@@ -1,3 +1,4 @@
+<!-- CODEX-AUDIT-WORKFLOW START -->
 # AGENTS.md — Execution Contract (v7)
 
 ## Purpose
@@ -231,3 +232,4 @@ Agents MUST:
 - keep documentation and audit artifacts up to date
 
 Failure to comply with WORKFLOW.md invalidates the session.
+<!-- CODEX-AUDIT-WORKFLOW END -->

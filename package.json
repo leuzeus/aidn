@@ -1,0 +1,9 @@
+{
+  "name": "codex-audit-workflow",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "install-pack": "node tools/install.mjs",
+    "build-release": "node tools/build-release.mjs"
+  }
+}
