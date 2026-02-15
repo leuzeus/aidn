@@ -193,6 +193,7 @@ If SPIKE results must survive:
 If mode is COMMITTING, the agent MUST ensure:
 - an active cycle exists
 - branch mapping is valid
+- DoR core gate is satisfied (or explicit override is documented)
 - baseline dependencies are respected
 
 If mode is EXPLORING and:
