@@ -52,6 +52,9 @@ node tools/install.mjs --target ../your-repo --pack core --dry-run
 Why it matters:
 - Prevents hallucination about project constraints.
 - Forces explicit local branch/cycle and snapshot policy.
+- Regulates entropy before structural decisions drift.
+- Preserves long-term coherence across cycles.
+- Improves AI stability and reduces cognitive load during context reload.
 - Keeps implementation choices aligned with your repo context.
 
 Minimum fields to fill before real work:

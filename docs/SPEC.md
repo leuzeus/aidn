@@ -1,6 +1,7 @@
-# CODEX WORKFLOW — Session-Based, Skill-Driven (v7)
+# AID'N WORKFLOW — Audit-Informed, Session-Based (v7)
 
-This workflow defines a **session-based, audit-driven process**.
+This workflow defines an **audit-informed, session-based process** with an embedded
+**audit-driven control layer**.
 It is **tool-agnostic**, but assumes the availability of Codex **skills** as the only
 mechanism allowed to modify state.
 
@@ -11,19 +12,49 @@ If an agent or user deviates from it, the session is considered **NON-COMPLIANT*
 
 ## Core Principles
 
-- **Sessions are intentional.** Every meaningful work period is a session.
+- **Audit-Informed Development is primary.** Audits are continuous decision filters.
+- **Entropy is regulated early.** Decisions are filtered before structural divergence compounds.
+- **Audit-Driven control is operational.** DoD and coherence are validated continuously.
+- **Sessions are intentional.** Every meaningful work period is a bounded session.
 - **Skills execute state.** Only skills may create or modify audit artifacts.
-- **Workflow orchestrates.** This file defines *when* and *why* skills must be used.
 - **Human intent is authoritative.** Automation assists; it does not decide.
+
+------------------------------------------------------------
+
+## System Model
+
+1. **Audit-Informed Development (Primary Philosophy)**
+   - Active before, during, and after implementation.
+   - Reduces entropy and scope drift before irreversible decisions.
+   - Protects long-term coherence of architecture and requirements.
+
+2. **Audit-Driven Layer (Control Mechanism)**
+   - Validates Definition of Done.
+   - Detects deviation and scope creep.
+   - Enforces architectural consistency and corrective adjustments.
+
+3. **Cycles (Bounded Delivery Units)**
+   - Intent audit
+   - Architecture audit
+   - Implementation
+   - Audit-driven validation
+   - Snapshot update
+
+4. **Memory System**
+   - Baseline = structural anchor
+   - Snapshots = fast reload memory
+   - Parking lot = entropy isolation
+
+This model is designed to increase AI stability while reducing operator cognitive load.
 
 ------------------------------------------------------------
 
 ## Key Files & Directories
 
-- Snapshot (fast reload): `docs/audit/snapshots/context-snapshot.md`
-- Baseline (current): `docs/audit/baseline/current.md`
+- Snapshot (fast reload memory): `docs/audit/snapshots/context-snapshot.md`
+- Baseline (structural anchor): `docs/audit/baseline/current.md`
 - Baseline (history): `docs/audit/baseline/history.md`
-- Parking lot (ideas / drift): `docs/audit/parking-lot.md`
+- Parking lot (entropy isolation): `docs/audit/parking-lot.md`
 - Cycles: `docs/audit/cycles/`
 - Agent contract: `AGENTS.md`
 
@@ -100,6 +131,13 @@ Ignoring drift is not allowed.
 ------------------------------------------------------------
 
 ## Cycle Management
+
+### Mandatory Cycle Pipeline
+- Intent audit
+- Architecture audit
+- Implementation
+- Audit-driven validation
+- Snapshot update
 
 ### Creating a Cycle
 - **Run skill: `cycle-create`**

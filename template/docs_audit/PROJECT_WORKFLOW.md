@@ -3,6 +3,7 @@
 This file is the project adapter for `aidn-workflow`.
 Use it to record repository-specific constraints and operating policy.
 Core workflow rules belong to the product spec (`docs/SPEC.md` in the product repo), not here.
+Its role is to reduce local ambiguity so AI behavior stays stable and cognitive load stays low.
 
 ## Setup Checklist
 
@@ -40,6 +41,7 @@ source_branch: {{SOURCE_BRANCH}}
 - Snapshot update trigger: `{{SNAPSHOT_TRIGGER}}`
 - Snapshot owner: `{{SNAPSHOT_OWNER}}`
 - Freshness rule before commit/review: `{{SNAPSHOT_FRESHNESS_RULE}}`
+- Parking lot rule for non-essential ideas (entropy isolation): `{{PARKING_LOT_RULE}}`
 
 ## Local Paths
 
