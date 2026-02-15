@@ -9,3 +9,20 @@ skills:
   - promote-baseline
   - requirements-delta
   - start-session
+
+remote:
+  repo: leuzeus/aidn
+  ref: "v{{VERSION}}"
+  root: template/codex
+
+install_urls:
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/branch-cycle-audit
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/close-session
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/context-reload
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/convert-to-spike
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/cycle-close
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/cycle-create
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/drift-check
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/promote-baseline
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/requirements-delta
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/start-session

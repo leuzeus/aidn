@@ -510,7 +510,41 @@ function writeUtf8(filePath, content, dryRun) {
   fs.writeFileSync(filePath, content, "utf8");
 }
 
-function copyRecursive(sourcePath, targetPath, dryRun, skipSources = null) {
+function renderTemplateVariables(content, templateVars) {
+  if (!templateVars) {
+    return content;
+  }
+  let rendered = content;
+  for (const [key, value] of Object.entries(templateVars)) {
+    rendered = rendered.replaceAll(`{{${key}}}`, String(value));
+  }
+  return rendered;
+}
+
+function shouldRenderTemplate(sourcePath) {
+  const base = path.basename(sourcePath).toLowerCase();
+  const ext = path.extname(sourcePath).toLowerCase();
+  if (base === ".gitignore") {
+    return true;
+  }
+  return [".md", ".yaml", ".yml", ".txt", ".json"].includes(ext);
+}
+
+function copyFile(sourcePath, targetPath, dryRun, templateVars = null) {
+  ensureDir(path.dirname(targetPath), dryRun);
+  if (dryRun) {
+    return;
+  }
+  if (shouldRenderTemplate(sourcePath)) {
+    const content = readUtf8(sourcePath);
+    const rendered = renderTemplateVariables(content, templateVars);
+    writeUtf8(targetPath, rendered, dryRun);
+    return;
+  }
+  fs.copyFileSync(sourcePath, targetPath);
+}
+
+function copyRecursive(sourcePath, targetPath, dryRun, skipSources = null, templateVars = null) {
   const absoluteSource = path.resolve(sourcePath);
   if (skipSources && skipSources.has(absoluteSource)) {
     return;
@@ -527,15 +561,13 @@ function copyRecursive(sourcePath, targetPath, dryRun, skipSources = null) {
         path.join(targetPath, entry.name),
         dryRun,
         skipSources,
+        templateVars,
       );
     }
     return;
   }
 
-  ensureDir(path.dirname(targetPath), dryRun);
-  if (!dryRun) {
-    fs.copyFileSync(sourcePath, targetPath);
-  }
+  copyFile(sourcePath, targetPath, dryRun, templateVars);
 }
 
 function ensureWorkflowBlock(templateText) {
@@ -774,6 +806,9 @@ async function main() {
     const repoRoot = path.resolve(scriptDir, "..");
     const targetRoot = path.resolve(process.cwd(), args.target);
     const version = readUtf8(path.join(repoRoot, "VERSION")).trim();
+    const templateVars = {
+      VERSION: version,
+    };
     const workflowManifestPath = path.join(
       repoRoot,
       "package",
@@ -856,9 +891,9 @@ async function main() {
           );
           const sourceStat = fs.statSync(sourcePath);
           if (sourceStat.isDirectory()) {
-            copyRecursive(sourcePath, targetPath, args.dryRun, explicitFileSources);
+            copyRecursive(sourcePath, targetPath, args.dryRun, explicitFileSources, templateVars);
           } else {
-            copyRecursive(sourcePath, targetPath, args.dryRun);
+            copyRecursive(sourcePath, targetPath, args.dryRun, null, templateVars);
           }
           summary.copied += 1;
         }
