@@ -8,13 +8,14 @@ The installer is a Node.js script and supports Node 18+ on Windows, Linux, and m
 
 ## Spec vs Project Stub (Why both exist)
 
-- Product spec: `aidn-workflow/docs/SPEC.md`
+- Product spec source: `aidn-workflow/docs/SPEC.md`
   - Defines official workflow rules for the workflow product.
+- Installed spec snapshot in client repos: `docs/audit/SPEC.md`
+  - Managed snapshot used to keep core instructions in local runtime context.
 - Project stub in client repos: `docs/audit/WORKFLOW.md`
   - Adapter file for local constraints and policies.
 
-Client repositories receive template artifacts only.
-They do not receive the full product spec file.
+Client repositories receive template artifacts and a managed spec snapshot.
 
 ## Step 1 - Prerequisites
 
@@ -65,6 +66,8 @@ Notes:
   - use `--skip-agents` to always skip AGENTS merge.
 
 ## Step 3 - Customize docs/audit/WORKFLOW.md (Project Stub)
+
+Before customization, review `docs/audit/SPEC.md` in the client repo.
 
 Why it matters:
 - Prevents hallucination about project constraints.

@@ -45,12 +45,25 @@ Fix:
 
 Symptom:
 - Team uses product spec path in client repos or edits the wrong file.
-- Unclear whether to change `docs/SPEC.md` or `docs/audit/WORKFLOW.md`.
+- Unclear whether to change `docs/SPEC.md`, `docs/audit/SPEC.md`, or `docs/audit/WORKFLOW.md`.
 
 Fix:
-- Use `docs/SPEC.md` only in the workflow product repository.
-- Use `docs/audit/WORKFLOW.md` only in client repositories.
+- Use `docs/SPEC.md` only in the workflow product repository (source spec).
+- Use `docs/audit/SPEC.md` in client repositories as the managed context snapshot (do not redefine rules there).
+- Use `docs/audit/WORKFLOW.md` only for project-local constraints/policies.
+- Re-run installer from the product repo to refresh client snapshot when the source spec changes.
 - In client setup, follow `docs/INSTALL.md` section `Spec vs Project Stub (Why both exist)`.
+
+## `docs/audit/SPEC.md` missing in client repository
+
+Symptom:
+- `docs/audit/SPEC.md` is missing after install or verify fails.
+
+Fix:
+- Re-run install:
+  - `node tools/install.mjs --target <repo> --pack core`
+- Re-run verify:
+  - `node tools/install.mjs --target <repo> --pack core --verify`
 
 ## Merge conflict in AGENTS.md
 

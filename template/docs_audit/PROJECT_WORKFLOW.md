@@ -2,7 +2,7 @@
 
 This file is the project adapter for `aidn-workflow`.
 Use it to record repository-specific constraints and operating policy.
-Core workflow rules belong to the product spec (`docs/SPEC.md` in the product repo), not here.
+Core workflow rules belong to the installed spec snapshot (`docs/audit/SPEC.md`, managed by installer), not here.
 Its role is to reduce local ambiguity so AI behavior stays stable and cognitive load stays low.
 
 ## Setup Checklist
@@ -46,6 +46,7 @@ source_branch: {{SOURCE_BRANCH}}
 
 ## Local Paths
 
+- Spec snapshot: `docs/audit/SPEC.md`
 - Baseline: `docs/audit/baseline/current.md`
 - Snapshot: `docs/audit/snapshots/context-snapshot.md`
 - Parking lot: `docs/audit/parking-lot.md`
@@ -53,4 +54,4 @@ source_branch: {{SOURCE_BRANCH}}
 ## Warning
 
 Do not redefine core workflow rules here.
-If this file conflicts with product rules, the product rules win.
+If this file conflicts with `docs/audit/SPEC.md`, the spec wins.

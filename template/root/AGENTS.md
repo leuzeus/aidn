@@ -6,11 +6,13 @@
 This repository uses a **Session-Based, Skill-Driven, Audit-Driven workflow**.
 
 Agents MUST:
-- follow `docs/audit/WORKFLOW.md` as the **single orchestration source**
+- follow `docs/audit/SPEC.md` as the canonical workflow specification
+- follow `docs/audit/WORKFLOW.md` as the project adapter for local constraints
 - use **Codex skills as the only state-changing mechanism**
 - minimize scope drift
 - preserve decision traceability
 - reduce context reload time
+- during upgrades, preserve `docs/audit/SPEC.md` authority and re-align `docs/audit/WORKFLOW.md` after install
 
 This file defines **how agents execute** the workflow — not the workflow itself.
 
@@ -37,13 +39,14 @@ If any required skill is unavailable, the agent MUST:
 ------------------------------------------------------------
 ## Source of Truth
 
-- Workflow (canonical): `docs/audit/WORKFLOW.md`
+- Workflow specification (canonical): `docs/audit/SPEC.md`
+- Workflow adapter (project-local): `docs/audit/WORKFLOW.md`
 - Current baseline: `docs/audit/baseline/current.md`
 - Snapshot (fast reload): `docs/audit/snapshots/context-snapshot.md`
 - Fast context reload: `docs/audit/snapshots/context-snapshot.md`
 - Ideas parking: `docs/audit/parking-lot.md`
 
-> If AGENTS.md and WORKFLOW.md conflict → **WORKFLOW.md wins**.
+> Precedence: `docs/audit/SPEC.md` > `docs/audit/WORKFLOW.md` > `AGENTS.md`.
 
 ------------------------------------------------------------
 ## Operating Environments
@@ -74,11 +77,16 @@ In this mode, the agent MUST:
 At the beginning of a session, the agent MUST:
 
 1. **Run skill: `context-reload`**
-2. **Run skill: `start-session`**
-3. Explicitly acknowledge the session mode:
+2. Confirm `docs/audit/SPEC.md` and `docs/audit/WORKFLOW.md` are loaded in context.
+3. **Run skill: `start-session`**
+4. Explicitly acknowledge the session mode:
   - THINKING
   - EXPLORING
   - COMMITTING
+
+If `docs/audit/SPEC.md` is missing, the agent MUST:
+- STOP
+- request workflow reinstall/repair before continuing
 
 If mode is **COMMITTING**, the agent MUST:
 - **Run skill: `branch-cycle-audit`**
@@ -226,11 +234,11 @@ Workflow precedence is defined above.
 These instructions apply to the entire repository unless a more specific `AGENTS.md` is added within a subdirectory.
 
 Agents MUST:
-- invoke skills explicitly when required by WORKFLOW.md
+- invoke skills explicitly when required by `docs/audit/SPEC.md` and `docs/audit/WORKFLOW.md`
 - avoid inventing workflow steps
 - avoid bypassing audit artifacts
 - report uncertainty rather than guessing
 - keep documentation and audit artifacts up to date
 
-Failure to comply with WORKFLOW.md invalidates the session.
+Failure to comply with `docs/audit/SPEC.md` invalidates the session.
 <!-- CODEX-AUDIT-WORKFLOW END -->
