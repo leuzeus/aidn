@@ -1,3 +1,47 @@
 # Troubleshooting
 
-Common issues and fixes.
+## Node not found
+
+Symptom:
+- `node` command is not recognized.
+
+Fix:
+- Install Node.js 18+.
+- Reopen your terminal and run `node -v`.
+
+## Verify failure
+
+Symptom:
+- `node tools/install.mjs --target <repo> --pack core --verify` prints `verified: FAIL`.
+
+Fix:
+- Read missing paths in command output.
+- Re-run install:
+  - `node tools/install.mjs --target <repo> --pack core`
+- Run verify again.
+
+## Merge conflict in AGENTS.md
+
+Symptom:
+- Workflow block appears duplicated or manually edited around merge markers.
+
+Fix:
+- Keep one managed block between:
+  - `<!-- CODEX-AUDIT-WORKFLOW START -->`
+  - `<!-- CODEX-AUDIT-WORKFLOW END -->`
+- Re-run installer to refresh only that block:
+  - `node tools/install.mjs --target <repo> --pack core`
+
+## Re-run install safely
+
+The installer is deterministic and idempotent for merge rules:
+- `AGENTS.md` uses block replacement/append, not blind overwrite.
+- `.gitignore` appends only unique lines.
+- template copy steps overwrite targeted template-managed paths.
+
+## AGENTS.md block explanation
+
+`AGENTS.md` merge strategy is `block`:
+- if target file does not exist, full template is written with markers.
+- if markers exist, only the marked block is replaced.
+- if markers do not exist, the managed block is appended to the end.
