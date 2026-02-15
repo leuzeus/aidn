@@ -35,3 +35,9 @@ Install then verify:
 node tools/install.mjs --target tests/fixtures/repo-installed-core --pack core
 node tools/install.mjs --target tests/fixtures/repo-installed-core --pack core --verify
 ```
+
+Dependency resolution check (`extended` should include `core`):
+
+```bash
+node tools/install.mjs --target tests/fixtures/repo-empty --pack extended --dry-run
+```
