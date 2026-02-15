@@ -59,6 +59,7 @@ Notes:
 - Compatibility is validated from product manifests (`node_min`, `os`) before file operations.
 - If `codex_online: true`, installer requires the `codex` command to be installed and available in `PATH`.
 - Compatibility policy and machine prereq result are printed in installer output (`Compatibility policy`, `Prereq check`).
+- `.codex/skills.yaml` is rendered with the current workflow version tag (for example `v0.1.0`) and points to `https://github.com/leuzeus/aidn`.
 - `AGENTS.md` non-interference policy:
   - if target `AGENTS.md` already exists, installer preserves it by default (no merge),
   - in `--assist`, preserving existing `AGENTS.md` is enforced by default,

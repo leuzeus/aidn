@@ -40,6 +40,7 @@ Client repository after install:
 - `docs/audit/cycles/`
 - `docs/audit/sessions/`
 - `.codex/skills.yaml`
+  - rendered with pinned `remote.ref` matching the installed aidn tag (for example `v0.1.0`)
 
 System model:
 - **Audit-Informed Development (primary philosophy):** audits act before, during, and after implementation as decision filters.
