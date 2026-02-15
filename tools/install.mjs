@@ -2,6 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import readline from "node:readline/promises";
+import { stdin as input, stdout as output } from "node:process";
 
 const BLOCK_START = "<!-- CODEX-AUDIT-WORKFLOW START -->";
 const BLOCK_END = "<!-- CODEX-AUDIT-WORKFLOW END -->";
@@ -12,6 +14,10 @@ function parseArgs(argv) {
     pack: "",
     dryRun: false,
     verifyOnly: false,
+    assist: false,
+    strict: false,
+    skipAgents: false,
+    forceAgentsMerge: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -26,6 +32,14 @@ function parseArgs(argv) {
       args.dryRun = true;
     } else if (token === "--verify") {
       args.verifyOnly = true;
+    } else if (token === "--assist") {
+      args.assist = true;
+    } else if (token === "--strict") {
+      args.strict = true;
+    } else if (token === "--skip-agents") {
+      args.skipAgents = true;
+    } else if (token === "--force-agents-merge") {
+      args.forceAgentsMerge = true;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -47,6 +61,10 @@ function printUsage() {
   console.log("  node tools/install.mjs --target ../repo --pack core");
   console.log("  node tools/install.mjs --target . --pack core --dry-run");
   console.log("  node tools/install.mjs --target . --pack core --verify");
+  console.log("  node tools/install.mjs --target ../repo --pack core --assist");
+  console.log("  node tools/install.mjs --target ../repo --pack core --strict");
+  console.log("  node tools/install.mjs --target ../repo --pack core --skip-agents");
+  console.log("  node tools/install.mjs --target ../repo --pack core --force-agents-merge");
 }
 
 function stripComments(line) {
@@ -204,14 +222,6 @@ function readYamlFile(filePath) {
   return parseYaml(readUtf8(filePath));
 }
 
-function parseNodeMajor() {
-  const major = Number(process.versions.node.split(".")[0]);
-  if (!Number.isInteger(major)) {
-    throw new Error(`Cannot parse current Node version: ${process.versions.node}`);
-  }
-  return major;
-}
-
 function normalizeOsLabel(platform) {
   if (platform === "win32") {
     return "windows";
@@ -220,6 +230,59 @@ function normalizeOsLabel(platform) {
     return "mac";
   }
   return "linux";
+}
+
+function commandExists(commandName) {
+  const pathValue = process.env.PATH ?? "";
+  if (!pathValue) {
+    return false;
+  }
+
+  const dirs = pathValue.split(path.delimiter).filter((entry) => entry && entry.trim().length > 0);
+  const isWindows = process.platform === "win32";
+  const extensions = isWindows
+    ? Array.from(
+      new Set(
+        ((process.env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM;.PS1")
+          .split(";")
+          .map((ext) => ext.trim().toLowerCase())
+          .filter((ext) => ext.length > 0))
+          .concat([".ps1"]),
+      ),
+    )
+    : [""];
+
+  for (const dir of dirs) {
+    if (isWindows) {
+      for (const ext of extensions) {
+        const candidate = path.join(dir, `${commandName}${ext}`);
+        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+          return true;
+        }
+      }
+      const plainCandidate = path.join(dir, commandName);
+      if (fs.existsSync(plainCandidate) && fs.statSync(plainCandidate).isFile()) {
+        return true;
+      }
+    } else {
+      const candidate = path.join(dir, commandName);
+      if (!fs.existsSync(candidate)) {
+        continue;
+      }
+      const stat = fs.statSync(candidate);
+      if (!stat.isFile()) {
+        continue;
+      }
+      try {
+        fs.accessSync(candidate, fs.constants.X_OK);
+        return true;
+      } catch {
+        // continue scanning
+      }
+    }
+  }
+
+  return false;
 }
 
 function asStringArray(value, label) {
@@ -313,12 +376,18 @@ function resolveCompatibility(workflowManifest, compatMatrix) {
 }
 
 function validateRuntimeCompatibility(compatibility) {
+  const runtime = {
+    node: process.versions.node,
+    os: normalizeOsLabel(process.platform),
+    codexInstalled: commandExists("codex"),
+  };
+
   if (!compatibility) {
-    return;
+    return runtime;
   }
 
   if (compatibility.nodeMin != null) {
-    const currentMajor = parseNodeMajor();
+    const currentMajor = Number(runtime.node.split(".")[0]);
     if (currentMajor < compatibility.nodeMin) {
       throw new Error(
         `Node ${currentMajor} is not supported (requires >= ${compatibility.nodeMin})`,
@@ -327,13 +396,37 @@ function validateRuntimeCompatibility(compatibility) {
   }
 
   if (compatibility.os && compatibility.os.length > 0) {
-    const currentOs = normalizeOsLabel(process.platform);
-    if (!compatibility.os.includes(currentOs)) {
+    if (!compatibility.os.includes(runtime.os)) {
       throw new Error(
-        `OS ${currentOs} is not supported by compatibility matrix (${compatibility.os.join(", ")})`,
+        `OS ${runtime.os} is not supported by compatibility matrix (${compatibility.os.join(", ")})`,
       );
     }
   }
+
+  if (compatibility.codexOnline === true && !runtime.codexInstalled) {
+    throw new Error(
+      "codex_online=true requires Codex CLI to be installed and available in PATH (command: codex)",
+    );
+  }
+
+  return runtime;
+}
+
+function formatCompatibility(compatibility) {
+  if (!compatibility) {
+    return "none";
+  }
+  const parts = [];
+  if (compatibility.nodeMin != null) {
+    parts.push(`node>=${compatibility.nodeMin}`);
+  }
+  if (compatibility.os && compatibility.os.length > 0) {
+    parts.push(`os=[${compatibility.os.join(", ")}]`);
+  }
+  if (compatibility.codexOnline != null) {
+    parts.push(`codex_online=${compatibility.codexOnline}`);
+  }
+  return parts.join(", ");
 }
 
 function loadPackManifest(repoRoot, packName) {
@@ -453,7 +546,100 @@ function ensureWorkflowBlock(templateText) {
   return `${BLOCK_START}${eol}${templateText.trimEnd()}${eol}${BLOCK_END}${eol}`;
 }
 
-function mergeBlock(templatePath, targetPath, dryRun) {
+function insertManagedBlockNearTop(currentNormalized, managedBlockNormalized) {
+  const managedBlock = managedBlockNormalized.endsWith("\n")
+    ? managedBlockNormalized
+    : `${managedBlockNormalized}\n`;
+  if (!currentNormalized) {
+    return managedBlock;
+  }
+
+  const lines = currentNormalized.split("\n");
+  let insertAt = 0;
+  if (lines[0].startsWith("# ")) {
+    insertAt = 1;
+    while (insertAt < lines.length && lines[insertAt].trim() === "") {
+      insertAt += 1;
+    }
+  }
+
+  const before = lines.slice(0, insertAt).join("\n");
+  const after = lines.slice(insertAt).join("\n");
+
+  if (!before) {
+    return `${managedBlock}${after}`;
+  }
+  if (!after) {
+    return `${before}\n\n${managedBlock}`;
+  }
+  return `${before}\n\n${managedBlock}\n${after}`;
+}
+
+function detectBlockMergeRisk(targetPath, currentNormalized) {
+  const reasons = [];
+  const lowerPath = targetPath.toLowerCase();
+  const lower = currentNormalized.toLowerCase();
+  if (lowerPath.endsWith("agents.md")) {
+    const nonEmptyCount = currentNormalized.split("\n").filter((line) => line.trim().length > 0).length;
+    if (nonEmptyCount > 40) {
+      reasons.push("target AGENTS.md already contains substantial content");
+    }
+    if (
+      lower.includes("required skills")
+      || lower.includes("execution contract")
+      || lower.includes("source of truth")
+    ) {
+      reasons.push("existing policy sections may overlap managed block");
+    }
+  }
+  return reasons;
+}
+
+function isAgentsPath(targetPath) {
+  return path.basename(targetPath).toLowerCase() === "agents.md";
+}
+
+function shouldSkipAgentsMerge(targetPath, args) {
+  if (!isAgentsPath(targetPath)) {
+    return { skip: false, reason: "" };
+  }
+  if (args.forceAgentsMerge) {
+    return { skip: false, reason: "" };
+  }
+  if (args.skipAgents) {
+    return { skip: true, reason: "explicit --skip-agents" };
+  }
+  if (fs.existsSync(targetPath)) {
+    if (args.assist) {
+      return {
+        skip: true,
+        reason: "assist mode preserves existing AGENTS.md to avoid instruction interference",
+      };
+    }
+    return {
+      skip: true,
+      reason: "existing AGENTS.md preserved by default (use --force-agents-merge to update managed block)",
+    };
+  }
+  return { skip: false, reason: "" };
+}
+
+async function confirmAssist(prompt) {
+  if (!input.isTTY) {
+    throw new Error(
+      "Assist confirmation requires an interactive terminal (TTY). Use --dry-run to preview or rerun without --assist.",
+    );
+  }
+  const rl = readline.createInterface({ input, output });
+  try {
+    const answer = await rl.question(`${prompt} [y/N]: `);
+    return /^y(es)?$/i.test(answer.trim());
+  } finally {
+    rl.close();
+  }
+}
+
+async function mergeBlock(templatePath, targetPath, dryRun, options) {
   const templateText = ensureWorkflowBlock(readUtf8(templatePath));
   const templateEol = detectEol(templateText);
   const targetExists = fs.existsSync(targetPath);
@@ -478,8 +664,30 @@ function mergeBlock(templatePath, targetPath, dryRun) {
       normalizedTemplate.trimEnd(),
     );
   } else {
-    const spacer = normalizedCurrent.endsWith("\n") || normalizedCurrent.length === 0 ? "" : "\n";
-    nextNormalized = `${normalizedCurrent}${spacer}${normalizedTemplate}`;
+    const risks = detectBlockMergeRisk(targetPath, normalizedCurrent);
+    if (risks.length > 0) {
+      const riskMessage = `potential merge conflict in ${targetPath}: ${risks.join("; ")}`;
+      if (options.strict) {
+        throw new Error(`Strict mode blocked install (${riskMessage})`);
+      }
+      console.warn(`WARNING: ${riskMessage}`);
+      if (options.assist) {
+        if (dryRun) {
+          console.warn("[dry-run] assist mode: confirmation will be requested on non-dry execution");
+        } else {
+          const approved = await confirmAssist(
+            `Apply managed AGENTS.md block insertion near top for ${targetPath}?`,
+          );
+          if (!approved) {
+            return { changed: false, skippedByAssist: true };
+          }
+        }
+      }
+    }
+    nextNormalized = insertManagedBlockNearTop(
+      normalizedCurrent,
+      normalizedTemplate.trimEnd(),
+    );
   }
 
   const nextContent = nextNormalized.replace(/\n/g, eol || templateEol);
@@ -488,7 +696,7 @@ function mergeBlock(templatePath, targetPath, dryRun) {
   }
 
   writeUtf8(targetPath, nextContent, dryRun);
-  return { changed: true };
+  return { changed: true, skippedByAssist: false };
 }
 
 function mergeAppendUnique(templatePath, targetPath, dryRun) {
@@ -559,7 +767,7 @@ function getWorkflowPlaceholders(targetRoot) {
   return placeholders;
 }
 
-function main() {
+async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -578,14 +786,16 @@ function main() {
       "manifests",
       "compat.matrix.yaml",
     );
-    const workflowManifest = fs.existsSync(workflowManifestPath)
-      ? readYamlFile(workflowManifestPath)
-      : null;
-    const compatMatrix = fs.existsSync(compatMatrixPath)
-      ? readYamlFile(compatMatrixPath)
-      : null;
+    if (!fs.existsSync(workflowManifestPath)) {
+      throw new Error(`Missing required workflow manifest: ${workflowManifestPath}`);
+    }
+    if (!fs.existsSync(compatMatrixPath)) {
+      throw new Error(`Missing required compatibility matrix: ${compatMatrixPath}`);
+    }
+    const workflowManifest = readYamlFile(workflowManifestPath);
+    const compatMatrix = readYamlFile(compatMatrixPath);
     const compatibility = resolveCompatibility(workflowManifest, compatMatrix);
-    validateRuntimeCompatibility(compatibility);
+    const runtime = validateRuntimeCompatibility(compatibility);
 
     const workflowPacks = workflowManifest?.packs ?? [];
     if (workflowManifest && !Array.isArray(workflowPacks)) {
@@ -605,6 +815,10 @@ function main() {
     console.log(`Product version: ${version}`);
     console.log(`Packs: ${selectedPacks.join(", ")}`);
     console.log(`Target: ${targetRoot}`);
+    console.log(`Compatibility policy: ${formatCompatibility(compatibility)}`);
+    console.log(
+      `Prereq check: OK (node ${runtime.node}, os ${runtime.os}, codex ${runtime.codexInstalled ? "installed" : "missing"})`,
+    );
     if (args.dryRun) {
       console.log("Mode: dry-run");
     } else if (args.verifyOnly) {
@@ -655,17 +869,33 @@ function main() {
           if (!fs.existsSync(sourcePath)) {
             throw new Error(`Merge source does not exist: ${op.from}`);
           }
+          const agentsPolicy = shouldSkipAgentsMerge(targetPath, args);
+          if (agentsPolicy.skip) {
+            console.log(
+              `skip merge ${op.from} -> ${op.to} (${op.strategy}, pack ${packName}, ${agentsPolicy.reason})`,
+            );
+            summary.skipped += 1;
+            continue;
+          }
 
           let result;
           if (op.strategy === "block") {
-            result = mergeBlock(sourcePath, targetPath, args.dryRun);
+            result = await mergeBlock(sourcePath, targetPath, args.dryRun, {
+              assist: args.assist,
+              strict: args.strict,
+            });
           } else if (op.strategy === "append_unique") {
             result = mergeAppendUnique(sourcePath, targetPath, args.dryRun);
           } else {
             throw new Error(`Unsupported merge strategy: ${op.strategy}`);
           }
 
-          if (result.changed) {
+          if (result.skippedByAssist) {
+            console.log(
+              `skip merge ${op.from} -> ${op.to} (${op.strategy}, pack ${packName}, not approved in assist mode)`,
+            );
+            summary.skipped += 1;
+          } else if (result.changed) {
             console.log(
               `${args.dryRun ? "[dry-run] " : ""}merge ${op.from} -> ${op.to} (${op.strategy}, pack ${packName})`,
             );

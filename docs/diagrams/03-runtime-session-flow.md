@@ -1,3 +1,4 @@
+```mermaid
 %% 3) Runtime Session Flow
 flowchart TD
   ST["Session Start"] --> RL["Context Reload"]
@@ -32,3 +33,4 @@ flowchart TD
   DEC -->|Yes| SU["Update Snapshot"]
   SU --> PL["Route non-essential items to Parking Lot"]
   PL --> END["Session End"]
+```

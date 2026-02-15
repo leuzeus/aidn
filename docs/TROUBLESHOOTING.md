@@ -9,6 +9,15 @@ Fix:
 - Install Node.js 18+.
 - Reopen your terminal and run `node -v`.
 
+## Codex CLI missing (codex_online=true)
+
+Symptom:
+- Installer fails with `codex_online=true requires Codex CLI to be installed...`.
+
+Fix:
+- Install Codex CLI and ensure `codex` is available in `PATH`.
+- Verify with `codex --version`.
+
 ## Verify failure
 
 Symptom:
@@ -54,6 +63,11 @@ Fix:
   - `<!-- CODEX-AUDIT-WORKFLOW END -->`
 - Re-run installer to refresh only that block:
   - `node tools/install.mjs --target <repo> --pack core`
+- If you need to keep local instructions untouched:
+  - `node tools/install.mjs --target <repo> --pack core --skip-agents`
+- If you explicitly want to update managed block in existing AGENTS:
+  - `node tools/install.mjs --target <repo> --pack core --force-agents-merge`
+- In `--assist`, existing `AGENTS.md` is preserved by default.
 
 ## Re-run install safely
 
@@ -66,5 +80,5 @@ The installer is deterministic and idempotent for merge rules:
 
 `AGENTS.md` merge strategy is `block`:
 - if target file does not exist, full template is written with markers.
-- if markers exist, only the marked block is replaced.
-- if markers do not exist, the managed block is appended to the end.
+- if target file exists, installer preserves it by default to avoid instruction interference.
+- use `--force-agents-merge` to apply managed block replacement/insertion.

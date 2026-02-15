@@ -1,3 +1,4 @@
+```mermaid
 %% 4) Entropy Regulation Control Loop
 flowchart TD
   subgraph AI["Audit-Informed Regulation (Pre-Decision)"]
@@ -34,3 +35,4 @@ flowchart TD
   VAL --> PARK
   PARK --> IN
   SNAP --> BASE
+```

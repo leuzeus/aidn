@@ -1,3 +1,4 @@
+```mermaid
 %% 1) Global System Architecture
 flowchart TD
   subgraph P["Audit-Informed Development (Primary Philosophy)"]
@@ -42,3 +43,4 @@ flowchart TD
   ADV --> PL
   PL --> I
   S --> AIF
+```

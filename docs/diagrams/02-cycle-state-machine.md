@@ -1,3 +1,4 @@
+```mermaid
 %% 2) Cycle State Machine
 stateDiagram-v2
   [*] --> Intent_Audit
@@ -24,3 +25,4 @@ stateDiagram-v2
     Entropy checkpoint #2:
     evaluate ΔE after build and before snapshot
   end note
+```
