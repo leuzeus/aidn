@@ -63,6 +63,7 @@ Minimum fields to fill before real work:
 - `Project Constraints`
 - `Branch & Cycle Policy`
 - `Snapshot Discipline`
+- `DoR policy` (minimal core gate + adaptive checks)
 
 Short filled example:
 

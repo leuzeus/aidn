@@ -34,6 +34,9 @@ Collect:
 Apply Branch/Cycle Requirement Auto-check:
 - Require a cycle + status.md
 - Require branch mapping in status.md (branch_name: ...)
+- Validate status DoR marker:
+  - `dor_state` should be READY
+  - if NOT_READY, ask user to resolve DoR gaps or explicitly document override reason
 
 5) Update snapshot (optional but recommended):
 - Ensure active cycle list reflects the mapped cycle

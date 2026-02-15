@@ -35,6 +35,7 @@ source_branch: {{SOURCE_BRANCH}}
 - Cycle branch naming: `CXXX-<type>-<slug>`
 - Branch-to-cycle rule: one active cycle per committing branch
 - Allowed cycle types: `{{ALLOWED_CYCLE_TYPES}}`
+- DoR policy: minimal core gate + adaptive checks by cycle type: `{{DOR_POLICY}}`
 
 ## Snapshot Discipline
 
