@@ -1,1 +1,1 @@
-# Checksums placeholder
+fe83ecef414825ce753e67fc7fd7ceee2994542e5254306b99966583b9dd6c0f  release/dist/codex-audit-workflow-0.1.0.zip
