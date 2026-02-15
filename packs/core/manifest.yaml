@@ -1,0 +1,6 @@
+name: core
+version: 0.1.0
+files:
+  - template/root/AGENTS.md
+  - template/docs_audit/**
+  - template/codex/skills.yaml
