@@ -1,0 +1,10 @@
+{
+  "name": "aidn-workflow",
+  "description": "aid’n — Audit-driven, session-based workflow packaging system for structured AI-assisted development",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "install-pack": "node tools/install.mjs",
+    "build-release": "node tools/build-release.mjs"
+  }
+}

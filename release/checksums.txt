@@ -1,1 +1,1 @@
-# Checksums placeholder
+d31144a3b4a228d6f8426af49f3c3f9f748f933e0fd3efab7e96810d960c126d  release/dist/aidn-workflow-0.1.0.zip

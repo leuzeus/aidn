@@ -1,0 +1,7 @@
+node_min: 18
+os:
+  - windows
+  - linux
+  - mac
+codex_online: true
+notes: "Template-only install via Node installer"

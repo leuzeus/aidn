@@ -1,3 +1,4 @@
-# Official Workflow Specification
+# Workflow Compatibility Pointer
 
-Source of truth for the workflow product.
+This file is kept for backward compatibility.
+Official workflow specification is in `docs/SPEC.md`.
