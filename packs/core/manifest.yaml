@@ -1,6 +1,27 @@
 name: core
 version: 0.1.0
-files:
-  - template/root/AGENTS.md
-  - template/docs_audit/**
-  - template/codex/skills.yaml
+
+install:
+  copy:
+    - from: template/docs_audit/
+      to: docs/audit/
+    - from: template/codex/skills.yaml
+      to: .codex/skills.yaml
+    - from: template/codex/README_CodexOnline.md
+      to: docs/audit/CODEX_ONLINE.md
+
+  merge:
+    - from: template/root/AGENTS.md
+      to: AGENTS.md
+      strategy: block
+    - from: template/root/.gitignore.append
+      to: .gitignore
+      strategy: append_unique
+
+verify:
+  must_exist:
+    - AGENTS.md
+    - docs/audit/baseline/current.md
+    - docs/audit/snapshots/context-snapshot.md
+    - docs/audit/parking-lot.md
+    - .codex/skills.yaml

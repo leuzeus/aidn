@@ -1,4 +1,10 @@
 name: extended
 version: 0.1.0
-files:
-  - (add extended modules here)
+depends_on: [core]
+
+install:
+  copy: []
+  merge: []
+
+verify:
+  must_exist: []
