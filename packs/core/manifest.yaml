@@ -5,6 +5,8 @@ install:
   copy:
     - from: template/docs_audit/
       to: docs/audit/
+    - from: docs/SPEC.md
+      to: docs/audit/SPEC.md
     - from: template/docs_audit/PROJECT_WORKFLOW.md
       to: docs/audit/WORKFLOW.md
     - from: template/codex/skills.yaml
@@ -23,6 +25,7 @@ install:
 verify:
   must_exist:
     - AGENTS.md
+    - docs/audit/SPEC.md
     - docs/audit/WORKFLOW.md
     - docs/audit/baseline/current.md
     - docs/audit/snapshots/context-snapshot.md

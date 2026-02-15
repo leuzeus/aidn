@@ -20,6 +20,7 @@ The model structures work through bounded cycles, session discipline, baseline a
   - Official specification: `docs/SPEC.md`
   - Installation templates: `template/`
 - Client repositories receive:
+  - Managed spec snapshot at `docs/audit/SPEC.md`
   - Project adapter stub at `docs/audit/WORKFLOW.md`
   - Audit artifacts and skill mapping used by day-to-day execution
 
@@ -32,6 +33,7 @@ Product repository:
 - Node installer and release tooling (`tools/`)
 
 Client repository after install:
+ - `docs/audit/SPEC.md` (managed spec snapshot)
 - `docs/audit/WORKFLOW.md` (project adapter stub)
 - `docs/audit/baseline/`
 - `docs/audit/snapshots/`
@@ -58,5 +60,5 @@ node tools/build-release.mjs
 
 ## Project Stub Customization
 
-After install, customize `docs/audit/WORKFLOW.md` in the client repository.
+After install, review `docs/audit/SPEC.md` then customize `docs/audit/WORKFLOW.md` in the client repository.
 Replace placeholders (for example `{{PROJECT_NAME}}` and `{{SOURCE_BRANCH}}`) and complete project constraints/policies before starting production work.
