@@ -110,6 +110,32 @@ Failure to complete these steps invalidates the session.
 
 ------------------------------------------------------------
 
+## Definition of Ready (DoR) — Explicit and Adaptive
+
+DoR governs entry into implementation for COMMITTING work.
+It is intentionally lightweight: strict on invariants, flexible on depth.
+
+### Core DoR Gate (mandatory for COMMITTING)
+- One active cycle exists and is bound to the current branch.
+- Intent is explicit in cycle artifacts (objective, scope, non-scope).
+- First implementation step is defined in `plan.md`.
+- Constraints/risks are acknowledged before coding.
+
+### Adaptive DoR Depth (by cycle type)
+- `spike`: keep DoR minimal (learning goal + timebox + decision target).
+- `feature | hotfix | refactor | perf | compat | corrective`: require minimal REQ and planned traceability.
+- `security | migration | integration | structural`: require impact notes and rollback/compatibility strategy.
+
+### Validation Responsibility
+- `start-session` validates the Core DoR Gate before COMMITTING execution.
+- `branch-cycle-audit` validates branch ownership and cycle binding consistency.
+- If DoR is not met, work remains in THINKING/EXPLORING until gaps are resolved.
+- Temporary override is allowed only if recorded in cycle status with rationale.
+
+DoR is an entropy filter, not bureaucracy.
+
+------------------------------------------------------------
+
 ## Drift Control (MANDATORY)
 
 Drift is any deviation from:

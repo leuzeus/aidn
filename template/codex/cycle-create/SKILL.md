@@ -33,6 +33,7 @@ docs/audit/cycles/CXXX-[type]-<short-title>/
 3) In status.md, set:
 - state: OPEN
 - branch_name: <current branch or suggested>
+- dor_state: NOT_READY
 - scope_frozen: false
 - next step: write plan + audit spec (or spike goal)
 
@@ -43,6 +44,10 @@ docs/audit/cycles/CXXX-[type]-<short-title>/
 5) Update snapshot:
 - Add the cycle as active
 - Set next entry point to status.md
+
+6) Mark readying actions:
+- fill DoR checklist in status.md
+- set `dor_state: READY` only when core gate is satisfied
 
 Output:
 - Cycle path created

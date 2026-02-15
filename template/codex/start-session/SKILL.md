@@ -34,6 +34,14 @@ Use TEMPLATE_SESSION_SXXX.md structure.
 If mode=COMMITTING:
 - Require a cycle + status.md
 - Require branch mapping in status.md (branch_name: current branch)
+- Run Core DoR check from status.md/brief.md/plan.md:
+  - objective + scope/non-scope present
+  - first implementation step defined
+  - constraints/risks acknowledged
+- If DoR not satisfied:
+  - do not proceed as COMMITTING
+  - recommend smallest actions to reach READY
+  - suggest THINKING or EXPLORING until fixed
 
 If mode=EXPLORING and:
 - >2 files touched OR

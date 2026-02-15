@@ -44,7 +44,6 @@ System model:
 - **Audit-Driven layer (control mechanism):** validates DoD, detects deviation/scope creep, and applies corrective adjustments.
 - **Cycles (bounded execution):** intent audit, architecture audit, implementation, audit-driven validation, snapshot update.
 - **Memory system:** baseline as structural anchor, snapshots as fast reload memory, parking lot as entropy isolation.
-
 ## Installation
 
 ```bash
