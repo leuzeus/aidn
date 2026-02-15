@@ -1,0 +1,28 @@
+```mermaid
+%% 2) Cycle State Machine
+stateDiagram-v2
+  [*] --> Intent_Audit
+  Intent_Audit --> Architecture_Audit: intent coherent / ΔE acceptable
+  Intent_Audit --> Corrective_Loop: intent unclear or ΔE high
+
+  Architecture_Audit --> Implementation: architecture valid / ready
+  Architecture_Audit --> Corrective_Loop: structural mismatch
+
+  Implementation --> Audit_Driven_Validation: build complete
+  Audit_Driven_Validation --> Snapshot_Update: DoD pass + no critical drift
+  Audit_Driven_Validation --> Corrective_Loop: DoD fail or drift detected
+
+  Snapshot_Update --> [*]
+
+  Corrective_Loop --> Intent_Audit: re-scope / constraints updated
+
+  note right of Intent_Audit
+    Entropy checkpoint #1:
+    evaluate ΔE before structural commitment
+  end note
+
+  note right of Audit_Driven_Validation
+    Entropy checkpoint #2:
+    evaluate ΔE after build and before snapshot
+  end note
+```

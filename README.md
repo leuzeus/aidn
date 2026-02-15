@@ -47,6 +47,7 @@ System model:
 ## Installation
 
 ```bash
+node tools/install.mjs --target ../client
 node tools/install.mjs --target ../client --pack core
 node tools/install.mjs --target ../client --pack core --verify
 ```

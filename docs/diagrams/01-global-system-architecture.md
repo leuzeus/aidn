@@ -1,0 +1,46 @@
+```mermaid
+%% 1) Global System Architecture
+flowchart TD
+  subgraph P["Audit-Informed Development (Primary Philosophy)"]
+    AIF["Continuous decision filters"]
+    E1["ΔE checkpoint: pre-structural decision"]
+    COH["Long-term coherence guard"]
+  end
+
+  subgraph C["Audit-Driven Layer (Control Mechanism)"]
+    DOD["DoD validation"]
+    DRIFT["Deviation / scope drift detection"]
+    ARCH["Architecture consistency checks"]
+    CORR["Corrective actions"]
+  end
+
+  subgraph X["Cycle Engine"]
+    I["Intent Audit"]
+    AA["Architecture Audit"]
+    IMPL["Implementation"]
+    ADV["Audit-Driven Validation"]
+    SU["Snapshot Update"]
+  end
+
+  subgraph M["Memory System"]
+    B["Baseline (structural anchor)"]
+    S["Snapshots (fast reload memory)"]
+    PL["Parking Lot (entropy isolation)"]
+  end
+
+  AIF --> E1 --> I
+  COH --> AA
+  I --> AA --> IMPL --> ADV --> SU
+  DOD --> ADV
+  DRIFT --> ADV
+  ARCH --> ADV
+  ADV --> CORR
+  CORR --> I
+
+  B --> I
+  B --> AA
+  SU --> S
+  ADV --> PL
+  PL --> I
+  S --> AIF
+```

@@ -29,6 +29,12 @@ From this repository root:
 node tools/install.mjs --target ../your-repo --pack core
 ```
 
+Install using workflow defaults (all packs listed in `package/manifests/workflow.manifest.yaml`):
+
+```bash
+node tools/install.mjs --target ../your-repo
+```
+
 Windows example:
 
 ```powershell
@@ -46,6 +52,17 @@ Dry run example:
 ```bash
 node tools/install.mjs --target ../your-repo --pack core --dry-run
 ```
+
+Notes:
+- The installer resolves `depends_on` recursively (for example `extended` installs `core` first).
+- Compatibility is validated from product manifests (`node_min`, `os`) before file operations.
+- If `codex_online: true`, installer requires the `codex` command to be installed and available in `PATH`.
+- Compatibility policy and machine prereq result are printed in installer output (`Compatibility policy`, `Prereq check`).
+- `AGENTS.md` non-interference policy:
+  - if target `AGENTS.md` already exists, installer preserves it by default (no merge),
+  - in `--assist`, preserving existing `AGENTS.md` is enforced by default,
+  - use `--force-agents-merge` to explicitly update/insert the managed block,
+  - use `--skip-agents` to always skip AGENTS merge.
 
 ## Step 3 - Customize docs/audit/WORKFLOW.md (Project Stub)
 
@@ -85,6 +102,7 @@ node tools/install.mjs --target ../your-repo --pack core --verify
 ```
 
 Verification checks required files declared in the pack manifest and returns a non-zero exit code on failure.
+When dependencies are resolved, verification covers the union of required files across all installed packs.
 The installer also prints a warning if the project stub still contains placeholders.
 
 ## Step 5 - Commit client repo files
