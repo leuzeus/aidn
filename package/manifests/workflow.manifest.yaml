@@ -1,4 +1,4 @@
-product_name: codex-audit-workflow
+product_name: aidn-workflow
 version: 0.1.0
 packs:
   - core

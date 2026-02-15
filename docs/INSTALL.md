@@ -8,7 +8,7 @@ The installer is a Node.js script and supports Node 18+ on Windows, Linux, and m
 
 ## Spec vs Project Stub (Why both exist)
 
-- Product spec: `codex-audit-workflow/docs/SPEC.md`
+- Product spec: `aidn-workflow/docs/SPEC.md`
   - Defines official workflow rules for the workflow product.
 - Project stub in client repos: `docs/audit/WORKFLOW.md`
   - Adapter file for local constraints and policies.
@@ -64,7 +64,7 @@ Minimum fields to fill before real work:
 Short filled example:
 
 ```yaml
-workflow_product: codex-audit-workflow
+workflow_product: aidn-workflow
 workflow_version: 0.1.0
 installed_pack: core
 project_name: my-product-repo

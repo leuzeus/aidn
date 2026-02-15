@@ -178,7 +178,7 @@ function main() {
   const repoRoot = path.resolve(scriptDir, "..");
   const version = fs.readFileSync(path.join(repoRoot, "VERSION"), "utf8").trim();
   const distDir = path.join(repoRoot, "release", "dist");
-  const zipName = `codex-audit-workflow-${version}.zip`;
+  const zipName = `aidn-workflow-${version}.zip`;
   const zipPath = path.join(distDir, zipName);
   const checksumsPath = path.join(repoRoot, "release", "checksums.txt");
 

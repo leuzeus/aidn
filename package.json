@@ -1,5 +1,6 @@
 {
-  "name": "codex-audit-workflow",
+  "name": "aidn-workflow",
+  "description": "aid’n — Audit-driven, session-based workflow packaging system for structured AI-assisted development",
   "private": true,
   "type": "module",
   "scripts": {

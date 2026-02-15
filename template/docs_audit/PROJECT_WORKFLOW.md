@@ -1,6 +1,6 @@
 # Project Workflow Adapter (Stub)
 
-This file is the project adapter for `codex-audit-workflow`.
+This file is the project adapter for `aidn-workflow`.
 Use it to record repository-specific constraints and operating policy.
 Core workflow rules belong to the product spec (`docs/SPEC.md` in the product repo), not here.
 
@@ -15,7 +15,7 @@ Core workflow rules belong to the product spec (`docs/SPEC.md` in the product re
 ## Adapter Metadata
 
 ```yaml
-workflow_product: codex-audit-workflow
+workflow_product: aidn-workflow
 workflow_version: {{VERSION}}
 installed_pack: core
 project_name: {{PROJECT_NAME}}
