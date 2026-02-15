@@ -1,0 +1,11 @@
+skills:
+  - branch-cycle-audit
+  - close-session
+  - context-reload
+  - convert-to-spike
+  - cycle-close
+  - cycle-create
+  - drift-check
+  - promote-baseline
+  - requirements-delta
+  - start-session
