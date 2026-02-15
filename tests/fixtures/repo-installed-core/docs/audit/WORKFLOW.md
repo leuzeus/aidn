@@ -1,23 +1,53 @@
-# CODEX WORKFLOW — Session-Based + Automated Context Reload (v3)
+# Project Workflow Adapter (Stub)
 
-This is a stack-agnostic workflow optimized for irregular development and creative drift control.
+This file is the project adapter for `codex-audit-workflow`.
+Use it to record repository-specific constraints and operating policy.
+Core workflow rules belong to the product spec (`docs/SPEC.md` in the product repo), not here.
 
-## Key files
-- Snapshot: `snapshots/context-snapshot.md` (fast reload < 5 minutes)
-- Baseline: `baseline/current.md`
-- Parking lot: `parking-lot.md`
-- Templates: `cycles/TEMPLATE_*.md`, `sessions/TEMPLATE_SESSION_SXXX.md`
-- Agent rules: `/AGENTS.md`
+## Setup Checklist
 
-## Guardrails
-- Scope Freeze + Change Requests (CR) gate
-- Parking lot for non-essential ideas
-- Branch awareness: map active branch to one active cycle
+- [ ] Fill `project_name`
+- [ ] Fill `source_branch`
+- [ ] Add project constraints
+- [ ] Confirm branch & cycle policy
+- [ ] Confirm snapshot discipline
 
-## Auto mode detection
-At the start of each session, propose a mode:
-- THINKING (doc only)
-- EXPLORING (code may be throwaway)
-- COMMITTING (production intent; cycle + branch mapping required)
+## Adapter Metadata
 
-Date: 2026-02-07
+```yaml
+workflow_product: codex-audit-workflow
+workflow_version: {{VERSION}}
+installed_pack: core
+project_name: {{PROJECT_NAME}}
+source_branch: {{SOURCE_BRANCH}}
+```
+
+## Project Constraints
+
+- Runtime/platform constraints: `{{RUNTIME_CONSTRAINTS}}`
+- Architecture constraints: `{{ARCH_CONSTRAINTS}}`
+- Delivery constraints (CI/release/compliance): `{{DELIVERY_CONSTRAINTS}}`
+
+## Branch & Cycle Policy
+
+- Source branch: `{{SOURCE_BRANCH}}`
+- Cycle branch naming: `CXXX-<type>-<slug>`
+- Branch-to-cycle rule: one active cycle per committing branch
+- Allowed cycle types: `{{ALLOWED_CYCLE_TYPES}}`
+
+## Snapshot Discipline
+
+- Snapshot update trigger: `{{SNAPSHOT_TRIGGER}}`
+- Snapshot owner: `{{SNAPSHOT_OWNER}}`
+- Freshness rule before commit/review: `{{SNAPSHOT_FRESHNESS_RULE}}`
+
+## Local Paths
+
+- Baseline: `docs/audit/baseline/current.md`
+- Snapshot: `docs/audit/snapshots/context-snapshot.md`
+- Parking lot: `docs/audit/parking-lot.md`
+
+## Warning
+
+Do not redefine core workflow rules here.
+If this file conflicts with product rules, the product rules win.

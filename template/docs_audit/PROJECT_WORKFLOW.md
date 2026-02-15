@@ -1,16 +1,16 @@
 # Project Workflow Adapter (Stub)
 
-This file is a project-level adapter for `codex-audit-workflow`.
-It records local constraints and decisions for this repository.
-It is not the official workflow spec and must not redefine core workflow rules.
+This file is the project adapter for `codex-audit-workflow`.
+Use it to record repository-specific constraints and operating policy.
+Core workflow rules belong to the product spec (`docs/SPEC.md` in the product repo), not here.
 
 ## Setup Checklist
 
-- [ ] Set `project_name`
-- [ ] Set `source_branch`
-- [ ] Fill constraints (SSR/WASM/etc)
-- [ ] Confirm cycle policy
-- [ ] Confirm snapshot policy
+- [ ] Fill `project_name`
+- [ ] Fill `source_branch`
+- [ ] Add project constraints
+- [ ] Confirm branch & cycle policy
+- [ ] Confirm snapshot discipline
 
 ## Adapter Metadata
 
@@ -24,24 +24,22 @@ source_branch: {{SOURCE_BRANCH}}
 
 ## Project Constraints
 
-Document practical constraints for this repository only.
-
-- Runtime/Platform constraints: `{{RUNTIME_CONSTRAINTS}}`
+- Runtime/platform constraints: `{{RUNTIME_CONSTRAINTS}}`
 - Architecture constraints: `{{ARCH_CONSTRAINTS}}`
-- Delivery constraints (CI, release, compliance): `{{DELIVERY_CONSTRAINTS}}`
+- Delivery constraints (CI/release/compliance): `{{DELIVERY_CONSTRAINTS}}`
 
 ## Branch & Cycle Policy
 
-- Source branch for long-lived work: `{{SOURCE_BRANCH}}`
-- Branch naming format for cycle work: `CXXX-<type>-<slug>`
-- Cycle mapping rule: exactly one active cycle per committing branch
-- Allowed cycle types in this project: `{{ALLOWED_CYCLE_TYPES}}`
+- Source branch: `{{SOURCE_BRANCH}}`
+- Cycle branch naming: `CXXX-<type>-<slug>`
+- Branch-to-cycle rule: one active cycle per committing branch
+- Allowed cycle types: `{{ALLOWED_CYCLE_TYPES}}`
 
 ## Snapshot Discipline
 
 - Snapshot update trigger: `{{SNAPSHOT_TRIGGER}}`
-- Snapshot owner/responsibility: `{{SNAPSHOT_OWNER}}`
-- Required freshness before commit/review: `{{SNAPSHOT_FRESHNESS_RULE}}`
+- Snapshot owner: `{{SNAPSHOT_OWNER}}`
+- Freshness rule before commit/review: `{{SNAPSHOT_FRESHNESS_RULE}}`
 
 ## Local Paths
 
@@ -52,4 +50,4 @@ Document practical constraints for this repository only.
 ## Warning
 
 Do not redefine core workflow rules here.
-If this file conflicts with workflow product rules, the product rules win.
+If this file conflicts with product rules, the product rules win.

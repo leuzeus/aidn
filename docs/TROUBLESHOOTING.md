@@ -32,6 +32,17 @@ Fix:
 - Follow `docs/INSTALL.md`, Step 3: `Customize docs/audit/WORKFLOW.md (Project Stub)`.
 - Commit the updated stub as part of baseline setup.
 
+## Confusion between product spec and project stub
+
+Symptom:
+- Team uses product spec path in client repos or edits the wrong file.
+- Unclear whether to change `docs/SPEC.md` or `docs/audit/WORKFLOW.md`.
+
+Fix:
+- Use `docs/SPEC.md` only in the workflow product repository.
+- Use `docs/audit/WORKFLOW.md` only in client repositories.
+- In client setup, follow `docs/INSTALL.md` section `Spec vs Project Stub (Why both exist)`.
+
 ## Merge conflict in AGENTS.md
 
 Symptom:

@@ -469,7 +469,7 @@ function main() {
         `WARNING: docs/audit/WORKFLOW.md still has placeholders: ${workflowPlaceholders.join(", ")}`,
       );
       console.warn(
-        'Customize the project stub. See docs/INSTALL.md section "Step 3 - Customize docs/audit/WORKFLOW.md (Project Stub)".',
+        'Customize the project stub. See docs/INSTALL.md sections "Spec vs Project Stub (Why both exist)" and "Step 3 - Customize docs/audit/WORKFLOW.md (Project Stub)".',
       );
     }
 

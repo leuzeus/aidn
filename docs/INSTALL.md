@@ -6,6 +6,16 @@ This workflow is installed by copying and merging template files into a client r
 No compiled binaries are required.
 The installer is a Node.js script and supports Node 18+ on Windows, Linux, and macOS.
 
+## Spec vs Project Stub (Why both exist)
+
+- Product spec: `codex-audit-workflow/docs/SPEC.md`
+  - Defines official workflow rules for the workflow product.
+- Project stub in client repos: `docs/audit/WORKFLOW.md`
+  - Adapter file for local constraints and policies.
+
+Client repositories receive template artifacts only.
+They do not receive the full product spec file.
+
 ## Step 1 - Prerequisites
 
 - Node.js 18 or newer
