@@ -20,6 +20,18 @@ Fix:
   - `node tools/install.mjs --target <repo> --pack core`
 - Run verify again.
 
+## Forgot to customize the project stub
+
+Symptom:
+- Installer warning reports placeholders in `docs/audit/WORKFLOW.md` such as `{{PROJECT_NAME}}` or `{{SOURCE_BRANCH}}`.
+- Team members are unclear on project constraints or branch policy.
+
+Fix:
+- Open `docs/audit/WORKFLOW.md` in the client repo.
+- Complete the setup checklist and replace placeholder values.
+- Follow `docs/INSTALL.md`, Step 3: `Customize docs/audit/WORKFLOW.md (Project Stub)`.
+- Commit the updated stub as part of baseline setup.
+
 ## Merge conflict in AGENTS.md
 
 Symptom:

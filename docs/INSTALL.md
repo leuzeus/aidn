@@ -6,12 +6,12 @@ This workflow is installed by copying and merging template files into a client r
 No compiled binaries are required.
 The installer is a Node.js script and supports Node 18+ on Windows, Linux, and macOS.
 
-## Prerequisites
+## Step 1 - Prerequisites
 
 - Node.js 18 or newer
 - This repository checked out locally
 
-## Install core pack
+## Step 2 - Install core pack
 
 From this repository root:
 
@@ -37,15 +37,43 @@ Dry run example:
 node tools/install.mjs --target ../your-repo --pack core --dry-run
 ```
 
-## Verify installation
+## Step 3 - Customize docs/audit/WORKFLOW.md (Project Stub)
+
+Why it matters:
+- Prevents hallucination about project constraints.
+- Forces explicit local branch/cycle and snapshot policy.
+- Keeps implementation choices aligned with your repo context.
+
+Minimum fields to fill before real work:
+- `project_name`
+- `source_branch`
+- `Project Constraints`
+- `Branch & Cycle Policy`
+- `Snapshot Discipline`
+
+Short filled example:
+
+```yaml
+workflow_product: codex-audit-workflow
+workflow_version: 0.1.0
+installed_pack: core
+project_name: my-product-repo
+source_branch: main
+```
+
+Recommended practice:
+- Treat this stub customization as part of baseline setup and commit it with other initial audit artifacts.
+
+## Step 4 - Verify installation
 
 ```bash
 node tools/install.mjs --target ../your-repo --pack core --verify
 ```
 
 Verification checks required files declared in the pack manifest and returns a non-zero exit code on failure.
+The installer also prints a warning if the project stub still contains placeholders.
 
-## What must be committed in the client repo
+## Step 5 - Commit client repo files
 
 - `AGENTS.md`
 - `docs/audit/`

@@ -5,6 +5,8 @@ install:
   copy:
     - from: template/docs_audit/
       to: docs/audit/
+    - from: template/docs_audit/WORKFLOW.stub.md
+      to: docs/audit/WORKFLOW.md
     - from: template/codex/skills.yaml
       to: .codex/skills.yaml
     - from: template/codex/README_CodexOnline.md
@@ -21,6 +23,7 @@ install:
 verify:
   must_exist:
     - AGENTS.md
+    - docs/audit/WORKFLOW.md
     - docs/audit/baseline/current.md
     - docs/audit/snapshots/context-snapshot.md
     - docs/audit/parking-lot.md

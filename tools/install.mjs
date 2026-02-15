@@ -349,6 +349,22 @@ function verifyPaths(targetRoot, pathsToCheck) {
   return { ok: missing.length === 0, missing };
 }
 
+function getWorkflowPlaceholders(targetRoot) {
+  const workflowPath = path.resolve(targetRoot, "docs/audit/WORKFLOW.md");
+  if (!fs.existsSync(workflowPath)) {
+    return [];
+  }
+  const content = readUtf8(workflowPath);
+  const placeholders = [];
+  if (content.includes("{{PROJECT_NAME}}")) {
+    placeholders.push("{{PROJECT_NAME}}");
+  }
+  if (content.includes("{{SOURCE_BRANCH}}")) {
+    placeholders.push("{{SOURCE_BRANCH}}");
+  }
+  return placeholders;
+}
+
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -419,10 +435,20 @@ function main() {
 
     const verifyEntries = manifest.verify?.must_exist ?? [];
     const verification = verifyPaths(targetRoot, verifyEntries);
+    const workflowPlaceholders = getWorkflowPlaceholders(targetRoot);
     if (!verification.ok) {
       for (const missing of verification.missing) {
         console.error(`missing: ${missing}`);
       }
+    }
+    if (workflowPlaceholders.length > 0) {
+      console.warn("");
+      console.warn(
+        `WARNING: docs/audit/WORKFLOW.md still has placeholders: ${workflowPlaceholders.join(", ")}`,
+      );
+      console.warn(
+        'Customize the project stub. See docs/INSTALL.md section "Step 3 - Customize docs/audit/WORKFLOW.md (Project Stub)".',
+      );
     }
 
     console.log("");
