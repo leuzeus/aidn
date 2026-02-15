@@ -229,7 +229,12 @@ function writeUtf8(filePath, content, dryRun) {
   fs.writeFileSync(filePath, content, "utf8");
 }
 
-function copyRecursive(sourcePath, targetPath, dryRun) {
+function copyRecursive(sourcePath, targetPath, dryRun, skipSources = null) {
+  const absoluteSource = path.resolve(sourcePath);
+  if (skipSources && skipSources.has(absoluteSource)) {
+    return;
+  }
+
   const sourceStat = fs.statSync(sourcePath);
   if (sourceStat.isDirectory()) {
     ensureDir(targetPath, dryRun);
@@ -240,6 +245,7 @@ function copyRecursive(sourcePath, targetPath, dryRun) {
         path.join(sourcePath, entry.name),
         path.join(targetPath, entry.name),
         dryRun,
+        skipSources,
       );
     }
     return;
@@ -395,6 +401,17 @@ function main() {
     if (!args.verifyOnly) {
       const copyOps = manifest.install?.copy ?? [];
       const mergeOps = manifest.install?.merge ?? [];
+      const explicitFileSources = new Set();
+
+      for (const op of copyOps) {
+        const sourcePath = path.resolve(repoRoot, op.from);
+        if (!fs.existsSync(sourcePath)) {
+          continue;
+        }
+        if (fs.statSync(sourcePath).isFile()) {
+          explicitFileSources.add(path.resolve(sourcePath));
+        }
+      }
 
       for (const op of copyOps) {
         const sourcePath = path.resolve(repoRoot, op.from);
@@ -403,7 +420,12 @@ function main() {
           throw new Error(`Copy source does not exist: ${op.from}`);
         }
         console.log(`${args.dryRun ? "[dry-run] " : ""}copy ${op.from} -> ${op.to}`);
-        copyRecursive(sourcePath, targetPath, args.dryRun);
+        const sourceStat = fs.statSync(sourcePath);
+        if (sourceStat.isDirectory()) {
+          copyRecursive(sourcePath, targetPath, args.dryRun, explicitFileSources);
+        } else {
+          copyRecursive(sourcePath, targetPath, args.dryRun);
+        }
         summary.copied += 1;
       }
 
