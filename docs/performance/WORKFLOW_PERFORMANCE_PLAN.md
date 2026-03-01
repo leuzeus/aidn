@@ -17,6 +17,26 @@ Contraintes:
 - fichiers Markdown restent la source de vérité
 - compatibilité multi-version: un même repo peut contenir des artefacts legacy + modernes; les contrôles doivent se baser sur la structure observée, pas uniquement sur la version déclarée.
 
+## Statut D'Exécution
+
+État au 2026-03-01:
+- Lot 1 (Quick wins): implémenté (instrumentation NDJSON, L1/L2/L3 gating, écritures conditionnelles, hooks session).
+- Lot 2 (Index local): implémenté (reload incrémental + fallback, index sync/check, structure profile multi-version, trend/check pipelines).
+- Lot 3 (DB future): implémenté en mode local SQLite progressif (store modes `sqlite|dual-sqlite|all`, import/export, parity SQL+SQLite, CI fixtures dédiées, feature flag `AIDN_INDEX_STORE_MODE`).
+
+Reste à finaliser:
+- validation KPI sur un corpus projet réel (au-delà des fixtures) avec fenêtre d'itérations représentative.
+- confirmation des objectifs de réduction vs baseline historique du projet cible.
+
+Dernière campagne locale de validation (fixtures, 30 itérations):
+- date: 2026-03-01
+- commande: `npm run perf:campaign -- --iterations 30 --target tests/fixtures/repo-installed-core --sleep-ms 1500 --index-store all`
+- `runs_analyzed`: 30
+- `overhead_ratio.mean`: 9.17
+- `artifacts_churn.mean`: 0.10
+- `gates_frequency.mean`: 18
+- `kpi thresholds`: `pass` (4/4)
+
 Hors scope (pour ce plan):
 - réécriture complète des skills
 - remplacement direct des artefacts Markdown par une base unique

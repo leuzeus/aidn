@@ -41,6 +41,7 @@ The following scripts were added under `tools/perf/`:
 - `check-thresholds.mjs` - compare KPI report against versioned thresholds
 - `check-regression.mjs` - compare latest KPI run versus rolling history median
 - `report-fallbacks.mjs` - compute fallback/storm metrics from workflow events (with warmup-adjusted metrics)
+- `run-kpi-campaign.mjs` - run repeated session/delivery cycles and emit KPI/threshold campaign summary
 - `render-summary.mjs` - generate Markdown summary from KPI + threshold/regression/fallback reports
 - `reset-runtime.mjs` - clear local perf runtime artifacts before a fresh measurement run
 - `sql/schema.sql` - SQLite schema used by SQL export and SQLite index mode
@@ -98,6 +99,7 @@ npm run perf:check-regression -- --kpi-file .aidn/runtime/perf/kpi-report.json -
 npm run perf:check-regression -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --targets docs/performance/REGRESSION_TARGETS.json --warmup-enabled true --warmup-history-lt 5 --warmup-multiplier 1.4 --warmup-severity warn --out .aidn/runtime/perf/kpi-regression.json
 npm run perf:fallback-report -- --file .aidn/runtime/perf/workflow-events.ndjson --run-prefix session- --out .aidn/runtime/perf/fallback-report.json
 npm run perf:check-fallbacks
+npm run perf:campaign -- --iterations 30 --target tests/fixtures/repo-installed-core
 npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --regression-file .aidn/runtime/perf/kpi-regression.json --fallback-report-file .aidn/runtime/perf/fallback-report.json --fallback-thresholds-file .aidn/runtime/perf/fallback-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
 npm run perf:reset
 npm run perf:reset -- --keep-history
@@ -121,6 +123,7 @@ Default runtime outputs:
 - `.aidn/runtime/perf/fallback-report.json`
 - `.aidn/runtime/perf/fallback-thresholds.json`
 - `.aidn/runtime/perf/kpi-summary.md`
+- `.aidn/runtime/perf/campaign-report.json` (when using `perf:campaign`)
 
 These runtime artifacts are intentionally local and ignored by git.
 Use `perf:reset -- --keep-history` if you want to preserve cross-run KPI history.
