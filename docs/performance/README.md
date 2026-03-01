@@ -28,7 +28,7 @@ The following scripts were added under `tools/perf/`:
 - `delivery-window.mjs` - mark delivery start/end to compute overhead ratio against control time
 - `check-thresholds.mjs` - compare KPI report against versioned thresholds
 - `check-regression.mjs` - compare latest KPI run versus rolling history median
-- `report-fallbacks.mjs` - compute fallback/storm metrics from workflow events
+- `report-fallbacks.mjs` - compute fallback/storm metrics from workflow events (with warmup-adjusted metrics)
 - `render-summary.mjs` - generate Markdown summary from KPI + threshold/regression/fallback reports
 - `reset-runtime.mjs` - clear local perf runtime artifacts before a fresh measurement run
 - `sql/schema.sql` - proposed SQLite schema for future index backend
@@ -163,6 +163,9 @@ Threshold source file:
 - `docs/performance/INDEX_TARGETS.json`
 - `docs/performance/REGRESSION_TARGETS.json`
 - `docs/performance/FALLBACK_TARGETS.json`
+
+Fallback thresholding note:
+- Fallback thresholds use warmup-adjusted metrics (`adjusted_fallback_total`, `adjusted_storm_runs`) that exclude cold-start reload fallbacks (`MISSING_CACHE`, `CORRUPT_CACHE`).
 
 ## Overhead Ratio Enablement
 

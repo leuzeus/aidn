@@ -222,7 +222,7 @@ function main() {
         bytes_read: 0,
         files_written_count: 0,
         bytes_written: 0,
-        gates_triggered: ["R03", "R04"],
+        gates_triggered: [],
         result: result.reload.decision === "stop"
           ? "stop"
           : (result.reload.fallback ? "fallback" : "ok"),

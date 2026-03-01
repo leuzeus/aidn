@@ -158,7 +158,8 @@ function buildMarkdown(kpi, thresholds, regression, fallbackReport, fallbackThre
   lines.push(`- Threshold status: ${thresholdStatus}`);
   lines.push(`- Regression status: ${regressionStatus}`);
   lines.push(`- Fallback status: ${fallbackStatus}`);
-  lines.push(`- Fallback total / run-rate / storm-runs: ${fallbackSummary.fallback_total ?? 0} / ${fmt(fallbackSummary.fallback_run_rate, 3)} / ${fallbackSummary.storm_runs ?? 0}`);
+  lines.push(`- Fallback adjusted-total / adjusted-run-rate / adjusted-storm-runs: ${fallbackSummary.adjusted_fallback_total ?? 0} / ${fmt(fallbackSummary.adjusted_fallback_run_rate, 3)} / ${fallbackSummary.adjusted_storm_runs ?? 0}`);
+  lines.push(`- Fallback raw-total / cold-start-total: ${fallbackSummary.fallback_total ?? 0} / ${fallbackSummary.cold_start_fallback_total ?? 0}`);
   lines.push("");
 
   if (checks.length > 0) {

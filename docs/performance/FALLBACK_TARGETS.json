@@ -11,14 +11,14 @@
     },
     {
       "id": "FALLBACK_TOTAL_MAX",
-      "key": "summary.fallback_total",
+      "key": "summary.adjusted_fallback_total",
       "op": "<=",
       "value": 3,
       "severity": "warn"
     },
     {
       "id": "FALLBACK_STORM_RUNS_MAX",
-      "key": "summary.storm_runs",
+      "key": "summary.adjusted_storm_runs",
       "op": "<=",
       "value": 0,
       "severity": "warn"

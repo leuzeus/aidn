@@ -19,6 +19,7 @@
 - Emit explicit `reload-check` events during checkpoints for better fallback observability.
 - Add fallback storm reporting/checks (`tools/perf/report-fallbacks.mjs`, `docs/performance/FALLBACK_TARGETS.json`) and CI option `strict_fallback`.
 - Extend KPI summary with fallback status/metrics/checks.
+- Make fallback thresholds warmup-aware by checking adjusted metrics that exclude cold-start fallback reasons (`MISSING_CACHE`, `CORRUPT_CACHE`).
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).
