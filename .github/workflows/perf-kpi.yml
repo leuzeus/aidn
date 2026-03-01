@@ -30,7 +30,7 @@ jobs:
         run: npm run perf:reset
 
       - name: Session Start Hook
-        run: npm run perf:session-start -- --target tests/fixtures/repo-installed-core --mode COMMITTING
+        run: npm run perf:session-start -- --target tests/fixtures/repo-installed-core --mode COMMITTING --index-store dual
 
       - name: Delivery Start
         run: npm run perf:delivery-start -- --target tests/fixtures/repo-installed-core --mode COMMITTING
@@ -42,7 +42,7 @@ jobs:
         run: npm run perf:delivery-end -- --target tests/fixtures/repo-installed-core --mode COMMITTING
 
       - name: Session Close Hook
-        run: npm run perf:session-close -- --target tests/fixtures/repo-installed-core --mode COMMITTING
+        run: npm run perf:session-close -- --target tests/fixtures/repo-installed-core --mode COMMITTING --index-store dual
 
       - name: Build KPI JSON
         run: |
@@ -78,4 +78,5 @@ jobs:
             .aidn/runtime/perf/kpi-thresholds.json
             .aidn/runtime/perf/kpi-summary.md
             .aidn/runtime/index/workflow-index.json
+            .aidn/runtime/index/workflow-index.sql
           if-no-files-found: warn

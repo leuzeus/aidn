@@ -2,11 +2,16 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { createIndexStore } from "./index-store.mjs";
 
 function parseArgs(argv) {
   const args = {
     target: ".",
     output: ".aidn/runtime/index/workflow-index.json",
+    store: "file",
+    sqlOutput: ".aidn/runtime/index/workflow-index.sql",
+    schemaFile: "tools/perf/sql/schema.sql",
+    includeSchema: true,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -17,6 +22,17 @@ function parseArgs(argv) {
     } else if (token === "--output") {
       args.output = argv[i + 1] ?? "";
       i += 1;
+    } else if (token === "--store") {
+      args.store = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--sql-output") {
+      args.sqlOutput = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--schema-file") {
+      args.schemaFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--no-schema") {
+      args.includeSchema = false;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -31,6 +47,13 @@ function parseArgs(argv) {
   if (!args.output) {
     throw new Error("Missing value for --output");
   }
+  args.store = String(args.store).toLowerCase();
+  if (!["file", "sql", "dual"].includes(args.store)) {
+    throw new Error(`Invalid --store mode: ${args.store}. Expected file|sql|dual.`);
+  }
+  if ((args.store === "sql" || args.store === "dual") && !args.sqlOutput) {
+    throw new Error("Missing value for --sql-output");
+  }
   return args;
 }
 
@@ -38,6 +61,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/index-sync.mjs --target ../client");
   console.log("  node tools/perf/index-sync.mjs --target . --output .aidn/runtime/index/workflow-index.json");
+  console.log("  node tools/perf/index-sync.mjs --target . --store dual --output .aidn/runtime/index/workflow-index.json --sql-output .aidn/runtime/index/workflow-index.sql");
 }
 
 function walkFiles(rootDir) {
@@ -248,13 +272,6 @@ function buildTags(cycleTagPairs, artifacts) {
   return { tags, artifactTagPairs };
 }
 
-function writeIndex(outputPath, payload) {
-  const absolute = path.resolve(process.cwd(), outputPath);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  fs.writeFileSync(absolute, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-  return absolute;
-}
-
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -287,10 +304,19 @@ function main() {
       },
     };
 
-    const outputPath = writeIndex(args.output, payload);
+    const store = createIndexStore({
+      mode: args.store,
+      jsonOutput: args.output,
+      sqlOutput: args.sqlOutput,
+      schemaFile: args.schemaFile,
+      includeSchema: args.includeSchema,
+    });
+    const outputs = store.write(payload);
     console.log(`Index synced.`);
     console.log(`Target: ${targetRoot}`);
-    console.log(`Output: ${outputPath}`);
+    for (const out of outputs) {
+      console.log(`Output (${out.kind}): ${out.path}`);
+    }
     console.log(
       `Summary: cycles=${payload.summary.cycles_count}, artifacts=${payload.summary.artifacts_count}, file_map=${payload.summary.file_map_count}, tags=${payload.summary.tags_count}`,
     );

@@ -13,8 +13,11 @@ The following scripts were added under `tools/perf/`:
 
 - `collect-event.mjs` - append workflow events to NDJSON
 - `report-kpi.mjs` - compute KPI summary from NDJSON
-- `index-sync.mjs` - build a local JSON index from `docs/audit/*`
+- `index-sync.mjs` - build index from `docs/audit/*` with `IndexStore` mode: `file|sql|dual`
+- `index-store.mjs` - local `IndexStore` abstraction (file-first, SQL export optional)
 - `index-to-sql.mjs` - export local index JSON to SQL import script (SQLite-friendly)
+- `index-sql-lib.mjs` - shared SQL generation library used by index tooling
+- `index-query.mjs` - run standard analytics queries on local index JSON
 - `reload-check.mjs` - evaluate incremental/full/stop reload decision from digest + mapping
 - `gating-evaluate.mjs` - evaluate L1/L2/L3 gating with conditional drift signals
 - `checkpoint.mjs` - run reload-check + gate + index-sync as one checkpoint command
@@ -32,7 +35,11 @@ npm run perf:collect -- --event "{\"skill\":\"context-reload\",\"phase\":\"end\"
 npm run perf:report
 npm run perf:report -- --run-prefix session- --require-delivery
 npm run perf:index -- --target ../client-repo
+npm run perf:index -- --target ../client-repo --store sql --sql-output .aidn/runtime/index/workflow-index.sql
+npm run perf:index-dual -- --target ../client-repo
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
+npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.json
+npm run perf:index-query -- --query artifacts-since --since 2026-03-01T00:00:00Z --index-file .aidn/runtime/index/workflow-index.json
 npm run perf:reload-check -- --target ../client-repo
 npm run perf:reload-check -- --target ../client-repo --write-cache
 npm run perf:gate -- --target ../client-repo --mode COMMITTING
@@ -56,6 +63,20 @@ Default runtime outputs:
 
 These runtime artifacts are intentionally local and ignored by git.
 
+## IndexStore Modes
+
+- `file` (default): writes JSON index only
+- `sql`: writes SQL import script only
+- `dual`: writes JSON + SQL in one run (controlled dual-write, non-blocking)
+
+`perf:index` remains backward compatible and defaults to `file` mode.
+
+## Standard Index Queries
+
+- `active-cycles`: list active cycles (`OPEN|IMPLEMENTING|VERIFYING`)
+- `artifacts-since`: list artifacts changed since an ISO timestamp (`--since` required)
+- `cycle-files`: list mapped files for one cycle (`--cycle-id` required)
+
 ## Gating Levels (implemented)
 
 - L1 fast checks: digest + mapping (`perf:reload-check`)
@@ -70,6 +91,7 @@ These runtime artifacts are intentionally local and ignored by git.
 - At session close: run `perf:session-close`
 - Default behavior is non-blocking (hook warns if checkpoint fails).
 - Use `--strict` on `perf:hook` when you want blocking behavior.
+- Optional index mode override on hooks: `--index-store file|sql|dual`.
 - Session start stores a shared `run_id` in `.aidn/runtime/perf/current-run-id.txt`.
 - Session close reuses that shared `run_id` when available, then clears the file.
 
@@ -91,6 +113,7 @@ These runtime artifacts are intentionally local and ignored by git.
   - `.aidn/runtime/perf/kpi-thresholds.json`
   - `.aidn/runtime/perf/kpi-summary.md`
   - `.aidn/runtime/index/workflow-index.json`
+  - `.aidn/runtime/index/workflow-index.sql`
 - `workflow_dispatch` supports `strict_thresholds=true` to make threshold violations blocking.
 
 Threshold source file:

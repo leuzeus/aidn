@@ -10,6 +10,10 @@ function parseArgs(argv) {
     cache: ".aidn/runtime/cache/reload-state.json",
     eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
     indexOutput: ".aidn/runtime/index/workflow-index.json",
+    indexStore: "file",
+    indexSqlOutput: ".aidn/runtime/index/workflow-index.sql",
+    indexSchemaFile: "tools/perf/sql/schema.sql",
+    indexIncludeSchema: true,
     mode: "COMMITTING",
     runId: "",
     json: false,
@@ -30,6 +34,17 @@ function parseArgs(argv) {
     } else if (token === "--index-output") {
       args.indexOutput = argv[i + 1] ?? "";
       i += 1;
+    } else if (token === "--index-store") {
+      args.indexStore = String(argv[i + 1] ?? "").toLowerCase();
+      i += 1;
+    } else if (token === "--index-sql-output") {
+      args.indexSqlOutput = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--index-schema-file") {
+      args.indexSchemaFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--index-no-schema") {
+      args.indexIncludeSchema = false;
     } else if (token === "--mode") {
       args.mode = String(argv[i + 1] ?? "").toUpperCase();
       i += 1;
@@ -57,6 +72,12 @@ function parseArgs(argv) {
   if (!args.indexOutput) {
     throw new Error("Missing value for --index-output");
   }
+  if (!["file", "sql", "dual"].includes(args.indexStore)) {
+    throw new Error("Invalid --index-store. Expected file|sql|dual");
+  }
+  if ((args.indexStore === "sql" || args.indexStore === "dual") && !args.indexSqlOutput) {
+    throw new Error("Missing value for --index-sql-output");
+  }
   if (!["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"].includes(args.mode)) {
     throw new Error("Invalid --mode. Expected THINKING|EXPLORING|COMMITTING|UNKNOWN");
   }
@@ -68,6 +89,7 @@ function printUsage() {
   console.log("  node tools/perf/checkpoint.mjs --target ../client");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --mode COMMITTING");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --run-id S072-20260301T1012Z");
+  console.log("  node tools/perf/checkpoint.mjs --target ../client --index-store dual --index-sql-output .aidn/runtime/index/workflow-index.sql");
   console.log("  node tools/perf/checkpoint.mjs --json");
 }
 
@@ -127,8 +149,20 @@ function main() {
     const gateDurationMs = Date.now() - gateStarted;
 
     const indexStarted = Date.now();
+    const indexArgs = [
+      `--target "${targetRoot}"`,
+      `--store ${args.indexStore}`,
+      `--output "${args.indexOutput}"`,
+    ];
+    if (args.indexStore === "sql" || args.indexStore === "dual") {
+      indexArgs.push(`--sql-output "${args.indexSqlOutput}"`);
+      indexArgs.push(`--schema-file "${args.indexSchemaFile}"`);
+      if (!args.indexIncludeSchema) {
+        indexArgs.push("--no-schema");
+      }
+    }
     const indexOut = execText(
-      `node tools/perf/index-sync.mjs --target "${targetRoot}" --output "${args.indexOutput}"`,
+      `node tools/perf/index-sync.mjs ${indexArgs.join(" ")}`,
     );
     const indexDurationMs = Date.now() - indexStarted;
 
@@ -153,7 +187,11 @@ function main() {
         duration_ms: gateDurationMs,
       },
       index: {
+        store: args.indexStore,
         output: path.resolve(process.cwd(), args.indexOutput),
+        sql_output: args.indexStore === "sql" || args.indexStore === "dual"
+          ? path.resolve(process.cwd(), args.indexSqlOutput)
+          : null,
         duration_ms: indexDurationMs,
       },
       total_duration_ms: Date.now() - started,

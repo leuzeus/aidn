@@ -12,6 +12,11 @@ function parseArgs(argv) {
     mode: "COMMITTING",
     eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
     runIdFile: ".aidn/runtime/perf/current-run-id.txt",
+    indexStore: "file",
+    indexOutput: ".aidn/runtime/index/workflow-index.json",
+    indexSqlOutput: ".aidn/runtime/index/workflow-index.sql",
+    indexSchemaFile: "tools/perf/sql/schema.sql",
+    indexIncludeSchema: true,
     strict: false,
     json: false,
   };
@@ -33,6 +38,20 @@ function parseArgs(argv) {
     } else if (token === "--run-id-file") {
       args.runIdFile = argv[i + 1] ?? "";
       i += 1;
+    } else if (token === "--index-store") {
+      args.indexStore = String(argv[i + 1] ?? "").toLowerCase();
+      i += 1;
+    } else if (token === "--index-output") {
+      args.indexOutput = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--index-sql-output") {
+      args.indexSqlOutput = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--index-schema-file") {
+      args.indexSchemaFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--index-no-schema") {
+      args.indexIncludeSchema = false;
     } else if (token === "--strict") {
       args.strict = true;
     } else if (token === "--json") {
@@ -54,6 +73,15 @@ function parseArgs(argv) {
   if (!["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"].includes(args.mode)) {
     throw new Error("Invalid --mode. Expected THINKING|EXPLORING|COMMITTING|UNKNOWN");
   }
+  if (!["file", "sql", "dual"].includes(args.indexStore)) {
+    throw new Error("Invalid --index-store. Expected file|sql|dual");
+  }
+  if (!args.indexOutput) {
+    throw new Error("Missing value for --index-output");
+  }
+  if ((args.indexStore === "sql" || args.indexStore === "dual") && !args.indexSqlOutput) {
+    throw new Error("Missing value for --index-sql-output");
+  }
   return args;
 }
 
@@ -61,6 +89,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --mode COMMITTING");
+  console.log("  node tools/perf/workflow-hook.mjs --phase session-start --index-store dual");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --run-id-file .aidn/runtime/perf/current-run-id.txt");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --strict");
 }
@@ -88,7 +117,7 @@ function getCurrentBranch(targetRoot) {
   }
 }
 
-function runCheckpoint(targetRoot, mode, runId) {
+function runCheckpoint(targetRoot, mode, runId, indexOptions = {}) {
   const scriptDir = path.dirname(fileURLToPath(import.meta.url));
   const checkpointScript = path.join(scriptDir, "checkpoint.mjs");
   const cmd = [
@@ -100,6 +129,21 @@ function runCheckpoint(targetRoot, mode, runId) {
   ];
   if (runId) {
     cmd.push("--run-id", runId);
+  }
+  if (indexOptions.store) {
+    cmd.push("--index-store", indexOptions.store);
+  }
+  if (indexOptions.output) {
+    cmd.push("--index-output", indexOptions.output);
+  }
+  if (indexOptions.sqlOutput) {
+    cmd.push("--index-sql-output", indexOptions.sqlOutput);
+  }
+  if (indexOptions.schemaFile) {
+    cmd.push("--index-schema-file", indexOptions.schemaFile);
+  }
+  if (indexOptions.includeSchema === false) {
+    cmd.push("--index-no-schema");
   }
   cmd.push("--json");
 
@@ -150,7 +194,13 @@ function main() {
     let checkpointError = null;
 
     try {
-      checkpointResult = runCheckpoint(targetRoot, args.mode, runId);
+      checkpointResult = runCheckpoint(targetRoot, args.mode, runId, {
+        store: args.indexStore,
+        output: args.indexOutput,
+        sqlOutput: args.indexSqlOutput,
+        schemaFile: args.indexSchemaFile,
+        includeSchema: args.indexIncludeSchema,
+      });
     } catch (error) {
       checkpointError = error;
       hookResult = args.strict ? "stop" : "warn";

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+- Add `IndexStore` abstraction for local workflow index output (`file|sql|dual`) in `tools/perf/index-sync.mjs`.
+- Add shared SQL generation module (`tools/perf/index-sql-lib.mjs`) and reuse it from `index-to-sql`.
+- Add `npm run perf:index-dual` for controlled dual-write output (JSON + SQL) without changing file-first source of truth.
+- Add `tools/perf/index-query.mjs` and `npm run perf:index-query` for standard local index analytics queries.
+
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).
 - Upgrade AGENTS execution contract for session/cycle/intermediate branch ownership.
