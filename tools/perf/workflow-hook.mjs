@@ -1,0 +1,193 @@
+#!/usr/bin/env node
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
+
+function parseArgs(argv) {
+  const args = {
+    phase: "",
+    target: ".",
+    mode: "COMMITTING",
+    eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
+    strict: false,
+    json: false,
+  };
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const token = argv[i];
+    if (token === "--phase") {
+      args.phase = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--target") {
+      args.target = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--mode") {
+      args.mode = String(argv[i + 1] ?? "").toUpperCase();
+      i += 1;
+    } else if (token === "--event-file") {
+      args.eventFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--strict") {
+      args.strict = true;
+    } else if (token === "--json") {
+      args.json = true;
+    } else if (token === "--help" || token === "-h") {
+      printUsage();
+      process.exit(0);
+    } else {
+      throw new Error(`Unknown argument: ${token}`);
+    }
+  }
+
+  if (!args.phase) {
+    throw new Error("Missing required --phase");
+  }
+  if (!["session-start", "session-close", "manual"].includes(args.phase)) {
+    throw new Error("Invalid --phase. Expected session-start|session-close|manual");
+  }
+  if (!["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"].includes(args.mode)) {
+    throw new Error("Invalid --mode. Expected THINKING|EXPLORING|COMMITTING|UNKNOWN");
+  }
+  return args;
+}
+
+function printUsage() {
+  console.log("Usage:");
+  console.log("  node tools/perf/workflow-hook.mjs --phase session-start");
+  console.log("  node tools/perf/workflow-hook.mjs --phase session-close --mode COMMITTING");
+  console.log("  node tools/perf/workflow-hook.mjs --phase session-start --strict");
+}
+
+function appendEvent(eventFile, payload) {
+  const absolute = path.resolve(process.cwd(), eventFile);
+  fs.mkdirSync(path.dirname(absolute), { recursive: true });
+  fs.appendFileSync(absolute, `${JSON.stringify(payload)}\n`, "utf8");
+  return absolute;
+}
+
+function toRunId(prefix) {
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  return `${prefix}-${stamp}`;
+}
+
+function getCurrentBranch(targetRoot) {
+  try {
+    return execFileSync("git", ["-C", targetRoot, "branch", "--show-current"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim() || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+function runCheckpoint(targetRoot, mode) {
+  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+  const checkpointScript = path.join(scriptDir, "checkpoint.mjs");
+  const stdout = execFileSync(process.execPath, [
+    checkpointScript,
+    "--target",
+    targetRoot,
+    "--mode",
+    mode,
+    "--json",
+  ], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return JSON.parse(stdout);
+}
+
+function main() {
+  const started = Date.now();
+  try {
+    const args = parseArgs(process.argv.slice(2));
+    const targetRoot = path.resolve(process.cwd(), args.target);
+    const branch = getCurrentBranch(targetRoot);
+    const phaseEvent = args.phase.replace("-", "_");
+    const runId = toRunId(`hook-${phaseEvent}`);
+
+    let checkpointResult = null;
+    let hookResult = "ok";
+    let reasonCode = null;
+    let checkpointError = null;
+
+    try {
+      checkpointResult = runCheckpoint(targetRoot, args.mode);
+    } catch (error) {
+      checkpointError = error;
+      hookResult = args.strict ? "stop" : "warn";
+      reasonCode = "HOOK_CHECKPOINT_FAILED";
+      if (args.strict) {
+        throw error;
+      }
+    }
+
+    const eventPayload = {
+      ts: new Date().toISOString(),
+      run_id: runId,
+      session_id: null,
+      cycle_id: null,
+      branch,
+      mode: args.mode,
+      skill: "workflow-hook",
+      phase: args.phase,
+      event: `hook_${phaseEvent}`,
+      duration_ms: Date.now() - started,
+      files_read_count: 0,
+      bytes_read: 0,
+      files_written_count: 0,
+      bytes_written: 0,
+      gates_triggered: ["R01", "R07", "R05", "R10"],
+      result: hookResult,
+      reason_code: reasonCode,
+      trace_id: `tr-${crypto.randomBytes(4).toString("hex")}`,
+    };
+    const eventFilePath = appendEvent(args.eventFile, eventPayload);
+
+    const output = {
+      ts: eventPayload.ts,
+      phase: args.phase,
+      target_root: targetRoot,
+      mode: args.mode,
+      strict: args.strict,
+      run_id: runId,
+      result: hookResult,
+      reason_code: reasonCode,
+      branch,
+      event_file: eventFilePath,
+      checkpoint: checkpointResult,
+      checkpoint_error: checkpointError ? String(checkpointError.message ?? checkpointError) : null,
+      duration_ms: eventPayload.duration_ms,
+    };
+
+    if (args.json) {
+      console.log(JSON.stringify(output, null, 2));
+      return;
+    }
+
+    console.log(`Hook phase: ${args.phase}`);
+    console.log(`Result: ${output.result}`);
+    if (output.reason_code) {
+      console.log(`Reason: ${output.reason_code}`);
+    }
+    console.log(`Target: ${targetRoot}`);
+    console.log(`Mode: ${args.mode}`);
+    console.log(`Event file: ${eventFilePath}`);
+    if (checkpointResult) {
+      console.log(`Checkpoint action: ${checkpointResult.gate?.action ?? "n/a"}`);
+      console.log(`Checkpoint total: ${checkpointResult.total_duration_ms ?? "n/a"}ms`);
+    }
+    if (checkpointError && !args.strict) {
+      console.log(`Checkpoint error (ignored): ${output.checkpoint_error}`);
+    }
+  } catch (error) {
+    console.error(`ERROR: ${error.message}`);
+    printUsage();
+    process.exit(1);
+  }
+}
+
+main();

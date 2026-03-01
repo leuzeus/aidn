@@ -11,6 +11,9 @@
     "perf:index": "node tools/perf/index-sync.mjs",
     "perf:reload-check": "node tools/perf/reload-check.mjs",
     "perf:gate": "node tools/perf/gating-evaluate.mjs",
-    "perf:checkpoint": "node tools/perf/checkpoint.mjs"
+    "perf:checkpoint": "node tools/perf/checkpoint.mjs",
+    "perf:hook": "node tools/perf/workflow-hook.mjs",
+    "perf:session-start": "node tools/perf/workflow-hook.mjs --phase session-start",
+    "perf:session-close": "node tools/perf/workflow-hook.mjs --phase session-close"
   }
 }

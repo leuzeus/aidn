@@ -66,5 +66,10 @@ Update:
 ### Next Entry Point
 ### Snapshot updated? (checked)
 
+7) Optional performance hook (recommended for instrumented repositories):
+- run `npm run perf:session-close -- --target . --mode <THINKING|EXPLORING|COMMITTING>`
+- this should not block workflow close by default
+- use strict mode only if repository policy requires blocking instrumentation
+
 Do not promote baseline automatically.
 If cycle DONE, recommend using promote-baseline workflow.

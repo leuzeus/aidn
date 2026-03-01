@@ -17,6 +17,7 @@ The following scripts were added under `tools/perf/`:
 - `reload-check.mjs` - evaluate incremental/full/stop reload decision from digest + mapping
 - `gating-evaluate.mjs` - evaluate L1/L2/L3 gating with conditional drift signals
 - `checkpoint.mjs` - run reload-check + gate + index-sync as one checkpoint command
+- `workflow-hook.mjs` - run checkpoint from session hooks (`session-start` / `session-close`)
 - `sql/schema.sql` - proposed SQLite schema for future index backend
 
 ## Commands
@@ -29,6 +30,8 @@ npm run perf:reload-check -- --target ../client-repo
 npm run perf:reload-check -- --target ../client-repo --write-cache
 npm run perf:gate -- --target ../client-repo --mode COMMITTING
 npm run perf:checkpoint -- --target ../client-repo --mode COMMITTING
+npm run perf:session-start -- --target ../client-repo --mode COMMITTING
+npm run perf:session-close -- --target ../client-repo --mode COMMITTING
 ```
 
 Default runtime outputs:
@@ -45,3 +48,10 @@ These runtime artifacts are intentionally local and ignored by git.
 - L3 incident trigger: blocking L1 reasons or repeated fallback patterns (`perf:gate`)
 
 `perf:checkpoint` orchestrates these steps and writes a summary event for KPI tracking.
+
+## Session Hook Integration (minimal)
+
+- At session start: run `perf:session-start`
+- At session close: run `perf:session-close`
+- Default behavior is non-blocking (hook warns if checkpoint fails).
+- Use `--strict` on `perf:hook` when you want blocking behavior.
