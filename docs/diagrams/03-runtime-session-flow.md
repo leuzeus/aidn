@@ -1,36 +1,50 @@
 ```mermaid
-%% 3) Runtime Session Flow
+%% 3) Runtime Session Flow (v0.2.0)
 flowchart TD
-  ST["Session Start"] --> RL["Context Reload"]
-  RL --> RLB["Read Baseline"]
-  RL --> RLS["Read Snapshot"]
-  RL --> MSEL["Select Mode (Thinking / Exploring / Committing)"]
+  ST["Session start"] --> CR["context-reload"]
+  CR --> SS["start-session"]
+  SS --> MODE{"Mode? (R02)"}
 
-  MSEL -->|Thinking| TW["Thinking Work"]
-  MSEL -->|Exploring| EW["Exploring Work"]
-  MSEL -->|Committing| CW["Committing Work"]
+  MODE -->|THINKING| THINK["Doc/reasoning work"]
+  MODE -->|EXPLORING| EXP["Exploration work"]
+  MODE -->|COMMITTING| BCA["branch-cycle-audit (R03)"]
 
-  CW --> IA["Intent Audit"]
-  IA --> ECP1["ΔE checkpoint: pre-decision"]
-  ECP1 --> AA["Architecture Audit"]
-  AA --> IM["Implementation"]
+  BCA --> MAP{"Mapping + DoR valid?"}
+  MAP -->|No| FIX["Remediate mapping/DoR\nor downgrade mode"]
+  FIX --> MODE
+  MAP -->|Yes| NEED{"Need new cycle branch?"}
 
-  EW --> DR["Drift Check"]
-  TW --> DR
-  IM --> ADV["Audit-Driven Validation"]
+  NEED -->|Yes| CONT{"Continuity gate (R06)\nR1/R2/R3"}
+  CONT --> CNEW["cycle-create + status continuity fields"]
+  CNEW --> IMPL["Implementation on cycle/intermediate"]
+  NEED -->|No| IMPL
 
-  ADV --> DOD["DoD Check"]
-  ADV --> ARCH["Architecture Consistency Check"]
-  ADV --> ECP2["ΔE checkpoint: post-build"]
+  THINK --> DRIFT["drift-check when needed (R05)"]
+  EXP --> DRIFT
+  IMPL --> DRIFT
+  DRIFT --> CLOSE{"Close session now?"}
 
-  DOD --> DEC{"Pass?"}
-  ARCH --> DEC
-  ECP2 --> DEC
+  CLOSE -->|No| LOOP["Continue active work"]
+  LOOP --> MODE
 
-  DEC -->|No| CA["Corrective Action"]
-  CA --> IA
+  CLOSE -->|Yes| RESOLVE["Resolve open cycles (R07):\nintegrate-to-session | report |\nclose-non-retained | cancel-close"]
+  RESOLVE --> OK{"All open cycles resolved?"}
+  OK -->|No (cancel-close)| LOOP
+  OK -->|Yes| CS["close-session + snapshot update"]
 
-  DEC -->|Yes| SU["Update Snapshot"]
-  SU --> PL["Route non-essential items to Parking Lot"]
-  PL --> END["Session End"]
+  CS --> PRQ{"PR/merge step required?"}
+  PRQ -->|No| END["Session ended"]
+  PRQ -->|Yes| PRG["PR review gate (R08)\nCodex threads triaged"]
+  PRG --> MRG["Merge"]
+  MRG --> SYNC{"Post-merge local sync gate (R09)\nlocal vs remote aligned?"}
+  SYNC -->|No| REC["Explicit local reconciliation"]
+  REC --> SYNC
+  SYNC -->|Yes| END
+
+  MAP --> INC["Incident triage (R10)"]
+  CONT --> INC
+  RESOLVE --> INC
+  PRG --> INC
+  SYNC --> INC
+  INC --> MODE
 ```

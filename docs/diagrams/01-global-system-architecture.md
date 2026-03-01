@@ -1,46 +1,63 @@
 ```mermaid
-%% 1) Global System Architecture
-flowchart TD
-  subgraph P["Audit-Informed Development (Primary Philosophy)"]
-    AIF["Continuous decision filters"]
-    E1["ΔE checkpoint: pre-structural decision"]
-    COH["Long-term coherence guard"]
+%% 1) Global System Architecture (v0.2.0 workflow)
+flowchart LR
+  subgraph RULE["Rule Layer (Normative)"]
+    SPEC["SPEC.md (SPEC-R01..SPEC-R11)"]
+    WF["WORKFLOW.md (local adapter extensions)"]
+    AG["AGENTS.md (execution contract)"]
+    SPEC --> WF --> AG
   end
 
-  subgraph C["Audit-Driven Layer (Control Mechanism)"]
-    DOD["DoD validation"]
-    DRIFT["Deviation / scope drift detection"]
-    ARCH["Architecture consistency checks"]
-    CORR["Corrective actions"]
+  subgraph RUN["Execution Layer (Skills + Gates)"]
+    START["context-reload + start-session (R01)"]
+    MODE{"Mode selected (R02)"}
+    BCA["branch-cycle-audit (R03)"]
+    CONT{"Continuity gate (R06)\nR1 | R2 | R3"}
+    DOR{"DoR gate (R04)"}
+    EXEC["Cycle implementation"]
+    DRIFT["drift-check (R05)"]
+    SCLOSE{"Session close gate (R07)"}
+    PRG{"PR review gate (R08)"}
+    SYNC{"Post-merge local sync (R09)"}
+    INC{"Incident triage (R10)\nL1/L2 auto-fix | L3/L4 stop+auth"}
   end
 
-  subgraph X["Cycle Engine"]
-    I["Intent Audit"]
-    AA["Architecture Audit"]
-    IMPL["Implementation"]
-    ADV["Audit-Driven Validation"]
-    SU["Snapshot Update"]
+  subgraph STATE["State Layer (Declarative)"]
+    SESS["sessions/SXXX.md"]
+    CYCLE["cycles/*/status.md"]
+    SNAP["snapshots/context-snapshot.md"]
+    BASE["baseline/current.md + history.md"]
+    PARK["parking-lot.md"]
+    INCF["incidents/INC-TMP-*.md"]
   end
 
-  subgraph M["Memory System"]
-    B["Baseline (structural anchor)"]
-    S["Snapshots (fast reload memory)"]
-    PL["Parking Lot (entropy isolation)"]
-  end
+  START --> MODE
+  MODE -->|COMMITTING| BCA --> CONT --> DOR --> EXEC --> DRIFT --> SCLOSE
+  MODE -->|THINKING / EXPLORING| DRIFT
+  SCLOSE --> PRG --> SYNC --> START
 
-  AIF --> E1 --> I
-  COH --> AA
-  I --> AA --> IMPL --> ADV --> SU
-  DOD --> ADV
-  DRIFT --> ADV
-  ARCH --> ADV
-  ADV --> CORR
-  CORR --> I
+  START <--> SESS
+  BCA <--> CYCLE
+  CONT --> CYCLE
+  EXEC --> CYCLE
+  DRIFT --> PARK
+  DRIFT --> SNAP
+  SCLOSE --> SESS
+  SCLOSE --> SNAP
+  SYNC --> SNAP
+  BASE --> START
 
-  B --> I
-  B --> AA
-  SU --> S
-  ADV --> PL
-  PL --> I
-  S --> AIF
+  CONT --> INC
+  DOR --> INC
+  DRIFT --> INC
+  SCLOSE --> INC
+  PRG --> INC
+  SYNC --> INC
+  INC --> INCF
+  INC --> START
+
+  SPEC -. governs .-> START
+  SPEC -. governs .-> SCLOSE
+  SPEC -. governs .-> PRG
+  SPEC -. governs .-> SYNC
 ```

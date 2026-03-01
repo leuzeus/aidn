@@ -1,28 +1,49 @@
 ```mermaid
-%% 2) Cycle State Machine
+%% 2) Cycle State Machine (v0.2.0)
 stateDiagram-v2
-  [*] --> Intent_Audit
-  Intent_Audit --> Architecture_Audit: intent coherent / ΔE acceptable
-  Intent_Audit --> Corrective_Loop: intent unclear or ΔE high
+  [*] --> CONTINUITY_GATE: cycle-create requested
+  CONTINUITY_GATE --> OPEN: select R1/R2/R3 + record metadata (R06)
+  CONTINUITY_GATE --> [*]: creation cancelled
 
-  Architecture_Audit --> Implementation: architecture valid / ready
-  Architecture_Audit --> Corrective_Loop: structural mismatch
+  OPEN --> OPEN: DoR not ready / clarify scope + plan (R04)
+  OPEN --> IMPLEMENTING: DoR READY\n(R2: predecessor import done)
+  OPEN --> NO_GO: close-non-retained decision
+  OPEN --> DROPPED: close-non-retained decision
 
-  Implementation --> Audit_Driven_Validation: build complete
-  Audit_Driven_Validation --> Snapshot_Update: DoD pass + no critical drift
-  Audit_Driven_Validation --> Corrective_Loop: DoD fail or drift detected
+  IMPLEMENTING --> IMPLEMENTING: normal progress
+  IMPLEMENTING --> OPEN: severe drift re-scope (R05)
+  IMPLEMENTING --> VERIFYING: implementation complete
+  IMPLEMENTING --> NO_GO: close-non-retained decision
+  IMPLEMENTING --> DROPPED: close-non-retained decision
 
-  Snapshot_Update --> [*]
+  VERIFYING --> IMPLEMENTING: failed validation -> fix required
+  VERIFYING --> DONE: retained close/integration complete
+  VERIFYING --> NO_GO: non-retained outcome
+  VERIFYING --> DROPPED: non-retained outcome
 
-  Corrective_Loop --> Intent_Audit: re-scope / constraints updated
+  OPEN --> OPEN: session-close decision = report (R07)
+  IMPLEMENTING --> IMPLEMENTING: session-close decision = report (R07)
+  VERIFYING --> VERIFYING: session-close decision = report (R07)
 
-  note right of Intent_Audit
-    Entropy checkpoint #1:
-    evaluate ΔE before structural commitment
+  DONE --> [*]
+  NO_GO --> [*]
+  DROPPED --> [*]
+
+  note right of CONTINUITY_GATE
+    SPEC-R06:
+    no cycle branch before explicit
+    continuity rule selection.
   end note
 
-  note right of Audit_Driven_Validation
-    Entropy checkpoint #2:
-    evaluate ΔE after build and before snapshot
+  note right of OPEN
+    SPEC-R04:
+    DoR is mandatory before
+    production implementation.
+  end note
+
+  note right of IMPLEMENTING
+    SPEC-R05:
+    drift-check required when
+    drift is suspected.
   end note
 ```
