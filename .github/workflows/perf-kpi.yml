@@ -113,6 +113,10 @@ jobs:
             node tools/perf/index-sync-check.mjs --target tests/fixtures/repo-installed-core --json > .aidn/runtime/index/index-sync-check.json || true
           fi
 
+      - name: Render Index Sync Summary
+        run: |
+          npm run perf:index-sync-summary -- --check-file .aidn/runtime/index/index-sync-check.json --out .aidn/runtime/index/index-sync-summary.md
+
       - name: Verify Index Dual-Write Parity
         run: |
           STRICT_INDEX="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_parity || false }}"
@@ -204,6 +208,8 @@ jobs:
         run: |
           cat .aidn/runtime/perf/kpi-summary.md >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat .aidn/runtime/index/index-sync-summary.md >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
           cat .aidn/runtime/index/index-summary.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Perf Runtime Artifacts
@@ -222,6 +228,7 @@ jobs:
             .aidn/runtime/index/workflow-index.json
             .aidn/runtime/index/workflow-index.sql
             .aidn/runtime/index/index-sync-check.json
+            .aidn/runtime/index/index-sync-summary.md
             .aidn/runtime/index/index-parity.json
             .aidn/runtime/index/index-report.json
             .aidn/runtime/index/index-thresholds.json

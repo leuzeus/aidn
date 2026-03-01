@@ -19,6 +19,7 @@
     "perf:index-verify": "node tools/perf/index-verify-dual.mjs",
     "perf:index-report": "node tools/perf/report-index.mjs",
     "perf:index-thresholds": "node tools/perf/check-thresholds.mjs --kpi-file .aidn/runtime/index/index-report.json --targets docs/performance/INDEX_TARGETS.json --out .aidn/runtime/index/index-thresholds.json",
+    "perf:index-sync-summary": "node tools/perf/render-index-sync-summary.mjs",
     "perf:index-summary": "node tools/perf/render-index-summary.mjs",
     "perf:reload-check": "node tools/perf/reload-check.mjs",
     "perf:gate": "node tools/perf/gating-evaluate.mjs",
