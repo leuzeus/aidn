@@ -91,6 +91,8 @@ function normalizeCheck(payload) {
     run_id: `${payload?.target_root ?? "unknown"}::${payload?.expected?.digest ?? "n/a"}::${payload?.ts ?? "n/a"}`,
     target_root: payload?.target_root ?? null,
     in_sync: payload?.in_sync === true,
+    drift_level: payload?.drift_level ?? "none",
+    reason_codes: Array.isArray(payload?.reason_codes) ? payload.reason_codes : [],
     action: payload?.action ?? null,
     expected_digest: payload?.expected?.digest ?? null,
     current_digest: payload?.current?.digest ?? null,

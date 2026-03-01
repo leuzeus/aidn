@@ -118,6 +118,7 @@ Use `perf:reset -- --keep-history` if you want to preserve cross-run KPI history
 `perf:index` remains backward compatible and defaults to `file` mode.
 `perf:index -- --dry-run --json` computes payload summary/digest without writing files.
 `perf:index-check` compares current index digest against a dry-run import and can auto-apply with `--apply`.
+`perf:index-check` also emits `reason_codes`, `drift_level` and numeric summary fields for automation.
 `perf:index-verify` should pass when SQL output is generated from the same JSON payload and schema settings.
 Index outputs are written conditionally: unchanged content is detected and not rewritten.
 For JSON index, equivalence check ignores `generated_at` to avoid churn-only rewrites.

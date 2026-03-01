@@ -29,6 +29,13 @@
       "op": "<=",
       "value": 3,
       "severity": "warn"
+    },
+    {
+      "id": "INDEX_SYNC_HIGH_DRIFT_RUNS_MAX",
+      "key": "summary.high_drift_runs",
+      "op": "<=",
+      "value": 1,
+      "severity": "warn"
     }
   ]
 }

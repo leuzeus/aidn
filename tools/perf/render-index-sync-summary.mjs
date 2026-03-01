@@ -65,6 +65,8 @@ function buildMarkdown(payload) {
   lines.push("## Index Sync Check");
   lines.push("");
   lines.push(`- In sync: ${payload?.in_sync ? "yes" : "no"}`);
+  lines.push(`- Drift level: ${fmt(payload?.drift_level)}`);
+  lines.push(`- Reason codes: ${Array.isArray(payload?.reason_codes) && payload.reason_codes.length > 0 ? payload.reason_codes.join(", ") : "none"}`);
   lines.push(`- Action: ${fmt(payload?.action)}`);
   lines.push(`- Expected digest: ${fmt(payload?.expected?.digest)}`);
   lines.push(`- Current digest: ${fmt(payload?.current?.digest)}`);

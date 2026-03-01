@@ -119,6 +119,30 @@ function compareSummary(expectedSummary, currentPayload) {
   return mismatches;
 }
 
+function buildReasonCodes(currentExists, digestMatch, summaryMismatches) {
+  const codes = [];
+  if (!currentExists) {
+    codes.push("INDEX_FILE_MISSING");
+  }
+  if (!digestMatch) {
+    codes.push("DIGEST_MISMATCH");
+  }
+  if (summaryMismatches.length > 0) {
+    codes.push("SUMMARY_MISMATCH");
+  }
+  return codes;
+}
+
+function toDriftLevel(reasonCodes, mismatchCount) {
+  if (reasonCodes.length === 0) {
+    return "none";
+  }
+  if (reasonCodes.includes("INDEX_FILE_MISSING") || mismatchCount >= 3) {
+    return "high";
+  }
+  return "low";
+}
+
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -129,9 +153,12 @@ function main() {
     const summaryMismatches = current.exists
       ? compareSummary(expected.summary, current.payload)
       : [];
+    const digestMatch = current.exists && current.digest === expected.payload_digest;
     const inSync = current.exists
-      && current.digest === expected.payload_digest
+      && digestMatch
       && summaryMismatches.length === 0;
+    const reasonCodes = buildReasonCodes(current.exists, digestMatch, summaryMismatches);
+    const driftLevel = toDriftLevel(reasonCodes, summaryMismatches.length);
 
     const output = {
       ts: new Date().toISOString(),
@@ -147,7 +174,15 @@ function main() {
         digest: current.digest,
       },
       in_sync: inSync,
+      reason_codes: reasonCodes,
+      drift_level: driftLevel,
       summary_mismatches: summaryMismatches,
+      summary: {
+        in_sync_numeric: inSync ? 1 : 0,
+        index_exists_numeric: current.exists ? 1 : 0,
+        digest_match_numeric: digestMatch ? 1 : 0,
+        mismatch_count: summaryMismatches.length,
+      },
       action: "none",
       apply_result: null,
     };
@@ -169,6 +204,8 @@ function main() {
       console.log(`Target: ${output.target_root}`);
       console.log(`Index file: ${output.current.index_file}`);
       console.log(`In sync: ${output.in_sync ? "yes" : "no"}`);
+      console.log(`Drift level: ${output.drift_level}`);
+      console.log(`Reason codes: ${output.reason_codes.length > 0 ? output.reason_codes.join(", ") : "none"}`);
       console.log(`Expected digest: ${output.expected.digest}`);
       console.log(`Current digest: ${output.current.digest ?? "missing"}`);
       if (output.summary_mismatches.length > 0) {
