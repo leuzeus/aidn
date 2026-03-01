@@ -15,6 +15,8 @@ function parseArgs(argv) {
     file: ".aidn/runtime/perf/workflow-events.ndjson",
     json: false,
     runId: "",
+    runPrefix: "",
+    requireDelivery: false,
     limit: 20,
   };
 
@@ -28,6 +30,11 @@ function parseArgs(argv) {
     } else if (token === "--run-id") {
       args.runId = argv[i + 1] ?? "";
       i += 1;
+    } else if (token === "--run-prefix") {
+      args.runPrefix = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--require-delivery") {
+      args.requireDelivery = true;
     } else if (token === "--limit") {
       const raw = argv[i + 1] ?? "";
       i += 1;
@@ -55,6 +62,7 @@ function printUsage() {
   console.log("  node tools/perf/report-kpi.mjs");
   console.log("  node tools/perf/report-kpi.mjs --file .aidn/runtime/perf/workflow-events.ndjson");
   console.log("  node tools/perf/report-kpi.mjs --run-id S072-20260301T1012Z");
+  console.log("  node tools/perf/report-kpi.mjs --run-prefix session- --require-delivery");
   console.log("  node tools/perf/report-kpi.mjs --json");
 }
 
@@ -266,6 +274,12 @@ function main() {
     if (args.runId) {
       runs = runs.filter((run) => run.run_id === args.runId);
     }
+    if (args.runPrefix) {
+      runs = runs.filter((run) => String(run.run_id).startsWith(args.runPrefix));
+    }
+    if (args.requireDelivery) {
+      runs = runs.filter((run) => run.delivery_time_ms > 0);
+    }
     if (args.limit > 0 && runs.length > args.limit) {
       runs = runs.slice(0, args.limit);
     }
@@ -273,6 +287,12 @@ function main() {
     const summary = summarize(runs);
     const payload = {
       source_file: absolute,
+      filters: {
+        run_id: args.runId || null,
+        run_prefix: args.runPrefix || null,
+        require_delivery: args.requireDelivery,
+        limit: args.limit,
+      },
       summary,
       runs,
     };

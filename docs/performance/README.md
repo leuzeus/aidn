@@ -29,6 +29,7 @@ The following scripts were added under `tools/perf/`:
 ```bash
 npm run perf:collect -- --event "{\"skill\":\"context-reload\",\"phase\":\"end\",\"event\":\"reload_summary\",\"duration_ms\":820,\"gates_triggered\":[\"R01\"]}"
 npm run perf:report
+npm run perf:report -- --run-prefix session- --require-delivery
 npm run perf:index -- --target ../client-repo
 npm run perf:reload-check -- --target ../client-repo
 npm run perf:reload-check -- --target ../client-repo --write-cache
@@ -78,7 +79,7 @@ These runtime artifacts are intentionally local and ignored by git.
   - `perf:delivery-start`
   - `perf:delivery-end`
   - `perf:session-close`
-  - `perf:report --json`
+  - `perf:report --run-prefix session- --require-delivery --json`
   - `perf:check-thresholds` (non-blocking by default in CI)
   - `perf:render-summary`
 - It publishes:

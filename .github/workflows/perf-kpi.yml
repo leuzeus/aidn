@@ -47,7 +47,7 @@ jobs:
       - name: Build KPI JSON
         run: |
           mkdir -p .aidn/runtime/perf
-          node tools/perf/report-kpi.mjs --file .aidn/runtime/perf/workflow-events.ndjson --json > .aidn/runtime/perf/kpi-report.json
+          node tools/perf/report-kpi.mjs --file .aidn/runtime/perf/workflow-events.ndjson --run-prefix session- --require-delivery --json > .aidn/runtime/perf/kpi-report.json
 
       - name: Evaluate KPI Thresholds (non-blocking)
         run: |
