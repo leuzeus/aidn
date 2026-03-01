@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { buildSqlFromIndex } from "./index-sql-lib.mjs";
+import { writeUtf8IfChanged } from "./io-lib.mjs";
 
 function stableIndexProjection(indexPayload) {
   if (!indexPayload || typeof indexPayload !== "object") {
@@ -22,27 +23,6 @@ function isJsonIndexEquivalent(previousContent, nextPayload) {
   }
 }
 
-function writeUtf8(filePath, content) {
-  const absolute = path.resolve(process.cwd(), filePath);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  if (fs.existsSync(absolute)) {
-    const previous = fs.readFileSync(absolute, "utf8");
-    if (previous === content) {
-      return {
-        path: absolute,
-        written: false,
-        bytes_written: 0,
-      };
-    }
-  }
-  fs.writeFileSync(absolute, content, "utf8");
-  return {
-    path: absolute,
-    written: true,
-    bytes_written: Buffer.byteLength(content, "utf8"),
-  };
-}
-
 function readSchema(filePath) {
   const absolute = path.resolve(process.cwd(), filePath);
   if (!fs.existsSync(absolute)) {
@@ -53,30 +33,17 @@ function readSchema(filePath) {
 
 function writeJsonIndex(outputPath, payload) {
   const content = `${JSON.stringify(payload, null, 2)}\n`;
-  const absolute = path.resolve(process.cwd(), outputPath);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  if (fs.existsSync(absolute)) {
-    const previous = fs.readFileSync(absolute, "utf8");
-    if (previous === content || isJsonIndexEquivalent(previous, payload)) {
-      return {
-        path: absolute,
-        written: false,
-        bytes_written: 0,
-      };
-    }
-  }
-  fs.writeFileSync(absolute, content, "utf8");
-  return {
-    path: absolute,
-    written: true,
-    bytes_written: Buffer.byteLength(content, "utf8"),
-  };
+  return writeUtf8IfChanged(outputPath, content, {
+    isEquivalent(previous) {
+      return isJsonIndexEquivalent(previous, payload);
+    },
+  });
 }
 
 function writeSqlIndex(outputPath, payload, schemaFile, includeSchema) {
   const schemaText = includeSchema ? readSchema(schemaFile) : "";
   const content = buildSqlFromIndex(payload, { includeSchema, schemaText });
-  return writeUtf8(outputPath, content);
+  return writeUtf8IfChanged(outputPath, content);
 }
 
 export function createIndexStore(options = {}) {

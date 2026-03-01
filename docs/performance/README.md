@@ -101,6 +101,7 @@ Use `perf:reset -- --keep-history` if you want to preserve cross-run KPI history
 `perf:index-verify` should pass when SQL output is generated from the same JSON payload and schema settings.
 Index outputs are written conditionally: unchanged content is detected and not rewritten.
 For JSON index, equivalence check ignores `generated_at` to avoid churn-only rewrites.
+KPI/regression/fallback/index report and summary outputs are also written conditionally when content is unchanged.
 Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --json` output.
 
 ## Standard Index Queries

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { isJsonEquivalent, writeJsonIfChanged } from "./io-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -139,10 +140,11 @@ function buildReport(indexData, parityData, parityExists) {
 }
 
 function writeJson(filePath, payload) {
-  const absolute = path.resolve(process.cwd(), filePath);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  fs.writeFileSync(absolute, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-  return absolute;
+  return writeJsonIfChanged(filePath, payload, {
+    isEquivalent(previousContent) {
+      return isJsonEquivalent(previousContent, payload, ["ts"]);
+    },
+  });
 }
 
 function main() {
@@ -154,15 +156,16 @@ function main() {
     report.index_file = index.absolute;
     report.parity_file = parity.absolute;
     report.parity_exists = parity.exists;
-    const outPath = writeJson(args.out, report);
-    report.output_file = outPath;
+    const outWrite = writeJson(args.out, report);
+    report.output_file = outWrite.path;
+    report.output_written = outWrite.written;
 
     if (args.json) {
       console.log(JSON.stringify(report, null, 2));
       return;
     }
 
-    console.log(`Index report generated: ${outPath}`);
+    console.log(`Index report generated: ${outWrite.path} (${outWrite.written ? "written" : "unchanged"})`);
     console.log(
       `Rows: cycles=${report.summary.rows.cycles}, artifacts=${report.summary.rows.artifacts}, file_map=${report.summary.rows.file_map}, tags=${report.summary.rows.tags}, run_metrics=${report.summary.rows.run_metrics}`,
     );

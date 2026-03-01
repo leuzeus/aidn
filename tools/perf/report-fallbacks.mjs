@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { isJsonEquivalent, writeJsonIfChanged } from "./io-lib.mjs";
 
 const COLD_START_REASON_CODES = new Set([
   "MISSING_CACHE",
@@ -178,10 +179,11 @@ function summarizeRuns(runs, stormThreshold) {
 }
 
 function writeJson(filePath, payload) {
-  const absolute = path.resolve(process.cwd(), filePath);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  fs.writeFileSync(absolute, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-  return absolute;
+  return writeJsonIfChanged(filePath, payload, {
+    isEquivalent(previousContent) {
+      return isJsonEquivalent(previousContent, payload, ["ts"]);
+    },
+  });
 }
 
 function printHuman(summary) {
@@ -218,14 +220,15 @@ function main() {
       summary,
       runs,
     };
-    const outPath = writeJson(args.out, payload);
-    payload.output_file = outPath;
+    const outWrite = writeJson(args.out, payload);
+    payload.output_file = outWrite.path;
+    payload.output_written = outWrite.written;
 
     if (args.json) {
       console.log(JSON.stringify(payload, null, 2));
     } else {
       printHuman(summary);
-      console.log(`Report file: ${outPath}`);
+      console.log(`Report file: ${outWrite.path} (${outWrite.written ? "written" : "unchanged"})`);
     }
   } catch (error) {
     console.error(`ERROR: ${error.message}`);

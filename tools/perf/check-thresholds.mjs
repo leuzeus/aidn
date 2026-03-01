@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { isJsonEquivalent, writeJsonIfChanged } from "./io-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -234,10 +235,11 @@ function printHuman(summary, checks) {
 }
 
 function writeJson(filePath, payload) {
-  const absolute = path.resolve(process.cwd(), filePath);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  fs.writeFileSync(absolute, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-  return absolute;
+  return writeJsonIfChanged(filePath, payload, {
+    isEquivalent(previousContent) {
+      return isJsonEquivalent(previousContent, payload, ["ts"]);
+    },
+  });
 }
 
 function main() {
@@ -255,15 +257,16 @@ function main() {
       summary,
       checks,
     };
-    const outPath = writeJson(args.out, output);
-    output.output_file = outPath;
+    const outWrite = writeJson(args.out, output);
+    output.output_file = outWrite.path;
+    output.output_written = outWrite.written;
 
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));
     } else {
       printHuman(summary, checks);
       console.log("");
-      console.log(`Report file: ${outPath}`);
+      console.log(`Report file: ${outWrite.path} (${outWrite.written ? "written" : "unchanged"})`);
     }
 
     if (summary.blocking > 0) {

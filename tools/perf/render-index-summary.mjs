@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { writeUtf8IfChanged } from "./io-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -96,10 +97,7 @@ function buildMarkdown(report, thresholds) {
 }
 
 function writeFile(filePath, content) {
-  const absolute = path.resolve(process.cwd(), filePath);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  fs.writeFileSync(absolute, content, "utf8");
-  return absolute;
+  return writeUtf8IfChanged(filePath, content);
 }
 
 function main() {
@@ -108,8 +106,8 @@ function main() {
     const report = readJson(args.reportFile, "Index report", true);
     const thresholds = readJson(args.thresholdsFile, "Index thresholds", false);
     const markdown = buildMarkdown(report.data, thresholds.data);
-    const outPath = writeFile(args.out, markdown);
-    console.log(`Index summary written: ${outPath}`);
+    const outWrite = writeFile(args.out, markdown);
+    console.log(`Index summary written: ${outWrite.path} (${outWrite.written ? "written" : "unchanged"})`);
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();

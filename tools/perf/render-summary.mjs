@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { writeUtf8IfChanged } from "./io-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -258,10 +259,7 @@ function buildMarkdown(kpi, mergedRuns, thresholds, regression, fallbackReport, 
 }
 
 function writeFile(filePath, content) {
-  const absolute = path.resolve(process.cwd(), filePath);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  fs.writeFileSync(absolute, content, "utf8");
-  return absolute;
+  return writeUtf8IfChanged(filePath, content);
 }
 
 function main() {
@@ -284,8 +282,8 @@ function main() {
       fallbackThresholds.data,
       args.maxRuns,
     );
-    const outPath = writeFile(args.out, markdown);
-    console.log(`Summary written: ${outPath}`);
+    const outWrite = writeFile(args.out, markdown);
+    console.log(`Summary written: ${outWrite.path} (${outWrite.written ? "written" : "unchanged"})`);
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
