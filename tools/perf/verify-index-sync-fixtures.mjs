@@ -6,7 +6,7 @@ function parseArgs(argv) {
   const args = {
     modernTarget: "tests/fixtures/perf-structure/modern",
     mixedTarget: "tests/fixtures/perf-structure/mixed",
-    indexFile: ".aidn/runtime/index/workflow-index.json",
+    indexFile: ".aidn/runtime/index/fixtures/sync/workflow-index.json",
     json: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -39,6 +39,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-index-sync-fixtures.mjs");
   console.log("  node tools/perf/verify-index-sync-fixtures.mjs --modern-target tests/fixtures/perf-structure/modern --mixed-target tests/fixtures/perf-structure/mixed");
+  console.log("  node tools/perf/verify-index-sync-fixtures.mjs --index-file .aidn/runtime/index/fixtures/sync/workflow-index.json");
 }
 
 function runJson(script, scriptArgs) {

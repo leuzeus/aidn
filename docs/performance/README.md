@@ -124,6 +124,7 @@ Default runtime outputs:
 
 These runtime artifacts are intentionally local and ignored by git.
 Use `perf:reset -- --keep-history` if you want to preserve cross-run KPI history.
+Fixture verifiers write isolated outputs under `.aidn/runtime/index/fixtures/*` to avoid collisions.
 
 ## IndexStore Modes
 

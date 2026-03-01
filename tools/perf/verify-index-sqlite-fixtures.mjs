@@ -6,10 +6,10 @@ import { execFileSync } from "node:child_process";
 function parseArgs(argv) {
   const args = {
     target: "tests/fixtures/repo-installed-core",
-    indexFile: ".aidn/runtime/index/workflow-index.json",
-    sqlFile: ".aidn/runtime/index/workflow-index.sql",
-    sqliteFile: ".aidn/runtime/index/workflow-index.sqlite",
-    exportedFile: ".aidn/runtime/index/workflow-index.from-sqlite.json",
+    indexFile: ".aidn/runtime/index/fixtures/sqlite/workflow-index.json",
+    sqlFile: ".aidn/runtime/index/fixtures/sqlite/workflow-index.sql",
+    sqliteFile: ".aidn/runtime/index/fixtures/sqlite/workflow-index.sqlite",
+    exportedFile: ".aidn/runtime/index/fixtures/sqlite/workflow-index.from-sqlite.json",
     json: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -48,6 +48,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-index-sqlite-fixtures.mjs");
   console.log("  node tools/perf/verify-index-sqlite-fixtures.mjs --target tests/fixtures/repo-installed-core");
+  console.log("  node tools/perf/verify-index-sqlite-fixtures.mjs --sqlite-file .aidn/runtime/index/fixtures/sqlite/workflow-index.sqlite");
 }
 
 function runJson(script, scriptArgs) {

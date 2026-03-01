@@ -49,6 +49,8 @@
 - Scope `index_sync_drift` gating signal to matching `target_root` to avoid cross-project false positives.
 - Add `perf:verify-index-sync` fixture integration test (drift -> apply -> in-sync) and run it in perf CI.
 - Add `perf:verify-index-sqlite` fixture integration test (sync + SQL parity + SQLite parity + export) and run it in perf CI.
+- Isolate fixture verifier runtime outputs under `.aidn/runtime/index/fixtures/*` to avoid local test collisions.
+- Fix `index-sync-check --apply` to write back to the provided `--index-file` path (custom output paths now converge correctly).
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).

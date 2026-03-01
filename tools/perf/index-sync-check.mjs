@@ -67,9 +67,9 @@ function digestPayload(payload) {
     .digest("hex");
 }
 
-function runIndexSync(targetRoot, dryRun) {
+function runIndexSync(targetRoot, indexOutput, dryRun) {
   const script = path.resolve(process.cwd(), "tools/perf/index-sync.mjs");
-  const cmd = [script, "--target", targetRoot, "--json"];
+  const cmd = [script, "--target", targetRoot, "--output", indexOutput, "--json"];
   if (dryRun) {
     cmd.push("--dry-run");
   }
@@ -147,7 +147,7 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const expected = runIndexSync(targetRoot, true);
+    const expected = runIndexSync(targetRoot, args.indexFile, true);
     const current = readIndex(args.indexFile);
 
     const summaryMismatches = current.exists
@@ -188,7 +188,7 @@ function main() {
     };
 
     if (!inSync && args.apply) {
-      const applyOut = runIndexSync(targetRoot, false);
+      const applyOut = runIndexSync(targetRoot, args.indexFile, false);
       output.action = "applied";
       output.apply_result = {
         writes: applyOut.writes ?? { files_written_count: 0, bytes_written: 0 },
