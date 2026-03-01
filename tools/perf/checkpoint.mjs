@@ -207,6 +207,30 @@ function main() {
     };
 
     if (args.emitSummaryEvent) {
+      const reloadEvent = {
+        ts: result.ts,
+        run_id: checkpointRunId,
+        session_id: null,
+        cycle_id: null,
+        branch: result.branch,
+        mode: result.mode,
+        skill: "reload-check",
+        phase: "check",
+        event: "reload_decision",
+        duration_ms: result.reload.duration_ms,
+        files_read_count: 0,
+        bytes_read: 0,
+        files_written_count: 0,
+        bytes_written: 0,
+        gates_triggered: ["R03", "R04"],
+        result: result.reload.decision === "stop"
+          ? "stop"
+          : (result.reload.fallback ? "fallback" : "ok"),
+        reason_code: (result.reload.reason_codes ?? [])[0] ?? null,
+        trace_id: `tr-${crypto.randomBytes(4).toString("hex")}`,
+      };
+      appendEvent(args.eventFile, reloadEvent);
+
       const event = {
         ts: result.ts,
         run_id: checkpointRunId,

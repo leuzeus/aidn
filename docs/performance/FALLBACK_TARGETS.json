@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "description": "Fallback storm guardrails based on reload-check fallback events.",
+  "rules": [
+    {
+      "id": "FALLBACK_RUNS_MIN",
+      "key": "summary.runs_analyzed",
+      "op": ">=",
+      "value": 1,
+      "severity": "error"
+    },
+    {
+      "id": "FALLBACK_TOTAL_MAX",
+      "key": "summary.fallback_total",
+      "op": "<=",
+      "value": 3,
+      "severity": "warn"
+    },
+    {
+      "id": "FALLBACK_STORM_RUNS_MAX",
+      "key": "summary.storm_runs",
+      "op": "<=",
+      "value": 0,
+      "severity": "warn"
+    },
+    {
+      "id": "FALLBACK_L3_REPEATED_MAX",
+      "key": "summary.l3_repeated_fallback",
+      "op": "<=",
+      "value": 0,
+      "severity": "error"
+    }
+  ]
+}

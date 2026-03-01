@@ -7,6 +7,8 @@ function parseArgs(argv) {
     kpiFile: ".aidn/runtime/perf/kpi-report.json",
     thresholdsFile: ".aidn/runtime/perf/kpi-thresholds.json",
     regressionFile: ".aidn/runtime/perf/kpi-regression.json",
+    fallbackReportFile: ".aidn/runtime/perf/fallback-report.json",
+    fallbackThresholdsFile: ".aidn/runtime/perf/fallback-thresholds.json",
     out: ".aidn/runtime/perf/kpi-summary.md",
     maxRuns: 10,
   };
@@ -21,6 +23,12 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--regression-file") {
       args.regressionFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--fallback-report-file") {
+      args.fallbackReportFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--fallback-thresholds-file") {
+      args.fallbackThresholdsFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--out") {
       args.out = argv[i + 1] ?? "";
@@ -127,15 +135,18 @@ function buildTrendLines(runs) {
   ];
 }
 
-function buildMarkdown(kpi, thresholds, regression, maxRuns) {
+function buildMarkdown(kpi, thresholds, regression, fallbackReport, fallbackThresholds, maxRuns) {
   const summary = kpi.summary ?? {};
   const overhead = summary.overhead_ratio ?? {};
   const churn = summary.artifacts_churn ?? {};
   const gates = summary.gates_frequency ?? {};
   const thresholdStatus = thresholds?.summary?.overall_status ?? "not-generated";
   const regressionStatus = regression?.summary?.overall_status ?? "not-generated";
+  const fallbackStatus = fallbackThresholds?.summary?.overall_status ?? "not-generated";
   const checks = Array.isArray(thresholds?.checks) ? thresholds.checks : [];
   const regressionChecks = Array.isArray(regression?.checks) ? regression.checks : [];
+  const fallbackChecks = Array.isArray(fallbackThresholds?.checks) ? fallbackThresholds.checks : [];
+  const fallbackSummary = fallbackReport?.summary ?? {};
 
   const lines = [];
   lines.push("## Perf KPI Summary");
@@ -146,6 +157,8 @@ function buildMarkdown(kpi, thresholds, regression, maxRuns) {
   lines.push(`- Gates frequency (mean/median/p90): ${fmt(gates.mean, 2)} / ${fmt(gates.median, 2)} / ${fmt(gates.p90, 2)}`);
   lines.push(`- Threshold status: ${thresholdStatus}`);
   lines.push(`- Regression status: ${regressionStatus}`);
+  lines.push(`- Fallback status: ${fallbackStatus}`);
+  lines.push(`- Fallback total / run-rate / storm-runs: ${fallbackSummary.fallback_total ?? 0} / ${fmt(fallbackSummary.fallback_run_rate, 3)} / ${fallbackSummary.storm_runs ?? 0}`);
   lines.push("");
 
   if (checks.length > 0) {
@@ -166,6 +179,17 @@ function buildMarkdown(kpi, thresholds, regression, maxRuns) {
     lines.push("|---|---|---|---|---:|---:|---:|---:|");
     for (const check of regressionChecks) {
       lines.push(`| ${check.id ?? "n/a"} | ${check.status ?? "n/a"} | ${check.severity ?? "n/a"} | ${check.metric ?? "n/a"} | ${check.latest_value ?? "n/a"} | ${check.baseline_median ?? "n/a"} | ${check.increase_pct ?? "n/a"} | ${check.max_increase_pct ?? "n/a"} |`);
+    }
+    lines.push("");
+  }
+
+  if (fallbackChecks.length > 0) {
+    lines.push("### Fallback Checks");
+    lines.push("");
+    lines.push("| id | status | severity | actual | op | expected |");
+    lines.push("|---|---|---|---:|---|---:|");
+    for (const check of fallbackChecks) {
+      lines.push(`| ${check.id ?? "n/a"} | ${check.status ?? "n/a"} | ${check.severity ?? "n/a"} | ${check.actual ?? "n/a"} | ${check.op ?? "n/a"} | ${check.expected ?? "n/a"} |`);
     }
     lines.push("");
   }
@@ -204,7 +228,16 @@ function main() {
     const kpi = readJsonOptional(args.kpiFile, "KPI report");
     const thresholds = readJsonOptional(args.thresholdsFile, null);
     const regression = readJsonOptional(args.regressionFile, null);
-    const markdown = buildMarkdown(kpi.data, thresholds.data, regression.data, args.maxRuns);
+    const fallbackReport = readJsonOptional(args.fallbackReportFile, null);
+    const fallbackThresholds = readJsonOptional(args.fallbackThresholdsFile, null);
+    const markdown = buildMarkdown(
+      kpi.data,
+      thresholds.data,
+      regression.data,
+      fallbackReport.data,
+      fallbackThresholds.data,
+      args.maxRuns,
+    );
     const outPath = writeFile(args.out, markdown);
     console.log(`Summary written: ${outPath}`);
   } catch (error) {

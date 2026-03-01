@@ -16,6 +16,9 @@
 - Add KPI regression checker (`tools/perf/check-regression.mjs`) with targets in `docs/performance/REGRESSION_TARGETS.json`.
 - Add CI option `strict_regression` (workflow_dispatch) for blocking KPI regression checks.
 - Extend KPI markdown summary with regression status/checks and trend section over recent runs.
+- Emit explicit `reload-check` events during checkpoints for better fallback observability.
+- Add fallback storm reporting/checks (`tools/perf/report-fallbacks.mjs`, `docs/performance/FALLBACK_TARGETS.json`) and CI option `strict_fallback`.
+- Extend KPI summary with fallback status/metrics/checks.
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).
