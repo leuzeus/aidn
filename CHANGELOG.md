@@ -36,6 +36,7 @@
 - Add `perf:index-sync-summary` markdown renderer and publish index sync drift summary in CI job summary/artifacts.
 - Add dedicated multi-version structure fixtures (`legacy|modern|mixed`) and `perf:verify-structure` validator script.
 - Run `perf:verify-structure` in `perf-kpi` CI workflow to prevent structure-profile regressions.
+- Add index sync trend pipeline (`sync-index-sync-history`, `report-index-sync`, `INDEX_SYNC_TARGETS`, markdown trend summary) and publish artifacts in perf CI.
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).

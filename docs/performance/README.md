@@ -17,6 +17,9 @@ The following scripts were added under `tools/perf/`:
 - `index-sync.mjs` - build index from `docs/audit/*` with `IndexStore` mode: `file|sql|dual`
 - `index-sync-check.mjs` - detect drift between on-disk index and fresh import from `docs/audit/*` (optional `--apply`)
 - `render-index-sync-summary.mjs` - generate Markdown summary from index sync check JSON
+- `sync-index-sync-history.mjs` - persist index sync check runs in NDJSON history
+- `report-index-sync.mjs` - compute trend KPIs from index sync history
+- `render-index-sync-report-summary.mjs` - generate Markdown trend summary from sync report + thresholds
 - `verify-structure-profile-fixtures.mjs` - validate structure profile detection on legacy/modern/mixed fixtures
 - `index-store.mjs` - local `IndexStore` abstraction (file-first, SQL export optional)
 - `index-to-sql.mjs` - export local index JSON to SQL import script (SQLite-friendly)
@@ -53,6 +56,10 @@ npm run perf:index-dual -- --target ../client-repo --kpi-file .aidn/runtime/perf
 npm run perf:index -- --target ../client-repo --json
 npm run perf:index -- --target ../client-repo --json --dry-run
 npm run perf:index-sync-summary -- --check-file .aidn/runtime/index/index-sync-check.json --out .aidn/runtime/index/index-sync-summary.md
+npm run perf:index-sync-history -- --check-file .aidn/runtime/index/index-sync-check.json --history-file .aidn/runtime/index/index-sync-history.ndjson --max-runs 200
+npm run perf:index-sync-report -- --history-file .aidn/runtime/index/index-sync-history.ndjson --out .aidn/runtime/index/index-sync-report.json
+npm run perf:index-sync-thresholds
+npm run perf:index-sync-trend-summary -- --report-file .aidn/runtime/index/index-sync-report.json --thresholds-file .aidn/runtime/index/index-sync-thresholds.json --out .aidn/runtime/index/index-sync-trend-summary.md
 npm run perf:verify-structure
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.json
@@ -169,6 +176,10 @@ Checkpoint summary events now carry effective index write counters (`files_writt
   - `perf:index-dual --kpi-file .aidn/runtime/perf/kpi-report.json`
   - `perf:index-check --json` (non-blocking by default in CI)
   - `perf:index-sync-summary`
+  - `perf:index-sync-history`
+  - `perf:index-sync-report`
+  - `perf:index-sync-thresholds` (non-blocking by default in CI)
+  - `perf:index-sync-trend-summary`
   - `perf:index-verify`
   - `perf:index-report`
   - `perf:index-thresholds`
@@ -191,6 +202,10 @@ Checkpoint summary events now carry effective index write counters (`files_writt
   - `.aidn/runtime/index/workflow-index.sql`
   - `.aidn/runtime/index/index-sync-check.json`
   - `.aidn/runtime/index/index-sync-summary.md`
+  - `.aidn/runtime/index/index-sync-history.ndjson`
+  - `.aidn/runtime/index/index-sync-report.json`
+  - `.aidn/runtime/index/index-sync-thresholds.json`
+  - `.aidn/runtime/index/index-sync-trend-summary.md`
 - `workflow_dispatch` supports `strict_thresholds=true` to make threshold violations blocking.
 - `workflow_dispatch` supports `strict_index_parity=true` to make dual-write parity violations blocking.
 - `workflow_dispatch` supports `strict_index_quality=true` to make index quality threshold violations blocking.
@@ -202,6 +217,7 @@ Checkpoint summary events now carry effective index write counters (`files_writt
 Threshold source file:
 - `docs/performance/KPI_TARGETS.json`
 - `docs/performance/INDEX_TARGETS.json`
+- `docs/performance/INDEX_SYNC_TARGETS.json`
 - `docs/performance/REGRESSION_TARGETS.json`
 - `docs/performance/FALLBACK_TARGETS.json`
 

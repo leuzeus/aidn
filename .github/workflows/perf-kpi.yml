@@ -120,6 +120,29 @@ jobs:
         run: |
           npm run perf:index-sync-summary -- --check-file .aidn/runtime/index/index-sync-check.json --out .aidn/runtime/index/index-sync-summary.md
 
+      - name: Sync Index Check History
+        run: |
+          npm run perf:index-sync-history -- --check-file .aidn/runtime/index/index-sync-check.json --history-file .aidn/runtime/index/index-sync-history.ndjson --max-runs 200
+
+      - name: Build Index Sync Trend Report
+        run: |
+          npm run perf:index-sync-report -- --history-file .aidn/runtime/index/index-sync-history.ndjson --out .aidn/runtime/index/index-sync-report.json
+
+      - name: Evaluate Index Sync Trend Thresholds (non-blocking)
+        run: |
+          STRICT_INDEX_SYNC="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_sync || false }}"
+          if [ "$STRICT_INDEX_SYNC" = "true" ]; then
+            echo "Running index sync trend checks in strict mode."
+            npm run perf:index-sync-thresholds -- --strict
+          else
+            echo "Running index sync trend checks in non-blocking mode."
+            npm run perf:index-sync-thresholds || true
+          fi
+
+      - name: Render Index Sync Trend Summary
+        run: |
+          npm run perf:index-sync-trend-summary -- --report-file .aidn/runtime/index/index-sync-report.json --thresholds-file .aidn/runtime/index/index-sync-thresholds.json --out .aidn/runtime/index/index-sync-trend-summary.md
+
       - name: Verify Index Dual-Write Parity
         run: |
           STRICT_INDEX="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_parity || false }}"
@@ -213,6 +236,8 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           cat .aidn/runtime/index/index-sync-summary.md >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat .aidn/runtime/index/index-sync-trend-summary.md >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
           cat .aidn/runtime/index/index-summary.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Perf Runtime Artifacts
@@ -232,6 +257,10 @@ jobs:
             .aidn/runtime/index/workflow-index.sql
             .aidn/runtime/index/index-sync-check.json
             .aidn/runtime/index/index-sync-summary.md
+            .aidn/runtime/index/index-sync-history.ndjson
+            .aidn/runtime/index/index-sync-report.json
+            .aidn/runtime/index/index-sync-thresholds.json
+            .aidn/runtime/index/index-sync-trend-summary.md
             .aidn/runtime/index/index-parity.json
             .aidn/runtime/index/index-report.json
             .aidn/runtime/index/index-thresholds.json
