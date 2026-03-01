@@ -23,7 +23,7 @@ stateDiagram-v2
   CONTINUITY_GATE --> [*]: creation cancelled
 
   OPEN --> OPEN: DoR not ready / clarify scope + plan (R04)
-  OPEN --> IMPLEMENTING: DoR READY\n(R2: predecessor import done)
+  OPEN --> IMPLEMENTING: DoR READY and R2 predecessor import done
   OPEN --> NO_GO: close-non-retained decision
   OPEN --> DROPPED: close-non-retained decision
 
