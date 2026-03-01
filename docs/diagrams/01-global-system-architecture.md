@@ -29,14 +29,14 @@ flowchart LR
     START["context-reload + start-session (R01)"]
     MODE{"Mode selected (R02)"}
     BCA["branch-cycle-audit (R03)"]
-    CONT{"Continuity gate (R06)\nR1 | R2 | R3"}
+    CONT{"Continuity gate R06: R1 R2 R3"}
     DOR{"DoR gate (R04)"}
     EXEC["Cycle implementation"]
     DRIFT["drift-check (R05)"]
     SCLOSE{"Session close gate (R07)"}
     PRG{"PR review gate (R08)"}
     SYNC{"Post-merge local sync (R09)"}
-    INC{"Incident triage (R10)\nL1/L2 auto-fix | L3/L4 stop+auth"}
+    INC{"Incident triage R10: L1 L2 auto-fix, L3 L4 stop+auth"}
   end
 
   subgraph STATE["State Layer (Declarative)"]

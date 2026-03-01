@@ -20,7 +20,7 @@
 flowchart TD
   subgraph PRE["Pre-Decision Regulation"]
     IN["Candidate change"]
-    RULES["Apply canonical gates\nR01-R06"]
+    RULES["Apply canonical gates R01-R06"]
     G1{"Continuity + DoR + mapping valid?"}
   end
 
@@ -39,7 +39,7 @@ flowchart TD
   end
 
   subgraph INC["Incident Control (R10)"]
-    TRIAGE["Incident triage\nseverity L1..L4"]
+    TRIAGE["Incident triage severity L1-L4"]
     L12["L1/L2: auto-fix + temp tracking"]
     L34["L3/L4: STOP + user authorization"]
   end
@@ -49,7 +49,7 @@ flowchart TD
     BASE["Baseline current/history"]
     PARK["Parking lot"]
     TMP["INC-TMP tracking file"]
-    BOUND["Rule vs State boundary:\npolicy in SPEC/WORKFLOW,\nfacts in state files"]
+    BOUND["Rule vs State boundary: policy in SPEC/WORKFLOW; facts in state files"]
   end
 
   IN --> RULES --> G1

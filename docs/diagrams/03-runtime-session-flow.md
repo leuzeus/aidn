@@ -27,11 +27,11 @@ flowchart TD
   MODE -->|COMMITTING| BCA["branch-cycle-audit (R03)"]
 
   BCA --> MAP{"Mapping + DoR valid?"}
-  MAP -->|No| FIX["Remediate mapping/DoR\nor downgrade mode"]
+  MAP -->|No| FIX["Remediate mapping or DoR and reselect mode"]
   FIX --> MODE
   MAP -->|Yes| NEED{"Need new cycle branch?"}
 
-  NEED -->|Yes| CONT{"Continuity gate (R06)\nR1/R2/R3"}
+  NEED -->|Yes| CONT{"Continuity gate R06: R1 R2 R3"}
   CONT --> CNEW["cycle-create + status continuity fields"]
   CNEW --> IMPL["Implementation on cycle/intermediate"]
   NEED -->|No| IMPL
@@ -44,16 +44,16 @@ flowchart TD
   CLOSE -->|No| LOOP["Continue active work"]
   LOOP --> MODE
 
-  CLOSE -->|Yes| RESOLVE["Resolve open cycles (R07):\nintegrate-to-session | report |\nclose-non-retained | cancel-close"]
+  CLOSE -->|Yes| RESOLVE["Resolve open cycles R07: integrate report close-non-retained or cancel-close"]
   RESOLVE --> OK{"All open cycles resolved?"}
-  OK -->|No (cancel-close)| LOOP
+  OK -->|No - cancel close| LOOP
   OK -->|Yes| CS["close-session + snapshot update"]
 
   CS --> PRQ{"PR/merge step required?"}
   PRQ -->|No| END["Session ended"]
-  PRQ -->|Yes| PRG["PR review gate (R08)\nCodex threads triaged"]
+  PRQ -->|Yes| PRG["PR review gate R08 with Codex threads triaged"]
   PRG --> MRG["Merge"]
-  MRG --> SYNC{"Post-merge local sync gate (R09)\nlocal vs remote aligned?"}
+  MRG --> SYNC{"Post-merge local sync gate R09: local vs remote aligned?"}
   SYNC -->|No| REC["Explicit local reconciliation"]
   REC --> SYNC
   SYNC -->|Yes| END
