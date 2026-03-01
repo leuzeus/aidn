@@ -59,6 +59,7 @@ These runtime artifacts are intentionally local and ignored by git.
 - Default behavior is non-blocking (hook warns if checkpoint fails).
 - Use `--strict` on `perf:hook` when you want blocking behavior.
 - Session start stores a shared `run_id` in `.aidn/runtime/perf/current-run-id.txt`.
+- Session close reuses that shared `run_id` when available, then clears the file.
 
 ## CI Integration
 

@@ -117,6 +117,15 @@ function writeRunIdFile(filePath, runId) {
   return absolute;
 }
 
+function readRunIdFile(filePath) {
+  const absolute = path.resolve(process.cwd(), filePath);
+  if (!fs.existsSync(absolute)) {
+    return null;
+  }
+  const text = fs.readFileSync(absolute, "utf8").trim();
+  return text || null;
+}
+
 function removeRunIdFile(filePath) {
   const absolute = path.resolve(process.cwd(), filePath);
   fs.rmSync(absolute, { force: true });
@@ -130,7 +139,10 @@ function main() {
     const targetRoot = path.resolve(process.cwd(), args.target);
     const branch = getCurrentBranch(targetRoot);
     const phaseEvent = args.phase.replace("-", "_");
-    const runId = toRunId(`session-${phaseEvent}`);
+    const existingRunId = readRunIdFile(args.runIdFile);
+    const runId = args.phase === "session-close"
+      ? (existingRunId || toRunId("session"))
+      : toRunId(`session-${phaseEvent}`);
 
     let checkpointResult = null;
     let hookResult = "ok";
