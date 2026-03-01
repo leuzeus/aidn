@@ -16,7 +16,7 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 3) Runtime Session Flow (v0.2.0)
+%% 3) Runtime Session Flow (v0.3.0)
 flowchart TD
   ST["Session start"] --> CR["context-reload"]
   CR --> SS["start-session"]

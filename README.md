@@ -43,7 +43,7 @@ Client repository after install:
 - `docs/audit/sessions/`
 - `docs/audit/incidents/`
 - `.codex/skills.yaml`
-  - rendered with pinned `remote.ref` matching the installed aidn tag (for example `v0.2.0`)
+  - rendered with pinned `remote.ref` matching the installed aidn tag (for example `v0.3.0`)
 
 ## Workflow Diagrams
 
