@@ -1,4 +1,21 @@
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Trebuchet MS, Verdana, sans-serif",
+    "fontSize": "15px",
+    "lineColor": "#1E1F5C",
+    "primaryColor": "#2C2E83",
+    "primaryTextColor": "#FFFFFF",
+    "primaryBorderColor": "#1E1F5C",
+    "secondaryColor": "#3B3FBF",
+    "secondaryTextColor": "#FFFFFF",
+    "secondaryBorderColor": "#1E1F5C",
+    "tertiaryColor": "#F6F7FF",
+    "tertiaryTextColor": "#1E1F5C",
+    "tertiaryBorderColor": "#2C2E83"
+  }
+}}%%
 %% 2) Cycle State Machine (v0.2.0)
 stateDiagram-v2
   [*] --> CONTINUITY_GATE: cycle-create requested

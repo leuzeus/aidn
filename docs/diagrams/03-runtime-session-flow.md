@@ -1,4 +1,21 @@
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Trebuchet MS, Verdana, sans-serif",
+    "fontSize": "15px",
+    "lineColor": "#1E1F5C",
+    "primaryColor": "#2C2E83",
+    "primaryTextColor": "#FFFFFF",
+    "primaryBorderColor": "#1E1F5C",
+    "secondaryColor": "#3B3FBF",
+    "secondaryTextColor": "#FFFFFF",
+    "secondaryBorderColor": "#1E1F5C",
+    "tertiaryColor": "#F6F7FF",
+    "tertiaryTextColor": "#1E1F5C",
+    "tertiaryBorderColor": "#2C2E83"
+  }
+}}%%
 %% 3) Runtime Session Flow (v0.2.0)
 flowchart TD
   ST["Session start"] --> CR["context-reload"]
@@ -47,4 +64,16 @@ flowchart TD
   PRG --> INC
   SYNC --> INC
   INC --> MODE
+
+  classDef gate fill:#3B3FBF,stroke:#1E1F5C,color:#FFFFFF,stroke-width:2px;
+  classDef action fill:#2C2E83,stroke:#1E1F5C,color:#FFFFFF,stroke-width:2px;
+  classDef endnode fill:#F6F7FF,stroke:#2C2E83,color:#1E1F5C,stroke-width:1.5px;
+  classDef incident fill:#FFF4F4,stroke:#B42318,color:#7A271A,stroke-width:2px;
+
+  class MODE,MAP,NEED,CONT,CLOSE,OK,PRQ,SYNC gate;
+  class ST,CR,SS,THINK,EXP,BCA,FIX,CNEW,IMPL,DRIFT,LOOP,RESOLVE,CS,PRG,MRG,REC action;
+  class END endnode;
+  class INC incident;
+
+  linkStyle default stroke:#1E1F5C,stroke-width:2px;
 ```

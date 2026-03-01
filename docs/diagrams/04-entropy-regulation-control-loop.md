@@ -1,4 +1,21 @@
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Trebuchet MS, Verdana, sans-serif",
+    "fontSize": "15px",
+    "lineColor": "#1E1F5C",
+    "primaryColor": "#2C2E83",
+    "primaryTextColor": "#FFFFFF",
+    "primaryBorderColor": "#1E1F5C",
+    "secondaryColor": "#3B3FBF",
+    "secondaryTextColor": "#FFFFFF",
+    "secondaryBorderColor": "#1E1F5C",
+    "tertiaryColor": "#F6F7FF",
+    "tertiaryTextColor": "#1E1F5C",
+    "tertiaryBorderColor": "#2C2E83"
+  }
+}}%%
 %% 4) Entropy Regulation Control Loop (v0.2.0)
 flowchart TD
   subgraph PRE["Pre-Decision Regulation"]
@@ -55,4 +72,16 @@ flowchart TD
 
   BOUND --> RULES
   BOUND --> SNAP
+
+  classDef gate fill:#3B3FBF,stroke:#1E1F5C,color:#FFFFFF,stroke-width:2px;
+  classDef action fill:#2C2E83,stroke:#1E1F5C,color:#FFFFFF,stroke-width:2px;
+  classDef state fill:#F6F7FF,stroke:#2C2E83,color:#1E1F5C,stroke-width:1.5px;
+  classDef incident fill:#FFF4F4,stroke:#B42318,color:#7A271A,stroke-width:2px;
+
+  class G1,G2 gate;
+  class IN,RULES,PLAN,IMP,DRIFT,CLOSE,PR,SYNC,FIX action;
+  class SNAP,BASE,PARK,TMP,BOUND state;
+  class TRIAGE,L12,L34 incident;
+
+  linkStyle default stroke:#1E1F5C,stroke-width:2px;
 ```
