@@ -253,3 +253,26 @@ Invariants maintenus:
 - seuil exact `scope_growth` par type de cycle
 - temps max sans L2 drift-check en COMMITTING
 - niveau de granularité optimal des tags artefact
+
+## Addendum - Compatibilité Multi-Version (legacy + moderne)
+
+Constat terrain:
+- un même repo peut contenir des structures de workflow issues de plusieurs versions (ex: cycles legacy `C001` et cycles modernes `C001-<slug>`).
+- le champ déclaré `workflow_version` peut être obsolète par rapport à la structure réellement observée.
+
+Décision:
+- prioriser un `structure profile check` basé sur la structure observée:
+  - `legacy` | `modern` | `mixed` | `unknown`
+- utiliser le profil pour choisir la policy d'artefacts requis (au lieu d'une liste unique globale).
+- conserver `workflow_version` comme signal secondaire de cohérence, pas comme source unique de vérité.
+
+Signaux normalisés proposés:
+- `STRUCTURE_MIXED_PROFILE`
+- `STRUCTURE_PROFILE_UNKNOWN`
+- `DECLARED_VERSION_STALE`
+- `STRUCTURE_PROFILE_CHANGED`
+
+Effet attendu:
+- moins de faux blocages sur repos hybrides
+- drift-check conditionnel plus fiable
+- meilleure traçabilité des écarts version déclarée vs structure observée

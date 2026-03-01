@@ -3,15 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { execSync } from "node:child_process";
+import { detectStructureProfile } from "./structure-profile-lib.mjs";
 
 const ACTIVE_STATES = new Set(["OPEN", "IMPLEMENTING", "VERIFYING"]);
-const REQUIRED_ARTIFACTS = [
-  "baseline/current.md",
-  "snapshots/context-snapshot.md",
-  "WORKFLOW.md",
-  "SPEC.md",
-];
-
 function parseArgs(argv) {
   const args = {
     target: ".",
@@ -238,6 +232,13 @@ function collectCurrentState(targetRoot) {
   if (!fs.existsSync(auditRoot)) {
     throw new Error(`Missing audit root: ${auditRoot}`);
   }
+  const structureProfile = detectStructureProfile(auditRoot);
+  const requiredArtifactPaths = Array.isArray(structureProfile.recommended_required_artifacts)
+    ? structureProfile.recommended_required_artifacts
+    : [];
+  const optionalTrackedPaths = Array.isArray(structureProfile.optional_tracked_artifacts)
+    ? structureProfile.optional_tracked_artifacts
+    : [];
 
   const branch = getGitValue(targetRoot, "branch --show-current");
   const headCommit = getGitValue(targetRoot, "rev-parse HEAD");
@@ -247,7 +248,7 @@ function collectCurrentState(targetRoot) {
 
   const requiredArtifacts = [];
   const missingRequiredArtifacts = [];
-  for (const relative of REQUIRED_ARTIFACTS) {
+  for (const relative of requiredArtifactPaths) {
     const absolute = path.join(auditRoot, relative);
     if (!fs.existsSync(absolute)) {
       missingRequiredArtifacts.push(relative);
@@ -264,6 +265,25 @@ function collectCurrentState(targetRoot) {
   }
 
   const trackedArtifacts = [...requiredArtifacts];
+  const trackedRel = new Set(trackedArtifacts.map((item) => item.rel));
+  for (const relative of optionalTrackedPaths) {
+    if (trackedRel.has(relative)) {
+      continue;
+    }
+    const absolute = path.join(auditRoot, relative);
+    if (!fs.existsSync(absolute)) {
+      continue;
+    }
+    const stats = fs.statSync(absolute);
+    trackedArtifacts.push({
+      rel: relative,
+      path: absolute,
+      hash: sha256File(absolute),
+      size_bytes: stats.size,
+      mtime_ns: Math.round(stats.mtimeMs * 1_000_000),
+    });
+    trackedRel.add(relative);
+  }
   for (const cycle of activeCycles) {
     const stats = fs.statSync(cycle.status_path);
     trackedArtifacts.push({
@@ -290,6 +310,11 @@ function collectCurrentState(targetRoot) {
   const digestInput = {
     branch,
     head_commit: headCommit,
+    structure_profile: {
+      kind: structureProfile.kind,
+      declared_workflow_version: structureProfile.declared_workflow_version,
+      observed_version_hint: structureProfile.observed_version_hint,
+    },
     required_artifacts: requiredArtifacts.map((item) => ({ rel: item.rel, hash: item.hash })),
     session_artifact: latestSession ? { rel: latestSession.rel, hash: latestSession.hash } : null,
     active_cycles: activeCycles
@@ -337,6 +362,8 @@ function collectCurrentState(targetRoot) {
       ? { rel: latestSession.rel, hash: latestSession.hash }
       : null,
     missing_required_artifacts: missingRequiredArtifacts,
+    required_artifacts_policy: requiredArtifactPaths,
+    structure_profile: structureProfile,
     reload_digest: reloadDigest,
   };
 }
@@ -379,6 +406,15 @@ function diffState(current, cacheData, cacheStatus) {
 
   if (current.missing_required_artifacts.length > 0) {
     reasonCodes.push("REQUIRED_ARTIFACT_MISSING");
+  }
+  if (current.structure_profile?.kind === "mixed") {
+    reasonCodes.push("STRUCTURE_MIXED_PROFILE");
+  } else if (current.structure_profile?.kind === "unknown") {
+    reasonCodes.push("STRUCTURE_PROFILE_UNKNOWN");
+  }
+  if (Array.isArray(current.structure_profile?.notes)
+    && current.structure_profile.notes.some((note) => /Declared workflow_version looks older/i.test(note))) {
+    reasonCodes.push("DECLARED_VERSION_STALE");
   }
 
   if (current.mapping.status === "ambiguous") {
@@ -436,6 +472,9 @@ function diffState(current, cacheData, cacheStatus) {
 
   if (String(cacheData.reload_digest ?? "") !== current.reload_digest) {
     reasonCodes.push("DIGEST_MISS");
+  }
+  if (String(cacheData?.structure_profile?.kind ?? "") !== String(current?.structure_profile?.kind ?? "")) {
+    reasonCodes.push("STRUCTURE_PROFILE_CHANGED");
   }
 
   return {
@@ -513,6 +552,8 @@ function main() {
       changed_artifacts: diff.changedArtifacts,
       active_cycles_count: currentState.active_cycles.length,
       missing_required_artifacts: currentState.missing_required_artifacts,
+      required_artifacts_policy: currentState.required_artifacts_policy,
+      structure_profile: currentState.structure_profile,
       reload_digest: currentState.reload_digest,
     };
 

@@ -30,6 +30,7 @@
 - Ensure CLI/CI warmup overrides are priority-applied over global and per-rule warmup target settings.
 - Add shared perf I/O utility (`tools/perf/io-lib.mjs`) and apply conditional write-on-change to KPI/regression/fallback/index reports and markdown summaries.
 - Add `--json` output mode to `tools/perf/index-sync.mjs` and wire checkpoint summary events to effective index write counters.
+- Add workflow structure profiling (`perf:structure`) with observed-profile detection (`legacy|modern|mixed|unknown`) and integrate it into reload/gating decisions for multi-version repositories.
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).

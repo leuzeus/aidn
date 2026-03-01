@@ -68,6 +68,7 @@ function buildMarkdown(report, thresholds) {
   const consistency = report?.summary?.consistency ?? {};
   const parity = report?.summary?.parity ?? {};
   const runMetrics = report?.summary?.run_metrics ?? {};
+  const structure = report?.summary?.structure ?? {};
   const thresholdStatus = thresholds?.summary?.overall_status ?? "not-generated";
   const checks = Array.isArray(thresholds?.checks) ? thresholds.checks : [];
 
@@ -78,6 +79,9 @@ function buildMarkdown(report, thresholds) {
   lines.push(`- Rows: cycles=${fmt(rows.cycles)}, artifacts=${fmt(rows.artifacts)}, file_map=${fmt(rows.file_map)}, tags=${fmt(rows.tags)}, run_metrics=${fmt(rows.run_metrics)}`);
   lines.push(`- Count consistency: ${consistency.all_count_match === 1 ? "pass" : "fail"}`);
   lines.push(`- Parity status: ${fmt(parity.status)}`);
+  lines.push(`- Structure profile: ${fmt(structure.kind)}`);
+  lines.push(`- Declared workflow version: ${fmt(structure.declared_workflow_version)}`);
+  lines.push(`- Declared version stale vs structure: ${structure.declared_version_looks_stale === 1 ? "yes" : "no"}`);
   lines.push(`- Run metrics present: ${runMetrics.present === 1 ? "yes" : "no"}`);
   lines.push(`- Threshold status: ${thresholdStatus}`);
   lines.push("");

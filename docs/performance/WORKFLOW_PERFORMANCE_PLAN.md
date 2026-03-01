@@ -15,6 +15,7 @@ Contraintes:
 - pas de migration "big bang"
 - livraison incrémentale en 3 lots
 - fichiers Markdown restent la source de vérité
+- compatibilité multi-version: un même repo peut contenir des artefacts legacy + modernes; les contrôles doivent se baser sur la structure observée, pas uniquement sur la version déclarée.
 
 Hors scope (pour ce plan):
 - réécriture complète des skills
@@ -127,15 +128,18 @@ Tâches techniques:
 - introduire checks L1 rapides avant gates lourdes
 - éviter relecture/écriture d'artefacts inchangés
 - templates de writeups plus concis (même contenu normatif, moins duplication)
+- ajouter un check de profil structurel (`legacy|modern|mixed|unknown`) avec signaux de fiabilité (version déclarée vs structure observée)
 
 Risques:
 - sous-instrumentation (angles morts)
 - optimisation trop agressive qui masque un drift réel
+- faux positifs de version si la détection repose sur le champ `workflow_version` seul
 
 Critères d'acceptation:
 - KPI disponibles sur 30 itérations minimum
 - zéro violation des invariants `SPEC-R01`, `R03`, `R04`, `R07`
 - aucun incident L3/L4 causé par les quick wins
+- repos mixtes (legacy+modern) détectés explicitement et routés vers checks conditionnels sans blocage erroné
 
 Definition of Done (Lot 1):
 - logs NDJSON exploitables
@@ -154,6 +158,7 @@ Tâches techniques:
 - cache local de reload (`.aidn/runtime/cache/reload-state.json`)
 - index local (fichier ou SQLite local) pour lookup cycles/artefacts/tags
 - invalider finement par changement baseline/snapshot/cycle/session/branch
+- étape de normalisation structurelle: policy d'artefacts requis par profil + codes raison normalisés (`STRUCTURE_MIXED_PROFILE`, etc.)
 
 Risques:
 - incohérence cache <> fichiers
@@ -163,6 +168,7 @@ Critères d'acceptation:
 - fallback full reload automatique sur incohérence
 - parité fonctionnelle entre mode full et mode incrémental
 - 0 perte de traçabilité (tous les champs de conformité restent présents)
+- profile check détecte correctement `legacy|modern|mixed` sur corpus de référence, sans se fier au seul numéro de version déclaré
 
 Definition of Done (Lot 2):
 - pipeline incremental reload activé par défaut avec fallback
@@ -207,6 +213,7 @@ Definition of Done (Lot 3):
 8. Requêtes analytiques standard (actifs, churn, fréquence gates)
 9. Dual-write contrôlé + tests de parité
 10. Feature flag DB future + doc migration
+11. Normalisation multi-version (profil structurel + policy d'artefacts requis par profil)
 
 ## Acceptance Criteria Globaux
 

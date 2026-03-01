@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { createIndexStore } from "./index-store.mjs";
+import { detectStructureProfile } from "./structure-profile-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -331,12 +332,14 @@ function main() {
     const { cycles, fileMap, cycleTagPairs } = buildCycleTables(auditRoot);
     const { tags, artifactTagPairs } = buildTags(cycleTagPairs, artifacts);
     const runMetrics = buildRunMetrics(args.kpiFile);
+    const structureProfile = detectStructureProfile(auditRoot);
 
     const payload = {
       schema_version: 1,
       generated_at: new Date().toISOString(),
       target_root: targetRoot,
       audit_root: auditRoot,
+      structure_profile: structureProfile,
       cycles,
       artifacts,
       file_map: fileMap,
@@ -349,6 +352,7 @@ function main() {
         file_map_count: fileMap.length,
         tags_count: tags.length,
         run_metrics_count: runMetrics.length,
+        structure_kind: structureProfile.kind,
       },
     };
 
@@ -373,6 +377,7 @@ function main() {
         store: args.store,
         outputs,
         writes,
+        structure_profile: structureProfile,
         summary: payload.summary,
       }, null, 2));
       return;

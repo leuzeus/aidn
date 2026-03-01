@@ -13,6 +13,7 @@ Scoring:
 | L1 fast checks (hash + mapping) | 5 | 2 | 2 | Lot 1 | 2.50 | Coupe les gates redondants |
 | Écriture conditionnelle artefacts inchangés | 4 | 2 | 2 | Lot 1 | 2.00 | Réduit le churn sans perte de trace |
 | Signaux L2 drift-check conditionnel | 4 | 3 | 3 | Lot 1/2 | 1.33 | Exige seuils bien calibrés |
+| Profil structurel multi-version (legacy/modern/mixed) | 5 | 2 | 2 | Lot 1/2 | 2.50 | Fiabilise les checks quand la version déclarée est inexacte |
 | Digest reload incrémental | 5 | 3 | 3 | Lot 2 | 1.67 | Gain direct sur latence |
 | Fallback full reload robuste | 5 | 2 | 1 | Lot 2 | 2.50 | Sécurité anti-régression |
 | Index local minimal (SQLite) | 4 | 3 | 2 | Lot 2 | 1.33 | Lookup rapide cycles/artefacts |
@@ -31,7 +32,8 @@ Scoring:
 6. Digest reload incrémental
 7. Index local minimal (SQLite)
 8. Signaux L2 drift-check conditionnel
-9. Requêtes analytiques standard
-10. Interface `IndexStore` abstraite
-11. Sync import/export complet
-12. Dual-write fichiers + DB
+9. Profil structurel multi-version (legacy/modern/mixed)
+10. Requêtes analytiques standard
+11. Interface `IndexStore` abstraite
+12. Sync import/export complet
+13. Dual-write fichiers + DB

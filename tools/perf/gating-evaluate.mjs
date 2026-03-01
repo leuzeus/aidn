@@ -247,6 +247,7 @@ function detectSignals(targetRoot, args, reloadResult) {
     cross_domain_touch: false,
     time_since_last_drift_check: false,
     uncertain_intent: false,
+    structure_mixed: false,
   };
 
   if (sessionObjective && cycleGoal) {
@@ -276,6 +277,9 @@ function detectSignals(targetRoot, args, reloadResult) {
   }
 
   signal.uncertain_intent = !sessionObjective || sessionObjective.trim().length < 15;
+  signal.structure_mixed = (reloadResult.reason_codes ?? []).some((code) =>
+    code === "STRUCTURE_MIXED_PROFILE" || code === "STRUCTURE_PROFILE_UNKNOWN" || code === "DECLARED_VERSION_STALE",
+  );
 
   const activeSignals = Object.entries(signal)
     .filter(([, active]) => active)

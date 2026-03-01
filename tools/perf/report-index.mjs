@@ -120,6 +120,17 @@ function buildReport(indexData, parityData, parityExists) {
   const parityStatus = !parityExists
     ? "missing"
     : (parityData?.ok === true ? "pass" : "fail");
+  const structureProfile = indexData?.structure_profile ?? null;
+  const structureKind = String(structureProfile?.kind ?? "unknown");
+  const declaredVersion = structureProfile?.declared_workflow_version ?? null;
+  const declaredVersionNote = Array.isArray(structureProfile?.notes)
+    && structureProfile.notes.some((note) => /Declared workflow_version/i.test(String(note)));
+  const declaredVersionLooksStale = boolNum(
+    declaredVersionNote
+      || (structureKind === "modern"
+        && typeof declaredVersion === "string"
+        && /^0\.1\./.test(declaredVersion)),
+  );
 
   return {
     ts: new Date().toISOString(),
@@ -134,6 +145,13 @@ function buildReport(indexData, parityData, parityExists) {
       parity: {
         status: parityStatus,
         ok_numeric: parityOk,
+      },
+      structure: {
+        kind: structureKind,
+        is_mixed: boolNum(structureKind === "mixed"),
+        is_unknown: boolNum(structureKind === "unknown"),
+        declared_workflow_version: declaredVersion,
+        declared_version_looks_stale: declaredVersionLooksStale,
       },
     },
   };

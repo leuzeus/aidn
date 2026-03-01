@@ -50,6 +50,7 @@ npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json -
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.json
 npm run perf:index-query -- --query artifacts-since --since 2026-03-01T00:00:00Z --index-file .aidn/runtime/index/workflow-index.json
 npm run perf:index-query -- --query run-metrics --index-file .aidn/runtime/index/workflow-index.json --limit 30
+npm run perf:structure -- --target ../client-repo --json
 npm run perf:index-verify -- --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql
 node tools/perf/index-verify-dual.mjs --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql --json > .aidn/runtime/index/index-parity.json
 npm run perf:index-report -- --index-file .aidn/runtime/index/workflow-index.json --parity-file .aidn/runtime/index/index-parity.json --out .aidn/runtime/index/index-report.json
@@ -115,11 +116,23 @@ Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --
 ## Gating Levels (implemented)
 
 - L1 fast checks: digest + mapping (`perf:reload-check`)
-- L2 conditional drift signals: objective delta, scope growth, cross-domain touch, stale drift-check, uncertain intent (`perf:gate`)
+- L2 conditional drift signals: objective delta, scope growth, cross-domain touch, stale drift-check, uncertain intent, structure-mixed/version-stale signals (`perf:gate`)
 - L3 incident trigger: blocking L1 reasons or repeated fallback patterns (`perf:gate`)
 
 `perf:checkpoint` orchestrates these steps and writes a summary event for KPI tracking.
 Checkpoint summary events now carry effective index write counters (`files_written_count`, `bytes_written`) from `index-sync --json`.
+
+## Structure Profile (multi-version compatibility)
+
+- `perf:structure` derives workflow profile from observed `docs/audit` structure (`legacy|modern|mixed|unknown`).
+- Reload checks prioritize observed structure over declared `workflow_version` when selecting required artifacts.
+- Mixed/unknown profile and declared-version-stale conditions are emitted as structured reason codes:
+  - `STRUCTURE_MIXED_PROFILE`
+  - `STRUCTURE_PROFILE_UNKNOWN`
+  - `DECLARED_VERSION_STALE`
+- Index quality thresholds can now enforce structure hygiene via numeric checks on:
+  - `summary.structure.is_unknown`
+  - `summary.structure.declared_version_looks_stale`
 
 ## Session Hook Integration (minimal)
 

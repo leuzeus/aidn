@@ -36,6 +36,20 @@
       "op": ">=",
       "value": 1,
       "severity": "warn"
+    },
+    {
+      "id": "INDEX_STRUCTURE_UNKNOWN_MAX",
+      "key": "summary.structure.is_unknown",
+      "op": "<=",
+      "value": 0,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_DECLARED_VERSION_STALE_MAX",
+      "key": "summary.structure.declared_version_looks_stale",
+      "op": "<=",
+      "value": 0,
+      "severity": "warn"
     }
   ]
 }

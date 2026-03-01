@@ -14,6 +14,7 @@
     "perf:index-dual": "node tools/perf/index-sync.mjs --store dual",
     "perf:index-sql": "node tools/perf/index-to-sql.mjs",
     "perf:index-query": "node tools/perf/index-query.mjs",
+    "perf:structure": "node tools/perf/structure-profile.mjs",
     "perf:index-verify": "node tools/perf/index-verify-dual.mjs",
     "perf:index-report": "node tools/perf/report-index.mjs",
     "perf:index-thresholds": "node tools/perf/check-thresholds.mjs --kpi-file .aidn/runtime/index/index-report.json --targets docs/performance/INDEX_TARGETS.json --out .aidn/runtime/index/index-thresholds.json",
