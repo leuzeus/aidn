@@ -14,6 +14,7 @@ The following scripts were added under `tools/perf/`:
 - `collect-event.mjs` - append workflow events to NDJSON
 - `report-kpi.mjs` - compute KPI summary from NDJSON
 - `index-sync.mjs` - build a local JSON index from `docs/audit/*`
+- `index-to-sql.mjs` - export local index JSON to SQL import script (SQLite-friendly)
 - `reload-check.mjs` - evaluate incremental/full/stop reload decision from digest + mapping
 - `gating-evaluate.mjs` - evaluate L1/L2/L3 gating with conditional drift signals
 - `checkpoint.mjs` - run reload-check + gate + index-sync as one checkpoint command
@@ -31,6 +32,7 @@ npm run perf:collect -- --event "{\"skill\":\"context-reload\",\"phase\":\"end\"
 npm run perf:report
 npm run perf:report -- --run-prefix session- --require-delivery
 npm run perf:index -- --target ../client-repo
+npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
 npm run perf:reload-check -- --target ../client-repo
 npm run perf:reload-check -- --target ../client-repo --write-cache
 npm run perf:gate -- --target ../client-repo --mode COMMITTING
@@ -47,6 +49,7 @@ npm run perf:reset
 Default runtime outputs:
 - `.aidn/runtime/perf/workflow-events.ndjson`
 - `.aidn/runtime/index/workflow-index.json`
+- `.aidn/runtime/index/workflow-index.sql`
 - `.aidn/runtime/cache/reload-state.json`
 - `.aidn/runtime/perf/kpi-thresholds.json`
 - `.aidn/runtime/perf/kpi-summary.md`

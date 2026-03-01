@@ -9,6 +9,7 @@
     "perf:collect": "node tools/perf/collect-event.mjs",
     "perf:report": "node tools/perf/report-kpi.mjs",
     "perf:index": "node tools/perf/index-sync.mjs",
+    "perf:index-sql": "node tools/perf/index-to-sql.mjs",
     "perf:reload-check": "node tools/perf/reload-check.mjs",
     "perf:gate": "node tools/perf/gating-evaluate.mjs",
     "perf:checkpoint": "node tools/perf/checkpoint.mjs",
