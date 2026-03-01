@@ -29,6 +29,26 @@ on:
         required: false
         default: false
         type: boolean
+      regression_warmup_enabled:
+        description: "Override regression warmup enabled (true/false, empty=use targets)"
+        required: false
+        default: ""
+        type: string
+      regression_warmup_history_lt:
+        description: "Override warmup history_lt (integer, empty=use targets)"
+        required: false
+        default: ""
+        type: string
+      regression_warmup_multiplier:
+        description: "Override warmup multiplier (number, empty=use targets)"
+        required: false
+        default: ""
+        type: string
+      regression_warmup_severity:
+        description: "Override warmup severity (warn|error, empty=use targets)"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -120,13 +140,29 @@ jobs:
 
       - name: Evaluate KPI Regression (non-blocking)
         run: |
+          REGRESSION_ARGS=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -n "${{ inputs.regression_warmup_enabled }}" ]; then
+              REGRESSION_ARGS="$REGRESSION_ARGS --warmup-enabled ${{ inputs.regression_warmup_enabled }}"
+            fi
+            if [ -n "${{ inputs.regression_warmup_history_lt }}" ]; then
+              REGRESSION_ARGS="$REGRESSION_ARGS --warmup-history-lt ${{ inputs.regression_warmup_history_lt }}"
+            fi
+            if [ -n "${{ inputs.regression_warmup_multiplier }}" ]; then
+              REGRESSION_ARGS="$REGRESSION_ARGS --warmup-multiplier ${{ inputs.regression_warmup_multiplier }}"
+            fi
+            if [ -n "${{ inputs.regression_warmup_severity }}" ]; then
+              REGRESSION_ARGS="$REGRESSION_ARGS --warmup-severity ${{ inputs.regression_warmup_severity }}"
+            fi
+          fi
+
           STRICT_REGRESSION="${{ github.event_name == 'workflow_dispatch' && inputs.strict_regression || false }}"
           if [ "$STRICT_REGRESSION" = "true" ]; then
             echo "Running regression check in strict mode."
-            node tools/perf/check-regression.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/REGRESSION_TARGETS.json --out .aidn/runtime/perf/kpi-regression.json --strict
+            node tools/perf/check-regression.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --targets docs/performance/REGRESSION_TARGETS.json --out .aidn/runtime/perf/kpi-regression.json $REGRESSION_ARGS --strict
           else
             echo "Running regression check in non-blocking mode."
-            node tools/perf/check-regression.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/REGRESSION_TARGETS.json --out .aidn/runtime/perf/kpi-regression.json || true
+            node tools/perf/check-regression.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --targets docs/performance/REGRESSION_TARGETS.json --out .aidn/runtime/perf/kpi-regression.json $REGRESSION_ARGS || true
           fi
 
       - name: Build Fallback Report

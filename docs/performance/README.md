@@ -64,6 +64,7 @@ npm run perf:delivery-start -- --target ../client-repo --mode COMMITTING
 npm run perf:delivery-end -- --target ../client-repo --mode COMMITTING
 npm run perf:check-thresholds -- --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/KPI_TARGETS.json
 npm run perf:check-regression -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --targets docs/performance/REGRESSION_TARGETS.json --out .aidn/runtime/perf/kpi-regression.json
+npm run perf:check-regression -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --targets docs/performance/REGRESSION_TARGETS.json --warmup-enabled true --warmup-history-lt 5 --warmup-multiplier 1.4 --warmup-severity warn --out .aidn/runtime/perf/kpi-regression.json
 npm run perf:fallback-report -- --file .aidn/runtime/perf/workflow-events.ndjson --run-prefix session- --out .aidn/runtime/perf/fallback-report.json
 npm run perf:check-fallbacks
 npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --regression-file .aidn/runtime/perf/kpi-regression.json --fallback-report-file .aidn/runtime/perf/fallback-report.json --fallback-thresholds-file .aidn/runtime/perf/fallback-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
@@ -164,6 +165,7 @@ Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --
 - `workflow_dispatch` supports `strict_index_quality=true` to make index quality threshold violations blocking.
 - `workflow_dispatch` supports `strict_regression=true` to make KPI regression violations blocking.
 - `workflow_dispatch` supports `strict_fallback=true` to make fallback-storm violations blocking.
+- `workflow_dispatch` supports regression warmup overrides via `regression_warmup_enabled`, `regression_warmup_history_lt`, `regression_warmup_multiplier`, `regression_warmup_severity`.
 
 Threshold source file:
 - `docs/performance/KPI_TARGETS.json`
@@ -175,6 +177,7 @@ Regression warmup note:
 - `REGRESSION_TARGETS.json` supports a `warmup` block.
 - Default warmup applies while `history_count < 5`: effective threshold is multiplied (`max_increase_pct_multiplier`) and severity can be overridden (default `warn`).
 - Each regression rule can override warmup values via `rules[].warmup` (for metric-specific warmup factors).
+- CLI/CI warmup overrides take precedence over both global and rule warmup settings.
 
 Fallback thresholding note:
 - Fallback thresholds use warmup-adjusted metrics (`adjusted_fallback_total`, `adjusted_storm_runs`) that exclude cold-start reload fallbacks (`MISSING_CACHE`, `CORRUPT_CACHE`).

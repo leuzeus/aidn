@@ -26,6 +26,8 @@
 - Add `perf:reset -- --keep-history` support to preserve cross-run KPI history when resetting runtime artifacts.
 - Add adaptive warmup handling for regression checks (`REGRESSION_TARGETS.warmup`) with effective threshold/severity adjustments on short history windows.
 - Add metric-specific warmup overrides (`rules[].warmup`) for regression checks (distinct effective thresholds by metric).
+- Add CLI/CI warmup override controls for regression checks (workflow_dispatch inputs mapped to `check-regression` warmup options).
+- Ensure CLI/CI warmup overrides are priority-applied over global and per-rule warmup target settings.
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).

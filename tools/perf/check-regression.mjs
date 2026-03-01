@@ -8,6 +8,10 @@ function parseArgs(argv) {
     historyFile: ".aidn/runtime/perf/kpi-history.ndjson",
     targets: "docs/performance/REGRESSION_TARGETS.json",
     out: ".aidn/runtime/perf/kpi-regression.json",
+    warmupEnabledOverride: null,
+    warmupHistoryLtOverride: null,
+    warmupMultiplierOverride: null,
+    warmupSeverityOverride: null,
     strict: false,
     json: false,
   };
@@ -26,6 +30,34 @@ function parseArgs(argv) {
     } else if (token === "--out") {
       args.out = argv[i + 1] ?? "";
       i += 1;
+    } else if (token === "--warmup-enabled") {
+      const raw = String(argv[i + 1] ?? "").trim().toLowerCase();
+      i += 1;
+      if (!["true", "false"].includes(raw)) {
+        throw new Error("--warmup-enabled expects true|false");
+      }
+      args.warmupEnabledOverride = raw === "true";
+    } else if (token === "--warmup-history-lt") {
+      const raw = argv[i + 1] ?? "";
+      i += 1;
+      if (!/^\d+$/.test(raw)) {
+        throw new Error("--warmup-history-lt expects an integer");
+      }
+      args.warmupHistoryLtOverride = Number(raw);
+    } else if (token === "--warmup-multiplier") {
+      const raw = argv[i + 1] ?? "";
+      i += 1;
+      if (!/^\d+(\.\d+)?$/.test(raw)) {
+        throw new Error("--warmup-multiplier expects a number");
+      }
+      args.warmupMultiplierOverride = Number(raw);
+    } else if (token === "--warmup-severity") {
+      const raw = String(argv[i + 1] ?? "").trim().toLowerCase();
+      i += 1;
+      if (!["warn", "error"].includes(raw)) {
+        throw new Error("--warmup-severity expects warn|error");
+      }
+      args.warmupSeverityOverride = raw;
     } else if (token === "--strict") {
       args.strict = true;
     } else if (token === "--json") {
@@ -51,6 +83,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/check-regression.mjs");
   console.log("  node tools/perf/check-regression.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --targets docs/performance/REGRESSION_TARGETS.json");
+  console.log("  node tools/perf/check-regression.mjs --warmup-enabled true --warmup-history-lt 5 --warmup-multiplier 1.5 --warmup-severity warn");
   console.log("  node tools/perf/check-regression.mjs --strict");
 }
 
@@ -134,6 +167,31 @@ function mergeWarmup(globalWarmup, ruleWarmup) {
   };
 }
 
+function applyWarmupOverrides(baseWarmup, args) {
+  const warmup = { ...baseWarmup };
+  let hasOverride = false;
+  if (typeof args.warmupEnabledOverride === "boolean") {
+    warmup.enabled = args.warmupEnabledOverride;
+    hasOverride = true;
+  }
+  if (args.warmupHistoryLtOverride != null) {
+    warmup.history_lt = args.warmupHistoryLtOverride;
+    hasOverride = true;
+  }
+  if (args.warmupMultiplierOverride != null) {
+    warmup.max_increase_pct_multiplier = args.warmupMultiplierOverride;
+    hasOverride = true;
+  }
+  if (args.warmupSeverityOverride != null) {
+    warmup.severity_override = args.warmupSeverityOverride;
+    hasOverride = true;
+  }
+  if (hasOverride) {
+    warmup.source = "override";
+  }
+  return warmup;
+}
+
 function median(values) {
   if (!values.length) {
     return null;
@@ -185,7 +243,8 @@ function mergeRuns(currentRuns, historyRuns) {
 }
 
 function evaluateRule(rule, runs, minHistoryDefault) {
-  const warmup = mergeWarmup(rule.__warmupGlobal, rule.warmup);
+  let warmup = mergeWarmup(rule.__warmupGlobal, rule.warmup);
+  warmup = applyWarmupOverrides(warmup, rule.__warmupOverrides ?? {});
   const id = String(rule.id ?? "").trim();
   const metric = String(rule.metric ?? "").trim();
   const maxIncreasePct = toNumber(rule.max_increase_pct);
@@ -378,10 +437,18 @@ function main() {
     const runs = mergeRuns(currentRuns, history.runs);
     const rules = Array.isArray(targetsData.rules) ? targetsData.rules : [];
     const minHistoryDefault = toNumber(targetsData.min_history) ?? 3;
-    const warmupCfg = normalizeWarmupConfig(targetsData.warmup ?? {});
+    const warmupCfgFromTargets = normalizeWarmupConfig(targetsData.warmup ?? {});
+    const warmupOverrides = {
+      warmupEnabledOverride: args.warmupEnabledOverride,
+      warmupHistoryLtOverride: args.warmupHistoryLtOverride,
+      warmupMultiplierOverride: args.warmupMultiplierOverride,
+      warmupSeverityOverride: args.warmupSeverityOverride,
+    };
+    const warmupCfg = applyWarmupOverrides(warmupCfgFromTargets, warmupOverrides);
     const checks = rules.map((rule) => evaluateRule({
       ...rule,
-      __warmupGlobal: warmupCfg,
+      __warmupGlobal: warmupCfgFromTargets,
+      __warmupOverrides: warmupOverrides,
     }, runs, minHistoryDefault));
     const summary = summarize(checks, args.strict);
 
@@ -400,6 +467,12 @@ function main() {
         history_lt: warmupCfg.history_lt,
         max_increase_pct_multiplier: warmupCfg.max_increase_pct_multiplier,
         severity_override: warmupCfg.severity_override,
+        overrides: {
+          enabled: args.warmupEnabledOverride,
+          history_lt: args.warmupHistoryLtOverride,
+          max_increase_pct_multiplier: args.warmupMultiplierOverride,
+          severity_override: args.warmupSeverityOverride,
+        },
       },
       summary,
       checks,
