@@ -217,10 +217,10 @@ function buildMarkdown(kpi, mergedRuns, thresholds, regression, fallbackReport, 
   if (regressionChecks.length > 0) {
     lines.push("### Regression Checks");
     lines.push("");
-    lines.push("| id | status | severity | metric | latest | baseline | delta_pct | max_increase_pct | effective_max | warmup |");
-    lines.push("|---|---|---|---|---:|---:|---:|---:|---:|---|");
+    lines.push("| id | status | severity | metric | latest | baseline | delta_pct | max_increase_pct | effective_max | warmup | warmup_source |");
+    lines.push("|---|---|---|---|---:|---:|---:|---:|---:|---|---|");
     for (const check of regressionChecks) {
-      lines.push(`| ${check.id ?? "n/a"} | ${check.status ?? "n/a"} | ${check.severity ?? "n/a"} | ${check.metric ?? "n/a"} | ${check.latest_value ?? "n/a"} | ${check.baseline_median ?? "n/a"} | ${check.increase_pct ?? "n/a"} | ${check.max_increase_pct ?? "n/a"} | ${check.effective_max_increase_pct ?? "n/a"} | ${check.warmup_applied === true ? "yes" : "no"} |`);
+      lines.push(`| ${check.id ?? "n/a"} | ${check.status ?? "n/a"} | ${check.severity ?? "n/a"} | ${check.metric ?? "n/a"} | ${check.latest_value ?? "n/a"} | ${check.baseline_median ?? "n/a"} | ${check.increase_pct ?? "n/a"} | ${check.max_increase_pct ?? "n/a"} | ${check.effective_max_increase_pct ?? "n/a"} | ${check.warmup_applied === true ? "yes" : "no"} | ${check.warmup_source ?? "n/a"} |`);
     }
     lines.push("");
   }

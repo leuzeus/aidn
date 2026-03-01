@@ -93,6 +93,47 @@ function toNumber(value) {
   return null;
 }
 
+function normalizeWarmupConfig(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  const enabled = source.enabled === true;
+  const historyLt = toNumber(source.history_lt);
+  const multiplier = toNumber(source.max_increase_pct_multiplier);
+  const severityOverride = typeof source.severity_override === "string"
+    ? source.severity_override.trim().toLowerCase()
+    : null;
+  return {
+    enabled,
+    history_lt: historyLt != null ? historyLt : null,
+    max_increase_pct_multiplier: multiplier != null ? multiplier : null,
+    severity_override: severityOverride || null,
+  };
+}
+
+function mergeWarmup(globalWarmup, ruleWarmup) {
+  const globalCfg = normalizeWarmupConfig(globalWarmup);
+  const ruleCfgRaw = ruleWarmup && typeof ruleWarmup === "object" ? ruleWarmup : null;
+  if (!ruleCfgRaw) {
+    return {
+      ...globalCfg,
+      source: globalCfg.enabled ? "global" : "disabled",
+    };
+  }
+  const ruleCfg = normalizeWarmupConfig({
+    enabled: ruleCfgRaw.enabled === undefined ? globalCfg.enabled : ruleCfgRaw.enabled,
+    history_lt: ruleCfgRaw.history_lt === undefined ? globalCfg.history_lt : ruleCfgRaw.history_lt,
+    max_increase_pct_multiplier: ruleCfgRaw.max_increase_pct_multiplier === undefined
+      ? globalCfg.max_increase_pct_multiplier
+      : ruleCfgRaw.max_increase_pct_multiplier,
+    severity_override: ruleCfgRaw.severity_override === undefined
+      ? globalCfg.severity_override
+      : ruleCfgRaw.severity_override,
+  });
+  return {
+    ...ruleCfg,
+    source: ruleCfg.enabled ? "rule" : "disabled",
+  };
+}
+
 function median(values) {
   if (!values.length) {
     return null;
@@ -144,7 +185,7 @@ function mergeRuns(currentRuns, historyRuns) {
 }
 
 function evaluateRule(rule, runs, minHistoryDefault) {
-  const warmup = rule.__warmup ?? null;
+  const warmup = mergeWarmup(rule.__warmupGlobal, rule.warmup);
   const id = String(rule.id ?? "").trim();
   const metric = String(rule.metric ?? "").trim();
   const maxIncreasePct = toNumber(rule.max_increase_pct);
@@ -219,7 +260,7 @@ function evaluateRule(rule, runs, minHistoryDefault) {
   let effectiveMaxIncreasePct = maxIncreasePct;
   let effectiveSeverity = severity;
   let warmupApplied = false;
-  if (warmup?.enabled && historyRaw.length < warmup.history_lt) {
+  if (warmup?.enabled && warmup.history_lt != null && historyRaw.length < warmup.history_lt) {
     if (warmup.max_increase_pct_multiplier != null) {
       effectiveMaxIncreasePct *= warmup.max_increase_pct_multiplier;
     }
@@ -246,6 +287,7 @@ function evaluateRule(rule, runs, minHistoryDefault) {
     effective_max_increase_pct: effectiveMaxIncreasePct,
     warmup_applied: warmupApplied,
     warmup_window_history_lt: warmup?.history_lt ?? null,
+    warmup_source: warmup?.source ?? null,
     min_history: minHistory,
     history_count: historyRaw.length,
   };
@@ -336,18 +378,10 @@ function main() {
     const runs = mergeRuns(currentRuns, history.runs);
     const rules = Array.isArray(targetsData.rules) ? targetsData.rules : [];
     const minHistoryDefault = toNumber(targetsData.min_history) ?? 3;
-    const warmupCfgRaw = targetsData.warmup ?? {};
-    const warmupCfg = {
-      enabled: warmupCfgRaw.enabled === true,
-      history_lt: toNumber(warmupCfgRaw.history_lt) ?? null,
-      max_increase_pct_multiplier: toNumber(warmupCfgRaw.max_increase_pct_multiplier) ?? null,
-      severity_override: typeof warmupCfgRaw.severity_override === "string"
-        ? warmupCfgRaw.severity_override
-        : null,
-    };
+    const warmupCfg = normalizeWarmupConfig(targetsData.warmup ?? {});
     const checks = rules.map((rule) => evaluateRule({
       ...rule,
-      __warmup: warmupCfg,
+      __warmupGlobal: warmupCfg,
     }, runs, minHistoryDefault));
     const summary = summarize(checks, args.strict);
 
