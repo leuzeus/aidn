@@ -34,6 +34,7 @@
 - Add `perf:index-check` drift control for import/export sync (`index-sync --dry-run` digest compare, optional `--apply` rebuild).
 - Add CI integration for `perf:index-check` with `strict_index_sync` workflow_dispatch option and artifact publishing (`index-sync-check.json`).
 - Add `perf:index-sync-summary` markdown renderer and publish index sync drift summary in CI job summary/artifacts.
+- Add dedicated multi-version structure fixtures (`legacy|modern|mixed`) and `perf:verify-structure` validator script.
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).

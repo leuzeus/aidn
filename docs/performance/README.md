@@ -17,6 +17,7 @@ The following scripts were added under `tools/perf/`:
 - `index-sync.mjs` - build index from `docs/audit/*` with `IndexStore` mode: `file|sql|dual`
 - `index-sync-check.mjs` - detect drift between on-disk index and fresh import from `docs/audit/*` (optional `--apply`)
 - `render-index-sync-summary.mjs` - generate Markdown summary from index sync check JSON
+- `verify-structure-profile-fixtures.mjs` - validate structure profile detection on legacy/modern/mixed fixtures
 - `index-store.mjs` - local `IndexStore` abstraction (file-first, SQL export optional)
 - `index-to-sql.mjs` - export local index JSON to SQL import script (SQLite-friendly)
 - `index-sql-lib.mjs` - shared SQL generation library used by index tooling
@@ -52,6 +53,7 @@ npm run perf:index-dual -- --target ../client-repo --kpi-file .aidn/runtime/perf
 npm run perf:index -- --target ../client-repo --json
 npm run perf:index -- --target ../client-repo --json --dry-run
 npm run perf:index-sync-summary -- --check-file .aidn/runtime/index/index-sync-check.json --out .aidn/runtime/index/index-sync-summary.md
+npm run perf:verify-structure
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.json
 npm run perf:index-query -- --query artifacts-since --since 2026-03-01T00:00:00Z --index-file .aidn/runtime/index/workflow-index.json
