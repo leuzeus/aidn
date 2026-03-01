@@ -122,6 +122,13 @@ function toMs(iso) {
   return Number.isNaN(ms) ? null : ms;
 }
 
+function resolveTargetPath(targetRoot, candidatePath) {
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+  return path.resolve(targetRoot, candidatePath);
+}
+
 function makeEvent({
   runId,
   mode,
@@ -158,10 +165,12 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
+    const eventFilePath = resolveTargetPath(targetRoot, args.file);
+    const stateFilePath = resolveTargetPath(targetRoot, args.stateFile);
+    const runIdFilePath = resolveTargetPath(targetRoot, args.runIdFile);
     const branch = getBranch(targetRoot);
-    const linkedRunId = readRunIdFile(args.runIdFile);
+    const linkedRunId = readRunIdFile(runIdFilePath);
     const resolvedRunId = args.runId || linkedRunId || `delivery-${compactNow()}`;
-    const statePath = path.resolve(process.cwd(), args.stateFile);
 
     if (args.action === "start") {
       const startState = {
@@ -171,7 +180,7 @@ function main() {
         branch,
         mode: args.mode,
       };
-      const saved = writeJson(statePath, startState);
+      const saved = writeJson(stateFilePath, startState);
       const event = makeEvent({
         runId: startState.run_id,
         mode: startState.mode,
@@ -180,7 +189,7 @@ function main() {
         event: "delivery_window_start",
         durationMs: 0,
       });
-      const eventFile = appendEvent(args.file, event);
+      const eventFile = appendEvent(eventFilePath, event);
       console.log(`Delivery window started.`);
       console.log(`run_id: ${startState.run_id}`);
       console.log(`state: ${saved}`);
@@ -188,7 +197,7 @@ function main() {
       return;
     }
 
-    const state = readJsonSafe(statePath);
+    const state = readJsonSafe(stateFilePath);
     if (!state || !state.started_at || !state.run_id) {
       throw new Error("No active delivery window. Start one first with --action start");
     }
@@ -206,8 +215,8 @@ function main() {
       event: "delivery_window_end",
       durationMs,
     });
-    const eventFile = appendEvent(args.file, event);
-    fs.rmSync(statePath, { force: true });
+    const eventFile = appendEvent(eventFilePath, event);
+    fs.rmSync(stateFilePath, { force: true });
 
     console.log(`Delivery window ended.`);
     console.log(`run_id: ${state.run_id}`);
