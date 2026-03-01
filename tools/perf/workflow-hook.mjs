@@ -18,6 +18,9 @@ function parseArgs(argv) {
     indexSchemaFile: "tools/perf/sql/schema.sql",
     indexIncludeSchema: true,
     indexKpiFile: "",
+    indexSyncCheck: false,
+    indexSyncCheckStrict: false,
+    indexSyncCheckOut: ".aidn/runtime/index/index-sync-check.json",
     strict: false,
     json: false,
   };
@@ -55,6 +58,14 @@ function parseArgs(argv) {
       args.indexIncludeSchema = false;
     } else if (token === "--index-kpi-file") {
       args.indexKpiFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--index-sync-check") {
+      args.indexSyncCheck = true;
+    } else if (token === "--index-sync-check-strict") {
+      args.indexSyncCheck = true;
+      args.indexSyncCheckStrict = true;
+    } else if (token === "--index-sync-check-out") {
+      args.indexSyncCheckOut = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--strict") {
       args.strict = true;
@@ -95,6 +106,7 @@ function printUsage() {
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --mode COMMITTING");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --index-store dual");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --index-kpi-file .aidn/runtime/perf/kpi-report.json");
+  console.log("  node tools/perf/workflow-hook.mjs --phase session-close --index-sync-check");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --run-id-file .aidn/runtime/perf/current-run-id.txt");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --strict");
 }
@@ -153,6 +165,15 @@ function runCheckpoint(targetRoot, mode, runId, indexOptions = {}) {
   if (indexOptions.kpiFile) {
     cmd.push("--index-kpi-file", indexOptions.kpiFile);
   }
+  if (indexOptions.syncCheck === true) {
+    cmd.push("--index-sync-check");
+  }
+  if (indexOptions.syncCheckStrict === true) {
+    cmd.push("--index-sync-check-strict");
+  }
+  if (indexOptions.syncCheckOut) {
+    cmd.push("--index-sync-check-out", indexOptions.syncCheckOut);
+  }
   cmd.push("--json");
 
   const stdout = execFileSync(process.execPath, cmd, {
@@ -209,6 +230,9 @@ function main() {
         schemaFile: args.indexSchemaFile,
         includeSchema: args.indexIncludeSchema,
         kpiFile: args.indexKpiFile,
+        syncCheck: args.indexSyncCheck,
+        syncCheckStrict: args.indexSyncCheckStrict,
+        syncCheckOut: args.indexSyncCheckOut,
       });
     } catch (error) {
       checkpointError = error;

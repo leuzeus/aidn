@@ -15,6 +15,9 @@ function parseArgs(argv) {
     indexSchemaFile: "tools/perf/sql/schema.sql",
     indexIncludeSchema: true,
     indexKpiFile: "",
+    indexSyncCheck: false,
+    indexSyncCheckStrict: false,
+    indexSyncCheckOut: ".aidn/runtime/index/index-sync-check.json",
     mode: "COMMITTING",
     runId: "",
     json: false,
@@ -48,6 +51,14 @@ function parseArgs(argv) {
       args.indexIncludeSchema = false;
     } else if (token === "--index-kpi-file") {
       args.indexKpiFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--index-sync-check") {
+      args.indexSyncCheck = true;
+    } else if (token === "--index-sync-check-strict") {
+      args.indexSyncCheck = true;
+      args.indexSyncCheckStrict = true;
+    } else if (token === "--index-sync-check-out") {
+      args.indexSyncCheckOut = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--mode") {
       args.mode = String(argv[i + 1] ?? "").toUpperCase();
@@ -95,6 +106,8 @@ function printUsage() {
   console.log("  node tools/perf/checkpoint.mjs --target ../client --run-id S072-20260301T1012Z");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --index-store dual --index-sql-output .aidn/runtime/index/workflow-index.sql");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --index-kpi-file .aidn/runtime/perf/kpi-report.json");
+  console.log("  node tools/perf/checkpoint.mjs --target ../client --index-sync-check");
+  console.log("  node tools/perf/checkpoint.mjs --target ../client --index-sync-check-strict");
   console.log("  node tools/perf/checkpoint.mjs --json");
 }
 
@@ -115,6 +128,13 @@ function appendEvent(eventFile, event) {
 
 function toIsoNowCompact() {
   return new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+}
+
+function writeJsonFile(filePath, payload) {
+  const absolute = path.resolve(process.cwd(), filePath);
+  fs.mkdirSync(path.dirname(absolute), { recursive: true });
+  fs.writeFileSync(absolute, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  return absolute;
 }
 
 function getCurrentBranch(targetRoot) {
@@ -167,6 +187,36 @@ function main() {
     );
     const indexDurationMs = Date.now() - indexStarted;
 
+    let indexSyncCheck = {
+      enabled: false,
+      strict: args.indexSyncCheckStrict,
+      in_sync: null,
+      action: null,
+      mismatch_count: 0,
+      duration_ms: 0,
+      output_file: null,
+    };
+    if (args.indexSyncCheck) {
+      const syncCheckStarted = Date.now();
+      const syncCheckOut = execJson(
+        `node tools/perf/index-sync-check.mjs --target "${targetRoot}" --index-file "${args.indexOutput}" --json`,
+      );
+      indexSyncCheck = {
+        enabled: true,
+        strict: args.indexSyncCheckStrict,
+        in_sync: syncCheckOut.in_sync === true,
+        action: syncCheckOut.action ?? null,
+        mismatch_count: Array.isArray(syncCheckOut.summary_mismatches)
+          ? syncCheckOut.summary_mismatches.length
+          : 0,
+        duration_ms: Date.now() - syncCheckStarted,
+        output_file: writeJsonFile(args.indexSyncCheckOut, syncCheckOut),
+      };
+      if (args.indexSyncCheckStrict && syncCheckOut.in_sync !== true) {
+        throw new Error("Index sync check drift detected in strict checkpoint mode");
+      }
+    }
+
     const checkpointRunId = args.runId || `checkpoint-${toIsoNowCompact()}`;
 
     const result = {
@@ -200,6 +250,7 @@ function main() {
         },
         duration_ms: indexDurationMs,
       },
+      index_sync_check: indexSyncCheck,
       total_duration_ms: Date.now() - started,
     };
 
@@ -243,9 +294,13 @@ function main() {
         bytes_read: 0,
         files_written_count: Number(result.index?.writes?.files_written_count ?? 0),
         bytes_written: Number(result.index?.writes?.bytes_written ?? 0),
-        gates_triggered: ["R03", "R04", "R05", "R10"],
+        gates_triggered: result.index_sync_check?.enabled
+          ? ["R03", "R04", "R05", "R10", "R11"]
+          : ["R03", "R04", "R05", "R10"],
         result: result.gate.result === "stop" ? "stop" : "ok",
-        reason_code: result.gate.reason_code,
+        reason_code: result.index_sync_check?.enabled && result.index_sync_check.in_sync === false
+          ? "INDEX_SYNC_DRIFT"
+          : result.gate.reason_code,
         trace_id: `tr-${crypto.randomBytes(4).toString("hex")}`,
       };
       result.summary_event_file = appendEvent(args.eventFile, event);
@@ -265,6 +320,14 @@ function main() {
     console.log(
       `Index writes: files=${result.index.writes.files_written_count}, bytes=${result.index.writes.bytes_written}`,
     );
+    if (result.index_sync_check?.enabled) {
+      console.log(
+        `Index sync check: in_sync=${result.index_sync_check.in_sync ? "yes" : "no"} (${result.index_sync_check.duration_ms}ms)`,
+      );
+      if (result.index_sync_check.output_file) {
+        console.log(`Index sync check file: ${result.index_sync_check.output_file}`);
+      }
+    }
     if (result.summary_event_file) {
       console.log(`Summary event: ${result.summary_event_file}`);
       console.log(`Summary run_id: ${result.summary_run_id}`);

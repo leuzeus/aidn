@@ -75,6 +75,7 @@ npm run perf:reload-check -- --target ../client-repo
 npm run perf:reload-check -- --target ../client-repo --write-cache
 npm run perf:gate -- --target ../client-repo --mode COMMITTING
 npm run perf:checkpoint -- --target ../client-repo --mode COMMITTING
+npm run perf:checkpoint -- --target ../client-repo --mode COMMITTING --index-sync-check
 npm run perf:session-start -- --target ../client-repo --mode COMMITTING
 npm run perf:session-close -- --target ../client-repo --mode COMMITTING
 npm run perf:delivery-start -- --target ../client-repo --mode COMMITTING
@@ -138,6 +139,7 @@ Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --
 
 `perf:checkpoint` orchestrates these steps and writes a summary event for KPI tracking.
 Checkpoint summary events now carry effective index write counters (`files_written_count`, `bytes_written`) from `index-sync --json`.
+`perf:checkpoint --index-sync-check` also runs `index-sync-check` after index write and stores a check JSON (optional `--index-sync-check-strict` to fail on drift).
 
 ## Structure Profile (multi-version compatibility)
 
@@ -158,6 +160,7 @@ Checkpoint summary events now carry effective index write counters (`files_writt
 - Default behavior is non-blocking (hook warns if checkpoint fails).
 - Use `--strict` on `perf:hook` when you want blocking behavior.
 - Optional index mode override on hooks: `--index-store file|sql|dual`.
+- Optional checkpoint sync verification on hooks: `--index-sync-check` (or `--index-sync-check-strict`).
 - Session start stores a shared `run_id` in `.aidn/runtime/perf/current-run-id.txt`.
 - Session close reuses that shared `run_id` when available, then clears the file.
 
