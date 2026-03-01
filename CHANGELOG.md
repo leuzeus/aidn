@@ -48,6 +48,7 @@
 - Extend `gating-evaluate` with `index_sync_drift` signal and L3 escalation path (`L3_INDEX_SYNC_DRIFT`) on high drift levels.
 - Scope `index_sync_drift` gating signal to matching `target_root` to avoid cross-project false positives.
 - Add `perf:verify-index-sync` fixture integration test (drift -> apply -> in-sync) and run it in perf CI.
+- Add `perf:verify-index-sqlite` fixture integration test (sync + SQL parity + SQLite parity + export) and run it in perf CI.
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).

@@ -22,6 +22,7 @@ The following scripts were added under `tools/perf/`:
 - `render-index-sync-report-summary.mjs` - generate Markdown trend summary from sync report + thresholds
 - `verify-structure-profile-fixtures.mjs` - validate structure profile detection on legacy/modern/mixed fixtures
 - `verify-index-sync-fixtures.mjs` - validate index sync drift/apply/in-sync flow on fixtures
+- `verify-index-sqlite-fixtures.mjs` - validate SQLite index flow (sync + SQL parity + SQLite parity + export)
 - `index-store.mjs` - local `IndexStore` abstraction (JSON/SQL/SQLite outputs)
 - `index-to-sql.mjs` - export local index JSON to SQL import script (SQLite-friendly)
 - `index-sql-lib.mjs` - shared SQL generation library used by index tooling
@@ -68,6 +69,7 @@ npm run perf:index-sync-thresholds
 npm run perf:index-sync-trend-summary -- --report-file .aidn/runtime/index/index-sync-report.json --thresholds-file .aidn/runtime/index/index-sync-thresholds.json --out .aidn/runtime/index/index-sync-trend-summary.md
 npm run perf:verify-structure
 npm run perf:verify-index-sync
+npm run perf:verify-index-sqlite
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
 npm run perf:index-from-sqlite -- --sqlite-file .aidn/runtime/index/workflow-index.sqlite --out .aidn/runtime/index/workflow-index.from-sqlite.json
 npm run perf:index-verify-sqlite -- --index-file .aidn/runtime/index/workflow-index.json --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json
@@ -196,6 +198,7 @@ Checkpoint summary events now carry effective index write counters (`files_writt
 - It executes:
   - `perf:verify-structure`
   - `perf:verify-index-sync`
+  - `perf:verify-index-sqlite`
   - `perf:session-start`
   - `perf:delivery-start`
   - `perf:delivery-end`
