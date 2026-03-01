@@ -1,5 +1,5 @@
 product_name: aidn-workflow
-version: 0.1.0
+version: 0.2.0
 packs:
   - core
   - extended

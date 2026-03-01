@@ -11,6 +11,7 @@ Reconstruct project state in <5 minutes of reading and propose a WORK MODE.
 ## Steps
 
 1) Read:
+- docs/audit/WORKFLOW_SUMMARY.md (if present)
 - docs/audit/snapshots/context-snapshot.md
 - docs/audit/baseline/current.md
 - docs/audit/cycles/*/status.md (active cycles only)
@@ -23,13 +24,17 @@ Reconstruct project state in <5 minutes of reading and propose a WORK MODE.
 - Active cycles + states
 - Current branch
 - Snapshot consistency
+- Pending reported cycles awaiting session import/decision
 
 ### BRANCH ↔ CYCLE CHECK
-- Does current branch match exactly one active cycle?
+- Classify current branch as `session` | `cycle` | `intermediate`.
+- If `cycle`: does it match exactly one active cycle (`status.md.branch_name`)?
+- If `intermediate`: is parent cycle ownership explicit and unambiguous?
+- If `session`: does it match the active session file `session_branch`?
 - If mismatch → flag issue and suggest:
-  - create cycle
-  - rename branch
-  - update status.md branch_name
+  - create/remap cycle
+  - switch branch
+  - update session metadata
 
 ### AUTO MODE DETECTION
 

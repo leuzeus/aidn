@@ -1,6 +1,6 @@
 ---
 name: cycle-close
-description: Close a cycle safely (VERIFYING → DONE), run exit checklist (REQ/TEST/GAP/CR), update status.md, snapshot, and next entry point.
+description: Close a cycle safely (VERIFYING → DONE or non-retained outcome), run exit checklist (REQ/TEST/GAP/CR), update status.md, snapshot, and next entry point.
 ---
 
 # Cycle Close Skill
@@ -10,7 +10,7 @@ Close a cycle cleanly and make it baseline-ready.
 
 ## Inputs
 - Target cycle folder (CXXX-...)
-- Desired final state: VERIFYING or DONE
+- Desired final state: VERIFYING | DONE | NO_GO | DROPPED
 
 ## Steps
 
@@ -46,17 +46,19 @@ Close a cycle cleanly and make it baseline-ready.
 - Confirm major design decisions are captured in decisions.md.
 
 3) Update status.md:
-- state: VERIFYING (if remaining validations) or DONE (if complete)
+- state: VERIFYING (if remaining validations), DONE (if retained), or NO_GO/DROPPED (if non-retained)
 - scope_frozen: true
 - last updated: (today)
 - next step:
   - VERIFYING: list remaining validations
   - DONE: recommend promote-baseline
+  - NO_GO/DROPPED: archive branch and record carry-over decision impact
 
 4) Update snapshot:
-- If DONE: remove from Active cycles, move to “Recently closed” section (if present) or add note.
+- If DONE/NO_GO/DROPPED: remove from Active cycles, move to “Recently closed” section (if present) or add note.
 - Set next entry point:
   - If DONE: suggest promote-baseline or start next cycle
+  - If NO_GO/DROPPED: suggest next retained cycle/session integration step
   - If VERIFYING: list remaining verification tasks
 
 Output:

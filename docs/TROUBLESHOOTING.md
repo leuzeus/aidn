@@ -32,32 +32,30 @@ Fix:
 ## Forgot to customize the project stub
 
 Symptom:
-- Installer warning reports placeholders in `docs/audit/WORKFLOW.md` such as `{{PROJECT_NAME}}` or `{{SOURCE_BRANCH}}`.
-- Team members are unclear on project constraints or branch policy.
+- Installer warning reports placeholders in `docs/audit/WORKFLOW.md`.
+- Team members are unclear on branch ownership, continuity, or local constraints.
 
 Fix:
 - Open `docs/audit/WORKFLOW.md` in the client repo.
 - Complete the setup checklist and replace placeholder values.
-- Follow `docs/INSTALL.md`, Step 3: `Customize docs/audit/WORKFLOW.md (Project Stub)`.
-- Commit the updated stub as part of baseline setup.
+- Follow `docs/INSTALL.md`, Step 3.
 
-## Confusion between product spec and project stub
+## Confusion between spec, summary, and workflow adapter
 
 Symptom:
-- Team uses product spec path in client repos or edits the wrong file.
-- Unclear whether to change `docs/SPEC.md`, `docs/audit/SPEC.md`, or `docs/audit/WORKFLOW.md`.
+- Team edits the wrong file.
+- Canonical rules are duplicated in state files.
 
 Fix:
-- Use `docs/SPEC.md` only in the workflow product repository (source spec).
-- Use `docs/audit/SPEC.md` in client repositories as the managed context snapshot (do not redefine rules there).
-- Use `docs/audit/WORKFLOW.md` only for project-local constraints/policies.
-- Re-run installer from the product repo to refresh client snapshot when the source spec changes.
-- In client setup, follow `docs/INSTALL.md` section `Spec vs Project Stub (Why both exist)`.
+- Canonical rules: `docs/audit/SPEC.md`
+- Quick operating reload: `docs/audit/WORKFLOW_SUMMARY.md`
+- Local adapter: `docs/audit/WORKFLOW.md`
+- Rule/state guidance: `docs/audit/RULE_STATE_BOUNDARY.md`
 
-## `docs/audit/SPEC.md` missing in client repository
+## Missing continuity or incident templates after install
 
 Symptom:
-- `docs/audit/SPEC.md` is missing after install or verify fails.
+- Files such as `docs/audit/CONTINUITY_GATE.md` or `docs/audit/incidents/TEMPLATE_INC_TMP.md` are missing.
 
 Fix:
 - Re-run install:
@@ -80,18 +78,10 @@ Fix:
   - `node tools/install.mjs --target <repo> --pack core --skip-agents`
 - If you explicitly want to update managed block in existing AGENTS:
   - `node tools/install.mjs --target <repo> --pack core --force-agents-merge`
-- In `--assist`, existing `AGENTS.md` is preserved by default.
 
 ## Re-run install safely
 
 The installer is deterministic and idempotent for merge rules:
 - `AGENTS.md` uses block replacement/append, not blind overwrite.
 - `.gitignore` appends only unique lines.
-- template copy steps overwrite targeted template-managed paths.
-
-## AGENTS.md block explanation
-
-`AGENTS.md` merge strategy is `block`:
-- if target file does not exist, full template is written with markers.
-- if target file exists, installer preserves it by default to avoid instruction interference.
-- use `--force-agents-merge` to apply managed block replacement/insertion.
+- Template copy steps overwrite targeted template-managed paths.

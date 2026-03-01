@@ -538,6 +538,9 @@ function copyFile(sourcePath, targetPath, dryRun, templateVars = null) {
   if (shouldRenderTemplate(sourcePath)) {
     const content = readUtf8(sourcePath);
     const rendered = renderTemplateVariables(content, templateVars);
+    if (content.includes("{{VERSION}}") && rendered.includes("{{VERSION}}")) {
+      throw new Error(`Unresolved {{VERSION}} placeholder in copied file: ${sourcePath}`);
+    }
     writeUtf8(targetPath, rendered, dryRun);
     return;
   }
@@ -672,7 +675,12 @@ async function confirmAssist(prompt) {
 }
 
 async function mergeBlock(templatePath, targetPath, dryRun, options) {
-  const templateText = ensureWorkflowBlock(readUtf8(templatePath));
+  const rawTemplateText = readUtf8(templatePath);
+  const renderedTemplateText = renderTemplateVariables(rawTemplateText, options.templateVars ?? null);
+  if (rawTemplateText.includes("{{VERSION}}") && renderedTemplateText.includes("{{VERSION}}")) {
+    throw new Error(`Unresolved {{VERSION}} placeholder in merge template: ${templatePath}`);
+  }
+  const templateText = ensureWorkflowBlock(renderedTemplateText);
   const templateEol = detectEol(templateText);
   const targetExists = fs.existsSync(targetPath);
 
@@ -731,8 +739,12 @@ async function mergeBlock(templatePath, targetPath, dryRun, options) {
   return { changed: true, skippedByAssist: false };
 }
 
-function mergeAppendUnique(templatePath, targetPath, dryRun) {
-  const templateText = readUtf8(templatePath);
+function mergeAppendUnique(templatePath, targetPath, dryRun, templateVars = null) {
+  const rawTemplateText = readUtf8(templatePath);
+  const templateText = renderTemplateVariables(rawTemplateText, templateVars);
+  if (rawTemplateText.includes("{{VERSION}}") && templateText.includes("{{VERSION}}")) {
+    throw new Error(`Unresolved {{VERSION}} placeholder in append_unique template: ${templatePath}`);
+  }
   const templateLines = splitLinesNormalized(templateText).filter((line) => line.length > 0);
   const targetExists = fs.existsSync(targetPath);
 
@@ -918,9 +930,10 @@ async function main() {
             result = await mergeBlock(sourcePath, targetPath, args.dryRun, {
               assist: args.assist,
               strict: args.strict,
+              templateVars,
             });
           } else if (op.strategy === "append_unique") {
-            result = mergeAppendUnique(sourcePath, targetPath, args.dryRun);
+            result = mergeAppendUnique(sourcePath, targetPath, args.dryRun, templateVars);
           } else {
             throw new Error(`Unsupported merge strategy: ${op.strategy}`);
           }
