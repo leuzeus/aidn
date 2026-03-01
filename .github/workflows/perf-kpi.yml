@@ -69,6 +69,10 @@ jobs:
           mkdir -p .aidn/runtime/perf
           node tools/perf/report-kpi.mjs --file .aidn/runtime/perf/workflow-events.ndjson --run-prefix session- --require-delivery --json > .aidn/runtime/perf/kpi-report.json
 
+      - name: Sync KPI History
+        run: |
+          node tools/perf/sync-kpi-history.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --max-runs 200
+
       - name: Refresh Index With KPI Metrics
         run: |
           npm run perf:index-dual -- --target tests/fixtures/repo-installed-core --kpi-file .aidn/runtime/perf/kpi-report.json
@@ -157,6 +161,7 @@ jobs:
           path: |
             .aidn/runtime/perf/workflow-events.ndjson
             .aidn/runtime/perf/kpi-report.json
+            .aidn/runtime/perf/kpi-history.ndjson
             .aidn/runtime/perf/kpi-thresholds.json
             .aidn/runtime/perf/kpi-regression.json
             .aidn/runtime/perf/fallback-report.json

@@ -5,6 +5,7 @@ import path from "node:path";
 function parseArgs(argv) {
   const args = {
     kpiFile: ".aidn/runtime/perf/kpi-report.json",
+    historyFile: ".aidn/runtime/perf/kpi-history.ndjson",
     thresholdsFile: ".aidn/runtime/perf/kpi-thresholds.json",
     regressionFile: ".aidn/runtime/perf/kpi-regression.json",
     fallbackReportFile: ".aidn/runtime/perf/fallback-report.json",
@@ -17,6 +18,9 @@ function parseArgs(argv) {
     const token = argv[i];
     if (token === "--kpi-file") {
       args.kpiFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--history-file") {
+      args.historyFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--thresholds-file") {
       args.thresholdsFile = argv[i + 1] ?? "";
@@ -79,6 +83,23 @@ function readJsonOptional(filePath, requiredLabel) {
   }
 }
 
+function readNdjsonOptional(filePath) {
+  const absolute = path.resolve(process.cwd(), filePath);
+  if (!fs.existsSync(absolute)) {
+    return { absolute, data: [], exists: false };
+  }
+  const lines = fs.readFileSync(absolute, "utf8").split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const out = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    try {
+      out.push(JSON.parse(lines[i]));
+    } catch (error) {
+      throw new Error(`Invalid NDJSON at ${absolute} line ${i + 1}: ${error.message}`);
+    }
+  }
+  return { absolute, data: out, exists: true };
+}
+
 function fmt(value, digits = 3) {
   if (value == null || Number.isNaN(value)) {
     return "n/a";
@@ -135,7 +156,26 @@ function buildTrendLines(runs) {
   ];
 }
 
-function buildMarkdown(kpi, thresholds, regression, fallbackReport, fallbackThresholds, maxRuns) {
+function mergeRuns(currentRuns, historyRuns) {
+  const byRunId = new Map();
+  for (const run of historyRuns) {
+    const runId = String(run?.run_id ?? "").trim();
+    if (!runId) {
+      continue;
+    }
+    byRunId.set(runId, run);
+  }
+  for (const run of currentRuns) {
+    const runId = String(run?.run_id ?? "").trim();
+    if (!runId) {
+      continue;
+    }
+    byRunId.set(runId, run);
+  }
+  return Array.from(byRunId.values()).sort((a, b) => String(b.started_at ?? "").localeCompare(String(a.started_at ?? "")));
+}
+
+function buildMarkdown(kpi, mergedRuns, thresholds, regression, fallbackReport, fallbackThresholds, maxRuns) {
   const summary = kpi.summary ?? {};
   const overhead = summary.overhead_ratio ?? {};
   const churn = summary.artifacts_churn ?? {};
@@ -158,6 +198,7 @@ function buildMarkdown(kpi, thresholds, regression, fallbackReport, fallbackThre
   lines.push(`- Threshold status: ${thresholdStatus}`);
   lines.push(`- Regression status: ${regressionStatus}`);
   lines.push(`- Fallback status: ${fallbackStatus}`);
+  lines.push(`- Trend runs (current+history): ${Array.isArray(mergedRuns) ? mergedRuns.length : 0}`);
   lines.push(`- Fallback adjusted-total / adjusted-run-rate / adjusted-storm-runs: ${fallbackSummary.adjusted_fallback_total ?? 0} / ${fmt(fallbackSummary.adjusted_fallback_run_rate, 3)} / ${fallbackSummary.adjusted_storm_runs ?? 0}`);
   lines.push(`- Fallback raw-total / cold-start-total: ${fallbackSummary.fallback_total ?? 0} / ${fallbackSummary.cold_start_fallback_total ?? 0}`);
   lines.push("");
@@ -195,8 +236,8 @@ function buildMarkdown(kpi, thresholds, regression, fallbackReport, fallbackThre
     lines.push("");
   }
 
-  const runs = Array.isArray(kpi.runs) ? kpi.runs.slice(0, maxRuns) : [];
-  const trendLines = buildTrendLines(Array.isArray(kpi.runs) ? kpi.runs : []);
+  const runs = Array.isArray(mergedRuns) ? mergedRuns.slice(0, maxRuns) : [];
+  const trendLines = buildTrendLines(Array.isArray(mergedRuns) ? mergedRuns : []);
   lines.push("### Trends");
   lines.push("");
   lines.push(...trendLines);
@@ -227,12 +268,16 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const kpi = readJsonOptional(args.kpiFile, "KPI report");
+    const history = readNdjsonOptional(args.historyFile);
     const thresholds = readJsonOptional(args.thresholdsFile, null);
     const regression = readJsonOptional(args.regressionFile, null);
     const fallbackReport = readJsonOptional(args.fallbackReportFile, null);
     const fallbackThresholds = readJsonOptional(args.fallbackThresholdsFile, null);
+    const currentRuns = Array.isArray(kpi.data?.runs) ? kpi.data.runs : [];
+    const mergedRuns = mergeRuns(currentRuns, history.data);
     const markdown = buildMarkdown(
       kpi.data,
+      mergedRuns,
       thresholds.data,
       regression.data,
       fallbackReport.data,

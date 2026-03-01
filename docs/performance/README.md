@@ -13,6 +13,7 @@ The following scripts were added under `tools/perf/`:
 
 - `collect-event.mjs` - append workflow events to NDJSON
 - `report-kpi.mjs` - compute KPI summary from NDJSON
+- `sync-kpi-history.mjs` - persist and deduplicate KPI runs across local iterations (`kpi-history.ndjson`)
 - `index-sync.mjs` - build index from `docs/audit/*` with `IndexStore` mode: `file|sql|dual`
 - `index-store.mjs` - local `IndexStore` abstraction (file-first, SQL export optional)
 - `index-to-sql.mjs` - export local index JSON to SQL import script (SQLite-friendly)
@@ -39,6 +40,7 @@ The following scripts were added under `tools/perf/`:
 npm run perf:collect -- --event "{\"skill\":\"context-reload\",\"phase\":\"end\",\"event\":\"reload_summary\",\"duration_ms\":820,\"gates_triggered\":[\"R01\"]}"
 npm run perf:report
 npm run perf:report -- --run-prefix session- --require-delivery
+npm run perf:sync-history -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --max-runs 200
 npm run perf:index -- --target ../client-repo
 npm run perf:index -- --target ../client-repo --store sql --sql-output .aidn/runtime/index/workflow-index.sql
 npm run perf:index-dual -- --target ../client-repo
@@ -61,10 +63,10 @@ npm run perf:session-close -- --target ../client-repo --mode COMMITTING
 npm run perf:delivery-start -- --target ../client-repo --mode COMMITTING
 npm run perf:delivery-end -- --target ../client-repo --mode COMMITTING
 npm run perf:check-thresholds -- --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/KPI_TARGETS.json
-npm run perf:check-regression -- --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/REGRESSION_TARGETS.json --out .aidn/runtime/perf/kpi-regression.json
+npm run perf:check-regression -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --targets docs/performance/REGRESSION_TARGETS.json --out .aidn/runtime/perf/kpi-regression.json
 npm run perf:fallback-report -- --file .aidn/runtime/perf/workflow-events.ndjson --run-prefix session- --out .aidn/runtime/perf/fallback-report.json
 npm run perf:check-fallbacks
-npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --regression-file .aidn/runtime/perf/kpi-regression.json --fallback-report-file .aidn/runtime/perf/fallback-report.json --fallback-thresholds-file .aidn/runtime/perf/fallback-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
+npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --regression-file .aidn/runtime/perf/kpi-regression.json --fallback-report-file .aidn/runtime/perf/fallback-report.json --fallback-thresholds-file .aidn/runtime/perf/fallback-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
 npm run perf:reset
 ```
 
@@ -79,6 +81,7 @@ Default runtime outputs:
 - `.aidn/runtime/cache/reload-state.json`
 - `.aidn/runtime/perf/kpi-thresholds.json`
 - `.aidn/runtime/perf/kpi-regression.json`
+- `.aidn/runtime/perf/kpi-history.ndjson`
 - `.aidn/runtime/perf/fallback-report.json`
 - `.aidn/runtime/perf/fallback-thresholds.json`
 - `.aidn/runtime/perf/kpi-summary.md`
@@ -132,6 +135,7 @@ Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --
   - `perf:delivery-end`
   - `perf:session-close`
   - `perf:report --run-prefix session- --require-delivery --json`
+  - `perf:sync-history`
   - `perf:index-dual --kpi-file .aidn/runtime/perf/kpi-report.json`
   - `perf:index-verify`
   - `perf:index-report`
@@ -145,6 +149,7 @@ Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --
 - It publishes:
   - `.aidn/runtime/perf/workflow-events.ndjson`
   - `.aidn/runtime/perf/kpi-report.json`
+  - `.aidn/runtime/perf/kpi-history.ndjson`
   - `.aidn/runtime/perf/kpi-thresholds.json`
   - `.aidn/runtime/perf/kpi-regression.json`
   - `.aidn/runtime/perf/fallback-report.json`

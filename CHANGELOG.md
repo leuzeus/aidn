@@ -20,6 +20,9 @@
 - Add fallback storm reporting/checks (`tools/perf/report-fallbacks.mjs`, `docs/performance/FALLBACK_TARGETS.json`) and CI option `strict_fallback`.
 - Extend KPI summary with fallback status/metrics/checks.
 - Make fallback thresholds warmup-aware by checking adjusted metrics that exclude cold-start fallback reasons (`MISSING_CACHE`, `CORRUPT_CACHE`).
+- Add persistent KPI history sync (`tools/perf/sync-kpi-history.mjs`) with dedup by `run_id` and bounded retention.
+- Update regression checks to consume merged current + history runs (`kpi-history.ndjson`) for cross-run baseline.
+- Update KPI summary trends/top-runs to use merged current + history runs.
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).

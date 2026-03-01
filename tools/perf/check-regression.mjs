@@ -5,6 +5,7 @@ import path from "node:path";
 function parseArgs(argv) {
   const args = {
     kpiFile: ".aidn/runtime/perf/kpi-report.json",
+    historyFile: ".aidn/runtime/perf/kpi-history.ndjson",
     targets: "docs/performance/REGRESSION_TARGETS.json",
     out: ".aidn/runtime/perf/kpi-regression.json",
     strict: false,
@@ -15,6 +16,9 @@ function parseArgs(argv) {
     const token = argv[i];
     if (token === "--kpi-file") {
       args.kpiFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--history-file") {
+      args.historyFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--targets") {
       args.targets = argv[i + 1] ?? "";
@@ -46,7 +50,7 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/check-regression.mjs");
-  console.log("  node tools/perf/check-regression.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/REGRESSION_TARGETS.json");
+  console.log("  node tools/perf/check-regression.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --targets docs/performance/REGRESSION_TARGETS.json");
   console.log("  node tools/perf/check-regression.mjs --strict");
 }
 
@@ -60,6 +64,23 @@ function readJson(filePath, label) {
   } catch (error) {
     throw new Error(`${label} invalid JSON: ${error.message}`);
   }
+}
+
+function readNdjsonOptional(filePath) {
+  const absolute = path.resolve(process.cwd(), filePath);
+  if (!fs.existsSync(absolute)) {
+    return { absolute, exists: false, runs: [] };
+  }
+  const lines = fs.readFileSync(absolute, "utf8").split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const runs = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    try {
+      runs.push(JSON.parse(lines[i]));
+    } catch (error) {
+      throw new Error(`History NDJSON invalid at line ${i + 1}: ${error.message}`);
+    }
+  }
+  return { absolute, exists: true, runs };
 }
 
 function toNumber(value) {
@@ -86,6 +107,40 @@ function median(values) {
 
 function sortRuns(runs) {
   return [...runs].sort((a, b) => String(b.started_at ?? "").localeCompare(String(a.started_at ?? "")));
+}
+
+function normalizeRun(run) {
+  return {
+    run_id: run.run_id ?? null,
+    started_at: run.started_at ?? null,
+    ended_at: run.ended_at ?? null,
+    overhead_ratio: run.overhead_ratio ?? null,
+    artifacts_churn: run.artifacts_churn ?? null,
+    gates_frequency: run.gates_frequency ?? null,
+    gates_stop_rate: run.gates_stop_rate ?? null,
+    control_time_ms: run.control_time_ms ?? null,
+    delivery_time_ms: run.delivery_time_ms ?? null,
+    events_count: run.events_count ?? null,
+  };
+}
+
+function mergeRuns(currentRuns, historyRuns) {
+  const byRunId = new Map();
+  for (const run of historyRuns) {
+    const runId = String(run?.run_id ?? "").trim();
+    if (!runId) {
+      continue;
+    }
+    byRunId.set(runId, normalizeRun(run));
+  }
+  for (const run of currentRuns) {
+    const runId = String(run?.run_id ?? "").trim();
+    if (!runId) {
+      continue;
+    }
+    byRunId.set(runId, normalizeRun(run));
+  }
+  return sortRuns(Array.from(byRunId.values()));
 }
 
 function evaluateRule(rule, runs, minHistoryDefault) {
@@ -253,9 +308,11 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const { absolute: kpiPath, data: kpiData } = readJson(args.kpiFile, "KPI file");
+    const history = readNdjsonOptional(args.historyFile);
     const { absolute: targetsPath, data: targetsData } = readJson(args.targets, "Regression targets");
 
-    const runs = Array.isArray(kpiData.runs) ? kpiData.runs : [];
+    const currentRuns = Array.isArray(kpiData.runs) ? kpiData.runs : [];
+    const runs = mergeRuns(currentRuns, history.runs);
     const rules = Array.isArray(targetsData.rules) ? targetsData.rules : [];
     const minHistoryDefault = toNumber(targetsData.min_history) ?? 3;
     const checks = rules.map((rule) => evaluateRule(rule, runs, minHistoryDefault));
@@ -265,8 +322,12 @@ function main() {
       ts: new Date().toISOString(),
       strict: args.strict,
       kpi_file: kpiPath,
+      history_file: history.absolute,
+      history_exists: history.exists,
+      history_runs: history.runs.length,
       targets_file: targetsPath,
       runs_analyzed: runs.length,
+      current_runs: currentRuns.length,
       summary,
       checks,
     };

@@ -8,6 +8,7 @@
     "build-release": "node tools/build-release.mjs",
     "perf:collect": "node tools/perf/collect-event.mjs",
     "perf:report": "node tools/perf/report-kpi.mjs",
+    "perf:sync-history": "node tools/perf/sync-kpi-history.mjs",
     "perf:fallback-report": "node tools/perf/report-fallbacks.mjs",
     "perf:index": "node tools/perf/index-sync.mjs",
     "perf:index-dual": "node tools/perf/index-sync.mjs --store dual",
