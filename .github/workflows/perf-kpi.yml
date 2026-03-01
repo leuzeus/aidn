@@ -161,6 +161,17 @@ jobs:
             node tools/perf/index-verify-dual.mjs --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql --json > .aidn/runtime/index/index-parity.json || true
           fi
 
+      - name: Verify Index SQLite Parity
+        run: |
+          STRICT_INDEX="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_parity || false }}"
+          if [ "$STRICT_INDEX" = "true" ]; then
+            echo "Running SQLite parity check in strict mode."
+            node tools/perf/index-verify-sqlite.mjs --index-file .aidn/runtime/index/workflow-index.json --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json --strict > .aidn/runtime/index/index-sqlite-parity.json
+          else
+            echo "Running SQLite parity check in non-blocking mode."
+            node tools/perf/index-verify-sqlite.mjs --index-file .aidn/runtime/index/workflow-index.json --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json > .aidn/runtime/index/index-sqlite-parity.json || true
+          fi
+
       - name: Build Index Quality Report
         run: |
           npm run perf:index-report -- --index-file .aidn/runtime/index/workflow-index.json --parity-file .aidn/runtime/index/index-parity.json --out .aidn/runtime/index/index-report.json
@@ -270,6 +281,7 @@ jobs:
             .aidn/runtime/index/index-sync-thresholds.json
             .aidn/runtime/index/index-sync-trend-summary.md
             .aidn/runtime/index/index-parity.json
+            .aidn/runtime/index/index-sqlite-parity.json
             .aidn/runtime/index/index-report.json
             .aidn/runtime/index/index-thresholds.json
             .aidn/runtime/index/index-summary.md

@@ -5,6 +5,7 @@
 - Add shared SQL generation module (`tools/perf/index-sql-lib.mjs`) and reuse it from `index-to-sql`.
 - Add `npm run perf:index-dual` for controlled dual-write output (JSON + SQL) without changing file-first source of truth.
 - Add `npm run perf:index-sqlite` and `npm run perf:index-all` convenience commands.
+- Add SQLite import/export helpers (`index-sqlite-lib`, `perf:index-from-sqlite`) and parity verifier (`perf:index-verify-sqlite`).
 - Add `tools/perf/index-query.mjs` and `npm run perf:index-query` for standard local index analytics queries.
 - Extend `tools/perf/index-query.mjs` with SQLite backend support (`--backend auto|json|sqlite`).
 - Extend `perf-kpi` CI flow to refresh and publish `workflow-index.sqlite` artifacts.

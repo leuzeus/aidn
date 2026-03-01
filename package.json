@@ -18,6 +18,8 @@
     "perf:index-dual": "node tools/perf/index-sync.mjs --store dual",
     "perf:index-sqlite": "node tools/perf/index-sync.mjs --store sqlite",
     "perf:index-all": "node tools/perf/index-sync.mjs --store all",
+    "perf:index-from-sqlite": "node tools/perf/index-from-sqlite.mjs",
+    "perf:index-verify-sqlite": "node tools/perf/index-verify-sqlite.mjs",
     "perf:index-sql": "node tools/perf/index-to-sql.mjs",
     "perf:index-query": "node tools/perf/index-query.mjs",
     "perf:structure": "node tools/perf/structure-profile.mjs",

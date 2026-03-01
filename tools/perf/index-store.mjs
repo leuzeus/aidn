@@ -217,6 +217,9 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       setMeta(db, "payload_digest", nextDigest);
       setMeta(db, "schema_version", String(payload?.schema_version ?? 1));
       setMeta(db, "structure_kind", String(payload?.summary?.structure_kind ?? "unknown"));
+      setMeta(db, "target_root", String(payload?.target_root ?? ""));
+      setMeta(db, "audit_root", String(payload?.audit_root ?? ""));
+      setMeta(db, "structure_profile_json", JSON.stringify(payload?.structure_profile ?? null));
       db.exec("COMMIT;");
     } catch (error) {
       db.exec("ROLLBACK;");

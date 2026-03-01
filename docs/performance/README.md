@@ -25,8 +25,11 @@ The following scripts were added under `tools/perf/`:
 - `index-store.mjs` - local `IndexStore` abstraction (JSON/SQL/SQLite outputs)
 - `index-to-sql.mjs` - export local index JSON to SQL import script (SQLite-friendly)
 - `index-sql-lib.mjs` - shared SQL generation library used by index tooling
+- `index-sqlite-lib.mjs` - shared SQLite read helpers for export/parity tooling
 - `index-query.mjs` - run standard analytics queries on local index JSON or SQLite index
 - `index-verify-dual.mjs` - verify JSON/SQL dual-write parity from deterministic SQL regeneration
+- `index-from-sqlite.mjs` - export SQLite index back to JSON (derived artifact)
+- `index-verify-sqlite.mjs` - verify JSON/SQLite parity from deterministic projection
 - `report-index.mjs` - compute index quality report (counts consistency, parity status, run-metrics presence)
 - `render-index-summary.mjs` - generate Markdown summary from index report + index threshold checks
 - `reload-check.mjs` - evaluate incremental/full/stop reload decision from digest + mapping
@@ -66,6 +69,8 @@ npm run perf:index-sync-trend-summary -- --report-file .aidn/runtime/index/index
 npm run perf:verify-structure
 npm run perf:verify-index-sync
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
+npm run perf:index-from-sqlite -- --sqlite-file .aidn/runtime/index/workflow-index.sqlite --out .aidn/runtime/index/workflow-index.from-sqlite.json
+npm run perf:index-verify-sqlite -- --index-file .aidn/runtime/index/workflow-index.json --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.json
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite
 npm run perf:index-query -- --query artifacts-since --since 2026-03-01T00:00:00Z --index-file .aidn/runtime/index/workflow-index.json
@@ -101,7 +106,9 @@ Default runtime outputs:
 - `.aidn/runtime/index/workflow-index.json`
 - `.aidn/runtime/index/workflow-index.sql`
 - `.aidn/runtime/index/workflow-index.sqlite` (when `--store` includes SQLite output)
+- `.aidn/runtime/index/workflow-index.from-sqlite.json` (optional export)
 - `.aidn/runtime/index/index-parity.json`
+- `.aidn/runtime/index/index-sqlite-parity.json`
 - `.aidn/runtime/index/index-report.json`
 - `.aidn/runtime/index/index-thresholds.json`
 - `.aidn/runtime/index/index-summary.md`
@@ -130,6 +137,7 @@ Use `perf:reset -- --keep-history` if you want to preserve cross-run KPI history
 `perf:index-check` compares current index digest against a dry-run import and can auto-apply with `--apply`.
 `perf:index-check` also emits `reason_codes`, `drift_level` and numeric summary fields for automation.
 `perf:index-verify` should pass when SQL output is generated from the same JSON payload and schema settings.
+`perf:index-verify-sqlite` should pass when SQLite output matches JSON payload projection.
 Index outputs are written conditionally: unchanged content is detected and not rewritten.
 For JSON index, equivalence check ignores `generated_at` to avoid churn-only rewrites.
 KPI/regression/fallback/index report and summary outputs are also written conditionally when content is unchanged.
@@ -203,6 +211,7 @@ Checkpoint summary events now carry effective index write counters (`files_writt
   - `perf:index-sync-thresholds` (non-blocking by default in CI)
   - `perf:index-sync-trend-summary`
   - `perf:index-verify`
+  - `perf:index-verify-sqlite`
   - `perf:index-report`
   - `perf:index-thresholds`
   - `perf:index-summary`
@@ -229,6 +238,8 @@ Checkpoint summary events now carry effective index write counters (`files_writt
   - `.aidn/runtime/index/index-sync-report.json`
   - `.aidn/runtime/index/index-sync-thresholds.json`
   - `.aidn/runtime/index/index-sync-trend-summary.md`
+  - `.aidn/runtime/index/index-parity.json`
+  - `.aidn/runtime/index/index-sqlite-parity.json`
 - `workflow_dispatch` supports `strict_thresholds=true` to make threshold violations blocking.
 - `workflow_dispatch` supports `strict_index_parity=true` to make dual-write parity violations blocking.
 - `workflow_dispatch` supports `strict_index_quality=true` to make index quality threshold violations blocking.
