@@ -40,6 +40,7 @@
 - Add optional checkpoint/hook `index-sync-check` execution (`--index-sync-check`, `--index-sync-check-strict`) with exported check JSON and summary-event integration.
 - Enrich `index-sync-check` outputs with `reason_codes`, `drift_level`, numeric summary fields, and high-drift trend reporting.
 - Extend `gating-evaluate` with `index_sync_drift` signal and L3 escalation path (`L3_INDEX_SYNC_DRIFT`) on high drift levels.
+- Scope `index_sync_drift` gating signal to matching `target_root` to avoid cross-project false positives.
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).

@@ -137,7 +137,7 @@ Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --
 
 - L1 fast checks: digest + mapping (`perf:reload-check`)
 - L2 conditional drift signals: objective delta, scope growth, cross-domain touch, stale drift-check, uncertain intent, structure-mixed/version-stale signals (`perf:gate`)
-- L2 conditional drift signals also include `index_sync_drift` when latest index sync check is out-of-sync (`--index-sync-check-file`).
+- L2 conditional drift signals also include `index_sync_drift` when latest index sync check is out-of-sync (`--index-sync-check-file`) and matches the same `target_root`.
 - L3 incident trigger: blocking L1 reasons or repeated fallback patterns (`perf:gate`)
 
 `perf:checkpoint` orchestrates these steps and writes a summary event for KPI tracking.

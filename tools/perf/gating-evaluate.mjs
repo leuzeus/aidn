@@ -301,7 +301,11 @@ function detectSignals(targetRoot, args, reloadResult) {
   const indexSyncCheck = readJsonOptional(args.indexSyncCheckFile);
   const indexSyncPayload = indexSyncCheck.data;
   const indexSyncInSync = indexSyncPayload?.in_sync === true;
-  signal.index_sync_drift = indexSyncCheck.exists && !indexSyncInSync;
+  const indexSyncTargetRoot = typeof indexSyncPayload?.target_root === "string"
+    ? path.resolve(indexSyncPayload.target_root)
+    : null;
+  const indexSyncTargetMatch = indexSyncTargetRoot === targetRoot;
+  signal.index_sync_drift = indexSyncCheck.exists && indexSyncTargetMatch && !indexSyncInSync;
 
   const activeSignals = Object.entries(signal)
     .filter(([, active]) => active)
@@ -328,12 +332,13 @@ function detectSignals(targetRoot, args, reloadResult) {
     required: activeSignals.length > 0,
     active_signals: activeSignals,
     critical_signals: criticalSignals,
-    changed_files_count: changedFiles.length,
-    changed_files_sample: changedFiles.slice(0, 20),
-    index_sync_check_file: indexSyncCheck.absolute,
-    index_sync_check_exists: indexSyncCheck.exists,
-    index_sync_in_sync: indexSyncInSync,
-  };
+      changed_files_count: changedFiles.length,
+      changed_files_sample: changedFiles.slice(0, 20),
+      index_sync_check_file: indexSyncCheck.absolute,
+      index_sync_check_exists: indexSyncCheck.exists,
+      index_sync_target_match: indexSyncTargetMatch,
+      index_sync_in_sync: indexSyncInSync,
+    };
 
   const hasBlockingReason = level1.reason_codes.some((code) =>
     code === "MAPPING_AMBIGUOUS" || code === "MAPPING_MISSING" || code === "REQUIRED_ARTIFACT_MISSING",
@@ -342,12 +347,12 @@ function detectSignals(targetRoot, args, reloadResult) {
   const level3 = {
     required: hasBlockingReason
       || fallbackRecentCount >= 3
-      || (indexSyncPayload?.drift_level === "high"),
+      || (indexSyncTargetMatch && indexSyncPayload?.drift_level === "high"),
     reason: hasBlockingReason
       ? "blocking_l1_reason"
       : (fallbackRecentCount >= 3
         ? "repeated_fallbacks"
-        : (indexSyncPayload?.drift_level === "high" ? "index_sync_high_drift" : null)),
+        : (indexSyncTargetMatch && indexSyncPayload?.drift_level === "high" ? "index_sync_high_drift" : null)),
     fallback_recent_count: fallbackRecentCount,
     index_sync_drift_level: indexSyncPayload?.drift_level ?? null,
   };
