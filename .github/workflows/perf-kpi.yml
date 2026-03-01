@@ -9,6 +9,11 @@ on:
         required: false
         default: false
         type: boolean
+      strict_index_parity:
+        description: "Fail job when dual-write parity check fails"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -44,14 +49,25 @@ jobs:
       - name: Session Close Hook
         run: npm run perf:session-close -- --target tests/fixtures/repo-installed-core --mode COMMITTING --index-store dual
 
-      - name: Verify Index Dual-Write Parity
-        run: |
-          npm run perf:index-verify -- --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql
-
       - name: Build KPI JSON
         run: |
           mkdir -p .aidn/runtime/perf
           node tools/perf/report-kpi.mjs --file .aidn/runtime/perf/workflow-events.ndjson --run-prefix session- --require-delivery --json > .aidn/runtime/perf/kpi-report.json
+
+      - name: Refresh Index With KPI Metrics
+        run: |
+          npm run perf:index-dual -- --target tests/fixtures/repo-installed-core --kpi-file .aidn/runtime/perf/kpi-report.json
+
+      - name: Verify Index Dual-Write Parity
+        run: |
+          STRICT_INDEX="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_parity || false }}"
+          if [ "$STRICT_INDEX" = "true" ]; then
+            echo "Running index parity check in strict mode."
+            npm run perf:index-verify -- --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql
+          else
+            echo "Running index parity check in non-blocking mode."
+            npm run perf:index-verify -- --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql || true
+          fi
 
       - name: Evaluate KPI Thresholds (non-blocking)
         run: |

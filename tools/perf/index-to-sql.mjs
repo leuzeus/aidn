@@ -90,7 +90,7 @@ function main() {
     }
     console.log(`Output: ${outputAbsolute}`);
     console.log(
-      `Rows: cycles=${(indexData.cycles ?? []).length}, artifacts=${(indexData.artifacts ?? []).length}, file_map=${(indexData.file_map ?? []).length}, tags=${(indexData.tags ?? []).length}, artifact_tags=${(indexData.artifact_tags ?? []).length}`,
+      `Rows: cycles=${(indexData.cycles ?? []).length}, artifacts=${(indexData.artifacts ?? []).length}, file_map=${(indexData.file_map ?? []).length}, tags=${(indexData.tags ?? []).length}, artifact_tags=${(indexData.artifact_tags ?? []).length}, run_metrics=${(indexData.run_metrics ?? []).length}`,
     );
   } catch (error) {
     console.error(`ERROR: ${error.message}`);

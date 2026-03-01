@@ -42,8 +42,8 @@ function parseArgs(argv) {
   if (!args.indexFile) {
     throw new Error("Missing value for --index-file");
   }
-  if (!["active-cycles", "artifacts-since", "cycle-files"].includes(args.query)) {
-    throw new Error("Invalid --query. Expected active-cycles|artifacts-since|cycle-files");
+  if (!["active-cycles", "artifacts-since", "cycle-files", "run-metrics"].includes(args.query)) {
+    throw new Error("Invalid --query. Expected active-cycles|artifacts-since|cycle-files|run-metrics");
   }
   if (args.query === "artifacts-since" && !args.since) {
     throw new Error("Missing --since for query artifacts-since");
@@ -62,6 +62,7 @@ function printUsage() {
   console.log("  node tools/perf/index-query.mjs --query active-cycles");
   console.log("  node tools/perf/index-query.mjs --query artifacts-since --since 2026-03-01T00:00:00Z");
   console.log("  node tools/perf/index-query.mjs --query cycle-files --cycle-id C118");
+  console.log("  node tools/perf/index-query.mjs --query run-metrics --limit 30");
 }
 
 function readIndex(filePath) {
@@ -127,6 +128,19 @@ function queryCycleFiles(indexData, cycleId, limit) {
   }));
 }
 
+function queryRunMetrics(indexData, limit) {
+  const rows = Array.isArray(indexData.run_metrics) ? indexData.run_metrics : [];
+  const sorted = [...rows].sort((a, b) => String(b.started_at ?? "").localeCompare(String(a.started_at ?? "")));
+  return sorted.slice(0, limit).map((row) => ({
+    run_id: row.run_id,
+    started_at: row.started_at,
+    ended_at: row.ended_at,
+    overhead_ratio: row.overhead_ratio,
+    artifacts_churn: row.artifacts_churn,
+    gates_frequency: row.gates_frequency,
+  }));
+}
+
 function runQuery(indexData, args) {
   if (args.query === "active-cycles") {
     return queryActiveCycles(indexData, args.limit);
@@ -136,6 +150,9 @@ function runQuery(indexData, args) {
   }
   if (args.query === "cycle-files") {
     return queryCycleFiles(indexData, args.cycleId, args.limit);
+  }
+  if (args.query === "run-metrics") {
+    return queryRunMetrics(indexData, args.limit);
   }
   return [];
 }

@@ -14,6 +14,7 @@ function parseArgs(argv) {
     indexSqlOutput: ".aidn/runtime/index/workflow-index.sql",
     indexSchemaFile: "tools/perf/sql/schema.sql",
     indexIncludeSchema: true,
+    indexKpiFile: "",
     mode: "COMMITTING",
     runId: "",
     json: false,
@@ -45,6 +46,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--index-no-schema") {
       args.indexIncludeSchema = false;
+    } else if (token === "--index-kpi-file") {
+      args.indexKpiFile = argv[i + 1] ?? "";
+      i += 1;
     } else if (token === "--mode") {
       args.mode = String(argv[i + 1] ?? "").toUpperCase();
       i += 1;
@@ -90,6 +94,7 @@ function printUsage() {
   console.log("  node tools/perf/checkpoint.mjs --target ../client --mode COMMITTING");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --run-id S072-20260301T1012Z");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --index-store dual --index-sql-output .aidn/runtime/index/workflow-index.sql");
+  console.log("  node tools/perf/checkpoint.mjs --target ../client --index-kpi-file .aidn/runtime/perf/kpi-report.json");
   console.log("  node tools/perf/checkpoint.mjs --json");
 }
 
@@ -160,6 +165,9 @@ function main() {
       if (!args.indexIncludeSchema) {
         indexArgs.push("--no-schema");
       }
+    }
+    if (args.indexKpiFile) {
+      indexArgs.push(`--kpi-file "${args.indexKpiFile}"`);
     }
     const indexOut = execText(
       `node tools/perf/index-sync.mjs ${indexArgs.join(" ")}`,

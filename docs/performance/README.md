@@ -38,9 +38,11 @@ npm run perf:report -- --run-prefix session- --require-delivery
 npm run perf:index -- --target ../client-repo
 npm run perf:index -- --target ../client-repo --store sql --sql-output .aidn/runtime/index/workflow-index.sql
 npm run perf:index-dual -- --target ../client-repo
+npm run perf:index-dual -- --target ../client-repo --kpi-file .aidn/runtime/perf/kpi-report.json
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.json
 npm run perf:index-query -- --query artifacts-since --since 2026-03-01T00:00:00Z --index-file .aidn/runtime/index/workflow-index.json
+npm run perf:index-query -- --query run-metrics --index-file .aidn/runtime/index/workflow-index.json --limit 30
 npm run perf:index-verify -- --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql
 npm run perf:reload-check -- --target ../client-repo
 npm run perf:reload-check -- --target ../client-repo --write-cache
@@ -75,12 +77,14 @@ These runtime artifacts are intentionally local and ignored by git.
 `perf:index-verify` should pass when SQL output is generated from the same JSON payload and schema settings.
 Index outputs are written conditionally: unchanged content is detected and not rewritten.
 For JSON index, equivalence check ignores `generated_at` to avoid churn-only rewrites.
+Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --json` output.
 
 ## Standard Index Queries
 
 - `active-cycles`: list active cycles (`OPEN|IMPLEMENTING|VERIFYING`)
 - `artifacts-since`: list artifacts changed since an ISO timestamp (`--since` required)
 - `cycle-files`: list mapped files for one cycle (`--cycle-id` required)
+- `run-metrics`: list KPI run metrics present in index payload
 
 ## Gating Levels (implemented)
 
@@ -109,8 +113,9 @@ For JSON index, equivalence check ignores `generated_at` to avoid churn-only rew
   - `perf:delivery-start`
   - `perf:delivery-end`
   - `perf:session-close`
-  - `perf:index-verify`
   - `perf:report --run-prefix session- --require-delivery --json`
+  - `perf:index-dual --kpi-file .aidn/runtime/perf/kpi-report.json`
+  - `perf:index-verify`
   - `perf:check-thresholds` (non-blocking by default in CI)
   - `perf:render-summary`
 - It publishes:
@@ -121,6 +126,7 @@ For JSON index, equivalence check ignores `generated_at` to avoid churn-only rew
   - `.aidn/runtime/index/workflow-index.json`
   - `.aidn/runtime/index/workflow-index.sql`
 - `workflow_dispatch` supports `strict_thresholds=true` to make threshold violations blocking.
+- `workflow_dispatch` supports `strict_index_parity=true` to make dual-write parity violations blocking.
 
 Threshold source file:
 - `docs/performance/KPI_TARGETS.json`

@@ -51,6 +51,14 @@ function insertArtifactTags(lines, artifactTags) {
   }
 }
 
+function insertRunMetrics(lines, runMetrics) {
+  for (const row of runMetrics) {
+    lines.push(
+      `INSERT INTO run_metrics (run_id, started_at, ended_at, overhead_ratio, artifacts_churn, gates_frequency) VALUES (${sqlString(row.run_id)}, ${sqlString(row.started_at)}, ${sqlString(row.ended_at)}, ${sqlNumber(row.overhead_ratio)}, ${sqlNumber(row.artifacts_churn)}, ${sqlNumber(row.gates_frequency)});`,
+    );
+  }
+}
+
 export function buildSqlFromIndex(indexData, options = {}) {
   const includeSchema = options.includeSchema !== false;
   const schemaText = (options.schemaText ?? "").trim();
@@ -81,6 +89,7 @@ export function buildSqlFromIndex(indexData, options = {}) {
   const fileMap = Array.isArray(indexData.file_map) ? indexData.file_map : [];
   const tags = Array.isArray(indexData.tags) ? indexData.tags : [];
   const artifactTags = Array.isArray(indexData.artifact_tags) ? indexData.artifact_tags : [];
+  const runMetrics = Array.isArray(indexData.run_metrics) ? indexData.run_metrics : [];
 
   lines.push("-- Insert data");
   insertCycles(lines, cycles);
@@ -88,6 +97,7 @@ export function buildSqlFromIndex(indexData, options = {}) {
   insertFileMap(lines, fileMap);
   insertTags(lines, tags);
   insertArtifactTags(lines, artifactTags);
+  insertRunMetrics(lines, runMetrics);
 
   lines.push("");
   lines.push("COMMIT;");

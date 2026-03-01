@@ -12,6 +12,7 @@ function parseArgs(argv) {
     sqlOutput: ".aidn/runtime/index/workflow-index.sql",
     schemaFile: "tools/perf/sql/schema.sql",
     includeSchema: true,
+    kpiFile: "",
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -33,6 +34,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--no-schema") {
       args.includeSchema = false;
+    } else if (token === "--kpi-file") {
+      args.kpiFile = argv[i + 1] ?? "";
+      i += 1;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -62,6 +66,7 @@ function printUsage() {
   console.log("  node tools/perf/index-sync.mjs --target ../client");
   console.log("  node tools/perf/index-sync.mjs --target . --output .aidn/runtime/index/workflow-index.json");
   console.log("  node tools/perf/index-sync.mjs --target . --store dual --output .aidn/runtime/index/workflow-index.json --sql-output .aidn/runtime/index/workflow-index.sql");
+  console.log("  node tools/perf/index-sync.mjs --target . --store dual --kpi-file .aidn/runtime/perf/kpi-report.json");
 }
 
 function walkFiles(rootDir) {
@@ -272,6 +277,42 @@ function buildTags(cycleTagPairs, artifacts) {
   return { tags, artifactTagPairs };
 }
 
+function toNumberOrNull(value) {
+  if (value == null) {
+    return null;
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function buildRunMetrics(kpiFilePath) {
+  if (!kpiFilePath) {
+    return [];
+  }
+  const absolute = path.resolve(process.cwd(), kpiFilePath);
+  if (!fs.existsSync(absolute)) {
+    throw new Error(`KPI file not found: ${absolute}`);
+  }
+  let payload;
+  try {
+    payload = JSON.parse(fs.readFileSync(absolute, "utf8"));
+  } catch (error) {
+    throw new Error(`Invalid KPI JSON in ${absolute}: ${error.message}`);
+  }
+
+  const runs = Array.isArray(payload.runs) ? payload.runs : [];
+  return runs
+    .filter((run) => typeof run?.run_id === "string" && run.run_id.trim().length > 0)
+    .map((run) => ({
+      run_id: String(run.run_id).trim(),
+      started_at: run.started_at ?? null,
+      ended_at: run.ended_at ?? null,
+      overhead_ratio: toNumberOrNull(run.overhead_ratio),
+      artifacts_churn: toNumberOrNull(run.artifacts_churn),
+      gates_frequency: toNumberOrNull(run.gates_frequency),
+    }));
+}
+
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -285,6 +326,7 @@ function main() {
     const artifacts = buildArtifactRows(auditRoot);
     const { cycles, fileMap, cycleTagPairs } = buildCycleTables(auditRoot);
     const { tags, artifactTagPairs } = buildTags(cycleTagPairs, artifacts);
+    const runMetrics = buildRunMetrics(args.kpiFile);
 
     const payload = {
       schema_version: 1,
@@ -296,11 +338,13 @@ function main() {
       file_map: fileMap,
       tags,
       artifact_tags: artifactTagPairs,
+      run_metrics: runMetrics,
       summary: {
         cycles_count: cycles.length,
         artifacts_count: artifacts.length,
         file_map_count: fileMap.length,
         tags_count: tags.length,
+        run_metrics_count: runMetrics.length,
       },
     };
 
@@ -319,7 +363,7 @@ function main() {
       console.log(`Output (${out.kind}, ${state}): ${out.path}`);
     }
     console.log(
-      `Summary: cycles=${payload.summary.cycles_count}, artifacts=${payload.summary.artifacts_count}, file_map=${payload.summary.file_map_count}, tags=${payload.summary.tags_count}`,
+      `Summary: cycles=${payload.summary.cycles_count}, artifacts=${payload.summary.artifacts_count}, file_map=${payload.summary.file_map_count}, tags=${payload.summary.tags_count}, run_metrics=${payload.summary.run_metrics_count}`,
     );
   } catch (error) {
     console.error(`ERROR: ${error.message}`);

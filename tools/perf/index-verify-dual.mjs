@@ -110,6 +110,7 @@ function summarizeIndex(indexData) {
     file_map: Array.isArray(indexData.file_map) ? indexData.file_map.length : 0,
     tags: Array.isArray(indexData.tags) ? indexData.tags.length : 0,
     artifact_tags: Array.isArray(indexData.artifact_tags) ? indexData.artifact_tags.length : 0,
+    run_metrics: Array.isArray(indexData.run_metrics) ? indexData.run_metrics.length : 0,
   };
 }
 
@@ -155,7 +156,7 @@ function main() {
         console.log(`First diff line: ${diff.line}`);
       }
       console.log(
-        `Rows: cycles=${result.summary.cycles}, artifacts=${result.summary.artifacts}, file_map=${result.summary.file_map}, tags=${result.summary.tags}, artifact_tags=${result.summary.artifact_tags}`,
+        `Rows: cycles=${result.summary.cycles}, artifacts=${result.summary.artifacts}, file_map=${result.summary.file_map}, tags=${result.summary.tags}, artifact_tags=${result.summary.artifact_tags}, run_metrics=${result.summary.run_metrics}`,
       );
     }
 

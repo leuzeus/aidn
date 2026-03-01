@@ -17,6 +17,7 @@ function parseArgs(argv) {
     indexSqlOutput: ".aidn/runtime/index/workflow-index.sql",
     indexSchemaFile: "tools/perf/sql/schema.sql",
     indexIncludeSchema: true,
+    indexKpiFile: "",
     strict: false,
     json: false,
   };
@@ -52,6 +53,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--index-no-schema") {
       args.indexIncludeSchema = false;
+    } else if (token === "--index-kpi-file") {
+      args.indexKpiFile = argv[i + 1] ?? "";
+      i += 1;
     } else if (token === "--strict") {
       args.strict = true;
     } else if (token === "--json") {
@@ -90,6 +94,7 @@ function printUsage() {
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --mode COMMITTING");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --index-store dual");
+  console.log("  node tools/perf/workflow-hook.mjs --phase session-close --index-kpi-file .aidn/runtime/perf/kpi-report.json");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --run-id-file .aidn/runtime/perf/current-run-id.txt");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --strict");
 }
@@ -144,6 +149,9 @@ function runCheckpoint(targetRoot, mode, runId, indexOptions = {}) {
   }
   if (indexOptions.includeSchema === false) {
     cmd.push("--index-no-schema");
+  }
+  if (indexOptions.kpiFile) {
+    cmd.push("--index-kpi-file", indexOptions.kpiFile);
   }
   cmd.push("--json");
 
@@ -200,6 +208,7 @@ function main() {
         sqlOutput: args.indexSqlOutput,
         schemaFile: args.indexSchemaFile,
         includeSchema: args.indexIncludeSchema,
+        kpiFile: args.indexKpiFile,
       });
     } catch (error) {
       checkpointError = error;
