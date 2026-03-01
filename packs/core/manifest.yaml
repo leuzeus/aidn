@@ -1,5 +1,5 @@
 name: core
-version: 0.1.0
+version: 0.2.0
 
 install:
   copy:
@@ -27,6 +27,10 @@ verify:
     - AGENTS.md
     - docs/audit/SPEC.md
     - docs/audit/WORKFLOW.md
+    - docs/audit/WORKFLOW_SUMMARY.md
+    - docs/audit/CONTINUITY_GATE.md
+    - docs/audit/RULE_STATE_BOUNDARY.md
+    - docs/audit/incidents/TEMPLATE_INC_TMP.md
     - docs/audit/baseline/current.md
     - docs/audit/snapshots/context-snapshot.md
     - docs/audit/parking-lot.md

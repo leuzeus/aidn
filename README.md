@@ -21,6 +21,7 @@ The model structures work through bounded cycles, session discipline, baseline a
   - Installation templates: `template/`
 - Client repositories receive:
   - Managed spec snapshot at `docs/audit/SPEC.md`
+  - Quick summary at `docs/audit/WORKFLOW_SUMMARY.md`
   - Project adapter stub at `docs/audit/WORKFLOW.md`
   - Audit artifacts and skill mapping used by day-to-day execution
 
@@ -33,19 +34,17 @@ Product repository:
 - Node installer and release tooling (`tools/`)
 
 Client repository after install:
- - `docs/audit/SPEC.md` (managed spec snapshot)
+- `docs/audit/SPEC.md` (managed spec snapshot)
+- `docs/audit/WORKFLOW_SUMMARY.md` (quick reload)
 - `docs/audit/WORKFLOW.md` (project adapter stub)
 - `docs/audit/baseline/`
 - `docs/audit/snapshots/`
 - `docs/audit/cycles/`
 - `docs/audit/sessions/`
+- `docs/audit/incidents/`
 - `.codex/skills.yaml`
+  - rendered with pinned `remote.ref` matching the installed aidn tag (for example `v0.2.0`)
 
-System model:
-- **Audit-Informed Development (primary philosophy):** audits act before, during, and after implementation as decision filters.
-- **Audit-Driven layer (control mechanism):** validates DoD, detects deviation/scope creep, and applies corrective adjustments.
-- **Cycles (bounded execution):** intent audit, architecture audit, implementation, audit-driven validation, snapshot update.
-- **Memory system:** baseline as structural anchor, snapshots as fast reload memory, parking lot as entropy isolation.
 ## Installation
 
 ```bash
@@ -60,5 +59,5 @@ node tools/build-release.mjs
 
 ## Project Stub Customization
 
-After install, review `docs/audit/SPEC.md` then customize `docs/audit/WORKFLOW.md` in the client repository.
+After install, review `docs/audit/SPEC.md` then `docs/audit/WORKFLOW_SUMMARY.md`, then customize `docs/audit/WORKFLOW.md` in the client repository.
 Replace placeholders (for example `{{PROJECT_NAME}}` and `{{SOURCE_BRANCH}}`) and complete project constraints/policies before starting production work.

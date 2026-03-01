@@ -1,5 +1,10 @@
 # Session SXXX — 2026-02-07
 
+Rule/State boundary:
+- This file is a state artifact (session facts, decisions, pointers).
+- Canonical workflow rules stay in `docs/audit/SPEC.md` and local extensions in `docs/audit/WORKFLOW.md`.
+- Keep rule text as references, not duplicated policy prose.
+
 ------------------------------------------------------------
 ## WORK MODE (required)
 
@@ -16,9 +21,27 @@
 - User override: (if needed)
 
 If COMMITTING:
-- Cycle ID:
+- Active Cycle ID: (current focus; optional if integration-only)
 - Branch:
 - scope_frozen: true | false
+
+### Session Branch Continuity (required)
+- session_branch: `SXXX-<short-slug>`
+- parent_session: SXXX (or `none` for first session in chain)
+- parent_branch:
+- continuity_basis: `rebase-from <commit>` | `merge-from <branch>` | `ff-from <branch>`
+- continuity_check: pass | fail
+
+### Branch Context (required for COMMITTING)
+- branch_kind: `session` | `cycle` | `intermediate`
+- cycle_branch: `<cycle-type>/CYYY-<short-slug>` | `none`
+- intermediate_branch: `<cycle-type>/CYYY-I##-<short-slug>` | `none`
+- integration_target_cycle: `CYYY` | `none`
+
+### Session Cycle Tracking (required for COMMITTING)
+- attached_cycles: `CYYY, CZZZ` | `none`
+- reported_from_previous_session: `none` | `CYYY, CZZZ`
+- carry_over_pending: yes | no
 
 ------------------------------------------------------------
 ## CONTEXT RELOAD (auto)
@@ -104,10 +127,16 @@ Discard:
 ### Blockers
 - 
 
+### Cycle Resolution At Session Close (required)
+- `CYYY` | state: `OPEN|IMPLEMENTING|VERIFYING|DONE` | decision: `integrate-to-session|report|close-non-retained|cancel-close` | target session: `SXXX|none` | rationale:
+
 ### Next Entry Point (resume in <5 minutes)
 1) 
 2) 
 3) 
+
+### Session close gate satisfied?
+- [ ] Yes
 
 ### Snapshot updated?
 - [ ] Yes
