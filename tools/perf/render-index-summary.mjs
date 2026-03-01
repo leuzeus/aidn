@@ -67,6 +67,8 @@ function buildMarkdown(report, thresholds) {
   const rows = report?.summary?.rows ?? {};
   const consistency = report?.summary?.consistency ?? {};
   const parity = report?.summary?.parity ?? {};
+  const paritySql = report?.summary?.parity_sql ?? {};
+  const paritySqlite = report?.summary?.parity_sqlite ?? {};
   const runMetrics = report?.summary?.run_metrics ?? {};
   const structure = report?.summary?.structure ?? {};
   const thresholdStatus = thresholds?.summary?.overall_status ?? "not-generated";
@@ -79,6 +81,8 @@ function buildMarkdown(report, thresholds) {
   lines.push(`- Rows: cycles=${fmt(rows.cycles)}, artifacts=${fmt(rows.artifacts)}, file_map=${fmt(rows.file_map)}, tags=${fmt(rows.tags)}, run_metrics=${fmt(rows.run_metrics)}`);
   lines.push(`- Count consistency: ${consistency.all_count_match === 1 ? "pass" : "fail"}`);
   lines.push(`- Parity status: ${fmt(parity.status)}`);
+  lines.push(`- Parity SQL status: ${fmt(paritySql.status)}`);
+  lines.push(`- Parity SQLite status: ${fmt(paritySqlite.status)}`);
   lines.push(`- Structure profile: ${fmt(structure.kind)}`);
   lines.push(`- Declared workflow version: ${fmt(structure.declared_workflow_version)}`);
   lines.push(`- Declared version stale vs structure: ${structure.declared_version_looks_stale === 1 ? "yes" : "no"}`);

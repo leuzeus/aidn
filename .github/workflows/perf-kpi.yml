@@ -174,7 +174,7 @@ jobs:
 
       - name: Build Index Quality Report
         run: |
-          npm run perf:index-report -- --index-file .aidn/runtime/index/workflow-index.json --parity-file .aidn/runtime/index/index-parity.json --out .aidn/runtime/index/index-report.json
+          npm run perf:index-report -- --index-file .aidn/runtime/index/workflow-index.json --parity-file .aidn/runtime/index/index-parity.json --sqlite-parity-file .aidn/runtime/index/index-sqlite-parity.json --out .aidn/runtime/index/index-report.json
 
       - name: Evaluate Index Quality Thresholds (non-blocking)
         run: |

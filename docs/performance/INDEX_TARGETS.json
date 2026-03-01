@@ -31,6 +31,20 @@
       "severity": "warn"
     },
     {
+      "id": "INDEX_PARITY_SQL_OK",
+      "key": "summary.parity_sql.ok_numeric",
+      "op": "==",
+      "value": 1,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_PARITY_SQLITE_OK",
+      "key": "summary.parity_sqlite.ok_numeric",
+      "op": "==",
+      "value": 1,
+      "severity": "warn"
+    },
+    {
       "id": "INDEX_RUN_METRICS_PRESENT",
       "key": "summary.run_metrics.present",
       "op": ">=",

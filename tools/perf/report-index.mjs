@@ -7,6 +7,7 @@ function parseArgs(argv) {
   const args = {
     indexFile: ".aidn/runtime/index/workflow-index.json",
     parityFile: ".aidn/runtime/index/index-parity.json",
+    sqliteParityFile: ".aidn/runtime/index/index-sqlite-parity.json",
     out: ".aidn/runtime/index/index-report.json",
     json: false,
   };
@@ -18,6 +19,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--parity-file") {
       args.parityFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--sqlite-parity-file") {
+      args.sqliteParityFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--out") {
       args.out = argv[i + 1] ?? "";
@@ -45,6 +49,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/report-index.mjs");
   console.log("  node tools/perf/report-index.mjs --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/index-report.json");
+  console.log("  node tools/perf/report-index.mjs --parity-file .aidn/runtime/index/index-parity.json --sqlite-parity-file .aidn/runtime/index/index-sqlite-parity.json");
 }
 
 function readJson(filePath, label) {
@@ -84,7 +89,41 @@ function numericOrNull(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-function buildReport(indexData, parityData, parityExists) {
+function parityOkFromPayload(payload) {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+  if (typeof payload.ok === "boolean") {
+    return payload.ok;
+  }
+  if (typeof payload.in_sync === "boolean") {
+    return payload.in_sync;
+  }
+  if (typeof payload.status === "string") {
+    if (payload.status === "pass") {
+      return true;
+    }
+    if (payload.status === "fail") {
+      return false;
+    }
+  }
+  return null;
+}
+
+function parityStatusFrom(ok, exists) {
+  if (!exists) {
+    return "missing";
+  }
+  if (ok === true) {
+    return "pass";
+  }
+  if (ok === false) {
+    return "fail";
+  }
+  return "unknown";
+}
+
+function buildReport(indexData, sqlParityData, sqlParityExists, sqliteParityData, sqliteParityExists) {
   const declared = {
     cycles: numericOrNull(indexData?.summary?.cycles_count),
     artifacts: numericOrNull(indexData?.summary?.artifacts_count),
@@ -116,10 +155,22 @@ function buildReport(indexData, parityData, parityExists) {
       && consistency.run_metrics_count_match === 1,
   );
 
-  const parityOk = parityExists ? boolNum(parityData?.ok === true) : 0;
-  const parityStatus = !parityExists
+  const sqlParityOkRaw = parityOkFromPayload(sqlParityData);
+  const sqliteParityOkRaw = parityOkFromPayload(sqliteParityData);
+  const sqlParityStatus = parityStatusFrom(sqlParityOkRaw, sqlParityExists);
+  const sqliteParityStatus = parityStatusFrom(sqliteParityOkRaw, sqliteParityExists);
+  const activeParityChecks = [];
+  if (sqlParityExists && sqlParityOkRaw != null) {
+    activeParityChecks.push(sqlParityOkRaw === true);
+  }
+  if (sqliteParityExists && sqliteParityOkRaw != null) {
+    activeParityChecks.push(sqliteParityOkRaw === true);
+  }
+  const parityAllOk = activeParityChecks.length > 0 && activeParityChecks.every(Boolean);
+  const parityStatus = activeParityChecks.length === 0
     ? "missing"
-    : (parityData?.ok === true ? "pass" : "fail");
+    : (parityAllOk ? "pass" : "fail");
+  const parityOk = boolNum(parityAllOk);
   const structureProfile = indexData?.structure_profile ?? null;
   const structureKind = String(structureProfile?.kind ?? "unknown");
   const declaredVersion = structureProfile?.declared_workflow_version ?? null;
@@ -146,6 +197,14 @@ function buildReport(indexData, parityData, parityExists) {
         status: parityStatus,
         ok_numeric: parityOk,
       },
+      parity_sql: {
+        status: sqlParityStatus,
+        ok_numeric: boolNum(sqlParityOkRaw === true),
+      },
+      parity_sqlite: {
+        status: sqliteParityStatus,
+        ok_numeric: boolNum(sqliteParityOkRaw === true),
+      },
       structure: {
         kind: structureKind,
         is_mixed: boolNum(structureKind === "mixed"),
@@ -169,11 +228,14 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const index = readJson(args.indexFile, "Index file");
-    const parity = readJsonOptional(args.parityFile, "Parity file");
-    const report = buildReport(index.data, parity.data, parity.exists);
+    const parity = readJsonOptional(args.parityFile, "SQL parity file");
+    const sqliteParity = readJsonOptional(args.sqliteParityFile, "SQLite parity file");
+    const report = buildReport(index.data, parity.data, parity.exists, sqliteParity.data, sqliteParity.exists);
     report.index_file = index.absolute;
     report.parity_file = parity.absolute;
     report.parity_exists = parity.exists;
+    report.sqlite_parity_file = sqliteParity.absolute;
+    report.sqlite_parity_exists = sqliteParity.exists;
     const outWrite = writeJson(args.out, report);
     report.output_file = outWrite.path;
     report.output_written = outWrite.written;

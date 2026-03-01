@@ -30,7 +30,7 @@ The following scripts were added under `tools/perf/`:
 - `index-verify-dual.mjs` - verify JSON/SQL dual-write parity from deterministic SQL regeneration
 - `index-from-sqlite.mjs` - export SQLite index back to JSON (derived artifact)
 - `index-verify-sqlite.mjs` - verify JSON/SQLite parity from deterministic projection
-- `report-index.mjs` - compute index quality report (counts consistency, parity status, run-metrics presence)
+- `report-index.mjs` - compute index quality report (counts consistency, SQL+SQLite parity status, run-metrics presence)
 - `render-index-summary.mjs` - generate Markdown summary from index report + index threshold checks
 - `reload-check.mjs` - evaluate incremental/full/stop reload decision from digest + mapping
 - `gating-evaluate.mjs` - evaluate L1/L2/L3 gating with conditional drift signals
@@ -78,7 +78,7 @@ npm run perf:index-query -- --query run-metrics --index-file .aidn/runtime/index
 npm run perf:structure -- --target ../client-repo --json
 npm run perf:index-verify -- --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql
 node tools/perf/index-verify-dual.mjs --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql --json > .aidn/runtime/index/index-parity.json
-npm run perf:index-report -- --index-file .aidn/runtime/index/workflow-index.json --parity-file .aidn/runtime/index/index-parity.json --out .aidn/runtime/index/index-report.json
+npm run perf:index-report -- --index-file .aidn/runtime/index/workflow-index.json --parity-file .aidn/runtime/index/index-parity.json --sqlite-parity-file .aidn/runtime/index/index-sqlite-parity.json --out .aidn/runtime/index/index-report.json
 npm run perf:index-thresholds
 npm run perf:index-summary -- --report-file .aidn/runtime/index/index-report.json --thresholds-file .aidn/runtime/index/index-thresholds.json --out .aidn/runtime/index/index-summary.md
 npm run perf:reload-check -- --target ../client-repo
