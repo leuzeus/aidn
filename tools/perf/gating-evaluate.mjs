@@ -9,6 +9,7 @@ function parseArgs(argv) {
     target: ".",
     cache: ".aidn/runtime/cache/reload-state.json",
     eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
+    indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
     thresholdFiles: 3,
     thresholdMinutes: 45,
     mode: "COMMITTING",
@@ -27,6 +28,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--event-file") {
       args.eventFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--index-sync-check-file") {
+      args.indexSyncCheckFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--threshold-files") {
       const raw = argv[i + 1] ?? "";
@@ -76,6 +80,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client --mode COMMITTING");
+  console.log("  node tools/perf/gating-evaluate.mjs --target ../client --index-sync-check-file .aidn/runtime/index/index-sync-check.json");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client --run-id S072-20260301T1012Z");
   console.log("  node tools/perf/gating-evaluate.mjs --json");
 }
@@ -228,6 +233,18 @@ function readNdjson(filePath) {
   return out;
 }
 
+function readJsonOptional(filePath) {
+  const absolute = path.resolve(process.cwd(), filePath);
+  if (!fs.existsSync(absolute)) {
+    return { exists: false, absolute, data: null };
+  }
+  try {
+    return { exists: true, absolute, data: JSON.parse(fs.readFileSync(absolute, "utf8")) };
+  } catch {
+    return { exists: true, absolute, data: null };
+  }
+}
+
 function toTimestampMs(iso) {
   const ms = Date.parse(String(iso ?? ""));
   return Number.isNaN(ms) ? null : ms;
@@ -248,6 +265,7 @@ function detectSignals(targetRoot, args, reloadResult) {
     time_since_last_drift_check: false,
     uncertain_intent: false,
     structure_mixed: false,
+    index_sync_drift: false,
   };
 
   if (sessionObjective && cycleGoal) {
@@ -280,13 +298,19 @@ function detectSignals(targetRoot, args, reloadResult) {
   signal.structure_mixed = (reloadResult.reason_codes ?? []).some((code) =>
     code === "STRUCTURE_MIXED_PROFILE" || code === "STRUCTURE_PROFILE_UNKNOWN" || code === "DECLARED_VERSION_STALE",
   );
+  const indexSyncCheck = readJsonOptional(args.indexSyncCheckFile);
+  const indexSyncPayload = indexSyncCheck.data;
+  const indexSyncInSync = indexSyncPayload?.in_sync === true;
+  signal.index_sync_drift = indexSyncCheck.exists && !indexSyncInSync;
 
   const activeSignals = Object.entries(signal)
     .filter(([, active]) => active)
     .map(([name]) => name);
 
   const criticalSignals = activeSignals.filter((name) =>
-    name === "cross_domain_touch" || (name === "scope_growth" && args.mode === "COMMITTING"),
+    name === "cross_domain_touch"
+      || name === "index_sync_drift"
+      || (name === "scope_growth" && args.mode === "COMMITTING"),
   );
 
   const fallbackEvents = events.filter((event) =>
@@ -306,6 +330,9 @@ function detectSignals(targetRoot, args, reloadResult) {
     critical_signals: criticalSignals,
     changed_files_count: changedFiles.length,
     changed_files_sample: changedFiles.slice(0, 20),
+    index_sync_check_file: indexSyncCheck.absolute,
+    index_sync_check_exists: indexSyncCheck.exists,
+    index_sync_in_sync: indexSyncInSync,
   };
 
   const hasBlockingReason = level1.reason_codes.some((code) =>
@@ -313,11 +340,16 @@ function detectSignals(targetRoot, args, reloadResult) {
   );
 
   const level3 = {
-    required: hasBlockingReason || fallbackRecentCount >= 3,
+    required: hasBlockingReason
+      || fallbackRecentCount >= 3
+      || (indexSyncPayload?.drift_level === "high"),
     reason: hasBlockingReason
       ? "blocking_l1_reason"
-      : (fallbackRecentCount >= 3 ? "repeated_fallbacks" : null),
+      : (fallbackRecentCount >= 3
+        ? "repeated_fallbacks"
+        : (indexSyncPayload?.drift_level === "high" ? "index_sync_high_drift" : null)),
     fallback_recent_count: fallbackRecentCount,
+    index_sync_drift_level: indexSyncPayload?.drift_level ?? null,
   };
 
   return { level1, level2, level3 };
@@ -331,7 +363,7 @@ function deriveAction(levels) {
       gates_triggered: ["R10"],
       reason_code: levels.level3.reason === "blocking_l1_reason"
         ? "L3_BLOCKING"
-        : "L3_REPEATED_FALLBACK",
+        : (levels.level3.reason === "index_sync_high_drift" ? "L3_INDEX_SYNC_DRIFT" : "L3_REPEATED_FALLBACK"),
     };
   }
   if (levels.level2.required) {

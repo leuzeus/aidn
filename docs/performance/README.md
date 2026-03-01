@@ -74,6 +74,7 @@ npm run perf:index-summary -- --report-file .aidn/runtime/index/index-report.jso
 npm run perf:reload-check -- --target ../client-repo
 npm run perf:reload-check -- --target ../client-repo --write-cache
 npm run perf:gate -- --target ../client-repo --mode COMMITTING
+npm run perf:gate -- --target ../client-repo --mode COMMITTING --index-sync-check-file .aidn/runtime/index/index-sync-check.json
 npm run perf:checkpoint -- --target ../client-repo --mode COMMITTING
 npm run perf:checkpoint -- --target ../client-repo --mode COMMITTING --index-sync-check
 npm run perf:session-start -- --target ../client-repo --mode COMMITTING
@@ -136,6 +137,7 @@ Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --
 
 - L1 fast checks: digest + mapping (`perf:reload-check`)
 - L2 conditional drift signals: objective delta, scope growth, cross-domain touch, stale drift-check, uncertain intent, structure-mixed/version-stale signals (`perf:gate`)
+- L2 conditional drift signals also include `index_sync_drift` when latest index sync check is out-of-sync (`--index-sync-check-file`).
 - L3 incident trigger: blocking L1 reasons or repeated fallback patterns (`perf:gate`)
 
 `perf:checkpoint` orchestrates these steps and writes a summary event for KPI tracking.
