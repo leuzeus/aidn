@@ -45,6 +45,14 @@ Client repository after install:
 - `.codex/skills.yaml`
   - rendered with pinned `remote.ref` matching the installed aidn tag (for example `v0.2.0`)
 
+## Workflow Diagrams
+
+- Global system architecture: `docs/diagrams/01-global-system-architecture.md`
+- Cycle state machine: `docs/diagrams/02-cycle-state-machine.md`
+- Runtime session flow: `docs/diagrams/03-runtime-session-flow.md`
+- Entropy regulation loop: `docs/diagrams/04-entropy-regulation-control-loop.md`
+- Mermaid style preset (indigo): `docs/diagrams/MERMAID_PRESET_INDIGO.md`
+
 ## Installation
 
 ```bash

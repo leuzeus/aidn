@@ -1,36 +1,79 @@
 ```mermaid
-%% 3) Runtime Session Flow
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Trebuchet MS, Verdana, sans-serif",
+    "fontSize": "15px",
+    "lineColor": "#1E1F5C",
+    "primaryColor": "#2C2E83",
+    "primaryTextColor": "#FFFFFF",
+    "primaryBorderColor": "#1E1F5C",
+    "secondaryColor": "#3B3FBF",
+    "secondaryTextColor": "#FFFFFF",
+    "secondaryBorderColor": "#1E1F5C",
+    "tertiaryColor": "#F6F7FF",
+    "tertiaryTextColor": "#1E1F5C",
+    "tertiaryBorderColor": "#2C2E83"
+  }
+}}%%
+%% 3) Runtime Session Flow (v0.2.0)
 flowchart TD
-  ST["Session Start"] --> RL["Context Reload"]
-  RL --> RLB["Read Baseline"]
-  RL --> RLS["Read Snapshot"]
-  RL --> MSEL["Select Mode (Thinking / Exploring / Committing)"]
+  ST["Session start"] --> CR["context-reload"]
+  CR --> SS["start-session"]
+  SS --> MODE{"Mode? (R02)"}
 
-  MSEL -->|Thinking| TW["Thinking Work"]
-  MSEL -->|Exploring| EW["Exploring Work"]
-  MSEL -->|Committing| CW["Committing Work"]
+  MODE -->|THINKING| THINK["Doc/reasoning work"]
+  MODE -->|EXPLORING| EXP["Exploration work"]
+  MODE -->|COMMITTING| BCA["branch-cycle-audit (R03)"]
 
-  CW --> IA["Intent Audit"]
-  IA --> ECP1["ΔE checkpoint: pre-decision"]
-  ECP1 --> AA["Architecture Audit"]
-  AA --> IM["Implementation"]
+  BCA --> MAP{"Mapping + DoR valid?"}
+  MAP -->|No| FIX["Remediate mapping or DoR and reselect mode"]
+  FIX --> MODE
+  MAP -->|Yes| NEED{"Need new cycle branch?"}
 
-  EW --> DR["Drift Check"]
-  TW --> DR
-  IM --> ADV["Audit-Driven Validation"]
+  NEED -->|Yes| CONT{"Continuity gate R06: R1 R2 R3"}
+  CONT --> CNEW["cycle-create + status continuity fields"]
+  CNEW --> IMPL["Implementation on cycle/intermediate"]
+  NEED -->|No| IMPL
 
-  ADV --> DOD["DoD Check"]
-  ADV --> ARCH["Architecture Consistency Check"]
-  ADV --> ECP2["ΔE checkpoint: post-build"]
+  THINK --> DRIFT["drift-check when needed (R05)"]
+  EXP --> DRIFT
+  IMPL --> DRIFT
+  DRIFT --> CLOSE{"Close session now?"}
 
-  DOD --> DEC{"Pass?"}
-  ARCH --> DEC
-  ECP2 --> DEC
+  CLOSE -->|No| LOOP["Continue active work"]
+  LOOP --> MODE
 
-  DEC -->|No| CA["Corrective Action"]
-  CA --> IA
+  CLOSE -->|Yes| RESOLVE["Resolve open cycles R07: integrate report close-non-retained or cancel-close"]
+  RESOLVE --> OK{"All open cycles resolved?"}
+  OK -->|No - cancel close| LOOP
+  OK -->|Yes| CS["close-session + snapshot update"]
 
-  DEC -->|Yes| SU["Update Snapshot"]
-  SU --> PL["Route non-essential items to Parking Lot"]
-  PL --> END["Session End"]
+  CS --> PRQ{"PR/merge step required?"}
+  PRQ -->|No| END["Session ended"]
+  PRQ -->|Yes| PRG["PR review gate R08 with Codex threads triaged"]
+  PRG --> MRG["Merge"]
+  MRG --> SYNC{"Post-merge local sync gate R09: local vs remote aligned?"}
+  SYNC -->|No| REC["Explicit local reconciliation"]
+  REC --> SYNC
+  SYNC -->|Yes| END
+
+  MAP --> INC["Incident triage (R10)"]
+  CONT --> INC
+  RESOLVE --> INC
+  PRG --> INC
+  SYNC --> INC
+  INC --> MODE
+
+  classDef gate fill:#3B3FBF,stroke:#1E1F5C,color:#FFFFFF,stroke-width:2px;
+  classDef action fill:#2C2E83,stroke:#1E1F5C,color:#FFFFFF,stroke-width:2px;
+  classDef endnode fill:#F6F7FF,stroke:#2C2E83,color:#1E1F5C,stroke-width:1.5px;
+  classDef incident fill:#FFF4F4,stroke:#B42318,color:#7A271A,stroke-width:2px;
+
+  class MODE,MAP,NEED,CONT,CLOSE,OK,PRQ,SYNC gate;
+  class ST,CR,SS,THINK,EXP,BCA,FIX,CNEW,IMPL,DRIFT,LOOP,RESOLVE,CS,PRG,MRG,REC action;
+  class END endnode;
+  class INC incident;
+
+  linkStyle default stroke:#1E1F5C,stroke-width:2px;
 ```
