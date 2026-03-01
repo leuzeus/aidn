@@ -14,6 +14,8 @@
     "perf:checkpoint": "node tools/perf/checkpoint.mjs",
     "perf:hook": "node tools/perf/workflow-hook.mjs",
     "perf:session-start": "node tools/perf/workflow-hook.mjs --phase session-start",
-    "perf:session-close": "node tools/perf/workflow-hook.mjs --phase session-close"
+    "perf:session-close": "node tools/perf/workflow-hook.mjs --phase session-close",
+    "perf:delivery-start": "node tools/perf/delivery-window.mjs --action start",
+    "perf:delivery-end": "node tools/perf/delivery-window.mjs --action end"
   }
 }

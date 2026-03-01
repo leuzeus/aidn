@@ -18,6 +18,7 @@ The following scripts were added under `tools/perf/`:
 - `gating-evaluate.mjs` - evaluate L1/L2/L3 gating with conditional drift signals
 - `checkpoint.mjs` - run reload-check + gate + index-sync as one checkpoint command
 - `workflow-hook.mjs` - run checkpoint from session hooks (`session-start` / `session-close`)
+- `delivery-window.mjs` - mark delivery start/end to compute overhead ratio against control time
 - `sql/schema.sql` - proposed SQLite schema for future index backend
 
 ## Commands
@@ -32,6 +33,8 @@ npm run perf:gate -- --target ../client-repo --mode COMMITTING
 npm run perf:checkpoint -- --target ../client-repo --mode COMMITTING
 npm run perf:session-start -- --target ../client-repo --mode COMMITTING
 npm run perf:session-close -- --target ../client-repo --mode COMMITTING
+npm run perf:delivery-start -- --target ../client-repo --mode COMMITTING
+npm run perf:delivery-end -- --target ../client-repo --mode COMMITTING
 ```
 
 Default runtime outputs:
@@ -55,3 +58,13 @@ These runtime artifacts are intentionally local and ignored by git.
 - At session close: run `perf:session-close`
 - Default behavior is non-blocking (hook warns if checkpoint fails).
 - Use `--strict` on `perf:hook` when you want blocking behavior.
+- Session start stores a shared `run_id` in `.aidn/runtime/perf/current-run-id.txt`.
+
+## Overhead Ratio Enablement
+
+To avoid `overhead_ratio=n/a`, emit delivery window markers:
+- `perf:delivery-start` before implementation window
+- `perf:delivery-end` after implementation window
+
+These events are marked as `control=false` and provide delivery duration for KPI ratio calculation.
+If no explicit `--run-id` is passed, delivery markers reuse the shared run id from session hook automatically.

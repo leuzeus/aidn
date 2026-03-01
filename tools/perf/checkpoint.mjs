@@ -11,6 +11,7 @@ function parseArgs(argv) {
     eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
     indexOutput: ".aidn/runtime/index/workflow-index.json",
     mode: "COMMITTING",
+    runId: "",
     json: false,
     emitSummaryEvent: true,
   };
@@ -31,6 +32,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--mode") {
       args.mode = String(argv[i + 1] ?? "").toUpperCase();
+      i += 1;
+    } else if (token === "--run-id") {
+      args.runId = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--json") {
       args.json = true;
@@ -63,6 +67,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/checkpoint.mjs --target ../client");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --mode COMMITTING");
+  console.log("  node tools/perf/checkpoint.mjs --target ../client --run-id S072-20260301T1012Z");
   console.log("  node tools/perf/checkpoint.mjs --json");
 }
 
@@ -117,7 +122,7 @@ function main() {
 
     const gateStarted = Date.now();
     const gate = execJson(
-      `node tools/perf/gating-evaluate.mjs --target "${targetRoot}" --cache "${args.cache}" --event-file "${args.eventFile}" --mode ${args.mode} --json`,
+      `node tools/perf/gating-evaluate.mjs --target "${targetRoot}" --cache "${args.cache}" --event-file "${args.eventFile}" --mode ${args.mode}${args.runId ? ` --run-id ${args.runId}` : ""} --json`,
     );
     const gateDurationMs = Date.now() - gateStarted;
 
@@ -127,8 +132,11 @@ function main() {
     );
     const indexDurationMs = Date.now() - indexStarted;
 
+    const checkpointRunId = args.runId || `checkpoint-${toIsoNowCompact()}`;
+
     const result = {
       ts: new Date().toISOString(),
+      run_id: checkpointRunId,
       target_root: targetRoot,
       mode: args.mode,
       branch: getCurrentBranch(targetRoot),
@@ -153,10 +161,9 @@ function main() {
     };
 
     if (args.emitSummaryEvent) {
-      const runId = `checkpoint-${toIsoNowCompact()}`;
       const event = {
         ts: result.ts,
-        run_id: runId,
+        run_id: checkpointRunId,
         session_id: null,
         cycle_id: null,
         branch: result.branch,
@@ -175,7 +182,7 @@ function main() {
         trace_id: `tr-${crypto.randomBytes(4).toString("hex")}`,
       };
       result.summary_event_file = appendEvent(args.eventFile, event);
-      result.summary_run_id = runId;
+      result.summary_run_id = checkpointRunId;
     }
 
     if (args.json) {

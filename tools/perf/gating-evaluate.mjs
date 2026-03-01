@@ -12,6 +12,7 @@ function parseArgs(argv) {
     thresholdFiles: 3,
     thresholdMinutes: 45,
     mode: "COMMITTING",
+    runId: "",
     emitEvent: true,
     json: false,
   };
@@ -44,6 +45,9 @@ function parseArgs(argv) {
     } else if (token === "--mode") {
       args.mode = String(argv[i + 1] ?? "").toUpperCase();
       i += 1;
+    } else if (token === "--run-id") {
+      args.runId = argv[i + 1] ?? "";
+      i += 1;
     } else if (token === "--no-emit-event") {
       args.emitEvent = false;
     } else if (token === "--json") {
@@ -72,6 +76,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client --mode COMMITTING");
+  console.log("  node tools/perf/gating-evaluate.mjs --target ../client --run-id S072-20260301T1012Z");
   console.log("  node tools/perf/gating-evaluate.mjs --json");
 }
 
@@ -399,7 +404,7 @@ function main() {
     if (args.emitEvent) {
       const eventPayload = {
         ts: result.ts,
-        run_id: `gate-${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z")}`,
+        run_id: args.runId || `gate-${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z")}`,
         session_id: null,
         cycle_id: null,
         branch: result.branch,

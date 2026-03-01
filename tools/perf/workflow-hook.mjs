@@ -11,6 +11,7 @@ function parseArgs(argv) {
     target: ".",
     mode: "COMMITTING",
     eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
+    runIdFile: ".aidn/runtime/perf/current-run-id.txt",
     strict: false,
     json: false,
   };
@@ -28,6 +29,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--event-file") {
       args.eventFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--run-id-file") {
+      args.runIdFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--strict") {
       args.strict = true;
@@ -57,6 +61,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --mode COMMITTING");
+  console.log("  node tools/perf/workflow-hook.mjs --phase session-start --run-id-file .aidn/runtime/perf/current-run-id.txt");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --strict");
 }
 
@@ -83,21 +88,39 @@ function getCurrentBranch(targetRoot) {
   }
 }
 
-function runCheckpoint(targetRoot, mode) {
+function runCheckpoint(targetRoot, mode, runId) {
   const scriptDir = path.dirname(fileURLToPath(import.meta.url));
   const checkpointScript = path.join(scriptDir, "checkpoint.mjs");
-  const stdout = execFileSync(process.execPath, [
+  const cmd = [
     checkpointScript,
     "--target",
     targetRoot,
     "--mode",
     mode,
-    "--json",
-  ], {
+  ];
+  if (runId) {
+    cmd.push("--run-id", runId);
+  }
+  cmd.push("--json");
+
+  const stdout = execFileSync(process.execPath, cmd, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
   return JSON.parse(stdout);
+}
+
+function writeRunIdFile(filePath, runId) {
+  const absolute = path.resolve(process.cwd(), filePath);
+  fs.mkdirSync(path.dirname(absolute), { recursive: true });
+  fs.writeFileSync(absolute, `${runId}\n`, "utf8");
+  return absolute;
+}
+
+function removeRunIdFile(filePath) {
+  const absolute = path.resolve(process.cwd(), filePath);
+  fs.rmSync(absolute, { force: true });
+  return absolute;
 }
 
 function main() {
@@ -107,7 +130,7 @@ function main() {
     const targetRoot = path.resolve(process.cwd(), args.target);
     const branch = getCurrentBranch(targetRoot);
     const phaseEvent = args.phase.replace("-", "_");
-    const runId = toRunId(`hook-${phaseEvent}`);
+    const runId = toRunId(`session-${phaseEvent}`);
 
     let checkpointResult = null;
     let hookResult = "ok";
@@ -115,7 +138,7 @@ function main() {
     let checkpointError = null;
 
     try {
-      checkpointResult = runCheckpoint(targetRoot, args.mode);
+      checkpointResult = runCheckpoint(targetRoot, args.mode, runId);
     } catch (error) {
       checkpointError = error;
       hookResult = args.strict ? "stop" : "warn";
@@ -147,6 +170,13 @@ function main() {
     };
     const eventFilePath = appendEvent(args.eventFile, eventPayload);
 
+    let runIdFilePath = null;
+    if (args.phase === "session-start") {
+      runIdFilePath = writeRunIdFile(args.runIdFile, runId);
+    } else if (args.phase === "session-close") {
+      runIdFilePath = removeRunIdFile(args.runIdFile);
+    }
+
     const output = {
       ts: eventPayload.ts,
       phase: args.phase,
@@ -158,6 +188,7 @@ function main() {
       reason_code: reasonCode,
       branch,
       event_file: eventFilePath,
+      run_id_file: runIdFilePath,
       checkpoint: checkpointResult,
       checkpoint_error: checkpointError ? String(checkpointError.message ?? checkpointError) : null,
       duration_ms: eventPayload.duration_ms,
@@ -175,7 +206,11 @@ function main() {
     }
     console.log(`Target: ${targetRoot}`);
     console.log(`Mode: ${args.mode}`);
+    console.log(`run_id: ${runId}`);
     console.log(`Event file: ${eventFilePath}`);
+    if (runIdFilePath) {
+      console.log(`Run id file: ${runIdFilePath}`);
+    }
     if (checkpointResult) {
       console.log(`Checkpoint action: ${checkpointResult.gate?.action ?? "n/a"}`);
       console.log(`Checkpoint total: ${checkpointResult.total_duration_ms ?? "n/a"}ms`);
