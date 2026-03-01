@@ -106,13 +106,6 @@ function execJson(command) {
   return JSON.parse(out);
 }
 
-function execText(command) {
-  return execSync(command, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-}
-
 function appendEvent(eventFile, event) {
   const absolute = path.resolve(process.cwd(), eventFile);
   fs.mkdirSync(path.dirname(absolute), { recursive: true });
@@ -169,8 +162,8 @@ function main() {
     if (args.indexKpiFile) {
       indexArgs.push(`--kpi-file "${args.indexKpiFile}"`);
     }
-    const indexOut = execText(
-      `node tools/perf/index-sync.mjs ${indexArgs.join(" ")}`,
+    const index = execJson(
+      `node tools/perf/index-sync.mjs ${indexArgs.join(" ")} --json`,
     );
     const indexDurationMs = Date.now() - indexStarted;
 
@@ -200,10 +193,14 @@ function main() {
         sql_output: args.indexStore === "sql" || args.indexStore === "dual"
           ? path.resolve(process.cwd(), args.indexSqlOutput)
           : null,
+        outputs: Array.isArray(index.outputs) ? index.outputs : [],
+        writes: index.writes ?? {
+          files_written_count: 0,
+          bytes_written: 0,
+        },
         duration_ms: indexDurationMs,
       },
       total_duration_ms: Date.now() - started,
-      index_sync_stdout: indexOut.trim(),
     };
 
     if (args.emitSummaryEvent) {
@@ -244,8 +241,8 @@ function main() {
         duration_ms: result.total_duration_ms,
         files_read_count: 0,
         bytes_read: 0,
-        files_written_count: 1,
-        bytes_written: 0,
+        files_written_count: Number(result.index?.writes?.files_written_count ?? 0),
+        bytes_written: Number(result.index?.writes?.bytes_written ?? 0),
         gates_triggered: ["R03", "R04", "R05", "R10"],
         result: result.gate.result === "stop" ? "stop" : "ok",
         reason_code: result.gate.reason_code,
@@ -265,6 +262,9 @@ function main() {
     console.log(`Reload: ${result.reload.decision} (${result.reload.duration_ms}ms)`);
     console.log(`Gate: ${result.gate.action} (${result.gate.duration_ms}ms)`);
     console.log(`Index: ${result.index.output} (${result.index.duration_ms}ms)`);
+    console.log(
+      `Index writes: files=${result.index.writes.files_written_count}, bytes=${result.index.writes.bytes_written}`,
+    );
     if (result.summary_event_file) {
       console.log(`Summary event: ${result.summary_event_file}`);
       console.log(`Summary run_id: ${result.summary_run_id}`);

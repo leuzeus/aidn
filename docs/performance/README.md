@@ -45,6 +45,7 @@ npm run perf:index -- --target ../client-repo
 npm run perf:index -- --target ../client-repo --store sql --sql-output .aidn/runtime/index/workflow-index.sql
 npm run perf:index-dual -- --target ../client-repo
 npm run perf:index-dual -- --target ../client-repo --kpi-file .aidn/runtime/perf/kpi-report.json
+npm run perf:index -- --target ../client-repo --json
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.json
 npm run perf:index-query -- --query artifacts-since --since 2026-03-01T00:00:00Z --index-file .aidn/runtime/index/workflow-index.json
@@ -118,6 +119,7 @@ Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --
 - L3 incident trigger: blocking L1 reasons or repeated fallback patterns (`perf:gate`)
 
 `perf:checkpoint` orchestrates these steps and writes a summary event for KPI tracking.
+Checkpoint summary events now carry effective index write counters (`files_written_count`, `bytes_written`) from `index-sync --json`.
 
 ## Session Hook Integration (minimal)
 

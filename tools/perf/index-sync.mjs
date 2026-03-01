@@ -13,6 +13,7 @@ function parseArgs(argv) {
     schemaFile: "tools/perf/sql/schema.sql",
     includeSchema: true,
     kpiFile: "",
+    json: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -37,6 +38,8 @@ function parseArgs(argv) {
     } else if (token === "--kpi-file") {
       args.kpiFile = argv[i + 1] ?? "";
       i += 1;
+    } else if (token === "--json") {
+      args.json = true;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -67,6 +70,7 @@ function printUsage() {
   console.log("  node tools/perf/index-sync.mjs --target . --output .aidn/runtime/index/workflow-index.json");
   console.log("  node tools/perf/index-sync.mjs --target . --store dual --output .aidn/runtime/index/workflow-index.json --sql-output .aidn/runtime/index/workflow-index.sql");
   console.log("  node tools/perf/index-sync.mjs --target . --store dual --kpi-file .aidn/runtime/perf/kpi-report.json");
+  console.log("  node tools/perf/index-sync.mjs --target . --json");
 }
 
 function walkFiles(rootDir) {
@@ -356,6 +360,24 @@ function main() {
       includeSchema: args.includeSchema,
     });
     const outputs = store.write(payload);
+    const writes = outputs.reduce((acc, out) => ({
+      files_written_count: acc.files_written_count + (out.written ? 1 : 0),
+      bytes_written: acc.bytes_written + (out.written ? Number(out.bytes_written ?? 0) : 0),
+    }), { files_written_count: 0, bytes_written: 0 });
+
+    if (args.json) {
+      console.log(JSON.stringify({
+        ts: new Date().toISOString(),
+        target_root: targetRoot,
+        audit_root: auditRoot,
+        store: args.store,
+        outputs,
+        writes,
+        summary: payload.summary,
+      }, null, 2));
+      return;
+    }
+
     console.log(`Index synced.`);
     console.log(`Target: ${targetRoot}`);
     for (const out of outputs) {

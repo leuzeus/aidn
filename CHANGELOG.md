@@ -29,6 +29,7 @@
 - Add CLI/CI warmup override controls for regression checks (workflow_dispatch inputs mapped to `check-regression` warmup options).
 - Ensure CLI/CI warmup overrides are priority-applied over global and per-rule warmup target settings.
 - Add shared perf I/O utility (`tools/perf/io-lib.mjs`) and apply conditional write-on-change to KPI/regression/fallback/index reports and markdown summaries.
+- Add `--json` output mode to `tools/perf/index-sync.mjs` and wire checkpoint summary events to effective index write counters.
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).
