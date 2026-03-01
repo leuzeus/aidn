@@ -11,6 +11,7 @@
     "perf:sync-history": "node tools/perf/sync-kpi-history.mjs",
     "perf:fallback-report": "node tools/perf/report-fallbacks.mjs",
     "perf:index": "node tools/perf/index-sync.mjs",
+    "perf:index-check": "node tools/perf/index-sync-check.mjs",
     "perf:index-dual": "node tools/perf/index-sync.mjs --store dual",
     "perf:index-sql": "node tools/perf/index-to-sql.mjs",
     "perf:index-query": "node tools/perf/index-query.mjs",

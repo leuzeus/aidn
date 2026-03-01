@@ -15,6 +15,7 @@ The following scripts were added under `tools/perf/`:
 - `report-kpi.mjs` - compute KPI summary from NDJSON
 - `sync-kpi-history.mjs` - persist and deduplicate KPI runs across local iterations (`kpi-history.ndjson`)
 - `index-sync.mjs` - build index from `docs/audit/*` with `IndexStore` mode: `file|sql|dual`
+- `index-sync-check.mjs` - detect drift between on-disk index and fresh import from `docs/audit/*` (optional `--apply`)
 - `index-store.mjs` - local `IndexStore` abstraction (file-first, SQL export optional)
 - `index-to-sql.mjs` - export local index JSON to SQL import script (SQLite-friendly)
 - `index-sql-lib.mjs` - shared SQL generation library used by index tooling
@@ -42,10 +43,13 @@ npm run perf:report
 npm run perf:report -- --run-prefix session- --require-delivery
 npm run perf:sync-history -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --max-runs 200
 npm run perf:index -- --target ../client-repo
+npm run perf:index-check -- --target ../client-repo --strict
+npm run perf:index-check -- --target ../client-repo --apply
 npm run perf:index -- --target ../client-repo --store sql --sql-output .aidn/runtime/index/workflow-index.sql
 npm run perf:index-dual -- --target ../client-repo
 npm run perf:index-dual -- --target ../client-repo --kpi-file .aidn/runtime/perf/kpi-report.json
 npm run perf:index -- --target ../client-repo --json
+npm run perf:index -- --target ../client-repo --json --dry-run
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.json
 npm run perf:index-query -- --query artifacts-since --since 2026-03-01T00:00:00Z --index-file .aidn/runtime/index/workflow-index.json
@@ -100,6 +104,8 @@ Use `perf:reset -- --keep-history` if you want to preserve cross-run KPI history
 - `dual`: writes JSON + SQL in one run (controlled dual-write, non-blocking)
 
 `perf:index` remains backward compatible and defaults to `file` mode.
+`perf:index -- --dry-run --json` computes payload summary/digest without writing files.
+`perf:index-check` compares current index digest against a dry-run import and can auto-apply with `--apply`.
 `perf:index-verify` should pass when SQL output is generated from the same JSON payload and schema settings.
 Index outputs are written conditionally: unchanged content is detected and not rewritten.
 For JSON index, equivalence check ignores `generated_at` to avoid churn-only rewrites.

@@ -15,6 +15,7 @@ function parseArgs(argv) {
     includeSchema: true,
     kpiFile: "",
     json: false,
+    dryRun: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -41,6 +42,8 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--json") {
       args.json = true;
+    } else if (token === "--dry-run") {
+      args.dryRun = true;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -72,6 +75,7 @@ function printUsage() {
   console.log("  node tools/perf/index-sync.mjs --target . --store dual --output .aidn/runtime/index/workflow-index.json --sql-output .aidn/runtime/index/workflow-index.sql");
   console.log("  node tools/perf/index-sync.mjs --target . --store dual --kpi-file .aidn/runtime/perf/kpi-report.json");
   console.log("  node tools/perf/index-sync.mjs --target . --json");
+  console.log("  node tools/perf/index-sync.mjs --target . --json --dry-run");
 }
 
 function walkFiles(rootDir) {
@@ -318,6 +322,20 @@ function buildRunMetrics(kpiFilePath) {
     }));
 }
 
+function stablePayloadProjection(payload) {
+  if (!payload || typeof payload !== "object") {
+    return payload;
+  }
+  const clone = JSON.parse(JSON.stringify(payload));
+  delete clone.generated_at;
+  return clone;
+}
+
+function payloadDigest(payload) {
+  const stable = stablePayloadProjection(payload);
+  return crypto.createHash("sha256").update(JSON.stringify(stable)).digest("hex");
+}
+
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -355,19 +373,24 @@ function main() {
         structure_kind: structureProfile.kind,
       },
     };
+    const digest = payloadDigest(payload);
 
-    const store = createIndexStore({
-      mode: args.store,
-      jsonOutput: args.output,
-      sqlOutput: args.sqlOutput,
-      schemaFile: args.schemaFile,
-      includeSchema: args.includeSchema,
-    });
-    const outputs = store.write(payload);
-    const writes = outputs.reduce((acc, out) => ({
-      files_written_count: acc.files_written_count + (out.written ? 1 : 0),
-      bytes_written: acc.bytes_written + (out.written ? Number(out.bytes_written ?? 0) : 0),
-    }), { files_written_count: 0, bytes_written: 0 });
+    const outputs = [];
+    let writes = { files_written_count: 0, bytes_written: 0 };
+    if (!args.dryRun) {
+      const store = createIndexStore({
+        mode: args.store,
+        jsonOutput: args.output,
+        sqlOutput: args.sqlOutput,
+        schemaFile: args.schemaFile,
+        includeSchema: args.includeSchema,
+      });
+      outputs.push(...store.write(payload));
+      writes = outputs.reduce((acc, out) => ({
+        files_written_count: acc.files_written_count + (out.written ? 1 : 0),
+        bytes_written: acc.bytes_written + (out.written ? Number(out.bytes_written ?? 0) : 0),
+      }), { files_written_count: 0, bytes_written: 0 });
+    }
 
     if (args.json) {
       console.log(JSON.stringify({
@@ -375,8 +398,10 @@ function main() {
         target_root: targetRoot,
         audit_root: auditRoot,
         store: args.store,
+        dry_run: args.dryRun,
         outputs,
         writes,
+        payload_digest: digest,
         structure_profile: structureProfile,
         summary: payload.summary,
       }, null, 2));
@@ -385,6 +410,10 @@ function main() {
 
     console.log(`Index synced.`);
     console.log(`Target: ${targetRoot}`);
+    console.log(`Payload digest: ${digest}`);
+    if (args.dryRun) {
+      console.log("Dry-run mode: no files written.");
+    }
     for (const out of outputs) {
       const state = out.written ? "updated" : "unchanged";
       console.log(`Output (${out.kind}, ${state}): ${out.path}`);

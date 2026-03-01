@@ -31,6 +31,7 @@
 - Add shared perf I/O utility (`tools/perf/io-lib.mjs`) and apply conditional write-on-change to KPI/regression/fallback/index reports and markdown summaries.
 - Add `--json` output mode to `tools/perf/index-sync.mjs` and wire checkpoint summary events to effective index write counters.
 - Add workflow structure profiling (`perf:structure`) with observed-profile detection (`legacy|modern|mixed|unknown`) and integrate it into reload/gating decisions for multi-version repositories.
+- Add `perf:index-check` drift control for import/export sync (`index-sync --dry-run` digest compare, optional `--apply` rebuild).
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).
