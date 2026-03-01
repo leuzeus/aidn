@@ -19,6 +19,8 @@ The following scripts were added under `tools/perf/`:
 - `index-sql-lib.mjs` - shared SQL generation library used by index tooling
 - `index-query.mjs` - run standard analytics queries on local index JSON
 - `index-verify-dual.mjs` - verify JSON/SQL dual-write parity from deterministic SQL regeneration
+- `report-index.mjs` - compute index quality report (counts consistency, parity status, run-metrics presence)
+- `render-index-summary.mjs` - generate Markdown summary from index report + index threshold checks
 - `reload-check.mjs` - evaluate incremental/full/stop reload decision from digest + mapping
 - `gating-evaluate.mjs` - evaluate L1/L2/L3 gating with conditional drift signals
 - `checkpoint.mjs` - run reload-check + gate + index-sync as one checkpoint command
@@ -44,6 +46,10 @@ npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/ind
 npm run perf:index-query -- --query artifacts-since --since 2026-03-01T00:00:00Z --index-file .aidn/runtime/index/workflow-index.json
 npm run perf:index-query -- --query run-metrics --index-file .aidn/runtime/index/workflow-index.json --limit 30
 npm run perf:index-verify -- --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql
+node tools/perf/index-verify-dual.mjs --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql --json > .aidn/runtime/index/index-parity.json
+npm run perf:index-report -- --index-file .aidn/runtime/index/workflow-index.json --parity-file .aidn/runtime/index/index-parity.json --out .aidn/runtime/index/index-report.json
+npm run perf:index-thresholds
+npm run perf:index-summary -- --report-file .aidn/runtime/index/index-report.json --thresholds-file .aidn/runtime/index/index-thresholds.json --out .aidn/runtime/index/index-summary.md
 npm run perf:reload-check -- --target ../client-repo
 npm run perf:reload-check -- --target ../client-repo --write-cache
 npm run perf:gate -- --target ../client-repo --mode COMMITTING
@@ -61,6 +67,10 @@ Default runtime outputs:
 - `.aidn/runtime/perf/workflow-events.ndjson`
 - `.aidn/runtime/index/workflow-index.json`
 - `.aidn/runtime/index/workflow-index.sql`
+- `.aidn/runtime/index/index-parity.json`
+- `.aidn/runtime/index/index-report.json`
+- `.aidn/runtime/index/index-thresholds.json`
+- `.aidn/runtime/index/index-summary.md`
 - `.aidn/runtime/cache/reload-state.json`
 - `.aidn/runtime/perf/kpi-thresholds.json`
 - `.aidn/runtime/perf/kpi-summary.md`
@@ -116,6 +126,9 @@ Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --
   - `perf:report --run-prefix session- --require-delivery --json`
   - `perf:index-dual --kpi-file .aidn/runtime/perf/kpi-report.json`
   - `perf:index-verify`
+  - `perf:index-report`
+  - `perf:index-thresholds`
+  - `perf:index-summary`
   - `perf:check-thresholds` (non-blocking by default in CI)
   - `perf:render-summary`
 - It publishes:
@@ -127,9 +140,11 @@ Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --
   - `.aidn/runtime/index/workflow-index.sql`
 - `workflow_dispatch` supports `strict_thresholds=true` to make threshold violations blocking.
 - `workflow_dispatch` supports `strict_index_parity=true` to make dual-write parity violations blocking.
+- `workflow_dispatch` supports `strict_index_quality=true` to make index quality threshold violations blocking.
 
 Threshold source file:
 - `docs/performance/KPI_TARGETS.json`
+- `docs/performance/INDEX_TARGETS.json`
 
 ## Overhead Ratio Enablement
 

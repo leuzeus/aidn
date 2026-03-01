@@ -10,6 +10,9 @@
 - Add optional `--kpi-file` on index sync/checkpoint/hook to enrich index payload with `run_metrics`.
 - Add SQL export/import support for `run_metrics` and `run-metrics` query mode in `perf:index-query`.
 - Add CI option `strict_index_parity` (workflow_dispatch) and keep parity check non-blocking by default on PR.
+- Add index quality reporting pipeline (`perf:index-report`, `perf:index-thresholds`, `perf:index-summary`) with targets in `docs/performance/INDEX_TARGETS.json`.
+- Extend perf CI artifacts and job summary with index quality outputs (`index-parity`, `index-report`, `index-thresholds`, `index-summary`).
+- Add CI option `strict_index_quality` (workflow_dispatch) for blocking index quality thresholds.
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).

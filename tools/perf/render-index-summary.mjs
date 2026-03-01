@@ -1,0 +1,120 @@
+#!/usr/bin/env node
+import fs from "node:fs";
+import path from "node:path";
+
+function parseArgs(argv) {
+  const args = {
+    reportFile: ".aidn/runtime/index/index-report.json",
+    thresholdsFile: ".aidn/runtime/index/index-thresholds.json",
+    out: ".aidn/runtime/index/index-summary.md",
+  };
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const token = argv[i];
+    if (token === "--report-file") {
+      args.reportFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--thresholds-file") {
+      args.thresholdsFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--out") {
+      args.out = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--help" || token === "-h") {
+      printUsage();
+      process.exit(0);
+    } else {
+      throw new Error(`Unknown argument: ${token}`);
+    }
+  }
+
+  if (!args.reportFile) {
+    throw new Error("Missing value for --report-file");
+  }
+  if (!args.out) {
+    throw new Error("Missing value for --out");
+  }
+  return args;
+}
+
+function printUsage() {
+  console.log("Usage:");
+  console.log("  node tools/perf/render-index-summary.mjs");
+  console.log("  node tools/perf/render-index-summary.mjs --report-file .aidn/runtime/index/index-report.json --out .aidn/runtime/index/index-summary.md");
+}
+
+function readJson(filePath, label, required = true) {
+  const absolute = path.resolve(process.cwd(), filePath);
+  if (!fs.existsSync(absolute)) {
+    if (!required) {
+      return { absolute, data: null, exists: false };
+    }
+    throw new Error(`${label} not found: ${absolute}`);
+  }
+  try {
+    return { absolute, data: JSON.parse(fs.readFileSync(absolute, "utf8")), exists: true };
+  } catch (error) {
+    throw new Error(`${label} invalid JSON: ${error.message}`);
+  }
+}
+
+function fmt(value) {
+  return value == null ? "n/a" : String(value);
+}
+
+function buildMarkdown(report, thresholds) {
+  const rows = report?.summary?.rows ?? {};
+  const consistency = report?.summary?.consistency ?? {};
+  const parity = report?.summary?.parity ?? {};
+  const runMetrics = report?.summary?.run_metrics ?? {};
+  const thresholdStatus = thresholds?.summary?.overall_status ?? "not-generated";
+  const checks = Array.isArray(thresholds?.checks) ? thresholds.checks : [];
+
+  const lines = [];
+  lines.push("## Index Quality Summary");
+  lines.push("");
+  lines.push(`- Schema version: ${fmt(report?.summary?.schema_version)}`);
+  lines.push(`- Rows: cycles=${fmt(rows.cycles)}, artifacts=${fmt(rows.artifacts)}, file_map=${fmt(rows.file_map)}, tags=${fmt(rows.tags)}, run_metrics=${fmt(rows.run_metrics)}`);
+  lines.push(`- Count consistency: ${consistency.all_count_match === 1 ? "pass" : "fail"}`);
+  lines.push(`- Parity status: ${fmt(parity.status)}`);
+  lines.push(`- Run metrics present: ${runMetrics.present === 1 ? "yes" : "no"}`);
+  lines.push(`- Threshold status: ${thresholdStatus}`);
+  lines.push("");
+
+  if (checks.length > 0) {
+    lines.push("### Index Threshold Checks");
+    lines.push("");
+    lines.push("| id | status | severity | actual | op | expected |");
+    lines.push("|---|---|---|---:|---|---:|");
+    for (const check of checks) {
+      lines.push(`| ${check.id ?? "n/a"} | ${check.status ?? "n/a"} | ${check.severity ?? "n/a"} | ${fmt(check.actual)} | ${check.op ?? "n/a"} | ${fmt(check.expected)} |`);
+    }
+    lines.push("");
+  }
+
+  return `${lines.join("\n")}\n`;
+}
+
+function writeFile(filePath, content) {
+  const absolute = path.resolve(process.cwd(), filePath);
+  fs.mkdirSync(path.dirname(absolute), { recursive: true });
+  fs.writeFileSync(absolute, content, "utf8");
+  return absolute;
+}
+
+function main() {
+  try {
+    const args = parseArgs(process.argv.slice(2));
+    const report = readJson(args.reportFile, "Index report", true);
+    const thresholds = readJson(args.thresholdsFile, "Index thresholds", false);
+    const markdown = buildMarkdown(report.data, thresholds.data);
+    const outPath = writeFile(args.out, markdown);
+    console.log(`Index summary written: ${outPath}`);
+  } catch (error) {
+    console.error(`ERROR: ${error.message}`);
+    printUsage();
+    process.exit(1);
+  }
+}
+
+main();

@@ -14,6 +14,11 @@ on:
         required: false
         default: false
         type: boolean
+      strict_index_quality:
+        description: "Fail job when index quality thresholds are violated"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -63,11 +68,30 @@ jobs:
           STRICT_INDEX="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_parity || false }}"
           if [ "$STRICT_INDEX" = "true" ]; then
             echo "Running index parity check in strict mode."
-            npm run perf:index-verify -- --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql
+            node tools/perf/index-verify-dual.mjs --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql --json > .aidn/runtime/index/index-parity.json
           else
             echo "Running index parity check in non-blocking mode."
-            npm run perf:index-verify -- --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql || true
+            node tools/perf/index-verify-dual.mjs --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql --json > .aidn/runtime/index/index-parity.json || true
           fi
+
+      - name: Build Index Quality Report
+        run: |
+          npm run perf:index-report -- --index-file .aidn/runtime/index/workflow-index.json --parity-file .aidn/runtime/index/index-parity.json --out .aidn/runtime/index/index-report.json
+
+      - name: Evaluate Index Quality Thresholds (non-blocking)
+        run: |
+          STRICT_INDEX_QUALITY="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_quality || false }}"
+          if [ "$STRICT_INDEX_QUALITY" = "true" ]; then
+            echo "Running index quality checks in strict mode."
+            npm run perf:index-thresholds -- --strict
+          else
+            echo "Running index quality checks in non-blocking mode."
+            npm run perf:index-thresholds || true
+          fi
+
+      - name: Render Index Markdown Summary
+        run: |
+          npm run perf:index-summary -- --report-file .aidn/runtime/index/index-report.json --thresholds-file .aidn/runtime/index/index-thresholds.json --out .aidn/runtime/index/index-summary.md
 
       - name: Evaluate KPI Thresholds (non-blocking)
         run: |
@@ -87,6 +111,8 @@ jobs:
       - name: Publish Job Summary
         run: |
           cat .aidn/runtime/perf/kpi-summary.md >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat .aidn/runtime/index/index-summary.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Perf Runtime Artifacts
         uses: actions/upload-artifact@v4
@@ -99,4 +125,8 @@ jobs:
             .aidn/runtime/perf/kpi-summary.md
             .aidn/runtime/index/workflow-index.json
             .aidn/runtime/index/workflow-index.sql
+            .aidn/runtime/index/index-parity.json
+            .aidn/runtime/index/index-report.json
+            .aidn/runtime/index/index-thresholds.json
+            .aidn/runtime/index/index-summary.md
           if-no-files-found: warn

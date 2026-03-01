@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "description": "Index quality thresholds for local derived index consistency and dual-write parity.",
+  "rules": [
+    {
+      "id": "INDEX_SCHEMA_VERSION",
+      "key": "summary.schema_version",
+      "op": "==",
+      "value": 1,
+      "severity": "error"
+    },
+    {
+      "id": "INDEX_ARTIFACTS_MIN",
+      "key": "summary.rows.artifacts",
+      "op": ">=",
+      "value": 1,
+      "severity": "error"
+    },
+    {
+      "id": "INDEX_COUNTS_MATCH",
+      "key": "summary.consistency.all_count_match",
+      "op": "==",
+      "value": 1,
+      "severity": "error"
+    },
+    {
+      "id": "INDEX_PARITY_OK",
+      "key": "summary.parity.ok_numeric",
+      "op": "==",
+      "value": 1,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_RUN_METRICS_PRESENT",
+      "key": "summary.run_metrics.present",
+      "op": ">=",
+      "value": 1,
+      "severity": "warn"
+    }
+  ]
+}
