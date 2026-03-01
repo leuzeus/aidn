@@ -14,6 +14,7 @@
     "perf:checkpoint": "node tools/perf/checkpoint.mjs",
     "perf:check-thresholds": "node tools/perf/check-thresholds.mjs",
     "perf:render-summary": "node tools/perf/render-summary.mjs",
+    "perf:reset": "node tools/perf/reset-runtime.mjs",
     "perf:hook": "node tools/perf/workflow-hook.mjs",
     "perf:session-start": "node tools/perf/workflow-hook.mjs --phase session-start",
     "perf:session-close": "node tools/perf/workflow-hook.mjs --phase session-close",

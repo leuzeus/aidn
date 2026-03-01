@@ -20,6 +20,9 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Reset Perf Runtime
+        run: npm run perf:reset
+
       - name: Session Start Hook
         run: npm run perf:session-start -- --target tests/fixtures/repo-installed-core --mode COMMITTING
 

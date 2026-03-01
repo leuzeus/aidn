@@ -21,6 +21,7 @@ The following scripts were added under `tools/perf/`:
 - `delivery-window.mjs` - mark delivery start/end to compute overhead ratio against control time
 - `check-thresholds.mjs` - compare KPI report against versioned thresholds
 - `render-summary.mjs` - generate Markdown summary from KPI + threshold reports
+- `reset-runtime.mjs` - clear local perf runtime artifacts before a fresh measurement run
 - `sql/schema.sql` - proposed SQLite schema for future index backend
 
 ## Commands
@@ -39,6 +40,7 @@ npm run perf:delivery-start -- --target ../client-repo --mode COMMITTING
 npm run perf:delivery-end -- --target ../client-repo --mode COMMITTING
 npm run perf:check-thresholds -- --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/KPI_TARGETS.json
 npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
+npm run perf:reset
 ```
 
 Default runtime outputs:
