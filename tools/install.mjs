@@ -324,6 +324,37 @@ function commandExists(commandName) {
   return false;
 }
 
+function checkCodexAuthentication() {
+  if (!commandExists("codex")) {
+    return {
+      checked: false,
+      authenticated: false,
+      reason: "codex command not found",
+      output: "",
+      status: null,
+    };
+  }
+
+  const result = spawnSync("codex login status", {
+    encoding: "utf8",
+    timeout: 20000,
+    maxBuffer: 1024 * 1024,
+    shell: true,
+  });
+  const output = `${String(result.stdout ?? "")}\n${String(result.stderr ?? "")}`.trim();
+  const lower = output.toLowerCase();
+  const loggedIn = lower.includes("logged in") && !lower.includes("not logged in");
+  const authenticated = result.status === 0 && loggedIn;
+
+  return {
+    checked: true,
+    authenticated,
+    reason: authenticated ? "ok" : "codex login status did not confirm authentication",
+    output,
+    status: result.status,
+  };
+}
+
 function asStringArray(value, label) {
   if (value == null) {
     return null;
@@ -415,10 +446,14 @@ function resolveCompatibility(workflowManifest, compatMatrix) {
 }
 
 function validateRuntimeCompatibility(compatibility) {
+  const codexAuth = checkCodexAuthentication();
   const runtime = {
     node: process.versions.node,
     os: normalizeOsLabel(process.platform),
     codexInstalled: commandExists("codex"),
+    codexAuthenticated: codexAuth.authenticated,
+    codexAuthChecked: codexAuth.checked,
+    codexAuthReason: codexAuth.reason,
   };
 
   if (!compatibility) {
@@ -445,6 +480,11 @@ function validateRuntimeCompatibility(compatibility) {
   if (compatibility.codexOnline === true && !runtime.codexInstalled) {
     throw new Error(
       "codex_online=true requires Codex CLI to be installed and available in PATH (command: codex)",
+    );
+  }
+  if (compatibility.codexOnline === true && !runtime.codexAuthenticated) {
+    throw new Error(
+      "codex_online=true requires an authenticated Codex session. Run: codex login",
     );
   }
 
@@ -1012,7 +1052,7 @@ async function main() {
     console.log(`Target: ${targetRoot}`);
     console.log(`Compatibility policy: ${formatCompatibility(compatibility)}`);
     console.log(
-      `Prereq check: OK (node ${runtime.node}, os ${runtime.os}, codex ${runtime.codexInstalled ? "installed" : "missing"})`,
+      `Prereq check: OK (node ${runtime.node}, os ${runtime.os}, codex ${runtime.codexInstalled ? "installed" : "missing"}, auth ${runtime.codexAuthenticated ? "ok" : "missing"})`,
     );
     console.log(
       `Custom-file policy: preserve=${CUSTOMIZABLE_TARGET_PATTERNS.length} patterns, codex_migrate=${args.codexMigrateCustom ? "enabled" : "disabled"}`,
@@ -1142,6 +1182,9 @@ async function main() {
         if (!runtime.codexInstalled) {
           console.warn("");
           console.warn("Codex migration skipped: codex command not found. Preserved files were left unchanged.");
+        } else if (!runtime.codexAuthenticated) {
+          console.warn("");
+          console.warn("Codex migration skipped: codex is not authenticated. Run `codex login` then retry.");
         } else {
           for (const item of uniqueCandidates) {
             console.log(

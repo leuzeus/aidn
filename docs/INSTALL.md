@@ -74,6 +74,7 @@ Notes:
 - The installer resolves `depends_on` recursively (for example `extended` installs `core` first).
 - Compatibility is validated from product manifests (`node_min`, `os`) before file operations.
 - If `codex_online: true`, installer requires the `codex` command to be installed and available in `PATH`.
+- If `codex_online: true`, installer also requires Codex authentication (`codex login`).
 - Compatibility policy and machine prereq result are printed in installer output (`Compatibility policy`, `Prereq check`).
 - `.codex/skills.yaml` is rendered with the current workflow version tag (template `v{{VERSION}}`, rendered at install time using the `VERSION` file) and points to `https://github.com/leuzeus/aidn`.
 - `AGENTS.md` non-interference policy:
@@ -84,6 +85,7 @@ Notes:
 - Customized project files policy:
   - the installer does not overwrite existing files that are expected to be customized in the client repo,
   - when `codex` is available, installer attempts an AI-assisted migration for those files,
+  - AI migration requires a logged-in Codex session (`codex login status` must be authenticated),
   - if migration is unavailable/fails, files remain unchanged,
   - disable AI migration with `--no-codex-migrate-custom`.
 

@@ -7,6 +7,7 @@
 - Fix perf runtime execution from external client repos by resolving sub-scripts from aidn package paths and writing runtime outputs relative to `--target`.
 - Harden SQLite index sync for mixed-structure repositories by upserting duplicate `cycle_id` rows instead of failing on unique constraint.
 - Preserve customizable client files during install updates and add optional Codex-assisted migration pass (with safe fallback to keep files unchanged).
+- Enforce Codex authentication (`codex login`) when `codex_online=true`, and skip AI migration when Codex is not authenticated.
 
 ## 0.3.0
 - Extend `IndexStore` abstraction for local workflow index output with SQLite modes (`sqlite|dual-sqlite|all`) in `tools/perf/index-sync.mjs`.
