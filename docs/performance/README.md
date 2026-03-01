@@ -136,6 +136,10 @@ Fixture verifiers write isolated outputs under `.aidn/runtime/index/fixtures/*` 
 - `all`: writes JSON + SQL + SQLite in one run
 
 `perf:index` remains backward compatible and defaults to `file` mode.
+You can set `AIDN_INDEX_STORE_MODE` to override the default store mode globally (for `perf:index`, `perf:checkpoint`, `perf:hook`), while CLI flags still take precedence.
+Examples:
+- PowerShell: ``$env:AIDN_INDEX_STORE_MODE='sqlite'; npm run perf:session-start -- --target ../client-repo``
+- Bash: ``AIDN_INDEX_STORE_MODE=sqlite npm run perf:index -- --target ../client-repo``
 `perf:index -- --dry-run --json` computes payload summary/digest without writing files.
 `perf:index-check` compares current index digest against a dry-run import and can auto-apply with `--apply`.
 `perf:index-check` also emits `reason_codes`, `drift_level` and numeric summary fields for automation.

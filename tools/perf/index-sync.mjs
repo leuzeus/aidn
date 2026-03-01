@@ -6,10 +6,11 @@ import { createIndexStore } from "./index-store.mjs";
 import { detectStructureProfile } from "./structure-profile-lib.mjs";
 
 function parseArgs(argv) {
+  const envStore = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().toLowerCase();
   const args = {
     target: ".",
     output: ".aidn/runtime/index/workflow-index.json",
-    store: "file",
+    store: envStore || "file",
     sqlOutput: ".aidn/runtime/index/workflow-index.sql",
     sqliteOutput: ".aidn/runtime/index/workflow-index.sqlite",
     schemaFile: "tools/perf/sql/schema.sql",
@@ -78,6 +79,7 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/index-sync.mjs --target ../client");
+  console.log("  AIDN_INDEX_STORE_MODE=sqlite node tools/perf/index-sync.mjs --target ../client");
   console.log("  node tools/perf/index-sync.mjs --target . --output .aidn/runtime/index/workflow-index.json");
   console.log("  node tools/perf/index-sync.mjs --target . --store dual --output .aidn/runtime/index/workflow-index.json --sql-output .aidn/runtime/index/workflow-index.sql");
   console.log("  node tools/perf/index-sync.mjs --target . --store sqlite --sqlite-output .aidn/runtime/index/workflow-index.sqlite");

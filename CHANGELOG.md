@@ -51,6 +51,7 @@
 - Add `perf:verify-index-sqlite` fixture integration test (sync + SQL parity + SQLite parity + export) and run it in perf CI.
 - Isolate fixture verifier runtime outputs under `.aidn/runtime/index/fixtures/*` to avoid local test collisions.
 - Fix `index-sync-check --apply` to write back to the provided `--index-file` path (custom output paths now converge correctly).
+- Add `AIDN_INDEX_STORE_MODE` feature flag to set default index store mode for `index-sync`, `checkpoint`, and `workflow-hook` (CLI args still override).
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).

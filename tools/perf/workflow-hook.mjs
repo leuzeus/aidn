@@ -6,13 +6,14 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
 function parseArgs(argv) {
+  const envStore = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().toLowerCase();
   const args = {
     phase: "",
     target: ".",
     mode: "COMMITTING",
     eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
     runIdFile: ".aidn/runtime/perf/current-run-id.txt",
-    indexStore: "file",
+    indexStore: envStore || "file",
     indexOutput: ".aidn/runtime/index/workflow-index.json",
     indexSqlOutput: ".aidn/runtime/index/workflow-index.sql",
     indexSqliteOutput: ".aidn/runtime/index/workflow-index.sqlite",
@@ -110,6 +111,7 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start");
+  console.log("  AIDN_INDEX_STORE_MODE=sqlite node tools/perf/workflow-hook.mjs --phase session-start");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --mode COMMITTING");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --index-store dual");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --index-store sqlite --index-sqlite-output .aidn/runtime/index/workflow-index.sqlite");

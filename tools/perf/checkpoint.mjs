@@ -5,12 +5,13 @@ import crypto from "node:crypto";
 import { execSync } from "node:child_process";
 
 function parseArgs(argv) {
+  const envStore = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().toLowerCase();
   const args = {
     target: ".",
     cache: ".aidn/runtime/cache/reload-state.json",
     eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
     indexOutput: ".aidn/runtime/index/workflow-index.json",
-    indexStore: "file",
+    indexStore: envStore || "file",
     indexSqlOutput: ".aidn/runtime/index/workflow-index.sql",
     indexSqliteOutput: ".aidn/runtime/index/workflow-index.sqlite",
     indexSchemaFile: "tools/perf/sql/schema.sql",
@@ -109,6 +110,7 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/checkpoint.mjs --target ../client");
+  console.log("  AIDN_INDEX_STORE_MODE=sqlite node tools/perf/checkpoint.mjs --target ../client");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --mode COMMITTING");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --run-id S072-20260301T1012Z");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --index-store dual --index-sql-output .aidn/runtime/index/workflow-index.sql");
