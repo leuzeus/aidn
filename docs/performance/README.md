@@ -60,6 +60,21 @@ These runtime artifacts are intentionally local and ignored by git.
 - Use `--strict` on `perf:hook` when you want blocking behavior.
 - Session start stores a shared `run_id` in `.aidn/runtime/perf/current-run-id.txt`.
 
+## CI Integration
+
+- A lightweight GitHub workflow is available: `.github/workflows/perf-kpi.yml`
+- Triggers: `pull_request` and `workflow_dispatch`
+- It executes:
+  - `perf:session-start`
+  - `perf:delivery-start`
+  - `perf:delivery-end`
+  - `perf:session-close`
+  - `perf:report --json`
+- It publishes:
+  - `.aidn/runtime/perf/workflow-events.ndjson`
+  - `.aidn/runtime/perf/kpi-report.json`
+  - `.aidn/runtime/index/workflow-index.json`
+
 ## Overhead Ratio Enablement
 
 To avoid `overhead_ratio=n/a`, emit delivery window markers:
