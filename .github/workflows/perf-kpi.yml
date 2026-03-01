@@ -74,6 +74,9 @@ jobs:
       - name: Verify Structure Profile Fixtures
         run: npm run perf:verify-structure
 
+      - name: Verify Index Sync Fixtures
+        run: npm run perf:verify-index-sync
+
       - name: Reset Perf Runtime
         run: npm run perf:reset
 

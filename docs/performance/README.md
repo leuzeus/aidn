@@ -21,6 +21,7 @@ The following scripts were added under `tools/perf/`:
 - `report-index-sync.mjs` - compute trend KPIs from index sync history
 - `render-index-sync-report-summary.mjs` - generate Markdown trend summary from sync report + thresholds
 - `verify-structure-profile-fixtures.mjs` - validate structure profile detection on legacy/modern/mixed fixtures
+- `verify-index-sync-fixtures.mjs` - validate index sync drift/apply/in-sync flow on fixtures
 - `index-store.mjs` - local `IndexStore` abstraction (file-first, SQL export optional)
 - `index-to-sql.mjs` - export local index JSON to SQL import script (SQLite-friendly)
 - `index-sql-lib.mjs` - shared SQL generation library used by index tooling
@@ -61,6 +62,7 @@ npm run perf:index-sync-report -- --history-file .aidn/runtime/index/index-sync-
 npm run perf:index-sync-thresholds
 npm run perf:index-sync-trend-summary -- --report-file .aidn/runtime/index/index-sync-report.json --thresholds-file .aidn/runtime/index/index-sync-thresholds.json --out .aidn/runtime/index/index-sync-trend-summary.md
 npm run perf:verify-structure
+npm run perf:verify-index-sync
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.json
 npm run perf:index-query -- --query artifacts-since --since 2026-03-01T00:00:00Z --index-file .aidn/runtime/index/workflow-index.json
@@ -173,6 +175,7 @@ Checkpoint summary events now carry effective index write counters (`files_writt
 - Triggers: `pull_request` and `workflow_dispatch`
 - It executes:
   - `perf:verify-structure`
+  - `perf:verify-index-sync`
   - `perf:session-start`
   - `perf:delivery-start`
   - `perf:delivery-end`
