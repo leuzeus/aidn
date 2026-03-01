@@ -44,6 +44,10 @@ jobs:
       - name: Session Close Hook
         run: npm run perf:session-close -- --target tests/fixtures/repo-installed-core --mode COMMITTING --index-store dual
 
+      - name: Verify Index Dual-Write Parity
+        run: |
+          npm run perf:index-verify -- --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql
+
       - name: Build KPI JSON
         run: |
           mkdir -p .aidn/runtime/perf

@@ -12,6 +12,7 @@
     "perf:index-dual": "node tools/perf/index-sync.mjs --store dual",
     "perf:index-sql": "node tools/perf/index-to-sql.mjs",
     "perf:index-query": "node tools/perf/index-query.mjs",
+    "perf:index-verify": "node tools/perf/index-verify-dual.mjs",
     "perf:reload-check": "node tools/perf/reload-check.mjs",
     "perf:gate": "node tools/perf/gating-evaluate.mjs",
     "perf:checkpoint": "node tools/perf/checkpoint.mjs",

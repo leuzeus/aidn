@@ -18,6 +18,7 @@ The following scripts were added under `tools/perf/`:
 - `index-to-sql.mjs` - export local index JSON to SQL import script (SQLite-friendly)
 - `index-sql-lib.mjs` - shared SQL generation library used by index tooling
 - `index-query.mjs` - run standard analytics queries on local index JSON
+- `index-verify-dual.mjs` - verify JSON/SQL dual-write parity from deterministic SQL regeneration
 - `reload-check.mjs` - evaluate incremental/full/stop reload decision from digest + mapping
 - `gating-evaluate.mjs` - evaluate L1/L2/L3 gating with conditional drift signals
 - `checkpoint.mjs` - run reload-check + gate + index-sync as one checkpoint command
@@ -40,6 +41,7 @@ npm run perf:index-dual -- --target ../client-repo
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.json
 npm run perf:index-query -- --query artifacts-since --since 2026-03-01T00:00:00Z --index-file .aidn/runtime/index/workflow-index.json
+npm run perf:index-verify -- --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql
 npm run perf:reload-check -- --target ../client-repo
 npm run perf:reload-check -- --target ../client-repo --write-cache
 npm run perf:gate -- --target ../client-repo --mode COMMITTING
@@ -70,6 +72,7 @@ These runtime artifacts are intentionally local and ignored by git.
 - `dual`: writes JSON + SQL in one run (controlled dual-write, non-blocking)
 
 `perf:index` remains backward compatible and defaults to `file` mode.
+`perf:index-verify` should pass when SQL output is generated from the same JSON payload and schema settings.
 
 ## Standard Index Queries
 
@@ -104,6 +107,7 @@ These runtime artifacts are intentionally local and ignored by git.
   - `perf:delivery-start`
   - `perf:delivery-end`
   - `perf:session-close`
+  - `perf:index-verify`
   - `perf:report --run-prefix session- --require-delivery --json`
   - `perf:check-thresholds` (non-blocking by default in CI)
   - `perf:render-summary`

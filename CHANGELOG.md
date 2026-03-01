@@ -5,6 +5,7 @@
 - Add shared SQL generation module (`tools/perf/index-sql-lib.mjs`) and reuse it from `index-to-sql`.
 - Add `npm run perf:index-dual` for controlled dual-write output (JSON + SQL) without changing file-first source of truth.
 - Add `tools/perf/index-query.mjs` and `npm run perf:index-query` for standard local index analytics queries.
+- Add `tools/perf/index-verify-dual.mjs` and CI parity check to validate dual-write JSON/SQL consistency.
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).
