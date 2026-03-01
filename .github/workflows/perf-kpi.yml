@@ -3,6 +3,12 @@ name: Perf KPI
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      strict_thresholds:
+        description: "Fail job when KPI thresholds are violated"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -45,7 +51,14 @@ jobs:
 
       - name: Evaluate KPI Thresholds (non-blocking)
         run: |
-          node tools/perf/check-thresholds.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/KPI_TARGETS.json --out .aidn/runtime/perf/kpi-thresholds.json || true
+          STRICT="${{ github.event_name == 'workflow_dispatch' && inputs.strict_thresholds || false }}"
+          if [ "$STRICT" = "true" ]; then
+            echo "Running threshold check in strict mode."
+            node tools/perf/check-thresholds.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/KPI_TARGETS.json --out .aidn/runtime/perf/kpi-thresholds.json --strict
+          else
+            echo "Running threshold check in non-blocking mode."
+            node tools/perf/check-thresholds.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/KPI_TARGETS.json --out .aidn/runtime/perf/kpi-thresholds.json || true
+          fi
 
       - name: Render KPI Markdown Summary
         run: |

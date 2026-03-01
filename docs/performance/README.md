@@ -87,6 +87,7 @@ These runtime artifacts are intentionally local and ignored by git.
   - `.aidn/runtime/perf/kpi-thresholds.json`
   - `.aidn/runtime/perf/kpi-summary.md`
   - `.aidn/runtime/index/workflow-index.json`
+- `workflow_dispatch` supports `strict_thresholds=true` to make threshold violations blocking.
 
 Threshold source file:
 - `docs/performance/KPI_TARGETS.json`
