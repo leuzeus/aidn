@@ -81,6 +81,24 @@ Notes:
   - in `--assist`, preserving existing `AGENTS.md` is enforced by default,
   - use `--force-agents-merge` to explicitly update/insert the managed block,
   - use `--skip-agents` to always skip AGENTS merge.
+- Customized project files policy:
+  - the installer does not overwrite existing files that are expected to be customized in the client repo,
+  - when `codex` is available, installer attempts an AI-assisted migration for those files,
+  - if migration is unavailable/fails, files remain unchanged,
+  - disable AI migration with `--no-codex-migrate-custom`.
+
+Customizable files preserved by default:
+- `.codex/skills.yaml`
+- `docs/audit/WORKFLOW.md`
+- `docs/audit/index.md`
+- `docs/audit/glossary.md`
+- `docs/audit/parking-lot.md`
+- `docs/audit/baseline/current.md`
+- `docs/audit/baseline/history.md`
+- `docs/audit/snapshots/context-snapshot.md`
+- `docs/audit/cycles/TEMPLATE_*.md`
+- `docs/audit/sessions/TEMPLATE_*.md`
+- `docs/audit/incidents/TEMPLATE_*.md`
 
 ## Step 4 - Customize docs/audit/WORKFLOW.md (Project Stub)
 

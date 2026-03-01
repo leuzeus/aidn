@@ -4,9 +4,47 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
+import { spawnSync } from "node:child_process";
 
 const BLOCK_START = "<!-- CODEX-AUDIT-WORKFLOW START -->";
 const BLOCK_END = "<!-- CODEX-AUDIT-WORKFLOW END -->";
+const CUSTOMIZABLE_TARGET_PATTERNS = [
+  ".codex/skills.yaml",
+  "docs/audit/WORKFLOW.md",
+  "docs/audit/index.md",
+  "docs/audit/glossary.md",
+  "docs/audit/parking-lot.md",
+  "docs/audit/baseline/current.md",
+  "docs/audit/baseline/history.md",
+  "docs/audit/snapshots/context-snapshot.md",
+  "docs/audit/cycles/TEMPLATE_*.md",
+  "docs/audit/sessions/TEMPLATE_*.md",
+  "docs/audit/incidents/TEMPLATE_*.md",
+];
+
+function normalizeRelativePath(value) {
+  if (!value) {
+    return "";
+  }
+  return String(value).replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/^\/+/, "");
+}
+
+function wildcardToRegex(pattern) {
+  const escaped = pattern
+    .split("*")
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join(".*");
+  return new RegExp(`^${escaped}$`, "i");
+}
+
+const CUSTOMIZABLE_TARGET_REGEX = CUSTOMIZABLE_TARGET_PATTERNS.map((pattern) =>
+  wildcardToRegex(normalizeRelativePath(pattern)),
+);
+
+function isCustomizableProjectFile(relativeTargetPath) {
+  const normalized = normalizeRelativePath(relativeTargetPath);
+  return CUSTOMIZABLE_TARGET_REGEX.some((regex) => regex.test(normalized));
+}
 
 function parseArgs(argv) {
   const args = {
@@ -18,6 +56,7 @@ function parseArgs(argv) {
     strict: false,
     skipAgents: false,
     forceAgentsMerge: false,
+    codexMigrateCustom: true,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -40,6 +79,8 @@ function parseArgs(argv) {
       args.skipAgents = true;
     } else if (token === "--force-agents-merge") {
       args.forceAgentsMerge = true;
+    } else if (token === "--no-codex-migrate-custom") {
+      args.codexMigrateCustom = false;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -65,6 +106,7 @@ function printUsage() {
   console.log("  node tools/install.mjs --target ../repo --pack core --strict");
   console.log("  node tools/install.mjs --target ../repo --pack core --skip-agents");
   console.log("  node tools/install.mjs --target ../repo --pack core --force-agents-merge");
+  console.log("  node tools/install.mjs --target ../repo --pack core --no-codex-migrate-custom");
 }
 
 function stripComments(line) {
@@ -530,7 +572,38 @@ function shouldRenderTemplate(sourcePath) {
   return [".md", ".yaml", ".yml", ".txt", ".json"].includes(ext);
 }
 
-function copyFile(sourcePath, targetPath, dryRun, templateVars = null) {
+function copyFile(sourcePath, targetPath, dryRun, templateVars = null, options = null) {
+  const targetRoot = options?.targetRoot ? path.resolve(options.targetRoot) : null;
+  const targetRelative = targetRoot
+    ? normalizeRelativePath(path.relative(targetRoot, targetPath))
+    : "";
+  const isCustomizable = targetRelative && isCustomizableProjectFile(targetRelative);
+  const targetExists = fs.existsSync(targetPath);
+
+  if (targetExists && options?.preserveCustomizableFiles === true && isCustomizable) {
+    let sourceRendered = null;
+    let differsFromTemplate = true;
+    if (shouldRenderTemplate(sourcePath)) {
+      const sourceText = readUtf8(sourcePath);
+      sourceRendered = renderTemplateVariables(sourceText, templateVars);
+      if (sourceText.includes("{{VERSION}}") && sourceRendered.includes("{{VERSION}}")) {
+        throw new Error(`Unresolved {{VERSION}} placeholder in copied file: ${sourcePath}`);
+      }
+      const targetText = readUtf8(targetPath);
+      differsFromTemplate = targetText !== sourceRendered;
+    }
+    if (typeof options.onPreservedCustomFile === "function") {
+      options.onPreservedCustomFile({
+        targetRelative,
+        sourcePath,
+        targetPath,
+        sourceRendered,
+        differsFromTemplate,
+      });
+    }
+    return;
+  }
+
   ensureDir(path.dirname(targetPath), dryRun);
   if (dryRun) {
     return;
@@ -547,7 +620,7 @@ function copyFile(sourcePath, targetPath, dryRun, templateVars = null) {
   fs.copyFileSync(sourcePath, targetPath);
 }
 
-function copyRecursive(sourcePath, targetPath, dryRun, skipSources = null, templateVars = null) {
+function copyRecursive(sourcePath, targetPath, dryRun, skipSources = null, templateVars = null, options = null) {
   const absoluteSource = path.resolve(sourcePath);
   if (skipSources && skipSources.has(absoluteSource)) {
     return;
@@ -565,12 +638,82 @@ function copyRecursive(sourcePath, targetPath, dryRun, skipSources = null, templ
         dryRun,
         skipSources,
         templateVars,
+        options,
       );
     }
     return;
   }
 
-  copyFile(sourcePath, targetPath, dryRun, templateVars);
+  copyFile(sourcePath, targetPath, dryRun, templateVars, options);
+}
+
+function buildCodexMigrationPrompt(relativeTargetPath, sourceRendered) {
+  const ext = path.extname(relativeTargetPath).toLowerCase();
+  const fence = ext === ".md" ? "markdown" : (ext === ".yaml" || ext === ".yml" ? "yaml" : "");
+  return [
+    "Migrate one customized workflow file in-place.",
+    `Target file: ${relativeTargetPath}`,
+    "Instructions:",
+    "- Keep project-specific customizations and local decisions.",
+    "- Integrate missing structure or guardrails from the provided updated template when relevant.",
+    "- Do not introduce placeholders unless already required by local conventions.",
+    "- Preserve valid syntax and readability.",
+    "- Edit only the target file and save it.",
+    "",
+    "Updated template content:",
+    `\`\`\`${fence}`,
+    sourceRendered,
+    "```",
+  ].join("\n");
+}
+
+function migrateCustomFileWithCodex(targetRoot, candidate, dryRun) {
+  if (dryRun) {
+    return { attempted: false, migrated: false, reason: "dry-run" };
+  }
+  if (!candidate.sourceRendered) {
+    return { attempted: false, migrated: false, reason: "non-text-template" };
+  }
+
+  const prompt = buildCodexMigrationPrompt(candidate.targetRelative, candidate.sourceRendered);
+  let result;
+  if (process.platform === "win32") {
+    const escapedTarget = String(targetRoot).replace(/"/g, '\\"');
+    result = spawnSync(`codex exec --full-auto -C "${escapedTarget}" -`, {
+      input: prompt,
+      encoding: "utf8",
+      timeout: 180000,
+      maxBuffer: 10 * 1024 * 1024,
+      shell: true,
+    });
+  } else {
+    result = spawnSync("codex", [
+      "exec",
+      "--full-auto",
+      "-C",
+      targetRoot,
+      "-",
+    ], {
+      input: prompt,
+      encoding: "utf8",
+      timeout: 180000,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+  }
+
+  if (result.error) {
+    return { attempted: true, migrated: false, reason: `error: ${result.error.message}` };
+  }
+  if (result.status !== 0) {
+    const stderr = String(result.stderr ?? "").trim();
+    return {
+      attempted: true,
+      migrated: false,
+      reason: stderr ? `exit ${result.status}: ${stderr}` : `exit ${result.status}`,
+    };
+  }
+
+  return { attempted: true, migrated: true, reason: "ok" };
 }
 
 function ensureWorkflowBlock(templateText) {
@@ -857,7 +1000,15 @@ async function main() {
       repoRoot,
       requestedPacks,
     );
-    const summary = { copied: 0, merged: 0, skipped: 0 };
+    const summary = {
+      copied: 0,
+      merged: 0,
+      skipped: 0,
+      preservedCustom: 0,
+      migratedCustom: 0,
+      migrationFailed: 0,
+    };
+    const preservedCustomCandidates = [];
 
     console.log(`Product version: ${version}`);
     console.log(`Packs: ${selectedPacks.join(", ")}`);
@@ -865,6 +1016,9 @@ async function main() {
     console.log(`Compatibility policy: ${formatCompatibility(compatibility)}`);
     console.log(
       `Prereq check: OK (node ${runtime.node}, os ${runtime.os}, codex ${runtime.codexInstalled ? "installed" : "missing"})`,
+    );
+    console.log(
+      `Custom-file policy: preserve=${CUSTOMIZABLE_TARGET_PATTERNS.length} patterns, codex_migrate=${args.codexMigrateCustom ? "enabled" : "disabled"}`,
     );
     if (args.dryRun) {
       console.log("Mode: dry-run");
@@ -902,10 +1056,27 @@ async function main() {
             `${args.dryRun ? "[dry-run] " : ""}copy ${op.from} -> ${op.to} (pack ${packName})`,
           );
           const sourceStat = fs.statSync(sourcePath);
+          const copyPolicy = {
+            targetRoot,
+            preserveCustomizableFiles: true,
+            onPreservedCustomFile(candidate) {
+              if (!candidate.differsFromTemplate) {
+                return;
+              }
+              preservedCustomCandidates.push(candidate);
+            },
+          };
           if (sourceStat.isDirectory()) {
-            copyRecursive(sourcePath, targetPath, args.dryRun, explicitFileSources, templateVars);
+            copyRecursive(
+              sourcePath,
+              targetPath,
+              args.dryRun,
+              explicitFileSources,
+              templateVars,
+              copyPolicy,
+            );
           } else {
-            copyRecursive(sourcePath, targetPath, args.dryRun, null, templateVars);
+            copyRecursive(sourcePath, targetPath, args.dryRun, null, templateVars, copyPolicy);
           }
           summary.copied += 1;
         }
@@ -956,6 +1127,44 @@ async function main() {
           }
         }
       }
+
+      const uniqueCandidates = Array.from(
+        new Map(preservedCustomCandidates.map((item) => [item.targetRelative.toLowerCase(), item])).values(),
+      );
+      summary.preservedCustom = uniqueCandidates.length;
+
+      if (uniqueCandidates.length > 0) {
+        console.log("");
+        console.log("Preserved customized files (not overwritten):");
+        for (const item of uniqueCandidates) {
+          console.log(`- ${item.targetRelative}`);
+        }
+      }
+
+      if (uniqueCandidates.length > 0 && args.codexMigrateCustom) {
+        if (!runtime.codexInstalled) {
+          console.warn("");
+          console.warn("Codex migration skipped: codex command not found. Preserved files were left unchanged.");
+        } else {
+          for (const item of uniqueCandidates) {
+            console.log(
+              `${args.dryRun ? "[dry-run] " : ""}migrate custom file via codex: ${item.targetRelative}`,
+            );
+            const migration = migrateCustomFileWithCodex(targetRoot, item, args.dryRun);
+            if (migration.migrated) {
+              summary.migratedCustom += 1;
+            } else if (migration.attempted) {
+              summary.migrationFailed += 1;
+              console.warn(`migration failed: ${item.targetRelative} (${migration.reason})`);
+            } else {
+              console.warn(`migration skipped: ${item.targetRelative} (${migration.reason})`);
+            }
+          }
+        }
+      } else if (uniqueCandidates.length > 0) {
+        console.log("");
+        console.log("Codex migration disabled: preserved customized files were left unchanged.");
+      }
     }
 
     const verifyEntriesSet = new Set();
@@ -980,7 +1189,7 @@ async function main() {
         `WARNING: docs/audit/WORKFLOW.md still has placeholders: ${workflowPlaceholders.join(", ")}`,
       );
       console.warn(
-        'Customize the project stub. See docs/INSTALL.md sections "Spec vs Project Stub (Why both exist)" and "Step 3 - Customize docs/audit/WORKFLOW.md (Project Stub)".',
+        'Customize the project stub. See docs/INSTALL.md sections "Spec vs Project Stub (Why both exist)" and "Step 4 - Customize docs/audit/WORKFLOW.md (Project Stub)".',
       );
     }
 
@@ -988,6 +1197,9 @@ async function main() {
     console.log(`copied: ${summary.copied}`);
     console.log(`merged: ${summary.merged}`);
     console.log(`skipped: ${summary.skipped}`);
+    console.log(`preserved_custom: ${summary.preservedCustom}`);
+    console.log(`migrated_custom: ${summary.migratedCustom}`);
+    console.log(`migration_failed: ${summary.migrationFailed}`);
     console.log(`verified: ${verification.ok ? "OK" : "FAIL"}`);
 
     if (!verification.ok && (args.verifyOnly || !args.dryRun)) {
