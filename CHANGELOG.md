@@ -13,6 +13,9 @@
 - Add index quality reporting pipeline (`perf:index-report`, `perf:index-thresholds`, `perf:index-summary`) with targets in `docs/performance/INDEX_TARGETS.json`.
 - Extend perf CI artifacts and job summary with index quality outputs (`index-parity`, `index-report`, `index-thresholds`, `index-summary`).
 - Add CI option `strict_index_quality` (workflow_dispatch) for blocking index quality thresholds.
+- Add KPI regression checker (`tools/perf/check-regression.mjs`) with targets in `docs/performance/REGRESSION_TARGETS.json`.
+- Add CI option `strict_regression` (workflow_dispatch) for blocking KPI regression checks.
+- Extend KPI markdown summary with regression status/checks and trend section over recent runs.
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).

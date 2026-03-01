@@ -27,7 +27,8 @@ The following scripts were added under `tools/perf/`:
 - `workflow-hook.mjs` - run checkpoint from session hooks (`session-start` / `session-close`)
 - `delivery-window.mjs` - mark delivery start/end to compute overhead ratio against control time
 - `check-thresholds.mjs` - compare KPI report against versioned thresholds
-- `render-summary.mjs` - generate Markdown summary from KPI + threshold reports
+- `check-regression.mjs` - compare latest KPI run versus rolling history median
+- `render-summary.mjs` - generate Markdown summary from KPI + threshold/regression reports
 - `reset-runtime.mjs` - clear local perf runtime artifacts before a fresh measurement run
 - `sql/schema.sql` - proposed SQLite schema for future index backend
 
@@ -59,7 +60,8 @@ npm run perf:session-close -- --target ../client-repo --mode COMMITTING
 npm run perf:delivery-start -- --target ../client-repo --mode COMMITTING
 npm run perf:delivery-end -- --target ../client-repo --mode COMMITTING
 npm run perf:check-thresholds -- --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/KPI_TARGETS.json
-npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
+npm run perf:check-regression -- --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/REGRESSION_TARGETS.json --out .aidn/runtime/perf/kpi-regression.json
+npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --regression-file .aidn/runtime/perf/kpi-regression.json --out .aidn/runtime/perf/kpi-summary.md
 npm run perf:reset
 ```
 
@@ -73,6 +75,7 @@ Default runtime outputs:
 - `.aidn/runtime/index/index-summary.md`
 - `.aidn/runtime/cache/reload-state.json`
 - `.aidn/runtime/perf/kpi-thresholds.json`
+- `.aidn/runtime/perf/kpi-regression.json`
 - `.aidn/runtime/perf/kpi-summary.md`
 
 These runtime artifacts are intentionally local and ignored by git.
@@ -130,21 +133,25 @@ Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --
   - `perf:index-thresholds`
   - `perf:index-summary`
   - `perf:check-thresholds` (non-blocking by default in CI)
+  - `perf:check-regression` (non-blocking by default in CI)
   - `perf:render-summary`
 - It publishes:
   - `.aidn/runtime/perf/workflow-events.ndjson`
   - `.aidn/runtime/perf/kpi-report.json`
   - `.aidn/runtime/perf/kpi-thresholds.json`
+  - `.aidn/runtime/perf/kpi-regression.json`
   - `.aidn/runtime/perf/kpi-summary.md`
   - `.aidn/runtime/index/workflow-index.json`
   - `.aidn/runtime/index/workflow-index.sql`
 - `workflow_dispatch` supports `strict_thresholds=true` to make threshold violations blocking.
 - `workflow_dispatch` supports `strict_index_parity=true` to make dual-write parity violations blocking.
 - `workflow_dispatch` supports `strict_index_quality=true` to make index quality threshold violations blocking.
+- `workflow_dispatch` supports `strict_regression=true` to make KPI regression violations blocking.
 
 Threshold source file:
 - `docs/performance/KPI_TARGETS.json`
 - `docs/performance/INDEX_TARGETS.json`
+- `docs/performance/REGRESSION_TARGETS.json`
 
 ## Overhead Ratio Enablement
 

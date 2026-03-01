@@ -19,6 +19,11 @@ on:
         required: false
         default: false
         type: boolean
+      strict_regression:
+        description: "Fail job when KPI regression checks are violated"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -104,9 +109,20 @@ jobs:
             node tools/perf/check-thresholds.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/KPI_TARGETS.json --out .aidn/runtime/perf/kpi-thresholds.json || true
           fi
 
+      - name: Evaluate KPI Regression (non-blocking)
+        run: |
+          STRICT_REGRESSION="${{ github.event_name == 'workflow_dispatch' && inputs.strict_regression || false }}"
+          if [ "$STRICT_REGRESSION" = "true" ]; then
+            echo "Running regression check in strict mode."
+            node tools/perf/check-regression.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/REGRESSION_TARGETS.json --out .aidn/runtime/perf/kpi-regression.json --strict
+          else
+            echo "Running regression check in non-blocking mode."
+            node tools/perf/check-regression.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/REGRESSION_TARGETS.json --out .aidn/runtime/perf/kpi-regression.json || true
+          fi
+
       - name: Render KPI Markdown Summary
         run: |
-          node tools/perf/render-summary.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
+          node tools/perf/render-summary.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --regression-file .aidn/runtime/perf/kpi-regression.json --out .aidn/runtime/perf/kpi-summary.md
 
       - name: Publish Job Summary
         run: |
@@ -122,6 +138,7 @@ jobs:
             .aidn/runtime/perf/workflow-events.ndjson
             .aidn/runtime/perf/kpi-report.json
             .aidn/runtime/perf/kpi-thresholds.json
+            .aidn/runtime/perf/kpi-regression.json
             .aidn/runtime/perf/kpi-summary.md
             .aidn/runtime/index/workflow-index.json
             .aidn/runtime/index/workflow-index.sql

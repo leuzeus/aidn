@@ -20,6 +20,7 @@
     "perf:gate": "node tools/perf/gating-evaluate.mjs",
     "perf:checkpoint": "node tools/perf/checkpoint.mjs",
     "perf:check-thresholds": "node tools/perf/check-thresholds.mjs",
+    "perf:check-regression": "node tools/perf/check-regression.mjs",
     "perf:render-summary": "node tools/perf/render-summary.mjs",
     "perf:reset": "node tools/perf/reset-runtime.mjs",
     "perf:hook": "node tools/perf/workflow-hook.mjs",
