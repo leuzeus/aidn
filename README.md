@@ -53,6 +53,13 @@ Client repository after install:
 - Entropy regulation loop: `docs/diagrams/04-entropy-regulation-control-loop.md`
 - Mermaid style preset (indigo): `docs/diagrams/MERMAID_PRESET_INDIGO.md`
 
+## Performance Rollout
+
+- Plan: `docs/performance/WORKFLOW_PERFORMANCE_PLAN.md`
+- Prioritization matrix: `docs/performance/PRIORITIZATION_MATRIX.md`
+- RFC: `docs/rfc/RFC-0001-reload-incremental-gating-index.md`
+- Tooling quickstart: `docs/performance/README.md`
+
 ## Installation
 
 ```bash

@@ -3,3 +3,4 @@ release/dist/
 .codex/local-*
 .idea/
 tmp/
+.aidn/runtime/

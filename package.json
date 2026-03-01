@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "install-pack": "node tools/install.mjs",
-    "build-release": "node tools/build-release.mjs"
+    "build-release": "node tools/build-release.mjs",
+    "perf:collect": "node tools/perf/collect-event.mjs",
+    "perf:report": "node tools/perf/report-kpi.mjs",
+    "perf:index": "node tools/perf/index-sync.mjs"
   }
 }
