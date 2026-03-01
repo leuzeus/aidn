@@ -162,6 +162,7 @@ Checkpoint summary events now carry effective index write counters (`files_writt
   - `perf:report --run-prefix session- --require-delivery --json`
   - `perf:sync-history`
   - `perf:index-dual --kpi-file .aidn/runtime/perf/kpi-report.json`
+  - `perf:index-check --json` (non-blocking by default in CI)
   - `perf:index-verify`
   - `perf:index-report`
   - `perf:index-thresholds`
@@ -182,9 +183,11 @@ Checkpoint summary events now carry effective index write counters (`files_writt
   - `.aidn/runtime/perf/kpi-summary.md`
   - `.aidn/runtime/index/workflow-index.json`
   - `.aidn/runtime/index/workflow-index.sql`
+  - `.aidn/runtime/index/index-sync-check.json`
 - `workflow_dispatch` supports `strict_thresholds=true` to make threshold violations blocking.
 - `workflow_dispatch` supports `strict_index_parity=true` to make dual-write parity violations blocking.
 - `workflow_dispatch` supports `strict_index_quality=true` to make index quality threshold violations blocking.
+- `workflow_dispatch` supports `strict_index_sync=true` to make index import/export drift checks blocking.
 - `workflow_dispatch` supports `strict_regression=true` to make KPI regression violations blocking.
 - `workflow_dispatch` supports `strict_fallback=true` to make fallback-storm violations blocking.
 - `workflow_dispatch` supports regression warmup overrides via `regression_warmup_enabled`, `regression_warmup_history_lt`, `regression_warmup_multiplier`, `regression_warmup_severity`.

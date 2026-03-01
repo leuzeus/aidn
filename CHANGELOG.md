@@ -32,6 +32,7 @@
 - Add `--json` output mode to `tools/perf/index-sync.mjs` and wire checkpoint summary events to effective index write counters.
 - Add workflow structure profiling (`perf:structure`) with observed-profile detection (`legacy|modern|mixed|unknown`) and integrate it into reload/gating decisions for multi-version repositories.
 - Add `perf:index-check` drift control for import/export sync (`index-sync --dry-run` digest compare, optional `--apply` rebuild).
+- Add CI integration for `perf:index-check` with `strict_index_sync` workflow_dispatch option and artifact publishing (`index-sync-check.json`).
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).

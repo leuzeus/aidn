@@ -19,6 +19,11 @@ on:
         required: false
         default: false
         type: boolean
+      strict_index_sync:
+        description: "Fail job when index import/export sync drift is detected"
+        required: false
+        default: false
+        type: boolean
       strict_regression:
         description: "Fail job when KPI regression checks are violated"
         required: false
@@ -96,6 +101,17 @@ jobs:
       - name: Refresh Index With KPI Metrics
         run: |
           npm run perf:index-dual -- --target tests/fixtures/repo-installed-core --kpi-file .aidn/runtime/perf/kpi-report.json
+
+      - name: Check Index Import/Export Sync (non-blocking)
+        run: |
+          STRICT_INDEX_SYNC="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_sync || false }}"
+          if [ "$STRICT_INDEX_SYNC" = "true" ]; then
+            echo "Running index sync check in strict mode."
+            node tools/perf/index-sync-check.mjs --target tests/fixtures/repo-installed-core --strict --json > .aidn/runtime/index/index-sync-check.json
+          else
+            echo "Running index sync check in non-blocking mode."
+            node tools/perf/index-sync-check.mjs --target tests/fixtures/repo-installed-core --json > .aidn/runtime/index/index-sync-check.json || true
+          fi
 
       - name: Verify Index Dual-Write Parity
         run: |
@@ -205,6 +221,7 @@ jobs:
             .aidn/runtime/perf/kpi-summary.md
             .aidn/runtime/index/workflow-index.json
             .aidn/runtime/index/workflow-index.sql
+            .aidn/runtime/index/index-sync-check.json
             .aidn/runtime/index/index-parity.json
             .aidn/runtime/index/index-report.json
             .aidn/runtime/index/index-thresholds.json
