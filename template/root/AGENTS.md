@@ -80,9 +80,9 @@ At the beginning of a session, the agent MUST:
 2. Confirm `docs/audit/SPEC.md` and `docs/audit/WORKFLOW.md` are loaded in context.
 3. **Run skill: `start-session`**
 4. Explicitly acknowledge the session mode:
-  - THINKING
-  - EXPLORING
-  - COMMITTING
+- THINKING
+- EXPLORING
+- COMMITTING
 
 If `docs/audit/SPEC.md` is missing, the agent MUST:
 - STOP
@@ -90,7 +90,7 @@ If `docs/audit/SPEC.md` is missing, the agent MUST:
 
 If mode is **COMMITTING**, the agent MUST:
 - **Run skill: `branch-cycle-audit`**
-- STOP if the branch does not map to exactly one active cycle
+- STOP if branch ownership is ambiguous or unmapped (`session` / `cycle` / `intermediate`)
 
 Agents MUST NOT skip these steps.
 
@@ -148,17 +148,45 @@ Additional files are allowed as needed:
 
 For COMMITTING sessions, the agent MUST:
 - identify the current Git branch
-- ensure it maps to exactly one active cycle
-- verify mapping is recorded in `status.md` as `branch_name`
+- classify it as `session` | `cycle` | `intermediate`
+- if `cycle` or `intermediate`, ensure it maps to exactly one active cycle
+- verify cycle mapping is recorded in `status.md` as `branch_name` for cycle branches
+- ensure session continuity metadata is present in the active session file (`session_branch`, `parent_session`, `parent_branch`, `continuity_basis`)
+- if on a session branch, restrict commits to integration/handover/PR orchestration unless an explicit integration target cycle is documented in the session file
 
 If mapping is missing or ambiguous:
 - STOP
 - ask the user how to proceed (create cycle, rename branch, or remap)
 
 Recommended branch naming:
-- `C012-feature-*`
-- `C013-spike-*`
-- `C014-structural-*`
+- Session branches: `S061-<short-slug>` (example: `S061-dsl-roadmap`)
+- Cycle branches: `<cycle-type>/C037-<short-slug>` (example: `feature/C037-dsl-grammar-on`)
+- Intermediate branches: `<cycle-type>/C037-I01-<short-slug>` (example: `spike/C037-I01-parser-investigation`)
+
+------------------------------------------------------------
+## Session Close Rule (MANDATORY)
+
+Before closing a session, the agent MUST:
+- enumerate attached cycles still in `OPEN | IMPLEMENTING | VERIFYING`
+- require one explicit decision per open cycle:
+  - `integrate-to-session` (merge `cycle -> session`, then set retained cycle `DONE`)
+  - `report` to next session
+  - `close-non-retained` (`NO_GO` or `DROPPED`)
+  - `cancel-close`
+- record cycle-by-cycle decisions in the session close report
+- STOP closure if at least one attached open cycle has no explicit decision
+
+If a cycle is reported:
+- keep the cycle open
+- record target next session and integration intent before resume
+
+If a cycle is non-retained:
+- do not merge it into the session branch
+- preserve audit artifacts and rationale
+
+If a cycle is integrated to session:
+- complete integration before session close
+- update cycle state/outcome as retained (`DONE`)
 
 ------------------------------------------------------------
 ## Drift Control & Change Management
@@ -203,6 +231,8 @@ If mode is COMMITTING, the agent MUST ensure:
 - branch mapping is valid
 - DoR core gate is satisfied (or explicit override is documented)
 - baseline dependencies are respected
+- session close gate is satisfied before closing (`integrate-to-session`/`report`/`close-non-retained` decisions for attached open cycles)
+- PR review gate is satisfied before merge: Codex review threads are triaged (`valid`/`invalid`) and resolved with evidence
 
 If mode is EXPLORING and:
 - work exceeds ~30 minutes, or

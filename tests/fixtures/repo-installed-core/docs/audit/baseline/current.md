@@ -1,11 +1,20 @@
 # Baseline (current)
 
-Version: v0.1
-Date: 2026-02-07
+baseline: v0.2
+source_branch: {{SOURCE_BRANCH}}
+migration_branch: (set if migrating workflow)
+date: 2026-03-01
 
-## Summary
-Initial baseline.
-source_branch: dev
-migration_branch: codex/migrate-audit-workflow
-## Cycles included
-- C001-structural-state-realignment
+## Intent
+Describe what this baseline stabilizes and why it is considered the current reference.
+
+## Included cycles
+- (none)
+
+## Quality & constraints
+- Key architectural constraints:
+- Key delivery/compliance constraints:
+- Known residual risks:
+
+## Next step
+Document the next baseline candidate trigger (for example: cycle closure criteria, pending validation, or release gate).
