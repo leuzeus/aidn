@@ -360,6 +360,27 @@ function resolveTargetPath(targetRoot, candidatePath) {
   return path.resolve(targetRoot, candidatePath);
 }
 
+function resolveInputPathPreferTarget(targetRoot, candidatePath) {
+  if (!candidatePath) {
+    return candidatePath;
+  }
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+
+  const fromTarget = path.resolve(targetRoot, candidatePath);
+  if (fs.existsSync(fromTarget)) {
+    return fromTarget;
+  }
+
+  const fromCwd = path.resolve(process.cwd(), candidatePath);
+  if (fs.existsSync(fromCwd)) {
+    return fromCwd;
+  }
+
+  return fromTarget;
+}
+
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -368,7 +389,7 @@ function main() {
     args.sqlOutput = resolveTargetPath(targetRoot, args.sqlOutput);
     args.sqliteOutput = resolveTargetPath(targetRoot, args.sqliteOutput);
     if (args.kpiFile) {
-      args.kpiFile = resolveTargetPath(targetRoot, args.kpiFile);
+      args.kpiFile = resolveInputPathPreferTarget(targetRoot, args.kpiFile);
     }
     const auditRoot = path.join(targetRoot, "docs", "audit");
 
