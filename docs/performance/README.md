@@ -68,6 +68,7 @@ npm run perf:fallback-report -- --file .aidn/runtime/perf/workflow-events.ndjson
 npm run perf:check-fallbacks
 npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --regression-file .aidn/runtime/perf/kpi-regression.json --fallback-report-file .aidn/runtime/perf/fallback-report.json --fallback-thresholds-file .aidn/runtime/perf/fallback-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
 npm run perf:reset
+npm run perf:reset -- --keep-history
 ```
 
 Default runtime outputs:
@@ -87,6 +88,7 @@ Default runtime outputs:
 - `.aidn/runtime/perf/kpi-summary.md`
 
 These runtime artifacts are intentionally local and ignored by git.
+Use `perf:reset -- --keep-history` if you want to preserve cross-run KPI history.
 
 ## IndexStore Modes
 
