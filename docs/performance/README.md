@@ -159,6 +159,7 @@ Checkpoint summary events now carry effective index write counters (`files_writt
 - A lightweight GitHub workflow is available: `.github/workflows/perf-kpi.yml`
 - Triggers: `pull_request` and `workflow_dispatch`
 - It executes:
+  - `perf:verify-structure`
   - `perf:session-start`
   - `perf:delivery-start`
   - `perf:delivery-end`

@@ -71,6 +71,9 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Verify Structure Profile Fixtures
+        run: npm run perf:verify-structure
+
       - name: Reset Perf Runtime
         run: npm run perf:reset
 
