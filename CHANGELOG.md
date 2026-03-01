@@ -24,6 +24,7 @@
 - Update regression checks to consume merged current + history runs (`kpi-history.ndjson`) for cross-run baseline.
 - Update KPI summary trends/top-runs to use merged current + history runs.
 - Add `perf:reset -- --keep-history` support to preserve cross-run KPI history when resetting runtime artifacts.
+- Add adaptive warmup handling for regression checks (`REGRESSION_TARGETS.warmup`) with effective threshold/severity adjustments on short history windows.
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).

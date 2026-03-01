@@ -144,6 +144,7 @@ function mergeRuns(currentRuns, historyRuns) {
 }
 
 function evaluateRule(rule, runs, minHistoryDefault) {
+  const warmup = rule.__warmup ?? null;
   const id = String(rule.id ?? "").trim();
   const metric = String(rule.metric ?? "").trim();
   const maxIncreasePct = toNumber(rule.max_increase_pct);
@@ -215,19 +216,36 @@ function evaluateRule(rule, runs, minHistoryDefault) {
     };
   }
 
+  let effectiveMaxIncreasePct = maxIncreasePct;
+  let effectiveSeverity = severity;
+  let warmupApplied = false;
+  if (warmup?.enabled && historyRaw.length < warmup.history_lt) {
+    if (warmup.max_increase_pct_multiplier != null) {
+      effectiveMaxIncreasePct *= warmup.max_increase_pct_multiplier;
+    }
+    if (typeof warmup.severity_override === "string" && warmup.severity_override.trim()) {
+      effectiveSeverity = warmup.severity_override.trim().toLowerCase();
+    }
+    warmupApplied = true;
+  }
+
   const increasePct = ((latestValue - baseline) / baseline) * 100;
-  const pass = increasePct <= maxIncreasePct;
+  const pass = increasePct <= effectiveMaxIncreasePct;
   return {
     id,
     metric,
     status: pass ? "pass" : "fail",
-    severity,
+    severity: effectiveSeverity,
+    configured_severity: severity,
     message: pass ? "Regression threshold satisfied" : "Regression threshold violated",
     latest_run_id: latest.run_id ?? null,
     latest_value: latestValue,
     baseline_median: baseline,
     increase_pct: increasePct,
     max_increase_pct: maxIncreasePct,
+    effective_max_increase_pct: effectiveMaxIncreasePct,
+    warmup_applied: warmupApplied,
+    warmup_window_history_lt: warmup?.history_lt ?? null,
     min_history: minHistory,
     history_count: historyRaw.length,
   };
@@ -295,8 +313,11 @@ function printHuman(summary, checks) {
   console.log("");
   for (const check of checks) {
     if (check.status === "pass" || check.status === "fail") {
+      const warmupInfo = check.warmup_applied
+        ? `, warmup=true, effective_max=${check.effective_max_increase_pct}`
+        : "";
       console.log(
-        `- ${check.status.toUpperCase()} ${check.id} [${check.severity}] ${check.metric}: latest=${check.latest_value}, baseline=${check.baseline_median}, increase_pct=${check.increase_pct?.toFixed(3)}, max=${check.max_increase_pct}`,
+        `- ${check.status.toUpperCase()} ${check.id} [${check.severity}] ${check.metric}: latest=${check.latest_value}, baseline=${check.baseline_median}, increase_pct=${check.increase_pct?.toFixed(3)}, max=${check.max_increase_pct}${warmupInfo}`,
       );
     } else {
       console.log(`- ${check.status.toUpperCase()} ${check.id} [${check.severity}] ${check.metric}: ${check.message}`);
@@ -315,7 +336,19 @@ function main() {
     const runs = mergeRuns(currentRuns, history.runs);
     const rules = Array.isArray(targetsData.rules) ? targetsData.rules : [];
     const minHistoryDefault = toNumber(targetsData.min_history) ?? 3;
-    const checks = rules.map((rule) => evaluateRule(rule, runs, minHistoryDefault));
+    const warmupCfgRaw = targetsData.warmup ?? {};
+    const warmupCfg = {
+      enabled: warmupCfgRaw.enabled === true,
+      history_lt: toNumber(warmupCfgRaw.history_lt) ?? null,
+      max_increase_pct_multiplier: toNumber(warmupCfgRaw.max_increase_pct_multiplier) ?? null,
+      severity_override: typeof warmupCfgRaw.severity_override === "string"
+        ? warmupCfgRaw.severity_override
+        : null,
+    };
+    const checks = rules.map((rule) => evaluateRule({
+      ...rule,
+      __warmup: warmupCfg,
+    }, runs, minHistoryDefault));
     const summary = summarize(checks, args.strict);
 
     const output = {
@@ -328,6 +361,12 @@ function main() {
       targets_file: targetsPath,
       runs_analyzed: runs.length,
       current_runs: currentRuns.length,
+      warmup: {
+        enabled: warmupCfg.enabled,
+        history_lt: warmupCfg.history_lt,
+        max_increase_pct_multiplier: warmupCfg.max_increase_pct_multiplier,
+        severity_override: warmupCfg.severity_override,
+      },
       summary,
       checks,
     };

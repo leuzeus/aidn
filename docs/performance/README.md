@@ -171,6 +171,10 @@ Threshold source file:
 - `docs/performance/REGRESSION_TARGETS.json`
 - `docs/performance/FALLBACK_TARGETS.json`
 
+Regression warmup note:
+- `REGRESSION_TARGETS.json` supports a `warmup` block.
+- Default warmup applies while `history_count < 5`: effective threshold is multiplied (`max_increase_pct_multiplier`) and severity can be overridden (default `warn`).
+
 Fallback thresholding note:
 - Fallback thresholds use warmup-adjusted metrics (`adjusted_fallback_total`, `adjusted_storm_runs`) that exclude cold-start reload fallbacks (`MISSING_CACHE`, `CORRUPT_CACHE`).
 
