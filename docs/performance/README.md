@@ -15,6 +15,8 @@ The following scripts were added under `tools/perf/`:
 - `report-kpi.mjs` - compute KPI summary from NDJSON
 - `index-sync.mjs` - build a local JSON index from `docs/audit/*`
 - `reload-check.mjs` - evaluate incremental/full/stop reload decision from digest + mapping
+- `gating-evaluate.mjs` - evaluate L1/L2/L3 gating with conditional drift signals
+- `checkpoint.mjs` - run reload-check + gate + index-sync as one checkpoint command
 - `sql/schema.sql` - proposed SQLite schema for future index backend
 
 ## Commands
@@ -25,6 +27,8 @@ npm run perf:report
 npm run perf:index -- --target ../client-repo
 npm run perf:reload-check -- --target ../client-repo
 npm run perf:reload-check -- --target ../client-repo --write-cache
+npm run perf:gate -- --target ../client-repo --mode COMMITTING
+npm run perf:checkpoint -- --target ../client-repo --mode COMMITTING
 ```
 
 Default runtime outputs:
@@ -33,3 +37,11 @@ Default runtime outputs:
 - `.aidn/runtime/cache/reload-state.json`
 
 These runtime artifacts are intentionally local and ignored by git.
+
+## Gating Levels (implemented)
+
+- L1 fast checks: digest + mapping (`perf:reload-check`)
+- L2 conditional drift signals: objective delta, scope growth, cross-domain touch, stale drift-check, uncertain intent (`perf:gate`)
+- L3 incident trigger: blocking L1 reasons or repeated fallback patterns (`perf:gate`)
+
+`perf:checkpoint` orchestrates these steps and writes a summary event for KPI tracking.
