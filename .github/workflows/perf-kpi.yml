@@ -40,9 +40,13 @@ jobs:
           mkdir -p .aidn/runtime/perf
           node tools/perf/report-kpi.mjs --file .aidn/runtime/perf/workflow-events.ndjson --json > .aidn/runtime/perf/kpi-report.json
 
+      - name: Evaluate KPI Thresholds (non-blocking)
+        run: |
+          node tools/perf/check-thresholds.mjs --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/KPI_TARGETS.json --out .aidn/runtime/perf/kpi-thresholds.json || true
+
       - name: Publish Job Summary
         run: |
-          node -e "const fs=require('fs'); const p='.aidn/runtime/perf/kpi-report.json'; const d=JSON.parse(fs.readFileSync(p,'utf8')); const s=d.summary||{}; const o=s.overhead_ratio||{}; const c=s.artifacts_churn||{}; const g=s.gates_frequency||{}; const lines=[ '## Perf KPI Summary', '', '- Runs analyzed: '+(s.runs_analyzed??0), '- Overhead ratio (mean/median/p90): '+(o.mean??'n/a')+' / '+(o.median??'n/a')+' / '+(o.p90??'n/a'), '- Artifacts churn (mean/median/p90): '+(c.mean??'n/a')+' / '+(c.median??'n/a')+' / '+(c.p90??'n/a'), '- Gates frequency (mean/median/p90): '+(g.mean??'n/a')+' / '+(g.median??'n/a')+' / '+(g.p90??'n/a') ].join('\n'); fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines+'\n');"
+          node -e "const fs=require('fs'); const p='.aidn/runtime/perf/kpi-report.json'; const t='.aidn/runtime/perf/kpi-thresholds.json'; const d=JSON.parse(fs.readFileSync(p,'utf8')); const s=d.summary||{}; const o=s.overhead_ratio||{}; const c=s.artifacts_churn||{}; const g=s.gates_frequency||{}; let threshold='not generated'; if(fs.existsSync(t)){ const td=JSON.parse(fs.readFileSync(t,'utf8')); threshold=td.summary?.overall_status||'unknown'; } const lines=[ '## Perf KPI Summary', '', '- Runs analyzed: '+(s.runs_analyzed??0), '- Overhead ratio (mean/median/p90): '+(o.mean??'n/a')+' / '+(o.median??'n/a')+' / '+(o.p90??'n/a'), '- Artifacts churn (mean/median/p90): '+(c.mean??'n/a')+' / '+(c.median??'n/a')+' / '+(c.p90??'n/a'), '- Gates frequency (mean/median/p90): '+(g.mean??'n/a')+' / '+(g.median??'n/a')+' / '+(g.p90??'n/a'), '- Threshold status: '+threshold ].join('\n'); fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines+'\n');"
 
       - name: Upload Perf Runtime Artifacts
         uses: actions/upload-artifact@v4
@@ -51,5 +55,6 @@ jobs:
           path: |
             .aidn/runtime/perf/workflow-events.ndjson
             .aidn/runtime/perf/kpi-report.json
+            .aidn/runtime/perf/kpi-thresholds.json
             .aidn/runtime/index/workflow-index.json
           if-no-files-found: warn

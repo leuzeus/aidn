@@ -19,6 +19,7 @@ The following scripts were added under `tools/perf/`:
 - `checkpoint.mjs` - run reload-check + gate + index-sync as one checkpoint command
 - `workflow-hook.mjs` - run checkpoint from session hooks (`session-start` / `session-close`)
 - `delivery-window.mjs` - mark delivery start/end to compute overhead ratio against control time
+- `check-thresholds.mjs` - compare KPI report against versioned thresholds
 - `sql/schema.sql` - proposed SQLite schema for future index backend
 
 ## Commands
@@ -35,12 +36,14 @@ npm run perf:session-start -- --target ../client-repo --mode COMMITTING
 npm run perf:session-close -- --target ../client-repo --mode COMMITTING
 npm run perf:delivery-start -- --target ../client-repo --mode COMMITTING
 npm run perf:delivery-end -- --target ../client-repo --mode COMMITTING
+npm run perf:check-thresholds -- --kpi-file .aidn/runtime/perf/kpi-report.json --targets docs/performance/KPI_TARGETS.json
 ```
 
 Default runtime outputs:
 - `.aidn/runtime/perf/workflow-events.ndjson`
 - `.aidn/runtime/index/workflow-index.json`
 - `.aidn/runtime/cache/reload-state.json`
+- `.aidn/runtime/perf/kpi-thresholds.json`
 
 These runtime artifacts are intentionally local and ignored by git.
 
@@ -71,10 +74,15 @@ These runtime artifacts are intentionally local and ignored by git.
   - `perf:delivery-end`
   - `perf:session-close`
   - `perf:report --json`
+  - `perf:check-thresholds` (non-blocking by default in CI)
 - It publishes:
   - `.aidn/runtime/perf/workflow-events.ndjson`
   - `.aidn/runtime/perf/kpi-report.json`
+  - `.aidn/runtime/perf/kpi-thresholds.json`
   - `.aidn/runtime/index/workflow-index.json`
+
+Threshold source file:
+- `docs/performance/KPI_TARGETS.json`
 
 ## Overhead Ratio Enablement
 
