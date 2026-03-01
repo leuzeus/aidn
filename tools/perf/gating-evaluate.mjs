@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { execSync, execFileSync } from "node:child_process";
 import crypto from "node:crypto";
+
+const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
   const args = {
@@ -86,17 +89,14 @@ function printUsage() {
 }
 
 function runReloadCheck(targetRoot, cachePath) {
-  const cmd = [
-    "node",
-    "tools/perf/reload-check.mjs",
+  const stdout = execFileSync(process.execPath, [
+    path.join(PERF_DIR, "reload-check.mjs"),
     "--target",
-    `"${targetRoot}"`,
+    targetRoot,
     "--cache",
-    `"${cachePath}"`,
+    cachePath,
     "--json",
-  ].join(" ");
-
-  const stdout = execSync(cmd, {
+  ], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -394,6 +394,13 @@ function appendEvent(eventFile, payload) {
   return absolute;
 }
 
+function resolveTargetPath(targetRoot, candidatePath) {
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+  return path.resolve(targetRoot, candidatePath);
+}
+
 function getCurrentBranch(targetRoot) {
   try {
     return execSync(`git -C "${targetRoot}" branch --show-current`, {
@@ -426,6 +433,9 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
+    args.cache = resolveTargetPath(targetRoot, args.cache);
+    args.eventFile = resolveTargetPath(targetRoot, args.eventFile);
+    args.indexSyncCheckFile = resolveTargetPath(targetRoot, args.indexSyncCheckFile);
     const reload = runReloadCheck(targetRoot, args.cache);
     const levels = detectSignals(targetRoot, args, reload);
     const decision = deriveAction(levels);

@@ -2,6 +2,12 @@
 
 This folder tracks workflow performance rollout artifacts.
 
+Execution model:
+- Perf scripts live in the aidn package (`tools/perf/*`) and are executed via the npm CLI entrypoint `aidn`.
+- They target client repositories via `--target <client-repo>`.
+- They do not copy `tools/perf/*` into client repositories.
+- Runtime outputs are written under `<target>/.aidn/runtime/*`.
+
 Core planning docs:
 - `WORKFLOW_PERFORMANCE_PLAN.md`
 - `PRIORITIZATION_MATRIX.md`
@@ -47,6 +53,17 @@ The following scripts were added under `tools/perf/`:
 - `sql/schema.sql` - SQLite schema used by SQL export and SQLite index mode
 
 ## Commands
+
+Package CLI (recommended in client repos):
+
+```bash
+npx aidn perf checkpoint --target . --mode COMMITTING --index-store all --index-sync-check --json
+npx aidn perf session-start --target . --mode COMMITTING --json
+npx aidn perf session-close --target . --mode COMMITTING --json
+npx aidn perf index --target . --store all --json
+```
+
+Repository scripts (maintainer/dev mode):
 
 ```bash
 npm run perf:collect -- --event "{\"skill\":\"context-reload\",\"phase\":\"end\",\"event\":\"reload_summary\",\"duration_ms\":820,\"gates_triggered\":[\"R01\"]}"

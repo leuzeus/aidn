@@ -2,7 +2,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
+
+const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
   const args = {
@@ -68,7 +71,7 @@ function digestPayload(payload) {
 }
 
 function runIndexSync(targetRoot, indexOutput, dryRun) {
-  const script = path.resolve(process.cwd(), "tools/perf/index-sync.mjs");
+  const script = path.join(PERF_DIR, "index-sync.mjs");
   const cmd = [script, "--target", targetRoot, "--output", indexOutput, "--json"];
   if (dryRun) {
     cmd.push("--dry-run");
@@ -143,12 +146,20 @@ function toDriftLevel(reasonCodes, mismatchCount) {
   return "low";
 }
 
+function resolveTargetPath(targetRoot, candidatePath) {
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+  return path.resolve(targetRoot, candidatePath);
+}
+
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const expected = runIndexSync(targetRoot, args.indexFile, true);
-    const current = readIndex(args.indexFile);
+    const indexFilePath = resolveTargetPath(targetRoot, args.indexFile);
+    const expected = runIndexSync(targetRoot, indexFilePath, true);
+    const current = readIndex(indexFilePath);
 
     const summaryMismatches = current.exists
       ? compareSummary(expected.summary, current.payload)
@@ -188,7 +199,7 @@ function main() {
     };
 
     if (!inSync && args.apply) {
-      const applyOut = runIndexSync(targetRoot, args.indexFile, false);
+      const applyOut = runIndexSync(targetRoot, indexFilePath, false);
       output.action = "applied";
       output.apply_result = {
         writes: applyOut.writes ?? { files_written_count: 0, bytes_written: 0 },

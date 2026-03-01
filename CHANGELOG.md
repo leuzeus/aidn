@@ -1,6 +1,11 @@
 # Changelog
 
 ## Unreleased
+- Add npm-standard package metadata (`version`, `bin`, `files`, `engines`) and expose a new `aidn` CLI entrypoint.
+- Add `bin/aidn.mjs` command router for installer/build/perf commands (`aidn install`, `aidn perf checkpoint`, etc.).
+- Update install/perf docs to use package-driven execution (`npm install ...` + `npx aidn ...`) instead of direct repository path calls.
+- Fix perf runtime execution from external client repos by resolving sub-scripts from aidn package paths and writing runtime outputs relative to `--target`.
+- Harden SQLite index sync for mixed-structure repositories by upserting duplicate `cycle_id` rows instead of failing on unique constraint.
 
 ## 0.3.0
 - Extend `IndexStore` abstraction for local workflow index output with SQLite modes (`sqlite|dual-sqlite|all`) in `tools/perf/index-sync.mjs`.
@@ -55,6 +60,7 @@
 - Fix `index-sync-check --apply` to write back to the provided `--index-file` path (custom output paths now converge correctly).
 - Add `AIDN_INDEX_STORE_MODE` feature flag to set default index store mode for `index-sync`, `checkpoint`, and `workflow-hook` (CLI args still override).
 - Add `perf:campaign` (`run-kpi-campaign`) to execute repeatable KPI validation campaigns across N iterations.
+- Fix perf subcommand path resolution so running `aidn/tools/perf/*.mjs` from a client repo `cwd` works without requiring `tools/perf` inside the client repository.
 
 ## 0.2.0
 - Add canonical rule index and workflow gates in `SPEC` (`SPEC-R01..SPEC-R11`).

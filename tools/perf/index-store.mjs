@@ -1,11 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { buildSqlFromIndex } from "./index-sql-lib.mjs";
 import { writeUtf8IfChanged } from "./io-lib.mjs";
 
 const require = createRequire(import.meta.url);
+const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function getDatabaseSync() {
   try {
@@ -143,7 +145,17 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
         INSERT INTO cycles (
           cycle_id, session_id, state, outcome, branch_name, dor_state,
           continuity_rule, continuity_base_branch, continuity_latest_cycle_branch, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(cycle_id) DO UPDATE SET
+          session_id = excluded.session_id,
+          state = excluded.state,
+          outcome = excluded.outcome,
+          branch_name = excluded.branch_name,
+          dor_state = excluded.dor_state,
+          continuity_rule = excluded.continuity_rule,
+          continuity_base_branch = excluded.continuity_base_branch,
+          continuity_latest_cycle_branch = excluded.continuity_latest_cycle_branch,
+          updated_at = excluded.updated_at;
       `);
       runInsert(cycleStmt, cycles, (row) => ([
         row.cycle_id ?? null,
@@ -247,7 +259,7 @@ export function createIndexStore(options = {}) {
   const jsonOutput = options.jsonOutput ?? ".aidn/runtime/index/workflow-index.json";
   const sqlOutput = options.sqlOutput ?? ".aidn/runtime/index/workflow-index.sql";
   const sqliteOutput = options.sqliteOutput ?? ".aidn/runtime/index/workflow-index.sqlite";
-  const schemaFile = options.schemaFile ?? "tools/perf/sql/schema.sql";
+  const schemaFile = options.schemaFile ?? path.join(PERF_DIR, "sql", "schema.sql");
   const includeSchema = options.includeSchema !== false;
 
   if (!["file", "sql", "dual", "sqlite", "dual-sqlite", "all"].includes(mode)) {

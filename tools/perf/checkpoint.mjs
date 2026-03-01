@@ -2,7 +2,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { execSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { execSync, execFileSync } from "node:child_process";
+
+const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
   const envStore = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().toLowerCase();
@@ -14,7 +17,7 @@ function parseArgs(argv) {
     indexStore: envStore || "file",
     indexSqlOutput: ".aidn/runtime/index/workflow-index.sql",
     indexSqliteOutput: ".aidn/runtime/index/workflow-index.sqlite",
-    indexSchemaFile: "tools/perf/sql/schema.sql",
+    indexSchemaFile: path.join(PERF_DIR, "sql", "schema.sql"),
     indexIncludeSchema: true,
     indexKpiFile: "",
     indexSyncCheck: false,
@@ -121,8 +124,11 @@ function printUsage() {
   console.log("  node tools/perf/checkpoint.mjs --json");
 }
 
-function execJson(command) {
-  const out = execSync(command, {
+function runToolJson(scriptName, argv) {
+  const out = execFileSync(process.execPath, [
+    path.join(PERF_DIR, scriptName),
+    ...argv,
+  ], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -147,6 +153,13 @@ function writeJsonFile(filePath, payload) {
   return absolute;
 }
 
+function resolveTargetPath(targetRoot, candidatePath) {
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+  return path.resolve(targetRoot, candidatePath);
+}
+
 function getCurrentBranch(targetRoot) {
   try {
     return execSync(`git -C "${targetRoot}" branch --show-current`, {
@@ -163,43 +176,61 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
+    const cachePath = resolveTargetPath(targetRoot, args.cache);
+    const eventFilePath = resolveTargetPath(targetRoot, args.eventFile);
+    const indexOutputPath = resolveTargetPath(targetRoot, args.indexOutput);
+    const indexSqlOutputPath = resolveTargetPath(targetRoot, args.indexSqlOutput);
+    const indexSqliteOutputPath = resolveTargetPath(targetRoot, args.indexSqliteOutput);
+    const indexSyncCheckOutPath = resolveTargetPath(targetRoot, args.indexSyncCheckOut);
 
     const reloadStarted = Date.now();
-    const reload = execJson(
-      `node tools/perf/reload-check.mjs --target "${targetRoot}" --cache "${args.cache}" --write-cache --json`,
-    );
+    const reload = runToolJson("reload-check.mjs", [
+      "--target",
+      targetRoot,
+      "--cache",
+      cachePath,
+      "--write-cache",
+      "--json",
+    ]);
     const reloadDurationMs = Date.now() - reloadStarted;
 
     const gateStarted = Date.now();
-    const gate = execJson(
-      `node tools/perf/gating-evaluate.mjs --target "${targetRoot}" --cache "${args.cache}" --event-file "${args.eventFile}" --mode ${args.mode}${args.runId ? ` --run-id ${args.runId}` : ""} --json`,
-    );
+    const gateArgs = [
+      "--target",
+      targetRoot,
+      "--cache",
+      cachePath,
+      "--event-file",
+      eventFilePath,
+      "--mode",
+      args.mode,
+      "--json",
+    ];
+    if (args.runId) {
+      gateArgs.push("--run-id", args.runId);
+    }
+    const gate = runToolJson("gating-evaluate.mjs", gateArgs);
     const gateDurationMs = Date.now() - gateStarted;
 
     const indexStarted = Date.now();
-    const indexArgs = [
-      `--target "${targetRoot}"`,
-      `--store ${args.indexStore}`,
-      `--output "${args.indexOutput}"`,
-    ];
+    const indexArgs = ["--target", targetRoot, "--store", args.indexStore, "--output", indexOutputPath];
     if (args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "all") {
-      indexArgs.push(`--sql-output "${args.indexSqlOutput}"`);
+      indexArgs.push("--sql-output", indexSqlOutputPath);
     }
     if (args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all") {
-      indexArgs.push(`--sqlite-output "${args.indexSqliteOutput}"`);
+      indexArgs.push("--sqlite-output", indexSqliteOutputPath);
     }
     if (args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all") {
-      indexArgs.push(`--schema-file "${args.indexSchemaFile}"`);
+      indexArgs.push("--schema-file", args.indexSchemaFile);
       if (!args.indexIncludeSchema) {
         indexArgs.push("--no-schema");
       }
     }
     if (args.indexKpiFile) {
-      indexArgs.push(`--kpi-file "${args.indexKpiFile}"`);
+      indexArgs.push("--kpi-file", args.indexKpiFile);
     }
-    const index = execJson(
-      `node tools/perf/index-sync.mjs ${indexArgs.join(" ")} --json`,
-    );
+    indexArgs.push("--json");
+    const index = runToolJson("index-sync.mjs", indexArgs);
     const indexDurationMs = Date.now() - indexStarted;
 
     let indexSyncCheck = {
@@ -213,9 +244,13 @@ function main() {
     };
     if (args.indexSyncCheck) {
       const syncCheckStarted = Date.now();
-      const syncCheckOut = execJson(
-        `node tools/perf/index-sync-check.mjs --target "${targetRoot}" --index-file "${args.indexOutput}" --json`,
-      );
+      const syncCheckOut = runToolJson("index-sync-check.mjs", [
+        "--target",
+        targetRoot,
+        "--index-file",
+        indexOutputPath,
+        "--json",
+      ]);
       indexSyncCheck = {
         enabled: true,
         strict: args.indexSyncCheckStrict,
@@ -225,7 +260,7 @@ function main() {
           ? syncCheckOut.summary_mismatches.length
           : 0,
         duration_ms: Date.now() - syncCheckStarted,
-        output_file: writeJsonFile(args.indexSyncCheckOut, syncCheckOut),
+        output_file: writeJsonFile(indexSyncCheckOutPath, syncCheckOut),
       };
       if (args.indexSyncCheckStrict && syncCheckOut.in_sync !== true) {
         throw new Error("Index sync check drift detected in strict checkpoint mode");
@@ -254,12 +289,12 @@ function main() {
       },
       index: {
         store: args.indexStore,
-        output: path.resolve(process.cwd(), args.indexOutput),
+        output: indexOutputPath,
         sql_output: args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "all"
-          ? path.resolve(process.cwd(), args.indexSqlOutput)
+          ? indexSqlOutputPath
           : null,
         sqlite_output: args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all"
-          ? path.resolve(process.cwd(), args.indexSqliteOutput)
+          ? indexSqliteOutputPath
           : null,
         outputs: Array.isArray(index.outputs) ? index.outputs : [],
         writes: index.writes ?? {
@@ -295,7 +330,7 @@ function main() {
         reason_code: (result.reload.reason_codes ?? [])[0] ?? null,
         trace_id: `tr-${crypto.randomBytes(4).toString("hex")}`,
       };
-      appendEvent(args.eventFile, reloadEvent);
+      appendEvent(eventFilePath, reloadEvent);
 
       const event = {
         ts: result.ts,
@@ -321,7 +356,7 @@ function main() {
           : result.gate.reason_code,
         trace_id: `tr-${crypto.randomBytes(4).toString("hex")}`,
       };
-      result.summary_event_file = appendEvent(args.eventFile, event);
+      result.summary_event_file = appendEvent(eventFilePath, event);
       result.summary_run_id = checkpointRunId;
     }
 

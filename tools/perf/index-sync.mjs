@@ -2,8 +2,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { createIndexStore } from "./index-store.mjs";
 import { detectStructureProfile } from "./structure-profile-lib.mjs";
+
+const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
   const envStore = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().toLowerCase();
@@ -13,7 +16,7 @@ function parseArgs(argv) {
     store: envStore || "file",
     sqlOutput: ".aidn/runtime/index/workflow-index.sql",
     sqliteOutput: ".aidn/runtime/index/workflow-index.sqlite",
-    schemaFile: "tools/perf/sql/schema.sql",
+    schemaFile: path.join(PERF_DIR, "sql", "schema.sql"),
     includeSchema: true,
     kpiFile: "",
     json: false,
@@ -347,10 +350,26 @@ function payloadDigest(payload) {
   return crypto.createHash("sha256").update(JSON.stringify(stable)).digest("hex");
 }
 
+function resolveTargetPath(targetRoot, candidatePath) {
+  if (!candidatePath) {
+    return candidatePath;
+  }
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+  return path.resolve(targetRoot, candidatePath);
+}
+
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
+    args.output = resolveTargetPath(targetRoot, args.output);
+    args.sqlOutput = resolveTargetPath(targetRoot, args.sqlOutput);
+    args.sqliteOutput = resolveTargetPath(targetRoot, args.sqliteOutput);
+    if (args.kpiFile) {
+      args.kpiFile = resolveTargetPath(targetRoot, args.kpiFile);
+    }
     const auditRoot = path.join(targetRoot, "docs", "audit");
 
     if (!fs.existsSync(auditRoot)) {

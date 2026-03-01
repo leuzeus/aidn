@@ -17,7 +17,7 @@ function parseArgs(argv) {
     indexOutput: ".aidn/runtime/index/workflow-index.json",
     indexSqlOutput: ".aidn/runtime/index/workflow-index.sql",
     indexSqliteOutput: ".aidn/runtime/index/workflow-index.sqlite",
-    indexSchemaFile: "tools/perf/sql/schema.sql",
+    indexSchemaFile: path.join(path.dirname(fileURLToPath(import.meta.url)), "sql", "schema.sql"),
     indexIncludeSchema: true,
     indexKpiFile: "",
     indexSyncCheck: false,
@@ -218,14 +218,27 @@ function removeRunIdFile(filePath) {
   return absolute;
 }
 
+function resolveTargetPath(targetRoot, candidatePath) {
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+  return path.resolve(targetRoot, candidatePath);
+}
+
 function main() {
   const started = Date.now();
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
+    const eventFilePath = resolveTargetPath(targetRoot, args.eventFile);
+    const runIdFilePathArg = resolveTargetPath(targetRoot, args.runIdFile);
+    const indexOutputPath = resolveTargetPath(targetRoot, args.indexOutput);
+    const indexSqlOutputPath = resolveTargetPath(targetRoot, args.indexSqlOutput);
+    const indexSqliteOutputPath = resolveTargetPath(targetRoot, args.indexSqliteOutput);
+    const indexSyncCheckOutPath = resolveTargetPath(targetRoot, args.indexSyncCheckOut);
     const branch = getCurrentBranch(targetRoot);
     const phaseEvent = args.phase.replace("-", "_");
-    const existingRunId = readRunIdFile(args.runIdFile);
+    const existingRunId = readRunIdFile(runIdFilePathArg);
     const runId = args.phase === "session-close"
       ? (existingRunId || toRunId("session"))
       : toRunId(`session-${phaseEvent}`);
@@ -238,15 +251,15 @@ function main() {
     try {
       checkpointResult = runCheckpoint(targetRoot, args.mode, runId, {
         store: args.indexStore,
-        output: args.indexOutput,
-        sqlOutput: args.indexSqlOutput,
-        sqliteOutput: args.indexSqliteOutput,
+        output: indexOutputPath,
+        sqlOutput: indexSqlOutputPath,
+        sqliteOutput: indexSqliteOutputPath,
         schemaFile: args.indexSchemaFile,
         includeSchema: args.indexIncludeSchema,
         kpiFile: args.indexKpiFile,
         syncCheck: args.indexSyncCheck,
         syncCheckStrict: args.indexSyncCheckStrict,
-        syncCheckOut: args.indexSyncCheckOut,
+        syncCheckOut: indexSyncCheckOutPath,
       });
     } catch (error) {
       checkpointError = error;
@@ -277,13 +290,13 @@ function main() {
       reason_code: reasonCode,
       trace_id: `tr-${crypto.randomBytes(4).toString("hex")}`,
     };
-    const eventFilePath = appendEvent(args.eventFile, eventPayload);
+    const appendedEventFile = appendEvent(eventFilePath, eventPayload);
 
     let runIdFilePath = null;
     if (args.phase === "session-start") {
-      runIdFilePath = writeRunIdFile(args.runIdFile, runId);
+      runIdFilePath = writeRunIdFile(runIdFilePathArg, runId);
     } else if (args.phase === "session-close") {
-      runIdFilePath = removeRunIdFile(args.runIdFile);
+      runIdFilePath = removeRunIdFile(runIdFilePathArg);
     }
 
     const output = {
@@ -296,7 +309,7 @@ function main() {
       result: hookResult,
       reason_code: reasonCode,
       branch,
-      event_file: eventFilePath,
+      event_file: appendedEventFile,
       run_id_file: runIdFilePath,
       checkpoint: checkpointResult,
       checkpoint_error: checkpointError ? String(checkpointError.message ?? checkpointError) : null,
@@ -316,7 +329,7 @@ function main() {
     console.log(`Target: ${targetRoot}`);
     console.log(`Mode: ${args.mode}`);
     console.log(`run_id: ${runId}`);
-    console.log(`Event file: ${eventFilePath}`);
+    console.log(`Event file: ${appendedEventFile}`);
     if (runIdFilePath) {
       console.log(`Run id file: ${runIdFilePath}`);
     }

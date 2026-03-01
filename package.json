@@ -1,9 +1,37 @@
 {
   "name": "aidn-workflow",
+  "version": "0.3.0",
   "description": "aid’n — Audit-driven, session-based workflow packaging system for structured AI-assisted development",
-  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/leuzeus/aidn.git"
+  },
+  "homepage": "https://github.com/leuzeus/aidn",
+  "bugs": {
+    "url": "https://github.com/leuzeus/aidn/issues"
+  },
   "type": "module",
+  "bin": {
+    "aidn": "./bin/aidn.mjs"
+  },
+  "files": [
+    "bin/",
+    "docs/",
+    "package/",
+    "packs/",
+    "template/",
+    "tools/",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md",
+    "VERSION"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
+    "aidn": "node bin/aidn.mjs",
     "install-pack": "node tools/install.mjs",
     "build-release": "node tools/build-release.mjs",
     "perf:collect": "node tools/perf/collect-event.mjs",

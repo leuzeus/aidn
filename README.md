@@ -63,13 +63,14 @@ Client repository after install:
 ## Installation
 
 ```bash
-node tools/install.mjs --target ../client
-node tools/install.mjs --target ../client --pack core
-node tools/install.mjs --target ../client --pack core --verify
+npm install --save-dev github:leuzeus/aidn#dev
+npx aidn install --target ../client --pack core
+npx aidn install --target ../client --pack core --verify
 ```
 
 ```bash
-node tools/build-release.mjs
+npx aidn perf checkpoint --target ../client --mode COMMITTING --index-store all --index-sync-check --json
+npx aidn build-release
 ```
 
 ## Project Stub Customization
