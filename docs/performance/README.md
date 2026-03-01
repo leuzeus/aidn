@@ -14,6 +14,7 @@ The following scripts were added under `tools/perf/`:
 - `collect-event.mjs` - append workflow events to NDJSON
 - `report-kpi.mjs` - compute KPI summary from NDJSON
 - `index-sync.mjs` - build a local JSON index from `docs/audit/*`
+- `reload-check.mjs` - evaluate incremental/full/stop reload decision from digest + mapping
 - `sql/schema.sql` - proposed SQLite schema for future index backend
 
 ## Commands
@@ -22,10 +23,13 @@ The following scripts were added under `tools/perf/`:
 npm run perf:collect -- --event "{\"skill\":\"context-reload\",\"phase\":\"end\",\"event\":\"reload_summary\",\"duration_ms\":820,\"gates_triggered\":[\"R01\"]}"
 npm run perf:report
 npm run perf:index -- --target ../client-repo
+npm run perf:reload-check -- --target ../client-repo
+npm run perf:reload-check -- --target ../client-repo --write-cache
 ```
 
 Default runtime outputs:
 - `.aidn/runtime/perf/workflow-events.ndjson`
 - `.aidn/runtime/index/workflow-index.json`
+- `.aidn/runtime/cache/reload-state.json`
 
 These runtime artifacts are intentionally local and ignored by git.
