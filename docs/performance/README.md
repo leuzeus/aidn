@@ -73,6 +73,8 @@ These runtime artifacts are intentionally local and ignored by git.
 
 `perf:index` remains backward compatible and defaults to `file` mode.
 `perf:index-verify` should pass when SQL output is generated from the same JSON payload and schema settings.
+Index outputs are written conditionally: unchanged content is detected and not rewritten.
+For JSON index, equivalence check ignores `generated_at` to avoid churn-only rewrites.
 
 ## Standard Index Queries
 

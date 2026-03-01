@@ -315,7 +315,8 @@ function main() {
     console.log(`Index synced.`);
     console.log(`Target: ${targetRoot}`);
     for (const out of outputs) {
-      console.log(`Output (${out.kind}): ${out.path}`);
+      const state = out.written ? "updated" : "unchanged";
+      console.log(`Output (${out.kind}, ${state}): ${out.path}`);
     }
     console.log(
       `Summary: cycles=${payload.summary.cycles_count}, artifacts=${payload.summary.artifacts_count}, file_map=${payload.summary.file_map_count}, tags=${payload.summary.tags_count}`,
