@@ -14,7 +14,7 @@ The following scripts were added under `tools/perf/`:
 - `collect-event.mjs` - append workflow events to NDJSON
 - `report-kpi.mjs` - compute KPI summary from NDJSON
 - `sync-kpi-history.mjs` - persist and deduplicate KPI runs across local iterations (`kpi-history.ndjson`)
-- `index-sync.mjs` - build index from `docs/audit/*` with `IndexStore` mode: `file|sql|dual`
+- `index-sync.mjs` - build index from `docs/audit/*` with `IndexStore` mode: `file|sql|dual|sqlite|dual-sqlite|all`
 - `index-sync-check.mjs` - detect drift between on-disk index and fresh import from `docs/audit/*` (optional `--apply`)
 - `render-index-sync-summary.mjs` - generate Markdown summary from index sync check JSON
 - `sync-index-sync-history.mjs` - persist index sync check runs in NDJSON history
@@ -22,10 +22,10 @@ The following scripts were added under `tools/perf/`:
 - `render-index-sync-report-summary.mjs` - generate Markdown trend summary from sync report + thresholds
 - `verify-structure-profile-fixtures.mjs` - validate structure profile detection on legacy/modern/mixed fixtures
 - `verify-index-sync-fixtures.mjs` - validate index sync drift/apply/in-sync flow on fixtures
-- `index-store.mjs` - local `IndexStore` abstraction (file-first, SQL export optional)
+- `index-store.mjs` - local `IndexStore` abstraction (JSON/SQL/SQLite outputs)
 - `index-to-sql.mjs` - export local index JSON to SQL import script (SQLite-friendly)
 - `index-sql-lib.mjs` - shared SQL generation library used by index tooling
-- `index-query.mjs` - run standard analytics queries on local index JSON
+- `index-query.mjs` - run standard analytics queries on local index JSON or SQLite index
 - `index-verify-dual.mjs` - verify JSON/SQL dual-write parity from deterministic SQL regeneration
 - `report-index.mjs` - compute index quality report (counts consistency, parity status, run-metrics presence)
 - `render-index-summary.mjs` - generate Markdown summary from index report + index threshold checks
@@ -39,7 +39,7 @@ The following scripts were added under `tools/perf/`:
 - `report-fallbacks.mjs` - compute fallback/storm metrics from workflow events (with warmup-adjusted metrics)
 - `render-summary.mjs` - generate Markdown summary from KPI + threshold/regression/fallback reports
 - `reset-runtime.mjs` - clear local perf runtime artifacts before a fresh measurement run
-- `sql/schema.sql` - proposed SQLite schema for future index backend
+- `sql/schema.sql` - SQLite schema used by SQL export and SQLite index mode
 
 ## Commands
 
@@ -52,6 +52,8 @@ npm run perf:index -- --target ../client-repo
 npm run perf:index-check -- --target ../client-repo --strict
 npm run perf:index-check -- --target ../client-repo --apply
 npm run perf:index -- --target ../client-repo --store sql --sql-output .aidn/runtime/index/workflow-index.sql
+npm run perf:index-sqlite -- --target ../client-repo
+npm run perf:index -- --target ../client-repo --store all --sqlite-output .aidn/runtime/index/workflow-index.sqlite
 npm run perf:index-dual -- --target ../client-repo
 npm run perf:index-dual -- --target ../client-repo --kpi-file .aidn/runtime/perf/kpi-report.json
 npm run perf:index -- --target ../client-repo --json
@@ -65,6 +67,7 @@ npm run perf:verify-structure
 npm run perf:verify-index-sync
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.json
+npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite
 npm run perf:index-query -- --query artifacts-since --since 2026-03-01T00:00:00Z --index-file .aidn/runtime/index/workflow-index.json
 npm run perf:index-query -- --query run-metrics --index-file .aidn/runtime/index/workflow-index.json --limit 30
 npm run perf:structure -- --target ../client-repo --json
@@ -97,6 +100,7 @@ Default runtime outputs:
 - `.aidn/runtime/perf/workflow-events.ndjson`
 - `.aidn/runtime/index/workflow-index.json`
 - `.aidn/runtime/index/workflow-index.sql`
+- `.aidn/runtime/index/workflow-index.sqlite` (when `--store` includes SQLite output)
 - `.aidn/runtime/index/index-parity.json`
 - `.aidn/runtime/index/index-report.json`
 - `.aidn/runtime/index/index-thresholds.json`
@@ -117,6 +121,9 @@ Use `perf:reset -- --keep-history` if you want to preserve cross-run KPI history
 - `file` (default): writes JSON index only
 - `sql`: writes SQL import script only
 - `dual`: writes JSON + SQL in one run (controlled dual-write, non-blocking)
+- `sqlite`: writes SQLite index file only
+- `dual-sqlite`: writes JSON + SQLite in one run
+- `all`: writes JSON + SQL + SQLite in one run
 
 `perf:index` remains backward compatible and defaults to `file` mode.
 `perf:index -- --dry-run --json` computes payload summary/digest without writing files.
@@ -129,6 +136,11 @@ KPI/regression/fallback/index report and summary outputs are also written condit
 Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --json` output.
 
 ## Standard Index Queries
+
+`perf:index-query` supports:
+- `--backend auto` (default): `.sqlite` file => SQLite mode, otherwise JSON mode
+- `--backend json`: force JSON reader
+- `--backend sqlite`: force SQLite reader
 
 - `active-cycles`: list active cycles (`OPEN|IMPLEMENTING|VERIFYING`)
 - `artifacts-since`: list artifacts changed since an ISO timestamp (`--since` required)
@@ -164,7 +176,7 @@ Checkpoint summary events now carry effective index write counters (`files_writt
 - At session close: run `perf:session-close`
 - Default behavior is non-blocking (hook warns if checkpoint fails).
 - Use `--strict` on `perf:hook` when you want blocking behavior.
-- Optional index mode override on hooks: `--index-store file|sql|dual`.
+- Optional index mode override on hooks: `--index-store file|sql|dual|sqlite|dual-sqlite|all`.
 - Optional checkpoint sync verification on hooks: `--index-sync-check` (or `--index-sync-check-strict`).
 - Session start stores a shared `run_id` in `.aidn/runtime/perf/current-run-id.txt`.
 - Session close reuses that shared `run_id` when available, then clears the file.
@@ -183,6 +195,7 @@ Checkpoint summary events now carry effective index write counters (`files_writt
   - `perf:report --run-prefix session- --require-delivery --json`
   - `perf:sync-history`
   - `perf:index-dual --kpi-file .aidn/runtime/perf/kpi-report.json`
+  - `perf:index-sqlite --kpi-file .aidn/runtime/perf/kpi-report.json`
   - `perf:index-check --json` (non-blocking by default in CI)
   - `perf:index-sync-summary`
   - `perf:index-sync-history`
@@ -209,6 +222,7 @@ Checkpoint summary events now carry effective index write counters (`files_writt
   - `.aidn/runtime/perf/kpi-summary.md`
   - `.aidn/runtime/index/workflow-index.json`
   - `.aidn/runtime/index/workflow-index.sql`
+  - `.aidn/runtime/index/workflow-index.sqlite`
   - `.aidn/runtime/index/index-sync-check.json`
   - `.aidn/runtime/index/index-sync-summary.md`
   - `.aidn/runtime/index/index-sync-history.ndjson`

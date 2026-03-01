@@ -15,6 +15,7 @@ function parseArgs(argv) {
     indexStore: "file",
     indexOutput: ".aidn/runtime/index/workflow-index.json",
     indexSqlOutput: ".aidn/runtime/index/workflow-index.sql",
+    indexSqliteOutput: ".aidn/runtime/index/workflow-index.sqlite",
     indexSchemaFile: "tools/perf/sql/schema.sql",
     indexIncludeSchema: true,
     indexKpiFile: "",
@@ -50,6 +51,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--index-sql-output") {
       args.indexSqlOutput = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--index-sqlite-output") {
+      args.indexSqliteOutput = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--index-schema-file") {
       args.indexSchemaFile = argv[i + 1] ?? "";
@@ -88,14 +92,17 @@ function parseArgs(argv) {
   if (!["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"].includes(args.mode)) {
     throw new Error("Invalid --mode. Expected THINKING|EXPLORING|COMMITTING|UNKNOWN");
   }
-  if (!["file", "sql", "dual"].includes(args.indexStore)) {
-    throw new Error("Invalid --index-store. Expected file|sql|dual");
+  if (!["file", "sql", "dual", "sqlite", "dual-sqlite", "all"].includes(args.indexStore)) {
+    throw new Error("Invalid --index-store. Expected file|sql|dual|sqlite|dual-sqlite|all");
   }
   if (!args.indexOutput) {
     throw new Error("Missing value for --index-output");
   }
-  if ((args.indexStore === "sql" || args.indexStore === "dual") && !args.indexSqlOutput) {
+  if ((args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "all") && !args.indexSqlOutput) {
     throw new Error("Missing value for --index-sql-output");
+  }
+  if ((args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all") && !args.indexSqliteOutput) {
+    throw new Error("Missing value for --index-sqlite-output");
   }
   return args;
 }
@@ -105,6 +112,7 @@ function printUsage() {
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --mode COMMITTING");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --index-store dual");
+  console.log("  node tools/perf/workflow-hook.mjs --phase session-start --index-store sqlite --index-sqlite-output .aidn/runtime/index/workflow-index.sqlite");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --index-kpi-file .aidn/runtime/perf/kpi-report.json");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --index-sync-check");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --run-id-file .aidn/runtime/perf/current-run-id.txt");
@@ -155,6 +163,9 @@ function runCheckpoint(targetRoot, mode, runId, indexOptions = {}) {
   }
   if (indexOptions.sqlOutput) {
     cmd.push("--index-sql-output", indexOptions.sqlOutput);
+  }
+  if (indexOptions.sqliteOutput) {
+    cmd.push("--index-sqlite-output", indexOptions.sqliteOutput);
   }
   if (indexOptions.schemaFile) {
     cmd.push("--index-schema-file", indexOptions.schemaFile);
@@ -227,6 +238,7 @@ function main() {
         store: args.indexStore,
         output: args.indexOutput,
         sqlOutput: args.indexSqlOutput,
+        sqliteOutput: args.indexSqliteOutput,
         schemaFile: args.indexSchemaFile,
         includeSchema: args.indexIncludeSchema,
         kpiFile: args.indexKpiFile,

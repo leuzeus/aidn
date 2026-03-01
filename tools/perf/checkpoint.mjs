@@ -12,6 +12,7 @@ function parseArgs(argv) {
     indexOutput: ".aidn/runtime/index/workflow-index.json",
     indexStore: "file",
     indexSqlOutput: ".aidn/runtime/index/workflow-index.sql",
+    indexSqliteOutput: ".aidn/runtime/index/workflow-index.sqlite",
     indexSchemaFile: "tools/perf/sql/schema.sql",
     indexIncludeSchema: true,
     indexKpiFile: "",
@@ -43,6 +44,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--index-sql-output") {
       args.indexSqlOutput = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--index-sqlite-output") {
+      args.indexSqliteOutput = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--index-schema-file") {
       args.indexSchemaFile = argv[i + 1] ?? "";
@@ -87,11 +91,14 @@ function parseArgs(argv) {
   if (!args.indexOutput) {
     throw new Error("Missing value for --index-output");
   }
-  if (!["file", "sql", "dual"].includes(args.indexStore)) {
-    throw new Error("Invalid --index-store. Expected file|sql|dual");
+  if (!["file", "sql", "dual", "sqlite", "dual-sqlite", "all"].includes(args.indexStore)) {
+    throw new Error("Invalid --index-store. Expected file|sql|dual|sqlite|dual-sqlite|all");
   }
-  if ((args.indexStore === "sql" || args.indexStore === "dual") && !args.indexSqlOutput) {
+  if ((args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "all") && !args.indexSqlOutput) {
     throw new Error("Missing value for --index-sql-output");
+  }
+  if ((args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all") && !args.indexSqliteOutput) {
+    throw new Error("Missing value for --index-sqlite-output");
   }
   if (!["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"].includes(args.mode)) {
     throw new Error("Invalid --mode. Expected THINKING|EXPLORING|COMMITTING|UNKNOWN");
@@ -105,6 +112,7 @@ function printUsage() {
   console.log("  node tools/perf/checkpoint.mjs --target ../client --mode COMMITTING");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --run-id S072-20260301T1012Z");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --index-store dual --index-sql-output .aidn/runtime/index/workflow-index.sql");
+  console.log("  node tools/perf/checkpoint.mjs --target ../client --index-store sqlite --index-sqlite-output .aidn/runtime/index/workflow-index.sqlite");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --index-kpi-file .aidn/runtime/perf/kpi-report.json");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --index-sync-check");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --index-sync-check-strict");
@@ -172,8 +180,13 @@ function main() {
       `--store ${args.indexStore}`,
       `--output "${args.indexOutput}"`,
     ];
-    if (args.indexStore === "sql" || args.indexStore === "dual") {
+    if (args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "all") {
       indexArgs.push(`--sql-output "${args.indexSqlOutput}"`);
+    }
+    if (args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all") {
+      indexArgs.push(`--sqlite-output "${args.indexSqliteOutput}"`);
+    }
+    if (args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all") {
       indexArgs.push(`--schema-file "${args.indexSchemaFile}"`);
       if (!args.indexIncludeSchema) {
         indexArgs.push("--no-schema");
@@ -240,8 +253,11 @@ function main() {
       index: {
         store: args.indexStore,
         output: path.resolve(process.cwd(), args.indexOutput),
-        sql_output: args.indexStore === "sql" || args.indexStore === "dual"
+        sql_output: args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "all"
           ? path.resolve(process.cwd(), args.indexSqlOutput)
+          : null,
+        sqlite_output: args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all"
+          ? path.resolve(process.cwd(), args.indexSqliteOutput)
           : null,
         outputs: Array.isArray(index.outputs) ? index.outputs : [],
         writes: index.writes ?? {

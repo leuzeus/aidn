@@ -1,10 +1,13 @@
 # Changelog
 
 ## Unreleased
-- Add `IndexStore` abstraction for local workflow index output (`file|sql|dual`) in `tools/perf/index-sync.mjs`.
+- Extend `IndexStore` abstraction for local workflow index output with SQLite modes (`sqlite|dual-sqlite|all`) in `tools/perf/index-sync.mjs`.
 - Add shared SQL generation module (`tools/perf/index-sql-lib.mjs`) and reuse it from `index-to-sql`.
 - Add `npm run perf:index-dual` for controlled dual-write output (JSON + SQL) without changing file-first source of truth.
+- Add `npm run perf:index-sqlite` and `npm run perf:index-all` convenience commands.
 - Add `tools/perf/index-query.mjs` and `npm run perf:index-query` for standard local index analytics queries.
+- Extend `tools/perf/index-query.mjs` with SQLite backend support (`--backend auto|json|sqlite`).
+- Extend `perf-kpi` CI flow to refresh and publish `workflow-index.sqlite` artifacts.
 - Add `tools/perf/index-verify-dual.mjs` and CI parity check to validate dual-write JSON/SQL consistency.
 - Optimize index writes with content-equivalence checks (including JSON equivalence without `generated_at`) to reduce unnecessary rewrites.
 - Add optional `--kpi-file` on index sync/checkpoint/hook to enrich index payload with `run_metrics`.
@@ -38,6 +41,7 @@
 - Run `perf:verify-structure` in `perf-kpi` CI workflow to prevent structure-profile regressions.
 - Add index sync trend pipeline (`sync-index-sync-history`, `report-index-sync`, `INDEX_SYNC_TARGETS`, markdown trend summary) and publish artifacts in perf CI.
 - Add optional checkpoint/hook `index-sync-check` execution (`--index-sync-check`, `--index-sync-check-strict`) with exported check JSON and summary-event integration.
+- Extend checkpoint/hook index options with SQLite output support (`--index-store sqlite|dual-sqlite|all`, `--index-sqlite-output`).
 - Enrich `index-sync-check` outputs with `reason_codes`, `drift_level`, numeric summary fields, and high-drift trend reporting.
 - Extend `gating-evaluate` with `index_sync_drift` signal and L3 escalation path (`L3_INDEX_SYNC_DRIFT`) on high drift levels.
 - Scope `index_sync_drift` gating signal to matching `target_root` to avoid cross-project false positives.

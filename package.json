@@ -16,6 +16,8 @@
     "perf:index-sync-report": "node tools/perf/report-index-sync.mjs",
     "perf:index-sync-thresholds": "node tools/perf/check-thresholds.mjs --kpi-file .aidn/runtime/index/index-sync-report.json --targets docs/performance/INDEX_SYNC_TARGETS.json --out .aidn/runtime/index/index-sync-thresholds.json",
     "perf:index-dual": "node tools/perf/index-sync.mjs --store dual",
+    "perf:index-sqlite": "node tools/perf/index-sync.mjs --store sqlite",
+    "perf:index-all": "node tools/perf/index-sync.mjs --store all",
     "perf:index-sql": "node tools/perf/index-to-sql.mjs",
     "perf:index-query": "node tools/perf/index-query.mjs",
     "perf:structure": "node tools/perf/structure-profile.mjs",

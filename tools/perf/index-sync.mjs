@@ -11,6 +11,7 @@ function parseArgs(argv) {
     output: ".aidn/runtime/index/workflow-index.json",
     store: "file",
     sqlOutput: ".aidn/runtime/index/workflow-index.sql",
+    sqliteOutput: ".aidn/runtime/index/workflow-index.sqlite",
     schemaFile: "tools/perf/sql/schema.sql",
     includeSchema: true,
     kpiFile: "",
@@ -31,6 +32,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--sql-output") {
       args.sqlOutput = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--sqlite-output") {
+      args.sqliteOutput = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--schema-file") {
       args.schemaFile = argv[i + 1] ?? "";
@@ -59,11 +63,14 @@ function parseArgs(argv) {
     throw new Error("Missing value for --output");
   }
   args.store = String(args.store).toLowerCase();
-  if (!["file", "sql", "dual"].includes(args.store)) {
-    throw new Error(`Invalid --store mode: ${args.store}. Expected file|sql|dual.`);
+  if (!["file", "sql", "dual", "sqlite", "dual-sqlite", "all"].includes(args.store)) {
+    throw new Error(`Invalid --store mode: ${args.store}. Expected file|sql|dual|sqlite|dual-sqlite|all.`);
   }
-  if ((args.store === "sql" || args.store === "dual") && !args.sqlOutput) {
+  if ((args.store === "sql" || args.store === "dual" || args.store === "all") && !args.sqlOutput) {
     throw new Error("Missing value for --sql-output");
+  }
+  if ((args.store === "sqlite" || args.store === "dual-sqlite" || args.store === "all") && !args.sqliteOutput) {
+    throw new Error("Missing value for --sqlite-output");
   }
   return args;
 }
@@ -73,6 +80,8 @@ function printUsage() {
   console.log("  node tools/perf/index-sync.mjs --target ../client");
   console.log("  node tools/perf/index-sync.mjs --target . --output .aidn/runtime/index/workflow-index.json");
   console.log("  node tools/perf/index-sync.mjs --target . --store dual --output .aidn/runtime/index/workflow-index.json --sql-output .aidn/runtime/index/workflow-index.sql");
+  console.log("  node tools/perf/index-sync.mjs --target . --store sqlite --sqlite-output .aidn/runtime/index/workflow-index.sqlite");
+  console.log("  node tools/perf/index-sync.mjs --target . --store all --output .aidn/runtime/index/workflow-index.json --sql-output .aidn/runtime/index/workflow-index.sql --sqlite-output .aidn/runtime/index/workflow-index.sqlite");
   console.log("  node tools/perf/index-sync.mjs --target . --store dual --kpi-file .aidn/runtime/perf/kpi-report.json");
   console.log("  node tools/perf/index-sync.mjs --target . --json");
   console.log("  node tools/perf/index-sync.mjs --target . --json --dry-run");
@@ -382,6 +391,7 @@ function main() {
         mode: args.store,
         jsonOutput: args.output,
         sqlOutput: args.sqlOutput,
+        sqliteOutput: args.sqliteOutput,
         schemaFile: args.schemaFile,
         includeSchema: args.includeSchema,
       });

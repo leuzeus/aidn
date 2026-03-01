@@ -1,10 +1,22 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+
+function getDatabaseSync() {
+  try {
+    return require("node:sqlite").DatabaseSync;
+  } catch (error) {
+    throw new Error(`SQLite backend unavailable: ${error.message}`);
+  }
+}
 
 function parseArgs(argv) {
   const args = {
     indexFile: ".aidn/runtime/index/workflow-index.json",
+    backend: "auto",
     query: "active-cycles",
     since: "",
     cycleId: "",
@@ -16,6 +28,9 @@ function parseArgs(argv) {
     const token = argv[i];
     if (token === "--index-file") {
       args.indexFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--backend") {
+      args.backend = String(argv[i + 1] ?? "").toLowerCase();
       i += 1;
     } else if (token === "--query") {
       args.query = String(argv[i + 1] ?? "").toLowerCase();
@@ -42,6 +57,9 @@ function parseArgs(argv) {
   if (!args.indexFile) {
     throw new Error("Missing value for --index-file");
   }
+  if (!["auto", "json", "sqlite"].includes(args.backend)) {
+    throw new Error("Invalid --backend. Expected auto|json|sqlite");
+  }
   if (!["active-cycles", "artifacts-since", "cycle-files", "run-metrics"].includes(args.query)) {
     throw new Error("Invalid --query. Expected active-cycles|artifacts-since|cycle-files|run-metrics");
   }
@@ -60,12 +78,20 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/index-query.mjs --query active-cycles");
+  console.log("  node tools/perf/index-query.mjs --query active-cycles --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite");
   console.log("  node tools/perf/index-query.mjs --query artifacts-since --since 2026-03-01T00:00:00Z");
   console.log("  node tools/perf/index-query.mjs --query cycle-files --cycle-id C118");
   console.log("  node tools/perf/index-query.mjs --query run-metrics --limit 30");
 }
 
-function readIndex(filePath) {
+function detectBackend(indexFile, backend) {
+  if (backend === "json" || backend === "sqlite") {
+    return backend;
+  }
+  return String(indexFile).toLowerCase().endsWith(".sqlite") ? "sqlite" : "json";
+}
+
+function readJsonIndex(filePath) {
   const absolute = path.resolve(process.cwd(), filePath);
   if (!fs.existsSync(absolute)) {
     throw new Error(`Index file not found: ${absolute}`);
@@ -79,12 +105,22 @@ function readIndex(filePath) {
   return { absolute, data };
 }
 
+function openSqlite(filePath) {
+  const DatabaseSync = getDatabaseSync();
+  const absolute = path.resolve(process.cwd(), filePath);
+  if (!fs.existsSync(absolute)) {
+    throw new Error(`Index sqlite file not found: ${absolute}`);
+  }
+  const db = new DatabaseSync(absolute);
+  return { absolute, db };
+}
+
 function toTimestamp(value) {
   const ms = Date.parse(value);
   return Number.isNaN(ms) ? null : ms;
 }
 
-function queryActiveCycles(indexData, limit) {
+function queryActiveCyclesJson(indexData, limit) {
   const rows = Array.isArray(indexData.cycles) ? indexData.cycles : [];
   const active = rows.filter((row) => ["OPEN", "IMPLEMENTING", "VERIFYING"].includes(String(row.state ?? "").toUpperCase()));
   active.sort((a, b) => String(b.updated_at ?? "").localeCompare(String(a.updated_at ?? "")));
@@ -97,7 +133,7 @@ function queryActiveCycles(indexData, limit) {
   }));
 }
 
-function queryArtifactsSince(indexData, sinceIso, limit) {
+function queryArtifactsSinceJson(indexData, sinceIso, limit) {
   const sinceTs = toTimestamp(sinceIso);
   if (sinceTs == null) {
     throw new Error(`Invalid ISO timestamp for --since: ${sinceIso}`);
@@ -116,7 +152,7 @@ function queryArtifactsSince(indexData, sinceIso, limit) {
   }));
 }
 
-function queryCycleFiles(indexData, cycleId, limit) {
+function queryCycleFilesJson(indexData, cycleId, limit) {
   const rows = Array.isArray(indexData.file_map) ? indexData.file_map : [];
   const filtered = rows.filter((row) => String(row.cycle_id) === String(cycleId));
   filtered.sort((a, b) => String(b.last_seen_at ?? "").localeCompare(String(a.last_seen_at ?? "")));
@@ -128,7 +164,7 @@ function queryCycleFiles(indexData, cycleId, limit) {
   }));
 }
 
-function queryRunMetrics(indexData, limit) {
+function queryRunMetricsJson(indexData, limit) {
   const rows = Array.isArray(indexData.run_metrics) ? indexData.run_metrics : [];
   const sorted = [...rows].sort((a, b) => String(b.started_at ?? "").localeCompare(String(a.started_at ?? "")));
   return sorted.slice(0, limit).map((row) => ({
@@ -141,18 +177,57 @@ function queryRunMetrics(indexData, limit) {
   }));
 }
 
-function runQuery(indexData, args) {
+function runJsonQuery(indexData, args) {
   if (args.query === "active-cycles") {
-    return queryActiveCycles(indexData, args.limit);
+    return queryActiveCyclesJson(indexData, args.limit);
   }
   if (args.query === "artifacts-since") {
-    return queryArtifactsSince(indexData, args.since, args.limit);
+    return queryArtifactsSinceJson(indexData, args.since, args.limit);
   }
   if (args.query === "cycle-files") {
-    return queryCycleFiles(indexData, args.cycleId, args.limit);
+    return queryCycleFilesJson(indexData, args.cycleId, args.limit);
   }
   if (args.query === "run-metrics") {
-    return queryRunMetrics(indexData, args.limit);
+    return queryRunMetricsJson(indexData, args.limit);
+  }
+  return [];
+}
+
+function runSqliteQuery(db, args) {
+  if (args.query === "active-cycles") {
+    return db.prepare(`
+      SELECT cycle_id, state, branch_name, dor_state, updated_at
+      FROM cycles
+      WHERE UPPER(state) IN ('OPEN', 'IMPLEMENTING', 'VERIFYING')
+      ORDER BY updated_at DESC
+      LIMIT ?
+    `).all(args.limit);
+  }
+  if (args.query === "artifacts-since") {
+    return db.prepare(`
+      SELECT path, kind, sha256, updated_at
+      FROM artifacts
+      WHERE updated_at > ?
+      ORDER BY updated_at DESC
+      LIMIT ?
+    `).all(args.since, args.limit);
+  }
+  if (args.query === "cycle-files") {
+    return db.prepare(`
+      SELECT cycle_id, path, role, last_seen_at
+      FROM file_map
+      WHERE cycle_id = ?
+      ORDER BY last_seen_at DESC
+      LIMIT ?
+    `).all(args.cycleId, args.limit);
+  }
+  if (args.query === "run-metrics") {
+    return db.prepare(`
+      SELECT run_id, started_at, ended_at, overhead_ratio, artifacts_churn, gates_frequency
+      FROM run_metrics
+      ORDER BY started_at DESC
+      LIMIT ?
+    `).all(args.limit);
   }
   return [];
 }
@@ -160,10 +235,27 @@ function runQuery(indexData, args) {
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
-    const { absolute, data } = readIndex(args.indexFile);
-    const rows = runQuery(data, args);
+    const backend = detectBackend(args.indexFile, args.backend);
+    let sourceIndex = "";
+    let rows = [];
+
+    if (backend === "sqlite") {
+      const { absolute, db } = openSqlite(args.indexFile);
+      sourceIndex = absolute;
+      try {
+        rows = runSqliteQuery(db, args);
+      } finally {
+        db.close();
+      }
+    } else {
+      const { absolute, data } = readJsonIndex(args.indexFile);
+      sourceIndex = absolute;
+      rows = runJsonQuery(data, args);
+    }
+
     const payload = {
-      source_index: absolute,
+      source_index: sourceIndex,
+      backend,
       query: args.query,
       count: rows.length,
       rows,
