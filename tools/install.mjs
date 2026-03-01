@@ -17,9 +17,6 @@ const CUSTOMIZABLE_TARGET_PATTERNS = [
   "docs/audit/baseline/current.md",
   "docs/audit/baseline/history.md",
   "docs/audit/snapshots/context-snapshot.md",
-  "docs/audit/cycles/TEMPLATE_*.md",
-  "docs/audit/sessions/TEMPLATE_*.md",
-  "docs/audit/incidents/TEMPLATE_*.md",
 ];
 
 function normalizeRelativePath(value) {
