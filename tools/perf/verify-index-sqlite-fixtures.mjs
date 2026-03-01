@@ -68,14 +68,25 @@ function runNoJson(script, scriptArgs) {
   });
 }
 
+function resolveTargetPath(targetRoot, candidatePath) {
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+  return path.resolve(targetRoot, candidatePath);
+}
+
 function exists(filePath) {
-  return fs.existsSync(path.resolve(process.cwd(), filePath));
+  return fs.existsSync(filePath);
 }
 
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const target = path.resolve(process.cwd(), args.target);
+    const indexFilePath = resolveTargetPath(target, args.indexFile);
+    const sqlFilePath = resolveTargetPath(target, args.sqlFile);
+    const sqliteFilePath = resolveTargetPath(target, args.sqliteFile);
+    const exportedFilePath = resolveTargetPath(target, args.exportedFile);
 
     runNoJson("tools/perf/index-sync.mjs", [
       "--target",
@@ -83,52 +94,52 @@ function main() {
       "--store",
       "all",
       "--output",
-      args.indexFile,
+      indexFilePath,
       "--sql-output",
-      args.sqlFile,
+      sqlFilePath,
       "--sqlite-output",
-      args.sqliteFile,
+      sqliteFilePath,
     ]);
 
     const dualParity = runJson("tools/perf/index-verify-dual.mjs", [
       "--index-file",
-      args.indexFile,
+      indexFilePath,
       "--sql-file",
-      args.sqlFile,
+      sqlFilePath,
       "--json",
     ]);
 
     const sqliteParity = runJson("tools/perf/index-verify-sqlite.mjs", [
       "--index-file",
-      args.indexFile,
+      indexFilePath,
       "--sqlite-file",
-      args.sqliteFile,
+      sqliteFilePath,
       "--json",
     ]);
 
     const exported = runJson("tools/perf/index-from-sqlite.mjs", [
       "--sqlite-file",
-      args.sqliteFile,
+      sqliteFilePath,
       "--out",
-      args.exportedFile,
+      exportedFilePath,
       "--json",
     ]);
 
     const pass = dualParity.ok === true
       && sqliteParity.in_sync === true
-      && exists(args.indexFile)
-      && exists(args.sqlFile)
-      && exists(args.sqliteFile)
-      && exists(args.exportedFile);
+      && exists(indexFilePath)
+      && exists(sqlFilePath)
+      && exists(sqliteFilePath)
+      && exists(exportedFilePath);
 
     const output = {
       ts: new Date().toISOString(),
       target_root: target,
       files: {
-        index_file: path.resolve(process.cwd(), args.indexFile),
-        sql_file: path.resolve(process.cwd(), args.sqlFile),
-        sqlite_file: path.resolve(process.cwd(), args.sqliteFile),
-        exported_file: path.resolve(process.cwd(), args.exportedFile),
+        index_file: indexFilePath,
+        sql_file: sqlFilePath,
+        sqlite_file: sqliteFilePath,
+        exported_file: exportedFilePath,
       },
       checks: {
         dual_parity_ok: dualParity.ok === true,
@@ -146,7 +157,7 @@ function main() {
       console.log(`Target: ${output.target_root}`);
       console.log(`Dual parity: ${output.checks.dual_parity_ok ? "PASS" : "FAIL"}`);
       console.log(`SQLite parity: ${output.checks.sqlite_parity_in_sync ? "PASS" : "FAIL"}`);
-      console.log(`Export exists: ${exists(args.exportedFile) ? "yes" : "no"}`);
+      console.log(`Export exists: ${exists(exportedFilePath) ? "yes" : "no"}`);
       console.log(`Result: ${output.pass ? "PASS" : "FAIL"}`);
     }
 
