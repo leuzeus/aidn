@@ -76,6 +76,8 @@ npx aidn perf index --target . --store all --json
 npx aidn perf index-export-files --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target . --audit-root docs/audit
 npx aidn perf index --target . --store all --no-content --json
 npx aidn perf index-export-files --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target . --audit-root docs/audit --render-markdown
+npx aidn perf index-canonical-check --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --targets docs/performance/INDEX_TARGETS.json --json
+npx aidn perf index-canonical-summary --check-file .aidn/runtime/index/index-canonical-check.json --out .aidn/runtime/index/index-canonical-check-summary.md
 ```
 
 Repository scripts (maintainer/dev mode):
