@@ -13,6 +13,8 @@ Core planning docs:
 - `PRIORITIZATION_MATRIX.md`
 - `PROCESS_ASIS_STATE.md`
 - `PROCESS_OPTIMIZATION_PLAN.md`
+- `PROCESS_MASTER_PLAN.md`
+- `LOT0_BASELINE_REPORT.md`
 - `../rfc/RFC-0001-reload-incremental-gating-index.md`
 
 ## CLI Tools
