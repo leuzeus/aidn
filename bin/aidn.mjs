@@ -33,6 +33,7 @@ const PERF_ALIASES = {
   "verify-index-sqlite": { file: "verify-index-sqlite-fixtures.mjs" },
   "verify-index-canonical-check": { file: "verify-index-canonical-check-fixtures.mjs" },
   "verify-index-regression": { file: "verify-index-regression-fixtures.mjs" },
+  "verify-cli-aliases": { file: "verify-perf-cli-aliases-fixtures.mjs" },
   "verify-structure": { file: "verify-structure-profile-fixtures.mjs" },
   "verify-skill-hooks": { file: "verify-skill-hook-coverage.mjs" },
   "verify-install-import": { file: "verify-install-import-fixtures.mjs" },
