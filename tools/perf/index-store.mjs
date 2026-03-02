@@ -85,6 +85,25 @@ function ensureMetaTable(db) {
   `);
 }
 
+function getTableColumns(db, tableName) {
+  const rows = db.prepare(`PRAGMA table_info(${tableName});`).all();
+  const out = new Set();
+  for (const row of rows) {
+    if (typeof row?.name === "string") {
+      out.add(row.name);
+    }
+  }
+  return out;
+}
+
+function ensureColumn(db, tableName, columnName, sqlTypeClause) {
+  const columns = getTableColumns(db, tableName);
+  if (columns.has(columnName)) {
+    return;
+  }
+  db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${sqlTypeClause};`);
+}
+
 function getMeta(db, key) {
   const stmt = db.prepare("SELECT value FROM index_meta WHERE key = ?");
   const row = stmt.get(key);
@@ -115,6 +134,13 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
   try {
     db.exec("PRAGMA foreign_keys=OFF;");
     db.exec(schemaText);
+    ensureColumn(db, "artifacts", "family", "TEXT NOT NULL DEFAULT 'unknown'");
+    ensureColumn(db, "artifacts", "subtype", "TEXT");
+    ensureColumn(db, "artifacts", "gate_relevance", "INTEGER NOT NULL DEFAULT 0");
+    ensureColumn(db, "artifacts", "classification_reason", "TEXT");
+    ensureColumn(db, "artifacts", "content_format", "TEXT");
+    ensureColumn(db, "artifacts", "content", "TEXT");
+    ensureColumn(db, "file_map", "relation", "TEXT NOT NULL DEFAULT 'unknown'");
     ensureMetaTable(db);
     const prevDigest = getMeta(db, "payload_digest");
     if (prevDigest === nextDigest) {
@@ -172,12 +198,18 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
 
       const artifactStmt = db.prepare(`
         INSERT INTO artifacts (
-          path, kind, sha256, size_bytes, mtime_ns, session_id, cycle_id, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+          path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, sha256, size_bytes, mtime_ns, session_id, cycle_id, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `);
       runInsert(artifactStmt, artifacts, (row) => ([
         row.path ?? null,
         row.kind ?? "other",
+        row.family ?? "unknown",
+        row.subtype ?? null,
+        Number(row.gate_relevance ?? 0),
+        row.classification_reason ?? null,
+        row.content_format ?? null,
+        row.content ?? null,
         row.sha256 ?? null,
         Number(row.size_bytes ?? 0),
         Number(row.mtime_ns ?? 0),
@@ -187,13 +219,14 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       ]));
 
       const fileMapStmt = db.prepare(`
-        INSERT INTO file_map (cycle_id, path, role, last_seen_at)
-        VALUES (?, ?, ?, ?);
+        INSERT INTO file_map (cycle_id, path, role, relation, last_seen_at)
+        VALUES (?, ?, ?, ?, ?);
       `);
       runInsert(fileMapStmt, fileMap, (row) => ([
         row.cycle_id ?? null,
         row.path ?? null,
         row.role ?? null,
+        row.relation ?? "unknown",
         row.last_seen_at ?? new Date().toISOString(),
       ]));
 

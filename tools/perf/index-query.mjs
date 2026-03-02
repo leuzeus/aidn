@@ -115,6 +115,17 @@ function openSqlite(filePath) {
   return { absolute, db };
 }
 
+function getSqliteColumns(db, tableName) {
+  const rows = db.prepare(`PRAGMA table_info(${tableName});`).all();
+  const out = new Set();
+  for (const row of rows) {
+    if (typeof row?.name === "string") {
+      out.add(row.name);
+    }
+  }
+  return out;
+}
+
 function toTimestamp(value) {
   const ms = Date.parse(value);
   return Number.isNaN(ms) ? null : ms;
@@ -147,6 +158,10 @@ function queryArtifactsSinceJson(indexData, sinceIso, limit) {
   return filtered.slice(0, limit).map((row) => ({
     path: row.path,
     kind: row.kind,
+    family: row.family ?? "unknown",
+    subtype: row.subtype ?? null,
+    gate_relevance: Number(row.gate_relevance ?? 0),
+    classification_reason: row.classification_reason ?? null,
     sha256: row.sha256,
     updated_at: row.updated_at,
   }));
@@ -160,6 +175,7 @@ function queryCycleFilesJson(indexData, cycleId, limit) {
     cycle_id: row.cycle_id,
     path: row.path,
     role: row.role,
+    relation: row.relation ?? "unknown",
     last_seen_at: row.last_seen_at,
   }));
 }
@@ -204,8 +220,13 @@ function runSqliteQuery(db, args) {
     `).all(args.limit);
   }
   if (args.query === "artifacts-since") {
+    const columns = getSqliteColumns(db, "artifacts");
+    const familyExpr = columns.has("family") ? "family" : "'unknown' AS family";
+    const subtypeExpr = columns.has("subtype") ? "subtype" : "NULL AS subtype";
+    const gateExpr = columns.has("gate_relevance") ? "gate_relevance" : "0 AS gate_relevance";
+    const reasonExpr = columns.has("classification_reason") ? "classification_reason" : "NULL AS classification_reason";
     return db.prepare(`
-      SELECT path, kind, sha256, updated_at
+      SELECT path, kind, ${familyExpr}, ${subtypeExpr}, ${gateExpr}, ${reasonExpr}, sha256, updated_at
       FROM artifacts
       WHERE updated_at > ?
       ORDER BY updated_at DESC
@@ -213,8 +234,10 @@ function runSqliteQuery(db, args) {
     `).all(args.since, args.limit);
   }
   if (args.query === "cycle-files") {
+    const columns = getSqliteColumns(db, "file_map");
+    const relationExpr = columns.has("relation") ? "relation" : "'unknown' AS relation";
     return db.prepare(`
-      SELECT cycle_id, path, role, last_seen_at
+      SELECT cycle_id, path, role, ${relationExpr}, last_seen_at
       FROM file_map
       WHERE cycle_id = ?
       ORDER BY last_seen_at DESC

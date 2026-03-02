@@ -15,6 +15,12 @@ CREATE TABLE artifacts (
   artifact_id INTEGER PRIMARY KEY AUTOINCREMENT,
   path TEXT NOT NULL UNIQUE,
   kind TEXT NOT NULL,
+  family TEXT NOT NULL DEFAULT 'unknown',
+  subtype TEXT,
+  gate_relevance INTEGER NOT NULL DEFAULT 0,
+  classification_reason TEXT,
+  content_format TEXT,
+  content TEXT,
   sha256 TEXT NOT NULL,
   size_bytes INTEGER NOT NULL,
   mtime_ns INTEGER NOT NULL,
@@ -27,6 +33,7 @@ CREATE TABLE file_map (
   cycle_id TEXT NOT NULL,
   path TEXT NOT NULL,
   role TEXT,
+  relation TEXT NOT NULL DEFAULT 'unknown',
   last_seen_at TEXT NOT NULL,
   PRIMARY KEY (cycle_id, path)
 );

@@ -10,6 +10,7 @@ function parseArgs(argv) {
     sqlFile: ".aidn/runtime/index/fixtures/sqlite/workflow-index.sql",
     sqliteFile: ".aidn/runtime/index/fixtures/sqlite/workflow-index.sqlite",
     exportedFile: ".aidn/runtime/index/fixtures/sqlite/workflow-index.from-sqlite.json",
+    rebuildAuditRoot: ".aidn/runtime/index/fixtures/sqlite/rebuild/docs/audit",
     json: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -29,6 +30,9 @@ function parseArgs(argv) {
     } else if (token === "--exported-file") {
       args.exportedFile = argv[i + 1] ?? "";
       i += 1;
+    } else if (token === "--rebuild-audit-root") {
+      args.rebuildAuditRoot = argv[i + 1] ?? "";
+      i += 1;
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -38,7 +42,7 @@ function parseArgs(argv) {
       throw new Error(`Unknown argument: ${token}`);
     }
   }
-  if (!args.target || !args.indexFile || !args.sqlFile || !args.sqliteFile || !args.exportedFile) {
+  if (!args.target || !args.indexFile || !args.sqlFile || !args.sqliteFile || !args.exportedFile || !args.rebuildAuditRoot) {
     throw new Error("Missing required argument values");
   }
   return args;
@@ -49,6 +53,7 @@ function printUsage() {
   console.log("  node tools/perf/verify-index-sqlite-fixtures.mjs");
   console.log("  node tools/perf/verify-index-sqlite-fixtures.mjs --target tests/fixtures/repo-installed-core");
   console.log("  node tools/perf/verify-index-sqlite-fixtures.mjs --sqlite-file .aidn/runtime/index/fixtures/sqlite/workflow-index.sqlite");
+  console.log("  node tools/perf/verify-index-sqlite-fixtures.mjs --rebuild-audit-root .aidn/runtime/index/fixtures/sqlite/rebuild/docs/audit");
 }
 
 function runJson(script, scriptArgs) {
@@ -87,12 +92,14 @@ function main() {
     const sqlFilePath = resolveTargetPath(target, args.sqlFile);
     const sqliteFilePath = resolveTargetPath(target, args.sqliteFile);
     const exportedFilePath = resolveTargetPath(target, args.exportedFile);
+    const rebuildAuditRootPath = resolveTargetPath(target, args.rebuildAuditRoot);
 
     runNoJson("tools/perf/index-sync.mjs", [
       "--target",
       target,
       "--store",
       "all",
+      "--with-content",
       "--output",
       indexFilePath,
       "--sql-output",
@@ -125,12 +132,27 @@ function main() {
       "--json",
     ]);
 
+    const rebuilt = runJson("tools/perf/index-export-files.mjs", [
+      "--index-file",
+      sqliteFilePath,
+      "--backend",
+      "sqlite",
+      "--target",
+      target,
+      "--audit-root",
+      rebuildAuditRootPath,
+      "--json",
+    ]);
+    const rebuiltWorkflowPath = path.resolve(rebuildAuditRootPath, "WORKFLOW.md");
+
     const pass = dualParity.ok === true
       && sqliteParity.in_sync === true
       && exists(indexFilePath)
       && exists(sqlFilePath)
       && exists(sqliteFilePath)
-      && exists(exportedFilePath);
+      && exists(exportedFilePath)
+      && exists(rebuiltWorkflowPath)
+      && Number(rebuilt?.summary?.missing_content ?? 0) === 0;
 
     const output = {
       ts: new Date().toISOString(),
@@ -140,11 +162,15 @@ function main() {
         sql_file: sqlFilePath,
         sqlite_file: sqliteFilePath,
         exported_file: exportedFilePath,
+        rebuilt_audit_root: rebuildAuditRootPath,
       },
       checks: {
         dual_parity_ok: dualParity.ok === true,
         sqlite_parity_in_sync: sqliteParity.in_sync === true,
         export_written: exported?.write?.written === true || exported?.write?.written === false,
+        rebuild_missing_content: Number(rebuilt?.summary?.missing_content ?? -1),
+        rebuild_exported: Number(rebuilt?.summary?.exported ?? 0),
+        rebuild_workflow_exists: exists(rebuiltWorkflowPath),
         dual_parity_digest: dualParity.actual_sha256 ?? null,
         sqlite_parity_digest: sqliteParity?.digests?.index_sqlite ?? null,
       },
@@ -158,6 +184,8 @@ function main() {
       console.log(`Dual parity: ${output.checks.dual_parity_ok ? "PASS" : "FAIL"}`);
       console.log(`SQLite parity: ${output.checks.sqlite_parity_in_sync ? "PASS" : "FAIL"}`);
       console.log(`Export exists: ${exists(exportedFilePath) ? "yes" : "no"}`);
+      console.log(`Rebuild workflow exists: ${output.checks.rebuild_workflow_exists ? "yes" : "no"}`);
+      console.log(`Rebuild missing content: ${output.checks.rebuild_missing_content}`);
       console.log(`Result: ${output.pass ? "PASS" : "FAIL"}`);
     }
 

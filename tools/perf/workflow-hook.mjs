@@ -7,13 +7,15 @@ import { execFileSync } from "node:child_process";
 
 function parseArgs(argv) {
   const envStore = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().toLowerCase();
+  const envStateMode = String(process.env.AIDN_STATE_MODE ?? "").trim().toLowerCase();
   const args = {
     phase: "",
     target: ".",
     mode: "COMMITTING",
     eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
     runIdFile: ".aidn/runtime/perf/current-run-id.txt",
-    indexStore: envStore || "file",
+    indexStore: envStore || "",
+    stateMode: envStateMode || "files",
     indexOutput: ".aidn/runtime/index/workflow-index.json",
     indexSqlOutput: ".aidn/runtime/index/workflow-index.sql",
     indexSqliteOutput: ".aidn/runtime/index/workflow-index.sqlite",
@@ -93,6 +95,19 @@ function parseArgs(argv) {
   if (!["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"].includes(args.mode)) {
     throw new Error("Invalid --mode. Expected THINKING|EXPLORING|COMMITTING|UNKNOWN");
   }
+  args.stateMode = String(args.stateMode ?? "").trim().toLowerCase() || "files";
+  if (!["files", "dual", "db-only"].includes(args.stateMode)) {
+    throw new Error("Invalid AIDN_STATE_MODE. Expected files|dual|db-only");
+  }
+  if (!args.indexStore) {
+    if (args.stateMode === "dual") {
+      args.indexStore = "dual-sqlite";
+    } else if (args.stateMode === "db-only") {
+      args.indexStore = "sqlite";
+    } else {
+      args.indexStore = "file";
+    }
+  }
   if (!["file", "sql", "dual", "sqlite", "dual-sqlite", "all"].includes(args.indexStore)) {
     throw new Error("Invalid --index-store. Expected file|sql|dual|sqlite|dual-sqlite|all");
   }
@@ -112,6 +127,8 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start");
   console.log("  AIDN_INDEX_STORE_MODE=sqlite node tools/perf/workflow-hook.mjs --phase session-start");
+  console.log("  AIDN_STATE_MODE=dual node tools/perf/workflow-hook.mjs --phase session-start");
+  console.log("  AIDN_STATE_MODE=db-only node tools/perf/workflow-hook.mjs --phase session-start");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --mode COMMITTING");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --index-store dual");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --index-store sqlite --index-sqlite-output .aidn/runtime/index/workflow-index.sqlite");
@@ -304,6 +321,7 @@ function main() {
       phase: args.phase,
       target_root: targetRoot,
       mode: args.mode,
+      state_mode: args.stateMode,
       strict: args.strict,
       run_id: runId,
       result: hookResult,
@@ -328,6 +346,7 @@ function main() {
     }
     console.log(`Target: ${targetRoot}`);
     console.log(`Mode: ${args.mode}`);
+    console.log(`State mode: ${args.stateMode}`);
     console.log(`run_id: ${runId}`);
     console.log(`Event file: ${appendedEventFile}`);
     if (runIdFilePath) {
@@ -335,6 +354,7 @@ function main() {
     }
     if (checkpointResult) {
       console.log(`Checkpoint action: ${checkpointResult.gate?.action ?? "n/a"}`);
+      console.log(`Checkpoint index store: ${checkpointResult.index?.store ?? "n/a"}`);
       console.log(`Checkpoint total: ${checkpointResult.total_duration_ms ?? "n/a"}ms`);
     }
     if (checkpointError && !args.strict) {

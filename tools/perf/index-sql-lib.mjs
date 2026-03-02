@@ -24,7 +24,7 @@ function insertCycles(lines, cycles) {
 function insertArtifacts(lines, artifacts) {
   for (const artifact of artifacts) {
     lines.push(
-      `INSERT INTO artifacts (path, kind, sha256, size_bytes, mtime_ns, session_id, cycle_id, updated_at) VALUES (${sqlString(artifact.path)}, ${sqlString(artifact.kind)}, ${sqlString(artifact.sha256)}, ${sqlNumber(artifact.size_bytes)}, ${sqlNumber(artifact.mtime_ns)}, ${sqlString(artifact.session_id)}, ${sqlString(artifact.cycle_id)}, ${sqlString(artifact.updated_at)});`,
+      `INSERT INTO artifacts (path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, sha256, size_bytes, mtime_ns, session_id, cycle_id, updated_at) VALUES (${sqlString(artifact.path)}, ${sqlString(artifact.kind)}, ${sqlString(artifact.family)}, ${sqlString(artifact.subtype)}, ${sqlNumber(artifact.gate_relevance)}, ${sqlString(artifact.classification_reason)}, ${sqlString(artifact.content_format)}, ${sqlString(artifact.content)}, ${sqlString(artifact.sha256)}, ${sqlNumber(artifact.size_bytes)}, ${sqlNumber(artifact.mtime_ns)}, ${sqlString(artifact.session_id)}, ${sqlString(artifact.cycle_id)}, ${sqlString(artifact.updated_at)});`,
     );
   }
 }
@@ -32,7 +32,7 @@ function insertArtifacts(lines, artifacts) {
 function insertFileMap(lines, fileMap) {
   for (const row of fileMap) {
     lines.push(
-      `INSERT INTO file_map (cycle_id, path, role, last_seen_at) VALUES (${sqlString(row.cycle_id)}, ${sqlString(row.path)}, ${sqlString(row.role)}, ${sqlString(row.last_seen_at)});`,
+      `INSERT INTO file_map (cycle_id, path, role, relation, last_seen_at) VALUES (${sqlString(row.cycle_id)}, ${sqlString(row.path)}, ${sqlString(row.role)}, ${sqlString(row.relation)}, ${sqlString(row.last_seen_at)});`,
     );
   }
 }

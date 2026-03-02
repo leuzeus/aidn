@@ -28,6 +28,26 @@ Fix:
 - Re-run install:
   - `node tools/install.mjs --target <repo> --pack core`
 - Run verify again.
+- If output includes `missing import artifact: ...`, run:
+  - `npx aidn perf index --target . --json`
+  - then rerun verify.
+
+## Artifact import failed during install
+
+Symptom:
+- Installer stops with `Artifact import failed: ...`.
+
+Fix:
+- Check `docs/audit/` exists and contains expected workflow files.
+- Run import manually from client repo:
+  - `npx aidn perf index --target . --json`
+- Re-run install:
+  - `node tools/install.mjs --target <repo> --pack core`
+- If you need to bypass import temporarily:
+  - `node tools/install.mjs --target <repo> --pack core --skip-artifact-import`
+- If import runs with an unexpected backend, force it explicitly:
+  - `node tools/install.mjs --target <repo> --pack core --artifact-import-store file`
+  - `node tools/install.mjs --target <repo> --pack core --artifact-import-store dual-sqlite`
 
 ## Forgot to customize the project stub
 

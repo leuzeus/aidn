@@ -254,6 +254,7 @@ Definition of Done (Lot 3):
 - plan de rollback DB -> file-only testé
 - contrat d'état `AIDN_STATE_MODE` documenté (`files|dual|db-only`)
 - tests automatiques import/export/parité incluant artefacts de support
+- test automatique d'équivalence `dual` vs `db-only` pour `reload-check` + `gating-evaluate` (`perf:verify-state-mode-parity`)
 
 ## Backlog Priorisé
 

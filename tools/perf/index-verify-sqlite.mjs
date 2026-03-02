@@ -116,6 +116,12 @@ function projectForParity(payload) {
     artifacts: artifacts.map((row) => ({
       path: row.path ?? null,
       kind: row.kind ?? null,
+      family: row.family ?? "unknown",
+      subtype: row.subtype ?? null,
+      gate_relevance: Number(row.gate_relevance ?? 0),
+      classification_reason: row.classification_reason ?? null,
+      content_format: row.content_format ?? null,
+      content: row.content ?? null,
       sha256: row.sha256 ?? null,
       size_bytes: Number(row.size_bytes ?? 0),
       mtime_ms: toMtimeMs(row.mtime_ns, row.updated_at),
@@ -127,6 +133,7 @@ function projectForParity(payload) {
       cycle_id: row.cycle_id ?? null,
       path: row.path ?? null,
       role: row.role ?? null,
+      relation: row.relation ?? "unknown",
       last_seen_at: row.last_seen_at ?? null,
     })),
     tags: tags.map((row) => ({

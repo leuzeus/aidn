@@ -29,6 +29,8 @@ The following scripts were added under `tools/perf/`:
 - `verify-structure-profile-fixtures.mjs` - validate structure profile detection on legacy/modern/mixed fixtures
 - `verify-index-sync-fixtures.mjs` - validate index sync drift/apply/in-sync flow on fixtures
 - `verify-index-sqlite-fixtures.mjs` - validate SQLite index flow (sync + SQL parity + SQLite parity + export)
+- `verify-install-import-fixtures.mjs` - validate installer artifact import behavior and backend precedence
+- `verify-state-mode-parity-fixtures.mjs` - validate `dual` vs `db-only` parity for reload + gating decisions on fixtures
 - `index-store.mjs` - local `IndexStore` abstraction (JSON/SQL/SQLite outputs)
 - `index-to-sql.mjs` - export local index JSON to SQL import script (SQLite-friendly)
 - `index-sql-lib.mjs` - shared SQL generation library used by index tooling
@@ -36,6 +38,7 @@ The following scripts were added under `tools/perf/`:
 - `index-query.mjs` - run standard analytics queries on local index JSON or SQLite index
 - `index-verify-dual.mjs` - verify JSON/SQL dual-write parity from deterministic SQL regeneration
 - `index-from-sqlite.mjs` - export SQLite index back to JSON (derived artifact)
+- `index-export-files.mjs` - reconstruct `docs/audit/*` artifacts from index payload content (JSON or SQLite backend)
 - `index-verify-sqlite.mjs` - verify JSON/SQLite parity from deterministic projection
 - `report-index.mjs` - compute index quality report (counts consistency, SQL+SQLite parity status, run-metrics presence)
 - `render-index-summary.mjs` - generate Markdown summary from index report + index threshold checks
@@ -61,6 +64,7 @@ npx aidn perf checkpoint --target . --mode COMMITTING --index-store all --index-
 npx aidn perf session-start --target . --mode COMMITTING --json
 npx aidn perf session-close --target . --mode COMMITTING --json
 npx aidn perf index --target . --store all --json
+npx aidn perf index-export-files --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target . --audit-root docs/audit
 ```
 
 Repository scripts (maintainer/dev mode):
@@ -88,8 +92,11 @@ npm run perf:index-sync-trend-summary -- --report-file .aidn/runtime/index/index
 npm run perf:verify-structure
 npm run perf:verify-index-sync
 npm run perf:verify-index-sqlite
+npm run perf:verify-install-import
+npm run perf:verify-state-mode-parity
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
 npm run perf:index-from-sqlite -- --sqlite-file .aidn/runtime/index/workflow-index.sqlite --out .aidn/runtime/index/workflow-index.from-sqlite.json
+npm run perf:index-export-files -- --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target ../client-repo --audit-root docs/audit
 npm run perf:index-verify-sqlite -- --index-file .aidn/runtime/index/workflow-index.json --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.json
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite
@@ -157,6 +164,15 @@ Fixture verifiers write isolated outputs under `.aidn/runtime/index/fixtures/*` 
 
 `perf:index` remains backward compatible and defaults to `file` mode.
 You can set `AIDN_INDEX_STORE_MODE` to override the default store mode globally (for `perf:index`, `perf:checkpoint`, `perf:hook`), while CLI flags still take precedence.
+You can also set `AIDN_STATE_MODE=files|dual|db-only` to control runtime state strategy defaults:
+- `files` -> default store `file`
+- `dual` -> default store `dual-sqlite`
+- `db-only` -> default store `sqlite`
+If both are set, explicit CLI flags still win, then `AIDN_INDEX_STORE_MODE`, then `AIDN_STATE_MODE`.
+Artifact content embedding defaults:
+- `files` -> content embedding disabled by default
+- `dual` and `db-only` -> content embedding enabled by default
+Override with `--with-content` or `--no-content` on `perf:index`.
 Examples:
 - PowerShell: ``$env:AIDN_INDEX_STORE_MODE='sqlite'; npm run perf:session-start -- --target ../client-repo``
 - Bash: ``AIDN_INDEX_STORE_MODE=sqlite npm run perf:index -- --target ../client-repo``
@@ -181,6 +197,16 @@ Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --
 - `artifacts-since`: list artifacts changed since an ISO timestamp (`--since` required)
 - `cycle-files`: list mapped files for one cycle (`--cycle-id` required)
 - `run-metrics`: list KPI run metrics present in index payload
+
+Artifact rows now include classification fields for multi-version/hybrid repositories:
+- `family`: `normative|support|unknown`
+- `subtype`: normalized artifact subtype (`status`, `plan`, `report`, ...)
+- `gate_relevance`: `1|0` (used by gating policy)
+- `classification_reason`: optional classifier hint for non-standard support artifacts
+- `content_format`: `utf8|base64|null`
+- `content`: optional embedded artifact payload (required for deterministic `db -> files` reconstruction)
+
+`cycle-files` rows now include `relation` (`normative|support`) for cycle-scoped mapping.
 
 ## Gating Levels (implemented)
 

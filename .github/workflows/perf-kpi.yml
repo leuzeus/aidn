@@ -85,6 +85,12 @@ jobs:
       - name: Verify Index SQLite Fixtures
         run: npm run perf:verify-index-sqlite
 
+      - name: Verify Install Import Fixtures
+        run: npm run perf:verify-install-import
+
+      - name: Verify State Mode Parity Fixtures
+        run: npm run perf:verify-state-mode-parity
+
       - name: Reset Perf Runtime
         run: npm run perf:reset -- --root "$PERF_RUNTIME"
 

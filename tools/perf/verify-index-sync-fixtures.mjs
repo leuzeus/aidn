@@ -64,20 +64,21 @@ function main() {
     const args = parseArgs(process.argv.slice(2));
     const mixedTarget = path.resolve(process.cwd(), args.mixedTarget);
     const modernTarget = path.resolve(process.cwd(), args.modernTarget);
+    const indexFilePath = path.resolve(process.cwd(), args.indexFile);
 
     // Seed index with mixed target to force drift for modern target.
     runNoJson("tools/perf/index-sync.mjs", [
       "--target",
       mixedTarget,
       "--output",
-      args.indexFile,
+      indexFilePath,
     ]);
 
     const checkDrift = runJson("tools/perf/index-sync-check.mjs", [
       "--target",
       modernTarget,
       "--index-file",
-      args.indexFile,
+      indexFilePath,
       "--json",
     ]);
 
@@ -85,7 +86,7 @@ function main() {
       "--target",
       modernTarget,
       "--index-file",
-      args.indexFile,
+      indexFilePath,
       "--apply",
       "--json",
     ]);
@@ -94,7 +95,7 @@ function main() {
       "--target",
       modernTarget,
       "--index-file",
-      args.indexFile,
+      indexFilePath,
       "--json",
     ]);
 
@@ -104,7 +105,7 @@ function main() {
 
     const output = {
       ts: new Date().toISOString(),
-      index_file: path.resolve(process.cwd(), args.indexFile),
+      index_file: indexFilePath,
       checks: {
         drift: {
           in_sync: checkDrift.in_sync,

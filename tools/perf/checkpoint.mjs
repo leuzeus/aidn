@@ -9,12 +9,14 @@ const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
   const envStore = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().toLowerCase();
+  const envStateMode = String(process.env.AIDN_STATE_MODE ?? "").trim().toLowerCase();
   const args = {
     target: ".",
     cache: ".aidn/runtime/cache/reload-state.json",
     eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
     indexOutput: ".aidn/runtime/index/workflow-index.json",
-    indexStore: envStore || "file",
+    indexStore: envStore || "",
+    stateMode: envStateMode || "files",
     indexSqlOutput: ".aidn/runtime/index/workflow-index.sql",
     indexSqliteOutput: ".aidn/runtime/index/workflow-index.sqlite",
     indexSchemaFile: path.join(PERF_DIR, "sql", "schema.sql"),
@@ -95,6 +97,19 @@ function parseArgs(argv) {
   if (!args.indexOutput) {
     throw new Error("Missing value for --index-output");
   }
+  args.stateMode = String(args.stateMode ?? "").trim().toLowerCase() || "files";
+  if (!["files", "dual", "db-only"].includes(args.stateMode)) {
+    throw new Error("Invalid AIDN_STATE_MODE. Expected files|dual|db-only");
+  }
+  if (!args.indexStore) {
+    if (args.stateMode === "dual") {
+      args.indexStore = "dual-sqlite";
+    } else if (args.stateMode === "db-only") {
+      args.indexStore = "sqlite";
+    } else {
+      args.indexStore = "file";
+    }
+  }
   if (!["file", "sql", "dual", "sqlite", "dual-sqlite", "all"].includes(args.indexStore)) {
     throw new Error("Invalid --index-store. Expected file|sql|dual|sqlite|dual-sqlite|all");
   }
@@ -114,6 +129,8 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/checkpoint.mjs --target ../client");
   console.log("  AIDN_INDEX_STORE_MODE=sqlite node tools/perf/checkpoint.mjs --target ../client");
+  console.log("  AIDN_STATE_MODE=dual node tools/perf/checkpoint.mjs --target ../client");
+  console.log("  AIDN_STATE_MODE=db-only node tools/perf/checkpoint.mjs --target ../client");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --mode COMMITTING");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --run-id S072-20260301T1012Z");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --index-store dual --index-sql-output .aidn/runtime/index/workflow-index.sql");
@@ -160,6 +177,19 @@ function resolveTargetPath(targetRoot, candidatePath) {
   return path.resolve(targetRoot, candidatePath);
 }
 
+function resolveReloadIndexConfig(args, indexOutputPath, indexSqliteOutputPath) {
+  if (args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all") {
+    return {
+      indexFile: indexSqliteOutputPath,
+      indexBackend: "sqlite",
+    };
+  }
+  return {
+    indexFile: indexOutputPath,
+    indexBackend: "json",
+  };
+}
+
 function getCurrentBranch(targetRoot) {
   try {
     return execSync(`git -C "${targetRoot}" branch --show-current`, {
@@ -182,16 +212,23 @@ function main() {
     const indexSqlOutputPath = resolveTargetPath(targetRoot, args.indexSqlOutput);
     const indexSqliteOutputPath = resolveTargetPath(targetRoot, args.indexSqliteOutput);
     const indexSyncCheckOutPath = resolveTargetPath(targetRoot, args.indexSyncCheckOut);
+    const reloadIndex = resolveReloadIndexConfig(args, indexOutputPath, indexSqliteOutputPath);
 
     const reloadStarted = Date.now();
-    const reload = runToolJson("reload-check.mjs", [
+    const reloadArgs = [
       "--target",
       targetRoot,
       "--cache",
       cachePath,
+      "--state-mode",
+      args.stateMode,
       "--write-cache",
       "--json",
-    ]);
+    ];
+    if (args.stateMode !== "files") {
+      reloadArgs.push("--index-file", reloadIndex.indexFile, "--index-backend", reloadIndex.indexBackend);
+    }
+    const reload = runToolJson("reload-check.mjs", reloadArgs);
     const reloadDurationMs = Date.now() - reloadStarted;
 
     const gateStarted = Date.now();
@@ -204,8 +241,13 @@ function main() {
       eventFilePath,
       "--mode",
       args.mode,
+      "--state-mode",
+      args.stateMode,
       "--json",
     ];
+    if (args.stateMode !== "files") {
+      gateArgs.push("--index-file", reloadIndex.indexFile, "--index-backend", reloadIndex.indexBackend);
+    }
     if (args.runId) {
       gateArgs.push("--run-id", args.runId);
     }
@@ -274,6 +316,7 @@ function main() {
       run_id: checkpointRunId,
       target_root: targetRoot,
       mode: args.mode,
+      state_mode: args.stateMode,
       branch: getCurrentBranch(targetRoot),
       reload: {
         decision: reload.decision,
@@ -288,6 +331,7 @@ function main() {
         duration_ms: gateDurationMs,
       },
       index: {
+        state_mode: args.stateMode,
         store: args.indexStore,
         output: indexOutputPath,
         sql_output: args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "all"
@@ -367,9 +411,10 @@ function main() {
 
     console.log(`Checkpoint completed in ${result.total_duration_ms}ms`);
     console.log(`Target: ${result.target_root}`);
+    console.log(`State mode: ${result.state_mode}`);
     console.log(`Reload: ${result.reload.decision} (${result.reload.duration_ms}ms)`);
     console.log(`Gate: ${result.gate.action} (${result.gate.duration_ms}ms)`);
-    console.log(`Index: ${result.index.output} (${result.index.duration_ms}ms)`);
+    console.log(`Index (${result.index.store}): ${result.index.output} (${result.index.duration_ms}ms)`);
     console.log(
       `Index writes: files=${result.index.writes.files_written_count}, bytes=${result.index.writes.bytes_written}`,
     );

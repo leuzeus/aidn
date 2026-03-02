@@ -70,6 +70,12 @@ Dry run example:
 npx aidn install --target . --pack core --dry-run
 ```
 
+Artifact import store override example:
+
+```bash
+npx aidn install --target . --pack core --artifact-import-store dual-sqlite
+```
+
 Notes:
 - The installer resolves `depends_on` recursively (for example `extended` installs `core` first).
 - Compatibility is validated from product manifests (`node_min`, `os`) before file operations.
@@ -94,6 +100,11 @@ Notes:
   - AI migration requires a logged-in Codex session (`codex login status` must be authenticated),
   - if migration is unavailable/fails, files remain unchanged,
   - disable AI migration with `--no-codex-migrate-custom`.
+- Artifact import policy:
+  - after install (non-verify mode), installer automatically imports `docs/audit/*` artifacts into `.aidn/runtime/index/*`,
+  - import store precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE` mapping,
+  - `AIDN_STATE_MODE` mapping remains: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite`,
+  - disable automatic import with `--skip-artifact-import`.
 
 Customizable files preserved by default:
 - `.codex/skills.yaml`
@@ -147,6 +158,8 @@ npx aidn install --target . --pack core --verify
 
 Verification checks required files declared in the pack manifest and returns a non-zero exit code on failure.
 When dependencies are resolved, verification covers the union of required files across all installed packs.
+Verification also checks expected imported index artifacts under `.aidn/runtime/index/*` using import-store precedence (`--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE`).
+Use `--skip-artifact-import` with `--verify` to skip this import-artifact check.
 The installer also prints a warning if the project stub still contains placeholders.
 
 ## Step 6 - Commit client repo files
@@ -163,3 +176,8 @@ The installer also prints a warning if the project stub still contains placehold
   - `npx aidn perf session-start --target . --mode COMMITTING --json`
   - `npx aidn perf session-close --target . --mode COMMITTING --json`
 - Runtime artifacts are written under `<target>/.aidn/runtime/*` (not in `<target>/tools`).
+- Optional runtime state mode:
+  - `AIDN_STATE_MODE=files|dual|db-only`
+  - default mapping: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite`
+  - explicit CLI `--index-store` still has priority.
+  - in `dual`/`db-only`, index payload content embedding is enabled by default so files can be reconstructed from DB.

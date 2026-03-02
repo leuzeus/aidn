@@ -5,3 +5,4 @@ release/dist/
 tmp/
 .aidn/runtime/
 tests/fixtures/tmp-*/
+tests/fixtures/**/.aidn/

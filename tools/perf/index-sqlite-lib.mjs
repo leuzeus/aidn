@@ -46,6 +46,17 @@ function readRows(db, sql, params = []) {
   return db.prepare(sql).all(...params);
 }
 
+function getTableColumns(db, tableName) {
+  const rows = db.prepare(`PRAGMA table_info(${tableName});`).all();
+  const set = new Set();
+  for (const row of rows) {
+    if (typeof row?.name === "string") {
+      set.add(row.name);
+    }
+  }
+  return set;
+}
+
 function toSchemaVersion(value, fallback = 1) {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : fallback;
@@ -72,6 +83,8 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
   const db = new DatabaseSync(absolute);
   try {
     const meta = readMetaMap(db);
+    const artifactColumns = getTableColumns(db, "artifacts");
+    const fileMapColumns = getTableColumns(db, "file_map");
     const structureProfile = parseJsonOrNull(meta.structure_profile_json);
     const structureKind = meta.structure_kind
       ?? structureProfile?.kind
@@ -90,12 +103,21 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
         ORDER BY cycle_id ASC
       `),
       artifacts: readRows(db, `
-        SELECT path, kind, sha256, size_bytes, CAST(mtime_ns AS TEXT) AS mtime_ns, session_id, cycle_id, updated_at
+        SELECT path, kind,
+               ${artifactColumns.has("family") ? "family" : "'unknown' AS family"},
+               ${artifactColumns.has("subtype") ? "subtype" : "NULL AS subtype"},
+               ${artifactColumns.has("gate_relevance") ? "gate_relevance" : "0 AS gate_relevance"},
+               ${artifactColumns.has("classification_reason") ? "classification_reason" : "NULL AS classification_reason"},
+               ${artifactColumns.has("content_format") ? "content_format" : "NULL AS content_format"},
+               ${artifactColumns.has("content") ? "content" : "NULL AS content"},
+               sha256, size_bytes, CAST(mtime_ns AS TEXT) AS mtime_ns, session_id, cycle_id, updated_at
         FROM artifacts
         ORDER BY path ASC
       `),
       file_map: readRows(db, `
-        SELECT cycle_id, path, role, last_seen_at
+        SELECT cycle_id, path, role,
+               ${fileMapColumns.has("relation") ? "relation" : "'unknown' AS relation"},
+               last_seen_at
         FROM file_map
         ORDER BY cycle_id ASC, path ASC
       `),

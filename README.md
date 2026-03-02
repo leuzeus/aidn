@@ -68,6 +68,11 @@ npx aidn install --target ../client --pack core
 npx aidn install --target ../client --pack core --verify
 ```
 
+Notes:
+- install auto-imports `docs/audit/*` artifacts into `../client/.aidn/runtime/index/*`
+- import backend precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE`
+- skip import with `--skip-artifact-import`
+
 ```bash
 npx aidn perf checkpoint --target ../client --mode COMMITTING --index-store all --index-sync-check --json
 npx aidn build-release

@@ -8,11 +8,15 @@ import crypto from "node:crypto";
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
+  const envStateMode = String(process.env.AIDN_STATE_MODE ?? "").trim().toLowerCase();
   const args = {
     target: ".",
     cache: ".aidn/runtime/cache/reload-state.json",
     eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
     indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
+    stateMode: envStateMode || "files",
+    indexFile: ".aidn/runtime/index/workflow-index.sqlite",
+    indexBackend: "auto",
     thresholdFiles: 3,
     thresholdMinutes: 45,
     mode: "COMMITTING",
@@ -34,6 +38,15 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--index-sync-check-file") {
       args.indexSyncCheckFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--state-mode") {
+      args.stateMode = String(argv[i + 1] ?? "").toLowerCase();
+      i += 1;
+    } else if (token === "--index-file") {
+      args.indexFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--index-backend") {
+      args.indexBackend = String(argv[i + 1] ?? "").toLowerCase();
       i += 1;
     } else if (token === "--threshold-files") {
       const raw = argv[i + 1] ?? "";
@@ -73,6 +86,15 @@ function parseArgs(argv) {
   if (!args.eventFile) {
     throw new Error("Missing value for --event-file");
   }
+  if (!["files", "dual", "db-only"].includes(args.stateMode)) {
+    throw new Error("Invalid --state-mode. Expected files|dual|db-only");
+  }
+  if (!args.indexFile) {
+    throw new Error("Missing value for --index-file");
+  }
+  if (!["auto", "json", "sqlite"].includes(args.indexBackend)) {
+    throw new Error("Invalid --index-backend. Expected auto|json|sqlite");
+  }
   if (!["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"].includes(args.mode)) {
     throw new Error("Invalid --mode. Expected THINKING|EXPLORING|COMMITTING|UNKNOWN");
   }
@@ -82,21 +104,30 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client");
+  console.log("  AIDN_STATE_MODE=db-only node tools/perf/gating-evaluate.mjs --target ../client");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client --mode COMMITTING");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client --index-sync-check-file .aidn/runtime/index/index-sync-check.json");
+  console.log("  node tools/perf/gating-evaluate.mjs --target ../client --state-mode db-only --index-file .aidn/runtime/index/workflow-index.sqlite");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client --run-id S072-20260301T1012Z");
   console.log("  node tools/perf/gating-evaluate.mjs --json");
 }
 
-function runReloadCheck(targetRoot, cachePath) {
-  const stdout = execFileSync(process.execPath, [
+function runReloadCheck(targetRoot, cachePath, stateMode, indexFile, indexBackend) {
+  const command = [
     path.join(PERF_DIR, "reload-check.mjs"),
     "--target",
     targetRoot,
     "--cache",
     cachePath,
+    "--state-mode",
+    stateMode,
+    "--index-file",
+    indexFile,
+    "--index-backend",
+    indexBackend,
     "--json",
-  ], {
+  ];
+  const stdout = execFileSync(process.execPath, command, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -436,13 +467,23 @@ function main() {
     args.cache = resolveTargetPath(targetRoot, args.cache);
     args.eventFile = resolveTargetPath(targetRoot, args.eventFile);
     args.indexSyncCheckFile = resolveTargetPath(targetRoot, args.indexSyncCheckFile);
-    const reload = runReloadCheck(targetRoot, args.cache);
+    if (args.stateMode !== "files") {
+      args.indexFile = resolveTargetPath(targetRoot, args.indexFile);
+    }
+    const reload = runReloadCheck(
+      targetRoot,
+      args.cache,
+      args.stateMode,
+      args.indexFile,
+      args.indexBackend,
+    );
     const levels = detectSignals(targetRoot, args, reload);
     const decision = deriveAction(levels);
 
     const result = {
       ts: new Date().toISOString(),
       mode: args.mode,
+      state_mode: args.stateMode,
       target_root: targetRoot,
       branch: getCurrentBranch(targetRoot),
       action: decision.action,

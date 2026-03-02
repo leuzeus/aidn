@@ -4,12 +4,17 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { execSync } from "node:child_process";
 import { detectStructureProfile } from "./structure-profile-lib.mjs";
+import { readIndexFromSqlite } from "./index-sqlite-lib.mjs";
 
 const ACTIVE_STATES = new Set(["OPEN", "IMPLEMENTING", "VERIFYING"]);
 function parseArgs(argv) {
+  const envStateMode = String(process.env.AIDN_STATE_MODE ?? "").trim().toLowerCase();
   const args = {
     target: ".",
     cache: ".aidn/runtime/cache/reload-state.json",
+    stateMode: envStateMode || "files",
+    indexFile: ".aidn/runtime/index/workflow-index.sqlite",
+    indexBackend: "auto",
     json: false,
     writeCache: false,
   };
@@ -21,6 +26,15 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--cache") {
       args.cache = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--state-mode") {
+      args.stateMode = String(argv[i + 1] ?? "").toLowerCase();
+      i += 1;
+    } else if (token === "--index-file") {
+      args.indexFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--index-backend") {
+      args.indexBackend = String(argv[i + 1] ?? "").toLowerCase();
       i += 1;
     } else if (token === "--json") {
       args.json = true;
@@ -40,6 +54,15 @@ function parseArgs(argv) {
   if (!args.cache) {
     throw new Error("Missing value for --cache");
   }
+  if (!["files", "dual", "db-only"].includes(args.stateMode)) {
+    throw new Error("Invalid --state-mode. Expected files|dual|db-only");
+  }
+  if (!args.indexFile) {
+    throw new Error("Missing value for --index-file");
+  }
+  if (!["auto", "json", "sqlite"].includes(args.indexBackend)) {
+    throw new Error("Invalid --index-backend. Expected auto|json|sqlite");
+  }
 
   return args;
 }
@@ -47,7 +70,9 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/reload-check.mjs --target ../client");
+  console.log("  AIDN_STATE_MODE=db-only node tools/perf/reload-check.mjs --target ../client");
   console.log("  node tools/perf/reload-check.mjs --target . --write-cache");
+  console.log("  node tools/perf/reload-check.mjs --target . --state-mode db-only --index-file .aidn/runtime/index/workflow-index.sqlite");
   console.log("  node tools/perf/reload-check.mjs --json");
 }
 
@@ -65,6 +90,59 @@ function readTextSafe(filePath) {
     return "";
   }
   return fs.readFileSync(filePath, "utf8");
+}
+
+function decodeArtifactContent(artifact) {
+  if (typeof artifact?.content !== "string") {
+    return null;
+  }
+  const format = String(artifact?.content_format ?? "utf8").toLowerCase();
+  if (format === "utf8") {
+    return artifact.content;
+  }
+  if (format === "base64") {
+    return Buffer.from(artifact.content, "base64").toString("utf8");
+  }
+  return null;
+}
+
+function detectBackend(indexFile, backend) {
+  if (backend === "json" || backend === "sqlite") {
+    return backend;
+  }
+  return String(indexFile).toLowerCase().endsWith(".sqlite") ? "sqlite" : "json";
+}
+
+function readJsonIndex(filePath) {
+  const absolute = path.resolve(process.cwd(), filePath);
+  if (!fs.existsSync(absolute)) {
+    throw new Error(`Index JSON not found: ${absolute}`);
+  }
+  let payload;
+  try {
+    payload = JSON.parse(fs.readFileSync(absolute, "utf8"));
+  } catch (error) {
+    throw new Error(`Invalid JSON index file ${absolute}: ${error.message}`);
+  }
+  return { absolute, payload };
+}
+
+function readIndexPayload(indexFile, indexBackend) {
+  const backend = detectBackend(indexFile, indexBackend);
+  if (backend === "sqlite") {
+    const out = readIndexFromSqlite(indexFile);
+    return {
+      backend,
+      absolute: out.absolute,
+      payload: out.payload,
+    };
+  }
+  const out = readJsonIndex(indexFile);
+  return {
+    backend,
+    absolute: out.absolute,
+    payload: out.payload,
+  };
 }
 
 function getGitValue(targetRoot, command) {
@@ -166,7 +244,7 @@ function classifyBranch(branch) {
   return "other";
 }
 
-function evaluateMapping(branch, activeCycles, latestSessionArtifact, auditRoot) {
+function evaluateMapping(branch, activeCycles, latestSessionArtifact, auditRoot, sessionBranchHint = null) {
   const kind = classifyBranch(branch);
   if (kind === "unknown" || kind === "other") {
     return {
@@ -207,10 +285,12 @@ function evaluateMapping(branch, activeCycles, latestSessionArtifact, auditRoot)
     if (!latestSessionArtifact) {
       return { kind, status: "unknown", reason_code: "MAPPING_SESSION_FILE_MISSING" };
     }
-    const fullPath = path.join(auditRoot, latestSessionArtifact.rel);
-    const text = readTextSafe(fullPath);
-    const meta = parseFrontMatterLike(text);
-    const sessionBranch = meta.session_branch ?? null;
+    const sessionBranch = sessionBranchHint ?? (() => {
+      const fullPath = path.join(auditRoot, latestSessionArtifact.rel);
+      const text = readTextSafe(fullPath);
+      const meta = parseFrontMatterLike(text);
+      return meta.session_branch ?? null;
+    })();
     if (!sessionBranch) {
       return { kind, status: "unknown", reason_code: "MAPPING_SESSION_BRANCH_UNSET" };
     }
@@ -227,7 +307,25 @@ function canonicalStateForDigest(state) {
   return JSON.stringify(state);
 }
 
-function collectCurrentState(targetRoot) {
+function resolveTargetPath(targetRoot, candidatePath) {
+  if (!candidatePath) {
+    return candidatePath;
+  }
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+  const fromTarget = path.resolve(targetRoot, candidatePath);
+  if (fs.existsSync(fromTarget)) {
+    return fromTarget;
+  }
+  const fromCwd = path.resolve(process.cwd(), candidatePath);
+  if (fs.existsSync(fromCwd)) {
+    return fromCwd;
+  }
+  return fromTarget;
+}
+
+function collectCurrentStateFromFiles(targetRoot) {
   const auditRoot = path.join(targetRoot, "docs", "audit");
   if (!fs.existsSync(auditRoot)) {
     throw new Error(`Missing audit root: ${auditRoot}`);
@@ -365,7 +463,207 @@ function collectCurrentState(targetRoot) {
     required_artifacts_policy: requiredArtifactPaths,
     structure_profile: structureProfile,
     reload_digest: reloadDigest,
+    state_source: "files",
   };
+}
+
+function toIsoTimestamp(value) {
+  const ms = Date.parse(String(value ?? ""));
+  if (Number.isNaN(ms)) {
+    return 0;
+  }
+  return ms;
+}
+
+function readSessionBranchFromArtifact(artifact) {
+  const text = decodeArtifactContent(artifact);
+  if (!text) {
+    return null;
+  }
+  const meta = parseFrontMatterLike(text);
+  return meta.session_branch ?? null;
+}
+
+function collectCurrentStateFromIndex(targetRoot, args) {
+  const indexFilePath = resolveTargetPath(targetRoot, args.indexFile);
+  const index = readIndexPayload(indexFilePath, args.indexBackend);
+  const payload = index.payload ?? {};
+  const auditRoot = String(payload.audit_root ?? path.join(targetRoot, "docs", "audit"));
+  const structureProfile = payload.structure_profile ?? {
+    kind: String(payload?.summary?.structure_kind ?? "unknown"),
+    declared_workflow_version: null,
+    observed_version_hint: null,
+    recommended_required_artifacts: [],
+    optional_tracked_artifacts: [],
+    reason_codes: [],
+    notes: [],
+    confidence: 0,
+  };
+  const requiredArtifactPaths = Array.isArray(structureProfile.recommended_required_artifacts)
+    ? structureProfile.recommended_required_artifacts
+    : [];
+
+  const branch = getGitValue(targetRoot, "branch --show-current");
+  const headCommit = getGitValue(targetRoot, "rev-parse HEAD");
+  const artifacts = Array.isArray(payload.artifacts) ? payload.artifacts : [];
+  const cycles = Array.isArray(payload.cycles) ? payload.cycles : [];
+
+  const artifactMap = new Map();
+  for (const artifact of artifacts) {
+    const rel = String(artifact?.path ?? "");
+    if (!rel) {
+      continue;
+    }
+    artifactMap.set(rel, artifact);
+  }
+
+  const requiredArtifacts = [];
+  const missingRequiredArtifacts = [];
+  for (const relative of requiredArtifactPaths) {
+    const artifact = artifactMap.get(relative);
+    if (!artifact) {
+      missingRequiredArtifacts.push(relative);
+      continue;
+    }
+    requiredArtifacts.push({
+      rel: relative,
+      path: path.join(auditRoot, relative),
+      hash: String(artifact.sha256 ?? ""),
+      size_bytes: Number(artifact.size_bytes ?? 0),
+      mtime_ns: Number(artifact.mtime_ns ?? 0),
+    });
+  }
+
+  const trackedArtifacts = artifacts
+    .map((artifact) => ({
+      rel: String(artifact?.path ?? ""),
+      path: path.join(auditRoot, String(artifact?.path ?? "")),
+      hash: String(artifact?.sha256 ?? ""),
+      size_bytes: Number(artifact?.size_bytes ?? 0),
+      mtime_ns: Number(artifact?.mtime_ns ?? 0),
+    }))
+    .filter((artifact) => artifact.rel.length > 0)
+    .sort((a, b) => a.rel.localeCompare(b.rel));
+
+  const statusHashByCycle = new Map();
+  const statusRelByCycle = new Map();
+  for (const artifact of artifacts) {
+    if (String(artifact?.subtype ?? "") !== "status") {
+      continue;
+    }
+    const cycleId = String(artifact?.cycle_id ?? "");
+    if (!cycleId) {
+      continue;
+    }
+    statusHashByCycle.set(cycleId, String(artifact?.sha256 ?? ""));
+    statusRelByCycle.set(cycleId, String(artifact?.path ?? ""));
+  }
+
+  const activeCycles = cycles
+    .filter((cycle) => ACTIVE_STATES.has(String(cycle?.state ?? "").toUpperCase()))
+    .map((cycle) => ({
+      cycle_id: String(cycle?.cycle_id ?? ""),
+      cycle_dir: String(cycle?.cycle_dir ?? cycle?.cycle_id ?? ""),
+      state: String(cycle?.state ?? "UNKNOWN").toUpperCase(),
+      branch_name: cycle?.branch_name ?? null,
+      session_owner: cycle?.session_id ?? null,
+      status_rel: statusRelByCycle.get(String(cycle?.cycle_id ?? "")) ?? null,
+      status_hash: statusHashByCycle.get(String(cycle?.cycle_id ?? "")) ?? "",
+    }))
+    .filter((cycle) => cycle.cycle_id.length > 0);
+
+  const sessionArtifacts = artifacts
+    .filter((artifact) => {
+      const rel = String(artifact?.path ?? "");
+      return String(artifact?.kind ?? "") === "session" || /^sessions\/S\d+.*\.md$/i.test(rel);
+    })
+    .sort((a, b) => toIsoTimestamp(b?.updated_at) - toIsoTimestamp(a?.updated_at));
+  const latestSessionRaw = sessionArtifacts[0] ?? null;
+  const latestSession = latestSessionRaw
+    ? {
+      rel: String(latestSessionRaw.path ?? ""),
+      hash: String(latestSessionRaw.sha256 ?? ""),
+    }
+    : null;
+  const sessionBranch = latestSessionRaw ? readSessionBranchFromArtifact(latestSessionRaw) : null;
+
+  const digestInput = {
+    branch,
+    head_commit: headCommit,
+    structure_profile: {
+      kind: structureProfile.kind,
+      declared_workflow_version: structureProfile.declared_workflow_version,
+      observed_version_hint: structureProfile.observed_version_hint,
+    },
+    required_artifacts: requiredArtifacts.map((item) => ({ rel: item.rel, hash: item.hash })),
+    session_artifact: latestSession ? { rel: latestSession.rel, hash: latestSession.hash } : null,
+    active_cycles: activeCycles
+      .map((cycle) => ({
+        cycle_id: cycle.cycle_id,
+        state: cycle.state,
+        branch_name: cycle.branch_name ?? "",
+        status_hash: cycle.status_hash,
+      }))
+      .sort((a, b) => a.cycle_id.localeCompare(b.cycle_id)),
+  };
+  const reloadDigest = sha256(canonicalStateForDigest(digestInput));
+  const mapping = evaluateMapping(
+    branch,
+    activeCycles,
+    latestSession,
+    auditRoot,
+    sessionBranch,
+  );
+
+  return {
+    collected_at: new Date().toISOString(),
+    target_root: targetRoot,
+    audit_root: auditRoot,
+    branch,
+    head_commit: headCommit,
+    mapping,
+    required_artifacts: requiredArtifacts.map((item) => ({
+      rel: item.rel,
+      hash: item.hash,
+      size_bytes: item.size_bytes,
+      mtime_ns: item.mtime_ns,
+    })),
+    tracked_artifacts: trackedArtifacts.map((item) => ({
+      rel: item.rel,
+      hash: item.hash,
+      size_bytes: item.size_bytes,
+      mtime_ns: item.mtime_ns,
+    })),
+    active_cycles: activeCycles,
+    session_artifact: latestSession
+      ? { rel: latestSession.rel, hash: latestSession.hash }
+      : null,
+    missing_required_artifacts: missingRequiredArtifacts,
+    required_artifacts_policy: requiredArtifactPaths,
+    structure_profile: structureProfile,
+    reload_digest: reloadDigest,
+    state_source: "index",
+    index_backend: index.backend,
+    index_file: index.absolute,
+  };
+}
+
+function collectCurrentState(targetRoot, args) {
+  if (args.stateMode === "files") {
+    return collectCurrentStateFromFiles(targetRoot);
+  }
+  try {
+    return collectCurrentStateFromIndex(targetRoot, args);
+  } catch (error) {
+    if (args.stateMode === "dual") {
+      const fallback = collectCurrentStateFromFiles(targetRoot);
+      fallback.state_source = "files";
+      fallback.state_mode_fallback = "index_unavailable";
+      fallback.state_mode_fallback_reason = String(error.message ?? error);
+      return fallback;
+    }
+    throw error;
+  }
 }
 
 function readCache(cachePath) {
@@ -421,6 +719,9 @@ function diffState(current, cacheData, cacheStatus) {
     reasonCodes.push("MAPPING_AMBIGUOUS");
   } else if (current.mapping.status === "missing") {
     reasonCodes.push("MAPPING_MISSING");
+  }
+  if (current.state_mode_fallback) {
+    reasonCodes.push("STATE_MODE_FALLBACK");
   }
 
   if (!cacheData || typeof cacheData !== "object") {
@@ -518,6 +819,7 @@ function printHuman(result, cacheFile) {
   console.log(`Decision: ${result.decision}`);
   console.log(`Fallback: ${result.fallback ? "yes" : "no"}`);
   console.log(`Reason codes: ${result.reason_codes.length ? result.reason_codes.join(", ") : "none"}`);
+  console.log(`State mode/source: ${result.state_mode}/${result.state_source ?? "unknown"}`);
   console.log(`Branch: ${result.branch}`);
   console.log(`Mapping: ${result.mapping.kind}/${result.mapping.status}`);
   console.log(`Digest: ${result.reload_digest}`);
@@ -534,7 +836,11 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const currentState = collectCurrentState(targetRoot);
+    args.cache = resolveTargetPath(targetRoot, args.cache);
+    if (args.stateMode !== "files") {
+      args.indexFile = resolveTargetPath(targetRoot, args.indexFile);
+    }
+    const currentState = collectCurrentState(targetRoot, args);
     const cacheStatus = readCache(args.cache);
     const diff = diffState(currentState, cacheStatus.data, cacheStatus);
     const outcome = decideOutcome(diff.reasonCodes);
@@ -543,6 +849,12 @@ function main() {
       ts: new Date().toISOString(),
       target_root: targetRoot,
       cache_file: cacheStatus.absolute,
+      state_mode: args.stateMode,
+      state_source: currentState.state_source ?? "unknown",
+      state_mode_fallback: currentState.state_mode_fallback ?? null,
+      state_mode_fallback_reason: currentState.state_mode_fallback_reason ?? null,
+      index_backend: currentState.index_backend ?? null,
+      index_file: currentState.index_file ?? null,
       branch: currentState.branch,
       head_commit: currentState.head_commit,
       mapping: currentState.mapping,

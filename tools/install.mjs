@@ -48,6 +48,8 @@ function parseArgs(argv) {
     pack: "",
     dryRun: false,
     verifyOnly: false,
+    skipArtifactImport: false,
+    artifactImportStore: "",
     assist: false,
     strict: false,
     skipAgents: false,
@@ -67,6 +69,11 @@ function parseArgs(argv) {
       args.dryRun = true;
     } else if (token === "--verify") {
       args.verifyOnly = true;
+    } else if (token === "--skip-artifact-import") {
+      args.skipArtifactImport = true;
+    } else if (token === "--artifact-import-store") {
+      args.artifactImportStore = String(argv[i + 1] ?? "").toLowerCase();
+      i += 1;
     } else if (token === "--assist") {
       args.assist = true;
     } else if (token === "--strict") {
@@ -88,6 +95,12 @@ function parseArgs(argv) {
   if (!args.target) {
     throw new Error("Missing required argument value: --target");
   }
+  if (
+    args.artifactImportStore
+    && !["file", "sql", "dual", "sqlite", "dual-sqlite", "all"].includes(args.artifactImportStore)
+  ) {
+    throw new Error("Invalid --artifact-import-store. Expected file|sql|dual|sqlite|dual-sqlite|all");
+  }
 
   return args;
 }
@@ -98,11 +111,213 @@ function printUsage() {
   console.log("  node tools/install.mjs --target ../repo --pack core");
   console.log("  node tools/install.mjs --target . --pack core --dry-run");
   console.log("  node tools/install.mjs --target . --pack core --verify");
+  console.log("  node tools/install.mjs --target . --pack core --skip-artifact-import");
+  console.log("  node tools/install.mjs --target . --pack core --artifact-import-store dual-sqlite");
   console.log("  node tools/install.mjs --target ../repo --pack core --assist");
   console.log("  node tools/install.mjs --target ../repo --pack core --strict");
   console.log("  node tools/install.mjs --target ../repo --pack core --skip-agents");
   console.log("  node tools/install.mjs --target ../repo --pack core --force-agents-merge");
   console.log("  node tools/install.mjs --target ../repo --pack core --no-codex-migrate-custom");
+}
+
+function resolveArtifactImportDefaults(args) {
+  const explicitStore = String(args?.artifactImportStore ?? "").trim().toLowerCase();
+  if (explicitStore) {
+    return {
+      store: explicitStore,
+      withContent: explicitStore === "sqlite" || explicitStore === "dual-sqlite" || explicitStore === "all",
+      stateMode: String(process.env.AIDN_STATE_MODE ?? "").trim().toLowerCase() || "files",
+      source: "cli",
+    };
+  }
+
+  const envStore = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().toLowerCase();
+  if (["file", "sql", "dual", "sqlite", "dual-sqlite", "all"].includes(envStore)) {
+    return {
+      store: envStore,
+      withContent: envStore === "sqlite" || envStore === "dual-sqlite" || envStore === "all",
+      stateMode: String(process.env.AIDN_STATE_MODE ?? "").trim().toLowerCase() || "files",
+      source: "env-index-store",
+    };
+  }
+
+  const stateMode = String(process.env.AIDN_STATE_MODE ?? "").trim().toLowerCase();
+  if (stateMode === "dual" || stateMode === "db-only") {
+    return {
+      store: stateMode === "dual" ? "dual-sqlite" : "sqlite",
+      withContent: true,
+      stateMode,
+      source: "env-state-mode",
+    };
+  }
+  return {
+    store: "file",
+    withContent: false,
+    stateMode: "files",
+    source: "default",
+  };
+}
+
+function runArtifactImport(repoRoot, targetRoot, dryRun, args) {
+  const auditRoot = path.resolve(targetRoot, "docs", "audit");
+  if (!fs.existsSync(auditRoot)) {
+    return {
+      attempted: false,
+      skipped: true,
+      reason: "docs/audit not found",
+    };
+  }
+  const scriptPath = path.join(repoRoot, "tools", "perf", "index-sync.mjs");
+  if (!fs.existsSync(scriptPath)) {
+    return {
+      attempted: false,
+      skipped: true,
+      reason: "tools/perf/index-sync.mjs not found",
+    };
+  }
+
+  const defaults = resolveArtifactImportDefaults(args);
+  const cmd = [
+    scriptPath,
+    "--target",
+    targetRoot,
+    "--store",
+    defaults.store,
+    "--json",
+  ];
+  if (defaults.withContent) {
+    cmd.push("--with-content");
+  }
+
+  if (dryRun) {
+    return {
+      attempted: false,
+      skipped: true,
+      dryRun: true,
+      reason: `dry-run (would run index-sync store=${defaults.store}, state_mode=${defaults.stateMode}, source=${defaults.source})`,
+    };
+  }
+
+  const result = spawnSync(process.execPath, cmd, {
+    encoding: "utf8",
+    timeout: 120000,
+    maxBuffer: 10 * 1024 * 1024,
+  });
+
+  if (result.error) {
+    return {
+      attempted: true,
+      skipped: false,
+      ok: false,
+      reason: `process error: ${result.error.message}`,
+      stdout: String(result.stdout ?? ""),
+      stderr: String(result.stderr ?? ""),
+    };
+  }
+  if (result.status !== 0) {
+    return {
+      attempted: true,
+      skipped: false,
+      ok: false,
+      reason: `exit ${result.status}`,
+      stdout: String(result.stdout ?? ""),
+      stderr: String(result.stderr ?? ""),
+    };
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(String(result.stdout ?? "{}"));
+  } catch (error) {
+    return {
+      attempted: true,
+      skipped: false,
+      ok: false,
+      reason: `invalid JSON output from index-sync: ${error.message}`,
+      stdout: String(result.stdout ?? ""),
+      stderr: String(result.stderr ?? ""),
+    };
+  }
+
+  return {
+    attempted: true,
+    skipped: false,
+    ok: true,
+    payload,
+    defaults,
+  };
+}
+
+function expectedArtifactImportFilesForStore(store) {
+  const base = ".aidn/runtime/index";
+  if (store === "file") {
+    return [`${base}/workflow-index.json`];
+  }
+  if (store === "sql") {
+    return [`${base}/workflow-index.sql`];
+  }
+  if (store === "dual") {
+    return [`${base}/workflow-index.json`, `${base}/workflow-index.sql`];
+  }
+  if (store === "sqlite") {
+    return [`${base}/workflow-index.sqlite`];
+  }
+  if (store === "dual-sqlite") {
+    return [`${base}/workflow-index.json`, `${base}/workflow-index.sqlite`];
+  }
+  if (store === "all") {
+    return [
+      `${base}/workflow-index.json`,
+      `${base}/workflow-index.sql`,
+      `${base}/workflow-index.sqlite`,
+    ];
+  }
+  return [];
+}
+
+function verifyArtifactImportOutputs(targetRoot, args) {
+  if (args.dryRun) {
+    return {
+      checked: false,
+      skipped: true,
+      reason: "dry-run",
+      defaults: resolveArtifactImportDefaults(args),
+      expected_files: [],
+      missing_files: [],
+    };
+  }
+  if (args.skipArtifactImport) {
+    return {
+      checked: false,
+      skipped: true,
+      reason: "explicit --skip-artifact-import",
+      defaults: resolveArtifactImportDefaults(args),
+      expected_files: [],
+      missing_files: [],
+    };
+  }
+  const auditRoot = path.resolve(targetRoot, "docs", "audit");
+  if (!fs.existsSync(auditRoot)) {
+    return {
+      checked: false,
+      skipped: true,
+      reason: "docs/audit not found",
+      defaults: resolveArtifactImportDefaults(args),
+      expected_files: [],
+      missing_files: [],
+    };
+  }
+  const defaults = resolveArtifactImportDefaults(args);
+  const expected = expectedArtifactImportFilesForStore(defaults.store);
+  const missing = expected.filter((relativePath) => !fs.existsSync(path.resolve(targetRoot, relativePath)));
+  return {
+    checked: true,
+    skipped: false,
+    ok: missing.length === 0,
+    defaults,
+    expected_files: expected,
+    missing_files: missing,
+  };
 }
 
 function stripComments(line) {
@@ -1304,6 +1519,12 @@ async function main() {
       migrationFailed: 0,
       placeholderPrompted: 0,
       placeholderAutoFilled: 0,
+      artifactImportAttempted: 0,
+      artifactImportSucceeded: 0,
+      artifactImportSkipped: 0,
+      artifactImportVerified: 0,
+      artifactImportVerifyFail: 0,
+      artifactImportVerifySkipped: 0,
     };
     const preservedCustomCandidates = [];
 
@@ -1485,6 +1706,48 @@ async function main() {
         console.log("");
         console.log("Codex migration disabled: preserved customized files were left unchanged.");
       }
+
+      if (args.skipArtifactImport) {
+        summary.artifactImportSkipped += 1;
+        console.log("artifact import skipped: explicit --skip-artifact-import");
+      } else {
+        const artifactImport = runArtifactImport(repoRoot, targetRoot, args.dryRun, args);
+        if (artifactImport.skipped) {
+          summary.artifactImportSkipped += 1;
+          const prefix = args.dryRun ? "[dry-run] " : "";
+          console.log(`${prefix}artifact import skipped: ${artifactImport.reason}`);
+        } else if (artifactImport.ok) {
+          summary.artifactImportAttempted += 1;
+          summary.artifactImportSucceeded += 1;
+          const payload = artifactImport.payload ?? {};
+          const defaults = artifactImport.defaults ?? {};
+          const outputs = Array.isArray(payload.outputs)
+            ? payload.outputs.map((row) => `${row.kind}:${path.relative(targetRoot, row.path ?? "")}`).join(", ")
+            : "";
+          console.log(
+            `artifact import: OK (store=${payload.store ?? "n/a"}, state_mode=${payload.state_mode ?? "n/a"}, source=${defaults.source ?? "n/a"}, artifacts=${payload.summary?.artifacts_count ?? "n/a"}${outputs ? `, outputs=${outputs}` : ""})`,
+          );
+          const importVerification = verifyArtifactImportOutputs(targetRoot, args);
+          if (importVerification.checked) {
+            if (importVerification.ok) {
+              summary.artifactImportVerified += 1;
+            } else {
+              summary.artifactImportVerifyFail += 1;
+              throw new Error(
+                `Artifact import verification failed for store=${importVerification.defaults?.store ?? "unknown"}: missing ${importVerification.missing_files.join(", ")}`,
+              );
+            }
+          } else {
+            summary.artifactImportVerifySkipped += 1;
+          }
+        } else {
+          summary.artifactImportAttempted += 1;
+          const stderr = String(artifactImport.stderr ?? "").trim();
+          const stdout = String(artifactImport.stdout ?? "").trim();
+          const details = stderr || stdout || artifactImport.reason || "unknown error";
+          throw new Error(`Artifact import failed: ${details}`);
+        }
+      }
     }
 
     const verifyEntriesSet = new Set();
@@ -1497,10 +1760,16 @@ async function main() {
     }
     const verifyEntries = Array.from(verifyEntriesSet);
     const verification = verifyPaths(targetRoot, verifyEntries);
+    const artifactImportVerification = verifyArtifactImportOutputs(targetRoot, args);
     const workflowPlaceholders = getWorkflowPlaceholders(targetRoot);
     if (!verification.ok) {
       for (const missing of verification.missing) {
         console.error(`missing: ${missing}`);
+      }
+    }
+    if (artifactImportVerification.checked && !artifactImportVerification.ok) {
+      for (const missing of artifactImportVerification.missing_files) {
+        console.error(`missing import artifact: ${missing}`);
       }
     }
     if (workflowPlaceholders.length > 0) {
@@ -1523,8 +1792,26 @@ async function main() {
     console.log(`migration_failed: ${summary.migrationFailed}`);
     console.log(`placeholder_prompted: ${summary.placeholderPrompted}`);
     console.log(`placeholder_autofilled: ${summary.placeholderAutoFilled}`);
+    console.log(`artifact_import_attempted: ${summary.artifactImportAttempted}`);
+    console.log(`artifact_import_succeeded: ${summary.artifactImportSucceeded}`);
+    console.log(`artifact_import_skipped: ${summary.artifactImportSkipped}`);
+    console.log(`artifact_import_verify_ok: ${summary.artifactImportVerified}`);
+    console.log(`artifact_import_verify_fail: ${summary.artifactImportVerifyFail}`);
+    console.log(`artifact_import_verify_skipped: ${summary.artifactImportVerifySkipped}`);
+    if (artifactImportVerification.checked) {
+      console.log(
+        `artifact_import_verify: ${artifactImportVerification.ok ? "OK" : "FAIL"} (store=${artifactImportVerification.defaults?.store ?? "n/a"}, source=${artifactImportVerification.defaults?.source ?? "n/a"})`,
+      );
+    } else {
+      console.log(
+        `artifact_import_verify: SKIP (${artifactImportVerification.reason ?? "not checked"})`,
+      );
+    }
     console.log(`verified: ${verification.ok ? "OK" : "FAIL"}`);
 
+    if ((artifactImportVerification.checked && !artifactImportVerification.ok) && (args.verifyOnly || !args.dryRun)) {
+      process.exit(1);
+    }
     if (!verification.ok && (args.verifyOnly || !args.dryRun)) {
       process.exit(1);
     }
