@@ -32,6 +32,7 @@ The following scripts were added under `tools/perf/`:
 - `verify-index-sqlite-fixtures.mjs` - validate SQLite index flow (sync + SQL parity + SQLite parity + export)
 - `verify-index-canonical-check-fixtures.mjs` - validate lightweight canonical coverage check (strict/non-strict) on fixtures
 - `verify-index-regression-fixtures.mjs` - validate index regression pipeline and zero-baseline handling on fixtures
+- `verify-perf-cli-aliases-fixtures.mjs` - validate `aidn perf` aliases for canonical/index commands on fixtures
 - `verify-install-import-fixtures.mjs` - validate installer artifact import behavior and backend precedence
 - `verify-state-mode-parity-fixtures.mjs` - validate `dual` vs `db-only` parity for reload + gating decisions on fixtures
 - `index-store.mjs` - local `IndexStore` abstraction (JSON/SQL/SQLite outputs)
@@ -105,6 +106,7 @@ npm run perf:verify-index-sync
 npm run perf:verify-index-sqlite
 npm run perf:verify-index-canonical-check
 npm run perf:verify-index-regression
+npm run perf:verify-cli-aliases
 npm run perf:verify-install-import
 npm run perf:verify-state-mode-parity
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
@@ -326,6 +328,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:verify-index-sqlite`
   - `perf:verify-index-canonical-check`
   - `perf:verify-index-regression`
+  - `perf:verify-cli-aliases`
   - `perf:session-start`
   - `perf:delivery-start`
   - `perf:delivery-end`

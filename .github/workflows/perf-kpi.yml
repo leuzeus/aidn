@@ -98,6 +98,9 @@ jobs:
       - name: Verify Index Canonical Check Fixtures
         run: npm run perf:verify-index-canonical-check
 
+      - name: Verify Perf CLI Aliases Fixtures
+        run: npm run perf:verify-cli-aliases
+
       - name: Verify Install Import Fixtures
         run: npm run perf:verify-install-import
 

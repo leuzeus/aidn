@@ -32,6 +32,7 @@ Contraintes:
 - Lot 3 (trend guardrails): pipeline de régression dédié à la couverture canonique (`index-report -> index-regression-kpi -> history -> check-regression`).
 - Lot 3 (fast guardrail): check léger CI de couverture canonique directement depuis `index-query canonical-coverage`.
 - Lot 3 (PR observability): résumé Markdown dédié du check canonique publié dans `GITHUB_STEP_SUMMARY` pour lecture immédiate.
+- Lot 3 (CLI reliability): vérification fixture des alias `aidn perf` pour les commandes index/canonical ajoutées.
 
 Reste à finaliser:
 - validation KPI sur un corpus projet réel (au-delà des fixtures) avec fenêtre d'itérations représentative.
