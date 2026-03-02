@@ -61,6 +61,13 @@ Close a cycle cleanly and make it baseline-ready.
   - If NO_GO/DROPPED: suggest next retained cycle/session integration step
   - If VERIFYING: list remaining verification tasks
 
+5) Optional performance hook (Phase 2, recommended for instrumented repositories):
+- run `npx aidn perf checkpoint --target . --mode COMMITTING --json`
+- use this output to capture:
+  - gate/reload outcome after close-state update
+  - index sync summary for changed cycle artifacts
+- this should not block workflow execution by default
+
 Output:
 - Exit checklist report
 - Files updated list

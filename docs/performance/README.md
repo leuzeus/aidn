@@ -27,7 +27,7 @@ The following scripts were added under `tools/perf/`:
 - `report-index-sync.mjs` - compute trend KPIs from index sync history
 - `render-index-sync-report-summary.mjs` - generate Markdown trend summary from sync report + thresholds
 - `verify-structure-profile-fixtures.mjs` - validate structure profile detection on legacy/modern/mixed fixtures
-- `verify-skill-hook-coverage.mjs` - validate phase-1 perf hook coverage on codex skills templates
+- `verify-skill-hook-coverage.mjs` - validate phase-1/2 perf hook coverage on codex skills templates
 - `verify-index-sync-fixtures.mjs` - validate index sync drift/apply/in-sync flow on fixtures
 - `verify-index-sqlite-fixtures.mjs` - validate SQLite index flow (sync + SQL parity + SQLite parity + export)
 - `verify-install-import-fixtures.mjs` - validate installer artifact import behavior and backend precedence
@@ -247,7 +247,7 @@ Checkpoint summary events now carry effective index write counters (`files_writt
 - Session start stores a shared `run_id` in `.aidn/runtime/perf/current-run-id.txt`.
 - Session close reuses that shared `run_id` when available, then clears the file.
 
-## Skill Hook Coverage (Phase 1)
+## Skill Hook Coverage (Phase 1 + 2)
 
 Recommended optional hooks (non-blocking by default) in skill flows:
 - `context-reload`: `npx aidn perf reload-check --target . --json`
@@ -255,8 +255,12 @@ Recommended optional hooks (non-blocking by default) in skill flows:
 - `drift-check`: `npx aidn perf gate --target . --mode COMMITTING --json`
 - `start-session`: `npx aidn perf session-start --target . --mode <THINKING|EXPLORING|COMMITTING>`
 - `close-session`: `npx aidn perf session-close --target . --mode <THINKING|EXPLORING|COMMITTING>`
+- `cycle-create`: `npx aidn perf checkpoint --target . --mode COMMITTING --json`
+- `cycle-close`: `npx aidn perf checkpoint --target . --mode COMMITTING --json`
+- `promote-baseline`: `npx aidn perf checkpoint --target . --mode COMMITTING --json`
+- `requirements-delta`: `npx aidn perf checkpoint --target . --mode COMMITTING --json`
 
-This phase extends optimization coverage to the highest-cost checks first, while keeping blocking behavior opt-in.
+This rollout extends optimization coverage to high-cost checks first, then mutating skills, while keeping blocking behavior opt-in.
 
 ## CI Integration
 

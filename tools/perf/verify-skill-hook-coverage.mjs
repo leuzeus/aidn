@@ -73,6 +73,10 @@ function main() {
       checkOne(args.root, "drift-check/SKILL.md", ["npx aidn perf gate --target . --mode COMMITTING --json"]),
       checkOne(args.root, "start-session/SKILL.md", ["npx aidn perf session-start --target . --mode <THINKING|EXPLORING|COMMITTING>"]),
       checkOne(args.root, "close-session/SKILL.md", ["npx aidn perf session-close --target . --mode <THINKING|EXPLORING|COMMITTING>"]),
+      checkOne(args.root, "cycle-create/SKILL.md", ["npx aidn perf checkpoint --target . --mode COMMITTING --json"]),
+      checkOne(args.root, "cycle-close/SKILL.md", ["npx aidn perf checkpoint --target . --mode COMMITTING --json"]),
+      checkOne(args.root, "promote-baseline/SKILL.md", ["npx aidn perf checkpoint --target . --mode COMMITTING --json"]),
+      checkOne(args.root, "requirements-delta/SKILL.md", ["npx aidn perf checkpoint --target . --mode COMMITTING --json"]),
     ];
 
     const pass = checks.every((item) => item.ok === true);

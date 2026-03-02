@@ -35,6 +35,13 @@ Safely “publish” completed work into baseline.
   - remove cycle from active
   - set next entry point
 
+5) Optional performance hook (Phase 2, recommended for instrumented repositories):
+- run `npx aidn perf checkpoint --target . --mode COMMITTING --json`
+- use this output to capture:
+  - baseline/snapshot-driven reload invalidation
+  - gate/index consistency after promotion updates
+- this should not block workflow execution by default
+
 Output:
 - Promotion summary
 - New baseline version
