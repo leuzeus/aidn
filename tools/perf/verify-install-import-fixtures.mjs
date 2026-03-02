@@ -55,13 +55,55 @@ function prepareTmp(sourceTarget, tmpRoot, suffix) {
   return target;
 }
 
-function runInstall(repoRoot, targetRoot, extraArgs = [], extraEnv = {}) {
+function makeCodexStub(tmpRoot) {
+  const binDir = path.resolve(tmpRoot, ".tmp-codex-bin");
+  fs.mkdirSync(binDir, { recursive: true });
+  if (process.platform === "win32") {
+    const cmdPath = path.join(binDir, "codex.cmd");
+    const content = [
+      "@echo off",
+      "if \"%1\"==\"login\" if \"%2\"==\"status\" (",
+      "  echo Logged in",
+      "  exit /b 0",
+      ")",
+      "if \"%1\"==\"exec\" (",
+      "  exit /b 0",
+      ")",
+      "exit /b 0",
+      "",
+    ].join("\r\n");
+    fs.writeFileSync(cmdPath, content, "utf8");
+  } else {
+    const cmdPath = path.join(binDir, "codex");
+    const content = [
+      "#!/usr/bin/env sh",
+      "if [ \"$1\" = \"login\" ] && [ \"$2\" = \"status\" ]; then",
+      "  echo \"Logged in\"",
+      "  exit 0",
+      "fi",
+      "if [ \"$1\" = \"exec\" ]; then",
+      "  exit 0",
+      "fi",
+      "exit 0",
+      "",
+    ].join("\n");
+    fs.writeFileSync(cmdPath, content, "utf8");
+    fs.chmodSync(cmdPath, 0o755);
+  }
+  return binDir;
+}
+
+function runInstall(repoRoot, targetRoot, codexStubBin, extraArgs = [], extraEnv = {}) {
   const installScript = path.resolve(repoRoot, "tools", "install.mjs");
   const args = [installScript, "--target", targetRoot, "--pack", "core", ...extraArgs];
+  const separator = process.platform === "win32" ? ";" : ":";
+  const basePath = String(process.env.PATH ?? "");
+  const mergedPath = codexStubBin ? `${codexStubBin}${separator}${basePath}` : basePath;
   const result = spawnSync(process.execPath, args, {
     cwd: repoRoot,
     env: {
       ...process.env,
+      PATH: mergedPath,
       ...extraEnv,
     },
     encoding: "utf8",
@@ -151,9 +193,9 @@ function installDiagnostics(out) {
   };
 }
 
-function checkCaseDefault(repoRoot, sourceTarget, tmpRoot) {
+function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const target = prepareTmp(sourceTarget, tmpRoot, "default");
-  const out = runInstall(repoRoot, target);
+  const out = runInstall(repoRoot, target, codexStubBin);
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const configPath = path.join(target, ".aidn", "config.json");
   const config = readConfigSafe(configPath);
@@ -177,9 +219,9 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot) {
   };
 }
 
-function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot) {
+function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const target = prepareTmp(sourceTarget, tmpRoot, "db-only");
-  const out = runInstall(repoRoot, target, [], { AIDN_STATE_MODE: "db-only" });
+  const out = runInstall(repoRoot, target, codexStubBin, [], { AIDN_STATE_MODE: "db-only" });
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
   const config = readConfigSafe(configPath);
@@ -203,9 +245,9 @@ function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot) {
   };
 }
 
-function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot) {
+function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const target = prepareTmp(sourceTarget, tmpRoot, "env-precedence");
-  const out = runInstall(repoRoot, target, [], {
+  const out = runInstall(repoRoot, target, codexStubBin, [], {
     AIDN_STATE_MODE: "db-only",
     AIDN_INDEX_STORE_MODE: "file",
   });
@@ -235,9 +277,9 @@ function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot) {
   };
 }
 
-function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot) {
+function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const target = prepareTmp(sourceTarget, tmpRoot, "cli-override");
-  const out = runInstall(repoRoot, target, ["--artifact-import-store", "dual-sqlite"], {
+  const out = runInstall(repoRoot, target, codexStubBin, ["--artifact-import-store", "dual-sqlite"], {
     AIDN_STATE_MODE: "files",
     AIDN_INDEX_STORE_MODE: "file",
   });
@@ -277,9 +319,9 @@ function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot) {
   };
 }
 
-function checkCaseSkip(repoRoot, sourceTarget, tmpRoot) {
+function checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const target = prepareTmp(sourceTarget, tmpRoot, "skip");
-  const out = runInstall(repoRoot, target, ["--skip-artifact-import"]);
+  const out = runInstall(repoRoot, target, codexStubBin, ["--skip-artifact-import"]);
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
@@ -308,19 +350,21 @@ function main() {
   let exitCode = 0;
   let keepTmp = false;
   const tmpTargets = [];
+  let codexStubBin = null;
   try {
     const args = parseArgs(process.argv.slice(2));
     keepTmp = args.keepTmp === true;
     const repoRoot = process.cwd();
     const sourceTarget = path.resolve(repoRoot, args.target);
     const tmpRoot = path.resolve(repoRoot, args.tmpRoot);
+    codexStubBin = makeCodexStub(tmpRoot);
 
     const cases = [
-      checkCaseDefault(repoRoot, sourceTarget, tmpRoot),
-      checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot),
-      checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot),
-      checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot),
-      checkCaseSkip(repoRoot, sourceTarget, tmpRoot),
+      checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin),
+      checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin),
+      checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin),
+      checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin),
+      checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin),
     ];
     for (const item of cases) {
       tmpTargets.push(item.target_root);
@@ -356,6 +400,9 @@ function main() {
     if (!keepTmp) {
       for (const target of tmpTargets) {
         fs.rmSync(target, { recursive: true, force: true });
+      }
+      if (codexStubBin) {
+        fs.rmSync(codexStubBin, { recursive: true, force: true });
       }
     }
   }
