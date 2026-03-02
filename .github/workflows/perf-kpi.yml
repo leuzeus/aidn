@@ -94,6 +94,17 @@ jobs:
       - name: Reset Perf Runtime
         run: npm run perf:reset -- --root "$PERF_RUNTIME"
 
+      - name: Restore Perf History Cache
+        id: perf_history_restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-history.ndjson
+          key: ${{ runner.os }}-perf-history-${{ github.event.pull_request.head.ref || github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ${{ runner.os }}-perf-history-${{ github.event.pull_request.head.ref || github.ref_name }}-
+
       - name: Session Start Hook
         run: npm run perf:session-start -- --target "$PERF_TARGET" --mode COMMITTING --index-store dual
 
@@ -300,3 +311,12 @@ jobs:
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-thresholds.json
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-summary.md
           if-no-files-found: warn
+
+      - name: Save Perf History Cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-history.ndjson
+          key: ${{ steps.perf_history_restore.outputs.cache-primary-key }}
