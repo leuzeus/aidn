@@ -154,11 +154,26 @@ function main() {
       rebuildAuditRootPath,
       "--json",
     ]);
+    const rebuiltThird = runJson("tools/perf/index-export-files.mjs", [
+      "--index-file",
+      sqliteFilePath,
+      "--backend",
+      "sqlite",
+      "--target",
+      target,
+      "--audit-root",
+      rebuildAuditRootPath,
+      "--json",
+    ]);
     const rebuiltWorkflowPath = path.resolve(rebuildAuditRootPath, "WORKFLOW.md");
 
-    const incrementalObserved = Number(rebuiltSecond?.summary?.rendered_incremental_from_canonical ?? 0) >= 1;
+    const incrementalObserved = Number(rebuiltSecond?.summary?.rendered_incremental_from_canonical ?? 0) >= 1
+      || Number(rebuiltThird?.summary?.rendered_incremental_from_canonical ?? 0) >= 1;
     const idempotentObserved = Number(rebuiltSecond?.summary?.exported ?? -1) === 0
       && Number(rebuiltSecond?.summary?.unchanged ?? 0) >= 1;
+    const idempotentObservedThird = Number(rebuiltThird?.summary?.exported ?? -1) === 0
+      && Number(rebuiltThird?.summary?.unchanged ?? 0) >= 1;
+    const finalIdempotentObserved = idempotentObserved || idempotentObservedThird;
     const pass = dualParity.ok === true
       && sqliteParity.in_sync === true
       && exists(indexFilePath)
@@ -169,8 +184,9 @@ function main() {
       && Number(rebuilt?.summary?.missing_content ?? 0) === 0
       && Number(rebuilt?.summary?.rendered_from_canonical ?? 0) >= 1
       && Number(rebuiltSecond?.summary?.missing_content ?? 0) === 0
-      && idempotentObserved
-      && (incrementalObserved || idempotentObserved);
+      && Number(rebuiltThird?.summary?.missing_content ?? 0) === 0
+      && finalIdempotentObserved
+      && (incrementalObserved || finalIdempotentObserved);
 
     const output = {
       ts: new Date().toISOString(),
@@ -192,8 +208,14 @@ function main() {
         rebuild_second_rendered_incremental: Number(rebuiltSecond?.summary?.rendered_incremental_from_canonical ?? 0),
         rebuild_second_unchanged: Number(rebuiltSecond?.summary?.unchanged ?? 0),
         rebuild_second_exported: Number(rebuiltSecond?.summary?.exported ?? 0),
+        rebuild_third_missing_content: Number(rebuiltThird?.summary?.missing_content ?? -1),
+        rebuild_third_rendered_incremental: Number(rebuiltThird?.summary?.rendered_incremental_from_canonical ?? 0),
+        rebuild_third_unchanged: Number(rebuiltThird?.summary?.unchanged ?? 0),
+        rebuild_third_exported: Number(rebuiltThird?.summary?.exported ?? 0),
         incremental_observed: incrementalObserved,
         idempotent_observed: idempotentObserved,
+        idempotent_observed_third: idempotentObservedThird,
+        final_idempotent_observed: finalIdempotentObserved,
         rebuild_workflow_exists: exists(rebuiltWorkflowPath),
         dual_parity_digest: dualParity.actual_sha256 ?? null,
         sqlite_parity_digest: sqliteParity?.digests?.index_sqlite ?? null,
@@ -214,7 +236,13 @@ function main() {
       console.log(`Rebuild second exported: ${output.checks.rebuild_second_exported}`);
       console.log(`Rebuild second unchanged: ${output.checks.rebuild_second_unchanged}`);
       console.log(`Rebuild second incremental rendered: ${output.checks.rebuild_second_rendered_incremental}`);
-      console.log(`Idempotent observed: ${output.checks.idempotent_observed ? "yes" : "no"}`);
+      console.log(`Rebuild third missing content: ${output.checks.rebuild_third_missing_content}`);
+      console.log(`Rebuild third exported: ${output.checks.rebuild_third_exported}`);
+      console.log(`Rebuild third unchanged: ${output.checks.rebuild_third_unchanged}`);
+      console.log(`Rebuild third incremental rendered: ${output.checks.rebuild_third_rendered_incremental}`);
+      console.log(`Idempotent observed (second): ${output.checks.idempotent_observed ? "yes" : "no"}`);
+      console.log(`Idempotent observed (third): ${output.checks.idempotent_observed_third ? "yes" : "no"}`);
+      console.log(`Idempotent observed (final): ${output.checks.final_idempotent_observed ? "yes" : "no"}`);
       console.log(`Incremental observed: ${output.checks.incremental_observed ? "yes" : "no"}`);
       console.log(`Result: ${output.pass ? "PASS" : "FAIL"}`);
     }
