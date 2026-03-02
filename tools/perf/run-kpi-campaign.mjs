@@ -2,7 +2,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { writeJsonIfChanged } from "./io-lib.mjs";
+
+const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
+const PACKAGE_ROOT = path.resolve(PERF_DIR, "..", "..");
 
 function parseArgs(argv) {
   const args = {
@@ -89,8 +93,51 @@ function printUsage() {
   console.log("  node tools/perf/run-kpi-campaign.mjs --iterations 10 --sleep-ms 500 --index-store all --json");
 }
 
+function resolveScript(script) {
+  if (path.isAbsolute(script)) {
+    return script;
+  }
+  let normalized = String(script ?? "").replace(/\\/g, "/");
+  if (normalized.startsWith("tools/perf/")) {
+    normalized = normalized.slice("tools/perf/".length);
+  }
+  return path.resolve(PERF_DIR, normalized);
+}
+
+function resolveInputPath(targetRoot, candidatePath) {
+  if (!candidatePath) {
+    return "";
+  }
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+  const fromTarget = path.resolve(targetRoot, candidatePath);
+  if (fs.existsSync(fromTarget)) {
+    return fromTarget;
+  }
+  const fromCwd = path.resolve(process.cwd(), candidatePath);
+  if (fs.existsSync(fromCwd)) {
+    return fromCwd;
+  }
+  const fromPackage = path.resolve(PACKAGE_ROOT, candidatePath);
+  if (fs.existsSync(fromPackage)) {
+    return fromPackage;
+  }
+  return fromTarget;
+}
+
+function resolveOutputPath(targetRoot, candidatePath) {
+  if (!candidatePath) {
+    return "";
+  }
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+  return path.resolve(targetRoot, candidatePath);
+}
+
 function runJson(script, scriptArgs) {
-  const file = path.resolve(process.cwd(), script);
+  const file = resolveScript(script);
   const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
@@ -99,7 +146,7 @@ function runJson(script, scriptArgs) {
 }
 
 function runNoJson(script, scriptArgs) {
-  const file = path.resolve(process.cwd(), script);
+  const file = resolveScript(script);
   execFileSync(process.execPath, [file, ...scriptArgs], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
@@ -133,15 +180,23 @@ async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
+    const eventFilePath = resolveOutputPath(targetRoot, args.eventFile);
+    const kpiFilePath = resolveOutputPath(targetRoot, args.kpiFile);
+    const thresholdsFilePath = resolveOutputPath(targetRoot, args.thresholdsFile);
+    const outFilePath = resolveOutputPath(targetRoot, args.out);
+    const targetsFilePath = resolveInputPath(targetRoot, args.targetsFile);
     const startedAt = Date.now();
 
     if (args.reset) {
-      runNoJson("tools/perf/reset-runtime.mjs", []);
+      runNoJson("reset-runtime.mjs", [
+        "--root",
+        path.resolve(targetRoot, ".aidn", "runtime"),
+      ]);
     }
 
     const runs = [];
     for (let i = 0; i < args.iterations; i += 1) {
-      const sessionStart = runJson("tools/perf/workflow-hook.mjs", [
+      const sessionStart = runJson("workflow-hook.mjs", [
         "--phase",
         "session-start",
         "--target",
@@ -151,11 +206,11 @@ async function main() {
         "--index-store",
         args.indexStore,
         "--event-file",
-        args.eventFile,
+        eventFilePath,
         "--json",
       ]);
 
-      runNoJson("tools/perf/delivery-window.mjs", [
+      runNoJson("delivery-window.mjs", [
         "--action",
         "start",
         "--target",
@@ -163,12 +218,12 @@ async function main() {
         "--mode",
         args.mode,
         "--file",
-        args.eventFile,
+        eventFilePath,
       ]);
       if (args.sleepMs > 0) {
         await sleep(args.sleepMs);
       }
-      runNoJson("tools/perf/delivery-window.mjs", [
+      runNoJson("delivery-window.mjs", [
         "--action",
         "end",
         "--target",
@@ -176,10 +231,10 @@ async function main() {
         "--mode",
         args.mode,
         "--file",
-        args.eventFile,
+        eventFilePath,
       ]);
 
-      const sessionClose = runJson("tools/perf/workflow-hook.mjs", [
+      const sessionClose = runJson("workflow-hook.mjs", [
         "--phase",
         "session-close",
         "--target",
@@ -189,7 +244,7 @@ async function main() {
         "--index-store",
         args.indexStore,
         "--event-file",
-        args.eventFile,
+        eventFilePath,
         "--json",
       ]);
 
@@ -201,9 +256,9 @@ async function main() {
       });
     }
 
-    const kpi = runJson("tools/perf/report-kpi.mjs", [
+    const kpi = runJson("report-kpi.mjs", [
       "--file",
-      args.eventFile,
+      eventFilePath,
       "--run-prefix",
       "session-",
       "--require-delivery",
@@ -211,15 +266,15 @@ async function main() {
       String(args.iterations * 5),
       "--json",
     ]);
-    const kpiWrite = writeJson(args.kpiFile, kpi);
+    const kpiWrite = writeJson(kpiFilePath, kpi);
 
-    const thresholds = runJson("tools/perf/check-thresholds.mjs", [
+    const thresholds = runJson("check-thresholds.mjs", [
       "--kpi-file",
-      args.kpiFile,
+      kpiFilePath,
       "--targets",
-      args.targetsFile,
+      targetsFilePath,
       "--out",
-      args.thresholdsFile,
+      thresholdsFilePath,
       "--json",
     ]);
 
@@ -231,17 +286,18 @@ async function main() {
       index_store: args.indexStore,
       sleep_ms: args.sleepMs,
       reset: args.reset,
-      event_file: path.resolve(process.cwd(), args.eventFile),
+      event_file: eventFilePath,
       kpi_file: kpiWrite.path,
       kpi_written: kpiWrite.written,
-      thresholds_file: path.resolve(process.cwd(), args.thresholdsFile),
+      thresholds_file: thresholdsFilePath,
+      targets_file: targetsFilePath,
       kpi_summary: kpi.summary ?? null,
       thresholds_summary: thresholds.summary ?? null,
       run_sample: runs.slice(-5),
       duration_ms: Date.now() - startedAt,
     };
 
-    const outWrite = writeJson(args.out, payload);
+    const outWrite = writeJson(outFilePath, payload);
     payload.output_file = outWrite.path;
     payload.output_written = outWrite.written;
 

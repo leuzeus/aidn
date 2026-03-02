@@ -12,6 +12,10 @@
 - Align `perf-kpi` CI runtime paths with fixture target runtime (`tests/fixtures/repo-installed-core/.aidn/runtime/*`) to avoid root-runtime path mismatches.
 - Fix `delivery-window` to resolve event/state/run-id files relative to `--target` (same runtime location as session hooks).
 - Expand installer placeholder handling: infer values from existing project files, prompt for missing values on first install, and auto-fill safe defaults in non-interactive runs.
+- Fix `check-index-canonical-coverage` package execution by resolving internal `index-query` from package paths (no client `tools/perf` dependency).
+- Add fallback lookup for canonical threshold targets (`docs/performance/INDEX_TARGETS.json`) from package defaults when missing in client repos.
+- Fix `run-kpi-campaign` runtime path resolution so event/KPI/threshold/campaign outputs are written under `--target` and sub-scripts are resolved from package paths.
+- Extend `perf:verify-cli-aliases` fixture to validate package-mode execution from a client repo (`cwd` on target), including `aidn perf campaign`.
 
 ## 0.3.0
 - Extend `IndexStore` abstraction for local workflow index output with SQLite modes (`sqlite|dual-sqlite|all`) in `tools/perf/index-sync.mjs`.

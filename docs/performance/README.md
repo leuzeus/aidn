@@ -268,7 +268,12 @@ Artifact rows now include classification fields for multi-version/hybrid reposit
 For fast CI feedback (without full report thresholds), use:
 - `perf:index-canonical-check` against `workflow-index.sqlite`
 - By default it reads `docs/performance/INDEX_TARGETS.json`; CLI values (`--min-*`) still override target-file values.
+- In package mode (`npx aidn ...`), if `docs/performance/INDEX_TARGETS.json` is not present in the client repo, the command falls back to the package's built-in `docs/performance/INDEX_TARGETS.json`.
 - Use `--require-target-rules` if missing target rules must fail the command.
+
+`perf:campaign` path behavior:
+- Runtime outputs (`workflow-events.ndjson`, KPI/threshold/campaign reports) are resolved under `--target`.
+- `--targets-file` is resolved with fallback order: `--target` -> current working directory -> package defaults.
 
 ## Gating Levels (implemented)
 

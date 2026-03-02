@@ -2,7 +2,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { isJsonEquivalent, writeJsonIfChanged } from "./io-lib.mjs";
+
+const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
+const PACKAGE_ROOT = path.resolve(PERF_DIR, "..", "..");
 
 function parseArgs(argv) {
   const args = {
@@ -95,7 +99,10 @@ function printUsage() {
 }
 
 function runIndexQuery(args) {
-  const script = path.resolve(process.cwd(), "tools/perf/index-query.mjs");
+  const script = path.resolve(PERF_DIR, "index-query.mjs");
+  if (!fs.existsSync(script)) {
+    throw new Error(`Index query script not found: ${script}`);
+  }
   const stdout = execFileSync(process.execPath, [
     script,
     "--index-file",
@@ -112,8 +119,28 @@ function runIndexQuery(args) {
   return JSON.parse(stdout);
 }
 
+function resolveInputPath(filePath) {
+  if (path.isAbsolute(filePath)) {
+    return fs.existsSync(filePath) ? filePath : "";
+  }
+  const fromCwd = path.resolve(process.cwd(), filePath);
+  if (fs.existsSync(fromCwd)) {
+    return fromCwd;
+  }
+  const fromPackage = path.resolve(PACKAGE_ROOT, filePath);
+  if (fs.existsSync(fromPackage)) {
+    return fromPackage;
+  }
+  return "";
+}
+
 function readTargets(filePath) {
-  const absolute = path.resolve(process.cwd(), filePath);
+  const absolute = resolveInputPath(filePath);
+  if (!absolute) {
+    throw new Error(
+      `Targets file not found: ${filePath} (searched in cwd and package root ${PACKAGE_ROOT})`,
+    );
+  }
   if (!fs.existsSync(absolute)) {
     throw new Error(`Targets file not found: ${absolute}`);
   }
