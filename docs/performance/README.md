@@ -30,6 +30,7 @@ The following scripts were added under `tools/perf/`:
 - `verify-skill-hook-coverage.mjs` - validate full perf hook coverage on codex skills templates
 - `verify-index-sync-fixtures.mjs` - validate index sync drift/apply/in-sync flow on fixtures
 - `verify-index-sqlite-fixtures.mjs` - validate SQLite index flow (sync + SQL parity + SQLite parity + export)
+- `verify-index-canonical-check-fixtures.mjs` - validate lightweight canonical coverage check (strict/non-strict) on fixtures
 - `verify-index-regression-fixtures.mjs` - validate index regression pipeline and zero-baseline handling on fixtures
 - `verify-install-import-fixtures.mjs` - validate installer artifact import behavior and backend precedence
 - `verify-state-mode-parity-fixtures.mjs` - validate `dual` vs `db-only` parity for reload + gating decisions on fixtures
@@ -38,6 +39,7 @@ The following scripts were added under `tools/perf/`:
 - `index-sql-lib.mjs` - shared SQL generation library used by index tooling
 - `index-sqlite-lib.mjs` - shared SQLite read helpers for export/parity tooling
 - `index-query.mjs` - run standard analytics queries on local index JSON or SQLite index
+- `check-index-canonical-coverage.mjs` - lightweight canonical coverage check directly from index query output
 - `index-verify-dual.mjs` - verify JSON/SQL dual-write parity from deterministic SQL regeneration
 - `index-from-sqlite.mjs` - export SQLite index back to JSON (derived artifact)
 - `index-export-files.mjs` - reconstruct `docs/audit/*` artifacts from index payload content (JSON or SQLite backend)
@@ -100,6 +102,7 @@ npm run perf:verify-structure
 npm run perf:verify-skill-hooks
 npm run perf:verify-index-sync
 npm run perf:verify-index-sqlite
+npm run perf:verify-index-canonical-check
 npm run perf:verify-index-regression
 npm run perf:verify-install-import
 npm run perf:verify-state-mode-parity
@@ -117,6 +120,7 @@ npm run perf:index-verify -- --index-file .aidn/runtime/index/workflow-index.jso
 node tools/perf/index-verify-dual.mjs --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql --json > .aidn/runtime/index/index-parity.json
 npm run perf:index-report -- --index-file .aidn/runtime/index/workflow-index.json --parity-file .aidn/runtime/index/index-parity.json --sqlite-parity-file .aidn/runtime/index/index-sqlite-parity.json --out .aidn/runtime/index/index-report.json
 npm run perf:index-thresholds
+npm run perf:index-canonical-check -- --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --out .aidn/runtime/index/index-canonical-check.json
 npm run perf:index-regression-kpi -- --index-report-file .aidn/runtime/index/index-report.json --out .aidn/runtime/index/index-regression-kpi.json
 npm run perf:index-regression-history -- --kpi-file .aidn/runtime/index/index-regression-kpi.json --history-file .aidn/runtime/index/index-regression-history.ndjson --max-runs 200
 npm run perf:index-regression -- --kpi-file .aidn/runtime/index/index-regression-kpi.json --history-file .aidn/runtime/index/index-regression-history.ndjson --targets docs/performance/INDEX_REGRESSION_TARGETS.json --out .aidn/runtime/index/index-regression.json
@@ -153,6 +157,7 @@ Default runtime outputs:
 - `.aidn/runtime/index/index-sqlite-parity.json`
 - `.aidn/runtime/index/index-report.json`
 - `.aidn/runtime/index/index-thresholds.json`
+- `.aidn/runtime/index/index-canonical-check.json`
 - `.aidn/runtime/index/index-regression-kpi.json`
 - `.aidn/runtime/index/index-regression-history.ndjson`
 - `.aidn/runtime/index/index-regression.json`
@@ -250,6 +255,9 @@ Artifact rows now include classification fields for multi-version/hybrid reposit
 - `INDEX_CANONICAL_ARTIFACTS_MIN`
 - `INDEX_CANONICAL_COVERAGE_MIN`
 
+For fast CI feedback (without full report thresholds), use:
+- `perf:index-canonical-check` against `workflow-index.sqlite`
+
 ## Gating Levels (implemented)
 
 - L1 fast checks: digest + mapping (`perf:reload-check`)
@@ -309,6 +317,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:verify-skill-hooks`
   - `perf:verify-index-sync`
   - `perf:verify-index-sqlite`
+  - `perf:verify-index-canonical-check`
   - `perf:verify-index-regression`
   - `perf:session-start`
   - `perf:delivery-start`
@@ -328,6 +337,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:index-verify-sqlite`
   - `perf:index-report`
   - `perf:index-thresholds`
+  - `perf:index-canonical-check` (non-blocking by default in CI)
   - `perf:index-regression-kpi`
   - `perf:index-regression-history`
   - `perf:index-regression` (non-blocking by default in CI)
@@ -357,6 +367,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `.aidn/runtime/index/index-sync-trend-summary.md`
   - `.aidn/runtime/index/index-parity.json`
   - `.aidn/runtime/index/index-sqlite-parity.json`
+  - `.aidn/runtime/index/index-canonical-check.json`
   - `.aidn/runtime/index/index-regression-kpi.json`
   - `.aidn/runtime/index/index-regression-history.ndjson`
   - `.aidn/runtime/index/index-regression.json`
