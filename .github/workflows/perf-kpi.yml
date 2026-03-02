@@ -162,6 +162,10 @@ jobs:
             node tools/perf/check-index-canonical-coverage.mjs --index-file "$PERF_RUNTIME_INDEX/workflow-index.sqlite" --backend sqlite --out "$PERF_RUNTIME_INDEX/index-canonical-check.json" || true
           fi
 
+      - name: Render Canonical Check Summary
+        run: |
+          npm run perf:index-canonical-summary -- --check-file "$PERF_RUNTIME_INDEX/index-canonical-check.json" --out "$PERF_RUNTIME_INDEX/index-canonical-check-summary.md"
+
       - name: Check Index Import/Export Sync (non-blocking)
         run: |
           STRICT_INDEX_SYNC="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_sync || false }}"
@@ -314,6 +318,8 @@ jobs:
         run: |
           cat "$PERF_RUNTIME_PERF/kpi-summary.md" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat "$PERF_RUNTIME_INDEX/index-canonical-check-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
           cat "$PERF_RUNTIME_INDEX/index-sync-summary.md" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           cat "$PERF_RUNTIME_INDEX/index-sync-trend-summary.md" >> "$GITHUB_STEP_SUMMARY"
@@ -337,6 +343,7 @@ jobs:
             tests/fixtures/repo-installed-core/.aidn/runtime/index/workflow-index.sql
             tests/fixtures/repo-installed-core/.aidn/runtime/index/workflow-index.sqlite
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-canonical-check.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-canonical-check-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-check.json
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-history.ndjson

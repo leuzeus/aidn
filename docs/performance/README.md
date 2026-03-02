@@ -40,6 +40,7 @@ The following scripts were added under `tools/perf/`:
 - `index-sqlite-lib.mjs` - shared SQLite read helpers for export/parity tooling
 - `index-query.mjs` - run standard analytics queries on local index JSON or SQLite index
 - `check-index-canonical-coverage.mjs` - lightweight canonical coverage check directly from index query output
+- `render-index-canonical-check-summary.mjs` - render concise Markdown summary for canonical coverage check output
 - `index-verify-dual.mjs` - verify JSON/SQL dual-write parity from deterministic SQL regeneration
 - `index-from-sqlite.mjs` - export SQLite index back to JSON (derived artifact)
 - `index-export-files.mjs` - reconstruct `docs/audit/*` artifacts from index payload content (JSON or SQLite backend)
@@ -121,6 +122,7 @@ node tools/perf/index-verify-dual.mjs --index-file .aidn/runtime/index/workflow-
 npm run perf:index-report -- --index-file .aidn/runtime/index/workflow-index.json --parity-file .aidn/runtime/index/index-parity.json --sqlite-parity-file .aidn/runtime/index/index-sqlite-parity.json --out .aidn/runtime/index/index-report.json
 npm run perf:index-thresholds
 npm run perf:index-canonical-check -- --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --out .aidn/runtime/index/index-canonical-check.json
+npm run perf:index-canonical-summary -- --check-file .aidn/runtime/index/index-canonical-check.json --out .aidn/runtime/index/index-canonical-check-summary.md
 npm run perf:index-regression-kpi -- --index-report-file .aidn/runtime/index/index-report.json --out .aidn/runtime/index/index-regression-kpi.json
 npm run perf:index-regression-history -- --kpi-file .aidn/runtime/index/index-regression-kpi.json --history-file .aidn/runtime/index/index-regression-history.ndjson --max-runs 200
 npm run perf:index-regression -- --kpi-file .aidn/runtime/index/index-regression-kpi.json --history-file .aidn/runtime/index/index-regression-history.ndjson --targets docs/performance/INDEX_REGRESSION_TARGETS.json --out .aidn/runtime/index/index-regression.json
@@ -158,6 +160,7 @@ Default runtime outputs:
 - `.aidn/runtime/index/index-report.json`
 - `.aidn/runtime/index/index-thresholds.json`
 - `.aidn/runtime/index/index-canonical-check.json`
+- `.aidn/runtime/index/index-canonical-check-summary.md`
 - `.aidn/runtime/index/index-regression-kpi.json`
 - `.aidn/runtime/index/index-regression-history.ndjson`
 - `.aidn/runtime/index/index-regression.json`
@@ -338,6 +341,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:index-report`
   - `perf:index-thresholds`
   - `perf:index-canonical-check` (non-blocking by default in CI)
+  - `perf:index-canonical-summary`
   - `perf:index-regression-kpi`
   - `perf:index-regression-history`
   - `perf:index-regression` (non-blocking by default in CI)
@@ -368,6 +372,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `.aidn/runtime/index/index-parity.json`
   - `.aidn/runtime/index/index-sqlite-parity.json`
   - `.aidn/runtime/index/index-canonical-check.json`
+  - `.aidn/runtime/index/index-canonical-check-summary.md`
   - `.aidn/runtime/index/index-regression-kpi.json`
   - `.aidn/runtime/index/index-regression-history.ndjson`
   - `.aidn/runtime/index/index-regression.json`

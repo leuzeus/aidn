@@ -62,6 +62,7 @@
     "perf:index-sync-summary": "node tools/perf/render-index-sync-summary.mjs",
     "perf:index-sync-trend-summary": "node tools/perf/render-index-sync-report-summary.mjs",
     "perf:index-summary": "node tools/perf/render-index-summary.mjs",
+    "perf:index-canonical-summary": "node tools/perf/render-index-canonical-check-summary.mjs --check-file .aidn/runtime/index/index-canonical-check.json --out .aidn/runtime/index/index-canonical-check-summary.md",
     "perf:verify-structure": "node tools/perf/verify-structure-profile-fixtures.mjs",
     "perf:verify-skill-hooks": "node tools/perf/verify-skill-hook-coverage.mjs",
     "perf:verify-index-sync": "node tools/perf/verify-index-sync-fixtures.mjs",

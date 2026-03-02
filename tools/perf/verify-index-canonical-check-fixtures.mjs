@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 
@@ -7,6 +8,7 @@ function parseArgs(argv) {
     target: "tests/fixtures/repo-installed-core",
     sqliteFile: ".aidn/runtime/index/fixtures/canonical-check/workflow-index.sqlite",
     reportFile: ".aidn/runtime/index/fixtures/canonical-check/index-canonical-check.json",
+    summaryFile: ".aidn/runtime/index/fixtures/canonical-check/index-canonical-check-summary.md",
     json: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -19,6 +21,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--report-file") {
       args.reportFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--summary-file") {
+      args.summaryFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--json") {
       args.json = true;
@@ -68,6 +73,7 @@ function main() {
     const targetRoot = path.resolve(process.cwd(), args.target);
     const sqliteFile = resolveTargetPath(targetRoot, args.sqliteFile);
     const reportFile = resolveTargetPath(targetRoot, args.reportFile);
+    const summaryFile = resolveTargetPath(targetRoot, args.summaryFile);
 
     runNoJson("tools/perf/index-sync.mjs", [
       "--target",
@@ -121,15 +127,24 @@ function main() {
       strictFailureDetected = true;
     }
 
+    runNoJson("tools/perf/render-index-canonical-check-summary.mjs", [
+      "--check-file",
+      reportFile,
+      "--out",
+      summaryFile,
+    ]);
+
     const pass = check?.summary?.overall_status === "pass"
       && strictPass?.summary?.overall_status === "pass"
-      && strictFailureDetected;
+      && strictFailureDetected
+      && fs.existsSync(summaryFile);
 
     const payload = {
       ts: new Date().toISOString(),
       target_root: targetRoot,
       sqlite_file: sqliteFile,
       report_file: reportFile,
+      summary_file: summaryFile,
       checks: {
         non_strict_status: check?.summary?.overall_status ?? null,
         strict_status: strictPass?.summary?.overall_status ?? null,
