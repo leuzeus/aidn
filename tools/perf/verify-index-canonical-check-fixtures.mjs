@@ -133,11 +133,17 @@ function main() {
       "--out",
       summaryFile,
     ]);
+    const summaryText = fs.existsSync(summaryFile)
+      ? fs.readFileSync(summaryFile, "utf8")
+      : "";
 
     const pass = check?.summary?.overall_status === "pass"
       && strictPass?.summary?.overall_status === "pass"
       && strictFailureDetected
       && fs.existsSync(summaryFile)
+      && summaryText.includes("## Index Canonical Coverage Check")
+      && summaryText.includes("- Status: PASS")
+      && summaryText.includes("- Coverage markdown:")
       && String(check?.targets_file ?? "").replace(/\\/g, "/").toLowerCase().endsWith("docs/performance/index_targets.json")
       && Number(check?.thresholds?.min_coverage_markdown ?? -1) === 0.8
       && Number(check?.thresholds?.min_canonical_artifacts ?? -1) === 1
