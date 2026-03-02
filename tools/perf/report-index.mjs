@@ -80,6 +80,20 @@ function toCount(arr) {
   return Array.isArray(arr) ? arr.length : 0;
 }
 
+function hasCanonical(row) {
+  if (row?.canonical && typeof row.canonical === "object") {
+    return true;
+  }
+  if (typeof row?.canonical_json === "string" && row.canonical_json.trim().length > 0) {
+    return true;
+  }
+  return typeof row?.canonical_format === "string" && row.canonical_format.trim().length > 0;
+}
+
+function hasContent(row) {
+  return typeof row?.content === "string" && row.content.length > 0;
+}
+
 function boolNum(value) {
   return value ? 1 : 0;
 }
@@ -134,6 +148,8 @@ function buildReport(indexData, sqlParityData, sqlParityExists, sqliteParityData
   const actual = {
     cycles: toCount(indexData?.cycles),
     artifacts: toCount(indexData?.artifacts),
+    artifacts_with_content: Array.isArray(indexData?.artifacts) ? indexData.artifacts.filter((row) => hasContent(row)).length : 0,
+    artifacts_with_canonical: Array.isArray(indexData?.artifacts) ? indexData.artifacts.filter((row) => hasCanonical(row)).length : 0,
     file_map: toCount(indexData?.file_map),
     tags: toCount(indexData?.tags),
     artifact_tags: toCount(indexData?.artifact_tags),
@@ -192,6 +208,13 @@ function buildReport(indexData, sqlParityData, sqlParityExists, sqliteParityData
       consistency,
       run_metrics: {
         present: boolNum(actual.run_metrics > 0),
+      },
+      projection: {
+        artifacts_with_content: actual.artifacts_with_content,
+        artifacts_with_canonical: actual.artifacts_with_canonical,
+        canonical_coverage_ratio: actual.artifacts > 0
+          ? Number((actual.artifacts_with_canonical / actual.artifacts).toFixed(4))
+          : 0,
       },
       parity: {
         status: parityStatus,

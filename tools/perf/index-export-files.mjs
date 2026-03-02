@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { readIndexFromSqlite } from "./index-sqlite-lib.mjs";
-import { renderMarkdownFromCanonical } from "./markdown-render-lib.mjs";
+import { renderOrMergeCanonicalMarkdown } from "./markdown-render-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -215,6 +215,7 @@ function main() {
     let unchanged = 0;
     let missingContent = 0;
     let renderedFromCanonical = 0;
+    let renderedIncrementalFromCanonical = 0;
     let skippedUnsafePath = 0;
     let skippedUnsupportedEncoding = 0;
     let bytesWritten = 0;
@@ -237,13 +238,20 @@ function main() {
       if (!decoded.ok && decoded.reason === "missing_content" && args.renderMarkdown) {
         const canonical = canonicalFromArtifact(artifact);
         if (canonical && typeof canonical === "object") {
-          const rendered = renderMarkdownFromCanonical(canonical, artifact);
+          const outputPath = path.resolve(auditRoot, relPath.replace(/\//g, path.sep));
+          const existingMarkdown = fs.existsSync(outputPath)
+            ? fs.readFileSync(outputPath, "utf8")
+            : null;
+          const rendered = renderOrMergeCanonicalMarkdown(canonical, artifact, existingMarkdown);
           decoded = {
             ok: true,
             reason: null,
-            content: Buffer.from(rendered, "utf8"),
+            content: Buffer.from(rendered.content, "utf8"),
           };
           renderedFromCanonical += 1;
+          if (rendered.mode === "incremental") {
+            renderedIncrementalFromCanonical += 1;
+          }
         }
       }
       if (!decoded.ok) {
@@ -279,6 +287,7 @@ function main() {
         unchanged,
         missing_content: missingContent,
         rendered_from_canonical: renderedFromCanonical,
+        rendered_incremental_from_canonical: renderedIncrementalFromCanonical,
         skipped_unsafe_path: skippedUnsafePath,
         skipped_unsupported_encoding: skippedUnsupportedEncoding,
         bytes_written: bytesWritten,
@@ -297,6 +306,7 @@ function main() {
       console.log(`Unchanged: ${result.summary.unchanged}`);
       console.log(`Missing content: ${result.summary.missing_content}`);
       console.log(`Rendered from canonical: ${result.summary.rendered_from_canonical}`);
+      console.log(`Rendered incremental from canonical: ${result.summary.rendered_incremental_from_canonical}`);
       console.log(`Bytes written: ${result.summary.bytes_written}`);
       if (warnings.length > 0) {
         console.log(`Warnings: ${warnings.length}`);

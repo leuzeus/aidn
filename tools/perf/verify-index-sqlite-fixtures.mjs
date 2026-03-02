@@ -143,6 +143,17 @@ function main() {
       rebuildAuditRootPath,
       "--json",
     ]);
+    const rebuiltSecond = runJson("tools/perf/index-export-files.mjs", [
+      "--index-file",
+      sqliteFilePath,
+      "--backend",
+      "sqlite",
+      "--target",
+      target,
+      "--audit-root",
+      rebuildAuditRootPath,
+      "--json",
+    ]);
     const rebuiltWorkflowPath = path.resolve(rebuildAuditRootPath, "WORKFLOW.md");
 
     const pass = dualParity.ok === true
@@ -153,7 +164,9 @@ function main() {
       && exists(exportedFilePath)
       && exists(rebuiltWorkflowPath)
       && Number(rebuilt?.summary?.missing_content ?? 0) === 0
-      && Number(rebuilt?.summary?.rendered_from_canonical ?? 0) >= 1;
+      && Number(rebuilt?.summary?.rendered_from_canonical ?? 0) >= 1
+      && Number(rebuiltSecond?.summary?.missing_content ?? 0) === 0
+      && Number(rebuiltSecond?.summary?.rendered_incremental_from_canonical ?? 0) >= 1;
 
     const output = {
       ts: new Date().toISOString(),
@@ -171,6 +184,9 @@ function main() {
         export_written: exported?.write?.written === true || exported?.write?.written === false,
         rebuild_missing_content: Number(rebuilt?.summary?.missing_content ?? -1),
         rebuild_rendered_from_canonical: Number(rebuilt?.summary?.rendered_from_canonical ?? 0),
+        rebuild_second_missing_content: Number(rebuiltSecond?.summary?.missing_content ?? -1),
+        rebuild_second_rendered_incremental: Number(rebuiltSecond?.summary?.rendered_incremental_from_canonical ?? 0),
+        rebuild_second_unchanged: Number(rebuiltSecond?.summary?.unchanged ?? 0),
         rebuild_exported: Number(rebuilt?.summary?.exported ?? 0),
         rebuild_workflow_exists: exists(rebuiltWorkflowPath),
         dual_parity_digest: dualParity.actual_sha256 ?? null,

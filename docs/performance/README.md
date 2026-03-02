@@ -225,6 +225,12 @@ Artifact rows now include classification fields for multi-version/hybrid reposit
 - embedded content present: writes exact embedded bytes (`content_format + content`)
 - embedded content missing and `--render-markdown` enabled (default): writes deterministic markdown projection from `canonical`
 - `--no-render-markdown`: disables projection fallback and reports `missing_content`
+- when projected markdown already exists with `aidn:generated-from-canonical` marker, export updates managed blocks incrementally (`aidn:block:*`) instead of forcing full-template regeneration
+
+`perf:index-report` now exposes projection coverage metrics:
+- `summary.projection.artifacts_with_content`
+- `summary.projection.artifacts_with_canonical`
+- `summary.projection.canonical_coverage_ratio`
 
 ## Gating Levels (implemented)
 
