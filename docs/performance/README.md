@@ -27,6 +27,7 @@ The following scripts were added under `tools/perf/`:
 - `report-index-sync.mjs` - compute trend KPIs from index sync history
 - `render-index-sync-report-summary.mjs` - generate Markdown trend summary from sync report + thresholds
 - `verify-structure-profile-fixtures.mjs` - validate structure profile detection on legacy/modern/mixed fixtures
+- `verify-skill-hook-coverage.mjs` - validate phase-1 perf hook coverage on codex skills templates
 - `verify-index-sync-fixtures.mjs` - validate index sync drift/apply/in-sync flow on fixtures
 - `verify-index-sqlite-fixtures.mjs` - validate SQLite index flow (sync + SQL parity + SQLite parity + export)
 - `verify-install-import-fixtures.mjs` - validate installer artifact import behavior and backend precedence
@@ -90,6 +91,7 @@ npm run perf:index-sync-report -- --history-file .aidn/runtime/index/index-sync-
 npm run perf:index-sync-thresholds
 npm run perf:index-sync-trend-summary -- --report-file .aidn/runtime/index/index-sync-report.json --thresholds-file .aidn/runtime/index/index-sync-thresholds.json --out .aidn/runtime/index/index-sync-trend-summary.md
 npm run perf:verify-structure
+npm run perf:verify-skill-hooks
 npm run perf:verify-index-sync
 npm run perf:verify-index-sqlite
 npm run perf:verify-install-import
@@ -262,6 +264,7 @@ This phase extends optimization coverage to the highest-cost checks first, while
 - Triggers: `pull_request` and `workflow_dispatch`
 - It executes:
   - `perf:verify-structure`
+  - `perf:verify-skill-hooks`
   - `perf:verify-index-sync`
   - `perf:verify-index-sqlite`
   - `perf:session-start`

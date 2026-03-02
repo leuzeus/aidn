@@ -83,6 +83,9 @@ jobs:
       - name: Verify Structure Profile Fixtures
         run: npm run perf:verify-structure
 
+      - name: Verify Skill Hook Coverage
+        run: npm run perf:verify-skill-hooks
+
       - name: Verify Index Sync Fixtures
         run: npm run perf:verify-index-sync
 

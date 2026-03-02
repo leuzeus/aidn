@@ -59,6 +59,7 @@
     "perf:index-sync-trend-summary": "node tools/perf/render-index-sync-report-summary.mjs",
     "perf:index-summary": "node tools/perf/render-index-summary.mjs",
     "perf:verify-structure": "node tools/perf/verify-structure-profile-fixtures.mjs",
+    "perf:verify-skill-hooks": "node tools/perf/verify-skill-hook-coverage.mjs",
     "perf:verify-index-sync": "node tools/perf/verify-index-sync-fixtures.mjs",
     "perf:verify-index-sqlite": "node tools/perf/verify-index-sqlite-fixtures.mjs",
     "perf:verify-install-import": "node tools/perf/verify-install-import-fixtures.mjs",
