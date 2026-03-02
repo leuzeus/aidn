@@ -29,6 +29,9 @@ Scoring:
 | Sync import/export complet | 4 | 4 | 3 | Lot 3 | 1.00 | Nécessaire pour rollback sûr |
 | Reconstruction DB -> fichiers (incluant supports) | 5 | 4 | 3 | Lot 3 | 1.25 | Indispensable pour `db-only` sûr |
 | Équivalence gates `dual` vs `db-only` | 5 | 3 | 4 | Lot 3 | 1.67 | Garantit qualité inchangée en mode DB-first |
+| Schéma canonique artefacts (JSON/SQLite) | 5 | 3 | 3 | Lot 3 | 1.67 | Base de vérité optimisée pour runtime multi-branches |
+| Renderer Markdown déterministe depuis état canonique | 4 | 3 | 2 | Lot 3 | 1.33 | Maintient lisibilité sans faire du Markdown la source runtime |
+| Rendu Markdown incrémental (section-level) | 4 | 3 | 2 | Lot 3 | 1.33 | Réduit le churn et les réécritures complètes |
 
 ## Priorité Exécution Recommandée
 
@@ -52,4 +55,7 @@ Scoring:
 18. Reconstruction DB -> fichiers (incluant supports)
 19. Équivalence gates `dual` vs `db-only`
 20. Couverture skills Phase 3 (convert-to-spike + harmonisation)
-21. Dual-write fichiers + DB
+21. Schéma canonique artefacts (JSON/SQLite)
+22. Renderer Markdown déterministe depuis état canonique
+23. Rendu Markdown incrémental (section-level)
+24. Dual-write fichiers + DB

@@ -18,6 +18,7 @@ Contraintes:
 - en mode `dual`, fichiers + DB doivent rester en parité
 - en mode `db-only`, les fichiers runtime ne sont plus requis mais doivent rester reconstructibles depuis la DB
 - compatibilité multi-version: un même repo peut contenir des artefacts legacy + modernes; les contrôles doivent se baser sur la structure observée, pas uniquement sur la version déclarée.
+- les artefacts Markdown doivent évoluer vers un rôle de projection lisible (générée), avec un état canonique optimisé côté JSON/SQLite.
 
 ## Statut D'Exécution
 
@@ -41,7 +42,7 @@ Dernière campagne locale de validation (fixtures, 30 itérations):
 
 Hors scope (pour ce plan):
 - réécriture complète des skills
-- remplacement direct des artefacts Markdown par une base unique
+- suppression immédiate des artefacts Markdown lisibles (ils restent requis pour la transition et l'audit humain)
 
 ## Corpus Pilote Et Taxonomie D'Artefacts
 
@@ -58,6 +59,7 @@ Décision de planification:
   - artefacts normatifs (pilotent les gates),
   - artefacts de support (preuves, analyses, rapports, migration),
 - l'export doit permettre reconstruction complète des dossiers cycle/session, y compris artefacts de support.
+- le format canonique runtime doit être structuré (JSON/SQLite) et les `.md` générés comme projection déterministe pour lecture/revue.
 
 ## Carte De Profiling Instrumentable
 
@@ -254,6 +256,9 @@ Tâches techniques:
 - ajouter mode dual-write contrôlé (fichiers + index) avec vérification de parité
 - ajouter mode `db-only` (gates lisent la DB; génération fichiers à la demande)
 - exporter métriques et états de contrôle pour analytics/CI
+- formaliser un schéma canonique par artefact (`status`, `session`, `cycle`, `support`) côté JSON/SQLite
+- implémenter rendu Markdown déterministe depuis l'état canonique (projection lisible)
+- implémenter rendu incrémental des `.md` (sections impactées uniquement, pas réécriture complète systématique)
 - implémenter commandes:
   - import `files -> db` (avec taxonomie normatif/support),
   - export `db -> files` (reconstruction complète),
@@ -270,6 +275,7 @@ Critères d'acceptation:
 - migration/rebuild complète depuis fichiers validée
 - en `db-only`, les décisions de gates sont équivalentes à `dual` sur corpus de référence
 - reconstruction d'un repo complet depuis DB validée (cycles/sessions + artefacts de support)
+- les `.md` régénérés depuis l'état canonique restent lisibles et stables (pas de churn inutile hors sections modifiées)
 
 Definition of Done (Lot 3):
 - contrat d'interface `IndexStore` stable
@@ -279,6 +285,7 @@ Definition of Done (Lot 3):
 - tests automatiques import/export/parité incluant artefacts de support
 - test automatique d'équivalence `dual` vs `db-only` pour `reload-check` + `gating-evaluate` (`perf:verify-state-mode-parity`)
 - couverture instrumentation 10/10 skills validée (mêmes garanties qualité, coût réduit)
+- renderer Markdown branché sur état canonique + tests de stabilité (idempotence/rendu partiel)
 
 ## Backlog Priorisé
 
@@ -299,6 +306,9 @@ Definition of Done (Lot 3):
 15. Couverture perf Phase 1: hooks sur `context-reload`, `branch-cycle-audit`, `drift-check`
 16. Couverture perf Phase 2: hooks sur `cycle-create`, `cycle-close`, `promote-baseline`, `requirements-delta`
 17. Couverture perf Phase 3: hooks sur `convert-to-spike` + uniformisation wrapper unique
+18. Schéma canonique artefacts runtime (JSON/SQLite) pour `status/session/cycle/support`
+19. Renderer Markdown déterministe depuis état canonique
+20. Rendu Markdown incrémental (sections impactées uniquement)
 
 ## Acceptance Criteria Globaux
 
@@ -308,6 +318,7 @@ Definition of Done (Lot 3):
 - Aucune suppression de gate canonique; seulement réduction de relances inutiles.
 - Aucune perte silencieuse d'artefact lors d'import/export (incluant artefacts de support non standard).
 - La couverture d'optimisation est étendue à 100% des skills du pack sans baisse des garanties DoR/DoD/drift-check.
+- Les artefacts Markdown deviennent des projections stables de l'état canonique, sans perte d'information ni surcharge de churn.
 
 ## Structure Recommandée A Créer
 
