@@ -670,6 +670,26 @@ function collectPlaceholderValuesFromText(text) {
   };
 }
 
+function normalizePreservedMetadata(targetRelative, text, templateVars) {
+  let next = String(text);
+  const version = sanitizeExtractedValue(templateVars?.VERSION);
+  if (!version) {
+    return { text: next, changed: false };
+  }
+
+  const normalizedTarget = normalizeRelativePath(targetRelative).toLowerCase();
+  if (normalizedTarget === "docs/audit/workflow.md") {
+    next = next.replace(/^(\s*workflow_version:\s*).+$/im, `$1${version}`);
+  }
+
+  if (normalizedTarget === ".codex/skills.yaml") {
+    next = next.replace(/^(\s*ref:\s*["']?)v[^"'\s]+(["']?\s*)$/im, `$1v${version}$2`);
+    next = next.replace(/(https:\/\/github\.com\/leuzeus\/aidn\/tree\/)v[^/]+(\/template\/codex\/)/gi, `$1v${version}$2`);
+  }
+
+  return { text: next, changed: next !== text };
+}
+
 function collectExistingPlaceholderValues(targetRoot) {
   const out = {};
   const candidates = [
@@ -844,7 +864,9 @@ function copyFile(sourcePath, targetPath, dryRun, templateVars = null, options =
         );
       }
 
-      const targetRendered = renderTemplateVariables(targetText, effectiveVars);
+      let targetRendered = renderTemplateVariables(targetText, effectiveVars);
+      const normalizedMeta = normalizePreservedMetadata(targetRelative, targetRendered, effectiveVars);
+      targetRendered = normalizedMeta.text;
       const targetRenderChanged = targetRendered !== targetText;
       if (targetRenderChanged) {
         if (!dryRun) {
@@ -933,6 +955,7 @@ function buildCodexMigrationPrompt(relativeTargetPath, sourceRendered) {
     "- Keep project-specific customizations and local decisions.",
     "- Integrate missing structure or guardrails from the provided updated template when relevant.",
     "- The updated template already contains resolved metadata placeholders; preserve equivalent local values.",
+    "- Force installed metadata version values from the template (for example workflow_version and skills ref/tag URLs).",
     "- Do not re-introduce unresolved placeholders.",
     "- Preserve valid syntax and readability.",
     "- Edit only the target file and save it.",
