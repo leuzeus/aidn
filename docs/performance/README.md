@@ -11,6 +11,8 @@ Execution model:
 Core planning docs:
 - `WORKFLOW_PERFORMANCE_PLAN.md`
 - `PRIORITIZATION_MATRIX.md`
+- `PROCESS_ASIS_STATE.md`
+- `PROCESS_OPTIMIZATION_PLAN.md`
 - `../rfc/RFC-0001-reload-incremental-gating-index.md`
 
 ## CLI Tools
