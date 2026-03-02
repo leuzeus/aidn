@@ -121,7 +121,7 @@ npm run perf:index-verify -- --index-file .aidn/runtime/index/workflow-index.jso
 node tools/perf/index-verify-dual.mjs --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql --json > .aidn/runtime/index/index-parity.json
 npm run perf:index-report -- --index-file .aidn/runtime/index/workflow-index.json --parity-file .aidn/runtime/index/index-parity.json --sqlite-parity-file .aidn/runtime/index/index-sqlite-parity.json --out .aidn/runtime/index/index-report.json
 npm run perf:index-thresholds
-npm run perf:index-canonical-check -- --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --out .aidn/runtime/index/index-canonical-check.json
+npm run perf:index-canonical-check -- --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --targets docs/performance/INDEX_TARGETS.json --out .aidn/runtime/index/index-canonical-check.json
 npm run perf:index-canonical-summary -- --check-file .aidn/runtime/index/index-canonical-check.json --out .aidn/runtime/index/index-canonical-check-summary.md
 npm run perf:index-regression-kpi -- --index-report-file .aidn/runtime/index/index-report.json --out .aidn/runtime/index/index-regression-kpi.json
 npm run perf:index-regression-history -- --kpi-file .aidn/runtime/index/index-regression-kpi.json --history-file .aidn/runtime/index/index-regression-history.ndjson --max-runs 200
@@ -260,6 +260,7 @@ Artifact rows now include classification fields for multi-version/hybrid reposit
 
 For fast CI feedback (without full report thresholds), use:
 - `perf:index-canonical-check` against `workflow-index.sqlite`
+- By default it reads `docs/performance/INDEX_TARGETS.json`; CLI values (`--min-*`) still override target-file values.
 
 ## Gating Levels (implemented)
 

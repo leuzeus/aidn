@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { isJsonEquivalent, writeJsonIfChanged } from "./io-lib.mjs";
@@ -7,9 +8,13 @@ function parseArgs(argv) {
   const args = {
     indexFile: ".aidn/runtime/index/workflow-index.sqlite",
     backend: "auto",
+    targets: "docs/performance/INDEX_TARGETS.json",
     minCoverageMarkdown: 0.8,
     minCanonicalArtifacts: 1,
     minMarkdownArtifacts: 1,
+    minCoverageMarkdownExplicit: false,
+    minCanonicalArtifactsExplicit: false,
+    minMarkdownArtifactsExplicit: false,
     out: ".aidn/runtime/index/index-canonical-check.json",
     strict: false,
     json: false,
@@ -23,14 +28,20 @@ function parseArgs(argv) {
     } else if (token === "--backend") {
       args.backend = String(argv[i + 1] ?? "").trim().toLowerCase();
       i += 1;
+    } else if (token === "--targets") {
+      args.targets = argv[i + 1] ?? "";
+      i += 1;
     } else if (token === "--min-coverage-markdown") {
       args.minCoverageMarkdown = Number(argv[i + 1] ?? "0.8");
+      args.minCoverageMarkdownExplicit = true;
       i += 1;
     } else if (token === "--min-canonical-artifacts") {
       args.minCanonicalArtifacts = Number(argv[i + 1] ?? "1");
+      args.minCanonicalArtifactsExplicit = true;
       i += 1;
     } else if (token === "--min-markdown-artifacts") {
       args.minMarkdownArtifacts = Number(argv[i + 1] ?? "1");
+      args.minMarkdownArtifactsExplicit = true;
       i += 1;
     } else if (token === "--out") {
       args.out = argv[i + 1] ?? "";
@@ -49,6 +60,9 @@ function parseArgs(argv) {
 
   if (!args.indexFile) {
     throw new Error("Missing value for --index-file");
+  }
+  if (!args.targets) {
+    throw new Error("Missing value for --targets");
   }
   if (!["auto", "json", "sqlite"].includes(args.backend)) {
     throw new Error("Invalid --backend. Expected auto|json|sqlite");
@@ -71,7 +85,8 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/check-index-canonical-coverage.mjs");
-  console.log("  node tools/perf/check-index-canonical-coverage.mjs --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --min-coverage-markdown 0.8");
+  console.log("  node tools/perf/check-index-canonical-coverage.mjs --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --targets docs/performance/INDEX_TARGETS.json");
+  console.log("  node tools/perf/check-index-canonical-coverage.mjs --min-coverage-markdown 0.8 --min-canonical-artifacts 1 --min-markdown-artifacts 1");
   console.log("  node tools/perf/check-index-canonical-coverage.mjs --strict");
 }
 
@@ -91,6 +106,66 @@ function runIndexQuery(args) {
     stdio: ["ignore", "pipe", "pipe"],
   });
   return JSON.parse(stdout);
+}
+
+function readTargets(filePath) {
+  const absolute = path.resolve(process.cwd(), filePath);
+  if (!fs.existsSync(absolute)) {
+    throw new Error(`Targets file not found: ${absolute}`);
+  }
+  let payload;
+  try {
+    payload = JSON.parse(fs.readFileSync(absolute, "utf8"));
+  } catch (error) {
+    throw new Error(`Targets file invalid JSON: ${error.message}`);
+  }
+  const rules = Array.isArray(payload?.rules) ? payload.rules : [];
+  const byId = new Map();
+  for (const rule of rules) {
+    const id = String(rule?.id ?? "").trim();
+    if (!id) {
+      continue;
+    }
+    byId.set(id, rule);
+  }
+  return { absolute, byId };
+}
+
+function toNumberOrNull(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function resolveThresholds(args, targetsById) {
+  const out = {
+    minCoverageMarkdown: args.minCoverageMarkdown,
+    minCanonicalArtifacts: args.minCanonicalArtifacts,
+    minMarkdownArtifacts: args.minMarkdownArtifacts,
+  };
+
+  if (!args.minCoverageMarkdownExplicit) {
+    const rule = targetsById.get("INDEX_CANONICAL_COVERAGE_MIN");
+    const value = toNumberOrNull(rule?.value);
+    if (value != null) {
+      out.minCoverageMarkdown = value;
+    }
+  }
+  if (!args.minCanonicalArtifactsExplicit) {
+    const rule = targetsById.get("INDEX_CANONICAL_ARTIFACTS_MIN");
+    const value = toNumberOrNull(rule?.value);
+    if (value != null) {
+      out.minCanonicalArtifacts = value;
+    }
+  }
+  if (!args.minMarkdownArtifactsExplicit) {
+    const rule = targetsById.get("INDEX_ARTIFACTS_MIN");
+    const value = toNumberOrNull(rule?.value);
+    if (value != null) {
+      out.minMarkdownArtifacts = value;
+    }
+  }
+
+  return out;
 }
 
 function evaluateChecks(row, args) {
@@ -159,25 +234,33 @@ function writeJson(filePath, payload) {
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
+    const targets = readTargets(args.targets);
+    const resolvedThresholds = resolveThresholds(args, targets.byId);
     const query = runIndexQuery(args);
     const row = Array.isArray(query?.rows) && query.rows.length > 0 ? query.rows[0] : null;
     if (!row) {
       throw new Error("canonical-coverage query returned no rows");
     }
 
-    const checks = evaluateChecks(row, args);
+    const checks = evaluateChecks(row, {
+      ...args,
+      minCoverageMarkdown: resolvedThresholds.minCoverageMarkdown,
+      minCanonicalArtifacts: resolvedThresholds.minCanonicalArtifacts,
+      minMarkdownArtifacts: resolvedThresholds.minMarkdownArtifacts,
+    });
     const summary = summarizeChecks(checks, args.strict);
     const payload = {
       ts: new Date().toISOString(),
       strict: args.strict,
       index_file: query.source_index ?? null,
       backend: query.backend ?? args.backend,
+      targets_file: targets.absolute,
       query: query.query ?? "canonical-coverage",
       coverage: row,
       thresholds: {
-        min_coverage_markdown: args.minCoverageMarkdown,
-        min_canonical_artifacts: args.minCanonicalArtifacts,
-        min_markdown_artifacts: args.minMarkdownArtifacts,
+        min_coverage_markdown: resolvedThresholds.minCoverageMarkdown,
+        min_canonical_artifacts: resolvedThresholds.minCanonicalArtifacts,
+        min_markdown_artifacts: resolvedThresholds.minMarkdownArtifacts,
       },
       summary,
       checks,

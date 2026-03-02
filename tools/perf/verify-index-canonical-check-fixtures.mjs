@@ -90,8 +90,8 @@ function main() {
       sqliteFile,
       "--backend",
       "sqlite",
-      "--min-coverage-markdown",
-      "0.8",
+      "--targets",
+      "docs/performance/INDEX_TARGETS.json",
       "--out",
       reportFile,
       "--json",
@@ -102,8 +102,8 @@ function main() {
       sqliteFile,
       "--backend",
       "sqlite",
-      "--min-coverage-markdown",
-      "0.8",
+      "--targets",
+      "docs/performance/INDEX_TARGETS.json",
       "--out",
       reportFile,
       "--strict",
@@ -137,7 +137,11 @@ function main() {
     const pass = check?.summary?.overall_status === "pass"
       && strictPass?.summary?.overall_status === "pass"
       && strictFailureDetected
-      && fs.existsSync(summaryFile);
+      && fs.existsSync(summaryFile)
+      && String(check?.targets_file ?? "").replace(/\\/g, "/").toLowerCase().endsWith("docs/performance/index_targets.json")
+      && Number(check?.thresholds?.min_coverage_markdown ?? -1) === 0.8
+      && Number(check?.thresholds?.min_canonical_artifacts ?? -1) === 1
+      && Number(check?.thresholds?.min_markdown_artifacts ?? -1) === 1;
 
     const payload = {
       ts: new Date().toISOString(),
@@ -149,6 +153,10 @@ function main() {
         non_strict_status: check?.summary?.overall_status ?? null,
         strict_status: strictPass?.summary?.overall_status ?? null,
         strict_failure_detected: strictFailureDetected,
+        targets_file: check?.targets_file ?? null,
+        min_coverage_markdown: Number(check?.thresholds?.min_coverage_markdown ?? -1),
+        min_canonical_artifacts: Number(check?.thresholds?.min_canonical_artifacts ?? -1),
+        min_markdown_artifacts: Number(check?.thresholds?.min_markdown_artifacts ?? -1),
       },
       pass,
     };

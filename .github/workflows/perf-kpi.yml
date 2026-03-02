@@ -156,10 +156,10 @@ jobs:
           STRICT_INDEX_QUALITY="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_quality || false }}"
           if [ "$STRICT_INDEX_QUALITY" = "true" ]; then
             echo "Running canonical coverage check in strict mode."
-            node tools/perf/check-index-canonical-coverage.mjs --index-file "$PERF_RUNTIME_INDEX/workflow-index.sqlite" --backend sqlite --out "$PERF_RUNTIME_INDEX/index-canonical-check.json" --strict
+            node tools/perf/check-index-canonical-coverage.mjs --index-file "$PERF_RUNTIME_INDEX/workflow-index.sqlite" --backend sqlite --targets docs/performance/INDEX_TARGETS.json --out "$PERF_RUNTIME_INDEX/index-canonical-check.json" --strict
           else
             echo "Running canonical coverage check in non-blocking mode."
-            node tools/perf/check-index-canonical-coverage.mjs --index-file "$PERF_RUNTIME_INDEX/workflow-index.sqlite" --backend sqlite --out "$PERF_RUNTIME_INDEX/index-canonical-check.json" || true
+            node tools/perf/check-index-canonical-coverage.mjs --index-file "$PERF_RUNTIME_INDEX/workflow-index.sqlite" --backend sqlite --targets docs/performance/INDEX_TARGETS.json --out "$PERF_RUNTIME_INDEX/index-canonical-check.json" || true
           fi
 
       - name: Render Canonical Check Summary
