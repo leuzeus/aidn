@@ -39,6 +39,7 @@ function parseArgs(argv) {
     emitSummaryEvent: true,
     skipIndexOnIncremental: true,
     skipGateEvaluate: false,
+    autoSkipGateOnNoSignal: true,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -97,6 +98,8 @@ function parseArgs(argv) {
       args.skipIndexOnIncremental = false;
     } else if (token === "--skip-gate-evaluate") {
       args.skipGateEvaluate = true;
+    } else if (token === "--no-auto-skip-gate") {
+      args.autoSkipGateOnNoSignal = false;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -157,6 +160,7 @@ function printUsage() {
   console.log("  node tools/perf/checkpoint.mjs --target ../client --index-sync-check-strict");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --no-skip-index-on-incremental");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --skip-gate-evaluate");
+  console.log("  node tools/perf/checkpoint.mjs --target ../client --no-auto-skip-gate");
   console.log("  node tools/perf/checkpoint.mjs --json");
 }
 
@@ -240,6 +244,31 @@ function getCurrentBranch(targetRoot) {
   } catch {
     return "unknown";
   }
+}
+
+function hasWorkingTreeChanges(targetRoot) {
+  const collect = (argv) => {
+    try {
+      const out = execFileSync("git", ["-C", targetRoot, ...argv], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+      if (!out) {
+        return [];
+      }
+      return out
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+    } catch {
+      return [];
+    }
+  };
+  const changed = new Set([
+    ...collect(["diff", "--name-only", "--relative", "HEAD"]),
+    ...collect(["diff", "--name-only", "--relative", "--cached", "HEAD"]),
+  ]);
+  return changed.size > 0;
 }
 
 function main() {
@@ -326,7 +355,14 @@ function main() {
       },
     };
     let gateDurationMs = 0;
-    if (!args.skipGateEvaluate) {
+    const noSignalGateSkip = args.autoSkipGateOnNoSignal
+      && !args.skipGateEvaluate
+      && reload.decision === "incremental"
+      && reload.fallback !== true
+      && Array.isArray(reload.reason_codes)
+      && reload.reason_codes.length === 0
+      && !hasWorkingTreeChanges(targetRoot);
+    if (!args.skipGateEvaluate && !noSignalGateSkip) {
       const gateStarted = Date.now();
       const gateArgs = [
         "--target",
@@ -355,6 +391,14 @@ function main() {
       }
       gate = runToolJson("gating-evaluate.mjs", gateArgs);
       gateDurationMs = Date.now() - gateStarted;
+    } else if (noSignalGateSkip) {
+      gate = {
+        ...gate,
+        action: "proceed_l1_fast_checks_only",
+        result: "ok",
+        reason_code: null,
+        gates_triggered: ["R03", "R04"],
+      };
     }
 
     const hasIndexOutputs = indexOutputsExistForStore(args, indexOutputPath, indexSqlOutputPath, indexSqliteOutputPath);
@@ -490,8 +534,10 @@ function main() {
         result: gate.result,
         reason_code: gate.reason_code,
         gates_triggered: Array.isArray(gate.gates_triggered) ? gate.gates_triggered : [],
-        skipped: args.skipGateEvaluate === true,
-        skip_reason: args.skipGateEvaluate === true ? "SKIPPED_BY_CHECKPOINT_OPTION" : null,
+        skipped: args.skipGateEvaluate === true || noSignalGateSkip,
+        skip_reason: args.skipGateEvaluate === true
+          ? "SKIPPED_BY_CHECKPOINT_OPTION"
+          : (noSignalGateSkip ? "SKIPPED_NO_SIGNAL_GATE" : null),
         duration_ms: gateDurationMs,
       },
       index: {

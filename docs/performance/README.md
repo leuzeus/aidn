@@ -1,4 +1,4 @@
-# Performance Tooling (Lot 1 Completed)
+# Performance Tooling (Lot 2 Completed)
 
 This folder tracks workflow performance rollout artifacts.
 
@@ -16,6 +16,7 @@ Core planning docs:
 - `PROCESS_MASTER_PLAN.md`
 - `LOT0_BASELINE_REPORT.md`
 - `LOT1_QUICK_WINS_REPORT.md`
+- `LOT2_PULL_FLOW_REPORT.md`
 - `../rfc/RFC-0001-reload-incremental-gating-index.md`
 
 ## CLI Tools

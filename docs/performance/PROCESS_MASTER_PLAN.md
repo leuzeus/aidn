@@ -110,5 +110,6 @@ KPI cible:
 
 - Lot 0: COMPLETED (baseline 30 itérations publiée).
 - Lot 1: COMPLETED (`LOT1_QUICK_WINS_REPORT.md` publié).
-- Lot actif: Lot 2.
+- Lot 2: COMPLETED (`LOT2_PULL_FLOW_REPORT.md` publié).
+- Lot actif: Lot 3.
 - Référence baseline: `LOT0_BASELINE_REPORT.md`.
