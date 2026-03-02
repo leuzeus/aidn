@@ -103,6 +103,9 @@ jobs:
       - name: Verify Support Artifacts Fixtures
         run: npm run perf:verify-support-artifacts
 
+      - name: Verify Index Export Filter Fixtures
+        run: npm run perf:verify-index-export-filter
+
       - name: Verify Index Canonical Check Fixtures
         run: npm run perf:verify-index-canonical-check
 

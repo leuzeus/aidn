@@ -38,6 +38,7 @@ The following scripts were added under `tools/perf/`:
 - `verify-index-sqlite-fixtures.mjs` - validate SQLite index flow (sync + SQL parity + SQLite parity + export)
 - `verify-index-canonical-check-fixtures.mjs` - validate lightweight canonical coverage check (strict/non-strict) on fixtures
 - `verify-index-regression-fixtures.mjs` - validate index regression pipeline and zero-baseline handling on fixtures
+- `verify-index-export-filter-fixtures.mjs` - validate selective export/projection via `--only-path` on fixtures
 - `verify-support-artifacts-fixtures.mjs` - validate import/export coverage for support artifacts (`reports/`, `migration/`, `backlog/`, `incidents/`)
 - `verify-db-only-hooks-fixtures.mjs` - validate runtime session hooks in `db-only` mode (`session-start`/`session-close`)
 - `verify-perf-cli-aliases-fixtures.mjs` - validate `aidn perf` aliases for canonical/index commands on fixtures
@@ -120,6 +121,7 @@ npm run perf:verify-index-sync
 npm run perf:verify-index-sqlite
 npm run perf:verify-index-canonical-check
 npm run perf:verify-index-regression
+npm run perf:verify-index-export-filter
 npm run perf:verify-support-artifacts
 npm run perf:verify-db-only-hooks
 npm run perf:verify-cli-aliases
@@ -129,6 +131,7 @@ npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json -
 npm run perf:index-from-sqlite -- --sqlite-file .aidn/runtime/index/workflow-index.sqlite --out .aidn/runtime/index/workflow-index.from-sqlite.json
 npm run perf:index-export-files -- --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target ../client-repo --audit-root docs/audit
 npm run perf:index-export-files -- --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target ../client-repo --audit-root docs/audit --no-render-markdown
+npm run perf:index-export-files -- --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target ../client-repo --audit-root docs/audit --only-path reports/R001-latency-review.md --only-path backlog/BL001-perf-followups.md
 npm run perf:index-verify-sqlite -- --index-file .aidn/runtime/index/workflow-index.json --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.json
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite
@@ -261,6 +264,8 @@ Artifact rows now include classification fields for multi-version/hybrid reposit
 - embedded content present: writes exact embedded bytes (`content_format + content`)
 - embedded content missing and `--render-markdown` enabled (default): writes deterministic markdown projection from `canonical`
 - `--no-render-markdown`: disables projection fallback and reports `missing_content`
+- `--only-path <relpath>` (repeatable): restricts export/projection to selected artifact paths
+- `--paths-file <file>`: loads selected paths from a newline-delimited file (supports `#` comments)
 - when projected markdown already exists with `aidn:generated-from-canonical` marker, export updates managed blocks incrementally (`aidn:block:*`) instead of forcing full-template regeneration
 - SQLite fixture verification enforces idempotence on second export pass (`exported=0`, `unchanged>=1`) with incremental projection active
 
@@ -350,6 +355,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:verify-index-sqlite`
   - `perf:verify-index-canonical-check`
   - `perf:verify-index-regression`
+  - `perf:verify-index-export-filter`
   - `perf:verify-support-artifacts`
   - `perf:verify-db-only-hooks`
   - `perf:verify-cli-aliases`

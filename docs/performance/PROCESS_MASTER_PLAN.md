@@ -116,3 +116,4 @@ KPI cible:
 - Progression Lot 3:
   - couverture fixture import/export des artefacts de support (`reports/`, `migration/`, `backlog/`, `incidents`)
   - smoke test hooks runtime `db-only` (`session-start` / `session-close`)
+  - projection Markdown sélective à la demande via `index-export-files --only-path|--paths-file`

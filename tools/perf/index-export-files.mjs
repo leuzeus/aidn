@@ -11,6 +11,8 @@ function parseArgs(argv) {
     target: ".",
     auditRoot: "",
     normativeOnly: false,
+    onlyPaths: [],
+    pathsFile: "",
     renderMarkdown: true,
     strict: false,
     dryRun: false,
@@ -33,6 +35,16 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--normative-only") {
       args.normativeOnly = true;
+    } else if (token === "--only-path") {
+      const raw = String(argv[i + 1] ?? "").trim();
+      i += 1;
+      if (!raw) {
+        throw new Error("Missing value for --only-path");
+      }
+      args.onlyPaths.push(raw.replace(/\\/g, "/"));
+    } else if (token === "--paths-file") {
+      args.pathsFile = argv[i + 1] ?? "";
+      i += 1;
     } else if (token === "--render-markdown") {
       args.renderMarkdown = true;
     } else if (token === "--no-render-markdown") {
@@ -70,6 +82,8 @@ function printUsage() {
   console.log("  node tools/perf/index-export-files.mjs --index-file .aidn/runtime/index/workflow-index.json --backend json");
   console.log("  node tools/perf/index-export-files.mjs --target ../client-repo --audit-root docs/audit");
   console.log("  node tools/perf/index-export-files.mjs --normative-only");
+  console.log("  node tools/perf/index-export-files.mjs --only-path reports/R001-latency-review.md --only-path backlog/BL001-perf-followups.md");
+  console.log("  node tools/perf/index-export-files.mjs --paths-file .aidn/runtime/index/export-paths.txt");
   console.log("  node tools/perf/index-export-files.mjs --render-markdown");
   console.log("  node tools/perf/index-export-files.mjs --no-render-markdown");
   console.log("  node tools/perf/index-export-files.mjs --dry-run --json");
@@ -161,6 +175,22 @@ function resolveTargetPath(targetRoot, candidate) {
   return path.resolve(targetRoot, candidate);
 }
 
+function loadPathsFilter(pathsFilePath) {
+  if (!pathsFilePath) {
+    return [];
+  }
+  const absolute = path.resolve(process.cwd(), pathsFilePath);
+  if (!fs.existsSync(absolute)) {
+    throw new Error(`Paths file not found: ${absolute}`);
+  }
+  const lines = fs.readFileSync(absolute, "utf8")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith("#"))
+    .map((line) => line.replace(/\\/g, "/"));
+  return Array.from(new Set(lines));
+}
+
 function writeIfChanged(filePath, content, dryRun) {
   const existed = fs.existsSync(filePath);
   let unchanged = false;
@@ -199,12 +229,25 @@ function main() {
     }
 
     const artifacts = Array.isArray(payload?.artifacts) ? payload.artifacts : [];
+    const pathsFromFile = loadPathsFilter(args.pathsFile);
+    const onlyPathsSet = new Set([
+      ...args.onlyPaths.map((item) => item.replace(/\\/g, "/")),
+      ...pathsFromFile,
+    ]);
     const selectedArtifacts = artifacts.filter((artifact) => {
       if (args.normativeOnly && String(artifact?.family ?? "unknown") !== "normative") {
         return false;
       }
+      if (onlyPathsSet.size > 0) {
+        const rel = String(artifact?.path ?? "").replace(/\\/g, "/");
+        return onlyPathsSet.has(rel);
+      }
       return true;
     });
+    const selectedPathSet = new Set(selectedArtifacts.map((artifact) => String(artifact?.path ?? "").replace(/\\/g, "/")));
+    const missingRequestedPaths = Array.from(onlyPathsSet)
+      .filter((rel) => !selectedPathSet.has(rel))
+      .sort((a, b) => a.localeCompare(b));
 
     const auditRoot = args.auditRoot
       ? resolveTargetPath(targetRoot, args.auditRoot)
@@ -291,8 +334,15 @@ function main() {
         skipped_unsafe_path: skippedUnsafePath,
         skipped_unsupported_encoding: skippedUnsupportedEncoding,
         bytes_written: bytesWritten,
+        selected_paths_filter_count: onlyPathsSet.size,
+        selected_paths_filter_missing_count: missingRequestedPaths.length,
       },
-      warnings,
+      warnings: [
+        ...warnings,
+        ...missingRequestedPaths.map((rel) => `missing_selected_path:${rel}`),
+      ],
+      selected_paths_filter: Array.from(onlyPathsSet).sort((a, b) => a.localeCompare(b)),
+      selected_paths_filter_missing: missingRequestedPaths,
     };
 
     if (args.json) {
