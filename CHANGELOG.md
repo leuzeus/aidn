@@ -20,8 +20,8 @@
   - `index-thresholds` (`index-report` + `INDEX_TARGETS`)
   - `index-sync-thresholds` (`index-sync-report` + `INDEX_SYNC_TARGETS`)
   - `check-fallbacks` (`fallback-report` + `FALLBACK_TARGETS`)
-- Installer now copies Codex skill source folders into client repos under `.codex/skills/aidn/*` (local/offline availability) in addition to `.codex/skills.yaml`.
-- Install fixture verification now checks local skill presence (`.codex/skills/aidn/context-reload/SKILL.md`) to prevent regressions.
+- Installer now copies Codex skill source folders into client repos under `.codex/skills/*` (local/offline availability) in addition to `.codex/skills.yaml`.
+- Install fixture verification now checks local skill presence (`.codex/skills/context-reload/SKILL.md`) to prevent regressions.
 
 ## 0.3.0
 - Extend `IndexStore` abstraction for local workflow index output with SQLite modes (`sqlite|dual-sqlite|all`) in `tools/perf/index-sync.mjs`.

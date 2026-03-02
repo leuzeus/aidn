@@ -198,7 +198,7 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const out = runInstall(repoRoot, target, codexStubBin);
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const configPath = path.join(target, ".aidn", "config.json");
-  const skillPath = path.join(target, ".codex", "skills", "aidn", "context-reload", "SKILL.md");
+  const skillPath = path.join(target, ".codex", "skills", "context-reload", "SKILL.md");
   const config = readConfigSafe(configPath);
   return {
     name: "default_files_mode",

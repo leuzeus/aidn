@@ -83,7 +83,7 @@ Notes:
 - If `codex_online: true`, installer also requires Codex authentication (`codex login`).
 - Compatibility policy and machine prereq result are printed in installer output (`Compatibility policy`, `Prereq check`).
 - `.codex/skills.yaml` is rendered with the current workflow version tag (template `v{{VERSION}}`, rendered at install time using the `VERSION` file) and points to `https://github.com/leuzeus/aidn`.
-- The installer also copies local skill sources under `.codex/skills/aidn/*` (one folder per skill) for local/offline availability.
+- The installer also copies local skill sources under `.codex/skills/*` (one folder per skill) for local/offline availability.
 - Placeholder policy:
   - installer resolves placeholders across copied templates (not only `{{VERSION}}`),
   - for files created for the first time, missing values are requested interactively,
@@ -110,7 +110,7 @@ Notes:
 
 Customizable files preserved by default:
 - `.codex/skills.yaml`
-- `.codex/skills/aidn/*`
+- `.codex/skills/*`
 - `docs/audit/WORKFLOW.md`
 - `docs/audit/index.md`
 - `docs/audit/glossary.md`
