@@ -386,6 +386,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
 - `workflow_dispatch` supports `strict_thresholds=true` to make threshold violations blocking.
 - `workflow_dispatch` supports `strict_index_parity=true` to make dual-write parity violations blocking.
 - `workflow_dispatch` supports `strict_index_quality=true` to make index quality threshold violations blocking.
+- `workflow_dispatch` supports `strict_index_canonical=true` to make lightweight canonical coverage checks blocking.
 - `workflow_dispatch` supports `strict_index_sync=true` to make index import/export drift checks blocking.
 - `workflow_dispatch` supports `strict_regression=true` to make KPI regression violations blocking.
 - `workflow_dispatch` supports `strict_fallback=true` to make fallback-storm violations blocking.
