@@ -8,6 +8,13 @@ description: Create a new cycle folder (CXXX-[type]) with required artifacts, in
 ## Goal
 Create a clean cycle scaffold fast and correctly.
 
+## Hygiene Guardrails
+- Never overwrite an existing cycle folder without explicit user confirmation.
+- If target cycle path already exists, STOP and ask whether to reuse/rename.
+- Create files from templates and avoid rewriting unchanged files.
+- Keep branch naming canonical: `<cycle-type>/CXXX-<short-title>`.
+- Do not modify baseline files from this skill.
+
 ## Inputs (ask user if missing)
 - Cycle ID: CXXX
 - Type: feature | spike | refactor | structural | migration | security | perf | integration | compat | corrective | hotfix

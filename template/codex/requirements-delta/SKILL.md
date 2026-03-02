@@ -8,6 +8,12 @@ description: Revise an old plan/spec safely by generating an addendum (delta), m
 ## Goal
 Handle “we revised an old plan” without losing traceability.
 
+## Hygiene Guardrails
+- Never silently rewrite/remove historical REQs.
+- Keep old-to-new mapping explicit and durable in addendum + traceability.
+- Do not modify baseline files from this skill.
+- If impact is medium/high and branch ownership is unclear, STOP and request cycle/branch decision.
+
 ## When to use
 - You revisit an older plan/audit-spec and realize structural changes are needed
 - New constraints appear (API/DB/security/architecture)

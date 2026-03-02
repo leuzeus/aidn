@@ -8,6 +8,12 @@ description: Close a cycle safely (VERIFYING → DONE or non-retained outcome), 
 ## Goal
 Close a cycle cleanly and make it baseline-ready.
 
+## Hygiene Guardrails
+- Do not delete cycle artifacts during close; preserve full audit trail.
+- Do not auto-promote baseline from this skill.
+- Do not auto-merge branches from this skill.
+- Apply write-on-change behavior for cycle/snapshot updates.
+
 ## Inputs
 - Target cycle folder (CXXX-...)
 - Desired final state: VERIFYING | DONE | NO_GO | DROPPED

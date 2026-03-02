@@ -8,6 +8,12 @@ description: Create or resume a session file from template, detect branch contex
 ## Goal
 Initialize or resume a session with correct mode, branch awareness, and cycle mapping.
 
+## Hygiene Guardrails
+- Mutate only the active session file in this skill.
+- Do not modify baseline files from this skill.
+- Apply write-on-change behavior (do not rewrite unchanged content).
+- If multiple open sessions match the current branch, STOP and ask user which session to resume.
+
 ## Steps
 
 1) Run context-reload logic (light version):

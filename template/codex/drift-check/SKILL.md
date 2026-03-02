@@ -8,6 +8,12 @@ description: Detect scope drift (A/B/D), generate a Recovery plan, and optionall
 ## Goal
 Detect when exploration/implementation drifted and recover quickly.
 
+## Hygiene Guardrails
+- Keep this skill diagnostic-first: detect and report before mutating artifacts.
+- Do not auto-create CR/parking entries without explicit user confirmation.
+- Do not edit `docs/audit/SPEC.md` or baseline files from this skill.
+- When drift is severe/structural, STOP and request arbitration before continuing implementation.
+
 ## Steps
 
 1) Read:

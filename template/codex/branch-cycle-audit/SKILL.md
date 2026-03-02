@@ -8,6 +8,12 @@ description: Verify branch ownership for session/cycle/intermediate branches and
 ## Goal
 Prevent silent drift between Git branches and cycle artifacts.
 
+## Hygiene Guardrails
+- Default behavior is read-only.
+- Never auto-edit `status.md.branch_name` or continuity fields without explicit user confirmation.
+- If mapping is ambiguous, STOP and request a user decision before any write.
+- Snapshot update is optional and should be applied only when explicitly requested.
+
 ## Steps
 
 1) Identify current Git branch (if accessible).

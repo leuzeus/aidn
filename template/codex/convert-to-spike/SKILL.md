@@ -8,6 +8,11 @@ description: Convert an ongoing EXPLORING effort into an official SPIKE cycle + 
 ## Goal
 When exploration becomes non-trivial, formalize it with minimal friction.
 
+## Hygiene Guardrails
+- Keep conversion lightweight: create/attach spike artifacts, do not mutate baseline.
+- Do not auto-close existing cycles as part of conversion.
+- Prefer recommendation over forced branch operations when user intent is not explicit.
+
 ## Trigger rule (use automatically if possible)
 If mode=EXPLORING and:
 - code changes > ~30 minutes OR touches >2 files
@@ -20,7 +25,7 @@ If mode=EXPLORING and:
 - brief.md includes learning goal + timebox
 - decisions.md must capture outcomes
 3) Recommend branch naming:
-- CXXX-spike-<topic>
+- spike/CXXX-<topic>
 4) Update current session:
 - mark mode still EXPLORING or switch to COMMITTING? (usually keep EXPLORING)
 - reference the new cycle id

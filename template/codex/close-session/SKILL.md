@@ -8,6 +8,12 @@ description: Finalize session, enforce drift check, update snapshot, validate br
 ## Goal
 End session cleanly and prepare for fast resume.
 
+## Hygiene Guardrails
+- Do not close session if at least one attached open cycle has no explicit decision.
+- Mutate only session/snapshot artifacts, plus cycle status files explicitly selected by user decision.
+- Never auto-merge branches from this skill.
+- Apply write-on-change behavior to avoid churn in unchanged artifacts.
+
 ## Steps
 
 1) Review current session SXXX.md.

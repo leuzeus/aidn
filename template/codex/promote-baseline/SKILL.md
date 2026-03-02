@@ -8,6 +8,12 @@ description: Promote a DONE cycle to baseline if conditions are met, update base
 ## Goal
 Safely “publish” completed work into baseline.
 
+## Hygiene Guardrails
+- Promote only explicitly selected cycle(s) in `DONE` state.
+- Do not rewrite existing baseline history entries; append only.
+- Update baseline current/history/snapshot coherently in one promotion pass.
+- Apply write-on-change behavior to avoid unnecessary churn.
+
 ## Preconditions
 - Cycle state is DONE (or VERIFYING completed)
 - No unresolved GAPs (or explicitly justified)

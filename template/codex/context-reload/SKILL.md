@@ -8,6 +8,12 @@ description: Reload project context, detect active branch/cycle alignment, propo
 ## Goal
 Reconstruct project state in <5 minutes of reading and propose a WORK MODE.
 
+## Hygiene Guardrails
+- Read-only skill: do not modify files in this skill.
+- Limit reads to listed workflow artifacts; avoid broad repository scans.
+- If an artifact is missing/inaccessible, report uncertainty explicitly (do not infer facts as certain).
+- Do not rewrite branch/cycle metadata here; only report mismatches and proposed fixes.
+
 ## Steps
 
 1) Read:

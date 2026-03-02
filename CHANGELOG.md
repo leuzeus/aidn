@@ -22,6 +22,7 @@
   - `check-fallbacks` (`fallback-report` + `FALLBACK_TARGETS`)
 - Installer now copies Codex skill source folders into client repos under `.codex/skills/*` (local/offline availability) in addition to `.codex/skills.yaml`.
 - Install fixture verification now checks local skill presence (`.codex/skills/context-reload/SKILL.md`) to prevent regressions.
+- Tighten Codex skill hygiene guardrails across workflow skills (read-only vs mutating boundaries, write-on-change expectations, explicit stop/confirmation points) and normalize spike branch recommendation to `spike/CXXX-<topic>`.
 
 ## 0.3.0
 - Extend `IndexStore` abstraction for local workflow index output with SQLite modes (`sqlite|dual-sqlite|all`) in `tools/perf/index-sync.mjs`.
