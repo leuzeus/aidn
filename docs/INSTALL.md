@@ -89,6 +89,7 @@ Notes:
   - use `--skip-agents` to always skip AGENTS merge.
 - Customized project files policy:
   - the installer does not overwrite existing files that are expected to be customized in the client repo,
+  - known placeholders (for example `{{VERSION}}`) are still replaced in preserved files when values are available,
   - when `codex` is available, installer attempts an AI-assisted migration for those files,
   - AI migration requires a logged-in Codex session (`codex login status` must be authenticated),
   - if migration is unavailable/fails, files remain unchanged,

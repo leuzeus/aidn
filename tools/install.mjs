@@ -843,7 +843,24 @@ function copyFile(sourcePath, targetPath, dryRun, templateVars = null, options =
           `Unresolved placeholders in preserved-file template render (${sourcePath}): ${unresolved.join(", ")}`,
         );
       }
-      differsFromTemplate = targetText !== sourceRendered;
+
+      const targetRendered = renderTemplateVariables(targetText, effectiveVars);
+      const targetRenderChanged = targetRendered !== targetText;
+      if (targetRenderChanged) {
+        if (!dryRun) {
+          writeUtf8(targetPath, targetRendered, dryRun);
+        }
+        if (typeof options.onPreservedPlaceholderApplied === "function") {
+          options.onPreservedPlaceholderApplied({
+            targetRelative,
+            targetPath,
+            placeholdersBefore: extractPlaceholders(targetText),
+            placeholdersAfter: extractPlaceholders(targetRendered),
+          });
+        }
+      }
+
+      differsFromTemplate = targetRendered !== sourceRendered;
     }
     if (typeof options.onPreservedCustomFile === "function") {
       options.onPreservedCustomFile({
@@ -1260,6 +1277,7 @@ async function main() {
       merged: 0,
       skipped: 0,
       preservedCustom: 0,
+      preservedPlaceholdersApplied: 0,
       migratedCustom: 0,
       migrationFailed: 0,
       placeholderPrompted: 0,
@@ -1330,6 +1348,12 @@ async function main() {
           const copyPolicy = {
             targetRoot,
             preserveCustomizableFiles: true,
+            onPreservedPlaceholderApplied(info) {
+              summary.preservedPlaceholdersApplied += 1;
+              console.log(
+                `${args.dryRun ? "[dry-run] " : ""}apply placeholders in preserved file: ${info.targetRelative}`,
+              );
+            },
             onPreservedCustomFile(candidate) {
               if (!candidate.differsFromTemplate) {
                 return;
@@ -1472,6 +1496,7 @@ async function main() {
     console.log(`merged: ${summary.merged}`);
     console.log(`skipped: ${summary.skipped}`);
     console.log(`preserved_custom: ${summary.preservedCustom}`);
+    console.log(`preserved_placeholders_applied: ${summary.preservedPlaceholdersApplied}`);
     console.log(`migrated_custom: ${summary.migratedCustom}`);
     console.log(`migration_failed: ${summary.migrationFailed}`);
     console.log(`placeholder_prompted: ${summary.placeholderPrompted}`);
