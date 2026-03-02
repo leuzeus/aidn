@@ -5,6 +5,16 @@ import { fileURLToPath } from "node:url";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { spawnSync } from "node:child_process";
+import {
+  defaultIndexStoreFromStateMode,
+  normalizeIndexStoreMode,
+  normalizeStateMode,
+  readAidnProjectConfig,
+  resolveConfigIndexStore,
+  resolveConfigStateMode,
+  stateModeFromIndexStore,
+  writeAidnProjectConfig,
+} from "./aidn-config-lib.mjs";
 
 const BLOCK_START = "<!-- CODEX-AUDIT-WORKFLOW START -->";
 const BLOCK_END = "<!-- CODEX-AUDIT-WORKFLOW END -->";
@@ -95,10 +105,7 @@ function parseArgs(argv) {
   if (!args.target) {
     throw new Error("Missing required argument value: --target");
   }
-  if (
-    args.artifactImportStore
-    && !["file", "sql", "dual", "sqlite", "dual-sqlite", "all"].includes(args.artifactImportStore)
-  ) {
+  if (args.artifactImportStore && !normalizeIndexStoreMode(args.artifactImportStore)) {
     throw new Error("Invalid --artifact-import-store. Expected file|sql|dual|sqlite|dual-sqlite|all");
   }
 
@@ -120,36 +127,59 @@ function printUsage() {
   console.log("  node tools/install.mjs --target ../repo --pack core --no-codex-migrate-custom");
 }
 
-function resolveArtifactImportDefaults(args) {
-  const explicitStore = String(args?.artifactImportStore ?? "").trim().toLowerCase();
+function resolveArtifactImportDefaults(args, configData = {}) {
+  const explicitStore = normalizeIndexStoreMode(args?.artifactImportStore);
   if (explicitStore) {
     return {
       store: explicitStore,
       withContent: explicitStore === "sqlite" || explicitStore === "dual-sqlite" || explicitStore === "all",
-      stateMode: String(process.env.AIDN_STATE_MODE ?? "").trim().toLowerCase() || "files",
+      stateMode: stateModeFromIndexStore(explicitStore),
       source: "cli",
     };
   }
 
-  const envStore = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().toLowerCase();
-  if (["file", "sql", "dual", "sqlite", "dual-sqlite", "all"].includes(envStore)) {
+  const envStore = normalizeIndexStoreMode(process.env.AIDN_INDEX_STORE_MODE);
+  if (envStore) {
     return {
       store: envStore,
       withContent: envStore === "sqlite" || envStore === "dual-sqlite" || envStore === "all",
-      stateMode: String(process.env.AIDN_STATE_MODE ?? "").trim().toLowerCase() || "files",
+      stateMode: stateModeFromIndexStore(envStore),
       source: "env-index-store",
     };
   }
 
-  const stateMode = String(process.env.AIDN_STATE_MODE ?? "").trim().toLowerCase();
-  if (stateMode === "dual" || stateMode === "db-only") {
+  const envStateMode = normalizeStateMode(process.env.AIDN_STATE_MODE);
+  if (envStateMode) {
+    const store = defaultIndexStoreFromStateMode(envStateMode);
     return {
-      store: stateMode === "dual" ? "dual-sqlite" : "sqlite",
-      withContent: true,
-      stateMode,
+      store,
+      withContent: store === "sqlite" || store === "dual-sqlite" || store === "all",
+      stateMode: envStateMode,
       source: "env-state-mode",
     };
   }
+
+  const configStore = resolveConfigIndexStore(configData);
+  if (configStore) {
+    return {
+      store: configStore,
+      withContent: configStore === "sqlite" || configStore === "dual-sqlite" || configStore === "all",
+      stateMode: stateModeFromIndexStore(configStore),
+      source: "config-index-store",
+    };
+  }
+
+  const configStateMode = resolveConfigStateMode(configData);
+  if (configStateMode) {
+    const store = defaultIndexStoreFromStateMode(configStateMode);
+    return {
+      store,
+      withContent: store === "sqlite" || store === "dual-sqlite" || store === "all",
+      stateMode: configStateMode,
+      source: "config-state-mode",
+    };
+  }
+
   return {
     store: "file",
     withContent: false,
@@ -158,13 +188,15 @@ function resolveArtifactImportDefaults(args) {
   };
 }
 
-function runArtifactImport(repoRoot, targetRoot, dryRun, args) {
+function runArtifactImport(repoRoot, targetRoot, dryRun, args, configData = {}) {
+  const defaults = resolveArtifactImportDefaults(args, configData);
   const auditRoot = path.resolve(targetRoot, "docs", "audit");
   if (!fs.existsSync(auditRoot)) {
     return {
       attempted: false,
       skipped: true,
       reason: "docs/audit not found",
+      defaults,
     };
   }
   const scriptPath = path.join(repoRoot, "tools", "perf", "index-sync.mjs");
@@ -173,10 +205,9 @@ function runArtifactImport(repoRoot, targetRoot, dryRun, args) {
       attempted: false,
       skipped: true,
       reason: "tools/perf/index-sync.mjs not found",
+      defaults,
     };
   }
-
-  const defaults = resolveArtifactImportDefaults(args);
   const cmd = [
     scriptPath,
     "--target",
@@ -275,13 +306,13 @@ function expectedArtifactImportFilesForStore(store) {
   return [];
 }
 
-function verifyArtifactImportOutputs(targetRoot, args) {
+function verifyArtifactImportOutputs(targetRoot, args, configData = {}) {
   if (args.dryRun) {
     return {
       checked: false,
       skipped: true,
       reason: "dry-run",
-      defaults: resolveArtifactImportDefaults(args),
+      defaults: resolveArtifactImportDefaults(args, configData),
       expected_files: [],
       missing_files: [],
     };
@@ -291,7 +322,7 @@ function verifyArtifactImportOutputs(targetRoot, args) {
       checked: false,
       skipped: true,
       reason: "explicit --skip-artifact-import",
-      defaults: resolveArtifactImportDefaults(args),
+      defaults: resolveArtifactImportDefaults(args, configData),
       expected_files: [],
       missing_files: [],
     };
@@ -302,12 +333,12 @@ function verifyArtifactImportOutputs(targetRoot, args) {
       checked: false,
       skipped: true,
       reason: "docs/audit not found",
-      defaults: resolveArtifactImportDefaults(args),
+      defaults: resolveArtifactImportDefaults(args, configData),
       expected_files: [],
       missing_files: [],
     };
   }
-  const defaults = resolveArtifactImportDefaults(args);
+  const defaults = resolveArtifactImportDefaults(args, configData);
   const expected = expectedArtifactImportFilesForStore(defaults.store);
   const missing = expected.filter((relativePath) => !fs.existsSync(path.resolve(targetRoot, relativePath)));
   return {
@@ -318,6 +349,41 @@ function verifyArtifactImportOutputs(targetRoot, args) {
     expected_files: expected,
     missing_files: missing,
   };
+}
+
+function buildNextAidnProjectConfig(existingData, defaults, args) {
+  const base = (existingData && typeof existingData === "object" && !Array.isArray(existingData))
+    ? JSON.parse(JSON.stringify(existingData))
+    : {};
+
+  if (typeof base.version !== "number") {
+    base.version = 1;
+  }
+  if (!base.install || typeof base.install !== "object" || Array.isArray(base.install)) {
+    base.install = {};
+  }
+  if (!base.runtime || typeof base.runtime !== "object" || Array.isArray(base.runtime)) {
+    base.runtime = {};
+  }
+
+  const explicitStore = normalizeIndexStoreMode(args?.artifactImportStore);
+  if (explicitStore) {
+    base.install.artifactImportStore = explicitStore;
+    base.runtime.stateMode = stateModeFromIndexStore(explicitStore);
+  } else {
+    if (!normalizeIndexStoreMode(base.install.artifactImportStore)) {
+      base.install.artifactImportStore = defaults.store;
+    }
+    if (!normalizeStateMode(base.runtime.stateMode)) {
+      base.runtime.stateMode = defaults.stateMode;
+    }
+  }
+
+  if (!normalizeStateMode(base.profile)) {
+    base.profile = base.runtime.stateMode;
+  }
+
+  return base;
 }
 
 function stripComments(line) {
@@ -1467,6 +1533,9 @@ async function main() {
     const scriptDir = path.dirname(fileURLToPath(import.meta.url));
     const repoRoot = path.resolve(scriptDir, "..");
     const targetRoot = path.resolve(process.cwd(), args.target);
+    const configRead = readAidnProjectConfig(targetRoot);
+    let currentAidnConfigData = configRead.data ?? {};
+    let aidnConfigExists = configRead.exists === true;
     const version = readUtf8(path.join(repoRoot, "VERSION")).trim();
     const inferredTemplateVars = collectExistingPlaceholderValues(targetRoot);
     const templateVars = {
@@ -1525,6 +1594,9 @@ async function main() {
       artifactImportVerified: 0,
       artifactImportVerifyFail: 0,
       artifactImportVerifySkipped: 0,
+      configCreated: 0,
+      configUpdated: 0,
+      configSkipped: 0,
     };
     const preservedCustomCandidates = [];
 
@@ -1707,11 +1779,13 @@ async function main() {
         console.log("Codex migration disabled: preserved customized files were left unchanged.");
       }
 
+      let resolvedImportDefaults = resolveArtifactImportDefaults(args, currentAidnConfigData);
       if (args.skipArtifactImport) {
         summary.artifactImportSkipped += 1;
         console.log("artifact import skipped: explicit --skip-artifact-import");
       } else {
-        const artifactImport = runArtifactImport(repoRoot, targetRoot, args.dryRun, args);
+        const artifactImport = runArtifactImport(repoRoot, targetRoot, args.dryRun, args, currentAidnConfigData);
+        resolvedImportDefaults = artifactImport.defaults ?? resolvedImportDefaults;
         if (artifactImport.skipped) {
           summary.artifactImportSkipped += 1;
           const prefix = args.dryRun ? "[dry-run] " : "";
@@ -1727,7 +1801,7 @@ async function main() {
           console.log(
             `artifact import: OK (store=${payload.store ?? "n/a"}, state_mode=${payload.state_mode ?? "n/a"}, source=${defaults.source ?? "n/a"}, artifacts=${payload.summary?.artifacts_count ?? "n/a"}${outputs ? `, outputs=${outputs}` : ""})`,
           );
-          const importVerification = verifyArtifactImportOutputs(targetRoot, args);
+          const importVerification = verifyArtifactImportOutputs(targetRoot, args, currentAidnConfigData);
           if (importVerification.checked) {
             if (importVerification.ok) {
               summary.artifactImportVerified += 1;
@@ -1748,6 +1822,35 @@ async function main() {
           throw new Error(`Artifact import failed: ${details}`);
         }
       }
+
+      const nextAidnConfigData = buildNextAidnProjectConfig(
+        currentAidnConfigData,
+        resolvedImportDefaults,
+        args,
+      );
+      const currentConfigJson = JSON.stringify(currentAidnConfigData);
+      const nextConfigJson = JSON.stringify(nextAidnConfigData);
+      if (currentConfigJson !== nextConfigJson) {
+        if (args.dryRun) {
+          console.log(
+            `[dry-run] ${aidnConfigExists ? "update" : "create"} .aidn/config.json (profile=${nextAidnConfigData.profile}, runtime.stateMode=${nextAidnConfigData.runtime?.stateMode}, install.artifactImportStore=${nextAidnConfigData.install?.artifactImportStore})`,
+          );
+        } else {
+          const configFilePath = writeAidnProjectConfig(targetRoot, nextAidnConfigData);
+          console.log(
+            `${aidnConfigExists ? "update" : "create"} .aidn/config.json -> ${configFilePath}`,
+          );
+        }
+        if (aidnConfigExists) {
+          summary.configUpdated += 1;
+        } else {
+          summary.configCreated += 1;
+        }
+        aidnConfigExists = true;
+        currentAidnConfigData = nextAidnConfigData;
+      } else {
+        summary.configSkipped += 1;
+      }
     }
 
     const verifyEntriesSet = new Set();
@@ -1760,7 +1863,7 @@ async function main() {
     }
     const verifyEntries = Array.from(verifyEntriesSet);
     const verification = verifyPaths(targetRoot, verifyEntries);
-    const artifactImportVerification = verifyArtifactImportOutputs(targetRoot, args);
+    const artifactImportVerification = verifyArtifactImportOutputs(targetRoot, args, currentAidnConfigData);
     const workflowPlaceholders = getWorkflowPlaceholders(targetRoot);
     if (!verification.ok) {
       for (const missing of verification.missing) {
@@ -1798,6 +1901,9 @@ async function main() {
     console.log(`artifact_import_verify_ok: ${summary.artifactImportVerified}`);
     console.log(`artifact_import_verify_fail: ${summary.artifactImportVerifyFail}`);
     console.log(`artifact_import_verify_skipped: ${summary.artifactImportVerifySkipped}`);
+    console.log(`config_created: ${summary.configCreated}`);
+    console.log(`config_updated: ${summary.configUpdated}`);
+    console.log(`config_skipped: ${summary.configSkipped}`);
     if (artifactImportVerification.checked) {
       console.log(
         `artifact_import_verify: ${artifactImportVerification.ok ? "OK" : "FAIL"} (store=${artifactImportVerification.defaults?.store ?? "n/a"}, source=${artifactImportVerification.defaults?.source ?? "n/a"})`,

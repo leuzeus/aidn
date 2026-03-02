@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import { execSync } from "node:child_process";
 import { detectStructureProfile } from "./structure-profile-lib.mjs";
 import { readIndexFromSqlite } from "./index-sqlite-lib.mjs";
+import { readAidnProjectConfig, resolveConfigStateMode } from "../aidn-config-lib.mjs";
 
 const ACTIVE_STATES = new Set(["OPEN", "IMPLEMENTING", "VERIFYING"]);
 function parseArgs(argv) {
@@ -13,6 +14,7 @@ function parseArgs(argv) {
     target: ".",
     cache: ".aidn/runtime/cache/reload-state.json",
     stateMode: envStateMode || "files",
+    stateModeExplicit: false,
     indexFile: ".aidn/runtime/index/workflow-index.sqlite",
     indexBackend: "auto",
     json: false,
@@ -29,6 +31,7 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--state-mode") {
       args.stateMode = String(argv[i + 1] ?? "").toLowerCase();
+      args.stateModeExplicit = true;
       i += 1;
     } else if (token === "--index-file") {
       args.indexFile = argv[i + 1] ?? "";
@@ -836,6 +839,16 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
+    if (!args.stateModeExplicit && !String(process.env.AIDN_STATE_MODE ?? "").trim()) {
+      const config = readAidnProjectConfig(targetRoot);
+      const configStateMode = resolveConfigStateMode(config.data);
+      if (configStateMode) {
+        args.stateMode = configStateMode;
+      }
+    }
+    if (!["files", "dual", "db-only"].includes(args.stateMode)) {
+      throw new Error("Invalid effective state mode. Expected files|dual|db-only");
+    }
     args.cache = resolveTargetPath(targetRoot, args.cache);
     if (args.stateMode !== "files") {
       args.indexFile = resolveTargetPath(targetRoot, args.indexFile);

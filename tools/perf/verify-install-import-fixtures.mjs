@@ -48,6 +48,7 @@ function prepareTmp(sourceTarget, tmpRoot, suffix) {
   const target = path.resolve(tmpRoot, `tmp-install-import-${suffix}-${stamp}`);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.cpSync(sourceTarget, target, { recursive: true });
+  fs.rmSync(path.join(target, ".aidn", "config.json"), { force: true });
   fs.rmSync(path.join(target, ".aidn", "runtime", "index"), { recursive: true, force: true });
   fs.rmSync(path.join(target, ".aidn", "runtime", "cache"), { recursive: true, force: true });
   fs.rmSync(path.join(target, ".aidn", "runtime", "perf"), { recursive: true, force: true });
@@ -74,8 +75,64 @@ function runInstall(repoRoot, targetRoot, extraArgs = [], extraEnv = {}) {
   };
 }
 
+function runCheckpointJson(repoRoot, targetRoot) {
+  const checkpointScript = path.resolve(repoRoot, "tools", "perf", "checkpoint.mjs");
+  const result = spawnSync(process.execPath, [
+    checkpointScript,
+    "--target",
+    targetRoot,
+    "--mode",
+    "COMMITTING",
+    "--json",
+  ], {
+    cwd: repoRoot,
+    env: { ...process.env },
+    encoding: "utf8",
+    timeout: 180000,
+    maxBuffer: 20 * 1024 * 1024,
+  });
+  if ((result.status ?? 1) !== 0) {
+    return {
+      ok: false,
+      status: result.status ?? 1,
+      payload: null,
+      stdout: String(result.stdout ?? ""),
+      stderr: String(result.stderr ?? ""),
+    };
+  }
+  try {
+    return {
+      ok: true,
+      status: 0,
+      payload: JSON.parse(String(result.stdout ?? "{}")),
+      stdout: String(result.stdout ?? ""),
+      stderr: String(result.stderr ?? ""),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 1,
+      payload: null,
+      stdout: String(result.stdout ?? ""),
+      stderr: `invalid checkpoint JSON: ${error.message}\n${String(result.stderr ?? "")}`,
+    };
+  }
+}
+
 function includes(text, token) {
   return String(text ?? "").includes(token);
+}
+
+function readConfigSafe(configPath) {
+  if (!fs.existsSync(configPath)) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 function tail(text, maxChars = 800) {
@@ -98,18 +155,24 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot) {
   const target = prepareTmp(sourceTarget, tmpRoot, "default");
   const out = runInstall(repoRoot, target);
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
+  const configPath = path.join(target, ".aidn", "config.json");
+  const config = readConfigSafe(configPath);
   return {
     name: "default_files_mode",
     target_root: target,
     ok: out.status === 0
       && includes(out.stdout, "artifact import: OK")
       && includes(out.stdout, "store=file")
-      && fs.existsSync(indexJson),
+      && fs.existsSync(indexJson)
+      && fs.existsSync(configPath)
+      && String(config?.runtime?.stateMode ?? "") === "files",
     details: {
       ...installDiagnostics(out),
       has_import_ok_line: includes(out.stdout, "artifact import: OK"),
       has_store_file: includes(out.stdout, "store=file"),
       index_json_exists: fs.existsSync(indexJson),
+      config_exists: fs.existsSync(configPath),
+      config_runtime_state_mode: config?.runtime?.stateMode ?? null,
     },
   };
 }
@@ -118,18 +181,24 @@ function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot) {
   const target = prepareTmp(sourceTarget, tmpRoot, "db-only");
   const out = runInstall(repoRoot, target, [], { AIDN_STATE_MODE: "db-only" });
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
+  const configPath = path.join(target, ".aidn", "config.json");
+  const config = readConfigSafe(configPath);
   return {
     name: "env_state_mode_db_only",
     target_root: target,
     ok: out.status === 0
       && includes(out.stdout, "artifact import: OK")
       && includes(out.stdout, "store=sqlite")
-      && fs.existsSync(indexSqlite),
+      && fs.existsSync(indexSqlite)
+      && fs.existsSync(configPath)
+      && String(config?.runtime?.stateMode ?? "") === "db-only",
     details: {
       ...installDiagnostics(out),
       has_import_ok_line: includes(out.stdout, "artifact import: OK"),
       has_store_sqlite: includes(out.stdout, "store=sqlite"),
       index_sqlite_exists: fs.existsSync(indexSqlite),
+      config_exists: fs.existsSync(configPath),
+      config_runtime_state_mode: config?.runtime?.stateMode ?? null,
     },
   };
 }
@@ -142,6 +211,8 @@ function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot) {
   });
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
+  const configPath = path.join(target, ".aidn", "config.json");
+  const config = readConfigSafe(configPath);
   return {
     name: "env_index_store_over_state_mode",
     target_root: target,
@@ -149,13 +220,17 @@ function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot) {
       && includes(out.stdout, "artifact import: OK")
       && includes(out.stdout, "store=file")
       && fs.existsSync(indexJson)
-      && !fs.existsSync(indexSqlite),
+      && !fs.existsSync(indexSqlite)
+      && fs.existsSync(configPath)
+      && String(config?.runtime?.stateMode ?? "") === "files",
     details: {
       ...installDiagnostics(out),
       has_import_ok_line: includes(out.stdout, "artifact import: OK"),
       has_store_file: includes(out.stdout, "store=file"),
       index_json_exists: fs.existsSync(indexJson),
       index_sqlite_exists: fs.existsSync(indexSqlite),
+      config_exists: fs.existsSync(configPath),
+      config_runtime_state_mode: config?.runtime?.stateMode ?? null,
     },
   };
 }
@@ -168,6 +243,9 @@ function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot) {
   });
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
+  const configPath = path.join(target, ".aidn", "config.json");
+  const config = readConfigSafe(configPath);
+  const checkpoint = runCheckpointJson(repoRoot, target);
   return {
     name: "cli_override_artifact_import_store",
     target_root: target,
@@ -176,7 +254,12 @@ function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot) {
       && includes(out.stdout, "store=dual-sqlite")
       && includes(out.stdout, "source=cli")
       && fs.existsSync(indexJson)
-      && fs.existsSync(indexSqlite),
+      && fs.existsSync(indexSqlite)
+      && fs.existsSync(configPath)
+      && String(config?.runtime?.stateMode ?? "") === "dual"
+      && checkpoint.ok
+      && String(checkpoint?.payload?.state_mode ?? "") === "dual"
+      && String(checkpoint?.payload?.index?.store ?? "") === "dual-sqlite",
     details: {
       ...installDiagnostics(out),
       has_import_ok_line: includes(out.stdout, "artifact import: OK"),
@@ -184,6 +267,12 @@ function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot) {
       has_source_cli: includes(out.stdout, "source=cli"),
       index_json_exists: fs.existsSync(indexJson),
       index_sqlite_exists: fs.existsSync(indexSqlite),
+      config_exists: fs.existsSync(configPath),
+      config_runtime_state_mode: config?.runtime?.stateMode ?? null,
+      runtime_checkpoint_ok: checkpoint.ok,
+      runtime_checkpoint_state_mode: checkpoint?.payload?.state_mode ?? null,
+      runtime_checkpoint_index_store: checkpoint?.payload?.index?.store ?? null,
+      runtime_checkpoint_stderr_tail: tail(checkpoint.stderr),
     },
   };
 }
@@ -193,18 +282,24 @@ function checkCaseSkip(repoRoot, sourceTarget, tmpRoot) {
   const out = runInstall(repoRoot, target, ["--skip-artifact-import"]);
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
+  const configPath = path.join(target, ".aidn", "config.json");
+  const config = readConfigSafe(configPath);
   return {
     name: "explicit_skip_artifact_import",
     target_root: target,
     ok: out.status === 0
       && includes(out.stdout, "artifact import skipped: explicit --skip-artifact-import")
       && !fs.existsSync(indexJson)
-      && !fs.existsSync(indexSqlite),
+      && !fs.existsSync(indexSqlite)
+      && fs.existsSync(configPath)
+      && String(config?.runtime?.stateMode ?? "") === "files",
     details: {
       ...installDiagnostics(out),
       has_skip_line: includes(out.stdout, "artifact import skipped: explicit --skip-artifact-import"),
       index_json_exists: fs.existsSync(indexJson),
       index_sqlite_exists: fs.existsSync(indexSqlite),
+      config_exists: fs.existsSync(configPath),
+      config_runtime_state_mode: config?.runtime?.stateMode ?? null,
     },
   };
 }

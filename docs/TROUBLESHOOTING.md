@@ -49,6 +49,16 @@ Fix:
   - `node tools/install.mjs --target <repo> --pack core --artifact-import-store file`
   - `node tools/install.mjs --target <repo> --pack core --artifact-import-store dual-sqlite`
 
+## Invalid .aidn/config.json
+
+Symptom:
+- Runtime or installer fails with `Invalid JSON in .../.aidn/config.json`.
+
+Fix:
+- Correct JSON syntax in `.aidn/config.json`.
+- Or regenerate from install:
+  - `node tools/install.mjs --target <repo> --pack core`
+
 ## Forgot to customize the project stub
 
 Symptom:

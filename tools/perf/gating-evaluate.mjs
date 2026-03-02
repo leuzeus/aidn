@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync, execFileSync } from "node:child_process";
 import crypto from "node:crypto";
+import { readAidnProjectConfig, resolveConfigStateMode } from "../aidn-config-lib.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
@@ -15,6 +16,7 @@ function parseArgs(argv) {
     eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
     indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
     stateMode: envStateMode || "files",
+    stateModeExplicit: false,
     indexFile: ".aidn/runtime/index/workflow-index.sqlite",
     indexBackend: "auto",
     thresholdFiles: 3,
@@ -41,6 +43,7 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--state-mode") {
       args.stateMode = String(argv[i + 1] ?? "").toLowerCase();
+      args.stateModeExplicit = true;
       i += 1;
     } else if (token === "--index-file") {
       args.indexFile = argv[i + 1] ?? "";
@@ -467,6 +470,16 @@ function main() {
     args.cache = resolveTargetPath(targetRoot, args.cache);
     args.eventFile = resolveTargetPath(targetRoot, args.eventFile);
     args.indexSyncCheckFile = resolveTargetPath(targetRoot, args.indexSyncCheckFile);
+    if (!args.stateModeExplicit && !String(process.env.AIDN_STATE_MODE ?? "").trim()) {
+      const config = readAidnProjectConfig(targetRoot);
+      const configStateMode = resolveConfigStateMode(config.data);
+      if (configStateMode) {
+        args.stateMode = configStateMode;
+      }
+    }
+    if (!["files", "dual", "db-only"].includes(args.stateMode)) {
+      throw new Error("Invalid effective state mode. Expected files|dual|db-only");
+    }
     if (args.stateMode !== "files") {
       args.indexFile = resolveTargetPath(targetRoot, args.indexFile);
     }

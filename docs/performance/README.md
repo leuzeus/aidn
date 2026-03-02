@@ -169,6 +169,9 @@ You can also set `AIDN_STATE_MODE=files|dual|db-only` to control runtime state s
 - `dual` -> default store `dual-sqlite`
 - `db-only` -> default store `sqlite`
 If both are set, explicit CLI flags still win, then `AIDN_INDEX_STORE_MODE`, then `AIDN_STATE_MODE`.
+When env vars are not set, runtime commands also read `.aidn/config.json` in the target repo:
+- `runtime.stateMode` (or `profile`) for state mode
+- `runtime.indexStoreMode` or `install.artifactImportStore` for index store fallback
 Artifact content embedding defaults:
 - `files` -> content embedding disabled by default
 - `dual` and `db-only` -> content embedding enabled by default

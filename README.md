@@ -72,6 +72,7 @@ Notes:
 - install auto-imports `docs/audit/*` artifacts into `../client/.aidn/runtime/index/*`
 - import backend precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE`
 - skip import with `--skip-artifact-import`
+- install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 
 ```bash
 npx aidn perf checkpoint --target ../client --mode COMMITTING --index-store all --index-sync-check --json
