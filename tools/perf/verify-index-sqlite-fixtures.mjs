@@ -166,7 +166,9 @@ function main() {
       && Number(rebuilt?.summary?.missing_content ?? 0) === 0
       && Number(rebuilt?.summary?.rendered_from_canonical ?? 0) >= 1
       && Number(rebuiltSecond?.summary?.missing_content ?? 0) === 0
-      && Number(rebuiltSecond?.summary?.rendered_incremental_from_canonical ?? 0) >= 1;
+      && Number(rebuiltSecond?.summary?.rendered_incremental_from_canonical ?? 0) >= 1
+      && Number(rebuiltSecond?.summary?.exported ?? -1) === 0
+      && Number(rebuiltSecond?.summary?.unchanged ?? 0) >= 1;
 
     const output = {
       ts: new Date().toISOString(),
