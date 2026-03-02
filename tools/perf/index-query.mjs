@@ -60,8 +60,8 @@ function parseArgs(argv) {
   if (!["auto", "json", "sqlite"].includes(args.backend)) {
     throw new Error("Invalid --backend. Expected auto|json|sqlite");
   }
-  if (!["active-cycles", "artifacts-since", "cycle-files", "run-metrics"].includes(args.query)) {
-    throw new Error("Invalid --query. Expected active-cycles|artifacts-since|cycle-files|run-metrics");
+  if (!["active-cycles", "artifacts-since", "cycle-files", "run-metrics", "canonical-coverage"].includes(args.query)) {
+    throw new Error("Invalid --query. Expected active-cycles|artifacts-since|cycle-files|run-metrics|canonical-coverage");
   }
   if (args.query === "artifacts-since" && !args.since) {
     throw new Error("Missing --since for query artifacts-since");
@@ -82,6 +82,7 @@ function printUsage() {
   console.log("  node tools/perf/index-query.mjs --query artifacts-since --since 2026-03-01T00:00:00Z");
   console.log("  node tools/perf/index-query.mjs --query cycle-files --cycle-id C118");
   console.log("  node tools/perf/index-query.mjs --query run-metrics --limit 30");
+  console.log("  node tools/perf/index-query.mjs --query canonical-coverage");
 }
 
 function detectBackend(indexFile, backend) {
@@ -193,6 +194,44 @@ function queryRunMetricsJson(indexData, limit) {
   }));
 }
 
+function queryCanonicalCoverageJson(indexData) {
+  const artifacts = Array.isArray(indexData.artifacts) ? indexData.artifacts : [];
+  const artifactsCount = artifacts.length;
+  const artifactsWithCanonical = artifacts.filter((row) => {
+    if (row?.canonical && typeof row.canonical === "object") {
+      return true;
+    }
+    if (typeof row?.canonical_json === "string" && row.canonical_json.trim().length > 0) {
+      return true;
+    }
+    return typeof row?.canonical_format === "string" && row.canonical_format.trim().length > 0;
+  }).length;
+  const markdownArtifacts = artifacts.filter((row) => String(row?.path ?? "").toLowerCase().endsWith(".md"));
+  const markdownCount = markdownArtifacts.length;
+  const markdownWithCanonical = markdownArtifacts.filter((row) => {
+    if (row?.canonical && typeof row.canonical === "object") {
+      return true;
+    }
+    if (typeof row?.canonical_json === "string" && row.canonical_json.trim().length > 0) {
+      return true;
+    }
+    return typeof row?.canonical_format === "string" && row.canonical_format.trim().length > 0;
+  }).length;
+
+  return [{
+    artifacts: artifactsCount,
+    artifacts_with_canonical: artifactsWithCanonical,
+    artifacts_markdown: markdownCount,
+    artifacts_markdown_with_canonical: markdownWithCanonical,
+    canonical_coverage_ratio: artifactsCount > 0
+      ? Number((artifactsWithCanonical / artifactsCount).toFixed(4))
+      : 0,
+    canonical_coverage_ratio_markdown: markdownCount > 0
+      ? Number((markdownWithCanonical / markdownCount).toFixed(4))
+      : 0,
+  }];
+}
+
 function runJsonQuery(indexData, args) {
   if (args.query === "active-cycles") {
     return queryActiveCyclesJson(indexData, args.limit);
@@ -205,6 +244,9 @@ function runJsonQuery(indexData, args) {
   }
   if (args.query === "run-metrics") {
     return queryRunMetricsJson(indexData, args.limit);
+  }
+  if (args.query === "canonical-coverage") {
+    return queryCanonicalCoverageJson(indexData);
   }
   return [];
 }
@@ -251,6 +293,40 @@ function runSqliteQuery(db, args) {
       ORDER BY started_at DESC
       LIMIT ?
     `).all(args.limit);
+  }
+  if (args.query === "canonical-coverage") {
+    const columns = getSqliteColumns(db, "artifacts");
+    const canonicalJsonExpr = columns.has("canonical_json")
+      ? "(canonical_json IS NOT NULL AND TRIM(canonical_json) <> '')"
+      : "0";
+    const canonicalFormatExpr = columns.has("canonical_format")
+      ? "(canonical_format IS NOT NULL AND TRIM(canonical_format) <> '')"
+      : "0";
+    const hasCanonicalExpr = `(${canonicalJsonExpr} OR ${canonicalFormatExpr})`;
+    const row = db.prepare(`
+      SELECT
+        COUNT(*) AS artifacts,
+        SUM(CASE WHEN ${hasCanonicalExpr} THEN 1 ELSE 0 END) AS artifacts_with_canonical,
+        SUM(CASE WHEN LOWER(path) LIKE '%.md' THEN 1 ELSE 0 END) AS artifacts_markdown,
+        SUM(CASE WHEN LOWER(path) LIKE '%.md' AND ${hasCanonicalExpr} THEN 1 ELSE 0 END) AS artifacts_markdown_with_canonical
+      FROM artifacts
+    `).get();
+    const artifacts = Number(row?.artifacts ?? 0);
+    const artifactsWithCanonical = Number(row?.artifacts_with_canonical ?? 0);
+    const artifactsMarkdown = Number(row?.artifacts_markdown ?? 0);
+    const artifactsMarkdownWithCanonical = Number(row?.artifacts_markdown_with_canonical ?? 0);
+    return [{
+      artifacts,
+      artifacts_with_canonical: artifactsWithCanonical,
+      artifacts_markdown: artifactsMarkdown,
+      artifacts_markdown_with_canonical: artifactsMarkdownWithCanonical,
+      canonical_coverage_ratio: artifacts > 0
+        ? Number((artifactsWithCanonical / artifacts).toFixed(4))
+        : 0,
+      canonical_coverage_ratio_markdown: artifactsMarkdown > 0
+        ? Number((artifactsMarkdownWithCanonical / artifactsMarkdown).toFixed(4))
+        : 0,
+    }];
   }
   return [];
 }

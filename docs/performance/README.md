@@ -208,6 +208,7 @@ Use `--kpi-file` to enrich index payload with `run_metrics` from `perf:report --
 - `artifacts-since`: list artifacts changed since an ISO timestamp (`--since` required)
 - `cycle-files`: list mapped files for one cycle (`--cycle-id` required)
 - `run-metrics`: list KPI run metrics present in index payload
+- `canonical-coverage`: show canonical projection coverage ratios (all artifacts + markdown subset)
 
 Artifact rows now include classification fields for multi-version/hybrid repositories:
 - `family`: `normative|support|unknown`
