@@ -70,11 +70,14 @@ function digestPayload(payload) {
     .digest("hex");
 }
 
-function runIndexSync(targetRoot, indexOutput, dryRun) {
+function runIndexSync(targetRoot, indexOutput, dryRun, includePayload = false) {
   const script = path.join(PERF_DIR, "index-sync.mjs");
   const cmd = [script, "--target", targetRoot, "--output", indexOutput, "--json"];
   if (dryRun) {
     cmd.push("--dry-run");
+  }
+  if (includePayload) {
+    cmd.push("--include-payload");
   }
   const stdout = execFileSync(process.execPath, cmd, {
     encoding: "utf8",
@@ -122,7 +125,86 @@ function compareSummary(expectedSummary, currentPayload) {
   return mismatches;
 }
 
-function buildReasonCodes(currentExists, digestMatch, summaryMismatches) {
+function mapArtifactsByPath(payload) {
+  const map = new Map();
+  const artifacts = Array.isArray(payload?.artifacts) ? payload.artifacts : [];
+  for (const artifact of artifacts) {
+    const rel = String(artifact?.path ?? "").replace(/\\/g, "/");
+    if (!rel) {
+      continue;
+    }
+    if (!map.has(rel)) {
+      map.set(rel, artifact);
+    }
+  }
+  return map;
+}
+
+function compareArtifacts(expectedPayload, currentPayload) {
+  const expectedMap = mapArtifactsByPath(expectedPayload);
+  const currentMap = mapArtifactsByPath(currentPayload);
+  const mismatches = [];
+  let missingInIndex = 0;
+  let staleInIndex = 0;
+  let digestMismatch = 0;
+
+  for (const [rel, expectedArtifact] of expectedMap.entries()) {
+    const currentArtifact = currentMap.get(rel);
+    if (!currentArtifact) {
+      missingInIndex += 1;
+      mismatches.push({
+        type: "missing_in_index",
+        path: rel,
+        expected_sha256: String(expectedArtifact?.sha256 ?? ""),
+        current_sha256: null,
+      });
+      continue;
+    }
+    const expectedSha = String(expectedArtifact?.sha256 ?? "");
+    const currentSha = String(currentArtifact?.sha256 ?? "");
+    if (expectedSha !== currentSha) {
+      digestMismatch += 1;
+      mismatches.push({
+        type: "digest_mismatch",
+        path: rel,
+        expected_sha256: expectedSha,
+        current_sha256: currentSha,
+      });
+    }
+  }
+
+  for (const [rel, currentArtifact] of currentMap.entries()) {
+    if (expectedMap.has(rel)) {
+      continue;
+    }
+    staleInIndex += 1;
+    mismatches.push({
+      type: "stale_in_index",
+      path: rel,
+      expected_sha256: null,
+      current_sha256: String(currentArtifact?.sha256 ?? ""),
+    });
+  }
+
+  mismatches.sort((a, b) => {
+    const byPath = String(a.path).localeCompare(String(b.path));
+    if (byPath !== 0) {
+      return byPath;
+    }
+    return String(a.type).localeCompare(String(b.type));
+  });
+
+  return {
+    mismatches,
+    summary: {
+      missing_in_index: missingInIndex,
+      stale_in_index: staleInIndex,
+      digest_mismatch: digestMismatch,
+    },
+  };
+}
+
+function buildReasonCodes(currentExists, digestMatch, summaryMismatches, artifactMismatchCount) {
   const codes = [];
   if (!currentExists) {
     codes.push("INDEX_FILE_MISSING");
@@ -133,14 +215,17 @@ function buildReasonCodes(currentExists, digestMatch, summaryMismatches) {
   if (summaryMismatches.length > 0) {
     codes.push("SUMMARY_MISMATCH");
   }
+  if (artifactMismatchCount > 0) {
+    codes.push("ARTIFACT_MISMATCH");
+  }
   return codes;
 }
 
-function toDriftLevel(reasonCodes, mismatchCount) {
+function toDriftLevel(reasonCodes, totalMismatchCount) {
   if (reasonCodes.length === 0) {
     return "none";
   }
-  if (reasonCodes.includes("INDEX_FILE_MISSING") || mismatchCount >= 3) {
+  if (reasonCodes.includes("INDEX_FILE_MISSING") || totalMismatchCount >= 3) {
     return "high";
   }
   return "low";
@@ -158,18 +243,24 @@ function main() {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
     const indexFilePath = resolveTargetPath(targetRoot, args.indexFile);
-    const expected = runIndexSync(targetRoot, indexFilePath, true);
+    const expected = runIndexSync(targetRoot, indexFilePath, true, true);
     const current = readIndex(indexFilePath);
 
     const summaryMismatches = current.exists
       ? compareSummary(expected.summary, current.payload)
       : [];
+    const artifactCompare = current.exists
+      ? compareArtifacts(expected.payload, current.payload)
+      : { mismatches: [], summary: { missing_in_index: 0, stale_in_index: 0, digest_mismatch: 0 } };
     const digestMatch = current.exists && current.digest === expected.payload_digest;
+    const artifactMismatchCount = artifactCompare.mismatches.length;
+    const totalMismatchCount = summaryMismatches.length + artifactMismatchCount;
     const inSync = current.exists
       && digestMatch
-      && summaryMismatches.length === 0;
-    const reasonCodes = buildReasonCodes(current.exists, digestMatch, summaryMismatches);
-    const driftLevel = toDriftLevel(reasonCodes, summaryMismatches.length);
+      && summaryMismatches.length === 0
+      && artifactMismatchCount === 0;
+    const reasonCodes = buildReasonCodes(current.exists, digestMatch, summaryMismatches, artifactMismatchCount);
+    const driftLevel = toDriftLevel(reasonCodes, totalMismatchCount);
 
     const output = {
       ts: new Date().toISOString(),
@@ -188,11 +279,15 @@ function main() {
       reason_codes: reasonCodes,
       drift_level: driftLevel,
       summary_mismatches: summaryMismatches,
+      artifact_mismatches: artifactCompare.mismatches,
+      artifact_summary: artifactCompare.summary,
       summary: {
         in_sync_numeric: inSync ? 1 : 0,
         index_exists_numeric: current.exists ? 1 : 0,
         digest_match_numeric: digestMatch ? 1 : 0,
         mismatch_count: summaryMismatches.length,
+        artifact_mismatch_count: artifactMismatchCount,
+        total_mismatch_count: totalMismatchCount,
       },
       action: "none",
       apply_result: null,
@@ -223,6 +318,12 @@ function main() {
         console.log("Summary mismatches:");
         for (const item of output.summary_mismatches) {
           console.log(`- ${item.key}: expected=${item.expected} current=${item.current}`);
+        }
+      }
+      if (output.artifact_mismatches.length > 0) {
+        console.log("Artifact mismatches:");
+        for (const item of output.artifact_mismatches.slice(0, 20)) {
+          console.log(`- ${item.type}: ${item.path}`);
         }
       }
       if (output.action === "applied") {

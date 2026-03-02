@@ -28,6 +28,7 @@ The following scripts were added under `tools/perf/`:
 - `sync-kpi-history.mjs` - persist and deduplicate KPI runs across local iterations (`kpi-history.ndjson`)
 - `index-sync.mjs` - build index from `docs/audit/*` with `IndexStore` mode: `file|sql|dual|sqlite|dual-sqlite|all`
 - `index-sync-check.mjs` - detect drift between on-disk index and fresh import from `docs/audit/*` (optional `--apply`)
+- `index-sync-select-paths.mjs` - derive drift-driven path selection (`export-paths.txt`) from `index-sync-check` artifact mismatches
 - `render-index-sync-summary.mjs` - generate Markdown summary from index sync check JSON
 - `sync-index-sync-history.mjs` - persist index sync check runs in NDJSON history
 - `report-index-sync.mjs` - compute trend KPIs from index sync history
@@ -35,6 +36,7 @@ The following scripts were added under `tools/perf/`:
 - `verify-structure-profile-fixtures.mjs` - validate structure profile detection on legacy/modern/mixed fixtures
 - `verify-skill-hook-coverage.mjs` - validate full perf hook coverage on codex skills templates
 - `verify-index-sync-fixtures.mjs` - validate index sync drift/apply/in-sync flow on fixtures
+- `verify-index-sync-select-paths-fixtures.mjs` - validate drift-driven path selection and selective export flow on fixtures
 - `verify-index-sqlite-fixtures.mjs` - validate SQLite index flow (sync + SQL parity + SQLite parity + export)
 - `verify-index-canonical-check-fixtures.mjs` - validate lightweight canonical coverage check (strict/non-strict) on fixtures
 - `verify-index-regression-fixtures.mjs` - validate index regression pipeline and zero-baseline handling on fixtures
@@ -83,6 +85,7 @@ npx aidn perf skill-hook --skill context-reload --target . --mode THINKING --jso
 npx aidn perf session-start --target . --mode COMMITTING --json
 npx aidn perf session-close --target . --mode COMMITTING --json
 npx aidn perf index --target . --store all --json
+npx aidn perf index-select-paths --target . --check-file .aidn/runtime/index/index-sync-check.json --out .aidn/runtime/index/export-paths.txt --include-types missing_in_index,digest_mismatch
 npx aidn perf index-export-files --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target . --audit-root docs/audit
 npx aidn perf index --target . --store all --no-content --json
 npx aidn perf index-export-files --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target . --audit-root docs/audit --render-markdown
@@ -103,6 +106,7 @@ npm run perf:sync-history -- --kpi-file .aidn/runtime/perf/kpi-report.json --his
 npm run perf:index -- --target ../client-repo
 npm run perf:index-check -- --target ../client-repo --strict
 npm run perf:index-check -- --target ../client-repo --apply
+npm run perf:index-select-paths -- --target ../client-repo --check-file .aidn/runtime/index/index-sync-check.json --out .aidn/runtime/index/export-paths.txt
 npm run perf:index -- --target ../client-repo --store sql --sql-output .aidn/runtime/index/workflow-index.sql
 npm run perf:index-sqlite -- --target ../client-repo
 npm run perf:index -- --target ../client-repo --store all --sqlite-output .aidn/runtime/index/workflow-index.sqlite
@@ -118,6 +122,7 @@ npm run perf:index-sync-trend-summary -- --report-file .aidn/runtime/index/index
 npm run perf:verify-structure
 npm run perf:verify-skill-hooks
 npm run perf:verify-index-sync
+npm run perf:verify-index-sync-select-paths
 npm run perf:verify-index-sqlite
 npm run perf:verify-index-canonical-check
 npm run perf:verify-index-regression
@@ -304,6 +309,11 @@ For fast CI feedback (without full report thresholds), use:
 `perf:checkpoint` orchestrates these steps and writes a summary event for KPI tracking.
 Checkpoint summary events now carry effective index write counters (`files_written_count`, `bytes_written`) from `index-sync --json`.
 `perf:checkpoint --index-sync-check` also runs `index-sync-check` after index write and stores a check JSON (optional `--index-sync-check-strict` to fail on drift).
+`index-sync-check` now emits artifact-level drift (`artifact_mismatches` + `artifact_summary`) with mismatch types:
+- `missing_in_index`
+- `digest_mismatch`
+- `stale_in_index`
+`perf:index-select-paths` can transform this drift payload into an `export-paths.txt` used by `index-export-files --paths-file` for targeted projection only.
 
 ## Structure Profile (multi-version compatibility)
 
@@ -352,6 +362,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:verify-structure`
   - `perf:verify-skill-hooks`
   - `perf:verify-index-sync`
+  - `perf:verify-index-sync-select-paths`
   - `perf:verify-index-sqlite`
   - `perf:verify-index-canonical-check`
   - `perf:verify-index-regression`
@@ -369,6 +380,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:index-sqlite --kpi-file .aidn/runtime/perf/kpi-report.json`
   - `perf:index-check --json` (non-blocking by default in CI)
   - `perf:index-sync-summary`
+  - `perf:index-select-paths`
   - `perf:index-sync-history`
   - `perf:index-sync-report`
   - `perf:index-sync-thresholds` (non-blocking by default in CI)
@@ -401,6 +413,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `.aidn/runtime/index/workflow-index.sql`
   - `.aidn/runtime/index/workflow-index.sqlite`
   - `.aidn/runtime/index/index-sync-check.json`
+  - `.aidn/runtime/index/export-paths.txt`
   - `.aidn/runtime/index/index-sync-summary.md`
   - `.aidn/runtime/index/index-sync-history.ndjson`
   - `.aidn/runtime/index/index-sync-report.json`

@@ -9,6 +9,8 @@ function parseArgs(argv) {
     sqliteFile: ".aidn/runtime/index/fixtures/cli-aliases/workflow-index.sqlite",
     canonicalCheckFile: ".aidn/runtime/index/fixtures/cli-aliases/index-canonical-check.json",
     canonicalSummaryFile: ".aidn/runtime/index/fixtures/cli-aliases/index-canonical-check-summary.md",
+    indexSyncCheckFile: ".aidn/runtime/index/fixtures/cli-aliases/index-sync-check.json",
+    exportPathsFile: ".aidn/runtime/index/fixtures/cli-aliases/export-paths.txt",
     campaignFile: ".aidn/runtime/perf/fixtures/cli-aliases/campaign-report.json",
     fallbackReportFile: ".aidn/runtime/perf/fallback-report.json",
     fallbackPassFile: ".aidn/runtime/perf/fixtures/cli-aliases/fallback-pass.json",
@@ -32,6 +34,12 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--canonical-summary-file") {
       args.canonicalSummaryFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--index-sync-check-file") {
+      args.indexSyncCheckFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--export-paths-file") {
+      args.exportPathsFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--campaign-file") {
       args.campaignFile = argv[i + 1] ?? "";
@@ -101,6 +109,8 @@ function main() {
     const sqliteFile = path.resolve(targetRoot, args.sqliteFile);
     const canonicalCheckFile = path.resolve(targetRoot, args.canonicalCheckFile);
     const canonicalSummaryFile = path.resolve(targetRoot, args.canonicalSummaryFile);
+    const indexSyncCheckFile = path.resolve(targetRoot, args.indexSyncCheckFile);
+    const exportPathsFile = path.resolve(targetRoot, args.exportPathsFile);
     const campaignFile = path.resolve(targetRoot, args.campaignFile);
     const fallbackReportFile = path.resolve(targetRoot, args.fallbackReportFile);
     const fallbackPassFile = path.resolve(targetRoot, args.fallbackPassFile);
@@ -141,6 +151,28 @@ function main() {
       canonicalCheckFile,
       "--out",
       canonicalSummaryFile,
+    ], targetRoot);
+
+    const indexSyncCheck = runNodeWithJson(aidnCli, [
+      "perf",
+      "index-check",
+      "--target",
+      ".",
+      "--json",
+    ], targetRoot);
+    fs.mkdirSync(path.dirname(indexSyncCheckFile), { recursive: true });
+    fs.writeFileSync(indexSyncCheckFile, `${JSON.stringify(indexSyncCheck, null, 2)}\n`, "utf8");
+
+    const exportPaths = runNodeWithJson(aidnCli, [
+      "perf",
+      "index-select-paths",
+      "--target",
+      ".",
+      "--check-file",
+      indexSyncCheckFile,
+      "--out",
+      exportPathsFile,
+      "--json",
     ], targetRoot);
 
     const campaign = runNodeWithJson(aidnCli, [
@@ -253,6 +285,7 @@ function main() {
 
     const pass = canonicalCheck?.summary?.overall_status === "pass"
       && Number(campaign?.iterations_completed ?? 0) === 1
+      && typeof exportPaths?.selected_paths_count === "number"
       && typeof fallbackThresholds?.summary?.overall_status === "string"
       && typeof indexThresholds?.summary?.overall_status === "string"
       && typeof indexSyncThresholds?.summary?.overall_status === "string"
@@ -260,6 +293,8 @@ function main() {
       && fs.existsSync(canonicalCheckFile)
       && fs.existsSync(canonicalSummaryFile)
       && fs.existsSync(campaignFile)
+      && fs.existsSync(indexSyncCheckFile)
+      && fs.existsSync(exportPathsFile)
       && fs.existsSync(fallbackReportFile)
       && fs.existsSync(fallbackThresholdsFile)
       && fs.existsSync(indexThresholdsFile)
@@ -272,6 +307,8 @@ function main() {
         sqlite_file: sqliteFile,
         canonical_check_file: canonicalCheckFile,
         canonical_summary_file: canonicalSummaryFile,
+        index_sync_check_file: indexSyncCheckFile,
+        export_paths_file: exportPathsFile,
         campaign_file: campaignFile,
         fallback_report_file: fallbackReportFile,
         fallback_pass_file: fallbackPassFile,
@@ -285,6 +322,7 @@ function main() {
         canonical_status: canonicalCheck?.summary?.overall_status ?? null,
         canonical_markdown_coverage: canonicalCheck?.coverage?.canonical_coverage_ratio_markdown ?? null,
         campaign_iterations_completed: campaign?.iterations_completed ?? null,
+        index_select_paths_count: exportPaths?.selected_paths_count ?? null,
         fallback_thresholds_status: fallbackThresholds?.summary?.overall_status ?? null,
         index_thresholds_status: indexThresholds?.summary?.overall_status ?? null,
         index_sync_thresholds_status: indexSyncThresholds?.summary?.overall_status ?? null,

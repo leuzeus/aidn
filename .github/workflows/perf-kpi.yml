@@ -94,6 +94,9 @@ jobs:
       - name: Verify Index Sync Fixtures
         run: npm run perf:verify-index-sync
 
+      - name: Verify Index Sync Select Paths Fixtures
+        run: npm run perf:verify-index-sync-select-paths
+
       - name: Verify Index SQLite Fixtures
         run: npm run perf:verify-index-sqlite
 
@@ -198,6 +201,10 @@ jobs:
       - name: Render Index Sync Summary
         run: |
           npm run perf:index-sync-summary -- --check-file "$PERF_RUNTIME_INDEX/index-sync-check.json" --out "$PERF_RUNTIME_INDEX/index-sync-summary.md"
+
+      - name: Build Drift-Driven Export Paths
+        run: |
+          npm run perf:index-select-paths -- --target "$PERF_TARGET" --check-file "$PERF_RUNTIME_INDEX/index-sync-check.json" --out "$PERF_RUNTIME_INDEX/export-paths.txt" --include-types missing_in_index,digest_mismatch,stale_in_index
 
       - name: Sync Index Check History
         run: |
@@ -363,6 +370,7 @@ jobs:
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-canonical-check.json
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-canonical-check-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-check.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/export-paths.txt
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-history.ndjson
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-report.json

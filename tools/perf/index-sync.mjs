@@ -33,6 +33,7 @@ function parseArgs(argv) {
     embedContent: envEmbedContent === "1" || envEmbedContent === "true" || envEmbedContent === "yes",
     embedContentExplicit: false,
     kpiFile: "",
+    includePayload: false,
     json: false,
     dryRun: false,
   };
@@ -69,6 +70,8 @@ function parseArgs(argv) {
     } else if (token === "--kpi-file") {
       args.kpiFile = argv[i + 1] ?? "";
       i += 1;
+    } else if (token === "--include-payload") {
+      args.includePayload = true;
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--dry-run") {
@@ -129,6 +132,7 @@ function printUsage() {
   console.log("  node tools/perf/index-sync.mjs --target . --store dual --kpi-file .aidn/runtime/perf/kpi-report.json");
   console.log("  node tools/perf/index-sync.mjs --target . --with-content");
   console.log("  node tools/perf/index-sync.mjs --target . --no-content");
+  console.log("  node tools/perf/index-sync.mjs --target . --json --include-payload");
   console.log("  node tools/perf/index-sync.mjs --target . --json");
   console.log("  node tools/perf/index-sync.mjs --target . --json --dry-run");
 }
@@ -730,6 +734,7 @@ function main() {
         payload_digest: digest,
         structure_profile: structureProfile,
         summary: payload.summary,
+        payload: args.includePayload ? payload : undefined,
       }, null, 2));
       return;
     }
