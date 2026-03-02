@@ -259,6 +259,7 @@ Recommended optional hooks (non-blocking by default) in skill flows:
 - `cycle-close`: `npx aidn perf checkpoint --target . --mode COMMITTING --json`
 - `promote-baseline`: `npx aidn perf checkpoint --target . --mode COMMITTING --json`
 - `requirements-delta`: `npx aidn perf checkpoint --target . --mode COMMITTING --json`
+- `convert-to-spike`: `npx aidn perf checkpoint --target . --mode EXPLORING --json`
 
 This rollout extends optimization coverage to high-cost checks first, then mutating skills, while keeping blocking behavior opt-in.
 

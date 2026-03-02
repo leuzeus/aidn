@@ -28,6 +28,13 @@ If mode=EXPLORING and:
 - add spike as active
 - next entry point points to spike status.md
 
+6) Optional performance hook (Phase 3, recommended for instrumented repositories):
+- run `npx aidn perf checkpoint --target . --mode EXPLORING --json`
+- use this output to capture:
+  - reload/gate outcome around spike conversion
+  - index update summary for newly created spike artifacts
+- this should not block workflow execution by default
+
 Output:
 - New cycle path
 - Branch recommendation

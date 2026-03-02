@@ -77,6 +77,7 @@ function main() {
       checkOne(args.root, "cycle-close/SKILL.md", ["npx aidn perf checkpoint --target . --mode COMMITTING --json"]),
       checkOne(args.root, "promote-baseline/SKILL.md", ["npx aidn perf checkpoint --target . --mode COMMITTING --json"]),
       checkOne(args.root, "requirements-delta/SKILL.md", ["npx aidn perf checkpoint --target . --mode COMMITTING --json"]),
+      checkOne(args.root, "convert-to-spike/SKILL.md", ["npx aidn perf checkpoint --target . --mode EXPLORING --json"]),
     ];
 
     const pass = checks.every((item) => item.ok === true);
