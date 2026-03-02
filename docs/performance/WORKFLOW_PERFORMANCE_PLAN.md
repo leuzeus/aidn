@@ -29,6 +29,7 @@ Contraintes:
 Reste à finaliser:
 - validation KPI sur un corpus projet réel (au-delà des fixtures) avec fenêtre d'itérations représentative.
 - confirmation des objectifs de réduction vs baseline historique du projet cible.
+- extension de la couverture d'optimisation à l'ensemble des skills du pack (`10` skills), avec priorisation par coût.
 
 Dernière campagne locale de validation (fixtures, 30 itérations):
 - date: 2026-03-01
@@ -72,6 +73,22 @@ Décision de planification:
 | `close-session` | résolution cycles ouverts + update snapshot | `duration_ms`, `open_cycles_count`, `decisions_count` |
 | writeups | mise à jour multiple d'artefacts (normatifs + support) | `writes_count`, `bytes_written`, `artifacts_touched`, `support_artifacts_touched` |
 | surcontexte | chargement de fichiers non nécessaires | `files_read_unneeded`, `context_bytes_total` |
+
+### Couverture Skills (plan d'extension)
+
+Constat courant:
+- hooks perf explicites déjà branchés: `start-session`, `close-session`.
+- skills du pack à couvrir: `branch-cycle-audit`, `close-session`, `context-reload`, `convert-to-spike`, `cycle-close`, `cycle-create`, `drift-check`, `promote-baseline`, `requirements-delta`, `start-session`.
+
+Approche recommandée (incrémentale):
+- Phase 1 (skills coûteuses, impact latence): `context-reload`, `branch-cycle-audit`, `drift-check`.
+- Phase 2 (skills mutatrices, impact churn/traçabilité): `cycle-create`, `cycle-close`, `promote-baseline`, `requirements-delta`.
+- Phase 3 (skills restantes, harmonisation): `convert-to-spike` + consolidation des hooks session existants.
+
+Règle d'implémentation:
+- éviter la duplication dans chaque skill: centraliser via `perf:checkpoint` / `perf:hook`.
+- instrumenter chaque skill avec un événement minimal `start/end` + compteurs de fichiers/gates.
+- préserver le mode non bloquant par défaut, basculable en strict.
 
 ### Format de logs minimal (NDJSON)
 
@@ -168,6 +185,7 @@ Tâches techniques:
 - éviter relecture/écriture d'artefacts inchangés
 - templates de writeups plus concis (même contenu normatif, moins duplication)
 - ajouter un check de profil structurel (`legacy|modern|mixed|unknown`) avec signaux de fiabilité (version déclarée vs structure observée)
+- brancher hooks perf sur les 3 skills coûteuses (`context-reload`, `branch-cycle-audit`, `drift-check`) via wrapper commun
 
 Risques:
 - sous-instrumentation (angles morts)
@@ -179,11 +197,13 @@ Critères d'acceptation:
 - zéro violation des invariants `SPEC-R01`, `R03`, `R04`, `R07`
 - aucun incident L3/L4 causé par les quick wins
 - repos mixtes (legacy+modern) détectés explicitement et routés vers checks conditionnels sans blocage erroné
+- couverture instrumentation: 5/10 skills minimum (`start-session`, `close-session` + 3 skills coûteuses)
 
 Definition of Done (Lot 1):
 - logs NDJSON exploitables
 - dashboard simple (script CLI) pour les 3 KPI
 - documentation d'exploitation + rollback activable
+- baseline de coverage skills instrumentées atteinte (5/10) et vérifiée sur fixtures
 
 ## Lot 2 - Index Local (cache + index fichier, source de vérité inchangée)
 
@@ -200,6 +220,7 @@ Tâches techniques:
 - étape de normalisation structurelle: policy d'artefacts requis par profil + codes raison normalisés (`STRUCTURE_MIXED_PROFILE`, etc.)
 - classer chaque artefact importé par famille (`normative|support`) + type (`status|plan|report|profiling|...`)
 - ne jamais bloquer un import parce qu'un artefact est inconnu: classer en `support/unknown` avec `reason_code`
+- étendre l'instrumentation aux skills mutatrices (`cycle-create`, `cycle-close`, `promote-baseline`, `requirements-delta`)
 
 Risques:
 - incohérence cache <> fichiers
@@ -211,11 +232,13 @@ Critères d'acceptation:
 - 0 perte de traçabilité (tous les champs de conformité restent présents)
 - profile check détecte correctement `legacy|modern|mixed` sur corpus de référence, sans se fier au seul numéro de version déclaré
 - import couvre 100% des fichiers `docs/audit` observés sur corpus pilote (aucun fichier silencieusement ignoré)
+- couverture instrumentation: 9/10 skills minimum (incluant toutes les skills mutatrices)
 
 Definition of Done (Lot 2):
 - pipeline incremental reload activé par défaut avec fallback
 - tests d'invalidation (baseline/snapshot/cycle/branch)
 - script de rebuild index local depuis les fichiers
+- hooks perf harmonisés sur skills mutatrices + métriques churn/gates exploitables par skill
 
 ## Lot 3 - DB Future (SQLite dev, modes dual/db-only, non bloquante)
 
@@ -236,6 +259,7 @@ Tâches techniques:
   - import `files -> db` (avec taxonomie normatif/support),
   - export `db -> files` (reconstruction complète),
   - verify parity `files <-> db`
+- finaliser couverture 10/10 skills avec wrapper unique (`perf:checkpoint`) et déprécier les hooks ad hoc
 
 Risques:
 - divergence entre écritures fichiers et DB
@@ -255,6 +279,7 @@ Definition of Done (Lot 3):
 - contrat d'état `AIDN_STATE_MODE` documenté (`files|dual|db-only`)
 - tests automatiques import/export/parité incluant artefacts de support
 - test automatique d'équivalence `dual` vs `db-only` pour `reload-check` + `gating-evaluate` (`perf:verify-state-mode-parity`)
+- couverture instrumentation 10/10 skills validée (mêmes garanties qualité, coût réduit)
 
 ## Backlog Priorisé
 
@@ -272,6 +297,9 @@ Definition of Done (Lot 3):
 12. Taxonomie artefacts (normatif/support/unknown) + parser tolérant
 13. Reconstruction DB -> fichiers (cycles/sessions + supports)
 14. Équivalence de décision des gates entre modes `dual` et `db-only`
+15. Couverture perf Phase 1: hooks sur `context-reload`, `branch-cycle-audit`, `drift-check`
+16. Couverture perf Phase 2: hooks sur `cycle-create`, `cycle-close`, `promote-baseline`, `requirements-delta`
+17. Couverture perf Phase 3: hooks sur `convert-to-spike` + uniformisation wrapper unique
 
 ## Acceptance Criteria Globaux
 
@@ -280,6 +308,7 @@ Definition of Done (Lot 3):
 - Toute incohérence détectée force un fallback sûr (full reload + trace incident si nécessaire).
 - Aucune suppression de gate canonique; seulement réduction de relances inutiles.
 - Aucune perte silencieuse d'artefact lors d'import/export (incluant artefacts de support non standard).
+- La couverture d'optimisation est étendue à 100% des skills du pack sans baisse des garanties DoR/DoD/drift-check.
 
 ## Structure Recommandée A Créer
 
