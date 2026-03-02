@@ -147,7 +147,12 @@ function main() {
       && String(check?.targets_file ?? "").replace(/\\/g, "/").toLowerCase().endsWith("docs/performance/index_targets.json")
       && Number(check?.thresholds?.min_coverage_markdown ?? -1) === 0.8
       && Number(check?.thresholds?.min_canonical_artifacts ?? -1) === 1
-      && Number(check?.thresholds?.min_markdown_artifacts ?? -1) === 1;
+      && Number(check?.thresholds?.min_markdown_artifacts ?? -1) === 1
+      && String(check?.thresholds?.sources?.min_coverage_markdown ?? "") === "targets"
+      && String(check?.thresholds?.sources?.min_canonical_artifacts ?? "") === "targets"
+      && String(check?.thresholds?.sources?.min_markdown_artifacts ?? "") === "targets"
+      && Array.isArray(check?.reason_codes)
+      && check.reason_codes.length === 0;
 
     const payload = {
       ts: new Date().toISOString(),
@@ -163,6 +168,10 @@ function main() {
         min_coverage_markdown: Number(check?.thresholds?.min_coverage_markdown ?? -1),
         min_canonical_artifacts: Number(check?.thresholds?.min_canonical_artifacts ?? -1),
         min_markdown_artifacts: Number(check?.thresholds?.min_markdown_artifacts ?? -1),
+        min_coverage_markdown_source: String(check?.thresholds?.sources?.min_coverage_markdown ?? ""),
+        min_canonical_artifacts_source: String(check?.thresholds?.sources?.min_canonical_artifacts ?? ""),
+        min_markdown_artifacts_source: String(check?.thresholds?.sources?.min_markdown_artifacts ?? ""),
+        reason_codes_count: Array.isArray(check?.reason_codes) ? check.reason_codes.length : -1,
       },
       pass,
     };

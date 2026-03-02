@@ -266,6 +266,7 @@ Artifact rows now include classification fields for multi-version/hybrid reposit
 For fast CI feedback (without full report thresholds), use:
 - `perf:index-canonical-check` against `workflow-index.sqlite`
 - By default it reads `docs/performance/INDEX_TARGETS.json`; CLI values (`--min-*`) still override target-file values.
+- Use `--require-target-rules` if missing target rules must fail the command.
 
 ## Gating Levels (implemented)
 

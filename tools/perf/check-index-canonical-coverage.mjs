@@ -15,6 +15,7 @@ function parseArgs(argv) {
     minCoverageMarkdownExplicit: false,
     minCanonicalArtifactsExplicit: false,
     minMarkdownArtifactsExplicit: false,
+    requireTargetRules: false,
     out: ".aidn/runtime/index/index-canonical-check.json",
     strict: false,
     json: false,
@@ -43,6 +44,8 @@ function parseArgs(argv) {
       args.minMarkdownArtifacts = Number(argv[i + 1] ?? "1");
       args.minMarkdownArtifactsExplicit = true;
       i += 1;
+    } else if (token === "--require-target-rules") {
+      args.requireTargetRules = true;
     } else if (token === "--out") {
       args.out = argv[i + 1] ?? "";
       i += 1;
@@ -87,6 +90,7 @@ function printUsage() {
   console.log("  node tools/perf/check-index-canonical-coverage.mjs");
   console.log("  node tools/perf/check-index-canonical-coverage.mjs --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --targets docs/performance/INDEX_TARGETS.json");
   console.log("  node tools/perf/check-index-canonical-coverage.mjs --min-coverage-markdown 0.8 --min-canonical-artifacts 1 --min-markdown-artifacts 1");
+  console.log("  node tools/perf/check-index-canonical-coverage.mjs --require-target-rules");
   console.log("  node tools/perf/check-index-canonical-coverage.mjs --strict");
 }
 
@@ -141,6 +145,12 @@ function resolveThresholds(args, targetsById) {
     minCoverageMarkdown: args.minCoverageMarkdown,
     minCanonicalArtifacts: args.minCanonicalArtifacts,
     minMarkdownArtifacts: args.minMarkdownArtifacts,
+    sources: {
+      min_coverage_markdown: args.minCoverageMarkdownExplicit ? "cli" : "default",
+      min_canonical_artifacts: args.minCanonicalArtifactsExplicit ? "cli" : "default",
+      min_markdown_artifacts: args.minMarkdownArtifactsExplicit ? "cli" : "default",
+    },
+    reasonCodes: [],
   };
 
   if (!args.minCoverageMarkdownExplicit) {
@@ -148,6 +158,9 @@ function resolveThresholds(args, targetsById) {
     const value = toNumberOrNull(rule?.value);
     if (value != null) {
       out.minCoverageMarkdown = value;
+      out.sources.min_coverage_markdown = "targets";
+    } else {
+      out.reasonCodes.push("MISSING_TARGET_RULE_INDEX_CANONICAL_COVERAGE_MIN");
     }
   }
   if (!args.minCanonicalArtifactsExplicit) {
@@ -155,6 +168,9 @@ function resolveThresholds(args, targetsById) {
     const value = toNumberOrNull(rule?.value);
     if (value != null) {
       out.minCanonicalArtifacts = value;
+      out.sources.min_canonical_artifacts = "targets";
+    } else {
+      out.reasonCodes.push("MISSING_TARGET_RULE_INDEX_CANONICAL_ARTIFACTS_MIN");
     }
   }
   if (!args.minMarkdownArtifactsExplicit) {
@@ -162,6 +178,9 @@ function resolveThresholds(args, targetsById) {
     const value = toNumberOrNull(rule?.value);
     if (value != null) {
       out.minMarkdownArtifacts = value;
+      out.sources.min_markdown_artifacts = "targets";
+    } else {
+      out.reasonCodes.push("MISSING_TARGET_RULE_INDEX_ARTIFACTS_MIN");
     }
   }
 
@@ -261,7 +280,9 @@ function main() {
         min_coverage_markdown: resolvedThresholds.minCoverageMarkdown,
         min_canonical_artifacts: resolvedThresholds.minCanonicalArtifacts,
         min_markdown_artifacts: resolvedThresholds.minMarkdownArtifacts,
+        sources: resolvedThresholds.sources,
       },
+      reason_codes: resolvedThresholds.reasonCodes,
       summary,
       checks,
     };
@@ -279,6 +300,10 @@ function main() {
       console.log(`Report file: ${outWrite.path} (${outWrite.written ? "written" : "unchanged"})`);
     }
 
+    const missingTargetRules = resolvedThresholds.reasonCodes.length > 0;
+    if (args.requireTargetRules && missingTargetRules) {
+      process.exit(2);
+    }
     if (summary.blocking > 0) {
       process.exit(1);
     }
