@@ -44,6 +44,8 @@ Client repository after install:
 - `docs/audit/incidents/`
 - `.codex/skills.yaml`
   - rendered with pinned `remote.ref` matching the installed aidn tag (for example `v0.3.0`)
+- `.codex/skills/aidn/*`
+  - local skill source folders copied during install (offline/local fallback)
 
 ## Workflow Diagrams
 

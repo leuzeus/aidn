@@ -198,6 +198,7 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const out = runInstall(repoRoot, target, codexStubBin);
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const configPath = path.join(target, ".aidn", "config.json");
+  const skillPath = path.join(target, ".codex", "skills", "aidn", "context-reload", "SKILL.md");
   const config = readConfigSafe(configPath);
   return {
     name: "default_files_mode",
@@ -206,6 +207,7 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       && includes(out.stdout, "artifact import: OK")
       && includes(out.stdout, "store=file")
       && fs.existsSync(indexJson)
+      && fs.existsSync(skillPath)
       && fs.existsSync(configPath)
       && String(config?.runtime?.stateMode ?? "") === "files",
     details: {
@@ -213,6 +215,7 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       has_import_ok_line: includes(out.stdout, "artifact import: OK"),
       has_store_file: includes(out.stdout, "store=file"),
       index_json_exists: fs.existsSync(indexJson),
+      local_skill_context_reload_exists: fs.existsSync(skillPath),
       config_exists: fs.existsSync(configPath),
       config_runtime_state_mode: config?.runtime?.stateMode ?? null,
     },
