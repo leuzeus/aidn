@@ -67,4 +67,12 @@ If structural/DB/security impact → force COMMITTING recommendation.
 3) Suggest 2–4 NEXT BEST ACTIONS.
 
 Keep report concise.
-Do not modify files in this skill.
+4) Optional performance hook (Phase 1, recommended for instrumented repositories):
+- run `npx aidn perf reload-check --target . --json`
+- use this output to cross-check:
+  - branch/cycle mapping
+  - structure profile (`legacy|modern|mixed|unknown`)
+  - reload decision/reason codes
+- this should not block the skill by default
+
+Do not modify project workflow files in this skill.

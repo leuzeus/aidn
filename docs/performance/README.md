@@ -245,6 +245,17 @@ Checkpoint summary events now carry effective index write counters (`files_writt
 - Session start stores a shared `run_id` in `.aidn/runtime/perf/current-run-id.txt`.
 - Session close reuses that shared `run_id` when available, then clears the file.
 
+## Skill Hook Coverage (Phase 1)
+
+Recommended optional hooks (non-blocking by default) in skill flows:
+- `context-reload`: `npx aidn perf reload-check --target . --json`
+- `branch-cycle-audit`: `npx aidn perf gate --target . --mode COMMITTING --json`
+- `drift-check`: `npx aidn perf gate --target . --mode COMMITTING --json`
+- `start-session`: `npx aidn perf session-start --target . --mode <THINKING|EXPLORING|COMMITTING>`
+- `close-session`: `npx aidn perf session-close --target . --mode <THINKING|EXPLORING|COMMITTING>`
+
+This phase extends optimization coverage to the highest-cost checks first, while keeping blocking behavior opt-in.
+
 ## CI Integration
 
 - A lightweight GitHub workflow is available: `.github/workflows/perf-kpi.yml`

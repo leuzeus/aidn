@@ -43,6 +43,16 @@ Detect when exploration/implementation drifted and recover quickly.
 6) If idea is valuable but non-essential:
 - Add IDEA-xxx suggestion for parking-lot.md
 
+7) Optional performance hook (Phase 1, recommended for instrumented repositories):
+- run `npx aidn perf gate --target . --mode COMMITTING --json`
+- use L2 signals as objective drift evidence:
+  - `objective_delta`
+  - `scope_growth`
+  - `cross_domain_touch`
+  - `time_since_last_drift_check`
+  - `uncertain_intent`
+- this should not block workflow execution by default
+
 Output:
 - Recovery actions (2–5 steps)
 - Clear Next Entry Point

@@ -68,6 +68,14 @@ Continuity validation by rule:
 - Ensure active cycle list reflects the mapped cycle
 - Next entry point points to that cycle status.md
 
+7) Optional performance hook (Phase 1, recommended for instrumented repositories):
+- run `npx aidn perf gate --target . --mode COMMITTING --json`
+- use this output to cross-check:
+  - L1 mapping/hash result
+  - L2 active drift signals
+  - L3 escalation reason if any
+- this should not block workflow execution by default
+
 Output:
 - Mapping result
 - Fix plan (if mismatch)

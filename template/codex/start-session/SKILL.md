@@ -81,7 +81,7 @@ If mode=EXPLORING and:
 - Planned Outputs
 
 7) Optional performance hook (recommended for instrumented repositories):
-- run `npm run perf:session-start -- --target . --mode <THINKING|EXPLORING|COMMITTING>`
+- run `npx aidn perf session-start --target . --mode <THINKING|EXPLORING|COMMITTING>`
 - this should not block workflow execution by default
 - use strict mode only if repository policy requires blocking instrumentation
 
