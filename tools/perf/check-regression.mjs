@@ -210,7 +210,7 @@ function sortRuns(runs) {
 }
 
 function normalizeRun(run) {
-  return {
+  const normalized = {
     run_id: run.run_id ?? null,
     started_at: run.started_at ?? null,
     ended_at: run.ended_at ?? null,
@@ -222,6 +222,12 @@ function normalizeRun(run) {
     delivery_time_ms: run.delivery_time_ms ?? null,
     events_count: run.events_count ?? null,
   };
+  for (const [key, value] of Object.entries(run ?? {})) {
+    if (!(key in normalized)) {
+      normalized[key] = value;
+    }
+  }
+  return normalized;
 }
 
 function mergeRuns(currentRuns, historyRuns) {
@@ -305,13 +311,13 @@ function evaluateRule(rule, runs, minHistoryDefault) {
   }
 
   const baseline = median(historyRaw);
-  if (baseline == null || baseline <= 0) {
+  if (baseline == null || baseline < 0) {
     return {
       id,
       metric,
       status: "invalid",
       severity: "error",
-      message: "Invalid baseline (median <= 0 or missing)",
+      message: "Invalid baseline (median < 0 or missing)",
       baseline,
       latest_value: latestValue,
     };
@@ -330,8 +336,20 @@ function evaluateRule(rule, runs, minHistoryDefault) {
     warmupApplied = true;
   }
 
-  const increasePct = ((latestValue - baseline) / baseline) * 100;
-  const pass = increasePct <= effectiveMaxIncreasePct;
+  let increasePct;
+  let pass;
+  if (baseline === 0) {
+    if (latestValue <= 0) {
+      increasePct = 0;
+      pass = true;
+    } else {
+      increasePct = Number.POSITIVE_INFINITY;
+      pass = false;
+    }
+  } else {
+    increasePct = ((latestValue - baseline) / baseline) * 100;
+    pass = increasePct <= effectiveMaxIncreasePct;
+  }
   return {
     id,
     metric,
@@ -419,8 +437,11 @@ function printHuman(summary, checks) {
       const warmupInfo = check.warmup_applied
         ? `, warmup=true, effective_max=${check.effective_max_increase_pct}`
         : "";
+      const increaseValue = Number.isFinite(check.increase_pct)
+        ? Number(check.increase_pct).toFixed(3)
+        : String(check.increase_pct);
       console.log(
-        `- ${check.status.toUpperCase()} ${check.id} [${check.severity}] ${check.metric}: latest=${check.latest_value}, baseline=${check.baseline_median}, increase_pct=${check.increase_pct?.toFixed(3)}, max=${check.max_increase_pct}${warmupInfo}`,
+        `- ${check.status.toUpperCase()} ${check.id} [${check.severity}] ${check.metric}: latest=${check.latest_value}, baseline=${check.baseline_median}, increase_pct=${increaseValue}, max=${check.max_increase_pct}${warmupInfo}`,
       );
     } else {
       console.log(`- ${check.status.toUpperCase()} ${check.id} [${check.severity}] ${check.metric}: ${check.message}`);

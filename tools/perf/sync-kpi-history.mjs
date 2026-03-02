@@ -80,7 +80,7 @@ function readHistory(filePath) {
 }
 
 function normalizeRun(run) {
-  return {
+  const normalized = {
     run_id: run.run_id ?? null,
     started_at: run.started_at ?? null,
     ended_at: run.ended_at ?? null,
@@ -94,6 +94,12 @@ function normalizeRun(run) {
     source: "kpi-report",
     synced_at: new Date().toISOString(),
   };
+  for (const [key, value] of Object.entries(run ?? {})) {
+    if (!(key in normalized)) {
+      normalized[key] = value;
+    }
+  }
+  return normalized;
 }
 
 function mergeRuns(historyRuns, incomingRuns) {

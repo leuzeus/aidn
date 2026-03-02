@@ -30,6 +30,7 @@ The following scripts were added under `tools/perf/`:
 - `verify-skill-hook-coverage.mjs` - validate full perf hook coverage on codex skills templates
 - `verify-index-sync-fixtures.mjs` - validate index sync drift/apply/in-sync flow on fixtures
 - `verify-index-sqlite-fixtures.mjs` - validate SQLite index flow (sync + SQL parity + SQLite parity + export)
+- `verify-index-regression-fixtures.mjs` - validate index regression pipeline and zero-baseline handling on fixtures
 - `verify-install-import-fixtures.mjs` - validate installer artifact import behavior and backend precedence
 - `verify-state-mode-parity-fixtures.mjs` - validate `dual` vs `db-only` parity for reload + gating decisions on fixtures
 - `index-store.mjs` - local `IndexStore` abstraction (JSON/SQL/SQLite outputs)
@@ -42,6 +43,7 @@ The following scripts were added under `tools/perf/`:
 - `index-export-files.mjs` - reconstruct `docs/audit/*` artifacts from index payload content (JSON or SQLite backend)
 - `index-verify-sqlite.mjs` - verify JSON/SQLite parity from deterministic projection
 - `report-index.mjs` - compute index quality report (counts consistency, SQL+SQLite parity status, run-metrics presence)
+- `report-index-regression-kpi.mjs` - convert index quality report into regression KPI input (`runs[]`)
 - `render-index-summary.mjs` - generate Markdown summary from index report + index threshold checks
 - `reload-check.mjs` - evaluate incremental/full/stop reload decision from digest + mapping
 - `gating-evaluate.mjs` - evaluate L1/L2/L3 gating with conditional drift signals
@@ -98,6 +100,7 @@ npm run perf:verify-structure
 npm run perf:verify-skill-hooks
 npm run perf:verify-index-sync
 npm run perf:verify-index-sqlite
+npm run perf:verify-index-regression
 npm run perf:verify-install-import
 npm run perf:verify-state-mode-parity
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
@@ -114,7 +117,10 @@ npm run perf:index-verify -- --index-file .aidn/runtime/index/workflow-index.jso
 node tools/perf/index-verify-dual.mjs --index-file .aidn/runtime/index/workflow-index.json --sql-file .aidn/runtime/index/workflow-index.sql --json > .aidn/runtime/index/index-parity.json
 npm run perf:index-report -- --index-file .aidn/runtime/index/workflow-index.json --parity-file .aidn/runtime/index/index-parity.json --sqlite-parity-file .aidn/runtime/index/index-sqlite-parity.json --out .aidn/runtime/index/index-report.json
 npm run perf:index-thresholds
-npm run perf:index-summary -- --report-file .aidn/runtime/index/index-report.json --thresholds-file .aidn/runtime/index/index-thresholds.json --out .aidn/runtime/index/index-summary.md
+npm run perf:index-regression-kpi -- --index-report-file .aidn/runtime/index/index-report.json --out .aidn/runtime/index/index-regression-kpi.json
+npm run perf:index-regression-history -- --kpi-file .aidn/runtime/index/index-regression-kpi.json --history-file .aidn/runtime/index/index-regression-history.ndjson --max-runs 200
+npm run perf:index-regression -- --kpi-file .aidn/runtime/index/index-regression-kpi.json --history-file .aidn/runtime/index/index-regression-history.ndjson --targets docs/performance/INDEX_REGRESSION_TARGETS.json --out .aidn/runtime/index/index-regression.json
+npm run perf:index-summary -- --report-file .aidn/runtime/index/index-report.json --thresholds-file .aidn/runtime/index/index-thresholds.json --regression-file .aidn/runtime/index/index-regression.json --out .aidn/runtime/index/index-summary.md
 npm run perf:reload-check -- --target ../client-repo
 npm run perf:reload-check -- --target ../client-repo --write-cache
 npm run perf:gate -- --target ../client-repo --mode COMMITTING
@@ -147,6 +153,9 @@ Default runtime outputs:
 - `.aidn/runtime/index/index-sqlite-parity.json`
 - `.aidn/runtime/index/index-report.json`
 - `.aidn/runtime/index/index-thresholds.json`
+- `.aidn/runtime/index/index-regression-kpi.json`
+- `.aidn/runtime/index/index-regression-history.ndjson`
+- `.aidn/runtime/index/index-regression.json`
 - `.aidn/runtime/index/index-summary.md`
 - `.aidn/runtime/cache/reload-state.json`
 - `.aidn/runtime/perf/kpi-thresholds.json`
@@ -300,6 +309,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:verify-skill-hooks`
   - `perf:verify-index-sync`
   - `perf:verify-index-sqlite`
+  - `perf:verify-index-regression`
   - `perf:session-start`
   - `perf:delivery-start`
   - `perf:delivery-end`
@@ -318,6 +328,9 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:index-verify-sqlite`
   - `perf:index-report`
   - `perf:index-thresholds`
+  - `perf:index-regression-kpi`
+  - `perf:index-regression-history`
+  - `perf:index-regression` (non-blocking by default in CI)
   - `perf:index-summary`
   - `perf:check-thresholds` (non-blocking by default in CI)
   - `perf:check-regression` (non-blocking by default in CI)
@@ -344,6 +357,9 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `.aidn/runtime/index/index-sync-trend-summary.md`
   - `.aidn/runtime/index/index-parity.json`
   - `.aidn/runtime/index/index-sqlite-parity.json`
+  - `.aidn/runtime/index/index-regression-kpi.json`
+  - `.aidn/runtime/index/index-regression-history.ndjson`
+  - `.aidn/runtime/index/index-regression.json`
 - `workflow_dispatch` supports `strict_thresholds=true` to make threshold violations blocking.
 - `workflow_dispatch` supports `strict_index_parity=true` to make dual-write parity violations blocking.
 - `workflow_dispatch` supports `strict_index_quality=true` to make index quality threshold violations blocking.
@@ -356,6 +372,7 @@ Threshold source file:
 - `docs/performance/KPI_TARGETS.json`
 - `docs/performance/INDEX_TARGETS.json`
 - `docs/performance/INDEX_SYNC_TARGETS.json`
+- `docs/performance/INDEX_REGRESSION_TARGETS.json`
 - `docs/performance/REGRESSION_TARGETS.json`
 - `docs/performance/FALLBACK_TARGETS.json`
 
@@ -364,6 +381,7 @@ Regression warmup note:
 - Default warmup applies while `history_count < 5`: effective threshold is multiplied (`max_increase_pct_multiplier`) and severity can be overridden (default `warn`).
 - Each regression rule can override warmup values via `rules[].warmup` (for metric-specific warmup factors).
 - CLI/CI warmup overrides take precedence over both global and rule warmup settings.
+- For baseline `0`, regression checks no longer fail as invalid: `latest=0` passes, `latest>0` is treated as a regression (`increase_pct=Infinity`).
 
 Fallback thresholding note:
 - Fallback thresholds use warmup-adjusted metrics (`adjusted_fallback_total`, `adjusted_storm_runs`) that exclude cold-start reload fallbacks (`MISSING_CACHE`, `CORRUPT_CACHE`).

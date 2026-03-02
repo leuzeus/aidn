@@ -29,6 +29,7 @@ Contraintes:
 - Lot 3 (projection canonique): rendu Markdown déterministe branché sur état canonique (`canonical_format` + `canonical`), avec fallback export DB->files même en `--no-content`.
 - Lot 3 (projection incrémentale): mise à jour section-level des projections Markdown via blocs gérés (`aidn:block:*`) pour réduire le churn lors des exports répétés.
 - Lot 3 (pilotage CI): seuils index enrichis avec garde-fous de couverture canonique (`INDEX_CANONICAL_*`) et résumé index mis à jour.
+- Lot 3 (trend guardrails): pipeline de régression dédié à la couverture canonique (`index-report -> index-regression-kpi -> history -> check-regression`).
 
 Reste à finaliser:
 - validation KPI sur un corpus projet réel (au-delà des fixtures) avec fenêtre d'itérations représentative.

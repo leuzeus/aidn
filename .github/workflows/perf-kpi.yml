@@ -92,6 +92,9 @@ jobs:
       - name: Verify Index SQLite Fixtures
         run: npm run perf:verify-index-sqlite
 
+      - name: Verify Index Regression Fixtures
+        run: npm run perf:verify-index-regression
+
       - name: Verify Install Import Fixtures
         run: npm run perf:verify-install-import
 
@@ -108,6 +111,7 @@ jobs:
           path: |
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-history.ndjson
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-regression-history.ndjson
           key: ${{ runner.os }}-perf-history-${{ github.event.pull_request.head.ref || github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             ${{ runner.os }}-perf-history-${{ github.event.pull_request.head.ref || github.ref_name }}-
@@ -219,9 +223,21 @@ jobs:
             node tools/perf/check-thresholds.mjs --kpi-file "$PERF_RUNTIME_INDEX/index-report.json" --targets docs/performance/INDEX_TARGETS.json --out "$PERF_RUNTIME_INDEX/index-thresholds.json" || true
           fi
 
-      - name: Render Index Markdown Summary
+      - name: Evaluate Index Regression + Render Index Markdown Summary
         run: |
-          npm run perf:index-summary -- --report-file "$PERF_RUNTIME_INDEX/index-report.json" --thresholds-file "$PERF_RUNTIME_INDEX/index-thresholds.json" --out "$PERF_RUNTIME_INDEX/index-summary.md"
+          npm run perf:index-regression-kpi -- --index-report-file "$PERF_RUNTIME_INDEX/index-report.json" --out "$PERF_RUNTIME_INDEX/index-regression-kpi.json"
+          npm run perf:index-regression-history -- --kpi-file "$PERF_RUNTIME_INDEX/index-regression-kpi.json" --history-file "$PERF_RUNTIME_INDEX/index-regression-history.ndjson" --max-runs 200
+
+          STRICT_INDEX_QUALITY="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_quality || false }}"
+          if [ "$STRICT_INDEX_QUALITY" = "true" ]; then
+            echo "Running index regression checks in strict mode."
+            npm run perf:index-regression -- --kpi-file "$PERF_RUNTIME_INDEX/index-regression-kpi.json" --history-file "$PERF_RUNTIME_INDEX/index-regression-history.ndjson" --targets docs/performance/INDEX_REGRESSION_TARGETS.json --out "$PERF_RUNTIME_INDEX/index-regression.json" --strict
+          else
+            echo "Running index regression checks in non-blocking mode."
+            npm run perf:index-regression -- --kpi-file "$PERF_RUNTIME_INDEX/index-regression-kpi.json" --history-file "$PERF_RUNTIME_INDEX/index-regression-history.ndjson" --targets docs/performance/INDEX_REGRESSION_TARGETS.json --out "$PERF_RUNTIME_INDEX/index-regression.json" || true
+          fi
+
+          npm run perf:index-summary -- --report-file "$PERF_RUNTIME_INDEX/index-report.json" --thresholds-file "$PERF_RUNTIME_INDEX/index-thresholds.json" --regression-file "$PERF_RUNTIME_INDEX/index-regression.json" --out "$PERF_RUNTIME_INDEX/index-summary.md"
 
       - name: Evaluate KPI Thresholds (non-blocking)
         run: |
@@ -316,6 +332,9 @@ jobs:
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sqlite-parity.json
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-report.json
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-thresholds.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-regression-kpi.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-regression-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-regression.json
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-summary.md
           if-no-files-found: warn
 
@@ -326,4 +345,5 @@ jobs:
           path: |
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-history.ndjson
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-regression-history.ndjson
           key: ${{ steps.perf_history_restore.outputs.cache-primary-key }}

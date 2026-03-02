@@ -7,6 +7,7 @@ function parseArgs(argv) {
   const args = {
     reportFile: ".aidn/runtime/index/index-report.json",
     thresholdsFile: ".aidn/runtime/index/index-thresholds.json",
+    regressionFile: "",
     out: ".aidn/runtime/index/index-summary.md",
   };
 
@@ -17,6 +18,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--thresholds-file") {
       args.thresholdsFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--regression-file") {
+      args.regressionFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--out") {
       args.out = argv[i + 1] ?? "";
@@ -42,6 +46,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/render-index-summary.mjs");
   console.log("  node tools/perf/render-index-summary.mjs --report-file .aidn/runtime/index/index-report.json --out .aidn/runtime/index/index-summary.md");
+  console.log("  node tools/perf/render-index-summary.mjs --report-file .aidn/runtime/index/index-report.json --thresholds-file .aidn/runtime/index/index-thresholds.json --regression-file .aidn/runtime/index/index-regression.json --out .aidn/runtime/index/index-summary.md");
 }
 
 function readJson(filePath, label, required = true) {
@@ -63,7 +68,7 @@ function fmt(value) {
   return value == null ? "n/a" : String(value);
 }
 
-function buildMarkdown(report, thresholds) {
+function buildMarkdown(report, thresholds, regression) {
   const rows = report?.summary?.rows ?? {};
   const consistency = report?.summary?.consistency ?? {};
   const parity = report?.summary?.parity ?? {};
@@ -74,6 +79,8 @@ function buildMarkdown(report, thresholds) {
   const structure = report?.summary?.structure ?? {};
   const thresholdStatus = thresholds?.summary?.overall_status ?? "not-generated";
   const checks = Array.isArray(thresholds?.checks) ? thresholds.checks : [];
+  const regressionStatus = regression?.summary?.overall_status ?? "not-generated";
+  const regressionChecks = Array.isArray(regression?.checks) ? regression.checks : [];
 
   const lines = [];
   lines.push("## Index Quality Summary");
@@ -92,6 +99,7 @@ function buildMarkdown(report, thresholds) {
   lines.push(`- Declared version stale vs structure: ${structure.declared_version_looks_stale === 1 ? "yes" : "no"}`);
   lines.push(`- Run metrics present: ${runMetrics.present === 1 ? "yes" : "no"}`);
   lines.push(`- Threshold status: ${thresholdStatus}`);
+  lines.push(`- Regression status: ${regressionStatus}`);
   lines.push("");
 
   if (checks.length > 0) {
@@ -101,6 +109,17 @@ function buildMarkdown(report, thresholds) {
     lines.push("|---|---|---|---:|---|---:|");
     for (const check of checks) {
       lines.push(`| ${check.id ?? "n/a"} | ${check.status ?? "n/a"} | ${check.severity ?? "n/a"} | ${fmt(check.actual)} | ${check.op ?? "n/a"} | ${fmt(check.expected)} |`);
+    }
+    lines.push("");
+  }
+
+  if (regressionChecks.length > 0) {
+    lines.push("### Index Regression Checks");
+    lines.push("");
+    lines.push("| id | status | severity | metric | latest | baseline | increase_pct | max |");
+    lines.push("|---|---|---|---|---:|---:|---:|---:|");
+    for (const check of regressionChecks) {
+      lines.push(`| ${check.id ?? "n/a"} | ${check.status ?? "n/a"} | ${check.severity ?? "n/a"} | ${check.metric ?? "n/a"} | ${fmt(check.latest_value)} | ${fmt(check.baseline_median)} | ${fmt(check.increase_pct)} | ${fmt(check.max_increase_pct)} |`);
     }
     lines.push("");
   }
@@ -117,7 +136,10 @@ function main() {
     const args = parseArgs(process.argv.slice(2));
     const report = readJson(args.reportFile, "Index report", true);
     const thresholds = readJson(args.thresholdsFile, "Index thresholds", false);
-    const markdown = buildMarkdown(report.data, thresholds.data);
+    const regression = args.regressionFile
+      ? readJson(args.regressionFile, "Index regression", false)
+      : { absolute: null, data: null, exists: false };
+    const markdown = buildMarkdown(report.data, thresholds.data, regression.data);
     const outWrite = writeFile(args.out, markdown);
     console.log(`Index summary written: ${outWrite.path} (${outWrite.written ? "written" : "unchanged"})`);
   } catch (error) {
