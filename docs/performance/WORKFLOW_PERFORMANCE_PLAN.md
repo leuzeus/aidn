@@ -26,6 +26,7 @@ Contraintes:
 - Lot 1 (Quick wins): implémenté (instrumentation NDJSON, L1/L2/L3 gating, écritures conditionnelles, hooks session).
 - Lot 2 (Index local): implémenté (reload incrémental + fallback, index sync/check, structure profile multi-version, trend/check pipelines).
 - Lot 3 (DB future): implémenté en mode local SQLite progressif (store modes `sqlite|dual-sqlite|all`, import/export, parity SQL+SQLite, CI fixtures dédiées, feature flag `AIDN_INDEX_STORE_MODE`).
+- Lot 3 (projection canonique): rendu Markdown déterministe branché sur état canonique (`canonical_format` + `canonical`), avec fallback export DB->files même en `--no-content`.
 
 Reste à finaliser:
 - validation KPI sur un corpus projet réel (au-delà des fixtures) avec fenêtre d'itérations représentative.

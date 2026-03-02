@@ -88,6 +88,37 @@ function toMtimeMs(value, updatedAt) {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
+function normalizeObject(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeObject(item));
+  }
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const key of Object.keys(value).sort((a, b) => a.localeCompare(b))) {
+      out[key] = normalizeObject(value[key]);
+    }
+    return out;
+  }
+  return value;
+}
+
+function normalizeCanonical(value) {
+  if (!value) {
+    return null;
+  }
+  if (typeof value === "string") {
+    try {
+      return normalizeObject(JSON.parse(value));
+    } catch {
+      return null;
+    }
+  }
+  if (typeof value === "object") {
+    return normalizeObject(value);
+  }
+  return null;
+}
+
 function projectForParity(payload) {
   const cycles = sortBy(Array.isArray(payload.cycles) ? payload.cycles : [], (row) => String(row.cycle_id ?? ""));
   const artifacts = sortBy(Array.isArray(payload.artifacts) ? payload.artifacts : [], (row) => String(row.path ?? ""));
@@ -122,6 +153,8 @@ function projectForParity(payload) {
       classification_reason: row.classification_reason ?? null,
       content_format: row.content_format ?? null,
       content: row.content ?? null,
+      canonical_format: row.canonical_format ?? null,
+      canonical: normalizeCanonical(row.canonical),
       sha256: row.sha256 ?? null,
       size_bytes: Number(row.size_bytes ?? 0),
       mtime_ms: toMtimeMs(row.mtime_ns, row.updated_at),
@@ -158,6 +191,8 @@ function projectForParity(payload) {
       tags_count: tags.length,
       run_metrics_count: runMetrics.length,
       structure_kind: structureKind,
+      artifacts_with_content_count: artifacts.filter((row) => typeof row?.content === "string").length,
+      artifacts_with_canonical_count: artifacts.filter((row) => normalizeCanonical(row?.canonical) != null).length,
     },
   };
 }
@@ -174,6 +209,8 @@ function mismatchSummary(left, right) {
     "tags_count",
     "run_metrics_count",
     "structure_kind",
+    "artifacts_with_content_count",
+    "artifacts_with_canonical_count",
   ];
   const mismatches = [];
   for (const key of keys) {

@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { readIndexFromSqlite } from "./index-sqlite-lib.mjs";
+import { renderMarkdownFromCanonical } from "./markdown-render-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -10,6 +11,7 @@ function parseArgs(argv) {
     target: ".",
     auditRoot: "",
     normativeOnly: false,
+    renderMarkdown: true,
     strict: false,
     dryRun: false,
     json: false,
@@ -31,6 +33,10 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--normative-only") {
       args.normativeOnly = true;
+    } else if (token === "--render-markdown") {
+      args.renderMarkdown = true;
+    } else if (token === "--no-render-markdown") {
+      args.renderMarkdown = false;
     } else if (token === "--strict") {
       args.strict = true;
     } else if (token === "--dry-run") {
@@ -64,6 +70,8 @@ function printUsage() {
   console.log("  node tools/perf/index-export-files.mjs --index-file .aidn/runtime/index/workflow-index.json --backend json");
   console.log("  node tools/perf/index-export-files.mjs --target ../client-repo --audit-root docs/audit");
   console.log("  node tools/perf/index-export-files.mjs --normative-only");
+  console.log("  node tools/perf/index-export-files.mjs --render-markdown");
+  console.log("  node tools/perf/index-export-files.mjs --no-render-markdown");
   console.log("  node tools/perf/index-export-files.mjs --dry-run --json");
 }
 
@@ -90,14 +98,44 @@ function readJsonIndex(indexFile) {
 
 function decodeArtifactContent(artifact) {
   if (typeof artifact?.content !== "string") {
-    return null;
+    return {
+      ok: false,
+      reason: "missing_content",
+      content: null,
+    };
   }
   const format = String(artifact?.content_format ?? "utf8").toLowerCase();
   if (format === "utf8") {
-    return Buffer.from(artifact.content, "utf8");
+    return {
+      ok: true,
+      reason: null,
+      content: Buffer.from(artifact.content, "utf8"),
+    };
   }
   if (format === "base64") {
-    return Buffer.from(artifact.content, "base64");
+    return {
+      ok: true,
+      reason: null,
+      content: Buffer.from(artifact.content, "base64"),
+    };
+  }
+  return {
+    ok: false,
+    reason: "unsupported_encoding",
+    content: null,
+  };
+}
+
+function canonicalFromArtifact(artifact) {
+  if (artifact?.canonical && typeof artifact.canonical === "object") {
+    return artifact.canonical;
+  }
+  if (typeof artifact?.canonical_json === "string" && artifact.canonical_json.trim().length > 0) {
+    try {
+      return JSON.parse(artifact.canonical_json);
+    } catch {
+      return null;
+    }
   }
   return null;
 }
@@ -176,6 +214,7 @@ function main() {
     let exported = 0;
     let unchanged = 0;
     let missingContent = 0;
+    let renderedFromCanonical = 0;
     let skippedUnsafePath = 0;
     let skippedUnsupportedEncoding = 0;
     let bytesWritten = 0;
@@ -189,21 +228,32 @@ function main() {
         warnings.push(`unsafe_path:${relPath}`);
         continue;
       }
-      const content = decodeArtifactContent(artifact);
-      if (!content) {
-        missingContent += 1;
-        warnings.push(`missing_content:${relPath}`);
-        continue;
-      }
-      if (String(artifact?.content_format ?? "utf8").toLowerCase() !== "utf8"
-        && String(artifact?.content_format ?? "utf8").toLowerCase() !== "base64") {
+      let decoded = decodeArtifactContent(artifact);
+      if (!decoded.ok && decoded.reason === "unsupported_encoding") {
         skippedUnsupportedEncoding += 1;
         warnings.push(`unsupported_encoding:${relPath}`);
         continue;
       }
+      if (!decoded.ok && decoded.reason === "missing_content" && args.renderMarkdown) {
+        const canonical = canonicalFromArtifact(artifact);
+        if (canonical && typeof canonical === "object") {
+          const rendered = renderMarkdownFromCanonical(canonical, artifact);
+          decoded = {
+            ok: true,
+            reason: null,
+            content: Buffer.from(rendered, "utf8"),
+          };
+          renderedFromCanonical += 1;
+        }
+      }
+      if (!decoded.ok) {
+        missingContent += 1;
+        warnings.push(`missing_content:${relPath}`);
+        continue;
+      }
 
       const outputPath = path.resolve(auditRoot, relPath.replace(/\//g, path.sep));
-      const out = writeIfChanged(outputPath, content, args.dryRun);
+      const out = writeIfChanged(outputPath, decoded.content, args.dryRun);
       if (out.unchanged) {
         unchanged += 1;
       } else {
@@ -228,6 +278,7 @@ function main() {
         exported,
         unchanged,
         missing_content: missingContent,
+        rendered_from_canonical: renderedFromCanonical,
         skipped_unsafe_path: skippedUnsafePath,
         skipped_unsupported_encoding: skippedUnsupportedEncoding,
         bytes_written: bytesWritten,
@@ -245,6 +296,7 @@ function main() {
       console.log(`Exported: ${result.summary.exported}`);
       console.log(`Unchanged: ${result.summary.unchanged}`);
       console.log(`Missing content: ${result.summary.missing_content}`);
+      console.log(`Rendered from canonical: ${result.summary.rendered_from_canonical}`);
       console.log(`Bytes written: ${result.summary.bytes_written}`);
       if (warnings.length > 0) {
         console.log(`Warnings: ${warnings.length}`);

@@ -21,6 +21,8 @@ CREATE TABLE artifacts (
   classification_reason TEXT,
   content_format TEXT,
   content TEXT,
+  canonical_format TEXT,
+  canonical_json TEXT,
   sha256 TEXT NOT NULL,
   size_bytes INTEGER NOT NULL,
   mtime_ns INTEGER NOT NULL,

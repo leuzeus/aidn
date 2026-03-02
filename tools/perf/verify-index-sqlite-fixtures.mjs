@@ -99,7 +99,7 @@ function main() {
       target,
       "--store",
       "all",
-      "--with-content",
+      "--no-content",
       "--output",
       indexFilePath,
       "--sql-output",
@@ -152,7 +152,8 @@ function main() {
       && exists(sqliteFilePath)
       && exists(exportedFilePath)
       && exists(rebuiltWorkflowPath)
-      && Number(rebuilt?.summary?.missing_content ?? 0) === 0;
+      && Number(rebuilt?.summary?.missing_content ?? 0) === 0
+      && Number(rebuilt?.summary?.rendered_from_canonical ?? 0) >= 1;
 
     const output = {
       ts: new Date().toISOString(),
@@ -169,6 +170,7 @@ function main() {
         sqlite_parity_in_sync: sqliteParity.in_sync === true,
         export_written: exported?.write?.written === true || exported?.write?.written === false,
         rebuild_missing_content: Number(rebuilt?.summary?.missing_content ?? -1),
+        rebuild_rendered_from_canonical: Number(rebuilt?.summary?.rendered_from_canonical ?? 0),
         rebuild_exported: Number(rebuilt?.summary?.exported ?? 0),
         rebuild_workflow_exists: exists(rebuiltWorkflowPath),
         dual_parity_digest: dualParity.actual_sha256 ?? null,

@@ -70,6 +70,12 @@ function buildSummary(payload, structureKindHint = null) {
     tags_count: Array.isArray(payload.tags) ? payload.tags.length : 0,
     run_metrics_count: Array.isArray(payload.run_metrics) ? payload.run_metrics.length : 0,
     structure_kind: structureKindHint ?? "unknown",
+    artifacts_with_content_count: Array.isArray(payload.artifacts)
+      ? payload.artifacts.filter((row) => typeof row?.content === "string").length
+      : 0,
+    artifacts_with_canonical_count: Array.isArray(payload.artifacts)
+      ? payload.artifacts.filter((row) => row?.canonical && typeof row.canonical === "object").length
+      : 0,
   };
 }
 
@@ -110,10 +116,29 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
                ${artifactColumns.has("classification_reason") ? "classification_reason" : "NULL AS classification_reason"},
                ${artifactColumns.has("content_format") ? "content_format" : "NULL AS content_format"},
                ${artifactColumns.has("content") ? "content" : "NULL AS content"},
+               ${artifactColumns.has("canonical_format") ? "canonical_format" : "NULL AS canonical_format"},
+               ${artifactColumns.has("canonical_json") ? "canonical_json" : "NULL AS canonical_json"},
                sha256, size_bytes, CAST(mtime_ns AS TEXT) AS mtime_ns, session_id, cycle_id, updated_at
         FROM artifacts
         ORDER BY path ASC
-      `),
+      `).map((row) => ({
+        path: row.path ?? null,
+        kind: row.kind ?? "other",
+        family: row.family ?? "unknown",
+        subtype: row.subtype ?? null,
+        gate_relevance: Number(row.gate_relevance ?? 0),
+        classification_reason: row.classification_reason ?? null,
+        content_format: row.content_format ?? null,
+        content: row.content ?? null,
+        canonical_format: row.canonical_format ?? null,
+        canonical: parseJsonOrNull(row.canonical_json),
+        sha256: row.sha256 ?? null,
+        size_bytes: Number(row.size_bytes ?? 0),
+        mtime_ns: row.mtime_ns ?? null,
+        session_id: row.session_id ?? null,
+        cycle_id: row.cycle_id ?? null,
+        updated_at: row.updated_at ?? null,
+      })),
       file_map: readRows(db, `
         SELECT cycle_id, path, role,
                ${fileMapColumns.has("relation") ? "relation" : "'unknown' AS relation"},

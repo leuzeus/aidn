@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { createIndexStore } from "./index-store.mjs";
 import { detectStructureProfile } from "./structure-profile-lib.mjs";
+import { buildCanonicalFromMarkdown } from "./markdown-render-lib.mjs";
 import {
   defaultIndexStoreFromStateMode,
   normalizeIndexStoreMode,
@@ -168,6 +169,11 @@ function encodeArtifactContent(content) {
     content_format: "base64",
     content: content.toString("base64"),
   };
+}
+
+function decodeUtf8OrNull(content) {
+  const utf8Text = content.toString("utf8");
+  return Buffer.from(utf8Text, "utf8").equals(content) ? utf8Text : null;
 }
 
 function toIsoFromStat(stats) {
@@ -463,6 +469,14 @@ function buildArtifactRows(auditRoot, options = {}) {
     const relativePath = path.relative(auditRoot, absolutePath).replace(/\\/g, "/");
     const ownership = inferArtifactOwnership(relativePath);
     const classification = inferArtifactClassification(relativePath);
+    const extension = path.extname(relativePath).toLowerCase();
+    const textContent = extension === ".md" ? decodeUtf8OrNull(raw) : null;
+    const canonical = textContent
+      ? buildCanonicalFromMarkdown(textContent, {
+        relativePath,
+        classification,
+      })
+      : null;
     const contentPayload = embedContent
       ? encodeArtifactContent(raw)
       : { content_format: null, content: null };
@@ -480,6 +494,8 @@ function buildArtifactRows(auditRoot, options = {}) {
       cycle_id: ownership.cycle_id,
       content_format: contentPayload.content_format,
       content: contentPayload.content,
+      canonical_format: canonical?.format ?? null,
+      canonical,
       updated_at: toIsoFromStat(stats),
     });
   }
@@ -677,6 +693,7 @@ function main() {
         artifacts_normative_count: artifacts.filter((item) => item.family === "normative").length,
         artifacts_support_count: artifacts.filter((item) => item.family === "support").length,
         artifacts_with_content_count: artifacts.filter((item) => typeof item.content === "string").length,
+        artifacts_with_canonical_count: artifacts.filter((item) => item.canonical && typeof item.canonical === "object").length,
       },
     };
     const digest = payloadDigest(payload);

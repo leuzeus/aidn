@@ -75,6 +75,17 @@ function runInsert(statement, rows, projector) {
   }
 }
 
+function canonicalToJson(value) {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return null;
+  }
+}
+
 function ensureMetaTable(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS index_meta (
@@ -140,6 +151,8 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
     ensureColumn(db, "artifacts", "classification_reason", "TEXT");
     ensureColumn(db, "artifacts", "content_format", "TEXT");
     ensureColumn(db, "artifacts", "content", "TEXT");
+    ensureColumn(db, "artifacts", "canonical_format", "TEXT");
+    ensureColumn(db, "artifacts", "canonical_json", "TEXT");
     ensureColumn(db, "file_map", "relation", "TEXT NOT NULL DEFAULT 'unknown'");
     ensureMetaTable(db);
     const prevDigest = getMeta(db, "payload_digest");
@@ -198,8 +211,8 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
 
       const artifactStmt = db.prepare(`
         INSERT INTO artifacts (
-          path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, sha256, size_bytes, mtime_ns, session_id, cycle_id, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, mtime_ns, session_id, cycle_id, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `);
       runInsert(artifactStmt, artifacts, (row) => ([
         row.path ?? null,
@@ -210,6 +223,8 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
         row.classification_reason ?? null,
         row.content_format ?? null,
         row.content ?? null,
+        row.canonical_format ?? null,
+        canonicalToJson(row.canonical),
         row.sha256 ?? null,
         Number(row.size_bytes ?? 0),
         Number(row.mtime_ns ?? 0),

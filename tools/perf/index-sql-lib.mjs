@@ -23,8 +23,11 @@ function insertCycles(lines, cycles) {
 
 function insertArtifacts(lines, artifacts) {
   for (const artifact of artifacts) {
+    const canonicalJson = artifact?.canonical && typeof artifact.canonical === "object"
+      ? JSON.stringify(artifact.canonical)
+      : null;
     lines.push(
-      `INSERT INTO artifacts (path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, sha256, size_bytes, mtime_ns, session_id, cycle_id, updated_at) VALUES (${sqlString(artifact.path)}, ${sqlString(artifact.kind)}, ${sqlString(artifact.family)}, ${sqlString(artifact.subtype)}, ${sqlNumber(artifact.gate_relevance)}, ${sqlString(artifact.classification_reason)}, ${sqlString(artifact.content_format)}, ${sqlString(artifact.content)}, ${sqlString(artifact.sha256)}, ${sqlNumber(artifact.size_bytes)}, ${sqlNumber(artifact.mtime_ns)}, ${sqlString(artifact.session_id)}, ${sqlString(artifact.cycle_id)}, ${sqlString(artifact.updated_at)});`,
+      `INSERT INTO artifacts (path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, mtime_ns, session_id, cycle_id, updated_at) VALUES (${sqlString(artifact.path)}, ${sqlString(artifact.kind)}, ${sqlString(artifact.family)}, ${sqlString(artifact.subtype)}, ${sqlNumber(artifact.gate_relevance)}, ${sqlString(artifact.classification_reason)}, ${sqlString(artifact.content_format)}, ${sqlString(artifact.content)}, ${sqlString(artifact.canonical_format)}, ${sqlString(canonicalJson)}, ${sqlString(artifact.sha256)}, ${sqlNumber(artifact.size_bytes)}, ${sqlNumber(artifact.mtime_ns)}, ${sqlString(artifact.session_id)}, ${sqlString(artifact.cycle_id)}, ${sqlString(artifact.updated_at)});`,
     );
   }
 }

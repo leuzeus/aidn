@@ -68,6 +68,8 @@ npx aidn perf session-start --target . --mode COMMITTING --json
 npx aidn perf session-close --target . --mode COMMITTING --json
 npx aidn perf index --target . --store all --json
 npx aidn perf index-export-files --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target . --audit-root docs/audit
+npx aidn perf index --target . --store all --no-content --json
+npx aidn perf index-export-files --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target . --audit-root docs/audit --render-markdown
 ```
 
 Repository scripts (maintainer/dev mode):
@@ -101,6 +103,7 @@ npm run perf:verify-state-mode-parity
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
 npm run perf:index-from-sqlite -- --sqlite-file .aidn/runtime/index/workflow-index.sqlite --out .aidn/runtime/index/workflow-index.from-sqlite.json
 npm run perf:index-export-files -- --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target ../client-repo --audit-root docs/audit
+npm run perf:index-export-files -- --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target ../client-repo --audit-root docs/audit --no-render-markdown
 npm run perf:index-verify-sqlite -- --index-file .aidn/runtime/index/workflow-index.json --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.json
 npm run perf:index-query -- --query active-cycles --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite
@@ -213,8 +216,15 @@ Artifact rows now include classification fields for multi-version/hybrid reposit
 - `classification_reason`: optional classifier hint for non-standard support artifacts
 - `content_format`: `utf8|base64|null`
 - `content`: optional embedded artifact payload (required for deterministic `db -> files` reconstruction)
+- `canonical_format`: canonical schema id (`markdown-canonical-v1|null`)
+- `canonical`: canonical artifact data used for deterministic markdown projection when embedded content is absent
 
 `cycle-files` rows now include `relation` (`normative|support`) for cycle-scoped mapping.
+
+`perf:index-export-files` behavior:
+- embedded content present: writes exact embedded bytes (`content_format + content`)
+- embedded content missing and `--render-markdown` enabled (default): writes deterministic markdown projection from `canonical`
+- `--no-render-markdown`: disables projection fallback and reports `missing_content`
 
 ## Gating Levels (implemented)
 
