@@ -8,6 +8,7 @@ function parseArgs(argv) {
     reportFile: ".aidn/runtime/index/index-report.json",
     thresholdsFile: ".aidn/runtime/index/index-thresholds.json",
     regressionFile: "",
+    canonicalCheckFile: "",
     out: ".aidn/runtime/index/index-summary.md",
   };
 
@@ -21,6 +22,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--regression-file") {
       args.regressionFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--canonical-check-file") {
+      args.canonicalCheckFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--out") {
       args.out = argv[i + 1] ?? "";
@@ -46,7 +50,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/render-index-summary.mjs");
   console.log("  node tools/perf/render-index-summary.mjs --report-file .aidn/runtime/index/index-report.json --out .aidn/runtime/index/index-summary.md");
-  console.log("  node tools/perf/render-index-summary.mjs --report-file .aidn/runtime/index/index-report.json --thresholds-file .aidn/runtime/index/index-thresholds.json --regression-file .aidn/runtime/index/index-regression.json --out .aidn/runtime/index/index-summary.md");
+  console.log("  node tools/perf/render-index-summary.mjs --report-file .aidn/runtime/index/index-report.json --thresholds-file .aidn/runtime/index/index-thresholds.json --regression-file .aidn/runtime/index/index-regression.json --canonical-check-file .aidn/runtime/index/index-canonical-check.json --out .aidn/runtime/index/index-summary.md");
 }
 
 function readJson(filePath, label, required = true) {
@@ -68,7 +72,7 @@ function fmt(value) {
   return value == null ? "n/a" : String(value);
 }
 
-function buildMarkdown(report, thresholds, regression) {
+function buildMarkdown(report, thresholds, regression, canonicalCheck) {
   const rows = report?.summary?.rows ?? {};
   const consistency = report?.summary?.consistency ?? {};
   const parity = report?.summary?.parity ?? {};
@@ -81,6 +85,9 @@ function buildMarkdown(report, thresholds, regression) {
   const checks = Array.isArray(thresholds?.checks) ? thresholds.checks : [];
   const regressionStatus = regression?.summary?.overall_status ?? "not-generated";
   const regressionChecks = Array.isArray(regression?.checks) ? regression.checks : [];
+  const canonicalStatus = canonicalCheck?.summary?.overall_status ?? "not-generated";
+  const canonicalCoverage = canonicalCheck?.coverage?.canonical_coverage_ratio_markdown ?? null;
+  const canonicalChecks = Array.isArray(canonicalCheck?.checks) ? canonicalCheck.checks : [];
 
   const lines = [];
   lines.push("## Index Quality Summary");
@@ -99,6 +106,8 @@ function buildMarkdown(report, thresholds, regression) {
   lines.push(`- Declared version stale vs structure: ${structure.declared_version_looks_stale === 1 ? "yes" : "no"}`);
   lines.push(`- Run metrics present: ${runMetrics.present === 1 ? "yes" : "no"}`);
   lines.push(`- Threshold status: ${thresholdStatus}`);
+  lines.push(`- Canonical check status: ${canonicalStatus}`);
+  lines.push(`- Canonical check markdown coverage: ${fmt(canonicalCoverage)}`);
   lines.push(`- Regression status: ${regressionStatus}`);
   lines.push("");
 
@@ -124,6 +133,17 @@ function buildMarkdown(report, thresholds, regression) {
     lines.push("");
   }
 
+  if (canonicalChecks.length > 0) {
+    lines.push("### Canonical Coverage Checks");
+    lines.push("");
+    lines.push("| id | status | severity | actual | op | expected |");
+    lines.push("|---|---|---|---:|---|---:|");
+    for (const check of canonicalChecks) {
+      lines.push(`| ${check.id ?? "n/a"} | ${check.status ?? "n/a"} | ${check.severity ?? "n/a"} | ${fmt(check.actual)} | ${check.op ?? "n/a"} | ${fmt(check.expected)} |`);
+    }
+    lines.push("");
+  }
+
   return `${lines.join("\n")}\n`;
 }
 
@@ -139,7 +159,10 @@ function main() {
     const regression = args.regressionFile
       ? readJson(args.regressionFile, "Index regression", false)
       : { absolute: null, data: null, exists: false };
-    const markdown = buildMarkdown(report.data, thresholds.data, regression.data);
+    const canonicalCheck = args.canonicalCheckFile
+      ? readJson(args.canonicalCheckFile, "Index canonical check", false)
+      : { absolute: null, data: null, exists: false };
+    const markdown = buildMarkdown(report.data, thresholds.data, regression.data, canonicalCheck.data);
     const outWrite = writeFile(args.out, markdown);
     console.log(`Index summary written: ${outWrite.path} (${outWrite.written ? "written" : "unchanged"})`);
   } catch (error) {

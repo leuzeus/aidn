@@ -126,7 +126,7 @@ npm run perf:index-canonical-summary -- --check-file .aidn/runtime/index/index-c
 npm run perf:index-regression-kpi -- --index-report-file .aidn/runtime/index/index-report.json --out .aidn/runtime/index/index-regression-kpi.json
 npm run perf:index-regression-history -- --kpi-file .aidn/runtime/index/index-regression-kpi.json --history-file .aidn/runtime/index/index-regression-history.ndjson --max-runs 200
 npm run perf:index-regression -- --kpi-file .aidn/runtime/index/index-regression-kpi.json --history-file .aidn/runtime/index/index-regression-history.ndjson --targets docs/performance/INDEX_REGRESSION_TARGETS.json --out .aidn/runtime/index/index-regression.json
-npm run perf:index-summary -- --report-file .aidn/runtime/index/index-report.json --thresholds-file .aidn/runtime/index/index-thresholds.json --regression-file .aidn/runtime/index/index-regression.json --out .aidn/runtime/index/index-summary.md
+npm run perf:index-summary -- --report-file .aidn/runtime/index/index-report.json --thresholds-file .aidn/runtime/index/index-thresholds.json --regression-file .aidn/runtime/index/index-regression.json --canonical-check-file .aidn/runtime/index/index-canonical-check.json --out .aidn/runtime/index/index-summary.md
 npm run perf:reload-check -- --target ../client-repo
 npm run perf:reload-check -- --target ../client-repo --write-cache
 npm run perf:gate -- --target ../client-repo --mode COMMITTING
@@ -253,6 +253,9 @@ Artifact rows now include classification fields for multi-version/hybrid reposit
 - `summary.projection.artifacts_markdown`
 - `summary.projection.artifacts_markdown_with_canonical`
 - `summary.projection.canonical_coverage_ratio_markdown`
+
+`perf:index-summary` can optionally include lightweight canonical check results:
+- pass `--canonical-check-file .aidn/runtime/index/index-canonical-check.json`
 
 `INDEX_TARGETS.json` now includes canonical projection guardrails:
 - `INDEX_CANONICAL_ARTIFACTS_MIN`

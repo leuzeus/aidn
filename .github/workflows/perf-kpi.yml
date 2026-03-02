@@ -255,7 +255,7 @@ jobs:
             npm run perf:index-regression -- --kpi-file "$PERF_RUNTIME_INDEX/index-regression-kpi.json" --history-file "$PERF_RUNTIME_INDEX/index-regression-history.ndjson" --targets docs/performance/INDEX_REGRESSION_TARGETS.json --out "$PERF_RUNTIME_INDEX/index-regression.json" || true
           fi
 
-          npm run perf:index-summary -- --report-file "$PERF_RUNTIME_INDEX/index-report.json" --thresholds-file "$PERF_RUNTIME_INDEX/index-thresholds.json" --regression-file "$PERF_RUNTIME_INDEX/index-regression.json" --out "$PERF_RUNTIME_INDEX/index-summary.md"
+          npm run perf:index-summary -- --report-file "$PERF_RUNTIME_INDEX/index-report.json" --thresholds-file "$PERF_RUNTIME_INDEX/index-thresholds.json" --regression-file "$PERF_RUNTIME_INDEX/index-regression.json" --canonical-check-file "$PERF_RUNTIME_INDEX/index-canonical-check.json" --out "$PERF_RUNTIME_INDEX/index-summary.md"
 
       - name: Evaluate KPI Thresholds (non-blocking)
         run: |
