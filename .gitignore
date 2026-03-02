@@ -4,3 +4,4 @@ release/dist/
 .idea/
 tmp/
 .aidn/runtime/
+tests/fixtures/tmp-*/
