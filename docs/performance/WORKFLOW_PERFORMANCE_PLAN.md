@@ -14,7 +14,9 @@ Garanties à préserver:
 Contraintes:
 - pas de migration "big bang"
 - livraison incrémentale en 3 lots
-- fichiers Markdown restent la source de vérité
+- transition explicite par modes: `files` -> `dual` -> `db-only`
+- en mode `dual`, fichiers + DB doivent rester en parité
+- en mode `db-only`, les fichiers runtime ne sont plus requis mais doivent rester reconstructibles depuis la DB
 - compatibilité multi-version: un même repo peut contenir des artefacts legacy + modernes; les contrôles doivent se baser sur la structure observée, pas uniquement sur la version déclarée.
 
 ## Statut D'Exécution
@@ -41,6 +43,22 @@ Hors scope (pour ce plan):
 - réécriture complète des skills
 - remplacement direct des artefacts Markdown par une base unique
 
+## Corpus Pilote Et Taxonomie D'Artefacts
+
+Référence terrain utilisée pour calibrage:
+- corpus `docs/audit` multi-versions et multi-artefacts (sessions, cycles, baseline, snapshot, rapports, migration, backlog, incidents).
+
+Constat principal:
+- les cycles ne contiennent pas uniquement les artefacts "standards" (`status`, `plan`, `brief`, `traceability`, ...),
+- ils incluent aussi des artefacts de support hétérogènes (ex: `report*.md`, `profiling.md`, `migration-plan.md`, `contract-spec.md`, `validation.md`, `*.patch`).
+
+Décision de planification:
+- l'import DB ne doit pas ignorer les artefacts hors gabarit standard,
+- la taxonomie DB doit distinguer:
+  - artefacts normatifs (pilotent les gates),
+  - artefacts de support (preuves, analyses, rapports, migration),
+- l'export doit permettre reconstruction complète des dossiers cycle/session, y compris artefacts de support.
+
 ## Carte De Profiling Instrumentable
 
 ### Points de coût (où mesurer)
@@ -52,7 +70,7 @@ Hors scope (pour ce plan):
 | `branch-cycle-audit` | scan cycles actifs + regex branch + checks continuité | `duration_ms`, `git_calls_count`, `mapping_status` |
 | `drift-check` | analyse signaux + rapport recovery + CR/parking-lot | `duration_ms`, `signals_count`, `drift_level` |
 | `close-session` | résolution cycles ouverts + update snapshot | `duration_ms`, `open_cycles_count`, `decisions_count` |
-| writeups | mise à jour multiple d'artefacts (`status`, `session`, `snapshot`) | `writes_count`, `bytes_written`, `artifacts_touched` |
+| writeups | mise à jour multiple d'artefacts (normatifs + support) | `writes_count`, `bytes_written`, `artifacts_touched`, `support_artifacts_touched` |
 | surcontexte | chargement de fichiers non nécessaires | `files_read_unneeded`, `context_bytes_total` |
 
 ### Format de logs minimal (NDJSON)
@@ -113,7 +131,8 @@ Définition:
 - `artifacts_churn = (artifact_writes + artifact_rewrites + artifact_deletes) / iteration`
 
 Artefacts concernés:
-- `status.md`, `SXXX.md`, `context-snapshot.md`, `change-requests.md`, `parking-lot.md`
+- normatifs: `status.md`, `SXXX.md`, `context-snapshot.md`, `change-requests.md`, `parking-lot.md`
+- support: `report*.md`, `profiling.md`, `migration-*.md`, `contract-spec.md`, `validation.md`, autres artefacts cycle non normatifs
 
 Cible:
 - Lot 1: -15%
@@ -179,6 +198,8 @@ Tâches techniques:
 - index local (fichier ou SQLite local) pour lookup cycles/artefacts/tags
 - invalider finement par changement baseline/snapshot/cycle/session/branch
 - étape de normalisation structurelle: policy d'artefacts requis par profil + codes raison normalisés (`STRUCTURE_MIXED_PROFILE`, etc.)
+- classer chaque artefact importé par famille (`normative|support`) + type (`status|plan|report|profiling|...`)
+- ne jamais bloquer un import parce qu'un artefact est inconnu: classer en `support/unknown` avec `reason_code`
 
 Risques:
 - incohérence cache <> fichiers
@@ -189,23 +210,32 @@ Critères d'acceptation:
 - parité fonctionnelle entre mode full et mode incrémental
 - 0 perte de traçabilité (tous les champs de conformité restent présents)
 - profile check détecte correctement `legacy|modern|mixed` sur corpus de référence, sans se fier au seul numéro de version déclaré
+- import couvre 100% des fichiers `docs/audit` observés sur corpus pilote (aucun fichier silencieusement ignoré)
 
 Definition of Done (Lot 2):
 - pipeline incremental reload activé par défaut avec fallback
 - tests d'invalidation (baseline/snapshot/cycle/branch)
 - script de rebuild index local depuis les fichiers
 
-## Lot 3 - DB Future (optionnelle, progressive, non bloquante)
+## Lot 3 - DB Future (SQLite dev, modes dual/db-only, non bloquante)
 
 Objectifs mesurables:
 - préparation d'un backend DB (SQLite renforcé puis cible Postgres) sans casser le mode fichiers
 - -50% overhead ratio vs baseline
 - requêtes analytiques < 100ms sur dataset de test
+- modes d'exécution configurables:
+  - `AIDN_STATE_MODE=dual` (transition),
+  - `AIDN_STATE_MODE=db-only` (runtime sans dépendance aux fichiers sessions/cycles)
 
 Tâches techniques:
 - introduire adaptateur `IndexStore` (file, sqlite, future remote)
-- ajouter mode dual-write contrôlé (fichiers + index)
+- ajouter mode dual-write contrôlé (fichiers + index) avec vérification de parité
+- ajouter mode `db-only` (gates lisent la DB; génération fichiers à la demande)
 - exporter métriques et états de contrôle pour analytics/CI
+- implémenter commandes:
+  - import `files -> db` (avec taxonomie normatif/support),
+  - export `db -> files` (reconstruction complète),
+  - verify parity `files <-> db`
 
 Risques:
 - divergence entre écritures fichiers et DB
@@ -215,11 +245,15 @@ Critères d'acceptation:
 - mode DB désactivable sans impact (feature flag)
 - aucune dépendance bloquante réseau pour exécution standard
 - migration/rebuild complète depuis fichiers validée
+- en `db-only`, les décisions de gates sont équivalentes à `dual` sur corpus de référence
+- reconstruction d'un repo complet depuis DB validée (cycles/sessions + artefacts de support)
 
 Definition of Done (Lot 3):
 - contrat d'interface `IndexStore` stable
 - migration dry-run documentée
 - plan de rollback DB -> file-only testé
+- contrat d'état `AIDN_STATE_MODE` documenté (`files|dual|db-only`)
+- tests automatiques import/export/parité incluant artefacts de support
 
 ## Backlog Priorisé
 
@@ -234,6 +268,9 @@ Definition of Done (Lot 3):
 9. Dual-write contrôlé + tests de parité
 10. Feature flag DB future + doc migration
 11. Normalisation multi-version (profil structurel + policy d'artefacts requis par profil)
+12. Taxonomie artefacts (normatif/support/unknown) + parser tolérant
+13. Reconstruction DB -> fichiers (cycles/sessions + supports)
+14. Équivalence de décision des gates entre modes `dual` et `db-only`
 
 ## Acceptance Criteria Globaux
 
@@ -241,6 +278,7 @@ Definition of Done (Lot 3):
 - Les KPI démontrent un gain mesurable sur 30 itérations minimum.
 - Toute incohérence détectée force un fallback sûr (full reload + trace incident si nécessaire).
 - Aucune suppression de gate canonique; seulement réduction de relances inutiles.
+- Aucune perte silencieuse d'artefact lors d'import/export (incluant artefacts de support non standard).
 
 ## Structure Recommandée A Créer
 
