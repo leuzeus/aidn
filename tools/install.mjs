@@ -9,7 +9,6 @@ import { spawnSync } from "node:child_process";
 const BLOCK_START = "<!-- CODEX-AUDIT-WORKFLOW START -->";
 const BLOCK_END = "<!-- CODEX-AUDIT-WORKFLOW END -->";
 const CUSTOMIZABLE_TARGET_PATTERNS = [
-  ".codex/skills.yaml",
   "docs/audit/WORKFLOW.md",
   "docs/audit/index.md",
   "docs/audit/glossary.md",
