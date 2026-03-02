@@ -60,7 +60,7 @@
     },
     {
       "id": "INDEX_CANONICAL_COVERAGE_MIN",
-      "key": "summary.projection.canonical_coverage_ratio",
+      "key": "summary.projection.canonical_coverage_ratio_markdown",
       "op": ">=",
       "value": 0.8,
       "severity": "warn"

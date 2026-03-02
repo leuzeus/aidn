@@ -94,6 +94,11 @@ function hasContent(row) {
   return typeof row?.content === "string" && row.content.length > 0;
 }
 
+function isMarkdownArtifact(row) {
+  const artifactPath = String(row?.path ?? "").toLowerCase();
+  return artifactPath.endsWith(".md");
+}
+
 function boolNum(value) {
   return value ? 1 : 0;
 }
@@ -150,6 +155,10 @@ function buildReport(indexData, sqlParityData, sqlParityExists, sqliteParityData
     artifacts: toCount(indexData?.artifacts),
     artifacts_with_content: Array.isArray(indexData?.artifacts) ? indexData.artifacts.filter((row) => hasContent(row)).length : 0,
     artifacts_with_canonical: Array.isArray(indexData?.artifacts) ? indexData.artifacts.filter((row) => hasCanonical(row)).length : 0,
+    artifacts_markdown: Array.isArray(indexData?.artifacts) ? indexData.artifacts.filter((row) => isMarkdownArtifact(row)).length : 0,
+    artifacts_markdown_with_canonical: Array.isArray(indexData?.artifacts)
+      ? indexData.artifacts.filter((row) => isMarkdownArtifact(row) && hasCanonical(row)).length
+      : 0,
     file_map: toCount(indexData?.file_map),
     tags: toCount(indexData?.tags),
     artifact_tags: toCount(indexData?.artifact_tags),
@@ -212,8 +221,13 @@ function buildReport(indexData, sqlParityData, sqlParityExists, sqliteParityData
       projection: {
         artifacts_with_content: actual.artifacts_with_content,
         artifacts_with_canonical: actual.artifacts_with_canonical,
+        artifacts_markdown: actual.artifacts_markdown,
+        artifacts_markdown_with_canonical: actual.artifacts_markdown_with_canonical,
         canonical_coverage_ratio: actual.artifacts > 0
           ? Number((actual.artifacts_with_canonical / actual.artifacts).toFixed(4))
+          : 0,
+        canonical_coverage_ratio_markdown: actual.artifacts_markdown > 0
+          ? Number((actual.artifacts_markdown_with_canonical / actual.artifacts_markdown).toFixed(4))
           : 0,
       },
       parity: {

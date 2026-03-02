@@ -231,6 +231,9 @@ Artifact rows now include classification fields for multi-version/hybrid reposit
 - `summary.projection.artifacts_with_content`
 - `summary.projection.artifacts_with_canonical`
 - `summary.projection.canonical_coverage_ratio`
+- `summary.projection.artifacts_markdown`
+- `summary.projection.artifacts_markdown_with_canonical`
+- `summary.projection.canonical_coverage_ratio_markdown`
 
 `INDEX_TARGETS.json` now includes canonical projection guardrails:
 - `INDEX_CANONICAL_ARTIFACTS_MIN`
