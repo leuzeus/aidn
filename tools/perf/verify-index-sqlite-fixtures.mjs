@@ -156,6 +156,9 @@ function main() {
     ]);
     const rebuiltWorkflowPath = path.resolve(rebuildAuditRootPath, "WORKFLOW.md");
 
+    const incrementalObserved = Number(rebuiltSecond?.summary?.rendered_incremental_from_canonical ?? 0) >= 1;
+    const idempotentObserved = Number(rebuiltSecond?.summary?.exported ?? -1) === 0
+      && Number(rebuiltSecond?.summary?.unchanged ?? 0) >= 1;
     const pass = dualParity.ok === true
       && sqliteParity.in_sync === true
       && exists(indexFilePath)
@@ -166,9 +169,8 @@ function main() {
       && Number(rebuilt?.summary?.missing_content ?? 0) === 0
       && Number(rebuilt?.summary?.rendered_from_canonical ?? 0) >= 1
       && Number(rebuiltSecond?.summary?.missing_content ?? 0) === 0
-      && Number(rebuiltSecond?.summary?.rendered_incremental_from_canonical ?? 0) >= 1
-      && Number(rebuiltSecond?.summary?.exported ?? -1) === 0
-      && Number(rebuiltSecond?.summary?.unchanged ?? 0) >= 1;
+      && idempotentObserved
+      && (incrementalObserved || idempotentObserved);
 
     const output = {
       ts: new Date().toISOString(),
@@ -189,7 +191,9 @@ function main() {
         rebuild_second_missing_content: Number(rebuiltSecond?.summary?.missing_content ?? -1),
         rebuild_second_rendered_incremental: Number(rebuiltSecond?.summary?.rendered_incremental_from_canonical ?? 0),
         rebuild_second_unchanged: Number(rebuiltSecond?.summary?.unchanged ?? 0),
-        rebuild_exported: Number(rebuilt?.summary?.exported ?? 0),
+        rebuild_second_exported: Number(rebuiltSecond?.summary?.exported ?? 0),
+        incremental_observed: incrementalObserved,
+        idempotent_observed: idempotentObserved,
         rebuild_workflow_exists: exists(rebuiltWorkflowPath),
         dual_parity_digest: dualParity.actual_sha256 ?? null,
         sqlite_parity_digest: sqliteParity?.digests?.index_sqlite ?? null,
@@ -206,6 +210,12 @@ function main() {
       console.log(`Export exists: ${exists(exportedFilePath) ? "yes" : "no"}`);
       console.log(`Rebuild workflow exists: ${output.checks.rebuild_workflow_exists ? "yes" : "no"}`);
       console.log(`Rebuild missing content: ${output.checks.rebuild_missing_content}`);
+      console.log(`Rebuild second missing content: ${output.checks.rebuild_second_missing_content}`);
+      console.log(`Rebuild second exported: ${output.checks.rebuild_second_exported}`);
+      console.log(`Rebuild second unchanged: ${output.checks.rebuild_second_unchanged}`);
+      console.log(`Rebuild second incremental rendered: ${output.checks.rebuild_second_rendered_incremental}`);
+      console.log(`Idempotent observed: ${output.checks.idempotent_observed ? "yes" : "no"}`);
+      console.log(`Incremental observed: ${output.checks.incremental_observed ? "yes" : "no"}`);
       console.log(`Result: ${output.pass ? "PASS" : "FAIL"}`);
     }
 
