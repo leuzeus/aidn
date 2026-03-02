@@ -113,3 +113,6 @@ KPI cible:
 - Lot 2: COMPLETED (`LOT2_PULL_FLOW_REPORT.md` publié).
 - Lot actif: Lot 3.
 - Référence baseline: `LOT0_BASELINE_REPORT.md`.
+- Progression Lot 3:
+  - couverture fixture import/export des artefacts de support (`reports/`, `migration/`, `backlog/`, `incidents`)
+  - smoke test hooks runtime `db-only` (`session-start` / `session-close`)

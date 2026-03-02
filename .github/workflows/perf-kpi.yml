@@ -115,6 +115,9 @@ jobs:
       - name: Verify State Mode Parity Fixtures
         run: npm run perf:verify-state-mode-parity
 
+      - name: Verify DB-Only Hooks Fixtures
+        run: npm run perf:verify-db-only-hooks
+
       - name: Reset Perf Runtime
         run: npm run perf:reset -- --root "$PERF_RUNTIME"
 
