@@ -52,6 +52,20 @@
       "severity": "warn"
     },
     {
+      "id": "INDEX_CANONICAL_ARTIFACTS_MIN",
+      "key": "summary.projection.artifacts_with_canonical",
+      "op": ">=",
+      "value": 1,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_CANONICAL_COVERAGE_MIN",
+      "key": "summary.projection.canonical_coverage_ratio",
+      "op": ">=",
+      "value": 0.8,
+      "severity": "warn"
+    },
+    {
       "id": "INDEX_STRUCTURE_UNKNOWN_MAX",
       "key": "summary.structure.is_unknown",
       "op": "<=",

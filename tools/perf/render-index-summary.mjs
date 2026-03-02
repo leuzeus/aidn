@@ -70,6 +70,7 @@ function buildMarkdown(report, thresholds) {
   const paritySql = report?.summary?.parity_sql ?? {};
   const paritySqlite = report?.summary?.parity_sqlite ?? {};
   const runMetrics = report?.summary?.run_metrics ?? {};
+  const projection = report?.summary?.projection ?? {};
   const structure = report?.summary?.structure ?? {};
   const thresholdStatus = thresholds?.summary?.overall_status ?? "not-generated";
   const checks = Array.isArray(thresholds?.checks) ? thresholds.checks : [];
@@ -83,6 +84,8 @@ function buildMarkdown(report, thresholds) {
   lines.push(`- Parity status: ${fmt(parity.status)}`);
   lines.push(`- Parity SQL status: ${fmt(paritySql.status)}`);
   lines.push(`- Parity SQLite status: ${fmt(paritySqlite.status)}`);
+  lines.push(`- Projection canonical coverage: ${fmt(projection.canonical_coverage_ratio)}`);
+  lines.push(`- Projection rows: with_content=${fmt(projection.artifacts_with_content)}, with_canonical=${fmt(projection.artifacts_with_canonical)}`);
   lines.push(`- Structure profile: ${fmt(structure.kind)}`);
   lines.push(`- Declared workflow version: ${fmt(structure.declared_workflow_version)}`);
   lines.push(`- Declared version stale vs structure: ${structure.declared_version_looks_stale === 1 ? "yes" : "no"}`);
