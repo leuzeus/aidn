@@ -76,6 +76,10 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Render Fixture Workflow Version
+        run: |
+          node tools/perf/render-workflow-version.mjs --file "$PERF_TARGET/docs/audit/WORKFLOW.md" --version-file VERSION
+
       - name: Verify Structure Profile Fixtures
         run: npm run perf:verify-structure
 
