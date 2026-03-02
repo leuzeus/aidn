@@ -16,6 +16,10 @@
 - Add fallback lookup for canonical threshold targets (`docs/performance/INDEX_TARGETS.json`) from package defaults when missing in client repos.
 - Fix `run-kpi-campaign` runtime path resolution so event/KPI/threshold/campaign outputs are written under `--target` and sub-scripts are resolved from package paths.
 - Extend `perf:verify-cli-aliases` fixture to validate package-mode execution from a client repo (`cwd` on target), including `aidn perf campaign`.
+- Add `aidn perf` preset threshold wrappers for package-mode workflows:
+  - `index-thresholds` (`index-report` + `INDEX_TARGETS`)
+  - `index-sync-thresholds` (`index-sync-report` + `INDEX_SYNC_TARGETS`)
+  - `check-fallbacks` (`fallback-report` + `FALLBACK_TARGETS`)
 
 ## 0.3.0
 - Extend `IndexStore` abstraction for local workflow index output with SQLite modes (`sqlite|dual-sqlite|all`) in `tools/perf/index-sync.mjs`.

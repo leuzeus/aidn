@@ -56,6 +56,7 @@ The following scripts were added under `tools/perf/`:
 - `workflow-hook.mjs` - run checkpoint from session hooks (`session-start` / `session-close`)
 - `delivery-window.mjs` - mark delivery start/end to compute overhead ratio against control time
 - `check-thresholds.mjs` - compare KPI report against versioned thresholds
+- `check-thresholds-defaults.mjs` - run threshold checks from preset defaults (`index|index-sync|fallback`) with package fallback targets
 - `check-regression.mjs` - compare latest KPI run versus rolling history median
 - `report-fallbacks.mjs` - compute fallback/storm metrics from workflow events (with warmup-adjusted metrics)
 - `run-kpi-campaign.mjs` - run repeated session/delivery cycles and emit KPI/threshold campaign summary
@@ -78,6 +79,9 @@ npx aidn perf index --target . --store all --no-content --json
 npx aidn perf index-export-files --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target . --audit-root docs/audit --render-markdown
 npx aidn perf index-canonical-check --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --targets docs/performance/INDEX_TARGETS.json --json
 npx aidn perf index-canonical-summary --check-file .aidn/runtime/index/index-canonical-check.json --out .aidn/runtime/index/index-canonical-check-summary.md
+npx aidn perf index-thresholds --target . --json
+npx aidn perf index-sync-thresholds --target . --json
+npx aidn perf check-fallbacks --target . --json
 ```
 
 Repository scripts (maintainer/dev mode):

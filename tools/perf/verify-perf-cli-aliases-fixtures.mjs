@@ -10,6 +10,8 @@ function parseArgs(argv) {
     canonicalCheckFile: ".aidn/runtime/index/fixtures/cli-aliases/index-canonical-check.json",
     canonicalSummaryFile: ".aidn/runtime/index/fixtures/cli-aliases/index-canonical-check-summary.md",
     campaignFile: ".aidn/runtime/perf/fixtures/cli-aliases/campaign-report.json",
+    fallbackReportFile: ".aidn/runtime/perf/fallback-report.json",
+    fallbackThresholdsFile: ".aidn/runtime/perf/fallback-thresholds.json",
     json: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -28,6 +30,12 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--campaign-file") {
       args.campaignFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--fallback-report-file") {
+      args.fallbackReportFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--fallback-thresholds-file") {
+      args.fallbackThresholdsFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--json") {
       args.json = true;
@@ -74,6 +82,8 @@ function main() {
     const canonicalCheckFile = path.resolve(targetRoot, args.canonicalCheckFile);
     const canonicalSummaryFile = path.resolve(targetRoot, args.canonicalSummaryFile);
     const campaignFile = path.resolve(targetRoot, args.campaignFile);
+    const fallbackReportFile = path.resolve(targetRoot, args.fallbackReportFile);
+    const fallbackThresholdsFile = path.resolve(targetRoot, args.fallbackThresholdsFile);
 
     runNodeNoJson(aidnCli, [
       "perf",
@@ -123,12 +133,35 @@ function main() {
       "--json",
     ], targetRoot);
 
+    runNodeWithJson(aidnCli, [
+      "perf",
+      "fallback-report",
+      "--file",
+      ".aidn/runtime/perf/workflow-events.ndjson",
+      "--run-prefix",
+      "session-",
+      "--out",
+      fallbackReportFile,
+      "--json",
+    ], targetRoot);
+
+    const fallbackThresholds = runNodeWithJson(aidnCli, [
+      "perf",
+      "check-fallbacks",
+      "--target",
+      ".",
+      "--json",
+    ], targetRoot);
+
     const pass = canonicalCheck?.summary?.overall_status === "pass"
       && Number(campaign?.iterations_completed ?? 0) === 1
+      && typeof fallbackThresholds?.summary?.overall_status === "string"
       && fs.existsSync(sqliteFile)
       && fs.existsSync(canonicalCheckFile)
       && fs.existsSync(canonicalSummaryFile)
-      && fs.existsSync(campaignFile);
+      && fs.existsSync(campaignFile)
+      && fs.existsSync(fallbackReportFile)
+      && fs.existsSync(fallbackThresholdsFile);
 
     const payload = {
       ts: new Date().toISOString(),
@@ -138,11 +171,14 @@ function main() {
         canonical_check_file: canonicalCheckFile,
         canonical_summary_file: canonicalSummaryFile,
         campaign_file: campaignFile,
+        fallback_report_file: fallbackReportFile,
+        fallback_thresholds_file: fallbackThresholdsFile,
       },
       checks: {
         canonical_status: canonicalCheck?.summary?.overall_status ?? null,
         canonical_markdown_coverage: canonicalCheck?.coverage?.canonical_coverage_ratio_markdown ?? null,
         campaign_iterations_completed: campaign?.iterations_completed ?? null,
+        fallback_thresholds_status: fallbackThresholds?.summary?.overall_status ?? null,
       },
       pass,
     };
