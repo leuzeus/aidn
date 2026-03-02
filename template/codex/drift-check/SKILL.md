@@ -44,7 +44,7 @@ Detect when exploration/implementation drifted and recover quickly.
 - Add IDEA-xxx suggestion for parking-lot.md
 
 7) Optional performance hook (Phase 1, recommended for instrumented repositories):
-- run `npx aidn perf gate --target . --mode COMMITTING --json`
+- run `npx aidn perf skill-hook --skill drift-check --target . --mode COMMITTING --json`
 - use L2 signals as objective drift evidence:
   - `objective_delta`
   - `scope_growth`

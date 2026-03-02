@@ -68,7 +68,7 @@ If structural/DB/security impact → force COMMITTING recommendation.
 
 Keep report concise.
 4) Optional performance hook (Phase 1, recommended for instrumented repositories):
-- run `npx aidn perf reload-check --target . --json`
+- run `npx aidn perf skill-hook --skill context-reload --target . --mode <THINKING|EXPLORING|COMMITTING> --json`
 - use this output to cross-check:
   - branch/cycle mapping
   - structure profile (`legacy|modern|mixed|unknown`)

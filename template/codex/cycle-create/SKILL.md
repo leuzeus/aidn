@@ -85,7 +85,7 @@ docs/audit/cycles/CXXX-[type]-<short-title>/
 - set `dor_state: READY` only when core gate is satisfied
 
 8) Optional performance hook (Phase 2, recommended for instrumented repositories):
-- run `npx aidn perf checkpoint --target . --mode COMMITTING --json`
+- run `npx aidn perf skill-hook --skill cycle-create --target . --mode COMMITTING --json`
 - use this output to capture:
   - reload decision and gating outcome
   - index/update summary after cycle scaffold changes

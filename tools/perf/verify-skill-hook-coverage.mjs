@@ -68,16 +68,16 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const checks = [
-      checkOne(args.root, "context-reload/SKILL.md", ["npx aidn perf reload-check --target . --json"]),
-      checkOne(args.root, "branch-cycle-audit/SKILL.md", ["npx aidn perf gate --target . --mode COMMITTING --json"]),
-      checkOne(args.root, "drift-check/SKILL.md", ["npx aidn perf gate --target . --mode COMMITTING --json"]),
-      checkOne(args.root, "start-session/SKILL.md", ["npx aidn perf session-start --target . --mode <THINKING|EXPLORING|COMMITTING>"]),
-      checkOne(args.root, "close-session/SKILL.md", ["npx aidn perf session-close --target . --mode <THINKING|EXPLORING|COMMITTING>"]),
-      checkOne(args.root, "cycle-create/SKILL.md", ["npx aidn perf checkpoint --target . --mode COMMITTING --json"]),
-      checkOne(args.root, "cycle-close/SKILL.md", ["npx aidn perf checkpoint --target . --mode COMMITTING --json"]),
-      checkOne(args.root, "promote-baseline/SKILL.md", ["npx aidn perf checkpoint --target . --mode COMMITTING --json"]),
-      checkOne(args.root, "requirements-delta/SKILL.md", ["npx aidn perf checkpoint --target . --mode COMMITTING --json"]),
-      checkOne(args.root, "convert-to-spike/SKILL.md", ["npx aidn perf checkpoint --target . --mode EXPLORING --json"]),
+      checkOne(args.root, "context-reload/SKILL.md", ["npx aidn perf skill-hook --skill context-reload --target . --mode <THINKING|EXPLORING|COMMITTING> --json"]),
+      checkOne(args.root, "branch-cycle-audit/SKILL.md", ["npx aidn perf skill-hook --skill branch-cycle-audit --target . --mode COMMITTING --json"]),
+      checkOne(args.root, "drift-check/SKILL.md", ["npx aidn perf skill-hook --skill drift-check --target . --mode COMMITTING --json"]),
+      checkOne(args.root, "start-session/SKILL.md", ["npx aidn perf skill-hook --skill start-session --target . --mode <THINKING|EXPLORING|COMMITTING> --json"]),
+      checkOne(args.root, "close-session/SKILL.md", ["npx aidn perf skill-hook --skill close-session --target . --mode <THINKING|EXPLORING|COMMITTING> --json"]),
+      checkOne(args.root, "cycle-create/SKILL.md", ["npx aidn perf skill-hook --skill cycle-create --target . --mode COMMITTING --json"]),
+      checkOne(args.root, "cycle-close/SKILL.md", ["npx aidn perf skill-hook --skill cycle-close --target . --mode COMMITTING --json"]),
+      checkOne(args.root, "promote-baseline/SKILL.md", ["npx aidn perf skill-hook --skill promote-baseline --target . --mode COMMITTING --json"]),
+      checkOne(args.root, "requirements-delta/SKILL.md", ["npx aidn perf skill-hook --skill requirements-delta --target . --mode COMMITTING --json"]),
+      checkOne(args.root, "convert-to-spike/SKILL.md", ["npx aidn perf skill-hook --skill convert-to-spike --target . --mode EXPLORING --json"]),
     ];
 
     const pass = checks.every((item) => item.ok === true);

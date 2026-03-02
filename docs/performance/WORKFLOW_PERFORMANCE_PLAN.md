@@ -29,7 +29,6 @@ Contraintes:
 Reste à finaliser:
 - validation KPI sur un corpus projet réel (au-delà des fixtures) avec fenêtre d'itérations représentative.
 - confirmation des objectifs de réduction vs baseline historique du projet cible.
-- harmonisation finale vers un wrapper unique (`perf:checkpoint`/`perf:hook`) pour réduire les variations de branchement entre skills.
 
 Dernière campagne locale de validation (fixtures, 30 itérations):
 - date: 2026-03-01

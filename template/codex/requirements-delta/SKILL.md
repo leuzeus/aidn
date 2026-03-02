@@ -63,7 +63,7 @@ Rules:
 - If on a mixed branch: recommend convert-to-spike or new cycle + new branch.
 
 7) Optional performance hook (Phase 2, recommended for instrumented repositories):
-- run `npx aidn perf checkpoint --target . --mode COMMITTING --json`
+- run `npx aidn perf skill-hook --skill requirements-delta --target . --mode COMMITTING --json`
 - use this output to capture:
   - scope drift signals after addendum/traceability updates
   - index/update summary for modified support artifacts
