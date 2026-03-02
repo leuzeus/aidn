@@ -11,6 +11,7 @@ function parseArgs(argv) {
     canonicalSummaryFile: ".aidn/runtime/index/fixtures/cli-aliases/index-canonical-check-summary.md",
     campaignFile: ".aidn/runtime/perf/fixtures/cli-aliases/campaign-report.json",
     fallbackReportFile: ".aidn/runtime/perf/fallback-report.json",
+    fallbackPassFile: ".aidn/runtime/perf/fixtures/cli-aliases/fallback-pass.json",
     fallbackThresholdsFile: ".aidn/runtime/perf/fallback-thresholds.json",
     json: false,
   };
@@ -33,6 +34,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--fallback-report-file") {
       args.fallbackReportFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--fallback-pass-file") {
+      args.fallbackPassFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--fallback-thresholds-file") {
       args.fallbackThresholdsFile = argv[i + 1] ?? "";
@@ -83,6 +87,7 @@ function main() {
     const canonicalSummaryFile = path.resolve(targetRoot, args.canonicalSummaryFile);
     const campaignFile = path.resolve(targetRoot, args.campaignFile);
     const fallbackReportFile = path.resolve(targetRoot, args.fallbackReportFile);
+    const fallbackPassFile = path.resolve(targetRoot, args.fallbackPassFile);
     const fallbackThresholdsFile = path.resolve(targetRoot, args.fallbackThresholdsFile);
 
     runNodeNoJson(aidnCli, [
@@ -145,11 +150,26 @@ function main() {
       "--json",
     ], targetRoot);
 
+    fs.mkdirSync(path.dirname(fallbackPassFile), { recursive: true });
+    fs.writeFileSync(fallbackPassFile, `${JSON.stringify({
+      ts: new Date().toISOString(),
+      summary: {
+        runs_analyzed: 1,
+        adjusted_fallback_total: 0,
+        adjusted_storm_runs: 0,
+        l3_repeated_fallback: 0,
+      },
+    }, null, 2)}\n`, "utf8");
+
     const fallbackThresholds = runNodeWithJson(aidnCli, [
       "perf",
       "check-fallbacks",
       "--target",
       ".",
+      "--kpi-file",
+      fallbackPassFile,
+      "--out",
+      fallbackThresholdsFile,
       "--json",
     ], targetRoot);
 
@@ -172,6 +192,7 @@ function main() {
         canonical_summary_file: canonicalSummaryFile,
         campaign_file: campaignFile,
         fallback_report_file: fallbackReportFile,
+        fallback_pass_file: fallbackPassFile,
         fallback_thresholds_file: fallbackThresholdsFile,
       },
       checks: {
