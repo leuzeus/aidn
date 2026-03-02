@@ -77,6 +77,11 @@ Notes:
 - If `codex_online: true`, installer also requires Codex authentication (`codex login`).
 - Compatibility policy and machine prereq result are printed in installer output (`Compatibility policy`, `Prereq check`).
 - `.codex/skills.yaml` is rendered with the current workflow version tag (template `v{{VERSION}}`, rendered at install time using the `VERSION` file) and points to `https://github.com/leuzeus/aidn`.
+- Placeholder policy:
+  - installer resolves placeholders across copied templates (not only `{{VERSION}}`),
+  - for files created for the first time, missing values are requested interactively,
+  - when non-interactive, missing values are auto-filled with safe defaults (for example `TO_DEFINE`),
+  - placeholders already present in project files are inferred and reused during updates/migrations.
 - `AGENTS.md` non-interference policy:
   - if target `AGENTS.md` already exists, installer preserves it by default (no merge),
   - in `--assist`, preserving existing `AGENTS.md` is enforced by default,

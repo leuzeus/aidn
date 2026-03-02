@@ -600,6 +600,195 @@ function renderTemplateVariables(content, templateVars) {
   return rendered;
 }
 
+function extractPlaceholders(content) {
+  const matches = String(content).matchAll(/\{\{([A-Z0-9_]+)\}\}/g);
+  const out = new Set();
+  for (const match of matches) {
+    out.add(String(match[1]));
+  }
+  return Array.from(out).sort((a, b) => a.localeCompare(b));
+}
+
+function sanitizeExtractedValue(value) {
+  const text = String(value ?? "").trim().replace(/^`+|`+$/g, "");
+  if (!text || /\{\{[A-Z0-9_]+\}\}/.test(text)) {
+    return "";
+  }
+  return text;
+}
+
+function readKeyValuePlaceholders(text) {
+  const out = {};
+  const lines = String(text).replace(/\r\n/g, "\n").split("\n");
+  for (const line of lines) {
+    const match = line.match(/^([a-z_][a-z0-9_]*)\s*:\s*(.+)$/i);
+    if (!match) {
+      continue;
+    }
+    const key = String(match[1]).trim().toUpperCase();
+    const value = sanitizeExtractedValue(match[2]);
+    if (!value) {
+      continue;
+    }
+    out[key] = value;
+  }
+  return out;
+}
+
+function readWorkflowSpecificPlaceholders(text) {
+  const out = {};
+  const patterns = [
+    { key: "RUNTIME_CONSTRAINTS", re: /Runtime\/platform constraints:\s*`([^`]+)`/i },
+    { key: "ARCH_CONSTRAINTS", re: /Architecture constraints:\s*`([^`]+)`/i },
+    { key: "DEPENDENCY_CONSTRAINTS", re: /Dependency\/data constraints:\s*`([^`]+)`/i },
+    { key: "DELIVERY_CONSTRAINTS", re: /Delivery constraints .*?:\s*`([^`]+)`/i },
+    { key: "GENERATED_ARTIFACT_CONSTRAINTS", re: /Generated artifact constraints:\s*`([^`]+)`/i },
+    { key: "TEST_REGRESSION_CONSTRAINTS", re: /Testing\/regression constraints:\s*`([^`]+)`/i },
+    { key: "DOR_POLICY", re: /DoR policy:\s*`([^`]+)`/i },
+    { key: "SNAPSHOT_TRIGGER", re: /Snapshot update trigger:\s*`([^`]+)`/i },
+    { key: "SNAPSHOT_OWNER", re: /Snapshot owner:\s*`([^`]+)`/i },
+    { key: "SNAPSHOT_FRESHNESS_RULE", re: /Freshness rule before commit\/review:\s*`([^`]+)`/i },
+    { key: "PARKING_LOT_RULE", re: /Parking lot rule .*?:\s*`([^`]+)`/i },
+  ];
+  for (const item of patterns) {
+    const match = String(text).match(item.re);
+    if (!match) {
+      continue;
+    }
+    const value = sanitizeExtractedValue(match[1]);
+    if (value) {
+      out[item.key] = value;
+    }
+  }
+  return out;
+}
+
+function collectPlaceholderValuesFromText(text) {
+  return {
+    ...readKeyValuePlaceholders(text),
+    ...readWorkflowSpecificPlaceholders(text),
+  };
+}
+
+function collectExistingPlaceholderValues(targetRoot) {
+  const out = {};
+  const candidates = [
+    path.join(targetRoot, "docs", "audit", "WORKFLOW.md"),
+    path.join(targetRoot, "docs", "audit", "baseline", "current.md"),
+    path.join(targetRoot, ".codex", "skills.yaml"),
+  ];
+
+  for (const filePath of candidates) {
+    if (!fs.existsSync(filePath)) {
+      continue;
+    }
+    const text = readUtf8(filePath);
+    Object.assign(out, collectPlaceholderValuesFromText(text));
+    if (filePath.toLowerCase().endsWith(path.join("docs", "audit", "workflow.md").toLowerCase())) {
+      Object.assign(out, readWorkflowSpecificPlaceholders(text));
+    }
+    if (filePath.toLowerCase().endsWith(path.join(".codex", "skills.yaml").toLowerCase())) {
+      const versionMatch = text.match(/ref:\s*"v([^"]+)"/i);
+      if (versionMatch && sanitizeExtractedValue(versionMatch[1])) {
+        out.VERSION = sanitizeExtractedValue(versionMatch[1]);
+      }
+    }
+  }
+
+  return out;
+}
+
+function suggestPlaceholderValue(name, targetRoot, templateVars) {
+  if (name === "PROJECT_NAME") {
+    return path.basename(targetRoot);
+  }
+  if (name === "SOURCE_BRANCH") {
+    const result = spawnSync("git", ["-C", targetRoot, "branch", "--show-current"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    const branch = sanitizeExtractedValue(result.stdout);
+    return branch || "main";
+  }
+  if (name === "VERSION") {
+    return sanitizeExtractedValue(templateVars.VERSION) || "0.0.0";
+  }
+  return "TO_DEFINE";
+}
+
+async function resolveMissingPlaceholdersForCopyOp({
+  sourcePath,
+  targetPath,
+  skipSources,
+  templateVars,
+  targetRoot,
+  dryRun,
+  summary,
+}) {
+  const missing = new Set();
+
+  function visit(sourceItem, targetItem) {
+    const absoluteSource = path.resolve(sourceItem);
+    if (skipSources && skipSources.has(absoluteSource)) {
+      return;
+    }
+    const stat = fs.statSync(sourceItem);
+    if (stat.isDirectory()) {
+      const entries = fs.readdirSync(sourceItem, { withFileTypes: true });
+      entries.sort((a, b) => a.name.localeCompare(b.name));
+      for (const entry of entries) {
+        visit(path.join(sourceItem, entry.name), path.join(targetItem, entry.name));
+      }
+      return;
+    }
+
+    if (!shouldRenderTemplate(sourceItem)) {
+      return;
+    }
+    if (fs.existsSync(targetItem)) {
+      return;
+    }
+    const placeholders = extractPlaceholders(readUtf8(sourceItem));
+    for (const placeholder of placeholders) {
+      if (!Object.prototype.hasOwnProperty.call(templateVars, placeholder) || !String(templateVars[placeholder]).trim()) {
+        missing.add(placeholder);
+      }
+    }
+  }
+
+  visit(sourcePath, targetPath);
+  if (missing.size === 0) {
+    return;
+  }
+
+  const ordered = Array.from(missing).sort((a, b) => a.localeCompare(b));
+  const canAsk = input.isTTY && !dryRun;
+  let rl = null;
+  if (canAsk) {
+    rl = readline.createInterface({ input, output });
+  }
+
+  try {
+    for (const placeholder of ordered) {
+      const defaultValue = suggestPlaceholderValue(placeholder, targetRoot, templateVars);
+      let resolved = defaultValue;
+      if (canAsk) {
+        const answer = await rl.question(`Value for {{${placeholder}}} [${defaultValue}]: `);
+        resolved = answer.trim() || defaultValue;
+        summary.placeholderPrompted += 1;
+      } else {
+        summary.placeholderAutoFilled += 1;
+      }
+      templateVars[placeholder] = resolved;
+      console.log(`${dryRun ? "[dry-run] " : ""}placeholder {{${placeholder}}} -> ${resolved}`);
+    }
+  } finally {
+    if (rl) {
+      rl.close();
+    }
+  }
+}
+
 function shouldRenderTemplate(sourcePath) {
   const base = path.basename(sourcePath).toLowerCase();
   const ext = path.extname(sourcePath).toLowerCase();
@@ -622,11 +811,38 @@ function copyFile(sourcePath, targetPath, dryRun, templateVars = null, options =
     let differsFromTemplate = true;
     if (shouldRenderTemplate(sourcePath)) {
       const sourceText = readUtf8(sourcePath);
-      sourceRendered = renderTemplateVariables(sourceText, templateVars);
-      if (sourceText.includes("{{VERSION}}") && sourceRendered.includes("{{VERSION}}")) {
-        throw new Error(`Unresolved {{VERSION}} placeholder in copied file: ${sourcePath}`);
-      }
       const targetText = readUtf8(targetPath);
+      const effectiveVars = { ...(templateVars ?? {}) };
+
+      sourceRendered = renderTemplateVariables(sourceText, effectiveVars);
+      let unresolved = extractPlaceholders(sourceRendered);
+      if (unresolved.length > 0) {
+        const inferred = collectPlaceholderValuesFromText(targetText);
+        for (const [key, value] of Object.entries(inferred)) {
+          if (!effectiveVars[key] || !String(effectiveVars[key]).trim()) {
+            effectiveVars[key] = value;
+          }
+        }
+        for (const placeholder of unresolved) {
+          if (!effectiveVars[placeholder] || !String(effectiveVars[placeholder]).trim()) {
+            effectiveVars[placeholder] = suggestPlaceholderValue(placeholder, targetRoot ?? process.cwd(), effectiveVars);
+          }
+        }
+        sourceRendered = renderTemplateVariables(sourceText, effectiveVars);
+        unresolved = extractPlaceholders(sourceRendered);
+      }
+      if (templateVars) {
+        for (const [key, value] of Object.entries(effectiveVars)) {
+          if (!templateVars[key] || !String(templateVars[key]).trim()) {
+            templateVars[key] = value;
+          }
+        }
+      }
+      if (unresolved.length > 0) {
+        throw new Error(
+          `Unresolved placeholders in preserved-file template render (${sourcePath}): ${unresolved.join(", ")}`,
+        );
+      }
       differsFromTemplate = targetText !== sourceRendered;
     }
     if (typeof options.onPreservedCustomFile === "function") {
@@ -642,16 +858,22 @@ function copyFile(sourcePath, targetPath, dryRun, templateVars = null, options =
   }
 
   ensureDir(path.dirname(targetPath), dryRun);
-  if (dryRun) {
-    return;
-  }
   if (shouldRenderTemplate(sourcePath)) {
     const content = readUtf8(sourcePath);
     const rendered = renderTemplateVariables(content, templateVars);
-    if (content.includes("{{VERSION}}") && rendered.includes("{{VERSION}}")) {
-      throw new Error(`Unresolved {{VERSION}} placeholder in copied file: ${sourcePath}`);
+    const unresolved = extractPlaceholders(rendered);
+    if (unresolved.length > 0) {
+      throw new Error(
+        `Unresolved placeholders in copied file (${sourcePath} -> ${targetPath}): ${unresolved.join(", ")}`,
+      );
+    }
+    if (dryRun) {
+      return;
     }
     writeUtf8(targetPath, rendered, dryRun);
+    return;
+  }
+  if (dryRun) {
     return;
   }
   fs.copyFileSync(sourcePath, targetPath);
@@ -693,7 +915,8 @@ function buildCodexMigrationPrompt(relativeTargetPath, sourceRendered) {
     "Instructions:",
     "- Keep project-specific customizations and local decisions.",
     "- Integrate missing structure or guardrails from the provided updated template when relevant.",
-    "- Do not introduce placeholders unless already required by local conventions.",
+    "- The updated template already contains resolved metadata placeholders; preserve equivalent local values.",
+    "- Do not re-introduce unresolved placeholders.",
     "- Preserve valid syntax and readability.",
     "- Edit only the target file and save it.",
     "",
@@ -981,14 +1204,7 @@ function getWorkflowPlaceholders(targetRoot) {
     return [];
   }
   const content = readUtf8(workflowPath);
-  const placeholders = [];
-  if (content.includes("{{PROJECT_NAME}}")) {
-    placeholders.push("{{PROJECT_NAME}}");
-  }
-  if (content.includes("{{SOURCE_BRANCH}}")) {
-    placeholders.push("{{SOURCE_BRANCH}}");
-  }
-  return placeholders;
+  return extractPlaceholders(content).map((name) => `{{${name}}}`);
 }
 
 async function main() {
@@ -998,7 +1214,9 @@ async function main() {
     const repoRoot = path.resolve(scriptDir, "..");
     const targetRoot = path.resolve(process.cwd(), args.target);
     const version = readUtf8(path.join(repoRoot, "VERSION")).trim();
+    const inferredTemplateVars = collectExistingPlaceholderValues(targetRoot);
     const templateVars = {
+      ...inferredTemplateVars,
       VERSION: version,
     };
     const workflowManifestPath = path.join(
@@ -1044,6 +1262,8 @@ async function main() {
       preservedCustom: 0,
       migratedCustom: 0,
       migrationFailed: 0,
+      placeholderPrompted: 0,
+      placeholderAutoFilled: 0,
     };
     const preservedCustomCandidates = [];
 
@@ -1057,6 +1277,9 @@ async function main() {
     console.log(
       `Custom-file policy: preserve=${CUSTOMIZABLE_TARGET_PATTERNS.length} patterns, codex_migrate=${args.codexMigrateCustom ? "enabled" : "disabled"}`,
     );
+    if (Object.keys(inferredTemplateVars).length > 0) {
+      console.log(`Placeholder inference: loaded ${Object.keys(inferredTemplateVars).length} values from existing project files`);
+    }
     if (args.dryRun) {
       console.log("Mode: dry-run");
     } else if (args.verifyOnly) {
@@ -1089,10 +1312,21 @@ async function main() {
           if (!fs.existsSync(sourcePath)) {
             throw new Error(`Copy source does not exist: ${op.from}`);
           }
+
+          const sourceStat = fs.statSync(sourcePath);
+          await resolveMissingPlaceholdersForCopyOp({
+            sourcePath,
+            targetPath,
+            skipSources: sourceStat.isDirectory() ? explicitFileSources : null,
+            templateVars,
+            targetRoot,
+            dryRun: args.dryRun,
+            summary,
+          });
+
           console.log(
             `${args.dryRun ? "[dry-run] " : ""}copy ${op.from} -> ${op.to} (pack ${packName})`,
           );
-          const sourceStat = fs.statSync(sourcePath);
           const copyPolicy = {
             targetRoot,
             preserveCustomizableFiles: true,
@@ -1240,6 +1474,8 @@ async function main() {
     console.log(`preserved_custom: ${summary.preservedCustom}`);
     console.log(`migrated_custom: ${summary.migratedCustom}`);
     console.log(`migration_failed: ${summary.migrationFailed}`);
+    console.log(`placeholder_prompted: ${summary.placeholderPrompted}`);
+    console.log(`placeholder_autofilled: ${summary.placeholderAutoFilled}`);
     console.log(`verified: ${verification.ok ? "OK" : "FAIL"}`);
 
     if (!verification.ok && (args.verifyOnly || !args.dryRun)) {

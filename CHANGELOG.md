@@ -11,6 +11,7 @@
 - Make `index-sync --kpi-file` resolution backward-compatible: prefer `--target` path, fallback to current working directory when only global CI/runtime KPI file exists.
 - Align `perf-kpi` CI runtime paths with fixture target runtime (`tests/fixtures/repo-installed-core/.aidn/runtime/*`) to avoid root-runtime path mismatches.
 - Fix `delivery-window` to resolve event/state/run-id files relative to `--target` (same runtime location as session hooks).
+- Expand installer placeholder handling: infer values from existing project files, prompt for missing values on first install, and auto-fill safe defaults in non-interactive runs.
 
 ## 0.3.0
 - Extend `IndexStore` abstraction for local workflow index output with SQLite modes (`sqlite|dual-sqlite|all`) in `tools/perf/index-sync.mjs`.
