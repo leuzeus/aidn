@@ -33,6 +33,7 @@ function parseArgs(argv) {
     indexSyncCheck: false,
     indexSyncCheckStrict: false,
     indexSyncCheckOut: ".aidn/runtime/index/index-sync-check.json",
+    startLightGate: true,
     strict: false,
     json: false,
   };
@@ -83,6 +84,10 @@ function parseArgs(argv) {
     } else if (token === "--index-sync-check-out") {
       args.indexSyncCheckOut = argv[i + 1] ?? "";
       i += 1;
+    } else if (token === "--start-light-gate") {
+      args.startLightGate = true;
+    } else if (token === "--full-start-gate") {
+      args.startLightGate = false;
     } else if (token === "--strict") {
       args.strict = true;
     } else if (token === "--json") {
@@ -144,6 +149,7 @@ function printUsage() {
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --index-kpi-file .aidn/runtime/perf/kpi-report.json");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --index-sync-check");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --run-id-file .aidn/runtime/perf/current-run-id.txt");
+  console.log("  node tools/perf/workflow-hook.mjs --phase session-start --full-start-gate");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --strict");
 }
 
@@ -155,7 +161,7 @@ function appendEvent(eventFile, payload) {
 }
 
 function toRunId(prefix) {
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  const stamp = new Date().toISOString().replace(/[-:.TZ]/g, "");
   return `${prefix}-${stamp}`;
 }
 
@@ -212,6 +218,9 @@ function runCheckpoint(targetRoot, mode, runId, indexOptions = {}) {
   }
   if (indexOptions.syncCheckOut) {
     cmd.push("--index-sync-check-out", indexOptions.syncCheckOut);
+  }
+  if (indexOptions.skipGateEvaluate === true) {
+    cmd.push("--skip-gate-evaluate");
   }
   cmd.push("--json");
 
@@ -309,6 +318,7 @@ function main() {
         syncCheck: args.indexSyncCheck,
         syncCheckStrict: args.indexSyncCheckStrict,
         syncCheckOut: indexSyncCheckOutPath,
+        skipGateEvaluate: args.phase === "session-start" && args.startLightGate,
       });
     } catch (error) {
       checkpointError = error;

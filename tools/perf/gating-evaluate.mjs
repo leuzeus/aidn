@@ -23,6 +23,9 @@ function parseArgs(argv) {
     thresholdMinutes: 45,
     mode: "COMMITTING",
     runId: "",
+    reloadDecision: "",
+    reloadFallback: "",
+    reloadReasonCodes: "",
     emitEvent: true,
     json: false,
   };
@@ -71,6 +74,15 @@ function parseArgs(argv) {
     } else if (token === "--run-id") {
       args.runId = argv[i + 1] ?? "";
       i += 1;
+    } else if (token === "--reload-decision") {
+      args.reloadDecision = String(argv[i + 1] ?? "").trim().toLowerCase();
+      i += 1;
+    } else if (token === "--reload-fallback") {
+      args.reloadFallback = String(argv[i + 1] ?? "").trim().toLowerCase();
+      i += 1;
+    } else if (token === "--reload-reason-codes") {
+      args.reloadReasonCodes = String(argv[i + 1] ?? "").trim();
+      i += 1;
     } else if (token === "--no-emit-event") {
       args.emitEvent = false;
     } else if (token === "--json") {
@@ -101,6 +113,12 @@ function parseArgs(argv) {
   if (!["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"].includes(args.mode)) {
     throw new Error("Invalid --mode. Expected THINKING|EXPLORING|COMMITTING|UNKNOWN");
   }
+  if (args.reloadDecision && !["incremental", "full", "stop"].includes(args.reloadDecision)) {
+    throw new Error("Invalid --reload-decision. Expected incremental|full|stop");
+  }
+  if (args.reloadFallback && !["true", "false"].includes(args.reloadFallback)) {
+    throw new Error("Invalid --reload-fallback. Expected true|false");
+  }
   return args;
 }
 
@@ -112,7 +130,28 @@ function printUsage() {
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client --index-sync-check-file .aidn/runtime/index/index-sync-check.json");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client --state-mode db-only --index-file .aidn/runtime/index/workflow-index.sqlite");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client --run-id S072-20260301T1012Z");
+  console.log("  node tools/perf/gating-evaluate.mjs --target ../client --reload-decision incremental --reload-fallback false --reload-reason-codes \"\"");
   console.log("  node tools/perf/gating-evaluate.mjs --json");
+}
+
+function parseReloadReasonCodes(value) {
+  if (!value) {
+    return [];
+  }
+  if (value.trim().startsWith("[")) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item)).filter((item) => item.length > 0);
+      }
+    } catch {
+      // fall back to comma-separated parsing
+    }
+  }
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
 }
 
 function runReloadCheck(targetRoot, cachePath, stateMode, indexFile, indexBackend) {
@@ -236,18 +275,40 @@ function getActiveCycleGoal(targetRoot) {
 }
 
 function getChangedFiles(targetRoot) {
+  const changed = new Set();
   try {
-    const output = execSync(`git -C "${targetRoot}" diff --name-only --relative HEAD~1 HEAD`, {
+    const outputWorking = execSync(`git -C "${targetRoot}" diff --name-only --relative HEAD`, {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
-    if (!output) {
-      return [];
+    if (outputWorking) {
+      for (const line of outputWorking.split(/\r?\n/)) {
+        const file = line.trim();
+        if (file) {
+          changed.add(file);
+        }
+      }
     }
-    return output.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   } catch {
-    return [];
+    // ignore and continue with other probes
   }
+  try {
+    const outputStaged = execSync(`git -C "${targetRoot}" diff --name-only --relative --cached HEAD`, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    if (outputStaged) {
+      for (const line of outputStaged.split(/\r?\n/)) {
+        const file = line.trim();
+        if (file) {
+          changed.add(file);
+        }
+      }
+    }
+  } catch {
+    // ignore and keep best-effort result
+  }
+  return Array.from(changed).sort((a, b) => a.localeCompare(b));
 }
 
 function readNdjson(filePath) {
@@ -301,17 +362,24 @@ function detectSignals(targetRoot, args, reloadResult) {
     structure_mixed: false,
     index_sync_drift: false,
   };
+  const noChangeFastPath = reloadResult.decision === "incremental"
+    && reloadResult.fallback !== true
+    && Array.isArray(reloadResult.reason_codes)
+    && reloadResult.reason_codes.length === 0
+    && changedFiles.length === 0;
 
-  if (sessionObjective && cycleGoal) {
+  if (!noChangeFastPath && sessionObjective && cycleGoal) {
     const left = sessionObjective.toLowerCase().trim();
     const right = cycleGoal.toLowerCase().trim();
     signal.objective_delta = left !== right && !left.includes(right) && !right.includes(left);
   }
 
-  signal.scope_growth = changedFiles.length > args.thresholdFiles;
-  signal.cross_domain_touch = changedFiles.some((file) =>
-    /(db|database|schema|migration|auth|security|api)/i.test(file),
-  );
+  if (!noChangeFastPath) {
+    signal.scope_growth = changedFiles.length > args.thresholdFiles;
+    signal.cross_domain_touch = changedFiles.some((file) =>
+      /(db|database|schema|migration|auth|security|api)/i.test(file),
+    );
+  }
 
   const driftEvents = events.filter((event) => String(event.skill ?? "") === "drift-check");
   const latestDrift = driftEvents
@@ -319,7 +387,7 @@ function detectSignals(targetRoot, args, reloadResult) {
     .filter((ms) => ms != null)
     .sort((a, b) => b - a)[0] ?? null;
 
-  if (args.mode === "COMMITTING") {
+  if (!noChangeFastPath && args.mode === "COMMITTING") {
     if (latestDrift == null) {
       signal.time_since_last_drift_check = true;
     } else {
@@ -328,10 +396,12 @@ function detectSignals(targetRoot, args, reloadResult) {
     }
   }
 
-  signal.uncertain_intent = !sessionObjective || sessionObjective.trim().length < 15;
-  signal.structure_mixed = (reloadResult.reason_codes ?? []).some((code) =>
-    code === "STRUCTURE_MIXED_PROFILE" || code === "STRUCTURE_PROFILE_UNKNOWN" || code === "DECLARED_VERSION_STALE",
-  );
+  if (!noChangeFastPath) {
+    signal.uncertain_intent = !sessionObjective || sessionObjective.trim().length < 15;
+    signal.structure_mixed = (reloadResult.reason_codes ?? []).some((code) =>
+      code === "STRUCTURE_MIXED_PROFILE" || code === "STRUCTURE_PROFILE_UNKNOWN" || code === "DECLARED_VERSION_STALE",
+    );
+  }
   const indexSyncCheck = readJsonOptional(args.indexSyncCheckFile);
   const indexSyncPayload = indexSyncCheck.data;
   const indexSyncInSync = indexSyncPayload?.in_sync === true;
@@ -428,6 +498,10 @@ function appendEvent(eventFile, payload) {
   return absolute;
 }
 
+function compactRunStamp() {
+  return new Date().toISOString().replace(/[-:.TZ]/g, "");
+}
+
 function resolveTargetPath(targetRoot, candidatePath) {
   if (path.isAbsolute(candidatePath)) {
     return candidatePath;
@@ -483,33 +557,43 @@ function main() {
     if (args.stateMode !== "files") {
       args.indexFile = resolveTargetPath(targetRoot, args.indexFile);
     }
-    const reload = runReloadCheck(
-      targetRoot,
-      args.cache,
-      args.stateMode,
-      args.indexFile,
-      args.indexBackend,
-    );
+    let reload = null;
+    if (args.reloadDecision) {
+      reload = {
+        decision: args.reloadDecision,
+        fallback: args.reloadFallback === "true",
+        reason_codes: parseReloadReasonCodes(args.reloadReasonCodes),
+      };
+    } else {
+      reload = runReloadCheck(
+        targetRoot,
+        args.cache,
+        args.stateMode,
+        args.indexFile,
+        args.indexBackend,
+      );
+    }
     const levels = detectSignals(targetRoot, args, reload);
     const decision = deriveAction(levels);
 
-    const result = {
-      ts: new Date().toISOString(),
-      mode: args.mode,
-      state_mode: args.stateMode,
-      target_root: targetRoot,
-      branch: getCurrentBranch(targetRoot),
-      action: decision.action,
-      result: decision.result,
-      reason_code: decision.reason_code,
-      levels,
-      duration_ms: Date.now() - started,
-    };
+  const result = {
+    ts: new Date().toISOString(),
+    mode: args.mode,
+    state_mode: args.stateMode,
+    target_root: targetRoot,
+    branch: getCurrentBranch(targetRoot),
+    action: decision.action,
+    result: decision.result,
+    reason_code: decision.reason_code,
+    gates_triggered: decision.gates_triggered,
+    levels,
+    duration_ms: Date.now() - started,
+  };
 
     if (args.emitEvent) {
       const eventPayload = {
         ts: result.ts,
-        run_id: args.runId || `gate-${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z")}`,
+        run_id: args.runId || `gate-${compactRunStamp()}`,
         session_id: null,
         cycle_id: null,
         branch: result.branch,

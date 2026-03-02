@@ -37,6 +37,8 @@ function parseArgs(argv) {
     runId: "",
     json: false,
     emitSummaryEvent: true,
+    skipIndexOnIncremental: true,
+    skipGateEvaluate: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -89,6 +91,12 @@ function parseArgs(argv) {
       args.json = true;
     } else if (token === "--no-summary-event") {
       args.emitSummaryEvent = false;
+    } else if (token === "--skip-index-on-incremental") {
+      args.skipIndexOnIncremental = true;
+    } else if (token === "--no-skip-index-on-incremental") {
+      args.skipIndexOnIncremental = false;
+    } else if (token === "--skip-gate-evaluate") {
+      args.skipGateEvaluate = true;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -147,6 +155,8 @@ function printUsage() {
   console.log("  node tools/perf/checkpoint.mjs --target ../client --index-kpi-file .aidn/runtime/perf/kpi-report.json");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --index-sync-check");
   console.log("  node tools/perf/checkpoint.mjs --target ../client --index-sync-check-strict");
+  console.log("  node tools/perf/checkpoint.mjs --target ../client --no-skip-index-on-incremental");
+  console.log("  node tools/perf/checkpoint.mjs --target ../client --skip-gate-evaluate");
   console.log("  node tools/perf/checkpoint.mjs --json");
 }
 
@@ -169,7 +179,7 @@ function appendEvent(eventFile, event) {
 }
 
 function toIsoNowCompact() {
-  return new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  return new Date().toISOString().replace(/[-:.TZ]/g, "");
 }
 
 function writeJsonFile(filePath, payload) {
@@ -177,6 +187,28 @@ function writeJsonFile(filePath, payload) {
   fs.mkdirSync(path.dirname(absolute), { recursive: true });
   fs.writeFileSync(absolute, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
   return absolute;
+}
+
+function indexOutputsExistForStore(args, indexOutputPath, indexSqlOutputPath, indexSqliteOutputPath) {
+  if (args.indexStore === "file") {
+    return fs.existsSync(indexOutputPath);
+  }
+  if (args.indexStore === "sql") {
+    return fs.existsSync(indexSqlOutputPath);
+  }
+  if (args.indexStore === "dual") {
+    return fs.existsSync(indexOutputPath) && fs.existsSync(indexSqlOutputPath);
+  }
+  if (args.indexStore === "sqlite") {
+    return fs.existsSync(indexSqliteOutputPath);
+  }
+  if (args.indexStore === "dual-sqlite") {
+    return fs.existsSync(indexOutputPath) && fs.existsSync(indexSqliteOutputPath);
+  }
+  if (args.indexStore === "all") {
+    return fs.existsSync(indexOutputPath) && fs.existsSync(indexSqlOutputPath) && fs.existsSync(indexSqliteOutputPath);
+  }
+  return false;
 }
 
 function resolveTargetPath(targetRoot, candidatePath) {
@@ -263,49 +295,114 @@ function main() {
     const reload = runToolJson("reload-check.mjs", reloadArgs);
     const reloadDurationMs = Date.now() - reloadStarted;
 
-    const gateStarted = Date.now();
-    const gateArgs = [
-      "--target",
-      targetRoot,
-      "--cache",
-      cachePath,
-      "--event-file",
-      eventFilePath,
-      "--mode",
-      args.mode,
-      "--state-mode",
-      args.stateMode,
-      "--json",
-    ];
-    if (args.stateMode !== "files") {
-      gateArgs.push("--index-file", reloadIndex.indexFile, "--index-backend", reloadIndex.indexBackend);
-    }
-    if (args.runId) {
-      gateArgs.push("--run-id", args.runId);
-    }
-    const gate = runToolJson("gating-evaluate.mjs", gateArgs);
-    const gateDurationMs = Date.now() - gateStarted;
-
-    const indexStarted = Date.now();
-    const indexArgs = ["--target", targetRoot, "--store", args.indexStore, "--output", indexOutputPath];
-    if (args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "all") {
-      indexArgs.push("--sql-output", indexSqlOutputPath);
-    }
-    if (args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all") {
-      indexArgs.push("--sqlite-output", indexSqliteOutputPath);
-    }
-    if (args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all") {
-      indexArgs.push("--schema-file", args.indexSchemaFile);
-      if (!args.indexIncludeSchema) {
-        indexArgs.push("--no-schema");
+    let gate = {
+      action: "proceed_l1_fast_checks_only",
+      result: "ok",
+      reason_code: null,
+      gates_triggered: [],
+      levels: {
+        level1: {
+          decision: reload.decision,
+          fallback: reload.fallback,
+          reason_codes: reload.reason_codes ?? [],
+        },
+        level2: {
+          required: false,
+          active_signals: [],
+          critical_signals: [],
+          changed_files_count: 0,
+          changed_files_sample: [],
+          index_sync_check_file: null,
+          index_sync_check_exists: false,
+          index_sync_target_match: false,
+          index_sync_in_sync: null,
+        },
+        level3: {
+          required: false,
+          reason: null,
+          fallback_recent_count: 0,
+          index_sync_drift_level: null,
+        },
+      },
+    };
+    let gateDurationMs = 0;
+    if (!args.skipGateEvaluate) {
+      const gateStarted = Date.now();
+      const gateArgs = [
+        "--target",
+        targetRoot,
+        "--cache",
+        cachePath,
+        "--event-file",
+        eventFilePath,
+        "--mode",
+        args.mode,
+        "--state-mode",
+        args.stateMode,
+        "--reload-decision",
+        String(reload.decision ?? "incremental"),
+        "--reload-fallback",
+        reload.fallback ? "true" : "false",
+        "--reload-reason-codes",
+        JSON.stringify(Array.isArray(reload.reason_codes) ? reload.reason_codes : []),
+        "--json",
+      ];
+      if (args.stateMode !== "files") {
+        gateArgs.push("--index-file", reloadIndex.indexFile, "--index-backend", reloadIndex.indexBackend);
       }
+      if (args.runId) {
+        gateArgs.push("--run-id", args.runId);
+      }
+      gate = runToolJson("gating-evaluate.mjs", gateArgs);
+      gateDurationMs = Date.now() - gateStarted;
     }
-    if (args.indexKpiFile) {
-      indexArgs.push("--kpi-file", args.indexKpiFile);
+
+    const hasIndexOutputs = indexOutputsExistForStore(args, indexOutputPath, indexSqlOutputPath, indexSqliteOutputPath);
+    const hasIndexFileForSyncCheck = !args.indexSyncCheck || fs.existsSync(indexOutputPath);
+    const shouldSkipIndex = args.skipIndexOnIncremental
+      && reload.decision === "incremental"
+      && reload.fallback !== true
+      && !args.indexKpiFile
+      && hasIndexOutputs
+      && hasIndexFileForSyncCheck;
+    let indexDurationMs = 0;
+    let index = {
+      ts: new Date().toISOString(),
+      target_root: targetRoot,
+      store: args.indexStore,
+      state_mode: args.stateMode,
+      skipped: true,
+      skip_reason: "SKIPPED_NO_RELOAD_SIGNAL",
+      outputs: [],
+      writes: {
+        files_written_count: 0,
+        bytes_written: 0,
+      },
+    };
+    if (!shouldSkipIndex) {
+      const indexStarted = Date.now();
+      const indexArgs = ["--target", targetRoot, "--store", args.indexStore, "--output", indexOutputPath];
+      if (args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "all") {
+        indexArgs.push("--sql-output", indexSqlOutputPath);
+      }
+      if (args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all") {
+        indexArgs.push("--sqlite-output", indexSqliteOutputPath);
+      }
+      if (args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all") {
+        indexArgs.push("--schema-file", args.indexSchemaFile);
+        if (!args.indexIncludeSchema) {
+          indexArgs.push("--no-schema");
+        }
+      }
+      if (args.indexKpiFile) {
+        indexArgs.push("--kpi-file", args.indexKpiFile);
+      }
+      indexArgs.push("--json");
+      index = runToolJson("index-sync.mjs", indexArgs);
+      indexDurationMs = Date.now() - indexStarted;
+      index.skipped = false;
+      index.skip_reason = null;
     }
-    indexArgs.push("--json");
-    const index = runToolJson("index-sync.mjs", indexArgs);
-    const indexDurationMs = Date.now() - indexStarted;
 
     let indexSyncCheck = {
       enabled: false,
@@ -315,29 +412,61 @@ function main() {
       mismatch_count: 0,
       duration_ms: 0,
       output_file: null,
+      skipped: false,
+      skip_reason: null,
     };
     if (args.indexSyncCheck) {
-      const syncCheckStarted = Date.now();
-      const syncCheckOut = runToolJson("index-sync-check.mjs", [
-        "--target",
-        targetRoot,
-        "--index-file",
-        indexOutputPath,
-        "--json",
-      ]);
-      indexSyncCheck = {
-        enabled: true,
-        strict: args.indexSyncCheckStrict,
-        in_sync: syncCheckOut.in_sync === true,
-        action: syncCheckOut.action ?? null,
-        mismatch_count: Array.isArray(syncCheckOut.summary_mismatches)
-          ? syncCheckOut.summary_mismatches.length
-          : 0,
-        duration_ms: Date.now() - syncCheckStarted,
-        output_file: writeJsonFile(indexSyncCheckOutPath, syncCheckOut),
-      };
-      if (args.indexSyncCheckStrict && syncCheckOut.in_sync !== true) {
-        throw new Error("Index sync check drift detected in strict checkpoint mode");
+      if (shouldSkipIndex) {
+        const syncCheckOut = {
+          ts: new Date().toISOString(),
+          target_root: targetRoot,
+          in_sync: true,
+          action: "skipped_no_signal",
+          reason_codes: ["SKIPPED_NO_RELOAD_SIGNAL"],
+          summary_mismatches: [],
+          summary: {
+            missing_in_index: 0,
+            stale_in_index: 0,
+            digest_mismatch: 0,
+          },
+          skipped: true,
+        };
+        indexSyncCheck = {
+          enabled: true,
+          strict: args.indexSyncCheckStrict,
+          in_sync: true,
+          action: "skipped_no_signal",
+          mismatch_count: 0,
+          duration_ms: 0,
+          output_file: writeJsonFile(indexSyncCheckOutPath, syncCheckOut),
+          skipped: true,
+          skip_reason: "SKIPPED_NO_RELOAD_SIGNAL",
+        };
+      } else {
+        const syncCheckStarted = Date.now();
+        const syncCheckOut = runToolJson("index-sync-check.mjs", [
+          "--target",
+          targetRoot,
+          "--index-file",
+          indexOutputPath,
+          "--json",
+        ]);
+        indexSyncCheck = {
+          enabled: true,
+          strict: args.indexSyncCheckStrict,
+          in_sync: syncCheckOut.in_sync === true,
+          action: syncCheckOut.action ?? null,
+          mismatch_count: Array.isArray(syncCheckOut.summary_mismatches)
+            ? syncCheckOut.summary_mismatches.length
+            : 0,
+          duration_ms: Date.now() - syncCheckStarted,
+          output_file: writeJsonFile(indexSyncCheckOutPath, syncCheckOut),
+          skipped: false,
+          skip_reason: null,
+        };
+        if (args.indexSyncCheckStrict && syncCheckOut.in_sync !== true) {
+          throw new Error("Index sync check drift detected in strict checkpoint mode");
+        }
       }
     }
 
@@ -360,11 +489,16 @@ function main() {
         action: gate.action,
         result: gate.result,
         reason_code: gate.reason_code,
+        gates_triggered: Array.isArray(gate.gates_triggered) ? gate.gates_triggered : [],
+        skipped: args.skipGateEvaluate === true,
+        skip_reason: args.skipGateEvaluate === true ? "SKIPPED_BY_CHECKPOINT_OPTION" : null,
         duration_ms: gateDurationMs,
       },
       index: {
         state_mode: args.stateMode,
         store: args.indexStore,
+        skipped: shouldSkipIndex,
+        skip_reason: shouldSkipIndex ? "SKIPPED_NO_RELOAD_SIGNAL" : null,
         output: indexOutputPath,
         sql_output: args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "all"
           ? indexSqlOutputPath
@@ -423,9 +557,10 @@ function main() {
         bytes_read: 0,
         files_written_count: Number(result.index?.writes?.files_written_count ?? 0),
         bytes_written: Number(result.index?.writes?.bytes_written ?? 0),
-        gates_triggered: result.index_sync_check?.enabled
-          ? ["R03", "R04", "R05", "R10", "R11"]
-          : ["R03", "R04", "R05", "R10"],
+        gates_triggered: Array.from(new Set([
+          ...(Array.isArray(result.gate?.gates_triggered) ? result.gate.gates_triggered : []),
+          ...(result.index_sync_check?.enabled ? ["R11"] : []),
+        ])),
         result: result.gate.result === "stop" ? "stop" : "ok",
         reason_code: result.index_sync_check?.enabled && result.index_sync_check.in_sync === false
           ? "INDEX_SYNC_DRIFT"
@@ -447,6 +582,9 @@ function main() {
     console.log(`Reload: ${result.reload.decision} (${result.reload.duration_ms}ms)`);
     console.log(`Gate: ${result.gate.action} (${result.gate.duration_ms}ms)`);
     console.log(`Index (${result.index.store}): ${result.index.output} (${result.index.duration_ms}ms)`);
+    if (result.index.skipped) {
+      console.log(`Index skipped: ${result.index.skip_reason}`);
+    }
     console.log(
       `Index writes: files=${result.index.writes.files_written_count}, bytes=${result.index.writes.bytes_written}`,
     );
