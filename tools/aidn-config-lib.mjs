@@ -46,24 +46,6 @@ export function stateModeFromIndexStore(storeMode) {
   return "files";
 }
 
-export function isIndexStoreCompatibleWithStateMode(stateMode, storeMode) {
-  const normalizedState = normalizeStateMode(stateMode);
-  const normalizedStore = normalizeIndexStoreMode(storeMode);
-  if (!normalizedState || !normalizedStore) {
-    return false;
-  }
-  if (normalizedState === "files") {
-    return true;
-  }
-  if (normalizedState === "dual") {
-    return normalizedStore === "dual-sqlite" || normalizedStore === "all";
-  }
-  if (normalizedState === "db-only") {
-    return normalizedStore === "sqlite";
-  }
-  return false;
-}
-
 export function resolveAidnConfigPath(targetRoot) {
   return path.resolve(targetRoot, ".aidn", "config.json");
 }

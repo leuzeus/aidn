@@ -288,11 +288,6 @@ If both are set, explicit CLI flags still win, then `AIDN_INDEX_STORE_MODE`, the
 When env vars are not set, runtime commands also read `.aidn/config.json` in the target repo:
 - `runtime.stateMode` (or `profile`) for state mode
 - `runtime.indexStoreMode` or `install.artifactImportStore` for index store fallback
-State-mode guardrails:
-- `dual` mode only accepts `dual-sqlite` or `all` store modes.
-- `db-only` mode only accepts `sqlite` store mode.
-- In `dual` and `db-only`, `checkpoint` cannot use `--skip-gate-evaluate` and disables auto gate skip on no-signal.
-- In `dual` and `db-only`, `workflow-hook` `session-start` forces full gate path (no light-gate bypass).
 Artifact content embedding defaults:
 - `files` -> content embedding disabled by default
 - `dual` and `db-only` -> content embedding enabled by default

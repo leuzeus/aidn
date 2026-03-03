@@ -259,17 +259,19 @@ function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const configPath = path.join(target, ".aidn", "config.json");
   const config = readConfigSafe(configPath);
   return {
-    name: "env_index_store_conflict_rejected",
+    name: "env_index_store_over_state_mode",
     target_root: target,
-    ok: out.status !== 0
-      && includes(out.stderr, "In state mode db-only")
-      && !fs.existsSync(indexJson)
+    ok: out.status === 0
+      && includes(out.stdout, "artifact import: OK")
+      && includes(out.stdout, "store=file")
+      && fs.existsSync(indexJson)
       && !fs.existsSync(indexSqlite)
-      && !fs.existsSync(configPath)
-      && config == null,
+      && fs.existsSync(configPath)
+      && String(config?.runtime?.stateMode ?? "") === "files",
     details: {
       ...installDiagnostics(out),
-      has_state_mode_conflict_error: includes(out.stderr, "In state mode db-only"),
+      has_import_ok_line: includes(out.stdout, "artifact import: OK"),
+      has_store_file: includes(out.stdout, "store=file"),
       index_json_exists: fs.existsSync(indexJson),
       index_sqlite_exists: fs.existsSync(indexSqlite),
       config_exists: fs.existsSync(configPath),

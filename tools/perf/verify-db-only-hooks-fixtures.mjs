@@ -64,33 +64,6 @@ function runJson(script, scriptArgs, env = {}) {
   return JSON.parse(stdout);
 }
 
-function runJsonResult(script, scriptArgs, env = {}) {
-  const file = path.resolve(process.cwd(), script);
-  try {
-    const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        ...env,
-      },
-    });
-    return {
-      ok: true,
-      payload: JSON.parse(stdout),
-      stderr: "",
-      message: "",
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      payload: null,
-      stderr: String(error?.stderr ?? ""),
-      message: String(error?.message ?? error),
-    };
-  }
-}
-
 function readNdjson(filePath) {
   if (!fs.existsSync(filePath)) {
     return [];
@@ -145,17 +118,6 @@ function main() {
       "sqlite",
       "--json",
     ], env);
-    const incompatible = runJsonResult("tools/perf/workflow-hook.mjs", [
-      "--phase",
-      "session-start",
-      "--target",
-      tmpTarget,
-      "--mode",
-      "COMMITTING",
-      "--index-store",
-      "all",
-      "--json",
-    ], env);
 
     const sqlitePath = path.resolve(tmpTarget, ".aidn/runtime/index/workflow-index.sqlite");
     const eventsPath = path.resolve(tmpTarget, ".aidn/runtime/perf/workflow-events.ndjson");
@@ -165,9 +127,6 @@ function main() {
     const runEvents = events.filter((event) => String(event?.run_id ?? "") === runId);
     const hasStartEvent = runEvents.some((event) => String(event?.event ?? "") === "hook_session_start");
     const hasCloseEvent = runEvents.some((event) => String(event?.event ?? "") === "hook_session_close");
-    const gatingEvents = runEvents.filter((event) =>
-      String(event?.skill ?? "") === "gating-evaluate" && String(event?.event ?? "") === "gating_summary",
-    );
 
     const checks = {
       start_ok: String(start?.result ?? "") === "ok",
@@ -176,14 +135,10 @@ function main() {
       sqlite_exists: fs.existsSync(sqlitePath),
       checkpoint_start_state_mode_db_only: String(start?.checkpoint?.state_mode ?? "") === "db-only",
       checkpoint_close_state_mode_db_only: String(close?.checkpoint?.state_mode ?? "") === "db-only",
-      checkpoint_start_gate_action_set: String(start?.checkpoint?.gate?.action ?? "").length > 0,
       checkpoint_close_gate_action_set: String(close?.checkpoint?.gate?.action ?? "").length > 0,
       events_file_exists: fs.existsSync(eventsPath),
       events_has_start: hasStartEvent,
       events_has_close: hasCloseEvent,
-      gating_events_start_close: gatingEvents.length >= 2,
-      db_only_rejects_non_sqlite_store: incompatible.ok === false
-        && /state mode db-only/i.test(String(incompatible.stderr ?? "")),
     };
 
     const pass = Object.values(checks).every((value) => value === true);
@@ -197,8 +152,6 @@ function main() {
         start_gate_action: start?.checkpoint?.gate?.action ?? null,
         close_gate_action: close?.checkpoint?.gate?.action ?? null,
         close_gate_result: close?.checkpoint?.gate?.result ?? null,
-        gating_events_count: gatingEvents.length,
-        incompatible_store_error: incompatible.stderr || incompatible.message || null,
       },
       pass,
     };

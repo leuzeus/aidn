@@ -50,43 +50,13 @@ function copyFixtureToTmp(source, tmpRoot) {
   return destination;
 }
 
-function runJson(script, scriptArgs, env = {}) {
+function runJson(script, scriptArgs) {
   const file = path.resolve(process.cwd(), script);
   const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
-    env: {
-      ...process.env,
-      ...env,
-    },
   });
   return JSON.parse(stdout);
-}
-
-function runJsonResult(script, scriptArgs, env = {}) {
-  const file = path.resolve(process.cwd(), script);
-  try {
-    const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        ...env,
-      },
-    });
-    return {
-      ok: true,
-      payload: JSON.parse(stdout),
-      stderr: "",
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      payload: null,
-      stderr: String(error?.stderr ?? ""),
-      message: String(error?.message ?? error),
-    };
-  }
 }
 
 function main() {
@@ -119,50 +89,6 @@ function main() {
       "--index-sync-check",
       "--json",
     ]);
-    const dualModeCompat = runJsonResult("tools/perf/checkpoint.mjs", [
-      "--target",
-      tmpTarget,
-      "--mode",
-      "COMMITTING",
-      "--index-store",
-      "dual-sqlite",
-      "--json",
-    ], {
-      AIDN_STATE_MODE: "dual",
-    });
-    const dualModeIncompat = runJsonResult("tools/perf/checkpoint.mjs", [
-      "--target",
-      tmpTarget,
-      "--mode",
-      "COMMITTING",
-      "--index-store",
-      "dual",
-      "--json",
-    ], {
-      AIDN_STATE_MODE: "dual",
-    });
-    const dbOnlyCompat = runJsonResult("tools/perf/checkpoint.mjs", [
-      "--target",
-      tmpTarget,
-      "--mode",
-      "COMMITTING",
-      "--index-store",
-      "sqlite",
-      "--json",
-    ], {
-      AIDN_STATE_MODE: "db-only",
-    });
-    const dbOnlyIncompat = runJsonResult("tools/perf/checkpoint.mjs", [
-      "--target",
-      tmpTarget,
-      "--mode",
-      "COMMITTING",
-      "--index-store",
-      "all",
-      "--json",
-    ], {
-      AIDN_STATE_MODE: "db-only",
-    });
 
     const checks = {
       dual_enabled: dual?.index_sync_check?.enabled === true,
@@ -173,16 +99,6 @@ function main() {
       sqlite_backend_sqlite: String(sqlite?.index_sync_check?.index_backend ?? "") === "sqlite",
       sqlite_index_file_sqlite: String(sqlite?.index_sync_check?.index_file ?? "").toLowerCase().endsWith("workflow-index.sqlite"),
       sqlite_output_exists: fs.existsSync(String(sqlite?.index_sync_check?.output_file ?? "")),
-      dual_mode_compatible_store_passes: dualModeCompat.ok === true
-        && String(dualModeCompat?.payload?.state_mode ?? "") === "dual"
-        && String(dualModeCompat?.payload?.index?.store ?? "") === "dual-sqlite",
-      dual_mode_incompatible_store_fails: dualModeIncompat.ok === false
-        && /state mode dual/i.test(String(dualModeIncompat.stderr ?? "")),
-      db_only_compatible_store_passes: dbOnlyCompat.ok === true
-        && String(dbOnlyCompat?.payload?.state_mode ?? "") === "db-only"
-        && String(dbOnlyCompat?.payload?.index?.store ?? "") === "sqlite",
-      db_only_incompatible_store_fails: dbOnlyIncompat.ok === false
-        && /state mode db-only/i.test(String(dbOnlyIncompat.stderr ?? "")),
     };
 
     const pass = Object.values(checks).every((value) => value === true);
@@ -202,8 +118,6 @@ function main() {
           action: sqlite?.index_sync_check?.action ?? null,
           skipped: sqlite?.index_sync_check?.skipped ?? null,
         },
-        dual_mode_incompatible_error: dualModeIncompat.stderr || dualModeIncompat.message || null,
-        db_only_incompatible_error: dbOnlyIncompat.stderr || dbOnlyIncompat.message || null,
       },
       pass,
     };

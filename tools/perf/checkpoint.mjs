@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 import { execSync, execFileSync } from "node:child_process";
 import {
   defaultIndexStoreFromStateMode,
-  isIndexStoreCompatibleWithStateMode,
   normalizeIndexStoreMode,
   readAidnProjectConfig,
   resolveConfigIndexStore,
@@ -299,20 +298,6 @@ function main() {
     }
     if (!normalizeIndexStoreMode(args.indexStore)) {
       throw new Error("Invalid effective --index-store. Expected file|sql|dual|sqlite|dual-sqlite|all");
-    }
-    if (!isIndexStoreCompatibleWithStateMode(args.stateMode, args.indexStore)) {
-      if (args.stateMode === "dual") {
-        throw new Error("In state mode dual, --index-store must be dual-sqlite or all");
-      }
-      if (args.stateMode === "db-only") {
-        throw new Error("In state mode db-only, --index-store must be sqlite");
-      }
-    }
-    if (args.stateMode !== "files" && args.skipGateEvaluate) {
-      throw new Error("--skip-gate-evaluate is not allowed when AIDN_STATE_MODE is dual or db-only");
-    }
-    if (args.stateMode !== "files") {
-      args.autoSkipGateOnNoSignal = false;
     }
     const cachePath = resolveTargetPath(targetRoot, args.cache);
     const eventFilePath = resolveTargetPath(targetRoot, args.eventFile);

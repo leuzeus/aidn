@@ -8,7 +8,6 @@ import { detectStructureProfile } from "./structure-profile-lib.mjs";
 import { buildCanonicalFromMarkdown } from "./markdown-render-lib.mjs";
 import {
   defaultIndexStoreFromStateMode,
-  isIndexStoreCompatibleWithStateMode,
   normalizeIndexStoreMode,
   readAidnProjectConfig,
   resolveConfigIndexStore,
@@ -654,14 +653,6 @@ function main() {
     args.store = String(args.store ?? "").toLowerCase();
     if (!normalizeIndexStoreMode(args.store)) {
       throw new Error(`Invalid effective --store mode: ${args.store}. Expected file|sql|dual|sqlite|dual-sqlite|all.`);
-    }
-    if (!isIndexStoreCompatibleWithStateMode(args.stateMode, args.store)) {
-      if (args.stateMode === "dual") {
-        throw new Error("In state mode dual, --store must be dual-sqlite or all");
-      }
-      if (args.stateMode === "db-only") {
-        throw new Error("In state mode db-only, --store must be sqlite");
-      }
     }
     if (!args.embedContentExplicit && !envEmbedContentSet) {
       args.embedContent = args.stateMode === "dual" || args.stateMode === "db-only";
