@@ -110,11 +110,12 @@ npx aidn perf index-thresholds --target . --json
 npx aidn perf index-sync-thresholds --target . --json
 npx aidn perf check-fallbacks --target . --json
 npx aidn perf check-constraints --target . --json
+npx aidn perf check-constraint-trend --target . --json
 npx aidn perf constraint-report --file .aidn/runtime/perf/workflow-events.ndjson --run-prefix session- --out .aidn/runtime/perf/constraint-report.json --json
 npx aidn perf constraint-actions --report-file .aidn/runtime/perf/constraint-report.json --thresholds-file .aidn/runtime/perf/constraint-thresholds.json --out .aidn/runtime/perf/constraint-actions.json --json
 npx aidn perf constraint-history --report-file .aidn/runtime/perf/constraint-report.json --actions-file .aidn/runtime/perf/constraint-actions.json --history-file .aidn/runtime/perf/constraint-history.ndjson
 npx aidn perf constraint-trend --history-file .aidn/runtime/perf/constraint-history.ndjson --out .aidn/runtime/perf/constraint-trend.json --json
-npx aidn perf constraint-trend-summary --report-file .aidn/runtime/perf/constraint-trend.json --out .aidn/runtime/perf/constraint-trend-summary.md
+npx aidn perf constraint-trend-summary --report-file .aidn/runtime/perf/constraint-trend.json --thresholds-file .aidn/runtime/perf/constraint-trend-thresholds.json --out .aidn/runtime/perf/constraint-trend-summary.md
 npx aidn perf constraint-summary --report-file .aidn/runtime/perf/constraint-report.json --thresholds-file .aidn/runtime/perf/constraint-thresholds.json --actions-file .aidn/runtime/perf/constraint-actions.json --out .aidn/runtime/perf/constraint-summary.md
 ```
 
@@ -204,7 +205,8 @@ npm run perf:check-constraints -- --target ../client-repo --kpi-file .aidn/runti
 npm run perf:constraint-actions -- --report-file .aidn/runtime/perf/constraint-report.json --thresholds-file .aidn/runtime/perf/constraint-thresholds.json --out .aidn/runtime/perf/constraint-actions.json
 npm run perf:constraint-history -- --report-file .aidn/runtime/perf/constraint-report.json --actions-file .aidn/runtime/perf/constraint-actions.json --history-file .aidn/runtime/perf/constraint-history.ndjson --max-runs 200
 npm run perf:constraint-trend -- --history-file .aidn/runtime/perf/constraint-history.ndjson --out .aidn/runtime/perf/constraint-trend.json
-npm run perf:constraint-trend-summary -- --report-file .aidn/runtime/perf/constraint-trend.json --out .aidn/runtime/perf/constraint-trend-summary.md
+npm run perf:check-constraint-trend -- --target ../client-repo --kpi-file .aidn/runtime/perf/constraint-trend.json --out .aidn/runtime/perf/constraint-trend-thresholds.json
+npm run perf:constraint-trend-summary -- --report-file .aidn/runtime/perf/constraint-trend.json --thresholds-file .aidn/runtime/perf/constraint-trend-thresholds.json --out .aidn/runtime/perf/constraint-trend-summary.md
 npm run perf:constraint-summary -- --report-file .aidn/runtime/perf/constraint-report.json --thresholds-file .aidn/runtime/perf/constraint-thresholds.json --actions-file .aidn/runtime/perf/constraint-actions.json --out .aidn/runtime/perf/constraint-summary.md
 npm run perf:check-fallbacks
 npm run perf:campaign -- --iterations 30 --target tests/fixtures/repo-installed-core
@@ -239,6 +241,7 @@ Default runtime outputs:
 - `.aidn/runtime/perf/constraint-actions.json`
 - `.aidn/runtime/perf/constraint-history.ndjson`
 - `.aidn/runtime/perf/constraint-trend.json`
+- `.aidn/runtime/perf/constraint-trend-thresholds.json`
 - `.aidn/runtime/perf/constraint-trend-summary.md`
 - `.aidn/runtime/perf/constraint-summary.md`
 - `.aidn/runtime/perf/fallback-thresholds.json`
@@ -456,6 +459,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:constraint-actions`
   - `perf:constraint-history`
   - `perf:constraint-trend`
+  - `perf:check-constraint-trend` (non-blocking by default in CI)
   - `perf:constraint-trend-summary`
   - `perf:constraint-summary`
   - `perf:check-fallbacks` (non-blocking by default in CI)
@@ -472,6 +476,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `.aidn/runtime/perf/constraint-actions.json`
   - `.aidn/runtime/perf/constraint-history.ndjson`
   - `.aidn/runtime/perf/constraint-trend.json`
+  - `.aidn/runtime/perf/constraint-trend-thresholds.json`
   - `.aidn/runtime/perf/constraint-trend-summary.md`
   - `.aidn/runtime/perf/constraint-summary.md`
   - `.aidn/runtime/perf/fallback-thresholds.json`
@@ -500,7 +505,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
 - `workflow_dispatch` supports `strict_index_sync=true` to make index import/export drift checks blocking.
 - `workflow_dispatch` supports `strict_regression=true` to make KPI regression violations blocking.
 - `workflow_dispatch` supports `strict_fallback=true` to make fallback-storm violations blocking.
-- `workflow_dispatch` supports `strict_constraint=true` to make active-constraint violations blocking.
+- `workflow_dispatch` supports `strict_constraint=true` to make active-constraint and constraint-trend violations blocking.
 - `workflow_dispatch` supports regression warmup overrides via `regression_warmup_enabled`, `regression_warmup_history_lt`, `regression_warmup_multiplier`, `regression_warmup_severity`.
 
 Threshold source file:
@@ -511,6 +516,7 @@ Threshold source file:
 - `docs/performance/REGRESSION_TARGETS.json`
 - `docs/performance/FALLBACK_TARGETS.json`
 - `docs/performance/CONSTRAINT_TARGETS.json`
+- `docs/performance/CONSTRAINT_TREND_TARGETS.json`
 
 Regression warmup note:
 - `REGRESSION_TARGETS.json` supports a `warmup` block.

@@ -6,12 +6,16 @@ import { writeUtf8IfChanged } from "./io-lib.mjs";
 function parseArgs(argv) {
   const args = {
     reportFile: ".aidn/runtime/perf/constraint-trend.json",
+    thresholdsFile: "",
     out: ".aidn/runtime/perf/constraint-trend-summary.md",
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === "--report-file") {
       args.reportFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--thresholds-file") {
+      args.thresholdsFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--out") {
       args.out = argv[i + 1] ?? "";
@@ -54,10 +58,27 @@ function fmtPct(value) {
   return `${(Number(value) * 100).toFixed(2)}%`;
 }
 
-function buildMarkdown(report) {
+function readJsonOptional(filePath) {
+  if (!filePath) {
+    return null;
+  }
+  const absolute = path.resolve(process.cwd(), filePath);
+  if (!fs.existsSync(absolute)) {
+    return null;
+  }
+  try {
+    return JSON.parse(fs.readFileSync(absolute, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function buildMarkdown(report, thresholds) {
   const summary = report?.summary ?? {};
   const topConstraints = Array.isArray(summary?.top_constraints) ? summary.top_constraints : [];
   const topActions = Array.isArray(summary?.top_actions) ? summary.top_actions : [];
+  const thresholdSummary = thresholds?.summary ?? null;
+  const thresholdChecks = Array.isArray(thresholds?.checks) ? thresholds.checks : [];
 
   const lines = [];
   lines.push("## Constraint Trend");
@@ -70,6 +91,9 @@ function buildMarkdown(report) {
   lines.push(`- Avg active constraint share: ${fmtPct(summary?.avg_active_constraint_share)}`);
   lines.push(`- High severity runs: ${summary?.high_severity_runs ?? 0}`);
   lines.push(`- Quick-win top-action runs: ${summary?.quick_win_top_runs ?? 0}`);
+  if (thresholdSummary != null) {
+    lines.push(`- Threshold status: ${thresholdSummary.overall_status ?? "n/a"} (${thresholdSummary.pass ?? 0} pass, ${thresholdSummary.fail ?? 0} fail, ${thresholdSummary.blocking ?? 0} blocking)`);
+  }
   lines.push("");
 
   if (topConstraints.length > 0) {
@@ -93,6 +117,16 @@ function buildMarkdown(report) {
     }
     lines.push("");
   }
+  if (thresholdChecks.length > 0) {
+    lines.push("### Trend Threshold Checks");
+    lines.push("");
+    lines.push("| id | status | severity | actual | op | expected |");
+    lines.push("|---|---|---|---:|---|---:|");
+    for (const check of thresholdChecks) {
+      lines.push(`| ${check.id ?? "n/a"} | ${check.status ?? "n/a"} | ${check.severity ?? "n/a"} | ${check.actual ?? "n/a"} | ${check.op ?? "n/a"} | ${check.expected ?? "n/a"} |`);
+    }
+    lines.push("");
+  }
 
   return `${lines.join("\n")}\n`;
 }
@@ -101,7 +135,8 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const report = readJson(args.reportFile, "Constraint trend report");
-    const markdown = buildMarkdown(report);
+    const thresholds = readJsonOptional(args.thresholdsFile);
+    const markdown = buildMarkdown(report, thresholds);
     const outWrite = writeUtf8IfChanged(args.out, markdown);
     console.log(`Constraint trend summary written: ${outWrite.path} (${outWrite.written ? "written" : "unchanged"})`);
   } catch (error) {

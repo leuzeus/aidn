@@ -42,6 +42,7 @@
     "perf:constraint-actions": "node tools/perf/report-constraint-actions.mjs",
     "perf:constraint-history": "node tools/perf/sync-constraint-history.mjs",
     "perf:constraint-trend": "node tools/perf/report-constraint-trend.mjs",
+    "perf:check-constraint-trend": "node tools/perf/check-thresholds-defaults.mjs --preset constraint-trend",
     "perf:constraint-trend-summary": "node tools/perf/render-constraint-trend-summary.mjs",
     "perf:constraint-summary": "node tools/perf/render-constraint-summary.mjs",
     "perf:check-constraints": "node tools/perf/check-thresholds-defaults.mjs --preset constraint",

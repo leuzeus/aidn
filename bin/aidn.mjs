@@ -61,6 +61,7 @@ const PERF_ALIASES = {
   "check-regression": { file: "check-regression.mjs" },
   "check-fallbacks": { file: "check-thresholds-defaults.mjs", fixedArgs: ["--preset", "fallback"] },
   "check-constraints": { file: "check-thresholds-defaults.mjs", fixedArgs: ["--preset", "constraint"] },
+  "check-constraint-trend": { file: "check-thresholds-defaults.mjs", fixedArgs: ["--preset", "constraint-trend"] },
   campaign: { file: "run-kpi-campaign.mjs" },
   "render-summary": { file: "render-summary.mjs" },
   reset: { file: "reset-runtime.mjs" },

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "description": "Trend guardrails for active-constraint evolution over recent runs.",
+  "rules": [
+    {
+      "id": "CONSTRAINT_TREND_RUNS_MIN",
+      "key": "summary.runs_analyzed",
+      "op": ">=",
+      "value": 1,
+      "severity": "error"
+    },
+    {
+      "id": "CONSTRAINT_TREND_STABILITY_MIN",
+      "key": "summary.constraint_stability_rate",
+      "op": ">=",
+      "value": 0.5,
+      "severity": "warn"
+    },
+    {
+      "id": "CONSTRAINT_TREND_SWITCHES_MAX",
+      "key": "summary.constraint_switches",
+      "op": "<=",
+      "value": 20,
+      "severity": "warn"
+    },
+    {
+      "id": "CONSTRAINT_TREND_CONTROL_SHARE_MAX",
+      "key": "summary.avg_control_share_of_total",
+      "op": "<=",
+      "value": 0.8,
+      "severity": "warn"
+    },
+    {
+      "id": "CONSTRAINT_TREND_HIGH_SEVERITY_MAX",
+      "key": "summary.high_severity_runs",
+      "op": "<=",
+      "value": 10,
+      "severity": "warn"
+    }
+  ]
+}

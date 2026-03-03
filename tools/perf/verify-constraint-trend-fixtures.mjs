@@ -11,6 +11,7 @@ function parseArgs(argv) {
     actionsFile: ".aidn/runtime/perf/fixtures/constraints/trend/constraint-actions.json",
     historyFile: ".aidn/runtime/perf/fixtures/constraints/trend/constraint-history.ndjson",
     trendFile: ".aidn/runtime/perf/fixtures/constraints/trend/constraint-trend.json",
+    trendThresholdsFile: ".aidn/runtime/perf/fixtures/constraints/trend/constraint-trend-thresholds.json",
     summaryFile: ".aidn/runtime/perf/fixtures/constraints/trend/constraint-trend-summary.md",
     json: false,
   };
@@ -33,6 +34,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--trend-file") {
       args.trendFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--trend-thresholds-file") {
+      args.trendThresholdsFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--summary-file") {
       args.summaryFile = argv[i + 1] ?? "";
@@ -72,8 +76,10 @@ function main() {
     const actionsFile = path.resolve(process.cwd(), args.actionsFile);
     const historyFile = path.resolve(process.cwd(), args.historyFile);
     const trendFile = path.resolve(process.cwd(), args.trendFile);
+    const trendThresholdsFile = path.resolve(process.cwd(), args.trendThresholdsFile);
     const summaryFile = path.resolve(process.cwd(), args.summaryFile);
     const targetFile = path.resolve(process.cwd(), "docs/performance/CONSTRAINT_TARGETS.json");
+    const trendTargetFile = path.resolve(process.cwd(), "docs/performance/CONSTRAINT_TREND_TARGETS.json");
 
     runJson("tools/perf/report-constraints.mjs", [
       "--file",
@@ -116,10 +122,21 @@ function main() {
       trendFile,
       "--json",
     ]);
+    const trendThresholds = runJson("tools/perf/check-thresholds.mjs", [
+      "--kpi-file",
+      trendFile,
+      "--targets",
+      trendTargetFile,
+      "--out",
+      trendThresholdsFile,
+      "--json",
+    ]);
     execFileSync(process.execPath, [
       path.resolve(process.cwd(), "tools/perf/render-constraint-trend-summary.mjs"),
       "--report-file",
       trendFile,
+      "--thresholds-file",
+      trendThresholdsFile,
       "--out",
       summaryFile,
     ], {
@@ -130,10 +147,14 @@ function main() {
     const checks = {
       history_written: fs.existsSync(historyFile),
       trend_written: fs.existsSync(trendFile),
+      trend_thresholds_written: fs.existsSync(trendThresholdsFile),
+      trend_thresholds_status: String(trendThresholds?.summary?.overall_status ?? "") === "pass",
       summary_written: fs.existsSync(summaryFile),
       runs_analyzed: Number(trend?.summary?.runs_analyzed ?? 0) >= 1,
       dominant_constraint_present: String(trend?.summary?.dominant_constraint_skill ?? "").length > 0,
       top_actions_present: Array.isArray(trend?.summary?.top_actions) && trend.summary.top_actions.length >= 1,
+      summary_contains_trend_checks: fs.existsSync(summaryFile)
+        && fs.readFileSync(summaryFile, "utf8").includes("Trend Threshold Checks"),
       history_runs_total: Number(history?.runs_total ?? 0) >= 1,
     };
 
@@ -146,6 +167,7 @@ function main() {
         actions: actionsFile,
         history: historyFile,
         trend: trendFile,
+        trend_thresholds: trendThresholdsFile,
         summary: summaryFile,
       },
       checks,

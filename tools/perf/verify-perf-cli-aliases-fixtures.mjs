@@ -18,6 +18,7 @@ function parseArgs(argv) {
     constraintThresholdsFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-thresholds.json",
     constraintHistoryFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-history.ndjson",
     constraintTrendFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-trend.json",
+    constraintTrendThresholdsFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-trend-thresholds.json",
     constraintTrendSummaryFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-trend-summary.md",
     fallbackReportFile: ".aidn/runtime/perf/fallback-report.json",
     fallbackPassFile: ".aidn/runtime/perf/fixtures/cli-aliases/fallback-pass.json",
@@ -68,6 +69,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--constraint-trend-file") {
       args.constraintTrendFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--constraint-trend-thresholds-file") {
+      args.constraintTrendThresholdsFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--constraint-trend-summary-file") {
       args.constraintTrendSummaryFile = argv[i + 1] ?? "";
@@ -146,6 +150,7 @@ function main() {
     const constraintThresholdsFile = path.resolve(targetRoot, args.constraintThresholdsFile);
     const constraintHistoryFile = path.resolve(targetRoot, args.constraintHistoryFile);
     const constraintTrendFile = path.resolve(targetRoot, args.constraintTrendFile);
+    const constraintTrendThresholdsFile = path.resolve(targetRoot, args.constraintTrendThresholdsFile);
     const constraintTrendSummaryFile = path.resolve(targetRoot, args.constraintTrendSummaryFile);
     const fallbackReportFile = path.resolve(targetRoot, args.fallbackReportFile);
     const fallbackPassFile = path.resolve(targetRoot, args.fallbackPassFile);
@@ -309,11 +314,24 @@ function main() {
       constraintTrendFile,
       "--json",
     ], targetRoot);
+    const constraintTrendThresholds = runNodeWithJson(aidnCli, [
+      "perf",
+      "check-constraint-trend",
+      "--target",
+      ".",
+      "--kpi-file",
+      constraintTrendFile,
+      "--out",
+      constraintTrendThresholdsFile,
+      "--json",
+    ], targetRoot);
     runNodeNoJson(aidnCli, [
       "perf",
       "constraint-trend-summary",
       "--report-file",
       constraintTrendFile,
+      "--thresholds-file",
+      constraintTrendThresholdsFile,
       "--out",
       constraintTrendSummaryFile,
     ], targetRoot);
@@ -417,6 +435,8 @@ function main() {
       && fs.readFileSync(constraintSummaryFile, "utf8").includes("Action Backlog");
     const constraintTrendSummaryContainsTitle = fs.existsSync(constraintTrendSummaryFile)
       && fs.readFileSync(constraintTrendSummaryFile, "utf8").includes("Constraint Trend");
+    const constraintTrendSummaryContainsChecks = fs.existsSync(constraintTrendSummaryFile)
+      && fs.readFileSync(constraintTrendSummaryFile, "utf8").includes("Trend Threshold Checks");
 
     const pass = canonicalCheck?.summary?.overall_status === "pass"
       && Number(campaign?.iterations_completed ?? 0) === 1
@@ -424,9 +444,11 @@ function main() {
       && constraintSummaryContainsActive
       && constraintSummaryContainsActions
       && constraintTrendSummaryContainsTitle
+      && constraintTrendSummaryContainsChecks
       && typeof constraintThresholds?.summary?.overall_status === "string"
       && typeof constraintActions?.summary?.generated_actions === "number"
       && Number(constraintTrend?.summary?.runs_analyzed ?? 0) >= 1
+      && typeof constraintTrendThresholds?.summary?.overall_status === "string"
       && typeof exportPaths?.selected_paths_count === "number"
       && typeof reconcile?.pass === "boolean"
       && typeof fallbackThresholds?.summary?.overall_status === "string"
@@ -442,6 +464,7 @@ function main() {
       && fs.existsSync(constraintThresholdsFile)
       && fs.existsSync(constraintHistoryFile)
       && fs.existsSync(constraintTrendFile)
+      && fs.existsSync(constraintTrendThresholdsFile)
       && fs.existsSync(constraintTrendSummaryFile)
       && fs.existsSync(indexSyncCheckFile)
       && fs.existsSync(exportPathsFile)
@@ -466,6 +489,7 @@ function main() {
         constraint_thresholds_file: constraintThresholdsFile,
         constraint_history_file: constraintHistoryFile,
         constraint_trend_file: constraintTrendFile,
+        constraint_trend_thresholds_file: constraintTrendThresholdsFile,
         constraint_trend_summary_file: constraintTrendSummaryFile,
         fallback_report_file: fallbackReportFile,
         fallback_pass_file: fallbackPassFile,
@@ -485,6 +509,8 @@ function main() {
         constraint_summary_contains_actions: constraintSummaryContainsActions,
         constraint_trend_runs_analyzed: constraintTrend?.summary?.runs_analyzed ?? null,
         constraint_trend_summary_contains_title: constraintTrendSummaryContainsTitle,
+        constraint_trend_summary_contains_checks: constraintTrendSummaryContainsChecks,
+        constraint_trend_thresholds_status: constraintTrendThresholds?.summary?.overall_status ?? null,
         constraint_thresholds_status: constraintThresholds?.summary?.overall_status ?? null,
         index_select_paths_count: exportPaths?.selected_paths_count ?? null,
         index_reconcile_pass: reconcile?.pass ?? null,

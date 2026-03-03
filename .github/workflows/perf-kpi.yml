@@ -375,9 +375,20 @@ jobs:
         run: |
           npm run perf:constraint-trend -- --history-file "$PERF_RUNTIME_PERF/constraint-history.ndjson" --out "$PERF_RUNTIME_PERF/constraint-trend.json"
 
+      - name: Evaluate Constraint Trend Thresholds (non-blocking)
+        run: |
+          STRICT_CONSTRAINT="${{ github.event_name == 'workflow_dispatch' && inputs.strict_constraint || false }}"
+          if [ "$STRICT_CONSTRAINT" = "true" ]; then
+            echo "Running constraint trend checks in strict mode."
+            npm run perf:check-constraint-trend -- --target "$PERF_TARGET" --kpi-file "$PERF_RUNTIME_PERF/constraint-trend.json" --out "$PERF_RUNTIME_PERF/constraint-trend-thresholds.json" --strict
+          else
+            echo "Running constraint trend checks in non-blocking mode."
+            npm run perf:check-constraint-trend -- --target "$PERF_TARGET" --kpi-file "$PERF_RUNTIME_PERF/constraint-trend.json" --out "$PERF_RUNTIME_PERF/constraint-trend-thresholds.json" || true
+          fi
+
       - name: Render Constraint Trend Summary
         run: |
-          npm run perf:constraint-trend-summary -- --report-file "$PERF_RUNTIME_PERF/constraint-trend.json" --out "$PERF_RUNTIME_PERF/constraint-trend-summary.md"
+          npm run perf:constraint-trend-summary -- --report-file "$PERF_RUNTIME_PERF/constraint-trend.json" --thresholds-file "$PERF_RUNTIME_PERF/constraint-trend-thresholds.json" --out "$PERF_RUNTIME_PERF/constraint-trend-summary.md"
 
       - name: Render Constraint Summary
         run: |
@@ -430,6 +441,7 @@ jobs:
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-actions.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-history.ndjson
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-trend.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-trend-thresholds.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-trend-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/fallback-thresholds.json
