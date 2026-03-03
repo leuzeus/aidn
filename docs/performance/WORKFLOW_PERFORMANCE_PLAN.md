@@ -22,7 +22,7 @@ Contraintes:
 
 ## Statut D'Exécution
 
-État au 2026-03-01:
+État au 2026-03-03:
 - Lot 1 (Quick wins): implémenté (instrumentation NDJSON, L1/L2/L3 gating, écritures conditionnelles, hooks session).
 - Lot 2 (Index local): implémenté (reload incrémental + fallback, index sync/check, structure profile multi-version, trend/check pipelines).
 - Lot 3 (DB future): implémenté en mode local SQLite progressif (store modes `sqlite|dual-sqlite|all`, import/export, parity SQL+SQLite, CI fixtures dédiées, feature flag `AIDN_INDEX_STORE_MODE`).
@@ -40,12 +40,12 @@ Reste à finaliser:
 - confirmation des objectifs de réduction vs baseline historique du projet cible.
 
 Dernière campagne locale de validation (fixtures, 30 itérations):
-- date: 2026-03-01
-- commande: `npm run perf:campaign -- --iterations 30 --target tests/fixtures/repo-installed-core --sleep-ms 1500 --index-store all`
+- date: 2026-03-03
+- commande: `npm run perf:campaign -- --iterations 30 --target tests/fixtures/repo-installed-core --sleep-ms 500 --index-store all --json`
 - `runs_analyzed`: 30
-- `overhead_ratio.mean`: 9.17
+- `overhead_ratio.mean`: 2.68662084302406
 - `artifacts_churn.mean`: 0.10
-- `gates_frequency.mean`: 18
+- `gates_frequency.mean`: 10
 - `kpi thresholds`: `pass` (4/4)
 
 Hors scope (pour ce plan):

@@ -17,6 +17,7 @@ Core planning docs:
 - `LOT0_BASELINE_REPORT.md`
 - `LOT1_QUICK_WINS_REPORT.md`
 - `LOT2_PULL_FLOW_REPORT.md`
+- `LOT3_DB_INTEGRATION_REPORT.md`
 - `../rfc/RFC-0001-reload-incremental-gating-index.md`
 
 ## CLI Tools
