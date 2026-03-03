@@ -120,7 +120,7 @@ KPI cible:
 - Lot 4 actionnable: backlog d'optimisation priorisé impact/effort généré automatiquement (`perf:constraint-actions`).
 - Lot 4 pilotage: suivi de tendance des contraintes (`perf:constraint-history` + `perf:constraint-trend`) pour mesurer stabilité et rotation des goulots.
 - Lot 4 exécution: plan de lot généré depuis le backlog (`perf:constraint-lot-plan`) avec mise à jour d'avancement (`perf:constraint-lot-update`), avancement automatique (`perf:constraint-lot-advance`) et boucle CI `plan -> advance -> summary` (`perf:constraint-lot-summary`).
-- Lot 4 statut courant: `L4-FD-01` en `in_progress` (3 actions pending), seuil KPI global en `pass`, seuil contrainte en `warn` non bloquant (`CONSTRAINT_CONTROL_SHARE_MAX`).
+- Lot 4 statut courant: `L4-FD-01` en `in_progress` (3 actions pending), seuil KPI global en `pass`, seuil contrainte en `pass`, contrainte active `reload-check`.
 - Progression Lot 3:
   - couverture fixture import/export des artefacts de support (`reports/`, `migration/`, `backlog/`, `incidents`)
   - smoke test hooks runtime `db-only` (`session-start` / `session-close`)
@@ -135,4 +135,4 @@ KPI cible:
 1. Valider la campagne KPI 30 itérations sur un corpus projet réel pour confirmer les gains hors fixtures.
 2. Exécuter la boucle TOC complète sur ce corpus: `constraint-report` -> `constraint-actions` -> `constraint-history` -> `constraint-trend` -> `constraint-lot-plan` -> `constraint-lot-advance` -> `constraint-lot-summary`.
 3. Vérifier `perf:check-constraints` et `perf:check-constraint-trend` sur les artefacts générés.
-4. Publier la décision de passage Lot 3 -> Lot 4 (go/no-go + risques + rollback).
+4. Publier la décision de clôture Lot 4 (go/no-go + risques + rollback) après exécution complète du lot `L4-FD-01`.

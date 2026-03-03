@@ -330,6 +330,17 @@ function main() {
     }
 
     const eventPayload = {
+      // Keep hook event duration focused on wrapper overhead to avoid
+      // double-counting nested checkpoint timing in KPI/constraint reports.
+      // Full checkpoint timing remains available in checkpoint payload/events.
+      duration_ms: (() => {
+        const elapsed = Date.now() - started;
+        const nested = Number(checkpointResult?.total_duration_ms ?? 0);
+        if (Number.isFinite(nested) && nested > 0) {
+          return Math.max(1, elapsed - nested);
+        }
+        return Math.max(1, elapsed);
+      })(),
       ts: new Date().toISOString(),
       run_id: runId,
       session_id: null,
@@ -339,7 +350,6 @@ function main() {
       skill: "workflow-hook",
       phase: args.phase,
       event: `hook_${phaseEvent}`,
-      duration_ms: Date.now() - started,
       files_read_count: 0,
       bytes_read: 0,
       files_written_count: 0,
