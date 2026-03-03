@@ -33,6 +33,7 @@ function parseArgs(argv) {
     indexSyncCheck: false,
     indexSyncCheckStrict: false,
     indexSyncCheckOut: ".aidn/runtime/index/index-sync-check.json",
+    constraintLoopStrict: false,
     startLightGate: true,
     strict: false,
     json: false,
@@ -84,6 +85,8 @@ function parseArgs(argv) {
     } else if (token === "--index-sync-check-out") {
       args.indexSyncCheckOut = argv[i + 1] ?? "";
       i += 1;
+    } else if (token === "--constraint-loop-strict") {
+      args.constraintLoopStrict = true;
     } else if (token === "--start-light-gate") {
       args.startLightGate = true;
     } else if (token === "--full-start-gate") {
@@ -151,6 +154,7 @@ function printUsage() {
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --run-id-file .aidn/runtime/perf/current-run-id.txt");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --full-start-gate");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --strict");
+  console.log("  node tools/perf/workflow-hook.mjs --phase session-close --constraint-loop-strict");
 }
 
 function appendEvent(eventFile, payload) {
@@ -221,6 +225,29 @@ function runCheckpoint(targetRoot, mode, runId, indexOptions = {}) {
   }
   if (indexOptions.skipGateEvaluate === true) {
     cmd.push("--skip-gate-evaluate");
+  }
+  cmd.push("--json");
+
+  const stdout = execFileSync(process.execPath, cmd, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return JSON.parse(stdout);
+}
+
+function runConstraintLoop(targetRoot, options = {}) {
+  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+  const loopScript = path.join(scriptDir, "constraint-loop.mjs");
+  const cmd = [
+    loopScript,
+    "--target",
+    targetRoot,
+  ];
+  if (options.eventFile) {
+    cmd.push("--event-file", options.eventFile);
+  }
+  if (options.strict === true) {
+    cmd.push("--strict");
   }
   cmd.push("--json");
 
@@ -305,6 +332,8 @@ function main() {
     let hookResult = "ok";
     let reasonCode = null;
     let checkpointError = null;
+    let constraintLoopResult = null;
+    let constraintLoopError = null;
 
     try {
       checkpointResult = runCheckpoint(targetRoot, args.mode, runId, {
@@ -368,6 +397,20 @@ function main() {
       runIdFilePath = removeRunIdFile(runIdFilePathArg);
     }
 
+    if (args.phase === "session-close") {
+      try {
+        constraintLoopResult = runConstraintLoop(targetRoot, {
+          eventFile: eventFilePath,
+          strict: args.constraintLoopStrict,
+        });
+      } catch (error) {
+        constraintLoopError = error;
+        if (args.constraintLoopStrict) {
+          throw error;
+        }
+      }
+    }
+
     const output = {
       ts: eventPayload.ts,
       phase: args.phase,
@@ -383,6 +426,8 @@ function main() {
       run_id_file: runIdFilePath,
       checkpoint: checkpointResult,
       checkpoint_error: checkpointError ? String(checkpointError.message ?? checkpointError) : null,
+      constraint_loop: constraintLoopResult,
+      constraint_loop_error: constraintLoopError ? String(constraintLoopError.message ?? constraintLoopError) : null,
       duration_ms: eventPayload.duration_ms,
     };
 
@@ -411,6 +456,16 @@ function main() {
     }
     if (checkpointError && !args.strict) {
       console.log(`Checkpoint error (ignored): ${output.checkpoint_error}`);
+    }
+    if (args.phase === "session-close") {
+      console.log(`Constraint loop: ${output.constraint_loop_error ? "WARN" : "OK"}`);
+      if (output.constraint_loop) {
+        console.log(`Constraint status: ${output.constraint_loop.summary?.constraint_status ?? "n/a"}`);
+        console.log(`Constraint trend: ${output.constraint_loop.summary?.trend_status ?? "n/a"}`);
+      }
+      if (output.constraint_loop_error && !args.constraintLoopStrict) {
+        console.log(`Constraint loop error (ignored): ${output.constraint_loop_error}`);
+      }
     }
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
