@@ -144,6 +144,12 @@ function main() {
       `${firstActionId}:done`,
       "--json",
     ]);
+    const updatedBeforeAdvance = JSON.parse(fs.readFileSync(planFile, "utf8"));
+    const advance = runJson("tools/perf/advance-constraint-lot-plan.mjs", [
+      "--plan-file",
+      planFile,
+      "--json",
+    ]);
 
     runNoJson("tools/perf/render-constraint-lot-plan-summary.mjs", [
       "--plan-file",
@@ -160,9 +166,15 @@ function main() {
       summary_written: fs.existsSync(summaryFile),
       lots_generated: Number(plan?.summary?.lots_total ?? 0) >= 1,
       next_lot_present: String(plan?.summary?.next_lot_id ?? "").length > 0,
-      first_lot_in_progress: String(updatedPlan?.lots?.[0]?.status ?? "") === "in_progress",
-      first_action_done: String(updatedPlan?.lots?.[0]?.actions?.[0]?.status ?? "") === "done",
+      first_lot_in_progress: String(updatedBeforeAdvance?.lots?.[0]?.status ?? "") === "in_progress",
+      first_lot_completed_after_advance: String(updatedPlan?.lots?.[0]?.status ?? "") === "completed",
+      first_action_done: String(updatedBeforeAdvance?.lots?.[0]?.actions?.[0]?.status ?? "") === "done",
       update_has_entries: Array.isArray(update?.updates) && update.updates.length >= 1,
+      advance_has_transitions: Array.isArray(advance?.transitions) && advance.transitions.length >= 1,
+      advance_completed_first_lot: Array.isArray(advance?.transitions)
+        && advance.transitions.some((entry) => entry?.type === "lot_completed" && entry?.lot_id === firstLotId),
+      advance_started_next_lot: Array.isArray(advance?.transitions)
+        && advance.transitions.some((entry) => entry?.type === "lot_started"),
       summary_contains_title: fs.readFileSync(summaryFile, "utf8").includes("Constraint Lot Plan"),
     };
 

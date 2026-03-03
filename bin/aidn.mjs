@@ -20,6 +20,7 @@ const PERF_ALIASES = {
   "constraint-trend-summary": { file: "render-constraint-trend-summary.mjs" },
   "constraint-lot-plan": { file: "report-constraint-lot-plan.mjs" },
   "constraint-lot-update": { file: "update-constraint-lot-plan.mjs" },
+  "constraint-lot-advance": { file: "advance-constraint-lot-plan.mjs" },
   "constraint-lot-summary": { file: "render-constraint-lot-plan-summary.mjs" },
   "constraint-summary": { file: "render-constraint-summary.mjs" },
   index: { file: "index-sync.mjs" },

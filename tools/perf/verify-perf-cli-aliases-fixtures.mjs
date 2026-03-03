@@ -371,6 +371,13 @@ function main() {
       `${firstActionId}:done`,
       "--json",
     ], targetRoot);
+    const constraintLotAdvance = runNodeWithJson(aidnCli, [
+      "perf",
+      "constraint-lot-advance",
+      "--plan-file",
+      constraintLotPlanFile,
+      "--json",
+    ], targetRoot);
     runNodeNoJson(aidnCli, [
       "perf",
       "constraint-lot-summary",
@@ -499,6 +506,8 @@ function main() {
       && Number(constraintLotPlan?.summary?.lots_total ?? 0) >= 1
       && Array.isArray(constraintLotUpdate?.updates)
       && constraintLotUpdate.updates.length >= 1
+      && Array.isArray(constraintLotAdvance?.transitions)
+      && typeof constraintLotAdvance.transitions.length === "number"
       && typeof exportPaths?.selected_paths_count === "number"
       && typeof reconcile?.pass === "boolean"
       && typeof fallbackThresholds?.summary?.overall_status === "string"
@@ -567,6 +576,7 @@ function main() {
         constraint_trend_thresholds_status: constraintTrendThresholds?.summary?.overall_status ?? null,
         constraint_lot_count: constraintLotPlan?.summary?.lots_total ?? null,
         constraint_lot_updates: Array.isArray(constraintLotUpdate?.updates) ? constraintLotUpdate.updates.length : null,
+        constraint_lot_advance_transitions: Array.isArray(constraintLotAdvance?.transitions) ? constraintLotAdvance.transitions.length : null,
         constraint_lot_summary_contains_title: constraintLotSummaryContainsTitle,
         constraint_thresholds_status: constraintThresholds?.summary?.overall_status ?? null,
         index_select_paths_count: exportPaths?.selected_paths_count ?? null,

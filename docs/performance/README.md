@@ -84,6 +84,7 @@ The following scripts were added under `tools/perf/`:
 - `render-constraint-trend-summary.mjs` - render concise Markdown trend summary from constraint trend report
 - `report-constraint-lot-plan.mjs` - generate executable lot plan from prioritized constraint actions
 - `update-constraint-lot-plan.mjs` - update lot/action statuses in lot plan (`planned|in_progress|completed|blocked`)
+- `advance-constraint-lot-plan.mjs` - auto-advance lot flow (start next lot, complete current lot when all actions are done)
 - `render-constraint-lot-plan-summary.mjs` - render concise Markdown summary of lot execution plan
 - `render-constraint-summary.mjs` - generate Markdown summary from constraint report for CI/job summary
 - `run-kpi-campaign.mjs` - run repeated session/delivery cycles and emit KPI/threshold campaign summary
@@ -122,6 +123,7 @@ npx aidn perf constraint-trend --history-file .aidn/runtime/perf/constraint-hist
 npx aidn perf constraint-trend-summary --report-file .aidn/runtime/perf/constraint-trend.json --thresholds-file .aidn/runtime/perf/constraint-trend-thresholds.json --out .aidn/runtime/perf/constraint-trend-summary.md
 npx aidn perf constraint-lot-plan --actions-file .aidn/runtime/perf/constraint-actions.json --trend-file .aidn/runtime/perf/constraint-trend.json --out .aidn/runtime/perf/constraint-lot-plan.json --json
 npx aidn perf constraint-lot-update --plan-file .aidn/runtime/perf/constraint-lot-plan.json --lot-id L4-QW-01 --lot-status in_progress --action-update context-reload:reload-cache-hit:done --json
+npx aidn perf constraint-lot-advance --plan-file .aidn/runtime/perf/constraint-lot-plan.json --json
 npx aidn perf constraint-lot-summary --plan-file .aidn/runtime/perf/constraint-lot-plan.json --out .aidn/runtime/perf/constraint-lot-plan-summary.md
 npx aidn perf constraint-summary --report-file .aidn/runtime/perf/constraint-report.json --thresholds-file .aidn/runtime/perf/constraint-thresholds.json --actions-file .aidn/runtime/perf/constraint-actions.json --out .aidn/runtime/perf/constraint-summary.md
 ```
@@ -217,6 +219,7 @@ npm run perf:check-constraint-trend -- --target ../client-repo --kpi-file .aidn/
 npm run perf:constraint-trend-summary -- --report-file .aidn/runtime/perf/constraint-trend.json --thresholds-file .aidn/runtime/perf/constraint-trend-thresholds.json --out .aidn/runtime/perf/constraint-trend-summary.md
 npm run perf:constraint-lot-plan -- --actions-file .aidn/runtime/perf/constraint-actions.json --trend-file .aidn/runtime/perf/constraint-trend.json --out .aidn/runtime/perf/constraint-lot-plan.json
 npm run perf:constraint-lot-update -- --plan-file .aidn/runtime/perf/constraint-lot-plan.json --lot-id L4-QW-01 --lot-status in_progress --action-update context-reload:reload-cache-hit:done
+npm run perf:constraint-lot-advance -- --plan-file .aidn/runtime/perf/constraint-lot-plan.json
 npm run perf:constraint-lot-summary -- --plan-file .aidn/runtime/perf/constraint-lot-plan.json --out .aidn/runtime/perf/constraint-lot-plan-summary.md
 npm run perf:constraint-summary -- --report-file .aidn/runtime/perf/constraint-report.json --thresholds-file .aidn/runtime/perf/constraint-thresholds.json --actions-file .aidn/runtime/perf/constraint-actions.json --out .aidn/runtime/perf/constraint-summary.md
 npm run perf:check-fallbacks

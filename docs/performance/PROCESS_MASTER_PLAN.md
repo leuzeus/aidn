@@ -117,7 +117,7 @@ KPI cible:
 - Préparation Lot 4 (TOC): rapport de contrainte active outillé (`perf:constraint-report`) avec seuils (`perf:check-constraints`) et résumé CI (`perf:constraint-summary`).
 - Lot 4 actionnable: backlog d'optimisation priorisé impact/effort généré automatiquement (`perf:constraint-actions`).
 - Lot 4 pilotage: suivi de tendance des contraintes (`perf:constraint-history` + `perf:constraint-trend`) pour mesurer stabilité et rotation des goulots.
-- Lot 4 exécution: plan de lot généré depuis le backlog (`perf:constraint-lot-plan`) avec mise à jour d'avancement (`perf:constraint-lot-update`) et résumé Markdown (`perf:constraint-lot-summary`).
+- Lot 4 exécution: plan de lot généré depuis le backlog (`perf:constraint-lot-plan`) avec mise à jour d'avancement (`perf:constraint-lot-update`), avancement automatique (`perf:constraint-lot-advance`) et résumé Markdown (`perf:constraint-lot-summary`).
 - Progression Lot 3:
   - couverture fixture import/export des artefacts de support (`reports/`, `migration/`, `backlog/`, `incidents`)
   - smoke test hooks runtime `db-only` (`session-start` / `session-close`)
