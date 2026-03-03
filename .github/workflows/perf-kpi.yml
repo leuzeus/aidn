@@ -39,6 +39,11 @@ on:
         required: false
         default: false
         type: boolean
+      strict_constraint:
+        description: "Fail job when active-constraint checks are violated"
+        required: false
+        default: false
+        type: boolean
       regression_warmup_enabled:
         description: "Override regression warmup enabled (true/false, empty=use targets)"
         required: false
@@ -340,9 +345,20 @@ jobs:
         run: |
           npm run perf:constraint-report -- --file "$PERF_RUNTIME_PERF/workflow-events.ndjson" --run-prefix session- --out "$PERF_RUNTIME_PERF/constraint-report.json"
 
+      - name: Evaluate Constraint Thresholds (non-blocking)
+        run: |
+          STRICT_CONSTRAINT="${{ github.event_name == 'workflow_dispatch' && inputs.strict_constraint || false }}"
+          if [ "$STRICT_CONSTRAINT" = "true" ]; then
+            echo "Running constraint checks in strict mode."
+            npm run perf:check-constraints -- --target "$PERF_TARGET" --kpi-file "$PERF_RUNTIME_PERF/constraint-report.json" --out "$PERF_RUNTIME_PERF/constraint-thresholds.json" --strict
+          else
+            echo "Running constraint checks in non-blocking mode."
+            npm run perf:check-constraints -- --target "$PERF_TARGET" --kpi-file "$PERF_RUNTIME_PERF/constraint-report.json" --out "$PERF_RUNTIME_PERF/constraint-thresholds.json" || true
+          fi
+
       - name: Render Constraint Summary
         run: |
-          npm run perf:constraint-summary -- --report-file "$PERF_RUNTIME_PERF/constraint-report.json" --out "$PERF_RUNTIME_PERF/constraint-summary.md"
+          npm run perf:constraint-summary -- --report-file "$PERF_RUNTIME_PERF/constraint-report.json" --thresholds-file "$PERF_RUNTIME_PERF/constraint-thresholds.json" --out "$PERF_RUNTIME_PERF/constraint-summary.md"
 
       - name: Evaluate Fallback Thresholds (non-blocking)
         run: |
@@ -385,6 +401,7 @@ jobs:
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-regression.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/fallback-report.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-report.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-thresholds.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/fallback-thresholds.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-summary.md

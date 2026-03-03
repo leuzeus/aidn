@@ -103,6 +103,7 @@ npx aidn perf index-canonical-summary --check-file .aidn/runtime/index/index-can
 npx aidn perf index-thresholds --target . --json
 npx aidn perf index-sync-thresholds --target . --json
 npx aidn perf check-fallbacks --target . --json
+npx aidn perf check-constraints --target . --json
 npx aidn perf constraint-report --file .aidn/runtime/perf/workflow-events.ndjson --run-prefix session- --out .aidn/runtime/perf/constraint-report.json --json
 npx aidn perf constraint-summary --report-file .aidn/runtime/perf/constraint-report.json --out .aidn/runtime/perf/constraint-summary.md
 ```
@@ -188,6 +189,7 @@ npm run perf:check-regression -- --kpi-file .aidn/runtime/perf/kpi-report.json -
 npm run perf:fallback-report -- --file .aidn/runtime/perf/workflow-events.ndjson --run-prefix session- --out .aidn/runtime/perf/fallback-report.json
 npm run perf:constraint-report -- --file .aidn/runtime/perf/workflow-events.ndjson --run-prefix session- --out .aidn/runtime/perf/constraint-report.json --json
 npm run perf:constraint-summary -- --report-file .aidn/runtime/perf/constraint-report.json --out .aidn/runtime/perf/constraint-summary.md
+npm run perf:check-constraints -- --target ../client-repo --kpi-file .aidn/runtime/perf/constraint-report.json --out .aidn/runtime/perf/constraint-thresholds.json
 npm run perf:check-fallbacks
 npm run perf:campaign -- --iterations 30 --target tests/fixtures/repo-installed-core
 npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --regression-file .aidn/runtime/perf/kpi-regression.json --fallback-report-file .aidn/runtime/perf/fallback-report.json --fallback-thresholds-file .aidn/runtime/perf/fallback-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
@@ -217,6 +219,7 @@ Default runtime outputs:
 - `.aidn/runtime/perf/kpi-history.ndjson`
 - `.aidn/runtime/perf/fallback-report.json`
 - `.aidn/runtime/perf/constraint-report.json`
+- `.aidn/runtime/perf/constraint-thresholds.json`
 - `.aidn/runtime/perf/constraint-summary.md`
 - `.aidn/runtime/perf/fallback-thresholds.json`
 - `.aidn/runtime/perf/kpi-summary.md`
@@ -427,6 +430,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:check-regression` (non-blocking by default in CI)
   - `perf:fallback-report`
   - `perf:constraint-report`
+  - `perf:check-constraints` (non-blocking by default in CI)
   - `perf:constraint-summary`
   - `perf:check-fallbacks` (non-blocking by default in CI)
   - `perf:render-summary`
@@ -438,6 +442,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `.aidn/runtime/perf/kpi-regression.json`
   - `.aidn/runtime/perf/fallback-report.json`
   - `.aidn/runtime/perf/constraint-report.json`
+  - `.aidn/runtime/perf/constraint-thresholds.json`
   - `.aidn/runtime/perf/constraint-summary.md`
   - `.aidn/runtime/perf/fallback-thresholds.json`
   - `.aidn/runtime/perf/kpi-summary.md`
@@ -465,6 +470,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
 - `workflow_dispatch` supports `strict_index_sync=true` to make index import/export drift checks blocking.
 - `workflow_dispatch` supports `strict_regression=true` to make KPI regression violations blocking.
 - `workflow_dispatch` supports `strict_fallback=true` to make fallback-storm violations blocking.
+- `workflow_dispatch` supports `strict_constraint=true` to make active-constraint violations blocking.
 - `workflow_dispatch` supports regression warmup overrides via `regression_warmup_enabled`, `regression_warmup_history_lt`, `regression_warmup_multiplier`, `regression_warmup_severity`.
 
 Threshold source file:
@@ -474,6 +480,7 @@ Threshold source file:
 - `docs/performance/INDEX_REGRESSION_TARGETS.json`
 - `docs/performance/REGRESSION_TARGETS.json`
 - `docs/performance/FALLBACK_TARGETS.json`
+- `docs/performance/CONSTRAINT_TARGETS.json`
 
 Regression warmup note:
 - `REGRESSION_TARGETS.json` supports a `warmup` block.

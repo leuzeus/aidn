@@ -14,6 +14,7 @@ function parseArgs(argv) {
     campaignFile: ".aidn/runtime/perf/fixtures/cli-aliases/campaign-report.json",
     constraintReportFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-report.json",
     constraintSummaryFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-summary.md",
+    constraintThresholdsFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-thresholds.json",
     fallbackReportFile: ".aidn/runtime/perf/fallback-report.json",
     fallbackPassFile: ".aidn/runtime/perf/fixtures/cli-aliases/fallback-pass.json",
     fallbackThresholdsFile: ".aidn/runtime/perf/fallback-thresholds.json",
@@ -51,6 +52,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--constraint-summary-file") {
       args.constraintSummaryFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--constraint-thresholds-file") {
+      args.constraintThresholdsFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--fallback-report-file") {
       args.fallbackReportFile = argv[i + 1] ?? "";
@@ -122,6 +126,7 @@ function main() {
     const campaignFile = path.resolve(targetRoot, args.campaignFile);
     const constraintReportFile = path.resolve(targetRoot, args.constraintReportFile);
     const constraintSummaryFile = path.resolve(targetRoot, args.constraintSummaryFile);
+    const constraintThresholdsFile = path.resolve(targetRoot, args.constraintThresholdsFile);
     const fallbackReportFile = path.resolve(targetRoot, args.fallbackReportFile);
     const fallbackPassFile = path.resolve(targetRoot, args.fallbackPassFile);
     const fallbackThresholdsFile = path.resolve(targetRoot, args.fallbackThresholdsFile);
@@ -237,6 +242,17 @@ function main() {
       "--out",
       constraintSummaryFile,
     ], targetRoot);
+    const constraintThresholds = runNodeWithJson(aidnCli, [
+      "perf",
+      "check-constraints",
+      "--target",
+      ".",
+      "--kpi-file",
+      constraintReportFile,
+      "--out",
+      constraintThresholdsFile,
+      "--json",
+    ], targetRoot);
 
     runNodeWithJson(aidnCli, [
       "perf",
@@ -338,6 +354,7 @@ function main() {
       && Number(campaign?.iterations_completed ?? 0) === 1
       && typeof constraintReport?.summary?.active_constraint?.skill === "string"
       && constraintSummaryContainsActive
+      && typeof constraintThresholds?.summary?.overall_status === "string"
       && typeof exportPaths?.selected_paths_count === "number"
       && typeof reconcile?.pass === "boolean"
       && typeof fallbackThresholds?.summary?.overall_status === "string"
@@ -349,6 +366,7 @@ function main() {
       && fs.existsSync(campaignFile)
       && fs.existsSync(constraintReportFile)
       && fs.existsSync(constraintSummaryFile)
+      && fs.existsSync(constraintThresholdsFile)
       && fs.existsSync(indexSyncCheckFile)
       && fs.existsSync(exportPathsFile)
       && fs.existsSync(fallbackReportFile)
@@ -368,6 +386,7 @@ function main() {
         campaign_file: campaignFile,
         constraint_report_file: constraintReportFile,
         constraint_summary_file: constraintSummaryFile,
+        constraint_thresholds_file: constraintThresholdsFile,
         fallback_report_file: fallbackReportFile,
         fallback_pass_file: fallbackPassFile,
         fallback_thresholds_file: fallbackThresholdsFile,
@@ -382,6 +401,7 @@ function main() {
         campaign_iterations_completed: campaign?.iterations_completed ?? null,
         constraint_active_skill: constraintReport?.summary?.active_constraint?.skill ?? null,
         constraint_summary_contains_active: constraintSummaryContainsActive,
+        constraint_thresholds_status: constraintThresholds?.summary?.overall_status ?? null,
         index_select_paths_count: exportPaths?.selected_paths_count ?? null,
         index_reconcile_pass: reconcile?.pass ?? null,
         fallback_thresholds_status: fallbackThresholds?.summary?.overall_status ?? null,

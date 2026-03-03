@@ -7,6 +7,8 @@ function parseArgs(argv) {
   const args = {
     file: "tests/fixtures/perf-constraints/workflow-events.ndjson",
     out: ".aidn/runtime/perf/fixtures/constraints/constraint-report.json",
+    targets: "docs/performance/CONSTRAINT_TARGETS.json",
+    thresholdsOut: ".aidn/runtime/perf/fixtures/constraints/constraint-thresholds.json",
     summaryOut: ".aidn/runtime/perf/fixtures/constraints/constraint-summary.md",
     json: false,
   };
@@ -17,6 +19,12 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--out") {
       args.out = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--targets") {
+      args.targets = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--thresholds-out") {
+      args.thresholdsOut = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--summary-out") {
       args.summaryOut = argv[i + 1] ?? "";
@@ -30,7 +38,7 @@ function parseArgs(argv) {
       throw new Error(`Unknown argument: ${token}`);
     }
   }
-  if (!args.file || !args.out || !args.summaryOut) {
+  if (!args.file || !args.out || !args.targets || !args.thresholdsOut || !args.summaryOut) {
     throw new Error("Missing required argument values");
   }
   return args;
@@ -56,6 +64,8 @@ function main() {
     const args = parseArgs(process.argv.slice(2));
     const eventFile = path.resolve(process.cwd(), args.file);
     const outFile = path.resolve(process.cwd(), args.out);
+    const targetsFile = path.resolve(process.cwd(), args.targets);
+    const thresholdsOutFile = path.resolve(process.cwd(), args.thresholdsOut);
     const summaryOutFile = path.resolve(process.cwd(), args.summaryOut);
 
     const report = runJson("tools/perf/report-constraints.mjs", [
@@ -65,10 +75,21 @@ function main() {
       outFile,
       "--json",
     ]);
+    const thresholds = runJson("tools/perf/check-thresholds.mjs", [
+      "--kpi-file",
+      outFile,
+      "--targets",
+      targetsFile,
+      "--out",
+      thresholdsOutFile,
+      "--json",
+    ]);
     execFileSync(process.execPath, [
       path.resolve(process.cwd(), "tools/perf/render-constraint-summary.mjs"),
       "--report-file",
       outFile,
+      "--thresholds-file",
+      thresholdsOutFile,
       "--out",
       summaryOutFile,
     ], {
@@ -89,6 +110,8 @@ function main() {
       active_constraint_signal: String(active?.signal ?? "") === "control_duration_ms",
       active_constraint_share: Number(active?.share ?? 0) > 0.5,
       output_written_exists: fs.existsSync(String(report?.output_file ?? "")),
+      thresholds_written_exists: fs.existsSync(String(thresholds?.output_file ?? "")),
+      thresholds_status_pass: String(thresholds?.summary?.overall_status ?? "") === "pass",
       summary_written_exists: fs.existsSync(summaryOutFile),
       summary_contains_active_constraint: fs.existsSync(summaryOutFile)
         && fs.readFileSync(summaryOutFile, "utf8").includes("Active constraint:"),

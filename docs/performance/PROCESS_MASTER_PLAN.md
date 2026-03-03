@@ -114,7 +114,7 @@ KPI cible:
 - Lot actif: Lot 3.
 - Référence baseline: `LOT0_BASELINE_REPORT.md`.
 - Dernier rapport Lot 3: `LOT3_DB_INTEGRATION_REPORT.md` (campagne 30 itérations, seuils KPI en PASS).
-- Préparation Lot 4 (TOC): rapport de contrainte active outillé (`perf:constraint-report` + `perf:verify-constraint-report`).
+- Préparation Lot 4 (TOC): rapport de contrainte active outillé (`perf:constraint-report`) avec seuils (`perf:check-constraints`) et résumé CI (`perf:constraint-summary`).
 - Progression Lot 3:
   - couverture fixture import/export des artefacts de support (`reports/`, `migration/`, `backlog/`, `incidents`)
   - smoke test hooks runtime `db-only` (`session-start` / `session-close`)

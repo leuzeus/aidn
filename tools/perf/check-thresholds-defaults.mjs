@@ -23,6 +23,11 @@ const PRESETS = {
     targets: "docs/performance/FALLBACK_TARGETS.json",
     out: ".aidn/runtime/perf/fallback-thresholds.json",
   },
+  constraint: {
+    kpiFile: ".aidn/runtime/perf/constraint-report.json",
+    targets: "docs/performance/CONSTRAINT_TARGETS.json",
+    out: ".aidn/runtime/perf/constraint-thresholds.json",
+  },
 };
 
 function parseArgs(argv) {
@@ -66,7 +71,7 @@ function parseArgs(argv) {
   }
 
   if (!args.preset || !Object.prototype.hasOwnProperty.call(PRESETS, args.preset)) {
-    throw new Error("Invalid --preset. Expected index|index-sync|fallback");
+    throw new Error("Invalid --preset. Expected index|index-sync|fallback|constraint");
   }
   if (!args.target) {
     throw new Error("Missing value for --target");
@@ -79,6 +84,7 @@ function printUsage() {
   console.log("  node tools/perf/check-thresholds-defaults.mjs --preset index");
   console.log("  node tools/perf/check-thresholds-defaults.mjs --preset index-sync --target ../client");
   console.log("  node tools/perf/check-thresholds-defaults.mjs --preset fallback --json");
+  console.log("  node tools/perf/check-thresholds-defaults.mjs --preset constraint --json");
   console.log("  node tools/perf/check-thresholds-defaults.mjs --preset index --kpi-file .aidn/runtime/index/index-report.json --targets docs/performance/INDEX_TARGETS.json --out .aidn/runtime/index/index-thresholds.json");
 }
 

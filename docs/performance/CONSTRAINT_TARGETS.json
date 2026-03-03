@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "description": "Active-constraint guardrails for TOC-oriented workflow optimization.",
+  "rules": [
+    {
+      "id": "CONSTRAINT_RUNS_MIN",
+      "key": "summary.runs_analyzed",
+      "op": ">=",
+      "value": 1,
+      "severity": "error"
+    },
+    {
+      "id": "CONSTRAINT_CONTROL_SHARE_MAX",
+      "key": "summary.control_share_of_total",
+      "op": "<=",
+      "value": 0.7,
+      "severity": "warn"
+    },
+    {
+      "id": "CONSTRAINT_ACTIVE_SHARE_MAX",
+      "key": "summary.active_constraint.share",
+      "op": "<=",
+      "value": 0.75,
+      "severity": "warn"
+    }
+  ]
+}
