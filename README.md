@@ -25,6 +25,11 @@ The model structures work through bounded cycles, session discipline, baseline a
   - Project adapter stub at `docs/audit/WORKFLOW.md`
   - Audit artifacts and skill mapping used by day-to-day execution
 
+Path distinction guardrail:
+- `docs/SPEC.md` is the source file in this package repository.
+- `docs/audit/*` is the operational tree in the installed client repository.
+- Workflow execution and agent behavior must always use the installed `docs/audit/*` paths in the client repo context.
+
 ## Architecture Overview
 
 Product repository:

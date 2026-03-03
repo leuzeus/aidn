@@ -8,6 +8,11 @@ mechanism allowed to modify state.
 This document is the **single source of truth**.
 If an agent or user deviates from it, the session is considered **NON-COMPLIANT**.
 
+Repository scope clarification:
+- In this product repository, this file (`docs/SPEC.md`) is the source specification.
+- In an installed client repository, the canonical runtime path is `docs/audit/SPEC.md` (managed snapshot copied from this source).
+- Runtime execution must follow the installed `docs/audit/*` tree in the client repository, not product-repo source paths.
+
 ------------------------------------------------------------
 
 ## Core Principles
