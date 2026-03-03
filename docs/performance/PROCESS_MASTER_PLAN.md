@@ -120,3 +120,4 @@ KPI cible:
   - pilotage drift-driven: sélection automatique des chemins de projection depuis `index-sync-check` (`index-sync-select-paths`)
   - orchestration de réconciliation (`index-sync-reconcile`) pour enchaîner check/apply/projection ciblée sans étape manuelle
   - compatibilité native SQLite sur la chaîne drift/reconcile (`index-sync-check --index-backend sqlite`, `index-sync-reconcile --index-backend sqlite`)
+  - checkpoint backend-aware: `checkpoint --index-sync-check` route automatiquement le contrôle vers l’index JSON ou SQLite selon le store effectif

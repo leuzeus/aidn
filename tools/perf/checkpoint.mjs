@@ -235,6 +235,19 @@ function resolveReloadIndexConfig(args, indexOutputPath, indexSqliteOutputPath) 
   };
 }
 
+function resolveSyncCheckIndexConfig(args, indexOutputPath, indexSqliteOutputPath) {
+  if (args.indexStore === "sqlite" || args.indexStore === "dual-sqlite") {
+    return {
+      indexFile: indexSqliteOutputPath,
+      indexBackend: "sqlite",
+    };
+  }
+  return {
+    indexFile: indexOutputPath,
+    indexBackend: "json",
+  };
+}
+
 function getCurrentBranch(targetRoot) {
   try {
     return execSync(`git -C "${targetRoot}" branch --show-current`, {
@@ -306,6 +319,7 @@ function main() {
     const indexSqliteOutputPath = resolveTargetPath(targetRoot, args.indexSqliteOutput);
     const indexSyncCheckOutPath = resolveTargetPath(targetRoot, args.indexSyncCheckOut);
     const reloadIndex = resolveReloadIndexConfig(args, indexOutputPath, indexSqliteOutputPath);
+    const syncCheckIndex = resolveSyncCheckIndexConfig(args, indexOutputPath, indexSqliteOutputPath);
 
     const reloadStarted = Date.now();
     const reloadArgs = [
@@ -402,7 +416,7 @@ function main() {
     }
 
     const hasIndexOutputs = indexOutputsExistForStore(args, indexOutputPath, indexSqlOutputPath, indexSqliteOutputPath);
-    const hasIndexFileForSyncCheck = !args.indexSyncCheck || fs.existsSync(indexOutputPath);
+    const hasIndexFileForSyncCheck = !args.indexSyncCheck || fs.existsSync(syncCheckIndex.indexFile);
     const shouldSkipIndex = args.skipIndexOnIncremental
       && reload.decision === "incremental"
       && reload.fallback !== true
@@ -456,6 +470,8 @@ function main() {
       mismatch_count: 0,
       duration_ms: 0,
       output_file: null,
+      index_file: null,
+      index_backend: null,
       skipped: false,
       skip_reason: null,
     };
@@ -483,6 +499,8 @@ function main() {
           mismatch_count: 0,
           duration_ms: 0,
           output_file: writeJsonFile(indexSyncCheckOutPath, syncCheckOut),
+          index_file: syncCheckIndex.indexFile,
+          index_backend: syncCheckIndex.indexBackend,
           skipped: true,
           skip_reason: "SKIPPED_NO_RELOAD_SIGNAL",
         };
@@ -492,7 +510,9 @@ function main() {
           "--target",
           targetRoot,
           "--index-file",
-          indexOutputPath,
+          syncCheckIndex.indexFile,
+          "--index-backend",
+          syncCheckIndex.indexBackend,
           "--json",
         ]);
         indexSyncCheck = {
@@ -505,6 +525,8 @@ function main() {
             : 0,
           duration_ms: Date.now() - syncCheckStarted,
           output_file: writeJsonFile(indexSyncCheckOutPath, syncCheckOut),
+          index_file: syncCheckIndex.indexFile,
+          index_backend: syncCheckIndex.indexBackend,
           skipped: false,
           skip_reason: null,
         };

@@ -39,6 +39,7 @@ The following scripts were added under `tools/perf/`:
 - `verify-index-sync-fixtures.mjs` - validate index sync drift/apply/in-sync flow on fixtures
 - `verify-index-sync-select-paths-fixtures.mjs` - validate drift-driven path selection and selective export flow on fixtures
 - `verify-index-reconcile-fixtures.mjs` - validate reconcile flow across drift then idempotent pass on fixtures
+- `verify-checkpoint-index-sync-backend-fixtures.mjs` - validate `checkpoint --index-sync-check` backend routing (`dual` -> JSON, `sqlite` -> SQLite)
 - `verify-index-sqlite-fixtures.mjs` - validate SQLite index flow (sync + SQL parity + SQLite parity + export)
 - `verify-index-canonical-check-fixtures.mjs` - validate lightweight canonical coverage check (strict/non-strict) on fixtures
 - `verify-index-regression-fixtures.mjs` - validate index regression pipeline and zero-baseline handling on fixtures
@@ -133,6 +134,7 @@ npm run perf:verify-index-sync
 npm run perf:verify-index-sync-select-paths
 npm run perf:verify-index-reconcile
 npm run perf:verify-index-reconcile-sqlite
+npm run perf:verify-checkpoint-index-sync-backend
 npm run perf:verify-index-sqlite
 npm run perf:verify-index-canonical-check
 npm run perf:verify-index-regression
@@ -319,6 +321,7 @@ For fast CI feedback (without full report thresholds), use:
 `perf:checkpoint` orchestrates these steps and writes a summary event for KPI tracking.
 Checkpoint summary events now carry effective index write counters (`files_written_count`, `bytes_written`) from `index-sync --json`.
 `perf:checkpoint --index-sync-check` also runs `index-sync-check` after index write and stores a check JSON (optional `--index-sync-check-strict` to fail on drift).
+`perf:checkpoint --index-sync-check` automatically resolves the backend/index file pair from store mode (`file|dual|all -> workflow-index.json`, `sqlite|dual-sqlite -> workflow-index.sqlite`).
 `index-sync-check` now emits artifact-level drift (`artifact_mismatches` + `artifact_summary`) with mismatch types:
 - `missing_in_index`
 - `digest_mismatch`
@@ -376,6 +379,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:verify-index-sync-select-paths`
   - `perf:verify-index-reconcile`
   - `perf:verify-index-reconcile-sqlite`
+  - `perf:verify-checkpoint-index-sync-backend`
   - `perf:verify-index-sqlite`
   - `perf:verify-index-canonical-check`
   - `perf:verify-index-regression`
