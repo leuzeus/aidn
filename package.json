@@ -70,6 +70,7 @@
     "perf:verify-index-sync": "node tools/perf/verify-index-sync-fixtures.mjs",
     "perf:verify-index-sync-select-paths": "node tools/perf/verify-index-sync-select-paths-fixtures.mjs",
     "perf:verify-index-reconcile": "node tools/perf/verify-index-reconcile-fixtures.mjs",
+    "perf:verify-index-reconcile-sqlite": "node tools/perf/verify-index-reconcile-fixtures.mjs --index-backend sqlite --index-file .aidn/runtime/index/fixtures/reconcile/workflow-index.sqlite --seed-output .aidn/runtime/index/fixtures/reconcile/workflow-index.seed.json --check-file .aidn/runtime/index/fixtures/reconcile/index-sync-check-sqlite.json --paths-file .aidn/runtime/index/fixtures/reconcile/export-paths-sqlite.txt --rebuild-audit-root .aidn/runtime/index/fixtures/reconcile/rebuild-sqlite/docs/audit",
     "perf:verify-index-sqlite": "node tools/perf/verify-index-sqlite-fixtures.mjs",
     "perf:verify-index-canonical-check": "node tools/perf/verify-index-canonical-check-fixtures.mjs",
     "perf:verify-index-regression": "node tools/perf/verify-index-regression-fixtures.mjs",

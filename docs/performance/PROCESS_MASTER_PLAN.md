@@ -119,3 +119,4 @@ KPI cible:
   - projection Markdown sélective à la demande via `index-export-files --only-path|--paths-file`
   - pilotage drift-driven: sélection automatique des chemins de projection depuis `index-sync-check` (`index-sync-select-paths`)
   - orchestration de réconciliation (`index-sync-reconcile`) pour enchaîner check/apply/projection ciblée sans étape manuelle
+  - compatibilité native SQLite sur la chaîne drift/reconcile (`index-sync-check --index-backend sqlite`, `index-sync-reconcile --index-backend sqlite`)

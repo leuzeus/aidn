@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
+
+const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
   const args = {
     target: ".",
     indexFile: ".aidn/runtime/index/workflow-index.json",
+    indexBackend: "auto",
     checkFile: ".aidn/runtime/index/index-sync-check.json",
     pathsFile: ".aidn/runtime/index/export-paths.txt",
     auditRoot: "docs/audit",
@@ -24,6 +28,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--index-file") {
       args.indexFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--index-backend") {
+      args.indexBackend = String(argv[i + 1] ?? "").toLowerCase();
       i += 1;
     } else if (token === "--check-file") {
       args.checkFile = argv[i + 1] ?? "";
@@ -61,6 +68,9 @@ function parseArgs(argv) {
   if (!args.target) {
     throw new Error("Missing value for --target");
   }
+  if (!["auto", "json", "sqlite"].includes(args.indexBackend)) {
+    throw new Error("Invalid --index-backend. Expected auto|json|sqlite");
+  }
   if (!args.indexFile || !args.checkFile || !args.pathsFile || !args.auditRoot) {
     throw new Error("Missing required path argument values");
   }
@@ -71,6 +81,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/index-sync-reconcile.mjs --target ../client");
   console.log("  node tools/perf/index-sync-reconcile.mjs --target ../client --index-file .aidn/runtime/index/workflow-index.json");
+  console.log("  node tools/perf/index-sync-reconcile.mjs --target ../client --index-file .aidn/runtime/index/workflow-index.sqlite --index-backend sqlite");
   console.log("  node tools/perf/index-sync-reconcile.mjs --target ../client --audit-root docs/audit --include-types missing_in_index,digest_mismatch,stale_in_index");
   console.log("  node tools/perf/index-sync-reconcile.mjs --target ../client --no-apply");
   console.log("  node tools/perf/index-sync-reconcile.mjs --json");
@@ -83,8 +94,8 @@ function resolveTargetPath(targetRoot, candidatePath) {
   return path.resolve(targetRoot, candidatePath);
 }
 
-function runJson(script, scriptArgs) {
-  const file = path.resolve(process.cwd(), script);
+function runJson(scriptName, scriptArgs) {
+  const file = path.join(PERF_DIR, scriptName);
   const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
@@ -102,17 +113,19 @@ function main() {
     const pathsFilePath = resolveTargetPath(targetRoot, args.pathsFile);
     const auditRootPath = resolveTargetPath(targetRoot, args.auditRoot);
 
-    const initialCheck = runJson("tools/perf/index-sync-check.mjs", [
+    const initialCheck = runJson("index-sync-check.mjs", [
       "--target",
       targetRoot,
       "--index-file",
       indexFilePath,
+      "--index-backend",
+      args.indexBackend,
       "--json",
     ]);
     fs.mkdirSync(path.dirname(checkFilePath), { recursive: true });
     fs.writeFileSync(checkFilePath, `${JSON.stringify(initialCheck, null, 2)}\n`, "utf8");
 
-    const selection = runJson("tools/perf/index-sync-select-paths.mjs", [
+    const selection = runJson("index-sync-select-paths.mjs", [
       "--target",
       targetRoot,
       "--check-file",
@@ -128,11 +141,13 @@ function main() {
 
     let applyCheck = null;
     if (initialCheck.in_sync !== true && args.apply) {
-      applyCheck = runJson("tools/perf/index-sync-check.mjs", [
+      applyCheck = runJson("index-sync-check.mjs", [
         "--target",
         targetRoot,
         "--index-file",
         indexFilePath,
+        "--index-backend",
+        args.indexBackend,
         "--apply",
         "--json",
       ]);
@@ -140,11 +155,11 @@ function main() {
 
     let exportResult = null;
     if (Number(selection.selected_paths_count ?? 0) > 0) {
-      exportResult = runJson("tools/perf/index-export-files.mjs", [
+      exportResult = runJson("index-export-files.mjs", [
         "--index-file",
         indexFilePath,
         "--backend",
-        "json",
+        args.indexBackend,
         "--target",
         targetRoot,
         "--audit-root",
@@ -174,6 +189,7 @@ function main() {
       target_root: targetRoot,
       files: {
         index_file: indexFilePath,
+        index_backend: args.indexBackend,
         check_file: checkFilePath,
         paths_file: pathsFilePath,
         audit_root: auditRootPath,

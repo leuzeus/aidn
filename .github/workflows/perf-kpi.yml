@@ -100,6 +100,9 @@ jobs:
       - name: Verify Index Reconcile Fixtures
         run: npm run perf:verify-index-reconcile
 
+      - name: Verify Index Reconcile SQLite Fixtures
+        run: npm run perf:verify-index-reconcile-sqlite
+
       - name: Verify Index SQLite Fixtures
         run: npm run perf:verify-index-sqlite
 

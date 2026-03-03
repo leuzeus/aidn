@@ -175,6 +175,24 @@ function main() {
       "--json",
     ], targetRoot);
 
+    const reconcile = runNodeWithJson(aidnCli, [
+      "perf",
+      "index-reconcile",
+      "--target",
+      ".",
+      "--index-file",
+      sqliteFile,
+      "--index-backend",
+      "sqlite",
+      "--check-file",
+      indexSyncCheckFile,
+      "--paths-file",
+      exportPathsFile,
+      "--audit-root",
+      "docs/audit",
+      "--json",
+    ], targetRoot);
+
     const campaign = runNodeWithJson(aidnCli, [
       "perf",
       "campaign",
@@ -286,6 +304,7 @@ function main() {
     const pass = canonicalCheck?.summary?.overall_status === "pass"
       && Number(campaign?.iterations_completed ?? 0) === 1
       && typeof exportPaths?.selected_paths_count === "number"
+      && typeof reconcile?.pass === "boolean"
       && typeof fallbackThresholds?.summary?.overall_status === "string"
       && typeof indexThresholds?.summary?.overall_status === "string"
       && typeof indexSyncThresholds?.summary?.overall_status === "string"
@@ -323,6 +342,7 @@ function main() {
         canonical_markdown_coverage: canonicalCheck?.coverage?.canonical_coverage_ratio_markdown ?? null,
         campaign_iterations_completed: campaign?.iterations_completed ?? null,
         index_select_paths_count: exportPaths?.selected_paths_count ?? null,
+        index_reconcile_pass: reconcile?.pass ?? null,
         fallback_thresholds_status: fallbackThresholds?.summary?.overall_status ?? null,
         index_thresholds_status: indexThresholds?.summary?.overall_status ?? null,
         index_sync_thresholds_status: indexSyncThresholds?.summary?.overall_status ?? null,

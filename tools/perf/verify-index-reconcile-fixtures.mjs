@@ -7,6 +7,8 @@ function parseArgs(argv) {
     modernTarget: "tests/fixtures/perf-structure/modern",
     mixedTarget: "tests/fixtures/perf-structure/mixed",
     indexFile: ".aidn/runtime/index/fixtures/reconcile/workflow-index.json",
+    indexBackend: "json",
+    seedOutput: ".aidn/runtime/index/fixtures/reconcile/workflow-index.seed.json",
     checkFile: ".aidn/runtime/index/fixtures/reconcile/index-sync-check.json",
     pathsFile: ".aidn/runtime/index/fixtures/reconcile/export-paths.txt",
     rebuildAuditRoot: ".aidn/runtime/index/fixtures/reconcile/rebuild/docs/audit",
@@ -22,6 +24,12 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--index-file") {
       args.indexFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--index-backend") {
+      args.indexBackend = String(argv[i + 1] ?? "").toLowerCase();
+      i += 1;
+    } else if (token === "--seed-output") {
+      args.seedOutput = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--check-file") {
       args.checkFile = argv[i + 1] ?? "";
@@ -41,8 +49,11 @@ function parseArgs(argv) {
       throw new Error(`Unknown argument: ${token}`);
     }
   }
-  if (!args.modernTarget || !args.mixedTarget || !args.indexFile || !args.checkFile || !args.pathsFile || !args.rebuildAuditRoot) {
+  if (!args.modernTarget || !args.mixedTarget || !args.indexFile || !args.seedOutput || !args.checkFile || !args.pathsFile || !args.rebuildAuditRoot) {
     throw new Error("Missing required argument values");
+  }
+  if (!["json", "sqlite"].includes(args.indexBackend)) {
+    throw new Error("Invalid --index-backend. Expected json|sqlite");
   }
   return args;
 }
@@ -51,6 +62,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-index-reconcile-fixtures.mjs");
   console.log("  node tools/perf/verify-index-reconcile-fixtures.mjs --modern-target tests/fixtures/perf-structure/modern --mixed-target tests/fixtures/perf-structure/mixed");
+  console.log("  node tools/perf/verify-index-reconcile-fixtures.mjs --index-backend sqlite --index-file .aidn/runtime/index/fixtures/reconcile/workflow-index.sqlite");
 }
 
 function runJson(script, scriptArgs) {
@@ -76,22 +88,38 @@ function main() {
     const modernTarget = path.resolve(process.cwd(), args.modernTarget);
     const mixedTarget = path.resolve(process.cwd(), args.mixedTarget);
     const indexFilePath = path.resolve(process.cwd(), args.indexFile);
+    const seedOutputPath = path.resolve(process.cwd(), args.seedOutput);
     const checkFilePath = path.resolve(process.cwd(), args.checkFile);
     const pathsFilePath = path.resolve(process.cwd(), args.pathsFile);
     const rebuildAuditRootPath = path.resolve(process.cwd(), args.rebuildAuditRoot);
 
-    runNoJson("tools/perf/index-sync.mjs", [
-      "--target",
-      mixedTarget,
-      "--output",
-      indexFilePath,
-    ]);
+    if (args.indexBackend === "sqlite") {
+      runNoJson("tools/perf/index-sync.mjs", [
+        "--target",
+        mixedTarget,
+        "--store",
+        "sqlite",
+        "--output",
+        seedOutputPath,
+        "--sqlite-output",
+        indexFilePath,
+      ]);
+    } else {
+      runNoJson("tools/perf/index-sync.mjs", [
+        "--target",
+        mixedTarget,
+        "--output",
+        indexFilePath,
+      ]);
+    }
 
     const first = runJson("tools/perf/index-sync-reconcile.mjs", [
       "--target",
       modernTarget,
       "--index-file",
       indexFilePath,
+      "--index-backend",
+      args.indexBackend,
       "--check-file",
       checkFilePath,
       "--paths-file",
@@ -106,6 +134,8 @@ function main() {
       modernTarget,
       "--index-file",
       indexFilePath,
+      "--index-backend",
+      args.indexBackend,
       "--check-file",
       checkFilePath,
       "--paths-file",
@@ -139,6 +169,8 @@ function main() {
       ts: new Date().toISOString(),
       files: {
         index_file: indexFilePath,
+        index_backend: args.indexBackend,
+        seed_output: seedOutputPath,
         check_file: checkFilePath,
         paths_file: pathsFilePath,
         rebuild_audit_root: rebuildAuditRootPath,
