@@ -50,6 +50,7 @@ Règle en échec:
 - baseline `overhead_ratio.mean` (Lot 0): `16.729346586949728`
 - cible Lot 4 du plan maître (`-50% vs Lot 0`): `<= 8.364673293474864`
 - dernier résultat publié (Lot 3, fixtures): `2.68662084302406` (`LOT3_DB_INTEGRATION_REPORT.md`)
+- dernier résultat publié (Lot 4, fixtures): `2.6148678708848396` (`LOT4_TOC_CONSTRAINT_REPORT.md`)
 - action de reprise: confirmer cet écart favorable sur corpus projet réel avant clôture Lot 3 et passage formel Lot 4.
 
 ## Artefacts Source

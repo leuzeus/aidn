@@ -112,13 +112,15 @@ KPI cible:
 - Lot 0: COMPLETED (baseline 30 itérations publiée).
 - Lot 1: COMPLETED (`LOT1_QUICK_WINS_REPORT.md` publié).
 - Lot 2: COMPLETED (`LOT2_PULL_FLOW_REPORT.md` publié).
-- Lot actif: Lot 3 (stabilisation finale avant bascule Lot 4).
+- Lot actif: Lot 4 (TOC en exécution).
 - Référence baseline: `LOT0_BASELINE_REPORT.md`.
 - Dernier rapport Lot 3: `LOT3_DB_INTEGRATION_REPORT.md` (campagne 30 itérations, seuils KPI en PASS).
+- Dernier rapport Lot 4: `LOT4_TOC_CONSTRAINT_REPORT.md` (comparaison Lot 0 vs Lot 4 publiée, boucle TOC exécutée).
 - Préparation Lot 4 (TOC): rapport de contrainte active outillé (`perf:constraint-report`) avec seuils (`perf:check-constraints`) et résumé CI (`perf:constraint-summary`).
 - Lot 4 actionnable: backlog d'optimisation priorisé impact/effort généré automatiquement (`perf:constraint-actions`).
 - Lot 4 pilotage: suivi de tendance des contraintes (`perf:constraint-history` + `perf:constraint-trend`) pour mesurer stabilité et rotation des goulots.
 - Lot 4 exécution: plan de lot généré depuis le backlog (`perf:constraint-lot-plan`) avec mise à jour d'avancement (`perf:constraint-lot-update`), avancement automatique (`perf:constraint-lot-advance`) et boucle CI `plan -> advance -> summary` (`perf:constraint-lot-summary`).
+- Lot 4 statut courant: `L4-FD-01` en `in_progress` (3 actions pending), seuil KPI global en `pass`, seuil contrainte en `warn` non bloquant (`CONSTRAINT_CONTROL_SHARE_MAX`).
 - Progression Lot 3:
   - couverture fixture import/export des artefacts de support (`reports/`, `migration/`, `backlog/`, `incidents`)
   - smoke test hooks runtime `db-only` (`session-start` / `session-close`)
