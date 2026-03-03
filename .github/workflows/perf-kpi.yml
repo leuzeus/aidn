@@ -135,6 +135,9 @@ jobs:
       - name: Verify Constraint Actions Fixtures
         run: npm run perf:verify-constraint-actions
 
+      - name: Verify Constraint Trend Fixtures
+        run: npm run perf:verify-constraint-trend
+
       - name: Verify Install Import Fixtures
         run: npm run perf:verify-install-import
 
@@ -153,6 +156,7 @@ jobs:
         with:
           path: |
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-history.ndjson
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-history.ndjson
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-regression-history.ndjson
           key: ${{ runner.os }}-perf-history-${{ github.event.pull_request.head.ref || github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -363,6 +367,18 @@ jobs:
         run: |
           npm run perf:constraint-actions -- --report-file "$PERF_RUNTIME_PERF/constraint-report.json" --thresholds-file "$PERF_RUNTIME_PERF/constraint-thresholds.json" --out "$PERF_RUNTIME_PERF/constraint-actions.json"
 
+      - name: Sync Constraint History
+        run: |
+          npm run perf:constraint-history -- --report-file "$PERF_RUNTIME_PERF/constraint-report.json" --actions-file "$PERF_RUNTIME_PERF/constraint-actions.json" --history-file "$PERF_RUNTIME_PERF/constraint-history.ndjson" --max-runs 200
+
+      - name: Build Constraint Trend Report
+        run: |
+          npm run perf:constraint-trend -- --history-file "$PERF_RUNTIME_PERF/constraint-history.ndjson" --out "$PERF_RUNTIME_PERF/constraint-trend.json"
+
+      - name: Render Constraint Trend Summary
+        run: |
+          npm run perf:constraint-trend-summary -- --report-file "$PERF_RUNTIME_PERF/constraint-trend.json" --out "$PERF_RUNTIME_PERF/constraint-trend-summary.md"
+
       - name: Render Constraint Summary
         run: |
           npm run perf:constraint-summary -- --report-file "$PERF_RUNTIME_PERF/constraint-report.json" --thresholds-file "$PERF_RUNTIME_PERF/constraint-thresholds.json" --actions-file "$PERF_RUNTIME_PERF/constraint-actions.json" --out "$PERF_RUNTIME_PERF/constraint-summary.md"
@@ -388,6 +404,8 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           cat "$PERF_RUNTIME_PERF/constraint-summary.md" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat "$PERF_RUNTIME_PERF/constraint-trend-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
           cat "$PERF_RUNTIME_INDEX/index-canonical-check-summary.md" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           cat "$PERF_RUNTIME_INDEX/index-sync-summary.md" >> "$GITHUB_STEP_SUMMARY"
@@ -410,6 +428,9 @@ jobs:
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-report.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-thresholds.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-actions.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-trend.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-trend-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/fallback-thresholds.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-summary.md
@@ -441,6 +462,7 @@ jobs:
         with:
           path: |
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-history.ndjson
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-history.ndjson
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-regression-history.ndjson
           key: ${{ steps.perf_history_restore.outputs.cache-primary-key }}

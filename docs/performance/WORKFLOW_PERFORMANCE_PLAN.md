@@ -34,7 +34,7 @@ Contraintes:
 - Lot 3 (PR observability): résumé Markdown dédié du check canonique publié dans `GITHUB_STEP_SUMMARY` pour lecture immédiate.
 - Lot 3 (CLI reliability): vérification fixture des alias `aidn perf` pour les commandes index/canonical ajoutées.
 - Lot 3 (ops controls): contrôle strict dédié `strict_index_canonical` dans `workflow_dispatch`.
-- Lot 4 (TOC prep): rapport de contrainte active (`report-constraints`) + seuils dédiés (`CONSTRAINT_TARGETS`) + backlog priorisé (`constraint-actions`) + résumé Markdown CI (`constraint-summary`) avec vérification fixture dédiée.
+- Lot 4 (TOC prep): rapport de contrainte active (`report-constraints`) + seuils dédiés (`CONSTRAINT_TARGETS`) + backlog priorisé (`constraint-actions`) + trend temporel (`constraint-history`/`constraint-trend`) + résumés Markdown CI (`constraint-summary`, `constraint-trend-summary`) avec vérifications fixtures dédiées.
 
 Reste à finaliser:
 - validation KPI sur un corpus projet réel (au-delà des fixtures) avec fenêtre d'itérations représentative.
