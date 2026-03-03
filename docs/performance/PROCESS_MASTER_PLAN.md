@@ -112,15 +112,16 @@ KPI cible:
 - Lot 0: COMPLETED (baseline 30 itérations publiée).
 - Lot 1: COMPLETED (`LOT1_QUICK_WINS_REPORT.md` publié).
 - Lot 2: COMPLETED (`LOT2_PULL_FLOW_REPORT.md` publié).
-- Lot actif: Lot 4 (TOC en exécution).
+- Lot 3: COMPLETED (`LOT3_DB_INTEGRATION_REPORT.md` publié).
+- Lot 4: COMPLETED (scope fixtures, boucle TOC soldée).
 - Référence baseline: `LOT0_BASELINE_REPORT.md`.
 - Dernier rapport Lot 3: `LOT3_DB_INTEGRATION_REPORT.md` (campagne 30 itérations, seuils KPI en PASS).
-- Dernier rapport Lot 4: `LOT4_TOC_CONSTRAINT_REPORT.md` (comparaison Lot 0 vs Lot 4 publiée, boucle TOC exécutée).
+- Dernier rapport Lot 4: `LOT4_TOC_CONSTRAINT_REPORT.md` (comparaison Lot 0 vs Lot 4 mise à jour, lot-plan TOC clôturé).
 - Préparation Lot 4 (TOC): rapport de contrainte active outillé (`perf:constraint-report`) avec seuils (`perf:check-constraints`) et résumé CI (`perf:constraint-summary`).
 - Lot 4 actionnable: backlog d'optimisation priorisé impact/effort généré automatiquement (`perf:constraint-actions`).
 - Lot 4 pilotage: suivi de tendance des contraintes (`perf:constraint-history` + `perf:constraint-trend`) pour mesurer stabilité et rotation des goulots.
 - Lot 4 exécution: plan de lot généré depuis le backlog (`perf:constraint-lot-plan`) avec mise à jour d'avancement (`perf:constraint-lot-update`), avancement automatique (`perf:constraint-lot-advance`) et boucle CI `plan -> advance -> summary` (`perf:constraint-lot-summary`).
-- Lot 4 statut courant: `L4-FD-01` en `in_progress` (3 actions pending), seuil KPI global en `pass`, seuil contrainte en `pass`, contrainte active `reload-check`.
+- Lot 4 statut final (fixtures): `L4-FD-01` et `L4-FD-02` en `completed`, `4/4` actions `done`, `0` pending, seuil KPI global `pass`, seuil contrainte `pass`, contrainte active `perf-checkpoint`.
 - Progression Lot 3:
   - couverture fixture import/export des artefacts de support (`reports/`, `migration/`, `backlog/`, `incidents`)
   - smoke test hooks runtime `db-only` (`session-start` / `session-close`)
@@ -130,9 +131,9 @@ KPI cible:
   - compatibilité native SQLite sur la chaîne drift/reconcile (`index-sync-check --index-backend sqlite`, `index-sync-reconcile --index-backend sqlite`)
   - checkpoint backend-aware: `checkpoint --index-sync-check` route automatiquement le contrôle vers l’index JSON ou SQLite selon le store effectif
 
-## Reprise Immédiate (Point D'Arret Lot 4)
+## Reprise Immédiate (Post Lot 4 Fixtures)
 
-1. Valider la campagne KPI 30 itérations sur un corpus projet réel pour confirmer les gains hors fixtures.
+1. Réexécuter la campagne KPI 30 itérations sur corpus projet réel pour confirmer les gains hors fixtures.
 2. Exécuter la boucle TOC complète sur ce corpus: `constraint-report` -> `constraint-actions` -> `constraint-history` -> `constraint-trend` -> `constraint-lot-plan` -> `constraint-lot-advance` -> `constraint-lot-summary`.
-3. Vérifier `perf:check-constraints` et `perf:check-constraint-trend` sur les artefacts générés.
-4. Publier la décision de clôture Lot 4 (go/no-go + risques + rollback) après exécution complète du lot `L4-FD-01`.
+3. Vérifier `perf:check-constraints` et `perf:check-constraint-trend` sur les artefacts réels.
+4. Publier la décision de clôture opérationnelle globale (go/no-go + risques + rollback) avec comparaison explicite Lot 0 vs Lot 4.

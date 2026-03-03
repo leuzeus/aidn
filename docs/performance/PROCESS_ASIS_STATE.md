@@ -101,5 +101,6 @@ Contraintes secondaires:
 
 - Les lots 1 à 3 ont réduit fortement le coût de contrôle sur fixtures (voir `LOT1_QUICK_WINS_REPORT.md`, `LOT2_PULL_FLOW_REPORT.md`, `LOT3_DB_INTEGRATION_REPORT.md`).
 - La préparation TOC est outillée de bout en bout (`constraint-report`, `constraint-actions`, `constraint-history`, `constraint-trend`, `constraint-lot-plan`, `constraint-lot-update`, `constraint-lot-advance`, `constraint-lot-summary`).
+- Lot 4 (scope fixtures) est soldé avec lot-plan complété (`4/4` actions `done`) et comparaison Lot 0 -> Lot 4 publiée (`LOT4_TOC_CONSTRAINT_REPORT.md`).
 - Le prochain risque principal n'est plus l'outillage mais la validation sur corpus projet réel (stabilité KPI + conformité gates).
-- La reprise opérationnelle cible donc la bascule formelle Lot 3 -> Lot 4 avec décision go/no-go documentée.
+- La reprise opérationnelle cible donc la clôture globale Lot 4 sur corpus réel avec décision go/no-go documentée.

@@ -32,12 +32,12 @@ Lot 0 baseline:
 - `gates_frequency.mean`: 18
 
 Lot 4 (TOC loop active):
-- `overhead_ratio.mean`: 1.564794913567456
+- `overhead_ratio.mean`: 2.189884153568903
 - `artifacts_churn.mean`: 0.1
 - `gates_frequency.mean`: 10
 
 Écart vs Lot 0:
-- `overhead_ratio.mean`: -90.65%
+- `overhead_ratio.mean`: -86.91%
 - `artifacts_churn.mean`: 0.00%
 - `gates_frequency.mean`: -44.44%
 
@@ -49,10 +49,10 @@ Statut global:
 ## Exécution TOC (Lot 4)
 
 Contrainte active:
-- `skill`: `reload-check`
+- `skill`: `perf-checkpoint`
 - `signal`: `control_duration_ms`
-- `share`: `0.43991530633153475` (`43.99%`)
-- `control_share_of_total`: `0.6075154150656852` (`60.75%`)
+- `share`: `0.4174375321544219` (`41.74%`)
+- `control_share_of_total`: `0.6852404849791934` (`68.52%`)
 
 Seuils contrainte (`CONSTRAINT_TARGETS`):
 - statut global: `pass` (3 pass, 0 fail, 0 blocking)
@@ -61,19 +61,35 @@ Seuils tendance contrainte (`CONSTRAINT_TREND_TARGETS`):
 - statut global: `pass` (5 pass, 0 fail, 0 blocking)
 
 Backlog et plan Lot 4:
-- actions générées: `3` (batch `foundational`)
-- action prioritaire: `reload-check:generic-control-reduction` (`priority_score=17.33`)
-- plan généré: `L4-FD-01` (`in_progress`, `3` actions `pending`)
+- actions générées: `4` (batch `foundational`)
+- action prioritaire: `perf-checkpoint:generic-control-reduction` (`priority_score=17.33`)
+- lots exécutés: `L4-FD-01`, `L4-FD-02`
+- avancement final: `4/4` actions `done`, `0` pending
 
 ## Ajustement Instrumentation Lot 4
 
 - `workflow-hook` publie désormais une durée de wrapper (overhead hook) sans re-compter la durée imbriquée de `checkpoint`.
 - objectif: éviter le double comptage dans les rapports KPI/contrainte et refléter la contrainte réelle du pipeline.
+- `gating-evaluate` réduit le coût de contrôle:
+  - scan Git unifié via `git status --porcelain --untracked-files=no`
+  - lecture NDJSON ciblée sur les signaux utiles (drift/fallback), sans parsing global du fichier d'événements.
+
+## Vérification de l'action restante (Lot 4)
+
+Action clôturée:
+- `gating-evaluate:generic-control-reduction`
+
+Impact observé (même campagne 30 runs):
+- `gating-evaluate.control_duration_ms`: `19544 -> 12052` (`-38.33%`)
+- `gating-evaluate.p90_duration_ms`: `732 -> 399` (`-45.49%`)
+- `gating-evaluate.control_share_of_control`: `17.62% -> 12.16%`
+- contrainte globale: `CONSTRAINT_CONTROL_SHARE_MAX` repasse en `pass` (`68.52% <= 70%`)
 
 ## Décision De Passage
 
-- Lot 4: `IN_PROGRESS` (boucle TOC exécutée et plan de lot démarré).
-- Prochaine étape: implémenter les actions du lot `L4-FD-01`, puis relancer campagne + pipeline TOC pour réduire la contrainte active `reload-check` tout en conservant les gains KPI vs Lot 0.
+- Lot 4: `COMPLETED` (scope fixtures) avec boucle TOC complète exécutée et backlog lot entièrement soldé.
+- comparaison Lot 0 -> Lot 4: objectif plan maître (`-50% overhead`) largement dépassé (`-86.91%`).
+- point de vigilance: confirmer le même profil de gains sur corpus projet réel avant clôture opérationnelle globale.
 
 ## Artefacts Source
 

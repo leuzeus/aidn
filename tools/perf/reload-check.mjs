@@ -83,9 +83,15 @@ function sha256(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 
+function statFingerprint(stats) {
+  const mtimeNs = Math.round(Number(stats.mtimeMs ?? 0) * 1_000_000);
+  const size = Number(stats.size ?? 0);
+  return `stat:${size}:${mtimeNs}`;
+}
+
 function sha256File(filePath) {
-  const data = fs.readFileSync(filePath);
-  return crypto.createHash("sha256").update(data).digest("hex");
+  const stats = fs.statSync(filePath);
+  return statFingerprint(stats);
 }
 
 function readTextSafe(filePath) {
@@ -204,7 +210,7 @@ function walkCycleStatusFiles(auditRoot) {
       state,
       branch_name: meta.branch_name ?? null,
       session_owner: meta.session_owner ?? null,
-      status_hash: sha256(text),
+      status_hash: sha256File(statusPath),
     });
   }
   return out;
@@ -224,10 +230,12 @@ function detectLatestSessionArtifact(auditRoot) {
   candidates.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
   const latest = candidates[0];
   const text = readTextSafe(latest);
+  const meta = parseFrontMatterLike(text);
   return {
     path: latest,
     rel: path.relative(auditRoot, latest).replace(/\\/g, "/"),
-    hash: sha256(text),
+    hash: sha256File(latest),
+    session_branch: meta.session_branch ?? null,
   };
 }
 
@@ -429,7 +437,13 @@ function collectCurrentStateFromFiles(targetRoot) {
   };
 
   const reloadDigest = sha256(canonicalStateForDigest(digestInput));
-  const mapping = evaluateMapping(branch, activeCycles, latestSession, auditRoot);
+  const mapping = evaluateMapping(
+    branch,
+    activeCycles,
+    latestSession,
+    auditRoot,
+    latestSession?.session_branch ?? null,
+  );
 
   return {
     collected_at: new Date().toISOString(),

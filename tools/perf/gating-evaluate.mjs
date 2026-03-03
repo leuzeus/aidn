@@ -277,32 +277,26 @@ function getActiveCycleGoal(targetRoot) {
 function getChangedFiles(targetRoot) {
   const changed = new Set();
   try {
-    const outputWorking = execSync(`git -C "${targetRoot}" diff --name-only --relative HEAD`, {
+    const statusOutput = execSync(`git -C "${targetRoot}" status --porcelain --untracked-files=no`, {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
-    if (outputWorking) {
-      for (const line of outputWorking.split(/\r?\n/)) {
-        const file = line.trim();
-        if (file) {
-          changed.add(file);
-        }
-      }
+    if (!statusOutput) {
+      return [];
     }
-  } catch {
-    // ignore and continue with other probes
-  }
-  try {
-    const outputStaged = execSync(`git -C "${targetRoot}" diff --name-only --relative --cached HEAD`, {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    if (outputStaged) {
-      for (const line of outputStaged.split(/\r?\n/)) {
-        const file = line.trim();
-        if (file) {
-          changed.add(file);
-        }
+    for (const line of statusOutput.split(/\r?\n/)) {
+      if (line.length < 4) {
+        continue;
+      }
+      const payload = line.slice(3).trim();
+      if (!payload) {
+        continue;
+      }
+      const renamed = payload.match(/^(.*)\s->\s(.*)$/);
+      if (renamed) {
+        changed.add(renamed[2].trim());
+      } else {
+        changed.add(payload);
       }
     }
   } catch {
@@ -311,21 +305,52 @@ function getChangedFiles(targetRoot) {
   return Array.from(changed).sort((a, b) => a.localeCompare(b));
 }
 
-function readNdjson(filePath) {
+function readEventSignalStats(filePath, options = {}) {
+  const {
+    includeDrift = true,
+    includeFallback = true,
+  } = options;
   const absolute = path.resolve(process.cwd(), filePath);
   if (!fs.existsSync(absolute)) {
-    return [];
+    return {
+      latestDriftMs: null,
+      fallbackRecentCount: 0,
+    };
   }
-  const lines = fs.readFileSync(absolute, "utf8").split(/\r?\n/).filter((line) => line.trim().length > 0);
-  const out = [];
+  const lines = fs.readFileSync(absolute, "utf8").split(/\r?\n/);
+  let latestDriftMs = null;
+  let fallbackRecentCount = 0;
   for (const line of lines) {
+    if (line.trim().length === 0) {
+      continue;
+    }
+    const mightBeDrift = includeDrift && line.includes("\"skill\":\"drift-check\"");
+    const mightBeFallback = includeFallback
+      && line.includes("\"skill\":\"reload-check\"")
+      && line.includes("\"result\":\"fallback\"");
+    if (!mightBeDrift && !mightBeFallback) {
+      continue;
+    }
     try {
-      out.push(JSON.parse(line));
+      const event = JSON.parse(line);
+      const skill = String(event.skill ?? "");
+      if (includeDrift && skill === "drift-check") {
+        const eventMs = toTimestampMs(event.ts);
+        if (eventMs != null && (latestDriftMs == null || eventMs > latestDriftMs)) {
+          latestDriftMs = eventMs;
+        }
+      }
+      if (includeFallback && skill === "reload-check" && String(event.result ?? "") === "fallback") {
+        fallbackRecentCount += 1;
+      }
     } catch {
       // ignore malformed line
     }
   }
-  return out;
+  return {
+    latestDriftMs,
+    fallbackRecentCount,
+  };
 }
 
 function readJsonOptional(filePath) {
@@ -351,7 +376,6 @@ function detectSignals(targetRoot, args, reloadResult) {
   const sessionObjective = extractSessionObjective(latestSession);
   const cycleGoal = getActiveCycleGoal(targetRoot);
   const changedFiles = getChangedFiles(targetRoot);
-  const events = readNdjson(args.eventFile);
 
   const signal = {
     objective_delta: false,
@@ -380,12 +404,11 @@ function detectSignals(targetRoot, args, reloadResult) {
       /(db|database|schema|migration|auth|security|api)/i.test(file),
     );
   }
-
-  const driftEvents = events.filter((event) => String(event.skill ?? "") === "drift-check");
-  const latestDrift = driftEvents
-    .map((event) => toTimestampMs(event.ts))
-    .filter((ms) => ms != null)
-    .sort((a, b) => b - a)[0] ?? null;
+  const eventStats = readEventSignalStats(args.eventFile, {
+    includeDrift: !noChangeFastPath && args.mode === "COMMITTING",
+    includeFallback: true,
+  });
+  const latestDrift = eventStats.latestDriftMs;
 
   if (!noChangeFastPath && args.mode === "COMMITTING") {
     if (latestDrift == null) {
@@ -421,10 +444,7 @@ function detectSignals(targetRoot, args, reloadResult) {
       || (name === "scope_growth" && args.mode === "COMMITTING"),
   );
 
-  const fallbackEvents = events.filter((event) =>
-    String(event.skill ?? "") === "reload-check" && String(event.result ?? "") === "fallback",
-  );
-  const fallbackRecentCount = fallbackEvents.length;
+  const fallbackRecentCount = eventStats.fallbackRecentCount;
 
   const level1 = {
     decision: reloadResult.decision,

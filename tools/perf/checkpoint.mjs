@@ -260,28 +260,15 @@ function getCurrentBranch(targetRoot) {
 }
 
 function hasWorkingTreeChanges(targetRoot) {
-  const collect = (argv) => {
-    try {
-      const out = execFileSync("git", ["-C", targetRoot, ...argv], {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      }).trim();
-      if (!out) {
-        return [];
-      }
-      return out
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter((line) => line.length > 0);
-    } catch {
-      return [];
-    }
-  };
-  const changed = new Set([
-    ...collect(["diff", "--name-only", "--relative", "HEAD"]),
-    ...collect(["diff", "--name-only", "--relative", "--cached", "HEAD"]),
-  ]);
-  return changed.size > 0;
+  try {
+    const out = execFileSync("git", ["-C", targetRoot, "status", "--porcelain", "--untracked-files=no"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return out.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 function main() {
