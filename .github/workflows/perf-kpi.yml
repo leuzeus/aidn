@@ -153,9 +153,6 @@ jobs:
       - name: Verify DB-Only Hooks Fixtures
         run: npm run perf:verify-db-only-hooks
 
-      - name: Verify Workflow Hook Constraint Loop Fixtures
-        run: npm run perf:verify-workflow-hook-constraint-loop
-
       - name: Reset Perf Runtime
         run: npm run perf:reset -- --root "$PERF_RUNTIME"
 

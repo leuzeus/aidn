@@ -49,7 +49,6 @@ The following scripts were added under `tools/perf/`:
 - `verify-index-export-filter-fixtures.mjs` - validate selective export/projection via `--only-path` on fixtures
 - `verify-support-artifacts-fixtures.mjs` - validate import/export coverage for support artifacts (`reports/`, `migration/`, `backlog/`, `incidents/`)
 - `verify-db-only-hooks-fixtures.mjs` - validate runtime session hooks in `db-only` mode (`session-start`/`session-close`)
-- `verify-workflow-hook-constraint-loop-fixtures.mjs` - validate `workflow-hook` constraint orchestration at `session-close` in `dual` and `db-only` modes
 - `verify-perf-cli-aliases-fixtures.mjs` - validate `aidn perf` aliases for canonical/index commands on fixtures
 - `verify-install-import-fixtures.mjs` - validate installer artifact import behavior and backend precedence
 - `verify-state-mode-parity-fixtures.mjs` - validate `dual` vs `db-only` parity for reload + gating decisions on fixtures
@@ -90,7 +89,6 @@ The following scripts were added under `tools/perf/`:
 - `advance-constraint-lot-plan.mjs` - auto-advance lot flow (start next lot, complete current lot when all actions are done)
 - `render-constraint-lot-plan-summary.mjs` - render concise Markdown summary of lot execution plan
 - `render-constraint-summary.mjs` - generate Markdown summary from constraint report for CI/job summary
-- `constraint-loop.mjs` - run full constraint chain (`report -> checks -> actions -> history -> trend -> lot-plan -> summaries`) as a single orchestrator
 - `run-kpi-campaign.mjs` - run repeated session/delivery cycles and emit KPI/threshold campaign summary
 - `render-summary.mjs` - generate Markdown summary from KPI + threshold/regression/fallback reports
 - `reset-runtime.mjs` - clear local perf runtime artifacts before a fresh measurement run
@@ -105,8 +103,6 @@ npx aidn perf checkpoint --target . --mode COMMITTING --index-store all --index-
 npx aidn perf skill-hook --skill context-reload --target . --mode THINKING --json
 npx aidn perf session-start --target . --mode COMMITTING --json
 npx aidn perf session-close --target . --mode COMMITTING --json
-npx aidn perf session-close --target . --mode COMMITTING --constraint-loop-strict --json
-npx aidn perf constraint-loop --target . --event-file .aidn/runtime/perf/workflow-events.ndjson --json
 npx aidn perf index --target . --store all --json
 npx aidn perf index-select-paths --target . --check-file .aidn/runtime/index/index-sync-check.json --out .aidn/runtime/index/export-paths.txt --include-types missing_in_index,digest_mismatch
 npx aidn perf index-reconcile --target . --index-file .aidn/runtime/index/workflow-index.json --check-file .aidn/runtime/index/index-sync-check.json --paths-file .aidn/runtime/index/export-paths.txt --audit-root docs/audit
@@ -174,7 +170,6 @@ npm run perf:verify-index-regression
 npm run perf:verify-index-export-filter
 npm run perf:verify-support-artifacts
 npm run perf:verify-db-only-hooks
-npm run perf:verify-workflow-hook-constraint-loop
 npm run perf:verify-cli-aliases
 npm run perf:verify-constraint-report
 npm run perf:verify-constraint-actions
@@ -230,7 +225,6 @@ npm run perf:constraint-lot-update -- --plan-file .aidn/runtime/perf/constraint-
 npm run perf:constraint-lot-advance -- --plan-file .aidn/runtime/perf/constraint-lot-plan.json --json > .aidn/runtime/perf/constraint-lot-advance.json
 npm run perf:constraint-lot-summary -- --plan-file .aidn/runtime/perf/constraint-lot-plan.json --advance-file .aidn/runtime/perf/constraint-lot-advance.json --out .aidn/runtime/perf/constraint-lot-plan-summary.md
 npm run perf:constraint-summary -- --report-file .aidn/runtime/perf/constraint-report.json --thresholds-file .aidn/runtime/perf/constraint-thresholds.json --actions-file .aidn/runtime/perf/constraint-actions.json --out .aidn/runtime/perf/constraint-summary.md
-npm run perf:constraint-loop -- --target ../client-repo --event-file .aidn/runtime/perf/workflow-events.ndjson --json
 npm run perf:check-fallbacks
 npm run perf:campaign -- --iterations 30 --target tests/fixtures/repo-installed-core
 npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --regression-file .aidn/runtime/perf/kpi-regression.json --fallback-report-file .aidn/runtime/perf/fallback-report.json --fallback-thresholds-file .aidn/runtime/perf/fallback-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
@@ -267,7 +261,6 @@ Default runtime outputs:
 - `.aidn/runtime/perf/constraint-trend-thresholds.json`
 - `.aidn/runtime/perf/constraint-trend-summary.md`
 - `.aidn/runtime/perf/constraint-lot-plan.json`
-- `.aidn/runtime/perf/constraint-lot-advance.json`
 - `.aidn/runtime/perf/constraint-lot-plan-summary.md`
 - `.aidn/runtime/perf/constraint-summary.md`
 - `.aidn/runtime/perf/fallback-thresholds.json`
@@ -407,10 +400,8 @@ Checkpoint summary events now carry effective index write counters (`files_writt
 
 - At session start: run `perf:session-start`
 - At session close: run `perf:session-close`
-- `perf:session-close` now runs the dedicated `constraint-loop` orchestrator by default (report/check/actions/history/trend/lot-plan/summaries).
 - Default behavior is non-blocking (hook warns if checkpoint fails).
 - Use `--strict` on `perf:hook` when you want blocking behavior.
-- Use `--constraint-loop-strict` on `perf:hook` or `perf:session-close` when you want blocking behavior for the constraint chain.
 - Optional index mode override on hooks: `--index-store file|sql|dual|sqlite|dual-sqlite|all`.
 - Optional checkpoint sync verification on hooks: `--index-sync-check` (or `--index-sync-check-strict`).
 - Session start stores a shared `run_id` in `.aidn/runtime/perf/current-run-id.txt`.
@@ -451,7 +442,6 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:verify-index-export-filter`
   - `perf:verify-support-artifacts`
   - `perf:verify-db-only-hooks`
-  - `perf:verify-workflow-hook-constraint-loop`
   - `perf:verify-cli-aliases`
   - `perf:verify-constraint-report`
   - `perf:verify-constraint-actions`
