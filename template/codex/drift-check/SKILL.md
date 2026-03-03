@@ -51,6 +51,7 @@ Detect when exploration/implementation drifted and recover quickly.
 
 7) Optional performance hook (Phase 1, recommended for instrumented repositories):
 - run `npx aidn perf skill-hook --skill drift-check --target . --mode COMMITTING --json`
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - use L2 signals as objective drift evidence:
   - `objective_delta`
   - `scope_growth`

@@ -35,6 +35,7 @@ If mode=EXPLORING and:
 
 6) Optional performance hook (Phase 3, recommended for instrumented repositories):
 - run `npx aidn perf skill-hook --skill convert-to-spike --target . --mode EXPLORING --json`
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - use this output to capture:
   - reload/gate outcome around spike conversion
   - index update summary for newly created spike artifacts

@@ -76,6 +76,7 @@ Continuity validation by rule:
 
 7) Optional performance hook (Phase 1, recommended for instrumented repositories):
 - run `npx aidn perf skill-hook --skill branch-cycle-audit --target . --mode COMMITTING --json`
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - use this output to cross-check:
   - L1 mapping/hash result
   - L2 active drift signals

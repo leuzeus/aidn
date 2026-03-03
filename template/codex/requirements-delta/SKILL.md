@@ -70,6 +70,7 @@ Rules:
 
 7) Optional performance hook (Phase 2, recommended for instrumented repositories):
 - run `npx aidn perf skill-hook --skill requirements-delta --target . --mode COMMITTING --json`
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - use this output to capture:
   - scope drift signals after addendum/traceability updates
   - index/update summary for modified support artifacts

@@ -38,6 +38,7 @@ The following scripts were added under `tools/perf/`:
 - `render-index-sync-report-summary.mjs` - generate Markdown trend summary from sync report + thresholds
 - `verify-structure-profile-fixtures.mjs` - validate structure profile detection on legacy/modern/mixed fixtures
 - `verify-skill-hook-coverage.mjs` - validate full perf hook coverage on codex skills templates
+- `verify-skill-hook-state-mode-fixtures.mjs` - validate skill-hook routing across all codex skills in `dual` and `db-only` state modes
 - `verify-index-sync-fixtures.mjs` - validate index sync drift/apply/in-sync flow on fixtures
 - `verify-index-sync-select-paths-fixtures.mjs` - validate drift-driven path selection and selective export flow on fixtures
 - `verify-index-reconcile-fixtures.mjs` - validate reconcile flow across drift then idempotent pass on fixtures
@@ -157,6 +158,7 @@ npm run perf:index-sync-thresholds
 npm run perf:index-sync-trend-summary -- --report-file .aidn/runtime/index/index-sync-report.json --thresholds-file .aidn/runtime/index/index-sync-thresholds.json --out .aidn/runtime/index/index-sync-trend-summary.md
 npm run perf:verify-structure
 npm run perf:verify-skill-hooks
+npm run perf:verify-skill-hook-state-mode
 npm run perf:verify-index-sync
 npm run perf:verify-index-sync-select-paths
 npm run perf:verify-index-reconcile
@@ -428,6 +430,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
 - It executes:
   - `perf:verify-structure`
   - `perf:verify-skill-hooks`
+  - `perf:verify-skill-hook-state-mode`
   - `perf:verify-index-sync`
   - `perf:verify-index-sync-select-paths`
   - `perf:verify-index-reconcile`

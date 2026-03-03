@@ -93,6 +93,7 @@ docs/audit/cycles/CXXX-[type]-<short-title>/
 
 8) Optional performance hook (Phase 2, recommended for instrumented repositories):
 - run `npx aidn perf skill-hook --skill cycle-create --target . --mode COMMITTING --json`
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - use this output to capture:
   - reload decision and gating outcome
   - index/update summary after cycle scaffold changes

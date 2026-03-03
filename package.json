@@ -90,6 +90,7 @@
     "perf:verify-index-export-filter": "node tools/perf/verify-index-export-filter-fixtures.mjs",
     "perf:verify-support-artifacts": "node tools/perf/verify-support-artifacts-fixtures.mjs",
     "perf:verify-db-only-hooks": "node tools/perf/verify-db-only-hooks-fixtures.mjs",
+    "perf:verify-skill-hook-state-mode": "node tools/perf/verify-skill-hook-state-mode-fixtures.mjs",
     "perf:verify-constraint-report": "node tools/perf/verify-constraint-report-fixtures.mjs",
     "perf:verify-constraint-actions": "node tools/perf/verify-constraint-actions-fixtures.mjs",
     "perf:verify-constraint-trend": "node tools/perf/verify-constraint-trend-fixtures.mjs",

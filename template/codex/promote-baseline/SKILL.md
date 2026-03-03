@@ -43,6 +43,7 @@ Safely “publish” completed work into baseline.
 
 5) Optional performance hook (Phase 2, recommended for instrumented repositories):
 - run `npx aidn perf skill-hook --skill promote-baseline --target . --mode COMMITTING --json`
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - use this output to capture:
   - baseline/snapshot-driven reload invalidation
   - gate/index consistency after promotion updates
