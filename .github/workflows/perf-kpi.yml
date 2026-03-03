@@ -124,6 +124,9 @@ jobs:
       - name: Verify Perf CLI Aliases Fixtures
         run: npm run perf:verify-cli-aliases
 
+      - name: Verify Constraint Report Fixtures
+        run: npm run perf:verify-constraint-report
+
       - name: Verify Install Import Fixtures
         run: npm run perf:verify-install-import
 
@@ -333,6 +336,10 @@ jobs:
         run: |
           node tools/perf/report-fallbacks.mjs --file "$PERF_RUNTIME_PERF/workflow-events.ndjson" --run-prefix session- --out "$PERF_RUNTIME_PERF/fallback-report.json"
 
+      - name: Build Constraint Report
+        run: |
+          npm run perf:constraint-report -- --file "$PERF_RUNTIME_PERF/workflow-events.ndjson" --run-prefix session- --out "$PERF_RUNTIME_PERF/constraint-report.json"
+
       - name: Evaluate Fallback Thresholds (non-blocking)
         run: |
           STRICT_FALLBACK="${{ github.event_name == 'workflow_dispatch' && inputs.strict_fallback || false }}"
@@ -371,6 +378,7 @@ jobs:
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-thresholds.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-regression.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/fallback-report.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-report.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/fallback-thresholds.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/index/workflow-index.json

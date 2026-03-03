@@ -12,6 +12,7 @@ function parseArgs(argv) {
     indexSyncCheckFile: ".aidn/runtime/index/fixtures/cli-aliases/index-sync-check.json",
     exportPathsFile: ".aidn/runtime/index/fixtures/cli-aliases/export-paths.txt",
     campaignFile: ".aidn/runtime/perf/fixtures/cli-aliases/campaign-report.json",
+    constraintReportFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-report.json",
     fallbackReportFile: ".aidn/runtime/perf/fallback-report.json",
     fallbackPassFile: ".aidn/runtime/perf/fixtures/cli-aliases/fallback-pass.json",
     fallbackThresholdsFile: ".aidn/runtime/perf/fallback-thresholds.json",
@@ -43,6 +44,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--campaign-file") {
       args.campaignFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--constraint-report-file") {
+      args.constraintReportFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--fallback-report-file") {
       args.fallbackReportFile = argv[i + 1] ?? "";
@@ -112,6 +116,7 @@ function main() {
     const indexSyncCheckFile = path.resolve(targetRoot, args.indexSyncCheckFile);
     const exportPathsFile = path.resolve(targetRoot, args.exportPathsFile);
     const campaignFile = path.resolve(targetRoot, args.campaignFile);
+    const constraintReportFile = path.resolve(targetRoot, args.constraintReportFile);
     const fallbackReportFile = path.resolve(targetRoot, args.fallbackReportFile);
     const fallbackPassFile = path.resolve(targetRoot, args.fallbackPassFile);
     const fallbackThresholdsFile = path.resolve(targetRoot, args.fallbackThresholdsFile);
@@ -205,6 +210,18 @@ function main() {
       ".",
       "--out",
       campaignFile,
+      "--json",
+    ], targetRoot);
+
+    const constraintReport = runNodeWithJson(aidnCli, [
+      "perf",
+      "constraint-report",
+      "--file",
+      ".aidn/runtime/perf/workflow-events.ndjson",
+      "--run-prefix",
+      "session-",
+      "--out",
+      constraintReportFile,
       "--json",
     ], targetRoot);
 
@@ -303,6 +320,7 @@ function main() {
 
     const pass = canonicalCheck?.summary?.overall_status === "pass"
       && Number(campaign?.iterations_completed ?? 0) === 1
+      && typeof constraintReport?.summary?.active_constraint?.skill === "string"
       && typeof exportPaths?.selected_paths_count === "number"
       && typeof reconcile?.pass === "boolean"
       && typeof fallbackThresholds?.summary?.overall_status === "string"
@@ -312,6 +330,7 @@ function main() {
       && fs.existsSync(canonicalCheckFile)
       && fs.existsSync(canonicalSummaryFile)
       && fs.existsSync(campaignFile)
+      && fs.existsSync(constraintReportFile)
       && fs.existsSync(indexSyncCheckFile)
       && fs.existsSync(exportPathsFile)
       && fs.existsSync(fallbackReportFile)
@@ -329,6 +348,7 @@ function main() {
         index_sync_check_file: indexSyncCheckFile,
         export_paths_file: exportPathsFile,
         campaign_file: campaignFile,
+        constraint_report_file: constraintReportFile,
         fallback_report_file: fallbackReportFile,
         fallback_pass_file: fallbackPassFile,
         fallback_thresholds_file: fallbackThresholdsFile,
@@ -341,6 +361,7 @@ function main() {
         canonical_status: canonicalCheck?.summary?.overall_status ?? null,
         canonical_markdown_coverage: canonicalCheck?.coverage?.canonical_coverage_ratio_markdown ?? null,
         campaign_iterations_completed: campaign?.iterations_completed ?? null,
+        constraint_active_skill: constraintReport?.summary?.active_constraint?.skill ?? null,
         index_select_paths_count: exportPaths?.selected_paths_count ?? null,
         index_reconcile_pass: reconcile?.pass ?? null,
         fallback_thresholds_status: fallbackThresholds?.summary?.overall_status ?? null,
