@@ -397,9 +397,13 @@ jobs:
         run: |
           npm run perf:constraint-lot-plan -- --actions-file "$PERF_RUNTIME_PERF/constraint-actions.json" --trend-file "$PERF_RUNTIME_PERF/constraint-trend.json" --out "$PERF_RUNTIME_PERF/constraint-lot-plan.json"
 
+      - name: Advance Constraint Lot Plan
+        run: |
+          npm run perf:constraint-lot-advance -- --plan-file "$PERF_RUNTIME_PERF/constraint-lot-plan.json" --json > "$PERF_RUNTIME_PERF/constraint-lot-advance.json"
+
       - name: Render Constraint Lot Plan Summary
         run: |
-          npm run perf:constraint-lot-summary -- --plan-file "$PERF_RUNTIME_PERF/constraint-lot-plan.json" --out "$PERF_RUNTIME_PERF/constraint-lot-plan-summary.md"
+          npm run perf:constraint-lot-summary -- --plan-file "$PERF_RUNTIME_PERF/constraint-lot-plan.json" --advance-file "$PERF_RUNTIME_PERF/constraint-lot-advance.json" --out "$PERF_RUNTIME_PERF/constraint-lot-plan-summary.md"
 
       - name: Render Constraint Summary
         run: |
@@ -457,6 +461,7 @@ jobs:
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-trend-thresholds.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-trend-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-lot-plan.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-lot-advance.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-lot-plan-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/fallback-thresholds.json

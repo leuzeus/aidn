@@ -11,6 +11,7 @@ function parseArgs(argv) {
     actionsFile: ".aidn/runtime/perf/fixtures/constraints/lot-plan/constraint-actions.json",
     trendFile: ".aidn/runtime/perf/fixtures/constraints/lot-plan/constraint-trend.json",
     planFile: ".aidn/runtime/perf/fixtures/constraints/lot-plan/constraint-lot-plan.json",
+    advanceFile: ".aidn/runtime/perf/fixtures/constraints/lot-plan/constraint-lot-advance.json",
     summaryFile: ".aidn/runtime/perf/fixtures/constraints/lot-plan/constraint-lot-plan-summary.md",
     json: false,
   };
@@ -33,6 +34,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--plan-file") {
       args.planFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--advance-file") {
+      args.advanceFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--summary-file") {
       args.summaryFile = argv[i + 1] ?? "";
@@ -80,6 +84,7 @@ function main() {
     const actionsFile = path.resolve(process.cwd(), args.actionsFile);
     const trendFile = path.resolve(process.cwd(), args.trendFile);
     const planFile = path.resolve(process.cwd(), args.planFile);
+    const advanceFile = path.resolve(process.cwd(), args.advanceFile);
     const summaryFile = path.resolve(process.cwd(), args.summaryFile);
     const constraintTargets = path.resolve(process.cwd(), "docs/performance/CONSTRAINT_TARGETS.json");
 
@@ -150,10 +155,14 @@ function main() {
       planFile,
       "--json",
     ]);
+    fs.mkdirSync(path.dirname(advanceFile), { recursive: true });
+    fs.writeFileSync(advanceFile, `${JSON.stringify(advance, null, 2)}\n`, "utf8");
 
     runNoJson("tools/perf/render-constraint-lot-plan-summary.mjs", [
       "--plan-file",
       planFile,
+      "--advance-file",
+      advanceFile,
       "--out",
       summaryFile,
       "--top-lots",
@@ -161,8 +170,10 @@ function main() {
     ]);
 
     const updatedPlan = JSON.parse(fs.readFileSync(planFile, "utf8"));
+    const summaryContent = fs.readFileSync(summaryFile, "utf8");
     const checks = {
       plan_written: fs.existsSync(planFile),
+      advance_written: fs.existsSync(advanceFile),
       summary_written: fs.existsSync(summaryFile),
       lots_generated: Number(plan?.summary?.lots_total ?? 0) >= 1,
       next_lot_present: String(plan?.summary?.next_lot_id ?? "").length > 0,
@@ -175,7 +186,8 @@ function main() {
         && advance.transitions.some((entry) => entry?.type === "lot_completed" && entry?.lot_id === firstLotId),
       advance_started_next_lot: Array.isArray(advance?.transitions)
         && advance.transitions.some((entry) => entry?.type === "lot_started"),
-      summary_contains_title: fs.readFileSync(summaryFile, "utf8").includes("Constraint Lot Plan"),
+      summary_contains_title: summaryContent.includes("Constraint Lot Plan"),
+      summary_contains_latest_transitions: summaryContent.includes("Latest Transitions"),
     };
 
     const pass = Object.values(checks).every((value) => value === true);
@@ -183,6 +195,7 @@ function main() {
       ts: new Date().toISOString(),
       files: {
         plan: planFile,
+        advance: advanceFile,
         summary: summaryFile,
       },
       checks,

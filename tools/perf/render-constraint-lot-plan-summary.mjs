@@ -6,6 +6,7 @@ import { writeUtf8IfChanged } from "./io-lib.mjs";
 function parseArgs(argv) {
   const args = {
     planFile: ".aidn/runtime/perf/constraint-lot-plan.json",
+    advanceFile: "",
     out: ".aidn/runtime/perf/constraint-lot-plan-summary.md",
     topLots: 5,
   };
@@ -13,6 +14,9 @@ function parseArgs(argv) {
     const token = argv[i];
     if (token === "--plan-file") {
       args.planFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--advance-file") {
+      args.advanceFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--out") {
       args.out = argv[i + 1] ?? "";
@@ -41,6 +45,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/render-constraint-lot-plan-summary.mjs");
   console.log("  node tools/perf/render-constraint-lot-plan-summary.mjs --plan-file .aidn/runtime/perf/constraint-lot-plan.json --out .aidn/runtime/perf/constraint-lot-plan-summary.md");
+  console.log("  node tools/perf/render-constraint-lot-plan-summary.mjs --advance-file .aidn/runtime/perf/constraint-lot-advance.json");
 }
 
 function readJson(filePath, label) {
@@ -55,7 +60,22 @@ function readJson(filePath, label) {
   }
 }
 
-function buildMarkdown(plan, topLots) {
+function readJsonOptional(filePath, label) {
+  if (!filePath) {
+    return null;
+  }
+  const absolute = path.resolve(process.cwd(), filePath);
+  if (!fs.existsSync(absolute)) {
+    return null;
+  }
+  try {
+    return JSON.parse(fs.readFileSync(absolute, "utf8"));
+  } catch (error) {
+    throw new Error(`${label} invalid JSON: ${error.message}`);
+  }
+}
+
+function buildMarkdown(plan, advance, topLots) {
   const summary = plan?.summary ?? {};
   const lots = Array.isArray(plan?.lots) ? plan.lots.slice(0, topLots) : [];
   const nextLotId = String(summary?.next_lot_id ?? "").trim();
@@ -98,6 +118,18 @@ function buildMarkdown(plan, topLots) {
     lines.push("");
   }
 
+  const transitions = Array.isArray(advance?.transitions) ? advance.transitions : [];
+  if (transitions.length > 0) {
+    lines.push("### Latest Transitions");
+    lines.push("");
+    lines.push("| type | lot_id |");
+    lines.push("|---|---|");
+    for (const transition of transitions) {
+      lines.push(`| ${transition?.type ?? "n/a"} | ${transition?.lot_id ?? "n/a"} |`);
+    }
+    lines.push("");
+  }
+
   return `${lines.join("\n")}\n`;
 }
 
@@ -105,7 +137,8 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const plan = readJson(args.planFile, "Constraint lot plan");
-    const markdown = buildMarkdown(plan, args.topLots);
+    const advance = readJsonOptional(args.advanceFile, "Constraint lot advance");
+    const markdown = buildMarkdown(plan, advance, args.topLots);
     const outWrite = writeUtf8IfChanged(args.out, markdown);
     console.log(`Constraint lot plan summary written: ${outWrite.path} (${outWrite.written ? "written" : "unchanged"})`);
   } catch (error) {
