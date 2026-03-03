@@ -108,11 +108,10 @@ KPI cible:
 
 ## Statut Actuel
 
-État au 2026-03-03:
 - Lot 0: COMPLETED (baseline 30 itérations publiée).
 - Lot 1: COMPLETED (`LOT1_QUICK_WINS_REPORT.md` publié).
 - Lot 2: COMPLETED (`LOT2_PULL_FLOW_REPORT.md` publié).
-- Lot actif: Lot 3 (stabilisation finale avant bascule).
+- Lot actif: Lot 3.
 - Référence baseline: `LOT0_BASELINE_REPORT.md`.
 - Dernier rapport Lot 3: `LOT3_DB_INTEGRATION_REPORT.md` (campagne 30 itérations, seuils KPI en PASS).
 - Préparation Lot 4 (TOC): rapport de contrainte active outillé (`perf:constraint-report`) avec seuils (`perf:check-constraints`) et résumé CI (`perf:constraint-summary`).
@@ -127,10 +126,3 @@ KPI cible:
   - orchestration de réconciliation (`index-sync-reconcile`) pour enchaîner check/apply/projection ciblée sans étape manuelle
   - compatibilité native SQLite sur la chaîne drift/reconcile (`index-sync-check --index-backend sqlite`, `index-sync-reconcile --index-backend sqlite`)
   - checkpoint backend-aware: `checkpoint --index-sync-check` route automatiquement le contrôle vers l’index JSON ou SQLite selon le store effectif
-
-## Reprise Immédiate (Lot 3 -> Lot 4)
-
-1. Valider sur corpus projet réel la campagne KPI 30 itérations (`overhead_ratio`, `artifacts_churn`, `gates_frequency`) pour confirmer les gains hors fixtures.
-2. Exécuter la boucle TOC complète sur le même corpus: `constraint-report` -> `constraint-actions` -> `constraint-history` -> `constraint-trend` -> `constraint-lot-plan` -> `constraint-lot-advance` -> `constraint-lot-summary`.
-3. Vérifier les seuils `perf:check-constraints` et `perf:check-constraint-trend` sur les artefacts produits.
-4. Publier la décision de bascule Lot 3/4 dans la documentation performance (go/no-go + risques + rollback).

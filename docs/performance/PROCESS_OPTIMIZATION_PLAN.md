@@ -26,13 +26,6 @@ Optimiser le workflow comme un analyste d'affaires:
 - Temps de décision L1 (fast checks): cible sub-second.
 - Idempotence export/projection: stable sur passes successives.
 
-## État D'Implémentation (au 2026-03-03)
-
-- Lot A (Rationalisation Lean): COMPLETED.
-- Lot B (Flux Tiré): COMPLETED.
-- Lot C (Intégration Données/Automatisation): COMPLETED sur fixtures + CI, validation corpus réel à finaliser.
-- Lot D (TOC): READY FOR EXECUTION avec outillage opérationnel (`constraint-report`, `constraint-actions`, `constraint-history`, `constraint-trend`, `constraint-lot-plan`, `constraint-lot-update`, `constraint-lot-advance`, `constraint-lot-summary`).
-
 ## Feuille De Route (Incrémentale)
 
 ## Lot A - Rationalisation Lean (quick wins)
@@ -95,15 +88,6 @@ Actions TOC:
 Critères d'acceptation:
 - réduction durable du temps de boucle contrôle.
 - amélioration de cadence session/cycle sans perte de conformité.
-- boucle exécutable `plan -> advance -> summary` opérationnelle en CI et exploitable en local.
-
-Exécution standard (Lot D):
-1. Générer contrainte active + backlog (`constraint-report`, `constraint-actions`).
-2. Mettre à jour l'historique et la tendance (`constraint-history`, `constraint-trend`).
-3. Générer/mettre à jour le plan de lot (`constraint-lot-plan`, `constraint-lot-update`).
-4. Avancer automatiquement le plan (`constraint-lot-advance`) en conservant le JSON d'advance.
-5. Produire le résumé de lot en injectant l'advance (`constraint-lot-summary --advance-file ...`).
-6. Contrôler les seuils de contrainte (`check-constraints`, `check-constraint-trend`).
 
 ## Backlog Priorisé (Impact/Effort)
 
@@ -113,7 +97,7 @@ Exécution standard (Lot D):
 4. Déclenchement gate "pull" conditionnel (élevé, moyen)
 5. Projection markdown à la demande (moyen/élevé, moyen)
 6. Consolidation état canonique + requêtes directes (élevé, moyen/élevé)
-7. TOC dashboard + exécution lot-plan CI (contrainte, file d'attente, latence, avancement) (moyen, moyen)
+7. TOC dashboard (contrainte, file d'attente, latence) (moyen, moyen)
 
 ## Gouvernance D'Exécution
 
