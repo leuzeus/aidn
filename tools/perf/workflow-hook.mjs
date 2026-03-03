@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import {
   defaultIndexStoreFromStateMode,
+  isIndexStoreCompatibleWithStateMode,
   normalizeIndexStoreMode,
   readAidnProjectConfig,
   resolveConfigIndexStore,
@@ -287,6 +288,17 @@ function main() {
     }
     if (!normalizeIndexStoreMode(args.indexStore)) {
       throw new Error("Invalid effective --index-store. Expected file|sql|dual|sqlite|dual-sqlite|all");
+    }
+    if (!isIndexStoreCompatibleWithStateMode(args.stateMode, args.indexStore)) {
+      if (args.stateMode === "dual") {
+        throw new Error("In state mode dual, --index-store must be dual-sqlite or all");
+      }
+      if (args.stateMode === "db-only") {
+        throw new Error("In state mode db-only, --index-store must be sqlite");
+      }
+    }
+    if (args.stateMode !== "files") {
+      args.startLightGate = false;
     }
     const eventFilePath = resolveTargetPath(targetRoot, args.eventFile);
     const runIdFilePathArg = resolveTargetPath(targetRoot, args.runIdFile);
