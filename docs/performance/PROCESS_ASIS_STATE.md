@@ -96,3 +96,10 @@ Contraintes secondaires:
 - Le workflow protège bien qualité/traçabilité.
 - Le coût dominant reste la redondance des contrôles et du cycle documentaire.
 - La prochaine phase doit concentrer l'optimisation sur le débit d'itération sans réduire les garanties DoR/DoD/drift-check.
+
+## Point D'Arret Exécution (2026-03-03)
+
+- Les lots 1 à 3 ont réduit fortement le coût de contrôle sur fixtures (voir `LOT1_QUICK_WINS_REPORT.md`, `LOT2_PULL_FLOW_REPORT.md`, `LOT3_DB_INTEGRATION_REPORT.md`).
+- La préparation TOC est outillée de bout en bout (`constraint-report`, `constraint-actions`, `constraint-history`, `constraint-trend`, `constraint-lot-plan`, `constraint-lot-update`, `constraint-lot-advance`, `constraint-lot-summary`).
+- Le prochain risque principal n'est plus l'outillage mais la validation sur corpus projet réel (stabilité KPI + conformité gates).
+- La reprise opérationnelle cible donc la bascule formelle Lot 3 -> Lot 4 avec décision go/no-go documentée.
