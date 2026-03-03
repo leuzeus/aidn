@@ -29,6 +29,7 @@ The following scripts were added under `tools/perf/`:
 - `index-sync.mjs` - build index from `docs/audit/*` with `IndexStore` mode: `file|sql|dual|sqlite|dual-sqlite|all`
 - `index-sync-check.mjs` - detect drift between on-disk index and fresh import from `docs/audit/*` (optional `--apply`)
 - `index-sync-select-paths.mjs` - derive drift-driven path selection (`export-paths.txt`) from `index-sync-check` artifact mismatches
+- `index-sync-reconcile.mjs` - end-to-end reconcile flow (`check -> select-paths -> apply -> selective export`)
 - `render-index-sync-summary.mjs` - generate Markdown summary from index sync check JSON
 - `sync-index-sync-history.mjs` - persist index sync check runs in NDJSON history
 - `report-index-sync.mjs` - compute trend KPIs from index sync history
@@ -37,6 +38,7 @@ The following scripts were added under `tools/perf/`:
 - `verify-skill-hook-coverage.mjs` - validate full perf hook coverage on codex skills templates
 - `verify-index-sync-fixtures.mjs` - validate index sync drift/apply/in-sync flow on fixtures
 - `verify-index-sync-select-paths-fixtures.mjs` - validate drift-driven path selection and selective export flow on fixtures
+- `verify-index-reconcile-fixtures.mjs` - validate reconcile flow across drift then idempotent pass on fixtures
 - `verify-index-sqlite-fixtures.mjs` - validate SQLite index flow (sync + SQL parity + SQLite parity + export)
 - `verify-index-canonical-check-fixtures.mjs` - validate lightweight canonical coverage check (strict/non-strict) on fixtures
 - `verify-index-regression-fixtures.mjs` - validate index regression pipeline and zero-baseline handling on fixtures
@@ -86,6 +88,7 @@ npx aidn perf session-start --target . --mode COMMITTING --json
 npx aidn perf session-close --target . --mode COMMITTING --json
 npx aidn perf index --target . --store all --json
 npx aidn perf index-select-paths --target . --check-file .aidn/runtime/index/index-sync-check.json --out .aidn/runtime/index/export-paths.txt --include-types missing_in_index,digest_mismatch
+npx aidn perf index-reconcile --target . --index-file .aidn/runtime/index/workflow-index.json --check-file .aidn/runtime/index/index-sync-check.json --paths-file .aidn/runtime/index/export-paths.txt --audit-root docs/audit
 npx aidn perf index-export-files --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target . --audit-root docs/audit
 npx aidn perf index --target . --store all --no-content --json
 npx aidn perf index-export-files --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --target . --audit-root docs/audit --render-markdown
@@ -107,6 +110,7 @@ npm run perf:index -- --target ../client-repo
 npm run perf:index-check -- --target ../client-repo --strict
 npm run perf:index-check -- --target ../client-repo --apply
 npm run perf:index-select-paths -- --target ../client-repo --check-file .aidn/runtime/index/index-sync-check.json --out .aidn/runtime/index/export-paths.txt
+npm run perf:index-reconcile -- --target ../client-repo --index-file .aidn/runtime/index/workflow-index.json --check-file .aidn/runtime/index/index-sync-check.json --paths-file .aidn/runtime/index/export-paths.txt --audit-root docs/audit
 npm run perf:index -- --target ../client-repo --store sql --sql-output .aidn/runtime/index/workflow-index.sql
 npm run perf:index-sqlite -- --target ../client-repo
 npm run perf:index -- --target ../client-repo --store all --sqlite-output .aidn/runtime/index/workflow-index.sqlite
@@ -123,6 +127,7 @@ npm run perf:verify-structure
 npm run perf:verify-skill-hooks
 npm run perf:verify-index-sync
 npm run perf:verify-index-sync-select-paths
+npm run perf:verify-index-reconcile
 npm run perf:verify-index-sqlite
 npm run perf:verify-index-canonical-check
 npm run perf:verify-index-regression
@@ -314,6 +319,7 @@ Checkpoint summary events now carry effective index write counters (`files_writt
 - `digest_mismatch`
 - `stale_in_index`
 `perf:index-select-paths` can transform this drift payload into an `export-paths.txt` used by `index-export-files --paths-file` for targeted projection only.
+`perf:index-reconcile` orchestrates `index-check -> index-select-paths -> index-check --apply -> index-export-files --paths-file` as a single reconciliation flow.
 
 ## Structure Profile (multi-version compatibility)
 
@@ -363,6 +369,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:verify-skill-hooks`
   - `perf:verify-index-sync`
   - `perf:verify-index-sync-select-paths`
+  - `perf:verify-index-reconcile`
   - `perf:verify-index-sqlite`
   - `perf:verify-index-canonical-check`
   - `perf:verify-index-regression`

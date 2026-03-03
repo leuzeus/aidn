@@ -97,6 +97,9 @@ jobs:
       - name: Verify Index Sync Select Paths Fixtures
         run: npm run perf:verify-index-sync-select-paths
 
+      - name: Verify Index Reconcile Fixtures
+        run: npm run perf:verify-index-reconcile
+
       - name: Verify Index SQLite Fixtures
         run: npm run perf:verify-index-sqlite
 
