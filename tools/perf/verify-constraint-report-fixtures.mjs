@@ -7,6 +7,7 @@ function parseArgs(argv) {
   const args = {
     file: "tests/fixtures/perf-constraints/workflow-events.ndjson",
     out: ".aidn/runtime/perf/fixtures/constraints/constraint-report.json",
+    summaryOut: ".aidn/runtime/perf/fixtures/constraints/constraint-summary.md",
     json: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -17,6 +18,9 @@ function parseArgs(argv) {
     } else if (token === "--out") {
       args.out = argv[i + 1] ?? "";
       i += 1;
+    } else if (token === "--summary-out") {
+      args.summaryOut = argv[i + 1] ?? "";
+      i += 1;
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -26,7 +30,7 @@ function parseArgs(argv) {
       throw new Error(`Unknown argument: ${token}`);
     }
   }
-  if (!args.file || !args.out) {
+  if (!args.file || !args.out || !args.summaryOut) {
     throw new Error("Missing required argument values");
   }
   return args;
@@ -52,6 +56,7 @@ function main() {
     const args = parseArgs(process.argv.slice(2));
     const eventFile = path.resolve(process.cwd(), args.file);
     const outFile = path.resolve(process.cwd(), args.out);
+    const summaryOutFile = path.resolve(process.cwd(), args.summaryOut);
 
     const report = runJson("tools/perf/report-constraints.mjs", [
       "--file",
@@ -60,6 +65,16 @@ function main() {
       outFile,
       "--json",
     ]);
+    execFileSync(process.execPath, [
+      path.resolve(process.cwd(), "tools/perf/render-constraint-summary.mjs"),
+      "--report-file",
+      outFile,
+      "--out",
+      summaryOutFile,
+    ], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
 
     const topSkill = Array.isArray(report.skills) && report.skills.length > 0
       ? report.skills[0]
@@ -74,6 +89,9 @@ function main() {
       active_constraint_signal: String(active?.signal ?? "") === "control_duration_ms",
       active_constraint_share: Number(active?.share ?? 0) > 0.5,
       output_written_exists: fs.existsSync(String(report?.output_file ?? "")),
+      summary_written_exists: fs.existsSync(summaryOutFile),
+      summary_contains_active_constraint: fs.existsSync(summaryOutFile)
+        && fs.readFileSync(summaryOutFile, "utf8").includes("Active constraint:"),
       top_skill_context_reload: String(topSkill?.skill ?? "") === "context-reload",
       top_skill_reason_code: Array.isArray(topSkill?.top_reason_codes)
         && topSkill.top_reason_codes.some((entry) => entry?.reason_code === "STALE_MAPPING"),
@@ -84,6 +102,7 @@ function main() {
       ts: new Date().toISOString(),
       file: eventFile,
       out: outFile,
+      summary_out: summaryOutFile,
       checks,
       pass,
     };

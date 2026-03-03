@@ -14,6 +14,7 @@ const PERF_ALIASES = {
   "sync-history": { file: "sync-kpi-history.mjs" },
   "fallback-report": { file: "report-fallbacks.mjs" },
   "constraint-report": { file: "report-constraints.mjs" },
+  "constraint-summary": { file: "render-constraint-summary.mjs" },
   index: { file: "index-sync.mjs" },
   "index-check": { file: "index-sync-check.mjs" },
   "index-select-paths": { file: "index-sync-select-paths.mjs" },

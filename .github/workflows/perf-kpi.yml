@@ -340,6 +340,10 @@ jobs:
         run: |
           npm run perf:constraint-report -- --file "$PERF_RUNTIME_PERF/workflow-events.ndjson" --run-prefix session- --out "$PERF_RUNTIME_PERF/constraint-report.json"
 
+      - name: Render Constraint Summary
+        run: |
+          npm run perf:constraint-summary -- --report-file "$PERF_RUNTIME_PERF/constraint-report.json" --out "$PERF_RUNTIME_PERF/constraint-summary.md"
+
       - name: Evaluate Fallback Thresholds (non-blocking)
         run: |
           STRICT_FALLBACK="${{ github.event_name == 'workflow_dispatch' && inputs.strict_fallback || false }}"
@@ -358,6 +362,8 @@ jobs:
       - name: Publish Job Summary
         run: |
           cat "$PERF_RUNTIME_PERF/kpi-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat "$PERF_RUNTIME_PERF/constraint-summary.md" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           cat "$PERF_RUNTIME_INDEX/index-canonical-check-summary.md" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
@@ -379,6 +385,7 @@ jobs:
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-regression.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/fallback-report.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-report.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/fallback-thresholds.json
             tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/index/workflow-index.json
