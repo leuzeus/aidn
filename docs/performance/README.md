@@ -52,6 +52,7 @@ The following scripts were added under `tools/perf/`:
 - `verify-state-mode-parity-fixtures.mjs` - validate `dual` vs `db-only` parity for reload + gating decisions on fixtures
 - `verify-constraint-actions-fixtures.mjs` - validate prioritized action backlog generation from constraint report fixtures
 - `verify-constraint-trend-fixtures.mjs` - validate constraint history/trend pipeline and Markdown trend summary
+- `verify-constraint-lot-plan-fixtures.mjs` - validate lot-plan generation/update loop and Markdown lot summary
 - `index-store.mjs` - local `IndexStore` abstraction (JSON/SQL/SQLite outputs)
 - `index-to-sql.mjs` - export local index JSON to SQL import script (SQLite-friendly)
 - `index-sql-lib.mjs` - shared SQL generation library used by index tooling
@@ -73,7 +74,7 @@ The following scripts were added under `tools/perf/`:
 - `workflow-hook.mjs` - run checkpoint from session hooks (`session-start` / `session-close`)
 - `delivery-window.mjs` - mark delivery start/end to compute overhead ratio against control time
 - `check-thresholds.mjs` - compare KPI report against versioned thresholds
-- `check-thresholds-defaults.mjs` - run threshold checks from preset defaults (`index|index-sync|fallback|constraint`) with package fallback targets
+- `check-thresholds-defaults.mjs` - run threshold checks from preset defaults (`index|index-sync|fallback|constraint|constraint-trend`) with package fallback targets
 - `check-regression.mjs` - compare latest KPI run versus rolling history median
 - `report-fallbacks.mjs` - compute fallback/storm metrics from workflow events (with warmup-adjusted metrics)
 - `report-constraints.mjs` - identify active workflow bottleneck (TOC) from perf events with skill-level shares and recommendations
@@ -81,6 +82,9 @@ The following scripts were added under `tools/perf/`:
 - `sync-constraint-history.mjs` - append and deduplicate active-constraint snapshots to NDJSON history
 - `report-constraint-trend.mjs` - compute trend metrics from constraint history (stability, switches, dominant constraint)
 - `render-constraint-trend-summary.mjs` - render concise Markdown trend summary from constraint trend report
+- `report-constraint-lot-plan.mjs` - generate executable lot plan from prioritized constraint actions
+- `update-constraint-lot-plan.mjs` - update lot/action statuses in lot plan (`planned|in_progress|completed|blocked`)
+- `render-constraint-lot-plan-summary.mjs` - render concise Markdown summary of lot execution plan
 - `render-constraint-summary.mjs` - generate Markdown summary from constraint report for CI/job summary
 - `run-kpi-campaign.mjs` - run repeated session/delivery cycles and emit KPI/threshold campaign summary
 - `render-summary.mjs` - generate Markdown summary from KPI + threshold/regression/fallback reports
@@ -116,6 +120,9 @@ npx aidn perf constraint-actions --report-file .aidn/runtime/perf/constraint-rep
 npx aidn perf constraint-history --report-file .aidn/runtime/perf/constraint-report.json --actions-file .aidn/runtime/perf/constraint-actions.json --history-file .aidn/runtime/perf/constraint-history.ndjson
 npx aidn perf constraint-trend --history-file .aidn/runtime/perf/constraint-history.ndjson --out .aidn/runtime/perf/constraint-trend.json --json
 npx aidn perf constraint-trend-summary --report-file .aidn/runtime/perf/constraint-trend.json --thresholds-file .aidn/runtime/perf/constraint-trend-thresholds.json --out .aidn/runtime/perf/constraint-trend-summary.md
+npx aidn perf constraint-lot-plan --actions-file .aidn/runtime/perf/constraint-actions.json --trend-file .aidn/runtime/perf/constraint-trend.json --out .aidn/runtime/perf/constraint-lot-plan.json --json
+npx aidn perf constraint-lot-update --plan-file .aidn/runtime/perf/constraint-lot-plan.json --lot-id L4-QW-01 --lot-status in_progress --action-update context-reload:reload-cache-hit:done --json
+npx aidn perf constraint-lot-summary --plan-file .aidn/runtime/perf/constraint-lot-plan.json --out .aidn/runtime/perf/constraint-lot-plan-summary.md
 npx aidn perf constraint-summary --report-file .aidn/runtime/perf/constraint-report.json --thresholds-file .aidn/runtime/perf/constraint-thresholds.json --actions-file .aidn/runtime/perf/constraint-actions.json --out .aidn/runtime/perf/constraint-summary.md
 ```
 
@@ -162,6 +169,7 @@ npm run perf:verify-cli-aliases
 npm run perf:verify-constraint-report
 npm run perf:verify-constraint-actions
 npm run perf:verify-constraint-trend
+npm run perf:verify-constraint-lot-plan
 npm run perf:verify-install-import
 npm run perf:verify-state-mode-parity
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
@@ -207,6 +215,9 @@ npm run perf:constraint-history -- --report-file .aidn/runtime/perf/constraint-r
 npm run perf:constraint-trend -- --history-file .aidn/runtime/perf/constraint-history.ndjson --out .aidn/runtime/perf/constraint-trend.json
 npm run perf:check-constraint-trend -- --target ../client-repo --kpi-file .aidn/runtime/perf/constraint-trend.json --out .aidn/runtime/perf/constraint-trend-thresholds.json
 npm run perf:constraint-trend-summary -- --report-file .aidn/runtime/perf/constraint-trend.json --thresholds-file .aidn/runtime/perf/constraint-trend-thresholds.json --out .aidn/runtime/perf/constraint-trend-summary.md
+npm run perf:constraint-lot-plan -- --actions-file .aidn/runtime/perf/constraint-actions.json --trend-file .aidn/runtime/perf/constraint-trend.json --out .aidn/runtime/perf/constraint-lot-plan.json
+npm run perf:constraint-lot-update -- --plan-file .aidn/runtime/perf/constraint-lot-plan.json --lot-id L4-QW-01 --lot-status in_progress --action-update context-reload:reload-cache-hit:done
+npm run perf:constraint-lot-summary -- --plan-file .aidn/runtime/perf/constraint-lot-plan.json --out .aidn/runtime/perf/constraint-lot-plan-summary.md
 npm run perf:constraint-summary -- --report-file .aidn/runtime/perf/constraint-report.json --thresholds-file .aidn/runtime/perf/constraint-thresholds.json --actions-file .aidn/runtime/perf/constraint-actions.json --out .aidn/runtime/perf/constraint-summary.md
 npm run perf:check-fallbacks
 npm run perf:campaign -- --iterations 30 --target tests/fixtures/repo-installed-core
@@ -243,6 +254,8 @@ Default runtime outputs:
 - `.aidn/runtime/perf/constraint-trend.json`
 - `.aidn/runtime/perf/constraint-trend-thresholds.json`
 - `.aidn/runtime/perf/constraint-trend-summary.md`
+- `.aidn/runtime/perf/constraint-lot-plan.json`
+- `.aidn/runtime/perf/constraint-lot-plan-summary.md`
 - `.aidn/runtime/perf/constraint-summary.md`
 - `.aidn/runtime/perf/fallback-thresholds.json`
 - `.aidn/runtime/perf/kpi-summary.md`
@@ -426,6 +439,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:verify-constraint-report`
   - `perf:verify-constraint-actions`
   - `perf:verify-constraint-trend`
+  - `perf:verify-constraint-lot-plan`
   - `perf:session-start`
   - `perf:delivery-start`
   - `perf:delivery-end`
@@ -461,6 +475,8 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:constraint-trend`
   - `perf:check-constraint-trend` (non-blocking by default in CI)
   - `perf:constraint-trend-summary`
+  - `perf:constraint-lot-plan`
+  - `perf:constraint-lot-summary`
   - `perf:constraint-summary`
   - `perf:check-fallbacks` (non-blocking by default in CI)
   - `perf:render-summary`
@@ -478,6 +494,8 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `.aidn/runtime/perf/constraint-trend.json`
   - `.aidn/runtime/perf/constraint-trend-thresholds.json`
   - `.aidn/runtime/perf/constraint-trend-summary.md`
+  - `.aidn/runtime/perf/constraint-lot-plan.json`
+  - `.aidn/runtime/perf/constraint-lot-plan-summary.md`
   - `.aidn/runtime/perf/constraint-summary.md`
   - `.aidn/runtime/perf/fallback-thresholds.json`
   - `.aidn/runtime/perf/kpi-summary.md`

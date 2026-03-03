@@ -20,6 +20,8 @@ function parseArgs(argv) {
     constraintTrendFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-trend.json",
     constraintTrendThresholdsFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-trend-thresholds.json",
     constraintTrendSummaryFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-trend-summary.md",
+    constraintLotPlanFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-lot-plan.json",
+    constraintLotSummaryFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-lot-plan-summary.md",
     fallbackReportFile: ".aidn/runtime/perf/fallback-report.json",
     fallbackPassFile: ".aidn/runtime/perf/fixtures/cli-aliases/fallback-pass.json",
     fallbackThresholdsFile: ".aidn/runtime/perf/fallback-thresholds.json",
@@ -75,6 +77,12 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--constraint-trend-summary-file") {
       args.constraintTrendSummaryFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--constraint-lot-plan-file") {
+      args.constraintLotPlanFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--constraint-lot-summary-file") {
+      args.constraintLotSummaryFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--fallback-report-file") {
       args.fallbackReportFile = argv[i + 1] ?? "";
@@ -152,6 +160,8 @@ function main() {
     const constraintTrendFile = path.resolve(targetRoot, args.constraintTrendFile);
     const constraintTrendThresholdsFile = path.resolve(targetRoot, args.constraintTrendThresholdsFile);
     const constraintTrendSummaryFile = path.resolve(targetRoot, args.constraintTrendSummaryFile);
+    const constraintLotPlanFile = path.resolve(targetRoot, args.constraintLotPlanFile);
+    const constraintLotSummaryFile = path.resolve(targetRoot, args.constraintLotSummaryFile);
     const fallbackReportFile = path.resolve(targetRoot, args.fallbackReportFile);
     const fallbackPassFile = path.resolve(targetRoot, args.fallbackPassFile);
     const fallbackThresholdsFile = path.resolve(targetRoot, args.fallbackThresholdsFile);
@@ -335,6 +345,40 @@ function main() {
       "--out",
       constraintTrendSummaryFile,
     ], targetRoot);
+    const constraintLotPlan = runNodeWithJson(aidnCli, [
+      "perf",
+      "constraint-lot-plan",
+      "--actions-file",
+      constraintActionsFile,
+      "--trend-file",
+      constraintTrendFile,
+      "--out",
+      constraintLotPlanFile,
+      "--json",
+    ], targetRoot);
+    const firstLotId = String(constraintLotPlan?.lots?.[0]?.lot_id ?? "");
+    const firstActionId = String(constraintLotPlan?.lots?.[0]?.actions?.[0]?.action_id ?? "");
+    const constraintLotUpdate = runNodeWithJson(aidnCli, [
+      "perf",
+      "constraint-lot-update",
+      "--plan-file",
+      constraintLotPlanFile,
+      "--lot-id",
+      firstLotId,
+      "--lot-status",
+      "in_progress",
+      "--action-update",
+      `${firstActionId}:done`,
+      "--json",
+    ], targetRoot);
+    runNodeNoJson(aidnCli, [
+      "perf",
+      "constraint-lot-summary",
+      "--plan-file",
+      constraintLotPlanFile,
+      "--out",
+      constraintLotSummaryFile,
+    ], targetRoot);
 
     runNodeWithJson(aidnCli, [
       "perf",
@@ -437,6 +481,8 @@ function main() {
       && fs.readFileSync(constraintTrendSummaryFile, "utf8").includes("Constraint Trend");
     const constraintTrendSummaryContainsChecks = fs.existsSync(constraintTrendSummaryFile)
       && fs.readFileSync(constraintTrendSummaryFile, "utf8").includes("Trend Threshold Checks");
+    const constraintLotSummaryContainsTitle = fs.existsSync(constraintLotSummaryFile)
+      && fs.readFileSync(constraintLotSummaryFile, "utf8").includes("Constraint Lot Plan");
 
     const pass = canonicalCheck?.summary?.overall_status === "pass"
       && Number(campaign?.iterations_completed ?? 0) === 1
@@ -445,10 +491,14 @@ function main() {
       && constraintSummaryContainsActions
       && constraintTrendSummaryContainsTitle
       && constraintTrendSummaryContainsChecks
+      && constraintLotSummaryContainsTitle
       && typeof constraintThresholds?.summary?.overall_status === "string"
       && typeof constraintActions?.summary?.generated_actions === "number"
       && Number(constraintTrend?.summary?.runs_analyzed ?? 0) >= 1
       && typeof constraintTrendThresholds?.summary?.overall_status === "string"
+      && Number(constraintLotPlan?.summary?.lots_total ?? 0) >= 1
+      && Array.isArray(constraintLotUpdate?.updates)
+      && constraintLotUpdate.updates.length >= 1
       && typeof exportPaths?.selected_paths_count === "number"
       && typeof reconcile?.pass === "boolean"
       && typeof fallbackThresholds?.summary?.overall_status === "string"
@@ -466,6 +516,8 @@ function main() {
       && fs.existsSync(constraintTrendFile)
       && fs.existsSync(constraintTrendThresholdsFile)
       && fs.existsSync(constraintTrendSummaryFile)
+      && fs.existsSync(constraintLotPlanFile)
+      && fs.existsSync(constraintLotSummaryFile)
       && fs.existsSync(indexSyncCheckFile)
       && fs.existsSync(exportPathsFile)
       && fs.existsSync(fallbackReportFile)
@@ -491,6 +543,8 @@ function main() {
         constraint_trend_file: constraintTrendFile,
         constraint_trend_thresholds_file: constraintTrendThresholdsFile,
         constraint_trend_summary_file: constraintTrendSummaryFile,
+        constraint_lot_plan_file: constraintLotPlanFile,
+        constraint_lot_summary_file: constraintLotSummaryFile,
         fallback_report_file: fallbackReportFile,
         fallback_pass_file: fallbackPassFile,
         fallback_thresholds_file: fallbackThresholdsFile,
@@ -511,6 +565,9 @@ function main() {
         constraint_trend_summary_contains_title: constraintTrendSummaryContainsTitle,
         constraint_trend_summary_contains_checks: constraintTrendSummaryContainsChecks,
         constraint_trend_thresholds_status: constraintTrendThresholds?.summary?.overall_status ?? null,
+        constraint_lot_count: constraintLotPlan?.summary?.lots_total ?? null,
+        constraint_lot_updates: Array.isArray(constraintLotUpdate?.updates) ? constraintLotUpdate.updates.length : null,
+        constraint_lot_summary_contains_title: constraintLotSummaryContainsTitle,
         constraint_thresholds_status: constraintThresholds?.summary?.overall_status ?? null,
         index_select_paths_count: exportPaths?.selected_paths_count ?? null,
         index_reconcile_pass: reconcile?.pass ?? null,
