@@ -33,13 +33,14 @@ If mode=EXPLORING and:
 - add spike as active
 - next entry point points to spike status.md
 
-6) Optional performance hook (Phase 3, recommended for instrumented repositories):
+6) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn perf skill-hook --skill convert-to-spike --target . --mode EXPLORING --json`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - use this output to capture:
   - reload/gate outcome around spike conversion
   - index update summary for newly created spike artifacts
-- this should not block workflow execution by default
+- in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
+- in files, this hook remains non-blocking by default.
 
 Output:
 - New cycle path

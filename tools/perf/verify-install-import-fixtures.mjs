@@ -197,24 +197,27 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const target = prepareTmp(sourceTarget, tmpRoot, "default");
   const out = runInstall(repoRoot, target, codexStubBin);
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
+  const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
   const skillPath = path.join(target, ".codex", "skills", "context-reload", "SKILL.md");
   const config = readConfigSafe(configPath);
   return {
-    name: "default_files_mode",
+    name: "default_dual_mode",
     target_root: target,
     ok: out.status === 0
       && includes(out.stdout, "artifact import: OK")
-      && includes(out.stdout, "store=file")
+      && includes(out.stdout, "store=dual-sqlite")
       && fs.existsSync(indexJson)
+      && fs.existsSync(indexSqlite)
       && fs.existsSync(skillPath)
       && fs.existsSync(configPath)
-      && String(config?.runtime?.stateMode ?? "") === "files",
+      && String(config?.runtime?.stateMode ?? "") === "dual",
     details: {
       ...installDiagnostics(out),
       has_import_ok_line: includes(out.stdout, "artifact import: OK"),
-      has_store_file: includes(out.stdout, "store=file"),
+      has_store_dual_sqlite: includes(out.stdout, "store=dual-sqlite"),
       index_json_exists: fs.existsSync(indexJson),
+      index_sqlite_exists: fs.existsSync(indexSqlite),
       local_skill_context_reload_exists: fs.existsSync(skillPath),
       config_exists: fs.existsSync(configPath),
       config_runtime_state_mode: config?.runtime?.stateMode ?? null,
@@ -337,7 +340,7 @@ function checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       && !fs.existsSync(indexJson)
       && !fs.existsSync(indexSqlite)
       && fs.existsSync(configPath)
-      && String(config?.runtime?.stateMode ?? "") === "files",
+      && String(config?.runtime?.stateMode ?? "") === "dual",
     details: {
       ...installDiagnostics(out),
       has_skip_line: includes(out.stdout, "artifact import skipped: explicit --skip-artifact-import"),

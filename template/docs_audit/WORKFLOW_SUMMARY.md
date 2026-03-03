@@ -23,6 +23,7 @@ Read order for session start:
 Session start:
 - Run `context-reload` then `start-session` (`SPEC-R01`)
 - If mode is COMMITTING: run `branch-cycle-audit` and ensure valid branch ownership mapping (`SPEC-R03`)
+- If runtime state mode is `dual`/`db-only`: run skill perf hooks in strict mode (DB-backed checks are mandatory)
 
 Committing execution:
 - Work must belong to a cycle (`SPEC-R03`)
@@ -33,6 +34,7 @@ Committing execution:
 Session close:
 - Resolve each open attached cycle explicitly (`integrate-to-session` | `report` | `close-non-retained` | `cancel-close`) (`SPEC-R07`)
 - Run `close-session`
+- In `dual`/`db-only`, session close MUST execute DB-backed constraint chain (`constraint-report -> thresholds -> actions -> history -> trend -> lot-plan -> summaries`)
 
 Merge/review:
 - Codex review threads triaged with evidence (`SPEC-R08`)

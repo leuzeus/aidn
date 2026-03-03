@@ -23,6 +23,7 @@ const PERF_ALIASES = {
   "constraint-lot-advance": { file: "advance-constraint-lot-plan.mjs" },
   "constraint-lot-summary": { file: "render-constraint-lot-plan-summary.mjs" },
   "constraint-summary": { file: "render-constraint-summary.mjs" },
+  "constraint-loop": { file: "constraint-loop.mjs" },
   index: { file: "index-sync.mjs" },
   "index-check": { file: "index-sync-check.mjs" },
   "index-select-paths": { file: "index-sync-select-paths.mjs" },

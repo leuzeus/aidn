@@ -73,13 +73,14 @@ If structural/DB/security impact → force COMMITTING recommendation.
 3) Suggest 2–4 NEXT BEST ACTIONS.
 
 Keep report concise.
-4) Optional performance hook (Phase 1, recommended for instrumented repositories):
+4) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn perf skill-hook --skill context-reload --target . --mode <THINKING|EXPLORING|COMMITTING> --json`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - use this output to cross-check:
   - branch/cycle mapping
   - structure profile (`legacy|modern|mixed|unknown`)
   - reload decision/reason codes
-- this should not block the skill by default
+- in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
+- in files, this hook remains non-blocking by default.
 
 Do not modify project workflow files in this skill.

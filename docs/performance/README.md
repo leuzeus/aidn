@@ -89,6 +89,7 @@ The following scripts were added under `tools/perf/`:
 - `advance-constraint-lot-plan.mjs` - auto-advance lot flow (start next lot, complete current lot when all actions are done)
 - `render-constraint-lot-plan-summary.mjs` - render concise Markdown summary of lot execution plan
 - `render-constraint-summary.mjs` - generate Markdown summary from constraint report for CI/job summary
+- `constraint-loop.mjs` - run full constraint chain (`report -> checks -> actions -> history -> trend -> lot-plan -> summaries`) in one orchestrator
 - `run-kpi-campaign.mjs` - run repeated session/delivery cycles and emit KPI/threshold campaign summary
 - `render-summary.mjs` - generate Markdown summary from KPI + threshold/regression/fallback reports
 - `reset-runtime.mjs` - clear local perf runtime artifacts before a fresh measurement run
@@ -128,6 +129,7 @@ npx aidn perf constraint-lot-update --plan-file .aidn/runtime/perf/constraint-lo
 npx aidn perf constraint-lot-advance --plan-file .aidn/runtime/perf/constraint-lot-plan.json --json > .aidn/runtime/perf/constraint-lot-advance.json
 npx aidn perf constraint-lot-summary --plan-file .aidn/runtime/perf/constraint-lot-plan.json --advance-file .aidn/runtime/perf/constraint-lot-advance.json --out .aidn/runtime/perf/constraint-lot-plan-summary.md
 npx aidn perf constraint-summary --report-file .aidn/runtime/perf/constraint-report.json --thresholds-file .aidn/runtime/perf/constraint-thresholds.json --actions-file .aidn/runtime/perf/constraint-actions.json --out .aidn/runtime/perf/constraint-summary.md
+npx aidn perf constraint-loop --target . --event-file .aidn/runtime/perf/workflow-events.ndjson --json
 ```
 
 Repository scripts (maintainer/dev mode):
@@ -225,6 +227,7 @@ npm run perf:constraint-lot-update -- --plan-file .aidn/runtime/perf/constraint-
 npm run perf:constraint-lot-advance -- --plan-file .aidn/runtime/perf/constraint-lot-plan.json --json > .aidn/runtime/perf/constraint-lot-advance.json
 npm run perf:constraint-lot-summary -- --plan-file .aidn/runtime/perf/constraint-lot-plan.json --advance-file .aidn/runtime/perf/constraint-lot-advance.json --out .aidn/runtime/perf/constraint-lot-plan-summary.md
 npm run perf:constraint-summary -- --report-file .aidn/runtime/perf/constraint-report.json --thresholds-file .aidn/runtime/perf/constraint-thresholds.json --actions-file .aidn/runtime/perf/constraint-actions.json --out .aidn/runtime/perf/constraint-summary.md
+npm run perf:constraint-loop -- --target ../client-repo --event-file .aidn/runtime/perf/workflow-events.ndjson --json
 npm run perf:check-fallbacks
 npm run perf:campaign -- --iterations 30 --target tests/fixtures/repo-installed-core
 npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --regression-file .aidn/runtime/perf/kpi-regression.json --fallback-report-file .aidn/runtime/perf/fallback-report.json --fallback-thresholds-file .aidn/runtime/perf/fallback-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
@@ -400,8 +403,10 @@ Checkpoint summary events now carry effective index write counters (`files_writt
 
 - At session start: run `perf:session-start`
 - At session close: run `perf:session-close`
-- Default behavior is non-blocking (hook warns if checkpoint fails).
-- Use `--strict` on `perf:hook` when you want blocking behavior.
+- In `dual`/`db-only`, `perf:session-close` executes `constraint-loop` automatically (mandatory DB-backed chain).
+- In `dual`/`db-only`, hooks are forced to strict blocking behavior.
+- In `files`, default behavior remains non-blocking unless `--strict` is set.
+- `--no-constraint-loop` is only allowed in `files` mode.
 - Optional index mode override on hooks: `--index-store file|sql|dual|sqlite|dual-sqlite|all`.
 - Optional checkpoint sync verification on hooks: `--index-sync-check` (or `--index-sync-check-strict`).
 - Session start stores a shared `run_id` in `.aidn/runtime/perf/current-run-id.txt`.
@@ -409,7 +414,7 @@ Checkpoint summary events now carry effective index write counters (`files_writt
 
 ## Skill Hook Coverage (Phase 1-3)
 
-Recommended optional hooks (non-blocking by default) in skill flows:
+Required hooks in `dual`/`db-only` (strict); optional non-blocking in `files` mode:
 - `context-reload`: `npx aidn perf skill-hook --skill context-reload --target . --mode <THINKING|EXPLORING|COMMITTING> --json`
 - `branch-cycle-audit`: `npx aidn perf skill-hook --skill branch-cycle-audit --target . --mode COMMITTING --json`
 - `drift-check`: `npx aidn perf skill-hook --skill drift-check --target . --mode COMMITTING --json`
@@ -421,7 +426,7 @@ Recommended optional hooks (non-blocking by default) in skill flows:
 - `requirements-delta`: `npx aidn perf skill-hook --skill requirements-delta --target . --mode COMMITTING --json`
 - `convert-to-spike`: `npx aidn perf skill-hook --skill convert-to-spike --target . --mode EXPLORING --json`
 
-This rollout extends optimization coverage to high-cost checks first, then mutating skills, while keeping blocking behavior opt-in.
+This rollout extends optimization coverage to high-cost checks first, then mutating skills, with blocking behavior mandatory in `dual`/`db-only`.
 
 ## CI Integration
 

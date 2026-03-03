@@ -33,6 +33,8 @@ function parseArgs(argv) {
     indexSyncCheck: false,
     indexSyncCheckStrict: false,
     indexSyncCheckOut: ".aidn/runtime/index/index-sync-check.json",
+    constraintLoopMode: "auto",
+    constraintLoopStrict: false,
     startLightGate: true,
     strict: false,
     json: false,
@@ -84,6 +86,12 @@ function parseArgs(argv) {
     } else if (token === "--index-sync-check-out") {
       args.indexSyncCheckOut = argv[i + 1] ?? "";
       i += 1;
+    } else if (token === "--constraint-loop") {
+      args.constraintLoopMode = "on";
+    } else if (token === "--no-constraint-loop") {
+      args.constraintLoopMode = "off";
+    } else if (token === "--constraint-loop-strict") {
+      args.constraintLoopStrict = true;
     } else if (token === "--start-light-gate") {
       args.startLightGate = true;
     } else if (token === "--full-start-gate") {
@@ -151,6 +159,25 @@ function printUsage() {
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --run-id-file .aidn/runtime/perf/current-run-id.txt");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --full-start-gate");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --strict");
+  console.log("  node tools/perf/workflow-hook.mjs --phase session-close --constraint-loop");
+  console.log("  node tools/perf/workflow-hook.mjs --phase session-close --no-constraint-loop");
+  console.log("  node tools/perf/workflow-hook.mjs --phase session-close --constraint-loop-strict");
+}
+
+function shouldRunConstraintLoop(args, effectiveStateMode) {
+  if (args.phase !== "session-close") {
+    return false;
+  }
+  if (args.constraintLoopMode === "on") {
+    return true;
+  }
+  if (args.constraintLoopMode === "off") {
+    if (effectiveStateMode === "dual" || effectiveStateMode === "db-only") {
+      throw new Error("--no-constraint-loop is not allowed in dual/db-only mode");
+    }
+    return false;
+  }
+  return effectiveStateMode === "dual" || effectiveStateMode === "db-only";
 }
 
 function appendEvent(eventFile, payload) {
@@ -231,6 +258,29 @@ function runCheckpoint(targetRoot, mode, runId, indexOptions = {}) {
   return JSON.parse(stdout);
 }
 
+function runConstraintLoop(targetRoot, options = {}) {
+  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+  const loopScript = path.join(scriptDir, "constraint-loop.mjs");
+  const cmd = [
+    loopScript,
+    "--target",
+    targetRoot,
+  ];
+  if (options.eventFile) {
+    cmd.push("--event-file", options.eventFile);
+  }
+  if (options.strict === true) {
+    cmd.push("--strict");
+  }
+  cmd.push("--json");
+
+  const stdout = execFileSync(process.execPath, cmd, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return JSON.parse(stdout);
+}
+
 function writeRunIdFile(filePath, runId) {
   const absolute = path.resolve(process.cwd(), filePath);
   fs.mkdirSync(path.dirname(absolute), { recursive: true });
@@ -277,6 +327,10 @@ function main() {
     if (!["files", "dual", "db-only"].includes(args.stateMode)) {
       throw new Error("Invalid effective AIDN_STATE_MODE. Expected files|dual|db-only");
     }
+    const strictRequiredByState = args.stateMode === "dual" || args.stateMode === "db-only";
+    if (strictRequiredByState) {
+      args.strict = true;
+    }
     if (!args.indexStoreExplicit && !envIndexStoreSet) {
       const configStore = resolveConfigIndexStore(config.data);
       if (configStore) {
@@ -300,11 +354,14 @@ function main() {
     const runId = args.phase === "session-close"
       ? (existingRunId || toRunId("session"))
       : toRunId(`session-${phaseEvent}`);
+    const constraintLoopRequired = shouldRunConstraintLoop(args, args.stateMode);
 
     let checkpointResult = null;
     let hookResult = "ok";
     let reasonCode = null;
     let checkpointError = null;
+    let constraintLoopResult = null;
+    let constraintLoopError = null;
 
     try {
       checkpointResult = runCheckpoint(targetRoot, args.mode, runId, {
@@ -368,6 +425,18 @@ function main() {
       runIdFilePath = removeRunIdFile(runIdFilePathArg);
     }
 
+    if (constraintLoopRequired) {
+      try {
+        constraintLoopResult = runConstraintLoop(targetRoot, {
+          eventFile: eventFilePath,
+          strict: args.constraintLoopStrict,
+        });
+      } catch (error) {
+        constraintLoopError = error;
+        throw error;
+      }
+    }
+
     const output = {
       ts: eventPayload.ts,
       phase: args.phase,
@@ -375,6 +444,7 @@ function main() {
       mode: args.mode,
       state_mode: args.stateMode,
       strict: args.strict,
+      strict_required_by_state: strictRequiredByState,
       run_id: runId,
       result: hookResult,
       reason_code: reasonCode,
@@ -383,6 +453,10 @@ function main() {
       run_id_file: runIdFilePath,
       checkpoint: checkpointResult,
       checkpoint_error: checkpointError ? String(checkpointError.message ?? checkpointError) : null,
+      constraint_loop_required: constraintLoopRequired,
+      constraint_loop_strict: args.constraintLoopStrict,
+      constraint_loop: constraintLoopResult,
+      constraint_loop_error: constraintLoopError ? String(constraintLoopError.message ?? constraintLoopError) : null,
       duration_ms: eventPayload.duration_ms,
     };
 
@@ -411,6 +485,11 @@ function main() {
     }
     if (checkpointError && !args.strict) {
       console.log(`Checkpoint error (ignored): ${output.checkpoint_error}`);
+    }
+    if (constraintLoopRequired) {
+      console.log("Constraint loop: OK");
+      console.log(`Constraint status: ${output.constraint_loop?.summary?.constraint_status ?? "n/a"}`);
+      console.log(`Constraint trend: ${output.constraint_loop?.summary?.trend_status ?? "n/a"}`);
     }
   } catch (error) {
     console.error(`ERROR: ${error.message}`);

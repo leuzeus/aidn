@@ -181,9 +181,9 @@ function resolveArtifactImportDefaults(args, configData = {}) {
   }
 
   return {
-    store: "file",
-    withContent: false,
-    stateMode: "files",
+    store: "dual-sqlite",
+    withContent: true,
+    stateMode: "dual",
     source: "default",
   };
 }

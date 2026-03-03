@@ -2,6 +2,11 @@
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import {
+  normalizeStateMode,
+  readAidnProjectConfig,
+  resolveConfigStateMode,
+} from "../aidn-config-lib.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 const VALID_MODES = new Set(["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"]);
@@ -82,10 +87,26 @@ function resolveMode(inputMode, route) {
   return route.defaultMode ?? "UNKNOWN";
 }
 
-function buildToolArgs(route, targetRoot, mode) {
+function resolveEffectiveStateMode(targetRoot) {
+  const envStateMode = normalizeStateMode(process.env.AIDN_STATE_MODE);
+  if (envStateMode) {
+    return envStateMode;
+  }
+  const config = readAidnProjectConfig(targetRoot);
+  const configStateMode = resolveConfigStateMode(config.data);
+  if (configStateMode) {
+    return configStateMode;
+  }
+  return "files";
+}
+
+function buildToolArgs(route, targetRoot, mode, effectiveStrict) {
   const args = [...(route.fixedArgs ?? []), "--target", targetRoot, "--json"];
   if (route.tool === "checkpoint.mjs" || route.tool === "gating-evaluate.mjs" || route.tool === "workflow-hook.mjs") {
     args.push("--mode", mode);
+  }
+  if (route.tool === "workflow-hook.mjs" && effectiveStrict) {
+    args.push("--strict");
   }
   return args;
 }
@@ -113,7 +134,11 @@ function main() {
     const args = parseArgs(process.argv.slice(2));
     const route = SKILL_ROUTES[args.skill];
     const mode = resolveMode(args.mode, route);
-    const toolArgs = buildToolArgs(route, args.target, mode);
+    const targetRoot = path.resolve(process.cwd(), args.target);
+    const stateMode = resolveEffectiveStateMode(targetRoot);
+    const strictRequiredByState = stateMode === "dual" || stateMode === "db-only";
+    const effectiveStrict = args.strict || strictRequiredByState;
+    const toolArgs = buildToolArgs(route, targetRoot, mode, effectiveStrict);
     const startedAt = new Date().toISOString();
 
     try {
@@ -124,7 +149,11 @@ function main() {
         skill: args.skill,
         tool: route.tool,
         mode,
-        target: path.resolve(process.cwd(), args.target),
+        target: targetRoot,
+        state_mode: stateMode,
+        strict_requested: args.strict,
+        strict_required_by_state: strictRequiredByState,
+        strict: effectiveStrict,
         payload,
       };
       if (args.json) {
@@ -135,7 +164,7 @@ function main() {
       return;
     } catch (error) {
       const err = toErrorObject(error);
-      if (args.strict) {
+      if (effectiveStrict) {
         throw new Error(`Skill hook failed for ${args.skill}: ${err.message}\n${err.stderr || err.stdout}`);
       }
       const out = {
@@ -144,7 +173,11 @@ function main() {
         skill: args.skill,
         tool: route.tool,
         mode,
-        target: path.resolve(process.cwd(), args.target),
+        target: targetRoot,
+        state_mode: stateMode,
+        strict_requested: args.strict,
+        strict_required_by_state: strictRequiredByState,
+        strict: effectiveStrict,
         error: err,
       };
       if (args.json) {

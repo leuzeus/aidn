@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 
 function parseArgs(argv) {
   const args = {
@@ -64,6 +64,23 @@ function runJson(script, scriptArgs, env = {}) {
   return JSON.parse(stdout);
 }
 
+function runWithStatus(script, scriptArgs, env = {}) {
+  const file = path.resolve(process.cwd(), script);
+  const result = spawnSync(process.execPath, [file, ...scriptArgs], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    env: {
+      ...process.env,
+      ...env,
+    },
+  });
+  return {
+    status: Number(result.status ?? 1),
+    stdout: String(result.stdout ?? ""),
+    stderr: String(result.stderr ?? ""),
+  };
+}
+
 function readNdjson(filePath) {
   if (!fs.existsSync(filePath)) {
     return [];
@@ -118,9 +135,32 @@ function main() {
       "sqlite",
       "--json",
     ], env);
+    const bypass = runWithStatus("tools/perf/workflow-hook.mjs", [
+      "--phase",
+      "session-close",
+      "--target",
+      tmpTarget,
+      "--mode",
+      "COMMITTING",
+      "--index-store",
+      "sqlite",
+      "--no-constraint-loop",
+      "--json",
+    ], env);
 
     const sqlitePath = path.resolve(tmpTarget, ".aidn/runtime/index/workflow-index.sqlite");
     const eventsPath = path.resolve(tmpTarget, ".aidn/runtime/perf/workflow-events.ndjson");
+    const constraintReportPath = path.resolve(tmpTarget, ".aidn/runtime/perf/constraint-report.json");
+    const constraintThresholdsPath = path.resolve(tmpTarget, ".aidn/runtime/perf/constraint-thresholds.json");
+    const constraintActionsPath = path.resolve(tmpTarget, ".aidn/runtime/perf/constraint-actions.json");
+    const constraintHistoryPath = path.resolve(tmpTarget, ".aidn/runtime/perf/constraint-history.ndjson");
+    const constraintTrendPath = path.resolve(tmpTarget, ".aidn/runtime/perf/constraint-trend.json");
+    const constraintTrendThresholdsPath = path.resolve(tmpTarget, ".aidn/runtime/perf/constraint-trend-thresholds.json");
+    const constraintTrendSummaryPath = path.resolve(tmpTarget, ".aidn/runtime/perf/constraint-trend-summary.md");
+    const constraintLotPlanPath = path.resolve(tmpTarget, ".aidn/runtime/perf/constraint-lot-plan.json");
+    const constraintLotAdvancePath = path.resolve(tmpTarget, ".aidn/runtime/perf/constraint-lot-advance.json");
+    const constraintLotSummaryPath = path.resolve(tmpTarget, ".aidn/runtime/perf/constraint-lot-plan-summary.md");
+    const constraintSummaryPath = path.resolve(tmpTarget, ".aidn/runtime/perf/constraint-summary.md");
     const events = readNdjson(eventsPath);
 
     const runId = String(start?.run_id ?? "");
@@ -131,11 +171,32 @@ function main() {
     const checks = {
       start_ok: String(start?.result ?? "") === "ok",
       close_ok: String(close?.result ?? "") === "ok",
+      start_strict_forced: start?.strict === true && start?.strict_required_by_state === true,
+      close_strict_forced: close?.strict === true && close?.strict_required_by_state === true,
       run_id_stable: runId.length > 0 && runId === String(close?.run_id ?? ""),
       sqlite_exists: fs.existsSync(sqlitePath),
       checkpoint_start_state_mode_db_only: String(start?.checkpoint?.state_mode ?? "") === "db-only",
       checkpoint_close_state_mode_db_only: String(close?.checkpoint?.state_mode ?? "") === "db-only",
       checkpoint_close_gate_action_set: String(close?.checkpoint?.gate?.action ?? "").length > 0,
+      constraint_loop_required: close?.constraint_loop_required === true,
+      constraint_loop_present: close?.constraint_loop != null,
+      constraint_loop_error_empty: String(close?.constraint_loop_error ?? "") === "",
+      constraint_loop_status_present: String(close?.constraint_loop?.summary?.constraint_status ?? "").length > 0,
+      constraint_loop_trend_present: String(close?.constraint_loop?.summary?.trend_status ?? "").length > 0,
+      constraint_loop_active_skill_present: String(close?.constraint_loop?.summary?.active_constraint_skill ?? "").length > 0,
+      constraint_loop_bypass_rejected: bypass.status !== 0
+        && String(bypass.stderr).includes("--no-constraint-loop is not allowed in dual/db-only mode"),
+      constraint_report_exists: fs.existsSync(constraintReportPath),
+      constraint_thresholds_exists: fs.existsSync(constraintThresholdsPath),
+      constraint_actions_exists: fs.existsSync(constraintActionsPath),
+      constraint_history_exists: fs.existsSync(constraintHistoryPath),
+      constraint_trend_exists: fs.existsSync(constraintTrendPath),
+      constraint_trend_thresholds_exists: fs.existsSync(constraintTrendThresholdsPath),
+      constraint_trend_summary_exists: fs.existsSync(constraintTrendSummaryPath),
+      constraint_lot_plan_exists: fs.existsSync(constraintLotPlanPath),
+      constraint_lot_advance_exists: fs.existsSync(constraintLotAdvancePath),
+      constraint_lot_summary_exists: fs.existsSync(constraintLotSummaryPath),
+      constraint_summary_exists: fs.existsSync(constraintSummaryPath),
       events_file_exists: fs.existsSync(eventsPath),
       events_has_start: hasStartEvent,
       events_has_close: hasCloseEvent,
@@ -152,6 +213,10 @@ function main() {
         start_gate_action: start?.checkpoint?.gate?.action ?? null,
         close_gate_action: close?.checkpoint?.gate?.action ?? null,
         close_gate_result: close?.checkpoint?.gate?.result ?? null,
+        constraint_status: close?.constraint_loop?.summary?.constraint_status ?? null,
+        constraint_trend_status: close?.constraint_loop?.summary?.trend_status ?? null,
+        constraint_active_skill: close?.constraint_loop?.summary?.active_constraint_skill ?? null,
+        bypass_status: bypass.status,
       },
       pass,
     };

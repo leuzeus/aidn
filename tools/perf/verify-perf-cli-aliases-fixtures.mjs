@@ -386,6 +386,15 @@ function main() {
       "--out",
       constraintLotSummaryFile,
     ], targetRoot);
+    const constraintLoop = runNodeWithJson(aidnCli, [
+      "perf",
+      "constraint-loop",
+      "--target",
+      ".",
+      "--event-file",
+      ".aidn/runtime/perf/workflow-events.ndjson",
+      "--json",
+    ], targetRoot);
 
     runNodeWithJson(aidnCli, [
       "perf",
@@ -508,6 +517,8 @@ function main() {
       && constraintLotUpdate.updates.length >= 1
       && Array.isArray(constraintLotAdvance?.transitions)
       && typeof constraintLotAdvance.transitions.length === "number"
+      && typeof constraintLoop?.summary?.constraint_status === "string"
+      && typeof constraintLoop?.summary?.trend_status === "string"
       && typeof exportPaths?.selected_paths_count === "number"
       && typeof reconcile?.pass === "boolean"
       && typeof fallbackThresholds?.summary?.overall_status === "string"
@@ -578,6 +589,8 @@ function main() {
         constraint_lot_updates: Array.isArray(constraintLotUpdate?.updates) ? constraintLotUpdate.updates.length : null,
         constraint_lot_advance_transitions: Array.isArray(constraintLotAdvance?.transitions) ? constraintLotAdvance.transitions.length : null,
         constraint_lot_summary_contains_title: constraintLotSummaryContainsTitle,
+        constraint_loop_status: constraintLoop?.summary?.constraint_status ?? null,
+        constraint_loop_trend_status: constraintLoop?.summary?.trend_status ?? null,
         constraint_thresholds_status: constraintThresholds?.summary?.overall_status ?? null,
         index_select_paths_count: exportPaths?.selected_paths_count ?? null,
         index_reconcile_pass: reconcile?.pass ?? null,

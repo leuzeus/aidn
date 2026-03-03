@@ -49,6 +49,7 @@
     "perf:constraint-lot-advance": "node tools/perf/advance-constraint-lot-plan.mjs",
     "perf:constraint-lot-summary": "node tools/perf/render-constraint-lot-plan-summary.mjs",
     "perf:constraint-summary": "node tools/perf/render-constraint-summary.mjs",
+    "perf:constraint-loop": "node tools/perf/constraint-loop.mjs",
     "perf:check-constraints": "node tools/perf/check-thresholds-defaults.mjs --preset constraint",
     "perf:index": "node tools/perf/index-sync.mjs",
     "perf:index-check": "node tools/perf/index-sync-check.mjs",

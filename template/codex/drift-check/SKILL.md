@@ -49,7 +49,7 @@ Detect when exploration/implementation drifted and recover quickly.
 6) If idea is valuable but non-essential:
 - Add IDEA-xxx suggestion for parking-lot.md
 
-7) Optional performance hook (Phase 1, recommended for instrumented repositories):
+7) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn perf skill-hook --skill drift-check --target . --mode COMMITTING --json`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - use L2 signals as objective drift evidence:
@@ -58,7 +58,8 @@ Detect when exploration/implementation drifted and recover quickly.
   - `cross_domain_touch`
   - `time_since_last_drift_check`
   - `uncertain_intent`
-- this should not block workflow execution by default
+- in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
+- in files, this hook remains non-blocking by default.
 
 Output:
 - Recovery actions (2–5 steps)

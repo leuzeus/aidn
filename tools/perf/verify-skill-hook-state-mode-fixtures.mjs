@@ -126,10 +126,27 @@ function runSkillCase(targetRoot, stateMode, skillCase) {
   const effectiveStateMode = readStateMode(out?.payload);
   const effectiveStore = readIndexStore(out?.payload);
   const expectedStore = expectedStoreForStateMode(stateMode);
+  const expectsConstraintLoop = skillCase.skill === "close-session" && (stateMode === "dual" || stateMode === "db-only");
+  const expectsWorkflowHookPayload = skillCase.skill === "start-session" || skillCase.skill === "close-session";
   const checks = {
     hook_ok: out?.ok === true,
+    state_mode_exposed: out?.state_mode === stateMode,
+    strict_required_by_state: out?.strict_required_by_state === true,
+    strict_effective: out?.strict === true,
     state_mode_applied: effectiveStateMode === stateMode,
     store_mode_applied: skillCase.expectsStore ? effectiveStore === expectedStore : true,
+    workflow_hook_strict_payload: expectsWorkflowHookPayload
+      ? out?.payload?.strict === true
+      : true,
+    constraint_loop_required: expectsConstraintLoop
+      ? out?.payload?.constraint_loop_required === true
+      : true,
+    constraint_loop_present: expectsConstraintLoop
+      ? out?.payload?.constraint_loop != null
+      : true,
+    constraint_loop_error_empty: expectsConstraintLoop
+      ? String(out?.payload?.constraint_loop_error ?? "") === ""
+      : true,
   };
   return {
     state_mode: stateMode,
@@ -137,9 +154,13 @@ function runSkillCase(targetRoot, stateMode, skillCase) {
     mode: skillCase.mode,
     checks,
     sample: {
+      strict: out?.strict ?? null,
+      strict_required_by_state: out?.strict_required_by_state ?? null,
       effective_state_mode: effectiveStateMode,
       effective_store: effectiveStore,
       expected_store: skillCase.expectsStore ? expectedStore : null,
+      constraint_loop_required: out?.payload?.constraint_loop_required ?? null,
+      constraint_status: out?.payload?.constraint_loop?.summary?.constraint_status ?? null,
       tool: out?.tool ?? null,
     },
     pass: Object.values(checks).every((value) => value === true),

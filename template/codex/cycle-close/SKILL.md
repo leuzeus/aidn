@@ -67,13 +67,14 @@ Close a cycle cleanly and make it baseline-ready.
   - If NO_GO/DROPPED: suggest next retained cycle/session integration step
   - If VERIFYING: list remaining verification tasks
 
-5) Optional performance hook (Phase 2, recommended for instrumented repositories):
+5) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn perf skill-hook --skill cycle-close --target . --mode COMMITTING --json`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - use this output to capture:
   - gate/reload outcome after close-state update
   - index sync summary for changed cycle artifacts
-- this should not block workflow execution by default
+- in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
+- in files, this hook remains non-blocking by default.
 
 Output:
 - Exit checklist report

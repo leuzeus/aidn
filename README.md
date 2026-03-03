@@ -73,6 +73,7 @@ npx aidn install --target ../client --pack core --verify
 Notes:
 - install auto-imports `docs/audit/*` artifacts into `../client/.aidn/runtime/index/*`
 - import backend precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE`
+- default fresh install profile is DB-backed (`runtime.stateMode=dual`, `install.artifactImportStore=dual-sqlite`)
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 

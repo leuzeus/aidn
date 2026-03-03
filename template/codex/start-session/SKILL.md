@@ -86,11 +86,12 @@ If mode=EXPLORING and:
 - Time Budget
 - Planned Outputs
 
-7) Optional performance hook (recommended for instrumented repositories):
+7) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn perf skill-hook --skill start-session --target . --mode <THINKING|EXPLORING|COMMITTING> --json`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
-- this should not block workflow execution by default
-- use strict mode only if repository policy requires blocking instrumentation
+- in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
+- in files, this hook remains non-blocking by default.
+- in `files`, strict mode remains optional by repository policy.
 
 Do not modify baseline.
 Only create/update session file.

@@ -91,13 +91,14 @@ docs/audit/cycles/CXXX-[type]-<short-title>/
 - fill DoR checklist in status.md
 - set `dor_state: READY` only when core gate is satisfied
 
-8) Optional performance hook (Phase 2, recommended for instrumented repositories):
+8) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn perf skill-hook --skill cycle-create --target . --mode COMMITTING --json`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - use this output to capture:
   - reload decision and gating outcome
   - index/update summary after cycle scaffold changes
-- this should not block workflow execution by default
+- in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
+- in files, this hook remains non-blocking by default.
 
 Output:
 - Cycle path created
