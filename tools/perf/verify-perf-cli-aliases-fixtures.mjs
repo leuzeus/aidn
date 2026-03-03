@@ -13,6 +13,7 @@ function parseArgs(argv) {
     exportPathsFile: ".aidn/runtime/index/fixtures/cli-aliases/export-paths.txt",
     campaignFile: ".aidn/runtime/perf/fixtures/cli-aliases/campaign-report.json",
     constraintReportFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-report.json",
+    constraintActionsFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-actions.json",
     constraintSummaryFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-summary.md",
     constraintThresholdsFile: ".aidn/runtime/perf/fixtures/cli-aliases/constraint-thresholds.json",
     fallbackReportFile: ".aidn/runtime/perf/fallback-report.json",
@@ -49,6 +50,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--constraint-report-file") {
       args.constraintReportFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--constraint-actions-file") {
+      args.constraintActionsFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--constraint-summary-file") {
       args.constraintSummaryFile = argv[i + 1] ?? "";
@@ -125,6 +129,7 @@ function main() {
     const exportPathsFile = path.resolve(targetRoot, args.exportPathsFile);
     const campaignFile = path.resolve(targetRoot, args.campaignFile);
     const constraintReportFile = path.resolve(targetRoot, args.constraintReportFile);
+    const constraintActionsFile = path.resolve(targetRoot, args.constraintActionsFile);
     const constraintSummaryFile = path.resolve(targetRoot, args.constraintSummaryFile);
     const constraintThresholdsFile = path.resolve(targetRoot, args.constraintThresholdsFile);
     const fallbackReportFile = path.resolve(targetRoot, args.fallbackReportFile);
@@ -234,14 +239,6 @@ function main() {
       constraintReportFile,
       "--json",
     ], targetRoot);
-    runNodeNoJson(aidnCli, [
-      "perf",
-      "constraint-summary",
-      "--report-file",
-      constraintReportFile,
-      "--out",
-      constraintSummaryFile,
-    ], targetRoot);
     const constraintThresholds = runNodeWithJson(aidnCli, [
       "perf",
       "check-constraints",
@@ -252,6 +249,29 @@ function main() {
       "--out",
       constraintThresholdsFile,
       "--json",
+    ], targetRoot);
+    const constraintActions = runNodeWithJson(aidnCli, [
+      "perf",
+      "constraint-actions",
+      "--report-file",
+      constraintReportFile,
+      "--thresholds-file",
+      constraintThresholdsFile,
+      "--out",
+      constraintActionsFile,
+      "--json",
+    ], targetRoot);
+    runNodeNoJson(aidnCli, [
+      "perf",
+      "constraint-summary",
+      "--report-file",
+      constraintReportFile,
+      "--thresholds-file",
+      constraintThresholdsFile,
+      "--actions-file",
+      constraintActionsFile,
+      "--out",
+      constraintSummaryFile,
     ], targetRoot);
 
     runNodeWithJson(aidnCli, [
@@ -349,12 +369,16 @@ function main() {
 
     const constraintSummaryContainsActive = fs.existsSync(constraintSummaryFile)
       && fs.readFileSync(constraintSummaryFile, "utf8").includes("Active constraint:");
+    const constraintSummaryContainsActions = fs.existsSync(constraintSummaryFile)
+      && fs.readFileSync(constraintSummaryFile, "utf8").includes("Action Backlog");
 
     const pass = canonicalCheck?.summary?.overall_status === "pass"
       && Number(campaign?.iterations_completed ?? 0) === 1
       && typeof constraintReport?.summary?.active_constraint?.skill === "string"
       && constraintSummaryContainsActive
+      && constraintSummaryContainsActions
       && typeof constraintThresholds?.summary?.overall_status === "string"
+      && typeof constraintActions?.summary?.generated_actions === "number"
       && typeof exportPaths?.selected_paths_count === "number"
       && typeof reconcile?.pass === "boolean"
       && typeof fallbackThresholds?.summary?.overall_status === "string"
@@ -365,6 +389,7 @@ function main() {
       && fs.existsSync(canonicalSummaryFile)
       && fs.existsSync(campaignFile)
       && fs.existsSync(constraintReportFile)
+      && fs.existsSync(constraintActionsFile)
       && fs.existsSync(constraintSummaryFile)
       && fs.existsSync(constraintThresholdsFile)
       && fs.existsSync(indexSyncCheckFile)
@@ -385,6 +410,7 @@ function main() {
         export_paths_file: exportPathsFile,
         campaign_file: campaignFile,
         constraint_report_file: constraintReportFile,
+        constraint_actions_file: constraintActionsFile,
         constraint_summary_file: constraintSummaryFile,
         constraint_thresholds_file: constraintThresholdsFile,
         fallback_report_file: fallbackReportFile,
@@ -400,7 +426,9 @@ function main() {
         canonical_markdown_coverage: canonicalCheck?.coverage?.canonical_coverage_ratio_markdown ?? null,
         campaign_iterations_completed: campaign?.iterations_completed ?? null,
         constraint_active_skill: constraintReport?.summary?.active_constraint?.skill ?? null,
+        constraint_actions_generated: constraintActions?.summary?.generated_actions ?? null,
         constraint_summary_contains_active: constraintSummaryContainsActive,
+        constraint_summary_contains_actions: constraintSummaryContainsActions,
         constraint_thresholds_status: constraintThresholds?.summary?.overall_status ?? null,
         index_select_paths_count: exportPaths?.selected_paths_count ?? null,
         index_reconcile_pass: reconcile?.pass ?? null,

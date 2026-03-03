@@ -7,6 +7,7 @@ function parseArgs(argv) {
   const args = {
     reportFile: ".aidn/runtime/perf/constraint-report.json",
     thresholdsFile: "",
+    actionsFile: "",
     out: ".aidn/runtime/perf/constraint-summary.md",
     top: 5,
   };
@@ -17,6 +18,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--thresholds-file") {
       args.thresholdsFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--actions-file") {
+      args.actionsFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--out") {
       args.out = argv[i + 1] ?? "";
@@ -81,12 +85,14 @@ function readJsonOptional(filePath) {
   }
 }
 
-function buildMarkdown(report, thresholds, topLimit) {
+function buildMarkdown(report, thresholds, actionsReport, topLimit) {
   const summary = report?.summary ?? {};
   const active = summary?.active_constraint ?? null;
   const skills = Array.isArray(report?.skills) ? report.skills.slice(0, topLimit) : [];
   const thresholdSummary = thresholds?.summary ?? null;
   const thresholdChecks = Array.isArray(thresholds?.checks) ? thresholds.checks : [];
+  const actionsSummary = actionsReport?.summary ?? null;
+  const actions = Array.isArray(actionsReport?.actions) ? actionsReport.actions.slice(0, topLimit) : [];
   const lines = [];
   lines.push("## Constraint Summary");
   lines.push("");
@@ -123,6 +129,21 @@ function buildMarkdown(report, thresholds, topLimit) {
     }
     lines.push("");
   }
+  if (actionsSummary != null) {
+    lines.push("### Action Backlog");
+    lines.push("");
+    lines.push(`- Actions generated: ${actionsSummary.generated_actions ?? 0}`);
+    lines.push(`- Quick wins/foundational/deep-change: ${actionsSummary.quick_wins ?? 0}/${actionsSummary.foundational ?? 0}/${actionsSummary.deep_change ?? 0}`);
+    lines.push("");
+  }
+  if (actions.length > 0) {
+    lines.push("| action_id | skill | batch | priority | impact | effort |");
+    lines.push("|---|---|---|---:|---:|---:|");
+    for (const action of actions) {
+      lines.push(`| ${action.action_id ?? "n/a"} | ${action.skill ?? "n/a"} | ${action.batch ?? "n/a"} | ${action.priority_score ?? "n/a"} | ${action.impact_score ?? "n/a"} | ${action.effort ?? "n/a"} |`);
+    }
+    lines.push("");
+  }
   return `${lines.join("\n")}\n`;
 }
 
@@ -131,7 +152,8 @@ function main() {
     const args = parseArgs(process.argv.slice(2));
     const report = readJson(args.reportFile);
     const thresholds = readJsonOptional(args.thresholdsFile);
-    const content = buildMarkdown(report, thresholds, args.top);
+    const actions = readJsonOptional(args.actionsFile);
+    const content = buildMarkdown(report, thresholds, actions, args.top);
     const outWrite = writeUtf8IfChanged(args.out, content);
     console.log(`Summary written: ${outWrite.path} (${outWrite.written ? "written" : "unchanged"})`);
   } catch (error) {

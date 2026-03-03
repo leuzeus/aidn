@@ -9,6 +9,7 @@ function parseArgs(argv) {
     out: ".aidn/runtime/perf/fixtures/constraints/constraint-report.json",
     targets: "docs/performance/CONSTRAINT_TARGETS.json",
     thresholdsOut: ".aidn/runtime/perf/fixtures/constraints/constraint-thresholds.json",
+    actionsOut: ".aidn/runtime/perf/fixtures/constraints/constraint-actions.json",
     summaryOut: ".aidn/runtime/perf/fixtures/constraints/constraint-summary.md",
     json: false,
   };
@@ -26,6 +27,9 @@ function parseArgs(argv) {
     } else if (token === "--thresholds-out") {
       args.thresholdsOut = argv[i + 1] ?? "";
       i += 1;
+    } else if (token === "--actions-out") {
+      args.actionsOut = argv[i + 1] ?? "";
+      i += 1;
     } else if (token === "--summary-out") {
       args.summaryOut = argv[i + 1] ?? "";
       i += 1;
@@ -38,7 +42,7 @@ function parseArgs(argv) {
       throw new Error(`Unknown argument: ${token}`);
     }
   }
-  if (!args.file || !args.out || !args.targets || !args.thresholdsOut || !args.summaryOut) {
+  if (!args.file || !args.out || !args.targets || !args.thresholdsOut || !args.actionsOut || !args.summaryOut) {
     throw new Error("Missing required argument values");
   }
   return args;
@@ -66,6 +70,7 @@ function main() {
     const outFile = path.resolve(process.cwd(), args.out);
     const targetsFile = path.resolve(process.cwd(), args.targets);
     const thresholdsOutFile = path.resolve(process.cwd(), args.thresholdsOut);
+    const actionsOutFile = path.resolve(process.cwd(), args.actionsOut);
     const summaryOutFile = path.resolve(process.cwd(), args.summaryOut);
 
     const report = runJson("tools/perf/report-constraints.mjs", [
@@ -84,12 +89,23 @@ function main() {
       thresholdsOutFile,
       "--json",
     ]);
+    const actions = runJson("tools/perf/report-constraint-actions.mjs", [
+      "--report-file",
+      outFile,
+      "--thresholds-file",
+      thresholdsOutFile,
+      "--out",
+      actionsOutFile,
+      "--json",
+    ]);
     execFileSync(process.execPath, [
       path.resolve(process.cwd(), "tools/perf/render-constraint-summary.mjs"),
       "--report-file",
       outFile,
       "--thresholds-file",
       thresholdsOutFile,
+      "--actions-file",
+      actionsOutFile,
       "--out",
       summaryOutFile,
     ], {
@@ -112,9 +128,14 @@ function main() {
       output_written_exists: fs.existsSync(String(report?.output_file ?? "")),
       thresholds_written_exists: fs.existsSync(String(thresholds?.output_file ?? "")),
       thresholds_status_pass: String(thresholds?.summary?.overall_status ?? "") === "pass",
+      actions_written_exists: fs.existsSync(String(actions?.output_file ?? "")),
+      actions_generated: Number(actions?.summary?.generated_actions ?? 0) >= 1,
+      actions_top_skill: String(actions?.actions?.[0]?.skill ?? "") === "context-reload",
       summary_written_exists: fs.existsSync(summaryOutFile),
       summary_contains_active_constraint: fs.existsSync(summaryOutFile)
         && fs.readFileSync(summaryOutFile, "utf8").includes("Active constraint:"),
+      summary_contains_action_backlog: fs.existsSync(summaryOutFile)
+        && fs.readFileSync(summaryOutFile, "utf8").includes("Action Backlog"),
       top_skill_context_reload: String(topSkill?.skill ?? "") === "context-reload",
       top_skill_reason_code: Array.isArray(topSkill?.top_reason_codes)
         && topSkill.top_reason_codes.some((entry) => entry?.reason_code === "STALE_MAPPING"),

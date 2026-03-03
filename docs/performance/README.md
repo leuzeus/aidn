@@ -50,6 +50,7 @@ The following scripts were added under `tools/perf/`:
 - `verify-perf-cli-aliases-fixtures.mjs` - validate `aidn perf` aliases for canonical/index commands on fixtures
 - `verify-install-import-fixtures.mjs` - validate installer artifact import behavior and backend precedence
 - `verify-state-mode-parity-fixtures.mjs` - validate `dual` vs `db-only` parity for reload + gating decisions on fixtures
+- `verify-constraint-actions-fixtures.mjs` - validate prioritized action backlog generation from constraint report fixtures
 - `index-store.mjs` - local `IndexStore` abstraction (JSON/SQL/SQLite outputs)
 - `index-to-sql.mjs` - export local index JSON to SQL import script (SQLite-friendly)
 - `index-sql-lib.mjs` - shared SQL generation library used by index tooling
@@ -71,10 +72,11 @@ The following scripts were added under `tools/perf/`:
 - `workflow-hook.mjs` - run checkpoint from session hooks (`session-start` / `session-close`)
 - `delivery-window.mjs` - mark delivery start/end to compute overhead ratio against control time
 - `check-thresholds.mjs` - compare KPI report against versioned thresholds
-- `check-thresholds-defaults.mjs` - run threshold checks from preset defaults (`index|index-sync|fallback`) with package fallback targets
+- `check-thresholds-defaults.mjs` - run threshold checks from preset defaults (`index|index-sync|fallback|constraint`) with package fallback targets
 - `check-regression.mjs` - compare latest KPI run versus rolling history median
 - `report-fallbacks.mjs` - compute fallback/storm metrics from workflow events (with warmup-adjusted metrics)
 - `report-constraints.mjs` - identify active workflow bottleneck (TOC) from perf events with skill-level shares and recommendations
+- `report-constraint-actions.mjs` - generate prioritized optimization backlog (impact/effort) from constraint report
 - `render-constraint-summary.mjs` - generate Markdown summary from constraint report for CI/job summary
 - `run-kpi-campaign.mjs` - run repeated session/delivery cycles and emit KPI/threshold campaign summary
 - `render-summary.mjs` - generate Markdown summary from KPI + threshold/regression/fallback reports
@@ -105,7 +107,8 @@ npx aidn perf index-sync-thresholds --target . --json
 npx aidn perf check-fallbacks --target . --json
 npx aidn perf check-constraints --target . --json
 npx aidn perf constraint-report --file .aidn/runtime/perf/workflow-events.ndjson --run-prefix session- --out .aidn/runtime/perf/constraint-report.json --json
-npx aidn perf constraint-summary --report-file .aidn/runtime/perf/constraint-report.json --out .aidn/runtime/perf/constraint-summary.md
+npx aidn perf constraint-actions --report-file .aidn/runtime/perf/constraint-report.json --thresholds-file .aidn/runtime/perf/constraint-thresholds.json --out .aidn/runtime/perf/constraint-actions.json --json
+npx aidn perf constraint-summary --report-file .aidn/runtime/perf/constraint-report.json --thresholds-file .aidn/runtime/perf/constraint-thresholds.json --actions-file .aidn/runtime/perf/constraint-actions.json --out .aidn/runtime/perf/constraint-summary.md
 ```
 
 Repository scripts (maintainer/dev mode):
@@ -149,6 +152,7 @@ npm run perf:verify-support-artifacts
 npm run perf:verify-db-only-hooks
 npm run perf:verify-cli-aliases
 npm run perf:verify-constraint-report
+npm run perf:verify-constraint-actions
 npm run perf:verify-install-import
 npm run perf:verify-state-mode-parity
 npm run perf:index-sql -- --index-file .aidn/runtime/index/workflow-index.json --out .aidn/runtime/index/workflow-index.sql
@@ -188,8 +192,9 @@ npm run perf:check-regression -- --kpi-file .aidn/runtime/perf/kpi-report.json -
 npm run perf:check-regression -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --targets docs/performance/REGRESSION_TARGETS.json --warmup-enabled true --warmup-history-lt 5 --warmup-multiplier 1.4 --warmup-severity warn --out .aidn/runtime/perf/kpi-regression.json
 npm run perf:fallback-report -- --file .aidn/runtime/perf/workflow-events.ndjson --run-prefix session- --out .aidn/runtime/perf/fallback-report.json
 npm run perf:constraint-report -- --file .aidn/runtime/perf/workflow-events.ndjson --run-prefix session- --out .aidn/runtime/perf/constraint-report.json --json
-npm run perf:constraint-summary -- --report-file .aidn/runtime/perf/constraint-report.json --out .aidn/runtime/perf/constraint-summary.md
 npm run perf:check-constraints -- --target ../client-repo --kpi-file .aidn/runtime/perf/constraint-report.json --out .aidn/runtime/perf/constraint-thresholds.json
+npm run perf:constraint-actions -- --report-file .aidn/runtime/perf/constraint-report.json --thresholds-file .aidn/runtime/perf/constraint-thresholds.json --out .aidn/runtime/perf/constraint-actions.json
+npm run perf:constraint-summary -- --report-file .aidn/runtime/perf/constraint-report.json --thresholds-file .aidn/runtime/perf/constraint-thresholds.json --actions-file .aidn/runtime/perf/constraint-actions.json --out .aidn/runtime/perf/constraint-summary.md
 npm run perf:check-fallbacks
 npm run perf:campaign -- --iterations 30 --target tests/fixtures/repo-installed-core
 npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --regression-file .aidn/runtime/perf/kpi-regression.json --fallback-report-file .aidn/runtime/perf/fallback-report.json --fallback-thresholds-file .aidn/runtime/perf/fallback-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
@@ -220,6 +225,7 @@ Default runtime outputs:
 - `.aidn/runtime/perf/fallback-report.json`
 - `.aidn/runtime/perf/constraint-report.json`
 - `.aidn/runtime/perf/constraint-thresholds.json`
+- `.aidn/runtime/perf/constraint-actions.json`
 - `.aidn/runtime/perf/constraint-summary.md`
 - `.aidn/runtime/perf/fallback-thresholds.json`
 - `.aidn/runtime/perf/kpi-summary.md`
@@ -401,6 +407,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:verify-db-only-hooks`
   - `perf:verify-cli-aliases`
   - `perf:verify-constraint-report`
+  - `perf:verify-constraint-actions`
   - `perf:session-start`
   - `perf:delivery-start`
   - `perf:delivery-end`
@@ -431,6 +438,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:fallback-report`
   - `perf:constraint-report`
   - `perf:check-constraints` (non-blocking by default in CI)
+  - `perf:constraint-actions`
   - `perf:constraint-summary`
   - `perf:check-fallbacks` (non-blocking by default in CI)
   - `perf:render-summary`
@@ -443,6 +451,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `.aidn/runtime/perf/fallback-report.json`
   - `.aidn/runtime/perf/constraint-report.json`
   - `.aidn/runtime/perf/constraint-thresholds.json`
+  - `.aidn/runtime/perf/constraint-actions.json`
   - `.aidn/runtime/perf/constraint-summary.md`
   - `.aidn/runtime/perf/fallback-thresholds.json`
   - `.aidn/runtime/perf/kpi-summary.md`
