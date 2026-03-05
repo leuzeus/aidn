@@ -74,8 +74,9 @@ If structural/DB/security impact → force COMMITTING recommendation.
 
 Keep report concise.
 4) Performance hook (mandatory in dual/db-only; optional in files):
-- run `npx aidn perf skill-hook --skill context-reload --target . --mode <THINKING|EXPLORING|COMMITTING> --json`
+- run `node tools/codex/run-json-hook.mjs --skill context-reload --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
+- read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - use this output to cross-check:
   - branch/cycle mapping
   - structure profile (`legacy|modern|mixed|unknown`)

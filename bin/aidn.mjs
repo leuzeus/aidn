@@ -51,6 +51,9 @@ const PERF_ALIASES = {
   "verify-cli-aliases": { file: "verify-perf-cli-aliases-fixtures.mjs" },
   "verify-structure": { file: "verify-structure-profile-fixtures.mjs" },
   "verify-skill-hooks": { file: "verify-skill-hook-coverage.mjs" },
+  "verify-skill-hook-context": { file: "verify-skill-hook-context-injection.mjs" },
+  "verify-db-first-sync": { file: "verify-db-first-sync-coverage.mjs" },
+  "verify-sync-db-first-selective": { file: "verify-sync-db-first-selective-fixtures.mjs" },
   "verify-install-import": { file: "verify-install-import-fixtures.mjs" },
   "verify-state-mode-parity": { file: "verify-state-mode-parity-fixtures.mjs" },
   "verify-constraint-report": { file: "verify-constraint-report-fixtures.mjs" },
@@ -76,6 +79,7 @@ const PERF_ALIASES = {
   "session-close": { file: "workflow-hook.mjs", fixedArgs: ["--phase", "session-close"] },
   "delivery-start": { file: "delivery-window.mjs", fixedArgs: ["--action", "start"] },
   "delivery-end": { file: "delivery-window.mjs", fixedArgs: ["--action", "end"] },
+  "audit-review": { file: "audit-review.mjs" },
 };
 
 function printUsage() {

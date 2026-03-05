@@ -38,6 +38,9 @@ The following scripts were added under `tools/perf/`:
 - `render-index-sync-report-summary.mjs` - generate Markdown trend summary from sync report + thresholds
 - `verify-structure-profile-fixtures.mjs` - validate structure profile detection on legacy/modern/mixed fixtures
 - `verify-skill-hook-coverage.mjs` - validate full perf hook coverage on codex skills templates
+- `verify-skill-hook-context-injection.mjs` - validate skill templates use JSON wrapper + explicit context injection
+- `verify-db-first-sync-coverage.mjs` - validate mutating skills document DB runtime sync step
+- `verify-sync-db-first-selective-fixtures.mjs` - validate selective DB sync fallback behavior (modify vs delete/rename)
 - `verify-skill-hook-state-mode-fixtures.mjs` - validate skill-hook routing across all codex skills in `dual` and `db-only` state modes
 - `verify-index-sync-fixtures.mjs` - validate index sync drift/apply/in-sync flow on fixtures
 - `verify-index-sync-select-paths-fixtures.mjs` - validate drift-driven path selection and selective export flow on fixtures
@@ -92,8 +95,25 @@ The following scripts were added under `tools/perf/`:
 - `constraint-loop.mjs` - run full constraint chain (`report -> checks -> actions -> history -> trend -> lot-plan -> summaries`) in one orchestrator
 - `run-kpi-campaign.mjs` - run repeated session/delivery cycles and emit KPI/threshold campaign summary
 - `render-summary.mjs` - generate Markdown summary from KPI + threshold/regression/fallback reports
+- `audit-review.mjs` - evaluate post-optimization process drift and emit PASS/WARN/FAIL + replanification decision
 - `reset-runtime.mjs` - clear local perf runtime artifacts before a fresh measurement run
 - `sql/schema.sql` - SQLite schema used by SQL export and SQLite index mode
+
+Codex context bridge scripts (`tools/codex/`):
+- `run-json-hook.mjs` - wrapper to execute `--json` hooks, normalize payload, and persist context snapshots
+- `normalize-hook-payload.mjs` - normalize heterogeneous hook payloads (`skill-hook|gate|checkpoint|workflow-hook`)
+- `hydrate-context.mjs` - hydrate a compact context view from `.aidn/runtime/context/*` (+ index artifacts when available)
+
+`run-json-hook.mjs` behavior:
+- for mutating skills (`start-session`, `close-session`, `cycle-create`, `cycle-close`, `promote-baseline`, `requirements-delta`, `convert-to-spike`) in `dual`/`db-only`, DB runtime sync is auto-triggered via selective sync (`sync-db-first-selective`, with fallback to full `sync-db-first`).
+- override with `--db-sync` or `--no-db-sync`.
+
+Runtime transition scripts (`tools/runtime/`):
+- `sync-db-first-selective.mjs` - update DB-backed runtime index from changed `docs/audit/*` paths (mandatory in `dual`/`db-only`, fallback to full sync on failure)
+- `sync-db-first.mjs` - full DB-backed runtime index sync from `docs/audit/*` (fallback/manual recovery)
+- `mode-migrate.mjs` - migrate runtime state mode (`files|dual|db-only`) with sync/materialization steps
+- `artifact-store.mjs` - minimal DB artifact upsert/read/list API (foundation for DB-first write-through)
+- `db-first-artifact.mjs` - upsert one artifact directly into DB runtime index with optional projection to `docs/audit` (write-through helper)
 
 ## Commands
 
@@ -102,6 +122,12 @@ Package CLI (recommended in client repos):
 ```bash
 npx aidn perf checkpoint --target . --mode COMMITTING --index-store all --index-sync-check --json
 npx aidn perf skill-hook --skill context-reload --target . --mode THINKING --json
+node tools/codex/run-json-hook.mjs --skill context-reload --mode THINKING --target . --json
+node tools/codex/hydrate-context.mjs --target . --json
+node tools/runtime/sync-db-first-selective.mjs --target . --json
+node tools/runtime/sync-db-first.mjs --target . --json
+node tools/runtime/db-first-artifact.mjs --target . --path snapshots/context-snapshot.md --source-file docs/audit/snapshots/context-snapshot.md --json
+node tools/runtime/mode-migrate.mjs --target . --to dual --json
 npx aidn perf session-start --target . --mode COMMITTING --json
 npx aidn perf session-close --target . --mode COMMITTING --json
 npx aidn perf index --target . --store all --json
@@ -160,6 +186,9 @@ npm run perf:index-sync-thresholds
 npm run perf:index-sync-trend-summary -- --report-file .aidn/runtime/index/index-sync-report.json --thresholds-file .aidn/runtime/index/index-sync-thresholds.json --out .aidn/runtime/index/index-sync-trend-summary.md
 npm run perf:verify-structure
 npm run perf:verify-skill-hooks
+npm run perf:verify-skill-hook-context
+npm run perf:verify-db-first-sync
+npm run perf:verify-sync-db-first-selective
 npm run perf:verify-skill-hook-state-mode
 npm run perf:verify-index-sync
 npm run perf:verify-index-sync-select-paths
@@ -231,6 +260,10 @@ npm run perf:constraint-loop -- --target ../client-repo --event-file .aidn/runti
 npm run perf:check-fallbacks
 npm run perf:campaign -- --iterations 30 --target tests/fixtures/repo-installed-core
 npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --regression-file .aidn/runtime/perf/kpi-regression.json --fallback-report-file .aidn/runtime/perf/fallback-report.json --fallback-thresholds-file .aidn/runtime/perf/fallback-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
+npm run perf:audit-review -- --target ../client-repo --json
+npm run runtime:sync-db-first -- --target ../client-repo --json
+npm run runtime:db-first-artifact -- --target ../client-repo --path snapshots/context-snapshot.md --source-file docs/audit/snapshots/context-snapshot.md --json
+npm run runtime:mode-migrate -- --target ../client-repo --to db-only --json
 npm run perf:reset
 npm run perf:reset -- --keep-history
 ```
@@ -252,6 +285,10 @@ Default runtime outputs:
 - `.aidn/runtime/index/index-regression.json`
 - `.aidn/runtime/index/index-summary.md`
 - `.aidn/runtime/cache/reload-state.json`
+- `.aidn/runtime/context/codex-context.json`
+- `.aidn/runtime/context/hydrated-context.json`
+- `.aidn/runtime/context/raw/*.json`
+- `.aidn/runtime/perf/audit-review.json`
 - `.aidn/runtime/perf/kpi-thresholds.json`
 - `.aidn/runtime/perf/kpi-regression.json`
 - `.aidn/runtime/perf/kpi-history.ndjson`
@@ -415,16 +452,18 @@ Checkpoint summary events now carry effective index write counters (`files_writt
 ## Skill Hook Coverage (Phase 1-3)
 
 Required hooks in `dual`/`db-only` (strict); optional non-blocking in `files` mode:
-- `context-reload`: `npx aidn perf skill-hook --skill context-reload --target . --mode <THINKING|EXPLORING|COMMITTING> --json`
-- `branch-cycle-audit`: `npx aidn perf skill-hook --skill branch-cycle-audit --target . --mode COMMITTING --json`
-- `drift-check`: `npx aidn perf skill-hook --skill drift-check --target . --mode COMMITTING --json`
-- `start-session`: `npx aidn perf skill-hook --skill start-session --target . --mode <THINKING|EXPLORING|COMMITTING> --json`
-- `close-session`: `npx aidn perf skill-hook --skill close-session --target . --mode <THINKING|EXPLORING|COMMITTING> --json`
-- `cycle-create`: `npx aidn perf skill-hook --skill cycle-create --target . --mode COMMITTING --json`
-- `cycle-close`: `npx aidn perf skill-hook --skill cycle-close --target . --mode COMMITTING --json`
-- `promote-baseline`: `npx aidn perf skill-hook --skill promote-baseline --target . --mode COMMITTING --json`
-- `requirements-delta`: `npx aidn perf skill-hook --skill requirements-delta --target . --mode COMMITTING --json`
-- `convert-to-spike`: `npx aidn perf skill-hook --skill convert-to-spike --target . --mode EXPLORING --json`
+- `context-reload`: `node tools/codex/run-json-hook.mjs --skill context-reload --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- `branch-cycle-audit`: `node tools/codex/run-json-hook.mjs --skill branch-cycle-audit --mode COMMITTING --target . --json`
+- `drift-check`: `node tools/codex/run-json-hook.mjs --skill drift-check --mode COMMITTING --target . --json`
+- `start-session`: `node tools/codex/run-json-hook.mjs --skill start-session --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- `close-session`: `node tools/codex/run-json-hook.mjs --skill close-session --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- `cycle-create`: `node tools/codex/run-json-hook.mjs --skill cycle-create --mode COMMITTING --target . --json`
+- `cycle-close`: `node tools/codex/run-json-hook.mjs --skill cycle-close --mode COMMITTING --target . --json`
+- `promote-baseline`: `node tools/codex/run-json-hook.mjs --skill promote-baseline --mode COMMITTING --target . --json`
+- `requirements-delta`: `node tools/codex/run-json-hook.mjs --skill requirements-delta --mode COMMITTING --target . --json`
+- `convert-to-spike`: `node tools/codex/run-json-hook.mjs --skill convert-to-spike --mode EXPLORING --target . --json`
+
+After each hook run, load `.aidn/runtime/context/codex-context.json` and use `decision/action/reason_codes` to drive next skill actions.
 
 This rollout extends optimization coverage to high-cost checks first, then mutating skills, with blocking behavior mandatory in `dual`/`db-only`.
 
@@ -435,6 +474,8 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
 - It executes:
   - `perf:verify-structure`
   - `perf:verify-skill-hooks`
+  - `perf:verify-skill-hook-context`
+  - `perf:verify-db-first-sync`
   - `perf:verify-skill-hook-state-mode`
   - `perf:verify-index-sync`
   - `perf:verify-index-sync-select-paths`
@@ -492,6 +533,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
   - `perf:constraint-summary`
   - `perf:check-fallbacks` (non-blocking by default in CI)
   - `perf:render-summary`
+  - `perf:audit-review`
 - It publishes:
   - `.aidn/runtime/perf/workflow-events.ndjson`
   - `.aidn/runtime/perf/kpi-report.json`

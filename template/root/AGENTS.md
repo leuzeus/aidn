@@ -96,7 +96,8 @@ Agents MUST NOT skip these steps.
 
 If runtime state mode is `dual` or `db-only`, the agent MUST:
 - run the performance hook for each invoked workflow skill
-- run those hooks in strict mode (`npx aidn perf skill-hook ... --strict`)
+- run those hooks through the JSON context wrapper in strict mode (`node tools/codex/run-json-hook.mjs ... --strict --json`)
+- run DB runtime sync after each mutating workflow skill (`node tools/runtime/sync-db-first-selective.mjs --target . --json`, fallback to full sync when needed)
 - treat hook failure as a stop condition (do not continue silently on file-only fallback paths)
 
 ------------------------------------------------------------
