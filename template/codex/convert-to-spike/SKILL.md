@@ -34,7 +34,7 @@ If mode=EXPLORING and:
 - next entry point points to spike status.md
 
 6) Performance hook (mandatory in dual/db-only; optional in files):
-- run `node tools/codex/run-json-hook.mjs --skill convert-to-spike --mode EXPLORING --target . --json`
+- run `npx aidn codex run-json-hook --skill convert-to-spike --mode EXPLORING --target . --json`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - use this output to capture:
@@ -43,8 +43,8 @@ If mode=EXPLORING and:
 - in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
 - in files, this hook remains non-blocking by default.
 - DB runtime sync (mandatory in dual/db-only; optional in files):
-- run `node tools/runtime/sync-db-first-selective.mjs --target . --json` (falls back to full sync when needed).
-- for DB-first write-through on a specific artifact, run `node tools/runtime/db-first-artifact.mjs --target . --path <relative-audit-path> --source-file <file> --json`.
+- run `npx aidn runtime sync-db-first-selective --target . --json` (falls back to full sync when needed).
+- for DB-first write-through on a specific artifact, run `npx aidn runtime db-first-artifact --target . --path <relative-audit-path> --source-file <file> --json`.
 - in dual/db-only, this step is mandatory and blocking on failure.
 - in files, this step is optional unless repository policy requires DB parity.
 
@@ -52,3 +52,4 @@ Output:
 - New cycle path
 - Branch recommendation
 - Next steps (validate hypotheses, document decision)
+

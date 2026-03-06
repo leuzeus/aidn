@@ -82,6 +82,21 @@ const PERF_ALIASES = {
   "audit-review": { file: "audit-review.mjs" },
 };
 
+const CODEX_ALIASES = {
+  "run-json-hook": { file: "run-json-hook.mjs" },
+  "normalize-hook-payload": { file: "normalize-hook-payload.mjs" },
+  "hydrate-context": { file: "hydrate-context.mjs" },
+  "context-store": { file: "context-store.mjs" },
+};
+
+const RUNTIME_ALIASES = {
+  "artifact-store": { file: "artifact-store.mjs" },
+  "db-first-artifact": { file: "db-first-artifact.mjs" },
+  "sync-db-first": { file: "sync-db-first.mjs" },
+  "sync-db-first-selective": { file: "sync-db-first-selective.mjs" },
+  "mode-migrate": { file: "mode-migrate.mjs" },
+};
+
 function printUsage() {
   console.log("Usage:");
   console.log("  aidn install --target ../repo --pack core");
@@ -89,9 +104,15 @@ function printUsage() {
   console.log("  aidn build-release");
   console.log("  aidn perf checkpoint --target ../repo --mode COMMITTING --index-store all --index-sync-check --json");
   console.log("  aidn perf session-start --target ../repo --mode COMMITTING --json");
+  console.log("  aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json");
+  console.log("  aidn runtime sync-db-first-selective --target . --json");
   console.log("");
   console.log("Perf subcommands:");
   console.log(`  ${Object.keys(PERF_ALIASES).sort().join(", ")}`);
+  console.log("Codex subcommands:");
+  console.log(`  ${Object.keys(CODEX_ALIASES).sort().join(", ")}`);
+  console.log("Runtime subcommands:");
+  console.log(`  ${Object.keys(RUNTIME_ALIASES).sort().join(", ")}`);
 }
 
 function printVersion() {
@@ -122,20 +143,49 @@ function runNodeScript(relativePath, args) {
 }
 
 function resolvePerfCommand(subcommand, args) {
-  const alias = PERF_ALIASES[subcommand];
+  return resolveToolCommand({
+    aliases: PERF_ALIASES,
+    group: "perf",
+    rootDir: path.join("tools", "perf"),
+    subcommand,
+    args,
+  });
+}
+
+function resolveCodexCommand(subcommand, args) {
+  return resolveToolCommand({
+    aliases: CODEX_ALIASES,
+    group: "codex",
+    rootDir: path.join("tools", "codex"),
+    subcommand,
+    args,
+  });
+}
+
+function resolveRuntimeCommand(subcommand, args) {
+  return resolveToolCommand({
+    aliases: RUNTIME_ALIASES,
+    group: "runtime",
+    rootDir: path.join("tools", "runtime"),
+    subcommand,
+    args,
+  });
+}
+
+function resolveToolCommand({ aliases, group, rootDir, subcommand, args }) {
+  const alias = aliases[subcommand];
   if (alias) {
     return {
-      relativePath: path.join("tools", "perf", alias.file),
+      relativePath: path.join(rootDir, alias.file),
       argv: [...(alias.fixedArgs ?? []), ...args],
     };
   }
-
   if (!/^[a-z0-9-]+$/.test(subcommand)) {
-    throw new Error(`Invalid perf subcommand: ${subcommand}`);
+    throw new Error(`Invalid ${group} subcommand: ${subcommand}`);
   }
   const fallbackFile = `${subcommand}.mjs`;
   return {
-    relativePath: path.join("tools", "perf", fallbackFile),
+    relativePath: path.join(rootDir, fallbackFile),
     argv: args,
   };
 }
@@ -172,6 +222,38 @@ function main() {
     try {
       const perf = resolvePerfCommand(subcommand, argv.slice(2));
       runNodeScript(perf.relativePath, perf.argv);
+      return;
+    } catch (error) {
+      console.error(`ERROR: ${error.message}`);
+      process.exit(1);
+    }
+  }
+
+  if (command === "codex") {
+    const subcommand = argv[1] ?? "";
+    if (!subcommand || subcommand === "--help" || subcommand === "-h" || subcommand === "help") {
+      printUsage();
+      process.exit(1);
+    }
+    try {
+      const codex = resolveCodexCommand(subcommand, argv.slice(2));
+      runNodeScript(codex.relativePath, codex.argv);
+      return;
+    } catch (error) {
+      console.error(`ERROR: ${error.message}`);
+      process.exit(1);
+    }
+  }
+
+  if (command === "runtime") {
+    const subcommand = argv[1] ?? "";
+    if (!subcommand || subcommand === "--help" || subcommand === "-h" || subcommand === "help") {
+      printUsage();
+      process.exit(1);
+    }
+    try {
+      const runtime = resolveRuntimeCommand(subcommand, argv.slice(2));
+      runNodeScript(runtime.relativePath, runtime.argv);
       return;
     } catch (error) {
       console.error(`ERROR: ${error.message}`);

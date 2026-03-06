@@ -86,8 +86,8 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
-  console.log("  node tools/runtime/db-first-artifact.mjs --target . --path snapshots/context-snapshot.md --source-file docs/audit/snapshots/context-snapshot.md --kind snapshot --family normative --json");
-  console.log("  node tools/runtime/db-first-artifact.mjs --target . --path sessions/S001.md --content \"# Session\" --kind session --family normative --materialize --json");
+  console.log("  npx aidn runtime db-first-artifact --target . --path snapshots/context-snapshot.md --source-file docs/audit/snapshots/context-snapshot.md --kind snapshot --family normative --json");
+  console.log("  npx aidn runtime db-first-artifact --target . --path sessions/S001.md --content \"# Session\" --kind session --family normative --materialize --json");
 }
 
 export function resolveStateMode(targetRoot, requested) {
@@ -251,3 +251,4 @@ function main() {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main();
 }
+

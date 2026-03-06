@@ -455,10 +455,10 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
-  console.log("  node tools/runtime/artifact-store.mjs list --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json");
-  console.log("  node tools/runtime/artifact-store.mjs get --path snapshots/context-snapshot.md --json");
-  console.log("  node tools/runtime/artifact-store.mjs upsert --path snapshots/context-snapshot.md --kind snapshot --family normative --content-file docs/audit/snapshots/context-snapshot.md --json");
-  console.log("  node tools/runtime/artifact-store.mjs materialize --audit-root docs/audit --only-path snapshots/context-snapshot.md --json");
+  console.log("  npx aidn runtime artifact-store list --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json");
+  console.log("  npx aidn runtime artifact-store get --path snapshots/context-snapshot.md --json");
+  console.log("  npx aidn runtime artifact-store upsert --path snapshots/context-snapshot.md --kind snapshot --family normative --content-file docs/audit/snapshots/context-snapshot.md --json");
+  console.log("  npx aidn runtime artifact-store materialize --audit-root docs/audit --only-path snapshots/context-snapshot.md --json");
 }
 
 function main() {
@@ -535,3 +535,4 @@ function main() {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main();
 }
+

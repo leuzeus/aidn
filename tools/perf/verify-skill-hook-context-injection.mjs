@@ -60,7 +60,7 @@ function checkSkill(root, spec) {
   }
   const text = fs.readFileSync(file, "utf8");
   const requiredPatterns = [
-    `node tools/codex/run-json-hook.mjs --skill ${spec.name} --mode ${spec.mode} --target . --json`,
+    `npx aidn codex run-json-hook --skill ${spec.name} --mode ${spec.mode} --target . --json`,
     ".aidn/runtime/context/codex-context.json",
   ];
   const forbiddenPatterns = [

@@ -53,9 +53,9 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
-  console.log("  node tools/runtime/sync-db-first.mjs --target . --json");
-  console.log("  node tools/runtime/sync-db-first.mjs --target . --state-mode dual --strict --json");
-  console.log("  node tools/runtime/sync-db-first.mjs --target . --force-in-files --json");
+  console.log("  npx aidn runtime sync-db-first --target . --json");
+  console.log("  npx aidn runtime sync-db-first --target . --state-mode dual --strict --json");
+  console.log("  npx aidn runtime sync-db-first --target . --force-in-files --json");
 }
 
 function resolveStateMode(targetRoot, requested) {
@@ -166,3 +166,4 @@ function main() {
 }
 
 main();
+

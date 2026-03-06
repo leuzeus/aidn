@@ -50,7 +50,7 @@ Detect when exploration/implementation drifted and recover quickly.
 - Add IDEA-xxx suggestion for parking-lot.md
 
 7) Performance hook (mandatory in dual/db-only; optional in files):
-- run `node tools/codex/run-json-hook.mjs --skill drift-check --mode COMMITTING --target . --json`
+- run `npx aidn codex run-json-hook --skill drift-check --mode COMMITTING --target . --json`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - use L2 signals as objective drift evidence:
@@ -65,3 +65,4 @@ Detect when exploration/implementation drifted and recover quickly.
 Output:
 - Recovery actions (2–5 steps)
 - Clear Next Entry Point
+

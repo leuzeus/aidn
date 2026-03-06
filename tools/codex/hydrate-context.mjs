@@ -75,8 +75,8 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
-  console.log("  node tools/codex/hydrate-context.mjs --target . --json");
-  console.log("  node tools/codex/hydrate-context.mjs --target . --skill context-reload --history-limit 10");
+  console.log("  npx aidn codex hydrate-context --target . --json");
+  console.log("  npx aidn codex hydrate-context --target . --skill context-reload --history-limit 10");
 }
 
 function resolveTargetPath(targetRoot, candidate) {
@@ -286,3 +286,4 @@ function firstStateMode(latest) {
 }
 
 main();
+

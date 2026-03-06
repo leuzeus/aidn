@@ -69,8 +69,8 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
-  console.log("  node tools/runtime/mode-migrate.mjs --target . --to dual --json");
-  console.log("  node tools/runtime/mode-migrate.mjs --target . --from db-only --to files --strict --json");
+  console.log("  npx aidn runtime mode-migrate --target . --to dual --json");
+  console.log("  npx aidn runtime mode-migrate --target . --from db-only --to files --strict --json");
 }
 
 function resolveTargetPath(targetRoot, candidate) {
@@ -224,3 +224,4 @@ function main() {
 }
 
 main();
+

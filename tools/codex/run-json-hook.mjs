@@ -111,10 +111,10 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
-  console.log("  node tools/codex/run-json-hook.mjs --skill context-reload --mode THINKING --target . --json");
-  console.log("  node tools/codex/run-json-hook.mjs --skill context-reload --mode THINKING --target . -- npx aidn perf skill-hook --skill context-reload --target . --mode THINKING --json");
-  console.log("  node tools/codex/run-json-hook.mjs --skill branch-cycle-audit --mode COMMITTING --target . --strict --fail-on-error");
-  console.log("  node tools/codex/run-json-hook.mjs --skill cycle-create --mode COMMITTING --target . --db-sync --json");
+  console.log("  npx aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json");
+  console.log("  npx aidn codex run-json-hook --skill context-reload --mode THINKING --target . -- npx aidn perf skill-hook --skill context-reload --target . --mode THINKING --json");
+  console.log("  npx aidn codex run-json-hook --skill branch-cycle-audit --mode COMMITTING --target . --strict --fail-on-error");
+  console.log("  npx aidn codex run-json-hook --skill cycle-create --mode COMMITTING --target . --db-sync --json");
 }
 
 function resolveStateMode(targetRoot, cliStateMode) {
@@ -392,3 +392,4 @@ function main() {
 }
 
 main();
+

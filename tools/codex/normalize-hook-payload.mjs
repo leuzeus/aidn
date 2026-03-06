@@ -210,7 +210,7 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
-  console.log("  node tools/codex/normalize-hook-payload.mjs --in .aidn/runtime/context/raw/context-reload-latest.json --json");
+  console.log("  npx aidn codex normalize-hook-payload --in .aidn/runtime/context/raw/context-reload-latest.json --json");
 }
 
 function main() {
@@ -244,3 +244,4 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPat
 if (isMain) {
   main();
 }
+

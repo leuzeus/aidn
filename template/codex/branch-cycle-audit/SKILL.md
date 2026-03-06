@@ -75,7 +75,7 @@ Continuity validation by rule:
 - Next entry point points to that cycle status.md
 
 7) Performance hook (mandatory in dual/db-only; optional in files):
-- run `node tools/codex/run-json-hook.mjs --skill branch-cycle-audit --mode COMMITTING --target . --json`
+- run `npx aidn codex run-json-hook --skill branch-cycle-audit --mode COMMITTING --target . --json`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - use this output to cross-check:
@@ -88,3 +88,4 @@ Continuity validation by rule:
 Output:
 - Mapping result
 - Fix plan (if mismatch)
+

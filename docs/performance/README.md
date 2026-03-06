@@ -122,12 +122,12 @@ Package CLI (recommended in client repos):
 ```bash
 npx aidn perf checkpoint --target . --mode COMMITTING --index-store all --index-sync-check --json
 npx aidn perf skill-hook --skill context-reload --target . --mode THINKING --json
-node tools/codex/run-json-hook.mjs --skill context-reload --mode THINKING --target . --json
-node tools/codex/hydrate-context.mjs --target . --json
-node tools/runtime/sync-db-first-selective.mjs --target . --json
-node tools/runtime/sync-db-first.mjs --target . --json
-node tools/runtime/db-first-artifact.mjs --target . --path snapshots/context-snapshot.md --source-file docs/audit/snapshots/context-snapshot.md --json
-node tools/runtime/mode-migrate.mjs --target . --to dual --json
+npx aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json
+npx aidn codex hydrate-context --target . --json
+npx aidn runtime sync-db-first-selective --target . --json
+npx aidn runtime sync-db-first --target . --json
+npx aidn runtime db-first-artifact --target . --path snapshots/context-snapshot.md --source-file docs/audit/snapshots/context-snapshot.md --json
+npx aidn runtime mode-migrate --target . --to dual --json
 npx aidn perf session-start --target . --mode COMMITTING --json
 npx aidn perf session-close --target . --mode COMMITTING --json
 npx aidn perf index --target . --store all --json
@@ -452,16 +452,16 @@ Checkpoint summary events now carry effective index write counters (`files_writt
 ## Skill Hook Coverage (Phase 1-3)
 
 Required hooks in `dual`/`db-only` (strict); optional non-blocking in `files` mode:
-- `context-reload`: `node tools/codex/run-json-hook.mjs --skill context-reload --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
-- `branch-cycle-audit`: `node tools/codex/run-json-hook.mjs --skill branch-cycle-audit --mode COMMITTING --target . --json`
-- `drift-check`: `node tools/codex/run-json-hook.mjs --skill drift-check --mode COMMITTING --target . --json`
-- `start-session`: `node tools/codex/run-json-hook.mjs --skill start-session --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
-- `close-session`: `node tools/codex/run-json-hook.mjs --skill close-session --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
-- `cycle-create`: `node tools/codex/run-json-hook.mjs --skill cycle-create --mode COMMITTING --target . --json`
-- `cycle-close`: `node tools/codex/run-json-hook.mjs --skill cycle-close --mode COMMITTING --target . --json`
-- `promote-baseline`: `node tools/codex/run-json-hook.mjs --skill promote-baseline --mode COMMITTING --target . --json`
-- `requirements-delta`: `node tools/codex/run-json-hook.mjs --skill requirements-delta --mode COMMITTING --target . --json`
-- `convert-to-spike`: `node tools/codex/run-json-hook.mjs --skill convert-to-spike --mode EXPLORING --target . --json`
+- `context-reload`: `npx aidn codex run-json-hook --skill context-reload --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- `branch-cycle-audit`: `npx aidn codex run-json-hook --skill branch-cycle-audit --mode COMMITTING --target . --json`
+- `drift-check`: `npx aidn codex run-json-hook --skill drift-check --mode COMMITTING --target . --json`
+- `start-session`: `npx aidn codex run-json-hook --skill start-session --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- `close-session`: `npx aidn codex run-json-hook --skill close-session --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- `cycle-create`: `npx aidn codex run-json-hook --skill cycle-create --mode COMMITTING --target . --json`
+- `cycle-close`: `npx aidn codex run-json-hook --skill cycle-close --mode COMMITTING --target . --json`
+- `promote-baseline`: `npx aidn codex run-json-hook --skill promote-baseline --mode COMMITTING --target . --json`
+- `requirements-delta`: `npx aidn codex run-json-hook --skill requirements-delta --mode COMMITTING --target . --json`
+- `convert-to-spike`: `npx aidn codex run-json-hook --skill convert-to-spike --mode EXPLORING --target . --json`
 
 After each hook run, load `.aidn/runtime/context/codex-context.json` and use `decision/action/reason_codes` to drive next skill actions.
 
@@ -608,3 +608,4 @@ To avoid `overhead_ratio=n/a`, emit delivery window markers:
 
 These events are marked as `control=false` and provide delivery duration for KPI ratio calculation.
 If no explicit `--run-id` is passed, delivery markers reuse the shared run id from session hook automatically.
+

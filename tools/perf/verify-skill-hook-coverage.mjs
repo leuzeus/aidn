@@ -70,7 +70,7 @@ function main() {
     const stateModeLine = "state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).";
     const mandatoryDbLine = "in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).";
     const contextInjectionLine = "read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.";
-    const wrap = (skill, mode) => `node tools/codex/run-json-hook.mjs --skill ${skill} --mode ${mode} --target . --json`;
+    const wrap = (skill, mode) => `npx aidn codex run-json-hook --skill ${skill} --mode ${mode} --target . --json`;
     const checks = [
       checkOne(args.root, "context-reload/SKILL.md", [wrap("context-reload", "<THINKING|EXPLORING|COMMITTING>"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
       checkOne(args.root, "branch-cycle-audit/SKILL.md", [wrap("branch-cycle-audit", "COMMITTING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),

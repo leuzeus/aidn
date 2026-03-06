@@ -60,8 +60,8 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
-  console.log("  node tools/runtime/sync-db-first-selective.mjs --target . --json");
-  console.log("  node tools/runtime/sync-db-first-selective.mjs --target . --state-mode dual --json");
+  console.log("  npx aidn runtime sync-db-first-selective --target . --json");
+  console.log("  npx aidn runtime sync-db-first-selective --target . --state-mode dual --json");
 }
 
 function parseGitPath(raw) {
@@ -310,3 +310,4 @@ function main() {
 }
 
 main();
+

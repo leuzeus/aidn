@@ -69,7 +69,7 @@ Rules:
 - If on a mixed branch: recommend convert-to-spike or new cycle + new branch.
 
 7) Performance hook (mandatory in dual/db-only; optional in files):
-- run `node tools/codex/run-json-hook.mjs --skill requirements-delta --mode COMMITTING --target . --json`
+- run `npx aidn codex run-json-hook --skill requirements-delta --mode COMMITTING --target . --json`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - use this output to capture:
@@ -78,8 +78,8 @@ Rules:
 - in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
 - in files, this hook remains non-blocking by default.
 - DB runtime sync (mandatory in dual/db-only; optional in files):
-- run `node tools/runtime/sync-db-first-selective.mjs --target . --json` (falls back to full sync when needed).
-- for DB-first write-through on a specific artifact, run `node tools/runtime/db-first-artifact.mjs --target . --path <relative-audit-path> --source-file <file> --json`.
+- run `npx aidn runtime sync-db-first-selective --target . --json` (falls back to full sync when needed).
+- for DB-first write-through on a specific artifact, run `npx aidn runtime db-first-artifact --target . --path <relative-audit-path> --source-file <file> --json`.
 - in dual/db-only, this step is mandatory and blocking on failure.
 - in files, this step is optional unless repository policy requires DB parity.
 
@@ -87,3 +87,4 @@ Output:
 - Addendum content
 - REQ mapping table
 - Recommended next step (CR/new cycle/continue)
+

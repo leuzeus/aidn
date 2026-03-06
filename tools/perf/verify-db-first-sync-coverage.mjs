@@ -57,9 +57,9 @@ function checkSkill(root, skill) {
   const text = fs.readFileSync(file, "utf8");
   const required = [
     "DB runtime sync (mandatory in dual/db-only; optional in files):",
-    "node tools/runtime/sync-db-first-selective.mjs --target . --json",
+    "npx aidn runtime sync-db-first-selective --target . --json",
     "falls back to full sync when needed",
-    "node tools/runtime/db-first-artifact.mjs --target . --path <relative-audit-path> --source-file <file> --json",
+    "npx aidn runtime db-first-artifact --target . --path <relative-audit-path> --source-file <file> --json",
   ];
   const missing = required.filter((pattern) => !text.includes(pattern));
   return {
