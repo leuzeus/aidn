@@ -27,9 +27,6 @@ const CUSTOMIZABLE_TARGET_PATTERNS = [
   "docs/audit/baseline/history.md",
   "docs/audit/snapshots/context-snapshot.md",
 ];
-const EXECUTION_MODES = new Set(["auto", "ask", "safe", "full"]);
-const CODEX_SANDBOX_MODES = new Set(["read-only", "workspace-write", "danger-full-access"]);
-const CODEX_APPROVAL_POLICIES = new Set(["untrusted", "on-failure", "on-request", "never"]);
 
 function normalizeRelativePath(value) {
   if (!value) {
@@ -68,10 +65,6 @@ function parseArgs(argv) {
     skipAgents: false,
     forceAgentsMerge: false,
     codexMigrateCustom: true,
-    codexMigrateCustomSource: "default",
-    executionMode: "auto",
-    codexSandbox: "",
-    codexApproval: "",
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -99,21 +92,8 @@ function parseArgs(argv) {
       args.skipAgents = true;
     } else if (token === "--force-agents-merge") {
       args.forceAgentsMerge = true;
-    } else if (token === "--codex-migrate-custom") {
-      args.codexMigrateCustom = true;
-      args.codexMigrateCustomSource = "cli";
     } else if (token === "--no-codex-migrate-custom") {
       args.codexMigrateCustom = false;
-      args.codexMigrateCustomSource = "cli";
-    } else if (token === "--execution-mode") {
-      args.executionMode = String(argv[i + 1] ?? "").trim().toLowerCase();
-      i += 1;
-    } else if (token === "--codex-sandbox") {
-      args.codexSandbox = String(argv[i + 1] ?? "").trim().toLowerCase();
-      i += 1;
-    } else if (token === "--codex-approval") {
-      args.codexApproval = String(argv[i + 1] ?? "").trim().toLowerCase();
-      i += 1;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -127,15 +107,6 @@ function parseArgs(argv) {
   }
   if (args.artifactImportStore && !normalizeIndexStoreMode(args.artifactImportStore)) {
     throw new Error("Invalid --artifact-import-store. Expected file|sql|dual|sqlite|dual-sqlite|all");
-  }
-  if (!EXECUTION_MODES.has(args.executionMode)) {
-    throw new Error("Invalid --execution-mode. Expected auto|ask|safe|full");
-  }
-  if (args.codexSandbox && !CODEX_SANDBOX_MODES.has(args.codexSandbox)) {
-    throw new Error("Invalid --codex-sandbox. Expected read-only|workspace-write|danger-full-access");
-  }
-  if (args.codexApproval && !CODEX_APPROVAL_POLICIES.has(args.codexApproval)) {
-    throw new Error("Invalid --codex-approval. Expected untrusted|on-failure|on-request|never");
   }
 
   return args;
@@ -153,105 +124,7 @@ function printUsage() {
   console.log("  node tools/install.mjs --target ../repo --pack core --strict");
   console.log("  node tools/install.mjs --target ../repo --pack core --skip-agents");
   console.log("  node tools/install.mjs --target ../repo --pack core --force-agents-merge");
-  console.log("  node tools/install.mjs --target ../repo --pack core --codex-migrate-custom");
   console.log("  node tools/install.mjs --target ../repo --pack core --no-codex-migrate-custom");
-  console.log("  node tools/install.mjs --target ../repo --pack core --execution-mode ask");
-  console.log("  node tools/install.mjs --target ../repo --pack core --codex-sandbox workspace-write --codex-approval on-request");
-}
-
-function resolveAutoExecutionMode(runtime) {
-  if (process.env.CODEX_THREAD_ID) {
-    return { mode: "safe", reason: "nested_codex_environment" };
-  }
-  if (!runtime.codexInstalled) {
-    return { mode: "safe", reason: "codex_not_installed" };
-  }
-  if (!runtime.codexAuthenticated) {
-    return { mode: "safe", reason: "codex_not_authenticated" };
-  }
-  return { mode: "full", reason: "codex_ready" };
-}
-
-async function promptExecutionMode(defaultMode) {
-  const rl = readline.createInterface({ input, output });
-  try {
-    console.log("");
-    console.log("Select install execution mode:");
-    console.log("  safe: disable Codex custom-file migration (recommended in restricted/read-only environments)");
-    console.log("  full: enable Codex custom-file migration for preserved customized files");
-    const answer = String(await rl.question(`Execution mode [${defaultMode}]: `)).trim().toLowerCase();
-    if (!answer) {
-      return defaultMode;
-    }
-    if (answer === "safe" || answer === "full") {
-      return answer;
-    }
-    console.warn(`Invalid execution mode '${answer}', using '${defaultMode}'.`);
-    return defaultMode;
-  } finally {
-    rl.close();
-  }
-}
-
-async function resolveCodexMigrationExecution(args, runtime) {
-  if (args.codexMigrateCustomSource === "cli") {
-    return {
-      mode: args.codexMigrateCustom ? "full" : "safe",
-      source: "flag",
-      reason: args.codexMigrateCustom ? "explicit_enable" : "explicit_disable",
-      codexMigrateCustom: args.codexMigrateCustom,
-    };
-  }
-
-  const auto = resolveAutoExecutionMode(runtime);
-  if (args.executionMode === "auto") {
-    return {
-      mode: auto.mode,
-      source: "auto",
-      reason: auto.reason,
-      codexMigrateCustom: auto.mode === "full",
-    };
-  }
-  if (args.executionMode === "safe" || args.executionMode === "full") {
-    return {
-      mode: args.executionMode,
-      source: "execution-mode",
-      reason: "explicit_mode",
-      codexMigrateCustom: args.executionMode === "full",
-    };
-  }
-  if (args.executionMode === "ask") {
-    if (args.dryRun || args.verifyOnly) {
-      return {
-        mode: auto.mode,
-        source: "ask-fallback",
-        reason: "prompt_skipped_non_install_mode",
-        codexMigrateCustom: auto.mode === "full",
-      };
-    }
-    if (!input.isTTY) {
-      return {
-        mode: auto.mode,
-        source: "ask-fallback",
-        reason: "prompt_skipped_non_tty",
-        codexMigrateCustom: auto.mode === "full",
-      };
-    }
-    const selectedMode = await promptExecutionMode(auto.mode);
-    return {
-      mode: selectedMode,
-      source: "prompt",
-      reason: "user_selected",
-      codexMigrateCustom: selectedMode === "full",
-    };
-  }
-
-  return {
-    mode: auto.mode,
-    source: "auto",
-    reason: auto.reason,
-    codexMigrateCustom: auto.mode === "full",
-  };
 }
 
 function resolveArtifactImportDefaults(args, configData = {}) {
@@ -1374,34 +1247,7 @@ function buildCodexMigrationPrompt(relativeTargetPath, sourceRendered) {
   ].join("\n");
 }
 
-function shellEscapeWindowsArg(value) {
-  const raw = String(value ?? "");
-  if (raw.length === 0) {
-    return '""';
-  }
-  if (!/[ \t"]/u.test(raw)) {
-    return raw;
-  }
-  return `"${raw.replace(/"/g, '\\"')}"`;
-}
-
-function buildCodexExecArgs(targetRoot, codexExecOptions = {}) {
-  const args = [];
-  if (codexExecOptions.sandbox) {
-    args.push("--sandbox", codexExecOptions.sandbox);
-  }
-  if (codexExecOptions.approval) {
-    args.push("--ask-for-approval", codexExecOptions.approval);
-  }
-  args.push("exec");
-  if (!codexExecOptions.sandbox && !codexExecOptions.approval) {
-    args.push("--full-auto");
-  }
-  args.push("-C", targetRoot, "-");
-  return args;
-}
-
-function migrateCustomFileWithCodex(targetRoot, candidate, dryRun, codexExecOptions = {}) {
+function migrateCustomFileWithCodex(targetRoot, candidate, dryRun) {
   if (dryRun) {
     return { attempted: false, migrated: false, reason: "dry-run" };
   }
@@ -1410,11 +1256,10 @@ function migrateCustomFileWithCodex(targetRoot, candidate, dryRun, codexExecOpti
   }
 
   const prompt = buildCodexMigrationPrompt(candidate.targetRelative, candidate.sourceRendered);
-  const codexArgs = buildCodexExecArgs(targetRoot, codexExecOptions);
   let result;
   if (process.platform === "win32") {
-    const commandLine = ["codex", ...codexArgs].map((item) => shellEscapeWindowsArg(item)).join(" ");
-    result = spawnSync(commandLine, {
+    const escapedTarget = String(targetRoot).replace(/"/g, '\\"');
+    result = spawnSync(`codex exec --full-auto -C "${escapedTarget}" -`, {
       input: prompt,
       encoding: "utf8",
       timeout: 180000,
@@ -1422,7 +1267,13 @@ function migrateCustomFileWithCodex(targetRoot, candidate, dryRun, codexExecOpti
       shell: true,
     });
   } else {
-    result = spawnSync("codex", codexArgs, {
+    result = spawnSync("codex", [
+      "exec",
+      "--full-auto",
+      "-C",
+      targetRoot,
+      "-",
+    ], {
       input: prompt,
       encoding: "utf8",
       timeout: 180000,
@@ -1713,8 +1564,6 @@ async function main() {
     const compatMatrix = readYamlFile(compatMatrixPath);
     const compatibility = resolveCompatibility(workflowManifest, compatMatrix);
     const runtime = validateRuntimeCompatibility(compatibility);
-    const execution = await resolveCodexMigrationExecution(args, runtime);
-    args.codexMigrateCustom = execution.codexMigrateCustom;
 
     const workflowPacks = workflowManifest?.packs ?? [];
     if (workflowManifest && !Array.isArray(workflowPacks)) {
@@ -1760,14 +1609,6 @@ async function main() {
     );
     console.log(
       `Custom-file policy: preserve=${CUSTOMIZABLE_TARGET_PATTERNS.length} patterns, codex_migrate=${args.codexMigrateCustom ? "enabled" : "disabled"}`,
-    );
-    if (args.codexMigrateCustom) {
-      const sandboxLabel = args.codexSandbox || "default(full-auto)";
-      const approvalLabel = args.codexApproval || "default(full-auto)";
-      console.log(`Codex exec policy: sandbox=${sandboxLabel}, approval=${approvalLabel}`);
-    }
-    console.log(
-      `Execution mode: ${execution.mode} (source=${execution.source}, reason=${execution.reason})`,
     );
     if (Object.keys(inferredTemplateVars).length > 0) {
       console.log(`Placeholder inference: loaded ${Object.keys(inferredTemplateVars).length} values from existing project files`);
@@ -1922,10 +1763,7 @@ async function main() {
             console.log(
               `${args.dryRun ? "[dry-run] " : ""}migrate custom file via codex: ${item.targetRelative}`,
             );
-            const migration = migrateCustomFileWithCodex(targetRoot, item, args.dryRun, {
-              sandbox: args.codexSandbox || null,
-              approval: args.codexApproval || null,
-            });
+            const migration = migrateCustomFileWithCodex(targetRoot, item, args.dryRun);
             if (migration.migrated) {
               summary.migratedCustom += 1;
             } else if (migration.attempted) {

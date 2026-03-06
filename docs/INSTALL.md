@@ -100,16 +100,7 @@ Notes:
   - when `codex` is available, installer attempts an AI-assisted migration for those files,
   - AI migration requires a logged-in Codex session (`codex login status` must be authenticated),
   - if migration is unavailable/fails, files remain unchanged,
-  - disable AI migration with `--no-codex-migrate-custom`,
-  - force-enable AI migration with `--codex-migrate-custom`,
-  - choose installer execution behavior with `--execution-mode auto|ask|safe|full`:
-    - `auto`: default heuristic (`safe` in nested Codex/restricted contexts, `full` when Codex is ready),
-    - `ask`: interactive prompt (`safe`/`full`) when TTY is available,
-    - `safe`: do not run Codex migration,
-    - `full`: run Codex migration when customized files are preserved.
-  - when Codex migration is enabled, you can set child Codex execution policy:
-    - `--codex-sandbox read-only|workspace-write|danger-full-access`
-    - `--codex-approval untrusted|on-failure|on-request|never`
+  - disable AI migration with `--no-codex-migrate-custom`.
 - Artifact import policy:
   - after install (non-verify mode), installer automatically imports `docs/audit/*` artifacts into `.aidn/runtime/index/*`,
   - import store precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE` mapping,
