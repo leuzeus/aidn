@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflowHookUseCase } from "../../src/application/runtime/workflow-hook-use-case.mjs";
 import { normalizeIndexStoreMode } from "../../src/lib/config/aidn-config-lib.mjs";
+import { resolveDefaultIndexStore } from "../../src/core/state-mode/runtime-index-policy.mjs";
 
 function parseArgs(argv) {
   const envStore = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().toLowerCase();
@@ -114,13 +115,7 @@ function parseArgs(argv) {
     throw new Error("Invalid AIDN_STATE_MODE. Expected files|dual|db-only");
   }
   if (!args.indexStore) {
-    if (args.stateMode === "dual") {
-      args.indexStore = "dual-sqlite";
-    } else if (args.stateMode === "db-only") {
-      args.indexStore = "sqlite";
-    } else {
-      args.indexStore = "file";
-    }
+    args.indexStore = resolveDefaultIndexStore(args.stateMode);
   }
   if (!["file", "sql", "dual", "sqlite", "dual-sqlite", "all"].includes(args.indexStore)) {
     throw new Error("Invalid --index-store. Expected file|sql|dual|sqlite|dual-sqlite|all");

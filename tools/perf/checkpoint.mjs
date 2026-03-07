@@ -2,7 +2,10 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCheckpointUseCase } from "../../src/application/runtime/checkpoint-use-case.mjs";
-import { normalizeIndexStoreMode } from "../../src/lib/config/aidn-config-lib.mjs";
+import {
+  normalizeIndexStoreMode,
+} from "../../src/lib/config/aidn-config-lib.mjs";
+import { resolveDefaultIndexStore } from "../../src/core/state-mode/runtime-index-policy.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
@@ -114,13 +117,7 @@ function parseArgs(argv) {
     throw new Error("Invalid AIDN_STATE_MODE. Expected files|dual|db-only");
   }
   if (!args.indexStore) {
-    if (args.stateMode === "dual") {
-      args.indexStore = "dual-sqlite";
-    } else if (args.stateMode === "db-only") {
-      args.indexStore = "sqlite";
-    } else {
-      args.indexStore = "file";
-    }
+    args.indexStore = resolveDefaultIndexStore(args.stateMode);
   }
   if (!["file", "sql", "dual", "sqlite", "dual-sqlite", "all"].includes(args.indexStore)) {
     throw new Error("Invalid --index-store. Expected file|sql|dual|sqlite|dual-sqlite|all");

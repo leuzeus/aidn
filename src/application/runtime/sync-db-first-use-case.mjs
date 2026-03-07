@@ -1,4 +1,5 @@
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
+import { requiresStrictRuntime } from "../../core/state-mode/state-mode-policy.mjs";
 
 export function runSyncDbFirstUseCase({ args, targetRoot, processAdapter, perfIndexSyncScript }) {
   const runtimeMode = resolveEffectiveRuntimeMode({
@@ -7,7 +8,7 @@ export function runSyncDbFirstUseCase({ args, targetRoot, processAdapter, perfIn
     indexStore: args.store || "file",
     indexStoreExplicit: Boolean(args.store),
   });
-  const strictByState = runtimeMode.stateMode === "dual" || runtimeMode.stateMode === "db-only";
+  const strictByState = requiresStrictRuntime(runtimeMode.stateMode);
   const strict = args.strict || strictByState;
 
   if (runtimeMode.stateMode === "files" && !args.forceInFiles) {

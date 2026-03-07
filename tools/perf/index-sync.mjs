@@ -9,6 +9,10 @@ import { runIndexSyncUseCase } from "../../src/application/runtime/index-sync-us
 import {
   normalizeIndexStoreMode,
 } from "../../src/lib/config/aidn-config-lib.mjs";
+import {
+  resolveDefaultIndexStore,
+  shouldEmbedArtifactContentByState,
+} from "../../src/core/state-mode/runtime-index-policy.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
@@ -91,16 +95,10 @@ function parseArgs(argv) {
     throw new Error("Invalid AIDN_STATE_MODE. Expected files|dual|db-only");
   }
   if (!args.store) {
-    if (args.stateMode === "dual") {
-      args.store = "dual-sqlite";
-    } else if (args.stateMode === "db-only") {
-      args.store = "sqlite";
-    } else {
-      args.store = "file";
-    }
+    args.store = resolveDefaultIndexStore(args.stateMode);
   }
   if (!args.embedContentExplicit) {
-    args.embedContent = args.stateMode === "dual" || args.stateMode === "db-only";
+    args.embedContent = shouldEmbedArtifactContentByState(args.stateMode);
   }
   args.store = String(args.store).toLowerCase();
   if (!normalizeIndexStoreMode(args.store)) {

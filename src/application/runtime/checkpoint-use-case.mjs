@@ -4,6 +4,11 @@ import crypto from "node:crypto";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-adapter.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
+import {
+  indexOutputsExistForStore,
+  resolveReloadIndexBackend,
+  resolveSyncCheckIndexBackend,
+} from "../../core/state-mode/runtime-index-policy.mjs";
 
 function appendEvent(eventFile, event) {
   const absolute = path.resolve(process.cwd(), eventFile);
@@ -23,59 +28,11 @@ function writeJsonFile(filePath, payload) {
   return absolute;
 }
 
-function indexOutputsExistForStore(args, indexOutputPath, indexSqlOutputPath, indexSqliteOutputPath) {
-  if (args.indexStore === "file") {
-    return fs.existsSync(indexOutputPath);
-  }
-  if (args.indexStore === "sql") {
-    return fs.existsSync(indexSqlOutputPath);
-  }
-  if (args.indexStore === "dual") {
-    return fs.existsSync(indexOutputPath) && fs.existsSync(indexSqlOutputPath);
-  }
-  if (args.indexStore === "sqlite") {
-    return fs.existsSync(indexSqliteOutputPath);
-  }
-  if (args.indexStore === "dual-sqlite") {
-    return fs.existsSync(indexOutputPath) && fs.existsSync(indexSqliteOutputPath);
-  }
-  if (args.indexStore === "all") {
-    return fs.existsSync(indexOutputPath) && fs.existsSync(indexSqlOutputPath) && fs.existsSync(indexSqliteOutputPath);
-  }
-  return false;
-}
-
 function resolveTargetPath(targetRoot, candidatePath) {
   if (path.isAbsolute(candidatePath)) {
     return candidatePath;
   }
   return path.resolve(targetRoot, candidatePath);
-}
-
-function resolveReloadIndexConfig(args, indexOutputPath, indexSqliteOutputPath) {
-  if (args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all") {
-    return {
-      indexFile: indexSqliteOutputPath,
-      indexBackend: "sqlite",
-    };
-  }
-  return {
-    indexFile: indexOutputPath,
-    indexBackend: "json",
-  };
-}
-
-function resolveSyncCheckIndexConfig(args, indexOutputPath, indexSqliteOutputPath) {
-  if (args.indexStore === "sqlite" || args.indexStore === "dual-sqlite") {
-    return {
-      indexFile: indexSqliteOutputPath,
-      indexBackend: "sqlite",
-    };
-  }
-  return {
-    indexFile: indexOutputPath,
-    indexBackend: "json",
-  };
 }
 
 export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
@@ -96,8 +53,16 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
   const indexSqlOutputPath = resolveTargetPath(targetRoot, args.indexSqlOutput);
   const indexSqliteOutputPath = resolveTargetPath(targetRoot, args.indexSqliteOutput);
   const indexSyncCheckOutPath = resolveTargetPath(targetRoot, args.indexSyncCheckOut);
-  const reloadIndex = resolveReloadIndexConfig(args, indexOutputPath, indexSqliteOutputPath);
-  const syncCheckIndex = resolveSyncCheckIndexConfig(args, indexOutputPath, indexSqliteOutputPath);
+  const reloadIndex = resolveReloadIndexBackend({
+    storeMode: args.indexStore,
+    indexOutputPath,
+    indexSqliteOutputPath,
+  });
+  const syncCheckIndex = resolveSyncCheckIndexBackend({
+    storeMode: args.indexStore,
+    indexOutputPath,
+    indexSqliteOutputPath,
+  });
 
   const reloadStarted = Date.now();
   const reloadArgs = [
@@ -193,7 +158,12 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
     };
   }
 
-  const hasIndexOutputs = indexOutputsExistForStore(args, indexOutputPath, indexSqlOutputPath, indexSqliteOutputPath);
+  const hasIndexOutputs = indexOutputsExistForStore({
+    storeMode: args.indexStore,
+    indexOutputPath,
+    indexSqlOutputPath,
+    indexSqliteOutputPath,
+  });
   const hasIndexFileForSyncCheck = !args.indexSyncCheck || fs.existsSync(syncCheckIndex.indexFile);
   const shouldSkipIndex = args.skipIndexOnIncremental
     && reload.decision === "incremental"

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createWorkflowStateStoreAdapter } from "../../adapters/runtime/workflow-state-store-adapter.mjs";
 import { assertArtifactProjector } from "../../core/ports/artifact-projector-port.mjs";
+import { shouldEmbedArtifactContentByState } from "../../core/state-mode/runtime-index-policy.mjs";
 import { persistWorkflowIndexProjection } from "./index-state-store-service.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
 
@@ -53,7 +54,7 @@ export function runIndexSyncUseCase({
   args.stateMode = runtimeMode.stateMode;
   args.store = runtimeMode.indexStore;
   if (!args.embedContentExplicit && !envEmbedContentSet) {
-    args.embedContent = args.stateMode === "dual" || args.stateMode === "db-only";
+    args.embedContent = shouldEmbedArtifactContentByState(args.stateMode);
   }
   args.output = resolveTargetPath(targetRoot, args.output);
   args.sqlOutput = resolveTargetPath(targetRoot, args.sqlOutput);
