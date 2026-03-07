@@ -90,6 +90,9 @@ function main() {
         && hydrated.repair_layer.finding_focus.artifact_paths.length >= 1,
       repair_layer_focus_session_present: Array.isArray(hydrated?.repair_layer?.finding_focus?.session_ids)
         && hydrated.repair_layer.finding_focus.session_ids.includes("S102"),
+      prioritized_findings_present: Array.isArray(hydrated?.repair_layer?.finding_focus?.prioritized_findings)
+        && hydrated.repair_layer.finding_focus.prioritized_findings.length >= 1,
+      prioritized_findings_scored: Number(hydrated?.repair_layer?.finding_focus?.prioritized_findings?.[0]?.priority_score ?? 0) >= 1,
       repair_finding_artifact_selected: repairFindingArtifacts.some((artifact) =>
         String(artifact?.path ?? "") === "sessions/S102-ambiguous.md"
       ),

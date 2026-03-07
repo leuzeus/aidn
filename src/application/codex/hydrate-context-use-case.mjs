@@ -4,6 +4,7 @@ import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import {
   artifactRepairScore,
   evaluateRepairRelation,
+  repairFindingPriorityScore,
   resolveRepairRelationThresholds,
 } from "../../core/workflow/repair-layer-policy.mjs";
 
@@ -82,15 +83,27 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
   const findingsByArtifactPath = new Map();
   const findingCycleIds = new Set();
   const findingSessionIds = new Set();
+  const prioritizedFindings = [];
   for (const row of migrationFindings) {
     const severity = String(row?.severity ?? "").toLowerCase();
     if (!["warning", "error"].includes(severity)) {
       continue;
     }
+    const priorityScore = repairFindingPriorityScore(row);
+    prioritizedFindings.push({
+      severity: row?.severity ?? null,
+      finding_type: row?.finding_type ?? null,
+      entity_type: row?.entity_type ?? null,
+      entity_id: row?.entity_id ?? null,
+      artifact_path: row?.artifact_path ?? null,
+      message: row?.message ?? null,
+      confidence: Number(row?.confidence ?? 0),
+      priority_score: priorityScore,
+    });
     const artifactPath = String(row?.artifact_path ?? "").replace(/\\/g, "/");
     if (artifactPath) {
       const list = findingsByArtifactPath.get(artifactPath) ?? [];
-      list.push(row);
+      list.push({ ...row, priority_score: priorityScore });
       findingsByArtifactPath.set(artifactPath, list);
     }
     const entityType = String(row?.entity_type ?? "").toLowerCase();
@@ -354,20 +367,25 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
   for (const artifact of artifacts) {
     const rel = String(artifact?.path ?? "").replace(/\\/g, "/");
     if (findingsByArtifactPath.has(rel)) {
-      const severityWeight = (findingsByArtifactPath.get(rel) ?? []).some((row) => String(row?.severity ?? "").toLowerCase() === "error")
-        ? 72
-        : 60;
-      mark(artifact, severityWeight, "repair_finding_artifact");
+      const findingScore = (findingsByArtifactPath.get(rel) ?? [])
+        .reduce((max, row) => Math.max(max, Number(row?.priority_score ?? 0)), 0);
+      mark(artifact, 40 + findingScore, "repair_finding_artifact");
     }
   }
   for (const artifact of artifacts) {
     if (findingSessionIds.has(String(artifact?.session_id ?? "")) && String(artifact?.kind ?? "") === "session") {
-      mark(artifact, 62, "repair_finding_session");
+      const sessionScore = prioritizedFindings
+        .filter((row) => String(row?.entity_type ?? "").toLowerCase() === "session" && String(row?.entity_id ?? "").toUpperCase() === String(artifact?.session_id ?? "").toUpperCase())
+        .reduce((max, row) => Math.max(max, Number(row?.priority_score ?? 0)), 0);
+      mark(artifact, 38 + sessionScore, "repair_finding_session");
     }
   }
   for (const artifact of artifacts) {
     if (findingCycleIds.has(String(artifact?.cycle_id ?? "")) && /\/status\.md$/i.test(String(artifact?.path ?? ""))) {
-      mark(artifact, 64, "repair_finding_cycle_status");
+      const cycleScore = prioritizedFindings
+        .filter((row) => String(row?.entity_type ?? "").toLowerCase() === "cycle" && String(row?.entity_id ?? "").toUpperCase() === String(artifact?.cycle_id ?? "").toUpperCase())
+        .reduce((max, row) => Math.max(max, Number(row?.priority_score ?? 0)), 0);
+      mark(artifact, 40 + cycleScore, "repair_finding_cycle_status");
     }
   }
   for (const artifact of artifacts) {
@@ -405,6 +423,10 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
       artifact_paths: Array.from(findingsByArtifactPath.keys()).sort((a, b) => a.localeCompare(b)).slice(0, 10),
       cycle_ids: Array.from(findingCycleIds).sort((a, b) => a.localeCompare(b)).slice(0, 10),
       session_ids: Array.from(findingSessionIds).sort((a, b) => a.localeCompare(b)).slice(0, 10),
+      prioritized_findings: prioritizedFindings
+        .slice()
+        .sort((left, right) => Number(right?.priority_score ?? 0) - Number(left?.priority_score ?? 0))
+        .slice(0, 10),
     },
   };
 }

@@ -43,6 +43,22 @@ const CONTINUITY_RELATION_TYPES = new Set([
   "carry_over_pending_from_session",
 ]);
 
+const FINDING_SEVERITY_WEIGHTS = Object.freeze({
+  error: 36,
+  warning: 24,
+  info: 8,
+});
+
+const FINDING_TYPE_WEIGHTS = Object.freeze({
+  AMBIGUOUS_RELATION: 10,
+  UNRESOLVED_SESSION_CYCLE: 14,
+  UNRESOLVED_CYCLE_REFERENCE: 12,
+  UNRESOLVED_PARENT_SESSION: 10,
+  LEGACY_CYCLE_DIR_REPAIRED: 6,
+  LEGACY_INDEX_PARTIAL_RELATIONS: 8,
+  SESSION_PARTIAL_METADATA: 5,
+});
+
 export function normalizeRepairConfidence(value, fallback = 0) {
   return clamp01(value, fallback);
 }
@@ -205,4 +221,13 @@ export function artifactRepairScore(artifact) {
   const confidence = normalizeRepairConfidence(artifact?.entity_confidence, 1);
   const sourceRank = repairSourceModeRank(artifact?.source_mode);
   return Math.round((confidence * 10) + (sourceRank * 2));
+}
+
+export function repairFindingPriorityScore(finding) {
+  const severity = String(finding?.severity ?? "info").trim().toLowerCase();
+  const findingType = String(finding?.finding_type ?? "").trim();
+  const severityWeight = FINDING_SEVERITY_WEIGHTS[severity] ?? FINDING_SEVERITY_WEIGHTS.info;
+  const typeWeight = FINDING_TYPE_WEIGHTS[findingType] ?? 4;
+  const confidenceWeight = Math.round(normalizeRepairConfidence(finding?.confidence, 0.5) * 10);
+  return severityWeight + typeWeight + confidenceWeight;
 }
