@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 import { execSync, execFileSync } from "node:child_process";
 import crypto from "node:crypto";
@@ -14,6 +13,10 @@ import {
   isWorkflowResultOk,
 } from "../../core/workflow/workflow-output-factory.mjs";
 import { readAidnProjectConfig, resolveConfigStateMode } from "../../lib/config/aidn-config-lib.mjs";
+import {
+  appendRuntimeNdjsonEvent,
+  resolveRuntimeTargetPath,
+} from "./runtime-path-service.mjs";
 
 function parseReloadReasonCodes(value) {
   if (!value) {
@@ -96,22 +99,8 @@ function detectSignals(targetRoot, args, reloadResult) {
   });
 }
 
-function appendEvent(eventFile, payload) {
-  const absolute = path.resolve(process.cwd(), eventFile);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  fs.appendFileSync(absolute, `${JSON.stringify(payload)}\n`, "utf8");
-  return absolute;
-}
-
 function compactRunStamp() {
   return new Date().toISOString().replace(/[-:.TZ]/g, "");
-}
-
-function resolveTargetPath(targetRoot, candidatePath) {
-  if (path.isAbsolute(candidatePath)) {
-    return candidatePath;
-  }
-  return path.resolve(targetRoot, candidatePath);
 }
 
 function getCurrentBranch(targetRoot) {
@@ -143,9 +132,9 @@ export function printHumanGatingResult(result) {
 
 export function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir }) {
   const started = Date.now();
-  args.cache = resolveTargetPath(targetRoot, args.cache);
-  args.eventFile = resolveTargetPath(targetRoot, args.eventFile);
-  args.indexSyncCheckFile = resolveTargetPath(targetRoot, args.indexSyncCheckFile);
+  args.cache = resolveRuntimeTargetPath(targetRoot, args.cache);
+  args.eventFile = resolveRuntimeTargetPath(targetRoot, args.eventFile);
+  args.indexSyncCheckFile = resolveRuntimeTargetPath(targetRoot, args.indexSyncCheckFile);
   if (!args.stateModeExplicit && !String(process.env.AIDN_STATE_MODE ?? "").trim()) {
     const config = readAidnProjectConfig(targetRoot);
     const configStateMode = resolveConfigStateMode(config.data);
@@ -157,7 +146,7 @@ export function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir }) {
     throw new Error("Invalid effective state mode. Expected files|dual|db-only");
   }
   if (args.stateMode !== "files") {
-    args.indexFile = resolveTargetPath(targetRoot, args.indexFile);
+    args.indexFile = resolveRuntimeTargetPath(targetRoot, args.indexFile);
   }
   let reload = null;
   if (args.reloadDecision) {
@@ -217,7 +206,7 @@ export function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir }) {
       reason_code: decision.reason_code,
       trace_id: `tr-${crypto.randomBytes(4).toString("hex")}`,
     };
-    result.event_file = appendEvent(args.eventFile, eventPayload);
+    result.event_file = appendRuntimeNdjsonEvent(args.eventFile, eventPayload);
   }
 
   return result;

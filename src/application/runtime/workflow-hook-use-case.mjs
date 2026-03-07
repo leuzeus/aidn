@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
@@ -26,20 +25,10 @@ import {
   runWorkflowCheckpoint,
   runWorkflowConstraintLoop,
 } from "./workflow-runtime-service.mjs";
-
-function appendEvent(eventFile, payload) {
-  const absolute = path.resolve(process.cwd(), eventFile);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  fs.appendFileSync(absolute, `${JSON.stringify(payload)}\n`, "utf8");
-  return absolute;
-}
-
-function resolveTargetPath(targetRoot, candidatePath) {
-  if (path.isAbsolute(candidatePath)) {
-    return candidatePath;
-  }
-  return path.resolve(targetRoot, candidatePath);
-}
+import {
+  appendRuntimeNdjsonEvent,
+  resolveRuntimeTargetPath,
+} from "./runtime-path-service.mjs";
 
 export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
   const gitAdapter = createLocalGitAdapter();
@@ -57,12 +46,12 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
   if (strictRequiredByState) {
     args.strict = true;
   }
-  const eventFilePath = resolveTargetPath(targetRoot, args.eventFile);
-  const runIdFilePathArg = resolveTargetPath(targetRoot, args.runIdFile);
-  const indexOutputPath = resolveTargetPath(targetRoot, args.indexOutput);
-  const indexSqlOutputPath = resolveTargetPath(targetRoot, args.indexSqlOutput);
-  const indexSqliteOutputPath = resolveTargetPath(targetRoot, args.indexSqliteOutput);
-  const indexSyncCheckOutPath = resolveTargetPath(targetRoot, args.indexSyncCheckOut);
+  const eventFilePath = resolveRuntimeTargetPath(targetRoot, args.eventFile);
+  const runIdFilePathArg = resolveRuntimeTargetPath(targetRoot, args.runIdFile);
+  const indexOutputPath = resolveRuntimeTargetPath(targetRoot, args.indexOutput);
+  const indexSqlOutputPath = resolveRuntimeTargetPath(targetRoot, args.indexSqlOutput);
+  const indexSqliteOutputPath = resolveRuntimeTargetPath(targetRoot, args.indexSqliteOutput);
+  const indexSyncCheckOutPath = resolveRuntimeTargetPath(targetRoot, args.indexSyncCheckOut);
   const branch = gitAdapter.getCurrentBranch(targetRoot);
   const runId = resolveWorkflowRunId({
     phase: args.phase,
@@ -127,7 +116,7 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
     reasonCode,
     traceId: `tr-${crypto.randomBytes(4).toString("hex")}`,
   });
-  const appendedEventFile = appendEvent(eventFilePath, eventPayload);
+  const appendedEventFile = appendRuntimeNdjsonEvent(eventFilePath, eventPayload);
 
   const runIdFilePath = persistWorkflowRunId({
     phase: args.phase,

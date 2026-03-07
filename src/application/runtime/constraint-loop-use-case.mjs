@@ -1,16 +1,9 @@
-import path from "node:path";
 import { writeJsonIfChanged } from "../../lib/index/io-lib.mjs";
 import {
   runWorkflowRuntimeJsonScript,
   runWorkflowRuntimeScript,
 } from "./workflow-runtime-service.mjs";
-
-function resolveTargetPath(targetRoot, candidatePath) {
-  if (path.isAbsolute(candidatePath)) {
-    return candidatePath;
-  }
-  return path.resolve(targetRoot, candidatePath);
-}
+import { resolveRuntimeTargetPath } from "./runtime-path-service.mjs";
 
 export function runConstraintLoopUseCase({
   args,
@@ -19,18 +12,18 @@ export function runConstraintLoopUseCase({
   processAdapter,
 }) {
   const started = Date.now();
-  const eventFile = resolveTargetPath(targetRoot, args.eventFile);
-  const reportFile = resolveTargetPath(targetRoot, args.reportFile);
-  const thresholdsFile = resolveTargetPath(targetRoot, args.thresholdsFile);
-  const actionsFile = resolveTargetPath(targetRoot, args.actionsFile);
-  const historyFile = resolveTargetPath(targetRoot, args.historyFile);
-  const trendFile = resolveTargetPath(targetRoot, args.trendFile);
-  const trendThresholdsFile = resolveTargetPath(targetRoot, args.trendThresholdsFile);
-  const trendSummaryFile = resolveTargetPath(targetRoot, args.trendSummaryFile);
-  const lotPlanFile = resolveTargetPath(targetRoot, args.lotPlanFile);
-  const lotAdvanceFile = resolveTargetPath(targetRoot, args.lotAdvanceFile);
-  const lotSummaryFile = resolveTargetPath(targetRoot, args.lotSummaryFile);
-  const summaryFile = resolveTargetPath(targetRoot, args.summaryFile);
+  const eventFile = resolveRuntimeTargetPath(targetRoot, args.eventFile);
+  const reportFile = resolveRuntimeTargetPath(targetRoot, args.reportFile);
+  const thresholdsFile = resolveRuntimeTargetPath(targetRoot, args.thresholdsFile);
+  const actionsFile = resolveRuntimeTargetPath(targetRoot, args.actionsFile);
+  const historyFile = resolveRuntimeTargetPath(targetRoot, args.historyFile);
+  const trendFile = resolveRuntimeTargetPath(targetRoot, args.trendFile);
+  const trendThresholdsFile = resolveRuntimeTargetPath(targetRoot, args.trendThresholdsFile);
+  const trendSummaryFile = resolveRuntimeTargetPath(targetRoot, args.trendSummaryFile);
+  const lotPlanFile = resolveRuntimeTargetPath(targetRoot, args.lotPlanFile);
+  const lotAdvanceFile = resolveRuntimeTargetPath(targetRoot, args.lotAdvanceFile);
+  const lotSummaryFile = resolveRuntimeTargetPath(targetRoot, args.lotSummaryFile);
+  const summaryFile = resolveRuntimeTargetPath(targetRoot, args.summaryFile);
 
   const report = runWorkflowRuntimeJsonScript({
     processAdapter,

@@ -30,34 +30,18 @@ import {
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
 import { runGatingEvaluateUseCase } from "./gating-evaluate-use-case.mjs";
 import {
+  appendRuntimeNdjsonEvent,
+  resolveRuntimeTargetPath,
+  writeRuntimeJsonFile,
+} from "./runtime-path-service.mjs";
+import {
   indexOutputsExistForStore,
   resolveReloadIndexBackend,
   resolveSyncCheckIndexBackend,
 } from "../../core/state-mode/runtime-index-policy.mjs";
 
-function appendEvent(eventFile, event) {
-  const absolute = path.resolve(process.cwd(), eventFile);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  fs.appendFileSync(absolute, `${JSON.stringify(event)}\n`, "utf8");
-  return absolute;
-}
-
 function toIsoNowCompact() {
   return new Date().toISOString().replace(/[-:.TZ]/g, "");
-}
-
-function writeJsonFile(filePath, payload) {
-  const absolute = path.resolve(process.cwd(), filePath);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  fs.writeFileSync(absolute, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-  return absolute;
-}
-
-function resolveTargetPath(targetRoot, candidatePath) {
-  if (path.isAbsolute(candidatePath)) {
-    return candidatePath;
-  }
-  return path.resolve(targetRoot, candidatePath);
 }
 
 export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
@@ -72,12 +56,12 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
   });
   args.stateMode = runtimeMode.stateMode;
   args.indexStore = runtimeMode.indexStore;
-  const cachePath = resolveTargetPath(targetRoot, args.cache);
-  const eventFilePath = resolveTargetPath(targetRoot, args.eventFile);
-  const indexOutputPath = resolveTargetPath(targetRoot, args.indexOutput);
-  const indexSqlOutputPath = resolveTargetPath(targetRoot, args.indexSqlOutput);
-  const indexSqliteOutputPath = resolveTargetPath(targetRoot, args.indexSqliteOutput);
-  const indexSyncCheckOutPath = resolveTargetPath(targetRoot, args.indexSyncCheckOut);
+  const cachePath = resolveRuntimeTargetPath(targetRoot, args.cache);
+  const eventFilePath = resolveRuntimeTargetPath(targetRoot, args.eventFile);
+  const indexOutputPath = resolveRuntimeTargetPath(targetRoot, args.indexOutput);
+  const indexSqlOutputPath = resolveRuntimeTargetPath(targetRoot, args.indexSqlOutput);
+  const indexSqliteOutputPath = resolveRuntimeTargetPath(targetRoot, args.indexSqliteOutput);
+  const indexSyncCheckOutPath = resolveRuntimeTargetPath(targetRoot, args.indexSyncCheckOut);
   const reloadIndex = resolveReloadIndexBackend({
     storeMode: args.indexStore,
     indexOutputPath,
@@ -204,7 +188,7 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
         strict: args.indexSyncCheckStrict,
         syncCheckOut,
         durationMs: 0,
-        outputFile: writeJsonFile(indexSyncCheckOutPath, syncCheckOut),
+        outputFile: writeRuntimeJsonFile(indexSyncCheckOutPath, syncCheckOut),
         indexFile: syncCheckIndex.indexFile,
         indexBackend: syncCheckIndex.indexBackend,
         skipped: true,
@@ -225,7 +209,7 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
         strict: args.indexSyncCheckStrict,
         syncCheckOut,
         durationMs: Date.now() - syncCheckStarted,
-        outputFile: writeJsonFile(indexSyncCheckOutPath, syncCheckOut),
+        outputFile: writeRuntimeJsonFile(indexSyncCheckOutPath, syncCheckOut),
         indexFile: syncCheckIndex.indexFile,
         indexBackend: syncCheckIndex.indexBackend,
       });
@@ -301,7 +285,7 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
       },
       traceId: `tr-${crypto.randomBytes(4).toString("hex")}`,
     });
-    appendEvent(eventFilePath, reloadEvent);
+    appendRuntimeNdjsonEvent(eventFilePath, reloadEvent);
 
     const event = buildCheckpointSummaryEvent({
       ts: result.ts,
@@ -319,7 +303,7 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
       reasonCode: result.summary.reason_code,
       traceId: `tr-${crypto.randomBytes(4).toString("hex")}`,
     });
-    result.summary_event_file = appendEvent(eventFilePath, event);
+    result.summary_event_file = appendRuntimeNdjsonEvent(eventFilePath, event);
     result.summary_run_id = checkpointRunId;
   }
 
