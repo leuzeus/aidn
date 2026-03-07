@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { readIndexFromSqlite } from "./index-sqlite-lib.mjs";
-import { renderOrMergeCanonicalMarkdown } from "./markdown-render-lib.mjs";
+import { readIndexFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
+import { renderOrMergeCanonicalMarkdown } from "../../src/lib/workflow/markdown-render-lib.mjs";
 
 function parseArgs(argv) {
   const args = {

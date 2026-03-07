@@ -2,7 +2,7 @@
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { writeJsonIfChanged } from "./io-lib.mjs";
+import { writeJsonIfChanged } from "../../src/lib/index/io-lib.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 

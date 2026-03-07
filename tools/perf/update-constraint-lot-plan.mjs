@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { writeJsonIfChanged } from "./io-lib.mjs";
+import { writeJsonIfChanged } from "../../src/lib/index/io-lib.mjs";
 
 const LOT_STATUS = new Set(["planned", "in_progress", "completed", "blocked"]);
 const ACTION_STATUS = new Set(["pending", "in_progress", "done", "blocked"]);

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { isJsonEquivalent, writeJsonIfChanged } from "./io-lib.mjs";
+import { isJsonEquivalent, writeJsonIfChanged } from "../../src/lib/index/io-lib.mjs";
 
 const COLD_START_REASON_CODES = new Set([
   "MISSING_CACHE",

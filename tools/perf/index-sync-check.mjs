@@ -4,7 +4,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { readIndexFromSqlite } from "./index-sqlite-lib.mjs";
+import { readIndexFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 

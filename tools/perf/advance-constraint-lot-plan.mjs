@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { writeJsonIfChanged } from "./io-lib.mjs";
+import { writeJsonIfChanged } from "../../src/lib/index/io-lib.mjs";
 
 function parseArgs(argv) {
   const args = {

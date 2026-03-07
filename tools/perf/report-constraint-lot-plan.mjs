@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { writeJsonIfChanged } from "./io-lib.mjs";
+import { writeJsonIfChanged } from "../../src/lib/index/io-lib.mjs";
 
 const BATCH_ORDER = ["quick-win", "foundational", "deep-change"];
 const BATCH_CODE = {

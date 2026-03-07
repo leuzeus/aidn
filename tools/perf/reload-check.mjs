@@ -3,8 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { execSync } from "node:child_process";
-import { detectStructureProfile } from "./structure-profile-lib.mjs";
-import { readIndexFromSqlite } from "./index-sqlite-lib.mjs";
+import { detectStructureProfile } from "../../src/lib/workflow/structure-profile-lib.mjs";
+import { readIndexFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
 import { readAidnProjectConfig, resolveConfigStateMode } from "../aidn-config-lib.mjs";
 
 const ACTIVE_STATES = new Set(["OPEN", "IMPLEMENTING", "VERIFYING"]);

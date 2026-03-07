@@ -2,8 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { readIndexFromSqlite } from "./index-sqlite-lib.mjs";
-import { writeJsonIfChanged } from "./io-lib.mjs";
+import { readIndexFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
+import { writeJsonIfChanged } from "../../src/lib/index/io-lib.mjs";
 
 function parseArgs(argv) {
   const args = {

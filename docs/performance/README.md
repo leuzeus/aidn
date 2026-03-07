@@ -58,10 +58,10 @@ The following scripts were added under `tools/perf/`:
 - `verify-constraint-actions-fixtures.mjs` - validate prioritized action backlog generation from constraint report fixtures
 - `verify-constraint-trend-fixtures.mjs` - validate constraint history/trend pipeline and Markdown trend summary
 - `verify-constraint-lot-plan-fixtures.mjs` - validate lot-plan generation/update loop and Markdown lot summary
-- `index-store.mjs` - local `IndexStore` abstraction (JSON/SQL/SQLite outputs)
+- `index-store` - local `IndexStore` abstraction (JSON/SQL/SQLite outputs)
 - `index-to-sql.mjs` - export local index JSON to SQL import script (SQLite-friendly)
-- `index-sql-lib.mjs` - shared SQL generation library used by index tooling
-- `index-sqlite-lib.mjs` - shared SQLite read helpers for export/parity tooling
+- shared SQL generation library under `src/lib/index/index-sql-lib.mjs`, used by index tooling
+- shared SQLite read helpers under `src/lib/sqlite/index-sqlite-lib.mjs`, used by export/parity tooling
 - `index-query.mjs` - run standard analytics queries on local index JSON or SQLite index
 - `check-index-canonical-coverage.mjs` - lightweight canonical coverage check directly from index query output
 - `render-index-canonical-check-summary.mjs` - render concise Markdown summary for canonical coverage check output

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { detectStructureProfile } from "./structure-profile-lib.mjs";
+import { detectStructureProfile } from "../../src/lib/workflow/structure-profile-lib.mjs";
 
 function parseArgs(argv) {
   const args = {

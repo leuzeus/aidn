@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { buildSqlFromIndex } from "./index-sql-lib.mjs";
+import { buildSqlFromIndex } from "../../src/lib/index/index-sql-lib.mjs";
 
 function parseArgs(argv) {
   const args = {

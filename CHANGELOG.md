@@ -26,7 +26,7 @@
 
 ## 0.3.0
 - Extend `IndexStore` abstraction for local workflow index output with SQLite modes (`sqlite|dual-sqlite|all`) in `tools/perf/index-sync.mjs`.
-- Add shared SQL generation module (`tools/perf/index-sql-lib.mjs`) and reuse it from `index-to-sql`.
+- Add shared SQL generation module (`src/lib/index/index-sql-lib.mjs`) and reuse it from `index-to-sql`.
 - Add `npm run perf:index-dual` for controlled dual-write output (JSON + SQL) without changing file-first source of truth.
 - Add `npm run perf:index-sqlite` and `npm run perf:index-all` convenience commands.
 - Add SQLite import/export helpers (`index-sqlite-lib`, `perf:index-from-sqlite`) and parity verifier (`perf:index-verify-sqlite`).
@@ -57,7 +57,7 @@
 - Add metric-specific warmup overrides (`rules[].warmup`) for regression checks (distinct effective thresholds by metric).
 - Add CLI/CI warmup override controls for regression checks (workflow_dispatch inputs mapped to `check-regression` warmup options).
 - Ensure CLI/CI warmup overrides are priority-applied over global and per-rule warmup target settings.
-- Add shared perf I/O utility (`tools/perf/io-lib.mjs`) and apply conditional write-on-change to KPI/regression/fallback/index reports and markdown summaries.
+- Add shared perf I/O utility (`src/lib/index/io-lib.mjs`) and apply conditional write-on-change to KPI/regression/fallback/index reports and markdown summaries.
 - Add `--json` output mode to `tools/perf/index-sync.mjs` and wire checkpoint summary events to effective index write counters.
 - Add workflow structure profiling (`perf:structure`) with observed-profile detection (`legacy|modern|mixed|unknown`) and integrate it into reload/gating decisions for multi-version repositories.
 - Add `perf:index-check` drift control for import/export sync (`index-sync --dry-run` digest compare, optional `--apply` rebuild).
