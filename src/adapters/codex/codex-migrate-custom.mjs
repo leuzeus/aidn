@@ -1,6 +1,33 @@
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
+const CODEX_MIGRATION_TIMEOUT_MS = 10 * 60 * 1000;
+const CODEX_MIGRATION_BASE_BUFFER_BYTES = 20 * 1024 * 1024;
+
+function estimateCodexMigrationTimeout(prompt) {
+  const promptSize = Buffer.byteLength(String(prompt ?? ""), "utf8");
+  const extraMs = Math.min(promptSize * 4, 3 * 60 * 1000);
+  return CODEX_MIGRATION_TIMEOUT_MS + extraMs;
+}
+
+function estimateCodexMigrationBuffer(prompt) {
+  const promptSize = Buffer.byteLength(String(prompt ?? ""), "utf8");
+  return Math.max(CODEX_MIGRATION_BASE_BUFFER_BYTES, promptSize * 8);
+}
+
+function getCodexSpawnSpec(targetRoot) {
+  if (process.platform === "win32") {
+    return {
+      command: "cmd.exe",
+      args: ["/d", "/s", "/c", "codex", "exec", "--full-auto", "-C", targetRoot, "-"],
+    };
+  }
+  return {
+    command: "codex",
+    args: ["exec", "--full-auto", "-C", targetRoot, "-"],
+  };
+}
+
 export function buildCodexMigrationPrompt(relativeTargetPath, sourceRendered) {
   const ext = path.extname(relativeTargetPath).toLowerCase();
   const fence = ext === ".md" ? "markdown" : (ext === ".yaml" || ext === ".yml" ? "yaml" : "");
@@ -32,30 +59,13 @@ export function migrateCustomFileWithCodex(targetRoot, candidate, dryRun) {
   }
 
   const prompt = buildCodexMigrationPrompt(candidate.targetRelative, candidate.sourceRendered);
-  let result;
-  if (process.platform === "win32") {
-    const escapedTarget = String(targetRoot).replace(/"/g, '\\"');
-    result = spawnSync(`codex exec --full-auto -C "${escapedTarget}" -`, {
-      input: prompt,
-      encoding: "utf8",
-      timeout: 180000,
-      maxBuffer: 10 * 1024 * 1024,
-      shell: true,
-    });
-  } else {
-    result = spawnSync("codex", [
-      "exec",
-      "--full-auto",
-      "-C",
-      targetRoot,
-      "-",
-    ], {
-      input: prompt,
-      encoding: "utf8",
-      timeout: 180000,
-      maxBuffer: 10 * 1024 * 1024,
-    });
-  }
+  const spawnSpec = getCodexSpawnSpec(targetRoot);
+  const result = spawnSync(spawnSpec.command, spawnSpec.args, {
+    input: prompt,
+    encoding: "utf8",
+    timeout: estimateCodexMigrationTimeout(prompt),
+    maxBuffer: estimateCodexMigrationBuffer(prompt),
+  });
 
   if (result.error) {
     return { attempted: true, migrated: false, reason: `error: ${result.error.message}` };
