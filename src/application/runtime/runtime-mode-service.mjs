@@ -16,12 +16,19 @@ export function resolveEffectiveRuntimeMode({
   const envIndexStoreSet = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().length > 0;
   const config = readAidnProjectConfig(targetRoot);
 
-  let effectiveStateMode = stateMode;
+  let effectiveStateMode = typeof stateMode === "string"
+    ? stateMode.trim().toLowerCase()
+    : "";
+  if (!effectiveStateMode) {
+    effectiveStateMode = "files";
+  }
   if (!envStateModeSet) {
     const configStateMode = resolveConfigStateMode(config.data);
     if (configStateMode) {
       effectiveStateMode = configStateMode;
     }
+  } else {
+    effectiveStateMode = String(process.env.AIDN_STATE_MODE ?? "").trim().toLowerCase() || effectiveStateMode;
   }
   if (!["files", "dual", "db-only"].includes(effectiveStateMode)) {
     throw new Error("Invalid effective AIDN_STATE_MODE. Expected files|dual|db-only");

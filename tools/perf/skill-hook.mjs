@@ -1,12 +1,8 @@
 #!/usr/bin/env node
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import {
-  normalizeStateMode,
-  readAidnProjectConfig,
-  resolveConfigStateMode,
-} from "../aidn-config-lib.mjs";
+import { createLocalProcessAdapter } from "../../src/adapters/runtime/local-process-adapter.mjs";
+import { resolveEffectiveStateMode } from "../../src/application/runtime/runtime-mode-service.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 const VALID_MODES = new Set(["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"]);
@@ -87,19 +83,6 @@ function resolveMode(inputMode, route) {
   return route.defaultMode ?? "UNKNOWN";
 }
 
-function resolveEffectiveStateMode(targetRoot) {
-  const envStateMode = normalizeStateMode(process.env.AIDN_STATE_MODE);
-  if (envStateMode) {
-    return envStateMode;
-  }
-  const config = readAidnProjectConfig(targetRoot);
-  const configStateMode = resolveConfigStateMode(config.data);
-  if (configStateMode) {
-    return configStateMode;
-  }
-  return "files";
-}
-
 function buildToolArgs(route, targetRoot, mode, effectiveStrict) {
   const args = [...(route.fixedArgs ?? []), "--target", targetRoot, "--json"];
   if (route.tool === "checkpoint.mjs" || route.tool === "gating-evaluate.mjs" || route.tool === "workflow-hook.mjs") {
@@ -109,15 +92,6 @@ function buildToolArgs(route, targetRoot, mode, effectiveStrict) {
     args.push("--strict");
   }
   return args;
-}
-
-function runToolJson(toolFile, args) {
-  const absoluteScript = path.join(PERF_DIR, toolFile);
-  const stdout = execFileSync(process.execPath, [absoluteScript, ...args], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  return JSON.parse(String(stdout ?? "{}"));
 }
 
 function toErrorObject(error) {
@@ -132,17 +106,21 @@ function toErrorObject(error) {
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
+    const processAdapter = createLocalProcessAdapter();
     const route = SKILL_ROUTES[args.skill];
     const mode = resolveMode(args.mode, route);
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const stateMode = resolveEffectiveStateMode(targetRoot);
+    const stateMode = resolveEffectiveStateMode({
+      targetRoot,
+      stateMode: "",
+    });
     const strictRequiredByState = stateMode === "dual" || stateMode === "db-only";
     const effectiveStrict = args.strict || strictRequiredByState;
     const toolArgs = buildToolArgs(route, targetRoot, mode, effectiveStrict);
     const startedAt = new Date().toISOString();
 
     try {
-      const payload = runToolJson(route.tool, toolArgs);
+      const payload = processAdapter.runJsonNodeScript(path.join(PERF_DIR, route.tool), toolArgs);
       const out = {
         ts: startedAt,
         ok: true,
