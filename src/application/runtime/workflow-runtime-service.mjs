@@ -78,6 +78,109 @@ export function runWorkflowCheckpoint({
   });
 }
 
+export function runWorkflowReloadCheck({
+  processAdapter,
+  runtimeDir,
+  targetRoot,
+  cachePath,
+  stateMode,
+  indexFile,
+  indexBackend,
+  writeCache = false,
+}) {
+  const args = [
+    "--target",
+    targetRoot,
+    "--cache",
+    cachePath,
+    "--state-mode",
+    stateMode,
+  ];
+  if (writeCache) {
+    args.push("--write-cache");
+  }
+  if (indexFile) {
+    args.push("--index-file", indexFile);
+  }
+  if (indexBackend) {
+    args.push("--index-backend", indexBackend);
+  }
+  args.push("--json");
+  return runWorkflowRuntimeJsonScript({
+    processAdapter,
+    runtimeDir,
+    scriptName: "reload-check.mjs",
+    args,
+  });
+}
+
+export function runWorkflowIndexSync({
+  processAdapter,
+  runtimeDir,
+  targetRoot,
+  store,
+  output,
+  sqlOutput,
+  sqliteOutput,
+  schemaFile,
+  includeSchema = true,
+  kpiFile,
+}) {
+  const args = [
+    "--target",
+    targetRoot,
+    "--store",
+    store,
+    "--output",
+    output,
+  ];
+  if (sqlOutput) {
+    args.push("--sql-output", sqlOutput);
+  }
+  if (sqliteOutput) {
+    args.push("--sqlite-output", sqliteOutput);
+  }
+  if (schemaFile) {
+    args.push("--schema-file", schemaFile);
+    if (includeSchema === false) {
+      args.push("--no-schema");
+    }
+  }
+  if (kpiFile) {
+    args.push("--kpi-file", kpiFile);
+  }
+  args.push("--json");
+  return runWorkflowRuntimeJsonScript({
+    processAdapter,
+    runtimeDir,
+    scriptName: "index-sync.mjs",
+    args,
+  });
+}
+
+export function runWorkflowIndexSyncCheck({
+  processAdapter,
+  runtimeDir,
+  targetRoot,
+  indexFile,
+  indexBackend,
+}) {
+  return runWorkflowRuntimeJsonScript({
+    processAdapter,
+    runtimeDir,
+    scriptName: "index-sync-check.mjs",
+    args: [
+      "--target",
+      targetRoot,
+      "--index-file",
+      indexFile,
+      "--index-backend",
+      indexBackend,
+      "--json",
+    ],
+  });
+}
+
 export function runWorkflowConstraintLoop({
   processAdapter,
   runtimeDir,

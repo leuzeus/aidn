@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import path from "node:path";
 import crypto from "node:crypto";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-adapter.mjs";
@@ -39,6 +38,11 @@ import {
   resolveReloadIndexBackend,
   resolveSyncCheckIndexBackend,
 } from "../../core/state-mode/runtime-index-policy.mjs";
+import {
+  runWorkflowIndexSync,
+  runWorkflowIndexSyncCheck,
+  runWorkflowReloadCheck,
+} from "./workflow-runtime-service.mjs";
 
 function toIsoNowCompact() {
   return new Date().toISOString().replace(/[-:.TZ]/g, "");
@@ -74,20 +78,16 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
   });
 
   const reloadStarted = Date.now();
-  const reloadArgs = [
-    "--target",
+  const reload = runWorkflowReloadCheck({
+    processAdapter,
+    runtimeDir,
     targetRoot,
-    "--cache",
     cachePath,
-    "--state-mode",
-    args.stateMode,
-    "--write-cache",
-    "--json",
-  ];
-  if (args.stateMode !== "files") {
-    reloadArgs.push("--index-file", reloadIndex.indexFile, "--index-backend", reloadIndex.indexBackend);
-  }
-  const reload = processAdapter.runJsonNodeScript(path.join(runtimeDir, "reload-check.mjs"), reloadArgs);
+    stateMode: args.stateMode,
+    indexFile: args.stateMode !== "files" ? reloadIndex.indexFile : "",
+    indexBackend: args.stateMode !== "files" ? reloadIndex.indexBackend : "",
+    writeCache: true,
+  });
   const reloadDurationMs = Date.now() - reloadStarted;
 
   let gate = buildDefaultCheckpointGate(reload);
@@ -155,24 +155,24 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
   });
   if (!shouldSkipIndex) {
     const indexStarted = Date.now();
-    const indexArgs = ["--target", targetRoot, "--store", args.indexStore, "--output", indexOutputPath];
-    if (args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "all") {
-      indexArgs.push("--sql-output", indexSqlOutputPath);
-    }
-    if (args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all") {
-      indexArgs.push("--sqlite-output", indexSqliteOutputPath);
-    }
-    if (args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all") {
-      indexArgs.push("--schema-file", args.indexSchemaFile);
-      if (!args.indexIncludeSchema) {
-        indexArgs.push("--no-schema");
-      }
-    }
-    if (args.indexKpiFile) {
-      indexArgs.push("--kpi-file", args.indexKpiFile);
-    }
-    indexArgs.push("--json");
-    index = processAdapter.runJsonNodeScript(path.join(runtimeDir, "index-sync.mjs"), indexArgs);
+    index = runWorkflowIndexSync({
+      processAdapter,
+      runtimeDir,
+      targetRoot,
+      store: args.indexStore,
+      output: indexOutputPath,
+      sqlOutput: args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "all"
+        ? indexSqlOutputPath
+        : "",
+      sqliteOutput: args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all"
+        ? indexSqliteOutputPath
+        : "",
+      schemaFile: args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all"
+        ? args.indexSchemaFile
+        : "",
+      includeSchema: args.indexIncludeSchema,
+      kpiFile: args.indexKpiFile,
+    });
     indexDurationMs = Date.now() - indexStarted;
     index.skipped = false;
     index.skip_reason = null;
@@ -196,15 +196,13 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
       });
     } else {
       const syncCheckStarted = Date.now();
-      const syncCheckOut = processAdapter.runJsonNodeScript(path.join(runtimeDir, "index-sync-check.mjs"), [
-        "--target",
+      const syncCheckOut = runWorkflowIndexSyncCheck({
+        processAdapter,
+        runtimeDir,
         targetRoot,
-        "--index-file",
-        syncCheckIndex.indexFile,
-        "--index-backend",
-        syncCheckIndex.indexBackend,
-        "--json",
-      ]);
+        indexFile: syncCheckIndex.indexFile,
+        indexBackend: syncCheckIndex.indexBackend,
+      });
       indexSyncCheck = buildCheckpointIndexSyncCheckResult({
         strict: args.indexSyncCheckStrict,
         syncCheckOut,
