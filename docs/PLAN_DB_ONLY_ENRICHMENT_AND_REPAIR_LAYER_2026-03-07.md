@@ -320,6 +320,234 @@ Le runtime doit pouvoir:
 
 ### `dual`
 
+- reste le meilleur mode operationnel a court terme;
+- combine auditabilite fichier et acceleration DB-backed;
+- beneficie directement de la repair layer sans changer la projection humaine.
+
+### `db-only`
+
+- devient defendable seulement si la DB porte un graphe relationnel suffisamment riche;
+- gagne de la valeur quand l'hydratation s'appuie sur des liens, des scores et des findings plutot que sur des heuristiques de chemin seules;
+- doit etre considere comme un mode "high leverage" pour projets bien instrumentes, pas comme simple variante technique.
+
+## Addendum - Priorisation des enrichissements `db-only`
+
+Cet addendum capture la priorisation issue de l'evaluation de l'implementation actuelle apres mise en place:
+
+- du schema v2;
+- de la repair layer dediee;
+- de l'hydratation classee par signaux de reparation;
+- de l'integration runtime dans `sync-db-first` et `mode-migrate`.
+
+### A. Verdict courant
+
+Position retenue:
+
+1. `dual` est pret et utile.
+2. `db-only` est maintenant credible et apporte deja:
+   - gain de rapidite;
+   - gain de contexte;
+   - meilleure coherence sur legacy/mixed.
+3. `db-only` n'est pas encore un graphe workflow complet; la prochaine valeur vient du modele relationnel, pas de plus de stockage brut.
+
+### B. Backlog priorise
+
+#### `P0`
+
+##### `P0-1` Promotion des relations fortes
+
+Objectif:
+- distinguer les relations quasi-canoniques des relations simplement inferees.
+
+A ajouter:
+- `relation_status` du type:
+  - `explicit`
+  - `promoted`
+  - `inferred`
+  - `ambiguous`
+  - `rejected`
+
+Portee prioritaire:
+- `attached_cycle`
+- `active_in_snapshot`
+- `included_in_baseline`
+
+Impact:
+- tres fort sur la qualite de l'hydratation.
+
+Effort:
+- moyen.
+
+##### `P0-2` Enrichissement fort des sessions
+
+Objectif:
+- faire des sessions de vraies entites workflow.
+
+A ajouter:
+- debut / fin reels;
+- parent / enfant;
+- carry-over structure;
+- integration cible;
+- mode de travail;
+- meilleures regles de continuite.
+
+Impact:
+- tres fort.
+
+Effort:
+- moyen.
+
+##### `P0-3` Relations artefact -> artefact plus riches
+
+Objectif:
+- sortir du simple `supports_cycle` / `summarizes_cycle`.
+
+A ajouter:
+- `supports_artifact`
+- `supersedes_artifact`
+- `references_artifact`
+- `implements_requirement`
+- `evidence_for_decision`
+
+Impact:
+- tres fort.
+
+Effort:
+- eleve.
+
+#### `P1`
+
+##### `P1-1` Requetes metier dediees
+
+Objectif:
+- faire de la DB une vraie surface de requetage workflow.
+
+A ajouter:
+- `getRelevantCyclesForSession`
+- `getRelevantSessionsForCycle`
+- `getBaselineContext`
+- `getSnapshotContext`
+- `getTopArtifactsForDecision`
+
+Impact:
+- fort.
+
+Effort:
+- moyen.
+
+##### `P1-2` Repair layer incrementale
+
+Objectif:
+- eviter le recalcul complet a chaque execution.
+
+A ajouter:
+- invalidation ciblee;
+- recalcul par artefact/cycle impacte;
+- fingerprint de migration.
+
+Impact:
+- fort sur performance et CI.
+
+Effort:
+- eleve.
+
+##### `P1-3` Gestion explicite des ambiguities
+
+Objectif:
+- transformer l'ambiguite en objet gouverne, pas en simple filtre.
+
+A ajouter:
+- statut:
+  - `open`
+  - `accepted`
+  - `rejected`
+  - `needs_human_resolution`
+- workflow de resolution.
+
+Impact:
+- fort.
+
+Effort:
+- moyen.
+
+#### `P2`
+
+##### `P2-1` Modelisation de la continuite workflow
+
+Objectif:
+- relier plus proprement session, cycle, baseline, snapshot, handoff.
+
+Impact:
+- moyen a fort.
+
+Effort:
+- moyen.
+
+##### `P2-2` Liens plus fins pour les artefacts de support
+
+Objectif:
+- mieux exploiter rapports, incidents, backlog, migration.
+
+Impact:
+- moyen.
+
+Effort:
+- moyen.
+
+##### `P2-3` Vues SQL orientees runtime
+
+Objectif:
+- simplifier les lectures frequentes et reduire la logique applicative repetitive.
+
+A ajouter:
+- `v_active_cycle_context`
+- `v_session_context`
+- `v_repair_findings_open`
+
+Impact:
+- moyen.
+
+Effort:
+- faible a moyen.
+
+### C. Ordre recommande
+
+Ordre d'execution recommande:
+
+1. promotion des relations fortes;
+2. enrichissement des sessions;
+3. requetes metier dediees;
+4. relations artefact -> artefact;
+5. gestion explicite des ambiguities;
+6. repair layer incrementale;
+7. continuite workflow;
+8. raffinement des artefacts de support;
+9. vues SQL runtime.
+
+### D. Rationnel
+
+Cet ordre est retenu parce qu'il maximise d'abord:
+
+- la qualite du contexte utile au runtime;
+- la valeur semantique de `db-only`;
+- la capacite de `db-only` a depasser `dual` sur les projets bien structures.
+
+Il reporte volontairement:
+
+- les optimisations de performance plus fines;
+- les raffinements de presentation SQL;
+- les enrichissements support moins critiques.
+
+### E. Decision de pilotage
+
+Position de pilotage retenue:
+
+1. recommander `dual` comme mode avance par defaut;
+2. continuer a investir dans `db-only` comme mode a forte valeur contextuelle;
+3. considerer que la prochaine phase d'investissement doit porter sur le modele relationnel et les requetes metier, pas sur le simple stockage d'artefacts.
+
+### `dual`
+
 - beneficie immediatement des relations enrichies;
 - garde la projection lisible;
 - devient le mode de validation ideale pour l'enrichissement.
