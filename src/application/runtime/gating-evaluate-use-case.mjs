@@ -65,6 +65,9 @@ function detectSignals(targetRoot, args, reloadResult, gitAdapter) {
     targetRoot,
     eventFile: args.eventFile,
     indexSyncCheckFile: args.indexSyncCheckFile,
+    indexFile: args.indexFile,
+    indexBackend: args.indexBackend,
+    stateMode: args.stateMode,
     mode: args.mode,
     reloadResult,
     gitAdapter,
@@ -82,6 +85,7 @@ function detectSignals(targetRoot, args, reloadResult, gitAdapter) {
     indexSyncTargetMatch: observations.indexSyncTargetMatch,
     indexSyncInSync: observations.indexSyncInSync,
     noChangeFastPath: observations.noChangeFastPath,
+    repairLayerOpenCount: observations.repairLayerOpenCount,
   });
 
   return deriveGatingLevels({
@@ -94,6 +98,10 @@ function detectSignals(targetRoot, args, reloadResult, gitAdapter) {
     indexSyncInSync: observations.indexSyncInSync,
     fallbackRecentCount: observations.fallbackRecentCount,
     indexSyncDriftLevel: observations.indexSyncDriftLevel,
+    repairLayerOpenCount: observations.repairLayerOpenCount,
+    repairLayerBlocking: observations.repairLayerBlocking,
+    repairLayerSeverityCounts: observations.repairLayerSeverityCounts,
+    repairLayerTopFindings: observations.repairLayerTopFindings,
     mode: args.mode,
   });
 }

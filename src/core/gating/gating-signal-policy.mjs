@@ -18,6 +18,7 @@ export function detectGatingSignals({
   indexSyncCheckExists,
   indexSyncTargetMatch,
   indexSyncInSync,
+  repairLayerOpenCount,
   noChangeFastPath,
 }) {
   const signal = {
@@ -28,6 +29,7 @@ export function detectGatingSignals({
     uncertain_intent: false,
     structure_mixed: false,
     index_sync_drift: false,
+    repair_findings_open: false,
   };
 
   if (!noChangeFastPath && sessionObjective && cycleGoal) {
@@ -60,6 +62,7 @@ export function detectGatingSignals({
   }
 
   signal.index_sync_drift = indexSyncCheckExists && indexSyncTargetMatch && !indexSyncInSync;
+  signal.repair_findings_open = Number(repairLayerOpenCount ?? 0) > 0;
   return signal;
 }
 
@@ -73,6 +76,10 @@ export function deriveGatingLevels({
   indexSyncInSync,
   fallbackRecentCount,
   indexSyncDriftLevel,
+  repairLayerOpenCount,
+  repairLayerBlocking,
+  repairLayerSeverityCounts,
+  repairLayerTopFindings,
   mode,
 }) {
   const activeSignals = Object.entries(signal)
@@ -82,6 +89,7 @@ export function deriveGatingLevels({
   const criticalSignals = activeSignals.filter((name) =>
     name === "cross_domain_touch"
       || name === "index_sync_drift"
+      || name === "repair_findings_open"
       || (name === "scope_growth" && mode === "COMMITTING"),
   );
 
@@ -101,6 +109,9 @@ export function deriveGatingLevels({
     index_sync_check_exists: indexSyncCheckExists,
     index_sync_target_match: indexSyncTargetMatch,
     index_sync_in_sync: indexSyncInSync,
+    repair_layer_open_count: Number(repairLayerOpenCount ?? 0),
+    repair_layer_severity_counts: repairLayerSeverityCounts ?? {},
+    repair_layer_top_findings: Array.isArray(repairLayerTopFindings) ? repairLayerTopFindings : [],
   };
 
   const hasBlockingReason = level1.reason_codes.some((code) =>
@@ -109,15 +120,19 @@ export function deriveGatingLevels({
 
   const level3 = {
     required: hasBlockingReason
+      || repairLayerBlocking === true
       || fallbackRecentCount >= 3
       || (indexSyncTargetMatch && indexSyncDriftLevel === "high"),
     reason: hasBlockingReason
       ? "blocking_l1_reason"
+      : (repairLayerBlocking === true
+        ? "repair_layer_blocking_findings"
       : (fallbackRecentCount >= 3
         ? "repeated_fallbacks"
-        : (indexSyncTargetMatch && indexSyncDriftLevel === "high" ? "index_sync_high_drift" : null)),
+        : (indexSyncTargetMatch && indexSyncDriftLevel === "high" ? "index_sync_high_drift" : null))),
     fallback_recent_count: fallbackRecentCount,
     index_sync_drift_level: indexSyncDriftLevel ?? null,
+    repair_layer_blocking: repairLayerBlocking === true,
   };
 
   return { level1, level2, level3 };

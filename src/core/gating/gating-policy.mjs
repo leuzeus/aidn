@@ -21,7 +21,9 @@ export function deriveGatingAction(levels) {
       gates_triggered: ["R10"],
       reason_code: levels.level3.reason === "blocking_l1_reason"
         ? "L3_BLOCKING"
-        : (levels.level3.reason === "index_sync_high_drift" ? "L3_INDEX_SYNC_DRIFT" : "L3_REPEATED_FALLBACK"),
+        : (levels.level3.reason === "repair_layer_blocking_findings"
+          ? "L3_REPAIR_FINDINGS"
+          : (levels.level3.reason === "index_sync_high_drift" ? "L3_INDEX_SYNC_DRIFT" : "L3_REPEATED_FALLBACK")),
     };
   }
   if (levels.level2.required) {

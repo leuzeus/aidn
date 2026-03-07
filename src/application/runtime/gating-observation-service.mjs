@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import { buildNoChangeFastPath } from "../../core/gating/gating-signal-policy.mjs";
 
 function readTextSafe(filePath) {
@@ -193,7 +194,60 @@ function readJsonOptional(filePath) {
   }
 }
 
-export function collectGatingObservations({ targetRoot, eventFile, indexSyncCheckFile, mode, reloadResult, gitAdapter }) {
+function detectIndexBackend(indexFile, backend) {
+  if (backend === "json" || backend === "sqlite") {
+    return backend;
+  }
+  return String(indexFile ?? "").toLowerCase().endsWith(".sqlite") ? "sqlite" : "json";
+}
+
+function readRepairLayerSummary(indexFile, backend) {
+  const absolute = path.resolve(process.cwd(), indexFile);
+  if (!fs.existsSync(absolute)) {
+    return {
+      exists: false,
+      blocking: false,
+      openCount: 0,
+      severityCounts: {},
+      topFindings: [],
+    };
+  }
+  let payload = null;
+  if (detectIndexBackend(indexFile, backend) === "sqlite") {
+    payload = readIndexFromSqlite(absolute).payload;
+  } else {
+    try {
+      payload = JSON.parse(fs.readFileSync(absolute, "utf8"));
+    } catch {
+      payload = null;
+    }
+  }
+  const findings = Array.isArray(payload?.migration_findings) ? payload.migration_findings : [];
+  const openFindings = findings.filter((row) => {
+    const severity = String(row?.severity ?? "").toLowerCase();
+    return severity === "warning" || severity === "error";
+  });
+  const severityCounts = {};
+  for (const row of openFindings) {
+    const severity = String(row?.severity ?? "unknown").toLowerCase();
+    severityCounts[severity] = Number(severityCounts[severity] ?? 0) + 1;
+  }
+  return {
+    exists: true,
+    blocking: openFindings.some((row) => String(row?.severity ?? "").toLowerCase() === "error"),
+    openCount: openFindings.length,
+    severityCounts,
+    topFindings: openFindings.slice(0, 5).map((row) => ({
+      severity: row?.severity ?? null,
+      finding_type: row?.finding_type ?? null,
+      entity_id: row?.entity_id ?? null,
+      artifact_path: row?.artifact_path ?? null,
+      message: row?.message ?? null,
+    })),
+  };
+}
+
+export function collectGatingObservations({ targetRoot, eventFile, indexSyncCheckFile, indexFile, indexBackend, stateMode, mode, reloadResult, gitAdapter }) {
   const sessionsRoot = path.join(targetRoot, "docs", "audit", "sessions");
   const latestSession = getLatestFileByPattern(sessionsRoot, /^S\d+.*\.md$/i);
   const sessionObjective = extractSessionObjective(latestSession);
@@ -211,6 +265,15 @@ export function collectGatingObservations({ targetRoot, eventFile, indexSyncChec
     ? path.resolve(indexSyncPayload.target_root)
     : null;
   const indexSyncTargetMatch = indexSyncTargetRoot === targetRoot;
+  const repairLayer = stateMode === "files"
+    ? {
+      exists: false,
+      blocking: false,
+      openCount: 0,
+      severityCounts: {},
+      topFindings: [],
+    }
+    : readRepairLayerSummary(indexFile, indexBackend);
 
   return {
     sessionObjective,
@@ -224,5 +287,9 @@ export function collectGatingObservations({ targetRoot, eventFile, indexSyncChec
     indexSyncInSync,
     indexSyncTargetMatch,
     indexSyncDriftLevel: indexSyncPayload?.drift_level ?? null,
+    repairLayerOpenCount: repairLayer.openCount,
+    repairLayerBlocking: repairLayer.blocking,
+    repairLayerSeverityCounts: repairLayer.severityCounts,
+    repairLayerTopFindings: repairLayer.topFindings,
   };
 }
