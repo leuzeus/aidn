@@ -57,7 +57,7 @@ Standardiser une etape obligatoire apres chaque hook JSON:
   - applique politique d'echec (`strict`, `state_mode`).
 - `tools/codex/normalize-hook-payload.mjs`
   - normalise les schemas heterogenes vers un contrat stable.
-- `tools/codex/context-store.mjs`
+- `src/adapters/codex/context-store.mjs`
   - ecrit:
     - brut: `.aidn/runtime/context/raw/<skill>-<ts>.json`
     - agregat: `.aidn/runtime/context/codex-context.json`
