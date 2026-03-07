@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { detectStructureProfile } from "../../../tools/perf/structure-profile-lib.mjs";
-import { buildCanonicalFromMarkdown } from "../../../tools/perf/markdown-render-lib.mjs";
+import { detectStructureProfile } from "../../lib/workflow/structure-profile-lib.mjs";
+import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
 import { assertArtifactProjector } from "../../core/ports/artifact-projector-port.mjs";
 
 function walkFiles(rootDir) {

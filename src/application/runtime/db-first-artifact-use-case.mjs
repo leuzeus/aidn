@@ -1,5 +1,5 @@
 import path from "node:path";
-import { buildCanonicalFromMarkdown } from "../../../tools/perf/markdown-render-lib.mjs";
+import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
 import { createArtifactStore } from "../../../tools/runtime/artifact-store.mjs";
 import {
   inferFamily,
