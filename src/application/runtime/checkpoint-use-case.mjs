@@ -3,7 +3,9 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-adapter.mjs";
+import { shouldSkipGateOnNoSignal } from "../../core/gating/gating-policy.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
+import { runGatingEvaluateUseCase } from "./gating-evaluate-use-case.mjs";
 import {
   indexOutputsExistForStore,
   resolveReloadIndexBackend,
@@ -112,41 +114,36 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
     },
   };
   let gateDurationMs = 0;
-  const noSignalGateSkip = args.autoSkipGateOnNoSignal
-    && !args.skipGateEvaluate
-    && reload.decision === "incremental"
-    && reload.fallback !== true
-    && Array.isArray(reload.reason_codes)
-    && reload.reason_codes.length === 0
-    && !gitAdapter.hasWorkingTreeChanges(targetRoot);
+  const noSignalGateSkip = shouldSkipGateOnNoSignal({
+    autoSkipGateOnNoSignal: args.autoSkipGateOnNoSignal,
+    skipGateEvaluate: args.skipGateEvaluate,
+    reload,
+    hasWorkingTreeChanges: gitAdapter.hasWorkingTreeChanges(targetRoot),
+  });
   if (!args.skipGateEvaluate && !noSignalGateSkip) {
     const gateStarted = Date.now();
-    const gateArgs = [
-      "--target",
+    gate = runGatingEvaluateUseCase({
+      args: {
+        target: targetRoot,
+        cache: cachePath,
+        eventFile: eventFilePath,
+        indexSyncCheckFile: indexSyncCheckOutPath,
+        stateMode: args.stateMode,
+        stateModeExplicit: true,
+        indexFile: reloadIndex.indexFile,
+        indexBackend: reloadIndex.indexBackend,
+        thresholdFiles: 3,
+        thresholdMinutes: 45,
+        mode: args.mode,
+        runId: args.runId,
+        reloadDecision: String(reload.decision ?? "incremental"),
+        reloadFallback: reload.fallback ? "true" : "false",
+        reloadReasonCodes: JSON.stringify(Array.isArray(reload.reason_codes) ? reload.reason_codes : []),
+        emitEvent: true,
+      },
       targetRoot,
-      "--cache",
-      cachePath,
-      "--event-file",
-      eventFilePath,
-      "--mode",
-      args.mode,
-      "--state-mode",
-      args.stateMode,
-      "--reload-decision",
-      String(reload.decision ?? "incremental"),
-      "--reload-fallback",
-      reload.fallback ? "true" : "false",
-      "--reload-reason-codes",
-      JSON.stringify(Array.isArray(reload.reason_codes) ? reload.reason_codes : []),
-      "--json",
-    ];
-    if (args.stateMode !== "files") {
-      gateArgs.push("--index-file", reloadIndex.indexFile, "--index-backend", reloadIndex.indexBackend);
-    }
-    if (args.runId) {
-      gateArgs.push("--run-id", args.runId);
-    }
-    gate = processAdapter.runJsonNodeScript(path.join(runtimeDir, "gating-evaluate.mjs"), gateArgs);
+      runtimeDir,
+    });
     gateDurationMs = Date.now() - gateStarted;
   } else if (noSignalGateSkip) {
     gate = {
