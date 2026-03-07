@@ -1,7 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
-import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
+import { createRequire } from "node:module";
 import { evaluateRepairRelation } from "../../core/workflow/repair-layer-policy.mjs";
+
+const require = createRequire(import.meta.url);
 
 function resolveTargetPath(targetRoot, candidatePath) {
   if (!candidatePath) {
@@ -29,6 +31,14 @@ function readJsonIndex(indexFile) {
   return { absolute, payload };
 }
 
+function getDatabaseSync() {
+  try {
+    return require("node:sqlite").DatabaseSync;
+  } catch (error) {
+    throw new Error(`SQLite backend unavailable: ${error.message}`);
+  }
+}
+
 function usableRelation(row, args) {
   return evaluateRepairRelation(row, {
     minConfidence: args.minRelationConfidence,
@@ -48,6 +58,139 @@ function buildLinkView(row, evaluation) {
       reason: evaluation.reason,
       min_confidence: evaluation.min_confidence,
     },
+  };
+}
+
+function mapCycleFromContextRow(row) {
+  return {
+    cycle_id: row?.cycle_id ?? null,
+    state: row?.cycle_state ?? null,
+    outcome: row?.cycle_outcome ?? null,
+    branch_name: row?.cycle_branch_name ?? null,
+    updated_at: row?.cycle_updated_at ?? null,
+  };
+}
+
+function mapSessionFromContextRow(row) {
+  return {
+    session_id: row?.session_id ?? null,
+    branch_name: row?.session_branch_name ?? null,
+    state: row?.session_state ?? null,
+    owner: row?.session_owner ?? null,
+    source_mode: row?.session_source_mode ?? null,
+    source_confidence: Number(row?.session_source_confidence ?? 1),
+  };
+}
+
+function openSqliteQueryContext(indexFile) {
+  const DatabaseSync = getDatabaseSync();
+  const absolute = path.resolve(process.cwd(), indexFile);
+  if (!fs.existsSync(absolute)) {
+    throw new Error(`SQLite index file not found: ${absolute}`);
+  }
+  return {
+    absolute,
+    db: new DatabaseSync(absolute),
+  };
+}
+
+function querySessionCycleContextRows(db, whereSql, params) {
+  return db.prepare(`
+    SELECT *
+    FROM v_session_cycle_context
+    ${whereSql}
+    ORDER BY confidence DESC, session_id ASC, cycle_id ASC, relation_type ASC
+  `).all(...params);
+}
+
+function queryArtifactLinkContextRows(db, sourcePath) {
+  return db.prepare(`
+    SELECT *
+    FROM v_artifact_link_context
+    WHERE source_path = ?
+    ORDER BY confidence DESC, target_path ASC, relation_type ASC
+  `).all(sourcePath);
+}
+
+function queryArtifactByPath(db, artifactPath) {
+  return db.prepare(`
+    SELECT path, kind, family, subtype, cycle_id, session_id, source_mode, entity_confidence, updated_at
+    FROM artifacts
+    WHERE path = ?
+  `).get(artifactPath) ?? null;
+}
+
+function queryLinkedSessionsByCycleIds(db, cycleIds) {
+  if (!Array.isArray(cycleIds) || cycleIds.length === 0) {
+    return [];
+  }
+  const placeholders = cycleIds.map(() => "?").join(", ");
+  return db.prepare(`
+    SELECT *
+    FROM v_session_cycle_context
+    WHERE cycle_id IN (${placeholders})
+    ORDER BY confidence DESC, session_id ASC, cycle_id ASC, relation_type ASC
+  `).all(...cycleIds);
+}
+
+function queryRelevantCyclesForSessionSqlite(db, args) {
+  const sessionId = String(args.sessionId ?? "").trim();
+  return querySessionCycleContextRows(db, "WHERE session_id = ?", [sessionId])
+    .map((row) => ({ row, evaluation: usableRelation(row, args) }))
+    .filter(({ evaluation }) => evaluation.usable)
+    .map(({ row, evaluation }) => ({
+      cycle: mapCycleFromContextRow(row),
+      link: buildLinkView(row, evaluation),
+    }));
+}
+
+function queryRelevantSessionsForCycleSqlite(db, args) {
+  const cycleId = String(args.cycleId ?? "").trim();
+  return querySessionCycleContextRows(db, "WHERE cycle_id = ?", [cycleId])
+    .map((row) => ({ row, evaluation: usableRelation(row, args) }))
+    .filter(({ evaluation }) => evaluation.usable)
+    .map(({ row, evaluation }) => ({
+      session: mapSessionFromContextRow(row),
+      link: buildLinkView(row, evaluation),
+    }));
+}
+
+function queryContextByArtifactSqlite(db, args, artifactPath) {
+  const normalizedArtifactPath = String(artifactPath ?? "").replace(/\\/g, "/");
+  const targetArtifact = queryArtifactByPath(db, normalizedArtifactPath);
+  const linkedArtifactRows = queryArtifactLinkContextRows(db, normalizedArtifactPath)
+    .map((row) => ({ row, evaluation: usableRelation(row, args) }))
+    .filter(({ evaluation }) => evaluation.usable)
+    .map(({ row, evaluation }) => ({
+      artifact: {
+        path: row?.target_path ?? null,
+        kind: row?.target_kind ?? null,
+        family: row?.target_family ?? null,
+        subtype: row?.target_subtype ?? null,
+        cycle_id: row?.target_cycle_id ?? null,
+        session_id: row?.target_session_id ?? null,
+        source_mode: row?.target_source_mode ?? null,
+        entity_confidence: Number(row?.target_entity_confidence ?? 1),
+        updated_at: row?.target_updated_at ?? null,
+      },
+      link: buildLinkView(row, evaluation),
+    }));
+  const linkedCycleIds = Array.from(new Set(
+    linkedArtifactRows
+      .map((row) => String(row?.artifact?.cycle_id ?? ""))
+      .filter(Boolean),
+  ));
+  const linkedSessions = queryLinkedSessionsByCycleIds(db, linkedCycleIds)
+    .map((row) => ({ row, evaluation: usableRelation(row, args) }))
+    .filter(({ evaluation }) => evaluation.usable)
+    .map(({ row, evaluation }) => ({
+      session: mapSessionFromContextRow(row),
+      link: buildLinkView(row, evaluation),
+    }));
+  return {
+    artifact: targetArtifact,
+    linked_artifacts: linkedArtifactRows,
+    linked_sessions: linkedSessions,
   };
 }
 
@@ -130,17 +273,44 @@ function runRepairLayerQuery(payload, args) {
   throw new Error(`Unsupported repair-layer query: ${args.query}`);
 }
 
+function runRepairLayerQuerySqlite(db, args) {
+  if (args.query === "relevant-cycles-for-session") {
+    return queryRelevantCyclesForSessionSqlite(db, args);
+  }
+  if (args.query === "relevant-sessions-for-cycle") {
+    return queryRelevantSessionsForCycleSqlite(db, args);
+  }
+  if (args.query === "baseline-context") {
+    return queryContextByArtifactSqlite(db, args, "baseline/current.md");
+  }
+  if (args.query === "snapshot-context") {
+    return queryContextByArtifactSqlite(db, args, "snapshots/context-snapshot.md");
+  }
+  throw new Error(`Unsupported repair-layer query: ${args.query}`);
+}
+
 export function runRepairLayerQueryUseCase({ args, targetRoot }) {
   const indexFile = resolveTargetPath(targetRoot, args.indexFile);
   const backend = detectBackend(indexFile, args.backend);
-  const index = backend === "sqlite"
-    ? readIndexFromSqlite(indexFile)
-    : readJsonIndex(indexFile);
-  const result = runRepairLayerQuery(index.payload, args);
+  let indexAbsolute = null;
+  let result;
+  if (backend === "sqlite") {
+    const sqlite = openSqliteQueryContext(indexFile);
+    indexAbsolute = sqlite.absolute;
+    try {
+      result = runRepairLayerQuerySqlite(sqlite.db, args);
+    } finally {
+      sqlite.db.close();
+    }
+  } else {
+    const index = readJsonIndex(indexFile);
+    indexAbsolute = index.absolute;
+    result = runRepairLayerQuery(index.payload, args);
+  }
   return {
     ts: new Date().toISOString(),
     target_root: targetRoot,
-    index_file: index.absolute,
+    index_file: indexAbsolute,
     backend,
     query: args.query,
     session_id: args.sessionId || null,

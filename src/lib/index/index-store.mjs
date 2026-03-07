@@ -198,6 +198,76 @@ function ensureRepairLayerTables(db) {
     CREATE INDEX IF NOT EXISTS idx_migration_findings_run ON migration_findings(migration_run_id);
     CREATE INDEX IF NOT EXISTS idx_repair_decisions_scope ON repair_decisions(relation_scope, decision);
   `);
+  db.exec(`
+    DROP VIEW IF EXISTS v_session_cycle_context;
+    CREATE VIEW v_session_cycle_context AS
+    SELECT
+      scl.session_id,
+      scl.cycle_id,
+      scl.relation_type,
+      scl.confidence,
+      scl.inference_source,
+      scl.source_mode,
+      scl.relation_status,
+      scl.ambiguity_status,
+      scl.updated_at,
+      s.branch_name AS session_branch_name,
+      s.state AS session_state,
+      s.owner AS session_owner,
+      s.source_mode AS session_source_mode,
+      s.source_confidence AS session_source_confidence,
+      c.state AS cycle_state,
+      c.outcome AS cycle_outcome,
+      c.branch_name AS cycle_branch_name,
+      c.updated_at AS cycle_updated_at
+    FROM session_cycle_links scl
+    LEFT JOIN sessions s ON s.session_id = scl.session_id
+    LEFT JOIN cycles c ON c.cycle_id = scl.cycle_id;
+
+    DROP VIEW IF EXISTS v_artifact_link_context;
+    CREATE VIEW v_artifact_link_context AS
+    SELECT
+      al.source_path,
+      al.target_path,
+      al.relation_type,
+      al.confidence,
+      al.inference_source,
+      al.source_mode,
+      al.relation_status,
+      al.updated_at,
+      sa.kind AS source_kind,
+      sa.family AS source_family,
+      sa.subtype AS source_subtype,
+      sa.cycle_id AS source_cycle_id,
+      sa.session_id AS source_session_id,
+      ta.kind AS target_kind,
+      ta.family AS target_family,
+      ta.subtype AS target_subtype,
+      ta.cycle_id AS target_cycle_id,
+      ta.session_id AS target_session_id,
+      ta.source_mode AS target_source_mode,
+      ta.entity_confidence AS target_entity_confidence,
+      ta.updated_at AS target_updated_at
+    FROM artifact_links al
+    LEFT JOIN artifacts sa ON sa.path = al.source_path
+    LEFT JOIN artifacts ta ON ta.path = al.target_path;
+
+    DROP VIEW IF EXISTS v_repair_findings_open;
+    CREATE VIEW v_repair_findings_open AS
+    SELECT
+      migration_run_id,
+      severity,
+      finding_type,
+      entity_type,
+      entity_id,
+      artifact_path,
+      message,
+      confidence,
+      suggested_action,
+      created_at
+    FROM migration_findings
+    WHERE severity IN ('warning', 'error');
+  `);
 }
 
 function getTableColumns(db, tableName) {
