@@ -54,3 +54,15 @@ export function resolveEffectiveRuntimeMode({
     indexStore: normalizedIndexStore,
   };
 }
+
+export function resolveEffectiveStateMode({
+  targetRoot,
+  stateMode,
+}) {
+  return resolveEffectiveRuntimeMode({
+    targetRoot,
+    stateMode,
+    indexStore: "file",
+    indexStoreExplicit: true,
+  }).stateMode;
+}

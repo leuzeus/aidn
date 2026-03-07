@@ -2,12 +2,9 @@
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import {
-  normalizeStateMode,
-  readAidnProjectConfig,
-  resolveConfigStateMode,
-} from "../aidn-config-lib.mjs";
+import { createCodexAgentAdapter } from "../../src/adapters/codex/codex-agent-adapter.mjs";
 import { createHookContextStoreAdapter } from "../../src/adapters/codex/hook-context-store-adapter.mjs";
+import { resolveEffectiveStateMode } from "../../src/application/runtime/runtime-mode-service.mjs";
 import { normalizeHookPayload } from "./normalize-hook-payload.mjs";
 
 const CODEX_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -117,18 +114,6 @@ function printUsage() {
   console.log("  npx aidn codex run-json-hook --skill cycle-create --mode COMMITTING --target . --db-sync --json");
 }
 
-function resolveStateMode(targetRoot, cliStateMode) {
-  if (cliStateMode) {
-    return cliStateMode;
-  }
-  const envMode = normalizeStateMode(process.env.AIDN_STATE_MODE);
-  if (envMode) {
-    return envMode;
-  }
-  const config = readAidnProjectConfig(targetRoot);
-  return resolveConfigStateMode(config.data) ?? "files";
-}
-
 function ensureJsonArg(commandArgs) {
   if (commandArgs.includes("--json")) {
     return commandArgs;
@@ -204,29 +189,6 @@ function runDbSync(targetRoot, stateMode) {
   };
 }
 
-function runCommand(command, commandArgs, commandLine, envOverrides = {}) {
-  const env = {
-    ...process.env,
-    ...envOverrides,
-  };
-  if (process.platform === "win32" && /\.(cmd|bat)$/i.test(command)) {
-    return spawnSync("cmd.exe", ["/d", "/s", "/c", commandLine], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      cwd: process.cwd(),
-      env,
-      shell: false,
-    });
-  }
-  return spawnSync(command, commandArgs, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    cwd: process.cwd(),
-    env,
-    shell: false,
-  });
-}
-
 function buildErrorPayload(args, targetRoot, stateMode, commandLine, result, parseError) {
   const strictRequiredByState = stateMode === "dual" || stateMode === "db-only";
   const spawnMessage = result?.error?.message ? `spawn error: ${result.error.message}` : "";
@@ -255,8 +217,13 @@ function buildErrorPayload(args, targetRoot, stateMode, commandLine, result, par
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
+    const agentAdapter = createCodexAgentAdapter();
+    const hookContextStore = createHookContextStoreAdapter();
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const stateMode = resolveStateMode(targetRoot, args.stateMode);
+    const stateMode = resolveEffectiveStateMode({
+      targetRoot,
+      stateMode: args.stateMode || "files",
+    });
 
     const commandSpec = args.command.length > 0
       ? {
@@ -273,8 +240,13 @@ function main() {
       ? ensureJsonArg(commandSpec.commandArgs)
       : commandSpec.commandArgs;
     const commandLine = toCommandLine(commandSpec.command, commandArgs);
-    const result = runCommand(commandSpec.command, commandArgs, commandLine, {
-      AIDN_STATE_MODE: stateMode,
+    const result = agentAdapter.runCommand({
+      command: commandSpec.command,
+      commandArgs,
+      commandLine,
+      envOverrides: {
+        AIDN_STATE_MODE: stateMode,
+      },
     });
 
     let rawPayload = null;
@@ -392,5 +364,3 @@ function main() {
 }
 
 main();
-
-    const hookContextStore = createHookContextStoreAdapter();
