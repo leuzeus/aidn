@@ -20,6 +20,7 @@
     "docs/",
     "package/",
     "packs/",
+    "src/",
     "template/",
     "tools/",
     "CHANGELOG.md",
