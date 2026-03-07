@@ -7,6 +7,7 @@ import { normalizeStateMode } from "../../src/lib/config/aidn-config-lib.mjs";
 
 const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PERF_INDEX_SYNC = path.resolve(RUNTIME_DIR, "..", "perf", "index-sync.mjs");
+const RUNTIME_REPAIR_LAYER = path.resolve(RUNTIME_DIR, "repair-layer.mjs");
 
 function parseArgs(argv) {
   const args = {
@@ -14,6 +15,9 @@ function parseArgs(argv) {
     stateMode: "",
     store: "",
     forceInFiles: false,
+    repairLayer: true,
+    repairLayerIndexFile: ".aidn/runtime/index/workflow-index.sqlite",
+    repairLayerReportFile: ".aidn/runtime/index/repair-layer-report.json",
     strict: false,
     json: false,
   };
@@ -30,6 +34,14 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--force-in-files") {
       args.forceInFiles = true;
+    } else if (token === "--no-repair-layer") {
+      args.repairLayer = false;
+    } else if (token === "--repair-layer-index-file") {
+      args.repairLayerIndexFile = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--repair-layer-report-file") {
+      args.repairLayerReportFile = String(argv[i + 1] ?? "").trim();
+      i += 1;
     } else if (token === "--strict") {
       args.strict = true;
     } else if (token === "--json") {
@@ -52,6 +64,7 @@ function printUsage() {
   console.log("  npx aidn runtime sync-db-first --target . --json");
   console.log("  npx aidn runtime sync-db-first --target . --state-mode dual --strict --json");
   console.log("  npx aidn runtime sync-db-first --target . --force-in-files --json");
+  console.log("  npx aidn runtime sync-db-first --target . --no-repair-layer --json");
 }
 
 function main() {
@@ -66,6 +79,7 @@ function main() {
       targetRoot,
       processAdapter,
       perfIndexSyncScript: PERF_INDEX_SYNC,
+      repairLayerScript: RUNTIME_REPAIR_LAYER,
     });
     if (args.json) {
       console.log(JSON.stringify(out, null, 2));

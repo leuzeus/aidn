@@ -126,6 +126,8 @@ function main() {
 
     const checks = {
       full_init_ok: fullInit.ok === true,
+      full_init_repair_layer_applied: String(fullInit?.repair_layer_result?.action ?? "") === "applied",
+      full_init_repair_layer_findings_field: Number(fullInit?.repair_layer_result?.summary?.migration_findings_count ?? -1) >= 0,
       selective_update_ok: selectiveUpdate.ok === true,
       selective_update_synced: Number(selectiveUpdate?.summary?.synced_count ?? 0) >= 1,
       selective_update_no_fallback: selectiveUpdate.fallback_full_used === false,
@@ -144,6 +146,10 @@ function main() {
         selective_update: {
           synced_count: selectiveUpdate?.summary?.synced_count ?? 0,
           fallback_full_used: selectiveUpdate?.fallback_full_used ?? null,
+        },
+        full_init: {
+          repair_layer_action: fullInit?.repair_layer_result?.action ?? null,
+          repair_layer_findings: fullInit?.repair_layer_result?.summary?.migration_findings_count ?? null,
         },
         selective_delete: {
           fallback_full_used: selectiveDelete?.fallback_full_used ?? null,

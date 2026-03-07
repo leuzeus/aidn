@@ -98,7 +98,7 @@ function createStateStoreForBackend(indexFile, backend) {
     });
   }
   return createWorkflowStateStoreAdapter({
-    mode: "json",
+    mode: "file",
     jsonOutput: indexFile,
   });
 }

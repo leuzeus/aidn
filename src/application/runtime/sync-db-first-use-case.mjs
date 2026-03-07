@@ -1,7 +1,31 @@
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
 import { requiresStrictRuntime } from "../../core/state-mode/state-mode-policy.mjs";
 
-export function runSyncDbFirstUseCase({ args, targetRoot, processAdapter, perfIndexSyncScript }) {
+function resolveRepairLayerTarget(payload, args) {
+  const outputs = Array.isArray(payload?.outputs) ? payload.outputs : [];
+  const sqliteOutput = outputs.find((row) => String(row?.backend ?? "").toLowerCase() === "sqlite")
+    ?? outputs.find((row) => String(row?.path ?? "").toLowerCase().endsWith(".sqlite"));
+  const jsonOutput = outputs.find((row) => String(row?.backend ?? "").toLowerCase() === "json")
+    ?? outputs.find((row) => String(row?.path ?? "").toLowerCase().endsWith(".json"));
+  if (sqliteOutput?.path) {
+    return {
+      indexFile: sqliteOutput.path,
+      indexBackend: "sqlite",
+    };
+  }
+  if (jsonOutput?.path) {
+    return {
+      indexFile: jsonOutput.path,
+      indexBackend: "json",
+    };
+  }
+  return {
+    indexFile: args.repairLayerIndexFile,
+    indexBackend: "sqlite",
+  };
+}
+
+export function runSyncDbFirstUseCase({ args, targetRoot, processAdapter, perfIndexSyncScript, repairLayerScript }) {
   const runtimeMode = resolveEffectiveRuntimeMode({
     targetRoot,
     stateMode: args.stateMode,
@@ -32,6 +56,22 @@ export function runSyncDbFirstUseCase({ args, targetRoot, processAdapter, perfIn
     "--json",
   ]);
 
+  let repairLayerResult = null;
+  if (args.repairLayer !== false) {
+    const repairTarget = resolveRepairLayerTarget(payload, args);
+    repairLayerResult = processAdapter.runJsonNodeScript(repairLayerScript, [
+      "--target",
+      targetRoot,
+      "--index-file",
+      repairTarget.indexFile,
+      "--index-backend",
+      repairTarget.indexBackend,
+      ...(args.repairLayerReportFile ? ["--report-file", args.repairLayerReportFile] : ["--no-report"]),
+      "--apply",
+      "--json",
+    ]);
+  }
+
   return {
     ts: new Date().toISOString(),
     ok: true,
@@ -41,5 +81,6 @@ export function runSyncDbFirstUseCase({ args, targetRoot, processAdapter, perfIn
     strict,
     store: runtimeMode.indexStore,
     payload,
+    repair_layer_result: repairLayerResult,
   };
 }
