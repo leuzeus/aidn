@@ -157,9 +157,15 @@ function main() {
         && baseline.result.linked_artifacts.some((row) => String(row?.artifact?.cycle_id ?? "") === "C101"),
       continuity_has_parent_session: String(continuity?.result?.session?.session_id ?? "") === "S102"
         && Array.isArray(continuity?.result?.continuity_links)
-        && continuity.result.continuity_links.some((row) => String(row?.related_session?.session_id ?? "") === "S101" && String(row?.link?.relation_type ?? "") === "continues_from_session"),
+        && continuity.result.continuity_links.some((row) =>
+          String(row?.related_session?.session_id ?? "") === "S101"
+          && String(row?.link?.relation_type ?? "") === "continues_from_session"
+          && String(row?.link?.relation_status ?? "") === "promoted"),
       continuity_has_carry_over_cycle: Array.isArray(continuity?.result?.continuity_cycles)
-        && continuity.result.continuity_cycles.some((row) => String(row?.cycle?.cycle_id ?? "") === "C102" && String(row?.link?.relation_type ?? "") === "integration_target_cycle"),
+        && continuity.result.continuity_cycles.some((row) =>
+          String(row?.cycle?.cycle_id ?? "") === "C102"
+          && String(row?.link?.relation_type ?? "") === "integration_target_cycle"
+          && String(row?.link?.relation_status ?? "") === "promoted"),
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {

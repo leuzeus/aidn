@@ -18,6 +18,10 @@ const DEFAULT_RELATION_THRESHOLDS = Object.freeze({
   attached_cycle: 0.75,
   active_in_snapshot: 0.75,
   included_in_baseline: 0.7,
+  integration_target_cycle: 0.8,
+  reported_from_previous_session: 0.75,
+  continues_from_session: 0.85,
+  carry_over_pending_from_session: 0.85,
 });
 
 const DEFAULT_PROMOTION_THRESHOLDS = Object.freeze({
@@ -26,7 +30,18 @@ const DEFAULT_PROMOTION_THRESHOLDS = Object.freeze({
   attached_cycle: 0.85,
   active_in_snapshot: 0.8,
   included_in_baseline: 0.75,
+  integration_target_cycle: 0.95,
+  reported_from_previous_session: 0.85,
+  continues_from_session: 0.95,
+  carry_over_pending_from_session: 0.95,
 });
+
+const CONTINUITY_RELATION_TYPES = new Set([
+  "integration_target_cycle",
+  "reported_from_previous_session",
+  "continues_from_session",
+  "carry_over_pending_from_session",
+]);
 
 export function normalizeRepairConfidence(value, fallback = 0) {
   return clamp01(value, fallback);
@@ -102,13 +117,16 @@ export function deriveRepairRelationStatus(row) {
   const sourceMode = String(row?.source_mode ?? "explicit").trim().toLowerCase();
   const confidence = normalizeRepairConfidence(row?.confidence, 1);
   const relationType = String(row?.relation_type ?? "").trim();
-  if (sourceMode === "explicit") {
-    return "explicit";
-  }
   if (sourceMode === "ambiguous") {
     return "ambiguous";
   }
   const promotionThreshold = getRepairRelationPromotionThreshold(relationType);
+  if (sourceMode === "explicit" && CONTINUITY_RELATION_TYPES.has(relationType) && confidence >= promotionThreshold) {
+    return "promoted";
+  }
+  if (sourceMode === "explicit") {
+    return "explicit";
+  }
   if (confidence >= promotionThreshold) {
     return "promoted";
   }

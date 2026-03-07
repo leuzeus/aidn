@@ -95,11 +95,14 @@ function main() {
       session_s102_parent_link: sessionLinks.some((row) =>
         String(row?.source_session_id ?? "") === "S102"
         && String(row?.target_session_id ?? "") === "S101"
-        && String(row?.relation_type ?? "") === "continues_from_session"),
+        && String(row?.relation_type ?? "") === "continues_from_session"
+        && String(row?.relation_status ?? "") === "promoted"),
       session_s102_carry_over_link: sessionLinks.some((row) =>
         String(row?.source_session_id ?? "") === "S102"
         && String(row?.target_session_id ?? "") === "S101"
-        && String(row?.relation_type ?? "") === "carry_over_pending_from_session"),
+        && String(row?.relation_type ?? "") === "carry_over_pending_from_session"
+        && String(row?.relation_status ?? "") === "promoted"),
+      session_s102_integration_target_promoted: String(linkFor("S102", "C102", "explicit", "integration_target_cycle")?.relation_status ?? "") === "promoted",
       unresolved_parent_session_finding: findings.some((row) => String(row?.finding_type ?? "") === "UNRESOLVED_PARENT_SESSION" && String(row?.entity_id ?? "") === "S101"),
       ambiguous_relation_finding: findings.some((row) => String(row?.finding_type ?? "") === "AMBIGUOUS_RELATION" && String(row?.entity_id ?? "") === "S102"),
     };
