@@ -94,6 +94,40 @@ function resolveTargetPath(targetRoot, candidatePath) {
   return path.resolve(targetRoot, candidatePath);
 }
 
+function resolveInputPathPreferTarget(targetRoot, candidatePath) {
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+
+  const fromTarget = path.resolve(targetRoot, candidatePath);
+  if (fs.existsSync(fromTarget)) {
+    return fromTarget;
+  }
+
+  const fromCwd = path.resolve(process.cwd(), candidatePath);
+  if (fs.existsSync(fromCwd)) {
+    return fromCwd;
+  }
+
+  return fromTarget;
+}
+
+function resolveOutputPathPreferExistingRoot(targetRoot, candidatePath) {
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+
+  const fromTarget = path.resolve(targetRoot, candidatePath);
+  const fromCwd = path.resolve(process.cwd(), candidatePath);
+  const targetParentExists = fs.existsSync(path.dirname(fromTarget));
+  const cwdParentExists = fs.existsSync(path.dirname(fromCwd));
+
+  if (!targetParentExists && cwdParentExists) {
+    return fromCwd;
+  }
+  return fromTarget;
+}
+
 function runJson(scriptName, scriptArgs) {
   const file = path.join(PERF_DIR, scriptName);
   const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
@@ -108,9 +142,9 @@ function main() {
     const started = Date.now();
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const indexFilePath = resolveTargetPath(targetRoot, args.indexFile);
-    const checkFilePath = resolveTargetPath(targetRoot, args.checkFile);
-    const pathsFilePath = resolveTargetPath(targetRoot, args.pathsFile);
+    const indexFilePath = resolveInputPathPreferTarget(targetRoot, args.indexFile);
+    const checkFilePath = resolveInputPathPreferTarget(targetRoot, args.checkFile);
+    const pathsFilePath = resolveOutputPathPreferExistingRoot(targetRoot, args.pathsFile);
     const auditRootPath = resolveTargetPath(targetRoot, args.auditRoot);
 
     const initialCheck = runJson("index-sync-check.mjs", [
