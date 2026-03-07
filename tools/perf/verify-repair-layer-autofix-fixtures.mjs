@@ -102,6 +102,39 @@ function main() {
       autofix_reduces_open_findings: Number(autofix?.summary?.open_findings_after ?? -1) < Number(autofix?.summary?.open_findings_before ?? -1),
       triage_after_is_clean: Number(triageAfter?.summary?.open_findings_count ?? -1) === 0,
     };
+
+    const carryTarget = path.join(tempRoot, "repo-carry");
+    fs.cpSync(sourceTarget, carryTarget, { recursive: true });
+    fs.rmSync(path.join(carryTarget, ".aidn"), { recursive: true, force: true });
+    const carrySessionFile = path.join(carryTarget, "docs", "audit", "sessions", "S102-ambiguous.md");
+    const carrySessionContent = fs.readFileSync(carrySessionFile, "utf8")
+      .replace("- integration_target_cycle: `C102`", "- integration_target_cycle: `none`");
+    fs.writeFileSync(carrySessionFile, carrySessionContent, "utf8");
+
+    runJson("tools/perf/index-sync.mjs", [
+      "--target",
+      carryTarget,
+      "--store",
+      "sqlite",
+      "--json",
+    ]);
+    const carryIndexFile = path.join(carryTarget, ".aidn/runtime/index/workflow-index.sqlite");
+    const carryIndexFileArg = path.relative(process.cwd(), carryIndexFile);
+    const carryAutofix = runJson("tools/runtime/repair-layer-autofix.mjs", [
+      "--target",
+      carryTarget,
+      "--index-file",
+      carryIndexFileArg,
+      "--index-backend",
+      "sqlite",
+      "--apply",
+      "--json",
+    ]);
+
+    checks.carry_over_autofix_applied = String(carryAutofix?.action ?? "") === "applied";
+    checks.carry_over_anchor_reason = Array.isArray(carryAutofix?.suggestions)
+      && carryAutofix.suggestions.some((row) => String(row?.anchor_reason ?? "") === "parent_carry_over_cycle");
+    checks.carry_over_autofix_reduces_open_findings = Number(carryAutofix?.summary?.open_findings_after ?? -1) < Number(carryAutofix?.summary?.open_findings_before ?? -1);
     const pass = Object.values(checks).every((value) => value === true);
     const output = {
       ts: new Date().toISOString(),

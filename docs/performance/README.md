@@ -592,6 +592,7 @@ This rollout extends optimization coverage to high-cost checks first, then mutat
 - `workflow_dispatch` supports `strict_regression=true` to make KPI regression violations blocking.
 - `workflow_dispatch` supports `strict_fallback=true` to make fallback-storm violations blocking.
 - `workflow_dispatch` supports `strict_constraint=true` to make active-constraint and constraint-trend violations blocking.
+- `workflow_dispatch` supports `repair_layer_autofix_safe_only=true` to apply the limited safe-only repair-layer autofix before publishing triage artifacts.
 - `workflow_dispatch` supports regression warmup overrides via `regression_warmup_enabled`, `regression_warmup_history_lt`, `regression_warmup_multiplier`, `regression_warmup_severity`.
 
 Threshold source file:

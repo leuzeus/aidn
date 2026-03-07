@@ -44,6 +44,11 @@ on:
         required: false
         default: false
         type: boolean
+      repair_layer_autofix_safe_only:
+        description: "Apply safe-only repair-layer autofix before building triage artifacts"
+        required: false
+        default: false
+        type: boolean
       regression_warmup_enabled:
         description: "Override regression warmup enabled (true/false, empty=use targets)"
         required: false
@@ -204,6 +209,11 @@ jobs:
       - name: Apply Repair Layer
         run: |
           node tools/runtime/repair-layer.mjs --target "$PERF_TARGET" --index-file "$PERF_RUNTIME_INDEX/workflow-index.sqlite" --index-backend sqlite --report-file "$PERF_RUNTIME_INDEX/repair-layer-report.json" --apply --json > "$PERF_RUNTIME_INDEX/repair-layer.json"
+
+      - name: Apply Safe Repair Layer Autofix
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.repair_layer_autofix_safe_only }}
+        run: |
+          node tools/runtime/repair-layer-autofix.mjs --target "$PERF_TARGET" --index-file "$PERF_RUNTIME_INDEX/workflow-index.sqlite" --index-backend sqlite --apply --json > "$PERF_RUNTIME_INDEX/repair-layer-autofix.json"
 
       - name: Build Repair Layer Triage
         run: |
@@ -488,6 +498,7 @@ jobs:
             tests/fixtures/repo-installed-core/.aidn/runtime/index/workflow-index.sqlite
             tests/fixtures/repo-installed-core/.aidn/runtime/index/repair-layer.json
             tests/fixtures/repo-installed-core/.aidn/runtime/index/repair-layer-report.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/repair-layer-autofix.json
             tests/fixtures/repo-installed-core/.aidn/runtime/index/repair-layer-triage.json
             tests/fixtures/repo-installed-core/.aidn/runtime/index/repair-layer-triage-summary.md
             tests/fixtures/repo-installed-core/.aidn/runtime/index/index-canonical-check.json
