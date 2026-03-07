@@ -5,6 +5,16 @@ import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.
 import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-adapter.mjs";
 import { shouldSkipGateOnNoSignal } from "../../core/gating/gating-policy.mjs";
 import {
+  buildDefaultCheckpointGate,
+  buildDefaultCheckpointIndex,
+  buildDefaultCheckpointIndexSyncCheck,
+  buildCheckpointIndexSyncCheckResult,
+} from "../../core/workflow/checkpoint-output-policy.mjs";
+import {
+  buildSkippedIndexSyncCheckPayload,
+  shouldSkipCheckpointIndex,
+} from "../../core/workflow/checkpoint-skip-policy.mjs";
+import {
   buildCheckpointSummaryEvent,
   buildReloadSummaryEvent,
 } from "../../core/workflow/workflow-event-factory.mjs";
@@ -96,36 +106,7 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
   const reload = processAdapter.runJsonNodeScript(path.join(runtimeDir, "reload-check.mjs"), reloadArgs);
   const reloadDurationMs = Date.now() - reloadStarted;
 
-  let gate = {
-    action: "proceed_l1_fast_checks_only",
-    result: "ok",
-    reason_code: null,
-    gates_triggered: [],
-    levels: {
-      level1: {
-        decision: reload.decision,
-        fallback: reload.fallback,
-        reason_codes: reload.reason_codes ?? [],
-      },
-      level2: {
-        required: false,
-        active_signals: [],
-        critical_signals: [],
-        changed_files_count: 0,
-        changed_files_sample: [],
-        index_sync_check_file: null,
-        index_sync_check_exists: false,
-        index_sync_target_match: false,
-        index_sync_in_sync: null,
-      },
-      level3: {
-        required: false,
-        reason: null,
-        fallback_recent_count: 0,
-        index_sync_drift_level: null,
-      },
-    },
-  };
+  let gate = buildDefaultCheckpointGate(reload);
   let gateDurationMs = 0;
   const noSignalGateSkip = shouldSkipGateOnNoSignal({
     autoSkipGateOnNoSignal: args.autoSkipGateOnNoSignal,
@@ -175,26 +156,19 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
     indexSqliteOutputPath,
   });
   const hasIndexFileForSyncCheck = !args.indexSyncCheck || fs.existsSync(syncCheckIndex.indexFile);
-  const shouldSkipIndex = args.skipIndexOnIncremental
-    && reload.decision === "incremental"
-    && reload.fallback !== true
-    && !args.indexKpiFile
-    && hasIndexOutputs
-    && hasIndexFileForSyncCheck;
+  const shouldSkipIndex = shouldSkipCheckpointIndex({
+    skipIndexOnIncremental: args.skipIndexOnIncremental,
+    reload,
+    indexKpiFile: args.indexKpiFile,
+    hasIndexOutputs,
+    hasIndexFileForSyncCheck,
+  });
   let indexDurationMs = 0;
-  let index = {
-    ts: new Date().toISOString(),
-    target_root: targetRoot,
+  let index = buildDefaultCheckpointIndex({
+    targetRoot,
+    stateMode: args.stateMode,
     store: args.indexStore,
-    state_mode: args.stateMode,
-    skipped: true,
-    skip_reason: "SKIPPED_NO_RELOAD_SIGNAL",
-    outputs: [],
-    writes: {
-      files_written_count: 0,
-      bytes_written: 0,
-    },
-  };
+  });
   if (!shouldSkipIndex) {
     const indexStarted = Date.now();
     const indexArgs = ["--target", targetRoot, "--store", args.indexStore, "--output", indexOutputPath];
@@ -220,48 +194,22 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
     index.skip_reason = null;
   }
 
-  let indexSyncCheck = {
-    enabled: false,
+  let indexSyncCheck = buildDefaultCheckpointIndexSyncCheck({
     strict: args.indexSyncCheckStrict,
-    in_sync: null,
-    action: null,
-    mismatch_count: 0,
-    duration_ms: 0,
-    output_file: null,
-    index_file: null,
-    index_backend: null,
-    skipped: false,
-    skip_reason: null,
-  };
+  });
   if (args.indexSyncCheck) {
     if (shouldSkipIndex) {
-      const syncCheckOut = {
-        ts: new Date().toISOString(),
-        target_root: targetRoot,
-        in_sync: true,
-        action: "skipped_no_signal",
-        reason_codes: ["SKIPPED_NO_RELOAD_SIGNAL"],
-        summary_mismatches: [],
-        summary: {
-          missing_in_index: 0,
-          stale_in_index: 0,
-          digest_mismatch: 0,
-        },
-        skipped: true,
-      };
-      indexSyncCheck = {
-        enabled: true,
+      const syncCheckOut = buildSkippedIndexSyncCheckPayload({ targetRoot });
+      indexSyncCheck = buildCheckpointIndexSyncCheckResult({
         strict: args.indexSyncCheckStrict,
-        in_sync: true,
-        action: "skipped_no_signal",
-        mismatch_count: 0,
-        duration_ms: 0,
-        output_file: writeJsonFile(indexSyncCheckOutPath, syncCheckOut),
-        index_file: syncCheckIndex.indexFile,
-        index_backend: syncCheckIndex.indexBackend,
+        syncCheckOut,
+        durationMs: 0,
+        outputFile: writeJsonFile(indexSyncCheckOutPath, syncCheckOut),
+        indexFile: syncCheckIndex.indexFile,
+        indexBackend: syncCheckIndex.indexBackend,
         skipped: true,
-        skip_reason: "SKIPPED_NO_RELOAD_SIGNAL",
-      };
+        skipReason: "SKIPPED_NO_RELOAD_SIGNAL",
+      });
     } else {
       const syncCheckStarted = Date.now();
       const syncCheckOut = processAdapter.runJsonNodeScript(path.join(runtimeDir, "index-sync-check.mjs"), [
@@ -273,21 +221,14 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
         syncCheckIndex.indexBackend,
         "--json",
       ]);
-      indexSyncCheck = {
-        enabled: true,
+      indexSyncCheck = buildCheckpointIndexSyncCheckResult({
         strict: args.indexSyncCheckStrict,
-        in_sync: syncCheckOut.in_sync === true,
-        action: syncCheckOut.action ?? null,
-        mismatch_count: Array.isArray(syncCheckOut.summary_mismatches)
-          ? syncCheckOut.summary_mismatches.length
-          : 0,
-        duration_ms: Date.now() - syncCheckStarted,
-        output_file: writeJsonFile(indexSyncCheckOutPath, syncCheckOut),
-        index_file: syncCheckIndex.indexFile,
-        index_backend: syncCheckIndex.indexBackend,
-        skipped: false,
-        skip_reason: null,
-      };
+        syncCheckOut,
+        durationMs: Date.now() - syncCheckStarted,
+        outputFile: writeJsonFile(indexSyncCheckOutPath, syncCheckOut),
+        indexFile: syncCheckIndex.indexFile,
+        indexBackend: syncCheckIndex.indexBackend,
+      });
       if (args.indexSyncCheckStrict && syncCheckOut.in_sync !== true) {
         throw new Error("Index sync check drift detected in strict checkpoint mode");
       }
