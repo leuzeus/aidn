@@ -12,6 +12,16 @@ export function createLocalGitAdapter() {
         return "unknown";
       }
     },
+    getHeadCommit(targetRoot) {
+      try {
+        return execSync(`git -C "${targetRoot}" rev-parse HEAD`, {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+        }).trim() || "unknown";
+      } catch {
+        return "unknown";
+      }
+    },
     hasWorkingTreeChanges(targetRoot) {
       try {
         const out = execFileSync("git", ["-C", targetRoot, "status", "--porcelain", "--untracked-files=no"], {
