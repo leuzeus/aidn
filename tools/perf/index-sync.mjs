@@ -3,9 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { createWorkflowStateStoreAdapter } from "../../src/adapters/runtime/workflow-state-store-adapter.mjs";
-import { persistWorkflowIndexProjection } from "../../src/application/runtime/index-state-store-service.mjs";
-import { resolveEffectiveRuntimeMode } from "../../src/application/runtime/runtime-mode-service.mjs";
+import { runIndexSyncUseCase } from "../../src/application/runtime/index-sync-use-case.mjs";
 import { detectStructureProfile } from "./structure-profile-lib.mjs";
 import { buildCanonicalFromMarkdown } from "./markdown-render-lib.mjs";
 import {
@@ -592,145 +590,71 @@ function payloadDigest(payload) {
   return crypto.createHash("sha256").update(JSON.stringify(stable)).digest("hex");
 }
 
-function resolveTargetPath(targetRoot, candidatePath) {
-  if (!candidatePath) {
-    return candidatePath;
-  }
-  if (path.isAbsolute(candidatePath)) {
-    return candidatePath;
-  }
-  return path.resolve(targetRoot, candidatePath);
-}
-
-function resolveInputPathPreferTarget(targetRoot, candidatePath) {
-  if (!candidatePath) {
-    return candidatePath;
-  }
-  if (path.isAbsolute(candidatePath)) {
-    return candidatePath;
-  }
-
-  const fromTarget = path.resolve(targetRoot, candidatePath);
-  if (fs.existsSync(fromTarget)) {
-    return fromTarget;
-  }
-
-  const fromCwd = path.resolve(process.cwd(), candidatePath);
-  if (fs.existsSync(fromCwd)) {
-    return fromCwd;
-  }
-
-  return fromTarget;
-}
-
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const envEmbedContentSet = String(process.env.AIDN_EMBED_ARTIFACT_CONTENT ?? "").trim().length > 0;
-    const runtimeMode = resolveEffectiveRuntimeMode({
+    const result = runIndexSyncUseCase({
+      args,
       targetRoot,
-      stateMode: args.stateMode,
-      indexStore: args.store,
-      indexStoreExplicit: args.storeExplicit,
-    });
-    args.stateMode = runtimeMode.stateMode;
-    args.store = runtimeMode.indexStore;
-    if (!args.embedContentExplicit && !envEmbedContentSet) {
-      args.embedContent = args.stateMode === "dual" || args.stateMode === "db-only";
-    }
-    args.output = resolveTargetPath(targetRoot, args.output);
-    args.sqlOutput = resolveTargetPath(targetRoot, args.sqlOutput);
-    args.sqliteOutput = resolveTargetPath(targetRoot, args.sqliteOutput);
-    if (args.kpiFile) {
-      args.kpiFile = resolveInputPathPreferTarget(targetRoot, args.kpiFile);
-    }
-    const auditRoot = path.join(targetRoot, "docs", "audit");
+      buildPayload({ targetRoot: resolvedTargetRoot, auditRoot, embedContent, kpiFile }) {
+        const artifacts = buildArtifactRows(auditRoot, { embedContent });
+        const { cycles, fileMap, cycleTagPairs } = buildCycleTables(auditRoot);
+        const { tags, artifactTagPairs } = buildTags(cycleTagPairs, artifacts);
+        const runMetrics = buildRunMetrics(kpiFile);
+        const structureProfile = detectStructureProfile(auditRoot);
 
-    if (!fs.existsSync(auditRoot)) {
-      throw new Error(`Missing audit root: ${auditRoot}`);
-    }
-
-    const artifacts = buildArtifactRows(auditRoot, { embedContent: args.embedContent });
-    const { cycles, fileMap, cycleTagPairs } = buildCycleTables(auditRoot);
-    const { tags, artifactTagPairs } = buildTags(cycleTagPairs, artifacts);
-    const runMetrics = buildRunMetrics(args.kpiFile);
-    const structureProfile = detectStructureProfile(auditRoot);
-
-    const payload = {
-      schema_version: 1,
-      generated_at: new Date().toISOString(),
-      target_root: targetRoot,
-      audit_root: auditRoot,
-      structure_profile: structureProfile,
-      cycles,
-      artifacts,
-      file_map: fileMap,
-      tags,
-      artifact_tags: artifactTagPairs,
-      run_metrics: runMetrics,
-      summary: {
-        cycles_count: cycles.length,
-        artifacts_count: artifacts.length,
-        file_map_count: fileMap.length,
-        tags_count: tags.length,
-        run_metrics_count: runMetrics.length,
-        structure_kind: structureProfile.kind,
-        artifacts_normative_count: artifacts.filter((item) => item.family === "normative").length,
-        artifacts_support_count: artifacts.filter((item) => item.family === "support").length,
-        artifacts_with_content_count: artifacts.filter((item) => typeof item.content === "string").length,
-        artifacts_with_canonical_count: artifacts.filter((item) => item.canonical && typeof item.canonical === "object").length,
+        return {
+          structureProfile,
+          payload: {
+            schema_version: 1,
+            generated_at: new Date().toISOString(),
+            target_root: resolvedTargetRoot,
+            audit_root: auditRoot,
+            structure_profile: structureProfile,
+            cycles,
+            artifacts,
+            file_map: fileMap,
+            tags,
+            artifact_tags: artifactTagPairs,
+            run_metrics: runMetrics,
+            summary: {
+              cycles_count: cycles.length,
+              artifacts_count: artifacts.length,
+              file_map_count: fileMap.length,
+              tags_count: tags.length,
+              run_metrics_count: runMetrics.length,
+              structure_kind: structureProfile.kind,
+              artifacts_normative_count: artifacts.filter((item) => item.family === "normative").length,
+              artifacts_support_count: artifacts.filter((item) => item.family === "support").length,
+              artifacts_with_content_count: artifacts.filter((item) => typeof item.content === "string").length,
+              artifacts_with_canonical_count: artifacts.filter((item) => item.canonical && typeof item.canonical === "object").length,
+            },
+          },
+        };
       },
-    };
-    const digest = payloadDigest(payload);
-
-    const stateStore = createWorkflowStateStoreAdapter({
-      mode: args.store,
-      jsonOutput: args.output,
-      sqlOutput: args.sqlOutput,
-      sqliteOutput: args.sqliteOutput,
-      schemaFile: args.schemaFile,
-      includeSchema: args.includeSchema,
-    });
-    const { outputs, writes } = persistWorkflowIndexProjection({
-      stateStore,
-      payload,
-      dryRun: args.dryRun,
+      payloadDigest,
     });
 
     if (args.json) {
-      console.log(JSON.stringify({
-        ts: new Date().toISOString(),
-        target_root: targetRoot,
-        audit_root: auditRoot,
-        store: args.store,
-        state_mode: args.stateMode,
-        embed_content: args.embedContent,
-        dry_run: args.dryRun,
-        outputs,
-        writes,
-        payload_digest: digest,
-        structure_profile: structureProfile,
-        summary: payload.summary,
-        payload: args.includePayload ? payload : undefined,
-      }, null, 2));
+      console.log(JSON.stringify(result, null, 2));
       return;
     }
 
     console.log(`Index synced.`);
-    console.log(`Target: ${targetRoot}`);
-    console.log(`State mode: ${args.stateMode}`);
-    console.log(`Embed content: ${args.embedContent ? "yes" : "no"}`);
-    console.log(`Payload digest: ${digest}`);
-    if (args.dryRun) {
+    console.log(`Target: ${result.target_root}`);
+    console.log(`State mode: ${result.state_mode}`);
+    console.log(`Embed content: ${result.embed_content ? "yes" : "no"}`);
+    console.log(`Payload digest: ${result.payload_digest}`);
+    if (result.dry_run) {
       console.log("Dry-run mode: no files written.");
     }
-    for (const out of outputs) {
+    for (const out of result.outputs) {
       const state = out.written ? "updated" : "unchanged";
       console.log(`Output (${out.kind}, ${state}): ${out.path}`);
     }
     console.log(
-      `Summary: cycles=${payload.summary.cycles_count}, artifacts=${payload.summary.artifacts_count}, file_map=${payload.summary.file_map_count}, tags=${payload.summary.tags_count}, run_metrics=${payload.summary.run_metrics_count}`,
+      `Summary: cycles=${result.summary.cycles_count}, artifacts=${result.summary.artifacts_count}, file_map=${result.summary.file_map_count}, tags=${result.summary.tags_count}, run_metrics=${result.summary.run_metrics_count}`,
     );
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
