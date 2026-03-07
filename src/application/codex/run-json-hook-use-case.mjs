@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveEffectiveStateMode } from "../runtime/runtime-mode-service.mjs";
-import { normalizeHookPayload } from "../../../tools/codex/normalize-hook-payload.mjs";
+import { normalizeHookPayload } from "./normalize-hook-payload.mjs";
 
 const CODEX_DIR = path.dirname(fileURLToPath(import.meta.url));
 const RUNTIME_SYNC_SCRIPT = path.resolve(CODEX_DIR, "..", "..", "..", "tools", "runtime", "sync-db-first-selective.mjs");
