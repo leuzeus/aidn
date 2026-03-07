@@ -99,6 +99,7 @@
     "perf:verify-index-canonical-check": "node tools/perf/verify-index-canonical-check-fixtures.mjs",
     "perf:verify-index-regression": "node tools/perf/verify-index-regression-fixtures.mjs",
     "perf:verify-index-export-filter": "node tools/perf/verify-index-export-filter-fixtures.mjs",
+    "perf:verify-repair-layer": "node tools/perf/verify-repair-layer-fixtures.mjs",
     "perf:verify-support-artifacts": "node tools/perf/verify-support-artifacts-fixtures.mjs",
     "perf:verify-db-only-hooks": "node tools/perf/verify-db-only-hooks-fixtures.mjs",
     "perf:verify-skill-hook-state-mode": "node tools/perf/verify-skill-hook-state-mode-fixtures.mjs",
