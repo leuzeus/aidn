@@ -4,6 +4,11 @@ import crypto from "node:crypto";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-adapter.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
+import { buildWorkflowHookEvent } from "../../core/workflow/workflow-event-factory.mjs";
+import {
+  resolveHookReasonCode,
+  resolveHookResult,
+} from "../../core/workflow/workflow-result-policy.mjs";
 import {
   requiresStrictRuntime,
   shouldRunConstraintLoopForState,
@@ -154,8 +159,6 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
   });
 
   let checkpointResult = null;
-  let hookResult = "ok";
-  let reasonCode = null;
   let checkpointError = null;
   let constraintLoopResult = null;
   let constraintLoopError = null;
@@ -176,15 +179,24 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
     });
   } catch (error) {
     checkpointError = error;
-    hookResult = args.strict ? "stop" : "warn";
-    reasonCode = "HOOK_CHECKPOINT_FAILED";
     if (args.strict) {
       throw error;
     }
   }
 
-  const eventPayload = {
-    duration_ms: (() => {
+  const hookResult = resolveHookResult({
+    strict: args.strict,
+    checkpointError,
+  });
+  const reasonCode = resolveHookReasonCode({ checkpointError });
+
+  const eventPayload = buildWorkflowHookEvent({
+    ts: new Date().toISOString(),
+    runId,
+    branch,
+    mode: args.mode,
+    phase: args.phase,
+    durationMs: (() => {
       const elapsed = Date.now() - started;
       const nested = Number(checkpointResult?.total_duration_ms ?? 0);
       if (Number.isFinite(nested) && nested > 0) {
@@ -192,24 +204,10 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
       }
       return Math.max(1, elapsed);
     })(),
-    ts: new Date().toISOString(),
-    run_id: runId,
-    session_id: null,
-    cycle_id: null,
-    branch,
-    mode: args.mode,
-    skill: "workflow-hook",
-    phase: args.phase,
-    event: `hook_${phaseEvent}`,
-    files_read_count: 0,
-    bytes_read: 0,
-    files_written_count: 0,
-    bytes_written: 0,
-    gates_triggered: ["R01", "R07", "R05", "R10"],
     result: hookResult,
-    reason_code: reasonCode,
-    trace_id: `tr-${crypto.randomBytes(4).toString("hex")}`,
-  };
+    reasonCode,
+    traceId: `tr-${crypto.randomBytes(4).toString("hex")}`,
+  });
   const appendedEventFile = appendEvent(eventFilePath, eventPayload);
 
   let runIdFilePath = null;

@@ -4,6 +4,15 @@ import crypto from "node:crypto";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-adapter.mjs";
 import { shouldSkipGateOnNoSignal } from "../../core/gating/gating-policy.mjs";
+import {
+  buildCheckpointSummaryEvent,
+  buildReloadSummaryEvent,
+} from "../../core/workflow/workflow-event-factory.mjs";
+import {
+  resolveCheckpointReasonCode,
+  resolveCheckpointResult,
+  resolveReloadEventResult,
+} from "../../core/workflow/workflow-result-policy.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
 import { runGatingEvaluateUseCase } from "./gating-evaluate-use-case.mjs";
 import {
@@ -331,55 +340,39 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
   };
 
   if (args.emitSummaryEvent) {
-    const reloadEvent = {
+    const reloadEvent = buildReloadSummaryEvent({
       ts: result.ts,
-      run_id: checkpointRunId,
-      session_id: null,
-      cycle_id: null,
+      runId: checkpointRunId,
       branch: result.branch,
       mode: result.mode,
-      skill: "reload-check",
-      phase: "check",
-      event: "reload_decision",
-      duration_ms: result.reload.duration_ms,
-      files_read_count: 0,
-      bytes_read: 0,
-      files_written_count: 0,
-      bytes_written: 0,
-      gates_triggered: [],
-      result: result.reload.decision === "stop"
-        ? "stop"
-        : (result.reload.fallback ? "fallback" : "ok"),
-      reason_code: (result.reload.reason_codes ?? [])[0] ?? null,
-      trace_id: `tr-${crypto.randomBytes(4).toString("hex")}`,
-    };
+      durationMs: result.reload.duration_ms,
+      reload: {
+        ...result.reload,
+        result: resolveReloadEventResult(result.reload),
+      },
+      traceId: `tr-${crypto.randomBytes(4).toString("hex")}`,
+    });
     appendEvent(eventFilePath, reloadEvent);
 
-    const event = {
+    const event = buildCheckpointSummaryEvent({
       ts: result.ts,
-      run_id: checkpointRunId,
-      session_id: null,
-      cycle_id: null,
+      runId: checkpointRunId,
       branch: result.branch,
       mode: result.mode,
-      skill: "perf-checkpoint",
-      phase: "end",
-      event: "checkpoint_summary",
-      duration_ms: result.total_duration_ms,
-      files_read_count: 0,
-      bytes_read: 0,
-      files_written_count: Number(result.index?.writes?.files_written_count ?? 0),
-      bytes_written: Number(result.index?.writes?.bytes_written ?? 0),
-      gates_triggered: Array.from(new Set([
+      durationMs: result.total_duration_ms,
+      filesWrittenCount: Number(result.index?.writes?.files_written_count ?? 0),
+      bytesWritten: Number(result.index?.writes?.bytes_written ?? 0),
+      gatesTriggered: Array.from(new Set([
         ...(Array.isArray(result.gate?.gates_triggered) ? result.gate.gates_triggered : []),
         ...(result.index_sync_check?.enabled ? ["R11"] : []),
       ])),
-      result: result.gate.result === "stop" ? "stop" : "ok",
-      reason_code: result.index_sync_check?.enabled && result.index_sync_check.in_sync === false
-        ? "INDEX_SYNC_DRIFT"
-        : result.gate.reason_code,
-      trace_id: `tr-${crypto.randomBytes(4).toString("hex")}`,
-    };
+      result: resolveCheckpointResult({ gateResult: result.gate.result }),
+      reasonCode: resolveCheckpointReasonCode({
+        gateReasonCode: result.gate.reason_code,
+        indexSyncCheck: result.index_sync_check,
+      }),
+      traceId: `tr-${crypto.randomBytes(4).toString("hex")}`,
+    });
     result.summary_event_file = appendEvent(eventFilePath, event);
     result.summary_run_id = checkpointRunId;
   }
