@@ -1,4 +1,4 @@
-import { createIndexStore } from "../../../tools/perf/index-store.mjs";
+import { createIndexStore } from "../../lib/index/index-store.mjs";
 import { assertWorkflowStateStore } from "../../core/ports/workflow-state-store-port.mjs";
 
 export function createWorkflowStateStoreAdapter(options = {}) {
