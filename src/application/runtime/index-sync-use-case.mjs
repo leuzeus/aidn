@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createWorkflowStateStoreAdapter } from "../../adapters/runtime/workflow-state-store-adapter.mjs";
+import { assertArtifactProjector } from "../../core/ports/artifact-projector-port.mjs";
 import { persistWorkflowIndexProjection } from "./index-state-store-service.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
 
@@ -38,9 +39,10 @@ function resolveInputPathPreferTarget(targetRoot, candidatePath) {
 export function runIndexSyncUseCase({
   args,
   targetRoot,
-  buildPayload,
+  artifactProjector,
   payloadDigest,
 }) {
+  assertArtifactProjector(artifactProjector);
   const envEmbedContentSet = String(process.env.AIDN_EMBED_ARTIFACT_CONTENT ?? "").trim().length > 0;
   const runtimeMode = resolveEffectiveRuntimeMode({
     targetRoot,
@@ -64,7 +66,7 @@ export function runIndexSyncUseCase({
     throw new Error(`Missing audit root: ${auditRoot}`);
   }
 
-  const built = buildPayload({
+  const built = artifactProjector.projectArtifacts({
     targetRoot,
     auditRoot,
     embedContent: args.embedContent,
