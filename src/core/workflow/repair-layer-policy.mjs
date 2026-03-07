@@ -12,6 +12,14 @@ function clamp01(value, fallback = 0) {
   return n;
 }
 
+const DEFAULT_RELATION_THRESHOLDS = Object.freeze({
+  summarizes_cycle: 0.7,
+  supports_cycle: 0.65,
+  attached_cycle: 0.75,
+  active_in_snapshot: 0.75,
+  included_in_baseline: 0.7,
+});
+
 export function normalizeRepairConfidence(value, fallback = 0) {
   return clamp01(value, fallback);
 }
@@ -26,7 +34,8 @@ export function repairSourceModeRank(mode) {
 }
 
 export function isRepairRelationUsable(row, options = {}) {
-  const minConfidence = clamp01(options.minConfidence, 0.65);
+  const relationType = String(row?.relation_type ?? "").trim();
+  const minConfidence = getRepairRelationMinConfidence(relationType, options);
   const allowAmbiguous = options.allowAmbiguous === true;
   const sourceMode = String(row?.source_mode ?? "explicit").trim().toLowerCase();
   const confidence = normalizeRepairConfidence(row?.confidence, 1);
@@ -34,6 +43,75 @@ export function isRepairRelationUsable(row, options = {}) {
     return false;
   }
   return confidence >= minConfidence;
+}
+
+export function getDefaultRepairRelationThresholds() {
+  return { ...DEFAULT_RELATION_THRESHOLDS };
+}
+
+export function resolveRepairRelationThresholds(options = {}) {
+  const resolved = getDefaultRepairRelationThresholds();
+  const globalMin = options.minConfidence;
+  if (Number.isFinite(Number(globalMin))) {
+    const normalized = clamp01(globalMin, 0.65);
+    for (const key of Object.keys(resolved)) {
+      resolved[key] = normalized;
+    }
+  }
+  const overrides = options.relationThresholds && typeof options.relationThresholds === "object"
+    ? options.relationThresholds
+    : {};
+  for (const [key, value] of Object.entries(overrides)) {
+    if (typeof key !== "string" || key.trim().length === 0) {
+      continue;
+    }
+    resolved[key.trim()] = clamp01(value, resolved[key.trim()] ?? 0.65);
+  }
+  return resolved;
+}
+
+export function getRepairRelationMinConfidence(relationType, options = {}) {
+  const thresholds = resolveRepairRelationThresholds(options);
+  if (relationType && Object.prototype.hasOwnProperty.call(thresholds, relationType)) {
+    return thresholds[relationType];
+  }
+  return clamp01(options.minConfidence, 0.65);
+}
+
+export function evaluateRepairRelation(row, options = {}) {
+  const sourceMode = String(row?.source_mode ?? "explicit").trim().toLowerCase();
+  const confidence = normalizeRepairConfidence(row?.confidence, 1);
+  const relationType = String(row?.relation_type ?? "").trim();
+  const minConfidence = getRepairRelationMinConfidence(relationType, options);
+  const allowAmbiguous = options.allowAmbiguous === true;
+  if (!allowAmbiguous && sourceMode === "ambiguous") {
+    return {
+      usable: false,
+      reason: "ambiguous_disabled",
+      confidence,
+      min_confidence: minConfidence,
+      relation_type: relationType,
+      source_mode: sourceMode,
+    };
+  }
+  if (confidence < minConfidence) {
+    return {
+      usable: false,
+      reason: "below_confidence_threshold",
+      confidence,
+      min_confidence: minConfidence,
+      relation_type: relationType,
+      source_mode: sourceMode,
+    };
+  }
+  return {
+    usable: true,
+    reason: "accepted",
+    confidence,
+    min_confidence: minConfidence,
+    relation_type: relationType,
+    source_mode: sourceMode,
+  };
 }
 
 export function artifactRepairScore(artifact) {

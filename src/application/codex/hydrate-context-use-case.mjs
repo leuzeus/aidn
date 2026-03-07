@@ -3,7 +3,8 @@ import path from "node:path";
 import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import {
   artifactRepairScore,
-  isRepairRelationUsable,
+  evaluateRepairRelation,
+  resolveRepairRelationThresholds,
 } from "../../core/workflow/repair-layer-policy.mjs";
 
 function resolveTargetPath(targetRoot, candidate) {
@@ -46,10 +47,30 @@ function readJsonIndex(indexFile) {
   return { absolute, payload };
 }
 
+function pushLimited(list, value, limit = 12) {
+  if (!Array.isArray(list) || list.length >= limit) {
+    return;
+  }
+  list.push(value);
+}
+
 function selectArtifacts(payload, maxArtifactBytes, options = {}) {
   const artifacts = Array.isArray(payload?.artifacts) ? payload.artifacts : [];
   const artifactLinks = Array.isArray(payload?.artifact_links) ? payload.artifact_links : [];
   const sessionCycleLinks = Array.isArray(payload?.session_cycle_links) ? payload.session_cycle_links : [];
+  const relationThresholds = resolveRepairRelationThresholds({
+    minConfidence: options.minRelationConfidence,
+    relationThresholds: options.relationThresholds,
+  });
+  const relationEvaluation = {
+    thresholds: relationThresholds,
+    accepted_count: 0,
+    rejected_count: 0,
+    accepted_by_type: {},
+    rejected_by_reason: {},
+    accepted_samples: [],
+    rejected_samples: [],
+  };
   const priority = new Set([
     "baseline/current.md",
     "snapshots/context-snapshot.md",
@@ -65,12 +86,35 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
   const linkedCycleIds = new Set();
   const prioritySources = new Set(["baseline/current.md", "baseline/history.md", "snapshots/context-snapshot.md"]);
   for (const row of artifactLinks) {
-    if (!isRepairRelationUsable(row, {
+    const evaluation = evaluateRepairRelation(row, {
       minConfidence: options.minRelationConfidence,
+      relationThresholds: options.relationThresholds,
       allowAmbiguous: options.allowAmbiguousLinks,
-    })) {
+    });
+    if (!evaluation.usable) {
+      relationEvaluation.rejected_count += 1;
+      relationEvaluation.rejected_by_reason[evaluation.reason] = Number(relationEvaluation.rejected_by_reason[evaluation.reason] ?? 0) + 1;
+      pushLimited(relationEvaluation.rejected_samples, {
+        relation_type: evaluation.relation_type,
+        source_mode: evaluation.source_mode,
+        confidence: evaluation.confidence,
+        min_confidence: evaluation.min_confidence,
+        reason: evaluation.reason,
+        source_path: String(row?.source_path ?? "").replace(/\\/g, "/"),
+        target_path: String(row?.target_path ?? "").replace(/\\/g, "/"),
+      });
       continue;
     }
+    relationEvaluation.accepted_count += 1;
+    relationEvaluation.accepted_by_type[evaluation.relation_type] = Number(relationEvaluation.accepted_by_type[evaluation.relation_type] ?? 0) + 1;
+    pushLimited(relationEvaluation.accepted_samples, {
+      relation_type: evaluation.relation_type,
+      source_mode: evaluation.source_mode,
+      confidence: evaluation.confidence,
+      min_confidence: evaluation.min_confidence,
+      source_path: String(row?.source_path ?? "").replace(/\\/g, "/"),
+      target_path: String(row?.target_path ?? "").replace(/\\/g, "/"),
+    });
     const sourcePath = String(row?.source_path ?? "").replace(/\\/g, "/");
     const targetPath = String(row?.target_path ?? "").replace(/\\/g, "/");
     const relationType = String(row?.relation_type ?? "");
@@ -91,12 +135,35 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
   }
   const relatedSessionIds = new Set();
   for (const row of sessionCycleLinks) {
-    if (!isRepairRelationUsable(row, {
+    const evaluation = evaluateRepairRelation(row, {
       minConfidence: options.minRelationConfidence,
+      relationThresholds: options.relationThresholds,
       allowAmbiguous: options.allowAmbiguousLinks,
-    })) {
+    });
+    if (!evaluation.usable) {
+      relationEvaluation.rejected_count += 1;
+      relationEvaluation.rejected_by_reason[evaluation.reason] = Number(relationEvaluation.rejected_by_reason[evaluation.reason] ?? 0) + 1;
+      pushLimited(relationEvaluation.rejected_samples, {
+        relation_type: evaluation.relation_type,
+        source_mode: evaluation.source_mode,
+        confidence: evaluation.confidence,
+        min_confidence: evaluation.min_confidence,
+        reason: evaluation.reason,
+        session_id: String(row?.session_id ?? ""),
+        cycle_id: String(row?.cycle_id ?? ""),
+      });
       continue;
     }
+    relationEvaluation.accepted_count += 1;
+    relationEvaluation.accepted_by_type[evaluation.relation_type] = Number(relationEvaluation.accepted_by_type[evaluation.relation_type] ?? 0) + 1;
+    pushLimited(relationEvaluation.accepted_samples, {
+      relation_type: evaluation.relation_type,
+      source_mode: evaluation.source_mode,
+      confidence: evaluation.confidence,
+      min_confidence: evaluation.min_confidence,
+      session_id: String(row?.session_id ?? ""),
+      cycle_id: String(row?.cycle_id ?? ""),
+    });
     const cycleId = String(row?.cycle_id ?? "");
     if (!cycleId) {
       continue;
@@ -212,7 +279,10 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
     pick(artifact);
   }
 
-  return selected;
+  return {
+    selected,
+    relation_evaluation: relationEvaluation,
+  };
 }
 
 function writeJson(filePath, payload) {
@@ -220,7 +290,7 @@ function writeJson(filePath, payload) {
   fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
 
-function summarizeRepairLayer(payload) {
+function summarizeRepairLayer(payload, selection = null) {
   const migrationRuns = Array.isArray(payload?.migration_runs) ? payload.migration_runs : [];
   const migrationFindings = Array.isArray(payload?.migration_findings) ? payload.migration_findings : [];
   const severityCounts = {};
@@ -241,6 +311,7 @@ function summarizeRepairLayer(payload) {
     type_counts: typeCounts,
     latest_run: latestRun,
     top_findings: migrationFindings.slice(0, 5),
+    relation_evaluation: selection?.relation_evaluation ?? null,
   };
 }
 
@@ -300,11 +371,13 @@ export function runHydrateContextUseCase({ args, hookContextStore, targetRoot })
         backend,
         file: index.absolute,
       };
-      selectedArtifacts = selectArtifacts(index.payload, args.maxArtifactBytes, {
+      const selection = selectArtifacts(index.payload, args.maxArtifactBytes, {
         minRelationConfidence: args.minRelationConfidence,
+        relationThresholds: args.relationThresholds,
         allowAmbiguousLinks: args.allowAmbiguousLinks,
       });
-      repairLayer = summarizeRepairLayer(index.payload);
+      selectedArtifacts = selection.selected;
+      repairLayer = summarizeRepairLayer(index.payload, selection);
     }
   }
 

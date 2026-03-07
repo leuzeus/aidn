@@ -15,6 +15,7 @@ function parseArgs(argv) {
     backend: "auto",
     maxArtifactBytes: 4096,
     minRelationConfidence: 0.65,
+    relationThresholds: {},
     allowAmbiguousLinks: false,
     json: false,
   };
@@ -48,6 +49,16 @@ function parseArgs(argv) {
     } else if (token === "--min-relation-confidence") {
       args.minRelationConfidence = Number(argv[i + 1] ?? 0.65);
       i += 1;
+    } else if (token === "--relation-threshold") {
+      const raw = String(argv[i + 1] ?? "").trim();
+      i += 1;
+      const [relationType, value] = raw.split("=", 2);
+      const key = String(relationType ?? "").trim();
+      const n = Number(value);
+      if (!key || !Number.isFinite(n) || n < 0 || n > 1) {
+        throw new Error("Invalid --relation-threshold. Expected relation=value with value between 0 and 1.");
+      }
+      args.relationThresholds[key] = n;
     } else if (token === "--allow-ambiguous-links") {
       args.allowAmbiguousLinks = true;
     } else if (token === "--no-artifacts") {
@@ -86,6 +97,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  npx aidn codex hydrate-context --target . --json");
   console.log("  npx aidn codex hydrate-context --target . --skill context-reload --history-limit 10");
+  console.log("  npx aidn codex hydrate-context --target . --relation-threshold attached_cycle=0.35 --allow-ambiguous-links --json");
 }
 
 function main() {
