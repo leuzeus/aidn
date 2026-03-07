@@ -95,13 +95,18 @@ function main() {
     const checks = {
       skill_hook_ok: skillHook?.ok === true,
       skill_hook_open_count_present: Number(skillHook?.repair_layer_open_count ?? 0) >= 1,
+      skill_hook_status_present: ["warn", "block"].includes(String(skillHook?.repair_layer_status ?? "")),
+      skill_hook_advice_present: String(skillHook?.repair_layer_advice ?? "").length >= 1,
       skill_hook_top_findings_present: Array.isArray(skillHook?.repair_layer_top_findings)
         && skillHook.repair_layer_top_findings.length >= 1,
       run_json_hook_ok: runJsonHook?.ok === true,
       run_json_hook_open_count_present: Number(runJsonHook?.repair_layer_open_count ?? 0) >= 1,
+      run_json_hook_status_present: ["warn", "block"].includes(String(runJsonHook?.repair_layer_status ?? "")),
+      run_json_hook_advice_present: String(runJsonHook?.repair_layer_advice ?? "").length >= 1,
       run_json_hook_top_findings_present: Array.isArray(runJsonHook?.repair_layer_top_findings)
         && runJsonHook.repair_layer_top_findings.length >= 1,
-      run_json_hook_summary_present: Number(runJsonHook?.summary?.repair_layer_open_count ?? 0) >= 1,
+      run_json_hook_summary_present: Number(runJsonHook?.summary?.repair_layer_open_count ?? 0) >= 1
+        && ["warn", "block"].includes(String(runJsonHook?.summary?.repair_layer_status ?? "")),
       parity_skill_hook_run_json_count: Number(skillHook?.repair_layer_open_count ?? -1)
         === Number(runJsonHook?.repair_layer_open_count ?? -2),
     };
@@ -115,11 +120,13 @@ function main() {
         skill_hook: {
           result: skillHook?.payload?.summary?.result ?? null,
           repair_layer_open_count: skillHook?.repair_layer_open_count ?? null,
+          repair_layer_status: skillHook?.repair_layer_status ?? null,
           top_finding: skillHook?.repair_layer_top_findings?.[0] ?? null,
         },
         run_json_hook: {
           result: runJsonHook?.summary?.result ?? null,
           repair_layer_open_count: runJsonHook?.repair_layer_open_count ?? null,
+          repair_layer_status: runJsonHook?.repair_layer_status ?? null,
           summary_repair_layer_open_count: runJsonHook?.summary?.repair_layer_open_count ?? null,
           top_finding: runJsonHook?.repair_layer_top_findings?.[0] ?? null,
         },

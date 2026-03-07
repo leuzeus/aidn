@@ -167,6 +167,18 @@ export function normalizeHookPayload(rawInput, options = {}) {
       inputSummary.repair_layer_top_findings,
       [],
     ),
+    repair_layer_status: firstDefined(
+      payloadSummary.repair_layer_status,
+      payloadCheckpointSummary.repair_layer_status,
+      inputSummary.repair_layer_status,
+      null,
+    ),
+    repair_layer_advice: firstDefined(
+      payloadSummary.repair_layer_advice,
+      payloadCheckpointSummary.repair_layer_advice,
+      inputSummary.repair_layer_advice,
+      null,
+    ),
     error,
     raw: input,
   };

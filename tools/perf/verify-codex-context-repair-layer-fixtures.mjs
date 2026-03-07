@@ -109,9 +109,13 @@ function main() {
     const checks = {
       hook_output_open_count_present: Number(hookOutput?.repair_layer_open_count ?? 0) >= 1,
       context_latest_open_count_present: Number(latestEntry?.repair_layer_open_count ?? 0) >= 1,
+      context_latest_status_present: ["warn", "block"].includes(String(latestEntry?.repair_layer_status ?? "")),
+      context_latest_advice_present: String(latestEntry?.repair_layer_advice ?? "").length >= 1,
       context_latest_top_findings_present: Array.isArray(latestEntry?.repair_layer_top_findings)
         && latestEntry.repair_layer_top_findings.length >= 1,
       hydrate_decision_open_count_present: Number(decision?.repair_layer_open_count ?? 0) >= 1,
+      hydrate_decision_status_present: ["warn", "block"].includes(String(decision?.repair_layer_status ?? "")),
+      hydrate_decision_advice_present: String(decision?.repair_layer_advice ?? "").length >= 1,
       hydrate_decision_top_findings_present: Array.isArray(decision?.repair_layer_top_findings)
         && decision.repair_layer_top_findings.length >= 1,
       hydrate_history_open_count_present: Number(latestHistory?.repair_layer_open_count ?? 0) >= 1,
@@ -130,10 +134,12 @@ function main() {
         },
         context_latest: {
           repair_layer_open_count: latestEntry?.repair_layer_open_count ?? null,
+          repair_layer_status: latestEntry?.repair_layer_status ?? null,
           top_finding: latestEntry?.repair_layer_top_findings?.[0] ?? null,
         },
         hydrated_decision: {
           repair_layer_open_count: decision?.repair_layer_open_count ?? null,
+          repair_layer_status: decision?.repair_layer_status ?? null,
           top_finding: decision?.repair_layer_top_findings?.[0] ?? null,
         },
       },

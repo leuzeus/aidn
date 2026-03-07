@@ -83,6 +83,12 @@ function main() {
       console.log(`Skill hook: OK (${args.skill} -> ${out.tool})`);
       if (Number(out.repair_layer_open_count ?? 0) > 0) {
         console.log(`Repair findings: ${out.repair_layer_open_count} open${out.repair_layer_blocking ? " (blocking)" : ""}`);
+        if (out.repair_layer_status) {
+          console.log(`Repair status: ${out.repair_layer_status}`);
+        }
+        if (out.repair_layer_advice) {
+          console.log(`Repair advice: ${out.repair_layer_advice}`);
+        }
       }
     } else {
       console.warn(`Skill hook: WARN (${args.skill} -> ${out.tool}) ${out.error?.message ?? "unknown error"}`);

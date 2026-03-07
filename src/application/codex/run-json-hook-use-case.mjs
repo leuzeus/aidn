@@ -225,6 +225,8 @@ export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContext
     result: normalized.result,
     repair_layer_open_count: normalized.repair_layer_open_count,
     repair_layer_blocking: normalized.repair_layer_blocking,
+    repair_layer_status: normalized.repair_layer_status,
+    repair_layer_advice: normalized.repair_layer_advice,
     repair_layer_top_findings: normalized.repair_layer_top_findings,
     error: normalized.error,
     command: commandLine,

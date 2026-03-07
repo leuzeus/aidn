@@ -124,6 +124,12 @@ function main() {
       console.log(`Hook context ${status}: skill=${output.skill} mode=${output.mode} state=${output.state_mode} decision=${decision}`);
       if (Number(output.repair_layer_open_count ?? 0) > 0) {
         console.log(`Repair findings: ${output.repair_layer_open_count} open${output.repair_layer_blocking ? " (blocking)" : ""}`);
+        if (output.repair_layer_status) {
+          console.log(`Repair status: ${output.repair_layer_status}`);
+        }
+        if (output.repair_layer_advice) {
+          console.log(`Repair advice: ${output.repair_layer_advice}`);
+        }
       }
       console.log(`Context file: ${output.context_file}`);
     }
