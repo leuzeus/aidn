@@ -1,8 +1,6 @@
 #!/usr/bin/env node
-import fs from "node:fs";
 import path from "node:path";
-import crypto from "node:crypto";
-import { execSync } from "node:child_process";
+import { runDeliveryWindowUseCase } from "../../src/application/runtime/delivery-window-use-case.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -63,165 +61,22 @@ function printUsage() {
   console.log("  node tools/perf/delivery-window.mjs --action start --run-id S072-20260301T1012Z");
 }
 
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function compactNow() {
-  return nowIso().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
-}
-
-function getBranch(targetRoot) {
-  try {
-    const branch = execSync(`git -C "${targetRoot}" branch --show-current`, {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    return branch || "unknown";
-  } catch {
-    return "unknown";
-  }
-}
-
-function readJsonSafe(filePath) {
-  if (!fs.existsSync(filePath)) {
-    return null;
-  }
-  try {
-    return JSON.parse(fs.readFileSync(filePath, "utf8"));
-  } catch {
-    return null;
-  }
-}
-
-function readRunIdFile(filePath) {
-  const absolute = path.resolve(process.cwd(), filePath);
-  if (!fs.existsSync(absolute)) {
-    return null;
-  }
-  const text = fs.readFileSync(absolute, "utf8").trim();
-  return text || null;
-}
-
-function writeJson(filePath, payload) {
-  const absolute = path.resolve(process.cwd(), filePath);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  fs.writeFileSync(absolute, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-  return absolute;
-}
-
-function appendEvent(filePath, payload) {
-  const absolute = path.resolve(process.cwd(), filePath);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  fs.appendFileSync(absolute, `${JSON.stringify(payload)}\n`, "utf8");
-  return absolute;
-}
-
-function toMs(iso) {
-  const ms = Date.parse(iso);
-  return Number.isNaN(ms) ? null : ms;
-}
-
-function resolveTargetPath(targetRoot, candidatePath) {
-  if (path.isAbsolute(candidatePath)) {
-    return candidatePath;
-  }
-  return path.resolve(targetRoot, candidatePath);
-}
-
-function makeEvent({
-  runId,
-  mode,
-  branch,
-  phase,
-  event,
-  durationMs,
-  reasonCode = null,
-}) {
-  return {
-    ts: nowIso(),
-    run_id: runId,
-    session_id: null,
-    cycle_id: null,
-    branch,
-    mode,
-    skill: "delivery-window",
-    phase,
-    event,
-    duration_ms: durationMs,
-    files_read_count: 0,
-    bytes_read: 0,
-    files_written_count: 0,
-    bytes_written: 0,
-    gates_triggered: [],
-    result: "ok",
-    reason_code: reasonCode,
-    trace_id: `tr-${crypto.randomBytes(4).toString("hex")}`,
-    control: false,
-  };
-}
-
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const eventFilePath = resolveTargetPath(targetRoot, args.file);
-    const stateFilePath = resolveTargetPath(targetRoot, args.stateFile);
-    const runIdFilePath = resolveTargetPath(targetRoot, args.runIdFile);
-    const branch = getBranch(targetRoot);
-    const linkedRunId = readRunIdFile(runIdFilePath);
-    const resolvedRunId = args.runId || linkedRunId || `delivery-${compactNow()}`;
-
-    if (args.action === "start") {
-      const startState = {
-        run_id: resolvedRunId,
-        started_at: nowIso(),
-        target_root: targetRoot,
-        branch,
-        mode: args.mode,
-      };
-      const saved = writeJson(stateFilePath, startState);
-      const event = makeEvent({
-        runId: startState.run_id,
-        mode: startState.mode,
-        branch: startState.branch,
-        phase: "start",
-        event: "delivery_window_start",
-        durationMs: 0,
-      });
-      const eventFile = appendEvent(eventFilePath, event);
-      console.log(`Delivery window started.`);
-      console.log(`run_id: ${startState.run_id}`);
-      console.log(`state: ${saved}`);
-      console.log(`event: ${eventFile}`);
+    const result = runDeliveryWindowUseCase({ args, targetRoot });
+    if (result.action === "start") {
+      console.log("Delivery window started.");
+      console.log(`run_id: ${result.run_id}`);
+      console.log(`state: ${result.state_file}`);
+      console.log(`event: ${result.event_file}`);
       return;
     }
-
-    const state = readJsonSafe(stateFilePath);
-    if (!state || !state.started_at || !state.run_id) {
-      throw new Error("No active delivery window. Start one first with --action start");
-    }
-    const startedMs = toMs(state.started_at);
-    if (startedMs == null) {
-      throw new Error("Invalid delivery window start timestamp");
-    }
-
-    const durationMs = Math.max(0, Date.now() - startedMs);
-    const event = makeEvent({
-      runId: state.run_id,
-      mode: state.mode ?? args.mode,
-      branch: state.branch ?? branch,
-      phase: "end",
-      event: "delivery_window_end",
-      durationMs,
-    });
-    const eventFile = appendEvent(eventFilePath, event);
-    fs.rmSync(stateFilePath, { force: true });
-
-    console.log(`Delivery window ended.`);
-    console.log(`run_id: ${state.run_id}`);
-    console.log(`duration_ms: ${durationMs}`);
-    console.log(`event: ${eventFile}`);
+    console.log("Delivery window ended.");
+    console.log(`run_id: ${result.run_id}`);
+    console.log(`duration_ms: ${result.duration_ms}`);
+    console.log(`event: ${result.event_file}`);
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();

@@ -125,6 +125,8 @@ export function runWorkflowIndexSync({
   schemaFile,
   includeSchema = true,
   kpiFile,
+  dryRun = false,
+  includePayload = false,
 }) {
   const args = [
     "--target",
@@ -148,6 +150,12 @@ export function runWorkflowIndexSync({
   }
   if (kpiFile) {
     args.push("--kpi-file", kpiFile);
+  }
+  if (dryRun) {
+    args.push("--dry-run");
+  }
+  if (includePayload) {
+    args.push("--include-payload");
   }
   args.push("--json");
   return runWorkflowRuntimeJsonScript({
