@@ -3,7 +3,7 @@ import path from "node:path";
 import {
   readAidnProjectConfig,
   writeAidnProjectConfig,
-} from "../../../tools/aidn-config-lib.mjs";
+} from "../../lib/config/aidn-config-lib.mjs";
 import {
   loadWorkflowManifests,
   resolvePackOrder,

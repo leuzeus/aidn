@@ -2,7 +2,7 @@ import {
   normalizeIndexStoreMode,
   normalizeStateMode,
   stateModeFromIndexStore,
-} from "../../../tools/aidn-config-lib.mjs";
+} from "../../lib/config/aidn-config-lib.mjs";
 
 export function buildNextAidnProjectConfig(existingData, defaults, args) {
   const base = (existingData && typeof existingData === "object" && !Array.isArray(existingData))

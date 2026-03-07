@@ -4,7 +4,7 @@ import {
   readAidnProjectConfig,
   resolveConfigIndexStore,
   resolveConfigStateMode,
-} from "../../../tools/aidn-config-lib.mjs";
+} from "../../lib/config/aidn-config-lib.mjs";
 
 export function resolveEffectiveRuntimeMode({
   targetRoot,

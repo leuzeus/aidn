@@ -8,7 +8,7 @@ import {
   resolveConfigIndexStore,
   resolveConfigStateMode,
   stateModeFromIndexStore,
-} from "../../../tools/aidn-config-lib.mjs";
+} from "../../lib/config/aidn-config-lib.mjs";
 
 export function resolveArtifactImportDefaults(args, configData = {}) {
   const explicitStore = normalizeIndexStoreMode(args?.artifactImportStore);
