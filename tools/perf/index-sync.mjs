@@ -5,14 +5,11 @@ import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { createWorkflowStateStoreAdapter } from "../../src/adapters/runtime/workflow-state-store-adapter.mjs";
 import { persistWorkflowIndexProjection } from "../../src/application/runtime/index-state-store-service.mjs";
+import { resolveEffectiveRuntimeMode } from "../../src/application/runtime/runtime-mode-service.mjs";
 import { detectStructureProfile } from "./structure-profile-lib.mjs";
 import { buildCanonicalFromMarkdown } from "./markdown-render-lib.mjs";
 import {
-  defaultIndexStoreFromStateMode,
   normalizeIndexStoreMode,
-  readAidnProjectConfig,
-  resolveConfigIndexStore,
-  resolveConfigStateMode,
 } from "../aidn-config-lib.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -630,35 +627,15 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const envStateModeSet = String(process.env.AIDN_STATE_MODE ?? "").trim().length > 0;
-    const envIndexStoreSet = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().length > 0;
     const envEmbedContentSet = String(process.env.AIDN_EMBED_ARTIFACT_CONTENT ?? "").trim().length > 0;
-    const config = readAidnProjectConfig(targetRoot);
-    if (!envStateModeSet) {
-      const configStateMode = resolveConfigStateMode(config.data);
-      if (configStateMode) {
-        args.stateMode = configStateMode;
-      }
-    }
-    if (!["files", "dual", "db-only"].includes(args.stateMode)) {
-      throw new Error("Invalid effective AIDN_STATE_MODE. Expected files|dual|db-only");
-    }
-    if (!args.storeExplicit && !envIndexStoreSet) {
-      if (envStateModeSet) {
-        args.store = defaultIndexStoreFromStateMode(args.stateMode);
-      } else {
-        const configStore = resolveConfigIndexStore(config.data);
-        if (configStore) {
-          args.store = configStore;
-        } else if (!normalizeIndexStoreMode(args.store)) {
-          args.store = defaultIndexStoreFromStateMode(args.stateMode);
-        }
-      }
-    }
-    args.store = String(args.store ?? "").toLowerCase();
-    if (!normalizeIndexStoreMode(args.store)) {
-      throw new Error(`Invalid effective --store mode: ${args.store}. Expected file|sql|dual|sqlite|dual-sqlite|all.`);
-    }
+    const runtimeMode = resolveEffectiveRuntimeMode({
+      targetRoot,
+      stateMode: args.stateMode,
+      indexStore: args.store,
+      indexStoreExplicit: args.storeExplicit,
+    });
+    args.stateMode = runtimeMode.stateMode;
+    args.store = runtimeMode.indexStore;
     if (!args.embedContentExplicit && !envEmbedContentSet) {
       args.embedContent = args.stateMode === "dual" || args.stateMode === "db-only";
     }

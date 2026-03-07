@@ -4,12 +4,9 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { execSync, execFileSync } from "node:child_process";
+import { resolveEffectiveRuntimeMode } from "../../src/application/runtime/runtime-mode-service.mjs";
 import {
-  defaultIndexStoreFromStateMode,
   normalizeIndexStoreMode,
-  readAidnProjectConfig,
-  resolveConfigIndexStore,
-  resolveConfigStateMode,
 } from "../aidn-config-lib.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -276,33 +273,14 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const envStateModeSet = String(process.env.AIDN_STATE_MODE ?? "").trim().length > 0;
-    const envIndexStoreSet = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().length > 0;
-    const config = readAidnProjectConfig(targetRoot);
-    if (!envStateModeSet) {
-      const configStateMode = resolveConfigStateMode(config.data);
-      if (configStateMode) {
-        args.stateMode = configStateMode;
-      }
-    }
-    if (!["files", "dual", "db-only"].includes(args.stateMode)) {
-      throw new Error("Invalid effective AIDN_STATE_MODE. Expected files|dual|db-only");
-    }
-    if (!args.indexStoreExplicit && !envIndexStoreSet) {
-      if (envStateModeSet) {
-        args.indexStore = defaultIndexStoreFromStateMode(args.stateMode);
-      } else {
-        const configStore = resolveConfigIndexStore(config.data);
-        if (configStore) {
-          args.indexStore = configStore;
-        } else if (!normalizeIndexStoreMode(args.indexStore)) {
-          args.indexStore = defaultIndexStoreFromStateMode(args.stateMode);
-        }
-      }
-    }
-    if (!normalizeIndexStoreMode(args.indexStore)) {
-      throw new Error("Invalid effective --index-store. Expected file|sql|dual|sqlite|dual-sqlite|all");
-    }
+    const runtimeMode = resolveEffectiveRuntimeMode({
+      targetRoot,
+      stateMode: args.stateMode,
+      indexStore: args.indexStore,
+      indexStoreExplicit: args.indexStoreExplicit,
+    });
+    args.stateMode = runtimeMode.stateMode;
+    args.indexStore = runtimeMode.indexStore;
     const cachePath = resolveTargetPath(targetRoot, args.cache);
     const eventFilePath = resolveTargetPath(targetRoot, args.eventFile);
     const indexOutputPath = resolveTargetPath(targetRoot, args.indexOutput);
