@@ -151,6 +151,16 @@ function main() {
     const acceptedRow = Array.isArray(strictAccepted.result)
       ? strictAccepted.result.find((row) => String(row?.session?.session_id ?? "") === "S102")
       : null;
+    const openAmbiguousOtherCycle = Array.isArray(strictOtherCycle.result)
+      ? strictOtherCycle.result.find((row) =>
+        String(row?.session?.session_id ?? "") === "S102"
+        && String(row?.link?.relation_type ?? "") === "attached_cycle")
+      : null;
+    const rejectedAmbiguousRow = Array.isArray(strictRejected.result)
+      ? strictRejected.result.find((row) =>
+        String(row?.session?.session_id ?? "") === "S102"
+        && String(row?.link?.relation_type ?? "") === "attached_cycle")
+      : null;
 
     const checks = {
       accept_applied: String(accept?.action ?? "") === "applied",
@@ -158,12 +168,10 @@ function main() {
       accept_marks_ambiguity_status: String(accept?.resolved_link?.ambiguity_status ?? "") === "accepted",
       strict_query_includes_accepted_s102: Boolean(acceptedRow),
       strict_query_accepted_reason_override: String(acceptedRow?.link?.usability?.reason ?? "") === "accepted_override",
-      strict_query_other_cycle_excludes_open_ambiguity: Array.isArray(strictOtherCycle.result)
-        && !strictOtherCycle.result.some((row) => String(row?.session?.session_id ?? "") === "S102"),
+      strict_query_other_cycle_excludes_open_ambiguity: !openAmbiguousOtherCycle,
       reject_applied: String(reject?.action ?? "") === "applied",
       reject_marks_rejected: String(reject?.resolved_link?.ambiguity_status ?? "") === "rejected",
-      strict_query_rejected_excludes_s102: Array.isArray(strictRejected.result)
-        && !strictRejected.result.some((row) => String(row?.session?.session_id ?? "") === "S102"),
+      strict_query_rejected_excludes_s102: !rejectedAmbiguousRow,
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {
