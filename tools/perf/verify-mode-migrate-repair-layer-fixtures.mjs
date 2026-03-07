@@ -60,6 +60,7 @@ function main() {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-mode-migrate-"));
     const workingCopy = path.join(tempRoot, "repo");
     fs.cpSync(sourceTarget, workingCopy, { recursive: true });
+    fs.rmSync(path.join(workingCopy, ".aidn"), { recursive: true, force: true });
 
     const migrated = runJson(process.execPath, [
       normalizePathForNode(MODE_MIGRATE),
