@@ -5,6 +5,7 @@ import {
   resolveEffectiveStateMode,
 } from "../../core/state-mode/state-mode-policy.mjs";
 import { shouldAutoDbSyncForSkill } from "../../core/skills/skill-policy.mjs";
+import { buildRunJsonHookSummary } from "../../core/workflow/workflow-output-factory.mjs";
 import { normalizeHookPayload } from "./normalize-hook-payload.mjs";
 
 const CODEX_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -207,7 +208,7 @@ export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContext
     dbSync.reason = "state_mode_not_db_backed";
   }
 
-  return {
+  const output = {
     ts: new Date().toISOString(),
     ok: normalized.ok,
     skill: normalized.skill,
@@ -228,4 +229,6 @@ export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContext
     db_sync: dbSync,
     normalized,
   };
+  output.summary = buildRunJsonHookSummary(output);
+  return output;
 }

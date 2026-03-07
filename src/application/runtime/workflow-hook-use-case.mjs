@@ -6,6 +6,10 @@ import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
 import { buildWorkflowHookEvent } from "../../core/workflow/workflow-event-factory.mjs";
 import {
+  buildWorkflowHookSummary,
+  isWorkflowResultOk,
+} from "../../core/workflow/workflow-output-factory.mjs";
+import {
   resolveHookReasonCode,
   resolveHookResult,
 } from "../../core/workflow/workflow-result-policy.mjs";
@@ -229,8 +233,9 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
     }
   }
 
-  return {
+  const result = {
     ts: eventPayload.ts,
+    ok: isWorkflowResultOk(hookResult),
     phase: args.phase,
     target_root: targetRoot,
     mode: args.mode,
@@ -251,4 +256,6 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
     constraint_loop_error: constraintLoopError ? String(constraintLoopError.message ?? constraintLoopError) : null,
     duration_ms: eventPayload.duration_ms,
   };
+  result.summary = buildWorkflowHookSummary(result);
+  return result;
 }

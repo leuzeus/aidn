@@ -3,6 +3,10 @@ import path from "node:path";
 import { execSync, execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 import { deriveGatingAction } from "../../core/gating/gating-policy.mjs";
+import {
+  buildGatingSummary,
+  isWorkflowResultOk,
+} from "../../core/workflow/workflow-output-factory.mjs";
 import { readAidnProjectConfig, resolveConfigStateMode } from "../../lib/config/aidn-config-lib.mjs";
 
 function parseReloadReasonCodes(value) {
@@ -440,6 +444,7 @@ export function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir }) {
 
   const result = {
     ts: new Date().toISOString(),
+    ok: isWorkflowResultOk(decision.result),
     mode: args.mode,
     state_mode: args.stateMode,
     target_root: targetRoot,
@@ -450,7 +455,9 @@ export function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir }) {
     gates_triggered: decision.gates_triggered,
     levels,
     duration_ms: Date.now() - started,
+    summary: null,
   };
+  result.summary = buildGatingSummary(result);
 
   if (args.emitEvent) {
     const eventPayload = {

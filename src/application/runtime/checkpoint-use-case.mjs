@@ -9,6 +9,10 @@ import {
   buildReloadSummaryEvent,
 } from "../../core/workflow/workflow-event-factory.mjs";
 import {
+  buildCheckpointSummary,
+  isWorkflowResultOk,
+} from "../../core/workflow/workflow-output-factory.mjs";
+import {
   resolveCheckpointReasonCode,
   resolveCheckpointResult,
   resolveReloadEventResult,
@@ -294,6 +298,7 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
 
   const result = {
     ts: new Date().toISOString(),
+    ok: false,
     run_id: checkpointRunId,
     target_root: targetRoot,
     mode: args.mode,
@@ -337,7 +342,10 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
     },
     index_sync_check: indexSyncCheck,
     total_duration_ms: Date.now() - started,
+    summary: null,
   };
+  result.summary = buildCheckpointSummary(result);
+  result.ok = isWorkflowResultOk(result.summary.result);
 
   if (args.emitSummaryEvent) {
     const reloadEvent = buildReloadSummaryEvent({
@@ -366,11 +374,8 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
         ...(Array.isArray(result.gate?.gates_triggered) ? result.gate.gates_triggered : []),
         ...(result.index_sync_check?.enabled ? ["R11"] : []),
       ])),
-      result: resolveCheckpointResult({ gateResult: result.gate.result }),
-      reasonCode: resolveCheckpointReasonCode({
-        gateReasonCode: result.gate.reason_code,
-        indexSyncCheck: result.index_sync_check,
-      }),
+      result: result.summary.result,
+      reasonCode: result.summary.reason_code,
       traceId: `tr-${crypto.randomBytes(4).toString("hex")}`,
     });
     result.summary_event_file = appendEvent(eventFilePath, event);
