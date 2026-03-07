@@ -16,6 +16,7 @@ function parseArgs(argv) {
     skill: "",
     mode: "",
     strict: false,
+    noAutoSkipGate: false,
     json: false,
   };
 
@@ -32,6 +33,8 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--strict") {
       args.strict = true;
+    } else if (token === "--no-auto-skip-gate") {
+      args.noAutoSkipGate = true;
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -60,6 +63,7 @@ function printUsage() {
   console.log("  node tools/perf/skill-hook.mjs --skill start-session --target . --mode EXPLORING");
   console.log("  node tools/perf/skill-hook.mjs --skill cycle-create --target . --mode COMMITTING --json");
   console.log("  node tools/perf/skill-hook.mjs --skill convert-to-spike --target . --strict");
+  console.log("  node tools/perf/skill-hook.mjs --skill close-session --target . --mode COMMITTING --no-auto-skip-gate");
 }
 
 function main() {
@@ -77,6 +81,9 @@ function main() {
       console.log(JSON.stringify(out, null, 2));
     } else if (out.ok) {
       console.log(`Skill hook: OK (${args.skill} -> ${out.tool})`);
+      if (Number(out.repair_layer_open_count ?? 0) > 0) {
+        console.log(`Repair findings: ${out.repair_layer_open_count} open${out.repair_layer_blocking ? " (blocking)" : ""}`);
+      }
     } else {
       console.warn(`Skill hook: WARN (${args.skill} -> ${out.tool}) ${out.error?.message ?? "unknown error"}`);
     }

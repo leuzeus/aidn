@@ -10,7 +10,7 @@ import {
 
 export { assertSupportedSkill, assertValidSkillMode };
 
-function buildToolArgs(route, targetRoot, mode, effectiveStrict) {
+function buildToolArgs(route, targetRoot, mode, effectiveStrict, noAutoSkipGate) {
   const args = [...(route.fixedArgs ?? []), "--target", targetRoot, "--json"];
   if (route.tool === "checkpoint.mjs" || route.tool === "gating-evaluate.mjs" || route.tool === "workflow-hook.mjs") {
     args.push("--mode", mode);
@@ -18,7 +18,24 @@ function buildToolArgs(route, targetRoot, mode, effectiveStrict) {
   if (route.tool === "workflow-hook.mjs" && effectiveStrict) {
     args.push("--strict");
   }
+  if ((route.tool === "checkpoint.mjs" || route.tool === "workflow-hook.mjs") && noAutoSkipGate) {
+    args.push("--no-auto-skip-gate");
+  }
   return args;
+}
+
+function extractRepairLayerSummary(payload) {
+  const summary = payload?.summary && typeof payload.summary === "object" ? payload.summary : {};
+  const checkpointSummary = payload?.checkpoint?.summary && typeof payload.checkpoint.summary === "object"
+    ? payload.checkpoint.summary
+    : {};
+  return {
+    repair_layer_open_count: Number(summary.repair_layer_open_count ?? checkpointSummary.repair_layer_open_count ?? 0),
+    repair_layer_blocking: (summary.repair_layer_blocking ?? checkpointSummary.repair_layer_blocking) === true,
+    repair_layer_top_findings: Array.isArray(summary.repair_layer_top_findings)
+      ? summary.repair_layer_top_findings
+      : (Array.isArray(checkpointSummary.repair_layer_top_findings) ? checkpointSummary.repair_layer_top_findings : []),
+  };
 }
 
 function toErrorObject(error) {
@@ -39,11 +56,12 @@ export function runSkillHookUseCase({ args, perfDir, targetRoot, processAdapter 
   });
   const strictRequiredByState = shouldForceStrictForSkillState(stateMode);
   const effectiveStrict = args.strict || strictRequiredByState;
-  const toolArgs = buildToolArgs(route, targetRoot, mode, effectiveStrict);
+  const toolArgs = buildToolArgs(route, targetRoot, mode, effectiveStrict, args.noAutoSkipGate === true);
   const startedAt = new Date().toISOString();
 
   try {
     const payload = processAdapter.runJsonNodeScript(path.join(perfDir, route.tool), toolArgs);
+    const repairLayer = extractRepairLayerSummary(payload);
     return {
       ts: startedAt,
       ok: true,
@@ -55,6 +73,9 @@ export function runSkillHookUseCase({ args, perfDir, targetRoot, processAdapter 
       strict_requested: args.strict,
       strict_required_by_state: strictRequiredByState,
       strict: effectiveStrict,
+      repair_layer_open_count: repairLayer.repair_layer_open_count,
+      repair_layer_blocking: repairLayer.repair_layer_blocking,
+      repair_layer_top_findings: repairLayer.repair_layer_top_findings,
       payload,
     };
   } catch (error) {

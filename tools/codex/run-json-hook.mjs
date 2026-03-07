@@ -23,6 +23,7 @@ function parseArgs(argv) {
     target: ".",
     stateMode: "",
     strict: false,
+    noAutoSkipGate: false,
     failOnError: false,
     forceJson: true,
     contextFile: ".aidn/runtime/context/codex-context.json",
@@ -50,6 +51,8 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--strict") {
       args.strict = true;
+    } else if (token === "--no-auto-skip-gate") {
+      args.noAutoSkipGate = true;
     } else if (token === "--fail-on-error") {
       args.failOnError = true;
     } else if (token === "--no-force-json") {
@@ -97,6 +100,7 @@ function printUsage() {
   console.log("  npx aidn codex run-json-hook --skill context-reload --mode THINKING --target . -- npx aidn perf skill-hook --skill context-reload --target . --mode THINKING --json");
   console.log("  npx aidn codex run-json-hook --skill branch-cycle-audit --mode COMMITTING --target . --strict --fail-on-error");
   console.log("  npx aidn codex run-json-hook --skill cycle-create --mode COMMITTING --target . --db-sync --json");
+  console.log("  npx aidn codex run-json-hook --skill close-session --mode COMMITTING --target . --no-auto-skip-gate --json");
 }
 
 function main() {
@@ -118,6 +122,9 @@ function main() {
       const status = output.ok ? "OK" : "WARN";
       const decision = output.decision ?? output.action ?? output.result ?? "n/a";
       console.log(`Hook context ${status}: skill=${output.skill} mode=${output.mode} state=${output.state_mode} decision=${decision}`);
+      if (Number(output.repair_layer_open_count ?? 0) > 0) {
+        console.log(`Repair findings: ${output.repair_layer_open_count} open${output.repair_layer_blocking ? " (blocking)" : ""}`);
+      }
       console.log(`Context file: ${output.context_file}`);
     }
 

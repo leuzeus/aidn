@@ -34,6 +34,9 @@ function buildDefaultCommand(args) {
   if (args.strict) {
     commandArgs.push("--strict");
   }
+  if (args.noAutoSkipGate) {
+    commandArgs.push("--no-auto-skip-gate");
+  }
   commandArgs.push("--json");
   return { command, commandArgs, source: "default" };
 }
@@ -220,6 +223,9 @@ export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContext
     reason_codes: normalized.reason_codes,
     action: normalized.action,
     result: normalized.result,
+    repair_layer_open_count: normalized.repair_layer_open_count,
+    repair_layer_blocking: normalized.repair_layer_blocking,
+    repair_layer_top_findings: normalized.repair_layer_top_findings,
     error: normalized.error,
     command: commandLine,
     command_status: result.status ?? 1,
