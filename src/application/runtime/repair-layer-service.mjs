@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { normalizeRepairConfidence, repairSourceModeRank } from "../../core/workflow/repair-layer-policy.mjs";
+import { deriveRepairRelationStatus, normalizeRepairConfidence, repairSourceModeRank } from "../../core/workflow/repair-layer-policy.mjs";
 
 function readTextArtifact(auditRoot, relativePath) {
   const absolute = path.resolve(auditRoot, relativePath);
@@ -166,7 +166,10 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
       return;
     }
     relationKeys.add(key);
-    artifactLinks.push(row);
+    artifactLinks.push({
+      ...row,
+      relation_status: row.relation_status ?? deriveRepairRelationStatus(row),
+    });
   }
 
   function addSessionCycleLink(row) {
@@ -187,12 +190,18 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
       if (!candidatePreferred) {
         return;
       }
-      sessionCycleLinks[existingIndex] = row;
+      sessionCycleLinks[existingIndex] = {
+        ...row,
+        relation_status: row.relation_status ?? deriveRepairRelationStatus(row),
+      };
       return;
     }
     relationKeys.add(key);
     sessionCycleLinkIndex.set(key, sessionCycleLinks.length);
-    sessionCycleLinks.push(row);
+    sessionCycleLinks.push({
+      ...row,
+      relation_status: row.relation_status ?? deriveRepairRelationStatus(row),
+    });
   }
 
   function addFinding(row) {

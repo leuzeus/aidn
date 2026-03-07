@@ -85,6 +85,7 @@ CREATE TABLE artifact_links (
   confidence REAL NOT NULL DEFAULT 1.0,
   inference_source TEXT,
   source_mode TEXT NOT NULL DEFAULT 'explicit',
+  relation_status TEXT NOT NULL DEFAULT 'explicit',
   updated_at TEXT NOT NULL,
   PRIMARY KEY (source_path, target_path, relation_type)
 );
@@ -96,6 +97,7 @@ CREATE TABLE cycle_links (
   confidence REAL NOT NULL DEFAULT 1.0,
   inference_source TEXT,
   source_mode TEXT NOT NULL DEFAULT 'explicit',
+  relation_status TEXT NOT NULL DEFAULT 'explicit',
   updated_at TEXT NOT NULL,
   PRIMARY KEY (source_cycle_id, target_cycle_id, relation_type)
 );
@@ -107,6 +109,7 @@ CREATE TABLE session_cycle_links (
   confidence REAL NOT NULL DEFAULT 1.0,
   inference_source TEXT,
   source_mode TEXT NOT NULL DEFAULT 'explicit',
+  relation_status TEXT NOT NULL DEFAULT 'explicit',
   updated_at TEXT NOT NULL,
   PRIMARY KEY (session_id, cycle_id, relation_type)
 );

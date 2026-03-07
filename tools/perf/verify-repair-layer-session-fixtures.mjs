@@ -69,20 +69,24 @@ function main() {
     const links = Array.isArray(payload.session_cycle_links) ? payload.session_cycle_links : [];
     const findings = Array.isArray(payload.migration_findings) ? payload.migration_findings : [];
     const byId = new Map(sessions.map((row) => [row.session_id, row]));
-    const linkFor = (sessionId, cycleId, sourceMode) => links.find((row) =>
+    const linkFor = (sessionId, cycleId, sourceMode, relationType = "attached_cycle") => links.find((row) =>
       String(row?.session_id ?? "") === sessionId
       && String(row?.cycle_id ?? "") === cycleId
-      && String(row?.source_mode ?? "") === sourceMode);
+      && String(row?.source_mode ?? "") === sourceMode
+      && String(row?.relation_type ?? "") === relationType);
 
     const checks = {
       session_s101_present: byId.has("S101"),
       session_s101_branch: String(byId.get("S101")?.branch_name ?? "") === "S101-alpha",
       session_s101_state: String(byId.get("S101")?.state ?? "") === "COMMITTING",
       session_s101_explicit_cycle: Boolean(linkFor("S101", "C101", "explicit")),
+      session_s101_explicit_cycle_status: String(linkFor("S101", "C101", "explicit")?.relation_status ?? "") === "explicit",
+      session_s101_snapshot_promoted: String(linkFor("S101", "C101", "inferred", "active_in_snapshot")?.relation_status ?? "") === "promoted",
       session_s102_present: byId.has("S102"),
       session_s102_branch: String(byId.get("S102")?.branch_name ?? "") === "S102-merge",
       session_s102_ambiguous_c101: Boolean(linkFor("S102", "C101", "ambiguous")),
       session_s102_ambiguous_c102: Boolean(linkFor("S102", "C102", "ambiguous")),
+      session_s102_ambiguous_status: String(linkFor("S102", "C101", "ambiguous")?.relation_status ?? "") === "ambiguous",
       ambiguous_relation_finding: findings.some((row) => String(row?.finding_type ?? "") === "AMBIGUOUS_RELATION" && String(row?.entity_id ?? "") === "S102"),
     };
     const pass = Object.values(checks).every((value) => value === true);

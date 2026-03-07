@@ -97,6 +97,7 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
       pushLimited(relationEvaluation.rejected_samples, {
         relation_type: evaluation.relation_type,
         source_mode: evaluation.source_mode,
+        relation_status: evaluation.relation_status,
         confidence: evaluation.confidence,
         min_confidence: evaluation.min_confidence,
         reason: evaluation.reason,
@@ -110,6 +111,7 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
     pushLimited(relationEvaluation.accepted_samples, {
       relation_type: evaluation.relation_type,
       source_mode: evaluation.source_mode,
+      relation_status: evaluation.relation_status,
       confidence: evaluation.confidence,
       min_confidence: evaluation.min_confidence,
       source_path: String(row?.source_path ?? "").replace(/\\/g, "/"),
@@ -146,6 +148,7 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
       pushLimited(relationEvaluation.rejected_samples, {
         relation_type: evaluation.relation_type,
         source_mode: evaluation.source_mode,
+        relation_status: evaluation.relation_status,
         confidence: evaluation.confidence,
         min_confidence: evaluation.min_confidence,
         reason: evaluation.reason,
@@ -159,6 +162,7 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
     pushLimited(relationEvaluation.accepted_samples, {
       relation_type: evaluation.relation_type,
       source_mode: evaluation.source_mode,
+      relation_status: evaluation.relation_status,
       confidence: evaluation.confidence,
       min_confidence: evaluation.min_confidence,
       session_id: String(row?.session_id ?? ""),

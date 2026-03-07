@@ -20,6 +20,14 @@ const DEFAULT_RELATION_THRESHOLDS = Object.freeze({
   included_in_baseline: 0.7,
 });
 
+const DEFAULT_PROMOTION_THRESHOLDS = Object.freeze({
+  summarizes_cycle: 0.85,
+  supports_cycle: 0.9,
+  attached_cycle: 0.85,
+  active_in_snapshot: 0.8,
+  included_in_baseline: 0.75,
+});
+
 export function normalizeRepairConfidence(value, fallback = 0) {
   return clamp01(value, fallback);
 }
@@ -78,12 +86,42 @@ export function getRepairRelationMinConfidence(relationType, options = {}) {
   return clamp01(options.minConfidence, 0.65);
 }
 
+export function getRepairPromotionThresholds() {
+  return { ...DEFAULT_PROMOTION_THRESHOLDS };
+}
+
+export function getRepairRelationPromotionThreshold(relationType) {
+  const thresholds = getRepairPromotionThresholds();
+  if (relationType && Object.prototype.hasOwnProperty.call(thresholds, relationType)) {
+    return thresholds[relationType];
+  }
+  return 1.1;
+}
+
+export function deriveRepairRelationStatus(row) {
+  const sourceMode = String(row?.source_mode ?? "explicit").trim().toLowerCase();
+  const confidence = normalizeRepairConfidence(row?.confidence, 1);
+  const relationType = String(row?.relation_type ?? "").trim();
+  if (sourceMode === "explicit") {
+    return "explicit";
+  }
+  if (sourceMode === "ambiguous") {
+    return "ambiguous";
+  }
+  const promotionThreshold = getRepairRelationPromotionThreshold(relationType);
+  if (confidence >= promotionThreshold) {
+    return "promoted";
+  }
+  return "inferred";
+}
+
 export function evaluateRepairRelation(row, options = {}) {
   const sourceMode = String(row?.source_mode ?? "explicit").trim().toLowerCase();
   const confidence = normalizeRepairConfidence(row?.confidence, 1);
   const relationType = String(row?.relation_type ?? "").trim();
   const minConfidence = getRepairRelationMinConfidence(relationType, options);
   const allowAmbiguous = options.allowAmbiguous === true;
+  const relationStatus = String(row?.relation_status ?? deriveRepairRelationStatus(row));
   if (!allowAmbiguous && sourceMode === "ambiguous") {
     return {
       usable: false,
@@ -92,6 +130,7 @@ export function evaluateRepairRelation(row, options = {}) {
       min_confidence: minConfidence,
       relation_type: relationType,
       source_mode: sourceMode,
+      relation_status: relationStatus,
     };
   }
   if (confidence < minConfidence) {
@@ -102,6 +141,7 @@ export function evaluateRepairRelation(row, options = {}) {
       min_confidence: minConfidence,
       relation_type: relationType,
       source_mode: sourceMode,
+      relation_status: relationStatus,
     };
   }
   return {
@@ -111,6 +151,7 @@ export function evaluateRepairRelation(row, options = {}) {
     min_confidence: minConfidence,
     relation_type: relationType,
     source_mode: sourceMode,
+    relation_status: relationStatus,
   };
 }
 

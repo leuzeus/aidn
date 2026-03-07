@@ -206,7 +206,9 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
       `),
       artifact_links: hasTable(db, "artifact_links")
         ? readRows(db, `
-          SELECT source_path, target_path, relation_type, confidence, inference_source, source_mode, updated_at
+          SELECT source_path, target_path, relation_type, confidence, inference_source, source_mode,
+                 ${getTableColumns(db, "artifact_links").has("relation_status") ? "relation_status" : "'explicit' AS relation_status"},
+                 updated_at
           FROM artifact_links
           ORDER BY source_path ASC, target_path ASC, relation_type ASC
         `).map((row) => ({
@@ -216,12 +218,15 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
           confidence: Number(row.confidence ?? 1),
           inference_source: row.inference_source ?? null,
           source_mode: row.source_mode ?? "explicit",
+          relation_status: row.relation_status ?? "explicit",
           updated_at: row.updated_at ?? null,
         }))
         : [],
       cycle_links: hasTable(db, "cycle_links")
         ? readRows(db, `
-          SELECT source_cycle_id, target_cycle_id, relation_type, confidence, inference_source, source_mode, updated_at
+          SELECT source_cycle_id, target_cycle_id, relation_type, confidence, inference_source, source_mode,
+                 ${getTableColumns(db, "cycle_links").has("relation_status") ? "relation_status" : "'explicit' AS relation_status"},
+                 updated_at
           FROM cycle_links
           ORDER BY source_cycle_id ASC, target_cycle_id ASC, relation_type ASC
         `).map((row) => ({
@@ -231,12 +236,15 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
           confidence: Number(row.confidence ?? 1),
           inference_source: row.inference_source ?? null,
           source_mode: row.source_mode ?? "explicit",
+          relation_status: row.relation_status ?? "explicit",
           updated_at: row.updated_at ?? null,
         }))
         : [],
       session_cycle_links: hasTable(db, "session_cycle_links")
         ? readRows(db, `
-          SELECT session_id, cycle_id, relation_type, confidence, inference_source, source_mode, updated_at
+          SELECT session_id, cycle_id, relation_type, confidence, inference_source, source_mode,
+                 ${getTableColumns(db, "session_cycle_links").has("relation_status") ? "relation_status" : "'explicit' AS relation_status"},
+                 updated_at
           FROM session_cycle_links
           ORDER BY session_id ASC, cycle_id ASC, relation_type ASC
         `).map((row) => ({
@@ -246,6 +254,7 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
           confidence: Number(row.confidence ?? 1),
           inference_source: row.inference_source ?? null,
           source_mode: row.source_mode ?? "explicit",
+          relation_status: row.relation_status ?? "explicit",
           updated_at: row.updated_at ?? null,
         }))
         : [],

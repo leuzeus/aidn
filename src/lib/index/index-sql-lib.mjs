@@ -73,7 +73,7 @@ function insertRunMetrics(lines, runMetrics) {
 function insertArtifactLinks(lines, rows) {
   for (const row of rows) {
     lines.push(
-      `INSERT INTO artifact_links (source_path, target_path, relation_type, confidence, inference_source, source_mode, updated_at) VALUES (${sqlString(row.source_path)}, ${sqlString(row.target_path)}, ${sqlString(row.relation_type)}, ${sqlNumber(row.confidence ?? 1)}, ${sqlString(row.inference_source)}, ${sqlString(row.source_mode ?? "explicit")}, ${sqlString(row.updated_at)});`,
+      `INSERT INTO artifact_links (source_path, target_path, relation_type, confidence, inference_source, source_mode, relation_status, updated_at) VALUES (${sqlString(row.source_path)}, ${sqlString(row.target_path)}, ${sqlString(row.relation_type)}, ${sqlNumber(row.confidence ?? 1)}, ${sqlString(row.inference_source)}, ${sqlString(row.source_mode ?? "explicit")}, ${sqlString(row.relation_status ?? "explicit")}, ${sqlString(row.updated_at)});`,
     );
   }
 }
@@ -81,7 +81,7 @@ function insertArtifactLinks(lines, rows) {
 function insertCycleLinks(lines, rows) {
   for (const row of rows) {
     lines.push(
-      `INSERT INTO cycle_links (source_cycle_id, target_cycle_id, relation_type, confidence, inference_source, source_mode, updated_at) VALUES (${sqlString(row.source_cycle_id)}, ${sqlString(row.target_cycle_id)}, ${sqlString(row.relation_type)}, ${sqlNumber(row.confidence ?? 1)}, ${sqlString(row.inference_source)}, ${sqlString(row.source_mode ?? "explicit")}, ${sqlString(row.updated_at)});`,
+      `INSERT INTO cycle_links (source_cycle_id, target_cycle_id, relation_type, confidence, inference_source, source_mode, relation_status, updated_at) VALUES (${sqlString(row.source_cycle_id)}, ${sqlString(row.target_cycle_id)}, ${sqlString(row.relation_type)}, ${sqlNumber(row.confidence ?? 1)}, ${sqlString(row.inference_source)}, ${sqlString(row.source_mode ?? "explicit")}, ${sqlString(row.relation_status ?? "explicit")}, ${sqlString(row.updated_at)});`,
     );
   }
 }
@@ -89,7 +89,7 @@ function insertCycleLinks(lines, rows) {
 function insertSessionCycleLinks(lines, rows) {
   for (const row of rows) {
     lines.push(
-      `INSERT INTO session_cycle_links (session_id, cycle_id, relation_type, confidence, inference_source, source_mode, updated_at) VALUES (${sqlString(row.session_id)}, ${sqlString(row.cycle_id)}, ${sqlString(row.relation_type)}, ${sqlNumber(row.confidence ?? 1)}, ${sqlString(row.inference_source)}, ${sqlString(row.source_mode ?? "explicit")}, ${sqlString(row.updated_at)});`,
+      `INSERT INTO session_cycle_links (session_id, cycle_id, relation_type, confidence, inference_source, source_mode, relation_status, updated_at) VALUES (${sqlString(row.session_id)}, ${sqlString(row.cycle_id)}, ${sqlString(row.relation_type)}, ${sqlNumber(row.confidence ?? 1)}, ${sqlString(row.inference_source)}, ${sqlString(row.source_mode ?? "explicit")}, ${sqlString(row.relation_status ?? "explicit")}, ${sqlString(row.updated_at)});`,
     );
   }
 }

@@ -118,6 +118,7 @@ function ensureRepairLayerTables(db) {
       confidence REAL NOT NULL DEFAULT 1.0,
       inference_source TEXT,
       source_mode TEXT NOT NULL DEFAULT 'explicit',
+      relation_status TEXT NOT NULL DEFAULT 'explicit',
       updated_at TEXT NOT NULL,
       PRIMARY KEY (source_path, target_path, relation_type)
     );
@@ -129,6 +130,7 @@ function ensureRepairLayerTables(db) {
       confidence REAL NOT NULL DEFAULT 1.0,
       inference_source TEXT,
       source_mode TEXT NOT NULL DEFAULT 'explicit',
+      relation_status TEXT NOT NULL DEFAULT 'explicit',
       updated_at TEXT NOT NULL,
       PRIMARY KEY (source_cycle_id, target_cycle_id, relation_type)
     );
@@ -140,6 +142,7 @@ function ensureRepairLayerTables(db) {
       confidence REAL NOT NULL DEFAULT 1.0,
       inference_source TEXT,
       source_mode TEXT NOT NULL DEFAULT 'explicit',
+      relation_status TEXT NOT NULL DEFAULT 'explicit',
       updated_at TEXT NOT NULL,
       PRIMARY KEY (session_id, cycle_id, relation_type)
     );
@@ -243,6 +246,9 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
     ensureColumn(db, "file_map", "relation", "TEXT NOT NULL DEFAULT 'unknown'");
     ensureMetaTable(db);
     ensureRepairLayerTables(db);
+    ensureColumn(db, "artifact_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
+    ensureColumn(db, "cycle_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
+    ensureColumn(db, "session_cycle_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
     const prevDigest = getMeta(db, "payload_digest");
     if (prevDigest === nextDigest) {
       return {
@@ -397,8 +403,8 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
 
       const artifactLinkStmt = db.prepare(`
         INSERT INTO artifact_links (
-          source_path, target_path, relation_type, confidence, inference_source, source_mode, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?);
+          source_path, target_path, relation_type, confidence, inference_source, source_mode, relation_status, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
       `);
       runInsert(artifactLinkStmt, artifactLinks, (row) => ([
         row.source_path ?? null,
@@ -407,13 +413,14 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
         Number(row.confidence ?? 1),
         row.inference_source ?? null,
         row.source_mode ?? "explicit",
+        row.relation_status ?? "explicit",
         row.updated_at ?? new Date().toISOString(),
       ]));
 
       const cycleLinkStmt = db.prepare(`
         INSERT INTO cycle_links (
-          source_cycle_id, target_cycle_id, relation_type, confidence, inference_source, source_mode, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?);
+          source_cycle_id, target_cycle_id, relation_type, confidence, inference_source, source_mode, relation_status, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
       `);
       runInsert(cycleLinkStmt, cycleLinks, (row) => ([
         row.source_cycle_id ?? null,
@@ -422,13 +429,14 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
         Number(row.confidence ?? 1),
         row.inference_source ?? null,
         row.source_mode ?? "explicit",
+        row.relation_status ?? "explicit",
         row.updated_at ?? new Date().toISOString(),
       ]));
 
       const sessionCycleLinkStmt = db.prepare(`
         INSERT INTO session_cycle_links (
-          session_id, cycle_id, relation_type, confidence, inference_source, source_mode, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?);
+          session_id, cycle_id, relation_type, confidence, inference_source, source_mode, relation_status, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
       `);
       runInsert(sessionCycleLinkStmt, sessionCycleLinks, (row) => ([
         row.session_id ?? null,
@@ -437,6 +445,7 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
         Number(row.confidence ?? 1),
         row.inference_source ?? null,
         row.source_mode ?? "explicit",
+        row.relation_status ?? "explicit",
         row.updated_at ?? new Date().toISOString(),
       ]));
 
