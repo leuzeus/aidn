@@ -32,6 +32,7 @@ export function runSyncDbFirstUseCase({
   processAdapter,
   perfIndexSyncScript,
   repairLayerScript,
+  repairLayerAutofixScript,
   repairLayerTriageSummaryScript,
 }) {
   const runtimeMode = resolveEffectiveRuntimeMode({
@@ -65,6 +66,7 @@ export function runSyncDbFirstUseCase({
   ]);
 
   let repairLayerResult = null;
+  let repairLayerAutofixResult = null;
   let repairLayerTriageResult = null;
   if (args.repairLayer !== false) {
     const repairTarget = resolveRepairLayerTarget(payload, args);
@@ -79,6 +81,18 @@ export function runSyncDbFirstUseCase({
       "--apply",
       "--json",
     ]);
+    if (args.repairLayerAutofixSafeOnly === true) {
+      repairLayerAutofixResult = processAdapter.runJsonNodeScript(repairLayerAutofixScript, [
+        "--target",
+        targetRoot,
+        "--index-file",
+        repairTarget.indexFile,
+        "--index-backend",
+        repairTarget.indexBackend,
+        "--apply",
+        "--json",
+      ]);
+    }
     if (args.repairLayerTriage !== false) {
       repairLayerTriageResult = writeRepairLayerTriageArtifacts({
         targetRoot,
@@ -104,6 +118,7 @@ export function runSyncDbFirstUseCase({
     store: runtimeMode.indexStore,
     payload,
     repair_layer_result: repairLayerResult,
+    repair_layer_autofix_result: repairLayerAutofixResult,
     repair_layer_triage_result: repairLayerTriageResult,
   };
 }

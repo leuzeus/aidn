@@ -504,7 +504,8 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
         });
       }
       if (attachedCycles.length === 0 && candidateCycleSet.size > 1) {
-        for (const cycleId of Array.from(candidateCycleSet).sort((a, b) => a.localeCompare(b))) {
+        const candidateCycleIds = Array.from(candidateCycleSet).sort((a, b) => a.localeCompare(b));
+        for (const cycleId of candidateCycleIds) {
           addSessionCycleLink({
             session_id: artifact.session_id,
             cycle_id: cycleId,
@@ -515,18 +516,29 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
             updated_at: artifact.updated_at ?? now,
           });
         }
-        addFinding({
-          migration_run_id: "repair-layer-v1",
-          severity: "warning",
-          finding_type: "AMBIGUOUS_RELATION",
-          entity_type: "session",
-          entity_id: artifact.session_id,
-          artifact_path: artifact.path,
-          message: `Session has multiple candidate cycles: ${Array.from(candidateCycleSet).sort((a, b) => a.localeCompare(b)).join(", ")}.`,
-          confidence: 0.4,
-          suggested_action: "Resolve attached_cycles or integration_target_cycle explicitly in the session artifact.",
-          created_at: artifact.updated_at ?? now,
+        const effectiveCycleIds = candidateCycleIds.filter((cycleId) => {
+          const decisionKey = [
+            "session_cycle_link",
+            String(artifact.session_id ?? ""),
+            cycleId,
+            "attached_cycle",
+          ].join("::");
+          return String(decisionIndex.get(decisionKey)?.decision ?? "").toLowerCase() !== "rejected";
         });
+        if (effectiveCycleIds.length > 1) {
+          addFinding({
+            migration_run_id: "repair-layer-v1",
+            severity: "warning",
+            finding_type: "AMBIGUOUS_RELATION",
+            entity_type: "session",
+            entity_id: artifact.session_id,
+            artifact_path: artifact.path,
+            message: `Session has multiple candidate cycles: ${effectiveCycleIds.join(", ")}.`,
+            confidence: 0.4,
+            suggested_action: "Resolve attached_cycles or integration_target_cycle explicitly in the session artifact.",
+            created_at: artifact.updated_at ?? now,
+          });
+        }
       }
       for (const cycleId of Array.from(candidateCycleSet).sort((a, b) => a.localeCompare(b))) {
         if (cycleStatusById.has(cycleId)) {

@@ -10,6 +10,7 @@ import {
   writeAidnProjectConfig,
 } from "../../src/lib/config/aidn-config-lib.mjs";
 import { writeRepairLayerTriageArtifacts } from "../../src/application/runtime/repair-layer-artifact-service.mjs";
+import { runRepairLayerAutofixUseCase } from "../../src/application/runtime/repair-layer-autofix-use-case.mjs";
 
 const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PERF_INDEX_SYNC = path.resolve(RUNTIME_DIR, "..", "perf", "index-sync.mjs");
@@ -25,6 +26,7 @@ function parseArgs(argv) {
     indexFile: ".aidn/runtime/index/workflow-index.sqlite",
     auditRoot: "docs/audit",
     repairLayer: true,
+    repairLayerAutofixSafeOnly: false,
     repairLayerReportFile: ".aidn/runtime/index/repair-layer-report.json",
     repairLayerTriage: true,
     repairLayerTriageFile: ".aidn/runtime/index/repair-layer-triage.json",
@@ -51,6 +53,8 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--no-repair-layer") {
       args.repairLayer = false;
+    } else if (token === "--repair-layer-autofix-safe-only") {
+      args.repairLayerAutofixSafeOnly = true;
     } else if (token === "--repair-layer-report-file") {
       args.repairLayerReportFile = String(argv[i + 1] ?? "").trim();
       i += 1;
@@ -94,6 +98,7 @@ function printUsage() {
   console.log("  npx aidn runtime mode-migrate --target . --from db-only --to files --strict --json");
   console.log("  npx aidn runtime mode-migrate --target . --to db-only --no-repair-layer --json");
   console.log("  npx aidn runtime mode-migrate --target . --to db-only --no-repair-layer-triage --json");
+  console.log("  npx aidn runtime mode-migrate --target . --to db-only --repair-layer-autofix-safe-only --json");
 }
 
 function resolveTargetPath(targetRoot, candidate) {
@@ -177,6 +182,7 @@ function main() {
     let syncResult = null;
     let exportResult = null;
     let repairLayerResult = null;
+    let repairLayerAutofixResult = null;
     let repairLayerTriageResult = null;
 
     if (toMode === "dual" || toMode === "db-only") {
@@ -211,6 +217,23 @@ function main() {
           ok: true,
           report_file: repairLayerResult.report_file,
         });
+        if (args.repairLayerAutofixSafeOnly) {
+          repairLayerAutofixResult = runRepairLayerAutofixUseCase({
+            args: {
+              indexFile,
+              indexBackend: "sqlite",
+              apply: true,
+              sessionId: "",
+              decidedBy: "mode-migrate",
+            },
+            targetRoot,
+          });
+          steps.push({
+            step: "repair_layer_autofix",
+            ok: true,
+            decisions_count: repairLayerAutofixResult?.summary?.decisions_count ?? 0,
+          });
+        }
         if (args.repairLayerTriage) {
           repairLayerTriageResult = writeRepairLayerTriageArtifacts({
             targetRoot,
@@ -269,6 +292,7 @@ function main() {
       steps,
       sync_result: syncResult,
       repair_layer_result: repairLayerResult,
+      repair_layer_autofix_result: repairLayerAutofixResult,
       repair_layer_triage_result: repairLayerTriageResult,
       export_result: exportResult,
       config_update: configUpdate,

@@ -62,6 +62,9 @@ function renderStep(step) {
   if (step.kind === "query" && step.command) {
     return `- Query: \`${step.command}\``;
   }
+  if (step.kind === "autofix_safe_only" && step.command) {
+    return `- Safe autofix: \`${step.command}\``;
+  }
   if (step.kind === "resolve" && Array.isArray(step.commands) && step.commands.length > 0) {
     const commands = step.commands
       .slice(0, 3)

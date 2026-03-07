@@ -28,18 +28,14 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
-  console.log("  node tools/perf/verify-repair-layer-triage-fixtures.mjs");
+  console.log("  node tools/perf/verify-repair-layer-autofix-fixtures.mjs");
 }
 
-function runJson(script, scriptArgs, env = {}) {
+function runJson(script, scriptArgs) {
   const file = path.resolve(process.cwd(), script);
   const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
-    env: {
-      ...process.env,
-      ...env,
-    },
   });
   return JSON.parse(stdout);
 }
@@ -49,11 +45,10 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const sourceTarget = path.resolve(process.cwd(), args.target);
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-repair-triage-"));
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-repair-autofix-"));
     const target = path.join(tempRoot, "repo");
     fs.cpSync(sourceTarget, target, { recursive: true });
     fs.rmSync(path.join(target, ".aidn"), { recursive: true, force: true });
-    const sqliteFileArg = path.relative(process.cwd(), path.join(target, ".aidn/runtime/index/workflow-index.sqlite"));
 
     runJson("tools/perf/index-sync.mjs", [
       "--target",
@@ -63,34 +58,49 @@ function main() {
       "--json",
     ]);
 
-    const triage = runJson("tools/runtime/repair-layer-triage.mjs", [
+    const indexFile = path.join(target, ".aidn/runtime/index/workflow-index.sqlite");
+    const indexFileArg = path.relative(process.cwd(), indexFile);
+    const triageBefore = runJson("tools/runtime/repair-layer-triage.mjs", [
       "--target",
       target,
       "--index-file",
-      sqliteFileArg,
+      indexFileArg,
+      "--backend",
+      "sqlite",
+      "--json",
+    ]);
+    const autofix = runJson("tools/runtime/repair-layer-autofix.mjs", [
+      "--target",
+      target,
+      "--index-file",
+      indexFileArg,
+      "--index-backend",
+      "sqlite",
+      "--apply",
+      "--json",
+    ]);
+    const triageAfter = runJson("tools/runtime/repair-layer-triage.mjs", [
+      "--target",
+      target,
+      "--index-file",
+      indexFileArg,
       "--backend",
       "sqlite",
       "--json",
     ]);
 
-    const ambiguous = Array.isArray(triage?.items)
-      ? triage.items.find((row) => String(row?.finding_type ?? "") === "AMBIGUOUS_RELATION")
+    const ambiguousBefore = Array.isArray(triageBefore?.items)
+      ? triageBefore.items.find((row) => String(row?.finding_type ?? "") === "AMBIGUOUS_RELATION")
       : null;
 
     const checks = {
-      open_findings_present: Number(triage?.summary?.open_findings_count ?? 0) >= 1,
-      actionable_items_present: Number(triage?.summary?.actionable_count ?? 0) >= 1,
-      ambiguous_item_present: ambiguous != null,
-      ambiguous_query_present: Array.isArray(ambiguous?.next_steps)
-        && ambiguous.next_steps.some((step) => String(step?.kind ?? "") === "query"),
-      ambiguous_resolve_present: Array.isArray(ambiguous?.next_steps)
-        && ambiguous.next_steps.some((step) => String(step?.kind ?? "") === "resolve"),
-      ambiguous_accept_command_present: Array.isArray(ambiguous?.next_steps)
-        && ambiguous.next_steps.some((step) =>
-          Array.isArray(step?.commands) && step.commands.some((cmd) => String(cmd?.accept ?? "").includes("--decision accepted"))
-        ),
-      ambiguous_autofix_present: Array.isArray(ambiguous?.next_steps)
-        && ambiguous.next_steps.some((step) => String(step?.kind ?? "") === "autofix_safe_only"),
+      triage_before_has_open_finding: Number(triageBefore?.summary?.open_findings_count ?? 0) >= 1,
+      triage_before_has_autofix_step: Array.isArray(ambiguousBefore?.next_steps)
+        && ambiguousBefore.next_steps.some((step) => String(step?.kind ?? "") === "autofix_safe_only"),
+      autofix_applied: String(autofix?.action ?? "") === "applied",
+      autofix_created_decision: Number(autofix?.summary?.decisions_count ?? 0) >= 1,
+      autofix_reduces_open_findings: Number(autofix?.summary?.open_findings_after ?? -1) < Number(autofix?.summary?.open_findings_before ?? -1),
+      triage_after_is_clean: Number(triageAfter?.summary?.open_findings_count ?? -1) === 0,
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {
@@ -99,8 +109,9 @@ function main() {
       target_root: target,
       checks,
       samples: {
-        summary: triage?.summary ?? null,
-        ambiguous: ambiguous ?? null,
+        triage_before: triageBefore?.summary ?? null,
+        autofix: autofix?.summary ?? null,
+        triage_after: triageAfter?.summary ?? null,
       },
       pass,
     };

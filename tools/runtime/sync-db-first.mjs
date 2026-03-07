@@ -8,6 +8,7 @@ import { normalizeStateMode } from "../../src/lib/config/aidn-config-lib.mjs";
 const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PERF_INDEX_SYNC = path.resolve(RUNTIME_DIR, "..", "perf", "index-sync.mjs");
 const RUNTIME_REPAIR_LAYER = path.resolve(RUNTIME_DIR, "repair-layer.mjs");
+const RUNTIME_REPAIR_LAYER_AUTOFIX = path.resolve(RUNTIME_DIR, "repair-layer-autofix.mjs");
 const PERF_REPAIR_LAYER_TRIAGE_SUMMARY = path.resolve(RUNTIME_DIR, "..", "perf", "render-repair-layer-triage-summary.mjs");
 
 function parseArgs(argv) {
@@ -17,6 +18,7 @@ function parseArgs(argv) {
     store: "",
     forceInFiles: false,
     repairLayer: true,
+    repairLayerAutofixSafeOnly: false,
     repairLayerIndexFile: ".aidn/runtime/index/workflow-index.sqlite",
     repairLayerReportFile: ".aidn/runtime/index/repair-layer-report.json",
     repairLayerTriage: true,
@@ -40,6 +42,8 @@ function parseArgs(argv) {
       args.forceInFiles = true;
     } else if (token === "--no-repair-layer") {
       args.repairLayer = false;
+    } else if (token === "--repair-layer-autofix-safe-only") {
+      args.repairLayerAutofixSafeOnly = true;
     } else if (token === "--repair-layer-index-file") {
       args.repairLayerIndexFile = String(argv[i + 1] ?? "").trim();
       i += 1;
@@ -78,6 +82,7 @@ function printUsage() {
   console.log("  npx aidn runtime sync-db-first --target . --force-in-files --json");
   console.log("  npx aidn runtime sync-db-first --target . --no-repair-layer --json");
   console.log("  npx aidn runtime sync-db-first --target . --no-repair-layer-triage --json");
+  console.log("  npx aidn runtime sync-db-first --target . --repair-layer-autofix-safe-only --json");
 }
 
 function main() {
@@ -93,6 +98,7 @@ function main() {
       processAdapter,
       perfIndexSyncScript: PERF_INDEX_SYNC,
       repairLayerScript: RUNTIME_REPAIR_LAYER,
+      repairLayerAutofixScript: RUNTIME_REPAIR_LAYER_AUTOFIX,
       repairLayerTriageSummaryScript: PERF_REPAIR_LAYER_TRIAGE_SUMMARY,
     });
     if (args.json) {

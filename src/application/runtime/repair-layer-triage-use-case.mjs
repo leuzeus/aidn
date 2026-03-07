@@ -1,6 +1,8 @@
 import fs from "node:fs";
+import path from "node:path";
 import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import { resolveRuntimePath } from "./runtime-path-resolution.mjs";
+import { collectRepairLayerSafeAutofixPlan } from "./repair-layer-autofix-plan-lib.mjs";
 
 function detectBackend(indexFile, backend) {
   if (backend === "json" || backend === "sqlite") {
@@ -59,6 +61,11 @@ function buildResolveCommands(targetRoot, indexFile, backend, sessionId, candida
 }
 
 function buildTriageItem(finding, payload, targetRoot, indexFile, backend) {
+  const autofixSuggestion = String(finding?.entity_type ?? "") === "session"
+    ? (collectRepairLayerSafeAutofixPlan(payload, {
+      sessionId: String(finding?.entity_id ?? ""),
+    })[0] ?? null)
+    : null;
   const item = {
     severity: finding?.severity ?? null,
     finding_type: finding?.finding_type ?? null,
@@ -107,6 +114,25 @@ function buildTriageItem(finding, payload, targetRoot, indexFile, backend) {
         session_id: sessionId,
         candidates: ambiguousLinks,
         commands: buildResolveCommands(targetRoot, indexFile, backend, sessionId, ambiguousLinks),
+      });
+    }
+    if (autofixSuggestion && autofixSuggestion.conflicting_cycle_ids.length > 0) {
+      item.next_steps.push({
+        kind: "autofix_safe_only",
+        command: [
+          "node",
+          "tools/runtime/repair-layer-autofix.mjs",
+          "--target",
+          targetRoot,
+          "--index-file",
+          indexFile,
+          "--index-backend",
+          backend,
+          "--session-id",
+          sessionId,
+          "--apply",
+          "--json",
+        ].join(" "),
       });
     }
   }

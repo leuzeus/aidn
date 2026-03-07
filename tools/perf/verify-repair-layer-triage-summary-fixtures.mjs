@@ -94,6 +94,7 @@ function main() {
       contains_ambiguous_relation: markdown.includes("AMBIGUOUS_RELATION"),
       contains_query_command: markdown.includes("tools/runtime/repair-layer-query.mjs"),
       contains_resolve_command: markdown.includes("tools/runtime/repair-layer-resolve.mjs"),
+      contains_autofix_command: markdown.includes("tools/runtime/repair-layer-autofix.mjs"),
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {
