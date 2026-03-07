@@ -9,11 +9,13 @@ import {
   resolveConfigStateMode,
   writeAidnProjectConfig,
 } from "../../src/lib/config/aidn-config-lib.mjs";
+import { writeRepairLayerTriageArtifacts } from "../../src/application/runtime/repair-layer-artifact-service.mjs";
 
 const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PERF_INDEX_SYNC = path.resolve(RUNTIME_DIR, "..", "perf", "index-sync.mjs");
 const PERF_INDEX_EXPORT = path.resolve(RUNTIME_DIR, "..", "perf", "index-export-files.mjs");
 const RUNTIME_REPAIR_LAYER = path.resolve(RUNTIME_DIR, "repair-layer.mjs");
+const PERF_REPAIR_LAYER_TRIAGE_SUMMARY = path.resolve(RUNTIME_DIR, "..", "perf", "render-repair-layer-triage-summary.mjs");
 
 function parseArgs(argv) {
   const args = {
@@ -24,6 +26,9 @@ function parseArgs(argv) {
     auditRoot: "docs/audit",
     repairLayer: true,
     repairLayerReportFile: ".aidn/runtime/index/repair-layer-report.json",
+    repairLayerTriage: true,
+    repairLayerTriageFile: ".aidn/runtime/index/repair-layer-triage.json",
+    repairLayerTriageSummaryFile: ".aidn/runtime/index/repair-layer-triage-summary.md",
     strict: false,
     json: false,
   };
@@ -48,6 +53,14 @@ function parseArgs(argv) {
       args.repairLayer = false;
     } else if (token === "--repair-layer-report-file") {
       args.repairLayerReportFile = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--no-repair-layer-triage") {
+      args.repairLayerTriage = false;
+    } else if (token === "--repair-layer-triage-file") {
+      args.repairLayerTriageFile = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--repair-layer-triage-summary-file") {
+      args.repairLayerTriageSummaryFile = String(argv[i + 1] ?? "").trim();
       i += 1;
     } else if (token === "--strict") {
       args.strict = true;
@@ -80,6 +93,7 @@ function printUsage() {
   console.log("  npx aidn runtime mode-migrate --target . --to dual --json");
   console.log("  npx aidn runtime mode-migrate --target . --from db-only --to files --strict --json");
   console.log("  npx aidn runtime mode-migrate --target . --to db-only --no-repair-layer --json");
+  console.log("  npx aidn runtime mode-migrate --target . --to db-only --no-repair-layer-triage --json");
 }
 
 function resolveTargetPath(targetRoot, candidate) {
@@ -108,6 +122,13 @@ function runJson(script, scriptArgs) {
     stdio: ["ignore", "pipe", "pipe"],
   });
   return parseJsonOutput(stdout);
+}
+
+function runNode(script, scriptArgs) {
+  return execFileSync(process.execPath, [script, ...scriptArgs], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 }
 
 function parseJsonOutput(text) {
@@ -156,6 +177,7 @@ function main() {
     let syncResult = null;
     let exportResult = null;
     let repairLayerResult = null;
+    let repairLayerTriageResult = null;
 
     if (toMode === "dual" || toMode === "db-only") {
       const store = defaultIndexStoreFromStateMode(toMode);
@@ -189,6 +211,25 @@ function main() {
           ok: true,
           report_file: repairLayerResult.report_file,
         });
+        if (args.repairLayerTriage) {
+          repairLayerTriageResult = writeRepairLayerTriageArtifacts({
+            targetRoot,
+            indexFile,
+            backend: "sqlite",
+            triageFile: args.repairLayerTriageFile,
+            summaryFile: args.repairLayerTriageSummaryFile,
+            renderScript: PERF_REPAIR_LAYER_TRIAGE_SUMMARY,
+            runNodeScript(scriptPath, scriptArgs) {
+              return runNode(scriptPath, scriptArgs);
+            },
+          });
+          steps.push({
+            step: "repair_layer_triage",
+            ok: true,
+            triage_file: repairLayerTriageResult.triage_file,
+            summary_file: repairLayerTriageResult.summary_file,
+          });
+        }
       }
     }
 
@@ -228,6 +269,7 @@ function main() {
       steps,
       sync_result: syncResult,
       repair_layer_result: repairLayerResult,
+      repair_layer_triage_result: repairLayerTriageResult,
       export_result: exportResult,
       config_update: configUpdate,
     };

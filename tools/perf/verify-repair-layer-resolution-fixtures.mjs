@@ -61,6 +61,7 @@ function main() {
     fs.cpSync(sourceTarget, target, { recursive: true });
     fs.rmSync(path.join(target, ".aidn"), { recursive: true, force: true });
     const sqliteFile = resolveTargetPath(target, args.sqliteFile);
+    const sqliteFileArg = path.relative(process.cwd(), sqliteFile);
 
     runJson("tools/perf/index-sync.mjs", [
       "--target",
@@ -76,7 +77,7 @@ function main() {
       "--target",
       target,
       "--index-file",
-      sqliteFile,
+      sqliteFileArg,
       "--index-backend",
       "sqlite",
       "--session-id",
@@ -93,7 +94,7 @@ function main() {
       "--target",
       target,
       "--index-file",
-      sqliteFile,
+      sqliteFileArg,
       "--backend",
       "sqlite",
       "--query",
@@ -107,7 +108,7 @@ function main() {
       "--target",
       target,
       "--index-file",
-      sqliteFile,
+      sqliteFileArg,
       "--backend",
       "sqlite",
       "--query",
@@ -121,7 +122,7 @@ function main() {
       "--target",
       target,
       "--index-file",
-      sqliteFile,
+      sqliteFileArg,
       "--index-backend",
       "sqlite",
       "--session-id",
@@ -138,7 +139,7 @@ function main() {
       "--target",
       target,
       "--index-file",
-      sqliteFile,
+      sqliteFileArg,
       "--backend",
       "sqlite",
       "--query",

@@ -1,16 +1,6 @@
 import fs from "node:fs";
-import path from "node:path";
 import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
-
-function resolveTargetPath(targetRoot, candidatePath) {
-  if (!candidatePath) {
-    return "";
-  }
-  if (path.isAbsolute(candidatePath)) {
-    return path.resolve(candidatePath);
-  }
-  return path.resolve(targetRoot, candidatePath);
-}
+import { resolveRuntimePath } from "./runtime-path-resolution.mjs";
 
 function detectBackend(indexFile, backend) {
   if (backend === "json" || backend === "sqlite") {
@@ -146,7 +136,7 @@ function buildTriageItem(finding, payload, targetRoot, indexFile, backend) {
 }
 
 export function runRepairLayerTriageUseCase({ args, targetRoot }) {
-  const indexFile = resolveTargetPath(targetRoot, args.indexFile);
+  const indexFile = resolveRuntimePath(targetRoot, args.indexFile);
   const backend = detectBackend(indexFile, args.backend);
   const index = backend === "sqlite"
     ? readIndexFromSqlite(indexFile)

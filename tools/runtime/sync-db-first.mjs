@@ -8,6 +8,7 @@ import { normalizeStateMode } from "../../src/lib/config/aidn-config-lib.mjs";
 const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PERF_INDEX_SYNC = path.resolve(RUNTIME_DIR, "..", "perf", "index-sync.mjs");
 const RUNTIME_REPAIR_LAYER = path.resolve(RUNTIME_DIR, "repair-layer.mjs");
+const PERF_REPAIR_LAYER_TRIAGE_SUMMARY = path.resolve(RUNTIME_DIR, "..", "perf", "render-repair-layer-triage-summary.mjs");
 
 function parseArgs(argv) {
   const args = {
@@ -18,6 +19,9 @@ function parseArgs(argv) {
     repairLayer: true,
     repairLayerIndexFile: ".aidn/runtime/index/workflow-index.sqlite",
     repairLayerReportFile: ".aidn/runtime/index/repair-layer-report.json",
+    repairLayerTriage: true,
+    repairLayerTriageFile: ".aidn/runtime/index/repair-layer-triage.json",
+    repairLayerTriageSummaryFile: ".aidn/runtime/index/repair-layer-triage-summary.md",
     strict: false,
     json: false,
   };
@@ -42,6 +46,14 @@ function parseArgs(argv) {
     } else if (token === "--repair-layer-report-file") {
       args.repairLayerReportFile = String(argv[i + 1] ?? "").trim();
       i += 1;
+    } else if (token === "--no-repair-layer-triage") {
+      args.repairLayerTriage = false;
+    } else if (token === "--repair-layer-triage-file") {
+      args.repairLayerTriageFile = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--repair-layer-triage-summary-file") {
+      args.repairLayerTriageSummaryFile = String(argv[i + 1] ?? "").trim();
+      i += 1;
     } else if (token === "--strict") {
       args.strict = true;
     } else if (token === "--json") {
@@ -65,6 +77,7 @@ function printUsage() {
   console.log("  npx aidn runtime sync-db-first --target . --state-mode dual --strict --json");
   console.log("  npx aidn runtime sync-db-first --target . --force-in-files --json");
   console.log("  npx aidn runtime sync-db-first --target . --no-repair-layer --json");
+  console.log("  npx aidn runtime sync-db-first --target . --no-repair-layer-triage --json");
 }
 
 function main() {
@@ -80,6 +93,7 @@ function main() {
       processAdapter,
       perfIndexSyncScript: PERF_INDEX_SYNC,
       repairLayerScript: RUNTIME_REPAIR_LAYER,
+      repairLayerTriageSummaryScript: PERF_REPAIR_LAYER_TRIAGE_SUMMARY,
     });
     if (args.json) {
       console.log(JSON.stringify(out, null, 2));

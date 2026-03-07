@@ -5,16 +5,7 @@ import { buildRepairLayerService } from "./repair-layer-service.mjs";
 import { createWorkflowStateStoreAdapter } from "../../adapters/runtime/workflow-state-store-adapter.mjs";
 import { persistWorkflowIndexProjection } from "./index-state-store-service.mjs";
 import { buildRepairLayerInputDigest, mergeRepairLayerPayload } from "./repair-layer-payload-lib.mjs";
-
-function resolveTargetPath(targetRoot, candidatePath) {
-  if (!candidatePath) {
-    return "";
-  }
-  if (path.isAbsolute(candidatePath)) {
-    return path.resolve(candidatePath);
-  }
-  return path.resolve(targetRoot, candidatePath);
-}
+import { resolveRuntimePath } from "./runtime-path-resolution.mjs";
 
 function detectBackend(indexFile, backend) {
   if (backend === "json" || backend === "sqlite") {
@@ -66,7 +57,7 @@ export function runRepairLayerResolveUseCase({ args, targetRoot }) {
     throw new Error(`Missing audit root: ${auditRoot}`);
   }
 
-  const indexFile = resolveTargetPath(targetRoot, args.indexFile);
+  const indexFile = resolveRuntimePath(targetRoot, args.indexFile);
   const backend = detectBackend(indexFile, args.indexBackend);
   const index = backend === "sqlite"
     ? readIndexFromSqlite(indexFile)

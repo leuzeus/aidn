@@ -10,16 +10,7 @@ import {
   REPAIR_LAYER_ENGINE_VERSION,
   summarizeRepairLayer,
 } from "./repair-layer-payload-lib.mjs";
-
-function resolveTargetPath(targetRoot, candidatePath) {
-  if (!candidatePath) {
-    return "";
-  }
-  if (path.isAbsolute(candidatePath)) {
-    return path.resolve(candidatePath);
-  }
-  return path.resolve(targetRoot, candidatePath);
-}
+import { resolveRuntimePath } from "./runtime-path-resolution.mjs";
 
 function detectBackend(indexFile, backend) {
   if (backend === "json" || backend === "sqlite") {
@@ -61,7 +52,7 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
     throw new Error(`Missing audit root: ${auditRoot}`);
   }
 
-  const indexFile = resolveTargetPath(targetRoot, args.indexFile);
+  const indexFile = resolveRuntimePath(targetRoot, args.indexFile);
   const backend = detectBackend(indexFile, args.indexBackend);
   const index = backend === "sqlite"
     ? readIndexFromSqlite(indexFile)
@@ -102,7 +93,7 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
     });
     let reportFile = null;
     if (args.reportFile) {
-      reportFile = resolveTargetPath(targetRoot, args.reportFile);
+      reportFile = resolveRuntimePath(targetRoot, args.reportFile);
       writeJson(reportFile, {
         ts: new Date().toISOString(),
         target_root: targetRoot,
@@ -171,7 +162,7 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
 
   let reportFile = null;
   if (args.reportFile) {
-    reportFile = resolveTargetPath(targetRoot, args.reportFile);
+    reportFile = resolveRuntimePath(targetRoot, args.reportFile);
     writeJson(reportFile, {
       ts: new Date().toISOString(),
       target_root: targetRoot,

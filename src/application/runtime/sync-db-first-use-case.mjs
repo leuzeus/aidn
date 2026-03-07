@@ -1,5 +1,6 @@
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
 import { requiresStrictRuntime } from "../../core/state-mode/state-mode-policy.mjs";
+import { writeRepairLayerTriageArtifacts } from "./repair-layer-artifact-service.mjs";
 
 function resolveRepairLayerTarget(payload, args) {
   const outputs = Array.isArray(payload?.outputs) ? payload.outputs : [];
@@ -25,7 +26,14 @@ function resolveRepairLayerTarget(payload, args) {
   };
 }
 
-export function runSyncDbFirstUseCase({ args, targetRoot, processAdapter, perfIndexSyncScript, repairLayerScript }) {
+export function runSyncDbFirstUseCase({
+  args,
+  targetRoot,
+  processAdapter,
+  perfIndexSyncScript,
+  repairLayerScript,
+  repairLayerTriageSummaryScript,
+}) {
   const runtimeMode = resolveEffectiveRuntimeMode({
     targetRoot,
     stateMode: args.stateMode,
@@ -57,6 +65,7 @@ export function runSyncDbFirstUseCase({ args, targetRoot, processAdapter, perfIn
   ]);
 
   let repairLayerResult = null;
+  let repairLayerTriageResult = null;
   if (args.repairLayer !== false) {
     const repairTarget = resolveRepairLayerTarget(payload, args);
     repairLayerResult = processAdapter.runJsonNodeScript(repairLayerScript, [
@@ -70,6 +79,19 @@ export function runSyncDbFirstUseCase({ args, targetRoot, processAdapter, perfIn
       "--apply",
       "--json",
     ]);
+    if (args.repairLayerTriage !== false) {
+      repairLayerTriageResult = writeRepairLayerTriageArtifacts({
+        targetRoot,
+        indexFile: repairTarget.indexFile,
+        backend: repairTarget.indexBackend,
+        triageFile: args.repairLayerTriageFile,
+        summaryFile: args.repairLayerTriageSummaryFile,
+        renderScript: repairLayerTriageSummaryScript,
+        runNodeScript(scriptPath, scriptArgs) {
+          return processAdapter.runNodeScript(scriptPath, scriptArgs);
+        },
+      });
+    }
   }
 
   return {
@@ -82,5 +104,6 @@ export function runSyncDbFirstUseCase({ args, targetRoot, processAdapter, perfIn
     store: runtimeMode.indexStore,
     payload,
     repair_layer_result: repairLayerResult,
+    repair_layer_triage_result: repairLayerTriageResult,
   };
 }

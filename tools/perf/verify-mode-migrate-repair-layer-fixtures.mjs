@@ -73,6 +73,8 @@ function main() {
 
     const sqliteFile = path.resolve(workingCopy, ".aidn/runtime/index/workflow-index.sqlite");
     const reportFile = path.resolve(workingCopy, ".aidn/runtime/index/repair-layer-report.json");
+    const triageFile = path.resolve(workingCopy, ".aidn/runtime/index/repair-layer-triage.json");
+    const triageSummaryFile = path.resolve(workingCopy, ".aidn/runtime/index/repair-layer-triage-summary.md");
     const payload = readIndexFromSqlite(sqliteFile).payload;
     const config = readAidnProjectConfig(workingCopy).data ?? {};
     const runtime = config.runtime && typeof config.runtime === "object" ? config.runtime : {};
@@ -83,6 +85,9 @@ function main() {
       repair_layer_step_present: Array.isArray(migrated?.steps) && migrated.steps.some((step) => String(step?.step ?? "") === "repair_layer"),
       repair_layer_completed: ["applied", "skipped"].includes(String(migrated?.repair_layer_result?.action ?? "")),
       report_exists: fs.existsSync(reportFile),
+      triage_exists: fs.existsSync(triageFile),
+      triage_summary_exists: fs.existsSync(triageSummaryFile),
+      repair_layer_triage_step_present: Array.isArray(migrated?.steps) && migrated.steps.some((step) => String(step?.step ?? "") === "repair_layer_triage"),
       sqlite_exists: fs.existsSync(sqliteFile),
       sqlite_sessions_present: Array.isArray(payload.sessions) && payload.sessions.length >= 2,
       sqlite_ambiguous_relation_present: Array.isArray(payload.migration_findings)

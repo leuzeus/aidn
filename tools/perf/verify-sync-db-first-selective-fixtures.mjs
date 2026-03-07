@@ -88,6 +88,8 @@ function main() {
       "dual",
       "--json",
     ], REPO_ROOT);
+    const triageFile = path.join(repoRoot, ".aidn/runtime/index/repair-layer-triage.json");
+    const triageSummaryFile = path.join(repoRoot, ".aidn/runtime/index/repair-layer-triage-summary.md");
 
     writeFile(fileA, "# Snapshot\n\nv2\n");
     const selectiveUpdate = runJson(process.execPath, [
@@ -128,6 +130,8 @@ function main() {
       full_init_ok: fullInit.ok === true,
       full_init_repair_layer_completed: ["applied", "skipped"].includes(String(fullInit?.repair_layer_result?.action ?? "")),
       full_init_repair_layer_findings_field: Number(fullInit?.repair_layer_result?.summary?.migration_findings_count ?? -1) >= 0,
+      full_init_triage_written: fs.existsSync(triageFile),
+      full_init_triage_summary_written: fs.existsSync(triageSummaryFile),
       selective_update_ok: selectiveUpdate.ok === true,
       selective_update_synced: Number(selectiveUpdate?.summary?.synced_count ?? 0) >= 1,
       selective_update_no_fallback: selectiveUpdate.fallback_full_used === false,
@@ -150,6 +154,8 @@ function main() {
         full_init: {
           repair_layer_action: fullInit?.repair_layer_result?.action ?? null,
           repair_layer_findings: fullInit?.repair_layer_result?.summary?.migration_findings_count ?? null,
+          triage_file: fullInit?.repair_layer_triage_result?.triage_file ?? null,
+          triage_summary_file: fullInit?.repair_layer_triage_result?.summary_file ?? null,
         },
         selective_delete: {
           fallback_full_used: selectiveDelete?.fallback_full_used ?? null,

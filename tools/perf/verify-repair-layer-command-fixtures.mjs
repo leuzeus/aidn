@@ -61,6 +61,8 @@ function main() {
     const target = path.resolve(process.cwd(), args.target);
     const sqliteFile = resolveTargetPath(target, args.sqliteFile);
     const reportFile = resolveTargetPath(target, args.reportFile);
+    const sqliteFileArg = path.relative(process.cwd(), sqliteFile);
+    const reportFileArg = path.relative(process.cwd(), reportFile);
 
     runJson("tools/perf/index-sync.mjs", [
       "--target",
@@ -76,11 +78,11 @@ function main() {
       "--target",
       target,
       "--index-file",
-      sqliteFile,
+      sqliteFileArg,
       "--index-backend",
       "sqlite",
       "--report-file",
-      reportFile,
+      reportFileArg,
       "--apply",
       "--json",
     ]);

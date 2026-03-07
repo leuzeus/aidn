@@ -53,6 +53,7 @@ function main() {
     const target = path.join(tempRoot, "repo");
     fs.cpSync(sourceTarget, target, { recursive: true });
     fs.rmSync(path.join(target, ".aidn"), { recursive: true, force: true });
+    const sqliteFileArg = path.relative(process.cwd(), path.join(target, ".aidn/runtime/index/workflow-index.sqlite"));
 
     runJson("tools/perf/index-sync.mjs", [
       "--target",
@@ -66,7 +67,7 @@ function main() {
       "--target",
       target,
       "--index-file",
-      ".aidn/runtime/index/workflow-index.sqlite",
+      sqliteFileArg,
       "--backend",
       "sqlite",
       "--json",

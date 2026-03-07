@@ -201,6 +201,18 @@ jobs:
         run: |
           npm run perf:index-sqlite -- --target "$PERF_TARGET" --kpi-file "$PERF_RUNTIME_PERF/kpi-report.json"
 
+      - name: Apply Repair Layer
+        run: |
+          node tools/runtime/repair-layer.mjs --target "$PERF_TARGET" --index-file "$PERF_RUNTIME_INDEX/workflow-index.sqlite" --index-backend sqlite --report-file "$PERF_RUNTIME_INDEX/repair-layer-report.json" --apply --json > "$PERF_RUNTIME_INDEX/repair-layer.json"
+
+      - name: Build Repair Layer Triage
+        run: |
+          node tools/runtime/repair-layer-triage.mjs --target "$PERF_TARGET" --index-file "$PERF_RUNTIME_INDEX/workflow-index.sqlite" --backend sqlite --json > "$PERF_RUNTIME_INDEX/repair-layer-triage.json"
+
+      - name: Render Repair Layer Triage Summary
+        run: |
+          node tools/perf/render-repair-layer-triage-summary.mjs --triage-file "$PERF_RUNTIME_INDEX/repair-layer-triage.json" --out "$PERF_RUNTIME_INDEX/repair-layer-triage-summary.md"
+
       - name: Lightweight Canonical Coverage Check (non-blocking)
         run: |
           STRICT_INDEX_QUALITY="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_quality || false }}"

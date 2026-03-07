@@ -2,18 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { evaluateRepairRelation } from "../../core/workflow/repair-layer-policy.mjs";
+import { resolveRuntimePath } from "./runtime-path-resolution.mjs";
 
 const require = createRequire(import.meta.url);
-
-function resolveTargetPath(targetRoot, candidatePath) {
-  if (!candidatePath) {
-    return "";
-  }
-  if (path.isAbsolute(candidatePath)) {
-    return path.resolve(candidatePath);
-  }
-  return path.resolve(targetRoot, candidatePath);
-}
 
 function detectBackend(indexFile, backend) {
   if (backend === "json" || backend === "sqlite") {
@@ -384,7 +375,7 @@ function runRepairLayerQuerySqlite(db, args) {
 }
 
 export function runRepairLayerQueryUseCase({ args, targetRoot }) {
-  const indexFile = resolveTargetPath(targetRoot, args.indexFile);
+  const indexFile = resolveRuntimePath(targetRoot, args.indexFile);
   const backend = detectBackend(indexFile, args.backend);
   let indexAbsolute = null;
   let result;
