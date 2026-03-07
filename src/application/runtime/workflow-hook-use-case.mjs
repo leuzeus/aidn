@@ -17,17 +17,17 @@ import {
   requiresStrictRuntime,
   shouldRunConstraintLoopForState,
 } from "../../core/state-mode/state-mode-policy.mjs";
+import {
+  computeWorkflowHookDurationMs,
+  persistWorkflowRunId,
+  resolveWorkflowRunId,
+} from "./workflow-session-service.mjs";
 
 function appendEvent(eventFile, payload) {
   const absolute = path.resolve(process.cwd(), eventFile);
   fs.mkdirSync(path.dirname(absolute), { recursive: true });
   fs.appendFileSync(absolute, `${JSON.stringify(payload)}\n`, "utf8");
   return absolute;
-}
-
-function toRunId(prefix) {
-  const stamp = new Date().toISOString().replace(/[-:.TZ]/g, "");
-  return `${prefix}-${stamp}`;
 }
 
 function runCheckpoint(runtimeDir, targetRoot, mode, runId, indexOptions = {}) {
@@ -100,28 +100,6 @@ function runConstraintLoop(runtimeDir, targetRoot, options = {}) {
   return processAdapter.runJsonNodeScript(loopScript, cmd.slice(1));
 }
 
-function writeRunIdFile(filePath, runId) {
-  const absolute = path.resolve(process.cwd(), filePath);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  fs.writeFileSync(absolute, `${runId}\n`, "utf8");
-  return absolute;
-}
-
-function readRunIdFile(filePath) {
-  const absolute = path.resolve(process.cwd(), filePath);
-  if (!fs.existsSync(absolute)) {
-    return null;
-  }
-  const text = fs.readFileSync(absolute, "utf8").trim();
-  return text || null;
-}
-
-function removeRunIdFile(filePath) {
-  const absolute = path.resolve(process.cwd(), filePath);
-  fs.rmSync(absolute, { force: true });
-  return absolute;
-}
-
 function resolveTargetPath(targetRoot, candidatePath) {
   if (path.isAbsolute(candidatePath)) {
     return candidatePath;
@@ -151,11 +129,10 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
   const indexSqliteOutputPath = resolveTargetPath(targetRoot, args.indexSqliteOutput);
   const indexSyncCheckOutPath = resolveTargetPath(targetRoot, args.indexSyncCheckOut);
   const branch = gitAdapter.getCurrentBranch(targetRoot);
-  const phaseEvent = args.phase.replace("-", "_");
-  const existingRunId = readRunIdFile(runIdFilePathArg);
-  const runId = args.phase === "session-close"
-    ? (existingRunId || toRunId("session"))
-    : toRunId(`session-${phaseEvent}`);
+  const runId = resolveWorkflowRunId({
+    phase: args.phase,
+    runIdFilePath: runIdFilePathArg,
+  });
   const constraintLoopRequired = shouldRunConstraintLoopForState({
     phase: args.phase,
     constraintLoopMode: args.constraintLoopMode,
@@ -200,26 +177,21 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
     branch,
     mode: args.mode,
     phase: args.phase,
-    durationMs: (() => {
-      const elapsed = Date.now() - started;
-      const nested = Number(checkpointResult?.total_duration_ms ?? 0);
-      if (Number.isFinite(nested) && nested > 0) {
-        return Math.max(1, elapsed - nested);
-      }
-      return Math.max(1, elapsed);
-    })(),
+    durationMs: computeWorkflowHookDurationMs({
+      startedAtMs: started,
+      checkpointTotalDurationMs: checkpointResult?.total_duration_ms,
+    }),
     result: hookResult,
     reasonCode,
     traceId: `tr-${crypto.randomBytes(4).toString("hex")}`,
   });
   const appendedEventFile = appendEvent(eventFilePath, eventPayload);
 
-  let runIdFilePath = null;
-  if (args.phase === "session-start") {
-    runIdFilePath = writeRunIdFile(runIdFilePathArg, runId);
-  } else if (args.phase === "session-close") {
-    runIdFilePath = removeRunIdFile(runIdFilePathArg);
-  }
+  const runIdFilePath = persistWorkflowRunId({
+    phase: args.phase,
+    runIdFilePath: runIdFilePathArg,
+    runId,
+  });
 
   if (constraintLoopRequired) {
     try {
