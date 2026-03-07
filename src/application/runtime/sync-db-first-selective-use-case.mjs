@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveStateMode, upsertDbFirstArtifact } from "../../../tools/runtime/db-first-artifact.mjs";
+import { resolveStateMode } from "./db-first-artifact-lib.mjs";
+import { runDbFirstArtifactUseCase } from "./db-first-artifact-use-case.mjs";
 
 const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url));
 const FULL_SYNC_SCRIPT = path.resolve(RUNTIME_DIR, "..", "..", "..", "tools", "runtime", "sync-db-first.mjs");
@@ -128,7 +129,7 @@ export function runSyncDbFirstSelectiveUseCase({
       const relAudit = path.relative(auditRootAbs, absolute).replace(/\\/g, "/");
       summary.candidates_count += 1;
       try {
-        const out = upsertDbFirstArtifact({
+        const out = runDbFirstArtifactUseCase({
           target: targetRoot,
           path: relAudit,
           sourceFile: absolute,

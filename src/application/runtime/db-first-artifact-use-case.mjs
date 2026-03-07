@@ -1,13 +1,13 @@
 import path from "node:path";
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
-import { createArtifactStore } from "../../../tools/runtime/artifact-store.mjs";
+import { createArtifactStore } from "../../adapters/runtime/artifact-store.mjs";
 import {
   inferFamily,
   inferKind,
   loadContent,
   resolveStateMode,
   shouldMaterialize,
-} from "../../../tools/runtime/db-first-artifact.mjs";
+} from "./db-first-artifact-lib.mjs";
 
 export function runDbFirstArtifactUseCase(options = {}) {
   const targetRoot = path.resolve(process.cwd(), options.target ?? ".");
