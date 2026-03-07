@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { writeJsonIfChanged } from "../../src/lib/index/io-lib.mjs";
+import { createLocalProcessAdapter } from "../../src/adapters/runtime/local-process-adapter.mjs";
+import { runConstraintLoopUseCase } from "../../src/application/runtime/constraint-loop-use-case.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
@@ -114,183 +114,17 @@ function printUsage() {
   console.log("  node tools/perf/constraint-loop.mjs --target . --strict");
 }
 
-function resolveTargetPath(targetRoot, candidatePath) {
-  if (path.isAbsolute(candidatePath)) {
-    return candidatePath;
-  }
-  return path.resolve(targetRoot, candidatePath);
-}
-
-function runToolJson(scriptName, scriptArgs) {
-  const stdout = execFileSync(process.execPath, [path.join(PERF_DIR, scriptName), ...scriptArgs], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  return JSON.parse(stdout);
-}
-
-function runToolNoJson(scriptName, scriptArgs) {
-  execFileSync(process.execPath, [path.join(PERF_DIR, scriptName), ...scriptArgs], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-}
-
 function main() {
-  const started = Date.now();
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const eventFile = resolveTargetPath(targetRoot, args.eventFile);
-    const reportFile = resolveTargetPath(targetRoot, args.reportFile);
-    const thresholdsFile = resolveTargetPath(targetRoot, args.thresholdsFile);
-    const actionsFile = resolveTargetPath(targetRoot, args.actionsFile);
-    const historyFile = resolveTargetPath(targetRoot, args.historyFile);
-    const trendFile = resolveTargetPath(targetRoot, args.trendFile);
-    const trendThresholdsFile = resolveTargetPath(targetRoot, args.trendThresholdsFile);
-    const trendSummaryFile = resolveTargetPath(targetRoot, args.trendSummaryFile);
-    const lotPlanFile = resolveTargetPath(targetRoot, args.lotPlanFile);
-    const lotAdvanceFile = resolveTargetPath(targetRoot, args.lotAdvanceFile);
-    const lotSummaryFile = resolveTargetPath(targetRoot, args.lotSummaryFile);
-    const summaryFile = resolveTargetPath(targetRoot, args.summaryFile);
-
-    const report = runToolJson("report-constraints.mjs", [
-      "--file",
-      eventFile,
-      "--run-prefix",
-      args.runPrefix,
-      "--out",
-      reportFile,
-      "--json",
-    ]);
-    const thresholds = runToolJson("check-thresholds-defaults.mjs", [
-      "--preset",
-      "constraint",
-      "--target",
+    const processAdapter = createLocalProcessAdapter();
+    const output = runConstraintLoopUseCase({
+      args,
       targetRoot,
-      "--kpi-file",
-      reportFile,
-      "--out",
-      thresholdsFile,
-      ...(args.strict ? ["--strict"] : []),
-      "--json",
-    ]);
-    const actions = runToolJson("report-constraint-actions.mjs", [
-      "--report-file",
-      reportFile,
-      "--thresholds-file",
-      thresholdsFile,
-      "--out",
-      actionsFile,
-      "--json",
-    ]);
-    runToolJson("sync-constraint-history.mjs", [
-      "--report-file",
-      reportFile,
-      "--actions-file",
-      actionsFile,
-      "--history-file",
-      historyFile,
-      "--max-runs",
-      String(args.maxRuns),
-      "--json",
-    ]);
-    const trend = runToolJson("report-constraint-trend.mjs", [
-      "--history-file",
-      historyFile,
-      "--out",
-      trendFile,
-      "--json",
-    ]);
-    const trendThresholds = runToolJson("check-thresholds-defaults.mjs", [
-      "--preset",
-      "constraint-trend",
-      "--target",
-      targetRoot,
-      "--kpi-file",
-      trendFile,
-      "--out",
-      trendThresholdsFile,
-      ...(args.strict ? ["--strict"] : []),
-      "--json",
-    ]);
-    const lotPlan = runToolJson("report-constraint-lot-plan.mjs", [
-      "--actions-file",
-      actionsFile,
-      "--trend-file",
-      trendFile,
-      "--out",
-      lotPlanFile,
-      "--max-lot-size",
-      String(args.maxLotSize),
-      "--lot-prefix",
-      args.lotPrefix,
-      "--json",
-    ]);
-    const lotAdvance = runToolJson("advance-constraint-lot-plan.mjs", [
-      "--plan-file",
-      lotPlanFile,
-      "--json",
-    ]);
-    const lotAdvanceWrite = writeJsonIfChanged(lotAdvanceFile, lotAdvance);
-
-    runToolNoJson("render-constraint-trend-summary.mjs", [
-      "--report-file",
-      trendFile,
-      "--thresholds-file",
-      trendThresholdsFile,
-      "--out",
-      trendSummaryFile,
-    ]);
-    runToolNoJson("render-constraint-lot-plan-summary.mjs", [
-      "--plan-file",
-      lotPlanFile,
-      "--advance-file",
-      lotAdvanceFile,
-      "--out",
-      lotSummaryFile,
-    ]);
-    runToolNoJson("render-constraint-summary.mjs", [
-      "--report-file",
-      reportFile,
-      "--thresholds-file",
-      thresholdsFile,
-      "--actions-file",
-      actionsFile,
-      "--out",
-      summaryFile,
-    ]);
-
-    const output = {
-      ts: new Date().toISOString(),
-      target_root: targetRoot,
-      strict: args.strict,
-      event_file: eventFile,
-      run_prefix: args.runPrefix,
-      artifacts: {
-        report_file: reportFile,
-        thresholds_file: thresholdsFile,
-        actions_file: actionsFile,
-        history_file: historyFile,
-        trend_file: trendFile,
-        trend_thresholds_file: trendThresholdsFile,
-        trend_summary_file: trendSummaryFile,
-        lot_plan_file: lotPlanFile,
-        lot_advance_file: lotAdvanceWrite.path,
-        lot_advance_written: lotAdvanceWrite.written,
-        lot_summary_file: lotSummaryFile,
-        summary_file: summaryFile,
-      },
-      summary: {
-        constraint_status: thresholds?.summary?.overall_status ?? null,
-        trend_status: trendThresholds?.summary?.overall_status ?? null,
-        active_constraint_skill: report?.summary?.active_constraint?.skill ?? null,
-        actions_generated: actions?.summary?.generated_actions ?? null,
-        lots_total: lotPlan?.summary?.lots_total ?? null,
-        next_lot_id: lotPlan?.summary?.next_lot_id ?? null,
-      },
-      duration_ms: Date.now() - started,
-    };
+      runtimeDir: PERF_DIR,
+      processAdapter,
+    });
 
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));

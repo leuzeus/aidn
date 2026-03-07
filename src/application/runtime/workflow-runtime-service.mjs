@@ -1,5 +1,23 @@
 import path from "node:path";
 
+export function runWorkflowRuntimeScript({
+  processAdapter,
+  runtimeDir,
+  scriptName,
+  args = [],
+}) {
+  return processAdapter.runNodeScript(path.join(runtimeDir, scriptName), args);
+}
+
+export function runWorkflowRuntimeJsonScript({
+  processAdapter,
+  runtimeDir,
+  scriptName,
+  args = [],
+}) {
+  return processAdapter.runJsonNodeScript(path.join(runtimeDir, scriptName), args);
+}
+
 export function runWorkflowCheckpoint({
   processAdapter,
   runtimeDir,
@@ -8,7 +26,6 @@ export function runWorkflowCheckpoint({
   runId,
   indexOptions = {},
 }) {
-  const checkpointScript = path.join(runtimeDir, "checkpoint.mjs");
   const cmd = [
     "--target",
     targetRoot,
@@ -53,7 +70,12 @@ export function runWorkflowCheckpoint({
   }
   cmd.push("--json");
 
-  return processAdapter.runJsonNodeScript(checkpointScript, cmd);
+  return runWorkflowRuntimeJsonScript({
+    processAdapter,
+    runtimeDir,
+    scriptName: "checkpoint.mjs",
+    args: cmd,
+  });
 }
 
 export function runWorkflowConstraintLoop({
@@ -62,7 +84,6 @@ export function runWorkflowConstraintLoop({
   targetRoot,
   options = {},
 }) {
-  const loopScript = path.join(runtimeDir, "constraint-loop.mjs");
   const cmd = [
     "--target",
     targetRoot,
@@ -75,5 +96,10 @@ export function runWorkflowConstraintLoop({
   }
   cmd.push("--json");
 
-  return processAdapter.runJsonNodeScript(loopScript, cmd);
+  return runWorkflowRuntimeJsonScript({
+    processAdapter,
+    runtimeDir,
+    scriptName: "constraint-loop.mjs",
+    args: cmd,
+  });
 }
