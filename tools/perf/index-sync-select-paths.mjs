@@ -87,6 +87,40 @@ function resolveTargetPath(targetRoot, candidatePath) {
   return path.resolve(targetRoot, candidatePath);
 }
 
+function resolveInputPathPreferTarget(targetRoot, candidatePath) {
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+
+  const fromTarget = path.resolve(targetRoot, candidatePath);
+  if (fs.existsSync(fromTarget)) {
+    return fromTarget;
+  }
+
+  const fromCwd = path.resolve(process.cwd(), candidatePath);
+  if (fs.existsSync(fromCwd)) {
+    return fromCwd;
+  }
+
+  return fromTarget;
+}
+
+function resolveOutputPathPreferExistingRoot(targetRoot, candidatePath) {
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+
+  const fromTarget = path.resolve(targetRoot, candidatePath);
+  const fromCwd = path.resolve(process.cwd(), candidatePath);
+  const targetParentExists = fs.existsSync(path.dirname(fromTarget));
+  const cwdParentExists = fs.existsSync(path.dirname(fromCwd));
+
+  if (!targetParentExists && cwdParentExists) {
+    return fromCwd;
+  }
+  return fromTarget;
+}
+
 function readJson(filePath) {
   if (!fs.existsSync(filePath)) {
     throw new Error(`JSON file not found: ${filePath}`);
@@ -113,8 +147,8 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const checkFilePath = resolveTargetPath(targetRoot, args.checkFile);
-    const outPath = resolveTargetPath(targetRoot, args.out);
+    const checkFilePath = resolveInputPathPreferTarget(targetRoot, args.checkFile);
+    const outPath = resolveOutputPathPreferExistingRoot(targetRoot, args.out);
     const check = readJson(checkFilePath);
     const includeTypesSet = new Set(args.includeTypes);
     const mismatches = Array.isArray(check?.artifact_mismatches) ? check.artifact_mismatches : [];
