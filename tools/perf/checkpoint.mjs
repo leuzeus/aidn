@@ -289,11 +289,15 @@ function main() {
       throw new Error("Invalid effective AIDN_STATE_MODE. Expected files|dual|db-only");
     }
     if (!args.indexStoreExplicit && !envIndexStoreSet) {
-      const configStore = resolveConfigIndexStore(config.data);
-      if (configStore) {
-        args.indexStore = configStore;
-      } else if (!normalizeIndexStoreMode(args.indexStore)) {
+      if (envStateModeSet) {
         args.indexStore = defaultIndexStoreFromStateMode(args.stateMode);
+      } else {
+        const configStore = resolveConfigIndexStore(config.data);
+        if (configStore) {
+          args.indexStore = configStore;
+        } else if (!normalizeIndexStoreMode(args.indexStore)) {
+          args.indexStore = defaultIndexStoreFromStateMode(args.stateMode);
+        }
       }
     }
     if (!normalizeIndexStoreMode(args.indexStore)) {

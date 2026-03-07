@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { createHookContextStoreAdapter } from "../../src/adapters/codex/hook-context-store-adapter.mjs";
 import { readIndexFromSqlite } from "../perf/index-sqlite-lib.mjs";
-import { readHookContext } from "./context-store.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -193,8 +193,9 @@ function writeJson(filePath, payload) {
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
+    const hookContextStore = createHookContextStoreAdapter();
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const context = readHookContext({
+    const context = hookContextStore.readContext({
       targetRoot,
       contextFile: args.contextFile,
     });

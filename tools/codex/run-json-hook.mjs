@@ -7,8 +7,8 @@ import {
   readAidnProjectConfig,
   resolveConfigStateMode,
 } from "../aidn-config-lib.mjs";
+import { createHookContextStoreAdapter } from "../../src/adapters/codex/hook-context-store-adapter.mjs";
 import { normalizeHookPayload } from "./normalize-hook-payload.mjs";
-import { persistHookContext } from "./context-store.mjs";
 
 const CODEX_DIR = path.dirname(fileURLToPath(import.meta.url));
 const RUNTIME_SYNC_SCRIPT = path.resolve(CODEX_DIR, "..", "runtime", "sync-db-first-selective.mjs");
@@ -296,7 +296,7 @@ function main() {
       targetRoot,
     });
 
-    const contextWrite = persistHookContext({
+    const contextWrite = hookContextStore.persistContext({
       targetRoot,
       contextFile: args.contextFile,
       rawDir: args.rawDir,
@@ -393,3 +393,4 @@ function main() {
 
 main();
 
+    const hookContextStore = createHookContextStoreAdapter();

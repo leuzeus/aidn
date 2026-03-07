@@ -3,7 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { createIndexStore } from "./index-store.mjs";
+import { createWorkflowStateStoreAdapter } from "../../src/adapters/runtime/workflow-state-store-adapter.mjs";
+import { persistWorkflowIndexProjection } from "../../src/application/runtime/index-state-store-service.mjs";
 import { detectStructureProfile } from "./structure-profile-lib.mjs";
 import { buildCanonicalFromMarkdown } from "./markdown-render-lib.mjs";
 import {
@@ -643,11 +644,15 @@ function main() {
       throw new Error("Invalid effective AIDN_STATE_MODE. Expected files|dual|db-only");
     }
     if (!args.storeExplicit && !envIndexStoreSet) {
-      const configStore = resolveConfigIndexStore(config.data);
-      if (configStore) {
-        args.store = configStore;
-      } else if (!normalizeIndexStoreMode(args.store)) {
+      if (envStateModeSet) {
         args.store = defaultIndexStoreFromStateMode(args.stateMode);
+      } else {
+        const configStore = resolveConfigIndexStore(config.data);
+        if (configStore) {
+          args.store = configStore;
+        } else if (!normalizeIndexStoreMode(args.store)) {
+          args.store = defaultIndexStoreFromStateMode(args.stateMode);
+        }
       }
     }
     args.store = String(args.store ?? "").toLowerCase();
@@ -702,23 +707,19 @@ function main() {
     };
     const digest = payloadDigest(payload);
 
-    const outputs = [];
-    let writes = { files_written_count: 0, bytes_written: 0 };
-    if (!args.dryRun) {
-      const store = createIndexStore({
-        mode: args.store,
-        jsonOutput: args.output,
-        sqlOutput: args.sqlOutput,
-        sqliteOutput: args.sqliteOutput,
-        schemaFile: args.schemaFile,
-        includeSchema: args.includeSchema,
-      });
-      outputs.push(...store.write(payload));
-      writes = outputs.reduce((acc, out) => ({
-        files_written_count: acc.files_written_count + (out.written ? 1 : 0),
-        bytes_written: acc.bytes_written + (out.written ? Number(out.bytes_written ?? 0) : 0),
-      }), { files_written_count: 0, bytes_written: 0 });
-    }
+    const stateStore = createWorkflowStateStoreAdapter({
+      mode: args.store,
+      jsonOutput: args.output,
+      sqlOutput: args.sqlOutput,
+      sqliteOutput: args.sqliteOutput,
+      schemaFile: args.schemaFile,
+      includeSchema: args.includeSchema,
+    });
+    const { outputs, writes } = persistWorkflowIndexProjection({
+      stateStore,
+      payload,
+      dryRun: args.dryRun,
+    });
 
     if (args.json) {
       console.log(JSON.stringify({
