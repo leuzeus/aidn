@@ -102,6 +102,7 @@
     "perf:verify-repair-layer": "node tools/perf/verify-repair-layer-fixtures.mjs",
     "perf:verify-repair-layer-session": "node tools/perf/verify-repair-layer-session-fixtures.mjs",
     "perf:verify-repair-layer-hydration": "node tools/perf/verify-repair-layer-hydration-fixtures.mjs",
+    "perf:verify-repair-layer-command": "node tools/perf/verify-repair-layer-command-fixtures.mjs",
     "perf:verify-support-artifacts": "node tools/perf/verify-support-artifacts-fixtures.mjs",
     "perf:verify-db-only-hooks": "node tools/perf/verify-db-only-hooks-fixtures.mjs",
     "perf:verify-skill-hook-state-mode": "node tools/perf/verify-skill-hook-state-mode-fixtures.mjs",
