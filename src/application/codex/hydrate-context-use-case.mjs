@@ -44,6 +44,7 @@ function readJsonIndex(indexFile) {
 
 function selectArtifacts(payload, maxArtifactBytes) {
   const artifacts = Array.isArray(payload?.artifacts) ? payload.artifacts : [];
+  const artifactLinks = Array.isArray(payload?.artifact_links) ? payload.artifact_links : [];
   const priority = new Set([
     "baseline/current.md",
     "snapshots/context-snapshot.md",
@@ -55,6 +56,23 @@ function selectArtifacts(payload, maxArtifactBytes) {
       .filter((cycle) => ["OPEN", "IMPLEMENTING", "VERIFYING"].includes(String(cycle?.state ?? "").toUpperCase()))
       .map((cycle) => String(cycle?.cycle_id ?? "")),
   );
+  const cycleStatusTargets = new Set();
+  const prioritySources = new Set(["baseline/current.md", "baseline/history.md", "snapshots/context-snapshot.md"]);
+  for (const row of artifactLinks) {
+    const sourcePath = String(row?.source_path ?? "").replace(/\\/g, "/");
+    const targetPath = String(row?.target_path ?? "").replace(/\\/g, "/");
+    const relationType = String(row?.relation_type ?? "");
+    if (!prioritySources.has(sourcePath)) {
+      continue;
+    }
+    if (!["summarizes_cycle", "supports_cycle"].includes(relationType)) {
+      continue;
+    }
+    if (!/\/status\.md$/i.test(targetPath)) {
+      continue;
+    }
+    cycleStatusTargets.add(targetPath);
+  }
 
   const selected = [];
   const seen = new Set();
@@ -95,6 +113,12 @@ function selectArtifacts(payload, maxArtifactBytes) {
   }
   for (const artifact of artifacts) {
     if (activeCycleIds.has(String(artifact?.cycle_id ?? "")) && /\/status\.md$/i.test(String(artifact?.path ?? ""))) {
+      pick(artifact);
+    }
+  }
+  for (const artifact of artifacts) {
+    const rel = String(artifact?.path ?? "").replace(/\\/g, "/");
+    if (cycleStatusTargets.has(rel)) {
       pick(artifact);
     }
   }

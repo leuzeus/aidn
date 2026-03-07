@@ -484,6 +484,14 @@ function extractCycleIdsFromText(text) {
   return Array.from(new Set(matches.map((item) => item.toUpperCase()))).sort((a, b) => a.localeCompare(b));
 }
 
+function extractSessionIdsFromText(text) {
+  if (typeof text !== "string" || text.length === 0) {
+    return [];
+  }
+  const matches = text.match(/\bS\d+\b/gi) ?? [];
+  return Array.from(new Set(matches.map((item) => item.toUpperCase()))).sort((a, b) => a.localeCompare(b));
+}
+
 function extractSessionField(text, fieldName) {
   if (typeof text !== "string" || text.length === 0) {
     return null;
@@ -699,7 +707,9 @@ function buildRepairLayer(auditRoot, artifacts, cycles, options = {}) {
 
     if (artifact.kind === "snapshot" || artifact.kind === "baseline") {
       const text = readTextArtifact(auditRoot, artifact.path);
-      for (const cycleId of extractCycleIdsFromText(text)) {
+      const referencedCycleIds = extractCycleIdsFromText(text);
+      const referencedSessionIds = extractSessionIdsFromText(text);
+      for (const cycleId of referencedCycleIds) {
         const statusPath = cycleStatusById.get(cycleId);
         if (!statusPath) {
           addFinding({
@@ -725,6 +735,60 @@ function buildRepairLayer(auditRoot, artifacts, cycles, options = {}) {
           source_mode: "inferred",
           updated_at: artifact.updated_at ?? now,
         });
+      }
+      if (artifact.kind === "snapshot") {
+        for (const sessionId of referencedSessionIds) {
+          addSession({
+            session_id: sessionId,
+            branch_name: null,
+            state: null,
+            owner: sessionId,
+            started_at: null,
+            ended_at: null,
+            source_artifact_path: artifact.path,
+            source_confidence: 0.7,
+            source_mode: "inferred",
+            updated_at: artifact.updated_at ?? now,
+          });
+          for (const cycleId of referencedCycleIds) {
+            addSessionCycleLink({
+              session_id: sessionId,
+              cycle_id: cycleId,
+              relation_type: "active_in_snapshot",
+              confidence: 0.8,
+              inference_source: "snapshot_active_cycles",
+              source_mode: "inferred",
+              updated_at: artifact.updated_at ?? now,
+            });
+          }
+        }
+      }
+      if (artifact.kind === "baseline") {
+        for (const sessionId of referencedSessionIds) {
+          addSession({
+            session_id: sessionId,
+            branch_name: null,
+            state: null,
+            owner: sessionId,
+            started_at: null,
+            ended_at: null,
+            source_artifact_path: artifact.path,
+            source_confidence: 0.6,
+            source_mode: "inferred",
+            updated_at: artifact.updated_at ?? now,
+          });
+          for (const cycleId of referencedCycleIds) {
+            addSessionCycleLink({
+              session_id: sessionId,
+              cycle_id: cycleId,
+              relation_type: "included_in_baseline",
+              confidence: 0.7,
+              inference_source: "baseline_included_cycles",
+              source_mode: "inferred",
+              updated_at: artifact.updated_at ?? now,
+            });
+          }
+        }
       }
     }
 
