@@ -121,6 +121,7 @@
     "perf:verify-agent-hook-repair-layer": "node tools/perf/verify-agent-hook-repair-layer-fixtures.mjs",
     "perf:verify-codex-context-repair-layer": "node tools/perf/verify-codex-context-repair-layer-fixtures.mjs",
     "perf:verify-hydrate-context-repair-focus": "node tools/perf/verify-hydrate-context-repair-focus-fixtures.mjs",
+    "perf:verify-agent-hook-repair-block": "node tools/perf/verify-agent-hook-repair-block-fixtures.mjs",
     "perf:verify-skill-hook-state-mode": "node tools/perf/verify-skill-hook-state-mode-fixtures.mjs",
     "perf:verify-constraint-report": "node tools/perf/verify-constraint-report-fixtures.mjs",
     "perf:verify-constraint-actions": "node tools/perf/verify-constraint-actions-fixtures.mjs",

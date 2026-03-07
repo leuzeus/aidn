@@ -24,6 +24,7 @@ function parseArgs(argv) {
     stateMode: "",
     strict: false,
     noAutoSkipGate: false,
+    failOnRepairBlock: false,
     failOnError: false,
     forceJson: true,
     contextFile: ".aidn/runtime/context/codex-context.json",
@@ -53,6 +54,8 @@ function parseArgs(argv) {
       args.strict = true;
     } else if (token === "--no-auto-skip-gate") {
       args.noAutoSkipGate = true;
+    } else if (token === "--fail-on-repair-block") {
+      args.failOnRepairBlock = true;
     } else if (token === "--fail-on-error") {
       args.failOnError = true;
     } else if (token === "--no-force-json") {
@@ -101,6 +104,7 @@ function printUsage() {
   console.log("  npx aidn codex run-json-hook --skill branch-cycle-audit --mode COMMITTING --target . --strict --fail-on-error");
   console.log("  npx aidn codex run-json-hook --skill cycle-create --mode COMMITTING --target . --db-sync --json");
   console.log("  npx aidn codex run-json-hook --skill close-session --mode COMMITTING --target . --no-auto-skip-gate --json");
+  console.log("  npx aidn codex run-json-hook --skill close-session --mode COMMITTING --target . --fail-on-repair-block");
 }
 
 function main() {
@@ -136,7 +140,8 @@ function main() {
 
     const dbSyncFailed = output.db_sync?.enabled === true && output.db_sync?.error != null;
     const shouldFail = (!output.ok && (args.failOnError || output.strict === true))
-      || (dbSyncFailed && output.strict === true);
+      || (dbSyncFailed && output.strict === true)
+      || (args.failOnRepairBlock && String(output.repair_layer_status ?? "") === "block");
     if (shouldFail) {
       process.exit(1);
     }
