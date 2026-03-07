@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { readIndexFromSqlite } from "../../../tools/perf/index-sqlite-lib.mjs";
+import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 
 function resolveTargetPath(targetRoot, candidate) {
   if (!candidate) {
