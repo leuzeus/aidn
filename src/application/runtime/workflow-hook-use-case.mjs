@@ -22,82 +22,16 @@ import {
   persistWorkflowRunId,
   resolveWorkflowRunId,
 } from "./workflow-session-service.mjs";
+import {
+  runWorkflowCheckpoint,
+  runWorkflowConstraintLoop,
+} from "./workflow-runtime-service.mjs";
 
 function appendEvent(eventFile, payload) {
   const absolute = path.resolve(process.cwd(), eventFile);
   fs.mkdirSync(path.dirname(absolute), { recursive: true });
   fs.appendFileSync(absolute, `${JSON.stringify(payload)}\n`, "utf8");
   return absolute;
-}
-
-function runCheckpoint(runtimeDir, targetRoot, mode, runId, indexOptions = {}) {
-  const checkpointScript = path.join(runtimeDir, "checkpoint.mjs");
-  const cmd = [
-    checkpointScript,
-    "--target",
-    targetRoot,
-    "--mode",
-    mode,
-  ];
-  if (runId) {
-    cmd.push("--run-id", runId);
-  }
-  if (indexOptions.store) {
-    cmd.push("--index-store", indexOptions.store);
-  }
-  if (indexOptions.output) {
-    cmd.push("--index-output", indexOptions.output);
-  }
-  if (indexOptions.sqlOutput) {
-    cmd.push("--index-sql-output", indexOptions.sqlOutput);
-  }
-  if (indexOptions.sqliteOutput) {
-    cmd.push("--index-sqlite-output", indexOptions.sqliteOutput);
-  }
-  if (indexOptions.schemaFile) {
-    cmd.push("--index-schema-file", indexOptions.schemaFile);
-  }
-  if (indexOptions.includeSchema === false) {
-    cmd.push("--index-no-schema");
-  }
-  if (indexOptions.kpiFile) {
-    cmd.push("--index-kpi-file", indexOptions.kpiFile);
-  }
-  if (indexOptions.syncCheck === true) {
-    cmd.push("--index-sync-check");
-  }
-  if (indexOptions.syncCheckStrict === true) {
-    cmd.push("--index-sync-check-strict");
-  }
-  if (indexOptions.syncCheckOut) {
-    cmd.push("--index-sync-check-out", indexOptions.syncCheckOut);
-  }
-  if (indexOptions.skipGateEvaluate === true) {
-    cmd.push("--skip-gate-evaluate");
-  }
-  cmd.push("--json");
-
-  const processAdapter = createLocalProcessAdapter();
-  return processAdapter.runJsonNodeScript(checkpointScript, cmd.slice(1));
-}
-
-function runConstraintLoop(runtimeDir, targetRoot, options = {}) {
-  const loopScript = path.join(runtimeDir, "constraint-loop.mjs");
-  const cmd = [
-    loopScript,
-    "--target",
-    targetRoot,
-  ];
-  if (options.eventFile) {
-    cmd.push("--event-file", options.eventFile);
-  }
-  if (options.strict === true) {
-    cmd.push("--strict");
-  }
-  cmd.push("--json");
-
-  const processAdapter = createLocalProcessAdapter();
-  return processAdapter.runJsonNodeScript(loopScript, cmd.slice(1));
 }
 
 function resolveTargetPath(targetRoot, candidatePath) {
@@ -109,6 +43,7 @@ function resolveTargetPath(targetRoot, candidatePath) {
 
 export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
   const gitAdapter = createLocalGitAdapter();
+  const processAdapter = createLocalProcessAdapter();
   const started = Date.now();
   const runtimeMode = resolveEffectiveRuntimeMode({
     targetRoot,
@@ -145,18 +80,25 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
   let constraintLoopError = null;
 
   try {
-    checkpointResult = runCheckpoint(runtimeDir, targetRoot, args.mode, runId, {
-      store: args.indexStore,
-      output: indexOutputPath,
-      sqlOutput: indexSqlOutputPath,
-      sqliteOutput: indexSqliteOutputPath,
-      schemaFile: args.indexSchemaFile,
-      includeSchema: args.indexIncludeSchema,
-      kpiFile: args.indexKpiFile,
-      syncCheck: args.indexSyncCheck,
-      syncCheckStrict: args.indexSyncCheckStrict,
-      syncCheckOut: indexSyncCheckOutPath,
-      skipGateEvaluate: args.phase === "session-start" && args.startLightGate,
+    checkpointResult = runWorkflowCheckpoint({
+      processAdapter,
+      runtimeDir,
+      targetRoot,
+      mode: args.mode,
+      runId,
+      indexOptions: {
+        store: args.indexStore,
+        output: indexOutputPath,
+        sqlOutput: indexSqlOutputPath,
+        sqliteOutput: indexSqliteOutputPath,
+        schemaFile: args.indexSchemaFile,
+        includeSchema: args.indexIncludeSchema,
+        kpiFile: args.indexKpiFile,
+        syncCheck: args.indexSyncCheck,
+        syncCheckStrict: args.indexSyncCheckStrict,
+        syncCheckOut: indexSyncCheckOutPath,
+        skipGateEvaluate: args.phase === "session-start" && args.startLightGate,
+      },
     });
   } catch (error) {
     checkpointError = error;
@@ -195,9 +137,14 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
 
   if (constraintLoopRequired) {
     try {
-      constraintLoopResult = runConstraintLoop(runtimeDir, targetRoot, {
-        eventFile: eventFilePath,
-        strict: args.constraintLoopStrict,
+      constraintLoopResult = runWorkflowConstraintLoop({
+        processAdapter,
+        runtimeDir,
+        targetRoot,
+        options: {
+          eventFile: eventFilePath,
+          strict: args.constraintLoopStrict,
+        },
       });
     } catch (error) {
       constraintLoopError = error;
