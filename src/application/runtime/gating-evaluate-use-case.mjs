@@ -1,5 +1,3 @@
-import path from "node:path";
-import { execSync, execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 import { deriveGatingAction } from "../../core/gating/gating-policy.mjs";
 import {
@@ -17,6 +15,8 @@ import {
   appendRuntimeNdjsonEvent,
   resolveRuntimeTargetPath,
 } from "./runtime-path-service.mjs";
+import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-adapter.mjs";
+import { runWorkflowRuntimeJsonScript } from "./workflow-runtime-service.mjs";
 
 function parseReloadReasonCodes(value) {
   if (!value) {
@@ -39,29 +39,28 @@ function parseReloadReasonCodes(value) {
 }
 
 function runReloadCheck(runtimeDir, targetRoot, cachePath, stateMode, indexFile, indexBackend) {
-  const command = [
-    path.join(runtimeDir, "reload-check.mjs"),
-    "--target",
-    targetRoot,
-    "--cache",
-    cachePath,
-    "--state-mode",
-    stateMode,
-    "--index-file",
-    indexFile,
-    "--index-backend",
-    indexBackend,
-    "--json",
-  ];
-  const stdout = execFileSync(process.execPath, command, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
+  const processAdapter = createLocalProcessAdapter();
+  return runWorkflowRuntimeJsonScript({
+    processAdapter,
+    runtimeDir,
+    scriptName: "reload-check.mjs",
+    args: [
+      "--target",
+      targetRoot,
+      "--cache",
+      cachePath,
+      "--state-mode",
+      stateMode,
+      "--index-file",
+      indexFile,
+      "--index-backend",
+      indexBackend,
+      "--json",
+    ],
   });
-  return JSON.parse(stdout);
 }
 
-function detectSignals(targetRoot, args, reloadResult) {
-  const gitAdapter = createLocalGitAdapter();
+function detectSignals(targetRoot, args, reloadResult, gitAdapter) {
   const observations = collectGatingObservations({
     targetRoot,
     eventFile: args.eventFile,
@@ -103,17 +102,6 @@ function compactRunStamp() {
   return new Date().toISOString().replace(/[-:.TZ]/g, "");
 }
 
-function getCurrentBranch(targetRoot) {
-  try {
-    return execSync(`git -C "${targetRoot}" branch --show-current`, {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim() || "unknown";
-  } catch {
-    return "unknown";
-  }
-}
-
 export function printHumanGatingResult(result) {
   console.log(`Action: ${result.action}`);
   console.log(`Result: ${result.result}`);
@@ -132,6 +120,7 @@ export function printHumanGatingResult(result) {
 
 export function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir }) {
   const started = Date.now();
+  const gitAdapter = createLocalGitAdapter();
   args.cache = resolveRuntimeTargetPath(targetRoot, args.cache);
   args.eventFile = resolveRuntimeTargetPath(targetRoot, args.eventFile);
   args.indexSyncCheckFile = resolveRuntimeTargetPath(targetRoot, args.indexSyncCheckFile);
@@ -165,7 +154,7 @@ export function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir }) {
       args.indexBackend,
     );
   }
-  const levels = detectSignals(targetRoot, args, reload);
+  const levels = detectSignals(targetRoot, args, reload, gitAdapter);
   const decision = deriveGatingAction(levels);
 
   const result = {
@@ -174,7 +163,7 @@ export function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir }) {
     mode: args.mode,
     state_mode: args.stateMode,
     target_root: targetRoot,
-    branch: getCurrentBranch(targetRoot),
+    branch: gitAdapter.getCurrentBranch(targetRoot),
     action: decision.action,
     result: decision.result,
     reason_code: decision.reason_code,
