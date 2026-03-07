@@ -8,7 +8,7 @@ import {
   readAidnProjectConfig,
   resolveConfigStateMode,
   writeAidnProjectConfig,
-} from "../aidn-config-lib.mjs";
+} from "../../src/lib/config/aidn-config-lib.mjs";
 
 const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PERF_INDEX_SYNC = path.resolve(RUNTIME_DIR, "..", "perf", "index-sync.mjs");

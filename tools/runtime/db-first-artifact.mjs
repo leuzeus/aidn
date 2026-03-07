@@ -7,7 +7,7 @@ import {
   normalizeStateMode,
   readAidnProjectConfig,
   resolveConfigStateMode,
-} from "../aidn-config-lib.mjs";
+} from "../../src/lib/config/aidn-config-lib.mjs";
 
 function parseArgs(argv) {
   const args = {

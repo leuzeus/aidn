@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import path from "node:path";
-import { normalizeStateMode } from "../aidn-config-lib.mjs";
+import { normalizeStateMode } from "../../src/lib/config/aidn-config-lib.mjs";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 import { createLocalProcessAdapter } from "../../src/adapters/runtime/local-process-adapter.mjs";
 import { runSyncDbFirstSelectiveUseCase } from "../../src/application/runtime/sync-db-first-selective-use-case.mjs";

@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import { execSync } from "node:child_process";
 import { detectStructureProfile } from "../../src/lib/workflow/structure-profile-lib.mjs";
 import { readIndexFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
-import { readAidnProjectConfig, resolveConfigStateMode } from "../aidn-config-lib.mjs";
+import { readAidnProjectConfig, resolveConfigStateMode } from "../../src/lib/config/aidn-config-lib.mjs";
 
 const ACTIVE_STATES = new Set(["OPEN", "IMPLEMENTING", "VERIFYING"]);
 function parseArgs(argv) {

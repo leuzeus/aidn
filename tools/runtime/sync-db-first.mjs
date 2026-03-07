@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createLocalProcessAdapter } from "../../src/adapters/runtime/local-process-adapter.mjs";
 import { runSyncDbFirstUseCase } from "../../src/application/runtime/sync-db-first-use-case.mjs";
-import { normalizeStateMode } from "../aidn-config-lib.mjs";
+import { normalizeStateMode } from "../../src/lib/config/aidn-config-lib.mjs";
 
 const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PERF_INDEX_SYNC = path.resolve(RUNTIME_DIR, "..", "perf", "index-sync.mjs");

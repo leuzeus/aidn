@@ -2,7 +2,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCheckpointUseCase } from "../../src/application/runtime/checkpoint-use-case.mjs";
-import { normalizeIndexStoreMode } from "../aidn-config-lib.mjs";
+import { normalizeIndexStoreMode } from "../../src/lib/config/aidn-config-lib.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 

@@ -2,7 +2,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflowHookUseCase } from "../../src/application/runtime/workflow-hook-use-case.mjs";
-import { normalizeIndexStoreMode } from "../aidn-config-lib.mjs";
+import { normalizeIndexStoreMode } from "../../src/lib/config/aidn-config-lib.mjs";
 
 function parseArgs(argv) {
   const envStore = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().toLowerCase();

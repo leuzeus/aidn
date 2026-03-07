@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   normalizeIndexStoreMode,
-} from "./aidn-config-lib.mjs";
+} from "../src/lib/config/aidn-config-lib.mjs";
 import { runInstallUseCase } from "../src/application/install/install-use-case.mjs";
 
 function parseArgs(argv) {

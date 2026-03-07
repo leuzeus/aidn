@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync, execFileSync } from "node:child_process";
 import crypto from "node:crypto";
-import { readAidnProjectConfig, resolveConfigStateMode } from "../aidn-config-lib.mjs";
+import { readAidnProjectConfig, resolveConfigStateMode } from "../../src/lib/config/aidn-config-lib.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 

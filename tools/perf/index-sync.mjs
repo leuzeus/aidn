@@ -8,7 +8,7 @@ import {
 import { runIndexSyncUseCase } from "../../src/application/runtime/index-sync-use-case.mjs";
 import {
   normalizeIndexStoreMode,
-} from "../aidn-config-lib.mjs";
+} from "../../src/lib/config/aidn-config-lib.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
