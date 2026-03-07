@@ -4,6 +4,11 @@ import { execSync, execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 import { deriveGatingAction } from "../../core/gating/gating-policy.mjs";
 import {
+  buildNoChangeFastPath,
+  deriveGatingLevels,
+  detectGatingSignals,
+} from "../../core/gating/gating-signal-policy.mjs";
+import {
   buildGatingSummary,
   isWorkflowResultOk,
 } from "../../core/workflow/workflow-output-factory.mjs";
@@ -251,55 +256,12 @@ function detectSignals(targetRoot, args, reloadResult) {
   const sessionObjective = extractSessionObjective(latestSession);
   const cycleGoal = getActiveCycleGoal(targetRoot);
   const changedFiles = getChangedFiles(targetRoot);
-
-  const signal = {
-    objective_delta: false,
-    scope_growth: false,
-    cross_domain_touch: false,
-    time_since_last_drift_check: false,
-    uncertain_intent: false,
-    structure_mixed: false,
-    index_sync_drift: false,
-  };
-  const noChangeFastPath = reloadResult.decision === "incremental"
-    && reloadResult.fallback !== true
-    && Array.isArray(reloadResult.reason_codes)
-    && reloadResult.reason_codes.length === 0
-    && changedFiles.length === 0;
-
-  if (!noChangeFastPath && sessionObjective && cycleGoal) {
-    const left = sessionObjective.toLowerCase().trim();
-    const right = cycleGoal.toLowerCase().trim();
-    signal.objective_delta = left !== right && !left.includes(right) && !right.includes(left);
-  }
-
-  if (!noChangeFastPath) {
-    signal.scope_growth = changedFiles.length > args.thresholdFiles;
-    signal.cross_domain_touch = changedFiles.some((file) =>
-      /(db|database|schema|migration|auth|security|api)/i.test(file),
-    );
-  }
+  const noChangeFastPath = buildNoChangeFastPath(reloadResult, changedFiles);
   const eventStats = readEventSignalStats(args.eventFile, {
     includeDrift: !noChangeFastPath && args.mode === "COMMITTING",
     includeFallback: true,
   });
   const latestDrift = eventStats.latestDriftMs;
-
-  if (!noChangeFastPath && args.mode === "COMMITTING") {
-    if (latestDrift == null) {
-      signal.time_since_last_drift_check = true;
-    } else {
-      const elapsedMinutes = (Date.now() - latestDrift) / (1000 * 60);
-      signal.time_since_last_drift_check = elapsedMinutes > args.thresholdMinutes;
-    }
-  }
-
-  if (!noChangeFastPath) {
-    signal.uncertain_intent = !sessionObjective || sessionObjective.trim().length < 15;
-    signal.structure_mixed = (reloadResult.reason_codes ?? []).some((code) =>
-      code === "STRUCTURE_MIXED_PROFILE" || code === "STRUCTURE_PROFILE_UNKNOWN" || code === "DECLARED_VERSION_STALE",
-    );
-  }
   const indexSyncCheck = readJsonOptional(args.indexSyncCheckFile);
   const indexSyncPayload = indexSyncCheck.data;
   const indexSyncInSync = indexSyncPayload?.in_sync === true;
@@ -307,56 +269,33 @@ function detectSignals(targetRoot, args, reloadResult) {
     ? path.resolve(indexSyncPayload.target_root)
     : null;
   const indexSyncTargetMatch = indexSyncTargetRoot === targetRoot;
-  signal.index_sync_drift = indexSyncCheck.exists && indexSyncTargetMatch && !indexSyncInSync;
+  const signal = detectGatingSignals({
+    sessionObjective,
+    cycleGoal,
+    changedFiles,
+    mode: args.mode,
+    thresholdFiles: args.thresholdFiles,
+    thresholdMinutes: args.thresholdMinutes,
+    latestDriftMs: latestDrift,
+    reloadReasonCodes: reloadResult.reason_codes ?? [],
+    indexSyncCheckExists: indexSyncCheck.exists,
+    indexSyncTargetMatch,
+    indexSyncInSync,
+    noChangeFastPath,
+  });
 
-  const activeSignals = Object.entries(signal)
-    .filter(([, active]) => active)
-    .map(([name]) => name);
-
-  const criticalSignals = activeSignals.filter((name) =>
-    name === "cross_domain_touch"
-      || name === "index_sync_drift"
-      || (name === "scope_growth" && args.mode === "COMMITTING"),
-  );
-
-  const fallbackRecentCount = eventStats.fallbackRecentCount;
-
-  const level1 = {
-    decision: reloadResult.decision,
-    fallback: reloadResult.fallback,
-    reason_codes: reloadResult.reason_codes ?? [],
-  };
-
-  const level2 = {
-    required: activeSignals.length > 0,
-    active_signals: activeSignals,
-    critical_signals: criticalSignals,
-      changed_files_count: changedFiles.length,
-      changed_files_sample: changedFiles.slice(0, 20),
-      index_sync_check_file: indexSyncCheck.absolute,
-      index_sync_check_exists: indexSyncCheck.exists,
-      index_sync_target_match: indexSyncTargetMatch,
-      index_sync_in_sync: indexSyncInSync,
-    };
-
-  const hasBlockingReason = level1.reason_codes.some((code) =>
-    code === "MAPPING_AMBIGUOUS" || code === "MAPPING_MISSING" || code === "REQUIRED_ARTIFACT_MISSING",
-  );
-
-  const level3 = {
-    required: hasBlockingReason
-      || fallbackRecentCount >= 3
-      || (indexSyncTargetMatch && indexSyncPayload?.drift_level === "high"),
-    reason: hasBlockingReason
-      ? "blocking_l1_reason"
-      : (fallbackRecentCount >= 3
-        ? "repeated_fallbacks"
-        : (indexSyncTargetMatch && indexSyncPayload?.drift_level === "high" ? "index_sync_high_drift" : null)),
-    fallback_recent_count: fallbackRecentCount,
-    index_sync_drift_level: indexSyncPayload?.drift_level ?? null,
-  };
-
-  return { level1, level2, level3 };
+  return deriveGatingLevels({
+    reloadResult,
+    signal,
+    changedFiles,
+    indexSyncCheckAbsolute: indexSyncCheck.absolute,
+    indexSyncCheckExists: indexSyncCheck.exists,
+    indexSyncTargetMatch,
+    indexSyncInSync,
+    fallbackRecentCount: eventStats.fallbackRecentCount,
+    indexSyncDriftLevel: indexSyncPayload?.drift_level ?? null,
+    mode: args.mode,
+  });
 }
 
 function appendEvent(eventFile, payload) {
