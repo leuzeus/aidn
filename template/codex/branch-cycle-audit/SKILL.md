@@ -78,12 +78,15 @@ Continuity validation by rule:
 - run `npx aidn codex run-json-hook --skill branch-cycle-audit --mode COMMITTING --target . --json`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
+- hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill branch-cycle-audit --json`.
+- in dual/db-only, use the hydrated payload to read `repair_layer_status`, `repair_layer_advice`, prioritized artifacts, and continuity hints before acting.
 - use this output to cross-check:
   - L1 mapping/hash result
   - L2 active drift signals
   - L3 escalation reason if any
 - in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
 - in files, this hook remains non-blocking by default.
+- if `repair_layer_status` is `warn` or `block`, run `npx aidn runtime repair-layer-triage --target . --json` before relying on db-backed continuity or artifact links.
 
 Output:
 - Mapping result
