@@ -110,8 +110,12 @@ Codex context bridge scripts (`tools/codex/`):
 
 Runtime transition scripts (`tools/runtime/`):
 - `sync-db-first-selective.mjs` - update DB-backed runtime index from changed `docs/audit/*` paths (mandatory in `dual`/`db-only`, fallback to full sync on failure)
-- `sync-db-first.mjs` - full DB-backed runtime index sync from `docs/audit/*` (fallback/manual recovery)
-- `mode-migrate.mjs` - migrate runtime state mode (`files|dual|db-only`) with sync/materialization steps
+- `sync-db-first.mjs` - full DB-backed runtime index sync from `docs/audit/*` (fallback/manual recovery) and, by default, emit repair-layer triage JSON + Markdown summary
+- `mode-migrate.mjs` - migrate runtime state mode (`files|dual|db-only`) with sync/materialization steps and, by default, emit repair-layer triage JSON + Markdown summary when migrating to DB-backed modes
+- `repair-layer.mjs` - enrich an existing JSON/SQLite index with repair-layer sessions, links, findings, and report output
+- `repair-layer-triage.mjs` - summarize open repair findings and emit actionable triage JSON
+- `repair-layer-query.mjs` - query workflow-oriented repair-layer relations (`baseline-context`, `session-continuity`, cycle/session links)
+- `repair-layer-resolve.mjs` - persist human decisions for ambiguous repair-layer relations
 - `artifact-store.mjs` - minimal DB artifact upsert/read/list API (foundation for DB-first write-through)
 - `db-first-artifact.mjs` - upsert one artifact directly into DB runtime index with optional projection to `docs/audit` (write-through helper)
 
@@ -126,6 +130,9 @@ npx aidn codex run-json-hook --skill context-reload --mode THINKING --target . -
 npx aidn codex hydrate-context --target . --json
 npx aidn runtime sync-db-first-selective --target . --json
 npx aidn runtime sync-db-first --target . --json
+npx aidn runtime repair-layer --target . --index-file .aidn/runtime/index/workflow-index.sqlite --index-backend sqlite --apply --json
+npx aidn runtime repair-layer-triage --target . --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --json
+npx aidn runtime repair-layer-query --target . --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --query session-continuity --session-id S102 --json
 npx aidn runtime db-first-artifact --target . --path snapshots/context-snapshot.md --source-file docs/audit/snapshots/context-snapshot.md --json
 npx aidn runtime mode-migrate --target . --to dual --json
 npx aidn perf session-start --target . --mode COMMITTING --json
@@ -273,6 +280,10 @@ Default runtime outputs:
 - `.aidn/runtime/index/workflow-index.json`
 - `.aidn/runtime/index/workflow-index.sql`
 - `.aidn/runtime/index/workflow-index.sqlite` (when `--store` includes SQLite output)
+- `.aidn/runtime/index/repair-layer.json`
+- `.aidn/runtime/index/repair-layer-report.json`
+- `.aidn/runtime/index/repair-layer-triage.json`
+- `.aidn/runtime/index/repair-layer-triage-summary.md`
 - `.aidn/runtime/index/workflow-index.from-sqlite.json` (optional export)
 - `.aidn/runtime/index/index-parity.json`
 - `.aidn/runtime/index/index-sqlite-parity.json`
