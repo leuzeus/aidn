@@ -427,6 +427,11 @@ export function runHydrateContextUseCase({ args, hookContextStore, targetRoot })
       action: entry?.action ?? null,
       result: entry?.result ?? null,
       reason_codes: Array.isArray(entry?.reason_codes) ? entry.reason_codes : [],
+      repair_layer_open_count: Number(entry?.repair_layer_open_count ?? 0),
+      repair_layer_blocking: entry?.repair_layer_blocking === true,
+      repair_layer_top_findings: Array.isArray(entry?.repair_layer_top_findings)
+        ? entry.repair_layer_top_findings
+        : [],
     };
   }
 

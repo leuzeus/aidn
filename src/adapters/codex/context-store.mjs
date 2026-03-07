@@ -102,6 +102,11 @@ export function persistHookContext(options) {
     action: normalized.action ?? null,
     result: normalized.result ?? null,
     reason_code: normalized.reason_code ?? null,
+    repair_layer_open_count: Number(normalized.repair_layer_open_count ?? 0),
+    repair_layer_blocking: normalized.repair_layer_blocking === true,
+    repair_layer_top_findings: Array.isArray(normalized.repair_layer_top_findings)
+      ? normalized.repair_layer_top_findings.slice(0, 5)
+      : [],
     gates_triggered: Array.isArray(normalized.gates_triggered) ? normalized.gates_triggered : [],
     error: normalized.error ?? null,
     command: normalized.command ?? sourceMeta.command ?? null,
