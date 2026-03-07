@@ -58,6 +58,7 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
   const artifacts = Array.isArray(payload?.artifacts) ? payload.artifacts : [];
   const artifactLinks = Array.isArray(payload?.artifact_links) ? payload.artifact_links : [];
   const sessionCycleLinks = Array.isArray(payload?.session_cycle_links) ? payload.session_cycle_links : [];
+  const sessionLinks = Array.isArray(payload?.session_links) ? payload.session_links : [];
   const relationThresholds = resolveRepairRelationThresholds({
     minConfidence: options.minRelationConfidence,
     relationThresholds: options.relationThresholds,
@@ -136,6 +137,8 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
     }
   }
   const relatedSessionIds = new Set();
+  const continuitySessionIds = new Set();
+  const continuityCycleIds = new Set();
   for (const row of sessionCycleLinks) {
     const evaluation = evaluateRepairRelation(row, {
       minConfidence: options.minRelationConfidence,
@@ -178,6 +181,65 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
     const sessionId = String(row?.session_id ?? "");
     if (sessionId) {
       relatedSessionIds.add(sessionId);
+    }
+  }
+  for (const row of sessionLinks) {
+    const evaluation = evaluateRepairRelation(row, {
+      minConfidence: options.minRelationConfidence,
+      relationThresholds: options.relationThresholds,
+      allowAmbiguous: options.allowAmbiguousLinks,
+    });
+    if (!evaluation.usable) {
+      relationEvaluation.rejected_count += 1;
+      relationEvaluation.rejected_by_reason[evaluation.reason] = Number(relationEvaluation.rejected_by_reason[evaluation.reason] ?? 0) + 1;
+      pushLimited(relationEvaluation.rejected_samples, {
+        relation_type: evaluation.relation_type,
+        source_mode: evaluation.source_mode,
+        relation_status: evaluation.relation_status,
+        confidence: evaluation.confidence,
+        min_confidence: evaluation.min_confidence,
+        reason: evaluation.reason,
+        source_session_id: String(row?.source_session_id ?? ""),
+        target_session_id: String(row?.target_session_id ?? ""),
+      });
+      continue;
+    }
+    relationEvaluation.accepted_count += 1;
+    relationEvaluation.accepted_by_type[evaluation.relation_type] = Number(relationEvaluation.accepted_by_type[evaluation.relation_type] ?? 0) + 1;
+    pushLimited(relationEvaluation.accepted_samples, {
+      relation_type: evaluation.relation_type,
+      source_mode: evaluation.source_mode,
+      relation_status: evaluation.relation_status,
+      confidence: evaluation.confidence,
+      min_confidence: evaluation.min_confidence,
+      source_session_id: String(row?.source_session_id ?? ""),
+      target_session_id: String(row?.target_session_id ?? ""),
+    });
+    const sourceSessionId = String(row?.source_session_id ?? "");
+    const targetSessionId = String(row?.target_session_id ?? "");
+    if (relatedSessionIds.has(sourceSessionId) && targetSessionId) {
+      continuitySessionIds.add(targetSessionId);
+    }
+    if (relatedSessionIds.has(targetSessionId) && sourceSessionId) {
+      continuitySessionIds.add(sourceSessionId);
+    }
+  }
+  for (const row of sessionCycleLinks) {
+    const evaluation = evaluateRepairRelation(row, {
+      minConfidence: options.minRelationConfidence,
+      relationThresholds: options.relationThresholds,
+      allowAmbiguous: options.allowAmbiguousLinks,
+    });
+    if (!evaluation.usable) {
+      continue;
+    }
+    const sessionId = String(row?.session_id ?? "");
+    const cycleId = String(row?.cycle_id ?? "");
+    if (!cycleId) {
+      continue;
+    }
+    if (continuitySessionIds.has(sessionId)) {
+      continuityCycleIds.add(cycleId);
     }
   }
 
@@ -260,6 +322,16 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
       mark(artifact, 65, "related_session");
     }
   }
+  for (const artifact of artifacts) {
+    if (String(artifact?.kind ?? "") === "session" && continuitySessionIds.has(String(artifact?.session_id ?? ""))) {
+      mark(artifact, 58, "continuity_session");
+    }
+  }
+  for (const artifact of artifacts) {
+    if (continuityCycleIds.has(String(artifact?.cycle_id ?? "")) && /\/status\.md$/i.test(String(artifact?.path ?? ""))) {
+      mark(artifact, 54, "continuity_cycle_status");
+    }
+  }
   const sessionCandidates = artifacts
     .filter((artifact) => String(artifact?.kind ?? "") === "session")
     .sort((a, b) => String(b?.updated_at ?? "").localeCompare(String(a?.updated_at ?? "")));
@@ -311,6 +383,7 @@ function summarizeRepairLayer(payload, selection = null) {
   return {
     migration_run_count: migrationRuns.length,
     finding_count: migrationFindings.length,
+    session_link_count: Array.isArray(payload?.session_links) ? payload.session_links.length : 0,
     severity_counts: severityCounts,
     type_counts: typeCounts,
     latest_run: latestRun,

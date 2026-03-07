@@ -39,6 +39,12 @@ CREATE TABLE sessions (
   branch_name TEXT,
   state TEXT,
   owner TEXT,
+  parent_session TEXT,
+  branch_kind TEXT,
+  cycle_branch TEXT,
+  intermediate_branch TEXT,
+  integration_target_cycle TEXT,
+  carry_over_pending TEXT,
   started_at TEXT,
   ended_at TEXT,
   source_artifact_path TEXT,
@@ -115,6 +121,18 @@ CREATE TABLE session_cycle_links (
   PRIMARY KEY (session_id, cycle_id, relation_type)
 );
 
+CREATE TABLE session_links (
+  source_session_id TEXT NOT NULL,
+  target_session_id TEXT NOT NULL,
+  relation_type TEXT NOT NULL,
+  confidence REAL NOT NULL DEFAULT 1.0,
+  inference_source TEXT,
+  source_mode TEXT NOT NULL DEFAULT 'explicit',
+  relation_status TEXT NOT NULL DEFAULT 'explicit',
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (source_session_id, target_session_id, relation_type)
+);
+
 CREATE TABLE repair_decisions (
   relation_scope TEXT NOT NULL,
   source_ref TEXT NOT NULL,
@@ -158,6 +176,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_updated_at ON sessions(updated_at);
 CREATE INDEX IF NOT EXISTS idx_artifact_links_target ON artifact_links(target_path, relation_type);
 CREATE INDEX IF NOT EXISTS idx_cycle_links_target ON cycle_links(target_cycle_id, relation_type);
 CREATE INDEX IF NOT EXISTS idx_session_cycle_links_cycle ON session_cycle_links(cycle_id, relation_type);
+CREATE INDEX IF NOT EXISTS idx_session_links_target ON session_links(target_session_id, relation_type);
 CREATE INDEX IF NOT EXISTS idx_migration_findings_run ON migration_findings(migration_run_id);
 CREATE INDEX IF NOT EXISTS idx_repair_decisions_scope ON repair_decisions(relation_scope, decision);
 
@@ -175,16 +194,42 @@ SELECT
   scl.updated_at,
   s.branch_name AS session_branch_name,
   s.state AS session_state,
-  s.owner AS session_owner,
-  s.source_mode AS session_source_mode,
-  s.source_confidence AS session_source_confidence,
-  c.state AS cycle_state,
+      s.owner AS session_owner,
+      s.parent_session,
+      s.branch_kind,
+      s.cycle_branch,
+      s.intermediate_branch,
+      s.integration_target_cycle,
+      s.carry_over_pending,
+      s.source_mode AS session_source_mode,
+      s.source_confidence AS session_source_confidence,
+      c.state AS cycle_state,
   c.outcome AS cycle_outcome,
   c.branch_name AS cycle_branch_name,
   c.updated_at AS cycle_updated_at
 FROM session_cycle_links scl
 LEFT JOIN sessions s ON s.session_id = scl.session_id
 LEFT JOIN cycles c ON c.cycle_id = scl.cycle_id;
+
+DROP VIEW IF EXISTS v_session_link_context;
+CREATE VIEW v_session_link_context AS
+SELECT
+  sl.source_session_id,
+  sl.target_session_id,
+  sl.relation_type,
+  sl.confidence,
+  sl.inference_source,
+  sl.source_mode,
+  sl.relation_status,
+  sl.updated_at,
+  ss.branch_name AS source_branch_name,
+  ss.state AS source_state,
+  ss.parent_session AS source_parent_session,
+  ts.branch_name AS target_branch_name,
+  ts.state AS target_state
+FROM session_links sl
+LEFT JOIN sessions ss ON ss.session_id = sl.source_session_id
+LEFT JOIN sessions ts ON ts.session_id = sl.target_session_id;
 
 DROP VIEW IF EXISTS v_artifact_link_context;
 CREATE VIEW v_artifact_link_context AS

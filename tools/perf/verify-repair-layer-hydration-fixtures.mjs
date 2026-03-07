@@ -91,13 +91,18 @@ function main() {
     const strictArtifacts = Array.isArray(strict.artifacts) ? strict.artifacts : [];
     const relaxedArtifacts = Array.isArray(relaxed.artifacts) ? relaxed.artifacts : [];
     const strictS102 = strictArtifacts.find((artifact) => String(artifact?.session_id ?? "") === "S102") ?? null;
+    const strictS101 = strictArtifacts.find((artifact) => String(artifact?.session_id ?? "") === "S101") ?? null;
     const strictRepair = strict.repair_layer?.relation_evaluation ?? {};
     const relaxedRepair = relaxed.repair_layer?.relation_evaluation ?? {};
 
     const checks = {
       strict_rejects_ambiguous: Number(strictRepair.rejected_by_reason?.ambiguous_disabled ?? 0) > 0,
-      strict_s102_not_selected_via_related_session: !Array.isArray(strictS102?.selection_reasons)
-        || !strictS102.selection_reasons.includes("related_session"),
+      strict_has_no_accepted_ambiguous_sample: !Array.isArray(strictRepair.accepted_samples)
+        || !strictRepair.accepted_samples.some((sample) => String(sample?.session_id ?? "") === "S102" && String(sample?.source_mode ?? "") === "ambiguous"),
+      strict_s102_selected_via_explicit_continuity: Array.isArray(strictS102?.selection_reasons)
+        && strictS102.selection_reasons.includes("related_session"),
+      strict_s101_has_continuity_reason: Array.isArray(strictS101?.selection_reasons)
+        && strictS101.selection_reasons.includes("continuity_session"),
       relaxed_accepts_attached_cycle: Number(relaxedRepair.accepted_by_type?.attached_cycle ?? 0) > Number(strictRepair.accepted_by_type?.attached_cycle ?? 0),
       relaxed_selects_s102: relaxedArtifacts.some((artifact) => String(artifact?.session_id ?? "") === "S102"),
       relaxed_has_accepted_ambiguous_sample: Array.isArray(relaxedRepair.accepted_samples)

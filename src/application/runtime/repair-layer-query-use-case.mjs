@@ -155,6 +155,54 @@ function queryRelevantSessionsForCycleSqlite(db, args) {
     }));
 }
 
+function querySessionContinuitySqlite(db, args) {
+  const sessionId = String(args.sessionId ?? "").trim();
+  const continuityLinks = db.prepare(`
+    SELECT *
+    FROM v_session_link_context
+    WHERE source_session_id = ? OR target_session_id = ?
+    ORDER BY confidence DESC, source_session_id ASC, target_session_id ASC, relation_type ASC
+  `).all(sessionId, sessionId)
+    .map((row) => ({ row, evaluation: usableRelation(row, args) }))
+    .filter(({ evaluation }) => evaluation.usable)
+    .map(({ row, evaluation }) => ({
+      direction: String(row?.source_session_id ?? "") === sessionId ? "outbound" : "inbound",
+      related_session: {
+        session_id: String(row?.source_session_id ?? "") === sessionId ? (row?.target_session_id ?? null) : (row?.source_session_id ?? null),
+        branch_name: String(row?.source_session_id ?? "") === sessionId ? (row?.target_branch_name ?? null) : (row?.source_branch_name ?? null),
+        state: String(row?.source_session_id ?? "") === sessionId ? (row?.target_state ?? null) : (row?.source_state ?? null),
+      },
+      link: buildLinkView(row, evaluation),
+    }));
+  const continuitySessionIds = Array.from(new Set([
+    sessionId,
+    ...continuityLinks.map((row) => String(row?.related_session?.session_id ?? "")).filter(Boolean),
+  ]));
+  const placeholders = continuitySessionIds.map(() => "?").join(", ");
+  const continuityCycles = db.prepare(`
+    SELECT *
+    FROM v_session_cycle_context
+    WHERE session_id IN (${placeholders})
+    ORDER BY confidence DESC, session_id ASC, cycle_id ASC, relation_type ASC
+  `).all(...continuitySessionIds)
+    .map((row) => ({ row, evaluation: usableRelation(row, args) }))
+    .filter(({ evaluation }) => evaluation.usable)
+    .map(({ row, evaluation }) => ({
+      cycle: mapCycleFromContextRow(row),
+      link: buildLinkView(row, evaluation),
+    }));
+  const session = db.prepare(`
+    SELECT session_id, branch_name, state, owner, parent_session, branch_kind, cycle_branch, intermediate_branch, integration_target_cycle, carry_over_pending
+    FROM sessions
+    WHERE session_id = ?
+  `).get(sessionId) ?? null;
+  return {
+    session,
+    continuity_links: continuityLinks,
+    continuity_cycles: continuityCycles,
+  };
+}
+
 function queryContextByArtifactSqlite(db, args, artifactPath) {
   const normalizedArtifactPath = String(artifactPath ?? "").replace(/\\/g, "/");
   const targetArtifact = queryArtifactByPath(db, normalizedArtifactPath);
@@ -226,6 +274,46 @@ function queryRelevantSessionsForCycle(payload, args) {
     }));
 }
 
+function querySessionContinuity(payload, args) {
+  const sessionId = String(args.sessionId ?? "").trim();
+  const sessions = Array.isArray(payload?.sessions) ? payload.sessions : [];
+  const sessionLinks = Array.isArray(payload?.session_links) ? payload.session_links : [];
+  const sessionCycleLinks = Array.isArray(payload?.session_cycle_links) ? payload.session_cycle_links : [];
+  const cycles = Array.isArray(payload?.cycles) ? payload.cycles : [];
+  const sessionById = new Map(sessions.map((row) => [String(row?.session_id ?? ""), row]));
+  const cycleById = new Map(cycles.map((row) => [String(row?.cycle_id ?? ""), row]));
+  const continuityLinks = sessionLinks
+    .filter((row) => String(row?.source_session_id ?? "") === sessionId || String(row?.target_session_id ?? "") === sessionId)
+    .map((row) => ({ row, evaluation: usableRelation(row, args) }))
+    .filter(({ evaluation }) => evaluation.usable)
+    .map(({ row, evaluation }) => ({
+      direction: String(row?.source_session_id ?? "") === sessionId ? "outbound" : "inbound",
+      related_session: sessionById.get(
+        String(row?.source_session_id ?? "") === sessionId
+          ? String(row?.target_session_id ?? "")
+          : String(row?.source_session_id ?? ""),
+      ) ?? null,
+      link: buildLinkView(row, evaluation),
+    }));
+  const continuitySessionIds = new Set([
+    sessionId,
+    ...continuityLinks.map((row) => String(row?.related_session?.session_id ?? "")).filter(Boolean),
+  ]);
+  const continuityCycles = sessionCycleLinks
+    .filter((row) => continuitySessionIds.has(String(row?.session_id ?? "")))
+    .map((row) => ({ row, evaluation: usableRelation(row, args) }))
+    .filter(({ evaluation }) => evaluation.usable)
+    .map(({ row, evaluation }) => ({
+      cycle: cycleById.get(String(row?.cycle_id ?? "")) ?? null,
+      link: buildLinkView(row, evaluation),
+    }));
+  return {
+    session: sessionById.get(sessionId) ?? null,
+    continuity_links: continuityLinks,
+    continuity_cycles: continuityCycles,
+  };
+}
+
 function queryContextByArtifact(payload, args, artifactPath) {
   const normalizedArtifactPath = String(artifactPath ?? "").replace(/\\/g, "/");
   const artifacts = Array.isArray(payload?.artifacts) ? payload.artifacts : [];
@@ -270,6 +358,9 @@ function runRepairLayerQuery(payload, args) {
   if (args.query === "snapshot-context") {
     return queryContextByArtifact(payload, args, "snapshots/context-snapshot.md");
   }
+  if (args.query === "session-continuity") {
+    return querySessionContinuity(payload, args);
+  }
   throw new Error(`Unsupported repair-layer query: ${args.query}`);
 }
 
@@ -285,6 +376,9 @@ function runRepairLayerQuerySqlite(db, args) {
   }
   if (args.query === "snapshot-context") {
     return queryContextByArtifactSqlite(db, args, "snapshots/context-snapshot.md");
+  }
+  if (args.query === "session-continuity") {
+    return querySessionContinuitySqlite(db, args);
   }
   throw new Error(`Unsupported repair-layer query: ${args.query}`);
 }

@@ -86,18 +86,22 @@ function main() {
       ORDER BY name ASC
     `).all().map((row) => String(row?.name ?? ""));
     const sessionContextRows = db.prepare("SELECT * FROM v_session_cycle_context ORDER BY session_id ASC, cycle_id ASC").all();
+    const sessionLinkRows = db.prepare("SELECT * FROM v_session_link_context ORDER BY source_session_id ASC, target_session_id ASC").all();
     const artifactContextRows = db.prepare("SELECT * FROM v_artifact_link_context ORDER BY source_path ASC, target_path ASC").all();
     const openFindingRows = db.prepare("SELECT * FROM v_repair_findings_open ORDER BY created_at DESC").all();
     db.close();
 
     const checks = {
       session_context_view_exists: viewNames.includes("v_session_cycle_context"),
+      session_link_view_exists: viewNames.includes("v_session_link_context"),
       artifact_context_view_exists: viewNames.includes("v_artifact_link_context"),
       repair_findings_view_exists: viewNames.includes("v_repair_findings_open"),
       session_context_has_rows: sessionContextRows.length >= 3,
+      session_link_has_rows: sessionLinkRows.length >= 1,
       artifact_context_has_rows: artifactContextRows.length >= 2,
       repair_findings_open_has_rows: openFindingRows.length >= 1,
       accepted_columns_present: sessionContextRows.some((row) => Object.prototype.hasOwnProperty.call(row, "session_branch_name")),
+      continuity_columns_present: sessionLinkRows.some((row) => Object.prototype.hasOwnProperty.call(row, "source_parent_session")),
       target_columns_present: artifactContextRows.some((row) => Object.prototype.hasOwnProperty.call(row, "target_cycle_id")),
     };
     const pass = Object.values(checks).every((value) => value === true);
@@ -109,6 +113,7 @@ function main() {
       samples: {
         views: viewNames,
         session_context_first: sessionContextRows[0] ?? null,
+        session_link_first: sessionLinkRows[0] ?? null,
         artifact_context_first: artifactContextRows[0] ?? null,
         repair_finding_first: openFindingRows[0] ?? null,
       },

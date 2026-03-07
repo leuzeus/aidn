@@ -106,6 +106,12 @@ function ensureRepairLayerTables(db) {
       branch_name TEXT,
       state TEXT,
       owner TEXT,
+      parent_session TEXT,
+      branch_kind TEXT,
+      cycle_branch TEXT,
+      intermediate_branch TEXT,
+      integration_target_cycle TEXT,
+      carry_over_pending TEXT,
       started_at TEXT,
       ended_at TEXT,
       source_artifact_path TEXT,
@@ -149,6 +155,18 @@ function ensureRepairLayerTables(db) {
       ambiguity_status TEXT,
       updated_at TEXT NOT NULL,
       PRIMARY KEY (session_id, cycle_id, relation_type)
+    );
+
+    CREATE TABLE IF NOT EXISTS session_links (
+      source_session_id TEXT NOT NULL,
+      target_session_id TEXT NOT NULL,
+      relation_type TEXT NOT NULL,
+      confidence REAL NOT NULL DEFAULT 1.0,
+      inference_source TEXT,
+      source_mode TEXT NOT NULL DEFAULT 'explicit',
+      relation_status TEXT NOT NULL DEFAULT 'explicit',
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (source_session_id, target_session_id, relation_type)
     );
 
     CREATE TABLE IF NOT EXISTS repair_decisions (
@@ -195,6 +213,7 @@ function ensureRepairLayerTables(db) {
     CREATE INDEX IF NOT EXISTS idx_artifact_links_target ON artifact_links(target_path, relation_type);
     CREATE INDEX IF NOT EXISTS idx_cycle_links_target ON cycle_links(target_cycle_id, relation_type);
     CREATE INDEX IF NOT EXISTS idx_session_cycle_links_cycle ON session_cycle_links(cycle_id, relation_type);
+    CREATE INDEX IF NOT EXISTS idx_session_links_target ON session_links(target_session_id, relation_type);
     CREATE INDEX IF NOT EXISTS idx_migration_findings_run ON migration_findings(migration_run_id);
     CREATE INDEX IF NOT EXISTS idx_repair_decisions_scope ON repair_decisions(relation_scope, decision);
   `);
@@ -214,6 +233,12 @@ function ensureRepairLayerTables(db) {
       s.branch_name AS session_branch_name,
       s.state AS session_state,
       s.owner AS session_owner,
+      s.parent_session,
+      s.branch_kind,
+      s.cycle_branch,
+      s.intermediate_branch,
+      s.integration_target_cycle,
+      s.carry_over_pending,
       s.source_mode AS session_source_mode,
       s.source_confidence AS session_source_confidence,
       c.state AS cycle_state,
@@ -223,6 +248,26 @@ function ensureRepairLayerTables(db) {
     FROM session_cycle_links scl
     LEFT JOIN sessions s ON s.session_id = scl.session_id
     LEFT JOIN cycles c ON c.cycle_id = scl.cycle_id;
+
+    DROP VIEW IF EXISTS v_session_link_context;
+    CREATE VIEW v_session_link_context AS
+    SELECT
+      sl.source_session_id,
+      sl.target_session_id,
+      sl.relation_type,
+      sl.confidence,
+      sl.inference_source,
+      sl.source_mode,
+      sl.relation_status,
+      sl.updated_at,
+      ss.branch_name AS source_branch_name,
+      ss.state AS source_state,
+      ss.parent_session AS source_parent_session,
+      ts.branch_name AS target_branch_name,
+      ts.state AS target_state
+    FROM session_links sl
+    LEFT JOIN sessions ss ON ss.session_id = sl.source_session_id
+    LEFT JOIN sessions ts ON ts.session_id = sl.target_session_id;
 
     DROP VIEW IF EXISTS v_artifact_link_context;
     CREATE VIEW v_artifact_link_context AS
@@ -333,10 +378,17 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
     ensureColumn(db, "file_map", "relation", "TEXT NOT NULL DEFAULT 'unknown'");
     ensureMetaTable(db);
     ensureRepairLayerTables(db);
+    ensureColumn(db, "sessions", "parent_session", "TEXT");
+    ensureColumn(db, "sessions", "branch_kind", "TEXT");
+    ensureColumn(db, "sessions", "cycle_branch", "TEXT");
+    ensureColumn(db, "sessions", "intermediate_branch", "TEXT");
+    ensureColumn(db, "sessions", "integration_target_cycle", "TEXT");
+    ensureColumn(db, "sessions", "carry_over_pending", "TEXT");
     ensureColumn(db, "artifact_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
     ensureColumn(db, "cycle_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
     ensureColumn(db, "session_cycle_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
     ensureColumn(db, "session_cycle_links", "ambiguity_status", "TEXT");
+    ensureColumn(db, "session_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
     const prevDigest = getMeta(db, "payload_digest");
     if (prevDigest === nextDigest) {
       return {
@@ -357,6 +409,7 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       db.exec("DELETE FROM artifact_links;");
       db.exec("DELETE FROM cycle_links;");
       db.exec("DELETE FROM session_cycle_links;");
+      db.exec("DELETE FROM session_links;");
       db.exec("DELETE FROM sessions;");
       db.exec("DELETE FROM migration_findings;");
       db.exec("DELETE FROM migration_runs;");
@@ -372,6 +425,7 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       const artifactLinks = Array.isArray(payload.artifact_links) ? payload.artifact_links : [];
       const cycleLinks = Array.isArray(payload.cycle_links) ? payload.cycle_links : [];
       const sessionCycleLinks = Array.isArray(payload.session_cycle_links) ? payload.session_cycle_links : [];
+      const sessionLinks = Array.isArray(payload.session_links) ? payload.session_links : [];
       const migrationRuns = Array.isArray(payload.migration_runs) ? payload.migration_runs : [];
       const migrationFindings = Array.isArray(payload.migration_findings) ? payload.migration_findings : [];
       const repairDecisions = Array.isArray(payload.repair_decisions) ? payload.repair_decisions : [];
@@ -434,14 +488,20 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
 
       const sessionStmt = db.prepare(`
         INSERT INTO sessions (
-          session_id, branch_name, state, owner, started_at, ended_at, source_artifact_path, source_confidence, source_mode, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          session_id, branch_name, state, owner, parent_session, branch_kind, cycle_branch, intermediate_branch, integration_target_cycle, carry_over_pending, started_at, ended_at, source_artifact_path, source_confidence, source_mode, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `);
       runInsert(sessionStmt, sessions, (row) => ([
         row.session_id ?? null,
         row.branch_name ?? null,
         row.state ?? null,
         row.owner ?? null,
+        row.parent_session ?? null,
+        row.branch_kind ?? null,
+        row.cycle_branch ?? null,
+        row.intermediate_branch ?? null,
+        row.integration_target_cycle ?? null,
+        row.carry_over_pending ?? null,
         row.started_at ?? null,
         row.ended_at ?? null,
         row.source_artifact_path ?? null,
@@ -537,6 +597,22 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
         row.source_mode ?? "explicit",
         row.relation_status ?? "explicit",
         row.ambiguity_status ?? null,
+        row.updated_at ?? new Date().toISOString(),
+      ]));
+
+      const sessionLinkStmt = db.prepare(`
+        INSERT INTO session_links (
+          source_session_id, target_session_id, relation_type, confidence, inference_source, source_mode, relation_status, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+      `);
+      runInsert(sessionLinkStmt, sessionLinks, (row) => ([
+        row.source_session_id ?? null,
+        row.target_session_id ?? null,
+        row.relation_type ?? null,
+        Number(row.confidence ?? 1),
+        row.inference_source ?? null,
+        row.source_mode ?? "explicit",
+        row.relation_status ?? "explicit",
         row.updated_at ?? new Date().toISOString(),
       ]));
 

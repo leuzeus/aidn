@@ -129,6 +129,20 @@ function main() {
       "--json",
     ]);
 
+    const continuity = runJson("tools/runtime/repair-layer-query.mjs", [
+      "--target",
+      target,
+      "--index-file",
+      sqliteFile,
+      "--backend",
+      "sqlite",
+      "--query",
+      "session-continuity",
+      "--session-id",
+      "S102",
+      "--json",
+    ]);
+
     const checks = {
       session_query_returns_c101: Array.isArray(sessionStrict.result)
         && sessionStrict.result.some((row) => String(row?.cycle?.cycle_id ?? "") === "C101" && String(row?.link?.relation_status ?? "") === "explicit"),
@@ -141,6 +155,11 @@ function main() {
       baseline_context_links_c101: String(baseline?.result?.artifact?.path ?? "") === "baseline/current.md"
         && Array.isArray(baseline?.result?.linked_artifacts)
         && baseline.result.linked_artifacts.some((row) => String(row?.artifact?.cycle_id ?? "") === "C101"),
+      continuity_has_parent_session: String(continuity?.result?.session?.session_id ?? "") === "S102"
+        && Array.isArray(continuity?.result?.continuity_links)
+        && continuity.result.continuity_links.some((row) => String(row?.related_session?.session_id ?? "") === "S101" && String(row?.link?.relation_type ?? "") === "continues_from_session"),
+      continuity_has_carry_over_cycle: Array.isArray(continuity?.result?.continuity_cycles)
+        && continuity.result.continuity_cycles.some((row) => String(row?.cycle?.cycle_id ?? "") === "C102" && String(row?.link?.relation_type ?? "") === "integration_target_cycle"),
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {

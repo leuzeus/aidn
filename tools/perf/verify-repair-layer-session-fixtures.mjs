@@ -67,6 +67,7 @@ function main() {
     const payload = readIndexFromSqlite(sqliteFile).payload;
     const sessions = Array.isArray(payload.sessions) ? payload.sessions : [];
     const links = Array.isArray(payload.session_cycle_links) ? payload.session_cycle_links : [];
+    const sessionLinks = Array.isArray(payload.session_links) ? payload.session_links : [];
     const findings = Array.isArray(payload.migration_findings) ? payload.migration_findings : [];
     const byId = new Map(sessions.map((row) => [row.session_id, row]));
     const linkFor = (sessionId, cycleId, sourceMode, relationType = "attached_cycle") => links.find((row) =>
@@ -79,14 +80,27 @@ function main() {
       session_s101_present: byId.has("S101"),
       session_s101_branch: String(byId.get("S101")?.branch_name ?? "") === "S101-alpha",
       session_s101_state: String(byId.get("S101")?.state ?? "") === "COMMITTING",
+      session_s101_parent_session: String(byId.get("S101")?.parent_session ?? "") === "S100",
       session_s101_explicit_cycle: Boolean(linkFor("S101", "C101", "explicit")),
       session_s101_explicit_cycle_status: String(linkFor("S101", "C101", "explicit")?.relation_status ?? "") === "explicit",
       session_s101_snapshot_promoted: String(linkFor("S101", "C101", "inferred", "active_in_snapshot")?.relation_status ?? "") === "promoted",
       session_s102_present: byId.has("S102"),
       session_s102_branch: String(byId.get("S102")?.branch_name ?? "") === "S102-merge",
+      session_s102_parent_session: String(byId.get("S102")?.parent_session ?? "") === "S101",
+      session_s102_integration_target_cycle: String(byId.get("S102")?.integration_target_cycle ?? "") === "C102",
+      session_s102_carry_over_pending: String(byId.get("S102")?.carry_over_pending ?? "") === "yes",
       session_s102_ambiguous_c101: Boolean(linkFor("S102", "C101", "ambiguous")),
       session_s102_ambiguous_c102: Boolean(linkFor("S102", "C102", "ambiguous")),
       session_s102_ambiguous_status: String(linkFor("S102", "C101", "ambiguous")?.relation_status ?? "") === "ambiguous",
+      session_s102_parent_link: sessionLinks.some((row) =>
+        String(row?.source_session_id ?? "") === "S102"
+        && String(row?.target_session_id ?? "") === "S101"
+        && String(row?.relation_type ?? "") === "continues_from_session"),
+      session_s102_carry_over_link: sessionLinks.some((row) =>
+        String(row?.source_session_id ?? "") === "S102"
+        && String(row?.target_session_id ?? "") === "S101"
+        && String(row?.relation_type ?? "") === "carry_over_pending_from_session"),
+      unresolved_parent_session_finding: findings.some((row) => String(row?.finding_type ?? "") === "UNRESOLVED_PARENT_SESSION" && String(row?.entity_id ?? "") === "S101"),
       ambiguous_relation_finding: findings.some((row) => String(row?.finding_type ?? "") === "AMBIGUOUS_RELATION" && String(row?.entity_id ?? "") === "S102"),
     };
     const pass = Object.values(checks).every((value) => value === true);
@@ -97,6 +111,7 @@ function main() {
       checks,
       sessions,
       session_cycle_links: links,
+      session_links: sessionLinks,
       findings,
       pass,
     };

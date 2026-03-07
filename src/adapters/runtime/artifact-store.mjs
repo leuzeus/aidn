@@ -68,6 +68,12 @@ function ensureRepairLayerTables(db) {
       branch_name TEXT,
       state TEXT,
       owner TEXT,
+      parent_session TEXT,
+      branch_kind TEXT,
+      cycle_branch TEXT,
+      intermediate_branch TEXT,
+      integration_target_cycle TEXT,
+      carry_over_pending TEXT,
       started_at TEXT,
       ended_at TEXT,
       source_artifact_path TEXT,
@@ -109,6 +115,18 @@ function ensureRepairLayerTables(db) {
       PRIMARY KEY (session_id, cycle_id, relation_type)
     );
 
+    CREATE TABLE IF NOT EXISTS session_links (
+      source_session_id TEXT NOT NULL,
+      target_session_id TEXT NOT NULL,
+      relation_type TEXT NOT NULL,
+      confidence REAL NOT NULL DEFAULT 1.0,
+      inference_source TEXT,
+      source_mode TEXT NOT NULL DEFAULT 'explicit',
+      relation_status TEXT NOT NULL DEFAULT 'explicit',
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (source_session_id, target_session_id, relation_type)
+    );
+
     CREATE TABLE IF NOT EXISTS migration_runs (
       migration_run_id TEXT PRIMARY KEY,
       engine_version TEXT NOT NULL,
@@ -134,6 +152,17 @@ function ensureRepairLayerTables(db) {
       FOREIGN KEY (migration_run_id) REFERENCES migration_runs(migration_run_id)
     );
   `);
+  ensureColumn(db, "sessions", "parent_session", "TEXT");
+  ensureColumn(db, "sessions", "branch_kind", "TEXT");
+  ensureColumn(db, "sessions", "cycle_branch", "TEXT");
+  ensureColumn(db, "sessions", "intermediate_branch", "TEXT");
+  ensureColumn(db, "sessions", "integration_target_cycle", "TEXT");
+  ensureColumn(db, "sessions", "carry_over_pending", "TEXT");
+  ensureColumn(db, "artifact_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
+  ensureColumn(db, "cycle_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
+  ensureColumn(db, "session_cycle_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
+  ensureColumn(db, "session_cycle_links", "ambiguity_status", "TEXT");
+  ensureColumn(db, "session_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
 }
 
 function canonicalToJson(value) {

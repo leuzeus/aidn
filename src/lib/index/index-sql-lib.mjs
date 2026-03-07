@@ -35,7 +35,7 @@ function insertArtifacts(lines, artifacts) {
 function insertSessions(lines, sessions) {
   for (const row of sessions) {
     lines.push(
-      `INSERT INTO sessions (session_id, branch_name, state, owner, started_at, ended_at, source_artifact_path, source_confidence, source_mode, updated_at) VALUES (${sqlString(row.session_id)}, ${sqlString(row.branch_name)}, ${sqlString(row.state)}, ${sqlString(row.owner)}, ${sqlString(row.started_at)}, ${sqlString(row.ended_at)}, ${sqlString(row.source_artifact_path)}, ${sqlNumber(row.source_confidence ?? 1)}, ${sqlString(row.source_mode ?? "explicit")}, ${sqlString(row.updated_at)});`,
+      `INSERT INTO sessions (session_id, branch_name, state, owner, parent_session, branch_kind, cycle_branch, intermediate_branch, integration_target_cycle, carry_over_pending, started_at, ended_at, source_artifact_path, source_confidence, source_mode, updated_at) VALUES (${sqlString(row.session_id)}, ${sqlString(row.branch_name)}, ${sqlString(row.state)}, ${sqlString(row.owner)}, ${sqlString(row.parent_session)}, ${sqlString(row.branch_kind)}, ${sqlString(row.cycle_branch)}, ${sqlString(row.intermediate_branch)}, ${sqlString(row.integration_target_cycle)}, ${sqlString(row.carry_over_pending)}, ${sqlString(row.started_at)}, ${sqlString(row.ended_at)}, ${sqlString(row.source_artifact_path)}, ${sqlNumber(row.source_confidence ?? 1)}, ${sqlString(row.source_mode ?? "explicit")}, ${sqlString(row.updated_at)});`,
     );
   }
 }
@@ -94,6 +94,14 @@ function insertSessionCycleLinks(lines, rows) {
   }
 }
 
+function insertSessionLinks(lines, rows) {
+  for (const row of rows) {
+    lines.push(
+      `INSERT INTO session_links (source_session_id, target_session_id, relation_type, confidence, inference_source, source_mode, relation_status, updated_at) VALUES (${sqlString(row.source_session_id)}, ${sqlString(row.target_session_id)}, ${sqlString(row.relation_type)}, ${sqlNumber(row.confidence ?? 1)}, ${sqlString(row.inference_source)}, ${sqlString(row.source_mode ?? "explicit")}, ${sqlString(row.relation_status ?? "explicit")}, ${sqlString(row.updated_at)});`,
+    );
+  }
+}
+
 function insertMigrationRuns(lines, rows) {
   for (const row of rows) {
     lines.push(
@@ -144,6 +152,7 @@ export function buildSqlFromIndex(indexData, options = {}) {
   lines.push("DELETE FROM artifact_links;");
   lines.push("DELETE FROM cycle_links;");
   lines.push("DELETE FROM session_cycle_links;");
+  lines.push("DELETE FROM session_links;");
   lines.push("DELETE FROM sessions;");
   lines.push("DELETE FROM migration_findings;");
   lines.push("DELETE FROM migration_runs;");
@@ -160,6 +169,7 @@ export function buildSqlFromIndex(indexData, options = {}) {
   const artifactLinks = Array.isArray(indexData.artifact_links) ? indexData.artifact_links : [];
   const cycleLinks = Array.isArray(indexData.cycle_links) ? indexData.cycle_links : [];
   const sessionCycleLinks = Array.isArray(indexData.session_cycle_links) ? indexData.session_cycle_links : [];
+  const sessionLinks = Array.isArray(indexData.session_links) ? indexData.session_links : [];
   const migrationRuns = Array.isArray(indexData.migration_runs) ? indexData.migration_runs : [];
   const migrationFindings = Array.isArray(indexData.migration_findings) ? indexData.migration_findings : [];
   const repairDecisions = Array.isArray(indexData.repair_decisions) ? indexData.repair_decisions : [];
@@ -175,6 +185,7 @@ export function buildSqlFromIndex(indexData, options = {}) {
   insertArtifactLinks(lines, artifactLinks);
   insertCycleLinks(lines, cycleLinks);
   insertSessionCycleLinks(lines, sessionCycleLinks);
+  insertSessionLinks(lines, sessionLinks);
   insertMigrationRuns(lines, migrationRuns);
   insertMigrationFindings(lines, migrationFindings);
   insertRepairDecisions(lines, repairDecisions);

@@ -69,11 +69,15 @@ function parseArgs(argv) {
     "relevant-sessions-for-cycle",
     "baseline-context",
     "snapshot-context",
+    "session-continuity",
   ].includes(args.query)) {
     throw new Error("Invalid --query.");
   }
   if (args.query === "relevant-cycles-for-session" && !args.sessionId) {
     throw new Error("Missing --session-id for query relevant-cycles-for-session");
+  }
+  if (args.query === "session-continuity" && !args.sessionId) {
+    throw new Error("Missing --session-id for query session-continuity");
   }
   if (args.query === "relevant-sessions-for-cycle" && !args.cycleId) {
     throw new Error("Missing --cycle-id for query relevant-sessions-for-cycle");
@@ -86,6 +90,7 @@ function printUsage() {
   console.log("  node tools/runtime/repair-layer-query.mjs --target . --query baseline-context --json");
   console.log("  node tools/runtime/repair-layer-query.mjs --target . --query relevant-cycles-for-session --session-id S101 --json");
   console.log("  node tools/runtime/repair-layer-query.mjs --target . --query relevant-sessions-for-cycle --cycle-id C101 --allow-ambiguous-links --relation-threshold attached_cycle=0.35 --json");
+  console.log("  node tools/runtime/repair-layer-query.mjs --target . --query session-continuity --session-id S102 --json");
 }
 
 function printHuman(output) {

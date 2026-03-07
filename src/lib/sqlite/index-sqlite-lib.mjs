@@ -82,6 +82,7 @@ function buildSummary(payload, structureKindHint = null) {
     artifact_links_count: Array.isArray(payload.artifact_links) ? payload.artifact_links.length : 0,
     cycle_links_count: Array.isArray(payload.cycle_links) ? payload.cycle_links.length : 0,
     session_cycle_links_count: Array.isArray(payload.session_cycle_links) ? payload.session_cycle_links.length : 0,
+    session_links_count: Array.isArray(payload.session_links) ? payload.session_links.length : 0,
     migration_runs_count: Array.isArray(payload.migration_runs) ? payload.migration_runs.length : 0,
     migration_findings_count: Array.isArray(payload.migration_findings) ? payload.migration_findings.length : 0,
     repair_decisions_count: Array.isArray(payload.repair_decisions) ? payload.repair_decisions.length : 0,
@@ -166,7 +167,13 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
       sessions: hasTable(db, "sessions")
         ? readRows(db, `
           SELECT session_id, branch_name, state, owner, started_at, ended_at, source_artifact_path,
-                 source_confidence, source_mode, updated_at
+                 source_confidence, source_mode, updated_at,
+                 ${getTableColumns(db, "sessions").has("parent_session") ? "parent_session" : "NULL AS parent_session"},
+                 ${getTableColumns(db, "sessions").has("branch_kind") ? "branch_kind" : "NULL AS branch_kind"},
+                 ${getTableColumns(db, "sessions").has("cycle_branch") ? "cycle_branch" : "NULL AS cycle_branch"},
+                 ${getTableColumns(db, "sessions").has("intermediate_branch") ? "intermediate_branch" : "NULL AS intermediate_branch"},
+                 ${getTableColumns(db, "sessions").has("integration_target_cycle") ? "integration_target_cycle" : "NULL AS integration_target_cycle"},
+                 ${getTableColumns(db, "sessions").has("carry_over_pending") ? "carry_over_pending" : "NULL AS carry_over_pending"}
           FROM sessions
           ORDER BY session_id ASC
         `).map((row) => ({
@@ -179,6 +186,12 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
           source_artifact_path: row.source_artifact_path ?? null,
           source_confidence: Number(row.source_confidence ?? 1),
           source_mode: row.source_mode ?? "explicit",
+          parent_session: row.parent_session ?? null,
+          branch_kind: row.branch_kind ?? null,
+          cycle_branch: row.cycle_branch ?? null,
+          intermediate_branch: row.intermediate_branch ?? null,
+          integration_target_cycle: row.integration_target_cycle ?? null,
+          carry_over_pending: row.carry_over_pending ?? null,
           updated_at: row.updated_at ?? null,
         }))
         : [],
@@ -259,6 +272,24 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
           source_mode: row.source_mode ?? "explicit",
           relation_status: row.relation_status ?? "explicit",
           ambiguity_status: row.ambiguity_status ?? null,
+          updated_at: row.updated_at ?? null,
+        }))
+        : [],
+      session_links: hasTable(db, "session_links")
+        ? readRows(db, `
+          SELECT source_session_id, target_session_id, relation_type, confidence, inference_source, source_mode,
+                 ${getTableColumns(db, "session_links").has("relation_status") ? "relation_status" : "'explicit' AS relation_status"},
+                 updated_at
+          FROM session_links
+          ORDER BY source_session_id ASC, target_session_id ASC, relation_type ASC
+        `).map((row) => ({
+          source_session_id: row.source_session_id ?? null,
+          target_session_id: row.target_session_id ?? null,
+          relation_type: row.relation_type ?? null,
+          confidence: Number(row.confidence ?? 1),
+          inference_source: row.inference_source ?? null,
+          source_mode: row.source_mode ?? "explicit",
+          relation_status: row.relation_status ?? "explicit",
           updated_at: row.updated_at ?? null,
         }))
         : [],

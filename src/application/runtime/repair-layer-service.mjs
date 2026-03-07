@@ -123,6 +123,7 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
   const sessionsMap = new Map();
   const artifactLinks = [];
   const sessionCycleLinks = [];
+  const sessionLinks = [];
   const migrationFindings = [];
   const cycleStatusById = new Map();
   const sessionArtifactById = new Map();
@@ -130,6 +131,7 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
   const knownArtifactPaths = new Set((Array.isArray(artifacts) ? artifacts : []).map((artifact) => artifact.path));
   const relationKeys = new Set();
   const sessionCycleLinkIndex = new Map();
+  const sessionLinkIndex = new Map();
   const findingKeys = new Set();
   const decisionIndex = new Map();
 
@@ -200,6 +202,12 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
       branch_name: preferRow ? (row.branch_name ?? previous.branch_name ?? null) : (previous.branch_name ?? row.branch_name ?? null),
       state: preferRow ? (row.state ?? previous.state ?? null) : (previous.state ?? row.state ?? null),
       owner: preferRow ? (row.owner ?? previous.owner ?? null) : (previous.owner ?? row.owner ?? null),
+      parent_session: preferRow ? (row.parent_session ?? previous.parent_session ?? null) : (previous.parent_session ?? row.parent_session ?? null),
+      branch_kind: preferRow ? (row.branch_kind ?? previous.branch_kind ?? null) : (previous.branch_kind ?? row.branch_kind ?? null),
+      cycle_branch: preferRow ? (row.cycle_branch ?? previous.cycle_branch ?? null) : (previous.cycle_branch ?? row.cycle_branch ?? null),
+      intermediate_branch: preferRow ? (row.intermediate_branch ?? previous.intermediate_branch ?? null) : (previous.intermediate_branch ?? row.intermediate_branch ?? null),
+      integration_target_cycle: preferRow ? (row.integration_target_cycle ?? previous.integration_target_cycle ?? null) : (previous.integration_target_cycle ?? row.integration_target_cycle ?? null),
+      carry_over_pending: preferRow ? (row.carry_over_pending ?? previous.carry_over_pending ?? null) : (previous.carry_over_pending ?? row.carry_over_pending ?? null),
       started_at: preferRow ? (row.started_at ?? previous.started_at ?? null) : (previous.started_at ?? row.started_at ?? null),
       ended_at: preferRow ? (row.ended_at ?? previous.ended_at ?? null) : (previous.ended_at ?? row.ended_at ?? null),
       source_artifact_path: preferRow ? (row.source_artifact_path ?? previous.source_artifact_path ?? null) : (previous.source_artifact_path ?? row.source_artifact_path ?? null),
@@ -211,6 +219,37 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
         ? (row.source_mode ?? previous.source_mode ?? null)
         : (previous.source_mode ?? row.source_mode ?? null),
       updated_at: preferRow ? (row.updated_at ?? previous.updated_at ?? now) : (previous.updated_at ?? row.updated_at ?? now),
+    });
+  }
+
+  function addSessionLink(row) {
+    if (!row?.source_session_id || !row?.target_session_id || !row?.relation_type) {
+      return;
+    }
+    const key = `${row.source_session_id}::${row.target_session_id}::${row.relation_type}`;
+    const existingIndex = sessionLinkIndex.get(key);
+    if (typeof existingIndex === "number") {
+      const previous = sessionLinks[existingIndex];
+      const candidatePreferred = isPreferredSessionSource({
+        source_confidence: row.confidence,
+        source_mode: row.source_mode,
+      }, {
+        source_confidence: previous?.confidence,
+        source_mode: previous?.source_mode,
+      });
+      if (!candidatePreferred) {
+        return;
+      }
+      sessionLinks[existingIndex] = {
+        ...row,
+        relation_status: row.relation_status ?? deriveRepairRelationStatus(row),
+      };
+      return;
+    }
+    sessionLinkIndex.set(key, sessionLinks.length);
+    sessionLinks.push({
+      ...row,
+      relation_status: row.relation_status ?? deriveRepairRelationStatus(row),
     });
   }
 
@@ -362,6 +401,12 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
         branch_name: sessionBranch,
         state: metadata.mode,
         owner: artifact.session_id,
+        parent_session: metadata.parent_session ?? null,
+        branch_kind: metadata.branch_kind ?? null,
+        cycle_branch: metadata.cycle_branch ?? null,
+        intermediate_branch: metadata.intermediate_branch ?? null,
+        integration_target_cycle: metadata.integration_target_cycle ?? null,
+        carry_over_pending: metadata.carry_over_pending ?? null,
         started_at: null,
         ended_at: null,
         source_artifact_path: artifact.path,
@@ -369,6 +414,60 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
         source_mode: "explicit",
         updated_at: artifact.updated_at ?? now,
       });
+      if (metadata.parent_session) {
+        addSession({
+          session_id: metadata.parent_session,
+          branch_name: null,
+          state: null,
+          owner: metadata.parent_session,
+          parent_session: null,
+          branch_kind: null,
+          cycle_branch: null,
+          intermediate_branch: null,
+          integration_target_cycle: null,
+          carry_over_pending: null,
+          started_at: null,
+          ended_at: null,
+          source_artifact_path: artifact.path,
+          source_confidence: 0.6,
+          source_mode: "inferred",
+          updated_at: artifact.updated_at ?? now,
+        });
+        addSessionLink({
+          source_session_id: artifact.session_id,
+          target_session_id: metadata.parent_session,
+          relation_type: "continues_from_session",
+          confidence: 1.0,
+          inference_source: "session_parent_session",
+          source_mode: "explicit",
+          updated_at: artifact.updated_at ?? now,
+        });
+        if (String(metadata.carry_over_pending ?? "").toLowerCase() === "yes") {
+          addSessionLink({
+            source_session_id: artifact.session_id,
+            target_session_id: metadata.parent_session,
+            relation_type: "carry_over_pending_from_session",
+            confidence: 0.95,
+            inference_source: "session_carry_over_pending",
+            source_mode: "explicit",
+            updated_at: artifact.updated_at ?? now,
+          });
+        }
+        if (!sessionArtifactById.has(metadata.parent_session)) {
+          addFinding({
+            migration_run_id: "repair-layer-v1",
+            severity: "info",
+            finding_type: "UNRESOLVED_PARENT_SESSION",
+            entity_type: "session",
+            entity_id: artifact.session_id,
+            artifact_path: artifact.path,
+            message: `Session references parent session ${metadata.parent_session} but no session artifact was indexed.`,
+            confidence: 0.8,
+            suggested_action: "Add or restore the parent session artifact to improve continuity context.",
+            created_at: artifact.updated_at ?? now,
+          });
+        }
+      }
       for (const cycleId of attachedCycles) {
         addSessionCycleLink({
           session_id: artifact.session_id,
@@ -445,6 +544,31 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
           suggested_action: "Add or restore the referenced cycle status artifact.",
           created_at: artifact.updated_at ?? now,
         });
+      }
+      for (const cycleId of reportedCycles) {
+        addSessionCycleLink({
+          session_id: artifact.session_id,
+          cycle_id: cycleId,
+          relation_type: "reported_from_previous_session",
+          confidence: 0.8,
+          inference_source: "session_reported_from_previous_session",
+          source_mode: "explicit",
+          updated_at: artifact.updated_at ?? now,
+        });
+      }
+      if (metadata.integration_target_cycle) {
+        const targetCycleIds = extractCycleIdsFromText(metadata.integration_target_cycle);
+        for (const cycleId of targetCycleIds) {
+          addSessionCycleLink({
+            session_id: artifact.session_id,
+            cycle_id: cycleId,
+            relation_type: "integration_target_cycle",
+            confidence: 0.95,
+            inference_source: "session_integration_target_cycle",
+            source_mode: "explicit",
+            updated_at: artifact.updated_at ?? now,
+          });
+        }
       }
       if (!sessionBranch || attachedCycles.length === 0) {
         addFinding({
@@ -620,6 +744,7 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
     sessions: Array.from(sessionsMap.values()).sort((a, b) => String(a.session_id).localeCompare(String(b.session_id))),
     artifact_links: artifactLinks.sort((a, b) => `${a.source_path}:${a.target_path}:${a.relation_type}`.localeCompare(`${b.source_path}:${b.target_path}:${b.relation_type}`)),
     session_cycle_links: sessionCycleLinks.sort((a, b) => `${a.session_id}:${a.cycle_id}:${a.relation_type}`.localeCompare(`${b.session_id}:${b.cycle_id}:${b.relation_type}`)),
+    session_links: sessionLinks.sort((a, b) => `${a.source_session_id}:${a.target_session_id}:${a.relation_type}`.localeCompare(`${b.source_session_id}:${b.target_session_id}:${b.relation_type}`)),
     migration_runs: [{
       migration_run_id: "repair-layer-v1",
       engine_version: "repair-layer-v1",

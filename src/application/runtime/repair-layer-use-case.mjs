@@ -92,6 +92,7 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
       sessions: Array.isArray(payload.sessions) ? payload.sessions : [],
       artifact_links: Array.isArray(payload.artifact_links) ? payload.artifact_links : [],
       session_cycle_links: Array.isArray(payload.session_cycle_links) ? payload.session_cycle_links : [],
+      session_links: Array.isArray(payload.session_links) ? payload.session_links : [],
       migration_runs: Array.isArray(payload.migration_runs) ? payload.migration_runs : [],
       migration_findings: Array.isArray(payload.migration_findings) ? payload.migration_findings : [],
     };
