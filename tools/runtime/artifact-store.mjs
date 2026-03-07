@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
+const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function getDatabaseSync() {
   try {
@@ -16,7 +17,9 @@ function getDatabaseSync() {
 }
 
 function readSchema(schemaFile) {
-  const absolute = path.resolve(process.cwd(), schemaFile);
+  const absolute = path.isAbsolute(schemaFile)
+    ? schemaFile
+    : path.resolve(process.cwd(), schemaFile);
   if (!fs.existsSync(absolute)) {
     throw new Error(`Schema file not found: ${absolute}`);
   }
@@ -204,7 +207,9 @@ function mapArtifactRow(row) {
 
 export function createArtifactStore(options = {}) {
   const sqliteFile = path.resolve(process.cwd(), options.sqliteFile ?? ".aidn/runtime/index/workflow-index.sqlite");
-  const schemaFile = options.schemaFile ?? "tools/perf/sql/schema.sql";
+  const schemaFile = options.schemaFile
+    ? path.resolve(process.cwd(), options.schemaFile)
+    : path.resolve(RUNTIME_DIR, "..", "perf", "sql", "schema.sql");
   const DatabaseSync = getDatabaseSync();
 
   fs.mkdirSync(path.dirname(sqliteFile), { recursive: true });
