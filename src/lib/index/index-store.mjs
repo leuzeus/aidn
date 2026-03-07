@@ -23,6 +23,9 @@ function stableIndexProjection(indexPayload) {
   }
   const clone = JSON.parse(JSON.stringify(indexPayload));
   delete clone.generated_at;
+  if (clone.repair_layer_meta && typeof clone.repair_layer_meta === "object") {
+    delete clone.repair_layer_meta.applied_at;
+  }
   return clone;
 }
 
@@ -522,6 +525,7 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       setMeta(db, "target_root", String(payload?.target_root ?? ""));
       setMeta(db, "audit_root", String(payload?.audit_root ?? ""));
       setMeta(db, "structure_profile_json", JSON.stringify(payload?.structure_profile ?? null));
+      setMeta(db, "repair_layer_meta_json", JSON.stringify(payload?.repair_layer_meta ?? null));
       db.exec("COMMIT;");
     } catch (error) {
       db.exec("ROLLBACK;");

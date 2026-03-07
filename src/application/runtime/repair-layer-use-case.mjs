@@ -4,6 +4,12 @@ import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import { buildRepairLayerService } from "./repair-layer-service.mjs";
 import { createWorkflowStateStoreAdapter } from "../../adapters/runtime/workflow-state-store-adapter.mjs";
 import { persistWorkflowIndexProjection } from "./index-state-store-service.mjs";
+import {
+  buildRepairLayerInputDigest,
+  mergeRepairLayerPayload,
+  REPAIR_LAYER_ENGINE_VERSION,
+  summarizeRepairLayer,
+} from "./repair-layer-payload-lib.mjs";
 
 function resolveTargetPath(targetRoot, candidatePath) {
   if (!candidatePath) {
@@ -34,63 +40,6 @@ function readJsonIndex(indexFile) {
 function writeJson(filePath, payload) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-}
-
-function mergeRepairLayer(payload, repairLayer) {
-  const artifacts = Array.isArray(payload?.artifacts) ? payload.artifacts : [];
-  const cycles = Array.isArray(payload?.cycles) ? payload.cycles : [];
-  const fileMap = Array.isArray(payload?.file_map) ? payload.file_map : [];
-  const tags = Array.isArray(payload?.tags) ? payload.tags : [];
-  const runMetrics = Array.isArray(payload?.run_metrics) ? payload.run_metrics : [];
-  return {
-    ...payload,
-    schema_version: Math.max(Number(payload?.schema_version ?? 1), 2),
-    sessions: repairLayer.sessions,
-    artifact_links: repairLayer.artifact_links,
-    cycle_links: Array.isArray(payload?.cycle_links) ? payload.cycle_links : [],
-    session_cycle_links: repairLayer.session_cycle_links,
-    migration_runs: repairLayer.migration_runs,
-    migration_findings: repairLayer.migration_findings,
-    repair_decisions: Array.isArray(payload?.repair_decisions) ? payload.repair_decisions : [],
-    summary: {
-      ...(payload?.summary && typeof payload.summary === "object" ? payload.summary : {}),
-      cycles_count: cycles.length,
-      sessions_count: repairLayer.sessions.length,
-      artifacts_count: artifacts.length,
-      file_map_count: fileMap.length,
-      tags_count: tags.length,
-      run_metrics_count: runMetrics.length,
-      artifact_links_count: repairLayer.artifact_links.length,
-      cycle_links_count: Array.isArray(payload?.cycle_links) ? payload.cycle_links.length : 0,
-      session_cycle_links_count: repairLayer.session_cycle_links.length,
-      migration_runs_count: repairLayer.migration_runs.length,
-      migration_findings_count: repairLayer.migration_findings.length,
-      repair_decisions_count: Array.isArray(payload?.repair_decisions) ? payload.repair_decisions.length : 0,
-    },
-  };
-}
-
-function summarizeRepairLayer(repairLayer) {
-  const findings = Array.isArray(repairLayer?.migration_findings) ? repairLayer.migration_findings : [];
-  const severityCounts = {};
-  const typeCounts = {};
-  for (const row of findings) {
-    const severity = String(row?.severity ?? "unknown");
-    const type = String(row?.finding_type ?? "unknown");
-    severityCounts[severity] = Number(severityCounts[severity] ?? 0) + 1;
-    typeCounts[type] = Number(typeCounts[type] ?? 0) + 1;
-  }
-  return {
-    sessions_count: Array.isArray(repairLayer?.sessions) ? repairLayer.sessions.length : 0,
-    artifact_links_count: Array.isArray(repairLayer?.artifact_links) ? repairLayer.artifact_links.length : 0,
-    session_cycle_links_count: Array.isArray(repairLayer?.session_cycle_links) ? repairLayer.session_cycle_links.length : 0,
-    migration_runs_count: Array.isArray(repairLayer?.migration_runs) ? repairLayer.migration_runs.length : 0,
-    migration_findings_count: findings.length,
-    repair_decisions_count: 0,
-    severity_counts: severityCounts,
-    type_counts: typeCounts,
-    top_findings: findings.slice(0, 10),
-  };
 }
 
 function createStateStoreForBackend(indexFile, backend) {
@@ -125,15 +74,83 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
     throw new Error("Repair layer requires an index payload with artifacts and cycles.");
   }
 
+  const repairDecisions = Array.isArray(payload.repair_decisions) ? payload.repair_decisions : [];
+  const inputDigest = buildRepairLayerInputDigest({
+    artifacts: payload.artifacts,
+    cycles: payload.cycles,
+    repair_decisions: repairDecisions,
+  });
+  const previousMeta = payload.repair_layer_meta && typeof payload.repair_layer_meta === "object"
+    ? payload.repair_layer_meta
+    : null;
+  const alreadyCurrent = previousMeta
+    && previousMeta.engine_version === REPAIR_LAYER_ENGINE_VERSION
+    && previousMeta.input_digest === inputDigest;
+
+  if (args.apply && alreadyCurrent) {
+    const repairLayer = {
+      sessions: Array.isArray(payload.sessions) ? payload.sessions : [],
+      artifact_links: Array.isArray(payload.artifact_links) ? payload.artifact_links : [],
+      session_cycle_links: Array.isArray(payload.session_cycle_links) ? payload.session_cycle_links : [],
+      migration_runs: Array.isArray(payload.migration_runs) ? payload.migration_runs : [],
+      migration_findings: Array.isArray(payload.migration_findings) ? payload.migration_findings : [],
+    };
+    const summary = summarizeRepairLayer(repairLayer, {
+      repairDecisions,
+      inputDigest,
+    });
+    let reportFile = null;
+    if (args.reportFile) {
+      reportFile = resolveTargetPath(targetRoot, args.reportFile);
+      writeJson(reportFile, {
+        ts: new Date().toISOString(),
+        target_root: targetRoot,
+        audit_root: auditRoot,
+        index_file: index.absolute,
+        index_backend: backend,
+        action: "skipped",
+        skip_reason: "input_unchanged",
+        summary,
+        migration_runs: repairLayer.migration_runs,
+        migration_findings: repairLayer.migration_findings,
+      });
+    }
+    return {
+      ts: new Date().toISOString(),
+      target_root: targetRoot,
+      audit_root: auditRoot,
+      index_file: index.absolute,
+      index_backend: backend,
+      action: "skipped",
+      skipped: true,
+      skip_reason: "input_unchanged",
+      report_file: reportFile,
+      summary,
+      apply_result: {
+        outputs: [],
+        writes: {
+          files_written_count: 0,
+          bytes_written: 0,
+        },
+      },
+    };
+  }
+
   const repairLayer = buildRepairLayerService({
     auditRoot,
     targetRoot,
     artifacts: payload.artifacts,
     cycles: payload.cycles,
-    repairDecisions: Array.isArray(payload.repair_decisions) ? payload.repair_decisions : [],
+    repairDecisions,
   });
-  const mergedPayload = mergeRepairLayer(payload, repairLayer);
-  const summary = summarizeRepairLayer(repairLayer);
+  const mergedPayload = mergeRepairLayerPayload(payload, repairLayer, {
+    repairDecisions,
+    inputDigest,
+  });
+  const summary = summarizeRepairLayer(repairLayer, {
+    repairDecisions,
+    inputDigest,
+  });
 
   let applyResult = {
     outputs: [],

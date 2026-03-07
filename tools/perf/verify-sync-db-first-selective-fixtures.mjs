@@ -126,7 +126,7 @@ function main() {
 
     const checks = {
       full_init_ok: fullInit.ok === true,
-      full_init_repair_layer_applied: String(fullInit?.repair_layer_result?.action ?? "") === "applied",
+      full_init_repair_layer_completed: ["applied", "skipped"].includes(String(fullInit?.repair_layer_result?.action ?? "")),
       full_init_repair_layer_findings_field: Number(fullInit?.repair_layer_result?.summary?.migration_findings_count ?? -1) >= 0,
       selective_update_ok: selectiveUpdate.ok === true,
       selective_update_synced: Number(selectiveUpdate?.summary?.synced_count ?? 0) >= 1,

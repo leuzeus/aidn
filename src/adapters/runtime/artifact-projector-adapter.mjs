@@ -5,6 +5,7 @@ import { detectStructureProfile } from "../../lib/workflow/structure-profile-lib
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
 import { assertArtifactProjector } from "../../core/ports/artifact-projector-port.mjs";
 import { buildRepairLayerService } from "../../application/runtime/repair-layer-service.mjs";
+import { buildRepairLayerInputDigest, buildRepairLayerMeta } from "../../application/runtime/repair-layer-payload-lib.mjs";
 
 function walkFiles(rootDir) {
   const files = [];
@@ -471,6 +472,9 @@ export function stablePayloadProjection(payload) {
   }
   const clone = JSON.parse(JSON.stringify(payload));
   delete clone.generated_at;
+  if (clone.repair_layer_meta && typeof clone.repair_layer_meta === "object") {
+    delete clone.repair_layer_meta.applied_at;
+  }
   return clone;
 }
 
@@ -481,13 +485,24 @@ export function payloadDigest(payload) {
 
 export function createArtifactProjectorAdapter() {
   return assertArtifactProjector({
-    projectArtifacts({ targetRoot, auditRoot, embedContent = false, kpiFile = "" }) {
+    projectArtifacts({ targetRoot, auditRoot, embedContent = false, kpiFile = "", repairDecisions = [] }) {
       const artifacts = buildArtifactRows(auditRoot, { embedContent });
       const { cycles, fileMap, cycleTagPairs } = buildCycleTables(auditRoot);
-      const repairLayer = buildRepairLayerService({ auditRoot, targetRoot, artifacts, cycles });
+      const repairLayer = buildRepairLayerService({ auditRoot, targetRoot, artifacts, cycles, repairDecisions });
       const { tags, artifactTagPairs } = buildTags(cycleTagPairs, artifacts);
       const runMetrics = buildRunMetrics(kpiFile);
       const structureProfile = detectStructureProfile(auditRoot);
+      const repairLayerMeta = buildRepairLayerMeta({
+        artifacts,
+        cycles,
+        repair_decisions: repairDecisions,
+      }, {
+        inputDigest: buildRepairLayerInputDigest({
+          artifacts,
+          cycles,
+          repair_decisions: repairDecisions,
+        }),
+      });
 
       return {
         structureProfile,
@@ -509,6 +524,8 @@ export function createArtifactProjectorAdapter() {
           session_cycle_links: repairLayer.session_cycle_links,
           migration_runs: repairLayer.migration_runs,
           migration_findings: repairLayer.migration_findings,
+          repair_decisions: repairDecisions,
+          repair_layer_meta: repairLayerMeta,
           summary: {
             cycles_count: cycles.length,
             sessions_count: repairLayer.sessions.length,
@@ -521,6 +538,7 @@ export function createArtifactProjectorAdapter() {
             session_cycle_links_count: repairLayer.session_cycle_links.length,
             migration_runs_count: repairLayer.migration_runs.length,
             migration_findings_count: repairLayer.migration_findings.length,
+            repair_decisions_count: repairDecisions.length,
             structure_kind: structureProfile.kind,
             artifacts_normative_count: artifacts.filter((item) => item.family === "normative").length,
             artifacts_support_count: artifacts.filter((item) => item.family === "support").length,

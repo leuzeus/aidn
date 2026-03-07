@@ -81,7 +81,7 @@ function main() {
       migrate_ok: migrated.ok === true,
       moved_to_db_only: String(migrated?.to_mode ?? "") === "db-only",
       repair_layer_step_present: Array.isArray(migrated?.steps) && migrated.steps.some((step) => String(step?.step ?? "") === "repair_layer"),
-      repair_layer_applied: String(migrated?.repair_layer_result?.action ?? "") === "applied",
+      repair_layer_completed: ["applied", "skipped"].includes(String(migrated?.repair_layer_result?.action ?? "")),
       report_exists: fs.existsSync(reportFile),
       sqlite_exists: fs.existsSync(sqliteFile),
       sqlite_sessions_present: Array.isArray(payload.sessions) && payload.sessions.length >= 2,

@@ -118,6 +118,7 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
       target_root: meta.target_root ?? null,
       audit_root: meta.audit_root ?? null,
       structure_profile: structureProfile ?? null,
+      repair_layer_meta: parseJsonOrNull(meta.repair_layer_meta_json),
       cycles: readRows(db, `
         SELECT cycle_id, session_id, state, outcome, branch_name, dor_state,
                continuity_rule, continuity_base_branch, continuity_latest_cycle_branch, updated_at

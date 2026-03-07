@@ -5,6 +5,7 @@ import { assertArtifactProjector } from "../../core/ports/artifact-projector-por
 import { shouldEmbedArtifactContentByState } from "../../core/state-mode/runtime-index-policy.mjs";
 import { persistWorkflowIndexProjection } from "./index-state-store-service.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
+import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 
 function resolveTargetPath(targetRoot, candidatePath) {
   if (!candidatePath) {
@@ -37,6 +38,48 @@ function resolveInputPathPreferTarget(targetRoot, candidatePath) {
   return fromTarget;
 }
 
+function readJsonIndexIfExists(indexFile) {
+  if (!indexFile || !fs.existsSync(indexFile)) {
+    return null;
+  }
+  try {
+    const payload = JSON.parse(fs.readFileSync(indexFile, "utf8"));
+    return payload && typeof payload === "object" ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+function readExistingRepairDecisions(args) {
+  const sqliteCandidates = [];
+  const jsonCandidates = [];
+  if (args.store === "sqlite" || args.store === "dual-sqlite" || args.store === "all") {
+    sqliteCandidates.push(args.sqliteOutput);
+  }
+  if (args.store === "file" || args.store === "dual" || args.store === "dual-sqlite" || args.store === "all") {
+    jsonCandidates.push(args.output);
+  }
+  for (const candidate of sqliteCandidates) {
+    if (!candidate || !fs.existsSync(candidate)) {
+      continue;
+    }
+    try {
+      const payload = readIndexFromSqlite(candidate).payload;
+      if (Array.isArray(payload?.repair_decisions)) {
+        return payload.repair_decisions;
+      }
+    } catch {
+    }
+  }
+  for (const candidate of jsonCandidates) {
+    const payload = readJsonIndexIfExists(candidate);
+    if (Array.isArray(payload?.repair_decisions)) {
+      return payload.repair_decisions;
+    }
+  }
+  return [];
+}
+
 export function runIndexSyncUseCase({
   args,
   targetRoot,
@@ -66,12 +109,14 @@ export function runIndexSyncUseCase({
   if (!fs.existsSync(auditRoot)) {
     throw new Error(`Missing audit root: ${auditRoot}`);
   }
+  const repairDecisions = readExistingRepairDecisions(args);
 
   const built = artifactProjector.projectArtifacts({
     targetRoot,
     auditRoot,
     embedContent: args.embedContent,
     kpiFile: args.kpiFile,
+    repairDecisions,
   });
   const payload = built.payload;
   const structureProfile = built.structureProfile;

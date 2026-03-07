@@ -89,7 +89,7 @@ function main() {
     const report = JSON.parse(fs.readFileSync(reportFile, "utf8"));
 
     const checks = {
-      action_applied: String(command?.action ?? "") === "applied",
+      action_completed: ["applied", "skipped"].includes(String(command?.action ?? "")),
       report_written: path.resolve(reportFile) === String(command?.report_file ?? ""),
       sqlite_sessions_present: Array.isArray(payload.sessions) && payload.sessions.length >= 2,
       sqlite_findings_present: Array.isArray(payload.migration_findings) && payload.migration_findings.length >= 1,

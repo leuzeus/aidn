@@ -4,6 +4,7 @@ import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import { buildRepairLayerService } from "./repair-layer-service.mjs";
 import { createWorkflowStateStoreAdapter } from "../../adapters/runtime/workflow-state-store-adapter.mjs";
 import { persistWorkflowIndexProjection } from "./index-state-store-service.mjs";
+import { buildRepairLayerInputDigest, mergeRepairLayerPayload } from "./repair-layer-payload-lib.mjs";
 
 function resolveTargetPath(targetRoot, candidatePath) {
   if (!candidatePath) {
@@ -42,26 +43,6 @@ function createStateStoreForBackend(indexFile, backend) {
     mode: "file",
     jsonOutput: indexFile,
   });
-}
-
-function mergeRepairLayer(payload, repairLayer, repairDecisions) {
-  return {
-    ...payload,
-    schema_version: Math.max(Number(payload?.schema_version ?? 1), 2),
-    sessions: repairLayer.sessions,
-    artifact_links: repairLayer.artifact_links,
-    cycle_links: Array.isArray(payload?.cycle_links) ? payload.cycle_links : [],
-    session_cycle_links: repairLayer.session_cycle_links,
-    migration_runs: repairLayer.migration_runs,
-    migration_findings: repairLayer.migration_findings,
-    repair_decisions: repairDecisions,
-    summary: {
-      ...(payload?.summary && typeof payload.summary === "object" ? payload.summary : {}),
-      repair_decisions_count: repairDecisions.length,
-      session_cycle_links_count: repairLayer.session_cycle_links.length,
-      migration_findings_count: repairLayer.migration_findings.length,
-    },
-  };
 }
 
 function upsertRepairDecision(existing, nextDecision) {
@@ -113,7 +94,14 @@ export function runRepairLayerResolveUseCase({ args, targetRoot }) {
     cycles: payload.cycles,
     repairDecisions,
   });
-  const mergedPayload = mergeRepairLayer(payload, repairLayer, repairDecisions);
+  const mergedPayload = mergeRepairLayerPayload(payload, repairLayer, {
+    repairDecisions,
+    inputDigest: buildRepairLayerInputDigest({
+      artifacts: payload.artifacts,
+      cycles: payload.cycles,
+      repair_decisions: repairDecisions,
+    }),
+  });
 
   let applyResult = {
     outputs: [],
