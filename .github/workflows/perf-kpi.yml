@@ -1,0 +1,503 @@
+name: Perf KPI
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      strict_thresholds:
+        description: "Fail job when KPI thresholds are violated"
+        required: false
+        default: false
+        type: boolean
+      strict_index_parity:
+        description: "Fail job when dual-write parity check fails"
+        required: false
+        default: false
+        type: boolean
+      strict_index_quality:
+        description: "Fail job when index quality thresholds are violated"
+        required: false
+        default: false
+        type: boolean
+      strict_index_canonical:
+        description: "Fail job when lightweight canonical coverage check is violated"
+        required: false
+        default: false
+        type: boolean
+      strict_index_sync:
+        description: "Fail job when index import/export sync drift is detected"
+        required: false
+        default: false
+        type: boolean
+      strict_regression:
+        description: "Fail job when KPI regression checks are violated"
+        required: false
+        default: false
+        type: boolean
+      strict_fallback:
+        description: "Fail job when fallback storm checks are violated"
+        required: false
+        default: false
+        type: boolean
+      strict_constraint:
+        description: "Fail job when active-constraint checks are violated"
+        required: false
+        default: false
+        type: boolean
+      regression_warmup_enabled:
+        description: "Override regression warmup enabled (true/false, empty=use targets)"
+        required: false
+        default: ""
+        type: string
+      regression_warmup_history_lt:
+        description: "Override warmup history_lt (integer, empty=use targets)"
+        required: false
+        default: ""
+        type: string
+      regression_warmup_multiplier:
+        description: "Override warmup multiplier (number, empty=use targets)"
+        required: false
+        default: ""
+        type: string
+      regression_warmup_severity:
+        description: "Override warmup severity (warn|error, empty=use targets)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  perf-kpi:
+    name: Collect Workflow KPI
+    runs-on: ubuntu-latest
+    env:
+      PERF_TARGET: tests/fixtures/repo-installed-core
+      PERF_RUNTIME: tests/fixtures/repo-installed-core/.aidn/runtime
+      PERF_RUNTIME_PERF: tests/fixtures/repo-installed-core/.aidn/runtime/perf
+      PERF_RUNTIME_INDEX: tests/fixtures/repo-installed-core/.aidn/runtime/index
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Render Fixture Workflow Version
+        run: |
+          node tools/perf/render-workflow-version.mjs --file "$PERF_TARGET/docs/audit/WORKFLOW.md" --version-file VERSION
+
+      - name: Verify Structure Profile Fixtures
+        run: npm run perf:verify-structure
+
+      - name: Verify Skill Hook Coverage
+        run: npm run perf:verify-skill-hooks
+
+      - name: Verify Skill Hook State Mode Fixtures
+        run: npm run perf:verify-skill-hook-state-mode
+
+      - name: Verify Index Sync Fixtures
+        run: npm run perf:verify-index-sync
+
+      - name: Verify Index Sync Select Paths Fixtures
+        run: npm run perf:verify-index-sync-select-paths
+
+      - name: Verify Index Reconcile Fixtures
+        run: npm run perf:verify-index-reconcile
+
+      - name: Verify Index Reconcile SQLite Fixtures
+        run: npm run perf:verify-index-reconcile-sqlite
+
+      - name: Verify Checkpoint Index Sync Backend Fixtures
+        run: npm run perf:verify-checkpoint-index-sync-backend
+
+      - name: Verify Index SQLite Fixtures
+        run: npm run perf:verify-index-sqlite
+
+      - name: Verify Index Regression Fixtures
+        run: npm run perf:verify-index-regression
+
+      - name: Verify Support Artifacts Fixtures
+        run: npm run perf:verify-support-artifacts
+
+      - name: Verify Index Export Filter Fixtures
+        run: npm run perf:verify-index-export-filter
+
+      - name: Verify Index Canonical Check Fixtures
+        run: npm run perf:verify-index-canonical-check
+
+      - name: Verify Perf CLI Aliases Fixtures
+        run: npm run perf:verify-cli-aliases
+
+      - name: Verify Constraint Report Fixtures
+        run: npm run perf:verify-constraint-report
+
+      - name: Verify Constraint Actions Fixtures
+        run: npm run perf:verify-constraint-actions
+
+      - name: Verify Constraint Trend Fixtures
+        run: npm run perf:verify-constraint-trend
+
+      - name: Verify Constraint Lot Plan Fixtures
+        run: npm run perf:verify-constraint-lot-plan
+
+      - name: Verify Install Import Fixtures
+        run: npm run perf:verify-install-import
+
+      - name: Verify State Mode Parity Fixtures
+        run: npm run perf:verify-state-mode-parity
+
+      - name: Verify DB-Only Hooks Fixtures
+        run: npm run perf:verify-db-only-hooks
+
+      - name: Reset Perf Runtime
+        run: npm run perf:reset -- --root "$PERF_RUNTIME"
+
+      - name: Restore Perf History Cache
+        id: perf_history_restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-regression-history.ndjson
+          key: ${{ runner.os }}-perf-history-${{ github.event.pull_request.head.ref || github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ${{ runner.os }}-perf-history-${{ github.event.pull_request.head.ref || github.ref_name }}-
+
+      - name: Session Start Hook
+        run: npm run perf:session-start -- --target "$PERF_TARGET" --mode COMMITTING --index-store dual
+
+      - name: Delivery Start
+        run: npm run perf:delivery-start -- --target "$PERF_TARGET" --mode COMMITTING
+
+      - name: Simulated Delivery Window
+        run: sleep 1
+
+      - name: Delivery End
+        run: npm run perf:delivery-end -- --target "$PERF_TARGET" --mode COMMITTING
+
+      - name: Session Close Hook
+        run: npm run perf:session-close -- --target "$PERF_TARGET" --mode COMMITTING --index-store dual
+
+      - name: Build KPI JSON
+        run: |
+          mkdir -p "$PERF_RUNTIME_PERF"
+          node tools/perf/report-kpi.mjs --file "$PERF_RUNTIME_PERF/workflow-events.ndjson" --run-prefix session- --require-delivery --json > "$PERF_RUNTIME_PERF/kpi-report.json"
+
+      - name: Sync KPI History
+        run: |
+          node tools/perf/sync-kpi-history.mjs --kpi-file "$PERF_RUNTIME_PERF/kpi-report.json" --history-file "$PERF_RUNTIME_PERF/kpi-history.ndjson" --max-runs 200
+
+      - name: Refresh Index With KPI Metrics
+        run: |
+          npm run perf:index-dual -- --target "$PERF_TARGET" --kpi-file "$PERF_RUNTIME_PERF/kpi-report.json"
+
+      - name: Refresh SQLite Index
+        run: |
+          npm run perf:index-sqlite -- --target "$PERF_TARGET" --kpi-file "$PERF_RUNTIME_PERF/kpi-report.json"
+
+      - name: Lightweight Canonical Coverage Check (non-blocking)
+        run: |
+          STRICT_INDEX_QUALITY="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_quality || false }}"
+          STRICT_INDEX_CANONICAL="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_canonical || false }}"
+          if [ "$STRICT_INDEX_QUALITY" = "true" ] || [ "$STRICT_INDEX_CANONICAL" = "true" ]; then
+            echo "Running canonical coverage check in strict mode."
+            node tools/perf/check-index-canonical-coverage.mjs --index-file "$PERF_RUNTIME_INDEX/workflow-index.sqlite" --backend sqlite --targets docs/performance/INDEX_TARGETS.json --out "$PERF_RUNTIME_INDEX/index-canonical-check.json" --strict
+          else
+            echo "Running canonical coverage check in non-blocking mode."
+            node tools/perf/check-index-canonical-coverage.mjs --index-file "$PERF_RUNTIME_INDEX/workflow-index.sqlite" --backend sqlite --targets docs/performance/INDEX_TARGETS.json --out "$PERF_RUNTIME_INDEX/index-canonical-check.json" || true
+          fi
+
+      - name: Render Canonical Check Summary
+        run: |
+          npm run perf:index-canonical-summary -- --check-file "$PERF_RUNTIME_INDEX/index-canonical-check.json" --out "$PERF_RUNTIME_INDEX/index-canonical-check-summary.md"
+
+      - name: Check Index Import/Export Sync (non-blocking)
+        run: |
+          STRICT_INDEX_SYNC="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_sync || false }}"
+          if [ "$STRICT_INDEX_SYNC" = "true" ]; then
+            echo "Running index sync check in strict mode."
+            node tools/perf/index-sync-check.mjs --target "$PERF_TARGET" --strict --json > "$PERF_RUNTIME_INDEX/index-sync-check.json"
+          else
+            echo "Running index sync check in non-blocking mode."
+            node tools/perf/index-sync-check.mjs --target "$PERF_TARGET" --json > "$PERF_RUNTIME_INDEX/index-sync-check.json" || true
+          fi
+
+      - name: Render Index Sync Summary
+        run: |
+          npm run perf:index-sync-summary -- --check-file "$PERF_RUNTIME_INDEX/index-sync-check.json" --out "$PERF_RUNTIME_INDEX/index-sync-summary.md"
+
+      - name: Build Drift-Driven Export Paths
+        run: |
+          npm run perf:index-select-paths -- --target "$PERF_TARGET" --check-file "$PERF_RUNTIME_INDEX/index-sync-check.json" --out "$PERF_RUNTIME_INDEX/export-paths.txt" --include-types missing_in_index,digest_mismatch,stale_in_index
+
+      - name: Sync Index Check History
+        run: |
+          npm run perf:index-sync-history -- --check-file "$PERF_RUNTIME_INDEX/index-sync-check.json" --history-file "$PERF_RUNTIME_INDEX/index-sync-history.ndjson" --max-runs 200
+
+      - name: Build Index Sync Trend Report
+        run: |
+          npm run perf:index-sync-report -- --history-file "$PERF_RUNTIME_INDEX/index-sync-history.ndjson" --out "$PERF_RUNTIME_INDEX/index-sync-report.json"
+
+      - name: Evaluate Index Sync Trend Thresholds (non-blocking)
+        run: |
+          STRICT_INDEX_SYNC="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_sync || false }}"
+          if [ "$STRICT_INDEX_SYNC" = "true" ]; then
+            echo "Running index sync trend checks in strict mode."
+            node tools/perf/check-thresholds.mjs --kpi-file "$PERF_RUNTIME_INDEX/index-sync-report.json" --targets docs/performance/INDEX_SYNC_TARGETS.json --out "$PERF_RUNTIME_INDEX/index-sync-thresholds.json" --strict
+          else
+            echo "Running index sync trend checks in non-blocking mode."
+            node tools/perf/check-thresholds.mjs --kpi-file "$PERF_RUNTIME_INDEX/index-sync-report.json" --targets docs/performance/INDEX_SYNC_TARGETS.json --out "$PERF_RUNTIME_INDEX/index-sync-thresholds.json" || true
+          fi
+
+      - name: Render Index Sync Trend Summary
+        run: |
+          npm run perf:index-sync-trend-summary -- --report-file "$PERF_RUNTIME_INDEX/index-sync-report.json" --thresholds-file "$PERF_RUNTIME_INDEX/index-sync-thresholds.json" --out "$PERF_RUNTIME_INDEX/index-sync-trend-summary.md"
+
+      - name: Verify Index Dual-Write Parity
+        run: |
+          STRICT_INDEX="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_parity || false }}"
+          if [ "$STRICT_INDEX" = "true" ]; then
+            echo "Running index parity check in strict mode."
+            node tools/perf/index-verify-dual.mjs --index-file "$PERF_RUNTIME_INDEX/workflow-index.json" --sql-file "$PERF_RUNTIME_INDEX/workflow-index.sql" --json > "$PERF_RUNTIME_INDEX/index-parity.json"
+          else
+            echo "Running index parity check in non-blocking mode."
+            node tools/perf/index-verify-dual.mjs --index-file "$PERF_RUNTIME_INDEX/workflow-index.json" --sql-file "$PERF_RUNTIME_INDEX/workflow-index.sql" --json > "$PERF_RUNTIME_INDEX/index-parity.json" || true
+          fi
+
+      - name: Verify Index SQLite Parity
+        run: |
+          STRICT_INDEX="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_parity || false }}"
+          if [ "$STRICT_INDEX" = "true" ]; then
+            echo "Running SQLite parity check in strict mode."
+            node tools/perf/index-verify-sqlite.mjs --index-file "$PERF_RUNTIME_INDEX/workflow-index.json" --sqlite-file "$PERF_RUNTIME_INDEX/workflow-index.sqlite" --json --strict > "$PERF_RUNTIME_INDEX/index-sqlite-parity.json"
+          else
+            echo "Running SQLite parity check in non-blocking mode."
+            node tools/perf/index-verify-sqlite.mjs --index-file "$PERF_RUNTIME_INDEX/workflow-index.json" --sqlite-file "$PERF_RUNTIME_INDEX/workflow-index.sqlite" --json > "$PERF_RUNTIME_INDEX/index-sqlite-parity.json" || true
+          fi
+
+      - name: Build Index Quality Report
+        run: |
+          npm run perf:index-report -- --index-file "$PERF_RUNTIME_INDEX/workflow-index.json" --parity-file "$PERF_RUNTIME_INDEX/index-parity.json" --sqlite-parity-file "$PERF_RUNTIME_INDEX/index-sqlite-parity.json" --out "$PERF_RUNTIME_INDEX/index-report.json"
+
+      - name: Evaluate Index Quality Thresholds (non-blocking)
+        run: |
+          STRICT_INDEX_QUALITY="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_quality || false }}"
+          if [ "$STRICT_INDEX_QUALITY" = "true" ]; then
+            echo "Running index quality checks in strict mode."
+            node tools/perf/check-thresholds.mjs --kpi-file "$PERF_RUNTIME_INDEX/index-report.json" --targets docs/performance/INDEX_TARGETS.json --out "$PERF_RUNTIME_INDEX/index-thresholds.json" --strict
+          else
+            echo "Running index quality checks in non-blocking mode."
+            node tools/perf/check-thresholds.mjs --kpi-file "$PERF_RUNTIME_INDEX/index-report.json" --targets docs/performance/INDEX_TARGETS.json --out "$PERF_RUNTIME_INDEX/index-thresholds.json" || true
+          fi
+
+      - name: Evaluate Index Regression + Render Index Markdown Summary
+        run: |
+          npm run perf:index-regression-kpi -- --index-report-file "$PERF_RUNTIME_INDEX/index-report.json" --out "$PERF_RUNTIME_INDEX/index-regression-kpi.json"
+          npm run perf:index-regression-history -- --kpi-file "$PERF_RUNTIME_INDEX/index-regression-kpi.json" --history-file "$PERF_RUNTIME_INDEX/index-regression-history.ndjson" --max-runs 200
+
+          STRICT_INDEX_QUALITY="${{ github.event_name == 'workflow_dispatch' && inputs.strict_index_quality || false }}"
+          if [ "$STRICT_INDEX_QUALITY" = "true" ]; then
+            echo "Running index regression checks in strict mode."
+            npm run perf:index-regression -- --kpi-file "$PERF_RUNTIME_INDEX/index-regression-kpi.json" --history-file "$PERF_RUNTIME_INDEX/index-regression-history.ndjson" --targets docs/performance/INDEX_REGRESSION_TARGETS.json --out "$PERF_RUNTIME_INDEX/index-regression.json" --strict
+          else
+            echo "Running index regression checks in non-blocking mode."
+            npm run perf:index-regression -- --kpi-file "$PERF_RUNTIME_INDEX/index-regression-kpi.json" --history-file "$PERF_RUNTIME_INDEX/index-regression-history.ndjson" --targets docs/performance/INDEX_REGRESSION_TARGETS.json --out "$PERF_RUNTIME_INDEX/index-regression.json" || true
+          fi
+
+          npm run perf:index-summary -- --report-file "$PERF_RUNTIME_INDEX/index-report.json" --thresholds-file "$PERF_RUNTIME_INDEX/index-thresholds.json" --regression-file "$PERF_RUNTIME_INDEX/index-regression.json" --canonical-check-file "$PERF_RUNTIME_INDEX/index-canonical-check.json" --out "$PERF_RUNTIME_INDEX/index-summary.md"
+
+      - name: Evaluate KPI Thresholds (non-blocking)
+        run: |
+          STRICT="${{ github.event_name == 'workflow_dispatch' && inputs.strict_thresholds || false }}"
+          if [ "$STRICT" = "true" ]; then
+            echo "Running threshold check in strict mode."
+            node tools/perf/check-thresholds.mjs --kpi-file "$PERF_RUNTIME_PERF/kpi-report.json" --targets docs/performance/KPI_TARGETS.json --out "$PERF_RUNTIME_PERF/kpi-thresholds.json" --strict
+          else
+            echo "Running threshold check in non-blocking mode."
+            node tools/perf/check-thresholds.mjs --kpi-file "$PERF_RUNTIME_PERF/kpi-report.json" --targets docs/performance/KPI_TARGETS.json --out "$PERF_RUNTIME_PERF/kpi-thresholds.json" || true
+          fi
+
+      - name: Evaluate KPI Regression (non-blocking)
+        run: |
+          REGRESSION_ARGS=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -n "${{ inputs.regression_warmup_enabled }}" ]; then
+              REGRESSION_ARGS="$REGRESSION_ARGS --warmup-enabled ${{ inputs.regression_warmup_enabled }}"
+            fi
+            if [ -n "${{ inputs.regression_warmup_history_lt }}" ]; then
+              REGRESSION_ARGS="$REGRESSION_ARGS --warmup-history-lt ${{ inputs.regression_warmup_history_lt }}"
+            fi
+            if [ -n "${{ inputs.regression_warmup_multiplier }}" ]; then
+              REGRESSION_ARGS="$REGRESSION_ARGS --warmup-multiplier ${{ inputs.regression_warmup_multiplier }}"
+            fi
+            if [ -n "${{ inputs.regression_warmup_severity }}" ]; then
+              REGRESSION_ARGS="$REGRESSION_ARGS --warmup-severity ${{ inputs.regression_warmup_severity }}"
+            fi
+          fi
+
+          STRICT_REGRESSION="${{ github.event_name == 'workflow_dispatch' && inputs.strict_regression || false }}"
+          if [ "$STRICT_REGRESSION" = "true" ]; then
+            echo "Running regression check in strict mode."
+            node tools/perf/check-regression.mjs --kpi-file "$PERF_RUNTIME_PERF/kpi-report.json" --history-file "$PERF_RUNTIME_PERF/kpi-history.ndjson" --targets docs/performance/REGRESSION_TARGETS.json --out "$PERF_RUNTIME_PERF/kpi-regression.json" $REGRESSION_ARGS --strict
+          else
+            echo "Running regression check in non-blocking mode."
+            node tools/perf/check-regression.mjs --kpi-file "$PERF_RUNTIME_PERF/kpi-report.json" --history-file "$PERF_RUNTIME_PERF/kpi-history.ndjson" --targets docs/performance/REGRESSION_TARGETS.json --out "$PERF_RUNTIME_PERF/kpi-regression.json" $REGRESSION_ARGS || true
+          fi
+
+      - name: Build Fallback Report
+        run: |
+          node tools/perf/report-fallbacks.mjs --file "$PERF_RUNTIME_PERF/workflow-events.ndjson" --run-prefix session- --out "$PERF_RUNTIME_PERF/fallback-report.json"
+
+      - name: Build Constraint Report
+        run: |
+          npm run perf:constraint-report -- --file "$PERF_RUNTIME_PERF/workflow-events.ndjson" --run-prefix session- --out "$PERF_RUNTIME_PERF/constraint-report.json"
+
+      - name: Evaluate Constraint Thresholds (non-blocking)
+        run: |
+          STRICT_CONSTRAINT="${{ github.event_name == 'workflow_dispatch' && inputs.strict_constraint || false }}"
+          if [ "$STRICT_CONSTRAINT" = "true" ]; then
+            echo "Running constraint checks in strict mode."
+            npm run perf:check-constraints -- --target "$PERF_TARGET" --kpi-file "$PERF_RUNTIME_PERF/constraint-report.json" --out "$PERF_RUNTIME_PERF/constraint-thresholds.json" --strict
+          else
+            echo "Running constraint checks in non-blocking mode."
+            npm run perf:check-constraints -- --target "$PERF_TARGET" --kpi-file "$PERF_RUNTIME_PERF/constraint-report.json" --out "$PERF_RUNTIME_PERF/constraint-thresholds.json" || true
+          fi
+
+      - name: Build Constraint Actions
+        run: |
+          npm run perf:constraint-actions -- --report-file "$PERF_RUNTIME_PERF/constraint-report.json" --thresholds-file "$PERF_RUNTIME_PERF/constraint-thresholds.json" --out "$PERF_RUNTIME_PERF/constraint-actions.json"
+
+      - name: Sync Constraint History
+        run: |
+          npm run perf:constraint-history -- --report-file "$PERF_RUNTIME_PERF/constraint-report.json" --actions-file "$PERF_RUNTIME_PERF/constraint-actions.json" --history-file "$PERF_RUNTIME_PERF/constraint-history.ndjson" --max-runs 200
+
+      - name: Build Constraint Trend Report
+        run: |
+          npm run perf:constraint-trend -- --history-file "$PERF_RUNTIME_PERF/constraint-history.ndjson" --out "$PERF_RUNTIME_PERF/constraint-trend.json"
+
+      - name: Evaluate Constraint Trend Thresholds (non-blocking)
+        run: |
+          STRICT_CONSTRAINT="${{ github.event_name == 'workflow_dispatch' && inputs.strict_constraint || false }}"
+          if [ "$STRICT_CONSTRAINT" = "true" ]; then
+            echo "Running constraint trend checks in strict mode."
+            npm run perf:check-constraint-trend -- --target "$PERF_TARGET" --kpi-file "$PERF_RUNTIME_PERF/constraint-trend.json" --out "$PERF_RUNTIME_PERF/constraint-trend-thresholds.json" --strict
+          else
+            echo "Running constraint trend checks in non-blocking mode."
+            npm run perf:check-constraint-trend -- --target "$PERF_TARGET" --kpi-file "$PERF_RUNTIME_PERF/constraint-trend.json" --out "$PERF_RUNTIME_PERF/constraint-trend-thresholds.json" || true
+          fi
+
+      - name: Render Constraint Trend Summary
+        run: |
+          npm run perf:constraint-trend-summary -- --report-file "$PERF_RUNTIME_PERF/constraint-trend.json" --thresholds-file "$PERF_RUNTIME_PERF/constraint-trend-thresholds.json" --out "$PERF_RUNTIME_PERF/constraint-trend-summary.md"
+
+      - name: Build Constraint Lot Plan
+        run: |
+          npm run perf:constraint-lot-plan -- --actions-file "$PERF_RUNTIME_PERF/constraint-actions.json" --trend-file "$PERF_RUNTIME_PERF/constraint-trend.json" --out "$PERF_RUNTIME_PERF/constraint-lot-plan.json"
+
+      - name: Advance Constraint Lot Plan
+        run: |
+          node tools/perf/advance-constraint-lot-plan.mjs --plan-file "$PERF_RUNTIME_PERF/constraint-lot-plan.json" --json > "$PERF_RUNTIME_PERF/constraint-lot-advance.json"
+
+      - name: Render Constraint Lot Plan Summary
+        run: |
+          npm run perf:constraint-lot-summary -- --plan-file "$PERF_RUNTIME_PERF/constraint-lot-plan.json" --advance-file "$PERF_RUNTIME_PERF/constraint-lot-advance.json" --out "$PERF_RUNTIME_PERF/constraint-lot-plan-summary.md"
+
+      - name: Render Constraint Summary
+        run: |
+          npm run perf:constraint-summary -- --report-file "$PERF_RUNTIME_PERF/constraint-report.json" --thresholds-file "$PERF_RUNTIME_PERF/constraint-thresholds.json" --actions-file "$PERF_RUNTIME_PERF/constraint-actions.json" --out "$PERF_RUNTIME_PERF/constraint-summary.md"
+
+      - name: Evaluate Fallback Thresholds (non-blocking)
+        run: |
+          STRICT_FALLBACK="${{ github.event_name == 'workflow_dispatch' && inputs.strict_fallback || false }}"
+          if [ "$STRICT_FALLBACK" = "true" ]; then
+            echo "Running fallback checks in strict mode."
+            node tools/perf/check-thresholds.mjs --kpi-file "$PERF_RUNTIME_PERF/fallback-report.json" --targets docs/performance/FALLBACK_TARGETS.json --out "$PERF_RUNTIME_PERF/fallback-thresholds.json" --strict
+          else
+            echo "Running fallback checks in non-blocking mode."
+            node tools/perf/check-thresholds.mjs --kpi-file "$PERF_RUNTIME_PERF/fallback-report.json" --targets docs/performance/FALLBACK_TARGETS.json --out "$PERF_RUNTIME_PERF/fallback-thresholds.json" || true
+          fi
+
+      - name: Render KPI Markdown Summary
+        run: |
+          node tools/perf/render-summary.mjs --kpi-file "$PERF_RUNTIME_PERF/kpi-report.json" --thresholds-file "$PERF_RUNTIME_PERF/kpi-thresholds.json" --regression-file "$PERF_RUNTIME_PERF/kpi-regression.json" --fallback-report-file "$PERF_RUNTIME_PERF/fallback-report.json" --fallback-thresholds-file "$PERF_RUNTIME_PERF/fallback-thresholds.json" --out "$PERF_RUNTIME_PERF/kpi-summary.md"
+
+      - name: Publish Job Summary
+        run: |
+          cat "$PERF_RUNTIME_PERF/kpi-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat "$PERF_RUNTIME_PERF/constraint-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat "$PERF_RUNTIME_PERF/constraint-trend-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat "$PERF_RUNTIME_PERF/constraint-lot-plan-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat "$PERF_RUNTIME_INDEX/index-canonical-check-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat "$PERF_RUNTIME_INDEX/index-sync-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat "$PERF_RUNTIME_INDEX/index-sync-trend-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat "$PERF_RUNTIME_INDEX/index-summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Perf Runtime Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-runtime
+          path: |
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/workflow-events.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-report.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-thresholds.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-regression.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/fallback-report.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-report.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-thresholds.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-actions.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-trend.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-trend-thresholds.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-trend-summary.md
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-lot-plan.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-lot-advance.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-lot-plan-summary.md
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-summary.md
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/fallback-thresholds.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-summary.md
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/workflow-index.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/workflow-index.sql
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/workflow-index.sqlite
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-canonical-check.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-canonical-check-summary.md
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-check.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/export-paths.txt
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-summary.md
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-report.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-thresholds.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-trend-summary.md
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-parity.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sqlite-parity.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-report.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-thresholds.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-regression-kpi.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-regression-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-regression.json
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-summary.md
+          if-no-files-found: warn
+
+      - name: Save Perf History Cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/kpi-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/perf/constraint-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-sync-history.ndjson
+            tests/fixtures/repo-installed-core/.aidn/runtime/index/index-regression-history.ndjson
+          key: ${{ steps.perf_history_restore.outputs.cache-primary-key }}

@@ -1,14 +1,15 @@
 # aid’n
 
-aid’n is a template-only, audit-informed workflow system for structured AI-assisted development.
-It combines a continuous audit philosophy with an audit-driven control layer to regulate entropy, preserve long-term coherence, and stabilize AI-assisted execution.
-The model structures work through bounded cycles, session discipline, baseline anchoring, snapshot reload, and clear separation between product specification and project adapter.
+aid’n is an audit-informed workflow runtime platform for structured AI-assisted development.
+It combines a continuous audit philosophy with an audit-driven control layer, deterministic template distribution, and local runtime state management to regulate entropy, preserve long-term coherence, and stabilize AI-assisted execution.
+The model structures work through bounded cycles, session discipline, baseline anchoring, snapshot reload, canonical state handling, and clear separation between product specification and project adapter.
 
 ## Philosophy
 
-- Template-only packaging
+- Template distribution with runtime enforcement
 - Deterministic installation
 - Separation between product spec and project adapter
+- Explicit state modes: `files | dual | db-only`
 - Entropy regulation before structural decisions
 - Long-term coherence over local optimization
 - AI stability and low cognitive load
@@ -31,7 +32,7 @@ Product repository:
 - Official specification (`docs/SPEC.md`)
 - Installation templates (`template/`)
 - Packs (`packs/core`, `packs/extended`)
-- Node installer and release tooling (`tools/`)
+- Runtime, installer, and release tooling (`tools/`)
 
 Client repository after install:
 - `docs/audit/SPEC.md` (managed spec snapshot)
@@ -43,7 +44,11 @@ Client repository after install:
 - `docs/audit/sessions/`
 - `docs/audit/incidents/`
 - `.codex/skills.yaml`
-  - rendered with pinned `remote.ref` matching the installed aidn tag (for example `v0.2.0`)
+  - rendered with pinned `remote.ref` matching the installed aidn tag (for example `v0.3.0`)
+- `.codex/skills/*`
+  - local skill source folders copied during install (offline/local fallback)
+- `.aidn/runtime/*`
+  - local runtime state, index, context, and observability artifacts
 
 ## Workflow Diagrams
 
@@ -53,16 +58,39 @@ Client repository after install:
 - Entropy regulation loop: `docs/diagrams/04-entropy-regulation-control-loop.md`
 - Mermaid style preset (indigo): `docs/diagrams/MERMAID_PRESET_INDIGO.md`
 
+## Performance Rollout
+
+- Plan: `docs/performance/WORKFLOW_PERFORMANCE_PLAN.md`
+- Prioritization matrix: `docs/performance/PRIORITIZATION_MATRIX.md`
+- RFC: `docs/rfc/RFC-0001-reload-incremental-gating-index.md`
+- Tooling quickstart: `docs/performance/README.md`
+
+## Architecture Direction
+
+- Target architecture ADR: `docs/ADR/ADR-0002-runtime-platform-architecture.md`
+- Remediation plan: `docs/PLAN_ARCHITECTURE_REMEDIATION_2026-03-07.md`
+- Executable backlog: `docs/BACKLOG_ARCHITECTURE_REMEDIATION_2026-03-07.md`
+- GitHub issues ready: `docs/BACKLOG_ARCHITECTURE_GITHUB_ISSUES_2026-03-07.md`
+- GitHub project ready: `docs/BACKLOG_ARCHITECTURE_GITHUB_PROJECT_2026-03-07.md`
+
 ## Installation
 
 ```bash
-node tools/install.mjs --target ../client
-node tools/install.mjs --target ../client --pack core
-node tools/install.mjs --target ../client --pack core --verify
+npm install --save-dev github:leuzeus/aidn#dev
+npx aidn install --target ../client --pack core
+npx aidn install --target ../client --pack core --verify
 ```
 
+Notes:
+- install auto-imports `docs/audit/*` artifacts into `../client/.aidn/runtime/index/*`
+- import backend precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE`
+- default fresh install profile is DB-backed (`runtime.stateMode=dual`, `install.artifactImportStore=dual-sqlite`)
+- skip import with `--skip-artifact-import`
+- install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
+
 ```bash
-node tools/build-release.mjs
+npx aidn perf checkpoint --target ../client --mode COMMITTING --index-store all --index-sync-check --json
+npx aidn build-release
 ```
 
 ## Project Stub Customization

@@ -8,6 +8,12 @@ description: Create or resume a session file from template, detect branch contex
 ## Goal
 Initialize or resume a session with correct mode, branch awareness, and cycle mapping.
 
+## Hygiene Guardrails
+- Mutate only the active session file in this skill.
+- Do not modify baseline files from this skill.
+- Apply write-on-change behavior (do not rewrite unchanged content).
+- If multiple open sessions match the current branch, STOP and ask user which session to resume.
+
 ## Steps
 
 1) Run context-reload logic (light version):
@@ -80,5 +86,19 @@ If mode=EXPLORING and:
 - Time Budget
 - Planned Outputs
 
+7) Performance hook (mandatory in dual/db-only; optional in files):
+- run `npx aidn codex run-json-hook --skill start-session --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
+- read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
+- in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
+- in files, this hook remains non-blocking by default.
+- DB runtime sync (mandatory in dual/db-only; optional in files):
+- run `npx aidn runtime sync-db-first-selective --target . --json` (falls back to full sync when needed).
+- for DB-first write-through on a specific artifact, run `npx aidn runtime db-first-artifact --target . --path <relative-audit-path> --source-file <file> --json`.
+- in dual/db-only, this step is mandatory and blocking on failure.
+- in files, this step is optional unless repository policy requires DB parity.
+- in `files`, strict mode remains optional by repository policy.
+
 Do not modify baseline.
 Only create/update session file.
+

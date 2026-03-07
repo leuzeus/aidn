@@ -8,6 +8,11 @@ description: Convert an ongoing EXPLORING effort into an official SPIKE cycle + 
 ## Goal
 When exploration becomes non-trivial, formalize it with minimal friction.
 
+## Hygiene Guardrails
+- Keep conversion lightweight: create/attach spike artifacts, do not mutate baseline.
+- Do not auto-close existing cycles as part of conversion.
+- Prefer recommendation over forced branch operations when user intent is not explicit.
+
 ## Trigger rule (use automatically if possible)
 If mode=EXPLORING and:
 - code changes > ~30 minutes OR touches >2 files
@@ -20,7 +25,7 @@ If mode=EXPLORING and:
 - brief.md includes learning goal + timebox
 - decisions.md must capture outcomes
 3) Recommend branch naming:
-- CXXX-spike-<topic>
+- spike/CXXX-<topic>
 4) Update current session:
 - mark mode still EXPLORING or switch to COMMITTING? (usually keep EXPLORING)
 - reference the new cycle id
@@ -28,7 +33,23 @@ If mode=EXPLORING and:
 - add spike as active
 - next entry point points to spike status.md
 
+6) Performance hook (mandatory in dual/db-only; optional in files):
+- run `npx aidn codex run-json-hook --skill convert-to-spike --mode EXPLORING --target . --json`
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
+- read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
+- use this output to capture:
+  - reload/gate outcome around spike conversion
+  - index update summary for newly created spike artifacts
+- in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
+- in files, this hook remains non-blocking by default.
+- DB runtime sync (mandatory in dual/db-only; optional in files):
+- run `npx aidn runtime sync-db-first-selective --target . --json` (falls back to full sync when needed).
+- for DB-first write-through on a specific artifact, run `npx aidn runtime db-first-artifact --target . --path <relative-audit-path> --source-file <file> --json`.
+- in dual/db-only, this step is mandatory and blocking on failure.
+- in files, this step is optional unless repository policy requires DB parity.
+
 Output:
 - New cycle path
 - Branch recommendation
 - Next steps (validate hypotheses, document decision)
+

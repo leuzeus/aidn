@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "description": "Initial KPI thresholds for workflow performance rollout. Values are conservative and should be tightened after baseline stabilization.",
+  "rules": [
+    {
+      "id": "RUNS_MIN",
+      "key": "summary.runs_analyzed",
+      "op": ">=",
+      "value": 1,
+      "severity": "error"
+    },
+    {
+      "id": "OVERHEAD_MEAN_MAX",
+      "key": "summary.overhead_ratio.mean",
+      "op": "<=",
+      "value": 12,
+      "severity": "warn"
+    },
+    {
+      "id": "CHURN_MEAN_MAX",
+      "key": "summary.artifacts_churn.mean",
+      "op": "<=",
+      "value": 5,
+      "severity": "warn"
+    },
+    {
+      "id": "GATES_MEAN_MAX",
+      "key": "summary.gates_frequency.mean",
+      "op": "<=",
+      "value": 25,
+      "severity": "warn"
+    }
+  ]
+}

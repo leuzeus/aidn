@@ -19,6 +19,8 @@ Objectif:
 - définir un reload incrémental sûr (digest + invalidation + fallback)
 - définir un gating à 3 niveaux (L1/L2/L3)
 - proposer un index local minimal SQLite optionnel
+- formaliser les modes d'état runtime `files|dual|db-only`
+- garantir l'import/export complet des artefacts normatifs et de support
 
 Non-objectifs:
 - remplacement immédiat des fichiers Markdown comme source de vérité
@@ -41,6 +43,8 @@ Fichiers suivis minimalement:
 - `docs/audit/cycles/*/status.md` (cycles actifs)
 - `docs/audit/WORKFLOW.md` (adapter local)
 - `docs/audit/SPEC.md` (snapshot canonique)
+- `docs/audit/cycles/*/*.md` (artefacts de support liés aux cycles)
+- `docs/audit/reports/*.md`, `docs/audit/migration/*.md`, `docs/audit/backlog/*.md`
 
 Cache:
 - `.aidn/runtime/cache/reload-state.json`
@@ -141,6 +145,9 @@ CREATE TABLE artifacts (
   artifact_id INTEGER PRIMARY KEY AUTOINCREMENT,
   path TEXT NOT NULL UNIQUE,
   kind TEXT NOT NULL,              -- baseline|snapshot|session|cycle_status|workflow|spec|other
+  family TEXT NOT NULL,            -- normative|support|unknown
+  subtype TEXT,                    -- plan|status|report|profiling|migration_plan|...
+  gate_relevance INTEGER NOT NULL DEFAULT 0, -- 1 si utilisé par gates, sinon 0
   sha256 TEXT NOT NULL,
   size_bytes INTEGER NOT NULL,
   mtime_ns INTEGER NOT NULL,
@@ -153,6 +160,7 @@ CREATE TABLE file_map (
   cycle_id TEXT NOT NULL,
   path TEXT NOT NULL,
   role TEXT,                       -- status|plan|brief|traceability|...
+  relation TEXT,                   -- normative|support
   last_seen_at TEXT NOT NULL,
   PRIMARY KEY (cycle_id, path)
 );
@@ -177,6 +185,12 @@ CREATE TABLE run_metrics (
   overhead_ratio REAL,
   artifacts_churn REAL,
   gates_frequency REAL
+);
+
+CREATE TABLE workflow_state (
+  key TEXT PRIMARY KEY,
+  value TEXT,
+  updated_at TEXT NOT NULL
 );
 ```
 
@@ -216,21 +230,29 @@ LIMIT 30;
 ## C3. Synchronisation avec fichiers existants (import/export)
 
 Principe:
-- les fichiers Markdown restent "source of truth"
-- SQLite est un index dérivé reconstruisible
+- mode `files`: fichiers Markdown restent source de vérité
+- mode `dual`: fichiers + SQLite doivent rester en parité
+- mode `db-only`: SQLite devient source runtime; fichiers reconstructibles à la demande
 
 Import (files -> index):
 1. scanner artefacts workflow
 2. parser champs structurés minimaux (`state`, `branch_name`, `dor_state`, etc.)
-3. upsert tables `cycles`, `artifacts`, `file_map`, `tags`
+3. classer chaque artefact: `family`, `subtype`, `gate_relevance`
+4. upsert tables `cycles`, `artifacts`, `file_map`, `tags`
+5. si format inconnu: conserver en `family=support|unknown` + `reason_code`, sans perte silencieuse
 
 Export (index -> rapports):
 - générer des rapports KPI/perf
-- ne pas écraser automatiquement les artefacts normatifs
+- en `dual`: ne pas écraser automatiquement les artefacts normatifs
+- en `db-only`: reconstruire dossiers cycle/session + artefacts de support depuis DB
 
 Rebuild:
 - commande de reconstruction complète depuis fichiers
 - utilisée en fallback/réparation
+
+Variables de mode proposées:
+- `AIDN_INDEX_STORE_MODE=file|sqlite|...` (backend index)
+- `AIDN_STATE_MODE=files|dual|db-only` (source d'état workflow)
 
 ## Compatibilité et Qualité
 
@@ -245,11 +267,34 @@ Invariants maintenus:
 ## Plan De Rollout
 
 1. Lot 1: instrumentation + L1 fast checks + KPI
-2. Lot 2: reload incrémental + index local + fallback robuste
-3. Lot 3: abstraction `IndexStore` + préparation DB future (feature flag)
+2. Lot 2: reload incrémental + index local + fallback robuste + taxonomie artefacts
+3. Lot 3: abstraction `IndexStore` + modes `dual/db-only` + reconstruction DB -> fichiers (feature flag)
 
 ## Open Questions
 
 - seuil exact `scope_growth` par type de cycle
 - temps max sans L2 drift-check en COMMITTING
 - niveau de granularité optimal des tags artefact
+
+## Addendum - Compatibilité Multi-Version (legacy + moderne)
+
+Constat terrain:
+- un même repo peut contenir des structures de workflow issues de plusieurs versions (ex: cycles legacy `C001` et cycles modernes `C001-<slug>`).
+- le champ déclaré `workflow_version` peut être obsolète par rapport à la structure réellement observée.
+
+Décision:
+- prioriser un `structure profile check` basé sur la structure observée:
+  - `legacy` | `modern` | `mixed` | `unknown`
+- utiliser le profil pour choisir la policy d'artefacts requis (au lieu d'une liste unique globale).
+- conserver `workflow_version` comme signal secondaire de cohérence, pas comme source unique de vérité.
+
+Signaux normalisés proposés:
+- `STRUCTURE_MIXED_PROFILE`
+- `STRUCTURE_PROFILE_UNKNOWN`
+- `DECLARED_VERSION_STALE`
+- `STRUCTURE_PROFILE_CHANGED`
+
+Effet attendu:
+- moins de faux blocages sur repos hybrides
+- drift-check conditionnel plus fiable
+- meilleure traçabilité des écarts version déclarée vs structure observée

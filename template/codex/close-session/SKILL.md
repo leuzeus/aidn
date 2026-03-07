@@ -8,6 +8,12 @@ description: Finalize session, enforce drift check, update snapshot, validate br
 ## Goal
 End session cleanly and prepare for fast resume.
 
+## Hygiene Guardrails
+- Do not close session if at least one attached open cycle has no explicit decision.
+- Mutate only session/snapshot artifacts, plus cycle status files explicitly selected by user decision.
+- Never auto-merge branches from this skill.
+- Apply write-on-change behavior to avoid churn in unchanged artifacts.
+
 ## Steps
 
 1) Review current session SXXX.md.
@@ -66,5 +72,19 @@ Update:
 ### Next Entry Point
 ### Snapshot updated? (checked)
 
+7) Performance hook (mandatory in dual/db-only; optional in files):
+- run `npx aidn codex run-json-hook --skill close-session --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
+- read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
+- in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
+- in files, this hook remains non-blocking by default.
+- DB runtime sync (mandatory in dual/db-only; optional in files):
+- run `npx aidn runtime sync-db-first-selective --target . --json` (falls back to full sync when needed).
+- for DB-first write-through on a specific artifact, run `npx aidn runtime db-first-artifact --target . --path <relative-audit-path> --source-file <file> --json`.
+- in dual/db-only, this step is mandatory and blocking on failure.
+- in files, this step is optional unless repository policy requires DB parity.
+- in files, strict mode remains optional by repository policy.
+
 Do not promote baseline automatically.
 If cycle DONE, recommend using promote-baseline workflow.
+

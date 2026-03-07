@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "description": "Regression guardrails for canonical markdown projection quality. Lower values are better for configured metrics.",
+  "min_history": 3,
+  "warmup": {
+    "enabled": true,
+    "history_lt": 5,
+    "max_increase_pct_multiplier": 2.0,
+    "severity_override": "warn"
+  },
+  "rules": [
+    {
+      "id": "INDEX_CANONICAL_GAP_MARKDOWN_REGRESSION_MAX_PCT",
+      "metric": "canonical_gap_markdown",
+      "max_increase_pct": 25,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_CANONICAL_GAP_ALL_REGRESSION_MAX_PCT",
+      "metric": "canonical_gap_all",
+      "max_increase_pct": 25,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_CANONICAL_MISSING_MARKDOWN_REGRESSION_MAX_PCT",
+      "metric": "artifacts_without_canonical_markdown",
+      "max_increase_pct": 30,
+      "severity": "warn"
+    }
+  ]
+}

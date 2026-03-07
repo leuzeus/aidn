@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "description": "Regression guardrails versus rolling local history. Lower values are better for all metrics below.",
+  "min_history": 3,
+  "warmup": {
+    "enabled": true,
+    "history_lt": 5,
+    "max_increase_pct_multiplier": 1.5,
+    "severity_override": "warn"
+  },
+  "rules": [
+    {
+      "id": "OVERHEAD_REGRESSION_MAX_PCT",
+      "metric": "overhead_ratio",
+      "max_increase_pct": 25,
+      "severity": "warn",
+      "warmup": {
+        "max_increase_pct_multiplier": 1.3
+      }
+    },
+    {
+      "id": "CHURN_REGRESSION_MAX_PCT",
+      "metric": "artifacts_churn",
+      "max_increase_pct": 35,
+      "severity": "warn",
+      "warmup": {
+        "max_increase_pct_multiplier": 1.8
+      }
+    },
+    {
+      "id": "GATES_REGRESSION_MAX_PCT",
+      "metric": "gates_frequency",
+      "max_increase_pct": 35,
+      "severity": "warn",
+      "warmup": {
+        "max_increase_pct_multiplier": 1.6
+      }
+    }
+  ]
+}

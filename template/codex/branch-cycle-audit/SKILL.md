@@ -8,6 +8,12 @@ description: Verify branch ownership for session/cycle/intermediate branches and
 ## Goal
 Prevent silent drift between Git branches and cycle artifacts.
 
+## Hygiene Guardrails
+- Default behavior is read-only.
+- Never auto-edit `status.md.branch_name` or continuity fields without explicit user confirmation.
+- If mapping is ambiguous, STOP and request a user decision before any write.
+- Snapshot update is optional and should be applied only when explicitly requested.
+
 ## Steps
 
 1) Identify current Git branch (if accessible).
@@ -68,6 +74,18 @@ Continuity validation by rule:
 - Ensure active cycle list reflects the mapped cycle
 - Next entry point points to that cycle status.md
 
+7) Performance hook (mandatory in dual/db-only; optional in files):
+- run `npx aidn codex run-json-hook --skill branch-cycle-audit --mode COMMITTING --target . --json`
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
+- read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
+- use this output to cross-check:
+  - L1 mapping/hash result
+  - L2 active drift signals
+  - L3 escalation reason if any
+- in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
+- in files, this hook remains non-blocking by default.
+
 Output:
 - Mapping result
 - Fix plan (if mismatch)
+

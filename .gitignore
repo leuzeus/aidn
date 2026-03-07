@@ -3,3 +3,7 @@ release/dist/
 .codex/local-*
 .idea/
 tmp/
+.ai/
+.aidn/runtime/
+tests/fixtures/tmp-*/
+tests/fixtures/**/.aidn/

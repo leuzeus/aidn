@@ -94,6 +94,12 @@ If mode is **COMMITTING**, the agent MUST:
 
 Agents MUST NOT skip these steps.
 
+If runtime state mode is `dual` or `db-only`, the agent MUST:
+- run the performance hook for each invoked workflow skill
+- run those hooks through the JSON context wrapper in strict mode (`npx aidn codex run-json-hook ... --strict --json`)
+- run DB runtime sync after each mutating workflow skill (`npx aidn runtime sync-db-first-selective --target . --json`, fallback to full sync when needed)
+- treat hook failure as a stop condition (do not continue silently on file-only fallback paths)
+
 ------------------------------------------------------------
 ## Mode Heuristics (Advisory, Not Authoritative)
 
@@ -233,6 +239,7 @@ If mode is COMMITTING, the agent MUST ensure:
 - baseline dependencies are respected
 - session close gate is satisfied before closing (`integrate-to-session`/`report`/`close-non-retained` decisions for attached open cycles)
 - PR review gate is satisfied before merge: Codex review threads are triaged (`valid`/`invalid`) and resolved with evidence
+- in `dual`/`db-only`, DB-backed perf chain is executed at session close (constraint report/actions/history/trend/lot summaries)
 
 If mode is EXPLORING and:
 - work exceeds ~30 minutes, or

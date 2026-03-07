@@ -8,6 +8,12 @@ description: Close a cycle safely (VERIFYING → DONE or non-retained outcome), 
 ## Goal
 Close a cycle cleanly and make it baseline-ready.
 
+## Hygiene Guardrails
+- Do not delete cycle artifacts during close; preserve full audit trail.
+- Do not auto-promote baseline from this skill.
+- Do not auto-merge branches from this skill.
+- Apply write-on-change behavior for cycle/snapshot updates.
+
 ## Inputs
 - Target cycle folder (CXXX-...)
 - Desired final state: VERIFYING | DONE | NO_GO | DROPPED
@@ -61,7 +67,23 @@ Close a cycle cleanly and make it baseline-ready.
   - If NO_GO/DROPPED: suggest next retained cycle/session integration step
   - If VERIFYING: list remaining verification tasks
 
+5) Performance hook (mandatory in dual/db-only; optional in files):
+- run `npx aidn codex run-json-hook --skill cycle-close --mode COMMITTING --target . --json`
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
+- read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
+- use this output to capture:
+  - gate/reload outcome after close-state update
+  - index sync summary for changed cycle artifacts
+- in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
+- in files, this hook remains non-blocking by default.
+- DB runtime sync (mandatory in dual/db-only; optional in files):
+- run `npx aidn runtime sync-db-first-selective --target . --json` (falls back to full sync when needed).
+- for DB-first write-through on a specific artifact, run `npx aidn runtime db-first-artifact --target . --path <relative-audit-path> --source-file <file> --json`.
+- in dual/db-only, this step is mandatory and blocking on failure.
+- in files, this step is optional unless repository policy requires DB parity.
+
 Output:
 - Exit checklist report
 - Files updated list
 - Next entry point
+

@@ -8,6 +8,12 @@ description: Revise an old plan/spec safely by generating an addendum (delta), m
 ## Goal
 Handle “we revised an old plan” without losing traceability.
 
+## Hygiene Guardrails
+- Never silently rewrite/remove historical REQs.
+- Keep old-to-new mapping explicit and durable in addendum + traceability.
+- Do not modify baseline files from this skill.
+- If impact is medium/high and branch ownership is unclear, STOP and request cycle/branch decision.
+
 ## When to use
 - You revisit an older plan/audit-spec and realize structural changes are needed
 - New constraints appear (API/DB/security/architecture)
@@ -62,7 +68,23 @@ Rules:
 - Recommend drift-check
 - If on a mixed branch: recommend convert-to-spike or new cycle + new branch.
 
+7) Performance hook (mandatory in dual/db-only; optional in files):
+- run `npx aidn codex run-json-hook --skill requirements-delta --mode COMMITTING --target . --json`
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
+- read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
+- use this output to capture:
+  - scope drift signals after addendum/traceability updates
+  - index/update summary for modified support artifacts
+- in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
+- in files, this hook remains non-blocking by default.
+- DB runtime sync (mandatory in dual/db-only; optional in files):
+- run `npx aidn runtime sync-db-first-selective --target . --json` (falls back to full sync when needed).
+- for DB-first write-through on a specific artifact, run `npx aidn runtime db-first-artifact --target . --path <relative-audit-path> --source-file <file> --json`.
+- in dual/db-only, this step is mandatory and blocking on failure.
+- in files, this step is optional unless repository policy requires DB parity.
+
 Output:
 - Addendum content
 - REQ mapping table
 - Recommended next step (CR/new cycle/continue)
+
