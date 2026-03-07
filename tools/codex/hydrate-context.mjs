@@ -14,6 +14,8 @@ function parseArgs(argv) {
     indexFile: ".aidn/runtime/index/workflow-index.sqlite",
     backend: "auto",
     maxArtifactBytes: 4096,
+    minRelationConfidence: 0.65,
+    allowAmbiguousLinks: false,
     json: false,
   };
 
@@ -43,6 +45,11 @@ function parseArgs(argv) {
     } else if (token === "--max-artifact-bytes") {
       args.maxArtifactBytes = Number(argv[i + 1] ?? 4096);
       i += 1;
+    } else if (token === "--min-relation-confidence") {
+      args.minRelationConfidence = Number(argv[i + 1] ?? 0.65);
+      i += 1;
+    } else if (token === "--allow-ambiguous-links") {
+      args.allowAmbiguousLinks = true;
     } else if (token === "--no-artifacts") {
       args.includeArtifacts = false;
     } else if (token === "--json") {
@@ -68,6 +75,9 @@ function parseArgs(argv) {
   }
   if (!Number.isFinite(args.maxArtifactBytes) || args.maxArtifactBytes < 128) {
     throw new Error("Invalid --max-artifact-bytes. Expected at least 128.");
+  }
+  if (!Number.isFinite(args.minRelationConfidence) || args.minRelationConfidence < 0 || args.minRelationConfidence > 1) {
+    throw new Error("Invalid --min-relation-confidence. Expected a number between 0 and 1.");
   }
   return args;
 }

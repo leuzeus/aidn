@@ -1,6 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
+import {
+  artifactRepairScore,
+  isRepairRelationUsable,
+} from "../../core/workflow/repair-layer-policy.mjs";
 
 function resolveTargetPath(targetRoot, candidate) {
   if (!candidate) {
@@ -42,7 +46,7 @@ function readJsonIndex(indexFile) {
   return { absolute, payload };
 }
 
-function selectArtifacts(payload, maxArtifactBytes) {
+function selectArtifacts(payload, maxArtifactBytes, options = {}) {
   const artifacts = Array.isArray(payload?.artifacts) ? payload.artifacts : [];
   const artifactLinks = Array.isArray(payload?.artifact_links) ? payload.artifact_links : [];
   const sessionCycleLinks = Array.isArray(payload?.session_cycle_links) ? payload.session_cycle_links : [];
@@ -61,6 +65,12 @@ function selectArtifacts(payload, maxArtifactBytes) {
   const linkedCycleIds = new Set();
   const prioritySources = new Set(["baseline/current.md", "baseline/history.md", "snapshots/context-snapshot.md"]);
   for (const row of artifactLinks) {
+    if (!isRepairRelationUsable(row, {
+      minConfidence: options.minRelationConfidence,
+      allowAmbiguous: options.allowAmbiguousLinks,
+    })) {
+      continue;
+    }
     const sourcePath = String(row?.source_path ?? "").replace(/\\/g, "/");
     const targetPath = String(row?.target_path ?? "").replace(/\\/g, "/");
     const relationType = String(row?.relation_type ?? "");
@@ -81,6 +91,12 @@ function selectArtifacts(payload, maxArtifactBytes) {
   }
   const relatedSessionIds = new Set();
   for (const row of sessionCycleLinks) {
+    if (!isRepairRelationUsable(row, {
+      minConfidence: options.minRelationConfidence,
+      allowAmbiguous: options.allowAmbiguousLinks,
+    })) {
+      continue;
+    }
     const cycleId = String(row?.cycle_id ?? "");
     if (!cycleId) {
       continue;
@@ -108,7 +124,7 @@ function selectArtifacts(payload, maxArtifactBytes) {
       return;
     }
     const previousScore = Number(artifactScore.get(rel) ?? 0);
-    artifactScore.set(rel, previousScore + score);
+    artifactScore.set(rel, previousScore + score + artifactRepairScore(artifact));
     const reasons = artifactReasons.get(rel) ?? [];
     if (!reasons.includes(reason)) {
       reasons.push(reason);
@@ -284,7 +300,10 @@ export function runHydrateContextUseCase({ args, hookContextStore, targetRoot })
         backend,
         file: index.absolute,
       };
-      selectedArtifacts = selectArtifacts(index.payload, args.maxArtifactBytes);
+      selectedArtifacts = selectArtifacts(index.payload, args.maxArtifactBytes, {
+        minRelationConfidence: args.minRelationConfidence,
+        allowAmbiguousLinks: args.allowAmbiguousLinks,
+      });
       repairLayer = summarizeRepairLayer(index.payload);
     }
   }

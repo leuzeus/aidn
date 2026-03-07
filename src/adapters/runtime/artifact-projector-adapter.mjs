@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { detectStructureProfile } from "../../lib/workflow/structure-profile-lib.mjs";
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
 import { assertArtifactProjector } from "../../core/ports/artifact-projector-port.mjs";
+import { buildRepairLayerService } from "../../application/runtime/repair-layer-service.mjs";
 
 function walkFiles(rootDir) {
   const files = [];
@@ -865,7 +866,7 @@ export function createArtifactProjectorAdapter() {
     projectArtifacts({ targetRoot, auditRoot, embedContent = false, kpiFile = "" }) {
       const artifacts = buildArtifactRows(auditRoot, { embedContent });
       const { cycles, fileMap, cycleTagPairs } = buildCycleTables(auditRoot);
-      const repairLayer = buildRepairLayer(auditRoot, artifacts, cycles, { targetRoot });
+      const repairLayer = buildRepairLayerService({ auditRoot, targetRoot, artifacts, cycles });
       const { tags, artifactTagPairs } = buildTags(cycleTagPairs, artifacts);
       const runMetrics = buildRunMetrics(kpiFile);
       const structureProfile = detectStructureProfile(auditRoot);
