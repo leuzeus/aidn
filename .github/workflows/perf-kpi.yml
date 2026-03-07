@@ -402,7 +402,7 @@ jobs:
 
       - name: Advance Constraint Lot Plan
         run: |
-          npm run perf:constraint-lot-advance -- --plan-file "$PERF_RUNTIME_PERF/constraint-lot-plan.json" --json > "$PERF_RUNTIME_PERF/constraint-lot-advance.json"
+          node tools/perf/advance-constraint-lot-plan.mjs --plan-file "$PERF_RUNTIME_PERF/constraint-lot-plan.json" --json > "$PERF_RUNTIME_PERF/constraint-lot-advance.json"
 
       - name: Render Constraint Lot Plan Summary
         run: |
