@@ -23,5 +23,21 @@ export function createLocalGitAdapter() {
         return false;
       }
     },
+    execStatusPorcelain(targetRoot, pathspec = "", includeUntrackedAll = false) {
+      const args = [
+        "-C",
+        targetRoot,
+        "status",
+        "--porcelain",
+        includeUntrackedAll ? "--untracked-files=all" : "--untracked-files=no",
+      ];
+      if (pathspec) {
+        args.push("--", pathspec);
+      }
+      return execFileSync("git", args, {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    },
   };
 }
