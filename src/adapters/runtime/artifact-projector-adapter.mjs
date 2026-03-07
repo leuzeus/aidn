@@ -493,15 +493,18 @@ function extractSessionField(text, fieldName) {
   return match ? match[1].trim() : null;
 }
 
-function buildRepairLayer(auditRoot, artifacts, cycles) {
+function buildRepairLayer(auditRoot, artifacts, cycles, options = {}) {
   const now = new Date().toISOString();
+  const targetRoot = options.targetRoot ?? null;
   const sessionsMap = new Map();
   const artifactLinks = [];
   const sessionCycleLinks = [];
+  const migrationFindings = [];
   const cycleStatusById = new Map();
   const sessionArtifactById = new Map();
   const knownArtifactPaths = new Set(artifacts.map((artifact) => artifact.path));
   const relationKeys = new Set();
+  const findingKeys = new Set();
 
   for (const artifact of artifacts) {
     if (artifact.kind === "cycle_status" && artifact.cycle_id) {
@@ -560,6 +563,24 @@ function buildRepairLayer(auditRoot, artifacts, cycles) {
     }
     relationKeys.add(key);
     sessionCycleLinks.push(row);
+  }
+
+  function addFinding(row) {
+    if (!row?.finding_type || !row?.message) {
+      return;
+    }
+    const key = [
+      row.finding_type,
+      row.entity_type ?? "",
+      row.entity_id ?? "",
+      row.artifact_path ?? "",
+      row.message,
+    ].join("::");
+    if (findingKeys.has(key)) {
+      return;
+    }
+    findingKeys.add(key);
+    migrationFindings.push(row);
   }
 
   for (const cycle of cycles) {
@@ -630,6 +651,20 @@ function buildRepairLayer(auditRoot, artifacts, cycles) {
           });
         }
       }
+      if (!sessionBranch || attachedCycles.length === 0) {
+        addFinding({
+          migration_run_id: "repair-layer-v1",
+          severity: "info",
+          finding_type: "SESSION_PARTIAL_METADATA",
+          entity_type: "session",
+          entity_id: artifact.session_id,
+          artifact_path: artifact.path,
+          message: "Session artifact is missing session_branch or attached_cycles metadata.",
+          confidence: 1.0,
+          suggested_action: "Complete session metadata to improve inferred session and cycle links.",
+          created_at: artifact.updated_at ?? now,
+        });
+      }
     }
 
     if (artifact.cycle_id) {
@@ -647,11 +682,38 @@ function buildRepairLayer(auditRoot, artifacts, cycles) {
       }
     }
 
+    if (artifact.source_mode === "legacy_repaired" && artifact.cycle_id) {
+      addFinding({
+        migration_run_id: "repair-layer-v1",
+        severity: "warning",
+        finding_type: "LEGACY_CYCLE_DIR_REPAIRED",
+        entity_type: "cycle",
+        entity_id: artifact.cycle_id,
+        artifact_path: artifact.path,
+        message: "Legacy cycle directory naming was repaired from path ownership.",
+        confidence: Number(artifact.entity_confidence ?? 0.7),
+        suggested_action: "Normalize the cycle directory layout to modern naming.",
+        created_at: artifact.updated_at ?? now,
+      });
+    }
+
     if (artifact.kind === "snapshot" || artifact.kind === "baseline") {
       const text = readTextArtifact(auditRoot, artifact.path);
       for (const cycleId of extractCycleIdsFromText(text)) {
         const statusPath = cycleStatusById.get(cycleId);
         if (!statusPath) {
+          addFinding({
+            migration_run_id: "repair-layer-v1",
+            severity: "warning",
+            finding_type: "UNRESOLVED_CYCLE_REFERENCE",
+            entity_type: "artifact",
+            entity_id: artifact.path,
+            artifact_path: artifact.path,
+            message: `Artifact references cycle ${cycleId} but no cycle status artifact was indexed.`,
+            confidence: 0.9,
+            suggested_action: "Add or restore the referenced cycle status artifact.",
+            created_at: artifact.updated_at ?? now,
+          });
           continue;
         }
         addArtifactLink({
@@ -680,12 +742,43 @@ function buildRepairLayer(auditRoot, artifacts, cycles) {
         });
       }
     }
+
+    if (artifact.path === "cycles/cycle-status.md") {
+      addFinding({
+        migration_run_id: "repair-layer-v1",
+        severity: "warning",
+        finding_type: "LEGACY_INDEX_PARTIAL_RELATIONS",
+        entity_type: "artifact",
+        entity_id: artifact.path,
+        artifact_path: artifact.path,
+        message: "Legacy cycle-status index remains only partially relational.",
+        confidence: 0.5,
+        suggested_action: "Split the legacy cycle index into per-cycle status artifacts when possible.",
+        created_at: artifact.updated_at ?? now,
+      });
+    }
   }
+
+  const latestObservedAt = artifacts
+    .map((artifact) => artifact.updated_at)
+    .filter((value) => typeof value === "string" && value.length > 0)
+    .sort((a, b) => a.localeCompare(b))
+    .at(-1) ?? now;
 
   return {
     sessions: Array.from(sessionsMap.values()).sort((a, b) => String(a.session_id).localeCompare(String(b.session_id))),
     artifact_links: artifactLinks.sort((a, b) => `${a.source_path}:${a.target_path}:${a.relation_type}`.localeCompare(`${b.source_path}:${b.target_path}:${b.relation_type}`)),
     session_cycle_links: sessionCycleLinks.sort((a, b) => `${a.session_id}:${a.cycle_id}:${a.relation_type}`.localeCompare(`${b.session_id}:${b.cycle_id}:${b.relation_type}`)),
+    migration_runs: [{
+      migration_run_id: "repair-layer-v1",
+      engine_version: "repair-layer-v1",
+      started_at: latestObservedAt,
+      ended_at: latestObservedAt,
+      status: "completed",
+      target_root: targetRoot,
+      notes: "Deterministic projection-time repair layer.",
+    }],
+    migration_findings: migrationFindings.sort((a, b) => `${a.finding_type}:${a.entity_id ?? ""}:${a.artifact_path ?? ""}`.localeCompare(`${b.finding_type}:${b.entity_id ?? ""}:${b.artifact_path ?? ""}`)),
   };
 }
 
@@ -708,7 +801,7 @@ export function createArtifactProjectorAdapter() {
     projectArtifacts({ targetRoot, auditRoot, embedContent = false, kpiFile = "" }) {
       const artifacts = buildArtifactRows(auditRoot, { embedContent });
       const { cycles, fileMap, cycleTagPairs } = buildCycleTables(auditRoot);
-      const repairLayer = buildRepairLayer(auditRoot, artifacts, cycles);
+      const repairLayer = buildRepairLayer(auditRoot, artifacts, cycles, { targetRoot });
       const { tags, artifactTagPairs } = buildTags(cycleTagPairs, artifacts);
       const runMetrics = buildRunMetrics(kpiFile);
       const structureProfile = detectStructureProfile(auditRoot);
@@ -731,8 +824,8 @@ export function createArtifactProjectorAdapter() {
           artifact_links: repairLayer.artifact_links,
           cycle_links: [],
           session_cycle_links: repairLayer.session_cycle_links,
-          migration_runs: [],
-          migration_findings: [],
+          migration_runs: repairLayer.migration_runs,
+          migration_findings: repairLayer.migration_findings,
           summary: {
             cycles_count: cycles.length,
             sessions_count: repairLayer.sessions.length,
@@ -743,8 +836,8 @@ export function createArtifactProjectorAdapter() {
             artifact_links_count: repairLayer.artifact_links.length,
             cycle_links_count: 0,
             session_cycle_links_count: repairLayer.session_cycle_links.length,
-            migration_runs_count: 0,
-            migration_findings_count: 0,
+            migration_runs_count: repairLayer.migration_runs.length,
+            migration_findings_count: repairLayer.migration_findings.length,
             structure_kind: structureProfile.kind,
             artifacts_normative_count: artifacts.filter((item) => item.family === "normative").length,
             artifacts_support_count: artifacts.filter((item) => item.family === "support").length,
