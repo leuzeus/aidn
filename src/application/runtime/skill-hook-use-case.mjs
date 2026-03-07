@@ -1,39 +1,14 @@
 import path from "node:path";
-import { resolveEffectiveStateMode } from "./runtime-mode-service.mjs";
+import { resolveEffectiveStateMode } from "../../core/state-mode/state-mode-policy.mjs";
+import {
+  assertSupportedSkill,
+  assertValidSkillMode,
+  getSkillRoute,
+  resolveSkillHookMode,
+  shouldForceStrictForSkillState,
+} from "../../core/skills/skill-policy.mjs";
 
-const VALID_MODES = new Set(["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"]);
-
-const SKILL_ROUTES = {
-  "context-reload": { tool: "reload-check.mjs", defaultMode: "THINKING" },
-  "branch-cycle-audit": { tool: "gating-evaluate.mjs", defaultMode: "COMMITTING" },
-  "drift-check": { tool: "gating-evaluate.mjs", defaultMode: "COMMITTING" },
-  "start-session": { tool: "workflow-hook.mjs", fixedArgs: ["--phase", "session-start"], defaultMode: "UNKNOWN" },
-  "close-session": { tool: "workflow-hook.mjs", fixedArgs: ["--phase", "session-close"], defaultMode: "UNKNOWN" },
-  "cycle-create": { tool: "checkpoint.mjs", defaultMode: "COMMITTING" },
-  "cycle-close": { tool: "checkpoint.mjs", defaultMode: "COMMITTING" },
-  "promote-baseline": { tool: "checkpoint.mjs", defaultMode: "COMMITTING" },
-  "requirements-delta": { tool: "checkpoint.mjs", defaultMode: "COMMITTING" },
-  "convert-to-spike": { tool: "checkpoint.mjs", defaultMode: "EXPLORING" },
-};
-
-export function assertSupportedSkill(skill) {
-  if (!SKILL_ROUTES[skill]) {
-    throw new Error(`Unsupported --skill: ${skill}`);
-  }
-}
-
-export function assertValidSkillMode(mode) {
-  if (mode && !VALID_MODES.has(mode)) {
-    throw new Error("Invalid --mode. Expected THINKING|EXPLORING|COMMITTING|UNKNOWN");
-  }
-}
-
-function resolveMode(inputMode, route) {
-  if (inputMode && VALID_MODES.has(inputMode)) {
-    return inputMode;
-  }
-  return route.defaultMode ?? "UNKNOWN";
-}
+export { assertSupportedSkill, assertValidSkillMode };
 
 function buildToolArgs(route, targetRoot, mode, effectiveStrict) {
   const args = [...(route.fixedArgs ?? []), "--target", targetRoot, "--json"];
@@ -56,13 +31,13 @@ function toErrorObject(error) {
 }
 
 export function runSkillHookUseCase({ args, perfDir, targetRoot, processAdapter }) {
-  const route = SKILL_ROUTES[args.skill];
-  const mode = resolveMode(args.mode, route);
+  const route = getSkillRoute(args.skill);
+  const mode = resolveSkillHookMode(args.mode, route);
   const stateMode = resolveEffectiveStateMode({
     targetRoot,
     stateMode: "",
   });
-  const strictRequiredByState = stateMode === "dual" || stateMode === "db-only";
+  const strictRequiredByState = shouldForceStrictForSkillState(stateMode);
   const effectiveStrict = args.strict || strictRequiredByState;
   const toolArgs = buildToolArgs(route, targetRoot, mode, effectiveStrict);
   const startedAt = new Date().toISOString();

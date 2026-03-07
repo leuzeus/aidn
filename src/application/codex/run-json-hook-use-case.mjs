@@ -1,20 +1,14 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveEffectiveStateMode } from "../runtime/runtime-mode-service.mjs";
+import {
+  isDbBackedStateMode,
+  resolveEffectiveStateMode,
+} from "../../core/state-mode/state-mode-policy.mjs";
+import { shouldAutoDbSyncForSkill } from "../../core/skills/skill-policy.mjs";
 import { normalizeHookPayload } from "./normalize-hook-payload.mjs";
 
 const CODEX_DIR = path.dirname(fileURLToPath(import.meta.url));
 const RUNTIME_SYNC_SCRIPT = path.resolve(CODEX_DIR, "..", "..", "..", "tools", "runtime", "sync-db-first-selective.mjs");
-const MUTATING_SKILLS = new Set([
-  "start-session",
-  "close-session",
-  "cycle-create",
-  "cycle-close",
-  "promote-baseline",
-  "requirements-delta",
-  "convert-to-spike",
-]);
-
 function ensureJsonArg(commandArgs) {
   if (commandArgs.includes("--json")) {
     return commandArgs;
@@ -67,7 +61,7 @@ function parseJsonOutput(text) {
 }
 
 function buildErrorPayload(args, targetRoot, stateMode, commandLine, result, parseError) {
-  const strictRequiredByState = stateMode === "dual" || stateMode === "db-only";
+  const strictRequiredByState = isDbBackedStateMode(stateMode);
   const spawnMessage = result?.error?.message ? `spawn error: ${result.error.message}` : "";
   const parseMessage = parseError ? String(parseError.message ?? parseError) : "";
   const message = [parseMessage, spawnMessage].filter((item) => item.length > 0).join(" | ") || "Command failed";
@@ -152,7 +146,7 @@ export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContext
     rawPayload = buildErrorPayload(args, targetRoot, stateMode, commandLine, result, parseError);
   }
 
-  const strictRequiredByState = stateMode === "dual" || stateMode === "db-only";
+  const strictRequiredByState = isDbBackedStateMode(stateMode);
   const normalized = normalizeHookPayload(rawPayload, {
     skill: args.skill,
     mode: args.mode || undefined,
@@ -178,7 +172,7 @@ export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContext
 
   const autoDbSync = args.dbSyncExplicit
     ? Boolean(args.dbSync)
-    : MUTATING_SKILLS.has(args.skill);
+    : shouldAutoDbSyncForSkill(args.skill);
   let dbSync = {
     enabled: false,
     skipped: true,
@@ -186,7 +180,7 @@ export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContext
     payload: null,
     error: null,
   };
-  if (autoDbSync && (stateMode === "dual" || stateMode === "db-only")) {
+  if (autoDbSync && isDbBackedStateMode(stateMode)) {
     dbSync.enabled = true;
     dbSync.skipped = false;
     dbSync.reason = null;

@@ -4,22 +4,10 @@ import crypto from "node:crypto";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-adapter.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
-
-function shouldRunConstraintLoop(args, effectiveStateMode) {
-  if (args.phase !== "session-close") {
-    return false;
-  }
-  if (args.constraintLoopMode === "on") {
-    return true;
-  }
-  if (args.constraintLoopMode === "off") {
-    if (effectiveStateMode === "dual" || effectiveStateMode === "db-only") {
-      throw new Error("--no-constraint-loop is not allowed in dual/db-only mode");
-    }
-    return false;
-  }
-  return effectiveStateMode === "dual" || effectiveStateMode === "db-only";
-}
+import {
+  requiresStrictRuntime,
+  shouldRunConstraintLoopForState,
+} from "../../core/state-mode/state-mode-policy.mjs";
 
 function appendEvent(eventFile, payload) {
   const absolute = path.resolve(process.cwd(), eventFile);
@@ -143,7 +131,7 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
   });
   args.stateMode = runtimeMode.stateMode;
   args.indexStore = runtimeMode.indexStore;
-  const strictRequiredByState = args.stateMode === "dual" || args.stateMode === "db-only";
+  const strictRequiredByState = requiresStrictRuntime(args.stateMode);
   if (strictRequiredByState) {
     args.strict = true;
   }
@@ -159,7 +147,11 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
   const runId = args.phase === "session-close"
     ? (existingRunId || toRunId("session"))
     : toRunId(`session-${phaseEvent}`);
-  const constraintLoopRequired = shouldRunConstraintLoop(args, args.stateMode);
+  const constraintLoopRequired = shouldRunConstraintLoopForState({
+    phase: args.phase,
+    constraintLoopMode: args.constraintLoopMode,
+    stateMode: args.stateMode,
+  });
 
   let checkpointResult = null;
   let hookResult = "ok";
