@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
+import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-adapter.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
 
 function shouldRunConstraintLoop(args, effectiveStateMode) {
@@ -30,17 +31,6 @@ function appendEvent(eventFile, payload) {
 function toRunId(prefix) {
   const stamp = new Date().toISOString().replace(/[-:.TZ]/g, "");
   return `${prefix}-${stamp}`;
-}
-
-function getCurrentBranch(targetRoot) {
-  try {
-    return execFileSync("git", ["-C", targetRoot, "branch", "--show-current"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim() || "unknown";
-  } catch {
-    return "unknown";
-  }
 }
 
 function runCheckpoint(runtimeDir, targetRoot, mode, runId, indexOptions = {}) {
@@ -90,11 +80,8 @@ function runCheckpoint(runtimeDir, targetRoot, mode, runId, indexOptions = {}) {
   }
   cmd.push("--json");
 
-  const stdout = execFileSync(process.execPath, cmd, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  return JSON.parse(stdout);
+  const processAdapter = createLocalProcessAdapter();
+  return processAdapter.runJsonNodeScript(checkpointScript, cmd.slice(1));
 }
 
 function runConstraintLoop(runtimeDir, targetRoot, options = {}) {
@@ -112,11 +99,8 @@ function runConstraintLoop(runtimeDir, targetRoot, options = {}) {
   }
   cmd.push("--json");
 
-  const stdout = execFileSync(process.execPath, cmd, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  return JSON.parse(stdout);
+  const processAdapter = createLocalProcessAdapter();
+  return processAdapter.runJsonNodeScript(loopScript, cmd.slice(1));
 }
 
 function writeRunIdFile(filePath, runId) {
@@ -149,6 +133,7 @@ function resolveTargetPath(targetRoot, candidatePath) {
 }
 
 export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
+  const gitAdapter = createLocalGitAdapter();
   const started = Date.now();
   const runtimeMode = resolveEffectiveRuntimeMode({
     targetRoot,
@@ -168,7 +153,7 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
   const indexSqlOutputPath = resolveTargetPath(targetRoot, args.indexSqlOutput);
   const indexSqliteOutputPath = resolveTargetPath(targetRoot, args.indexSqliteOutput);
   const indexSyncCheckOutPath = resolveTargetPath(targetRoot, args.indexSyncCheckOut);
-  const branch = getCurrentBranch(targetRoot);
+  const branch = gitAdapter.getCurrentBranch(targetRoot);
   const phaseEvent = args.phase.replace("-", "_");
   const existingRunId = readRunIdFile(runIdFilePathArg);
   const runId = args.phase === "session-close"

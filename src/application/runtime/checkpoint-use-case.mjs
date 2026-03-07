@@ -1,19 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { execSync, execFileSync } from "node:child_process";
+import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
+import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-adapter.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
-
-function runToolJson(runtimeDir, scriptName, argv) {
-  const out = execFileSync(process.execPath, [
-    path.join(runtimeDir, scriptName),
-    ...argv,
-  ], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  return JSON.parse(out);
-}
 
 function appendEvent(eventFile, event) {
   const absolute = path.resolve(process.cwd(), eventFile);
@@ -88,30 +78,9 @@ function resolveSyncCheckIndexConfig(args, indexOutputPath, indexSqliteOutputPat
   };
 }
 
-function getCurrentBranch(targetRoot) {
-  try {
-    return execSync(`git -C "${targetRoot}" branch --show-current`, {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim() || "unknown";
-  } catch {
-    return "unknown";
-  }
-}
-
-function hasWorkingTreeChanges(targetRoot) {
-  try {
-    const out = execFileSync("git", ["-C", targetRoot, "status", "--porcelain", "--untracked-files=no"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    return out.length > 0;
-  } catch {
-    return false;
-  }
-}
-
 export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
+  const processAdapter = createLocalProcessAdapter();
+  const gitAdapter = createLocalGitAdapter();
   const started = Date.now();
   const runtimeMode = resolveEffectiveRuntimeMode({
     targetRoot,
@@ -144,7 +113,7 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
   if (args.stateMode !== "files") {
     reloadArgs.push("--index-file", reloadIndex.indexFile, "--index-backend", reloadIndex.indexBackend);
   }
-  const reload = runToolJson(runtimeDir, "reload-check.mjs", reloadArgs);
+  const reload = processAdapter.runJsonNodeScript(path.join(runtimeDir, "reload-check.mjs"), reloadArgs);
   const reloadDurationMs = Date.now() - reloadStarted;
 
   let gate = {
@@ -184,7 +153,7 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
     && reload.fallback !== true
     && Array.isArray(reload.reason_codes)
     && reload.reason_codes.length === 0
-    && !hasWorkingTreeChanges(targetRoot);
+    && !gitAdapter.hasWorkingTreeChanges(targetRoot);
   if (!args.skipGateEvaluate && !noSignalGateSkip) {
     const gateStarted = Date.now();
     const gateArgs = [
@@ -212,7 +181,7 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
     if (args.runId) {
       gateArgs.push("--run-id", args.runId);
     }
-    gate = runToolJson(runtimeDir, "gating-evaluate.mjs", gateArgs);
+    gate = processAdapter.runJsonNodeScript(path.join(runtimeDir, "gating-evaluate.mjs"), gateArgs);
     gateDurationMs = Date.now() - gateStarted;
   } else if (noSignalGateSkip) {
     gate = {
@@ -265,7 +234,7 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
       indexArgs.push("--kpi-file", args.indexKpiFile);
     }
     indexArgs.push("--json");
-    index = runToolJson(runtimeDir, "index-sync.mjs", indexArgs);
+    index = processAdapter.runJsonNodeScript(path.join(runtimeDir, "index-sync.mjs"), indexArgs);
     indexDurationMs = Date.now() - indexStarted;
     index.skipped = false;
     index.skip_reason = null;
@@ -315,7 +284,7 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
       };
     } else {
       const syncCheckStarted = Date.now();
-      const syncCheckOut = runToolJson(runtimeDir, "index-sync-check.mjs", [
+      const syncCheckOut = processAdapter.runJsonNodeScript(path.join(runtimeDir, "index-sync-check.mjs"), [
         "--target",
         targetRoot,
         "--index-file",
@@ -353,7 +322,7 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
     target_root: targetRoot,
     mode: args.mode,
     state_mode: args.stateMode,
-    branch: getCurrentBranch(targetRoot),
+    branch: gitAdapter.getCurrentBranch(targetRoot),
     reload: {
       decision: reload.decision,
       fallback: reload.fallback,
