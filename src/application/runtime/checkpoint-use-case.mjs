@@ -218,6 +218,7 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
   }
 
   const checkpointRunId = args.runId || `checkpoint-${toIsoNowCompact()}`;
+  const gateLevels = gate?.levels ?? buildDefaultCheckpointGate(reload).levels;
 
   const result = {
     ts: new Date().toISOString(),
@@ -238,6 +239,7 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
       result: gate.result,
       reason_code: gate.reason_code,
       gates_triggered: Array.isArray(gate.gates_triggered) ? gate.gates_triggered : [],
+      levels: gateLevels,
       skipped: args.skipGateEvaluate === true || noSignalGateSkip,
       skip_reason: args.skipGateEvaluate === true
         ? "SKIPPED_BY_CHECKPOINT_OPTION"
@@ -299,6 +301,8 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
       ])),
       result: result.summary.result,
       reasonCode: result.summary.reason_code,
+      repairLayerOpenCount: result.summary.repair_layer_open_count,
+      repairLayerBlocking: result.summary.repair_layer_blocking,
       traceId: `tr-${crypto.randomBytes(4).toString("hex")}`,
     });
     result.summary_event_file = appendRuntimeNdjsonEvent(eventFilePath, event);

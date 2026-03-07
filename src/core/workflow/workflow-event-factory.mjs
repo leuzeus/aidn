@@ -40,6 +40,8 @@ export function buildCheckpointSummaryEvent({
   gatesTriggered,
   result,
   reasonCode,
+  repairLayerOpenCount,
+  repairLayerBlocking,
   traceId,
 }) {
   return {
@@ -60,6 +62,8 @@ export function buildCheckpointSummaryEvent({
     gates_triggered: gatesTriggered,
     result,
     reason_code: reasonCode,
+    repair_layer_open_count: Number(repairLayerOpenCount ?? 0),
+    repair_layer_blocking: repairLayerBlocking === true,
     trace_id: traceId,
   };
 }

@@ -56,6 +56,12 @@ export function normalizeHookPayload(rawInput, options = {}) {
   const now = new Date().toISOString();
   const input = rawInput && typeof rawInput === "object" ? rawInput : {};
   const payload = input.payload && typeof input.payload === "object" ? input.payload : {};
+  const inputSummary = input.summary && typeof input.summary === "object" ? input.summary : {};
+  const payloadSummary = payload.summary && typeof payload.summary === "object" ? payload.summary : {};
+  const payloadCheckpoint = payload.checkpoint && typeof payload.checkpoint === "object" ? payload.checkpoint : {};
+  const payloadCheckpointSummary = payloadCheckpoint.summary && typeof payloadCheckpoint.summary === "object"
+    ? payloadCheckpoint.summary
+    : {};
   const gate = input.gate && typeof input.gate === "object" ? input.gate : {};
   const reload = input.reload && typeof input.reload === "object" ? input.reload : {};
   const levels = input.levels && typeof input.levels === "object" ? input.levels : {};
@@ -143,6 +149,24 @@ export function normalizeHookPayload(rawInput, options = {}) {
     )),
     mapping: firstDefined(payload.mapping, input.mapping, null),
     target: firstDefined(input.target, input.target_root, payload.target_root, options.targetRoot, null),
+    repair_layer_open_count: Number(firstDefined(
+      payloadSummary.repair_layer_open_count,
+      payloadCheckpointSummary.repair_layer_open_count,
+      inputSummary.repair_layer_open_count,
+      0,
+    )),
+    repair_layer_blocking: toBooleanOrNull(firstDefined(
+      payloadSummary.repair_layer_blocking,
+      payloadCheckpointSummary.repair_layer_blocking,
+      inputSummary.repair_layer_blocking,
+      false,
+    )) === true,
+    repair_layer_top_findings: firstDefined(
+      payloadSummary.repair_layer_top_findings,
+      payloadCheckpointSummary.repair_layer_top_findings,
+      inputSummary.repair_layer_top_findings,
+      [],
+    ),
     error,
     raw: input,
   };

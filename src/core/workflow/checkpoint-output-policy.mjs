@@ -20,12 +20,16 @@ export function buildDefaultCheckpointGate(reload) {
         index_sync_check_exists: false,
         index_sync_target_match: false,
         index_sync_in_sync: null,
+        repair_layer_open_count: 0,
+        repair_layer_severity_counts: {},
+        repair_layer_top_findings: [],
       },
       level3: {
         required: false,
         reason: null,
         fallback_recent_count: 0,
         index_sync_drift_level: null,
+        repair_layer_blocking: false,
       },
     },
   };

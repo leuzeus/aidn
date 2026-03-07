@@ -68,6 +68,9 @@ export function runWorkflowCheckpoint({
   if (indexOptions.skipGateEvaluate === true) {
     cmd.push("--skip-gate-evaluate");
   }
+  if (indexOptions.autoSkipGateOnNoSignal === false) {
+    cmd.push("--no-auto-skip-gate");
+  }
   cmd.push("--json");
 
   return runWorkflowRuntimeJsonScript({

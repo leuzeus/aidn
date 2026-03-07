@@ -29,6 +29,7 @@ function parseArgs(argv) {
     constraintLoopMode: "auto",
     constraintLoopStrict: false,
     startLightGate: true,
+    autoSkipGateOnNoSignal: true,
     strict: false,
     json: false,
   };
@@ -89,6 +90,8 @@ function parseArgs(argv) {
       args.startLightGate = true;
     } else if (token === "--full-start-gate") {
       args.startLightGate = false;
+    } else if (token === "--no-auto-skip-gate") {
+      args.autoSkipGateOnNoSignal = false;
     } else if (token === "--strict") {
       args.strict = true;
     } else if (token === "--json") {
@@ -145,6 +148,7 @@ function printUsage() {
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --index-sync-check");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --run-id-file .aidn/runtime/perf/current-run-id.txt");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --full-start-gate");
+  console.log("  node tools/perf/workflow-hook.mjs --phase session-close --no-auto-skip-gate");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-start --strict");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --constraint-loop");
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --no-constraint-loop");
@@ -180,6 +184,10 @@ function main() {
       console.log(`Checkpoint action: ${output.checkpoint.gate?.action ?? "n/a"}`);
       console.log(`Checkpoint index store: ${output.checkpoint.index?.store ?? "n/a"}`);
       console.log(`Checkpoint total: ${output.checkpoint.total_duration_ms ?? "n/a"}ms`);
+      const repairLayerOpenCount = Number(output.summary?.repair_layer_open_count ?? 0);
+      if (repairLayerOpenCount > 0) {
+        console.log(`Repair findings: ${repairLayerOpenCount} open${output.summary?.repair_layer_blocking ? " (blocking)" : ""}`);
+      }
     }
     if (output.checkpoint_error && !args.strict) {
       console.log(`Checkpoint error (ignored): ${output.checkpoint_error}`);

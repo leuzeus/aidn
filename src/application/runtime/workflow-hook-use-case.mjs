@@ -87,6 +87,7 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
         syncCheckStrict: args.indexSyncCheckStrict,
         syncCheckOut: indexSyncCheckOutPath,
         skipGateEvaluate: args.phase === "session-start" && args.startLightGate,
+        autoSkipGateOnNoSignal: args.autoSkipGateOnNoSignal,
       },
     });
   } catch (error) {

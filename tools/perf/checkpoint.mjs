@@ -185,6 +185,10 @@ function main() {
         console.log(`Index sync check file: ${result.index_sync_check.output_file}`);
       }
     }
+    const repairLayerOpenCount = Number(result.summary?.repair_layer_open_count ?? 0);
+    if (repairLayerOpenCount > 0) {
+      console.log(`Repair findings: ${repairLayerOpenCount} open${result.summary?.repair_layer_blocking ? " (blocking)" : ""}`);
+    }
     if (result.summary_event_file) {
       console.log(`Summary event: ${result.summary_event_file}`);
       console.log(`Summary run_id: ${result.summary_run_id}`);
