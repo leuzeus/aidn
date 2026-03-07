@@ -48,6 +48,18 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
+function resolveDbSyncOpenCount(hookOutput) {
+  const triageCount = hookOutput?.db_sync?.payload?.repair_layer_triage_result?.triage?.summary?.open_findings_count;
+  if (triageCount !== undefined && triageCount !== null) {
+    return Number(triageCount);
+  }
+  const severityCounts = hookOutput?.db_sync?.payload?.repair_layer_result?.summary?.severity_counts;
+  if (severityCounts && typeof severityCounts === "object") {
+    return Number(severityCounts.warning ?? 0) + Number(severityCounts.error ?? 0);
+  }
+  return null;
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -81,7 +93,6 @@ function main() {
       "--state-mode",
       "db-only",
       "--no-auto-skip-gate",
-      "--no-db-sync",
       "--json",
     ], env);
 
@@ -107,7 +118,10 @@ function main() {
     const latestHistory = closeHistory[closeHistory.length - 1] ?? {};
 
     const checks = {
+      hook_output_db_sync_enabled: hookOutput?.db_sync?.enabled === true,
       hook_output_open_count_present: Number(hookOutput?.repair_layer_open_count ?? 0) >= 1,
+      hook_output_matches_db_sync_summary: Number(hookOutput?.repair_layer_open_count ?? -1)
+        === Number(resolveDbSyncOpenCount(hookOutput) ?? -2),
       context_latest_open_count_present: Number(latestEntry?.repair_layer_open_count ?? 0) >= 1,
       context_latest_status_present: ["warn", "block"].includes(String(latestEntry?.repair_layer_status ?? "")),
       context_latest_advice_present: String(latestEntry?.repair_layer_advice ?? "").length >= 1,

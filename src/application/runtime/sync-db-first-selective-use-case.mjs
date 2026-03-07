@@ -3,6 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveStateMode } from "./db-first-artifact-lib.mjs";
 import { runDbFirstArtifactUseCase } from "./db-first-artifact-use-case.mjs";
+import { writeRepairLayerTriageArtifacts } from "./repair-layer-artifact-service.mjs";
+import { runRepairLayerUseCase } from "./repair-layer-use-case.mjs";
 
 const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url));
 const FULL_SYNC_SCRIPT = path.resolve(RUNTIME_DIR, "..", "..", "..", "tools", "runtime", "sync-db-first.mjs");
@@ -73,6 +75,7 @@ export function runSyncDbFirstSelectiveUseCase({
   targetRoot,
   gitAdapter,
   processAdapter,
+  repairLayerTriageSummaryScript,
 }) {
   const stateMode = resolveStateMode(targetRoot, args.stateMode);
   const strictByState = stateMode === "dual" || stateMode === "db-only";
@@ -166,6 +169,31 @@ export function runSyncDbFirstSelectiveUseCase({
     ]);
   }
 
+  let repairLayerResult = null;
+  let repairLayerTriageResult = null;
+  if (fallback == null && stateMode !== "files") {
+    repairLayerResult = runRepairLayerUseCase({
+      args: {
+        indexFile: args.sqliteFile,
+        indexBackend: "sqlite",
+        reportFile: args.repairLayerReportFile,
+        apply: true,
+      },
+      targetRoot,
+    });
+    repairLayerTriageResult = writeRepairLayerTriageArtifacts({
+      targetRoot,
+      indexFile: args.sqliteFile,
+      backend: "sqlite",
+      triageFile: args.repairLayerTriageFile,
+      summaryFile: args.repairLayerTriageSummaryFile,
+      renderScript: repairLayerTriageSummaryScript,
+      runNodeScript(scriptPath, scriptArgs) {
+        return processAdapter.runNodeScript(scriptPath, scriptArgs);
+      },
+    });
+  }
+
   return {
     ts: new Date().toISOString(),
     ok: summary.failed_count === 0 && (fallback == null || fallback.ok !== false),
@@ -182,5 +210,7 @@ export function runSyncDbFirstSelectiveUseCase({
     synced,
     errors,
     fallback,
+    repair_layer_result: fallback?.repair_layer_result ?? repairLayerResult,
+    repair_layer_triage_result: fallback?.repair_layer_triage_result ?? repairLayerTriageResult,
   };
 }

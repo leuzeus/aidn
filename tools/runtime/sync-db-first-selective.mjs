@@ -4,12 +4,19 @@ import { normalizeStateMode } from "../../src/lib/config/aidn-config-lib.mjs";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 import { createLocalProcessAdapter } from "../../src/adapters/runtime/local-process-adapter.mjs";
 import { runSyncDbFirstSelectiveUseCase } from "../../src/application/runtime/sync-db-first-selective-use-case.mjs";
+import { fileURLToPath } from "node:url";
+
+const TOOL_DIR = path.dirname(fileURLToPath(import.meta.url));
+const REPAIR_LAYER_TRIAGE_SUMMARY_SCRIPT = path.resolve(TOOL_DIR, "..", "perf", "render-repair-layer-triage-summary.mjs");
 
 function parseArgs(argv) {
   const args = {
     target: ".",
     auditRoot: "docs/audit",
     sqliteFile: ".aidn/runtime/index/workflow-index.sqlite",
+    repairLayerReportFile: ".aidn/runtime/index/repair-layer-report.json",
+    repairLayerTriageFile: ".aidn/runtime/index/repair-layer-triage.json",
+    repairLayerTriageSummaryFile: ".aidn/runtime/index/repair-layer-triage-summary.md",
     stateMode: "",
     forceInFiles: false,
     fallbackFull: true,
@@ -26,6 +33,15 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--sqlite-file") {
       args.sqliteFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--repair-layer-report-file") {
+      args.repairLayerReportFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--repair-layer-triage-file") {
+      args.repairLayerTriageFile = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--repair-layer-triage-summary-file") {
+      args.repairLayerTriageSummaryFile = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--state-mode") {
       args.stateMode = String(argv[i + 1] ?? "").trim().toLowerCase();
@@ -73,6 +89,7 @@ function main() {
       targetRoot,
       gitAdapter,
       processAdapter,
+      repairLayerTriageSummaryScript: REPAIR_LAYER_TRIAGE_SUMMARY_SCRIPT,
     });
 
     if (args.json) {

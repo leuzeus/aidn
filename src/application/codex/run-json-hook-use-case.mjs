@@ -5,7 +5,11 @@ import {
   resolveEffectiveStateMode,
 } from "../../core/state-mode/state-mode-policy.mjs";
 import { shouldAutoDbSyncForSkill } from "../../core/skills/skill-policy.mjs";
-import { buildRunJsonHookSummary } from "../../core/workflow/workflow-output-factory.mjs";
+import {
+  buildRunJsonHookSummary,
+  deriveRepairLayerAdvice,
+  deriveRepairLayerStatus,
+} from "../../core/workflow/workflow-output-factory.mjs";
 import { normalizeHookPayload } from "./normalize-hook-payload.mjs";
 
 const CODEX_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -110,6 +114,62 @@ function runDbSync(agentAdapter, targetRoot, stateMode) {
   };
 }
 
+function toOpenCountFromSeverityCounts(severityCounts) {
+  if (!severityCounts || typeof severityCounts !== "object") {
+    return null;
+  }
+  return Number(severityCounts.warning ?? 0) + Number(severityCounts.error ?? 0);
+}
+
+function normalizeTopFindings(items) {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  return items.slice(0, 5).map((item) => ({
+    severity: item?.severity ?? null,
+    finding_type: item?.finding_type ?? null,
+    entity_id: item?.entity_id ?? null,
+    artifact_path: item?.artifact_path ?? null,
+    message: item?.message ?? null,
+  }));
+}
+
+function mergeRepairLayerSummary(normalized, dbSyncPayload) {
+  const triage = dbSyncPayload?.repair_layer_triage_result?.triage ?? {};
+  const triageSummary = triage?.summary && typeof triage.summary === "object" ? triage.summary : {};
+  const repairSummary = dbSyncPayload?.repair_layer_result?.summary && typeof dbSyncPayload.repair_layer_result.summary === "object"
+    ? dbSyncPayload.repair_layer_result.summary
+    : {};
+  const dbSyncOpenCount = triageSummary.open_findings_count
+    ?? toOpenCountFromSeverityCounts(repairSummary.severity_counts);
+  const openCount = Number(dbSyncOpenCount ?? normalized.repair_layer_open_count ?? 0);
+  const blocking = Number(repairSummary?.severity_counts?.error ?? 0) > 0
+    || normalized.repair_layer_blocking === true;
+  const dbSyncTopFindings = normalizeTopFindings(
+    Array.isArray(triage?.items) && triage.items.length > 0
+      ? triage.items
+      : repairSummary.top_findings,
+  );
+  const topFindings = dbSyncTopFindings.length > 0
+    ? dbSyncTopFindings
+    : (Array.isArray(normalized.repair_layer_top_findings) ? normalized.repair_layer_top_findings : []);
+  return {
+    ...normalized,
+    repair_layer_open_count: openCount,
+    repair_layer_blocking: blocking,
+    repair_layer_top_findings: topFindings,
+    repair_layer_status: deriveRepairLayerStatus({
+      openCount,
+      blocking,
+    }),
+    repair_layer_advice: deriveRepairLayerAdvice({
+      openCount,
+      blocking,
+      topFindings,
+    }),
+  };
+}
+
 export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContextStore }) {
   const stateMode = resolveEffectiveStateMode({
     targetRoot,
@@ -160,20 +220,6 @@ export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContext
     targetRoot,
   });
 
-  const contextWrite = hookContextStore.persistContext({
-    targetRoot,
-    contextFile: args.contextFile,
-    rawDir: args.rawDir,
-    maxEntries: args.maxEntries,
-    skill: args.skill,
-    rawPayload,
-    normalized,
-    sourceMeta: {
-      command: commandLine,
-      command_status: result.status ?? 1,
-    },
-  });
-
   const autoDbSync = args.dbSyncExplicit
     ? Boolean(args.dbSync)
     : shouldAutoDbSyncForSkill(args.skill);
@@ -211,31 +257,49 @@ export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContext
     dbSync.reason = "state_mode_not_db_backed";
   }
 
+  const effectiveNormalized = dbSync.payload
+    ? mergeRepairLayerSummary(normalized, dbSync.payload)
+    : normalized;
+
+  const contextWrite = hookContextStore.persistContext({
+    targetRoot,
+    contextFile: args.contextFile,
+    rawDir: args.rawDir,
+    maxEntries: args.maxEntries,
+    skill: args.skill,
+    rawPayload,
+    normalized: effectiveNormalized,
+    sourceMeta: {
+      command: commandLine,
+      command_status: result.status ?? 1,
+    },
+  });
+
   const output = {
     ts: new Date().toISOString(),
-    ok: normalized.ok,
-    skill: normalized.skill,
-    mode: normalized.mode,
-    state_mode: normalized.state_mode,
-    strict: normalized.strict,
-    decision: normalized.decision,
-    fallback: normalized.fallback,
-    reason_codes: normalized.reason_codes,
-    action: normalized.action,
-    result: normalized.result,
-    repair_layer_open_count: normalized.repair_layer_open_count,
-    repair_layer_blocking: normalized.repair_layer_blocking,
-    repair_layer_status: normalized.repair_layer_status,
-    repair_layer_advice: normalized.repair_layer_advice,
-    repair_layer_top_findings: normalized.repair_layer_top_findings,
-    error: normalized.error,
+    ok: effectiveNormalized.ok,
+    skill: effectiveNormalized.skill,
+    mode: effectiveNormalized.mode,
+    state_mode: effectiveNormalized.state_mode,
+    strict: effectiveNormalized.strict,
+    decision: effectiveNormalized.decision,
+    fallback: effectiveNormalized.fallback,
+    reason_codes: effectiveNormalized.reason_codes,
+    action: effectiveNormalized.action,
+    result: effectiveNormalized.result,
+    repair_layer_open_count: effectiveNormalized.repair_layer_open_count,
+    repair_layer_blocking: effectiveNormalized.repair_layer_blocking,
+    repair_layer_status: effectiveNormalized.repair_layer_status,
+    repair_layer_advice: effectiveNormalized.repair_layer_advice,
+    repair_layer_top_findings: effectiveNormalized.repair_layer_top_findings,
+    error: effectiveNormalized.error,
     command: commandLine,
     command_status: result.status ?? 1,
     context_file: contextWrite.context_file,
     raw_file: contextWrite.raw_file,
     history_count: contextWrite.history_count,
     db_sync: dbSync,
-    normalized,
+    normalized: effectiveNormalized,
   };
   output.summary = buildRunJsonHookSummary(output);
   return output;

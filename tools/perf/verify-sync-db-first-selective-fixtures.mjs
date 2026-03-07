@@ -135,6 +135,8 @@ function main() {
       selective_update_ok: selectiveUpdate.ok === true,
       selective_update_synced: Number(selectiveUpdate?.summary?.synced_count ?? 0) >= 1,
       selective_update_no_fallback: selectiveUpdate.fallback_full_used === false,
+      selective_update_repair_layer_completed: ["applied", "skipped"].includes(String(selectiveUpdate?.repair_layer_result?.action ?? "")),
+      selective_update_triage_written: fs.existsSync(triageFile),
       selective_delete_triggers_fallback: selectiveDelete.fallback_full_used === true,
       selective_delete_fallback_reason: selectiveDelete.fallback_full_reason === "git_status_requires_full",
       selective_rename_triggers_fallback: selectiveRename.fallback_full_used === true,
@@ -150,6 +152,8 @@ function main() {
         selective_update: {
           synced_count: selectiveUpdate?.summary?.synced_count ?? 0,
           fallback_full_used: selectiveUpdate?.fallback_full_used ?? null,
+          repair_layer_action: selectiveUpdate?.repair_layer_result?.action ?? null,
+          triage_file: selectiveUpdate?.repair_layer_triage_result?.triage_file ?? null,
         },
         full_init: {
           repair_layer_action: fullInit?.repair_layer_result?.action ?? null,
