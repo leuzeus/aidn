@@ -28,6 +28,22 @@ CREATE TABLE artifacts (
   mtime_ns INTEGER NOT NULL,
   session_id TEXT,
   cycle_id TEXT,
+  source_mode TEXT NOT NULL DEFAULT 'explicit',
+  entity_confidence REAL NOT NULL DEFAULT 1.0,
+  legacy_origin TEXT,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE sessions (
+  session_id TEXT PRIMARY KEY,
+  branch_name TEXT,
+  state TEXT,
+  owner TEXT,
+  started_at TEXT,
+  ended_at TEXT,
+  source_artifact_path TEXT,
+  source_confidence REAL NOT NULL DEFAULT 1.0,
+  source_mode TEXT NOT NULL DEFAULT 'explicit',
   updated_at TEXT NOT NULL
 );
 
@@ -61,3 +77,69 @@ CREATE TABLE run_metrics (
   artifacts_churn REAL,
   gates_frequency REAL
 );
+
+CREATE TABLE artifact_links (
+  source_path TEXT NOT NULL,
+  target_path TEXT NOT NULL,
+  relation_type TEXT NOT NULL,
+  confidence REAL NOT NULL DEFAULT 1.0,
+  inference_source TEXT,
+  source_mode TEXT NOT NULL DEFAULT 'explicit',
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (source_path, target_path, relation_type)
+);
+
+CREATE TABLE cycle_links (
+  source_cycle_id TEXT NOT NULL,
+  target_cycle_id TEXT NOT NULL,
+  relation_type TEXT NOT NULL,
+  confidence REAL NOT NULL DEFAULT 1.0,
+  inference_source TEXT,
+  source_mode TEXT NOT NULL DEFAULT 'explicit',
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (source_cycle_id, target_cycle_id, relation_type)
+);
+
+CREATE TABLE session_cycle_links (
+  session_id TEXT NOT NULL,
+  cycle_id TEXT NOT NULL,
+  relation_type TEXT NOT NULL,
+  confidence REAL NOT NULL DEFAULT 1.0,
+  inference_source TEXT,
+  source_mode TEXT NOT NULL DEFAULT 'explicit',
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (session_id, cycle_id, relation_type)
+);
+
+CREATE TABLE migration_runs (
+  migration_run_id TEXT PRIMARY KEY,
+  engine_version TEXT NOT NULL,
+  started_at TEXT NOT NULL,
+  ended_at TEXT,
+  status TEXT NOT NULL,
+  target_root TEXT,
+  notes TEXT
+);
+
+CREATE TABLE migration_findings (
+  finding_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  migration_run_id TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  finding_type TEXT NOT NULL,
+  entity_type TEXT,
+  entity_id TEXT,
+  artifact_path TEXT,
+  message TEXT NOT NULL,
+  confidence REAL,
+  suggested_action TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (migration_run_id) REFERENCES migration_runs(migration_run_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_artifacts_cycle_id ON artifacts(cycle_id);
+CREATE INDEX IF NOT EXISTS idx_artifacts_session_id ON artifacts(session_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_updated_at ON sessions(updated_at);
+CREATE INDEX IF NOT EXISTS idx_artifact_links_target ON artifact_links(target_path, relation_type);
+CREATE INDEX IF NOT EXISTS idx_cycle_links_target ON cycle_links(target_cycle_id, relation_type);
+CREATE INDEX IF NOT EXISTS idx_session_cycle_links_cycle ON session_cycle_links(cycle_id, relation_type);
+CREATE INDEX IF NOT EXISTS idx_migration_findings_run ON migration_findings(migration_run_id);

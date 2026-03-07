@@ -39,6 +39,103 @@ function ensureMetaTable(db) {
   `);
 }
 
+function getTableColumns(db, tableName) {
+  const rows = db.prepare(`PRAGMA table_info(${tableName});`).all();
+  const out = new Set();
+  for (const row of rows) {
+    if (typeof row?.name === "string") {
+      out.add(row.name);
+    }
+  }
+  return out;
+}
+
+function ensureColumn(db, tableName, columnName, sqlTypeClause) {
+  const columns = getTableColumns(db, tableName);
+  if (columns.has(columnName)) {
+    return;
+  }
+  db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${sqlTypeClause};`);
+}
+
+function ensureRepairLayerTables(db) {
+  ensureColumn(db, "artifacts", "source_mode", "TEXT NOT NULL DEFAULT 'explicit'");
+  ensureColumn(db, "artifacts", "entity_confidence", "REAL NOT NULL DEFAULT 1.0");
+  ensureColumn(db, "artifacts", "legacy_origin", "TEXT");
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      session_id TEXT PRIMARY KEY,
+      branch_name TEXT,
+      state TEXT,
+      owner TEXT,
+      started_at TEXT,
+      ended_at TEXT,
+      source_artifact_path TEXT,
+      source_confidence REAL NOT NULL DEFAULT 1.0,
+      source_mode TEXT NOT NULL DEFAULT 'explicit',
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS artifact_links (
+      source_path TEXT NOT NULL,
+      target_path TEXT NOT NULL,
+      relation_type TEXT NOT NULL,
+      confidence REAL NOT NULL DEFAULT 1.0,
+      inference_source TEXT,
+      source_mode TEXT NOT NULL DEFAULT 'explicit',
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (source_path, target_path, relation_type)
+    );
+
+    CREATE TABLE IF NOT EXISTS cycle_links (
+      source_cycle_id TEXT NOT NULL,
+      target_cycle_id TEXT NOT NULL,
+      relation_type TEXT NOT NULL,
+      confidence REAL NOT NULL DEFAULT 1.0,
+      inference_source TEXT,
+      source_mode TEXT NOT NULL DEFAULT 'explicit',
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (source_cycle_id, target_cycle_id, relation_type)
+    );
+
+    CREATE TABLE IF NOT EXISTS session_cycle_links (
+      session_id TEXT NOT NULL,
+      cycle_id TEXT NOT NULL,
+      relation_type TEXT NOT NULL,
+      confidence REAL NOT NULL DEFAULT 1.0,
+      inference_source TEXT,
+      source_mode TEXT NOT NULL DEFAULT 'explicit',
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (session_id, cycle_id, relation_type)
+    );
+
+    CREATE TABLE IF NOT EXISTS migration_runs (
+      migration_run_id TEXT PRIMARY KEY,
+      engine_version TEXT NOT NULL,
+      started_at TEXT NOT NULL,
+      ended_at TEXT,
+      status TEXT NOT NULL,
+      target_root TEXT,
+      notes TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS migration_findings (
+      finding_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      migration_run_id TEXT NOT NULL,
+      severity TEXT NOT NULL,
+      finding_type TEXT NOT NULL,
+      entity_type TEXT,
+      entity_id TEXT,
+      artifact_path TEXT,
+      message TEXT NOT NULL,
+      confidence REAL,
+      suggested_action TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (migration_run_id) REFERENCES migration_runs(migration_run_id)
+    );
+  `);
+}
+
 function canonicalToJson(value) {
   if (!value || typeof value !== "object") {
     return null;
@@ -128,6 +225,9 @@ function normalizeArtifact(input) {
     mtime_ns: mtimeNs,
     session_id: input.session_id ?? null,
     cycle_id: input.cycle_id ?? null,
+    source_mode: input.source_mode ?? "explicit",
+    entity_confidence: Number(input.entity_confidence ?? 1),
+    legacy_origin: input.legacy_origin ?? null,
     updated_at: input.updated_at ?? now.toISOString(),
   };
 }
@@ -200,6 +300,9 @@ function mapArtifactRow(row) {
     mtime_ns: row.mtime_ns ?? null,
     session_id: row.session_id ?? null,
     cycle_id: row.cycle_id ?? null,
+    source_mode: row.source_mode ?? "explicit",
+    entity_confidence: Number(row.entity_confidence ?? 1),
+    legacy_origin: row.legacy_origin ?? null,
     updated_at: row.updated_at ?? null,
   };
 }
@@ -217,11 +320,12 @@ export function createArtifactStore(options = {}) {
   db.exec("PRAGMA foreign_keys=OFF;");
   db.exec(schemaText);
   ensureMetaTable(db);
+  ensureRepairLayerTables(db);
 
   const upsertStmt = db.prepare(`
     INSERT INTO artifacts (
-      path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, mtime_ns, session_id, cycle_id, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, mtime_ns, session_id, cycle_id, source_mode, entity_confidence, legacy_origin, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(path) DO UPDATE SET
       kind = excluded.kind,
       family = excluded.family,
@@ -237,24 +341,27 @@ export function createArtifactStore(options = {}) {
       mtime_ns = excluded.mtime_ns,
       session_id = excluded.session_id,
       cycle_id = excluded.cycle_id,
+      source_mode = excluded.source_mode,
+      entity_confidence = excluded.entity_confidence,
+      legacy_origin = excluded.legacy_origin,
       updated_at = excluded.updated_at;
   `);
 
   const getStmt = db.prepare(`
-    SELECT path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, CAST(mtime_ns AS TEXT) AS mtime_ns, session_id, cycle_id, updated_at
+    SELECT path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, CAST(mtime_ns AS TEXT) AS mtime_ns, session_id, cycle_id, source_mode, entity_confidence, legacy_origin, updated_at
     FROM artifacts
     WHERE path = ?
   `);
 
   const listStmt = db.prepare(`
-    SELECT path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, CAST(mtime_ns AS TEXT) AS mtime_ns, session_id, cycle_id, updated_at
+    SELECT path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, CAST(mtime_ns AS TEXT) AS mtime_ns, session_id, cycle_id, source_mode, entity_confidence, legacy_origin, updated_at
     FROM artifacts
     ORDER BY updated_at DESC, path ASC
     LIMIT ?
   `);
 
   const listByPathsStmt = db.prepare(`
-    SELECT path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, CAST(mtime_ns AS TEXT) AS mtime_ns, session_id, cycle_id, updated_at
+    SELECT path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, CAST(mtime_ns AS TEXT) AS mtime_ns, session_id, cycle_id, source_mode, entity_confidence, legacy_origin, updated_at
     FROM artifacts
     WHERE path = ?
   `);
@@ -299,6 +406,9 @@ export function createArtifactStore(options = {}) {
         artifact.mtime_ns,
         artifact.session_id,
         artifact.cycle_id,
+        artifact.source_mode,
+        artifact.entity_confidence,
+        artifact.legacy_origin,
         artifact.updated_at,
       );
       const cycleId = extractCycleIdFromPath(artifact.path);

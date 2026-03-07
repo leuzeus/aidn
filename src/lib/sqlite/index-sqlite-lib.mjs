@@ -46,6 +46,15 @@ function readRows(db, sql, params = []) {
   return db.prepare(sql).all(...params);
 }
 
+function hasTable(db, tableName) {
+  const row = db.prepare(`
+    SELECT name
+    FROM sqlite_master
+    WHERE type = 'table' AND name = ?
+  `).get(tableName);
+  return Boolean(row);
+}
+
 function getTableColumns(db, tableName) {
   const rows = db.prepare(`PRAGMA table_info(${tableName});`).all();
   const set = new Set();
@@ -65,10 +74,16 @@ function toSchemaVersion(value, fallback = 1) {
 function buildSummary(payload, structureKindHint = null) {
   return {
     cycles_count: Array.isArray(payload.cycles) ? payload.cycles.length : 0,
+    sessions_count: Array.isArray(payload.sessions) ? payload.sessions.length : 0,
     artifacts_count: Array.isArray(payload.artifacts) ? payload.artifacts.length : 0,
     file_map_count: Array.isArray(payload.file_map) ? payload.file_map.length : 0,
     tags_count: Array.isArray(payload.tags) ? payload.tags.length : 0,
     run_metrics_count: Array.isArray(payload.run_metrics) ? payload.run_metrics.length : 0,
+    artifact_links_count: Array.isArray(payload.artifact_links) ? payload.artifact_links.length : 0,
+    cycle_links_count: Array.isArray(payload.cycle_links) ? payload.cycle_links.length : 0,
+    session_cycle_links_count: Array.isArray(payload.session_cycle_links) ? payload.session_cycle_links.length : 0,
+    migration_runs_count: Array.isArray(payload.migration_runs) ? payload.migration_runs.length : 0,
+    migration_findings_count: Array.isArray(payload.migration_findings) ? payload.migration_findings.length : 0,
     structure_kind: structureKindHint ?? "unknown",
     artifacts_with_content_count: Array.isArray(payload.artifacts)
       ? payload.artifacts.filter((row) => typeof row?.content === "string").length
@@ -118,7 +133,11 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
                ${artifactColumns.has("content") ? "content" : "NULL AS content"},
                ${artifactColumns.has("canonical_format") ? "canonical_format" : "NULL AS canonical_format"},
                ${artifactColumns.has("canonical_json") ? "canonical_json" : "NULL AS canonical_json"},
-               sha256, size_bytes, CAST(mtime_ns AS TEXT) AS mtime_ns, session_id, cycle_id, updated_at
+               sha256, size_bytes, CAST(mtime_ns AS TEXT) AS mtime_ns, session_id, cycle_id,
+               ${artifactColumns.has("source_mode") ? "source_mode" : "'explicit' AS source_mode"},
+               ${artifactColumns.has("entity_confidence") ? "entity_confidence" : "1.0 AS entity_confidence"},
+               ${artifactColumns.has("legacy_origin") ? "legacy_origin" : "NULL AS legacy_origin"},
+               updated_at
         FROM artifacts
         ORDER BY path ASC
       `).map((row) => ({
@@ -137,8 +156,30 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
         mtime_ns: row.mtime_ns ?? null,
         session_id: row.session_id ?? null,
         cycle_id: row.cycle_id ?? null,
+        source_mode: row.source_mode ?? "explicit",
+        entity_confidence: Number(row.entity_confidence ?? 1),
+        legacy_origin: row.legacy_origin ?? null,
         updated_at: row.updated_at ?? null,
       })),
+      sessions: hasTable(db, "sessions")
+        ? readRows(db, `
+          SELECT session_id, branch_name, state, owner, started_at, ended_at, source_artifact_path,
+                 source_confidence, source_mode, updated_at
+          FROM sessions
+          ORDER BY session_id ASC
+        `).map((row) => ({
+          session_id: row.session_id ?? null,
+          branch_name: row.branch_name ?? null,
+          state: row.state ?? null,
+          owner: row.owner ?? null,
+          started_at: row.started_at ?? null,
+          ended_at: row.ended_at ?? null,
+          source_artifact_path: row.source_artifact_path ?? null,
+          source_confidence: Number(row.source_confidence ?? 1),
+          source_mode: row.source_mode ?? "explicit",
+          updated_at: row.updated_at ?? null,
+        }))
+        : [],
       file_map: readRows(db, `
         SELECT cycle_id, path, role,
                ${fileMapColumns.has("relation") ? "relation" : "'unknown' AS relation"},
@@ -163,6 +204,65 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
         FROM run_metrics
         ORDER BY started_at DESC, run_id ASC
       `),
+      artifact_links: hasTable(db, "artifact_links")
+        ? readRows(db, `
+          SELECT source_path, target_path, relation_type, confidence, inference_source, source_mode, updated_at
+          FROM artifact_links
+          ORDER BY source_path ASC, target_path ASC, relation_type ASC
+        `).map((row) => ({
+          source_path: row.source_path ?? null,
+          target_path: row.target_path ?? null,
+          relation_type: row.relation_type ?? null,
+          confidence: Number(row.confidence ?? 1),
+          inference_source: row.inference_source ?? null,
+          source_mode: row.source_mode ?? "explicit",
+          updated_at: row.updated_at ?? null,
+        }))
+        : [],
+      cycle_links: hasTable(db, "cycle_links")
+        ? readRows(db, `
+          SELECT source_cycle_id, target_cycle_id, relation_type, confidence, inference_source, source_mode, updated_at
+          FROM cycle_links
+          ORDER BY source_cycle_id ASC, target_cycle_id ASC, relation_type ASC
+        `).map((row) => ({
+          source_cycle_id: row.source_cycle_id ?? null,
+          target_cycle_id: row.target_cycle_id ?? null,
+          relation_type: row.relation_type ?? null,
+          confidence: Number(row.confidence ?? 1),
+          inference_source: row.inference_source ?? null,
+          source_mode: row.source_mode ?? "explicit",
+          updated_at: row.updated_at ?? null,
+        }))
+        : [],
+      session_cycle_links: hasTable(db, "session_cycle_links")
+        ? readRows(db, `
+          SELECT session_id, cycle_id, relation_type, confidence, inference_source, source_mode, updated_at
+          FROM session_cycle_links
+          ORDER BY session_id ASC, cycle_id ASC, relation_type ASC
+        `).map((row) => ({
+          session_id: row.session_id ?? null,
+          cycle_id: row.cycle_id ?? null,
+          relation_type: row.relation_type ?? null,
+          confidence: Number(row.confidence ?? 1),
+          inference_source: row.inference_source ?? null,
+          source_mode: row.source_mode ?? "explicit",
+          updated_at: row.updated_at ?? null,
+        }))
+        : [],
+      migration_runs: hasTable(db, "migration_runs")
+        ? readRows(db, `
+          SELECT migration_run_id, engine_version, started_at, ended_at, status, target_root, notes
+          FROM migration_runs
+          ORDER BY started_at DESC, migration_run_id ASC
+        `)
+        : [],
+      migration_findings: hasTable(db, "migration_findings")
+        ? readRows(db, `
+          SELECT migration_run_id, severity, finding_type, entity_type, entity_id, artifact_path, message, confidence, suggested_action, created_at
+          FROM migration_findings
+          ORDER BY created_at DESC, finding_id ASC
+        `)
+        : [],
     };
     payload.summary = buildSummary(payload, structureKind);
     return { absolute, payload, meta };

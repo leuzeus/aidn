@@ -27,7 +27,15 @@ function insertArtifacts(lines, artifacts) {
       ? JSON.stringify(artifact.canonical)
       : null;
     lines.push(
-      `INSERT INTO artifacts (path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, mtime_ns, session_id, cycle_id, updated_at) VALUES (${sqlString(artifact.path)}, ${sqlString(artifact.kind)}, ${sqlString(artifact.family)}, ${sqlString(artifact.subtype)}, ${sqlNumber(artifact.gate_relevance)}, ${sqlString(artifact.classification_reason)}, ${sqlString(artifact.content_format)}, ${sqlString(artifact.content)}, ${sqlString(artifact.canonical_format)}, ${sqlString(canonicalJson)}, ${sqlString(artifact.sha256)}, ${sqlNumber(artifact.size_bytes)}, ${sqlNumber(artifact.mtime_ns)}, ${sqlString(artifact.session_id)}, ${sqlString(artifact.cycle_id)}, ${sqlString(artifact.updated_at)});`,
+      `INSERT INTO artifacts (path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, mtime_ns, session_id, cycle_id, source_mode, entity_confidence, legacy_origin, updated_at) VALUES (${sqlString(artifact.path)}, ${sqlString(artifact.kind)}, ${sqlString(artifact.family)}, ${sqlString(artifact.subtype)}, ${sqlNumber(artifact.gate_relevance)}, ${sqlString(artifact.classification_reason)}, ${sqlString(artifact.content_format)}, ${sqlString(artifact.content)}, ${sqlString(artifact.canonical_format)}, ${sqlString(canonicalJson)}, ${sqlString(artifact.sha256)}, ${sqlNumber(artifact.size_bytes)}, ${sqlNumber(artifact.mtime_ns)}, ${sqlString(artifact.session_id)}, ${sqlString(artifact.cycle_id)}, ${sqlString(artifact.source_mode ?? "explicit")}, ${sqlNumber(artifact.entity_confidence ?? 1)}, ${sqlString(artifact.legacy_origin)}, ${sqlString(artifact.updated_at)});`,
+    );
+  }
+}
+
+function insertSessions(lines, sessions) {
+  for (const row of sessions) {
+    lines.push(
+      `INSERT INTO sessions (session_id, branch_name, state, owner, started_at, ended_at, source_artifact_path, source_confidence, source_mode, updated_at) VALUES (${sqlString(row.session_id)}, ${sqlString(row.branch_name)}, ${sqlString(row.state)}, ${sqlString(row.owner)}, ${sqlString(row.started_at)}, ${sqlString(row.ended_at)}, ${sqlString(row.source_artifact_path)}, ${sqlNumber(row.source_confidence ?? 1)}, ${sqlString(row.source_mode ?? "explicit")}, ${sqlString(row.updated_at)});`,
     );
   }
 }
@@ -62,6 +70,46 @@ function insertRunMetrics(lines, runMetrics) {
   }
 }
 
+function insertArtifactLinks(lines, rows) {
+  for (const row of rows) {
+    lines.push(
+      `INSERT INTO artifact_links (source_path, target_path, relation_type, confidence, inference_source, source_mode, updated_at) VALUES (${sqlString(row.source_path)}, ${sqlString(row.target_path)}, ${sqlString(row.relation_type)}, ${sqlNumber(row.confidence ?? 1)}, ${sqlString(row.inference_source)}, ${sqlString(row.source_mode ?? "explicit")}, ${sqlString(row.updated_at)});`,
+    );
+  }
+}
+
+function insertCycleLinks(lines, rows) {
+  for (const row of rows) {
+    lines.push(
+      `INSERT INTO cycle_links (source_cycle_id, target_cycle_id, relation_type, confidence, inference_source, source_mode, updated_at) VALUES (${sqlString(row.source_cycle_id)}, ${sqlString(row.target_cycle_id)}, ${sqlString(row.relation_type)}, ${sqlNumber(row.confidence ?? 1)}, ${sqlString(row.inference_source)}, ${sqlString(row.source_mode ?? "explicit")}, ${sqlString(row.updated_at)});`,
+    );
+  }
+}
+
+function insertSessionCycleLinks(lines, rows) {
+  for (const row of rows) {
+    lines.push(
+      `INSERT INTO session_cycle_links (session_id, cycle_id, relation_type, confidence, inference_source, source_mode, updated_at) VALUES (${sqlString(row.session_id)}, ${sqlString(row.cycle_id)}, ${sqlString(row.relation_type)}, ${sqlNumber(row.confidence ?? 1)}, ${sqlString(row.inference_source)}, ${sqlString(row.source_mode ?? "explicit")}, ${sqlString(row.updated_at)});`,
+    );
+  }
+}
+
+function insertMigrationRuns(lines, rows) {
+  for (const row of rows) {
+    lines.push(
+      `INSERT INTO migration_runs (migration_run_id, engine_version, started_at, ended_at, status, target_root, notes) VALUES (${sqlString(row.migration_run_id)}, ${sqlString(row.engine_version)}, ${sqlString(row.started_at)}, ${sqlString(row.ended_at)}, ${sqlString(row.status)}, ${sqlString(row.target_root)}, ${sqlString(row.notes)});`,
+    );
+  }
+}
+
+function insertMigrationFindings(lines, rows) {
+  for (const row of rows) {
+    lines.push(
+      `INSERT INTO migration_findings (migration_run_id, severity, finding_type, entity_type, entity_id, artifact_path, message, confidence, suggested_action, created_at) VALUES (${sqlString(row.migration_run_id)}, ${sqlString(row.severity)}, ${sqlString(row.finding_type)}, ${sqlString(row.entity_type)}, ${sqlString(row.entity_id)}, ${sqlString(row.artifact_path)}, ${sqlString(row.message)}, ${sqlNumber(row.confidence)}, ${sqlString(row.suggested_action)}, ${sqlString(row.created_at)});`,
+    );
+  }
+}
+
 export function buildSqlFromIndex(indexData, options = {}) {
   const includeSchema = options.includeSchema !== false;
   const schemaText = (options.schemaText ?? "").trim();
@@ -85,6 +133,12 @@ export function buildSqlFromIndex(indexData, options = {}) {
   lines.push("DELETE FROM artifacts;");
   lines.push("DELETE FROM cycles;");
   lines.push("DELETE FROM run_metrics;");
+  lines.push("DELETE FROM artifact_links;");
+  lines.push("DELETE FROM cycle_links;");
+  lines.push("DELETE FROM session_cycle_links;");
+  lines.push("DELETE FROM sessions;");
+  lines.push("DELETE FROM migration_findings;");
+  lines.push("DELETE FROM migration_runs;");
   lines.push("");
 
   const cycles = Array.isArray(indexData.cycles) ? indexData.cycles : [];
@@ -93,14 +147,26 @@ export function buildSqlFromIndex(indexData, options = {}) {
   const tags = Array.isArray(indexData.tags) ? indexData.tags : [];
   const artifactTags = Array.isArray(indexData.artifact_tags) ? indexData.artifact_tags : [];
   const runMetrics = Array.isArray(indexData.run_metrics) ? indexData.run_metrics : [];
+  const sessions = Array.isArray(indexData.sessions) ? indexData.sessions : [];
+  const artifactLinks = Array.isArray(indexData.artifact_links) ? indexData.artifact_links : [];
+  const cycleLinks = Array.isArray(indexData.cycle_links) ? indexData.cycle_links : [];
+  const sessionCycleLinks = Array.isArray(indexData.session_cycle_links) ? indexData.session_cycle_links : [];
+  const migrationRuns = Array.isArray(indexData.migration_runs) ? indexData.migration_runs : [];
+  const migrationFindings = Array.isArray(indexData.migration_findings) ? indexData.migration_findings : [];
 
   lines.push("-- Insert data");
   insertCycles(lines, cycles);
   insertArtifacts(lines, artifacts);
+  insertSessions(lines, sessions);
   insertFileMap(lines, fileMap);
   insertTags(lines, tags);
   insertArtifactTags(lines, artifactTags);
   insertRunMetrics(lines, runMetrics);
+  insertArtifactLinks(lines, artifactLinks);
+  insertCycleLinks(lines, cycleLinks);
+  insertSessionCycleLinks(lines, sessionCycleLinks);
+  insertMigrationRuns(lines, migrationRuns);
+  insertMigrationFindings(lines, migrationFindings);
 
   lines.push("");
   lines.push("COMMIT;");

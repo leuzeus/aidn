@@ -96,6 +96,90 @@ function ensureMetaTable(db) {
   `);
 }
 
+function ensureRepairLayerTables(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      session_id TEXT PRIMARY KEY,
+      branch_name TEXT,
+      state TEXT,
+      owner TEXT,
+      started_at TEXT,
+      ended_at TEXT,
+      source_artifact_path TEXT,
+      source_confidence REAL NOT NULL DEFAULT 1.0,
+      source_mode TEXT NOT NULL DEFAULT 'explicit',
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS artifact_links (
+      source_path TEXT NOT NULL,
+      target_path TEXT NOT NULL,
+      relation_type TEXT NOT NULL,
+      confidence REAL NOT NULL DEFAULT 1.0,
+      inference_source TEXT,
+      source_mode TEXT NOT NULL DEFAULT 'explicit',
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (source_path, target_path, relation_type)
+    );
+
+    CREATE TABLE IF NOT EXISTS cycle_links (
+      source_cycle_id TEXT NOT NULL,
+      target_cycle_id TEXT NOT NULL,
+      relation_type TEXT NOT NULL,
+      confidence REAL NOT NULL DEFAULT 1.0,
+      inference_source TEXT,
+      source_mode TEXT NOT NULL DEFAULT 'explicit',
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (source_cycle_id, target_cycle_id, relation_type)
+    );
+
+    CREATE TABLE IF NOT EXISTS session_cycle_links (
+      session_id TEXT NOT NULL,
+      cycle_id TEXT NOT NULL,
+      relation_type TEXT NOT NULL,
+      confidence REAL NOT NULL DEFAULT 1.0,
+      inference_source TEXT,
+      source_mode TEXT NOT NULL DEFAULT 'explicit',
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (session_id, cycle_id, relation_type)
+    );
+
+    CREATE TABLE IF NOT EXISTS migration_runs (
+      migration_run_id TEXT PRIMARY KEY,
+      engine_version TEXT NOT NULL,
+      started_at TEXT NOT NULL,
+      ended_at TEXT,
+      status TEXT NOT NULL,
+      target_root TEXT,
+      notes TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS migration_findings (
+      finding_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      migration_run_id TEXT NOT NULL,
+      severity TEXT NOT NULL,
+      finding_type TEXT NOT NULL,
+      entity_type TEXT,
+      entity_id TEXT,
+      artifact_path TEXT,
+      message TEXT NOT NULL,
+      confidence REAL,
+      suggested_action TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (migration_run_id) REFERENCES migration_runs(migration_run_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_artifacts_cycle_id ON artifacts(cycle_id);
+    CREATE INDEX IF NOT EXISTS idx_artifacts_session_id ON artifacts(session_id);
+    CREATE INDEX IF NOT EXISTS idx_artifacts_source_mode ON artifacts(source_mode);
+    CREATE INDEX IF NOT EXISTS idx_sessions_updated_at ON sessions(updated_at);
+    CREATE INDEX IF NOT EXISTS idx_artifact_links_target ON artifact_links(target_path, relation_type);
+    CREATE INDEX IF NOT EXISTS idx_cycle_links_target ON cycle_links(target_cycle_id, relation_type);
+    CREATE INDEX IF NOT EXISTS idx_session_cycle_links_cycle ON session_cycle_links(cycle_id, relation_type);
+    CREATE INDEX IF NOT EXISTS idx_migration_findings_run ON migration_findings(migration_run_id);
+  `);
+}
+
 function getTableColumns(db, tableName) {
   const rows = db.prepare(`PRAGMA table_info(${tableName});`).all();
   const out = new Set();
@@ -153,8 +237,12 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
     ensureColumn(db, "artifacts", "content", "TEXT");
     ensureColumn(db, "artifacts", "canonical_format", "TEXT");
     ensureColumn(db, "artifacts", "canonical_json", "TEXT");
+    ensureColumn(db, "artifacts", "source_mode", "TEXT NOT NULL DEFAULT 'explicit'");
+    ensureColumn(db, "artifacts", "entity_confidence", "REAL NOT NULL DEFAULT 1.0");
+    ensureColumn(db, "artifacts", "legacy_origin", "TEXT");
     ensureColumn(db, "file_map", "relation", "TEXT NOT NULL DEFAULT 'unknown'");
     ensureMetaTable(db);
+    ensureRepairLayerTables(db);
     const prevDigest = getMeta(db, "payload_digest");
     if (prevDigest === nextDigest) {
       return {
@@ -172,6 +260,12 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       db.exec("DELETE FROM artifacts;");
       db.exec("DELETE FROM cycles;");
       db.exec("DELETE FROM run_metrics;");
+      db.exec("DELETE FROM artifact_links;");
+      db.exec("DELETE FROM cycle_links;");
+      db.exec("DELETE FROM session_cycle_links;");
+      db.exec("DELETE FROM sessions;");
+      db.exec("DELETE FROM migration_findings;");
+      db.exec("DELETE FROM migration_runs;");
 
       const cycles = Array.isArray(payload.cycles) ? payload.cycles : [];
       const artifacts = Array.isArray(payload.artifacts) ? payload.artifacts : [];
@@ -179,6 +273,12 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       const tags = Array.isArray(payload.tags) ? payload.tags : [];
       const artifactTags = Array.isArray(payload.artifact_tags) ? payload.artifact_tags : [];
       const runMetrics = Array.isArray(payload.run_metrics) ? payload.run_metrics : [];
+      const sessions = Array.isArray(payload.sessions) ? payload.sessions : [];
+      const artifactLinks = Array.isArray(payload.artifact_links) ? payload.artifact_links : [];
+      const cycleLinks = Array.isArray(payload.cycle_links) ? payload.cycle_links : [];
+      const sessionCycleLinks = Array.isArray(payload.session_cycle_links) ? payload.session_cycle_links : [];
+      const migrationRuns = Array.isArray(payload.migration_runs) ? payload.migration_runs : [];
+      const migrationFindings = Array.isArray(payload.migration_findings) ? payload.migration_findings : [];
 
       const cycleStmt = db.prepare(`
         INSERT INTO cycles (
@@ -211,8 +311,8 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
 
       const artifactStmt = db.prepare(`
         INSERT INTO artifacts (
-          path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, mtime_ns, session_id, cycle_id, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, mtime_ns, session_id, cycle_id, source_mode, entity_confidence, legacy_origin, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `);
       runInsert(artifactStmt, artifacts, (row) => ([
         row.path ?? null,
@@ -230,6 +330,27 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
         Number(row.mtime_ns ?? 0),
         row.session_id ?? null,
         row.cycle_id ?? null,
+        row.source_mode ?? "explicit",
+        Number(row.entity_confidence ?? 1),
+        row.legacy_origin ?? null,
+        row.updated_at ?? new Date().toISOString(),
+      ]));
+
+      const sessionStmt = db.prepare(`
+        INSERT INTO sessions (
+          session_id, branch_name, state, owner, started_at, ended_at, source_artifact_path, source_confidence, source_mode, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      `);
+      runInsert(sessionStmt, sessions, (row) => ([
+        row.session_id ?? null,
+        row.branch_name ?? null,
+        row.state ?? null,
+        row.owner ?? null,
+        row.started_at ?? null,
+        row.ended_at ?? null,
+        row.source_artifact_path ?? null,
+        Number(row.source_confidence ?? 1),
+        row.source_mode ?? "explicit",
         row.updated_at ?? new Date().toISOString(),
       ]));
 
@@ -274,8 +395,86 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
         row.gates_frequency ?? null,
       ]));
 
+      const artifactLinkStmt = db.prepare(`
+        INSERT INTO artifact_links (
+          source_path, target_path, relation_type, confidence, inference_source, source_mode, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?);
+      `);
+      runInsert(artifactLinkStmt, artifactLinks, (row) => ([
+        row.source_path ?? null,
+        row.target_path ?? null,
+        row.relation_type ?? null,
+        Number(row.confidence ?? 1),
+        row.inference_source ?? null,
+        row.source_mode ?? "explicit",
+        row.updated_at ?? new Date().toISOString(),
+      ]));
+
+      const cycleLinkStmt = db.prepare(`
+        INSERT INTO cycle_links (
+          source_cycle_id, target_cycle_id, relation_type, confidence, inference_source, source_mode, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?);
+      `);
+      runInsert(cycleLinkStmt, cycleLinks, (row) => ([
+        row.source_cycle_id ?? null,
+        row.target_cycle_id ?? null,
+        row.relation_type ?? null,
+        Number(row.confidence ?? 1),
+        row.inference_source ?? null,
+        row.source_mode ?? "explicit",
+        row.updated_at ?? new Date().toISOString(),
+      ]));
+
+      const sessionCycleLinkStmt = db.prepare(`
+        INSERT INTO session_cycle_links (
+          session_id, cycle_id, relation_type, confidence, inference_source, source_mode, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?);
+      `);
+      runInsert(sessionCycleLinkStmt, sessionCycleLinks, (row) => ([
+        row.session_id ?? null,
+        row.cycle_id ?? null,
+        row.relation_type ?? null,
+        Number(row.confidence ?? 1),
+        row.inference_source ?? null,
+        row.source_mode ?? "explicit",
+        row.updated_at ?? new Date().toISOString(),
+      ]));
+
+      const migrationRunStmt = db.prepare(`
+        INSERT INTO migration_runs (
+          migration_run_id, engine_version, started_at, ended_at, status, target_root, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?);
+      `);
+      runInsert(migrationRunStmt, migrationRuns, (row) => ([
+        row.migration_run_id ?? null,
+        row.engine_version ?? "unknown",
+        row.started_at ?? new Date().toISOString(),
+        row.ended_at ?? null,
+        row.status ?? "pending",
+        row.target_root ?? null,
+        row.notes ?? null,
+      ]));
+
+      const migrationFindingStmt = db.prepare(`
+        INSERT INTO migration_findings (
+          migration_run_id, severity, finding_type, entity_type, entity_id, artifact_path, message, confidence, suggested_action, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      `);
+      runInsert(migrationFindingStmt, migrationFindings, (row) => ([
+        row.migration_run_id ?? null,
+        row.severity ?? "info",
+        row.finding_type ?? "unknown",
+        row.entity_type ?? null,
+        row.entity_id ?? null,
+        row.artifact_path ?? null,
+        row.message ?? "",
+        row.confidence ?? null,
+        row.suggested_action ?? null,
+        row.created_at ?? new Date().toISOString(),
+      ]));
+
       setMeta(db, "payload_digest", nextDigest);
-      setMeta(db, "schema_version", String(payload?.schema_version ?? 1));
+      setMeta(db, "schema_version", String(payload?.schema_version ?? 2));
       setMeta(db, "structure_kind", String(payload?.summary?.structure_kind ?? "unknown"));
       setMeta(db, "target_root", String(payload?.target_root ?? ""));
       setMeta(db, "audit_root", String(payload?.audit_root ?? ""));
