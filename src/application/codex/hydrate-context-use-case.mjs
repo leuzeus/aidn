@@ -59,6 +59,7 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
   const artifactLinks = Array.isArray(payload?.artifact_links) ? payload.artifact_links : [];
   const sessionCycleLinks = Array.isArray(payload?.session_cycle_links) ? payload.session_cycle_links : [];
   const sessionLinks = Array.isArray(payload?.session_links) ? payload.session_links : [];
+  const migrationFindings = Array.isArray(payload?.migration_findings) ? payload.migration_findings : [];
   const relationThresholds = resolveRepairRelationThresholds({
     minConfidence: options.minRelationConfidence,
     relationThresholds: options.relationThresholds,
@@ -78,6 +79,29 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
     "WORKFLOW.md",
     "SPEC.md",
   ]);
+  const findingsByArtifactPath = new Map();
+  const findingCycleIds = new Set();
+  const findingSessionIds = new Set();
+  for (const row of migrationFindings) {
+    const severity = String(row?.severity ?? "").toLowerCase();
+    if (!["warning", "error"].includes(severity)) {
+      continue;
+    }
+    const artifactPath = String(row?.artifact_path ?? "").replace(/\\/g, "/");
+    if (artifactPath) {
+      const list = findingsByArtifactPath.get(artifactPath) ?? [];
+      list.push(row);
+      findingsByArtifactPath.set(artifactPath, list);
+    }
+    const entityType = String(row?.entity_type ?? "").toLowerCase();
+    const entityId = String(row?.entity_id ?? "").toUpperCase();
+    if (entityType === "cycle" && /^C\d+$/.test(entityId)) {
+      findingCycleIds.add(entityId);
+    }
+    if (entityType === "session" && /^S\d+$/.test(entityId)) {
+      findingSessionIds.add(entityId);
+    }
+  }
   const activeCycleIds = new Set(
     (Array.isArray(payload?.cycles) ? payload.cycles : [])
       .filter((cycle) => ["OPEN", "IMPLEMENTING", "VERIFYING"].includes(String(cycle?.state ?? "").toUpperCase()))
@@ -328,6 +352,25 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
     }
   }
   for (const artifact of artifacts) {
+    const rel = String(artifact?.path ?? "").replace(/\\/g, "/");
+    if (findingsByArtifactPath.has(rel)) {
+      const severityWeight = (findingsByArtifactPath.get(rel) ?? []).some((row) => String(row?.severity ?? "").toLowerCase() === "error")
+        ? 72
+        : 60;
+      mark(artifact, severityWeight, "repair_finding_artifact");
+    }
+  }
+  for (const artifact of artifacts) {
+    if (findingSessionIds.has(String(artifact?.session_id ?? "")) && String(artifact?.kind ?? "") === "session") {
+      mark(artifact, 62, "repair_finding_session");
+    }
+  }
+  for (const artifact of artifacts) {
+    if (findingCycleIds.has(String(artifact?.cycle_id ?? "")) && /\/status\.md$/i.test(String(artifact?.path ?? ""))) {
+      mark(artifact, 64, "repair_finding_cycle_status");
+    }
+  }
+  for (const artifact of artifacts) {
     if (continuityCycleIds.has(String(artifact?.cycle_id ?? "")) && /\/status\.md$/i.test(String(artifact?.path ?? ""))) {
       mark(artifact, 54, "continuity_cycle_status");
     }
@@ -358,6 +401,11 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
   return {
     selected,
     relation_evaluation: relationEvaluation,
+    finding_focus: {
+      artifact_paths: Array.from(findingsByArtifactPath.keys()).sort((a, b) => a.localeCompare(b)).slice(0, 10),
+      cycle_ids: Array.from(findingCycleIds).sort((a, b) => a.localeCompare(b)).slice(0, 10),
+      session_ids: Array.from(findingSessionIds).sort((a, b) => a.localeCompare(b)).slice(0, 10),
+    },
   };
 }
 
@@ -389,6 +437,7 @@ function summarizeRepairLayer(payload, selection = null) {
     latest_run: latestRun,
     top_findings: migrationFindings.slice(0, 5),
     relation_evaluation: selection?.relation_evaluation ?? null,
+    finding_focus: selection?.finding_focus ?? null,
   };
 }
 
