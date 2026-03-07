@@ -113,6 +113,7 @@ Runtime transition scripts (`tools/runtime/`):
 - `sync-db-first.mjs` - full DB-backed runtime index sync from `docs/audit/*` (fallback/manual recovery) and, by default, emit repair-layer triage JSON + Markdown summary
 - `mode-migrate.mjs` - migrate runtime state mode (`files|dual|db-only`) with sync/materialization steps and, by default, emit repair-layer triage JSON + Markdown summary when migrating to DB-backed modes
 - `repair-layer.mjs` - enrich an existing JSON/SQLite index with repair-layer sessions, links, findings, and report output
+- `repair-layer-autofix.mjs` - apply a very limited safe-only auto-resolution pass for ambiguous `attached_cycle` relations already contradicted by a stronger continuity link
 - `repair-layer-triage.mjs` - summarize open repair findings and emit actionable triage JSON
 - `repair-layer-query.mjs` - query workflow-oriented repair-layer relations (`baseline-context`, `session-continuity`, cycle/session links)
 - `repair-layer-resolve.mjs` - persist human decisions for ambiguous repair-layer relations
@@ -131,6 +132,7 @@ npx aidn codex hydrate-context --target . --json
 npx aidn runtime sync-db-first-selective --target . --json
 npx aidn runtime sync-db-first --target . --json
 npx aidn runtime repair-layer --target . --index-file .aidn/runtime/index/workflow-index.sqlite --index-backend sqlite --apply --json
+npx aidn runtime repair-layer-autofix --target . --index-file .aidn/runtime/index/workflow-index.sqlite --index-backend sqlite --apply --json
 npx aidn runtime repair-layer-triage --target . --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --json
 npx aidn runtime repair-layer-query --target . --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --query session-continuity --session-id S102 --json
 npx aidn runtime db-first-artifact --target . --path snapshots/context-snapshot.md --source-file docs/audit/snapshots/context-snapshot.md --json
@@ -321,6 +323,7 @@ Default runtime outputs:
 These runtime artifacts are intentionally local and ignored by git.
 Use `perf:reset -- --keep-history` if you want to preserve cross-run KPI history.
 Fixture verifiers write isolated outputs under `.aidn/runtime/index/fixtures/*` to avoid collisions.
+The Perf KPI GitHub workflow now also publishes `repair-layer-triage-summary.md` into the job summary and uploads the repair-layer JSON/Markdown artifacts with the runtime bundle.
 
 ## IndexStore Modes
 
