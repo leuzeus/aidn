@@ -51,6 +51,7 @@ function mergeRepairLayer(payload, repairLayer) {
     session_cycle_links: repairLayer.session_cycle_links,
     migration_runs: repairLayer.migration_runs,
     migration_findings: repairLayer.migration_findings,
+    repair_decisions: Array.isArray(payload?.repair_decisions) ? payload.repair_decisions : [],
     summary: {
       ...(payload?.summary && typeof payload.summary === "object" ? payload.summary : {}),
       cycles_count: cycles.length,
@@ -64,6 +65,7 @@ function mergeRepairLayer(payload, repairLayer) {
       session_cycle_links_count: repairLayer.session_cycle_links.length,
       migration_runs_count: repairLayer.migration_runs.length,
       migration_findings_count: repairLayer.migration_findings.length,
+      repair_decisions_count: Array.isArray(payload?.repair_decisions) ? payload.repair_decisions.length : 0,
     },
   };
 }
@@ -84,6 +86,7 @@ function summarizeRepairLayer(repairLayer) {
     session_cycle_links_count: Array.isArray(repairLayer?.session_cycle_links) ? repairLayer.session_cycle_links.length : 0,
     migration_runs_count: Array.isArray(repairLayer?.migration_runs) ? repairLayer.migration_runs.length : 0,
     migration_findings_count: findings.length,
+    repair_decisions_count: 0,
     severity_counts: severityCounts,
     type_counts: typeCounts,
     top_findings: findings.slice(0, 10),
@@ -127,6 +130,7 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
     targetRoot,
     artifacts: payload.artifacts,
     cycles: payload.cycles,
+    repairDecisions: Array.isArray(payload.repair_decisions) ? payload.repair_decisions : [],
   });
   const mergedPayload = mergeRepairLayer(payload, repairLayer);
   const summary = summarizeRepairLayer(repairLayer);

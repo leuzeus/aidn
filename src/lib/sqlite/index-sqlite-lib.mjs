@@ -84,6 +84,7 @@ function buildSummary(payload, structureKindHint = null) {
     session_cycle_links_count: Array.isArray(payload.session_cycle_links) ? payload.session_cycle_links.length : 0,
     migration_runs_count: Array.isArray(payload.migration_runs) ? payload.migration_runs.length : 0,
     migration_findings_count: Array.isArray(payload.migration_findings) ? payload.migration_findings.length : 0,
+    repair_decisions_count: Array.isArray(payload.repair_decisions) ? payload.repair_decisions.length : 0,
     structure_kind: structureKindHint ?? "unknown",
     artifacts_with_content_count: Array.isArray(payload.artifacts)
       ? payload.artifacts.filter((row) => typeof row?.content === "string").length
@@ -244,6 +245,7 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
         ? readRows(db, `
           SELECT session_id, cycle_id, relation_type, confidence, inference_source, source_mode,
                  ${getTableColumns(db, "session_cycle_links").has("relation_status") ? "relation_status" : "'explicit' AS relation_status"},
+                 ${getTableColumns(db, "session_cycle_links").has("ambiguity_status") ? "ambiguity_status" : "NULL AS ambiguity_status"},
                  updated_at
           FROM session_cycle_links
           ORDER BY session_id ASC, cycle_id ASC, relation_type ASC
@@ -255,6 +257,7 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
           inference_source: row.inference_source ?? null,
           source_mode: row.source_mode ?? "explicit",
           relation_status: row.relation_status ?? "explicit",
+          ambiguity_status: row.ambiguity_status ?? null,
           updated_at: row.updated_at ?? null,
         }))
         : [],
@@ -270,6 +273,13 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
           SELECT migration_run_id, severity, finding_type, entity_type, entity_id, artifact_path, message, confidence, suggested_action, created_at
           FROM migration_findings
           ORDER BY created_at DESC, finding_id ASC
+        `)
+        : [],
+      repair_decisions: hasTable(db, "repair_decisions")
+        ? readRows(db, `
+          SELECT relation_scope, source_ref, target_ref, relation_type, decision, decided_at, decided_by, notes
+          FROM repair_decisions
+          ORDER BY relation_scope ASC, source_ref ASC, target_ref ASC, relation_type ASC
         `)
         : [],
     };

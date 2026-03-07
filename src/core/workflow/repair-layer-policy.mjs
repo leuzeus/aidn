@@ -122,6 +122,31 @@ export function evaluateRepairRelation(row, options = {}) {
   const minConfidence = getRepairRelationMinConfidence(relationType, options);
   const allowAmbiguous = options.allowAmbiguous === true;
   const relationStatus = String(row?.relation_status ?? deriveRepairRelationStatus(row));
+  const ambiguityStatus = String(row?.ambiguity_status ?? "").trim().toLowerCase() || null;
+  if (ambiguityStatus === "rejected") {
+    return {
+      usable: false,
+      reason: "ambiguity_rejected",
+      confidence,
+      min_confidence: minConfidence,
+      relation_type: relationType,
+      source_mode: sourceMode,
+      relation_status: relationStatus,
+      ambiguity_status: ambiguityStatus,
+    };
+  }
+  if (ambiguityStatus === "accepted") {
+    return {
+      usable: true,
+      reason: "accepted_override",
+      confidence,
+      min_confidence: minConfidence,
+      relation_type: relationType,
+      source_mode: sourceMode,
+      relation_status: relationStatus,
+      ambiguity_status: ambiguityStatus,
+    };
+  }
   if (!allowAmbiguous && sourceMode === "ambiguous") {
     return {
       usable: false,
@@ -131,6 +156,7 @@ export function evaluateRepairRelation(row, options = {}) {
       relation_type: relationType,
       source_mode: sourceMode,
       relation_status: relationStatus,
+      ambiguity_status: ambiguityStatus,
     };
   }
   if (confidence < minConfidence) {
@@ -142,6 +168,7 @@ export function evaluateRepairRelation(row, options = {}) {
       relation_type: relationType,
       source_mode: sourceMode,
       relation_status: relationStatus,
+      ambiguity_status: ambiguityStatus,
     };
   }
   return {
@@ -152,6 +179,7 @@ export function evaluateRepairRelation(row, options = {}) {
     relation_type: relationType,
     source_mode: sourceMode,
     relation_status: relationStatus,
+    ambiguity_status: ambiguityStatus,
   };
 }
 

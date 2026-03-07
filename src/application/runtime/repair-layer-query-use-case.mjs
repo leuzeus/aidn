@@ -42,6 +42,7 @@ function buildLinkView(row, evaluation) {
     ...row,
     confidence: Number(row?.confidence ?? 1),
     relation_status: row?.relation_status ?? evaluation.relation_status,
+    ambiguity_status: row?.ambiguity_status ?? evaluation.ambiguity_status ?? null,
     usability: {
       usable: evaluation.usable,
       reason: evaluation.reason,

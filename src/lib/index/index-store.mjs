@@ -143,8 +143,21 @@ function ensureRepairLayerTables(db) {
       inference_source TEXT,
       source_mode TEXT NOT NULL DEFAULT 'explicit',
       relation_status TEXT NOT NULL DEFAULT 'explicit',
+      ambiguity_status TEXT,
       updated_at TEXT NOT NULL,
       PRIMARY KEY (session_id, cycle_id, relation_type)
+    );
+
+    CREATE TABLE IF NOT EXISTS repair_decisions (
+      relation_scope TEXT NOT NULL,
+      source_ref TEXT NOT NULL,
+      target_ref TEXT NOT NULL,
+      relation_type TEXT NOT NULL,
+      decision TEXT NOT NULL,
+      decided_at TEXT NOT NULL,
+      decided_by TEXT,
+      notes TEXT,
+      PRIMARY KEY (relation_scope, source_ref, target_ref, relation_type)
     );
 
     CREATE TABLE IF NOT EXISTS migration_runs (
@@ -180,6 +193,7 @@ function ensureRepairLayerTables(db) {
     CREATE INDEX IF NOT EXISTS idx_cycle_links_target ON cycle_links(target_cycle_id, relation_type);
     CREATE INDEX IF NOT EXISTS idx_session_cycle_links_cycle ON session_cycle_links(cycle_id, relation_type);
     CREATE INDEX IF NOT EXISTS idx_migration_findings_run ON migration_findings(migration_run_id);
+    CREATE INDEX IF NOT EXISTS idx_repair_decisions_scope ON repair_decisions(relation_scope, decision);
   `);
 }
 
@@ -249,6 +263,7 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
     ensureColumn(db, "artifact_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
     ensureColumn(db, "cycle_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
     ensureColumn(db, "session_cycle_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
+    ensureColumn(db, "session_cycle_links", "ambiguity_status", "TEXT");
     const prevDigest = getMeta(db, "payload_digest");
     if (prevDigest === nextDigest) {
       return {
@@ -272,6 +287,7 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       db.exec("DELETE FROM sessions;");
       db.exec("DELETE FROM migration_findings;");
       db.exec("DELETE FROM migration_runs;");
+      db.exec("DELETE FROM repair_decisions;");
 
       const cycles = Array.isArray(payload.cycles) ? payload.cycles : [];
       const artifacts = Array.isArray(payload.artifacts) ? payload.artifacts : [];
@@ -285,6 +301,7 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       const sessionCycleLinks = Array.isArray(payload.session_cycle_links) ? payload.session_cycle_links : [];
       const migrationRuns = Array.isArray(payload.migration_runs) ? payload.migration_runs : [];
       const migrationFindings = Array.isArray(payload.migration_findings) ? payload.migration_findings : [];
+      const repairDecisions = Array.isArray(payload.repair_decisions) ? payload.repair_decisions : [];
 
       const cycleStmt = db.prepare(`
         INSERT INTO cycles (
@@ -435,8 +452,8 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
 
       const sessionCycleLinkStmt = db.prepare(`
         INSERT INTO session_cycle_links (
-          session_id, cycle_id, relation_type, confidence, inference_source, source_mode, relation_status, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+          session_id, cycle_id, relation_type, confidence, inference_source, source_mode, relation_status, ambiguity_status, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
       `);
       runInsert(sessionCycleLinkStmt, sessionCycleLinks, (row) => ([
         row.session_id ?? null,
@@ -446,6 +463,7 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
         row.inference_source ?? null,
         row.source_mode ?? "explicit",
         row.relation_status ?? "explicit",
+        row.ambiguity_status ?? null,
         row.updated_at ?? new Date().toISOString(),
       ]));
 
@@ -480,6 +498,22 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
         row.confidence ?? null,
         row.suggested_action ?? null,
         row.created_at ?? new Date().toISOString(),
+      ]));
+
+      const repairDecisionStmt = db.prepare(`
+        INSERT INTO repair_decisions (
+          relation_scope, source_ref, target_ref, relation_type, decision, decided_at, decided_by, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+      `);
+      runInsert(repairDecisionStmt, repairDecisions, (row) => ([
+        row.relation_scope ?? null,
+        row.source_ref ?? null,
+        row.target_ref ?? null,
+        row.relation_type ?? null,
+        row.decision ?? null,
+        row.decided_at ?? new Date().toISOString(),
+        row.decided_by ?? null,
+        row.notes ?? null,
       ]));
 
       setMeta(db, "payload_digest", nextDigest);

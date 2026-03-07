@@ -110,8 +110,21 @@ CREATE TABLE session_cycle_links (
   inference_source TEXT,
   source_mode TEXT NOT NULL DEFAULT 'explicit',
   relation_status TEXT NOT NULL DEFAULT 'explicit',
+  ambiguity_status TEXT,
   updated_at TEXT NOT NULL,
   PRIMARY KEY (session_id, cycle_id, relation_type)
+);
+
+CREATE TABLE repair_decisions (
+  relation_scope TEXT NOT NULL,
+  source_ref TEXT NOT NULL,
+  target_ref TEXT NOT NULL,
+  relation_type TEXT NOT NULL,
+  decision TEXT NOT NULL,
+  decided_at TEXT NOT NULL,
+  decided_by TEXT,
+  notes TEXT,
+  PRIMARY KEY (relation_scope, source_ref, target_ref, relation_type)
 );
 
 CREATE TABLE migration_runs (
@@ -146,3 +159,4 @@ CREATE INDEX IF NOT EXISTS idx_artifact_links_target ON artifact_links(target_pa
 CREATE INDEX IF NOT EXISTS idx_cycle_links_target ON cycle_links(target_cycle_id, relation_type);
 CREATE INDEX IF NOT EXISTS idx_session_cycle_links_cycle ON session_cycle_links(cycle_id, relation_type);
 CREATE INDEX IF NOT EXISTS idx_migration_findings_run ON migration_findings(migration_run_id);
+CREATE INDEX IF NOT EXISTS idx_repair_decisions_scope ON repair_decisions(relation_scope, decision);

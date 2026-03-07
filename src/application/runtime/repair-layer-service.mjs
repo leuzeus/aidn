@@ -27,6 +27,35 @@ function extractSessionIdsFromText(text) {
   return Array.from(new Set(matches.map((item) => item.toUpperCase()))).sort((a, b) => a.localeCompare(b));
 }
 
+function extractMarkdownLinks(text) {
+  if (typeof text !== "string" || text.length === 0) {
+    return [];
+  }
+  const links = [];
+  const pattern = /\[[^\]]*]\(([^)]+)\)/g;
+  for (const match of text.matchAll(pattern)) {
+    const raw = String(match[1] ?? "").trim();
+    if (!raw || raw.startsWith("#") || /^[a-z]+:/i.test(raw)) {
+      continue;
+    }
+    links.push(raw);
+  }
+  return Array.from(new Set(links));
+}
+
+function resolveArtifactLinkTarget(sourcePath, rawLink) {
+  const normalized = String(rawLink ?? "").split("#", 1)[0].split("?", 1)[0].trim().replace(/\\/g, "/");
+  if (!normalized || normalized.startsWith("/")) {
+    return null;
+  }
+  const sourceDir = path.posix.dirname(String(sourcePath ?? "").replace(/\\/g, "/"));
+  const resolved = path.posix.normalize(path.posix.join(sourceDir, normalized));
+  if (resolved.startsWith("../")) {
+    return null;
+  }
+  return resolved;
+}
+
 function extractSessionField(text, fieldName) {
   if (typeof text !== "string" || text.length === 0) {
     return null;
@@ -89,7 +118,7 @@ function parseSessionMetadata(text) {
   };
 }
 
-export function buildRepairLayerService({ auditRoot, targetRoot = null, artifacts, cycles }) {
+export function buildRepairLayerService({ auditRoot, targetRoot = null, artifacts, cycles, repairDecisions = [] }) {
   const now = new Date().toISOString();
   const sessionsMap = new Map();
   const artifactLinks = [];
@@ -97,10 +126,12 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
   const migrationFindings = [];
   const cycleStatusById = new Map();
   const sessionArtifactById = new Map();
+  const artifactByPath = new Map();
   const knownArtifactPaths = new Set((Array.isArray(artifacts) ? artifacts : []).map((artifact) => artifact.path));
   const relationKeys = new Set();
   const sessionCycleLinkIndex = new Map();
   const findingKeys = new Set();
+  const decisionIndex = new Map();
 
   for (const artifact of Array.isArray(artifacts) ? artifacts : []) {
     if (artifact.kind === "cycle_status" && artifact.cycle_id) {
@@ -109,6 +140,35 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
     if (artifact.kind === "session" && artifact.session_id) {
       sessionArtifactById.set(artifact.session_id, artifact.path);
     }
+    if (artifact?.path) {
+      artifactByPath.set(artifact.path, artifact);
+    }
+  }
+
+  for (const row of repairDecisions) {
+    if (String(row?.relation_scope ?? "") !== "session_cycle_link") {
+      continue;
+    }
+    const key = [
+      "session_cycle_link",
+      String(row?.source_ref ?? ""),
+      String(row?.target_ref ?? ""),
+      String(row?.relation_type ?? ""),
+    ].join("::");
+    decisionIndex.set(key, row);
+  }
+
+  function inferArtifactRelationType(sourceArtifact, targetArtifact) {
+    if ((sourceArtifact?.family ?? "") === "support" && (targetArtifact?.family ?? "") === "normative") {
+      return "supports_artifact";
+    }
+    if (targetArtifact?.kind === "baseline") {
+      return "references_baseline";
+    }
+    if (targetArtifact?.kind === "snapshot") {
+      return "references_snapshot";
+    }
+    return "references_artifact";
   }
 
   function isPreferredSessionSource(candidate, current) {
@@ -176,6 +236,25 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
     if (!row?.session_id || !row?.cycle_id || !row?.relation_type) {
       return;
     }
+    const decisionKey = [
+      "session_cycle_link",
+      String(row?.session_id ?? ""),
+      String(row?.cycle_id ?? ""),
+      String(row?.relation_type ?? ""),
+    ].join("::");
+    const decision = decisionIndex.get(decisionKey) ?? null;
+    const ambiguityStatus = String(row?.source_mode ?? "") === "ambiguous"
+      ? (decision?.decision === "accepted"
+        ? "accepted"
+        : decision?.decision === "rejected"
+          ? "rejected"
+          : "open")
+      : null;
+    const relationStatus = ambiguityStatus === "accepted"
+      ? "promoted"
+      : ambiguityStatus === "rejected"
+        ? "rejected"
+        : row.relation_status ?? deriveRepairRelationStatus(row);
     const key = `session::${row.session_id}::${row.cycle_id}::${row.relation_type}`;
     const existingIndex = sessionCycleLinkIndex.get(key);
     if (typeof existingIndex === "number") {
@@ -192,7 +271,8 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
       }
       sessionCycleLinks[existingIndex] = {
         ...row,
-        relation_status: row.relation_status ?? deriveRepairRelationStatus(row),
+        relation_status: relationStatus,
+        ambiguity_status: ambiguityStatus,
       };
       return;
     }
@@ -200,7 +280,8 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
     sessionCycleLinkIndex.set(key, sessionCycleLinks.length);
     sessionCycleLinks.push({
       ...row,
-      relation_status: row.relation_status ?? deriveRepairRelationStatus(row),
+      relation_status: relationStatus,
+      ambiguity_status: ambiguityStatus,
     });
   }
 
@@ -251,8 +332,25 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
   }
 
   for (const artifact of Array.isArray(artifacts) ? artifacts : []) {
+    const text = String(readTextArtifact(auditRoot, artifact.path) ?? "");
+    for (const rawLink of extractMarkdownLinks(text)) {
+      const targetPath = resolveArtifactLinkTarget(artifact.path, rawLink);
+      if (!targetPath || !knownArtifactPaths.has(targetPath) || targetPath === artifact.path) {
+        continue;
+      }
+      const targetArtifact = artifactByPath.get(targetPath);
+      addArtifactLink({
+        source_path: artifact.path,
+        target_path: targetPath,
+        relation_type: inferArtifactRelationType(artifact, targetArtifact),
+        confidence: 1.0,
+        inference_source: "markdown_explicit_link",
+        source_mode: "explicit",
+        updated_at: artifact.updated_at ?? now,
+      });
+    }
+
     if (artifact.kind === "session" && artifact.session_id) {
-      const text = readTextArtifact(auditRoot, artifact.path);
       const metadata = parseSessionMetadata(text);
       const attachedCycles = metadata.attached_cycles;
       const sessionBranch = metadata.session_branch ?? extractSessionField(text, "branch");

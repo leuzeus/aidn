@@ -89,7 +89,7 @@ function insertCycleLinks(lines, rows) {
 function insertSessionCycleLinks(lines, rows) {
   for (const row of rows) {
     lines.push(
-      `INSERT INTO session_cycle_links (session_id, cycle_id, relation_type, confidence, inference_source, source_mode, relation_status, updated_at) VALUES (${sqlString(row.session_id)}, ${sqlString(row.cycle_id)}, ${sqlString(row.relation_type)}, ${sqlNumber(row.confidence ?? 1)}, ${sqlString(row.inference_source)}, ${sqlString(row.source_mode ?? "explicit")}, ${sqlString(row.relation_status ?? "explicit")}, ${sqlString(row.updated_at)});`,
+      `INSERT INTO session_cycle_links (session_id, cycle_id, relation_type, confidence, inference_source, source_mode, relation_status, ambiguity_status, updated_at) VALUES (${sqlString(row.session_id)}, ${sqlString(row.cycle_id)}, ${sqlString(row.relation_type)}, ${sqlNumber(row.confidence ?? 1)}, ${sqlString(row.inference_source)}, ${sqlString(row.source_mode ?? "explicit")}, ${sqlString(row.relation_status ?? "explicit")}, ${sqlString(row.ambiguity_status)}, ${sqlString(row.updated_at)});`,
     );
   }
 }
@@ -106,6 +106,14 @@ function insertMigrationFindings(lines, rows) {
   for (const row of rows) {
     lines.push(
       `INSERT INTO migration_findings (migration_run_id, severity, finding_type, entity_type, entity_id, artifact_path, message, confidence, suggested_action, created_at) VALUES (${sqlString(row.migration_run_id)}, ${sqlString(row.severity)}, ${sqlString(row.finding_type)}, ${sqlString(row.entity_type)}, ${sqlString(row.entity_id)}, ${sqlString(row.artifact_path)}, ${sqlString(row.message)}, ${sqlNumber(row.confidence)}, ${sqlString(row.suggested_action)}, ${sqlString(row.created_at)});`,
+    );
+  }
+}
+
+function insertRepairDecisions(lines, rows) {
+  for (const row of rows) {
+    lines.push(
+      `INSERT INTO repair_decisions (relation_scope, source_ref, target_ref, relation_type, decision, decided_at, decided_by, notes) VALUES (${sqlString(row.relation_scope)}, ${sqlString(row.source_ref)}, ${sqlString(row.target_ref)}, ${sqlString(row.relation_type)}, ${sqlString(row.decision)}, ${sqlString(row.decided_at)}, ${sqlString(row.decided_by)}, ${sqlString(row.notes)});`,
     );
   }
 }
@@ -139,6 +147,7 @@ export function buildSqlFromIndex(indexData, options = {}) {
   lines.push("DELETE FROM sessions;");
   lines.push("DELETE FROM migration_findings;");
   lines.push("DELETE FROM migration_runs;");
+  lines.push("DELETE FROM repair_decisions;");
   lines.push("");
 
   const cycles = Array.isArray(indexData.cycles) ? indexData.cycles : [];
@@ -153,6 +162,7 @@ export function buildSqlFromIndex(indexData, options = {}) {
   const sessionCycleLinks = Array.isArray(indexData.session_cycle_links) ? indexData.session_cycle_links : [];
   const migrationRuns = Array.isArray(indexData.migration_runs) ? indexData.migration_runs : [];
   const migrationFindings = Array.isArray(indexData.migration_findings) ? indexData.migration_findings : [];
+  const repairDecisions = Array.isArray(indexData.repair_decisions) ? indexData.repair_decisions : [];
 
   lines.push("-- Insert data");
   insertCycles(lines, cycles);
@@ -167,6 +177,7 @@ export function buildSqlFromIndex(indexData, options = {}) {
   insertSessionCycleLinks(lines, sessionCycleLinks);
   insertMigrationRuns(lines, migrationRuns);
   insertMigrationFindings(lines, migrationFindings);
+  insertRepairDecisions(lines, repairDecisions);
 
   lines.push("");
   lines.push("COMMIT;");
