@@ -16,7 +16,7 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 4) Entropy Regulation Control Loop (v0.2.0)
+%% 4) Entropy Regulation Control Loop (v0.3.0)
 flowchart TD
   subgraph PRE["Pre-Decision Regulation"]
     IN["Candidate change"]

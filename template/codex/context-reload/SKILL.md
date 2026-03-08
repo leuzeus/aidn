@@ -8,6 +8,12 @@ description: Reload project context, detect active branch/cycle alignment, propo
 ## Goal
 Reconstruct project state in <5 minutes of reading and propose a WORK MODE.
 
+## Hygiene Guardrails
+- Read-only skill: do not modify files in this skill.
+- Limit reads to listed workflow artifacts; avoid broad repository scans.
+- If an artifact is missing/inaccessible, report uncertainty explicitly (do not infer facts as certain).
+- Do not rewrite branch/cycle metadata here; only report mismatches and proposed fixes.
+
 ## Steps
 
 1) Read:
@@ -67,4 +73,19 @@ If structural/DB/security impact → force COMMITTING recommendation.
 3) Suggest 2–4 NEXT BEST ACTIONS.
 
 Keep report concise.
-Do not modify files in this skill.
+4) Performance hook (mandatory in dual/db-only; optional in files):
+- run `npx aidn codex run-json-hook --skill context-reload --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
+- read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
+- hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill context-reload --json`.
+- in dual/db-only, use the hydrated payload to read `repair_layer_status`, `repair_layer_advice`, prioritized artifacts, and continuity hints before acting.
+- use this output to cross-check:
+  - branch/cycle mapping
+  - structure profile (`legacy|modern|mixed|unknown`)
+  - reload decision/reason codes
+- in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
+- in files, this hook remains non-blocking by default.
+- if `repair_layer_status` is `warn` or `block`, run `npx aidn runtime repair-layer-triage --target . --json` before relying on db-backed continuity or artifact links.
+
+Do not modify project workflow files in this skill.
+

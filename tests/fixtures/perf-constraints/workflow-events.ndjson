@@ -1,0 +1,9 @@
+{"ts":"2026-03-03T00:00:00Z","run_id":"session-001","skill":"context-reload","phase":"check","event":"reload_summary","duration_ms":900,"control":true,"gates_triggered":["R1"],"result":"ok"}
+{"ts":"2026-03-03T00:00:01Z","run_id":"session-001","skill":"branch-cycle-audit","phase":"check","event":"branch_audit","duration_ms":220,"control":true,"gates_triggered":[],"result":"ok"}
+{"ts":"2026-03-03T00:00:02Z","run_id":"session-001","skill":"drift-check","phase":"check","event":"drift_summary","duration_ms":130,"control":true,"gates_triggered":["R5"],"result":"ok"}
+{"ts":"2026-03-03T00:00:03Z","run_id":"session-001","skill":"delivery-window","phase":"execute","event":"delivery","duration_ms":1200,"control":false,"gates_triggered":[],"result":"ok"}
+{"ts":"2026-03-03T00:00:04Z","run_id":"session-001","skill":"close-session","phase":"write","event":"session_close","duration_ms":180,"control":true,"gates_triggered":[],"result":"ok"}
+{"ts":"2026-03-03T00:01:00Z","run_id":"session-002","skill":"context-reload","phase":"check","event":"reload_summary","duration_ms":700,"control":true,"gates_triggered":[],"result":"fallback","reason_code":"STALE_MAPPING"}
+{"ts":"2026-03-03T00:01:01Z","run_id":"session-002","skill":"start-session","phase":"write","event":"session_start","duration_ms":260,"control":true,"gates_triggered":[],"result":"ok"}
+{"ts":"2026-03-03T00:01:02Z","run_id":"session-002","skill":"drift-check","phase":"fallback","event":"drift_summary","duration_ms":110,"control":true,"gates_triggered":["R5"],"result":"ok","reason_code":"STALE_DRIFT_CHECK"}
+{"ts":"2026-03-03T00:01:03Z","run_id":"session-002","skill":"delivery-window","phase":"execute","event":"delivery","duration_ms":1000,"control":false,"gates_triggered":[],"result":"ok"}

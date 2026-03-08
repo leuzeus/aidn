@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "description": "Index sync drift trend thresholds for import/export parity over recent runs.",
+  "rules": [
+    {
+      "id": "INDEX_SYNC_RUNS_MIN",
+      "key": "summary.runs_analyzed",
+      "op": ">=",
+      "value": 1,
+      "severity": "error"
+    },
+    {
+      "id": "INDEX_SYNC_RATE_MIN",
+      "key": "summary.in_sync_rate",
+      "op": ">=",
+      "value": 0.9,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_SYNC_AVG_MISMATCH_MAX",
+      "key": "summary.avg_mismatch_count",
+      "op": "<=",
+      "value": 1,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_SYNC_DRIFT_RUNS_MAX",
+      "key": "summary.drift_runs",
+      "op": "<=",
+      "value": 3,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_SYNC_HIGH_DRIFT_RUNS_MAX",
+      "key": "summary.high_drift_runs",
+      "op": "<=",
+      "value": 1,
+      "severity": "warn"
+    }
+  ]
+}

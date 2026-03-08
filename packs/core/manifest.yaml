@@ -1,5 +1,5 @@
 name: core
-version: 0.2.0
+version: 0.3.0
 
 install:
   copy:
@@ -11,6 +11,8 @@ install:
       to: docs/audit/WORKFLOW.md
     - from: template/codex/skills.yaml
       to: .codex/skills.yaml
+    - from: template/codex/
+      to: .codex/skills/
     - from: template/codex/README_CodexOnline.md
       to: docs/audit/CODEX_ONLINE.md
 
@@ -35,3 +37,13 @@ verify:
     - docs/audit/snapshots/context-snapshot.md
     - docs/audit/parking-lot.md
     - .codex/skills.yaml
+    - .codex/skills/branch-cycle-audit/SKILL.md
+    - .codex/skills/close-session/SKILL.md
+    - .codex/skills/context-reload/SKILL.md
+    - .codex/skills/convert-to-spike/SKILL.md
+    - .codex/skills/cycle-close/SKILL.md
+    - .codex/skills/cycle-create/SKILL.md
+    - .codex/skills/drift-check/SKILL.md
+    - .codex/skills/promote-baseline/SKILL.md
+    - .codex/skills/requirements-delta/SKILL.md
+    - .codex/skills/start-session/SKILL.md

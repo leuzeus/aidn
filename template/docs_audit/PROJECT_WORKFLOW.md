@@ -58,6 +58,13 @@ source_branch: {{SOURCE_BRANCH}}
 - Allowed cycle types: `feature | hotfix | spike | refactor | structural | migration | security | perf | integration | compat | corrective`
 - DoR policy: `{{DOR_POLICY}}`
 
+## Runtime State Policy (Project Adapter)
+
+- Preferred runtime state mode: `dual` (or `db-only` if project chooses full DB runtime).
+- In `dual`/`db-only`, workflow skill perf hooks are mandatory and executed in strict mode.
+- In `dual`/`db-only`, session close must run the DB-backed constraint chain and produce constraint artifacts under `.aidn/runtime/perf/`.
+- `files` mode is allowed only as an explicit fallback profile; it is not the primary execution path for this adapter.
+
 ### Session Start Branch Base Gate (Mandatory, adapter extension to `SPEC-R01`/`SPEC-R03`)
 
 - Before creating a new session branch `SXXX-*`, check previous session PR status against source branch.
