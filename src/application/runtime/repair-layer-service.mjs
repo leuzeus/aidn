@@ -729,21 +729,6 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
         });
       }
     }
-
-    if (artifact.path === "cycles/cycle-status.md") {
-      addFinding({
-        migration_run_id: "repair-layer-v1",
-        severity: "warning",
-        finding_type: "LEGACY_INDEX_PARTIAL_RELATIONS",
-        entity_type: "artifact",
-        entity_id: artifact.path,
-        artifact_path: artifact.path,
-        message: "Legacy cycle-status index remains only partially relational.",
-        confidence: 0.5,
-        suggested_action: "Split the legacy cycle index into per-cycle status artifacts when possible.",
-        created_at: artifact.updated_at ?? now,
-      });
-    }
   }
 
   const latestObservedAt = (Array.isArray(artifacts) ? artifacts : [])

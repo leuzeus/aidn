@@ -75,13 +75,10 @@ function detectKind(signals) {
     return { kind: "modern", confidence: signals.has_spec_md ? 90 : 70 };
   }
   if (signals.cycle_dirs_legacy_count > 0) {
-    return { kind: "legacy", confidence: signals.has_legacy_cycle_status ? 90 : 75 };
+    return { kind: "legacy", confidence: 75 };
   }
   if (signals.has_spec_md && signals.has_workflow_summary) {
     return { kind: "modern", confidence: 65 };
-  }
-  if (signals.has_legacy_cycle_status) {
-    return { kind: "legacy", confidence: 65 };
   }
   return { kind: "unknown", confidence: 30 };
 }
@@ -103,7 +100,6 @@ export function detectStructureProfile(auditRoot) {
   const cycleDirs = safeDirEntries(cyclesRoot).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
   const cycleDirsLegacy = cycleDirs.filter((name) => /^C\d+$/.test(name));
   const cycleDirsModern = cycleDirs.filter((name) => /^C\d+-/.test(name));
-  const legacyCycleStatusPath = path.join(cyclesRoot, "cycle-status.md");
 
   const hasSpec = fs.existsSync(path.join(auditRoot, "SPEC.md"));
   const hasSummary = fs.existsSync(path.join(auditRoot, "WORKFLOW_SUMMARY.md"));
@@ -122,7 +118,6 @@ export function detectStructureProfile(auditRoot) {
     has_spec_md: hasSpec,
     has_workflow_summary: hasSummary,
     has_continuity_gate: hasContinuityGate,
-    has_legacy_cycle_status: fs.existsSync(legacyCycleStatusPath),
     cycle_dirs_total: cycleDirs.length,
     cycle_dirs_legacy_count: cycleDirsLegacy.length,
     cycle_dirs_modern_count: cycleDirsModern.length,
@@ -155,7 +150,6 @@ export function detectStructureProfile(auditRoot) {
       "SPEC.md",
       "WORKFLOW_SUMMARY.md",
       "CONTINUITY_GATE.md",
-      "cycles/cycle-status.md",
     ],
     signals,
     notes,

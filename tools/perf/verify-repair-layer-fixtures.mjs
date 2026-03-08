@@ -78,7 +78,6 @@ function main() {
       schema_version_v2: Number(payload.schema_version ?? 0) === 2,
       has_migration_run: Array.isArray(payload.migration_runs) && payload.migration_runs.length >= 1,
       has_legacy_cycle_dir_repaired: findingTypes.has("LEGACY_CYCLE_DIR_REPAIRED"),
-      has_legacy_index_partial_relations: findingTypes.has("LEGACY_INDEX_PARTIAL_RELATIONS"),
       repaired_artifact_present: Boolean(repairedArtifact),
       repaired_artifact_source_mode: String(repairedArtifact?.source_mode ?? "") === "legacy_repaired",
       repaired_artifact_legacy_origin: String(repairedArtifact?.legacy_origin ?? "") === "legacy_cycle_dir",

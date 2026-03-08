@@ -266,12 +266,16 @@ Depuis `baseline/current.md` et `baseline/history.md`:
 
 ### 7.5 Reparation legacy
 
-Cas `cycles/cycle-status.md` ou structures mixtes:
+Cas legacy supportes:
 
-- si un cycle individuel peut etre isole, creer une entite cycle normale;
-- sinon creer un artefact `cycle_status_index`;
-- ajouter des liens `derived_from_legacy_index` vers les cycles inferables;
-- emettre un finding `LEGACY_INDEX_PARTIAL_RELATIONS` si l'information reste incomplete.
+- dossiers de cycles legacy du type `cycles/C001/`;
+- structures mixtes combinant `cycles/C001/` et `cycles/C001-modern-sample/`.
+
+Politique retenue:
+
+- reparer l'ownership par dossier legacy;
+- materialiser les liens utiles vers les statuts de cycle individuels;
+- ne pas maintenir d'index global legacy separé.
 
 ### 7.6 Reparation des artefacts de support
 
@@ -302,7 +306,7 @@ Exemples:
 
 - `source_mode=explicit`, `confidence=1.0`
 - `source_mode=inferred`, `confidence=0.8`, `inference_source=session_frontmatter`
-- `source_mode=legacy_repaired`, `confidence=0.5`, `inference_source=cycle_status_index`
+- `source_mode=legacy_repaired`, `confidence=0.7`, `inference_source=legacy_cycle_dir`
 
 Le runtime doit pouvoir:
 

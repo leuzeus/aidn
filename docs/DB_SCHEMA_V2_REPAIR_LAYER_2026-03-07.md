@@ -514,13 +514,12 @@ WHERE confidence >= 0.8
 
 - meme traitement que ci-dessus
 
-### Cas `cycles/cycle-status.md`
+### Cas legacy sans index global
 
-- ne pas forcer une decomposition fausse
-- stocker l'artefact avec:
-  - `kind='other'` ou `subtype='cycle_status_index'`
-  - `legacy_origin='legacy_cycle_status_index'`
-- creer des findings si les cycles individuels ne peuvent pas etre reconstruits
+- ne pas reintroduire d'artefact `cycle_status_index`
+- les layouts legacy supportes sont les dossiers de type `cycles/C001/`
+- la reparation cible directement les artefacts individuels (`status.md`, `plan.md`, `scope.md`)
+- la normalisation attendue consiste a converger vers un statut de cycle par dossier
 
 ### Cas support artifact dans un dossier cycle
 

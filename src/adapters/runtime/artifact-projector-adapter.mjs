@@ -197,11 +197,7 @@ function inferArtifactClassification(relativePath) {
   } else if (normalized.startsWith("cycles/")) {
     const remainder = normalized.slice("cycles/".length);
     if (!remainder.includes("/")) {
-      if (basename.toLowerCase() === "cycle-status.md") {
-        family = "normative";
-        gateRelevance = 1;
-        subtype = "cycle_status_index";
-      } else if (/^template_/i.test(basename)) {
+      if (/^template_/i.test(basename)) {
         family = "support";
         gateRelevance = 0;
         subtype = "cycle_template";
