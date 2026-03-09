@@ -4,6 +4,13 @@ Use this prompt when an assistant lost context, restarted, or only partially rem
 
 ## Mandatory Read List
 
+If another agent already prepared a relay:
+
+1. `docs/audit/HANDOFF-PACKET.md`
+2. run `npx aidn runtime handoff-admit --target . --json`
+
+Then continue with:
+
 1. `docs/audit/CURRENT-STATE.md`
 2. `docs/audit/WORKFLOW-KERNEL.md`
 3. `docs/audit/WORKFLOW_SUMMARY.md`
@@ -28,6 +35,8 @@ State explicitly:
 - active session
 - active cycle
 - `dor_state`
+- handoff status when `HANDOFF-PACKET.md` is present
+- transition policy status when `HANDOFF-PACKET.md` is present
 - first implementation step from `plan.md` when `COMMITTING`
 - runtime state mode when known
 - missing context, if any

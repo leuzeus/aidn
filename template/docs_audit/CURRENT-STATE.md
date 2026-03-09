@@ -63,6 +63,7 @@ blocking_findings:
 
 - workflow kernel: `docs/audit/WORKFLOW-KERNEL.md`
 - workflow summary: `docs/audit/WORKFLOW_SUMMARY.md`
+- handoff packet: `docs/audit/HANDOFF-PACKET.md`
 - artifact manifest: `docs/audit/ARTIFACT_MANIFEST.md`
 - runtime digest: `docs/audit/RUNTIME-STATE.md`
 - project workflow: `docs/audit/WORKFLOW.md`

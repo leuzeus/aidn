@@ -26,6 +26,7 @@ This workflow assumes the availability of the following skills:
 - close-session
 - branch-cycle-audit
 - drift-check
+- handoff-close
 - cycle-create
 - cycle-close
 - promote-baseline
@@ -43,6 +44,9 @@ If any required skill is unavailable, the agent MUST:
 - Workflow adapter (project-local): `docs/audit/WORKFLOW.md`
 - Workflow kernel (minimal re-anchor): `docs/audit/WORKFLOW-KERNEL.md`
 - Current state summary: `docs/audit/CURRENT-STATE.md`
+- Multi-agent handoff packet: `docs/audit/HANDOFF-PACKET.md`
+- Multi-agent status digest: `docs/audit/MULTI-AGENT-STATUS.md`
+- Agent adapter contract: `docs/audit/AGENT-ADAPTERS.md`
 - Runtime digest: `docs/audit/RUNTIME-STATE.md`
 - Current baseline: `docs/audit/baseline/current.md`
 - Snapshot (fast reload): `docs/audit/snapshots/context-snapshot.md`
@@ -151,6 +155,32 @@ Special note for recent Codex Windows app flows:
 
 This gate does not redefine canonical workflow mechanics.
 It only defines the minimum execution contract before writing.
+
+------------------------------------------------------------
+## Multi-Agent Handoff
+
+When work is likely to continue in another agent, the agent SHOULD:
+
+- run skill: `handoff-close`
+- refresh `docs/audit/CURRENT-STATE.md`
+- refresh `docs/audit/RUNTIME-STATE.md` when in `dual` / `db-only`
+- project `docs/audit/HANDOFF-PACKET.md`
+- keep `docs/audit/COORDINATION-LOG.md` available for explicit coordinator dispatch traces
+
+The receiving agent MAY start from `docs/audit/HANDOFF-PACKET.md`, but MUST still:
+
+- run `npx aidn runtime handoff-admit --target . --json`
+- reload the referenced artifacts
+- complete the mandatory pre-write restatement
+- stop if the packet says `handoff_status=blocked`
+- if `dispatch_status=escalated`, record explicit user arbitration before resuming automatic dispatch
+
+Multi-agent relays remain constrained by workflow mode:
+
+- a handoff packet MUST declare the source agent role/action and the recommended target role/action
+- `handoff-admit` MUST reject a relay when the mode-specific transition policy does not allow `from -> to`
+- if transition policy is rejected or stale, the next agent MUST fall back to `coordinator + reanchor`
+- if the coordinator loop escalates, resume only after `npx aidn runtime coordinator-record-arbitration --target . --decision <...> --note <...>`
 
 ------------------------------------------------------------
 ## Mode Heuristics (Advisory, Not Authoritative)

@@ -7,6 +7,7 @@ Its role is to reduce local ambiguity and keep AI behavior stable.
 
 ## Recommended Read Order (Fast Reload)
 
+0. `docs/audit/HANDOFF-PACKET.md` when another agent already prepared a relay
 1. `docs/audit/CURRENT-STATE.md`
 2. `docs/audit/WORKFLOW-KERNEL.md`
 3. `docs/audit/WORKFLOW_SUMMARY.md`
@@ -135,6 +136,7 @@ source_branch: dev
 ## Local Paths
 
 - Current state: `docs/audit/CURRENT-STATE.md`
+- Handoff packet: `docs/audit/HANDOFF-PACKET.md`
 - Runtime digest: `docs/audit/RUNTIME-STATE.md`
 - Workflow kernel: `docs/audit/WORKFLOW-KERNEL.md`
 - Spec snapshot: `docs/audit/SPEC.md`

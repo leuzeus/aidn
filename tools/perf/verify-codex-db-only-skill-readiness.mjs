@@ -7,6 +7,7 @@ const MUTATING_SKILLS = new Set([
   "close-session",
   "cycle-create",
   "cycle-close",
+  "handoff-close",
   "promote-baseline",
   "requirements-delta",
   "convert-to-spike",

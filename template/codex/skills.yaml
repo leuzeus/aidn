@@ -6,6 +6,7 @@ skills:
   - cycle-close
   - cycle-create
   - drift-check
+  - handoff-close
   - promote-baseline
   - requirements-delta
   - start-session
@@ -23,6 +24,7 @@ install_urls:
   - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/cycle-close
   - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/cycle-create
   - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/drift-check
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/handoff-close
   - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/promote-baseline
   - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/requirements-delta
   - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/template/codex/start-session

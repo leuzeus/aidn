@@ -213,6 +213,7 @@ function formatFinding(item) {
 
 function derivePrioritizedArtifacts(consistency, hydrated, args) {
   const values = [
+    "docs/audit/HANDOFF-PACKET.md",
     "docs/audit/CURRENT-STATE.md",
     "docs/audit/snapshots/context-snapshot.md",
   ];
@@ -234,6 +235,34 @@ function derivePrioritizedArtifacts(consistency, hydrated, args) {
     ? hydrated.artifacts.map((artifact) => String(artifact?.path ?? "").trim()).filter(Boolean)
     : [];
   return uniqueItems([...values, ...artifactPaths.slice(0, 6)]);
+}
+
+function deriveRepairRouting({ status, advice, blocking }) {
+  const normalizedStatus = String(status ?? "").trim().toLowerCase();
+  if (normalizedStatus === "block" || blocking === true) {
+    return {
+      hint: "repair",
+      reason: "blocking repair findings require repair-first routing before any implementation handoff",
+    };
+  }
+  if (normalizedStatus === "warn") {
+    return {
+      hint: "audit-first",
+      reason: advice && advice !== "unknown"
+        ? advice
+        : "repair warnings require an audit-first relay before implementation",
+    };
+  }
+  if (normalizedStatus === "ok") {
+    return {
+      hint: "execution-or-audit",
+      reason: "repair layer reports no blocking findings for the current relay",
+    };
+  }
+  return {
+    hint: "reanchor",
+    reason: "repair routing is unknown, so the next agent should reanchor before acting",
+  };
 }
 
 function buildMarkdown(digest) {
@@ -258,6 +287,8 @@ function buildMarkdown(digest) {
   lines.push(`runtime_state_mode: ${digest.runtime_state_mode}`);
   lines.push(`repair_layer_status: ${digest.repair_layer_status}`);
   lines.push(`repair_layer_advice: ${digest.repair_layer_advice}`);
+  lines.push(`repair_routing_hint: ${digest.repair_routing_hint}`);
+  lines.push(`repair_routing_reason: ${digest.repair_routing_reason}`);
   lines.push("");
   lines.push("## Current State Freshness");
   lines.push("");
@@ -316,6 +347,7 @@ export function projectRuntimeState({
   const consistency = evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot });
   const repairSummary = deriveRepairSummary(hydrated, fallbackContext);
   const freshness = deriveFreshness(consistency);
+  const repairRouting = deriveRepairRouting(repairSummary);
   const blockingFindings = uniqueItems(
     repairSummary.findings
       .map((item) => formatFinding(item))
@@ -330,6 +362,8 @@ export function projectRuntimeState({
     runtime_state_mode: String(hydrated?.state_mode ?? "files"),
     repair_layer_status: repairSummary.status,
     repair_layer_advice: repairSummary.advice,
+    repair_routing_hint: repairRouting.hint,
+    repair_routing_reason: repairRouting.reason,
     current_state_freshness: freshness.freshness,
     current_state_freshness_basis: freshness.basis,
     blocking_findings: blockingFindings,
@@ -373,6 +407,7 @@ function main() {
       console.log(`Runtime state digest: ${output.output_file} (${output.written ? "written" : "unchanged"})`);
       console.log(`- runtime_state_mode=${output.digest.runtime_state_mode}`);
       console.log(`- repair_layer_status=${output.digest.repair_layer_status}`);
+      console.log(`- repair_routing_hint=${output.digest.repair_routing_hint}`);
       console.log(`- current_state_freshness=${output.digest.current_state_freshness}`);
       console.log(`- consistency=${output.digest.consistency_status}`);
       printFreshnessHint(output.digest);

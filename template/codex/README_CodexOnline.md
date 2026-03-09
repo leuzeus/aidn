@@ -3,6 +3,7 @@
 Ensure skills are available before execution.
 
 Before any durable write, reload the minimal workflow context in this order:
+- `docs/audit/HANDOFF-PACKET.md` when another agent already prepared a relay
 - `docs/audit/CURRENT-STATE.md`
 - `docs/audit/WORKFLOW-KERNEL.md`
 - `docs/audit/WORKFLOW_SUMMARY.md`
@@ -32,6 +33,12 @@ For `dual` / `db-only` projects, use the Node runtime chain end-to-end:
 - `npx aidn runtime repair-layer-triage --target . --json` when `repair_layer_status` is `warn|block`
 - `npx aidn runtime repair-layer-autofix --target . --apply --json` only for safe-only autofix cases
 
+When `docs/audit/AGENT-SELECTION-SUMMARY.md` exists, `hydrate-context` also refreshes it automatically unless `--no-project-agent-selection-summary` is set.
+Use that summary for the short human view, then fall back to:
+- `aidn runtime list-agent-adapters --target . --json`
+- `aidn runtime coordinator-select-agent --target . --role <role> --action <action> --json`
+- `docs/audit/AGENT-HEALTH-SUMMARY.md` when you need adapter readiness instead of routing only
+
 When runtime output shows:
 - `Runtime digest: docs/audit/RUNTIME-STATE.md`
   - read that digest first for short repair-layer and freshness signals
@@ -39,5 +46,12 @@ When runtime output shows:
   - treat `CURRENT-STATE.md` as stale summary state
   - reload active session/cycle facts before any durable write
   - refresh summary state through the normal workflow skills instead of patching it ad hoc
+
+For agent-to-agent work:
+- refresh `docs/audit/HANDOFF-PACKET.md` before pausing when another agent is expected to continue
+- if a handoff packet exists, read it before the standard re-anchor sequence and verify its pointers against the live artifacts
+- if `docs/audit/MULTI-AGENT-STATUS.md` exists, use it as the short digest before opening the detailed multi-agent artifacts
+
+When `docs/audit/MULTI-AGENT-STATUS.md` exists, `hydrate-context` also refreshes it automatically unless `--no-project-multi-agent-status` is set.
 
 For recent Codex Windows application flows, treat `apply_patch` as a durable write shortcut, not as a safe bypass of workflow reload.

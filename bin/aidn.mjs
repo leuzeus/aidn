@@ -91,7 +91,24 @@ const CODEX_ALIASES = {
 
 const RUNTIME_ALIASES = {
   "artifact-store": { file: "artifact-store.mjs" },
+  "coordinator-dispatch-execute": { file: "coordinator-dispatch-execute.mjs" },
+  "coordinator-dispatch-plan": { file: "coordinator-dispatch-plan.mjs" },
+  "coordinator-loop": { file: "coordinator-loop.mjs" },
+  "coordinator-orchestrate": { file: "coordinator-orchestrate.mjs" },
+  "coordinator-record-arbitration": { file: "coordinator-record-arbitration.mjs" },
+  "coordinator-resume": { file: "coordinator-resume.mjs" },
+  "coordinator-next-action": { file: "coordinator-next-action.mjs" },
+  "coordinator-select-agent": { file: "coordinator-select-agent.mjs" },
+  "coordinator-suggest-arbitration": { file: "coordinator-suggest-arbitration.mjs" },
+  "list-agent-adapters": { file: "list-agent-adapters.mjs" },
+  "verify-agent-roster": { file: "verify-agent-roster.mjs" },
+  "project-agent-health-summary": { file: "project-agent-health-summary.mjs" },
+  "project-agent-selection-summary": { file: "project-agent-selection-summary.mjs" },
+  "project-multi-agent-status": { file: "project-multi-agent-status.mjs" },
   "db-first-artifact": { file: "db-first-artifact.mjs" },
+  "handoff-admit": { file: "handoff-admit.mjs" },
+  "project-coordination-summary": { file: "project-coordination-summary.mjs" },
+  "project-handoff-packet": { file: "project-handoff-packet.mjs" },
   "project-runtime-state": { file: "project-runtime-state.mjs" },
   "sync-db-first": { file: "sync-db-first.mjs" },
   "sync-db-first-selective": { file: "sync-db-first-selective.mjs" },
@@ -107,6 +124,23 @@ function printUsage() {
   console.log("  aidn perf session-start --target ../repo --mode COMMITTING --json");
   console.log("  aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json");
   console.log("  aidn runtime sync-db-first-selective --target . --json");
+  console.log("  aidn runtime coordinator-dispatch-execute --target . --execute --json");
+  console.log("  aidn runtime coordinator-dispatch-plan --target . --json");
+  console.log("  aidn runtime coordinator-loop --target . --json");
+  console.log("  aidn runtime coordinator-orchestrate --target . --execute --max-iterations 2 --json");
+  console.log("  aidn runtime coordinator-record-arbitration --target . --decision continue --note \"validated by user\" --json");
+  console.log("  aidn runtime coordinator-resume --target . --json");
+  console.log("  aidn runtime coordinator-next-action --target . --json");
+  console.log("  aidn runtime coordinator-select-agent --target . --role auditor --action audit --json");
+  console.log("  aidn runtime coordinator-suggest-arbitration --target . --json");
+  console.log("  aidn runtime list-agent-adapters --target . --json");
+  console.log("  aidn runtime verify-agent-roster --target . --json");
+  console.log("  aidn runtime project-agent-health-summary --target . --json");
+  console.log("  aidn runtime project-agent-selection-summary --target . --json");
+  console.log("  aidn runtime project-multi-agent-status --target . --json");
+  console.log("  aidn runtime handoff-admit --target . --json");
+  console.log("  aidn runtime project-coordination-summary --target . --json");
+  console.log("  aidn runtime project-handoff-packet --target . --json");
   console.log("  aidn runtime project-runtime-state --target . --json");
   console.log("");
   console.log("Perf subcommands:");

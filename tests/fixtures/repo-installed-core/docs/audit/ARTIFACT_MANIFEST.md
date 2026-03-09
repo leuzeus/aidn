@@ -6,6 +6,14 @@ Use this file when the workflow context is incomplete or when an assistant must 
 
 ## Minimal Re-Anchor Path
 
+If another agent prepared a handoff:
+
+1. `docs/audit/HANDOFF-PACKET.md`
+2. `docs/audit/CURRENT-STATE.md`
+3. `docs/audit/WORKFLOW-KERNEL.md`
+
+Default path:
+
 1. `docs/audit/CURRENT-STATE.md`
 2. `docs/audit/WORKFLOW-KERNEL.md`
 3. `docs/audit/WORKFLOW_SUMMARY.md`
@@ -20,6 +28,16 @@ If more detail is needed:
 ### Current operational summary
 
 - Primary file: `docs/audit/CURRENT-STATE.md`
+- Agent-to-agent handoff digest: `docs/audit/HANDOFF-PACKET.md`
+- Agent adapter roster: `docs/audit/AGENT-ROSTER.md`
+- Agent adapter contract: `docs/audit/AGENT-ADAPTERS.md`
+- Agent adapter health summary: `docs/audit/AGENT-HEALTH-SUMMARY.md`
+- Agent selection summary: `docs/audit/AGENT-SELECTION-SUMMARY.md`
+- Multi-agent status digest: `docs/audit/MULTI-AGENT-STATUS.md`
+- Example external adapters: `.aidn/runtime/agents/`
+- Coordination digest: `docs/audit/COORDINATION-SUMMARY.md`
+- Coordinator routing history: `docs/audit/COORDINATION-LOG.md`
+- User arbitration trace: `docs/audit/USER-ARBITRATION.md`
 - Fallbacks:
   - `docs/audit/snapshots/context-snapshot.md`
   - `docs/audit/baseline/current.md`
@@ -124,14 +142,27 @@ Read for:
 ### Runtime context in `dual` / `db-only`
 
 - Runtime digest: `docs/audit/RUNTIME-STATE.md`
+- Handoff digest: `docs/audit/HANDOFF-PACKET.md`
+- Agent adapter roster: `docs/audit/AGENT-ROSTER.md`
+- Agent adapter contract: `docs/audit/AGENT-ADAPTERS.md`
+- Agent adapter health summary: `docs/audit/AGENT-HEALTH-SUMMARY.md`
+- Agent selection summary: `docs/audit/AGENT-SELECTION-SUMMARY.md`
+- Multi-agent status digest: `docs/audit/MULTI-AGENT-STATUS.md`
+- Example external adapters: `.aidn/runtime/agents/`
+- Coordination log: `docs/audit/COORDINATION-LOG.md`
+- Coordination summary: `docs/audit/COORDINATION-SUMMARY.md`
+- User arbitration log: `docs/audit/USER-ARBITRATION.md`
 - Runtime context root: `.aidn/runtime/context/`
 - Read for:
   - `runtime_state_mode`
   - `repair_layer_status`
   - `current_state_freshness`
+  - handoff readiness for a second agent
+  - latest coordination outcome without reading raw history
   - prioritized artifacts
   - continuity hints
   - blocking findings
+  - structured coordination history in `.aidn/runtime/context/coordination-history.ndjson`
 
 ## Read Strategy By Situation
 
@@ -139,11 +170,12 @@ Read for:
 
 Read:
 
-1. `CURRENT-STATE.md`
-2. `WORKFLOW-KERNEL.md`
-3. active cycle `status.md`
-4. active session file
-5. runtime context if `dual` / `db-only`
+1. `HANDOFF-PACKET.md` when another agent already prepared a relay
+2. `CURRENT-STATE.md`
+3. `WORKFLOW-KERNEL.md`
+4. active cycle `status.md`
+5. active session file
+6. runtime context if `dual` / `db-only`
 
 ### Need to understand why the current approach exists
 

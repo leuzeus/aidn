@@ -67,6 +67,14 @@ const SKILL_SPECS = [
       "update `docs/audit/CURRENT-STATE.md` when present",
     ],
   },
+  {
+    name: "handoff-close",
+    required: [
+      "Keep `docs/audit/CURRENT-STATE.md` summary-only if updated.",
+      "Update `docs/audit/CURRENT-STATE.md` when present:",
+      "next agent goal",
+    ],
+  },
 ];
 
 function parseArgs(argv) {

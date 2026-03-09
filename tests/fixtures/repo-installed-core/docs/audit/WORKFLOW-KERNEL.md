@@ -4,11 +4,22 @@ Purpose: shortest safe workflow re-anchor before any durable write.
 
 ## Read Order
 
+If another agent already prepared a handoff:
+
+1. `docs/audit/HANDOFF-PACKET.md`
+2. run `npx aidn runtime handoff-admit --target . --json`
+3. `docs/audit/CURRENT-STATE.md`
+4. `docs/audit/WORKFLOW-KERNEL.md`
+
+Otherwise:
+
 1. `docs/audit/CURRENT-STATE.md`
 2. `docs/audit/WORKFLOW-KERNEL.md`
 3. `docs/audit/WORKFLOW_SUMMARY.md`
 4. `docs/audit/WORKFLOW.md`
 5. `docs/audit/SPEC.md` only when a canonical rule must be checked precisely
+
+Agent-to-agent handoff is advisory only. The receiving agent must still complete the mandatory restatement before any durable write.
 
 ## Mandatory Restatement Before Durable Write
 
