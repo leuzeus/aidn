@@ -49,6 +49,7 @@ function main() {
     assert(text.includes("## Coordination"), "status file should include coordination section");
     assert(text.includes("## Arbitration"), "status file should include arbitration section");
     assert(typeof result.arbitration?.preferred_decision === "string", "projection should expose arbitration summary");
+    assert(String(result.arbitration?.arbitration_status ?? "") === "ok", "healthy projection should expose arbitration_status=ok");
 
     fs.writeFileSync(path.join(target, "docs", "audit", "AGENT-ROSTER.md"), [
       "# Agent Roster",
@@ -136,12 +137,14 @@ function main() {
     assert(environmentResult.recommended_role_coverage.status === "blocked", "multi-agent status should mark recommended role coverage as blocked when no runnable adapter remains");
     assert(environmentResult.coordinator.recommendation.role === "auditor", "environment coverage test should force an auditor recommendation");
     assert(environmentResult.arbitration.arbitration_required === true, "blocked role coverage should require arbitration in multi-agent status");
+    assert(environmentResult.arbitration.arbitration_status === "ok", "blocked role coverage should still expose arbitration_status=ok");
     assert(environmentResult.arbitration.preferred_decision === "reanchor", "blocked role coverage should prefer reanchor");
     assert(environmentText.includes("environment_unavailable_count: 1"), "status file should count environment-unavailable adapters");
     assert(environmentText.includes("recommended_role_coverage_status: blocked"), "status file should surface blocked role coverage");
     assert(environmentText.includes("recommendation: no runnable adapter remains for role auditor"), "status file should explain the blocked role coverage");
     assert(environmentText.includes("blocked_adapter: probe-failing -> external runner is not configured"), "status file should surface blocked adapter reasons");
     assert(environmentText.includes("arbitration_required: yes"), "status file should expose arbitration requirement");
+    assert(environmentText.includes("arbitration_status: ok"), "status file should expose arbitration status");
     assert(environmentText.includes("preferred_decision: reanchor"), "status file should expose preferred arbitration decision");
     assert(environmentText.includes("suggestion: reanchor recommended=yes actionable=yes"), "status file should expose actionable reanchor suggestion");
 

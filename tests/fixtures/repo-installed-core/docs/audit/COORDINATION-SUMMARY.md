@@ -44,4 +44,3 @@ recommended_role_counts: none
 - refresh this summary after `coordinator-dispatch-execute --execute`
 - use `COORDINATION-LOG.md` for readable detail
 - use `.aidn/runtime/context/coordination-history.ndjson` for structured analysis
-

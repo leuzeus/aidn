@@ -88,6 +88,7 @@ function buildBlockedResult({
   dispatch,
   loopState,
   arbitrationSuggestions,
+  executeRequested,
 }) {
   const escalationReason = arbitrationSuggestions?.arbitration_reason
     || loopState.loop?.escalation?.reason
@@ -100,7 +101,7 @@ function buildBlockedResult({
     arbitration_satisfied: false,
     preferred_decision: arbitrationSuggestions?.preferred_decision ?? null,
     arbitration_suggestions: arbitrationSuggestions,
-    execute_requested: false,
+    execute_requested: Boolean(executeRequested),
     can_resume: false,
     loop: loopState.loop,
     context: loopState.context,
@@ -158,6 +159,7 @@ export async function resumeCoordinatorDispatch({
       dispatch,
       loopState,
       arbitrationSuggestions,
+      executeRequested: execute,
     });
   }
 

@@ -32,6 +32,7 @@ auto_selected_agent: unknown
 coordination_history_status: empty
 last_execution_status: unknown
 arbitration_required: no
+arbitration_status: ok
 preferred_decision: continue
 
 ## Coordinator Recommendation
@@ -43,6 +44,7 @@ preferred_decision: continue
 ## Arbitration
 
 - required: no
+- status: ok
 - reason: dispatch is already actionable
 - preferred_decision: continue
 - suggestion: continue recommended=yes actionable=yes

@@ -54,4 +54,3 @@ prioritized_artifacts:
 - `CURRENT-STATE.md` consistency check passed for the currently evaluated signals.
 - In `files` mode, this digest may remain minimal.
 - In `dual` / `db-only`, refresh this digest whenever runtime hydration or repair-layer triage reveals new blocking facts.
-

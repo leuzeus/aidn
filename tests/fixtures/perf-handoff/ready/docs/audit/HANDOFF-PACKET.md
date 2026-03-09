@@ -78,4 +78,3 @@ handoff_note: none
 - Cycle status: docs/audit/cycles/C101-feature-alpha/status.md
 - Refresh this packet after significant session/cycle state changes when work is likely to continue in another agent.
 - In `dual` / `db-only`, refresh this packet after refreshing `docs/audit/RUNTIME-STATE.md`.
-

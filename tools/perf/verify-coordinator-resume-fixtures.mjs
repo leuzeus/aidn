@@ -176,12 +176,14 @@ function main() {
     assert(blockedDryRun.dispatch.dispatch_status === "escalated", "blocked resume should show escalated dispatch");
     assert(blockedDryRun.preferred_decision === "reanchor", "blocked resume should expose the preferred arbitration decision");
     assert(blockedDryRun.arbitration_suggestions?.preferred_decision === "reanchor", "blocked resume should expose arbitration suggestions");
+    assert(blockedDryRun.execute_requested === false, "blocked dry-run should report execute_requested=false");
     assert(Array.isArray(blockedDryRun.arbitration_suggestions?.suggestions) && blockedDryRun.arbitration_suggestions.suggestions.some((item) => String(item.record_command ?? "").includes("coordinator-record-arbitration")), "blocked resume suggestions should include record-arbitration commands");
     assert(blockedExecute.resume_status === "blocked", "blocked execute should stay blocked");
     assert(blockedExecute.execution_status === "blocked", "blocked execute should refuse execution");
     assert(blockedExecute.executed === false, "blocked execute should not run steps");
     assert(blockedExecute.execution === null, "blocked execute should not include execution details");
     assert(blockedExecute.arbitration_suggestions?.preferred_decision === "reanchor", "blocked execute should keep arbitration suggestions");
+    assert(blockedExecute.execute_requested === true, "blocked execute should preserve execute_requested=true");
 
     assert(continueArbitration.arbitration_event.decision === "continue", "fixture should record continue arbitration");
     assert(resumedDryRun.resume_status === "resumed_after_arbitration", "continue arbitration should unlock resume");
@@ -213,6 +215,7 @@ function main() {
     assert(roleBlockedExecute.execution_status === "blocked", "role-blocked execute should not run");
     assert(roleBlockedExecute.executed === false, "role-blocked execute should report not executed");
     assert(roleBlockedExecute.arbitration_suggestions?.preferred_decision === "reanchor", "role-blocked execute should keep arbitration suggestions");
+    assert(roleBlockedExecute.execute_requested === true, "role-blocked execute should preserve execute_requested=true");
     assert(!fs.existsSync(roleBlockedLogFile), "role-blocked execute should not create coordination log");
 
     const output = {

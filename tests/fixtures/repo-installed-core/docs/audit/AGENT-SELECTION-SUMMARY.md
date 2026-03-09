@@ -41,4 +41,3 @@ roster_issue_count: 0
 
 - Use `aidn runtime list-agent-adapters --target . --json` for the full machine-readable view.
 - Use `aidn runtime coordinator-select-agent --target . --role <role> --action <action> --json` to diagnose one relay.
-

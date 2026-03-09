@@ -190,6 +190,7 @@ function buildMarkdown({
   lines.push(`coordination_history_status: ${coordinationSummary.summary.history_status}`);
   lines.push(`last_execution_status: ${coordinationSummary.summary.last_execution_status}`);
   lines.push(`arbitration_required: ${arbitration.arbitration_required ? "yes" : "no"}`);
+  lines.push(`arbitration_status: ${arbitration.arbitration_status ?? "ok"}`);
   lines.push(`preferred_decision: ${arbitration.preferred_decision}`);
   lines.push("");
   lines.push("## Coordinator Recommendation");
@@ -201,6 +202,7 @@ function buildMarkdown({
   lines.push("## Arbitration");
   lines.push("");
   lines.push(`- required: ${arbitration.arbitration_required ? "yes" : "no"}`);
+  lines.push(`- status: ${arbitration.arbitration_status ?? "ok"}`);
   lines.push(`- reason: ${arbitration.arbitration_reason}`);
   lines.push(`- preferred_decision: ${arbitration.preferred_decision}`);
   if (Array.isArray(arbitration.suggestions) && arbitration.suggestions.length > 0) {
@@ -308,12 +310,18 @@ export async function projectMultiAgentStatus({
   const arbitration = await suggestCoordinatorArbitration({
     targetRoot: absoluteTargetRoot,
     agentRosterFile: rosterFile,
-  }).catch(() => ({
-    dispatch_status: "unknown",
-    arbitration_required: false,
-    arbitration_reason: "arbitration suggestions unavailable",
-    preferred_decision: "continue",
+  }).then((result) => ({
+    arbitration_status: "ok",
+    ...result,
+  })).catch((error) => ({
+    target_root: absoluteTargetRoot,
+    dispatch_status: "error",
+    arbitration_status: "error",
+    arbitration_required: true,
+    arbitration_reason: `arbitration suggestions unavailable: ${error.message}`,
+    preferred_decision: "reanchor",
     suggestions: [],
+    error_message: error.message,
   }));
   const rosterVerification = await verifyAgentRoster({
     targetRoot: absoluteTargetRoot,

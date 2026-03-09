@@ -103,4 +103,3 @@ last_execution_status: unknown
 - if `roster_verification` fails, do not trust `auto_selected_agent` until the roster is fixed
 - if `recommended_role_coverage_status` is `blocked`, do not dispatch automatically until adapter availability is restored
 - generated file: `docs/audit/MULTI-AGENT-STATUS.md`
-

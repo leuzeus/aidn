@@ -64,4 +64,3 @@ warning_count: 0
 - `degraded` means the adapter loads but the roster config is inconsistent
 - `unavailable` means the adapter cannot be loaded or cannot pass the environment probe in the current environment
 - `environment` distinguishes loadable adapters from adapters that are actually runnable now
-
