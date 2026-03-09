@@ -58,6 +58,14 @@ Client repository after install:
 - Entropy regulation loop: `docs/diagrams/04-entropy-regulation-control-loop.md`
 - Mermaid style preset (indigo): `docs/diagrams/MERMAID_PRESET_INDIGO.md`
 
+## Git Workflow
+
+- `main` is the stable/release branch.
+- `dev` is the integration branch and may accumulate multiple workstreams.
+- clean PRs should be opened from short-lived branches created from `main`.
+- if a change exists on `dev` but needs a narrow PR, create a fresh branch from `main` and cherry-pick the relevant commit(s).
+- full policy: `docs/GIT_WORKFLOW.md`
+
 ## Performance Rollout
 
 - Plan: `docs/performance/WORKFLOW_PERFORMANCE_PLAN.md`
