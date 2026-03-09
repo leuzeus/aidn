@@ -1,6 +1,6 @@
 # Upgrade Guide
 
-## Upgrade to 0.2.0
+## Upgrade to 0.4.0
 
 This release introduces stronger workflow governance artifacts:
 - canonical rule index in `SPEC` (`SPEC-R01..SPEC-R11`),

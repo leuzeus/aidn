@@ -1,6 +1,15 @@
 # Changelog
 
 ## Unreleased
+
+## 0.4.0
+- Add post-install workflow re-anchor artifacts: `WORKFLOW-KERNEL.md`, `CURRENT-STATE.md`, `REANCHOR_PROMPT.md`, `ARTIFACT_MANIFEST.md`, and `RUNTIME-STATE.md`.
+- Add a mandatory pre-write gate in `AGENTS.md`, including explicit durable-write handling for `apply_patch` in recent Codex Windows flows.
+- Add `aidn runtime project-runtime-state` and integrate runtime digest projection into `hydrate-context` for `dual` and `db-only` repositories.
+- Surface runtime digest and stale current-state hints in agent-facing hook outputs.
+- Extend workflow/runtime verification with current-state consistency fixtures, runtime-state projector checks, hydrate-context projection checks, and install/import propagation checks.
+- Regenerate installed-core fixture and diagrams to reflect the `0.4.0` workflow/runtime model.
+
 - Add npm-standard package metadata (`version`, `bin`, `files`, `engines`) and expose a new `aidn` CLI entrypoint.
 - Add `bin/aidn.mjs` command router for installer/build/perf commands (`aidn install`, `aidn perf checkpoint`, etc.).
 - Update install/perf docs to use package-driven execution (`npm install ...` + `npx aidn ...`) instead of direct repository path calls.

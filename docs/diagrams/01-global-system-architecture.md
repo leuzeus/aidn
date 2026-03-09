@@ -16,7 +16,7 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 1) Global System Architecture (v0.3.0 workflow)
+%% 1) Global System Architecture (v0.4.0 workflow)
 flowchart LR
   subgraph RULE["Rule Layer (Normative)"]
     SPEC["SPEC.md (SPEC-R01..SPEC-R11)"]
@@ -27,11 +27,14 @@ flowchart LR
 
   subgraph RUN["Execution Layer (Skills + Gates)"]
     START["context-reload + start-session (R01)"]
+    REANCHOR["CURRENT-STATE + WORKFLOW-KERNEL reload"]
     MODE{"Mode selected (R02)"}
     BCA["branch-cycle-audit (R03)"]
     CONT{"Continuity gate R06: R1 R2 R3"}
     DOR{"DoR gate (R04)"}
+    PWRITE{"Pre-write gate"}
     EXEC["Cycle implementation"]
+    HYDRATE["hydrate-context + runtime digest refresh"]
     DRIFT["drift-check (R05)"]
     SCLOSE{"Session close gate (R07)"}
     PRG{"PR review gate (R08)"}
@@ -42,24 +45,30 @@ flowchart LR
   subgraph STATE["State Layer (Declarative)"]
     SESS["sessions/SXXX.md"]
     CYCLE["cycles/*/status.md"]
+    CURR["CURRENT-STATE.md"]
+    RT["RUNTIME-STATE.md"]
     SNAP["snapshots/context-snapshot.md"]
     BASE["baseline/current.md + history.md"]
     PARK["parking-lot.md"]
     INCF["incidents/INC-TMP-*.md"]
   end
 
-  START --> MODE
-  MODE -->|COMMITTING| BCA --> CONT --> DOR --> EXEC --> DRIFT --> SCLOSE
+  START --> REANCHOR --> MODE
+  MODE -->|COMMITTING| BCA --> CONT --> DOR --> PWRITE --> EXEC --> HYDRATE --> DRIFT --> SCLOSE
   MODE -->|THINKING / EXPLORING| DRIFT
   SCLOSE --> PRG --> SYNC --> START
 
   START <--> SESS
   BCA <--> CYCLE
+  REANCHOR <--> CURR
+  HYDRATE <--> RT
   CONT --> CYCLE
   EXEC --> CYCLE
   DRIFT --> PARK
+  DRIFT --> CURR
   DRIFT --> SNAP
   SCLOSE --> SESS
+  SCLOSE --> CURR
   SCLOSE --> SNAP
   SYNC --> SNAP
   BASE --> START
@@ -85,9 +94,9 @@ flowchart LR
   classDef incident fill:#FFF4F4,stroke:#B42318,color:#7A271A,stroke-width:2px;
 
   class SPEC,WF,AG rule;
-  class MODE,CONT,DOR,SCLOSE,PRG,SYNC gate;
-  class START,BCA,EXEC,DRIFT action;
-  class SESS,CYCLE,SNAP,BASE,PARK,INCF state;
+  class MODE,CONT,DOR,PWRITE,SCLOSE,PRG,SYNC gate;
+  class START,REANCHOR,BCA,EXEC,HYDRATE,DRIFT action;
+  class SESS,CYCLE,CURR,RT,SNAP,BASE,PARK,INCF state;
   class INC incident;
 
   linkStyle default stroke:#1E1F5C,stroke-width:2px;
