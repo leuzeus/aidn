@@ -16,7 +16,7 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 2) Cycle State Machine (v0.3.0)
+%% 2) Cycle State Machine (v0.4.0)
 stateDiagram-v2
   [*] --> CONTINUITY_GATE: cycle-create requested
   CONTINUITY_GATE --> OPEN: select R1/R2/R3 + record metadata (R06)
@@ -56,11 +56,15 @@ stateDiagram-v2
     SPEC-R04:
     DoR is mandatory before
     production implementation.
+    CURRENT-STATE.md should already
+    expose active cycle + first step.
   end note
 
   note right of IMPLEMENTING
     SPEC-R05:
     drift-check required when
     drift is suspected.
+    In dual/db-only, runtime digest
+    should be refreshed after writes.
   end note
 ```

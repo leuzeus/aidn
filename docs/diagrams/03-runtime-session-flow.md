@@ -16,10 +16,11 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 3) Runtime Session Flow (v0.3.0)
+%% 3) Runtime Session Flow (v0.4.0)
 flowchart TD
   ST["Session start"] --> CR["context-reload"]
-  CR --> SS["start-session"]
+  CR --> RA["Read CURRENT-STATE + WORKFLOW-KERNEL"]
+  RA --> SS["start-session"]
   SS --> MODE{"Mode? (R02)"}
 
   MODE -->|THINKING| THINK["Doc/reasoning work"]
@@ -33,8 +34,13 @@ flowchart TD
 
   NEED -->|Yes| CONT{"Continuity gate R06: R1 R2 R3"}
   CONT --> CNEW["cycle-create + status continuity fields"]
-  CNEW --> IMPL["Implementation on cycle/intermediate"]
-  NEED -->|No| IMPL
+  CNEW --> PW{"Pre-write gate complete?"}
+  NEED -->|No| PW
+  PW -->|No| FIX
+  PW -->|Yes| RT{"dual/db-only runtime digest required?"}
+  RT -->|Yes| DIG["hydrate-context + RUNTIME-STATE refresh"]
+  RT -->|No| IMPL["Implementation on cycle/intermediate"]
+  DIG --> IMPL
 
   THINK --> DRIFT["drift-check when needed (R05)"]
   EXP --> DRIFT
@@ -70,8 +76,8 @@ flowchart TD
   classDef endnode fill:#F6F7FF,stroke:#2C2E83,color:#1E1F5C,stroke-width:1.5px;
   classDef incident fill:#FFF4F4,stroke:#B42318,color:#7A271A,stroke-width:2px;
 
-  class MODE,MAP,NEED,CONT,CLOSE,OK,PRQ,SYNC gate;
-  class ST,CR,SS,THINK,EXP,BCA,FIX,CNEW,IMPL,DRIFT,LOOP,RESOLVE,CS,PRG,MRG,REC action;
+  class MODE,MAP,NEED,CONT,PW,RT,CLOSE,OK,PRQ,SYNC gate;
+  class ST,CR,RA,SS,THINK,EXP,BCA,FIX,CNEW,DIG,IMPL,DRIFT,LOOP,RESOLVE,CS,PRG,MRG,REC action;
   class END endnode;
   class INC incident;
 
