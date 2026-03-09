@@ -28,6 +28,36 @@ Fix:
 - Re-run install:
   - `node tools/install.mjs --target <repo> --pack core`
 - Run verify again.
+- If output includes `missing import artifact: ...`, run:
+  - `npx aidn perf index --target . --json`
+  - then rerun verify.
+
+## Artifact import failed during install
+
+Symptom:
+- Installer stops with `Artifact import failed: ...`.
+
+Fix:
+- Check `docs/audit/` exists and contains expected workflow files.
+- Run import manually from client repo:
+  - `npx aidn perf index --target . --json`
+- Re-run install:
+  - `node tools/install.mjs --target <repo> --pack core`
+- If you need to bypass import temporarily:
+  - `node tools/install.mjs --target <repo> --pack core --skip-artifact-import`
+- If import runs with an unexpected backend, force it explicitly:
+  - `node tools/install.mjs --target <repo> --pack core --artifact-import-store file`
+  - `node tools/install.mjs --target <repo> --pack core --artifact-import-store dual-sqlite`
+
+## Invalid .aidn/config.json
+
+Symptom:
+- Runtime or installer fails with `Invalid JSON in .../.aidn/config.json`.
+
+Fix:
+- Correct JSON syntax in `.aidn/config.json`.
+- Or regenerate from install:
+  - `node tools/install.mjs --target <repo> --pack core`
 
 ## Forgot to customize the project stub
 
@@ -40,6 +70,34 @@ Fix:
 - Complete the setup checklist and replace placeholder values.
 - Follow `docs/INSTALL.md`, Step 3.
 
+## Assistant lost context or restarted
+
+Symptom:
+- Assistant starts proposing edits too quickly.
+- Assistant ignores cycle/session context.
+- Assistant behaves as if only part of the workflow is loaded.
+
+Fix:
+- Re-anchor in this order:
+  - `docs/audit/CURRENT-STATE.md`
+  - `docs/audit/WORKFLOW-KERNEL.md`
+  - `docs/audit/WORKFLOW_SUMMARY.md`
+  - `docs/audit/RUNTIME-STATE.md` when runtime freshness or repair signals matter
+- If needed, continue with:
+  - active session file
+  - active cycle `status.md`
+  - `docs/audit/WORKFLOW.md`
+  - `docs/audit/SPEC.md`
+- Use `docs/audit/REANCHOR_PROMPT.md` as the restart protocol.
+- Do not allow durable writes until mode, branch kind, active cycle, `dor_state`, and first implementation step are explicit.
+
+If runtime output additionally shows:
+- `Runtime digest: docs/audit/RUNTIME-STATE.md`
+  - open that file first for short runtime repair/freshness signals
+- `Current state stale: docs/audit/CURRENT-STATE.md`
+  - do not trust `CURRENT-STATE.md` as a sufficient summary
+  - reload session/cycle facts and refresh summary state through workflow skills before writing
+
 ## Confusion between spec, summary, and workflow adapter
 
 Symptom:
@@ -48,9 +106,37 @@ Symptom:
 
 Fix:
 - Canonical rules: `docs/audit/SPEC.md`
+- Minimal re-anchor rules: `docs/audit/WORKFLOW-KERNEL.md`
+- Current operational summary: `docs/audit/CURRENT-STATE.md`
+- Runtime digest: `docs/audit/RUNTIME-STATE.md`
 - Quick operating reload: `docs/audit/WORKFLOW_SUMMARY.md`
 - Local adapter: `docs/audit/WORKFLOW.md`
+- Artifact map: `docs/audit/ARTIFACT_MANIFEST.md`
 - Rule/state guidance: `docs/audit/RULE_STATE_BOUNDARY.md`
+
+## `apply_patch` or local AI editing feels too eager
+
+Symptom:
+- A local AI client tries to edit before the workflow context is fully reloaded.
+- This may be observed with recent Codex local app flows, including Windows.
+
+Fix:
+- Treat `apply_patch` and direct edits as durable writes.
+- Apply the same pre-write gate as any other mutation:
+  - confirm mode
+  - confirm branch kind
+  - confirm active cycle when relevant
+  - confirm `dor_state`
+  - confirm first implementation step
+- If context is incomplete or contradictory, stay read-only and use `docs/audit/REANCHOR_PROMPT.md`.
+- To validate the resilience guardrails in the package and reference installed fixture, run:
+  - `npm run perf:verify-context-resilience`
+- To validate only the state summary against snapshot/session/cycle artifacts, run:
+  - `npm run perf:verify-current-state-consistency -- --target <repo>`
+- To validate the runtime hints and digest guidance, run:
+  - `npm run perf:verify-runtime-digest-hints`
+- Full command reference:
+  - `docs/VERIFY_CONTEXT_RESILIENCE.md`
 
 ## Missing continuity or incident templates after install
 

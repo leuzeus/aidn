@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "description": "Index quality thresholds for local derived index consistency and dual-write parity.",
+  "rules": [
+    {
+      "id": "INDEX_SCHEMA_VERSION",
+      "key": "summary.schema_version",
+      "op": "==",
+      "value": 1,
+      "severity": "error"
+    },
+    {
+      "id": "INDEX_ARTIFACTS_MIN",
+      "key": "summary.rows.artifacts",
+      "op": ">=",
+      "value": 1,
+      "severity": "error"
+    },
+    {
+      "id": "INDEX_COUNTS_MATCH",
+      "key": "summary.consistency.all_count_match",
+      "op": "==",
+      "value": 1,
+      "severity": "error"
+    },
+    {
+      "id": "INDEX_PARITY_OK",
+      "key": "summary.parity.ok_numeric",
+      "op": "==",
+      "value": 1,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_PARITY_SQL_OK",
+      "key": "summary.parity_sql.ok_numeric",
+      "op": "==",
+      "value": 1,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_PARITY_SQLITE_OK",
+      "key": "summary.parity_sqlite.ok_numeric",
+      "op": "==",
+      "value": 1,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_RUN_METRICS_PRESENT",
+      "key": "summary.run_metrics.present",
+      "op": ">=",
+      "value": 1,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_CANONICAL_ARTIFACTS_MIN",
+      "key": "summary.projection.artifacts_with_canonical",
+      "op": ">=",
+      "value": 1,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_CANONICAL_COVERAGE_MIN",
+      "key": "summary.projection.canonical_coverage_ratio_markdown",
+      "op": ">=",
+      "value": 0.8,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_STRUCTURE_UNKNOWN_MAX",
+      "key": "summary.structure.is_unknown",
+      "op": "<=",
+      "value": 0,
+      "severity": "warn"
+    },
+    {
+      "id": "INDEX_DECLARED_VERSION_STALE_MAX",
+      "key": "summary.structure.declared_version_looks_stale",
+      "op": "<=",
+      "value": 0,
+      "severity": "warn"
+    }
+  ]
+}

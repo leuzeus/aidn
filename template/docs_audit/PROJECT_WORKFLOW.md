@@ -7,9 +7,12 @@ Its role is to reduce local ambiguity and keep AI behavior stable.
 
 ## Recommended Read Order (Fast Reload)
 
-1. `docs/audit/SPEC.md`
-2. `docs/audit/WORKFLOW_SUMMARY.md`
-3. `docs/audit/WORKFLOW.md`
+1. `docs/audit/CURRENT-STATE.md`
+2. `docs/audit/WORKFLOW-KERNEL.md`
+3. `docs/audit/WORKFLOW_SUMMARY.md`
+4. `docs/audit/RUNTIME-STATE.md` when runtime freshness or repair signals matter
+5. `docs/audit/WORKFLOW.md`
+6. `docs/audit/SPEC.md` only when a canonical rule must be checked precisely
 
 ## Canonical Rule References
 
@@ -57,6 +60,13 @@ source_branch: {{SOURCE_BRANCH}}
 - Intermediate branch naming: `<cycle-type>/CXXX-I##-<slug>`
 - Allowed cycle types: `feature | hotfix | spike | refactor | structural | migration | security | perf | integration | compat | corrective`
 - DoR policy: `{{DOR_POLICY}}`
+
+## Runtime State Policy (Project Adapter)
+
+- Preferred runtime state mode: `dual` (or `db-only` if project chooses full DB runtime).
+- In `dual`/`db-only`, workflow skill perf hooks are mandatory and executed in strict mode.
+- In `dual`/`db-only`, session close must run the DB-backed constraint chain and produce constraint artifacts under `.aidn/runtime/perf/`.
+- `files` mode is allowed only as an explicit fallback profile; it is not the primary execution path for this adapter.
 
 ### Session Start Branch Base Gate (Mandatory, adapter extension to `SPEC-R01`/`SPEC-R03`)
 
@@ -127,9 +137,13 @@ source_branch: {{SOURCE_BRANCH}}
 - Snapshot owner: `{{SNAPSHOT_OWNER}}`
 - Freshness rule before commit/review: `{{SNAPSHOT_FRESHNESS_RULE}}`
 - Parking lot rule for non-essential ideas (entropy isolation): `{{PARKING_LOT_RULE}}`
+- If context is partial or stale after restart/window switch, run `docs/audit/REANCHOR_PROMPT.md` before any durable write.
 
 ## Local Paths
 
+- Current state: `docs/audit/CURRENT-STATE.md`
+- Runtime digest: `docs/audit/RUNTIME-STATE.md`
+- Workflow kernel: `docs/audit/WORKFLOW-KERNEL.md`
 - Spec snapshot: `docs/audit/SPEC.md`
 - Baseline: `docs/audit/baseline/current.md`
 - Snapshot: `docs/audit/snapshots/context-snapshot.md`
@@ -137,6 +151,8 @@ source_branch: {{SOURCE_BRANCH}}
 - Continuity guide: `docs/audit/CONTINUITY_GATE.md`
 - Rule/state guide: `docs/audit/RULE_STATE_BOUNDARY.md`
 - Workflow summary: `docs/audit/WORKFLOW_SUMMARY.md`
+- Re-anchor prompt: `docs/audit/REANCHOR_PROMPT.md`
+- Artifact manifest: `docs/audit/ARTIFACT_MANIFEST.md`
 - Incidents: `docs/audit/incidents/`
 
 ## Warning

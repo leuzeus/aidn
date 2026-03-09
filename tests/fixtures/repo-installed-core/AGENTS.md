@@ -41,6 +41,9 @@ If any required skill is unavailable, the agent MUST:
 
 - Workflow specification (canonical): `docs/audit/SPEC.md`
 - Workflow adapter (project-local): `docs/audit/WORKFLOW.md`
+- Workflow kernel (minimal re-anchor): `docs/audit/WORKFLOW-KERNEL.md`
+- Current state summary: `docs/audit/CURRENT-STATE.md`
+- Runtime digest: `docs/audit/RUNTIME-STATE.md`
 - Current baseline: `docs/audit/baseline/current.md`
 - Snapshot (fast reload): `docs/audit/snapshots/context-snapshot.md`
 - Fast context reload: `docs/audit/snapshots/context-snapshot.md`
@@ -70,6 +73,7 @@ In this mode, the agent MUST:
 - treat missing information as hypotheses (`HYP-xxx`)
 - avoid assuming repository state
 - explicitly state uncertainty when audit artifacts are unavailable
+- prefer `docs/audit/REANCHOR_PROMPT.md` when context was partially lost or restarted
 
 ------------------------------------------------------------
 ## Session Start Responsibilities
@@ -93,6 +97,60 @@ If mode is **COMMITTING**, the agent MUST:
 - STOP if branch ownership is ambiguous or unmapped (`session` / `cycle` / `intermediate`)
 
 Agents MUST NOT skip these steps.
+
+If runtime state mode is `dual` or `db-only`, the agent MUST:
+- run the performance hook for each invoked workflow skill
+- run those hooks through the JSON context wrapper in strict mode (`npx aidn codex run-json-hook ... --strict --json`)
+- prefer `--fail-on-repair-block` for mutating workflow skills and stop on `repair_layer_status=block`
+- hydrate db-backed context after each workflow skill (`npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json`)
+- use hydrated context to read `repair_layer_status`, `repair_layer_advice`, prioritized artifacts, and continuity hints before acting
+- prefer `docs/audit/RUNTIME-STATE.md` as the short runtime digest when available
+- run DB runtime sync after each mutating workflow skill (`npx aidn runtime sync-db-first-selective --target . --json`, fallback to full sync when needed)
+- run `npx aidn runtime repair-layer-triage --target . --json` whenever `repair_layer_status` is `warn` or `block`
+- if triage exposes a safe-only autofix candidate, the agent MAY run `npx aidn runtime repair-layer-autofix --target . --apply --json`
+- stop and request user arbitration if blocking repair findings remain after triage/autofix
+- treat hook failure as a stop condition (do not continue silently on file-only fallback paths)
+
+------------------------------------------------------------
+## Pre-Write Gate (MANDATORY)
+
+Before any durable write, the agent MUST restate:
+
+- current mode
+- current branch kind
+- active session (`SXXX | none | unknown`)
+- active cycle (`CXXX | none | unknown`) when relevant
+- `dor_state` when `COMMITTING`
+- first implementation step from `plan.md` when `COMMITTING`
+- workflow artifacts verified
+- missing or uncertain context, if any
+
+Durable writes include:
+
+- `apply_patch`
+- direct file edits
+- generated file creation
+- mutating scripts
+
+If runtime state mode is `dual` or `db-only`, the agent MUST also:
+
+- read hydrated runtime context before durable write
+- check `repair_layer_status`
+- stop on blocking repair findings
+
+If one required field is missing, ambiguous, or contradictory, the agent MUST:
+
+- stop durable write
+- continue with read-only context reload only
+- report the smallest compliant next step
+
+Special note for recent Codex Windows app flows:
+
+- treat `apply_patch` as a durable write operation, not as a shortcut around workflow checks
+- do not use `apply_patch` before the pre-write restatement is complete
+
+This gate does not redefine canonical workflow mechanics.
+It only defines the minimum execution contract before writing.
 
 ------------------------------------------------------------
 ## Mode Heuristics (Advisory, Not Authoritative)
@@ -230,9 +288,11 @@ If mode is COMMITTING, the agent MUST ensure:
 - an active cycle exists
 - branch mapping is valid
 - DoR core gate is satisfied (or explicit override is documented)
+- no plan, no durable write: the first implementation step must be explicit before writing
 - baseline dependencies are respected
 - session close gate is satisfied before closing (`integrate-to-session`/`report`/`close-non-retained` decisions for attached open cycles)
 - PR review gate is satisfied before merge: Codex review threads are triaged (`valid`/`invalid`) and resolved with evidence
+- in `dual`/`db-only`, DB-backed perf chain is executed at session close (constraint report/actions/history/trend/lot summaries)
 
 If mode is EXPLORING and:
 - work exceeds ~30 minutes, or
