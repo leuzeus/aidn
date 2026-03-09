@@ -56,10 +56,11 @@ function main() {
     }
 
     const source = String(fs.readFileSync(filePath, "utf8"));
-    const next = source.replace(/^(\s*workflow_version:\s*).+$/im, `$1${version}`);
-    if (next === source) {
+    const pattern = /^(\s*workflow_version:\s*).+$/im;
+    if (!pattern.test(source)) {
       throw new Error(`workflow_version field not found in: ${filePath}`);
     }
+    const next = source.replace(pattern, `$1${version}`);
 
     fs.writeFileSync(filePath, next, "utf8");
     console.log(`Rendered workflow_version=${version} in ${filePath}`);
