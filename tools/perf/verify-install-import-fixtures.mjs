@@ -161,6 +161,90 @@ function runCheckpointJson(repoRoot, targetRoot) {
   }
 }
 
+function runCurrentStateSkillCoverageJson(repoRoot, skillsRoot) {
+  const script = path.resolve(repoRoot, "tools", "perf", "verify-current-state-skill-coverage.mjs");
+  const result = spawnSync(process.execPath, [
+    script,
+    "--root",
+    skillsRoot,
+    "--json",
+  ], {
+    cwd: repoRoot,
+    env: { ...process.env },
+    encoding: "utf8",
+    timeout: 180000,
+    maxBuffer: 20 * 1024 * 1024,
+  });
+  if ((result.status ?? 1) !== 0) {
+    return {
+      ok: false,
+      status: result.status ?? 1,
+      payload: null,
+      stdout: String(result.stdout ?? ""),
+      stderr: String(result.stderr ?? ""),
+    };
+  }
+  try {
+    return {
+      ok: true,
+      status: 0,
+      payload: JSON.parse(String(result.stdout ?? "{}")),
+      stdout: String(result.stdout ?? ""),
+      stderr: String(result.stderr ?? ""),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 1,
+      payload: null,
+      stdout: String(result.stdout ?? ""),
+      stderr: `invalid current-state skill coverage JSON: ${error.message}\n${String(result.stderr ?? "")}`,
+    };
+  }
+}
+
+function runCurrentStateConsistencyJson(repoRoot, targetRoot) {
+  const script = path.resolve(repoRoot, "tools", "perf", "verify-current-state-consistency.mjs");
+  const result = spawnSync(process.execPath, [
+    script,
+    "--target",
+    targetRoot,
+    "--json",
+  ], {
+    cwd: repoRoot,
+    env: { ...process.env },
+    encoding: "utf8",
+    timeout: 180000,
+    maxBuffer: 20 * 1024 * 1024,
+  });
+  if ((result.status ?? 1) !== 0) {
+    return {
+      ok: false,
+      status: result.status ?? 1,
+      payload: null,
+      stdout: String(result.stdout ?? ""),
+      stderr: String(result.stderr ?? ""),
+    };
+  }
+  try {
+    return {
+      ok: true,
+      status: 0,
+      payload: JSON.parse(String(result.stdout ?? "{}")),
+      stdout: String(result.stdout ?? ""),
+      stderr: String(result.stderr ?? ""),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 1,
+      payload: null,
+      stdout: String(result.stdout ?? ""),
+      stderr: `invalid current-state consistency JSON: ${error.message}\n${String(result.stderr ?? "")}`,
+    };
+  }
+}
+
 function includes(text, token) {
   return String(text ?? "").includes(token);
 }
@@ -193,6 +277,18 @@ function installDiagnostics(out) {
   };
 }
 
+function collectReanchorArtifactDetails(target) {
+  const auditRoot = path.join(target, "docs", "audit");
+  return {
+    workflow_kernel_exists: fs.existsSync(path.join(auditRoot, "WORKFLOW-KERNEL.md")),
+    current_state_exists: fs.existsSync(path.join(auditRoot, "CURRENT-STATE.md")),
+    runtime_state_exists: fs.existsSync(path.join(auditRoot, "RUNTIME-STATE.md")),
+    reanchor_prompt_exists: fs.existsSync(path.join(auditRoot, "REANCHOR_PROMPT.md")),
+    artifact_manifest_exists: fs.existsSync(path.join(auditRoot, "ARTIFACT_MANIFEST.md")),
+    codex_online_exists: fs.existsSync(path.join(auditRoot, "CODEX_ONLINE.md")),
+  };
+}
+
 function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const target = prepareTmp(sourceTarget, tmpRoot, "default");
   const out = runInstall(repoRoot, target, codexStubBin);
@@ -200,7 +296,11 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
   const skillPath = path.join(target, ".codex", "skills", "context-reload", "SKILL.md");
+  const installedSkillsRoot = path.join(target, ".codex", "skills");
   const config = readConfigSafe(configPath);
+  const reanchor = collectReanchorArtifactDetails(target);
+  const skillCoverage = runCurrentStateSkillCoverageJson(repoRoot, installedSkillsRoot);
+  const currentStateConsistency = runCurrentStateConsistencyJson(repoRoot, target);
   return {
     name: "default_dual_mode",
     target_root: target,
@@ -211,7 +311,12 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       && fs.existsSync(indexSqlite)
       && fs.existsSync(skillPath)
       && fs.existsSync(configPath)
-      && String(config?.runtime?.stateMode ?? "") === "dual",
+      && String(config?.runtime?.stateMode ?? "") === "dual"
+      && Object.values(reanchor).every((value) => value === true)
+      && skillCoverage.ok
+      && skillCoverage.payload?.pass === true
+      && currentStateConsistency.ok
+      && currentStateConsistency.payload?.pass === true,
     details: {
       ...installDiagnostics(out),
       has_import_ok_line: includes(out.stdout, "artifact import: OK"),
@@ -221,6 +326,13 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       local_skill_context_reload_exists: fs.existsSync(skillPath),
       config_exists: fs.existsSync(configPath),
       config_runtime_state_mode: config?.runtime?.stateMode ?? null,
+      reanchor_artifacts: reanchor,
+      current_state_skill_coverage_ok: skillCoverage.ok,
+      current_state_skill_coverage_pass: skillCoverage.payload?.pass ?? false,
+      current_state_skill_coverage_stderr_tail: tail(skillCoverage.stderr),
+      current_state_consistency_ok: currentStateConsistency.ok,
+      current_state_consistency_pass: currentStateConsistency.payload?.pass ?? false,
+      current_state_consistency_stderr_tail: tail(currentStateConsistency.stderr),
     },
   };
 }
@@ -230,7 +342,11 @@ function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const out = runInstall(repoRoot, target, codexStubBin, [], { AIDN_STATE_MODE: "db-only" });
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
+  const installedSkillsRoot = path.join(target, ".codex", "skills");
   const config = readConfigSafe(configPath);
+  const reanchor = collectReanchorArtifactDetails(target);
+  const skillCoverage = runCurrentStateSkillCoverageJson(repoRoot, installedSkillsRoot);
+  const currentStateConsistency = runCurrentStateConsistencyJson(repoRoot, target);
   return {
     name: "env_state_mode_db_only",
     target_root: target,
@@ -239,7 +355,12 @@ function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       && includes(out.stdout, "store=sqlite")
       && fs.existsSync(indexSqlite)
       && fs.existsSync(configPath)
-      && String(config?.runtime?.stateMode ?? "") === "db-only",
+      && String(config?.runtime?.stateMode ?? "") === "db-only"
+      && Object.values(reanchor).every((value) => value === true)
+      && skillCoverage.ok
+      && skillCoverage.payload?.pass === true
+      && currentStateConsistency.ok
+      && currentStateConsistency.payload?.pass === true,
     details: {
       ...installDiagnostics(out),
       has_import_ok_line: includes(out.stdout, "artifact import: OK"),
@@ -247,6 +368,13 @@ function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       index_sqlite_exists: fs.existsSync(indexSqlite),
       config_exists: fs.existsSync(configPath),
       config_runtime_state_mode: config?.runtime?.stateMode ?? null,
+      reanchor_artifacts: reanchor,
+      current_state_skill_coverage_ok: skillCoverage.ok,
+      current_state_skill_coverage_pass: skillCoverage.payload?.pass ?? false,
+      current_state_skill_coverage_stderr_tail: tail(skillCoverage.stderr),
+      current_state_consistency_ok: currentStateConsistency.ok,
+      current_state_consistency_pass: currentStateConsistency.payload?.pass ?? false,
+      current_state_consistency_stderr_tail: tail(currentStateConsistency.stderr),
     },
   };
 }
@@ -260,7 +388,11 @@ function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
+  const installedSkillsRoot = path.join(target, ".codex", "skills");
   const config = readConfigSafe(configPath);
+  const reanchor = collectReanchorArtifactDetails(target);
+  const skillCoverage = runCurrentStateSkillCoverageJson(repoRoot, installedSkillsRoot);
+  const currentStateConsistency = runCurrentStateConsistencyJson(repoRoot, target);
   return {
     name: "env_index_store_over_state_mode",
     target_root: target,
@@ -270,7 +402,12 @@ function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       && fs.existsSync(indexJson)
       && !fs.existsSync(indexSqlite)
       && fs.existsSync(configPath)
-      && String(config?.runtime?.stateMode ?? "") === "files",
+      && String(config?.runtime?.stateMode ?? "") === "files"
+      && Object.values(reanchor).every((value) => value === true)
+      && skillCoverage.ok
+      && skillCoverage.payload?.pass === true
+      && currentStateConsistency.ok
+      && currentStateConsistency.payload?.pass === true,
     details: {
       ...installDiagnostics(out),
       has_import_ok_line: includes(out.stdout, "artifact import: OK"),
@@ -279,6 +416,13 @@ function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       index_sqlite_exists: fs.existsSync(indexSqlite),
       config_exists: fs.existsSync(configPath),
       config_runtime_state_mode: config?.runtime?.stateMode ?? null,
+      reanchor_artifacts: reanchor,
+      current_state_skill_coverage_ok: skillCoverage.ok,
+      current_state_skill_coverage_pass: skillCoverage.payload?.pass ?? false,
+      current_state_skill_coverage_stderr_tail: tail(skillCoverage.stderr),
+      current_state_consistency_ok: currentStateConsistency.ok,
+      current_state_consistency_pass: currentStateConsistency.payload?.pass ?? false,
+      current_state_consistency_stderr_tail: tail(currentStateConsistency.stderr),
     },
   };
 }
@@ -292,8 +436,12 @@ function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
+  const installedSkillsRoot = path.join(target, ".codex", "skills");
   const config = readConfigSafe(configPath);
   const checkpoint = runCheckpointJson(repoRoot, target);
+  const reanchor = collectReanchorArtifactDetails(target);
+  const skillCoverage = runCurrentStateSkillCoverageJson(repoRoot, installedSkillsRoot);
+  const currentStateConsistency = runCurrentStateConsistencyJson(repoRoot, target);
   return {
     name: "cli_override_artifact_import_store",
     target_root: target,
@@ -307,7 +455,12 @@ function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       && String(config?.runtime?.stateMode ?? "") === "dual"
       && checkpoint.ok
       && String(checkpoint?.payload?.state_mode ?? "") === "dual"
-      && String(checkpoint?.payload?.index?.store ?? "") === "dual-sqlite",
+      && String(checkpoint?.payload?.index?.store ?? "") === "dual-sqlite"
+      && Object.values(reanchor).every((value) => value === true)
+      && skillCoverage.ok
+      && skillCoverage.payload?.pass === true
+      && currentStateConsistency.ok
+      && currentStateConsistency.payload?.pass === true,
     details: {
       ...installDiagnostics(out),
       has_import_ok_line: includes(out.stdout, "artifact import: OK"),
@@ -321,6 +474,13 @@ function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       runtime_checkpoint_state_mode: checkpoint?.payload?.state_mode ?? null,
       runtime_checkpoint_index_store: checkpoint?.payload?.index?.store ?? null,
       runtime_checkpoint_stderr_tail: tail(checkpoint.stderr),
+      reanchor_artifacts: reanchor,
+      current_state_skill_coverage_ok: skillCoverage.ok,
+      current_state_skill_coverage_pass: skillCoverage.payload?.pass ?? false,
+      current_state_skill_coverage_stderr_tail: tail(skillCoverage.stderr),
+      current_state_consistency_ok: currentStateConsistency.ok,
+      current_state_consistency_pass: currentStateConsistency.payload?.pass ?? false,
+      current_state_consistency_stderr_tail: tail(currentStateConsistency.stderr),
     },
   };
 }
@@ -331,7 +491,11 @@ function checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
+  const installedSkillsRoot = path.join(target, ".codex", "skills");
   const config = readConfigSafe(configPath);
+  const reanchor = collectReanchorArtifactDetails(target);
+  const skillCoverage = runCurrentStateSkillCoverageJson(repoRoot, installedSkillsRoot);
+  const currentStateConsistency = runCurrentStateConsistencyJson(repoRoot, target);
   return {
     name: "explicit_skip_artifact_import",
     target_root: target,
@@ -340,7 +504,12 @@ function checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       && !fs.existsSync(indexJson)
       && !fs.existsSync(indexSqlite)
       && fs.existsSync(configPath)
-      && String(config?.runtime?.stateMode ?? "") === "dual",
+      && String(config?.runtime?.stateMode ?? "") === "dual"
+      && Object.values(reanchor).every((value) => value === true)
+      && skillCoverage.ok
+      && skillCoverage.payload?.pass === true
+      && currentStateConsistency.ok
+      && currentStateConsistency.payload?.pass === true,
     details: {
       ...installDiagnostics(out),
       has_skip_line: includes(out.stdout, "artifact import skipped: explicit --skip-artifact-import"),
@@ -348,6 +517,13 @@ function checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       index_sqlite_exists: fs.existsSync(indexSqlite),
       config_exists: fs.existsSync(configPath),
       config_runtime_state_mode: config?.runtime?.stateMode ?? null,
+      reanchor_artifacts: reanchor,
+      current_state_skill_coverage_ok: skillCoverage.ok,
+      current_state_skill_coverage_pass: skillCoverage.payload?.pass ?? false,
+      current_state_skill_coverage_stderr_tail: tail(skillCoverage.stderr),
+      current_state_consistency_ok: currentStateConsistency.ok,
+      current_state_consistency_pass: currentStateConsistency.payload?.pass ?? false,
+      current_state_consistency_stderr_tail: tail(currentStateConsistency.stderr),
     },
   };
 }

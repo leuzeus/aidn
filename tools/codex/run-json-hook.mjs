@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from "node:fs";
 import path from "node:path";
 import { createCodexAgentAdapter } from "../../src/adapters/codex/codex-agent-adapter.mjs";
 import { createHookContextStoreAdapter } from "../../src/adapters/codex/hook-context-store-adapter.mjs";
@@ -107,6 +108,30 @@ function printUsage() {
   console.log("  npx aidn codex run-json-hook --skill close-session --mode COMMITTING --target . --fail-on-repair-block");
 }
 
+function printRuntimeDigestHint(targetRoot, repairLayerStatus) {
+  const status = String(repairLayerStatus ?? "").trim().toLowerCase();
+  if (!["warn", "block"].includes(status)) {
+    return;
+  }
+  const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
+  if (!fs.existsSync(runtimeStateFile)) {
+    return;
+  }
+  console.log("Runtime digest: docs/audit/RUNTIME-STATE.md");
+}
+
+function printCurrentStateStaleHint(targetRoot) {
+  const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
+  if (!fs.existsSync(runtimeStateFile)) {
+    return;
+  }
+  const text = fs.readFileSync(runtimeStateFile, "utf8");
+  if (!text.includes("current_state_freshness: stale")) {
+    return;
+  }
+  console.log("Current state stale: docs/audit/CURRENT-STATE.md");
+}
+
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -134,6 +159,8 @@ function main() {
         if (output.repair_layer_advice) {
           console.log(`Repair advice: ${output.repair_layer_advice}`);
         }
+        printRuntimeDigestHint(targetRoot, output.repair_layer_status);
+        printCurrentStateStaleHint(targetRoot);
       }
       console.log(`Context file: ${output.context_file}`);
     }

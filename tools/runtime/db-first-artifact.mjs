@@ -124,7 +124,10 @@ export function inferFamily(relPath, explicitFamily) {
   const normative = new Set([
     "SPEC.md",
     "WORKFLOW.md",
+    "WORKFLOW-KERNEL.md",
     "WORKFLOW_SUMMARY.md",
+    "CURRENT-STATE.md",
+    "RUNTIME-STATE.md",
     "baseline/current.md",
     "baseline/history.md",
     "snapshots/context-snapshot.md",

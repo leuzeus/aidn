@@ -1,7 +1,7 @@
 # Baseline (current)
 
 baseline: v0.2
-source_branch: {{SOURCE_BRANCH}}
+source_branch: dev
 migration_branch: (set if migrating workflow)
 date: 2026-03-01
 

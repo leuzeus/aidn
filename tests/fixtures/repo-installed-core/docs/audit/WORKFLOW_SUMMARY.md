@@ -1,16 +1,25 @@
 # Workflow Summary (Quick Reload)
 
-Purpose: fast operational reload before reading full `docs/audit/WORKFLOW.md`.
+Purpose: fast operational reload after the minimal re-anchor path.
 
 Canonical precedence:
 - `docs/audit/SPEC.md` (canonical mechanics)
 - `docs/audit/WORKFLOW.md` (project adapter, local extensions)
 - `AGENTS.md` (execution contract)
 
-Read order for session start:
-1. `docs/audit/SPEC.md` (Rule Index + start/commit/close gates)
-2. `docs/audit/WORKFLOW_SUMMARY.md` (this page)
-3. `docs/audit/WORKFLOW.md` (full local policy details)
+Minimal re-anchor path:
+1. `docs/audit/CURRENT-STATE.md`
+2. `docs/audit/WORKFLOW-KERNEL.md`
+3. `docs/audit/WORKFLOW_SUMMARY.md` (this page)
+4. `docs/audit/RUNTIME-STATE.md` when runtime freshness or repair signals matter
+
+Detailed read order when more context is needed:
+1. `docs/audit/CURRENT-STATE.md`
+2. `docs/audit/WORKFLOW-KERNEL.md`
+3. `docs/audit/WORKFLOW_SUMMARY.md`
+4. `docs/audit/RUNTIME-STATE.md`
+5. `docs/audit/WORKFLOW.md`
+6. `docs/audit/SPEC.md` (Rule Index + canonical rule details)
 
 ## Branch Model
 - `source`: configured source branch (reload/reference branch; never cycle ownership)
@@ -23,6 +32,7 @@ Read order for session start:
 Session start:
 - Run `context-reload` then `start-session` (`SPEC-R01`)
 - If mode is COMMITTING: run `branch-cycle-audit` and ensure valid branch ownership mapping (`SPEC-R03`)
+- If runtime state mode is `dual`/`db-only`: run skill perf hooks in strict mode (DB-backed checks are mandatory)
 
 Committing execution:
 - Work must belong to a cycle (`SPEC-R03`)
@@ -33,6 +43,7 @@ Committing execution:
 Session close:
 - Resolve each open attached cycle explicitly (`integrate-to-session` | `report` | `close-non-retained` | `cancel-close`) (`SPEC-R07`)
 - Run `close-session`
+- In `dual`/`db-only`, session close MUST execute DB-backed constraint chain (`constraint-report -> thresholds -> actions -> history -> trend -> lot-plan -> summaries`)
 
 Merge/review:
 - Codex review threads triaged with evidence (`SPEC-R08`)
@@ -46,13 +57,17 @@ Incident handling:
 - Branch mapping ambiguous/unmapped in COMMITTING
 - Structural/architecture, DB schema, security, or medium/high-impact CR without explicit decision
 - Contradictory requirements requiring arbitration
+- Missing mode, active cycle, `dor_state`, or first implementation step before durable write in `COMMITTING`
 
 ## State vs Rule Boundary
 - Rules live in `SPEC.md` and adapter extensions in `WORKFLOW.md`.
 - State files (`snapshot`, `baseline`, `cycles/*/status.md`, `sessions`) stay declarative and reference canonical rules.
 
 ## Next Entry Checklist
+- Confirm `CURRENT-STATE.md` freshness
+- Confirm `RUNTIME-STATE.md.current_state_freshness` when available
 - Confirm current branch kind
 - Confirm active cycle/session mapping
 - Confirm snapshot freshness
 - Confirm intended mode and required gates
+- Confirm first implementation step before durable write

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflowHookUseCase } from "../../src/application/runtime/workflow-hook-use-case.mjs";
@@ -155,6 +156,18 @@ function printUsage() {
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --constraint-loop-strict");
 }
 
+function printRuntimeDigestHint(targetRoot, repairLayerStatus) {
+  const status = String(repairLayerStatus ?? "").trim().toLowerCase();
+  if (!["warn", "block"].includes(status)) {
+    return;
+  }
+  const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
+  if (!fs.existsSync(runtimeStateFile)) {
+    return;
+  }
+  console.log("Runtime digest: docs/audit/RUNTIME-STATE.md");
+}
+
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -187,6 +200,13 @@ function main() {
       const repairLayerOpenCount = Number(output.summary?.repair_layer_open_count ?? 0);
       if (repairLayerOpenCount > 0) {
         console.log(`Repair findings: ${repairLayerOpenCount} open${output.summary?.repair_layer_blocking ? " (blocking)" : ""}`);
+        if (output.summary?.repair_layer_status) {
+          console.log(`Repair status: ${output.summary.repair_layer_status}`);
+        }
+        if (output.summary?.repair_layer_advice) {
+          console.log(`Repair advice: ${output.summary.repair_layer_advice}`);
+        }
+        printRuntimeDigestHint(targetRoot, output.summary?.repair_layer_status);
       }
     }
     if (output.checkpoint_error && !args.strict) {

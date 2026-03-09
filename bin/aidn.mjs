@@ -92,6 +92,7 @@ const CODEX_ALIASES = {
 const RUNTIME_ALIASES = {
   "artifact-store": { file: "artifact-store.mjs" },
   "db-first-artifact": { file: "db-first-artifact.mjs" },
+  "project-runtime-state": { file: "project-runtime-state.mjs" },
   "sync-db-first": { file: "sync-db-first.mjs" },
   "sync-db-first-selective": { file: "sync-db-first-selective.mjs" },
   "mode-migrate": { file: "mode-migrate.mjs" },
@@ -106,6 +107,7 @@ function printUsage() {
   console.log("  aidn perf session-start --target ../repo --mode COMMITTING --json");
   console.log("  aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json");
   console.log("  aidn runtime sync-db-first-selective --target . --json");
+  console.log("  aidn runtime project-runtime-state --target . --json");
   console.log("");
   console.log("Perf subcommands:");
   console.log(`  ${Object.keys(PERF_ALIASES).sort().join(", ")}`);

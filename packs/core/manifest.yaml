@@ -29,7 +29,12 @@ verify:
     - AGENTS.md
     - docs/audit/SPEC.md
     - docs/audit/WORKFLOW.md
+    - docs/audit/WORKFLOW-KERNEL.md
     - docs/audit/WORKFLOW_SUMMARY.md
+    - docs/audit/CURRENT-STATE.md
+    - docs/audit/RUNTIME-STATE.md
+    - docs/audit/REANCHOR_PROMPT.md
+    - docs/audit/ARTIFACT_MANIFEST.md
     - docs/audit/CONTINUITY_GATE.md
     - docs/audit/RULE_STATE_BOUNDARY.md
     - docs/audit/incidents/TEMPLATE_INC_TMP.md

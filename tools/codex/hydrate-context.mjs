@@ -1,7 +1,9 @@
 #!/usr/bin/env node
+import fs from "node:fs";
 import path from "node:path";
 import { createHookContextStoreAdapter } from "../../src/adapters/codex/hook-context-store-adapter.mjs";
 import { runHydrateContextUseCase } from "../../src/application/codex/hydrate-context-use-case.mjs";
+import { projectRuntimeState } from "../runtime/project-runtime-state.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -17,6 +19,8 @@ function parseArgs(argv) {
     minRelationConfidence: 0.65,
     relationThresholds: {},
     allowAmbiguousLinks: false,
+    projectRuntimeState: null,
+    runtimeStateOut: "docs/audit/RUNTIME-STATE.md",
     json: false,
   };
 
@@ -61,6 +65,13 @@ function parseArgs(argv) {
       args.relationThresholds[key] = n;
     } else if (token === "--allow-ambiguous-links") {
       args.allowAmbiguousLinks = true;
+    } else if (token === "--project-runtime-state") {
+      args.projectRuntimeState = true;
+    } else if (token === "--no-project-runtime-state") {
+      args.projectRuntimeState = false;
+    } else if (token === "--runtime-state-out") {
+      args.runtimeStateOut = String(argv[i + 1] ?? "").trim();
+      i += 1;
     } else if (token === "--no-artifacts") {
       args.includeArtifacts = false;
     } else if (token === "--json") {
@@ -93,10 +104,27 @@ function parseArgs(argv) {
   return args;
 }
 
+function shouldProjectRuntimeState(args, hydrated, targetRoot) {
+  if (args.projectRuntimeState === true) {
+    return true;
+  }
+  if (args.projectRuntimeState === false) {
+    return false;
+  }
+  const stateMode = String(hydrated?.state_mode ?? "").trim().toLowerCase();
+  if (!["dual", "db-only"].includes(stateMode)) {
+    return false;
+  }
+  const runtimeStateFile = path.resolve(targetRoot, args.runtimeStateOut);
+  return fs.existsSync(runtimeStateFile);
+}
+
 function printUsage() {
   console.log("Usage:");
   console.log("  npx aidn codex hydrate-context --target . --json");
   console.log("  npx aidn codex hydrate-context --target . --skill context-reload --history-limit 10");
+  console.log("  npx aidn codex hydrate-context --target . --skill start-session --project-runtime-state --json");
+  console.log("  npx aidn codex hydrate-context --target . --skill context-reload --no-project-runtime-state --json");
   console.log("  npx aidn codex hydrate-context --target . --relation-threshold attached_cycle=0.35 --allow-ambiguous-links --json");
 }
 
@@ -110,6 +138,21 @@ function main() {
       hookContextStore,
       targetRoot,
     });
+    let runtimeState = null;
+    if (shouldProjectRuntimeState(args, hydrated, targetRoot)) {
+      runtimeState = projectRuntimeState({
+        targetRoot,
+        hydratedFile: args.out,
+        contextFile: args.contextFile,
+        out: args.runtimeStateOut,
+      });
+      hydrated.runtime_state = {
+        output_file: runtimeState.output_file,
+        written: runtimeState.written,
+        digest: runtimeState.digest,
+        mode: args.projectRuntimeState === true ? "forced" : "auto",
+      };
+    }
 
     if (args.json) {
       console.log(JSON.stringify(hydrated, null, 2));
@@ -117,6 +160,9 @@ function main() {
       console.log(`Hydrated context: state_mode=${hydrated.state_mode} history=${hydrated.recent_history.length} artifacts=${hydrated.artifacts.length}`);
       if (hydrated.output_file) {
         console.log(`Output: ${hydrated.output_file}`);
+      }
+      if (runtimeState?.output_file) {
+        console.log(`Runtime state: ${runtimeState.output_file}`);
       }
     }
   } catch (error) {

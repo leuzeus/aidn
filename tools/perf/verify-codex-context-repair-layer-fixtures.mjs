@@ -44,6 +44,18 @@ function runJson(script, scriptArgs, env = {}) {
   return JSON.parse(stdout);
 }
 
+function runNoJson(script, scriptArgs, env = {}) {
+  const file = path.resolve(process.cwd(), script);
+  execFileSync(process.execPath, [file, ...scriptArgs], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    env: {
+      ...process.env,
+      ...env,
+    },
+  });
+}
+
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
@@ -69,6 +81,13 @@ function main() {
     const target = path.join(tempRoot, "repo");
     fs.cpSync(sourceTarget, target, { recursive: true });
     fs.rmSync(path.join(target, ".aidn"), { recursive: true, force: true });
+    runNoJson("tools/install.mjs", [
+      "--target",
+      target,
+      "--pack",
+      "core",
+      "--force-agents-merge",
+    ]);
 
     runJson("tools/perf/index-sync.mjs", [
       "--target",
@@ -111,6 +130,10 @@ function main() {
       "close-session",
       "--json",
     ], env);
+    const runtimeStateFile = path.join(target, "docs", "audit", "RUNTIME-STATE.md");
+    const runtimeStateText = fs.existsSync(runtimeStateFile)
+      ? fs.readFileSync(runtimeStateFile, "utf8")
+      : "";
 
     const decision = hydrated?.decisions?.["close-session"] ?? {};
     const recentHistory = Array.isArray(hydrated?.recent_history) ? hydrated.recent_history : [];
@@ -134,6 +157,13 @@ function main() {
         && decision.repair_layer_top_findings.length >= 1,
       hydrate_history_open_count_present: Number(latestHistory?.repair_layer_open_count ?? 0) >= 1,
       parity_context_hydrate_count: Number(latestEntry?.repair_layer_open_count ?? -1) === Number(decision?.repair_layer_open_count ?? -2),
+      hydrate_runtime_state_present: hydrated?.runtime_state && typeof hydrated.runtime_state === "object",
+      hydrate_runtime_state_status_present: ["warn", "block"].includes(String(hydrated?.runtime_state?.digest?.repair_layer_status ?? "")),
+      hydrate_runtime_state_matches_decision: String(hydrated?.runtime_state?.digest?.repair_layer_status ?? "")
+        === String(decision?.repair_layer_status ?? ""),
+      hydrate_runtime_state_file_written: fs.existsSync(runtimeStateFile),
+      hydrate_runtime_state_markdown_mentions_status: runtimeStateText.includes(`repair_layer_status: ${String(decision?.repair_layer_status ?? "")}`),
+      hydrate_runtime_state_markdown_mentions_advice: runtimeStateText.includes(`repair_layer_advice: ${String(decision?.repair_layer_advice ?? "")}`),
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {
@@ -155,6 +185,11 @@ function main() {
           repair_layer_open_count: decision?.repair_layer_open_count ?? null,
           repair_layer_status: decision?.repair_layer_status ?? null,
           top_finding: decision?.repair_layer_top_findings?.[0] ?? null,
+        },
+        hydrated_runtime_state: {
+          output_file: hydrated?.runtime_state?.output_file ?? null,
+          repair_layer_status: hydrated?.runtime_state?.digest?.repair_layer_status ?? null,
+          top_finding: hydrated?.runtime_state?.digest?.blocking_findings?.[0] ?? null,
         },
       },
       pass,

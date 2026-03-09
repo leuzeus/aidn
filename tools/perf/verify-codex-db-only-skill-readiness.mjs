@@ -71,6 +71,39 @@ function parseSkillsYaml(filePath) {
   return skills;
 }
 
+function resolveSkillsLayout(root) {
+  const rootSkillsYaml = path.join(root, "skills.yaml");
+  const nestedSkillsYaml = path.join(root, ".codex", "skills.yaml");
+  const nestedSkillsDir = path.join(root, ".codex", "skills");
+  const siblingSkillsYaml = path.join(path.dirname(root), "skills.yaml");
+
+  if (fs.existsSync(rootSkillsYaml)) {
+    const skillsDir = fs.existsSync(path.join(root, "skills"))
+      ? path.join(root, "skills")
+      : root;
+    return {
+      skillsYaml: rootSkillsYaml,
+      skillsDir,
+    };
+  }
+
+  if (fs.existsSync(nestedSkillsYaml) && fs.existsSync(nestedSkillsDir)) {
+    return {
+      skillsYaml: nestedSkillsYaml,
+      skillsDir: nestedSkillsDir,
+    };
+  }
+
+  if (fs.existsSync(siblingSkillsYaml)) {
+    return {
+      skillsYaml: siblingSkillsYaml,
+      skillsDir: root,
+    };
+  }
+
+  throw new Error(`Missing skills.yaml under ${root}`);
+}
+
 function checkPatterns(file, text, patterns) {
   const missingPatterns = patterns.filter((pattern) => !text.includes(pattern));
   return {
@@ -85,13 +118,17 @@ function main() {
     const args = parseArgs(process.argv.slice(2));
     const root = path.resolve(process.cwd(), args.root);
     const agentsFile = path.resolve(process.cwd(), args.agents);
-    const skillsYaml = path.resolve(root, "skills.yaml");
+    const layout = resolveSkillsLayout(root);
+    const skillsYaml = layout.skillsYaml;
+    const skillsDir = layout.skillsDir;
     const skills = parseSkillsYaml(skillsYaml);
 
     const commonPatterns = [
       "hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill ",
+      "--project-runtime-state --json`",
       "`repair_layer_status`",
       "`repair_layer_advice`",
+      "`docs/audit/RUNTIME-STATE.md`",
       "npx aidn runtime repair-layer-triage --target . --json",
     ];
     const mutatingPatterns = [
@@ -101,7 +138,7 @@ function main() {
     ];
 
     const skillChecks = skills.map((skill) => {
-      const file = path.resolve(root, skill, "SKILL.md");
+      const file = path.resolve(skillsDir, skill, "SKILL.md");
       if (!fs.existsSync(file)) {
         return {
           skill,
@@ -128,9 +165,10 @@ function main() {
 
     const agentsText = readRequired(agentsFile);
     const agentsCheck = checkPatterns(agentsFile, agentsText, [
-      "npx aidn codex hydrate-context --target . --skill <skill> --json",
+      "npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json",
       "`repair_layer_status`",
       "`repair_layer_advice`",
+      "`docs/audit/RUNTIME-STATE.md`",
       "npx aidn runtime repair-layer-triage --target . --json",
       "npx aidn runtime repair-layer-autofix --target . --apply --json",
       "--fail-on-repair-block",
@@ -141,6 +179,7 @@ function main() {
       ts: new Date().toISOString(),
       root,
       skills_yaml: skillsYaml,
+      skills_dir: skillsDir,
       agents_file: agentsFile,
       skill_checks: skillChecks,
       agents_check: agentsCheck,
@@ -152,6 +191,7 @@ function main() {
     } else {
       console.log(`Root: ${root}`);
       console.log(`Skills YAML: ${skillsYaml}`);
+      console.log(`Skills Dir: ${skillsDir}`);
       for (const item of skillChecks) {
         console.log(`${item.ok ? "PASS" : "FAIL"} ${item.skill} -> ${item.file}`);
         if (!item.ok && item.missing_patterns.length > 0) {

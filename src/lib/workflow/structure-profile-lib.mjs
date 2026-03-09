@@ -149,6 +149,9 @@ export function detectStructureProfile(auditRoot) {
     optional_tracked_artifacts: [
       "SPEC.md",
       "WORKFLOW_SUMMARY.md",
+      "WORKFLOW-KERNEL.md",
+      "CURRENT-STATE.md",
+      "RUNTIME-STATE.md",
       "CONTINUITY_GATE.md",
     ],
     signals,

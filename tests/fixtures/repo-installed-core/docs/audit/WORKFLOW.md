@@ -7,9 +7,12 @@ Its role is to reduce local ambiguity and keep AI behavior stable.
 
 ## Recommended Read Order (Fast Reload)
 
-1. `docs/audit/SPEC.md`
-2. `docs/audit/WORKFLOW_SUMMARY.md`
-3. `docs/audit/WORKFLOW.md`
+1. `docs/audit/CURRENT-STATE.md`
+2. `docs/audit/WORKFLOW-KERNEL.md`
+3. `docs/audit/WORKFLOW_SUMMARY.md`
+4. `docs/audit/RUNTIME-STATE.md` when runtime freshness or repair signals matter
+5. `docs/audit/WORKFLOW.md`
+6. `docs/audit/SPEC.md` only when a canonical rule must be checked precisely
 
 ## Canonical Rule References
 
@@ -33,30 +36,30 @@ Adapter rules in this file extend (but do not redefine) canonical mechanics from
 
 ```yaml
 workflow_product: aidn-workflow
-workflow_version: {{VERSION}}
+workflow_version: 0.3.0
 installed_pack: core
-project_name: {{PROJECT_NAME}}
-source_branch: {{SOURCE_BRANCH}}
+project_name: repo-installed-core
+source_branch: dev
 ```
 
 ## Project Constraints
 
-- Runtime/platform constraints: `{{RUNTIME_CONSTRAINTS}}`
-- Architecture constraints: `{{ARCH_CONSTRAINTS}}`
-- Dependency/data constraints: `{{DEPENDENCY_CONSTRAINTS}}`
-- Delivery constraints (CI/release/compliance): `{{DELIVERY_CONSTRAINTS}}`
-- Generated artifact constraints: `{{GENERATED_ARTIFACT_CONSTRAINTS}}`
-- Testing/regression constraints: `{{TEST_REGRESSION_CONSTRAINTS}}`
+- Runtime/platform constraints: `TO_DEFINE`
+- Architecture constraints: `TO_DEFINE`
+- Dependency/data constraints: `TO_DEFINE`
+- Delivery constraints (CI/release/compliance): `TO_DEFINE`
+- Generated artifact constraints: `TO_DEFINE`
+- Testing/regression constraints: `TO_DEFINE`
 
 ## Branch & Cycle Policy
 
-- Source branch: `{{SOURCE_BRANCH}}`
+- Source branch: `dev`
 - Source branch classification: `source` (reload/reference branch only; never a cycle ownership branch).
 - Session branch naming: `SXXX-<short-slug>`
 - Cycle branch naming: `<cycle-type>/CXXX-<slug>`
 - Intermediate branch naming: `<cycle-type>/CXXX-I##-<slug>`
 - Allowed cycle types: `feature | hotfix | spike | refactor | structural | migration | security | perf | integration | compat | corrective`
-- DoR policy: `{{DOR_POLICY}}`
+- DoR policy: `TO_DEFINE`
 
 ### Session Start Branch Base Gate (Mandatory, adapter extension to `SPEC-R01`/`SPEC-R03`)
 
@@ -87,9 +90,9 @@ source_branch: {{SOURCE_BRANCH}}
 ### Dev Branch Alignment Gate (Mandatory, adapter extension to `SPEC-R09`)
 
 - After PR merge and before opening a new session branch:
-  - `git switch {{SOURCE_BRANCH}}`
-  - `git fetch origin {{SOURCE_BRANCH}}`
-  - `git rev-list --left-right --count {{SOURCE_BRANCH}}...origin/{{SOURCE_BRANCH}}`
+  - `git switch dev`
+  - `git fetch origin dev`
+  - `git rev-list --left-right --count dev...origin/dev`
 - Require `0 0` divergence before continuing.
 
 ### Post-Merge Reconciliation Gate (Mandatory, adapter extension to `SPEC-R09`)
@@ -123,13 +126,17 @@ source_branch: {{SOURCE_BRANCH}}
 
 ## Snapshot Discipline
 
-- Snapshot update trigger: `{{SNAPSHOT_TRIGGER}}`
-- Snapshot owner: `{{SNAPSHOT_OWNER}}`
-- Freshness rule before commit/review: `{{SNAPSHOT_FRESHNESS_RULE}}`
-- Parking lot rule for non-essential ideas (entropy isolation): `{{PARKING_LOT_RULE}}`
+- Snapshot update trigger: `TO_DEFINE`
+- Snapshot owner: `TO_DEFINE`
+- Freshness rule before commit/review: `TO_DEFINE`
+- Parking lot rule for non-essential ideas (entropy isolation): `TO_DEFINE`
+- If context is partial or stale after restart/window switch, run `docs/audit/REANCHOR_PROMPT.md` before any durable write.
 
 ## Local Paths
 
+- Current state: `docs/audit/CURRENT-STATE.md`
+- Runtime digest: `docs/audit/RUNTIME-STATE.md`
+- Workflow kernel: `docs/audit/WORKFLOW-KERNEL.md`
 - Spec snapshot: `docs/audit/SPEC.md`
 - Baseline: `docs/audit/baseline/current.md`
 - Snapshot: `docs/audit/snapshots/context-snapshot.md`
@@ -137,6 +144,8 @@ source_branch: {{SOURCE_BRANCH}}
 - Continuity guide: `docs/audit/CONTINUITY_GATE.md`
 - Rule/state guide: `docs/audit/RULE_STATE_BOUNDARY.md`
 - Workflow summary: `docs/audit/WORKFLOW_SUMMARY.md`
+- Re-anchor prompt: `docs/audit/REANCHOR_PROMPT.md`
+- Artifact manifest: `docs/audit/ARTIFACT_MANIFEST.md`
 - Incidents: `docs/audit/incidents/`
 
 ## Warning

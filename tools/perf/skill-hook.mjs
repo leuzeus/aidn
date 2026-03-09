@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createLocalProcessAdapter } from "../../src/adapters/runtime/local-process-adapter.mjs";
@@ -70,6 +71,30 @@ function printUsage() {
   console.log("  node tools/perf/skill-hook.mjs --skill close-session --target . --mode COMMITTING --fail-on-repair-block");
 }
 
+function printRuntimeDigestHint(targetRoot, repairLayerStatus) {
+  const status = String(repairLayerStatus ?? "").trim().toLowerCase();
+  if (!["warn", "block"].includes(status)) {
+    return;
+  }
+  const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
+  if (!fs.existsSync(runtimeStateFile)) {
+    return;
+  }
+  console.log("Runtime digest: docs/audit/RUNTIME-STATE.md");
+}
+
+function printCurrentStateStaleHint(targetRoot) {
+  const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
+  if (!fs.existsSync(runtimeStateFile)) {
+    return;
+  }
+  const text = fs.readFileSync(runtimeStateFile, "utf8");
+  if (!text.includes("current_state_freshness: stale")) {
+    return;
+  }
+  console.log("Current state stale: docs/audit/CURRENT-STATE.md");
+}
+
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -93,6 +118,8 @@ function main() {
         if (out.repair_layer_advice) {
           console.log(`Repair advice: ${out.repair_layer_advice}`);
         }
+        printRuntimeDigestHint(targetRoot, out.repair_layer_status);
+        printCurrentStateStaleHint(targetRoot);
       }
     } else {
       console.warn(`Skill hook: WARN (${args.skill} -> ${out.tool}) ${out.error?.message ?? "unknown error"}`);

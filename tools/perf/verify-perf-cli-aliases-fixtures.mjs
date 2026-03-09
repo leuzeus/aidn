@@ -169,6 +169,7 @@ function main() {
     const indexThresholdsFile = path.resolve(targetRoot, args.indexThresholdsFile);
     const indexSyncReportPassFile = path.resolve(targetRoot, args.indexSyncReportPassFile);
     const indexSyncThresholdsFile = path.resolve(targetRoot, args.indexSyncThresholdsFile);
+    const runtimeStateAliasFile = path.resolve(targetRoot, ".aidn/runtime/context/fixtures/cli-aliases/runtime-state-alias.md");
 
     runNodeNoJson(aidnCli, [
       "perf",
@@ -489,6 +490,16 @@ function main() {
       "--json",
     ], targetRoot);
 
+    const runtimeStateAlias = runNodeWithJson(aidnCli, [
+      "runtime",
+      "project-runtime-state",
+      "--target",
+      ".",
+      "--out",
+      runtimeStateAliasFile,
+      "--json",
+    ], targetRoot);
+
     const constraintSummaryContainsActive = fs.existsSync(constraintSummaryFile)
       && fs.readFileSync(constraintSummaryFile, "utf8").includes("Active constraint:");
     const constraintSummaryContainsActions = fs.existsSync(constraintSummaryFile)
@@ -524,6 +535,8 @@ function main() {
       && typeof fallbackThresholds?.summary?.overall_status === "string"
       && typeof indexThresholds?.summary?.overall_status === "string"
       && typeof indexSyncThresholds?.summary?.overall_status === "string"
+      && typeof runtimeStateAlias?.digest?.runtime_state_mode === "string"
+      && typeof runtimeStateAlias?.digest?.current_state_freshness === "string"
       && fs.existsSync(sqliteFile)
       && fs.existsSync(canonicalCheckFile)
       && fs.existsSync(canonicalSummaryFile)
@@ -543,7 +556,8 @@ function main() {
       && fs.existsSync(fallbackReportFile)
       && fs.existsSync(fallbackThresholdsFile)
       && fs.existsSync(indexThresholdsFile)
-      && fs.existsSync(indexSyncThresholdsFile);
+      && fs.existsSync(indexSyncThresholdsFile)
+      && fs.existsSync(runtimeStateAliasFile);
 
     const payload = {
       ts: new Date().toISOString(),
@@ -597,6 +611,8 @@ function main() {
         fallback_thresholds_status: fallbackThresholds?.summary?.overall_status ?? null,
         index_thresholds_status: indexThresholds?.summary?.overall_status ?? null,
         index_sync_thresholds_status: indexSyncThresholds?.summary?.overall_status ?? null,
+        runtime_state_alias_mode: runtimeStateAlias?.digest?.runtime_state_mode ?? null,
+        runtime_state_alias_freshness: runtimeStateAlias?.digest?.current_state_freshness ?? null,
       },
       pass,
     };

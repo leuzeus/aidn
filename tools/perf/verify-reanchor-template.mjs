@@ -1,0 +1,138 @@
+#!/usr/bin/env node
+import fs from "node:fs";
+import path from "node:path";
+
+function parseArgs(argv) {
+  const args = {
+    root: ".",
+    json: false,
+  };
+  for (let i = 0; i < argv.length; i += 1) {
+    const token = argv[i];
+    if (token === "--root") {
+      args.root = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--json") {
+      args.json = true;
+    } else if (token === "--help" || token === "-h") {
+      printUsage();
+      process.exit(0);
+    } else {
+      throw new Error(`Unknown argument: ${token}`);
+    }
+  }
+  if (!args.root) {
+    throw new Error("Missing --root");
+  }
+  return args;
+}
+
+function printUsage() {
+  console.log("Usage:");
+  console.log("  node tools/perf/verify-reanchor-template.mjs");
+  console.log("  node tools/perf/verify-reanchor-template.mjs --root . --json");
+}
+
+function exists(filePath) {
+  return fs.existsSync(filePath);
+}
+
+function readText(filePath) {
+  return fs.readFileSync(filePath, "utf8");
+}
+
+function main() {
+  try {
+    const args = parseArgs(process.argv.slice(2));
+    const root = path.resolve(process.cwd(), args.root);
+
+    const files = {
+      kernel: path.join(root, "template", "docs_audit", "WORKFLOW-KERNEL.md"),
+      currentState: path.join(root, "template", "docs_audit", "CURRENT-STATE.md"),
+      runtimeState: path.join(root, "template", "docs_audit", "RUNTIME-STATE.md"),
+      reanchorPrompt: path.join(root, "template", "docs_audit", "REANCHOR_PROMPT.md"),
+      artifactManifest: path.join(root, "template", "docs_audit", "ARTIFACT_MANIFEST.md"),
+      workflowSummary: path.join(root, "template", "docs_audit", "WORKFLOW_SUMMARY.md"),
+      projectWorkflow: path.join(root, "template", "docs_audit", "PROJECT_WORKFLOW.md"),
+      index: path.join(root, "template", "docs_audit", "index.md"),
+      agents: path.join(root, "template", "root", "AGENTS.md"),
+      codexOnline: path.join(root, "template", "codex", "README_CodexOnline.md"),
+    };
+
+    const missingFiles = Object.values(files).filter((filePath) => !exists(filePath));
+
+    const workflowSummaryText = exists(files.workflowSummary) ? readText(files.workflowSummary) : "";
+    const projectWorkflowText = exists(files.projectWorkflow) ? readText(files.projectWorkflow) : "";
+    const indexText = exists(files.index) ? readText(files.index) : "";
+    const agentsText = exists(files.agents) ? readText(files.agents) : "";
+    const codexOnlineText = exists(files.codexOnline) ? readText(files.codexOnline) : "";
+    const currentStateText = exists(files.currentState) ? readText(files.currentState) : "";
+    const runtimeStateText = exists(files.runtimeState) ? readText(files.runtimeState) : "";
+
+    const checks = {
+      workflow_kernel_present: exists(files.kernel),
+      current_state_present: exists(files.currentState),
+      runtime_state_present: exists(files.runtimeState),
+      reanchor_prompt_present: exists(files.reanchorPrompt),
+      artifact_manifest_present: exists(files.artifactManifest),
+      summary_references_kernel: workflowSummaryText.includes("WORKFLOW-KERNEL.md"),
+      summary_references_current_state: workflowSummaryText.includes("CURRENT-STATE.md"),
+      summary_references_runtime_state: workflowSummaryText.includes("RUNTIME-STATE.md"),
+      project_workflow_references_kernel: projectWorkflowText.includes("WORKFLOW-KERNEL.md"),
+      project_workflow_references_current_state: projectWorkflowText.includes("CURRENT-STATE.md"),
+      project_workflow_references_reanchor_prompt: projectWorkflowText.includes("REANCHOR_PROMPT.md"),
+      index_references_kernel: indexText.includes("WORKFLOW-KERNEL.md"),
+      index_references_current_state: indexText.includes("CURRENT-STATE.md"),
+      index_references_runtime_state: indexText.includes("RUNTIME-STATE.md"),
+      index_references_manifest: indexText.includes("ARTIFACT_MANIFEST.md"),
+      agents_references_kernel: agentsText.includes("WORKFLOW-KERNEL.md"),
+      agents_references_current_state: agentsText.includes("CURRENT-STATE.md"),
+      agents_references_runtime_state: agentsText.includes("RUNTIME-STATE.md"),
+      agents_references_reanchor_prompt: agentsText.includes("REANCHOR_PROMPT.md"),
+      agents_has_pre_write_gate: agentsText.includes("## Pre-Write Gate (MANDATORY)"),
+      agents_mentions_apply_patch: agentsText.includes("`apply_patch`"),
+      current_state_references_manifest: currentStateText.includes("ARTIFACT_MANIFEST.md"),
+      current_state_references_runtime_state: currentStateText.includes("RUNTIME-STATE.md"),
+      runtime_state_mentions_freshness: runtimeStateText.includes("current_state_freshness"),
+      codex_online_references_kernel: codexOnlineText.includes("WORKFLOW-KERNEL.md"),
+      codex_online_references_current_state: codexOnlineText.includes("CURRENT-STATE.md"),
+      codex_online_references_runtime_state: codexOnlineText.includes("RUNTIME-STATE.md"),
+      codex_online_references_reanchor_prompt: codexOnlineText.includes("REANCHOR_PROMPT.md"),
+      codex_online_mentions_apply_patch: codexOnlineText.includes("`apply_patch`"),
+      codex_online_mentions_durable_write: codexOnlineText.includes("durable write"),
+    };
+
+    const pass = missingFiles.length === 0
+      && Object.values(checks).every((value) => value === true);
+
+    const output = {
+      ts: new Date().toISOString(),
+      root,
+      files,
+      missing_files: missingFiles,
+      checks,
+      pass,
+    };
+
+    if (args.json) {
+      console.log(JSON.stringify(output, null, 2));
+    } else {
+      console.log(`Root: ${root}`);
+      console.log(`Missing files: ${missingFiles.length}`);
+      for (const [key, value] of Object.entries(checks)) {
+        console.log(`- ${key}: ${value ? "yes" : "no"}`);
+      }
+      console.log(`Result: ${pass ? "PASS" : "FAIL"}`);
+    }
+
+    if (!pass) {
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error(`ERROR: ${error.message}`);
+    printUsage();
+    process.exit(1);
+  }
+}
+
+main();

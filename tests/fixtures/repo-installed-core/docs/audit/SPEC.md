@@ -104,6 +104,10 @@ At the **start of every session**, the following MUST occur in order:
     - If current branch is `session`, it MUST map to one active session file and declare integration intent
     - If mapping fails: **STOP** and remediate before proceeding
 
+5. **Runtime state gate (`files|dual|db-only`)**
+    - If runtime state mode is `dual` or `db-only`, performance skill hooks are mandatory and blocking (strict behavior).
+    - In `dual` or `db-only`, workflow checks MUST use DB-backed execution path; file-only fallback is not a valid primary path.
+
 Failure to complete these steps invalidates the session.
 
 ------------------------------------------------------------
@@ -235,6 +239,10 @@ Before ending a session:
 3. **Run skill: `close-session`**
     - Finalize session notes
     - Update snapshot pointers
+4. **If runtime state mode is `dual` or `db-only`**
+    - Session close MUST execute DB-backed constraint orchestration chain:
+      `constraint-report -> thresholds -> actions -> history -> trend -> lot-plan -> summaries`
+    - Disabling this chain is not allowed in `dual`/`db-only`.
 
 A session close with unresolved attached open cycles is invalid.
 
