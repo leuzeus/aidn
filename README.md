@@ -95,16 +95,19 @@ Codex instruction layering after install:
 ```bash
 npm install --save-dev github:leuzeus/aidn#dev
 npx aidn install --target ../client --pack core
+npx aidn install --target ../client --pack core --source-branch main
 npx aidn install --target ../client --pack core --verify
 ```
 
 Notes:
 - install creates or updates the project-layer `AGENTS.md`; it does not write `~/.codex/AGENTS.md`
+- install can set workflow adapter metadata explicitly with `--source-branch <name>`
 - install auto-imports `docs/audit/*` artifacts into `../client/.aidn/runtime/index/*`
 - import backend precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE`
 - default fresh install profile is DB-backed (`runtime.stateMode=dual`, `install.artifactImportStore=dual-sqlite`)
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
+- `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 

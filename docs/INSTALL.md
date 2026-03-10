@@ -60,6 +60,12 @@ Install using workflow defaults (all packs listed in `package/manifests/workflow
 npx aidn install --target .
 ```
 
+Install with explicit source branch metadata:
+
+```bash
+npx aidn install --target . --pack core --source-branch main
+```
+
 Windows example:
 
 ```powershell
@@ -99,9 +105,11 @@ Notes:
 - `aidn` installs and maintains only the project layer; it does not write to `~/.codex`.
 - Placeholder policy:
   - installer resolves placeholders across copied templates (not only `{{VERSION}}`),
+  - `SOURCE_BRANCH` can be defined explicitly at install time with `--source-branch <name>`,
   - for files created for the first time, missing values are requested interactively,
   - when non-interactive, missing values are auto-filled with safe defaults (for example `TO_DEFINE`),
   - placeholders already present in project files are inferred and reused during updates/migrations.
+  - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`.
 - `AGENTS.md` non-interference policy:
   - if target `AGENTS.md` already exists, installer preserves it by default (no merge),
   - in `--assist`, preserving existing `AGENTS.md` is enforced by default,

@@ -10,6 +10,7 @@ function parseArgs(argv) {
   const args = {
     target: ".",
     pack: "",
+    sourceBranch: "",
     dryRun: false,
     verifyOnly: false,
     skipArtifactImport: false,
@@ -28,6 +29,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--pack") {
       args.pack = argv[i + 1] ?? "";
+      i += 1;
+    } else if (token === "--source-branch") {
+      args.sourceBranch = String(argv[i + 1] ?? "").trim();
       i += 1;
     } else if (token === "--dry-run") {
       args.dryRun = true;
@@ -70,6 +74,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/install.mjs --target ../repo");
   console.log("  node tools/install.mjs --target ../repo --pack core");
+  console.log("  node tools/install.mjs --target ../repo --pack core --source-branch main");
   console.log("  node tools/install.mjs --target . --pack core --dry-run");
   console.log("  node tools/install.mjs --target . --pack core --verify");
   console.log("  node tools/install.mjs --target . --pack core --skip-artifact-import");

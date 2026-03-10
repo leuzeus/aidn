@@ -56,6 +56,28 @@ function sanitizeExtractedValue(value) {
   return text;
 }
 
+function resolveDefaultGitBranch(targetRoot) {
+  const remoteHead = spawnSync("git", ["-C", targetRoot, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const remoteHeadText = sanitizeExtractedValue(remoteHead.stdout).replace(/^origin\//, "");
+  if (remoteHeadText) {
+    return remoteHeadText;
+  }
+
+  const currentBranch = spawnSync("git", ["-C", targetRoot, "branch", "--show-current"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const currentBranchText = sanitizeExtractedValue(currentBranch.stdout);
+  if (currentBranchText) {
+    return currentBranchText;
+  }
+
+  return "main";
+}
+
 function readKeyValuePlaceholders(text) {
   const out = {};
   const lines = String(text).replace(/\r\n/g, "\n").split("\n");
@@ -112,18 +134,37 @@ export function collectPlaceholderValuesFromText(text) {
 export function normalizePreservedMetadata(targetRelative, text, templateVars) {
   let next = String(text);
   const version = sanitizeExtractedValue(templateVars?.VERSION);
+  const sourceBranch = sanitizeExtractedValue(templateVars?.SOURCE_BRANCH);
   if (!version) {
-    return { text: next, changed: false };
+    if (!sourceBranch) {
+      return { text: next, changed: false };
+    }
   }
 
   const normalizedTarget = normalizeRelativePath(targetRelative).toLowerCase();
   if (normalizedTarget === "docs/audit/workflow.md") {
-    next = next.replace(/^(\s*workflow_version:\s*).+$/im, `$1${version}`);
+    if (version) {
+      next = next.replace(/^(\s*workflow_version:\s*).+$/im, `$1${version}`);
+    }
+    if (sourceBranch) {
+      next = next.replace(/^(\s*source_branch:\s*).+$/im, `$1${sourceBranch}`);
+      next = next.replace(/^(\s*-\s*Source branch:\s*`).+(`.*)$/im, `$1${sourceBranch}$2`);
+    }
+  }
+
+  if (normalizedTarget === "docs/audit/baseline/current.md" && sourceBranch) {
+    next = next.replace(/^(\s*source_branch:\s*).+$/im, `$1${sourceBranch}`);
+  }
+
+  if (normalizedTarget === "docs/audit/baseline/history.md" && sourceBranch) {
+    next = next.replace(/^(\s*-\s*source_branch:\s*).+$/gim, `$1${sourceBranch}`);
   }
 
   if (normalizedTarget === ".codex/skills.yaml") {
-    next = next.replace(/^(\s*ref:\s*["']?)v[^"'\s]+(["']?\s*)$/im, `$1v${version}$2`);
-    next = next.replace(/(https:\/\/github\.com\/leuzeus\/aidn\/tree\/)v[^/]+(\/template\/codex\/)/gi, `$1v${version}$2`);
+    if (version) {
+      next = next.replace(/^(\s*ref:\s*["']?)v[^"'\s]+(["']?\s*)$/im, `$1v${version}$2`);
+      next = next.replace(/(https:\/\/github\.com\/leuzeus\/aidn\/tree\/)v[^/]+(\/template\/codex\/)/gi, `$1v${version}$2`);
+    }
   }
 
   return { text: next, changed: next !== text };
@@ -162,12 +203,7 @@ export function suggestPlaceholderValue(name, targetRoot, templateVars) {
     return path.basename(targetRoot);
   }
   if (name === "SOURCE_BRANCH") {
-    const result = spawnSync("git", ["-C", targetRoot, "branch", "--show-current"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-    const branch = sanitizeExtractedValue(result.stdout);
-    return branch || "main";
+    return sanitizeExtractedValue(templateVars?.SOURCE_BRANCH) || resolveDefaultGitBranch(targetRoot);
   }
   if (name === "VERSION") {
     return sanitizeExtractedValue(templateVars.VERSION) || "0.0.0";

@@ -67,6 +67,7 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
   const inferredTemplateVars = collectExistingPlaceholderValues(targetRoot);
   const templateVars = {
     ...inferredTemplateVars,
+    ...(args.sourceBranch ? { SOURCE_BRANCH: args.sourceBranch } : {}),
     VERSION: version,
   };
   const { workflowManifest, compatMatrix } = loadWorkflowManifests(repoRoot);
@@ -120,6 +121,9 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
   );
   if (Object.keys(inferredTemplateVars).length > 0) {
     console.log(`Placeholder inference: loaded ${Object.keys(inferredTemplateVars).length} values from existing project files`);
+  }
+  if (templateVars.SOURCE_BRANCH) {
+    console.log(`Install metadata: source_branch=${templateVars.SOURCE_BRANCH}${args.sourceBranch ? " (cli)" : " (inferred)"}`);
   }
   if (args.dryRun) {
     console.log("Mode: dry-run");
