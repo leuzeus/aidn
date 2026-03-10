@@ -73,6 +73,9 @@ function main() {
     assert(payload.packet.handoff_from_agent_action === "relay", "expected default handoff source action");
     assert(payload.packet.recommended_next_agent_role === "coordinator", "expected coordinator next agent role");
     assert(payload.packet.recommended_next_agent_action === "reanchor", "expected reanchor next agent action");
+    assert(payload.packet.scope_type === "session", "expected session scope for idle fixture");
+    assert(payload.packet.scope_id === "none", "expected none scope_id for idle fixture");
+    assert(payload.packet.target_branch === "none", "expected none target_branch for idle fixture");
     assert(payload.packet.transition_policy_status === "unknown_mode", "expected unknown_mode transition policy for idle fixture");
     assert(String(payload.packet.next_agent_goal ?? "").length > 0, "expected explicit next_agent_goal");
     assert(payload.packet.prioritized_artifacts.includes("docs/audit/CURRENT-STATE.md"), "missing CURRENT-STATE priority");
@@ -81,6 +84,8 @@ function main() {
     assert(text.includes("handoff_from_agent_action: relay"), "packet file missing source action");
     assert(text.includes("recommended_next_agent_role: coordinator"), "packet file missing coordinator role");
     assert(text.includes("recommended_next_agent_action: reanchor"), "packet file missing reanchor action");
+    assert(text.includes("scope_type: session"), "packet file missing session scope");
+    assert(text.includes("scope_id: none"), "packet file missing scope id");
     assert(text.includes("transition_policy_status: unknown_mode"), "packet file missing transition policy status");
     assert(text.includes("next_agent_goal:"), "packet file missing next_agent_goal");
     assert(text.includes("`docs/audit/WORKFLOW-KERNEL.md`"), "packet file missing workflow kernel");

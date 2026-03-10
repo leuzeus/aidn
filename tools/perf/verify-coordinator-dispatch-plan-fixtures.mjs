@@ -297,21 +297,26 @@ function main() {
     assert(ready.dispatch_status === "ready", "ready dispatch should be ready");
     assert(ready.entrypoint_name === "branch-cycle-audit", "ready dispatch should use branch-cycle-audit");
     assert(ready.selected_agent.id === "codex", "ready dispatch should use the general codex adapter");
+    assert(ready.dispatch_scope.scope_type === "cycle", "ready dispatch should expose cycle scope");
+    assert(ready.dispatch_scope.scope_id === "C101", "ready dispatch should expose active cycle id");
     assert(ready.commands.some((item) => item.includes("--skill branch-cycle-audit")), "ready dispatch should include branch-cycle-audit command");
 
     assert(warn.dispatch_status === "ready", "warn dispatch should stay ready");
     assert(warn.entrypoint_name === "drift-check", "warn dispatch should use drift-check");
     assert(warn.selected_agent.id === "codex-auditor", "warn dispatch should prefer the specialized auditor adapter");
+    assert(warn.dispatch_scope.scope_type === "cycle", "warn dispatch should expose cycle scope");
     assert(warn.commands.some((item) => item.includes("--skill drift-check")), "warn dispatch should include drift-check command");
 
     assert(blocked.dispatch_status === "gated", "blocked dispatch should be gated");
     assert(blocked.entrypoint_kind === "runtime", "blocked dispatch should use runtime entrypoint");
     assert(blocked.selected_agent.id === "codex-repair", "blocked dispatch should prefer the specialized repair adapter");
+    assert(blocked.dispatch_scope.scope_type === "cycle", "blocked dispatch should preserve cycle scope");
     assert(blocked.commands.some((item) => item.includes("runtime project-runtime-state")), "blocked dispatch should refresh runtime state");
 
     assert(fallback.dispatch_status === "ready", "fallback dispatch should be ready");
     assert(fallback.entrypoint_name === "branch-cycle-audit", "fallback dispatch should use branch-cycle-audit");
     assert(fallback.selected_agent.id === "codex", "dispatch should select codex adapter");
+    assert(fallback.dispatch_scope.scope_type === "cycle", "fallback dispatch should expose cycle scope");
 
     assert(escalated.dispatch_status === "escalated", "escalated dispatch should require manual arbitration");
     assert(escalated.entrypoint_kind === "manual", "escalated dispatch should use manual entrypoint");

@@ -368,6 +368,7 @@ export function computeCoordinatorLoopState({
     history_file: historyPath,
     summary_file: summaryPath,
     handoff: nextAction.handoff,
+    scope: nextAction.scope,
     context: nextAction.context,
     base_recommendation: nextAction.recommendation,
     recommendation,

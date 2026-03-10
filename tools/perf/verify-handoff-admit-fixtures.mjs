@@ -142,21 +142,26 @@ function main() {
     assert(readyAdmit.admission_status === "admitted", "ready handoff should be admitted");
     assert(readyAdmit.recommended_next_agent_role === "executor", "ready handoff should route to executor");
     assert(readyAdmit.recommended_action === "implement", "ready handoff should route to implement action");
+    assert(readyAdmit.scope_type === "cycle", "ready handoff should expose cycle scope");
+    assert(readyAdmit.scope_id === "C101", "ready handoff should expose active cycle scope");
 
     assert(warnPacket.packet.handoff_status === "ready", "warn packet should stay ready");
     assert(warnPacket.packet.recommended_next_agent_role === "auditor", "warn packet should route to auditor");
     assert(warnPacket.packet.recommended_next_agent_action === "audit", "warn packet should route to audit action");
+    assert(warnPacket.packet.scope_type === "cycle", "warn packet should expose cycle scope");
     assert(String(warnPacket.packet.repair_routing_hint ?? "") === "audit-first", "warn packet should expose audit-first routing");
     assert(warnAdmit.admitted === true, "warn handoff should be admitted");
     assert(warnAdmit.admission_status === "admitted", "warn handoff should be admitted");
     assert(warnAdmit.recommended_next_agent_role === "auditor", "warn handoff should route to auditor");
     assert(warnAdmit.recommended_action === "audit", "warn handoff should route to audit action");
+    assert(warnAdmit.scope_type === "cycle", "warn handoff should preserve cycle scope");
 
     assert(blockedPacket.packet.handoff_status === "blocked", "blocked packet should be blocked");
     assert(blockedAdmit.admitted === false, "blocked handoff should be rejected");
     assert(blockedAdmit.admission_status === "blocked", "blocked handoff should report blocked");
     assert(blockedAdmit.recommended_next_agent_role === "repair", "blocked handoff should route to repair");
     assert(blockedAdmit.recommended_action === "repair", "blocked handoff should route to repair action");
+    assert(blockedAdmit.scope_type === "cycle", "blocked handoff should preserve cycle scope");
 
     assert(tamperedAdmit.admitted === false, "tampered handoff should be rejected");
     assert(tamperedAdmit.admission_status === "rejected", "tampered handoff should report rejected");

@@ -192,6 +192,9 @@ export function admitHandoff({
   const packetAction = normalizeAgentAction(packet.get("recommended_next_agent_action") ?? "");
   const packetTransitionStatus = normalizeScalar(packet.get("transition_policy_status") ?? "unknown");
   const packetTransitionReason = normalizeScalar(packet.get("transition_policy_reason") ?? "unknown");
+  const packetScopeType = normalizeScalar(packet.get("scope_type") ?? "none").toLowerCase();
+  const packetScopeId = normalizeScalar(packet.get("scope_id") ?? "none");
+  const packetTargetBranch = normalizeScalar(packet.get("target_branch") ?? "none");
   const transition = evaluateAgentTransition({
     mode: packetMode,
     fromRole: packetFromRole,
@@ -226,6 +229,12 @@ export function admitHandoff({
   }
   if (!transition.allowed) {
     issues.push(`transition policy rejected handoff: ${transition.reason}`);
+  }
+  if (!["cycle", "session", "none"].includes(packetScopeType)) {
+    issues.push(`unknown packet scope_type: ${packet.get("scope_type") ?? "missing"}`);
+  }
+  if (handoffStatus === "ready" && packetRole !== "coordinator" && (packetScopeType === "none" || canonicalNone(packetScopeId))) {
+    issues.push("ready handoff for non-coordinator role is missing an explicit scope");
   }
   if (packetTransitionStatus && packetTransitionStatus !== "unknown" && packetTransitionStatus !== transition.status) {
     issues.push(`transition_policy_status mismatch: packet=${packetTransitionStatus} live=${transition.status}`);
@@ -274,6 +283,22 @@ export function admitHandoff({
   if (packetUpdatedAtMs !== null && currentUpdatedAtMs !== null && packetUpdatedAtMs < currentUpdatedAtMs) {
     issues.push("handoff packet is older than CURRENT-STATE.md");
   }
+  const liveActiveCycle = normalizeScalar(current.get("active_cycle") ?? "none");
+  const liveActiveSession = normalizeScalar(current.get("active_session") ?? "none");
+  const liveCycleBranch = normalizeScalar(current.get("cycle_branch") ?? "none");
+  const liveSessionBranch = normalizeScalar(current.get("session_branch") ?? "none");
+  if (packetScopeType === "cycle" && !canonicalNone(liveActiveCycle) && !canonicalUnknown(liveActiveCycle) && packetScopeId !== liveActiveCycle) {
+    addMismatch(issues, "scope_id", packetScopeId, liveActiveCycle);
+  }
+  if (packetScopeType === "session" && !canonicalNone(liveActiveSession) && !canonicalUnknown(liveActiveSession) && packetScopeId !== liveActiveSession) {
+    addMismatch(issues, "scope_id", packetScopeId, liveActiveSession);
+  }
+  if (packetScopeType === "cycle" && !canonicalNone(packetTargetBranch) && !canonicalNone(liveCycleBranch) && !canonicalUnknown(liveCycleBranch) && packetTargetBranch !== liveCycleBranch) {
+    addMismatch(issues, "target_branch", packetTargetBranch, liveCycleBranch);
+  }
+  if (packetScopeType === "session" && !canonicalNone(packetTargetBranch) && !canonicalNone(liveSessionBranch) && !canonicalUnknown(liveSessionBranch) && packetTargetBranch !== liveSessionBranch) {
+    addMismatch(issues, "target_branch", packetTargetBranch, liveSessionBranch);
+  }
 
   const missingArtifacts = prioritizedArtifacts
     .filter(isConcreteArtifactPath)
@@ -313,6 +338,9 @@ export function admitHandoff({
     recommended_action: recommendedAction,
     recommended_next_agent_role: recommendedRole,
     next_agent_goal: normalizeScalar(packet.get("next_agent_goal") ?? "unknown") || "unknown",
+    scope_type: packetScopeType || "none",
+    scope_id: packetScopeId || "none",
+    target_branch: packetTargetBranch || "none",
     packet: Object.fromEntries(packet.entries()),
     transition_policy: transition,
     prioritized_artifacts: prioritizedArtifacts,
@@ -339,6 +367,7 @@ function main() {
       console.log(`- recommended_action=${result.recommended_action}`);
       console.log(`- recommended_next_agent_role=${result.recommended_next_agent_role}`);
       console.log(`- next_agent_goal=${result.next_agent_goal}`);
+      console.log(`- scope=${result.scope_type}:${result.scope_id}`);
       if (result.issues.length > 0) {
         console.log("- issues:");
         for (const issue of result.issues) {

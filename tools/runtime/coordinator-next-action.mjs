@@ -199,6 +199,32 @@ function deriveFallbackRecommendation(currentMap, runtimeMap, nextActions) {
   };
 }
 
+function deriveFallbackScope(currentMap) {
+  const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
+  const activeSession = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
+  const cycleBranch = normalizeScalar(currentMap.get("cycle_branch") ?? "none") || "none";
+  const sessionBranch = normalizeScalar(currentMap.get("session_branch") ?? "none") || "none";
+  if (!canonicalNone(activeCycle) && !canonicalUnknown(activeCycle)) {
+    return {
+      scope_type: "cycle",
+      scope_id: activeCycle,
+      target_branch: !canonicalNone(cycleBranch) && !canonicalUnknown(cycleBranch) ? cycleBranch : "none",
+    };
+  }
+  if (!canonicalNone(activeSession) && !canonicalUnknown(activeSession)) {
+    return {
+      scope_type: "session",
+      scope_id: activeSession,
+      target_branch: !canonicalNone(sessionBranch) && !canonicalUnknown(sessionBranch) ? sessionBranch : "none",
+    };
+  }
+  return {
+    scope_type: "none",
+    scope_id: "none",
+    target_branch: "none",
+  };
+}
+
 export function computeCoordinatorNextAction({
   targetRoot,
   currentStateFile = "docs/audit/CURRENT-STATE.md",
@@ -217,6 +243,7 @@ export function computeCoordinatorNextAction({
 
   let handoff = null;
   let recommendation = null;
+  let scope = null;
   if (exists(packetPath) && exists(currentStatePath) && exists(runtimeStatePath)) {
     handoff = admitHandoff({
       targetRoot: absoluteTargetRoot,
@@ -234,12 +261,19 @@ export function computeCoordinatorNextAction({
         : `handoff admission ${handoff.admission_status}`,
       stop_required: handoff.admission_status === "blocked",
     };
+    scope = {
+      scope_type: normalizeScalar(handoff.scope_type ?? "none") || "none",
+      scope_id: normalizeScalar(handoff.scope_id ?? "none") || "none",
+      target_branch: normalizeScalar(handoff.target_branch ?? "none") || "none",
+    };
   } else {
     recommendation = deriveFallbackRecommendation(currentMap, runtimeMap, nextActions);
+    scope = deriveFallbackScope(currentMap);
   }
 
   if (!recommendation) {
     recommendation = deriveFallbackRecommendation(currentMap, runtimeMap, nextActions);
+    scope = deriveFallbackScope(currentMap);
   }
   if (!canAgentRolePerform(recommendation.role, recommendation.action)) {
     throw new Error(`Invalid coordinator recommendation: role=${recommendation.role} action=${recommendation.action}`);
@@ -252,6 +286,7 @@ export function computeCoordinatorNextAction({
     packet_file: exists(packetPath) ? packetPath : "none",
     handoff,
     recommendation,
+    scope,
     context: {
       mode: normalizeScalar(currentMap.get("mode") ?? "unknown") || "unknown",
       active_session: normalizeScalar(currentMap.get("active_session") ?? "none") || "none",
@@ -278,6 +313,7 @@ function main() {
       console.log("Coordinator next action:");
       console.log(`- role=${result.recommendation.role}`);
       console.log(`- action=${result.recommendation.action}`);
+      console.log(`- scope=${result.scope.scope_type}:${result.scope.scope_id}`);
       console.log(`- goal=${result.recommendation.goal}`);
       console.log(`- source=${result.recommendation.source}`);
       console.log(`- reason=${result.recommendation.reason}`);

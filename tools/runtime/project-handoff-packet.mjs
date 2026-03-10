@@ -289,6 +289,39 @@ function buildPrioritizedArtifacts({ targetRoot, runtimeStateText, sessionFile, 
   return uniqueItems([...items, ...runtimeArtifacts]);
 }
 
+function deriveDispatchScope({ currentMap, nextRouting }) {
+  const activeSession = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
+  const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
+  const sessionBranch = normalizeScalar(currentMap.get("session_branch") ?? "none") || "none";
+  const cycleBranch = normalizeScalar(currentMap.get("cycle_branch") ?? "none") || "none";
+  if (!canonicalNone(activeCycle) && !canonicalUnknown(activeCycle)) {
+    return {
+      scope_type: "cycle",
+      scope_id: activeCycle,
+      target_branch: !canonicalNone(cycleBranch) && !canonicalUnknown(cycleBranch) ? cycleBranch : "none",
+    };
+  }
+  if (!canonicalNone(activeSession) && !canonicalUnknown(activeSession)) {
+    return {
+      scope_type: "session",
+      scope_id: activeSession,
+      target_branch: !canonicalNone(sessionBranch) && !canonicalUnknown(sessionBranch) ? sessionBranch : "none",
+    };
+  }
+  if (nextRouting.role === "coordinator") {
+    return {
+      scope_type: "session",
+      scope_id: !canonicalNone(activeSession) && !canonicalUnknown(activeSession) ? activeSession : "none",
+      target_branch: !canonicalNone(sessionBranch) && !canonicalUnknown(sessionBranch) ? sessionBranch : "none",
+    };
+  }
+  return {
+    scope_type: "none",
+    scope_id: "none",
+    target_branch: "none",
+  };
+}
+
 function buildMarkdown(packet) {
   const lines = [];
   lines.push("# Handoff Packet");
@@ -314,6 +347,9 @@ function buildMarkdown(packet) {
   lines.push(`recommended_next_agent_role: ${packet.recommended_next_agent_role}`);
   lines.push(`recommended_next_agent_action: ${packet.recommended_next_agent_action}`);
   lines.push(`next_agent_goal: ${packet.next_agent_goal}`);
+  lines.push(`scope_type: ${packet.scope_type}`);
+  lines.push(`scope_id: ${packet.scope_id}`);
+  lines.push(`target_branch: ${packet.target_branch}`);
   lines.push(`transition_policy_status: ${packet.transition_policy_status}`);
   lines.push(`transition_policy_reason: ${packet.transition_policy_reason}`);
   lines.push("");
@@ -417,6 +453,7 @@ export function projectHandoffPacket({
     toRole: nextRouting.role,
     toAction: nextRouting.action,
   });
+  const scope = deriveDispatchScope({ currentMap, nextRouting });
 
   const packet = {
     updated_at: new Date().toISOString(),
@@ -434,6 +471,9 @@ export function projectHandoffPacket({
       firstPlanStep,
       blockingFindings,
     }),
+    scope_type: scope.scope_type,
+    scope_id: scope.scope_id,
+    target_branch: scope.target_branch,
     handoff_note: normalizeScalar(handoffNote) || "none",
     mode,
     branch_kind: normalizeScalar(currentMap.get("branch_kind") ?? "unknown") || "unknown",
@@ -495,6 +535,7 @@ function main() {
       console.log(`- handoff_from_agent_action=${output.packet.handoff_from_agent_action}`);
       console.log(`- recommended_next_agent_role=${output.packet.recommended_next_agent_role}`);
       console.log(`- recommended_next_agent_action=${output.packet.recommended_next_agent_action}`);
+      console.log(`- scope=${output.packet.scope_type}:${output.packet.scope_id}`);
       console.log(`- transition_policy_status=${output.packet.transition_policy_status}`);
       console.log(`- next_agent_goal=${output.packet.next_agent_goal}`);
       console.log(`- active_session=${output.packet.active_session}`);

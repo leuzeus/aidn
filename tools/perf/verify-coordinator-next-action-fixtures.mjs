@@ -138,13 +138,17 @@ function main() {
     assert(ready.recommendation.role === "executor", "ready should route to executor");
     assert(ready.recommendation.action === "implement", "ready should route to implement");
     assert(ready.recommendation.source === "handoff", "ready should come from handoff");
+    assert(ready.scope.scope_type === "cycle", "ready should preserve cycle scope");
+    assert(ready.scope.scope_id === "C101", "ready should preserve active cycle id");
 
     assert(warn.recommendation.role === "auditor", "warn should route to auditor");
     assert(warn.recommendation.action === "audit", "warn should route to audit");
+    assert(warn.scope.scope_type === "cycle", "warn should preserve cycle scope");
 
     assert(blocked.recommendation.role === "repair", "blocked should route to repair");
     assert(blocked.recommendation.action === "repair", "blocked should route to repair action");
     assert(blocked.recommendation.stop_required === true, "blocked should require stop");
+    assert(blocked.scope.scope_type === "cycle", "blocked should preserve cycle scope");
 
     assert(tampered.recommendation.role === "coordinator", "tampered should fall back to coordinator");
     assert(tampered.recommendation.action === "reanchor", "tampered should fall back to reanchor");
@@ -157,6 +161,7 @@ function main() {
     assert(fallback.recommendation.role === "executor", "fallback should route to executor");
     assert(fallback.recommendation.action === "implement", "fallback should route to implement");
     assert(fallback.recommendation.source === "current-state", "fallback should come from current-state");
+    assert(fallback.scope.scope_type === "cycle", "fallback should derive cycle scope from current state");
 
     const output = {
       ts: new Date().toISOString(),

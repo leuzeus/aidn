@@ -377,6 +377,11 @@ export async function computeCoordinatorDispatchPlan({
     },
     recommended_role_coverage: recommendedRoleCoverage,
     coordinator_recommendation: recommendation,
+    dispatch_scope: loopState.scope ?? {
+      scope_type: "none",
+      scope_id: "none",
+      target_branch: "none",
+    },
     dispatch_status: dispatchStatus,
     entrypoint_kind: dispatch.entrypoint_kind,
     entrypoint_name: dispatch.entrypoint_name,
@@ -415,6 +420,7 @@ function main() {
       console.log(`- agent=${result.selected_agent.id}`);
       console.log(`- role=${result.coordinator_recommendation.role}`);
       console.log(`- action=${result.coordinator_recommendation.action}`);
+      console.log(`- scope=${result.dispatch_scope.scope_type}:${result.dispatch_scope.scope_id}`);
       console.log(`- dispatch_status=${result.dispatch_status}`);
       console.log(`- entrypoint=${result.entrypoint_kind}:${result.entrypoint_name}`);
       for (const command of result.commands) {

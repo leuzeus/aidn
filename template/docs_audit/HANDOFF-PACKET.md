@@ -21,6 +21,9 @@ handoff_from_agent_action: relay
 recommended_next_agent_role: coordinator
 recommended_next_agent_action: reanchor
 next_agent_goal: reanchor current session, cycle, and runtime facts before any durable write
+scope_type: session
+scope_id: none
+target_branch: none
 transition_policy_status: allowed
 transition_policy_reason: THINKING allows coordinator -> coordinator
 

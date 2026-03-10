@@ -14,13 +14,16 @@ Rule/State boundary:
 
 ## Summary
 
-updated_at: 2026-03-09T20:38:48.625Z
+updated_at: 2026-03-10T00:35:27.190Z
 handoff_status: refresh_required
 handoff_from_agent_role: coordinator
 handoff_from_agent_action: relay
 recommended_next_agent_role: coordinator
 recommended_next_agent_action: reanchor
 next_agent_goal: reanchor current session, cycle, and runtime facts before any durable write
+scope_type: session
+scope_id: none
+target_branch: none
 transition_policy_status: unknown_mode
 transition_policy_reason: unknown mode: unknown
 
