@@ -8,6 +8,7 @@ function parseArgs(argv) {
   const args = {
     handoffFixturesRoot: "tests/fixtures/perf-handoff",
     currentStateFixturesRoot: "tests/fixtures/perf-current-state",
+    integrationFixturesRoot: "tests/fixtures/perf-integration-risk",
     json: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -17,6 +18,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--current-state-fixtures-root") {
       args.currentStateFixturesRoot = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--integration-fixtures-root") {
+      args.integrationFixturesRoot = String(argv[i + 1] ?? "").trim();
       i += 1;
     } else if (token === "--json") {
       args.json = true;
@@ -63,6 +67,7 @@ function main() {
     const repoRoot = process.cwd();
     const handoffFixturesRoot = path.resolve(repoRoot, args.handoffFixturesRoot);
     const currentStateFixturesRoot = path.resolve(repoRoot, args.currentStateFixturesRoot);
+    const integrationFixturesRoot = path.resolve(repoRoot, args.integrationFixturesRoot);
     const handoffProjectScript = path.resolve(repoRoot, "tools", "runtime", "project-handoff-packet.mjs");
     const dispatchScript = path.resolve(repoRoot, "tools", "runtime", "coordinator-dispatch-plan.mjs");
 
@@ -73,6 +78,8 @@ function main() {
     const fallbackTarget = path.join(tempRoot, "fallback");
     const escalatedTarget = path.join(tempRoot, "escalated");
     const roleBlockedTarget = path.join(tempRoot, "role-blocked");
+    const directMergeIntegrationTarget = path.join(tempRoot, "direct-merge-integration");
+    const integrationCycleTarget = path.join(tempRoot, "integration-cycle-strategy");
 
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), readyTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "warn"), warnTarget, { recursive: true });
@@ -80,6 +87,8 @@ function main() {
     fs.cpSync(path.join(currentStateFixturesRoot, "active"), fallbackTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), escalatedTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "warn"), roleBlockedTarget, { recursive: true });
+    fs.cpSync(path.join(integrationFixturesRoot, "direct-merge"), directMergeIntegrationTarget, { recursive: true });
+    fs.cpSync(path.join(integrationFixturesRoot, "integration-cycle"), integrationCycleTarget, { recursive: true });
 
     runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", warnTarget, "--json"], repoRoot, 0);
@@ -147,6 +156,8 @@ function main() {
     const blocked = runJson(dispatchScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
     const fallback = runJson(dispatchScript, ["--target", fallbackTarget, "--json"], repoRoot, 0);
     const escalated = runJson(dispatchScript, ["--target", escalatedTarget, "--json"], repoRoot, 0);
+    const directMergeIntegration = runJson(dispatchScript, ["--target", directMergeIntegrationTarget, "--json"], repoRoot, 0);
+    const integrationCycle = runJson(dispatchScript, ["--target", integrationCycleTarget, "--json"], repoRoot, 0);
 
     const localShellRosterContent = [
       "# Agent Roster",
@@ -333,6 +344,14 @@ function main() {
     assert(roleBlocked.entrypoint_name === "user-arbitration", "role-blocked dispatch should point to user arbitration");
     assert(roleBlocked.recommended_role_coverage.status === "blocked", "role-blocked dispatch should expose blocked role coverage");
     assert(roleBlocked.notes.some((note) => note.includes("Recommended role coverage is blocked")), "role-blocked dispatch should explain the blocked coverage");
+    assert(directMergeIntegration.dispatch_status === "ready", "direct-merge integration assessment should not escalate the coordinator");
+    assert(directMergeIntegration.integration_risk.recommended_strategy === "direct_merge", "direct-merge integration assessment should expose direct_merge");
+    assert(directMergeIntegration.notes.some((note) => note.includes("Integration strategy assessment: direct_merge")), "direct-merge integration assessment should be surfaced in notes");
+    assert(integrationCycle.dispatch_status === "escalated", "integration-cycle assessment should escalate the session-level dispatch");
+    assert(integrationCycle.entrypoint_kind === "manual", "integration-cycle assessment should force a manual entrypoint");
+    assert(integrationCycle.integration_risk.recommended_strategy === "integration_cycle", "integration-cycle assessment should expose integration_cycle");
+    assert(integrationCycle.integration_risk_gate.active === true, "integration-cycle assessment should activate the integration gate");
+    assert(integrationCycle.notes.some((note) => note.includes("Integration strategy requires explicit resolution: integration_cycle")), "integration-cycle assessment should explain the gate");
 
     const output = {
       ts: new Date().toISOString(),
@@ -341,6 +360,8 @@ function main() {
       blocked,
       fallback,
       escalated,
+      direct_merge_integration: directMergeIntegration,
+      integration_cycle: integrationCycle,
       ready_local_shell: readyLocalShell,
       warn_local_shell: warnLocalShell,
       blocked_local_shell: blockedLocalShell,

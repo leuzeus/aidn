@@ -2,6 +2,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { AGENT_ROLES } from "../../src/core/agents/agent-role-model.mjs";
+import { assessIntegrationRisk } from "../../src/application/runtime/integration-risk-service.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
 import { computeCoordinatorNextAction } from "./coordinator-next-action.mjs";
 import { projectAgentHealthSummary } from "./project-agent-health-summary.mjs";
@@ -147,6 +148,7 @@ function buildMarkdown({
   selectionSummary,
   healthSummary,
   coordinationSummary,
+  integrationRisk,
   roleCoverage,
   effectiveRecommendedRoleCoverage,
   out,
@@ -189,6 +191,9 @@ function buildMarkdown({
   lines.push(`auto_selected_agent: ${selectionPreview?.selected_agent ?? "unknown"}`);
   lines.push(`coordination_history_status: ${coordinationSummary.summary.history_status}`);
   lines.push(`last_execution_status: ${coordinationSummary.summary.last_execution_status}`);
+  lines.push(`integration_strategy: ${integrationRisk.recommended_strategy}`);
+  lines.push(`integration_mergeability: ${integrationRisk.mergeability}`);
+  lines.push(`integration_candidate_cycle_count: ${integrationRisk.candidate_cycles.length}`);
   lines.push(`arbitration_required: ${arbitration.arbitration_required ? "yes" : "no"}`);
   lines.push(`arbitration_status: ${arbitration.arbitration_status ?? "ok"}`);
   lines.push(`preferred_decision: ${arbitration.preferred_decision}`);
@@ -198,6 +203,19 @@ function buildMarkdown({
   lines.push(`- source: ${coordinator.recommendation.source}`);
   lines.push(`- reason: ${coordinator.recommendation.reason}`);
   lines.push(`- stop_required: ${coordinator.recommendation.stop_required ? "yes" : "no"}`);
+  lines.push("");
+  lines.push("## Integration Strategy");
+  lines.push("");
+  lines.push(`- candidate_cycle_count: ${integrationRisk.candidate_cycles.length}`);
+  lines.push(`- overlap_level: ${integrationRisk.overlap.overall_overlap}`);
+  lines.push(`- semantic_risk: ${integrationRisk.semantic.semantic_risk}`);
+  lines.push(`- readiness: ${integrationRisk.readiness}`);
+  lines.push(`- mergeability: ${integrationRisk.mergeability}`);
+  lines.push(`- recommended_strategy: ${integrationRisk.recommended_strategy}`);
+  lines.push(`- arbitration_required: ${integrationRisk.arbitration_required ? "yes" : "no"}`);
+  for (const reason of integrationRisk.rationale ?? []) {
+    lines.push(`- rationale: ${reason}`);
+  }
   lines.push("");
   lines.push("## Arbitration");
   lines.push("");
@@ -307,6 +325,9 @@ export async function projectMultiAgentStatus({
   const coordinator = computeCoordinatorNextAction({
     targetRoot: absoluteTargetRoot,
   });
+  const integrationRisk = assessIntegrationRisk({
+    targetRoot: absoluteTargetRoot,
+  });
   const arbitration = await suggestCoordinatorArbitration({
     targetRoot: absoluteTargetRoot,
     agentRosterFile: rosterFile,
@@ -355,6 +376,7 @@ export async function projectMultiAgentStatus({
     selectionSummary,
     healthSummary,
     coordinationSummary,
+    integrationRisk,
     roleCoverage,
     effectiveRecommendedRoleCoverage,
     out,
@@ -365,6 +387,7 @@ export async function projectMultiAgentStatus({
     output_file: write.path,
     written: write.written,
     coordinator,
+    integration_risk: integrationRisk,
     arbitration,
     recommended_role_coverage: effectiveRecommendedRoleCoverage,
     roster_verification: {

@@ -7,12 +7,16 @@ import { spawnSync } from "node:child_process";
 function parseArgs(argv) {
   const args = {
     handoffFixturesRoot: "tests/fixtures/perf-handoff",
+    integrationFixturesRoot: "tests/fixtures/perf-integration-risk",
     json: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
     if (token === "--handoff-fixtures-root") {
       args.handoffFixturesRoot = String(argv[index + 1] ?? "").trim();
+      index += 1;
+    } else if (token === "--integration-fixtures-root") {
+      args.integrationFixturesRoot = String(argv[index + 1] ?? "").trim();
       index += 1;
     } else if (token === "--json") {
       args.json = true;
@@ -82,6 +86,7 @@ function main() {
     const args = parseArgs(process.argv.slice(2));
     const repoRoot = process.cwd();
     const handoffFixturesRoot = path.resolve(repoRoot, args.handoffFixturesRoot);
+    const integrationFixturesRoot = path.resolve(repoRoot, args.integrationFixturesRoot);
     const handoffProjectScript = path.resolve(repoRoot, "tools", "runtime", "project-handoff-packet.mjs");
     const summaryScript = path.resolve(repoRoot, "tools", "runtime", "project-coordination-summary.mjs");
     const loopScript = path.resolve(repoRoot, "tools", "runtime", "coordinator-loop.mjs");
@@ -90,7 +95,9 @@ function main() {
 
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-coordinator-arbitration-"));
     const escalatedTarget = path.join(tempRoot, "escalated");
+    const integrationTarget = path.join(tempRoot, "integration-cycle");
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), escalatedTarget, { recursive: true });
+    fs.cpSync(path.join(integrationFixturesRoot, "integration-cycle"), integrationTarget, { recursive: true });
     runJson(handoffProjectScript, ["--target", escalatedTarget, "--json"], repoRoot, 0);
 
     appendHistoryEvent(escalatedTarget, buildDispatchEvent("2026-03-09T02:00:00Z"));
@@ -105,6 +112,9 @@ function main() {
     const arbitration = runJson(recordArbitrationScript, ["--target", escalatedTarget, "--decision", "continue", "--note", "validated by user", "--json"], repoRoot, 0);
     const afterLoop = runJson(loopScript, ["--target", escalatedTarget, "--json"], repoRoot, 0);
     const afterDispatch = runJson(dispatchPlanScript, ["--target", escalatedTarget, "--json"], repoRoot, 0);
+    const integrationArbitration = runJson(recordArbitrationScript, ["--target", integrationTarget, "--decision", "integration_cycle", "--note", "use a dedicated integration vehicle", "--json"], repoRoot, 0);
+    const integrationLoop = runJson(loopScript, ["--target", integrationTarget, "--json"], repoRoot, 0);
+    const integrationDispatch = runJson(dispatchPlanScript, ["--target", integrationTarget, "--json"], repoRoot, 0);
 
     const arbitrationFile = path.join(escalatedTarget, "docs", "audit", "USER-ARBITRATION.md");
     const summaryFile = path.join(escalatedTarget, "docs", "audit", "COORDINATION-SUMMARY.md");
@@ -123,6 +133,15 @@ function main() {
     assert(afterLoop.recommendation.role === "executor", "user arbitration continue should restore executor relay");
     assert(afterDispatch.dispatch_status === "ready", "dispatch should return to ready after user arbitration");
     assert(afterDispatch.entrypoint_name === "branch-cycle-audit", "dispatch should restore the implementation entrypoint");
+    assert(integrationArbitration.arbitration_event.decision === "integration_cycle", "integration fixture should record integration_cycle arbitration");
+    assert(integrationLoop.loop.status === "arbitrated", "integration-cycle arbitration should be reflected in the loop state");
+    assert(integrationLoop.recommendation.role === "coordinator", "integration-cycle arbitration should keep routing on the coordinator");
+    assert(integrationLoop.recommendation.action === "coordinate", "integration-cycle arbitration should request coordination");
+    assert(/integration cycle/i.test(String(integrationLoop.recommendation.goal ?? "")), "integration-cycle arbitration should explain the dedicated vehicle goal");
+    assert(integrationDispatch.dispatch_status === "ready", "matching integration-cycle arbitration should clear the integration gate");
+    assert(integrationDispatch.integration_risk_gate.active === false, "integration-cycle arbitration should deactivate the integration gate");
+    assert(integrationDispatch.integration_risk_gate.applied_decision === "integration_cycle", "dispatch should record the applied integration decision");
+    assert(integrationDispatch.entrypoint_name === "start-session", "integration-cycle arbitration should keep the coordination entrypoint");
 
     const output = {
       ts: new Date().toISOString(),
@@ -131,6 +150,9 @@ function main() {
       arbitration,
       after_loop: afterLoop,
       after_dispatch: afterDispatch,
+      integration_arbitration: integrationArbitration,
+      integration_loop: integrationLoop,
+      integration_dispatch: integrationDispatch,
       pass: true,
     };
 

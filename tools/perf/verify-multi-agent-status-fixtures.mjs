@@ -29,6 +29,7 @@ function main() {
   try {
     const repoRoot = process.cwd();
     const sourceTarget = path.resolve(repoRoot, "tests/fixtures/repo-installed-core");
+    const integrationFixturesRoot = path.resolve(repoRoot, "tests/fixtures/perf-integration-risk");
     const script = path.resolve(repoRoot, "tools", "runtime", "project-multi-agent-status.mjs");
 
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-multi-agent-status-"));
@@ -46,6 +47,7 @@ function main() {
     assert(text.includes("## Adapter Health"), "status file should include adapter health section");
     assert(text.includes("## Environment Compatibility"), "status file should include environment compatibility section");
     assert(text.includes("## Role Coverage"), "status file should include role coverage section");
+    assert(text.includes("## Integration Strategy"), "status file should include integration strategy section");
     assert(text.includes("## Coordination"), "status file should include coordination section");
     assert(text.includes("## Arbitration"), "status file should include arbitration section");
     assert(typeof result.arbitration?.preferred_decision === "string", "projection should expose arbitration summary");
@@ -147,6 +149,17 @@ function main() {
     assert(environmentText.includes("arbitration_status: ok"), "status file should expose arbitration status");
     assert(environmentText.includes("preferred_decision: reanchor"), "status file should expose preferred arbitration decision");
     assert(environmentText.includes("suggestion: reanchor recommended=yes actionable=yes"), "status file should expose actionable reanchor suggestion");
+
+    const integrationTarget = path.join(tempRoot, "integration-target");
+    fs.cpSync(path.join(integrationFixturesRoot, "integration-cycle"), integrationTarget, { recursive: true });
+    const integrationResult = runJson(script, ["--target", integrationTarget, "--json"], repoRoot, 0);
+    const integrationText = fs.readFileSync(integrationResult.output_file, "utf8");
+    assert(integrationResult.integration_risk.recommended_strategy === "integration_cycle", "multi-agent status should expose the integration strategy");
+    assert(integrationResult.arbitration.preferred_decision === "integration_cycle", "integration-cycle strategy should flow into arbitration");
+    assert(integrationText.includes("integration_strategy: integration_cycle"), "status file should surface the integration strategy in summary");
+    assert(integrationText.includes("## Integration Strategy"), "status file should render integration strategy section");
+    assert(integrationText.includes("recommended_strategy: integration_cycle"), "status file should expose the recommended integration strategy");
+    assert(integrationText.includes("preferred_decision: integration_cycle"), "status file should expose the preferred integration arbitration decision");
 
     console.log("PASS");
   } catch (error) {

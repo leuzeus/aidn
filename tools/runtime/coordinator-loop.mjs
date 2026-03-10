@@ -289,6 +289,36 @@ function buildArbitrationRecommendation(baseRecommendation, arbitration) {
       stop_required: false,
     };
   }
+  if (decision === "integration_cycle") {
+    return {
+      role: "coordinator",
+      action: "coordinate",
+      goal: goalOverride || "open a dedicated integration cycle for the candidate session cycles",
+      source: "user_arbitration",
+      reason: "user arbitration selected an explicit integration vehicle",
+      stop_required: false,
+    };
+  }
+  if (decision === "report_forward") {
+    return {
+      role: "coordinator",
+      action: "coordinate",
+      goal: goalOverride || "report the candidate cycles forward instead of integrating them now",
+      source: "user_arbitration",
+      reason: "user arbitration deferred the integration path",
+      stop_required: false,
+    };
+  }
+  if (decision === "rework_from_example") {
+    return {
+      role: "coordinator",
+      action: "coordinate",
+      goal: goalOverride || "open a dedicated integration vehicle and replay the selected cycles from example",
+      source: "user_arbitration",
+      reason: "user arbitration chose replay-based integration over mechanical merge",
+      stop_required: false,
+    };
+  }
   return {
     ...baseRecommendation,
     goal: goalOverride || baseRecommendation.goal,

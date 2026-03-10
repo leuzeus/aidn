@@ -7,12 +7,16 @@ import { spawnSync } from "node:child_process";
 function parseArgs(argv) {
   const args = {
     handoffFixturesRoot: "tests/fixtures/perf-handoff",
+    integrationFixturesRoot: "tests/fixtures/perf-integration-risk",
     json: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
     if (token === "--handoff-fixtures-root") {
       args.handoffFixturesRoot = String(argv[index + 1] ?? "").trim();
+      index += 1;
+    } else if (token === "--integration-fixtures-root") {
+      args.integrationFixturesRoot = String(argv[index + 1] ?? "").trim();
       index += 1;
     } else if (token === "--json") {
       args.json = true;
@@ -58,15 +62,18 @@ function main() {
     const args = parseArgs(process.argv.slice(2));
     const repoRoot = process.cwd();
     const fixturesRoot = path.resolve(repoRoot, args.handoffFixturesRoot);
+    const integrationFixturesRoot = path.resolve(repoRoot, args.integrationFixturesRoot);
     const handoffProjectScript = path.resolve(repoRoot, "tools", "runtime", "project-handoff-packet.mjs");
     const suggestScript = path.resolve(repoRoot, "tools", "runtime", "coordinator-suggest-arbitration.mjs");
 
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-suggest-arbitration-"));
     const readyTarget = path.join(tempRoot, "ready");
     const roleBlockedTarget = path.join(tempRoot, "role-blocked");
+    const integrationCycleTarget = path.join(tempRoot, "integration-cycle");
 
     fs.cpSync(path.join(fixturesRoot, "ready"), readyTarget, { recursive: true });
     fs.cpSync(path.join(fixturesRoot, "warn"), roleBlockedTarget, { recursive: true });
+    fs.cpSync(path.join(integrationFixturesRoot, "integration-cycle"), integrationCycleTarget, { recursive: true });
 
     runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", roleBlockedTarget, "--json"], repoRoot, 0);
@@ -115,6 +122,7 @@ function main() {
 
     const ready = runJson(suggestScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     const roleBlocked = runJson(suggestScript, ["--target", roleBlockedTarget, "--json"], repoRoot, 0);
+    const integrationCycle = runJson(suggestScript, ["--target", integrationCycleTarget, "--json"], repoRoot, 0);
 
     assert(ready.arbitration_required === false, "ready dispatch should not require arbitration");
     assert(ready.preferred_decision === "continue", "ready dispatch should prefer continue");
@@ -130,11 +138,17 @@ function main() {
     assert(roleBlocked.suggestions.some((item) => item.decision === "continue" && item.immediately_actionable === false), "role-blocked suggestions should include a non-actionable continue");
     assert(roleBlocked.suggestions.every((item) => String(item.record_command ?? "").includes("coordinator-record-arbitration")), "suggestions should include record-arbitration commands");
     assert(/no runnable adapter remains for role auditor/i.test(roleBlocked.arbitration_reason), "role-blocked suggestions should explain the blocked auditor coverage");
+    assert(integrationCycle.arbitration_required === true, "integration-cycle strategy should require arbitration");
+    assert(integrationCycle.dispatch.integration_risk.recommended_strategy === "integration_cycle", "integration-cycle suggestions should expose the integration strategy");
+    assert(integrationCycle.preferred_decision === "integration_cycle", "integration-cycle suggestions should prefer an integration vehicle");
+    assert(integrationCycle.suggestions.some((item) => item.decision === "integration_cycle" && item.recommended === true && item.immediately_actionable === true), "integration-cycle suggestions should include an actionable integration_cycle decision");
+    assert(integrationCycle.suggestions.some((item) => item.decision === "report_forward"), "integration-cycle suggestions should include report_forward as an alternative");
 
     const output = {
       ts: new Date().toISOString(),
       ready,
       role_blocked: roleBlocked,
+      integration_cycle: integrationCycle,
       pass: true,
     };
 

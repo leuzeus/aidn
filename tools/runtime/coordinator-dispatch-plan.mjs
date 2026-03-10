@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadRegisteredAgentAdapters } from "../../src/application/runtime/agent-adapter-registry-service.mjs";
 import { loadAgentRoster } from "../../src/application/runtime/agent-roster-service.mjs";
+import { assessIntegrationRisk } from "../../src/application/runtime/integration-risk-service.mjs";
 import { selectAgentAdapter } from "../../src/core/agents/agent-selection-policy.mjs";
 import { computeCoordinatorLoopState } from "./coordinator-loop.mjs";
 import { buildAgentHealthMap, verifyAgentRoster } from "./verify-agent-roster.mjs";
@@ -176,6 +177,52 @@ function buildRecommendedRoleCoverage({ recommendation, adapters, rosterVerifica
   };
 }
 
+function normalizeDecision(value) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function resolveAppliedIntegrationDecision(loopState) {
+  if (!loopState?.loop?.history?.arbitration_applied) {
+    return null;
+  }
+  const decision = normalizeDecision(loopState.loop.history.last_arbitration?.decision ?? "");
+  if (["integration_cycle", "report_forward", "rework_from_example"].includes(decision)) {
+    return decision;
+  }
+  return null;
+}
+
+function buildIntegrationRiskGate({ loopState, assessment, recommendation, scope }) {
+  const appliedDecision = resolveAppliedIntegrationDecision(loopState);
+  const sessionScoped = scope?.scope_type === "session" || recommendation.role === "coordinator";
+  if (!sessionScoped || assessment.candidate_cycles.length <= 1) {
+    return {
+      active: false,
+      applied_decision: appliedDecision,
+      reason: "integration gate not required for the current relay scope",
+    };
+  }
+  if (assessment.recommended_strategy === "direct_merge") {
+    return {
+      active: false,
+      applied_decision: appliedDecision,
+      reason: "integration risk allows a direct merge path",
+    };
+  }
+  if (appliedDecision && appliedDecision === assessment.recommended_strategy) {
+    return {
+      active: false,
+      applied_decision: appliedDecision,
+      reason: `user arbitration already selected ${appliedDecision}`,
+    };
+  }
+  return {
+    active: true,
+    applied_decision: appliedDecision,
+    reason: `integration strategy ${assessment.recommended_strategy} must be resolved explicitly before session-level relay`,
+  };
+}
+
 function buildEntryPlan({ targetRoot, recommendation, context }) {
   const targetArg = targetRoot;
   const mode = deriveModeForInvocation(context.mode);
@@ -289,6 +336,10 @@ export async function computeCoordinatorDispatchPlan({
     packetFile,
   });
   const recommendation = loopState.recommendation;
+  const integrationRisk = assessIntegrationRisk({
+    targetRoot: absoluteTargetRoot,
+    currentStateFile,
+  });
   const roster = loadAgentRoster({
     targetRoot: absoluteTargetRoot,
     rosterFile: agentRosterFile,
@@ -324,6 +375,12 @@ export async function computeCoordinatorDispatchPlan({
     recommendation,
     context: loopState.context,
   });
+  const integrationRiskGate = buildIntegrationRiskGate({
+    loopState,
+    assessment: integrationRisk,
+    recommendation,
+    scope: loopState.scope,
+  });
 
   if (loopState.loop?.escalation?.level === "user_arbitration_required") {
     dispatch.entrypoint_kind = "manual";
@@ -334,6 +391,23 @@ export async function computeCoordinatorDispatchPlan({
       `User arbitration required: ${loopState.loop.escalation.reason}`,
       "Do not dispatch another agent automatically until the issue is resolved.",
       "Run `aidn runtime coordinator-suggest-arbitration --target . --json` to review the structured arbitration options.",
+    ];
+  }
+  if (integrationRiskGate.active) {
+    dispatch.entrypoint_kind = "manual";
+    dispatch.entrypoint_name = "user-arbitration";
+    dispatch.steps = [];
+    dispatch.commands = [];
+    dispatch.notes = [
+      `Integration strategy requires explicit resolution: ${integrationRisk.recommended_strategy}.`,
+      ...integrationRisk.rationale.map((reason) => `Rationale: ${reason}`),
+      "Run `aidn runtime project-integration-risk --target . --json` to inspect the cycle collision assessment.",
+      "Run `aidn runtime coordinator-suggest-arbitration --target . --json` to review the structured integration decisions.",
+    ];
+  } else if (integrationRisk.candidate_cycles.length > 1) {
+    dispatch.notes = [
+      ...dispatch.notes,
+      `Integration strategy assessment: ${integrationRisk.recommended_strategy} (${integrationRisk.mergeability}).`,
     ];
   }
   if (recommendedRoleCoverage.status === "blocked") {
@@ -348,7 +422,7 @@ export async function computeCoordinatorDispatchPlan({
     ];
   }
 
-  const dispatchStatus = (loopState.loop?.escalation?.level === "user_arbitration_required" || recommendedRoleCoverage.status === "blocked")
+  const dispatchStatus = (loopState.loop?.escalation?.level === "user_arbitration_required" || recommendedRoleCoverage.status === "blocked" || integrationRiskGate.active)
     ? "escalated"
     : (!supported
       ? "unsupported"
@@ -377,6 +451,8 @@ export async function computeCoordinatorDispatchPlan({
     },
     recommended_role_coverage: recommendedRoleCoverage,
     coordinator_recommendation: recommendation,
+    integration_risk: integrationRisk,
+    integration_risk_gate: integrationRiskGate,
     dispatch_scope: loopState.scope ?? {
       scope_type: "none",
       scope_id: "none",

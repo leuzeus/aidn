@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { appendRuntimeNdjsonEvent } from "../../src/application/runtime/runtime-path-service.mjs";
 import { projectCoordinationSummary } from "./project-coordination-summary.mjs";
 
-const ALLOWED_DECISIONS = new Set(["continue", "reanchor", "repair", "audit"]);
+const ALLOWED_DECISIONS = new Set(["continue", "reanchor", "repair", "audit", "integration_cycle", "report_forward", "rework_from_example"]);
 
 function parseArgs(argv) {
   const args = {
@@ -66,6 +66,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/runtime/coordinator-record-arbitration.mjs --target . --decision continue --note \"validated by user\"");
   console.log("  node tools/runtime/coordinator-record-arbitration.mjs --target . --decision repair --note \"repair first\" --goal \"triage mismatch\" --json");
+  console.log("  node tools/runtime/coordinator-record-arbitration.mjs --target . --decision integration_cycle --note \"use a dedicated integration vehicle\" --json");
 }
 
 function resolveTargetPath(targetRoot, candidate) {
