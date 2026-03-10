@@ -148,7 +148,7 @@ export function normalizePreservedMetadata(targetRelative, text, templateVars) {
     }
     if (sourceBranch) {
       next = next.replace(/^(\s*source_branch:\s*).+$/im, `$1${sourceBranch}`);
-      next = next.replace(/^(\s*-\s*Source branch:\s*`).+(`.*)$/im, `$1${sourceBranch}$2`);
+      next = next.replace(/^\s*-\s*Source branch:.*$/im, `- Source branch: \`${sourceBranch}\``);
     }
   }
 

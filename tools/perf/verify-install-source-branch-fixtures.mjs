@@ -121,6 +121,42 @@ function main() {
       throw new Error(String(result.stderr ?? result.stdout ?? "").trim() || "install failed");
     }
 
+    fs.writeFileSync(path.join(tempRoot, "docs", "audit", "WORKFLOW.md"), [
+      "# Project Workflow Adapter (Stub)",
+      "",
+      "workflow_version: 0.0.0",
+      `source_branch: wrong-branch`,
+      "",
+      "## Branch & Cycle Policy",
+      "",
+      "- Source branch: `wrong-branch`)",
+      "",
+    ].join("\n"), "utf8");
+
+    const preserveResult = spawnSync(process.execPath, [
+      path.resolve(repoRoot, "tools", "install.mjs"),
+      "--target",
+      tempRoot,
+      "--pack",
+      "core",
+      "--source-branch",
+      args.sourceBranch,
+      "--skip-artifact-import",
+      "--no-codex-migrate-custom",
+    ], {
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        PATH: `${codexStubBin}${separator}${process.env.PATH ?? ""}`,
+      },
+      encoding: "utf8",
+      timeout: 180000,
+      maxBuffer: 20 * 1024 * 1024,
+    });
+    if ((preserveResult.status ?? 1) !== 0) {
+      throw new Error(String(preserveResult.stderr ?? preserveResult.stdout ?? "").trim() || "preserve install failed");
+    }
+
     const workflowText = fs.readFileSync(path.join(tempRoot, "docs", "audit", "WORKFLOW.md"), "utf8");
     const baselineCurrentText = fs.readFileSync(path.join(tempRoot, "docs", "audit", "baseline", "current.md"), "utf8");
     const baselineHistoryText = fs.readFileSync(path.join(tempRoot, "docs", "audit", "baseline", "history.md"), "utf8");
