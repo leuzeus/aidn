@@ -57,11 +57,12 @@ If mode=COMMITTING:
     - constraints/risks acknowledged
 - If branch kind is `intermediate`:
   - Require exactly one parent cycle owner
-  - Require explicit link to parent cycle in session file (`integration_target_cycle`)
+  - Require explicit link to parent cycle in session file (`integration_target_cycles`, with `primary_focus_cycle` when one local focus is needed)
   - Require final integration path `intermediate -> cycle -> session`
 - If branch kind is `session`:
   - Allow only integration/handover/PR orchestration by default
-  - Require explicit `integration_target_cycle` when integrating a cycle into session
+  - Require explicit session topology via `integration_target_cycles` when integrating cycles into the session
+  - Use `primary_focus_cycle` only when one local relay needs a single focus cycle
   - If production implementation is needed, recommend creating/switching to a cycle branch
 - If DoR or mapping is not satisfied:
   - do not proceed as COMMITTING

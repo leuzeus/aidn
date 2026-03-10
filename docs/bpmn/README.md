@@ -53,3 +53,4 @@ This directory contains BPMN 2.0 XML files intended for import into `bpmn.io`.
 - use `coordinator-resume` to gate any automatic replay after escalation; escalation must be cleared by `user_arbitration` first
 - use `coordinator-orchestrate` only as a bounded opt-in runner; it should stop on unresolved escalation or immediate repeat, not behave like an open-ended scheduler
 - use `agent-selection-policy` with `--agent auto` to prefer specialized adapters for audit and repair relays while preserving explicit adapter override when needed
+- read session topology as plural (`attached_cycles`, `integration_target_cycles`) and dispatch focus as singular (`scope_type`, `scope_id`, `target_branch`); they intentionally solve different problems

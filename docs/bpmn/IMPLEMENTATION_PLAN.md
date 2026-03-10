@@ -41,9 +41,23 @@ The implementation also goes further than the original slice set with:
 - adapter health and environment compatibility checks
 - coordination log/history/summary digests
 - multi-agent status and agent selection digests
+- explicit distinction between session topology (`attached_cycles`, `integration_target_cycles`, optional `primary_focus_cycle`) and dispatch scope
 
 At this point, the remaining work is no longer "foundational multi-agent workflow support".
 It is product expansion on top of the implemented baseline.
+
+## Multi-Cycle Session Runtime Note
+
+The runtime now distinguishes:
+
+- session topology:
+  - `attached_cycles`
+  - `integration_target_cycles`
+  - optional `primary_focus_cycle`
+- dispatch focus:
+  - singular `scope_type + scope_id + target_branch`
+
+This prevents the coordinator and repair layer from treating a multi-cycle session as if it had to collapse into one global target cycle.
 
 ## Continuity With The Original Next Steps
 
