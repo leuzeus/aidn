@@ -104,6 +104,44 @@ function parseSessionFile(text) {
   return map;
 }
 
+function parseSessionListField(text, fieldName) {
+  const lines = String(text).split(/\r?\n/);
+  const items = [];
+  const inlinePattern = new RegExp(`^\\s*-\\s+${fieldName}:\\s*(.*)$`, "i");
+  let collecting = false;
+
+  for (const line of lines) {
+    const match = line.match(inlinePattern);
+    if (!collecting && match) {
+      const remainder = normalizeScalar(match[1] ?? "");
+      if (remainder) {
+        if (!canonicalNone(remainder)) {
+          items.push(...remainder.split(",").map((item) => normalizeScalar(item)).filter(Boolean).filter((item) => !canonicalNone(item)));
+        }
+        break;
+      }
+      collecting = true;
+      continue;
+    }
+    if (!collecting) {
+      continue;
+    }
+    if (/^##\s+/.test(line) || /^\s*-\s+[a-zA-Z0-9_]+:\s*/.test(line)) {
+      break;
+    }
+    const bulletMatch = line.match(/^\s*-\s+(.+)$/);
+    if (!bulletMatch) {
+      continue;
+    }
+    const item = normalizeScalar(bulletMatch[1] ?? "");
+    if (item && !canonicalNone(item)) {
+      items.push(item);
+    }
+  }
+
+  return Array.from(new Set(items));
+}
+
 function parseSnapshot(text) {
   const lines = String(text).split(/\r?\n/);
   let activeCycles = [];
@@ -296,7 +334,9 @@ export function evaluateCurrentStateConsistency({ targetRoot }) {
   const sessionBranchKind = normalizeScalar(session.get("branch_kind") ?? "");
   const sessionCycleBranch = normalizeScalar(session.get("cycle_branch") ?? "");
   const sessionIntegrationTarget = normalizeScalar(session.get("integration_target_cycle") ?? "");
-  const sessionAttachedCycles = normalizeScalar(session.get("attached_cycles") ?? "");
+  const sessionPrimaryFocusCycle = normalizeScalar(session.get("primary_focus_cycle") ?? "");
+  const sessionAttachedCycles = parseSessionListField(sessionFile ? readText(sessionFile) : "", "attached_cycles");
+  const sessionIntegrationTargetCycles = parseSessionListField(sessionFile ? readText(sessionFile) : "", "integration_target_cycles");
 
     check(
       checks,
@@ -326,19 +366,24 @@ export function evaluateCurrentStateConsistency({ targetRoot }) {
       `session.cycle_branch=${sessionCycleBranch || "missing"} current_state.cycle_branch=${cycleBranch || "missing"}`,
     );
 
-  const attachedCycles = sessionAttachedCycles
-    ? sessionAttachedCycles.split(",").map((item) => normalizeScalar(item)).filter(Boolean).filter((item) => item.toLowerCase() !== "none")
-    : [];
+  const attachedCycles = sessionAttachedCycles;
+  const integrationTargets = Array.from(new Set([
+    ...sessionIntegrationTargetCycles,
+    ...(sessionIntegrationTarget
+      ? sessionIntegrationTarget.split(",").map((item) => normalizeScalar(item)).filter(Boolean).filter((item) => item.toLowerCase() !== "none")
+      : []),
+    ...(sessionPrimaryFocusCycle && !canonicalNone(sessionPrimaryFocusCycle) ? [sessionPrimaryFocusCycle] : []),
+  ]));
   check(
     checks,
     "active_cycle_matches_session_tracking",
     !sessionFile
       || canonicalNone(activeCycle)
       || canonicalUnknown(activeCycle)
-      || (!sessionIntegrationTarget && attachedCycles.length === 0)
-      || sessionIntegrationTarget === activeCycle
+      || (integrationTargets.length === 0 && attachedCycles.length === 0)
+      || integrationTargets.includes(activeCycle)
       || attachedCycles.includes(activeCycle),
-    `session.integration_target_cycle=${sessionIntegrationTarget || "missing"} session.attached_cycles=${attachedCycles.join(",") || "none"} current_state.active_cycle=${activeCycle || "missing"}`,
+    `session.integration_target_cycle=${sessionIntegrationTarget || "missing"} session.integration_target_cycles=${integrationTargets.join(",") || "none"} session.attached_cycles=${attachedCycles.join(",") || "none"} current_state.active_cycle=${activeCycle || "missing"}`,
   );
 
   const cycleStatusPath = findCycleStatus(cyclesDir, activeCycle);
