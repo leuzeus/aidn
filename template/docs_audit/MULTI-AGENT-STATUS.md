@@ -31,6 +31,9 @@ adapter_count: 0
 auto_selected_agent: unknown
 coordination_history_status: empty
 last_execution_status: unknown
+integration_strategy: user_arbitration_required
+integration_mergeability: insufficient_context
+integration_candidate_cycle_count: 0
 arbitration_required: no
 arbitration_status: ok
 preferred_decision: continue
@@ -40,6 +43,17 @@ preferred_decision: continue
 - source: current-state
 - reason: template placeholder
 - stop_required: no
+
+## Integration Strategy
+
+- candidate_cycle_count: 0
+- overlap_level: unknown
+- semantic_risk: unknown
+- readiness: unknown
+- mergeability: insufficient_context
+- recommended_strategy: user_arbitration_required
+- arbitration_required: yes
+- rationale: template placeholder
 
 ## Arbitration
 

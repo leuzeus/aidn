@@ -11,6 +11,7 @@ Minimal re-anchor path:
 0. `docs/audit/HANDOFF-PACKET.md` when another agent already prepared a relay
 0b. run `npx aidn runtime handoff-admit --target . --json` when a relay packet is present
 0c. `docs/audit/MULTI-AGENT-STATUS.md` when a short coordinator-facing digest is enough
+0d. `docs/audit/INTEGRATION-RISK.md` when several session cycles may converge
 1. `docs/audit/CURRENT-STATE.md`
 2. `docs/audit/WORKFLOW-KERNEL.md`
 3. `docs/audit/WORKFLOW_SUMMARY.md` (this page)
@@ -20,6 +21,7 @@ Detailed read order when more context is needed:
 0. `docs/audit/HANDOFF-PACKET.md` when relevant
 0b. run `npx aidn runtime handoff-admit --target . --json` when relevant
 0c. `docs/audit/MULTI-AGENT-STATUS.md` when relevant
+0d. `docs/audit/INTEGRATION-RISK.md` when relevant
 1. `docs/audit/CURRENT-STATE.md`
 2. `docs/audit/WORKFLOW-KERNEL.md`
 3. `docs/audit/WORKFLOW_SUMMARY.md`

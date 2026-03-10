@@ -104,6 +104,7 @@ const RUNTIME_ALIASES = {
   "verify-agent-roster": { file: "verify-agent-roster.mjs" },
   "project-agent-health-summary": { file: "project-agent-health-summary.mjs" },
   "project-agent-selection-summary": { file: "project-agent-selection-summary.mjs" },
+  "project-integration-risk": { file: "project-integration-risk.mjs" },
   "project-multi-agent-status": { file: "project-multi-agent-status.mjs" },
   "db-first-artifact": { file: "db-first-artifact.mjs" },
   "handoff-admit": { file: "handoff-admit.mjs" },
@@ -137,6 +138,7 @@ function printUsage() {
   console.log("  aidn runtime verify-agent-roster --target . --json");
   console.log("  aidn runtime project-agent-health-summary --target . --json");
   console.log("  aidn runtime project-agent-selection-summary --target . --json");
+  console.log("  aidn runtime project-integration-risk --target . --json");
   console.log("  aidn runtime project-multi-agent-status --target . --json");
   console.log("  aidn runtime handoff-admit --target . --json");
   console.log("  aidn runtime project-coordination-summary --target . --json");

@@ -22,6 +22,7 @@ Recommended fields:
 - decision
 - note
 - optional goal override
+- optional integration strategy override
 - resulting next relay expectation
 
 ## Notes

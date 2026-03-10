@@ -12,6 +12,10 @@ Before any durable write, reload the minimal workflow context in this order:
 
 If context is partial, stale, or contradictory, run `docs/audit/REANCHOR_PROMPT.md` and stop before writing.
 
+When several cycles attached to the same session may converge, also read:
+- `docs/audit/INTEGRATION-RISK.md`
+- and prefer `aidn runtime project-integration-risk --target . --json` before assuming a normal merge path
+
 Durable writes include:
 - `apply_patch`
 - direct file edits

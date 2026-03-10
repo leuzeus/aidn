@@ -15,7 +15,7 @@ Rule/State boundary:
 
 ## Summary
 
-updated_at: 2026-03-09T16:54:17.331Z
+updated_at: unknown
 history_status: empty
 total_dispatches: 0
 last_recommended_role: unknown
@@ -26,8 +26,6 @@ last_arbitration_decision: unknown
 last_arbitration_ts: unknown
 
 ## Aggregates
-
-event_type_counts: none
 
 dispatch_status_counts: none
 

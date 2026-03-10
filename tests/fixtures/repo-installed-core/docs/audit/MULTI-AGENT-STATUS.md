@@ -14,29 +14,55 @@ Rule/State boundary:
 
 ## Summary
 
-updated_at: 2026-03-09T16:54:17.333Z
+updated_at: template
 recommended_role: coordinator
 recommended_action: reanchor
-recommended_goal: reanchor current session, cycle, and runtime facts before any durable write
-handoff_status: refresh_required
-handoff_admission_status: rejected
+recommended_goal: reload the active session, cycle, and runtime facts before acting
+handoff_status: none
+handoff_admission_status: none
 roster_verification: pass
 roster_issue_count: 0
 adapter_health_pass: yes
-environment_ready_count: 3
+environment_ready_count: 0
 environment_degraded_count: 0
 environment_unavailable_count: 0
 recommended_role_coverage_status: ok
-adapter_count: 6
-auto_selected_agent: codex
+adapter_count: 0
+auto_selected_agent: unknown
 coordination_history_status: empty
 last_execution_status: unknown
+integration_strategy: user_arbitration_required
+integration_mergeability: insufficient_context
+integration_candidate_cycle_count: 0
+arbitration_required: no
+arbitration_status: ok
+preferred_decision: continue
 
 ## Coordinator Recommendation
 
-- source: handoff-admit
-- reason: handoff admission rejected
+- source: current-state
+- reason: template placeholder
 - stop_required: no
+
+## Integration Strategy
+
+- candidate_cycle_count: 0
+- overlap_level: unknown
+- semantic_risk: unknown
+- readiness: unknown
+- mergeability: insufficient_context
+- recommended_strategy: user_arbitration_required
+- arbitration_required: yes
+- rationale: template placeholder
+
+## Arbitration
+
+- required: no
+- status: ok
+- reason: dispatch is already actionable
+- preferred_decision: continue
+- suggestion: continue recommended=yes actionable=yes
+  rationale: template placeholder
 
 ## Roster Verification
 
@@ -44,40 +70,29 @@ last_execution_status: unknown
 
 ## Selection Preview
 
-- selected_agent: codex
-- selection_status: selected
-- reason: auto selected codex for coordinator + reanchor
+- selected_agent: unknown
+- selection_status: unavailable
 
 ## Adapter Health
 
-- codex: ready (adapter is enabled and loadable)
-  environment: ready (adapter executed the default environment probe successfully)
-- codex-auditor: ready (adapter is enabled and loadable)
-  environment: ready (adapter executed the default environment probe successfully)
-- codex-repair: ready (adapter is enabled and loadable)
-  environment: ready (adapter executed the default environment probe successfully)
-- external-example-auditor: disabled (adapter is disabled by roster)
-  environment: unknown (environment probe skipped because the adapter is disabled by roster)
-- local-shell-auditor: disabled (adapter is disabled by roster)
-  environment: unknown (environment probe skipped because the adapter is disabled by roster)
-- local-shell-repair: disabled (adapter is disabled by roster)
-  environment: unknown (environment probe skipped because the adapter is disabled by roster)
+- codex: ready (template placeholder)
+  environment: ready (template placeholder)
 
 ## Environment Compatibility
 
-- ready: 3
+- ready: 0
 - degraded: 0
 - unavailable: 0
-- unknown: 3
+- unknown: 0
 - blocked_adapter: none
 
 ## Role Coverage
 
-- coordinator: ready=1, degraded=0, unavailable=0, disabled=0, unknown=0
-- executor: ready=1, degraded=0, unavailable=0, disabled=0, unknown=0
-- auditor: ready=2, degraded=0, unavailable=0, disabled=2, unknown=0
-- repair: ready=2, degraded=0, unavailable=0, disabled=1, unknown=0
-- recommendation: 1 runnable adapter(s) remain available for role coordinator
+- coordinator: ready=0, degraded=0, unavailable=0, disabled=0, unknown=0
+- executor: ready=0, degraded=0, unavailable=0, disabled=0, unknown=0
+- auditor: ready=0, degraded=0, unavailable=0, disabled=0, unknown=0
+- repair: ready=0, degraded=0, unavailable=0, disabled=0, unknown=0
+- recommendation: template placeholder
 
 ## Coordination
 
@@ -96,10 +111,10 @@ last_execution_status: unknown
 - `docs/audit/AGENT-SELECTION-SUMMARY.md`
 - `docs/audit/COORDINATION-SUMMARY.md`
 - `docs/audit/USER-ARBITRATION.md` when escalation is active
+- `aidn runtime coordinator-suggest-arbitration --target . --json` when arbitration remains required
 
 ## Notes
 
 - refresh this digest after roster changes, handoff refresh, or active coordination dispatch
 - if `roster_verification` fails, do not trust `auto_selected_agent` until the roster is fixed
 - if `recommended_role_coverage_status` is `blocked`, do not dispatch automatically until adapter availability is restored
-- generated file: `docs/audit/MULTI-AGENT-STATUS.md`

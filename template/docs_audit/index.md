@@ -16,6 +16,7 @@
 - Workflow kernel: `WORKFLOW-KERNEL.md`
 - Current state: `CURRENT-STATE.md`
 - Runtime digest: `RUNTIME-STATE.md`
+- Integration risk: `INTEGRATION-RISK.md`
 - Snapshot: `snapshots/context-snapshot.md`
 - Baseline: `baseline/current.md`
 - Workflow summary: `WORKFLOW_SUMMARY.md`

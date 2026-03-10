@@ -28,6 +28,7 @@ If more detail is needed:
 ### Current operational summary
 
 - Primary file: `docs/audit/CURRENT-STATE.md`
+- Integration risk digest: `docs/audit/INTEGRATION-RISK.md`
 - Agent-to-agent handoff digest: `docs/audit/HANDOFF-PACKET.md`
 - Agent adapter roster: `docs/audit/AGENT-ROSTER.md`
 - Agent adapter contract: `docs/audit/AGENT-ADAPTERS.md`
@@ -142,6 +143,7 @@ Read for:
 ### Runtime context in `dual` / `db-only`
 
 - Runtime digest: `docs/audit/RUNTIME-STATE.md`
+- Integration risk digest: `docs/audit/INTEGRATION-RISK.md`
 - Handoff digest: `docs/audit/HANDOFF-PACKET.md`
 - Agent adapter roster: `docs/audit/AGENT-ROSTER.md`
 - Agent adapter contract: `docs/audit/AGENT-ADAPTERS.md`

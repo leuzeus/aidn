@@ -152,6 +152,7 @@ export function detectStructureProfile(auditRoot) {
       "WORKFLOW-KERNEL.md",
       "CURRENT-STATE.md",
       "RUNTIME-STATE.md",
+      "INTEGRATION-RISK.md",
       "HANDOFF-PACKET.md",
       "AGENT-ROSTER.md",
       "AGENT-HEALTH-SUMMARY.md",

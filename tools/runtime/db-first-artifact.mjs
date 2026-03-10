@@ -128,6 +128,7 @@ export function inferFamily(relPath, explicitFamily) {
     "WORKFLOW_SUMMARY.md",
     "CURRENT-STATE.md",
     "RUNTIME-STATE.md",
+    "INTEGRATION-RISK.md",
     "HANDOFF-PACKET.md",
     "AGENT-ROSTER.md",
     "AGENT-ADAPTERS.md",

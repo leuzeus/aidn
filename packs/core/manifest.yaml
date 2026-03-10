@@ -35,6 +35,7 @@ verify:
     - docs/audit/WORKFLOW_SUMMARY.md
     - docs/audit/CURRENT-STATE.md
     - docs/audit/RUNTIME-STATE.md
+    - docs/audit/INTEGRATION-RISK.md
     - docs/audit/HANDOFF-PACKET.md
     - docs/audit/AGENT-ROSTER.md
     - docs/audit/AGENT-ADAPTERS.md

@@ -283,6 +283,7 @@ function collectReanchorArtifactDetails(target) {
     workflow_kernel_exists: fs.existsSync(path.join(auditRoot, "WORKFLOW-KERNEL.md")),
     current_state_exists: fs.existsSync(path.join(auditRoot, "CURRENT-STATE.md")),
     runtime_state_exists: fs.existsSync(path.join(auditRoot, "RUNTIME-STATE.md")),
+    integration_risk_exists: fs.existsSync(path.join(auditRoot, "INTEGRATION-RISK.md")),
     handoff_packet_exists: fs.existsSync(path.join(auditRoot, "HANDOFF-PACKET.md")),
     agent_roster_exists: fs.existsSync(path.join(auditRoot, "AGENT-ROSTER.md")),
     agent_adapters_exists: fs.existsSync(path.join(auditRoot, "AGENT-ADAPTERS.md")),

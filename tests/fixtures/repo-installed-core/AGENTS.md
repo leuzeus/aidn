@@ -46,6 +46,7 @@ If any required skill is unavailable, the agent MUST:
 - Current state summary: `docs/audit/CURRENT-STATE.md`
 - Multi-agent handoff packet: `docs/audit/HANDOFF-PACKET.md`
 - Multi-agent status digest: `docs/audit/MULTI-AGENT-STATUS.md`
+- Integration risk digest: `docs/audit/INTEGRATION-RISK.md`
 - Agent adapter contract: `docs/audit/AGENT-ADAPTERS.md`
 - Runtime digest: `docs/audit/RUNTIME-STATE.md`
 - Current baseline: `docs/audit/baseline/current.md`
@@ -275,6 +276,15 @@ If a cycle is non-retained:
 If a cycle is integrated to session:
 - complete integration before session close
 - update cycle state/outcome as retained (`DONE`)
+
+If several attached cycles may converge into the same session:
+- consult `docs/audit/INTEGRATION-RISK.md` before assuming a normal merge path
+- classify the chosen path explicitly as one of:
+  - `direct_merge`
+  - `integration_cycle`
+  - `report_forward`
+  - `rework_from_example`
+- record explicit user arbitration when the integration strategy is not `direct_merge`
 
 ------------------------------------------------------------
 ## Drift Control & Change Management
