@@ -73,6 +73,12 @@ At the beginning of a session, the agent MUST:
 4. Run skill: `start-session`
 5. Explicitly acknowledge the session mode: `THINKING | EXPLORING | COMMITTING`
 
+`start-session` begins with blocking admission:
+- resume the current session/cycle when continuity already exists
+- stop on non-compliant branches or unresolved session-base continuity
+- stop and request user choice when several open cycles compete
+- only allow new session creation after admission returns `create_session_allowed`
+
 If `docs/audit/SPEC.md` is missing, the agent MUST:
 - STOP
 - request workflow reinstall or repair before continuing
@@ -80,6 +86,7 @@ If `docs/audit/SPEC.md` is missing, the agent MUST:
 If mode is `COMMITTING`, the agent MUST:
 - run skill: `branch-cycle-audit`
 - stop if branch ownership is ambiguous or unmapped
+- rely on the same branch/session/cycle mapping layer as `start-session`, not on generic gating alone
 
 ## Pre-Write Gate (MANDATORY)
 
@@ -109,10 +116,11 @@ Before any durable write, the agent MUST also:
 
 If runtime state mode is `dual` or `db-only`, the agent MUST:
 
-- run workflow hooks in strict JSON mode (`npx aidn codex run-json-hook ... --strict --json`)
+- run workflow hooks in strict JSON mode (`npx aidn codex run-json-hook ... --strict --fail-on-repair-block --json`)
 - hydrate db-backed context after each workflow skill (`npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json`)
 - read hydrated runtime context before durable write
 - check `repair_layer_status`
+- check `repair_layer_advice`
 - stop on blocking repair findings
 
 If one required field is missing, ambiguous, or contradictory, the agent MUST:
@@ -156,6 +164,10 @@ For `dual` / `db-only` projects, the runtime chain is authoritative for mutating
 - `npx aidn runtime sync-db-first-selective --target . --json` for mutating skills
 - `npx aidn runtime repair-layer-triage --target . --json` when `repair_layer_status` is `warn` or `block`
 - `npx aidn runtime repair-layer-autofix --target . --apply --json` only for safe-only autofix cases
+
+Runtime hooks are infrastructure:
+- `start-session` admission decides `resume | choose | create | stop`, then delegates to generic `session-start` runtime work only when admitted
+- `branch-cycle-audit` admission validates owned branch mapping, then delegates to generic gating/perf evaluation only when mapping is valid
 
 When work is likely to continue in another agent, the agent SHOULD:
 

@@ -39,7 +39,9 @@ Detailed read order when more context is needed:
 
 Session start:
 - Run `context-reload` then `start-session` (`SPEC-R01`)
+- `start-session` begins with blocking admission: it may stop for non-compliant branches, unresolved continuity, or multi-cycle arbitration before any new session/cycle creation.
 - If mode is COMMITTING: run `branch-cycle-audit` and ensure valid branch ownership mapping (`SPEC-R03`)
+- `branch-cycle-audit` reuses the same branch/session/cycle mapping layer and stops before generic gating when ownership is missing or ambiguous.
 - If runtime state mode is `dual`/`db-only`: run skill perf hooks in strict mode (DB-backed checks are mandatory)
 
 Committing execution:

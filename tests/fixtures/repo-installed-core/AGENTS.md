@@ -93,6 +93,12 @@ At the beginning of a session, the agent MUST:
 - EXPLORING
 - COMMITTING
 
+`start-session` begins with blocking admission:
+- resume the current session/cycle when continuity already exists
+- stop on non-compliant branches or unresolved session-base continuity
+- stop and request user choice when several open cycles compete
+- only allow new session creation after admission returns `create_session_allowed`
+
 If `docs/audit/SPEC.md` is missing, the agent MUST:
 - STOP
 - request workflow reinstall/repair before continuing
@@ -100,12 +106,13 @@ If `docs/audit/SPEC.md` is missing, the agent MUST:
 If mode is **COMMITTING**, the agent MUST:
 - **Run skill: `branch-cycle-audit`**
 - STOP if branch ownership is ambiguous or unmapped (`session` / `cycle` / `intermediate`)
+- rely on the same branch/session/cycle mapping layer as `start-session`, not on generic gating alone
 
 Agents MUST NOT skip these steps.
 
 If runtime state mode is `dual` or `db-only`, the agent MUST:
 - run the performance hook for each invoked workflow skill
-- run those hooks through the JSON context wrapper in strict mode (`npx aidn codex run-json-hook ... --strict --json`)
+- run those hooks through the JSON context wrapper in strict mode (`npx aidn codex run-json-hook ... --strict --fail-on-repair-block --json`)
 - prefer `--fail-on-repair-block` for mutating workflow skills and stop on `repair_layer_status=block`
 - hydrate db-backed context after each workflow skill (`npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json`)
 - use hydrated context to read `repair_layer_status`, `repair_layer_advice`, prioritized artifacts, and continuity hints before acting
@@ -115,6 +122,9 @@ If runtime state mode is `dual` or `db-only`, the agent MUST:
 - if triage exposes a safe-only autofix candidate, the agent MAY run `npx aidn runtime repair-layer-autofix --target . --apply --json`
 - stop and request user arbitration if blocking repair findings remain after triage/autofix
 - treat hook failure as a stop condition (do not continue silently on file-only fallback paths)
+- treat generic runtime hooks as infrastructure only:
+  - `start-session` admission decides `resume | choose | create | stop`, then delegates to generic `session-start` runtime work only when admitted
+  - `branch-cycle-audit` admission validates owned branch mapping, then delegates to generic gating/perf evaluation only when mapping is valid
 
 ------------------------------------------------------------
 ## Pre-Write Gate (MANDATORY)

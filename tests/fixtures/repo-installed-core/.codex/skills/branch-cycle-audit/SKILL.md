@@ -15,24 +15,41 @@ Prevent silent drift between Git branches and cycle artifacts.
 - Snapshot update is optional and should be applied only when explicitly requested.
 - If snapshot or other workflow state is updated, keep `docs/audit/CURRENT-STATE.md` consistent with the same decision.
 
+## Pre-Write Admission
+Before the first durable write in this skill, run:
+- `npx aidn runtime pre-write-admit --target . --skill branch-cycle-audit --json`
+- If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+- This skill begins with a blocking branch-ownership admission decision before generic gating/perf evaluation runs.
+- If runtime admission returns `result=stop`, STOP and request the required mapping decision before continuing.
+
 ## Steps
 
-1) Identify current Git branch (if accessible).
+1) Run branch-cycle admission first:
+- detect current branch
+- classify branch kind with the shared workflow mapping layer used by `start-session`
+- resolve the owning session/cycle artifact
+- stop on:
+  - non-owned branches (`source` / `other` / `unknown`)
+  - missing mapping
+  - ambiguous mapping
+- only continue to generic gating/perf evaluation when branch ownership is valid
+
+2) Identify current Git branch (if accessible).
 If not accessible, ask user to provide it.
 
-2) Scan active cycles:
+3) Scan active cycles:
 docs/audit/cycles/*/status.md
 Collect:
 - cycle id
 - state
 - branch_name
 
-3) Classify current branch:
+4) Classify current branch:
 - session branch: `^S[0-9]+-`
 - cycle branch: `^(feature|hotfix|spike|refactor|structural|migration|security|perf|integration|compat|corrective)/C[0-9]+-`
 - intermediate branch: `^(feature|hotfix|spike|refactor|structural|migration|security|perf|integration|compat|corrective)/C[0-9]+-I[0-9]+-`
 
-4) Check mapping by branch kind:
+5) Check mapping by branch kind:
 - Cycle branch:
   - Exactly one cycle MUST have `status.md.branch_name == current branch` -> OK
   - If none: suggest creating/remapping the cycle and updating `status.md.branch_name`
@@ -46,7 +63,7 @@ Collect:
   - Commits should be limited to integration/handover/PR orchestration unless explicit exception is documented
   - If session close is requested, verify open-cycle resolution decisions are present (`integrate-to-session` / `report` / `close-non-retained`)
 
-5) If current work mode is COMMITTING:
+6) If current work mode is COMMITTING:
 Apply Branch/Cycle Requirement Auto-check:
 - Require cycle ownership for cycle/intermediate branches
 - Require branch mapping in status.md for cycle branches only
@@ -71,7 +88,7 @@ Continuity validation by rule:
   - matching CR entry must exist with impact >= medium.
   - if missing -> STOP.
 
-6) Update snapshot (optional but recommended):
+7) Update snapshot (optional but recommended):
 - Ensure active cycle list reflects the mapped cycle
 - Next entry point points to that cycle status.md
 - If snapshot is updated, also update `docs/audit/CURRENT-STATE.md` when present:
@@ -80,8 +97,9 @@ Continuity validation by rule:
   - clear stale focus if mapping remains ambiguous
   - record the next safe action instead of leaving inferred ownership implicit
 
-7) Performance hook (mandatory in dual/db-only; optional in files):
+8) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill branch-cycle-audit --mode COMMITTING --target . --json`
+- the runtime `branch-cycle-audit` hook applies branch-ownership admission before delegating to generic gating evaluation
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill branch-cycle-audit --project-runtime-state --json`.

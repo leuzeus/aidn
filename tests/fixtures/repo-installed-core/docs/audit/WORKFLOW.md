@@ -64,6 +64,7 @@ source_branch: dev
 
 ### Session Start Branch Base Gate (Mandatory, adapter extension to `SPEC-R01`/`SPEC-R03`)
 
+- Runtime enforcement path: `start-session` admission runs before generic `session-start` checkpoint/index/repair work.
 - Before creating a new session branch `SXXX-*`, check previous session PR status against source branch.
 - Decision order:
   - `PR OPEN`: continue on existing session branch by default.
@@ -71,6 +72,7 @@ source_branch: dev
   - `PR MERGED` or `no previous session`: open new session branch from up-to-date source branch.
   - `PR CLOSED (not merged)`: require explicit user decision before opening a new session branch.
 - Hard stop: do not chain session branches by default.
+- If previous-session status cannot be inferred reliably from local workflow state, STOP and request explicit user arbitration instead of assuming a new session is allowed.
 
 ### Git Hygiene Gate (Mandatory, adapter extension to `SPEC-R03`)
 
@@ -119,6 +121,12 @@ source_branch: dev
   - `R3_EXCEPTION_OVERRIDE`
 - Record decision in cycle `status.md` continuity fields.
 - Reference: `docs/audit/CONTINUITY_GATE.md`
+
+## Branch Ownership Admission Gate (Mandatory)
+
+- `start-session` and `branch-cycle-audit` MUST use the same runtime branch/session/cycle mapping layer.
+- Non-owned branches (`source`, `other`, `unknown`) MUST stop `branch-cycle-audit` in `COMMITTING`.
+- Missing or ambiguous mapping MUST stop before generic gating/perf evaluation continues.
 
 ## Session Close & PR Review
 

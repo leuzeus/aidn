@@ -74,9 +74,11 @@ The following scripts were added under `tools/perf/`:
 - `render-index-summary.mjs` - generate Markdown summary from index report + index threshold checks
 - `reload-check.mjs` - evaluate incremental/full/stop reload decision from digest + mapping
 - `gating-evaluate.mjs` - evaluate L1/L2/L3 gating with conditional drift signals
+- `branch-cycle-audit-hook.mjs` - enforce owned branch/session/cycle mapping before generic gating evaluation
 - `checkpoint.mjs` - run reload-check + gate + index-sync as one checkpoint command
 - `skill-hook.mjs` - route skill-level perf hooks to the right runtime tool (`reload-check|gate|checkpoint|hook`)
 - `workflow-hook.mjs` - run checkpoint from session hooks (`session-start` / `session-close`)
+- `start-session-hook.mjs` - enforce start-session admission before generic `session-start` runtime processing
 - `delivery-window.mjs` - mark delivery start/end to compute overhead ratio against control time
 - `check-thresholds.mjs` - compare KPI report against versioned thresholds
 - `check-thresholds-defaults.mjs` - run threshold checks from preset defaults (`index|index-sync|fallback|constraint|constraint-trend`) with package fallback targets
@@ -453,6 +455,8 @@ Checkpoint summary events now carry effective index write counters (`files_writt
 ## Session Hook Integration (minimal)
 
 - At session start: run `perf:session-start`
+- `perf:session-start` now routes through `start-session` admission first and only runs generic `session-start` checkpoint/index/repair work after admission succeeds.
+- `perf:branch-cycle-audit` routes through shared branch ownership admission before generic gating evaluation.
 - At session close: run `perf:session-close`
 - In `dual`/`db-only`, `perf:session-close` executes `constraint-loop` automatically (mandatory DB-backed chain).
 - In `dual`/`db-only`, hooks are forced to strict blocking behavior.

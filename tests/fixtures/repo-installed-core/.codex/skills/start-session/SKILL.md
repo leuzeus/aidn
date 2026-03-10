@@ -14,25 +14,49 @@ Initialize or resume a session with correct mode, branch awareness, and cycle ma
 - Apply write-on-change behavior (do not rewrite unchanged content).
 - If multiple open sessions match the current branch, STOP and ask user which session to resume.
 
+## Pre-Write Admission
+Before the first durable write in this skill, run:
+- `npx aidn runtime pre-write-admit --target . --skill start-session --json`
+- If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+- This skill itself also begins with a blocking runtime admission decision before any session/cycle creation is allowed.
+- If runtime admission returns `result=stop`, STOP and surface the required user choice instead of creating new workflow artifacts.
+
 ## Steps
 
-1) Run context-reload logic (light version):
+1) Run start-session runtime admission first:
+- detect current branch
+- classify branch kind: `source` | `session` | `cycle` | `intermediate` | `other`
+- resolve active session / active cycle / open cycles
+- decide one of:
+  - `resume_current_session`
+  - `resume_current_cycle`
+  - `choose_cycle`
+  - `create_session_allowed`
+  - `blocked_non_compliant_branch`
+  - `blocked_session_base_gate`
+  - `blocked_ambiguous_topology`
+- If branch is non-compliant with aid'n, STOP and ask whether the work must be merged to the configured source branch first or explicitly ignored with rationale.
+- If several open cycles compete, STOP and ask the user to choose the cycle to continue or relaunch by agent.
+- If an open session/cycle already owns continuity, resume it before creating anything new.
+
+2) Run context-reload logic (light version):
 - Read `docs/audit/CURRENT-STATE.md` if present
 - Read snapshot
 - Read baseline
 - Detect current branch
 - Detect active cycle (if any)
-- Classify branch kind: `session` | `cycle` | `intermediate`
+- Classify branch kind: `source` | `session` | `cycle` | `intermediate`
 - Detect cycles reported from previous session close report (if any)
 
-2) Create or update session file:
-- If user explicitly opens a new session, create `docs/audit/sessions/SXXX.md`.
+3) Create or update session file:
+- If runtime admission returns `create_session_allowed` and user explicitly opens a new session, create `docs/audit/sessions/SXXX.md`.
 - If current work belongs to an existing open session, update that session file (do not create a new SXXX).
 - If a previous session closed with reported cycles, ask whether to import them into this session.
+- Never create a new session or cycle while runtime admission says continuity must resume existing workflow state first.
 
 Use TEMPLATE_SESSION_SXXX.md structure.
 
-3) Fill:
+4) Fill:
 - Auto-detected mode
 - Confidence + reasons
 - Current branch
@@ -45,7 +69,7 @@ Use TEMPLATE_SESSION_SXXX.md structure.
   - reported_from_previous_session
   - carry_over_pending
 
-4) Apply Branch/Cycle Requirement Auto-check:
+5) Apply Branch/Cycle Requirement Auto-check:
 
 If mode=COMMITTING:
 - If branch kind is `cycle`:
@@ -69,7 +93,7 @@ If mode=COMMITTING:
   - recommend smallest actions to reach READY
   - suggest THINKING or EXPLORING until fixed
 
-5) Carry-over handling at session start:
+6) Carry-over handling at session start:
 - For each reported cycle from previous session, require one decision:
   - integrate now (resume and integrate cycle into current session when ready)
   - import now (attach to current session)
@@ -83,12 +107,12 @@ If mode=EXPLORING and:
 - >30 min code work expected
 → Recommend converting to SPIKE cycle + dedicated branch
 
-6) Suggest:
+7) Suggest:
 - Session Objective (1 sentence)
 - Time Budget
 - Planned Outputs
 
-7) Update `docs/audit/CURRENT-STATE.md`:
+8) Update `docs/audit/CURRENT-STATE.md`:
 - `updated_at`
 - `active_session`
 - `session_branch`
@@ -103,8 +127,9 @@ If mode=EXPLORING and:
 Keep this file summary-only.
 Do not duplicate full session or cycle content.
 
-8) Performance hook (mandatory in dual/db-only; optional in files):
+9) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill start-session --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- the runtime `start-session` hook applies workflow admission before delegating to generic session-start checkpoint/index/repair behavior
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill start-session --project-runtime-state --json`.
