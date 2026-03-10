@@ -4,9 +4,9 @@ export const VALID_SKILL_HOOK_MODES = new Set(["THINKING", "EXPLORING", "COMMITT
 
 export const SKILL_ROUTES = {
   "context-reload": { tool: "reload-check.mjs", defaultMode: "THINKING" },
-  "branch-cycle-audit": { tool: "gating-evaluate.mjs", defaultMode: "COMMITTING" },
+  "branch-cycle-audit": { tool: "branch-cycle-audit-hook.mjs", defaultMode: "COMMITTING" },
   "drift-check": { tool: "gating-evaluate.mjs", defaultMode: "COMMITTING" },
-  "start-session": { tool: "workflow-hook.mjs", fixedArgs: ["--phase", "session-start"], defaultMode: "UNKNOWN" },
+  "start-session": { tool: "start-session-hook.mjs", defaultMode: "UNKNOWN" },
   "close-session": { tool: "workflow-hook.mjs", fixedArgs: ["--phase", "session-close"], defaultMode: "UNKNOWN" },
   "cycle-create": { tool: "checkpoint.mjs", defaultMode: "COMMITTING" },
   "cycle-close": { tool: "checkpoint.mjs", defaultMode: "COMMITTING" },

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { initGitRepo } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -149,6 +150,9 @@ function main() {
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), escalatedTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), reanchorTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "warn"), roleBlockedTarget, { recursive: true });
+    initGitRepo(escalatedTarget, { workingBranch: "feature/C101-alpha" });
+    initGitRepo(reanchorTarget, { workingBranch: "feature/C101-alpha" });
+    initGitRepo(roleBlockedTarget, { workingBranch: "feature/C101-alpha" });
 
     buildEscalatedFixture(escalatedTarget, repoRoot, handoffProjectScript, summaryScript);
     buildEscalatedFixture(reanchorTarget, repoRoot, handoffProjectScript, summaryScript);

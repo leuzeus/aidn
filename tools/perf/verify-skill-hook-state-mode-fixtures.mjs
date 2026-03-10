@@ -2,10 +2,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { copyFixtureToTmp, initGitRepo } from "./test-git-fixture-lib.mjs";
+import { readSourceBranch } from "../../src/lib/workflow/session-context-lib.mjs";
 
 const SKILL_CASES = [
   { skill: "context-reload", mode: "THINKING", expectsStore: false },
-  { skill: "branch-cycle-audit", mode: "COMMITTING", expectsStore: false },
+  { skill: "branch-cycle-audit", mode: "COMMITTING", expectsStore: false, expectedOk: false },
   { skill: "drift-check", mode: "COMMITTING", expectsStore: false },
   { skill: "start-session", mode: "COMMITTING", expectsStore: true },
   { skill: "close-session", mode: "COMMITTING", expectsStore: true },
@@ -55,14 +57,6 @@ function printUsage() {
   console.log("  node tools/perf/verify-skill-hook-state-mode-fixtures.mjs --tmp-root tests/fixtures --keep-tmp");
 }
 
-function copyFixtureToTmp(source, tmpRoot) {
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
-  const destination = path.resolve(tmpRoot, `tmp-skill-hook-state-mode-${stamp}`);
-  fs.mkdirSync(path.dirname(destination), { recursive: true });
-  fs.cpSync(source, destination, { recursive: true });
-  return destination;
-}
-
 function runJson(script, scriptArgs, env = {}) {
   const file = path.resolve(process.cwd(), script);
   const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
@@ -74,6 +68,13 @@ function runJson(script, scriptArgs, env = {}) {
     },
   });
   return JSON.parse(stdout);
+}
+
+function runGit(target, args) {
+  execFileSync("git", ["-C", target, ...args], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 }
 
 function expectedStoreForStateMode(stateMode) {
@@ -111,6 +112,8 @@ function readIndexStore(payload) {
 }
 
 function runSkillCase(targetRoot, stateMode, skillCase) {
+  const defaultBranch = readSourceBranch(targetRoot) || "main";
+  runGit(targetRoot, ["checkout", skillCase.workingBranch || defaultBranch]);
   const out = runJson("tools/perf/skill-hook.mjs", [
     "--skill",
     skillCase.skill,
@@ -129,7 +132,7 @@ function runSkillCase(targetRoot, stateMode, skillCase) {
   const expectsConstraintLoop = skillCase.skill === "close-session" && (stateMode === "dual" || stateMode === "db-only");
   const expectsWorkflowHookPayload = skillCase.skill === "start-session" || skillCase.skill === "close-session";
   const checks = {
-    hook_ok: out?.ok === true,
+    hook_ok: out?.ok === (skillCase.expectedOk ?? true),
     state_mode_exposed: out?.state_mode === stateMode,
     strict_required_by_state: out?.strict_required_by_state === true,
     strict_effective: out?.strict === true,
@@ -175,7 +178,8 @@ function main() {
     keepTmp = args.keepTmp === true;
     const sourceTarget = path.resolve(process.cwd(), args.target);
     const tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
-    tmpTarget = copyFixtureToTmp(sourceTarget, tmpRoot);
+    tmpTarget = copyFixtureToTmp(sourceTarget, tmpRoot, "tmp-skill-hook-state-mode");
+    initGitRepo(tmpTarget);
 
     const runs = [];
     for (const stateMode of ["dual", "db-only"]) {

@@ -183,7 +183,7 @@ export function normalizeHookPayload(rawInput, options = {}) {
     raw: input,
   };
 
-  if (normalized.ok === false && normalized.error == null) {
+  if (normalized.ok === false && normalized.error == null && normalized.result == null && normalized.action == null) {
     normalized.error = {
       message: "Hook execution failed",
       stdout: "",
