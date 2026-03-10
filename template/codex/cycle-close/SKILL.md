@@ -15,6 +15,11 @@ Close a cycle cleanly and make it baseline-ready.
 - Apply write-on-change behavior for cycle/snapshot updates.
 - Keep `docs/audit/CURRENT-STATE.md` summary-only if updated.
 
+## Pre-Write Admission
+Before the first durable write in this skill, run:
+- `npx aidn runtime pre-write-admit --target . --skill cycle-close --json`
+- If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+
 ## Inputs
 - Target cycle folder (CXXX-...)
 - Desired final state: VERIFYING | DONE | NO_GO | DROPPED

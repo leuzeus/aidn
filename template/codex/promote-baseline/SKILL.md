@@ -15,6 +15,11 @@ Safely “publish” completed work into baseline.
 - Apply write-on-change behavior to avoid unnecessary churn.
 - Keep `docs/audit/CURRENT-STATE.md` summary-only if updated.
 
+## Pre-Write Admission
+Before the first durable write in this skill, run:
+- `npx aidn runtime pre-write-admit --target . --skill promote-baseline --json`
+- If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+
 ## Preconditions
 - Cycle state is DONE (or VERIFYING completed)
 - No unresolved GAPs (or explicitly justified)

@@ -14,6 +14,11 @@ End session cleanly and prepare for fast resume.
 - Never auto-merge branches from this skill.
 - Apply write-on-change behavior to avoid churn in unchanged artifacts.
 
+## Pre-Write Admission
+Before the first durable write in this skill, run:
+- `npx aidn runtime pre-write-admit --target . --skill close-session --json`
+- If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+
 ## Steps
 
 1) Review current session SXXX.md.

@@ -2,6 +2,12 @@
 
 Ensure skills are available before execution.
 
+Instruction layering reminder:
+- this file complements the installed project `AGENTS.md`; it does not replace it
+- Codex may also load `~/.codex/AGENTS.md` or `~/.codex/AGENTS.override.md`
+- a closer `AGENTS.md` or `AGENTS.override.md` can override broader project rules
+- the live workflow state still lives in `docs/audit/*` and hydrated runtime context, not in startup guidance alone
+
 Before any durable write, reload the minimal workflow context in this order:
 - `docs/audit/HANDOFF-PACKET.md` when another agent already prepared a relay
 - `docs/audit/CURRENT-STATE.md`
@@ -59,3 +65,8 @@ For agent-to-agent work:
 When `docs/audit/MULTI-AGENT-STATUS.md` exists, `hydrate-context` also refreshes it automatically unless `--no-project-multi-agent-status` is set.
 
 For recent Codex Windows application flows, treat `apply_patch` as a durable write shortcut, not as a safe bypass of workflow reload.
+
+If a long session starts drifting from the workflow:
+- do not assume `AGENTS.md` was never loaded
+- treat it as a runtime re-anchor failure
+- return to read-only mode, rerun the workflow skill or hook path, and re-check the short audit artifacts before writing again

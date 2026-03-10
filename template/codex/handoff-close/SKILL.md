@@ -14,6 +14,11 @@ Prepare a deterministic relay packet before pausing when another agent is expect
 - Do not use this skill to bypass normal session close, cycle close, or branch-cycle audit rules.
 - Do not leave `next_agent_goal` implicit. State it explicitly.
 
+## Pre-Write Admission
+Before the first durable write in this skill, run:
+- `npx aidn runtime pre-write-admit --target . --skill handoff-close --json`
+- If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+
 ## Steps
 
 1) Read:

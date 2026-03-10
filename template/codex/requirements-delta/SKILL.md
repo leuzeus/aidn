@@ -15,6 +15,11 @@ Handle “we revised an old plan” without losing traceability.
 - If impact is medium/high and branch ownership is unclear, STOP and request cycle/branch decision.
 - If the delta changes active scope or next steps, keep `docs/audit/CURRENT-STATE.md` aligned at summary level.
 
+## Pre-Write Admission
+Before the first durable write in this skill, run:
+- `npx aidn runtime pre-write-admit --target . --skill requirements-delta --json`
+- If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+
 ## When to use
 - You revisit an older plan/audit-spec and realize structural changes are needed
 - New constraints appear (API/DB/security/architecture)

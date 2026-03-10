@@ -48,6 +48,17 @@ function verifyPaths(targetRoot, pathsToCheck) {
   return { ok: missing.length === 0, missing };
 }
 
+function collectInstructionPrecedenceWarnings(targetRoot) {
+  const warnings = [];
+  const rootAgentsOverride = path.resolve(targetRoot, "AGENTS.override.md");
+  if (fs.existsSync(rootAgentsOverride)) {
+    warnings.push(
+      "Target root contains AGENTS.override.md. Codex will prefer it over the installed AGENTS.md.",
+    );
+  }
+  return warnings;
+}
+
 export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
   const configRead = readAidnProjectConfig(targetRoot);
   let currentAidnConfigData = configRead.data ?? {};
@@ -380,6 +391,16 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
     );
     console.warn(
       'Customize the project stub. See docs/INSTALL.md sections "Spec vs Project Stub (Why both exist)" and "Step 4 - Customize docs/audit/WORKFLOW.md (Project Stub)".',
+    );
+  }
+  const instructionPrecedenceWarnings = collectInstructionPrecedenceWarnings(targetRoot);
+  if (instructionPrecedenceWarnings.length > 0) {
+    console.warn("");
+    for (const warning of instructionPrecedenceWarnings) {
+      console.warn(`WARNING: ${warning}`);
+    }
+    console.warn(
+      "Review Codex instruction precedence before relying on the installed project contract.",
     );
   }
 

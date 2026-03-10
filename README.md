@@ -35,6 +35,9 @@ Product repository:
 - Runtime, installer, and release tooling (`tools/`)
 
 Client repository after install:
+- `AGENTS.md`
+  - root project startup contract for Codex in the installed repo
+  - keeps stable write-stop rules and points toward workflow state and runtime checks
 - `docs/audit/SPEC.md` (managed spec snapshot)
 - `docs/audit/WORKFLOW_SUMMARY.md` (quick reload)
 - `docs/audit/WORKFLOW.md` (project adapter stub)
@@ -49,6 +52,12 @@ Client repository after install:
   - local skill source folders copied during install (offline/local fallback)
 - `.aidn/runtime/*`
   - local runtime state, index, context, and observability artifacts
+
+Codex instruction layering after install:
+- global user or org guidance may still come from `~/.codex/AGENTS.md` or `~/.codex/AGENTS.override.md`
+- the installed root `AGENTS.md` is only the project layer
+- nested `AGENTS.md` or `AGENTS.override.md` can override root rules in specialized subtrees
+- `aidn` does not install or manage the global `~/.codex` layer
 
 ## Workflow Diagrams
 
@@ -90,11 +99,14 @@ npx aidn install --target ../client --pack core --verify
 ```
 
 Notes:
+- install creates or updates the project-layer `AGENTS.md`; it does not write `~/.codex/AGENTS.md`
 - install auto-imports `docs/audit/*` artifacts into `../client/.aidn/runtime/index/*`
 - import backend precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE`
 - default fresh install profile is DB-backed (`runtime.stateMode=dual`, `install.artifactImportStore=dual-sqlite`)
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
+- if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
+- `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 
 ```bash
 npx aidn perf checkpoint --target ../client --mode COMMITTING --index-store all --index-sync-check --json
@@ -105,3 +117,17 @@ npx aidn build-release
 
 After install, review `docs/audit/SPEC.md` then `docs/audit/WORKFLOW_SUMMARY.md`, then customize `docs/audit/WORKFLOW.md` in the client repository.
 Replace placeholders (for example `{{PROJECT_NAME}}` and `{{SOURCE_BRANCH}}`) and complete project constraints/policies before starting production work.
+
+## Codex Verification
+
+After install, verify the real instruction chain that Codex sees from the client repo:
+
+```bash
+codex --ask-for-approval never "Summarize the current instructions."
+codex --cd docs/audit --ask-for-approval never "Show which instruction files are active."
+```
+
+Expected behavior:
+- Codex reports the installed root `AGENTS.md` for the project layer
+- nested overrides only appear when they actually exist
+- if guidance looks wrong, inspect `AGENTS.override.md` in the repo or `~/.codex/AGENTS.override.md` in the user profile before assuming install failed

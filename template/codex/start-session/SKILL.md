@@ -14,6 +14,11 @@ Initialize or resume a session with correct mode, branch awareness, and cycle ma
 - Apply write-on-change behavior (do not rewrite unchanged content).
 - If multiple open sessions match the current branch, STOP and ask user which session to resume.
 
+## Pre-Write Admission
+Before the first durable write in this skill, run:
+- `npx aidn runtime pre-write-admit --target . --skill start-session --json`
+- If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+
 ## Steps
 
 1) Run context-reload logic (light version):

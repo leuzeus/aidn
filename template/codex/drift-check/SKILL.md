@@ -15,6 +15,11 @@ Detect when exploration/implementation drifted and recover quickly.
 - When drift is severe/structural, STOP and request arbitration before continuing implementation.
 - If a confirmed drift action mutates workflow state, keep `docs/audit/CURRENT-STATE.md` aligned with the resulting next action.
 
+## Pre-Write Admission
+Before the first durable write in this skill, run:
+- `npx aidn runtime pre-write-admit --target . --skill drift-check --json`
+- If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+
 ## Steps
 
 1) Read:

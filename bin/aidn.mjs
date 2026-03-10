@@ -108,6 +108,7 @@ const RUNTIME_ALIASES = {
   "project-multi-agent-status": { file: "project-multi-agent-status.mjs" },
   "db-first-artifact": { file: "db-first-artifact.mjs" },
   "handoff-admit": { file: "handoff-admit.mjs" },
+  "pre-write-admit": { file: "pre-write-admit.mjs" },
   "project-coordination-summary": { file: "project-coordination-summary.mjs" },
   "project-handoff-packet": { file: "project-handoff-packet.mjs" },
   "project-runtime-state": { file: "project-runtime-state.mjs" },
@@ -141,6 +142,7 @@ function printUsage() {
   console.log("  aidn runtime project-integration-risk --target . --json");
   console.log("  aidn runtime project-multi-agent-status --target . --json");
   console.log("  aidn runtime handoff-admit --target . --json");
+  console.log("  aidn runtime pre-write-admit --target . --skill cycle-create --json");
   console.log("  aidn runtime project-coordination-summary --target . --json");
   console.log("  aidn runtime project-handoff-packet --target . --json");
   console.log("  aidn runtime project-runtime-state --target . --json");

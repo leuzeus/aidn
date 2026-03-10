@@ -16,6 +16,11 @@ Create a clean cycle scaffold fast and correctly.
 - Do not modify baseline files from this skill.
 - Keep `docs/audit/CURRENT-STATE.md` summary-only if updated.
 
+## Pre-Write Admission
+Before the first durable write in this skill, run:
+- `npx aidn runtime pre-write-admit --target . --skill cycle-create --json`
+- If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+
 ## Inputs (ask user if missing)
 - Cycle ID: CXXX
 - Type: feature | spike | refactor | structural | migration | security | perf | integration | compat | corrective | hotfix

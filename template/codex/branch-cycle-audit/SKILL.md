@@ -15,6 +15,11 @@ Prevent silent drift between Git branches and cycle artifacts.
 - Snapshot update is optional and should be applied only when explicitly requested.
 - If snapshot or other workflow state is updated, keep `docs/audit/CURRENT-STATE.md` consistent with the same decision.
 
+## Pre-Write Admission
+Before the first durable write in this skill, run:
+- `npx aidn runtime pre-write-admit --target . --skill branch-cycle-audit --json`
+- If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+
 ## Steps
 
 1) Identify current Git branch (if accessible).

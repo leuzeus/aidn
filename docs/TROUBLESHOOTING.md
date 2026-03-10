@@ -98,6 +98,11 @@ If runtime output additionally shows:
   - do not trust `CURRENT-STATE.md` as a sufficient summary
   - reload session/cycle facts and refresh summary state through workflow skills before writing
 
+Important:
+- this is usually a runtime re-anchor problem, not proof that `AGENTS.md` is obsolete
+- in long Codex sessions, startup guidance may no longer be sufficient on its own
+- rely on workflow skills, runtime hooks, and short audit artifacts to recover write discipline
+
 ## Confusion between spec, summary, and workflow adapter
 
 Symptom:
@@ -129,6 +134,7 @@ Fix:
   - confirm `dor_state`
   - confirm first implementation step
 - If context is incomplete or contradictory, stay read-only and use `docs/audit/REANCHOR_PROMPT.md`.
+- Treat this as a sign of workflow drift, not as a special exemption of `apply_patch` from the workflow.
 - To validate the resilience guardrails in the package and reference installed fixture, run:
   - `npm run perf:verify-context-resilience`
 - To validate only the state summary against snapshot/session/cycle artifacts, run:
@@ -164,6 +170,27 @@ Fix:
   - `node tools/install.mjs --target <repo> --pack core --skip-agents`
 - If you explicitly want to update managed block in existing AGENTS:
   - `node tools/install.mjs --target <repo> --pack core --force-agents-merge`
+
+## Wrong instruction file seems active
+
+Symptom:
+- Codex behaves differently from the installed root `AGENTS.md`.
+- The workflow contract appears to be ignored even though install succeeded.
+
+Fix:
+- Remember the Codex precedence chain:
+  - `~/.codex/AGENTS.override.md` or `~/.codex/AGENTS.md`
+  - repo root `AGENTS.override.md` or `AGENTS.md`
+  - closer nested `AGENTS.override.md` or `AGENTS.md`
+- From the client repo root, run:
+  - `codex --ask-for-approval never "Summarize the current instructions."`
+- From a nested directory, run:
+  - `codex --cd <subdir> --ask-for-approval never "Show which instruction files are active."`
+- If guidance is still unexpected:
+  - inspect `~/.codex/AGENTS.override.md`
+  - inspect repo-level `AGENTS.override.md`
+  - inspect nested overrides closer to the working directory
+  - confirm whether `CODEX_HOME` points to a non-default profile
 
 ## Re-run install safely
 
