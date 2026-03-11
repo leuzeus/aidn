@@ -14,7 +14,7 @@ const SKILL_CASES = [
   { skill: "cycle-create", mode: "COMMITTING", expectsStore: true, expectedOk: false },
   { skill: "cycle-close", mode: "COMMITTING", expectsStore: true },
   { skill: "handoff-close", mode: "COMMITTING", expectsStore: true },
-  { skill: "promote-baseline", mode: "COMMITTING", expectsStore: true },
+  { skill: "promote-baseline", mode: "COMMITTING", expectsStore: true, expectedOk: false },
   { skill: "requirements-delta", mode: "COMMITTING", expectsStore: true, expectedOk: false },
   { skill: "convert-to-spike", mode: "EXPLORING", expectsStore: true },
 ];
