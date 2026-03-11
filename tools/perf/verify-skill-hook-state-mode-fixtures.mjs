@@ -16,7 +16,7 @@ const SKILL_CASES = [
   { skill: "handoff-close", mode: "COMMITTING", expectsStore: true },
   { skill: "promote-baseline", mode: "COMMITTING", expectsStore: true, expectedOk: false },
   { skill: "requirements-delta", mode: "COMMITTING", expectsStore: true, expectedOk: false },
-  { skill: "convert-to-spike", mode: "EXPLORING", expectsStore: true },
+  { skill: "convert-to-spike", mode: "EXPLORING", expectsStore: true, expectedOk: false },
 ];
 
 function parseArgs(argv) {

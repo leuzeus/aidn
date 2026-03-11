@@ -22,6 +22,7 @@ function buildToolArgs(route, targetRoot, mode, effectiveStrict, noAutoSkipGate)
     || route.tool === "cycle-create-hook.mjs"
     || route.tool === "requirements-delta-hook.mjs"
     || route.tool === "promote-baseline-hook.mjs"
+    || route.tool === "convert-to-spike-hook.mjs"
   ) {
     args.push("--mode", mode);
   }
@@ -35,7 +36,8 @@ function buildToolArgs(route, targetRoot, mode, effectiveStrict, noAutoSkipGate)
       || route.tool === "close-session-hook.mjs"
       || route.tool === "cycle-create-hook.mjs"
       || route.tool === "requirements-delta-hook.mjs"
-      || route.tool === "promote-baseline-hook.mjs")
+      || route.tool === "promote-baseline-hook.mjs"
+      || route.tool === "convert-to-spike-hook.mjs")
     && noAutoSkipGate
   ) {
     args.push("--no-auto-skip-gate");
@@ -90,6 +92,7 @@ export function runSkillHookUseCase({ args, perfDir, targetRoot, processAdapter 
       || route.tool === "cycle-create-hook.mjs"
       || route.tool === "requirements-delta-hook.mjs"
       || route.tool === "promote-baseline-hook.mjs"
+      || route.tool === "convert-to-spike-hook.mjs"
     ) && typeof payload?.ok === "boolean"
       ? payload.ok
       : true;

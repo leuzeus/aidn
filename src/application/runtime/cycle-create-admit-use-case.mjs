@@ -37,6 +37,63 @@ function makeResult(base, overrides = {}) {
   };
 }
 
+function buildModeGateChoices(mode) {
+  if (mode === "THINKING") {
+    return ["r3_exception_override"];
+  }
+  if (mode === "EXPLORING") {
+    return ["r2_session_base_with_import", "r3_exception_override"];
+  }
+  return [
+    "r1_strict_chain",
+    "r2_session_base_with_import",
+    "r3_exception_override",
+  ];
+}
+
+function isContinuityAllowedInMode(continuityRule, mode) {
+  if (mode === "COMMITTING" || mode === "UNKNOWN") {
+    return continuityRule === "R1_STRICT_CHAIN" || continuityRule === "R2_SESSION_BASE_WITH_IMPORT";
+  }
+  if (mode === "EXPLORING") {
+    return continuityRule === "R2_SESSION_BASE_WITH_IMPORT";
+  }
+  if (mode === "THINKING") {
+    return false;
+  }
+  return false;
+}
+
+function applyModeGate(base, candidate) {
+  if (candidate.ok !== true) {
+    return candidate;
+  }
+  const continuityRule = String(candidate.continuity_rule ?? "").toUpperCase();
+  if (!continuityRule || isContinuityAllowedInMode(continuityRule, base.mode)) {
+    return candidate;
+  }
+  const blockingReasons = [];
+  if (continuityRule === "R1_STRICT_CHAIN" && base.mode === "EXPLORING") {
+    blockingReasons.push("EXPLORING mode cannot auto-select strict cycle chaining; choose session-base import or explicit override.");
+  } else if (base.mode === "THINKING") {
+    blockingReasons.push("THINKING mode cannot create a production continuity path without an explicit exception override.");
+  } else {
+    blockingReasons.push(`Continuity rule ${continuityRule} is not allowed in mode ${base.mode}.`);
+  }
+  return makeResult(base, {
+    action: "stop_choose_continuity_rule",
+    result: "stop",
+    reason_code: "CYCLE_CREATE_MODE_RULE_DISALLOWS_CONTINUITY",
+    continuity_rule: continuityRule,
+    continuity_base_branch: candidate.continuity_base_branch ?? base.branch,
+    required_user_choice: buildModeGateChoices(base.mode),
+    blocking_reasons: blockingReasons,
+    recommended_next_action: base.mode === "THINKING"
+      ? "Stay read-only unless the user explicitly chooses exception continuity."
+      : "Choose an allowed continuity rule for the current mode before creating cycle artifacts.",
+  });
+}
+
 function resolveTargetSession({ currentState, sessions, branchKind, mapping }) {
   const activeSessionId = String(currentState.active_session ?? "none").toUpperCase();
   if (activeSessionId && activeSessionId !== "NONE") {
@@ -118,7 +175,7 @@ export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) 
   };
 
   if ([AIDN_BRANCH_KIND.UNKNOWN, AIDN_BRANCH_KIND.OTHER].includes(branchKind)) {
-    return makeResult(base, {
+    return applyModeGate(base, makeResult(base, {
       action: "blocked_non_compliant_branch",
       reason_code: "CYCLE_CREATE_BRANCH_NOT_WORKFLOW_COMPLIANT",
       blocking_reasons: [
@@ -126,19 +183,19 @@ export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) 
       ],
       required_user_choice: ["switch_to_configured_source_branch", "ignore_with_rationale"],
       recommended_next_action: "Switch to the configured source branch or a valid session/cycle branch before creating a cycle.",
-    });
+    }));
   }
 
   if (branchKind === AIDN_BRANCH_KIND.CYCLE || branchKind === AIDN_BRANCH_KIND.INTERMEDIATE) {
     if (branch === latestActiveCycle?.branch_name) {
-      return makeResult(base, {
+      return applyModeGate(base, makeResult(base, {
         action: "proceed_r1_strict_chain",
         continuity_rule: "R1_STRICT_CHAIN",
         continuity_base_branch: branch,
         recommended_next_action: `Create the next cycle from ${branch} using strict chain continuity.`,
-      });
+      }));
     }
-    return makeResult(base, {
+    return applyModeGate(base, makeResult(base, {
       action: "stop_choose_continuity_rule",
       reason_code: "CYCLE_CREATE_CONTINUITY_CHOICE_REQUIRED",
       required_user_choice: [
@@ -150,29 +207,29 @@ export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) 
         `Current branch ${branch} is not the latest allowed cycle continuity base for the active session context.`,
       ],
       recommended_next_action: "Choose the continuity rule explicitly before creating cycle artifacts.",
-    });
+    }));
   }
 
   if (branchKind === AIDN_BRANCH_KIND.SESSION) {
-    return makeResult(base, {
+    return applyModeGate(base, makeResult(base, {
       action: "proceed_r2_session_base_with_import",
       continuity_rule: "R2_SESSION_BASE_WITH_IMPORT",
       continuity_base_branch: branch,
       recommended_next_action: `Create the next cycle from session branch ${branch} and record predecessor import if needed.`,
-    });
+    }));
   }
 
   if (branchKind === AIDN_BRANCH_KIND.SOURCE) {
     if (!latestActiveCycle && (!sessionBranch || sessionBranch === "none")) {
-      return makeResult(base, {
+      return applyModeGate(base, makeResult(base, {
         action: "create_cycle_allowed",
         continuity_rule: "R2_SESSION_BASE_WITH_IMPORT",
         continuity_base_branch: branch,
         warnings: ["No active session branch was found; using the configured source branch as the continuity base."],
         recommended_next_action: `Create the cycle from configured source branch ${branch}.`,
-      });
+      }));
     }
-    return makeResult(base, {
+    return applyModeGate(base, makeResult(base, {
       action: "stop_choose_continuity_rule",
       reason_code: "CYCLE_CREATE_CONTINUITY_CHOICE_REQUIRED",
       required_user_choice: [
@@ -184,10 +241,10 @@ export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) 
         `Configured source branch ${branch} does not uniquely identify the continuity rule while active workflow context already exists.`,
       ],
       recommended_next_action: "Choose whether to continue from the latest cycle branch, the session branch, or an explicit override before creating the cycle.",
-    });
+    }));
   }
 
-  return makeResult(base, {
+  return applyModeGate(base, makeResult(base, {
     action: "stop_choose_continuity_rule",
     reason_code: "CYCLE_CREATE_CONTINUITY_UNRESOLVED",
     required_user_choice: [
@@ -199,5 +256,5 @@ export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) 
       "Cycle continuity could not be resolved from the current branch and workflow context.",
     ],
     recommended_next_action: "Re-anchor the active session/cycle context and choose the continuity rule explicitly.",
-  });
+  }));
 }

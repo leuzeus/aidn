@@ -4,81 +4,47 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { copyFixtureToTmp, initGitRepo } from "./test-git-fixture-lib.mjs";
 
+const CONFIG = {
+  version: 1,
+  profile: "dual",
+  install: {
+    artifactImportStore: "dual-sqlite",
+  },
+  runtime: {
+    stateMode: "dual",
+  },
+  workflow: {
+    sourceBranch: "main",
+  },
+};
+
 const CASES = [
   {
     id: "source_branch_requires_choice",
     fixture: "tests/fixtures/perf-structure/session-multi-cycle-explicit",
     workingBranch: "main",
-    mutate(targetRoot) {
-      const configDir = path.join(targetRoot, ".aidn");
-      fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(path.join(configDir, "config.json"), `${JSON.stringify({
-        version: 1,
-        profile: "dual",
-        install: {
-          artifactImportStore: "dual-sqlite",
-        },
-        runtime: {
-          stateMode: "dual",
-        },
-        workflow: {
-          sourceBranch: "main",
-        },
-      }, null, 2)}\n`, "utf8");
-    },
     expectedAction: "stop_choose_continuity_rule",
     expectedResult: "stop",
+    expectedReasonCode: "CYCLE_CREATE_CONTINUITY_CHOICE_REQUIRED",
     expectsCheckpoint: false,
   },
   {
-    id: "session_branch_allows_r2",
+    id: "session_branch_allows_spike_conversion",
     fixture: "tests/fixtures/perf-structure/session-multi-cycle-explicit",
     workingBranch: "S103-multi",
-    mutate(targetRoot) {
-      const configDir = path.join(targetRoot, ".aidn");
-      fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(path.join(configDir, "config.json"), `${JSON.stringify({
-        version: 1,
-        profile: "dual",
-        install: {
-          artifactImportStore: "dual-sqlite",
-        },
-        runtime: {
-          stateMode: "dual",
-        },
-        workflow: {
-          sourceBranch: "main",
-        },
-      }, null, 2)}\n`, "utf8");
-    },
     expectedAction: "proceed_r2_session_base_with_import",
     expectedResult: "ok",
+    expectedReasonCode: null,
     expectsCheckpoint: true,
   },
   {
-    id: "latest_cycle_allows_r1",
+    id: "latest_cycle_requires_mode_override",
     fixture: "tests/fixtures/perf-structure/session-multi-cycle-explicit",
     workingBranch: "feature/C104-delta",
-    mutate(targetRoot) {
-      const configDir = path.join(targetRoot, ".aidn");
-      fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(path.join(configDir, "config.json"), `${JSON.stringify({
-        version: 1,
-        profile: "dual",
-        install: {
-          artifactImportStore: "dual-sqlite",
-        },
-        runtime: {
-          stateMode: "dual",
-        },
-        workflow: {
-          sourceBranch: "main",
-        },
-      }, null, 2)}\n`, "utf8");
-    },
-    expectedAction: "proceed_r1_strict_chain",
-    expectedResult: "ok",
-    expectsCheckpoint: true,
+    expectedAction: "stop_choose_continuity_rule",
+    expectedResult: "stop",
+    expectedReasonCode: "CYCLE_CREATE_MODE_RULE_DISALLOWS_CONTINUITY",
+    expectsCheckpoint: false,
   },
 ];
 
@@ -109,7 +75,7 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
-  console.log("  node tools/perf/verify-cycle-create-admission-fixtures.mjs");
+  console.log("  node tools/perf/verify-convert-to-spike-admission-fixtures.mjs");
 }
 
 function runJson(script, scriptArgs, env = {}) {
@@ -133,41 +99,45 @@ function runJson(script, scriptArgs, env = {}) {
   }
 }
 
+function writeConfig(targetRoot) {
+  const configDir = path.join(targetRoot, ".aidn");
+  fs.mkdirSync(configDir, { recursive: true });
+  fs.writeFileSync(path.join(configDir, "config.json"), `${JSON.stringify(CONFIG, null, 2)}\n`, "utf8");
+}
+
 function runCase(tmpRoot, testCase) {
   const sourceTarget = path.resolve(process.cwd(), testCase.fixture);
-  const targetRoot = copyFixtureToTmp(sourceTarget, tmpRoot, `tmp-cycle-create-${testCase.id}`);
-  if (typeof testCase.mutate === "function") {
-    testCase.mutate(targetRoot);
-  }
+  const targetRoot = copyFixtureToTmp(sourceTarget, tmpRoot, `tmp-convert-to-spike-${testCase.id}`);
+  writeConfig(targetRoot);
   initGitRepo(targetRoot, {
     workingBranch: testCase.workingBranch,
   });
 
-  const hook = runJson("tools/perf/cycle-create-hook.mjs", [
+  const hook = runJson("tools/perf/convert-to-spike-hook.mjs", [
     "--target",
     targetRoot,
     "--mode",
-    "COMMITTING",
+    "EXPLORING",
     "--json",
   ]);
   const codex = runJson("tools/codex/run-json-hook.mjs", [
     "--skill",
-    "cycle-create",
+    "convert-to-spike",
     "--target",
     targetRoot,
     "--mode",
-    "COMMITTING",
+    "EXPLORING",
     "--json",
   ]);
-  const codexAction = codex?.action ?? codex?.normalized?.action ?? null;
-  const codexResult = codex?.result ?? codex?.normalized?.result ?? null;
 
   const checks = {
     hook_action_expected: String(hook?.action ?? "") === testCase.expectedAction,
     hook_result_expected: String(hook?.result ?? "") === testCase.expectedResult,
+    hook_reason_expected: String(hook?.reason_code ?? "") === String(testCase.expectedReasonCode ?? ""),
     hook_checkpoint_expected: Boolean(hook?.checkpoint) === testCase.expectsCheckpoint,
-    codex_action_expected: String(codexAction ?? "") === testCase.expectedAction,
-    codex_result_expected: String(codexResult ?? "") === testCase.expectedResult,
+    codex_action_expected: String(codex?.action ?? "") === testCase.expectedAction,
+    codex_result_expected: String(codex?.result ?? "") === testCase.expectedResult,
+    codex_reason_expected: String(codex?.normalized?.reason_code ?? "") === String(testCase.expectedReasonCode ?? ""),
   };
   return {
     id: testCase.id,
@@ -177,9 +147,11 @@ function runCase(tmpRoot, testCase) {
     sample: {
       hook_action: hook?.action ?? null,
       hook_result: hook?.result ?? null,
+      hook_reason_code: hook?.reason_code ?? null,
       hook_checkpoint_ran: Boolean(hook?.checkpoint),
-      codex_action: codexAction,
-      codex_result: codexResult,
+      codex_action: codex?.action ?? null,
+      codex_result: codex?.result ?? null,
+      codex_reason_code: codex?.normalized?.reason_code ?? null,
       codex_ok: codex?.ok ?? null,
     },
     pass: Object.values(checks).every((value) => value === true),

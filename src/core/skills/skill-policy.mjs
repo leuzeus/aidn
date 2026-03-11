@@ -12,7 +12,7 @@ export const SKILL_ROUTES = {
   "cycle-close": { tool: "checkpoint.mjs", defaultMode: "COMMITTING" },
   "promote-baseline": { tool: "promote-baseline-hook.mjs", defaultMode: "COMMITTING" },
   "requirements-delta": { tool: "requirements-delta-hook.mjs", defaultMode: "COMMITTING" },
-  "convert-to-spike": { tool: "checkpoint.mjs", defaultMode: "EXPLORING" },
+  "convert-to-spike": { tool: "convert-to-spike-hook.mjs", defaultMode: "EXPLORING" },
   "handoff-close": { tool: "checkpoint.mjs", defaultMode: "UNKNOWN" },
 };
 
