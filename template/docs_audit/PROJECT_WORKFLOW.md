@@ -135,6 +135,16 @@ source_branch: {{SOURCE_BRANCH}}
 - Non-owned branches (`source`, `other`, `unknown`) MUST stop `branch-cycle-audit` in `COMMITTING`.
 - Missing or ambiguous mapping MUST stop before generic gating/perf evaluation continues.
 
+## Additional Admission-First Runtime Gates (Mandatory)
+
+- `close-session` MUST stop before generic `session-close` runtime work when open attached cycles still lack explicit close decisions.
+- `cycle-create` MUST stop before scaffold creation when continuity rule or mode-gate compatibility is unresolved.
+- `requirements-delta` MUST stop before artifact mutation when medium/high-impact ownership is unclear.
+- `promote-baseline` MUST stop before promotion when target cycle selection, gap closure, or traceability readiness is incomplete.
+- `convert-to-spike` MUST reuse cycle continuity admission in `EXPLORING` mode before creating spike artifacts.
+- `handoff-close` may keep generic checkpoint semantics, but the runtime skill result MUST expose the real blocking checkpoint outcome.
+- `drift-check` continues to use generic gating as the drift source of truth; blocked gating outcomes are authoritative runtime stops.
+
 ## Session Close & PR Review
 
 - Session close and PR review gates are canonical in `docs/audit/SPEC.md` (`SPEC-R07`, `SPEC-R08`).

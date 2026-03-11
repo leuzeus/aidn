@@ -48,12 +48,22 @@ Committing execution:
 - Work must belong to a cycle (`SPEC-R03`)
 - DoR core/adaptive checks must be satisfied before implementation (`SPEC-R04`)
 - Drift suspicion requires `drift-check` (`SPEC-R05`)
+- `drift-check` uses generic gating as the canonical drift gate; its top-level hook result is authoritative when it returns `stop`
 - Cycle continuity rule must be explicit (`R1`/`R2`/`R3`, `SPEC-R06`)
+- `cycle-create` enforces continuity admission before scaffold creation
+- `requirements-delta` stops on medium/high-impact ownership ambiguity before addendum mutation
+- `promote-baseline` stops on missing traceability, open gaps, or ambiguous DONE-cycle selection
+- `convert-to-spike` reuses cycle continuity admission under the `EXPLORING` mode gate before spike creation
 
 Session close:
 - Resolve each open attached cycle explicitly (`integrate-to-session` | `report` | `close-non-retained` | `cancel-close`) (`SPEC-R07`)
 - Run `close-session`
+- `close-session` begins with blocking admission and does not delegate to generic session-close runtime work until all attached open-cycle decisions are explicit
 - In `dual`/`db-only`, session close MUST execute DB-backed constraint chain (`constraint-report -> thresholds -> actions -> history -> trend -> lot-plan -> summaries`)
+
+Relay / handoff:
+- Run `handoff-close` only when another agent is expected to continue the same line of work
+- `handoff-close` exposes blocking checkpoint results directly; explicit relay semantics remain validated by `project-handoff-packet` and `handoff-admit`
 
 Merge/review:
 - Codex review threads triaged with evidence (`SPEC-R08`)

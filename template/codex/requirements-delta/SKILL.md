@@ -81,6 +81,8 @@ Rules:
 
 8) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill requirements-delta --mode COMMITTING --target . --json`
+- the runtime `requirements-delta` hook applies ownership/impact admission before delegating to generic checkpoint/index/repair behavior
+- expect machine-visible outcomes such as `continue_same_cycle`, `recommend_new_cycle`, or `stop_choose_cycle_or_branch`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill requirements-delta --project-runtime-state --json`.

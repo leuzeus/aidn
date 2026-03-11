@@ -1,5 +1,22 @@
 # Audit Gate Coverage - 2026-03-10
 
+## Follow-Up Status - 2026-03-11
+
+This audit is now partially superseded by remediation work already landed on the runtime path.
+
+Remediated after the audit:
+
+- `close-session`
+- `cycle-create`
+- `requirements-delta`
+- `promote-baseline`
+- `convert-to-spike`
+- `handoff-close` runtime exposure mismatch
+
+Clarified after the audit:
+
+- `drift-check` remains intentionally backed by generic gating, but hook output now exposes the real gate result instead of masking blocked states behind `ok=true`
+
 ## Scope
 
 Audit trace to detect other workflow gates/features that are in the same failure class as the gate recently restored for `start-session`:

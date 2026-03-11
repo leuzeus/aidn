@@ -14,7 +14,7 @@ Reference audit:
 
 ### GCR-01 - Consolidate Shared Workflow Interpretation Helpers
 
-Status: proposed
+Status: done
 Priority: high
 
 Files:
@@ -33,7 +33,7 @@ Done when:
 
 ### GCR-02 - Implement `close-session-admit`
 
-Status: proposed
+Status: done
 Priority: high
 
 Files:
@@ -54,7 +54,7 @@ Done when:
 
 ### GCR-03 - Add `close-session` Specialized Hook Entrypoint
 
-Status: proposed
+Status: done
 Priority: high
 
 Files:
@@ -74,7 +74,7 @@ Done when:
 
 ### GCR-04 - Add `close-session` Contract Fixtures
 
-Status: proposed
+Status: done
 Priority: high
 
 Files:
@@ -94,7 +94,7 @@ Done when:
 
 ### GCR-05 - Implement `cycle-create-admit`
 
-Status: proposed
+Status: done
 Priority: high
 
 Files:
@@ -115,7 +115,7 @@ Done when:
 
 ### GCR-06 - Add `cycle-create` Specialized Hook Entrypoint
 
-Status: proposed
+Status: done
 Priority: high
 
 Files:
@@ -135,7 +135,7 @@ Done when:
 
 ### GCR-07 - Add `cycle-create` Contract Fixtures
 
-Status: proposed
+Status: done
 Priority: high
 
 Files:
@@ -155,7 +155,7 @@ Done when:
 
 ### GCR-08 - Implement `requirements-delta-admit`
 
-Status: proposed
+Status: done
 Priority: high
 
 Files:
@@ -174,7 +174,7 @@ Done when:
 
 ### GCR-09 - Add `requirements-delta` Specialized Hook Entrypoint
 
-Status: proposed
+Status: done
 Priority: high
 
 Files:
@@ -194,7 +194,7 @@ Done when:
 
 ### GCR-10 - Add `requirements-delta` Contract Fixtures
 
-Status: proposed
+Status: done
 Priority: high
 
 Files:
@@ -213,7 +213,7 @@ Done when:
 
 ### GCR-11 - Expose `handoff-close` In Runtime Skill Routing
 
-Status: proposed
+Status: done
 Priority: high
 
 Files:
@@ -234,7 +234,7 @@ Done when:
 
 ### GCR-12 - Decide Whether `handoff-close` Needs Dedicated Admission
 
-Status: proposed
+Status: done
 Priority: medium
 
 Files:
@@ -254,7 +254,7 @@ Done when:
 
 ### GCR-13 - Reassess `convert-to-spike` After `cycle-create` Fix
 
-Status: proposed
+Status: done
 Priority: medium
 
 Files:
@@ -273,7 +273,7 @@ Done when:
 
 ### GCR-14 - Reassess `promote-baseline` For Machine-Enforced Validation
 
-Status: proposed
+Status: done
 Priority: medium
 
 Files:
@@ -292,7 +292,7 @@ Done when:
 
 ### GCR-15 - Reassess `drift-check` Arbitration Boundary
 
-Status: proposed
+Status: done
 Priority: low
 
 Files:
@@ -310,7 +310,7 @@ Done when:
 
 ### GCR-16 - Update Skill Documentation For Admission-First Behavior
 
-Status: proposed
+Status: in-progress
 Priority: high
 
 Files:
@@ -331,7 +331,7 @@ Done when:
 
 ### GCR-17 - Update Global Workflow Documentation
 
-Status: proposed
+Status: in-progress
 Priority: high
 
 Files:
@@ -352,7 +352,7 @@ Done when:
 
 ### GCR-18 - Rerun Gate Coverage Audit After The First Remediation Batch
 
-Status: proposed
+Status: pending
 Priority: high
 
 Files:

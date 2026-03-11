@@ -168,6 +168,13 @@ For `dual` / `db-only` projects, the runtime chain is authoritative for mutating
 Runtime hooks are infrastructure:
 - `start-session` admission decides `resume | choose | create | stop`, then delegates to generic `session-start` runtime work only when admitted
 - `branch-cycle-audit` admission validates owned branch mapping, then delegates to generic gating/perf evaluation only when mapping is valid
+- `close-session` admission resolves open-cycle close decisions before generic `session-close` runtime work
+- `cycle-create` admission resolves continuity plus mode-gate compatibility before generic checkpoint work
+- `requirements-delta` admission stops medium/high-impact ownership ambiguity before artifact mutation
+- `promote-baseline` admission blocks promotion when target cycle selection, traceability, or open-gap validation is incomplete
+- `convert-to-spike` admission reuses cycle continuity logic in `EXPLORING` mode before spike creation work
+- `handoff-close` uses generic checkpoint evaluation, but the runtime hook now exposes the actual blocking result instead of a masked success wrapper
+- `drift-check` continues to use generic gating as the drift source of truth; treat hook `stop|warn|ok` as authoritative
 
 When work is likely to continue in another agent, the agent SHOULD:
 

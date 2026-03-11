@@ -42,6 +42,8 @@ Before the first durable write in this skill, run:
 
 4) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill handoff-close --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- the runtime `handoff-close` hook exposes the underlying checkpoint result directly; blocked reload/gate states are surfaced as blocking hook results
+- handoff-specific packet validation remains enforced by `project-handoff-packet` and `handoff-admit`, not by the perf hook alone
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill handoff-close --project-runtime-state --json`.

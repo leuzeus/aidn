@@ -1,7 +1,7 @@
 # Plan - Gate Coverage Remediation
 
 Date: 2026-03-10
-Status: proposed
+Status: active
 Scope: remediate the workflow gate coverage gaps identified in `docs/AUDIT_GATE_COVERAGE_2026-03-10.md` while integrating cleanly with the current runtime/hook architecture.
 
 ## Problem Statement
@@ -94,6 +94,24 @@ Implementation impact:
 - installer must persist the resolved source branch into `.aidn/config.json`
 - runtime source-branch readers must read config first and then fall back to installed workflow artifacts
 - `cycle-create` continuity admission must treat the configured source branch as the persistent continuity metadata reference
+
+## Implementation Progress - 2026-03-11
+
+Completed runtime batches:
+
+- shared workflow interpretation now routes through reusable branch/session/cycle helpers
+- `close-session` now applies admission before generic `session-close` runtime delegation
+- `cycle-create` now applies continuity admission and mode-gate enforcement before generic `checkpoint`
+- `requirements-delta` now applies ownership/impact admission before generic `checkpoint`
+- `promote-baseline` now applies validation admission before generic `checkpoint`
+- `convert-to-spike` now applies explicit spike-continuity admission reusing `cycle-create` continuity logic in `EXPLORING`
+- `handoff-close` is exposed in the runtime map and now surfaces blocking checkpoint results directly
+- `drift-check` continues to use generic gating as the business source of truth, but top-level hook `ok` now reflects the actual gate result
+
+Remaining work:
+
+- finish documentation alignment across installed templates and workflow summaries
+- rerun and record the follow-up audit outcome after the remediation batch
 
 ## Design Principle
 
@@ -240,6 +258,7 @@ Follow-up decision:
 Expected result:
 
 - a documented skill is no longer rejected as unsupported by the runtime CLI
+- the top-level skill hook also exposes the blocking checkpoint result instead of masking it behind a generic success wrapper
 
 ### Phase 6 - Decide the remaining watchlist scope
 
@@ -258,9 +277,9 @@ Decision rule:
 
 Likely direction:
 
-- `convert-to-spike` may be sufficiently covered once `cycle-create` admission is restored
-- `promote-baseline` may need only a targeted validation gate if machine enforcement is required
-- `drift-check` may remain on generic gating if that remains the intended source of truth
+- `convert-to-spike` is now covered with a dedicated spike-continuity wrapper over `cycle-create` admission
+- `promote-baseline` now uses a targeted validation gate before promotion work
+- `drift-check` remains on generic gating, with normalized top-level hook output so blocking gate results are not hidden
 
 ## Integration Model
 
