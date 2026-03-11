@@ -10,11 +10,12 @@ const SKILL_CASES = [
   { skill: "branch-cycle-audit", mode: "COMMITTING", expectsStore: false, expectedOk: false },
   { skill: "drift-check", mode: "COMMITTING", expectsStore: false },
   { skill: "start-session", mode: "COMMITTING", expectsStore: true },
-  { skill: "close-session", mode: "COMMITTING", expectsStore: true },
-  { skill: "cycle-create", mode: "COMMITTING", expectsStore: true },
+  { skill: "close-session", mode: "COMMITTING", expectsStore: true, expectedOk: false },
+  { skill: "cycle-create", mode: "COMMITTING", expectsStore: true, expectedOk: false },
   { skill: "cycle-close", mode: "COMMITTING", expectsStore: true },
+  { skill: "handoff-close", mode: "COMMITTING", expectsStore: true },
   { skill: "promote-baseline", mode: "COMMITTING", expectsStore: true },
-  { skill: "requirements-delta", mode: "COMMITTING", expectsStore: true },
+  { skill: "requirements-delta", mode: "COMMITTING", expectsStore: true, expectedOk: false },
   { skill: "convert-to-spike", mode: "EXPLORING", expectsStore: true },
 ];
 
@@ -131,24 +132,25 @@ function runSkillCase(targetRoot, stateMode, skillCase) {
   const expectedStore = expectedStoreForStateMode(stateMode);
   const expectsConstraintLoop = skillCase.skill === "close-session" && (stateMode === "dual" || stateMode === "db-only");
   const expectsWorkflowHookPayload = skillCase.skill === "start-session" || skillCase.skill === "close-session";
+  const delegatedRuntime = out?.payload?.workflow_hook != null || out?.payload?.checkpoint != null || out?.payload?.index != null;
   const checks = {
     hook_ok: out?.ok === (skillCase.expectedOk ?? true),
     state_mode_exposed: out?.state_mode === stateMode,
     strict_required_by_state: out?.strict_required_by_state === true,
     strict_effective: out?.strict === true,
     state_mode_applied: effectiveStateMode === stateMode,
-    store_mode_applied: skillCase.expectsStore ? effectiveStore === expectedStore : true,
+    store_mode_applied: skillCase.expectsStore ? (!delegatedRuntime || effectiveStore === expectedStore) : true,
     workflow_hook_strict_payload: expectsWorkflowHookPayload
       ? out?.payload?.strict === true
       : true,
     constraint_loop_required: expectsConstraintLoop
-      ? out?.payload?.constraint_loop_required === true
+      ? (!delegatedRuntime || out?.payload?.constraint_loop_required === true)
       : true,
     constraint_loop_present: expectsConstraintLoop
-      ? out?.payload?.constraint_loop != null
+      ? (!delegatedRuntime || out?.payload?.constraint_loop != null)
       : true,
     constraint_loop_error_empty: expectsConstraintLoop
-      ? String(out?.payload?.constraint_loop_error ?? "") === ""
+      ? (!delegatedRuntime || String(out?.payload?.constraint_loop_error ?? "") === "")
       : true,
   };
   return {

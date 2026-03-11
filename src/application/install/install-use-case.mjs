@@ -339,14 +339,17 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
     const nextAidnConfigData = buildNextAidnProjectConfig(
       currentAidnConfigData,
       resolvedImportDefaults,
-      args,
+      {
+        ...args,
+        sourceBranch: templateVars.SOURCE_BRANCH ?? args.sourceBranch,
+      },
     );
     const currentConfigJson = JSON.stringify(currentAidnConfigData);
     const nextConfigJson = JSON.stringify(nextAidnConfigData);
     if (currentConfigJson !== nextConfigJson) {
       if (args.dryRun) {
         console.log(
-          `[dry-run] ${aidnConfigExists ? "update" : "create"} .aidn/config.json (profile=${nextAidnConfigData.profile}, runtime.stateMode=${nextAidnConfigData.runtime?.stateMode}, install.artifactImportStore=${nextAidnConfigData.install?.artifactImportStore})`,
+          `[dry-run] ${aidnConfigExists ? "update" : "create"} .aidn/config.json (profile=${nextAidnConfigData.profile}, runtime.stateMode=${nextAidnConfigData.runtime?.stateMode}, install.artifactImportStore=${nextAidnConfigData.install?.artifactImportStore}, workflow.sourceBranch=${nextAidnConfigData.workflow?.sourceBranch ?? "n/a"})`,
         );
       } else {
         const configFilePath = writeAidnProjectConfig(targetRoot, nextAidnConfigData);

@@ -10,6 +10,7 @@ const SKILLS = [
   { name: "close-session", mode: "<THINKING|EXPLORING|COMMITTING>" },
   { name: "cycle-create", mode: "COMMITTING" },
   { name: "cycle-close", mode: "COMMITTING" },
+  { name: "handoff-close", mode: "<THINKING|EXPLORING|COMMITTING>" },
   { name: "promote-baseline", mode: "COMMITTING" },
   { name: "requirements-delta", mode: "COMMITTING" },
   { name: "convert-to-spike", mode: "EXPLORING" },

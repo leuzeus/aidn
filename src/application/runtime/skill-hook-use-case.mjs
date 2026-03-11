@@ -12,13 +12,30 @@ export { assertSupportedSkill, assertValidSkillMode };
 
 function buildToolArgs(route, targetRoot, mode, effectiveStrict, noAutoSkipGate) {
   const args = [...(route.fixedArgs ?? []), "--target", targetRoot, "--json"];
-  if (route.tool === "checkpoint.mjs" || route.tool === "gating-evaluate.mjs" || route.tool === "workflow-hook.mjs" || route.tool === "start-session-hook.mjs" || route.tool === "branch-cycle-audit-hook.mjs") {
+  if (
+    route.tool === "checkpoint.mjs"
+    || route.tool === "gating-evaluate.mjs"
+    || route.tool === "workflow-hook.mjs"
+    || route.tool === "start-session-hook.mjs"
+    || route.tool === "branch-cycle-audit-hook.mjs"
+    || route.tool === "close-session-hook.mjs"
+    || route.tool === "cycle-create-hook.mjs"
+    || route.tool === "requirements-delta-hook.mjs"
+  ) {
     args.push("--mode", mode);
   }
-  if ((route.tool === "workflow-hook.mjs" || route.tool === "start-session-hook.mjs") && effectiveStrict) {
+  if ((route.tool === "workflow-hook.mjs" || route.tool === "start-session-hook.mjs" || route.tool === "close-session-hook.mjs") && effectiveStrict) {
     args.push("--strict");
   }
-  if ((route.tool === "checkpoint.mjs" || route.tool === "workflow-hook.mjs" || route.tool === "start-session-hook.mjs") && noAutoSkipGate) {
+  if (
+    (route.tool === "checkpoint.mjs"
+      || route.tool === "workflow-hook.mjs"
+      || route.tool === "start-session-hook.mjs"
+      || route.tool === "close-session-hook.mjs"
+      || route.tool === "cycle-create-hook.mjs"
+      || route.tool === "requirements-delta-hook.mjs")
+    && noAutoSkipGate
+  ) {
     args.push("--no-auto-skip-gate");
   }
   return args;
@@ -64,7 +81,13 @@ export function runSkillHookUseCase({ args, perfDir, targetRoot, processAdapter 
   try {
     const payload = processAdapter.runJsonNodeScript(path.join(perfDir, route.tool), toolArgs);
     const repairLayer = extractRepairLayerSummary(payload);
-    const payloadOk = (route.tool === "start-session-hook.mjs" || route.tool === "branch-cycle-audit-hook.mjs") && typeof payload?.ok === "boolean"
+    const payloadOk = (
+      route.tool === "start-session-hook.mjs"
+      || route.tool === "branch-cycle-audit-hook.mjs"
+      || route.tool === "close-session-hook.mjs"
+      || route.tool === "cycle-create-hook.mjs"
+      || route.tool === "requirements-delta-hook.mjs"
+    ) && typeof payload?.ok === "boolean"
       ? payload.ok
       : true;
     return {

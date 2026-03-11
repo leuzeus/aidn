@@ -1,7 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
+import {
+  readAidnProjectConfig,
+  resolveConfigSourceBranch,
+} from "../config/aidn-config-lib.mjs";
 
 const OPEN_CYCLE_STATES = new Set(["OPEN", "IMPLEMENTING", "VERIFYING"]);
+const CLOSE_SESSION_DECISIONS = new Set(["integrate-to-session", "report", "close-non-retained", "cancel-close"]);
 
 export function normalizeScalar(value) {
   const normalized = String(value ?? "").trim();
@@ -164,6 +169,49 @@ export function parseSessionMetadata(text) {
   };
 }
 
+export function parseSessionCloseCycleDecisions(text) {
+  if (typeof text !== "string" || text.length === 0) {
+    return [];
+  }
+  const lines = String(text).split(/\r?\n/);
+  const items = [];
+  let active = false;
+  for (const line of lines) {
+    if (/^###\s+Cycle Resolution At Session Close/i.test(line.trim())) {
+      active = true;
+      continue;
+    }
+    if (active && /^###\s+/.test(line.trim())) {
+      break;
+    }
+    if (!active) {
+      continue;
+    }
+    const bulletMatch = line.match(/^\s*-\s+(.+)$/);
+    if (!bulletMatch) {
+      continue;
+    }
+    const raw = String(bulletMatch[1] ?? "").trim();
+    const cycleId = extractIds(raw, "C").at(0) ?? null;
+    const stateMatch = raw.match(/state:\s*`?([A-Z_]+)`?/i);
+    const decisionMatch = raw.match(/decision:\s*`?([a-z-]+)`?/i);
+    const targetSessionMatch = raw.match(/target session:\s*`?([^|`]+)`?/i);
+    const rationaleMatch = raw.match(/rationale:\s*(.+)$/i);
+    const decision = normalizeScalar(decisionMatch?.[1] ?? "").toLowerCase();
+    if (!cycleId || !CLOSE_SESSION_DECISIONS.has(decision)) {
+      continue;
+    }
+    items.push({
+      cycle_id: cycleId,
+      state: normalizeScalar(stateMatch?.[1] ?? "").toUpperCase() || null,
+      decision,
+      target_session: normalizeScalar(targetSessionMatch?.[1] ?? "") || "none",
+      rationale: normalizeScalar(rationaleMatch?.[1] ?? "") || "",
+    });
+  }
+  return items;
+}
+
 export function findSessionFile(auditRoot, sessionId) {
   if (!sessionId || canonicalNone(sessionId) || canonicalUnknown(sessionId)) {
     return null;
@@ -211,6 +259,11 @@ export function findCycleStatus(auditRoot, cycleId) {
   return null;
 }
 
+export function findCycleDirectory(auditRoot, cycleId) {
+  const statusPath = findCycleStatus(auditRoot, cycleId);
+  return statusPath ? path.dirname(statusPath) : null;
+}
+
 export function readCurrentState(targetRoot) {
   const auditRoot = path.join(targetRoot, "docs", "audit");
   const filePath = path.join(auditRoot, "CURRENT-STATE.md");
@@ -233,6 +286,18 @@ export function readCurrentState(targetRoot) {
 }
 
 export function readSourceBranch(targetRoot) {
+  const config = readAidnProjectConfig(targetRoot);
+  const configSourceBranch = resolveConfigSourceBranch(config.data);
+  if (configSourceBranch) {
+    return configSourceBranch;
+  }
+  const workflowPath = path.join(targetRoot, "docs", "audit", "WORKFLOW.md");
+  const workflowText = readTextIfExists(workflowPath);
+  const workflowMap = parseSimpleMap(workflowText);
+  const workflowSourceBranch = normalizeScalar(workflowMap.get("source_branch") ?? "");
+  if (workflowSourceBranch) {
+    return workflowSourceBranch;
+  }
   const baselinePath = path.join(targetRoot, "docs", "audit", "baseline", "current.md");
   const text = readTextIfExists(baselinePath);
   const map = parseSimpleMap(text);
@@ -301,4 +366,21 @@ export function isOpenCycleState(state) {
 
 export function collectOpenCycles(cycles) {
   return (Array.isArray(cycles) ? cycles : []).filter((cycle) => isOpenCycleState(cycle?.state));
+}
+
+export function readCycleChangeRequestImpacts(cycleDir) {
+  if (!cycleDir) {
+    return [];
+  }
+  const filePath = path.join(cycleDir, "change-requests.md");
+  const text = readTextIfExists(filePath);
+  const impacts = [];
+  for (const line of String(text).split(/\r?\n/)) {
+    const match = line.match(/^\s*-\s*Impact:\s*(low|medium|high)\s*$/i);
+    if (!match) {
+      continue;
+    }
+    impacts.push(String(match[1]).trim().toLowerCase());
+  }
+  return impacts;
 }
