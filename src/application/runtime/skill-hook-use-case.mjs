@@ -23,6 +23,7 @@ function buildToolArgs(route, targetRoot, mode, effectiveStrict, noAutoSkipGate)
     || route.tool === "requirements-delta-hook.mjs"
     || route.tool === "promote-baseline-hook.mjs"
     || route.tool === "convert-to-spike-hook.mjs"
+    || route.tool === "handoff-close-hook.mjs"
   ) {
     args.push("--mode", mode);
   }
@@ -37,7 +38,8 @@ function buildToolArgs(route, targetRoot, mode, effectiveStrict, noAutoSkipGate)
       || route.tool === "cycle-create-hook.mjs"
       || route.tool === "requirements-delta-hook.mjs"
       || route.tool === "promote-baseline-hook.mjs"
-      || route.tool === "convert-to-spike-hook.mjs")
+      || route.tool === "convert-to-spike-hook.mjs"
+      || route.tool === "handoff-close-hook.mjs")
     && noAutoSkipGate
   ) {
     args.push("--no-auto-skip-gate");
@@ -86,13 +88,15 @@ export function runSkillHookUseCase({ args, perfDir, targetRoot, processAdapter 
     const payload = processAdapter.runJsonNodeScript(path.join(perfDir, route.tool), toolArgs);
     const repairLayer = extractRepairLayerSummary(payload);
     const payloadOk = (
-      route.tool === "start-session-hook.mjs"
+      route.tool === "gating-evaluate.mjs"
+      || route.tool === "start-session-hook.mjs"
       || route.tool === "branch-cycle-audit-hook.mjs"
       || route.tool === "close-session-hook.mjs"
       || route.tool === "cycle-create-hook.mjs"
       || route.tool === "requirements-delta-hook.mjs"
       || route.tool === "promote-baseline-hook.mjs"
       || route.tool === "convert-to-spike-hook.mjs"
+      || route.tool === "handoff-close-hook.mjs"
     ) && typeof payload?.ok === "boolean"
       ? payload.ok
       : true;

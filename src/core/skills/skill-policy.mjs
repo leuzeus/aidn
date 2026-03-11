@@ -13,7 +13,7 @@ export const SKILL_ROUTES = {
   "promote-baseline": { tool: "promote-baseline-hook.mjs", defaultMode: "COMMITTING" },
   "requirements-delta": { tool: "requirements-delta-hook.mjs", defaultMode: "COMMITTING" },
   "convert-to-spike": { tool: "convert-to-spike-hook.mjs", defaultMode: "EXPLORING" },
-  "handoff-close": { tool: "checkpoint.mjs", defaultMode: "UNKNOWN" },
+  "handoff-close": { tool: "handoff-close-hook.mjs", defaultMode: "UNKNOWN" },
 };
 
 export const MUTATING_SKILLS = new Set([
