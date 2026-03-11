@@ -215,6 +215,17 @@ function main() {
       const dbOnlyPass = dbOnlyRuns.every((run) => run.pass);
       console.log(`Skill hooks dual mode: ${dualPass ? "PASS" : "FAIL"}`);
       console.log(`Skill hooks db-only mode: ${dbOnlyPass ? "PASS" : "FAIL"}`);
+      if (!pass) {
+        const failedRuns = runs.filter((run) => !run.pass);
+        for (const run of failedRuns) {
+          const failedChecks = Object.entries(run.checks)
+            .filter(([, value]) => value !== true)
+            .map(([name]) => name);
+          console.log(`FAIL ${run.state_mode} ${run.skill} ${run.mode}`);
+          console.log(`  failed_checks=${failedChecks.join(",")}`);
+          console.log(`  sample=${JSON.stringify(run.sample)}`);
+        }
+      }
       console.log(`Result: ${pass ? "PASS" : "FAIL"}`);
     }
 
