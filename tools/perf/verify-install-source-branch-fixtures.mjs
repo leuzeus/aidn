@@ -139,8 +139,6 @@ function main() {
       tempRoot,
       "--pack",
       "core",
-      "--source-branch",
-      args.sourceBranch,
       "--skip-artifact-import",
       "--no-codex-migrate-custom",
     ], {
@@ -160,11 +158,14 @@ function main() {
     const workflowText = fs.readFileSync(path.join(tempRoot, "docs", "audit", "WORKFLOW.md"), "utf8");
     const baselineCurrentText = fs.readFileSync(path.join(tempRoot, "docs", "audit", "baseline", "current.md"), "utf8");
     const baselineHistoryText = fs.readFileSync(path.join(tempRoot, "docs", "audit", "baseline", "history.md"), "utf8");
+    const configText = fs.readFileSync(path.join(tempRoot, ".aidn", "config.json"), "utf8");
+    const config = JSON.parse(configText);
 
     assert(workflowText.includes(`source_branch: ${args.sourceBranch}`), "WORKFLOW.md should include explicit source_branch metadata");
     assert(workflowText.includes(`Source branch: \`${args.sourceBranch}\``), "WORKFLOW.md should include explicit source branch policy");
     assert(baselineCurrentText.includes(`source_branch: ${args.sourceBranch}`), "baseline/current.md should include explicit source_branch");
     assert(baselineHistoryText.includes(`source_branch: ${args.sourceBranch}`), "baseline/history.md should include explicit source_branch");
+    assert(String(config?.workflow?.sourceBranch ?? "") === args.sourceBranch, ".aidn/config.json should persist explicit sourceBranch and win on reinstall");
 
     const output = {
       ts: new Date().toISOString(),

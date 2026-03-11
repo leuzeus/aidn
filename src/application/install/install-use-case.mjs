@@ -24,6 +24,7 @@ import {
   CUSTOMIZABLE_TARGET_PATTERNS,
   collectExistingPlaceholderValues,
   getWorkflowPlaceholders,
+  resolveInstallSourceBranch,
   resolveMissingPlaceholdersForCopyOp,
 } from "./custom-file-policy.mjs";
 import {
@@ -65,9 +66,9 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
   let aidnConfigExists = configRead.exists === true;
   const version = readUtf8(path.join(repoRoot, "VERSION")).trim();
   const inferredTemplateVars = collectExistingPlaceholderValues(targetRoot);
+  delete inferredTemplateVars.SOURCE_BRANCH;
   const templateVars = {
     ...inferredTemplateVars,
-    ...(args.sourceBranch ? { SOURCE_BRANCH: args.sourceBranch } : {}),
     VERSION: version,
   };
   const { workflowManifest, compatMatrix } = loadWorkflowManifests(repoRoot);
@@ -107,6 +108,16 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
     configUpdated: 0,
     configSkipped: 0,
   };
+  const resolvedSourceBranch = await resolveInstallSourceBranch({
+    explicitSourceBranch: args.sourceBranch,
+    configData: currentAidnConfigData,
+    targetRoot,
+    dryRun: args.dryRun,
+    summary,
+  });
+  if (resolvedSourceBranch.value) {
+    templateVars.SOURCE_BRANCH = resolvedSourceBranch.value;
+  }
   const preservedCustomCandidates = [];
 
   console.log(`Product version: ${version}`);
@@ -123,7 +134,7 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
     console.log(`Placeholder inference: loaded ${Object.keys(inferredTemplateVars).length} values from existing project files`);
   }
   if (templateVars.SOURCE_BRANCH) {
-    console.log(`Install metadata: source_branch=${templateVars.SOURCE_BRANCH}${args.sourceBranch ? " (cli)" : " (inferred)"}`);
+    console.log(`Install metadata: source_branch=${templateVars.SOURCE_BRANCH} (${resolvedSourceBranch.source})`);
   }
   if (args.dryRun) {
     console.log("Mode: dry-run");

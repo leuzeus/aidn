@@ -4,6 +4,7 @@ import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { spawnSync } from "node:child_process";
 import { readUtf8 } from "./template-io.mjs";
+import { resolveConfigSourceBranch } from "../../lib/config/aidn-config-lib.mjs";
 
 export const CUSTOMIZABLE_TARGET_PATTERNS = [
   "docs/audit/WORKFLOW.md",
@@ -196,6 +197,56 @@ export function collectExistingPlaceholderValues(targetRoot) {
   }
 
   return out;
+}
+
+export async function resolveInstallSourceBranch({
+  explicitSourceBranch,
+  configData,
+  targetRoot,
+  dryRun,
+  summary,
+}) {
+  const cliValue = sanitizeExtractedValue(explicitSourceBranch);
+  if (cliValue) {
+    return {
+      value: cliValue,
+      source: "cli",
+    };
+  }
+
+  const configValue = sanitizeExtractedValue(resolveConfigSourceBranch(configData));
+  if (configValue) {
+    return {
+      value: configValue,
+      source: "config",
+    };
+  }
+
+  const defaultValue = resolveDefaultGitBranch(targetRoot);
+  const canAsk = input.isTTY && !dryRun;
+  if (canAsk) {
+    const rl = readline.createInterface({ input, output });
+    try {
+      const answer = await rl.question(`Project source branch [${defaultValue}]: `);
+      if (summary) {
+        summary.placeholderPrompted += 1;
+      }
+      return {
+        value: sanitizeExtractedValue(answer) || defaultValue,
+        source: "prompt",
+      };
+    } finally {
+      rl.close();
+    }
+  }
+
+  if (summary) {
+    summary.placeholderAutoFilled += 1;
+  }
+  return {
+    value: defaultValue,
+    source: "auto-default",
+  };
 }
 
 export function suggestPlaceholderValue(name, targetRoot, templateVars) {

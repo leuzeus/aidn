@@ -106,10 +106,11 @@ Notes:
 - Placeholder policy:
   - installer resolves placeholders across copied templates (not only `{{VERSION}}`),
   - `SOURCE_BRANCH` can be defined explicitly at install time with `--source-branch <name>`,
-  - for files created for the first time, missing values are requested interactively,
+  - `SOURCE_BRANCH` is resolved from explicit configuration only: `--source-branch` first, then existing `.aidn/config.json` (`workflow.sourceBranch`),
+  - if `SOURCE_BRANCH` is still missing and install is interactive, the installer asks for it explicitly,
   - when non-interactive, missing values are auto-filled with safe defaults (for example `TO_DEFINE`),
-  - placeholders already present in project files are inferred and reused during updates/migrations.
-  - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`.
+  - placeholders already present in project files are inferred and reused during updates/migrations, except `SOURCE_BRANCH` which is not inferred from existing workflow/session/cycle documents.
+  - non-interactive `SOURCE_BRANCH` fallback order is: Git remote default branch > current branch > `main`.
 - `AGENTS.md` non-interference policy:
   - if target `AGENTS.md` already exists, installer preserves it by default (no merge),
   - in `--assist`, preserving existing `AGENTS.md` is enforced by default,
