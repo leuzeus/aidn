@@ -6,7 +6,7 @@
   xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
   id="Definitions_AidnMultiAgentHandoff"
   targetNamespace="https://github.com/leuzeus/aidn/bpmn">
-  <bpmn:process id="Process_AidnMultiAgentHandoff" name="aid'n multi-agent handoff detail" isExecutable="false">
+  <bpmn:process id="Process_AidnMultiAgentHandoff" name="aid'n multi-agent handoff detail (current runtime baseline)" isExecutable="false">
     <bpmn:laneSet id="LaneSet_Detail">
       <bpmn:lane id="Lane_Detail_Coordinator" name="Coordinator Agent">
         <bpmn:flowNodeRef>StartEvent_Handoff</bpmn:flowNodeRef>
@@ -34,19 +34,19 @@
     </bpmn:laneSet>
 
     <bpmn:startEvent id="StartEvent_Handoff" name="Receive handoff" />
-    <bpmn:task id="Task_ReadHandoffPacket" name="Read HANDOFF-PACKET and priority artifacts" />
+    <bpmn:task id="Task_ReadHandoffPacket" name="Read HANDOFF-PACKET, handoff-admit and priority artifacts" />
     <bpmn:exclusiveGateway id="Gateway_HandoffBlocked" name="handoff_status = blocked?" default="Flow_HandoffOpen" />
     <bpmn:task id="Task_RequestArbitration" name="Stop and request user arbitration" />
     <bpmn:task id="Task_ReloadArtifacts" name="Reload CURRENT-STATE, session, cycle and plan" />
-    <bpmn:task id="Task_RestateContext" name="Restate mode, branch kind, cycle, DoR and step" />
-    <bpmn:exclusiveGateway id="Gateway_WriteAuthorized" name="Pre-write gate satisfied?" default="Flow_WriteNo" />
+    <bpmn:task id="Task_RestateContext" name="Restate mode, branch kind, cycle, DoR, step and active admissions" />
+    <bpmn:exclusiveGateway id="Gateway_WriteAuthorized" name="Pre-write and workflow gates satisfied?" default="Flow_WriteNo" />
     <bpmn:task id="Task_ExecuteStep" name="Execute one planned step" />
-    <bpmn:task id="Task_RefreshRuntimeState" name="Hydrate context and refresh runtime + handoff state" />
+    <bpmn:task id="Task_RefreshRuntimeState" name="Hydrate context and refresh runtime, repair and handoff state" />
     <bpmn:exclusiveGateway id="Gateway_RepairOutcome" name="repair status" default="Flow_RepairWarn_Detail" />
     <bpmn:task id="Task_RunRepairTriage" name="Repair triage / safe autofix" />
     <bpmn:task id="Task_CheckTraceability" name="Check drift, evidence and traceability" />
     <bpmn:exclusiveGateway id="Gateway_ContinueOrRelay" name="Continue same agent?" default="Flow_Relay" />
-    <bpmn:task id="Task_PublishRelay" name="Refresh HANDOFF-PACKET for next agent" />
+    <bpmn:task id="Task_PublishRelay" name="handoff-close + refresh HANDOFF-PACKET for next agent" />
     <bpmn:endEvent id="EndEvent_HandoffReady" name="Ready for next agent or next step" />
 
     <bpmn:dataObjectReference id="Data_Detail_Handoff" name="HANDOFF-PACKET.md" dataObjectRef="DataObject_Detail_Handoff" />

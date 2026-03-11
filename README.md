@@ -3,6 +3,7 @@
 aid’n is an audit-informed workflow runtime platform for structured AI-assisted development.
 It combines a continuous audit philosophy with an audit-driven control layer, deterministic template distribution, and local runtime state management to regulate entropy, preserve long-term coherence, and stabilize AI-assisted execution.
 The model structures work through bounded cycles, session discipline, baseline anchoring, snapshot reload, canonical state handling, and clear separation between product specification and project adapter.
+The current runtime baseline also includes admission-first workflow hooks for session start/close, cycle continuity, requirements delta, baseline promotion, spike conversion, and explicit multi-agent handoff relays.
 
 ## Philosophy
 
@@ -66,6 +67,9 @@ Codex instruction layering after install:
 - Runtime session flow: `docs/diagrams/03-runtime-session-flow.md`
 - Entropy regulation loop: `docs/diagrams/04-entropy-regulation-control-loop.md`
 - Mermaid style preset (indigo): `docs/diagrams/MERMAID_PRESET_INDIGO.md`
+- BPMN overview and usage notes: `docs/bpmn/README.md`
+- BPMN macro workflow: `docs/bpmn/aidn-multi-agent-ideal.bpmn`
+- BPMN handoff detail: `docs/bpmn/aidn-multi-agent-handoff-detail.bpmn`
 
 ## Git Workflow
 
@@ -93,7 +97,7 @@ Codex instruction layering after install:
 ## Installation
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#dev
+npm install --save-dev github:leuzeus/aidn#v0.4.0
 npx aidn install --target ../client --pack core
 npx aidn install --target ../client --pack core --source-branch main
 npx aidn install --target ../client --pack core --verify
@@ -102,12 +106,14 @@ npx aidn install --target ../client --pack core --verify
 Notes:
 - install creates or updates the project-layer `AGENTS.md`; it does not write `~/.codex/AGENTS.md`
 - install can set workflow adapter metadata explicitly with `--source-branch <name>`
+- install persists the resolved source branch in `../client/.aidn/config.json` under `workflow.sourceBranch`
 - install auto-imports `docs/audit/*` artifacts into `../client/.aidn/runtime/index/*`
 - import backend precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE`
 - default fresh install profile is DB-backed (`runtime.stateMode=dual`, `install.artifactImportStore=dual-sqlite`)
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
+- prefer a tagged install (`#v0.4.0`) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 

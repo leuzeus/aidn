@@ -16,7 +16,7 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 1) Global System Architecture (v0.4.0 workflow)
+%% 1) Global System Architecture (v0.4.0 workflow baseline)
 flowchart LR
   subgraph RULE["Rule Layer (Normative)"]
     SPEC["SPEC.md (SPEC-R01..SPEC-R11)"]
@@ -26,17 +26,19 @@ flowchart LR
   end
 
   subgraph RUN["Execution Layer (Skills + Gates)"]
-    START["context-reload + start-session (R01)"]
+    START["context-reload + start-session admission (R01)"]
     REANCHOR["CURRENT-STATE + WORKFLOW-KERNEL reload"]
     MODE{"Mode selected (R02)"}
-    BCA["branch-cycle-audit (R03)"]
-    CONT{"Continuity gate R06: R1 R2 R3"}
-    DOR{"DoR gate (R04)"}
+    BCA["branch-cycle-audit admission (R03)"]
+    CONT{"cycle-create / convert-to-spike continuity (R06)"}
+    DOR{"DoR + ownership + validation gates (R04-R07)"}
     PWRITE{"Pre-write gate"}
     EXEC["Cycle implementation"]
     HYDRATE["hydrate-context + runtime digest refresh"]
-    DRIFT["drift-check (R05)"]
-    SCLOSE{"Session close gate (R07)"}
+    DRIFT["drift-check via generic gating (R05)"]
+    MUTATE["requirements-delta / promote-baseline admissions"]
+    HAND["handoff-close + handoff-admit"]
+    SCLOSE{"close-session admission (R07)"}
     PRG{"PR review gate (R08)"}
     SYNC{"Post-merge local sync (R09)"}
     INC{"Incident triage R10: L1 L2 auto-fix, L3 L4 stop+auth"}
@@ -54,8 +56,10 @@ flowchart LR
   end
 
   START --> REANCHOR --> MODE
-  MODE -->|COMMITTING| BCA --> CONT --> DOR --> PWRITE --> EXEC --> HYDRATE --> DRIFT --> SCLOSE
+  MODE -->|COMMITTING| BCA --> CONT --> DOR --> PWRITE --> EXEC --> HYDRATE --> DRIFT --> MUTATE --> SCLOSE
   MODE -->|THINKING / EXPLORING| DRIFT
+  MUTATE --> HAND
+  HAND --> SCLOSE
   SCLOSE --> PRG --> SYNC --> START
 
   START <--> SESS
@@ -95,7 +99,7 @@ flowchart LR
 
   class SPEC,WF,AG rule;
   class MODE,CONT,DOR,PWRITE,SCLOSE,PRG,SYNC gate;
-  class START,REANCHOR,BCA,EXEC,HYDRATE,DRIFT action;
+  class START,REANCHOR,BCA,EXEC,HYDRATE,DRIFT,MUTATE,HAND action;
   class SESS,CYCLE,CURR,RT,SNAP,BASE,PARK,INCF state;
   class INC incident;
 

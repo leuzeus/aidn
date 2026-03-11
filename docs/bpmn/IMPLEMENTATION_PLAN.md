@@ -18,6 +18,8 @@ Already available in the repository:
 - pre-write gate in `AGENTS.md`
 - runtime hydration and repair-layer refresh
 - deterministic handoff packet projection
+- admission-first workflow hooks for `start-session`, `close-session`, `cycle-create`, `requirements-delta`, `promote-baseline`, and `convert-to-spike`
+- explicit `handoff-close` runtime exposure with blocking checkpoint results surfaced at the skill boundary
 
 This means the BPMN is not starting from zero.
 The next work should focus on turning these artifacts into a true multi-agent operating model.

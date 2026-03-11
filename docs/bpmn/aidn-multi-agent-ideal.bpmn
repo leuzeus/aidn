@@ -6,7 +6,7 @@
   xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
   id="Definitions_AidnMultiAgentIdeal"
   targetNamespace="https://github.com/leuzeus/aidn/bpmn">
-  <bpmn:process id="Process_AidnMultiAgentIdeal" name="aid'n multi-agent workflow (ideal target)" isExecutable="false">
+  <bpmn:process id="Process_AidnMultiAgentIdeal" name="aid'n multi-agent workflow (current runtime baseline)" isExecutable="false">
     <bpmn:laneSet id="LaneSet_Main">
       <bpmn:lane id="Lane_User" name="User / Operator">
         <bpmn:flowNodeRef>StartEvent_Request</bpmn:flowNodeRef>
@@ -43,25 +43,25 @@
     </bpmn:laneSet>
 
     <bpmn:startEvent id="StartEvent_Request" name="Improvement request" />
-    <bpmn:task id="Task_ReanchorContext" name="Reload CURRENT-STATE, RUNTIME-STATE, HANDOFF-PACKET" />
+    <bpmn:task id="Task_ReanchorContext" name="context-reload + reload CURRENT-STATE, RUNTIME-STATE, HANDOFF-PACKET" />
     <bpmn:exclusiveGateway id="Gateway_ContextComplete" name="Context complete?" default="Flow_ContextNo" />
     <bpmn:task id="Task_ClarifyIntent" name="Clarify scope or missing facts" />
-    <bpmn:task id="Task_AssignWork" name="Select mode and assign agent role" />
+    <bpmn:task id="Task_AssignWork" name="start-session admission + select mode and agent role" />
     <bpmn:task id="Task_LoadCycleContext" name="Load active session, cycle and plan" />
-    <bpmn:task id="Task_CheckBranchAndCycle" name="Audit branch mapping and active cycle" />
-    <bpmn:task id="Task_CheckPreWriteGate" name="Check DoR and pre-write gate" />
-    <bpmn:exclusiveGateway id="Gateway_DorReady" name="Ready to write?" default="Flow_DorNo" />
+    <bpmn:task id="Task_CheckBranchAndCycle" name="branch-cycle-audit + audit branch mapping and active cycle" />
+    <bpmn:task id="Task_CheckPreWriteGate" name="Check cycle continuity, ownership, DoR and pre-write gate" />
+    <bpmn:exclusiveGateway id="Gateway_DorReady" name="Admission + DoR ready to write?" default="Flow_DorNo" />
     <bpmn:task id="Task_PreparePlanOnly" name="Stay read-only and update plan or hypotheses" />
     <bpmn:task id="Task_ImplementChange" name="Implement cycle step" />
     <bpmn:task id="Task_HydrateRuntime" name="Hydrate context and refresh runtime digest" />
     <bpmn:exclusiveGateway id="Gateway_RepairStatus" name="repair_layer_status" default="Flow_RepairWarn" />
     <bpmn:task id="Task_TriageRepair" name="Run repair triage / safe autofix" />
     <bpmn:task id="Task_ArbitrateBlock" name="User arbitration on blocking findings" />
-    <bpmn:task id="Task_DriftAndTraceabilityReview" name="Review drift, traceability and evidence" />
+    <bpmn:task id="Task_DriftAndTraceabilityReview" name="drift-check or traceability review" />
     <bpmn:exclusiveGateway id="Gateway_HandoffNeeded" name="Need another agent?" default="Flow_HandoffNo" />
-    <bpmn:task id="Task_ProjectHandoffPacket" name="Project HANDOFF-PACKET and relay state" />
+    <bpmn:task id="Task_ProjectHandoffPacket" name="handoff-close + project HANDOFF-PACKET and relay state" />
     <bpmn:exclusiveGateway id="Gateway_CloseSession" name="Close session now?" default="Flow_CloseNo" />
-    <bpmn:task id="Task_CloseArtifacts" name="Close session and cycle artifacts" />
+    <bpmn:task id="Task_CloseArtifacts" name="close-session admission + close session and cycle artifacts" />
     <bpmn:task id="Task_PublishSessionState" name="Publish snapshot and current state" />
     <bpmn:endEvent id="EndEvent_Complete" name="Session continued or closed" />
 
