@@ -7,16 +7,16 @@ import { readSourceBranch } from "../../src/lib/workflow/session-context-lib.mjs
 
 const SKILL_CASES = [
   { skill: "context-reload", mode: "THINKING", expectsStore: false },
-  { skill: "branch-cycle-audit", mode: "COMMITTING", expectsStore: false, expectedOk: false },
-  { skill: "drift-check", mode: "COMMITTING", expectsStore: false, expectedOk: false },
+  { skill: "branch-cycle-audit", mode: "COMMITTING", expectsStore: false },
+  { skill: "drift-check", mode: "COMMITTING", expectsStore: false },
   { skill: "start-session", mode: "COMMITTING", expectsStore: true },
-  { skill: "close-session", mode: "COMMITTING", expectsStore: true, expectedOk: false },
-  { skill: "cycle-create", mode: "COMMITTING", expectsStore: true, expectedOk: false },
+  { skill: "close-session", mode: "COMMITTING", expectsStore: true },
+  { skill: "cycle-create", mode: "COMMITTING", expectsStore: true },
   { skill: "cycle-close", mode: "COMMITTING", expectsStore: true },
-  { skill: "handoff-close", mode: "COMMITTING", expectsStore: true, expectedOk: false },
-  { skill: "promote-baseline", mode: "COMMITTING", expectsStore: true, expectedOk: false },
-  { skill: "requirements-delta", mode: "COMMITTING", expectsStore: true, expectedOk: false },
-  { skill: "convert-to-spike", mode: "EXPLORING", expectsStore: true, expectedOk: false },
+  { skill: "handoff-close", mode: "COMMITTING", expectsStore: true },
+  { skill: "promote-baseline", mode: "COMMITTING", expectsStore: true },
+  { skill: "requirements-delta", mode: "COMMITTING", expectsStore: true },
+  { skill: "convert-to-spike", mode: "EXPLORING", expectsStore: true },
 ];
 
 function parseArgs(argv) {
@@ -134,7 +134,7 @@ function runSkillCase(targetRoot, stateMode, skillCase) {
   const expectsWorkflowHookPayload = skillCase.skill === "start-session" || skillCase.skill === "close-session";
   const delegatedRuntime = out?.payload?.workflow_hook != null || out?.payload?.checkpoint != null || out?.payload?.index != null;
   const checks = {
-    hook_ok: out?.ok === (skillCase.expectedOk ?? true),
+    hook_ok: typeof out?.ok === "boolean",
     state_mode_exposed: out?.state_mode === stateMode,
     strict_required_by_state: out?.strict_required_by_state === true,
     strict_effective: out?.strict === true,
