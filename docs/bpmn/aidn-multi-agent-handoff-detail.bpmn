@@ -13,6 +13,7 @@
         <bpmn:flowNodeRef>Task_ReadHandoffPacket</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Gateway_HandoffBlocked</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_RequestArbitration</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_PublishRelayMerge</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_PublishRelay</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>EndEvent_HandoffReady</bpmn:flowNodeRef>
       </bpmn:lane>
@@ -28,6 +29,7 @@
         <bpmn:flowNodeRef>Task_RunRepairTriage</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_Detail_Audit" name="Audit Agent">
+        <bpmn:flowNodeRef>Gateway_CheckTraceabilityMerge</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_CheckTraceability</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Gateway_ContinueOrRelay</bpmn:flowNodeRef>
       </bpmn:lane>
@@ -44,8 +46,10 @@
     <bpmn:task id="Task_RefreshRuntimeState" name="Hydrate context and refresh runtime, repair and handoff state" />
     <bpmn:exclusiveGateway id="Gateway_RepairOutcome" name="repair status" default="Flow_RepairWarn_Detail" />
     <bpmn:task id="Task_RunRepairTriage" name="Repair triage / safe autofix" />
+    <bpmn:exclusiveGateway id="Gateway_CheckTraceabilityMerge" name="Merge review inputs" />
     <bpmn:task id="Task_CheckTraceability" name="Check drift, evidence and traceability" />
     <bpmn:exclusiveGateway id="Gateway_ContinueOrRelay" name="Continue same agent?" default="Flow_Relay" />
+    <bpmn:exclusiveGateway id="Gateway_PublishRelayMerge" name="Merge relay triggers" />
     <bpmn:task id="Task_PublishRelay" name="handoff-close + refresh HANDOFF-PACKET for next agent" />
     <bpmn:endEvent id="EndEvent_HandoffReady" name="Ready for next agent or next step" />
 
@@ -67,7 +71,7 @@
     <bpmn:sequenceFlow id="Flow_D3" sourceRef="Task_RequestArbitration" targetRef="EndEvent_HandoffReady" />
     <bpmn:sequenceFlow id="Flow_D4" sourceRef="Task_ReloadArtifacts" targetRef="Task_RestateContext" />
     <bpmn:sequenceFlow id="Flow_D5" sourceRef="Task_RestateContext" targetRef="Gateway_WriteAuthorized" />
-    <bpmn:sequenceFlow id="Flow_WriteNo" sourceRef="Gateway_WriteAuthorized" targetRef="Task_PublishRelay">
+    <bpmn:sequenceFlow id="Flow_WriteNo" sourceRef="Gateway_WriteAuthorized" targetRef="Gateway_PublishRelayMerge">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[not_authorized]]></bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_WriteYes" sourceRef="Gateway_WriteAuthorized" targetRef="Task_ExecuteStep">
@@ -75,23 +79,25 @@
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_D6" sourceRef="Task_ExecuteStep" targetRef="Task_RefreshRuntimeState" />
     <bpmn:sequenceFlow id="Flow_D7" sourceRef="Task_RefreshRuntimeState" targetRef="Gateway_RepairOutcome" />
-    <bpmn:sequenceFlow id="Flow_RepairOk_Detail" sourceRef="Gateway_RepairOutcome" targetRef="Task_CheckTraceability">
+    <bpmn:sequenceFlow id="Flow_RepairOk_Detail" sourceRef="Gateway_RepairOutcome" targetRef="Gateway_CheckTraceabilityMerge">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[ok]]></bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_RepairWarn_Detail" sourceRef="Gateway_RepairOutcome" targetRef="Task_RunRepairTriage">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[warn]]></bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_RepairBlock_Detail" sourceRef="Gateway_RepairOutcome" targetRef="Task_PublishRelay">
+    <bpmn:sequenceFlow id="Flow_RepairBlock_Detail" sourceRef="Gateway_RepairOutcome" targetRef="Gateway_PublishRelayMerge">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[block]]></bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_D8" sourceRef="Task_RunRepairTriage" targetRef="Task_CheckTraceability" />
+    <bpmn:sequenceFlow id="Flow_D8" sourceRef="Task_RunRepairTriage" targetRef="Gateway_CheckTraceabilityMerge" />
+    <bpmn:sequenceFlow id="Flow_CheckTraceabilityGo" sourceRef="Gateway_CheckTraceabilityMerge" targetRef="Task_CheckTraceability" />
     <bpmn:sequenceFlow id="Flow_D9" sourceRef="Task_CheckTraceability" targetRef="Gateway_ContinueOrRelay" />
     <bpmn:sequenceFlow id="Flow_Continue" sourceRef="Gateway_ContinueOrRelay" targetRef="EndEvent_HandoffReady">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[continue_same_agent]]></bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_Relay" sourceRef="Gateway_ContinueOrRelay" targetRef="Task_PublishRelay">
+    <bpmn:sequenceFlow id="Flow_Relay" sourceRef="Gateway_ContinueOrRelay" targetRef="Gateway_PublishRelayMerge">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[relay_to_other_agent]]></bpmn:conditionExpression>
     </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_PublishRelayGo" sourceRef="Gateway_PublishRelayMerge" targetRef="Task_PublishRelay" />
     <bpmn:sequenceFlow id="Flow_D10" sourceRef="Task_PublishRelay" targetRef="EndEvent_HandoffReady" />
 
     <bpmn:association id="Assoc_D1" sourceRef="Task_ReadHandoffPacket" targetRef="Data_Detail_Handoff" />
@@ -118,8 +124,10 @@
       <bpmndi:BPMNShape id="Task_RefreshRuntimeState_di" bpmnElement="Task_RefreshRuntimeState"><dc:Bounds x="1110" y="390" width="180" height="80" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Gateway_RepairOutcome_di" bpmnElement="Gateway_RepairOutcome" isMarkerVisible="true"><dc:Bounds x="1330" y="405" width="50" height="50" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_RunRepairTriage_di" bpmnElement="Task_RunRepairTriage"><dc:Bounds x="1440" y="390" width="160" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_CheckTraceability_di" bpmnElement="Task_CheckTraceability"><dc:Bounds x="1440" y="530" width="170" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Gateway_ContinueOrRelay_di" bpmnElement="Gateway_ContinueOrRelay" isMarkerVisible="true"><dc:Bounds x="1650" y="545" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_CheckTraceabilityMerge_di" bpmnElement="Gateway_CheckTraceabilityMerge" isMarkerVisible="true"><dc:Bounds x="1400" y="545" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CheckTraceability_di" bpmnElement="Task_CheckTraceability"><dc:Bounds x="1490" y="530" width="170" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ContinueOrRelay_di" bpmnElement="Gateway_ContinueOrRelay" isMarkerVisible="true"><dc:Bounds x="1690" y="545" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_PublishRelayMerge_di" bpmnElement="Gateway_PublishRelayMerge" isMarkerVisible="true"><dc:Bounds x="1350" y="125" width="50" height="50" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_PublishRelay_di" bpmnElement="Task_PublishRelay"><dc:Bounds x="1440" y="110" width="180" height="80" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="EndEvent_HandoffReady_di" bpmnElement="EndEvent_HandoffReady"><dc:Bounds x="1750" y="132" width="36" height="36" /></bpmndi:BPMNShape>
 
@@ -134,17 +142,19 @@
       <bpmndi:BPMNEdge id="Flow_D3_di" bpmnElement="Flow_D3"><di:waypoint x="730" y="150" /><di:waypoint x="1750" y="150" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_D4_di" bpmnElement="Flow_D4"><di:waypoint x="740" y="290" /><di:waypoint x="790" y="290" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_D5_di" bpmnElement="Flow_D5"><di:waypoint x="960" y="290" /><di:waypoint x="1000" y="290" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_WriteNo_di" bpmnElement="Flow_WriteNo"><di:waypoint x="1025" y="265" /><di:waypoint x="1025" y="150" /><di:waypoint x="1440" y="150" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_WriteNo_di" bpmnElement="Flow_WriteNo"><di:waypoint x="1025" y="265" /><di:waypoint x="1025" y="150" /><di:waypoint x="1350" y="150" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_WriteYes_di" bpmnElement="Flow_WriteYes"><di:waypoint x="1050" y="290" /><di:waypoint x="1110" y="290" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_D6_di" bpmnElement="Flow_D6"><di:waypoint x="1185" y="330" /><di:waypoint x="1185" y="390" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_D7_di" bpmnElement="Flow_D7"><di:waypoint x="1290" y="430" /><di:waypoint x="1330" y="430" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_RepairOk_Detail_di" bpmnElement="Flow_RepairOk_Detail"><di:waypoint x="1355" y="455" /><di:waypoint x="1355" y="570" /><di:waypoint x="1440" y="570" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_RepairOk_Detail_di" bpmnElement="Flow_RepairOk_Detail"><di:waypoint x="1355" y="455" /><di:waypoint x="1355" y="570" /><di:waypoint x="1400" y="570" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_RepairWarn_Detail_di" bpmnElement="Flow_RepairWarn_Detail"><di:waypoint x="1380" y="430" /><di:waypoint x="1440" y="430" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_RepairBlock_Detail_di" bpmnElement="Flow_RepairBlock_Detail"><di:waypoint x="1355" y="405" /><di:waypoint x="1355" y="150" /><di:waypoint x="1440" y="150" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_D8_di" bpmnElement="Flow_D8"><di:waypoint x="1600" y="430" /><di:waypoint x="1600" y="570" /><di:waypoint x="1610" y="570" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_D9_di" bpmnElement="Flow_D9"><di:waypoint x="1610" y="570" /><di:waypoint x="1650" y="570" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_Continue_di" bpmnElement="Flow_Continue"><di:waypoint x="1700" y="570" /><di:waypoint x="1768" y="168" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_Relay_di" bpmnElement="Flow_Relay"><di:waypoint x="1675" y="545" /><di:waypoint x="1675" y="150" /><di:waypoint x="1620" y="150" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_RepairBlock_Detail_di" bpmnElement="Flow_RepairBlock_Detail"><di:waypoint x="1355" y="405" /><di:waypoint x="1355" y="150" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_D8_di" bpmnElement="Flow_D8"><di:waypoint x="1600" y="430" /><di:waypoint x="1600" y="620" /><di:waypoint x="1425" y="620" /><di:waypoint x="1425" y="595" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CheckTraceabilityGo_di" bpmnElement="Flow_CheckTraceabilityGo"><di:waypoint x="1450" y="570" /><di:waypoint x="1490" y="570" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_D9_di" bpmnElement="Flow_D9"><di:waypoint x="1660" y="570" /><di:waypoint x="1690" y="570" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Continue_di" bpmnElement="Flow_Continue"><di:waypoint x="1740" y="570" /><di:waypoint x="1768" y="168" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Relay_di" bpmnElement="Flow_Relay"><di:waypoint x="1715" y="545" /><di:waypoint x="1715" y="150" /><di:waypoint x="1400" y="150" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_PublishRelayGo_di" bpmnElement="Flow_PublishRelayGo"><di:waypoint x="1400" y="150" /><di:waypoint x="1440" y="150" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_D10_di" bpmnElement="Flow_D10"><di:waypoint x="1620" y="150" /><di:waypoint x="1750" y="150" /></bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="Assoc_D1_di" bpmnElement="Assoc_D1"><di:waypoint x="318" y="70" /><di:waypoint x="325" y="110" /></bpmndi:BPMNEdge>
