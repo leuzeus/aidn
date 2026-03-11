@@ -310,7 +310,7 @@ Done when:
 
 ### GCR-16 - Update Skill Documentation For Admission-First Behavior
 
-Status: in-progress
+Status: done
 Priority: high
 
 Files:
@@ -331,7 +331,7 @@ Done when:
 
 ### GCR-17 - Update Global Workflow Documentation
 
-Status: in-progress
+Status: done
 Priority: high
 
 Files:
@@ -352,7 +352,7 @@ Done when:
 
 ### GCR-18 - Rerun Gate Coverage Audit After The First Remediation Batch
 
-Status: pending
+Status: done
 Priority: high
 
 Files:

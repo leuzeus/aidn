@@ -1,7 +1,7 @@
 # Plan - Gate Coverage Remediation
 
 Date: 2026-03-10
-Status: active
+Status: completed
 Scope: remediate the workflow gate coverage gaps identified in `docs/AUDIT_GATE_COVERAGE_2026-03-10.md` while integrating cleanly with the current runtime/hook architecture.
 
 ## Problem Statement
@@ -110,8 +110,7 @@ Completed runtime batches:
 
 Remaining work:
 
-- finish documentation alignment across installed templates and workflow summaries
-- rerun and record the follow-up audit outcome after the remediation batch
+- none in the original remediation scope; follow-up audit recorded in `docs/AUDIT_GATE_COVERAGE_FOLLOWUP_2026-03-11.md`
 
 ## Design Principle
 
