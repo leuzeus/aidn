@@ -144,6 +144,35 @@ Fix:
 - Full command reference:
   - `docs/VERIFY_CONTEXT_RESILIENCE.md`
 
+## Codex app says it stayed read-only so it skipped `start-session`
+
+Symptom:
+- A Codex desktop/app session says `start-session` was not executed because it is "mutative".
+- The assistant claims it did only an informal re-anchor because the request was analysis-only.
+- Workflow branch/session continuity was therefore never admitted.
+
+Why this is wrong:
+- In aid'n, `start-session` is admission-first.
+- The admission phase is required even for analysis-only requests because it decides `resume | choose | create | stop` before any durable write.
+- Read-only intent can justify stopping after admission; it does not justify skipping the admission step itself.
+
+Fix:
+- Run:
+  - `npx aidn codex run-json-hook --skill start-session --mode <THINKING|EXPLORING|COMMITTING> --target . --strict --json`
+- Read the admission result first.
+- If it returns `stop`, surface the blocking reason and required user choice.
+- Only continue in read-only mode after that explicit admission outcome is known.
+- Do not replace `start-session` with an undocumented "re-anchor only" shortcut.
+
+Typical root cause:
+- Additional app-level guidance treats any potentially mutating skill as forbidden in read-only analysis.
+- That heuristic is too coarse for aid'n because some workflow skills have mandatory non-mutating admission phases.
+
+Reference:
+- `template/codex/start-session/SKILL.md`
+- `template/root/AGENTS.md`
+- `template/codex/README_CodexOnline.md`
+
 ## Missing continuity or incident templates after install
 
 Symptom:

@@ -73,6 +73,13 @@ At the beginning of a session, the agent MUST:
 4. Run skill: `start-session`
 5. Explicitly acknowledge the session mode: `THINKING | EXPLORING | COMMITTING`
 
+Important compatibility rule for conservative Codex app / online flows:
+- do not skip `start-session` only because the overall skill may later mutate workflow artifacts
+- `start-session` is admission-first: its runtime admission step is the required way to decide `resume | choose | create | stop`
+- this admission step must still run for analysis-only or read-only requests
+- read-only intent prevents durable writes; it does not exempt the agent from session admission
+- if admission returns `stop`, surface the blocking reason and required user choice instead of silently replacing the skill with an informal re-anchor
+
 `start-session` begins with blocking admission:
 - resume the current session/cycle when continuity already exists
 - stop on non-compliant branches or unresolved session-base continuity
@@ -134,6 +141,8 @@ Special note for recent Codex Windows app flows:
 
 - treat `apply_patch` as a durable write operation, not as a shortcut around workflow checks
 - do not use `apply_patch` before the pre-write restatement is complete
+- treat "this skill is mutative" as a write-scope warning, not as a reason to skip admission-first skills such as `start-session`
+- if the user request is analysis-only, run admission, stay read-only on `stop|resume`, and only avoid the later durable-write steps
 
 ## COMMITTING Hard Stops
 

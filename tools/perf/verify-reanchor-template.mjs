@@ -128,6 +128,7 @@ function main() {
       agents_references_reanchor_prompt: agentsText.includes("REANCHOR_PROMPT.md"),
       agents_has_pre_write_gate: agentsText.includes("## Pre-Write Gate (MANDATORY)"),
       agents_mentions_apply_patch: agentsText.includes("`apply_patch`"),
+      agents_mentions_start_session_read_only_admission: agentsText.includes("read-only intent prevents durable writes; it does not exempt the agent from session admission"),
       current_state_references_handoff_packet: currentStateText.includes("HANDOFF-PACKET.md"),
       current_state_references_manifest: currentStateText.includes("ARTIFACT_MANIFEST.md"),
       current_state_references_runtime_state: currentStateText.includes("RUNTIME-STATE.md"),
@@ -140,6 +141,7 @@ function main() {
       codex_online_references_reanchor_prompt: codexOnlineText.includes("REANCHOR_PROMPT.md"),
       codex_online_mentions_apply_patch: codexOnlineText.includes("`apply_patch`"),
       codex_online_mentions_durable_write: codexOnlineText.includes("durable write"),
+      codex_online_mentions_start_session_read_only_admission: codexOnlineText.includes("still run `start-session` even when the immediate user request is analysis-only"),
     };
 
     const pass = missingFiles.length === 0

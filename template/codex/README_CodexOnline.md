@@ -16,6 +16,13 @@ Before any durable write, reload the minimal workflow context in this order:
 - `docs/audit/RUNTIME-STATE.md` when runtime freshness or repair signals matter
 - active cycle `status.md` and active session file when relevant
 
+For session startup in conservative app/online flows:
+- still run `start-session` even when the immediate user request is analysis-only
+- `start-session` is admission-first, so the initial runtime decision is part of read discipline, not a workflow bypass
+- "this skill may mutate later" is not sufficient reason to skip admission
+- if admission returns `stop`, surface the branch/continuity issue and remain read-only
+- only skip the later durable-write part when no workflow artifact creation/update is justified
+
 If context is partial, stale, or contradictory, run `docs/audit/REANCHOR_PROMPT.md` and stop before writing.
 
 When several cycles attached to the same session may converge, also read:
@@ -65,6 +72,10 @@ For agent-to-agent work:
 When `docs/audit/MULTI-AGENT-STATUS.md` exists, `hydrate-context` also refreshes it automatically unless `--no-project-multi-agent-status` is set.
 
 For recent Codex Windows application flows, treat `apply_patch` as a durable write shortcut, not as a safe bypass of workflow reload.
+
+For recent Codex Windows application flows, also treat "mutating skill" labels carefully:
+- a skill that may eventually write can still have a mandatory read-only admission phase
+- `start-session` must not be replaced by an informal re-anchor when the workflow contract requires its admission result first
 
 If a long session starts drifting from the workflow:
 - do not assume `AGENTS.md` was never loaded

@@ -154,6 +154,9 @@ function main() {
       if (MUTATING_SKILLS.has(skill)) {
         patterns.push(...mutatingPatterns);
       }
+      if (skill === "start-session") {
+        patterns.push("do not skip this skill for that reason alone: run the admission phase");
+      }
       const result = checkPatterns(file, text, patterns);
       return {
         skill,
@@ -173,6 +176,7 @@ function main() {
       "npx aidn runtime repair-layer-triage --target . --json",
       "npx aidn runtime repair-layer-autofix --target . --apply --json",
       "--fail-on-repair-block",
+      "read-only intent prevents durable writes; it does not exempt the agent from session admission",
     ]);
 
     const pass = skillChecks.every((item) => item.ok) && agentsCheck.ok;

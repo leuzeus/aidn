@@ -20,6 +20,7 @@ Before the first durable write in this skill, run:
 - If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
 - This skill itself also begins with a blocking runtime admission decision before any session/cycle creation is allowed.
 - If runtime admission returns `result=stop`, STOP and surface the required user choice instead of creating new workflow artifacts.
+- In analysis-only or read-only app flows, do not skip this skill for that reason alone: run the admission phase, then remain read-only unless and until durable writes are explicitly justified and admitted.
 
 ## Steps
 
@@ -38,6 +39,7 @@ Before the first durable write in this skill, run:
 - If branch is non-compliant with aid'n, STOP and ask whether the work must be merged to the configured source branch first or explicitly ignored with rationale.
 - If several open cycles compete, STOP and ask the user to choose the cycle to continue or relaunch by agent.
 - If an open session/cycle already owns continuity, resume it before creating anything new.
+- This step is required even when the user only asked for analysis: admission decides whether read-only continuation is compliant or whether explicit arbitration is required first.
 
 2) Run context-reload logic (light version):
 - Read `docs/audit/CURRENT-STATE.md` if present
