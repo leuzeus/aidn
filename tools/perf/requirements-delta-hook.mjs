@@ -43,10 +43,56 @@ function parseArgs(argv) {
     } else if (token === "--mode") {
       args.mode = String(argv[i + 1] ?? "").trim().toUpperCase();
       i += 1;
+    } else if (token === "--cache") {
+      args.cache = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--event-file") {
+      args.eventFile = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--index-output") {
+      args.indexOutput = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--index-store") {
+      args.indexStore = String(argv[i + 1] ?? "").trim().toLowerCase();
+      args.indexStoreExplicit = true;
+      i += 1;
+    } else if (token === "--index-sql-output") {
+      args.indexSqlOutput = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--index-sqlite-output") {
+      args.indexSqliteOutput = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--index-schema-file") {
+      args.indexSchemaFile = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--index-no-schema") {
+      args.indexIncludeSchema = false;
+    } else if (token === "--index-kpi-file") {
+      args.indexKpiFile = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--index-sync-check") {
+      args.indexSyncCheck = true;
+    } else if (token === "--index-sync-check-strict") {
+      args.indexSyncCheck = true;
+      args.indexSyncCheckStrict = true;
+    } else if (token === "--index-sync-check-out") {
+      args.indexSyncCheckOut = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--run-id") {
+      args.runId = String(argv[i + 1] ?? "").trim();
+      i += 1;
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--no-auto-skip-gate") {
       args.autoSkipGateOnNoSignal = false;
+    } else if (token === "--no-summary-event") {
+      args.emitSummaryEvent = false;
+    } else if (token === "--skip-index-on-incremental") {
+      args.skipIndexOnIncremental = true;
+    } else if (token === "--no-skip-index-on-incremental") {
+      args.skipIndexOnIncremental = false;
+    } else if (token === "--skip-gate-evaluate") {
+      args.skipGateEvaluate = true;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -68,12 +114,25 @@ function parseArgs(argv) {
   if (!args.indexStore) {
     args.indexStore = resolveDefaultIndexStore(args.stateMode);
   }
+  if (!["file", "sql", "dual", "sqlite", "dual-sqlite", "all"].includes(args.indexStore)) {
+    throw new Error("Invalid --index-store. Expected file|sql|dual|sqlite|dual-sqlite|all");
+  }
+  if (!args.indexOutput) {
+    throw new Error("Missing value for --index-output");
+  }
+  if ((args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "all") && !args.indexSqlOutput) {
+    throw new Error("Missing value for --index-sql-output");
+  }
+  if ((args.indexStore === "sqlite" || args.indexStore === "dual-sqlite" || args.indexStore === "all") && !args.indexSqliteOutput) {
+    throw new Error("Missing value for --index-sqlite-output");
+  }
   return args;
 }
 
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/requirements-delta-hook.mjs --target . --mode COMMITTING --json");
+  console.log("  node tools/perf/requirements-delta-hook.mjs --target . --mode COMMITTING --index-store dual --json");
 }
 
 function shouldRunCheckpoint(admission) {
