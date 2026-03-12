@@ -4,6 +4,8 @@ This file is the project adapter for `aidn-workflow`.
 Use it to record repository-specific constraints and operating policy.
 Core workflow rules belong to `docs/audit/SPEC.md`, not here.
 Its role is to reduce local ambiguity and keep AI behavior stable.
+In installed repositories, this document is generated from `.aidn/project/workflow.adapter.json`.
+Durable local policy changes should be made through that adapter config, not by editing generated sections here.
 
 ## Recommended Read Order (Fast Reload)
 
@@ -151,6 +153,7 @@ source_branch: dev
 
 - Session close and PR review gates are canonical in `docs/audit/SPEC.md` (`SPEC-R07`, `SPEC-R08`).
 - Add local CI/review capacity policy here if your repository needs it.
+- Project-specific CI/review capacity policy: `none`
 
 ## Snapshot Discipline
 
