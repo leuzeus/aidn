@@ -62,6 +62,10 @@ export function createDefaultWorkflowAdapterConfig(options = {}) {
     ciPolicy: {
       capacity: normalizeStringArray(options.ciPolicy?.capacity),
     },
+    legacyPreserved: {
+      projectConstraintsBullets: normalizeStringArray(options.legacyPreserved?.projectConstraintsBullets),
+      importedSections: normalizeStringArray(options.legacyPreserved?.importedSections),
+    },
   };
 }
 
@@ -72,6 +76,7 @@ export function normalizeWorkflowAdapterConfig(data, options = {}) {
   const runtimePolicy = isPlainObject(base.runtimePolicy) ? base.runtimePolicy : {};
   const snapshotPolicy = isPlainObject(base.snapshotPolicy) ? base.snapshotPolicy : {};
   const ciPolicy = isPlainObject(base.ciPolicy) ? base.ciPolicy : {};
+  const legacyPreserved = isPlainObject(base.legacyPreserved) ? base.legacyPreserved : {};
 
   return {
     version: WORKFLOW_ADAPTER_CONFIG_VERSION,
@@ -97,6 +102,10 @@ export function normalizeWorkflowAdapterConfig(data, options = {}) {
     },
     ciPolicy: {
       capacity: normalizeStringArray(ciPolicy.capacity),
+    },
+    legacyPreserved: {
+      projectConstraintsBullets: normalizeStringArray(legacyPreserved.projectConstraintsBullets),
+      importedSections: normalizeStringArray(legacyPreserved.importedSections),
     },
   };
 }

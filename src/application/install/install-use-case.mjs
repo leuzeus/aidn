@@ -320,6 +320,7 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
       dryRun: args.dryRun,
       templateVars,
       existingContentByTarget: generatedDocExistingContent,
+      workflowAdapterConfig,
     });
     for (const item of generatedDocs) {
       console.log(

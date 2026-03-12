@@ -17,7 +17,7 @@ import {
 } from "../install/custom-file-policy.mjs";
 import { buildGeneratedDocTemplateVars } from "../install/generated-doc-template-vars.mjs";
 import { renderManagedInstallDocs } from "../install/generated-doc-render-service.mjs";
-import { readUtf8, writeUtf8 } from "../install/template-io.mjs";
+import { readUtf8, renderTemplateVariables, writeUtf8 } from "../install/template-io.mjs";
 
 function clean(value) {
   return String(value ?? "").trim();
@@ -54,14 +54,26 @@ function parseBacktickBullets(sectionLines) {
   const out = [];
   for (const rawLine of sectionLines) {
     const line = String(rawLine ?? "");
-    const match = line.match(/^\s*-\s*(.+?):\s*`([^`]+)`\s*$/);
-    if (!match) {
+    const bulletMatch = line.match(/^\s*-\s*(.+)$/);
+    if (!bulletMatch) {
+      continue;
+    }
+    const body = clean(bulletMatch[1]);
+    const firstColon = body.indexOf(":");
+    const firstBacktick = body.indexOf("`");
+    const lastBacktick = body.lastIndexOf("`");
+    if (firstColon <= 0 || firstBacktick <= firstColon || lastBacktick <= firstBacktick) {
+      continue;
+    }
+    const label = clean(body.slice(0, firstColon));
+    const value = clean(body.slice(firstBacktick + 1, lastBacktick));
+    if (!label || !value) {
       continue;
     }
     out.push({
-      label: clean(match[1]),
-      value: clean(match[2]),
-      raw: `${clean(match[1])}: \`${clean(match[2])}\``,
+      label,
+      value,
+      raw: `${label}: \`${value}\``,
     });
   }
   return out;
@@ -100,9 +112,67 @@ function extractCiCapacityLines(sections) {
   ].includes(line));
 }
 
+function extractProjectConstraintBullets(sections) {
+  return parsePlainBullets(sections.get("Project Constraints")?.lines ?? []);
+}
+
+function collectCanonicalHeadingNames(renderedTemplate) {
+  const names = new Set();
+  const lines = String(renderedTemplate ?? "").replace(/\r\n/g, "\n").split("\n");
+  for (const line of lines) {
+    const match = line.match(/^(#{2,3})\s+(.+)$/);
+    if (!match) {
+      continue;
+    }
+    names.add(clean(match[2]).replace(/\s+\(project adapter\)$/i, "").replace(/\s+\(Imported\)$/i, "").trim().toLowerCase());
+  }
+  names.add("runtime state policy");
+  names.add("ci capacity gate (mandatory, project policy extension)");
+  return names;
+}
+
+function collectImportedSectionsFromLegacy(renderedTemplate, sourceText) {
+  const canonicalHeadings = collectCanonicalHeadingNames(renderedTemplate);
+  const lines = String(sourceText ?? "").replace(/\r\n/g, "\n").split("\n");
+  const sections = [];
+  let current = null;
+
+  function flush() {
+    if (!current) {
+      return;
+    }
+    const body = current.lines.join("\n").trimEnd();
+    if (body) {
+      sections.push(body);
+    }
+    current = null;
+  }
+
+  for (const line of lines) {
+    const match = line.match(/^(#{2,3})\s+(.+)$/);
+    if (match) {
+      const headingName = clean(match[2]).replace(/\s+\(project adapter\)$/i, "").replace(/\s+\(Imported\)$/i, "").trim().toLowerCase();
+      if (headingName === "imported local extensions" || canonicalHeadings.has(headingName)) {
+        flush();
+        current = null;
+        continue;
+      }
+      flush();
+      current = { lines: [line] };
+      continue;
+    }
+    if (current) {
+      current.lines.push(line);
+    }
+  }
+  flush();
+  return Array.from(new Set(sections.map((item) => item.trim()).filter((item) => item.length > 0)));
+}
+
 function extractFromWorkflowMarkdown(text, defaults = {}) {
   const placeholders = collectPlaceholderValuesFromText(text);
   const sections = parseSections(text);
+  const projectConstraintBullets = extractProjectConstraintBullets(sections);
   const projectConstraints = parseBacktickBullets(sections.get("Project Constraints")?.lines ?? []);
   const runtimePolicyLines = parsePlainBullets(sections.get("Runtime State Policy")?.lines ?? []);
   const branchPolicyLines = parseBacktickBullets(sections.get("Branch & Cycle Policy")?.lines ?? []);
@@ -178,6 +248,10 @@ function extractFromWorkflowMarkdown(text, defaults = {}) {
     },
     ciPolicy: {
       capacity: ciCapacityLines,
+    },
+    legacyPreserved: {
+      projectConstraintsBullets: projectConstraintBullets,
+      importedSections: defaults.importedSections ?? [],
     },
   }, defaults);
 }
@@ -256,10 +330,38 @@ export function previewWorkflowAdapterMigration({
     projectName: extractedProjectName,
     preferredStateMode: resolveConfigStateMode(aidnConfigState.data),
     defaultIndexStore: resolveConfigIndexStore(aidnConfigState.data),
+    importedSections: [],
+  });
+  const provisionalWorkflowAdapterConfig = {
+    path: resolveWorkflowAdapterConfigPath(targetRoot),
+    data: extractedConfig,
+  };
+  const provisionalTemplateVars = buildWorkflowAdapterMigrationTemplateVars({
+    aidnConfigData: aidnConfigState.data,
+    workflowAdapterConfig: provisionalWorkflowAdapterConfig,
+    version,
+    projectName: extractedProjectName,
+    sourceBranch: extractedSourceBranch,
+  });
+  const renderedTemplate = renderTemplateVariables(
+    readUtf8(path.resolve(repoRoot, "template", "docs_audit", "PROJECT_WORKFLOW.md")),
+    provisionalTemplateVars,
+  );
+  const importedSections = collectImportedSectionsFromLegacy(renderedTemplate, extractionSourceText);
+  const finalizedConfig = normalizeWorkflowAdapterConfig({
+    ...extractedConfig,
+    legacyPreserved: {
+      ...(extractedConfig.legacyPreserved ?? {}),
+      importedSections,
+    },
+  }, {
+    projectName: extractedProjectName,
+    preferredStateMode: resolveConfigStateMode(aidnConfigState.data),
+    defaultIndexStore: resolveConfigIndexStore(aidnConfigState.data),
   });
   const workflowAdapterConfig = {
     path: resolveWorkflowAdapterConfigPath(targetRoot),
-    data: extractedConfig,
+    data: finalizedConfig,
   };
   const templateVars = buildWorkflowAdapterMigrationTemplateVars({
     aidnConfigData: aidnConfigState.data,
@@ -285,6 +387,7 @@ export function previewWorkflowAdapterMigration({
         ? readUtf8(path.resolve(targetRoot, "docs", "audit", "index.md"))
         : null,
     },
+    workflowAdapterConfig,
   });
 
   return {
@@ -349,6 +452,7 @@ export function executeWorkflowAdapterMigration({
           ? readUtf8(path.resolve(targetRoot, "docs", "audit", "index.md"))
           : null,
       },
+      workflowAdapterConfig: preview.workflowAdapterConfig,
     });
     const reportPath = buildMigrationReportPath(targetRoot);
     const report = {

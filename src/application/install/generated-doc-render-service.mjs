@@ -130,8 +130,25 @@ function collectImportedWorkflowSections(renderedTemplate, existingContent) {
   return sections;
 }
 
-function appendImportedWorkflowSections(renderedTemplate, existingContent) {
-  const sections = collectImportedWorkflowSections(renderedTemplate, existingContent);
+function mergeImportedWorkflowSections(existingSections, adapterSections) {
+  const merged = [];
+  const seen = new Set();
+  for (const section of [...existingSections, ...adapterSections]) {
+    const normalized = String(section ?? "").replace(/\r\n/g, "\n").trim();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    merged.push(normalized);
+  }
+  return merged;
+}
+
+function appendImportedWorkflowSections(renderedTemplate, existingContent, adapterSections = []) {
+  const sections = mergeImportedWorkflowSections(
+    collectImportedWorkflowSections(renderedTemplate, existingContent),
+    Array.isArray(adapterSections) ? adapterSections : [],
+  );
   if (sections.length === 0) {
     return renderedTemplate;
   }
@@ -156,6 +173,7 @@ export function renderGeneratedDocContent({
   templateVars,
   preserveImportedWorkflowExtensions = false,
   existingContentOverride = null,
+  workflowAdapterConfig = null,
 }) {
   const templatePath = path.resolve(repoRoot, templateRelative);
   const targetPath = path.resolve(targetRoot, targetRelative);
@@ -170,7 +188,11 @@ export function renderGeneratedDocContent({
     ? existingContentOverride
     : (fs.existsSync(targetPath) ? readUtf8(targetPath) : null);
   if (preserveImportedWorkflowExtensions && typeof existingContent === "string") {
-    rendered = appendImportedWorkflowSections(rendered, existingContent);
+    rendered = appendImportedWorkflowSections(
+      rendered,
+      existingContent,
+      workflowAdapterConfig?.data?.legacyPreserved?.importedSections ?? [],
+    );
   }
   return rendered.endsWith("\n") ? rendered : `${rendered}\n`;
 }
@@ -181,6 +203,7 @@ export function renderManagedInstallDocs({
   dryRun = false,
   templateVars = {},
   existingContentByTarget = {},
+  workflowAdapterConfig = null,
 }) {
   const results = [];
   for (const item of GENERATED_DOCS) {
@@ -194,6 +217,7 @@ export function renderManagedInstallDocs({
       templateVars,
       preserveImportedWorkflowExtensions: item.preserveImportedWorkflowExtensions === true,
       existingContentOverride: existingContentByTarget[targetKey] ?? null,
+      workflowAdapterConfig,
     });
     const previous = fs.existsSync(targetPath) ? readUtf8(targetPath) : null;
     const changed = previous !== content;

@@ -47,13 +47,7 @@ source_branch: {{SOURCE_BRANCH}}
 
 ## Project Constraints
 
-- Runtime/platform constraints: `{{RUNTIME_CONSTRAINTS}}`
-- Architecture constraints: `{{ARCH_CONSTRAINTS}}`
-- Dependency/data constraints: `{{DEPENDENCY_CONSTRAINTS}}`
-- Delivery constraints (CI/release/compliance): `{{DELIVERY_CONSTRAINTS}}`
-{{ADDITIONAL_CONSTRAINT_BLOCK}}
-- Generated artifact constraints: `{{GENERATED_ARTIFACT_CONSTRAINTS}}`
-- Testing/regression constraints: `{{TEST_REGRESSION_CONSTRAINTS}}`
+{{PROJECT_CONSTRAINTS_BLOCK}}
 
 ## Branch & Cycle Policy
 
