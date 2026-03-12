@@ -7,8 +7,6 @@ import { readUtf8 } from "./template-io.mjs";
 import { resolveConfigSourceBranch } from "../../lib/config/aidn-config-lib.mjs";
 
 export const CUSTOMIZABLE_TARGET_PATTERNS = [
-  "docs/audit/WORKFLOW.md",
-  "docs/audit/index.md",
   "docs/audit/glossary.md",
   "docs/audit/parking-lot.md",
   "docs/audit/baseline/current.md",
@@ -258,6 +256,15 @@ export function suggestPlaceholderValue(name, targetRoot, templateVars) {
   }
   if (name === "VERSION") {
     return sanitizeExtractedValue(templateVars.VERSION) || "0.0.0";
+  }
+  if (name === "PREFERRED_STATE_MODE") {
+    return sanitizeExtractedValue(templateVars.PREFERRED_STATE_MODE) || "dual";
+  }
+  if (name === "DEFAULT_INDEX_STORE") {
+    return sanitizeExtractedValue(templateVars.DEFAULT_INDEX_STORE) || "dual-sqlite";
+  }
+  if (name === "ADDITIONAL_CONSTRAINTS") {
+    return sanitizeExtractedValue(templateVars.ADDITIONAL_CONSTRAINTS) || "none";
   }
   return "TO_DEFINE";
 }

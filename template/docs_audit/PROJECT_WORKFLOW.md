@@ -49,6 +49,7 @@ source_branch: {{SOURCE_BRANCH}}
 - Architecture constraints: `{{ARCH_CONSTRAINTS}}`
 - Dependency/data constraints: `{{DEPENDENCY_CONSTRAINTS}}`
 - Delivery constraints (CI/release/compliance): `{{DELIVERY_CONSTRAINTS}}`
+- Additional local constraints: `{{ADDITIONAL_CONSTRAINTS}}`
 - Generated artifact constraints: `{{GENERATED_ARTIFACT_CONSTRAINTS}}`
 - Testing/regression constraints: `{{TEST_REGRESSION_CONSTRAINTS}}`
 
@@ -64,7 +65,8 @@ source_branch: {{SOURCE_BRANCH}}
 
 ## Runtime State Policy (Project Adapter)
 
-- Preferred runtime state mode: `dual` (or `db-only` if project chooses full DB runtime).
+- Preferred runtime state mode: `{{PREFERRED_STATE_MODE}}`.
+- Default install/runtime index store: `{{DEFAULT_INDEX_STORE}}`.
 - In `dual`/`db-only`, workflow skill perf hooks are mandatory and executed in strict mode.
 - In `dual`/`db-only`, session close must run the DB-backed constraint chain and produce constraint artifacts under `.aidn/runtime/perf/`.
 - `files` mode is allowed only as an explicit fallback profile; it is not the primary execution path for this adapter.

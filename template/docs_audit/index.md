@@ -1,5 +1,9 @@
 # Audit Workflow Index (v4)
 
+- Project: `{{PROJECT_NAME}}`
+- Source branch: `{{SOURCE_BRANCH}}`
+- Preferred runtime state mode: `{{PREFERRED_STATE_MODE}}`
+- Default index store: `{{DEFAULT_INDEX_STORE}}`
 - Main workflow: `WORKFLOW.md`
 - Agent rules: `/AGENTS.md`
 

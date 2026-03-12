@@ -30,6 +30,9 @@ Detailed read order when more context is needed:
 6. `docs/audit/SPEC.md` (Rule Index + canonical rule details)
 
 ## Branch Model
+- Configured source branch: `{{SOURCE_BRANCH}}`
+- Preferred runtime state mode: `{{PREFERRED_STATE_MODE}}`
+- Default index store: `{{DEFAULT_INDEX_STORE}}`
 - `source`: configured source branch (reload/reference branch; never cycle ownership)
 - `session`: `SXXX-<slug>`
 - `cycle`: `<cycle-type>/CXXX-<slug>`

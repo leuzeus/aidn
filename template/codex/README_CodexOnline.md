@@ -2,6 +2,11 @@
 
 Ensure skills are available before execution.
 
+Project defaults:
+- source branch: `{{SOURCE_BRANCH}}`
+- preferred runtime state mode: `{{PREFERRED_STATE_MODE}}`
+- default index store: `{{DEFAULT_INDEX_STORE}}`
+
 Instruction layering reminder:
 - this file complements the installed project `AGENTS.md`; it does not replace it
 - Codex may also load `~/.codex/AGENTS.md` or `~/.codex/AGENTS.override.md`

@@ -32,6 +32,8 @@ import {
   shouldRenderTemplate,
 } from "./template-copy-service.mjs";
 import { ensureWorkflowAdapterConfig } from "../project/project-config-use-case.mjs";
+import { buildGeneratedDocTemplateVars } from "./generated-doc-template-vars.mjs";
+import { renderManagedInstallDocs } from "./generated-doc-render-service.mjs";
 import {
   mergeAppendUnique,
   mergeBlock,
@@ -108,6 +110,8 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
     configCreated: 0,
     configUpdated: 0,
     configSkipped: 0,
+    generatedRendered: 0,
+    generatedUnchanged: 0,
   };
   const initialImportDefaults = resolveArtifactImportDefaults(args, currentAidnConfigData);
   const resolvedSourceBranch = await resolveInstallSourceBranch({
@@ -134,6 +138,28 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
   if (workflowAdapterConfig?.data?.projectName) {
     templateVars.PROJECT_NAME = workflowAdapterConfig.data.projectName;
   }
+  Object.assign(
+    templateVars,
+    buildGeneratedDocTemplateVars({
+      templateVars,
+      aidnConfigData: currentAidnConfigData,
+      workflowAdapterConfig,
+    }),
+  );
+  const generatedDocExistingContent = {
+    "docs/audit/workflow.md": fs.existsSync(path.join(targetRoot, "docs", "audit", "WORKFLOW.md"))
+      ? readUtf8(path.join(targetRoot, "docs", "audit", "WORKFLOW.md"))
+      : null,
+    "docs/audit/workflow_summary.md": fs.existsSync(path.join(targetRoot, "docs", "audit", "WORKFLOW_SUMMARY.md"))
+      ? readUtf8(path.join(targetRoot, "docs", "audit", "WORKFLOW_SUMMARY.md"))
+      : null,
+    "docs/audit/codex_online.md": fs.existsSync(path.join(targetRoot, "docs", "audit", "CODEX_ONLINE.md"))
+      ? readUtf8(path.join(targetRoot, "docs", "audit", "CODEX_ONLINE.md"))
+      : null,
+    "docs/audit/index.md": fs.existsSync(path.join(targetRoot, "docs", "audit", "index.md"))
+      ? readUtf8(path.join(targetRoot, "docs", "audit", "index.md"))
+      : null,
+  };
   const preservedCustomCandidates = [];
 
   console.log(`Product version: ${version}`);
@@ -285,6 +311,24 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
           );
           summary.skipped += 1;
         }
+      }
+    }
+
+    const generatedDocs = renderManagedInstallDocs({
+      repoRoot,
+      targetRoot,
+      dryRun: args.dryRun,
+      templateVars,
+      existingContentByTarget: generatedDocExistingContent,
+    });
+    for (const item of generatedDocs) {
+      console.log(
+        `${args.dryRun ? "[dry-run] " : ""}render generated doc: ${item.targetRelative} (${item.changed ? "updated" : "unchanged"})`,
+      );
+      if (item.changed) {
+        summary.generatedRendered += 1;
+      } else {
+        summary.generatedUnchanged += 1;
       }
     }
 
@@ -467,6 +511,8 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
   console.log(`config_created: ${summary.configCreated}`);
   console.log(`config_updated: ${summary.configUpdated}`);
   console.log(`config_skipped: ${summary.configSkipped}`);
+  console.log(`generated_rendered: ${summary.generatedRendered}`);
+  console.log(`generated_unchanged: ${summary.generatedUnchanged}`);
   if (artifactImportVerification.checked) {
     console.log(
       `artifact_import_verify: ${artifactImportVerification.ok ? "OK" : "FAIL"} (store=${artifactImportVerification.defaults?.store ?? "n/a"}, source=${artifactImportVerification.defaults?.source ?? "n/a"})`,

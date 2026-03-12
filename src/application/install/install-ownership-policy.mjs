@@ -12,8 +12,18 @@ const RUNTIME_STATE_PATHS = new Set([
   "docs/audit/snapshots/context-snapshot.md",
 ]);
 
+const GENERATED_PATHS = new Set([
+  "docs/audit/workflow.md",
+  "docs/audit/workflow_summary.md",
+  "docs/audit/codex_online.md",
+  "docs/audit/index.md",
+]);
+
 export function resolveInstallOwnership(relativeTargetPath) {
-  const normalized = normalizeRelativePath(relativeTargetPath);
+  const normalized = normalizeRelativePath(relativeTargetPath).toLowerCase();
+  if (GENERATED_PATHS.has(normalized)) {
+    return "generated";
+  }
   if (SEED_ONCE_PATHS.has(normalized)) {
     return "seed-once";
   }
