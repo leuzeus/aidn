@@ -170,6 +170,13 @@ npx aidn project config --target . --migrate-adapter --version "$(cat node_modul
 
 If your shell does not support that inline version command, pass the installed package version explicitly.
 
+Legacy note:
+
+- `legacyPreserved.importedSections` is compatibility-only
+- new or migrated repositories should move active policy into structured adapter fields and deterministic generated sections
+- readers still accept `legacyPreserved.importedSections` for older repositories during the transition window
+- once migration drains that field, do not reintroduce durable policy there
+
 ### Ownership classes used by install/reinstall
 
 - `generated`
