@@ -11,6 +11,7 @@ function parseArgs(argv) {
     target: ".",
     pack: "",
     sourceBranch: "",
+    adapterFile: "",
     dryRun: false,
     verifyOnly: false,
     skipArtifactImport: false,
@@ -32,6 +33,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--source-branch") {
       args.sourceBranch = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--adapter-file") {
+      args.adapterFile = String(argv[i + 1] ?? "").trim();
       i += 1;
     } else if (token === "--dry-run") {
       args.dryRun = true;
@@ -75,6 +79,7 @@ function printUsage() {
   console.log("  node tools/install.mjs --target ../repo");
   console.log("  node tools/install.mjs --target ../repo --pack core");
   console.log("  node tools/install.mjs --target ../repo --pack core --source-branch main");
+  console.log("  node tools/install.mjs --target ../repo --pack core --adapter-file ./workflow.adapter.json");
   console.log("  node tools/install.mjs --target . --pack core --dry-run");
   console.log("  node tools/install.mjs --target . --pack core --verify");
   console.log("  node tools/install.mjs --target . --pack core --skip-artifact-import");

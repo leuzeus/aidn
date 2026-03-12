@@ -78,6 +78,25 @@ function makeCodexStub(tmpRoot) {
   return binDir;
 }
 
+function writeAdapterFile(tmpRoot) {
+  const filePath = path.join(tmpRoot, "workflow.adapter.json");
+  fs.writeFileSync(filePath, `${JSON.stringify({
+    version: 1,
+    projectName: path.basename(tmpRoot),
+    constraints: {
+      runtime: "",
+      architecture: "",
+      delivery: "",
+      additional: [],
+    },
+    runtimePolicy: {
+      preferredStateMode: "dual",
+      defaultIndexStore: "dual-sqlite",
+    },
+  }, null, 2)}\n`, "utf8");
+  return filePath;
+}
+
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
@@ -87,6 +106,7 @@ function assert(condition, message) {
 function main() {
   let tempRoot = "";
   let codexStubBin = "";
+  let adapterFile = "";
   try {
     const args = parseArgs(process.argv.slice(2));
     const repoRoot = process.cwd();
@@ -96,6 +116,7 @@ function main() {
       stdio: "ignore",
     });
     codexStubBin = makeCodexStub(tempRoot);
+    adapterFile = writeAdapterFile(tempRoot);
     const separator = process.platform === "win32" ? ";" : ":";
     const result = spawnSync(process.execPath, [
       path.resolve(repoRoot, "tools", "install.mjs"),
@@ -103,6 +124,8 @@ function main() {
       tempRoot,
       "--pack",
       "core",
+      "--adapter-file",
+      adapterFile,
       "--source-branch",
       args.sourceBranch,
       "--skip-artifact-import",
@@ -139,6 +162,8 @@ function main() {
       tempRoot,
       "--pack",
       "core",
+      "--adapter-file",
+      adapterFile,
       "--skip-artifact-import",
       "--no-codex-migrate-custom",
     ], {
@@ -186,6 +211,9 @@ function main() {
   } finally {
     if (codexStubBin && fs.existsSync(codexStubBin)) {
       fs.rmSync(codexStubBin, { recursive: true, force: true });
+    }
+    if (adapterFile && fs.existsSync(adapterFile)) {
+      fs.rmSync(adapterFile, { force: true });
     }
     if (tempRoot && fs.existsSync(tempRoot)) {
       fs.rmSync(tempRoot, { recursive: true, force: true });

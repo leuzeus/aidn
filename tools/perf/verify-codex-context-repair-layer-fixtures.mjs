@@ -60,6 +60,25 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
+function writeAdapterFile(tempRoot) {
+  const filePath = path.join(tempRoot, "workflow.adapter.json");
+  fs.writeFileSync(filePath, `${JSON.stringify({
+    version: 1,
+    projectName: "repo",
+    constraints: {
+      runtime: "",
+      architecture: "",
+      delivery: "",
+      additional: [],
+    },
+    runtimePolicy: {
+      preferredStateMode: "dual",
+      defaultIndexStore: "dual-sqlite",
+    },
+  }, null, 2)}\n`, "utf8");
+  return filePath;
+}
+
 function resolveDbSyncOpenCount(hookOutput) {
   const triageCount = hookOutput?.db_sync?.payload?.repair_layer_triage_result?.triage?.summary?.open_findings_count;
   if (triageCount !== undefined && triageCount !== null) {
@@ -74,6 +93,7 @@ function resolveDbSyncOpenCount(hookOutput) {
 
 function main() {
   let tempRoot = "";
+  let adapterFile = "";
   try {
     const args = parseArgs(process.argv.slice(2));
     const sourceTarget = path.resolve(process.cwd(), args.target);
@@ -81,11 +101,14 @@ function main() {
     const target = path.join(tempRoot, "repo");
     fs.cpSync(sourceTarget, target, { recursive: true });
     fs.rmSync(path.join(target, ".aidn"), { recursive: true, force: true });
+    adapterFile = writeAdapterFile(tempRoot);
     runNoJson("tools/install.mjs", [
       "--target",
       target,
       "--pack",
       "core",
+      "--adapter-file",
+      adapterFile,
       "--force-agents-merge",
     ]);
 
@@ -213,6 +236,9 @@ function main() {
     printUsage();
     process.exit(1);
   } finally {
+    if (adapterFile && fs.existsSync(adapterFile)) {
+      fs.rmSync(adapterFile, { force: true });
+    }
     if (tempRoot && fs.existsSync(tempRoot)) {
       fs.rmSync(tempRoot, { recursive: true, force: true });
     }

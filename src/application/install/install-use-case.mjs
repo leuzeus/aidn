@@ -31,6 +31,7 @@ import {
   copyRecursive,
   shouldRenderTemplate,
 } from "./template-copy-service.mjs";
+import { ensureWorkflowAdapterConfig } from "../project/project-config-use-case.mjs";
 import {
   mergeAppendUnique,
   mergeBlock,
@@ -108,6 +109,7 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
     configUpdated: 0,
     configSkipped: 0,
   };
+  const initialImportDefaults = resolveArtifactImportDefaults(args, currentAidnConfigData);
   const resolvedSourceBranch = await resolveInstallSourceBranch({
     explicitSourceBranch: args.sourceBranch,
     configData: currentAidnConfigData,
@@ -117,6 +119,20 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
   });
   if (resolvedSourceBranch.value) {
     templateVars.SOURCE_BRANCH = resolvedSourceBranch.value;
+  }
+  const workflowAdapterConfig = await ensureWorkflowAdapterConfig({
+    targetRoot,
+    dryRun: args.dryRun,
+    verifyOnly: args.verifyOnly,
+    adapterFile: args.adapterFile,
+    defaults: {
+      projectName: path.basename(targetRoot),
+      preferredStateMode: initialImportDefaults.stateMode,
+      defaultIndexStore: initialImportDefaults.store,
+    },
+  });
+  if (workflowAdapterConfig?.data?.projectName) {
+    templateVars.PROJECT_NAME = workflowAdapterConfig.data.projectName;
   }
   const preservedCustomCandidates = [];
 
@@ -135,6 +151,11 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
   }
   if (templateVars.SOURCE_BRANCH) {
     console.log(`Install metadata: source_branch=${templateVars.SOURCE_BRANCH} (${resolvedSourceBranch.source})`);
+  }
+  if (workflowAdapterConfig?.path) {
+    console.log(
+      `Workflow adapter config: ${workflowAdapterConfig.path} (${workflowAdapterConfig.source}${workflowAdapterConfig.created ? ", created" : ""})`,
+    );
   }
   if (args.dryRun) {
     console.log("Mode: dry-run");
@@ -198,6 +219,11 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
               return;
             }
             preservedCustomCandidates.push(candidate);
+          },
+          onOwnershipSkip(info) {
+            console.log(
+              `${args.dryRun ? "[dry-run] " : ""}skip copy ${info.targetRelative} (${info.ownership})`,
+            );
           },
         };
         if (sourceStat.isDirectory()) {

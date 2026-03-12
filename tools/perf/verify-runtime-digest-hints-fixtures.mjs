@@ -39,6 +39,25 @@ function assert(condition, message) {
   }
 }
 
+function writeAdapterFile(tempRoot) {
+  const filePath = path.join(tempRoot, "workflow.adapter.json");
+  fs.writeFileSync(filePath, `${JSON.stringify({
+    version: 1,
+    projectName: "repo",
+    constraints: {
+      runtime: "",
+      architecture: "",
+      delivery: "",
+      additional: [],
+    },
+    runtimePolicy: {
+      preferredStateMode: "dual",
+      defaultIndexStore: "dual-sqlite",
+    },
+  }, null, 2)}\n`, "utf8");
+  return filePath;
+}
+
 function setStaleCurrentState(target) {
   const file = path.join(target, "docs", "audit", "CURRENT-STATE.md");
   let text = fs.readFileSync(file, "utf8");
@@ -56,18 +75,22 @@ function setStaleRuntimeDigest(target) {
 
 function main() {
   let tempRoot = "";
+  let adapterFile = "";
   try {
     const sourceTarget = path.resolve(process.cwd(), "tests/fixtures/perf-structure/session-rich");
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-runtime-digest-hints-"));
     const target = path.join(tempRoot, "repo");
     fs.cpSync(sourceTarget, target, { recursive: true });
     fs.rmSync(path.join(target, ".aidn"), { recursive: true, force: true });
+    adapterFile = writeAdapterFile(tempRoot);
 
     runNoJson("tools/install.mjs", [
       "--target",
       target,
       "--pack",
       "core",
+      "--adapter-file",
+      adapterFile,
       "--force-agents-merge",
     ]);
 
@@ -128,6 +151,9 @@ function main() {
     printUsage();
     process.exit(1);
   } finally {
+    if (adapterFile && fs.existsSync(adapterFile)) {
+      fs.rmSync(adapterFile, { force: true });
+    }
     if (tempRoot && fs.existsSync(tempRoot)) {
       fs.rmSync(tempRoot, { recursive: true, force: true });
     }

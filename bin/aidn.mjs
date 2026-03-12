@@ -117,6 +117,10 @@ const RUNTIME_ALIASES = {
   "mode-migrate": { file: "mode-migrate.mjs" },
 };
 
+const PROJECT_ALIASES = {
+  config: { file: "config.mjs" },
+};
+
 function printUsage() {
   console.log("Usage:");
   console.log("  aidn install --target ../repo --pack core");
@@ -146,6 +150,8 @@ function printUsage() {
   console.log("  aidn runtime project-coordination-summary --target . --json");
   console.log("  aidn runtime project-handoff-packet --target . --json");
   console.log("  aidn runtime project-runtime-state --target . --json");
+  console.log("  aidn project config --target . --list --json");
+  console.log("  aidn project config --target . --wizard");
   console.log("");
   console.log("Perf subcommands:");
   console.log(`  ${Object.keys(PERF_ALIASES).sort().join(", ")}`);
@@ -153,6 +159,8 @@ function printUsage() {
   console.log(`  ${Object.keys(CODEX_ALIASES).sort().join(", ")}`);
   console.log("Runtime subcommands:");
   console.log(`  ${Object.keys(RUNTIME_ALIASES).sort().join(", ")}`);
+  console.log("Project subcommands:");
+  console.log(`  ${Object.keys(PROJECT_ALIASES).sort().join(", ")}`);
 }
 
 function printVersion() {
@@ -207,6 +215,16 @@ function resolveRuntimeCommand(subcommand, args) {
     aliases: RUNTIME_ALIASES,
     group: "runtime",
     rootDir: path.join("tools", "runtime"),
+    subcommand,
+    args,
+  });
+}
+
+function resolveProjectCommand(subcommand, args) {
+  return resolveToolCommand({
+    aliases: PROJECT_ALIASES,
+    group: "project",
+    rootDir: path.join("tools", "project"),
     subcommand,
     args,
   });
@@ -294,6 +312,22 @@ function main() {
     try {
       const runtime = resolveRuntimeCommand(subcommand, argv.slice(2));
       runNodeScript(runtime.relativePath, runtime.argv);
+      return;
+    } catch (error) {
+      console.error(`ERROR: ${error.message}`);
+      process.exit(1);
+    }
+  }
+
+  if (command === "project") {
+    const subcommand = argv[1] ?? "";
+    if (!subcommand || subcommand === "--help" || subcommand === "-h" || subcommand === "help") {
+      printUsage();
+      process.exit(1);
+    }
+    try {
+      const project = resolveProjectCommand(subcommand, argv.slice(2));
+      runNodeScript(project.relativePath, project.argv);
       return;
     } catch (error) {
       console.error(`ERROR: ${error.message}`);

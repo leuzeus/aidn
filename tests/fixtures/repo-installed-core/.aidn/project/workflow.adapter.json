@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "projectName": "repo-installed-core",
+  "constraints": {
+    "runtime": "",
+    "architecture": "",
+    "delivery": "",
+    "additional": []
+  },
+  "runtimePolicy": {
+    "preferredStateMode": "dual",
+    "defaultIndexStore": "dual-sqlite"
+  }
+}
