@@ -5,6 +5,9 @@
 - Route `branch-cycle-audit` through the same shared branch/session/cycle mapping layer as `start-session`, stopping on non-owned, missing, or ambiguous mappings before generic gating evaluation.
 - Add shared workflow mapping helpers plus regression verifiers for `start-session` and `branch-cycle-audit`, and include them in context-resilience validation.
 - Update workflow templates and installed-core fixture docs to reflect admission-first execution for `start-session` and `branch-cycle-audit`.
+- Add durable project adapter config support via `.aidn/project/workflow.adapter.json`, plus `aidn project config` wizard/list/migration flows.
+- Render `WORKFLOW.md`, `WORKFLOW_SUMMARY.md`, `CODEX_ONLINE.md`, and `index.md` deterministically from template + config instead of defaulting to free-form Codex migration.
+- Preserve `baseline/current.md`, `baseline/history.md`, `parking-lot.md`, and `snapshots/context-snapshot.md` across reinstall according to explicit ownership classes.
 
 ## 0.4.0
 - Add post-install workflow re-anchor artifacts: `WORKFLOW-KERNEL.md`, `CURRENT-STATE.md`, `REANCHOR_PROMPT.md`, `ARTIFACT_MANIFEST.md`, and `RUNTIME-STATE.md`.

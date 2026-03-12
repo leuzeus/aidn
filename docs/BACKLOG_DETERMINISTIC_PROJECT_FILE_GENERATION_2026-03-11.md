@@ -430,7 +430,7 @@ Done when:
 
 ### DPG-20 - Add Golden Tests For Deterministic Generators
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -453,7 +453,7 @@ Done when:
 
 ### DPG-21 - Add Install/Reinstall Idempotence Tests
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -477,7 +477,7 @@ Done when:
 
 ### DPG-22 - Document Generated vs Preserved vs Runtime-State Ownership
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
