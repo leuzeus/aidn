@@ -85,6 +85,8 @@ source_branch: {{SOURCE_BRANCH}}
 - If out-of-scope untracked/modified files exist, stop and require explicit decision (`commit-now | stash-now | drop-now`).
 - Record overrides in session/cycle artifacts with impact level.
 
+{{SESSION_TRANSITION_CLEANLINESS_BLOCK}}
+
 ### Cycle Scaffold Materialization Gate (Mandatory)
 
 - Before `IMPLEMENTING`, active cycle artifacts must be tracked:
@@ -117,6 +119,12 @@ source_branch: {{SOURCE_BRANCH}}
 - Severity policy:
   - `L1/L2`: auto-fix allowed with traceability.
   - `L3/L4`: explicit user authorization required before workflow rule changes.
+- Noise-control policy:
+  - trivial one-shot `L1` issues should stay out of temporary incident tracking unless they repeat or widen in scope
+  - `L2+` incidents should keep explicit temporary tracking until resolution or defer decision
+- If `defer-with-risk` is selected:
+  - record rationale in session notes and in the incident file
+  - open a follow-up cycle or task before the next session start
 
 ## Cycle Continuity Gate (Project Policy, adapter extension to `SPEC-R06`)
 
@@ -142,6 +150,10 @@ source_branch: {{SOURCE_BRANCH}}
 - `convert-to-spike` MUST reuse cycle continuity admission in `EXPLORING` mode before creating spike artifacts.
 - `handoff-close` may keep generic checkpoint semantics, but the runtime skill result MUST expose the real blocking checkpoint outcome.
 - `drift-check` continues to use generic gating as the drift source of truth; blocked gating outcomes are authoritative runtime stops.
+
+{{EXECUTION_POLICY_BLOCK}}
+
+{{SHARED_CODEGEN_BOUNDARY_BLOCK}}
 
 ## Session Close & PR Review
 

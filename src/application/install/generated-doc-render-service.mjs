@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { filterRetainedImportedSections } from "../project/imported-sections-policy-lib.mjs";
 import {
   extractPlaceholders,
   normalizeRelativePath,
@@ -130,10 +131,14 @@ function collectImportedWorkflowSections(renderedTemplate, existingContent) {
   return sections;
 }
 
-function mergeImportedWorkflowSections(existingSections, adapterSections) {
+function mergeImportedWorkflowSections(existingSections, adapterSections, adapterData = null) {
   const merged = [];
   const seen = new Set();
-  for (const section of [...existingSections, ...adapterSections]) {
+  const retained = filterRetainedImportedSections([
+    ...existingSections,
+    ...adapterSections,
+  ], adapterData);
+  for (const section of retained) {
     const normalized = String(section ?? "").replace(/\r\n/g, "\n").trim();
     if (!normalized || seen.has(normalized)) {
       continue;
@@ -144,10 +149,11 @@ function mergeImportedWorkflowSections(existingSections, adapterSections) {
   return merged;
 }
 
-function appendImportedWorkflowSections(renderedTemplate, existingContent, adapterSections = []) {
+function appendImportedWorkflowSections(renderedTemplate, existingContent, adapterSections = [], adapterData = null) {
   const sections = mergeImportedWorkflowSections(
     collectImportedWorkflowSections(renderedTemplate, existingContent),
-    Array.isArray(adapterSections) ? adapterSections : [],
+    filterRetainedImportedSections(Array.isArray(adapterSections) ? adapterSections : [], adapterData),
+    adapterData,
   );
   if (sections.length === 0) {
     return renderedTemplate;
@@ -159,10 +165,15 @@ function appendImportedWorkflowSections(renderedTemplate, existingContent, adapt
     IMPORTED_EXTENSIONS_HEADING,
     "",
     "The sections below were preserved from the previous local adapter because they are not yet modeled by the canonical deterministic template or structured adapter config.",
+    "They are compatibility-only and should be migrated out of legacy storage before relying on them as durable adapter policy.",
     "",
     ...sections.flatMap((section) => [section, ""]),
   ];
   return `${lines.join("\n").trimEnd()}\n`;
+}
+
+function normalizeRenderedSpacing(text) {
+  return String(text ?? "").replace(/\n{3,}/g, "\n\n");
 }
 
 export function renderGeneratedDocContent({
@@ -188,12 +199,14 @@ export function renderGeneratedDocContent({
     ? existingContentOverride
     : (fs.existsSync(targetPath) ? readUtf8(targetPath) : null);
   if (preserveImportedWorkflowExtensions && typeof existingContent === "string") {
-    rendered = appendImportedWorkflowSections(
+      rendered = appendImportedWorkflowSections(
       rendered,
       existingContent,
       workflowAdapterConfig?.data?.legacyPreserved?.importedSections ?? [],
+      workflowAdapterConfig?.data ?? null,
     );
   }
+  rendered = normalizeRenderedSpacing(rendered);
   return rendered.endsWith("\n") ? rendered : `${rendered}\n`;
 }
 

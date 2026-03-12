@@ -156,17 +156,50 @@ function main() {
       adapter_legacy_project_constraints_preserved: Array.isArray(adapterConfig.legacyPreserved?.projectConstraintsBullets)
         && adapterConfig.legacyPreserved.projectConstraintsBullets.some((item) => String(item).includes("Shared codegen boundary constraints"))
         && adapterConfig.legacyPreserved.projectConstraintsBullets.some((item) => String(item).includes("Generated artifact constraints")),
-      adapter_legacy_imported_sections_preserved: Array.isArray(adapterConfig.legacyPreserved?.importedSections)
-        && adapterConfig.legacyPreserved.importedSections.some((item) => String(item).includes("## Shared Codegen Boundary Gate"))
-        && adapterConfig.legacyPreserved.importedSections.some((item) => String(item).includes("## Execution Speed Policy")),
+      adapter_promoted_session_transition: adapterConfig.sessionPolicy?.transitionCleanliness?.enabled === true
+        && Array.isArray(adapterConfig.sessionPolicy?.transitionCleanliness?.requiredDecisionOptions)
+        && adapterConfig.sessionPolicy.transitionCleanliness.requiredDecisionOptions.includes("adopt-to-current-session")
+        && adapterConfig.sessionPolicy.transitionCleanliness.requiredDecisionOptions.includes("archive-non-retained")
+        && adapterConfig.sessionPolicy.transitionCleanliness.requiredDecisionOptions.includes("drop-with-rationale"),
+      adapter_promoted_execution_policy: adapterConfig.executionPolicy?.enabled === true
+        && adapterConfig.executionPolicy.evaluationScope === "dispatch-or-local-scope"
+        && Array.isArray(adapterConfig.executionPolicy.hardGates)
+        && adapterConfig.executionPolicy.hardGates.some((item) => String(item).includes("branch/cycle mapping validity"))
+        && Array.isArray(adapterConfig.executionPolicy.lightGates)
+        && adapterConfig.executionPolicy.lightGates.some((item) => String(item).includes("breadth of validation commands"))
+        && adapterConfig.executionPolicy.fastPath?.enabled === true
+        && adapterConfig.executionPolicy.fastPath?.maxTouchedFiles === 2
+        && String(adapterConfig.executionPolicy.validationProfiles?.high ?? "").includes("full validation stack"),
+      adapter_promoted_shared_codegen_boundary: adapterConfig.specializedGates?.sharedCodegenBoundary?.enabled === true
+        && adapterConfig.specializedGates.sharedCodegenBoundary.sharedIntegrationSurface === true
+        && Array.isArray(adapterConfig.specializedGates.sharedCodegenBoundary.generatorPaths)
+        && adapterConfig.specializedGates.sharedCodegenBoundary.generatorPaths.includes("internal/builder/engines/components.go")
+        && adapterConfig.specializedGates.sharedCodegenBoundary.generatorPaths.includes("internal/components/manifest.json")
+        && adapterConfig.specializedGates.sharedCodegenBoundary.generatorPaths.includes("web/ce/elements.js")
+        && Array.isArray(adapterConfig.specializedGates.sharedCodegenBoundary.requiredEvidence)
+        && adapterConfig.specializedGates.sharedCodegenBoundary.requiredEvidence.includes("decisions.md")
+        && adapterConfig.specializedGates.sharedCodegenBoundary.requiredEvidence.includes("traceability.md")
+        && adapterConfig.specializedGates.sharedCodegenBoundary.forbidComponentSpecificGeneratorFixes === true,
+      adapter_legacy_imported_sections_drained: Array.isArray(adapterConfig.legacyPreserved?.importedSections)
+        && adapterConfig.legacyPreserved.importedSections.length === 0,
+      adapter_legacy_native_core_sections_removed: Array.isArray(adapterConfig.legacyPreserved?.importedSections)
+        && !adapterConfig.legacyPreserved.importedSections.some((item) => String(item).includes("### Incident Trigger Conditions"))
+        && !adapterConfig.legacyPreserved.importedSections.some((item) => String(item).includes("### Mode mapping"))
+        && !adapterConfig.legacyPreserved.importedSections.some((item) => String(item).includes("### Interactive Stop Prompt")),
       adapter_dor_policy: String(adapterConfig.dorPolicy ?? "").includes("Session branch commits are limited to integration/handover/PR orchestration."),
       adapter_snapshot_policy: String(adapterConfig.snapshotPolicy?.trigger ?? "").includes("At session close")
         && String(adapterConfig.snapshotPolicy?.owner ?? "").includes("Current session agent"),
       adapter_ci_policy: Array.isArray(adapterConfig.ciPolicy?.capacity)
         && adapterConfig.ciPolicy.capacity.some((item) => String(item).includes("Drone capacity is limited")),
-      workflow_preserved_noncanonical_sections: workflowText.includes("## Imported Local Extensions")
+      workflow_promoted_sections_rendered_natively: !workflowText.includes("## Imported Local Extensions")
         && workflowText.includes("### Session Transition Cleanliness Gate (Mandatory)")
-        && workflowText.includes("### Mode mapping"),
+        && workflowText.includes("## Execution Speed Policy (Project Optimization)")
+        && workflowText.includes("## Shared Codegen Boundary Gate (Mandatory, adapter extension to `SPEC-R03`/`SPEC-R04`)")
+        && workflowText.includes("- Adapter policy scope: `session-topology`.")
+        && workflowText.includes("- In multi-agent contexts, evaluate fast-path eligibility at the concrete dispatch/local execution scope")
+        && workflowText.includes("- Treat this area as a shared integration surface.")
+        && !workflowText.includes("### Mode mapping")
+        && !workflowText.includes("### Incident Trigger Conditions"),
       workflow_preserved_shared_codegen_constraint: workflowText.includes("- Shared codegen boundary constraints:")
         && workflowText.includes("internal/components/manifest.json")
         && workflowText.includes("generated SSR tests"),
@@ -177,7 +210,8 @@ function main() {
       workflow_renders_snapshot_policy: workflowText.includes("Snapshot update trigger: `At session close and whenever baseline")
         && workflowText.includes("Snapshot owner: `Current session agent, validated during review.`"),
       workflow_restored_from_config_after_stale_overwrite: workflowTextAfterSecond.includes("- Shared codegen boundary constraints:")
-        && workflowTextAfterSecond.includes("## Shared Codegen Boundary Gate (Mandatory, adapter extension to `SPEC-R03`/`SPEC-R04`)"),
+        && workflowTextAfterSecond.includes("## Shared Codegen Boundary Gate (Mandatory, adapter extension to `SPEC-R03`/`SPEC-R04`)")
+        && !workflowTextAfterSecond.includes("## Imported Local Extensions"),
       summary_regenerated: summaryText.includes("- Configured source branch: `dev`"),
       codex_online_regenerated: codexOnlineText.includes("- source branch: `dev`"),
       index_regenerated: indexText.includes("- Project: `gowire`"),

@@ -123,6 +123,12 @@ source_branch: dev
 - Severity policy:
   - `L1/L2`: auto-fix allowed with traceability.
   - `L3/L4`: explicit user authorization required before workflow rule changes.
+- Noise-control policy:
+  - trivial one-shot `L1` issues should stay out of temporary incident tracking unless they repeat or widen in scope
+  - `L2+` incidents should keep explicit temporary tracking until resolution or defer decision
+- If `defer-with-risk` is selected:
+  - record rationale in session notes and in the incident file
+  - open a follow-up cycle or task before the next session start
 
 ## Cycle Continuity Gate (Project Policy, adapter extension to `SPEC-R06`)
 

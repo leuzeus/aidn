@@ -13,6 +13,11 @@ import {
   writeWorkflowAdapterConfig,
 } from "../../lib/config/workflow-adapter-config-lib.mjs";
 import {
+  extractImportedSectionHeading,
+  filterRetainedImportedSections,
+  findImportedSectionPolicy,
+} from "./imported-sections-policy-lib.mjs";
+import {
   collectPlaceholderValuesFromText,
 } from "../install/custom-file-policy.mjs";
 import { buildGeneratedDocTemplateVars } from "../install/generated-doc-template-vars.mjs";
@@ -167,6 +172,173 @@ function collectImportedSectionsFromLegacy(renderedTemplate, sourceText) {
   }
   flush();
   return Array.from(new Set(sections.map((item) => item.trim()).filter((item) => item.length > 0)));
+}
+
+function summarizeImportedSectionDecisions(importedSections) {
+  const items = Array.isArray(importedSections) ? importedSections : [];
+  return items.map((section) => {
+    const heading = clean(extractImportedSectionHeading(section));
+    const policy = findImportedSectionPolicy(heading);
+    return {
+      heading,
+      classification: policy?.classification ?? "keep-temporary",
+      multi_agent_scope: policy?.multiAgentScope ?? "dispatch-scope",
+      native_target: policy?.nativeTarget ?? "legacyPreserved.importedSections",
+      canonical_parity: policy?.canonicalParity ?? "unknown",
+    };
+  });
+}
+
+function buildImportedSectionMap(importedSections) {
+  const map = new Map();
+  for (const section of Array.isArray(importedSections) ? importedSections : []) {
+    const heading = clean(extractImportedSectionHeading(section));
+    if (!heading || map.has(heading)) {
+      continue;
+    }
+    map.set(heading, String(section ?? ""));
+  }
+  return map;
+}
+
+function parseNestedBacktickBullets(section) {
+  const values = [];
+  const matches = String(section ?? "").matchAll(/^\s{2,}-\s+`([^`]+)`/gm);
+  for (const match of matches) {
+    const value = clean(match[1]);
+    if (value) {
+      values.push(value);
+    }
+  }
+  return Array.from(new Set(values));
+}
+
+function splitCommaSentenceValues(text) {
+  return String(text ?? "")
+    .replace(/\.$/, "")
+    .split(/\s*,\s*/)
+    .map((item) => clean(item.replace(/^and\s+/i, "")))
+    .filter((item) => item.length > 0);
+}
+
+function parseExecutionGateLine(section, labelExpression) {
+  const match = String(section ?? "").match(labelExpression);
+  return splitCommaSentenceValues(match?.[1] ?? "");
+}
+
+function parseValidationProfile(section, level) {
+  const expression = new RegExp(`-\\s+\`${level}\`\\s+risk:\\s+(.+)$`, "im");
+  const match = String(section ?? "").match(expression);
+  return clean((match?.[1] ?? "").replace(/\.$/, ""));
+}
+
+function extractBacktickPaths(text) {
+  const values = [];
+  const matches = String(text ?? "").matchAll(/`([^`]+)`/g);
+  for (const match of matches) {
+    const value = clean(match[1]);
+    if (!value) {
+      continue;
+    }
+    if (value.includes("/") || /\.(go|js|json|ts|tsx|jsx|md)$/i.test(value)) {
+      values.push(value);
+    }
+  }
+  return Array.from(new Set(values));
+}
+
+function extractSharedCodegenConstraintPaths(additionalConstraints) {
+  const sharedConstraint = (Array.isArray(additionalConstraints) ? additionalConstraints : [])
+    .find((item) => /shared codegen boundary constraints/i.test(String(item ?? "")));
+  return extractBacktickPaths(sharedConstraint ?? "");
+}
+
+function promoteStructuredPoliciesFromImportedSections(importedSections, extractedConfig) {
+  const sectionMap = buildImportedSectionMap(importedSections);
+  const sessionTransitionSection = sectionMap.get("Session Transition Cleanliness Gate (Mandatory)") ?? "";
+  const executionOverviewSection = sectionMap.get("Execution Speed Policy (Project Optimization)") ?? "";
+  const executionGateClassesSection = sectionMap.get("1) Gate classes: Hard vs Light") ?? "";
+  const executionFastPathSection = sectionMap.get("2) Fast Path for micro-changes") ?? "";
+  const executionValidationSection = sectionMap.get("3) Risk-based validation profile") ?? "";
+  const sharedCodegenSection = sectionMap.get(
+    "Shared Codegen Boundary Gate (Mandatory, adapter extension to `SPEC-R03`/`SPEC-R04`)",
+  ) ?? "";
+  const promotedSessionTransition = sessionTransitionSection
+    ? {
+      enabled: true,
+      scope: "session-topology",
+      requiredDecisionOptions: parseNestedBacktickBullets(sessionTransitionSection),
+    }
+    : extractedConfig.sessionPolicy?.transitionCleanliness;
+  const promotedExecutionPolicy = executionOverviewSection || executionGateClassesSection || executionFastPathSection || executionValidationSection
+    ? {
+      enabled: true,
+      evaluationScope: "dispatch-or-local-scope",
+      escalateOnParallelAttachedCycles: extractedConfig.executionPolicy?.escalateOnParallelAttachedCycles === true,
+      escalateOnSharedIntegrationSurface: /shared runtime\/codegen boundary is touched/i.test(executionFastPathSection),
+      hardGates: parseExecutionGateLine(
+        executionGateClassesSection,
+        /- Hard gates .*?:\s+(.+)$/im,
+      ),
+      lightGates: parseExecutionGateLine(
+        executionGateClassesSection,
+        /- Light gates .*?:\s+(.+)$/im,
+      ),
+      fastPath: {
+        enabled: /Fast Path is allowed when all conditions are true:/i.test(executionFastPathSection),
+        maxTouchedFiles: Number.parseInt(
+          String(executionFastPathSection).match(/<=\s*(\d+)/)?.[1] ?? "0",
+          10,
+        ) || 0,
+        autoEscalateOnTouchedFileThreshold: /touched files exceed threshold/i.test(executionFastPathSection),
+        autoEscalateOnRequirementScopeDrift: /requirement\/scope drift appears/i.test(executionFastPathSection),
+        forbidApiContractSchemaSecurityChange: /no API\/contract\/schema\/security change/i.test(executionFastPathSection),
+        forbidSharedCodegenBoundaryImpact: /no shared codegen boundary impact/i.test(executionFastPathSection),
+        requireNoContinuityAmbiguity: /no continuity ambiguity/i.test(executionFastPathSection),
+      },
+      validationProfiles: {
+        low: parseValidationProfile(executionValidationSection, "LOW"),
+        medium: parseValidationProfile(executionValidationSection, "MEDIUM"),
+        high: parseValidationProfile(executionValidationSection, "HIGH"),
+      },
+    }
+    : extractedConfig.executionPolicy;
+  const promotedSharedCodegenBoundary = sharedCodegenSection
+    ? {
+      enabled: true,
+      sharedIntegrationSurface: true,
+      escalateOnMultiAgentOverlap: extractedConfig.specializedGates?.sharedCodegenBoundary?.escalateOnMultiAgentOverlap === true,
+      generatorPaths: Array.from(new Set([
+        ...extractBacktickPaths(sharedCodegenSection),
+        ...extractSharedCodegenConstraintPaths(extractedConfig.constraints?.additional),
+      ])).filter((item) => !/\.md$/i.test(item)),
+      requiredEvidence: extractBacktickPaths(
+        String(sharedCodegenSection).split(/Required evidence in cycle artifacts:/i)[1] ?? "",
+      ).filter((item) => /\.md$/i.test(item)),
+      forbidComponentSpecificGeneratorFixes: /component-specific inside generator\/shared generated bridge code/i.test(sharedCodegenSection)
+        || /MUST NOT be implemented in this generator/i.test(
+          (Array.isArray(extractedConfig.constraints?.additional) ? extractedConfig.constraints.additional : [])
+            .find((item) => /shared codegen boundary constraints/i.test(String(item ?? ""))) ?? "",
+        ),
+    }
+    : extractedConfig.specializedGates?.sharedCodegenBoundary;
+
+  return normalizeWorkflowAdapterConfig({
+    ...extractedConfig,
+    sessionPolicy: {
+      ...(extractedConfig.sessionPolicy ?? {}),
+      transitionCleanliness: promotedSessionTransition,
+    },
+    executionPolicy: promotedExecutionPolicy,
+    specializedGates: {
+      ...(extractedConfig.specializedGates ?? {}),
+      sharedCodegenBoundary: promotedSharedCodegenBoundary,
+    },
+  }, {
+    projectName: extractedConfig.projectName,
+    preferredStateMode: extractedConfig.runtimePolicy?.preferredStateMode,
+    defaultIndexStore: extractedConfig.runtimePolicy?.defaultIndexStore,
+  });
 }
 
 function extractFromWorkflowMarkdown(text, defaults = {}) {
@@ -348,11 +520,13 @@ export function previewWorkflowAdapterMigration({
     provisionalTemplateVars,
   );
   const importedSections = collectImportedSectionsFromLegacy(renderedTemplate, extractionSourceText);
+  const promotedConfig = promoteStructuredPoliciesFromImportedSections(importedSections, extractedConfig);
+  const retainedImportedSections = filterRetainedImportedSections(importedSections, promotedConfig);
   const finalizedConfig = normalizeWorkflowAdapterConfig({
-    ...extractedConfig,
+    ...promotedConfig,
     legacyPreserved: {
-      ...(extractedConfig.legacyPreserved ?? {}),
-      importedSections,
+      ...(promotedConfig.legacyPreserved ?? {}),
+      importedSections: retainedImportedSections,
     },
   }, {
     projectName: extractedProjectName,
@@ -400,6 +574,7 @@ export function previewWorkflowAdapterMigration({
     extractionSourcePath: fs.existsSync(legacyWorkflowSourcePath) ? legacyWorkflowSourcePath : workflowPath,
     workflowAdapterConfig,
     templateVars,
+    importedSectionDecisions: summarizeImportedSectionDecisions(importedSections),
     generatedPreview,
     workflowText,
   };
@@ -416,6 +591,9 @@ export function executeWorkflowAdapterMigration({
     targetRoot,
     version,
   });
+  const legacyCompatibility = preview.workflowAdapterConfig.data.legacyPreserved?.importedSections?.length > 0
+    ? "compatibility-only-retained"
+    : "compatibility-drained";
   const nextAidnConfig = {
     ...(preview.aidnConfigState.data ?? {}),
     workflow: {
@@ -462,10 +640,13 @@ export function executeWorkflowAdapterMigration({
       adapter_path: preview.workflowAdapterConfig.path,
       source_branch: nextAidnConfig.workflow.sourceBranch,
       extracted_config: preview.workflowAdapterConfig.data,
+      imported_section_decisions: preview.importedSectionDecisions,
       generated_docs: preview.generatedPreview.map((item) => ({
         target: item.targetRelative,
         changed: item.changed,
       })),
+      legacy_status: legacyCompatibility,
+      reader_compatibility: "Readers continue accepting legacyPreserved.importedSections for older repositories until removal is announced.",
       preserved_files: [
         "docs/audit/baseline/current.md",
         "docs/audit/baseline/history.md",
@@ -489,10 +670,13 @@ export function executeWorkflowAdapterMigration({
     legacy_workflow_source_path: preview.legacyWorkflowSourcePath,
     extraction_source_path: preview.extractionSourcePath,
     extracted_config: preview.workflowAdapterConfig.data,
+    imported_section_decisions: preview.importedSectionDecisions,
     generated_docs: preview.generatedPreview.map((item) => ({
       target: item.targetRelative,
       changed: item.changed,
     })),
+    legacy_status: legacyCompatibility,
+    reader_compatibility: "Readers continue accepting legacyPreserved.importedSections for older repositories until removal is announced.",
     preserved_files: [
       "docs/audit/baseline/current.md",
       "docs/audit/baseline/history.md",

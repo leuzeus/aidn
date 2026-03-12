@@ -21,6 +21,43 @@
   "ciPolicy": {
     "capacity": []
   },
+  "sessionPolicy": {
+    "transitionCleanliness": {
+      "enabled": false,
+      "scope": "session-topology",
+      "requiredDecisionOptions": []
+    }
+  },
+  "executionPolicy": {
+    "enabled": false,
+    "evaluationScope": "dispatch-or-local-scope",
+    "escalateOnParallelAttachedCycles": false,
+    "escalateOnSharedIntegrationSurface": false,
+    "hardGates": [],
+    "lightGates": [],
+    "fastPath": {
+      "enabled": false,
+      "maxTouchedFiles": 0,
+      "forbidApiContractSchemaSecurityChange": false,
+      "forbidSharedCodegenBoundaryImpact": false,
+      "requireNoContinuityAmbiguity": false
+    },
+    "validationProfiles": {
+      "low": "",
+      "medium": "",
+      "high": ""
+    }
+  },
+  "specializedGates": {
+    "sharedCodegenBoundary": {
+      "enabled": false,
+      "sharedIntegrationSurface": false,
+      "escalateOnMultiAgentOverlap": false,
+      "generatorPaths": [],
+      "requiredEvidence": [],
+      "forbidComponentSpecificGeneratorFixes": false
+    }
+  },
   "legacyPreserved": {
     "projectConstraintsBullets": [
       "Runtime/platform constraints: `TO_DEFINE`",
