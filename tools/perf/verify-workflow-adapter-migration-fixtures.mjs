@@ -43,6 +43,8 @@ function main() {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-migrate-adapter-"));
     const targetRoot = path.join(tempRoot, "repo");
     fs.cpSync(sourceFixture, targetRoot, { recursive: true });
+    fs.rmSync(path.join(targetRoot, ".aidn", "project", "workflow.adapter.legacy-source.md"), { force: true });
+    fs.rmSync(path.join(targetRoot, ".aidn", "project", "workflow.adapter.migration-report.json"), { force: true });
 
     const workflowPath = path.join(targetRoot, "docs", "audit", "WORKFLOW.md");
     const summaryPath = path.join(targetRoot, "docs", "audit", "WORKFLOW_SUMMARY.md");
@@ -99,6 +101,8 @@ function main() {
       index: sha256(indexPath),
     };
 
+    fs.writeFileSync(workflowPath, "# stale workflow\n", "utf8");
+
     const second = run(repoRoot, [
       "--target",
       targetRoot,
@@ -107,6 +111,8 @@ function main() {
       version,
       "--json",
     ]);
+    const secondPayload = JSON.parse(second.stdout || "{}");
+    const workflowTextAfterSecond = readText(workflowPath);
 
     const generatedHashesAfterSecond = {
       workflow: sha256(workflowPath),
@@ -115,9 +121,26 @@ function main() {
       index: sha256(indexPath),
     };
 
+    const third = run(repoRoot, [
+      "--target",
+      targetRoot,
+      "--migrate-adapter",
+      "--version",
+      version,
+      "--json",
+    ]);
+
+    const generatedHashesAfterThird = {
+      workflow: sha256(workflowPath),
+      summary: sha256(summaryPath),
+      codexOnline: sha256(codexOnlinePath),
+      index: sha256(indexPath),
+    };
+
     const checks = {
       first_ok: first.status === 0 && firstPayload.ok === true,
-      second_ok: second.status === 0,
+      second_ok: second.status === 0 && secondPayload.ok === true,
+      third_ok: third.status === 0,
       adapter_written: fs.existsSync(adapterPath),
       report_written: fs.existsSync(reportPath),
       legacy_source_written: fs.existsSync(legacyWorkflowSourcePath)
@@ -128,9 +151,15 @@ function main() {
       adapter_architecture_constraint: String(adapterConfig.constraints?.architecture ?? "").includes("SSR-first custom elements"),
       adapter_delivery_constraint: String(adapterConfig.constraints?.delivery ?? "").includes("CI orchestration is managed by Drone"),
       adapter_additional_constraints: Array.isArray(adapterConfig.constraints?.additional)
-        && adapterConfig.constraints.additional.some((item) => String(item).includes("Dependency/data constraints"))
-        && adapterConfig.constraints.additional.some((item) => String(item).includes("Generated artifact constraints")),
-      adapter_dor_policy: String(adapterConfig.dorPolicy ?? "").includes("minimal core gate"),
+        && adapterConfig.constraints.additional.some((item) => String(item).includes("Dependency minimization constraints"))
+        && adapterConfig.constraints.additional.some((item) => String(item).includes("Shared codegen boundary constraints")),
+      adapter_legacy_project_constraints_preserved: Array.isArray(adapterConfig.legacyPreserved?.projectConstraintsBullets)
+        && adapterConfig.legacyPreserved.projectConstraintsBullets.some((item) => String(item).includes("Shared codegen boundary constraints"))
+        && adapterConfig.legacyPreserved.projectConstraintsBullets.some((item) => String(item).includes("Generated artifact constraints")),
+      adapter_legacy_imported_sections_preserved: Array.isArray(adapterConfig.legacyPreserved?.importedSections)
+        && adapterConfig.legacyPreserved.importedSections.some((item) => String(item).includes("## Shared Codegen Boundary Gate"))
+        && adapterConfig.legacyPreserved.importedSections.some((item) => String(item).includes("## Execution Speed Policy")),
+      adapter_dor_policy: String(adapterConfig.dorPolicy ?? "").includes("Session branch commits are limited to integration/handover/PR orchestration."),
       adapter_snapshot_policy: String(adapterConfig.snapshotPolicy?.trigger ?? "").includes("At session close")
         && String(adapterConfig.snapshotPolicy?.owner ?? "").includes("Current session agent"),
       adapter_ci_policy: Array.isArray(adapterConfig.ciPolicy?.capacity)
@@ -138,12 +167,17 @@ function main() {
       workflow_preserved_noncanonical_sections: workflowText.includes("## Imported Local Extensions")
         && workflowText.includes("### Session Transition Cleanliness Gate (Mandatory)")
         && workflowText.includes("### Mode mapping"),
-      workflow_renders_extracted_constraints: workflowText.includes("- Dependency/data constraints: `Imports must follow the minimal-dependency principle")
+      workflow_preserved_shared_codegen_constraint: workflowText.includes("- Shared codegen boundary constraints:")
+        && workflowText.includes("internal/components/manifest.json")
+        && workflowText.includes("generated SSR tests"),
+      workflow_renders_extracted_constraints: workflowText.includes("- Dependency minimization constraints: `Imports must follow the minimal-dependency principle")
         && workflowText.includes("Every hotfix touching hydration/dispatch"),
       workflow_renders_ci_capacity: workflowText.includes("Drone capacity is limited: only one PR may consume")
         && workflowText.includes("Dependency/security batches (Dependabot included) must be sequential"),
       workflow_renders_snapshot_policy: workflowText.includes("Snapshot update trigger: `At session close and whenever baseline")
         && workflowText.includes("Snapshot owner: `Current session agent, validated during review.`"),
+      workflow_restored_from_config_after_stale_overwrite: workflowTextAfterSecond.includes("- Shared codegen boundary constraints:")
+        && workflowTextAfterSecond.includes("## Shared Codegen Boundary Gate (Mandatory, adapter extension to `SPEC-R03`/`SPEC-R04`)"),
       summary_regenerated: summaryText.includes("- Configured source branch: `dev`"),
       codex_online_regenerated: codexOnlineText.includes("- source branch: `dev`"),
       index_regenerated: indexText.includes("- Project: `gowire`"),
@@ -151,10 +185,14 @@ function main() {
       baseline_history_preserved: beforeHashes.baselineHistory === sha256(baselineHistoryPath),
       parking_lot_preserved: beforeHashes.parkingLot === sha256(parkingLotPath),
       snapshot_preserved: beforeHashes.snapshot === sha256(snapshotPath),
-      second_workflow_stable: generatedHashesAfterFirst.workflow === generatedHashesAfterSecond.workflow,
+      second_workflow_restored: generatedHashesAfterFirst.workflow === generatedHashesAfterSecond.workflow,
       second_summary_stable: generatedHashesAfterFirst.summary === generatedHashesAfterSecond.summary,
       second_codex_online_stable: generatedHashesAfterFirst.codexOnline === generatedHashesAfterSecond.codexOnline,
       second_index_stable: generatedHashesAfterFirst.index === generatedHashesAfterSecond.index,
+      third_workflow_stable: generatedHashesAfterSecond.workflow === generatedHashesAfterThird.workflow,
+      third_summary_stable: generatedHashesAfterSecond.summary === generatedHashesAfterThird.summary,
+      third_codex_online_stable: generatedHashesAfterSecond.codexOnline === generatedHashesAfterThird.codexOnline,
+      third_index_stable: generatedHashesAfterSecond.index === generatedHashesAfterThird.index,
     };
 
     const pass = Object.values(checks).every((value) => value === true);
@@ -165,6 +203,7 @@ function main() {
       samples: {
         first_stderr: first.stderr.trim(),
         second_stderr: second.stderr.trim(),
+        third_stderr: third.stderr.trim(),
         adapter_excerpt: adapterConfig,
       },
       pass,
