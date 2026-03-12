@@ -266,6 +266,12 @@ export function suggestPlaceholderValue(name, targetRoot, templateVars) {
   if (name === "ADDITIONAL_CONSTRAINTS") {
     return sanitizeExtractedValue(templateVars.ADDITIONAL_CONSTRAINTS) || "none";
   }
+  if (name === "ADDITIONAL_CONSTRAINT_BLOCK") {
+    return sanitizeExtractedValue(templateVars.ADDITIONAL_CONSTRAINT_BLOCK) || "- Additional local constraints: `none`";
+  }
+  if (name === "CI_CAPACITY_BLOCK") {
+    return sanitizeExtractedValue(templateVars.CI_CAPACITY_BLOCK) || "- Project-specific CI/review capacity policy: `none`";
+  }
   return "TO_DEFINE";
 }
 

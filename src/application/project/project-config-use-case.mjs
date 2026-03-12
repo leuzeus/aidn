@@ -6,6 +6,7 @@ import {
   writeWorkflowAdapterConfigFile,
 } from "../../lib/config/workflow-adapter-config-lib.mjs";
 import { runWorkflowAdapterConfigWizard } from "./workflow-adapter-config-wizard.mjs";
+import { executeWorkflowAdapterMigration } from "./workflow-adapter-migration-service.mjs";
 
 function buildDefaults(targetRoot, defaults = {}) {
   return {
@@ -112,11 +113,21 @@ export async function ensureWorkflowAdapterConfig({
 export async function runProjectConfigUseCase({
   args,
   targetRoot,
+  repoRoot = process.cwd(),
 }) {
   const defaults = {
     preferredStateMode: args.preferredStateMode,
     defaultIndexStore: args.defaultIndexStore,
   };
+
+  if (args.migrateAdapter) {
+    return executeWorkflowAdapterMigration({
+      repoRoot,
+      targetRoot,
+      version: args.version ?? "",
+      dryRun: args.dryRun === true,
+    });
+  }
 
   if (args.list) {
     const state = loadWorkflowAdapterConfigState({ targetRoot, defaults });

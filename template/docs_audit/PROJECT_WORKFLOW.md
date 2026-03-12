@@ -49,7 +49,7 @@ source_branch: {{SOURCE_BRANCH}}
 - Architecture constraints: `{{ARCH_CONSTRAINTS}}`
 - Dependency/data constraints: `{{DEPENDENCY_CONSTRAINTS}}`
 - Delivery constraints (CI/release/compliance): `{{DELIVERY_CONSTRAINTS}}`
-- Additional local constraints: `{{ADDITIONAL_CONSTRAINTS}}`
+{{ADDITIONAL_CONSTRAINT_BLOCK}}
 - Generated artifact constraints: `{{GENERATED_ARTIFACT_CONSTRAINTS}}`
 - Testing/regression constraints: `{{TEST_REGRESSION_CONSTRAINTS}}`
 
@@ -151,6 +151,7 @@ source_branch: {{SOURCE_BRANCH}}
 
 - Session close and PR review gates are canonical in `docs/audit/SPEC.md` (`SPEC-R07`, `SPEC-R08`).
 - Add local CI/review capacity policy here if your repository needs it.
+{{CI_CAPACITY_BLOCK}}
 
 ## Snapshot Discipline
 

@@ -48,9 +48,19 @@ export function createDefaultWorkflowAdapterConfig(options = {}) {
       delivery: normalizeString(options.constraints?.delivery),
       additional: normalizeStringArray(options.constraints?.additional),
     },
+    dorPolicy: normalizeString(options.dorPolicy),
     runtimePolicy: {
       preferredStateMode,
       defaultIndexStore,
+    },
+    snapshotPolicy: {
+      trigger: normalizeString(options.snapshotPolicy?.trigger),
+      owner: normalizeString(options.snapshotPolicy?.owner),
+      freshnessRule: normalizeString(options.snapshotPolicy?.freshnessRule),
+      parkingLotRule: normalizeString(options.snapshotPolicy?.parkingLotRule),
+    },
+    ciPolicy: {
+      capacity: normalizeStringArray(options.ciPolicy?.capacity),
     },
   };
 }
@@ -60,6 +70,8 @@ export function normalizeWorkflowAdapterConfig(data, options = {}) {
   const defaults = createDefaultWorkflowAdapterConfig(options);
   const constraints = isPlainObject(base.constraints) ? base.constraints : {};
   const runtimePolicy = isPlainObject(base.runtimePolicy) ? base.runtimePolicy : {};
+  const snapshotPolicy = isPlainObject(base.snapshotPolicy) ? base.snapshotPolicy : {};
+  const ciPolicy = isPlainObject(base.ciPolicy) ? base.ciPolicy : {};
 
   return {
     version: WORKFLOW_ADAPTER_CONFIG_VERSION,
@@ -70,11 +82,21 @@ export function normalizeWorkflowAdapterConfig(data, options = {}) {
       delivery: normalizeString(constraints.delivery, defaults.constraints.delivery),
       additional: normalizeStringArray(constraints.additional),
     },
+    dorPolicy: normalizeString(base.dorPolicy, defaults.dorPolicy),
     runtimePolicy: {
       preferredStateMode: normalizeStateMode(runtimePolicy.preferredStateMode)
         ?? defaults.runtimePolicy.preferredStateMode,
       defaultIndexStore: normalizeIndexStoreMode(runtimePolicy.defaultIndexStore)
         ?? defaults.runtimePolicy.defaultIndexStore,
+    },
+    snapshotPolicy: {
+      trigger: normalizeString(snapshotPolicy.trigger, defaults.snapshotPolicy.trigger),
+      owner: normalizeString(snapshotPolicy.owner, defaults.snapshotPolicy.owner),
+      freshnessRule: normalizeString(snapshotPolicy.freshnessRule, defaults.snapshotPolicy.freshnessRule),
+      parkingLotRule: normalizeString(snapshotPolicy.parkingLotRule, defaults.snapshotPolicy.parkingLotRule),
+    },
+    ciPolicy: {
+      capacity: normalizeStringArray(ciPolicy.capacity),
     },
   };
 }

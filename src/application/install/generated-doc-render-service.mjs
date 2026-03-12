@@ -36,6 +36,7 @@ const GENERATED_DOCS = [
 function normalizeHeadingText(value) {
   return String(value ?? "")
     .trim()
+    .replace(/\s+\(project adapter\)$/i, "")
     .replace(/\s+\(Imported\)$/i, "")
     .trim()
     .toLowerCase();
@@ -79,6 +80,8 @@ function collectCanonicalHeadingNames(renderedTemplate) {
     }
     names.add(normalizeHeadingText(match[2]));
   }
+  names.add("runtime state policy");
+  names.add("ci capacity gate (mandatory, project policy extension)");
   return names;
 }
 

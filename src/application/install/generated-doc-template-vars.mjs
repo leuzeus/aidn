@@ -25,14 +25,45 @@ function toConstraintValue(value, fallback = "TO_DEFINE") {
   return text || fallback;
 }
 
-function toAdditionalConstraintsText(values) {
-  if (!Array.isArray(values) || values.length === 0) {
-    return "none";
+function toPolicyValue(value, fallback = "TO_DEFINE") {
+  const text = clean(value);
+  return text || fallback;
+}
+
+function parseLabeledConstraint(raw) {
+  const match = clean(raw).match(/^(.+?):\s*`([^`]+)`$/);
+  if (!match) {
+    return {
+      label: "",
+      value: "",
+      raw: clean(raw),
+    };
   }
-  const normalized = values
-    .map((item) => clean(item))
-    .filter((item) => item.length > 0);
-  return normalized.length > 0 ? normalized.join(" | ") : "none";
+  return {
+    label: clean(match[1]).toLowerCase(),
+    value: clean(match[2]),
+    raw: clean(raw),
+  };
+}
+
+function buildAdditionalConstraintBlock(values) {
+  const normalized = Array.isArray(values)
+    ? values.map((item) => clean(item)).filter((item) => item.length > 0)
+    : [];
+  if (normalized.length === 0) {
+    return "- Additional local constraints: `none`";
+  }
+  return normalized.map((item) => `- ${item}`).join("\n");
+}
+
+function buildCiCapacityBlock(values) {
+  const normalized = Array.isArray(values)
+    ? values.map((item) => clean(item)).filter((item) => item.length > 0)
+    : [];
+  if (normalized.length === 0) {
+    return "- Project-specific CI/review capacity policy: `none`";
+  }
+  return normalized.map((item) => `- ${item}`).join("\n");
 }
 
 export function buildGeneratedDocTemplateVars({
@@ -43,6 +74,27 @@ export function buildGeneratedDocTemplateVars({
   const adapterData = workflowAdapterConfig?.data ?? {};
   const adapterConstraints = adapterData.constraints ?? {};
   const adapterRuntimePolicy = adapterData.runtimePolicy ?? {};
+  const adapterSnapshotPolicy = adapterData.snapshotPolicy ?? {};
+  const parsedAdditional = Array.isArray(adapterConstraints.additional)
+    ? adapterConstraints.additional
+      .map((item) => parseLabeledConstraint(item))
+      .filter((item) => item.raw.length > 0)
+    : [];
+  const additionalConsumed = new Set();
+  function promoteAdditional(labelExpressions) {
+    const found = parsedAdditional.find((item, index) => {
+      if (additionalConsumed.has(index) || !item.label || !item.value) {
+        return false;
+      }
+      return labelExpressions.some((expression) => expression.test(item.label));
+    });
+    if (!found) {
+      return "";
+    }
+    const index = parsedAdditional.indexOf(found);
+    additionalConsumed.add(index);
+    return found.value;
+  }
   const preferredStateMode = normalizeStateMode(
     pick(
       adapterRuntimePolicy.preferredStateMode,
@@ -59,6 +111,20 @@ export function buildGeneratedDocTemplateVars({
       defaultIndexStoreFromStateMode(preferredStateMode),
     ),
   ) ?? defaultIndexStoreFromStateMode(preferredStateMode);
+  const dependencyConstraint = promoteAdditional([
+    /dependency\/data constraints/i,
+    /dependency minimization constraints/i,
+  ]);
+  const generatedArtifactConstraint = promoteAdditional([
+    /generated artifact constraints/i,
+  ]);
+  const testRegressionConstraint = promoteAdditional([
+    /testing\/regression constraints/i,
+    /regression safety constraints/i,
+  ]);
+  const remainingAdditional = parsedAdditional
+    .filter((item, index) => !additionalConsumed.has(index))
+    .map((item) => item.raw);
 
   return {
     ...templateVars,
@@ -74,14 +140,23 @@ export function buildGeneratedDocTemplateVars({
     DELIVERY_CONSTRAINTS: toConstraintValue(
       pick(adapterConstraints.delivery, templateVars.DELIVERY_CONSTRAINTS),
     ),
-    ADDITIONAL_CONSTRAINTS: toAdditionalConstraintsText(adapterConstraints.additional),
-    DEPENDENCY_CONSTRAINTS: toConstraintValue(templateVars.DEPENDENCY_CONSTRAINTS),
-    GENERATED_ARTIFACT_CONSTRAINTS: toConstraintValue(templateVars.GENERATED_ARTIFACT_CONSTRAINTS),
-    TEST_REGRESSION_CONSTRAINTS: toConstraintValue(templateVars.TEST_REGRESSION_CONSTRAINTS),
-    DOR_POLICY: toConstraintValue(templateVars.DOR_POLICY),
-    SNAPSHOT_TRIGGER: toConstraintValue(templateVars.SNAPSHOT_TRIGGER),
-    SNAPSHOT_OWNER: toConstraintValue(templateVars.SNAPSHOT_OWNER),
-    SNAPSHOT_FRESHNESS_RULE: toConstraintValue(templateVars.SNAPSHOT_FRESHNESS_RULE),
-    PARKING_LOT_RULE: toConstraintValue(templateVars.PARKING_LOT_RULE),
+    ADDITIONAL_CONSTRAINT_BLOCK: buildAdditionalConstraintBlock(remainingAdditional),
+    DEPENDENCY_CONSTRAINTS: toConstraintValue(pick(dependencyConstraint, templateVars.DEPENDENCY_CONSTRAINTS)),
+    GENERATED_ARTIFACT_CONSTRAINTS: toConstraintValue(
+      pick(generatedArtifactConstraint, templateVars.GENERATED_ARTIFACT_CONSTRAINTS),
+    ),
+    TEST_REGRESSION_CONSTRAINTS: toConstraintValue(
+      pick(testRegressionConstraint, templateVars.TEST_REGRESSION_CONSTRAINTS),
+    ),
+    DOR_POLICY: toPolicyValue(pick(adapterData.dorPolicy, templateVars.DOR_POLICY)),
+    SNAPSHOT_TRIGGER: toPolicyValue(pick(adapterSnapshotPolicy.trigger, templateVars.SNAPSHOT_TRIGGER)),
+    SNAPSHOT_OWNER: toPolicyValue(pick(adapterSnapshotPolicy.owner, templateVars.SNAPSHOT_OWNER)),
+    SNAPSHOT_FRESHNESS_RULE: toPolicyValue(
+      pick(adapterSnapshotPolicy.freshnessRule, templateVars.SNAPSHOT_FRESHNESS_RULE),
+    ),
+    PARKING_LOT_RULE: toPolicyValue(
+      pick(adapterSnapshotPolicy.parkingLotRule, templateVars.PARKING_LOT_RULE),
+    ),
+    CI_CAPACITY_BLOCK: buildCiCapacityBlock(adapterData.ciPolicy?.capacity),
   };
 }

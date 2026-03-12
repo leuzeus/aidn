@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { runProjectConfigUseCase } from "../../src/application/project/project-config-use-case.mjs";
 
 function parseArgs(argv) {
@@ -10,6 +11,9 @@ function parseArgs(argv) {
     adapterFile: "",
     preferredStateMode: "",
     defaultIndexStore: "",
+    migrateAdapter: false,
+    dryRun: false,
+    version: "",
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
@@ -26,6 +30,13 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--default-index-store") {
       args.defaultIndexStore = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--migrate-adapter") {
+      args.migrateAdapter = true;
+    } else if (token === "--dry-run") {
+      args.dryRun = true;
+    } else if (token === "--version") {
+      args.version = String(argv[i + 1] ?? "").trim();
       i += 1;
     } else if (token === "--json") {
       args.json = true;
@@ -49,13 +60,16 @@ function printUsage() {
   console.log("  node tools/project/config.mjs --target . --list --json");
   console.log("  node tools/project/config.mjs --target . --wizard");
   console.log("  node tools/project/config.mjs --target . --adapter-file ./workflow.adapter.json");
+  console.log("  node tools/project/config.mjs --target . --migrate-adapter --json");
 }
 
 async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
+    const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+    const repoRoot = path.resolve(scriptDir, "..", "..");
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const result = await runProjectConfigUseCase({ args, targetRoot });
+    const result = await runProjectConfigUseCase({ args, targetRoot, repoRoot });
 
     if (args.json) {
       console.log(JSON.stringify(result, null, 2));
@@ -64,7 +78,7 @@ async function main() {
 
     console.log(`Target: ${result.target_root}`);
     console.log(`Action: ${result.action}`);
-    console.log(`Path: ${result.path}`);
+    console.log(`Path: ${result.path ?? result.adapter_path ?? "n/a"}`);
     if (result.exists) {
       console.log(`Exists: yes`);
     } else {
@@ -72,6 +86,9 @@ async function main() {
     }
     if (result.config) {
       console.log(JSON.stringify(result.config, null, 2));
+    }
+    if (result.extracted_config) {
+      console.log(JSON.stringify(result.extracted_config, null, 2));
     }
     if (!result.ok) {
       process.exit(1);

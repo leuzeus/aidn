@@ -152,6 +152,7 @@ function printUsage() {
   console.log("  aidn runtime project-runtime-state --target . --json");
   console.log("  aidn project config --target . --list --json");
   console.log("  aidn project config --target . --wizard");
+  console.log("  aidn project config --target . --migrate-adapter --json");
   console.log("");
   console.log("Perf subcommands:");
   console.log(`  ${Object.keys(PERF_ALIASES).sort().join(", ")}`);
