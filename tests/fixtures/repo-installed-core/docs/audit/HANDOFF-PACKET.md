@@ -14,7 +14,7 @@ Rule/State boundary:
 
 ## Summary
 
-updated_at: 2026-03-10T01:30:34.809Z
+updated_at: 2026-03-09T00:00:00Z
 handoff_status: refresh_required
 handoff_from_agent_role: coordinator
 handoff_from_agent_action: relay
@@ -24,8 +24,8 @@ next_agent_goal: reanchor current session, cycle, and runtime facts before any d
 scope_type: session
 scope_id: none
 target_branch: none
-transition_policy_status: unknown_mode
-transition_policy_reason: unknown mode: unknown
+transition_policy_status: allowed
+transition_policy_reason: THINKING allows coordinator -> coordinator
 
 ## Active Context
 
@@ -54,18 +54,15 @@ prioritized_artifacts:
 - `docs/audit/CURRENT-STATE.md`
 - `docs/audit/WORKFLOW-KERNEL.md`
 - `docs/audit/RUNTIME-STATE.md`
-- `docs/audit/WORKFLOW_SUMMARY.md`
-- `docs/audit/HANDOFF-PACKET.md`
-- `docs/audit/snapshots/context-snapshot.md`
-- `active cycle `status.md``
-- `active session file`
-- `.aidn/runtime/context/`
+- active session file
+- active cycle `status.md`
 
 ## Handoff Guidance
 
 - `ready`: the next agent can resume from the prioritized artifacts and restate the workflow context before writing
 - `refresh_required`: the next agent must reload session/cycle facts before any durable write
 - `blocked`: the next agent must resolve runtime blocking findings or workflow contradictions before continuing
+- multi-agent relays remain constrained by workflow mode; an admitted packet still needs an allowed `from -> to` transition
 
 ## Handoff Intent
 
@@ -73,8 +70,5 @@ handoff_note: none
 
 ## Notes
 
-- Current-state consistency: pass
-- Session file: none
-- Cycle status: none
 - Refresh this packet after significant session/cycle state changes when work is likely to continue in another agent.
 - In `dual` / `db-only`, refresh this packet after refreshing `docs/audit/RUNTIME-STATE.md`.

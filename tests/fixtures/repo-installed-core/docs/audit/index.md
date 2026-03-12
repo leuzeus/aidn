@@ -1,5 +1,9 @@
 # Audit Workflow Index (v4)
 
+- Project: `repo-installed-core`
+- Source branch: `dev`
+- Preferred runtime state mode: `dual`
+- Default index store: `dual-sqlite`
 - Main workflow: `WORKFLOW.md`
 - Agent rules: `/AGENTS.md`
 

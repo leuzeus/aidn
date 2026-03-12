@@ -1,0 +1,14 @@
+{
+  "runtime": {
+    "stateMode": "dual",
+    "indexStoreMode": "dual-sqlite"
+  },
+  "version": 1,
+  "install": {
+    "artifactImportStore": "dual-sqlite"
+  },
+  "profile": "dual",
+  "workflow": {
+    "sourceBranch": "dev"
+  }
+}

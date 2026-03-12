@@ -49,6 +49,7 @@ source_branch: dev
 - Architecture constraints: `TO_DEFINE`
 - Dependency/data constraints: `TO_DEFINE`
 - Delivery constraints (CI/release/compliance): `TO_DEFINE`
+- Additional local constraints: `none`
 - Generated artifact constraints: `TO_DEFINE`
 - Testing/regression constraints: `TO_DEFINE`
 
@@ -61,6 +62,14 @@ source_branch: dev
 - Intermediate branch naming: `<cycle-type>/CXXX-I##-<slug>`
 - Allowed cycle types: `feature | hotfix | spike | refactor | structural | migration | security | perf | integration | compat | corrective`
 - DoR policy: `TO_DEFINE`
+
+## Runtime State Policy (Project Adapter)
+
+- Preferred runtime state mode: `dual`.
+- Default install/runtime index store: `dual-sqlite`.
+- In `dual`/`db-only`, workflow skill perf hooks are mandatory and executed in strict mode.
+- In `dual`/`db-only`, session close must run the DB-backed constraint chain and produce constraint artifacts under `.aidn/runtime/perf/`.
+- `files` mode is allowed only as an explicit fallback profile; it is not the primary execution path for this adapter.
 
 ### Session Start Branch Base Gate (Mandatory, adapter extension to `SPEC-R01`/`SPEC-R03`)
 
@@ -127,6 +136,16 @@ source_branch: dev
 - `start-session` and `branch-cycle-audit` MUST use the same runtime branch/session/cycle mapping layer.
 - Non-owned branches (`source`, `other`, `unknown`) MUST stop `branch-cycle-audit` in `COMMITTING`.
 - Missing or ambiguous mapping MUST stop before generic gating/perf evaluation continues.
+
+## Additional Admission-First Runtime Gates (Mandatory)
+
+- `close-session` MUST stop before generic `session-close` runtime work when open attached cycles still lack explicit close decisions.
+- `cycle-create` MUST stop before scaffold creation when continuity rule or mode-gate compatibility is unresolved.
+- `requirements-delta` MUST stop before artifact mutation when medium/high-impact ownership is unclear.
+- `promote-baseline` MUST stop before promotion when target cycle selection, gap closure, or traceability readiness is incomplete.
+- `convert-to-spike` MUST reuse cycle continuity admission in `EXPLORING` mode before creating spike artifacts.
+- `handoff-close` may keep generic checkpoint semantics, but the runtime skill result MUST expose the real blocking checkpoint outcome.
+- `drift-check` continues to use generic gating as the drift source of truth; blocked gating outcomes are authoritative runtime stops.
 
 ## Session Close & PR Review
 

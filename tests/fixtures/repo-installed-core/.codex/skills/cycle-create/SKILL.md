@@ -16,6 +16,11 @@ Create a clean cycle scaffold fast and correctly.
 - Do not modify baseline files from this skill.
 - Keep `docs/audit/CURRENT-STATE.md` summary-only if updated.
 
+## Pre-Write Admission
+Before the first durable write in this skill, run:
+- `npx aidn runtime pre-write-admit --target . --skill cycle-create --json`
+- If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+
 ## Inputs (ask user if missing)
 - Cycle ID: CXXX
 - Type: feature | spike | refactor | structural | migration | security | perf | integration | compat | corrective | hotfix
@@ -103,6 +108,8 @@ docs/audit/cycles/CXXX-[type]-<short-title>/
 
 9) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill cycle-create --mode COMMITTING --target . --json`
+- the runtime `cycle-create` hook applies continuity admission before delegating to generic checkpoint/index/repair behavior
+- expect machine-visible continuity outcomes such as `proceed_r1_strict_chain`, `proceed_r2_session_base_with_import`, or `stop_choose_continuity_rule`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill cycle-create --project-runtime-state --json`.

@@ -14,6 +14,11 @@ When exploration becomes non-trivial, formalize it with minimal friction.
 - Prefer recommendation over forced branch operations when user intent is not explicit.
 - Keep `docs/audit/CURRENT-STATE.md` summary-only if updated.
 
+## Pre-Write Admission
+Before the first durable write in this skill, run:
+- `npx aidn runtime pre-write-admit --target . --skill convert-to-spike --json`
+- If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+
 ## Trigger rule (use automatically if possible)
 If mode=EXPLORING and:
 - code changes > ~30 minutes OR touches >2 files
@@ -42,6 +47,8 @@ If mode=EXPLORING and:
 
 7) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill convert-to-spike --mode EXPLORING --target . --json`
+- the runtime `convert-to-spike` hook applies spike-continuity admission before delegating to generic checkpoint/index/repair behavior
+- it reuses `cycle-create` continuity logic with the `EXPLORING` mode gate, so strict chain may still stop and require explicit override/choice
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill convert-to-spike --project-runtime-state --json`.

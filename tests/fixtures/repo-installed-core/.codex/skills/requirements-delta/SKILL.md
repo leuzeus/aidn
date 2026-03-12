@@ -15,6 +15,11 @@ Handle “we revised an old plan” without losing traceability.
 - If impact is medium/high and branch ownership is unclear, STOP and request cycle/branch decision.
 - If the delta changes active scope or next steps, keep `docs/audit/CURRENT-STATE.md` aligned at summary level.
 
+## Pre-Write Admission
+Before the first durable write in this skill, run:
+- `npx aidn runtime pre-write-admit --target . --skill requirements-delta --json`
+- If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+
 ## When to use
 - You revisit an older plan/audit-spec and realize structural changes are needed
 - New constraints appear (API/DB/security/architecture)
@@ -76,6 +81,8 @@ Rules:
 
 8) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill requirements-delta --mode COMMITTING --target . --json`
+- the runtime `requirements-delta` hook applies ownership/impact admission before delegating to generic checkpoint/index/repair behavior
+- expect machine-visible outcomes such as `continue_same_cycle`, `recommend_new_cycle`, or `stop_choose_cycle_or_branch`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill requirements-delta --project-runtime-state --json`.
