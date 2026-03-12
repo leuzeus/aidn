@@ -4,6 +4,7 @@ release/dist/
 .idea/
 tmp/
 .ai/
+/.aidn/
 .aidn/runtime/
 tests/fixtures/tmp-*/
 tests/fixtures/**/.aidn/
