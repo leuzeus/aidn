@@ -1,7 +1,7 @@
 # Plan - Deterministic Project File Generation
 
 Date: 2026-03-11
-Status: proposed
+Status: in-progress
 Scope: replace non-deterministic install-time custom-file migration with deterministic generation and persistence rules, while preserving existing project data across reinstall and reinitialization.
 
 ## Problem Statement
@@ -740,3 +740,9 @@ After the plan is accepted:
 1. write an implementation backlog with atomic items
 2. execute the migration helper on `gowire`
 3. validate that future reinstall operations no longer depend on Codex-based document migration
+
+## Progress Notes
+
+- 2026-03-11: `DPG-01` through `DPG-07` completed. Ownership classes, adapter config foundation, wizard, CLI surface, and install integration are in place.
+- 2026-03-11: `DPG-08` through `DPG-16` completed. Managed workflow docs are now rendered deterministically and removed from the default Codex migration path.
+- 2026-03-11: `DPG-17` through `DPG-19` completed. A migration helper now extracts adapter config from legacy installed workflow docs, preserves project-owned data, regenerates managed docs, and has been exercised against `gowire` without data loss.

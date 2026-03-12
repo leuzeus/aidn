@@ -12,7 +12,7 @@ Reference plan:
 
 ### DPG-01 - Add Install Ownership Classes
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -36,7 +36,7 @@ Done when:
 
 ### DPG-02 - Define Adapter Config Schema
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -61,7 +61,7 @@ Done when:
 
 ### DPG-03 - Add Adapter Config Storage Service
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -82,7 +82,7 @@ Done when:
 
 ### DPG-04 - Implement Local Wizard Core
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -109,7 +109,7 @@ Done when:
 
 ### DPG-05 - Expose `aidn project config` Command Family
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -132,7 +132,7 @@ Done when:
 
 ### DPG-06 - Add Non-Interactive Adapter Config Failure Path
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -155,7 +155,7 @@ Done when:
 
 ### DPG-07 - Wire Install To Launch Wizard When Adapter Config Is Missing
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -175,7 +175,7 @@ Done when:
 
 ### DPG-08 - Build Deterministic Renderer For `WORKFLOW.md`
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -200,7 +200,7 @@ Done when:
 
 ### DPG-09 - Build Deterministic Renderer For `WORKFLOW_SUMMARY.md`
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -220,7 +220,7 @@ Done when:
 
 ### DPG-10 - Build Deterministic Renderer For `CODEX_ONLINE.md`
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
@@ -240,7 +240,7 @@ Done when:
 
 ### DPG-11 - Build Deterministic Renderer For `index.md`
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
@@ -260,7 +260,7 @@ Done when:
 
 ### DPG-12 - Reclassify `baseline/current.md` As Seed-Once Data
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -280,7 +280,7 @@ Done when:
 
 ### DPG-13 - Reclassify `baseline/history.md` As Seed-Once Data
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -300,7 +300,7 @@ Done when:
 
 ### DPG-14 - Reclassify `parking-lot.md` As Seed-Once Data
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -320,7 +320,7 @@ Done when:
 
 ### DPG-15 - Reclassify `context-snapshot.md` As Runtime State
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -339,7 +339,7 @@ Done when:
 
 ### DPG-16 - Remove Managed Files From Default Codex Migration Path
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -359,7 +359,7 @@ Done when:
 
 ### DPG-17 - Add Migration Helper For Existing Installed Repositories
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -384,7 +384,7 @@ Done when:
 
 ### DPG-18 - Implement `gowire` Extraction Mapping
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -409,7 +409,7 @@ Done when:
 
 ### DPG-19 - Migrate `gowire` Without Data Loss
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
