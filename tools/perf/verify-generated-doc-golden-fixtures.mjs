@@ -57,6 +57,7 @@ function main() {
     SOURCE_BRANCH: resolveConfigSourceBranch(aidnConfig.data) || "main",
   };
   Object.assign(templateVars, buildGeneratedDocTemplateVars({
+    repoRoot,
     templateVars,
     aidnConfigData: aidnConfig.data,
     workflowAdapterConfig: adapterConfig,

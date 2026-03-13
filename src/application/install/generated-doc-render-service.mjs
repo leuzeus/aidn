@@ -199,7 +199,7 @@ export function renderGeneratedDocContent({
     ? existingContentOverride
     : (fs.existsSync(targetPath) ? readUtf8(targetPath) : null);
   if (preserveImportedWorkflowExtensions && typeof existingContent === "string") {
-      rendered = appendImportedWorkflowSections(
+    rendered = appendImportedWorkflowSections(
       rendered,
       existingContent,
       workflowAdapterConfig?.data?.legacyPreserved?.importedSections ?? [],

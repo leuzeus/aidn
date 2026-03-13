@@ -141,6 +141,7 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
   Object.assign(
     templateVars,
     buildGeneratedDocTemplateVars({
+      repoRoot,
       templateVars,
       aidnConfigData: currentAidnConfigData,
       workflowAdapterConfig,

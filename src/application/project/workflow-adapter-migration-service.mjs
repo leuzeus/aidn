@@ -447,6 +447,7 @@ function buildLegacyWorkflowSourcePath(targetRoot) {
 }
 
 export function buildWorkflowAdapterMigrationTemplateVars({
+  repoRoot,
   aidnConfigData,
   workflowAdapterConfig,
   version,
@@ -459,6 +460,7 @@ export function buildWorkflowAdapterMigrationTemplateVars({
     SOURCE_BRANCH: clean(sourceBranch),
   };
   const generated = buildGeneratedDocTemplateVars({
+    repoRoot,
     templateVars,
     aidnConfigData,
     workflowAdapterConfig,
@@ -509,6 +511,7 @@ export function previewWorkflowAdapterMigration({
     data: extractedConfig,
   };
   const provisionalTemplateVars = buildWorkflowAdapterMigrationTemplateVars({
+    repoRoot,
     aidnConfigData: aidnConfigState.data,
     workflowAdapterConfig: provisionalWorkflowAdapterConfig,
     version,
@@ -538,6 +541,7 @@ export function previewWorkflowAdapterMigration({
     data: finalizedConfig,
   };
   const templateVars = buildWorkflowAdapterMigrationTemplateVars({
+    repoRoot,
     aidnConfigData: aidnConfigState.data,
     workflowAdapterConfig,
     version,

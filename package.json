@@ -162,6 +162,7 @@
     "perf:verify-install-source-branch": "node tools/perf/verify-install-source-branch-fixtures.mjs",
     "perf:verify-generated-docs": "node tools/perf/verify-generated-docs-fixtures.mjs",
     "perf:verify-generated-doc-golden": "node tools/perf/verify-generated-doc-golden-fixtures.mjs",
+    "perf:verify-generated-doc-fragments": "node tools/perf/verify-generated-doc-fragments-fixtures.mjs",
     "perf:verify-gowire-workflow-parity": "node tools/perf/verify-gowire-workflow-parity-fixtures.mjs",
     "perf:verify-promoted-workflow-section-visibility": "node tools/perf/verify-promoted-workflow-section-visibility-fixtures.mjs",
     "perf:verify-promoted-policy-multi-agent": "node tools/perf/verify-promoted-policy-multi-agent-fixtures.mjs",
