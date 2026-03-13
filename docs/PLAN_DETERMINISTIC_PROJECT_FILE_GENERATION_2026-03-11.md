@@ -315,7 +315,7 @@ Type:
 
 Inputs:
 
-- `template/docs_audit/PROJECT_WORKFLOW.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 - `VERSION`
 - `.aidn/config.json`
 - `.aidn/project/workflow.adapter.json`
@@ -349,7 +349,7 @@ Type:
 
 Inputs:
 
-- `template/docs_audit/WORKFLOW_SUMMARY.md`
+- `scaffold/docs_audit/WORKFLOW_SUMMARY.md`
 - `.aidn/config.json`
 - `.aidn/project/workflow.adapter.json`
 
@@ -375,7 +375,7 @@ Type:
 
 Inputs:
 
-- `template/codex/README_CodexOnline.md`
+- `scaffold/codex/README_CodexOnline.md`
 - `.aidn/config.json`
 - `.aidn/project/workflow.adapter.json`
 
@@ -400,7 +400,7 @@ Type:
 
 Inputs:
 
-- `template/docs_audit/index.md`
+- `scaffold/docs_audit/index.md`
 - `.aidn/config.json`
 - possibly selected generated/state file presence
 
@@ -426,7 +426,7 @@ Type:
 
 Inputs:
 
-- created initially from `template/docs_audit/baseline/current.md`
+- created initially from `scaffold/docs_audit/baseline/current.md`
 
 Update owner:
 
@@ -449,7 +449,7 @@ Type:
 
 Inputs:
 
-- created initially from `template/docs_audit/baseline/history.md`
+- created initially from `scaffold/docs_audit/baseline/history.md`
 
 Update owner:
 
@@ -468,7 +468,7 @@ Type:
 
 Inputs:
 
-- created initially from `template/docs_audit/parking-lot.md`
+- created initially from `scaffold/docs_audit/parking-lot.md`
 
 Update owner:
 
@@ -694,11 +694,11 @@ Update documentation in the same implementation stream.
 - explain the new adapter config
 - explain which files are generated vs preserved vs runtime state
 
-2. `template/docs_audit/PROJECT_WORKFLOW.md`
+2. `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 
 - mark it as generated from adapter config in installed projects
 
-3. `template/docs_audit/index.md`
+3. `scaffold/docs_audit/index.md`
 
 - align it as managed/generated output
 

@@ -103,8 +103,8 @@ Expected implementation:
 
 Likely touchpoints:
 
-- `template/codex/`
-- `template/root/AGENTS.md`
+- `scaffold/codex/`
+- `scaffold/root/AGENTS.md`
 - `tools/codex/hydrate-context.mjs`
 - `tools/runtime/project-handoff-packet.mjs`
 
@@ -157,7 +157,7 @@ Likely touchpoints:
 
 - `tools/runtime/project-handoff-packet.mjs`
 - new verifier under `tools/perf/`
-- `template/docs_audit/REANCHOR_PROMPT.md`
+- `scaffold/docs_audit/REANCHOR_PROMPT.md`
 
 Acceptance criteria:
 
@@ -251,8 +251,8 @@ Expected implementation:
 
 Likely touchpoints:
 
-- `template/root/AGENTS.md`
-- `template/docs_audit/WORKFLOW.md`
+- `scaffold/root/AGENTS.md`
+- `scaffold/docs_audit/WORKFLOW.md`
 - maybe a dedicated policy artifact later if needed
 
 Acceptance criteria:

@@ -245,7 +245,7 @@ Move out of `AGENTS.md`:
 
 Primary target:
 
-- `template/root/AGENTS.md`
+- `scaffold/root/AGENTS.md`
 
 ### D2 - Add An Executable Pre-Write Admission Step
 
@@ -314,7 +314,7 @@ Primary targets:
 Direction:
 
 - do not force-install a project Codex config blindly
-- provide an optional template/snippet and documentation
+- provide an optional scaffold/snippet and documentation
 
 Useful options:
 
@@ -350,7 +350,7 @@ Primary targets:
 
 Files:
 
-- `template/root/AGENTS.md`
+- `scaffold/root/AGENTS.md`
 
 Done when:
 
@@ -389,7 +389,7 @@ Files:
 
 - `README.md`
 - `docs/INSTALL.md`
-- `template/codex/README_CodexOnline.md`
+- `scaffold/codex/README_CodexOnline.md`
 - `docs/TROUBLESHOOTING.md`
 
 Done when:
@@ -472,7 +472,7 @@ Acceptance:
 ## Suggested First Implementation Order
 
 1. document the new model in package docs
-2. refactor `template/root/AGENTS.md`
+2. refactor `scaffold/root/AGENTS.md`
 3. add explicit admission/gating command for pre-write checks
 4. wire mutating skills to the admission step
 5. add install/verify warnings for `AGENTS.override.md`

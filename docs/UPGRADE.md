@@ -19,7 +19,7 @@ Recent workflow resilience updates also add:
 
 ## Product repository steps
 
-1. Update workflow sources in this repository (`docs/SPEC.md`, `template/`, manifests).
+1. Update workflow sources in this repository (`docs/SPEC.md`, `scaffold/`, manifests).
 2. Bump versions in:
    - `package/manifests/workflow.manifest.yaml`
    - `packs/core/manifest.yaml`

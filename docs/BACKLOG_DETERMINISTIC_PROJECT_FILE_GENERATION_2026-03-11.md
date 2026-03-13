@@ -181,7 +181,7 @@ Priority: high
 Files:
 
 - template renderer services
-- `template/docs_audit/PROJECT_WORKFLOW.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 - tests
 
 Why:
@@ -206,7 +206,7 @@ Priority: high
 Files:
 
 - template renderer services
-- `template/docs_audit/WORKFLOW_SUMMARY.md`
+- `scaffold/docs_audit/WORKFLOW_SUMMARY.md`
 - tests
 
 Why:
@@ -226,7 +226,7 @@ Priority: medium
 Files:
 
 - template renderer services
-- `template/codex/README_CodexOnline.md`
+- `scaffold/codex/README_CodexOnline.md`
 - tests
 
 Why:
@@ -246,7 +246,7 @@ Priority: medium
 Files:
 
 - template renderer services
-- `template/docs_audit/index.md`
+- `scaffold/docs_audit/index.md`
 - tests
 
 Why:

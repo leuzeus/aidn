@@ -348,30 +348,30 @@ Documentation must move with the implementation to avoid repeating the current c
 
 ### Required updates
 
-1. `template/codex/close-session/SKILL.md`
+1. `scaffold/codex/close-session/SKILL.md`
 
 - document that runtime admission resolves or blocks open cycles before generic close execution
 - describe the structured stop/decision outcomes
 
-2. `template/codex/cycle-create/SKILL.md`
+2. `scaffold/codex/cycle-create/SKILL.md`
 
 - document that continuity admission is enforced before any branch or artifact creation
 - clarify machine-visible decision outcomes for `R1`, `R2`, `R3`
 
-3. `template/codex/requirements-delta/SKILL.md`
+3. `scaffold/codex/requirements-delta/SKILL.md`
 
 - clarify the explicit admission boundary for medium/high impact ownership ambiguity
 
-4. `template/codex/handoff-close/SKILL.md`
+4. `scaffold/codex/handoff-close/SKILL.md`
 
 - align the contract with the exposed runtime route and any blocking handoff-state semantics
 
-5. `template/root/AGENTS.md`
+5. `scaffold/root/AGENTS.md`
 
 - extend the runtime admission summary beyond `start-session` and `branch-cycle-audit`
 - document which skills now have admission-first behavior
 
-6. `template/docs_audit/PROJECT_WORKFLOW.md`
+6. `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 
 - update the workflow contract where cycle close/session close/continuity admission now becomes runtime-enforced
 

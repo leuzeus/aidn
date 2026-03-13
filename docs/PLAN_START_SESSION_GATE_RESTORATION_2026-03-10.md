@@ -252,19 +252,19 @@ Documentation must be updated in the same implementation stream.
 
 ### Required updates
 
-1. `template/codex/start-session/SKILL.md`
+1. `scaffold/codex/start-session/SKILL.md`
 
 - describe that `start-session` begins with a blocking admission decision
 - clarify resume/create/block outcomes
 - clarify user-choice requirements for multiple cycles and non-compliant branches
 
-2. `template/docs_audit/PROJECT_WORKFLOW.md`
+2. `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 
 - keep the session branch base gate
 - clarify that it is now enforced by runtime admission, not just documented
 - clarify the expected stop/arbitration behavior
 
-3. `template/root/AGENTS.md`
+3. `scaffold/root/AGENTS.md`
 
 - reflect the actual execution order:
   - context reload
@@ -277,7 +277,7 @@ Documentation must be updated in the same implementation stream.
 - update only if wording is needed to make the admission step explicit in implementation terms
 - do not change canonical intent unless necessary
 
-5. `template/docs_audit/WORKFLOW_SUMMARY.md`
+5. `scaffold/docs_audit/WORKFLOW_SUMMARY.md`
 
 - add a concise note that `start-session` can block and request arbitration before any new session/cycle creation
 

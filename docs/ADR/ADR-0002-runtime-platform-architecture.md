@@ -13,7 +13,7 @@ Proposed
 `aidn` started from a template-first workflow product:
 
 - canonical workflow specification in `docs/SPEC.md`
-- installable templates in `template/`
+- installable templates in `scaffold/`
 - lightweight pack distribution in `packs/`
 
 The current repository has moved beyond that baseline:

@@ -17,7 +17,7 @@ Priority: high
 
 Files:
 
-- `template/root/AGENTS.md`
+- `scaffold/root/AGENTS.md`
 
 Why:
 
@@ -54,7 +54,7 @@ Priority: high
 
 Files:
 
-- `template/codex/*/SKILL.md` for mutating skills
+- `scaffold/codex/*/SKILL.md` for mutating skills
 
 Why:
 
@@ -94,7 +94,7 @@ Files:
 - `README.md`
 - `docs/INSTALL.md`
 - `docs/TROUBLESHOOTING.md`
-- `template/codex/README_CodexOnline.md`
+- `scaffold/codex/README_CodexOnline.md`
 
 Why:
 
@@ -133,7 +133,7 @@ Priority: medium
 Files:
 
 - documentation
-- optional template/snippet if adopted
+- optional scaffold/snippet if adopted
 
 Why:
 

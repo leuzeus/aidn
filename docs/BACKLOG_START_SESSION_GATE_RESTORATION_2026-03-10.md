@@ -340,7 +340,7 @@ Priority: high
 
 Files:
 
-- `template/codex/start-session/SKILL.md`
+- `scaffold/codex/start-session/SKILL.md`
 
 Why:
 
@@ -362,8 +362,8 @@ Priority: medium
 
 Files:
 
-- `template/docs_audit/PROJECT_WORKFLOW.md`
-- `template/docs_audit/WORKFLOW_SUMMARY.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
+- `scaffold/docs_audit/WORKFLOW_SUMMARY.md`
 
 Why:
 
@@ -381,7 +381,7 @@ Priority: medium
 
 Files:
 
-- `template/root/AGENTS.md`
+- `scaffold/root/AGENTS.md`
 
 Why:
 

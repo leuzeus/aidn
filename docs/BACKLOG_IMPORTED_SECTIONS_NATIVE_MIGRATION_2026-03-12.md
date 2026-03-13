@@ -45,8 +45,8 @@ Priority: high
 Files:
 
 - `docs/SPEC.md`
-- `template/docs_audit/PROJECT_WORKFLOW.md`
-- `template/docs_audit/incidents/*`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
+- `scaffold/docs_audit/incidents/*`
 - parity tests/docs
 
 Why:
@@ -67,8 +67,8 @@ Priority: high
 Files:
 
 - `docs/SPEC.md`
-- `template/docs_audit/CONTINUITY_GATE.md`
-- `template/docs_audit/PROJECT_WORKFLOW.md`
+- `scaffold/docs_audit/CONTINUITY_GATE.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 - continuity-related skills/tests
 
 Why:
@@ -160,7 +160,7 @@ Priority: high
 Files:
 
 - `src/application/install/generated-doc-template-vars.mjs`
-- `template/docs_audit/PROJECT_WORKFLOW.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 - generated-doc tests
 
 Why:
@@ -182,7 +182,7 @@ Priority: high
 Files:
 
 - `src/application/install/generated-doc-template-vars.mjs`
-- `template/docs_audit/PROJECT_WORKFLOW.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 - generated-doc tests
 
 Why:
@@ -207,7 +207,7 @@ Priority: high
 Files:
 
 - `src/application/install/generated-doc-template-vars.mjs`
-- `template/docs_audit/PROJECT_WORKFLOW.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 - generated-doc tests
 
 Why:

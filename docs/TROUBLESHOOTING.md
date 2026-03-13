@@ -169,9 +169,9 @@ Typical root cause:
 - That heuristic is too coarse for aid'n because some workflow skills have mandatory non-mutating admission phases.
 
 Reference:
-- `template/codex/start-session/SKILL.md`
-- `template/root/AGENTS.md`
-- `template/codex/README_CodexOnline.md`
+- `scaffold/codex/start-session/SKILL.md`
+- `scaffold/root/AGENTS.md`
+- `scaffold/codex/README_CodexOnline.md`
 
 ## Missing continuity or incident templates after install
 

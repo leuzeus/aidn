@@ -162,15 +162,15 @@ These blocks no longer need to live as imported legacy prose because their subst
 Evidence already exists in:
 
 - `docs/SPEC.md`
-- `template/docs_audit/PROJECT_WORKFLOW.md`
-- `template/docs_audit/CONTINUITY_GATE.md`
-- `template/docs_audit/incidents/TEMPLATE_INC_TMP.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
+- `scaffold/docs_audit/CONTINUITY_GATE.md`
+- `scaffold/docs_audit/incidents/TEMPLATE_INC_TMP.md`
 - runtime admission logic for continuity selection
 
 Conclusion:
 
 - these blocks should be removed from `importedSections`
-- before removal, wording gaps must be checked and, if needed, covered by small template/core doc updates
+- before removal, wording gaps must be checked and, if needed, covered by small scaffold/core doc updates
 
 ### B. Valuable project-local policy that should become first-class adapter config
 
@@ -215,7 +215,7 @@ Remain owned by `aidn` core docs and runtime:
 These should live in:
 
 - `docs/SPEC.md`
-- installed canonical support docs under `template/docs_audit/`
+- installed canonical support docs under `scaffold/docs_audit/`
 
 ### 2. First-Class Adapter Fields
 

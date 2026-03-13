@@ -17,7 +17,7 @@ Priority: high
 
 Files:
 
-- `template/docs_audit/fragments/workflow/*`
+- `scaffold/docs_audit/fragments/workflow/*`
 - renderer service files
 - contributor docs if needed
 
@@ -143,7 +143,7 @@ Priority: medium
 
 Files:
 
-- `template/docs_audit/PROJECT_WORKFLOW.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 - tests
 
 Why:

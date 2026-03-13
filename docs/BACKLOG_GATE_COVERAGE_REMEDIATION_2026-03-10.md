@@ -259,7 +259,7 @@ Priority: medium
 
 Files:
 
-- `template/codex/convert-to-spike/SKILL.md`
+- `scaffold/codex/convert-to-spike/SKILL.md`
 - runtime route if needed
 
 Why:
@@ -278,7 +278,7 @@ Priority: medium
 
 Files:
 
-- `template/codex/promote-baseline/SKILL.md`
+- `scaffold/codex/promote-baseline/SKILL.md`
 - runtime route if needed
 
 Why:
@@ -297,7 +297,7 @@ Priority: low
 
 Files:
 
-- `template/codex/drift-check/SKILL.md`
+- `scaffold/codex/drift-check/SKILL.md`
 - gating runtime if needed
 
 Why:
@@ -315,10 +315,10 @@ Priority: high
 
 Files:
 
-- `template/codex/close-session/SKILL.md`
-- `template/codex/cycle-create/SKILL.md`
-- `template/codex/requirements-delta/SKILL.md`
-- `template/codex/handoff-close/SKILL.md`
+- `scaffold/codex/close-session/SKILL.md`
+- `scaffold/codex/cycle-create/SKILL.md`
+- `scaffold/codex/requirements-delta/SKILL.md`
+- `scaffold/codex/handoff-close/SKILL.md`
 
 Why:
 
@@ -336,9 +336,9 @@ Priority: high
 
 Files:
 
-- `template/root/AGENTS.md`
-- `template/docs_audit/PROJECT_WORKFLOW.md`
-- `template/docs_audit/WORKFLOW_SUMMARY.md`
+- `scaffold/root/AGENTS.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
+- `scaffold/docs_audit/WORKFLOW_SUMMARY.md`
 - changelog docs
 
 Why:

@@ -116,7 +116,7 @@ Priority: medium
 
 Files:
 
-- `template/docs_audit/*`
+- `scaffold/docs_audit/*`
 - installed fixtures
 
 Why:

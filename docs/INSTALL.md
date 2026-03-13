@@ -1,8 +1,8 @@
 # Installation Guide
 
-## Template-only model
+## Scaffold-based model
 
-This workflow is installed by copying and merging template files into a client repository.
+This workflow is installed by copying and merging scaffold files into a client repository.
 No compiled binaries are required.
 The installer is a Node.js script and supports Node 18+ on Windows, Linux, and macOS.
 
@@ -15,7 +15,7 @@ The installer is a Node.js script and supports Node 18+ on Windows, Linux, and m
 - Project stub in client repos: `docs/audit/WORKFLOW.md`
   - Adapter file for local constraints and policies.
 
-Client repositories receive template artifacts and a managed spec snapshot.
+Client repositories receive scaffold artifacts and a managed spec snapshot.
 
 Installed workflow support files now also include:
 
@@ -96,7 +96,7 @@ Notes:
 - If `codex_online: true`, installer requires the `codex` command to be installed and available in `PATH`.
 - If `codex_online: true`, installer also requires Codex authentication (`codex login`).
 - Compatibility policy and machine prereq result are printed in installer output (`Compatibility policy`, `Prereq check`).
-- `.codex/skills.yaml` is rendered with the current workflow version tag (template `v{{VERSION}}`, rendered at install time using the `VERSION` file) and points to `https://github.com/leuzeus/aidn`.
+- `.codex/skills.yaml` is rendered with the current workflow version tag (scaffold value `v{{VERSION}}`, rendered at install time using the `VERSION` file) and points to `https://github.com/leuzeus/aidn`.
 - The installer also copies local skill sources under `.codex/skills/*` (one folder per skill) for local/offline availability.
 - Codex instruction layering after install is:
   - optional global layer: `~/.codex/AGENTS.md` or `~/.codex/AGENTS.override.md`
@@ -104,7 +104,7 @@ Notes:
   - optional nested project overrides: closer `AGENTS.md` or `AGENTS.override.md`
 - `aidn` installs and maintains only the project layer; it does not write to `~/.codex`.
 - Placeholder policy:
-  - installer resolves placeholders across copied templates (not only `{{VERSION}}`),
+  - installer resolves placeholders across copied scaffold files (not only `{{VERSION}}`),
   - `SOURCE_BRANCH` can be defined explicitly at install time with `--source-branch <name>`,
   - `SOURCE_BRANCH` is resolved from explicit configuration only: `--source-branch` first, then existing `.aidn/config.json` (`workflow.sourceBranch`),
   - if `SOURCE_BRANCH` is still missing and install is interactive, the installer asks for it explicitly,
@@ -180,7 +180,7 @@ Legacy note:
 ### Ownership classes used by install/reinstall
 
 - `generated`
-  - deterministic outputs rendered from templates + `.aidn/config.json` + `.aidn/project/workflow.adapter.json`
+  - deterministic outputs rendered from scaffold files + `.aidn/config.json` + `.aidn/project/workflow.adapter.json`
   - current set:
     - `docs/audit/WORKFLOW.md`
     - `docs/audit/WORKFLOW_SUMMARY.md`
@@ -215,7 +215,19 @@ If your repository ignores `.aidn/`, carve out an exception for `.aidn/project/w
 - edit `.aidn/project/workflow.adapter.json` via `aidn project config`
 - do not rely on direct edits to generated sections of `docs/audit/WORKFLOW.md`, `WORKFLOW_SUMMARY.md`, `CODEX_ONLINE.md`, or `index.md`
 - keep project memory in `baseline/*`, `parking-lot.md`, and runtime state in `snapshots/context-snapshot.md`
-- when changing generated workflow wording, edit the readable fragment templates under `template/fragments/workflow/` and keep the JS layer focused on data preparation
+- when changing generated workflow wording, edit the readable fragment templates under `scaffold/fragments/workflow/` and keep the JS layer focused on data preparation
+
+## Product Boundary Note
+
+Inside the `aidn` product repository:
+
+- `scaffold/` is product-owned install source material, not a live installed repo
+- product-local scratch runtime should use `.aidn-dev/` if needed
+- self-host dogfooding should use the dedicated workspace model under `tests/workspaces/selfhost-product/`
+
+Boundary reference:
+
+- `docs/PRODUCT_SELFHOST_BOUNDARIES.md`
 
 Before configuring adapter policy, review in this order:
 1. `docs/audit/CURRENT-STATE.md`

@@ -7,7 +7,7 @@ The current runtime baseline also includes admission-first workflow hooks for se
 
 ## Philosophy
 
-- Template distribution with runtime enforcement
+- Scaffold distribution with runtime enforcement
 - Deterministic installation
 - Separation between product spec and project adapter
 - Explicit state modes: `files | dual | db-only`
@@ -20,7 +20,7 @@ The current runtime baseline also includes admission-first workflow hooks for se
 
 - Product repository contains:
   - Official specification: `docs/SPEC.md`
-  - Installation templates: `template/`
+  - Installation scaffold: `scaffold/`
 - Client repositories receive:
   - Managed spec snapshot at `docs/audit/SPEC.md`
   - Quick summary at `docs/audit/WORKFLOW_SUMMARY.md`
@@ -31,7 +31,7 @@ The current runtime baseline also includes admission-first workflow hooks for se
 
 Product repository:
 - Official specification (`docs/SPEC.md`)
-- Installation templates (`template/`)
+- Installation scaffold (`scaffold/`)
 - Packs (`packs/core`, `packs/extended`)
 - Runtime, installer, and release tooling (`tools/`)
 
@@ -121,6 +121,17 @@ Notes:
 npx aidn perf checkpoint --target ../client --mode COMMITTING --index-store all --index-sync-check --json
 npx aidn build-release
 ```
+
+## Product vs Installed vs Self-Host
+
+- Product repository assets live under `docs/`, `src/`, `tools/`, `packs/`, and `scaffold/`.
+- Installed client assets live under `docs/audit/*`, `.codex/*`, and `.aidn/*`.
+- The canonical self-host workspace lives under `tests/workspaces/selfhost-product/`.
+- Product-local scratch runtime should use `.aidn-dev/` if needed; product-root `.aidn/` should not be the normal dogfooding target.
+
+Detailed boundary note:
+
+- `docs/PRODUCT_SELFHOST_BOUNDARIES.md`
 
 ## Project Stub Customization
 

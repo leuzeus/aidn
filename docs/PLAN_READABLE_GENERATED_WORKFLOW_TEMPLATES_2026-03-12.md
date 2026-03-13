@@ -76,7 +76,7 @@ Consequences:
 
 Primary file:
 
-- `template/docs_audit/PROJECT_WORKFLOW.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 
 Consequences:
 
@@ -111,7 +111,7 @@ Keep one render pipeline responsible for:
 
 Move long adapter-rendered sections into dedicated Markdown fragments, for example under:
 
-- `template/docs_audit/fragments/workflow/`
+- `scaffold/docs_audit/fragments/workflow/`
 
 Candidate fragments:
 
@@ -190,7 +190,7 @@ If output changes:
 
 Introduce a fragment structure such as:
 
-- `template/docs_audit/fragments/workflow/*.md`
+- `scaffold/docs_audit/fragments/workflow/*.md`
 
 Define a small loader/renderer contract:
 
@@ -336,7 +336,7 @@ Reason:
 
 Delivered in the current implementation:
 
-- readable workflow fragments now live under `template/fragments/workflow/`
+- readable workflow fragments now live under `scaffold/fragments/workflow/`
 - deterministic rendering still flows through a single assembler
 - `generated-doc-template-vars.mjs` now prepares data and delegates long prose rendering to fragment templates
 - `PROJECT_WORKFLOW.md` remains the compact composition shell

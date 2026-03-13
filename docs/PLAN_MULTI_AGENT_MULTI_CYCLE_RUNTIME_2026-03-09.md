@@ -158,8 +158,8 @@ Purpose:
 
 Target areas:
 
-- `template/docs_audit/*`
-- `template/root/AGENTS.md`
+- `scaffold/docs_audit/*`
+- `scaffold/root/AGENTS.md`
 - BPMN/runtime planning docs
 
 Status:

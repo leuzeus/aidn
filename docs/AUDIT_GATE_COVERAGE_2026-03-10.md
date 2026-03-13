@@ -27,9 +27,9 @@ Audit trace to detect other workflow gates/features that are in the same failure
 
 Audited surface:
 
-- `template/codex/*/SKILL.md`
-- `template/root/AGENTS.md`
-- `template/docs_audit/PROJECT_WORKFLOW.md`
+- `scaffold/codex/*/SKILL.md`
+- `scaffold/root/AGENTS.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 - `src/core/skills/skill-policy.mjs`
 - `src/application/runtime/*`
 - selected `tools/perf/*` verification scripts
@@ -75,7 +75,7 @@ Classification: `confirmed-runtime-gap`
 
 Contract requires a mandatory gate before close:
 
-- `template/codex/close-session/SKILL.md` says open cycles must be resolved before session close.
+- `scaffold/codex/close-session/SKILL.md` says open cycles must be resolved before session close.
 - It also says each open cycle needs an explicit decision.
 - It explicitly says: if one open cycle has no explicit decision, stop session close.
 
@@ -115,7 +115,7 @@ Classification: `confirmed-runtime-gap`
 
 Contract requires a continuity decision before creation:
 
-- `template/codex/cycle-create/SKILL.md` says to run a continuity gate before creating files/branch
+- `scaffold/codex/cycle-create/SKILL.md` says to run a continuity gate before creating files/branch
 - if requested source branch is neither latest active cycle branch nor current session tip, it must stop
 - the user must select exactly one continuity rule `R1 | R2 | R3`
 - no cycle artifacts should be created until that selection is made
@@ -152,7 +152,7 @@ Classification: `watchlist`
 
 Contract requires a business stop:
 
-- `template/codex/requirements-delta/SKILL.md` says medium/high impact with unclear branch ownership must stop and request a cycle/branch decision
+- `scaffold/codex/requirements-delta/SKILL.md` says medium/high impact with unclear branch ownership must stop and request a cycle/branch decision
 
 Runtime route does not show any specialized enforcement:
 
@@ -174,7 +174,7 @@ Classification: `watchlist`
 
 Contract requires validation-driven stop:
 
-- `template/codex/promote-baseline/SKILL.md` says if validation fails, produce missing checklist and do not promote
+- `scaffold/codex/promote-baseline/SKILL.md` says if validation fails, produce missing checklist and do not promote
 
 Runtime route remains generic:
 
@@ -227,10 +227,10 @@ Assessment:
 
 Classification: `confirmed-structural-gap`
 
-Template/contract exists:
+scaffold/contract exists:
 
-- `template/codex/handoff-close/SKILL.md`
-- `template/codex/skills.yaml` lists `handoff-close`
+- `scaffold/codex/handoff-close/SKILL.md`
+- `scaffold/codex/skills.yaml` lists `handoff-close`
 
 Runtime exposure is missing from the supported skill map:
 
@@ -301,8 +301,8 @@ Reason:
 Commands used in this audit included:
 
 ```powershell
-rg -n "start-session|close-session|cycle-create|cycle-close|promote-baseline|requirements-delta|drift-check|branch-cycle-audit|handoff-close|convert-to-spike" src/core/skills/skill-policy.mjs template/codex -S
-rg -n "mandatory gate|STOP|blocked|arbitration|choose|choice|open cycles|source branch|continuity|do not promote|no explicit decision|unclear branch ownership|severe|structural drift|select exactly one continuity rule|already exists" template/codex template/docs_audit template/root/AGENTS.md -S
+rg -n "start-session|close-session|cycle-create|cycle-close|promote-baseline|requirements-delta|drift-check|branch-cycle-audit|handoff-close|convert-to-spike" src/core/skills/skill-policy.mjs scaffold/codex -S
+rg -n "mandatory gate|STOP|blocked|arbitration|choose|choice|open cycles|source branch|continuity|do not promote|no explicit decision|unclear branch ownership|severe|structural drift|select exactly one continuity rule|already exists" scaffold/codex scaffold/docs_audit scaffold/root/AGENTS.md -S
 node tools/perf/skill-hook.mjs --skill close-session --target tests/fixtures/perf-structure/session-multi-cycle-explicit --mode COMMITTING --json
 node tools/perf/skill-hook.mjs --skill cycle-create --target tests/fixtures/perf-structure/session-multi-cycle-explicit --mode COMMITTING --json
 node tools/perf/skill-hook.mjs --skill handoff-close --target tests/fixtures/perf-handoff/blocked --mode COMMITTING --json
