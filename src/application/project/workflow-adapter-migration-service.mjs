@@ -22,6 +22,7 @@ import {
 } from "../install/custom-file-policy.mjs";
 import { buildGeneratedDocTemplateVars } from "../install/generated-doc-template-vars.mjs";
 import { renderManagedInstallDocs } from "../install/generated-doc-render-service.mjs";
+import { resolveScaffoldPath } from "../install/scaffold-paths-lib.mjs";
 import { readUtf8, renderTemplateVariables, writeUtf8 } from "../install/template-io.mjs";
 
 function clean(value) {
@@ -519,7 +520,7 @@ export function previewWorkflowAdapterMigration({
     sourceBranch: extractedSourceBranch,
   });
   const renderedTemplate = renderTemplateVariables(
-    readUtf8(path.resolve(repoRoot, "template", "docs_audit", "PROJECT_WORKFLOW.md")),
+    readUtf8(resolveScaffoldPath(repoRoot, "docs_audit", "PROJECT_WORKFLOW.md")),
     provisionalTemplateVars,
   );
   const importedSections = collectImportedSectionsFromLegacy(renderedTemplate, extractionSourceText);

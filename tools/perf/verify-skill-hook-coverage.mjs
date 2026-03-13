@@ -4,7 +4,7 @@ import path from "node:path";
 
 function parseArgs(argv) {
   const args = {
-    root: "template/codex",
+    root: "scaffold/codex",
     json: false,
   };
 
@@ -32,7 +32,7 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-skill-hook-coverage.mjs");
-  console.log("  node tools/perf/verify-skill-hook-coverage.mjs --root template/codex");
+  console.log("  node tools/perf/verify-skill-hook-coverage.mjs --root scaffold/codex");
   console.log("  node tools/perf/verify-skill-hook-coverage.mjs --json");
 }
 

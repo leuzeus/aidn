@@ -11,25 +11,26 @@ import {
   renderTemplateVariables,
   writeUtf8,
 } from "./template-io.mjs";
+import { getScaffoldRelativePath } from "./scaffold-paths-lib.mjs";
 
 const IMPORTED_EXTENSIONS_HEADING = "## Imported Local Extensions";
 
 const GENERATED_DOCS = [
   {
-    templateRelative: "template/docs_audit/PROJECT_WORKFLOW.md",
+    templateRelative: getScaffoldRelativePath("docs_audit", "PROJECT_WORKFLOW.md"),
     targetRelative: "docs/audit/WORKFLOW.md",
     preserveImportedWorkflowExtensions: true,
   },
   {
-    templateRelative: "template/docs_audit/WORKFLOW_SUMMARY.md",
+    templateRelative: getScaffoldRelativePath("docs_audit", "WORKFLOW_SUMMARY.md"),
     targetRelative: "docs/audit/WORKFLOW_SUMMARY.md",
   },
   {
-    templateRelative: "template/codex/README_CodexOnline.md",
+    templateRelative: getScaffoldRelativePath("codex", "README_CodexOnline.md"),
     targetRelative: "docs/audit/CODEX_ONLINE.md",
   },
   {
-    templateRelative: "template/docs_audit/index.md",
+    templateRelative: getScaffoldRelativePath("docs_audit", "index.md"),
     targetRelative: "docs/audit/index.md",
   },
 ];

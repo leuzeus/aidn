@@ -5,6 +5,7 @@ release/dist/
 tmp/
 .ai/
 /.aidn/
+.aidn-dev/
 .aidn/runtime/
 tests/fixtures/tmp-*/
 tests/fixtures/**/.aidn/

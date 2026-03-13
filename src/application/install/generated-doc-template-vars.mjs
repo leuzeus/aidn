@@ -6,6 +6,7 @@ import {
   resolveConfigStateMode,
 } from "../../lib/config/aidn-config-lib.mjs";
 import { renderGeneratedDocFragment } from "./generated-doc-fragment-render-service.mjs";
+import { getScaffoldRelativePath } from "./scaffold-paths-lib.mjs";
 
 function clean(value) {
   return String(value ?? "").trim();
@@ -103,7 +104,7 @@ function buildSessionTransitionCleanlinessBlock(repoRoot, policy = {}) {
   }
   return renderGeneratedDocFragment({
     repoRoot,
-    fragmentRelative: "template/fragments/workflow/session-transition-cleanliness.md",
+    fragmentRelative: getScaffoldRelativePath("fragments", "workflow", "session-transition-cleanliness.md"),
     templateVars: {
       TRANSITION_CLEANLINESS_SCOPE: clean(policy.scope) || "session-topology",
       TRANSITION_REQUIRED_DECISION_OPTIONS_BLOCK: buildNestedBulletBlock(
@@ -161,7 +162,7 @@ function buildExecutionPolicyBlock(repoRoot, policy = {}) {
   }
   return renderGeneratedDocFragment({
     repoRoot,
-    fragmentRelative: "template/fragments/workflow/execution-speed-policy.md",
+    fragmentRelative: getScaffoldRelativePath("fragments", "workflow", "execution-speed-policy.md"),
     templateVars: {
       EXECUTION_EVALUATION_SCOPE: clean(policy.evaluationScope) || "dispatch-or-local-scope",
       EXECUTION_HARD_GATES_BLOCK: buildPlainNestedBulletBlock(
@@ -206,7 +207,7 @@ function buildSharedCodegenBoundaryBlock(repoRoot, policy = {}) {
   }
   return renderGeneratedDocFragment({
     repoRoot,
-    fragmentRelative: "template/fragments/workflow/shared-codegen-boundary.md",
+    fragmentRelative: getScaffoldRelativePath("fragments", "workflow", "shared-codegen-boundary.md"),
     templateVars: {
       SHARED_CODEGEN_SHARED_SURFACE_LINE: policy.sharedIntegrationSurface === true
         ? "- Treat this area as a shared integration surface."

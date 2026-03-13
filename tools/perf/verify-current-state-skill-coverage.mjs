@@ -79,7 +79,7 @@ const SKILL_SPECS = [
 
 function parseArgs(argv) {
   const args = {
-    root: "template/codex",
+    root: "scaffold/codex",
     json: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -105,7 +105,7 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-current-state-skill-coverage.mjs");
-  console.log("  node tools/perf/verify-current-state-skill-coverage.mjs --root template/codex --json");
+  console.log("  node tools/perf/verify-current-state-skill-coverage.mjs --root scaffold/codex --json");
   console.log("  node tools/perf/verify-current-state-skill-coverage.mjs --root tests/fixtures/repo-installed-core/.codex/skills --json");
 }
 

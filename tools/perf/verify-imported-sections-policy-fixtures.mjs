@@ -31,9 +31,9 @@ function main() {
 
     const legacyWorkflow = readText(path.resolve(fixtureRoot, "WORKFLOW.md"));
     const specText = readText(path.resolve(repoRoot, "docs", "SPEC.md"));
-    const projectWorkflowTemplate = readText(path.resolve(repoRoot, "template", "docs_audit", "PROJECT_WORKFLOW.md"));
-    const continuityTemplate = readText(path.resolve(repoRoot, "template", "docs_audit", "CONTINUITY_GATE.md"));
-    const incidentTemplate = readText(path.resolve(repoRoot, "template", "docs_audit", "incidents", "TEMPLATE_INC_TMP.md"));
+    const projectWorkflowTemplate = readText(path.resolve(repoRoot, "scaffold", "docs_audit", "PROJECT_WORKFLOW.md"));
+    const continuityTemplate = readText(path.resolve(repoRoot, "scaffold", "docs_audit", "CONTINUITY_GATE.md"));
+    const incidentTemplate = readText(path.resolve(repoRoot, "scaffold", "docs_audit", "incidents", "TEMPLATE_INC_TMP.md"));
 
     const migrationPreview = previewWorkflowAdapterMigration({
       repoRoot,

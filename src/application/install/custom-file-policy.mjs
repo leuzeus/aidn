@@ -162,7 +162,7 @@ export function normalizePreservedMetadata(targetRelative, text, templateVars) {
   if (normalizedTarget === ".codex/skills.yaml") {
     if (version) {
       next = next.replace(/^(\s*ref:\s*["']?)v[^"'\s]+(["']?\s*)$/im, `$1v${version}$2`);
-      next = next.replace(/(https:\/\/github\.com\/leuzeus\/aidn\/tree\/)v[^/]+(\/template\/codex\/)/gi, `$1v${version}$2`);
+      next = next.replace(/(https:\/\/github\.com\/leuzeus\/aidn\/tree\/)v[^/]+(\/scaffold\/codex\/)/gi, `$1v${version}$2`);
     }
   }
 

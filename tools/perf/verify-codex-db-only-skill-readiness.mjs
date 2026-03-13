@@ -15,8 +15,8 @@ const MUTATING_SKILLS = new Set([
 
 function parseArgs(argv) {
   const args = {
-    root: "template/codex",
-    agents: "template/root/AGENTS.md",
+    root: "scaffold/codex",
+    agents: "scaffold/root/AGENTS.md",
     json: false,
   };
 
@@ -50,7 +50,7 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-codex-db-only-skill-readiness.mjs");
-  console.log("  node tools/perf/verify-codex-db-only-skill-readiness.mjs --root template/codex --agents template/root/AGENTS.md --json");
+  console.log("  node tools/perf/verify-codex-db-only-skill-readiness.mjs --root scaffold/codex --agents scaffold/root/AGENTS.md --json");
 }
 
 function readRequired(filePath) {

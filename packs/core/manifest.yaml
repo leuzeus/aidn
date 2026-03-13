@@ -3,26 +3,26 @@ version: 0.4.0
 
 install:
   copy:
-    - from: template/docs_audit/
+    - from: scaffold/docs_audit/
       to: docs/audit/
     - from: docs/SPEC.md
       to: docs/audit/SPEC.md
-    - from: template/docs_audit/PROJECT_WORKFLOW.md
+    - from: scaffold/docs_audit/PROJECT_WORKFLOW.md
       to: docs/audit/WORKFLOW.md
-    - from: template/codex/skills.yaml
+    - from: scaffold/codex/skills.yaml
       to: .codex/skills.yaml
-    - from: template/codex/
+    - from: scaffold/codex/
       to: .codex/skills/
-    - from: template/codex/README_CodexOnline.md
+    - from: scaffold/codex/README_CodexOnline.md
       to: docs/audit/CODEX_ONLINE.md
-    - from: template/runtime_agents/
+    - from: scaffold/runtime_agents/
       to: .aidn/runtime/agents/
 
   merge:
-    - from: template/root/AGENTS.md
+    - from: scaffold/root/AGENTS.md
       to: AGENTS.md
       strategy: block
-    - from: template/root/.gitignore.append
+    - from: scaffold/root/.gitignore.append
       to: .gitignore
       strategy: append_unique
 

@@ -15,23 +15,23 @@ import { readUtf8 } from "../../src/application/install/template-io.mjs";
 const GENERATED_DOC_CASES = [
   {
     key: "workflow",
-    templateRelative: "template/docs_audit/PROJECT_WORKFLOW.md",
+    templateRelative: "scaffold/docs_audit/PROJECT_WORKFLOW.md",
     targetRelative: "docs/audit/WORKFLOW.md",
     preserveImportedWorkflowExtensions: true,
   },
   {
     key: "summary",
-    templateRelative: "template/docs_audit/WORKFLOW_SUMMARY.md",
+    templateRelative: "scaffold/docs_audit/WORKFLOW_SUMMARY.md",
     targetRelative: "docs/audit/WORKFLOW_SUMMARY.md",
   },
   {
     key: "codex_online",
-    templateRelative: "template/codex/README_CodexOnline.md",
+    templateRelative: "scaffold/codex/README_CodexOnline.md",
     targetRelative: "docs/audit/CODEX_ONLINE.md",
   },
   {
     key: "index",
-    templateRelative: "template/docs_audit/index.md",
+    templateRelative: "scaffold/docs_audit/index.md",
     targetRelative: "docs/audit/index.md",
   },
 ];
