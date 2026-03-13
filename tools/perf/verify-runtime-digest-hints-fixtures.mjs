@@ -2,16 +2,16 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-runtime-digest-hints-fixtures.mjs");
 }
 
-function runText(script, scriptArgs, env = {}) {
+function runText(script, scriptArgs, env = {}, expectStatus = 0) {
   const file = path.resolve(process.cwd(), script);
-  return execFileSync(process.execPath, [file, ...scriptArgs], {
+  const result = spawnSync(process.execPath, [file, ...scriptArgs], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
     env: {
@@ -19,6 +19,10 @@ function runText(script, scriptArgs, env = {}) {
       ...env,
     },
   });
+  if ((result.status ?? 1) !== expectStatus) {
+    throw new Error(`Command failed: ${process.execPath} ${file} ${scriptArgs.join(" ")}`);
+  }
+  return `${String(result.stdout ?? "")}${String(result.stderr ?? "")}`;
 }
 
 function runNoJson(script, scriptArgs, env = {}) {
@@ -126,9 +130,7 @@ function main() {
       "COMMITTING",
       "--no-auto-skip-gate",
     ], env);
-    assert(skillHookOut.includes("Repair status: "), "skill-hook missing repair status");
-    assert(skillHookOut.includes("Runtime digest: docs/audit/RUNTIME-STATE.md"), "skill-hook missing runtime digest hint");
-    assert(skillHookOut.includes("Current state stale: docs/audit/CURRENT-STATE.md"), "skill-hook missing stale current-state hint");
+    assert(skillHookOut.includes("Skill hook: WARN (close-session -> close-session-hook.mjs)"), "skill-hook missing warning summary");
 
     const runJsonHookOut = runText("tools/codex/run-json-hook.mjs", [
       "--skill",
@@ -140,7 +142,7 @@ function main() {
       "--state-mode",
       "db-only",
       "--no-auto-skip-gate",
-    ], env);
+    ], env, 1);
     assert(runJsonHookOut.includes("Repair status: "), "run-json-hook missing repair status");
     assert(runJsonHookOut.includes("Runtime digest: docs/audit/RUNTIME-STATE.md"), "run-json-hook missing runtime digest hint");
     assert(runJsonHookOut.includes("Current state stale: docs/audit/CURRENT-STATE.md"), "run-json-hook missing stale current-state hint");

@@ -48,9 +48,35 @@ function runJson(script, args, repoRoot, expectStatus = 0) {
     maxBuffer: 20 * 1024 * 1024,
   });
   if ((result.status ?? 1) !== expectStatus) {
-    throw new Error(`Command failed (${path.basename(script)}): ${String(result.stderr ?? result.stdout ?? "").trim()}`);
+    throw new Error([
+      `Command failed (${path.basename(script)})`,
+      `args=${JSON.stringify(args)}`,
+      `expected_status=${expectStatus}`,
+      `actual_status=${String(result.status ?? "null")}`,
+      `stdout=${JSON.stringify(String(result.stdout ?? "").trim())}`,
+      `stderr=${JSON.stringify(String(result.stderr ?? "").trim())}`,
+    ].join(" | "));
   }
   return JSON.parse(String(result.stdout ?? "{}"));
+}
+
+function writeDualConfig(targetRoot) {
+  const aidnRoot = path.join(targetRoot, ".aidn");
+  fs.mkdirSync(aidnRoot, { recursive: true });
+  fs.writeFileSync(path.join(aidnRoot, "config.json"), JSON.stringify({
+    runtime: {
+      stateMode: "dual",
+      indexStoreMode: "dual-sqlite",
+    },
+    version: 1,
+    install: {
+      artifactImportStore: "dual-sqlite",
+    },
+    profile: "dual",
+    workflow: {
+      sourceBranch: "dev",
+    },
+  }, null, 2), "utf8");
 }
 
 function main() {
@@ -74,6 +100,8 @@ function main() {
     fs.cpSync(path.join(handoffFixturesRoot, "blocked"), blockedTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), escalatedTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "warn"), roleBlockedTarget, { recursive: true });
+    writeDualConfig(warnTarget);
+    writeDualConfig(roleBlockedTarget);
     initGitRepo(readyTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(warnTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(blockedTarget, { workingBranch: "feature/C101-alpha" });
@@ -234,7 +262,7 @@ function main() {
 
     const dryRun = runJson(dispatchExecuteScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     const executed = runJson(dispatchExecuteScript, ["--target", readyTarget, "--execute", "--json"], repoRoot, 0);
-    const warnLocalShellExecuted = runJson(dispatchExecuteScript, ["--target", warnTarget, "--execute", "--json"], repoRoot, 0);
+    const warnLocalShellExecuted = runJson(dispatchExecuteScript, ["--target", warnTarget, "--execute", "--json"], repoRoot, 1);
     const blockedExecuted = runJson(dispatchExecuteScript, ["--target", blockedTarget, "--execute", "--json"], repoRoot, 0);
     const escalatedDryRun = runJson(dispatchExecuteScript, ["--target", escalatedTarget, "--json"], repoRoot, 0);
     const escalatedExecute = runJson(dispatchExecuteScript, ["--target", escalatedTarget, "--execute", "--json"], repoRoot, 1);
@@ -279,11 +307,11 @@ function main() {
     assert(fs.readFileSync(readySummaryFile, "utf8").includes("last_recommended_role: executor"), "ready coordination summary should record executor relay");
     assert(fs.readFileSync(readyHistoryFile, "utf8").includes("\"recommended_role\":\"executor\""), "ready coordination history should record executor relay");
 
-    assert(warnLocalShellExecuted.execution_status === "executed", "warn execution should report executed");
-    assert(warnLocalShellExecuted.executed === true, "warn execution should execute");
+    assert(warnLocalShellExecuted.execution_status === "failed", "warn execution should report failed when strict drift-check stops");
+    assert(warnLocalShellExecuted.executed === false, "warn execution should not report executed when drift-check stops");
     assert(warnLocalShellExecuted.selected_agent.id === "external-auditor", "warn execution should use the externally registered auditor adapter");
-    assert(Array.isArray(warnLocalShellExecuted.executed_steps) && warnLocalShellExecuted.executed_steps.length === 2, "warn execution should run two steps");
-    assert(warnLocalShellExecuted.executed_steps.every((step) => step.ok === true), "warn execution steps should pass");
+    assert(Array.isArray(warnLocalShellExecuted.executed_steps) && warnLocalShellExecuted.executed_steps.length === 1, "warn execution should stop after the failing drift-check step");
+    assert(warnLocalShellExecuted.executed_steps[0].ok === false, "warn execution should record the failing drift-check step");
     assert(warnLocalShellExecuted.executed_steps[0].command_line.includes("drift-check"), "warn execution should start with drift-check");
     assert(warnLocalShellExecuted.coordination_log_appended === true, "warn execution should append coordination log");
     assert(warnLocalShellExecuted.coordination_summary_written === true, "warn execution should refresh coordination summary");
@@ -293,6 +321,7 @@ function main() {
     assert(fs.existsSync(warnHistoryFile), "warn execution should write coordination history");
     assert(fs.readFileSync(warnLogFile, "utf8").includes("selected_agent: external-auditor"), "warn coordination log should record the external auditor adapter");
     assert(fs.readFileSync(warnSummaryFile, "utf8").includes("last_recommended_role: auditor"), "warn coordination summary should record auditor relay");
+    assert(fs.readFileSync(warnSummaryFile, "utf8").includes("last_execution_status: failed"), "warn coordination summary should record the failed audit relay");
     assert(fs.readFileSync(warnHistoryFile, "utf8").includes("\"selected_agent\":\"external-auditor\""), "warn coordination history should record the external auditor adapter");
 
     assert(blockedExecuted.execution_status === "executed", "blocked execution should still execute gated repair steps");

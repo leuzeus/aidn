@@ -108,8 +108,14 @@ function main() {
     });
     if (args.json) {
       console.log(JSON.stringify(out, null, 2));
-    } else if (out.ok) {
-      console.log(`Skill hook: OK (${args.skill} -> ${out.tool})`);
+    } else {
+      const status = out.ok ? "OK" : "WARN";
+      const summary = `${args.skill} -> ${out.tool}`;
+      if (out.ok) {
+        console.log(`Skill hook: ${status} (${summary})`);
+      } else {
+        console.warn(`Skill hook: ${status} (${summary}) ${out.error?.message ?? "unknown error"}`);
+      }
       if (Number(out.repair_layer_open_count ?? 0) > 0) {
         console.log(`Repair findings: ${out.repair_layer_open_count} open${out.repair_layer_blocking ? " (blocking)" : ""}`);
         if (out.repair_layer_status) {
@@ -121,8 +127,6 @@ function main() {
         printRuntimeDigestHint(targetRoot, out.repair_layer_status);
         printCurrentStateStaleHint(targetRoot);
       }
-    } else {
-      console.warn(`Skill hook: WARN (${args.skill} -> ${out.tool}) ${out.error?.message ?? "unknown error"}`);
     }
     if (args.failOnRepairBlock && String(out.repair_layer_status ?? "") === "block") {
       process.exit(1);
