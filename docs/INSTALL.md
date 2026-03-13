@@ -215,6 +215,7 @@ If your repository ignores `.aidn/`, carve out an exception for `.aidn/project/w
 - edit `.aidn/project/workflow.adapter.json` via `aidn project config`
 - do not rely on direct edits to generated sections of `docs/audit/WORKFLOW.md`, `WORKFLOW_SUMMARY.md`, `CODEX_ONLINE.md`, or `index.md`
 - keep project memory in `baseline/*`, `parking-lot.md`, and runtime state in `snapshots/context-snapshot.md`
+- when changing generated workflow wording, edit the readable fragment templates under `template/fragments/workflow/` and keep the JS layer focused on data preparation
 
 Before configuring adapter policy, review in this order:
 1. `docs/audit/CURRENT-STATE.md`
