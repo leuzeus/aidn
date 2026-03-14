@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "projectName": "aidn-selfhost-product",
+  "constraints": {
+    "runtime": "Dogfood the installed runtime without mutating the product root.",
+    "architecture": "Treat this workspace as a client-like install target for aidn self-host verification.",
+    "delivery": "Use install and verify flows here before assuming the product root is a valid runtime target.",
+    "additional": []
+  },
+  "dorPolicy": "Self-host workspace changes must keep install, verify, and runtime visibility healthy before broader product changes are accepted.",
+  "runtimePolicy": {
+    "preferredStateMode": "dual",
+    "defaultIndexStore": "dual-sqlite"
+  },
+  "snapshotPolicy": {
+    "trigger": "Update when the self-host workspace baseline or runtime contract changes.",
+    "owner": "Current product maintainer running the self-host check.",
+    "freshnessRule": "Review before using the workspace as a dogfooding target.",
+    "parkingLotRule": "Do not treat this workspace as long-term product memory."
+  },
+  "ciPolicy": {
+    "capacity": []
+  },
+  "sessionPolicy": {
+    "transitionCleanliness": {
+      "enabled": false,
+      "scope": "session-topology",
+      "requiredDecisionOptions": []
+    }
+  },
+  "executionPolicy": {
+    "enabled": false,
+    "evaluationScope": "dispatch-or-local-scope",
+    "escalateOnParallelAttachedCycles": false,
+    "escalateOnSharedIntegrationSurface": false,
+    "hardGates": [],
+    "lightGates": [],
+    "fastPath": {
+      "enabled": false,
+      "maxTouchedFiles": 0,
+      "autoEscalateOnTouchedFileThreshold": false,
+      "autoEscalateOnRequirementScopeDrift": false,
+      "forbidApiContractSchemaSecurityChange": false,
+      "forbidSharedCodegenBoundaryImpact": false,
+      "requireNoContinuityAmbiguity": false
+    },
+    "validationProfiles": {
+      "low": "",
+      "medium": "",
+      "high": ""
+    }
+  },
+  "specializedGates": {
+    "sharedCodegenBoundary": {
+      "enabled": false,
+      "sharedIntegrationSurface": false,
+      "escalateOnMultiAgentOverlap": false,
+      "generatorPaths": [],
+      "requiredEvidence": [],
+      "forbidComponentSpecificGeneratorFixes": false
+    }
+  },
+  "legacyPreserved": {
+    "projectConstraintsBullets": [
+      "Runtime/platform constraints: `Dogfood the installed runtime without mutating the product root.`",
+      "Architecture constraints: `Treat this workspace as a client-like install target for aidn self-host verification.`",
+      "Dependency/data constraints: `TO_DEFINE`",
+      "Delivery constraints (CI/release/compliance): `Use install and verify flows here before assuming the product root is a valid runtime target.`",
+      "Additional local constraints: `none`",
+      "Generated artifact constraints: `TO_DEFINE`",
+      "Testing/regression constraints: `TO_DEFINE`"
+    ],
+    "importedSections": []
+  }
+}

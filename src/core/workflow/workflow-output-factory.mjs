@@ -110,9 +110,10 @@ export function buildRunJsonHookSummary(result) {
   const repairLayerTopFindings = Array.isArray(result.normalized?.repair_layer_top_findings)
     ? result.normalized.repair_layer_top_findings
     : [];
+  const executionFailed = Boolean(result.error?.message) && result.result == null && result.action == null;
   return {
     result: result.result,
-    reason_code: result.error?.message ? "HOOK_COMMAND_FAILED" : null,
+    reason_code: executionFailed ? "HOOK_COMMAND_FAILED" : null,
     state_mode: result.state_mode,
     db_sync_enabled: result.db_sync?.enabled === true,
     db_sync_ok: result.db_sync?.enabled !== true || !result.db_sync?.error,

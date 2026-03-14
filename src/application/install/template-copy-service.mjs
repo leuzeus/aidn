@@ -14,6 +14,7 @@ import {
   renderTemplateVariables,
   writeUtf8,
 } from "./template-io.mjs";
+import { shouldSkipInstallWrite } from "./install-ownership-policy.mjs";
 
 export function shouldRenderTemplate(sourcePath) {
   const base = path.basename(sourcePath).toLowerCase();
@@ -31,6 +32,20 @@ export function copyFile(sourcePath, targetPath, dryRun, templateVars = null, op
     : "";
   const isCustomizable = targetRelative && isCustomizableProjectFile(targetRelative);
   const targetExists = fs.existsSync(targetPath);
+  const ownershipDecision = targetRelative
+    ? shouldSkipInstallWrite(targetRelative, targetExists)
+    : { skip: false, ownership: "managed-copy" };
+
+  if (ownershipDecision.skip) {
+    if (typeof options?.onOwnershipSkip === "function") {
+      options.onOwnershipSkip({
+        targetRelative,
+        targetPath,
+        ownership: ownershipDecision.ownership,
+      });
+    }
+    return;
+  }
 
   if (targetExists && options?.preserveCustomizableFiles === true && isCustomizable) {
     let sourceRendered = null;

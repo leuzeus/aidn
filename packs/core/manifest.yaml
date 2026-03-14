@@ -3,24 +3,26 @@ version: 0.4.0
 
 install:
   copy:
-    - from: template/docs_audit/
+    - from: scaffold/docs_audit/
       to: docs/audit/
     - from: docs/SPEC.md
       to: docs/audit/SPEC.md
-    - from: template/docs_audit/PROJECT_WORKFLOW.md
+    - from: scaffold/docs_audit/PROJECT_WORKFLOW.md
       to: docs/audit/WORKFLOW.md
-    - from: template/codex/skills.yaml
+    - from: scaffold/codex/skills.yaml
       to: .codex/skills.yaml
-    - from: template/codex/
+    - from: scaffold/codex/
       to: .codex/skills/
-    - from: template/codex/README_CodexOnline.md
+    - from: scaffold/codex/README_CodexOnline.md
       to: docs/audit/CODEX_ONLINE.md
+    - from: scaffold/runtime_agents/
+      to: .aidn/runtime/agents/
 
   merge:
-    - from: template/root/AGENTS.md
+    - from: scaffold/root/AGENTS.md
       to: AGENTS.md
       strategy: block
-    - from: template/root/.gitignore.append
+    - from: scaffold/root/.gitignore.append
       to: .gitignore
       strategy: append_unique
 
@@ -33,11 +35,23 @@ verify:
     - docs/audit/WORKFLOW_SUMMARY.md
     - docs/audit/CURRENT-STATE.md
     - docs/audit/RUNTIME-STATE.md
+    - docs/audit/INTEGRATION-RISK.md
+    - docs/audit/HANDOFF-PACKET.md
+    - docs/audit/AGENT-ROSTER.md
+    - docs/audit/AGENT-ADAPTERS.md
+    - docs/audit/AGENT-HEALTH-SUMMARY.md
+    - docs/audit/AGENT-SELECTION-SUMMARY.md
+    - docs/audit/MULTI-AGENT-STATUS.md
+    - docs/audit/COORDINATION-SUMMARY.md
+    - docs/audit/COORDINATION-LOG.md
+    - docs/audit/USER-ARBITRATION.md
     - docs/audit/REANCHOR_PROMPT.md
     - docs/audit/ARTIFACT_MANIFEST.md
+    - .aidn/runtime/agents/example-external-auditor.mjs
     - docs/audit/CONTINUITY_GATE.md
     - docs/audit/RULE_STATE_BOUNDARY.md
     - docs/audit/incidents/TEMPLATE_INC_TMP.md
+    - docs/audit/backlog/TEMPLATE_SESSION_BACKLOG.md
     - docs/audit/baseline/current.md
     - docs/audit/snapshots/context-snapshot.md
     - docs/audit/parking-lot.md

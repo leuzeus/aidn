@@ -16,23 +16,23 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 3) Runtime Session Flow (v0.4.0)
+%% 3) Runtime Session Flow (v0.4.0 workflow baseline)
 flowchart TD
   ST["Session start"] --> CR["context-reload"]
   CR --> RA["Read CURRENT-STATE + WORKFLOW-KERNEL"]
-  RA --> SS["start-session"]
+  RA --> SS["start-session admission"]
   SS --> MODE{"Mode? (R02)"}
 
   MODE -->|THINKING| THINK["Doc/reasoning work"]
   MODE -->|EXPLORING| EXP["Exploration work"]
-  MODE -->|COMMITTING| BCA["branch-cycle-audit (R03)"]
+  MODE -->|COMMITTING| BCA["branch-cycle-audit admission (R03)"]
 
   BCA --> MAP{"Mapping + DoR valid?"}
   MAP -->|No| FIX["Remediate mapping or DoR and reselect mode"]
   FIX --> MODE
   MAP -->|Yes| NEED{"Need new cycle branch?"}
 
-  NEED -->|Yes| CONT{"Continuity gate R06: R1 R2 R3"}
+  NEED -->|Yes| CONT{"cycle-create continuity gate R06: R1 R2 R3"}
   CONT --> CNEW["cycle-create + status continuity fields"]
   CNEW --> PW{"Pre-write gate complete?"}
   NEED -->|No| PW
@@ -43,26 +43,34 @@ flowchart TD
   DIG --> IMPL
 
   THINK --> DRIFT["drift-check when needed (R05)"]
+  EXP --> SPIKE["convert-to-spike admission when exploration becomes non-trivial"]
+  SPIKE --> CONT
   EXP --> DRIFT
-  IMPL --> DRIFT
-  DRIFT --> CLOSE{"Close session now?"}
+  IMPL --> DELTA["requirements-delta admission when scope changes"]
+  DELTA --> DRIFT
+  DRIFT --> CLOSE{"Close, relay, or continue?"}
 
   CLOSE -->|No| LOOP["Continue active work"]
   LOOP --> MODE
+  CLOSE -->|Relay| RELAY["handoff-close + handoff-admit"]
+  RELAY --> END_RELAY["Session paused or relayed"]
 
   CLOSE -->|Yes| RESOLVE["Resolve open cycles R07: integrate report close-non-retained or cancel-close"]
   RESOLVE --> OK{"All open cycles resolved?"}
   OK -->|No - cancel close| LOOP
   OK -->|Yes| CS["close-session + snapshot update"]
+  CS --> PB{"Cycle DONE and ready for baseline?"}
+  PB -->|Yes| PROMO["promote-baseline admission + baseline update"]
+  PB -->|No| PRQ{"PR/merge step required?"}
+  PROMO --> PRQ
 
-  CS --> PRQ{"PR/merge step required?"}
-  PRQ -->|No| END["Session ended"]
+  PRQ -->|No| END_DONE["Session ended"]
   PRQ -->|Yes| PRG["PR review gate R08 with Codex threads triaged"]
   PRG --> MRG["Merge"]
   MRG --> SYNC{"Post-merge local sync gate R09: local vs remote aligned?"}
   SYNC -->|No| REC["Explicit local reconciliation"]
   REC --> SYNC
-  SYNC -->|Yes| END
+  SYNC -->|Yes| END_DONE
 
   MAP --> INC["Incident triage (R10)"]
   CONT --> INC
@@ -77,8 +85,8 @@ flowchart TD
   classDef incident fill:#FFF4F4,stroke:#B42318,color:#7A271A,stroke-width:2px;
 
   class MODE,MAP,NEED,CONT,PW,RT,CLOSE,OK,PRQ,SYNC gate;
-  class ST,CR,RA,SS,THINK,EXP,BCA,FIX,CNEW,DIG,IMPL,DRIFT,LOOP,RESOLVE,CS,PRG,MRG,REC action;
-  class END endnode;
+  class ST,CR,RA,SS,THINK,EXP,BCA,FIX,CNEW,DIG,IMPL,DRIFT,SPIKE,DELTA,LOOP,RELAY,RESOLVE,CS,PROMO,PRG,MRG,REC action;
+  class END_RELAY,END_DONE endnode;
   class INC incident;
 
   linkStyle default stroke:#1E1F5C,stroke-width:2px;

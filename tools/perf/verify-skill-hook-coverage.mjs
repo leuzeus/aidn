@@ -4,7 +4,7 @@ import path from "node:path";
 
 function parseArgs(argv) {
   const args = {
-    root: "template/codex",
+    root: "scaffold/codex",
     json: false,
   };
 
@@ -32,7 +32,7 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-skill-hook-coverage.mjs");
-  console.log("  node tools/perf/verify-skill-hook-coverage.mjs --root template/codex");
+  console.log("  node tools/perf/verify-skill-hook-coverage.mjs --root scaffold/codex");
   console.log("  node tools/perf/verify-skill-hook-coverage.mjs --json");
 }
 
@@ -79,6 +79,7 @@ function main() {
       checkOne(args.root, "close-session/SKILL.md", [wrap("close-session", "<THINKING|EXPLORING|COMMITTING>"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
       checkOne(args.root, "cycle-create/SKILL.md", [wrap("cycle-create", "COMMITTING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
       checkOne(args.root, "cycle-close/SKILL.md", [wrap("cycle-close", "COMMITTING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
+      checkOne(args.root, "handoff-close/SKILL.md", [wrap("handoff-close", "<THINKING|EXPLORING|COMMITTING>"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
       checkOne(args.root, "promote-baseline/SKILL.md", [wrap("promote-baseline", "COMMITTING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
       checkOne(args.root, "requirements-delta/SKILL.md", [wrap("requirements-delta", "COMMITTING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
       checkOne(args.root, "convert-to-spike/SKILL.md", [wrap("convert-to-spike", "EXPLORING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),

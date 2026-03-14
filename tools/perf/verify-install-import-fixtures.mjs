@@ -203,6 +203,48 @@ function runCurrentStateSkillCoverageJson(repoRoot, skillsRoot) {
   }
 }
 
+function runPreWriteAdmitSkillCoverageJson(repoRoot, skillsRoot) {
+  const script = path.resolve(repoRoot, "tools", "perf", "verify-pre-write-admit-skill-coverage.mjs");
+  const result = spawnSync(process.execPath, [
+    script,
+    "--root",
+    skillsRoot,
+    "--json",
+  ], {
+    cwd: repoRoot,
+    env: { ...process.env },
+    encoding: "utf8",
+    timeout: 180000,
+    maxBuffer: 20 * 1024 * 1024,
+  });
+  if ((result.status ?? 1) !== 0) {
+    return {
+      ok: false,
+      status: result.status ?? 1,
+      payload: null,
+      stdout: String(result.stdout ?? ""),
+      stderr: String(result.stderr ?? ""),
+    };
+  }
+  try {
+    return {
+      ok: true,
+      status: 0,
+      payload: JSON.parse(String(result.stdout ?? "{}")),
+      stdout: String(result.stdout ?? ""),
+      stderr: String(result.stderr ?? ""),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 1,
+      payload: null,
+      stdout: String(result.stdout ?? ""),
+      stderr: `invalid pre-write skill coverage JSON: ${error.message}\n${String(result.stderr ?? "")}`,
+    };
+  }
+}
+
 function runCurrentStateConsistencyJson(repoRoot, targetRoot) {
   const script = path.resolve(repoRoot, "tools", "perf", "verify-current-state-consistency.mjs");
   const result = spawnSync(process.execPath, [
@@ -283,6 +325,16 @@ function collectReanchorArtifactDetails(target) {
     workflow_kernel_exists: fs.existsSync(path.join(auditRoot, "WORKFLOW-KERNEL.md")),
     current_state_exists: fs.existsSync(path.join(auditRoot, "CURRENT-STATE.md")),
     runtime_state_exists: fs.existsSync(path.join(auditRoot, "RUNTIME-STATE.md")),
+    integration_risk_exists: fs.existsSync(path.join(auditRoot, "INTEGRATION-RISK.md")),
+    handoff_packet_exists: fs.existsSync(path.join(auditRoot, "HANDOFF-PACKET.md")),
+    agent_roster_exists: fs.existsSync(path.join(auditRoot, "AGENT-ROSTER.md")),
+    agent_adapters_exists: fs.existsSync(path.join(auditRoot, "AGENT-ADAPTERS.md")),
+    agent_health_summary_exists: fs.existsSync(path.join(auditRoot, "AGENT-HEALTH-SUMMARY.md")),
+    agent_selection_summary_exists: fs.existsSync(path.join(auditRoot, "AGENT-SELECTION-SUMMARY.md")),
+    multi_agent_status_exists: fs.existsSync(path.join(auditRoot, "MULTI-AGENT-STATUS.md")),
+    example_external_agent_exists: fs.existsSync(path.join(target, ".aidn", "runtime", "agents", "example-external-auditor.mjs")),
+    coordination_summary_exists: fs.existsSync(path.join(auditRoot, "COORDINATION-SUMMARY.md")),
+    user_arbitration_exists: fs.existsSync(path.join(auditRoot, "USER-ARBITRATION.md")),
     reanchor_prompt_exists: fs.existsSync(path.join(auditRoot, "REANCHOR_PROMPT.md")),
     artifact_manifest_exists: fs.existsSync(path.join(auditRoot, "ARTIFACT_MANIFEST.md")),
     codex_online_exists: fs.existsSync(path.join(auditRoot, "CODEX_ONLINE.md")),
@@ -300,6 +352,7 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const config = readConfigSafe(configPath);
   const reanchor = collectReanchorArtifactDetails(target);
   const skillCoverage = runCurrentStateSkillCoverageJson(repoRoot, installedSkillsRoot);
+  const preWriteSkillCoverage = runPreWriteAdmitSkillCoverageJson(repoRoot, installedSkillsRoot);
   const currentStateConsistency = runCurrentStateConsistencyJson(repoRoot, target);
   return {
     name: "default_dual_mode",
@@ -315,6 +368,8 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       && Object.values(reanchor).every((value) => value === true)
       && skillCoverage.ok
       && skillCoverage.payload?.pass === true
+      && preWriteSkillCoverage.ok
+      && preWriteSkillCoverage.payload?.pass === true
       && currentStateConsistency.ok
       && currentStateConsistency.payload?.pass === true,
     details: {
@@ -330,6 +385,9 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       current_state_skill_coverage_ok: skillCoverage.ok,
       current_state_skill_coverage_pass: skillCoverage.payload?.pass ?? false,
       current_state_skill_coverage_stderr_tail: tail(skillCoverage.stderr),
+      pre_write_skill_coverage_ok: preWriteSkillCoverage.ok,
+      pre_write_skill_coverage_pass: preWriteSkillCoverage.payload?.pass ?? false,
+      pre_write_skill_coverage_stderr_tail: tail(preWriteSkillCoverage.stderr),
       current_state_consistency_ok: currentStateConsistency.ok,
       current_state_consistency_pass: currentStateConsistency.payload?.pass ?? false,
       current_state_consistency_stderr_tail: tail(currentStateConsistency.stderr),
@@ -346,6 +404,7 @@ function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const config = readConfigSafe(configPath);
   const reanchor = collectReanchorArtifactDetails(target);
   const skillCoverage = runCurrentStateSkillCoverageJson(repoRoot, installedSkillsRoot);
+  const preWriteSkillCoverage = runPreWriteAdmitSkillCoverageJson(repoRoot, installedSkillsRoot);
   const currentStateConsistency = runCurrentStateConsistencyJson(repoRoot, target);
   return {
     name: "env_state_mode_db_only",
@@ -359,6 +418,8 @@ function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       && Object.values(reanchor).every((value) => value === true)
       && skillCoverage.ok
       && skillCoverage.payload?.pass === true
+      && preWriteSkillCoverage.ok
+      && preWriteSkillCoverage.payload?.pass === true
       && currentStateConsistency.ok
       && currentStateConsistency.payload?.pass === true,
     details: {
@@ -372,6 +433,9 @@ function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       current_state_skill_coverage_ok: skillCoverage.ok,
       current_state_skill_coverage_pass: skillCoverage.payload?.pass ?? false,
       current_state_skill_coverage_stderr_tail: tail(skillCoverage.stderr),
+      pre_write_skill_coverage_ok: preWriteSkillCoverage.ok,
+      pre_write_skill_coverage_pass: preWriteSkillCoverage.payload?.pass ?? false,
+      pre_write_skill_coverage_stderr_tail: tail(preWriteSkillCoverage.stderr),
       current_state_consistency_ok: currentStateConsistency.ok,
       current_state_consistency_pass: currentStateConsistency.payload?.pass ?? false,
       current_state_consistency_stderr_tail: tail(currentStateConsistency.stderr),
@@ -392,6 +456,7 @@ function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const config = readConfigSafe(configPath);
   const reanchor = collectReanchorArtifactDetails(target);
   const skillCoverage = runCurrentStateSkillCoverageJson(repoRoot, installedSkillsRoot);
+  const preWriteSkillCoverage = runPreWriteAdmitSkillCoverageJson(repoRoot, installedSkillsRoot);
   const currentStateConsistency = runCurrentStateConsistencyJson(repoRoot, target);
   return {
     name: "env_index_store_over_state_mode",
@@ -406,6 +471,8 @@ function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       && Object.values(reanchor).every((value) => value === true)
       && skillCoverage.ok
       && skillCoverage.payload?.pass === true
+      && preWriteSkillCoverage.ok
+      && preWriteSkillCoverage.payload?.pass === true
       && currentStateConsistency.ok
       && currentStateConsistency.payload?.pass === true,
     details: {
@@ -420,6 +487,9 @@ function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       current_state_skill_coverage_ok: skillCoverage.ok,
       current_state_skill_coverage_pass: skillCoverage.payload?.pass ?? false,
       current_state_skill_coverage_stderr_tail: tail(skillCoverage.stderr),
+      pre_write_skill_coverage_ok: preWriteSkillCoverage.ok,
+      pre_write_skill_coverage_pass: preWriteSkillCoverage.payload?.pass ?? false,
+      pre_write_skill_coverage_stderr_tail: tail(preWriteSkillCoverage.stderr),
       current_state_consistency_ok: currentStateConsistency.ok,
       current_state_consistency_pass: currentStateConsistency.payload?.pass ?? false,
       current_state_consistency_stderr_tail: tail(currentStateConsistency.stderr),
@@ -441,6 +511,7 @@ function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const checkpoint = runCheckpointJson(repoRoot, target);
   const reanchor = collectReanchorArtifactDetails(target);
   const skillCoverage = runCurrentStateSkillCoverageJson(repoRoot, installedSkillsRoot);
+  const preWriteSkillCoverage = runPreWriteAdmitSkillCoverageJson(repoRoot, installedSkillsRoot);
   const currentStateConsistency = runCurrentStateConsistencyJson(repoRoot, target);
   return {
     name: "cli_override_artifact_import_store",
@@ -459,6 +530,8 @@ function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       && Object.values(reanchor).every((value) => value === true)
       && skillCoverage.ok
       && skillCoverage.payload?.pass === true
+      && preWriteSkillCoverage.ok
+      && preWriteSkillCoverage.payload?.pass === true
       && currentStateConsistency.ok
       && currentStateConsistency.payload?.pass === true,
     details: {
@@ -478,6 +551,9 @@ function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       current_state_skill_coverage_ok: skillCoverage.ok,
       current_state_skill_coverage_pass: skillCoverage.payload?.pass ?? false,
       current_state_skill_coverage_stderr_tail: tail(skillCoverage.stderr),
+      pre_write_skill_coverage_ok: preWriteSkillCoverage.ok,
+      pre_write_skill_coverage_pass: preWriteSkillCoverage.payload?.pass ?? false,
+      pre_write_skill_coverage_stderr_tail: tail(preWriteSkillCoverage.stderr),
       current_state_consistency_ok: currentStateConsistency.ok,
       current_state_consistency_pass: currentStateConsistency.payload?.pass ?? false,
       current_state_consistency_stderr_tail: tail(currentStateConsistency.stderr),
@@ -495,6 +571,7 @@ function checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const config = readConfigSafe(configPath);
   const reanchor = collectReanchorArtifactDetails(target);
   const skillCoverage = runCurrentStateSkillCoverageJson(repoRoot, installedSkillsRoot);
+  const preWriteSkillCoverage = runPreWriteAdmitSkillCoverageJson(repoRoot, installedSkillsRoot);
   const currentStateConsistency = runCurrentStateConsistencyJson(repoRoot, target);
   return {
     name: "explicit_skip_artifact_import",
@@ -508,6 +585,8 @@ function checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       && Object.values(reanchor).every((value) => value === true)
       && skillCoverage.ok
       && skillCoverage.payload?.pass === true
+      && preWriteSkillCoverage.ok
+      && preWriteSkillCoverage.payload?.pass === true
       && currentStateConsistency.ok
       && currentStateConsistency.payload?.pass === true,
     details: {
@@ -521,6 +600,9 @@ function checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       current_state_skill_coverage_ok: skillCoverage.ok,
       current_state_skill_coverage_pass: skillCoverage.payload?.pass ?? false,
       current_state_skill_coverage_stderr_tail: tail(skillCoverage.stderr),
+      pre_write_skill_coverage_ok: preWriteSkillCoverage.ok,
+      pre_write_skill_coverage_pass: preWriteSkillCoverage.payload?.pass ?? false,
+      pre_write_skill_coverage_stderr_tail: tail(preWriteSkillCoverage.stderr),
       current_state_consistency_ok: currentStateConsistency.ok,
       current_state_consistency_pass: currentStateConsistency.payload?.pass ?? false,
       current_state_consistency_stderr_tail: tail(currentStateConsistency.stderr),

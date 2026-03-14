@@ -31,11 +31,11 @@ npm run perf:verify-reanchor-template
 
 Checks:
 
-- `template/docs_audit/WORKFLOW-KERNEL.md`
-- `template/docs_audit/CURRENT-STATE.md`
-- `template/docs_audit/RUNTIME-STATE.md`
-- `template/docs_audit/REANCHOR_PROMPT.md`
-- `template/docs_audit/ARTIFACT_MANIFEST.md`
+- `scaffold/docs_audit/WORKFLOW-KERNEL.md`
+- `scaffold/docs_audit/CURRENT-STATE.md`
+- `scaffold/docs_audit/RUNTIME-STATE.md`
+- `scaffold/docs_audit/REANCHOR_PROMPT.md`
+- `scaffold/docs_audit/ARTIFACT_MANIFEST.md`
 - references from summary, adapter, index, `AGENTS.md`, and Codex notes
 
 ### Installed Fixture Re-Anchor Files
@@ -87,7 +87,7 @@ This runs both:
 Template skills:
 
 ```bash
-npm run perf:verify-current-state-skill-coverage -- --root template/codex
+npm run perf:verify-current-state-skill-coverage -- --root scaffold/codex
 ```
 
 Installed skills:
@@ -122,9 +122,9 @@ Each scenario now also checks:
 
 Run the full check set before:
 
-- changing `template/docs_audit/*`
-- changing `template/root/AGENTS.md`
-- changing `template/codex/*`
+- changing `scaffold/docs_audit/*`
+- changing `scaffold/root/AGENTS.md`
+- changing `scaffold/codex/*`
 - changing install/import behavior
 - changing pack manifests that affect installed workflow files
 - preparing a release that touches workflow resilience

@@ -17,7 +17,7 @@ Priority: high
 
 Files:
 
-- `template/docs_audit/WORKFLOW-KERNEL.md`
+- `scaffold/docs_audit/WORKFLOW-KERNEL.md`
 
 Why:
 
@@ -36,7 +36,7 @@ Priority: high
 
 Files:
 
-- `template/docs_audit/CURRENT-STATE.md`
+- `scaffold/docs_audit/CURRENT-STATE.md`
 
 Why:
 
@@ -55,7 +55,7 @@ Priority: high
 
 Files:
 
-- `template/docs_audit/REANCHOR_PROMPT.md`
+- `scaffold/docs_audit/REANCHOR_PROMPT.md`
 
 Why:
 
@@ -74,7 +74,7 @@ Priority: medium
 
 Files:
 
-- `template/docs_audit/ARTIFACT_MANIFEST.md`
+- `scaffold/docs_audit/ARTIFACT_MANIFEST.md`
 
 Why:
 
@@ -91,7 +91,7 @@ Priority: high
 
 Files:
 
-- `template/docs_audit/WORKFLOW_SUMMARY.md`
+- `scaffold/docs_audit/WORKFLOW_SUMMARY.md`
 
 Why:
 
@@ -110,7 +110,7 @@ Priority: medium
 
 Files:
 
-- `template/docs_audit/index.md`
+- `scaffold/docs_audit/index.md`
 
 Why:
 
@@ -127,7 +127,7 @@ Priority: high
 
 Files:
 
-- `template/root/AGENTS.md`
+- `scaffold/root/AGENTS.md`
 
 Why:
 
@@ -146,9 +146,9 @@ Priority: high
 
 Files:
 
-- `template/root/AGENTS.md`
-- `template/docs_audit/WORKFLOW-KERNEL.md`
-- `template/docs_audit/WORKFLOW_SUMMARY.md`
+- `scaffold/root/AGENTS.md`
+- `scaffold/docs_audit/WORKFLOW-KERNEL.md`
+- `scaffold/docs_audit/WORKFLOW_SUMMARY.md`
 
 Why:
 
@@ -165,7 +165,7 @@ Priority: medium
 
 Files:
 
-- `template/docs_audit/CURRENT-STATE.md`
+- `scaffold/docs_audit/CURRENT-STATE.md`
 - or a dedicated runtime digest artifact if needed
 
 Why:
@@ -188,8 +188,8 @@ Priority: high
 
 Files:
 
-- `template/root/AGENTS.md`
-- `template/docs_audit/REANCHOR_PROMPT.md`
+- `scaffold/root/AGENTS.md`
+- `scaffold/docs_audit/REANCHOR_PROMPT.md`
 
 Why:
 

@@ -7,7 +7,10 @@ const SKILL_SPECS = [
     name: "start-session",
     required: [
       "docs/audit/CURRENT-STATE.md",
-      "Only create/update session file and `docs/audit/CURRENT-STATE.md`.",
+      "Only create/update session file",
+      "npx aidn runtime session-plan --target .",
+      "active_backlog",
+      "preferred_dispatch_source=shared_planning",
     ],
   },
   {
@@ -23,6 +26,8 @@ const SKILL_SPECS = [
     required: [
       "Keep `docs/audit/CURRENT-STATE.md` summary-only if updated.",
       "Update `docs/audit/CURRENT-STATE.md`:",
+      "backlog_selected_execution_scope=new_cycle",
+      "npx aidn runtime session-plan --target . --selected-execution-scope new_cycle --promote --json",
     ],
   },
   {
@@ -67,11 +72,22 @@ const SKILL_SPECS = [
       "update `docs/audit/CURRENT-STATE.md` when present",
     ],
   },
+  {
+    name: "handoff-close",
+    required: [
+      "Keep `docs/audit/CURRENT-STATE.md` summary-only if updated.",
+      "Update `docs/audit/CURRENT-STATE.md` when present:",
+      "next agent goal",
+      "npx aidn runtime session-plan --target .",
+      "backlog_refs",
+      "preferred_dispatch_source",
+    ],
+  },
 ];
 
 function parseArgs(argv) {
   const args = {
-    root: "template/codex",
+    root: "scaffold/codex",
     json: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -97,7 +113,7 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-current-state-skill-coverage.mjs");
-  console.log("  node tools/perf/verify-current-state-skill-coverage.mjs --root template/codex --json");
+  console.log("  node tools/perf/verify-current-state-skill-coverage.mjs --root scaffold/codex --json");
   console.log("  node tools/perf/verify-current-state-skill-coverage.mjs --root tests/fixtures/repo-installed-core/.codex/skills --json");
 }
 

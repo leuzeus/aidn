@@ -1,6 +1,7 @@
 import {
   normalizeIndexStoreMode,
   normalizeStateMode,
+  resolveConfigSourceBranch,
   stateModeFromIndexStore,
 } from "../../lib/config/aidn-config-lib.mjs";
 
@@ -18,6 +19,9 @@ export function buildNextAidnProjectConfig(existingData, defaults, args) {
   if (!base.runtime || typeof base.runtime !== "object" || Array.isArray(base.runtime)) {
     base.runtime = {};
   }
+  if (!base.workflow || typeof base.workflow !== "object" || Array.isArray(base.workflow)) {
+    base.workflow = {};
+  }
 
   const explicitStore = normalizeIndexStoreMode(args?.artifactImportStore);
   if (explicitStore) {
@@ -34,6 +38,11 @@ export function buildNextAidnProjectConfig(existingData, defaults, args) {
 
   if (!normalizeStateMode(base.profile)) {
     base.profile = base.runtime.stateMode;
+  }
+
+  const resolvedSourceBranch = String(args?.sourceBranch ?? "").trim() || resolveConfigSourceBranch(base) || "";
+  if (resolvedSourceBranch) {
+    base.workflow.sourceBranch = resolvedSourceBranch;
   }
 
   return base;

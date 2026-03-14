@@ -14,7 +14,7 @@ const MUTATING_SKILLS = [
 
 function parseArgs(argv) {
   const args = {
-    root: "template/codex",
+    root: "scaffold/codex",
     json: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -40,7 +40,7 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-db-first-sync-coverage.mjs");
-  console.log("  node tools/perf/verify-db-first-sync-coverage.mjs --root template/codex --json");
+  console.log("  node tools/perf/verify-db-first-sync-coverage.mjs --root scaffold/codex --json");
 }
 
 function checkSkill(root, skill) {
@@ -61,6 +61,9 @@ function checkSkill(root, skill) {
     "falls back to full sync when needed",
     "npx aidn runtime db-first-artifact --target . --path <relative-audit-path> --source-file <file> --json",
   ];
+  if (skill === "start-session" || skill === "handoff-close") {
+    required.push("npx aidn runtime session-plan --target . --promote --state-mode <files|dual|db-only> --json");
+  }
   const missing = required.filter((pattern) => !text.includes(pattern));
   return {
     skill,

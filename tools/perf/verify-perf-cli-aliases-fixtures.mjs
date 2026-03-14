@@ -499,6 +499,13 @@ function main() {
       runtimeStateAliasFile,
       "--json",
     ], targetRoot);
+    const arbitrationSuggestionAlias = runNodeWithJson(aidnCli, [
+      "runtime",
+      "coordinator-suggest-arbitration",
+      "--target",
+      ".",
+      "--json",
+    ], targetRoot);
 
     const constraintSummaryContainsActive = fs.existsSync(constraintSummaryFile)
       && fs.readFileSync(constraintSummaryFile, "utf8").includes("Active constraint:");
@@ -537,6 +544,7 @@ function main() {
       && typeof indexSyncThresholds?.summary?.overall_status === "string"
       && typeof runtimeStateAlias?.digest?.runtime_state_mode === "string"
       && typeof runtimeStateAlias?.digest?.current_state_freshness === "string"
+      && typeof arbitrationSuggestionAlias?.preferred_decision === "string"
       && fs.existsSync(sqliteFile)
       && fs.existsSync(canonicalCheckFile)
       && fs.existsSync(canonicalSummaryFile)
@@ -613,6 +621,7 @@ function main() {
         index_sync_thresholds_status: indexSyncThresholds?.summary?.overall_status ?? null,
         runtime_state_alias_mode: runtimeStateAlias?.digest?.runtime_state_mode ?? null,
         runtime_state_alias_freshness: runtimeStateAlias?.digest?.current_state_freshness ?? null,
+        arbitration_suggestion_preferred_decision: arbitrationSuggestionAlias?.preferred_decision ?? null,
       },
       pass,
     };

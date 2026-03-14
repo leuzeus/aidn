@@ -65,6 +65,50 @@ function extractSessionField(text, fieldName) {
   return match ? match[1].trim() : null;
 }
 
+function hasSessionField(text, fieldName) {
+  if (typeof text !== "string" || text.length === 0) {
+    return false;
+  }
+  const pattern = new RegExp(`^[-*]?\\s*${fieldName}:\\s*`, "im");
+  return pattern.test(text);
+}
+
+function extractSessionListField(text, fieldName, itemExtractor = (value) => splitEntityList(value)) {
+  if (typeof text !== "string" || text.length === 0) {
+    return [];
+  }
+  const lines = String(text).split(/\r?\n/);
+  const items = [];
+  const inlinePattern = new RegExp(`^[-*]?\\s*${fieldName}:\\s*(.*)$`, "i");
+  let collecting = false;
+
+  for (const line of lines) {
+    const inlineMatch = line.match(inlinePattern);
+    if (!collecting && inlineMatch) {
+      const remainder = String(inlineMatch[1] ?? "").trim();
+      if (remainder.length > 0) {
+        items.push(...itemExtractor(remainder));
+        break;
+      }
+      collecting = true;
+      continue;
+    }
+    if (!collecting) {
+      continue;
+    }
+    if (/^##\s+/.test(line) || /^[-*]?\s*[a-zA-Z0-9_]+:\s*/.test(line)) {
+      break;
+    }
+    const bulletMatch = line.match(/^\s*-\s+(.+)$/);
+    if (!bulletMatch) {
+      continue;
+    }
+    items.push(...itemExtractor(String(bulletMatch[1] ?? "").trim()));
+  }
+
+  return Array.from(new Set(items.map((item) => String(item ?? "").trim()).filter(Boolean)));
+}
+
 function extractSessionMode(text) {
   if (typeof text !== "string" || text.length === 0) {
     return null;
@@ -95,21 +139,35 @@ function parseSessionMetadata(text) {
   const branchKind = extractSessionField(text, "branch_kind");
   const cycleBranch = extractSessionField(text, "cycle_branch");
   const intermediateBranch = extractSessionField(text, "intermediate_branch");
-  const integrationTargetCycle = extractSessionField(text, "integration_target_cycle");
-  const attachedCyclesRaw = extractSessionField(text, "attached_cycles");
-  const reportedFromPreviousSession = extractSessionField(text, "reported_from_previous_session");
+  const integrationTargetCycleLegacy = extractSessionField(text, "integration_target_cycle");
+  const integrationTargetCycles = extractSessionListField(text, "integration_target_cycles", (value) =>
+    extractCycleIdsFromText(splitEntityList(value).join(" ")));
+  const primaryFocusCycleRaw = extractSessionField(text, "primary_focus_cycle");
+  const attachedCycles = extractSessionListField(text, "attached_cycles", (value) =>
+    extractCycleIdsFromText(splitEntityList(value).join(" ")));
+  const reportedCycles = extractSessionListField(text, "reported_from_previous_session", (value) =>
+    extractCycleIdsFromText(splitEntityList(value).join(" ")));
   const carryOverPending = extractSessionField(text, "carry_over_pending");
   const sessionMode = extractSessionMode(text);
-  const attachedCycles = extractCycleIdsFromText(splitEntityList(attachedCyclesRaw).join(" "));
-  const reportedCycles = extractCycleIdsFromText(splitEntityList(reportedFromPreviousSession).join(" "));
-  const cycleBranchCycles = extractCycleIdsFromText([cycleBranch, intermediateBranch, integrationTargetCycle].filter(Boolean).join(" "));
+  const legacyIntegrationTargetCycles = extractCycleIdsFromText(splitEntityList(integrationTargetCycleLegacy).join(" "));
+  const effectiveIntegrationTargetCycles = integrationTargetCycles.length > 0
+    ? integrationTargetCycles
+    : legacyIntegrationTargetCycles;
+  const primaryFocusCycle = extractCycleIdsFromText(primaryFocusCycleRaw ?? "").at(0)
+    ?? (effectiveIntegrationTargetCycles.length === 1 ? effectiveIntegrationTargetCycles[0] : null);
+  const cycleBranchCycles = extractCycleIdsFromText([cycleBranch, intermediateBranch].filter(Boolean).join(" "));
   return {
     session_branch: sessionBranch,
     parent_session: parentSession,
     branch_kind: branchKind,
     cycle_branch: cycleBranch,
     intermediate_branch: intermediateBranch,
-    integration_target_cycle: integrationTargetCycle,
+    integration_target_cycle: primaryFocusCycle ?? (legacyIntegrationTargetCycles.length === 1 ? integrationTargetCycleLegacy : null),
+    integration_target_cycles: effectiveIntegrationTargetCycles,
+    integration_target_cycles_declared: hasSessionField(text, "integration_target_cycles"),
+    primary_focus_cycle: primaryFocusCycle,
+    legacy_integration_target_cycle: integrationTargetCycleLegacy,
+    legacy_multi_target_scalar: integrationTargetCycles.length === 0 && legacyIntegrationTargetCycles.length > 1,
     attached_cycles: attachedCycles,
     reported_cycles: reportedCycles,
     branch_cycles: cycleBranchCycles,
@@ -197,8 +255,8 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
       return;
     }
     const preferRow = isPreferredSessionSource(row, previous);
-    sessionsMap.set(row.session_id, {
-      ...previous,
+      sessionsMap.set(row.session_id, {
+        ...previous,
       branch_name: preferRow ? (row.branch_name ?? previous.branch_name ?? null) : (previous.branch_name ?? row.branch_name ?? null),
       state: preferRow ? (row.state ?? previous.state ?? null) : (previous.state ?? row.state ?? null),
       owner: preferRow ? (row.owner ?? previous.owner ?? null) : (previous.owner ?? row.owner ?? null),
@@ -392,10 +450,14 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
     if (artifact.kind === "session" && artifact.session_id) {
       const metadata = parseSessionMetadata(text);
       const attachedCycles = metadata.attached_cycles;
+      const integrationTargetCycles = metadata.integration_target_cycles;
       const sessionBranch = metadata.session_branch ?? extractSessionField(text, "branch");
       const branchCycleCandidates = metadata.branch_cycles;
       const reportedCycles = metadata.reported_cycles;
-      const candidateCycleSet = new Set([...attachedCycles, ...branchCycleCandidates, ...reportedCycles]);
+      const explicitTopologyCycles = new Set([...attachedCycles, ...integrationTargetCycles]);
+      const suppressImplicitAmbiguity = attachedCycles.length > 0 || metadata.integration_target_cycles_declared || metadata.legacy_multi_target_scalar;
+      const implicitCandidateCycleSet = new Set([...branchCycleCandidates, ...reportedCycles]);
+      const candidateCycleSet = new Set([...explicitTopologyCycles, ...implicitCandidateCycleSet]);
       addSession({
         session_id: artifact.session_id,
         branch_name: sessionBranch,
@@ -405,7 +467,7 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
         branch_kind: metadata.branch_kind ?? null,
         cycle_branch: metadata.cycle_branch ?? null,
         intermediate_branch: metadata.intermediate_branch ?? null,
-        integration_target_cycle: metadata.integration_target_cycle ?? null,
+        integration_target_cycle: metadata.primary_focus_cycle ?? metadata.integration_target_cycle ?? null,
         carry_over_pending: metadata.carry_over_pending ?? null,
         started_at: null,
         ended_at: null,
@@ -468,6 +530,20 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
           });
         }
       }
+      if (metadata.legacy_multi_target_scalar) {
+        addFinding({
+          migration_run_id: "repair-layer-v1",
+          severity: "info",
+          finding_type: "SESSION_METADATA_NORMALIZATION_RECOMMENDED",
+          entity_type: "session",
+          entity_id: artifact.session_id,
+          artifact_path: artifact.path,
+          message: "Session uses comma-separated legacy integration_target_cycle; prefer integration_target_cycles for explicit multi-cycle topology.",
+          confidence: 0.95,
+          suggested_action: "Replace legacy integration_target_cycle with integration_target_cycles and optional primary_focus_cycle.",
+          created_at: artifact.updated_at ?? now,
+        });
+      }
       for (const cycleId of attachedCycles) {
         addSessionCycleLink({
           session_id: artifact.session_id,
@@ -491,8 +567,8 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
           });
         }
       }
-      if (attachedCycles.length === 0 && candidateCycleSet.size === 1) {
-        const [onlyCycleId] = Array.from(candidateCycleSet);
+      if (!suppressImplicitAmbiguity && attachedCycles.length === 0 && implicitCandidateCycleSet.size === 1) {
+        const [onlyCycleId] = Array.from(implicitCandidateCycleSet);
         addSessionCycleLink({
           session_id: artifact.session_id,
           cycle_id: onlyCycleId,
@@ -503,8 +579,8 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
           updated_at: artifact.updated_at ?? now,
         });
       }
-      if (attachedCycles.length === 0 && candidateCycleSet.size > 1) {
-        const candidateCycleIds = Array.from(candidateCycleSet).sort((a, b) => a.localeCompare(b));
+      if (!suppressImplicitAmbiguity && attachedCycles.length === 0 && implicitCandidateCycleSet.size > 1) {
+        const candidateCycleIds = Array.from(implicitCandidateCycleSet).sort((a, b) => a.localeCompare(b));
         for (const cycleId of candidateCycleIds) {
           addSessionCycleLink({
             session_id: artifact.session_id,
@@ -535,7 +611,7 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
             artifact_path: artifact.path,
             message: `Session has multiple candidate cycles: ${effectiveCycleIds.join(", ")}.`,
             confidence: 0.4,
-            suggested_action: "Resolve attached_cycles or integration_target_cycle explicitly in the session artifact.",
+            suggested_action: "Resolve attached_cycles or integration_target_cycles explicitly in the session artifact, and use primary_focus_cycle only when one local focus is required.",
             created_at: artifact.updated_at ?? now,
           });
         }
@@ -568,21 +644,18 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
           updated_at: artifact.updated_at ?? now,
         });
       }
-      if (metadata.integration_target_cycle) {
-        const targetCycleIds = extractCycleIdsFromText(metadata.integration_target_cycle);
-        for (const cycleId of targetCycleIds) {
-          addSessionCycleLink({
-            session_id: artifact.session_id,
-            cycle_id: cycleId,
-            relation_type: "integration_target_cycle",
-            confidence: 0.95,
-            inference_source: "session_integration_target_cycle",
-            source_mode: "explicit",
-            updated_at: artifact.updated_at ?? now,
-          });
-        }
+      for (const cycleId of integrationTargetCycles) {
+        addSessionCycleLink({
+          session_id: artifact.session_id,
+          cycle_id: cycleId,
+          relation_type: "integration_target_cycle",
+          confidence: 0.95,
+          inference_source: "session_integration_target_cycle",
+          source_mode: "explicit",
+          updated_at: artifact.updated_at ?? now,
+        });
       }
-      if (!sessionBranch || attachedCycles.length === 0) {
+      if (!sessionBranch || (!suppressImplicitAmbiguity && explicitTopologyCycles.size === 0)) {
         addFinding({
           migration_run_id: "repair-layer-v1",
           severity: "info",
@@ -590,9 +663,9 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
           entity_type: "session",
           entity_id: artifact.session_id,
           artifact_path: artifact.path,
-          message: "Session artifact is missing session_branch or attached_cycles metadata.",
+          message: "Session artifact is missing session_branch or explicit multi-cycle topology metadata.",
           confidence: 1.0,
-          suggested_action: "Complete session metadata to improve inferred session and cycle links.",
+          suggested_action: "Complete session metadata with session_branch plus attached_cycles or integration_target_cycles.",
           created_at: artifact.updated_at ?? now,
         });
       }

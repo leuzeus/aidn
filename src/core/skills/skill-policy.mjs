@@ -4,15 +4,16 @@ export const VALID_SKILL_HOOK_MODES = new Set(["THINKING", "EXPLORING", "COMMITT
 
 export const SKILL_ROUTES = {
   "context-reload": { tool: "reload-check.mjs", defaultMode: "THINKING" },
-  "branch-cycle-audit": { tool: "gating-evaluate.mjs", defaultMode: "COMMITTING" },
+  "branch-cycle-audit": { tool: "branch-cycle-audit-hook.mjs", defaultMode: "COMMITTING" },
   "drift-check": { tool: "gating-evaluate.mjs", defaultMode: "COMMITTING" },
-  "start-session": { tool: "workflow-hook.mjs", fixedArgs: ["--phase", "session-start"], defaultMode: "UNKNOWN" },
-  "close-session": { tool: "workflow-hook.mjs", fixedArgs: ["--phase", "session-close"], defaultMode: "UNKNOWN" },
-  "cycle-create": { tool: "checkpoint.mjs", defaultMode: "COMMITTING" },
+  "start-session": { tool: "start-session-hook.mjs", defaultMode: "UNKNOWN" },
+  "close-session": { tool: "close-session-hook.mjs", defaultMode: "UNKNOWN" },
+  "cycle-create": { tool: "cycle-create-hook.mjs", defaultMode: "COMMITTING" },
   "cycle-close": { tool: "checkpoint.mjs", defaultMode: "COMMITTING" },
-  "promote-baseline": { tool: "checkpoint.mjs", defaultMode: "COMMITTING" },
-  "requirements-delta": { tool: "checkpoint.mjs", defaultMode: "COMMITTING" },
-  "convert-to-spike": { tool: "checkpoint.mjs", defaultMode: "EXPLORING" },
+  "promote-baseline": { tool: "promote-baseline-hook.mjs", defaultMode: "COMMITTING" },
+  "requirements-delta": { tool: "requirements-delta-hook.mjs", defaultMode: "COMMITTING" },
+  "convert-to-spike": { tool: "convert-to-spike-hook.mjs", defaultMode: "EXPLORING" },
+  "handoff-close": { tool: "handoff-close-hook.mjs", defaultMode: "UNKNOWN" },
 };
 
 export const MUTATING_SKILLS = new Set([
@@ -23,6 +24,7 @@ export const MUTATING_SKILLS = new Set([
   "promote-baseline",
   "requirements-delta",
   "convert-to-spike",
+  "handoff-close",
 ]);
 
 export function assertSupportedSkill(skill) {
