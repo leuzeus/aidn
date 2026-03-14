@@ -132,6 +132,51 @@ function buildRoleBlockedFixture(targetRoot, repoRoot, handoffProjectScript) {
   ].join("\n"), "utf8");
 }
 
+function installSharedPlanningFixture(targetRoot) {
+  const currentStateFile = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
+  const currentStateText = fs.readFileSync(currentStateFile, "utf8");
+  fs.writeFileSync(currentStateFile, currentStateText.replace(
+    "first_plan_step: implement alpha feature validation",
+    [
+      "first_plan_step: implement alpha feature validation",
+      "active_backlog: backlog/BL-S101-session-planning.md",
+      "backlog_status: promoted",
+      "backlog_next_step: implement alpha feature validation",
+      "planning_arbitration_status: none",
+    ].join("\n"),
+  ), "utf8");
+  const backlogDir = path.join(targetRoot, "docs", "audit", "backlog");
+  fs.mkdirSync(backlogDir, { recursive: true });
+  fs.writeFileSync(path.join(backlogDir, "BL-S101-session-planning.md"), [
+    "# Session Backlog - S101",
+    "",
+    "## Summary",
+    "",
+    "updated_at: 2026-03-09T01:03:00Z",
+    "session_id: S101",
+    "session_branch: S101-alpha",
+    "mode: COMMITTING",
+    "planning_status: promoted",
+    "linked_cycles: C101",
+    "dispatch_ready: yes",
+    "planning_arbitration_status: none",
+    "next_dispatch_scope: cycle",
+    "next_dispatch_action: implement",
+    "backlog_next_step: implement alpha feature validation",
+    "",
+    "## Backlog Items",
+    "",
+    "backlog_items:",
+    "- implement alpha feature validation",
+    "",
+    "## Open Questions",
+    "",
+    "open_questions:",
+    "- none",
+    "",
+  ].join("\n"), "utf8");
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -157,6 +202,8 @@ function main() {
     initGitRepo(resumedTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(roleBlockedTarget, { workingBranch: "feature/C101-alpha" });
 
+    installSharedPlanningFixture(readyTarget);
+    installSharedPlanningFixture(resumedTarget);
     runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     buildEscalatedFixture(escalatedTarget, repoRoot, handoffProjectScript, summaryScript);
     buildEscalatedFixture(resumedTarget, repoRoot, handoffProjectScript, summaryScript);
@@ -175,6 +222,8 @@ function main() {
     assert(dryRun.iterations_completed === 0, "dry-run should not execute iterations");
     assert(Array.isArray(dryRun.runs) && dryRun.runs.length === 0, "dry-run should not produce executed runs");
     assert(dryRun.initial_preview.resume_status === "ready", "dry-run should preview a ready resume");
+    assert(dryRun.preferred_dispatch_source === "shared_planning", "dry-run should surface the aligned shared planning preference");
+    assert(dryRun.shared_planning_candidate?.candidate_aligned === true, "dry-run should expose an aligned shared planning candidate");
 
     assert(blocked.orchestration_status === "blocked", "orchestrate should block unresolved escalation");
     assert(blocked.stop_reason === "resume_blocked_until_user_arbitration", "blocked orchestration should cite arbitration gate");
@@ -188,6 +237,8 @@ function main() {
     assert(resumed.iterations_completed === 1, "orchestrate should execute one bounded iteration");
     assert(Array.isArray(resumed.runs) && resumed.runs.length === 1, "orchestrate should record the executed iteration");
     assert(resumed.runs[0].resume_status === "resumed_after_arbitration", "orchestrate should preserve arbitration-aware resume status");
+    assert(resumed.runs[0].preferred_dispatch_source === "shared_planning", "orchestrate should keep the aligned shared planning preference during execution");
+    assert(resumed.runs[0].shared_planning_candidate?.candidate_aligned === true, "orchestrate should preserve the aligned shared planning candidate during execution");
     assert(resumed.runs[0].execution_status === "executed", "orchestrate should execute the resumed dispatch");
     assert(fs.existsSync(resumedHistoryFile), "orchestrate should write coordination history");
     assert(fs.existsSync(resumedLogFile), "orchestrate should write coordination log");

@@ -78,6 +78,7 @@ function summarize(entries) {
   const byDispatchStatus = {};
   const byExecutionStatus = {};
   const byRole = {};
+  const byPreferredDispatchSource = {};
   const byEventType = {};
 
   for (const entry of entries) {
@@ -89,9 +90,11 @@ function summarize(entries) {
     const dispatchStatus = normalizeScalar(entry.dispatch_status || "unknown");
     const executionStatus = normalizeScalar(entry.execution_status || "unknown");
     const role = normalizeScalar(entry.recommended_role || "unknown");
+    const preferredDispatchSource = normalizeScalar(entry.preferred_dispatch_source || "workflow");
     byDispatchStatus[dispatchStatus] = (byDispatchStatus[dispatchStatus] ?? 0) + 1;
     byExecutionStatus[executionStatus] = (byExecutionStatus[executionStatus] ?? 0) + 1;
     byRole[role] = (byRole[role] ?? 0) + 1;
+    byPreferredDispatchSource[preferredDispatchSource] = (byPreferredDispatchSource[preferredDispatchSource] ?? 0) + 1;
   }
 
   return {
@@ -100,6 +103,7 @@ function summarize(entries) {
     total_dispatches: total,
     last_recommended_role: normalizeScalar(last?.recommended_role || "unknown") || "unknown",
     last_recommended_action: normalizeScalar(last?.recommended_action || "unknown") || "unknown",
+    last_preferred_dispatch_source: normalizeScalar(last?.preferred_dispatch_source || "workflow") || "workflow",
     last_execution_status: normalizeScalar(last?.execution_status || "unknown") || "unknown",
     arbitration_count: arbitrationEntries.length,
     last_arbitration_decision: normalizeScalar(lastArbitration?.decision || "unknown") || "unknown",
@@ -107,12 +111,14 @@ function summarize(entries) {
     by_dispatch_status: byDispatchStatus,
     by_execution_status: byExecutionStatus,
     by_role: byRole,
+    by_preferred_dispatch_source: byPreferredDispatchSource,
     by_event_type: byEventType,
     recent_dispatches: dispatchEntries.slice(-5).reverse().map((entry) => ({
       ts: normalizeScalar(entry.ts || "unknown") || "unknown",
       selected_agent: normalizeScalar(entry.selected_agent || "unknown") || "unknown",
       recommended_role: normalizeScalar(entry.recommended_role || "unknown") || "unknown",
       recommended_action: normalizeScalar(entry.recommended_action || "unknown") || "unknown",
+      preferred_dispatch_source: normalizeScalar(entry.preferred_dispatch_source || "workflow") || "workflow",
       dispatch_status: normalizeScalar(entry.dispatch_status || "unknown") || "unknown",
       execution_status: normalizeScalar(entry.execution_status || "unknown") || "unknown",
       goal: normalizeScalar(entry.goal || "unknown") || "unknown",
@@ -157,6 +163,7 @@ function buildMarkdown(summary, historyRelativePath) {
   lines.push(`total_dispatches: ${summary.total_dispatches}`);
   lines.push(`last_recommended_role: ${summary.last_recommended_role}`);
   lines.push(`last_recommended_action: ${summary.last_recommended_action}`);
+  lines.push(`last_preferred_dispatch_source: ${summary.last_preferred_dispatch_source}`);
   lines.push(`last_execution_status: ${summary.last_execution_status}`);
   lines.push(`arbitration_count: ${summary.arbitration_count}`);
   lines.push(`last_arbitration_decision: ${summary.last_arbitration_decision}`);
@@ -172,13 +179,15 @@ function buildMarkdown(summary, historyRelativePath) {
   lines.push("");
   lines.push(...renderCounts("recommended_role_counts", summary.by_role));
   lines.push("");
+  lines.push(...renderCounts("preferred_dispatch_source_counts", summary.by_preferred_dispatch_source));
+  lines.push("");
   lines.push("## Recent Dispatches");
   lines.push("");
   if (!Array.isArray(summary.recent_dispatches) || summary.recent_dispatches.length === 0) {
     lines.push("- none");
   } else {
     for (const item of summary.recent_dispatches) {
-      lines.push(`- ${item.ts} | ${item.selected_agent} | ${item.recommended_role} + ${item.recommended_action} | dispatch=${item.dispatch_status} | execution=${item.execution_status} | goal=${item.goal}`);
+      lines.push(`- ${item.ts} | ${item.selected_agent} | ${item.recommended_role} + ${item.recommended_action} | source=${item.preferred_dispatch_source} | dispatch=${item.dispatch_status} | execution=${item.execution_status} | goal=${item.goal}`);
     }
   }
   lines.push("");

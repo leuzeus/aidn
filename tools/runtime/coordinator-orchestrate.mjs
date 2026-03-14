@@ -117,6 +117,8 @@ function buildArbitrationSurface(preview) {
     arbitration_required: Boolean(preview?.arbitration_required),
     preferred_decision: preview?.preferred_decision ?? preview?.arbitration_suggestions?.preferred_decision ?? null,
     arbitration_suggestions: preview?.arbitration_suggestions ?? null,
+    preferred_dispatch_source: preview?.preferred_dispatch_source ?? "workflow",
+    shared_planning_candidate: preview?.shared_planning_candidate ?? null,
   };
 }
 

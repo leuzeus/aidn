@@ -14,7 +14,7 @@ Rule/State boundary:
 
 ## Summary
 
-updated_at: 2026-03-13T00:43:45.022Z
+updated_at: 2026-03-14T07:02:31.627Z
 handoff_status: refresh_required
 handoff_from_agent_role: coordinator
 handoff_from_agent_action: relay
@@ -24,6 +24,17 @@ next_agent_goal: reanchor current session, cycle, and runtime facts before any d
 scope_type: session
 scope_id: none
 target_branch: none
+backlog_refs: none
+planning_arbitration_status: none
+preferred_dispatch_source: workflow
+shared_planning_candidate_ready: no
+shared_planning_candidate_aligned: no
+shared_planning_dispatch_scope: none
+shared_planning_dispatch_action: none
+shared_planning_freshness: not_applicable
+shared_planning_freshness_basis: no active shared planning backlog
+shared_planning_gate_status: not_applicable
+shared_planning_gate_reason: no active shared planning backlog
 transition_policy_status: unknown_mode
 transition_policy_reason: unknown mode: unknown
 
@@ -35,6 +46,10 @@ active_session: none
 active_cycle: none
 dor_state: unknown
 first_plan_step: unknown
+active_backlog: none
+backlog_status: unknown
+backlog_next_step: unknown
+linked_backlog_cycles: none
 
 ## Runtime Signals
 
@@ -66,6 +81,7 @@ prioritized_artifacts:
 - `ready`: the next agent can resume from the prioritized artifacts and restate the workflow context before writing
 - `refresh_required`: the next agent must reload session/cycle facts before any durable write
 - `blocked`: the next agent must resolve runtime blocking findings or workflow contradictions before continuing
+- stale shared planning is a warning signal; reload the referenced backlog before replacing the relay intent
 
 ## Handoff Intent
 

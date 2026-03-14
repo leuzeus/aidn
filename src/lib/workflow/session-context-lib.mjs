@@ -282,6 +282,11 @@ export function readCurrentState(targetRoot) {
     cycle_branch: normalizeScalar(map.get("cycle_branch") ?? "none") || "none",
     dor_state: normalizeScalar(map.get("dor_state") ?? "unknown") || "unknown",
     first_plan_step: normalizeScalar(map.get("first_plan_step") ?? "unknown") || "unknown",
+    active_backlog: normalizeScalar(map.get("active_backlog") ?? "none") || "none",
+    backlog_status: normalizeScalar(map.get("backlog_status") ?? "unknown") || "unknown",
+    backlog_next_step: normalizeScalar(map.get("backlog_next_step") ?? "unknown") || "unknown",
+    backlog_selected_execution_scope: normalizeScalar(map.get("backlog_selected_execution_scope") ?? "none") || "none",
+    planning_arbitration_status: normalizeScalar(map.get("planning_arbitration_status") ?? "none") || "none",
   };
 }
 

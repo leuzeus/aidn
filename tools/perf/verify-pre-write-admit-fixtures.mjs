@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -51,13 +53,55 @@ function runAidn(repoRoot, args, expectStatus = 0) {
   return JSON.parse(String(result.stdout ?? "{}"));
 }
 
+function installSharedPlanningFixture(targetRoot, { selectedExecutionScope = "none" } = {}) {
+  const currentStateFile = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
+  const currentStateText = fs.readFileSync(currentStateFile, "utf8");
+  fs.writeFileSync(currentStateFile, currentStateText.replace(
+    "first_plan_step: implement alpha feature validation",
+    [
+      "first_plan_step: implement alpha feature validation",
+      "active_backlog: backlog/BL-S101-session-planning.md",
+      "backlog_status: promoted",
+      "backlog_next_step: select the first cycle scope",
+      `backlog_selected_execution_scope: ${selectedExecutionScope}`,
+      "planning_arbitration_status: none",
+    ].join("\n"),
+  ), "utf8");
+  const backlogDir = path.join(targetRoot, "docs", "audit", "backlog");
+  fs.mkdirSync(backlogDir, { recursive: true });
+  fs.writeFileSync(path.join(backlogDir, "BL-S101-session-planning.md"), [
+    "# Session Backlog - S101",
+    "",
+    "## Summary",
+    "",
+    "updated_at: 2026-03-09T01:03:00Z",
+    "session_id: S101",
+    "session_branch: S101-alpha",
+    "mode: COMMITTING",
+    "planning_status: promoted",
+    "linked_cycles: C101",
+    "dispatch_ready: yes",
+    "planning_arbitration_status: none",
+    "next_dispatch_scope: cycle",
+    "next_dispatch_action: implement",
+    "backlog_next_step: select the first cycle scope",
+    `selected_execution_scope: ${selectedExecutionScope}`,
+    "",
+  ].join("\n"), "utf8");
+}
+
 function main() {
+  let tempRoot = "";
   try {
     const args = parseArgs(process.argv.slice(2));
     const repoRoot = process.cwd();
     const fixturesRoot = path.resolve(repoRoot, args.fixturesRoot);
     const readyTarget = path.join(fixturesRoot, "ready");
     const blockedTarget = path.join(fixturesRoot, "blocked");
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-pre-write-admit-"));
+    const cycleCreateTarget = path.join(tempRoot, "cycle-create");
+    fs.cpSync(readyTarget, cycleCreateTarget, { recursive: true });
+    installSharedPlanningFixture(cycleCreateTarget, { selectedExecutionScope: "none" });
 
     const ready = runAidn(repoRoot, [
       "runtime",
@@ -78,6 +122,16 @@ function main() {
       "--strict",
       "--json",
     ], 1);
+    const cycleCreateBlocked = runAidn(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      cycleCreateTarget,
+      "--skill",
+      "cycle-create",
+      "--strict",
+      "--json",
+    ], 1);
 
     assert(ready.ok === true, "ready pre-write admission should pass");
     assert(ready.admission_status === "admitted", "ready pre-write admission should be admitted");
@@ -90,12 +144,17 @@ function main() {
     assert(blocked.context.repair_layer_status === "block", "blocked pre-write admission should expose repair block");
     assert(blocked.blocking_reasons.some((item) => String(item).includes("repair layer is blocking")), "blocked pre-write admission should expose repair blocking reason");
     assert(blocked.blocking_findings.includes("branch_cycle_mismatch"), "blocked pre-write admission should expose blocking findings");
+    assert(cycleCreateBlocked.ok === false, "cycle-create pre-write admission should fail when shared planning scope is missing");
+    assert(cycleCreateBlocked.context.active_backlog === "backlog/BL-S101-session-planning.md", "cycle-create pre-write admission should expose the active backlog");
+    assert(cycleCreateBlocked.context.backlog_selected_execution_scope === "none", "cycle-create pre-write admission should expose the missing execution scope");
+    assert(cycleCreateBlocked.blocking_reasons.some((item) => String(item).includes("selected execution scope")), "cycle-create pre-write admission should explain the missing shared planning scope");
 
     const output = {
       ts: new Date().toISOString(),
       fixtures_root: fixturesRoot,
       ready,
       blocked,
+      cycle_create_blocked: cycleCreateBlocked,
       pass: true,
     };
 
@@ -109,6 +168,10 @@ function main() {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
+  } finally {
+    if (tempRoot && fs.existsSync(tempRoot)) {
+      fs.rmSync(tempRoot, { recursive: true, force: true });
+    }
   }
 }
 

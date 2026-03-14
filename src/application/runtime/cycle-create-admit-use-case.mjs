@@ -64,6 +64,85 @@ function isContinuityAllowedInMode(continuityRule, mode) {
   return false;
 }
 
+function hasPromotedSharedPlanning(currentState) {
+  const activeBacklog = String(currentState.active_backlog ?? "none").trim().toLowerCase();
+  const backlogStatus = String(currentState.backlog_status ?? "unknown").trim().toLowerCase();
+  return activeBacklog !== "none"
+    && activeBacklog !== "unknown"
+    && backlogStatus !== "none"
+    && backlogStatus !== "unknown"
+    && backlogStatus !== "closed"
+    && backlogStatus !== "consumed_by_cycle";
+}
+
+function isResolvedPlanningArbitrationStatus(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return !normalized
+    || normalized === "none"
+    || normalized === "resolved"
+    || normalized === "closed"
+    || normalized === "approved"
+    || normalized === "cleared";
+}
+
+function normalizeExecutionScope(value) {
+  return String(value ?? "").trim().toLowerCase() || "none";
+}
+
+function applySharedPlanningCycleCreateGate(base, currentState, candidate) {
+  if (candidate.ok !== true) {
+    return candidate;
+  }
+  if (!hasPromotedSharedPlanning(currentState)) {
+    return candidate;
+  }
+  const planningArbitrationStatus = String(currentState.planning_arbitration_status ?? "none").trim() || "none";
+  if (!isResolvedPlanningArbitrationStatus(planningArbitrationStatus)) {
+    return makeResult(base, {
+      action: "stop_resolve_planning_arbitration",
+      result: "stop",
+      reason_code: "CYCLE_CREATE_SHARED_PLANNING_ARBITRATION_UNRESOLVED",
+      continuity_rule: candidate.continuity_rule ?? null,
+      continuity_base_branch: candidate.continuity_base_branch ?? base.branch,
+      blocking_reasons: [
+        `Shared planning arbitration remains unresolved: ${planningArbitrationStatus}.`,
+      ],
+      required_user_choice: ["resolve_planning_arbitration", "defer_cycle_creation"],
+      recommended_next_action: "Resolve the shared planning arbitration before creating a new cycle from the promoted backlog.",
+    });
+  }
+  const selectedExecutionScope = normalizeExecutionScope(currentState.backlog_selected_execution_scope);
+  if (selectedExecutionScope === "none" || selectedExecutionScope === "unknown") {
+    return makeResult(base, {
+      action: "stop_select_execution_scope",
+      result: "stop",
+      reason_code: "CYCLE_CREATE_SHARED_PLANNING_SCOPE_REQUIRED",
+      continuity_rule: candidate.continuity_rule ?? null,
+      continuity_base_branch: candidate.continuity_base_branch ?? base.branch,
+      blocking_reasons: [
+        "Shared planning is promoted but no selected execution scope is recorded for cycle creation.",
+      ],
+      required_user_choice: ["select_new_cycle_scope", "resume_existing_cycle", "defer_cycle_creation"],
+      recommended_next_action: "Record `backlog_selected_execution_scope=new_cycle` through session planning before creating the cycle.",
+    });
+  }
+  if (selectedExecutionScope !== "new_cycle") {
+    return makeResult(base, {
+      action: "stop_select_execution_scope",
+      result: "stop",
+      reason_code: "CYCLE_CREATE_SHARED_PLANNING_SCOPE_MISMATCH",
+      continuity_rule: candidate.continuity_rule ?? null,
+      continuity_base_branch: candidate.continuity_base_branch ?? base.branch,
+      blocking_reasons: [
+        `Shared planning selected execution scope is ${selectedExecutionScope}; cycle-create requires new_cycle.`,
+      ],
+      required_user_choice: ["select_new_cycle_scope", "use_resume_flow", "defer_cycle_creation"],
+      recommended_next_action: "Either switch the shared planning execution scope to `new_cycle` or use the resume flow that matches the selected scope.",
+    });
+  }
+  return candidate;
+}
+
 function applyModeGate(base, candidate) {
   if (candidate.ok !== true) {
     return candidate;
@@ -172,6 +251,11 @@ export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) 
     active_cycle: String(currentState.active_cycle ?? "none"),
     session_branch: sessionBranch,
     latest_active_cycle_branch: latestActiveCycle?.branch_name ?? "none",
+    active_backlog: String(currentState.active_backlog ?? "none"),
+    backlog_status: String(currentState.backlog_status ?? "unknown"),
+    backlog_next_step: String(currentState.backlog_next_step ?? "unknown"),
+    backlog_selected_execution_scope: String(currentState.backlog_selected_execution_scope ?? "none"),
+    planning_arbitration_status: String(currentState.planning_arbitration_status ?? "none"),
   };
 
   if ([AIDN_BRANCH_KIND.UNKNOWN, AIDN_BRANCH_KIND.OTHER].includes(branchKind)) {
@@ -188,12 +272,12 @@ export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) 
 
   if (branchKind === AIDN_BRANCH_KIND.CYCLE || branchKind === AIDN_BRANCH_KIND.INTERMEDIATE) {
     if (branch === latestActiveCycle?.branch_name) {
-      return applyModeGate(base, makeResult(base, {
-        action: "proceed_r1_strict_chain",
-        continuity_rule: "R1_STRICT_CHAIN",
-        continuity_base_branch: branch,
-        recommended_next_action: `Create the next cycle from ${branch} using strict chain continuity.`,
-      }));
+    return applySharedPlanningCycleCreateGate(base, currentState, applyModeGate(base, makeResult(base, {
+      action: "proceed_r1_strict_chain",
+      continuity_rule: "R1_STRICT_CHAIN",
+      continuity_base_branch: branch,
+      recommended_next_action: `Create the next cycle from ${branch} using strict chain continuity.`,
+    })));
     }
     return applyModeGate(base, makeResult(base, {
       action: "stop_choose_continuity_rule",
@@ -211,23 +295,23 @@ export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) 
   }
 
   if (branchKind === AIDN_BRANCH_KIND.SESSION) {
-    return applyModeGate(base, makeResult(base, {
+    return applySharedPlanningCycleCreateGate(base, currentState, applyModeGate(base, makeResult(base, {
       action: "proceed_r2_session_base_with_import",
       continuity_rule: "R2_SESSION_BASE_WITH_IMPORT",
       continuity_base_branch: branch,
       recommended_next_action: `Create the next cycle from session branch ${branch} and record predecessor import if needed.`,
-    }));
+    })));
   }
 
   if (branchKind === AIDN_BRANCH_KIND.SOURCE) {
     if (!latestActiveCycle && (!sessionBranch || sessionBranch === "none")) {
-      return applyModeGate(base, makeResult(base, {
+      return applySharedPlanningCycleCreateGate(base, currentState, applyModeGate(base, makeResult(base, {
         action: "create_cycle_allowed",
         continuity_rule: "R2_SESSION_BASE_WITH_IMPORT",
         continuity_base_branch: branch,
         warnings: ["No active session branch was found; using the configured source branch as the continuity base."],
         recommended_next_action: `Create the cycle from configured source branch ${branch}.`,
-      }));
+      })));
     }
     return applyModeGate(base, makeResult(base, {
       action: "stop_choose_continuity_rule",

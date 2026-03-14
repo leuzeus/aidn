@@ -25,6 +25,11 @@ active_cycle: none
 cycle_branch: none
 dor_state: unknown
 first_plan_step: unknown
+active_backlog: none
+backlog_status: unknown
+backlog_next_step: unknown
+backlog_selected_execution_scope: none
+planning_arbitration_status: none
 
 ## Top Operational Items
 
@@ -70,6 +75,7 @@ blocking_findings:
 - canonical spec: `docs/audit/SPEC.md`
 - snapshot: `docs/audit/snapshots/context-snapshot.md`
 - baseline: `docs/audit/baseline/current.md`
+- backlog: `docs/audit/backlog/`
 - sessions: `docs/audit/sessions/`
 - cycles: `docs/audit/cycles/`
 - runtime context: `.aidn/runtime/context/`

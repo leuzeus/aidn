@@ -110,6 +110,35 @@ function resolveTargetPath(targetRoot, candidate) {
   return path.resolve(targetRoot, candidate);
 }
 
+function deriveSharedPlanningCandidate(dispatch) {
+  const sharedPlanning = dispatch?.shared_planning ?? {};
+  const recommendation = dispatch?.coordinator_recommendation ?? {};
+  const dispatchScope = String(dispatch?.dispatch_scope?.scope_type ?? "none").trim();
+  const nextDispatchScope = String(sharedPlanning.next_dispatch_scope ?? "none").trim();
+  const nextDispatchAction = String(sharedPlanning.next_dispatch_action ?? "none").trim();
+  const candidateReady = Boolean(sharedPlanning.enabled) && sharedPlanning.dispatch_ready === true;
+  const actionAligned = candidateReady && nextDispatchAction !== "none"
+    && (
+      nextDispatchAction === String(recommendation.action ?? "").trim()
+      || (String(recommendation.role ?? "").trim() === "coordinator" && nextDispatchAction === "coordinate")
+    );
+  const scopeAligned = candidateReady && nextDispatchScope !== "none"
+    && (
+      nextDispatchScope === dispatchScope
+      || (String(recommendation.role ?? "").trim() === "coordinator" && nextDispatchScope === "session")
+    );
+  const candidateAligned = actionAligned && scopeAligned;
+  return {
+    enabled: Boolean(sharedPlanning.enabled),
+    candidate_ready: candidateReady,
+    candidate_aligned: candidateAligned,
+    preferred_source: candidateAligned ? "shared_planning" : "workflow",
+    next_dispatch_scope: nextDispatchScope,
+    next_dispatch_action: nextDispatchAction,
+    backlog_next_step: String(sharedPlanning.backlog_next_step ?? "unknown").trim() || "unknown",
+  };
+}
+
 function buildCoordinationLogEntry(result) {
   const ts = new Date().toISOString();
   const lines = [];
@@ -123,6 +152,10 @@ function buildCoordinationLogEntry(result) {
   lines.push(`execution_status: ${result.execution_status}`);
   lines.push(`entrypoint: ${result.entrypoint_kind}:${result.entrypoint_name}`);
   lines.push(`goal: ${result.coordinator_recommendation.goal}`);
+  lines.push(`preferred_dispatch_source: ${result.preferred_dispatch_source ?? "workflow"}`);
+  if (result.shared_planning_candidate?.candidate_ready) {
+    lines.push(`shared_planning_candidate: ${result.shared_planning_candidate.next_dispatch_scope} + ${result.shared_planning_candidate.next_dispatch_action}`);
+  }
   lines.push("");
   lines.push("notes:");
   if (Array.isArray(result.notes) && result.notes.length > 0) {
@@ -169,6 +202,11 @@ function buildCoordinationHistoryEvent(result) {
     execution_status: result.execution_status,
     entrypoint_kind: result.entrypoint_kind,
     entrypoint_name: result.entrypoint_name,
+    preferred_dispatch_source: result.preferred_dispatch_source ?? "workflow",
+    shared_planning_candidate_ready: Boolean(result.shared_planning_candidate?.candidate_ready),
+    shared_planning_candidate_aligned: Boolean(result.shared_planning_candidate?.candidate_aligned),
+    shared_planning_next_dispatch_scope: result.shared_planning_candidate?.next_dispatch_scope ?? "none",
+    shared_planning_next_dispatch_action: result.shared_planning_candidate?.next_dispatch_action ?? "none",
     stop_required: Boolean(result.coordinator_recommendation.stop_required),
     executed: Boolean(result.executed),
     executed_steps: Array.isArray(result.executed_steps)
@@ -207,6 +245,7 @@ export async function executeCoordinatorDispatch({
     packetFile,
     agentRosterFile,
   });
+  const sharedPlanningCandidate = deriveSharedPlanningCandidate(dispatch);
   const coordinationLogPath = resolveTargetPath(absoluteTargetRoot, coordinationLogFile);
   const coordinationSummaryPath = resolveTargetPath(absoluteTargetRoot, coordinationSummaryFile);
   const coordinationHistoryPath = resolveTargetPath(absoluteTargetRoot, coordinationHistoryFile);
@@ -217,6 +256,8 @@ export async function executeCoordinatorDispatch({
       coordination_log_file: coordinationLogPath,
       coordination_summary_file: coordinationSummaryPath,
       coordination_history_file: coordinationHistoryPath,
+      preferred_dispatch_source: sharedPlanningCandidate.preferred_source,
+      shared_planning_candidate: sharedPlanningCandidate,
       coordination_log_appended: false,
       coordination_log_entry: "",
       coordination_summary_written: false,
@@ -242,6 +283,8 @@ export async function executeCoordinatorDispatch({
       coordination_log_file: coordinationLogPath,
       coordination_summary_file: coordinationSummaryPath,
       coordination_history_file: coordinationHistoryPath,
+      preferred_dispatch_source: sharedPlanningCandidate.preferred_source,
+      shared_planning_candidate: sharedPlanningCandidate,
       coordination_log_appended: false,
       coordination_log_entry: "",
       coordination_summary_written: false,
@@ -265,6 +308,8 @@ export async function executeCoordinatorDispatch({
       coordination_log_file: coordinationLogPath,
       coordination_summary_file: coordinationSummaryPath,
       coordination_history_file: coordinationHistoryPath,
+      preferred_dispatch_source: sharedPlanningCandidate.preferred_source,
+      shared_planning_candidate: sharedPlanningCandidate,
       coordination_log_appended: false,
       coordination_log_entry: "",
       coordination_summary_written: false,
@@ -288,6 +333,8 @@ export async function executeCoordinatorDispatch({
       coordination_log_file: coordinationLogPath,
       coordination_summary_file: coordinationSummaryPath,
       coordination_history_file: coordinationHistoryPath,
+      preferred_dispatch_source: sharedPlanningCandidate.preferred_source,
+      shared_planning_candidate: sharedPlanningCandidate,
       coordination_log_appended: false,
       coordination_log_entry: "",
       coordination_summary_written: false,
@@ -341,6 +388,8 @@ export async function executeCoordinatorDispatch({
     coordination_log_file: coordinationLogPath,
     coordination_summary_file: coordinationSummaryPath,
     coordination_history_file: coordinationHistoryPath,
+    preferred_dispatch_source: sharedPlanningCandidate.preferred_source,
+    shared_planning_candidate: sharedPlanningCandidate,
     coordination_log_appended: false,
     coordination_log_entry: "",
     coordination_summary_written: false,

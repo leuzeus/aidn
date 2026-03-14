@@ -147,6 +147,16 @@ function canonicalUnknown(value) {
   return normalizeScalar(value).toLowerCase() === "unknown";
 }
 
+function isResolvedPlanningArbitrationStatus(value) {
+  const normalized = normalizeScalar(value).toLowerCase();
+  return !normalized
+    || normalized === "none"
+    || normalized === "resolved"
+    || normalized === "closed"
+    || normalized === "approved"
+    || normalized === "cleared";
+}
+
 function parseSimpleMap(text) {
   const map = new Map();
   for (const line of String(text).split(/\r?\n/)) {
@@ -320,6 +330,11 @@ export function preWriteAdmit({
   const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
   const dorState = normalizeScalar(currentMap.get("dor_state") ?? "unknown") || "unknown";
   const currentFirstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "unknown") || "unknown";
+  const activeBacklog = normalizeScalar(currentMap.get("active_backlog") ?? "none") || "none";
+  const backlogStatus = normalizeScalar(currentMap.get("backlog_status") ?? "unknown") || "unknown";
+  const backlogNextStep = normalizeScalar(currentMap.get("backlog_next_step") ?? "unknown") || "unknown";
+  const backlogSelectedExecutionScope = normalizeScalar(currentMap.get("backlog_selected_execution_scope") ?? "none") || "none";
+  const planningArbitrationStatus = normalizeScalar(currentMap.get("planning_arbitration_status") ?? "none") || "none";
   const cycleBranch = normalizeScalar(currentMap.get("cycle_branch") ?? "none") || "none";
   const sessionBranch = normalizeScalar(currentMap.get("session_branch") ?? "none") || "none";
 
@@ -439,11 +454,30 @@ export function preWriteAdmit({
     warnings.push("COMMITTING work on a session branch should stay limited to integration, handoff, or orchestration unless explicitly documented");
   }
 
+  const promotedSharedPlanning = !canonicalNone(activeBacklog)
+    && !canonicalUnknown(activeBacklog)
+    && !canonicalNone(backlogStatus)
+    && !canonicalUnknown(backlogStatus)
+    && backlogStatus.toLowerCase() !== "closed"
+    && backlogStatus.toLowerCase() !== "consumed_by_cycle";
+  addCheck(checks, "shared_planning_scope_selected", !promotedSharedPlanning || (!canonicalNone(backlogSelectedExecutionScope) && !canonicalUnknown(backlogSelectedExecutionScope)), `backlog_selected_execution_scope=${backlogSelectedExecutionScope}`);
+  if (skill === "cycle-create" && promotedSharedPlanning) {
+    if (!isResolvedPlanningArbitrationStatus(planningArbitrationStatus)) {
+      blockingReasons.push(`shared planning arbitration remains unresolved: ${planningArbitrationStatus}`);
+    }
+    if (canonicalNone(backlogSelectedExecutionScope) || canonicalUnknown(backlogSelectedExecutionScope)) {
+      blockingReasons.push("shared planning does not define a selected execution scope for cycle creation");
+    } else if (backlogSelectedExecutionScope.toLowerCase() !== "new_cycle") {
+      blockingReasons.push(`shared planning selected execution scope is ${backlogSelectedExecutionScope}; cycle-create requires new_cycle`);
+    }
+  }
+
   const prioritizedArtifacts = uniqueItems([
     "docs/audit/CURRENT-STATE.md",
     "docs/audit/WORKFLOW-KERNEL.md",
     "docs/audit/RUNTIME-STATE.md",
     "docs/audit/REANCHOR_PROMPT.md",
+    !canonicalNone(activeBacklog) && !canonicalUnknown(activeBacklog) ? `docs/audit/${activeBacklog.replace(/^docs\/audit\//, "")}` : "",
     sessionFile ? relativePath(absoluteTargetRoot, sessionFile) : "",
     cycleStatusFile ? relativePath(absoluteTargetRoot, cycleStatusFile) : "",
     planFile && exists(planFile) ? relativePath(absoluteTargetRoot, planFile) : "",
@@ -474,6 +508,11 @@ export function preWriteAdmit({
       cycle_branch: cycleBranch,
       dor_state: dorState,
       first_plan_step: effectiveFirstPlanStep,
+      active_backlog: activeBacklog,
+      backlog_status: backlogStatus,
+      backlog_next_step: backlogNextStep,
+      backlog_selected_execution_scope: backlogSelectedExecutionScope,
+      planning_arbitration_status: planningArbitrationStatus,
       current_state_freshness: currentStateFreshness,
       runtime_state_mode: runtimeStateMode,
       repair_layer_status: repairLayerStatus,

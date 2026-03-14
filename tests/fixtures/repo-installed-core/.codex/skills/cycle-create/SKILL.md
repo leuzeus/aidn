@@ -26,6 +26,7 @@ Before the first durable write in this skill, run:
 - Type: feature | spike | refactor | structural | migration | security | perf | integration | compat | corrective | hotfix
 - Short title (for folder suffix)
 - Current session branch name (if accessible)
+- If a promoted shared backlog is active: explicit execution scope selection for cycle creation (`backlog_selected_execution_scope: new_cycle`)
 
 ## Steps
 
@@ -48,6 +49,8 @@ Mode gate:
 - COMMITTING: allow R1/R2 by default, R3 only with explicit user override.
 - EXPLORING: allow R2/R3.
 - THINKING: R3 only (no production implementation).
+- If `active_backlog` is promoted, STOP unless shared planning arbitration is resolved and `backlog_selected_execution_scope=new_cycle`.
+- To record that choice through workflow state, run `npx aidn runtime session-plan --target . --selected-execution-scope new_cycle --promote --json` before creating the cycle.
 
 1) Create folder:
 docs/audit/cycles/CXXX-[type]-<short-title>/

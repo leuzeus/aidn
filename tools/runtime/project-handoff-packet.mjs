@@ -104,6 +104,29 @@ function canonicalUnknown(value) {
   return normalizeScalar(value).toLowerCase() === "unknown";
 }
 
+function parseTimestamp(value) {
+  const normalized = normalizeScalar(value);
+  if (!normalized) {
+    return null;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    const parsed = Date.parse(`${normalized}T00:00:00Z`);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  const parsed = Date.parse(normalized);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function isResolvedPlanningArbitrationStatus(value) {
+  const normalized = normalizeScalar(value).toLowerCase();
+  return !normalized
+    || normalized === "none"
+    || normalized === "resolved"
+    || normalized === "closed"
+    || normalized === "approved"
+    || normalized === "cleared";
+}
+
 function parseSimpleMap(text) {
   const map = new Map();
   for (const line of String(text).split(/\r?\n/)) {
@@ -188,6 +211,40 @@ function uniqueItems(values) {
   return out;
 }
 
+function splitList(value) {
+  if (!value) {
+    return [];
+  }
+  return uniqueItems(String(value).split(",").map((item) => item.trim()));
+}
+
+function normalizeBacklogRef(value) {
+  const normalized = normalizeScalar(value);
+  if (!normalized || canonicalNone(normalized) || canonicalUnknown(normalized)) {
+    return "none";
+  }
+  if (normalized.startsWith("docs/audit/")) {
+    return normalized;
+  }
+  if (normalized.startsWith("backlog/")) {
+    return `docs/audit/${normalized}`;
+  }
+  return normalized;
+}
+
+function parseBacklogArtifact(text) {
+  const map = parseSimpleMap(text);
+  return {
+    updated_at: normalizeScalar(map.get("updated_at") ?? "") || "",
+    dispatch_ready: normalizeScalar(map.get("dispatch_ready") ?? "no") || "no",
+    next_dispatch_scope: normalizeScalar(map.get("next_dispatch_scope") ?? "none") || "none",
+    next_dispatch_action: normalizeScalar(map.get("next_dispatch_action") ?? "none") || "none",
+    backlog_next_step: normalizeScalar(map.get("backlog_next_step") ?? "unknown") || "unknown",
+    planning_arbitration_status: normalizeScalar(map.get("planning_arbitration_status") ?? "none") || "none",
+    linked_cycles: splitList(map.get("linked_cycles") ?? ""),
+  };
+}
+
 function relativePath(root, filePath) {
   if (!filePath) {
     return "";
@@ -233,7 +290,16 @@ function deriveNextAgentRouting({ handoffStatus, mode, repairStatus }) {
   return { role: "coordinator", action: "coordinate" };
 }
 
-function deriveNextAgentGoal({ explicitGoal, handoffStatus, mode, repairStatus, repairAdvice, firstPlanStep, blockingFindings }) {
+function deriveNextAgentGoal({
+  explicitGoal,
+  handoffStatus,
+  mode,
+  repairStatus,
+  repairAdvice,
+  firstPlanStep,
+  backlogNextStep,
+  blockingFindings,
+}) {
   const manualGoal = normalizeScalar(explicitGoal);
   if (manualGoal) {
     return manualGoal;
@@ -254,6 +320,9 @@ function deriveNextAgentGoal({ explicitGoal, handoffStatus, mode, repairStatus, 
   }
   if (handoffStatus === "refresh_required") {
     return "reanchor current session, cycle, and runtime facts before any durable write";
+  }
+  if (backlogNextStep && !canonicalUnknown(backlogNextStep) && !canonicalNone(backlogNextStep)) {
+    return backlogNextStep;
   }
   if (mode === "COMMITTING" && firstPlanStep && !canonicalUnknown(firstPlanStep) && !canonicalNone(firstPlanStep)) {
     return firstPlanStep;
@@ -276,6 +345,10 @@ function buildPrioritizedArtifacts({ targetRoot, runtimeStateText, sessionFile, 
   ];
   const runtimeArtifacts = parseListSection(runtimeStateText, "prioritized_artifacts");
   const firstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "");
+  const activeBacklog = normalizeBacklogRef(currentMap.get("active_backlog") ?? "none");
+  if (activeBacklog !== "none") {
+    items.push(activeBacklog);
+  }
   if (sessionFile) {
     items.push(relativePath(targetRoot, sessionFile));
   }
@@ -322,6 +395,91 @@ function deriveDispatchScope({ currentMap, nextRouting }) {
   };
 }
 
+function deriveSharedPlanningCandidate({ targetRoot, activeBacklog, scope, nextRouting }) {
+  const normalizedBacklog = normalizeBacklogRef(activeBacklog);
+  if (normalizedBacklog === "none") {
+    return {
+      enabled: false,
+      artifact_found: false,
+      preferred_dispatch_source: "workflow",
+      candidate_ready: false,
+      candidate_aligned: false,
+      freshness_status: "not_applicable",
+      freshness_basis: "no active shared planning backlog",
+      gate_status: "not_applicable",
+      gate_reason: "no active shared planning backlog",
+      next_dispatch_scope: "none",
+      next_dispatch_action: "none",
+      backlog_next_step: "unknown",
+      planning_arbitration_status: "none",
+      linked_cycles: [],
+    };
+  }
+  const backlogPath = resolveTargetPath(targetRoot, normalizedBacklog);
+  if (!exists(backlogPath)) {
+    return {
+      enabled: true,
+      artifact_found: false,
+      preferred_dispatch_source: "workflow",
+      candidate_ready: false,
+      candidate_aligned: false,
+      freshness_status: "missing",
+      freshness_basis: "active backlog artifact is referenced but not found",
+      gate_status: "warn",
+      gate_reason: "active shared planning backlog is referenced but missing",
+      next_dispatch_scope: "none",
+      next_dispatch_action: "none",
+      backlog_next_step: "unknown",
+      planning_arbitration_status: "none",
+      linked_cycles: [],
+    };
+  }
+  const backlog = parseBacklogArtifact(readTextIfExists(backlogPath));
+  const candidateReady = String(backlog.dispatch_ready).trim().toLowerCase() === "yes";
+  const actionAligned = candidateReady && backlog.next_dispatch_action !== "none"
+    && (
+      backlog.next_dispatch_action === nextRouting.action
+      || (nextRouting.role === "coordinator" && backlog.next_dispatch_action === "coordinate")
+    );
+  const scopeAligned = candidateReady && backlog.next_dispatch_scope !== "none"
+    && (
+      backlog.next_dispatch_scope === scope.scope_type
+      || (nextRouting.role === "coordinator" && backlog.next_dispatch_scope === "session")
+    );
+  const candidateAligned = actionAligned && scopeAligned;
+  const currentStatePath = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
+  const currentMap = parseSimpleMap(readTextIfExists(currentStatePath));
+  const currentUpdatedAtMs = parseTimestamp(currentMap.get("updated_at") ?? "");
+  const backlogUpdatedAtMs = parseTimestamp(backlog.updated_at ?? "");
+  let freshnessStatus = "unknown";
+  let freshnessBasis = "shared planning freshness could not be derived";
+  if (currentUpdatedAtMs !== null && backlogUpdatedAtMs !== null) {
+    freshnessStatus = backlogUpdatedAtMs >= currentUpdatedAtMs ? "ok" : "stale";
+    freshnessBasis = backlogUpdatedAtMs >= currentUpdatedAtMs
+      ? "backlog updated_at is aligned with CURRENT-STATE.md"
+      : "backlog updated_at is older than CURRENT-STATE.md";
+  }
+  const arbitrationResolved = isResolvedPlanningArbitrationStatus(backlog.planning_arbitration_status);
+  return {
+    enabled: true,
+    artifact_found: true,
+    preferred_dispatch_source: candidateAligned ? "shared_planning" : "workflow",
+    candidate_ready: candidateReady,
+    candidate_aligned: candidateAligned,
+    freshness_status: freshnessStatus,
+    freshness_basis: freshnessBasis,
+    gate_status: arbitrationResolved ? "ok" : "blocked",
+    gate_reason: arbitrationResolved
+      ? "shared planning arbitration is resolved"
+      : `planning arbitration remains unresolved: ${backlog.planning_arbitration_status}`,
+    next_dispatch_scope: backlog.next_dispatch_scope,
+    next_dispatch_action: backlog.next_dispatch_action,
+    backlog_next_step: backlog.backlog_next_step,
+    planning_arbitration_status: backlog.planning_arbitration_status,
+    linked_cycles: backlog.linked_cycles,
+  };
+}
+
 function buildMarkdown(packet) {
   const lines = [];
   lines.push("# Handoff Packet");
@@ -350,6 +508,17 @@ function buildMarkdown(packet) {
   lines.push(`scope_type: ${packet.scope_type}`);
   lines.push(`scope_id: ${packet.scope_id}`);
   lines.push(`target_branch: ${packet.target_branch}`);
+  lines.push(`backlog_refs: ${packet.backlog_refs}`);
+  lines.push(`planning_arbitration_status: ${packet.planning_arbitration_status}`);
+  lines.push(`preferred_dispatch_source: ${packet.preferred_dispatch_source}`);
+  lines.push(`shared_planning_candidate_ready: ${packet.shared_planning_candidate_ready}`);
+  lines.push(`shared_planning_candidate_aligned: ${packet.shared_planning_candidate_aligned}`);
+  lines.push(`shared_planning_dispatch_scope: ${packet.shared_planning_dispatch_scope}`);
+  lines.push(`shared_planning_dispatch_action: ${packet.shared_planning_dispatch_action}`);
+  lines.push(`shared_planning_freshness: ${packet.shared_planning_freshness}`);
+  lines.push(`shared_planning_freshness_basis: ${packet.shared_planning_freshness_basis}`);
+  lines.push(`shared_planning_gate_status: ${packet.shared_planning_gate_status}`);
+  lines.push(`shared_planning_gate_reason: ${packet.shared_planning_gate_reason}`);
   lines.push(`transition_policy_status: ${packet.transition_policy_status}`);
   lines.push(`transition_policy_reason: ${packet.transition_policy_reason}`);
   lines.push("");
@@ -361,6 +530,10 @@ function buildMarkdown(packet) {
   lines.push(`active_cycle: ${packet.active_cycle}`);
   lines.push(`dor_state: ${packet.dor_state}`);
   lines.push(`first_plan_step: ${packet.first_plan_step}`);
+  lines.push(`active_backlog: ${packet.active_backlog}`);
+  lines.push(`backlog_status: ${packet.backlog_status}`);
+  lines.push(`backlog_next_step: ${packet.backlog_next_step}`);
+  lines.push(`linked_backlog_cycles: ${packet.linked_backlog_cycles.length > 0 ? packet.linked_backlog_cycles.join(", ") : "none"}`);
   lines.push("");
   lines.push("## Runtime Signals");
   lines.push("");
@@ -392,6 +565,7 @@ function buildMarkdown(packet) {
   lines.push("- `ready`: the next agent can resume from the prioritized artifacts and restate the workflow context before writing");
   lines.push("- `refresh_required`: the next agent must reload session/cycle facts before any durable write");
   lines.push("- `blocked`: the next agent must resolve runtime blocking findings or workflow contradictions before continuing");
+  lines.push("- stale shared planning is a warning signal; reload the referenced backlog before replacing the relay intent");
   lines.push("");
   lines.push("## Handoff Intent");
   lines.push("");
@@ -438,6 +612,10 @@ export function projectHandoffPacket({
   const handoffStatus = deriveHandoffStatus({ consistency, runtimeMap, currentMap });
   const mode = normalizeScalar(currentMap.get("mode") ?? "unknown") || "unknown";
   const firstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "unknown") || "unknown";
+  const activeBacklog = normalizeBacklogRef(currentMap.get("active_backlog") ?? "none");
+  const backlogStatus = normalizeScalar(currentMap.get("backlog_status") ?? "unknown") || "unknown";
+  const backlogNextStep = normalizeScalar(currentMap.get("backlog_next_step") ?? "unknown") || "unknown";
+  const planningArbitrationStatus = normalizeScalar(currentMap.get("planning_arbitration_status") ?? "none") || "none";
   const blockingFindings = uniqueItems(parseListSection(runtimeStateText, "blocking_findings").slice(0, 5));
   const nextRouting = deriveNextAgentRouting({
     handoffStatus,
@@ -454,6 +632,12 @@ export function projectHandoffPacket({
     toAction: nextRouting.action,
   });
   const scope = deriveDispatchScope({ currentMap, nextRouting });
+  const sharedPlanning = deriveSharedPlanningCandidate({
+    targetRoot: absoluteTargetRoot,
+    activeBacklog,
+    scope,
+    nextRouting,
+  });
 
   const packet = {
     updated_at: new Date().toISOString(),
@@ -469,11 +653,23 @@ export function projectHandoffPacket({
       repairStatus: repairRoutingHint,
       repairAdvice: repairRoutingReason,
       firstPlanStep,
+      backlogNextStep,
       blockingFindings,
     }),
     scope_type: scope.scope_type,
     scope_id: scope.scope_id,
     target_branch: scope.target_branch,
+    backlog_refs: activeBacklog,
+    planning_arbitration_status: sharedPlanning.artifact_found ? sharedPlanning.planning_arbitration_status : planningArbitrationStatus,
+    preferred_dispatch_source: sharedPlanning.preferred_dispatch_source,
+    shared_planning_candidate_ready: sharedPlanning.candidate_ready ? "yes" : "no",
+    shared_planning_candidate_aligned: sharedPlanning.candidate_aligned ? "yes" : "no",
+    shared_planning_dispatch_scope: sharedPlanning.next_dispatch_scope,
+    shared_planning_dispatch_action: sharedPlanning.next_dispatch_action,
+    shared_planning_freshness: sharedPlanning.freshness_status,
+    shared_planning_freshness_basis: sharedPlanning.freshness_basis,
+    shared_planning_gate_status: sharedPlanning.gate_status,
+    shared_planning_gate_reason: sharedPlanning.gate_reason,
     handoff_note: normalizeScalar(handoffNote) || "none",
     mode,
     branch_kind: normalizeScalar(currentMap.get("branch_kind") ?? "unknown") || "unknown",
@@ -481,6 +677,10 @@ export function projectHandoffPacket({
     active_cycle: activeCycle,
     dor_state: normalizeScalar(currentMap.get("dor_state") ?? "unknown") || "unknown",
     first_plan_step: firstPlanStep,
+    active_backlog: activeBacklog,
+    backlog_status: backlogStatus,
+    backlog_next_step: sharedPlanning.artifact_found && !canonicalUnknown(sharedPlanning.backlog_next_step) ? sharedPlanning.backlog_next_step : backlogNextStep,
+    linked_backlog_cycles: sharedPlanning.linked_cycles,
     runtime_state_mode: normalizeScalar(runtimeMap.get("runtime_state_mode") ?? currentMap.get("runtime_state_mode") ?? "unknown") || "unknown",
     repair_layer_status: repairStatus,
     repair_routing_hint: repairRoutingHint,

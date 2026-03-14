@@ -126,8 +126,13 @@ function deriveFallbackRecommendation(currentMap, runtimeMap, nextActions) {
   const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
   const dorState = normalizeScalar(currentMap.get("dor_state") ?? "unknown") || "unknown";
   const firstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "unknown") || "unknown";
+  const activeBacklog = normalizeScalar(currentMap.get("active_backlog") ?? "none") || "none";
+  const backlogNextStep = normalizeScalar(currentMap.get("backlog_next_step") ?? "unknown") || "unknown";
   const repairRouting = normalizeScalar(runtimeMap.get("repair_routing_hint") ?? runtimeMap.get("repair_layer_status") ?? "unknown").toLowerCase();
   const repairAdvice = normalizeScalar(runtimeMap.get("repair_routing_reason") ?? runtimeMap.get("repair_layer_advice") ?? "");
+  const sharedPlanningGoal = !canonicalNone(activeBacklog) && !canonicalUnknown(activeBacklog) && backlogNextStep && !canonicalUnknown(backlogNextStep)
+    ? backlogNextStep
+    : "";
 
   if (repairRouting === "repair" || repairRouting === "block") {
     return {
@@ -163,9 +168,11 @@ function deriveFallbackRecommendation(currentMap, runtimeMap, nextActions) {
     return {
       role: "auditor",
       action: "analyze",
-      goal: nextActions[0] ?? "continue analysis and validate the next hypothesis",
+      goal: sharedPlanningGoal || nextActions[0] || "continue analysis and validate the next hypothesis",
       source: "current-state",
-      reason: "exploring mode favors audit/analyze routing",
+      reason: sharedPlanningGoal
+        ? "shared session backlog defines the next planning step for analysis"
+        : "exploring mode favors audit/analyze routing",
       stop_required: false,
     };
   }
@@ -173,9 +180,11 @@ function deriveFallbackRecommendation(currentMap, runtimeMap, nextActions) {
     return {
       role: "coordinator",
       action: "coordinate",
-      goal: nextActions[0] ?? "restate the objective and smallest compliant next step",
+      goal: sharedPlanningGoal || nextActions[0] || "restate the objective and smallest compliant next step",
       source: "current-state",
-      reason: "thinking mode favors coordination before execution",
+      reason: sharedPlanningGoal
+        ? "shared session backlog defines the next coordination step"
+        : "thinking mode favors coordination before execution",
       stop_required: false,
     };
   }
@@ -225,6 +234,16 @@ function deriveFallbackScope(currentMap) {
   };
 }
 
+function deriveSharedPlanningCandidate(handoff) {
+  return {
+    preferred_dispatch_source: normalizeScalar(handoff?.preferred_dispatch_source ?? "workflow") || "workflow",
+    shared_planning_candidate_ready: normalizeScalar(handoff?.shared_planning_candidate_ready ?? "no") || "no",
+    shared_planning_candidate_aligned: normalizeScalar(handoff?.shared_planning_candidate_aligned ?? "no") || "no",
+    shared_planning_dispatch_scope: normalizeScalar(handoff?.shared_planning_dispatch_scope ?? "none") || "none",
+    shared_planning_dispatch_action: normalizeScalar(handoff?.shared_planning_dispatch_action ?? "none") || "none",
+  };
+}
+
 export function computeCoordinatorNextAction({
   targetRoot,
   currentStateFile = "docs/audit/CURRENT-STATE.md",
@@ -251,13 +270,20 @@ export function computeCoordinatorNextAction({
       currentStateFile,
       runtimeStateFile,
     });
+    const preferredDispatchSource = normalizeScalar(handoff.preferred_dispatch_source ?? "workflow") || "workflow";
     recommendation = {
       role: handoff.recommended_next_agent_role,
       action: handoff.recommended_action,
       goal: handoff.next_agent_goal,
-      source: handoff.admission_status === "admitted" ? "handoff" : "handoff-admit",
+      source: handoff.admission_status === "admitted"
+        ? (preferredDispatchSource === "shared_planning" ? "handoff-shared-planning" : "handoff")
+        : "handoff-admit",
       reason: handoff.admission_status === "admitted"
-        ? `admitted handoff packet provides the next relay (${handoff.transition_policy?.status ?? "unknown-transition"})`
+        ? (
+          preferredDispatchSource === "shared_planning"
+            ? `admitted handoff packet provides a shared-planning relay (${handoff.transition_policy?.status ?? "unknown-transition"})`
+            : `admitted handoff packet provides the next relay (${handoff.transition_policy?.status ?? "unknown-transition"})`
+        )
         : `handoff admission ${handoff.admission_status}`,
       stop_required: handoff.admission_status === "blocked",
     };
@@ -285,6 +311,10 @@ export function computeCoordinatorNextAction({
     runtime_state_file: runtimeStatePath,
     packet_file: exists(packetPath) ? packetPath : "none",
     handoff,
+    preferred_dispatch_source: handoff
+      ? (normalizeScalar(handoff.preferred_dispatch_source ?? "workflow") || "workflow")
+      : "workflow",
+    shared_planning_candidate: handoff ? deriveSharedPlanningCandidate(handoff) : null,
     recommendation,
     scope,
     context: {

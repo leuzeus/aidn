@@ -195,6 +195,10 @@ export function admitHandoff({
   const packetScopeType = normalizeScalar(packet.get("scope_type") ?? "none").toLowerCase();
   const packetScopeId = normalizeScalar(packet.get("scope_id") ?? "none");
   const packetTargetBranch = normalizeScalar(packet.get("target_branch") ?? "none");
+  const preferredDispatchSource = normalizeScalar(packet.get("preferred_dispatch_source") ?? "workflow") || "workflow";
+  const sharedPlanningFreshness = normalizeScalar(packet.get("shared_planning_freshness") ?? "not_applicable") || "not_applicable";
+  const sharedPlanningGateStatus = normalizeScalar(packet.get("shared_planning_gate_status") ?? "not_applicable") || "not_applicable";
+  const sharedPlanningGateReason = normalizeScalar(packet.get("shared_planning_gate_reason") ?? "none") || "none";
   const transition = evaluateAgentTransition({
     mode: packetMode,
     fromRole: packetFromRole,
@@ -211,6 +215,9 @@ export function admitHandoff({
   }
   if (packetFreshness === "stale") {
     issues.push("handoff packet reports stale current-state freshness");
+  }
+  if (sharedPlanningGateStatus === "blocked") {
+    issues.push(`shared planning gate is blocked: ${sharedPlanningGateReason}`);
   }
   if (consistency.pass === false) {
     issues.push("live current-state consistency failed");
@@ -310,6 +317,9 @@ export function admitHandoff({
   if (handoffStatus === "refresh_required" && issues.length === 0) {
     warnings.push("handoff packet requires normal re-anchor before durable write");
   }
+  if (sharedPlanningFreshness === "stale") {
+    warnings.push("shared planning backlog is stale relative to CURRENT-STATE.md");
+  }
 
   let admissionStatus = "admitted";
   let admitted = true;
@@ -338,6 +348,14 @@ export function admitHandoff({
     recommended_action: recommendedAction,
     recommended_next_agent_role: recommendedRole,
     next_agent_goal: normalizeScalar(packet.get("next_agent_goal") ?? "unknown") || "unknown",
+    preferred_dispatch_source: preferredDispatchSource,
+    shared_planning_candidate_ready: normalizeScalar(packet.get("shared_planning_candidate_ready") ?? "no") || "no",
+    shared_planning_candidate_aligned: normalizeScalar(packet.get("shared_planning_candidate_aligned") ?? "no") || "no",
+    shared_planning_dispatch_scope: normalizeScalar(packet.get("shared_planning_dispatch_scope") ?? "none") || "none",
+    shared_planning_dispatch_action: normalizeScalar(packet.get("shared_planning_dispatch_action") ?? "none") || "none",
+    shared_planning_freshness: sharedPlanningFreshness,
+    shared_planning_gate_status: sharedPlanningGateStatus,
+    shared_planning_gate_reason: sharedPlanningGateReason,
     scope_type: packetScopeType || "none",
     scope_id: packetScopeId || "none",
     target_branch: packetTargetBranch || "none",

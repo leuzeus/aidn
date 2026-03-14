@@ -61,6 +61,9 @@ function checkSkill(root, skill) {
     "falls back to full sync when needed",
     "npx aidn runtime db-first-artifact --target . --path <relative-audit-path> --source-file <file> --json",
   ];
+  if (skill === "start-session" || skill === "handoff-close") {
+    required.push("npx aidn runtime session-plan --target . --promote --state-mode <files|dual|db-only> --json");
+  }
   const missing = required.filter((pattern) => !text.includes(pattern));
   return {
     skill,

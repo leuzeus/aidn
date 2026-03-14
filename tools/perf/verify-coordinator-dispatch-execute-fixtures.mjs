@@ -79,6 +79,51 @@ function writeDualConfig(targetRoot) {
   }, null, 2), "utf8");
 }
 
+function installSharedPlanningFixture(targetRoot) {
+  const currentStateFile = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
+  const currentStateText = fs.readFileSync(currentStateFile, "utf8");
+  fs.writeFileSync(currentStateFile, currentStateText.replace(
+    "first_plan_step: implement alpha feature validation",
+    [
+      "first_plan_step: implement alpha feature validation",
+      "active_backlog: backlog/BL-S101-session-planning.md",
+      "backlog_status: promoted",
+      "backlog_next_step: implement alpha feature validation",
+      "planning_arbitration_status: none",
+    ].join("\n"),
+  ), "utf8");
+  const backlogDir = path.join(targetRoot, "docs", "audit", "backlog");
+  fs.mkdirSync(backlogDir, { recursive: true });
+  fs.writeFileSync(path.join(backlogDir, "BL-S101-session-planning.md"), [
+    "# Session Backlog - S101",
+    "",
+    "## Summary",
+    "",
+    "updated_at: 2026-03-09T01:03:00Z",
+    "session_id: S101",
+    "session_branch: S101-alpha",
+    "mode: COMMITTING",
+    "planning_status: promoted",
+    "linked_cycles: C101",
+    "dispatch_ready: yes",
+    "planning_arbitration_status: none",
+    "next_dispatch_scope: cycle",
+    "next_dispatch_action: implement",
+    "backlog_next_step: implement alpha feature validation",
+    "",
+    "## Backlog Items",
+    "",
+    "backlog_items:",
+    "- implement alpha feature validation",
+    "",
+    "## Open Questions",
+    "",
+    "open_questions:",
+    "- none",
+    "",
+  ].join("\n"), "utf8");
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -100,6 +145,7 @@ function main() {
     fs.cpSync(path.join(handoffFixturesRoot, "blocked"), blockedTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), escalatedTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "warn"), roleBlockedTarget, { recursive: true });
+    installSharedPlanningFixture(readyTarget);
     writeDualConfig(warnTarget);
     writeDualConfig(roleBlockedTarget);
     initGitRepo(readyTarget, { workingBranch: "feature/C101-alpha" });
@@ -290,6 +336,8 @@ function main() {
     assert(dryRun.coordination_summary === null, "dry run should not build coordination summary");
     assert(dryRun.coordination_history_appended === false, "dry run should not append coordination history");
     assert(String(dryRun.coordination_history_event?.event ?? "") === "coordinator_dispatch", "dry run should expose coordination history preview");
+    assert(dryRun.preferred_dispatch_source === "shared_planning", "dry run should expose shared planning provenance");
+    assert(dryRun.shared_planning_candidate?.candidate_aligned === true, "dry run should expose aligned shared planning candidate");
 
     assert(executed.execution_status === "executed", "ready execution should report executed");
     assert(executed.executed === true, "ready execution should execute");
@@ -300,12 +348,17 @@ function main() {
     assert(executed.coordination_log_appended === true, "ready execution should append coordination log");
     assert(executed.coordination_summary_written === true, "ready execution should refresh coordination summary");
     assert(executed.coordination_history_appended === true, "ready execution should append coordination history");
+    assert(executed.preferred_dispatch_source === "shared_planning", "ready execution should record shared planning provenance");
+    assert(executed.shared_planning_candidate?.candidate_aligned === true, "ready execution should keep aligned shared planning candidate");
     assert(fs.existsSync(readyLogFile), "ready execution should write coordination log");
     assert(fs.existsSync(readySummaryFile), "ready execution should write coordination summary");
     assert(fs.existsSync(readyHistoryFile), "ready execution should write coordination history");
     assert(fs.readFileSync(readyLogFile, "utf8").includes("recommended_role: executor"), "ready coordination log should record executor relay");
+    assert(fs.readFileSync(readyLogFile, "utf8").includes("preferred_dispatch_source: shared_planning"), "ready coordination log should record shared planning provenance");
     assert(fs.readFileSync(readySummaryFile, "utf8").includes("last_recommended_role: executor"), "ready coordination summary should record executor relay");
+    assert(fs.readFileSync(readySummaryFile, "utf8").includes("last_preferred_dispatch_source: shared_planning"), "ready coordination summary should record shared planning provenance");
     assert(fs.readFileSync(readyHistoryFile, "utf8").includes("\"recommended_role\":\"executor\""), "ready coordination history should record executor relay");
+    assert(fs.readFileSync(readyHistoryFile, "utf8").includes("\"preferred_dispatch_source\":\"shared_planning\""), "ready coordination history should record shared planning provenance");
 
     assert(warnLocalShellExecuted.execution_status === "failed", "warn execution should report failed when strict drift-check stops");
     assert(warnLocalShellExecuted.executed === false, "warn execution should not report executed when drift-check stops");

@@ -24,6 +24,17 @@ next_agent_goal: reanchor current session, cycle, and runtime facts before any d
 scope_type: session
 scope_id: none
 target_branch: none
+backlog_refs: none
+planning_arbitration_status: none
+preferred_dispatch_source: workflow
+shared_planning_candidate_ready: no
+shared_planning_candidate_aligned: no
+shared_planning_dispatch_scope: none
+shared_planning_dispatch_action: none
+shared_planning_freshness: not_applicable
+shared_planning_freshness_basis: no active shared planning backlog
+shared_planning_gate_status: not_applicable
+shared_planning_gate_reason: no active shared planning backlog
 transition_policy_status: allowed
 transition_policy_reason: THINKING allows coordinator -> coordinator
 
@@ -35,6 +46,10 @@ active_session: none
 active_cycle: none
 dor_state: unknown
 first_plan_step: unknown
+active_backlog: none
+backlog_status: unknown
+backlog_next_step: unknown
+linked_backlog_cycles: none
 
 ## Runtime Signals
 
@@ -54,6 +69,7 @@ prioritized_artifacts:
 - `docs/audit/CURRENT-STATE.md`
 - `docs/audit/WORKFLOW-KERNEL.md`
 - `docs/audit/RUNTIME-STATE.md`
+- active backlog artifact when present
 - active session file
 - active cycle `status.md`
 

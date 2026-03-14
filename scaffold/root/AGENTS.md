@@ -12,17 +12,6 @@ Agents MUST:
 - treat workflow skills and runtime hooks as the mutating enforcement path
 - use this file for stable startup rules, precedence, and write-stop conditions
 
-## Instruction Layering
-
-Codex may also load guidance outside this file:
-
-- global guidance from `~/.codex/AGENTS.md`
-- global temporary override from `~/.codex/AGENTS.override.md`
-- nested project guidance from closer `AGENTS.md` or `AGENTS.override.md`
-
-This root file defines the default repository contract.
-More specific nested instruction files override broader rules and should remain exceptional.
-
 ## Required Skills (Contract)
 
 This workflow assumes the following skills are available:
@@ -195,12 +184,13 @@ When work is likely to continue in another agent, the agent SHOULD:
 The receiving agent MAY start from `docs/audit/HANDOFF-PACKET.md`, but MUST still:
 
 - reload the referenced artifacts
+- prefer `backlog_refs` first when `preferred_dispatch_source=shared_planning`
 - complete the mandatory pre-write gate
 - stop if handoff state is blocked or stale
 
 ## Scope
 
-These instructions apply to the entire repository unless a more specific `AGENTS.md` or `AGENTS.override.md` is added within a subdirectory.
+These instructions apply to the entire repository. Keep any narrower `AGENTS.md` or `AGENTS.override.md` exceptional and justified by a real local rule change.
 
 Agents MUST:
 - invoke skills explicitly when required by `docs/audit/SPEC.md` and `docs/audit/WORKFLOW.md`

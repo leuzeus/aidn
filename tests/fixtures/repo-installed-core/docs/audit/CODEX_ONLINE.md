@@ -7,11 +7,7 @@ Project defaults:
 - preferred runtime state mode: `dual`
 - default index store: `dual-sqlite`
 
-Instruction layering reminder:
-- this file complements the installed project `AGENTS.md`; it does not replace it
-- Codex may also load `~/.codex/AGENTS.md` or `~/.codex/AGENTS.override.md`
-- a closer `AGENTS.md` or `AGENTS.override.md` can override broader project rules
-- the live workflow state still lives in `docs/audit/*` and hydrated runtime context, not in startup guidance alone
+This file complements the installed project `AGENTS.md`; it does not replace it. The live workflow state still lives in `docs/audit/*` and hydrated runtime context.
 
 Before any durable write, reload the minimal workflow context in this order:
 - `docs/audit/HANDOFF-PACKET.md` when another agent already prepared a relay
@@ -72,7 +68,12 @@ When runtime output shows:
 For agent-to-agent work:
 - refresh `docs/audit/HANDOFF-PACKET.md` before pausing when another agent is expected to continue
 - if a handoff packet exists, read it before the standard re-anchor sequence and verify its pointers against the live artifacts
+- if `HANDOFF-PACKET.md.preferred_dispatch_source=shared_planning`, open `backlog_refs` before replacing the relay intent
 - if `docs/audit/MULTI-AGENT-STATUS.md` exists, use it as the short digest before opening the detailed multi-agent artifacts
+
+For session planning:
+- keep planning local in `.aidn/runtime/context/session-plan-draft.json` while the work stays short, single-agent, and pre-decision
+- promote planning to `docs/audit/backlog/BL-SXXX-<slug>.md` before handoff, multi-agent work, or cycle creation from the planning outcome
 
 When `docs/audit/MULTI-AGENT-STATUS.md` exists, `hydrate-context` also refreshes it automatically unless `--no-project-multi-agent-status` is set.
 

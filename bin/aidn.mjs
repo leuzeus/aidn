@@ -112,6 +112,7 @@ const RUNTIME_ALIASES = {
   "project-coordination-summary": { file: "project-coordination-summary.mjs" },
   "project-handoff-packet": { file: "project-handoff-packet.mjs" },
   "project-runtime-state": { file: "project-runtime-state.mjs" },
+  "session-plan": { file: "session-plan.mjs" },
   "sync-db-first": { file: "sync-db-first.mjs" },
   "sync-db-first-selective": { file: "sync-db-first-selective.mjs" },
   "mode-migrate": { file: "mode-migrate.mjs" },
@@ -150,6 +151,7 @@ function printUsage() {
   console.log("  aidn runtime project-coordination-summary --target . --json");
   console.log("  aidn runtime project-handoff-packet --target . --json");
   console.log("  aidn runtime project-runtime-state --target . --json");
+  console.log("  aidn runtime session-plan --target . --item \"define session backlog\" --promote --json");
   console.log("  aidn project config --target . --list --json");
   console.log("  aidn project config --target . --wizard");
   console.log("  aidn project config --target . --migrate-adapter --json");

@@ -49,7 +49,6 @@ function main() {
     const agentsFile = path.join(targetRoot, "AGENTS.md");
     const workflowFile = path.join(auditRoot, "WORKFLOW.md");
     const codexOnlineFile = path.join(auditRoot, "CODEX_ONLINE.md");
-
     const requiredFiles = [
       path.join(auditRoot, "WORKFLOW-KERNEL.md"),
       path.join(auditRoot, "CURRENT-STATE.md"),

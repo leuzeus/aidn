@@ -39,8 +39,15 @@ Before the first durable write in this skill, run:
 - top open items
 - next actions
 - blocking findings when known
+- `active_backlog`, `backlog_status`, `backlog_next_step`, and `planning_arbitration_status` when a shared session backlog is relevant to the relay
 
-4) Performance hook (mandatory in dual/db-only; optional in files):
+4) If planning must survive the relay:
+- run `npx aidn runtime session-plan --target . --item "<handoff planning item>" --next-step "<explicit next step>" --promote --json`
+- use the promoted backlog when the next agent must inherit a session-level plan before or across cycle execution
+- if the backlog already exists, update the shared planning state through `session-plan` inputs before projecting the relay packet
+- in `dual`/`db-only`, prefer `--state-mode dual|db-only` so the promoted backlog is also written through the DB-backed artifact store
+
+5) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill handoff-close --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
 - the runtime `handoff-close` hook exposes the underlying checkpoint result directly; blocked reload/gate states are surfaced as blocking hook results
 - handoff-specific packet validation remains enforced by `project-handoff-packet` and `handoff-admit`, not by the perf hook alone
@@ -54,6 +61,7 @@ Before the first durable write in this skill, run:
 - DB runtime sync (mandatory in dual/db-only; optional in files):
 - run `npx aidn runtime sync-db-first-selective --target . --json` (falls back to full sync when needed).
 - for DB-first write-through on a specific artifact, run `npx aidn runtime db-first-artifact --target . --path <relative-audit-path> --source-file <file> --json`.
+- for promoted session planning, run `npx aidn runtime session-plan --target . --promote --state-mode <files|dual|db-only> --json` so the shared backlog and `CURRENT-STATE.md` stay aligned before relay.
 - in dual/db-only, this step is mandatory and blocking on failure.
 - in files, this step is optional unless repository policy requires DB parity.
 - if `repair_layer_status` is `warn` or `block`, run `npx aidn runtime repair-layer-triage --target . --json` before continuing.
@@ -62,16 +70,19 @@ Before the first durable write in this skill, run:
 - in files, strict mode remains optional by repository policy.
 - in dual/db-only, prefer `--fail-on-repair-block` on the JSON hook invocation and STOP on `repair_layer_status=block`.
 
-5) Project the relay packet explicitly:
+6) Project the relay packet explicitly:
 - run `npx aidn runtime project-handoff-packet --target . --next-agent-goal "<explicit next-agent goal>" --handoff-note "<optional note>" --json`
 - if hydration already refreshed `docs/audit/RUNTIME-STATE.md`, keep the relay aligned with that digest
 - ensure `docs/audit/HANDOFF-PACKET.md` contains:
   - `handoff_status`
   - `recommended_next_agent_role`
   - `next_agent_goal`
+  - `preferred_dispatch_source`
+  - `backlog_refs` when a shared session backlog exists
   - prioritized artifacts
+- if `preferred_dispatch_source=shared_planning`, tell the receiving agent to open `backlog_refs` before replacing the relay intent
 
-6) Before another agent resumes, recommend:
+7) Before another agent resumes, recommend:
 - `npx aidn runtime handoff-admit --target . --json`
 
 ## Output

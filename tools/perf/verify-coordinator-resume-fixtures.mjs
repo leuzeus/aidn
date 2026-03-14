@@ -132,6 +132,51 @@ function buildRoleBlockedFixture(targetRoot, repoRoot, handoffProjectScript) {
   ].join("\n"), "utf8");
 }
 
+function installSharedPlanningFixture(targetRoot) {
+  const currentStateFile = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
+  const currentStateText = fs.readFileSync(currentStateFile, "utf8");
+  fs.writeFileSync(currentStateFile, currentStateText.replace(
+    "first_plan_step: implement alpha feature validation",
+    [
+      "first_plan_step: implement alpha feature validation",
+      "active_backlog: backlog/BL-S101-session-planning.md",
+      "backlog_status: promoted",
+      "backlog_next_step: implement alpha feature validation",
+      "planning_arbitration_status: none",
+    ].join("\n"),
+  ), "utf8");
+  const backlogDir = path.join(targetRoot, "docs", "audit", "backlog");
+  fs.mkdirSync(backlogDir, { recursive: true });
+  fs.writeFileSync(path.join(backlogDir, "BL-S101-session-planning.md"), [
+    "# Session Backlog - S101",
+    "",
+    "## Summary",
+    "",
+    "updated_at: 2026-03-09T01:03:00Z",
+    "session_id: S101",
+    "session_branch: S101-alpha",
+    "mode: COMMITTING",
+    "planning_status: promoted",
+    "linked_cycles: C101",
+    "dispatch_ready: yes",
+    "planning_arbitration_status: none",
+    "next_dispatch_scope: cycle",
+    "next_dispatch_action: implement",
+    "backlog_next_step: implement alpha feature validation",
+    "",
+    "## Backlog Items",
+    "",
+    "backlog_items:",
+    "- implement alpha feature validation",
+    "",
+    "## Open Questions",
+    "",
+    "open_questions:",
+    "- none",
+    "",
+  ].join("\n"), "utf8");
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -154,6 +199,7 @@ function main() {
     initGitRepo(reanchorTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(roleBlockedTarget, { workingBranch: "feature/C101-alpha" });
 
+    installSharedPlanningFixture(escalatedTarget);
     buildEscalatedFixture(escalatedTarget, repoRoot, handoffProjectScript, summaryScript);
     buildEscalatedFixture(reanchorTarget, repoRoot, handoffProjectScript, summaryScript);
     buildRoleBlockedFixture(roleBlockedTarget, repoRoot, handoffProjectScript);
@@ -193,9 +239,13 @@ function main() {
     assert(resumedDryRun.resume_status === "resumed_after_arbitration", "continue arbitration should unlock resume");
     assert(resumedDryRun.arbitration_satisfied === true, "continue arbitration should satisfy resume gate");
     assert(resumedDryRun.dispatch.dispatch_status === "ready", "continue arbitration should restore ready dispatch");
+    assert(resumedDryRun.preferred_dispatch_source === "shared_planning", "continue arbitration should prefer the aligned shared planning relay");
+    assert(resumedDryRun.shared_planning_candidate?.candidate_ready === true, "continue arbitration should expose a ready shared planning candidate");
+    assert(resumedDryRun.shared_planning_candidate?.candidate_aligned === true, "continue arbitration should expose an aligned shared planning candidate");
     assert(resumedExecute.resume_status === "resumed_after_arbitration", "executed resume should preserve arbitration resume status");
     assert(resumedExecute.execution_status === "executed", "executed resume should complete execution");
     assert(resumedExecute.executed === true, "executed resume should report executed");
+    assert(resumedExecute.preferred_dispatch_source === "shared_planning", "executed resume should keep the aligned shared planning preference");
     assert(resumedExecute.execution?.dispatch_status === "ready", "executed resume should execute a ready dispatch");
     assert(Array.isArray(resumedExecute.execution?.executed_steps) && resumedExecute.execution.executed_steps.length === 2, "executed resume should run the implementation dispatch");
     assert(fs.existsSync(escalatedLogFile), "executed resume should write coordination log after arbitration");

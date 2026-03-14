@@ -80,7 +80,119 @@ const CASES = [
     expectedResult: "ok",
     expectsCheckpoint: true,
   },
+  {
+    id: "promoted_backlog_requires_scope_selection",
+    fixture: "tests/fixtures/perf-structure/session-multi-cycle-explicit",
+    workingBranch: "S103-multi",
+    mutate(targetRoot) {
+      writeDualConfig(targetRoot);
+      installSharedPlanningFixture(targetRoot, { selectedExecutionScope: "none" });
+    },
+    expectedAction: "stop_select_execution_scope",
+    expectedResult: "stop",
+    expectsCheckpoint: false,
+  },
+  {
+    id: "promoted_backlog_new_cycle_scope_allows_r2",
+    fixture: "tests/fixtures/perf-structure/session-multi-cycle-explicit",
+    workingBranch: "S103-multi",
+    mutate(targetRoot) {
+      writeDualConfig(targetRoot);
+      installSharedPlanningFixture(targetRoot, { selectedExecutionScope: "new_cycle" });
+    },
+    expectedAction: "proceed_r2_session_base_with_import",
+    expectedResult: "ok",
+    expectsCheckpoint: true,
+  },
 ];
+
+function writeDualConfig(targetRoot) {
+  const configDir = path.join(targetRoot, ".aidn");
+  fs.mkdirSync(configDir, { recursive: true });
+  fs.writeFileSync(path.join(configDir, "config.json"), `${JSON.stringify({
+    version: 1,
+    profile: "dual",
+    install: {
+      artifactImportStore: "dual-sqlite",
+    },
+    runtime: {
+      stateMode: "dual",
+    },
+    workflow: {
+      sourceBranch: "main",
+    },
+  }, null, 2)}\n`, "utf8");
+}
+
+function installSharedPlanningFixture(targetRoot, { selectedExecutionScope = "none" } = {}) {
+  const currentStateFile = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
+  const currentStateText = fs.existsSync(currentStateFile)
+    ? fs.readFileSync(currentStateFile, "utf8")
+    : [
+      "# Current State",
+      "",
+      "## Summary",
+      "",
+      "updated_at: 2026-03-09T01:05:00Z",
+      "structure_profile: modern",
+      "runtime_state_mode: dual",
+      "repair_layer_status: ok",
+      "",
+      "## Active Context",
+      "",
+      "active_session: S103",
+      "session_branch: S103-multi",
+      "branch_kind: session",
+      "mode: COMMITTING",
+      "",
+      "active_cycle: C104",
+      "cycle_branch: feature/C104-delta",
+      "dor_state: READY",
+      "first_plan_step: select the first cycle scope",
+      "",
+    ].join("\n");
+  const nextCurrentState = currentStateText.includes("active_backlog:")
+    ? currentStateText
+      .replace(/active_backlog:\s*.+/g, "active_backlog: backlog/BL-S103-session-planning.md")
+      .replace(/backlog_status:\s*.+/g, "backlog_status: promoted")
+      .replace(/backlog_next_step:\s*.+/g, "backlog_next_step: select the first cycle scope")
+      .replace(/backlog_selected_execution_scope:\s*.+/g, `backlog_selected_execution_scope: ${selectedExecutionScope}`)
+      .replace(/planning_arbitration_status:\s*.+/g, "planning_arbitration_status: none")
+    : currentStateText.replace(
+      "first_plan_step: select the first cycle scope",
+      [
+        "first_plan_step: select the first cycle scope",
+        "active_backlog: backlog/BL-S103-session-planning.md",
+        "backlog_status: promoted",
+        "backlog_next_step: select the first cycle scope",
+        `backlog_selected_execution_scope: ${selectedExecutionScope}`,
+        "planning_arbitration_status: none",
+      ].join("\n"),
+    );
+  fs.mkdirSync(path.dirname(currentStateFile), { recursive: true });
+  fs.writeFileSync(currentStateFile, `${nextCurrentState.replace(/\n+$/u, "")}\n`, "utf8");
+  const backlogDir = path.join(targetRoot, "docs", "audit", "backlog");
+  fs.mkdirSync(backlogDir, { recursive: true });
+  fs.writeFileSync(path.join(backlogDir, "BL-S103-session-planning.md"), [
+    "# Session Backlog - S103",
+    "",
+    "## Summary",
+    "",
+    "updated_at: 2026-03-09T01:10:00Z",
+    "session_id: S103",
+    "session_branch: S103-multi",
+    "mode: COMMITTING",
+    "planning_status: promoted",
+    "linked_cycles: C103, C104",
+    "dispatch_ready: yes",
+    "planning_arbitration_status: none",
+    "next_dispatch_scope: cycle",
+    "next_dispatch_action: implement",
+    "backlog_next_step: select the first cycle scope",
+    `selected_execution_scope: ${selectedExecutionScope}`,
+    "",
+  ].join("\n"), "utf8");
+}
 
 function parseArgs(argv) {
   const args = {

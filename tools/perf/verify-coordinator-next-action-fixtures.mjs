@@ -56,6 +56,41 @@ function runJson(script, args, repoRoot, expectStatus = 0) {
   return JSON.parse(String(result.stdout ?? "{}"));
 }
 
+function installSharedPlanningFixture(targetRoot) {
+  const currentStateFile = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
+  const currentStateText = fs.readFileSync(currentStateFile, "utf8");
+  fs.writeFileSync(currentStateFile, currentStateText.replace(
+    "first_plan_step: implement alpha feature validation",
+    [
+      "first_plan_step: implement alpha feature validation",
+      "active_backlog: backlog/BL-S101-session-planning.md",
+      "backlog_status: promoted",
+      "backlog_next_step: implement alpha feature validation",
+      "planning_arbitration_status: none",
+    ].join("\n"),
+  ), "utf8");
+  const backlogDir = path.join(targetRoot, "docs", "audit", "backlog");
+  fs.mkdirSync(backlogDir, { recursive: true });
+  fs.writeFileSync(path.join(backlogDir, "BL-S101-session-planning.md"), [
+    "# Session Backlog - S101",
+    "",
+    "## Summary",
+    "",
+    "updated_at: 2026-03-09T01:03:00Z",
+    "session_id: S101",
+    "session_branch: S101-alpha",
+    "mode: COMMITTING",
+    "planning_status: promoted",
+    "linked_cycles: C101",
+    "dispatch_ready: yes",
+    "planning_arbitration_status: none",
+    "next_dispatch_scope: cycle",
+    "next_dispatch_action: implement",
+    "backlog_next_step: implement alpha feature validation",
+    "",
+  ].join("\n"), "utf8");
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -80,6 +115,7 @@ function main() {
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), tamperedTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), transitionRejectedTarget, { recursive: true });
     fs.cpSync(path.join(currentStateFixturesRoot, "active"), fallbackTarget, { recursive: true });
+    installSharedPlanningFixture(readyTarget);
 
     runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", warnTarget, "--json"], repoRoot, 0);
@@ -137,7 +173,10 @@ function main() {
 
     assert(ready.recommendation.role === "executor", "ready should route to executor");
     assert(ready.recommendation.action === "implement", "ready should route to implement");
-    assert(ready.recommendation.source === "handoff", "ready should come from handoff");
+    assert(ready.recommendation.source === "handoff-shared-planning", "ready should come from shared planning handoff");
+    assert(ready.preferred_dispatch_source === "shared_planning", "ready should expose shared planning provenance");
+    assert(ready.shared_planning_candidate?.shared_planning_candidate_ready === "yes", "ready should expose a ready shared planning candidate");
+    assert(ready.shared_planning_candidate?.shared_planning_candidate_aligned === "yes", "ready should expose an aligned shared planning candidate");
     assert(ready.scope.scope_type === "cycle", "ready should preserve cycle scope");
     assert(ready.scope.scope_id === "C101", "ready should preserve active cycle id");
 

@@ -63,6 +63,237 @@ function printUsage() {
   console.log("  node tools/runtime/coordinator-dispatch-plan.mjs --target . --agent auto --json");
 }
 
+function resolveTargetPath(targetRoot, candidate) {
+  if (!candidate) {
+    return "";
+  }
+  if (path.isAbsolute(candidate)) {
+    return path.resolve(candidate);
+  }
+  return path.resolve(targetRoot, candidate);
+}
+
+function readTextIfExists(filePath) {
+  return filePath && fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf8") : "";
+}
+
+function normalizeScalar(value) {
+  const normalized = String(value ?? "").trim();
+  if (normalized.startsWith("`") && normalized.endsWith("`") && normalized.length >= 2) {
+    return normalized.slice(1, -1).trim();
+  }
+  return normalized;
+}
+
+function parseSimpleMap(text) {
+  const map = new Map();
+  for (const line of String(text).split(/\r?\n/)) {
+    const match = line.match(/^([a-zA-Z0-9_]+):\s*(.+)$/);
+    if (!match) {
+      continue;
+    }
+    map.set(match[1], normalizeScalar(match[2]));
+  }
+  return map;
+}
+
+function canonicalNone(value) {
+  const normalized = normalizeScalar(value).toLowerCase();
+  return normalized === "none" || normalized === "(none)";
+}
+
+function canonicalUnknown(value) {
+  return normalizeScalar(value).toLowerCase() === "unknown";
+}
+
+function parseTimestamp(value) {
+  const normalized = normalizeScalar(value);
+  if (!normalized) {
+    return null;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    const parsed = Date.parse(`${normalized}T00:00:00Z`);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  const parsed = Date.parse(normalized);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function uniqueItems(values) {
+  const out = [];
+  const seen = new Set();
+  for (const value of values) {
+    const normalized = normalizeScalar(value);
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    out.push(normalized);
+  }
+  return out;
+}
+
+function splitList(value) {
+  if (!value) {
+    return [];
+  }
+  return uniqueItems(String(value).split(",").map((item) => item.trim()));
+}
+
+function isMeaningfulScalar(value, { allowNone = false, allowUnknown = false } = {}) {
+  const normalized = normalizeScalar(value);
+  if (!normalized) {
+    return false;
+  }
+  if (!allowNone && canonicalNone(normalized)) {
+    return false;
+  }
+  if (!allowUnknown && canonicalUnknown(normalized)) {
+    return false;
+  }
+  return true;
+}
+
+function pickScalar(values, options = {}) {
+  for (const value of values) {
+    if (isMeaningfulScalar(value, options)) {
+      return normalizeScalar(value);
+    }
+  }
+  return "";
+}
+
+function parseLabeledBulletList(text, label) {
+  const lines = String(text).split(/\r?\n/);
+  const items = [];
+  let active = false;
+  for (const line of lines) {
+    if (!active && line.trim() === label) {
+      active = true;
+      continue;
+    }
+    if (!active) {
+      continue;
+    }
+    if (/^##\s+/.test(line) || (/^[a-zA-Z0-9_]+:\s*/.test(line) && line.trim() !== label)) {
+      break;
+    }
+    const match = line.match(/^\s*-\s+(.+)$/);
+    if (match) {
+      const item = normalizeScalar(match[1]);
+      if (item && !canonicalNone(item)) {
+        items.push(item);
+      }
+    }
+  }
+  return uniqueItems(items);
+}
+
+function parseSectionBulletList(text, heading) {
+  const lines = String(text).split(/\r?\n/);
+  const items = [];
+  let active = false;
+  for (const line of lines) {
+    if (!active && line.trim() === heading) {
+      active = true;
+      continue;
+    }
+    if (!active) {
+      continue;
+    }
+    if (/^##\s+/.test(line)) {
+      break;
+    }
+    const match = line.match(/^\s*-\s+(.+)$/);
+    if (match) {
+      const item = normalizeScalar(match[1]);
+      if (item) {
+        items.push(item);
+      }
+    }
+  }
+  return uniqueItems(items);
+}
+
+function parseSectionBulletEntries(text, heading) {
+  const lines = String(text).split(/\r?\n/);
+  const items = [];
+  let active = false;
+  for (const line of lines) {
+    if (!active && line.trim() === heading) {
+      active = true;
+      continue;
+    }
+    if (!active) {
+      continue;
+    }
+    if (/^##\s+/.test(line)) {
+      break;
+    }
+    const match = line.match(/^\s*-\s+(.+)$/);
+    if (match) {
+      const item = normalizeScalar(match[1]);
+      if (item) {
+        items.push(item);
+      }
+    }
+  }
+  return items;
+}
+
+function parseAddendumLine(line) {
+  const tokens = String(line).split("|").map((item) => normalizeScalar(item)).filter(Boolean);
+  const addendum = {
+    timestamp: "",
+    agent_role: "unknown",
+    rationale: "planning update",
+    affected_item: "none",
+    affected_question: "none",
+    note: "",
+    raw: normalizeScalar(line),
+  };
+  if (tokens.length === 0) {
+    return addendum;
+  }
+  const first = tokens[0];
+  if (!first.includes(":")) {
+    addendum.timestamp = first;
+  }
+  for (const token of tokens) {
+    const match = token.match(/^([a-z_]+):\s*(.+)$/i);
+    if (!match) {
+      continue;
+    }
+    const key = String(match[1]).toLowerCase();
+    const value = normalizeScalar(match[2]);
+    if (key === "ts" || key === "timestamp") {
+      addendum.timestamp = value;
+    } else if (key === "agent_role") {
+      addendum.agent_role = value || "unknown";
+    } else if (key === "rationale") {
+      addendum.rationale = value || "planning update";
+    } else if (key === "affected_item") {
+      addendum.affected_item = value || "none";
+    } else if (key === "affected_question") {
+      addendum.affected_question = value || "none";
+    } else if (key === "note") {
+      addendum.note = value;
+    }
+  }
+  if (!addendum.timestamp && tokens[0]) {
+    addendum.timestamp = tokens[0];
+  }
+  return addendum;
+}
+
+function parseAddendaSection(text) {
+  return parseSectionBulletEntries(text, "## Addenda").map(parseAddendumLine);
+}
+
+function relPath(root, filePath) {
+  return path.relative(root, filePath).replace(/\\/g, "/");
+}
+
 function quoteArg(value) {
   return `"${String(value ?? "").replace(/"/g, '\\"')}"`;
 }
@@ -97,6 +328,150 @@ function buildStep(command, args, label) {
     command: executable,
     args,
     command_line: buildCommandLine(command, args),
+  };
+}
+
+function resolveActiveBacklogPath(targetRoot, activeBacklog) {
+  const normalized = normalizeScalar(activeBacklog);
+  if (!normalized || canonicalNone(normalized) || canonicalUnknown(normalized)) {
+    return { relative_path: "none", absolute_path: "", found: false };
+  }
+  const relativePath = normalized.startsWith("docs/")
+    ? normalized.replace(/\\/g, "/")
+    : `docs/audit/${normalized.replace(/\\/g, "/").replace(/^\/+/, "")}`;
+  const absolutePath = resolveTargetPath(targetRoot, relativePath);
+  return {
+    relative_path: relativePath,
+    absolute_path: absolutePath,
+    found: fs.existsSync(absolutePath),
+  };
+}
+
+function parseBacklogArtifact(text) {
+  const map = parseSimpleMap(text);
+  return {
+    updated_at: normalizeScalar(map.get("updated_at") ?? "") || "",
+    planning_status: normalizeScalar(map.get("planning_status") ?? "unknown") || "unknown",
+    linked_cycles: splitList(map.get("linked_cycles") ?? ""),
+    dispatch_ready: normalizeScalar(map.get("dispatch_ready") ?? "no") || "no",
+    planning_arbitration_status: normalizeScalar(map.get("planning_arbitration_status") ?? "none") || "none",
+    next_dispatch_scope: normalizeScalar(map.get("next_dispatch_scope") ?? "none") || "none",
+    next_dispatch_action: normalizeScalar(map.get("next_dispatch_action") ?? "none") || "none",
+    backlog_next_step: normalizeScalar(map.get("backlog_next_step") ?? "unknown") || "unknown",
+    backlog_items: parseLabeledBulletList(text, "backlog_items:"),
+    open_questions: parseLabeledBulletList(text, "open_questions:"),
+    addenda: parseAddendaSection(text),
+  };
+}
+
+function isResolvedPlanningArbitrationStatus(value) {
+  const normalized = normalizeScalar(value).toLowerCase();
+  return !normalized
+    || normalized === "none"
+    || normalized === "resolved"
+    || normalized === "closed"
+    || normalized === "approved"
+    || normalized === "cleared";
+}
+
+function normalizeSharedPlanning(currentState) {
+  const activeBacklog = String(currentState?.active_backlog ?? "none").trim() || "none";
+  const backlogStatus = String(currentState?.backlog_status ?? "unknown").trim() || "unknown";
+  const backlogNextStep = String(currentState?.backlog_next_step ?? "unknown").trim() || "unknown";
+  const planningArbitrationStatus = String(currentState?.planning_arbitration_status ?? "none").trim() || "none";
+  return {
+    active_backlog: activeBacklog,
+    backlog_status: backlogStatus,
+    backlog_next_step: backlogNextStep,
+    planning_arbitration_status: planningArbitrationStatus,
+    enabled: activeBacklog !== "none" && activeBacklog !== "unknown",
+  };
+}
+
+function readSharedPlanning(targetRoot, currentStateFile) {
+  const currentStatePath = resolveTargetPath(targetRoot, currentStateFile);
+  const currentStateText = readTextIfExists(currentStatePath);
+  const currentMap = parseSimpleMap(currentStateText);
+  const currentState = normalizeSharedPlanning({
+    active_backlog: currentMap.get("active_backlog") ?? "none",
+    backlog_status: currentMap.get("backlog_status") ?? "unknown",
+    backlog_next_step: currentMap.get("backlog_next_step") ?? "unknown",
+    planning_arbitration_status: currentMap.get("planning_arbitration_status") ?? "none",
+  });
+  const backlogArtifactRef = resolveActiveBacklogPath(targetRoot, currentState.active_backlog);
+  const backlogArtifact = backlogArtifactRef.found
+    ? parseBacklogArtifact(readTextIfExists(backlogArtifactRef.absolute_path))
+    : null;
+  const backlogStatus = pickScalar(
+    [backlogArtifact?.planning_status, currentState.backlog_status],
+    { allowNone: false, allowUnknown: false },
+  ) || "unknown";
+  const backlogNextStep = pickScalar(
+    [backlogArtifact?.backlog_next_step, currentState.backlog_next_step],
+    { allowNone: false, allowUnknown: false },
+  ) || "unknown";
+  const planningArbitrationStatus = pickScalar(
+    [backlogArtifact?.planning_arbitration_status, currentState.planning_arbitration_status],
+    { allowNone: false, allowUnknown: false },
+  ) || "none";
+  const nextDispatchScope = pickScalar(
+    [backlogArtifact?.next_dispatch_scope],
+    { allowNone: false, allowUnknown: false },
+  ) || "none";
+  const nextDispatchAction = pickScalar(
+    [backlogArtifact?.next_dispatch_action],
+    { allowNone: false, allowUnknown: false },
+  ) || "none";
+  const dispatchReady = String(backlogArtifact?.dispatch_ready ?? "no").trim().toLowerCase() === "yes";
+  const currentUpdatedAtMs = parseTimestamp(currentMap.get("updated_at") ?? "");
+  const backlogUpdatedAtMs = parseTimestamp(backlogArtifact?.updated_at ?? "");
+  let freshnessStatus = "unknown";
+  let freshnessBasis = "shared planning freshness could not be derived";
+  if (!backlogArtifactRef.found) {
+    freshnessStatus = "missing";
+    freshnessBasis = "active backlog artifact is referenced but not found";
+  } else if (currentUpdatedAtMs !== null && backlogUpdatedAtMs !== null) {
+    freshnessStatus = backlogUpdatedAtMs >= currentUpdatedAtMs ? "ok" : "stale";
+    freshnessBasis = backlogUpdatedAtMs >= currentUpdatedAtMs
+      ? "backlog updated_at is aligned with CURRENT-STATE.md"
+      : "backlog updated_at is older than CURRENT-STATE.md";
+  } else if (currentStateText.includes("active_backlog:") && currentStateText.includes("backlog_next_step:")) {
+    freshnessStatus = "ok";
+    freshnessBasis = "shared planning summary fields are present but timestamps are incomplete";
+  }
+  const arbitrationResolved = isResolvedPlanningArbitrationStatus(planningArbitrationStatus);
+  const gateStatus = !currentState.enabled
+    ? "not_applicable"
+    : (!backlogArtifactRef.found
+      ? "warn"
+      : (!arbitrationResolved ? "blocked" : "ok"));
+  const gateReason = !currentState.enabled
+    ? "no active shared planning backlog"
+    : (!backlogArtifactRef.found
+      ? "active shared planning backlog is referenced but missing"
+      : (!arbitrationResolved
+        ? `planning arbitration remains unresolved: ${planningArbitrationStatus}`
+        : "shared planning arbitration is resolved"));
+  return {
+    active_backlog: currentState.active_backlog,
+    backlog_status: backlogStatus,
+    backlog_next_step: backlogNextStep,
+    planning_arbitration_status: planningArbitrationStatus,
+    enabled: currentState.enabled,
+    artifact_found: backlogArtifactRef.found,
+    artifact_path: backlogArtifactRef.found ? relPath(targetRoot, backlogArtifactRef.absolute_path) : backlogArtifactRef.relative_path,
+    backlog_items: backlogArtifact?.backlog_items ?? [],
+    open_questions: backlogArtifact?.open_questions ?? [],
+    linked_cycles: backlogArtifact?.linked_cycles ?? [],
+    addenda_count: Array.isArray(backlogArtifact?.addenda) ? backlogArtifact.addenda.length : 0,
+    recent_addenda: Array.isArray(backlogArtifact?.addenda) ? backlogArtifact.addenda.slice(-3) : [],
+    dispatch_ready: dispatchReady,
+    next_dispatch_scope: nextDispatchScope,
+    next_dispatch_action: nextDispatchAction,
+    freshness_status: freshnessStatus,
+    freshness_basis: freshnessBasis,
+    gate_status: gateStatus,
+    gate_reason: gateReason,
   };
 }
 
@@ -175,6 +550,29 @@ function buildRecommendedRoleCoverage({ recommendation, adapters, rosterVerifica
     summary,
     reason: `no adapter is currently exposed for role ${role}`,
   };
+}
+
+function summarizeList(items, limit = 2) {
+  const values = uniqueItems(items);
+  if (values.length === 0) {
+    return "";
+  }
+  const visible = values.slice(0, limit);
+  if (values.length > limit) {
+    visible.push(`+${values.length - limit} more`);
+  }
+  return visible.join("; ");
+}
+
+function summarizeAddenda(addenda, limit = 2) {
+  const values = Array.isArray(addenda) ? addenda.slice(-limit) : [];
+  return values
+    .map((item) => {
+      const agentRole = normalizeScalar(item?.agent_role) || "unknown";
+      const rationale = normalizeScalar(item?.rationale) || "planning update";
+      return `${agentRole}: ${rationale}`;
+    })
+    .join("; ");
 }
 
 function normalizeDecision(value) {
@@ -336,6 +734,7 @@ export async function computeCoordinatorDispatchPlan({
     packetFile,
   });
   const recommendation = loopState.recommendation;
+  const sharedPlanning = readSharedPlanning(absoluteTargetRoot, currentStateFile);
   const integrationRisk = assessIntegrationRisk({
     targetRoot: absoluteTargetRoot,
     currentStateFile,
@@ -421,8 +820,44 @@ export async function computeCoordinatorDispatchPlan({
       "Run `aidn runtime coordinator-suggest-arbitration --target . --json` to review the structured arbitration options.",
     ];
   }
+  if (sharedPlanning.gate_status === "blocked") {
+    dispatch.entrypoint_kind = "manual";
+    dispatch.entrypoint_name = "user-arbitration";
+    dispatch.steps = [];
+    dispatch.commands = [];
+    dispatch.notes = [
+      `Shared planning arbitration must be resolved before dispatch: ${sharedPlanning.gate_reason}.`,
+      "Run `aidn runtime session-plan --target . --planning-arbitration-status resolved --promote --json` after the planning decision is explicit.",
+      "Run `aidn runtime coordinator-suggest-arbitration --target . --json` if the next dispatch scope still needs user arbitration.",
+    ];
+  }
+  if (sharedPlanning.enabled) {
+    dispatch.notes = [
+      ...dispatch.notes,
+      `Shared planning backlog: ${sharedPlanning.active_backlog}.`,
+    ];
+    dispatch.notes.push(`Shared planning freshness: ${sharedPlanning.freshness_status} (${sharedPlanning.freshness_basis}).`);
+    if (sharedPlanning.backlog_next_step !== "unknown") {
+      dispatch.notes.push(`Shared planning next step: ${sharedPlanning.backlog_next_step}.`);
+    }
+    if (sharedPlanning.planning_arbitration_status !== "none") {
+      dispatch.notes.push(`Planning arbitration status: ${sharedPlanning.planning_arbitration_status}.`);
+    }
+    if (sharedPlanning.backlog_items.length > 0) {
+      dispatch.notes.push(`Shared planning items: ${summarizeList(sharedPlanning.backlog_items)}.`);
+    }
+    if (sharedPlanning.open_questions.length > 0) {
+      dispatch.notes.push(`Shared planning open questions: ${summarizeList(sharedPlanning.open_questions)}.`);
+    }
+    if (sharedPlanning.addenda_count > 0) {
+      dispatch.notes.push(`Shared planning addenda: ${sharedPlanning.addenda_count} (${summarizeAddenda(sharedPlanning.recent_addenda)}).`);
+    }
+    if (sharedPlanning.dispatch_ready) {
+      dispatch.notes.push(`Shared planning dispatch candidate: ${sharedPlanning.next_dispatch_scope} + ${sharedPlanning.next_dispatch_action}.`);
+    }
+  }
 
-  const dispatchStatus = (loopState.loop?.escalation?.level === "user_arbitration_required" || recommendedRoleCoverage.status === "blocked" || integrationRiskGate.active)
+  const dispatchStatus = (loopState.loop?.escalation?.level === "user_arbitration_required" || recommendedRoleCoverage.status === "blocked" || integrationRiskGate.active || sharedPlanning.gate_status === "blocked")
     ? "escalated"
     : (!supported
       ? "unsupported"
@@ -453,6 +888,7 @@ export async function computeCoordinatorDispatchPlan({
     coordinator_recommendation: recommendation,
     integration_risk: integrationRisk,
     integration_risk_gate: integrationRiskGate,
+    shared_planning: sharedPlanning,
     dispatch_scope: loopState.scope ?? {
       scope_type: "none",
       scope_id: "none",
@@ -466,6 +902,7 @@ export async function computeCoordinatorDispatchPlan({
     notes: dispatch.notes,
     preconditions: [
       "reload prioritized artifacts before acting",
+      ...(sharedPlanning.enabled ? ["read the active shared backlog artifact before acting"] : []),
       "complete the mandatory pre-write restatement before durable write",
       recommendation.stop_required
         ? "respect the stop gate before any normal implementation relay"

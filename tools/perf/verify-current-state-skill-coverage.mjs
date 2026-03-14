@@ -7,7 +7,10 @@ const SKILL_SPECS = [
     name: "start-session",
     required: [
       "docs/audit/CURRENT-STATE.md",
-      "Only create/update session file and `docs/audit/CURRENT-STATE.md`.",
+      "Only create/update session file",
+      "npx aidn runtime session-plan --target .",
+      "active_backlog",
+      "preferred_dispatch_source=shared_planning",
     ],
   },
   {
@@ -23,6 +26,8 @@ const SKILL_SPECS = [
     required: [
       "Keep `docs/audit/CURRENT-STATE.md` summary-only if updated.",
       "Update `docs/audit/CURRENT-STATE.md`:",
+      "backlog_selected_execution_scope=new_cycle",
+      "npx aidn runtime session-plan --target . --selected-execution-scope new_cycle --promote --json",
     ],
   },
   {
@@ -73,6 +78,9 @@ const SKILL_SPECS = [
       "Keep `docs/audit/CURRENT-STATE.md` summary-only if updated.",
       "Update `docs/audit/CURRENT-STATE.md` when present:",
       "next agent goal",
+      "npx aidn runtime session-plan --target .",
+      "backlog_refs",
+      "preferred_dispatch_source",
     ],
   },
 ];

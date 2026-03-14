@@ -77,6 +77,11 @@ function main() {
     assert(payload.packet.scope_id === "none", "expected none scope_id for idle fixture");
     assert(payload.packet.target_branch === "none", "expected none target_branch for idle fixture");
     assert(payload.packet.transition_policy_status === "unknown_mode", "expected unknown_mode transition policy for idle fixture");
+    assert(payload.packet.preferred_dispatch_source === "workflow", "expected workflow dispatch source for idle fixture");
+    assert(payload.packet.shared_planning_candidate_ready === "no", "expected no shared planning candidate for idle fixture");
+    assert(payload.packet.shared_planning_candidate_aligned === "no", "expected non-aligned shared planning candidate for idle fixture");
+    assert(payload.packet.shared_planning_freshness === "not_applicable", "expected no shared planning freshness for idle fixture");
+    assert(payload.packet.shared_planning_gate_status === "not_applicable", "expected no shared planning gate for idle fixture");
     assert(String(payload.packet.next_agent_goal ?? "").length > 0, "expected explicit next_agent_goal");
     assert(payload.packet.prioritized_artifacts.includes("docs/audit/CURRENT-STATE.md"), "missing CURRENT-STATE priority");
     assert(text.includes("handoff_status: refresh_required"), "packet file missing refresh_required");
@@ -87,6 +92,10 @@ function main() {
     assert(text.includes("scope_type: session"), "packet file missing session scope");
     assert(text.includes("scope_id: none"), "packet file missing scope id");
     assert(text.includes("transition_policy_status: unknown_mode"), "packet file missing transition policy status");
+    assert(text.includes("preferred_dispatch_source: workflow"), "packet file missing dispatch source");
+    assert(text.includes("shared_planning_candidate_ready: no"), "packet file missing shared planning candidate flag");
+    assert(text.includes("shared_planning_freshness: not_applicable"), "packet file missing shared planning freshness");
+    assert(text.includes("shared_planning_gate_status: not_applicable"), "packet file missing shared planning gate");
     assert(text.includes("next_agent_goal:"), "packet file missing next_agent_goal");
     assert(text.includes("`docs/audit/WORKFLOW-KERNEL.md`"), "packet file missing workflow kernel");
 

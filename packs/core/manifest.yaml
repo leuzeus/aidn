@@ -51,6 +51,7 @@ verify:
     - docs/audit/CONTINUITY_GATE.md
     - docs/audit/RULE_STATE_BOUNDARY.md
     - docs/audit/incidents/TEMPLATE_INC_TMP.md
+    - docs/audit/backlog/TEMPLATE_SESSION_BACKLOG.md
     - docs/audit/baseline/current.md
     - docs/audit/snapshots/context-snapshot.md
     - docs/audit/parking-lot.md

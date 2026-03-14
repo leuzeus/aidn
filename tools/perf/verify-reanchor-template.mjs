@@ -79,6 +79,7 @@ function main() {
     const codexOnlineText = exists(files.codexOnline) ? readText(files.codexOnline) : "";
     const currentStateText = exists(files.currentState) ? readText(files.currentState) : "";
     const runtimeStateText = exists(files.runtimeState) ? readText(files.runtimeState) : "";
+    const reanchorPromptText = exists(files.reanchorPrompt) ? readText(files.reanchorPrompt) : "";
 
     const checks = {
       workflow_kernel_present: exists(files.kernel),
@@ -126,6 +127,7 @@ function main() {
       agents_references_current_state: agentsText.includes("CURRENT-STATE.md"),
       agents_references_runtime_state: agentsText.includes("RUNTIME-STATE.md"),
       agents_references_reanchor_prompt: agentsText.includes("REANCHOR_PROMPT.md"),
+      agents_mentions_shared_planning_handoff: agentsText.includes("prefer `backlog_refs` first when `preferred_dispatch_source=shared_planning`"),
       agents_has_pre_write_gate: agentsText.includes("## Pre-Write Gate (MANDATORY)"),
       agents_mentions_apply_patch: agentsText.includes("`apply_patch`"),
       agents_mentions_start_session_read_only_admission: agentsText.includes("read-only intent prevents durable writes; it does not exempt the agent from session admission"),
@@ -134,11 +136,15 @@ function main() {
       current_state_references_runtime_state: currentStateText.includes("RUNTIME-STATE.md"),
       runtime_state_references_handoff_packet: runtimeStateText.includes("HANDOFF-PACKET.md"),
       runtime_state_mentions_freshness: runtimeStateText.includes("current_state_freshness"),
+      reanchor_prompt_mentions_dispatch_source: reanchorPromptText.includes("preferred dispatch source"),
+      reanchor_prompt_mentions_shared_planning_candidate: reanchorPromptText.includes("shared planning candidate readiness/alignment"),
+      reanchor_prompt_mentions_backlog_refs: reanchorPromptText.includes("backlog_refs"),
       codex_online_references_handoff_packet: codexOnlineText.includes("HANDOFF-PACKET.md"),
       codex_online_references_kernel: codexOnlineText.includes("WORKFLOW-KERNEL.md"),
       codex_online_references_current_state: codexOnlineText.includes("CURRENT-STATE.md"),
       codex_online_references_runtime_state: codexOnlineText.includes("RUNTIME-STATE.md"),
       codex_online_references_reanchor_prompt: codexOnlineText.includes("REANCHOR_PROMPT.md"),
+      codex_online_mentions_shared_planning_handoff: codexOnlineText.includes("preferred_dispatch_source=shared_planning"),
       codex_online_mentions_apply_patch: codexOnlineText.includes("`apply_patch`"),
       codex_online_mentions_durable_write: codexOnlineText.includes("durable write"),
       codex_online_mentions_start_session_read_only_admission: codexOnlineText.includes("still run `start-session` even when the immediate user request is analysis-only"),

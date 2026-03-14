@@ -150,6 +150,53 @@ function main() {
       "- `docs/audit/CURRENT-STATE.md`",
       "",
     ].join("\n"), "utf8");
+    const fallbackCurrentState = path.join(fallbackTarget, "docs", "audit", "CURRENT-STATE.md");
+    const fallbackCurrentStateText = fs.readFileSync(fallbackCurrentState, "utf8");
+    fs.writeFileSync(fallbackCurrentState, fallbackCurrentStateText.replace(
+      "first_plan_step: implement alpha feature validation",
+      [
+        "first_plan_step: implement alpha feature validation",
+        "active_backlog: backlog/BL-S101-session-planning.md",
+        "backlog_status: promoted",
+        "backlog_next_step: validate shared planning before dispatch",
+        "planning_arbitration_status: review_requested",
+      ].join("\n"),
+    ), "utf8");
+    const fallbackBacklogDir = path.join(fallbackTarget, "docs", "audit", "backlog");
+    fs.mkdirSync(fallbackBacklogDir, { recursive: true });
+    fs.writeFileSync(path.join(fallbackBacklogDir, "BL-S101-session-planning.md"), [
+      "# Session Backlog - S101",
+      "",
+      "## Summary",
+      "",
+      "updated_at: 2026-03-09T01:03:00Z",
+      "session_id: S101",
+      "session_branch: S101-alpha",
+      "mode: COMMITTING",
+      "planning_status: promoted",
+      "linked_cycles: C101",
+      "dispatch_ready: yes",
+      "planning_arbitration_status: review_requested",
+      "next_dispatch_scope: session",
+      "next_dispatch_action: coordinate",
+      "backlog_next_step: validate shared planning before dispatch",
+      "",
+      "## Backlog Items",
+      "",
+      "backlog_items:",
+      "- validate shared planning before dispatch",
+      "- preserve session-level arbitration trace",
+      "",
+      "## Open Questions",
+      "",
+      "open_questions:",
+      "- should coordinator dispatch session or cycle work next?",
+      "",
+      "## Addenda",
+      "",
+      "- ts: 2026-03-09T01:03:00Z | agent_role: coordinator | rationale: initial session backlog promotion | affected_item: validate shared planning before dispatch | affected_question: should coordinator dispatch session or cycle work next? | note: promoted from runtime draft",
+      "",
+    ].join("\n"), "utf8");
 
     const ready = runJson(dispatchScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     const warn = runJson(dispatchScript, ["--target", warnTarget, "--json"], repoRoot, 0);
@@ -324,10 +371,32 @@ function main() {
     assert(blocked.dispatch_scope.scope_type === "cycle", "blocked dispatch should preserve cycle scope");
     assert(blocked.commands.some((item) => item.includes("runtime project-runtime-state")), "blocked dispatch should refresh runtime state");
 
-    assert(fallback.dispatch_status === "ready", "fallback dispatch should be ready");
-    assert(fallback.entrypoint_name === "branch-cycle-audit", "fallback dispatch should use branch-cycle-audit");
-    assert(fallback.selected_agent.id === "codex", "dispatch should select codex adapter");
-    assert(fallback.dispatch_scope.scope_type === "cycle", "fallback dispatch should expose cycle scope");
+    assert(fallback.dispatch_status === "escalated", "fallback dispatch should escalate when shared planning arbitration is unresolved");
+    assert(fallback.entrypoint_kind === "manual", "fallback dispatch should become manual when shared planning arbitration is unresolved");
+    assert(fallback.entrypoint_name === "user-arbitration", "fallback dispatch should point to user arbitration when shared planning arbitration is unresolved");
+    assert(fallback.shared_planning.enabled === true, "fallback dispatch should expose active shared planning");
+    assert(fallback.shared_planning.active_backlog === "backlog/BL-S101-session-planning.md", "fallback dispatch should expose the active backlog path");
+    assert(fallback.shared_planning.artifact_found === true, "fallback dispatch should load the backlog artifact");
+    assert(Array.isArray(fallback.shared_planning.backlog_items) && fallback.shared_planning.backlog_items.length === 2, "fallback dispatch should expose backlog items from the shared artifact");
+    assert(Array.isArray(fallback.shared_planning.open_questions) && fallback.shared_planning.open_questions.length === 1, "fallback dispatch should expose open questions from the shared artifact");
+    assert(fallback.shared_planning.dispatch_ready === true, "fallback dispatch should expose dispatch readiness from the shared artifact");
+    assert(fallback.shared_planning.next_dispatch_scope === "session", "fallback dispatch should expose the backlog dispatch scope");
+    assert(fallback.shared_planning.next_dispatch_action === "coordinate", "fallback dispatch should expose the backlog dispatch action");
+    assert(fallback.shared_planning.freshness_status === "ok", "fallback dispatch should expose aligned shared planning freshness when backlog is newer than CURRENT-STATE");
+    assert(fallback.shared_planning.gate_status === "blocked", "fallback dispatch should block unresolved shared planning arbitration");
+    assert(Array.isArray(fallback.shared_planning.recent_addenda) && fallback.shared_planning.recent_addenda.length === 1, "fallback dispatch should expose structured recent addenda");
+    assert(fallback.shared_planning.recent_addenda[0].agent_role === "coordinator", "fallback dispatch should preserve addendum agent role");
+    assert(fallback.shared_planning.recent_addenda[0].rationale === "initial session backlog promotion", "fallback dispatch should preserve addendum rationale");
+    assert(fallback.notes.some((note) => note.includes("Shared planning backlog: backlog/BL-S101-session-planning.md")), "fallback dispatch should mention the shared backlog");
+    assert(fallback.notes.some((note) => note.includes("Shared planning freshness: ok")), "fallback dispatch should mention shared planning freshness");
+    assert(fallback.notes.some((note) => note.includes("Shared planning next step: validate shared planning before dispatch")), "fallback dispatch should mention the shared backlog next step");
+    assert(fallback.notes.some((note) => note.includes("Planning arbitration status: review_requested")), "fallback dispatch should mention the shared planning arbitration status");
+    assert(fallback.notes.some((note) => note.includes("Shared planning items: validate shared planning before dispatch; preserve session-level arbitration trace")), "fallback dispatch should summarize backlog items");
+    assert(fallback.notes.some((note) => note.includes("Shared planning open questions: should coordinator dispatch session or cycle work next?")), "fallback dispatch should summarize open questions");
+    assert(fallback.notes.some((note) => note.includes("Shared planning addenda: 1 (coordinator: initial session backlog promotion)")), "fallback dispatch should summarize structured addenda");
+    assert(fallback.notes.some((note) => note.includes("Shared planning dispatch candidate: session + coordinate")), "fallback dispatch should expose the shared planning dispatch candidate");
+    assert(fallback.notes.some((note) => note.includes("Shared planning arbitration must be resolved before dispatch")), "fallback dispatch should explain the arbitration block");
+    assert(fallback.preconditions.includes("read the active shared backlog artifact before acting"), "fallback dispatch should require reading the shared backlog before acting");
 
     assert(escalated.dispatch_status === "escalated", "escalated dispatch should require manual arbitration");
     assert(escalated.entrypoint_kind === "manual", "escalated dispatch should use manual entrypoint");

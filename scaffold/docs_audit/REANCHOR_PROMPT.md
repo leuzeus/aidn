@@ -8,6 +8,7 @@ If another agent already prepared a relay:
 
 1. `docs/audit/HANDOFF-PACKET.md`
 2. run `npx aidn runtime handoff-admit --target . --json`
+3. if `preferred_dispatch_source=shared_planning`, read `backlog_refs` before any durable write
 
 Then continue with:
 
@@ -37,6 +38,9 @@ State explicitly:
 - `dor_state`
 - handoff status when `HANDOFF-PACKET.md` is present
 - transition policy status when `HANDOFF-PACKET.md` is present
+- preferred dispatch source when `HANDOFF-PACKET.md` is present
+- shared planning candidate readiness/alignment when `HANDOFF-PACKET.md` is present
+- active backlog ref when `HANDOFF-PACKET.md.preferred_dispatch_source=shared_planning`
 - first implementation step from `plan.md` when `COMMITTING`
 - runtime state mode when known
 - missing context, if any
@@ -63,6 +67,7 @@ If one required field is unknown, ambiguous, or contradictory:
 
 - Context workflow detected
 - Audit de conformite
+- Provenance du relay
 - Plan de changement
 - Decision: durable write authorized or refused
 - If refused: next compliant step

@@ -43,6 +43,8 @@ Before the first durable write in this skill, run:
 
 2) Run context-reload logic (light version):
 - Read `docs/audit/CURRENT-STATE.md` if present
+- If `docs/audit/HANDOFF-PACKET.md` exists, inspect `preferred_dispatch_source`, `backlog_refs`, `shared_planning_candidate_ready`, and `shared_planning_candidate_aligned`
+- If the packet says `preferred_dispatch_source=shared_planning`, reload the referenced backlog before deciding whether to resume planning, execution, or re-anchor
 - Read snapshot
 - Read baseline
 - Detect current branch
@@ -114,6 +116,14 @@ If mode=EXPLORING and:
 - Time Budget
 - Planned Outputs
 
+8) When planning exists before cycle execution:
+- run `npx aidn runtime session-plan --target . --item "<planning item>" --question "<open question>" --next-step "<smallest next step>" --json`
+- use draft mode when planning should stay local/read-only for now
+- use `--promote` when the planning outcome must survive handoff, restart, or multi-agent continuation
+- if the relay source is `handoff-shared-planning`, preserve the backlog intent first and only replace it when the user or arbitration explicitly changes the dispatch path
+- if a shared backlog is promoted, keep `docs/audit/CURRENT-STATE.md` aligned through the command output instead of duplicating the backlog body manually
+- in `dual`/`db-only`, prefer `--state-mode dual|db-only` so the promoted backlog is also written through the DB-backed artifact store
+
 8) Update `docs/audit/CURRENT-STATE.md`:
 - `updated_at`
 - `active_session`
@@ -124,6 +134,7 @@ If mode=EXPLORING and:
 - `cycle_branch`
 - `dor_state`
 - `first_plan_step` (if known)
+- `active_backlog`, `backlog_status`, `backlog_next_step`, and `planning_arbitration_status` when session planning is promoted
 - top operational summaries when clearly known
 
 Keep this file summary-only.
@@ -143,6 +154,7 @@ Do not duplicate full session or cycle content.
 - DB runtime sync (mandatory in dual/db-only; optional in files):
 - run `npx aidn runtime sync-db-first-selective --target . --json` (falls back to full sync when needed).
 - for DB-first write-through on a specific artifact, run `npx aidn runtime db-first-artifact --target . --path <relative-audit-path> --source-file <file> --json`.
+- for promoted session planning, run `npx aidn runtime session-plan --target . --promote --state-mode <files|dual|db-only> --json` so the shared backlog and `CURRENT-STATE.md` stay aligned.
 - in dual/db-only, this step is mandatory and blocking on failure.
 - in files, this step is optional unless repository policy requires DB parity.
 - if `repair_layer_status` is `warn` or `block`, run `npx aidn runtime repair-layer-triage --target . --json` before continuing.
@@ -151,5 +163,5 @@ Do not duplicate full session or cycle content.
 - in `files`, strict mode remains optional by repository policy.
 
 Do not modify baseline.
-Only create/update session file and `docs/audit/CURRENT-STATE.md`.
+Only create/update session file, `docs/audit/CURRENT-STATE.md`, and the session planning artifacts created through `aidn runtime session-plan`.
 
