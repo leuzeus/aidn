@@ -12,7 +12,7 @@ Reference plan:
 
 ### SSGR-01 - Extract Shared Branch Classification Helpers
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -30,9 +30,14 @@ Done when:
 - supported kinds include `session`, `cycle`, `intermediate`, `other`, `unknown`
 - existing consumers use the shared helper instead of local regex copies
 
+Progress note:
+
+- branch classification is centralized in `src/lib/workflow/branch-kind-lib.mjs`
+- `start-session`, `branch-cycle-audit`, `cycle-create`, `close-session`, `promote-baseline`, `requirements-delta`, and reload consumers use the shared branch-kind helper instead of local regex copies
+
 ### SSGR-02 - Extract Shared Session/Cycle Context Parsing Helpers
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -56,9 +61,15 @@ Done when:
   - parsing `carry_over_pending`
 - runtime and verification code stop maintaining divergent parsers
 
+Progress note:
+
+- shared session/cycle parsing helpers now live in `src/lib/workflow/session-context-lib.mjs` and `src/lib/workflow/branch-mapping-lib.mjs`
+- `start-session` and `branch-cycle-audit` admission paths use these shared helpers for session lookup, cycle lookup, and continuity fields
+- `integration-risk-service` now reuses the shared session metadata parser and artifact lookup helpers instead of maintaining a separate session-topology parser
+
 ### SSGR-03 - Implement `start-session-admit` Use Case
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -80,13 +91,18 @@ Done when:
   - active session
   - active cycle
   - open cycles
-  - blocking reasons
-  - required user choice
-  - recommended next action
+- blocking reasons
+- required user choice
+- recommended next action
+
+Progress note:
+
+- `src/application/runtime/start-session-admit-use-case.mjs` now provides a dedicated workflow-specific admission layer before `session-start`
+- it returns structured decisions including branch kind, active session/cycle, open cycles, mapping state, blocking reasons, user choices, and recommended next action
 
 ### SSGR-04 - Enforce Non-Compliant Branch Stop At Session Start
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -106,9 +122,15 @@ Done when:
   - merge into source branch first
   - ignore with rationale
 
+Progress note:
+
+- `start-session` now stops on `branch_kind=other|unknown` with `action=blocked_non_compliant_branch`
+- the admission output exposes explicit operator choices: `merge_to_source_first` and `ignore_with_rationale`
+- fixture coverage verifies the blocked branch path in both the specialized hook and the Codex JSON hook
+
 ### SSGR-05 - Enforce Resume-First Session Continuity
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -125,9 +147,14 @@ Done when:
 - if the current branch maps to an open session, the decision is `resume_current_session`
 - `start-session` does not silently authorize a new session in that case
 
+Progress note:
+
+- `start-session-admit` now returns `resume_current_session` for owned session branches and for source-branch continuity when an active session must be resumed first
+- fixture coverage now includes an explicit `resume_current_session` case
+
 ### SSGR-06 - Enforce Resume-First Cycle Continuity
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -144,9 +171,14 @@ Done when:
 - if the current branch maps to an open cycle or intermediate branch, the decision is `resume_current_cycle`
 - cycle parent continuity is explicit in the admission output
 
+Progress note:
+
+- `start-session-admit` now returns `resume_current_cycle` for owned cycle and intermediate branches
+- the admission payload exposes the mapped cycle and owner session when they can be resolved
+
 ### SSGR-07 - Block New Session/Cycle Creation While Open Cycles Need Resolution
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -164,9 +196,14 @@ Done when:
 - the output requires resolving or choosing an existing cycle first
 - without a new request, the decision resumes the current session/cycle path
 
+Progress note:
+
+- source-branch admission now blocks new workflow creation when active sessions or open cycles already own continuity
+- it returns `resume_current_session`, `resume_current_cycle`, or `choose_cycle` instead of silently authorizing a new session
+
 ### SSGR-08 - Add Multi-Cycle Arbitration At Session Start
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -184,9 +221,14 @@ Done when:
 - output includes candidate cycle ids
 - output supports explicit user choice or relaunch by agent
 
+Progress note:
+
+- multi-cycle session and source-branch scenarios now return `choose_cycle` with candidate cycle summaries and explicit required user choices
+- fixture coverage verifies the blocked multi-cycle branch path
+
 ### SSGR-09 - Implement Session Branch Base Gate Against `source_branch`
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -205,12 +247,17 @@ Done when:
 - it distinguishes at minimum:
   - previous session still open / continue existing branch
   - previous session resolved / new session allowed
-  - non-resolved ambiguous prior state / explicit user decision required
+- non-resolved ambiguous prior state / explicit user decision required
 - hard stop remains in effect for default session-branch chaining
+
+Progress note:
+
+- `start-session-admit` now enforces a session-base gate via latest-session continuity against the configured `source_branch`
+- unresolved previous session state returns `blocked_session_base_gate` instead of opening a new session branch by default
 
 ### SSGR-10 - Add Specialized `start-session` Hook Entrypoint
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -229,9 +276,13 @@ Done when:
 - the specialized hook runs admission first
 - the generic `workflow-hook --phase session-start` is called only after admission success
 
+Progress note:
+
+- `tools/perf/start-session-hook.mjs` now performs admission first and only delegates to generic `session-start` workflow work on admitted paths
+
 ### SSGR-11 - Update Skill Routing To Use The Specialized Start-Session Path
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -248,9 +299,14 @@ Done when:
 - `start-session` no longer routes directly to the generic `workflow-hook`
 - runtime skill invocation preserves current JSON/strict behavior
 
+Progress note:
+
+- skill routing now targets the specialized `start-session-hook.mjs`
+- runtime skill execution preserves JSON, strict, and DB-backed behavior through the standard skill-hook path
+
 ### SSGR-12 - Re-Align `branch-cycle-audit` With Shared Mapping Logic
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -268,9 +324,14 @@ Done when:
 - `branch-cycle-audit` uses the same shared branch/session/cycle mapping logic
 - generic signal gating remains additive, not the only branch/cycle decision layer
 
+Progress note:
+
+- `branch-cycle-audit-admit` now reuses the same shared branch-kind and branch-mapping helpers as `start-session`
+- coverage verifies that branch ownership stops before generic gating when mapping is missing or ambiguous
+
 ### SSGR-13 - Extend Contract Tests For Negative Start-Session Outcomes
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -287,13 +348,17 @@ Done when:
 - tests explicitly fail when `start-session` incorrectly passes on:
   - non-compliant branch
   - missing session mapping
-  - missing cycle mapping
-  - unresolved multi-cycle continuity
+- missing cycle mapping
+- unresolved multi-cycle continuity
 - tests assert admission decisions, not only generic `ok`
+
+Progress note:
+
+- `verify-start-session-admission-fixtures.mjs` now asserts structured admission decisions for non-compliant branch, missing session mapping, missing cycle mapping, and multi-cycle arbitration cases
 
 ### SSGR-14 - Add Positive Continuity Tests For Resume Paths
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
@@ -309,13 +374,17 @@ Done when:
 
 - tests cover:
   - resume current open session
-  - resume current open cycle
-  - continue current cycle without creating a new session
-  - choose cycle when several valid open cycles exist
+- resume current open cycle
+- continue current cycle without creating a new session
+- choose cycle when several valid open cycles exist
+
+Progress note:
+
+- fixture coverage now includes positive resume cases for both `resume_current_session` and `resume_current_cycle`, plus the `choose_cycle` arbitration path
 
 ### SSGR-15 - Preserve `dual` / `db-only` Strict Semantics After Admission
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -333,9 +402,14 @@ Done when:
 - hydration/index/repair behavior still runs after successful admission
 - blocked admission prevents downstream mutation/runtime progression cleanly
 
+Progress note:
+
+- `start-session` keeps strict runtime semantics in DB-backed modes through the standard skill-hook path
+- blocked admission prevents delegation to the generic workflow hook, while admitted paths still flow through hydration/index/repair checks
+
 ### SSGR-16 - Update `start-session` Skill Documentation
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -351,13 +425,17 @@ Done when:
 - the skill explicitly describes:
   - blocking admission
   - resume-vs-create decisions
-  - non-compliant branch stop
-  - multi-cycle arbitration
-  - continuity-first behavior
+- non-compliant branch stop
+- multi-cycle arbitration
+- continuity-first behavior
+
+Progress note:
+
+- `scaffold/codex/start-session/SKILL.md` now documents admission-first execution, stop conditions, resume-vs-create decisions, and multi-cycle arbitration
 
 ### SSGR-17 - Update Workflow Adapter Documentation
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
@@ -374,9 +452,13 @@ Done when:
 - session branch base gate wording matches implemented admission behavior
 - workflow summary mentions that `start-session` may block and request arbitration before creation
 
+Progress note:
+
+- installed workflow docs now describe `start-session` as a blocking admission step that may stop and request arbitration before any creation path
+
 ### SSGR-18 - Update Installed Execution Contract Documentation
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
@@ -392,9 +474,13 @@ Done when:
 - `AGENTS.md` reflects that `start-session` begins with admission
 - it distinguishes infrastructure runtime hooks from workflow business gates
 
+Progress note:
+
+- the installed execution contract now states that `start-session` is admission-first and separates workflow business gates from generic runtime hooks
+
 ### SSGR-19 - Record The Restoration In Changelog
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
@@ -410,6 +496,10 @@ Done when:
 
 - changelog records restoration of `start-session` branch/session/cycle gating
 - changelog notes documentation and test coverage updates
+
+Progress note:
+
+- `CHANGELOG.md` already records the restoration of `start-session` admission gates, the shared `branch-cycle-audit` mapping path, and the associated regression coverage/docs updates
 
 ## Sequencing Recommendation
 

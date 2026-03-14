@@ -30,10 +30,42 @@ const CASES = [
     expectsWorkflowHook: true,
   },
   {
+    id: "session_branch_resumes_with_single_focus",
+    fixture: "tests/fixtures/perf-start-session/session-multi-choice",
+    workingBranch: "S201-multi",
+    expectedAction: "resume_current_session",
+    expectedResult: "ok",
+    expectsWorkflowHook: true,
+    mutate(targetRoot) {
+      const sessionFile = path.join(targetRoot, "docs", "audit", "sessions", "S201-multi.md");
+      const text = fs.readFileSync(sessionFile, "utf8")
+        .replace(/- integration_target_cycles:\s*\r?\n\s*- C201\r?\n\s*- C202/u, "- integration_target_cycles:\n  - C201")
+        .replace(/- attached_cycles:\s*\r?\n\s*- C201\r?\n\s*- C202/u, "- attached_cycles:\n  - C201")
+        .replace(/- cycle_branch: `feature\/C201-alpha`/u, "- cycle_branch: `feature/C201-alpha`\n- primary_focus_cycle: `C201`");
+      fs.writeFileSync(sessionFile, text, "utf8");
+    },
+  },
+  {
     id: "session_multi_requires_choice",
     fixture: "tests/fixtures/perf-start-session/session-multi-choice",
     workingBranch: "S201-multi",
     expectedAction: "choose_cycle",
+    expectedResult: "stop",
+    expectsWorkflowHook: false,
+  },
+  {
+    id: "session_mapping_missing_blocks",
+    fixture: "tests/fixtures/perf-start-session/session-multi-choice",
+    workingBranch: "S999-missing",
+    expectedAction: "blocked_non_compliant_branch",
+    expectedResult: "stop",
+    expectsWorkflowHook: false,
+  },
+  {
+    id: "cycle_mapping_missing_blocks",
+    fixture: "tests/fixtures/perf-current-state/active",
+    workingBranch: "feature/C999-missing",
+    expectedAction: "blocked_non_compliant_branch",
     expectedResult: "stop",
     expectsWorkflowHook: false,
   },
@@ -85,6 +117,9 @@ function runJson(script, scriptArgs, env = {}) {
 function runCase(tmpRoot, testCase) {
   const sourceTarget = path.resolve(process.cwd(), testCase.fixture);
   const targetRoot = copyFixtureToTmp(sourceTarget, tmpRoot, `tmp-start-session-${testCase.id}`);
+  if (typeof testCase.mutate === "function") {
+    testCase.mutate(targetRoot);
+  }
   initGitRepo(targetRoot, {
     workingBranch: testCase.workingBranch,
   });

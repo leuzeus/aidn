@@ -7,6 +7,11 @@ import {
   deriveIntegrationStrategy,
   normalizeCycleType,
 } from "../../core/workflow/integration-strategy-policy.mjs";
+import {
+  findCycleStatus,
+  findSessionFile,
+  parseSessionMetadata,
+} from "../../lib/workflow/session-context-lib.mjs";
 
 const ROOT_FILE_NAMES = new Set([
   "package.json",
@@ -102,52 +107,25 @@ function parseCurrentState(currentStatePath) {
   };
 }
 
-function findSessionFile(sessionsDir, sessionId) {
-  if (!sessionId || canonicalNone(sessionId) || !fs.existsSync(sessionsDir)) {
-    return null;
-  }
-  const entries = fs.readdirSync(sessionsDir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.toUpperCase().startsWith(`${sessionId.toUpperCase()}`) && entry.name.toLowerCase().endsWith(".md"))
-    .sort((a, b) => a.name.localeCompare(b.name));
-  if (entries.length === 0) {
-    return null;
-  }
-  return path.join(sessionsDir, entries[0].name);
-}
-
 function parseSessionTopology(sessionText, activeCycle) {
-  const attachedCycles = extractCycleIds(parseListField(sessionText, "attached_cycles").join(" "));
-  const integrationTargetCycles = extractCycleIds(parseListField(sessionText, "integration_target_cycles").join(" "));
-  const primaryFocusCycle = extractCycleIds(normalizeScalar(parseSimpleMap(sessionText).get("primary_focus_cycle") ?? "")).at(0) ?? null;
-  const legacyIntegrationTargetCycle = normalizeScalar(parseSimpleMap(sessionText).get("integration_target_cycle") ?? "");
-  const legacyCycles = extractCycleIds(legacyIntegrationTargetCycle);
+  const metadata = parseSessionMetadata(sessionText);
+  const attachedCycles = Array.isArray(metadata.attached_cycles) ? metadata.attached_cycles : [];
+  const integrationTargetCycles = Array.isArray(metadata.integration_target_cycles)
+    ? metadata.integration_target_cycles
+    : [];
+  const primaryFocusCycle = metadata.primary_focus_cycle ?? null;
   const candidateCycleIds = Array.from(new Set([
     ...attachedCycles,
     ...integrationTargetCycles,
-    ...legacyCycles,
-    ...extractCycleIds(primaryFocusCycle ?? ""),
+    ...(primaryFocusCycle ? [primaryFocusCycle] : []),
     ...extractCycleIds(activeCycle ?? ""),
   ])).sort((a, b) => a.localeCompare(b));
   return {
     attached_cycles: attachedCycles,
-    integration_target_cycles: integrationTargetCycles.length > 0 ? integrationTargetCycles : legacyCycles,
+    integration_target_cycles: integrationTargetCycles,
     primary_focus_cycle: primaryFocusCycle,
     candidate_cycle_ids: candidateCycleIds,
   };
-}
-
-function resolveCycleStatusPath(cyclesDir, cycleId) {
-  if (!fs.existsSync(cyclesDir)) {
-    return null;
-  }
-  const entries = fs.readdirSync(cyclesDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name.toUpperCase().startsWith(`${cycleId.toUpperCase()}-`))
-    .sort((a, b) => a.name.localeCompare(b.name));
-  if (entries.length === 0) {
-    return null;
-  }
-  const statusPath = path.join(cyclesDir, entries[0].name, "status.md");
-  return fs.existsSync(statusPath) ? statusPath : null;
 }
 
 function parseBlockers(text) {
@@ -374,11 +352,11 @@ export function assessIntegrationRisk({
   const sessionsRoot = path.resolve(absoluteTargetRoot, sessionsDir);
   const cyclesRoot = path.resolve(absoluteTargetRoot, cyclesDir);
   const currentState = parseCurrentState(currentStatePath);
-  const sessionFile = findSessionFile(sessionsRoot, currentState.active_session);
+  const sessionFile = findSessionFile(path.dirname(sessionsRoot), currentState.active_session);
   const sessionText = sessionFile ? fs.readFileSync(sessionFile, "utf8") : "";
   const topology = parseSessionTopology(sessionText, currentState.active_cycle);
   const candidateCycles = topology.candidate_cycle_ids.map((cycleId) => {
-    const statusPath = resolveCycleStatusPath(cyclesRoot, cycleId);
+    const statusPath = findCycleStatus(path.dirname(cyclesRoot), cycleId);
     const descriptor = loadCycleDescriptor(statusPath);
     if (descriptor) {
       return descriptor;
