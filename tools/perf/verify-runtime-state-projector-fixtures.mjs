@@ -38,6 +38,7 @@ function main() {
     const markdown = fs.readFileSync(outFile, "utf8");
     assert(result?.digest?.runtime_state_mode, "digest.runtime_state_mode missing");
     assert(result?.digest?.repair_layer_status, "digest.repair_layer_status missing");
+    assert(result?.digest?.repair_primary_reason, "digest.repair_primary_reason missing");
     assert(result?.digest?.current_state_freshness, "digest.current_state_freshness missing");
     assert(Array.isArray(result?.digest?.prioritized_artifacts), "digest.prioritized_artifacts missing");
     assert(result.digest.prioritized_artifacts.includes("docs/audit/CURRENT-STATE.md"), "digest missing CURRENT-STATE.md");

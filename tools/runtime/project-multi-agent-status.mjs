@@ -180,6 +180,8 @@ function buildMarkdown({
   lines.push(`recommended_goal: ${coordinator.recommendation.goal}`);
   lines.push(`handoff_status: ${coordinator.handoff?.packet?.handoff_status ?? "none"}`);
   lines.push(`handoff_admission_status: ${coordinator.handoff?.admission_status ?? "none"}`);
+  lines.push(`repair_layer_status: ${coordinator.handoff?.packet?.repair_layer_status ?? "unknown"}`);
+  lines.push(`repair_primary_reason: ${coordinator.handoff?.packet?.repair_primary_reason ?? "unknown"}`);
   lines.push(`roster_verification: ${rosterVerification.pass ? "pass" : "fail"}`);
   lines.push(`roster_issue_count: ${rosterVerification.issues.length}`);
   lines.push(`adapter_health_pass: ${healthSummary.verification.pass ? "yes" : "no"}`);
@@ -203,6 +205,7 @@ function buildMarkdown({
   lines.push(`- source: ${coordinator.recommendation.source}`);
   lines.push(`- reason: ${coordinator.recommendation.reason}`);
   lines.push(`- stop_required: ${coordinator.recommendation.stop_required ? "yes" : "no"}`);
+  lines.push(`- repair_primary_reason: ${coordinator.handoff?.packet?.repair_primary_reason ?? "unknown"}`);
   lines.push("");
   lines.push("## Integration Strategy");
   lines.push("");

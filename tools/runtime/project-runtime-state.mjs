@@ -211,6 +211,23 @@ function formatFinding(item) {
   return parts.join(": ");
 }
 
+function deriveRepairPrimaryReason({ status, advice, findings }) {
+  const topFinding = Array.isArray(findings) ? findings[0] : null;
+  const topFormatted = formatFinding(topFinding);
+  if (topFormatted) {
+    return topFormatted;
+  }
+  const normalizedAdvice = normalizeScalar(advice);
+  if (normalizedAdvice && !canonicalUnknown(normalizedAdvice)) {
+    return normalizedAdvice;
+  }
+  const normalizedStatus = normalizeScalar(status).toLowerCase();
+  if (normalizedStatus === "clean" || normalizedStatus === "ok") {
+    return "repair layer reports no blocking findings for the current relay";
+  }
+  return "repair-layer reason is unknown";
+}
+
 function derivePrioritizedArtifacts(consistency, hydrated, args) {
   const values = [
     "docs/audit/HANDOFF-PACKET.md",
@@ -287,6 +304,7 @@ function buildMarkdown(digest) {
   lines.push(`runtime_state_mode: ${digest.runtime_state_mode}`);
   lines.push(`repair_layer_status: ${digest.repair_layer_status}`);
   lines.push(`repair_layer_advice: ${digest.repair_layer_advice}`);
+  lines.push(`repair_primary_reason: ${digest.repair_primary_reason}`);
   lines.push(`repair_routing_hint: ${digest.repair_routing_hint}`);
   lines.push(`repair_routing_reason: ${digest.repair_routing_reason}`);
   lines.push("");
@@ -362,6 +380,7 @@ export function projectRuntimeState({
     runtime_state_mode: String(hydrated?.state_mode ?? "files"),
     repair_layer_status: repairSummary.status,
     repair_layer_advice: repairSummary.advice,
+    repair_primary_reason: deriveRepairPrimaryReason(repairSummary),
     repair_routing_hint: repairRouting.hint,
     repair_routing_reason: repairRouting.reason,
     current_state_freshness: freshness.freshness,

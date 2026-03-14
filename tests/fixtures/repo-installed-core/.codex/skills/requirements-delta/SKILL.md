@@ -78,6 +78,7 @@ Rules:
 - update `docs/audit/CURRENT-STATE.md` when present
 - refresh top open items, active hypotheses, and `next_actions`
 - keep only the first actionable implementation or validation step in summary form
+- keep `repair_layer_status` and `repair_primary_reason` aligned with the latest hydrated/runtime digest when repair context is relevant
 
 8) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill requirements-delta --mode COMMITTING --target . --json`

@@ -144,6 +144,7 @@ function buildSummary(result) {
     repair_layer_blocking: workflowSummary.repair_layer_blocking === true,
     repair_layer_status: workflowSummary.repair_layer_status ?? "clean",
     repair_layer_advice: workflowSummary.repair_layer_advice ?? "Repair layer is clean.",
+    repair_primary_reason: workflowSummary.repair_primary_reason ?? workflowSummary.repair_layer_advice ?? "Repair layer is clean.",
     repair_layer_top_findings: Array.isArray(workflowSummary.repair_layer_top_findings)
       ? workflowSummary.repair_layer_top_findings
       : [],

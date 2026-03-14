@@ -11,6 +11,7 @@ const SKILL_SPECS = [
       "npx aidn runtime session-plan --target .",
       "active_backlog",
       "preferred_dispatch_source=shared_planning",
+      "repair_primary_reason",
     ],
   },
   {
@@ -19,6 +20,7 @@ const SKILL_SPECS = [
       "docs/audit/CURRENT-STATE.md",
       "active session / cycle summary after close decision",
       "next actions",
+      "repair_primary_reason",
     ],
   },
   {
@@ -28,6 +30,7 @@ const SKILL_SPECS = [
       "Update `docs/audit/CURRENT-STATE.md`:",
       "backlog_selected_execution_scope=new_cycle",
       "npx aidn runtime session-plan --target . --selected-execution-scope new_cycle --promote --json",
+      "repair_primary_reason",
     ],
   },
   {
@@ -35,6 +38,7 @@ const SKILL_SPECS = [
     required: [
       "Keep `docs/audit/CURRENT-STATE.md` summary-only if updated.",
       "Update `docs/audit/CURRENT-STATE.md` when present:",
+      "repair_primary_reason",
     ],
   },
   {
@@ -42,6 +46,7 @@ const SKILL_SPECS = [
     required: [
       "Keep `docs/audit/CURRENT-STATE.md` summary-only if updated.",
       "Update `docs/audit/CURRENT-STATE.md` when present:",
+      "repair_primary_reason",
     ],
   },
   {
@@ -49,6 +54,7 @@ const SKILL_SPECS = [
     required: [
       "Keep `docs/audit/CURRENT-STATE.md` summary-only if updated.",
       "Update `docs/audit/CURRENT-STATE.md` when present:",
+      "repair_primary_reason",
     ],
   },
   {
@@ -56,6 +62,7 @@ const SKILL_SPECS = [
     required: [
       "keep `docs/audit/CURRENT-STATE.md` consistent with the same decision.",
       "If snapshot is updated, also update `docs/audit/CURRENT-STATE.md` when present:",
+      "repair_primary_reason",
     ],
   },
   {
@@ -63,6 +70,7 @@ const SKILL_SPECS = [
     required: [
       "keep `docs/audit/CURRENT-STATE.md` aligned with the resulting next action.",
       "refresh `docs/audit/CURRENT-STATE.md` when present",
+      "repair_primary_reason",
     ],
   },
   {
@@ -70,6 +78,7 @@ const SKILL_SPECS = [
     required: [
       "keep `docs/audit/CURRENT-STATE.md` aligned at summary level.",
       "update `docs/audit/CURRENT-STATE.md` when present",
+      "repair_primary_reason",
     ],
   },
   {
@@ -81,6 +90,7 @@ const SKILL_SPECS = [
       "npx aidn runtime session-plan --target .",
       "backlog_refs",
       "preferred_dispatch_source",
+      "repair_primary_reason",
     ],
   },
 ];

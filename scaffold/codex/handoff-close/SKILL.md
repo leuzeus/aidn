@@ -40,6 +40,7 @@ Before the first durable write in this skill, run:
 - next actions
 - blocking findings when known
 - `active_backlog`, `backlog_status`, `backlog_next_step`, and `planning_arbitration_status` when a shared session backlog is relevant to the relay
+- `repair_layer_status` and `repair_primary_reason` when the latest hydrated/runtime digest exposes them
 
 4) If planning must survive the relay:
 - run `npx aidn runtime session-plan --target . --item "<handoff planning item>" --next-step "<explicit next step>" --promote --json`

@@ -103,6 +103,7 @@ docs/audit/cycles/CXXX-[type]-<short-title>/
 - `branch_kind`
 - `dor_state`
 - `first_plan_step` if already known
+- `repair_layer_status` and `repair_primary_reason` when the latest hydrated/runtime digest exposes them
 - next actions reflecting cycle creation
 
 8) Mark readying actions:

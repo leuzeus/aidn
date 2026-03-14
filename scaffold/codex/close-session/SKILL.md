@@ -80,6 +80,7 @@ Update:
 - top open items
 - next actions
 - blocking findings when known
+- `repair_layer_status` and `repair_primary_reason` when the latest hydrated/runtime digest exposes them
 
 7) Ensure session contains:
 ### Outputs

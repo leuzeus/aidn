@@ -44,6 +44,7 @@ If mode=EXPLORING and:
 - keep `mode` aligned with the chosen session mode after conversion
 - summarize the new exploration goal in `next_actions`
 - avoid duplicating full spike plan content; keep only the first actionable step
+- keep `repair_layer_status` and `repair_primary_reason` aligned with the latest hydrated/runtime digest when repair context is relevant
 
 7) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill convert-to-spike --mode EXPLORING --target . --json`

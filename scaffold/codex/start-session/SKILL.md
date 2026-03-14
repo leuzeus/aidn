@@ -135,6 +135,7 @@ If mode=EXPLORING and:
 - `dor_state`
 - `first_plan_step` (if known)
 - `active_backlog`, `backlog_status`, `backlog_next_step`, and `planning_arbitration_status` when session planning is promoted
+- `repair_layer_status` and `repair_primary_reason` when the latest hydrated/runtime digest surfaces a meaningful repair signal
 - top operational summaries when clearly known
 
 Keep this file summary-only.

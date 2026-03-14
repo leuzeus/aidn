@@ -502,6 +502,7 @@ export function runHydrateContextUseCase({ args, hookContextStore, targetRoot })
       repair_layer_blocking: entry?.repair_layer_blocking === true,
       repair_layer_status: entry?.repair_layer_status ?? null,
       repair_layer_advice: entry?.repair_layer_advice ?? null,
+      repair_primary_reason: entry?.repair_primary_reason ?? null,
       repair_layer_top_findings: Array.isArray(entry?.repair_layer_top_findings)
         ? entry.repair_layer_top_findings
         : [],

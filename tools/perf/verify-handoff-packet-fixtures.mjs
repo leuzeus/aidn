@@ -82,6 +82,7 @@ function main() {
     assert(payload.packet.shared_planning_candidate_aligned === "no", "expected non-aligned shared planning candidate for idle fixture");
     assert(payload.packet.shared_planning_freshness === "not_applicable", "expected no shared planning freshness for idle fixture");
     assert(payload.packet.shared_planning_gate_status === "not_applicable", "expected no shared planning gate for idle fixture");
+    assert(payload.packet.repair_primary_reason === "unknown", "expected unknown repair primary reason for idle fixture");
     assert(String(payload.packet.next_agent_goal ?? "").length > 0, "expected explicit next_agent_goal");
     assert(payload.packet.prioritized_artifacts.includes("docs/audit/CURRENT-STATE.md"), "missing CURRENT-STATE priority");
     assert(text.includes("handoff_status: refresh_required"), "packet file missing refresh_required");
@@ -96,6 +97,7 @@ function main() {
     assert(text.includes("shared_planning_candidate_ready: no"), "packet file missing shared planning candidate flag");
     assert(text.includes("shared_planning_freshness: not_applicable"), "packet file missing shared planning freshness");
     assert(text.includes("shared_planning_gate_status: not_applicable"), "packet file missing shared planning gate");
+    assert(text.includes("repair_primary_reason: unknown"), "packet file missing repair primary reason");
     assert(text.includes("next_agent_goal:"), "packet file missing next_agent_goal");
     assert(text.includes("`docs/audit/WORKFLOW-KERNEL.md`"), "packet file missing workflow kernel");
 

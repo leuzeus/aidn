@@ -50,6 +50,7 @@ function main() {
     assert(text.includes("## Integration Strategy"), "status file should include integration strategy section");
     assert(text.includes("## Coordination"), "status file should include coordination section");
     assert(text.includes("## Arbitration"), "status file should include arbitration section");
+    assert(text.includes("repair_primary_reason:"), "status file should include repair primary reason");
     assert(typeof result.arbitration?.preferred_decision === "string", "projection should expose arbitration summary");
     assert(String(result.arbitration?.arbitration_status ?? "") === "ok", "healthy projection should expose arbitration_status=ok");
 

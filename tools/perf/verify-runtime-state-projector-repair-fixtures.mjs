@@ -48,11 +48,13 @@ function verifyScenario(tempRoot, name, payload, expectations) {
   const markdown = fs.readFileSync(outFile, "utf8");
   assert(markdown.includes(`repair_layer_status: ${expectations.status}`), `${name}: status missing`);
   assert(markdown.includes(`repair_layer_advice: ${expectations.advice}`), `${name}: advice missing`);
+  assert(markdown.includes(`repair_primary_reason: ${expectations.primaryReason}`), `${name}: primary reason missing`);
   assert(markdown.includes(`repair_routing_hint: ${expectations.routingHint}`), `${name}: routing hint missing`);
   assert(markdown.includes(`repair_routing_reason: ${expectations.routingReason}`), `${name}: routing reason missing`);
   assert(markdown.includes(expectations.findingLine), `${name}: finding line missing`);
   assert(result?.digest?.repair_layer_status === expectations.status, `${name}: digest status mismatch`);
   assert(result?.digest?.repair_layer_advice === expectations.advice, `${name}: digest advice mismatch`);
+  assert(result?.digest?.repair_primary_reason === expectations.primaryReason, `${name}: digest primary reason mismatch`);
   assert(result?.digest?.repair_routing_hint === expectations.routingHint, `${name}: digest routing hint mismatch`);
   if (expectations.blockingLine) {
     assert(markdown.includes(expectations.blockingLine), `${name}: blocking line missing`);
@@ -89,6 +91,7 @@ function main() {
     }, {
       status: "warn",
       advice: "Review open repair findings, starting with branch_cycle_mismatch.",
+      primaryReason: "warning: branch_cycle_mismatch: C101: Active branch and cycle mapping disagree",
       routingHint: "audit-first",
       routingReason: "Review open repair findings, starting with branch_cycle_mismatch.",
       findingLine: "- warning: branch_cycle_mismatch: C101: Active branch and cycle mapping disagree",
@@ -120,6 +123,7 @@ function main() {
     }, {
       status: "block",
       advice: "Resolve blocking repair findings before continuing db-backed execution.",
+      primaryReason: "error: orphan_cycle_status: C202: Cycle status has no reachable session continuity",
       routingHint: "repair",
       routingReason: "blocking repair findings require repair-first routing before any implementation handoff",
       findingLine: "- error: orphan_cycle_status: C202: Cycle status has no reachable session continuity",

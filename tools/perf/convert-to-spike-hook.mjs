@@ -152,6 +152,7 @@ function buildSummary(result) {
     repair_layer_blocking: checkpointSummary.repair_layer_blocking === true,
     repair_layer_status: checkpointSummary.repair_layer_status ?? "clean",
     repair_layer_advice: checkpointSummary.repair_layer_advice ?? "Repair layer is clean.",
+    repair_primary_reason: checkpointSummary.repair_primary_reason ?? checkpointSummary.repair_layer_advice ?? "Repair layer is clean.",
     repair_layer_top_findings: Array.isArray(checkpointSummary.repair_layer_top_findings)
       ? checkpointSummary.repair_layer_top_findings
       : [],

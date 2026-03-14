@@ -79,6 +79,7 @@ Before the first durable write in this skill, run:
 - keep only top active decisions/hypotheses/gaps if the cycle remains relevant
 - update `next_actions` so the next safe entry point is explicit
 - if the closed cycle was the active focus, avoid leaving stale `first_plan_step`
+- keep `repair_layer_status` and `repair_primary_reason` aligned with the latest hydrated/runtime digest when repair context is relevant
 
 6) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill cycle-close --mode COMMITTING --target . --json`

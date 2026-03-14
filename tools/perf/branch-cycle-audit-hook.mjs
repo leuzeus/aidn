@@ -137,6 +137,7 @@ function buildSummary(result) {
     repair_layer_blocking: false,
     repair_layer_status: "clean",
     repair_layer_advice: "Repair layer is clean.",
+    repair_primary_reason: "Repair layer is clean.",
     repair_layer_top_findings: [],
   };
 }

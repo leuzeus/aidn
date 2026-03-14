@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { deriveRepairRelationStatus, normalizeRepairConfidence, repairSourceModeRank } from "../../core/workflow/repair-layer-policy.mjs";
+import { REPAIR_LAYER_ENGINE_VERSION } from "./repair-layer-payload-lib.mjs";
 
 function readTextArtifact(auditRoot, relativePath) {
   const absolute = path.resolve(auditRoot, relativePath);
@@ -176,6 +178,97 @@ function parseSessionMetadata(text) {
   };
 }
 
+function extractCycleIdFromDirName(cycleDirName) {
+  const match = String(cycleDirName ?? "").match(/(C\d+)/i);
+  return match ? match[1].toUpperCase() : null;
+}
+
+function walkFiles(rootDir) {
+  if (!fs.existsSync(rootDir)) {
+    return [];
+  }
+  const files = [];
+  const stack = [rootDir];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    const entries = fs.readdirSync(current, { withFileTypes: true });
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+    for (const entry of entries) {
+      const absolute = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(absolute);
+      } else if (entry.isFile()) {
+        files.push(absolute);
+      }
+    }
+  }
+  files.sort((a, b) => a.localeCompare(b));
+  return files;
+}
+
+function readTrackedRepoPaths(targetRoot) {
+  if (!targetRoot) {
+    return null;
+  }
+  try {
+    const stdout = execFileSync("git", ["-C", targetRoot, "ls-files", "-z", "--", "docs/audit/cycles"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    return new Set(stdout
+      .split("\0")
+      .map((item) => item.trim().replace(/\\/g, "/"))
+      .filter((item) => item.length > 0));
+  } catch {
+    return null;
+  }
+}
+
+function collectLocalCycleStatusCandidates(auditRoot, targetRoot) {
+  const cycleRoot = path.join(auditRoot, "cycles");
+  const trackedRepoPaths = readTrackedRepoPaths(targetRoot);
+  const candidatesById = new Map();
+
+  for (const absolute of walkFiles(cycleRoot)) {
+    const relativeAuditPath = path.relative(auditRoot, absolute).replace(/\\/g, "/");
+    if (!/^cycles\/[^/]+\/status\.md$/i.test(relativeAuditPath)) {
+      continue;
+    }
+    const parts = relativeAuditPath.split("/");
+    const cycleId = extractCycleIdFromDirName(parts[1]);
+    if (!cycleId) {
+      continue;
+    }
+    const repoPath = `docs/audit/${relativeAuditPath}`;
+    const gitTracking = trackedRepoPaths == null
+      ? "unknown"
+      : trackedRepoPaths.has(repoPath)
+        ? "tracked"
+        : "untracked";
+    const current = candidatesById.get(cycleId) ?? [];
+    current.push({
+      cycle_id: cycleId,
+      artifact_path: relativeAuditPath,
+      repo_path: repoPath,
+      git_tracking: gitTracking,
+    });
+    candidatesById.set(cycleId, current);
+  }
+
+  for (const rows of candidatesById.values()) {
+    rows.sort((left, right) => {
+      const trackingRank = (value) => (value === "tracked" ? 2 : value === "unknown" ? 1 : 0);
+      const trackingDelta = trackingRank(right.git_tracking) - trackingRank(left.git_tracking);
+      if (trackingDelta !== 0) {
+        return trackingDelta;
+      }
+      return String(left.artifact_path).localeCompare(String(right.artifact_path));
+    });
+  }
+
+  return candidatesById;
+}
+
 export function buildRepairLayerService({ auditRoot, targetRoot = null, artifacts, cycles, repairDecisions = [] }) {
   const now = new Date().toISOString();
   const sessionsMap = new Map();
@@ -192,6 +285,7 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
   const sessionLinkIndex = new Map();
   const findingKeys = new Set();
   const decisionIndex = new Map();
+  const localCycleStatusCandidatesById = collectLocalCycleStatusCandidates(auditRoot, targetRoot);
 
   for (const artifact of Array.isArray(artifacts) ? artifacts : []) {
     if (artifact.kind === "cycle_status" && artifact.cycle_id) {
@@ -216,6 +310,109 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
       String(row?.relation_type ?? ""),
     ].join("::");
     decisionIndex.set(key, row);
+  }
+
+  function resolveCycleStatusReference(cycleId) {
+    const normalizedCycleId = String(cycleId ?? "").trim().toUpperCase();
+    const indexedPath = cycleStatusById.get(normalizedCycleId) ?? null;
+    if (indexedPath) {
+      return {
+        cycle_id: normalizedCycleId,
+        resolution_state: "indexed",
+        indexed_artifact_path: indexedPath,
+        local_artifact_path: indexedPath,
+        git_tracking: "tracked",
+      };
+    }
+    const localCandidates = localCycleStatusCandidatesById.get(normalizedCycleId) ?? [];
+    if (localCandidates.length === 0) {
+      return {
+        cycle_id: normalizedCycleId,
+        resolution_state: "missing",
+        indexed_artifact_path: null,
+        local_artifact_path: null,
+        git_tracking: "missing",
+      };
+    }
+    const preferred = localCandidates[0];
+    return {
+      cycle_id: normalizedCycleId,
+      resolution_state: preferred.git_tracking === "tracked" ? "tracked_not_indexed" : "present_local_untracked",
+      indexed_artifact_path: null,
+      local_artifact_path: preferred.artifact_path,
+      git_tracking: preferred.git_tracking,
+    };
+  }
+
+  function addCycleReferenceFinding({
+    cycleId,
+    artifact,
+    entityType,
+    entityId,
+    missingFindingType,
+    missingMessagePrefix,
+    localMessagePrefix,
+    createdAt,
+  }) {
+    const resolution = resolveCycleStatusReference(cycleId);
+    if (resolution.resolution_state === "indexed") {
+      return resolution;
+    }
+    if (resolution.resolution_state === "tracked_not_indexed") {
+      addFinding({
+        migration_run_id: REPAIR_LAYER_ENGINE_VERSION,
+        severity: "warning",
+        finding_type: "UNINDEXED_CYCLE_STATUS_REFERENCE",
+        entity_type: entityType,
+        entity_id: entityId,
+        artifact_path: artifact.path,
+        referenced_cycle_id: cycleId,
+        reference_resolution_state: resolution.resolution_state,
+        local_artifact_path: resolution.local_artifact_path,
+        git_tracking: resolution.git_tracking,
+        message: `${localMessagePrefix} ${cycleId}; matching cycle status artifact ${resolution.local_artifact_path} exists locally and is tracked, but it is not visible in the current index.`,
+        confidence: 0.9,
+        suggested_action: "Refresh or rebuild the runtime index so the tracked cycle status artifact is materialized.",
+        created_at: createdAt,
+      });
+      return resolution;
+    }
+    if (resolution.resolution_state === "missing") {
+      addFinding({
+        migration_run_id: REPAIR_LAYER_ENGINE_VERSION,
+        severity: "warning",
+        finding_type: missingFindingType,
+        entity_type: entityType,
+        entity_id: entityId,
+        artifact_path: artifact.path,
+        referenced_cycle_id: cycleId,
+        reference_resolution_state: "missing",
+        local_artifact_path: null,
+        git_tracking: "missing",
+        message: `${missingMessagePrefix} ${cycleId} but no matching cycle status artifact was found in the index or on disk.`,
+        confidence: 0.9,
+        suggested_action: "Add or restore the referenced cycle status artifact.",
+        created_at: createdAt,
+      });
+      return resolution;
+    }
+    addFinding({
+      migration_run_id: REPAIR_LAYER_ENGINE_VERSION,
+      severity: "warning",
+      finding_type: "UNTRACKED_CYCLE_STATUS_REFERENCE",
+      entity_type: entityType,
+      entity_id: entityId,
+      artifact_path: artifact.path,
+      referenced_cycle_id: cycleId,
+      reference_resolution_state: resolution.resolution_state,
+      local_artifact_path: resolution.local_artifact_path,
+      git_tracking: resolution.git_tracking,
+      message: `${localMessagePrefix} ${cycleId}; matching cycle status artifact ${resolution.local_artifact_path} exists locally, but it is not tracked/materialized in the current index.`,
+      confidence: 0.85,
+      suggested_action: "Track the local cycle status artifact and refresh the runtime index.",
+      created_at: createdAt,
+    });
+    return resolution;
   }
 
   function inferArtifactRelationType(sourceArtifact, targetArtifact) {
@@ -517,7 +714,7 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
         }
         if (!sessionArtifactById.has(metadata.parent_session)) {
           addFinding({
-            migration_run_id: "repair-layer-v1",
+            migration_run_id: REPAIR_LAYER_ENGINE_VERSION,
             severity: "info",
             finding_type: "UNRESOLVED_PARENT_SESSION",
             entity_type: "session",
@@ -532,7 +729,7 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
       }
       if (metadata.legacy_multi_target_scalar) {
         addFinding({
-          migration_run_id: "repair-layer-v1",
+          migration_run_id: REPAIR_LAYER_ENGINE_VERSION,
           severity: "info",
           finding_type: "SESSION_METADATA_NORMALIZATION_RECOMMENDED",
           entity_type: "session",
@@ -603,7 +800,7 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
         });
         if (effectiveCycleIds.length > 1) {
           addFinding({
-            migration_run_id: "repair-layer-v1",
+            migration_run_id: REPAIR_LAYER_ENGINE_VERSION,
             severity: "warning",
             finding_type: "AMBIGUOUS_RELATION",
             entity_type: "session",
@@ -617,20 +814,19 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
         }
       }
       for (const cycleId of Array.from(candidateCycleSet).sort((a, b) => a.localeCompare(b))) {
-        if (cycleStatusById.has(cycleId)) {
+        const resolution = resolveCycleStatusReference(cycleId);
+        if (resolution.resolution_state === "indexed") {
           continue;
         }
-        addFinding({
-          migration_run_id: "repair-layer-v1",
-          severity: "warning",
-          finding_type: "UNRESOLVED_SESSION_CYCLE",
-          entity_type: "session",
-          entity_id: artifact.session_id,
-          artifact_path: artifact.path,
-          message: `Session references cycle ${cycleId} but no cycle status artifact was indexed.`,
-          confidence: 0.9,
-          suggested_action: "Add or restore the referenced cycle status artifact.",
-          created_at: artifact.updated_at ?? now,
+        addCycleReferenceFinding({
+          cycleId,
+          artifact,
+          entityType: "session",
+          entityId: artifact.session_id,
+          missingFindingType: "UNRESOLVED_SESSION_CYCLE",
+          missingMessagePrefix: "Session references cycle",
+          localMessagePrefix: "Session references cycle",
+          createdAt: artifact.updated_at ?? now,
         });
       }
       for (const cycleId of reportedCycles) {
@@ -657,7 +853,7 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
       }
       if (!sessionBranch || (!suppressImplicitAmbiguity && explicitTopologyCycles.size === 0)) {
         addFinding({
-          migration_run_id: "repair-layer-v1",
+          migration_run_id: REPAIR_LAYER_ENGINE_VERSION,
           severity: "info",
           finding_type: "SESSION_PARTIAL_METADATA",
           entity_type: "session",
@@ -688,7 +884,7 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
 
     if (artifact.source_mode === "legacy_repaired" && artifact.cycle_id) {
       addFinding({
-        migration_run_id: "repair-layer-v1",
+        migration_run_id: REPAIR_LAYER_ENGINE_VERSION,
         severity: "warning",
         finding_type: "LEGACY_CYCLE_DIR_REPAIRED",
         entity_type: "cycle",
@@ -706,25 +902,23 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
       const referencedCycleIds = extractCycleIdsFromText(text);
       const referencedSessionIds = extractSessionIdsFromText(text);
       for (const cycleId of referencedCycleIds) {
-        const statusPath = cycleStatusById.get(cycleId);
-        if (!statusPath) {
-          addFinding({
-            migration_run_id: "repair-layer-v1",
-            severity: "warning",
-            finding_type: "UNRESOLVED_CYCLE_REFERENCE",
-            entity_type: "artifact",
-            entity_id: artifact.path,
-            artifact_path: artifact.path,
-            message: `Artifact references cycle ${cycleId} but no cycle status artifact was indexed.`,
-            confidence: 0.9,
-            suggested_action: "Add or restore the referenced cycle status artifact.",
-            created_at: artifact.updated_at ?? now,
+        const resolution = resolveCycleStatusReference(cycleId);
+        if (resolution.resolution_state !== "indexed") {
+          addCycleReferenceFinding({
+            cycleId,
+            artifact,
+            entityType: "artifact",
+            entityId: artifact.path,
+            missingFindingType: "UNRESOLVED_CYCLE_REFERENCE",
+            missingMessagePrefix: "Artifact references cycle",
+            localMessagePrefix: "Artifact references cycle",
+            createdAt: artifact.updated_at ?? now,
           });
           continue;
         }
         addArtifactLink({
           source_path: artifact.path,
-          target_path: statusPath,
+          target_path: resolution.indexed_artifact_path,
           relation_type: "summarizes_cycle",
           confidence: artifact.kind === "snapshot" ? 0.85 : 0.75,
           inference_source: artifact.kind === "snapshot" ? "snapshot_cycle_reference" : "baseline_cycle_reference",
@@ -816,8 +1010,8 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
     session_cycle_links: sessionCycleLinks.sort((a, b) => `${a.session_id}:${a.cycle_id}:${a.relation_type}`.localeCompare(`${b.session_id}:${b.cycle_id}:${b.relation_type}`)),
     session_links: sessionLinks.sort((a, b) => `${a.source_session_id}:${a.target_session_id}:${a.relation_type}`.localeCompare(`${b.source_session_id}:${b.target_session_id}:${b.relation_type}`)),
     migration_runs: [{
-      migration_run_id: "repair-layer-v1",
-      engine_version: "repair-layer-v1",
+      migration_run_id: REPAIR_LAYER_ENGINE_VERSION,
+      engine_version: REPAIR_LAYER_ENGINE_VERSION,
       started_at: latestObservedAt,
       ended_at: latestObservedAt,
       status: "completed",

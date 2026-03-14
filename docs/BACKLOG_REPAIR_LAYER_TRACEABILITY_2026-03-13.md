@@ -12,7 +12,7 @@ Reference plan:
 
 ### RLT-01 - Add Explicit Finding Taxonomy For Cycle Reference Resolution
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -29,9 +29,14 @@ Done when:
 - repair-layer can distinguish `missing`, `present_local_untracked`, and `tracked_not_indexed`
 - `UNRESOLVED_CYCLE_REFERENCE` is no longer used for all three situations
 
+Progress note:
+
+- repair-layer now distinguishes `missing`, `present_local_untracked`, and `tracked_not_indexed` during cycle status resolution
+- `UNTRACKED_CYCLE_STATUS_REFERENCE` and `UNINDEXED_CYCLE_STATUS_REFERENCE` are emitted instead of collapsing all three cases into `UNRESOLVED_CYCLE_REFERENCE`
+
 ### RLT-02 - Detect Local Cycle Status Presence Before Declaring A Reference Unresolved
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -48,9 +53,14 @@ Done when:
 - snapshot/baseline repair lookup checks the local cycle status path pattern before emitting the "absent" finding
 - local match behavior is covered by fixtures
 
+Progress note:
+
+- repair-layer now scans local `docs/audit/cycles/*/status.md` before concluding that a cycle reference is absent
+- the same local-first resolution path is reused for snapshot/baseline references and session-to-cycle references
+
 ### RLT-03 - Introduce Dedicated Findings For Untracked / Unindexed Local Cycle Status
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -68,9 +78,14 @@ Done when:
 - triage can emit a specific finding for "tracked but not indexed" if that case is observable
 - messages no longer imply the artifact does not exist when it does
 
+Progress note:
+
+- triage now exposes `referenced_cycle_id`, `reference_resolution_state`, `local_artifact_path`, and `git_tracking`
+- `UNINDEXED_CYCLE_STATUS_REFERENCE` now carries a `refresh_index` next step, while `UNTRACKED_CYCLE_STATUS_REFERENCE` preserves the local presence diagnosis without claiming the artifact is missing
+
 ### RLT-04 - Align Derived Runtime Outputs On One Repair Status Reason
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -91,9 +106,15 @@ Done when:
 - all derived outputs share the same top repair reason
 - the behavior is verified in fixtures
 
+Progress note:
+
+- `RUNTIME-STATE.md`, `HANDOFF-PACKET.md`, and `MULTI-AGENT-STATUS.md` now expose the same `repair_primary_reason`
+- `CURRENT-STATE.md` now carries the same field in template form, and the skills that maintain it explicitly instruct agents to keep `repair_layer_status` and `repair_primary_reason` aligned with the latest hydrated/runtime digest
+- fixture coverage now verifies both the hook/context relay path and the `CURRENT-STATE.md` skill contract
+
 ### RLT-05 - Enrich Triage JSON With Resolution Provenance
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
@@ -110,9 +131,14 @@ Done when:
 - triage JSON can optionally include provenance fields such as `source`, `resolution_basis`, `index_visibility`, `detected_local_paths`
 - existing consumers remain compatible
 
+Progress note:
+
+- triage JSON now exposes provenance fields directly on each item: `referenced_cycle_id`, `reference_resolution_state`, `local_artifact_path`, and `git_tracking`
+- existing repair-layer triage and runtime-state verifiers continue to pass unchanged, so downstream consumers remain compatible
+
 ### RLT-06 - Improve `pre-write-admit` Warning Wording
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
@@ -128,9 +154,14 @@ Done when:
 - pre-write output names the real cause for local-but-non-indexed cycle references
 - the wording differentiates workflow inconsistency from indexing lag
 
+Progress note:
+
+- `pre-write-admit` now emits a warning that explicitly distinguishes a local untracked cycle status from a tracked-but-unindexed one
+- fixture coverage verifies the non-blocking warning path without changing the admission gate itself
+
 ### RLT-07 - Add Fixtures For Snapshot / Local Presence / Index Divergence
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -149,9 +180,14 @@ Done when:
 - fixtures assert derived output consistency
 - fixture names clearly map to the scenario under test
 
+Progress note:
+
+- `tools/perf/verify-repair-layer-traceability-fixtures.mjs` now reproduces both useful divergence cases: local untracked cycle status and tracked-but-not-indexed cycle status
+- the verifier asserts deterministic triage classification and the presence of a `refresh_index` next step for the tracked-but-not-indexed case
+
 ### RLT-08 - Document The Scenario In Troubleshooting / Runtime Docs
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
@@ -169,6 +205,11 @@ Done when:
 - docs explain the difference between missing and non-indexed cycle references
 - docs include the expected recovery path
 - docs mention when the warning is informational vs workflow-blocking
+
+Progress note:
+
+- `docs/TROUBLESHOOTING.md` now explains the difference between `UNRESOLVED_CYCLE_REFERENCE`, `UNTRACKED_CYCLE_STATUS_REFERENCE`, and `UNINDEXED_CYCLE_STATUS_REFERENCE`
+- `docs/performance/README.md` now documents the expected recovery path when the issue is index visibility rather than a missing artifact
 
 ## Recommended Execution Order
 

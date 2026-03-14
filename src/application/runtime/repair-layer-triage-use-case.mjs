@@ -60,6 +60,19 @@ function buildResolveCommands(targetRoot, indexFile, backend, sessionId, candida
   }));
 }
 
+function buildIndexRefreshCommand(targetRoot, indexFile, backend) {
+  const base = [
+    "node",
+    "tools/perf/index-sync.mjs",
+    "--target",
+    targetRoot,
+  ];
+  if (backend === "sqlite") {
+    return [...base, "--store", "sqlite", "--sqlite-output", indexFile, "--json"].join(" ");
+  }
+  return [...base, "--store", "file", "--output", indexFile, "--json"].join(" ");
+}
+
 function buildTriageItem(finding, payload, targetRoot, indexFile, backend) {
   const autofixSuggestion = String(finding?.entity_type ?? "") === "session"
     ? (collectRepairLayerSafeAutofixPlan(payload, {
@@ -72,6 +85,10 @@ function buildTriageItem(finding, payload, targetRoot, indexFile, backend) {
     entity_type: finding?.entity_type ?? null,
     entity_id: finding?.entity_id ?? null,
     artifact_path: finding?.artifact_path ?? null,
+    referenced_cycle_id: finding?.referenced_cycle_id ?? null,
+    reference_resolution_state: finding?.reference_resolution_state ?? null,
+    local_artifact_path: finding?.local_artifact_path ?? null,
+    git_tracking: finding?.git_tracking ?? null,
     message: finding?.message ?? null,
     confidence: Number(finding?.confidence ?? 0),
     suggested_action: finding?.suggested_action ?? null,
@@ -155,6 +172,13 @@ function buildTriageItem(finding, payload, targetRoot, indexFile, backend) {
         String(finding?.entity_id ?? ""),
         "--json",
       ].join(" "),
+    });
+  }
+
+  if (String(finding?.finding_type ?? "") === "UNINDEXED_CYCLE_STATUS_REFERENCE") {
+    item.next_steps.push({
+      kind: "refresh_index",
+      command: buildIndexRefreshCommand(targetRoot, indexFile, backend),
     });
   }
 

@@ -47,10 +47,11 @@ Before the first durable write in this skill, run:
   - remove cycle from active
   - set next entry point
 - Update `docs/audit/CURRENT-STATE.md` when present:
-  - refresh baseline summary/version pointer
-  - remove promoted cycle from active focus
-  - update open gaps/CR summary if promotion resolves them
-  - set the next safe action after promotion
+- refresh baseline summary/version pointer
+- remove promoted cycle from active focus
+- update open gaps/CR summary if promotion resolves them
+- set the next safe action after promotion
+- keep `repair_layer_status` and `repair_primary_reason` aligned with the latest hydrated/runtime digest when repair context is relevant
 
 5) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill promote-baseline --mode COMMITTING --target . --json`

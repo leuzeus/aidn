@@ -57,6 +57,7 @@ function extractRepairLayerSummary(payload) {
     repair_layer_blocking: (summary.repair_layer_blocking ?? checkpointSummary.repair_layer_blocking) === true,
     repair_layer_status: summary.repair_layer_status ?? checkpointSummary.repair_layer_status ?? null,
     repair_layer_advice: summary.repair_layer_advice ?? checkpointSummary.repair_layer_advice ?? null,
+    repair_primary_reason: summary.repair_primary_reason ?? checkpointSummary.repair_primary_reason ?? null,
     repair_layer_top_findings: Array.isArray(summary.repair_layer_top_findings)
       ? summary.repair_layer_top_findings
       : (Array.isArray(checkpointSummary.repair_layer_top_findings) ? checkpointSummary.repair_layer_top_findings : []),
@@ -115,6 +116,7 @@ export function runSkillHookUseCase({ args, perfDir, targetRoot, processAdapter 
       repair_layer_blocking: repairLayer.repair_layer_blocking,
       repair_layer_status: repairLayer.repair_layer_status,
       repair_layer_advice: repairLayer.repair_layer_advice,
+      repair_primary_reason: repairLayer.repair_primary_reason,
       repair_layer_top_findings: repairLayer.repair_layer_top_findings,
       action: payload?.action ?? null,
       result: payload?.result ?? null,

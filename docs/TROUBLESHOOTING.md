@@ -184,6 +184,35 @@ Fix:
 - Re-run verify:
   - `node tools/install.mjs --target <repo> --pack core --verify`
 
+## Repair-layer says a cycle is unresolved but the `status.md` exists locally
+
+Symptom:
+- runtime triage reports a cycle reference problem
+- you can see `docs/audit/cycles/CXXX-*/status.md` on disk
+- the message used to look like "missing cycle status" even though the file exists locally
+
+Meaning:
+- `UNTRACKED_CYCLE_STATUS_REFERENCE`
+  - the matching `status.md` exists locally, but git/runtime tracking has not picked it up yet
+- `UNINDEXED_CYCLE_STATUS_REFERENCE`
+  - the matching `status.md` is tracked, but the current runtime index still does not see it
+- `UNRESOLVED_CYCLE_REFERENCE`
+  - no matching `status.md` was found in the index or on disk
+
+Fix:
+- For a tracked-but-not-indexed artifact:
+  - `npx aidn perf index --target . --store sqlite --sqlite-output .aidn/runtime/index/workflow-index.sqlite --json`
+  - or rerun your normal DB-backed sync flow
+- For a local-but-untracked artifact:
+  - track the `status.md` in git
+  - then refresh the runtime index
+- For a truly missing artifact:
+  - restore or create the referenced `status.md`
+
+Notes:
+- this is often an index visibility problem, not a workflow continuity contradiction
+- `pre-write-admit` should now warn with the real cause instead of implying the cycle artifact is absent
+
 ## Merge conflict in AGENTS.md
 
 Symptom:

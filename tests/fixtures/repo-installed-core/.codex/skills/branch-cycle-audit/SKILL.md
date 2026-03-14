@@ -92,10 +92,11 @@ Continuity validation by rule:
 - Ensure active cycle list reflects the mapped cycle
 - Next entry point points to that cycle status.md
 - If snapshot is updated, also update `docs/audit/CURRENT-STATE.md` when present:
-  - align `branch_kind`
-  - align `active_cycle`
-  - clear stale focus if mapping remains ambiguous
-  - record the next safe action instead of leaving inferred ownership implicit
+- align `branch_kind`
+- align `active_cycle`
+- clear stale focus if mapping remains ambiguous
+- record the next safe action instead of leaving inferred ownership implicit
+- keep `repair_layer_status` and `repair_primary_reason` aligned with the latest hydrated/runtime digest when repair context is relevant
 
 8) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill branch-cycle-audit --mode COMMITTING --target . --json`

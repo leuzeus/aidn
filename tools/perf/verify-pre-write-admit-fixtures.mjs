@@ -90,6 +90,40 @@ function installSharedPlanningFixture(targetRoot, { selectedExecutionScope = "no
   ].join("\n"), "utf8");
 }
 
+function installRepairWarningFixture(targetRoot) {
+  const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
+  fs.writeFileSync(runtimeStateFile, [
+    "# Runtime State Digest",
+    "",
+    "## Summary",
+    "",
+    "updated_at: 2026-03-09T01:05:00Z",
+    "runtime_state_mode: dual",
+    "repair_layer_status: warn",
+    "repair_layer_advice: Review open repair findings, starting with UNTRACKED_CYCLE_STATUS_REFERENCE.",
+    "repair_primary_reason: warning: UNTRACKED_CYCLE_STATUS_REFERENCE: docs/audit/snapshots/context-snapshot.md: Artifact references cycle C901; matching cycle status artifact cycles/C901-local-only/status.md exists locally, but it is not tracked/materialized in the current index.",
+    "repair_routing_hint: audit-first",
+    "repair_routing_reason: Review open repair findings, starting with UNTRACKED_CYCLE_STATUS_REFERENCE.",
+    "",
+    "## Current State Freshness",
+    "",
+    "current_state_freshness: ok",
+    "current_state_freshness_basis: current-state timestamps are aligned with active cycle timestamps",
+    "",
+    "## Blocking Findings",
+    "",
+    "blocking_findings:",
+    "- warning: UNTRACKED_CYCLE_STATUS_REFERENCE: docs/audit/snapshots/context-snapshot.md: Artifact references cycle C901; matching cycle status artifact cycles/C901-local-only/status.md exists locally, but it is not tracked/materialized in the current index.",
+    "",
+    "## Prioritized Reads",
+    "",
+    "prioritized_artifacts:",
+    "- `docs/audit/CURRENT-STATE.md`",
+    "- `docs/audit/RUNTIME-STATE.md`",
+    "",
+  ].join("\n"), "utf8");
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -100,8 +134,11 @@ function main() {
     const blockedTarget = path.join(fixturesRoot, "blocked");
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-pre-write-admit-"));
     const cycleCreateTarget = path.join(tempRoot, "cycle-create");
+    const warningTarget = path.join(tempRoot, "repair-warning");
     fs.cpSync(readyTarget, cycleCreateTarget, { recursive: true });
+    fs.cpSync(readyTarget, warningTarget, { recursive: true });
     installSharedPlanningFixture(cycleCreateTarget, { selectedExecutionScope: "none" });
+    installRepairWarningFixture(warningTarget);
 
     const ready = runAidn(repoRoot, [
       "runtime",
@@ -132,6 +169,15 @@ function main() {
       "--strict",
       "--json",
     ], 1);
+    const warning = runAidn(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      warningTarget,
+      "--skill",
+      "requirements-delta",
+      "--json",
+    ], 0);
 
     assert(ready.ok === true, "ready pre-write admission should pass");
     assert(ready.admission_status === "admitted", "ready pre-write admission should be admitted");
@@ -148,12 +194,16 @@ function main() {
     assert(cycleCreateBlocked.context.active_backlog === "backlog/BL-S101-session-planning.md", "cycle-create pre-write admission should expose the active backlog");
     assert(cycleCreateBlocked.context.backlog_selected_execution_scope === "none", "cycle-create pre-write admission should expose the missing execution scope");
     assert(cycleCreateBlocked.blocking_reasons.some((item) => String(item).includes("selected execution scope")), "cycle-create pre-write admission should explain the missing shared planning scope");
+    assert(warning.ok === true, "warning pre-write admission should stay admitted");
+    assert(warning.context.repair_layer_status === "warn", "warning pre-write admission should expose repair warn status");
+    assert(warning.warnings.some((item) => String(item).includes("locally present cycle status artifact")), "warning pre-write admission should explain local-but-untracked repair state");
 
     const output = {
       ts: new Date().toISOString(),
       fixtures_root: fixturesRoot,
       ready,
       blocked,
+      warning,
       cycle_create_blocked: cycleCreateBlocked,
       pass: true,
     };

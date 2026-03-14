@@ -539,6 +539,7 @@ function buildMarkdown(packet) {
   lines.push("");
   lines.push(`runtime_state_mode: ${packet.runtime_state_mode}`);
   lines.push(`repair_layer_status: ${packet.repair_layer_status}`);
+  lines.push(`repair_primary_reason: ${packet.repair_primary_reason}`);
   lines.push(`repair_routing_hint: ${packet.repair_routing_hint}`);
   lines.push(`current_state_freshness: ${packet.current_state_freshness}`);
   lines.push("");
@@ -607,6 +608,7 @@ export function projectHandoffPacket({
   const sessionFile = findSessionFile(auditRoot, activeSession);
   const cycleStatus = findCycleStatus(auditRoot, activeCycle);
   const repairStatus = normalizeScalar(runtimeMap.get("repair_layer_status") ?? "unknown") || "unknown";
+  const repairPrimaryReason = normalizeScalar(runtimeMap.get("repair_primary_reason") ?? runtimeMap.get("repair_layer_advice") ?? "unknown") || "unknown";
   const repairRoutingHint = normalizeScalar(runtimeMap.get("repair_routing_hint") ?? repairStatus) || "unknown";
   const repairRoutingReason = normalizeScalar(runtimeMap.get("repair_routing_reason") ?? runtimeMap.get("repair_layer_advice") ?? "unknown") || "unknown";
   const handoffStatus = deriveHandoffStatus({ consistency, runtimeMap, currentMap });
@@ -683,6 +685,7 @@ export function projectHandoffPacket({
     linked_backlog_cycles: sharedPlanning.linked_cycles,
     runtime_state_mode: normalizeScalar(runtimeMap.get("runtime_state_mode") ?? currentMap.get("runtime_state_mode") ?? "unknown") || "unknown",
     repair_layer_status: repairStatus,
+    repair_primary_reason: repairPrimaryReason,
     repair_routing_hint: repairRoutingHint,
     current_state_freshness: normalizeScalar(runtimeMap.get("current_state_freshness") ?? "unknown") || "unknown",
     transition_policy_status: transition.status,

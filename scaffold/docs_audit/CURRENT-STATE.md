@@ -13,6 +13,7 @@ updated_at: 2026-03-09T00:00:00Z
 structure_profile: modern
 runtime_state_mode: dual
 repair_layer_status: unknown
+repair_primary_reason: unknown
 
 ## Active Context
 

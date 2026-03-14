@@ -18,6 +18,7 @@ updated_at: 2026-03-09T00:00:00Z
 runtime_state_mode: dual
 repair_layer_status: unknown
 repair_layer_advice: unknown
+repair_primary_reason: unknown
 repair_routing_hint: reanchor
 repair_routing_reason: repair routing is unknown, so the next agent should reanchor before acting
 

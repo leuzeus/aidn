@@ -14,7 +14,7 @@ Rule/State boundary:
 
 ## Summary
 
-updated_at: 2026-03-14T07:02:31.627Z
+updated_at: 2026-03-14T22:49:04.934Z
 handoff_status: refresh_required
 handoff_from_agent_role: coordinator
 handoff_from_agent_action: relay
@@ -55,6 +55,7 @@ linked_backlog_cycles: none
 
 runtime_state_mode: dual
 repair_layer_status: unknown
+repair_primary_reason: unknown
 repair_routing_hint: reanchor
 current_state_freshness: unknown
 

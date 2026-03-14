@@ -59,6 +59,7 @@ Before the first durable write in this skill, run:
 - refresh `docs/audit/CURRENT-STATE.md` when present
 - keep only summary-level scope change, blockers, and next action
 - do not duplicate the full recovery plan outside the owning artifact
+- keep `repair_layer_status` and `repair_primary_reason` aligned with the latest hydrated/runtime digest when repair context is relevant
 
 8) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill drift-check --mode COMMITTING --target . --json`

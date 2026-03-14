@@ -268,6 +268,20 @@ function uniqueItems(values) {
   return out;
 }
 
+function classifyRepairFindingSummary(item) {
+  const text = String(item ?? "").trim();
+  if (!text) {
+    return null;
+  }
+  if (text.includes("UNTRACKED_CYCLE_STATUS_REFERENCE")) {
+    return "repair layer found a locally present cycle status artifact that is not tracked/materialized in the current index";
+  }
+  if (text.includes("UNINDEXED_CYCLE_STATUS_REFERENCE")) {
+    return "repair layer found a tracked cycle status artifact that is still missing from the current index";
+  }
+  return null;
+}
+
 function relativePath(root, filePath) {
   if (!filePath) {
     return "none";
@@ -422,6 +436,13 @@ export function preWriteAdmit({
     blockingReasons.push(blockingFindings.length > 0
       ? `repair layer is blocking: ${blockingFindings.join(", ")}`
       : "repair layer is blocking");
+  } else if (repairLayerStatus.toLowerCase() === "warn") {
+    const repairSpecificWarning = blockingFindings
+      .map((item) => classifyRepairFindingSummary(item))
+      .find(Boolean);
+    if (repairSpecificWarning) {
+      warnings.push(repairSpecificWarning);
+    }
   }
 
   if (policy.requireFreshCurrentState) {

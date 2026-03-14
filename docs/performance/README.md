@@ -122,6 +122,13 @@ Runtime transition scripts (`tools/runtime/`):
 - `artifact-store.mjs` - minimal DB artifact upsert/read/list API (foundation for DB-first write-through)
 - `db-first-artifact.mjs` - upsert one artifact directly into DB runtime index with optional projection to `docs/audit` (write-through helper)
 
+Repair-layer traceability note:
+- cycle reference findings now distinguish:
+  - `UNRESOLVED_CYCLE_REFERENCE` for truly missing `status.md`
+  - `UNTRACKED_CYCLE_STATUS_REFERENCE` for a local `status.md` that exists on disk but is not tracked/materialized
+  - `UNINDEXED_CYCLE_STATUS_REFERENCE` for a tracked `status.md` that is still absent from the current index
+- when the issue is `UNINDEXED_CYCLE_STATUS_REFERENCE`, the expected recovery is to refresh the index, not to recreate the cycle artifact
+
 ## Commands
 
 Package CLI (recommended in client repos):
