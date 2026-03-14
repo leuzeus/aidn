@@ -52,12 +52,56 @@ function verifyPaths(targetRoot, pathsToCheck) {
   return { ok: missing.length === 0, missing };
 }
 
+const KNOWN_OVERRIDE_SCAN_ROOTS = [
+  "docs",
+  path.join("docs", "audit"),
+  ".codex",
+  ".aidn",
+];
+
+function listNestedAgentsOverrides(targetRoot) {
+  const found = new Set();
+
+  function visit(dirPath) {
+    if (!fs.existsSync(dirPath)) {
+      return;
+    }
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const absolute = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        visit(absolute);
+        continue;
+      }
+      if (!entry.isFile() || entry.name !== "AGENTS.override.md") {
+        continue;
+      }
+      const relative = path.relative(targetRoot, absolute).replace(/\\/g, "/");
+      if (relative.toLowerCase() !== "agents.override.md") {
+        found.add(relative);
+      }
+    }
+  }
+
+  for (const scanRoot of KNOWN_OVERRIDE_SCAN_ROOTS) {
+    visit(path.resolve(targetRoot, scanRoot));
+  }
+
+  return Array.from(found).sort((left, right) => left.localeCompare(right));
+}
+
 function collectInstructionPrecedenceWarnings(targetRoot) {
   const warnings = [];
   const rootAgentsOverride = path.resolve(targetRoot, "AGENTS.override.md");
   if (fs.existsSync(rootAgentsOverride)) {
     warnings.push(
       "Target root contains AGENTS.override.md. Codex will prefer it over the installed AGENTS.md.",
+    );
+  }
+  const nestedOverrides = listNestedAgentsOverrides(targetRoot);
+  if (nestedOverrides.length > 0) {
+    warnings.push(
+      `Nested AGENTS.override.md detected in known workflow paths: ${nestedOverrides.join(", ")}.`,
     );
   }
   return warnings;

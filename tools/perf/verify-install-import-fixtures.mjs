@@ -291,6 +291,10 @@ function includes(text, token) {
   return String(text ?? "").includes(token);
 }
 
+function includesEither(out, token) {
+  return includes(out.stdout, token) || includes(out.stderr, token);
+}
+
 function readConfigSafe(configPath) {
   if (!fs.existsSync(configPath)) {
     return null;
@@ -610,6 +614,40 @@ function checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   };
 }
 
+function checkCaseInstructionOverrideWarnings(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
+  const target = prepareTmp(sourceTarget, tmpRoot, "instruction-overrides");
+  fs.writeFileSync(path.join(target, "AGENTS.override.md"), "# local override\n", "utf8");
+  const nestedDir = path.join(target, "docs", "audit", "nested");
+  fs.mkdirSync(nestedDir, { recursive: true });
+  fs.writeFileSync(path.join(nestedDir, "AGENTS.override.md"), "# nested override\n", "utf8");
+
+  const installOut = runInstall(repoRoot, target, codexStubBin);
+  const verifyOut = runInstall(repoRoot, target, codexStubBin, ["--verify"]);
+
+  return {
+    name: "instruction_override_warnings",
+    target_root: target,
+    ok: installOut.status === 0
+      && verifyOut.status === 0
+      && includesEither(installOut, "Target root contains AGENTS.override.md. Codex will prefer it over the installed AGENTS.md.")
+      && includesEither(installOut, "Nested AGENTS.override.md detected in known workflow paths: docs/audit/nested/AGENTS.override.md.")
+      && includesEither(installOut, "Review Codex instruction precedence before relying on the installed project contract.")
+      && includesEither(verifyOut, "Target root contains AGENTS.override.md. Codex will prefer it over the installed AGENTS.md.")
+      && includesEither(verifyOut, "Nested AGENTS.override.md detected in known workflow paths: docs/audit/nested/AGENTS.override.md.")
+      && includesEither(verifyOut, "Review Codex instruction precedence before relying on the installed project contract."),
+    details: {
+      install: installDiagnostics(installOut),
+      verify: installDiagnostics(verifyOut),
+      root_override_warning_install: includesEither(installOut, "Target root contains AGENTS.override.md. Codex will prefer it over the installed AGENTS.md."),
+      nested_override_warning_install: includesEither(installOut, "Nested AGENTS.override.md detected in known workflow paths: docs/audit/nested/AGENTS.override.md."),
+      precedence_review_warning_install: includesEither(installOut, "Review Codex instruction precedence before relying on the installed project contract."),
+      root_override_warning_verify: includesEither(verifyOut, "Target root contains AGENTS.override.md. Codex will prefer it over the installed AGENTS.md."),
+      nested_override_warning_verify: includesEither(verifyOut, "Nested AGENTS.override.md detected in known workflow paths: docs/audit/nested/AGENTS.override.md."),
+      precedence_review_warning_verify: includesEither(verifyOut, "Review Codex instruction precedence before relying on the installed project contract."),
+    },
+  };
+}
+
 function main() {
   let exitCode = 0;
   let keepTmp = false;
@@ -629,6 +667,7 @@ function main() {
       checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin),
       checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin),
       checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin),
+      checkCaseInstructionOverrideWarnings(repoRoot, sourceTarget, tmpRoot, codexStubBin),
     ];
     for (const item of cases) {
       tmpTargets.push(item.target_root);

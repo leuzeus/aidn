@@ -31,7 +31,7 @@ Done when:
 
 ### ARF-02 - Define Pre-Write Admission Command
 
-Status: in progress
+Status: completed
 Priority: high
 
 Files:
@@ -47,9 +47,14 @@ Done when:
 - one command reports write readiness
 - output includes mode, branch kind, active cycle/session, `dor_state`, runtime freshness, and blocking findings
 
+Progress note:
+
+- `npx aidn runtime pre-write-admit --target . --skill <skill> --json` is now the dedicated executable pre-write readiness command
+- its output surfaces mode, branch kind, active session/cycle, `dor_state`, runtime freshness, blocking reasons, prioritized artifacts, and repair-layer context
+
 ### ARF-03 - Require Admission In Mutating Skills
 
-Status: in progress
+Status: completed
 Priority: high
 
 Files:
@@ -65,9 +70,15 @@ Done when:
 - every mutating skill runs admission/gating before durable write
 - every mutating skill hydrates context after successful mutation
 
+Progress note:
+
+- mutating skills now require `pre-write-admit` before the first durable write
+- skill coverage verifies both current-state updates and pre-write admission wiring in scaffold and installed fixtures
+- DB-backed execution paths already document and verify post-hook hydration via `run-json-hook` and `hydrate-context`
+
 ### ARF-04 - Detect `AGENTS.override.md` During Install / Verify
 
-Status: in progress
+Status: completed
 Priority: high
 
 Files:
@@ -83,6 +94,11 @@ Done when:
 
 - install warns when target root `AGENTS.override.md` exists
 - verify reports effective precedence risks clearly
+
+Progress note:
+
+- install/verify now warn on both root and nested `AGENTS.override.md` files in known workflow paths
+- fixture coverage verifies the precedence warnings across install and verify flows
 
 ### ARF-05 - Document Codex Instruction Layering
 
@@ -108,7 +124,7 @@ Done when:
 
 ### ARF-06 - Add Real Codex Verification Steps To Docs
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
@@ -125,9 +141,14 @@ Done when:
 - docs include root and nested-directory verification commands
 - docs mention checking active instruction sources
 
+Progress note:
+
+- `README.md` and `docs/INSTALL.md` now include concrete Codex verification commands from repo root and nested directories
+- docs explicitly tell users to inspect active instruction sources instead of relying on file presence alone
+
 ### ARF-07 - Add Optional `.codex` Project Config Guidance
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
@@ -145,9 +166,14 @@ Done when:
 - `project_doc_max_bytes` use is documented
 - default install remains simple and non-intrusive
 
+Progress note:
+
+- install docs now document optional project-level Codex config only for non-default `project_doc_fallback_filenames` and `project_doc_max_bytes`
+- the default install remains free of `.codex/config.toml`
+
 ### ARF-08 - Define Nested Override Policy
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
@@ -164,9 +190,14 @@ Done when:
 - nested overrides are documented as advanced/optional
 - default `aidn` install still avoids scattering AGENTS files by default
 
+Progress note:
+
+- root docs and troubleshooting now describe nested overrides as advanced, optional, and external to the default `aidn` install story
+- install continues to manage only the root project layer by default
+
 ### ARF-09 - Revisit Troubleshooting Around Long Session Drift
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
@@ -181,6 +212,10 @@ Done when:
 
 - troubleshooting differentiates prompt drift from installation failure
 - mitigation path points toward re-anchor + runtime admission
+
+Progress note:
+
+- troubleshooting now distinguishes long-session runtime drift from install failure and points users toward re-anchor, workflow hooks, and runtime admission
 
 ## Sequencing Recommendation
 
