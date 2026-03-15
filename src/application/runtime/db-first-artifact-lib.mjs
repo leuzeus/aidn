@@ -6,6 +6,21 @@ import {
   resolveConfigStateMode,
 } from "../../lib/config/aidn-config-lib.mjs";
 
+const DB_FIRST_PRESERVED_PATHS = new Set([
+  "CURRENT-STATE.md",
+  "RUNTIME-STATE.md",
+  "INTEGRATION-RISK.md",
+  "HANDOFF-PACKET.md",
+  "AGENT-ROSTER.md",
+  "AGENT-ADAPTERS.md",
+  "AGENT-HEALTH-SUMMARY.md",
+  "AGENT-SELECTION-SUMMARY.md",
+  "MULTI-AGENT-STATUS.md",
+  "COORDINATION-SUMMARY.md",
+  "COORDINATION-LOG.md",
+  "USER-ARBITRATION.md",
+]);
+
 export function resolveStateMode(targetRoot, requested) {
   const requestedMode = normalizeStateMode(requested);
   if (requestedMode) {
@@ -94,4 +109,15 @@ export function loadContent(targetRoot, sourceFile, inlineContent) {
     return inlineContent;
   }
   throw new Error("Missing content source. Use --source-file or --content");
+}
+
+export function shouldPreserveDbFirstArtifactPath(relativePath) {
+  const rel = String(relativePath ?? "").replace(/\\/g, "/").replace(/^docs\/audit\//, "");
+  if (!rel) {
+    return false;
+  }
+  if (DB_FIRST_PRESERVED_PATHS.has(rel)) {
+    return true;
+  }
+  return /^backlog\/BL-S[0-9]+.*\.md$/i.test(rel);
 }

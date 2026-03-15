@@ -125,7 +125,7 @@ Progress note:
 
 ### DSM-06 - Remove Destructive Reset From Durable Tables
 
-Status: proposed
+Status: in_progress
 Priority: high
 
 Why:
@@ -137,9 +137,14 @@ Done when:
 - the main SQLite write path no longer truncates durable tables by default
 - rebuild behavior is limited to explicitly rebuildable ownership scopes only
 
+Progress note:
+
+- full SQLite sync now preserves DB-first runtime/backlog artifacts that can legitimately exist without a materialized `docs/audit/*` file in `db-only`
+- the broad table reset behavior in `index-store` still exists, so this item is only partially delivered
+
 ### DSM-07 - Define Table Ownership Policy
 
-Status: proposed
+Status: in_progress
 Priority: high
 
 Why:
@@ -152,6 +157,11 @@ Done when:
   - rebuildable projection tables
   - durable runtime tables
   - hybrid / ambiguous tables requiring redesign
+
+Progress note:
+
+- the current implementation now treats DB-first runtime/root artifacts and session backlogs as a first preserved ownership class during full sync
+- the full table-by-table ownership map still needs to be documented and enforced more broadly
 
 ### DSM-08 - Make `mode-migrate` A Real Migration Flow
 
