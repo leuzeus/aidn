@@ -140,6 +140,10 @@ Done when:
 Progress note:
 
 - full SQLite sync now preserves DB-first runtime/backlog artifacts that can legitimately exist without a materialized `docs/audit/*` file in `db-only`
+- the SQLite writer now reconciles `artifacts` with ownership-aware behavior:
+  - stale rebuildable artifact rows are removed
+  - protected DB-first artifact rows are not blindly deleted
+  - projected artifact rows are refreshed via `upsert` instead of relying on full-table wipe
 - the broad table reset behavior in `index-store` still exists, so this item is only partially delivered
 
 ### DSM-07 - Define Table Ownership Policy

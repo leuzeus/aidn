@@ -6,7 +6,7 @@ import { shouldEmbedArtifactContentByState } from "../../core/state-mode/runtime
 import { persistWorkflowIndexProjection } from "./index-state-store-service.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
 import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
-import { shouldPreserveDbFirstArtifactPath } from "./db-first-artifact-lib.mjs";
+import { shouldPreserveDbFirstArtifactPath } from "../../lib/workflow/db-first-artifact-path-policy.mjs";
 
 function resolveTargetPath(targetRoot, candidatePath) {
   if (!candidatePath) {

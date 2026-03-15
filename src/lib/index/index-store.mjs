@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import { buildSqlFromIndex } from "./index-sql-lib.mjs";
 import { writeUtf8IfChanged } from "./io-lib.mjs";
 import { ensureWorkflowDbSchema } from "../sqlite/workflow-db-schema-lib.mjs";
+import { shouldPreserveDbFirstArtifactPath } from "../workflow/db-first-artifact-path-policy.mjs";
 
 const require = createRequire(import.meta.url);
 const LIB_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -87,6 +88,29 @@ function canonicalToJson(value) {
     return JSON.stringify(value);
   } catch {
     return null;
+  }
+}
+
+function deleteStaleArtifacts(db, artifacts) {
+  const payloadPaths = new Set(
+    (Array.isArray(artifacts) ? artifacts : [])
+      .map((row) => String(row?.path ?? ""))
+      .filter((value) => value.length > 0),
+  );
+  const rows = db.prepare("SELECT path FROM artifacts ORDER BY path ASC").all();
+  const deleteStmt = db.prepare("DELETE FROM artifacts WHERE path = ?");
+  for (const row of rows) {
+    const artifactPath = String(row?.path ?? "");
+    if (!artifactPath) {
+      continue;
+    }
+    if (payloadPaths.has(artifactPath)) {
+      continue;
+    }
+    if (shouldPreserveDbFirstArtifactPath(artifactPath)) {
+      continue;
+    }
+    deleteStmt.run(artifactPath);
   }
 }
 
@@ -383,7 +407,6 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       db.exec("DELETE FROM artifact_tags;");
       db.exec("DELETE FROM tags;");
       db.exec("DELETE FROM file_map;");
-      db.exec("DELETE FROM artifacts;");
       db.exec("DELETE FROM cycles;");
       db.exec("DELETE FROM run_metrics;");
       db.exec("DELETE FROM artifact_links;");
@@ -442,8 +465,28 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       const artifactStmt = db.prepare(`
         INSERT INTO artifacts (
           path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, mtime_ns, session_id, cycle_id, source_mode, entity_confidence, legacy_origin, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(path) DO UPDATE SET
+          kind = excluded.kind,
+          family = excluded.family,
+          subtype = excluded.subtype,
+          gate_relevance = excluded.gate_relevance,
+          classification_reason = excluded.classification_reason,
+          content_format = excluded.content_format,
+          content = excluded.content,
+          canonical_format = excluded.canonical_format,
+          canonical_json = excluded.canonical_json,
+          sha256 = excluded.sha256,
+          size_bytes = excluded.size_bytes,
+          mtime_ns = excluded.mtime_ns,
+          session_id = excluded.session_id,
+          cycle_id = excluded.cycle_id,
+          source_mode = excluded.source_mode,
+          entity_confidence = excluded.entity_confidence,
+          legacy_origin = excluded.legacy_origin,
+          updated_at = excluded.updated_at;
       `);
+      deleteStaleArtifacts(db, artifacts);
       runInsert(artifactStmt, artifacts, (row) => ([
         row.path ?? null,
         row.kind ?? "other",

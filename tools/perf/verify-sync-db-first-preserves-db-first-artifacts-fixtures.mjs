@@ -28,6 +28,8 @@ function main() {
       workingCopy,
       "--state-mode",
       "db-only",
+      "--store",
+      "sqlite",
       "--json",
     ]);
     const sqliteFile = String(
@@ -70,18 +72,25 @@ function main() {
     const backlogOnDisk = path.join(workingCopy, "docs", "audit", "backlog", "BL-S401-db-only-preservation.md");
     const storeBefore = createArtifactStore({ sqliteFile });
     const artifactBefore = storeBefore.getArtifact("backlog/BL-S401-db-only-preservation.md");
+    const rebuildableBefore = storeBefore.getArtifact("SPEC.md");
     storeBefore.close();
+
+    const rebuildablePath = path.join(workingCopy, "docs", "audit", "SPEC.md");
+    fs.rmSync(rebuildablePath, { force: true });
 
     const secondSync = runJson("tools/runtime/sync-db-first.mjs", [
       "--target",
       workingCopy,
       "--state-mode",
       "db-only",
+      "--store",
+      "sqlite",
       "--json",
     ]);
 
     const storeAfter = createArtifactStore({ sqliteFile });
     const artifactAfter = storeAfter.getArtifact("backlog/BL-S401-db-only-preservation.md");
+    const rebuildableAfter = storeAfter.getArtifact("SPEC.md");
     storeAfter.close();
 
     const checks = {
@@ -89,9 +98,11 @@ function main() {
       db_first_write_ok: String(dbFirstWrite?.artifact?.path ?? "") === "backlog/BL-S401-db-only-preservation.md",
       backlog_not_materialized_in_db_only: fs.existsSync(backlogOnDisk) === false,
       artifact_present_before_full_sync: Boolean(artifactBefore),
+      rebuildable_artifact_present_before_full_sync: Boolean(rebuildableBefore),
       second_sync_ok: secondSync.ok === true,
       artifact_preserved_after_full_sync: Boolean(artifactAfter),
       artifact_content_preserved_after_full_sync: String(artifactAfter?.content ?? "").includes("preserve db-only backlog during sync"),
+      rebuildable_deleted_file_removed_from_db: rebuildableAfter == null,
     };
     const pass = Object.values(checks).every((value) => value === true);
 
@@ -104,6 +115,8 @@ function main() {
         sqlite_file: sqliteFile,
         artifact_before: artifactBefore,
         artifact_after: artifactAfter,
+        rebuildable_before: rebuildableBefore,
+        rebuildable_after: rebuildableAfter,
       },
       pass,
     };
