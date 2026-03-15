@@ -91,6 +91,9 @@ const CODEX_ALIASES = {
 
 const RUNTIME_ALIASES = {
   "artifact-store": { file: "artifact-store.mjs" },
+  "db-backup": { file: "db-backup.mjs" },
+  "db-migrate": { file: "db-migrate.mjs" },
+  "db-status": { file: "db-status.mjs" },
   "coordinator-dispatch-execute": { file: "coordinator-dispatch-execute.mjs" },
   "coordinator-dispatch-plan": { file: "coordinator-dispatch-plan.mjs" },
   "coordinator-loop": { file: "coordinator-loop.mjs" },
@@ -131,6 +134,9 @@ function printUsage() {
   console.log("  aidn perf session-start --target ../repo --mode COMMITTING --json");
   console.log("  aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json");
   console.log("  aidn runtime sync-db-first-selective --target . --json");
+  console.log("  aidn runtime db-status --target . --json");
+  console.log("  aidn runtime db-migrate --target . --json");
+  console.log("  aidn runtime db-backup --target . --json");
   console.log("  aidn runtime coordinator-dispatch-execute --target . --execute --json");
   console.log("  aidn runtime coordinator-dispatch-plan --target . --json");
   console.log("  aidn runtime coordinator-loop --target . --json");

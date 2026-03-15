@@ -187,7 +187,7 @@ Done when:
 
 ### DSM-09 - Add DB Migration CLI Surface
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Why:
@@ -200,6 +200,12 @@ Done when:
   - `aidn runtime db-status`
   - `aidn runtime db-migrate`
   - `aidn runtime db-backup`
+
+Progress note:
+
+- `aidn runtime db-status` now reports DB existence, schema version, applied migrations, and pending migrations without mutating the DB
+- `aidn runtime db-migrate` now applies pending migrations explicitly and reports backup / applied migration details
+- `aidn runtime db-backup` now emits a standalone timestamped SQLite backup on demand
 
 ### DSM-10 - Decide Single-DB vs Two-DB Architecture
 

@@ -337,6 +337,15 @@ function ensureSchemaMigrationsTable(db) {
   `);
 }
 
+function hasTable(db, tableName) {
+  const row = db.prepare(`
+    SELECT name
+    FROM sqlite_master
+    WHERE type = 'table' AND name = ?
+  `).get(tableName);
+  return Boolean(row);
+}
+
 function listUserTables(db) {
   return db.prepare(`
     SELECT name
@@ -402,6 +411,20 @@ function createBackupIfNeeded(sqliteFile, backupRoot) {
   return backupFile;
 }
 
+export function backupWorkflowDbFile(options = {}) {
+  const resolved = resolveWorkflowSchemaOptions(options);
+  if (!resolved.sqliteFile) {
+    throw new Error("backupWorkflowDbFile requires sqliteFile");
+  }
+  const backupFile = createBackupIfNeeded(resolved.sqliteFile, resolved.backupRoot);
+  return {
+    ok: true,
+    sqlite_file: resolved.sqliteFile,
+    backup_file: backupFile,
+    backup_created: Boolean(backupFile),
+  };
+}
+
 function getWorkflowDbMigrations(schemaFile) {
   return [
     {
@@ -415,19 +438,97 @@ function getWorkflowDbMigrations(schemaFile) {
   ];
 }
 
+function resolveWorkflowSchemaOptions(options = {}) {
+  return {
+    sqliteFile: options.sqliteFile
+      ? path.resolve(process.cwd(), options.sqliteFile)
+      : "",
+    role: String(options.role ?? "runtime"),
+    engineVersion: String(options.engineVersion ?? "unknown"),
+    schemaFile: path.resolve(
+      process.cwd(),
+      options.schemaFile ?? getDefaultWorkflowSchemaFile(),
+    ),
+    backupRoot: options.backupRoot ?? "",
+  };
+}
+
+function listAppliedMigrationRows(db) {
+  if (!hasTable(db, "schema_migrations")) {
+    return [];
+  }
+  return db.prepare(`
+    SELECT migration_id, checksum, description, role, engine_version, applied_at, notes
+    FROM schema_migrations
+    ORDER BY applied_at ASC, migration_id ASC
+  `).all();
+}
+
+function readIndexMetaValue(db, key) {
+  if (!hasTable(db, "index_meta")) {
+    return null;
+  }
+  const row = db.prepare("SELECT value FROM index_meta WHERE key = ?").get(key);
+  return row?.value ?? null;
+}
+
+export function inspectWorkflowDbSchema(options = {}) {
+  const resolved = resolveWorkflowSchemaOptions(options);
+  const migrations = getWorkflowDbMigrations(resolved.schemaFile);
+  const expectedMigrationIds = migrations.map((migration) => migration.id);
+  if (!resolved.sqliteFile || !fs.existsSync(resolved.sqliteFile)) {
+    return {
+      ok: true,
+      sqlite_file: resolved.sqliteFile || null,
+      schema_file: resolved.schemaFile,
+      exists: false,
+      table_count: 0,
+      schema_version: null,
+      schema_migrations_present: false,
+      applied_migrations: [],
+      applied_ids: [],
+      pending_ids: expectedMigrationIds,
+    };
+  }
+
+  const DatabaseSync = getDatabaseSync();
+  const db = new DatabaseSync(resolved.sqliteFile);
+  try {
+    const appliedRows = listAppliedMigrationRows(db);
+    const appliedIds = new Set(appliedRows.map((row) => row.migration_id));
+    const tableCount = db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM sqlite_master
+      WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+    `).get()?.count ?? 0;
+    return {
+      ok: true,
+      sqlite_file: resolved.sqliteFile,
+      schema_file: resolved.schemaFile,
+      exists: true,
+      table_count: Number(tableCount),
+      schema_version: readIndexMetaValue(db, "schema_version"),
+      schema_migrations_present: hasTable(db, "schema_migrations"),
+      applied_migrations: appliedRows,
+      applied_ids: appliedRows.map((row) => row.migration_id),
+      pending_ids: migrations.filter((migration) => !appliedIds.has(migration.id)).map((migration) => migration.id),
+    };
+  } finally {
+    db.close();
+  }
+}
+
 export function ensureWorkflowDbSchema(options = {}) {
   const db = options.db;
   if (!db) {
     throw new Error("ensureWorkflowDbSchema requires db");
   }
-  const sqliteFile = options.sqliteFile ?? "";
-  const role = String(options.role ?? "runtime");
-  const engineVersion = String(options.engineVersion ?? "unknown");
-  const schemaFile = path.resolve(
-    process.cwd(),
-    options.schemaFile ?? getDefaultWorkflowSchemaFile(),
-  );
-  const backupRoot = options.backupRoot ?? "";
+  const resolved = resolveWorkflowSchemaOptions(options);
+  const sqliteFile = resolved.sqliteFile;
+  const role = resolved.role;
+  const engineVersion = resolved.engineVersion;
+  const schemaFile = resolved.schemaFile;
+  const backupRoot = resolved.backupRoot;
 
   const hadExistingSchema = listUserTables(db).length > 0;
   ensureSchemaMigrationsTable(db);
@@ -471,4 +572,45 @@ export function ensureWorkflowDbSchema(options = {}) {
     applied_ids: appliedIds,
     migration_count: appliedIds.length,
   };
+}
+
+export function migrateWorkflowDbFile(options = {}) {
+  const resolved = resolveWorkflowSchemaOptions(options);
+  if (!resolved.sqliteFile) {
+    throw new Error("migrateWorkflowDbFile requires sqliteFile");
+  }
+  fs.mkdirSync(path.dirname(resolved.sqliteFile), { recursive: true });
+  const DatabaseSync = getDatabaseSync();
+  const db = new DatabaseSync(resolved.sqliteFile);
+  try {
+    db.exec("PRAGMA foreign_keys=OFF;");
+    const migration = ensureWorkflowDbSchema({
+      db,
+      sqliteFile: resolved.sqliteFile,
+      role: resolved.role,
+      engineVersion: resolved.engineVersion,
+      schemaFile: resolved.schemaFile,
+      backupRoot: resolved.backupRoot,
+    });
+    const status = inspectWorkflowDbSchema({
+      sqliteFile: resolved.sqliteFile,
+      schemaFile: resolved.schemaFile,
+      role: resolved.role,
+      engineVersion: resolved.engineVersion,
+      backupRoot: resolved.backupRoot,
+    });
+    return {
+      ok: true,
+      sqlite_file: resolved.sqliteFile,
+      schema_file: resolved.schemaFile,
+      migration,
+      status,
+    };
+  } finally {
+    try {
+      db.exec("PRAGMA foreign_keys=ON;");
+    } catch {
+    }
+    db.close();
+  }
 }
