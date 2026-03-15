@@ -114,6 +114,46 @@ function deleteStaleArtifacts(db, artifacts) {
   }
 }
 
+ function repairDecisionKey(row) {
+  return [
+    String(row?.relation_scope ?? ""),
+    String(row?.source_ref ?? ""),
+    String(row?.target_ref ?? ""),
+    String(row?.relation_type ?? ""),
+  ].join("\u0000");
+}
+
+function deleteStaleRepairDecisions(db, repairDecisions) {
+  const payloadKeys = new Set(
+    (Array.isArray(repairDecisions) ? repairDecisions : [])
+      .map((row) => repairDecisionKey(row))
+      .filter((value) => value.length > 0),
+  );
+  const rows = db.prepare(`
+    SELECT relation_scope, source_ref, target_ref, relation_type
+    FROM repair_decisions
+    ORDER BY relation_scope ASC, source_ref ASC, target_ref ASC, relation_type ASC
+  `).all();
+  const deleteStmt = db.prepare(`
+    DELETE FROM repair_decisions
+    WHERE relation_scope = ?
+      AND source_ref = ?
+      AND target_ref = ?
+      AND relation_type = ?
+  `);
+  for (const row of rows) {
+    if (payloadKeys.has(repairDecisionKey(row))) {
+      continue;
+    }
+    deleteStmt.run(
+      row.relation_scope,
+      row.source_ref,
+      row.target_ref,
+      row.relation_type,
+    );
+  }
+}
+
 function ensureMetaTable(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS index_meta (
@@ -416,7 +456,6 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       db.exec("DELETE FROM sessions;");
       db.exec("DELETE FROM migration_findings;");
       db.exec("DELETE FROM migration_runs;");
-      db.exec("DELETE FROM repair_decisions;");
 
       const cycles = Array.isArray(payload.cycles) ? payload.cycles : [];
       const artifacts = Array.isArray(payload.artifacts) ? payload.artifacts : [];
@@ -675,8 +714,14 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       const repairDecisionStmt = db.prepare(`
         INSERT INTO repair_decisions (
           relation_scope, source_ref, target_ref, relation_type, decision, decided_at, decided_by, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(relation_scope, source_ref, target_ref, relation_type) DO UPDATE SET
+          decision = excluded.decision,
+          decided_at = excluded.decided_at,
+          decided_by = excluded.decided_by,
+          notes = excluded.notes;
       `);
+      deleteStaleRepairDecisions(db, repairDecisions);
       runInsert(repairDecisionStmt, repairDecisions, (row) => ([
         row.relation_scope ?? null,
         row.source_ref ?? null,

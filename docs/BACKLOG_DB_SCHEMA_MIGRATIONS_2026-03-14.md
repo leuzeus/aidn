@@ -125,7 +125,7 @@ Progress note:
 
 ### DSM-06 - Remove Destructive Reset From Durable Tables
 
-Status: in_progress
+Status: completed
 Priority: high
 
 Why:
@@ -144,11 +144,15 @@ Progress note:
   - stale rebuildable artifact rows are removed
   - protected DB-first artifact rows are not blindly deleted
   - projected artifact rows are refreshed via `upsert` instead of relying on full-table wipe
-- the broad table reset behavior in `index-store` still exists, so this item is only partially delivered
+- `repair_decisions` now follow the same reconcile pattern:
+  - stale rows are removed by key
+  - current rows are refreshed via `upsert`
+  - existing accepted/rejected overrides survive full sync without physical row replacement
+- broad table reset still exists for explicitly rebuildable projection tables, but the currently identified durable tables are no longer truncated by default
 
 ### DSM-07 - Define Table Ownership Policy
 
-Status: in_progress
+Status: completed
 Priority: high
 
 Why:
@@ -165,11 +169,12 @@ Done when:
 Progress note:
 
 - the current implementation now treats DB-first runtime/root artifacts and session backlogs as a first preserved ownership class during full sync
-- the full table-by-table ownership map still needs to be documented and enforced more broadly
+- `docs/PLAN_DB_SCHEMA_MIGRATIONS_2026-03-14.md` now records the interim table-by-table ownership map across rebuildable projection tables, durable tables, and mixed zones still carrying design debt
+- the code now enforces that policy directly for the known durable zones in `artifacts` and `repair_decisions`
 
 ### DSM-08 - Make `mode-migrate` A Real Migration Flow
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Why:
@@ -184,6 +189,12 @@ Done when:
   - data sync status
   - repair status
 - it no longer implies destructive DB reset
+
+Progress note:
+
+- `mode-migrate` now inspects schema status before execution, runs the shared migration runner explicitly, and reports schema status after migration
+- the JSON result now exposes `schema_status_before`, `schema_migration_result`, `schema_status_after`, plus the existing sync and repair-layer results
+- verifier coverage confirms the explicit `schema_migrate` step and zero pending migrations after transition to `db-only`
 
 ### DSM-09 - Add DB Migration CLI Surface
 
@@ -209,7 +220,7 @@ Progress note:
 
 ### DSM-10 - Decide Single-DB vs Two-DB Architecture
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Why:
@@ -223,9 +234,15 @@ Done when:
 - or:
   - split DBs (`workflow-index.sqlite` + `workflow-state.sqlite`)
 
+Progress note:
+
+- the current product line now records an explicit decision for a single SQLite file with ownership zones
+- the main reason is repository-wide coupling to `workflow-index.sqlite` across install, runtime CLI, repair-layer flows, and verifiers
+- a future split into `workflow-index.sqlite` + `workflow-state.sqlite` remains acceptable as a later redesign, but is no longer the active migration target
+
 ### DSM-11 - Add Upgrade Fixtures For Existing Repositories
 
-Status: proposed
+Status: completed
 Priority: high
 
 Why:
@@ -241,9 +258,18 @@ Done when:
   - `dual` and `db-only`
   - `gowire`-like upgrade paths
 
+Progress note:
+
+- legacy schema adoption is now covered by `verify-db-schema-migrations-fixtures.mjs`
+- `mode-migrate` transition to `db-only` is covered with explicit schema migration and repair-layer verification in `verify-mode-migrate-repair-layer-fixtures.mjs`
+- reinstall no-loss for a DB-first artifact in `db-only` is now covered by `verify-install-db-only-preserves-db-first-artifacts-fixtures.mjs`
+- reinitialization no-loss in `db-only` is now covered by `verify-reinit-db-only-preserves-db-first-artifacts-fixtures.mjs`
+- a `gowire`-like client upgrade path is now covered by `verify-gowire-like-db-only-upgrade-preserves-db-first-artifacts-fixtures.mjs`
+- `dual` / `db-only` install baselines remain covered by `verify-selfhost-workspace-fixtures.mjs`
+
 ### DSM-12 - Add No-Loss Verification Gates
 
-Status: proposed
+Status: completed
 Priority: high
 
 Why:
@@ -257,6 +283,18 @@ Done when:
   - durable rows disappear across reinstall/reinit
   - backup is missing on risky migration
   - schema version changes without migration record
+
+Progress note:
+
+- the repository now has explicit gates for:
+  - migration registry / backup adoption (`verify-db-schema-migrations-fixtures.mjs`)
+  - explicit CLI migration surface (`verify-db-runtime-cli-fixtures.mjs`)
+  - DB-first artifact preservation across full sync (`verify-sync-db-first-preserves-db-first-artifacts-fixtures.mjs`)
+  - repair decision preservation without physical row replacement (`verify-sync-db-first-preserves-repair-decisions-fixtures.mjs`)
+  - reinstall preservation in `db-only` (`verify-install-db-only-preserves-db-first-artifacts-fixtures.mjs`)
+  - reinitialization preservation in `db-only` (`verify-reinit-db-only-preserves-db-first-artifacts-fixtures.mjs`)
+  - `gowire`-like client upgrade preservation in `db-only` (`verify-gowire-like-db-only-upgrade-preserves-db-first-artifacts-fixtures.mjs`)
+- together with `verify-selfhost-workspace-fixtures.mjs`, this closes the current no-loss gate set for the existing single-DB design
 
 ## Recommended Execution Order
 

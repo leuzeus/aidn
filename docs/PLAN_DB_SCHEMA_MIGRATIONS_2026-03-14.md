@@ -1,8 +1,24 @@
 # Plan - DB Schema Migrations
 
 Date: 2026-03-14
-Status: proposed
+Status: completed
 Scope: add a real SQLite schema migration mechanism and eliminate destructive DB reset behavior during update, reinstall, reinitialization, and runtime mode transitions.
+
+## Implementation Status
+
+Delivered so far:
+
+- shared SQLite schema migration runner with `schema_migrations`, baseline adoption, and pre-migration backups
+- explicit runtime CLI for `db-status`, `db-migrate`, and `db-backup`
+- ownership-aware preservation for durable `artifacts` rows written through DB-first flows
+- ownership-aware preservation for `repair_decisions`, including stable row identity across full sync
+- `mode-migrate` now runs schema inspection + migration explicitly before its sync/export stages and reports schema status before/after
+
+Follow-up:
+
+- broad table resets still exist for rebuildable projection tables
+- upgrade/no-loss fixtures now cover legacy adoption, `mode-migrate`, reinstall, reinitialization, and a `gowire`-like client upgrade path
+- a future split `workflow-index.sqlite` / `workflow-state.sqlite` remains a redesign option if mixed ownership inside `artifacts` becomes too costly to maintain
 
 ## Problem Statement
 
@@ -82,7 +98,7 @@ This is useful, but insufficient because:
 
 ### B. Destructive state rebuild in the write path
 
-Current index projection behavior deletes existing rows from:
+Current index projection behavior historically deleted existing rows from:
 
 - `artifacts`
 - `cycles`
@@ -93,7 +109,7 @@ Current index projection behavior deletes existing rows from:
 
 before reinserting the next payload.
 
-That means:
+That used to mean:
 
 - even perfect schema migrations would not prevent data loss
 - DB-native state is mixed with rebuildable projection state
@@ -180,6 +196,15 @@ Instead:
 - schema changes go through migrations
 - content refresh goes through merge/upsert/reconcile logic
 
+Current status:
+
+- this is now true for the known durable zones:
+  - `schema_migrations`
+  - `index_meta`
+  - `repair_decisions`
+  - preserved DB-first/root coordination rows inside `artifacts`
+- rebuildable projection tables still use refresh-oriented semantics and remain the main remaining design debt
+
 ### 4. Separate Rebuildable vs Durable Ownership
 
 This is the most important design decision.
@@ -192,6 +217,28 @@ The current SQLite file mixes at least two classes of data:
 That is unsafe.
 
 There are two acceptable target directions.
+
+### Architecture Decision
+
+Decision:
+
+- adopt Option A for the current product line:
+  - one SQLite file
+  - explicit ownership zones
+  - durable rows preserved by migration/reconcile rules
+- keep Option B as a future redesign candidate, not as the current migration target
+
+Why:
+
+- the current repository has deep path and tool coupling around `workflow-index.sqlite`
+- install, runtime CLI, perf tooling, repair-layer queries, handoff flows, and many verifiers already assume one SQLite entry point
+- the current no-loss problem can be solved inside that single file, and the implemented slices now do so for the identified durable zones
+- forcing a two-file split now would expand the scope from migration safety into a cross-cutting runtime/storage redesign
+
+Consequence:
+
+- short- and medium-term work should continue refining ownership rules inside the current SQLite file
+- any future split into `workflow-index.sqlite` and `workflow-state.sqlite` should be treated as a separate architecture program with explicit compatibility/migration work
 
 #### Option A - One SQLite file, two ownership zones
 
@@ -281,8 +328,8 @@ This table is currently mixed:
 - many rows are rebuildable from `docs/audit/*`
 - some rows are DB-first durable runtime state
 
-That makes `artifacts` the main remaining design debt.
-The next remediation slices should reduce or remove this mixed ownership.
+That makes mixed ownership inside `artifacts` the main remaining design debt.
+The current implementation now protects the known durable subset, but the next remediation slices should reduce or remove this mixed ownership entirely.
 
 ### 5. Explicit Backup / Repair UX
 
