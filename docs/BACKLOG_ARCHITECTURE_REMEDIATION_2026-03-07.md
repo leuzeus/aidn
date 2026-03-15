@@ -503,13 +503,14 @@ Critères d'acceptation:
 
 - priorité: `P2`
 - dépend de: `E5-T5`, `E6-T3`
-- statut: `Partial`
+- statut: `Done`
 
 Avancement:
 
 - `packs/extended/manifest.yaml` n'est plus vide: il agrège maintenant `runtime-local` et `codex-integration`
 - `package/manifests/workflow.manifest.yaml` revient à un défaut simple (`core`) pour éviter les doublons implicites
-- la frontière `core` vs `extended` est maintenant explicite, mais reste encore guidée par la compatibilité historique plutôt que par une séparation produit totalement stricte
+- la frontière `core` vs `extended` est maintenant explicite et documentée comme séparation compatibilité/default vs composite full-stack
+- `tools/perf/verify-pack-topology-fixtures.mjs` couvre aussi les scénarios de réinstallation ciblée `runtime-local`, `codex-integration` et `extended`
 
 Critères d'acceptation:
 

@@ -103,6 +103,11 @@ Notes:
   - `runtime-local`: targeted refresh of local runtime adapter examples
   - `codex-integration`: targeted refresh of local Codex skill assets
   - `extended`: explicit full-stack composite profile
+- Operational boundary:
+  - use `core` for the compatibility/default project install path
+  - use `runtime-local` when you want to refresh `.aidn/runtime/agents/*` explicitly
+  - use `codex-integration` when you want to refresh `.codex/*` explicitly
+  - use `extended` when both layers must be refreshed together
 - Compatibility is validated from product manifests (`node_min`, `os`) before file operations.
 - If `codex_online: true`, installer requires the `codex` command to be installed and available in `PATH`.
 - If `codex_online: true`, installer also requires Codex authentication (`codex login`).

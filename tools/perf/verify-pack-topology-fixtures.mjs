@@ -68,6 +68,32 @@ function runInstallDry(repoRoot, targetRoot, codexStubBin, pack) {
   };
 }
 
+function runInstall(repoRoot, targetRoot, codexStubBin, pack, extraArgs = []) {
+  const separator = process.platform === "win32" ? ";" : ":";
+  const result = spawnSync(process.execPath, [
+    path.resolve(repoRoot, "tools", "install.mjs"),
+    "--target",
+    targetRoot,
+    "--pack",
+    pack,
+    ...extraArgs,
+  ], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      PATH: `${codexStubBin}${separator}${process.env.PATH ?? ""}`,
+    },
+    encoding: "utf8",
+    timeout: 180000,
+    maxBuffer: 20 * 1024 * 1024,
+  });
+  return {
+    status: result.status ?? 1,
+    stdout: String(result.stdout ?? ""),
+    stderr: String(result.stderr ?? ""),
+  };
+}
+
 function main() {
   const repoRoot = process.cwd();
   const tempRoot = fs.mkdtempSync(path.join(path.resolve(repoRoot, "tests", "fixtures"), "tmp-pack-topology-"));
@@ -79,11 +105,32 @@ function main() {
     const sourceTarget = path.resolve(repoRoot, "tests/fixtures/repo-installed-core");
     const targetRoot = path.join(tempRoot, "repo");
     fs.cpSync(sourceTarget, targetRoot, { recursive: true });
+    const runtimeLocalTarget = path.join(tempRoot, "runtime-local-refresh");
+    const codexTarget = path.join(tempRoot, "codex-refresh");
+    const extendedTarget = path.join(tempRoot, "extended-refresh");
+    fs.cpSync(sourceTarget, runtimeLocalTarget, { recursive: true });
+    fs.cpSync(sourceTarget, codexTarget, { recursive: true });
+    fs.cpSync(sourceTarget, extendedTarget, { recursive: true });
     const codexStubBin = makeCodexStub(tempRoot);
 
     const runtimeLocalDry = runInstallDry(repoRoot, targetRoot, codexStubBin, "runtime-local");
     const codexIntegrationDry = runInstallDry(repoRoot, targetRoot, codexStubBin, "codex-integration");
     const extendedDry = runInstallDry(repoRoot, targetRoot, codexStubBin, "extended");
+
+    fs.rmSync(path.join(runtimeLocalTarget, ".aidn", "runtime", "agents"), { recursive: true, force: true });
+    const runtimeLocalInstall = runInstall(repoRoot, runtimeLocalTarget, codexStubBin, "runtime-local", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
+    const runtimeLocalVerify = runInstall(repoRoot, runtimeLocalTarget, codexStubBin, "runtime-local", ["--verify"]);
+
+    fs.rmSync(path.join(codexTarget, ".codex", "skills"), { recursive: true, force: true });
+    fs.rmSync(path.join(codexTarget, ".codex", "skills.yaml"), { force: true });
+    const codexInstall = runInstall(repoRoot, codexTarget, codexStubBin, "codex-integration", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
+    const codexVerify = runInstall(repoRoot, codexTarget, codexStubBin, "codex-integration", ["--verify"]);
+
+    fs.rmSync(path.join(extendedTarget, ".aidn", "runtime", "agents"), { recursive: true, force: true });
+    fs.rmSync(path.join(extendedTarget, ".codex", "skills"), { recursive: true, force: true });
+    fs.rmSync(path.join(extendedTarget, ".codex", "skills.yaml"), { force: true });
+    const extendedInstall = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
+    const extendedVerify = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--verify"]);
 
     assert(/packs:\s*\r?\n\s*-\s*core/i.test(workflowManifest) || /packs:\s*\n\s*-\s*core/i.test(workflowManifest), "workflow manifest should default to core only");
     assert(/depends_on:\s*\[core]/i.test(runtimeLocalManifest), "runtime-local should depend on core");
@@ -99,6 +146,18 @@ function main() {
     assert(runtimeLocalDry.stdout.includes("Packs: core, runtime-local"), "runtime-local dry-run should resolve core dependency");
     assert(codexIntegrationDry.stdout.includes("Packs: core, codex-integration"), "codex-integration dry-run should resolve core dependency");
     assert(extendedDry.stdout.includes("Packs: core, runtime-local, codex-integration, extended"), "extended dry-run should resolve the full composite order");
+    assert(runtimeLocalInstall.status === 0, `runtime-local refresh failed\nstdout:\n${runtimeLocalInstall.stdout}\nstderr:\n${runtimeLocalInstall.stderr}`);
+    assert(runtimeLocalVerify.status === 0, `runtime-local verify failed\nstdout:\n${runtimeLocalVerify.stdout}\nstderr:\n${runtimeLocalVerify.stderr}`);
+    assert(fs.existsSync(path.join(runtimeLocalTarget, ".aidn", "runtime", "agents", "example-external-auditor.mjs")), "runtime-local should restore runtime agent examples");
+    assert(codexInstall.status === 0, `codex-integration refresh failed\nstdout:\n${codexInstall.stdout}\nstderr:\n${codexInstall.stderr}`);
+    assert(codexVerify.status === 0, `codex-integration verify failed\nstdout:\n${codexVerify.stdout}\nstderr:\n${codexVerify.stderr}`);
+    assert(fs.existsSync(path.join(codexTarget, ".codex", "skills", "start-session", "SKILL.md")), "codex-integration should restore local skills");
+    assert(fs.existsSync(path.join(codexTarget, ".codex", "skills.yaml")), "codex-integration should restore skills.yaml");
+    assert(extendedInstall.status === 0, `extended refresh failed\nstdout:\n${extendedInstall.stdout}\nstderr:\n${extendedInstall.stderr}`);
+    assert(extendedVerify.status === 0, `extended verify failed\nstdout:\n${extendedVerify.stdout}\nstderr:\n${extendedVerify.stderr}`);
+    assert(fs.existsSync(path.join(extendedTarget, ".aidn", "runtime", "agents", "example-external-auditor.mjs")), "extended should restore runtime agent examples");
+    assert(fs.existsSync(path.join(extendedTarget, ".codex", "skills", "start-session", "SKILL.md")), "extended should restore local skills");
+    assert(fs.existsSync(path.join(extendedTarget, ".codex", "skills.yaml")), "extended should restore skills.yaml");
 
     console.log("PASS");
   } catch (error) {
