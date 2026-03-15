@@ -219,6 +219,71 @@ This better matches the existing semantics:
 
 It also reduces the chance that an index rebuild destroys DB-first data.
 
+### 4.1 Interim Ownership Map
+
+Until the repository fully splits index and durable state, the current tables should be treated as follows.
+
+#### Rebuildable projection tables
+
+- `cycles`
+- `sessions`
+- `file_map`
+- `tags`
+- `artifact_tags`
+- `run_metrics`
+- `artifact_links`
+- `cycle_links`
+- `session_cycle_links`
+- `session_links`
+- `migration_runs`
+- `migration_findings`
+
+These tables are currently derived from:
+
+- `docs/audit/*`
+- repair-layer recomputation
+- KPI inputs
+
+They may be refreshed from projection, but only through explicit sync semantics.
+
+#### Durable or semi-durable state already requiring preservation
+
+- `schema_migrations`
+- `index_meta`
+- `repair_decisions`
+- a bounded subset of rows in `artifacts`
+
+The currently known preserved artifact rows are:
+
+- root runtime/root coordination artifacts such as:
+  - `CURRENT-STATE.md`
+  - `RUNTIME-STATE.md`
+  - `HANDOFF-PACKET.md`
+  - `AGENT-ROSTER.md`
+  - `AGENT-ADAPTERS.md`
+  - `AGENT-HEALTH-SUMMARY.md`
+  - `AGENT-SELECTION-SUMMARY.md`
+  - `MULTI-AGENT-STATUS.md`
+  - `COORDINATION-SUMMARY.md`
+  - `COORDINATION-LOG.md`
+  - `USER-ARBITRATION.md`
+- shared session backlogs:
+  - `backlog/BL-SXXX-*.md`
+
+These rows can legitimately exist in SQLite without a materialized `docs/audit/*` file in `db-only`.
+
+#### Hybrid / still ambiguous area
+
+- `artifacts`
+
+This table is currently mixed:
+
+- many rows are rebuildable from `docs/audit/*`
+- some rows are DB-first durable runtime state
+
+That makes `artifacts` the main remaining design debt.
+The next remediation slices should reduce or remove this mixed ownership.
+
 ### 5. Explicit Backup / Repair UX
 
 Add CLI support equivalent to the safety developers expect from migration frameworks.
