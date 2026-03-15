@@ -1,7 +1,8 @@
 import { execSync, execFileSync } from "node:child_process";
+import { assertVcsAdapter } from "../../core/ports/vcs-adapter-port.mjs";
 
 export function createLocalGitAdapter() {
-  return {
+  return assertVcsAdapter({
     getCurrentBranch(targetRoot) {
       try {
         return execSync(`git -C "${targetRoot}" branch --show-current`, {
@@ -49,5 +50,5 @@ export function createLocalGitAdapter() {
         stdio: ["ignore", "pipe", "pipe"],
       });
     },
-  };
+  }, "LocalGitAdapter");
 }
