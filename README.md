@@ -32,7 +32,7 @@ The current runtime baseline also includes admission-first workflow hooks for se
 Product repository:
 - Official specification (`docs/SPEC.md`)
 - Installation scaffold (`scaffold/`)
-- Packs (`packs/core`, `packs/extended`)
+- Packs (`packs/core`, `packs/runtime-local`, `packs/codex-integration`, `packs/extended`)
 - Runtime, installer, and release tooling (`tools/`)
 
 Client repository after install:
@@ -99,11 +99,16 @@ Codex instruction layering after install:
 ```bash
 npm install --save-dev github:leuzeus/aidn#v0.4.0
 npx aidn install --target ../client --pack core
+npx aidn install --target ../client --pack extended
 npx aidn install --target ../client --pack core --source-branch main
 npx aidn install --target ../client --pack core --verify
 ```
 
 Notes:
+- `core` remains the compatibility/default install profile
+- `runtime-local` refreshes local runtime adapter examples on top of `core`
+- `codex-integration` refreshes local Codex skill assets on top of `core`
+- `extended` is the explicit composite profile (`core` + `runtime-local` + `codex-integration`)
 - install creates or updates the project-layer `AGENTS.md`; it does not write `~/.codex/AGENTS.md`
 - install can set workflow adapter metadata explicitly with `--source-branch <name>`
 - install persists the resolved source branch in `../client/.aidn/config.json` under `workflow.sourceBranch`

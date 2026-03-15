@@ -160,6 +160,7 @@
     "perf:verify-constraint-lot-plan": "node tools/perf/verify-constraint-lot-plan-fixtures.mjs",
     "perf:verify-cli-aliases": "node tools/perf/verify-perf-cli-aliases-fixtures.mjs",
     "perf:verify-install-import": "node tools/perf/verify-install-import-fixtures.mjs",
+    "perf:verify-pack-topology": "node tools/perf/verify-pack-topology-fixtures.mjs",
     "perf:verify-install-source-branch": "node tools/perf/verify-install-source-branch-fixtures.mjs",
     "perf:verify-generated-docs": "node tools/perf/verify-generated-docs-fixtures.mjs",
     "perf:verify-generated-doc-golden": "node tools/perf/verify-generated-doc-golden-fixtures.mjs",

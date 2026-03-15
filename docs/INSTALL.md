@@ -46,7 +46,7 @@ npm install --save-dev ../aidn
 
 After install, use the package CLI via `npx aidn ...`.
 
-## Step 3 - Install core pack
+## Step 3 - Install core or composite pack
 
 From your client repository root:
 
@@ -54,7 +54,13 @@ From your client repository root:
 npx aidn install --target . --pack core
 ```
 
-Install using workflow defaults (all packs listed in `package/manifests/workflow.manifest.yaml`):
+Install the explicit composite profile:
+
+```bash
+npx aidn install --target . --pack extended
+```
+
+Install using workflow defaults (the default compatibility profile listed in `package/manifests/workflow.manifest.yaml`):
 
 ```bash
 npx aidn install --target .
@@ -92,6 +98,11 @@ npx aidn install --target . --pack core --artifact-import-store dual-sqlite
 
 Notes:
 - The installer resolves `depends_on` recursively (for example `extended` installs `core` first).
+- Pack intent is:
+  - `core`: compatibility/default install profile
+  - `runtime-local`: targeted refresh of local runtime adapter examples
+  - `codex-integration`: targeted refresh of local Codex skill assets
+  - `extended`: explicit full-stack composite profile
 - Compatibility is validated from product manifests (`node_min`, `os`) before file operations.
 - If `codex_online: true`, installer requires the `codex` command to be installed and available in `PATH`.
 - If `codex_online: true`, installer also requires Codex authentication (`codex login`).

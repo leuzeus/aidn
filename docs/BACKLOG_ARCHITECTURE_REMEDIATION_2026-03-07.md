@@ -503,12 +503,13 @@ Critères d'acceptation:
 
 - priorité: `P2`
 - dépend de: `E5-T5`, `E6-T3`
-- statut: `Open`
+- statut: `Partial`
 
 Avancement:
 
-- `packs/extended/manifest.yaml` existe toujours mais reste vide
-- la frontière réelle entre `core` et `extended` n'est pas encore justifiée
+- `packs/extended/manifest.yaml` n'est plus vide: il agrège maintenant `runtime-local` et `codex-integration`
+- `package/manifests/workflow.manifest.yaml` revient à un défaut simple (`core`) pour éviter les doublons implicites
+- la frontière `core` vs `extended` est maintenant explicite, mais reste encore guidée par la compatibilité historique plutôt que par une séparation produit totalement stricte
 
 Critères d'acceptation:
 
@@ -519,7 +520,12 @@ Critères d'acceptation:
 
 - priorité: `P2`
 - dépend de: `E7-T1`
-- statut: `Open`
+- statut: `Done`
+
+Avancement:
+
+- `packs/runtime-local/manifest.yaml` existe et encapsule le refresh ciblé des adapters runtime locaux
+- un verifier de topologie de packs couvre sa dépendance sur `core`
 
 Critères d'acceptation:
 
@@ -530,7 +536,12 @@ Critères d'acceptation:
 
 - priorité: `P2`
 - dépend de: `E6-T3`, `E7-T1`
-- statut: `Open`
+- statut: `Done`
+
+Avancement:
+
+- `packs/codex-integration/manifest.yaml` existe et encapsule le refresh ciblé des assets `.codex`
+- le verifier de topologie couvre sa dépendance sur `core`
 
 Critères d'acceptation:
 
@@ -540,7 +551,12 @@ Critères d'acceptation:
 
 - priorité: `P2`
 - dépend de: `E7-T2`, `E7-T3`
-- statut: `Open`
+- statut: `Done`
+
+Avancement:
+
+- `README.md`, `docs/INSTALL.md`, `tests/README.md`, `package.json` et le workflow manifest documentent désormais `core`, `runtime-local`, `codex-integration` et `extended`
+- `tools/perf/verify-pack-topology-fixtures.mjs` verrouille le graphe de packs attendu
 
 Critères d'acceptation:
 

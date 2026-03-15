@@ -2,7 +2,6 @@ product_name: aidn-workflow
 version: 0.4.0
 packs:
   - core
-  - extended
 compatibility:
   os: [windows, linux, mac]
   node_min: 18

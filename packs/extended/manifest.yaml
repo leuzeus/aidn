@@ -1,10 +1,15 @@
 name: extended
 version: 0.4.0
-depends_on: [core]
+depends_on:
+  - runtime-local
+  - codex-integration
 
 install:
   copy: []
   merge: []
 
 verify:
-  must_exist: []
+  must_exist:
+    - .aidn/runtime/agents/example-external-auditor.mjs
+    - .codex/skills.yaml
+    - .codex/skills/start-session/SKILL.md

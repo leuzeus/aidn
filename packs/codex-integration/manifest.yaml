@@ -1,0 +1,16 @@
+name: codex-integration
+version: 0.4.0
+depends_on: [core]
+
+install:
+  copy:
+    - from: scaffold/codex/skills.yaml
+      to: .codex/skills.yaml
+    - from: scaffold/codex/
+      to: .codex/skills/
+  merge: []
+
+verify:
+  must_exist:
+    - .codex/skills.yaml
+    - .codex/skills/start-session/SKILL.md

@@ -41,3 +41,9 @@ Dependency resolution check (`extended` should include `core`):
 ```bash
 node tools/install.mjs --target tests/fixtures/repo-empty --pack extended --dry-run
 ```
+
+Pack topology check:
+
+```bash
+node tools/perf/verify-pack-topology-fixtures.mjs
+```
