@@ -310,7 +310,7 @@ export async function resolveMissingPlaceholdersForCopyOp({
     }
     const placeholders = extractPlaceholders(readUtf8(sourceItem));
     for (const placeholder of placeholders) {
-      if (!Object.prototype.hasOwnProperty.call(templateVars, placeholder) || !String(templateVars[placeholder]).trim()) {
+      if (!Object.prototype.hasOwnProperty.call(templateVars, placeholder)) {
         missing.add(placeholder);
       }
     }
