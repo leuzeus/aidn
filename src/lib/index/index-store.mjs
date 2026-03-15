@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { buildSqlFromIndex } from "./index-sql-lib.mjs";
 import { writeUtf8IfChanged } from "./io-lib.mjs";
+import { ensureWorkflowDbSchema } from "../sqlite/workflow-db-schema-lib.mjs";
 
 const require = createRequire(import.meta.url);
 const LIB_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -355,7 +356,6 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
   const DatabaseSync = getDatabaseSync();
   const absolute = path.resolve(process.cwd(), outputPath);
   fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  const schemaText = toIdempotentSchema(readSchema(schemaFile));
   const nextDigest = payloadDigest(payload);
   const existedBefore = fs.existsSync(absolute);
   const sizeBefore = existedBefore ? fs.statSync(absolute).size : 0;
@@ -363,32 +363,12 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
   const db = new DatabaseSync(absolute);
   try {
     db.exec("PRAGMA foreign_keys=OFF;");
-    db.exec(schemaText);
-    ensureColumn(db, "artifacts", "family", "TEXT NOT NULL DEFAULT 'unknown'");
-    ensureColumn(db, "artifacts", "subtype", "TEXT");
-    ensureColumn(db, "artifacts", "gate_relevance", "INTEGER NOT NULL DEFAULT 0");
-    ensureColumn(db, "artifacts", "classification_reason", "TEXT");
-    ensureColumn(db, "artifacts", "content_format", "TEXT");
-    ensureColumn(db, "artifacts", "content", "TEXT");
-    ensureColumn(db, "artifacts", "canonical_format", "TEXT");
-    ensureColumn(db, "artifacts", "canonical_json", "TEXT");
-    ensureColumn(db, "artifacts", "source_mode", "TEXT NOT NULL DEFAULT 'explicit'");
-    ensureColumn(db, "artifacts", "entity_confidence", "REAL NOT NULL DEFAULT 1.0");
-    ensureColumn(db, "artifacts", "legacy_origin", "TEXT");
-    ensureColumn(db, "file_map", "relation", "TEXT NOT NULL DEFAULT 'unknown'");
-    ensureMetaTable(db);
-    ensureRepairLayerTables(db);
-    ensureColumn(db, "sessions", "parent_session", "TEXT");
-    ensureColumn(db, "sessions", "branch_kind", "TEXT");
-    ensureColumn(db, "sessions", "cycle_branch", "TEXT");
-    ensureColumn(db, "sessions", "intermediate_branch", "TEXT");
-    ensureColumn(db, "sessions", "integration_target_cycle", "TEXT");
-    ensureColumn(db, "sessions", "carry_over_pending", "TEXT");
-    ensureColumn(db, "artifact_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
-    ensureColumn(db, "cycle_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
-    ensureColumn(db, "session_cycle_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
-    ensureColumn(db, "session_cycle_links", "ambiguity_status", "TEXT");
-    ensureColumn(db, "session_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
+    ensureWorkflowDbSchema({
+      db,
+      sqliteFile: absolute,
+      schemaFile,
+      role: "index-store",
+    });
     const prevDigest = getMeta(db, "payload_digest");
     if (prevDigest === nextDigest) {
       return {

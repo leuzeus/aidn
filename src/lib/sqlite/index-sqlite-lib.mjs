@@ -1,16 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { createRequire } from "node:module";
-
-const require = createRequire(import.meta.url);
-
-function getDatabaseSync() {
-  try {
-    return require("node:sqlite").DatabaseSync;
-  } catch (error) {
-    throw new Error(`SQLite backend unavailable: ${error.message}`);
-  }
-}
+import { ensureWorkflowDbSchema, getDatabaseSync } from "./workflow-db-schema-lib.mjs";
 
 function parseJsonOrNull(text) {
   if (typeof text !== "string" || text.trim().length === 0) {
@@ -105,6 +95,11 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
 
   const db = new DatabaseSync(absolute);
   try {
+    ensureWorkflowDbSchema({
+      db,
+      sqliteFile: absolute,
+      role: "index-sqlite-reader",
+    });
     const meta = readMetaMap(db);
     const artifactColumns = getTableColumns(db, "artifacts");
     const fileMapColumns = getTableColumns(db, "file_map");

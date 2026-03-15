@@ -1,169 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
-
-const require = createRequire(import.meta.url);
-const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url));
-
-function getDatabaseSync() {
-  try {
-    return require("node:sqlite").DatabaseSync;
-  } catch (error) {
-    throw new Error(`SQLite backend unavailable: ${error.message}`);
-  }
-}
-
-function readSchema(schemaFile) {
-  const absolute = path.isAbsolute(schemaFile)
-    ? schemaFile
-    : path.resolve(process.cwd(), schemaFile);
-  if (!fs.existsSync(absolute)) {
-    throw new Error(`Schema file not found: ${absolute}`);
-  }
-  return fs.readFileSync(absolute, "utf8");
-}
-
-function toIdempotentSchema(schemaText) {
-  return String(schemaText).replace(/CREATE TABLE\s+/gi, "CREATE TABLE IF NOT EXISTS ");
-}
-
-function ensureMetaTable(db) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS index_meta (
-      key TEXT PRIMARY KEY,
-      value TEXT,
-      updated_at TEXT
-    );
-  `);
-}
-
-function getTableColumns(db, tableName) {
-  const rows = db.prepare(`PRAGMA table_info(${tableName});`).all();
-  const out = new Set();
-  for (const row of rows) {
-    if (typeof row?.name === "string") {
-      out.add(row.name);
-    }
-  }
-  return out;
-}
-
-function ensureColumn(db, tableName, columnName, sqlTypeClause) {
-  const columns = getTableColumns(db, tableName);
-  if (columns.has(columnName)) {
-    return;
-  }
-  db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${sqlTypeClause};`);
-}
-
-function ensureRepairLayerTables(db) {
-  ensureColumn(db, "artifacts", "source_mode", "TEXT NOT NULL DEFAULT 'explicit'");
-  ensureColumn(db, "artifacts", "entity_confidence", "REAL NOT NULL DEFAULT 1.0");
-  ensureColumn(db, "artifacts", "legacy_origin", "TEXT");
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS sessions (
-      session_id TEXT PRIMARY KEY,
-      branch_name TEXT,
-      state TEXT,
-      owner TEXT,
-      parent_session TEXT,
-      branch_kind TEXT,
-      cycle_branch TEXT,
-      intermediate_branch TEXT,
-      integration_target_cycle TEXT,
-      carry_over_pending TEXT,
-      started_at TEXT,
-      ended_at TEXT,
-      source_artifact_path TEXT,
-      source_confidence REAL NOT NULL DEFAULT 1.0,
-      source_mode TEXT NOT NULL DEFAULT 'explicit',
-      updated_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS artifact_links (
-      source_path TEXT NOT NULL,
-      target_path TEXT NOT NULL,
-      relation_type TEXT NOT NULL,
-      confidence REAL NOT NULL DEFAULT 1.0,
-      inference_source TEXT,
-      source_mode TEXT NOT NULL DEFAULT 'explicit',
-      updated_at TEXT NOT NULL,
-      PRIMARY KEY (source_path, target_path, relation_type)
-    );
-
-    CREATE TABLE IF NOT EXISTS cycle_links (
-      source_cycle_id TEXT NOT NULL,
-      target_cycle_id TEXT NOT NULL,
-      relation_type TEXT NOT NULL,
-      confidence REAL NOT NULL DEFAULT 1.0,
-      inference_source TEXT,
-      source_mode TEXT NOT NULL DEFAULT 'explicit',
-      updated_at TEXT NOT NULL,
-      PRIMARY KEY (source_cycle_id, target_cycle_id, relation_type)
-    );
-
-    CREATE TABLE IF NOT EXISTS session_cycle_links (
-      session_id TEXT NOT NULL,
-      cycle_id TEXT NOT NULL,
-      relation_type TEXT NOT NULL,
-      confidence REAL NOT NULL DEFAULT 1.0,
-      inference_source TEXT,
-      source_mode TEXT NOT NULL DEFAULT 'explicit',
-      updated_at TEXT NOT NULL,
-      PRIMARY KEY (session_id, cycle_id, relation_type)
-    );
-
-    CREATE TABLE IF NOT EXISTS session_links (
-      source_session_id TEXT NOT NULL,
-      target_session_id TEXT NOT NULL,
-      relation_type TEXT NOT NULL,
-      confidence REAL NOT NULL DEFAULT 1.0,
-      inference_source TEXT,
-      source_mode TEXT NOT NULL DEFAULT 'explicit',
-      relation_status TEXT NOT NULL DEFAULT 'explicit',
-      updated_at TEXT NOT NULL,
-      PRIMARY KEY (source_session_id, target_session_id, relation_type)
-    );
-
-    CREATE TABLE IF NOT EXISTS migration_runs (
-      migration_run_id TEXT PRIMARY KEY,
-      engine_version TEXT NOT NULL,
-      started_at TEXT NOT NULL,
-      ended_at TEXT,
-      status TEXT NOT NULL,
-      target_root TEXT,
-      notes TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS migration_findings (
-      finding_id INTEGER PRIMARY KEY AUTOINCREMENT,
-      migration_run_id TEXT NOT NULL,
-      severity TEXT NOT NULL,
-      finding_type TEXT NOT NULL,
-      entity_type TEXT,
-      entity_id TEXT,
-      artifact_path TEXT,
-      message TEXT NOT NULL,
-      confidence REAL,
-      suggested_action TEXT,
-      created_at TEXT NOT NULL,
-      FOREIGN KEY (migration_run_id) REFERENCES migration_runs(migration_run_id)
-    );
-  `);
-  ensureColumn(db, "sessions", "parent_session", "TEXT");
-  ensureColumn(db, "sessions", "branch_kind", "TEXT");
-  ensureColumn(db, "sessions", "cycle_branch", "TEXT");
-  ensureColumn(db, "sessions", "intermediate_branch", "TEXT");
-  ensureColumn(db, "sessions", "integration_target_cycle", "TEXT");
-  ensureColumn(db, "sessions", "carry_over_pending", "TEXT");
-  ensureColumn(db, "artifact_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
-  ensureColumn(db, "cycle_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
-  ensureColumn(db, "session_cycle_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
-  ensureColumn(db, "session_cycle_links", "ambiguity_status", "TEXT");
-  ensureColumn(db, "session_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
-}
+import { ensureWorkflowDbSchema, getDatabaseSync, getDefaultWorkflowSchemaFile } from "../../lib/sqlite/workflow-db-schema-lib.mjs";
 
 function canonicalToJson(value) {
   if (!value || typeof value !== "object") {
@@ -340,16 +178,18 @@ export function createArtifactStore(options = {}) {
   const sqliteFile = path.resolve(process.cwd(), options.sqliteFile ?? ".aidn/runtime/index/workflow-index.sqlite");
   const schemaFile = options.schemaFile
     ? path.resolve(process.cwd(), options.schemaFile)
-    : path.resolve(RUNTIME_DIR, "..", "..", "..", "tools", "perf", "sql", "schema.sql");
+    : getDefaultWorkflowSchemaFile();
   const DatabaseSync = getDatabaseSync();
 
   fs.mkdirSync(path.dirname(sqliteFile), { recursive: true });
-  const schemaText = toIdempotentSchema(readSchema(schemaFile));
   const db = new DatabaseSync(sqliteFile);
   db.exec("PRAGMA foreign_keys=OFF;");
-  db.exec(schemaText);
-  ensureMetaTable(db);
-  ensureRepairLayerTables(db);
+  ensureWorkflowDbSchema({
+    db,
+    sqliteFile,
+    schemaFile,
+    role: "artifact-store-adapter",
+  });
 
   const upsertStmt = db.prepare(`
     INSERT INTO artifacts (
