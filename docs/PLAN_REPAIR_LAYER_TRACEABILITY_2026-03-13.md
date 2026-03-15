@@ -1,7 +1,7 @@
 # Plan Repair-Layer Traceability - 2026-03-13
 
 Date: 2026-03-13
-Status: proposed
+Status: completed
 
 ## 1. Goal
 
@@ -13,22 +13,33 @@ The goal is not to relax workflow gates. The goal is to make the diagnosis exact
 - an artifact that exists locally but is untracked;
 - an artifact that is tracked but not yet visible in the current index.
 
+## 1.1 Implementation Status
+
+This plan is no longer a proposed change set.
+
+It is now a historical implementation record for work delivered in:
+
+- `docs/BACKLOG_REPAIR_LAYER_TRACEABILITY_2026-03-13.md`
+- commit `52c1b5b` (`Tighten repair layer traceability outputs`)
+
+The diagnosis, target behavior, and compatibility constraints below remain useful as design reference, but the implementation phases are no longer pending work.
+
 ## 2. Current State
 
-Observed state:
+Observed state at the time this plan was written:
 
 - `docs/audit/snapshots/context-snapshot.md` references `C058` and `C059`;
 - `docs/audit/cycles/C058-*/status.md` and `docs/audit/cycles/C059-*/status.md` exist locally;
 - `CURRENT-STATE.md` may display a coherent context and `repair_layer_status: clean`;
 - `RUNTIME-STATE.md` and `repair-layer-triage.json` may simultaneously display `repair_layer_status: warn` with `UNRESOLVED_CYCLE_REFERENCE`.
 
-Likely cause:
+Likely cause at the time:
 
 - the repair-layer currently reasons over indexed artifacts;
 - the snapshot can be updated before new cycles/sessions are tracked in Git or materialized into the SQLite index;
 - the current message incorrectly treats "not indexed" as "missing".
 
-Negative effects:
+Negative effects observed then:
 
 - false-positive `UNRESOLVED_CYCLE_REFERENCE` findings;
 - divergence between `CURRENT-STATE.md` and `RUNTIME-STATE.md`;
@@ -156,6 +167,11 @@ If a run identifier already exists, it should be reused to connect:
 - document the scenario in runtime / troubleshooting docs;
 - make the difference explicit between a real error and a transient false positive.
 
+Implementation note:
+
+- these three phases have been completed
+- the backlog itemization and progress notes in `docs/BACKLOG_REPAIR_LAYER_TRACEABILITY_2026-03-13.md` are the source of truth for what was delivered
+
 ## 8. Tests and Validation
 
 Tests must cover at least:
@@ -199,3 +215,7 @@ After the fix:
 - runtime outputs are consistent with each other;
 - handoff and pre-write guard output become more reliable;
 - repair-layer diagnostic traceability becomes usable for debugging and audit.
+
+Outcome status:
+
+- achieved
