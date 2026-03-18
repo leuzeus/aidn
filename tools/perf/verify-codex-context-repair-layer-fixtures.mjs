@@ -186,12 +186,13 @@ function main() {
       hydrate_history_open_count_present: Number(latestHistory?.repair_layer_open_count ?? 0) >= 1,
       parity_context_hydrate_count: Number(latestEntry?.repair_layer_open_count ?? -1) === Number(decision?.repair_layer_open_count ?? -2),
       hydrate_runtime_state_present: hydrated?.runtime_state && typeof hydrated.runtime_state === "object",
-      hydrate_runtime_state_status_present: ["warn", "block"].includes(String(hydrated?.runtime_state?.digest?.repair_layer_status ?? "")),
+      hydrate_runtime_state_status_present: ["clean", "warn", "block"].includes(String(hydrated?.runtime_state?.digest?.repair_layer_status ?? "")),
       hydrate_runtime_state_matches_decision: String(hydrated?.runtime_state?.digest?.repair_layer_status ?? "")
         === String(decision?.repair_layer_status ?? ""),
       hydrate_runtime_state_file_written: fs.existsSync(runtimeStateFile),
       hydrate_runtime_state_markdown_mentions_status: runtimeStateText.includes(`repair_layer_status: ${String(decision?.repair_layer_status ?? "")}`),
-      hydrate_runtime_state_markdown_mentions_advice: runtimeStateText.includes(`repair_layer_advice: ${String(decision?.repair_layer_advice ?? "")}`),
+      hydrate_runtime_state_markdown_mentions_advice: String(hydrated?.runtime_state?.digest?.repair_layer_advice ?? "").length >= 1
+        && runtimeStateText.includes(`repair_layer_advice: ${String(hydrated?.runtime_state?.digest?.repair_layer_advice ?? "")}`),
       hydrate_runtime_state_markdown_mentions_primary_reason: runtimeStateText.includes(`repair_primary_reason: ${String(decision?.repair_primary_reason ?? "")}`),
     };
     const pass = Object.values(checks).every((value) => value === true);

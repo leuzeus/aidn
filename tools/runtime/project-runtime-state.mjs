@@ -99,42 +99,153 @@ function latestDecision(entries) {
     })[0] ?? null;
 }
 
+function repairCandidateRank(entry) {
+  if (!entry || typeof entry !== "object") {
+    return 0;
+  }
+  let rank = 0;
+  if (!canonicalUnknown(entry.repair_layer_status) && normalizeScalar(entry.repair_layer_status)) {
+    rank += entry.repair_layer_status_inferred ? 2 : 4;
+  }
+  if (!canonicalUnknown(entry.repair_layer_advice) && normalizeScalar(entry.repair_layer_advice)) {
+    rank += entry.repair_layer_advice_inferred ? 1 : 3;
+  }
+  if (Array.isArray(entry.repair_layer_top_findings) && entry.repair_layer_top_findings.length > 0) {
+    rank += 1;
+  }
+  if (entry.repair_layer_blocking === true) {
+    rank += 2;
+  }
+  return rank;
+}
+
+function repairCandidateHasKnownStatus(entry) {
+  return !canonicalUnknown(entry?.repair_layer_status) && normalizeScalar(entry?.repair_layer_status).length > 0;
+}
+
+function latestRepairCandidate(entries) {
+  return entries
+    .slice()
+    .sort((left, right) => {
+      const knownStatusDelta = Number(repairCandidateHasKnownStatus(right)) - Number(repairCandidateHasKnownStatus(left));
+      if (knownStatusDelta !== 0) {
+        return knownStatusDelta;
+      }
+      const leftTs = Date.parse(String(left?.ts ?? left?.updated_at ?? ""));
+      const rightTs = Date.parse(String(right?.ts ?? right?.updated_at ?? ""));
+      const tsDelta = (Number.isNaN(rightTs) ? 0 : rightTs) - (Number.isNaN(leftTs) ? 0 : leftTs);
+      if (tsDelta !== 0) {
+        return tsDelta;
+      }
+      return repairCandidateRank(right) - repairCandidateRank(left);
+    })[0] ?? null;
+}
+
+function inferRepairStatus(status, findings, blocking) {
+  const normalizedStatus = String(status ?? "").trim().toLowerCase();
+  if (normalizedStatus) {
+    return normalizedStatus;
+  }
+  if (blocking === true) {
+    return "block";
+  }
+  const severities = Array.isArray(findings)
+    ? findings.map((item) => normalizeScalar(item?.severity).toLowerCase()).filter(Boolean)
+    : [];
+  if (severities.includes("error") || severities.includes("warning")) {
+    return "warn";
+  }
+  if (severities.length > 0) {
+    return "clean";
+  }
+  return "";
+}
+
+function inferRepairAdvice(advice, status) {
+  const normalizedAdvice = String(advice ?? "").trim();
+  if (normalizedAdvice) {
+    return normalizedAdvice;
+  }
+  const normalizedStatus = String(status ?? "").trim().toLowerCase();
+  if (normalizedStatus === "clean" || normalizedStatus === "ok") {
+    return "Repair layer is clean.";
+  }
+  if (normalizedStatus === "warn") {
+    return "Review open repair findings.";
+  }
+  if (normalizedStatus === "block") {
+    return "Resolve blocking repair findings before continuing.";
+  }
+  return "";
+}
+
+function normalizeRepairCandidate(entry, defaults = {}) {
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+  const rawStatus = String(
+    entry.repair_layer_status
+      ?? entry.status
+      ?? defaults.status
+      ?? "",
+  ).trim();
+  const rawAdvice = String(
+    entry.repair_layer_advice
+      ?? entry.advice
+      ?? defaults.advice
+      ?? "",
+  ).trim();
+  const findings = Array.isArray(entry.repair_layer_top_findings)
+    ? entry.repair_layer_top_findings
+    : (Array.isArray(entry.top_findings) ? entry.top_findings : []);
+  const blocking = entry.repair_layer_blocking === true
+    || entry.blocking === true
+    || defaults.blocking === true;
+  const status = inferRepairStatus(rawStatus, findings, blocking);
+  const advice = inferRepairAdvice(rawAdvice, status);
+  const ts = String(
+    entry.ts
+      ?? entry.updated_at
+      ?? defaults.ts
+      ?? "",
+  ).trim();
+  if (!status && !advice && findings.length === 0 && !blocking) {
+    return null;
+  }
+  return {
+    ts,
+    repair_layer_status: status || "unknown",
+    repair_layer_status_inferred: !rawStatus,
+    repair_layer_advice: advice || "unknown",
+    repair_layer_advice_inferred: !rawAdvice,
+    repair_layer_top_findings: findings,
+    repair_layer_blocking: blocking,
+  };
+}
+
 function deriveRepairSummary(hydrated, fallbackContext) {
   const repairLayer = hydrated?.repair_layer && typeof hydrated.repair_layer === "object"
     ? hydrated.repair_layer
     : null;
   const history = Array.isArray(hydrated?.recent_history) ? hydrated.recent_history : [];
   const decisions = collectDecisionEntries(hydrated);
-  const decisionCandidates = [
-    ...history.filter((entry) => entry && typeof entry === "object"),
-    ...decisions,
-  ];
-  const latest = latestDecision(decisionCandidates);
-  const fallbackLatest = fallbackContext?.latest && typeof fallbackContext.latest === "object"
-    ? Object.values(fallbackContext.latest).find((entry) => entry && typeof entry === "object") ?? null
-    : null;
-  const source = latest ?? fallbackLatest;
-
-  const status = String(
-    repairLayer?.status
-      ?? source?.repair_layer_status
-      ?? "unknown",
-  ).trim() || "unknown";
-  const advice = String(
-    repairLayer?.advice
-      ?? source?.repair_layer_advice
-      ?? "unknown",
-  ).trim() || "unknown";
-
-  const findings = Array.isArray(repairLayer?.top_findings) && repairLayer.top_findings.length > 0
-    ? repairLayer.top_findings
-    : (Array.isArray(source?.repair_layer_top_findings) ? source.repair_layer_top_findings : []);
-
+  const fallbackEntries = fallbackContext?.latest && typeof fallbackContext.latest === "object"
+    ? Object.values(fallbackContext.latest).filter((entry) => entry && typeof entry === "object")
+    : [];
+  const source = latestRepairCandidate([
+    normalizeRepairCandidate(repairLayer, {
+      ts: hydrated?.ts,
+      blocking: repairLayer?.blocking === true,
+    }),
+    ...history.map((entry) => normalizeRepairCandidate(entry)),
+    ...decisions.map((entry) => normalizeRepairCandidate(entry)),
+    ...fallbackEntries.map((entry) => normalizeRepairCandidate(entry)),
+  ].filter(Boolean));
   return {
-    status,
-    advice,
-    findings,
-    blocking: repairLayer?.blocking === true || source?.repair_layer_blocking === true,
+    status: String(source?.repair_layer_status ?? "unknown").trim() || "unknown",
+    advice: String(source?.repair_layer_advice ?? "unknown").trim() || "unknown",
+    findings: Array.isArray(source?.repair_layer_top_findings) ? source.repair_layer_top_findings : [],
+    blocking: source?.repair_layer_blocking === true,
   };
 }
 
@@ -212,6 +323,10 @@ function formatFinding(item) {
 }
 
 function deriveRepairPrimaryReason({ status, advice, findings }) {
+  const normalizedStatus = normalizeScalar(status).toLowerCase();
+  if (normalizedStatus === "clean" || normalizedStatus === "ok") {
+    return "repair layer reports no blocking findings for the current relay";
+  }
   const topFinding = Array.isArray(findings) ? findings[0] : null;
   const topFormatted = formatFinding(topFinding);
   if (topFormatted) {
@@ -220,10 +335,6 @@ function deriveRepairPrimaryReason({ status, advice, findings }) {
   const normalizedAdvice = normalizeScalar(advice);
   if (normalizedAdvice && !canonicalUnknown(normalizedAdvice)) {
     return normalizedAdvice;
-  }
-  const normalizedStatus = normalizeScalar(status).toLowerCase();
-  if (normalizedStatus === "clean" || normalizedStatus === "ok") {
-    return "repair layer reports no blocking findings for the current relay";
   }
   return "repair-layer reason is unknown";
 }
@@ -270,7 +381,7 @@ function deriveRepairRouting({ status, advice, blocking }) {
         : "repair warnings require an audit-first relay before implementation",
     };
   }
-  if (normalizedStatus === "ok") {
+  if (normalizedStatus === "ok" || normalizedStatus === "clean") {
     return {
       hint: "execution-or-audit",
       reason: "repair layer reports no blocking findings for the current relay",
@@ -361,13 +472,19 @@ export function projectRuntimeState({
   const hydratedPath = resolveTargetPath(absoluteTargetRoot, hydratedFile);
   const contextPath = resolveTargetPath(absoluteTargetRoot, contextFile);
   const hydrated = readJsonIfExists(hydratedPath);
-  const fallbackContext = hydrated ? null : readJsonIfExists(contextPath);
+  const fallbackContext = readJsonIfExists(contextPath);
   const consistency = evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot });
   const repairSummary = deriveRepairSummary(hydrated, fallbackContext);
   const freshness = deriveFreshness(consistency);
   const repairRouting = deriveRepairRouting(repairSummary);
+  const prioritizedFindings = Array.isArray(repairSummary.findings)
+    ? repairSummary.findings.filter((item) => {
+      const severity = normalizeScalar(item?.severity).toLowerCase();
+      return severity === "warning" || severity === "error";
+    })
+    : [];
   const blockingFindings = uniqueItems(
-    repairSummary.findings
+    prioritizedFindings
       .map((item) => formatFinding(item))
       .filter(Boolean)
       .slice(0, 5),
