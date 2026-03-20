@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { initGitRepo } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -124,6 +125,67 @@ function installRepairWarningFixture(targetRoot) {
   ].join("\n"), "utf8");
 }
 
+function setSessionBranchCurrentState(targetRoot) {
+  const currentStateFile = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
+  const currentStateText = fs.readFileSync(currentStateFile, "utf8")
+    .replace("branch_kind: cycle", "branch_kind: session");
+  fs.writeFileSync(currentStateFile, currentStateText, "utf8");
+}
+
+function runGit(targetRoot, args) {
+  const result = spawnSync("git", ["-C", targetRoot, ...args], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if ((result.status ?? 1) !== 0) {
+    throw new Error(`git ${args.join(" ")} failed: ${String(result.stderr ?? result.stdout ?? "").trim()}`);
+  }
+  return String(result.stdout ?? "").trim();
+}
+
+function installGitCycleCreateFixtures(targetRoot, mode) {
+  initGitRepo(targetRoot, {
+    workingBranch: "feature/C101-alpha",
+  });
+  const remoteRoot = path.join(path.dirname(targetRoot), `${path.basename(targetRoot)}-origin.git`);
+  runGit(path.dirname(targetRoot), ["init", "--bare", remoteRoot]);
+  runGit(targetRoot, ["remote", "add", "origin", remoteRoot]);
+  runGit(targetRoot, ["push", "-u", "origin", "main"]);
+  runGit(targetRoot, ["push", "-u", "origin", "feature/C101-alpha"]);
+
+  const workingFile = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
+  if (mode === "dirty") {
+    fs.writeFileSync(workingFile, `${fs.readFileSync(workingFile, "utf8")}\nlocal change\n`, "utf8");
+    return;
+  }
+
+  if (mode === "ahead") {
+    fs.writeFileSync(workingFile, `${fs.readFileSync(workingFile, "utf8")}\nlocal commit ahead\n`, "utf8");
+    runGit(targetRoot, ["add", "docs/audit/CURRENT-STATE.md"]);
+    runGit(targetRoot, ["commit", "-m", "ahead fixture"]);
+  }
+}
+
+function installSessionMergeFixture(targetRoot) {
+  setSessionBranchCurrentState(targetRoot);
+  initGitRepo(targetRoot, {
+    workingBranch: "main",
+  });
+  const remoteRoot = path.join(path.dirname(targetRoot), `${path.basename(targetRoot)}-origin.git`);
+  runGit(path.dirname(targetRoot), ["init", "--bare", remoteRoot]);
+  runGit(targetRoot, ["remote", "add", "origin", remoteRoot]);
+  runGit(targetRoot, ["push", "-u", "origin", "main"]);
+  runGit(targetRoot, ["checkout", "-b", "S101-alpha"]);
+  runGit(targetRoot, ["push", "-u", "origin", "S101-alpha"]);
+  runGit(targetRoot, ["checkout", "-b", "feature/C101-alpha"]);
+  const cycleStatusFile = path.join(targetRoot, "docs", "audit", "cycles", "C101-feature-alpha", "status.md");
+  fs.writeFileSync(cycleStatusFile, `${fs.readFileSync(cycleStatusFile, "utf8")}\nmerge fixture\n`, "utf8");
+  runGit(targetRoot, ["add", "docs/audit/cycles/C101-feature-alpha/status.md"]);
+  runGit(targetRoot, ["commit", "-m", "cycle branch work"]);
+  runGit(targetRoot, ["push", "-u", "origin", "feature/C101-alpha"]);
+  runGit(targetRoot, ["checkout", "S101-alpha"]);
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -135,10 +197,19 @@ function main() {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-pre-write-admit-"));
     const cycleCreateTarget = path.join(tempRoot, "cycle-create");
     const warningTarget = path.join(tempRoot, "repair-warning");
+    const dirtyCycleCreateTarget = path.join(tempRoot, "cycle-create-dirty");
+    const aheadCycleCreateTarget = path.join(tempRoot, "cycle-create-ahead");
+    const unmergedSessionCycleCreateTarget = path.join(tempRoot, "cycle-create-session-unmerged");
     fs.cpSync(readyTarget, cycleCreateTarget, { recursive: true });
     fs.cpSync(readyTarget, warningTarget, { recursive: true });
+    fs.cpSync(readyTarget, dirtyCycleCreateTarget, { recursive: true });
+    fs.cpSync(readyTarget, aheadCycleCreateTarget, { recursive: true });
+    fs.cpSync(readyTarget, unmergedSessionCycleCreateTarget, { recursive: true });
     installSharedPlanningFixture(cycleCreateTarget, { selectedExecutionScope: "none" });
     installRepairWarningFixture(warningTarget);
+    installGitCycleCreateFixtures(dirtyCycleCreateTarget, "dirty");
+    installGitCycleCreateFixtures(aheadCycleCreateTarget, "ahead");
+    installSessionMergeFixture(unmergedSessionCycleCreateTarget);
 
     const ready = runAidn(repoRoot, [
       "runtime",
@@ -178,6 +249,36 @@ function main() {
       "requirements-delta",
       "--json",
     ], 0);
+    const dirtyCycleCreateBlocked = runAidn(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      dirtyCycleCreateTarget,
+      "--skill",
+      "cycle-create",
+      "--strict",
+      "--json",
+    ], 1);
+    const aheadCycleCreateBlocked = runAidn(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      aheadCycleCreateTarget,
+      "--skill",
+      "cycle-create",
+      "--strict",
+      "--json",
+    ], 1);
+    const unmergedSessionCycleCreateBlocked = runAidn(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      unmergedSessionCycleCreateTarget,
+      "--skill",
+      "cycle-create",
+      "--strict",
+      "--json",
+    ], 1);
 
     assert(ready.ok === true, "ready pre-write admission should pass");
     assert(ready.admission_status === "admitted", "ready pre-write admission should be admitted");
@@ -194,6 +295,15 @@ function main() {
     assert(cycleCreateBlocked.context.active_backlog === "backlog/BL-S101-session-planning.md", "cycle-create pre-write admission should expose the active backlog");
     assert(cycleCreateBlocked.context.backlog_selected_execution_scope === "none", "cycle-create pre-write admission should expose the missing execution scope");
     assert(cycleCreateBlocked.blocking_reasons.some((item) => String(item).includes("selected execution scope")), "cycle-create pre-write admission should explain the missing shared planning scope");
+    assert(dirtyCycleCreateBlocked.ok === false, "dirty cycle-create pre-write admission should fail");
+    assert(dirtyCycleCreateBlocked.blocking_reasons.some((item) => String(item).includes("git working tree is not clean")), "dirty cycle-create pre-write admission should require git hygiene first");
+    assert(dirtyCycleCreateBlocked.context.git_branch === "feature/C101-alpha", "dirty cycle-create pre-write admission should expose the active git branch");
+    assert(aheadCycleCreateBlocked.ok === false, "ahead cycle-create pre-write admission should fail");
+    assert(aheadCycleCreateBlocked.blocking_reasons.some((item) => String(item).includes("diverges from origin/feature/C101-alpha")), "ahead cycle-create pre-write admission should require upstream reconciliation");
+    assert(Number(aheadCycleCreateBlocked.context.git_upstream_ahead) === 1, "ahead cycle-create pre-write admission should expose ahead count");
+    assert(unmergedSessionCycleCreateBlocked.ok === false, "session cycle-create pre-write admission should fail when previous cycle is not merged");
+    assert(unmergedSessionCycleCreateBlocked.blocking_reasons.some((item) => String(item).includes("is not merged into session branch S101-alpha")), "session cycle-create pre-write admission should require merge into the session branch");
+    assert(unmergedSessionCycleCreateBlocked.context.previous_cycle_merged_into_session === "no", "session cycle-create pre-write admission should expose merge state");
     assert(warning.ok === true, "warning pre-write admission should stay admitted");
     assert(warning.context.repair_layer_status === "warn", "warning pre-write admission should expose repair warn status");
     assert(warning.warnings.some((item) => String(item).includes("locally present cycle status artifact")), "warning pre-write admission should explain local-but-untracked repair state");
@@ -205,6 +315,9 @@ function main() {
       blocked,
       warning,
       cycle_create_blocked: cycleCreateBlocked,
+      cycle_create_dirty_blocked: dirtyCycleCreateBlocked,
+      cycle_create_ahead_blocked: aheadCycleCreateBlocked,
+      cycle_create_session_unmerged_blocked: unmergedSessionCycleCreateBlocked,
       pass: true,
     };
 
