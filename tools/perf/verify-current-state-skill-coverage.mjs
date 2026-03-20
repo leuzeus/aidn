@@ -24,6 +24,16 @@ const SKILL_SPECS = [
     ],
   },
   {
+    name: "pr-orchestrate",
+    required: [
+      "docs/audit/CURRENT-STATE.md",
+      "session_pr_status",
+      "session_pr_review_status",
+      "post_merge_sync_status",
+      "repair_primary_reason",
+    ],
+  },
+  {
     name: "cycle-create",
     required: [
       "Keep `docs/audit/CURRENT-STATE.md` summary-only if updated.",

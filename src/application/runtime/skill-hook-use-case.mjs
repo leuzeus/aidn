@@ -19,6 +19,7 @@ function buildToolArgs(route, targetRoot, mode, effectiveStrict, noAutoSkipGate)
     || route.tool === "start-session-hook.mjs"
     || route.tool === "branch-cycle-audit-hook.mjs"
     || route.tool === "close-session-hook.mjs"
+    || route.tool === "pr-orchestrate-hook.mjs"
     || route.tool === "cycle-create-hook.mjs"
     || route.tool === "requirements-delta-hook.mjs"
     || route.tool === "promote-baseline-hook.mjs"
@@ -27,7 +28,13 @@ function buildToolArgs(route, targetRoot, mode, effectiveStrict, noAutoSkipGate)
   ) {
     args.push("--mode", mode);
   }
-  if ((route.tool === "workflow-hook.mjs" || route.tool === "start-session-hook.mjs" || route.tool === "close-session-hook.mjs") && effectiveStrict) {
+  if (
+    (route.tool === "workflow-hook.mjs"
+      || route.tool === "start-session-hook.mjs"
+      || route.tool === "close-session-hook.mjs"
+      || route.tool === "pr-orchestrate-hook.mjs")
+    && effectiveStrict
+  ) {
     args.push("--strict");
   }
   if (
@@ -35,6 +42,7 @@ function buildToolArgs(route, targetRoot, mode, effectiveStrict, noAutoSkipGate)
       || route.tool === "workflow-hook.mjs"
       || route.tool === "start-session-hook.mjs"
       || route.tool === "close-session-hook.mjs"
+      || route.tool === "pr-orchestrate-hook.mjs"
       || route.tool === "cycle-create-hook.mjs"
       || route.tool === "requirements-delta-hook.mjs"
       || route.tool === "promote-baseline-hook.mjs"
@@ -93,6 +101,7 @@ export function runSkillHookUseCase({ args, perfDir, targetRoot, processAdapter 
       || route.tool === "start-session-hook.mjs"
       || route.tool === "branch-cycle-audit-hook.mjs"
       || route.tool === "close-session-hook.mjs"
+      || route.tool === "pr-orchestrate-hook.mjs"
       || route.tool === "cycle-create-hook.mjs"
       || route.tool === "requirements-delta-hook.mjs"
       || route.tool === "promote-baseline-hook.mjs"

@@ -77,6 +77,7 @@ function main() {
       checkOne(args.root, "drift-check/SKILL.md", [wrap("drift-check", "COMMITTING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
       checkOne(args.root, "start-session/SKILL.md", [wrap("start-session", "<THINKING|EXPLORING|COMMITTING>"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
       checkOne(args.root, "close-session/SKILL.md", [wrap("close-session", "<THINKING|EXPLORING|COMMITTING>"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
+      checkOne(args.root, "pr-orchestrate/SKILL.md", [wrap("pr-orchestrate", "<THINKING|EXPLORING|COMMITTING>"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
       checkOne(args.root, "cycle-create/SKILL.md", [wrap("cycle-create", "COMMITTING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
       checkOne(args.root, "cycle-close/SKILL.md", [wrap("cycle-close", "COMMITTING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
       checkOne(args.root, "handoff-close/SKILL.md", [wrap("handoff-close", "<THINKING|EXPLORING|COMMITTING>"), contextInjectionLine, stateModeLine, mandatoryDbLine]),

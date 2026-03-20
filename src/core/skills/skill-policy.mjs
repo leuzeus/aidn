@@ -8,6 +8,7 @@ export const SKILL_ROUTES = {
   "drift-check": { tool: "gating-evaluate.mjs", defaultMode: "COMMITTING" },
   "start-session": { tool: "start-session-hook.mjs", defaultMode: "UNKNOWN" },
   "close-session": { tool: "close-session-hook.mjs", defaultMode: "UNKNOWN" },
+  "pr-orchestrate": { tool: "pr-orchestrate-hook.mjs", defaultMode: "UNKNOWN" },
   "cycle-create": { tool: "cycle-create-hook.mjs", defaultMode: "COMMITTING" },
   "cycle-close": { tool: "checkpoint.mjs", defaultMode: "COMMITTING" },
   "promote-baseline": { tool: "promote-baseline-hook.mjs", defaultMode: "COMMITTING" },
@@ -19,6 +20,7 @@ export const SKILL_ROUTES = {
 export const MUTATING_SKILLS = new Set([
   "start-session",
   "close-session",
+  "pr-orchestrate",
   "cycle-create",
   "cycle-close",
   "promote-baseline",

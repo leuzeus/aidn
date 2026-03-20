@@ -7,6 +7,9 @@ import {
 
 const OPEN_CYCLE_STATES = new Set(["OPEN", "IMPLEMENTING", "VERIFYING"]);
 const CLOSE_SESSION_DECISIONS = new Set(["integrate-to-session", "report", "close-non-retained", "cancel-close"]);
+const SESSION_PR_STATUSES = new Set(["none", "open", "merged", "closed_not_merged", "unknown"]);
+const SESSION_PR_REVIEW_STATUSES = new Set(["unknown", "pending", "approved", "changes_requested", "resolved"]);
+const POST_MERGE_SYNC_STATUSES = new Set(["not_needed", "required", "done", "unknown"]);
 
 export function normalizeScalar(value) {
   const normalized = String(value ?? "").trim();
@@ -26,6 +29,49 @@ export function canonicalNone(value) {
 
 export function canonicalUnknown(value) {
   return normalizeScalar(value).toLowerCase() === "unknown";
+}
+
+export function normalizeSessionPrStatus(value) {
+  const normalized = normalizeScalar(value).toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/-/g, "_")
+    .replace(/[()]/g, "");
+  if (!normalized || canonicalNone(normalized)) {
+    return "none";
+  }
+  if (normalized === "closednotmerged" || normalized === "closed_not_merged") {
+    return "closed_not_merged";
+  }
+  if (SESSION_PR_STATUSES.has(normalized)) {
+    return normalized;
+  }
+  return "unknown";
+}
+
+export function normalizeSessionPrReviewStatus(value) {
+  const normalized = normalizeScalar(value).toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/-/g, "_");
+  if (!normalized) {
+    return "unknown";
+  }
+  if (SESSION_PR_REVIEW_STATUSES.has(normalized)) {
+    return normalized;
+  }
+  return "unknown";
+}
+
+export function normalizePostMergeSyncStatus(value) {
+  const normalized = normalizeScalar(value).toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/-/g, "_");
+  if (!normalized || canonicalNone(normalized)) {
+    return "not_needed";
+  }
+  if (POST_MERGE_SYNC_STATUSES.has(normalized)) {
+    return normalized;
+  }
+  return "unknown";
 }
 
 export function parseSimpleMap(text) {
@@ -151,6 +197,14 @@ export function parseSessionMetadata(text) {
   const primaryFocusCycle = extractIds(extractSessionField(text, "primary_focus_cycle") ?? "", "C").at(0) ?? null;
   const legacyIntegrationTargetCycle = extractIds(extractSessionField(text, "integration_target_cycle") ?? "", "C");
   const effectiveIntegrationTargets = integrationTargetCycles.length > 0 ? integrationTargetCycles : legacyIntegrationTargetCycle;
+  const prStatus = normalizeSessionPrStatus(extractSessionField(text, "pr_status"));
+  const prUrl = extractSessionField(text, "pr_url");
+  const prNumber = extractSessionField(text, "pr_number");
+  const prBaseBranch = extractSessionField(text, "pr_base_branch");
+  const prHeadBranch = extractSessionField(text, "pr_head_branch");
+  const prReviewStatus = normalizeSessionPrReviewStatus(extractSessionField(text, "pr_review_status"));
+  const postMergeSyncStatus = normalizePostMergeSyncStatus(extractSessionField(text, "post_merge_sync_status"));
+  const postMergeSyncBasis = extractSessionField(text, "post_merge_sync_basis");
   return {
     mode: extractSessionMode(text),
     session_branch: extractSessionField(text, "session_branch"),
@@ -164,6 +218,14 @@ export function parseSessionMetadata(text) {
     attached_cycles: attachedCycles,
     reported_from_previous_session: reportedFromPreviousSession,
     carry_over_pending: extractSessionField(text, "carry_over_pending"),
+    pr_status: prStatus,
+    pr_url: prUrl && !canonicalNone(prUrl) ? prUrl : null,
+    pr_number: prNumber && !canonicalNone(prNumber) ? prNumber : null,
+    pr_base_branch: prBaseBranch && !canonicalNone(prBaseBranch) ? prBaseBranch : null,
+    pr_head_branch: prHeadBranch && !canonicalNone(prHeadBranch) ? prHeadBranch : null,
+    pr_review_status: prReviewStatus,
+    post_merge_sync_status: postMergeSyncStatus,
+    post_merge_sync_basis: postMergeSyncBasis && !canonicalNone(postMergeSyncBasis) ? postMergeSyncBasis : null,
     close_gate_satisfied: extractSectionCheckbox(text, "### Session close gate satisfied?"),
     snapshot_updated: extractSectionCheckbox(text, "### Snapshot updated?"),
   };
@@ -280,6 +342,9 @@ export function readCurrentState(targetRoot) {
     mode: normalizeScalar(map.get("mode") ?? "unknown") || "unknown",
     active_cycle: normalizeScalar(map.get("active_cycle") ?? "none") || "none",
     cycle_branch: normalizeScalar(map.get("cycle_branch") ?? "none") || "none",
+    session_pr_status: normalizeSessionPrStatus(map.get("session_pr_status") ?? "none"),
+    session_pr_review_status: normalizeSessionPrReviewStatus(map.get("session_pr_review_status") ?? "unknown"),
+    post_merge_sync_status: normalizePostMergeSyncStatus(map.get("post_merge_sync_status") ?? "not_needed"),
     dor_state: normalizeScalar(map.get("dor_state") ?? "unknown") || "unknown",
     first_plan_step: normalizeScalar(map.get("first_plan_step") ?? "unknown") || "unknown",
     active_backlog: normalizeScalar(map.get("active_backlog") ?? "none") || "none",

@@ -65,7 +65,8 @@ flowchart TD
   PROMO --> PRQ
 
   PRQ -->|No| END_DONE["Session ended"]
-  PRQ -->|Yes| PRG["PR review gate R08 with Codex threads triaged"]
+  PRQ -->|Yes| PRO["pr-orchestrate: push + open/recover PR"]
+  PRO --> PRG["PR review gate R08 with Codex threads triaged"]
   PRG --> MRG["Merge"]
   MRG --> SYNC{"Post-merge local sync gate R09: local vs remote aligned?"}
   SYNC -->|No| REC["Explicit local reconciliation"]
@@ -85,7 +86,7 @@ flowchart TD
   classDef incident fill:#FFF4F4,stroke:#B42318,color:#7A271A,stroke-width:2px;
 
   class MODE,MAP,NEED,CONT,PW,RT,CLOSE,OK,PRQ,SYNC gate;
-  class ST,CR,RA,SS,THINK,EXP,BCA,FIX,CNEW,DIG,IMPL,DRIFT,SPIKE,DELTA,LOOP,RELAY,RESOLVE,CS,PROMO,PRG,MRG,REC action;
+  class ST,CR,RA,SS,THINK,EXP,BCA,FIX,CNEW,DIG,IMPL,DRIFT,SPIKE,DELTA,LOOP,RELAY,RESOLVE,CS,PROMO,PRO,PRG,MRG,REC action;
   class END_RELAY,END_DONE endnode;
   class INC incident;
 

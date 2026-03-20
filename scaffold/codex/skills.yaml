@@ -1,6 +1,7 @@
 skills:
   - branch-cycle-audit
   - close-session
+  - pr-orchestrate
   - context-reload
   - convert-to-spike
   - cycle-close
@@ -19,6 +20,7 @@ remote:
 install_urls:
   - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/branch-cycle-audit
   - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/close-session
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/pr-orchestrate
   - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/context-reload
   - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/convert-to-spike
   - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/cycle-close

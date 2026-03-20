@@ -69,6 +69,90 @@ const CASES = [
     expectedResult: "stop",
     expectsWorkflowHook: false,
   },
+  {
+    id: "source_branch_resumes_previous_session_when_pr_open",
+    fixture: "tests/fixtures/perf-start-session/session-multi-choice",
+    workingBranch: "dev",
+    expectedAction: "resume_current_session",
+    expectedResult: "ok",
+    expectsWorkflowHook: true,
+    mutate(targetRoot) {
+      const currentState = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
+      fs.writeFileSync(currentState, [
+        "# Current State",
+        "",
+        "## Summary",
+        "",
+        "updated_at: 2026-03-19T00:00:00Z",
+        "structure_profile: modern",
+        "runtime_state_mode: files",
+        "repair_layer_status: unknown",
+        "",
+        "## Active Context",
+        "",
+        "active_session: none",
+        "session_branch: none",
+        "branch_kind: source",
+        "mode: THINKING",
+        "",
+        "active_cycle: none",
+        "cycle_branch: none",
+        "dor_state: unknown",
+        "first_plan_step: unknown",
+      ].join("\n"), "utf8");
+      for (const cycleFile of [
+        path.join(targetRoot, "docs", "audit", "cycles", "C201-feature-alpha", "status.md"),
+        path.join(targetRoot, "docs", "audit", "cycles", "C202-feature-beta", "status.md"),
+      ]) {
+        const text = fs.readFileSync(cycleFile, "utf8").replace(/state:\s*(OPEN|IMPLEMENTING|VERIFYING)/gu, "state: DONE");
+        fs.writeFileSync(cycleFile, text, "utf8");
+      }
+      const sessionFile = path.join(targetRoot, "docs", "audit", "sessions", "S201-multi.md");
+      fs.appendFileSync(sessionFile, "\n\n### PR Orchestration\n- pr_status: `open`\n- pr_review_status: `pending`\n\n### Session close gate satisfied?\n- [x] Yes\n", "utf8");
+    },
+  },
+  {
+    id: "source_branch_blocks_when_post_merge_sync_required",
+    fixture: "tests/fixtures/perf-start-session/session-multi-choice",
+    workingBranch: "dev",
+    expectedAction: "blocked_session_base_gate",
+    expectedResult: "stop",
+    expectsWorkflowHook: false,
+    mutate(targetRoot) {
+      const currentState = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
+      fs.writeFileSync(currentState, [
+        "# Current State",
+        "",
+        "## Summary",
+        "",
+        "updated_at: 2026-03-19T00:00:00Z",
+        "structure_profile: modern",
+        "runtime_state_mode: files",
+        "repair_layer_status: unknown",
+        "",
+        "## Active Context",
+        "",
+        "active_session: none",
+        "session_branch: none",
+        "branch_kind: source",
+        "mode: THINKING",
+        "",
+        "active_cycle: none",
+        "cycle_branch: none",
+        "dor_state: unknown",
+        "first_plan_step: unknown",
+      ].join("\n"), "utf8");
+      for (const cycleFile of [
+        path.join(targetRoot, "docs", "audit", "cycles", "C201-feature-alpha", "status.md"),
+        path.join(targetRoot, "docs", "audit", "cycles", "C202-feature-beta", "status.md"),
+      ]) {
+        const text = fs.readFileSync(cycleFile, "utf8").replace(/state:\s*(OPEN|IMPLEMENTING|VERIFYING)/gu, "state: DONE");
+        fs.writeFileSync(cycleFile, text, "utf8");
+      }
+      const sessionFile = path.join(targetRoot, "docs", "audit", "sessions", "S201-multi.md");
+      fs.appendFileSync(sessionFile, "\n\n### PR Orchestration\n- pr_status: `merged`\n- pr_review_status: `approved`\n- post_merge_sync_status: `required`\n\n### Session close gate satisfied?\n- [x] Yes\n", "utf8");
+    },
+  },
 ];
 
 function parseArgs(argv) {

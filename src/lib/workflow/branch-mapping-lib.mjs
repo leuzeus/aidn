@@ -13,6 +13,9 @@ function toSessionSummary(session) {
     integration_target_cycles: session.metadata.integration_target_cycles,
     primary_focus_cycle: session.metadata.primary_focus_cycle ?? null,
     carry_over_pending: session.metadata.carry_over_pending ?? null,
+    pr_status: session.metadata.pr_status ?? "none",
+    pr_review_status: session.metadata.pr_review_status ?? "unknown",
+    post_merge_sync_status: session.metadata.post_merge_sync_status ?? "not_needed",
     close_gate_satisfied: session.metadata.close_gate_satisfied,
   };
 }

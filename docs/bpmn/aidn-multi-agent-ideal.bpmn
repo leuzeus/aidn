@@ -67,8 +67,8 @@
     <bpmn:exclusiveGateway id="Gateway_HandoffNeeded" name="Need another agent?" default="Flow_HandoffNo" />
     <bpmn:task id="Task_ProjectHandoffPacket" name="handoff-close + project HANDOFF-PACKET and relay state" />
     <bpmn:exclusiveGateway id="Gateway_CloseSession" name="Close session now?" default="Flow_CloseNo" />
-    <bpmn:task id="Task_CloseArtifacts" name="close-session admission + close session and cycle artifacts" />
-    <bpmn:task id="Task_PublishSessionState" name="Publish snapshot and current state" />
+    <bpmn:task id="Task_CloseArtifacts" name="close-session admission + close session artifacts, then pr-orchestrate" />
+    <bpmn:task id="Task_PublishSessionState" name="Publish snapshot, current state and post-merge sync status" />
     <bpmn:endEvent id="EndEvent_Complete" name="Session continued or closed" />
 
     <bpmn:dataObjectReference id="Data_CurrentState" name="CURRENT-STATE.md" dataObjectRef="DataObject_CurrentState" />

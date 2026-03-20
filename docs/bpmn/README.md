@@ -33,7 +33,7 @@ They are aligned with the current runtime baseline, not just the original target
   - `HANDOFF-PACKET.md`
   - `pre-write gate`
   - `repair_layer_status`
-  - admission-first workflow hooks (`start-session`, `close-session`, `cycle-create`, `requirements-delta`, `promote-baseline`, `convert-to-spike`)
+  - admission-first workflow hooks (`start-session`, `close-session`, `pr-orchestrate`, `cycle-create`, `requirements-delta`, `promote-baseline`, `convert-to-spike`)
 - it does not assume a full scheduler or autonomous multi-agent planner yet
 
 ## Read Order

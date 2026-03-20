@@ -8,6 +8,7 @@ const SKILLS = [
   { name: "drift-check", mode: "COMMITTING" },
   { name: "start-session", mode: "<THINKING|EXPLORING|COMMITTING>" },
   { name: "close-session", mode: "<THINKING|EXPLORING|COMMITTING>" },
+  { name: "pr-orchestrate", mode: "<THINKING|EXPLORING|COMMITTING>" },
   { name: "cycle-create", mode: "COMMITTING" },
   { name: "cycle-close", mode: "COMMITTING" },
   { name: "handoff-close", mode: "<THINKING|EXPLORING|COMMITTING>" },

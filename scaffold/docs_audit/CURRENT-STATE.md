@@ -21,6 +21,9 @@ active_session: none
 session_branch: none
 branch_kind: unknown
 mode: unknown
+session_pr_status: none
+session_pr_review_status: unknown
+post_merge_sync_status: not_needed
 
 active_cycle: none
 cycle_branch: none

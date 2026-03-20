@@ -71,6 +71,7 @@ source_branch: {{SOURCE_BRANCH}}
 
 - Runtime enforcement path: `start-session` admission runs before generic `session-start` checkpoint/index/repair work.
 - Before creating a new session branch `SXXX-*`, check previous session PR status against source branch.
+- `pr-orchestrate` owns the explicit bridge `push -> PR open/recover -> review/merge -> post-merge sync`.
 - Decision order:
   - `PR OPEN`: continue on existing session branch by default.
   - `PR OPEN` + explicit user override: new session branch allowed with documented rationale.
@@ -158,6 +159,13 @@ source_branch: {{SOURCE_BRANCH}}
 ## Session Close & PR Review
 
 - Session close and PR review gates are canonical in `docs/audit/SPEC.md` (`SPEC-R07`, `SPEC-R08`).
+- Local runtime order after a review-ready session close:
+  - `close-session`
+  - `pr-orchestrate`
+  - push session branch
+  - create/recover PR
+  - review / merge
+  - post-merge local sync
 - Add local CI/review capacity policy here if your repository needs it.
 {{CI_CAPACITY_BLOCK}}
 

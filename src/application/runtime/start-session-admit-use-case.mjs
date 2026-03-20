@@ -15,6 +15,7 @@ import {
   findLatestSessionFile,
   listCycleStatuses,
   listSessionArtifacts,
+  normalizeSessionPrStatus,
   parseSessionMetadata,
   readCurrentState,
   readSourceBranch,
@@ -59,12 +60,75 @@ function makeResult(base, overrides = {}) {
 
 function shouldBlockForLatestSession(latestSession, sourceBranch) {
   if (!latestSession || !sourceBranch) {
-    return false;
+    return null;
   }
-  if (latestSession.metadata.close_gate_satisfied === true) {
-    return false;
+  if (latestSession.metadata.close_gate_satisfied !== true) {
+    return {
+      action: "blocked_session_base_gate",
+      reason_code: "START_SESSION_PREVIOUS_SESSION_NOT_RESOLVED",
+      blocking_reasons: [
+        `Latest session ${latestSession.session_id ?? "unknown"} is not marked closed; do not chain a new session branch by default.`,
+      ],
+      required_user_choice: ["continue_existing_session_branch", "override_new_session_with_rationale"],
+      recommended_next_action: "Resolve or explicitly override the previous session before opening a new session branch.",
+    };
   }
-  return Boolean(latestSession.metadata.session_branch);
+  const prStatus = normalizeSessionPrStatus(latestSession.metadata.pr_status);
+  const postMergeSyncStatus = String(latestSession.metadata.post_merge_sync_status ?? "not_needed");
+
+  if (prStatus === "open") {
+    return {
+      action: "resume_current_session",
+      reason_code: "START_SESSION_PREVIOUS_SESSION_PR_OPEN",
+      mapped_session: toSessionSummary(latestSession),
+      blocking_reasons: [
+        `Latest session ${latestSession.session_id ?? "unknown"} still has an open PR.`,
+      ],
+      required_user_choice: ["continue_existing_session_branch", "override_new_session_with_rationale"],
+      recommended_next_action: `Continue ${latestSession.session_id ?? "the latest session"} on ${latestSession.metadata.session_branch ?? "its session branch"} until review/merge is resolved.`,
+    };
+  }
+
+  if (prStatus === "closed_not_merged") {
+    return {
+      action: "blocked_session_base_gate",
+      reason_code: "START_SESSION_PREVIOUS_SESSION_PR_CLOSED_NOT_MERGED",
+      mapped_session: toSessionSummary(latestSession),
+      blocking_reasons: [
+        `Latest session ${latestSession.session_id ?? "unknown"} was closed without merge.`,
+      ],
+      required_user_choice: ["override_new_session_with_rationale", "resume_previous_session"],
+      recommended_next_action: "Decide whether to resume, replace, or abandon the previous session before opening a new one.",
+    };
+  }
+
+  if (prStatus === "merged" && postMergeSyncStatus === "required") {
+    return {
+      action: "blocked_session_base_gate",
+      reason_code: "START_SESSION_POST_MERGE_SYNC_REQUIRED",
+      mapped_session: toSessionSummary(latestSession),
+      blocking_reasons: [
+        `Latest session ${latestSession.session_id ?? "unknown"} is merged but still requires post-merge source-branch reconciliation.`,
+      ],
+      required_user_choice: ["run_pr_orchestrate", "sync_source_branch_now"],
+      recommended_next_action: "Run pr-orchestrate or reconcile the source branch before opening a new session.",
+    };
+  }
+
+  if (prStatus === "merged") {
+    return null;
+  }
+
+  return {
+    action: "blocked_session_base_gate",
+    reason_code: "START_SESSION_PREVIOUS_SESSION_PR_STATUS_UNKNOWN",
+    mapped_session: toSessionSummary(latestSession),
+    blocking_reasons: [
+      `Latest session ${latestSession.session_id ?? "unknown"} is closed but its PR status is not recorded.`,
+    ],
+    required_user_choice: ["run_pr_orchestrate", "override_new_session_with_rationale"],
+    recommended_next_action: "Record the previous session PR state before opening a new session branch.",
+  };
 }
 
 export function runStartSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
@@ -166,15 +230,10 @@ export function runStartSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
       }
     }
 
-    if (shouldBlockForLatestSession(latestSession, sourceBranch)) {
+    const latestSessionBlock = shouldBlockForLatestSession(latestSession, sourceBranch);
+    if (latestSessionBlock) {
       return makeResult(base, {
-        action: "blocked_session_base_gate",
-        reason_code: "START_SESSION_PREVIOUS_SESSION_NOT_RESOLVED",
-        blocking_reasons: [
-          `Latest session ${latestSession.session_id ?? "unknown"} is not marked closed; do not chain a new session branch by default.`,
-        ],
-        required_user_choice: ["continue_existing_session_branch", "override_new_session_with_rationale"],
-        recommended_next_action: "Resolve or explicitly override the previous session before opening a new session branch.",
+        ...latestSessionBlock,
       });
     }
 

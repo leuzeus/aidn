@@ -146,6 +146,6 @@ export function runCloseSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
     warnings: branchKind !== AIDN_BRANCH_KIND.SESSION
       ? ["close-session is being admitted outside a session branch; verify branch alignment before mutating artifacts."]
       : [],
-    recommended_next_action: `Close session ${targetSession.session_id} and then run the generic session-close runtime hook.`,
+    recommended_next_action: `Close session ${targetSession.session_id}, refresh snapshot/current state, then run pr-orchestrate before opening a new session.`,
   });
 }

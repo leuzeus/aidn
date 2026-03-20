@@ -19,6 +19,7 @@ Already available in the repository:
 - runtime hydration and repair-layer refresh
 - deterministic handoff packet projection
 - admission-first workflow hooks for `start-session`, `close-session`, `cycle-create`, `requirements-delta`, `promote-baseline`, and `convert-to-spike`
+- explicit session PR lifecycle orchestration via `pr-orchestrate`
 - explicit `handoff-close` runtime exposure with blocking checkpoint results surfaced at the skill boundary
 
 This means the BPMN is not starting from zero.

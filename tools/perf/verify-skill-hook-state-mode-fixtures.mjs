@@ -11,6 +11,7 @@ const SKILL_CASES = [
   { skill: "drift-check", mode: "COMMITTING", expectsStore: false },
   { skill: "start-session", mode: "COMMITTING", expectsStore: true },
   { skill: "close-session", mode: "COMMITTING", expectsStore: true },
+  { skill: "pr-orchestrate", mode: "COMMITTING", expectsStore: false },
   { skill: "cycle-create", mode: "COMMITTING", expectsStore: true },
   { skill: "cycle-close", mode: "COMMITTING", expectsStore: true },
   { skill: "handoff-close", mode: "COMMITTING", expectsStore: true },
