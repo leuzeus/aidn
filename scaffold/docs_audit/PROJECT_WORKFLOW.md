@@ -111,6 +111,19 @@ source_branch: {{SOURCE_BRANCH}}
 - After merge, verify local/remote alignment before any new cycle/session branch creation.
 - If divergence exists, stop and reconcile explicitly.
 
+### Optional Branch Pruning Policy (Project Policy)
+
+- If this repository uses a durable integration branch such as `dev`, branch cleanup SHOULD run only after `dev` is merged into `{{SOURCE_BRANCH}}`.
+- Do not prune branches on baseline proposal alone.
+- Baseline promotion may mark exploration or spike branches as review candidates, but deletion requires Git-level confirmation.
+- CI pruning, when enabled, SHOULD be conservative:
+  - only short-lived branches
+  - already fully absorbed by `{{SOURCE_BRANCH}}`
+  - no open pull request
+  - minimum age window
+  - protected/kept branch patterns excluded
+- Keep the integration branch itself persistent unless an explicit repository decision says otherwise.
+
 ## Workflow Incident Handling (Project Policy, adapter extension to `SPEC-R10`)
 
 - Trigger incident triage on repeated workflow failures, rule contradictions, or unresolved branch continuity conflicts.

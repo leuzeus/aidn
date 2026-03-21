@@ -3,6 +3,7 @@ version: 0.4.0
 depends_on:
   - runtime-local
   - codex-integration
+  - github-integration
 
 install:
   copy: []
@@ -13,3 +14,4 @@ verify:
     - .aidn/runtime/agents/example-external-auditor.mjs
     - .codex/skills.yaml
     - .codex/skills/start-session/SKILL.md
+    - .github/workflows/branch-prune.yml
