@@ -10,10 +10,10 @@ function assert(condition, message) {
   }
 }
 
-function runJson(script, args, repoRoot) {
+function runJson(script, args, repoRoot, env = {}) {
   const result = spawnSync(process.execPath, [script, ...args], {
     cwd: repoRoot,
-    env: { ...process.env },
+    env: { ...process.env, ...env },
     encoding: "utf8",
     timeout: 180000,
     maxBuffer: 20 * 1024 * 1024,
@@ -36,16 +36,41 @@ function main() {
     const integrationTarget = path.join(tempRoot, "integration-cycle");
     const reworkTarget = path.join(tempRoot, "rework-from-example");
     const reportTarget = path.join(tempRoot, "report-forward");
+    const filelessTarget = path.join(tempRoot, "integration-cycle-fileless");
 
     fs.cpSync(path.join(fixturesRoot, "direct-merge"), directTarget, { recursive: true });
     fs.cpSync(path.join(fixturesRoot, "integration-cycle"), integrationTarget, { recursive: true });
     fs.cpSync(path.join(fixturesRoot, "rework-from-example"), reworkTarget, { recursive: true });
     fs.cpSync(path.join(fixturesRoot, "report-forward"), reportTarget, { recursive: true });
+    fs.cpSync(path.join(fixturesRoot, "integration-cycle"), filelessTarget, { recursive: true });
 
     const direct = runJson(script, ["--target", directTarget, "--json"], repoRoot);
     const integration = runJson(script, ["--target", integrationTarget, "--json"], repoRoot);
     const rework = runJson(script, ["--target", reworkTarget, "--json"], repoRoot);
     const report = runJson(script, ["--target", reportTarget, "--json"], repoRoot);
+    runJson(path.resolve(repoRoot, "tools", "perf", "index-sync.mjs"), [
+      "--target", filelessTarget,
+      "--store", "sqlite",
+      "--with-content",
+      "--json",
+    ], repoRoot, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    for (const rel of [
+      "docs/audit/CURRENT-STATE.md",
+      "docs/audit/sessions/S311.md",
+      "docs/audit/cycles/C311-feature-auth/status.md",
+      "docs/audit/cycles/C311-feature-auth/plan.md",
+      "docs/audit/cycles/C312-refactor-auth-core/status.md",
+      "docs/audit/cycles/C312-refactor-auth-core/plan.md",
+    ]) {
+      fs.rmSync(path.join(filelessTarget, rel), { force: true });
+    }
+    const fileless = runJson(script, ["--target", filelessTarget, "--json"], repoRoot, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
 
     assert(direct.recommended_strategy === "direct_merge", "direct fixture should recommend direct_merge");
     assert(direct.mergeability === "merge_safe", "direct fixture should be merge_safe");
@@ -55,6 +80,12 @@ function main() {
     assert(integration.recommended_strategy === "integration_cycle", "feature+refactor fixture should recommend integration_cycle");
     assert(integration.mergeability === "merge_risky", "feature+refactor fixture should be merge_risky");
     assert(integration.overlap.overall_overlap === "medium", "feature+refactor fixture should detect medium overlap");
+    assert(fileless.recommended_strategy === "integration_cycle", "db-only fileless fixture should preserve integration_cycle strategy");
+    assert(fileless.mergeability === "merge_risky", "db-only fileless fixture should preserve mergeability");
+    assert(fileless.overlap.overall_overlap === "medium", "db-only fileless fixture should preserve overlap classification");
+    assert(fileless.current_state_source === "sqlite", "db-only fileless fixture should load current state from SQLite");
+    assert(fileless.session_source === "sqlite", "db-only fileless fixture should load session topology from SQLite");
+    assert(fileless.candidate_cycles.every((cycle) => String(cycle.status_path).startsWith("docs/audit/cycles/")), "db-only fileless fixture should recover cycle status paths logically");
 
     assert(rework.recommended_strategy === "rework_from_example", "spike fixture should recommend rework_from_example");
     assert(rework.mergeability === "merge_not_recommended", "spike fixture should reject mechanical merge");

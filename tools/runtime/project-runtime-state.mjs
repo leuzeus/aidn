@@ -4,6 +4,18 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
+import {
+  buildVirtualCurrentStateConsistency,
+  canonicalNone,
+  canonicalUnknown,
+  loadSqliteIndexPayloadSafe,
+  normalizeScalar,
+  parseSimpleMap,
+  resolveAuditArtifactText,
+  resolveCycleStatusArtifact,
+  resolveDbBackedMode,
+  resolveSessionArtifact,
+} from "./db-first-runtime-view-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -65,19 +77,6 @@ function readJsonIfExists(filePath) {
     return null;
   }
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
-}
-
-function normalizeScalar(value) {
-  return String(value ?? "").trim();
-}
-
-function canonicalNone(value) {
-  const normalized = normalizeScalar(value).toLowerCase();
-  return normalized === "none" || normalized === "(none)";
-}
-
-function canonicalUnknown(value) {
-  return normalizeScalar(value).toLowerCase() === "unknown";
 }
 
 function collectDecisionEntries(payload) {
@@ -473,7 +472,45 @@ export function projectRuntimeState({
   const contextPath = resolveTargetPath(absoluteTargetRoot, contextFile);
   const hydrated = readJsonIfExists(hydratedPath);
   const fallbackContext = readJsonIfExists(contextPath);
-  const consistency = evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot });
+  const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
+  const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
+  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+    exists: false,
+    sqliteFile: "",
+    payload: null,
+    warning: "",
+  };
+  const currentStateResolution = resolveAuditArtifactText({
+    targetRoot: absoluteTargetRoot,
+    candidatePath: "docs/audit/CURRENT-STATE.md",
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const currentStateMap = parseSimpleMap(currentStateResolution.text);
+  const activeSession = normalizeScalar(currentStateMap.get("active_session") ?? "none") || "none";
+  const activeCycle = normalizeScalar(currentStateMap.get("active_cycle") ?? "none") || "none";
+  const sessionResolution = resolveSessionArtifact({
+    targetRoot: absoluteTargetRoot,
+    auditRoot,
+    sessionId: activeSession,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const cycleStatusResolution = resolveCycleStatusArtifact({
+    targetRoot: absoluteTargetRoot,
+    auditRoot,
+    cycleId: activeCycle,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const consistency = currentStateResolution.source === "file"
+    ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })
+    : buildVirtualCurrentStateConsistency({
+      currentStateResolution,
+      activeCycle,
+      activeSession,
+      cycleStatusResolution,
+    });
   const repairSummary = deriveRepairSummary(hydrated, fallbackContext);
   const freshness = deriveFreshness(consistency);
   const repairRouting = deriveRepairRouting(repairSummary);
@@ -494,7 +531,7 @@ export function projectRuntimeState({
   }
   const digest = {
     updated_at: new Date().toISOString(),
-    runtime_state_mode: String(hydrated?.state_mode ?? "files"),
+    runtime_state_mode: String(dbBackedMode ? effectiveStateMode : (hydrated?.state_mode ?? "files")),
     repair_layer_status: repairSummary.status,
     repair_layer_advice: repairSummary.advice,
     repair_primary_reason: deriveRepairPrimaryReason(repairSummary),
@@ -508,6 +545,9 @@ export function projectRuntimeState({
       ? path.relative(absoluteTargetRoot, hydratedPath).replace(/\\/g, "/")
       : (fallbackContext ? path.relative(absoluteTargetRoot, contextPath).replace(/\\/g, "/") : "none"),
     consistency_status: consistency.pass ? "pass" : "fail",
+    current_state_source: currentStateResolution.source,
+    session_artifact_source: sessionResolution.source,
+    cycle_status_source: cycleStatusResolution.source,
   };
   const markdown = buildMarkdown(digest);
   const outWrite = writeUtf8IfChanged(resolveTargetPath(absoluteTargetRoot, out), markdown);

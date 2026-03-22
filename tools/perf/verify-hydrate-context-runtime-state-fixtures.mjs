@@ -107,6 +107,36 @@ function main() {
     assert(!("agent_selection_summary" in noProject), "agent_selection_summary should be absent when --no-project-agent-selection-summary is set");
     assert(!("multi_agent_status" in noProject), "multi_agent_status should be absent when --no-project-multi-agent-status is set");
 
+    fs.rmSync(path.join(target, "docs", "audit", "RUNTIME-STATE.md"), { force: true });
+    fs.rmSync(path.join(target, "docs", "audit", "HANDOFF-PACKET.md"), { force: true });
+    fs.rmSync(path.join(target, "docs", "audit", "AGENT-HEALTH-SUMMARY.md"), { force: true });
+    fs.rmSync(path.join(target, "docs", "audit", "AGENT-SELECTION-SUMMARY.md"), { force: true });
+    fs.rmSync(path.join(target, "docs", "audit", "MULTI-AGENT-STATUS.md"), { force: true });
+
+    const dbOnlyAutoProject = runJson("tools/codex/hydrate-context.mjs", [
+      "--target",
+      target,
+      "--skill",
+      "context-reload",
+      "--json",
+    ], {
+      env: {
+        AIDN_STATE_MODE: "db-only",
+      },
+    });
+    assert(String(dbOnlyAutoProject?.state_mode ?? "") === "db-only", "env db-only should override stale context state mode");
+    assert(String(dbOnlyAutoProject?.state_mode_source ?? "") === "env-state-mode", "state mode source should report env override");
+    assert(String(dbOnlyAutoProject?.runtime_state?.mode ?? "") === "auto", "runtime_state should auto-project in db-only without preexisting file");
+    assert(String(dbOnlyAutoProject?.handoff_packet?.mode ?? "") === "auto", "handoff packet should auto-project in db-only without preexisting file");
+    assert(String(dbOnlyAutoProject?.agent_health_summary?.mode ?? "") === "auto", "agent health summary should auto-project in db-only without preexisting file");
+    assert(String(dbOnlyAutoProject?.agent_selection_summary?.mode ?? "") === "auto", "agent selection summary should auto-project in db-only without preexisting file");
+    assert(String(dbOnlyAutoProject?.multi_agent_status?.mode ?? "") === "auto", "multi-agent status should auto-project in db-only without preexisting file");
+    assert(fs.existsSync(String(dbOnlyAutoProject?.runtime_state?.output_file ?? "")), "runtime_state output file should be recreated in db-only");
+    assert(fs.existsSync(String(dbOnlyAutoProject?.handoff_packet?.output_file ?? "")), "handoff packet output file should be recreated in db-only");
+    assert(fs.existsSync(String(dbOnlyAutoProject?.agent_health_summary?.output_file ?? "")), "agent health summary output file should be recreated in db-only");
+    assert(fs.existsSync(String(dbOnlyAutoProject?.agent_selection_summary?.output_file ?? "")), "agent selection summary output file should be recreated in db-only");
+    assert(fs.existsSync(String(dbOnlyAutoProject?.multi_agent_status?.output_file ?? "")), "multi-agent status output file should be recreated in db-only");
+
     console.log("PASS");
   } catch (error) {
     console.error(`ERROR: ${error.message}`);

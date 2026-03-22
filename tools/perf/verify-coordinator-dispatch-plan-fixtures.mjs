@@ -46,10 +46,10 @@ function assert(condition, message) {
   }
 }
 
-function runJson(script, args, repoRoot, expectStatus = 0) {
+function runJson(script, args, repoRoot, expectStatus = 0, env = {}) {
   const result = spawnSync(process.execPath, [script, ...args], {
     cwd: repoRoot,
-    env: { ...process.env },
+    env: { ...process.env, ...env },
     encoding: "utf8",
     timeout: 180000,
     maxBuffer: 10 * 1024 * 1024,
@@ -80,6 +80,7 @@ function main() {
     const roleBlockedTarget = path.join(tempRoot, "role-blocked");
     const directMergeIntegrationTarget = path.join(tempRoot, "direct-merge-integration");
     const integrationCycleTarget = path.join(tempRoot, "integration-cycle-strategy");
+    const dbOnlyFilelessTarget = path.join(tempRoot, "db-only-fileless");
 
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), readyTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "warn"), warnTarget, { recursive: true });
@@ -89,12 +90,35 @@ function main() {
     fs.cpSync(path.join(handoffFixturesRoot, "warn"), roleBlockedTarget, { recursive: true });
     fs.cpSync(path.join(integrationFixturesRoot, "direct-merge"), directMergeIntegrationTarget, { recursive: true });
     fs.cpSync(path.join(integrationFixturesRoot, "integration-cycle"), integrationCycleTarget, { recursive: true });
+    fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlyFilelessTarget, { recursive: true });
 
     runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", warnTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", escalatedTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", roleBlockedTarget, "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", dbOnlyFilelessTarget, "--json"], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    runJson(path.resolve(repoRoot, "tools", "perf", "index-sync.mjs"), [
+      "--target", dbOnlyFilelessTarget,
+      "--store", "sqlite",
+      "--with-content",
+      "--json",
+    ], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    for (const rel of [
+      "docs/audit/CURRENT-STATE.md",
+      "docs/audit/RUNTIME-STATE.md",
+      "docs/audit/HANDOFF-PACKET.md",
+      "docs/audit/sessions/S101-alpha.md",
+      "docs/audit/cycles/C101-feature-alpha/status.md",
+    ]) {
+      fs.rmSync(path.join(dbOnlyFilelessTarget, rel), { force: true });
+    }
 
     const escalatedHistory = path.join(escalatedTarget, ".aidn", "runtime", "context", "coordination-history.ndjson");
     fs.mkdirSync(path.dirname(escalatedHistory), { recursive: true });
@@ -205,6 +229,10 @@ function main() {
     const escalated = runJson(dispatchScript, ["--target", escalatedTarget, "--json"], repoRoot, 0);
     const directMergeIntegration = runJson(dispatchScript, ["--target", directMergeIntegrationTarget, "--json"], repoRoot, 0);
     const integrationCycle = runJson(dispatchScript, ["--target", integrationCycleTarget, "--json"], repoRoot, 0);
+    const dbOnlyFileless = runJson(dispatchScript, ["--target", dbOnlyFilelessTarget, "--json"], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
 
     const localShellRosterContent = [
       "# Agent Roster",
@@ -421,6 +449,11 @@ function main() {
     assert(integrationCycle.integration_risk.recommended_strategy === "integration_cycle", "integration-cycle assessment should expose integration_cycle");
     assert(integrationCycle.integration_risk_gate.active === true, "integration-cycle assessment should activate the integration gate");
     assert(integrationCycle.notes.some((note) => note.includes("Integration strategy requires explicit resolution: integration_cycle")), "integration-cycle assessment should explain the gate");
+    assert(dbOnlyFileless.dispatch_status === "ready", "db-only fileless dispatch should remain ready");
+    assert(dbOnlyFileless.coordinator_recommendation.role === "executor", "db-only fileless dispatch should preserve executor relay");
+    assert(dbOnlyFileless.coordinator_recommendation.action === "implement", "db-only fileless dispatch should preserve implement relay");
+    assert(dbOnlyFileless.context.current_state_source === "sqlite", "db-only fileless dispatch should load current state from SQLite");
+    assert(dbOnlyFileless.context.packet_source === "sqlite", "db-only fileless dispatch should load packet from SQLite");
 
     const output = {
       ts: new Date().toISOString(),
@@ -431,6 +464,7 @@ function main() {
       escalated,
       direct_merge_integration: directMergeIntegration,
       integration_cycle: integrationCycle,
+      db_only_fileless: dbOnlyFileless,
       ready_local_shell: readyLocalShell,
       warn_local_shell: warnLocalShell,
       blocked_local_shell: blockedLocalShell,

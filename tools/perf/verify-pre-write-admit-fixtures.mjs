@@ -40,16 +40,35 @@ function assert(condition, message) {
 }
 
 function runAidn(repoRoot, args, expectStatus = 0) {
+  return runAidnWithEnv(repoRoot, args, {}, expectStatus);
+}
+
+function runAidnWithEnv(repoRoot, args, env = {}, expectStatus = 0) {
   const cli = path.resolve(repoRoot, "bin", "aidn.mjs");
   const result = spawnSync(process.execPath, [cli, ...args], {
     cwd: repoRoot,
-    env: { ...process.env },
+    env: { ...process.env, ...env },
     encoding: "utf8",
     timeout: 180000,
     maxBuffer: 10 * 1024 * 1024,
   });
   if ((result.status ?? 1) !== expectStatus) {
     throw new Error(`Command failed (aidn ${args.join(" ")}): ${String(result.stderr ?? result.stdout ?? "").trim()}`);
+  }
+  return JSON.parse(String(result.stdout ?? "{}"));
+}
+
+function runNodeJson(repoRoot, script, args, env = {}, expectStatus = 0) {
+  const file = path.resolve(repoRoot, script);
+  const result = spawnSync(process.execPath, [file, ...args], {
+    cwd: repoRoot,
+    env: { ...process.env, ...env },
+    encoding: "utf8",
+    timeout: 180000,
+    maxBuffer: 10 * 1024 * 1024,
+  });
+  if ((result.status ?? 1) !== expectStatus) {
+    throw new Error(`Command failed (${script} ${args.join(" ")}): ${String(result.stderr ?? result.stdout ?? "").trim()}`);
   }
   return JSON.parse(String(result.stdout ?? "{}"));
 }
@@ -125,6 +144,40 @@ function installRepairWarningFixture(targetRoot) {
   ].join("\n"), "utf8");
 }
 
+function installDbOnlyReadyRuntimeFixture(targetRoot) {
+  const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
+  fs.writeFileSync(runtimeStateFile, [
+    "# Runtime State Digest",
+    "",
+    "## Summary",
+    "",
+    "updated_at: 2026-03-22T12:05:00Z",
+    "runtime_state_mode: db-only",
+    "repair_layer_status: ok",
+    "repair_layer_advice: none",
+    "repair_routing_hint: continue",
+    "repair_routing_reason: runtime repair layer is clear",
+    "",
+    "## Current State Freshness",
+    "",
+    "current_state_freshness: ok",
+    "current_state_freshness_basis: CURRENT-STATE facts are synchronized in SQLite",
+    "",
+    "## Blocking Findings",
+    "",
+    "blocking_findings:",
+    "- none",
+    "",
+    "## Prioritized Reads",
+    "",
+    "prioritized_artifacts:",
+    "- `docs/audit/CURRENT-STATE.md`",
+    "- `docs/audit/RUNTIME-STATE.md`",
+    "- `docs/audit/cycles/C101-*/status.md`",
+    "",
+  ].join("\n"), "utf8");
+}
+
 function setSessionBranchCurrentState(targetRoot) {
   const currentStateFile = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
   const currentStateText = fs.readFileSync(currentStateFile, "utf8")
@@ -186,6 +239,22 @@ function installSessionMergeFixture(targetRoot) {
   runGit(targetRoot, ["checkout", "S101-alpha"]);
 }
 
+function installDbOnlyIndexFixture(repoRoot, targetRoot) {
+  const env = {
+    AIDN_STATE_MODE: "db-only",
+    AIDN_INDEX_STORE_MODE: "sqlite",
+  };
+  installDbOnlyReadyRuntimeFixture(targetRoot);
+  runNodeJson(repoRoot, "tools/perf/index-sync.mjs", [
+    "--target",
+    targetRoot,
+    "--store",
+    "sqlite",
+    "--with-content",
+    "--json",
+  ], env);
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -200,16 +269,28 @@ function main() {
     const dirtyCycleCreateTarget = path.join(tempRoot, "cycle-create-dirty");
     const aheadCycleCreateTarget = path.join(tempRoot, "cycle-create-ahead");
     const unmergedSessionCycleCreateTarget = path.join(tempRoot, "cycle-create-session-unmerged");
+    const dbOnlyRequirementsTarget = path.join(tempRoot, "db-only-fileless-requirements");
+    const dbOnlyCloseSessionTarget = path.join(tempRoot, "db-only-fileless-close-session");
     fs.cpSync(readyTarget, cycleCreateTarget, { recursive: true });
     fs.cpSync(readyTarget, warningTarget, { recursive: true });
     fs.cpSync(readyTarget, dirtyCycleCreateTarget, { recursive: true });
     fs.cpSync(readyTarget, aheadCycleCreateTarget, { recursive: true });
     fs.cpSync(readyTarget, unmergedSessionCycleCreateTarget, { recursive: true });
+    fs.cpSync(readyTarget, dbOnlyRequirementsTarget, { recursive: true });
+    fs.cpSync(readyTarget, dbOnlyCloseSessionTarget, { recursive: true });
     installSharedPlanningFixture(cycleCreateTarget, { selectedExecutionScope: "none" });
     installRepairWarningFixture(warningTarget);
     installGitCycleCreateFixtures(dirtyCycleCreateTarget, "dirty");
     installGitCycleCreateFixtures(aheadCycleCreateTarget, "ahead");
     installSessionMergeFixture(unmergedSessionCycleCreateTarget);
+    installDbOnlyIndexFixture(repoRoot, dbOnlyRequirementsTarget);
+    installDbOnlyIndexFixture(repoRoot, dbOnlyCloseSessionTarget);
+    fs.rmSync(path.join(dbOnlyRequirementsTarget, "docs", "audit", "CURRENT-STATE.md"), { force: true });
+    fs.rmSync(path.join(dbOnlyRequirementsTarget, "docs", "audit", "RUNTIME-STATE.md"), { force: true });
+    fs.rmSync(path.join(dbOnlyRequirementsTarget, "docs", "audit", "cycles", "C101-feature-alpha", "status.md"), { force: true });
+    fs.rmSync(path.join(dbOnlyCloseSessionTarget, "docs", "audit", "CURRENT-STATE.md"), { force: true });
+    fs.rmSync(path.join(dbOnlyCloseSessionTarget, "docs", "audit", "RUNTIME-STATE.md"), { force: true });
+    fs.rmSync(path.join(dbOnlyCloseSessionTarget, "docs", "audit", "sessions", "S101-alpha.md"), { force: true });
 
     const ready = runAidn(repoRoot, [
       "runtime",
@@ -279,6 +360,30 @@ function main() {
       "--strict",
       "--json",
     ], 1);
+    const dbOnlyRequirements = runAidnWithEnv(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      dbOnlyRequirementsTarget,
+      "--skill",
+      "requirements-delta",
+      "--json",
+    ], {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    }, 0);
+    const dbOnlyCloseSession = runAidnWithEnv(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      dbOnlyCloseSessionTarget,
+      "--skill",
+      "close-session",
+      "--json",
+    ], {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    }, 0);
 
     assert(ready.ok === true, "ready pre-write admission should pass");
     assert(ready.admission_status === "admitted", "ready pre-write admission should be admitted");
@@ -307,6 +412,15 @@ function main() {
     assert(warning.ok === true, "warning pre-write admission should stay admitted");
     assert(warning.context.repair_layer_status === "warn", "warning pre-write admission should expose repair warn status");
     assert(warning.warnings.some((item) => String(item).includes("locally present cycle status artifact")), "warning pre-write admission should explain local-but-untracked repair state");
+    assert(dbOnlyRequirements.ok === true, "db-only fileless requirements admission should pass from SQLite artifacts");
+    assert(dbOnlyRequirements.context.effective_state_mode === "db-only", "db-only fileless requirements admission should expose the effective state mode");
+    assert(dbOnlyRequirements.context.current_state_source === "sqlite", "db-only fileless requirements admission should load CURRENT-STATE from SQLite");
+    assert(dbOnlyRequirements.context.runtime_state_source === "sqlite", "db-only fileless requirements admission should load RUNTIME-STATE from SQLite");
+    assert(dbOnlyRequirements.context.cycle_status_source === "sqlite", "db-only fileless requirements admission should load cycle status from SQLite");
+    assert(dbOnlyRequirements.blocking_reasons.every((item) => !String(item).includes("missing docs/audit/CURRENT-STATE.md")), "db-only fileless requirements admission should not block on missing CURRENT-STATE.md when SQLite is populated");
+    assert(dbOnlyCloseSession.ok === true, "db-only fileless close-session admission should pass from SQLite artifacts");
+    assert(dbOnlyCloseSession.context.current_state_source === "sqlite", "db-only fileless close-session admission should load CURRENT-STATE from SQLite");
+    assert(dbOnlyCloseSession.context.session_artifact_source === "sqlite", "db-only fileless close-session admission should load the session artifact from SQLite");
 
     const output = {
       ts: new Date().toISOString(),
@@ -314,6 +428,8 @@ function main() {
       ready,
       blocked,
       warning,
+      db_only_requirements: dbOnlyRequirements,
+      db_only_close_session: dbOnlyCloseSession,
       cycle_create_blocked: cycleCreateBlocked,
       cycle_create_dirty_blocked: dirtyCycleCreateBlocked,
       cycle_create_ahead_blocked: aheadCycleCreateBlocked,

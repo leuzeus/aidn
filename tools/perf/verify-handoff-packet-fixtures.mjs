@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 
 function parseArgs(argv) {
   const args = {
@@ -40,7 +41,20 @@ function assert(condition, message) {
   }
 }
 
+function runJson(script, args, env = {}) {
+  const stdout = execFileSync(process.execPath, [script, ...args], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      ...env,
+    },
+  });
+  return JSON.parse(stdout);
+}
+
 function main() {
+  let tempRoot = "";
   try {
     const args = parseArgs(process.argv.slice(2));
     const repoRoot = process.cwd();
@@ -101,6 +115,53 @@ function main() {
     assert(text.includes("next_agent_goal:"), "packet file missing next_agent_goal");
     assert(text.includes("`docs/audit/WORKFLOW-KERNEL.md`"), "packet file missing workflow kernel");
 
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-handoff-packet-"));
+    const filelessRepo = path.join(tempRoot, "db-only-fileless");
+    fs.cpSync(path.resolve(repoRoot, "tests/fixtures/perf-handoff/ready"), filelessRepo, { recursive: true });
+    runJson("tools/perf/index-sync.mjs", [
+      "--target", filelessRepo,
+      "--store", "sqlite",
+      "--with-content",
+      "--json",
+    ], {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    fs.rmSync(path.join(filelessRepo, "docs", "audit", "CURRENT-STATE.md"), { force: true });
+    fs.rmSync(path.join(filelessRepo, "docs", "audit", "RUNTIME-STATE.md"), { force: true });
+    fs.rmSync(path.join(filelessRepo, "docs", "audit", "sessions", "S101-alpha.md"), { force: true });
+    fs.rmSync(path.join(filelessRepo, "docs", "audit", "cycles", "C101-feature-alpha", "status.md"), { force: true });
+    const filelessResult = spawnSync(process.execPath, [
+      script,
+      "--target",
+      filelessRepo,
+      "--json",
+    ], {
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        AIDN_STATE_MODE: "db-only",
+        AIDN_INDEX_STORE_MODE: "sqlite",
+      },
+      encoding: "utf8",
+      timeout: 180000,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    if ((filelessResult.status ?? 1) !== 0) {
+      throw new Error(`project-handoff-packet db-only fileless failed: ${String(filelessResult.stderr ?? filelessResult.stdout ?? "").trim()}`);
+    }
+    const filelessPayload = JSON.parse(String(filelessResult.stdout ?? "{}"));
+    const filelessText = fs.readFileSync(path.join(filelessRepo, "docs", "audit", "HANDOFF-PACKET.md"), "utf8");
+    assert(filelessPayload.packet.handoff_status === "ready", "db-only fileless handoff should stay ready");
+    assert(filelessPayload.packet.recommended_next_agent_role === "executor", "db-only fileless handoff should route to executor");
+    assert(filelessPayload.packet.recommended_next_agent_action === "implement", "db-only fileless handoff should route to implement");
+    assert(filelessPayload.packet.scope_type === "cycle", "db-only fileless handoff should preserve cycle scope");
+    assert(filelessPayload.packet.scope_id === "C101", "db-only fileless handoff should preserve active cycle");
+    assert(filelessPayload.packet.current_state_source === "sqlite", "db-only fileless handoff should load CURRENT-STATE from SQLite");
+    assert(filelessPayload.packet.runtime_state_source === "sqlite", "db-only fileless handoff should load RUNTIME-STATE from SQLite");
+    assert(filelessPayload.packet.session_file === "docs/audit/sessions/S101-alpha.md", "db-only fileless handoff should recover the session artifact path");
+    assert(filelessPayload.packet.cycle_status_file === "docs/audit/cycles/C101-feature-alpha/status.md", "db-only fileless handoff should recover the cycle status path");
+    assert(filelessText.includes("handoff_status: ready"), "db-only fileless handoff markdown should record ready status");
     const output = {
       ts: new Date().toISOString(),
       target,
@@ -119,6 +180,10 @@ function main() {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
+  } finally {
+    if (tempRoot && fs.existsSync(tempRoot)) {
+      fs.rmSync(tempRoot, { recursive: true, force: true });
+    }
   }
 }
 

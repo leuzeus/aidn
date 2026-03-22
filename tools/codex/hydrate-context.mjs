@@ -163,8 +163,7 @@ function shouldProjectRuntimeState(args, hydrated, targetRoot) {
   if (!["dual", "db-only"].includes(stateMode)) {
     return false;
   }
-  const runtimeStateFile = path.resolve(targetRoot, args.runtimeStateOut);
-  return fs.existsSync(runtimeStateFile);
+  return true;
 }
 
 function shouldProjectHandoffPacket(args, hydrated, targetRoot) {
@@ -178,38 +177,49 @@ function shouldProjectHandoffPacket(args, hydrated, targetRoot) {
   if (!["dual", "db-only"].includes(stateMode)) {
     return false;
   }
-  const handoffFile = path.resolve(targetRoot, args.handoffPacketOut);
-  return fs.existsSync(handoffFile);
+  return true;
 }
 
-function shouldProjectAgentSelectionSummary(args, targetRoot) {
+function shouldProjectAgentSelectionSummary(args, hydrated, targetRoot) {
   if (args.projectAgentSelectionSummary === true) {
     return true;
   }
   if (args.projectAgentSelectionSummary === false) {
     return false;
   }
+  const stateMode = String(hydrated?.state_mode ?? "").trim().toLowerCase();
+  if (["dual", "db-only"].includes(stateMode)) {
+    return true;
+  }
   const summaryFile = path.resolve(targetRoot, args.agentSelectionSummaryOut);
   return fs.existsSync(summaryFile);
 }
 
-function shouldProjectAgentHealthSummary(args, targetRoot) {
+function shouldProjectAgentHealthSummary(args, hydrated, targetRoot) {
   if (args.projectAgentHealthSummary === true) {
     return true;
   }
   if (args.projectAgentHealthSummary === false) {
     return false;
   }
+  const stateMode = String(hydrated?.state_mode ?? "").trim().toLowerCase();
+  if (["dual", "db-only"].includes(stateMode)) {
+    return true;
+  }
   const summaryFile = path.resolve(targetRoot, args.agentHealthSummaryOut);
   return fs.existsSync(summaryFile);
 }
 
-function shouldProjectMultiAgentStatus(args, targetRoot) {
+function shouldProjectMultiAgentStatus(args, hydrated, targetRoot) {
   if (args.projectMultiAgentStatus === true) {
     return true;
   }
   if (args.projectMultiAgentStatus === false) {
     return false;
+  }
+  const stateMode = String(hydrated?.state_mode ?? "").trim().toLowerCase();
+  if (["dual", "db-only"].includes(stateMode)) {
+    return true;
   }
   const summaryFile = path.resolve(targetRoot, args.multiAgentStatusOut);
   return fs.existsSync(summaryFile);
@@ -255,7 +265,7 @@ async function main() {
         mode: args.projectRuntimeState === true ? "forced" : "auto",
       };
     }
-    if (shouldProjectAgentHealthSummary(args, targetRoot)) {
+    if (shouldProjectAgentHealthSummary(args, hydrated, targetRoot)) {
       agentHealthSummary = await projectAgentHealthSummary({
         targetRoot,
         out: args.agentHealthSummaryOut,
@@ -271,7 +281,7 @@ async function main() {
         mode: args.projectAgentHealthSummary === true ? "forced" : "auto",
       };
     }
-    if (shouldProjectAgentSelectionSummary(args, targetRoot)) {
+    if (shouldProjectAgentSelectionSummary(args, hydrated, targetRoot)) {
       agentSelectionSummary = await projectAgentSelectionSummary({
         targetRoot,
         out: args.agentSelectionSummaryOut,
@@ -299,7 +309,7 @@ async function main() {
         mode: args.projectHandoffPacket === true ? "forced" : "auto",
       };
     }
-    if (shouldProjectMultiAgentStatus(args, targetRoot)) {
+    if (shouldProjectMultiAgentStatus(args, hydrated, targetRoot)) {
       multiAgentStatus = await projectMultiAgentStatus({
         targetRoot,
         out: args.multiAgentStatusOut,

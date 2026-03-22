@@ -2,6 +2,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import {
+  normalizeIndexStoreMode,
+  normalizeStateMode,
+  readAidnProjectConfig,
+  resolveConfigIndexStore,
+  resolveConfigStateMode,
+  stateModeFromIndexStore,
+} from "../../lib/config/aidn-config-lib.mjs";
+import {
   artifactRepairScore,
   evaluateRepairRelation,
   repairFindingPriorityScore,
@@ -473,6 +481,62 @@ function firstStateMode(latest) {
   return null;
 }
 
+function resolveEffectiveStateMode(targetRoot, latest, requestedSkill) {
+  const envStateMode = normalizeStateMode(process.env.AIDN_STATE_MODE);
+  if (envStateMode) {
+    return {
+      mode: envStateMode,
+      source: "env-state-mode",
+    };
+  }
+
+  const config = readAidnProjectConfig(targetRoot);
+  const configStateMode = resolveConfigStateMode(config.data);
+  if (configStateMode) {
+    return {
+      mode: configStateMode,
+      source: "config-state-mode",
+    };
+  }
+
+  const envIndexStore = normalizeIndexStoreMode(process.env.AIDN_INDEX_STORE_MODE);
+  if (envIndexStore) {
+    return {
+      mode: stateModeFromIndexStore(envIndexStore),
+      source: "env-index-store",
+    };
+  }
+
+  const configIndexStore = resolveConfigIndexStore(config.data);
+  if (configIndexStore) {
+    return {
+      mode: stateModeFromIndexStore(configIndexStore),
+      source: "config-index-store",
+    };
+  }
+
+  const requestedSkillMode = normalizeStateMode(requestedSkill ? latest?.[requestedSkill]?.state_mode : "");
+  if (requestedSkillMode) {
+    return {
+      mode: requestedSkillMode,
+      source: "context-requested-skill",
+    };
+  }
+
+  const historicalMode = normalizeStateMode(firstStateMode(latest));
+  if (historicalMode) {
+    return {
+      mode: historicalMode,
+      source: "context-history",
+    };
+  }
+
+  return {
+    mode: "files",
+    source: "default",
+  };
+}
+
 export function runHydrateContextUseCase({ args, hookContextStore, targetRoot }) {
   const context = hookContextStore.readContext({
     targetRoot,
@@ -509,9 +573,8 @@ export function runHydrateContextUseCase({ args, hookContextStore, targetRoot })
     };
   }
 
-  const effectiveStateMode = args.skill && latest[args.skill]
-    ? String(latest[args.skill]?.state_mode ?? "files")
-    : String(firstStateMode(latest) ?? "files");
+  const effectiveState = resolveEffectiveStateMode(targetRoot, latest, args.skill);
+  const effectiveStateMode = effectiveState.mode;
 
   let artifactSource = null;
   let selectedArtifacts = [];
@@ -541,6 +604,7 @@ export function runHydrateContextUseCase({ args, hookContextStore, targetRoot })
     ts: new Date().toISOString(),
     target_root: targetRoot,
     state_mode: effectiveStateMode,
+    state_mode_source: effectiveState.source,
     context_file: context.context_file,
     requested_skill: args.skill || null,
     decisions: decisionBySkill,

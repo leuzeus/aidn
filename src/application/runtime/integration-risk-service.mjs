@@ -12,6 +12,13 @@ import {
   findSessionFile,
   parseSessionMetadata,
 } from "../../lib/workflow/session-context-lib.mjs";
+import {
+  loadSqliteIndexPayloadSafe,
+  resolveAuditArtifactText,
+  resolveCycleStatusArtifact,
+  resolveDbBackedMode,
+  resolveSessionArtifact,
+} from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
 
 const ROOT_FILE_NAMES = new Set([
   "package.json",
@@ -97,6 +104,17 @@ function extractCycleIds(value) {
 
 function parseCurrentState(currentStatePath) {
   const text = fs.existsSync(currentStatePath) ? fs.readFileSync(currentStatePath, "utf8") : "";
+  const map = parseSimpleMap(text);
+  return {
+    text,
+    map,
+    active_session: normalizeScalar(map.get("active_session") ?? "none") || "none",
+    active_cycle: normalizeScalar(map.get("active_cycle") ?? "none") || "none",
+    mode: normalizeScalar(map.get("mode") ?? "unknown") || "unknown",
+  };
+}
+
+function parseCurrentStateText(text) {
   const map = parseSimpleMap(text);
   return {
     text,
@@ -294,6 +312,82 @@ function loadCycleDescriptor(statusPath) {
   };
 }
 
+function decodeArtifactContent(artifact) {
+  if (typeof artifact?.content !== "string") {
+    return "";
+  }
+  const format = String(artifact?.content_format ?? "utf8").trim().toLowerCase();
+  if (format === "base64") {
+    return Buffer.from(artifact.content, "base64").toString("utf8");
+  }
+  return artifact.content;
+}
+
+function normalizeArtifactPath(value) {
+  return String(value ?? "").replace(/\\/g, "/");
+}
+
+function extractCycleDirNameFromArtifactPath(artifactPath, cycleId) {
+  const normalized = normalizeArtifactPath(artifactPath);
+  const match = normalized.match(/^cycles\/([^/]+)\//i);
+  if (match?.[1]) {
+    return match[1];
+  }
+  return cycleId ?? "none";
+}
+
+function collectCycleArtifactTextsFromSqlite(sqlitePayload, cycleId) {
+  if (!sqlitePayload || !Array.isArray(sqlitePayload.artifacts)) {
+    return [];
+  }
+  return sqlitePayload.artifacts
+    .filter((artifact) => {
+      const rel = normalizeArtifactPath(artifact?.path);
+      return String(artifact?.cycle_id ?? "") === cycleId
+        || new RegExp(`^cycles/${cycleId}[^/]*/`, "i").test(rel);
+    })
+    .map((artifact) => ({
+      path: normalizeArtifactPath(artifact?.path),
+      text: decodeArtifactContent(artifact),
+    }))
+    .filter((entry) => entry.path && entry.text);
+}
+
+function loadCycleDescriptorFromResolution(cycleId, cycleStatusResolution, sqlitePayload = null) {
+  if (!cycleStatusResolution?.exists) {
+    return null;
+  }
+  const statusText = cycleStatusResolution.text;
+  const statusMap = parseSimpleMap(statusText);
+  const branchName = normalizeScalar(statusMap.get("branch_name") ?? "none") || "none";
+  const artifactPath = normalizeArtifactPath(cycleStatusResolution.artifactPath || cycleStatusResolution.logicalPath);
+  const dirName = extractCycleDirNameFromArtifactPath(artifactPath, cycleId);
+  const cycleArtifacts = collectCycleArtifactTextsFromSqlite(sqlitePayload, cycleId);
+  const referencedPaths = Array.from(new Set(cycleArtifacts.flatMap((entry) => extractRepoPaths(entry.text))))
+    .sort((a, b) => a.localeCompare(b));
+  const readiness = classifyCycleReadiness({
+    outcome: statusMap.get("outcome") ?? "",
+    dorState: statusMap.get("dor_state") ?? "",
+    blockers: parseBlockers(statusText),
+  });
+  return {
+    cycle_id: cycleId,
+    cycle_dir: cycleStatusResolution.logicalPath.replace(/\/status\.md$/i, ""),
+    cycle_dir_name: dirName,
+    status_path: cycleStatusResolution.logicalPath,
+    cycle_type: deriveCycleType({ dirName, branchName }),
+    branch_name: branchName,
+    state: normalizeScalar(statusMap.get("state") ?? "unknown") || "unknown",
+    outcome: normalizeScalar(statusMap.get("outcome") ?? "unknown") || "unknown",
+    dor_state: normalizeScalar(statusMap.get("dor_state") ?? "unknown") || "unknown",
+    blockers: parseBlockers(statusText),
+    readiness: readiness.readiness,
+    readiness_reason: readiness.reason,
+    referenced_paths: referencedPaths,
+    module_hints: deriveModuleHints(referencedPaths),
+  };
+}
+
 function intersect(left, right) {
   const rightSet = new Set(right);
   return left.filter((item) => rightSet.has(item));
@@ -351,13 +445,44 @@ export function assessIntegrationRisk({
   const currentStatePath = path.resolve(absoluteTargetRoot, currentStateFile);
   const sessionsRoot = path.resolve(absoluteTargetRoot, sessionsDir);
   const cyclesRoot = path.resolve(absoluteTargetRoot, cyclesDir);
-  const currentState = parseCurrentState(currentStatePath);
-  const sessionFile = findSessionFile(path.dirname(sessionsRoot), currentState.active_session);
-  const sessionText = sessionFile ? fs.readFileSync(sessionFile, "utf8") : "";
+  const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
+  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+    exists: false,
+    sqliteFile: "",
+    payload: null,
+    warning: "",
+  };
+  const currentStateResolution = resolveAuditArtifactText({
+    targetRoot: absoluteTargetRoot,
+    candidatePath: currentStateFile,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const currentState = currentStateResolution.exists
+    ? parseCurrentStateText(currentStateResolution.text)
+    : parseCurrentState(currentStatePath);
+  const sessionResolution = resolveSessionArtifact({
+    targetRoot: absoluteTargetRoot,
+    auditRoot: path.dirname(sessionsRoot),
+    sessionId: currentState.active_session,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const sessionFile = sessionResolution.exists ? sessionResolution.logicalPath : "missing";
+  const sessionText = sessionResolution.text;
   const topology = parseSessionTopology(sessionText, currentState.active_cycle);
   const candidateCycles = topology.candidate_cycle_ids.map((cycleId) => {
-    const statusPath = findCycleStatus(path.dirname(cyclesRoot), cycleId);
-    const descriptor = loadCycleDescriptor(statusPath);
+    const cycleStatusResolution = resolveCycleStatusArtifact({
+      targetRoot: absoluteTargetRoot,
+      auditRoot: path.dirname(cyclesRoot),
+      cycleId,
+      dbBacked: dbBackedMode,
+      sqlitePayload: sqliteFallback.payload,
+    });
+    const statusPath = cycleStatusResolution.filePath ?? findCycleStatus(path.dirname(cyclesRoot), cycleId);
+    const descriptor = cycleStatusResolution.source === "sqlite"
+      ? loadCycleDescriptorFromResolution(cycleId, cycleStatusResolution, sqliteFallback.payload)
+      : loadCycleDescriptor(statusPath);
     if (descriptor) {
       return descriptor;
     }
@@ -394,7 +519,7 @@ export function assessIntegrationRisk({
   });
   return {
     target_root: absoluteTargetRoot,
-    current_state_file: currentStatePath,
+    current_state_file: currentStateResolution.exists ? currentStateResolution.logicalPath : currentStatePath,
     session_file: sessionFile ?? "missing",
     active_session: currentState.active_session,
     active_cycle: currentState.active_cycle,
@@ -408,5 +533,7 @@ export function assessIntegrationRisk({
     arbitration_required: strategy.arbitration_required,
     rationale: strategy.reasons,
     missing_context: missingContext,
+    current_state_source: currentStateResolution.exists ? currentStateResolution.source : "missing",
+    session_source: sessionResolution.exists ? sessionResolution.source : "missing",
   };
 }

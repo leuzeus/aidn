@@ -8,6 +8,11 @@ import { assessIntegrationRisk } from "../../src/application/runtime/integration
 import { selectAgentAdapter } from "../../src/core/agents/agent-selection-policy.mjs";
 import { computeCoordinatorLoopState } from "./coordinator-loop.mjs";
 import { buildAgentHealthMap, verifyAgentRoster } from "./verify-agent-roster.mjs";
+import {
+  loadSqliteIndexPayloadSafe as loadSqliteIndexPayloadSafeDb,
+  resolveAuditArtifactText as resolveAuditArtifactTextDb,
+  resolveDbBackedMode as resolveDbBackedModeDb,
+} from "./db-first-runtime-view-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -389,8 +394,20 @@ function normalizeSharedPlanning(currentState) {
 }
 
 function readSharedPlanning(targetRoot, currentStateFile) {
-  const currentStatePath = resolveTargetPath(targetRoot, currentStateFile);
-  const currentStateText = readTextIfExists(currentStatePath);
+  const { dbBackedMode } = resolveDbBackedModeDb(targetRoot);
+  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafeDb(targetRoot) : {
+    exists: false,
+    sqliteFile: "",
+    payload: null,
+    warning: "",
+  };
+  const currentStateResolution = resolveAuditArtifactTextDb({
+    targetRoot,
+    candidatePath: currentStateFile,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const currentStateText = currentStateResolution.text;
   const currentMap = parseSimpleMap(currentStateText);
   const currentState = normalizeSharedPlanning({
     active_backlog: currentMap.get("active_backlog") ?? "none",
@@ -399,8 +416,14 @@ function readSharedPlanning(targetRoot, currentStateFile) {
     planning_arbitration_status: currentMap.get("planning_arbitration_status") ?? "none",
   });
   const backlogArtifactRef = resolveActiveBacklogPath(targetRoot, currentState.active_backlog);
-  const backlogArtifact = backlogArtifactRef.found
-    ? parseBacklogArtifact(readTextIfExists(backlogArtifactRef.absolute_path))
+  const backlogResolution = resolveAuditArtifactTextDb({
+    targetRoot,
+    candidatePath: backlogArtifactRef.relative_path,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const backlogArtifact = backlogResolution.exists
+    ? parseBacklogArtifact(backlogResolution.text)
     : null;
   const backlogStatus = pickScalar(
     [backlogArtifact?.planning_status, currentState.backlog_status],
@@ -427,7 +450,7 @@ function readSharedPlanning(targetRoot, currentStateFile) {
   const backlogUpdatedAtMs = parseTimestamp(backlogArtifact?.updated_at ?? "");
   let freshnessStatus = "unknown";
   let freshnessBasis = "shared planning freshness could not be derived";
-  if (!backlogArtifactRef.found) {
+  if (!backlogResolution.exists) {
     freshnessStatus = "missing";
     freshnessBasis = "active backlog artifact is referenced but not found";
   } else if (currentUpdatedAtMs !== null && backlogUpdatedAtMs !== null) {
@@ -442,12 +465,12 @@ function readSharedPlanning(targetRoot, currentStateFile) {
   const arbitrationResolved = isResolvedPlanningArbitrationStatus(planningArbitrationStatus);
   const gateStatus = !currentState.enabled
     ? "not_applicable"
-    : (!backlogArtifactRef.found
+    : (!backlogResolution.exists
       ? "warn"
       : (!arbitrationResolved ? "blocked" : "ok"));
   const gateReason = !currentState.enabled
     ? "no active shared planning backlog"
-    : (!backlogArtifactRef.found
+    : (!backlogResolution.exists
       ? "active shared planning backlog is referenced but missing"
       : (!arbitrationResolved
         ? `planning arbitration remains unresolved: ${planningArbitrationStatus}`
@@ -458,8 +481,8 @@ function readSharedPlanning(targetRoot, currentStateFile) {
     backlog_next_step: backlogNextStep,
     planning_arbitration_status: planningArbitrationStatus,
     enabled: currentState.enabled,
-    artifact_found: backlogArtifactRef.found,
-    artifact_path: backlogArtifactRef.found ? relPath(targetRoot, backlogArtifactRef.absolute_path) : backlogArtifactRef.relative_path,
+    artifact_found: backlogResolution.exists,
+    artifact_path: backlogResolution.exists ? backlogResolution.logicalPath : backlogArtifactRef.relative_path,
     backlog_items: backlogArtifact?.backlog_items ?? [],
     open_questions: backlogArtifact?.open_questions ?? [],
     linked_cycles: backlogArtifact?.linked_cycles ?? [],
@@ -472,6 +495,8 @@ function readSharedPlanning(targetRoot, currentStateFile) {
     freshness_basis: freshnessBasis,
     gate_status: gateStatus,
     gate_reason: gateReason,
+    current_state_source: currentStateResolution.source,
+    backlog_artifact_source: backlogResolution.source,
   };
 }
 

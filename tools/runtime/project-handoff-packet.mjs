@@ -6,6 +6,20 @@ import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
 import { canAgentRolePerform } from "../../src/core/agents/agent-role-model.mjs";
 import { evaluateAgentTransition } from "../../src/core/agents/agent-transition-policy.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
+import {
+  buildVirtualCurrentStateConsistency,
+  canonicalNone,
+  canonicalUnknown,
+  loadSqliteIndexPayloadSafe,
+  normalizeScalar,
+  parseSimpleMap,
+  parseTimestamp,
+  resolveAuditArtifactText,
+  resolveCyclePlanArtifact,
+  resolveCycleStatusArtifact,
+  resolveDbBackedMode,
+  resolveSessionArtifact,
+} from "./db-first-runtime-view-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -83,40 +97,6 @@ function exists(filePath) {
   return Boolean(filePath) && fs.existsSync(filePath);
 }
 
-function readTextIfExists(filePath) {
-  return exists(filePath) ? fs.readFileSync(filePath, "utf8") : "";
-}
-
-function normalizeScalar(value) {
-  const normalized = String(value ?? "").trim();
-  if (normalized.startsWith("`") && normalized.endsWith("`") && normalized.length >= 2) {
-    return normalized.slice(1, -1).trim();
-  }
-  return normalized;
-}
-
-function canonicalNone(value) {
-  const normalized = normalizeScalar(value).toLowerCase();
-  return normalized === "none" || normalized === "(none)";
-}
-
-function canonicalUnknown(value) {
-  return normalizeScalar(value).toLowerCase() === "unknown";
-}
-
-function parseTimestamp(value) {
-  const normalized = normalizeScalar(value);
-  if (!normalized) {
-    return null;
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
-    const parsed = Date.parse(`${normalized}T00:00:00Z`);
-    return Number.isNaN(parsed) ? null : parsed;
-  }
-  const parsed = Date.parse(normalized);
-  return Number.isNaN(parsed) ? null : parsed;
-}
-
 function isResolvedPlanningArbitrationStatus(value) {
   const normalized = normalizeScalar(value).toLowerCase();
   return !normalized
@@ -125,18 +105,6 @@ function isResolvedPlanningArbitrationStatus(value) {
     || normalized === "closed"
     || normalized === "approved"
     || normalized === "cleared";
-}
-
-function parseSimpleMap(text) {
-  const map = new Map();
-  for (const line of String(text).split(/\r?\n/)) {
-    const match = line.match(/^([a-zA-Z0-9_]+):\s*(.+)$/);
-    if (!match) {
-      continue;
-    }
-    map.set(match[1], normalizeScalar(match[2]));
-  }
-  return map;
 }
 
 function parseListSection(text, header) {
@@ -162,39 +130,6 @@ function parseListSection(text, header) {
     }
   }
   return items;
-}
-
-function findSessionFile(auditRoot, sessionId) {
-  if (!sessionId || canonicalNone(sessionId) || canonicalUnknown(sessionId)) {
-    return null;
-  }
-  const sessionsDir = path.join(auditRoot, "sessions");
-  if (!exists(sessionsDir)) {
-    return null;
-  }
-  const entries = fs.readdirSync(sessionsDir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && /^S\d+.*\.md$/i.test(entry.name));
-  const direct = entries.find((entry) => entry.name.startsWith(sessionId));
-  return direct ? path.join(sessionsDir, direct.name) : null;
-}
-
-function findCycleStatus(auditRoot, cycleId) {
-  if (!cycleId || canonicalNone(cycleId) || canonicalUnknown(cycleId)) {
-    return null;
-  }
-  const cyclesDir = path.join(auditRoot, "cycles");
-  if (!exists(cyclesDir)) {
-    return null;
-  }
-  const entries = fs.readdirSync(cyclesDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name.startsWith(`${cycleId}-`));
-  for (const entry of entries) {
-    const statusPath = path.join(cyclesDir, entry.name, "status.md");
-    if (exists(statusPath)) {
-      return statusPath;
-    }
-  }
-  return null;
 }
 
 function uniqueItems(values) {
@@ -336,7 +271,13 @@ function deriveNextAgentGoal({
   return "reload the prioritized artifacts and choose the next compliant action";
 }
 
-function buildPrioritizedArtifacts({ targetRoot, runtimeStateText, sessionFile, cycleStatus, currentMap }) {
+function buildPrioritizedArtifacts({
+  runtimeStateText,
+  sessionArtifact,
+  cycleStatusArtifact,
+  planArtifact,
+  currentMap,
+}) {
   const items = [
     "docs/audit/CURRENT-STATE.md",
     "docs/audit/WORKFLOW-KERNEL.md",
@@ -349,15 +290,14 @@ function buildPrioritizedArtifacts({ targetRoot, runtimeStateText, sessionFile, 
   if (activeBacklog !== "none") {
     items.push(activeBacklog);
   }
-  if (sessionFile) {
-    items.push(relativePath(targetRoot, sessionFile));
+  if (sessionArtifact?.exists) {
+    items.push(sessionArtifact.logicalPath);
   }
-  if (cycleStatus) {
-    items.push(relativePath(targetRoot, cycleStatus));
-    const planPath = path.join(path.dirname(cycleStatus), "plan.md");
-    if (firstPlanStep && exists(planPath)) {
-      items.push(relativePath(targetRoot, planPath));
-    }
+  if (cycleStatusArtifact?.exists) {
+    items.push(cycleStatusArtifact.logicalPath);
+  }
+  if (firstPlanStep && planArtifact?.exists) {
+    items.push(planArtifact.logicalPath);
   }
   return uniqueItems([...items, ...runtimeArtifacts]);
 }
@@ -395,7 +335,15 @@ function deriveDispatchScope({ currentMap, nextRouting }) {
   };
 }
 
-function deriveSharedPlanningCandidate({ targetRoot, activeBacklog, scope, nextRouting }) {
+function deriveSharedPlanningCandidate({
+  targetRoot,
+  activeBacklog,
+  scope,
+  nextRouting,
+  currentStateUpdatedAtMs,
+  dbBacked = false,
+  sqlitePayload = null,
+}) {
   const normalizedBacklog = normalizeBacklogRef(activeBacklog);
   if (normalizedBacklog === "none") {
     return {
@@ -413,10 +361,17 @@ function deriveSharedPlanningCandidate({ targetRoot, activeBacklog, scope, nextR
       backlog_next_step: "unknown",
       planning_arbitration_status: "none",
       linked_cycles: [],
+      backlog_artifact_source: "missing",
+      backlog_logical_path: "none",
     };
   }
-  const backlogPath = resolveTargetPath(targetRoot, normalizedBacklog);
-  if (!exists(backlogPath)) {
+  const backlogResolution = resolveAuditArtifactText({
+    targetRoot,
+    candidatePath: normalizedBacklog,
+    dbBacked,
+    sqlitePayload,
+  });
+  if (!backlogResolution.exists) {
     return {
       enabled: true,
       artifact_found: false,
@@ -432,9 +387,11 @@ function deriveSharedPlanningCandidate({ targetRoot, activeBacklog, scope, nextR
       backlog_next_step: "unknown",
       planning_arbitration_status: "none",
       linked_cycles: [],
+      backlog_artifact_source: "missing",
+      backlog_logical_path: "none",
     };
   }
-  const backlog = parseBacklogArtifact(readTextIfExists(backlogPath));
+  const backlog = parseBacklogArtifact(backlogResolution.text);
   const candidateReady = String(backlog.dispatch_ready).trim().toLowerCase() === "yes";
   const actionAligned = candidateReady && backlog.next_dispatch_action !== "none"
     && (
@@ -447,15 +404,12 @@ function deriveSharedPlanningCandidate({ targetRoot, activeBacklog, scope, nextR
       || (nextRouting.role === "coordinator" && backlog.next_dispatch_scope === "session")
     );
   const candidateAligned = actionAligned && scopeAligned;
-  const currentStatePath = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
-  const currentMap = parseSimpleMap(readTextIfExists(currentStatePath));
-  const currentUpdatedAtMs = parseTimestamp(currentMap.get("updated_at") ?? "");
   const backlogUpdatedAtMs = parseTimestamp(backlog.updated_at ?? "");
   let freshnessStatus = "unknown";
   let freshnessBasis = "shared planning freshness could not be derived";
-  if (currentUpdatedAtMs !== null && backlogUpdatedAtMs !== null) {
-    freshnessStatus = backlogUpdatedAtMs >= currentUpdatedAtMs ? "ok" : "stale";
-    freshnessBasis = backlogUpdatedAtMs >= currentUpdatedAtMs
+  if (currentStateUpdatedAtMs !== null && backlogUpdatedAtMs !== null) {
+    freshnessStatus = backlogUpdatedAtMs >= currentStateUpdatedAtMs ? "ok" : "stale";
+    freshnessBasis = backlogUpdatedAtMs >= currentStateUpdatedAtMs
       ? "backlog updated_at is aligned with CURRENT-STATE.md"
       : "backlog updated_at is older than CURRENT-STATE.md";
   }
@@ -477,6 +431,8 @@ function deriveSharedPlanningCandidate({ targetRoot, activeBacklog, scope, nextR
     backlog_next_step: backlog.backlog_next_step,
     planning_arbitration_status: backlog.planning_arbitration_status,
     linked_cycles: backlog.linked_cycles,
+    backlog_artifact_source: backlogResolution.source,
+    backlog_logical_path: backlogResolution.logicalPath,
   };
 }
 
@@ -595,18 +551,61 @@ export function projectHandoffPacket({
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
-  const currentStatePath = resolveTargetPath(absoluteTargetRoot, currentStateFile);
-  const runtimeStatePath = resolveTargetPath(absoluteTargetRoot, runtimeStateFile);
-  const currentStateText = readTextIfExists(currentStatePath);
-  const runtimeStateText = readTextIfExists(runtimeStatePath);
+  const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
+  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+    exists: false,
+    sqliteFile: "",
+    payload: null,
+    warning: "",
+  };
+  const currentStateResolution = resolveAuditArtifactText({
+    targetRoot: absoluteTargetRoot,
+    candidatePath: currentStateFile,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const runtimeStateResolution = resolveAuditArtifactText({
+    targetRoot: absoluteTargetRoot,
+    candidatePath: runtimeStateFile,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const currentStateText = currentStateResolution.text;
+  const runtimeStateText = runtimeStateResolution.text;
   const currentMap = parseSimpleMap(currentStateText);
   const runtimeMap = parseSimpleMap(runtimeStateText);
-  const consistency = evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot });
 
   const activeSession = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
   const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
-  const sessionFile = findSessionFile(auditRoot, activeSession);
-  const cycleStatus = findCycleStatus(auditRoot, activeCycle);
+  const sessionResolution = resolveSessionArtifact({
+    targetRoot: absoluteTargetRoot,
+    auditRoot,
+    sessionId: activeSession,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const cycleStatusResolution = resolveCycleStatusArtifact({
+    targetRoot: absoluteTargetRoot,
+    auditRoot,
+    cycleId: activeCycle,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const planResolution = resolveCyclePlanArtifact({
+    targetRoot: absoluteTargetRoot,
+    cycleStatusResolution,
+    cycleId: activeCycle,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const consistency = currentStateResolution.source === "file"
+    ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })
+    : buildVirtualCurrentStateConsistency({
+      currentStateResolution,
+      activeCycle,
+      activeSession,
+      cycleStatusResolution,
+    });
   const repairStatus = normalizeScalar(runtimeMap.get("repair_layer_status") ?? "unknown") || "unknown";
   const repairPrimaryReason = normalizeScalar(runtimeMap.get("repair_primary_reason") ?? runtimeMap.get("repair_layer_advice") ?? "unknown") || "unknown";
   const repairRoutingHint = normalizeScalar(runtimeMap.get("repair_routing_hint") ?? repairStatus) || "unknown";
@@ -639,6 +638,9 @@ export function projectHandoffPacket({
     activeBacklog,
     scope,
     nextRouting,
+    currentStateUpdatedAtMs: parseTimestamp(currentMap.get("updated_at") ?? ""),
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
   });
 
   const packet = {
@@ -683,7 +685,11 @@ export function projectHandoffPacket({
     backlog_status: backlogStatus,
     backlog_next_step: sharedPlanning.artifact_found && !canonicalUnknown(sharedPlanning.backlog_next_step) ? sharedPlanning.backlog_next_step : backlogNextStep,
     linked_backlog_cycles: sharedPlanning.linked_cycles,
-    runtime_state_mode: normalizeScalar(runtimeMap.get("runtime_state_mode") ?? currentMap.get("runtime_state_mode") ?? "unknown") || "unknown",
+    runtime_state_mode: normalizeScalar(
+      dbBackedMode
+        ? effectiveStateMode
+        : (runtimeMap.get("runtime_state_mode") ?? currentMap.get("runtime_state_mode") ?? "unknown"),
+    ) || "unknown",
     repair_layer_status: repairStatus,
     repair_primary_reason: repairPrimaryReason,
     repair_routing_hint: repairRoutingHint,
@@ -691,10 +697,19 @@ export function projectHandoffPacket({
     transition_policy_status: transition.status,
     transition_policy_reason: transition.reason,
     blocking_findings: blockingFindings,
-    prioritized_artifacts: buildPrioritizedArtifacts({ targetRoot: absoluteTargetRoot, runtimeStateText, sessionFile, cycleStatus, currentMap }),
+    prioritized_artifacts: buildPrioritizedArtifacts({
+      runtimeStateText,
+      sessionArtifact: sessionResolution,
+      cycleStatusArtifact: cycleStatusResolution,
+      planArtifact: planResolution,
+      currentMap,
+    }),
     consistency_status: consistency.pass ? "pass" : "fail",
-    session_file: sessionFile ? relativePath(absoluteTargetRoot, sessionFile) : "none",
-    cycle_status_file: cycleStatus ? relativePath(absoluteTargetRoot, cycleStatus) : "none",
+    session_file: sessionResolution.exists ? sessionResolution.logicalPath : "none",
+    cycle_status_file: cycleStatusResolution.exists ? cycleStatusResolution.logicalPath : "none",
+    current_state_source: currentStateResolution.source,
+    runtime_state_source: runtimeStateResolution.source,
+    shared_planning_artifact_source: sharedPlanning.backlog_artifact_source,
   };
 
   if (!canAgentRolePerform(packet.recommended_next_agent_role, packet.recommended_next_agent_action)) {

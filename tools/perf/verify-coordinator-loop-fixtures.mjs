@@ -38,10 +38,10 @@ function assert(condition, message) {
   }
 }
 
-function runJson(script, args, repoRoot, expectStatus = 0) {
+function runJson(script, args, repoRoot, expectStatus = 0, env = {}) {
   const result = spawnSync(process.execPath, [script, ...args], {
     cwd: repoRoot,
-    env: { ...process.env },
+    env: { ...process.env, ...env },
     encoding: "utf8",
     timeout: 180000,
     maxBuffer: 20 * 1024 * 1024,
@@ -91,16 +91,40 @@ function main() {
     const blockedTarget = path.join(tempRoot, "blocked");
     const failedTarget = path.join(tempRoot, "failed");
     const repeatedTarget = path.join(tempRoot, "repeated");
+    const dbOnlyFilelessTarget = path.join(tempRoot, "db-only-fileless");
 
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), readyTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "blocked"), blockedTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), failedTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), repeatedTarget, { recursive: true });
+    fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlyFilelessTarget, { recursive: true });
 
     runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", failedTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", repeatedTarget, "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", dbOnlyFilelessTarget, "--json"], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    runJson(path.resolve(repoRoot, "tools", "perf", "index-sync.mjs"), [
+      "--target", dbOnlyFilelessTarget,
+      "--store", "sqlite",
+      "--with-content",
+      "--json",
+    ], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    for (const rel of [
+      "docs/audit/CURRENT-STATE.md",
+      "docs/audit/RUNTIME-STATE.md",
+      "docs/audit/HANDOFF-PACKET.md",
+      "docs/audit/sessions/S101-alpha.md",
+      "docs/audit/cycles/C101-feature-alpha/status.md",
+    ]) {
+      fs.rmSync(path.join(dbOnlyFilelessTarget, rel), { force: true });
+    }
 
     runJson(summaryScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     runJson(summaryScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
@@ -147,6 +171,10 @@ function main() {
     const blocked = runJson(loopScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
     const failed = runJson(loopScript, ["--target", failedTarget, "--json"], repoRoot, 0);
     const repeated = runJson(loopScript, ["--target", repeatedTarget, "--json"], repoRoot, 0);
+    const dbOnlyFileless = runJson(loopScript, ["--target", dbOnlyFilelessTarget, "--json"], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
 
     assert(ready.loop.status === "history_empty", "ready loop should report empty history");
     assert(ready.recommendation.role === "executor", "ready loop should preserve executor relay");
@@ -170,6 +198,11 @@ function main() {
     assert(repeated.recommendation.action === "coordinate", "repeated loop should coordinate instead of replaying blindly");
     assert(repeated.loop.history.repeated_dispatch_count === 3, "repeated loop should count repeated relays");
     assert(repeated.loop.escalation.level === "none", "three repeated relays should not yet force human arbitration");
+    assert(dbOnlyFileless.loop.status === "history_empty", "db-only fileless loop should still report empty history");
+    assert(dbOnlyFileless.recommendation.role === "executor", "db-only fileless loop should preserve executor relay");
+    assert(dbOnlyFileless.recommendation.action === "implement", "db-only fileless loop should preserve implement relay");
+    assert(dbOnlyFileless.context.current_state_source === "sqlite", "db-only fileless loop should load current state from SQLite");
+    assert(dbOnlyFileless.context.packet_source === "sqlite", "db-only fileless loop should load packet from SQLite");
 
     const output = {
       ts: new Date().toISOString(),
@@ -177,6 +210,7 @@ function main() {
       blocked,
       failed,
       repeated,
+      db_only_fileless: dbOnlyFileless,
       pass: true,
     };
 

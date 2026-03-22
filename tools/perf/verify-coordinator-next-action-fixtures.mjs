@@ -42,10 +42,10 @@ function assert(condition, message) {
   }
 }
 
-function runJson(script, args, repoRoot, expectStatus = 0) {
+function runJson(script, args, repoRoot, expectStatus = 0, env = {}) {
   const result = spawnSync(process.execPath, [script, ...args], {
     cwd: repoRoot,
-    env: { ...process.env },
+    env: { ...process.env, ...env },
     encoding: "utf8",
     timeout: 180000,
     maxBuffer: 10 * 1024 * 1024,
@@ -108,6 +108,7 @@ function main() {
     const tamperedTarget = path.join(tempRoot, "tampered");
     const transitionRejectedTarget = path.join(tempRoot, "transition-rejected");
     const fallbackTarget = path.join(tempRoot, "fallback");
+    const dbOnlyFilelessTarget = path.join(tempRoot, "db-only-fileless");
 
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), readyTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "warn"), warnTarget, { recursive: true });
@@ -115,13 +116,38 @@ function main() {
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), tamperedTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), transitionRejectedTarget, { recursive: true });
     fs.cpSync(path.join(currentStateFixturesRoot, "active"), fallbackTarget, { recursive: true });
+    fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlyFilelessTarget, { recursive: true });
     installSharedPlanningFixture(readyTarget);
+    installSharedPlanningFixture(dbOnlyFilelessTarget);
 
     runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", warnTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", tamperedTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", transitionRejectedTarget, "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", dbOnlyFilelessTarget, "--json"], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    runJson(path.resolve(repoRoot, "tools", "perf", "index-sync.mjs"), [
+      "--target", dbOnlyFilelessTarget,
+      "--store", "sqlite",
+      "--with-content",
+      "--json",
+    ], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    for (const rel of [
+      "docs/audit/CURRENT-STATE.md",
+      "docs/audit/RUNTIME-STATE.md",
+      "docs/audit/HANDOFF-PACKET.md",
+      "docs/audit/sessions/S101-alpha.md",
+      "docs/audit/cycles/C101-feature-alpha/status.md",
+      "docs/audit/backlog/BL-S101-session-planning.md",
+    ]) {
+      fs.rmSync(path.join(dbOnlyFilelessTarget, rel), { force: true });
+    }
 
     const tamperedPacketPath = path.join(tamperedTarget, "docs", "audit", "HANDOFF-PACKET.md");
     const tamperedText = fs.readFileSync(tamperedPacketPath, "utf8").replace("active_cycle: C101", "active_cycle: C999");
@@ -170,6 +196,10 @@ function main() {
     const tampered = runJson(coordinatorScript, ["--target", tamperedTarget, "--json"], repoRoot, 0);
     const transitionRejected = runJson(coordinatorScript, ["--target", transitionRejectedTarget, "--json"], repoRoot, 0);
     const fallback = runJson(coordinatorScript, ["--target", fallbackTarget, "--json"], repoRoot, 0);
+    const dbOnlyFileless = runJson(coordinatorScript, ["--target", dbOnlyFilelessTarget, "--json"], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
 
     assert(ready.recommendation.role === "executor", "ready should route to executor");
     assert(ready.recommendation.action === "implement", "ready should route to implement");
@@ -201,6 +231,13 @@ function main() {
     assert(fallback.recommendation.action === "implement", "fallback should route to implement");
     assert(fallback.recommendation.source === "current-state", "fallback should come from current-state");
     assert(fallback.scope.scope_type === "cycle", "fallback should derive cycle scope from current state");
+    assert(dbOnlyFileless.recommendation.role === "executor", "db-only fileless should still route to executor");
+    assert(dbOnlyFileless.recommendation.action === "implement", "db-only fileless should still route to implement");
+    assert(dbOnlyFileless.recommendation.source === "handoff-shared-planning", "db-only fileless should keep shared-planning relay");
+    assert(dbOnlyFileless.scope.scope_type === "cycle", "db-only fileless should preserve cycle scope");
+    assert(dbOnlyFileless.context.current_state_source === "sqlite", "db-only fileless should load current state from SQLite");
+    assert(dbOnlyFileless.context.runtime_state_source === "sqlite", "db-only fileless should load runtime state from SQLite");
+    assert(dbOnlyFileless.context.packet_source === "sqlite", "db-only fileless should load packet from SQLite");
 
     const output = {
       ts: new Date().toISOString(),
@@ -210,6 +247,7 @@ function main() {
       tampered,
       transition_rejected: transitionRejected,
       fallback,
+      db_only_fileless: dbOnlyFileless,
       pass: true,
     };
 

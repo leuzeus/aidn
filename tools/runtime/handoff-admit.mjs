@@ -5,6 +5,18 @@ import { pathToFileURL } from "node:url";
 import { canAgentRolePerform, isKnownAgentRole, normalizeAgentAction, normalizeAgentRole } from "../../src/core/agents/agent-role-model.mjs";
 import { evaluateAgentTransition } from "../../src/core/agents/agent-transition-policy.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
+import {
+  buildVirtualCurrentStateConsistency,
+  canonicalNone,
+  canonicalUnknown,
+  loadSqliteIndexPayloadSafe,
+  normalizeScalar,
+  parseSimpleMap,
+  parseTimestamp,
+  resolveAuditArtifactText,
+  resolveCycleStatusArtifact,
+  resolveDbBackedMode,
+} from "./db-first-runtime-view-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -59,46 +71,6 @@ function resolveTargetPath(targetRoot, candidate) {
   return path.resolve(targetRoot, candidate);
 }
 
-function exists(filePath) {
-  return Boolean(filePath) && fs.existsSync(filePath);
-}
-
-function readRequired(filePath) {
-  if (!exists(filePath)) {
-    throw new Error(`Missing file: ${filePath}`);
-  }
-  return fs.readFileSync(filePath, "utf8");
-}
-
-function normalizeScalar(value) {
-  const normalized = String(value ?? "").trim();
-  if (normalized.startsWith("`") && normalized.endsWith("`") && normalized.length >= 2) {
-    return normalized.slice(1, -1).trim();
-  }
-  return normalized;
-}
-
-function canonicalNone(value) {
-  const normalized = normalizeScalar(value).toLowerCase();
-  return normalized === "none" || normalized === "(none)";
-}
-
-function canonicalUnknown(value) {
-  return normalizeScalar(value).toLowerCase() === "unknown";
-}
-
-function parseSimpleMap(text) {
-  const map = new Map();
-  for (const line of String(text).split(/\r?\n/)) {
-    const match = line.match(/^([a-zA-Z0-9_]+):\s*(.+)$/);
-    if (!match) {
-      continue;
-    }
-    map.set(match[1], normalizeScalar(match[2]));
-  }
-  return map;
-}
-
 function parseListSection(text, header) {
   const lines = String(text).split(/\r?\n/);
   const items = [];
@@ -122,19 +94,6 @@ function parseListSection(text, header) {
     }
   }
   return items;
-}
-
-function parseTimestamp(value) {
-  const normalized = normalizeScalar(value);
-  if (!normalized) {
-    return null;
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
-    const parsed = Date.parse(`${normalized}T00:00:00Z`);
-    return Number.isNaN(parsed) ? null : parsed;
-  }
-  const parsed = Date.parse(normalized);
-  return Number.isNaN(parsed) ? null : parsed;
 }
 
 function isPathLikeArtifact(item) {
@@ -167,18 +126,63 @@ export function admitHandoff({
   runtimeStateFile = "docs/audit/RUNTIME-STATE.md",
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
-  const packetPath = resolveTargetPath(absoluteTargetRoot, packetFile);
-  const currentStatePath = resolveTargetPath(absoluteTargetRoot, currentStateFile);
-  const runtimeStatePath = resolveTargetPath(absoluteTargetRoot, runtimeStateFile);
+  const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
+  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+    exists: false,
+    sqliteFile: "",
+    payload: null,
+    warning: "",
+  };
+  const packetResolution = resolveAuditArtifactText({
+    targetRoot: absoluteTargetRoot,
+    candidatePath: packetFile,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const currentStateResolution = resolveAuditArtifactText({
+    targetRoot: absoluteTargetRoot,
+    candidatePath: currentStateFile,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const runtimeStateResolution = resolveAuditArtifactText({
+    targetRoot: absoluteTargetRoot,
+    candidatePath: runtimeStateFile,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  if (!packetResolution.exists) {
+    throw new Error(`Missing file: ${resolveTargetPath(absoluteTargetRoot, packetFile)}`);
+  }
+  if (!currentStateResolution.exists) {
+    throw new Error(`Missing file: ${resolveTargetPath(absoluteTargetRoot, currentStateFile)}`);
+  }
+  if (!runtimeStateResolution.exists) {
+    throw new Error(`Missing file: ${resolveTargetPath(absoluteTargetRoot, runtimeStateFile)}`);
+  }
 
-  const packetText = readRequired(packetPath);
-  const currentStateText = readRequired(currentStatePath);
-  const runtimeStateText = readRequired(runtimeStatePath);
+  const packetText = packetResolution.text;
+  const currentStateText = currentStateResolution.text;
+  const runtimeStateText = runtimeStateResolution.text;
   const packet = parseSimpleMap(packetText);
   const current = parseSimpleMap(currentStateText);
   const runtime = parseSimpleMap(runtimeStateText);
   const prioritizedArtifacts = parseListSection(packetText, "prioritized_artifacts");
-  const consistency = evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot });
+  const cycleStatusResolution = resolveCycleStatusArtifact({
+    targetRoot: absoluteTargetRoot,
+    auditRoot: path.join(absoluteTargetRoot, "docs", "audit"),
+    cycleId: normalizeScalar(current.get("active_cycle") ?? "none") || "none",
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const consistency = currentStateResolution.source === "file"
+    ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })
+    : buildVirtualCurrentStateConsistency({
+      currentStateResolution,
+      activeCycle: normalizeScalar(current.get("active_cycle") ?? "none") || "none",
+      activeSession: normalizeScalar(current.get("active_session") ?? "none") || "none",
+      cycleStatusResolution,
+    });
   const issues = [];
   const warnings = [];
 
@@ -276,7 +280,9 @@ export function admitHandoff({
   ];
   for (const field of runtimeChecks) {
     const packetValue = normalizeScalar(packet.get(field) ?? "");
-    const liveValue = normalizeScalar(runtime.get(field) ?? "");
+    const liveValue = field === "runtime_state_mode" && dbBackedMode
+      ? normalizeScalar(effectiveStateMode)
+      : normalizeScalar(runtime.get(field) ?? "");
     if (!packetValue || !liveValue || canonicalUnknown(packetValue) || canonicalUnknown(liveValue)) {
       continue;
     }
@@ -309,7 +315,17 @@ export function admitHandoff({
 
   const missingArtifacts = prioritizedArtifacts
     .filter(isConcreteArtifactPath)
-    .filter((item) => !exists(resolveTargetPath(absoluteTargetRoot, item)));
+    .filter((item) => {
+      if (String(item).replace(/\\/g, "/").startsWith("docs/audit/")) {
+        return !resolveAuditArtifactText({
+          targetRoot: absoluteTargetRoot,
+          candidatePath: item,
+          dbBacked: dbBackedMode,
+          sqlitePayload: sqliteFallback.payload,
+        }).exists;
+      }
+      return !fs.existsSync(resolveTargetPath(absoluteTargetRoot, item));
+    });
   for (const item of missingArtifacts) {
     issues.push(`missing prioritized artifact: ${item}`);
   }
@@ -342,7 +358,7 @@ export function admitHandoff({
 
   return {
     target_root: absoluteTargetRoot,
-    packet_file: packetPath,
+    packet_file: packetResolution.logicalPath,
     admission_status: admissionStatus,
     admitted,
     recommended_action: recommendedAction,
@@ -365,6 +381,9 @@ export function admitHandoff({
     consistency,
     issues,
     warnings,
+    current_state_source: currentStateResolution.source,
+    runtime_state_source: runtimeStateResolution.source,
+    packet_source: packetResolution.source,
   };
 }
 

@@ -4,6 +4,15 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { canAgentRolePerform } from "../../src/core/agents/agent-role-model.mjs";
 import { admitHandoff } from "./handoff-admit.mjs";
+import {
+  canonicalNone,
+  canonicalUnknown,
+  loadSqliteIndexPayloadSafe,
+  normalizeScalar,
+  parseSimpleMap,
+  resolveAuditArtifactText,
+  resolveDbBackedMode,
+} from "./db-first-runtime-view-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -56,43 +65,6 @@ function resolveTargetPath(targetRoot, candidate) {
     return path.resolve(candidate);
   }
   return path.resolve(targetRoot, candidate);
-}
-
-function exists(filePath) {
-  return Boolean(filePath) && fs.existsSync(filePath);
-}
-
-function readTextIfExists(filePath) {
-  return exists(filePath) ? fs.readFileSync(filePath, "utf8") : "";
-}
-
-function normalizeScalar(value) {
-  const normalized = String(value ?? "").trim();
-  if (normalized.startsWith("`") && normalized.endsWith("`") && normalized.length >= 2) {
-    return normalized.slice(1, -1).trim();
-  }
-  return normalized;
-}
-
-function canonicalNone(value) {
-  const normalized = normalizeScalar(value).toLowerCase();
-  return normalized === "none" || normalized === "(none)";
-}
-
-function canonicalUnknown(value) {
-  return normalizeScalar(value).toLowerCase() === "unknown";
-}
-
-function parseSimpleMap(text) {
-  const map = new Map();
-  for (const line of String(text).split(/\r?\n/)) {
-    const match = line.match(/^([a-zA-Z0-9_]+):\s*(.+)$/);
-    if (!match) {
-      continue;
-    }
-    map.set(match[1], normalizeScalar(match[2]));
-  }
-  return map;
 }
 
 function parseNumberedSection(text, header) {
@@ -251,11 +223,33 @@ export function computeCoordinatorNextAction({
   packetFile = "docs/audit/HANDOFF-PACKET.md",
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
-  const currentStatePath = resolveTargetPath(absoluteTargetRoot, currentStateFile);
-  const runtimeStatePath = resolveTargetPath(absoluteTargetRoot, runtimeStateFile);
-  const packetPath = resolveTargetPath(absoluteTargetRoot, packetFile);
-  const currentStateText = readTextIfExists(currentStatePath);
-  const runtimeStateText = readTextIfExists(runtimeStatePath);
+  const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
+  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+    exists: false,
+    sqliteFile: "",
+    payload: null,
+    warning: "",
+  };
+  const currentStateResolution = resolveAuditArtifactText({
+    targetRoot: absoluteTargetRoot,
+    candidatePath: currentStateFile,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const runtimeStateResolution = resolveAuditArtifactText({
+    targetRoot: absoluteTargetRoot,
+    candidatePath: runtimeStateFile,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const packetResolution = resolveAuditArtifactText({
+    targetRoot: absoluteTargetRoot,
+    candidatePath: packetFile,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const currentStateText = currentStateResolution.text;
+  const runtimeStateText = runtimeStateResolution.text;
   const currentMap = parseSimpleMap(currentStateText);
   const runtimeMap = parseSimpleMap(runtimeStateText);
   const nextActions = parseNumberedSection(currentStateText, "## Next Actions");
@@ -263,7 +257,7 @@ export function computeCoordinatorNextAction({
   let handoff = null;
   let recommendation = null;
   let scope = null;
-  if (exists(packetPath) && exists(currentStatePath) && exists(runtimeStatePath)) {
+  if (packetResolution.exists && currentStateResolution.exists && runtimeStateResolution.exists) {
     handoff = admitHandoff({
       targetRoot: absoluteTargetRoot,
       packetFile,
@@ -307,9 +301,9 @@ export function computeCoordinatorNextAction({
 
   return {
     target_root: absoluteTargetRoot,
-    current_state_file: currentStatePath,
-    runtime_state_file: runtimeStatePath,
-    packet_file: exists(packetPath) ? packetPath : "none",
+    current_state_file: currentStateResolution.exists ? currentStateResolution.logicalPath : "none",
+    runtime_state_file: runtimeStateResolution.exists ? runtimeStateResolution.logicalPath : "none",
+    packet_file: packetResolution.exists ? packetResolution.logicalPath : "none",
     handoff,
     preferred_dispatch_source: handoff
       ? (normalizeScalar(handoff.preferred_dispatch_source ?? "workflow") || "workflow")
@@ -324,6 +318,9 @@ export function computeCoordinatorNextAction({
       dor_state: normalizeScalar(currentMap.get("dor_state") ?? "unknown") || "unknown",
       repair_routing_hint: normalizeScalar(runtimeMap.get("repair_routing_hint") ?? runtimeMap.get("repair_layer_status") ?? "unknown") || "unknown",
       next_actions: nextActions,
+      current_state_source: currentStateResolution.source,
+      runtime_state_source: runtimeStateResolution.source,
+      packet_source: packetResolution.source,
     },
   };
 }

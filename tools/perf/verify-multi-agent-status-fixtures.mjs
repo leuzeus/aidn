@@ -114,6 +114,7 @@ function main() {
       "",
     ].join("\n"), "utf8");
     fs.rmSync(path.join(target, "docs", "audit", "HANDOFF-PACKET.md"), { force: true });
+    fs.rmSync(path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite"), { force: true });
     fs.writeFileSync(path.join(target, "docs", "audit", "CURRENT-STATE.md"), [
       "# Current State",
       "",
