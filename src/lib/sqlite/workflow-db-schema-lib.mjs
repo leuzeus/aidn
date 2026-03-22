@@ -314,6 +314,165 @@ function ensureLatestColumns(db) {
   ensureColumn(db, "session_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
 }
 
+function normalizeArtifactPath(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/^\.?\//, "")
+    .replace(/^docs\/audit\//i, "");
+}
+
+const RUNTIME_HEAD_DEFINITIONS = [
+  {
+    headKey: "current_state",
+    subtypes: new Set(["current_state"]),
+    fileNames: new Set(["CURRENT-STATE.md"]),
+  },
+  {
+    headKey: "runtime_state",
+    subtypes: new Set(["runtime_state"]),
+    fileNames: new Set(["RUNTIME-STATE.md"]),
+  },
+  {
+    headKey: "handoff_packet",
+    subtypes: new Set(["handoff_packet"]),
+    fileNames: new Set(["HANDOFF-PACKET.md"]),
+  },
+  {
+    headKey: "agent_roster",
+    subtypes: new Set(["agent_roster"]),
+    fileNames: new Set(["AGENT-ROSTER.md"]),
+  },
+  {
+    headKey: "agent_health_summary",
+    subtypes: new Set(["agent_health_summary"]),
+    fileNames: new Set(["AGENT-HEALTH-SUMMARY.md"]),
+  },
+  {
+    headKey: "agent_selection_summary",
+    subtypes: new Set(["agent_selection_summary"]),
+    fileNames: new Set(["AGENT-SELECTION-SUMMARY.md"]),
+  },
+  {
+    headKey: "multi_agent_status",
+    subtypes: new Set(["multi_agent_status"]),
+    fileNames: new Set(["MULTI-AGENT-STATUS.md"]),
+  },
+  {
+    headKey: "coordination_summary",
+    subtypes: new Set(["coordination_summary"]),
+    fileNames: new Set(["COORDINATION-SUMMARY.md"]),
+  },
+];
+
+function resolveRuntimeHeadDefinition(artifact) {
+  const subtype = String(artifact?.subtype ?? "").trim().toLowerCase();
+  if (subtype) {
+    const bySubtype = RUNTIME_HEAD_DEFINITIONS.find((item) => item.subtypes.has(subtype));
+    if (bySubtype) {
+      return bySubtype;
+    }
+  }
+  const normalizedPath = normalizeArtifactPath(artifact?.path);
+  const fileName = normalizedPath.split("/").pop() ?? "";
+  if (!fileName) {
+    return null;
+  }
+  return RUNTIME_HEAD_DEFINITIONS.find((item) => item.fileNames.has(fileName)) ?? null;
+}
+
+function buildRuntimeHeadPayload(artifact, definition) {
+  return JSON.stringify({
+    head_key: definition.headKey,
+    artifact_id: Number(artifact?.artifact_id ?? 0) || null,
+    artifact_path: artifact?.path ?? null,
+    sha256: artifact?.sha256 ?? null,
+    session_id: artifact?.session_id ?? null,
+    cycle_id: artifact?.cycle_id ?? null,
+    kind: artifact?.kind ?? null,
+    subtype: artifact?.subtype ?? null,
+    updated_at: artifact?.updated_at ?? null,
+  });
+}
+
+function ensureRuntimeHeadsTable(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS runtime_heads (
+      head_key TEXT PRIMARY KEY,
+      artifact_id INTEGER,
+      artifact_path TEXT NOT NULL,
+      artifact_sha256 TEXT,
+      session_id TEXT,
+      cycle_id TEXT,
+      kind TEXT,
+      subtype TEXT,
+      updated_at TEXT NOT NULL,
+      payload_json TEXT,
+      FOREIGN KEY (artifact_id) REFERENCES artifacts(artifact_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_runtime_heads_artifact_path ON runtime_heads(artifact_path);
+    CREATE INDEX IF NOT EXISTS idx_runtime_heads_session_cycle_updated ON runtime_heads(session_id, cycle_id, updated_at);
+  `);
+}
+
+function backfillRuntimeHeads(db) {
+  if (!hasTable(db, "artifacts")) {
+    return { inserted: 0, updated: 0, matched: 0 };
+  }
+  ensureRuntimeHeadsTable(db);
+  const rows = db.prepare(`
+    SELECT artifact_id, path, kind, subtype, sha256, session_id, cycle_id, updated_at
+    FROM artifacts
+    ORDER BY updated_at DESC, artifact_id DESC
+  `).all();
+
+  const seen = new Set();
+  const upsert = db.prepare(`
+    INSERT INTO runtime_heads (
+      head_key, artifact_id, artifact_path, artifact_sha256, session_id, cycle_id, kind, subtype, updated_at, payload_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(head_key) DO UPDATE SET
+      artifact_id = excluded.artifact_id,
+      artifact_path = excluded.artifact_path,
+      artifact_sha256 = excluded.artifact_sha256,
+      session_id = excluded.session_id,
+      cycle_id = excluded.cycle_id,
+      kind = excluded.kind,
+      subtype = excluded.subtype,
+      updated_at = excluded.updated_at,
+      payload_json = excluded.payload_json;
+  `);
+
+  let matched = 0;
+  for (const row of rows) {
+    const definition = resolveRuntimeHeadDefinition(row);
+    if (!definition || seen.has(definition.headKey)) {
+      continue;
+    }
+    seen.add(definition.headKey);
+    matched += 1;
+    upsert.run(
+      definition.headKey,
+      Number(row.artifact_id ?? 0) || null,
+      String(row.path ?? ""),
+      row.sha256 ?? null,
+      row.session_id ?? null,
+      row.cycle_id ?? null,
+      row.kind ?? null,
+      row.subtype ?? null,
+      row.updated_at ?? new Date().toISOString(),
+      buildRuntimeHeadPayload(row, definition),
+    );
+  }
+
+  return {
+    inserted: matched,
+    updated: 0,
+    matched,
+  };
+}
+
 function applyBaselineWorkflowSchema(db, schemaFile) {
   const schemaText = toIdempotentSchema(readSchemaFile(schemaFile));
   db.exec(schemaText);
@@ -433,6 +592,16 @@ function getWorkflowDbMigrations(schemaFile) {
       checksum: buildMigrationChecksum(`0001|${schemaFile}|workflow-index-baseline-v2`),
       up(db) {
         applyBaselineWorkflowSchema(db, schemaFile);
+      },
+    },
+    {
+      id: "0002_runtime_heads",
+      description: "Add hot runtime artifact heads for fast DB-first consultation and backfill them from artifacts",
+      checksum: buildMigrationChecksum("0002|runtime-heads-v1"),
+      up(db) {
+        ensureRuntimeHeadsTable(db);
+        backfillRuntimeHeads(db);
+        setMeta(db, "schema_version", "3");
       },
     },
   ];
