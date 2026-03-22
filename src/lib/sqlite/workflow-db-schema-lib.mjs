@@ -8,6 +8,7 @@ const require = createRequire(import.meta.url);
 const SQLITE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const BASELINE_WORKFLOW_SCHEMA_VERSION = 2;
 const LATEST_WORKFLOW_SCHEMA_VERSION = 6;
+const LATEST_WORKFLOW_PAYLOAD_SCHEMA_VERSION = 2;
 
 export function getDatabaseSync() {
   try {
@@ -37,6 +38,10 @@ export function getDefaultWorkflowSchemaFile() {
 
 export function getLatestWorkflowSchemaVersion() {
   return LATEST_WORKFLOW_SCHEMA_VERSION;
+}
+
+export function getLatestWorkflowPayloadSchemaVersion() {
+  return LATEST_WORKFLOW_PAYLOAD_SCHEMA_VERSION;
 }
 
 export function getTableColumns(db, tableName) {
@@ -76,6 +81,15 @@ function setMeta(db, key, value) {
       value = excluded.value,
       updated_at = excluded.updated_at;
   `).run(key, value, new Date().toISOString());
+}
+
+function ensurePayloadSchemaVersionMeta(db) {
+  const rawValue = readIndexMetaValue(db, "payload_schema_version");
+  const numeric = Number(rawValue);
+  if (Number.isFinite(numeric) && numeric > 0) {
+    return;
+  }
+  setMeta(db, "payload_schema_version", String(LATEST_WORKFLOW_PAYLOAD_SCHEMA_VERSION));
 }
 
 export function ensureRepairLayerTables(db) {
@@ -664,6 +678,7 @@ function applyBaselineWorkflowSchema(db, schemaFile) {
   ensureLatestColumns(db);
   ensureRepairLayerTables(db);
   setMeta(db, "schema_version", String(BASELINE_WORKFLOW_SCHEMA_VERSION));
+  ensurePayloadSchemaVersionMeta(db);
 }
 
 function ensureSchemaMigrationsTable(db) {
@@ -786,6 +801,7 @@ function getWorkflowDbMigrations(schemaFile) {
         ensureRuntimeHeadsTable(db);
         rebuildRuntimeHeads(db);
         setMeta(db, "schema_version", "3");
+        ensurePayloadSchemaVersionMeta(db);
       },
     },
     {
@@ -796,6 +812,7 @@ function getWorkflowDbMigrations(schemaFile) {
         ensureArtifactBlobsTable(db);
         rebuildArtifactBlobs(db);
         setMeta(db, "schema_version", "4");
+        ensurePayloadSchemaVersionMeta(db);
       },
     },
     {
@@ -806,6 +823,7 @@ function getWorkflowDbMigrations(schemaFile) {
         ensureArtifactBlobsTable(db);
         ensureMaterializableArtifactsView(db);
         setMeta(db, "schema_version", String(LATEST_WORKFLOW_SCHEMA_VERSION));
+        ensurePayloadSchemaVersionMeta(db);
       },
     },
     {
@@ -817,6 +835,7 @@ function getWorkflowDbMigrations(schemaFile) {
         ensureHotArtifactIndexes(db);
         rebuildRuntimeHeads(db);
         setMeta(db, "schema_version", String(LATEST_WORKFLOW_SCHEMA_VERSION));
+        ensurePayloadSchemaVersionMeta(db);
       },
     },
   ];
@@ -945,6 +964,11 @@ export function ensureWorkflowDbSchema(options = {}) {
       db.exec("ROLLBACK;");
       throw error;
     }
+  }
+
+  if (readIndexMetaValue(db, "payload_schema_version") == null) {
+    ensureMetaTable(db);
+    ensurePayloadSchemaVersionMeta(db);
   }
 
   return {

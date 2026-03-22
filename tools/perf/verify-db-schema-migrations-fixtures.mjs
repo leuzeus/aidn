@@ -148,6 +148,23 @@ function readArtifactBlobs(sqliteFile) {
   }
 }
 
+function readMetaValues(sqliteFile, keys) {
+  const DatabaseSync = getDatabaseSync();
+  const db = new DatabaseSync(sqliteFile);
+  try {
+    const placeholders = keys.map(() => "?").join(", ");
+    const rows = db.prepare(`
+      SELECT key, value
+      FROM index_meta
+      WHERE key IN (${placeholders})
+      ORDER BY key ASC
+    `).all(...keys);
+    return Object.fromEntries(rows.map((row) => [String(row?.key ?? ""), row?.value ?? null]));
+  } finally {
+    db.close();
+  }
+}
+
 function readMaterializableArtifacts(sqliteFile) {
   const DatabaseSync = getDatabaseSync();
   const db = new DatabaseSync(sqliteFile);
@@ -251,7 +268,10 @@ function main() {
     assert.equal(countArtifactBlobs(legacySqlite), 2, "artifact-blob migration should backfill reconstructible payloads from legacy artifacts");
 
     const legacyPayload = readIndexFromSqlite(legacySqlite);
-    assert.equal(Number(legacyPayload?.payload?.schema_version ?? 0), 6, "migrated DB should expose schema version 6");
+    const legacyMeta = readMetaValues(legacySqlite, ["schema_version", "payload_schema_version"]);
+    assert.equal(Number(legacyPayload?.payload?.schema_version ?? 0), 2, "migrated DB reader should preserve logical payload schema version 2");
+    assert.equal(Number(legacyMeta?.schema_version ?? 0), 6, "migrated DB should expose physical schema version 6");
+    assert.equal(Number(legacyMeta?.payload_schema_version ?? 0), 2, "migrated DB should record logical payload schema version 2");
     const runtimeHeadsPayload = readRuntimeHeadArtifactsFromSqlite(legacySqlite);
     const artifactBlobs = readArtifactBlobs(legacySqlite);
     const materializableArtifacts = readMaterializableArtifacts(legacySqlite);
@@ -323,7 +343,9 @@ function main() {
         runtime_head_only_resolution_works: runtimeHeadOnlyResolution.exists === true,
         materializable_view_exposes_reconstructible_content: /Current State/i.test(String(materializedCurrentState?.content ?? "")),
         dual_materialization_roundtrip_works: materializeResult.exported === 2 && fs.existsSync(materializedCurrentStateFile) && fs.existsSync(materializedAgentHealthFile),
-        sqlite_reader_sees_schema_v6: Number(legacyPayload?.payload?.schema_version ?? 0) === 6,
+        sqlite_reader_preserves_payload_schema_v2: Number(legacyPayload?.payload?.schema_version ?? 0) === 2,
+        sqlite_meta_exposes_schema_v6: Number(legacyMeta?.schema_version ?? 0) === 6,
+        sqlite_meta_exposes_payload_schema_v2: Number(legacyMeta?.payload_schema_version ?? 0) === 2,
       },
       samples: {
         fresh_migration_ids: freshMigrations.map((row) => row.migration_id),
@@ -333,6 +355,7 @@ function main() {
         legacy_runtime_heads: runtimeHeads,
         legacy_artifact_subtypes: artifactSubtypes,
         legacy_artifact_indexes: artifactIndexNames,
+        legacy_meta: legacyMeta,
         legacy_artifact_blobs: artifactBlobs,
         legacy_materializable_artifacts: materializableArtifacts,
         materialize_result: materializeResult,

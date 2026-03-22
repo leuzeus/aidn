@@ -1,6 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { ensureWorkflowDbSchema, getDatabaseSync } from "./workflow-db-schema-lib.mjs";
+import {
+  ensureWorkflowDbSchema,
+  getDatabaseSync,
+  getLatestWorkflowPayloadSchemaVersion,
+} from "./workflow-db-schema-lib.mjs";
 
 function parseJsonOrNull(text) {
   if (typeof text !== "string" || text.trim().length === 0) {
@@ -59,6 +63,18 @@ function getTableColumns(db, tableName) {
 function toSchemaVersion(value, fallback = 1) {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function resolvePayloadSchemaVersion(meta) {
+  const explicit = Number(meta?.payload_schema_version ?? "");
+  if (Number.isFinite(explicit) && explicit > 0) {
+    return explicit;
+  }
+  const dbSchemaVersion = Number(meta?.schema_version ?? "");
+  if (Number.isFinite(dbSchemaVersion) && dbSchemaVersion > 0) {
+    return Math.min(dbSchemaVersion, getLatestWorkflowPayloadSchemaVersion());
+  }
+  return getLatestWorkflowPayloadSchemaVersion();
 }
 
 function buildSummary(payload, structureKindHint = null) {
@@ -255,7 +271,7 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
       ?? "unknown";
 
     const payload = {
-      schema_version: toSchemaVersion(meta.schema_version, 1),
+      schema_version: resolvePayloadSchemaVersion(meta),
       generated_at: options.generatedAt ?? new Date().toISOString(),
       target_root: meta.target_root ?? null,
       audit_root: meta.audit_root ?? null,

@@ -7,6 +7,7 @@ import { buildSqlFromIndex } from "./index-sql-lib.mjs";
 import { writeUtf8IfChanged } from "./io-lib.mjs";
 import {
   ensureWorkflowDbSchema,
+  getLatestWorkflowPayloadSchemaVersion,
   getLatestWorkflowSchemaVersion,
   normalizeHotArtifactSubtype,
   rebuildArtifactBlobs,
@@ -742,6 +743,11 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       ]));
 
       setMeta(db, "payload_digest", nextDigest);
+      setMeta(
+        db,
+        "payload_schema_version",
+        String(Number(payload?.schema_version ?? getLatestWorkflowPayloadSchemaVersion()) || getLatestWorkflowPayloadSchemaVersion()),
+      );
       setMeta(
         db,
         "schema_version",
