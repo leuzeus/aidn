@@ -2,6 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
+import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
 
 function parseArgs(argv) {
@@ -206,18 +208,41 @@ export function projectCoordinationSummary({
   out = "docs/audit/COORDINATION-SUMMARY.md",
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
   const historyPath = resolveTargetPath(absoluteTargetRoot, historyFile);
   const outPath = resolveTargetPath(absoluteTargetRoot, out);
   const entries = readNdjson(historyPath);
   const summary = summarize(entries);
   const historyRelativePath = path.relative(absoluteTargetRoot, historyPath).replace(/\\/g, "/") || historyFile;
   const markdown = buildMarkdown(summary, historyRelativePath);
-  const write = writeUtf8IfChanged(outPath, markdown);
+  const relativeOut = String(out).replace(/\\/g, "/").replace(/^docs\/audit\//i, "");
+  const dbFirstWrite = effectiveStateMode === "dual" || effectiveStateMode === "db-only"
+    ? runDbFirstArtifactUseCase({
+      target: absoluteTargetRoot,
+      auditRoot: "docs/audit",
+      path: relativeOut,
+      content: markdown,
+      kind: "other",
+      family: "normative",
+      subtype: "coordination_summary",
+      stateMode: effectiveStateMode,
+    })
+    : null;
+  const write = effectiveStateMode === "files"
+    ? writeUtf8IfChanged(outPath, markdown)
+    : {
+      path: outPath,
+      written: Boolean(dbFirstWrite?.ok),
+    };
   return {
     target_root: absoluteTargetRoot,
     history_file: historyPath,
     output_file: write.path,
     written: write.written,
+    state_mode: effectiveStateMode,
+    db_first_applied: Boolean(dbFirstWrite),
+    db_first_materialized: Boolean(dbFirstWrite?.materialized),
+    db_first_artifact_path: dbFirstWrite?.artifact?.path ?? relativeOut,
     summary,
   };
 }

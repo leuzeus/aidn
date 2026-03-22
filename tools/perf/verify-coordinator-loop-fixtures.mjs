@@ -92,18 +92,24 @@ function main() {
     const failedTarget = path.join(tempRoot, "failed");
     const repeatedTarget = path.join(tempRoot, "repeated");
     const dbOnlyFilelessTarget = path.join(tempRoot, "db-only-fileless");
+    const dbOnlySummaryFilelessTarget = path.join(tempRoot, "db-only-summary-fileless");
 
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), readyTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "blocked"), blockedTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), failedTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), repeatedTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlyFilelessTarget, { recursive: true });
+    fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlySummaryFilelessTarget, { recursive: true });
 
     runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", failedTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", repeatedTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", dbOnlyFilelessTarget, "--json"], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    runJson(handoffProjectScript, ["--target", dbOnlySummaryFilelessTarget, "--json"], repoRoot, 0, {
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",
     });
@@ -166,12 +172,33 @@ function main() {
       goal: "implement alpha feature validation",
     }));
     runJson(summaryScript, ["--target", repeatedTarget, "--json"], repoRoot, 0);
+    appendHistoryEvent(dbOnlySummaryFilelessTarget, buildEvent({
+      ts: "2026-03-09T02:00:00Z",
+      role: "executor",
+      action: "implement",
+      goal: "implement alpha feature validation",
+    }));
+    runJson(summaryScript, ["--target", dbOnlySummaryFilelessTarget, "--json"], repoRoot, 0);
+    runJson(path.resolve(repoRoot, "tools", "perf", "index-sync.mjs"), [
+      "--target", dbOnlySummaryFilelessTarget,
+      "--store", "sqlite",
+      "--with-content",
+      "--json",
+    ], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    fs.rmSync(path.join(dbOnlySummaryFilelessTarget, "docs", "audit", "COORDINATION-SUMMARY.md"), { force: true });
 
     const ready = runJson(loopScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     const blocked = runJson(loopScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
     const failed = runJson(loopScript, ["--target", failedTarget, "--json"], repoRoot, 0);
     const repeated = runJson(loopScript, ["--target", repeatedTarget, "--json"], repoRoot, 0);
     const dbOnlyFileless = runJson(loopScript, ["--target", dbOnlyFilelessTarget, "--json"], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    const dbOnlySummaryFileless = runJson(loopScript, ["--target", dbOnlySummaryFilelessTarget, "--json"], repoRoot, 0, {
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",
     });
@@ -203,6 +230,9 @@ function main() {
     assert(dbOnlyFileless.recommendation.action === "implement", "db-only fileless loop should preserve implement relay");
     assert(dbOnlyFileless.context.current_state_source === "sqlite", "db-only fileless loop should load current state from SQLite");
     assert(dbOnlyFileless.context.packet_source === "sqlite", "db-only fileless loop should load packet from SQLite");
+    assert(dbOnlySummaryFileless.loop.history.total_dispatches === 1, "db-only summary fileless loop should preserve history");
+    assert(dbOnlySummaryFileless.loop.summary_source === "sqlite", "db-only summary fileless loop should load coordination summary from SQLite");
+    assert(dbOnlySummaryFileless.loop.summary_alignment.status === "aligned", "db-only summary fileless loop should keep summary alignment");
 
     const output = {
       ts: new Date().toISOString(),
@@ -211,6 +241,7 @@ function main() {
       failed,
       repeated,
       db_only_fileless: dbOnlyFileless,
+      db_only_summary_fileless: dbOnlySummaryFileless,
       pass: true,
     };
 

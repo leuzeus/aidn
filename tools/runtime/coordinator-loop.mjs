@@ -5,6 +5,11 @@ import { pathToFileURL } from "node:url";
 import { canAgentRolePerform } from "../../src/core/agents/agent-role-model.mjs";
 import { evaluateCoordinatorEscalation } from "../../src/core/agents/coordinator-escalation-policy.mjs";
 import { computeCoordinatorNextAction } from "./coordinator-next-action.mjs";
+import {
+  loadSqliteIndexPayloadSafe,
+  resolveAuditArtifactText,
+  resolveDbBackedMode,
+} from "./db-first-runtime-view-lib.mjs";
 
 const FAILURE_STATUSES = new Set(["failed", "unsupported", "no_steps"]);
 
@@ -342,10 +347,23 @@ export function computeCoordinatorLoopState({
     runtimeStateFile,
     packetFile,
   });
+  const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
+  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+    exists: false,
+    sqliteFile: "",
+    payload: null,
+    warning: "",
+  };
   const historyPath = resolveTargetPath(absoluteTargetRoot, historyFile);
   const summaryPath = resolveTargetPath(absoluteTargetRoot, summaryFile);
+  const summaryResolution = resolveAuditArtifactText({
+    targetRoot: absoluteTargetRoot,
+    candidatePath: summaryFile,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
   const history = summarizeHistory(readNdjson(historyPath));
-  const summary = parseCoordinationSummary(readTextIfExists(summaryPath));
+  const summary = parseCoordinationSummary(summaryResolution.exists ? summaryResolution.text : readTextIfExists(summaryPath));
   const summaryAlignment = deriveSummaryAlignment(summary, history);
 
   let recommendation = { ...nextAction.recommendation };
@@ -396,7 +414,7 @@ export function computeCoordinatorLoopState({
     runtime_state_file: nextAction.runtime_state_file,
     packet_file: nextAction.packet_file,
     history_file: historyPath,
-    summary_file: summaryPath,
+    summary_file: summaryResolution.exists ? summaryResolution.logicalPath : summaryPath,
     handoff: nextAction.handoff,
     scope: nextAction.scope,
     context: nextAction.context,
@@ -407,6 +425,7 @@ export function computeCoordinatorLoopState({
       reasons: loopReasons,
       history,
       summary,
+      summary_source: summaryResolution.exists ? summaryResolution.source : "missing",
       summary_alignment: summaryAlignment,
       escalation,
     },

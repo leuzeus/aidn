@@ -19,6 +19,7 @@ const AUDIT_MARKERS = [
 const DB_FIRST_MARKERS = [
   "db-first-runtime-view-lib.mjs",
   "db-first-artifact-lib.mjs",
+  "runDbFirstArtifactUseCase",
   "resolveAuditArtifactText",
   "resolveSessionArtifact",
   "resolveCycleStatusArtifact",
