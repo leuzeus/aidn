@@ -4,12 +4,23 @@ import { execFileSync } from "node:child_process";
 import { deriveRepairRelationStatus, normalizeRepairConfidence, repairSourceModeRank } from "../../core/workflow/repair-layer-policy.mjs";
 import { REPAIR_LAYER_ENGINE_VERSION } from "./repair-layer-payload-lib.mjs";
 
-function readTextArtifact(auditRoot, relativePath) {
+function decodeEmbeddedArtifactContent(artifact) {
+  if (typeof artifact?.content !== "string" || artifact.content.length === 0) {
+    return null;
+  }
+  const format = String(artifact?.content_format ?? "utf8").trim().toLowerCase();
+  if (format === "base64") {
+    return Buffer.from(artifact.content, "base64").toString("utf8");
+  }
+  return artifact.content;
+}
+
+function readTextArtifact(auditRoot, relativePath, artifact = null) {
   const absolute = path.resolve(auditRoot, relativePath);
   try {
     return fs.readFileSync(absolute, "utf8");
   } catch {
-    return null;
+    return decodeEmbeddedArtifactContent(artifact);
   }
 }
 
@@ -626,7 +637,7 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
   }
 
   for (const artifact of Array.isArray(artifacts) ? artifacts : []) {
-    const text = String(readTextArtifact(auditRoot, artifact.path) ?? "");
+    const text = String(readTextArtifact(auditRoot, artifact.path, artifact) ?? "");
     for (const rawLink of extractMarkdownLinks(text)) {
       const targetPath = resolveArtifactLinkTarget(artifact.path, rawLink);
       if (!targetPath || !knownArtifactPaths.has(targetPath) || targetPath === artifact.path) {
@@ -898,7 +909,7 @@ export function buildRepairLayerService({ auditRoot, targetRoot = null, artifact
     }
 
     if (artifact.kind === "snapshot" || artifact.kind === "baseline") {
-      const text = readTextArtifact(auditRoot, artifact.path);
+      const text = readTextArtifact(auditRoot, artifact.path, artifact);
       const referencedCycleIds = extractCycleIdsFromText(text);
       const referencedSessionIds = extractSessionIdsFromText(text);
       for (const cycleId of referencedCycleIds) {

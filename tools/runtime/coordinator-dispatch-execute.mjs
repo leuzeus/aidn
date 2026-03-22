@@ -3,8 +3,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadRegisteredAgentAdapters } from "../../src/application/runtime/agent-adapter-registry-service.mjs";
+import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
+import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
 import { loadAgentRoster } from "../../src/application/runtime/agent-roster-service.mjs";
 import { appendRuntimeNdjsonEvent } from "../../src/application/runtime/runtime-path-service.mjs";
+import {
+  loadSqliteIndexPayloadSafe,
+  resolveAuditArtifactText,
+  resolveDbBackedMode,
+} from "./db-first-runtime-view-lib.mjs";
 import { computeCoordinatorDispatchPlan } from "./coordinator-dispatch-plan.mjs";
 import { projectCoordinationSummary } from "./project-coordination-summary.mjs";
 import { projectMultiAgentStatus } from "./project-multi-agent-status.mjs";
@@ -190,6 +197,14 @@ function appendCoordinationLog(logPath, entry) {
   fs.writeFileSync(logPath, next, "utf8");
 }
 
+function buildAppendedMarkdown(current, entry, header) {
+  const normalizedCurrent = String(current ?? "");
+  const base = normalizedCurrent.length > 0 ? normalizedCurrent : header;
+  return base.endsWith("\n\n") || base.length === 0
+    ? `${base}${entry}`
+    : `${base}\n${entry}`;
+}
+
 function buildCoordinationHistoryEvent(result) {
   return {
     ts: new Date().toISOString(),
@@ -233,6 +248,7 @@ export async function executeCoordinatorDispatch({
   execute = false,
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
   const roster = loadAgentRoster({
     targetRoot: absoluteTargetRoot,
     rosterFile: agentRosterFile,
@@ -404,8 +420,36 @@ export async function executeCoordinatorDispatch({
   };
   finalResult.coordination_log_entry = buildCoordinationLogEntry(finalResult);
   finalResult.coordination_history_event = buildCoordinationHistoryEvent(finalResult);
-  appendCoordinationLog(coordinationLogPath, finalResult.coordination_log_entry);
-  finalResult.coordination_log_appended = true;
+  if (effectiveStateMode === "files") {
+    appendCoordinationLog(coordinationLogPath, finalResult.coordination_log_entry);
+    finalResult.coordination_log_appended = true;
+  } else {
+    const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot, effectiveStateMode);
+    const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+      exists: false,
+      sqliteFile: "",
+      payload: null,
+      warning: "",
+    };
+    const existingLog = resolveAuditArtifactText({
+      targetRoot: absoluteTargetRoot,
+      candidatePath: coordinationLogFile,
+      dbBacked: dbBackedMode,
+      sqlitePayload: sqliteFallback.payload,
+    });
+    const relativeLogPath = String(coordinationLogFile).replace(/\\/g, "/").replace(/^docs\/audit\//i, "");
+    const coordinationLogDbFirst = runDbFirstArtifactUseCase({
+      target: absoluteTargetRoot,
+      auditRoot: "docs/audit",
+      path: relativeLogPath,
+      content: buildAppendedMarkdown(existingLog.text, finalResult.coordination_log_entry, "# Coordination Log\n\n"),
+      kind: "other",
+      family: "normative",
+      subtype: "coordination_log",
+      stateMode: effectiveStateMode,
+    });
+    finalResult.coordination_log_appended = Boolean(coordinationLogDbFirst?.ok);
+  }
   appendRuntimeNdjsonEvent(coordinationHistoryPath, finalResult.coordination_history_event);
   finalResult.coordination_history_appended = true;
   finalResult.coordination_summary = projectCoordinationSummary({

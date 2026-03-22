@@ -58,7 +58,7 @@ function main() {
     }
 
     const report = runJson(script, ["--target", target, "--json"], repoRoot, env);
-    assert(report.summary.status === "warn", "db-only readiness should warn while package scan still finds file-bound entrypoints");
+    assert(report.summary.status === "pass", "db-only readiness should pass once operational checks and source scan are fully DB-first");
     assert(report.operational.status === "pass", "db-only readiness operational checks should pass in fileless SQLite mode");
     assert(report.operational.effective_state_mode === "db-only", "db-only readiness should resolve effective state mode from env");
     assert(report.operational.sqlite_index.exists === true, "db-only readiness should detect SQLite index");
@@ -68,7 +68,8 @@ function main() {
     assert(report.operational.resolutions.handoff_packet.source === "sqlite", "db-only readiness should resolve HANDOFF-PACKET from SQLite");
     assert(report.operational.resolutions.session_artifact.source === "sqlite", "db-only readiness should resolve active session from SQLite");
     assert(report.operational.resolutions.cycle_status.source === "sqlite", "db-only readiness should resolve active cycle status from SQLite");
-    assert(report.source_scan.likely_file_bound_count >= 1, "db-only readiness should surface remaining likely file-bound entrypoints");
+    assert(report.source_scan.likely_file_bound_count === 0, "db-only readiness should clear likely file-bound entrypoints once DB-first fallbacks are wired");
+    assert(report.source_scan.manual_review_count === 0, "db-only readiness should clear manual-review candidates once rollout is complete");
 
     console.log("PASS");
   } catch (error) {

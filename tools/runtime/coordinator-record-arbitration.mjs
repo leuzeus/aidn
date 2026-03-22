@@ -2,7 +2,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
+import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
 import { appendRuntimeNdjsonEvent } from "../../src/application/runtime/runtime-path-service.mjs";
+import {
+  loadSqliteIndexPayloadSafe,
+  resolveAuditArtifactText,
+  resolveDbBackedMode,
+} from "./db-first-runtime-view-lib.mjs";
 import { projectCoordinationSummary } from "./project-coordination-summary.mjs";
 
 const ALLOWED_DECISIONS = new Set(["continue", "reanchor", "repair", "audit", "integration_cycle", "report_forward", "rework_from_example"]);
@@ -91,6 +98,14 @@ function appendArbitrationLog(logPath, entry) {
   fs.writeFileSync(logPath, next, "utf8");
 }
 
+function buildAppendedMarkdown(current, entry, header) {
+  const normalizedCurrent = String(current ?? "");
+  const base = normalizedCurrent.length > 0 ? normalizedCurrent : header;
+  return base.endsWith("\n\n") || base.length === 0
+    ? `${base}${entry}`
+    : `${base}\n${entry}`;
+}
+
 function buildArbitrationEvent({ decision, note, goal }) {
   return {
     ts: new Date().toISOString(),
@@ -125,11 +140,44 @@ export function recordCoordinatorArbitration({
   coordinationSummaryFile = "docs/audit/COORDINATION-SUMMARY.md",
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
   const arbitrationPath = resolveTargetPath(absoluteTargetRoot, arbitrationFile);
   const historyPath = resolveTargetPath(absoluteTargetRoot, coordinationHistoryFile);
   const summaryPath = resolveTargetPath(absoluteTargetRoot, coordinationSummaryFile);
   const event = buildArbitrationEvent({ decision, note, goal });
-  appendArbitrationLog(arbitrationPath, buildArbitrationLogEntry(event));
+  const arbitrationMarkdown = buildArbitrationLogEntry(event);
+  let arbitrationLogAppended = false;
+  let arbitrationDbFirst = null;
+  if (effectiveStateMode === "files") {
+    appendArbitrationLog(arbitrationPath, arbitrationMarkdown);
+    arbitrationLogAppended = true;
+  } else {
+    const relativeArbitrationPath = String(arbitrationFile).replace(/\\/g, "/").replace(/^docs\/audit\//i, "");
+    const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot, effectiveStateMode);
+    const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+      exists: false,
+      sqliteFile: "",
+      payload: null,
+      warning: "",
+    };
+    const existingArbitration = resolveAuditArtifactText({
+      targetRoot: absoluteTargetRoot,
+      candidatePath: arbitrationFile,
+      dbBacked: dbBackedMode,
+      sqlitePayload: sqliteFallback.payload,
+    });
+    arbitrationDbFirst = runDbFirstArtifactUseCase({
+      target: absoluteTargetRoot,
+      auditRoot: "docs/audit",
+      path: relativeArbitrationPath,
+      content: buildAppendedMarkdown(existingArbitration.text, arbitrationMarkdown, "# User Arbitration Log\n\n"),
+      kind: "other",
+      family: "normative",
+      subtype: "user_arbitration",
+      stateMode: effectiveStateMode,
+    });
+    arbitrationLogAppended = Boolean(arbitrationDbFirst?.ok);
+  }
   appendRuntimeNdjsonEvent(historyPath, event);
   const summary = projectCoordinationSummary({
     targetRoot: absoluteTargetRoot,
@@ -138,10 +186,13 @@ export function recordCoordinatorArbitration({
   });
   return {
     target_root: absoluteTargetRoot,
+    state_mode: effectiveStateMode,
     arbitration_file: arbitrationPath,
     coordination_history_file: historyPath,
     coordination_summary_file: summaryPath,
-    arbitration_log_appended: true,
+    arbitration_log_appended: arbitrationLogAppended,
+    arbitration_db_first_applied: Boolean(arbitrationDbFirst),
+    arbitration_db_first_materialized: Boolean(arbitrationDbFirst?.materialized),
     coordination_history_appended: true,
     coordination_summary_written: Boolean(summary?.written),
     arbitration_event: event,

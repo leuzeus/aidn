@@ -42,10 +42,10 @@ function assert(condition, message) {
   }
 }
 
-function runJson(script, args, repoRoot, expectStatus = 0) {
+function runJson(script, args, repoRoot, expectStatus = 0, env = {}) {
   const result = spawnSync(process.execPath, [script, ...args], {
     cwd: repoRoot,
-    env: { ...process.env },
+    env: { ...process.env, ...env },
     encoding: "utf8",
     timeout: 180000,
     maxBuffer: 20 * 1024 * 1024,
@@ -96,9 +96,15 @@ function main() {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-coordinator-arbitration-"));
     const escalatedTarget = path.join(tempRoot, "escalated");
     const integrationTarget = path.join(tempRoot, "integration-cycle");
+    const dbOnlyTarget = path.join(tempRoot, "db-only-escalated");
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), escalatedTarget, { recursive: true });
     fs.cpSync(path.join(integrationFixturesRoot, "integration-cycle"), integrationTarget, { recursive: true });
+    fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlyTarget, { recursive: true });
     runJson(handoffProjectScript, ["--target", escalatedTarget, "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", dbOnlyTarget, "--json"], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
 
     appendHistoryEvent(escalatedTarget, buildDispatchEvent("2026-03-09T02:00:00Z"));
     appendHistoryEvent(escalatedTarget, buildDispatchEvent("2026-03-09T02:05:00Z"));
@@ -106,6 +112,15 @@ function main() {
     appendHistoryEvent(escalatedTarget, buildDispatchEvent("2026-03-09T02:15:00Z"));
     appendHistoryEvent(escalatedTarget, buildDispatchEvent("2026-03-09T02:20:00Z"));
     runJson(summaryScript, ["--target", escalatedTarget, "--json"], repoRoot, 0);
+    appendHistoryEvent(dbOnlyTarget, buildDispatchEvent("2026-03-09T02:00:00Z"));
+    appendHistoryEvent(dbOnlyTarget, buildDispatchEvent("2026-03-09T02:05:00Z"));
+    appendHistoryEvent(dbOnlyTarget, buildDispatchEvent("2026-03-09T02:10:00Z"));
+    appendHistoryEvent(dbOnlyTarget, buildDispatchEvent("2026-03-09T02:15:00Z"));
+    appendHistoryEvent(dbOnlyTarget, buildDispatchEvent("2026-03-09T02:20:00Z"));
+    runJson(summaryScript, ["--target", dbOnlyTarget, "--json"], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
 
     const beforeLoop = runJson(loopScript, ["--target", escalatedTarget, "--json"], repoRoot, 0);
     const beforeDispatch = runJson(dispatchPlanScript, ["--target", escalatedTarget, "--json"], repoRoot, 0);
@@ -115,10 +130,23 @@ function main() {
     const integrationArbitration = runJson(recordArbitrationScript, ["--target", integrationTarget, "--decision", "integration_cycle", "--note", "use a dedicated integration vehicle", "--json"], repoRoot, 0);
     const integrationLoop = runJson(loopScript, ["--target", integrationTarget, "--json"], repoRoot, 0);
     const integrationDispatch = runJson(dispatchPlanScript, ["--target", integrationTarget, "--json"], repoRoot, 0);
+    const dbOnlyArbitration = runJson(recordArbitrationScript, ["--target", dbOnlyTarget, "--decision", "continue", "--note", "validated by user", "--json"], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    const dbOnlyLoop = runJson(loopScript, ["--target", dbOnlyTarget, "--json"], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    const dbOnlyDispatch = runJson(dispatchPlanScript, ["--target", dbOnlyTarget, "--json"], repoRoot, 0, {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
 
     const arbitrationFile = path.join(escalatedTarget, "docs", "audit", "USER-ARBITRATION.md");
     const summaryFile = path.join(escalatedTarget, "docs", "audit", "COORDINATION-SUMMARY.md");
     const historyFile = path.join(escalatedTarget, ".aidn", "runtime", "context", "coordination-history.ndjson");
+    const dbOnlyArbitrationFile = path.join(dbOnlyTarget, "docs", "audit", "USER-ARBITRATION.md");
 
     assert(beforeLoop.loop.escalation.level === "user_arbitration_required", "loop should escalate before user arbitration");
     assert(beforeDispatch.dispatch_status === "escalated", "dispatch should be escalated before user arbitration");
@@ -142,6 +170,12 @@ function main() {
     assert(integrationDispatch.integration_risk_gate.active === false, "integration-cycle arbitration should deactivate the integration gate");
     assert(integrationDispatch.integration_risk_gate.applied_decision === "integration_cycle", "dispatch should record the applied integration decision");
     assert(integrationDispatch.entrypoint_name === "start-session", "integration-cycle arbitration should keep the coordination entrypoint");
+    assert(dbOnlyArbitration.state_mode === "db-only", "db-only arbitration should resolve state mode");
+    assert(dbOnlyArbitration.arbitration_db_first_applied === true, "db-only arbitration should upsert USER-ARBITRATION to SQLite");
+    assert(dbOnlyArbitration.arbitration_db_first_materialized === false, "db-only arbitration should not materialize USER-ARBITRATION on disk");
+    assert(fs.existsSync(dbOnlyArbitrationFile) === false, "db-only arbitration should stay fileless on disk");
+    assert(dbOnlyLoop.loop.status === "arbitrated", "db-only arbitration should still affect loop state");
+    assert(dbOnlyDispatch.dispatch_status === "ready", "db-only arbitration should still clear escalated dispatch state");
 
     const output = {
       ts: new Date().toISOString(),
@@ -153,6 +187,9 @@ function main() {
       integration_arbitration: integrationArbitration,
       integration_loop: integrationLoop,
       integration_dispatch: integrationDispatch,
+      db_only_arbitration: dbOnlyArbitration,
+      db_only_loop: dbOnlyLoop,
+      db_only_dispatch: dbOnlyDispatch,
       pass: true,
     };
 

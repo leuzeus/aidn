@@ -3,6 +3,8 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { AGENT_ROLES } from "../../src/core/agents/agent-role-model.mjs";
 import { assessIntegrationRisk } from "../../src/application/runtime/integration-risk-service.mjs";
+import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
+import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
 import { computeCoordinatorNextAction } from "./coordinator-next-action.mjs";
 import { projectAgentHealthSummary } from "./project-agent-health-summary.mjs";
@@ -325,6 +327,7 @@ export async function projectMultiAgentStatus({
   out = "docs/audit/MULTI-AGENT-STATUS.md",
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
   const coordinator = computeCoordinatorNextAction({
     targetRoot: absoluteTargetRoot,
   });
@@ -384,11 +387,33 @@ export async function projectMultiAgentStatus({
     effectiveRecommendedRoleCoverage,
     out,
   });
-  const write = writeUtf8IfChanged(outPath, markdown);
+  const relativeOut = String(out).replace(/\\/g, "/").replace(/^docs\/audit\//i, "");
+  const dbFirstWrite = effectiveStateMode === "dual" || effectiveStateMode === "db-only"
+    ? runDbFirstArtifactUseCase({
+      target: absoluteTargetRoot,
+      auditRoot: "docs/audit",
+      path: relativeOut,
+      content: markdown,
+      kind: "other",
+      family: "normative",
+      subtype: "multi_agent_status",
+      stateMode: effectiveStateMode,
+    })
+    : null;
+  const write = effectiveStateMode === "files"
+    ? writeUtf8IfChanged(outPath, markdown)
+    : {
+      path: outPath,
+      written: Boolean(dbFirstWrite?.ok),
+    };
   return {
     target_root: absoluteTargetRoot,
     output_file: write.path,
     written: write.written,
+    state_mode: effectiveStateMode,
+    db_first_applied: Boolean(dbFirstWrite),
+    db_first_materialized: Boolean(dbFirstWrite?.materialized),
+    db_first_artifact_path: dbFirstWrite?.artifact?.path ?? relativeOut,
     coordinator,
     integration_risk: integrationRisk,
     arbitration,

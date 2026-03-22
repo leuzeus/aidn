@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
+import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
 import { verifyAgentRoster } from "./verify-agent-roster.mjs";
 
@@ -101,17 +103,40 @@ export async function projectAgentHealthSummary({
   out = "docs/audit/AGENT-HEALTH-SUMMARY.md",
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
   const verification = await verifyAgentRoster({
     targetRoot: absoluteTargetRoot,
     rosterFile,
   });
   const outPath = path.resolve(absoluteTargetRoot, out);
   const markdown = buildMarkdown(verification);
-  const write = writeUtf8IfChanged(outPath, markdown);
+  const relativeOut = String(out).replace(/\\/g, "/").replace(/^docs\/audit\//i, "");
+  const dbFirstWrite = effectiveStateMode === "dual" || effectiveStateMode === "db-only"
+    ? runDbFirstArtifactUseCase({
+      target: absoluteTargetRoot,
+      auditRoot: "docs/audit",
+      path: relativeOut,
+      content: markdown,
+      kind: "other",
+      family: "normative",
+      subtype: "agent_health_summary",
+      stateMode: effectiveStateMode,
+    })
+    : null;
+  const write = effectiveStateMode === "files"
+    ? writeUtf8IfChanged(outPath, markdown)
+    : {
+      path: outPath,
+      written: Boolean(dbFirstWrite?.ok),
+    };
   return {
     target_root: absoluteTargetRoot,
     output_file: write.path,
     written: write.written,
+    state_mode: effectiveStateMode,
+    db_first_applied: Boolean(dbFirstWrite),
+    db_first_materialized: Boolean(dbFirstWrite?.materialized),
+    db_first_artifact_path: dbFirstWrite?.artifact?.path ?? relativeOut,
     verification,
   };
 }

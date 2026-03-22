@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHookContextStoreAdapter } from "../../src/adapters/codex/hook-context-store-adapter.mjs";
 import { runHydrateContextUseCase } from "../../src/application/codex/hydrate-context-use-case.mjs";
+import { resolveDbBackedMode } from "../runtime/db-first-runtime-view-lib.mjs";
 import { projectAgentHealthSummary } from "../runtime/project-agent-health-summary.mjs";
 import { projectAgentSelectionSummary } from "../runtime/project-agent-selection-summary.mjs";
 import { projectHandoffPacket } from "../runtime/project-handoff-packet.mjs";
@@ -152,6 +153,10 @@ function parseArgs(argv) {
   return args;
 }
 
+function resolveEffectiveStateMode(targetRoot, hydrated) {
+  return resolveDbBackedMode(targetRoot, hydrated?.state_mode).effectiveStateMode;
+}
+
 function shouldProjectRuntimeState(args, hydrated, targetRoot) {
   if (args.projectRuntimeState === true) {
     return true;
@@ -159,7 +164,7 @@ function shouldProjectRuntimeState(args, hydrated, targetRoot) {
   if (args.projectRuntimeState === false) {
     return false;
   }
-  const stateMode = String(hydrated?.state_mode ?? "").trim().toLowerCase();
+  const stateMode = resolveEffectiveStateMode(targetRoot, hydrated);
   if (!["dual", "db-only"].includes(stateMode)) {
     return false;
   }
@@ -173,7 +178,7 @@ function shouldProjectHandoffPacket(args, hydrated, targetRoot) {
   if (args.projectHandoffPacket === false) {
     return false;
   }
-  const stateMode = String(hydrated?.state_mode ?? "").trim().toLowerCase();
+  const stateMode = resolveEffectiveStateMode(targetRoot, hydrated);
   if (!["dual", "db-only"].includes(stateMode)) {
     return false;
   }
@@ -187,7 +192,7 @@ function shouldProjectAgentSelectionSummary(args, hydrated, targetRoot) {
   if (args.projectAgentSelectionSummary === false) {
     return false;
   }
-  const stateMode = String(hydrated?.state_mode ?? "").trim().toLowerCase();
+  const stateMode = resolveEffectiveStateMode(targetRoot, hydrated);
   if (["dual", "db-only"].includes(stateMode)) {
     return true;
   }
@@ -202,7 +207,7 @@ function shouldProjectAgentHealthSummary(args, hydrated, targetRoot) {
   if (args.projectAgentHealthSummary === false) {
     return false;
   }
-  const stateMode = String(hydrated?.state_mode ?? "").trim().toLowerCase();
+  const stateMode = resolveEffectiveStateMode(targetRoot, hydrated);
   if (["dual", "db-only"].includes(stateMode)) {
     return true;
   }
@@ -217,7 +222,7 @@ function shouldProjectMultiAgentStatus(args, hydrated, targetRoot) {
   if (args.projectMultiAgentStatus === false) {
     return false;
   }
-  const stateMode = String(hydrated?.state_mode ?? "").trim().toLowerCase();
+  const stateMode = resolveEffectiveStateMode(targetRoot, hydrated);
   if (["dual", "db-only"].includes(stateMode)) {
     return true;
   }

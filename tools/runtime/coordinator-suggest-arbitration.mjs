@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { resolveDbBackedMode } from "./db-first-runtime-view-lib.mjs";
 import { computeCoordinatorDispatchPlan } from "./coordinator-dispatch-plan.mjs";
 
 function parseArgs(argv) {
@@ -298,6 +299,7 @@ export async function suggestCoordinatorArbitration({
   agentRosterFile = "docs/audit/AGENT-ROSTER.md",
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
   const dispatch = await computeCoordinatorDispatchPlan({
     targetRoot: absoluteTargetRoot,
     agent,
@@ -320,6 +322,8 @@ export async function suggestCoordinatorArbitration({
 
   return {
     target_root: absoluteTargetRoot,
+    state_mode: effectiveStateMode,
+    db_backed_mode: dbBackedMode,
     dispatch_status: dispatch.dispatch_status,
     coordinator_recommendation: dispatch.coordinator_recommendation,
     recommended_role_coverage: dispatch.recommended_role_coverage,

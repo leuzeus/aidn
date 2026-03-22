@@ -21,10 +21,12 @@ const DB_FIRST_MARKERS = [
   "db-first-artifact-lib.mjs",
   "runDbFirstArtifactUseCase",
   "resolveAuditArtifactText",
+  "resolveDbBackedMode",
   "resolveSessionArtifact",
   "resolveCycleStatusArtifact",
   "loadSqliteIndexPayloadSafe",
   "readIndexFromSqlite",
+  "decodeEmbeddedArtifactContent(",
 ];
 
 const FILESYSTEM_MARKERS = [
@@ -91,7 +93,11 @@ function relative(rootDir, absolutePath) {
 
 function scanFileForDbOnly(packageRoot, absolutePath) {
   const rel = relative(packageRoot, absolutePath);
-  if (rel.endsWith("db-first-runtime-view-lib.mjs") || rel.endsWith("db-first-artifact-lib.mjs")) {
+  if (
+    rel.endsWith("db-first-runtime-view-lib.mjs")
+    || rel.endsWith("db-first-artifact-lib.mjs")
+    || rel === "tools/runtime/artifact-store.mjs"
+  ) {
     return null;
   }
   const text = fs.readFileSync(absolutePath, "utf8");

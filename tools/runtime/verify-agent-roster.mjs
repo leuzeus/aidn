@@ -7,6 +7,7 @@ import {
 } from "../../src/application/runtime/agent-adapter-registry-service.mjs";
 import { loadAgentRoster } from "../../src/application/runtime/agent-roster-service.mjs";
 import { AGENT_ROLES, getAgentRoleCapabilities } from "../../src/core/agents/agent-role-model.mjs";
+import { resolveDbBackedMode } from "./db-first-runtime-view-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -239,6 +240,7 @@ export async function verifyAgentRoster({
   rosterFile = "docs/audit/AGENT-ROSTER.md",
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
   const roster = loadAgentRoster({
     targetRoot: absoluteTargetRoot,
     rosterFile,
@@ -283,6 +285,8 @@ export async function verifyAgentRoster({
 
   return {
     target_root: absoluteTargetRoot,
+    state_mode: effectiveStateMode,
+    db_backed_mode: dbBackedMode,
     roster_found: roster.found,
     roster_file: roster.file_path,
     default_requested_agent: defaultRequestedAgent,

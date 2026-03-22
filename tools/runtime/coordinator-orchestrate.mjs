@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { resolveDbBackedMode } from "./db-first-runtime-view-lib.mjs";
 import { resumeCoordinatorDispatch } from "./coordinator-resume.mjs";
 
 function parseArgs(argv) {
@@ -138,11 +139,14 @@ export async function orchestrateCoordinatorDispatch(options = {}) {
     maxIterations: Number.isInteger(options.maxIterations) ? options.maxIterations : 1,
     execute: Boolean(options.execute),
   };
+  const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(args.target);
 
   const initialPreview = await resumeCoordinatorDispatch(buildResumeOptions(args, false));
   if (!args.execute) {
     return {
       target_root: args.target,
+      state_mode: effectiveStateMode,
+      db_backed_mode: dbBackedMode,
       orchestration_status: initialPreview.can_resume ? "dry_run" : "blocked",
       stop_reason: initialPreview.can_resume
         ? "dry_run_only"
@@ -161,6 +165,8 @@ export async function orchestrateCoordinatorDispatch(options = {}) {
   if (!initialPreview.can_resume) {
     return {
       target_root: args.target,
+      state_mode: effectiveStateMode,
+      db_backed_mode: dbBackedMode,
       orchestration_status: "blocked",
       stop_reason: "resume_blocked_until_user_arbitration",
       execute_requested: true,
@@ -215,6 +221,8 @@ export async function orchestrateCoordinatorDispatch(options = {}) {
 
   return {
     target_root: args.target,
+    state_mode: effectiveStateMode,
+    db_backed_mode: dbBackedMode,
     orchestration_status: orchestrationStatus,
     stop_reason: stopReason,
     execute_requested: true,

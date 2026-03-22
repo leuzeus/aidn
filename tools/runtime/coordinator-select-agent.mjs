@@ -5,6 +5,7 @@ import { normalizeRequestedAgentAction, normalizeRequestedAgentRole } from "../.
 import { rankAgentAdapters, selectAgentAdapter } from "../../src/core/agents/agent-selection-policy.mjs";
 import { loadRegisteredAgentAdapters } from "../../src/application/runtime/agent-adapter-registry-service.mjs";
 import { loadAgentRoster } from "../../src/application/runtime/agent-roster-service.mjs";
+import { resolveDbBackedMode } from "./db-first-runtime-view-lib.mjs";
 import { buildAgentHealthMap, verifyAgentRoster } from "./verify-agent-roster.mjs";
 
 function parseArgs(argv) {
@@ -80,6 +81,7 @@ export async function coordinatorSelectAgent({
   rosterFile = "docs/audit/AGENT-ROSTER.md",
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
   const normalizedRole = normalizeRequestedAgentRole(role);
   const normalizedAction = normalizeRequestedAgentAction(action);
   const roster = loadAgentRoster({
@@ -114,6 +116,8 @@ export async function coordinatorSelectAgent({
 
   return {
     target_root: absoluteTargetRoot,
+    state_mode: effectiveStateMode,
+    db_backed_mode: dbBackedMode,
     requested_agent: String(requestedAgent ?? "auto").trim().toLowerCase() || "auto",
     role: normalizedRole,
     action: normalizedAction,

@@ -4,6 +4,11 @@ import {
   readAidnProjectConfig,
   resolveConfigSourceBranch,
 } from "../config/aidn-config-lib.mjs";
+import {
+  loadSqliteIndexPayloadSafe,
+  resolveAuditArtifactText,
+  resolveDbBackedMode,
+} from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
 
 const OPEN_CYCLE_STATES = new Set(["OPEN", "IMPLEMENTING", "VERIFYING"]);
 const CLOSE_SESSION_DECISIONS = new Set(["integrate-to-session", "report", "close-non-retained", "cancel-close"]);
@@ -86,9 +91,126 @@ export function parseSimpleMap(text) {
   return map;
 }
 
+function decodeArtifactContent(artifact) {
+  if (typeof artifact?.content !== "string" || artifact.content.length === 0) {
+    return "";
+  }
+  const format = String(artifact?.content_format ?? "utf8").trim().toLowerCase();
+  if (format === "base64") {
+    return Buffer.from(artifact.content, "base64").toString("utf8");
+  }
+  return artifact.content;
+}
+
+function deriveTargetRootFromAuditRoot(auditRoot) {
+  return path.resolve(auditRoot, "..", "..");
+}
+
+function deriveTargetRootFromAuditPath(filePath) {
+  const resolved = path.resolve(filePath).replace(/\\/g, "/");
+  const marker = "/docs/audit/";
+  const index = resolved.toLowerCase().indexOf(marker);
+  if (index === -1) {
+    return null;
+  }
+  return path.resolve(resolved.slice(0, index));
+}
+
+function toRelativeAuditPath(targetRoot, filePath) {
+  if (!targetRoot || !filePath) {
+    return "";
+  }
+  const rel = path.relative(targetRoot, filePath).replace(/\\/g, "/");
+  return rel.startsWith("docs/audit/") ? rel : "";
+}
+
+function loadDbAuditContext(targetRoot) {
+  if (!targetRoot) {
+    return {
+      targetRoot: null,
+      dbBackedMode: false,
+      sqlitePayload: null,
+    };
+  }
+  const { dbBackedMode } = resolveDbBackedMode(targetRoot);
+  return {
+    targetRoot,
+    dbBackedMode,
+    sqlitePayload: dbBackedMode ? loadSqliteIndexPayloadSafe(targetRoot).payload : null,
+  };
+}
+
+function loadDbAuditContextFromAuditRoot(auditRoot) {
+  return loadDbAuditContext(deriveTargetRootFromAuditRoot(auditRoot));
+}
+
+function listSessionArtifactsFromSqlite(auditRoot, sqlitePayload) {
+  if (!sqlitePayload || !Array.isArray(sqlitePayload.artifacts)) {
+    return [];
+  }
+  return sqlitePayload.artifacts
+    .filter((artifact) => /^sessions\/S\d+.*\.md$/i.test(String(artifact?.path ?? "").replace(/\\/g, "/")))
+    .map((artifact) => {
+      const relativePath = String(artifact.path).replace(/\\/g, "/");
+      const text = decodeArtifactContent(artifact);
+      const metadata = parseSessionMetadata(text);
+      const sessionIdMatch = path.basename(relativePath).match(/^(S\d+)/i);
+      return {
+        session_id: sessionIdMatch ? String(sessionIdMatch[1]).toUpperCase() : path.basename(relativePath, ".md").toUpperCase(),
+        file_path: path.resolve(auditRoot, relativePath),
+        metadata,
+      };
+    })
+    .sort((left, right) => left.session_id.localeCompare(right.session_id, undefined, { numeric: true, sensitivity: "base" }));
+}
+
+function listCycleStatusesFromSqlite(auditRoot, sqlitePayload) {
+  if (!sqlitePayload || !Array.isArray(sqlitePayload.artifacts)) {
+    return [];
+  }
+  return sqlitePayload.artifacts
+    .filter((artifact) => /^cycles\/[^/]+\/status\.md$/i.test(String(artifact?.path ?? "").replace(/\\/g, "/")))
+    .map((artifact) => {
+      const relativePath = String(artifact.path).replace(/\\/g, "/");
+      const text = decodeArtifactContent(artifact);
+      const map = parseSimpleMap(text);
+      const cycleDir = relativePath.split("/")[1] ?? "";
+      const cycleIdMatch = cycleDir.match(/(C\d+)/i);
+      return {
+        cycle_id: cycleIdMatch ? String(cycleIdMatch[1]).toUpperCase() : cycleDir.toUpperCase(),
+        cycle_dir: cycleDir,
+        file_path: path.resolve(auditRoot, relativePath),
+        text,
+        state: normalizeScalar(map.get("state") ?? "unknown").toUpperCase() || "UNKNOWN",
+        branch_name: normalizeScalar(map.get("branch_name") ?? "none") || "none",
+        session_owner: normalizeScalar(map.get("session_owner") ?? "none") || "none",
+        outcome: normalizeScalar(map.get("outcome") ?? "unknown") || "unknown",
+        dor_state: normalizeScalar(map.get("dor_state") ?? "unknown") || "unknown",
+        continuity_rule: normalizeScalar(map.get("continuity_rule") ?? "none") || "none",
+        continuity_base_branch: normalizeScalar(map.get("continuity_base_branch") ?? "none") || "none",
+        continuity_latest_cycle_branch: normalizeScalar(map.get("continuity_latest_cycle_branch") ?? "none") || "none",
+      };
+    })
+    .sort((left, right) => left.cycle_id.localeCompare(right.cycle_id, undefined, { numeric: true, sensitivity: "base" }));
+}
+
 export function readTextIfExists(filePath) {
   if (!filePath || !fs.existsSync(filePath)) {
-    return "";
+    const targetRoot = deriveTargetRootFromAuditPath(filePath);
+    const relativeAuditPath = toRelativeAuditPath(targetRoot, filePath);
+    if (!targetRoot || !relativeAuditPath) {
+      return "";
+    }
+    const dbContext = loadDbAuditContext(targetRoot);
+    if (!dbContext.dbBackedMode || !dbContext.sqlitePayload) {
+      return "";
+    }
+    return resolveAuditArtifactText({
+      targetRoot,
+      candidatePath: relativeAuditPath,
+      dbBacked: dbContext.dbBackedMode,
+      sqlitePayload: dbContext.sqlitePayload,
+    }).text;
   }
   return fs.readFileSync(filePath, "utf8");
 }
@@ -279,26 +401,36 @@ export function findSessionFile(auditRoot, sessionId) {
     return null;
   }
   const sessionsDir = path.join(auditRoot, "sessions");
-  if (!fs.existsSync(sessionsDir)) {
-    return null;
-  }
-  const entries = fs.readdirSync(sessionsDir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && /^S\d+.*\.md$/i.test(entry.name))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const entries = fs.existsSync(sessionsDir)
+    ? fs.readdirSync(sessionsDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && /^S\d+.*\.md$/i.test(entry.name))
+      .sort((a, b) => a.name.localeCompare(b.name))
+    : [];
   const direct = entries.find((entry) => entry.name.toUpperCase().startsWith(String(sessionId).toUpperCase()));
-  return direct ? path.join(sessionsDir, direct.name) : null;
+  if (direct) {
+    return path.join(sessionsDir, direct.name);
+  }
+  const dbContext = loadDbAuditContextFromAuditRoot(auditRoot);
+  const fallback = listSessionArtifactsFromSqlite(auditRoot, dbContext.sqlitePayload)
+    .find((session) => session.session_id === String(sessionId).toUpperCase());
+  return fallback?.file_path ?? null;
 }
 
 export function findLatestSessionFile(auditRoot) {
   const sessionsDir = path.join(auditRoot, "sessions");
-  if (!fs.existsSync(sessionsDir)) {
-    return null;
+  if (fs.existsSync(sessionsDir)) {
+    const entries = fs.readdirSync(sessionsDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && /^S\d+.*\.md$/i.test(entry.name))
+      .map((entry) => path.join(sessionsDir, entry.name))
+      .sort((left, right) => path.basename(right).localeCompare(path.basename(left), undefined, { numeric: true, sensitivity: "base" }));
+    if (entries.length > 0) {
+      return entries[0] ?? null;
+    }
   }
-  const entries = fs.readdirSync(sessionsDir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && /^S\d+.*\.md$/i.test(entry.name))
-    .map((entry) => path.join(sessionsDir, entry.name))
-    .sort((left, right) => path.basename(right).localeCompare(path.basename(left), undefined, { numeric: true, sensitivity: "base" }));
-  return entries[0] ?? null;
+  const dbContext = loadDbAuditContextFromAuditRoot(auditRoot);
+  return listSessionArtifactsFromSqlite(auditRoot, dbContext.sqlitePayload)
+    .map((session) => session.file_path)
+    .sort((left, right) => path.basename(right).localeCompare(path.basename(left), undefined, { numeric: true, sensitivity: "base" }))[0] ?? null;
 }
 
 export function findCycleStatus(auditRoot, cycleId) {
@@ -306,19 +438,21 @@ export function findCycleStatus(auditRoot, cycleId) {
     return null;
   }
   const cyclesDir = path.join(auditRoot, "cycles");
-  if (!fs.existsSync(cyclesDir)) {
-    return null;
-  }
-  const entries = fs.readdirSync(cyclesDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name.toUpperCase().startsWith(`${String(cycleId).toUpperCase()}-`))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const entries = fs.existsSync(cyclesDir)
+    ? fs.readdirSync(cyclesDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && entry.name.toUpperCase().startsWith(`${String(cycleId).toUpperCase()}-`))
+      .sort((a, b) => a.name.localeCompare(b.name))
+    : [];
   for (const entry of entries) {
     const statusPath = path.join(cyclesDir, entry.name, "status.md");
     if (fs.existsSync(statusPath)) {
       return statusPath;
     }
   }
-  return null;
+  const dbContext = loadDbAuditContextFromAuditRoot(auditRoot);
+  const fallback = listCycleStatusesFromSqlite(auditRoot, dbContext.sqlitePayload)
+    .find((cycle) => cycle.cycle_id === String(cycleId).toUpperCase());
+  return fallback?.file_path ?? null;
 }
 
 export function findCycleDirectory(auditRoot, cycleId) {
@@ -329,7 +463,14 @@ export function findCycleDirectory(auditRoot, cycleId) {
 export function readCurrentState(targetRoot) {
   const auditRoot = path.join(targetRoot, "docs", "audit");
   const filePath = path.join(auditRoot, "CURRENT-STATE.md");
-  const text = readTextIfExists(filePath);
+  const dbContext = loadDbAuditContext(targetRoot);
+  const resolution = resolveAuditArtifactText({
+    targetRoot,
+    candidatePath: "docs/audit/CURRENT-STATE.md",
+    dbBacked: dbContext.dbBackedMode,
+    sqlitePayload: dbContext.sqlitePayload,
+  });
+  const text = resolution.text;
   const map = parseSimpleMap(text);
   return {
     audit_root: auditRoot,
@@ -361,15 +502,24 @@ export function readSourceBranch(targetRoot) {
   if (configSourceBranch) {
     return configSourceBranch;
   }
-  const workflowPath = path.join(targetRoot, "docs", "audit", "WORKFLOW.md");
-  const workflowText = readTextIfExists(workflowPath);
+  const dbContext = loadDbAuditContext(targetRoot);
+  const workflowText = resolveAuditArtifactText({
+    targetRoot,
+    candidatePath: "docs/audit/WORKFLOW.md",
+    dbBacked: dbContext.dbBackedMode,
+    sqlitePayload: dbContext.sqlitePayload,
+  }).text;
   const workflowMap = parseSimpleMap(workflowText);
   const workflowSourceBranch = normalizeScalar(workflowMap.get("source_branch") ?? "");
   if (workflowSourceBranch) {
     return workflowSourceBranch;
   }
-  const baselinePath = path.join(targetRoot, "docs", "audit", "baseline", "current.md");
-  const text = readTextIfExists(baselinePath);
+  const text = resolveAuditArtifactText({
+    targetRoot,
+    candidatePath: "docs/audit/baseline/current.md",
+    dbBacked: dbContext.dbBackedMode,
+    sqlitePayload: dbContext.sqlitePayload,
+  }).text;
   const map = parseSimpleMap(text);
   const sourceBranch = normalizeScalar(map.get("source_branch") ?? "");
   return sourceBranch || null;
@@ -377,57 +527,65 @@ export function readSourceBranch(targetRoot) {
 
 export function listSessionArtifacts(auditRoot) {
   const sessionsDir = path.join(auditRoot, "sessions");
-  if (!fs.existsSync(sessionsDir)) {
-    return [];
+  if (fs.existsSync(sessionsDir)) {
+    const entries = fs.readdirSync(sessionsDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && /^S\d+.*\.md$/i.test(entry.name))
+      .map((entry) => {
+        const filePath = path.join(sessionsDir, entry.name);
+        const text = readTextIfExists(filePath);
+        const metadata = parseSessionMetadata(text);
+        const sessionIdMatch = entry.name.match(/^(S\d+)/i);
+        return {
+          session_id: sessionIdMatch ? String(sessionIdMatch[1]).toUpperCase() : path.basename(entry.name, ".md").toUpperCase(),
+          file_path: filePath,
+          metadata,
+        };
+      })
+      .sort((left, right) => left.session_id.localeCompare(right.session_id, undefined, { numeric: true, sensitivity: "base" }));
+    if (entries.length > 0) {
+      return entries;
+    }
   }
-  return fs.readdirSync(sessionsDir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && /^S\d+.*\.md$/i.test(entry.name))
-    .map((entry) => {
-      const filePath = path.join(sessionsDir, entry.name);
-      const text = readTextIfExists(filePath);
-      const metadata = parseSessionMetadata(text);
-      const sessionIdMatch = entry.name.match(/^(S\d+)/i);
-      return {
-        session_id: sessionIdMatch ? String(sessionIdMatch[1]).toUpperCase() : path.basename(entry.name, ".md").toUpperCase(),
-        file_path: filePath,
-        metadata,
-      };
-    })
-    .sort((left, right) => left.session_id.localeCompare(right.session_id, undefined, { numeric: true, sensitivity: "base" }));
+  const dbContext = loadDbAuditContextFromAuditRoot(auditRoot);
+  return listSessionArtifactsFromSqlite(auditRoot, dbContext.sqlitePayload);
 }
 
 export function listCycleStatuses(auditRoot) {
   const cyclesDir = path.join(auditRoot, "cycles");
-  if (!fs.existsSync(cyclesDir)) {
-    return [];
+  if (fs.existsSync(cyclesDir)) {
+    const entries = fs.readdirSync(cyclesDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => {
+        const filePath = path.join(cyclesDir, entry.name, "status.md");
+        if (!fs.existsSync(filePath)) {
+          return null;
+        }
+        const text = readTextIfExists(filePath);
+        const map = parseSimpleMap(text);
+        const cycleIdMatch = entry.name.match(/(C\d+)/i);
+        return {
+          cycle_id: cycleIdMatch ? String(cycleIdMatch[1]).toUpperCase() : entry.name.toUpperCase(),
+          cycle_dir: entry.name,
+          file_path: filePath,
+          text,
+          state: normalizeScalar(map.get("state") ?? "unknown").toUpperCase() || "UNKNOWN",
+          branch_name: normalizeScalar(map.get("branch_name") ?? "none") || "none",
+          session_owner: normalizeScalar(map.get("session_owner") ?? "none") || "none",
+          outcome: normalizeScalar(map.get("outcome") ?? "unknown") || "unknown",
+          dor_state: normalizeScalar(map.get("dor_state") ?? "unknown") || "unknown",
+          continuity_rule: normalizeScalar(map.get("continuity_rule") ?? "none") || "none",
+          continuity_base_branch: normalizeScalar(map.get("continuity_base_branch") ?? "none") || "none",
+          continuity_latest_cycle_branch: normalizeScalar(map.get("continuity_latest_cycle_branch") ?? "none") || "none",
+        };
+      })
+      .filter(Boolean)
+      .sort((left, right) => left.cycle_id.localeCompare(right.cycle_id, undefined, { numeric: true, sensitivity: "base" }));
+    if (entries.length > 0) {
+      return entries;
+    }
   }
-  return fs.readdirSync(cyclesDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => {
-      const filePath = path.join(cyclesDir, entry.name, "status.md");
-      if (!fs.existsSync(filePath)) {
-        return null;
-      }
-      const text = readTextIfExists(filePath);
-      const map = parseSimpleMap(text);
-      const cycleIdMatch = entry.name.match(/(C\d+)/i);
-      return {
-        cycle_id: cycleIdMatch ? String(cycleIdMatch[1]).toUpperCase() : entry.name.toUpperCase(),
-        cycle_dir: entry.name,
-        file_path: filePath,
-        text,
-        state: normalizeScalar(map.get("state") ?? "unknown").toUpperCase() || "UNKNOWN",
-        branch_name: normalizeScalar(map.get("branch_name") ?? "none") || "none",
-        session_owner: normalizeScalar(map.get("session_owner") ?? "none") || "none",
-        outcome: normalizeScalar(map.get("outcome") ?? "unknown") || "unknown",
-        dor_state: normalizeScalar(map.get("dor_state") ?? "unknown") || "unknown",
-        continuity_rule: normalizeScalar(map.get("continuity_rule") ?? "none") || "none",
-        continuity_base_branch: normalizeScalar(map.get("continuity_base_branch") ?? "none") || "none",
-        continuity_latest_cycle_branch: normalizeScalar(map.get("continuity_latest_cycle_branch") ?? "none") || "none",
-      };
-    })
-    .filter(Boolean)
-    .sort((left, right) => left.cycle_id.localeCompare(right.cycle_id, undefined, { numeric: true, sensitivity: "base" }));
+  const dbContext = loadDbAuditContextFromAuditRoot(auditRoot);
+  return listCycleStatusesFromSqlite(auditRoot, dbContext.sqlitePayload);
 }
 
 export function isOpenCycleState(state) {

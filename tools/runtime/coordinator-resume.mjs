@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { resolveDbBackedMode } from "./db-first-runtime-view-lib.mjs";
 import { computeCoordinatorLoopState } from "./coordinator-loop.mjs";
 import { computeCoordinatorDispatchPlan } from "./coordinator-dispatch-plan.mjs";
 import { executeCoordinatorDispatch } from "./coordinator-dispatch-execute.mjs";
@@ -85,6 +86,8 @@ function printUsage() {
 
 function buildBlockedResult({
   absoluteTargetRoot,
+  effectiveStateMode,
+  dbBackedMode,
   dispatch,
   loopState,
   arbitrationSuggestions,
@@ -96,6 +99,8 @@ function buildBlockedResult({
     || "user arbitration is required before resuming this escalated dispatch";
   return {
     target_root: absoluteTargetRoot,
+    state_mode: effectiveStateMode,
+    db_backed_mode: dbBackedMode,
     resume_status: "blocked",
     resume_reason: escalationReason,
     arbitration_required: true,
@@ -160,6 +165,7 @@ export async function resumeCoordinatorDispatch({
   execute = false,
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
   const loopState = computeCoordinatorLoopState({
     targetRoot: absoluteTargetRoot,
     currentStateFile,
@@ -188,6 +194,8 @@ export async function resumeCoordinatorDispatch({
     });
     return buildBlockedResult({
       absoluteTargetRoot,
+      effectiveStateMode,
+      dbBackedMode,
       dispatch,
       loopState,
       arbitrationSuggestions,
@@ -213,6 +221,8 @@ export async function resumeCoordinatorDispatch({
   if (!execute) {
     return {
       target_root: absoluteTargetRoot,
+      state_mode: effectiveStateMode,
+      db_backed_mode: dbBackedMode,
       resume_status: resumeStatus,
       resume_reason: resumeReason,
       arbitration_required: false,
@@ -246,6 +256,8 @@ export async function resumeCoordinatorDispatch({
 
   return {
     target_root: absoluteTargetRoot,
+    state_mode: effectiveStateMode,
+    db_backed_mode: dbBackedMode,
     resume_status: resumeStatus,
     resume_reason: resumeReason,
     arbitration_required: false,

@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { verifyAgentRoster } from "../runtime/verify-agent-roster.mjs";
 
 function assert(condition, message) {
@@ -101,6 +102,34 @@ async function main() {
     assert(invalid.issues.some((issue) => issue.includes("ghost-agent: unknown adapter id with no adapter_module")), "invalid roster should flag unknown agent id");
     assert(invalid.issues.some((issue) => issue.includes("broken-external: adapter module missing")), "invalid roster should flag missing module");
     assert(invalid.issues.some((issue) => issue.includes("codex-auditor: roster roles not supported by adapter: repair")), "invalid roster should flag unsupported roster roles");
+
+    const repoRoot = process.cwd();
+    const dbOnlyTarget = path.join(tempRoot, "db-only-target");
+    fs.cpSync(installedFixture, dbOnlyTarget, { recursive: true });
+    const syncScript = path.join(repoRoot, "tools", "perf", "index-sync.mjs");
+    const syncResult = spawnSync(process.execPath, [syncScript, "--target", dbOnlyTarget, "--store", "sqlite", "--with-content", "--json"], {
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        AIDN_STATE_MODE: "db-only",
+        AIDN_INDEX_STORE_MODE: "sqlite",
+      },
+      encoding: "utf8",
+      timeout: 180000,
+      maxBuffer: 20 * 1024 * 1024,
+    });
+    if ((syncResult.status ?? 1) !== 0) {
+      throw new Error(`index-sync failed for db-only roster fixture: ${String(syncResult.stderr ?? syncResult.stdout ?? "").trim()}`);
+    }
+    const dbOnlyRosterPath = path.join(dbOnlyTarget, "docs", "audit", "AGENT-ROSTER.md");
+    fs.rmSync(dbOnlyRosterPath, { force: true });
+    const dbOnly = await verifyAgentRoster({
+      targetRoot: dbOnlyTarget,
+    });
+    assert(dbOnly.pass === true, "db-only fileless roster should pass");
+    assert(dbOnly.roster_found === true, "db-only fileless roster should still be found");
+    assert(dbOnly.roster_file === path.resolve(dbOnlyRosterPath), "db-only roster should preserve logical file path");
+    assert(dbOnly.entries.some((entry) => entry.id === "codex"), "db-only roster should still expose built-in entries");
 
     console.log("PASS");
   } catch (error) {

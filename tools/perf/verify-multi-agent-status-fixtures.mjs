@@ -11,9 +11,13 @@ function assert(condition, message) {
 }
 
 function runJson(script, args, repoRoot, expectStatus = 0) {
+  return runJsonWithEnv(script, args, repoRoot, {}, expectStatus);
+}
+
+function runJsonWithEnv(script, args, repoRoot, env = {}, expectStatus = 0) {
   const result = spawnSync(process.execPath, [script, ...args], {
     cwd: repoRoot,
-    env: { ...process.env },
+    env: { ...process.env, ...env },
     encoding: "utf8",
     timeout: 180000,
     maxBuffer: 20 * 1024 * 1024,
@@ -162,6 +166,35 @@ function main() {
     assert(integrationText.includes("## Integration Strategy"), "status file should render integration strategy section");
     assert(integrationText.includes("recommended_strategy: integration_cycle"), "status file should expose the recommended integration strategy");
     assert(integrationText.includes("preferred_decision: integration_cycle"), "status file should expose the preferred integration arbitration decision");
+
+    const dbOnlyTarget = path.join(tempRoot, "db-only-target");
+    fs.cpSync(sourceTarget, dbOnlyTarget, { recursive: true });
+    const dbOnlyEnv = {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    };
+    runJsonWithEnv(path.resolve(repoRoot, "tools", "perf", "index-sync.mjs"), [
+      "--target", dbOnlyTarget,
+      "--store", "sqlite",
+      "--with-content",
+      "--json",
+    ], repoRoot, dbOnlyEnv, 0);
+    for (const rel of [
+      "docs/audit/AGENT-ROSTER.md",
+      "docs/audit/AGENT-HEALTH-SUMMARY.md",
+      "docs/audit/AGENT-SELECTION-SUMMARY.md",
+      "docs/audit/MULTI-AGENT-STATUS.md",
+    ]) {
+      fs.rmSync(path.join(dbOnlyTarget, rel), { force: true });
+    }
+    const dbOnlyResult = runJsonWithEnv(script, ["--target", dbOnlyTarget, "--json"], repoRoot, dbOnlyEnv, 0);
+    assert(dbOnlyResult.state_mode === "db-only", "db-only multi-agent status should resolve db-only state mode");
+    assert(dbOnlyResult.db_first_applied === true, "db-only multi-agent status should write through SQLite");
+    assert(dbOnlyResult.db_first_materialized === false, "db-only multi-agent status should not materialize markdown on disk");
+    assert(dbOnlyResult.roster_verification.pass === true, "db-only multi-agent status should still verify roster from SQLite");
+    assert(dbOnlyResult.agent_health_summary.written === true, "db-only multi-agent status should still refresh health summary through SQLite");
+    assert(dbOnlyResult.agent_selection_summary.written === true, "db-only multi-agent status should still refresh selection summary through SQLite");
+    assert(fs.existsSync(path.join(dbOnlyTarget, "docs", "audit", "MULTI-AGENT-STATUS.md")) === false, "db-only multi-agent status should not recreate MULTI-AGENT-STATUS.md");
 
     console.log("PASS");
   } catch (error) {

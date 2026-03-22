@@ -39,9 +39,13 @@ function assert(condition, message) {
 }
 
 function runJson(script, args, repoRoot, expectStatus = 0) {
+  return runJsonWithEnv(script, args, repoRoot, {}, expectStatus);
+}
+
+function runJsonWithEnv(script, args, repoRoot, env = {}, expectStatus = 0) {
   const result = spawnSync(process.execPath, [script, ...args], {
     cwd: repoRoot,
-    env: { ...process.env },
+    env: { ...process.env, ...env },
     encoding: "utf8",
     timeout: 180000,
     maxBuffer: 20 * 1024 * 1024,
@@ -115,6 +119,28 @@ function main() {
     assert(externalResult.roster_verification.pass === true, "external projection should pass roster verification");
     assert(externalSummaryText.includes("external-auditor"), "external summary should include the registered adapter");
     assert(externalSummaryText.includes("auditor + audit: external-auditor"), "external summary should show the auto selection preview for the external adapter");
+
+    const dbOnlyTarget = path.join(tempRoot, "db-only-target");
+    fs.cpSync(sourceTarget, dbOnlyTarget, { recursive: true });
+    const dbOnlyEnv = {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    };
+    runJsonWithEnv(path.resolve(repoRoot, "tools", "perf", "index-sync.mjs"), [
+      "--target", dbOnlyTarget,
+      "--store", "sqlite",
+      "--with-content",
+      "--json",
+    ], repoRoot, dbOnlyEnv, 0);
+    fs.rmSync(path.join(dbOnlyTarget, "docs", "audit", "AGENT-ROSTER.md"), { force: true });
+    fs.rmSync(path.join(dbOnlyTarget, "docs", "audit", "AGENT-SELECTION-SUMMARY.md"), { force: true });
+    const dbOnlyResult = runJsonWithEnv(script, ["--target", dbOnlyTarget, "--json"], repoRoot, dbOnlyEnv, 0);
+    assert(dbOnlyResult.state_mode === "db-only", "db-only selection projection should resolve db-only state mode");
+    assert(dbOnlyResult.db_first_applied === true, "db-only selection projection should write through SQLite");
+    assert(dbOnlyResult.db_first_materialized === false, "db-only selection projection should not materialize markdown on disk");
+    assert(dbOnlyResult.roster_verification.pass === true, "db-only selection projection should still validate roster from SQLite");
+    assert(dbOnlyResult.summary.adapters.some((adapter) => adapter.id === "codex"), "db-only selection projection should still expose adapter summary");
+    assert(fs.existsSync(path.join(dbOnlyTarget, "docs", "audit", "AGENT-SELECTION-SUMMARY.md")) === false, "db-only selection projection should not recreate AGENT-SELECTION-SUMMARY.md");
 
     const output = {
       ts: new Date().toISOString(),

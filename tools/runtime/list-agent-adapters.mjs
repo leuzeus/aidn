@@ -5,6 +5,7 @@ import { AGENT_ROLES, getAgentRoleCapabilities } from "../../src/core/agents/age
 import { selectAgentAdapter } from "../../src/core/agents/agent-selection-policy.mjs";
 import { loadRegisteredAgentAdapters, listBuiltInAgentAdapters } from "../../src/application/runtime/agent-adapter-registry-service.mjs";
 import { loadAgentRoster } from "../../src/application/runtime/agent-roster-service.mjs";
+import { resolveDbBackedMode } from "./db-first-runtime-view-lib.mjs";
 import { buildAgentHealthMap, verifyAgentRoster } from "./verify-agent-roster.mjs";
 
 function parseArgs(argv) {
@@ -126,6 +127,7 @@ export async function listAgentAdapters({
   rosterFile = "docs/audit/AGENT-ROSTER.md",
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
   const roster = loadAgentRoster({
     targetRoot: absoluteTargetRoot,
     rosterFile,
@@ -160,6 +162,8 @@ export async function listAgentAdapters({
 
   return {
     target_root: absoluteTargetRoot,
+    state_mode: effectiveStateMode,
+    db_backed_mode: dbBackedMode,
     roster: {
       found: roster.found,
       file_path: roster.file_path,

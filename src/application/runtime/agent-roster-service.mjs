@@ -1,5 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import {
+  loadSqliteIndexPayloadSafe,
+  resolveAuditArtifactText,
+  resolveDbBackedMode,
+} from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
 
 function normalizeScalar(value) {
   return String(value ?? "").trim();
@@ -34,26 +39,20 @@ function parseRoles(value) {
 function createDefaultRoster() {
   return {
     file_path: null,
+    source: "missing",
+    logical_path: "none",
     default_requested_agent: "auto",
     agents: {},
     found: false,
   };
 }
 
-export function loadAgentRoster({
-  targetRoot,
-  rosterFile = "docs/audit/AGENT-ROSTER.md",
-} = {}) {
-  const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
-  const rosterPath = path.resolve(absoluteTargetRoot, rosterFile);
-  if (!fs.existsSync(rosterPath)) {
-    return createDefaultRoster();
-  }
-
-  const content = fs.readFileSync(rosterPath, "utf8").replace(/\r\n/g, "\n");
-  const lines = content.split("\n");
+function parseRosterContent(content, rosterPath, source, logicalPath) {
+  const lines = String(content ?? "").replace(/\r\n/g, "\n").split("\n");
   const roster = {
     file_path: rosterPath,
+    source,
+    logical_path: logicalPath,
     default_requested_agent: "auto",
     agents: {},
     found: true,
@@ -112,4 +111,31 @@ export function loadAgentRoster({
   }
 
   return roster;
+}
+
+export function loadAgentRoster({
+  targetRoot,
+  rosterFile = "docs/audit/AGENT-ROSTER.md",
+} = {}) {
+  const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const rosterPath = path.resolve(absoluteTargetRoot, rosterFile);
+  const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
+  const sqlitePayload = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot).payload : null;
+  const resolution = resolveAuditArtifactText({
+    targetRoot: absoluteTargetRoot,
+    candidatePath: rosterFile,
+    dbBacked: dbBackedMode,
+    sqlitePayload,
+  });
+
+  if (!resolution.exists) {
+    return createDefaultRoster();
+  }
+
+  return parseRosterContent(
+    resolution.source === "file" ? fs.readFileSync(rosterPath, "utf8") : resolution.text,
+    rosterPath,
+    resolution.source,
+    resolution.logicalPath,
+  );
 }

@@ -2,6 +2,7 @@ import path from "node:path";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { resolveBranchMapping, toCycleSummary, toSessionSummary } from "../../lib/workflow/branch-mapping-lib.mjs";
+import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
 import {
   findCycleDirectory,
   listCycleStatuses,
@@ -20,6 +21,8 @@ function makeResult(base, overrides = {}) {
     result,
     action,
     reason_code: overrides.reason_code ?? null,
+    state_mode: base.state_mode,
+    db_backed_mode: base.db_backed_mode,
     branch: base.branch,
     branch_kind: base.branch_kind,
     source_branch: base.source_branch,
@@ -52,6 +55,7 @@ function isOwnershipClear(branchKind, mapping, activeCycleId) {
 export function runRequirementsDeltaAdmitUseCase({ targetRoot, mode = "COMMITTING" }) {
   const gitAdapter = createLocalGitAdapter();
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
+  const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
   const currentState = readCurrentState(absoluteTargetRoot);
   const auditRoot = currentState.audit_root;
   const sourceBranch = readSourceBranch(absoluteTargetRoot);
@@ -77,6 +81,8 @@ export function runRequirementsDeltaAdmitUseCase({ targetRoot, mode = "COMMITTIN
 
   const base = {
     branch,
+    state_mode: effectiveStateMode,
+    db_backed_mode: dbBackedMode,
     branch_kind: branchKind,
     source_branch: sourceBranch,
     mode,
