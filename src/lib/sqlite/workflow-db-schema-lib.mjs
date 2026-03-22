@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 const SQLITE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const BASELINE_WORKFLOW_SCHEMA_VERSION = 2;
-const LATEST_WORKFLOW_SCHEMA_VERSION = 5;
+const LATEST_WORKFLOW_SCHEMA_VERSION = 6;
 
 export function getDatabaseSync() {
   try {
@@ -387,6 +387,18 @@ function resolveRuntimeHeadDefinition(artifact) {
   return RUNTIME_HEAD_DEFINITIONS.find((item) => item.fileNames.has(fileName)) ?? null;
 }
 
+export function normalizeHotArtifactSubtype(pathValue, subtypeValue) {
+  const normalizedSubtype = String(subtypeValue ?? "").trim().toLowerCase();
+  if (normalizedSubtype) {
+    return normalizedSubtype;
+  }
+  const definition = resolveRuntimeHeadDefinition({
+    path: pathValue,
+    subtype: subtypeValue,
+  });
+  return definition?.headKey ?? null;
+}
+
 function buildRuntimeHeadPayload(artifact, definition) {
   return JSON.stringify({
     head_key: definition.headKey,
@@ -437,6 +449,14 @@ function ensureArtifactBlobsTable(db) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_artifact_blobs_updated_at ON artifact_blobs(updated_at);
+  `);
+}
+
+function ensureHotArtifactIndexes(db) {
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_artifacts_subtype_updated ON artifacts(subtype, updated_at);
+    CREATE INDEX IF NOT EXISTS idx_artifacts_session_subtype ON artifacts(session_id, subtype);
+    CREATE INDEX IF NOT EXISTS idx_artifacts_cycle_subtype ON artifacts(cycle_id, subtype);
   `);
 }
 
@@ -610,6 +630,33 @@ export function rebuildRuntimeHeads(db) {
   };
 }
 
+export function normalizeHotArtifactSubtypes(db) {
+  if (!hasTable(db, "artifacts")) {
+    return { updated: 0 };
+  }
+  const rows = db.prepare(`
+    SELECT artifact_id, path, subtype
+    FROM artifacts
+    WHERE subtype IS NULL OR TRIM(subtype) = ''
+    ORDER BY artifact_id ASC
+  `).all();
+  const update = db.prepare(`
+    UPDATE artifacts
+    SET subtype = ?
+    WHERE artifact_id = ?
+  `);
+  let updated = 0;
+  for (const row of rows) {
+    const normalizedSubtype = normalizeHotArtifactSubtype(row?.path, row?.subtype);
+    if (!normalizedSubtype) {
+      continue;
+    }
+    update.run(normalizedSubtype, Number(row.artifact_id ?? 0));
+    updated += 1;
+  }
+  return { updated };
+}
+
 function applyBaselineWorkflowSchema(db, schemaFile) {
   const schemaText = toIdempotentSchema(readSchemaFile(schemaFile));
   db.exec(schemaText);
@@ -758,6 +805,17 @@ function getWorkflowDbMigrations(schemaFile) {
       up(db) {
         ensureArtifactBlobsTable(db);
         ensureMaterializableArtifactsView(db);
+        setMeta(db, "schema_version", String(LATEST_WORKFLOW_SCHEMA_VERSION));
+      },
+    },
+    {
+      id: "0005_hot_subtypes_and_indexes",
+      description: "Normalize missing hot artifact subtypes and add composite indexes for subtype-first runtime reads",
+      checksum: buildMigrationChecksum("0005|hot-subtypes-and-indexes-v1"),
+      up(db) {
+        normalizeHotArtifactSubtypes(db);
+        ensureHotArtifactIndexes(db);
+        rebuildRuntimeHeads(db);
         setMeta(db, "schema_version", String(LATEST_WORKFLOW_SCHEMA_VERSION));
       },
     },

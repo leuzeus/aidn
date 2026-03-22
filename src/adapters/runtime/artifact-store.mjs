@@ -6,6 +6,7 @@ import {
   ensureWorkflowDbSchema,
   getDatabaseSync,
   getDefaultWorkflowSchemaFile,
+  normalizeHotArtifactSubtype,
   rebuildRuntimeHeads,
   upsertArtifactBlobByPath,
 } from "../../lib/sqlite/workflow-db-schema-lib.mjs";
@@ -87,7 +88,7 @@ function normalizeArtifact(input) {
     path: String(input.path ?? "").replace(/\\/g, "/"),
     kind: String(input.kind ?? "other"),
     family: String(input.family ?? "unknown"),
-    subtype: input.subtype ?? null,
+    subtype: normalizeHotArtifactSubtype(input.path, input.subtype) ?? input.subtype ?? null,
     gate_relevance: Number(input.gate_relevance ?? 0),
     classification_reason: input.classification_reason ?? null,
     content_format: content.content_format,

@@ -297,7 +297,10 @@ function main() {
       }
     }
 
-    if (toMode === "files" && (fromMode === "dual" || fromMode === "db-only")) {
+    if (
+      (toMode === "files" && (fromMode === "dual" || fromMode === "db-only"))
+      || (toMode === "dual" && fromMode === "db-only")
+    ) {
       exportResult = runJson(PERF_INDEX_EXPORT, [
         "--index-file",
         indexFile,
@@ -313,6 +316,7 @@ function main() {
         step: "materialize_files_from_db",
         ok: true,
         index_file: indexFile,
+        target_mode: toMode,
       });
     }
 

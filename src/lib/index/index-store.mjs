@@ -8,6 +8,7 @@ import { writeUtf8IfChanged } from "./io-lib.mjs";
 import {
   ensureWorkflowDbSchema,
   getLatestWorkflowSchemaVersion,
+  normalizeHotArtifactSubtype,
   rebuildArtifactBlobs,
   rebuildRuntimeHeads,
 } from "../sqlite/workflow-db-schema-lib.mjs";
@@ -535,7 +536,7 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
         row.path ?? null,
         row.kind ?? "other",
         row.family ?? "unknown",
-        row.subtype ?? null,
+        normalizeHotArtifactSubtype(row.path, row.subtype) ?? row.subtype ?? null,
         Number(row.gate_relevance ?? 0),
         row.classification_reason ?? null,
         row.content_format ?? null,
