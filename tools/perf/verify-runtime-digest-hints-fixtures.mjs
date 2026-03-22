@@ -98,14 +98,6 @@ function main() {
       "--force-agents-merge",
     ]);
 
-    runText("tools/perf/index-sync.mjs", [
-      "--target",
-      target,
-      "--store",
-      "sqlite",
-      "--json",
-    ]);
-
     const env = {
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",
@@ -120,6 +112,15 @@ function main() {
       "--json",
     ], env);
     setStaleRuntimeDigest(target);
+    runText("tools/perf/index-sync.mjs", [
+      "--target",
+      target,
+      "--store",
+      "sqlite",
+      "--with-content",
+      "--json",
+    ], env);
+    fs.rmSync(path.join(target, "docs", "audit", "RUNTIME-STATE.md"), { force: true });
 
     const skillHookOut = runText("tools/perf/skill-hook.mjs", [
       "--skill",

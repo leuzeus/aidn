@@ -8,6 +8,11 @@ import {
   assertValidSkillMode,
   runSkillHookUseCase,
 } from "../../src/application/runtime/skill-hook-use-case.mjs";
+import {
+  loadSqliteIndexPayloadSafe,
+  resolveAuditArtifactText,
+  resolveDbBackedMode,
+} from "../runtime/db-first-runtime-view-lib.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
@@ -71,24 +76,40 @@ function printUsage() {
   console.log("  node tools/perf/skill-hook.mjs --skill close-session --target . --mode COMMITTING --fail-on-repair-block");
 }
 
+function resolveRuntimeStateHint(targetRoot) {
+  const { dbBackedMode } = resolveDbBackedMode(targetRoot);
+  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(targetRoot) : {
+    exists: false,
+    sqliteFile: "",
+    payload: null,
+    warning: "",
+  };
+  return resolveAuditArtifactText({
+    targetRoot,
+    candidatePath: "docs/audit/RUNTIME-STATE.md",
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+}
+
 function printRuntimeDigestHint(targetRoot, repairLayerStatus) {
   const status = String(repairLayerStatus ?? "").trim().toLowerCase();
   if (!["warn", "block"].includes(status)) {
     return;
   }
-  const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
-  if (!fs.existsSync(runtimeStateFile)) {
+  const runtimeStateResolution = resolveRuntimeStateHint(targetRoot);
+  if (!runtimeStateResolution.exists) {
     return;
   }
   console.log("Runtime digest: docs/audit/RUNTIME-STATE.md");
 }
 
 function printCurrentStateStaleHint(targetRoot) {
-  const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
-  if (!fs.existsSync(runtimeStateFile)) {
+  const runtimeStateResolution = resolveRuntimeStateHint(targetRoot);
+  if (!runtimeStateResolution.exists) {
     return;
   }
-  const text = fs.readFileSync(runtimeStateFile, "utf8");
+  const text = runtimeStateResolution.text;
   if (!text.includes("current_state_freshness: stale")) {
     return;
   }
@@ -111,12 +132,16 @@ function main() {
     } else {
       const status = out.ok ? "OK" : "WARN";
       const summary = `${args.skill} -> ${out.tool}`;
+      const repairStatus = String(out.repair_layer_status ?? "").trim().toLowerCase();
+      const shouldPrintRepairDetails = Number(out.repair_layer_open_count ?? 0) > 0
+        || repairStatus === "warn"
+        || repairStatus === "block";
       if (out.ok) {
         console.log(`Skill hook: ${status} (${summary})`);
       } else {
         console.warn(`Skill hook: ${status} (${summary}) ${out.error?.message ?? "unknown error"}`);
       }
-      if (Number(out.repair_layer_open_count ?? 0) > 0) {
+      if (shouldPrintRepairDetails) {
         console.log(`Repair findings: ${out.repair_layer_open_count} open${out.repair_layer_blocking ? " (blocking)" : ""}`);
         if (out.repair_layer_status) {
           console.log(`Repair status: ${out.repair_layer_status}`);

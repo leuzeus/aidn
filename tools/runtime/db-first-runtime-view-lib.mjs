@@ -145,10 +145,10 @@ function findArtifactByPath(sqlitePayload, artifactPath) {
   return sqlitePayload.artifacts.find((artifact) => normalizeRelativeArtifactPath(artifact?.path) === normalized) ?? null;
 }
 
-export function resolveDbBackedMode(targetRoot) {
+export function resolveDbBackedMode(targetRoot, requestedStateMode = "files") {
   const effectiveStateMode = resolveEffectiveStateMode({
     targetRoot,
-    stateMode: "files",
+    stateMode: requestedStateMode,
   });
   return {
     effectiveStateMode,

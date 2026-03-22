@@ -5,6 +5,11 @@ import { fileURLToPath } from "node:url";
 import { runWorkflowHookUseCase } from "../../src/application/runtime/workflow-hook-use-case.mjs";
 import { normalizeIndexStoreMode } from "../../src/lib/config/aidn-config-lib.mjs";
 import { resolveDefaultIndexStore } from "../../src/core/state-mode/runtime-index-policy.mjs";
+import {
+  loadSqliteIndexPayloadSafe,
+  resolveAuditArtifactText,
+  resolveDbBackedMode,
+} from "../runtime/db-first-runtime-view-lib.mjs";
 
 function parseArgs(argv) {
   const envStore = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().toLowerCase();
@@ -156,13 +161,29 @@ function printUsage() {
   console.log("  node tools/perf/workflow-hook.mjs --phase session-close --constraint-loop-strict");
 }
 
-function printRuntimeDigestHint(targetRoot, repairLayerStatus) {
+function resolveRuntimeStateHint(targetRoot, requestedStateMode = "") {
+  const { dbBackedMode } = resolveDbBackedMode(targetRoot, requestedStateMode || "files");
+  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(targetRoot) : {
+    exists: false,
+    sqliteFile: "",
+    payload: null,
+    warning: "",
+  };
+  return resolveAuditArtifactText({
+    targetRoot,
+    candidatePath: "docs/audit/RUNTIME-STATE.md",
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+}
+
+function printRuntimeDigestHint(targetRoot, repairLayerStatus, requestedStateMode = "") {
   const status = String(repairLayerStatus ?? "").trim().toLowerCase();
   if (!["warn", "block"].includes(status)) {
     return;
   }
-  const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
-  if (!fs.existsSync(runtimeStateFile)) {
+  const runtimeStateResolution = resolveRuntimeStateHint(targetRoot, requestedStateMode);
+  if (!runtimeStateResolution.exists) {
     return;
   }
   console.log("Runtime digest: docs/audit/RUNTIME-STATE.md");
@@ -198,7 +219,8 @@ function main() {
       console.log(`Checkpoint index store: ${output.checkpoint.index?.store ?? "n/a"}`);
       console.log(`Checkpoint total: ${output.checkpoint.total_duration_ms ?? "n/a"}ms`);
       const repairLayerOpenCount = Number(output.summary?.repair_layer_open_count ?? 0);
-      if (repairLayerOpenCount > 0) {
+      const repairStatus = String(output.summary?.repair_layer_status ?? "").trim().toLowerCase();
+      if (repairLayerOpenCount > 0 || repairStatus === "warn" || repairStatus === "block") {
         console.log(`Repair findings: ${repairLayerOpenCount} open${output.summary?.repair_layer_blocking ? " (blocking)" : ""}`);
         if (output.summary?.repair_layer_status) {
           console.log(`Repair status: ${output.summary.repair_layer_status}`);
@@ -206,7 +228,7 @@ function main() {
         if (output.summary?.repair_layer_advice) {
           console.log(`Repair advice: ${output.summary.repair_layer_advice}`);
         }
-        printRuntimeDigestHint(targetRoot, output.summary?.repair_layer_status);
+        printRuntimeDigestHint(targetRoot, output.summary?.repair_layer_status, args.stateMode);
       }
     }
     if (output.checkpoint_error && !args.strict) {

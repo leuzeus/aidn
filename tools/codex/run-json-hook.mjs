@@ -4,6 +4,11 @@ import path from "node:path";
 import { createCodexAgentAdapter } from "../../src/adapters/codex/codex-agent-adapter.mjs";
 import { createHookContextStoreAdapter } from "../../src/adapters/codex/hook-context-store-adapter.mjs";
 import { runJsonHookUseCase } from "../../src/application/codex/run-json-hook-use-case.mjs";
+import {
+  loadSqliteIndexPayloadSafe,
+  resolveAuditArtifactText,
+  resolveDbBackedMode,
+} from "../runtime/db-first-runtime-view-lib.mjs";
 
 function splitArgs(argv) {
   const idx = argv.indexOf("--");
@@ -108,24 +113,40 @@ function printUsage() {
   console.log("  npx aidn codex run-json-hook --skill close-session --mode COMMITTING --target . --fail-on-repair-block");
 }
 
-function printRuntimeDigestHint(targetRoot, repairLayerStatus) {
+function resolveRuntimeStateHint(targetRoot, requestedStateMode = "") {
+  const { dbBackedMode } = resolveDbBackedMode(targetRoot, requestedStateMode || "files");
+  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(targetRoot) : {
+    exists: false,
+    sqliteFile: "",
+    payload: null,
+    warning: "",
+  };
+  return resolveAuditArtifactText({
+    targetRoot,
+    candidatePath: "docs/audit/RUNTIME-STATE.md",
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+}
+
+function printRuntimeDigestHint(targetRoot, repairLayerStatus, requestedStateMode = "") {
   const status = String(repairLayerStatus ?? "").trim().toLowerCase();
   if (!["warn", "block"].includes(status)) {
     return;
   }
-  const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
-  if (!fs.existsSync(runtimeStateFile)) {
+  const runtimeStateResolution = resolveRuntimeStateHint(targetRoot, requestedStateMode);
+  if (!runtimeStateResolution.exists) {
     return;
   }
   console.log("Runtime digest: docs/audit/RUNTIME-STATE.md");
 }
 
-function printCurrentStateStaleHint(targetRoot) {
-  const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
-  if (!fs.existsSync(runtimeStateFile)) {
+function printCurrentStateStaleHint(targetRoot, requestedStateMode = "") {
+  const runtimeStateResolution = resolveRuntimeStateHint(targetRoot, requestedStateMode);
+  if (!runtimeStateResolution.exists) {
     return;
   }
-  const text = fs.readFileSync(runtimeStateFile, "utf8");
+  const text = runtimeStateResolution.text;
   if (!text.includes("current_state_freshness: stale")) {
     return;
   }
@@ -150,8 +171,12 @@ function main() {
     } else {
       const status = output.ok ? "OK" : "WARN";
       const decision = output.decision ?? output.action ?? output.result ?? "n/a";
+      const repairStatus = String(output.repair_layer_status ?? "").trim().toLowerCase();
+      const shouldPrintRepairDetails = Number(output.repair_layer_open_count ?? 0) > 0
+        || repairStatus === "warn"
+        || repairStatus === "block";
       console.log(`Hook context ${status}: skill=${output.skill} mode=${output.mode} state=${output.state_mode} decision=${decision}`);
-      if (Number(output.repair_layer_open_count ?? 0) > 0) {
+      if (shouldPrintRepairDetails) {
         console.log(`Repair findings: ${output.repair_layer_open_count} open${output.repair_layer_blocking ? " (blocking)" : ""}`);
         if (output.repair_layer_status) {
           console.log(`Repair status: ${output.repair_layer_status}`);
@@ -159,8 +184,8 @@ function main() {
         if (output.repair_layer_advice) {
           console.log(`Repair advice: ${output.repair_layer_advice}`);
         }
-        printRuntimeDigestHint(targetRoot, output.repair_layer_status);
-        printCurrentStateStaleHint(targetRoot);
+        printRuntimeDigestHint(targetRoot, output.repair_layer_status, args.stateMode);
+        printCurrentStateStaleHint(targetRoot, args.stateMode);
       }
       console.log(`Context file: ${output.context_file}`);
     }
