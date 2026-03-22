@@ -59,18 +59,21 @@ export function assessDbOnlyReadiness({
     candidatePath: currentStateFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteIndex.payload,
+    sqliteRuntimeHeads: sqliteIndex.runtimeHeads,
   });
   const runtimeState = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: runtimeStateFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteIndex.payload,
+    sqliteRuntimeHeads: sqliteIndex.runtimeHeads,
   });
   const handoffPacket = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: packetFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteIndex.payload,
+    sqliteRuntimeHeads: sqliteIndex.runtimeHeads,
   });
 
   const currentMap = parseSimpleMap(currentState.text);
@@ -99,6 +102,7 @@ export function assessDbOnlyReadiness({
       candidatePath: backlogPath,
       dbBacked: dbBackedMode,
       sqlitePayload: sqliteIndex.payload,
+      sqliteRuntimeHeads: sqliteIndex.runtimeHeads,
     })
     : createMissingResolution("none", "not_applicable");
 

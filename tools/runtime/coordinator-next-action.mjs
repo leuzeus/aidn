@@ -228,6 +228,7 @@ export function computeCoordinatorNextAction({
     exists: false,
     sqliteFile: "",
     payload: null,
+    runtimeHeads: {},
     warning: "",
   };
   const currentStateResolution = resolveAuditArtifactText({
@@ -235,18 +236,21 @@ export function computeCoordinatorNextAction({
     candidatePath: currentStateFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
   });
   const runtimeStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: runtimeStateFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
   });
   const packetResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: packetFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
   });
   const currentStateText = currentStateResolution.text;
   const runtimeStateText = runtimeStateResolution.text;

@@ -5,7 +5,12 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { buildSqlFromIndex } from "./index-sql-lib.mjs";
 import { writeUtf8IfChanged } from "./io-lib.mjs";
-import { ensureWorkflowDbSchema } from "../sqlite/workflow-db-schema-lib.mjs";
+import {
+  ensureWorkflowDbSchema,
+  getLatestWorkflowSchemaVersion,
+  rebuildArtifactBlobs,
+  rebuildRuntimeHeads,
+} from "../sqlite/workflow-db-schema-lib.mjs";
 import { shouldPreserveDbFirstArtifactPath } from "../workflow/db-first-artifact-path-policy.mjs";
 
 const require = createRequire(import.meta.url);
@@ -547,6 +552,8 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
         row.legacy_origin ?? null,
         row.updated_at ?? new Date().toISOString(),
       ]));
+      rebuildArtifactBlobs(db);
+      rebuildRuntimeHeads(db);
 
       const sessionStmt = db.prepare(`
         INSERT INTO sessions (
@@ -734,7 +741,11 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       ]));
 
       setMeta(db, "payload_digest", nextDigest);
-      setMeta(db, "schema_version", String(payload?.schema_version ?? 2));
+      setMeta(
+        db,
+        "schema_version",
+        String(Math.max(Number(payload?.schema_version ?? 1), getLatestWorkflowSchemaVersion())),
+      );
       setMeta(db, "structure_kind", String(payload?.summary?.structure_kind ?? "unknown"));
       setMeta(db, "target_root", String(payload?.target_root ?? ""));
       setMeta(db, "audit_root", String(payload?.audit_root ?? ""));

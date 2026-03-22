@@ -399,6 +399,7 @@ function readSharedPlanning(targetRoot, currentStateFile) {
     exists: false,
     sqliteFile: "",
     payload: null,
+    runtimeHeads: {},
     warning: "",
   };
   const currentStateResolution = resolveAuditArtifactTextDb({
@@ -406,6 +407,7 @@ function readSharedPlanning(targetRoot, currentStateFile) {
     candidatePath: currentStateFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
   });
   const currentStateText = currentStateResolution.text;
   const currentMap = parseSimpleMap(currentStateText);
@@ -421,6 +423,7 @@ function readSharedPlanning(targetRoot, currentStateFile) {
     candidatePath: backlogArtifactRef.relative_path,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
   });
   const backlogArtifact = backlogResolution.exists
     ? parseBacklogArtifact(backlogResolution.text)

@@ -130,13 +130,16 @@ function loadDbAuditContext(targetRoot) {
       targetRoot: null,
       dbBackedMode: false,
       sqlitePayload: null,
+      sqliteRuntimeHeads: {},
     };
   }
   const { dbBackedMode } = resolveDbBackedMode(targetRoot);
+  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(targetRoot) : null;
   return {
     targetRoot,
     dbBackedMode,
-    sqlitePayload: dbBackedMode ? loadSqliteIndexPayloadSafe(targetRoot).payload : null,
+    sqlitePayload: sqliteFallback?.payload ?? null,
+    sqliteRuntimeHeads: sqliteFallback?.runtimeHeads ?? {},
   };
 }
 
@@ -210,6 +213,7 @@ export function readTextIfExists(filePath) {
       candidatePath: relativeAuditPath,
       dbBacked: dbContext.dbBackedMode,
       sqlitePayload: dbContext.sqlitePayload,
+      sqliteRuntimeHeads: dbContext.sqliteRuntimeHeads,
     }).text;
   }
   return fs.readFileSync(filePath, "utf8");
@@ -469,6 +473,7 @@ export function readCurrentState(targetRoot) {
     candidatePath: "docs/audit/CURRENT-STATE.md",
     dbBacked: dbContext.dbBackedMode,
     sqlitePayload: dbContext.sqlitePayload,
+    sqliteRuntimeHeads: dbContext.sqliteRuntimeHeads,
   });
   const text = resolution.text;
   const map = parseSimpleMap(text);
@@ -508,6 +513,7 @@ export function readSourceBranch(targetRoot) {
     candidatePath: "docs/audit/WORKFLOW.md",
     dbBacked: dbContext.dbBackedMode,
     sqlitePayload: dbContext.sqlitePayload,
+    sqliteRuntimeHeads: dbContext.sqliteRuntimeHeads,
   }).text;
   const workflowMap = parseSimpleMap(workflowText);
   const workflowSourceBranch = normalizeScalar(workflowMap.get("source_branch") ?? "");
@@ -519,6 +525,7 @@ export function readSourceBranch(targetRoot) {
     candidatePath: "docs/audit/baseline/current.md",
     dbBacked: dbContext.dbBackedMode,
     sqlitePayload: dbContext.sqlitePayload,
+    sqliteRuntimeHeads: dbContext.sqliteRuntimeHeads,
   }).text;
   const map = parseSimpleMap(text);
   const sourceBranch = normalizeScalar(map.get("source_branch") ?? "");

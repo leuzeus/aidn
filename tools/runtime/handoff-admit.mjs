@@ -131,6 +131,7 @@ export function admitHandoff({
     exists: false,
     sqliteFile: "",
     payload: null,
+    runtimeHeads: {},
     warning: "",
   };
   const packetResolution = resolveAuditArtifactText({
@@ -138,18 +139,21 @@ export function admitHandoff({
     candidatePath: packetFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
   });
   const currentStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: currentStateFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
   });
   const runtimeStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: runtimeStateFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
   });
   if (!packetResolution.exists) {
     throw new Error(`Missing file: ${resolveTargetPath(absoluteTargetRoot, packetFile)}`);
@@ -322,6 +326,7 @@ export function admitHandoff({
           candidatePath: item,
           dbBacked: dbBackedMode,
           sqlitePayload: sqliteFallback.payload,
+          sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
         }).exists;
       }
       return !fs.existsSync(resolveTargetPath(absoluteTargetRoot, item));

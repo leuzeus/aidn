@@ -1,7 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { ensureWorkflowDbSchema, getDatabaseSync, getDefaultWorkflowSchemaFile } from "../../lib/sqlite/workflow-db-schema-lib.mjs";
+import {
+  cleanupOrphanArtifactBlobs,
+  ensureWorkflowDbSchema,
+  getDatabaseSync,
+  getDefaultWorkflowSchemaFile,
+  rebuildRuntimeHeads,
+  upsertArtifactBlobByPath,
+} from "../../lib/sqlite/workflow-db-schema-lib.mjs";
 
 function canonicalToJson(value) {
   if (!value || typeof value !== "object") {
@@ -174,6 +181,32 @@ function mapArtifactRow(row) {
   };
 }
 
+function buildArtifactSelectSql() {
+  return `
+    SELECT
+      path,
+      kind,
+      family,
+      subtype,
+      gate_relevance,
+      classification_reason,
+      content_format,
+      content,
+      canonical_format,
+      canonical_json,
+      sha256,
+      size_bytes,
+      CAST(mtime_ns AS TEXT) AS mtime_ns,
+      session_id,
+      cycle_id,
+      source_mode,
+      entity_confidence,
+      legacy_origin,
+      updated_at
+    FROM v_materializable_artifacts
+  `;
+}
+
 export function createArtifactStore(options = {}) {
   const sqliteFile = path.resolve(process.cwd(), options.sqliteFile ?? ".aidn/runtime/index/workflow-index.sqlite");
   const schemaFile = options.schemaFile
@@ -217,21 +250,18 @@ export function createArtifactStore(options = {}) {
   `);
 
   const getStmt = db.prepare(`
-    SELECT path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, CAST(mtime_ns AS TEXT) AS mtime_ns, session_id, cycle_id, source_mode, entity_confidence, legacy_origin, updated_at
-    FROM artifacts
+    ${buildArtifactSelectSql()}
     WHERE path = ?
   `);
 
   const listStmt = db.prepare(`
-    SELECT path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, CAST(mtime_ns AS TEXT) AS mtime_ns, session_id, cycle_id, source_mode, entity_confidence, legacy_origin, updated_at
-    FROM artifacts
+    ${buildArtifactSelectSql()}
     ORDER BY updated_at DESC, path ASC
     LIMIT ?
   `);
 
   const listByPathsStmt = db.prepare(`
-    SELECT path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, CAST(mtime_ns AS TEXT) AS mtime_ns, session_id, cycle_id, source_mode, entity_confidence, legacy_origin, updated_at
-    FROM artifacts
+    ${buildArtifactSelectSql()}
     WHERE path = ?
   `);
 
@@ -280,6 +310,9 @@ export function createArtifactStore(options = {}) {
         artifact.legacy_origin,
         artifact.updated_at,
       );
+      upsertArtifactBlobByPath(db, artifact.path);
+      rebuildRuntimeHeads(db);
+      cleanupOrphanArtifactBlobs(db);
       const cycleId = extractCycleIdFromPath(artifact.path);
       if (cycleId && artifact.content_format === "utf8" && typeof artifact.content === "string") {
         const meta = parseFrontMatterLike(artifact.content);

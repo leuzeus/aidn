@@ -352,6 +352,7 @@ export function computeCoordinatorLoopState({
     exists: false,
     sqliteFile: "",
     payload: null,
+    runtimeHeads: {},
     warning: "",
   };
   const historyPath = resolveTargetPath(absoluteTargetRoot, historyFile);
@@ -361,6 +362,7 @@ export function computeCoordinatorLoopState({
     candidatePath: summaryFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
   });
   const history = summarizeHistory(readNdjson(historyPath));
   const summary = parseCoordinationSummary(summaryResolution.exists ? summaryResolution.text : readTextIfExists(summaryPath));

@@ -478,6 +478,7 @@ export function projectRuntimeState({
     exists: false,
     sqliteFile: "",
     payload: null,
+    runtimeHeads: {},
     warning: "",
   };
   const currentStateResolution = resolveAuditArtifactText({
@@ -485,6 +486,7 @@ export function projectRuntimeState({
     candidatePath: "docs/audit/CURRENT-STATE.md",
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
   });
   const currentStateMap = parseSimpleMap(currentStateResolution.text);
   const activeSession = normalizeScalar(currentStateMap.get("active_session") ?? "none") || "none";

@@ -115,10 +115,11 @@ function printUsage() {
 
 function resolveRuntimeStateHint(targetRoot, requestedStateMode = "") {
   const { dbBackedMode } = resolveDbBackedMode(targetRoot, requestedStateMode || "files");
-  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(targetRoot) : {
+  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(targetRoot, { includePayload: false }) : {
     exists: false,
     sqliteFile: "",
     payload: null,
+    runtimeHeads: {},
     warning: "",
   };
   return resolveAuditArtifactText({
@@ -126,6 +127,7 @@ function resolveRuntimeStateHint(targetRoot, requestedStateMode = "") {
     candidatePath: "docs/audit/RUNTIME-STATE.md",
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
   });
 }
 

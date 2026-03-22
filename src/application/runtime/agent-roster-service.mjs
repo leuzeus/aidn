@@ -120,12 +120,14 @@ export function loadAgentRoster({
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const rosterPath = path.resolve(absoluteTargetRoot, rosterFile);
   const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const sqlitePayload = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot).payload : null;
+  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot, { includePayload: false }) : null;
+  const sqlitePayload = sqliteFallback?.payload ?? null;
   const resolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: rosterFile,
     dbBacked: dbBackedMode,
     sqlitePayload,
+    sqliteRuntimeHeads: sqliteFallback?.runtimeHeads ?? {},
   });
 
   if (!resolution.exists) {

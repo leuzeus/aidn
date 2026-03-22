@@ -450,6 +450,7 @@ export function assessIntegrationRisk({
     exists: false,
     sqliteFile: "",
     payload: null,
+    runtimeHeads: {},
     warning: "",
   };
   const currentStateResolution = resolveAuditArtifactText({
@@ -457,6 +458,7 @@ export function assessIntegrationRisk({
     candidatePath: currentStateFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
   });
   const currentState = currentStateResolution.exists
     ? parseCurrentStateText(currentStateResolution.text)

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { resolveEffectiveStateMode } from "../../src/core/state-mode/state-mode-policy.mjs";
-import { readIndexFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
+import { readIndexFromSqlite, readRuntimeHeadArtifactsFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
 
 export function normalizeScalar(value) {
   const normalized = String(value ?? "").trim();
@@ -107,21 +107,57 @@ function toAuditArtifactPath(value) {
   return normalized ? `docs/audit/${normalized}` : "none";
 }
 
-export function loadSqliteIndexPayloadSafe(targetRoot) {
+const RUNTIME_HEAD_KEYS_BY_PATH = new Map([
+  ["CURRENT-STATE.md", "current_state"],
+  ["RUNTIME-STATE.md", "runtime_state"],
+  ["HANDOFF-PACKET.md", "handoff_packet"],
+  ["AGENT-ROSTER.md", "agent_roster"],
+  ["AGENT-HEALTH-SUMMARY.md", "agent_health_summary"],
+  ["AGENT-SELECTION-SUMMARY.md", "agent_selection_summary"],
+  ["MULTI-AGENT-STATUS.md", "multi_agent_status"],
+  ["COORDINATION-SUMMARY.md", "coordination_summary"],
+]);
+
+function resolveRuntimeHeadKeyForArtifactPath(artifactPath) {
+  const normalized = normalizeRelativeArtifactPath(artifactPath);
+  if (!normalized) {
+    return "";
+  }
+  const fileName = normalized.split("/").pop() ?? "";
+  return RUNTIME_HEAD_KEYS_BY_PATH.get(fileName) ?? "";
+}
+
+function findRuntimeHeadArtifact(runtimeHeads, artifactPath) {
+  if (!runtimeHeads || typeof runtimeHeads !== "object") {
+    return null;
+  }
+  const headKey = resolveRuntimeHeadKeyForArtifactPath(artifactPath);
+  if (!headKey) {
+    return null;
+  }
+  const artifact = runtimeHeads[headKey];
+  return artifact && normalizeRelativeArtifactPath(artifact.path) ? artifact : null;
+}
+
+export function loadSqliteIndexPayloadSafe(targetRoot, options = {}) {
+  const includePayload = options.includePayload !== false;
   const sqliteFile = path.join(targetRoot, ".aidn", "runtime", "index", "workflow-index.sqlite");
   if (!exists(sqliteFile)) {
     return {
       exists: false,
       sqliteFile,
       payload: null,
+      runtimeHeads: {},
       warning: "",
     };
   }
   try {
+    const runtimeHeads = readRuntimeHeadArtifactsFromSqlite(sqliteFile).heads;
     return {
       exists: true,
       sqliteFile,
-      payload: readIndexFromSqlite(sqliteFile).payload,
+      payload: includePayload ? readIndexFromSqlite(sqliteFile).payload : null,
+      runtimeHeads,
       warning: "",
     };
   } catch (error) {
@@ -129,6 +165,7 @@ export function loadSqliteIndexPayloadSafe(targetRoot) {
       exists: true,
       sqliteFile,
       payload: null,
+      runtimeHeads: {},
       warning: `SQLite artifact fallback unavailable: ${error.message}`,
     };
   }
@@ -161,6 +198,7 @@ export function resolveAuditArtifactText({
   candidatePath,
   dbBacked = false,
   sqlitePayload = null,
+  sqliteRuntimeHeads = null,
 } = {}) {
   const absolutePath = resolveTargetPath(targetRoot, candidatePath);
   if (exists(absolutePath)) {
@@ -173,7 +211,29 @@ export function resolveAuditArtifactText({
       text: readTextIfExists(absolutePath),
     };
   }
-  if (!dbBacked || !sqlitePayload) {
+  if (!dbBacked) {
+    return {
+      exists: false,
+      source: "missing",
+      absolutePath,
+      logicalPath: relativePath(targetRoot, absolutePath),
+      artifactPath: normalizeRelativeArtifactPath(candidatePath),
+      text: "",
+    };
+  }
+  const runtimeHeadArtifact = findRuntimeHeadArtifact(sqliteRuntimeHeads, candidatePath);
+  const runtimeHeadText = decodeArtifactContent(runtimeHeadArtifact);
+  if (runtimeHeadArtifact && runtimeHeadText) {
+    return {
+      exists: true,
+      source: "sqlite",
+      absolutePath,
+      logicalPath: toAuditArtifactPath(runtimeHeadArtifact.path),
+      artifactPath: normalizeRelativeArtifactPath(runtimeHeadArtifact.path),
+      text: runtimeHeadText,
+    };
+  }
+  if (!sqlitePayload) {
     return {
       exists: false,
       source: "missing",

@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 const SQLITE_DIR = path.dirname(fileURLToPath(import.meta.url));
+const BASELINE_WORKFLOW_SCHEMA_VERSION = 2;
+const LATEST_WORKFLOW_SCHEMA_VERSION = 5;
 
 export function getDatabaseSync() {
   try {
@@ -31,6 +33,10 @@ export function toIdempotentSchema(schemaText) {
 
 export function getDefaultWorkflowSchemaFile() {
   return path.resolve(SQLITE_DIR, "..", "..", "..", "tools", "perf", "sql", "schema.sql");
+}
+
+export function getLatestWorkflowSchemaVersion() {
+  return LATEST_WORKFLOW_SCHEMA_VERSION;
 }
 
 export function getTableColumns(db, tableName) {
@@ -416,11 +422,142 @@ function ensureRuntimeHeadsTable(db) {
   `);
 }
 
-function backfillRuntimeHeads(db) {
+function ensureArtifactBlobsTable(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS artifact_blobs (
+      artifact_id INTEGER PRIMARY KEY,
+      content_format TEXT,
+      content TEXT,
+      canonical_format TEXT,
+      canonical_json TEXT,
+      sha256 TEXT,
+      size_bytes INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (artifact_id) REFERENCES artifacts(artifact_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_artifact_blobs_updated_at ON artifact_blobs(updated_at);
+  `);
+}
+
+function ensureMaterializableArtifactsView(db) {
+  db.exec(`
+    DROP VIEW IF EXISTS v_materializable_artifacts;
+    CREATE VIEW v_materializable_artifacts AS
+    SELECT
+      a.artifact_id,
+      a.path,
+      a.kind,
+      a.family,
+      a.subtype,
+      a.gate_relevance,
+      a.classification_reason,
+      COALESCE(ab.content_format, a.content_format) AS content_format,
+      COALESCE(ab.content, a.content) AS content,
+      COALESCE(ab.canonical_format, a.canonical_format) AS canonical_format,
+      COALESCE(ab.canonical_json, a.canonical_json) AS canonical_json,
+      COALESCE(ab.sha256, a.sha256) AS sha256,
+      COALESCE(ab.size_bytes, a.size_bytes) AS size_bytes,
+      a.mtime_ns,
+      a.session_id,
+      a.cycle_id,
+      a.source_mode,
+      a.entity_confidence,
+      a.legacy_origin,
+      COALESCE(ab.updated_at, a.updated_at) AS updated_at
+    FROM artifacts a
+    LEFT JOIN artifact_blobs ab
+      ON ab.artifact_id = a.artifact_id;
+  `);
+}
+
+export function rebuildArtifactBlobs(db) {
+  if (!hasTable(db, "artifacts")) {
+    return { synced: 0 };
+  }
+  ensureArtifactBlobsTable(db);
+  db.exec("DELETE FROM artifact_blobs;");
+  const insert = db.prepare(`
+    INSERT INTO artifact_blobs (
+      artifact_id, content_format, content, canonical_format, canonical_json, sha256, size_bytes, updated_at
+    )
+    SELECT
+      artifact_id,
+      content_format,
+      content,
+      canonical_format,
+      canonical_json,
+      sha256,
+      COALESCE(size_bytes, 0),
+      COALESCE(updated_at, CURRENT_TIMESTAMP)
+    FROM artifacts
+  `);
+  const out = insert.run();
+  return {
+    synced: Number(out?.changes ?? 0),
+  };
+}
+
+export function upsertArtifactBlobByPath(db, artifactPath) {
+  if (!hasTable(db, "artifacts")) {
+    return { synced: 0 };
+  }
+  const normalizedPath = String(artifactPath ?? "").trim();
+  if (!normalizedPath) {
+    return { synced: 0 };
+  }
+  ensureArtifactBlobsTable(db);
+  const out = db.prepare(`
+    INSERT INTO artifact_blobs (
+      artifact_id, content_format, content, canonical_format, canonical_json, sha256, size_bytes, updated_at
+    )
+    SELECT
+      artifact_id,
+      content_format,
+      content,
+      canonical_format,
+      canonical_json,
+      sha256,
+      COALESCE(size_bytes, 0),
+      COALESCE(updated_at, CURRENT_TIMESTAMP)
+    FROM artifacts
+    WHERE path = ?
+    ON CONFLICT(artifact_id) DO UPDATE SET
+      content_format = excluded.content_format,
+      content = excluded.content,
+      canonical_format = excluded.canonical_format,
+      canonical_json = excluded.canonical_json,
+      sha256 = excluded.sha256,
+      size_bytes = excluded.size_bytes,
+      updated_at = excluded.updated_at;
+  `).run(normalizedPath);
+  return {
+    synced: Number(out?.changes ?? 0),
+  };
+}
+
+export function cleanupOrphanArtifactBlobs(db) {
+  if (!hasTable(db, "artifact_blobs") || !hasTable(db, "artifacts")) {
+    return { deleted: 0 };
+  }
+  const out = db.prepare(`
+    DELETE FROM artifact_blobs
+    WHERE artifact_id NOT IN (
+      SELECT artifact_id
+      FROM artifacts
+    )
+  `).run();
+  return {
+    deleted: Number(out?.changes ?? 0),
+  };
+}
+
+export function rebuildRuntimeHeads(db) {
   if (!hasTable(db, "artifacts")) {
     return { inserted: 0, updated: 0, matched: 0 };
   }
   ensureRuntimeHeadsTable(db);
+  db.exec("DELETE FROM runtime_heads;");
   const rows = db.prepare(`
     SELECT artifact_id, path, kind, subtype, sha256, session_id, cycle_id, updated_at
     FROM artifacts
@@ -479,7 +616,7 @@ function applyBaselineWorkflowSchema(db, schemaFile) {
   ensureMetaTable(db);
   ensureLatestColumns(db);
   ensureRepairLayerTables(db);
-  setMeta(db, "schema_version", "2");
+  setMeta(db, "schema_version", String(BASELINE_WORKFLOW_SCHEMA_VERSION));
 }
 
 function ensureSchemaMigrationsTable(db) {
@@ -600,8 +737,28 @@ function getWorkflowDbMigrations(schemaFile) {
       checksum: buildMigrationChecksum("0002|runtime-heads-v1"),
       up(db) {
         ensureRuntimeHeadsTable(db);
-        backfillRuntimeHeads(db);
+        rebuildRuntimeHeads(db);
         setMeta(db, "schema_version", "3");
+      },
+    },
+    {
+      id: "0003_artifact_blobs_split",
+      description: "Add reconstructible artifact_blobs storage, backfill payload columns from artifacts, and keep DB rematerialization dual-compatible",
+      checksum: buildMigrationChecksum("0003|artifact-blobs-split-v1"),
+      up(db) {
+        ensureArtifactBlobsTable(db);
+        rebuildArtifactBlobs(db);
+        setMeta(db, "schema_version", "4");
+      },
+    },
+    {
+      id: "0004_materializable_artifacts_view",
+      description: "Add a stable materialization view over artifacts and artifact_blobs for dual/db-only rematerialization",
+      checksum: buildMigrationChecksum("0004|materializable-artifacts-view-v1"),
+      up(db) {
+        ensureArtifactBlobsTable(db);
+        ensureMaterializableArtifactsView(db);
+        setMeta(db, "schema_version", String(LATEST_WORKFLOW_SCHEMA_VERSION));
       },
     },
   ];
