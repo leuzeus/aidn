@@ -24,12 +24,16 @@ import {
   CUSTOMIZABLE_TARGET_PATTERNS,
   collectExistingPlaceholderValues,
   getWorkflowPlaceholders,
+  resolveInstallSourceBranch,
   resolveMissingPlaceholdersForCopyOp,
 } from "./custom-file-policy.mjs";
 import {
   copyRecursive,
   shouldRenderTemplate,
 } from "./template-copy-service.mjs";
+import { ensureWorkflowAdapterConfig } from "../project/project-config-use-case.mjs";
+import { buildGeneratedDocTemplateVars } from "./generated-doc-template-vars.mjs";
+import { renderManagedInstallDocs } from "./generated-doc-render-service.mjs";
 import {
   mergeAppendUnique,
   mergeBlock,
@@ -48,12 +52,68 @@ function verifyPaths(targetRoot, pathsToCheck) {
   return { ok: missing.length === 0, missing };
 }
 
+const KNOWN_OVERRIDE_SCAN_ROOTS = [
+  "docs",
+  path.join("docs", "audit"),
+  ".codex",
+  ".aidn",
+];
+
+function listNestedAgentsOverrides(targetRoot) {
+  const found = new Set();
+
+  function visit(dirPath) {
+    if (!fs.existsSync(dirPath)) {
+      return;
+    }
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const absolute = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        visit(absolute);
+        continue;
+      }
+      if (!entry.isFile() || entry.name !== "AGENTS.override.md") {
+        continue;
+      }
+      const relative = path.relative(targetRoot, absolute).replace(/\\/g, "/");
+      if (relative.toLowerCase() !== "agents.override.md") {
+        found.add(relative);
+      }
+    }
+  }
+
+  for (const scanRoot of KNOWN_OVERRIDE_SCAN_ROOTS) {
+    visit(path.resolve(targetRoot, scanRoot));
+  }
+
+  return Array.from(found).sort((left, right) => left.localeCompare(right));
+}
+
+function collectInstructionPrecedenceWarnings(targetRoot) {
+  const warnings = [];
+  const rootAgentsOverride = path.resolve(targetRoot, "AGENTS.override.md");
+  if (fs.existsSync(rootAgentsOverride)) {
+    warnings.push(
+      "Target root contains AGENTS.override.md. Codex will prefer it over the installed AGENTS.md.",
+    );
+  }
+  const nestedOverrides = listNestedAgentsOverrides(targetRoot);
+  if (nestedOverrides.length > 0) {
+    warnings.push(
+      `Nested AGENTS.override.md detected in known workflow paths: ${nestedOverrides.join(", ")}.`,
+    );
+  }
+  return warnings;
+}
+
 export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
   const configRead = readAidnProjectConfig(targetRoot);
   let currentAidnConfigData = configRead.data ?? {};
   let aidnConfigExists = configRead.exists === true;
   const version = readUtf8(path.join(repoRoot, "VERSION")).trim();
   const inferredTemplateVars = collectExistingPlaceholderValues(targetRoot);
+  delete inferredTemplateVars.SOURCE_BRANCH;
   const templateVars = {
     ...inferredTemplateVars,
     VERSION: version,
@@ -94,6 +154,56 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
     configCreated: 0,
     configUpdated: 0,
     configSkipped: 0,
+    generatedRendered: 0,
+    generatedUnchanged: 0,
+  };
+  const initialImportDefaults = resolveArtifactImportDefaults(args, currentAidnConfigData);
+  const resolvedSourceBranch = await resolveInstallSourceBranch({
+    explicitSourceBranch: args.sourceBranch,
+    configData: currentAidnConfigData,
+    targetRoot,
+    dryRun: args.dryRun,
+    summary,
+  });
+  if (resolvedSourceBranch.value) {
+    templateVars.SOURCE_BRANCH = resolvedSourceBranch.value;
+  }
+  const workflowAdapterConfig = await ensureWorkflowAdapterConfig({
+    targetRoot,
+    dryRun: args.dryRun,
+    verifyOnly: args.verifyOnly,
+    adapterFile: args.adapterFile,
+    defaults: {
+      projectName: path.basename(targetRoot),
+      preferredStateMode: initialImportDefaults.stateMode,
+      defaultIndexStore: initialImportDefaults.store,
+    },
+  });
+  if (workflowAdapterConfig?.data?.projectName) {
+    templateVars.PROJECT_NAME = workflowAdapterConfig.data.projectName;
+  }
+  Object.assign(
+    templateVars,
+    buildGeneratedDocTemplateVars({
+      repoRoot,
+      templateVars,
+      aidnConfigData: currentAidnConfigData,
+      workflowAdapterConfig,
+    }),
+  );
+  const generatedDocExistingContent = {
+    "docs/audit/workflow.md": fs.existsSync(path.join(targetRoot, "docs", "audit", "WORKFLOW.md"))
+      ? readUtf8(path.join(targetRoot, "docs", "audit", "WORKFLOW.md"))
+      : null,
+    "docs/audit/workflow_summary.md": fs.existsSync(path.join(targetRoot, "docs", "audit", "WORKFLOW_SUMMARY.md"))
+      ? readUtf8(path.join(targetRoot, "docs", "audit", "WORKFLOW_SUMMARY.md"))
+      : null,
+    "docs/audit/codex_online.md": fs.existsSync(path.join(targetRoot, "docs", "audit", "CODEX_ONLINE.md"))
+      ? readUtf8(path.join(targetRoot, "docs", "audit", "CODEX_ONLINE.md"))
+      : null,
+    "docs/audit/index.md": fs.existsSync(path.join(targetRoot, "docs", "audit", "index.md"))
+      ? readUtf8(path.join(targetRoot, "docs", "audit", "index.md"))
+      : null,
   };
   const preservedCustomCandidates = [];
 
@@ -109,6 +219,14 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
   );
   if (Object.keys(inferredTemplateVars).length > 0) {
     console.log(`Placeholder inference: loaded ${Object.keys(inferredTemplateVars).length} values from existing project files`);
+  }
+  if (templateVars.SOURCE_BRANCH) {
+    console.log(`Install metadata: source_branch=${templateVars.SOURCE_BRANCH} (${resolvedSourceBranch.source})`);
+  }
+  if (workflowAdapterConfig?.path) {
+    console.log(
+      `Workflow adapter config: ${workflowAdapterConfig.path} (${workflowAdapterConfig.source}${workflowAdapterConfig.created ? ", created" : ""})`,
+    );
   }
   if (args.dryRun) {
     console.log("Mode: dry-run");
@@ -173,6 +291,11 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
             }
             preservedCustomCandidates.push(candidate);
           },
+          onOwnershipSkip(info) {
+            console.log(
+              `${args.dryRun ? "[dry-run] " : ""}skip copy ${info.targetRelative} (${info.ownership})`,
+            );
+          },
         };
         if (sourceStat.isDirectory()) {
           copyRecursive(
@@ -233,6 +356,25 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
           );
           summary.skipped += 1;
         }
+      }
+    }
+
+    const generatedDocs = renderManagedInstallDocs({
+      repoRoot,
+      targetRoot,
+      dryRun: args.dryRun,
+      templateVars,
+      existingContentByTarget: generatedDocExistingContent,
+      workflowAdapterConfig,
+    });
+    for (const item of generatedDocs) {
+      console.log(
+        `${args.dryRun ? "[dry-run] " : ""}render generated doc: ${item.targetRelative} (${item.changed ? "updated" : "unchanged"})`,
+      );
+      if (item.changed) {
+        summary.generatedRendered += 1;
+      } else {
+        summary.generatedUnchanged += 1;
       }
     }
 
@@ -324,14 +466,17 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
     const nextAidnConfigData = buildNextAidnProjectConfig(
       currentAidnConfigData,
       resolvedImportDefaults,
-      args,
+      {
+        ...args,
+        sourceBranch: templateVars.SOURCE_BRANCH ?? args.sourceBranch,
+      },
     );
     const currentConfigJson = JSON.stringify(currentAidnConfigData);
     const nextConfigJson = JSON.stringify(nextAidnConfigData);
     if (currentConfigJson !== nextConfigJson) {
       if (args.dryRun) {
         console.log(
-          `[dry-run] ${aidnConfigExists ? "update" : "create"} .aidn/config.json (profile=${nextAidnConfigData.profile}, runtime.stateMode=${nextAidnConfigData.runtime?.stateMode}, install.artifactImportStore=${nextAidnConfigData.install?.artifactImportStore})`,
+          `[dry-run] ${aidnConfigExists ? "update" : "create"} .aidn/config.json (profile=${nextAidnConfigData.profile}, runtime.stateMode=${nextAidnConfigData.runtime?.stateMode}, install.artifactImportStore=${nextAidnConfigData.install?.artifactImportStore}, workflow.sourceBranch=${nextAidnConfigData.workflow?.sourceBranch ?? "n/a"})`,
         );
       } else {
         const configFilePath = writeAidnProjectConfig(targetRoot, nextAidnConfigData);
@@ -382,6 +527,16 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
       'Customize the project stub. See docs/INSTALL.md sections "Spec vs Project Stub (Why both exist)" and "Step 4 - Customize docs/audit/WORKFLOW.md (Project Stub)".',
     );
   }
+  const instructionPrecedenceWarnings = collectInstructionPrecedenceWarnings(targetRoot);
+  if (instructionPrecedenceWarnings.length > 0) {
+    console.warn("");
+    for (const warning of instructionPrecedenceWarnings) {
+      console.warn(`WARNING: ${warning}`);
+    }
+    console.warn(
+      "Review Codex instruction precedence before relying on the installed project contract.",
+    );
+  }
 
   console.log("");
   console.log(`copied: ${summary.copied}`);
@@ -402,6 +557,8 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
   console.log(`config_created: ${summary.configCreated}`);
   console.log(`config_updated: ${summary.configUpdated}`);
   console.log(`config_skipped: ${summary.configSkipped}`);
+  console.log(`generated_rendered: ${summary.generatedRendered}`);
+  console.log(`generated_unchanged: ${summary.generatedUnchanged}`);
   if (artifactImportVerification.checked) {
     console.log(
       `artifact_import_verify: ${artifactImportVerification.ok ? "OK" : "FAIL"} (store=${artifactImportVerification.defaults?.store ?? "n/a"}, source=${artifactImportVerification.defaults?.source ?? "n/a"})`,

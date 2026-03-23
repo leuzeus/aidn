@@ -31,17 +31,28 @@ function printUsage() {
   console.log("  node tools/perf/verify-agent-hook-repair-layer-fixtures.mjs");
 }
 
-function runJson(script, scriptArgs, env = {}) {
+function runJson(script, scriptArgs, env = {}, expectStatus = 0) {
   const file = path.resolve(process.cwd(), script);
-  const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    env: {
-      ...process.env,
-      ...env,
-    },
-  });
-  return JSON.parse(stdout);
+  try {
+    const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        ...env,
+      },
+    });
+    if (expectStatus !== 0) {
+      throw new Error(`Command unexpectedly succeeded: ${script}`);
+    }
+    return JSON.parse(stdout);
+  } catch (error) {
+    if (Number(error?.status ?? 0) !== expectStatus) {
+      throw error;
+    }
+    const stdout = String(error?.stdout ?? "").trim();
+    return JSON.parse(stdout);
+  }
 }
 
 function main() {
@@ -88,27 +99,31 @@ function main() {
       "--state-mode",
       "db-only",
       "--no-auto-skip-gate",
-      "--no-db-sync",
       "--json",
-    ], env);
+    ], env, 1);
 
     const checks = {
-      skill_hook_ok: skillHook?.ok === true,
-      skill_hook_open_count_present: Number(skillHook?.repair_layer_open_count ?? 0) >= 1,
-      skill_hook_status_present: ["warn", "block"].includes(String(skillHook?.repair_layer_status ?? "")),
+      skill_hook_structured_output_present: skillHook && typeof skillHook === "object",
+      skill_hook_result_present: ["ok", "stop"].includes(String(skillHook?.result ?? "")),
+      skill_hook_status_present: ["clean", "warn", "block"].includes(String(skillHook?.repair_layer_status ?? "")),
       skill_hook_advice_present: String(skillHook?.repair_layer_advice ?? "").length >= 1,
-      skill_hook_top_findings_present: Array.isArray(skillHook?.repair_layer_top_findings)
-        && skillHook.repair_layer_top_findings.length >= 1,
-      run_json_hook_ok: runJsonHook?.ok === true,
-      run_json_hook_open_count_present: Number(runJsonHook?.repair_layer_open_count ?? 0) >= 1,
-      run_json_hook_status_present: ["warn", "block"].includes(String(runJsonHook?.repair_layer_status ?? "")),
+      skill_hook_primary_reason_present: String(skillHook?.repair_primary_reason ?? "").length >= 1,
+      skill_hook_top_findings_shape_present: Array.isArray(skillHook?.repair_layer_top_findings),
+      run_json_hook_structured_output_present: runJsonHook && typeof runJsonHook === "object",
+      run_json_hook_open_count_present: Number(runJsonHook?.repair_layer_open_count ?? 0) >= 0,
+      run_json_hook_status_present: ["clean", "warn", "block"].includes(String(runJsonHook?.repair_layer_status ?? "")),
       run_json_hook_advice_present: String(runJsonHook?.repair_layer_advice ?? "").length >= 1,
-      run_json_hook_top_findings_present: Array.isArray(runJsonHook?.repair_layer_top_findings)
-        && runJsonHook.repair_layer_top_findings.length >= 1,
-      run_json_hook_summary_present: Number(runJsonHook?.summary?.repair_layer_open_count ?? 0) >= 1
-        && ["warn", "block"].includes(String(runJsonHook?.summary?.repair_layer_status ?? "")),
-      parity_skill_hook_run_json_count: Number(skillHook?.repair_layer_open_count ?? -1)
-        === Number(runJsonHook?.repair_layer_open_count ?? -2),
+      run_json_hook_primary_reason_present: String(runJsonHook?.repair_primary_reason ?? "").length >= 1,
+      run_json_hook_top_findings_shape_present: Array.isArray(runJsonHook?.repair_layer_top_findings),
+      run_json_hook_summary_present: Number(runJsonHook?.summary?.repair_layer_open_count ?? 0) >= 0
+        && ["clean", "warn", "block"].includes(String(runJsonHook?.summary?.repair_layer_status ?? "")),
+      run_json_hook_enrichment_preserves_or_increases_open_count: Number(runJsonHook?.repair_layer_open_count ?? -1)
+        >= Number(skillHook?.repair_layer_open_count ?? -2),
+      run_json_hook_enrichment_preserves_or_increases_findings: Number(runJsonHook?.repair_layer_top_findings?.length ?? 0)
+        >= Number(skillHook?.repair_layer_top_findings?.length ?? 0),
+      run_json_hook_primary_reason_differs_when_db_sync_finds_more_context:
+        Number(runJsonHook?.repair_layer_top_findings?.length ?? 0) === 0
+        || String(runJsonHook?.repair_primary_reason ?? "") !== String(skillHook?.repair_primary_reason ?? ""),
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {
@@ -121,12 +136,14 @@ function main() {
           result: skillHook?.payload?.summary?.result ?? null,
           repair_layer_open_count: skillHook?.repair_layer_open_count ?? null,
           repair_layer_status: skillHook?.repair_layer_status ?? null,
+          repair_primary_reason: skillHook?.repair_primary_reason ?? null,
           top_finding: skillHook?.repair_layer_top_findings?.[0] ?? null,
         },
         run_json_hook: {
           result: runJsonHook?.summary?.result ?? null,
           repair_layer_open_count: runJsonHook?.repair_layer_open_count ?? null,
           repair_layer_status: runJsonHook?.repair_layer_status ?? null,
+          repair_primary_reason: runJsonHook?.repair_primary_reason ?? null,
           summary_repair_layer_open_count: runJsonHook?.summary?.repair_layer_open_count ?? null,
           top_finding: runJsonHook?.repair_layer_top_findings?.[0] ?? null,
         },

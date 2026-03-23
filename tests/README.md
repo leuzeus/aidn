@@ -41,3 +41,15 @@ Dependency resolution check (`extended` should include `core`):
 ```bash
 node tools/install.mjs --target tests/fixtures/repo-empty --pack extended --dry-run
 ```
+
+Targeted GitHub integration check:
+
+```bash
+node tools/install.mjs --target tests/fixtures/repo-empty --pack github-integration --dry-run
+```
+
+Pack topology check:
+
+```bash
+node tools/perf/verify-pack-topology-fixtures.mjs
+```

@@ -28,6 +28,33 @@ export function deriveRepairLayerAdvice({ openCount, blocking, topFindings }) {
   return "Repair layer is clean.";
 }
 
+export function deriveRepairPrimaryReason({ status, advice, topFindings }) {
+  const topFinding = Array.isArray(topFindings) ? topFindings[0] : null;
+  if (topFinding && typeof topFinding === "object") {
+    const severity = String(topFinding.severity ?? "").trim().toLowerCase();
+    const findingType = String(topFinding.finding_type ?? "").trim();
+    const entityId = String(topFinding.entity_id ?? "").trim();
+    const message = String(topFinding.message ?? "").trim();
+    const parts = [];
+    if (severity) parts.push(severity);
+    if (findingType) parts.push(findingType);
+    if (entityId) parts.push(entityId);
+    if (message) parts.push(message);
+    if (parts.length > 0) {
+      return parts.join(": ");
+    }
+  }
+  const normalizedAdvice = String(advice ?? "").trim();
+  if (normalizedAdvice.length > 0) {
+    return normalizedAdvice;
+  }
+  const normalizedStatus = String(status ?? "").trim().toLowerCase();
+  if (normalizedStatus === "clean" || normalizedStatus === "ok") {
+    return "Repair layer is clean.";
+  }
+  return "repair-layer reason is unknown";
+}
+
 export function buildGatingSummary(result) {
   return {
     action: result.action,
@@ -69,6 +96,18 @@ export function buildCheckpointSummary(result) {
       blocking: repairLayerBlocking,
       topFindings: repairLayerTopFindings,
     }),
+    repair_primary_reason: deriveRepairPrimaryReason({
+      status: deriveRepairLayerStatus({
+        openCount: repairLayerOpenCount,
+        blocking: repairLayerBlocking,
+      }),
+      advice: deriveRepairLayerAdvice({
+        openCount: repairLayerOpenCount,
+        blocking: repairLayerBlocking,
+        topFindings: repairLayerTopFindings,
+      }),
+      topFindings: repairLayerTopFindings,
+    }),
     repair_layer_top_findings: repairLayerTopFindings,
   };
 }
@@ -98,6 +137,18 @@ export function buildWorkflowHookSummary(result) {
       blocking: repairLayerBlocking,
       topFindings: repairLayerTopFindings,
     }),
+    repair_primary_reason: deriveRepairPrimaryReason({
+      status: deriveRepairLayerStatus({
+        openCount: repairLayerOpenCount,
+        blocking: repairLayerBlocking,
+      }),
+      advice: deriveRepairLayerAdvice({
+        openCount: repairLayerOpenCount,
+        blocking: repairLayerBlocking,
+        topFindings: repairLayerTopFindings,
+      }),
+      topFindings: repairLayerTopFindings,
+    }),
     repair_layer_top_findings: repairLayerTopFindings,
     constraint_loop_required: result.constraint_loop_required === true,
     constraint_loop_ok: result.constraint_loop_required !== true || !result.constraint_loop_error,
@@ -110,9 +161,10 @@ export function buildRunJsonHookSummary(result) {
   const repairLayerTopFindings = Array.isArray(result.normalized?.repair_layer_top_findings)
     ? result.normalized.repair_layer_top_findings
     : [];
+  const executionFailed = Boolean(result.error?.message) && result.result == null && result.action == null;
   return {
     result: result.result,
-    reason_code: result.error?.message ? "HOOK_COMMAND_FAILED" : null,
+    reason_code: executionFailed ? "HOOK_COMMAND_FAILED" : null,
     state_mode: result.state_mode,
     db_sync_enabled: result.db_sync?.enabled === true,
     db_sync_ok: result.db_sync?.enabled !== true || !result.db_sync?.error,
@@ -126,6 +178,18 @@ export function buildRunJsonHookSummary(result) {
     repair_layer_advice: deriveRepairLayerAdvice({
       openCount: repairLayerOpenCount,
       blocking: repairLayerBlocking,
+      topFindings: repairLayerTopFindings,
+    }),
+    repair_primary_reason: deriveRepairPrimaryReason({
+      status: deriveRepairLayerStatus({
+        openCount: repairLayerOpenCount,
+        blocking: repairLayerBlocking,
+      }),
+      advice: deriveRepairLayerAdvice({
+        openCount: repairLayerOpenCount,
+        blocking: repairLayerBlocking,
+        topFindings: repairLayerTopFindings,
+      }),
       topFindings: repairLayerTopFindings,
     }),
     repair_layer_top_findings: repairLayerTopFindings,

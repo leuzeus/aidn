@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "projectName": "repo-installed-core",
+  "constraints": {
+    "runtime": "TO_DEFINE",
+    "architecture": "TO_DEFINE",
+    "delivery": "TO_DEFINE",
+    "additional": []
+  },
+  "dorPolicy": "TO_DEFINE",
+  "runtimePolicy": {
+    "preferredStateMode": "dual",
+    "defaultIndexStore": "dual-sqlite"
+  },
+  "snapshotPolicy": {
+    "trigger": "TO_DEFINE",
+    "owner": "TO_DEFINE",
+    "freshnessRule": "TO_DEFINE",
+    "parkingLotRule": "TO_DEFINE"
+  },
+  "ciPolicy": {
+    "capacity": []
+  },
+  "sessionPolicy": {
+    "transitionCleanliness": {
+      "enabled": false,
+      "scope": "session-topology",
+      "requiredDecisionOptions": []
+    }
+  },
+  "executionPolicy": {
+    "enabled": false,
+    "evaluationScope": "dispatch-or-local-scope",
+    "escalateOnParallelAttachedCycles": false,
+    "escalateOnSharedIntegrationSurface": false,
+    "hardGates": [],
+    "lightGates": [],
+    "fastPath": {
+      "enabled": false,
+      "maxTouchedFiles": 0,
+      "forbidApiContractSchemaSecurityChange": false,
+      "forbidSharedCodegenBoundaryImpact": false,
+      "requireNoContinuityAmbiguity": false
+    },
+    "validationProfiles": {
+      "low": "",
+      "medium": "",
+      "high": ""
+    }
+  },
+  "specializedGates": {
+    "sharedCodegenBoundary": {
+      "enabled": false,
+      "sharedIntegrationSurface": false,
+      "escalateOnMultiAgentOverlap": false,
+      "generatorPaths": [],
+      "requiredEvidence": [],
+      "forbidComponentSpecificGeneratorFixes": false
+    }
+  },
+  "legacyPreserved": {
+    "projectConstraintsBullets": [
+      "Runtime/platform constraints: `TO_DEFINE`",
+      "Architecture constraints: `TO_DEFINE`",
+      "Dependency/data constraints: `TO_DEFINE`",
+      "Delivery constraints (CI/release/compliance): `TO_DEFINE`",
+      "Additional local constraints: `none`",
+      "Generated artifact constraints: `TO_DEFINE`",
+      "Testing/regression constraints: `TO_DEFINE`"
+    ],
+    "importedSections": []
+  }
+}

@@ -5,6 +5,7 @@ import {
   readAidnProjectConfig,
   resolveConfigStateMode,
 } from "../../lib/config/aidn-config-lib.mjs";
+import { shouldPreserveDbFirstArtifactPath } from "../../lib/workflow/db-first-artifact-path-policy.mjs";
 
 export function resolveStateMode(targetRoot, requested) {
   const requestedMode = normalizeStateMode(requested);
@@ -45,6 +46,15 @@ export function inferFamily(relPath, explicitFamily) {
     "WORKFLOW_SUMMARY.md",
     "CURRENT-STATE.md",
     "RUNTIME-STATE.md",
+    "INTEGRATION-RISK.md",
+    "HANDOFF-PACKET.md",
+    "AGENT-ROSTER.md",
+    "AGENT-HEALTH-SUMMARY.md",
+    "AGENT-SELECTION-SUMMARY.md",
+    "MULTI-AGENT-STATUS.md",
+    "COORDINATION-SUMMARY.md",
+    "COORDINATION-LOG.md",
+    "USER-ARBITRATION.md",
     "baseline/current.md",
     "baseline/history.md",
     "snapshots/context-snapshot.md",

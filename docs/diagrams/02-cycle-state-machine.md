@@ -16,13 +16,14 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 2) Cycle State Machine (v0.4.0)
+%% 2) Cycle State Machine (v0.4.0 workflow baseline)
 stateDiagram-v2
   [*] --> CONTINUITY_GATE: cycle-create requested
   CONTINUITY_GATE --> OPEN: select R1/R2/R3 + record metadata (R06)
   CONTINUITY_GATE --> [*]: creation cancelled
 
   OPEN --> OPEN: DoR not ready / clarify scope + plan (R04)
+  OPEN --> OPEN: convert-to-spike may open spike continuity path in EXPLORING
   OPEN --> IMPLEMENTING: DoR READY and R2 predecessor import done
   OPEN --> NO_GO: close-non-retained decision
   OPEN --> DROPPED: close-non-retained decision
@@ -66,5 +67,13 @@ stateDiagram-v2
     drift is suspected.
     In dual/db-only, runtime digest
     should be refreshed after writes.
+  end note
+
+  note right of DONE
+    Baseline promotion is separate:
+    promote-baseline validates
+    open gaps, traceability and
+    target cycle selection before
+    baseline mutation.
   end note
 ```

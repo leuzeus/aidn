@@ -179,11 +179,17 @@ export function normalizeHookPayload(rawInput, options = {}) {
       inputSummary.repair_layer_advice,
       null,
     ),
+    repair_primary_reason: firstDefined(
+      payloadSummary.repair_primary_reason,
+      payloadCheckpointSummary.repair_primary_reason,
+      inputSummary.repair_primary_reason,
+      null,
+    ),
     error,
     raw: input,
   };
 
-  if (normalized.ok === false && normalized.error == null) {
+  if (normalized.ok === false && normalized.error == null && normalized.result == null && normalized.action == null) {
     normalized.error = {
       message: "Hook execution failed",
       stdout: "",

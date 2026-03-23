@@ -4,9 +4,12 @@ This file is the project adapter for `aidn-workflow`.
 Use it to record repository-specific constraints and operating policy.
 Core workflow rules belong to `docs/audit/SPEC.md`, not here.
 Its role is to reduce local ambiguity and keep AI behavior stable.
+In installed repositories, this document is generated from `.aidn/project/workflow.adapter.json`.
+Durable local policy changes should be made through that adapter config, not by editing generated sections here.
 
 ## Recommended Read Order (Fast Reload)
 
+0. `docs/audit/HANDOFF-PACKET.md` when another agent already prepared a relay
 1. `docs/audit/CURRENT-STATE.md`
 2. `docs/audit/WORKFLOW-KERNEL.md`
 3. `docs/audit/WORKFLOW_SUMMARY.md`
@@ -48,6 +51,7 @@ source_branch: dev
 - Architecture constraints: `TO_DEFINE`
 - Dependency/data constraints: `TO_DEFINE`
 - Delivery constraints (CI/release/compliance): `TO_DEFINE`
+- Additional local constraints: `none`
 - Generated artifact constraints: `TO_DEFINE`
 - Testing/regression constraints: `TO_DEFINE`
 
@@ -61,8 +65,17 @@ source_branch: dev
 - Allowed cycle types: `feature | hotfix | spike | refactor | structural | migration | security | perf | integration | compat | corrective`
 - DoR policy: `TO_DEFINE`
 
+## Runtime State Policy (Project Adapter)
+
+- Preferred runtime state mode: `dual`.
+- Default install/runtime index store: `dual-sqlite`.
+- In `dual`/`db-only`, workflow skill perf hooks are mandatory and executed in strict mode.
+- In `dual`/`db-only`, session close must run the DB-backed constraint chain and produce constraint artifacts under `.aidn/runtime/perf/`.
+- `files` mode is allowed only as an explicit fallback profile; it is not the primary execution path for this adapter.
+
 ### Session Start Branch Base Gate (Mandatory, adapter extension to `SPEC-R01`/`SPEC-R03`)
 
+- Runtime enforcement path: `start-session` admission runs before generic `session-start` checkpoint/index/repair work.
 - Before creating a new session branch `SXXX-*`, check previous session PR status against source branch.
 - Decision order:
   - `PR OPEN`: continue on existing session branch by default.
@@ -70,6 +83,7 @@ source_branch: dev
   - `PR MERGED` or `no previous session`: open new session branch from up-to-date source branch.
   - `PR CLOSED (not merged)`: require explicit user decision before opening a new session branch.
 - Hard stop: do not chain session branches by default.
+- If previous-session status cannot be inferred reliably from local workflow state, STOP and request explicit user arbitration instead of assuming a new session is allowed.
 
 ### Git Hygiene Gate (Mandatory, adapter extension to `SPEC-R03`)
 
@@ -109,6 +123,12 @@ source_branch: dev
 - Severity policy:
   - `L1/L2`: auto-fix allowed with traceability.
   - `L3/L4`: explicit user authorization required before workflow rule changes.
+- Noise-control policy:
+  - trivial one-shot `L1` issues should stay out of temporary incident tracking unless they repeat or widen in scope
+  - `L2+` incidents should keep explicit temporary tracking until resolution or defer decision
+- If `defer-with-risk` is selected:
+  - record rationale in session notes and in the incident file
+  - open a follow-up cycle or task before the next session start
 
 ## Cycle Continuity Gate (Project Policy, adapter extension to `SPEC-R06`)
 
@@ -119,10 +139,27 @@ source_branch: dev
 - Record decision in cycle `status.md` continuity fields.
 - Reference: `docs/audit/CONTINUITY_GATE.md`
 
+## Branch Ownership Admission Gate (Mandatory)
+
+- `start-session` and `branch-cycle-audit` MUST use the same runtime branch/session/cycle mapping layer.
+- Non-owned branches (`source`, `other`, `unknown`) MUST stop `branch-cycle-audit` in `COMMITTING`.
+- Missing or ambiguous mapping MUST stop before generic gating/perf evaluation continues.
+
+## Additional Admission-First Runtime Gates (Mandatory)
+
+- `close-session` MUST stop before generic `session-close` runtime work when open attached cycles still lack explicit close decisions.
+- `cycle-create` MUST stop before scaffold creation when continuity rule or mode-gate compatibility is unresolved.
+- `requirements-delta` MUST stop before artifact mutation when medium/high-impact ownership is unclear.
+- `promote-baseline` MUST stop before promotion when target cycle selection, gap closure, or traceability readiness is incomplete.
+- `convert-to-spike` MUST reuse cycle continuity admission in `EXPLORING` mode before creating spike artifacts.
+- `handoff-close` may keep generic checkpoint semantics, but the runtime skill result MUST expose the real blocking checkpoint outcome.
+- `drift-check` continues to use generic gating as the drift source of truth; blocked gating outcomes are authoritative runtime stops.
+
 ## Session Close & PR Review
 
 - Session close and PR review gates are canonical in `docs/audit/SPEC.md` (`SPEC-R07`, `SPEC-R08`).
 - Add local CI/review capacity policy here if your repository needs it.
+- Project-specific CI/review capacity policy: `none`
 
 ## Snapshot Discipline
 
@@ -135,6 +172,7 @@ source_branch: dev
 ## Local Paths
 
 - Current state: `docs/audit/CURRENT-STATE.md`
+- Handoff packet: `docs/audit/HANDOFF-PACKET.md`
 - Runtime digest: `docs/audit/RUNTIME-STATE.md`
 - Workflow kernel: `docs/audit/WORKFLOW-KERNEL.md`
 - Spec snapshot: `docs/audit/SPEC.md`

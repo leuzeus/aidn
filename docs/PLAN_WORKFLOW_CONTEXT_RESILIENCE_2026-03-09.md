@@ -16,7 +16,7 @@ This plan is explicitly scoped to the repository structure **after installation*
 - `docs/audit/cycles/*`
 - `.aidn/runtime/context/*` in `dual` / `db-only`
 
-The package repository remains the implementation source, but the target workflow behavior is the installed client layout produced from `template/*`.
+The package repository remains the implementation source, but the target workflow behavior is the installed client layout produced from `scaffold/*`.
 
 ## Scope
 
@@ -91,7 +91,7 @@ Expected content:
 
 Target template path:
 
-- `template/docs_audit/WORKFLOW-KERNEL.md`
+- `scaffold/docs_audit/WORKFLOW-KERNEL.md`
 
 ### D2 - Add `CURRENT-STATE.md`
 
@@ -114,7 +114,7 @@ Expected content:
 
 Target template path:
 
-- `template/docs_audit/CURRENT-STATE.md`
+- `scaffold/docs_audit/CURRENT-STATE.md`
 
 ### D3 - Add `REANCHOR_PROMPT.md`
 
@@ -130,7 +130,7 @@ Expected content:
 
 Target template path:
 
-- `template/docs_audit/REANCHOR_PROMPT.md`
+- `scaffold/docs_audit/REANCHOR_PROMPT.md`
 
 ### D4 - Add `ARTIFACT_MANIFEST.md`
 
@@ -149,7 +149,7 @@ Expected content:
 
 Target template path:
 
-- `template/docs_audit/ARTIFACT_MANIFEST.md`
+- `scaffold/docs_audit/ARTIFACT_MANIFEST.md`
 
 ### D5 - Strengthen `AGENTS.md` with a Pre-Write Gate
 
@@ -176,7 +176,7 @@ Durable write examples:
 
 Target template path:
 
-- `template/root/AGENTS.md`
+- `scaffold/root/AGENTS.md`
 
 ### D6 - Update `WORKFLOW_SUMMARY.md` and `index.md`
 
@@ -192,8 +192,8 @@ Changes:
 
 Target template paths:
 
-- `template/docs_audit/WORKFLOW_SUMMARY.md`
-- `template/docs_audit/index.md`
+- `scaffold/docs_audit/WORKFLOW_SUMMARY.md`
+- `scaffold/docs_audit/index.md`
 
 ## `apply_patch` Specific Policy
 

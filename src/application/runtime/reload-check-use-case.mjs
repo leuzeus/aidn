@@ -7,6 +7,7 @@ import { readAidnProjectConfig, resolveConfigStateMode } from "../../lib/config/
 import { resolveRuntimeTargetPath, writeRuntimeJsonFile } from "./runtime-path-service.mjs";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { decideReloadOutcome } from "../../core/workflow/reload-policy.mjs";
+import { AIDN_BRANCH_KIND, classifyAidnBranch, extractCycleIdFromBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 
 const ACTIVE_STATES = new Set(["OPEN", "IMPLEMENTING", "VERIFYING"]);
 
@@ -158,25 +159,9 @@ function detectLatestSessionArtifact(auditRoot) {
   };
 }
 
-function classifyBranch(branch) {
-  if (!branch || branch === "unknown") {
-    return "unknown";
-  }
-  if (/^S[0-9]+-/.test(branch)) {
-    return "session";
-  }
-  if (/^(feature|hotfix|spike|refactor|structural|migration|security|perf|integration|compat|corrective)\/C[0-9]+-I[0-9]+-/.test(branch)) {
-    return "intermediate";
-  }
-  if (/^(feature|hotfix|spike|refactor|structural|migration|security|perf|integration|compat|corrective)\/C[0-9]+-/.test(branch)) {
-    return "cycle";
-  }
-  return "other";
-}
-
 function evaluateMapping(branch, activeCycles, latestSessionArtifact, auditRoot, sessionBranchHint = null) {
-  const kind = classifyBranch(branch);
-  if (kind === "unknown" || kind === "other") {
+  const kind = classifyAidnBranch(branch);
+  if (kind === AIDN_BRANCH_KIND.UNKNOWN || kind === AIDN_BRANCH_KIND.OTHER) {
     return {
       kind,
       status: "unknown",
@@ -184,7 +169,7 @@ function evaluateMapping(branch, activeCycles, latestSessionArtifact, auditRoot,
     };
   }
 
-  if (kind === "cycle") {
+  if (kind === AIDN_BRANCH_KIND.CYCLE) {
     const matches = activeCycles.filter((cycle) => cycle.branch_name === branch);
     if (matches.length === 1) {
       return { kind, status: "ok", reason_code: null };
@@ -195,12 +180,11 @@ function evaluateMapping(branch, activeCycles, latestSessionArtifact, auditRoot,
     return { kind, status: "ambiguous", reason_code: "MAPPING_AMBIGUOUS" };
   }
 
-  if (kind === "intermediate") {
-    const cycleIdMatch = branch.match(/\/(C[0-9]+)-I[0-9]+-/);
-    if (!cycleIdMatch) {
+  if (kind === AIDN_BRANCH_KIND.INTERMEDIATE) {
+    const cycleId = extractCycleIdFromBranch(branch);
+    if (!cycleId) {
       return { kind, status: "ambiguous", reason_code: "MAPPING_AMBIGUOUS" };
     }
-    const cycleId = cycleIdMatch[1];
     const matches = activeCycles.filter((cycle) => cycle.cycle_id === cycleId);
     if (matches.length === 1) {
       return { kind, status: "ok", reason_code: null };
@@ -211,7 +195,7 @@ function evaluateMapping(branch, activeCycles, latestSessionArtifact, auditRoot,
     return { kind, status: "ambiguous", reason_code: "MAPPING_AMBIGUOUS" };
   }
 
-  if (kind === "session") {
+  if (kind === AIDN_BRANCH_KIND.SESSION) {
     if (!latestSessionArtifact) {
       return { kind, status: "unknown", reason_code: "MAPPING_SESSION_FILE_MISSING" };
     }

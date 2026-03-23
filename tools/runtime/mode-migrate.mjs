@@ -11,6 +11,7 @@ import {
 } from "../../src/lib/config/aidn-config-lib.mjs";
 import { writeRepairLayerTriageArtifacts } from "../../src/application/runtime/repair-layer-artifact-service.mjs";
 import { runRepairLayerAutofixUseCase } from "../../src/application/runtime/repair-layer-autofix-use-case.mjs";
+import { inspectWorkflowDbSchema, migrateWorkflowDbFile } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
 
 const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PERF_INDEX_SYNC = path.resolve(RUNTIME_DIR, "..", "perf", "index-sync.mjs");
@@ -167,6 +168,10 @@ function updateConfigStateMode(targetRoot, toMode) {
   };
 }
 
+function shouldRunSchemaMigration(fromMode, toMode) {
+  return [fromMode, toMode].some((mode) => mode === "dual" || mode === "db-only");
+}
+
 function main() {
   let outputJson = false;
   try {
@@ -184,6 +189,42 @@ function main() {
     let repairLayerResult = null;
     let repairLayerAutofixResult = null;
     let repairLayerTriageResult = null;
+    let schemaStatusBefore = null;
+    let schemaMigrationResult = null;
+    let schemaStatusAfter = null;
+
+    if (shouldRunSchemaMigration(fromMode, toMode)) {
+      schemaStatusBefore = inspectWorkflowDbSchema({
+        sqliteFile: indexFile,
+        role: "mode-migrate",
+      });
+      steps.push({
+        step: "schema_status_before",
+        ok: true,
+        exists: schemaStatusBefore.exists,
+        pending_ids: schemaStatusBefore.pending_ids,
+      });
+      schemaMigrationResult = migrateWorkflowDbFile({
+        sqliteFile: indexFile,
+        role: "mode-migrate",
+      });
+      steps.push({
+        step: "schema_migrate",
+        ok: true,
+        backup_file: schemaMigrationResult?.migration?.backup_file ?? null,
+        applied_ids: schemaMigrationResult?.migration?.applied_ids ?? [],
+      });
+      schemaStatusAfter = schemaMigrationResult?.status ?? inspectWorkflowDbSchema({
+        sqliteFile: indexFile,
+        role: "mode-migrate",
+      });
+      steps.push({
+        step: "schema_status_after",
+        ok: true,
+        exists: schemaStatusAfter.exists,
+        pending_ids: schemaStatusAfter.pending_ids,
+      });
+    }
 
     if (toMode === "dual" || toMode === "db-only") {
       const store = defaultIndexStoreFromStateMode(toMode);
@@ -256,7 +297,10 @@ function main() {
       }
     }
 
-    if (toMode === "files" && (fromMode === "dual" || fromMode === "db-only")) {
+    if (
+      (toMode === "files" && (fromMode === "dual" || fromMode === "db-only"))
+      || (toMode === "dual" && fromMode === "db-only")
+    ) {
       exportResult = runJson(PERF_INDEX_EXPORT, [
         "--index-file",
         indexFile,
@@ -272,6 +316,7 @@ function main() {
         step: "materialize_files_from_db",
         ok: true,
         index_file: indexFile,
+        target_mode: toMode,
       });
     }
 
@@ -289,6 +334,9 @@ function main() {
       from_mode: fromMode,
       to_mode: toMode,
       strict: args.strict,
+      schema_status_before: schemaStatusBefore,
+      schema_migration_result: schemaMigrationResult,
+      schema_status_after: schemaStatusAfter,
       steps,
       sync_result: syncResult,
       repair_layer_result: repairLayerResult,

@@ -4,10 +4,9 @@ import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { spawnSync } from "node:child_process";
 import { readUtf8 } from "./template-io.mjs";
+import { resolveConfigSourceBranch } from "../../lib/config/aidn-config-lib.mjs";
 
 export const CUSTOMIZABLE_TARGET_PATTERNS = [
-  "docs/audit/WORKFLOW.md",
-  "docs/audit/index.md",
   "docs/audit/glossary.md",
   "docs/audit/parking-lot.md",
   "docs/audit/baseline/current.md",
@@ -54,6 +53,28 @@ function sanitizeExtractedValue(value) {
     return "";
   }
   return text;
+}
+
+function resolveDefaultGitBranch(targetRoot) {
+  const remoteHead = spawnSync("git", ["-C", targetRoot, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const remoteHeadText = sanitizeExtractedValue(remoteHead.stdout).replace(/^origin\//, "");
+  if (remoteHeadText) {
+    return remoteHeadText;
+  }
+
+  const currentBranch = spawnSync("git", ["-C", targetRoot, "branch", "--show-current"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const currentBranchText = sanitizeExtractedValue(currentBranch.stdout);
+  if (currentBranchText) {
+    return currentBranchText;
+  }
+
+  return "main";
 }
 
 function readKeyValuePlaceholders(text) {
@@ -112,18 +133,37 @@ export function collectPlaceholderValuesFromText(text) {
 export function normalizePreservedMetadata(targetRelative, text, templateVars) {
   let next = String(text);
   const version = sanitizeExtractedValue(templateVars?.VERSION);
+  const sourceBranch = sanitizeExtractedValue(templateVars?.SOURCE_BRANCH);
   if (!version) {
-    return { text: next, changed: false };
+    if (!sourceBranch) {
+      return { text: next, changed: false };
+    }
   }
 
   const normalizedTarget = normalizeRelativePath(targetRelative).toLowerCase();
   if (normalizedTarget === "docs/audit/workflow.md") {
-    next = next.replace(/^(\s*workflow_version:\s*).+$/im, `$1${version}`);
+    if (version) {
+      next = next.replace(/^(\s*workflow_version:\s*).+$/im, `$1${version}`);
+    }
+    if (sourceBranch) {
+      next = next.replace(/^(\s*source_branch:\s*).+$/im, `$1${sourceBranch}`);
+      next = next.replace(/^\s*-\s*Source branch:.*$/im, `- Source branch: \`${sourceBranch}\``);
+    }
+  }
+
+  if (normalizedTarget === "docs/audit/baseline/current.md" && sourceBranch) {
+    next = next.replace(/^(\s*source_branch:\s*).+$/im, `$1${sourceBranch}`);
+  }
+
+  if (normalizedTarget === "docs/audit/baseline/history.md" && sourceBranch) {
+    next = next.replace(/^(\s*-\s*source_branch:\s*).+$/gim, `$1${sourceBranch}`);
   }
 
   if (normalizedTarget === ".codex/skills.yaml") {
-    next = next.replace(/^(\s*ref:\s*["']?)v[^"'\s]+(["']?\s*)$/im, `$1v${version}$2`);
-    next = next.replace(/(https:\/\/github\.com\/leuzeus\/aidn\/tree\/)v[^/]+(\/template\/codex\/)/gi, `$1v${version}$2`);
+    if (version) {
+      next = next.replace(/^(\s*ref:\s*["']?)v[^"'\s]+(["']?\s*)$/im, `$1v${version}$2`);
+      next = next.replace(/(https:\/\/github\.com\/leuzeus\/aidn\/tree\/)v[^/]+(\/scaffold\/codex\/)/gi, `$1v${version}$2`);
+    }
   }
 
   return { text: next, changed: next !== text };
@@ -157,20 +197,80 @@ export function collectExistingPlaceholderValues(targetRoot) {
   return out;
 }
 
+export async function resolveInstallSourceBranch({
+  explicitSourceBranch,
+  configData,
+  targetRoot,
+  dryRun,
+  summary,
+}) {
+  const cliValue = sanitizeExtractedValue(explicitSourceBranch);
+  if (cliValue) {
+    return {
+      value: cliValue,
+      source: "cli",
+    };
+  }
+
+  const configValue = sanitizeExtractedValue(resolveConfigSourceBranch(configData));
+  if (configValue) {
+    return {
+      value: configValue,
+      source: "config",
+    };
+  }
+
+  const defaultValue = resolveDefaultGitBranch(targetRoot);
+  const canAsk = input.isTTY && !dryRun;
+  if (canAsk) {
+    const rl = readline.createInterface({ input, output });
+    try {
+      const answer = await rl.question(`Project source branch [${defaultValue}]: `);
+      if (summary) {
+        summary.placeholderPrompted += 1;
+      }
+      return {
+        value: sanitizeExtractedValue(answer) || defaultValue,
+        source: "prompt",
+      };
+    } finally {
+      rl.close();
+    }
+  }
+
+  if (summary) {
+    summary.placeholderAutoFilled += 1;
+  }
+  return {
+    value: defaultValue,
+    source: "auto-default",
+  };
+}
+
 export function suggestPlaceholderValue(name, targetRoot, templateVars) {
   if (name === "PROJECT_NAME") {
     return path.basename(targetRoot);
   }
   if (name === "SOURCE_BRANCH") {
-    const result = spawnSync("git", ["-C", targetRoot, "branch", "--show-current"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-    const branch = sanitizeExtractedValue(result.stdout);
-    return branch || "main";
+    return sanitizeExtractedValue(templateVars?.SOURCE_BRANCH) || resolveDefaultGitBranch(targetRoot);
   }
   if (name === "VERSION") {
     return sanitizeExtractedValue(templateVars.VERSION) || "0.0.0";
+  }
+  if (name === "PREFERRED_STATE_MODE") {
+    return sanitizeExtractedValue(templateVars.PREFERRED_STATE_MODE) || "dual";
+  }
+  if (name === "DEFAULT_INDEX_STORE") {
+    return sanitizeExtractedValue(templateVars.DEFAULT_INDEX_STORE) || "dual-sqlite";
+  }
+  if (name === "ADDITIONAL_CONSTRAINTS") {
+    return sanitizeExtractedValue(templateVars.ADDITIONAL_CONSTRAINTS) || "none";
+  }
+  if (name === "ADDITIONAL_CONSTRAINT_BLOCK") {
+    return sanitizeExtractedValue(templateVars.ADDITIONAL_CONSTRAINT_BLOCK) || "- Additional local constraints: `none`";
+  }
+  if (name === "CI_CAPACITY_BLOCK") {
+    return sanitizeExtractedValue(templateVars.CI_CAPACITY_BLOCK) || "- Project-specific CI/review capacity policy: `none`";
   }
   return "TO_DEFINE";
 }
@@ -210,7 +310,7 @@ export async function resolveMissingPlaceholdersForCopyOp({
     }
     const placeholders = extractPlaceholders(readUtf8(sourceItem));
     for (const placeholder of placeholders) {
-      if (!Object.prototype.hasOwnProperty.call(templateVars, placeholder) || !String(templateVars[placeholder]).trim()) {
+      if (!Object.prototype.hasOwnProperty.call(templateVars, placeholder)) {
         missing.add(placeholder);
       }
     }

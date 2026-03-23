@@ -98,6 +98,11 @@ If runtime output additionally shows:
   - do not trust `CURRENT-STATE.md` as a sufficient summary
   - reload session/cycle facts and refresh summary state through workflow skills before writing
 
+Important:
+- this is usually a runtime re-anchor problem, not proof that `AGENTS.md` is obsolete
+- in long Codex sessions, startup guidance may no longer be sufficient on its own
+- rely on workflow skills, runtime hooks, and short audit artifacts to recover write discipline
+
 ## Confusion between spec, summary, and workflow adapter
 
 Symptom:
@@ -129,6 +134,7 @@ Fix:
   - confirm `dor_state`
   - confirm first implementation step
 - If context is incomplete or contradictory, stay read-only and use `docs/audit/REANCHOR_PROMPT.md`.
+- Treat this as a sign of workflow drift, not as a special exemption of `apply_patch` from the workflow.
 - To validate the resilience guardrails in the package and reference installed fixture, run:
   - `npm run perf:verify-context-resilience`
 - To validate only the state summary against snapshot/session/cycle artifacts, run:
@@ -137,6 +143,35 @@ Fix:
   - `npm run perf:verify-runtime-digest-hints`
 - Full command reference:
   - `docs/VERIFY_CONTEXT_RESILIENCE.md`
+
+## Codex app says it stayed read-only so it skipped `start-session`
+
+Symptom:
+- A Codex desktop/app session says `start-session` was not executed because it is "mutative".
+- The assistant claims it did only an informal re-anchor because the request was analysis-only.
+- Workflow branch/session continuity was therefore never admitted.
+
+Why this is wrong:
+- In aid'n, `start-session` is admission-first.
+- The admission phase is required even for analysis-only requests because it decides `resume | choose | create | stop` before any durable write.
+- Read-only intent can justify stopping after admission; it does not justify skipping the admission step itself.
+
+Fix:
+- Run:
+  - `npx aidn codex run-json-hook --skill start-session --mode <THINKING|EXPLORING|COMMITTING> --target . --strict --json`
+- Read the admission result first.
+- If it returns `stop`, surface the blocking reason and required user choice.
+- Only continue in read-only mode after that explicit admission outcome is known.
+- Do not replace `start-session` with an undocumented "re-anchor only" shortcut.
+
+Typical root cause:
+- Additional app-level guidance treats any potentially mutating skill as forbidden in read-only analysis.
+- That heuristic is too coarse for aid'n because some workflow skills have mandatory non-mutating admission phases.
+
+Reference:
+- `scaffold/codex/start-session/SKILL.md`
+- `scaffold/root/AGENTS.md`
+- `scaffold/codex/README_CodexOnline.md`
 
 ## Missing continuity or incident templates after install
 
@@ -148,6 +183,35 @@ Fix:
   - `node tools/install.mjs --target <repo> --pack core`
 - Re-run verify:
   - `node tools/install.mjs --target <repo> --pack core --verify`
+
+## Repair-layer says a cycle is unresolved but the `status.md` exists locally
+
+Symptom:
+- runtime triage reports a cycle reference problem
+- you can see `docs/audit/cycles/CXXX-*/status.md` on disk
+- the message used to look like "missing cycle status" even though the file exists locally
+
+Meaning:
+- `UNTRACKED_CYCLE_STATUS_REFERENCE`
+  - the matching `status.md` exists locally, but git/runtime tracking has not picked it up yet
+- `UNINDEXED_CYCLE_STATUS_REFERENCE`
+  - the matching `status.md` is tracked, but the current runtime index still does not see it
+- `UNRESOLVED_CYCLE_REFERENCE`
+  - no matching `status.md` was found in the index or on disk
+
+Fix:
+- For a tracked-but-not-indexed artifact:
+  - `npx aidn perf index --target . --store sqlite --sqlite-output .aidn/runtime/index/workflow-index.sqlite --json`
+  - or rerun your normal DB-backed sync flow
+- For a local-but-untracked artifact:
+  - track the `status.md` in git
+  - then refresh the runtime index
+- For a truly missing artifact:
+  - restore or create the referenced `status.md`
+
+Notes:
+- this is often an index visibility problem, not a workflow continuity contradiction
+- `pre-write-admit` should now warn with the real cause instead of implying the cycle artifact is absent
 
 ## Merge conflict in AGENTS.md
 
@@ -164,6 +228,27 @@ Fix:
   - `node tools/install.mjs --target <repo> --pack core --skip-agents`
 - If you explicitly want to update managed block in existing AGENTS:
   - `node tools/install.mjs --target <repo> --pack core --force-agents-merge`
+
+## Wrong instruction file seems active
+
+Symptom:
+- Codex behaves differently from the installed root `AGENTS.md`.
+- The workflow contract appears to be ignored even though install succeeded.
+
+Fix:
+- Remember the Codex precedence chain:
+  - `~/.codex/AGENTS.override.md` or `~/.codex/AGENTS.md`
+  - repo root `AGENTS.override.md` or `AGENTS.md`
+  - closer nested `AGENTS.override.md` or `AGENTS.md`
+- From the client repo root, run:
+  - `codex --ask-for-approval never "Summarize the current instructions."`
+- From a nested directory, run:
+  - `codex --cd <subdir> --ask-for-approval never "Show which instruction files are active."`
+- If guidance is still unexpected:
+  - inspect `~/.codex/AGENTS.override.md`
+  - inspect repo-level `AGENTS.override.md`
+  - inspect nested overrides closer to the working directory
+  - confirm whether `CODEX_HOME` points to a non-default profile
 
 ## Re-run install safely
 

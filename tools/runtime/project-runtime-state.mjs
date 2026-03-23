@@ -4,6 +4,18 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
+import {
+  buildVirtualCurrentStateConsistency,
+  canonicalNone,
+  canonicalUnknown,
+  loadSqliteIndexPayloadSafe,
+  normalizeScalar,
+  parseSimpleMap,
+  resolveAuditArtifactText,
+  resolveCycleStatusArtifact,
+  resolveDbBackedMode,
+  resolveSessionArtifact,
+} from "./db-first-runtime-view-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -67,19 +79,6 @@ function readJsonIfExists(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
-function normalizeScalar(value) {
-  return String(value ?? "").trim();
-}
-
-function canonicalNone(value) {
-  const normalized = normalizeScalar(value).toLowerCase();
-  return normalized === "none" || normalized === "(none)";
-}
-
-function canonicalUnknown(value) {
-  return normalizeScalar(value).toLowerCase() === "unknown";
-}
-
 function collectDecisionEntries(payload) {
   const entries = payload && typeof payload.decisions === "object"
     ? Object.entries(payload.decisions)
@@ -99,42 +98,153 @@ function latestDecision(entries) {
     })[0] ?? null;
 }
 
+function repairCandidateRank(entry) {
+  if (!entry || typeof entry !== "object") {
+    return 0;
+  }
+  let rank = 0;
+  if (!canonicalUnknown(entry.repair_layer_status) && normalizeScalar(entry.repair_layer_status)) {
+    rank += entry.repair_layer_status_inferred ? 2 : 4;
+  }
+  if (!canonicalUnknown(entry.repair_layer_advice) && normalizeScalar(entry.repair_layer_advice)) {
+    rank += entry.repair_layer_advice_inferred ? 1 : 3;
+  }
+  if (Array.isArray(entry.repair_layer_top_findings) && entry.repair_layer_top_findings.length > 0) {
+    rank += 1;
+  }
+  if (entry.repair_layer_blocking === true) {
+    rank += 2;
+  }
+  return rank;
+}
+
+function repairCandidateHasKnownStatus(entry) {
+  return !canonicalUnknown(entry?.repair_layer_status) && normalizeScalar(entry?.repair_layer_status).length > 0;
+}
+
+function latestRepairCandidate(entries) {
+  return entries
+    .slice()
+    .sort((left, right) => {
+      const knownStatusDelta = Number(repairCandidateHasKnownStatus(right)) - Number(repairCandidateHasKnownStatus(left));
+      if (knownStatusDelta !== 0) {
+        return knownStatusDelta;
+      }
+      const leftTs = Date.parse(String(left?.ts ?? left?.updated_at ?? ""));
+      const rightTs = Date.parse(String(right?.ts ?? right?.updated_at ?? ""));
+      const tsDelta = (Number.isNaN(rightTs) ? 0 : rightTs) - (Number.isNaN(leftTs) ? 0 : leftTs);
+      if (tsDelta !== 0) {
+        return tsDelta;
+      }
+      return repairCandidateRank(right) - repairCandidateRank(left);
+    })[0] ?? null;
+}
+
+function inferRepairStatus(status, findings, blocking) {
+  const normalizedStatus = String(status ?? "").trim().toLowerCase();
+  if (normalizedStatus) {
+    return normalizedStatus;
+  }
+  if (blocking === true) {
+    return "block";
+  }
+  const severities = Array.isArray(findings)
+    ? findings.map((item) => normalizeScalar(item?.severity).toLowerCase()).filter(Boolean)
+    : [];
+  if (severities.includes("error") || severities.includes("warning")) {
+    return "warn";
+  }
+  if (severities.length > 0) {
+    return "clean";
+  }
+  return "";
+}
+
+function inferRepairAdvice(advice, status) {
+  const normalizedAdvice = String(advice ?? "").trim();
+  if (normalizedAdvice) {
+    return normalizedAdvice;
+  }
+  const normalizedStatus = String(status ?? "").trim().toLowerCase();
+  if (normalizedStatus === "clean" || normalizedStatus === "ok") {
+    return "Repair layer is clean.";
+  }
+  if (normalizedStatus === "warn") {
+    return "Review open repair findings.";
+  }
+  if (normalizedStatus === "block") {
+    return "Resolve blocking repair findings before continuing.";
+  }
+  return "";
+}
+
+function normalizeRepairCandidate(entry, defaults = {}) {
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+  const rawStatus = String(
+    entry.repair_layer_status
+      ?? entry.status
+      ?? defaults.status
+      ?? "",
+  ).trim();
+  const rawAdvice = String(
+    entry.repair_layer_advice
+      ?? entry.advice
+      ?? defaults.advice
+      ?? "",
+  ).trim();
+  const findings = Array.isArray(entry.repair_layer_top_findings)
+    ? entry.repair_layer_top_findings
+    : (Array.isArray(entry.top_findings) ? entry.top_findings : []);
+  const blocking = entry.repair_layer_blocking === true
+    || entry.blocking === true
+    || defaults.blocking === true;
+  const status = inferRepairStatus(rawStatus, findings, blocking);
+  const advice = inferRepairAdvice(rawAdvice, status);
+  const ts = String(
+    entry.ts
+      ?? entry.updated_at
+      ?? defaults.ts
+      ?? "",
+  ).trim();
+  if (!status && !advice && findings.length === 0 && !blocking) {
+    return null;
+  }
+  return {
+    ts,
+    repair_layer_status: status || "unknown",
+    repair_layer_status_inferred: !rawStatus,
+    repair_layer_advice: advice || "unknown",
+    repair_layer_advice_inferred: !rawAdvice,
+    repair_layer_top_findings: findings,
+    repair_layer_blocking: blocking,
+  };
+}
+
 function deriveRepairSummary(hydrated, fallbackContext) {
   const repairLayer = hydrated?.repair_layer && typeof hydrated.repair_layer === "object"
     ? hydrated.repair_layer
     : null;
   const history = Array.isArray(hydrated?.recent_history) ? hydrated.recent_history : [];
   const decisions = collectDecisionEntries(hydrated);
-  const decisionCandidates = [
-    ...history.filter((entry) => entry && typeof entry === "object"),
-    ...decisions,
-  ];
-  const latest = latestDecision(decisionCandidates);
-  const fallbackLatest = fallbackContext?.latest && typeof fallbackContext.latest === "object"
-    ? Object.values(fallbackContext.latest).find((entry) => entry && typeof entry === "object") ?? null
-    : null;
-  const source = latest ?? fallbackLatest;
-
-  const status = String(
-    repairLayer?.status
-      ?? source?.repair_layer_status
-      ?? "unknown",
-  ).trim() || "unknown";
-  const advice = String(
-    repairLayer?.advice
-      ?? source?.repair_layer_advice
-      ?? "unknown",
-  ).trim() || "unknown";
-
-  const findings = Array.isArray(repairLayer?.top_findings) && repairLayer.top_findings.length > 0
-    ? repairLayer.top_findings
-    : (Array.isArray(source?.repair_layer_top_findings) ? source.repair_layer_top_findings : []);
-
+  const fallbackEntries = fallbackContext?.latest && typeof fallbackContext.latest === "object"
+    ? Object.values(fallbackContext.latest).filter((entry) => entry && typeof entry === "object")
+    : [];
+  const source = latestRepairCandidate([
+    normalizeRepairCandidate(repairLayer, {
+      ts: hydrated?.ts,
+      blocking: repairLayer?.blocking === true,
+    }),
+    ...history.map((entry) => normalizeRepairCandidate(entry)),
+    ...decisions.map((entry) => normalizeRepairCandidate(entry)),
+    ...fallbackEntries.map((entry) => normalizeRepairCandidate(entry)),
+  ].filter(Boolean));
   return {
-    status,
-    advice,
-    findings,
-    blocking: repairLayer?.blocking === true || source?.repair_layer_blocking === true,
+    status: String(source?.repair_layer_status ?? "unknown").trim() || "unknown",
+    advice: String(source?.repair_layer_advice ?? "unknown").trim() || "unknown",
+    findings: Array.isArray(source?.repair_layer_top_findings) ? source.repair_layer_top_findings : [],
+    blocking: source?.repair_layer_blocking === true,
   };
 }
 
@@ -211,8 +321,26 @@ function formatFinding(item) {
   return parts.join(": ");
 }
 
+function deriveRepairPrimaryReason({ status, advice, findings }) {
+  const normalizedStatus = normalizeScalar(status).toLowerCase();
+  if (normalizedStatus === "clean" || normalizedStatus === "ok") {
+    return "repair layer reports no blocking findings for the current relay";
+  }
+  const topFinding = Array.isArray(findings) ? findings[0] : null;
+  const topFormatted = formatFinding(topFinding);
+  if (topFormatted) {
+    return topFormatted;
+  }
+  const normalizedAdvice = normalizeScalar(advice);
+  if (normalizedAdvice && !canonicalUnknown(normalizedAdvice)) {
+    return normalizedAdvice;
+  }
+  return "repair-layer reason is unknown";
+}
+
 function derivePrioritizedArtifacts(consistency, hydrated, args) {
   const values = [
+    "docs/audit/HANDOFF-PACKET.md",
     "docs/audit/CURRENT-STATE.md",
     "docs/audit/snapshots/context-snapshot.md",
   ];
@@ -234,6 +362,34 @@ function derivePrioritizedArtifacts(consistency, hydrated, args) {
     ? hydrated.artifacts.map((artifact) => String(artifact?.path ?? "").trim()).filter(Boolean)
     : [];
   return uniqueItems([...values, ...artifactPaths.slice(0, 6)]);
+}
+
+function deriveRepairRouting({ status, advice, blocking }) {
+  const normalizedStatus = String(status ?? "").trim().toLowerCase();
+  if (normalizedStatus === "block" || blocking === true) {
+    return {
+      hint: "repair",
+      reason: "blocking repair findings require repair-first routing before any implementation handoff",
+    };
+  }
+  if (normalizedStatus === "warn") {
+    return {
+      hint: "audit-first",
+      reason: advice && advice !== "unknown"
+        ? advice
+        : "repair warnings require an audit-first relay before implementation",
+    };
+  }
+  if (normalizedStatus === "ok" || normalizedStatus === "clean") {
+    return {
+      hint: "execution-or-audit",
+      reason: "repair layer reports no blocking findings for the current relay",
+    };
+  }
+  return {
+    hint: "reanchor",
+    reason: "repair routing is unknown, so the next agent should reanchor before acting",
+  };
 }
 
 function buildMarkdown(digest) {
@@ -258,6 +414,9 @@ function buildMarkdown(digest) {
   lines.push(`runtime_state_mode: ${digest.runtime_state_mode}`);
   lines.push(`repair_layer_status: ${digest.repair_layer_status}`);
   lines.push(`repair_layer_advice: ${digest.repair_layer_advice}`);
+  lines.push(`repair_primary_reason: ${digest.repair_primary_reason}`);
+  lines.push(`repair_routing_hint: ${digest.repair_routing_hint}`);
+  lines.push(`repair_routing_reason: ${digest.repair_routing_reason}`);
   lines.push("");
   lines.push("## Current State Freshness");
   lines.push("");
@@ -312,12 +471,59 @@ export function projectRuntimeState({
   const hydratedPath = resolveTargetPath(absoluteTargetRoot, hydratedFile);
   const contextPath = resolveTargetPath(absoluteTargetRoot, contextFile);
   const hydrated = readJsonIfExists(hydratedPath);
-  const fallbackContext = hydrated ? null : readJsonIfExists(contextPath);
-  const consistency = evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot });
+  const fallbackContext = readJsonIfExists(contextPath);
+  const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
+  const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
+  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+    exists: false,
+    sqliteFile: "",
+    payload: null,
+    runtimeHeads: {},
+    warning: "",
+  };
+  const currentStateResolution = resolveAuditArtifactText({
+    targetRoot: absoluteTargetRoot,
+    candidatePath: "docs/audit/CURRENT-STATE.md",
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+  });
+  const currentStateMap = parseSimpleMap(currentStateResolution.text);
+  const activeSession = normalizeScalar(currentStateMap.get("active_session") ?? "none") || "none";
+  const activeCycle = normalizeScalar(currentStateMap.get("active_cycle") ?? "none") || "none";
+  const sessionResolution = resolveSessionArtifact({
+    targetRoot: absoluteTargetRoot,
+    auditRoot,
+    sessionId: activeSession,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const cycleStatusResolution = resolveCycleStatusArtifact({
+    targetRoot: absoluteTargetRoot,
+    auditRoot,
+    cycleId: activeCycle,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+  });
+  const consistency = currentStateResolution.source === "file"
+    ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })
+    : buildVirtualCurrentStateConsistency({
+      currentStateResolution,
+      activeCycle,
+      activeSession,
+      cycleStatusResolution,
+    });
   const repairSummary = deriveRepairSummary(hydrated, fallbackContext);
   const freshness = deriveFreshness(consistency);
+  const repairRouting = deriveRepairRouting(repairSummary);
+  const prioritizedFindings = Array.isArray(repairSummary.findings)
+    ? repairSummary.findings.filter((item) => {
+      const severity = normalizeScalar(item?.severity).toLowerCase();
+      return severity === "warning" || severity === "error";
+    })
+    : [];
   const blockingFindings = uniqueItems(
-    repairSummary.findings
+    prioritizedFindings
       .map((item) => formatFinding(item))
       .filter(Boolean)
       .slice(0, 5),
@@ -327,9 +533,12 @@ export function projectRuntimeState({
   }
   const digest = {
     updated_at: new Date().toISOString(),
-    runtime_state_mode: String(hydrated?.state_mode ?? "files"),
+    runtime_state_mode: String(dbBackedMode ? effectiveStateMode : (hydrated?.state_mode ?? "files")),
     repair_layer_status: repairSummary.status,
     repair_layer_advice: repairSummary.advice,
+    repair_primary_reason: deriveRepairPrimaryReason(repairSummary),
+    repair_routing_hint: repairRouting.hint,
+    repair_routing_reason: repairRouting.reason,
     current_state_freshness: freshness.freshness,
     current_state_freshness_basis: freshness.basis,
     blocking_findings: blockingFindings,
@@ -338,6 +547,9 @@ export function projectRuntimeState({
       ? path.relative(absoluteTargetRoot, hydratedPath).replace(/\\/g, "/")
       : (fallbackContext ? path.relative(absoluteTargetRoot, contextPath).replace(/\\/g, "/") : "none"),
     consistency_status: consistency.pass ? "pass" : "fail",
+    current_state_source: currentStateResolution.source,
+    session_artifact_source: sessionResolution.source,
+    cycle_status_source: cycleStatusResolution.source,
   };
   const markdown = buildMarkdown(digest);
   const outWrite = writeUtf8IfChanged(resolveTargetPath(absoluteTargetRoot, out), markdown);
@@ -373,6 +585,7 @@ function main() {
       console.log(`Runtime state digest: ${output.output_file} (${output.written ? "written" : "unchanged"})`);
       console.log(`- runtime_state_mode=${output.digest.runtime_state_mode}`);
       console.log(`- repair_layer_status=${output.digest.repair_layer_status}`);
+      console.log(`- repair_routing_hint=${output.digest.repair_routing_hint}`);
       console.log(`- current_state_freshness=${output.digest.current_state_freshness}`);
       console.log(`- consistency=${output.digest.consistency_status}`);
       printFreshnessHint(output.digest);

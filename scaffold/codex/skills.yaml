@@ -1,0 +1,32 @@
+skills:
+  - branch-cycle-audit
+  - close-session
+  - pr-orchestrate
+  - context-reload
+  - convert-to-spike
+  - cycle-close
+  - cycle-create
+  - drift-check
+  - handoff-close
+  - promote-baseline
+  - requirements-delta
+  - start-session
+
+remote:
+  repo: leuzeus/aidn
+  ref: "v{{VERSION}}"
+  root: scaffold/codex
+
+install_urls:
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/branch-cycle-audit
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/close-session
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/pr-orchestrate
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/context-reload
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/convert-to-spike
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/cycle-close
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/cycle-create
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/drift-check
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/handoff-close
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/promote-baseline
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/requirements-delta
+  - https://github.com/leuzeus/aidn/tree/v{{VERSION}}/scaffold/codex/start-session

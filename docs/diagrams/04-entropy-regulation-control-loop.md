@@ -16,12 +16,13 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 4) Entropy Regulation Control Loop (v0.4.0)
+%% 4) Entropy Regulation Control Loop (v0.4.0 workflow baseline)
 flowchart TD
   subgraph PRE["Pre-Decision Regulation"]
     IN["Candidate change"]
-    RULES["Apply canonical gates R01-R06"]
+    RULES["Apply canonical rules R01-R06"]
     ANCHOR["Reload CURRENT-STATE + WORKFLOW-KERNEL"]
+    HOOKS["Admission-first hooks for start/session/cycle mutations"]
     G1{"Continuity + DoR + mapping valid?"}
   end
 
@@ -30,7 +31,8 @@ flowchart TD
     PWRITE{"Pre-write gate satisfied?"}
     IMP["Implement / explore / reason"]
     RT["Refresh runtime digest when needed"]
-    DRIFT["Drift control (R05)"]
+    DRIFT["Drift control via generic gating (R05)"]
+    MUT["requirements-delta / promote-baseline / handoff-close decisions"]
   end
 
   subgraph POST["Post-Execution Gates"]
@@ -55,8 +57,8 @@ flowchart TD
     BOUND["Rule vs State boundary: policy in SPEC/WORKFLOW; facts in state files"]
   end
 
-  IN --> RULES --> ANCHOR --> G1
-  G1 -->|Yes| PLAN --> PWRITE --> IMP --> RT --> DRIFT --> CLOSE --> PR --> SYNC --> G2
+  IN --> RULES --> ANCHOR --> HOOKS --> G1
+  G1 -->|Yes| PLAN --> PWRITE --> IMP --> RT --> DRIFT --> MUT --> CLOSE --> PR --> SYNC --> G2
   G1 -->|No| FIX
   PWRITE -->|No| FIX
   G2 -->|No| FIX --> IN
@@ -83,7 +85,7 @@ flowchart TD
   classDef incident fill:#FFF4F4,stroke:#B42318,color:#7A271A,stroke-width:2px;
 
   class G1,PWRITE,G2 gate;
-  class IN,RULES,ANCHOR,PLAN,IMP,RT,DRIFT,CLOSE,PR,SYNC,FIX action;
+  class IN,RULES,ANCHOR,HOOKS,PLAN,IMP,RT,DRIFT,MUT,CLOSE,PR,SYNC,FIX action;
   class SNAP,BASE,PARK,TMP,BOUND state;
   class TRIAGE,L12,L34 incident;
 

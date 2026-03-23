@@ -1,10 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { createRequire } from "node:module";
 import { evaluateRepairRelation } from "../../core/workflow/repair-layer-policy.mjs";
 import { resolveRuntimePath } from "./runtime-path-resolution.mjs";
-
-const require = createRequire(import.meta.url);
+import { ensureWorkflowDbSchema, getDatabaseSync } from "../../lib/sqlite/workflow-db-schema-lib.mjs";
 
 function detectBackend(indexFile, backend) {
   if (backend === "json" || backend === "sqlite") {
@@ -20,14 +18,6 @@ function readJsonIndex(indexFile) {
   }
   const payload = JSON.parse(fs.readFileSync(absolute, "utf8"));
   return { absolute, payload };
-}
-
-function getDatabaseSync() {
-  try {
-    return require("node:sqlite").DatabaseSync;
-  } catch (error) {
-    throw new Error(`SQLite backend unavailable: ${error.message}`);
-  }
 }
 
 function usableRelation(row, args) {
@@ -79,9 +69,15 @@ function openSqliteQueryContext(indexFile) {
   if (!fs.existsSync(absolute)) {
     throw new Error(`SQLite index file not found: ${absolute}`);
   }
+  const db = new DatabaseSync(absolute);
+  ensureWorkflowDbSchema({
+    db,
+    sqliteFile: absolute,
+    role: "repair-layer-query",
+  });
   return {
     absolute,
-    db: new DatabaseSync(absolute),
+    db,
   };
 }
 

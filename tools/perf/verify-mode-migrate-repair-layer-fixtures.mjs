@@ -82,6 +82,11 @@ function main() {
     const checks = {
       migrate_ok: migrated.ok === true,
       moved_to_db_only: String(migrated?.to_mode ?? "") === "db-only",
+      schema_status_before_present: migrated?.schema_status_before?.ok === true,
+      schema_migration_result_present: migrated?.schema_migration_result?.ok === true,
+      schema_status_after_present: migrated?.schema_status_after?.ok === true,
+      schema_migration_step_present: Array.isArray(migrated?.steps) && migrated.steps.some((step) => String(step?.step ?? "") === "schema_migrate"),
+      schema_status_after_no_pending: Array.isArray(migrated?.schema_status_after?.pending_ids) && migrated.schema_status_after.pending_ids.length === 0,
       repair_layer_step_present: Array.isArray(migrated?.steps) && migrated.steps.some((step) => String(step?.step ?? "") === "repair_layer"),
       repair_layer_completed: ["applied", "skipped"].includes(String(migrated?.repair_layer_result?.action ?? "")),
       report_exists: fs.existsSync(reportFile),

@@ -11,6 +11,18 @@ Ce backlog est conçu pour:
 - séquencer les PRs
 - suivre les dépendances et les critères d'acceptation
 
+## Note De Traçabilité
+
+Ce backlog a été largement absorbé par l'implémentation avant son réalignement explicite.
+
+En pratique:
+
+- plusieurs items `E1`, `E2` et `E3` étaient déjà livrés dans le dépôt avant mise à jour du statut
+- le réalignement documentaire sert surtout à rendre l'état réel visible
+- le seul durcissement technique tardif ajouté pendant cette reprise est la formalisation du port `VcsAdapter`, pour expliciter un adapter git local déjà utilisé par le runtime
+
+Si une divergence est constatée plus tard entre ce backlog et l'historique git, il faut l'interpréter comme un backlog de remédiation/documentation réaligné a posteriori, pas comme un déroulé strictement chronologique de livraison
+
 ## Règles d'utilisation
 
 1. chaque ticket doit tenir dans une PR reviewable
@@ -38,7 +50,13 @@ Ce backlog est conçu pour:
 
 - priorité: `P0`
 - statut cible: `Done`
+- statut: `Done`
 - livrable: ADR décrivant positionnement runtime-platform, couches, contrats et source de vérité
+
+Avancement:
+
+- l'ADR cible existe dans `docs/ADR/ADR-0002-runtime-platform-architecture.md`
+- le vocabulaire `core/application/adapters/distribution` y est posé explicitement
 
 Critères d'acceptation:
 
@@ -50,7 +68,12 @@ Critères d'acceptation:
 
 - priorité: `P0`
 - dépend de: `E1-T1`
+- statut: `Done`
 - livrable: plan détaillé par PR
+
+Avancement:
+
+- `docs/PLAN_ARCHITECTURE_REMEDIATION_2026-03-07.md` formalise la séquence de migration, les risques et les critères de succès
 
 Critères d'acceptation:
 
@@ -62,6 +85,12 @@ Critères d'acceptation:
 
 - priorité: `P0`
 - dépend de: `E1-T1`
+- statut: `Done`
+
+Avancement:
+
+- `README.md` référence l'ADR architecture et le plan de remédiation
+- les modes `files|dual|db-only` et le positionnement runtime sont visibles
 
 Critères d'acceptation:
 
@@ -75,9 +104,15 @@ Critères d'acceptation:
 
 - priorité: `P0`
 - dépend de: `E1-T2`
+- statut: `Done`
 - cible technique:
   - `src/application/install/manifest-loader.mjs`
   - `src/adapters/manifest/yaml-reader.mjs`
+
+Avancement:
+
+- `manifest-loader.mjs` charge les manifests workflow et pack hors CLI
+- `tools/install.mjs` délègue cette logique au use case applicatif
 
 Critères d'acceptation:
 
@@ -89,8 +124,13 @@ Critères d'acceptation:
 
 - priorité: `P0`
 - dépend de: `E2-T1`
+- statut: `Done`
 - cible technique:
   - `src/application/install/compatibility-policy.mjs`
+
+Avancement:
+
+- la validation de compatibilité est isolée dans `src/application/install/compatibility-policy.mjs`
 
 Critères d'acceptation:
 
@@ -101,8 +141,13 @@ Critères d'acceptation:
 
 - priorité: `P0`
 - dépend de: `E2-T1`
+- statut: `Done`
 - cible technique:
   - `src/application/install/project-config-service.mjs`
+
+Avancement:
+
+- la construction et la persistance de config projet sont gérées par `project-config-service.mjs`
 
 Critères d'acceptation:
 
@@ -114,9 +159,15 @@ Critères d'acceptation:
 
 - priorité: `P0`
 - dépend de: `E2-T1`
+- statut: `Done`
 - cible technique:
   - `src/application/install/template-copy-service.mjs`
   - `src/application/install/template-merge-service.mjs`
+
+Avancement:
+
+- la copie et le merge passent par des services dédiés
+- les stratégies `block` et `append_unique` restent centralisées hors CLI
 
 Critères d'acceptation:
 
@@ -127,8 +178,13 @@ Critères d'acceptation:
 
 - priorité: `P0`
 - dépend de: `E2-T4`
+- statut: `Done`
 - cible technique:
   - `src/application/install/custom-file-policy.mjs`
+
+Avancement:
+
+- la logique de préservation des fichiers customisés vit dans `custom-file-policy.mjs`
 
 Critères d'acceptation:
 
@@ -140,6 +196,12 @@ Critères d'acceptation:
 
 - priorité: `P0`
 - dépend de: `E2-T2`, `E2-T3`, `E2-T4`, `E2-T5`
+- statut: `Done`
+
+Avancement:
+
+- `tools/install.mjs` se limite à parser les arguments et déléguer à `runInstallUseCase`
+- l'orchestration métier est concentrée dans `src/application/install/install-use-case.mjs`
 
 Critères d'acceptation:
 
@@ -186,6 +248,12 @@ Critères d'acceptation:
 
 - priorité: `P1`
 - dépend de: `E3-T3`
+- statut: `Done`
+
+Avancement:
+
+- `src/core/ports/agent-adapter-port.mjs` formalise le contrat agent
+- les adapters Codex et shell local sont validés contre ce port
 
 Critères d'acceptation:
 
@@ -196,6 +264,13 @@ Critères d'acceptation:
 
 - priorité: `P1`
 - dépend de: `E3-T1`
+- statut: `Done`
+
+Avancement:
+
+- `src/core/ports/vcs-adapter-port.mjs` formalise le contrat minimal `getCurrentBranch`, `getHeadCommit`, `hasWorkingTreeChanges`, `execStatusPorcelain`
+- `src/adapters/runtime/local-git-adapter.mjs` est validé contre ce port
+- les use cases runtime continuent d'appeler git via cet adapter local plutôt que via des appels shell dispersés
 
 Critères d'acceptation:
 
@@ -206,6 +281,12 @@ Critères d'acceptation:
 
 - priorité: `P1`
 - dépend de: `E3-T1`
+- statut: `Done`
+
+Avancement:
+
+- `src/core/state-mode/state-mode-policy.mjs` centralise la résolution `files|dual|db-only`
+- les règles de strictness DB-backed et de résolution effective y sont testables
 
 Critères d'acceptation:
 
@@ -218,8 +299,14 @@ Critères d'acceptation:
 
 - priorité: `P1`
 - dépend de: `E3-T6`
+- statut: `Done`
 - cible technique:
   - `src/application/runtime/checkpoint-use-case.mjs`
+
+Avancement:
+
+- `src/application/runtime/checkpoint-use-case.mjs` existe
+- `tools/perf/checkpoint.mjs` agit déjà comme wrapper fin autour du use case
 
 Critères d'acceptation:
 
@@ -230,8 +317,14 @@ Critères d'acceptation:
 
 - priorité: `P1`
 - dépend de: `E4-T1`
+- statut: `Done`
 - cible technique:
   - `src/application/runtime/hook-use-case.mjs`
+
+Avancement:
+
+- `src/application/runtime/workflow-hook-use-case.mjs` existe
+- les hooks `start-session` et `close-session` passent déjà par ce use case
 
 Critères d'acceptation:
 
@@ -242,8 +335,14 @@ Critères d'acceptation:
 
 - priorité: `P1`
 - dépend de: `E4-T1`
+- statut: `Partial`
 - cible technique:
   - `src/application/runtime/parity-verify-use-case.mjs`
+
+Avancement:
+
+- la couverture de parité existe largement dans `tools/perf/*`
+- aucun use case applicatif unique de type `parity-verify-use-case` n'est encore matérialisé
 
 Critères d'acceptation:
 
@@ -253,6 +352,12 @@ Critères d'acceptation:
 
 - priorité: `P1`
 - dépend de: `E4-T1`
+- statut: `Partial`
+
+Avancement:
+
+- le runtime est moins script-centric qu'au départ
+- la collecte NDJSON et plusieurs rapports restent cependant concentrés dans `tools/perf/*`, sans vraie couche `application/observability`
 
 Critères d'acceptation:
 
@@ -265,8 +370,14 @@ Critères d'acceptation:
 
 - priorité: `P1`
 - dépend de: `E3-T1`, `E4-T2`
+- statut: `Partial`
 - cible technique:
   - `src/adapters/filesystem/file-workflow-state-store.mjs`
+
+Avancement:
+
+- `src/adapters/runtime/workflow-state-store-adapter.mjs` route déjà les écritures vers le backend fichier
+- le contrat cœur reste plus faible que la cible initiale du backlog
 
 Critères d'acceptation:
 
@@ -276,8 +387,14 @@ Critères d'acceptation:
 
 - priorité: `P1`
 - dépend de: `E3-T1`, `E4-T2`
+- statut: `Partial`
 - cible technique:
   - `src/adapters/sqlite/db-workflow-state-store.mjs`
+
+Avancement:
+
+- l'index SQLite et les écritures DB-backed existent
+- l'implémentation n'est pas encore encapsulée comme port riche `DbWorkflowStateStore` distinct
 
 Critères d'acceptation:
 
@@ -288,6 +405,12 @@ Critères d'acceptation:
 
 - priorité: `P1`
 - dépend de: `E5-T1`, `E5-T2`
+- statut: `Partial`
+
+Avancement:
+
+- le comportement `dual` existe dans la pratique via la résolution de mode et l'index store
+- le coordinateur explicite `DualWorkflowStateStore` n'est pas encore isolé comme composant dédié
 
 Critères d'acceptation:
 
@@ -299,6 +422,12 @@ Critères d'acceptation:
 
 - priorité: `P1`
 - dépend de: `E3-T2`, `E5-T1`, `E5-T2`
+- statut: `Partial`
+
+Avancement:
+
+- `src/adapters/runtime/artifact-projector-adapter.mjs` est branché sur `index-sync`
+- le contrat existe, mais la séparation finale entre projector et state stores reste incomplète
 
 Critères d'acceptation:
 
@@ -309,6 +438,12 @@ Critères d'acceptation:
 
 - priorité: `P1`
 - dépend de: `E5-T3`, `E5-T4`
+- statut: `Partial`
+
+Avancement:
+
+- `tools/runtime/mode-migrate.mjs` existe et couvre les transitions inter-modes
+- le flux reste encore orchestré principalement côté script, sans use case applicatif dédié
 
 Critères d'acceptation:
 
@@ -320,8 +455,13 @@ Critères d'acceptation:
 
 - priorité: `P1`
 - dépend de: `E2-T5`, `E3-T4`
+- statut: `Done`
 - cible technique:
   - `src/adapters/codex/codex-migrate-custom.mjs`
+
+Avancement:
+
+- `src/adapters/codex/codex-migrate-custom.mjs` existe et est utilisé par l'installation
 
 Critères d'acceptation:
 
@@ -331,6 +471,12 @@ Critères d'acceptation:
 
 - priorité: `P1`
 - dépend de: `E3-T4`
+- statut: `Done`
+
+Avancement:
+
+- `src/application/codex/run-json-hook-use-case.mjs` exécute via `agentAdapter.runCommand`
+- le cœur applicatif n'impose plus directement Codex pour ce chemin
 
 Critères d'acceptation:
 
@@ -340,6 +486,12 @@ Critères d'acceptation:
 
 - priorité: `P1`
 - dépend de: `E3-T3`, `E5-T2`
+- statut: `Partial`
+
+Avancement:
+
+- `HookContextStore` est branché pour la lecture/écriture de contexte
+- `hydrate-context` lit encore SQLite directement sur une partie du chemin, donc la dépendance complète aux ports n'est pas finie
 
 Critères d'acceptation:
 
@@ -351,6 +503,14 @@ Critères d'acceptation:
 
 - priorité: `P2`
 - dépend de: `E5-T5`, `E6-T3`
+- statut: `Done`
+
+Avancement:
+
+- `packs/extended/manifest.yaml` n'est plus vide: il agrège maintenant `runtime-local` et `codex-integration`
+- `package/manifests/workflow.manifest.yaml` revient à un défaut simple (`core`) pour éviter les doublons implicites
+- la frontière `core` vs `extended` est maintenant explicite et documentée comme séparation compatibilité/default vs composite full-stack
+- `tools/perf/verify-pack-topology-fixtures.mjs` couvre aussi les scénarios de réinstallation ciblée `runtime-local`, `codex-integration` et `extended`
 
 Critères d'acceptation:
 
@@ -361,6 +521,12 @@ Critères d'acceptation:
 
 - priorité: `P2`
 - dépend de: `E7-T1`
+- statut: `Done`
+
+Avancement:
+
+- `packs/runtime-local/manifest.yaml` existe et encapsule le refresh ciblé des adapters runtime locaux
+- un verifier de topologie de packs couvre sa dépendance sur `core`
 
 Critères d'acceptation:
 
@@ -371,6 +537,12 @@ Critères d'acceptation:
 
 - priorité: `P2`
 - dépend de: `E6-T3`, `E7-T1`
+- statut: `Done`
+
+Avancement:
+
+- `packs/codex-integration/manifest.yaml` existe et encapsule le refresh ciblé des assets `.codex`
+- le verifier de topologie couvre sa dépendance sur `core`
 
 Critères d'acceptation:
 
@@ -380,6 +552,12 @@ Critères d'acceptation:
 
 - priorité: `P2`
 - dépend de: `E7-T2`, `E7-T3`
+- statut: `Done`
+
+Avancement:
+
+- `README.md`, `docs/INSTALL.md`, `tests/README.md`, `package.json` et le workflow manifest documentent désormais `core`, `runtime-local`, `codex-integration` et `extended`
+- `tools/perf/verify-pack-topology-fixtures.mjs` verrouille le graphe de packs attendu
 
 Critères d'acceptation:
 
@@ -392,6 +570,12 @@ Critères d'acceptation:
 
 - priorité: `P2`
 - dépend de: `E5-T5`
+- statut: `Partial`
+
+Avancement:
+
+- un corpus réel existe déjà de fait via `repo-installed-core`, `selfhost-product` et les fixtures `gowire`-like
+- le cadrage explicite "3 à 5 types de repos cibles" n'est pas encore synthétisé dans ce backlog
 
 Critères d'acceptation:
 
@@ -402,6 +586,12 @@ Critères d'acceptation:
 
 - priorité: `P2`
 - dépend de: `E5-T5`
+- statut: `Partial`
+
+Avancement:
+
+- des vérifications inter-modes existent, notamment autour de `mode-migrate` et de la parité `dual/db-only`
+- la couverture n'est pas encore reformulée ici comme lot de validation architecture clos
 
 Critères d'acceptation:
 
@@ -414,6 +604,12 @@ Critères d'acceptation:
 
 - priorité: `P2`
 - dépend de: `E2-T6`, `E6-T1`
+- statut: `Partial`
+
+Avancement:
+
+- l'installation customisée est déjà couverte par plusieurs fixtures d'install et de project config
+- la matrice de validation "avec et sans Codex disponible" n'est pas explicitement close dans ce backlog
 
 Critères d'acceptation:
 
@@ -424,6 +620,12 @@ Critères d'acceptation:
 
 - priorité: `P2`
 - dépend de: `E8-T2`
+- statut: `Partial`
+
+Avancement:
+
+- des vérifications réelles existent pour la parité runtime, y compris sur les fixtures `gowire`-like et self-host
+- la clôture formelle de ce ticket demande encore un alignement doc explicite entre corpus, commandes et critères
 
 Critères d'acceptation:
 

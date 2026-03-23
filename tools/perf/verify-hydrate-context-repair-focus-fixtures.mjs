@@ -74,6 +74,12 @@ function main() {
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",
     });
+    if (String(hydrated?.state_mode ?? "") !== "db-only") {
+      throw new Error(`expected db-only effective state mode, got ${String(hydrated?.state_mode ?? "missing")}`);
+    }
+    if (String(hydrated?.state_mode_source ?? "") !== "env-state-mode") {
+      throw new Error(`expected env-state-mode source, got ${String(hydrated?.state_mode_source ?? "missing")}`);
+    }
 
     const artifacts = Array.isArray(hydrated?.artifacts) ? hydrated.artifacts : [];
     const repairFindingArtifacts = artifacts.filter((artifact) =>

@@ -36,10 +36,16 @@ If COMMITTING:
 - branch_kind: `session` | `cycle` | `intermediate`
 - cycle_branch: `<cycle-type>/CYYY-<short-slug>` | `none`
 - intermediate_branch: `<cycle-type>/CYYY-I##-<short-slug>` | `none`
-- integration_target_cycle: `CYYY` | `none`
+- integration_target_cycles:
+  - `CYYY`
+  - `CZZZ`
+- primary_focus_cycle: `CYYY` | `none`
+- integration_target_cycle: `CYYY` | `none` (legacy compatibility only; prefer `integration_target_cycles`)
 
 ### Session Cycle Tracking (required for COMMITTING)
-- attached_cycles: `CYYY, CZZZ` | `none`
+- attached_cycles:
+  - `CYYY`
+  - `CZZZ`
 - reported_from_previous_session: `none` | `CYYY, CZZZ`
 - carry_over_pending: yes | no
 

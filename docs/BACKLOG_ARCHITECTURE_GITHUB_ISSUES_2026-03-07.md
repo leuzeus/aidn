@@ -8,6 +8,12 @@ This document provides ready-to-create GitHub issues derived from:
 - `docs/PLAN_ARCHITECTURE_REMEDIATION_2026-03-07.md`
 - `docs/BACKLOG_ARCHITECTURE_REMEDIATION_2026-03-07.md`
 
+Important:
+
+- this file is a derived issue-preparation artifact, not the source of truth for implementation status
+- current delivery status must be read from `docs/BACKLOG_ARCHITECTURE_REMEDIATION_2026-03-07.md`
+- if these issue drafts diverge from the repository state, treat them as stale planning exports until refreshed
+
 Recommended labels:
 
 - `architecture`

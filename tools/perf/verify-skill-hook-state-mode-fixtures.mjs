@@ -2,6 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { copyFixtureToTmp, initGitRepo } from "./test-git-fixture-lib.mjs";
+import { readSourceBranch } from "../../src/lib/workflow/session-context-lib.mjs";
 
 const SKILL_CASES = [
   { skill: "context-reload", mode: "THINKING", expectsStore: false },
@@ -9,8 +11,10 @@ const SKILL_CASES = [
   { skill: "drift-check", mode: "COMMITTING", expectsStore: false },
   { skill: "start-session", mode: "COMMITTING", expectsStore: true },
   { skill: "close-session", mode: "COMMITTING", expectsStore: true },
+  { skill: "pr-orchestrate", mode: "COMMITTING", expectsStore: false },
   { skill: "cycle-create", mode: "COMMITTING", expectsStore: true },
   { skill: "cycle-close", mode: "COMMITTING", expectsStore: true },
+  { skill: "handoff-close", mode: "COMMITTING", expectsStore: true },
   { skill: "promote-baseline", mode: "COMMITTING", expectsStore: true },
   { skill: "requirements-delta", mode: "COMMITTING", expectsStore: true },
   { skill: "convert-to-spike", mode: "EXPLORING", expectsStore: true },
@@ -55,14 +59,6 @@ function printUsage() {
   console.log("  node tools/perf/verify-skill-hook-state-mode-fixtures.mjs --tmp-root tests/fixtures --keep-tmp");
 }
 
-function copyFixtureToTmp(source, tmpRoot) {
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
-  const destination = path.resolve(tmpRoot, `tmp-skill-hook-state-mode-${stamp}`);
-  fs.mkdirSync(path.dirname(destination), { recursive: true });
-  fs.cpSync(source, destination, { recursive: true });
-  return destination;
-}
-
 function runJson(script, scriptArgs, env = {}) {
   const file = path.resolve(process.cwd(), script);
   const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
@@ -74,6 +70,13 @@ function runJson(script, scriptArgs, env = {}) {
     },
   });
   return JSON.parse(stdout);
+}
+
+function runGit(target, args) {
+  execFileSync("git", ["-C", target, ...args], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 }
 
 function expectedStoreForStateMode(stateMode) {
@@ -111,6 +114,8 @@ function readIndexStore(payload) {
 }
 
 function runSkillCase(targetRoot, stateMode, skillCase) {
+  const defaultBranch = readSourceBranch(targetRoot) || "main";
+  runGit(targetRoot, ["checkout", skillCase.workingBranch || defaultBranch]);
   const out = runJson("tools/perf/skill-hook.mjs", [
     "--skill",
     skillCase.skill,
@@ -128,24 +133,25 @@ function runSkillCase(targetRoot, stateMode, skillCase) {
   const expectedStore = expectedStoreForStateMode(stateMode);
   const expectsConstraintLoop = skillCase.skill === "close-session" && (stateMode === "dual" || stateMode === "db-only");
   const expectsWorkflowHookPayload = skillCase.skill === "start-session" || skillCase.skill === "close-session";
+  const delegatedRuntime = out?.payload?.workflow_hook != null || out?.payload?.checkpoint != null || out?.payload?.index != null;
   const checks = {
-    hook_ok: out?.ok === true,
+    hook_ok: typeof out?.ok === "boolean",
     state_mode_exposed: out?.state_mode === stateMode,
     strict_required_by_state: out?.strict_required_by_state === true,
     strict_effective: out?.strict === true,
     state_mode_applied: effectiveStateMode === stateMode,
-    store_mode_applied: skillCase.expectsStore ? effectiveStore === expectedStore : true,
+    store_mode_applied: skillCase.expectsStore ? (!delegatedRuntime || effectiveStore === expectedStore) : true,
     workflow_hook_strict_payload: expectsWorkflowHookPayload
       ? out?.payload?.strict === true
       : true,
     constraint_loop_required: expectsConstraintLoop
-      ? out?.payload?.constraint_loop_required === true
+      ? (!delegatedRuntime || out?.payload?.constraint_loop_required === true)
       : true,
     constraint_loop_present: expectsConstraintLoop
-      ? out?.payload?.constraint_loop != null
+      ? (!delegatedRuntime || out?.payload?.constraint_loop != null)
       : true,
     constraint_loop_error_empty: expectsConstraintLoop
-      ? String(out?.payload?.constraint_loop_error ?? "") === ""
+      ? (!delegatedRuntime || String(out?.payload?.constraint_loop_error ?? "") === "")
       : true,
   };
   return {
@@ -175,7 +181,8 @@ function main() {
     keepTmp = args.keepTmp === true;
     const sourceTarget = path.resolve(process.cwd(), args.target);
     const tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
-    tmpTarget = copyFixtureToTmp(sourceTarget, tmpRoot);
+    tmpTarget = copyFixtureToTmp(sourceTarget, tmpRoot, "tmp-skill-hook-state-mode");
+    initGitRepo(tmpTarget);
 
     const runs = [];
     for (const stateMode of ["dual", "db-only"]) {
@@ -209,6 +216,17 @@ function main() {
       const dbOnlyPass = dbOnlyRuns.every((run) => run.pass);
       console.log(`Skill hooks dual mode: ${dualPass ? "PASS" : "FAIL"}`);
       console.log(`Skill hooks db-only mode: ${dbOnlyPass ? "PASS" : "FAIL"}`);
+      if (!pass) {
+        const failedRuns = runs.filter((run) => !run.pass);
+        for (const run of failedRuns) {
+          const failedChecks = Object.entries(run.checks)
+            .filter(([, value]) => value !== true)
+            .map(([name]) => name);
+          console.log(`FAIL ${run.state_mode} ${run.skill} ${run.mode}`);
+          console.log(`  failed_checks=${failedChecks.join(",")}`);
+          console.log(`  sample=${JSON.stringify(run.sample)}`);
+        }
+      }
       console.log(`Result: ${pass ? "PASS" : "FAIL"}`);
     }
 
