@@ -14,6 +14,11 @@ End session cleanly and prepare for fast resume.
 - Never auto-merge branches from this skill.
 - Apply write-on-change behavior to avoid churn in unchanged artifacts.
 
+## Pre-Write Admission
+Before the first durable write in this skill, run:
+- `npx aidn runtime pre-write-admit --target . --skill close-session --json`
+- If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+
 ## Steps
 
 1) Review current session SXXX.md.
@@ -75,6 +80,7 @@ Update:
 - top open items
 - next actions
 - blocking findings when known
+- `repair_layer_status` and `repair_primary_reason` when the latest hydrated/runtime digest exposes them
 
 7) Ensure session contains:
 ### Outputs
@@ -87,6 +93,8 @@ Update:
 
 8) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill close-session --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- the runtime `close-session` hook applies open-cycle resolution admission before delegating to generic `session-close` checkpoint/index/repair behavior
+- expect machine-visible outcomes such as `close_session_allowed`, `blocked_open_cycles_must_be_resolved`, or `blocked_cycle_resolution_decision_required`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill close-session --project-runtime-state --json`.

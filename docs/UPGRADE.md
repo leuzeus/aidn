@@ -19,10 +19,11 @@ Recent workflow resilience updates also add:
 
 ## Product repository steps
 
-1. Update workflow sources in this repository (`docs/SPEC.md`, `template/`, manifests).
+1. Update workflow sources in this repository (`docs/SPEC.md`, `scaffold/`, manifests).
 2. Bump versions in:
    - `package/manifests/workflow.manifest.yaml`
    - `packs/core/manifest.yaml`
+   - `packs/github-integration/manifest.yaml`
    - `packs/extended/manifest.yaml`
 3. Regenerate and verify fixtures:
    - `node tools/install.mjs --target tests/fixtures/repo-installed-core --pack core`
@@ -42,6 +43,13 @@ node tools/install.mjs --target <client-repo> --pack core
 
 ```bash
 node tools/install.mjs --target <client-repo> --pack core --verify
+```
+
+If the client repo uses the optional GitHub automation layer:
+
+```bash
+node tools/install.mjs --target <client-repo> --pack github-integration
+node tools/install.mjs --target <client-repo> --pack github-integration --verify
 ```
 
 3. Review local adapter updates:

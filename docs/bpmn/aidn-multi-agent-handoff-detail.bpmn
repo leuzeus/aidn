@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  id="Definitions_AidnMultiAgentHandoff"
+  targetNamespace="https://github.com/leuzeus/aidn/bpmn">
+  <bpmn:process id="Process_AidnMultiAgentHandoff" name="aid'n multi-agent handoff detail (current runtime baseline)" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_Detail">
+      <bpmn:lane id="Lane_Detail_Coordinator" name="Coordinator Agent">
+        <bpmn:flowNodeRef>StartEvent_Handoff</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReadHandoffPacket</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_HandoffBlocked</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RequestArbitration</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_PublishRelayMerge</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_PublishRelay</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_HandoffReady</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Detail_Execution" name="Execution Agent">
+        <bpmn:flowNodeRef>Task_ReloadArtifacts</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RestateContext</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_WriteAuthorized</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ExecuteStep</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Detail_Runtime" name="Runtime / Repair Layer">
+        <bpmn:flowNodeRef>Task_RefreshRuntimeState</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_RepairOutcome</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RunRepairTriage</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Detail_Audit" name="Audit Agent">
+        <bpmn:flowNodeRef>Gateway_CheckTraceabilityMerge</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CheckTraceability</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ContinueOrRelay</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="StartEvent_Handoff" name="Receive handoff" />
+    <bpmn:task id="Task_ReadHandoffPacket" name="Read HANDOFF-PACKET, handoff-admit and priority artifacts" />
+    <bpmn:exclusiveGateway id="Gateway_HandoffBlocked" name="handoff_status = blocked?" default="Flow_HandoffOpen" />
+    <bpmn:task id="Task_RequestArbitration" name="Stop and request user arbitration" />
+    <bpmn:task id="Task_ReloadArtifacts" name="Reload CURRENT-STATE, session, cycle and plan" />
+    <bpmn:task id="Task_RestateContext" name="Restate mode, branch kind, cycle, DoR, step and active admissions" />
+    <bpmn:exclusiveGateway id="Gateway_WriteAuthorized" name="Pre-write and workflow gates satisfied?" default="Flow_WriteNo" />
+    <bpmn:task id="Task_ExecuteStep" name="Execute one planned step" />
+    <bpmn:task id="Task_RefreshRuntimeState" name="Hydrate context and refresh runtime, repair and handoff state" />
+    <bpmn:exclusiveGateway id="Gateway_RepairOutcome" name="repair status" default="Flow_RepairWarn_Detail" />
+    <bpmn:task id="Task_RunRepairTriage" name="Repair triage / safe autofix" />
+    <bpmn:exclusiveGateway id="Gateway_CheckTraceabilityMerge" name="Merge review inputs" />
+    <bpmn:task id="Task_CheckTraceability" name="Check drift, evidence and traceability" />
+    <bpmn:exclusiveGateway id="Gateway_ContinueOrRelay" name="Continue same agent?" default="Flow_Relay" />
+    <bpmn:exclusiveGateway id="Gateway_PublishRelayMerge" name="Merge relay triggers" />
+    <bpmn:task id="Task_PublishRelay" name="handoff-close + refresh HANDOFF-PACKET for next agent" />
+    <bpmn:endEvent id="EndEvent_HandoffReady" name="Ready for next agent or next step" />
+
+    <bpmn:dataObjectReference id="Data_Detail_Handoff" name="HANDOFF-PACKET.md" dataObjectRef="DataObject_Detail_Handoff" />
+    <bpmn:dataObject id="DataObject_Detail_Handoff" />
+    <bpmn:dataObjectReference id="Data_Detail_Runtime" name="RUNTIME-STATE.md" dataObjectRef="DataObject_Detail_Runtime" />
+    <bpmn:dataObject id="DataObject_Detail_Runtime" />
+    <bpmn:dataObjectReference id="Data_Detail_Current" name="CURRENT-STATE.md" dataObjectRef="DataObject_Detail_Current" />
+    <bpmn:dataObject id="DataObject_Detail_Current" />
+
+    <bpmn:sequenceFlow id="Flow_D1" sourceRef="StartEvent_Handoff" targetRef="Task_ReadHandoffPacket" />
+    <bpmn:sequenceFlow id="Flow_D2" sourceRef="Task_ReadHandoffPacket" targetRef="Gateway_HandoffBlocked" />
+    <bpmn:sequenceFlow id="Flow_HandoffBlockedYes" sourceRef="Gateway_HandoffBlocked" targetRef="Task_RequestArbitration">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[blocked]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_HandoffOpen" sourceRef="Gateway_HandoffBlocked" targetRef="Task_ReloadArtifacts">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[ready_or_refresh_required]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_D3" sourceRef="Task_RequestArbitration" targetRef="EndEvent_HandoffReady" />
+    <bpmn:sequenceFlow id="Flow_D4" sourceRef="Task_ReloadArtifacts" targetRef="Task_RestateContext" />
+    <bpmn:sequenceFlow id="Flow_D5" sourceRef="Task_RestateContext" targetRef="Gateway_WriteAuthorized" />
+    <bpmn:sequenceFlow id="Flow_WriteNo" sourceRef="Gateway_WriteAuthorized" targetRef="Gateway_PublishRelayMerge">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[not_authorized]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_WriteYes" sourceRef="Gateway_WriteAuthorized" targetRef="Task_ExecuteStep">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[authorized]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_D6" sourceRef="Task_ExecuteStep" targetRef="Task_RefreshRuntimeState" />
+    <bpmn:sequenceFlow id="Flow_D7" sourceRef="Task_RefreshRuntimeState" targetRef="Gateway_RepairOutcome" />
+    <bpmn:sequenceFlow id="Flow_RepairOk_Detail" sourceRef="Gateway_RepairOutcome" targetRef="Gateway_CheckTraceabilityMerge">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[ok]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_RepairWarn_Detail" sourceRef="Gateway_RepairOutcome" targetRef="Task_RunRepairTriage">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[warn]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_RepairBlock_Detail" sourceRef="Gateway_RepairOutcome" targetRef="Gateway_PublishRelayMerge">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[block]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_D8" sourceRef="Task_RunRepairTriage" targetRef="Gateway_CheckTraceabilityMerge" />
+    <bpmn:sequenceFlow id="Flow_CheckTraceabilityGo" sourceRef="Gateway_CheckTraceabilityMerge" targetRef="Task_CheckTraceability" />
+    <bpmn:sequenceFlow id="Flow_D9" sourceRef="Task_CheckTraceability" targetRef="Gateway_ContinueOrRelay" />
+    <bpmn:sequenceFlow id="Flow_Continue" sourceRef="Gateway_ContinueOrRelay" targetRef="EndEvent_HandoffReady">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[continue_same_agent]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Relay" sourceRef="Gateway_ContinueOrRelay" targetRef="Gateway_PublishRelayMerge">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[relay_to_other_agent]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_PublishRelayGo" sourceRef="Gateway_PublishRelayMerge" targetRef="Task_PublishRelay" />
+    <bpmn:sequenceFlow id="Flow_D10" sourceRef="Task_PublishRelay" targetRef="EndEvent_HandoffReady" />
+
+    <bpmn:association id="Assoc_D1" sourceRef="Task_ReadHandoffPacket" targetRef="Data_Detail_Handoff" />
+    <bpmn:association id="Assoc_D2" sourceRef="Task_ReloadArtifacts" targetRef="Data_Detail_Current" />
+    <bpmn:association id="Assoc_D3" sourceRef="Task_RefreshRuntimeState" targetRef="Data_Detail_Runtime" />
+    <bpmn:association id="Assoc_D4" sourceRef="Task_PublishRelay" targetRef="Data_Detail_Handoff" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_AidnMultiAgentHandoff">
+    <bpmndi:BPMNPlane id="BPMNPlane_AidnMultiAgentHandoff" bpmnElement="Process_AidnMultiAgentHandoff">
+      <bpmndi:BPMNShape id="Lane_Detail_Coordinator_di" bpmnElement="Lane_Detail_Coordinator" isHorizontal="true"><dc:Bounds x="100" y="80" width="1720" height="140" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Detail_Execution_di" bpmnElement="Lane_Detail_Execution" isHorizontal="true"><dc:Bounds x="100" y="220" width="1720" height="140" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Detail_Runtime_di" bpmnElement="Lane_Detail_Runtime" isHorizontal="true"><dc:Bounds x="100" y="360" width="1720" height="140" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Detail_Audit_di" bpmnElement="Lane_Detail_Audit" isHorizontal="true"><dc:Bounds x="100" y="500" width="1720" height="140" /></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="StartEvent_Handoff_di" bpmnElement="StartEvent_Handoff"><dc:Bounds x="150" y="132" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReadHandoffPacket_di" bpmnElement="Task_ReadHandoffPacket"><dc:Bounds x="240" y="110" width="170" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_HandoffBlocked_di" bpmnElement="Gateway_HandoffBlocked" isMarkerVisible="true"><dc:Bounds x="450" y="125" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RequestArbitration_di" bpmnElement="Task_RequestArbitration"><dc:Bounds x="560" y="110" width="170" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReloadArtifacts_di" bpmnElement="Task_ReloadArtifacts"><dc:Bounds x="560" y="250" width="180" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RestateContext_di" bpmnElement="Task_RestateContext"><dc:Bounds x="790" y="250" width="170" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_WriteAuthorized_di" bpmnElement="Gateway_WriteAuthorized" isMarkerVisible="true"><dc:Bounds x="1000" y="265" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ExecuteStep_di" bpmnElement="Task_ExecuteStep"><dc:Bounds x="1110" y="250" width="150" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RefreshRuntimeState_di" bpmnElement="Task_RefreshRuntimeState"><dc:Bounds x="1110" y="390" width="180" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_RepairOutcome_di" bpmnElement="Gateway_RepairOutcome" isMarkerVisible="true"><dc:Bounds x="1330" y="405" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RunRepairTriage_di" bpmnElement="Task_RunRepairTriage"><dc:Bounds x="1440" y="390" width="160" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_CheckTraceabilityMerge_di" bpmnElement="Gateway_CheckTraceabilityMerge" isMarkerVisible="true"><dc:Bounds x="1400" y="545" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CheckTraceability_di" bpmnElement="Task_CheckTraceability"><dc:Bounds x="1490" y="530" width="170" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ContinueOrRelay_di" bpmnElement="Gateway_ContinueOrRelay" isMarkerVisible="true"><dc:Bounds x="1690" y="545" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_PublishRelayMerge_di" bpmnElement="Gateway_PublishRelayMerge" isMarkerVisible="true"><dc:Bounds x="1350" y="125" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PublishRelay_di" bpmnElement="Task_PublishRelay"><dc:Bounds x="1440" y="110" width="180" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_HandoffReady_di" bpmnElement="EndEvent_HandoffReady"><dc:Bounds x="1750" y="132" width="36" height="36" /></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Data_Detail_Handoff_di" bpmnElement="Data_Detail_Handoff"><dc:Bounds x="300" y="20" width="36" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Data_Detail_Runtime_di" bpmnElement="Data_Detail_Runtime"><dc:Bounds x="1180" y="660" width="36" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Data_Detail_Current_di" bpmnElement="Data_Detail_Current"><dc:Bounds x="650" y="660" width="36" height="50" /></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_D1_di" bpmnElement="Flow_D1"><di:waypoint x="186" y="150" /><di:waypoint x="240" y="150" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_D2_di" bpmnElement="Flow_D2"><di:waypoint x="410" y="150" /><di:waypoint x="450" y="150" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HandoffBlockedYes_di" bpmnElement="Flow_HandoffBlockedYes"><di:waypoint x="500" y="150" /><di:waypoint x="560" y="150" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HandoffOpen_di" bpmnElement="Flow_HandoffOpen"><di:waypoint x="475" y="175" /><di:waypoint x="475" y="290" /><di:waypoint x="560" y="290" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_D3_di" bpmnElement="Flow_D3"><di:waypoint x="730" y="150" /><di:waypoint x="1750" y="150" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_D4_di" bpmnElement="Flow_D4"><di:waypoint x="740" y="290" /><di:waypoint x="790" y="290" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_D5_di" bpmnElement="Flow_D5"><di:waypoint x="960" y="290" /><di:waypoint x="1000" y="290" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_WriteNo_di" bpmnElement="Flow_WriteNo"><di:waypoint x="1025" y="265" /><di:waypoint x="1025" y="150" /><di:waypoint x="1350" y="150" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_WriteYes_di" bpmnElement="Flow_WriteYes"><di:waypoint x="1050" y="290" /><di:waypoint x="1110" y="290" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_D6_di" bpmnElement="Flow_D6"><di:waypoint x="1185" y="330" /><di:waypoint x="1185" y="390" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_D7_di" bpmnElement="Flow_D7"><di:waypoint x="1290" y="430" /><di:waypoint x="1330" y="430" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_RepairOk_Detail_di" bpmnElement="Flow_RepairOk_Detail"><di:waypoint x="1355" y="455" /><di:waypoint x="1355" y="570" /><di:waypoint x="1400" y="570" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_RepairWarn_Detail_di" bpmnElement="Flow_RepairWarn_Detail"><di:waypoint x="1380" y="430" /><di:waypoint x="1440" y="430" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_RepairBlock_Detail_di" bpmnElement="Flow_RepairBlock_Detail"><di:waypoint x="1355" y="405" /><di:waypoint x="1355" y="150" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_D8_di" bpmnElement="Flow_D8"><di:waypoint x="1600" y="430" /><di:waypoint x="1600" y="620" /><di:waypoint x="1425" y="620" /><di:waypoint x="1425" y="595" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CheckTraceabilityGo_di" bpmnElement="Flow_CheckTraceabilityGo"><di:waypoint x="1450" y="570" /><di:waypoint x="1490" y="570" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_D9_di" bpmnElement="Flow_D9"><di:waypoint x="1660" y="570" /><di:waypoint x="1690" y="570" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Continue_di" bpmnElement="Flow_Continue"><di:waypoint x="1740" y="570" /><di:waypoint x="1768" y="168" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Relay_di" bpmnElement="Flow_Relay"><di:waypoint x="1715" y="545" /><di:waypoint x="1715" y="150" /><di:waypoint x="1400" y="150" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_PublishRelayGo_di" bpmnElement="Flow_PublishRelayGo"><di:waypoint x="1400" y="150" /><di:waypoint x="1440" y="150" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_D10_di" bpmnElement="Flow_D10"><di:waypoint x="1620" y="150" /><di:waypoint x="1750" y="150" /></bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Assoc_D1_di" bpmnElement="Assoc_D1"><di:waypoint x="318" y="70" /><di:waypoint x="325" y="110" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_D2_di" bpmnElement="Assoc_D2"><di:waypoint x="668" y="660" /><di:waypoint x="650" y="330" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_D3_di" bpmnElement="Assoc_D3"><di:waypoint x="1198" y="660" /><di:waypoint x="1200" y="470" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_D4_di" bpmnElement="Assoc_D4"><di:waypoint x="318" y="70" /><di:waypoint x="1530" y="110" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

@@ -13,6 +13,7 @@ updated_at: 2026-03-09T00:00:00Z
 structure_profile: modern
 runtime_state_mode: dual
 repair_layer_status: unknown
+repair_primary_reason: unknown
 
 ## Active Context
 
@@ -25,6 +26,11 @@ active_cycle: none
 cycle_branch: none
 dor_state: unknown
 first_plan_step: unknown
+active_backlog: none
+backlog_status: unknown
+backlog_next_step: unknown
+backlog_selected_execution_scope: none
+planning_arbitration_status: none
 
 ## Top Operational Items
 
@@ -63,12 +69,14 @@ blocking_findings:
 
 - workflow kernel: `docs/audit/WORKFLOW-KERNEL.md`
 - workflow summary: `docs/audit/WORKFLOW_SUMMARY.md`
+- handoff packet: `docs/audit/HANDOFF-PACKET.md`
 - artifact manifest: `docs/audit/ARTIFACT_MANIFEST.md`
 - runtime digest: `docs/audit/RUNTIME-STATE.md`
 - project workflow: `docs/audit/WORKFLOW.md`
 - canonical spec: `docs/audit/SPEC.md`
 - snapshot: `docs/audit/snapshots/context-snapshot.md`
 - baseline: `docs/audit/baseline/current.md`
+- backlog: `docs/audit/backlog/`
 - sessions: `docs/audit/sessions/`
 - cycles: `docs/audit/cycles/`
 - runtime context: `.aidn/runtime/context/`

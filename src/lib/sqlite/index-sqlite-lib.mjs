@@ -1,16 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { createRequire } from "node:module";
-
-const require = createRequire(import.meta.url);
-
-function getDatabaseSync() {
-  try {
-    return require("node:sqlite").DatabaseSync;
-  } catch (error) {
-    throw new Error(`SQLite backend unavailable: ${error.message}`);
-  }
-}
+import {
+  ensureWorkflowDbSchema,
+  getDatabaseSync,
+  getLatestWorkflowPayloadSchemaVersion,
+} from "./workflow-db-schema-lib.mjs";
 
 function parseJsonOrNull(text) {
   if (typeof text !== "string" || text.trim().length === 0) {
@@ -71,6 +65,18 @@ function toSchemaVersion(value, fallback = 1) {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+function resolvePayloadSchemaVersion(meta) {
+  const explicit = Number(meta?.payload_schema_version ?? "");
+  if (Number.isFinite(explicit) && explicit > 0) {
+    return explicit;
+  }
+  const dbSchemaVersion = Number(meta?.schema_version ?? "");
+  if (Number.isFinite(dbSchemaVersion) && dbSchemaVersion > 0) {
+    return Math.min(dbSchemaVersion, getLatestWorkflowPayloadSchemaVersion());
+  }
+  return getLatestWorkflowPayloadSchemaVersion();
+}
+
 function buildSummary(payload, structureKindHint = null) {
   return {
     cycles_count: Array.isArray(payload.cycles) ? payload.cycles.length : 0,
@@ -96,6 +102,152 @@ function buildSummary(payload, structureKindHint = null) {
   };
 }
 
+function mapArtifactLikeRow(row) {
+  if (!row) {
+    return null;
+  }
+  return {
+    artifact_id: Number(row.artifact_id ?? 0) || null,
+    path: row.path ?? null,
+    kind: row.kind ?? "other",
+    family: row.family ?? "unknown",
+    subtype: row.subtype ?? null,
+    gate_relevance: Number(row.gate_relevance ?? 0),
+    classification_reason: row.classification_reason ?? null,
+    content_format: row.content_format ?? null,
+    content: row.content ?? null,
+    canonical_format: row.canonical_format ?? null,
+    canonical: parseJsonOrNull(row.canonical_json),
+    sha256: row.sha256 ?? null,
+    size_bytes: Number(row.size_bytes ?? 0),
+    mtime_ns: row.mtime_ns ?? null,
+    session_id: row.session_id ?? null,
+    cycle_id: row.cycle_id ?? null,
+    source_mode: row.source_mode ?? "explicit",
+    entity_confidence: Number(row.entity_confidence ?? 1),
+    legacy_origin: row.legacy_origin ?? null,
+    updated_at: row.updated_at ?? null,
+  };
+}
+
+function buildArtifactPayloadQueryParts(db, artifactAlias = "a", blobAlias = "ab") {
+  const artifactColumns = getTableColumns(db, "artifacts");
+  const hasArtifactBlobs = hasTable(db, "artifact_blobs");
+  const blobColumns = hasArtifactBlobs ? getTableColumns(db, "artifact_blobs") : new Set();
+  const artifactExpr = (columnName, fallbackSql) => artifactColumns.has(columnName)
+    ? `${artifactAlias}.${columnName}`
+    : fallbackSql;
+  const coalescedExpr = (columnName, fallbackSql = "NULL") => {
+    const artifactSql = artifactExpr(columnName, fallbackSql);
+    if (!hasArtifactBlobs || !blobColumns.has(columnName)) {
+      return `${artifactSql} AS ${columnName}`;
+    }
+    return `COALESCE(${blobAlias}.${columnName}, ${artifactSql}) AS ${columnName}`;
+  };
+  return {
+    artifactColumns,
+    hasArtifactBlobs,
+    blobJoinSql: hasArtifactBlobs
+      ? `LEFT JOIN artifact_blobs ${blobAlias} ON ${blobAlias}.artifact_id = ${artifactAlias}.artifact_id`
+      : "",
+    selectSql: [
+      `${artifactAlias}.artifact_id AS artifact_id`,
+      `${artifactAlias}.path AS path`,
+      `${artifactAlias}.kind AS kind`,
+      artifactColumns.has("family") ? `${artifactAlias}.family AS family` : "'unknown' AS family",
+      artifactColumns.has("subtype") ? `${artifactAlias}.subtype AS subtype` : "NULL AS subtype",
+      artifactColumns.has("gate_relevance") ? `${artifactAlias}.gate_relevance AS gate_relevance` : "0 AS gate_relevance",
+      artifactColumns.has("classification_reason") ? `${artifactAlias}.classification_reason AS classification_reason` : "NULL AS classification_reason",
+      coalescedExpr("content_format"),
+      coalescedExpr("content"),
+      coalescedExpr("canonical_format"),
+      coalescedExpr("canonical_json"),
+      coalescedExpr("sha256"),
+      coalescedExpr("size_bytes", "0"),
+      `CAST(${artifactAlias}.mtime_ns AS TEXT) AS mtime_ns`,
+      `${artifactAlias}.session_id AS session_id`,
+      `${artifactAlias}.cycle_id AS cycle_id`,
+      artifactColumns.has("source_mode") ? `${artifactAlias}.source_mode AS source_mode` : "'explicit' AS source_mode",
+      artifactColumns.has("entity_confidence") ? `${artifactAlias}.entity_confidence AS entity_confidence` : "1.0 AS entity_confidence",
+      artifactColumns.has("legacy_origin") ? `${artifactAlias}.legacy_origin AS legacy_origin` : "NULL AS legacy_origin",
+      hasArtifactBlobs && blobColumns.has("updated_at")
+        ? `COALESCE(${blobAlias}.updated_at, ${artifactAlias}.updated_at) AS updated_at`
+        : `${artifactAlias}.updated_at AS updated_at`,
+    ].join(",\n        "),
+  };
+}
+
+export function readRuntimeHeadArtifactsFromSqlite(sqliteFile) {
+  const DatabaseSync = getDatabaseSync();
+  const absolute = path.resolve(process.cwd(), sqliteFile);
+  if (!fs.existsSync(absolute)) {
+    throw new Error(`SQLite index file not found: ${absolute}`);
+  }
+
+  const db = new DatabaseSync(absolute);
+  try {
+    ensureWorkflowDbSchema({
+      db,
+      sqliteFile: absolute,
+      role: "runtime-head-reader",
+    });
+    if (!hasTable(db, "runtime_heads")) {
+      return { absolute, heads: {} };
+    }
+    const artifactQuery = buildArtifactPayloadQueryParts(db, "a", "ab");
+    const rows = readRows(db, `
+      SELECT
+        rh.head_key,
+        rh.artifact_id,
+        rh.artifact_path,
+        rh.artifact_sha256,
+        rh.session_id AS head_session_id,
+        rh.cycle_id AS head_cycle_id,
+        rh.kind AS head_kind,
+        rh.subtype AS head_subtype,
+        rh.updated_at AS head_updated_at,
+        rh.payload_json,
+        ${artifactQuery.selectSql}
+      FROM runtime_heads rh
+      LEFT JOIN artifacts a
+        ON a.artifact_id = rh.artifact_id
+      ${artifactQuery.blobJoinSql}
+      ORDER BY rh.head_key ASC
+    `);
+
+    const heads = {};
+    for (const row of rows) {
+      const mappedArtifact = mapArtifactLikeRow(row);
+      const artifact = mappedArtifact?.path ? mappedArtifact : {
+        artifact_id: Number(row.artifact_id ?? 0) || null,
+        path: row.artifact_path ?? null,
+        kind: row.head_kind ?? "other",
+        family: "unknown",
+        subtype: row.head_subtype ?? null,
+        gate_relevance: 0,
+        classification_reason: null,
+        content_format: null,
+        content: null,
+        canonical_format: null,
+        canonical: parseJsonOrNull(row.payload_json),
+        sha256: row.artifact_sha256 ?? null,
+        size_bytes: 0,
+        mtime_ns: null,
+        session_id: row.head_session_id ?? null,
+        cycle_id: row.head_cycle_id ?? null,
+        source_mode: "explicit",
+        entity_confidence: 1,
+        legacy_origin: null,
+        updated_at: row.head_updated_at ?? null,
+      };
+      heads[String(row.head_key ?? "")] = artifact;
+    }
+    return { absolute, heads };
+  } finally {
+    db.close();
+  }
+}
+
 export function readIndexFromSqlite(sqliteFile, options = {}) {
   const DatabaseSync = getDatabaseSync();
   const absolute = path.resolve(process.cwd(), sqliteFile);
@@ -105,8 +257,13 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
 
   const db = new DatabaseSync(absolute);
   try {
+    ensureWorkflowDbSchema({
+      db,
+      sqliteFile: absolute,
+      role: "index-sqlite-reader",
+    });
     const meta = readMetaMap(db);
-    const artifactColumns = getTableColumns(db, "artifacts");
+    const artifactQuery = buildArtifactPayloadQueryParts(db, "a", "ab");
     const fileMapColumns = getTableColumns(db, "file_map");
     const structureProfile = parseJsonOrNull(meta.structure_profile_json);
     const structureKind = meta.structure_kind
@@ -114,7 +271,7 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
       ?? "unknown";
 
     const payload = {
-      schema_version: toSchemaVersion(meta.schema_version, 1),
+      schema_version: resolvePayloadSchemaVersion(meta),
       generated_at: options.generatedAt ?? new Date().toISOString(),
       target_root: meta.target_root ?? null,
       audit_root: meta.audit_root ?? null,
@@ -127,22 +284,11 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
         ORDER BY cycle_id ASC
       `),
       artifacts: readRows(db, `
-        SELECT path, kind,
-               ${artifactColumns.has("family") ? "family" : "'unknown' AS family"},
-               ${artifactColumns.has("subtype") ? "subtype" : "NULL AS subtype"},
-               ${artifactColumns.has("gate_relevance") ? "gate_relevance" : "0 AS gate_relevance"},
-               ${artifactColumns.has("classification_reason") ? "classification_reason" : "NULL AS classification_reason"},
-               ${artifactColumns.has("content_format") ? "content_format" : "NULL AS content_format"},
-               ${artifactColumns.has("content") ? "content" : "NULL AS content"},
-               ${artifactColumns.has("canonical_format") ? "canonical_format" : "NULL AS canonical_format"},
-               ${artifactColumns.has("canonical_json") ? "canonical_json" : "NULL AS canonical_json"},
-               sha256, size_bytes, CAST(mtime_ns AS TEXT) AS mtime_ns, session_id, cycle_id,
-               ${artifactColumns.has("source_mode") ? "source_mode" : "'explicit' AS source_mode"},
-               ${artifactColumns.has("entity_confidence") ? "entity_confidence" : "1.0 AS entity_confidence"},
-               ${artifactColumns.has("legacy_origin") ? "legacy_origin" : "NULL AS legacy_origin"},
-               updated_at
-        FROM artifacts
-        ORDER BY path ASC
+        SELECT
+          ${artifactQuery.selectSql}
+        FROM artifacts a
+        ${artifactQuery.blobJoinSql}
+        ORDER BY a.path ASC
       `).map((row) => ({
         path: row.path ?? null,
         kind: row.kind ?? "other",

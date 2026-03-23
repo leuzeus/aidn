@@ -8,6 +8,11 @@ import {
   assertValidSkillMode,
   runSkillHookUseCase,
 } from "../../src/application/runtime/skill-hook-use-case.mjs";
+import {
+  loadSqliteIndexPayloadSafe,
+  resolveAuditArtifactText,
+  resolveDbBackedMode,
+} from "../runtime/db-first-runtime-view-lib.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
@@ -71,24 +76,42 @@ function printUsage() {
   console.log("  node tools/perf/skill-hook.mjs --skill close-session --target . --mode COMMITTING --fail-on-repair-block");
 }
 
+function resolveRuntimeStateHint(targetRoot) {
+  const { dbBackedMode } = resolveDbBackedMode(targetRoot);
+  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(targetRoot, { includePayload: false }) : {
+    exists: false,
+    sqliteFile: "",
+    payload: null,
+    runtimeHeads: {},
+    warning: "",
+  };
+  return resolveAuditArtifactText({
+    targetRoot,
+    candidatePath: "docs/audit/RUNTIME-STATE.md",
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+  });
+}
+
 function printRuntimeDigestHint(targetRoot, repairLayerStatus) {
   const status = String(repairLayerStatus ?? "").trim().toLowerCase();
   if (!["warn", "block"].includes(status)) {
     return;
   }
-  const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
-  if (!fs.existsSync(runtimeStateFile)) {
+  const runtimeStateResolution = resolveRuntimeStateHint(targetRoot);
+  if (!runtimeStateResolution.exists) {
     return;
   }
   console.log("Runtime digest: docs/audit/RUNTIME-STATE.md");
 }
 
 function printCurrentStateStaleHint(targetRoot) {
-  const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
-  if (!fs.existsSync(runtimeStateFile)) {
+  const runtimeStateResolution = resolveRuntimeStateHint(targetRoot);
+  if (!runtimeStateResolution.exists) {
     return;
   }
-  const text = fs.readFileSync(runtimeStateFile, "utf8");
+  const text = runtimeStateResolution.text;
   if (!text.includes("current_state_freshness: stale")) {
     return;
   }
@@ -108,9 +131,19 @@ function main() {
     });
     if (args.json) {
       console.log(JSON.stringify(out, null, 2));
-    } else if (out.ok) {
-      console.log(`Skill hook: OK (${args.skill} -> ${out.tool})`);
-      if (Number(out.repair_layer_open_count ?? 0) > 0) {
+    } else {
+      const status = out.ok ? "OK" : "WARN";
+      const summary = `${args.skill} -> ${out.tool}`;
+      const repairStatus = String(out.repair_layer_status ?? "").trim().toLowerCase();
+      const shouldPrintRepairDetails = Number(out.repair_layer_open_count ?? 0) > 0
+        || repairStatus === "warn"
+        || repairStatus === "block";
+      if (out.ok) {
+        console.log(`Skill hook: ${status} (${summary})`);
+      } else {
+        console.warn(`Skill hook: ${status} (${summary}) ${out.error?.message ?? "unknown error"}`);
+      }
+      if (shouldPrintRepairDetails) {
         console.log(`Repair findings: ${out.repair_layer_open_count} open${out.repair_layer_blocking ? " (blocking)" : ""}`);
         if (out.repair_layer_status) {
           console.log(`Repair status: ${out.repair_layer_status}`);
@@ -121,8 +154,6 @@ function main() {
         printRuntimeDigestHint(targetRoot, out.repair_layer_status);
         printCurrentStateStaleHint(targetRoot);
       }
-    } else {
-      console.warn(`Skill hook: WARN (${args.skill} -> ${out.tool}) ${out.error?.message ?? "unknown error"}`);
     }
     if (args.failOnRepairBlock && String(out.repair_layer_status ?? "") === "block") {
       process.exit(1);

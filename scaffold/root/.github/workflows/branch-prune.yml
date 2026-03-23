@@ -1,0 +1,243 @@
+name: Branch Prune
+
+on:
+  pull_request:
+    types:
+      - closed
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: "Delete matching branches instead of dry-run only"
+        required: false
+        default: false
+        type: boolean
+      base_branch:
+        description: "Base branch used to decide whether a branch is already absorbed"
+        required: false
+        default: "main"
+        type: string
+      source_branch:
+        description: "Integration branch that triggered the cleanup policy"
+        required: false
+        default: "dev"
+        type: string
+      min_age_days:
+        description: "Minimum branch age before it can be pruned"
+        required: false
+        default: "14"
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  prune-merged-branches:
+    name: Prune merged short-lived branches
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.merged == true &&
+        github.event.pull_request.base.ref == 'main' &&
+        github.event.pull_request.head.ref == 'dev'
+      )
+    runs-on: ubuntu-latest
+    env:
+      DEFAULT_EXECUTE: ${{ vars.AIDN_BRANCH_PRUNE_EXECUTE || 'false' }}
+      DEFAULT_BASE_BRANCH: ${{ vars.AIDN_BRANCH_PRUNE_BASE_BRANCH || 'main' }}
+      DEFAULT_SOURCE_BRANCH: ${{ vars.AIDN_BRANCH_PRUNE_SOURCE_BRANCH || 'dev' }}
+      DEFAULT_MIN_AGE_DAYS: ${{ vars.AIDN_BRANCH_PRUNE_MIN_AGE_DAYS || '14' }}
+      CANDIDATE_REGEX: ${{ vars.AIDN_BRANCH_PRUNE_CANDIDATE_REGEX || '^(feature|feat|fix|chore|docs|refactor|spike)/' }}
+      KEEP_REGEX: ${{ vars.AIDN_BRANCH_PRUNE_KEEP_REGEX || '^(main|dev)$|^(release|backup)/' }}
+    steps:
+      - name: Evaluate and prune eligible branches
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const executeInput = context.payload.inputs?.execute;
+            const baseBranch = context.payload.inputs?.base_branch || process.env.DEFAULT_BASE_BRANCH;
+            const sourceBranch = context.payload.inputs?.source_branch || process.env.DEFAULT_SOURCE_BRANCH;
+            const minAgeDays = Number(context.payload.inputs?.min_age_days || process.env.DEFAULT_MIN_AGE_DAYS || "14");
+            const execute = String(executeInput ?? process.env.DEFAULT_EXECUTE).toLowerCase() === "true";
+            const candidateRegex = new RegExp(process.env.CANDIDATE_REGEX);
+            const keepRegex = new RegExp(process.env.KEEP_REGEX);
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const now = Date.now();
+
+            function ageInDays(isoDate) {
+              const ts = Date.parse(isoDate);
+              return Number.isFinite(ts) ? (now - ts) / 86400000 : Number.POSITIVE_INFINITY;
+            }
+
+            async function branchHasOpenPullRequest(branchName) {
+              const prs = await github.paginate(
+                github.rest.pulls.list,
+                {
+                  owner,
+                  repo,
+                  state: "open",
+                  head: `${owner}:${branchName}`,
+                  per_page: 100,
+                },
+              );
+              return prs.length > 0;
+            }
+
+            async function getLatestCommitDate(branchName) {
+              const commits = await github.rest.repos.listCommits({
+                owner,
+                repo,
+                sha: branchName,
+                per_page: 1,
+              });
+              const latest = commits.data[0];
+              return latest?.commit?.committer?.date || latest?.commit?.author?.date || null;
+            }
+
+            async function branchMergedIntoBase(branchName) {
+              const comparison = await github.rest.repos.compareCommitsWithBasehead({
+                owner,
+                repo,
+                basehead: `${branchName}...${baseBranch}`,
+              });
+              return comparison.data.status === "ahead" || comparison.data.status === "identical";
+            }
+
+            const allBranches = await github.paginate(github.rest.repos.listBranches, {
+              owner,
+              repo,
+              protected: false,
+              per_page: 100,
+            });
+
+            const report = [];
+
+            for (const branch of allBranches) {
+              const entry = {
+                branch: branch.name,
+                action: "skip",
+                reason: "",
+              };
+
+              if (branch.name === baseBranch || branch.name === sourceBranch) {
+                entry.reason = "protected branch role";
+                report.push(entry);
+                continue;
+              }
+
+              if (branch.protected) {
+                entry.reason = "branch is protected";
+                report.push(entry);
+                continue;
+              }
+
+              if (keepRegex.test(branch.name)) {
+                entry.reason = `matches keep regex ${process.env.KEEP_REGEX}`;
+                report.push(entry);
+                continue;
+              }
+
+              if (!candidateRegex.test(branch.name)) {
+                entry.reason = `outside candidate regex ${process.env.CANDIDATE_REGEX}`;
+                report.push(entry);
+                continue;
+              }
+
+              if (await branchHasOpenPullRequest(branch.name)) {
+                entry.reason = "branch still has an open pull request";
+                report.push(entry);
+                continue;
+              }
+
+              const latestCommitDate = await getLatestCommitDate(branch.name);
+              entry.latestCommitDate = latestCommitDate;
+              entry.ageDays = latestCommitDate ? Number(ageInDays(latestCommitDate).toFixed(1)) : null;
+
+              if (!latestCommitDate) {
+                entry.reason = "could not resolve latest commit date";
+                report.push(entry);
+                continue;
+              }
+
+              if (entry.ageDays < minAgeDays) {
+                entry.reason = `branch is younger than ${minAgeDays} days`;
+                report.push(entry);
+                continue;
+              }
+
+              if (!(await branchMergedIntoBase(branch.name))) {
+                entry.reason = `${branch.name} is not fully absorbed by ${baseBranch}`;
+                report.push(entry);
+                continue;
+              }
+
+              entry.action = execute ? "delete" : "would-delete";
+              entry.reason = `merged into ${baseBranch} and older than ${minAgeDays} days`;
+
+              if (execute) {
+                await github.rest.git.deleteRef({
+                  owner,
+                  repo,
+                  ref: `heads/${branch.name}`,
+                });
+              }
+
+              report.push(entry);
+            }
+
+            const deleted = report.filter((entry) => entry.action === "delete");
+            const wouldDelete = report.filter((entry) => entry.action === "would-delete");
+            const skipped = report.filter((entry) => entry.action === "skip");
+
+            core.notice(
+              `Branch prune mode=${execute ? "execute" : "dry-run"} base=${baseBranch} source=${sourceBranch} candidates=${report.length} prune_targets=${deleted.length + wouldDelete.length}`,
+            );
+
+            await core.summary
+              .addHeading("Branch prune summary")
+              .addRaw(`mode: ${execute ? "execute" : "dry-run"}\n`, true)
+              .addRaw(`base_branch: ${baseBranch}\n`, true)
+              .addRaw(`source_branch: ${sourceBranch}\n`, true)
+              .addRaw(`min_age_days: ${minAgeDays}\n`, true)
+              .addRaw(`candidate_regex: ${process.env.CANDIDATE_REGEX}\n`, true)
+              .addRaw(`keep_regex: ${process.env.KEEP_REGEX}\n`, true)
+              .addRaw(`\nprune_targets: ${deleted.length + wouldDelete.length}\n`, true)
+              .addRaw(`skipped: ${skipped.length}\n`, true)
+              .addRaw("\n", true);
+
+            if (deleted.length + wouldDelete.length > 0) {
+              await core.summary.addTable([
+                [
+                  { data: "Branch", header: true },
+                  { data: "Action", header: true },
+                  { data: "Latest Commit", header: true },
+                  { data: "Age (days)", header: true },
+                  { data: "Reason", header: true },
+                ],
+                ...report
+                  .filter((entry) => entry.action !== "skip")
+                  .map((entry) => [
+                    entry.branch,
+                    entry.action,
+                    entry.latestCommitDate || "",
+                    entry.ageDays == null ? "" : String(entry.ageDays),
+                    entry.reason,
+                  ]),
+              ]);
+            }
+
+            if (skipped.length > 0) {
+              await core.summary
+                .addHeading("Skipped branches")
+                .addTable([
+                  [
+                    { data: "Branch", header: true },
+                    { data: "Reason", header: true },
+                  ],
+                  ...skipped.map((entry) => [entry.branch, entry.reason]),
+                ]);
+            }
+
+            await core.summary.write();

@@ -6,6 +6,7 @@ import { shouldEmbedArtifactContentByState } from "../../core/state-mode/runtime
 import { persistWorkflowIndexProjection } from "./index-state-store-service.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
 import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
+import { shouldPreserveDbFirstArtifactPath } from "../../lib/workflow/db-first-artifact-path-policy.mjs";
 
 function resolveTargetPath(targetRoot, candidatePath) {
   if (!candidatePath) {
@@ -80,6 +81,56 @@ function readExistingRepairDecisions(args) {
   return [];
 }
 
+function mergePreservedDbFirstArtifacts(args, payload) {
+  if (!payload || !Array.isArray(payload.artifacts)) {
+    return payload;
+  }
+  if (!(args.store === "sqlite" || args.store === "dual-sqlite" || args.store === "all")) {
+    return payload;
+  }
+  const sqliteFile = args.sqliteOutput;
+  if (!sqliteFile || !fs.existsSync(sqliteFile)) {
+    return payload;
+  }
+  try {
+    const existing = readIndexFromSqlite(sqliteFile).payload;
+    const existingArtifacts = Array.isArray(existing?.artifacts) ? existing.artifacts : [];
+    if (existingArtifacts.length === 0) {
+      return payload;
+    }
+    const knownPaths = new Set(payload.artifacts.map((row) => String(row?.path ?? "")));
+    const preservedArtifacts = existingArtifacts
+      .filter((row) => {
+        const relPath = String(row?.path ?? "");
+        if (!relPath || knownPaths.has(relPath)) {
+          return false;
+        }
+        return shouldPreserveDbFirstArtifactPath(relPath);
+      });
+    if (preservedArtifacts.length === 0) {
+      return payload;
+    }
+    const nextPayload = {
+      ...payload,
+      artifacts: [...payload.artifacts, ...preservedArtifacts].sort((a, b) =>
+        String(a?.path ?? "").localeCompare(String(b?.path ?? ""))),
+      summary: {
+        ...(payload.summary && typeof payload.summary === "object" ? payload.summary : {}),
+        artifacts_count: Number(payload.summary?.artifacts_count ?? payload.artifacts.length) + preservedArtifacts.length,
+        artifacts_with_content_count:
+          Number(payload.summary?.artifacts_with_content_count ?? payload.artifacts.filter((row) => typeof row?.content === "string").length)
+          + preservedArtifacts.filter((row) => typeof row?.content === "string").length,
+        artifacts_with_canonical_count:
+          Number(payload.summary?.artifacts_with_canonical_count ?? payload.artifacts.filter((row) => row?.canonical && typeof row.canonical === "object").length)
+          + preservedArtifacts.filter((row) => row?.canonical && typeof row.canonical === "object").length,
+      },
+    };
+    return nextPayload;
+  } catch {
+    return payload;
+  }
+}
+
 export function runIndexSyncUseCase({
   args,
   targetRoot,
@@ -118,7 +169,7 @@ export function runIndexSyncUseCase({
     kpiFile: args.kpiFile,
     repairDecisions,
   });
-  const payload = built.payload;
+  const payload = mergePreservedDbFirstArtifacts(args, built.payload);
   const structureProfile = built.structureProfile;
   const digest = payloadDigest(payload);
 

@@ -5,6 +5,15 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { buildSqlFromIndex } from "./index-sql-lib.mjs";
 import { writeUtf8IfChanged } from "./io-lib.mjs";
+import {
+  ensureWorkflowDbSchema,
+  getLatestWorkflowPayloadSchemaVersion,
+  getLatestWorkflowSchemaVersion,
+  normalizeHotArtifactSubtype,
+  rebuildArtifactBlobs,
+  rebuildRuntimeHeads,
+} from "../sqlite/workflow-db-schema-lib.mjs";
+import { shouldPreserveDbFirstArtifactPath } from "../workflow/db-first-artifact-path-policy.mjs";
 
 const require = createRequire(import.meta.url);
 const LIB_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -86,6 +95,69 @@ function canonicalToJson(value) {
     return JSON.stringify(value);
   } catch {
     return null;
+  }
+}
+
+function deleteStaleArtifacts(db, artifacts) {
+  const payloadPaths = new Set(
+    (Array.isArray(artifacts) ? artifacts : [])
+      .map((row) => String(row?.path ?? ""))
+      .filter((value) => value.length > 0),
+  );
+  const rows = db.prepare("SELECT path FROM artifacts ORDER BY path ASC").all();
+  const deleteStmt = db.prepare("DELETE FROM artifacts WHERE path = ?");
+  for (const row of rows) {
+    const artifactPath = String(row?.path ?? "");
+    if (!artifactPath) {
+      continue;
+    }
+    if (payloadPaths.has(artifactPath)) {
+      continue;
+    }
+    if (shouldPreserveDbFirstArtifactPath(artifactPath)) {
+      continue;
+    }
+    deleteStmt.run(artifactPath);
+  }
+}
+
+ function repairDecisionKey(row) {
+  return [
+    String(row?.relation_scope ?? ""),
+    String(row?.source_ref ?? ""),
+    String(row?.target_ref ?? ""),
+    String(row?.relation_type ?? ""),
+  ].join("\u0000");
+}
+
+function deleteStaleRepairDecisions(db, repairDecisions) {
+  const payloadKeys = new Set(
+    (Array.isArray(repairDecisions) ? repairDecisions : [])
+      .map((row) => repairDecisionKey(row))
+      .filter((value) => value.length > 0),
+  );
+  const rows = db.prepare(`
+    SELECT relation_scope, source_ref, target_ref, relation_type
+    FROM repair_decisions
+    ORDER BY relation_scope ASC, source_ref ASC, target_ref ASC, relation_type ASC
+  `).all();
+  const deleteStmt = db.prepare(`
+    DELETE FROM repair_decisions
+    WHERE relation_scope = ?
+      AND source_ref = ?
+      AND target_ref = ?
+      AND relation_type = ?
+  `);
+  for (const row of rows) {
+    if (payloadKeys.has(repairDecisionKey(row))) {
+      continue;
+    }
+    deleteStmt.run(
+      row.relation_scope,
+      row.source_ref,
+      row.target_ref,
+      row.relation_type,
+    );
   }
 }
 
@@ -355,7 +427,6 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
   const DatabaseSync = getDatabaseSync();
   const absolute = path.resolve(process.cwd(), outputPath);
   fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  const schemaText = toIdempotentSchema(readSchema(schemaFile));
   const nextDigest = payloadDigest(payload);
   const existedBefore = fs.existsSync(absolute);
   const sizeBefore = existedBefore ? fs.statSync(absolute).size : 0;
@@ -363,32 +434,12 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
   const db = new DatabaseSync(absolute);
   try {
     db.exec("PRAGMA foreign_keys=OFF;");
-    db.exec(schemaText);
-    ensureColumn(db, "artifacts", "family", "TEXT NOT NULL DEFAULT 'unknown'");
-    ensureColumn(db, "artifacts", "subtype", "TEXT");
-    ensureColumn(db, "artifacts", "gate_relevance", "INTEGER NOT NULL DEFAULT 0");
-    ensureColumn(db, "artifacts", "classification_reason", "TEXT");
-    ensureColumn(db, "artifacts", "content_format", "TEXT");
-    ensureColumn(db, "artifacts", "content", "TEXT");
-    ensureColumn(db, "artifacts", "canonical_format", "TEXT");
-    ensureColumn(db, "artifacts", "canonical_json", "TEXT");
-    ensureColumn(db, "artifacts", "source_mode", "TEXT NOT NULL DEFAULT 'explicit'");
-    ensureColumn(db, "artifacts", "entity_confidence", "REAL NOT NULL DEFAULT 1.0");
-    ensureColumn(db, "artifacts", "legacy_origin", "TEXT");
-    ensureColumn(db, "file_map", "relation", "TEXT NOT NULL DEFAULT 'unknown'");
-    ensureMetaTable(db);
-    ensureRepairLayerTables(db);
-    ensureColumn(db, "sessions", "parent_session", "TEXT");
-    ensureColumn(db, "sessions", "branch_kind", "TEXT");
-    ensureColumn(db, "sessions", "cycle_branch", "TEXT");
-    ensureColumn(db, "sessions", "intermediate_branch", "TEXT");
-    ensureColumn(db, "sessions", "integration_target_cycle", "TEXT");
-    ensureColumn(db, "sessions", "carry_over_pending", "TEXT");
-    ensureColumn(db, "artifact_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
-    ensureColumn(db, "cycle_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
-    ensureColumn(db, "session_cycle_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
-    ensureColumn(db, "session_cycle_links", "ambiguity_status", "TEXT");
-    ensureColumn(db, "session_links", "relation_status", "TEXT NOT NULL DEFAULT 'explicit'");
+    ensureWorkflowDbSchema({
+      db,
+      sqliteFile: absolute,
+      schemaFile,
+      role: "index-store",
+    });
     const prevDigest = getMeta(db, "payload_digest");
     if (prevDigest === nextDigest) {
       return {
@@ -403,7 +454,6 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       db.exec("DELETE FROM artifact_tags;");
       db.exec("DELETE FROM tags;");
       db.exec("DELETE FROM file_map;");
-      db.exec("DELETE FROM artifacts;");
       db.exec("DELETE FROM cycles;");
       db.exec("DELETE FROM run_metrics;");
       db.exec("DELETE FROM artifact_links;");
@@ -413,7 +463,6 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       db.exec("DELETE FROM sessions;");
       db.exec("DELETE FROM migration_findings;");
       db.exec("DELETE FROM migration_runs;");
-      db.exec("DELETE FROM repair_decisions;");
 
       const cycles = Array.isArray(payload.cycles) ? payload.cycles : [];
       const artifacts = Array.isArray(payload.artifacts) ? payload.artifacts : [];
@@ -462,13 +511,33 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       const artifactStmt = db.prepare(`
         INSERT INTO artifacts (
           path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, mtime_ns, session_id, cycle_id, source_mode, entity_confidence, legacy_origin, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(path) DO UPDATE SET
+          kind = excluded.kind,
+          family = excluded.family,
+          subtype = excluded.subtype,
+          gate_relevance = excluded.gate_relevance,
+          classification_reason = excluded.classification_reason,
+          content_format = excluded.content_format,
+          content = excluded.content,
+          canonical_format = excluded.canonical_format,
+          canonical_json = excluded.canonical_json,
+          sha256 = excluded.sha256,
+          size_bytes = excluded.size_bytes,
+          mtime_ns = excluded.mtime_ns,
+          session_id = excluded.session_id,
+          cycle_id = excluded.cycle_id,
+          source_mode = excluded.source_mode,
+          entity_confidence = excluded.entity_confidence,
+          legacy_origin = excluded.legacy_origin,
+          updated_at = excluded.updated_at;
       `);
+      deleteStaleArtifacts(db, artifacts);
       runInsert(artifactStmt, artifacts, (row) => ([
         row.path ?? null,
         row.kind ?? "other",
         row.family ?? "unknown",
-        row.subtype ?? null,
+        normalizeHotArtifactSubtype(row.path, row.subtype) ?? row.subtype ?? null,
         Number(row.gate_relevance ?? 0),
         row.classification_reason ?? null,
         row.content_format ?? null,
@@ -485,6 +554,8 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
         row.legacy_origin ?? null,
         row.updated_at ?? new Date().toISOString(),
       ]));
+      rebuildArtifactBlobs(db);
+      rebuildRuntimeHeads(db);
 
       const sessionStmt = db.prepare(`
         INSERT INTO sessions (
@@ -652,8 +723,14 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       const repairDecisionStmt = db.prepare(`
         INSERT INTO repair_decisions (
           relation_scope, source_ref, target_ref, relation_type, decision, decided_at, decided_by, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(relation_scope, source_ref, target_ref, relation_type) DO UPDATE SET
+          decision = excluded.decision,
+          decided_at = excluded.decided_at,
+          decided_by = excluded.decided_by,
+          notes = excluded.notes;
       `);
+      deleteStaleRepairDecisions(db, repairDecisions);
       runInsert(repairDecisionStmt, repairDecisions, (row) => ([
         row.relation_scope ?? null,
         row.source_ref ?? null,
@@ -666,7 +743,16 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       ]));
 
       setMeta(db, "payload_digest", nextDigest);
-      setMeta(db, "schema_version", String(payload?.schema_version ?? 2));
+      setMeta(
+        db,
+        "payload_schema_version",
+        String(Number(payload?.schema_version ?? getLatestWorkflowPayloadSchemaVersion()) || getLatestWorkflowPayloadSchemaVersion()),
+      );
+      setMeta(
+        db,
+        "schema_version",
+        String(Math.max(Number(payload?.schema_version ?? 1), getLatestWorkflowSchemaVersion())),
+      );
       setMeta(db, "structure_kind", String(payload?.summary?.structure_kind ?? "unknown"));
       setMeta(db, "target_root", String(payload?.target_root ?? ""));
       setMeta(db, "audit_root", String(payload?.audit_root ?? ""));

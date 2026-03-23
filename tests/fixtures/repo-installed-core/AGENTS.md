@@ -1,118 +1,97 @@
 <!-- CODEX-AUDIT-WORKFLOW START -->
-# AGENTS.md — Execution Contract (v7)
+# AGENTS.md — Execution Contract (v8)
 
 ## Purpose
 
-This repository uses a **Session-Based, Skill-Driven, Audit-Driven workflow**.
+This installed repository uses a **Session-Based, Skill-Driven, Audit-Driven workflow**.
+
+This file is a **startup contract**, not the full live workflow engine.
 
 Agents MUST:
-- follow `docs/audit/SPEC.md` as the canonical workflow specification
-- follow `docs/audit/WORKFLOW.md` as the project adapter for local constraints
-- use **Codex skills as the only state-changing mechanism**
-- minimize scope drift
-- preserve decision traceability
-- reduce context reload time
-- during upgrades, preserve `docs/audit/SPEC.md` authority and re-align `docs/audit/WORKFLOW.md` after install
+- treat `docs/audit/*` and hydrated runtime context as the live workflow state
+- treat workflow skills and runtime hooks as the mutating enforcement path
+- use this file for stable startup rules, precedence, and write-stop conditions
 
-This file defines **how agents execute** the workflow — not the workflow itself.
-
-------------------------------------------------------------
 ## Required Skills (Contract)
 
-This workflow assumes the availability of the following skills:
+This workflow assumes the following skills are available:
 
 - context-reload
 - start-session
 - close-session
 - branch-cycle-audit
 - drift-check
+- handoff-close
 - cycle-create
 - cycle-close
 - promote-baseline
 - convert-to-spike
 - requirements-delta
 
-If any required skill is unavailable, the agent MUST:
+If a required skill is unavailable, the agent MUST:
 - report the missing skill
 - STOP the session
 
-------------------------------------------------------------
-## Source of Truth
+## Source Of Truth
 
 - Workflow specification (canonical): `docs/audit/SPEC.md`
 - Workflow adapter (project-local): `docs/audit/WORKFLOW.md`
 - Workflow kernel (minimal re-anchor): `docs/audit/WORKFLOW-KERNEL.md`
 - Current state summary: `docs/audit/CURRENT-STATE.md`
 - Runtime digest: `docs/audit/RUNTIME-STATE.md`
-- Current baseline: `docs/audit/baseline/current.md`
-- Snapshot (fast reload): `docs/audit/snapshots/context-snapshot.md`
-- Fast context reload: `docs/audit/snapshots/context-snapshot.md`
+- Multi-agent handoff packet: `docs/audit/HANDOFF-PACKET.md`
+- Integration risk digest: `docs/audit/INTEGRATION-RISK.md`
+- Agent adapter contract: `docs/audit/AGENT-ADAPTERS.md`
+- Fast snapshot: `docs/audit/snapshots/context-snapshot.md`
 - Ideas parking: `docs/audit/parking-lot.md`
 
-> Precedence: `docs/audit/SPEC.md` > `docs/audit/WORKFLOW.md` > `AGENTS.md`.
+> Precedence inside workflow rules: `docs/audit/SPEC.md` > `docs/audit/WORKFLOW.md` > `AGENTS.md`.
 
-------------------------------------------------------------
-## Operating Environments
-
-
-### IDE Mode (GoLand AI Chat)
-
-Agent has full repository access.
-
-In this mode, the agent MUST:
-- update audit artifacts directly under `docs/audit/`
-- keep cycle `status.md` accurate at all times
-- update the snapshot before session end (via skills)
-
-### Online Mode (ChatGPT / Codex Web)
-
-Agent may not see the full repository.
-
-In this mode, the agent MUST:
-- request snapshot, baseline, and active cycle status before asserting facts
-- treat missing information as hypotheses (`HYP-xxx`)
-- avoid assuming repository state
-- explicitly state uncertainty when audit artifacts are unavailable
-- prefer `docs/audit/REANCHOR_PROMPT.md` when context was partially lost or restarted
-
-------------------------------------------------------------
 ## Session Start Responsibilities
 
 At the beginning of a session, the agent MUST:
 
-1. **Run skill: `context-reload`**
-2. Confirm `docs/audit/SPEC.md` and `docs/audit/WORKFLOW.md` are loaded in context.
-3. **Run skill: `start-session`**
-4. Explicitly acknowledge the session mode:
-- THINKING
-- EXPLORING
-- COMMITTING
+1. Run skill: `context-reload`
+2. Re-anchor in this order:
+   - `docs/audit/CURRENT-STATE.md`
+   - `docs/audit/WORKFLOW-KERNEL.md`
+   - `docs/audit/WORKFLOW_SUMMARY.md`
+   - `docs/audit/RUNTIME-STATE.md` when runtime freshness or repair signals matter
+   - active cycle `status.md` and active session file when relevant
+3. Confirm `docs/audit/SPEC.md` and `docs/audit/WORKFLOW.md` are loaded when canonical rule precision is needed
+4. Run skill: `start-session`
+5. Explicitly acknowledge the session mode: `THINKING | EXPLORING | COMMITTING`
+
+Important compatibility rule for conservative Codex app / online flows:
+- do not skip `start-session` only because the overall skill may later mutate workflow artifacts
+- `start-session` is admission-first: its runtime admission step is the required way to decide `resume | choose | create | stop`
+- this admission step must still run for analysis-only or read-only requests
+- read-only intent prevents durable writes; it does not exempt the agent from session admission
+- if admission returns `stop`, surface the blocking reason and required user choice instead of silently replacing the skill with an informal re-anchor
+
+`start-session` begins with blocking admission:
+- resume the current session/cycle when continuity already exists
+- stop on non-compliant branches or unresolved session-base continuity
+- stop and request user choice when several open cycles compete
+- only allow new session creation after admission returns `create_session_allowed`
 
 If `docs/audit/SPEC.md` is missing, the agent MUST:
 - STOP
-- request workflow reinstall/repair before continuing
+- request workflow reinstall or repair before continuing
 
-If mode is **COMMITTING**, the agent MUST:
-- **Run skill: `branch-cycle-audit`**
-- STOP if branch ownership is ambiguous or unmapped (`session` / `cycle` / `intermediate`)
+If mode is `COMMITTING`, the agent MUST:
+- run skill: `branch-cycle-audit`
+- stop if branch ownership is ambiguous or unmapped
+- rely on the same branch/session/cycle mapping layer as `start-session`, not on generic gating alone
 
-Agents MUST NOT skip these steps.
-
-If runtime state mode is `dual` or `db-only`, the agent MUST:
-- run the performance hook for each invoked workflow skill
-- run those hooks through the JSON context wrapper in strict mode (`npx aidn codex run-json-hook ... --strict --json`)
-- prefer `--fail-on-repair-block` for mutating workflow skills and stop on `repair_layer_status=block`
-- hydrate db-backed context after each workflow skill (`npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json`)
-- use hydrated context to read `repair_layer_status`, `repair_layer_advice`, prioritized artifacts, and continuity hints before acting
-- prefer `docs/audit/RUNTIME-STATE.md` as the short runtime digest when available
-- run DB runtime sync after each mutating workflow skill (`npx aidn runtime sync-db-first-selective --target . --json`, fallback to full sync when needed)
-- run `npx aidn runtime repair-layer-triage --target . --json` whenever `repair_layer_status` is `warn` or `block`
-- if triage exposes a safe-only autofix candidate, the agent MAY run `npx aidn runtime repair-layer-autofix --target . --apply --json`
-- stop and request user arbitration if blocking repair findings remain after triage/autofix
-- treat hook failure as a stop condition (do not continue silently on file-only fallback paths)
-
-------------------------------------------------------------
 ## Pre-Write Gate (MANDATORY)
+
+Durable writes include:
+
+- `apply_patch`
+- direct file edits
+- generated file creation
+- mutating scripts
 
 Before any durable write, the agent MUST restate:
 
@@ -125,203 +104,93 @@ Before any durable write, the agent MUST restate:
 - workflow artifacts verified
 - missing or uncertain context, if any
 
-Durable writes include:
+Before any durable write, the agent MUST also:
 
-- `apply_patch`
-- direct file edits
-- generated file creation
-- mutating scripts
+- use workflow skills as the normal state-changing mechanism
+- prefer the runtime hook path before mutating workflow work
+- stop when required context is missing, ambiguous, stale, or contradictory
 
-If runtime state mode is `dual` or `db-only`, the agent MUST also:
+If runtime state mode is `dual` or `db-only`, the agent MUST:
 
+- run workflow hooks in strict JSON mode (`npx aidn codex run-json-hook ... --strict --fail-on-repair-block --json`)
+- hydrate db-backed context after each workflow skill (`npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json`)
 - read hydrated runtime context before durable write
 - check `repair_layer_status`
+- check `repair_layer_advice`
 - stop on blocking repair findings
 
 If one required field is missing, ambiguous, or contradictory, the agent MUST:
 
 - stop durable write
 - continue with read-only context reload only
+- use `docs/audit/REANCHOR_PROMPT.md` for the restart protocol when context was partially lost
 - report the smallest compliant next step
 
 Special note for recent Codex Windows app flows:
 
 - treat `apply_patch` as a durable write operation, not as a shortcut around workflow checks
 - do not use `apply_patch` before the pre-write restatement is complete
+- treat "this skill is mutative" as a write-scope warning, not as a reason to skip admission-first skills such as `start-session`
+- if the user request is analysis-only, run admission, stay read-only on `stop|resume`, and only avoid the later durable-write steps
 
-This gate does not redefine canonical workflow mechanics.
-It only defines the minimum execution contract before writing.
+## COMMITTING Hard Stops
 
-------------------------------------------------------------
-## Mode Heuristics (Advisory, Not Authoritative)
+If mode is `COMMITTING`, the agent MUST ensure:
 
-Default recommendation: **THINKING**
-
-Recommend **EXPLORING** when:
-- intent includes experimentation, comparison, or uncertainty
-- code may be temporary or discarded
-- more than one approach is being evaluated
-
-Recommend **COMMITTING** when:
-- intent includes implement / fix / refactor for production
-- requirements exist or are being created
-- changes affect public API, DB schema, security, or architecture
-- code is expected to survive and be merged
-
-Agent MUST:
-- propose a mode
-- state confidence (low / medium / high)
-- provide top 1–2 reasons
-- accept user override at any time
-
-If confidence is low, the agent SHOULD ask for confirmation.
-
-------------------------------------------------------------
-## Mandatory Work Model
-
-### Cycle Binding
-
-All COMMITTING work MUST belong to a cycle located at:
-
-`docs/audit/cycles/CXXX-[type]-*/`
-
-Allowed cycle types:
-`feature | hotfix | spike | refactor | structural | migration | security | perf | integration | compat | corrective`
-
-Each cycle MUST maintain at least:
-- `status.md`
-- `brief.md`
-- `plan.md`
-- `decisions.md`
-- `traceability.md`
-
-Additional files are allowed as needed:
-- `hypotheses.md`
-- `audit-spec.md`
-- `gap-report.md`
-- `change-requests.md`
-
-------------------------------------------------------------
-## Branch Awareness Rule (MANDATORY)
-
-For COMMITTING sessions, the agent MUST:
-- identify the current Git branch
-- classify it as `session` | `cycle` | `intermediate`
-- if `cycle` or `intermediate`, ensure it maps to exactly one active cycle
-- verify cycle mapping is recorded in `status.md` as `branch_name` for cycle branches
-- ensure session continuity metadata is present in the active session file (`session_branch`, `parent_session`, `parent_branch`, `continuity_basis`)
-- if on a session branch, restrict commits to integration/handover/PR orchestration unless an explicit integration target cycle is documented in the session file
-
-If mapping is missing or ambiguous:
-- STOP
-- ask the user how to proceed (create cycle, rename branch, or remap)
-
-Recommended branch naming:
-- Session branches: `S061-<short-slug>` (example: `S061-dsl-roadmap`)
-- Cycle branches: `<cycle-type>/C037-<short-slug>` (example: `feature/C037-dsl-grammar-on`)
-- Intermediate branches: `<cycle-type>/C037-I01-<short-slug>` (example: `spike/C037-I01-parser-investigation`)
-
-------------------------------------------------------------
-## Session Close Rule (MANDATORY)
-
-Before closing a session, the agent MUST:
-- enumerate attached cycles still in `OPEN | IMPLEMENTING | VERIFYING`
-- require one explicit decision per open cycle:
-  - `integrate-to-session` (merge `cycle -> session`, then set retained cycle `DONE`)
-  - `report` to next session
-  - `close-non-retained` (`NO_GO` or `DROPPED`)
-  - `cancel-close`
-- record cycle-by-cycle decisions in the session close report
-- STOP closure if at least one attached open cycle has no explicit decision
-
-If a cycle is reported:
-- keep the cycle open
-- record target next session and integration intent before resume
-
-If a cycle is non-retained:
-- do not merge it into the session branch
-- preserve audit artifacts and rationale
-
-If a cycle is integrated to session:
-- complete integration before session close
-- update cycle state/outcome as retained (`DONE`)
-
-------------------------------------------------------------
-## Drift Control & Change Management
-
-### Scope Freeze
-
-If `status.md` indicates `state=IMPLEMENTING`:
-- scope MUST be considered frozen
-- expanding objectives inside the same cycle is NOT allowed
-
-### Change Requests (CR)
-
-Any objective, scope, or requirement change MUST:
-- be recorded in `change-requests.md`
-- include impact assessment: low / medium / high
-
-If impact is medium or high:
-- agent MUST recommend opening a new cycle
-
-### Parking Lot
-
-Ideas that are valuable but non-essential MUST:
-- be recorded in `docs/audit/parking-lot.md` as `IDEA-xxx`
-- NOT be implemented immediately
-
-------------------------------------------------------------
-## Spike Rule
-
-A SPIKE exists for learning and uncertainty reduction.
-
-SPIKE code MUST NOT be treated as production.
-If SPIKE results must survive:
-- open a new FEATURE cycle
-- formalize requirements
-- rework the code under COMMITTING rules
-
-------------------------------------------------------------
-## Automatic Enforcement Expectations
-
-If mode is COMMITTING, the agent MUST ensure:
 - an active cycle exists
 - branch mapping is valid
-- DoR core gate is satisfied (or explicit override is documented)
+- DoR core gate is satisfied, or an explicit override is documented
 - no plan, no durable write: the first implementation step must be explicit before writing
-- baseline dependencies are respected
-- session close gate is satisfied before closing (`integrate-to-session`/`report`/`close-non-retained` decisions for attached open cycles)
-- PR review gate is satisfied before merge: Codex review threads are triaged (`valid`/`invalid`) and resolved with evidence
-- in `dual`/`db-only`, DB-backed perf chain is executed at session close (constraint report/actions/history/trend/lot summaries)
 
-If mode is EXPLORING and:
-- work exceeds ~30 minutes, or
-- touches more than ~2 files
+The agent MUST STOP and request user decision when:
 
-The agent SHOULD recommend converting to a SPIKE cycle.
-
-------------------------------------------------------------
-## Stop Conditions (Hard Stops)
-
-Agent MUST STOP and request user decision when:
 - structural or architectural changes are detected
 - DB schema or security impact is detected
-- medium/high impact change request is identified
+- medium or high impact change request is identified
 - conflicting requirements exist
 - multiple competing strategies require arbitration
 
-------------------------------------------------------------
-## Legacy Technical Guardrails
+If `status.md` indicates `state=IMPLEMENTING`, scope is frozen.
+New objectives belong in a change request or a new cycle, not in an untracked expansion of the current cycle.
 
-The following rules define architectural, testing, and CI constraints.
-They DO NOT override workflow rules.
-Workflow precedence is defined above.
-------------------------------------------------------------
+## Runtime And Handoff Expectations
 
-# AGENT INSTRUCTIONS
+For `dual` / `db-only` projects, the runtime chain is authoritative for mutating enforcement:
+
+- `npx aidn codex run-json-hook ... --strict --json`
+- `npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json`
+- `npx aidn runtime sync-db-first-selective --target . --json` for mutating skills
+- `npx aidn runtime repair-layer-triage --target . --json` when `repair_layer_status` is `warn` or `block`
+- `npx aidn runtime repair-layer-autofix --target . --apply --json` only for safe-only autofix cases
+
+Runtime hooks are infrastructure:
+- `start-session` admission decides `resume | choose | create | stop`, then delegates to generic `session-start` runtime work only when admitted
+- `branch-cycle-audit` admission validates owned branch mapping, then delegates to generic gating/perf evaluation only when mapping is valid
+- `close-session` admission resolves open-cycle close decisions before generic `session-close` runtime work
+- `cycle-create` admission resolves continuity plus mode-gate compatibility before generic checkpoint work
+- `requirements-delta` admission stops medium/high-impact ownership ambiguity before artifact mutation
+- `promote-baseline` admission blocks promotion when target cycle selection, traceability, or open-gap validation is incomplete
+- `convert-to-spike` admission reuses cycle continuity logic in `EXPLORING` mode before spike creation work
+- `handoff-close` uses generic checkpoint evaluation, but the runtime hook now exposes the actual blocking result instead of a masked success wrapper
+- `drift-check` continues to use generic gating as the drift source of truth; treat hook `stop|warn|ok` as authoritative
+
+When work is likely to continue in another agent, the agent SHOULD:
+
+- run skill: `handoff-close`
+- refresh `docs/audit/CURRENT-STATE.md`
+- refresh `docs/audit/RUNTIME-STATE.md` when in `dual` / `db-only`
+- project `docs/audit/HANDOFF-PACKET.md`
+
+The receiving agent MAY start from `docs/audit/HANDOFF-PACKET.md`, but MUST still:
+
+- reload the referenced artifacts
+- prefer `backlog_refs` first when `preferred_dispatch_source=shared_planning`
+- complete the mandatory pre-write gate
+- stop if handoff state is blocked or stale
 
 ## Scope
-These instructions apply to the entire repository unless a more specific `AGENTS.md` is added within a subdirectory.
+
+These instructions apply to the entire repository. Keep any narrower `AGENTS.md` or `AGENTS.override.md` exceptional and justified by a real local rule change.
 
 Agents MUST:
 - invoke skills explicitly when required by `docs/audit/SPEC.md` and `docs/audit/WORKFLOW.md`

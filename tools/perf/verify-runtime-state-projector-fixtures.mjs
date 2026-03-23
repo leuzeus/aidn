@@ -9,10 +9,14 @@ function printUsage() {
   console.log("  node tools/perf/verify-runtime-state-projector-fixtures.mjs");
 }
 
-function runJson(script, args) {
+function runJson(script, args, env = {}) {
   const stdout = execFileSync(process.execPath, [script, ...args], {
     cwd: process.cwd(),
     encoding: "utf8",
+    env: {
+      ...process.env,
+      ...env,
+    },
   });
   return JSON.parse(stdout);
 }
@@ -38,12 +42,44 @@ function main() {
     const markdown = fs.readFileSync(outFile, "utf8");
     assert(result?.digest?.runtime_state_mode, "digest.runtime_state_mode missing");
     assert(result?.digest?.repair_layer_status, "digest.repair_layer_status missing");
+    assert(result?.digest?.repair_primary_reason, "digest.repair_primary_reason missing");
     assert(result?.digest?.current_state_freshness, "digest.current_state_freshness missing");
     assert(Array.isArray(result?.digest?.prioritized_artifacts), "digest.prioritized_artifacts missing");
     assert(result.digest.prioritized_artifacts.includes("docs/audit/CURRENT-STATE.md"), "digest missing CURRENT-STATE.md");
     assert(!markdown.includes("docs/audit/cycles/none-*/status.md"), "digest leaked none cycle path");
     assert(!markdown.includes("docs/audit/sessions/none*.md"), "digest leaked none session path");
     assert(markdown.includes("current_state_freshness: unknown"), "expected unknown freshness for empty installed fixture");
+
+    const filelessRepo = path.join(tempRoot, "db-only-fileless");
+    fs.cpSync(path.resolve(process.cwd(), "tests/fixtures/perf-handoff/ready"), filelessRepo, { recursive: true });
+    runJson("tools/perf/index-sync.mjs", [
+      "--target", filelessRepo,
+      "--store", "sqlite",
+      "--with-content",
+      "--json",
+    ], {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    fs.rmSync(path.join(filelessRepo, "docs", "audit", "CURRENT-STATE.md"), { force: true });
+    fs.rmSync(path.join(filelessRepo, "docs", "audit", "cycles", "C101-feature-alpha", "status.md"), { force: true });
+    const filelessOut = path.join(tempRoot, "RUNTIME-STATE-fileless.md");
+    const fileless = runJson("tools/runtime/project-runtime-state.mjs", [
+      "--target", filelessRepo,
+      "--out", filelessOut,
+      "--json",
+    ], {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    const filelessMarkdown = fs.readFileSync(filelessOut, "utf8");
+    assert(fileless.digest.runtime_state_mode === "db-only", "db-only fileless digest should preserve runtime_state_mode");
+    assert(fileless.digest.current_state_freshness === "ok", "db-only fileless digest should recover freshness from SQLite");
+    assert(fileless.digest.consistency_status === "pass", "db-only fileless digest should keep consistency pass");
+    assert(fileless.digest.current_state_source === "sqlite", "db-only fileless digest should load CURRENT-STATE from SQLite");
+    assert(fileless.digest.cycle_status_source === "sqlite", "db-only fileless digest should load cycle status from SQLite");
+    assert(filelessMarkdown.includes("current_state_freshness: ok"), "db-only fileless markdown should record recovered freshness");
+
     const textOut = execFileSync(process.execPath, [
       "tools/runtime/project-runtime-state.mjs",
       "--target", fixture,

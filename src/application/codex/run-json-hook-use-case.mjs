@@ -8,6 +8,7 @@ import { shouldAutoDbSyncForSkill } from "../../core/skills/skill-policy.mjs";
 import {
   buildRunJsonHookSummary,
   deriveRepairLayerAdvice,
+  deriveRepairPrimaryReason,
   deriveRepairLayerStatus,
 } from "../../core/workflow/workflow-output-factory.mjs";
 import { normalizeHookPayload } from "./normalize-hook-payload.mjs";
@@ -167,6 +168,18 @@ function mergeRepairLayerSummary(normalized, dbSyncPayload) {
       blocking,
       topFindings,
     }),
+    repair_primary_reason: deriveRepairPrimaryReason({
+      status: deriveRepairLayerStatus({
+        openCount,
+        blocking,
+      }),
+      advice: deriveRepairLayerAdvice({
+        openCount,
+        blocking,
+        topFindings,
+      }),
+      topFindings,
+    }),
   };
 }
 
@@ -291,6 +304,7 @@ export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContext
     repair_layer_blocking: effectiveNormalized.repair_layer_blocking,
     repair_layer_status: effectiveNormalized.repair_layer_status,
     repair_layer_advice: effectiveNormalized.repair_layer_advice,
+    repair_primary_reason: effectiveNormalized.repair_primary_reason,
     repair_layer_top_findings: effectiveNormalized.repair_layer_top_findings,
     error: effectiveNormalized.error,
     command: commandLine,

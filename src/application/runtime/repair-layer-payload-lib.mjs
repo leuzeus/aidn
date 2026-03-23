@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-export const REPAIR_LAYER_ENGINE_VERSION = "repair-layer-v1";
+export const REPAIR_LAYER_ENGINE_VERSION = "repair-layer-v2";
 
 function stableClone(value) {
   return JSON.parse(JSON.stringify(value));

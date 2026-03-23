@@ -1,0 +1,13 @@
+name: runtime-local
+version: 0.4.0
+depends_on: [core]
+
+install:
+  copy:
+    - from: scaffold/runtime_agents/
+      to: .aidn/runtime/agents/
+  merge: []
+
+verify:
+  must_exist:
+    - .aidn/runtime/agents/example-external-auditor.mjs

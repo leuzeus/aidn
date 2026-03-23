@@ -239,7 +239,14 @@ Before ending a session:
 3. **Run skill: `close-session`**
     - Finalize session notes
     - Update snapshot pointers
-4. **If runtime state mode is `dual` or `db-only`**
+4. **If the session is review-ready**
+    - **Run skill: `pr-orchestrate`**
+    - Follow the explicit path:
+      - push session branch
+      - create or recover PR
+      - triage review / merge
+      - perform post-merge local sync
+5. **If runtime state mode is `dual` or `db-only`**
     - Session close MUST execute DB-backed constraint orchestration chain:
       `constraint-report -> thresholds -> actions -> history -> trend -> lot-plan -> summaries`
     - Disabling this chain is not allowed in `dual`/`db-only`.
@@ -251,6 +258,14 @@ Sessions MUST NOT end silently.
 ------------------------------------------------------------
 
 ## PR Review Gate (Codex) [SPEC-R08]
+
+The PR lifecycle after a review-ready session close is:
+- `pr-orchestrate`
+- push session branch
+- open or recover the PR
+- triage Codex review threads
+- merge
+- post-merge local sync
 
 Before merge, Codex review threads MUST be triaged and resolved:
 - `valid`: implement fix, run impacted validations, push evidence.

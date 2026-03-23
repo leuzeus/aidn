@@ -115,3 +115,12 @@ export function resolveConfigIndexStore(configData) {
   }
   return null;
 }
+
+export function resolveConfigSourceBranch(configData) {
+  if (!isPlainObject(configData)) {
+    return null;
+  }
+  const workflow = isPlainObject(configData.workflow) ? configData.workflow : {};
+  const value = String(workflow.sourceBranch ?? "").trim();
+  return value || null;
+}

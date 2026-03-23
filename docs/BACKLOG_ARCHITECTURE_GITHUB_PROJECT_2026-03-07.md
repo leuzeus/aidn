@@ -9,6 +9,12 @@ This document complements:
 - `docs/BACKLOG_ARCHITECTURE_REMEDIATION_2026-03-07.md`
 - `docs/BACKLOG_ARCHITECTURE_GITHUB_ISSUES_2026-03-07.md`
 
+Important:
+
+- this file is a derived project-planning artifact, not the source of truth for implementation status
+- current delivery status must be tracked in `docs/BACKLOG_ARCHITECTURE_REMEDIATION_2026-03-07.md`
+- if this board model diverges from the repository state, treat it as a stale project export until refreshed
+
 It defines:
 
 - project structure

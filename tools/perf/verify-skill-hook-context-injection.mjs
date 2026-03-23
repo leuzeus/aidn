@@ -8,8 +8,10 @@ const SKILLS = [
   { name: "drift-check", mode: "COMMITTING" },
   { name: "start-session", mode: "<THINKING|EXPLORING|COMMITTING>" },
   { name: "close-session", mode: "<THINKING|EXPLORING|COMMITTING>" },
+  { name: "pr-orchestrate", mode: "<THINKING|EXPLORING|COMMITTING>" },
   { name: "cycle-create", mode: "COMMITTING" },
   { name: "cycle-close", mode: "COMMITTING" },
+  { name: "handoff-close", mode: "<THINKING|EXPLORING|COMMITTING>" },
   { name: "promote-baseline", mode: "COMMITTING" },
   { name: "requirements-delta", mode: "COMMITTING" },
   { name: "convert-to-spike", mode: "EXPLORING" },
@@ -17,7 +19,7 @@ const SKILLS = [
 
 function parseArgs(argv) {
   const args = {
-    root: "template/codex",
+    root: "scaffold/codex",
     json: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -43,7 +45,7 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-skill-hook-context-injection.mjs");
-  console.log("  node tools/perf/verify-skill-hook-context-injection.mjs --root template/codex --json");
+  console.log("  node tools/perf/verify-skill-hook-context-injection.mjs --root scaffold/codex --json");
 }
 
 function checkSkill(root, spec) {

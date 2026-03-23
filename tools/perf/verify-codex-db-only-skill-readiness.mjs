@@ -7,6 +7,7 @@ const MUTATING_SKILLS = new Set([
   "close-session",
   "cycle-create",
   "cycle-close",
+  "handoff-close",
   "promote-baseline",
   "requirements-delta",
   "convert-to-spike",
@@ -14,8 +15,8 @@ const MUTATING_SKILLS = new Set([
 
 function parseArgs(argv) {
   const args = {
-    root: "template/codex",
-    agents: "template/root/AGENTS.md",
+    root: "scaffold/codex",
+    agents: "scaffold/root/AGENTS.md",
     json: false,
   };
 
@@ -49,7 +50,7 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-codex-db-only-skill-readiness.mjs");
-  console.log("  node tools/perf/verify-codex-db-only-skill-readiness.mjs --root template/codex --agents template/root/AGENTS.md --json");
+  console.log("  node tools/perf/verify-codex-db-only-skill-readiness.mjs --root scaffold/codex --agents scaffold/root/AGENTS.md --json");
 }
 
 function readRequired(filePath) {
@@ -153,6 +154,9 @@ function main() {
       if (MUTATING_SKILLS.has(skill)) {
         patterns.push(...mutatingPatterns);
       }
+      if (skill === "start-session") {
+        patterns.push("do not skip this skill for that reason alone: run the admission phase");
+      }
       const result = checkPatterns(file, text, patterns);
       return {
         skill,
@@ -172,6 +176,7 @@ function main() {
       "npx aidn runtime repair-layer-triage --target . --json",
       "npx aidn runtime repair-layer-autofix --target . --apply --json",
       "--fail-on-repair-block",
+      "read-only intent prevents durable writes; it does not exempt the agent from session admission",
     ]);
 
     const pass = skillChecks.every((item) => item.ok) && agentsCheck.ok;

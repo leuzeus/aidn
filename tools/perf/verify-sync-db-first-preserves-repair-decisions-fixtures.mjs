@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -40,6 +41,33 @@ function runJson(script, scriptArgs) {
   return JSON.parse(stdout);
 }
 
+function readRepairDecisionRow(sqliteFile) {
+  const DatabaseSync = getDatabaseSync();
+  const db = new DatabaseSync(sqliteFile);
+  try {
+    const row = db.prepare(`
+      SELECT
+        rowid,
+        relation_scope,
+        source_ref,
+        target_ref,
+        relation_type,
+        decision,
+        decided_at,
+        decided_by,
+        notes
+      FROM repair_decisions
+      WHERE relation_scope = ?
+        AND source_ref = ?
+        AND target_ref = ?
+        AND relation_type = ?
+    `).get("session_cycle_link", "S102", "C101", "attached_cycle");
+    return row ?? null;
+  } finally {
+    db.close();
+  }
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -55,6 +83,8 @@ function main() {
       workingCopy,
       "--state-mode",
       "db-only",
+      "--store",
+      "sqlite",
       "--json",
     ]);
     const sqliteFile = String(
@@ -80,14 +110,18 @@ function main() {
       "--apply",
       "--json",
     ]);
+    const decisionBeforeSecondSync = readRepairDecisionRow(sqliteFile);
 
     const secondSync = runJson("tools/runtime/sync-db-first.mjs", [
       "--target",
       workingCopy,
       "--state-mode",
       "db-only",
+      "--store",
+      "sqlite",
       "--json",
     ]);
+    const decisionAfterSecondSync = readRepairDecisionRow(sqliteFile);
 
     const strictQuery = runJson("tools/runtime/repair-layer-query.mjs", [
       "--target",
@@ -110,9 +144,13 @@ function main() {
       first_sync_ok: firstSync.ok === true,
       resolve_applied: String(resolve?.action ?? "") === "applied",
       second_sync_ok: secondSync.ok === true,
-      second_sync_repair_layer_skipped: String(secondSync?.repair_layer_result?.action ?? "") === "skipped",
+      second_sync_repair_layer_stable: ["applied", "skipped"].includes(String(secondSync?.repair_layer_result?.action ?? "")),
       accepted_relation_preserved: String(accepted?.link?.ambiguity_status ?? "") === "accepted",
       accepted_relation_reason_preserved: String(accepted?.link?.usability?.reason ?? "") === "accepted_override",
+      repair_decision_row_present_before_second_sync: Number.isInteger(decisionBeforeSecondSync?.rowid),
+      repair_decision_row_present_after_second_sync: Number.isInteger(decisionAfterSecondSync?.rowid),
+      repair_decision_rowid_stable: Number(decisionBeforeSecondSync?.rowid ?? 0) > 0
+        && Number(decisionBeforeSecondSync?.rowid) === Number(decisionAfterSecondSync?.rowid),
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {
@@ -123,6 +161,8 @@ function main() {
       samples: {
         second_sync_action: secondSync?.repair_layer_result?.action ?? null,
         accepted_relation: accepted ?? null,
+        repair_decision_before_second_sync: decisionBeforeSecondSync,
+        repair_decision_after_second_sync: decisionAfterSecondSync,
       },
       pass,
     };

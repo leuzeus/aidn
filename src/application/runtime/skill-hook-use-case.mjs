@@ -12,13 +12,44 @@ export { assertSupportedSkill, assertValidSkillMode };
 
 function buildToolArgs(route, targetRoot, mode, effectiveStrict, noAutoSkipGate) {
   const args = [...(route.fixedArgs ?? []), "--target", targetRoot, "--json"];
-  if (route.tool === "checkpoint.mjs" || route.tool === "gating-evaluate.mjs" || route.tool === "workflow-hook.mjs") {
+  if (
+    route.tool === "checkpoint.mjs"
+    || route.tool === "gating-evaluate.mjs"
+    || route.tool === "workflow-hook.mjs"
+    || route.tool === "start-session-hook.mjs"
+    || route.tool === "branch-cycle-audit-hook.mjs"
+    || route.tool === "close-session-hook.mjs"
+    || route.tool === "pr-orchestrate-hook.mjs"
+    || route.tool === "cycle-create-hook.mjs"
+    || route.tool === "requirements-delta-hook.mjs"
+    || route.tool === "promote-baseline-hook.mjs"
+    || route.tool === "convert-to-spike-hook.mjs"
+    || route.tool === "handoff-close-hook.mjs"
+  ) {
     args.push("--mode", mode);
   }
-  if (route.tool === "workflow-hook.mjs" && effectiveStrict) {
+  if (
+    (route.tool === "workflow-hook.mjs"
+      || route.tool === "start-session-hook.mjs"
+      || route.tool === "close-session-hook.mjs"
+      || route.tool === "pr-orchestrate-hook.mjs")
+    && effectiveStrict
+  ) {
     args.push("--strict");
   }
-  if ((route.tool === "checkpoint.mjs" || route.tool === "workflow-hook.mjs") && noAutoSkipGate) {
+  if (
+    (route.tool === "checkpoint.mjs"
+      || route.tool === "workflow-hook.mjs"
+      || route.tool === "start-session-hook.mjs"
+      || route.tool === "close-session-hook.mjs"
+      || route.tool === "pr-orchestrate-hook.mjs"
+      || route.tool === "cycle-create-hook.mjs"
+      || route.tool === "requirements-delta-hook.mjs"
+      || route.tool === "promote-baseline-hook.mjs"
+      || route.tool === "convert-to-spike-hook.mjs"
+      || route.tool === "handoff-close-hook.mjs")
+    && noAutoSkipGate
+  ) {
     args.push("--no-auto-skip-gate");
   }
   return args;
@@ -34,6 +65,7 @@ function extractRepairLayerSummary(payload) {
     repair_layer_blocking: (summary.repair_layer_blocking ?? checkpointSummary.repair_layer_blocking) === true,
     repair_layer_status: summary.repair_layer_status ?? checkpointSummary.repair_layer_status ?? null,
     repair_layer_advice: summary.repair_layer_advice ?? checkpointSummary.repair_layer_advice ?? null,
+    repair_primary_reason: summary.repair_primary_reason ?? checkpointSummary.repair_primary_reason ?? null,
     repair_layer_top_findings: Array.isArray(summary.repair_layer_top_findings)
       ? summary.repair_layer_top_findings
       : (Array.isArray(checkpointSummary.repair_layer_top_findings) ? checkpointSummary.repair_layer_top_findings : []),
@@ -64,9 +96,23 @@ export function runSkillHookUseCase({ args, perfDir, targetRoot, processAdapter 
   try {
     const payload = processAdapter.runJsonNodeScript(path.join(perfDir, route.tool), toolArgs);
     const repairLayer = extractRepairLayerSummary(payload);
+    const payloadOk = (
+      route.tool === "gating-evaluate.mjs"
+      || route.tool === "start-session-hook.mjs"
+      || route.tool === "branch-cycle-audit-hook.mjs"
+      || route.tool === "close-session-hook.mjs"
+      || route.tool === "pr-orchestrate-hook.mjs"
+      || route.tool === "cycle-create-hook.mjs"
+      || route.tool === "requirements-delta-hook.mjs"
+      || route.tool === "promote-baseline-hook.mjs"
+      || route.tool === "convert-to-spike-hook.mjs"
+      || route.tool === "handoff-close-hook.mjs"
+    ) && typeof payload?.ok === "boolean"
+      ? payload.ok
+      : true;
     return {
       ts: startedAt,
-      ok: true,
+      ok: payloadOk,
       skill: args.skill,
       tool: route.tool,
       mode,
@@ -79,7 +125,11 @@ export function runSkillHookUseCase({ args, perfDir, targetRoot, processAdapter 
       repair_layer_blocking: repairLayer.repair_layer_blocking,
       repair_layer_status: repairLayer.repair_layer_status,
       repair_layer_advice: repairLayer.repair_layer_advice,
+      repair_primary_reason: repairLayer.repair_primary_reason,
       repair_layer_top_findings: repairLayer.repair_layer_top_findings,
+      action: payload?.action ?? null,
+      result: payload?.result ?? null,
+      reason_code: payload?.reason_code ?? null,
       payload,
     };
   } catch (error) {

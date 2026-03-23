@@ -1,0 +1,237 @@
+# Backlog AGENTS Runtime Refocus - 2026-03-10
+
+## Goal
+
+Track concrete follow-up work for the `AGENTS.md` runtime refocus plan.
+
+Reference plan:
+
+- `docs/PLAN_AGENTS_RUNTIME_REFOCUS_2026-03-10.md`
+
+## Backlog Items
+
+### ARF-01 - Refactor Installed Root `AGENTS.md`
+
+Status: done
+Priority: high
+
+Files:
+
+- `scaffold/root/AGENTS.md`
+
+Why:
+
+- reduce prompt-only workflow burden
+
+Done when:
+
+- file is materially shorter
+- file keeps hard stops and reload order
+- file routes dynamic procedure toward skills/runtime instead of restating it inline
+
+### ARF-02 - Define Pre-Write Admission Command
+
+Status: completed
+Priority: high
+
+Files:
+
+- runtime CLI / use case files
+
+Why:
+
+- make durable-write readiness executable
+
+Done when:
+
+- one command reports write readiness
+- output includes mode, branch kind, active cycle/session, `dor_state`, runtime freshness, and blocking findings
+
+Progress note:
+
+- `npx aidn runtime pre-write-admit --target . --skill <skill> --json` is now the dedicated executable pre-write readiness command
+- its output surfaces mode, branch kind, active session/cycle, `dor_state`, runtime freshness, blocking reasons, prioritized artifacts, and repair-layer context
+
+### ARF-03 - Require Admission In Mutating Skills
+
+Status: completed
+Priority: high
+
+Files:
+
+- `scaffold/codex/*/SKILL.md` for mutating skills
+
+Why:
+
+- stop relying on AGENTS prose as the only write gate
+
+Done when:
+
+- every mutating skill runs admission/gating before durable write
+- every mutating skill hydrates context after successful mutation
+
+Progress note:
+
+- mutating skills now require `pre-write-admit` before the first durable write
+- skill coverage verifies both current-state updates and pre-write admission wiring in scaffold and installed fixtures
+- DB-backed execution paths already document and verify post-hook hydration via `run-json-hook` and `hydrate-context`
+
+### ARF-04 - Detect `AGENTS.override.md` During Install / Verify
+
+Status: completed
+Priority: high
+
+Files:
+
+- installer logic
+- verify logic
+
+Why:
+
+- the installed root `AGENTS.md` may be present but not active
+
+Done when:
+
+- install warns when target root `AGENTS.override.md` exists
+- verify reports effective precedence risks clearly
+
+Progress note:
+
+- install/verify now warn on both root and nested `AGENTS.override.md` files in known workflow paths
+- fixture coverage verifies the precedence warnings across install and verify flows
+
+### ARF-05 - Document Codex Instruction Layering
+
+Status: done
+Priority: high
+
+Files:
+
+- `README.md`
+- `docs/INSTALL.md`
+- `docs/TROUBLESHOOTING.md`
+- `scaffold/codex/README_CodexOnline.md`
+
+Why:
+
+- package users need to understand global vs project vs nested layers
+
+Done when:
+
+- docs explain `~/.codex/AGENTS.md`
+- docs explain `AGENTS.override.md`
+- docs explain that `aidn` only installs the project layer
+
+### ARF-06 - Add Real Codex Verification Steps To Docs
+
+Status: completed
+Priority: medium
+
+Files:
+
+- `README.md`
+- `docs/INSTALL.md`
+
+Why:
+
+- file presence is not enough; actual loaded instruction sources matter
+
+Done when:
+
+- docs include root and nested-directory verification commands
+- docs mention checking active instruction sources
+
+Progress note:
+
+- `README.md` and `docs/INSTALL.md` now include concrete Codex verification commands from repo root and nested directories
+- docs explicitly tell users to inspect active instruction sources instead of relying on file presence alone
+
+### ARF-07 - Add Optional `.codex` Project Config Guidance
+
+Status: completed
+Priority: medium
+
+Files:
+
+- documentation
+- optional scaffold/snippet if adopted
+
+Why:
+
+- some installed repos may need fallback filenames or a larger instruction budget
+
+Done when:
+
+- `project_doc_fallback_filenames` use is documented
+- `project_doc_max_bytes` use is documented
+- default install remains simple and non-intrusive
+
+Progress note:
+
+- install docs now document optional project-level Codex config only for non-default `project_doc_fallback_filenames` and `project_doc_max_bytes`
+- the default install remains free of `.codex/config.toml`
+
+### ARF-08 - Define Nested Override Policy
+
+Status: completed
+Priority: medium
+
+Files:
+
+- docs
+- optional examples
+
+Why:
+
+- specialized subtrees may need local rules without polluting the repo root contract
+
+Done when:
+
+- nested overrides are documented as advanced/optional
+- default `aidn` install still avoids scattering AGENTS files by default
+
+Progress note:
+
+- root docs and troubleshooting now describe nested overrides as advanced, optional, and external to the default `aidn` install story
+- install continues to manage only the root project layer by default
+
+### ARF-09 - Revisit Troubleshooting Around Long Session Drift
+
+Status: completed
+Priority: medium
+
+Files:
+
+- `docs/TROUBLESHOOTING.md`
+
+Why:
+
+- users currently frame the issue as `apply_patch` or AGENTS failure rather than runtime drift
+
+Done when:
+
+- troubleshooting differentiates prompt drift from installation failure
+- mitigation path points toward re-anchor + runtime admission
+
+Progress note:
+
+- troubleshooting now distinguishes long-session runtime drift from install failure and points users toward re-anchor, workflow hooks, and runtime admission
+
+## Sequencing Recommendation
+
+1. ARF-05
+2. ARF-01
+3. ARF-02
+4. ARF-03
+5. ARF-04
+6. ARF-06
+7. ARF-09
+8. ARF-07
+9. ARF-08
+
+## Open Questions
+
+- should pre-write admission be a new dedicated command or a stricter mode of an existing hook?
+- should install/verify scan only the target root or also known nested workflow paths for overrides?
+- how much of the current `AGENTS.md` should remain duplicated in `README_CodexOnline.md`?
+- should optional `.codex` project config be generated by install or documented as manual opt-in?
