@@ -1,6 +1,15 @@
 # Changelog
 
 ## Unreleased
+
+## 0.5.0-rc.1
+- Complete DB-first fileless runtime support so `db-only` repositories remain readable by the assistant even when workflow markdown artifacts are not materialized on disk.
+- Preserve `dual` compatibility by keeping artifacts reconstructible from SQLite and by fixing `db-only -> dual` migration to rematerialize missing hot workflow files from the database.
+- Add runtime diagnostics and DB-first fallback coverage across hydrate-context, admissions, coordinator flows, integration risk, and workflow summary projectors.
+- Add additive SQLite schema migrations `0002` through `0005` for `runtime_heads`, reconstructible `artifact_blobs`, `v_materializable_artifacts`, and hot artifact subtype/index normalization.
+- Separate logical payload schema versioning from physical SQLite schema migration versioning to keep JSON/SQLite parity checks stable while allowing DB evolution.
+- Extend migration and round-trip regression coverage for DB adoption, fileless `db-only`, dual rematerialization, and hot artifact rebuild workflows.
+
 - Restore blocking `start-session` admission gates for branch compliance, session/cycle continuity, multi-cycle arbitration, and session-base continuity before generic runtime session-start processing.
 - Route `branch-cycle-audit` through the same shared branch/session/cycle mapping layer as `start-session`, stopping on non-owned, missing, or ambiguous mappings before generic gating evaluation.
 - Add shared workflow mapping helpers plus regression verifiers for `start-session` and `branch-cycle-audit`, and include them in context-resilience validation.
