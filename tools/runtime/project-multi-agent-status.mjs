@@ -180,6 +180,8 @@ function buildMarkdown({
   lines.push(`recommended_role: ${coordinator.recommendation.role}`);
   lines.push(`recommended_action: ${coordinator.recommendation.action}`);
   lines.push(`recommended_goal: ${coordinator.recommendation.goal}`);
+  lines.push(`recommended_source: ${coordinator.recommendation.source}`);
+  lines.push(`recommended_stop_required: ${coordinator.recommendation.stop_required ? "yes" : "no"}`);
   lines.push(`handoff_status: ${coordinator.handoff?.packet?.handoff_status ?? "none"}`);
   lines.push(`handoff_admission_status: ${coordinator.handoff?.admission_status ?? "none"}`);
   lines.push(`repair_layer_status: ${coordinator.handoff?.packet?.repair_layer_status ?? "unknown"}`);
@@ -207,6 +209,7 @@ function buildMarkdown({
   lines.push(`- source: ${coordinator.recommendation.source}`);
   lines.push(`- reason: ${coordinator.recommendation.reason}`);
   lines.push(`- stop_required: ${coordinator.recommendation.stop_required ? "yes" : "no"}`);
+  lines.push(`- admission_status: ${coordinator.handoff?.status?.admission_status ?? coordinator.handoff?.admission_status ?? "unknown"}`);
   lines.push(`- repair_primary_reason: ${coordinator.handoff?.packet?.repair_primary_reason ?? "unknown"}`);
   lines.push("");
   lines.push("## Integration Strategy");
@@ -415,6 +418,8 @@ export async function projectMultiAgentStatus({
     db_first_materialized: Boolean(dbFirstWrite?.materialized),
     db_first_artifact_path: dbFirstWrite?.artifact?.path ?? relativeOut,
     coordinator,
+    recommendation: coordinator.recommendation,
+    handoff_status: coordinator.handoff?.status ?? null,
     integration_risk: integrationRisk,
     arbitration,
     recommended_role_coverage: effectiveRecommendedRoleCoverage,

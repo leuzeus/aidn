@@ -381,6 +381,7 @@ function main() {
     const roleBlocked = runJson(dispatchScript, ["--target", roleBlockedTarget, "--agent-roster-file", "docs/audit/AGENT-ROSTER.md", "--json"], repoRoot, 0);
 
     assert(ready.dispatch_status === "ready", "ready dispatch should be ready");
+    assert(ready.coordinator_status?.admission_status === "admitted", "ready dispatch should expose normalized coordinator status");
     assert(ready.entrypoint_name === "branch-cycle-audit", "ready dispatch should use branch-cycle-audit");
     assert(ready.selected_agent.id === "codex", "ready dispatch should use the general codex adapter");
     assert(ready.dispatch_scope.scope_type === "cycle", "ready dispatch should expose cycle scope");
@@ -394,6 +395,7 @@ function main() {
     assert(warn.commands.some((item) => item.includes("--skill drift-check")), "warn dispatch should include drift-check command");
 
     assert(blocked.dispatch_status === "gated", "blocked dispatch should be gated");
+    assert(blocked.coordinator_status?.admission_status === "blocked", "blocked dispatch should expose blocked coordinator status");
     assert(blocked.entrypoint_kind === "runtime", "blocked dispatch should use runtime entrypoint");
     assert(blocked.selected_agent.id === "codex-repair", "blocked dispatch should prefer the specialized repair adapter");
     assert(blocked.dispatch_scope.scope_type === "cycle", "blocked dispatch should preserve cycle scope");

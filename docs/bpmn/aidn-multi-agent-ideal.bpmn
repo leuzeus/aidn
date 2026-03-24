@@ -1,224 +1,517 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
-  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
-  id="Definitions_AidnMultiAgentIdeal"
-  targetNamespace="https://github.com/leuzeus/aidn/bpmn">
-  <bpmn:process id="Process_AidnMultiAgentIdeal" name="aid'n multi-agent workflow (current runtime baseline)" isExecutable="false">
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_AidnMultiAgentIdeal" targetNamespace="https://github.com/leuzeus/aidn/bpmn" exporter="bpmn-js (https://demo.bpmn.io)" exporterVersion="18.13.1">
+  <bpmn:process id="Process_AidnMultiAgentIdeal" name="aid&#39;n multi-agent workflow (current runtime baseline)" isExecutable="false">
     <bpmn:laneSet id="LaneSet_Main">
-      <bpmn:lane id="Lane_User" name="User / Operator">
-        <bpmn:flowNodeRef>StartEvent_Request</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Task_ClarifyIntent</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Task_ArbitrateBlock</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>EndEvent_Complete</bpmn:flowNodeRef>
+      <bpmn:lane id="Lane_Runtime" name="Runtime / Repair Layer">
+        <bpmn:flowNodeRef>Task_HydrateRuntime</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_RepairBlocked</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_RepairStatus</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_TriageRepair</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="Lane_Coordinator" name="Coordinator Agent">
-        <bpmn:flowNodeRef>Gateway_ReanchorMerge</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Task_ReanchorContext</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Gateway_ContextComplete</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Task_AssignWork</bpmn:flowNodeRef>
+      <bpmn:lane id="Lane_Audit" name="Audit Agent">
+        <bpmn:flowNodeRef>Task_CheckBranchAndCycle</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CheckPreWriteGate</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Gateway_DorReady</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Task_PreparePlanOnly</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_DriftReviewMerge</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DriftAndTraceabilityReview</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Gateway_HandoffNeeded</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Task_ProjectHandoffPacket</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Gateway_CloseSession</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Task_PublishSessionState</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CloseArtifacts</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_Execution" name="Execution Agent">
         <bpmn:flowNodeRef>Task_LoadCycleContext</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Gateway_ImplementMerge</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_ImplementChange</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="Lane_Audit" name="Audit Agent">
-        <bpmn:flowNodeRef>Task_CheckBranchAndCycle</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Task_CheckPreWriteGate</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Gateway_DriftReviewMerge</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Task_DriftAndTraceabilityReview</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Task_CloseArtifacts</bpmn:flowNodeRef>
+      <bpmn:lane id="Lane_Coordinator" name="Coordinator Agent">
+        <bpmn:flowNodeRef>Gateway_ReanchorUserMerge</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ReanchorLoopMerge</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ReanchorMerge</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReanchorContext</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ContextComplete</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AssignWork</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_PreparePlanOnly</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ProjectHandoffPacket</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_HandoffComplete</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_PublishSessionState</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_SessionPublished</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="Lane_Runtime" name="Runtime / Repair Layer">
-        <bpmn:flowNodeRef>Task_HydrateRuntime</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Gateway_RepairStatus</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Task_TriageRepair</bpmn:flowNodeRef>
+      <bpmn:lane id="Lane_User" name="User / Operator">
+        <bpmn:flowNodeRef>StartEvent_Request</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ClarifyIntent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ArbitrateBlock</bpmn:flowNodeRef>
       </bpmn:lane>
     </bpmn:laneSet>
-
-    <bpmn:startEvent id="StartEvent_Request" name="Improvement request" />
-    <bpmn:exclusiveGateway id="Gateway_ReanchorMerge" name="Merge re-entry paths" />
-    <bpmn:task id="Task_ReanchorContext" name="context-reload + reload CURRENT-STATE, RUNTIME-STATE, HANDOFF-PACKET" />
+    <bpmn:startEvent id="StartEvent_Request" name="Receive request" />
+    <bpmn:exclusiveGateway id="Gateway_ReanchorUserMerge" name="Resume after clarification" />
+    <bpmn:exclusiveGateway id="Gateway_ReanchorLoopMerge" name="Resume loop" />
+    <bpmn:exclusiveGateway id="Gateway_ReanchorMerge" name="Reload workflow path" />
+    <bpmn:task id="Task_ReanchorContext" name="Reload runtime context" />
     <bpmn:exclusiveGateway id="Gateway_ContextComplete" name="Context complete?" default="Flow_ContextNo" />
-    <bpmn:task id="Task_ClarifyIntent" name="Clarify scope or missing facts" />
-    <bpmn:task id="Task_AssignWork" name="start-session admission + select mode and agent role" />
-    <bpmn:task id="Task_LoadCycleContext" name="Load active session, cycle and plan" />
-    <bpmn:task id="Task_CheckBranchAndCycle" name="branch-cycle-audit + audit branch mapping and active cycle" />
-    <bpmn:task id="Task_CheckPreWriteGate" name="Check cycle continuity, ownership, DoR and pre-write gate" />
-    <bpmn:exclusiveGateway id="Gateway_DorReady" name="Admission + DoR ready to write?" default="Flow_DorNo" />
-    <bpmn:task id="Task_PreparePlanOnly" name="Stay read-only and update plan or hypotheses" />
-    <bpmn:exclusiveGateway id="Gateway_ImplementMerge" name="Merge write continuation" />
-    <bpmn:task id="Task_ImplementChange" name="Implement cycle step" />
-    <bpmn:task id="Task_HydrateRuntime" name="Hydrate context and refresh runtime digest" />
-    <bpmn:exclusiveGateway id="Gateway_RepairStatus" name="repair_layer_status" default="Flow_RepairWarn" />
-    <bpmn:task id="Task_TriageRepair" name="Run repair triage / safe autofix" />
-    <bpmn:task id="Task_ArbitrateBlock" name="User arbitration on blocking findings" />
-    <bpmn:exclusiveGateway id="Gateway_DriftReviewMerge" name="Merge post-repair review" />
-    <bpmn:task id="Task_DriftAndTraceabilityReview" name="drift-check or traceability review" />
+    <bpmn:task id="Task_ClarifyIntent" name="Clarify scope" />
+    <bpmn:task id="Task_AssignWork" name="Admit session and assign work" />
+    <bpmn:task id="Task_LoadCycleContext" name="Load session and cycle context" />
+    <bpmn:task id="Task_CheckBranchAndCycle" name="Validate branch-cycle mapping" />
+    <bpmn:task id="Task_CheckPreWriteGate" name="Validate write prerequisites" />
+    <bpmn:exclusiveGateway id="Gateway_DorReady" name="Ready to write?" default="Flow_DorNo" />
+    <bpmn:task id="Task_PreparePlanOnly" name="Update plan in read-only mode" />
+    <bpmn:exclusiveGateway id="Gateway_ImplementMerge" name="Writing path" />
+    <bpmn:task id="Task_ImplementChange" name="Implement planned change" />
+    <bpmn:task id="Task_HydrateRuntime" name="Refresh runtime state" />
+    <bpmn:exclusiveGateway id="Gateway_RepairBlocked" name="Repair blocked?" default="Flow_RepairNotBlocked" />
+    <bpmn:exclusiveGateway id="Gateway_RepairStatus" name="Repair warning?" default="Flow_RepairWarn" />
+    <bpmn:task id="Task_TriageRepair" name="Run repair triage" />
+    <bpmn:task id="Task_ArbitrateBlock" name="Arbitrate blocking issue" />
+    <bpmn:exclusiveGateway id="Gateway_DriftReviewMerge" name="Review path" />
+    <bpmn:task id="Task_DriftAndTraceabilityReview" name="Review drift and traceability" />
     <bpmn:exclusiveGateway id="Gateway_HandoffNeeded" name="Need another agent?" default="Flow_HandoffNo" />
-    <bpmn:task id="Task_ProjectHandoffPacket" name="handoff-close + project HANDOFF-PACKET and relay state" />
+    <bpmn:task id="Task_ProjectHandoffPacket" name="Prepare handoff packet" />
     <bpmn:exclusiveGateway id="Gateway_CloseSession" name="Close session now?" default="Flow_CloseNo" />
-    <bpmn:task id="Task_CloseArtifacts" name="close-session admission + close session artifacts, then pr-orchestrate" />
-    <bpmn:task id="Task_PublishSessionState" name="Publish snapshot, current state and post-merge sync status" />
-    <bpmn:endEvent id="EndEvent_Complete" name="Session continued or closed" />
-
+    <bpmn:task id="Task_CloseArtifacts" name="Close session and orchestrate PR" />
+    <bpmn:task id="Task_PublishSessionState" name="Publish session state" />
+    <bpmn:endEvent id="EndEvent_HandoffComplete" name="Handoff prepared" />
+    <bpmn:endEvent id="EndEvent_SessionPublished" name="Session state published" />
     <bpmn:dataObjectReference id="Data_CurrentState" name="CURRENT-STATE.md" dataObjectRef="DataObject_CurrentState" />
     <bpmn:dataObject id="DataObject_CurrentState" />
+    <bpmn:dataObjectReference id="Data_CurrentState_Publish" name="CURRENT-STATE.md" dataObjectRef="DataObject_CurrentState" />
     <bpmn:dataObjectReference id="Data_RuntimeState" name="RUNTIME-STATE.md" dataObjectRef="DataObject_RuntimeState" />
     <bpmn:dataObject id="DataObject_RuntimeState" />
+    <bpmn:dataObjectReference id="Data_RuntimeState_Reanchor" name="RUNTIME-STATE.md" dataObjectRef="DataObject_RuntimeState" />
     <bpmn:dataObjectReference id="Data_HandoffPacket" name="HANDOFF-PACKET.md" dataObjectRef="DataObject_HandoffPacket" />
     <bpmn:dataObject id="DataObject_HandoffPacket" />
+    <bpmn:dataObjectReference id="Data_HandoffPacket_Reanchor" name="HANDOFF-PACKET.md" dataObjectRef="DataObject_HandoffPacket" />
     <bpmn:dataObjectReference id="Data_CycleStatus" name="active cycle status.md" dataObjectRef="DataObject_CycleStatus" />
     <bpmn:dataObject id="DataObject_CycleStatus" />
-
-    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_Request" targetRef="Gateway_ReanchorMerge" />
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_Request" targetRef="Gateway_ReanchorUserMerge" />
+    <bpmn:sequenceFlow id="Flow_ReanchorUserToMain" sourceRef="Gateway_ReanchorUserMerge" targetRef="Gateway_ReanchorMerge" />
+    <bpmn:sequenceFlow id="Flow_ReanchorLoopToMain" sourceRef="Gateway_ReanchorLoopMerge" targetRef="Gateway_ReanchorMerge" />
     <bpmn:sequenceFlow id="Flow_ReanchorGo" sourceRef="Gateway_ReanchorMerge" targetRef="Task_ReanchorContext" />
     <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_ReanchorContext" targetRef="Gateway_ContextComplete" />
     <bpmn:sequenceFlow id="Flow_ContextNo" sourceRef="Gateway_ContextComplete" targetRef="Task_ClarifyIntent">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[context_incomplete]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">context_incomplete</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_ContextYes" sourceRef="Gateway_ContextComplete" targetRef="Task_AssignWork">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[context_complete]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">context_complete</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_ClarifyBack" sourceRef="Task_ClarifyIntent" targetRef="Gateway_ReanchorMerge" />
+    <bpmn:sequenceFlow id="Flow_ClarifyBack" sourceRef="Task_ClarifyIntent" targetRef="Gateway_ReanchorUserMerge" />
     <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_AssignWork" targetRef="Task_LoadCycleContext" />
     <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_LoadCycleContext" targetRef="Task_CheckBranchAndCycle" />
     <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_CheckBranchAndCycle" targetRef="Task_CheckPreWriteGate" />
     <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_CheckPreWriteGate" targetRef="Gateway_DorReady" />
     <bpmn:sequenceFlow id="Flow_DorNo" sourceRef="Gateway_DorReady" targetRef="Task_PreparePlanOnly">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[dor_not_ready]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">dor_not_ready</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_DorYes" sourceRef="Gateway_DorReady" targetRef="Gateway_ImplementMerge">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[dor_ready]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">dor_ready</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_PlanLoop" sourceRef="Task_PreparePlanOnly" targetRef="Gateway_ReanchorMerge" />
+    <bpmn:sequenceFlow id="Flow_PlanLoop" sourceRef="Task_PreparePlanOnly" targetRef="Gateway_ReanchorLoopMerge" />
     <bpmn:sequenceFlow id="Flow_ImplementGo" sourceRef="Gateway_ImplementMerge" targetRef="Task_ImplementChange" />
     <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_ImplementChange" targetRef="Task_HydrateRuntime" />
-    <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_HydrateRuntime" targetRef="Gateway_RepairStatus" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_HydrateRuntime" targetRef="Gateway_RepairBlocked" />
+    <bpmn:sequenceFlow id="Flow_RepairNotBlocked" sourceRef="Gateway_RepairBlocked" targetRef="Gateway_RepairStatus">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">ok_or_warn</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_RepairOk" sourceRef="Gateway_RepairStatus" targetRef="Gateway_DriftReviewMerge">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[repair_ok]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">repair_ok</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_RepairWarn" sourceRef="Gateway_RepairStatus" targetRef="Task_TriageRepair">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[repair_warn]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">repair_warn</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_RepairBlock" sourceRef="Gateway_RepairStatus" targetRef="Task_ArbitrateBlock">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[repair_block]]></bpmn:conditionExpression>
+    <bpmn:sequenceFlow id="Flow_RepairBlock" sourceRef="Gateway_RepairBlocked" targetRef="Task_ArbitrateBlock">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">repair_block</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_TriageBack" sourceRef="Task_TriageRepair" targetRef="Gateway_DriftReviewMerge" />
     <bpmn:sequenceFlow id="Flow_DriftReviewGo" sourceRef="Gateway_DriftReviewMerge" targetRef="Task_DriftAndTraceabilityReview" />
-    <bpmn:sequenceFlow id="Flow_BlockBack" sourceRef="Task_ArbitrateBlock" targetRef="Gateway_ReanchorMerge" />
+    <bpmn:sequenceFlow id="Flow_BlockBack" sourceRef="Task_ArbitrateBlock" targetRef="Gateway_ReanchorLoopMerge" />
     <bpmn:sequenceFlow id="Flow_9" sourceRef="Task_DriftAndTraceabilityReview" targetRef="Gateway_HandoffNeeded" />
     <bpmn:sequenceFlow id="Flow_HandoffYes" sourceRef="Gateway_HandoffNeeded" targetRef="Task_ProjectHandoffPacket">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[handoff_needed]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">handoff_needed</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_HandoffNo" sourceRef="Gateway_HandoffNeeded" targetRef="Gateway_CloseSession">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[continue_same_agent]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">continue_same_agent</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_HandoffLoop" sourceRef="Task_ProjectHandoffPacket" targetRef="EndEvent_Complete" />
+    <bpmn:sequenceFlow id="Flow_HandoffLoop" sourceRef="Task_ProjectHandoffPacket" targetRef="EndEvent_HandoffComplete" />
     <bpmn:sequenceFlow id="Flow_CloseYes" sourceRef="Gateway_CloseSession" targetRef="Task_CloseArtifacts">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[close_now]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">close_now</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_CloseNo" sourceRef="Gateway_CloseSession" targetRef="Gateway_ImplementMerge">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[continue_working]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">continue_working</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_10" sourceRef="Task_CloseArtifacts" targetRef="Task_PublishSessionState" />
-    <bpmn:sequenceFlow id="Flow_11" sourceRef="Task_PublishSessionState" targetRef="EndEvent_Complete" />
-
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="Task_PublishSessionState" targetRef="EndEvent_SessionPublished" />
     <bpmn:association id="Assoc_1" sourceRef="Task_ReanchorContext" targetRef="Data_CurrentState" />
-    <bpmn:association id="Assoc_2" sourceRef="Task_ReanchorContext" targetRef="Data_RuntimeState" />
-    <bpmn:association id="Assoc_3" sourceRef="Task_ReanchorContext" targetRef="Data_HandoffPacket" />
+    <bpmn:association id="Assoc_2" sourceRef="Task_ReanchorContext" targetRef="Data_RuntimeState_Reanchor" />
+    <bpmn:association id="Assoc_3" sourceRef="Task_ReanchorContext" targetRef="Data_HandoffPacket_Reanchor" />
     <bpmn:association id="Assoc_4" sourceRef="Task_LoadCycleContext" targetRef="Data_CycleStatus" />
     <bpmn:association id="Assoc_5" sourceRef="Task_HydrateRuntime" targetRef="Data_RuntimeState" />
     <bpmn:association id="Assoc_6" sourceRef="Task_ProjectHandoffPacket" targetRef="Data_HandoffPacket" />
-    <bpmn:association id="Assoc_7" sourceRef="Task_PublishSessionState" targetRef="Data_CurrentState" />
+    <bpmn:association id="Assoc_7" sourceRef="Task_PublishSessionState" targetRef="Data_CurrentState_Publish" />
   </bpmn:process>
-
   <bpmndi:BPMNDiagram id="BPMNDiagram_AidnMultiAgentIdeal">
     <bpmndi:BPMNPlane id="BPMNPlane_AidnMultiAgentIdeal" bpmnElement="Process_AidnMultiAgentIdeal">
-      <bpmndi:BPMNShape id="Lane_User_di" bpmnElement="Lane_User" isHorizontal="true"><dc:Bounds x="120" y="80" width="2120" height="120" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Lane_Coordinator_di" bpmnElement="Lane_Coordinator" isHorizontal="true"><dc:Bounds x="120" y="200" width="2120" height="180" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Lane_Execution_di" bpmnElement="Lane_Execution" isHorizontal="true"><dc:Bounds x="120" y="380" width="2120" height="120" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Lane_Audit_di" bpmnElement="Lane_Audit" isHorizontal="true"><dc:Bounds x="120" y="500" width="2120" height="120" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Lane_Runtime_di" bpmnElement="Lane_Runtime" isHorizontal="true"><dc:Bounds x="120" y="620" width="2120" height="140" /></bpmndi:BPMNShape>
-
-      <bpmndi:BPMNShape id="StartEvent_Request_di" bpmnElement="StartEvent_Request"><dc:Bounds x="170" y="122" width="36" height="36" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Gateway_ReanchorMerge_di" bpmnElement="Gateway_ReanchorMerge" isMarkerVisible="true"><dc:Bounds x="230" y="260" width="50" height="50" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_ReanchorContext_di" bpmnElement="Task_ReanchorContext"><dc:Bounds x="320" y="245" width="150" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Gateway_ContextComplete_di" bpmnElement="Gateway_ContextComplete" isMarkerVisible="true"><dc:Bounds x="500" y="268" width="50" height="50" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_ClarifyIntent_di" bpmnElement="Task_ClarifyIntent"><dc:Bounds x="560" y="100" width="150" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_AssignWork_di" bpmnElement="Task_AssignWork"><dc:Bounds x="560" y="245" width="150" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_LoadCycleContext_di" bpmnElement="Task_LoadCycleContext"><dc:Bounds x="760" y="400" width="150" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_CheckBranchAndCycle_di" bpmnElement="Task_CheckBranchAndCycle"><dc:Bounds x="960" y="520" width="150" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_CheckPreWriteGate_di" bpmnElement="Task_CheckPreWriteGate"><dc:Bounds x="1160" y="520" width="150" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Gateway_DorReady_di" bpmnElement="Gateway_DorReady" isMarkerVisible="true"><dc:Bounds x="1360" y="535" width="50" height="50" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_PreparePlanOnly_di" bpmnElement="Task_PreparePlanOnly"><dc:Bounds x="1460" y="245" width="170" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Gateway_ImplementMerge_di" bpmnElement="Gateway_ImplementMerge" isMarkerVisible="true"><dc:Bounds x="1450" y="415" width="50" height="50" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_ImplementChange_di" bpmnElement="Task_ImplementChange"><dc:Bounds x="1540" y="400" width="160" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_HydrateRuntime_di" bpmnElement="Task_HydrateRuntime"><dc:Bounds x="1670" y="650" width="160" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Gateway_RepairStatus_di" bpmnElement="Gateway_RepairStatus" isMarkerVisible="true"><dc:Bounds x="1870" y="665" width="50" height="50" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_TriageRepair_di" bpmnElement="Task_TriageRepair"><dc:Bounds x="1980" y="650" width="150" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_ArbitrateBlock_di" bpmnElement="Task_ArbitrateBlock"><dc:Bounds x="1980" y="100" width="150" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Gateway_DriftReviewMerge_di" bpmnElement="Gateway_DriftReviewMerge" isMarkerVisible="true"><dc:Bounds x="1920" y="535" width="50" height="50" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_DriftAndTraceabilityReview_di" bpmnElement="Task_DriftAndTraceabilityReview"><dc:Bounds x="1980" y="520" width="170" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Gateway_HandoffNeeded_di" bpmnElement="Gateway_HandoffNeeded" isMarkerVisible="true"><dc:Bounds x="2190" y="535" width="50" height="50" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_ProjectHandoffPacket_di" bpmnElement="Task_ProjectHandoffPacket"><dc:Bounds x="2270" y="245" width="170" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Gateway_CloseSession_di" bpmnElement="Gateway_CloseSession" isMarkerVisible="true"><dc:Bounds x="2270" y="535" width="50" height="50" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_CloseArtifacts_di" bpmnElement="Task_CloseArtifacts"><dc:Bounds x="2370" y="520" width="150" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_PublishSessionState_di" bpmnElement="Task_PublishSessionState"><dc:Bounds x="2570" y="245" width="160" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="EndEvent_Complete_di" bpmnElement="EndEvent_Complete"><dc:Bounds x="2780" y="122" width="36" height="36" /></bpmndi:BPMNShape>
-
-      <bpmndi:BPMNShape id="Data_CurrentState_di" bpmnElement="Data_CurrentState"><dc:Bounds x="250" y="20" width="36" height="50" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Data_RuntimeState_di" bpmnElement="Data_RuntimeState"><dc:Bounds x="1670" y="780" width="36" height="50" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Data_HandoffPacket_di" bpmnElement="Data_HandoffPacket"><dc:Bounds x="2500" y="20" width="36" height="50" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Data_CycleStatus_di" bpmnElement="Data_CycleStatus"><dc:Bounds x="800" y="780" width="36" height="50" /></bpmndi:BPMNShape>
-
-      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1"><di:waypoint x="206" y="140" /><di:waypoint x="255" y="140" /><di:waypoint x="255" y="260" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_ReanchorGo_di" bpmnElement="Flow_ReanchorGo"><di:waypoint x="280" y="285" /><di:waypoint x="320" y="285" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2"><di:waypoint x="470" y="285" /><di:waypoint x="500" y="293" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_ContextNo_di" bpmnElement="Flow_ContextNo"><di:waypoint x="525" y="268" /><di:waypoint x="525" y="140" /><di:waypoint x="560" y="140" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_ContextYes_di" bpmnElement="Flow_ContextYes"><di:waypoint x="550" y="293" /><di:waypoint x="560" y="285" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_ClarifyBack_di" bpmnElement="Flow_ClarifyBack"><di:waypoint x="635" y="180" /><di:waypoint x="635" y="355" /><di:waypoint x="255" y="355" /><di:waypoint x="255" y="310" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3"><di:waypoint x="710" y="285" /><di:waypoint x="760" y="440" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4"><di:waypoint x="910" y="440" /><di:waypoint x="960" y="560" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5"><di:waypoint x="1110" y="560" /><di:waypoint x="1160" y="560" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6"><di:waypoint x="1310" y="560" /><di:waypoint x="1360" y="560" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_DorNo_di" bpmnElement="Flow_DorNo"><di:waypoint x="1385" y="535" /><di:waypoint x="1385" y="285" /><di:waypoint x="1460" y="285" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_DorYes_di" bpmnElement="Flow_DorYes"><di:waypoint x="1410" y="560" /><di:waypoint x="1475" y="560" /><di:waypoint x="1475" y="465" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_PlanLoop_di" bpmnElement="Flow_PlanLoop"><di:waypoint x="1460" y="325" /><di:waypoint x="255" y="325" /><di:waypoint x="255" y="310" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_ImplementGo_di" bpmnElement="Flow_ImplementGo"><di:waypoint x="1500" y="440" /><di:waypoint x="1540" y="440" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7"><di:waypoint x="1700" y="440" /><di:waypoint x="1750" y="650" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8"><di:waypoint x="1830" y="690" /><di:waypoint x="1870" y="690" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_RepairOk_di" bpmnElement="Flow_RepairOk"><di:waypoint x="1895" y="665" /><di:waypoint x="1895" y="560" /><di:waypoint x="1920" y="560" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_RepairWarn_di" bpmnElement="Flow_RepairWarn"><di:waypoint x="1920" y="690" /><di:waypoint x="1980" y="690" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_RepairBlock_di" bpmnElement="Flow_RepairBlock"><di:waypoint x="1895" y="665" /><di:waypoint x="1895" y="140" /><di:waypoint x="1980" y="140" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_TriageBack_di" bpmnElement="Flow_TriageBack"><di:waypoint x="2130" y="690" /><di:waypoint x="2130" y="600" /><di:waypoint x="1945" y="600" /><di:waypoint x="1945" y="585" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_DriftReviewGo_di" bpmnElement="Flow_DriftReviewGo"><di:waypoint x="1970" y="560" /><di:waypoint x="1980" y="560" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_BlockBack_di" bpmnElement="Flow_BlockBack"><di:waypoint x="2130" y="140" /><di:waypoint x="2130" y="40" /><di:waypoint x="255" y="40" /><di:waypoint x="255" y="260" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9"><di:waypoint x="2200" y="560" /><di:waypoint x="2190" y="560" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_HandoffYes_di" bpmnElement="Flow_HandoffYes"><di:waypoint x="2215" y="535" /><di:waypoint x="2215" y="285" /><di:waypoint x="2270" y="285" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_HandoffNo_di" bpmnElement="Flow_HandoffNo"><di:waypoint x="2240" y="560" /><di:waypoint x="2270" y="560" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_HandoffLoop_di" bpmnElement="Flow_HandoffLoop"><di:waypoint x="2440" y="285" /><di:waypoint x="2798" y="140" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_CloseYes_di" bpmnElement="Flow_CloseYes"><di:waypoint x="2320" y="560" /><di:waypoint x="2370" y="560" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_CloseNo_di" bpmnElement="Flow_CloseNo"><di:waypoint x="2295" y="585" /><di:waypoint x="2295" y="500" /><di:waypoint x="1475" y="500" /><di:waypoint x="1475" y="465" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_10_di" bpmnElement="Flow_10"><di:waypoint x="2520" y="560" /><di:waypoint x="2650" y="325" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_11_di" bpmnElement="Flow_11"><di:waypoint x="2730" y="285" /><di:waypoint x="2798" y="158" /></bpmndi:BPMNEdge>
-
-      <bpmndi:BPMNEdge id="Assoc_1_di" bpmnElement="Assoc_1"><di:waypoint x="286" y="45" /><di:waypoint x="286" y="245" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Assoc_2_di" bpmnElement="Assoc_2"><di:waypoint x="1706" y="780" /><di:waypoint x="1750" y="730" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Assoc_3_di" bpmnElement="Assoc_3"><di:waypoint x="2518" y="70" /><di:waypoint x="410" y="245" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Assoc_4_di" bpmnElement="Assoc_4"><di:waypoint x="818" y="780" /><di:waypoint x="835" y="480" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Assoc_5_di" bpmnElement="Assoc_5"><di:waypoint x="1706" y="780" /><di:waypoint x="1830" y="730" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Assoc_6_di" bpmnElement="Assoc_6"><di:waypoint x="2518" y="70" /><di:waypoint x="2355" y="285" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Assoc_7_di" bpmnElement="Assoc_7"><di:waypoint x="286" y="70" /><di:waypoint x="2650" y="245" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Lane_User_di" bpmnElement="Lane_User" isHorizontal="true">
+        <dc:Bounds x="120" y="180" width="3520" height="120" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Coordinator_di" bpmnElement="Lane_Coordinator" isHorizontal="true">
+        <dc:Bounds x="120" y="300" width="3520" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Execution_di" bpmnElement="Lane_Execution" isHorizontal="true">
+        <dc:Bounds x="120" y="480" width="3520" height="120" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Audit_di" bpmnElement="Lane_Audit" isHorizontal="true">
+        <dc:Bounds x="120" y="600" width="3520" height="120" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Runtime_di" bpmnElement="Lane_Runtime" isHorizontal="true">
+        <dc:Bounds x="120" y="720" width="3520" height="140" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_Request_di" bpmnElement="StartEvent_Request">
+        <dc:Bounds x="170" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="148" y="258" width="81" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ReanchorUserMerge_di" bpmnElement="Gateway_ReanchorUserMerge" isMarkerVisible="true">
+        <dc:Bounds x="230" y="215" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+        <dc:Bounds x="185" y="175" width="141" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ReanchorLoopMerge_di" bpmnElement="Gateway_ReanchorLoopMerge" isMarkerVisible="true">
+        <dc:Bounds x="230" y="430" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+        <dc:Bounds x="206" y="480" width="99" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ReanchorMerge_di" bpmnElement="Gateway_ReanchorMerge" isMarkerVisible="true">
+        <dc:Bounds x="230" y="360" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+        <dc:Bounds x="192" y="410" width="126" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReanchorContext_di" bpmnElement="Task_ReanchorContext">
+        <dc:Bounds x="320" y="345" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ContextComplete_di" bpmnElement="Gateway_ContextComplete" isMarkerVisible="true">
+        <dc:Bounds x="500" y="368" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="500" y="418" width="51" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ClarifyIntent_di" bpmnElement="Task_ClarifyIntent">
+        <dc:Bounds x="560" y="200" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AssignWork_di" bpmnElement="Task_AssignWork">
+        <dc:Bounds x="560" y="345" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_LoadCycleContext_di" bpmnElement="Task_LoadCycleContext">
+        <dc:Bounds x="760" y="500" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CheckBranchAndCycle_di" bpmnElement="Task_CheckBranchAndCycle">
+        <dc:Bounds x="960" y="620" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CheckPreWriteGate_di" bpmnElement="Task_CheckPreWriteGate">
+        <dc:Bounds x="1160" y="620" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_DorReady_di" bpmnElement="Gateway_DorReady" isMarkerVisible="true">
+        <dc:Bounds x="1360" y="635" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1347" y="685" width="77" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PreparePlanOnly_di" bpmnElement="Task_PreparePlanOnly">
+        <dc:Bounds x="1460" y="345" width="170" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ImplementMerge_di" bpmnElement="Gateway_ImplementMerge" isMarkerVisible="true">
+        <dc:Bounds x="1450" y="515" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+        <dc:Bounds x="1436" y="477.5" width="79" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ImplementChange_di" bpmnElement="Task_ImplementChange">
+        <dc:Bounds x="1540" y="500" width="160" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_HydrateRuntime_di" bpmnElement="Task_HydrateRuntime">
+        <dc:Bounds x="1670" y="750" width="160" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_RepairBlocked_di" bpmnElement="Gateway_RepairBlocked" isMarkerVisible="true">
+        <dc:Bounds x="1870" y="765" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1854" y="815" width="82" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_RepairStatus_di" bpmnElement="Gateway_RepairStatus" isMarkerVisible="true">
+        <dc:Bounds x="1990" y="635" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1970" y="685" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_TriageRepair_di" bpmnElement="Task_TriageRepair">
+        <dc:Bounds x="2140" y="750" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ArbitrateBlock_di" bpmnElement="Task_ArbitrateBlock">
+        <dc:Bounds x="820" y="200" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_DriftReviewMerge_di" bpmnElement="Gateway_DriftReviewMerge" isMarkerVisible="true">
+        <dc:Bounds x="2180" y="635" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2170" y="597.5" width="70" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DriftAndTraceabilityReview_di" bpmnElement="Task_DriftAndTraceabilityReview">
+        <dc:Bounds x="2280" y="620" width="170" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_HandoffNeeded_di" bpmnElement="Gateway_HandoffNeeded" isMarkerVisible="true">
+        <dc:Bounds x="2540" y="635" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2531" y="685" width="68" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ProjectHandoffPacket_di" bpmnElement="Task_ProjectHandoffPacket">
+        <dc:Bounds x="2540" y="345" width="170" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_CloseSession_di" bpmnElement="Gateway_CloseSession" isMarkerVisible="true">
+        <dc:Bounds x="2720" y="635" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2711" y="685" width="69" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CloseArtifacts_di" bpmnElement="Task_CloseArtifacts">
+        <dc:Bounds x="2820" y="620" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PublishSessionState_di" bpmnElement="Task_PublishSessionState">
+        <dc:Bounds x="3040" y="345" width="160" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_HandoffComplete_di" bpmnElement="EndEvent_HandoffComplete">
+        <dc:Bounds x="2780" y="367" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2755" y="403" width="86" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_SessionPublished_di" bpmnElement="EndEvent_SessionPublished">
+        <dc:Bounds x="3270" y="367" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3255" y="403" width="67" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Data_CurrentState_di" bpmnElement="Data_CurrentState">
+        <dc:Bounds x="250" y="120" width="36" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="239" y="170" width="58" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Data_CurrentState_Publish_di" bpmnElement="Data_CurrentState_Publish">
+        <dc:Bounds x="3040" y="120" width="36" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3029" y="170" width="58" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Data_RuntimeState_di" bpmnElement="Data_RuntimeState">
+        <dc:Bounds x="1670" y="880" width="36" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1661" y="930" width="55" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Data_RuntimeState_Reanchor_di" bpmnElement="Data_RuntimeState_Reanchor">
+        <dc:Bounds x="360" y="120" width="36" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="350" y="82.5" width="55" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Data_HandoffPacket_di" bpmnElement="Data_HandoffPacket">
+        <dc:Bounds x="2540" y="120" width="36" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2528" y="170" width="61" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Data_HandoffPacket_Reanchor_di" bpmnElement="Data_HandoffPacket_Reanchor">
+        <dc:Bounds x="470" y="120" width="36" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="458" y="170" width="61" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Data_CycleStatus_di" bpmnElement="Data_CycleStatus">
+        <dc:Bounds x="800" y="880" width="36" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="790" y="930" width="57" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="206" y="240" />
+        <di:waypoint x="230" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ReanchorUserToMain_di" bpmnElement="Flow_ReanchorUserToMain">
+        <di:waypoint x="255" y="265" />
+        <di:waypoint x="255" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ReanchorLoopToMain_di" bpmnElement="Flow_ReanchorLoopToMain">
+        <di:waypoint x="255" y="430" />
+        <di:waypoint x="255" y="410" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ReanchorGo_di" bpmnElement="Flow_ReanchorGo">
+        <di:waypoint x="280" y="385" />
+        <di:waypoint x="320" y="385" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="470" y="385" />
+        <di:waypoint x="500" y="393" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ContextNo_di" bpmnElement="Flow_ContextNo">
+        <di:waypoint x="525" y="368" />
+        <di:waypoint x="525" y="240" />
+        <di:waypoint x="560" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ContextYes_di" bpmnElement="Flow_ContextYes">
+        <di:waypoint x="550" y="393" />
+        <di:waypoint x="560" y="385" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ClarifyBack_di" bpmnElement="Flow_ClarifyBack">
+        <di:waypoint x="635" y="280" />
+        <di:waypoint x="635" y="240" />
+        <di:waypoint x="280" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="710" y="385" />
+        <di:waypoint x="760" y="540" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="910" y="540" />
+        <di:waypoint x="960" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="1110" y="660" />
+        <di:waypoint x="1160" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="1310" y="660" />
+        <di:waypoint x="1360" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DorNo_di" bpmnElement="Flow_DorNo">
+        <di:waypoint x="1385" y="635" />
+        <di:waypoint x="1385" y="385" />
+        <di:waypoint x="1460" y="385" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DorYes_di" bpmnElement="Flow_DorYes">
+        <di:waypoint x="1410" y="660" />
+        <di:waypoint x="1475" y="660" />
+        <di:waypoint x="1475" y="565" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_PlanLoop_di" bpmnElement="Flow_PlanLoop">
+        <di:waypoint x="1460" y="425" />
+        <di:waypoint x="255" y="425" />
+        <di:waypoint x="255" y="430" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ImplementGo_di" bpmnElement="Flow_ImplementGo">
+        <di:waypoint x="1500" y="540" />
+        <di:waypoint x="1540" y="540" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="1700" y="540" />
+        <di:waypoint x="1750" y="750" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
+        <di:waypoint x="1830" y="790" />
+        <di:waypoint x="1870" y="790" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_RepairNotBlocked_di" bpmnElement="Flow_RepairNotBlocked">
+        <di:waypoint x="1895" y="765" />
+        <di:waypoint x="1895" y="660" />
+        <di:waypoint x="1990" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_RepairOk_di" bpmnElement="Flow_RepairOk">
+        <di:waypoint x="2040" y="660" />
+        <di:waypoint x="2180" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_RepairWarn_di" bpmnElement="Flow_RepairWarn">
+        <di:waypoint x="2015" y="685" />
+        <di:waypoint x="1895" y="790" />
+        <di:waypoint x="2140" y="790" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_RepairBlock_di" bpmnElement="Flow_RepairBlock">
+        <di:waypoint x="1895" y="765" />
+        <di:waypoint x="1895" y="190" />
+        <di:waypoint x="895" y="190" />
+        <di:waypoint x="895" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TriageBack_di" bpmnElement="Flow_TriageBack">
+        <di:waypoint x="2290" y="790" />
+        <di:waypoint x="2290" y="660" />
+        <di:waypoint x="2230" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DriftReviewGo_di" bpmnElement="Flow_DriftReviewGo">
+        <di:waypoint x="2230" y="660" />
+        <di:waypoint x="2280" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_BlockBack_di" bpmnElement="Flow_BlockBack">
+        <di:waypoint x="895" y="280" />
+        <di:waypoint x="895" y="455" />
+        <di:waypoint x="255" y="455" />
+        <di:waypoint x="255" y="480" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9">
+        <di:waypoint x="2450" y="660" />
+        <di:waypoint x="2540" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HandoffYes_di" bpmnElement="Flow_HandoffYes">
+        <di:waypoint x="2565" y="635" />
+        <di:waypoint x="2565" y="385" />
+        <di:waypoint x="2540" y="385" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HandoffNo_di" bpmnElement="Flow_HandoffNo">
+        <di:waypoint x="2590" y="660" />
+        <di:waypoint x="2720" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HandoffLoop_di" bpmnElement="Flow_HandoffLoop">
+        <di:waypoint x="2710" y="385" />
+        <di:waypoint x="2780" y="385" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CloseYes_di" bpmnElement="Flow_CloseYes">
+        <di:waypoint x="2770" y="660" />
+        <di:waypoint x="2820" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CloseNo_di" bpmnElement="Flow_CloseNo">
+        <di:waypoint x="2745" y="685" />
+        <di:waypoint x="2745" y="540" />
+        <di:waypoint x="1475" y="540" />
+        <di:waypoint x="1475" y="565" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_10_di" bpmnElement="Flow_10">
+        <di:waypoint x="2970" y="660" />
+        <di:waypoint x="3120" y="660" />
+        <di:waypoint x="3120" y="425" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_11_di" bpmnElement="Flow_11">
+        <di:waypoint x="3200" y="385" />
+        <di:waypoint x="3270" y="385" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_1_di" bpmnElement="Assoc_1">
+        <di:waypoint x="350" y="345" />
+        <di:waypoint x="268" y="170" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_2_di" bpmnElement="Assoc_2">
+        <di:waypoint x="380" y="345" />
+        <di:waypoint x="378" y="170" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_3_di" bpmnElement="Assoc_3">
+        <di:waypoint x="430" y="345" />
+        <di:waypoint x="488" y="170" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_4_di" bpmnElement="Assoc_4">
+        <di:waypoint x="835" y="580" />
+        <di:waypoint x="835" y="830" />
+        <di:waypoint x="818" y="880" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_5_di" bpmnElement="Assoc_5">
+        <di:waypoint x="1750" y="830" />
+        <di:waypoint x="1706" y="880" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_6_di" bpmnElement="Assoc_6">
+        <di:waypoint x="2625" y="345" />
+        <di:waypoint x="2558" y="170" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_7_di" bpmnElement="Assoc_7">
+        <di:waypoint x="3120" y="345" />
+        <di:waypoint x="3058" y="170" />
+      </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>

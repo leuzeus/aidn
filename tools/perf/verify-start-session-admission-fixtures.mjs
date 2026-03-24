@@ -4,6 +4,13 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { copyFixtureToTmp, initGitRepo } from "./test-git-fixture-lib.mjs";
 
+function runGit(target, args) {
+  execFileSync("git", ["-C", target, ...args], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
 const CASES = [
   {
     id: "non_compliant_branch",
@@ -153,6 +160,103 @@ const CASES = [
       fs.appendFileSync(sessionFile, "\n\n### PR Orchestration\n- pr_status: `merged`\n- pr_review_status: `approved`\n- post_merge_sync_status: `required`\n\n### Session close gate satisfied?\n- [x] Yes\n", "utf8");
     },
   },
+  {
+    id: "source_branch_blocks_stale_open_cycle_merged_into_source",
+    fixture: "tests/fixtures/perf-start-session/session-multi-choice",
+    workingBranch: "dev",
+    expectedAction: "blocked_stale_open_cycle_state",
+    expectedResult: "stop",
+    expectsWorkflowHook: false,
+    mutate(targetRoot) {
+      const currentState = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
+      fs.writeFileSync(currentState, [
+        "# Current State",
+        "",
+        "## Summary",
+        "",
+        "updated_at: 2026-03-19T00:00:00Z",
+        "structure_profile: modern",
+        "runtime_state_mode: files",
+        "repair_layer_status: unknown",
+        "",
+        "## Active Context",
+        "",
+        "active_session: none",
+        "session_branch: none",
+        "branch_kind: source",
+        "mode: THINKING",
+        "",
+        "active_cycle: none",
+        "cycle_branch: none",
+        "dor_state: unknown",
+        "first_plan_step: unknown",
+      ].join("\n"), "utf8");
+      const doneCycle = path.join(targetRoot, "docs", "audit", "cycles", "C202-feature-beta", "status.md");
+      const doneText = fs.readFileSync(doneCycle, "utf8").replace(/state:\s*(OPEN|IMPLEMENTING|VERIFYING)/gu, "state: DONE");
+      fs.writeFileSync(doneCycle, doneText, "utf8");
+    },
+    configureGit(targetRoot) {
+      runGit(targetRoot, ["checkout", "-b", "S201-multi"]);
+      runGit(targetRoot, ["checkout", "-b", "feature/C201-alpha"]);
+      fs.appendFileSync(path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md"), "\n", "utf8");
+      runGit(targetRoot, ["add", "."]);
+      runGit(targetRoot, ["commit", "-m", "cycle C201"]);
+      runGit(targetRoot, ["checkout", "S201-multi"]);
+      runGit(targetRoot, ["merge", "--no-ff", "--no-edit", "feature/C201-alpha"]);
+      runGit(targetRoot, ["checkout", "dev"]);
+      runGit(targetRoot, ["merge", "--no-ff", "--no-edit", "S201-multi"]);
+    },
+  },
+  {
+    id: "source_branch_blocks_stale_open_cycle_merged_into_source_db_only",
+    fixture: "tests/fixtures/perf-start-session/session-multi-choice",
+    workingBranch: "dev",
+    expectedAction: "blocked_stale_open_cycle_state",
+    expectedResult: "stop",
+    expectsWorkflowHook: false,
+    env: {
+      AIDN_STATE_MODE: "db-only",
+    },
+    mutate(targetRoot) {
+      const currentState = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
+      fs.writeFileSync(currentState, [
+        "# Current State",
+        "",
+        "## Summary",
+        "",
+        "updated_at: 2026-03-19T00:00:00Z",
+        "structure_profile: modern",
+        "runtime_state_mode: db-only",
+        "repair_layer_status: unknown",
+        "",
+        "## Active Context",
+        "",
+        "active_session: none",
+        "session_branch: none",
+        "branch_kind: source",
+        "mode: THINKING",
+        "",
+        "active_cycle: none",
+        "cycle_branch: none",
+        "dor_state: unknown",
+        "first_plan_step: unknown",
+      ].join("\n"), "utf8");
+      const doneCycle = path.join(targetRoot, "docs", "audit", "cycles", "C202-feature-beta", "status.md");
+      const doneText = fs.readFileSync(doneCycle, "utf8").replace(/state:\s*(OPEN|IMPLEMENTING|VERIFYING)/gu, "state: DONE");
+      fs.writeFileSync(doneCycle, doneText, "utf8");
+    },
+    configureGit(targetRoot) {
+      runGit(targetRoot, ["checkout", "-b", "S201-multi"]);
+      runGit(targetRoot, ["checkout", "-b", "feature/C201-alpha"]);
+      fs.appendFileSync(path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md"), "\n", "utf8");
+      runGit(targetRoot, ["add", "."]);
+      runGit(targetRoot, ["commit", "-m", "cycle C201"]);
+      runGit(targetRoot, ["checkout", "S201-multi"]);
+      runGit(targetRoot, ["merge", "--no-ff", "--no-edit", "feature/C201-alpha"]);
+      runGit(targetRoot, ["checkout", "dev"]);
+      runGit(targetRoot, ["merge", "--no-ff", "--no-edit", "S201-multi"]);
+    },
+  },
 ];
 
 function parseArgs(argv) {
@@ -187,15 +291,27 @@ function printUsage() {
 
 function runJson(script, scriptArgs, env = {}) {
   const file = path.resolve(process.cwd(), script);
-  const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    env: {
-      ...process.env,
-      ...env,
-    },
-  });
-  return JSON.parse(stdout);
+  try {
+    const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        ...env,
+      },
+    });
+    return JSON.parse(stdout);
+  } catch (error) {
+    const stdout = String(error?.stdout ?? "").trim();
+    if (stdout) {
+      return JSON.parse(stdout);
+    }
+    const stderr = String(error?.stderr ?? "").trim();
+    if (stderr.startsWith("{")) {
+      return JSON.parse(stderr);
+    }
+    throw error;
+  }
 }
 
 function runCase(tmpRoot, testCase) {
@@ -207,6 +323,9 @@ function runCase(tmpRoot, testCase) {
   initGitRepo(targetRoot, {
     workingBranch: testCase.workingBranch,
   });
+  if (typeof testCase.configureGit === "function") {
+    testCase.configureGit(targetRoot);
+  }
 
   const hook = runJson("tools/perf/start-session-hook.mjs", [
     "--target",
@@ -214,7 +333,7 @@ function runCase(tmpRoot, testCase) {
     "--mode",
     "COMMITTING",
     "--json",
-  ]);
+  ], testCase.env);
   const codex = runJson("tools/codex/run-json-hook.mjs", [
     "--skill",
     "start-session",
@@ -223,7 +342,7 @@ function runCase(tmpRoot, testCase) {
     "--mode",
     "COMMITTING",
     "--json",
-  ]);
+  ], testCase.env);
 
   const checks = {
     hook_action_expected: String(hook?.action ?? "") === testCase.expectedAction,

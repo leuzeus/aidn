@@ -4,6 +4,13 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { copyFixtureToTmp, initGitRepo } from "./test-git-fixture-lib.mjs";
 
+function runGit(target, args) {
+  execFileSync("git", ["-C", target, ...args], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
 const CASES = [
   {
     id: "unresolved_open_cycles_block",
@@ -24,6 +31,26 @@ const CASES = [
     expectedAction: "close_session_allowed",
     expectedResult: "ok",
     expectsWorkflowHook: true,
+  },
+  {
+    id: "stale_reported_cycle_blocks",
+    fixture: "tests/fixtures/perf-structure/session-multi-cycle-explicit",
+    workingBranch: "S103-multi",
+    mutate(targetRoot) {
+      const sessionFile = path.join(targetRoot, "docs", "audit", "sessions", "S103-multi.md");
+      fs.appendFileSync(sessionFile, "\n### Cycle Resolution At Session Close (required)\n- `C103` | state: `IMPLEMENTING` | decision: `report` | target session: `none` | rationale: defer\n- `C104` | state: `VERIFYING` | decision: `integrate-to-session` | target session: `S103` | rationale: ready\n\n### Session close gate satisfied?\n- [x] Yes\n", "utf8");
+    },
+    configureGit(targetRoot) {
+      runGit(targetRoot, ["checkout", "-b", "feature/C103-gamma"]);
+      fs.appendFileSync(path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md"), "\n", "utf8");
+      runGit(targetRoot, ["add", "."]);
+      runGit(targetRoot, ["commit", "-m", "cycle C103"]);
+      runGit(targetRoot, ["checkout", "S103-multi"]);
+      runGit(targetRoot, ["merge", "--no-ff", "--no-edit", "feature/C103-gamma"]);
+    },
+    expectedAction: "blocked_stale_reported_cycles_require_regularization",
+    expectedResult: "stop",
+    expectsWorkflowHook: false,
   },
 ];
 
@@ -87,6 +114,9 @@ function runCase(tmpRoot, testCase) {
   initGitRepo(targetRoot, {
     workingBranch: testCase.workingBranch,
   });
+  if (typeof testCase.configureGit === "function") {
+    testCase.configureGit(targetRoot);
+  }
 
   const hook = runJson("tools/perf/close-session-hook.mjs", [
     "--target",

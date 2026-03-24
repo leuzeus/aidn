@@ -2,6 +2,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  WORKFLOW_ADMISSION_STATUS,
+} from "../../src/application/runtime/workflow-transition-constants.mjs";
+import {
+  buildWorkflowRoute,
+  buildWorkflowStatus,
+} from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { canAgentRolePerform, isKnownAgentRole, normalizeAgentAction, normalizeAgentRole } from "../../src/core/agents/agent-role-model.mjs";
 import { evaluateAgentTransition } from "../../src/core/agents/agent-transition-policy.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
@@ -342,17 +349,17 @@ export function admitHandoff({
     warnings.push("shared planning backlog is stale relative to CURRENT-STATE.md");
   }
 
-  let admissionStatus = "admitted";
+  let admissionStatus = WORKFLOW_ADMISSION_STATUS.ADMITTED;
   let admitted = true;
   let recommendedRole = packetRole || "coordinator";
   let recommendedAction = packetAction || "coordinate";
   if (issues.some((item) => item === "handoff packet is blocked")) {
-    admissionStatus = "blocked";
+    admissionStatus = WORKFLOW_ADMISSION_STATUS.BLOCKED;
     admitted = false;
     recommendedRole = "repair";
     recommendedAction = "repair";
   } else if (issues.length > 0) {
-    admissionStatus = "rejected";
+    admissionStatus = WORKFLOW_ADMISSION_STATUS.REJECTED;
     admitted = false;
     recommendedRole = "coordinator";
     recommendedAction = "reanchor";
@@ -361,14 +368,35 @@ export function admitHandoff({
     recommendedAction = "reanchor";
   }
 
+  const route = buildWorkflowRoute({
+    role: recommendedRole,
+    action: recommendedAction,
+    goal: normalizeScalar(packet.get("next_agent_goal") ?? "unknown") || "unknown",
+    source: preferredDispatchSource === "shared_planning" && admitted
+      ? "handoff-shared-planning"
+      : (admitted ? "handoff" : "handoff-admit"),
+    reason: admitted
+      ? `handoff admission ${admissionStatus}`
+      : `handoff admission ${admissionStatus}`,
+    stop_required: admissionStatus === WORKFLOW_ADMISSION_STATUS.BLOCKED,
+  });
+  const status = buildWorkflowStatus({
+    admission_status: admissionStatus,
+    admitted,
+    issues,
+    warnings,
+  });
+
   return {
     target_root: absoluteTargetRoot,
     packet_file: packetResolution.logicalPath,
-    admission_status: admissionStatus,
-    admitted,
-    recommended_action: recommendedAction,
-    recommended_next_agent_role: recommendedRole,
-    next_agent_goal: normalizeScalar(packet.get("next_agent_goal") ?? "unknown") || "unknown",
+    admission_status: status.admission_status,
+    admitted: status.admitted,
+    recommended_action: route.action,
+    recommended_next_agent_role: route.role,
+    next_agent_goal: route.goal,
+    route,
+    status,
     preferred_dispatch_source: preferredDispatchSource,
     shared_planning_candidate_ready: normalizeScalar(packet.get("shared_planning_candidate_ready") ?? "no") || "no",
     shared_planning_candidate_aligned: normalizeScalar(packet.get("shared_planning_candidate_aligned") ?? "no") || "no",
@@ -384,8 +412,8 @@ export function admitHandoff({
     transition_policy: transition,
     prioritized_artifacts: prioritizedArtifacts,
     consistency,
-    issues,
-    warnings,
+    issues: status.issues,
+    warnings: status.warnings,
     current_state_source: currentStateResolution.source,
     runtime_state_source: runtimeStateResolution.source,
     packet_source: packetResolution.source,
