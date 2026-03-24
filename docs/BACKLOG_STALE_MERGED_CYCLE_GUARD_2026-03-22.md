@@ -12,7 +12,7 @@ Reference plan:
 
 ### SMCG-01 - Define Stale Merged Cycle Vocabulary
 
-Status: pending
+Status: implemented in essence
 Priority: high
 
 Why:
@@ -29,7 +29,7 @@ Done when:
 
 ### SMCG-02 - Extract Shared Topology Helper
 
-Status: pending
+Status: implemented in essence
 Priority: high
 
 Why:
@@ -48,7 +48,7 @@ Done when:
 
 ### SMCG-03 - Harden `close-session` Against Stale `report` Decisions
 
-Status: pending
+Status: implemented in essence
 Priority: high
 
 Why:
@@ -64,7 +64,7 @@ Done when:
 
 ### SMCG-04 - Harden `close-session` Against Post-Close Drift
 
-Status: pending
+Status: implemented in essence
 Priority: high
 
 Why:
@@ -79,7 +79,7 @@ Done when:
 
 ### SMCG-05 - Harden `start-session` Source-Branch Resume Logic
 
-Status: pending
+Status: implemented in essence
 Priority: high
 
 Why:
@@ -93,7 +93,7 @@ Done when:
 
 ### SMCG-06 - Add `close-session` Fixture Coverage
 
-Status: pending
+Status: implemented in essence
 Priority: high
 
 Why:
@@ -108,7 +108,7 @@ Done when:
 
 ### SMCG-07 - Add `start-session` Fixture Coverage
 
-Status: pending
+Status: implemented in essence
 Priority: high
 
 Why:
@@ -123,7 +123,7 @@ Done when:
 
 ### SMCG-08 - Add `db-only` Parity Fixture
 
-Status: pending
+Status: partially implemented
 Priority: high
 
 Why:
@@ -151,7 +151,7 @@ Done when:
 
 ### SMCG-10 - Document Runtime Behavior Change
 
-Status: pending
+Status: partially implemented
 Priority: medium
 
 Why:
@@ -164,3 +164,19 @@ Done when:
   - stale merged open cycle detection
   - `close-session` blocking on inconsistent `report`
   - `start-session` blocking on stale resume paths
+
+## Current Read Of Implementation
+
+- `SMCG-01` to `SMCG-07` are implemented in essence in the current codebase:
+  - shared stale-cycle vocabulary exists in `stale-open-cycle-guard-lib.mjs`
+  - `start-session` and `close-session` both consume the shared classification
+  - stale-source and stale-session actions/reason codes are wired through runtime admission
+  - fixture coverage exists in `verify-start-session-admission-fixtures.mjs`, `verify-close-session-admission-fixtures.mjs`, and `verify-workflow-transition-fixtures.mjs`
+- `SMCG-08` is only partially implemented:
+  - there is explicit `db-only` stale-cycle coverage for `start-session`
+  - parity is not yet documented as fully closed across every stale-cycle path
+- `SMCG-09` remains open:
+  - the guard currently lives in admission logic, not in a dedicated `CURRENT-STATE` consistency verifier
+- `SMCG-10` is only partially implemented:
+  - the diagrams now mention the stale merged-cycle guard
+  - a broader workflow/changelog note is still missing if we want the behavior change documented outside diagrams and planning docs

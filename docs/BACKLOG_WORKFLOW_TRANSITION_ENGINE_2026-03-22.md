@@ -8,6 +8,8 @@ Executable backlog for aligning workflow code and BPMN around a shared transitio
 
 ### WTE-01 - Introduce Shared Transition Constants
 
+Status: implemented in essence
+
 Outcome:
 
 - centralize workflow action names, reason codes, and routing hints
@@ -24,6 +26,8 @@ Done when:
 
 ### WTE-02 - Extract Re-anchor Transition Helper
 
+Status: implemented in essence
+
 Outcome:
 
 - isolate source-entry vs loop-resume decision logic
@@ -38,6 +42,8 @@ Done when:
 - source-branch transition selection is delegated to a shared helper
 
 ### WTE-03 - Extract Close-session Decision Helper
+
+Status: implemented in essence
 
 Outcome:
 
@@ -56,6 +62,8 @@ Done when:
 
 ### WTE-04 - Extract Repair Routing Helper
 
+Status: implemented in essence
+
 Outcome:
 
 - use one repair decision model across runtime digest, handoff, and pre-write
@@ -73,6 +81,8 @@ Done when:
 
 ### WTE-05 - Normalize Transition Output Shape
 
+Status: implemented in essence
+
 Outcome:
 
 - standard result structure for workflow decisions
@@ -88,6 +98,8 @@ Done when:
 - transition outputs expose a stable small schema usable by callers
 
 ### WTE-06 - Add Transition Decision Fixture Coverage
+
+Status: implemented in essence
 
 Outcome:
 
@@ -107,6 +119,8 @@ Done when:
 
 ### WTE-07 - Align Handoff Routing With Shared Transitions
 
+Status: implemented in essence
+
 Outcome:
 
 - handoff packet projection uses the same transition vocabulary as runtime admission
@@ -122,6 +136,8 @@ Done when:
 
 ### WTE-08 - Align Pre-write Admission With Shared Transitions
 
+Status: implemented in essence
+
 Outcome:
 
 - pre-write checks map to the same decision model as BPMN execution gating
@@ -135,6 +151,8 @@ Done when:
 - repair / audit / execution routing is explainable from shared helpers
 
 ### WTE-09 - Split BPMN Documentation
+
+Status: implemented in essence
 
 Outcome:
 
@@ -165,10 +183,9 @@ Done when:
 
 Recommended next executable slice:
 
-- `WTE-01`
-- `WTE-02`
-- `WTE-03`
+- no mandatory slice remains in this backlog
 
 Reason:
 
-- these tasks give the best architecture gain without forcing a large behavioral migration
+- the transition extraction, shared vocabulary, focused BPMN split, and related fixture coverage are now present in the codebase
+- any next step should be tracked as follow-up cleanup, extension, or product-specific runtime work rather than as core `WTE` extraction work
