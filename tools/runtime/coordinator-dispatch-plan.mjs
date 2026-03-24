@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { buildWorkflowStatus } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { loadRegisteredAgentAdapters } from "../../src/application/runtime/agent-adapter-registry-service.mjs";
 import { loadAgentRoster } from "../../src/application/runtime/agent-roster-service.mjs";
 import { assessIntegrationRisk } from "../../src/application/runtime/integration-risk-service.mjs";
@@ -890,6 +891,12 @@ export async function computeCoordinatorDispatchPlan({
     : (!supported
       ? "unsupported"
       : (recommendation.stop_required ? "gated" : "ready"));
+  const coordinatorStatus = buildWorkflowStatus({
+    admission_status: loopState.handoff?.status?.admission_status ?? loopState.handoff?.admission_status ?? "admitted",
+    admitted: loopState.handoff?.status?.admitted ?? loopState.handoff?.admitted ?? true,
+    issues: loopState.handoff?.status?.issues ?? loopState.handoff?.issues ?? [],
+    warnings: loopState.handoff?.status?.warnings ?? loopState.handoff?.warnings ?? [],
+  });
 
   return {
     target_root: absoluteTargetRoot,
@@ -914,6 +921,7 @@ export async function computeCoordinatorDispatchPlan({
     },
     recommended_role_coverage: recommendedRoleCoverage,
     coordinator_recommendation: recommendation,
+    coordinator_status: coordinatorStatus,
     integration_risk: integrationRisk,
     integration_risk_gate: integrationRiskGate,
     shared_planning: sharedPlanning,

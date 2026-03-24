@@ -2,6 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
+import { buildWorkflowRoute } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { canAgentRolePerform } from "../../src/core/agents/agent-role-model.mjs";
 import { admitHandoff } from "./handoff-admit.mjs";
 import {
@@ -107,37 +109,37 @@ function deriveFallbackRecommendation(currentMap, runtimeMap, nextActions) {
     : "";
 
   if (repairRouting === "repair" || repairRouting === "block") {
-    return {
+    return buildWorkflowRoute({
       role: "repair",
       action: "repair",
       goal: repairAdvice || "resolve blocking repair findings before continuing",
       source: "runtime-state",
       reason: "runtime repair routing is blocking",
       stop_required: true,
-    };
+    });
   }
-  if (repairRouting === "audit-first") {
-    return {
+  if (repairRouting === WORKFLOW_REPAIR_HINT.AUDIT_FIRST) {
+    return buildWorkflowRoute({
       role: "auditor",
       action: "audit",
       goal: repairAdvice || "review runtime warnings before continuing implementation",
       source: "runtime-state",
       reason: "runtime repair routing requires an audit-first pass",
       stop_required: false,
-    };
+    });
   }
   if (mode === "COMMITTING" && !canonicalNone(activeCycle) && !canonicalUnknown(activeCycle) && dorState === "READY" && firstPlanStep && !canonicalUnknown(firstPlanStep)) {
-    return {
+    return buildWorkflowRoute({
       role: "executor",
       action: "implement",
       goal: firstPlanStep,
       source: "current-state",
       reason: "current state is ready for committing execution",
       stop_required: false,
-    };
+    });
   }
   if (mode === "EXPLORING") {
-    return {
+    return buildWorkflowRoute({
       role: "auditor",
       action: "analyze",
       goal: sharedPlanningGoal || nextActions[0] || "continue analysis and validate the next hypothesis",
@@ -146,10 +148,10 @@ function deriveFallbackRecommendation(currentMap, runtimeMap, nextActions) {
         ? "shared session backlog defines the next planning step for analysis"
         : "exploring mode favors audit/analyze routing",
       stop_required: false,
-    };
+    });
   }
   if (mode === "THINKING") {
-    return {
+    return buildWorkflowRoute({
       role: "coordinator",
       action: "coordinate",
       goal: sharedPlanningGoal || nextActions[0] || "restate the objective and smallest compliant next step",
@@ -158,26 +160,26 @@ function deriveFallbackRecommendation(currentMap, runtimeMap, nextActions) {
         ? "shared session backlog defines the next coordination step"
         : "thinking mode favors coordination before execution",
       stop_required: false,
-    };
+    });
   }
   if (canonicalNone(activeSession) && canonicalNone(activeCycle)) {
-    return {
+    return buildWorkflowRoute({
       role: "coordinator",
       action: "reanchor",
       goal: "reload the active session, cycle, and runtime facts before acting",
       source: "current-state",
       reason: "no active session or cycle is declared",
       stop_required: false,
-    };
+    });
   }
-  return {
+  return buildWorkflowRoute({
     role: "coordinator",
     action: "coordinate",
     goal: nextActions[0] ?? "review the active artifacts and select the smallest compliant next step",
     source: "current-state",
     reason: "fallback coordination path",
     stop_required: false,
-  };
+  });
 }
 
 function deriveFallbackScope(currentMap) {
@@ -269,22 +271,37 @@ export function computeCoordinatorNextAction({
       runtimeStateFile,
     });
     const preferredDispatchSource = normalizeScalar(handoff.preferred_dispatch_source ?? "workflow") || "workflow";
-    recommendation = {
-      role: handoff.recommended_next_agent_role,
-      action: handoff.recommended_action,
-      goal: handoff.next_agent_goal,
-      source: handoff.admission_status === "admitted"
-        ? (preferredDispatchSource === "shared_planning" ? "handoff-shared-planning" : "handoff")
-        : "handoff-admit",
-      reason: handoff.admission_status === "admitted"
-        ? (
-          preferredDispatchSource === "shared_planning"
-            ? `admitted handoff packet provides a shared-planning relay (${handoff.transition_policy?.status ?? "unknown-transition"})`
-            : `admitted handoff packet provides the next relay (${handoff.transition_policy?.status ?? "unknown-transition"})`
-        )
-        : `handoff admission ${handoff.admission_status}`,
-      stop_required: handoff.admission_status === "blocked",
-    };
+    recommendation = handoff.route
+      ? buildWorkflowRoute({
+        ...handoff.route,
+        source: handoff.admission_status === "admitted"
+          ? (preferredDispatchSource === "shared_planning" ? "handoff-shared-planning" : "handoff")
+          : "handoff-admit",
+        reason: handoff.admission_status === "admitted"
+          ? (
+            preferredDispatchSource === "shared_planning"
+              ? `admitted handoff packet provides a shared-planning relay (${handoff.transition_policy?.status ?? "unknown-transition"})`
+              : `admitted handoff packet provides the next relay (${handoff.transition_policy?.status ?? "unknown-transition"})`
+          )
+          : `handoff admission ${handoff.admission_status}`,
+        stop_required: handoff.admission_status === "blocked",
+      })
+      : buildWorkflowRoute({
+        role: handoff.recommended_next_agent_role,
+        action: handoff.recommended_action,
+        goal: handoff.next_agent_goal,
+        source: handoff.admission_status === "admitted"
+          ? (preferredDispatchSource === "shared_planning" ? "handoff-shared-planning" : "handoff")
+          : "handoff-admit",
+        reason: handoff.admission_status === "admitted"
+          ? (
+            preferredDispatchSource === "shared_planning"
+              ? `admitted handoff packet provides a shared-planning relay (${handoff.transition_policy?.status ?? "unknown-transition"})`
+              : `admitted handoff packet provides the next relay (${handoff.transition_policy?.status ?? "unknown-transition"})`
+          )
+          : `handoff admission ${handoff.admission_status}`,
+        stop_required: handoff.admission_status === "blocked",
+      });
     scope = {
       scope_type: normalizeScalar(handoff.scope_type ?? "none") || "none",
       scope_id: normalizeScalar(handoff.scope_id ?? "none") || "none",

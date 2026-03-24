@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.5.1
+
+- Refactor workflow transition handling around shared constants and helpers for `start-session`, `close-session`, handoff routing, and repair routing.
+- Normalize runtime transition outputs and extend fixture coverage for extracted workflow decisions.
+- Split and clean up BPMN documentation into focused views, align the macro workflow view, and document BPMN modeling/layout rules.
+- Add stale merged cycle guard groundwork, shared topology classification, and related workflow diagram updates.
+
 ## 0.5.0-rc.1
 - Complete DB-first fileless runtime support so `db-only` repositories remain readable by the assistant even when workflow markdown artifacts are not materialized on disk.
 - Preserve `dual` compatibility by keeping artifacts reconstructible from SQLite and by fixing `db-only -> dual` migration to rematerialize missing hot workflow files from the database.

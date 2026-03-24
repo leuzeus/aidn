@@ -39,9 +39,9 @@ stateDiagram-v2
   VERIFYING --> NO_GO: non-retained outcome
   VERIFYING --> DROPPED: non-retained outcome
 
-  OPEN --> OPEN: session-close decision = report (R07)
-  IMPLEMENTING --> IMPLEMENTING: session-close decision = report (R07)
-  VERIFYING --> VERIFYING: session-close decision = report (R07)
+  OPEN --> OPEN: session-close decision = report and cycle branch not yet merged (R07)
+  IMPLEMENTING --> IMPLEMENTING: session-close decision = report and cycle branch not yet merged (R07)
+  VERIFYING --> VERIFYING: session-close decision = report and cycle branch not yet merged (R07)
 
   DONE --> [*]
   NO_GO --> [*]
@@ -67,6 +67,15 @@ stateDiagram-v2
     drift is suspected.
     In dual/db-only, runtime digest
     should be refreshed after writes.
+  end note
+
+  note left of VERIFYING
+    start-session and close-session
+    now block stale open-cycle states
+    when a cycle branch is already
+    merged into its session or source
+    but artifacts still declare OPEN,
+    IMPLEMENTING or VERIFYING.
   end note
 
   note right of DONE

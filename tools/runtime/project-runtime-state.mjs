@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
 import {
@@ -364,34 +365,6 @@ function derivePrioritizedArtifacts(consistency, hydrated, args) {
   return uniqueItems([...values, ...artifactPaths.slice(0, 6)]);
 }
 
-function deriveRepairRouting({ status, advice, blocking }) {
-  const normalizedStatus = String(status ?? "").trim().toLowerCase();
-  if (normalizedStatus === "block" || blocking === true) {
-    return {
-      hint: "repair",
-      reason: "blocking repair findings require repair-first routing before any implementation handoff",
-    };
-  }
-  if (normalizedStatus === "warn") {
-    return {
-      hint: "audit-first",
-      reason: advice && advice !== "unknown"
-        ? advice
-        : "repair warnings require an audit-first relay before implementation",
-    };
-  }
-  if (normalizedStatus === "ok" || normalizedStatus === "clean") {
-    return {
-      hint: "execution-or-audit",
-      reason: "repair layer reports no blocking findings for the current relay",
-    };
-  }
-  return {
-    hint: "reanchor",
-    reason: "repair routing is unknown, so the next agent should reanchor before acting",
-  };
-}
-
 function buildMarkdown(digest) {
   const lines = [];
   lines.push("# Runtime State Digest");
@@ -515,7 +488,7 @@ export function projectRuntimeState({
     });
   const repairSummary = deriveRepairSummary(hydrated, fallbackContext);
   const freshness = deriveFreshness(consistency);
-  const repairRouting = deriveRepairRouting(repairSummary);
+  const repairRouting = evaluateRepairRouting(repairSummary);
   const prioritizedFindings = Array.isArray(repairSummary.findings)
     ? repairSummary.findings.filter((item) => {
       const severity = normalizeScalar(item?.severity).toLowerCase();
@@ -537,8 +510,8 @@ export function projectRuntimeState({
     repair_layer_status: repairSummary.status,
     repair_layer_advice: repairSummary.advice,
     repair_primary_reason: deriveRepairPrimaryReason(repairSummary),
-    repair_routing_hint: repairRouting.hint,
-    repair_routing_reason: repairRouting.reason,
+    repair_routing_hint: repairRouting.routing_hint,
+    repair_routing_reason: repairRouting.routing_reason,
     current_state_freshness: freshness.freshness,
     current_state_freshness_basis: freshness.basis,
     blocking_findings: blockingFindings,

@@ -20,8 +20,10 @@
 flowchart TD
   ST["Session start"] --> CR["context-reload"]
   CR --> RA["Read CURRENT-STATE + WORKFLOW-KERNEL"]
-  RA --> SS["start-session admission"]
-  SS --> MODE{"Mode? (R02)"}
+  RA --> SS["start-session admission + stale open-cycle guard"]
+  SS --> STALE{"Open cycle stale after merge?"}
+  STALE -->|Yes| REG["Stop and regularize stale merged cycle artifacts"]
+  STALE -->|No| MODE{"Mode? (R02)"}
 
   MODE -->|THINKING| THINK["Doc/reasoning work"]
   MODE -->|EXPLORING| EXP["Exploration work"]
@@ -58,7 +60,7 @@ flowchart TD
   CLOSE -->|Yes| RESOLVE["Resolve open cycles R07: integrate report close-non-retained or cancel-close"]
   RESOLVE --> OK{"All open cycles resolved?"}
   OK -->|No - cancel close| LOOP
-  OK -->|Yes| CS["close-session + snapshot update"]
+  OK -->|Yes| CS["close-session admission + stale merged-cycle guard + snapshot update"]
   CS --> PB{"Cycle DONE and ready for baseline?"}
   PB -->|Yes| PROMO["promote-baseline admission + baseline update"]
   PB -->|No| PRQ{"PR/merge step required?"}
@@ -85,8 +87,8 @@ flowchart TD
   classDef endnode fill:#F6F7FF,stroke:#2C2E83,color:#1E1F5C,stroke-width:1.5px;
   classDef incident fill:#FFF4F4,stroke:#B42318,color:#7A271A,stroke-width:2px;
 
-  class MODE,MAP,NEED,CONT,PW,RT,CLOSE,OK,PRQ,SYNC gate;
-  class ST,CR,RA,SS,THINK,EXP,BCA,FIX,CNEW,DIG,IMPL,DRIFT,SPIKE,DELTA,LOOP,RELAY,RESOLVE,CS,PROMO,PRO,PRG,MRG,REC action;
+  class MODE,MAP,NEED,CONT,PW,RT,CLOSE,OK,PRQ,SYNC,STALE gate;
+  class ST,CR,RA,SS,THINK,EXP,BCA,FIX,CNEW,DIG,IMPL,DRIFT,SPIKE,DELTA,LOOP,RELAY,RESOLVE,CS,PROMO,PRO,PRG,MRG,REC,REG action;
   class END_RELAY,END_DONE endnode;
   class INC incident;
 
