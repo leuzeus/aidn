@@ -26,7 +26,7 @@ flowchart LR
   end
 
   subgraph RUN["Execution Layer (Skills + Gates)"]
-    START["context-reload + start-session admission (R01)"]
+    START["context-reload + start-session admission (R01) + stale open-cycle guard"]
     REANCHOR["CURRENT-STATE + WORKFLOW-KERNEL reload"]
     MODE{"Mode selected (R02)"}
     BCA["branch-cycle-audit admission (R03)"]
@@ -38,7 +38,7 @@ flowchart LR
     DRIFT["drift-check via generic gating (R05)"]
     MUTATE["requirements-delta / promote-baseline admissions"]
     HAND["handoff-close + handoff-admit"]
-    SCLOSE{"close-session admission (R07)"}
+    SCLOSE{"close-session admission (R07) + stale merged-cycle guard"}
     PRG{"PR review gate (R08)"}
     SYNC{"Post-merge local sync (R09)"}
     INC{"Incident triage R10: L1 L2 auto-fix, L3 L4 stop+auth"}
