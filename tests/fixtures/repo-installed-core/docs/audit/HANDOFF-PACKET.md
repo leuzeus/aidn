@@ -14,7 +14,7 @@ Rule/State boundary:
 
 ## Summary
 
-updated_at: 2026-03-14T22:49:04.934Z
+updated_at: 2026-03-23T03:59:03.369Z
 handoff_status: refresh_required
 handoff_from_agent_role: coordinator
 handoff_from_agent_action: relay

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  id="Definitions_AidnHandoffClosePublish"
+  targetNamespace="https://github.com/leuzeus/aidn/bpmn"
+  exporter="bpmn-js (https://demo.bpmn.io)"
+  exporterVersion="18.13.1">
+  <bpmn:process id="Process_AidnHandoffClosePublish" name="aid'n handoff, close, and publish" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_HandoffClose">
+      <bpmn:lane id="Lane_HandoffClose_Audit" name="Audit Agent">
+        <bpmn:flowNodeRef>StartEvent_HandoffClose</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_HandoffCloseNeeded</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_HandoffCloseSession</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_HandoffCloseArtifacts</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_HandoffContinue</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_HandoffClose_Coordinator" name="Coordinator Agent">
+        <bpmn:flowNodeRef>Task_HandoffPublishPacket</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_HandoffPublishSessionState</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_HandoffPrepared</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_HandoffPublished</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="StartEvent_HandoffClose" name="Review outcome ready" />
+    <bpmn:exclusiveGateway id="Gateway_HandoffCloseNeeded" name="Need another agent?" default="Flow_HandoffCloseNo" />
+    <bpmn:task id="Task_HandoffPublishPacket" name="Prepare handoff packet" />
+    <bpmn:exclusiveGateway id="Gateway_HandoffCloseSession" name="Close session now?" default="Flow_HandoffContinue" />
+    <bpmn:task id="Task_HandoffCloseArtifacts" name="Close session and orchestrate PR" />
+    <bpmn:task id="Task_HandoffPublishSessionState" name="Publish session state" />
+    <bpmn:endEvent id="EndEvent_HandoffPrepared" name="Handoff prepared" />
+    <bpmn:endEvent id="EndEvent_HandoffPublished" name="Session state published" />
+    <bpmn:endEvent id="EndEvent_HandoffContinue" name="Continue current cycle" />
+    <bpmn:dataObjectReference id="Data_HandoffClosePacket" name="HANDOFF-PACKET.md" dataObjectRef="DataObject_HandoffClosePacket" />
+    <bpmn:dataObject id="DataObject_HandoffClosePacket" />
+    <bpmn:dataObjectReference id="Data_HandoffCloseCurrentState" name="CURRENT-STATE.md" dataObjectRef="DataObject_HandoffCloseCurrentState" />
+    <bpmn:dataObject id="DataObject_HandoffCloseCurrentState" />
+    <bpmn:sequenceFlow id="Flow_HandoffCloseStart" sourceRef="StartEvent_HandoffClose" targetRef="Gateway_HandoffCloseNeeded" />
+    <bpmn:sequenceFlow id="Flow_HandoffCloseYes" sourceRef="Gateway_HandoffCloseNeeded" targetRef="Task_HandoffPublishPacket">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[handoff_needed]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_HandoffCloseNo" sourceRef="Gateway_HandoffCloseNeeded" targetRef="Gateway_HandoffCloseSession">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[continue_same_agent]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_HandoffPrepared" sourceRef="Task_HandoffPublishPacket" targetRef="EndEvent_HandoffPrepared" />
+    <bpmn:sequenceFlow id="Flow_HandoffCloseYesNow" sourceRef="Gateway_HandoffCloseSession" targetRef="Task_HandoffCloseArtifacts">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[close_now]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_HandoffContinue" sourceRef="Gateway_HandoffCloseSession" targetRef="EndEvent_HandoffContinue">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[continue_working]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_HandoffPublishState" sourceRef="Task_HandoffCloseArtifacts" targetRef="Task_HandoffPublishSessionState" />
+    <bpmn:sequenceFlow id="Flow_HandoffPublished" sourceRef="Task_HandoffPublishSessionState" targetRef="EndEvent_HandoffPublished" />
+    <bpmn:association id="Assoc_HandoffClosePacket" sourceRef="Task_HandoffPublishPacket" targetRef="Data_HandoffClosePacket" />
+    <bpmn:association id="Assoc_HandoffCloseCurrentState" sourceRef="Task_HandoffPublishSessionState" targetRef="Data_HandoffCloseCurrentState" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_AidnHandoffClosePublish">
+    <bpmndi:BPMNPlane id="BPMNPlane_AidnHandoffClosePublish" bpmnElement="Process_AidnHandoffClosePublish">
+      <bpmndi:BPMNShape id="Lane_HandoffClose_Audit_di" bpmnElement="Lane_HandoffClose_Audit" isHorizontal="true"><dc:Bounds x="100" y="80" width="2460" height="160" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_HandoffClose_Coordinator_di" bpmnElement="Lane_HandoffClose_Coordinator" isHorizontal="true"><dc:Bounds x="100" y="240" width="2460" height="160" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_HandoffClose_di" bpmnElement="StartEvent_HandoffClose"><dc:Bounds x="170" y="142" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_HandoffCloseNeeded_di" bpmnElement="Gateway_HandoffCloseNeeded" isMarkerVisible="true"><dc:Bounds x="340" y="135" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_HandoffPublishPacket_di" bpmnElement="Task_HandoffPublishPacket"><dc:Bounds x="650" y="280" width="190" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_HandoffCloseSession_di" bpmnElement="Gateway_HandoffCloseSession" isMarkerVisible="true"><dc:Bounds x="830" y="135" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_HandoffCloseArtifacts_di" bpmnElement="Task_HandoffCloseArtifacts"><dc:Bounds x="1080" y="120" width="210" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_HandoffPublishSessionState_di" bpmnElement="Task_HandoffPublishSessionState"><dc:Bounds x="1760" y="280" width="190" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_HandoffPrepared_di" bpmnElement="EndEvent_HandoffPrepared"><dc:Bounds x="980" y="302" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_HandoffPublished_di" bpmnElement="EndEvent_HandoffPublished"><dc:Bounds x="2090" y="302" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_HandoffContinue_di" bpmnElement="EndEvent_HandoffContinue"><dc:Bounds x="1540" y="142" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Data_HandoffClosePacket_di" bpmnElement="Data_HandoffClosePacket"><dc:Bounds x="720" y="20" width="36" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Data_HandoffCloseCurrentState_di" bpmnElement="Data_HandoffCloseCurrentState"><dc:Bounds x="1840" y="20" width="36" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_HandoffCloseStart_di" bpmnElement="Flow_HandoffCloseStart"><di:waypoint x="206" y="160" /><di:waypoint x="340" y="160" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HandoffCloseYes_di" bpmnElement="Flow_HandoffCloseYes"><di:waypoint x="365" y="185" /><di:waypoint x="365" y="320" /><di:waypoint x="650" y="320" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HandoffCloseNo_di" bpmnElement="Flow_HandoffCloseNo"><di:waypoint x="390" y="160" /><di:waypoint x="830" y="160" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HandoffPrepared_di" bpmnElement="Flow_HandoffPrepared"><di:waypoint x="840" y="320" /><di:waypoint x="980" y="320" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HandoffCloseYesNow_di" bpmnElement="Flow_HandoffCloseYesNow"><di:waypoint x="880" y="160" /><di:waypoint x="1080" y="160" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HandoffContinue_di" bpmnElement="Flow_HandoffContinue"><di:waypoint x="855" y="135" /><di:waypoint x="855" y="100" /><di:waypoint x="1558" y="100" /><di:waypoint x="1558" y="142" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HandoffPublishState_di" bpmnElement="Flow_HandoffPublishState"><di:waypoint x="1290" y="160" /><di:waypoint x="1855" y="160" /><di:waypoint x="1855" y="280" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HandoffPublished_di" bpmnElement="Flow_HandoffPublished"><di:waypoint x="1950" y="320" /><di:waypoint x="2090" y="320" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_HandoffClosePacket_di" bpmnElement="Assoc_HandoffClosePacket"><di:waypoint x="738" y="70" /><di:waypoint x="745" y="280" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_HandoffCloseCurrentState_di" bpmnElement="Assoc_HandoffCloseCurrentState"><di:waypoint x="1858" y="70" /><di:waypoint x="1855" y="280" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

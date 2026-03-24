@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
+import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
+import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { resolveEffectiveStateMode } from "../../src/core/state-mode/state-mode-policy.mjs";
 import { readIndexFromSqlite, readRuntimeHeadArtifactsFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
@@ -1013,11 +1015,17 @@ export function preWriteAdmit({
   addCheck(checks, "runtime_repair_status_known", !canonicalUnknown(repairLayerStatus), `repair_layer_status=${repairLayerStatus}`);
   addCheck(checks, "current_state_freshness_known", !canonicalUnknown(currentStateFreshness), `current_state_freshness=${currentStateFreshness}`);
 
-  if (repairLayerStatus.toLowerCase() === "block") {
+  const repairRouting = evaluateRepairRouting({
+    status: repairLayerStatus,
+    advice: normalizeScalar(runtimeMap.get("repair_routing_reason") ?? runtimeMap.get("repair_layer_advice") ?? "unknown") || "unknown",
+    blocking: repairLayerStatus.toLowerCase() === "block",
+  });
+
+  if (repairRouting.routing_hint === WORKFLOW_REPAIR_HINT.REPAIR) {
     blockingReasons.push(blockingFindings.length > 0
       ? `repair layer is blocking: ${blockingFindings.join(", ")}`
       : "repair layer is blocking");
-  } else if (repairLayerStatus.toLowerCase() === "warn") {
+  } else if (repairRouting.routing_hint === WORKFLOW_REPAIR_HINT.AUDIT_FIRST) {
     const repairSpecificWarning = blockingFindings
       .map((item) => classifyRepairFindingSummary(item))
       .find(Boolean);

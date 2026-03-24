@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  id="Definitions_AidnExecutionRepairReview"
+  targetNamespace="https://github.com/leuzeus/aidn/bpmn"
+  exporter="bpmn-js (https://demo.bpmn.io)"
+  exporterVersion="18.13.1">
+  <bpmn:process id="Process_AidnExecutionRepairReview" name="aid'n execution, repair, and review loop" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_ExecutionReview">
+      <bpmn:lane id="Lane_ExecutionReview_Coordinator" name="Coordinator Agent">
+        <bpmn:flowNodeRef>Task_ExecutionResumeAfterBlock</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_ExecutionResume</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_ExecutionReview_Execution" name="Execution Agent">
+        <bpmn:flowNodeRef>StartEvent_ExecutionReady</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ExecutionLoopMerge</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ExecutionImplement</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_ExecutionReview_Runtime" name="Runtime / Repair Layer">
+        <bpmn:flowNodeRef>Task_ExecutionRefreshRuntime</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ExecutionRepairBlocked</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ExecutionRepairWarn</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ExecutionRepairTriage</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_ExecutionReview_Audit" name="Audit Agent">
+        <bpmn:flowNodeRef>Gateway_ExecutionReviewMerge</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ExecutionReview</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ExecutionAnotherPass</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_ExecutionStepDone</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_ExecutionReview_User" name="User / Operator">
+        <bpmn:flowNodeRef>Task_ExecutionArbitrateBlock</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="StartEvent_ExecutionReady" name="Execution admitted" />
+    <bpmn:exclusiveGateway id="Gateway_ExecutionLoopMerge" name="Resume write loop" />
+    <bpmn:task id="Task_ExecutionImplement" name="Implement planned change" />
+    <bpmn:task id="Task_ExecutionRefreshRuntime" name="Refresh runtime state" />
+    <bpmn:exclusiveGateway id="Gateway_ExecutionRepairBlocked" name="Repair blocked?" default="Flow_ExecutionNotBlocked" />
+    <bpmn:exclusiveGateway id="Gateway_ExecutionRepairWarn" name="Repair warning?" default="Flow_ExecutionWarn" />
+    <bpmn:task id="Task_ExecutionRepairTriage" name="Run repair triage" />
+    <bpmn:exclusiveGateway id="Gateway_ExecutionReviewMerge" name="Review ready?" />
+    <bpmn:task id="Task_ExecutionReview" name="Review drift and traceability" />
+    <bpmn:exclusiveGateway id="Gateway_ExecutionAnotherPass" name="Need another pass?" default="Flow_ExecutionDone" />
+    <bpmn:task id="Task_ExecutionArbitrateBlock" name="Arbitrate blocking issue" />
+    <bpmn:task id="Task_ExecutionResumeAfterBlock" name="Reload context after arbitration" />
+    <bpmn:endEvent id="EndEvent_ExecutionResume" name="Resume from coordinator" />
+    <bpmn:endEvent id="EndEvent_ExecutionStepDone" name="Execution step complete" />
+    <bpmn:dataObjectReference id="Data_ExecutionRuntimeState" name="RUNTIME-STATE.md" dataObjectRef="DataObject_ExecutionRuntimeState" />
+    <bpmn:dataObject id="DataObject_ExecutionRuntimeState" />
+    <bpmn:sequenceFlow id="Flow_ExecutionStart" sourceRef="StartEvent_ExecutionReady" targetRef="Gateway_ExecutionLoopMerge" />
+    <bpmn:sequenceFlow id="Flow_ExecutionLoopGo" sourceRef="Gateway_ExecutionLoopMerge" targetRef="Task_ExecutionImplement" />
+    <bpmn:sequenceFlow id="Flow_ExecutionRefresh" sourceRef="Task_ExecutionImplement" targetRef="Task_ExecutionRefreshRuntime" />
+    <bpmn:sequenceFlow id="Flow_ExecutionRepairGate" sourceRef="Task_ExecutionRefreshRuntime" targetRef="Gateway_ExecutionRepairBlocked" />
+    <bpmn:sequenceFlow id="Flow_ExecutionRepairBlock" sourceRef="Gateway_ExecutionRepairBlocked" targetRef="Task_ExecutionArbitrateBlock">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[repair_block]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ExecutionNotBlocked" sourceRef="Gateway_ExecutionRepairBlocked" targetRef="Gateway_ExecutionRepairWarn">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[ok_or_warn]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ExecutionRepairOk" sourceRef="Gateway_ExecutionRepairWarn" targetRef="Gateway_ExecutionReviewMerge">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[repair_ok]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ExecutionWarn" sourceRef="Gateway_ExecutionRepairWarn" targetRef="Task_ExecutionRepairTriage">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[repair_warn]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ExecutionTriageBack" sourceRef="Task_ExecutionRepairTriage" targetRef="Gateway_ExecutionReviewMerge" />
+    <bpmn:sequenceFlow id="Flow_ExecutionReviewGo" sourceRef="Gateway_ExecutionReviewMerge" targetRef="Task_ExecutionReview" />
+    <bpmn:sequenceFlow id="Flow_ExecutionReviewDone" sourceRef="Task_ExecutionReview" targetRef="Gateway_ExecutionAnotherPass" />
+    <bpmn:sequenceFlow id="Flow_ExecutionAnotherPass" sourceRef="Gateway_ExecutionAnotherPass" targetRef="Gateway_ExecutionLoopMerge">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[continue_working]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ExecutionDone" sourceRef="Gateway_ExecutionAnotherPass" targetRef="EndEvent_ExecutionStepDone">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[review_complete]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ExecutionArbitrated" sourceRef="Task_ExecutionArbitrateBlock" targetRef="Task_ExecutionResumeAfterBlock" />
+    <bpmn:sequenceFlow id="Flow_ExecutionResumeEnd" sourceRef="Task_ExecutionResumeAfterBlock" targetRef="EndEvent_ExecutionResume" />
+    <bpmn:association id="Assoc_ExecutionRuntime" sourceRef="Task_ExecutionRefreshRuntime" targetRef="Data_ExecutionRuntimeState" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_AidnExecutionRepairReview">
+    <bpmndi:BPMNPlane id="BPMNPlane_AidnExecutionRepairReview" bpmnElement="Process_AidnExecutionRepairReview">
+      <bpmndi:BPMNShape id="Lane_ExecutionReview_Coordinator_di" bpmnElement="Lane_ExecutionReview_Coordinator" isHorizontal="true"><dc:Bounds x="100" y="80" width="2820" height="120" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_ExecutionReview_Execution_di" bpmnElement="Lane_ExecutionReview_Execution" isHorizontal="true"><dc:Bounds x="100" y="200" width="2820" height="120" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_ExecutionReview_Runtime_di" bpmnElement="Lane_ExecutionReview_Runtime" isHorizontal="true"><dc:Bounds x="100" y="320" width="2820" height="150" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_ExecutionReview_Audit_di" bpmnElement="Lane_ExecutionReview_Audit" isHorizontal="true"><dc:Bounds x="100" y="470" width="2820" height="130" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_ExecutionReview_User_di" bpmnElement="Lane_ExecutionReview_User" isHorizontal="true"><dc:Bounds x="100" y="600" width="2820" height="110" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_ExecutionReady_di" bpmnElement="StartEvent_ExecutionReady"><dc:Bounds x="170" y="242" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ExecutionLoopMerge_di" bpmnElement="Gateway_ExecutionLoopMerge" isMarkerVisible="true"><dc:Bounds x="380" y="235" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ExecutionImplement_di" bpmnElement="Task_ExecutionImplement"><dc:Bounds x="620" y="220" width="190" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ExecutionRefreshRuntime_di" bpmnElement="Task_ExecutionRefreshRuntime"><dc:Bounds x="980" y="355" width="190" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ExecutionRepairBlocked_di" bpmnElement="Gateway_ExecutionRepairBlocked" isMarkerVisible="true"><dc:Bounds x="1300" y="370" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ExecutionRepairWarn_di" bpmnElement="Gateway_ExecutionRepairWarn" isMarkerVisible="true"><dc:Bounds x="1520" y="370" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ExecutionRepairTriage_di" bpmnElement="Task_ExecutionRepairTriage"><dc:Bounds x="1710" y="355" width="180" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ExecutionReviewMerge_di" bpmnElement="Gateway_ExecutionReviewMerge" isMarkerVisible="true"><dc:Bounds x="2050" y="505" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ExecutionReview_di" bpmnElement="Task_ExecutionReview"><dc:Bounds x="2210" y="490" width="200" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ExecutionAnotherPass_di" bpmnElement="Gateway_ExecutionAnotherPass" isMarkerVisible="true"><dc:Bounds x="2510" y="505" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ExecutionArbitrateBlock_di" bpmnElement="Task_ExecutionArbitrateBlock"><dc:Bounds x="1420" y="615" width="190" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ExecutionResumeAfterBlock_di" bpmnElement="Task_ExecutionResumeAfterBlock"><dc:Bounds x="1860" y="100" width="220" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_ExecutionResume_di" bpmnElement="EndEvent_ExecutionResume"><dc:Bounds x="2190" y="122" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_ExecutionStepDone_di" bpmnElement="EndEvent_ExecutionStepDone"><dc:Bounds x="2800" y="522" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Data_ExecutionRuntimeState_di" bpmnElement="Data_ExecutionRuntimeState"><dc:Bounds x="1040" y="20" width="36" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_ExecutionStart_di" bpmnElement="Flow_ExecutionStart"><di:waypoint x="206" y="260" /><di:waypoint x="380" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ExecutionLoopGo_di" bpmnElement="Flow_ExecutionLoopGo"><di:waypoint x="430" y="260" /><di:waypoint x="620" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ExecutionRefresh_di" bpmnElement="Flow_ExecutionRefresh"><di:waypoint x="810" y="260" /><di:waypoint x="1075" y="260" /><di:waypoint x="1075" y="355" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ExecutionRepairGate_di" bpmnElement="Flow_ExecutionRepairGate"><di:waypoint x="1170" y="395" /><di:waypoint x="1300" y="395" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ExecutionRepairBlock_di" bpmnElement="Flow_ExecutionRepairBlock"><di:waypoint x="1325" y="420" /><di:waypoint x="1325" y="655" /><di:waypoint x="1420" y="655" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ExecutionNotBlocked_di" bpmnElement="Flow_ExecutionNotBlocked"><di:waypoint x="1350" y="395" /><di:waypoint x="1520" y="395" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ExecutionRepairOk_di" bpmnElement="Flow_ExecutionRepairOk"><di:waypoint x="1545" y="420" /><di:waypoint x="1545" y="530" /><di:waypoint x="2050" y="530" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ExecutionWarn_di" bpmnElement="Flow_ExecutionWarn"><di:waypoint x="1570" y="395" /><di:waypoint x="1710" y="395" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ExecutionTriageBack_di" bpmnElement="Flow_ExecutionTriageBack"><di:waypoint x="1890" y="395" /><di:waypoint x="2075" y="395" /><di:waypoint x="2075" y="505" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ExecutionReviewGo_di" bpmnElement="Flow_ExecutionReviewGo"><di:waypoint x="2100" y="530" /><di:waypoint x="2210" y="530" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ExecutionReviewDone_di" bpmnElement="Flow_ExecutionReviewDone"><di:waypoint x="2410" y="530" /><di:waypoint x="2510" y="530" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ExecutionAnotherPass_di" bpmnElement="Flow_ExecutionAnotherPass"><di:waypoint x="2535" y="505" /><di:waypoint x="2535" y="220" /><di:waypoint x="405" y="220" /><di:waypoint x="405" y="235" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ExecutionDone_di" bpmnElement="Flow_ExecutionDone"><di:waypoint x="2560" y="530" /><di:waypoint x="2800" y="540" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ExecutionArbitrated_di" bpmnElement="Flow_ExecutionArbitrated"><di:waypoint x="1610" y="655" /><di:waypoint x="1970" y="655" /><di:waypoint x="1970" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ExecutionResumeEnd_di" bpmnElement="Flow_ExecutionResumeEnd"><di:waypoint x="2080" y="140" /><di:waypoint x="2190" y="140" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_ExecutionRuntime_di" bpmnElement="Assoc_ExecutionRuntime"><di:waypoint x="1058" y="70" /><di:waypoint x="1058" y="355" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

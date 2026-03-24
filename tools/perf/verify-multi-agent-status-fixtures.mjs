@@ -45,6 +45,7 @@ function main() {
 
     assert(result.written === true || result.written === false, "projection should return written flag");
     assert(String(result.coordinator?.recommendation?.role ?? "").length > 0, "projection should include coordinator recommendation");
+    assert(String(result.recommendation?.role ?? "").length > 0, "projection should expose normalized recommendation");
     assert(text.includes("# Multi-Agent Status"), "status file should include title");
     assert(text.includes("## Roster Verification"), "status file should include roster verification section");
     assert(text.includes("## Selection Preview"), "status file should include selection preview section");
@@ -54,6 +55,7 @@ function main() {
     assert(text.includes("## Integration Strategy"), "status file should include integration strategy section");
     assert(text.includes("## Coordination"), "status file should include coordination section");
     assert(text.includes("## Arbitration"), "status file should include arbitration section");
+    assert(text.includes("recommended_source:"), "status file should include recommendation source");
     assert(text.includes("repair_primary_reason:"), "status file should include repair primary reason");
     assert(typeof result.arbitration?.preferred_decision === "string", "projection should expose arbitration summary");
     assert(String(result.arbitration?.arbitration_status ?? "") === "ok", "healthy projection should expose arbitration_status=ok");
@@ -144,6 +146,7 @@ function main() {
     assert(environmentResult.agent_health_summary.verification.environment_summary.unavailable >= 1, "multi-agent status should expose environment-unavailable adapters");
     assert(environmentResult.recommended_role_coverage.status === "blocked", "multi-agent status should mark recommended role coverage as blocked when no runnable adapter remains");
     assert(environmentResult.coordinator.recommendation.role === "auditor", "environment coverage test should force an auditor recommendation");
+    assert(environmentResult.recommendation.role === "auditor", "environment coverage test should expose normalized recommendation");
     assert(environmentResult.arbitration.arbitration_required === true, "blocked role coverage should require arbitration in multi-agent status");
     assert(environmentResult.arbitration.arbitration_status === "ok", "blocked role coverage should still expose arbitration_status=ok");
     assert(environmentResult.arbitration.preferred_decision === "reanchor", "blocked role coverage should prefer reanchor");

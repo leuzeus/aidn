@@ -323,6 +323,7 @@ async function main() {
         output_file: multiAgentStatus.output_file,
         written: multiAgentStatus.written,
         recommendation: multiAgentStatus.coordinator.recommendation,
+        handoff_status: multiAgentStatus.handoff_status,
         roster_verification: multiAgentStatus.roster_verification,
         mode: args.projectMultiAgentStatus === true ? "forced" : "auto",
       };

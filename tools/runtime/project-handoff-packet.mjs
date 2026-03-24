@@ -2,6 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
+import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
 import { canAgentRolePerform } from "../../src/core/agents/agent-role-model.mjs";
 import { evaluateAgentTransition } from "../../src/core/agents/agent-transition-policy.mjs";
@@ -207,10 +209,10 @@ function deriveHandoffStatus({ consistency, runtimeMap, currentMap }) {
 
 function deriveNextAgentRouting({ handoffStatus, mode, repairStatus }) {
   const normalizedRepair = String(repairStatus ?? "").trim().toLowerCase();
-  if (handoffStatus === "blocked" || normalizedRepair === "block" || normalizedRepair === "repair") {
+  if (handoffStatus === "blocked" || normalizedRepair === "block" || normalizedRepair === WORKFLOW_REPAIR_HINT.REPAIR) {
     return { role: "repair", action: "repair" };
   }
-  if (normalizedRepair === "audit-first") {
+  if (normalizedRepair === WORKFLOW_REPAIR_HINT.AUDIT_FIRST) {
     return { role: "auditor", action: "audit" };
   }
   if (handoffStatus === "refresh_required") {
@@ -239,14 +241,14 @@ function deriveNextAgentGoal({
   if (manualGoal) {
     return manualGoal;
   }
-  if (handoffStatus === "blocked" || repairStatus === "block" || repairStatus === "repair") {
+  if (handoffStatus === "blocked" || repairStatus === "block" || repairStatus === WORKFLOW_REPAIR_HINT.REPAIR) {
     const topFinding = normalizeScalar(blockingFindings[0] ?? "");
     if (topFinding) {
       return `resolve blocking finding: ${topFinding}`;
     }
     return "resolve blocking repair-layer or workflow findings before continuing";
   }
-  if (repairStatus === "audit-first") {
+  if (repairStatus === WORKFLOW_REPAIR_HINT.AUDIT_FIRST) {
     const normalizedAdvice = normalizeScalar(repairAdvice);
     if (normalizedAdvice && normalizedAdvice.toLowerCase() !== "unknown") {
       return `review runtime warnings first: ${normalizedAdvice}`;
@@ -611,8 +613,13 @@ export function projectHandoffPacket({
     });
   const repairStatus = normalizeScalar(runtimeMap.get("repair_layer_status") ?? "unknown") || "unknown";
   const repairPrimaryReason = normalizeScalar(runtimeMap.get("repair_primary_reason") ?? runtimeMap.get("repair_layer_advice") ?? "unknown") || "unknown";
-  const repairRoutingHint = normalizeScalar(runtimeMap.get("repair_routing_hint") ?? repairStatus) || "unknown";
-  const repairRoutingReason = normalizeScalar(runtimeMap.get("repair_routing_reason") ?? runtimeMap.get("repair_layer_advice") ?? "unknown") || "unknown";
+  const repairRouting = evaluateRepairRouting({
+    status: repairStatus,
+    advice: normalizeScalar(runtimeMap.get("repair_layer_advice") ?? "unknown") || "unknown",
+    blocking: repairStatus.toLowerCase() === "block",
+  });
+  const repairRoutingHint = normalizeScalar(runtimeMap.get("repair_routing_hint") ?? repairRouting.routing_hint) || "unknown";
+  const repairRoutingReason = normalizeScalar(runtimeMap.get("repair_routing_reason") ?? repairRouting.routing_reason) || "unknown";
   const handoffStatus = deriveHandoffStatus({ consistency, runtimeMap, currentMap });
   const mode = normalizeScalar(currentMap.get("mode") ?? "unknown") || "unknown";
   const firstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "unknown") || "unknown";

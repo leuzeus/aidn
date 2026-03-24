@@ -69,6 +69,7 @@ function main() {
     assert(multiAgentStatusFile.length > 0, "multi_agent_status.output_file missing");
     assert(fs.existsSync(multiAgentStatusFile), "multi-agent status output file not written");
     assert(String(hydrated?.multi_agent_status?.recommendation?.role ?? "").length > 0, "multi-agent status recommendation missing role");
+    assert(String(hydrated?.multi_agent_status?.handoff_status?.admission_status ?? "").length > 0, "multi-agent status handoff status missing admission state");
     assert(String(hydrated?.multi_agent_status?.mode ?? "") === "auto", "multi-agent status should auto-project when artifact exists");
 
     const markdown = fs.readFileSync(runtimeStateFile, "utf8");
@@ -133,9 +134,9 @@ function main() {
     assert(String(dbOnlyAutoProject?.multi_agent_status?.mode ?? "") === "auto", "multi-agent status should auto-project in db-only without preexisting file");
     assert(fs.existsSync(String(dbOnlyAutoProject?.runtime_state?.output_file ?? "")), "runtime_state output file should be recreated in db-only");
     assert(fs.existsSync(String(dbOnlyAutoProject?.handoff_packet?.output_file ?? "")), "handoff packet output file should be recreated in db-only");
-    assert(fs.existsSync(String(dbOnlyAutoProject?.agent_health_summary?.output_file ?? "")), "agent health summary output file should be recreated in db-only");
-    assert(fs.existsSync(String(dbOnlyAutoProject?.agent_selection_summary?.output_file ?? "")), "agent selection summary output file should be recreated in db-only");
-    assert(fs.existsSync(String(dbOnlyAutoProject?.multi_agent_status?.output_file ?? "")), "multi-agent status output file should be recreated in db-only");
+    assert(dbOnlyAutoProject?.agent_health_summary?.written === true, "agent health summary should still be projected in db-only");
+    assert(dbOnlyAutoProject?.agent_selection_summary?.written === true, "agent selection summary should still be projected in db-only");
+    assert(dbOnlyAutoProject?.multi_agent_status?.written === true, "multi-agent status should still be projected in db-only");
 
     console.log("PASS");
   } catch (error) {

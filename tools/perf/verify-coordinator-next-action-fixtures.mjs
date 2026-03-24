@@ -203,6 +203,7 @@ function main() {
 
     assert(ready.recommendation.role === "executor", "ready should route to executor");
     assert(ready.recommendation.action === "implement", "ready should route to implement");
+    assert(ready.handoff?.route?.role === "executor", "ready handoff should expose normalized route");
     assert(ready.recommendation.source === "handoff-shared-planning", "ready should come from shared planning handoff");
     assert(ready.preferred_dispatch_source === "shared_planning", "ready should expose shared planning provenance");
     assert(ready.shared_planning_candidate?.shared_planning_candidate_ready === "yes", "ready should expose a ready shared planning candidate");
@@ -216,6 +217,7 @@ function main() {
 
     assert(blocked.recommendation.role === "repair", "blocked should route to repair");
     assert(blocked.recommendation.action === "repair", "blocked should route to repair action");
+    assert(blocked.handoff?.status?.admission_status === "blocked", "blocked handoff should expose normalized status");
     assert(blocked.recommendation.stop_required === true, "blocked should require stop");
     assert(blocked.scope.scope_type === "cycle", "blocked should preserve cycle scope");
 
