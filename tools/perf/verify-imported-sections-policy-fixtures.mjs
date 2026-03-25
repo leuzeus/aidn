@@ -97,6 +97,25 @@ function main() {
           ],
           forbidComponentSpecificGeneratorFixes: true,
         },
+        crossUsageConvergence: {
+          enabled: true,
+          sharedSurfaceKinds: [
+            "runtime",
+            "hydration",
+            "dispatch",
+            "codegen",
+          ],
+          evidenceArtifacts: [
+            "plan.md",
+            "traceability.md",
+            "status.md",
+          ],
+          sharedSurfaceMinimumUsageClasses: 2,
+          highRiskMinimumUsageClasses: 3,
+          requireAlternateUsage: true,
+          requireContextualUsageForHighRisk: true,
+          overfitFixIsBlocking: true,
+        },
       },
     });
 
@@ -143,6 +162,7 @@ function main() {
         "2) Fast Path for micro-changes",
         "3) Risk-based validation profile",
         "Shared Codegen Boundary Gate (Mandatory, adapter extension to `SPEC-R03`/`SPEC-R04`)",
+        "Cross-Usage Convergence Policy (Project Policy, adapter extension to `SPEC-R04` / `SPEC-R11`)",
       ].every((heading) => structuredHeadings.includes(heading)),
       incident_spec_has_severity_model: [
         "Workflow Incident Management",
@@ -198,6 +218,14 @@ function main() {
         && normalizedConfig.specializedGates.sharedCodegenBoundary.generatorPaths.length === 3
         && normalizedConfig.specializedGates.sharedCodegenBoundary.requiredEvidence.length === 2
         && normalizedConfig.specializedGates.sharedCodegenBoundary.forbidComponentSpecificGeneratorFixes === true,
+      normalized_cross_usage_convergence: normalizedConfig.specializedGates.crossUsageConvergence.enabled === true
+        && normalizedConfig.specializedGates.crossUsageConvergence.sharedSurfaceKinds.length === 4
+        && normalizedConfig.specializedGates.crossUsageConvergence.evidenceArtifacts.length === 3
+        && normalizedConfig.specializedGates.crossUsageConvergence.sharedSurfaceMinimumUsageClasses === 2
+        && normalizedConfig.specializedGates.crossUsageConvergence.highRiskMinimumUsageClasses === 3
+        && normalizedConfig.specializedGates.crossUsageConvergence.requireAlternateUsage === true
+        && normalizedConfig.specializedGates.crossUsageConvergence.requireContextualUsageForHighRisk === true
+        && normalizedConfig.specializedGates.crossUsageConvergence.overfitFixIsBlocking === true,
     };
 
     const pass = Object.values(checks).every((value) => value === true);

@@ -180,6 +180,21 @@ function main() {
         && adapterConfig.specializedGates.sharedCodegenBoundary.requiredEvidence.includes("decisions.md")
         && adapterConfig.specializedGates.sharedCodegenBoundary.requiredEvidence.includes("traceability.md")
         && adapterConfig.specializedGates.sharedCodegenBoundary.forbidComponentSpecificGeneratorFixes === true,
+      adapter_promoted_cross_usage_convergence: adapterConfig.specializedGates?.crossUsageConvergence?.enabled === true
+        && Array.isArray(adapterConfig.specializedGates.crossUsageConvergence.sharedSurfaceKinds)
+        && adapterConfig.specializedGates.crossUsageConvergence.sharedSurfaceKinds.includes("runtime")
+        && adapterConfig.specializedGates.crossUsageConvergence.sharedSurfaceKinds.includes("hydration")
+        && adapterConfig.specializedGates.crossUsageConvergence.sharedSurfaceKinds.includes("dispatch")
+        && adapterConfig.specializedGates.crossUsageConvergence.sharedSurfaceKinds.includes("codegen")
+        && Array.isArray(adapterConfig.specializedGates.crossUsageConvergence.evidenceArtifacts)
+        && adapterConfig.specializedGates.crossUsageConvergence.evidenceArtifacts.includes("plan.md")
+        && adapterConfig.specializedGates.crossUsageConvergence.evidenceArtifacts.includes("traceability.md")
+        && adapterConfig.specializedGates.crossUsageConvergence.evidenceArtifacts.includes("status.md")
+        && adapterConfig.specializedGates.crossUsageConvergence.sharedSurfaceMinimumUsageClasses === 2
+        && adapterConfig.specializedGates.crossUsageConvergence.highRiskMinimumUsageClasses === 3
+        && adapterConfig.specializedGates.crossUsageConvergence.requireAlternateUsage === true
+        && adapterConfig.specializedGates.crossUsageConvergence.requireContextualUsageForHighRisk === true
+        && adapterConfig.specializedGates.crossUsageConvergence.overfitFixIsBlocking === true,
       adapter_legacy_imported_sections_drained: Array.isArray(adapterConfig.legacyPreserved?.importedSections)
         && adapterConfig.legacyPreserved.importedSections.length === 0,
       adapter_legacy_native_core_sections_removed: Array.isArray(adapterConfig.legacyPreserved?.importedSections)
@@ -195,9 +210,12 @@ function main() {
         && workflowText.includes("### Session Transition Cleanliness Gate (Mandatory)")
         && workflowText.includes("## Execution Speed Policy (Project Optimization)")
         && workflowText.includes("## Shared Codegen Boundary Gate (Mandatory, adapter extension to `SPEC-R03`/`SPEC-R04`)")
+        && workflowText.includes("## Cross-Usage Convergence Policy (Project Policy, adapter extension to `SPEC-R04` / `SPEC-R11`)")
         && workflowText.includes("- Adapter policy scope: `session-topology`.")
         && workflowText.includes("- In multi-agent contexts, evaluate fast-path eligibility at the concrete dispatch/local execution scope")
         && workflowText.includes("- Treat this area as a shared integration surface.")
+        && workflowText.includes("- Shared-surface defaults apply to:")
+        && workflowText.includes("- Expected evidence artifacts:")
         && !workflowText.includes("### Mode mapping")
         && !workflowText.includes("### Incident Trigger Conditions"),
       workflow_preserved_shared_codegen_constraint: workflowText.includes("- Shared codegen boundary constraints:")
