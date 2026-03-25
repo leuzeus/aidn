@@ -19,6 +19,7 @@ dor_state: NOT_READY
 dor_last_check: 2026-02-07
 dor_checked_by: (name/agent)
 dor_override_reason: (optional; required only if forced COMMITTING while NOT_READY)
+usage_matrix_scope: local # local | shared | high-risk
 usage_matrix_state: NOT_DEFINED # NOT_DEFINED | DECLARED | PARTIAL | VERIFIED | WAIVED
 usage_matrix_summary: (ex: nominal + alternate + stale-revision)
 usage_matrix_rationale: (optional; required if reduced/waived on shared or high-risk change)

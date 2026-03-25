@@ -11,6 +11,7 @@ const CASES = [
     workingBranch: "S301-integration",
     expectedAction: "choose_cycle",
     expectedResult: "stop",
+    expectedReasonCode: "PROMOTE_BASELINE_MULTIPLE_DONE_CYCLES",
     expectsCheckpoint: false,
   },
   {
@@ -38,7 +39,46 @@ const CASES = [
     },
     expectedAction: "blocked_validation_incomplete",
     expectedResult: "stop",
+    expectedReasonCode: "PROMOTE_BASELINE_OPEN_GAPS",
     expectsCheckpoint: false,
+  },
+  {
+    id: "shared_surface_requires_verified_usage_matrix",
+    fixture: "tests/fixtures/perf-integration-risk/direct-merge",
+    workingBranch: "S301-integration",
+    mutate(targetRoot) {
+      fs.rmSync(path.join(targetRoot, "docs", "audit", "cycles", "C302-feature-beta"), { recursive: true, force: true });
+      const statusPath = path.join(targetRoot, "docs", "audit", "cycles", "C301-feature-alpha", "status.md");
+      const base = fs.readFileSync(statusPath, "utf8");
+      fs.writeFileSync(
+        statusPath,
+        `${base}\nusage_matrix_scope: shared\nusage_matrix_state: NOT_DEFINED\nusage_matrix_summary: nominal + alternate\nusage_matrix_rationale: none\n`,
+        "utf8",
+      );
+    },
+    expectedAction: "blocked_validation_incomplete",
+    expectedResult: "stop",
+    expectedReasonCode: "PROMOTE_BASELINE_USAGE_MATRIX_INCOMPLETE",
+    expectsCheckpoint: false,
+  },
+  {
+    id: "waived_usage_matrix_with_rationale_allows_promotion",
+    fixture: "tests/fixtures/perf-integration-risk/direct-merge",
+    workingBranch: "S301-integration",
+    mutate(targetRoot) {
+      fs.rmSync(path.join(targetRoot, "docs", "audit", "cycles", "C302-feature-beta"), { recursive: true, force: true });
+      const statusPath = path.join(targetRoot, "docs", "audit", "cycles", "C301-feature-alpha", "status.md");
+      const base = fs.readFileSync(statusPath, "utf8");
+      fs.writeFileSync(
+        statusPath,
+        `${base}\nusage_matrix_scope: high-risk\nusage_matrix_state: WAIVED\nusage_matrix_summary: nominal + adversarial pending\nusage_matrix_rationale: explicit temporary waiver approved in cycle decisions\n`,
+        "utf8",
+      );
+    },
+    expectedAction: "promote_baseline_allowed",
+    expectedResult: "ok",
+    expectedReasonCode: null,
+    expectsCheckpoint: true,
   },
 ];
 
@@ -120,13 +160,23 @@ function runCase(tmpRoot, testCase) {
     "COMMITTING",
     "--json",
   ]);
+  const hookReasonCode = hook?.reason_code ?? hook?.admission?.reason_code ?? hook?.summary?.reason_code ?? "";
+  const codexReasonCode = codex?.reason_code
+    ?? codex?.normalized?.reason_code
+    ?? codex?.hook?.reason_code
+    ?? codex?.admission?.reason_code
+    ?? codex?.raw?.reason_code
+    ?? "";
+  const hookCheckpointRan = Boolean(hook?.summary?.checkpoint_ran ?? hook?.checkpoint);
 
   const checks = {
     hook_action_expected: String(hook?.action ?? "") === testCase.expectedAction,
     hook_result_expected: String(hook?.result ?? "") === testCase.expectedResult,
-    hook_checkpoint_expected: Boolean(hook?.checkpoint) === testCase.expectsCheckpoint,
+    hook_reason_code_expected: String(hookReasonCode) === String(testCase.expectedReasonCode ?? ""),
+    hook_checkpoint_expected: testCase.expectsCheckpoint === true ? hookCheckpointRan : !hookCheckpointRan,
     codex_action_expected: String(codex?.action ?? "") === testCase.expectedAction,
     codex_result_expected: String(codex?.result ?? "") === testCase.expectedResult,
+    codex_reason_code_expected: String(codexReasonCode) === String(testCase.expectedReasonCode ?? ""),
   };
   return {
     id: testCase.id,

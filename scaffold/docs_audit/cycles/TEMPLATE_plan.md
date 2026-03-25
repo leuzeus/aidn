@@ -1,6 +1,8 @@
 # Plan — CXXX-[type]
 
 ## Usage Matrix
+Scope: `local | shared | high-risk`
+
 | Usage Class | Scenario | Constraint Difference | Evidence |
 |---|---|---|---|
 | nominal | (main scenario) | primary path | TEST-XXX |
