@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { normalizeWorkflowAdapterConfig } from "../../src/lib/config/workflow-adapter-config-lib.mjs";
 import { previewWorkflowAdapterMigration } from "../../src/application/project/workflow-adapter-migration-service.mjs";
 import { IMPORTED_SECTION_POLICIES } from "../../src/application/project/imported-sections-policy-lib.mjs";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function readText(filePath) {
   return fs.readFileSync(filePath, "utf8").replace(/\r\n/g, "\n");
@@ -250,7 +251,10 @@ function main() {
     }
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok) {
+        throw cleanup.error;
+      }
     }
   }
 }

@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function run(repoRoot, argv) {
   const result = spawnSync(process.execPath, [
@@ -157,7 +158,10 @@ function main() {
     process.exit(1);
   } finally {
     if (tmpRoot && fs.existsSync(tmpRoot)) {
-      fs.rmSync(tmpRoot, { recursive: true, force: true });
+      const cleanup = removePathWithRetry(tmpRoot);
+      if (!cleanup.ok) {
+        throw cleanup.error;
+      }
     }
   }
 }
