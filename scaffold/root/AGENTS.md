@@ -104,6 +104,7 @@ Before any durable write, the agent MUST restate:
 - first implementation step from `plan.md` when `COMMITTING`
 - workflow artifacts verified
 - missing or uncertain context, if any
+- `usage_matrix` status when the touched surface is shared or high-risk
 
 Before any durable write, the agent MUST also:
 
@@ -153,6 +154,14 @@ The agent MUST STOP and request user decision when:
 
 If `status.md` indicates `state=IMPLEMENTING`, scope is frozen.
 New objectives belong in a change request or a new cycle, not in an untracked expansion of the current cycle.
+
+For shared or high-risk implementation surfaces, the agent MUST:
+
+- avoid declaring a fix generic from the triggering scenario alone
+- confirm the cycle has a declared `usage_matrix` before durable implementation work continues
+- prefer generalization of the shared contract/path over caller-specific patching
+- treat regression on another declared usage class as evidence of overfitting, not as an acceptable local tradeoff
+- keep closure blocked until the declared usage classes are covered or explicitly reduced with rationale
 
 ## Runtime And Handoff Expectations
 

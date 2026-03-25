@@ -157,12 +157,12 @@ Progress note:
 
 ### CUC-08 - Define AI Correction Guidance
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
 
-- `AGENTS.md`
+- `scaffold/root/AGENTS.md`
 - Codex workflow guidance under `scaffold/codex/` if needed
 
 Done when:
@@ -170,6 +170,11 @@ Done when:
 - AI guidance says not to stop at the triggering scenario
 - the usage matrix is referenced as a convergence guardrail
 - overfit remediation behavior is explicit
+
+Progress note:
+
+- `scaffold/root/AGENTS.md` now requires `usage_matrix` awareness on shared/high-risk work
+- cycle-close and requirements-delta skills now mention usage-matrix validation and maintenance
 
 ### CUC-09 - Decide Native Config / Template Representation
 
@@ -194,19 +199,24 @@ Progress note:
 
 ### CUC-10 - Define Runtime / Tooling Follow-Up
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
 
-- runtime admission and verification planning docs
-- optional future tooling docs
+- `docs/PLAN_CROSS_USAGE_CONVERGENCE_2026-03-24.md`
+- adapter/runtime follow-up docs if enforcement is later extended
 
 Done when:
 
 - the automation path is explicit
 - manual-first operation remains valid
 - touched-surface to matrix-profile mapping is identified
+
+Progress note:
+
+- the plan now contains an explicit tooling direction and touched-surface to profile mapping
+- manual-first operation remains the default while structured adapter rendering provides a future automation anchor
 
 ## Recommended Execution Order
 
