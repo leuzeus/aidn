@@ -169,6 +169,19 @@ source_branch: {{SOURCE_BRANCH}}
 
 {{SHARED_CODEGEN_BOUNDARY_BLOCK}}
 
+## Cross-Usage Convergence Policy (Project Policy, adapter extension to `SPEC-R04` / `SPEC-R11`)
+
+- Treat cross-usage convergence as a validation rule for shared or high-risk implementation surfaces.
+- A shared or high-risk change SHOULD declare a minimal `usage_matrix` before `IMPLEMENTING`.
+- A shared or high-risk change MUST NOT be considered stable from single-usage evidence only.
+- The `usage_matrix` should reason in usage classes, not raw scenario count:
+  - nominal usage
+  - alternate business or caller usage
+  - context, edge, or adversarial usage relevant to the touched surface
+- Shared runtime, hydration, dispatch, codegen, migration, or concurrency-sensitive changes SHOULD validate at least three usage classes before closure.
+- If a fix resolves the triggering scenario but regresses another declared usage class, treat it as overfitted and keep the cycle out of `DONE`.
+- Prefer reusing canonical scenarios for shared surfaces instead of multiplying near-duplicate tests.
+
 ## Session Close & PR Review
 
 - Session close and PR review gates are canonical in `docs/audit/SPEC.md` (`SPEC-R07`, `SPEC-R08`).

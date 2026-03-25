@@ -65,7 +65,7 @@ Priority: high
 Files:
 
 - `docs/SPEC.md`
-- `scaffold/docs_audit/WORKFLOW.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 - cycle templates or summary docs as needed
 
 Done when:
@@ -81,7 +81,7 @@ Priority: high
 
 Files:
 
-- `scaffold/docs_audit/WORKFLOW.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 - workflow adapter config handling if native fields are introduced
 
 Done when:
@@ -98,7 +98,7 @@ Priority: high
 Files:
 
 - `docs/SPEC.md`
-- `scaffold/docs_audit/WORKFLOW.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 
 Done when:
 
