@@ -1,7 +1,7 @@
 # Plan Cross-Usage Convergence - 2026-03-24
 
 Date: 2026-03-24
-Status: proposed
+Status: completed
 Scope: define, position, and operationalize a cross-usage stabilization principle in AIDN so shared or high-risk implementations cannot converge on a single usage only.
 
 ## Objective
@@ -401,3 +401,13 @@ Recommended product stance:
 - make `Cross-Usage Convergence` a validation doctrine in AIDN
 - enforce it as a conditional invariant on shared or high-risk implementation surfaces
 - expose it in project adapters as a risk-based validation policy, not as a blanket rule
+
+## Outcome
+
+Completed integration in this lot:
+
+- canonical term, DoR rule, validation convergence rule, and conditional invariants added to `docs/SPEC.md`
+- `usage_matrix` contract added to cycle plan, status, and traceability templates
+- structured adapter rendering added through `specializedGates.crossUsageConvergence`
+- migration/import policy updated so the adapter section is treated as native structured policy
+- agent and skill guidance updated to reject overfit fixes and maintain the matrix during cycle close and requirements deltas
