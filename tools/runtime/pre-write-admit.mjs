@@ -1043,8 +1043,8 @@ export function preWriteAdmit({
 
   addCheck(
     checks,
-    "usage_matrix_cycle_close_ready",
-    skill !== "cycle-close"
+    "usage_matrix_close_or_promotion_ready",
+    (skill !== "cycle-close" && skill !== "promote-baseline")
       || normalizeScalar(cycleStatusMap.get("state") ?? "unknown").toUpperCase() !== "DONE"
       || usageMatrixSatisfied({
         scope: usageMatrixScope,
@@ -1054,7 +1054,7 @@ export function preWriteAdmit({
     `usage_matrix_scope=${usageMatrixScope}; usage_matrix_state=${usageMatrixState}`,
   );
   if (
-    skill === "cycle-close"
+    (skill === "cycle-close" || skill === "promote-baseline")
     && normalizeScalar(cycleStatusMap.get("state") ?? "unknown").toUpperCase() === "DONE"
     && !usageMatrixSatisfied({
       scope: usageMatrixScope,
@@ -1063,7 +1063,9 @@ export function preWriteAdmit({
     })
   ) {
     blockingReasons.push(
-      `cycle ${activeCycle} is marked DONE but usage matrix is not complete for cycle-close (scope=${usageMatrixScope}, state=${usageMatrixState})`,
+      skill === "promote-baseline"
+        ? `cycle ${activeCycle} is marked DONE but usage matrix is not complete for promote-baseline (scope=${usageMatrixScope}, state=${usageMatrixState})`
+        : `cycle ${activeCycle} is marked DONE but usage matrix is not complete for cycle-close (scope=${usageMatrixScope}, state=${usageMatrixState})`,
     );
   }
 
