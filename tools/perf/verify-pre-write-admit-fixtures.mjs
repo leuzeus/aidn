@@ -296,6 +296,8 @@ function main() {
     const unmergedSessionCycleCreateTarget = path.join(tempRoot, "cycle-create-session-unmerged");
     const cycleCloseBlockedTarget = path.join(tempRoot, "cycle-close-usage-matrix-blocked");
     const cycleCloseWaivedTarget = path.join(tempRoot, "cycle-close-usage-matrix-waived");
+    const promoteBaselineBlockedTarget = path.join(tempRoot, "promote-baseline-usage-matrix-blocked");
+    const promoteBaselineWaivedTarget = path.join(tempRoot, "promote-baseline-usage-matrix-waived");
     const dbOnlyRequirementsTarget = path.join(tempRoot, "db-only-fileless-requirements");
     const dbOnlyCloseSessionTarget = path.join(tempRoot, "db-only-fileless-close-session");
     fs.cpSync(readyTarget, cycleCreateTarget, { recursive: true });
@@ -305,6 +307,8 @@ function main() {
     fs.cpSync(readyTarget, unmergedSessionCycleCreateTarget, { recursive: true });
     fs.cpSync(readyTarget, cycleCloseBlockedTarget, { recursive: true });
     fs.cpSync(readyTarget, cycleCloseWaivedTarget, { recursive: true });
+    fs.cpSync(readyTarget, promoteBaselineBlockedTarget, { recursive: true });
+    fs.cpSync(readyTarget, promoteBaselineWaivedTarget, { recursive: true });
     fs.cpSync(readyTarget, dbOnlyRequirementsTarget, { recursive: true });
     fs.cpSync(readyTarget, dbOnlyCloseSessionTarget, { recursive: true });
     installSharedPlanningFixture(cycleCreateTarget, { selectedExecutionScope: "none" });
@@ -314,6 +318,13 @@ function main() {
     installSessionMergeFixture(unmergedSessionCycleCreateTarget);
     installCycleCloseUsageMatrixFixture(cycleCloseBlockedTarget);
     installCycleCloseUsageMatrixFixture(cycleCloseWaivedTarget, {
+      scope: "high-risk",
+      state: "WAIVED",
+      summary: "nominal + adversarial pending",
+      rationale: "explicit temporary waiver approved in cycle decisions",
+    });
+    installCycleCloseUsageMatrixFixture(promoteBaselineBlockedTarget);
+    installCycleCloseUsageMatrixFixture(promoteBaselineWaivedTarget, {
       scope: "high-risk",
       state: "WAIVED",
       summary: "nominal + adversarial pending",
@@ -439,6 +450,25 @@ function main() {
       "cycle-close",
       "--json",
     ], 0);
+    const promoteBaselineBlocked = runAidn(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      promoteBaselineBlockedTarget,
+      "--skill",
+      "promote-baseline",
+      "--strict",
+      "--json",
+    ], 1);
+    const promoteBaselineWaived = runAidn(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      promoteBaselineWaivedTarget,
+      "--skill",
+      "promote-baseline",
+      "--json",
+    ], 0);
 
     assert(ready.ok === true, "ready pre-write admission should pass");
     assert(ready.admission_status === "admitted", "ready pre-write admission should be admitted");
@@ -475,6 +505,14 @@ function main() {
     assert(cycleCloseWaived.ok === true, "cycle-close pre-write admission should allow an explicit waiver");
     assert(cycleCloseWaived.context.usage_matrix_scope === "high-risk", "cycle-close waiver pre-write admission should expose high-risk scope");
     assert(cycleCloseWaived.context.usage_matrix_state === "WAIVED", "cycle-close waiver pre-write admission should expose waived state");
+    assert(promoteBaselineBlocked.ok === false, "promote-baseline pre-write admission should fail when usage matrix is incomplete on DONE");
+    assert(promoteBaselineBlocked.context.cycle_state === "DONE", "promote-baseline pre-write admission should expose DONE cycle state");
+    assert(promoteBaselineBlocked.context.usage_matrix_scope === "shared", "promote-baseline pre-write admission should expose usage matrix scope");
+    assert(promoteBaselineBlocked.context.usage_matrix_state === "NOT_DEFINED", "promote-baseline pre-write admission should expose usage matrix state");
+    assert(promoteBaselineBlocked.blocking_reasons.some((item) => String(item).includes("promote-baseline")), "promote-baseline pre-write admission should explain the missing usage matrix evidence");
+    assert(promoteBaselineWaived.ok === true, "promote-baseline pre-write admission should allow an explicit waiver");
+    assert(promoteBaselineWaived.context.usage_matrix_scope === "high-risk", "promote-baseline waiver pre-write admission should expose high-risk scope");
+    assert(promoteBaselineWaived.context.usage_matrix_state === "WAIVED", "promote-baseline waiver pre-write admission should expose waived state");
     assert(dbOnlyRequirements.ok === true, "db-only fileless requirements admission should pass from SQLite artifacts");
     assert(dbOnlyRequirements.context.effective_state_mode === "db-only", "db-only fileless requirements admission should expose the effective state mode");
     assert(dbOnlyRequirements.context.current_state_source === "sqlite", "db-only fileless requirements admission should load CURRENT-STATE from SQLite");
@@ -493,6 +531,8 @@ function main() {
       warning,
       cycle_close_blocked: cycleCloseBlocked,
       cycle_close_waived: cycleCloseWaived,
+      promote_baseline_blocked: promoteBaselineBlocked,
+      promote_baseline_waived: promoteBaselineWaived,
       db_only_requirements: dbOnlyRequirements,
       db_only_close_session: dbOnlyCloseSession,
       cycle_create_blocked: cycleCreateBlocked,

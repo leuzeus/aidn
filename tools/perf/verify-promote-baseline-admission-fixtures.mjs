@@ -177,6 +177,15 @@ function runCase(tmpRoot, testCase) {
     codex_action_expected: String(codex?.action ?? "") === testCase.expectedAction,
     codex_result_expected: String(codex?.result ?? "") === testCase.expectedResult,
     codex_reason_code_expected: String(codexReasonCode) === String(testCase.expectedReasonCode ?? ""),
+    codex_blocking_reasons_expected: testCase.expectedReasonCode === "PROMOTE_BASELINE_USAGE_MATRIX_INCOMPLETE"
+      ? Array.isArray(codex?.blocking_reasons) && codex.blocking_reasons.some((item) => {
+        const normalized = String(item).toLowerCase();
+        return normalized.includes("cross-usage evidence") || normalized.includes("usage matrix");
+      })
+      : true,
+    codex_recommended_next_action_expected: testCase.expectedReasonCode === "PROMOTE_BASELINE_USAGE_MATRIX_INCOMPLETE"
+      ? String(codex?.recommended_next_action ?? "").toLowerCase().includes("usage matrix")
+      : true,
   };
   return {
     id: testCase.id,
@@ -190,6 +199,8 @@ function runCase(tmpRoot, testCase) {
       codex_action: codex?.action ?? null,
       codex_result: codex?.result ?? null,
       codex_ok: codex?.ok ?? null,
+      codex_blocking_reasons: Array.isArray(codex?.blocking_reasons) ? codex.blocking_reasons : [],
+      codex_recommended_next_action: codex?.recommended_next_action ?? null,
     },
     pass: Object.values(checks).every((value) => value === true),
   };
