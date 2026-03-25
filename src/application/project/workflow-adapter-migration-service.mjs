@@ -264,6 +264,9 @@ function promoteStructuredPoliciesFromImportedSections(importedSections, extract
   const sharedCodegenSection = sectionMap.get(
     "Shared Codegen Boundary Gate (Mandatory, adapter extension to `SPEC-R03`/`SPEC-R04`)",
   ) ?? "";
+  const crossUsageSection = sectionMap.get(
+    "Cross-Usage Convergence Policy (Project Policy, adapter extension to `SPEC-R04` / `SPEC-R11`)",
+  ) ?? "";
   const promotedSessionTransition = sessionTransitionSection
     ? {
       enabled: true,
@@ -323,6 +326,28 @@ function promoteStructuredPoliciesFromImportedSections(importedSections, extract
         ),
     }
     : extractedConfig.specializedGates?.sharedCodegenBoundary;
+  const promotedCrossUsageConvergence = crossUsageSection
+    ? {
+      enabled: true,
+      sharedSurfaceKinds: parseNestedBacktickBullets(
+        String(crossUsageSection).split(/Shared-surface defaults apply to:/i)[1] ?? "",
+      ),
+      evidenceArtifacts: parseNestedBacktickBullets(
+        String(crossUsageSection).split(/Expected evidence artifacts:/i)[1] ?? "",
+      ),
+      sharedSurfaceMinimumUsageClasses: Number.parseInt(
+        String(crossUsageSection).match(/shared surface:\s*`(\d+)`/i)?.[1] ?? "2",
+        10,
+      ) || 2,
+      highRiskMinimumUsageClasses: Number.parseInt(
+        String(crossUsageSection).match(/high-risk surface:\s*`(\d+)`/i)?.[1] ?? "3",
+        10,
+      ) || 3,
+      requireAlternateUsage: /At least one non-primary usage should exercise/i.test(crossUsageSection),
+      requireContextualUsageForHighRisk: /High-risk changes should include at least one context, edge, or adversarial usage/i.test(crossUsageSection),
+      overfitFixIsBlocking: /treat it as overfitted and block closure/i.test(crossUsageSection),
+    }
+    : extractedConfig.specializedGates?.crossUsageConvergence;
 
   return normalizeWorkflowAdapterConfig({
     ...extractedConfig,
@@ -334,6 +359,7 @@ function promoteStructuredPoliciesFromImportedSections(importedSections, extract
     specializedGates: {
       ...(extractedConfig.specializedGates ?? {}),
       sharedCodegenBoundary: promotedSharedCodegenBoundary,
+      crossUsageConvergence: promotedCrossUsageConvergence,
     },
   }, {
     projectName: extractedConfig.projectName,

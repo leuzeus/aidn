@@ -96,7 +96,7 @@ Progress note:
 
 ### CUC-05 - Define Risk-Based Validation Profiles
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -110,9 +110,14 @@ Done when:
 - shared-surface minimum profile is defined
 - profile selection is practical and deterministic
 
+Progress note:
+
+- `docs/SPEC.md`, the plan, and the adapter policy now define shared/high-risk matrix minimums
+- native adapter rendering now supports structured cross-usage defaults for shared/high-risk surfaces
+
 ### CUC-06 - Define Shared-Surface Scope Rules
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -124,6 +129,11 @@ Done when:
 
 - the rule names the surfaces that trigger stronger matrix requirements
 - runtime, hydration, dispatch, patch, codegen, and protocol surfaces are covered where relevant
+
+Progress note:
+
+- shared/high-risk scope is explicit in `docs/SPEC.md` and the plan
+- native adapter config can now render explicit shared-surface kinds
 
 ### CUC-07 - Add Gowire-Oriented Matrix Examples
 
@@ -163,7 +173,7 @@ Done when:
 
 ### CUC-09 - Decide Native Config / Template Representation
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
@@ -176,6 +186,11 @@ Done when:
 
 - it is clear whether cross-usage policy stays documentation-level
 - or becomes a first-class adapter config field
+
+Progress note:
+
+- cross-usage convergence is now a first-class adapter config/rendering surface under `specializedGates.crossUsageConvergence`
+- migration/import policy also recognizes the section as adapter-structured
 
 ### CUC-10 - Define Runtime / Tooling Follow-Up
 

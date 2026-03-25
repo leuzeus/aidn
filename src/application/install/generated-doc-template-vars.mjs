@@ -222,6 +222,64 @@ function buildSharedCodegenBoundaryBlock(repoRoot, policy = {}) {
   });
 }
 
+function buildCrossUsageRuleLines(policy = {}) {
+  const lines = [];
+  if (policy.requireAlternateUsage === true) {
+    lines.push("- At least one non-primary usage should exercise a different caller, business path, or contract shape.");
+  }
+  if (policy.requireContextualUsageForHighRisk === true) {
+    lines.push("- High-risk changes should include at least one context, edge, or adversarial usage.");
+  }
+  if (policy.overfitFixIsBlocking === true) {
+    lines.push("- If a fix resolves the triggering scenario but regresses another declared usage class, treat it as overfitted and block closure.");
+  }
+  lines.push("- Prefer reusing canonical scenarios for shared surfaces instead of multiplying near-duplicate tests.");
+  return buildLineBlock(lines);
+}
+
+function buildCrossUsageSurfaceBlock(policy = {}) {
+  const kinds = Array.isArray(policy.sharedSurfaceKinds)
+    ? policy.sharedSurfaceKinds.map((item) => clean(item)).filter((item) => item.length > 0)
+    : [];
+  if (kinds.length === 0) {
+    return "";
+  }
+  return [
+    "- Shared-surface defaults apply to:",
+    ...kinds.map((item) => `  - \`${item}\``),
+  ].join("\n");
+}
+
+function buildCrossUsageEvidenceBlock(policy = {}) {
+  const artifacts = Array.isArray(policy.evidenceArtifacts)
+    ? policy.evidenceArtifacts.map((item) => clean(item)).filter((item) => item.length > 0)
+    : [];
+  if (artifacts.length === 0) {
+    return "";
+  }
+  return [
+    "- Expected evidence artifacts:",
+    ...artifacts.map((item) => `  - \`${item}\``),
+  ].join("\n");
+}
+
+function buildCrossUsageConvergenceBlock(repoRoot, policy = {}) {
+  if (policy?.enabled !== true) {
+    return "";
+  }
+  return renderGeneratedDocFragment({
+    repoRoot,
+    fragmentRelative: getScaffoldRelativePath("fragments", "workflow", "cross-usage-convergence-policy.md"),
+    templateVars: {
+      CROSS_USAGE_SHARED_MIN: String(policy.sharedSurfaceMinimumUsageClasses ?? 2),
+      CROSS_USAGE_HIGH_RISK_MIN: String(policy.highRiskMinimumUsageClasses ?? 3),
+      CROSS_USAGE_RULE_LINES: buildCrossUsageRuleLines(policy),
+      CROSS_USAGE_SURFACE_BLOCK: buildCrossUsageSurfaceBlock(policy),
+      CROSS_USAGE_EVIDENCE_BLOCK: buildCrossUsageEvidenceBlock(policy),
+    },
+  });
+}
+
 function buildProjectConstraintsBlock({
   runtimeConstraint,
   architectureConstraint,
@@ -352,6 +410,10 @@ export function buildGeneratedDocTemplateVars({
     SHARED_CODEGEN_BOUNDARY_BLOCK: buildSharedCodegenBoundaryBlock(
       repoRoot,
       adapterSpecializedGates.sharedCodegenBoundary,
+    ),
+    CROSS_USAGE_CONVERGENCE_BLOCK: buildCrossUsageConvergenceBlock(
+      repoRoot,
+      adapterSpecializedGates.crossUsageConvergence,
     ),
     PROJECT_CONSTRAINTS_BLOCK: buildProjectConstraintsBlock({
       runtimeConstraint: runtimeConstraintValue,
