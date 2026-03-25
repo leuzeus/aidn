@@ -12,7 +12,7 @@ Reference plan:
 
 ### CUC-01 - Finalize Canonical Term And Definition
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -26,9 +26,14 @@ Done when:
 - one concise definition exists
 - the scope boundary is explicit
 
+Progress note:
+
+- canonical term selected as `Cross-Usage Convergence`
+- definition and scope boundary are recorded in `docs/SPEC.md` and the plan
+
 ### CUC-02 - Define Conditional Invariants In `SPEC`
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -41,9 +46,14 @@ Done when:
 - single-usage validation is explicitly insufficient for shared/high-risk surfaces
 - overfit-fix detection is stated clearly
 
+Progress note:
+
+- `docs/SPEC.md` now states the single-usage prohibition for shared/high-risk surfaces
+- overfit-fix detection is explicit in both validation and invariant wording
+
 ### CUC-03 - Define `usage_matrix` Artifact Contract
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -57,9 +67,14 @@ Done when:
 - expected fields are clear
 - artifact ownership is unambiguous
 
+Progress note:
+
+- cycle plan, traceability, and status templates now carry `usage_matrix` structure/state
+- the plan template defines usage classes and evidence expectations
+
 ### CUC-04 - Integrate Matrix Requirement Into DoR / VERIFYING / DoD
 
-Status: proposed
+Status: completed
 Priority: high
 
 Files:
@@ -73,6 +88,11 @@ Done when:
 - DoR says when a matrix must be declared
 - VERIFYING says when evidence must exist
 - DoD blocks closure when required classes are missing
+
+Progress note:
+
+- `docs/SPEC.md` now requires a minimal matrix in DoR for shared/high-risk changes
+- cycle templates now include validation closure language tied to matrix execution
 
 ### CUC-05 - Define Risk-Based Validation Profiles
 
@@ -107,7 +127,7 @@ Done when:
 
 ### CUC-07 - Add Gowire-Oriented Matrix Examples
 
-Status: proposed
+Status: completed
 Priority: medium
 
 Files:
@@ -120,6 +140,10 @@ Done when:
 - examples exist for shared runtime fixes
 - examples exist for hydration/dispatch ordering issues
 - examples show nominal + alternate + context/adversarial combinations
+
+Progress note:
+
+- the plan now contains Gowire-oriented examples for dispatch ordering, hydration preservation, and codegen changes
 
 ### CUC-08 - Define AI Correction Guidance
 

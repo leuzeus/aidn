@@ -148,6 +148,82 @@ By stabilization value, the default order is:
 
 For Gowire-like shared runtime work, context and adversarial usages are often mandatory.
 
+## Gowire-Oriented Examples
+
+### Example 1 - Shared Dispatch Ordering Fix
+
+Touched surface:
+
+- shared dispatch/runtime ordering
+
+Minimum matrix:
+
+- nominal: standard dispatch completes in order
+- alternate: second component or caller uses the same dispatch path
+- adversarial: out-of-order completion or retry-after-failure does not apply stale result
+
+Expected evidence:
+
+- targeted runtime tests
+- ordering or stale-revision test
+- one cross-component/shared-surface scenario
+
+### Example 2 - Hydration Preservation Fix
+
+Touched surface:
+
+- shared hydration or mutation patch path
+
+Minimum matrix:
+
+- nominal: primary component hydrates and preserves expected interaction
+- alternate: another component using the same shared helper hydrates correctly
+- context: SSR output and hydration behavior remain aligned
+
+Expected evidence:
+
+- SSR validation
+- hydration validation
+- one second component or page path using the same helper
+
+### Example 3 - Codegen Contract Change
+
+Touched surface:
+
+- generator or shared generated bridge
+
+Minimum matrix:
+
+- nominal: intended generated component path still works
+- alternate: another generated component or manifest path still compiles/renders
+- edge/context: generated output remains valid under the relevant runtime mode or compatibility path
+
+Expected evidence:
+
+- generator-level validation
+- at least one alternate generated target
+- explicit note when the change touches a shared integration surface
+
+## Tooling Direction
+
+Manual-first operation remains valid.
+
+Recommended future automation path:
+
+- infer a default matrix profile from touched surfaces
+- suggest canonical scenarios before generating new ones
+- reuse existing tests as matrix evidence whenever possible
+- escalate automatically when shared surfaces or concurrency-sensitive paths are touched
+
+Touched-surface to default profile mapping:
+
+| Touched surface | Default profile |
+|---|---|
+| isolated local feature | nominal only or nominal + edge |
+| shared component/helper | nominal + alternate |
+| runtime/hydration/dispatch | nominal + alternate + context/adversarial |
+| codegen/protocol/migration | nominal + alternate + context |
+
 ## Proposed Invariants
 
 ### CUC-01 - No Single-Usage Stability Claim
