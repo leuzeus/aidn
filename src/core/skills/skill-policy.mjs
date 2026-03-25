@@ -10,7 +10,7 @@ export const SKILL_ROUTES = {
   "close-session": { tool: "close-session-hook.mjs", defaultMode: "UNKNOWN" },
   "pr-orchestrate": { tool: "pr-orchestrate-hook.mjs", defaultMode: "UNKNOWN" },
   "cycle-create": { tool: "cycle-create-hook.mjs", defaultMode: "COMMITTING" },
-  "cycle-close": { tool: "checkpoint.mjs", defaultMode: "COMMITTING" },
+  "cycle-close": { tool: "cycle-close-hook.mjs", defaultMode: "COMMITTING" },
   "promote-baseline": { tool: "promote-baseline-hook.mjs", defaultMode: "COMMITTING" },
   "requirements-delta": { tool: "requirements-delta-hook.mjs", defaultMode: "COMMITTING" },
   "convert-to-spike": { tool: "convert-to-spike-hook.mjs", defaultMode: "EXPLORING" },
