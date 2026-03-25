@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { copyFixtureToTmp, initGitRepo } from "./test-git-fixture-lib.mjs";
+import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function upsertScalarLine(text, key, value) {
   const pattern = new RegExp(`^${key}:\\s*.*$`, "im");
@@ -217,7 +217,10 @@ function main() {
     }
     if (!args.keepTmp) {
       for (const target of createdTargets) {
-        fs.rmSync(target, { recursive: true, force: true });
+        const cleanup = removePathWithRetry(target);
+        if (!cleanup.ok) {
+          throw cleanup.error;
+        }
       }
     }
     if (!pass) {
