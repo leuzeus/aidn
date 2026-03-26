@@ -61,6 +61,14 @@ function runWithStatus(script, scriptArgs, env = {}) {
   };
 }
 
+function parseJsonOutput(text) {
+  const trimmed = String(text ?? "").trim();
+  if (!trimmed) {
+    return null;
+  }
+  return JSON.parse(trimmed);
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -106,14 +114,18 @@ function main() {
       "--state-mode",
       "db-only",
       "--no-auto-skip-gate",
-      "--no-db-sync",
       "--fail-on-repair-block",
       "--json",
     ], env);
+    const runJsonPayload = parseJsonOutput(runJsonHook.stdout);
 
     const checks = {
       skill_hook_does_not_fail_on_warn: skillHook.status === 0,
-      run_json_hook_does_not_fail_on_warn: runJsonHook.status === 0,
+      run_json_hook_still_fails_under_strict_stop: runJsonHook.status === 1,
+      run_json_hook_repair_status_is_warn_not_block: String(runJsonPayload?.repair_layer_status ?? "") === "warn",
+      run_json_hook_repair_blocking_flag_is_false: runJsonPayload?.repair_layer_blocking === false,
+      run_json_hook_failure_is_not_caused_by_repair_block: String(runJsonPayload?.summary?.repair_layer_status ?? "") === "warn"
+        && String(runJsonPayload?.summary?.result ?? "") === "stop",
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {
@@ -124,6 +136,11 @@ function main() {
       samples: {
         skill_hook_status: skillHook.status,
         run_json_hook_status: runJsonHook.status,
+        run_json_hook_payload: {
+          result: runJsonPayload?.summary?.result ?? null,
+          repair_layer_status: runJsonPayload?.repair_layer_status ?? null,
+          repair_layer_blocking: runJsonPayload?.repair_layer_blocking ?? null,
+        },
       },
       pass,
     };
