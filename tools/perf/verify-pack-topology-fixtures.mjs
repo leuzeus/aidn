@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function assert(condition, message) {
   if (!condition) {
@@ -181,7 +182,7 @@ function main() {
     console.error(`ERROR: ${error.message}`);
     process.exit(1);
   } finally {
-    fs.rmSync(tempRoot, { recursive: true, force: true });
+    removePathWithRetry(tempRoot);
   }
 }
 
