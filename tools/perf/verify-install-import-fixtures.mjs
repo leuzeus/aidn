@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -702,10 +703,16 @@ function main() {
   } finally {
     if (!keepTmp) {
       for (const target of tmpTargets) {
-        fs.rmSync(target, { recursive: true, force: true });
+        const cleanup = removePathWithRetry(target);
+        if (!cleanup.ok) {
+          throw cleanup.error;
+        }
       }
       if (codexStubBin) {
-        fs.rmSync(codexStubBin, { recursive: true, force: true });
+        const cleanup = removePathWithRetry(codexStubBin);
+        if (!cleanup.ok) {
+          throw cleanup.error;
+        }
       }
     }
   }
