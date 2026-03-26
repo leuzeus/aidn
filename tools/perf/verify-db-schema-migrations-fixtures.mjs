@@ -13,6 +13,7 @@ import {
   ensureMetaTable,
 } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
 import { resolveAuditArtifactText } from "../runtime/db-first-runtime-view-lib.mjs";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function countBackupFiles(sqliteFile) {
   const backupDir = path.join(path.dirname(sqliteFile), "backups");
@@ -370,7 +371,7 @@ function main() {
     process.exitCode = 1;
   } finally {
     if (tempRoot) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      removePathWithRetry(tempRoot);
     }
   }
 }

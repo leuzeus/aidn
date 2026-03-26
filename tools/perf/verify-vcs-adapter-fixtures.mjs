@@ -5,6 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 import { assertVcsAdapter } from "../../src/core/ports/vcs-adapter-port.mjs";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function assert(condition, message) {
   if (!condition) {
@@ -88,7 +89,7 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      removePathWithRetry(tempRoot);
     }
   }
 }
