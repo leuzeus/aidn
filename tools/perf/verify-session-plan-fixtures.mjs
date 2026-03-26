@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -66,14 +67,15 @@ function readText(filePath) {
 }
 
 function main() {
+  let tempTarget = null;
   try {
     const args = parseArgs(process.argv.slice(2));
     const repoRoot = process.cwd();
     const sourceTarget = path.resolve(repoRoot, args.target);
-    const tempTarget = path.resolve(repoRoot, args.tempRoot);
+    tempTarget = path.resolve(repoRoot, args.tempRoot);
     const sqliteFile = path.resolve(tempTarget, args.sqliteFile);
 
-    fs.rmSync(tempTarget, { recursive: true, force: true });
+    removePathWithRetry(tempTarget);
     copyFixture(sourceTarget, tempTarget);
 
     const dualResult = runJson("tools/runtime/session-plan.mjs", [
@@ -231,6 +233,10 @@ function main() {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
+  } finally {
+    if (tempTarget) {
+      removePathWithRetry(tempTarget);
+    }
   }
 }
 

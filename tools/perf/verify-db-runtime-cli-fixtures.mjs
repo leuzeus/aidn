@@ -10,6 +10,7 @@ import {
   readSchemaFile,
   toIdempotentSchema,
 } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function runJson(script, scriptArgs) {
   const file = path.resolve(process.cwd(), script);
@@ -168,7 +169,10 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok) {
+        throw cleanup.error;
+      }
     }
   }
 }

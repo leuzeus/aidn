@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { readIndexFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
 import { readAidnProjectConfig } from "../../src/lib/config/aidn-config-lib.mjs";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const MODE_MIGRATE = path.resolve(REPO_ROOT, "tools", "runtime", "mode-migrate.mjs");
@@ -129,7 +130,7 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      removePathWithRetry(tempRoot);
     }
   }
 }

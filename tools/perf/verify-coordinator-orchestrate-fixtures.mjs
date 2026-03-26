@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { initGitRepo } from "./test-git-fixture-lib.mjs";
+import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -272,7 +272,10 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok) {
+        throw cleanup.error;
+      }
     }
   }
 }

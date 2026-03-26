@@ -9,8 +9,6 @@ const AUDIT_MARKERS = [
   "CURRENT-STATE.md",
   "RUNTIME-STATE.md",
   "HANDOFF-PACKET.md",
-  "active_session",
-  "active_cycle",
   "backlog/",
   "sessions/",
   "cycles/",

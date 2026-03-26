@@ -145,11 +145,31 @@ It is intentionally lightweight: strict on invariants, flexible on depth.
 - Intent is explicit in cycle artifacts (objective, scope, non-scope).
 - First implementation step is defined in `plan.md`.
 - Constraints/risks are acknowledged before coding.
+- For shared or high-risk implementation surfaces, a minimal `usage_matrix` is declared before implementation starts.
 
 ### Adaptive DoR Depth (by cycle type)
 - `spike`: keep DoR minimal (learning goal + timebox + decision target).
 - `feature | hotfix | refactor | perf | compat | corrective`: require minimal REQ and planned traceability.
 - `security | migration | integration | structural`: require impact notes and rollback/compatibility strategy.
+
+### Cross-Usage Convergence Planning
+
+Cross-usage convergence is the rule that a shared or high-risk implementation must not be considered stable when validated through only one usage class.
+
+Purpose:
+- reduce hidden assumptions
+- increase pressure toward generic solutions
+- detect overfit fixes that only satisfy the triggering scenario
+
+Operational planning rule:
+- local isolated change: one usage class may be sufficient
+- shared or medium-risk change: at least two usage classes should be planned
+- shared runtime, hydration, dispatch, codegen, migration, or concurrency-sensitive change: at least three usage classes must be planned
+
+Minimum `usage_matrix` structure:
+- primary nominal usage
+- one alternate usage when the surface is shared or medium/high risk
+- one context, edge, or adversarial usage when the surface is shared/high risk
 
 ### Validation Responsibility
 - `start-session` validates the Core DoR Gate before COMMITTING execution.
@@ -189,6 +209,15 @@ Ignoring drift is not allowed.
 - Implementation
 - Audit-driven validation
 - Snapshot update
+
+### Validation Convergence Rule
+
+Audit-driven validation must check whether the implementation survived the declared `usage_matrix`, not only whether the triggering scenario passed.
+
+Consequences:
+- validation evidence should show which usage classes were exercised
+- a fix that passes the triggering scenario while regressing another declared usage class is overfitted and cannot satisfy DoD
+- shared or high-risk surfaces must not close with single-usage evidence only
 
 ### Creating a Cycle
 - **Run skill: `cycle-create`**
@@ -330,6 +359,9 @@ Goal:
 - Skills MUST NOT decide workflow logic
 - Workflow rules MUST NOT be duplicated elsewhere
 - Missing audit files/folders require STOP and remediation
+- A shared or high-risk implementation MUST NOT be declared stable from single-usage validation only
+- At least one non-primary usage MUST exercise a meaningfully different constraint on shared or high-risk surfaces
+- A fix that only satisfies the triggering scenario while degrading another declared usage class is invalid
 
 ------------------------------------------------------------
 

@@ -19,6 +19,7 @@ Close a cycle cleanly and make it baseline-ready.
 Before the first durable write in this skill, run:
 - `npx aidn runtime pre-write-admit --target . --skill cycle-close --json`
 - If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+- If the block mentions `usage matrix`, treat it as a hard gate: update `status.md` so `usage_matrix_state=VERIFIED` or `WAIVED` with an explicit rationale before trying to close again.
 
 ## Inputs
 - Target cycle folder (CXXX-...)
@@ -44,6 +45,7 @@ Before the first durable write in this skill, run:
 ### Tests / Validation
 - Traceability matrix updated OR justification provided for non-testable REQs.
 - TEST references exist or validation steps documented.
+- If the cycle touched a shared or high-risk surface, confirm the declared `usage_matrix` is either verified or explicitly reduced with rationale.
 
 ### Gaps
 - If gap-report.md exists:
@@ -60,6 +62,7 @@ Before the first durable write in this skill, run:
 3) Update status.md:
 - state: VERIFYING (if remaining validations), DONE (if retained), or NO_GO/DROPPED (if non-retained)
 - scope_frozen: true
+- `usage_matrix_state`: `PARTIAL | VERIFIED | WAIVED` as appropriate
 - last updated: (today)
 - next step:
   - VERIFYING: list remaining validations
@@ -91,6 +94,7 @@ Before the first durable write in this skill, run:
 - use this output to capture:
   - gate/reload outcome after close-state update
   - index sync summary for changed cycle artifacts
+- if the hook returns `reason_code=CYCLE_CLOSE_USAGE_MATRIX_INCOMPLETE`, STOP and apply the JSON `recommended_next_action` before any further write.
 - in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
 - in files, this hook remains non-blocking by default.
 - in dual/db-only, prefer `--fail-on-repair-block` on the JSON hook invocation and STOP on `repair_layer_status=block`.

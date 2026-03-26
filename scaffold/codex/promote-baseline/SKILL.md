@@ -19,6 +19,7 @@ Safely “publish” completed work into baseline.
 Before the first durable write in this skill, run:
 - `npx aidn runtime pre-write-admit --target . --skill promote-baseline --json`
 - If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
+- If the block mentions `usage matrix`, treat it as a hard gate: update the target cycle `status.md` so `usage_matrix_state=VERIFIED` or `WAIVED` with an explicit rationale before trying to promote again.
 
 ## Preconditions
 - Cycle state is DONE (or VERIFYING completed)
@@ -32,6 +33,7 @@ Before the first durable write in this skill, run:
 - status.md state
 - gap-report.md open items
 - traceability completeness (or notes)
+- usage matrix completeness for `shared` or `high-risk` surfaces
 3) If validation fails:
 - produce a checklist of what’s missing
 - stop (do not promote)
@@ -65,6 +67,7 @@ Before the first durable write in this skill, run:
 - use this output to capture:
   - baseline/snapshot-driven reload invalidation
   - gate/index consistency after promotion updates
+- if the hook returns `reason_code=PROMOTE_BASELINE_USAGE_MATRIX_INCOMPLETE`, STOP and apply the JSON `recommended_next_action` before any further write.
 - in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
 - in files, this hook remains non-blocking by default.
 - in dual/db-only, prefer `--fail-on-repair-block` on the JSON hook invocation and STOP on `repair_layer_status=block`.

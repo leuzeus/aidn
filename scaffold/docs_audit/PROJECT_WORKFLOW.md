@@ -169,6 +169,8 @@ source_branch: {{SOURCE_BRANCH}}
 
 {{SHARED_CODEGEN_BOUNDARY_BLOCK}}
 
+{{CROSS_USAGE_CONVERGENCE_BLOCK}}
+
 ## Session Close & PR Review
 
 - Session close and PR review gates are canonical in `docs/audit/SPEC.md` (`SPEC-R07`, `SPEC-R08`).

@@ -67,6 +67,7 @@ If more detail is needed:
 - Read for:
   - branch mapping
   - `dor_state`
+  - `usage_matrix_state`
   - continuity data
   - outcome/state
   - next step
@@ -81,6 +82,7 @@ Read for:
 - objective
 - scope / non-scope
 - first implementation step
+- declared `usage_matrix` and expected usage classes
 
 ### Decisions
 
@@ -119,6 +121,7 @@ Read for:
 - File: `docs/audit/cycles/CXXX-*/traceability.md`
 - Read for:
   - REQ to TEST links
+  - usage-class coverage (`nominal | alternate | context/edge/adversarial`)
   - affected files
   - planned vs verified coverage
 
@@ -204,6 +207,7 @@ Read:
 2. `brief.md`
 3. `plan.md`
 4. `traceability.md`
+5. confirm `usage_matrix` coverage when the touched surface is shared or high-risk
 
 ## Reminder
 

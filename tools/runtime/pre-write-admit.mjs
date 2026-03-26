@@ -208,6 +208,35 @@ function canonicalUnknown(value) {
   return normalizeScalar(value).toLowerCase() === "unknown";
 }
 
+function normalizeUsageMatrixScope(value) {
+  const normalized = normalizeScalar(value).toLowerCase();
+  if (normalized === "shared" || normalized === "high-risk") {
+    return normalized;
+  }
+  return "local";
+}
+
+function normalizeUsageMatrixState(value) {
+  const normalized = normalizeScalar(value).toUpperCase();
+  if (["NOT_DEFINED", "DECLARED", "PARTIAL", "VERIFIED", "WAIVED"].includes(normalized)) {
+    return normalized;
+  }
+  return "NOT_DEFINED";
+}
+
+function usageMatrixSatisfied({ scope, state, rationale }) {
+  if (scope === "local") {
+    return true;
+  }
+  if (state === "VERIFIED") {
+    return true;
+  }
+  if (state === "WAIVED" && String(rationale ?? "").trim().length > 0 && String(rationale ?? "").trim().toLowerCase() !== "none") {
+    return true;
+  }
+  return false;
+}
+
 function isResolvedPlanningArbitrationStatus(value) {
   const normalized = normalizeScalar(value).toLowerCase();
   return !normalized
@@ -944,6 +973,10 @@ export function preWriteAdmit({
   );
   const dorOverrideReason = normalizeScalar(cycleStatusMap.get("dor_override_reason") ?? "none") || "none";
   const mappedCycleBranch = normalizeScalar(cycleStatusMap.get("branch_name") ?? "none") || "none";
+  const usageMatrixScope = normalizeUsageMatrixScope(cycleStatusMap.get("usage_matrix_scope") ?? "local");
+  const usageMatrixState = normalizeUsageMatrixState(cycleStatusMap.get("usage_matrix_state") ?? "NOT_DEFINED");
+  const usageMatrixSummary = normalizeScalar(cycleStatusMap.get("usage_matrix_summary") ?? "none") || "none";
+  const usageMatrixRationale = normalizeScalar(cycleStatusMap.get("usage_matrix_rationale") ?? "none") || "none";
   const cycleCreateGitGate = skill === "cycle-create"
     ? evaluateCycleCreateGitGate(absoluteTargetRoot)
     : null;
@@ -1006,6 +1039,34 @@ export function preWriteAdmit({
     blockingReasons.push("dor_state is not READY and no override reason is documented");
   } else if (policy.requireDorReady && dorState !== "READY" && !canonicalNone(dorOverrideReason)) {
     warnings.push(`DoR override in effect: ${dorOverrideReason}`);
+  }
+
+  addCheck(
+    checks,
+    "usage_matrix_close_or_promotion_ready",
+    (skill !== "cycle-close" && skill !== "promote-baseline")
+      || normalizeScalar(cycleStatusMap.get("state") ?? "unknown").toUpperCase() !== "DONE"
+      || usageMatrixSatisfied({
+        scope: usageMatrixScope,
+        state: usageMatrixState,
+        rationale: usageMatrixRationale,
+      }),
+    `usage_matrix_scope=${usageMatrixScope}; usage_matrix_state=${usageMatrixState}`,
+  );
+  if (
+    (skill === "cycle-close" || skill === "promote-baseline")
+    && normalizeScalar(cycleStatusMap.get("state") ?? "unknown").toUpperCase() === "DONE"
+    && !usageMatrixSatisfied({
+      scope: usageMatrixScope,
+      state: usageMatrixState,
+      rationale: usageMatrixRationale,
+    })
+  ) {
+    blockingReasons.push(
+      skill === "promote-baseline"
+        ? `cycle ${activeCycle} is marked DONE but usage matrix is not complete for promote-baseline (scope=${usageMatrixScope}, state=${usageMatrixState})`
+        : `cycle ${activeCycle} is marked DONE but usage matrix is not complete for cycle-close (scope=${usageMatrixScope}, state=${usageMatrixState})`,
+    );
   }
 
   addCheck(checks, "runtime_state_exists", runtimeStateExists, runtimeStateExists
@@ -1138,7 +1199,12 @@ export function preWriteAdmit({
       session_branch: sessionBranch,
       active_cycle: activeCycle,
       cycle_branch: cycleBranch,
+      cycle_state: normalizeScalar(cycleStatusMap.get("state") ?? "unknown").toUpperCase() || "UNKNOWN",
       dor_state: dorState,
+      usage_matrix_scope: usageMatrixScope,
+      usage_matrix_state: usageMatrixState,
+      usage_matrix_summary: usageMatrixSummary,
+      usage_matrix_rationale: usageMatrixRationale,
       first_plan_step: effectiveFirstPlanStep,
       active_backlog: activeBacklog,
       backlog_status: backlogStatus,

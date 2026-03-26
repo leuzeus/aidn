@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { readIndexFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function makeCodexStub(tmpRoot) {
   const binDir = path.resolve(tmpRoot, ".tmp-codex-bin");
@@ -223,10 +224,7 @@ function main() {
     process.exit(1);
   } finally {
     if (tmpRoot && fs.existsSync(tmpRoot)) {
-      fs.rmSync(tmpRoot, { recursive: true, force: true });
-    }
-    if (codexStubBin && fs.existsSync(codexStubBin)) {
-      fs.rmSync(codexStubBin, { recursive: true, force: true });
+      removePathWithRetry(tmpRoot);
     }
   }
 }

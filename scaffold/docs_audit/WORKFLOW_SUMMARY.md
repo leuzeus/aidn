@@ -50,6 +50,7 @@ Session start:
 Committing execution:
 - Work must belong to a cycle (`SPEC-R03`)
 - DoR core/adaptive checks must be satisfied before implementation (`SPEC-R04`)
+- Shared or high-risk changes require a declared `usage_matrix` before implementation and must not close on single-usage evidence only
 - Drift suspicion requires `drift-check` (`SPEC-R05`)
 - `drift-check` uses generic gating as the canonical drift gate; its top-level hook result is authoritative when it returns `stop`
 - Cycle continuity rule must be explicit (`R1`/`R2`/`R3`, `SPEC-R06`)
@@ -98,3 +99,4 @@ Incident handling:
 - Confirm snapshot freshness
 - Confirm intended mode and required gates
 - Confirm first implementation step before durable write
+- Confirm `usage_matrix` status when the touched surface is shared or high-risk

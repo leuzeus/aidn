@@ -12,6 +12,16 @@ import {
 } from "./repair-layer-payload-lib.mjs";
 import { resolveRuntimePath } from "./runtime-path-resolution.mjs";
 
+function resolveRuntimeOutputPath(targetRoot, candidatePath) {
+  if (!candidatePath) {
+    return "";
+  }
+  if (path.isAbsolute(candidatePath)) {
+    return path.resolve(candidatePath);
+  }
+  return path.resolve(targetRoot, candidatePath);
+}
+
 function detectBackend(indexFile, backend) {
   if (backend === "json" || backend === "sqlite") {
     return backend;
@@ -93,7 +103,7 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
     });
     let reportFile = null;
     if (args.reportFile) {
-      reportFile = resolveRuntimePath(targetRoot, args.reportFile);
+      reportFile = resolveRuntimeOutputPath(targetRoot, args.reportFile);
       writeJson(reportFile, {
         ts: new Date().toISOString(),
         target_root: targetRoot,
@@ -162,7 +172,7 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
 
   let reportFile = null;
   if (args.reportFile) {
-    reportFile = resolveRuntimePath(targetRoot, args.reportFile);
+    reportFile = resolveRuntimeOutputPath(targetRoot, args.reportFile);
     writeJson(reportFile, {
       ts: new Date().toISOString(),
       target_root: targetRoot,
