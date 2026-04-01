@@ -2,7 +2,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { readLatestSharedHandoffRelay, resolveSharedCoordinationStore } from "../../src/application/runtime/shared-coordination-store-service.mjs";
 import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { buildWorkflowRoute } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { canAgentRolePerform } from "../../src/core/agents/agent-role-model.mjs";
 import { admitHandoff } from "./handoff-admit.mjs";
@@ -11,6 +13,7 @@ import {
   canonicalUnknown,
   loadSqliteIndexPayloadSafe,
   normalizeScalar,
+  parseTimestamp,
   parseSimpleMap,
   resolveAuditArtifactText,
   resolveDbBackedMode,
@@ -218,13 +221,222 @@ function deriveSharedPlanningCandidate(handoff) {
   };
 }
 
-export function computeCoordinatorNextAction({
+function readPacketSummary(packetResolution) {
+  if (!packetResolution?.exists) {
+    return {
+      exists: false,
+      updated_at: "",
+      updated_at_ms: null,
+      recommended_role: "",
+      recommended_action: "",
+      goal: "",
+      scope_type: "",
+      scope_id: "",
+      preferred_dispatch_source: "",
+    };
+  }
+  const packetMap = parseSimpleMap(packetResolution.text);
+  const updatedAt = normalizeScalar(packetMap.get("updated_at") ?? "");
+  return {
+    exists: true,
+    updated_at: updatedAt,
+    updated_at_ms: parseTimestamp(updatedAt),
+    recommended_role: normalizeScalar(packetMap.get("recommended_next_agent_role") ?? ""),
+    recommended_action: normalizeScalar(packetMap.get("recommended_next_agent_action") ?? ""),
+    goal: normalizeScalar(packetMap.get("next_agent_goal") ?? ""),
+    scope_type: normalizeScalar(packetMap.get("scope_type") ?? ""),
+    scope_id: normalizeScalar(packetMap.get("scope_id") ?? ""),
+    preferred_dispatch_source: normalizeScalar(packetMap.get("preferred_dispatch_source") ?? ""),
+  };
+}
+
+function readSharedRelaySummary(relay) {
+  if (!relay || typeof relay !== "object") {
+    return {
+      exists: false,
+      updated_at: "",
+      updated_at_ms: null,
+      recommended_role: "",
+      recommended_action: "",
+      goal: "",
+      scope_type: "",
+      scope_id: "",
+      preferred_dispatch_source: "",
+    };
+  }
+  const metadata = relay.metadata && typeof relay.metadata === "object"
+    ? relay.metadata
+    : {};
+  const updatedAt = normalizeScalar(metadata.updated_at || relay.created_at || "");
+  return {
+    exists: true,
+    updated_at: updatedAt,
+    updated_at_ms: parseTimestamp(updatedAt),
+    recommended_role: normalizeScalar(metadata.recommended_next_agent_role || relay.recommended_next_agent_role || ""),
+    recommended_action: normalizeScalar(metadata.recommended_next_agent_action || relay.recommended_next_agent_action || ""),
+    goal: normalizeScalar(metadata.next_agent_goal || ""),
+    scope_type: normalizeScalar(metadata.scope_type || relay.scope_type || ""),
+    scope_id: normalizeScalar(metadata.scope_id || relay.scope_id || ""),
+    preferred_dispatch_source: normalizeScalar(metadata.preferred_dispatch_source || ""),
+  };
+}
+
+function derivePacketResolution(localPacket, sharedRelay) {
+  if (!localPacket.exists && !sharedRelay.exists) {
+    return {
+      selected_source: "none",
+      selection_reason: "no local packet or shared handoff relay is available",
+      freshness_status: "missing",
+      conflict_status: "not_applicable",
+      local_packet_updated_at: "",
+      shared_relay_updated_at: "",
+    };
+  }
+  if (!localPacket.exists && sharedRelay.exists) {
+    return {
+      selected_source: "shared-coordination",
+      selection_reason: "local handoff packet is missing",
+      freshness_status: "local-missing",
+      conflict_status: "not_applicable",
+      local_packet_updated_at: "",
+      shared_relay_updated_at: sharedRelay.updated_at,
+    };
+  }
+  if (localPacket.exists && !sharedRelay.exists) {
+    return {
+      selected_source: "local-packet",
+      selection_reason: "no shared handoff relay is available",
+      freshness_status: "shared-missing",
+      conflict_status: "not_applicable",
+      local_packet_updated_at: localPacket.updated_at,
+      shared_relay_updated_at: "",
+    };
+  }
+
+  const diverged = localPacket.recommended_role !== sharedRelay.recommended_role
+    || localPacket.recommended_action !== sharedRelay.recommended_action
+    || localPacket.goal !== sharedRelay.goal
+    || localPacket.scope_type !== sharedRelay.scope_type
+    || localPacket.scope_id !== sharedRelay.scope_id
+    || localPacket.preferred_dispatch_source !== sharedRelay.preferred_dispatch_source;
+
+  if (localPacket.updated_at_ms === null && sharedRelay.updated_at_ms !== null) {
+    return {
+      selected_source: "shared-coordination",
+      selection_reason: "local handoff packet has no parseable timestamp while the shared relay does",
+      freshness_status: "shared-newer",
+      conflict_status: diverged ? "diverged-shared-preferred" : "aligned-shared-preferred",
+      local_packet_updated_at: localPacket.updated_at,
+      shared_relay_updated_at: sharedRelay.updated_at,
+    };
+  }
+  if (localPacket.updated_at_ms !== null && sharedRelay.updated_at_ms === null) {
+    return {
+      selected_source: "local-packet",
+      selection_reason: "shared handoff relay has no parseable timestamp while the local packet does",
+      freshness_status: "local-newer",
+      conflict_status: diverged ? "diverged-local-preferred" : "aligned-local-preferred",
+      local_packet_updated_at: localPacket.updated_at,
+      shared_relay_updated_at: sharedRelay.updated_at,
+    };
+  }
+  if (localPacket.updated_at_ms !== null && sharedRelay.updated_at_ms !== null) {
+    if (sharedRelay.updated_at_ms > localPacket.updated_at_ms) {
+      return {
+        selected_source: "shared-coordination",
+        selection_reason: "shared handoff relay is newer than the local packet",
+        freshness_status: "shared-newer",
+        conflict_status: diverged ? "diverged-shared-preferred" : "aligned-shared-preferred",
+        local_packet_updated_at: localPacket.updated_at,
+        shared_relay_updated_at: sharedRelay.updated_at,
+      };
+    }
+    if (localPacket.updated_at_ms > sharedRelay.updated_at_ms) {
+      return {
+        selected_source: "local-packet",
+        selection_reason: "local handoff packet is newer than the shared relay",
+        freshness_status: "local-newer",
+        conflict_status: diverged ? "diverged-local-preferred" : "aligned-local-preferred",
+        local_packet_updated_at: localPacket.updated_at,
+        shared_relay_updated_at: sharedRelay.updated_at,
+      };
+    }
+  }
+  return {
+    selected_source: "local-packet",
+    selection_reason: diverged
+      ? "local and shared handoff timestamps are tied; local packet stays authoritative for this worktree"
+      : "local and shared handoff timestamps are tied and aligned",
+    freshness_status: "same-age",
+    conflict_status: diverged ? "diverged-local-preferred" : "aligned",
+    local_packet_updated_at: localPacket.updated_at,
+    shared_relay_updated_at: sharedRelay.updated_at,
+  };
+}
+
+function buildSharedRelayHandoff(relay) {
+  const metadata = relay?.metadata && typeof relay.metadata === "object"
+    ? relay.metadata
+    : {};
+  const packet = {
+    handoff_status: normalizeScalar(metadata.handoff_status || relay?.handoff_status || "unknown") || "unknown",
+    recommended_next_agent_role: normalizeScalar(metadata.recommended_next_agent_role || relay?.recommended_next_agent_role || "coordinator") || "coordinator",
+    recommended_next_agent_action: normalizeScalar(metadata.recommended_next_agent_action || relay?.recommended_next_agent_action || "coordinate") || "coordinate",
+    next_agent_goal: normalizeScalar(metadata.next_agent_goal || "reload the shared relay and continue") || "reload the shared relay and continue",
+    preferred_dispatch_source: normalizeScalar(metadata.preferred_dispatch_source || "workflow") || "workflow",
+    shared_planning_candidate_ready: normalizeScalar(metadata.shared_planning_candidate_ready || "no") || "no",
+    shared_planning_candidate_aligned: normalizeScalar(metadata.shared_planning_candidate_aligned || "no") || "no",
+    shared_planning_dispatch_scope: normalizeScalar(metadata.shared_planning_dispatch_scope || "none") || "none",
+    shared_planning_dispatch_action: normalizeScalar(metadata.shared_planning_dispatch_action || "none") || "none",
+    scope_type: normalizeScalar(metadata.scope_type || relay?.scope_type || "none") || "none",
+    scope_id: normalizeScalar(metadata.scope_id || relay?.scope_id || "none") || "none",
+    target_branch: normalizeScalar(metadata.target_branch || "none") || "none",
+    repair_layer_status: normalizeScalar(metadata.repair_layer_status || "unknown") || "unknown",
+    repair_primary_reason: normalizeScalar(metadata.repair_primary_reason || "unknown") || "unknown",
+    updated_at: normalizeScalar(metadata.updated_at || relay?.created_at || ""),
+  };
+  return {
+    admission_status: "admitted",
+    status: {
+      admission_status: "admitted",
+      admitted: true,
+      issues: [],
+      warnings: [],
+    },
+    packet,
+    recommended_next_agent_role: packet.recommended_next_agent_role,
+    recommended_action: packet.recommended_next_agent_action,
+    next_agent_goal: packet.next_agent_goal,
+    preferred_dispatch_source: packet.preferred_dispatch_source,
+    scope_type: packet.scope_type,
+    scope_id: packet.scope_id,
+    target_branch: packet.target_branch,
+    transition_policy: {
+      status: "shared_relay_fallback",
+      reason: "shared coordination handoff relay used because the local packet is missing or older",
+    },
+    route: {
+      role: packet.recommended_next_agent_role,
+      action: packet.recommended_next_agent_action,
+      goal: packet.next_agent_goal,
+    },
+    source: "shared-coordination",
+  };
+}
+
+export async function computeCoordinatorNextAction({
   targetRoot,
   currentStateFile = "docs/audit/CURRENT-STATE.md",
   runtimeStateFile = "docs/audit/RUNTIME-STATE.md",
   packetFile = "docs/audit/HANDOFF-PACKET.md",
+  workspace = null,
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const effectiveWorkspace = workspace ?? resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
   const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
   const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
     exists: false,
@@ -259,11 +471,29 @@ export function computeCoordinatorNextAction({
   const currentMap = parseSimpleMap(currentStateText);
   const runtimeMap = parseSimpleMap(runtimeStateText);
   const nextActions = parseNumberedSection(currentStateText, "## Next Actions");
+  const activeSession = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
+  const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
+  const sharedCoordinationResolution = sharedCoordination ?? await resolveSharedCoordinationStore({
+    targetRoot: absoluteTargetRoot,
+    workspace: effectiveWorkspace,
+    ...sharedCoordinationOptions,
+  });
+  const sharedRelayRead = await readLatestSharedHandoffRelay(sharedCoordinationResolution, {
+    workspace: effectiveWorkspace,
+    sessionId: activeSession !== "none" ? activeSession : "",
+    scopeType: activeCycle !== "none" ? "cycle" : "",
+    scopeId: activeCycle !== "none" ? activeCycle : "",
+  });
+  const sharedRelay = sharedRelayRead.handoff_relay ?? null;
+  const localPacket = readPacketSummary(packetResolution);
+  const sharedRelayPacket = readSharedRelaySummary(sharedRelay);
+  const packetResolutionInfo = derivePacketResolution(localPacket, sharedRelayPacket);
+  const shouldUseSharedRelay = packetResolutionInfo.selected_source === "shared-coordination";
 
   let handoff = null;
   let recommendation = null;
   let scope = null;
-  if (packetResolution.exists && currentStateResolution.exists && runtimeStateResolution.exists) {
+  if (packetResolution.exists && currentStateResolution.exists && runtimeStateResolution.exists && !shouldUseSharedRelay) {
     handoff = admitHandoff({
       targetRoot: absoluteTargetRoot,
       packetFile,
@@ -307,6 +537,24 @@ export function computeCoordinatorNextAction({
       scope_id: normalizeScalar(handoff.scope_id ?? "none") || "none",
       target_branch: normalizeScalar(handoff.target_branch ?? "none") || "none",
     };
+  } else if (shouldUseSharedRelay && currentStateResolution.exists && runtimeStateResolution.exists) {
+    handoff = buildSharedRelayHandoff(sharedRelay);
+    const preferredDispatchSource = normalizeScalar(handoff.preferred_dispatch_source ?? "workflow") || "workflow";
+    recommendation = buildWorkflowRoute({
+      role: handoff.recommended_next_agent_role,
+      action: handoff.recommended_action,
+      goal: handoff.next_agent_goal,
+      source: preferredDispatchSource === "shared_planning" ? "handoff-shared-planning" : "handoff-shared-relay",
+      reason: preferredDispatchSource === "shared_planning"
+        ? `shared handoff relay provides a shared-planning recommendation (${handoff.transition_policy?.status ?? "shared-relay"})`
+        : `shared handoff relay provides the next recommendation (${handoff.transition_policy?.status ?? "shared-relay"})`,
+      stop_required: handoff.admission_status === "blocked",
+    });
+    scope = {
+      scope_type: normalizeScalar(handoff.scope_type ?? "none") || "none",
+      scope_id: normalizeScalar(handoff.scope_id ?? "none") || "none",
+      target_branch: normalizeScalar(handoff.target_branch ?? "none") || "none",
+    };
   } else {
     recommendation = deriveFallbackRecommendation(currentMap, runtimeMap, nextActions);
     scope = deriveFallbackScope(currentMap);
@@ -324,7 +572,10 @@ export function computeCoordinatorNextAction({
     target_root: absoluteTargetRoot,
     current_state_file: currentStateResolution.exists ? currentStateResolution.logicalPath : "none",
     runtime_state_file: runtimeStateResolution.exists ? runtimeStateResolution.logicalPath : "none",
-    packet_file: packetResolution.exists ? packetResolution.logicalPath : "none",
+    packet_file: handoff?.source === "shared-coordination"
+      ? (normalizeScalar(sharedRelay?.handoff_packet_ref) || "shared-coordination://handoff_relays")
+      : (packetResolution.exists ? packetResolution.logicalPath : "none"),
+    packet_resolution: packetResolutionInfo,
     handoff,
     preferred_dispatch_source: handoff
       ? (normalizeScalar(handoff.preferred_dispatch_source ?? "workflow") || "workflow")
@@ -341,15 +592,18 @@ export function computeCoordinatorNextAction({
       next_actions: nextActions,
       current_state_source: currentStateResolution.source,
       runtime_state_source: runtimeStateResolution.source,
-      packet_source: packetResolution.source,
+      packet_source: handoff?.source === "shared-coordination"
+        ? "shared-coordination"
+        : packetResolution.source,
+      packet_resolution: packetResolutionInfo,
     },
   };
 }
 
 function main() {
-  try {
+  Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
-    const result = computeCoordinatorNextAction({
+    const result = await computeCoordinatorNextAction({
       targetRoot: args.target,
       currentStateFile: args.currentStateFile,
       runtimeStateFile: args.runtimeStateFile,
@@ -367,11 +621,11 @@ function main() {
       console.log(`- reason=${result.recommendation.reason}`);
       console.log(`- stop_required=${result.recommendation.stop_required}`);
     }
-  } catch (error) {
+  }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
-  }
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

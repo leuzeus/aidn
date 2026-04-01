@@ -331,7 +331,7 @@ export async function projectMultiAgentStatus({
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
-  const coordinator = computeCoordinatorNextAction({
+  const coordinator = await computeCoordinatorNextAction({
     targetRoot: absoluteTargetRoot,
   });
   const integrationRisk = assessIntegrationRisk({
@@ -373,7 +373,7 @@ export async function projectMultiAgentStatus({
     targetRoot: absoluteTargetRoot,
     rosterFile,
   });
-  const coordinationSummary = projectCoordinationSummary({
+  const coordinationSummary = await projectCoordinationSummary({
     targetRoot: absoluteTargetRoot,
     historyFile: coordinationHistoryFile,
   });

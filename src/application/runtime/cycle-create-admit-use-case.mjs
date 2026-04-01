@@ -1,5 +1,6 @@
 import path from "node:path";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
+import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { resolveBranchMapping } from "../../lib/workflow/branch-mapping-lib.mjs";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
@@ -37,6 +38,7 @@ function makeResult(base, overrides = {}) {
     blocking_reasons: overrides.blocking_reasons ?? [],
     warnings: overrides.warnings ?? [],
     recommended_next_action: overrides.recommended_next_action ?? null,
+    workspace: overrides.workspace ?? base.workspace ?? null,
   };
 }
 
@@ -218,6 +220,10 @@ export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) 
   const gitAdapter = createLocalGitAdapter();
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+    gitAdapter,
+  });
   const currentState = readCurrentState(absoluteTargetRoot);
   const auditRoot = currentState.audit_root;
   const sourceBranch = readSourceBranch(absoluteTargetRoot);
@@ -262,6 +268,7 @@ export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) 
     backlog_next_step: String(currentState.backlog_next_step ?? "unknown"),
     backlog_selected_execution_scope: String(currentState.backlog_selected_execution_scope ?? "none"),
     planning_arbitration_status: String(currentState.planning_arbitration_status ?? "none"),
+    workspace,
   };
 
   if ([AIDN_BRANCH_KIND.UNKNOWN, AIDN_BRANCH_KIND.OTHER].includes(branchKind)) {

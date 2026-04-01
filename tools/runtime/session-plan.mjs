@@ -2,6 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { resolveSharedCoordinationStore, summarizeSharedCoordinationResolution, syncSharedPlanningState } from "../../src/application/runtime/shared-coordination-store-service.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { writeJsonIfChanged, writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
@@ -566,7 +568,7 @@ function shouldPersistDbFirst(stateMode, dbFirstFlag) {
   return stateMode === "dual" || stateMode === "db-only";
 }
 
-export function runSessionPlan({
+export async function runSessionPlan({
   targetRoot,
   currentStateFile = "docs/audit/CURRENT-STATE.md",
   draftFile = ".aidn/runtime/context/session-plan-draft.json",
@@ -590,8 +592,18 @@ export function runSessionPlan({
   items = [],
   questions = [],
   promote = false,
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const sharedCoordinationResolution = sharedCoordination ?? await resolveSharedCoordinationStore({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    ...sharedCoordinationOptions,
+  });
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, stateMode);
   const currentStatePath = resolveTargetPath(absoluteTargetRoot, currentStateFile);
   const currentStateText = readTextIfExists(currentStatePath);
@@ -655,6 +667,14 @@ export function runSessionPlan({
   let backlogPayload = null;
   let currentStateWrite = null;
   let dbFirstWrites = [];
+  let sharedCoordinationSync = {
+    attempted: false,
+    ok: false,
+    status: sharedCoordinationResolution.status,
+    reason: sharedCoordinationResolution.reason,
+    operation: "none",
+    backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
+  };
   if (promote) {
     backlogRelative = resolveBacklogRelativePath({
       sessionId: resolvedSessionId,
@@ -731,10 +751,20 @@ export function runSessionPlan({
         }));
       }
     }
+
+    sharedCoordinationSync = await syncSharedPlanningState(sharedCoordinationResolution, {
+      workspace,
+      payload: backlogPayload,
+      backlogFile: backlogRelative,
+      planningKey: `session:${resolvedSessionId}`,
+    });
   }
 
   return {
     target_root: absoluteTargetRoot,
+    workspace,
+    shared_coordination_backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
+    shared_coordination_sync: sharedCoordinationSync,
     state_mode: effectiveStateMode,
     current_state_file: fs.existsSync(currentStatePath) ? relPath(absoluteTargetRoot, currentStatePath) : "none",
     draft_file: relPath(absoluteTargetRoot, resolveTargetPath(absoluteTargetRoot, draftFile)),
@@ -755,9 +785,9 @@ export function runSessionPlan({
 }
 
 function main() {
-  try {
+  Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
-    const output = runSessionPlan({
+    const output = await runSessionPlan({
       targetRoot: args.target,
       currentStateFile: args.currentStateFile,
       draftFile: args.draftFile,
@@ -797,11 +827,11 @@ function main() {
       console.log(`- planning_arbitration_status=${output.payload.planning_arbitration_status}`);
       console.log(`- db_first_applied=${output.db_first_applied ? "yes" : "no"}`);
     }
-  } catch (error) {
+  }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
-  }
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

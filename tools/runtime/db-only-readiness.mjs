@@ -115,6 +115,10 @@ function scanFileForDbOnly(packageRoot, absolutePath) {
     status = "likely-file-bound";
     reasons.push("reads audit artifacts through filesystem calls without DB-first helpers");
   } else {
+    status = "metadata-only";
+    reasons.push("mentions audit/runtime artifact names but does not read them directly");
+  }
+  if (status === "manual-review") {
     reasons.push("touches audit/runtime artifacts but DB-first support was not detected");
   }
   return {

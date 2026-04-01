@@ -2,6 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
+import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
 import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
@@ -390,6 +392,7 @@ function buildMarkdown(digest) {
   lines.push(`repair_primary_reason: ${digest.repair_primary_reason}`);
   lines.push(`repair_routing_hint: ${digest.repair_routing_hint}`);
   lines.push(`repair_routing_reason: ${digest.repair_routing_reason}`);
+  lines.push(`shared_runtime_validation_status: ${digest.shared_runtime_validation_status}`);
   lines.push("");
   lines.push("## Current State Freshness");
   lines.push("");
@@ -446,6 +449,13 @@ export function projectRuntimeState({
   const hydrated = readJsonIfExists(hydratedPath);
   const fallbackContext = readJsonIfExists(contextPath);
   const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const sharedRuntimeValidation = validateSharedRuntimeContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+  });
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
   const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
     exists: false,
@@ -512,6 +522,7 @@ export function projectRuntimeState({
     repair_primary_reason: deriveRepairPrimaryReason(repairSummary),
     repair_routing_hint: repairRouting.routing_hint,
     repair_routing_reason: repairRouting.routing_reason,
+    shared_runtime_validation_status: sharedRuntimeValidation.status,
     current_state_freshness: freshness.freshness,
     current_state_freshness_basis: freshness.basis,
     blocking_findings: blockingFindings,
@@ -528,6 +539,9 @@ export function projectRuntimeState({
   const outWrite = writeUtf8IfChanged(resolveTargetPath(absoluteTargetRoot, out), markdown);
   return {
     target_root: absoluteTargetRoot,
+    workspace,
+    shared_state_backend: sqliteFallback.backend ?? null,
+    shared_runtime_validation: sharedRuntimeValidation,
     output_file: outWrite.path,
     written: outWrite.written,
     digest,

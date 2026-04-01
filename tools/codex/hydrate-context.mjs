@@ -299,7 +299,7 @@ async function main() {
       };
     }
     if (shouldProjectHandoffPacket(args, hydrated, targetRoot)) {
-      handoffPacket = projectHandoffPacket({
+      handoffPacket = await projectHandoffPacket({
         targetRoot,
         currentStateFile: "docs/audit/CURRENT-STATE.md",
         runtimeStateFile: args.runtimeStateOut,

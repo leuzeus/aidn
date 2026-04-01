@@ -278,6 +278,8 @@ function runCase(tmpRoot, testCase) {
     hook_action_expected: String(hook?.action ?? "") === testCase.expectedAction,
     hook_result_expected: String(hook?.result ?? "") === testCase.expectedResult,
     hook_checkpoint_expected: Boolean(hook?.checkpoint) === testCase.expectsCheckpoint,
+    hook_workspace_present: String(hook?.workspace?.workspace_id ?? "").length > 0,
+    hook_worktree_present: String(hook?.workspace?.worktree_id ?? "").length > 0,
     codex_action_expected: String(codexAction ?? "") === testCase.expectedAction,
     codex_result_expected: String(codexResult ?? "") === testCase.expectedResult,
   };
@@ -290,6 +292,8 @@ function runCase(tmpRoot, testCase) {
       hook_action: hook?.action ?? null,
       hook_result: hook?.result ?? null,
       hook_checkpoint_ran: Boolean(hook?.checkpoint),
+      hook_workspace_id: hook?.workspace?.workspace_id ?? null,
+      hook_is_linked_worktree: hook?.workspace?.is_linked_worktree ?? null,
       codex_action: codexAction,
       codex_result: codexResult,
       codex_ok: codex?.ok ?? null,

@@ -166,7 +166,7 @@ export async function resumeCoordinatorDispatch({
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const loopState = computeCoordinatorLoopState({
+  const loopState = await computeCoordinatorLoopState({
     targetRoot: absoluteTargetRoot,
     currentStateFile,
     runtimeStateFile,

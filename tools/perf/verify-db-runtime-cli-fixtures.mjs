@@ -126,10 +126,12 @@ function main() {
 
     const checks = {
       status_before_reports_missing_db: statusBefore.exists === false,
+      status_before_reports_local_scope: statusBefore.sqlite_scope === "explicit-path",
       status_before_reports_pending_baseline: Array.isArray(statusBefore.pending_ids) && statusBefore.pending_ids.includes("0001_workflow_index_baseline_v2"),
       migrate_fresh_applies_baseline: Array.isArray(migrateFresh?.migration?.applied_ids) && migrateFresh.migration.applied_ids.includes("0001_workflow_index_baseline_v2"),
       status_after_no_pending: Array.isArray(statusAfter.pending_ids) && statusAfter.pending_ids.length === 0,
       status_after_reports_applied: Array.isArray(statusAfter.applied_ids) && statusAfter.applied_ids.includes("0001_workflow_index_baseline_v2"),
+      status_after_reports_resolved_projection: statusAfter.resolved_projection_backend?.projection_scope === "local-target",
       backup_fresh_created: typeof backupFresh?.backup_file === "string" && fs.existsSync(backupFresh.backup_file),
       legacy_migrate_creates_backup: typeof migrateLegacy?.migration?.backup_file === "string" && fs.existsSync(migrateLegacy.migration.backup_file),
       legacy_migrate_applies_baseline: Array.isArray(migrateLegacy?.migration?.applied_ids) && migrateLegacy.migration.applied_ids.includes("0001_workflow_index_baseline_v2"),
@@ -141,11 +143,13 @@ function main() {
       samples: {
         status_before: {
           exists: statusBefore.exists,
+          sqlite_scope: statusBefore.sqlite_scope,
           pending_ids: statusBefore.pending_ids,
         },
         migrate_fresh: migrateFresh,
         status_after: {
           exists: statusAfter.exists,
+          resolved_projection_backend: statusAfter.resolved_projection_backend,
           applied_ids: statusAfter.applied_ids,
           pending_ids: statusAfter.pending_ids,
         },

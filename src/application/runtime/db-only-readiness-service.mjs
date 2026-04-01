@@ -201,6 +201,8 @@ export function assessDbOnlyReadiness({
     sqlite_index: {
       exists: sqliteIndex.exists,
       file: sqliteIndex.sqliteFile,
+      projection_scope: sqliteIndex.backend?.projection_scope ?? "local-target",
+      coordination_backend_kind: sqliteIndex.backend?.coordination_backend_kind ?? "none",
       readable: sqliteIndex.payload != null,
       artifact_count: Array.isArray(sqliteIndex.payload?.artifacts) ? sqliteIndex.payload.artifacts.length : 0,
       content_artifacts_count: sqliteContentArtifactsCount,

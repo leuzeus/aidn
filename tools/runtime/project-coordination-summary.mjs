@@ -2,6 +2,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  readSharedCoordinationRecords,
+  resolveSharedCoordinationStore,
+  summarizeSharedCoordinationResolution,
+} from "../../src/application/runtime/shared-coordination-store-service.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
@@ -69,6 +75,28 @@ function readNdjson(filePath) {
     .filter(Boolean)
     .map((line) => JSON.parse(line))
     .filter((entry) => entry && typeof entry === "object");
+}
+
+function mapCoordinationRecordToEvent(record) {
+  if (!record || typeof record !== "object") {
+    return null;
+  }
+  const payload = record.payload && typeof record.payload === "object"
+    ? record.payload
+    : {};
+  return {
+    ts: normalizeScalar(payload.ts || record.created_at || "unknown") || "unknown",
+    event: normalizeScalar(payload.event || record.record_type || "coordinator_dispatch") || "coordinator_dispatch",
+    selected_agent: normalizeScalar(payload.selected_agent || "unknown") || "unknown",
+    recommended_role: normalizeScalar(payload.recommended_role || record.actor_role || "unknown") || "unknown",
+    recommended_action: normalizeScalar(payload.recommended_action || record.actor_action || "unknown") || "unknown",
+    goal: normalizeScalar(payload.goal || "unknown") || "unknown",
+    dispatch_status: normalizeScalar(payload.dispatch_status || "unknown") || "unknown",
+    execution_status: normalizeScalar(payload.execution_status || record.status || "unknown") || "unknown",
+    preferred_dispatch_source: normalizeScalar(payload.preferred_dispatch_source || "workflow") || "workflow",
+    decision: normalizeScalar(payload.decision || "unknown") || "unknown",
+    note: normalizeScalar(payload.note || "unknown") || "unknown",
+  };
 }
 
 function summarize(entries) {
@@ -202,18 +230,40 @@ function buildMarkdown(summary, historyRelativePath) {
   return `${lines.join("\n")}\n`;
 }
 
-export function projectCoordinationSummary({
+export async function projectCoordinationSummary({
   targetRoot,
   historyFile = ".aidn/runtime/context/coordination-history.ndjson",
   out = "docs/audit/COORDINATION-SUMMARY.md",
+  workspace = null,
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
+  const effectiveWorkspace = workspace ?? resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
   const historyPath = resolveTargetPath(absoluteTargetRoot, historyFile);
   const outPath = resolveTargetPath(absoluteTargetRoot, out);
-  const entries = readNdjson(historyPath);
+  const sharedCoordinationResolution = sharedCoordination ?? await resolveSharedCoordinationStore({
+    targetRoot: absoluteTargetRoot,
+    workspace: effectiveWorkspace,
+    ...sharedCoordinationOptions,
+  });
+  const sharedRecords = await readSharedCoordinationRecords(sharedCoordinationResolution, {
+    workspace: effectiveWorkspace,
+    limit: 200,
+  });
+  const entries = sharedRecords.ok && Array.isArray(sharedRecords.records) && sharedRecords.records.length > 0
+    ? sharedRecords.records.map((record) => mapCoordinationRecordToEvent(record)).filter(Boolean)
+    : readNdjson(historyPath);
   const summary = summarize(entries);
-  const historyRelativePath = path.relative(absoluteTargetRoot, historyPath).replace(/\\/g, "/") || historyFile;
+  const historySource = sharedRecords.ok && Array.isArray(sharedRecords.records) && sharedRecords.records.length > 0
+    ? "shared-coordination"
+    : "coordination-history";
+  const historyRelativePath = historySource === "shared-coordination"
+    ? "shared-coordination://coordination_records"
+    : (path.relative(absoluteTargetRoot, historyPath).replace(/\\/g, "/") || historyFile);
   const markdown = buildMarkdown(summary, historyRelativePath);
   const relativeOut = String(out).replace(/\\/g, "/").replace(/^docs\/audit\//i, "");
   const dbFirstWrite = effectiveStateMode === "dual" || effectiveStateMode === "db-only"
@@ -236,7 +286,10 @@ export function projectCoordinationSummary({
     };
   return {
     target_root: absoluteTargetRoot,
+    workspace: effectiveWorkspace,
     history_file: historyPath,
+    history_source: historySource,
+    shared_coordination_backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
     output_file: write.path,
     written: write.written,
     state_mode: effectiveStateMode,
@@ -248,9 +301,9 @@ export function projectCoordinationSummary({
 }
 
 function main() {
-  try {
+  Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
-    const result = projectCoordinationSummary({
+    const result = await projectCoordinationSummary({
       targetRoot: args.target,
       historyFile: args.historyFile,
       out: args.out,
@@ -264,11 +317,11 @@ function main() {
       console.log(`- last_recommended_role=${result.summary.last_recommended_role}`);
       console.log(`- last_execution_status=${result.summary.last_execution_status}`);
     }
-  } catch (error) {
+  }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
-  }
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -3,10 +3,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
+import { loadSharedStateSnapshot } from "../../src/application/runtime/shared-state-backend-service.mjs";
+import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
 import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { resolveEffectiveStateMode } from "../../src/core/state-mode/state-mode-policy.mjs";
-import { readIndexFromSqlite, readRuntimeHeadArtifactsFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
 
 const DEFAULT_POLICY = Object.freeze({
@@ -547,33 +549,11 @@ function relativePath(root, filePath) {
 }
 
 function loadSqliteIndexPayloadSafe(targetRoot) {
-  const sqliteFile = path.join(targetRoot, ".aidn", "runtime", "index", "workflow-index.sqlite");
-  if (!exists(sqliteFile)) {
-    return {
-      exists: false,
-      sqliteFile,
-      payload: null,
-      runtimeHeads: {},
-      warning: "",
-    };
-  }
-  try {
-    return {
-      exists: true,
-      sqliteFile,
-      payload: readIndexFromSqlite(sqliteFile).payload,
-      runtimeHeads: readRuntimeHeadArtifactsFromSqlite(sqliteFile).heads,
-      warning: "",
-    };
-  } catch (error) {
-    return {
-      exists: true,
-      sqliteFile,
-      payload: null,
-      runtimeHeads: {},
-      warning: `SQLite artifact fallback unavailable: ${error.message}`,
-    };
-  }
+  return loadSharedStateSnapshot({
+    targetRoot,
+    includePayload: true,
+    includeRuntimeHeads: true,
+  });
 }
 
 function findArtifactByPath(sqlitePayload, artifactPath) {
@@ -853,6 +833,13 @@ export function preWriteAdmit({
   runtimeStateFile = "docs/audit/RUNTIME-STATE.md",
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const sharedRuntimeValidation = validateSharedRuntimeContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+  });
   const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
   const effectiveStateMode = resolveEffectiveStateMode({
     targetRoot: absoluteTargetRoot,
@@ -1120,6 +1107,10 @@ export function preWriteAdmit({
     && cycleBranch !== mappedCycleBranch) {
     blockingReasons.push(`cycle branch mismatch: CURRENT-STATE=${cycleBranch} status.md=${mappedCycleBranch}`);
   }
+  if (sharedRuntimeValidation.status === "reject") {
+    blockingReasons.push(...sharedRuntimeValidation.issues);
+  }
+  warnings.push(...sharedRuntimeValidation.warnings);
 
   if (mode === "COMMITTING" && branchKind === "session") {
     warnings.push("COMMITTING work on a session branch should stay limited to integration, handoff, or orchestration unless explicitly documented");
@@ -1185,6 +1176,9 @@ export function preWriteAdmit({
     ok,
     admission_status: admissionStatus,
     target_root: absoluteTargetRoot,
+    workspace,
+    shared_state_backend: sqliteFallback.backend ?? null,
+    shared_runtime_validation: sharedRuntimeValidation,
     skill: skill || "generic",
     policy,
     current_state_file: currentStateExists ? currentStateResolution.logicalPath : "none",
@@ -1193,6 +1187,14 @@ export function preWriteAdmit({
     cycle_status_file: cycleStatusResolution.exists ? cycleStatusResolution.logicalPath : "none",
     plan_file: planResolution.exists ? planResolution.logicalPath : "none",
     context: {
+      workspace_id: workspace.workspace_id,
+      workspace_id_source: workspace.workspace_id_source,
+      worktree_id: workspace.worktree_id,
+      is_linked_worktree: workspace.is_linked_worktree ? "yes" : "no",
+      shared_runtime_mode: workspace.shared_runtime_mode,
+      shared_runtime_validation_status: sharedRuntimeValidation.status,
+      shared_runtime_locator_ref: workspace.shared_runtime_locator_ref,
+      shared_backend_kind: workspace.shared_backend_kind,
       mode,
       branch_kind: branchKind,
       active_session: activeSession,

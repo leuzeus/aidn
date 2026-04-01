@@ -2,6 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
+import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
 import {
   WORKFLOW_ADMISSION_STATUS,
 } from "../../src/application/runtime/workflow-transition-constants.mjs";
@@ -178,6 +180,13 @@ export function admitHandoff({
   const packet = parseSimpleMap(packetText);
   const current = parseSimpleMap(currentStateText);
   const runtime = parseSimpleMap(runtimeStateText);
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const sharedRuntimeValidation = validateSharedRuntimeContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+  });
   const prioritizedArtifacts = parseListSection(packetText, "prioritized_artifacts");
   const cycleStatusResolution = resolveCycleStatusArtifact({
     targetRoot: absoluteTargetRoot,
@@ -233,6 +242,9 @@ export function admitHandoff({
   }
   if (sharedPlanningGateStatus === "blocked") {
     issues.push(`shared planning gate is blocked: ${sharedPlanningGateReason}`);
+  }
+  if (sharedRuntimeValidation.status === "reject") {
+    issues.push(...sharedRuntimeValidation.issues);
   }
   if (consistency.pass === false) {
     issues.push("live current-state consistency failed");
@@ -348,6 +360,7 @@ export function admitHandoff({
   if (sharedPlanningFreshness === "stale") {
     warnings.push("shared planning backlog is stale relative to CURRENT-STATE.md");
   }
+  warnings.push(...sharedRuntimeValidation.warnings);
 
   let admissionStatus = WORKFLOW_ADMISSION_STATUS.ADMITTED;
   let admitted = true;
@@ -408,6 +421,9 @@ export function admitHandoff({
     scope_type: packetScopeType || "none",
     scope_id: packetScopeId || "none",
     target_branch: packetTargetBranch || "none",
+    workspace,
+    shared_state_backend: sqliteFallback.backend ?? null,
+    shared_runtime_validation: sharedRuntimeValidation,
     packet: Object.fromEntries(packet.entries()),
     transition_policy: transition,
     prioritized_artifacts: prioritizedArtifacts,

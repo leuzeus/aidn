@@ -50,6 +50,10 @@ function main() {
     const headCommit = adapter.getHeadCommit(targetRoot);
     const cleanWorkingTree = adapter.hasWorkingTreeChanges(targetRoot);
     const repoRoot = adapter.getRepoRoot(targetRoot);
+    const worktreeRoot = adapter.getWorktreeRoot(targetRoot);
+    const gitDir = adapter.getGitDir(targetRoot);
+    const gitCommonDir = adapter.getGitCommonDir(targetRoot);
+    const linkedWorktree = adapter.isLinkedWorktree(targetRoot);
     const upstreamBranch = adapter.getUpstreamBranch(targetRoot);
     const syncedDivergence = adapter.getAheadBehind(targetRoot, "HEAD", upstreamBranch);
     const mainBranchExists = adapter.refExists(targetRoot, "main");
@@ -59,10 +63,31 @@ function main() {
     assert(headCommit !== "unknown" && headCommit.length >= 7, "expected a concrete HEAD commit");
     assert(cleanWorkingTree === false, "expected clean working tree after initial commit");
     assert(path.resolve(repoRoot) === path.resolve(targetRoot), "expected repo root to match initialized repository");
+    assert(path.resolve(worktreeRoot) === path.resolve(targetRoot), "expected worktree root to match initialized repository");
+    assert(gitDir && path.isAbsolute(gitDir), "expected absolute git dir for main checkout");
+    assert(gitCommonDir && path.isAbsolute(gitCommonDir), "expected absolute git common dir for main checkout");
+    assert(path.resolve(gitDir) === path.resolve(gitCommonDir), "expected main checkout git dir and common dir to match");
+    assert(linkedWorktree === false, "expected main checkout not to be reported as linked worktree");
     assert(upstreamBranch === "origin/main", `expected upstream branch origin/main, received ${upstreamBranch}`);
     assert(syncedDivergence.known === true && syncedDivergence.ahead === 0 && syncedDivergence.behind === 0, "expected synced branch divergence after initial push");
     assert(mainBranchExists === true, "expected main branch ref to exist");
     assert(missingBranchExists === false, "expected missing ref lookup to return false");
+
+    const linkedRoot = path.join(tempRoot, "repo-linked");
+    runGit(targetRoot, ["worktree", "add", linkedRoot, "-b", "feature/worktree-fixture"]);
+    const linkedRepoRoot = adapter.getRepoRoot(linkedRoot);
+    const linkedWorktreeRoot = adapter.getWorktreeRoot(linkedRoot);
+    const linkedGitDir = adapter.getGitDir(linkedRoot);
+    const linkedGitCommonDir = adapter.getGitCommonDir(linkedRoot);
+    const linkedWorktreeFlag = adapter.isLinkedWorktree(linkedRoot);
+
+    assert(path.resolve(linkedRepoRoot) === path.resolve(linkedRoot), "expected linked worktree repo root to match linked checkout");
+    assert(path.resolve(linkedWorktreeRoot) === path.resolve(linkedRoot), "expected linked worktree root to match linked checkout");
+    assert(linkedGitDir && path.isAbsolute(linkedGitDir), "expected absolute git dir for linked worktree");
+    assert(linkedGitCommonDir && path.isAbsolute(linkedGitCommonDir), "expected absolute git common dir for linked worktree");
+    assert(path.resolve(linkedGitDir) !== path.resolve(linkedGitCommonDir), "expected linked worktree git dir to differ from common dir");
+    assert(path.resolve(linkedGitCommonDir) === path.resolve(gitCommonDir), "expected linked worktree to share the same common dir as main checkout");
+    assert(linkedWorktreeFlag === true, "expected linked checkout to be reported as linked worktree");
 
     fs.writeFileSync(readmePath, "# fixture\n\nupdated\n", "utf8");
 
