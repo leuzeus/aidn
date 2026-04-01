@@ -2,6 +2,7 @@ release/dist/
 .codex/cache/
 .codex/local-*
 .idea/
+node_modules/
 tmp/
 .ai/
 /.aidn/
