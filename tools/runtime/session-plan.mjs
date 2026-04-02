@@ -705,6 +705,7 @@ export async function runSessionPlan({
 
     if (currentStateText) {
       let nextCurrentState = currentStateText;
+      nextCurrentState = setOrInsertScalar(nextCurrentState, "active_session", resolvedSessionId, "session_branch");
       nextCurrentState = setOrInsertScalar(nextCurrentState, "active_backlog", backlogRelative.replace(/^docs\/audit\//, ""), "first_plan_step");
       nextCurrentState = setOrInsertScalar(nextCurrentState, "backlog_status", backlogPayload.planning_status, "active_backlog");
       nextCurrentState = setOrInsertScalar(nextCurrentState, "backlog_next_step", backlogPayload.backlog_next_step, "backlog_status");
