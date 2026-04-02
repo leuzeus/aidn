@@ -157,11 +157,13 @@ async function main() {
     });
     assert(direct.ok === true, "direct backup should succeed with fake store");
     assert(direct.health?.schema_status === "ready", "direct backup should expose schema status");
+    assert(direct.backup?.schema_snapshot?.latest_applied_schema_version === 1, "direct backup should expose the applied schema version snapshot");
     assert(direct.backup?.snapshot?.coordination_read?.record_count === 2, "direct backup should export coordination records");
     assert(fs.existsSync(outFile), "direct backup should write the backup file");
 
     const writtenPayload = JSON.parse(fs.readFileSync(outFile, "utf8"));
     assert(writtenPayload.shared_coordination_backend?.backend_kind === "postgres", "written backup should expose postgres backend");
+    assert(writtenPayload.contract?.source_schema_version === 1, "written backup should expose the source schema version");
     assert(writtenPayload.snapshot?.handoff_read?.handoff_relay?.relay_id === "handoff:backup:1", "written backup should contain latest handoff relay");
 
     console.log("PASS");

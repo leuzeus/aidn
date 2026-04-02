@@ -273,6 +273,7 @@ export async function executeCoordinatorDispatch({
     runtimeStateFile,
     packetFile,
     agentRosterFile,
+    sharedCoordination: sharedCoordinationResolution,
   });
   const sharedPlanningCandidate = deriveSharedPlanningCandidate(dispatch);
   const coordinationLogPath = resolveTargetPath(absoluteTargetRoot, coordinationLogFile);
@@ -497,6 +498,7 @@ export async function executeCoordinatorDispatch({
     targetRoot: absoluteTargetRoot,
     coordinationHistoryFile,
     out: multiAgentStatusFile,
+    sharedCoordination: sharedCoordinationResolution,
   });
   finalResult.multi_agent_status_written = Boolean(finalResult.multi_agent_status?.written);
   return decorateWithSharedCoordination(finalResult);

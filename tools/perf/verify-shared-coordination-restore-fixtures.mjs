@@ -30,12 +30,29 @@ function runCli(args, env = {}) {
   };
 }
 
-function createBackupPayload(workspaceId = "workspace-restore") {
+function createBackupPayload(workspaceId = "workspace-restore", sourceSchemaVersion = 1) {
   return {
     ts: "2026-03-29T18:00:00.000Z",
     workspace: {
       workspace_id: workspaceId,
       worktree_id: "worktree-source",
+    },
+    health: {
+      schema_status: sourceSchemaVersion === 1 ? "ready" : "version-ahead",
+      latest_applied_schema_version: sourceSchemaVersion,
+      expected_schema_version: sourceSchemaVersion,
+    },
+    schema_snapshot: {
+      schema_name: "aidn_shared",
+      expected_schema_version: sourceSchemaVersion,
+      latest_applied_schema_version: sourceSchemaVersion,
+      schema_status: sourceSchemaVersion === 1 ? "ready" : "version-ahead",
+    },
+    contract: {
+      schema_name: "aidn_shared",
+      schema_version: sourceSchemaVersion,
+      expected_schema_version: sourceSchemaVersion,
+      source_schema_version: sourceSchemaVersion,
     },
     snapshot: {
       planning_read: {
@@ -251,6 +268,7 @@ async function main() {
     });
     assert(dryRun.ok === true, "direct restore dry-run should succeed");
     assert(dryRun.status === "dry-run", "direct restore should default to dry-run");
+    assert(dryRun.schema_compatibility?.status === "compatible", "direct restore dry-run should report schema compatibility");
     assert(state.planning === null, "dry-run should not mutate the backend");
 
     const writeResult = await restoreSharedCoordination({
@@ -261,12 +279,41 @@ async function main() {
     });
     assert(writeResult.ok === true, "direct restore write should succeed");
     assert(writeResult.status === "restored", "direct restore write should report restored");
+    assert(writeResult.schema_compatibility?.status === "compatible", "direct restore write should preserve schema compatibility");
     assert(state.workspace?.workspaceId === "workspace-restore", "restore should register workspace");
     assert(state.worktree?.worktreeId, "restore should register worktree");
     assert(state.planning?.planningKey === "session:S201", "restore should replay planning state");
     assert(state.handoff?.relayId === "handoff:restore:1", "restore should replay handoff relay");
     assert(state.coordination.length === 2, "restore should replay coordination records");
     assert(state.coordination[0]?.recordId === "coord:restore:1", "restore should replay coordination records oldest-first");
+
+    fakeResolution.store.healthcheck = async () => ({
+      ok: true,
+      database_name: "aidn_test",
+      schema_name: "aidn_shared",
+      current_schema_name: "public",
+      expected_schema_version: 1,
+      applied_schema_versions: [],
+      latest_applied_schema_version: 0,
+      tables_present: [],
+      tables_missing: [
+        "coordination_records",
+        "handoff_relays",
+        "planning_states",
+        "schema_migrations",
+        "workspace_registry",
+        "worktree_registry",
+      ],
+      schema_status: "needs-bootstrap",
+      schema_ok: false,
+    });
+    const bootstrapCompatible = await restoreSharedCoordination({
+      targetRoot,
+      input: ".aidn/runtime/shared-coordination-backup.json",
+      sharedCoordination: fakeResolution,
+    });
+    assert(bootstrapCompatible.ok === true, "restore preview should remain compatible when the target schema only needs bootstrap");
+    assert(bootstrapCompatible.schema_compatibility?.status === "compatible-after-bootstrap", "restore preview should explain bootstrap-compatible schema replay");
 
     fs.writeFileSync(backupFile, JSON.stringify(createBackupPayload("workspace-other"), null, 2));
     const mismatch = await restoreSharedCoordination({
@@ -276,6 +323,15 @@ async function main() {
     });
     assert(mismatch.ok === false, "workspace mismatch should fail");
     assert(mismatch.status === "workspace-mismatch", "workspace mismatch should be explicit");
+
+    fs.writeFileSync(backupFile, JSON.stringify(createBackupPayload("workspace-restore", 2), null, 2));
+    const versionAhead = await restoreSharedCoordination({
+      targetRoot,
+      input: ".aidn/runtime/shared-coordination-backup.json",
+      sharedCoordination: fakeResolution,
+    });
+    assert(versionAhead.ok === false, "newer-schema backup should be rejected");
+    assert(versionAhead.status === "backup-version-ahead", "newer-schema backup mismatch should be explicit");
 
     console.log("PASS");
   } catch (error) {

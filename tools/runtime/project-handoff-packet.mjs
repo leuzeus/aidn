@@ -8,6 +8,7 @@ import {
   resolveSharedCoordinationStore,
   summarizeSharedCoordinationResolution,
 } from "../../src/application/runtime/shared-coordination-store-service.mjs";
+import { resolvePromotedSharedPlanningContext } from "../../src/application/runtime/shared-planning-resolution-service.mjs";
 import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
@@ -286,7 +287,8 @@ function buildPrioritizedArtifacts({
   sessionArtifact,
   cycleStatusArtifact,
   planArtifact,
-  currentMap,
+  activeBacklog,
+  firstPlanStep,
 }) {
   const items = [
     "docs/audit/CURRENT-STATE.md",
@@ -295,10 +297,9 @@ function buildPrioritizedArtifacts({
     "docs/audit/WORKFLOW_SUMMARY.md",
   ];
   const runtimeArtifacts = parseListSection(runtimeStateText, "prioritized_artifacts");
-  const firstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "");
-  const activeBacklog = normalizeBacklogRef(currentMap.get("active_backlog") ?? "none");
-  if (activeBacklog !== "none") {
-    items.push(activeBacklog);
+  const normalizedBacklog = normalizeBacklogRef(activeBacklog);
+  if (normalizedBacklog !== "none") {
+    items.push(normalizedBacklog);
   }
   if (sessionArtifact?.exists) {
     items.push(sessionArtifact.logicalPath);
@@ -711,10 +712,23 @@ export async function projectHandoffPacket({
   const handoffStatus = deriveHandoffStatus({ consistency, runtimeMap, currentMap });
   const mode = normalizeScalar(currentMap.get("mode") ?? "unknown") || "unknown";
   const firstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "unknown") || "unknown";
-  const activeBacklog = normalizeBacklogRef(currentMap.get("active_backlog") ?? "none");
-  const backlogStatus = normalizeScalar(currentMap.get("backlog_status") ?? "unknown") || "unknown";
-  const backlogNextStep = normalizeScalar(currentMap.get("backlog_next_step") ?? "unknown") || "unknown";
-  const planningArbitrationStatus = normalizeScalar(currentMap.get("planning_arbitration_status") ?? "none") || "none";
+  const sharedPlanningContext = await resolvePromotedSharedPlanningContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    currentState: {
+      active_session: activeSession,
+      active_backlog: currentMap.get("active_backlog") ?? "none",
+      backlog_status: currentMap.get("backlog_status") ?? "unknown",
+      backlog_next_step: currentMap.get("backlog_next_step") ?? "unknown",
+      backlog_selected_execution_scope: currentMap.get("backlog_selected_execution_scope") ?? "none",
+      planning_arbitration_status: currentMap.get("planning_arbitration_status") ?? "none",
+    },
+    sharedCoordination: sharedCoordinationResolution,
+  });
+  const activeBacklog = normalizeBacklogRef(sharedPlanningContext.active_backlog);
+  const backlogStatus = normalizeScalar(sharedPlanningContext.backlog_status) || "unknown";
+  const backlogNextStep = normalizeScalar(sharedPlanningContext.backlog_next_step) || "unknown";
+  const planningArbitrationStatus = normalizeScalar(sharedPlanningContext.planning_arbitration_status) || "none";
   const blockingFindings = uniqueItems(parseListSection(runtimeStateText, "blocking_findings").slice(0, 5));
   const nextRouting = deriveNextAgentRouting({
     handoffStatus,
@@ -777,7 +791,7 @@ export async function projectHandoffPacket({
     scope_id: scope.scope_id,
     target_branch: scope.target_branch,
     backlog_refs: activeBacklog,
-    planning_arbitration_status: sharedPlanning.artifact_found ? sharedPlanning.planning_arbitration_status : planningArbitrationStatus,
+    planning_arbitration_status: planningArbitrationStatus,
     preferred_dispatch_source: sharedPlanning.preferred_dispatch_source,
     shared_planning_candidate_ready: sharedPlanning.candidate_ready ? "yes" : "no",
     shared_planning_candidate_aligned: sharedPlanning.candidate_aligned ? "yes" : "no",
@@ -815,7 +829,8 @@ export async function projectHandoffPacket({
       sessionArtifact: sessionResolution,
       cycleStatusArtifact: cycleStatusResolution,
       planArtifact: planResolution,
-      currentMap,
+      activeBacklog,
+      firstPlanStep,
     }),
     consistency_status: consistency.pass ? "pass" : "fail",
     session_file: sessionResolution.exists ? sessionResolution.logicalPath : "none",

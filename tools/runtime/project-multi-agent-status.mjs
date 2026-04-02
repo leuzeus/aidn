@@ -328,11 +328,15 @@ export async function projectMultiAgentStatus({
   rosterFile = "docs/audit/AGENT-ROSTER.md",
   coordinationHistoryFile = ".aidn/runtime/context/coordination-history.ndjson",
   out = "docs/audit/MULTI-AGENT-STATUS.md",
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
   const coordinator = await computeCoordinatorNextAction({
     targetRoot: absoluteTargetRoot,
+    sharedCoordination,
+    sharedCoordinationOptions,
   });
   const integrationRisk = assessIntegrationRisk({
     targetRoot: absoluteTargetRoot,
@@ -340,6 +344,8 @@ export async function projectMultiAgentStatus({
   const arbitration = await suggestCoordinatorArbitration({
     targetRoot: absoluteTargetRoot,
     agentRosterFile: rosterFile,
+    sharedCoordination,
+    sharedCoordinationOptions,
   }).then((result) => ({
     arbitration_status: "ok",
     ...result,
@@ -376,6 +382,8 @@ export async function projectMultiAgentStatus({
   const coordinationSummary = await projectCoordinationSummary({
     targetRoot: absoluteTargetRoot,
     historyFile: coordinationHistoryFile,
+    sharedCoordination,
+    sharedCoordinationOptions,
   });
   const outPath = path.resolve(absoluteTargetRoot, out);
   const markdown = buildMarkdown({

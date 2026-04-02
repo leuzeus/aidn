@@ -128,7 +128,7 @@ async function main() {
     });
     assert(behind.ok === false, "doctor should fail when the schema is behind");
     assert(behind.findings?.some((item) => item.code === "version-behind"), "doctor should report version-behind");
-    assert(behind.recommended_actions?.some((item) => item.includes("Upgrade")), "doctor should recommend upgrading the schema");
+    assert(behind.recommended_actions?.some((item) => item.includes("shared-coordination-migrate --dry-run")), "doctor should recommend reviewing the upgrade plan before applying it");
 
     console.log("PASS");
   } catch (error) {

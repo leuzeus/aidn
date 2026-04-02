@@ -31,6 +31,10 @@ function runCli(args, env = {}) {
 }
 
 function createFakeResolution() {
+  const state = {
+    schemaStatus: "ready",
+    latestSchemaVersion: 1,
+  };
   return {
     enabled: true,
     configured: true,
@@ -55,6 +59,8 @@ function createFakeResolution() {
     },
     store: {
       async bootstrap() {
+        state.schemaStatus = "ready";
+        state.latestSchemaVersion = 1;
         return {
           ok: true,
           schema_name: "aidn_shared",
@@ -68,8 +74,8 @@ function createFakeResolution() {
           schema_name: "aidn_shared",
           current_schema_name: "public",
           expected_schema_version: 1,
-          applied_schema_versions: [1],
-          latest_applied_schema_version: 1,
+          applied_schema_versions: state.latestSchemaVersion > 0 ? [state.latestSchemaVersion] : [],
+          latest_applied_schema_version: state.latestSchemaVersion,
           tables_present: [
             "coordination_records",
             "handoff_relays",
@@ -79,9 +85,24 @@ function createFakeResolution() {
             "worktree_registry",
           ],
           tables_missing: [],
-          schema_status: "ready",
-          schema_ok: true,
+          schema_status: state.schemaStatus,
+          schema_ok: state.schemaStatus === "ready",
         };
+      },
+      async registerWorkspace(input) {
+        return { ok: true, workspace: input };
+      },
+      async registerWorktreeHeartbeat(input) {
+        return { ok: true, worktree: input };
+      },
+      async getPlanningState() {
+        return { ok: true, planning_state: null };
+      },
+      async getLatestHandoffRelay() {
+        return { ok: true, handoff_relay: null };
+      },
+      async listCoordinationRecords() {
+        return { ok: true, records: [] };
       },
       describeContract() {
         return {
@@ -89,6 +110,7 @@ function createFakeResolution() {
         };
       },
     },
+    state,
   };
 }
 
@@ -116,15 +138,41 @@ async function main() {
     assert(missingEnv.json?.shared_coordination_migration?.status === "missing-env", "migrate CLI should surface missing-env");
     assert(missingEnv.json?.shared_coordination_backend?.backend_kind === "postgres", "migrate CLI should still identify postgres backend");
 
-    const direct = await migrateSharedCoordination({
+    const directReady = await migrateSharedCoordination({
       targetRoot,
       sharedCoordination: createFakeResolution(),
     });
-    assert(direct.ok === true, "direct migrate projection should succeed with fake store");
-    assert(direct.shared_coordination_migration?.status === "ready", "direct migrate projection should report ready status");
-    assert(direct.shared_coordination_migration?.health?.schema_status === "ready", "direct migrate projection should expose ready schema status");
-    assert(direct.contract?.schema_name === "aidn_shared", "direct migrate projection should expose schema contract");
-    assert(direct.shared_coordination_backend?.driver_package === "pg", "direct migrate projection should expose pg driver package");
+    assert(directReady.ok === true, "direct migrate projection should succeed with fake store");
+    assert(directReady.shared_coordination_migration?.status === "ready", "direct migrate projection should report ready status");
+    assert(directReady.migration_plan?.action === "noop", "ready migrate projection should report a noop migration plan");
+    assert(directReady.shared_coordination_migration?.health?.schema_status === "ready", "direct migrate projection should expose ready schema status");
+    assert(directReady.contract?.schema_name === "aidn_shared", "direct migrate projection should expose schema contract");
+    assert(directReady.shared_coordination_backend?.driver_package === "pg", "direct migrate projection should expose pg driver package");
+
+    const upgradeResolution = createFakeResolution();
+    upgradeResolution.state.schemaStatus = "version-behind";
+    upgradeResolution.state.latestSchemaVersion = 0;
+    const dryRun = await migrateSharedCoordination({
+      targetRoot,
+      write: false,
+      rollbackOut: ".aidn/runtime/upgrade-rollback.json",
+      sharedCoordination: upgradeResolution,
+    });
+    assert(dryRun.ok === true, "dry-run upgrade projection should succeed");
+    assert(dryRun.shared_coordination_migration?.status === "dry-run", "dry-run upgrade projection should report dry-run");
+    assert(dryRun.migration_plan?.action === "upgrade", "dry-run should report an upgrade migration plan");
+    assert(dryRun.rollback_hint?.restore_command?.includes("shared-coordination-restore"), "dry-run should expose the planned rollback command");
+
+    const writeResult = await migrateSharedCoordination({
+      targetRoot,
+      rollbackOut: ".aidn/runtime/upgrade-rollback.json",
+      sharedCoordination: upgradeResolution,
+    });
+    assert(writeResult.ok === true, "upgrade migrate projection should succeed");
+    assert(writeResult.pre_migration_health?.schema_status === "version-behind", "upgrade migrate should expose the pre-migration schema status");
+    assert(writeResult.shared_coordination_migration?.health?.schema_status === "ready", "upgrade migrate should converge to a ready schema");
+    assert(writeResult.rollback_snapshot?.output_file?.endsWith("upgrade-rollback.json"), "upgrade migrate should write a rollback snapshot");
+    assert(writeResult.rollback_hint?.restore_command?.includes("upgrade-rollback.json"), "upgrade migrate should expose the rollback restore command");
 
     console.log("PASS");
   } catch (error) {

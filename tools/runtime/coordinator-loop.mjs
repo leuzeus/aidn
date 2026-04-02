@@ -376,6 +376,9 @@ export async function computeCoordinatorLoopState({
     currentStateFile,
     runtimeStateFile,
     packetFile,
+    workspace: effectiveWorkspace,
+    sharedCoordination,
+    sharedCoordinationOptions,
   });
   const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
   const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {

@@ -126,7 +126,9 @@ async function main() {
   try {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-shared-coordination-sync-"));
     const targetRoot = path.join(tempRoot, "repo");
+    const linkedTargetRoot = path.join(tempRoot, "repo-linked");
     fs.cpSync(path.resolve(process.cwd(), "tests/fixtures/perf-handoff/ready"), targetRoot, { recursive: true });
+    fs.cpSync(path.resolve(process.cwd(), "tests/fixtures/perf-handoff/ready"), linkedTargetRoot, { recursive: true });
 
     const fake = createFakeResolution();
 
@@ -145,6 +147,33 @@ async function main() {
     assert(sessionPlan.shared_coordination_backend.backend_kind === "postgres", "session-plan should expose postgres shared coordination backend");
     assert(sessionPlan.shared_coordination_sync.ok === true, "session-plan should sync shared planning");
     assert(fake.state.planningStates.length === 1, "session-plan should write one shared planning state");
+
+    const resumedSessionPlan = await runSessionPlan({
+      targetRoot: linkedTargetRoot,
+      promote: true,
+      title: "session-planning",
+      items: ["record linked worktree addendum"],
+      questions: ["does the linked worktree see existing planning?"],
+      selectedExecutionScope: "new_cycle",
+      dispatchScope: "session",
+      dispatchAction: "coordinate",
+      planningArbitrationStatus: "review_requested",
+      sourceAgent: "codex-linked",
+      rationale: "linked worktree planning continuation",
+      affectedItem: "record linked worktree addendum",
+      affectedQuestion: "does the linked worktree see existing planning?",
+      addendumNote: "continued from shared coordination state",
+      sharedCoordination: fake.resolution,
+    });
+    assert(resumedSessionPlan.shared_coordination_sync.ok === true, "linked session-plan should sync shared planning");
+    assert(resumedSessionPlan.backlog_operation === "updated", "linked session-plan should treat shared planning as an existing backlog");
+    assert(resumedSessionPlan.backlog_seed_source === "shared-coordination", "linked session-plan should seed the backlog from shared coordination when the local file is absent");
+    assert(resumedSessionPlan.payload.backlog_items.includes("define rollout"), "linked session-plan should preserve prior shared backlog items");
+    assert(resumedSessionPlan.payload.backlog_items.includes("record linked worktree addendum"), "linked session-plan should merge new backlog items");
+    assert(resumedSessionPlan.payload.open_questions.includes("which cycle first?"), "linked session-plan should preserve prior shared questions");
+    assert(resumedSessionPlan.payload.open_questions.includes("does the linked worktree see existing planning?"), "linked session-plan should merge new questions");
+    assert((resumedSessionPlan.payload.addenda ?? []).length >= 2, "linked session-plan should preserve prior shared addenda");
+    assert(fake.state.planningStates.length === 2, "linked session-plan should record a second shared planning revision");
 
     const handoff = await projectHandoffPacket({
       targetRoot,

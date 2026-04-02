@@ -212,7 +212,7 @@ These capabilities already exist and should be preserved, not re-invented:
 
 ### BK-10. Implement PostgreSQL shared backend support
 **Priority:** P1  
-**Status today:** partial; adapter/store, targeted shared sync, health/status flows, optional `pg` packaging, and a live smoke harness are implemented, and a real `G:/projets/gowire` two-worktree pilot on 2026-04-02 validated `doctor`, `migrate`, `bootstrap`, `status`, `backup`, `restore`, shared handoff relay writes, and shared coordination record writes against a live PostgreSQL server; broad runtime read-surface adoption remains incomplete
+**Status today:** implemented; adapter/store, targeted shared sync, health/status flows, optional `pg` packaging, and a live smoke harness are implemented, and a real `G:/projets/gowire` two-worktree pilot on 2026-04-02 validated `doctor`, `migrate`, `bootstrap`, `status`, `backup`, `restore`, shared handoff relay writes, and shared coordination record writes against a live PostgreSQL server; the shared-planning/shared-relay routing now covers admissions (`pre-write-admit`, `cycle-create`, `convert-to-spike`), `session-plan` promotion merge/seed behavior, `project-handoff-packet`, the full coordinator wrapper chain (`next-action`, `loop`, `resume`, `dispatch-execute`, `orchestrate`, arbitration suggestions, multi-agent digest), `project-runtime-state`, `handoff-admit`, and `db-only-readiness`, with regression coverage proving PostgreSQL-backed coordination remains usable across linked worktrees on the intended runtime path
 
 **Goal:** make shared coordination state persist safely in PostgreSQL.
 
@@ -230,7 +230,7 @@ These capabilities already exist and should be preserved, not re-invented:
 
 ### BK-11. Route only the intended shared coordination scope through the shared backend
 **Priority:** P1  
-**Status today:** partial; the `sqlite-file` boundary and live PostgreSQL handoff/coordination visibility are now validated on a real `G:/projets/gowire` two-worktree pilot, checkout-bound artifacts remain local, and the `session-plan` promotion path now updates `CURRENT-STATE.md` so shared planning becomes discoverable through standard status reads; the remaining gap is broader read/routing adoption beyond the currently exercised surfaces
+**Status today:** implemented; the `sqlite-file` boundary and live PostgreSQL handoff/coordination visibility are validated on a real `G:/projets/gowire` two-worktree pilot, checkout-bound artifacts remain local, and the intended shared coordination scope now routes end-to-end through standard runtime/projector surfaces: `session-plan` promotion updates `CURRENT-STATE.md`, shared planning becomes visible through `project-runtime-state`, `project-handoff-packet`, `pre-write-admit`, `cycle-create` / `convert-to-spike`, `handoff-admit`, `db-only-readiness`, and the full coordinator wrapper chain (`next-action` / `loop` / `resume` / `dispatch-execute` / `orchestrate` plus arbitration and multi-agent summary), while packet/relay fallbacks keep checkout-bound files local and only use PostgreSQL for the shared coordination records they are meant to share
 
 **Goal:** keep checkout-bound artifacts local while exposing the right coordination state across worktrees.
 
@@ -267,7 +267,7 @@ These capabilities already exist and should be preserved, not re-invented:
 
 ### BK-13. Add concurrency tests for shared coordination state
 **Priority:** P2  
-**Status today:** implemented with residual stress-validation risk; store-level multi-writer coverage exists for PostgreSQL shared coordination, a real linked-worktree fixture validates concurrent shared coordination routing across actual `git worktree add` checkouts, an explicit `sqlite-file` linked-worktree boundary fixture proves shared SQLite projection reuse while keeping shared coordination disabled, the live PostgreSQL smoke harness covers concurrent overlap behind `AIDN_PG_SMOKE_URL`, a manual real-server smoke passed on 2026-03-29, and a real `G:/projets/gowire` two-worktree pilot on 2026-04-02 produced shared planning revisions, shared handoff relay visibility, and shared coordination records with distinct `source_worktree_id` values; heavier sustained-contention validation remains an optional narrower follow-up rather than a blocker for this backlog slice
+**Status today:** implemented with sustained-contention coverage; store-level multi-writer coverage exists for PostgreSQL shared coordination, a real linked-worktree fixture validates concurrent shared coordination routing across actual `git worktree add` checkouts, an explicit `sqlite-file` linked-worktree boundary fixture proves shared SQLite projection reuse while keeping shared coordination disabled, the live PostgreSQL smoke harness covers concurrent overlap behind `AIDN_PG_SMOKE_URL`, a manual real-server smoke passed on 2026-03-29, a real `G:/projets/gowire` two-worktree pilot on 2026-04-02 produced shared planning revisions, shared handoff relay visibility, and shared coordination records with distinct `source_worktree_id` values, and dedicated sustained-contention fixtures now lock monotonic `planning_states.revision`, latest-relay resolution, and no-drop coordination record retention across overlapping bursts
 
 **Goal:** prove the shared backend behaves correctly under overlapping access.
 
@@ -319,7 +319,7 @@ These capabilities already exist and should be preserved, not re-invented:
 
 ### BK-16. Add PostgreSQL admin flows without regressing SQLite admin flows
 **Priority:** P3  
-  **Status today:** partial but narrowed; PostgreSQL `status`, `bootstrap`, `migrate`, `doctor`, `backup`, and `restore` CLIs now exist, schema-version/schema-drift inspection is explicit, local backup/export and snapshot replay flows exist, a manual real-server smoke passed on 2026-03-29, and a real `G:/projets/gowire` pilot on 2026-04-02 validated those admin flows against a live PostgreSQL backend; the remaining gap is the deeper schema upgrade/rollback lifecycle rather than baseline operational usability
+  **Status today:** implemented; PostgreSQL `status`, `bootstrap`, `migrate`, `doctor`, `backup`, and `restore` CLIs exist without overloading the SQLite `db-*` commands, schema-version/schema-drift inspection is explicit, and the admin lifecycle now includes migration planning (`--dry-run`), pre-mutation rollback snapshots, restore-side schema compatibility checks, and rollback restore hints, alongside local backup/export and snapshot replay flows. A manual real-server smoke passed on 2026-03-29, a real `G:/projets/gowire` pilot on 2026-04-02 validated those admin flows against a live PostgreSQL backend, and fixture coverage now locks the upgrade/rollback path in addition to baseline operational usability
 
 **Goal:** provide setup/status/repair workflows for PostgreSQL while keeping current SQLite CLIs clear and valid.
 

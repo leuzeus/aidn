@@ -160,10 +160,10 @@ function buildSummary(result) {
 }
 
 function main() {
-  try {
+  Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const admission = runConvertToSpikeAdmitUseCase({
+    const admission = await runConvertToSpikeAdmitUseCase({
       targetRoot,
       mode: args.mode,
     });
@@ -205,11 +205,11 @@ function main() {
       console.log(`Next action: ${admission.recommended_next_action}`);
     }
     process.exit(0);
-  } catch (error) {
+  }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
-  }
+  });
 }
 
 main();

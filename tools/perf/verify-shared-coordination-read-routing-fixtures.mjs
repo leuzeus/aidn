@@ -3,12 +3,20 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { computeCoordinatorNextAction } from "../runtime/coordinator-next-action.mjs";
+import { executeCoordinatorDispatch } from "../runtime/coordinator-dispatch-execute.mjs";
 import { computeCoordinatorDispatchPlan } from "../runtime/coordinator-dispatch-plan.mjs";
 import { computeCoordinatorLoopState } from "../runtime/coordinator-loop.mjs";
+import { orchestrateCoordinatorDispatch } from "../runtime/coordinator-orchestrate.mjs";
+import { admitHandoff } from "../runtime/handoff-admit.mjs";
+import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
+import { projectMultiAgentStatus } from "../runtime/project-multi-agent-status.mjs";
 import { projectCoordinationSummary } from "../runtime/project-coordination-summary.mjs";
 import { projectHandoffPacket } from "../runtime/project-handoff-packet.mjs";
+import { resumeCoordinatorDispatch } from "../runtime/coordinator-resume.mjs";
+import { suggestCoordinatorArbitration } from "../runtime/coordinator-suggest-arbitration.mjs";
 import { projectSharedCoordinationStatus } from "../runtime/shared-coordination-status.mjs";
-import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { runCycleCreateAdmitUseCase } from "../../src/application/runtime/cycle-create-admit-use-case.mjs";
+import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function assert(condition, message) {
   if (!condition) {
@@ -62,6 +70,7 @@ function createFakeResolution() {
           next_dispatch_scope: "cycle",
           next_dispatch_action: "implement",
           backlog_next_step: "implement alpha feature validation",
+          selected_execution_scope: "current_cycle",
           linked_cycles: ["C101"],
           backlog_items: ["implement alpha feature validation"],
           open_questions: [],
@@ -87,7 +96,26 @@ function createFakeResolution() {
         handoff_packet_ref: "docs/audit/HANDOFF-PACKET.md",
         handoff_packet_sha256: "",
         prioritized_artifacts: ["docs/audit/CURRENT-STATE.md"],
-        metadata: {},
+        metadata: {
+          updated_at: "2030-01-01T00:01:00Z",
+          handoff_status: "ready",
+          handoff_from_agent_role: "coordinator",
+          handoff_from_agent_action: "relay",
+          recommended_next_agent_role: "executor",
+          recommended_next_agent_action: "implement",
+          next_agent_goal: "implement alpha feature validation",
+          preferred_dispatch_source: "shared_planning",
+          shared_planning_candidate_ready: "yes",
+          shared_planning_candidate_aligned: "yes",
+          shared_planning_dispatch_scope: "cycle",
+          shared_planning_dispatch_action: "implement",
+          scope_type: "cycle",
+          scope_id: "C101",
+          target_branch: "none",
+          repair_layer_status: "unknown",
+          repair_primary_reason: "unknown",
+          prioritized_artifacts: ["docs/audit/CURRENT-STATE.md"],
+        },
         created_at: "2030-01-01T00:01:00Z",
       },
     ],
@@ -230,6 +258,9 @@ async function main() {
     fs.cpSync(path.resolve(process.cwd(), "tests/fixtures/perf-handoff/ready"), targetRoot, { recursive: true });
     installCurrentStateBacklogPointer(targetRoot);
     fs.rmSync(path.join(targetRoot, "docs", "audit", "backlog", "BL-S101-session-planning.md"), { force: true });
+    initGitRepo(targetRoot, {
+      workingBranch: "S101-alpha",
+    });
 
     const fake = createFakeResolution();
 
@@ -241,6 +272,10 @@ async function main() {
     assert(handoff.packet.shared_planning_candidate_ready === "yes", "handoff should expose a ready shared planning candidate");
     assert(handoff.packet.shared_planning_candidate_aligned === "yes", "handoff should expose an aligned shared planning candidate");
     assert(handoff.packet.shared_planning_artifact_source === "shared-coordination", "handoff should mark shared planning as coming from shared coordination");
+    assert(handoff.packet.active_backlog === "docs/audit/backlog/BL-S101-session-planning.md", "handoff should project the shared backlog ref when the local backlog is absent");
+    assert(handoff.packet.backlog_refs === "docs/audit/backlog/BL-S101-session-planning.md", "handoff should keep backlog_refs aligned with the shared backlog ref");
+    assert(handoff.packet.backlog_status === "promoted", "handoff should project the shared backlog status");
+    assert(handoff.packet.prioritized_artifacts.includes("docs/audit/backlog/BL-S101-session-planning.md"), "handoff should prioritize the shared backlog ref even when it is not materialized locally");
     assert(handoff.packet.backlog_next_step === "implement alpha feature validation", "handoff should expose the shared planning next step");
     assert(handoff.packet.planning_arbitration_status === "resolved", "handoff should prefer the shared planning arbitration status");
 
@@ -284,6 +319,15 @@ async function main() {
     assert(nextAction.recommendation.action === "implement", "next-action should recover the action from the shared handoff relay");
     assert(nextAction.recommendation.source === "handoff-shared-planning", "next-action should preserve shared-planning provenance from the shared relay");
     assert(nextAction.context.packet_source === "shared-coordination", "next-action should mark the packet source as shared coordination when the local packet is missing");
+    assert(nextAction.context.shared_planning_source === "shared-coordination", "next-action should expose shared planning provenance in context");
+
+    const admittedSharedRelay = await admitHandoff({
+      targetRoot,
+      sharedCoordination: fake.resolution,
+    });
+    assert(admittedSharedRelay.admission_status === "admitted", "handoff-admit should admit the shared relay when the local packet is missing");
+    assert(admittedSharedRelay.packet_source === "shared-coordination", "handoff-admit should expose shared coordination as the packet source when falling back to relay");
+    assert(admittedSharedRelay.preferred_dispatch_source === "shared_planning", "handoff-admit should preserve shared-planning provenance from the relay");
 
     const dispatch = await computeCoordinatorDispatchPlan({
       targetRoot,
@@ -303,6 +347,30 @@ async function main() {
     assert(status.snapshot?.handoff_read?.status === "found", "status should expose the latest shared handoff relay");
     assert(status.snapshot?.coordination_read?.status === "found", "status should expose recent shared coordination records");
 
+    const preWrite = await preWriteAdmit({
+      targetRoot,
+      skill: "cycle-create",
+      sharedCoordination: fake.resolution,
+    });
+    assert(preWrite.ok === false, "pre-write admission should still gate cycle-create when shared planning keeps the relay session-scoped");
+    assert(preWrite.context.active_backlog === "backlog/BL-S101-session-planning.md", "pre-write admission should expose the shared planning backlog");
+    assert(preWrite.context.backlog_selected_execution_scope === "current_cycle", "pre-write admission should expose the shared execution scope from shared coordination");
+    assert(preWrite.context.shared_planning_source === "shared-coordination", "pre-write admission should expose shared planning provenance");
+    assert(preWrite.blocking_reasons.some((item) => String(item).includes("selected execution scope is current_cycle")), "pre-write admission should enforce cycle-create scope rules from shared planning");
+
+    fake.state.planningStates[0].selected_execution_scope = "new_cycle";
+    fake.state.planningStates[0].payload.selected_execution_scope = "new_cycle";
+
+    const cycleCreate = await runCycleCreateAdmitUseCase({
+      targetRoot,
+      mode: "COMMITTING",
+      sharedCoordination: fake.resolution,
+    });
+    assert(cycleCreate.ok === true, "cycle-create admission should adopt the shared planning scope when it allows new_cycle");
+    assert(cycleCreate.action === "proceed_r2_session_base_with_import", "cycle-create admission should keep the session continuity path");
+    assert(cycleCreate.active_backlog === "backlog/BL-S101-session-planning.md", "cycle-create admission should expose the shared planning backlog");
+    assert(cycleCreate.backlog_selected_execution_scope === "new_cycle", "cycle-create admission should expose the shared execution scope");
+
     const coordinationSummary = await projectCoordinationSummary({
       targetRoot,
       sharedCoordination: fake.resolution,
@@ -315,10 +383,64 @@ async function main() {
       targetRoot,
       sharedCoordination: fake.resolution,
     });
+    assert(loop.context.packet_source === "shared-coordination", "coordinator loop should preserve the shared relay packet source");
     assert(loop.loop.history_source === "shared-coordination", "coordinator loop should prefer shared coordination history");
     assert(loop.loop.history.total_dispatches === 1, "coordinator loop should see the shared dispatch record");
     assert(loop.loop.summary_source === "shared-coordination" || loop.loop.summary_source === "file", "coordinator loop should surface a valid shared-aware summary source");
     assert(fake.state.handoffRelays.length >= 2, "handoff projection should append a new shared relay");
+
+    const arbitration = await suggestCoordinatorArbitration({
+      targetRoot,
+      sharedCoordination: fake.resolution,
+    });
+    assert(arbitration.dispatch.shared_planning.shared_planning_source === "shared-coordination", "arbitration suggestions should route dispatch planning through shared coordination");
+    assert(arbitration.dispatch.shared_planning.dispatch_ready === true, "arbitration suggestions should expose the shared planning readiness from shared coordination");
+
+    const resume = await resumeCoordinatorDispatch({
+      targetRoot,
+      sharedCoordination: fake.resolution,
+    });
+    assert(resume.resume_status === "ready", "coordinator resume should stay ready with a shared planning candidate");
+    assert(resume.preferred_dispatch_source === "shared_planning", "coordinator resume should prefer the shared planning relay");
+    assert(resume.context.packet_source === "shared-coordination", "coordinator resume should expose the shared relay packet source");
+
+    const execute = await executeCoordinatorDispatch({
+      targetRoot,
+      sharedCoordination: fake.resolution,
+    });
+    assert(execute.execution_status === "dry_run", "dispatch execute without --execute should remain a dry run");
+    assert(execute.dispatch_status === "ready", "dispatch execute dry run should keep the ready shared-planning dispatch");
+    assert(execute.preferred_dispatch_source === "shared_planning", "dispatch execute should preserve shared-planning provenance");
+    assert(execute.shared_coordination_sync?.ok === true, "dispatch execute dry run should append a shared coordination projection record");
+
+    const multiAgentStatus = await projectMultiAgentStatus({
+      targetRoot,
+      sharedCoordination: fake.resolution,
+    });
+    assert(multiAgentStatus.coordinator.context.packet_source === "shared-coordination", "multi-agent status should reuse the shared relay packet source");
+    assert(multiAgentStatus.coordination_summary.summary.total_dispatches >= 1, "multi-agent status should reuse a non-empty coordination summary");
+
+    const orchestrated = await orchestrateCoordinatorDispatch({
+      targetRoot,
+      sharedCoordination: fake.resolution,
+    });
+    assert(orchestrated.orchestration_status === "dry_run", "coordinator-orchestrate should preserve the shared-aware ready dry-run state");
+    assert(orchestrated.preferred_dispatch_source === "shared_planning", "coordinator-orchestrate should preserve shared-planning provenance");
+    assert(orchestrated.initial_preview.context.packet_source === "shared-coordination", "coordinator-orchestrate should reuse the shared relay packet source");
+
+    fake.state.handoffRelays = [];
+    const currentStateFile = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
+    const currentStateText = fs.readFileSync(currentStateFile, "utf8")
+      .replace("mode: COMMITTING", "mode: THINKING");
+    fs.writeFileSync(currentStateFile, currentStateText, "utf8");
+    fs.rmSync(path.join(targetRoot, "docs", "audit", "HANDOFF-PACKET.md"), { force: true });
+    const fallbackNextAction = await computeCoordinatorNextAction({
+      targetRoot,
+      sharedCoordination: fake.resolution,
+    });
+    assert(fallbackNextAction.recommendation.source === "current-state-shared-planning", "next-action fallback should tag shared-planning-backed current-state routing");
+    assert(fallbackNextAction.recommendation.goal === "implement alpha feature validation", "next-action fallback should reuse the shared planning next step");
+    assert(fallbackNextAction.context.packet_source === "missing", "next-action fallback should expose the missing packet source when no relay exists");
 
     console.log("PASS");
   } catch (error) {

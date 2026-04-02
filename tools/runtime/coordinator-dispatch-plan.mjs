@@ -861,6 +861,9 @@ export async function computeCoordinatorDispatchPlan({
     currentStateFile,
     runtimeStateFile,
     packetFile,
+    workspace,
+    sharedCoordination,
+    sharedCoordinationOptions,
   });
   const recommendation = loopState.recommendation;
   const sharedPlanning = await readSharedPlanning(absoluteTargetRoot, currentStateFile, {

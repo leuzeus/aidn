@@ -102,6 +102,8 @@ function buildResumeOptions(args, execute) {
     coordinationSummaryFile: args.coordinationSummaryFile,
     coordinationHistoryFile: args.coordinationHistoryFile,
     execute,
+    sharedCoordination: args.sharedCoordination ?? null,
+    sharedCoordinationOptions: args.sharedCoordinationOptions ?? {},
   };
 }
 
@@ -138,6 +140,8 @@ export async function orchestrateCoordinatorDispatch(options = {}) {
     coordinationHistoryFile: options.coordinationHistoryFile ?? ".aidn/runtime/context/coordination-history.ndjson",
     maxIterations: Number.isInteger(options.maxIterations) ? options.maxIterations : 1,
     execute: Boolean(options.execute),
+    sharedCoordination: options.sharedCoordination ?? null,
+    sharedCoordinationOptions: options.sharedCoordinationOptions ?? {},
   };
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(args.target);
 

@@ -25,6 +25,7 @@ For session startup in conservative app/online flows:
 - only skip the later durable-write part when no workflow artifact creation/update is justified
 
 If context is partial, stale, or contradictory, run `docs/audit/REANCHOR_PROMPT.md` and stop before writing.
+If the stop was abrupt and shared coordination may be ahead of local files, use the `crash-recovery` skill and `docs/audit/CRASH-RECOVERY-RUNBOOK.md`.
 
 When several cycles attached to the same session may converge, also read:
 - `docs/audit/INTEGRATION-RISK.md`

@@ -44,6 +44,12 @@ function main() {
     assert(result?.digest?.repair_layer_status, "digest.repair_layer_status missing");
     assert(result?.digest?.repair_primary_reason, "digest.repair_primary_reason missing");
     assert(result?.digest?.shared_runtime_validation_status === "clear", "digest should expose clear shared runtime validation by default");
+    assert(typeof result?.digest?.shared_planning_source === "string", "digest.shared_planning_source missing");
+    assert(typeof result?.digest?.shared_planning_read_status === "string", "digest.shared_planning_read_status missing");
+    assert(typeof result?.digest?.active_backlog === "string", "digest.active_backlog missing");
+    assert(typeof result?.digest?.backlog_status === "string", "digest.backlog_status missing");
+    assert(typeof result?.digest?.backlog_next_step === "string", "digest.backlog_next_step missing");
+    assert(typeof result?.digest?.planning_arbitration_status === "string", "digest.planning_arbitration_status missing");
     assert(result?.digest?.current_state_freshness, "digest.current_state_freshness missing");
     assert(Array.isArray(result?.digest?.prioritized_artifacts), "digest.prioritized_artifacts missing");
     assert(result.digest.prioritized_artifacts.includes("docs/audit/CURRENT-STATE.md"), "digest missing CURRENT-STATE.md");
@@ -80,6 +86,7 @@ function main() {
     assert(fileless.digest.consistency_status === "pass", "db-only fileless digest should keep consistency pass");
     assert(fileless.digest.current_state_source === "sqlite", "db-only fileless digest should load CURRENT-STATE from SQLite");
     assert(fileless.digest.cycle_status_source === "sqlite", "db-only fileless digest should load cycle status from SQLite");
+    assert(typeof fileless.digest.shared_planning_source === "string", "db-only fileless digest should expose shared planning provenance");
     assert(filelessMarkdown.includes("current_state_freshness: ok"), "db-only fileless markdown should record recovered freshness");
 
     const textOut = execFileSync(process.execPath, [

@@ -17,6 +17,7 @@ import {
   resolveDbBackedMode,
 } from "./db-first-runtime-view-lib.mjs";
 import { isJsonEquivalent, writeJsonIfChanged } from "../../src/lib/index/io-lib.mjs";
+import { resolveSharedCoordinationBackupSchemaInfo } from "../../src/application/runtime/shared-coordination-admin-service.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -139,12 +140,20 @@ export async function backupSharedCoordination({
     workspace,
     shared_coordination_backend: backend,
     health,
+    schema_snapshot: {
+      schema_name: resolution.contract?.schema_name ?? health?.schema_name ?? "unknown",
+      expected_schema_version: Number(resolution.contract?.schema_version ?? health?.expected_schema_version ?? 0) || 0,
+      latest_applied_schema_version: Number(health?.latest_applied_schema_version ?? 0) || 0,
+      schema_status: normalizeScalar(health?.schema_status || "unknown") || "unknown",
+    },
     active_context: activeContext,
     contract: resolution.contract
       ? {
         scope: resolution.contract.scope,
         schema_name: resolution.contract.schema_name,
         schema_version: resolution.contract.schema_version,
+        expected_schema_version: resolution.contract.schema_version,
+        source_schema_version: Number(health?.latest_applied_schema_version ?? 0) || 0,
         schema_file: resolution.contract.schema_file,
         driver: resolution.contract.driver,
       }
@@ -183,6 +192,7 @@ export async function backupSharedCoordination({
     workspace,
     shared_coordination_backend: backend,
     health,
+    schema_compatibility: resolveSharedCoordinationBackupSchemaInfo(backup),
     backup,
   };
 }

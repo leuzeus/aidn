@@ -7,6 +7,7 @@ import {
   summarizeSharedCoordinationResolution,
   syncSharedWorkspaceRegistration,
 } from "../../src/application/runtime/shared-coordination-store-service.mjs";
+import { resolveSharedCoordinationRestoreCompatibility } from "../../src/application/runtime/shared-coordination-admin-service.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 
 function normalizeScalar(value) {
@@ -134,6 +135,11 @@ export async function restoreSharedCoordination({
   }
 
   const snapshot = loadBackupSnapshot(absoluteInput);
+  const schemaCompatibility = resolveSharedCoordinationRestoreCompatibility({
+    backupPayload: snapshot.payload,
+    resolution,
+    health,
+  });
   const workspaceMatch = checkWorkspaceMatch(workspace, snapshot.payload);
   if (!workspaceMatch.ok) {
     return {
@@ -147,11 +153,28 @@ export async function restoreSharedCoordination({
       shared_coordination_backend: backend,
       health,
       preview: buildPreview(snapshot),
+      schema_compatibility: schemaCompatibility,
       restore: null,
     };
   }
 
   const preview = buildPreview(snapshot);
+  if (!schemaCompatibility.ok) {
+    return {
+      target_root: absoluteTargetRoot,
+      input_file: absoluteInput,
+      ok: false,
+      status: schemaCompatibility.status,
+      reason: schemaCompatibility.reason,
+      write_requested: Boolean(write),
+      workspace,
+      shared_coordination_backend: backend,
+      health,
+      preview,
+      schema_compatibility: schemaCompatibility,
+      restore: null,
+    };
+  }
   if (!write) {
     return {
       target_root: absoluteTargetRoot,
@@ -164,6 +187,7 @@ export async function restoreSharedCoordination({
       shared_coordination_backend: backend,
       health,
       preview,
+      schema_compatibility: schemaCompatibility,
       restore: null,
     };
   }
@@ -183,6 +207,7 @@ export async function restoreSharedCoordination({
       shared_coordination_backend: backend,
       health,
       preview,
+      schema_compatibility: schemaCompatibility,
       restore: {
         registration,
         planning: null,
@@ -267,6 +292,7 @@ export async function restoreSharedCoordination({
     shared_coordination_backend: backend,
     health,
     preview,
+    schema_compatibility: schemaCompatibility,
     restore: {
       registration,
       planning,
@@ -287,6 +313,9 @@ function printHuman(result) {
     console.log(`- planning_present=${result.preview.planning_present ? "yes" : "no"}`);
     console.log(`- handoff_present=${result.preview.handoff_present ? "yes" : "no"}`);
     console.log(`- coordination_record_count=${result.preview.coordination_record_count}`);
+  }
+  if (result.schema_compatibility) {
+    console.log(`- schema_compatibility=${result.schema_compatibility.status}`);
   }
   if (result.health) {
     console.log(`- schema_status=${result.health.schema_status || "unknown"}`);

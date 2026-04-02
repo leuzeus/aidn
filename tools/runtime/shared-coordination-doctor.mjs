@@ -85,13 +85,13 @@ function buildDoctorReport({ resolution, workspace, health }) {
         message: `shared coordination schema status is ${schemaStatus}`,
       });
       if (schemaStatus === "needs-bootstrap" || schemaStatus === "no-migrations") {
-        recommendedActions.push("Run shared-coordination-migrate to bootstrap the shared PostgreSQL schema.");
+        recommendedActions.push("Run shared-coordination-migrate --dry-run first, then rerun without --dry-run to bootstrap the shared PostgreSQL schema.");
       } else if (schemaStatus === "version-behind") {
-        recommendedActions.push("Upgrade the shared PostgreSQL schema before enabling writes from this package version.");
+        recommendedActions.push("Run shared-coordination-migrate --dry-run to inspect the upgrade plan, then rerun it to upgrade with a rollback snapshot.");
       } else if (schemaStatus === "version-ahead") {
         recommendedActions.push("Use a compatible package version or review schema compatibility before continuing.");
       } else if (schemaStatus === "schema-drift") {
-        recommendedActions.push("Inspect the missing shared-coordination tables and rerun shared-coordination-migrate if the schema is incomplete.");
+        recommendedActions.push("Take a shared-coordination-backup if possible, then run shared-coordination-migrate --dry-run before repairing the incomplete schema.");
       }
     } else {
       findings.push({
