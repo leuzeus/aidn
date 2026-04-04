@@ -144,6 +144,9 @@ function main() {
       console.log(JSON.stringify(result, null, 2));
     } else {
       console.log("Shared coordination status:");
+      console.log(`- project_id=${result.workspace?.project_id || "none"}`);
+      console.log(`- workspace_id=${result.workspace?.workspace_id || "none"}`);
+      console.log(`- worktree_id=${result.workspace?.worktree_id || "none"}`);
       console.log(`- backend_kind=${result.shared_coordination_backend.backend_kind}`);
       console.log(`- status=${result.shared_coordination_backend.status}`);
       console.log(`- reason=${result.shared_coordination_backend.reason}`);
@@ -151,7 +154,10 @@ function main() {
       if (result.health) {
         console.log(`- health=${result.health.ok ? "ok" : "fail"}`);
         console.log(`- schema_status=${result.health.schema_status || "unknown"}`);
+        console.log(`- compatibility_status=${result.health.compatibility_status || "unknown"}`);
         console.log(`- latest_schema_version=${result.health.latest_applied_schema_version ?? 0}`);
+        console.log(`- registered_project_count=${result.health.registered_project_count ?? 0}`);
+        console.log(`- legacy_workspace_rows=${result.health.legacy_workspace_rows ?? 0}`);
       }
     }
   }).catch((error) => {

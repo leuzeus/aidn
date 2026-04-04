@@ -34,10 +34,12 @@ function main() {
     assert(contract.driver.package_scope === "optionalDependencies", "expected optional dependency package scope");
     assert(POSTGRES_SHARED_COORDINATION_DRIVER.module_specifier === "pg", "expected pg module specifier");
 
-    for (const tableName of ["schema_migrations", "workspace_registry", "worktree_registry", "planning_states", "handoff_relays", "coordination_records"]) {
+    for (const tableName of ["schema_migrations", "project_registry", "workspace_registry", "worktree_registry", "planning_states", "handoff_relays", "coordination_records"]) {
       assert(tableNames.has(tableName), `expected contract table ${tableName}`);
       assert(schemaSql.includes(`aidn_shared.${tableName}`), `expected schema to declare ${tableName}`);
     }
+
+    assert(contract.schema_version === 2, "expected shared coordination schema version 2");
 
     for (const operation of ["registerWorkspace", "registerWorktreeHeartbeat", "upsertPlanningState", "appendHandoffRelay", "appendCoordinationRecord", "healthcheck"]) {
       assert(contract.operations.includes(operation), `expected operation ${operation}`);

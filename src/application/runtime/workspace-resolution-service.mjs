@@ -60,7 +60,7 @@ function hashIdentity(prefix, value) {
   return `${prefix}-${crypto.createHash("sha256").update(value).digest("hex").slice(0, 16)}`;
 }
 
-function deriveWorkspaceIdentity({
+function deriveLegacyWorkspaceIdentity({
   explicitWorkspaceId,
   envWorkspaceId,
   locatorWorkspaceId,
@@ -101,6 +101,96 @@ function deriveWorkspaceIdentity({
   return {
     workspace_id: hashIdentity("local", worktreeRoot),
     workspace_id_source: "worktree-root",
+  };
+}
+
+function deriveProjectIdentity({
+  explicitProjectId,
+  envProjectId,
+  locatorProjectId,
+  legacyWorkspaceIdentity,
+}) {
+  if (explicitProjectId) {
+    return {
+      project_id: explicitProjectId,
+      project_id_source: "explicit",
+    };
+  }
+  if (envProjectId) {
+    return {
+      project_id: envProjectId,
+      project_id_source: "env",
+    };
+  }
+  if (locatorProjectId) {
+    return {
+      project_id: locatorProjectId,
+      project_id_source: "locator",
+    };
+  }
+  return {
+    project_id: legacyWorkspaceIdentity.workspace_id,
+    project_id_source: `legacy-${legacyWorkspaceIdentity.workspace_id_source}`,
+  };
+}
+
+function deriveProjectRoot({
+  targetRoot,
+  explicitProjectRoot,
+  envProjectRoot,
+  locatorProjectRoot,
+}) {
+  if (normalizeScalar(explicitProjectRoot)) {
+    return {
+      project_root: resolveRuntimePath(targetRoot, explicitProjectRoot),
+      project_root_source: "explicit",
+    };
+  }
+  if (normalizeScalar(envProjectRoot)) {
+    return {
+      project_root: resolveRuntimePath(targetRoot, envProjectRoot),
+      project_root_source: "env",
+    };
+  }
+  if (normalizeScalar(locatorProjectRoot)) {
+    return {
+      project_root: resolveRuntimePath(targetRoot, locatorProjectRoot),
+      project_root_source: "locator",
+    };
+  }
+  return {
+    project_root: targetRoot,
+    project_root_source: "target-root",
+  };
+}
+
+function deriveWorkspaceIdentity({
+  explicitWorkspaceId,
+  envWorkspaceId,
+  locatorWorkspaceId,
+  projectIdentity,
+}) {
+  if (explicitWorkspaceId) {
+    return {
+      workspace_id: explicitWorkspaceId,
+      workspace_id_source: "explicit",
+    };
+  }
+  if (envWorkspaceId) {
+    return {
+      workspace_id: envWorkspaceId,
+      workspace_id_source: "env",
+    };
+  }
+  if (locatorWorkspaceId) {
+    return {
+      workspace_id: locatorWorkspaceId,
+      workspace_id_source: "locator",
+    };
+  }
+  return {
+    workspace_id: projectIdentity.project_id,
+    workspace_id_source: `project-${projectIdentity.project_id_source}`,
   };
 }
 
@@ -167,6 +257,8 @@ export function resolveWorkspaceContext({
   targetRoot = ".",
   gitAdapter = createLocalGitAdapter(),
   env = process.env,
+  projectId = "",
+  projectRoot = "",
   workspaceId = "",
   sharedRuntimeRoot = "",
   sharedBackendKind = "",
@@ -175,7 +267,11 @@ export function resolveWorkspaceContext({
 } = {}) {
   const adapter = assertVcsAdapter(gitAdapter, "WorkspaceResolutionGitAdapter");
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
+  const explicitProjectId = normalizeScalar(projectId);
+  const explicitProjectRoot = normalizeScalar(projectRoot);
   const explicitWorkspaceId = normalizeScalar(workspaceId);
+  const envProjectId = normalizeScalar(env.AIDN_PROJECT_ID);
+  const envProjectRoot = normalizeScalar(env.AIDN_PROJECT_ROOT);
   const envWorkspaceId = normalizeScalar(env.AIDN_WORKSPACE_ID);
   const locator = locatorState ?? readSharedRuntimeLocator(absoluteTargetRoot);
   const locatorData = locator.data ?? {};
@@ -202,7 +298,8 @@ export function resolveWorkspaceContext({
   const isGitRepo = repoRoot.length > 0 && repoRoot !== normalizeIdentityPath(absoluteTargetRoot)
     ? true
     : Boolean(typeof adapter.getHeadCommit === "function" && adapter.getHeadCommit(absoluteTargetRoot) !== "unknown");
-  const workspaceIdentity = deriveWorkspaceIdentity({
+
+  const legacyWorkspaceIdentity = deriveLegacyWorkspaceIdentity({
     explicitWorkspaceId,
     envWorkspaceId,
     locatorWorkspaceId: normalizeScalar(locatorData.workspaceId),
@@ -210,9 +307,31 @@ export function resolveWorkspaceContext({
     repoRoot,
     worktreeRoot,
   });
+  const projectIdentity = deriveProjectIdentity({
+    explicitProjectId,
+    envProjectId,
+    locatorProjectId: normalizeScalar(locatorData.projectId),
+    legacyWorkspaceIdentity,
+  });
+  const projectRootResolution = deriveProjectRoot({
+    targetRoot: absoluteTargetRoot,
+    explicitProjectRoot,
+    envProjectRoot,
+    locatorProjectRoot: normalizeScalar(locatorData.project?.root),
+  });
+  const workspaceIdentity = deriveWorkspaceIdentity({
+    explicitWorkspaceId,
+    envWorkspaceId,
+    locatorWorkspaceId: normalizeScalar(locatorData.workspaceId),
+    projectIdentity,
+  });
 
   return {
     target_root: absoluteTargetRoot,
+    project_id: projectIdentity.project_id,
+    project_id_source: projectIdentity.project_id_source,
+    project_root: projectRootResolution.project_root || absoluteTargetRoot,
+    project_root_source: projectRootResolution.project_root_source,
     worktree_root: worktreeRoot,
     repo_root: repoRoot || null,
     git_dir: gitDir || null,

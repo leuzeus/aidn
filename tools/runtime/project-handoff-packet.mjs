@@ -524,6 +524,9 @@ function buildMarkdown(packet) {
   lines.push("## Summary");
   lines.push("");
   lines.push(`updated_at: ${packet.updated_at}`);
+  lines.push(`project_id: ${packet.project_id}`);
+  lines.push(`project_id_source: ${packet.project_id_source}`);
+  lines.push(`project_root: ${packet.project_root}`);
   lines.push(`workspace_id: ${packet.workspace_id}`);
   lines.push(`workspace_id_source: ${packet.workspace_id_source}`);
   lines.push(`worktree_id: ${packet.worktree_id}`);
@@ -764,6 +767,9 @@ export async function projectHandoffPacket({
 
   const packet = {
     updated_at: new Date().toISOString(),
+    project_id: workspace.project_id,
+    project_id_source: workspace.project_id_source,
+    project_root: workspace.project_root,
     workspace_id: workspace.workspace_id,
     workspace_id_source: workspace.workspace_id_source,
     worktree_id: workspace.worktree_id,

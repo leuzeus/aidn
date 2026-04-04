@@ -93,6 +93,13 @@ function buildDoctorReport({ resolution, workspace, health }) {
       } else if (schemaStatus === "schema-drift") {
         recommendedActions.push("Take a shared-coordination-backup if possible, then run shared-coordination-migrate --dry-run before repairing the incomplete schema.");
       }
+    } else if (Number(health?.legacy_workspace_rows ?? 0) > 0 || String(health?.compatibility_status ?? "").trim() === "mixed-legacy-v2") {
+      findings.push({
+        severity: "error",
+        code: "mixed-legacy-v2",
+        message: `shared coordination still contains ${Number(health?.legacy_workspace_rows ?? 0)} legacy workspace rows without project_id`,
+      });
+      recommendedActions.push("Finish the additive migration backfill so every workspace_registry row carries project_id before treating the backend as healthy.");
     } else {
       findings.push({
         severity: "info",
@@ -146,6 +153,7 @@ function printHuman(result) {
   console.log(`- status=${result.status}`);
   if (result.health) {
     console.log(`- schema_status=${result.health.schema_status || "unknown"}`);
+    console.log(`- compatibility_status=${result.health.compatibility_status || "unknown"}`);
     console.log(`- latest_schema_version=${result.health.latest_applied_schema_version ?? 0}`);
   }
   for (const finding of result.findings) {

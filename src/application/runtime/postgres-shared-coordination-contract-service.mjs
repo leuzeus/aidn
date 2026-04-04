@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 export const POSTGRES_SHARED_COORDINATION_SCHEMA_NAME = "aidn_shared";
-export const POSTGRES_SHARED_COORDINATION_SCHEMA_VERSION = 1;
+export const POSTGRES_SHARED_COORDINATION_SCHEMA_VERSION = 2;
 export const POSTGRES_SHARED_COORDINATION_DRIVER = Object.freeze({
   backend_kind: "postgres",
   package_name: "pg",
@@ -35,34 +35,40 @@ export const POSTGRES_SHARED_COORDINATION_TABLES = Object.freeze([
     primary_key: ["schema_name", "schema_version"],
   }),
   Object.freeze({
-    table: "workspace_registry",
-    purpose: "store canonical shared workspace identity derived from Git common-dir or explicit locator identity",
+    table: "project_registry",
+    purpose: "store canonical shared project identity and backend binding for multi-project shared coordination",
     lifecycle: "upsert",
-    primary_key: ["workspace_id"],
+    primary_key: ["project_id"],
+  }),
+  Object.freeze({
+    table: "workspace_registry",
+    purpose: "store canonical shared workspace identity scoped inside a project",
+    lifecycle: "upsert",
+    primary_key: ["project_id", "workspace_id"],
   }),
   Object.freeze({
     table: "worktree_registry",
-    purpose: "record distinct checkout identities and heartbeats per shared workspace",
+    purpose: "record distinct checkout identities and heartbeats per project workspace",
     lifecycle: "upsert",
-    primary_key: ["workspace_id", "worktree_id"],
+    primary_key: ["project_id", "workspace_id", "worktree_id"],
   }),
   Object.freeze({
     table: "planning_states",
     purpose: "persist shared planning and dispatch metadata without replacing versioned backlog artifacts",
     lifecycle: "upsert-with-revision",
-    primary_key: ["workspace_id", "planning_key"],
+    primary_key: ["project_id", "workspace_id", "planning_key"],
   }),
   Object.freeze({
     table: "handoff_relays",
     purpose: "append relay metadata for cross-worktree handoff coordination while keeping HANDOFF-PACKET.md versioned",
     lifecycle: "append-only",
-    primary_key: ["workspace_id", "relay_id"],
+    primary_key: ["project_id", "workspace_id", "relay_id"],
   }),
   Object.freeze({
     table: "coordination_records",
     purpose: "append dispatch, arbitration, and coordination digest records shared across worktrees",
     lifecycle: "append-only",
-    primary_key: ["workspace_id", "record_id"],
+    primary_key: ["project_id", "workspace_id", "record_id"],
   }),
 ]);
 

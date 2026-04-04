@@ -27,11 +27,18 @@ function main() {
     assert(missing.exists === false, "expected missing locator to report exists=false");
     assert(missing.ref === resolveSharedRuntimeLocatorRef(), "expected logical locator ref for missing locator");
     assert(missing.data.enabled === false, "expected missing locator to default to disabled");
+    assert(missing.data.version === 2, "expected missing locator to normalize to v2");
     assert(missing.data.backend.kind === "none", "expected missing locator backend kind to default to none");
+    assert(missing.data.projectId === "", "expected missing locator projectId to default to empty");
 
     const writtenPath = writeSharedRuntimeLocator(targetRoot, {
       enabled: true,
+      projectId: "project-locator",
       workspaceId: "workspace-locator",
+      project: {
+        root: ".",
+        rootRef: "target-root",
+      },
       backend: {
         kind: "postgres",
         connectionRef: "env:AIDN_PG_URL",
@@ -45,7 +52,9 @@ function main() {
     const roundTrip = readSharedRuntimeLocator(targetRoot);
     assert(roundTrip.exists === true, "expected written locator to exist");
     assert(roundTrip.data.enabled === true, "expected written locator to stay enabled");
+    assert(roundTrip.data.projectId === "project-locator", "expected written projectId to round-trip");
     assert(roundTrip.data.workspaceId === "workspace-locator", "expected written workspaceId to round-trip");
+    assert(roundTrip.data.project.root === ".", "expected project root to round-trip");
     assert(roundTrip.data.backend.kind === "postgres", "expected backend kind to round-trip");
     assert(roundTrip.data.backend.connectionRef === "env:AIDN_PG_URL", "expected connection ref to round-trip");
     assert(roundTrip.data.projection.localIndexMode === "preserve-current", "expected projection policy to round-trip");
@@ -54,6 +63,24 @@ function main() {
     fs.writeFileSync(invalidPath, `${JSON.stringify({
       version: 1,
       enabled: true,
+      workspaceId: "workspace-legacy",
+      backend: {
+        kind: "sqlite-file",
+        root: "../shared-legacy",
+      },
+      projection: {
+        localIndexMode: "preserve-current",
+      },
+    }, null, 2)}\n`, "utf8");
+    const legacyRoundTrip = readSharedRuntimeLocator(targetRoot);
+    assert(legacyRoundTrip.data.version === 2, "expected v1 locator to normalize to v2");
+    assert(legacyRoundTrip.data.projectId === "workspace-legacy", "expected v1 locator projectId to default from workspaceId");
+    assert(legacyRoundTrip.data.compat.legacyWorkspaceIdentity === "workspace-legacy", "expected legacy workspace identity to be preserved");
+
+    fs.writeFileSync(invalidPath, `${JSON.stringify({
+      version: 2,
+      enabled: true,
+      projectId: "project-invalid",
       backend: {
         kind: "mysql",
       },

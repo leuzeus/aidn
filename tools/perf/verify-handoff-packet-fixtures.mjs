@@ -85,6 +85,7 @@ function main() {
 
     assert(String(payload.workspace?.workspace_id ?? "").length > 0, "expected workspace_id in handoff output envelope");
     assert(String(payload.workspace?.worktree_id ?? "").length > 0, "expected worktree_id in handoff output envelope");
+    assert(String(payload.packet.project_id ?? "").length > 0, "expected project_id in handoff packet");
     assert(String(payload.packet.workspace_id ?? "").length > 0, "expected workspace_id in handoff packet");
     assert(String(payload.packet.worktree_id ?? "").length > 0, "expected worktree_id in handoff packet");
     assert(payload.packet.shared_runtime_mode === "local-only", "expected local-only runtime mode in handoff packet");
@@ -109,6 +110,7 @@ function main() {
     assert(String(payload.packet.next_agent_goal ?? "").length > 0, "expected explicit next_agent_goal");
     assert(payload.packet.prioritized_artifacts.includes("docs/audit/CURRENT-STATE.md"), "missing CURRENT-STATE priority");
     assert(text.includes("handoff_status: refresh_required"), "packet file missing refresh_required");
+    assert(text.includes("project_id:"), "packet file missing project_id");
     assert(text.includes("workspace_id:"), "packet file missing workspace_id");
     assert(text.includes("worktree_id:"), "packet file missing worktree_id");
     assert(text.includes("shared_runtime_mode: local-only"), "packet file missing local-only runtime mode");
@@ -167,6 +169,7 @@ function main() {
     }
     const filelessPayload = JSON.parse(String(filelessResult.stdout ?? "{}"));
     const filelessText = fs.readFileSync(path.join(filelessRepo, "docs", "audit", "HANDOFF-PACKET.md"), "utf8");
+    assert(String(filelessPayload.packet.project_id ?? "").length > 0, "db-only fileless handoff should expose project_id");
     assert(String(filelessPayload.packet.workspace_id ?? "").length > 0, "db-only fileless handoff should expose workspace_id");
     assert(String(filelessPayload.packet.worktree_id ?? "").length > 0, "db-only fileless handoff should expose worktree_id");
     assert(filelessPayload.packet.shared_runtime_mode === "local-only", "db-only fileless handoff should stay local-only by default");
@@ -180,6 +183,7 @@ function main() {
     assert(filelessPayload.packet.session_file === "docs/audit/sessions/S101-alpha.md", "db-only fileless handoff should recover the session artifact path");
     assert(filelessPayload.packet.cycle_status_file === "docs/audit/cycles/C101-feature-alpha/status.md", "db-only fileless handoff should recover the cycle status path");
     assert(filelessText.includes("handoff_status: ready"), "db-only fileless handoff markdown should record ready status");
+    assert(filelessText.includes("project_id:"), "db-only fileless handoff markdown should record project_id");
     assert(filelessText.includes("workspace_id:"), "db-only fileless handoff markdown should record workspace_id");
     const output = {
       ts: new Date().toISOString(),

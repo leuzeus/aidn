@@ -30,7 +30,11 @@ function runCli(args, env = {}) {
   };
 }
 
-function createFakeResolution({ schemaStatus = "ready", latestSchemaVersion = 1 } = {}) {
+function createFakeResolution({
+  schemaStatus = "ready",
+  latestSchemaVersion = 2,
+  legacyWorkspaceRows = 0,
+} = {}) {
   return {
     enabled: true,
     configured: true,
@@ -47,7 +51,7 @@ function createFakeResolution({ schemaStatus = "ready", latestSchemaVersion = 1 
     contract: {
       scope: "shared-coordination-only",
       schema_name: "aidn_shared",
-      schema_version: 1,
+      schema_version: 2,
       schema_file: path.resolve(process.cwd(), "tools/perf/sql/shared-coordination-postgres.sql"),
       driver: {
         package_name: "pg",
@@ -60,20 +64,25 @@ function createFakeResolution({ schemaStatus = "ready", latestSchemaVersion = 1 
           database_name: "aidn_test",
           schema_name: "aidn_shared",
           current_schema_name: "public",
-          expected_schema_version: 1,
+          expected_schema_version: 2,
           applied_schema_versions: latestSchemaVersion > 0 ? [latestSchemaVersion] : [],
           latest_applied_schema_version: latestSchemaVersion,
           tables_present: [
             "coordination_records",
             "handoff_relays",
             "planning_states",
+            "project_registry",
             "schema_migrations",
             "workspace_registry",
             "worktree_registry",
           ],
           tables_missing: schemaStatus === "schema-drift" ? ["handoff_relays"] : [],
           schema_status: schemaStatus,
-          schema_ok: schemaStatus === "ready",
+          compatibility_status: legacyWorkspaceRows > 0 ? "mixed-legacy-v2" : (schemaStatus === "ready" ? "project-scoped" : "schema-not-ready"),
+          migration_diagnostics: legacyWorkspaceRows > 0 ? [`${legacyWorkspaceRows} workspace_registry rows still need project_id backfill`] : [],
+          schema_ok: schemaStatus === "ready" && legacyWorkspaceRows === 0,
+          registered_project_count: 1,
+          legacy_workspace_rows: legacyWorkspaceRows,
         };
       },
       describeContract() {
@@ -98,6 +107,7 @@ async function main() {
     fs.mkdirSync(targetRoot, { recursive: true });
     writeSharedRuntimeLocator(targetRoot, {
       enabled: true,
+      projectId: "project-doctor",
       workspaceId: "workspace-doctor",
       backend: {
         kind: "postgres",
@@ -113,11 +123,12 @@ async function main() {
       targetRoot,
       sharedCoordination: createFakeResolution({
         schemaStatus: "ready",
-        latestSchemaVersion: 1,
+        latestSchemaVersion: 2,
       }),
     });
     assert(ready.ok === true, "doctor should pass for a healthy aligned schema");
     assert(ready.health?.schema_status === "ready", "doctor should expose ready schema status");
+    assert(ready.health?.compatibility_status === "project-scoped", "doctor should expose project-scoped compatibility status");
 
     const behind = await doctorSharedCoordination({
       targetRoot,
@@ -129,6 +140,17 @@ async function main() {
     assert(behind.ok === false, "doctor should fail when the schema is behind");
     assert(behind.findings?.some((item) => item.code === "version-behind"), "doctor should report version-behind");
     assert(behind.recommended_actions?.some((item) => item.includes("shared-coordination-migrate --dry-run")), "doctor should recommend reviewing the upgrade plan before applying it");
+
+    const mixedState = await doctorSharedCoordination({
+      targetRoot,
+      sharedCoordination: createFakeResolution({
+        schemaStatus: "ready",
+        latestSchemaVersion: 2,
+        legacyWorkspaceRows: 3,
+      }),
+    });
+    assert(mixedState.ok === false, "doctor should fail when legacy workspace rows remain");
+    assert(mixedState.findings?.some((item) => item.code === "mixed-legacy-v2"), "doctor should report mixed legacy/v2 state");
 
     console.log("PASS");
   } catch (error) {

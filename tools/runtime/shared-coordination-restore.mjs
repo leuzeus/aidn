@@ -85,16 +85,28 @@ function sortRecordsForReplay(records) {
 }
 
 function checkWorkspaceMatch(workspace, payload) {
+  const backupProjectId = normalizeScalar(payload?.workspace?.project_id);
   const backupWorkspaceId = normalizeScalar(payload?.workspace?.workspace_id);
+  if (backupProjectId && backupProjectId !== normalizeScalar(workspace?.project_id)) {
+    return {
+      ok: false,
+      backup_project_id: backupProjectId,
+      backup_workspace_id: backupWorkspaceId,
+      mismatch: "project",
+    };
+  }
   if (!backupWorkspaceId) {
     return {
       ok: true,
+      backup_project_id: backupProjectId,
       backup_workspace_id: "",
     };
   }
   return {
     ok: backupWorkspaceId === normalizeScalar(workspace?.workspace_id),
+    backup_project_id: backupProjectId,
     backup_workspace_id: backupWorkspaceId,
+    mismatch: backupWorkspaceId === normalizeScalar(workspace?.workspace_id) ? "" : "workspace",
   };
 }
 
@@ -146,8 +158,10 @@ export async function restoreSharedCoordination({
       target_root: absoluteTargetRoot,
       input_file: absoluteInput,
       ok: false,
-      status: "workspace-mismatch",
-      reason: `backup workspace_id ${workspaceMatch.backup_workspace_id} does not match current workspace_id ${workspace.workspace_id}`,
+      status: workspaceMatch.mismatch === "project" ? "project-mismatch" : "workspace-mismatch",
+      reason: workspaceMatch.mismatch === "project"
+        ? `backup project_id ${workspaceMatch.backup_project_id} does not match current project_id ${workspace.project_id}`
+        : `backup workspace_id ${workspaceMatch.backup_workspace_id} does not match current workspace_id ${workspace.workspace_id}`,
       write_requested: Boolean(write),
       workspace,
       shared_coordination_backend: backend,
@@ -219,6 +233,7 @@ export async function restoreSharedCoordination({
 
   const planning = snapshot.planningState
     ? await resolution.store.upsertPlanningState({
+      projectId: workspace.project_id,
       workspaceId: workspace.workspace_id,
       planningKey: snapshot.planningState.planning_key,
       sessionId: snapshot.planningState.session_id,
@@ -238,6 +253,7 @@ export async function restoreSharedCoordination({
 
   const handoff = snapshot.handoffRelay
     ? await resolution.store.appendHandoffRelay({
+      projectId: workspace.project_id,
       workspaceId: workspace.workspace_id,
       relayId: snapshot.handoffRelay.relay_id,
       sessionId: snapshot.handoffRelay.session_id,
@@ -260,6 +276,7 @@ export async function restoreSharedCoordination({
   const coordination = [];
   for (const record of sortRecordsForReplay(snapshot.coordinationRecords)) {
     coordination.push(await resolution.store.appendCoordinationRecord({
+      projectId: workspace.project_id,
       workspaceId: workspace.workspace_id,
       recordId: record.record_id,
       recordType: record.record_type,

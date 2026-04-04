@@ -397,6 +397,11 @@ function buildMarkdown(digest) {
   lines.push("## Summary");
   lines.push("");
   lines.push(`updated_at: ${digest.updated_at}`);
+  lines.push(`project_id: ${digest.project_id}`);
+  lines.push(`project_id_source: ${digest.project_id_source}`);
+  lines.push(`project_root: ${digest.project_root}`);
+  lines.push(`workspace_id: ${digest.workspace_id}`);
+  lines.push(`worktree_id: ${digest.worktree_id}`);
   lines.push(`runtime_state_mode: ${digest.runtime_state_mode}`);
   lines.push(`repair_layer_status: ${digest.repair_layer_status}`);
   lines.push(`repair_layer_advice: ${digest.repair_layer_advice}`);
@@ -549,6 +554,11 @@ export async function projectRuntimeState({
   }
   const digest = {
     updated_at: new Date().toISOString(),
+    project_id: workspace.project_id,
+    project_id_source: workspace.project_id_source,
+    project_root: workspace.project_root,
+    workspace_id: workspace.workspace_id,
+    worktree_id: workspace.worktree_id,
     runtime_state_mode: String(dbBackedMode ? effectiveStateMode : (hydrated?.state_mode ?? "files")),
     repair_layer_status: repairSummary.status,
     repair_layer_advice: repairSummary.advice,

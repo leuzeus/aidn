@@ -1,4 +1,4 @@
-import { readSharedRuntimeLocator } from "../../lib/config/shared-runtime-locator-config-lib.mjs";
+import { findDescendantSharedRuntimeLocators, readSharedRuntimeLocator } from "../../lib/config/shared-runtime-locator-config-lib.mjs";
 import { canonicalizeRuntimePath, isSameOrChildRuntimePath, resolveRuntimePath } from "./shared-runtime-path-lib.mjs";
 
 function normalizeScalar(value) {
@@ -30,6 +30,8 @@ export function validateSharedRuntimeContext({
   const sharedRuntimeRoot = normalizeScalar(resolvedWorkspace.shared_runtime_root);
   const sharedBackendKind = normalizeScalar(resolvedWorkspace.shared_backend_kind).toLowerCase() || "none";
   const sharedConnectionRef = normalizeScalar(resolvedWorkspace.shared_runtime_connection_ref);
+  const projectId = normalizeScalar(resolvedWorkspace.project_id);
+  const projectIdSource = normalizeScalar(resolvedWorkspace.project_id_source) || "unknown";
   const workspaceId = normalizeScalar(resolvedWorkspace.workspace_id);
   const workspaceIdSource = normalizeScalar(resolvedWorkspace.workspace_id_source) || "unknown";
   const worktreeRoot = canonicalizeRuntimePath(resolvedWorkspace.worktree_root ?? absoluteTargetRoot, { platform });
@@ -37,15 +39,24 @@ export function validateSharedRuntimeContext({
   const docsAuditRoot = resolveRuntimePath(worktreeRoot, "docs/audit", { platform });
   const gitDir = canonicalizeRuntimePath(resolvedWorkspace.git_dir, { platform });
   const localRuntimeRoot = resolveRuntimePath(worktreeRoot, ".aidn/runtime", { platform });
+  const locatorProjectId = normalizeScalar(locatorData.projectId);
   const locatorWorkspaceId = normalizeScalar(locatorData.workspaceId);
+  const envProjectId = normalizeScalar(env.AIDN_PROJECT_ID);
   const envWorkspaceId = normalizeScalar(env.AIDN_WORKSPACE_ID);
+  const descendantLocators = locator.exists === true
+    ? []
+    : findDescendantSharedRuntimeLocators(absoluteTargetRoot, {
+      maxResults: 2,
+    });
 
   const checks = {
     shared_runtime_contract_complete: makeCheck(true, sharedRuntimeMode === "local-only"
       ? "local-only mode does not require shared runtime contract fields"
       : `shared backend kind=${sharedBackendKind}`),
     shared_runtime_root_is_trusted: makeCheck(true, sharedRuntimeRoot || "no shared runtime root configured"),
+    locator_project_identity_consistent: makeCheck(true, locatorProjectId || "no locator project identity declared"),
     locator_workspace_identity_consistent: makeCheck(true, locatorWorkspaceId || "no locator workspace identity declared"),
+    nested_project_locator_topology_clear: makeCheck(true, "no nested project locator ambiguity detected"),
   };
 
   if (sharedRuntimeMode !== "local-only") {
@@ -90,6 +101,15 @@ export function validateSharedRuntimeContext({
     }
   }
 
+  if (locatorProjectId) {
+    if (projectIdSource !== "locator" && projectId && projectId !== locatorProjectId) {
+      issues.push(`shared runtime locator project_id mismatch: locator=${locatorProjectId} resolved=${projectId}`);
+      checks.locator_project_identity_consistent = makeCheck(false, `locator=${locatorProjectId}; resolved=${projectId}; source=${projectIdSource}`);
+    } else {
+      checks.locator_project_identity_consistent = makeCheck(true, `locator=${locatorProjectId}; source=${projectIdSource}`);
+    }
+  }
+
   if (locatorWorkspaceId) {
     if (workspaceIdSource !== "locator" && workspaceId && workspaceId !== locatorWorkspaceId) {
       issues.push(`shared runtime locator workspace_id mismatch: locator=${locatorWorkspaceId} resolved=${workspaceId}`);
@@ -99,8 +119,22 @@ export function validateSharedRuntimeContext({
     }
   }
 
+  if (descendantLocators.length > 1) {
+    const listedLocators = descendantLocators
+      .map((entry) => canonicalizeRuntimePath(entry, { platform }))
+      .join(", ");
+    issues.push(`target root is ambiguous: multiple nested shared runtime locators detected beneath ${canonicalizeRuntimePath(absoluteTargetRoot, { platform })}`);
+    checks.nested_project_locator_topology_clear = makeCheck(false, listedLocators);
+  } else if (descendantLocators.length === 1) {
+    warnings.push(`target root does not declare a local shared runtime locator; prefer the nested project root at ${canonicalizeRuntimePath(descendantLocators[0], { platform })}`);
+    checks.nested_project_locator_topology_clear = makeCheck(true, canonicalizeRuntimePath(descendantLocators[0], { platform }));
+  }
+
   if (locator.exists && locatorData.enabled === false && sharedRuntimeMode !== "local-only") {
     warnings.push("shared runtime is enabled by override while the locator is disabled");
+  }
+  if (locatorProjectId && envProjectId && envProjectId !== locatorProjectId) {
+    warnings.push(`environment project override differs from locator project identity: env=${envProjectId} locator=${locatorProjectId}`);
   }
   if (locatorWorkspaceId && envWorkspaceId && envWorkspaceId !== locatorWorkspaceId) {
     warnings.push(`environment workspace override differs from locator workspace identity: env=${envWorkspaceId} locator=${locatorWorkspaceId}`);

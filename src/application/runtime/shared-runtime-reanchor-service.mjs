@@ -72,6 +72,8 @@ function hasRepairIntent(options = {}) {
   return Boolean(
     options.write === true
     || options.localOnly === true
+    || normalizeScalar(options.projectId)
+    || normalizeScalar(options.projectRoot)
     || normalizeScalar(options.workspaceId)
     || normalizeScalar(options.backendKind)
     || normalizeScalar(options.sharedRoot)
@@ -91,7 +93,12 @@ function buildProposedLocator(inspectResult, options = {}) {
   if (options.localOnly === true) {
     return normalizeSharedRuntimeLocator({
       enabled: false,
+      projectId: "",
       workspaceId: "",
+      project: {
+        root: "",
+        rootRef: "none",
+      },
       backend: {
         kind: "none",
         root: "",
@@ -104,15 +111,28 @@ function buildProposedLocator(inspectResult, options = {}) {
   }
 
   const backendKind = normalizeBackendKind(options.backendKind || current.backend?.kind || "");
+  const projectId = normalizeScalar(options.projectId)
+    || normalizeScalar(current.projectId)
+    || normalizeScalar(inspectResult.workspace?.project_id)
+    || normalizeScalar(current.compat?.legacyWorkspaceIdentity);
   const workspaceId = normalizeScalar(options.workspaceId)
     || normalizeScalar(current.workspaceId)
-    || normalizeScalar(inspectResult.workspace?.workspace_id);
+    || normalizeScalar(inspectResult.workspace?.workspace_id)
+    || projectId;
+  const projectRoot = normalizeScalar(options.projectRoot)
+    || normalizeScalar(current.project?.root)
+    || ".";
   const backendRoot = normalizeScalar(options.sharedRoot) || normalizeScalar(current.backend?.root);
   const connectionRef = normalizeScalar(options.connectionRef) || normalizeScalar(current.backend?.connectionRef);
 
   return normalizeSharedRuntimeLocator({
     enabled: true,
+    projectId,
     workspaceId,
+    project: {
+      root: projectRoot,
+      rootRef: normalizeScalar(current.project?.rootRef) || "target-root",
+    },
     backend: {
       kind: backendKind || "none",
       root: backendRoot,
@@ -173,6 +193,8 @@ export function inspectSharedRuntimeReanchor({
 export function repairSharedRuntimeReanchor({
   targetRoot = ".",
   env = process.env,
+  projectId = "",
+  projectRoot = "",
   workspaceId = "",
   backendKind = "",
   sharedRoot = "",
@@ -187,6 +209,8 @@ export function repairSharedRuntimeReanchor({
   });
   const intendedWrite = write === true || hasRepairIntent({
     localOnly,
+    projectId,
+    projectRoot,
     workspaceId,
     backendKind,
     sharedRoot,
@@ -204,6 +228,8 @@ export function repairSharedRuntimeReanchor({
   }
 
   const proposedLocator = buildProposedLocator(inspectResult, {
+    projectId,
+    projectRoot,
     workspaceId,
     backendKind,
     sharedRoot,

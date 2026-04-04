@@ -14,9 +14,12 @@ Rule/State boundary:
 
 ## Summary
 
-updated_at: 2026-03-28T15:02:29.707Z
+updated_at: 2026-04-04T05:01:47.754Z
+project_id: git-9447929f5071671f
+project_id_source: legacy-git-common-dir
+project_root: G:\projets\aidn\tests\fixtures\repo-installed-core
 workspace_id: git-9447929f5071671f
-workspace_id_source: git-common-dir
+workspace_id_source: project-legacy-git-common-dir
 worktree_id: worktree-2eb6ed3a3edfc3f2
 is_linked_worktree: no
 shared_runtime_mode: local-only

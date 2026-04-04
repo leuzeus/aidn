@@ -30,10 +30,11 @@ function runCli(args, env = {}) {
   };
 }
 
-function createBackupPayload(workspaceId = "workspace-restore", sourceSchemaVersion = 1) {
+function createBackupPayload(workspaceId = "workspace-restore", sourceSchemaVersion = 2, projectId = "project-restore") {
   return {
     ts: "2026-03-29T18:00:00.000Z",
     workspace: {
+      project_id: projectId,
       workspace_id: workspaceId,
       worktree_id: "worktree-source",
     },
@@ -58,6 +59,7 @@ function createBackupPayload(workspaceId = "workspace-restore", sourceSchemaVers
       planning_read: {
         status: "found",
         planning_state: {
+          project_id: projectId,
           workspace_id: workspaceId,
           planning_key: "session:S201",
           session_id: "S201",
@@ -79,6 +81,7 @@ function createBackupPayload(workspaceId = "workspace-restore", sourceSchemaVers
       handoff_read: {
         status: "found",
         handoff_relay: {
+          project_id: projectId,
           workspace_id: workspaceId,
           relay_id: "handoff:restore:1",
           session_id: "S201",
@@ -104,6 +107,7 @@ function createBackupPayload(workspaceId = "workspace-restore", sourceSchemaVers
         record_count: 2,
         records: [
           {
+            project_id: projectId,
             workspace_id: workspaceId,
             record_id: "coord:restore:1",
             record_type: "coordinator_dispatch",
@@ -123,6 +127,7 @@ function createBackupPayload(workspaceId = "workspace-restore", sourceSchemaVers
             created_at: "2026-03-29T18:01:00.000Z",
           },
           {
+            project_id: projectId,
             workspace_id: workspaceId,
             record_id: "coord:restore:2",
             record_type: "coordinator_dispatch",
@@ -164,7 +169,7 @@ function createFakeResolution(state) {
     contract: {
       scope: "shared-coordination-only",
       schema_name: "aidn_shared",
-      schema_version: 1,
+      schema_version: 2,
       driver: {
         package_name: "pg",
       },
@@ -174,7 +179,7 @@ function createFakeResolution(state) {
         return {
           ok: true,
           schema_name: "aidn_shared",
-          schema_version: 1,
+          schema_version: 2,
         };
       },
       async healthcheck() {
@@ -183,13 +188,14 @@ function createFakeResolution(state) {
           database_name: "aidn_test",
           schema_name: "aidn_shared",
           current_schema_name: "public",
-          expected_schema_version: 1,
-          applied_schema_versions: [1],
-          latest_applied_schema_version: 1,
+          expected_schema_version: 2,
+          applied_schema_versions: [2],
+          latest_applied_schema_version: 2,
           tables_present: [
             "coordination_records",
             "handoff_relays",
             "planning_states",
+            "project_registry",
             "schema_migrations",
             "workspace_registry",
             "worktree_registry",
@@ -197,6 +203,8 @@ function createFakeResolution(state) {
           tables_missing: [],
           schema_status: "ready",
           schema_ok: true,
+          registered_project_count: 1,
+          legacy_workspace_rows: 0,
         };
       },
       async registerWorkspace(input) {
@@ -238,6 +246,7 @@ async function main() {
     fs.mkdirSync(path.join(targetRoot, ".aidn", "runtime"), { recursive: true });
     writeSharedRuntimeLocator(targetRoot, {
       enabled: true,
+      projectId: "project-restore",
       workspaceId: "workspace-restore",
       backend: {
         kind: "postgres",
@@ -280,6 +289,7 @@ async function main() {
     assert(writeResult.ok === true, "direct restore write should succeed");
     assert(writeResult.status === "restored", "direct restore write should report restored");
     assert(writeResult.schema_compatibility?.status === "compatible", "direct restore write should preserve schema compatibility");
+    assert(state.workspace?.projectId === "project-restore", "restore should register project-aware workspace");
     assert(state.workspace?.workspaceId === "workspace-restore", "restore should register workspace");
     assert(state.worktree?.worktreeId, "restore should register worktree");
     assert(state.planning?.planningKey === "session:S201", "restore should replay planning state");
@@ -292,7 +302,7 @@ async function main() {
       database_name: "aidn_test",
       schema_name: "aidn_shared",
       current_schema_name: "public",
-      expected_schema_version: 1,
+      expected_schema_version: 2,
       applied_schema_versions: [],
       latest_applied_schema_version: 0,
       tables_present: [],
@@ -300,6 +310,7 @@ async function main() {
         "coordination_records",
         "handoff_relays",
         "planning_states",
+        "project_registry",
         "schema_migrations",
         "workspace_registry",
         "worktree_registry",
@@ -324,7 +335,7 @@ async function main() {
     assert(mismatch.ok === false, "workspace mismatch should fail");
     assert(mismatch.status === "workspace-mismatch", "workspace mismatch should be explicit");
 
-    fs.writeFileSync(backupFile, JSON.stringify(createBackupPayload("workspace-restore", 2), null, 2));
+    fs.writeFileSync(backupFile, JSON.stringify(createBackupPayload("workspace-restore", 3), null, 2));
     const versionAhead = await restoreSharedCoordination({
       targetRoot,
       input: ".aidn/runtime/shared-coordination-backup.json",
@@ -332,6 +343,15 @@ async function main() {
     });
     assert(versionAhead.ok === false, "newer-schema backup should be rejected");
     assert(versionAhead.status === "backup-version-ahead", "newer-schema backup mismatch should be explicit");
+
+    fs.writeFileSync(backupFile, JSON.stringify(createBackupPayload("workspace-restore", 2, "project-other"), null, 2));
+    const projectMismatch = await restoreSharedCoordination({
+      targetRoot,
+      input: ".aidn/runtime/shared-coordination-backup.json",
+      sharedCoordination: fakeResolution,
+    });
+    assert(projectMismatch.ok === false, "project mismatch should fail");
+    assert(projectMismatch.status === "project-mismatch", "project mismatch should be explicit");
 
     console.log("PASS");
   } catch (error) {

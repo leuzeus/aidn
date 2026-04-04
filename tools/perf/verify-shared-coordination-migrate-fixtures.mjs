@@ -33,7 +33,7 @@ function runCli(args, env = {}) {
 function createFakeResolution() {
   const state = {
     schemaStatus: "ready",
-    latestSchemaVersion: 1,
+    latestSchemaVersion: 2,
   };
   return {
     enabled: true,
@@ -51,7 +51,7 @@ function createFakeResolution() {
     contract: {
       scope: "shared-coordination-only",
       schema_name: "aidn_shared",
-      schema_version: 1,
+      schema_version: 2,
       schema_file: path.resolve(process.cwd(), "tools/perf/sql/shared-coordination-postgres.sql"),
       driver: {
         package_name: "pg",
@@ -60,11 +60,11 @@ function createFakeResolution() {
     store: {
       async bootstrap() {
         state.schemaStatus = "ready";
-        state.latestSchemaVersion = 1;
+        state.latestSchemaVersion = 2;
         return {
           ok: true,
           schema_name: "aidn_shared",
-          schema_version: 1,
+          schema_version: 2,
         };
       },
       async healthcheck() {
@@ -73,13 +73,14 @@ function createFakeResolution() {
           database_name: "aidn_test",
           schema_name: "aidn_shared",
           current_schema_name: "public",
-          expected_schema_version: 1,
+          expected_schema_version: 2,
           applied_schema_versions: state.latestSchemaVersion > 0 ? [state.latestSchemaVersion] : [],
           latest_applied_schema_version: state.latestSchemaVersion,
           tables_present: [
             "coordination_records",
             "handoff_relays",
             "planning_states",
+            "project_registry",
             "schema_migrations",
             "workspace_registry",
             "worktree_registry",
@@ -87,6 +88,8 @@ function createFakeResolution() {
           tables_missing: [],
           schema_status: state.schemaStatus,
           schema_ok: state.schemaStatus === "ready",
+          registered_project_count: 1,
+          legacy_workspace_rows: 0,
         };
       },
       async registerWorkspace(input) {
@@ -126,6 +129,7 @@ async function main() {
     fs.mkdirSync(targetRoot, { recursive: true });
     writeSharedRuntimeLocator(targetRoot, {
       enabled: true,
+      projectId: "project-migrate",
       workspaceId: "workspace-migrate",
       backend: {
         kind: "postgres",

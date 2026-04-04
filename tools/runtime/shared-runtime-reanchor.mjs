@@ -12,6 +12,8 @@ function parseArgs(argv) {
     json: false,
     write: false,
     localOnly: false,
+    projectId: "",
+    projectRoot: "",
     workspaceId: "",
     backendKind: "",
     sharedRoot: "",
@@ -22,6 +24,12 @@ function parseArgs(argv) {
     const token = argv[i];
     if (token === "--target") {
       args.target = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--project-id") {
+      args.projectId = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--project-root") {
+      args.projectRoot = String(argv[i + 1] ?? "").trim();
       i += 1;
     } else if (token === "--workspace-id") {
       args.workspaceId = String(argv[i + 1] ?? "").trim();
@@ -61,14 +69,16 @@ function printUsage() {
   console.log("Usage:");
   console.log("  npx aidn runtime shared-runtime-reanchor --target . --json");
   console.log("  npx aidn runtime shared-runtime-reanchor --target . --local-only --write --json");
-  console.log("  npx aidn runtime shared-runtime-reanchor --target . --backend postgres --connection-ref env:AIDN_PG_URL --workspace-id workspace-main --write --json");
-  console.log("  npx aidn runtime shared-runtime-reanchor --target . --backend sqlite-file --shared-root ../aidn-shared --workspace-id workspace-main --write --json");
+  console.log("  npx aidn runtime shared-runtime-reanchor --target . --backend postgres --connection-ref env:AIDN_PG_URL --project-id project-main --workspace-id workspace-main --write --json");
+  console.log("  npx aidn runtime shared-runtime-reanchor --target . --backend sqlite-file --shared-root ../aidn-shared --project-id project-main --workspace-id workspace-main --write --json");
 }
 
 export function runSharedRuntimeReanchor(options = {}) {
   return repairSharedRuntimeReanchor({
     targetRoot: options.target,
     env: process.env,
+    projectId: options.projectId,
+    projectRoot: options.projectRoot,
     workspaceId: options.workspaceId,
     backendKind: options.backendKind,
     sharedRoot: options.sharedRoot,

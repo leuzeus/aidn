@@ -12,6 +12,12 @@ function normalizeScalar(value) {
   return String(value ?? "").trim();
 }
 
+function resolveProjectId(projectId, workspaceId, runtimeWorkspace = null) {
+  return normalizeScalar(projectId)
+    || normalizeScalar(runtimeWorkspace?.project_id)
+    || normalizeScalar(workspaceId);
+}
+
 function toJsonValue(value, fallback) {
   if (value == null) {
     return JSON.stringify(fallback);
@@ -142,6 +148,7 @@ function mapPlanningRow(row) {
     return null;
   }
   return {
+    project_id: normalizeScalar(row.project_id),
     workspace_id: normalizeScalar(row.workspace_id),
     planning_key: normalizeScalar(row.planning_key),
     session_id: normalizeScalar(row.session_id) || "none",
@@ -167,6 +174,7 @@ function mapHandoffRow(row) {
     return null;
   }
   return {
+    project_id: normalizeScalar(row.project_id),
     workspace_id: normalizeScalar(row.workspace_id),
     relay_id: normalizeScalar(row.relay_id),
     session_id: normalizeScalar(row.session_id) || "none",
@@ -192,6 +200,7 @@ function mapCoordinationRow(row) {
     return null;
   }
   return {
+    project_id: normalizeScalar(row.project_id),
     workspace_id: normalizeScalar(row.workspace_id),
     record_id: normalizeScalar(row.record_id),
     record_type: normalizeScalar(row.record_type) || "unknown",
@@ -207,6 +216,143 @@ function mapCoordinationRow(row) {
     coordination_summary_ref: normalizeScalar(row.coordination_summary_ref) || "none",
     payload: parseJsonValue(row.payload_json, {}),
     created_at: normalizeScalar(row.created_at),
+  };
+}
+
+function mapProjectRegistryRow(row) {
+  if (!row) {
+    return null;
+  }
+  return {
+    project_id: normalizeScalar(row.project_id),
+    project_id_source: normalizeScalar(row.project_id_source) || "unknown",
+    project_root_ref: normalizeScalar(row.project_root_ref) || "none",
+    locator_ref: normalizeScalar(row.locator_ref) || "none",
+    shared_backend_kind: normalizeScalar(row.shared_backend_kind) || "unknown",
+    workspace_count: Number(row.workspace_count ?? 0) || 0,
+    worktree_count: Number(row.worktree_count ?? 0) || 0,
+    planning_state_count: Number(row.planning_state_count ?? 0) || 0,
+    handoff_relay_count: Number(row.handoff_relay_count ?? 0) || 0,
+    coordination_record_count: Number(row.coordination_record_count ?? 0) || 0,
+    updated_at: normalizeScalar(row.updated_at),
+  };
+}
+
+function mapWorkspaceRegistryRow(row) {
+  if (!row) {
+    return null;
+  }
+  return {
+    project_id: normalizeScalar(row.project_id),
+    workspace_id: normalizeScalar(row.workspace_id),
+    workspace_id_source: normalizeScalar(row.workspace_id_source) || "unknown",
+    project_id_source: normalizeScalar(row.project_id_source) || "unknown",
+    project_root_ref: normalizeScalar(row.project_root_ref) || "none",
+    locator_ref: normalizeScalar(row.locator_ref) || "none",
+    git_common_dir: normalizeScalar(row.git_common_dir) || "none",
+    repo_root: normalizeScalar(row.repo_root) || "none",
+    shared_backend_kind: normalizeScalar(row.shared_backend_kind) || "unknown",
+    updated_at: normalizeScalar(row.updated_at),
+  };
+}
+
+async function queryLegacyProjectList(client) {
+  const queryResult = await client.query(
+    `
+    SELECT
+      wr.workspace_id AS project_id,
+      'legacy-workspace' AS project_id_source,
+      wr.repo_root AS project_root_ref,
+      wr.locator_ref,
+      wr.shared_backend_kind,
+      wr.updated_at,
+      1::int AS workspace_count,
+      (
+        SELECT COUNT(*)::int
+        FROM aidn_shared.worktree_registry wt
+        WHERE wt.workspace_id = wr.workspace_id
+      ) AS worktree_count,
+      (
+        SELECT COUNT(*)::int
+        FROM aidn_shared.planning_states ps
+        WHERE ps.workspace_id = wr.workspace_id
+      ) AS planning_state_count,
+      (
+        SELECT COUNT(*)::int
+        FROM aidn_shared.handoff_relays hr
+        WHERE hr.workspace_id = wr.workspace_id
+      ) AS handoff_relay_count,
+      (
+        SELECT COUNT(*)::int
+        FROM aidn_shared.coordination_records cr
+        WHERE cr.workspace_id = wr.workspace_id
+      ) AS coordination_record_count
+    FROM aidn_shared.workspace_registry wr
+    ORDER BY wr.workspace_id ASC
+    `,
+  );
+  return Array.isArray(queryResult.rows) ? queryResult.rows.map((row) => mapProjectRegistryRow(row)) : [];
+}
+
+async function queryLegacyProjectInspect(client, resolvedProjectId) {
+  const projectResult = await client.query(
+    `
+    SELECT
+      wr.workspace_id AS project_id,
+      'legacy-workspace' AS project_id_source,
+      wr.repo_root AS project_root_ref,
+      wr.locator_ref,
+      wr.shared_backend_kind,
+      wr.updated_at,
+      1::int AS workspace_count,
+      (
+        SELECT COUNT(*)::int
+        FROM aidn_shared.worktree_registry wt
+        WHERE wt.workspace_id = wr.workspace_id
+      ) AS worktree_count,
+      (
+        SELECT COUNT(*)::int
+        FROM aidn_shared.planning_states ps
+        WHERE ps.workspace_id = wr.workspace_id
+      ) AS planning_state_count,
+      (
+        SELECT COUNT(*)::int
+        FROM aidn_shared.handoff_relays hr
+        WHERE hr.workspace_id = wr.workspace_id
+      ) AS handoff_relay_count,
+      (
+        SELECT COUNT(*)::int
+        FROM aidn_shared.coordination_records cr
+        WHERE cr.workspace_id = wr.workspace_id
+      ) AS coordination_record_count
+    FROM aidn_shared.workspace_registry wr
+    WHERE wr.workspace_id = $1
+    LIMIT 1
+    `,
+    [resolvedProjectId],
+  );
+  const workspaceResult = await client.query(
+    `
+    SELECT
+      wr.workspace_id AS project_id,
+      'legacy-workspace' AS project_id_source,
+      wr.repo_root AS project_root_ref,
+      wr.workspace_id,
+      wr.workspace_id_source,
+      wr.locator_ref,
+      wr.git_common_dir,
+      wr.repo_root,
+      wr.shared_backend_kind,
+      wr.updated_at
+    FROM aidn_shared.workspace_registry wr
+    WHERE wr.workspace_id = $1
+    ORDER BY wr.workspace_id ASC
+    `,
+    [resolvedProjectId],
+  );
+  return {
+    project: mapProjectRegistryRow(projectResult.rows[0] ?? null),
+    workspaces: Array.isArray(workspaceResult.rows) ? workspaceResult.rows.map((row) => mapWorkspaceRegistryRow(row)) : [],
   };
 }
 
@@ -282,6 +428,9 @@ export function createPostgresSharedCoordinationStore({
     },
 
     async registerWorkspace({
+      projectId = "",
+      projectIdSource = "",
+      projectRootRef = "",
       workspaceId,
       workspaceIdSource = "",
       locatorRef = "",
@@ -291,9 +440,41 @@ export function createPostgresSharedCoordinationStore({
     } = {}) {
       try {
         const result = await withClient(runtime, async (client) => {
+          const resolvedProjectId = resolveProjectId(projectId, workspaceId, runtime.workspace);
+          const resolvedProjectIdSource = normalizeScalar(projectIdSource)
+            || normalizeScalar(runtime.workspace?.project_id_source)
+            || "legacy-workspace";
+          await client.query(
+            `
+            INSERT INTO aidn_shared.project_registry (
+              project_id,
+              project_id_source,
+              project_root_ref,
+              locator_ref,
+              shared_backend_kind,
+              updated_at
+            ) VALUES ($1, $2, $3, $4, $5, NOW())
+            ON CONFLICT (project_id) DO UPDATE SET
+              project_id_source = EXCLUDED.project_id_source,
+              project_root_ref = EXCLUDED.project_root_ref,
+              locator_ref = EXCLUDED.locator_ref,
+              shared_backend_kind = EXCLUDED.shared_backend_kind,
+              updated_at = NOW()
+            `,
+            [
+              resolvedProjectId,
+              resolvedProjectIdSource,
+              normalizeScalar(projectRootRef || runtime.workspace?.project_root) || null,
+              normalizeScalar(locatorRef) || null,
+              normalizeScalar(sharedBackendKind) || "postgres",
+            ],
+          );
           const queryResult = await client.query(
             `
             INSERT INTO aidn_shared.workspace_registry (
+              project_id,
+              project_id_source,
+              project_root_ref,
               workspace_id,
               workspace_id_source,
               locator_ref,
@@ -301,17 +482,22 @@ export function createPostgresSharedCoordinationStore({
               repo_root,
               shared_backend_kind,
               updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
-            ON CONFLICT (workspace_id) DO UPDATE SET
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+            ON CONFLICT (project_id, workspace_id) DO UPDATE SET
+              project_id_source = EXCLUDED.project_id_source,
+              project_root_ref = EXCLUDED.project_root_ref,
               workspace_id_source = EXCLUDED.workspace_id_source,
               locator_ref = EXCLUDED.locator_ref,
               git_common_dir = EXCLUDED.git_common_dir,
               repo_root = EXCLUDED.repo_root,
               shared_backend_kind = EXCLUDED.shared_backend_kind,
               updated_at = NOW()
-            RETURNING workspace_id, workspace_id_source, locator_ref, git_common_dir, repo_root, shared_backend_kind
+            RETURNING project_id, project_id_source, project_root_ref, workspace_id, workspace_id_source, locator_ref, git_common_dir, repo_root, shared_backend_kind
             `,
             [
+              resolvedProjectId,
+              resolvedProjectIdSource,
+              normalizeScalar(projectRootRef || runtime.workspace?.project_root) || null,
               normalizeScalar(workspaceId),
               normalizeScalar(workspaceIdSource) || "unknown",
               normalizeScalar(locatorRef) || null,
@@ -335,6 +521,7 @@ export function createPostgresSharedCoordinationStore({
     },
 
     async registerWorktreeHeartbeat({
+      projectId = "",
       workspaceId,
       worktreeId,
       worktreeRoot = "",
@@ -343,24 +530,27 @@ export function createPostgresSharedCoordinationStore({
     } = {}) {
       try {
         const result = await withClient(runtime, async (client) => {
+          const resolvedProjectId = resolveProjectId(projectId, workspaceId, runtime.workspace);
           const queryResult = await client.query(
             `
             INSERT INTO aidn_shared.worktree_registry (
+              project_id,
               workspace_id,
               worktree_id,
               worktree_root,
               git_dir,
               is_linked_worktree,
               last_seen_at
-            ) VALUES ($1, $2, $3, $4, $5, NOW())
-            ON CONFLICT (workspace_id, worktree_id) DO UPDATE SET
+            ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            ON CONFLICT (project_id, workspace_id, worktree_id) DO UPDATE SET
               worktree_root = EXCLUDED.worktree_root,
               git_dir = EXCLUDED.git_dir,
               is_linked_worktree = EXCLUDED.is_linked_worktree,
               last_seen_at = NOW()
-            RETURNING workspace_id, worktree_id, worktree_root, git_dir, is_linked_worktree, last_seen_at
+            RETURNING project_id, workspace_id, worktree_id, worktree_root, git_dir, is_linked_worktree, last_seen_at
             `,
             [
+              resolvedProjectId,
               normalizeScalar(workspaceId),
               normalizeScalar(worktreeId),
               normalizeScalar(worktreeRoot) || null,
@@ -383,6 +573,7 @@ export function createPostgresSharedCoordinationStore({
     },
 
     async upsertPlanningState({
+      projectId = "",
       workspaceId,
       planningKey,
       sessionId = "",
@@ -400,9 +591,11 @@ export function createPostgresSharedCoordinationStore({
     } = {}) {
       try {
         const result = await withClient(runtime, async (client) => {
+          const resolvedProjectId = resolveProjectId(projectId, workspaceId, runtime.workspace);
           const queryResult = await client.query(
             `
             INSERT INTO aidn_shared.planning_states (
+              project_id,
               workspace_id,
               planning_key,
               session_id,
@@ -419,8 +612,8 @@ export function createPostgresSharedCoordinationStore({
               payload_json,
               revision,
               updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, 0, NOW())
-            ON CONFLICT (workspace_id, planning_key) DO UPDATE SET
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, 0, NOW())
+            ON CONFLICT (project_id, workspace_id, planning_key) DO UPDATE SET
               session_id = EXCLUDED.session_id,
               backlog_artifact_ref = EXCLUDED.backlog_artifact_ref,
               backlog_artifact_sha256 = EXCLUDED.backlog_artifact_sha256,
@@ -438,6 +631,7 @@ export function createPostgresSharedCoordinationStore({
             RETURNING *
             `,
             [
+              resolvedProjectId,
               normalizeScalar(workspaceId),
               normalizeScalar(planningKey),
               normalizeScalar(sessionId) || null,
@@ -469,6 +663,7 @@ export function createPostgresSharedCoordinationStore({
     },
 
     async appendHandoffRelay({
+      projectId = "",
       workspaceId,
       relayId,
       sessionId = "",
@@ -488,9 +683,11 @@ export function createPostgresSharedCoordinationStore({
     } = {}) {
       try {
         const result = await withClient(runtime, async (client) => {
+          const resolvedProjectId = resolveProjectId(projectId, workspaceId, runtime.workspace);
           const queryResult = await client.query(
             `
             INSERT INTO aidn_shared.handoff_relays (
+              project_id,
               workspace_id,
               relay_id,
               session_id,
@@ -507,8 +704,8 @@ export function createPostgresSharedCoordinationStore({
               handoff_packet_sha256,
               prioritized_artifacts,
               metadata_json
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16::jsonb)
-            ON CONFLICT (workspace_id, relay_id) DO UPDATE SET
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::jsonb, $17::jsonb)
+            ON CONFLICT (project_id, workspace_id, relay_id) DO UPDATE SET
               session_id = EXCLUDED.session_id,
               cycle_id = EXCLUDED.cycle_id,
               scope_type = EXCLUDED.scope_type,
@@ -526,6 +723,7 @@ export function createPostgresSharedCoordinationStore({
             RETURNING *
             `,
             [
+              resolvedProjectId,
               normalizeScalar(workspaceId),
               normalizeScalar(relayId),
               normalizeScalar(sessionId) || null,
@@ -559,6 +757,7 @@ export function createPostgresSharedCoordinationStore({
     },
 
     async appendCoordinationRecord({
+      projectId = "",
       workspaceId,
       recordId,
       recordType,
@@ -576,9 +775,11 @@ export function createPostgresSharedCoordinationStore({
     } = {}) {
       try {
         const result = await withClient(runtime, async (client) => {
+          const resolvedProjectId = resolveProjectId(projectId, workspaceId, runtime.workspace);
           const queryResult = await client.query(
             `
             INSERT INTO aidn_shared.coordination_records (
+              project_id,
               workspace_id,
               record_id,
               record_type,
@@ -593,8 +794,8 @@ export function createPostgresSharedCoordinationStore({
               coordination_log_ref,
               coordination_summary_ref,
               payload_json
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
-            ON CONFLICT (workspace_id, record_id) DO UPDATE SET
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb)
+            ON CONFLICT (project_id, workspace_id, record_id) DO UPDATE SET
               record_type = EXCLUDED.record_type,
               session_id = EXCLUDED.session_id,
               cycle_id = EXCLUDED.cycle_id,
@@ -610,6 +811,7 @@ export function createPostgresSharedCoordinationStore({
             RETURNING *
             `,
             [
+              resolvedProjectId,
               normalizeScalar(workspaceId),
               normalizeScalar(recordId),
               normalizeScalar(recordType) || "unknown",
@@ -641,20 +843,24 @@ export function createPostgresSharedCoordinationStore({
     },
 
     async getPlanningState({
+      projectId = "",
       workspaceId,
       planningKey,
     } = {}) {
       try {
         const result = await withClient(runtime, async (client) => {
+          const resolvedProjectId = resolveProjectId(projectId, workspaceId, runtime.workspace);
           const queryResult = await client.query(
             `
             SELECT *
             FROM aidn_shared.planning_states
-            WHERE workspace_id = $1
-              AND planning_key = $2
+            WHERE project_id = $1
+              AND workspace_id = $2
+              AND planning_key = $3
             LIMIT 1
             `,
             [
+              resolvedProjectId,
               normalizeScalar(workspaceId),
               normalizeScalar(planningKey),
             ],
@@ -674,6 +880,7 @@ export function createPostgresSharedCoordinationStore({
     },
 
     async getLatestHandoffRelay({
+      projectId = "",
       workspaceId,
       sessionId = "",
       scopeType = "",
@@ -681,18 +888,21 @@ export function createPostgresSharedCoordinationStore({
     } = {}) {
       try {
         const result = await withClient(runtime, async (client) => {
+          const resolvedProjectId = resolveProjectId(projectId, workspaceId, runtime.workspace);
           const queryResult = await client.query(
             `
             SELECT *
             FROM aidn_shared.handoff_relays
-            WHERE workspace_id = $1
-              AND ($2::text = '' OR session_id = $2)
-              AND ($3::text = '' OR scope_type = $3)
-              AND ($4::text = '' OR scope_id = $4)
+            WHERE project_id = $1
+              AND workspace_id = $2
+              AND ($3::text = '' OR session_id = $3)
+              AND ($4::text = '' OR scope_type = $4)
+              AND ($5::text = '' OR scope_id = $5)
             ORDER BY created_at DESC, relay_id DESC
             LIMIT 1
             `,
             [
+              resolvedProjectId,
               normalizeScalar(workspaceId),
               normalizeScalar(sessionId),
               normalizeScalar(scopeType),
@@ -714,6 +924,7 @@ export function createPostgresSharedCoordinationStore({
     },
 
     async listCoordinationRecords({
+      projectId = "",
       workspaceId,
       recordType = "",
       sessionId = "",
@@ -723,19 +934,22 @@ export function createPostgresSharedCoordinationStore({
     } = {}) {
       try {
         const result = await withClient(runtime, async (client) => {
+          const resolvedProjectId = resolveProjectId(projectId, workspaceId, runtime.workspace);
           const queryResult = await client.query(
             `
             SELECT *
             FROM aidn_shared.coordination_records
-            WHERE workspace_id = $1
-              AND ($2::text = '' OR record_type = $2)
-              AND ($3::text = '' OR session_id = $3)
-              AND ($4::text = '' OR scope_type = $4)
-              AND ($5::text = '' OR scope_id = $5)
+            WHERE project_id = $1
+              AND workspace_id = $2
+              AND ($3::text = '' OR record_type = $3)
+              AND ($4::text = '' OR session_id = $4)
+              AND ($5::text = '' OR scope_type = $5)
+              AND ($6::text = '' OR scope_id = $6)
             ORDER BY created_at DESC, record_id DESC
-            LIMIT $6
+            LIMIT $7
             `,
             [
+              resolvedProjectId,
               normalizeScalar(workspaceId),
               normalizeScalar(recordType),
               normalizeScalar(sessionId),
@@ -755,6 +969,165 @@ export function createPostgresSharedCoordinationStore({
         };
       } catch (error) {
         return mapFailure("listCoordinationRecords", error);
+      }
+    },
+
+    async listProjects() {
+      try {
+        const result = await withClient(runtime, async (client) => {
+          let projects = [];
+          try {
+            const queryResult = await client.query(
+              `
+              SELECT
+                p.project_id,
+                p.project_id_source,
+                p.project_root_ref,
+                p.locator_ref,
+                p.shared_backend_kind,
+                p.updated_at,
+                (
+                  SELECT COUNT(*)::int
+                  FROM aidn_shared.workspace_registry wr
+                  WHERE wr.project_id = p.project_id
+                ) AS workspace_count,
+                (
+                  SELECT COUNT(*)::int
+                  FROM aidn_shared.worktree_registry wt
+                  WHERE wt.project_id = p.project_id
+                ) AS worktree_count,
+                (
+                  SELECT COUNT(*)::int
+                  FROM aidn_shared.planning_states ps
+                  WHERE ps.project_id = p.project_id
+                ) AS planning_state_count,
+                (
+                  SELECT COUNT(*)::int
+                  FROM aidn_shared.handoff_relays hr
+                  WHERE hr.project_id = p.project_id
+                ) AS handoff_relay_count,
+                (
+                  SELECT COUNT(*)::int
+                  FROM aidn_shared.coordination_records cr
+                  WHERE cr.project_id = p.project_id
+                ) AS coordination_record_count
+              FROM aidn_shared.project_registry p
+              ORDER BY p.project_id ASC
+              `,
+            );
+            projects = Array.isArray(queryResult.rows) ? queryResult.rows.map((row) => mapProjectRegistryRow(row)) : [];
+          } catch (error) {
+            const classified = classifyPostgresSharedCoordinationError(error);
+            if (classified.category !== "schema") {
+              throw error;
+            }
+            projects = await queryLegacyProjectList(client);
+          }
+          return {
+            ok: true,
+            projects,
+          };
+        });
+        return {
+          operation: "listProjects",
+          ...result,
+        };
+      } catch (error) {
+        return mapFailure("listProjects", error);
+      }
+    },
+
+    async inspectProject({
+      projectId = "",
+    } = {}) {
+      try {
+        const result = await withClient(runtime, async (client) => {
+          const resolvedProjectId = normalizeScalar(projectId) || normalizeScalar(runtime.workspace?.project_id);
+          let project = null;
+          let workspaces = [];
+          try {
+            const projectResult = await client.query(
+              `
+              SELECT
+                p.project_id,
+                p.project_id_source,
+                p.project_root_ref,
+                p.locator_ref,
+                p.shared_backend_kind,
+                p.updated_at,
+                (
+                  SELECT COUNT(*)::int
+                  FROM aidn_shared.workspace_registry wr
+                  WHERE wr.project_id = p.project_id
+                ) AS workspace_count,
+                (
+                  SELECT COUNT(*)::int
+                  FROM aidn_shared.worktree_registry wt
+                  WHERE wt.project_id = p.project_id
+                ) AS worktree_count,
+                (
+                  SELECT COUNT(*)::int
+                  FROM aidn_shared.planning_states ps
+                  WHERE ps.project_id = p.project_id
+                ) AS planning_state_count,
+                (
+                  SELECT COUNT(*)::int
+                  FROM aidn_shared.handoff_relays hr
+                  WHERE hr.project_id = p.project_id
+                ) AS handoff_relay_count,
+                (
+                  SELECT COUNT(*)::int
+                  FROM aidn_shared.coordination_records cr
+                  WHERE cr.project_id = p.project_id
+                ) AS coordination_record_count
+              FROM aidn_shared.project_registry p
+              WHERE p.project_id = $1
+              LIMIT 1
+              `,
+              [resolvedProjectId],
+            );
+            const workspaceResult = await client.query(
+              `
+              SELECT
+                project_id,
+                project_id_source,
+                project_root_ref,
+                workspace_id,
+                workspace_id_source,
+                locator_ref,
+                git_common_dir,
+                repo_root,
+                shared_backend_kind,
+                updated_at
+              FROM aidn_shared.workspace_registry
+              WHERE project_id = $1
+              ORDER BY workspace_id ASC
+              `,
+              [resolvedProjectId],
+            );
+            project = mapProjectRegistryRow(projectResult.rows[0] ?? null);
+            workspaces = Array.isArray(workspaceResult.rows) ? workspaceResult.rows.map((row) => mapWorkspaceRegistryRow(row)) : [];
+          } catch (error) {
+            const classified = classifyPostgresSharedCoordinationError(error);
+            if (classified.category !== "schema") {
+              throw error;
+            }
+            const legacyResult = await queryLegacyProjectInspect(client, resolvedProjectId);
+            project = legacyResult.project;
+            workspaces = legacyResult.workspaces;
+          }
+          return {
+            ok: true,
+            project,
+            workspaces,
+          };
+        });
+        return {
+          operation: "inspectProject",
+          ...result,
+        };
+      } catch (error) {
+        return mapFailure("inspectProject", error);
       }
     },
 
@@ -810,6 +1183,37 @@ export function createPostgresSharedCoordinationStore({
           const latestAppliedSchemaVersion = appliedSchemaVersions.length > 0
             ? Math.max(...appliedSchemaVersions)
             : 0;
+          let registeredProjectCount = 0;
+          let legacyWorkspaceRows = 0;
+          if (tablesPresent.includes("project_registry")) {
+            try {
+              const projectCountResult = await client.query("SELECT COUNT(*)::int AS registered_project_count FROM aidn_shared.project_registry");
+              registeredProjectCount = Number(projectCountResult.rows?.[0]?.registered_project_count ?? 0) || 0;
+            } catch (error) {
+              const classified = classifyPostgresSharedCoordinationError(error);
+              if (classified.category !== "schema") {
+                throw error;
+              }
+            }
+          }
+          if (tablesPresent.includes("workspace_registry")) {
+            try {
+              const legacyWorkspaceResult = await client.query(
+                "SELECT COUNT(*)::int AS legacy_workspace_rows FROM aidn_shared.workspace_registry WHERE project_id IS NULL OR project_id = ''",
+              );
+              legacyWorkspaceRows = Number(legacyWorkspaceResult.rows?.[0]?.legacy_workspace_rows ?? 0) || 0;
+            } catch (error) {
+              const classified = classifyPostgresSharedCoordinationError(error);
+              if (classified.category !== "schema") {
+                throw error;
+              }
+              const workspaceCountResult = await client.query("SELECT COUNT(*)::int AS legacy_workspace_rows FROM aidn_shared.workspace_registry");
+              legacyWorkspaceRows = Number(workspaceCountResult.rows?.[0]?.legacy_workspace_rows ?? 0) || 0;
+              if (registeredProjectCount === 0) {
+                registeredProjectCount = legacyWorkspaceRows;
+              }
+            }
+          }
           let schemaStatus = "ready";
           if (tablesMissing.length > 0 && appliedSchemaVersions.length === 0) {
             schemaStatus = "needs-bootstrap";
@@ -822,6 +1226,20 @@ export function createPostgresSharedCoordinationStore({
           } else if (appliedSchemaVersions.length === 0) {
             schemaStatus = "no-migrations";
           }
+          let compatibilityStatus = "project-scoped";
+          const migrationDiagnostics = [];
+          if (!tablesPresent.includes("project_registry") && tablesPresent.includes("workspace_registry")) {
+            compatibilityStatus = "legacy-workspace-only";
+            migrationDiagnostics.push("project_registry is missing; project enumeration falls back to workspace_id compatibility");
+          } else if (schemaStatus !== "ready") {
+            compatibilityStatus = "schema-not-ready";
+          } else if (legacyWorkspaceRows > 0) {
+            compatibilityStatus = "mixed-legacy-v2";
+            migrationDiagnostics.push(`${legacyWorkspaceRows} workspace_registry rows still need project_id backfill`);
+          } else if (registeredProjectCount === 0) {
+            compatibilityStatus = "empty";
+            migrationDiagnostics.push("project_registry is empty");
+          }
           return {
             ok: true,
             database_name: normalizeScalar(metadataRow.database_name) || "unknown",
@@ -832,8 +1250,12 @@ export function createPostgresSharedCoordinationStore({
             latest_applied_schema_version: latestAppliedSchemaVersion,
             tables_present: tablesPresent,
             tables_missing: tablesMissing,
+            registered_project_count: registeredProjectCount,
+            legacy_workspace_rows: legacyWorkspaceRows,
             schema_status: schemaStatus,
-            schema_ok: schemaStatus === "ready",
+            compatibility_status: compatibilityStatus,
+            migration_diagnostics: migrationDiagnostics,
+            schema_ok: schemaStatus === "ready" && legacyWorkspaceRows === 0,
           };
         });
         return {

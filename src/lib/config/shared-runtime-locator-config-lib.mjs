@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export const SHARED_RUNTIME_LOCATOR_VERSION = 1;
+export const SHARED_RUNTIME_LOCATOR_VERSION = 2;
+const SUPPORTED_SHARED_RUNTIME_LOCATOR_VERSIONS = new Set([1, 2]);
 export const VALID_SHARED_RUNTIME_BACKEND_KINDS = new Set(["none", "sqlite-file", "postgres"]);
 const DEFAULT_PROJECTION_POLICY = "preserve-current";
 
@@ -58,10 +59,24 @@ export function normalizeSharedRuntimeLocator(data = {}) {
   const base = isPlainObject(data) ? data : {};
   const backend = isPlainObject(base.backend) ? base.backend : {};
   const projection = isPlainObject(base.projection) ? base.projection : {};
+  const project = isPlainObject(base.project) ? base.project : {};
+  const compat = isPlainObject(base.compat) ? base.compat : {};
+  const rawVersion = Number(base.version ?? 1);
+  if (!SUPPORTED_SHARED_RUNTIME_LOCATOR_VERSIONS.has(rawVersion)) {
+    throw new Error(`Unsupported shared runtime locator version: ${base.version}`);
+  }
+  const workspaceId = normalizeString(base.workspaceId);
+  const projectId = normalizeString(base.projectId, rawVersion === 1 ? workspaceId : "");
+  const legacyWorkspaceIdentity = normalizeString(compat.legacyWorkspaceIdentity, workspaceId);
   return {
     version: SHARED_RUNTIME_LOCATOR_VERSION,
     enabled: normalizeBoolean(base.enabled, false),
-    workspaceId: normalizeString(base.workspaceId),
+    projectId,
+    workspaceId,
+    project: {
+      root: normalizeString(project.root ?? base.projectRoot),
+      rootRef: normalizeString(project.rootRef, "none"),
+    },
     backend: {
       kind: normalizeBackendKind(backend.kind ?? base.backendKind, "none"),
       root: normalizeString(backend.root ?? base.sharedRuntimeRoot),
@@ -69,6 +84,9 @@ export function normalizeSharedRuntimeLocator(data = {}) {
     },
     projection: {
       localIndexMode: normalizeString(projection.localIndexMode, DEFAULT_PROJECTION_POLICY),
+    },
+    compat: {
+      legacyWorkspaceIdentity,
     },
   };
 }
@@ -93,7 +111,7 @@ export function readSharedRuntimeLocator(targetRoot) {
   if (!isPlainObject(parsed)) {
     throw new Error(`Invalid config root in ${filePath}: expected JSON object`);
   }
-  if (parsed.version != null && Number(parsed.version) !== SHARED_RUNTIME_LOCATOR_VERSION) {
+  if (parsed.version != null && !SUPPORTED_SHARED_RUNTIME_LOCATOR_VERSIONS.has(Number(parsed.version))) {
     throw new Error(`Unsupported shared runtime locator version in ${filePath}: ${parsed.version}`);
   }
 
@@ -146,4 +164,52 @@ export function writeSharedRuntimeLocator(targetRoot, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
   return filePath;
+}
+
+export function findDescendantSharedRuntimeLocators(targetRoot, {
+  maxResults = Infinity,
+  skipDirs = [".git", "node_modules", ".next", ".turbo", "dist", "build"],
+} = {}) {
+  const root = path.resolve(targetRoot);
+  const results = [];
+  const skipped = new Set(skipDirs.map((entry) => normalizeString(entry)));
+
+  function visit(currentRoot) {
+    if (results.length >= maxResults) {
+      return;
+    }
+
+    const locatorPath = resolveSharedRuntimeLocatorPath(currentRoot);
+    if (currentRoot !== root && fs.existsSync(locatorPath)) {
+      results.push(locatorPath);
+      if (results.length >= maxResults) {
+        return;
+      }
+    }
+
+    let entries = [];
+    try {
+      entries = fs.readdirSync(currentRoot, {
+        withFileTypes: true,
+      });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (results.length >= maxResults) {
+        return;
+      }
+      if (!entry.isDirectory()) {
+        continue;
+      }
+      if (skipped.has(normalizeString(entry.name))) {
+        continue;
+      }
+      visit(path.join(currentRoot, entry.name));
+    }
+  }
+
+  visit(root);
+  return results;
 }

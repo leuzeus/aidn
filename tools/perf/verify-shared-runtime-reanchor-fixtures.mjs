@@ -33,6 +33,7 @@ function writeMalformedLocator(targetRoot) {
 }
 
 function writeInvalidLocator(targetRoot, {
+  projectId = "project-locator",
   workspaceId = "workspace-locator",
   backendKind = "sqlite-file",
   root = "docs/audit/shared-runtime",
@@ -41,12 +42,45 @@ function writeInvalidLocator(targetRoot, {
   const locatorFile = path.join(targetRoot, ".aidn", "project", "shared-runtime.locator.json");
   fs.mkdirSync(path.dirname(locatorFile), { recursive: true });
   fs.writeFileSync(locatorFile, `${JSON.stringify({
-    version: 1,
+    version: 2,
     enabled: true,
+    projectId,
     workspaceId,
+    project: {
+      root: ".",
+      rootRef: "target-root",
+    },
     backend: {
       kind: backendKind,
       root,
+      connectionRef,
+    },
+    projection: {
+      localIndexMode: "preserve-current",
+    },
+  }, null, 2)}\n`, "utf8");
+}
+
+function writeValidLocator(targetRoot, {
+  projectId,
+  workspaceId = "",
+  backendKind = "postgres",
+  connectionRef = "env:AIDN_PG_URL",
+} = {}) {
+  const locatorFile = path.join(targetRoot, ".aidn", "project", "shared-runtime.locator.json");
+  fs.mkdirSync(path.dirname(locatorFile), { recursive: true });
+  fs.writeFileSync(locatorFile, `${JSON.stringify({
+    version: 2,
+    enabled: true,
+    projectId,
+    workspaceId: workspaceId || projectId,
+    project: {
+      root: ".",
+      rootRef: "target-root",
+    },
+    backend: {
+      kind: backendKind,
+      root: "",
       connectionRef,
     },
     projection: {
@@ -64,16 +98,27 @@ function main() {
     const malformedTarget = path.join(tempRoot, "malformed-locator");
     const invalidPathTarget = path.join(tempRoot, "invalid-path-locator");
     const mismatchTarget = path.join(tempRoot, "workspace-mismatch-locator");
+    const monorepoRoot = path.join(tempRoot, "ambiguous-monorepo");
+    const appAlphaRoot = path.join(monorepoRoot, "apps", "alpha");
+    const appBetaRoot = path.join(monorepoRoot, "apps", "beta");
 
     fs.cpSync(readyTarget, malformedTarget, { recursive: true });
     fs.cpSync(readyTarget, invalidPathTarget, { recursive: true });
     fs.cpSync(readyTarget, mismatchTarget, { recursive: true });
+    fs.mkdirSync(appAlphaRoot, { recursive: true });
+    fs.mkdirSync(appBetaRoot, { recursive: true });
 
     writeMalformedLocator(malformedTarget);
     writeInvalidLocator(invalidPathTarget);
     writeInvalidLocator(mismatchTarget, {
       workspaceId: "workspace-locator",
       root: "../aidn-shared-before-fix",
+    });
+    writeValidLocator(appAlphaRoot, {
+      projectId: "project-alpha",
+    });
+    writeValidLocator(appBetaRoot, {
+      projectId: "project-beta",
     });
 
     const inspectMalformed = runAidn(repoRoot, [
@@ -99,6 +144,7 @@ function main() {
     assert(repairedMalformed.ok === true, "malformed locator should be repairable via local-only fallback");
     assert(repairedMalformed.applied === true, "local-only fallback should write a repaired locator");
     assert(repairedMalformed.applied_locator.data.enabled === false, "local-only fallback should disable shared runtime");
+    assert(repairedMalformed.applied_locator.data.version === 2, "repair should rewrite malformed locator as v2");
     assert(repairedMalformed.applied_workspace.shared_runtime_mode === "local-only", "local-only fallback should restore local-only mode");
 
     const malformedAdmission = runAidn(repoRoot, [
@@ -133,12 +179,15 @@ function main() {
       "sqlite-file",
       "--shared-root",
       "../aidn-shared-fixed",
+      "--project-id",
+      "project-reanchored",
       "--workspace-id",
       "workspace-reanchored",
       "--write",
       "--json",
     ]);
     assert(repairedInvalidPath.ok === true, "invalid path locator should be repairable with a trusted shared root");
+    assert(repairedInvalidPath.applied_workspace.project_id === "project-reanchored", "trusted repair should expose the requested project id");
     assert(repairedInvalidPath.applied_workspace.shared_runtime_mode === "shared-runtime", "trusted sqlite-file repair should keep shared-runtime mode");
     assert(repairedInvalidPath.applied_validation.status === "clear", "trusted sqlite-file repair should validate cleanly");
 
@@ -179,6 +228,8 @@ function main() {
       "sqlite-file",
       "--shared-root",
       "../aidn-shared-fixed-2",
+      "--project-id",
+      "project-override",
       "--workspace-id",
       "workspace-override",
       "--write",
@@ -187,6 +238,7 @@ function main() {
       AIDN_WORKSPACE_ID: "workspace-override",
     });
     assert(repairedMismatch.ok === true, "workspace mismatch should be repairable by re-anchoring to the override workspace id");
+    assert(repairedMismatch.applied_workspace.project_id === "project-override", "workspace mismatch repair should expose the requested project id");
     assert(repairedMismatch.applied_validation.status === "clear", "workspace mismatch repair should validate cleanly");
 
     const mismatchAfter = runAidn(repoRoot, [
@@ -203,6 +255,30 @@ function main() {
     });
     assert(mismatchAfter.ok === true, "workspace mismatch should stop blocking pre-write admission after re-anchor");
     assert(mismatchAfter.shared_runtime_validation.status === "clear", "workspace mismatch repair should restore clear validation");
+
+    const ambiguousMonorepoInspect = runAidn(repoRoot, [
+      "runtime",
+      "shared-runtime-reanchor",
+      "--target",
+      monorepoRoot,
+      "--json",
+    ], {}, 1);
+    assert(ambiguousMonorepoInspect.ok === false, "ambiguous monorepo root should fail inspection");
+    assert(ambiguousMonorepoInspect.current_validation.status === "reject", "ambiguous monorepo root should expose reject validation");
+    assert(
+      ambiguousMonorepoInspect.current_validation.issues.some((item) => String(item).includes("multiple nested shared runtime locators")),
+      "ambiguous monorepo root should explain nested locator ambiguity",
+    );
+
+    const nestedProjectInspect = runAidn(repoRoot, [
+      "runtime",
+      "shared-runtime-reanchor",
+      "--target",
+      appAlphaRoot,
+      "--json",
+    ]);
+    assert(nestedProjectInspect.ok === true, "nested project root with its own locator should stay valid");
+    assert(nestedProjectInspect.current_validation.status === "clear", "nested project root with its own locator should validate cleanly");
 
     console.log("PASS");
   } catch (error) {

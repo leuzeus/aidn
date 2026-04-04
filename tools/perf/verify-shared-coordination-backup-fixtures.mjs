@@ -47,7 +47,7 @@ function createFakeResolution() {
     contract: {
       scope: "shared-coordination-only",
       schema_name: "aidn_shared",
-      schema_version: 1,
+      schema_version: 2,
       schema_file: path.resolve(process.cwd(), "tools/perf/sql/shared-coordination-postgres.sql"),
       driver: {
         package_name: "pg",
@@ -58,7 +58,7 @@ function createFakeResolution() {
         return {
           ok: true,
           schema_name: "aidn_shared",
-          schema_version: 1,
+          schema_version: 2,
         };
       },
       async healthcheck() {
@@ -67,13 +67,14 @@ function createFakeResolution() {
           database_name: "aidn_test",
           schema_name: "aidn_shared",
           current_schema_name: "public",
-          expected_schema_version: 1,
-          applied_schema_versions: [1],
-          latest_applied_schema_version: 1,
+          expected_schema_version: 2,
+          applied_schema_versions: [2],
+          latest_applied_schema_version: 2,
           tables_present: [
             "coordination_records",
             "handoff_relays",
             "planning_states",
+            "project_registry",
             "schema_migrations",
             "workspace_registry",
             "worktree_registry",
@@ -81,6 +82,8 @@ function createFakeResolution() {
           tables_missing: [],
           schema_status: "ready",
           schema_ok: true,
+          registered_project_count: 1,
+          legacy_workspace_rows: 0,
         };
       },
       async registerWorkspace(input) {
@@ -93,6 +96,7 @@ function createFakeResolution() {
         return {
           ok: true,
           planning_state: {
+            project_id: "project-backup",
             workspace_id: "workspace-backup",
             planning_key: "session:S101",
             planning_status: "promoted",
@@ -103,6 +107,7 @@ function createFakeResolution() {
         return {
           ok: true,
           handoff_relay: {
+            project_id: "project-backup",
             workspace_id: "workspace-backup",
             relay_id: "handoff:backup:1",
             handoff_status: "ready",
@@ -113,8 +118,8 @@ function createFakeResolution() {
         return {
           ok: true,
           records: [
-            { workspace_id: "workspace-backup", record_id: "coord:backup:1", record_type: "coordinator_dispatch" },
-            { workspace_id: "workspace-backup", record_id: "coord:backup:2", record_type: "coordinator_dispatch" },
+            { project_id: "project-backup", workspace_id: "workspace-backup", record_id: "coord:backup:1", record_type: "coordinator_dispatch" },
+            { project_id: "project-backup", workspace_id: "workspace-backup", record_id: "coord:backup:2", record_type: "coordinator_dispatch" },
           ],
         };
       },
@@ -137,6 +142,7 @@ async function main() {
     fs.mkdirSync(targetRoot, { recursive: true });
     writeSharedRuntimeLocator(targetRoot, {
       enabled: true,
+      projectId: "project-backup",
       workspaceId: "workspace-backup",
       backend: {
         kind: "postgres",
@@ -157,13 +163,15 @@ async function main() {
     });
     assert(direct.ok === true, "direct backup should succeed with fake store");
     assert(direct.health?.schema_status === "ready", "direct backup should expose schema status");
-    assert(direct.backup?.schema_snapshot?.latest_applied_schema_version === 1, "direct backup should expose the applied schema version snapshot");
+    assert(direct.backup?.workspace?.project_id === "project-backup", "direct backup should expose project identity");
+    assert(direct.backup?.schema_snapshot?.latest_applied_schema_version === 2, "direct backup should expose the applied schema version snapshot");
     assert(direct.backup?.snapshot?.coordination_read?.record_count === 2, "direct backup should export coordination records");
     assert(fs.existsSync(outFile), "direct backup should write the backup file");
 
     const writtenPayload = JSON.parse(fs.readFileSync(outFile, "utf8"));
     assert(writtenPayload.shared_coordination_backend?.backend_kind === "postgres", "written backup should expose postgres backend");
-    assert(writtenPayload.contract?.source_schema_version === 1, "written backup should expose the source schema version");
+    assert(writtenPayload.workspace?.project_id === "project-backup", "written backup should expose project id");
+    assert(writtenPayload.contract?.source_schema_version === 2, "written backup should expose the source schema version");
     assert(writtenPayload.snapshot?.handoff_read?.handoff_relay?.relay_id === "handoff:backup:1", "written backup should contain latest handoff relay");
 
     console.log("PASS");

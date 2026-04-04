@@ -28,6 +28,7 @@ function runJson(args, env = {}) {
 
 function createFakeResolution() {
   const planningState = {
+    project_id: "project-cli",
     workspace_id: "workspace-cli",
     planning_key: "session:S101",
     session_id: "S101",
@@ -44,6 +45,7 @@ function createFakeResolution() {
     updated_at: "2026-03-28T10:00:00Z",
   };
   const handoffRelay = {
+    project_id: "project-cli",
     workspace_id: "workspace-cli",
     relay_id: "handoff:worktree:2026-03-28T10:05:00Z",
     session_id: "S101",
@@ -57,6 +59,7 @@ function createFakeResolution() {
   };
   const records = [
     {
+      project_id: "project-cli",
       workspace_id: "workspace-cli",
       record_id: "coordinator:1",
       record_type: "coordinator_dispatch",
@@ -87,7 +90,7 @@ function createFakeResolution() {
     contract: {
       scope: "shared-coordination-only",
       schema_name: "aidn_shared",
-      schema_version: 1,
+      schema_version: 2,
       driver: {
         package_name: "pg",
       },
@@ -104,13 +107,14 @@ function createFakeResolution() {
           database_name: "aidn_test",
           schema_name: "aidn_shared",
           current_schema_name: "public",
-          expected_schema_version: 1,
-          applied_schema_versions: [1],
-          latest_applied_schema_version: 1,
+          expected_schema_version: 2,
+          applied_schema_versions: [2],
+          latest_applied_schema_version: 2,
           tables_present: [
             "coordination_records",
             "handoff_relays",
             "planning_states",
+            "project_registry",
             "schema_migrations",
             "workspace_registry",
             "worktree_registry",
@@ -118,6 +122,10 @@ function createFakeResolution() {
           tables_missing: [],
           schema_status: "ready",
           schema_ok: true,
+          compatibility_status: "project-scoped",
+          migration_diagnostics: [],
+          registered_project_count: 1,
+          legacy_workspace_rows: 0,
         };
       },
       async registerWorkspace(input) {
@@ -170,6 +178,7 @@ async function main() {
     fs.mkdirSync(targetRoot, { recursive: true });
     writeSharedRuntimeLocator(targetRoot, {
       enabled: true,
+      projectId: "project-cli",
       workspaceId: "workspace-cli",
       backend: {
         kind: "postgres",
@@ -186,8 +195,10 @@ async function main() {
       sharedCoordination: fakeResolution,
     });
     assert(directStatus.ok === true, "direct status projection should succeed with fake store");
+    assert(directStatus.workspace.project_id === "project-cli", "direct status projection should expose project identity");
     assert(directStatus.health?.ok === true, "direct status projection should expose health");
     assert(directStatus.health?.schema_status === "ready", "direct status projection should expose ready schema status");
+    assert(directStatus.health?.compatibility_status === "project-scoped", "direct status projection should expose compatibility status");
     assert(directStatus.snapshot?.handoff_read?.status === "found", "direct status projection should expose handoff snapshot");
     assert(directStatus.snapshot?.coordination_read?.status === "found", "direct status projection should expose coordination snapshot");
 

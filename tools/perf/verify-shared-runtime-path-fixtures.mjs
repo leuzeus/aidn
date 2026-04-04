@@ -36,6 +36,8 @@ function main() {
       targetRoot: "C:\\Repo\\Main",
       workspace: {
         target_root: "C:\\Repo\\Main",
+        project_id: "project-win",
+        project_id_source: "locator",
         worktree_root: "C:\\Repo\\Main",
         git_dir: "C:\\Repo\\Main\\.git",
         shared_runtime_mode: "shared-runtime",
@@ -51,6 +53,7 @@ function main() {
         ref: ".aidn/project/shared-runtime.locator.json",
         data: {
           enabled: true,
+          projectId: "project-win",
           workspaceId: "workspace-win",
           backend: {
             kind: "sqlite-file",
@@ -72,6 +75,8 @@ function main() {
       targetRoot: "/repo/main",
       workspace: {
         target_root: "/repo/main",
+        project_id: "project-linux",
+        project_id_source: "locator",
         worktree_root: "/repo/main",
         git_dir: "/repo/main/.git",
         shared_runtime_mode: "shared-runtime",
@@ -87,6 +92,7 @@ function main() {
         ref: ".aidn/project/shared-runtime.locator.json",
         data: {
           enabled: true,
+          projectId: "project-linux",
           workspaceId: "workspace-linux",
           backend: {
             kind: "sqlite-file",
@@ -107,6 +113,8 @@ function main() {
       targetRoot: "/repo/main",
       workspace: {
         target_root: "/repo/main",
+        project_id: "project-linux",
+        project_id_source: "locator",
         worktree_root: "/repo/main",
         git_dir: "/repo/main/.git",
         shared_runtime_mode: "shared-runtime",
@@ -122,6 +130,7 @@ function main() {
         ref: ".aidn/project/shared-runtime.locator.json",
         data: {
           enabled: true,
+          projectId: "project-linux",
           workspaceId: "workspace-linux",
           backend: {
             kind: "sqlite-file",
@@ -142,6 +151,8 @@ function main() {
       targetRoot: "C:\\Repo\\Main",
       workspace: {
         target_root: "C:\\Repo\\Main",
+        project_id: "project-env",
+        project_id_source: "env",
         worktree_root: "C:\\Repo\\Main",
         git_dir: "C:\\Repo\\Main\\.git",
         shared_runtime_mode: "shared-runtime",
@@ -153,6 +164,7 @@ function main() {
         is_linked_worktree: false,
       },
       env: {
+        AIDN_PROJECT_ID: "project-env",
         AIDN_WORKSPACE_ID: "workspace-env",
       },
       locatorState: {
@@ -160,6 +172,7 @@ function main() {
         ref: ".aidn/project/shared-runtime.locator.json",
         data: {
           enabled: true,
+          projectId: "project-locator",
           workspaceId: "workspace-locator",
           backend: {
             kind: "sqlite-file",
@@ -173,6 +186,7 @@ function main() {
       },
       platform: "win32",
     });
+    assert(workspaceMismatch.issues.some((item) => String(item).includes("project_id mismatch")), "expected locator/env project mismatch reason");
     assert(workspaceMismatch.ok === false, "expected locator/env workspace mismatch to be rejected");
     assert(workspaceMismatch.issues.some((item) => String(item).includes("workspace_id mismatch")), "expected locator/env workspace mismatch reason");
 

@@ -40,6 +40,47 @@ function buildSyntheticId(prefix, workspace, suffix = "") {
   return `${prefix}:${worktreeId}:${tail}`;
 }
 
+function evaluateSharedCoordinationHealthReadiness(health) {
+  if (!health || health.ok !== true) {
+    return {
+      ok: false,
+      status: "unhealthy",
+      reason: normalizeScalar(health?.error?.message) || "healthcheck failed",
+    };
+  }
+
+  const schemaStatus = normalizeScalar(health.schema_status);
+  const compatibilityStatus = normalizeScalar(health.compatibility_status);
+  const schemaOk = health.schema_ok;
+
+  if (schemaStatus && schemaStatus !== "ready") {
+    return {
+      ok: false,
+      status: "schema-not-ready",
+      reason: `shared coordination schema is ${schemaStatus}; run shared-coordination-migrate before normal coordination traffic`,
+    };
+  }
+  if (compatibilityStatus && !["project-scoped", "empty"].includes(compatibilityStatus)) {
+    return {
+      ok: false,
+      status: "compatibility-not-ready",
+      reason: `shared coordination compatibility status is ${compatibilityStatus}; complete migration before normal coordination traffic`,
+    };
+  }
+  if (schemaOk === false) {
+    return {
+      ok: false,
+      status: "schema-not-ready",
+      reason: "shared coordination schema is not ready for normal coordination traffic",
+    };
+  }
+  return {
+    ok: true,
+    status: "ready",
+    reason: "shared coordination backend bootstrapped and healthy",
+  };
+}
+
 export function summarizeSharedCoordinationResolution(resolution) {
   return {
     enabled: Boolean(resolution?.enabled),
@@ -170,11 +211,23 @@ export async function ensureSharedCoordinationReady(resolution) {
     };
   }
 
+  const healthReadiness = evaluateSharedCoordinationHealthReadiness(health);
+  if (!healthReadiness.ok) {
+    return {
+      attempted: true,
+      ok: false,
+      status: healthReadiness.status,
+      reason: healthReadiness.reason,
+      bootstrap,
+      health,
+    };
+  }
+
   return {
     attempted: true,
     ok: true,
     status: "ready",
-    reason: "shared coordination backend bootstrapped and healthy",
+    reason: healthReadiness.reason,
     bootstrap,
     health,
   };
@@ -209,6 +262,9 @@ export async function syncSharedWorkspaceRegistration(resolution, {
   }
 
   const workspaceRegistration = await resolution.store.registerWorkspace({
+    projectId: effectiveWorkspace?.project_id,
+    projectIdSource: effectiveWorkspace?.project_id_source,
+    projectRootRef: effectiveWorkspace?.project_root,
     workspaceId: effectiveWorkspace?.workspace_id,
     workspaceIdSource: effectiveWorkspace?.workspace_id_source,
     locatorRef: effectiveWorkspace?.shared_runtime_locator_ref,
@@ -232,6 +288,7 @@ export async function syncSharedWorkspaceRegistration(resolution, {
   }
 
   const worktreeRegistration = await resolution.store.registerWorktreeHeartbeat({
+    projectId: effectiveWorkspace?.project_id,
     workspaceId: effectiveWorkspace?.workspace_id,
     worktreeId: effectiveWorkspace?.worktree_id,
     worktreeRoot: effectiveWorkspace?.worktree_root,
@@ -290,6 +347,7 @@ export async function syncSharedPlanningState(resolution, {
   }
 
   const result = await resolution.store.upsertPlanningState({
+    projectId: effectiveWorkspace?.project_id,
     workspaceId: effectiveWorkspace?.workspace_id,
     planningKey: normalizeScalar(planningKey) || `session:${normalizeScalar(payload?.session_id) || "none"}`,
     sessionId: payload?.session_id,
@@ -340,6 +398,7 @@ export async function appendSharedHandoffRelay(resolution, {
 
   const relayId = buildSyntheticId("handoff", effectiveWorkspace, packet?.updated_at);
   const result = await resolution.store.appendHandoffRelay({
+    projectId: effectiveWorkspace?.project_id,
     workspaceId: effectiveWorkspace?.workspace_id,
     relayId,
     sessionId: packet?.active_session,
@@ -405,6 +464,7 @@ export async function appendSharedCoordinationRecord(resolution, {
     normalizeScalar(payload?.ts) || new Date().toISOString(),
   );
   const result = await resolution.store.appendCoordinationRecord({
+    projectId: effectiveWorkspace?.project_id,
     workspaceId: effectiveWorkspace?.workspace_id,
     recordId: resolvedRecordId,
     recordType,
@@ -470,6 +530,7 @@ export async function readSharedPlanningState(resolution, {
 
   const resolvedPlanningKey = normalizeScalar(planningKey) || `session:${normalizeScalar(sessionId) || "none"}`;
   const result = await resolution.store.getPlanningState({
+    projectId: effectiveWorkspace?.project_id,
     workspaceId: effectiveWorkspace?.workspace_id,
     planningKey: resolvedPlanningKey,
   });
@@ -526,6 +587,7 @@ export async function readLatestSharedHandoffRelay(resolution, {
   }
 
   const result = await resolution.store.getLatestHandoffRelay({
+    projectId: effectiveWorkspace?.project_id,
     workspaceId: effectiveWorkspace?.workspace_id,
     sessionId,
     scopeType,
@@ -586,6 +648,7 @@ export async function readSharedCoordinationRecords(resolution, {
   }
 
   const result = await resolution.store.listCoordinationRecords({
+    projectId: effectiveWorkspace?.project_id,
     workspaceId: effectiveWorkspace?.workspace_id,
     recordType,
     sessionId,
