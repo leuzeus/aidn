@@ -280,6 +280,29 @@ function installCycleCloseUsageMatrixFixture(targetRoot, {
   fs.writeFileSync(statusFile, statusText, "utf8");
 }
 
+function installInvalidSharedRuntimeLocator(targetRoot, {
+  workspaceId = "workspace-locator",
+  backendKind = "sqlite-file",
+  root = "docs/audit/shared-runtime",
+  connectionRef = "",
+} = {}) {
+  const locatorDir = path.join(targetRoot, ".aidn", "project");
+  fs.mkdirSync(locatorDir, { recursive: true });
+  fs.writeFileSync(path.join(locatorDir, "shared-runtime.locator.json"), `${JSON.stringify({
+    version: 1,
+    enabled: true,
+    workspaceId,
+    backend: {
+      kind: backendKind,
+      root,
+      connectionRef,
+    },
+    projection: {
+      localIndexMode: "preserve-current",
+    },
+  }, null, 2)}\n`, "utf8");
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -300,6 +323,8 @@ function main() {
     const promoteBaselineWaivedTarget = path.join(tempRoot, "promote-baseline-usage-matrix-waived");
     const dbOnlyRequirementsTarget = path.join(tempRoot, "db-only-fileless-requirements");
     const dbOnlyCloseSessionTarget = path.join(tempRoot, "db-only-fileless-close-session");
+    const invalidSharedRuntimeTarget = path.join(tempRoot, "invalid-shared-runtime");
+    const locatorWorkspaceMismatchTarget = path.join(tempRoot, "locator-workspace-mismatch");
     fs.cpSync(readyTarget, cycleCreateTarget, { recursive: true });
     fs.cpSync(readyTarget, warningTarget, { recursive: true });
     fs.cpSync(readyTarget, dirtyCycleCreateTarget, { recursive: true });
@@ -311,6 +336,8 @@ function main() {
     fs.cpSync(readyTarget, promoteBaselineWaivedTarget, { recursive: true });
     fs.cpSync(readyTarget, dbOnlyRequirementsTarget, { recursive: true });
     fs.cpSync(readyTarget, dbOnlyCloseSessionTarget, { recursive: true });
+    fs.cpSync(readyTarget, invalidSharedRuntimeTarget, { recursive: true });
+    fs.cpSync(readyTarget, locatorWorkspaceMismatchTarget, { recursive: true });
     installSharedPlanningFixture(cycleCreateTarget, { selectedExecutionScope: "none" });
     installRepairWarningFixture(warningTarget);
     installGitCycleCreateFixtures(dirtyCycleCreateTarget, "dirty");
@@ -332,6 +359,10 @@ function main() {
     });
     installDbOnlyIndexFixture(repoRoot, dbOnlyRequirementsTarget);
     installDbOnlyIndexFixture(repoRoot, dbOnlyCloseSessionTarget);
+    installInvalidSharedRuntimeLocator(invalidSharedRuntimeTarget);
+    installInvalidSharedRuntimeLocator(locatorWorkspaceMismatchTarget, {
+      root: ".aidn-shared",
+    });
     fs.rmSync(path.join(dbOnlyRequirementsTarget, "docs", "audit", "CURRENT-STATE.md"), { force: true });
     fs.rmSync(path.join(dbOnlyRequirementsTarget, "docs", "audit", "RUNTIME-STATE.md"), { force: true });
     fs.rmSync(path.join(dbOnlyRequirementsTarget, "docs", "audit", "cycles", "C101-feature-alpha", "status.md"), { force: true });
@@ -469,9 +500,38 @@ function main() {
       "promote-baseline",
       "--json",
     ], 0);
+    const invalidSharedRuntime = runAidn(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      invalidSharedRuntimeTarget,
+      "--skill",
+      "requirements-delta",
+      "--strict",
+      "--json",
+    ], 1);
+    const locatorWorkspaceMismatch = runAidnWithEnv(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      locatorWorkspaceMismatchTarget,
+      "--skill",
+      "requirements-delta",
+      "--strict",
+      "--json",
+    ], {
+      AIDN_WORKSPACE_ID: "workspace-override",
+    }, 1);
 
     assert(ready.ok === true, "ready pre-write admission should pass");
     assert(ready.admission_status === "admitted", "ready pre-write admission should be admitted");
+    assert(String(ready.workspace?.workspace_id ?? "").length > 0, "ready pre-write admission should expose workspace_id");
+    assert(String(ready.workspace?.worktree_id ?? "").length > 0, "ready pre-write admission should expose worktree_id");
+    assert(ready.context.workspace_id === ready.workspace.workspace_id, "ready pre-write admission should mirror workspace_id in context");
+    assert(ready.context.worktree_id === ready.workspace.worktree_id, "ready pre-write admission should mirror worktree_id in context");
+    assert(ready.context.shared_runtime_mode === "local-only", "ready pre-write admission should default to local-only runtime mode");
+    assert(ready.context.shared_runtime_validation_status === "clear", "ready pre-write admission should expose clear shared runtime validation");
+    assert(ready.context.shared_runtime_locator_ref === "none", "ready pre-write admission should expose no locator ref by default");
     assert(ready.context.active_cycle === "C101", "ready pre-write admission should expose active cycle");
     assert(ready.context.first_plan_step === "implement alpha feature validation", "ready pre-write admission should keep first plan step");
     assert(Array.isArray(ready.prioritized_artifacts) && ready.prioritized_artifacts.includes("docs/audit/CURRENT-STATE.md"), "ready pre-write admission should prioritize CURRENT-STATE.md");
@@ -513,13 +573,22 @@ function main() {
     assert(promoteBaselineWaived.ok === true, "promote-baseline pre-write admission should allow an explicit waiver");
     assert(promoteBaselineWaived.context.usage_matrix_scope === "high-risk", "promote-baseline waiver pre-write admission should expose high-risk scope");
     assert(promoteBaselineWaived.context.usage_matrix_state === "WAIVED", "promote-baseline waiver pre-write admission should expose waived state");
+    assert(invalidSharedRuntime.ok === false, "invalid shared runtime locator should block pre-write admission");
+    assert(invalidSharedRuntime.shared_runtime_validation?.status === "reject", "invalid shared runtime locator should expose reject validation status");
+    assert(invalidSharedRuntime.blocking_reasons.some((item) => String(item).includes("overlaps versioned workflow artifacts")), "invalid shared runtime locator should explain the rejected path overlap");
+    assert(locatorWorkspaceMismatch.ok === false, "workspace mismatch override should block pre-write admission");
+    assert(locatorWorkspaceMismatch.shared_runtime_validation?.status === "reject", "workspace mismatch override should expose reject validation status");
+    assert(locatorWorkspaceMismatch.blocking_reasons.some((item) => String(item).includes("workspace_id mismatch")), "workspace mismatch override should explain the rejected workspace identity");
     assert(dbOnlyRequirements.ok === true, "db-only fileless requirements admission should pass from SQLite artifacts");
+    assert(String(dbOnlyRequirements.workspace?.workspace_id ?? "").length > 0, "db-only fileless requirements admission should expose workspace_id");
+    assert(String(dbOnlyRequirements.workspace?.worktree_id ?? "").length > 0, "db-only fileless requirements admission should expose worktree_id");
     assert(dbOnlyRequirements.context.effective_state_mode === "db-only", "db-only fileless requirements admission should expose the effective state mode");
     assert(dbOnlyRequirements.context.current_state_source === "sqlite", "db-only fileless requirements admission should load CURRENT-STATE from SQLite");
     assert(dbOnlyRequirements.context.runtime_state_source === "sqlite", "db-only fileless requirements admission should load RUNTIME-STATE from SQLite");
     assert(dbOnlyRequirements.context.cycle_status_source === "sqlite", "db-only fileless requirements admission should load cycle status from SQLite");
     assert(dbOnlyRequirements.blocking_reasons.every((item) => !String(item).includes("missing docs/audit/CURRENT-STATE.md")), "db-only fileless requirements admission should not block on missing CURRENT-STATE.md when SQLite is populated");
     assert(dbOnlyCloseSession.ok === true, "db-only fileless close-session admission should pass from SQLite artifacts");
+    assert(String(dbOnlyCloseSession.workspace?.workspace_id ?? "").length > 0, "db-only fileless close-session admission should expose workspace_id");
     assert(dbOnlyCloseSession.context.current_state_source === "sqlite", "db-only fileless close-session admission should load CURRENT-STATE from SQLite");
     assert(dbOnlyCloseSession.context.session_artifact_source === "sqlite", "db-only fileless close-session admission should load the session artifact from SQLite");
 
@@ -535,6 +604,8 @@ function main() {
       promote_baseline_waived: promoteBaselineWaived,
       db_only_requirements: dbOnlyRequirements,
       db_only_close_session: dbOnlyCloseSession,
+      invalid_shared_runtime: invalidSharedRuntime,
+      locator_workspace_mismatch: locatorWorkspaceMismatch,
       cycle_create_blocked: cycleCreateBlocked,
       cycle_create_dirty_blocked: dirtyCycleCreateBlocked,
       cycle_create_ahead_blocked: aheadCycleCreateBlocked,

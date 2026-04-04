@@ -2,6 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { readSharedCoordinationRecords, resolveSharedCoordinationStore } from "../../src/application/runtime/shared-coordination-store-service.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { canAgentRolePerform } from "../../src/core/agents/agent-role-model.mjs";
 import { evaluateCoordinatorEscalation } from "../../src/core/agents/coordinator-escalation-policy.mjs";
 import { computeCoordinatorNextAction } from "./coordinator-next-action.mjs";
@@ -109,6 +111,28 @@ function readNdjson(filePath) {
     .filter(Boolean)
     .map((line) => JSON.parse(line))
     .filter((entry) => entry && typeof entry === "object");
+}
+
+function mapCoordinationRecordToEvent(record) {
+  if (!record || typeof record !== "object") {
+    return null;
+  }
+  const payload = record.payload && typeof record.payload === "object"
+    ? record.payload
+    : {};
+  return {
+    ts: normalizeScalar(payload.ts || record.created_at || "unknown") || "unknown",
+    event: normalizeScalar(payload.event || record.record_type || "coordinator_dispatch") || "coordinator_dispatch",
+    selected_agent: normalizeScalar(payload.selected_agent || "unknown") || "unknown",
+    recommended_role: normalizeScalar(payload.recommended_role || record.actor_role || "unknown") || "unknown",
+    recommended_action: normalizeScalar(payload.recommended_action || record.actor_action || "unknown") || "unknown",
+    goal: normalizeScalar(payload.goal || "unknown") || "unknown",
+    dispatch_status: normalizeScalar(payload.dispatch_status || "unknown") || "unknown",
+    execution_status: normalizeScalar(payload.execution_status || record.status || "unknown") || "unknown",
+    stop_required: Boolean(payload.stop_required),
+    decision: normalizeScalar(payload.decision || "unknown") || "unknown",
+    note: normalizeScalar(payload.note || "unknown") || "unknown",
+  };
 }
 
 function sameDispatchIdentity(left, right) {
@@ -332,20 +356,29 @@ function buildArbitrationRecommendation(baseRecommendation, arbitration) {
   };
 }
 
-export function computeCoordinatorLoopState({
+export async function computeCoordinatorLoopState({
   targetRoot,
   currentStateFile = "docs/audit/CURRENT-STATE.md",
   runtimeStateFile = "docs/audit/RUNTIME-STATE.md",
   packetFile = "docs/audit/HANDOFF-PACKET.md",
   historyFile = ".aidn/runtime/context/coordination-history.ndjson",
   summaryFile = "docs/audit/COORDINATION-SUMMARY.md",
+  workspace = null,
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
-  const nextAction = computeCoordinatorNextAction({
+  const effectiveWorkspace = workspace ?? resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const nextAction = await computeCoordinatorNextAction({
     targetRoot: absoluteTargetRoot,
     currentStateFile,
     runtimeStateFile,
     packetFile,
+    workspace: effectiveWorkspace,
+    sharedCoordination,
+    sharedCoordinationOptions,
   });
   const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
   const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
@@ -357,6 +390,15 @@ export function computeCoordinatorLoopState({
   };
   const historyPath = resolveTargetPath(absoluteTargetRoot, historyFile);
   const summaryPath = resolveTargetPath(absoluteTargetRoot, summaryFile);
+  const sharedCoordinationResolution = sharedCoordination ?? await resolveSharedCoordinationStore({
+    targetRoot: absoluteTargetRoot,
+    workspace: effectiveWorkspace,
+    ...sharedCoordinationOptions,
+  });
+  const sharedRecords = await readSharedCoordinationRecords(sharedCoordinationResolution, {
+    workspace: effectiveWorkspace,
+    limit: 200,
+  });
   const summaryResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: summaryFile,
@@ -364,8 +406,21 @@ export function computeCoordinatorLoopState({
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
   });
-  const history = summarizeHistory(readNdjson(historyPath));
-  const summary = parseCoordinationSummary(summaryResolution.exists ? summaryResolution.text : readTextIfExists(summaryPath));
+  const historyEntries = sharedRecords.ok && Array.isArray(sharedRecords.records) && sharedRecords.records.length > 0
+    ? sharedRecords.records.map((record) => mapCoordinationRecordToEvent(record)).filter(Boolean)
+    : readNdjson(historyPath);
+  const history = summarizeHistory(historyEntries);
+  const summary = summaryResolution.exists
+    ? parseCoordinationSummary(summaryResolution.text)
+    : (sharedRecords.ok && Array.isArray(sharedRecords.records) && sharedRecords.records.length > 0
+      ? {
+        status: history.history_status,
+        total_dispatches: history.total_dispatches,
+        last_recommended_role: history.last_dispatch?.recommended_role ?? "unknown",
+        last_recommended_action: history.last_dispatch?.recommended_action ?? "unknown",
+        last_execution_status: history.last_dispatch?.execution_status ?? "unknown",
+      }
+      : parseCoordinationSummary(readTextIfExists(summaryPath)));
   const summaryAlignment = deriveSummaryAlignment(summary, history);
 
   let recommendation = { ...nextAction.recommendation };
@@ -426,8 +481,13 @@ export function computeCoordinatorLoopState({
       status: loopStatus,
       reasons: loopReasons,
       history,
+      history_source: sharedRecords.ok && Array.isArray(sharedRecords.records) && sharedRecords.records.length > 0
+        ? "shared-coordination"
+        : "coordination-history",
       summary,
-      summary_source: summaryResolution.exists ? summaryResolution.source : "missing",
+      summary_source: summaryResolution.exists
+        ? summaryResolution.source
+        : (sharedRecords.ok && Array.isArray(sharedRecords.records) && sharedRecords.records.length > 0 ? "shared-coordination" : "missing"),
       summary_alignment: summaryAlignment,
       escalation,
     },
@@ -435,9 +495,9 @@ export function computeCoordinatorLoopState({
 }
 
 function main() {
-  try {
+  Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
-    const result = computeCoordinatorLoopState({
+    const result = await computeCoordinatorLoopState({
       targetRoot: args.target,
       currentStateFile: args.currentStateFile,
       runtimeStateFile: args.runtimeStateFile,
@@ -458,11 +518,11 @@ function main() {
       console.log(`- summary_alignment=${result.loop.summary_alignment.status}`);
       console.log(`- escalation=${result.loop.escalation.status}:${result.loop.escalation.level}`);
     }
-  } catch (error) {
+  }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
-  }
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

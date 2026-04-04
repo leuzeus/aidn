@@ -163,16 +163,20 @@ export async function resumeCoordinatorDispatch({
   coordinationSummaryFile = "docs/audit/COORDINATION-SUMMARY.md",
   coordinationHistoryFile = ".aidn/runtime/context/coordination-history.ndjson",
   execute = false,
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const loopState = computeCoordinatorLoopState({
+  const loopState = await computeCoordinatorLoopState({
     targetRoot: absoluteTargetRoot,
     currentStateFile,
     runtimeStateFile,
     packetFile,
     historyFile,
     summaryFile,
+    sharedCoordination,
+    sharedCoordinationOptions,
   });
   const dispatch = await computeCoordinatorDispatchPlan({
     targetRoot: absoluteTargetRoot,
@@ -181,6 +185,8 @@ export async function resumeCoordinatorDispatch({
     runtimeStateFile,
     packetFile,
     agentRosterFile,
+    sharedCoordination,
+    sharedCoordinationOptions,
   });
 
   if (dispatch.dispatch_status === "escalated") {
@@ -191,6 +197,8 @@ export async function resumeCoordinatorDispatch({
       runtimeStateFile,
       packetFile,
       agentRosterFile,
+      sharedCoordination,
+      sharedCoordinationOptions,
     });
     return buildBlockedResult({
       absoluteTargetRoot,
@@ -252,6 +260,8 @@ export async function resumeCoordinatorDispatch({
     coordinationSummaryFile,
     coordinationHistoryFile,
     execute: true,
+    sharedCoordination,
+    sharedCoordinationOptions,
   });
 
   return {

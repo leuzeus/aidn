@@ -2,7 +2,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { appendSharedCoordinationRecord, resolveSharedCoordinationStore, summarizeSharedCoordinationResolution } from "../../src/application/runtime/shared-coordination-store-service.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
 import { appendRuntimeNdjsonEvent } from "../../src/application/runtime/runtime-path-service.mjs";
 import {
@@ -130,7 +132,7 @@ function buildArbitrationLogEntry(event) {
   return `${lines.join("\n")}\n`;
 }
 
-export function recordCoordinatorArbitration({
+export async function recordCoordinatorArbitration({
   targetRoot,
   decision,
   note,
@@ -138,8 +140,18 @@ export function recordCoordinatorArbitration({
   arbitrationFile = "docs/audit/USER-ARBITRATION.md",
   coordinationHistoryFile = ".aidn/runtime/context/coordination-history.ndjson",
   coordinationSummaryFile = "docs/audit/COORDINATION-SUMMARY.md",
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const sharedCoordinationResolution = sharedCoordination ?? await resolveSharedCoordinationStore({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    ...sharedCoordinationOptions,
+  });
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
   const arbitrationPath = resolveTargetPath(absoluteTargetRoot, arbitrationFile);
   const historyPath = resolveTargetPath(absoluteTargetRoot, coordinationHistoryFile);
@@ -179,13 +191,31 @@ export function recordCoordinatorArbitration({
     arbitrationLogAppended = Boolean(arbitrationDbFirst?.ok);
   }
   appendRuntimeNdjsonEvent(historyPath, event);
-  const summary = projectCoordinationSummary({
+  const summary = await projectCoordinationSummary({
     targetRoot: absoluteTargetRoot,
     historyFile: coordinationHistoryFile,
     out: coordinationSummaryFile,
+    workspace,
+    sharedCoordination: sharedCoordinationResolution,
+  });
+  const sharedCoordinationSync = await appendSharedCoordinationRecord(sharedCoordinationResolution, {
+    workspace,
+    recordType: "user_arbitration",
+    status: decision,
+    payload: event,
+    sessionId: "",
+    cycleId: "",
+    scopeType: "session",
+    scopeId: "none",
+    actorRole: "user",
+    actorAction: "arbitrate",
+    coordinationSummaryRef: String(coordinationSummaryFile).replace(/\\/g, "/"),
   });
   return {
     target_root: absoluteTargetRoot,
+    workspace,
+    shared_coordination_backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
+    shared_coordination_sync: sharedCoordinationSync,
     state_mode: effectiveStateMode,
     arbitration_file: arbitrationPath,
     coordination_history_file: historyPath,
@@ -201,9 +231,9 @@ export function recordCoordinatorArbitration({
 }
 
 function main() {
-  try {
+  Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
-    const result = recordCoordinatorArbitration({
+    const result = await recordCoordinatorArbitration({
       targetRoot: args.target,
       decision: args.decision,
       note: args.note,
@@ -220,11 +250,11 @@ function main() {
       console.log(`- arbitration_file=${result.arbitration_file}`);
       console.log(`- coordination_summary=${result.coordination_summary_file} (${result.coordination_summary_written ? "written" : "unchanged"})`);
     }
-  } catch (error) {
+  }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
-  }
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

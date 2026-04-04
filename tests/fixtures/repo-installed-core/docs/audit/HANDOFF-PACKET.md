@@ -14,7 +14,18 @@ Rule/State boundary:
 
 ## Summary
 
-updated_at: 2026-03-09T00:00:00Z
+updated_at: 2026-04-04T05:01:47.754Z
+project_id: git-9447929f5071671f
+project_id_source: legacy-git-common-dir
+project_root: G:\projets\aidn\tests\fixtures\repo-installed-core
+workspace_id: git-9447929f5071671f
+workspace_id_source: project-legacy-git-common-dir
+worktree_id: worktree-2eb6ed3a3edfc3f2
+is_linked_worktree: no
+shared_runtime_mode: local-only
+shared_runtime_validation_status: clear
+shared_runtime_locator_ref: none
+shared_backend_kind: none
 handoff_status: refresh_required
 handoff_from_agent_role: coordinator
 handoff_from_agent_action: relay
@@ -35,8 +46,8 @@ shared_planning_freshness: not_applicable
 shared_planning_freshness_basis: no active shared planning backlog
 shared_planning_gate_status: not_applicable
 shared_planning_gate_reason: no active shared planning backlog
-transition_policy_status: allowed
-transition_policy_reason: THINKING allows coordinator -> coordinator
+transition_policy_status: unknown_mode
+transition_policy_reason: unknown mode: unknown
 
 ## Active Context
 
@@ -70,16 +81,19 @@ prioritized_artifacts:
 - `docs/audit/CURRENT-STATE.md`
 - `docs/audit/WORKFLOW-KERNEL.md`
 - `docs/audit/RUNTIME-STATE.md`
-- active backlog artifact when present
-- active session file
-- active cycle `status.md`
+- `docs/audit/WORKFLOW_SUMMARY.md`
+- `docs/audit/HANDOFF-PACKET.md`
+- `docs/audit/snapshots/context-snapshot.md`
+- `active cycle `status.md``
+- `active session file`
+- `.aidn/runtime/context/`
 
 ## Handoff Guidance
 
 - `ready`: the next agent can resume from the prioritized artifacts and restate the workflow context before writing
 - `refresh_required`: the next agent must reload session/cycle facts before any durable write
 - `blocked`: the next agent must resolve runtime blocking findings or workflow contradictions before continuing
-- multi-agent relays remain constrained by workflow mode; an admitted packet still needs an allowed `from -> to` transition
+- stale shared planning is a warning signal; reload the referenced backlog before replacing the relay intent
 
 ## Handoff Intent
 
@@ -87,5 +101,9 @@ handoff_note: none
 
 ## Notes
 
+- Current-state consistency: pass
+- Session file: none
+- Cycle status: none
 - Refresh this packet after significant session/cycle state changes when work is likely to continue in another agent.
 - In `dual` / `db-only`, refresh this packet after refreshing `docs/audit/RUNTIME-STATE.md`.
+

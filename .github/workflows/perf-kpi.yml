@@ -152,6 +152,39 @@ jobs:
       - name: Verify Install Import Fixtures
         run: npm run perf:verify-install-import
 
+      - name: Verify VCS Adapter Fixtures
+        run: npm run perf:verify-vcs-adapter
+
+      - name: Verify Workspace Resolution Fixtures
+        run: npm run perf:verify-workspace-resolution
+
+      - name: Verify Shared Runtime Path Fixtures
+        run: npm run perf:verify-shared-runtime-path
+
+      - name: Verify Shared Runtime Reanchor Fixtures
+        run: npm run perf:verify-shared-runtime-reanchor
+
+      - name: Verify Shared Runtime DB-First Regression Fixtures
+        run: npm run perf:verify-shared-runtime-db-first-regression
+
+      - name: Verify Shared SQLite Boundary Fixtures
+        run: npm run perf:verify-shared-sqlite-boundary
+
+      - name: Verify Shared Coordination Worktree Concurrency Fixtures
+        run: npm run perf:verify-shared-coordination-worktree-concurrency
+
+      - name: Verify Shared Coordination Backup Fixtures
+        run: npm run perf:verify-shared-coordination-backup
+
+      - name: Verify Shared Coordination Restore Fixtures
+        run: npm run perf:verify-shared-coordination-restore
+
+      - name: Verify Shared Coordination Doctor Fixtures
+        run: npm run perf:verify-shared-coordination-doctor
+
+      - name: Verify Shared Coordination Migrate Fixtures
+        run: npm run perf:verify-shared-coordination-migrate
+
       - name: Verify State Mode Parity Fixtures
         run: npm run perf:verify-state-mode-parity
 

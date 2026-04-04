@@ -212,6 +212,7 @@ function main() {
       reason_code: admission.reason_code,
       branch: admission.branch,
       branch_kind: admission.branch_kind,
+      workspace: admission.workspace ?? null,
       admission,
       checkpoint: workflowHook?.checkpoint ?? null,
       checkpoint_error: workflowHook?.checkpoint_error ?? null,

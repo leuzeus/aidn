@@ -1,5 +1,18 @@
+import fs from "node:fs";
+import path from "node:path";
 import { execSync, execFileSync } from "node:child_process";
 import { assertVcsAdapter } from "../../core/ports/vcs-adapter-port.mjs";
+
+function runGitString(targetRoot, args) {
+  try {
+    return execFileSync("git", ["-C", targetRoot, ...args], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "";
+  }
+}
 
 export function createLocalGitAdapter() {
   return assertVcsAdapter({
@@ -51,13 +64,26 @@ export function createLocalGitAdapter() {
       });
     },
     getRepoRoot(targetRoot) {
+      return runGitString(targetRoot, ["rev-parse", "--show-toplevel"]) || null;
+    },
+    getWorktreeRoot(targetRoot) {
+      return runGitString(targetRoot, ["rev-parse", "--show-toplevel"]) || null;
+    },
+    getGitDir(targetRoot) {
+      return runGitString(targetRoot, ["rev-parse", "--absolute-git-dir"]) || null;
+    },
+    getGitCommonDir(targetRoot) {
+      return runGitString(targetRoot, ["rev-parse", "--path-format=absolute", "--git-common-dir"]) || null;
+    },
+    isLinkedWorktree(targetRoot) {
+      const repoRoot = runGitString(targetRoot, ["rev-parse", "--show-toplevel"]);
+      if (!repoRoot) {
+        return false;
+      }
       try {
-        return execSync(`git -C "${targetRoot}" rev-parse --show-toplevel`, {
-          encoding: "utf8",
-          stdio: ["ignore", "pipe", "ignore"],
-        }).trim() || null;
+        return fs.lstatSync(path.join(repoRoot, ".git")).isFile();
       } catch {
-        return null;
+        return false;
       }
     },
     getUpstreamBranch(targetRoot, ref = "HEAD") {

@@ -94,6 +94,14 @@ const RUNTIME_ALIASES = {
   "db-backup": { file: "db-backup.mjs" },
   "db-migrate": { file: "db-migrate.mjs" },
   "db-status": { file: "db-status.mjs" },
+  "shared-runtime-reanchor": { file: "shared-runtime-reanchor.mjs" },
+  "shared-coordination-backup": { file: "shared-coordination-backup.mjs" },
+  "shared-coordination-restore": { file: "shared-coordination-restore.mjs" },
+  "shared-coordination-doctor": { file: "shared-coordination-doctor.mjs" },
+  "shared-coordination-migrate": { file: "shared-coordination-migrate.mjs" },
+  "shared-coordination-bootstrap": { file: "shared-coordination-bootstrap.mjs" },
+  "shared-coordination-status": { file: "shared-coordination-status.mjs" },
+  "shared-coordination-projects": { file: "shared-coordination-projects.mjs" },
   "coordinator-dispatch-execute": { file: "coordinator-dispatch-execute.mjs" },
   "coordinator-dispatch-plan": { file: "coordinator-dispatch-plan.mjs" },
   "coordinator-loop": { file: "coordinator-loop.mjs" },
@@ -135,8 +143,19 @@ function printUsage() {
   console.log("  aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json");
   console.log("  aidn runtime sync-db-first-selective --target . --json");
   console.log("  aidn runtime db-status --target . --json");
+  console.log("  aidn runtime shared-runtime-reanchor --target . --json");
+  console.log("  aidn runtime shared-runtime-reanchor --target . --local-only --write --json");
+  console.log("  aidn runtime shared-runtime-reanchor --target . --backend postgres --connection-ref env:AIDN_PG_URL --project-id project-main --workspace-id workspace-main --write --json");
   console.log("  aidn runtime db-migrate --target . --json");
   console.log("  aidn runtime db-backup --target . --json");
+  console.log("  aidn runtime shared-coordination-backup --target . --json");
+  console.log("  aidn runtime shared-coordination-restore --target . --json");
+  console.log("  aidn runtime shared-coordination-restore --target . --write --json");
+  console.log("  aidn runtime shared-coordination-doctor --target . --json");
+  console.log("  aidn runtime shared-coordination-status --target . --json");
+  console.log("  aidn runtime shared-coordination-projects --target . --json");
+  console.log("  aidn runtime shared-coordination-migrate --target . --json");
+  console.log("  aidn runtime shared-coordination-bootstrap --target . --json");
   console.log("  aidn runtime coordinator-dispatch-execute --target . --execute --json");
   console.log("  aidn runtime coordinator-dispatch-plan --target . --json");
   console.log("  aidn runtime coordinator-loop --target . --json");
