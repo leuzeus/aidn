@@ -4,6 +4,7 @@ release/dist/
 .idea/
 node_modules/
 tmp/
+.tmp/
 .ai/
 /.aidn/
 .aidn-dev/
