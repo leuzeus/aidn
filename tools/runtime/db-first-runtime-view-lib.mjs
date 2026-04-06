@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { resolveEffectiveStateMode } from "../../src/core/state-mode/state-mode-policy.mjs";
-import { readIndexFromSqlite, readRuntimeHeadArtifactsFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
+import { loadSharedStateSnapshot } from "../../src/application/runtime/shared-state-backend-service.mjs";
 
 export function normalizeScalar(value) {
   const normalized = String(value ?? "").trim();
@@ -141,34 +141,11 @@ function findRuntimeHeadArtifact(runtimeHeads, artifactPath) {
 
 export function loadSqliteIndexPayloadSafe(targetRoot, options = {}) {
   const includePayload = options.includePayload !== false;
-  const sqliteFile = path.join(targetRoot, ".aidn", "runtime", "index", "workflow-index.sqlite");
-  if (!exists(sqliteFile)) {
-    return {
-      exists: false,
-      sqliteFile,
-      payload: null,
-      runtimeHeads: {},
-      warning: "",
-    };
-  }
-  try {
-    const runtimeHeads = readRuntimeHeadArtifactsFromSqlite(sqliteFile).heads;
-    return {
-      exists: true,
-      sqliteFile,
-      payload: includePayload ? readIndexFromSqlite(sqliteFile).payload : null,
-      runtimeHeads,
-      warning: "",
-    };
-  } catch (error) {
-    return {
-      exists: true,
-      sqliteFile,
-      payload: null,
-      runtimeHeads: {},
-      warning: `SQLite artifact fallback unavailable: ${error.message}`,
-    };
-  }
+  return loadSharedStateSnapshot({
+    targetRoot,
+    includePayload,
+    includeRuntimeHeads: true,
+  });
 }
 
 function findArtifactByPath(sqlitePayload, artifactPath) {

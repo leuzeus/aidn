@@ -297,6 +297,8 @@ export async function suggestCoordinatorArbitration({
   runtimeStateFile = "docs/audit/RUNTIME-STATE.md",
   packetFile = "docs/audit/HANDOFF-PACKET.md",
   agentRosterFile = "docs/audit/AGENT-ROSTER.md",
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
@@ -307,6 +309,8 @@ export async function suggestCoordinatorArbitration({
     runtimeStateFile,
     packetFile,
     agentRosterFile,
+    sharedCoordination,
+    sharedCoordinationOptions,
   });
 
   let suggestionBundle;

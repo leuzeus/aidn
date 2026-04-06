@@ -341,6 +341,7 @@ function collectReanchorArtifactDetails(target) {
     coordination_summary_exists: fs.existsSync(path.join(auditRoot, "COORDINATION-SUMMARY.md")),
     user_arbitration_exists: fs.existsSync(path.join(auditRoot, "USER-ARBITRATION.md")),
     reanchor_prompt_exists: fs.existsSync(path.join(auditRoot, "REANCHOR_PROMPT.md")),
+    crash_recovery_runbook_exists: fs.existsSync(path.join(auditRoot, "CRASH-RECOVERY-RUNBOOK.md")),
     artifact_manifest_exists: fs.existsSync(path.join(auditRoot, "ARTIFACT_MANIFEST.md")),
     codex_online_exists: fs.existsSync(path.join(auditRoot, "CODEX_ONLINE.md")),
   };
@@ -353,6 +354,7 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
   const skillPath = path.join(target, ".codex", "skills", "context-reload", "SKILL.md");
+  const crashRecoverySkillPath = path.join(target, ".codex", "skills", "crash-recovery", "SKILL.md");
   const installedSkillsRoot = path.join(target, ".codex", "skills");
   const config = readConfigSafe(configPath);
   const reanchor = collectReanchorArtifactDetails(target);
@@ -368,6 +370,7 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       && fs.existsSync(indexJson)
       && fs.existsSync(indexSqlite)
       && fs.existsSync(skillPath)
+      && fs.existsSync(crashRecoverySkillPath)
       && fs.existsSync(configPath)
       && String(config?.runtime?.stateMode ?? "") === "dual"
       && Object.values(reanchor).every((value) => value === true)
@@ -384,6 +387,7 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       index_json_exists: fs.existsSync(indexJson),
       index_sqlite_exists: fs.existsSync(indexSqlite),
       local_skill_context_reload_exists: fs.existsSync(skillPath),
+      local_skill_crash_recovery_exists: fs.existsSync(crashRecoverySkillPath),
       config_exists: fs.existsSync(configPath),
       config_runtime_state_mode: config?.runtime?.stateMode ?? null,
       reanchor_artifacts: reanchor,

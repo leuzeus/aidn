@@ -3,10 +3,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadRegisteredAgentAdapters } from "../../src/application/runtime/agent-adapter-registry-service.mjs";
+import { appendSharedCoordinationRecord, resolveSharedCoordinationStore, summarizeSharedCoordinationResolution } from "../../src/application/runtime/shared-coordination-store-service.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
 import { loadAgentRoster } from "../../src/application/runtime/agent-roster-service.mjs";
 import { appendRuntimeNdjsonEvent } from "../../src/application/runtime/runtime-path-service.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import {
   loadSqliteIndexPayloadSafe,
   resolveAuditArtifactText,
@@ -246,8 +248,19 @@ export async function executeCoordinatorDispatch({
   multiAgentStatusFile = "docs/audit/MULTI-AGENT-STATUS.md",
   coordinationHistoryFile = ".aidn/runtime/context/coordination-history.ndjson",
   execute = false,
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const sharedCoordinationResolution = sharedCoordination ?? await resolveSharedCoordinationStore({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    ...sharedCoordinationOptions,
+  });
+  const sharedCoordinationBackend = summarizeSharedCoordinationResolution(sharedCoordinationResolution);
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
   const roster = loadAgentRoster({
     targetRoot: absoluteTargetRoot,
@@ -260,11 +273,34 @@ export async function executeCoordinatorDispatch({
     runtimeStateFile,
     packetFile,
     agentRosterFile,
+    sharedCoordination: sharedCoordinationResolution,
   });
   const sharedPlanningCandidate = deriveSharedPlanningCandidate(dispatch);
   const coordinationLogPath = resolveTargetPath(absoluteTargetRoot, coordinationLogFile);
   const coordinationSummaryPath = resolveTargetPath(absoluteTargetRoot, coordinationSummaryFile);
   const coordinationHistoryPath = resolveTargetPath(absoluteTargetRoot, coordinationHistoryFile);
+  const decorateWithSharedCoordination = async (result) => {
+    const sharedCoordinationSync = await appendSharedCoordinationRecord(sharedCoordinationResolution, {
+      workspace,
+      recordType: "coordinator_dispatch",
+      status: result.execution_status ?? result.dispatch_status ?? "unknown",
+      payload: result.coordination_history_event ?? buildCoordinationHistoryEvent(result),
+      sessionId: result.active_session ?? "",
+      cycleId: result.active_cycle ?? "",
+      scopeType: result.dispatch_scope?.scope_type ?? "none",
+      scopeId: result.dispatch_scope?.scope_id ?? "none",
+      actorRole: "coordinator",
+      actorAction: result.coordinator_recommendation?.action ?? "coordinate",
+      coordinationLogRef: String(coordinationLogFile).replace(/\\/g, "/"),
+      coordinationSummaryRef: String(coordinationSummaryFile).replace(/\\/g, "/"),
+    });
+    return {
+      ...result,
+      workspace,
+      shared_coordination_backend: sharedCoordinationBackend,
+      shared_coordination_sync: sharedCoordinationSync,
+    };
+  };
 
   if (!execute) {
     const dryRunResult = {
@@ -288,9 +324,7 @@ export async function executeCoordinatorDispatch({
     };
     dryRunResult.coordination_log_entry = buildCoordinationLogEntry(dryRunResult);
     dryRunResult.coordination_history_event = buildCoordinationHistoryEvent(dryRunResult);
-    return {
-      ...dryRunResult,
-    };
+    return decorateWithSharedCoordination(dryRunResult);
   }
 
   if (dispatch.dispatch_status === "unsupported") {
@@ -315,7 +349,7 @@ export async function executeCoordinatorDispatch({
     };
     unsupportedResult.coordination_log_entry = buildCoordinationLogEntry(unsupportedResult);
     unsupportedResult.coordination_history_event = buildCoordinationHistoryEvent(unsupportedResult);
-    return unsupportedResult;
+    return decorateWithSharedCoordination(unsupportedResult);
   }
 
   if (dispatch.dispatch_status === "escalated") {
@@ -340,7 +374,7 @@ export async function executeCoordinatorDispatch({
     };
     escalatedResult.coordination_log_entry = buildCoordinationLogEntry(escalatedResult);
     escalatedResult.coordination_history_event = buildCoordinationHistoryEvent(escalatedResult);
-    return escalatedResult;
+    return decorateWithSharedCoordination(escalatedResult);
   }
 
   if (!Array.isArray(dispatch.steps) || dispatch.steps.length === 0) {
@@ -365,7 +399,7 @@ export async function executeCoordinatorDispatch({
     };
     noStepsResult.coordination_log_entry = buildCoordinationLogEntry(noStepsResult);
     noStepsResult.coordination_history_event = buildCoordinationHistoryEvent(noStepsResult);
-    return noStepsResult;
+    return decorateWithSharedCoordination(noStepsResult);
   }
 
   const agentAdapter = await resolveAgentAdapter(dispatch.selected_agent.id, {
@@ -452,19 +486,22 @@ export async function executeCoordinatorDispatch({
   }
   appendRuntimeNdjsonEvent(coordinationHistoryPath, finalResult.coordination_history_event);
   finalResult.coordination_history_appended = true;
-  finalResult.coordination_summary = projectCoordinationSummary({
+  finalResult.coordination_summary = await projectCoordinationSummary({
     targetRoot: absoluteTargetRoot,
     historyFile: coordinationHistoryFile,
     out: coordinationSummaryFile,
+    workspace,
+    sharedCoordination: sharedCoordinationResolution,
   });
   finalResult.coordination_summary_written = Boolean(finalResult.coordination_summary?.written);
   finalResult.multi_agent_status = await projectMultiAgentStatus({
     targetRoot: absoluteTargetRoot,
     coordinationHistoryFile,
     out: multiAgentStatusFile,
+    sharedCoordination: sharedCoordinationResolution,
   });
   finalResult.multi_agent_status_written = Boolean(finalResult.multi_agent_status?.written);
-  return finalResult;
+  return decorateWithSharedCoordination(finalResult);
 }
 
 function main() {

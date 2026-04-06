@@ -33,6 +33,9 @@ If a required skill is unavailable, the agent MUST:
 - report the missing skill
 - STOP the session
 
+Optional recovery skill:
+- `crash-recovery` for abrupt-stop, partial-write, and shared-runtime recovery situations
+
 ## Source Of Truth
 
 - Workflow specification (canonical): `docs/audit/SPEC.md`
@@ -41,6 +44,7 @@ If a required skill is unavailable, the agent MUST:
 - Current state summary: `docs/audit/CURRENT-STATE.md`
 - Runtime digest: `docs/audit/RUNTIME-STATE.md`
 - Multi-agent handoff packet: `docs/audit/HANDOFF-PACKET.md`
+- Crash recovery runbook: `docs/audit/CRASH-RECOVERY-RUNBOOK.md`
 - Integration risk digest: `docs/audit/INTEGRATION-RISK.md`
 - Agent adapter contract: `docs/audit/AGENT-ADAPTERS.md`
 - Fast snapshot: `docs/audit/snapshots/context-snapshot.md`
@@ -126,6 +130,7 @@ If one required field is missing, ambiguous, or contradictory, the agent MUST:
 - stop durable write
 - continue with read-only context reload only
 - use `docs/audit/REANCHOR_PROMPT.md` for the restart protocol when context was partially lost
+- use `docs/audit/CRASH-RECOVERY-RUNBOOK.md` when an abrupt stop may have left shared coordination ahead of local artifacts
 - report the smallest compliant next step
 
 Special note for recent Codex Windows app flows:

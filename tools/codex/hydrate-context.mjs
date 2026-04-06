@@ -257,7 +257,7 @@ async function main() {
     let agentSelectionSummary = null;
     let multiAgentStatus = null;
     if (shouldProjectRuntimeState(args, hydrated, targetRoot)) {
-      runtimeState = projectRuntimeState({
+      runtimeState = await projectRuntimeState({
         targetRoot,
         hydratedFile: args.out,
         contextFile: args.contextFile,
@@ -299,7 +299,7 @@ async function main() {
       };
     }
     if (shouldProjectHandoffPacket(args, hydrated, targetRoot)) {
-      handoffPacket = projectHandoffPacket({
+      handoffPacket = await projectHandoffPacket({
         targetRoot,
         currentStateFile: "docs/audit/CURRENT-STATE.md",
         runtimeStateFile: args.runtimeStateOut,

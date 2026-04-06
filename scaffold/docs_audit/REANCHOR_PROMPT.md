@@ -2,6 +2,8 @@
 
 Use this prompt when an assistant lost context, restarted, or only partially remembers the workflow state.
 
+If the restart followed an abrupt stop and shared coordination may be ahead of local files, use `docs/audit/CRASH-RECOVERY-RUNBOOK.md` first.
+
 ## Mandatory Read List
 
 If another agent already prepared a relay:

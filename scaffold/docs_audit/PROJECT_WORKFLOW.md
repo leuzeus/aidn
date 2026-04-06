@@ -191,6 +191,7 @@ source_branch: {{SOURCE_BRANCH}}
 - Freshness rule before commit/review: `{{SNAPSHOT_FRESHNESS_RULE}}`
 - Parking lot rule for non-essential ideas (entropy isolation): `{{PARKING_LOT_RULE}}`
 - If context is partial or stale after restart/window switch, run `docs/audit/REANCHOR_PROMPT.md` before any durable write.
+- If the stop was abrupt and local artifacts may be behind shared coordination, follow `docs/audit/CRASH-RECOVERY-RUNBOOK.md` before resuming durable work.
 
 ## Local Paths
 
@@ -206,6 +207,7 @@ source_branch: {{SOURCE_BRANCH}}
 - Rule/state guide: `docs/audit/RULE_STATE_BOUNDARY.md`
 - Workflow summary: `docs/audit/WORKFLOW_SUMMARY.md`
 - Re-anchor prompt: `docs/audit/REANCHOR_PROMPT.md`
+- Crash recovery runbook: `docs/audit/CRASH-RECOVERY-RUNBOOK.md`
 - Artifact manifest: `docs/audit/ARTIFACT_MANIFEST.md`
 - Incidents: `docs/audit/incidents/`
 

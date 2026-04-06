@@ -86,6 +86,52 @@ Codex instruction layering after install:
 - RFC: `docs/rfc/RFC-0001-reload-incremental-gating-index.md`
 - Tooling quickstart: `docs/performance/README.md`
 
+## Shared Coordination Verification
+
+Local verification:
+
+```bash
+npm run perf:verify-vcs-adapter
+npm run perf:verify-workspace-resolution
+npm run perf:verify-shared-runtime-path
+npm run perf:verify-shared-runtime-reanchor
+npm run perf:verify-shared-runtime-db-first-regression
+npm run perf:verify-shared-sqlite-boundary
+npm run perf:verify-shared-coordination-worktree-concurrency
+npm run perf:verify-shared-coordination-backup
+npm run perf:verify-shared-coordination-restore
+npm run perf:verify-shared-coordination-doctor
+npm run perf:verify-shared-coordination-migrate
+```
+
+Optional live PostgreSQL smoke:
+
+```bash
+AIDN_PG_SMOKE_URL=postgres://user:pass@host:5432/db npm run perf:verify-postgres-shared-coordination-live-smoke
+```
+
+Latest known live result:
+
+- manual live smoke passed on 2026-03-29 against a real PostgreSQL server
+- returned `schema_status=ready`, `latest_schema_version=1`, and successful concurrent shared writes
+- this smoke is intentionally treated as a local/manual validation, not a GitHub-hosted CI check
+
+CI integration:
+
+- `.github/workflows/perf-kpi.yml` runs the linked-worktree shared-coordination fixture on every PR
+- the live PostgreSQL smoke is not run in GitHub CI and should stay local unless a self-hosted or ephemeral PostgreSQL setup is introduced later
+
+Migration and repair:
+
+- `npx aidn runtime shared-coordination-migrate --target . --json`
+- `npx aidn runtime shared-coordination-backup --target . --json`
+- `npx aidn runtime shared-coordination-restore --target . --json`
+- `npx aidn runtime shared-coordination-restore --target . --write --json`
+- `npx aidn runtime shared-coordination-doctor --target . --json`
+- `npx aidn runtime shared-runtime-reanchor --target . --json`
+- `docs/MIGRATION_SHARED_RUNTIME_POSTGRESQL.md`
+- `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md`
+
 ## Architecture Direction
 
 - Target architecture ADR: `docs/ADR/ADR-0002-runtime-platform-architecture.md`
