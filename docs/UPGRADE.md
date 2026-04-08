@@ -1,12 +1,15 @@
 # Upgrade Guide
 
-## Upgrade to 0.4.0
+## Upgrade to 0.5.1
 
-This release introduces stronger workflow governance artifacts:
-- canonical rule index in `SPEC` (`SPEC-R01..SPEC-R11`),
-- continuity and session-close resolution model,
-- explicit rule/state boundary support files,
-- extended templates for cycle/session state tracking.
+This baseline consolidates the current product/runtime surface:
+
+- generated workflow adapter outputs driven by `.aidn/project/workflow.adapter.json`
+- `aidn project config` as the durable adapter management entrypoint
+- bounded coordinator/orchestration runtime commands
+- shared coordination PostgreSQL visibility/admin commands
+- runtime persistence adoption and migration support for `sqlite | postgres`
+- Mermaid and BPMN documentation aligned with the current baseline
 
 Recent workflow resilience updates also add:
 
@@ -20,39 +23,59 @@ Recent workflow resilience updates also add:
 ## Product repository steps
 
 1. Update workflow sources in this repository (`docs/SPEC.md`, `scaffold/`, manifests).
-2. Bump versions in:
+2. Align product version signals so live docs and manifests match `VERSION`:
    - `package/manifests/workflow.manifest.yaml`
    - `packs/core/manifest.yaml`
+   - `packs/runtime-local/manifest.yaml`
+   - `packs/codex-integration/manifest.yaml`
    - `packs/github-integration/manifest.yaml`
    - `packs/extended/manifest.yaml`
 3. Regenerate and verify fixtures:
    - `node tools/install.mjs --target tests/fixtures/repo-installed-core --pack core`
    - `node tools/install.mjs --target tests/fixtures/repo-installed-core --pack core --verify`
-4. Re-run workflow resilience verification:
+4. Re-run current verification coverage:
    - `npm run perf:verify-context-resilience`
+   - `npm run perf:verify-project-config-fixtures`
+   - `npm run perf:verify-shared-coordination-runtime-cli`
+   - `npm run perf:verify-runtime-backend-adoption`
 
 ## Client repository steps
 
-1. Reinstall core pack from the workflow product repo:
+1. Install or upgrade the package to the matching product tag:
 
 ```bash
-node tools/install.mjs --target <client-repo> --pack core
+npm install --save-dev github:leuzeus/aidn#v0.5.1
 ```
 
-2. Verify installation:
+2. Reinstall the desired pack from the workflow product repo:
 
 ```bash
-node tools/install.mjs --target <client-repo> --pack core --verify
+npx aidn install --target <client-repo> --pack core
 ```
 
 If the client repo uses the optional GitHub automation layer:
 
 ```bash
-node tools/install.mjs --target <client-repo> --pack github-integration
-node tools/install.mjs --target <client-repo> --pack github-integration --verify
+npx aidn install --target <client-repo> --pack github-integration
+npx aidn install --target <client-repo> --pack github-integration --verify
 ```
 
-3. Review local adapter updates:
+3. Refresh or migrate the durable project adapter when needed:
+
+```bash
+npx aidn project config --target <client-repo> --wizard
+npx aidn project config --target <client-repo> --migrate-adapter --version 0.5.1 --json
+```
+
+4. Verify installation and current runtime/admin surfaces:
+
+```bash
+npx aidn install --target <client-repo> --pack core --verify
+npx aidn runtime shared-coordination-status --target <client-repo> --json
+npx aidn runtime persistence-adopt --target <client-repo> --backend postgres --dry-run --json
+```
+
+5. Review local adapter updates:
 - `docs/audit/CURRENT-STATE.md`
 - `docs/audit/WORKFLOW-KERNEL.md`
 - `docs/audit/WORKFLOW.md`
@@ -71,8 +94,8 @@ Recommended post-upgrade reload path:
 5. `docs/audit/WORKFLOW.md`
 6. `docs/audit/SPEC.md` if canonical rule details are needed
 
-4. If an existing `AGENTS.md` must be updated, run with explicit merge:
+6. If an existing `AGENTS.md` must be updated, run with explicit merge:
 
 ```bash
-node tools/install.mjs --target <client-repo> --pack core --force-agents-merge
+npx aidn install --target <client-repo> --pack core --force-agents-merge
 ```

@@ -16,7 +16,7 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 1) Global System Architecture (v0.4.0 workflow baseline)
+%% 1) Global System Architecture (v0.5.1 runtime baseline)
 flowchart LR
   subgraph RULE["Rule Layer (Normative)"]
     SPEC["SPEC.md (SPEC-R01..SPEC-R11)"]
@@ -38,6 +38,9 @@ flowchart LR
     DRIFT["drift-check via generic gating (R05)"]
     MUTATE["requirements-delta / promote-baseline admissions"]
     HAND["handoff-close + handoff-admit"]
+    COORD["coordinator next-action + dispatch/orchestrate"]
+    GEN["install + project config generation"]
+    PERSIST["runtime persistence + shared coordination services"]
     SCLOSE{"close-session admission (R07) + stale merged-cycle guard"}
     PRG{"PR review gate (R08)"}
     SYNC{"Post-merge local sync (R09)"}
@@ -52,14 +55,16 @@ flowchart LR
     SNAP["snapshots/context-snapshot.md"]
     BASE["baseline/current.md + history.md"]
     PARK["parking-lot.md"]
+    HANDOFF["HANDOFF-PACKET.md"]
+    COORDS["COORDINATION-SUMMARY.md + COORDINATION-LOG.md"]
+    ADAPT[".aidn/project/workflow.adapter.json"]
+    CFG[".aidn/config.json"]
     INCF["incidents/INC-TMP-*.md"]
   end
 
   START --> REANCHOR --> MODE
-  MODE -->|COMMITTING| BCA --> CONT --> DOR --> PWRITE --> EXEC --> HYDRATE --> DRIFT --> MUTATE --> SCLOSE
+  MODE -->|COMMITTING| BCA --> CONT --> DOR --> PWRITE --> EXEC --> HYDRATE --> DRIFT --> MUTATE --> HAND --> COORD --> SCLOSE
   MODE -->|THINKING / EXPLORING| DRIFT
-  MUTATE --> HAND
-  HAND --> SCLOSE
   SCLOSE --> PRG --> SYNC --> START
 
   START <--> SESS
@@ -71,11 +76,18 @@ flowchart LR
   DRIFT --> PARK
   DRIFT --> CURR
   DRIFT --> SNAP
+  HAND <--> HANDOFF
+  COORD <--> COORDS
+  GEN <--> ADAPT
+  PERSIST <--> CFG
+  PERSIST <--> RT
   SCLOSE --> SESS
   SCLOSE --> CURR
   SCLOSE --> SNAP
   SYNC --> SNAP
   BASE --> START
+  ADAPT --> GEN
+  GEN -. renders .-> WF
 
   CONT --> INC
   DOR --> INC
@@ -99,8 +111,8 @@ flowchart LR
 
   class SPEC,WF,AG rule;
   class MODE,CONT,DOR,PWRITE,SCLOSE,PRG,SYNC gate;
-  class START,REANCHOR,BCA,EXEC,HYDRATE,DRIFT,MUTATE,HAND action;
-  class SESS,CYCLE,CURR,RT,SNAP,BASE,PARK,INCF state;
+  class START,REANCHOR,BCA,EXEC,HYDRATE,DRIFT,MUTATE,HAND,COORD,GEN,PERSIST action;
+  class SESS,CYCLE,CURR,RT,SNAP,BASE,PARK,HANDOFF,COORDS,ADAPT,CFG,INCF state;
   class INC incident;
 
   linkStyle default stroke:#1E1F5C,stroke-width:2px;

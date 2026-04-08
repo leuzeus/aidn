@@ -16,7 +16,7 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 2) Cycle State Machine (v0.4.0 workflow baseline)
+%% 2) Cycle State Machine (v0.5.1 runtime baseline)
 stateDiagram-v2
   [*] --> CONTINUITY_GATE: cycle-create requested
   CONTINUITY_GATE --> OPEN: select R1/R2/R3 + record metadata (R06)
