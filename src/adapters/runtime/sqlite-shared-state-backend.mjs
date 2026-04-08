@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { readIndexFromSqlite, readRuntimeHeadArtifactsFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
+import { createSqliteRuntimeArtifactStore } from "./sqlite-runtime-artifact-store.mjs";
 
 export function createSqliteSharedStateBackend({
   sqliteFile,
@@ -10,6 +10,10 @@ export function createSqliteSharedStateBackend({
   logicalRoot = null,
 } = {}) {
   const absoluteSqliteFile = path.resolve(process.cwd(), sqliteFile ?? "");
+  const runtimeArtifactStore = createSqliteRuntimeArtifactStore({
+    sqliteFile: absoluteSqliteFile,
+    mode: "sqlite",
+  });
 
   function describeBackend() {
     return {
@@ -27,32 +31,10 @@ export function createSqliteSharedStateBackend({
     includePayload = true,
     includeRuntimeHeads = true,
   } = {}) {
-    if (!fs.existsSync(absoluteSqliteFile)) {
-      return {
-        exists: false,
-        sqliteFile: absoluteSqliteFile,
-        payload: null,
-        runtimeHeads: {},
-        warning: "",
-      };
-    }
-    try {
-      return {
-        exists: true,
-        sqliteFile: absoluteSqliteFile,
-        payload: includePayload ? readIndexFromSqlite(absoluteSqliteFile).payload : null,
-        runtimeHeads: includeRuntimeHeads ? readRuntimeHeadArtifactsFromSqlite(absoluteSqliteFile).heads : {},
-        warning: "",
-      };
-    } catch (error) {
-      return {
-        exists: true,
-        sqliteFile: absoluteSqliteFile,
-        payload: null,
-        runtimeHeads: {},
-        warning: `SQLite artifact fallback unavailable: ${error.message}`,
-      };
-    }
+    return runtimeArtifactStore.loadSnapshot({
+      includePayload,
+      includeRuntimeHeads,
+    });
   }
 
   return {

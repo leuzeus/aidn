@@ -3,6 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   normalizeIndexStoreMode,
+  normalizeRuntimeLocalProjectionPolicy,
+  normalizeRuntimePersistenceBackend,
 } from "../src/lib/config/aidn-config-lib.mjs";
 import { runInstallUseCase } from "../src/application/install/install-use-case.mjs";
 
@@ -16,6 +18,9 @@ function parseArgs(argv) {
     verifyOnly: false,
     skipArtifactImport: false,
     artifactImportStore: "",
+    runtimePersistenceBackend: "",
+    runtimePersistenceConnectionRef: "",
+    runtimePersistenceLocalProjectionPolicy: "",
     assist: false,
     strict: false,
     skipAgents: false,
@@ -46,6 +51,15 @@ function parseArgs(argv) {
     } else if (token === "--artifact-import-store") {
       args.artifactImportStore = String(argv[i + 1] ?? "").toLowerCase();
       i += 1;
+    } else if (token === "--runtime-persistence-backend") {
+      args.runtimePersistenceBackend = String(argv[i + 1] ?? "").trim().toLowerCase();
+      i += 1;
+    } else if (token === "--runtime-persistence-connection-ref") {
+      args.runtimePersistenceConnectionRef = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--runtime-persistence-local-projection-policy") {
+      args.runtimePersistenceLocalProjectionPolicy = String(argv[i + 1] ?? "").trim().toLowerCase();
+      i += 1;
     } else if (token === "--assist") {
       args.assist = true;
     } else if (token === "--strict") {
@@ -70,6 +84,13 @@ function parseArgs(argv) {
   if (args.artifactImportStore && !normalizeIndexStoreMode(args.artifactImportStore)) {
     throw new Error("Invalid --artifact-import-store. Expected file|sql|dual|sqlite|dual-sqlite|all");
   }
+  if (args.runtimePersistenceBackend && !normalizeRuntimePersistenceBackend(args.runtimePersistenceBackend)) {
+    throw new Error("Invalid --runtime-persistence-backend. Expected sqlite|postgres");
+  }
+  if (args.runtimePersistenceLocalProjectionPolicy
+    && !normalizeRuntimeLocalProjectionPolicy(args.runtimePersistenceLocalProjectionPolicy)) {
+    throw new Error("Invalid --runtime-persistence-local-projection-policy. Expected keep-local-sqlite|keep-json|keep-sql|none");
+  }
 
   return args;
 }
@@ -84,6 +105,7 @@ function printUsage() {
   console.log("  node tools/install.mjs --target . --pack core --verify");
   console.log("  node tools/install.mjs --target . --pack core --skip-artifact-import");
   console.log("  node tools/install.mjs --target . --pack core --artifact-import-store dual-sqlite");
+  console.log("  node tools/install.mjs --target . --pack core --runtime-persistence-backend postgres --runtime-persistence-connection-ref env:AIDN_PG_URL");
   console.log("  node tools/install.mjs --target ../repo --pack core --assist");
   console.log("  node tools/install.mjs --target ../repo --pack core --strict");
   console.log("  node tools/install.mjs --target ../repo --pack core --skip-agents");

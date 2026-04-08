@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import { buildNoChangeFastPath } from "../../core/gating/gating-signal-policy.mjs";
+import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
 
 function readTextSafe(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -195,10 +195,7 @@ function readJsonOptional(filePath) {
 }
 
 function detectIndexBackend(indexFile, backend) {
-  if (backend === "json" || backend === "sqlite") {
-    return backend;
-  }
-  return String(indexFile ?? "").toLowerCase().endsWith(".sqlite") ? "sqlite" : "json";
+  return detectRuntimeSnapshotBackend(indexFile, backend);
 }
 
 function readRepairLayerSummary(indexFile, backend) {
@@ -214,7 +211,10 @@ function readRepairLayerSummary(indexFile, backend) {
   }
   let payload = null;
   if (detectIndexBackend(indexFile, backend) === "sqlite") {
-    payload = readIndexFromSqlite(absolute).payload;
+    payload = readRuntimeSnapshot({
+      indexFile: absolute,
+      backend: "sqlite",
+    }).payload;
   } else {
     try {
       payload = JSON.parse(fs.readFileSync(absolute, "utf8"));

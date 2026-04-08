@@ -94,6 +94,10 @@ const RUNTIME_ALIASES = {
   "db-backup": { file: "db-backup.mjs" },
   "db-migrate": { file: "db-migrate.mjs" },
   "db-status": { file: "db-status.mjs" },
+  "persistence-backup": { file: "db-backup.mjs" },
+  "persistence-adopt": { file: "persistence-adopt.mjs" },
+  "persistence-migrate": { file: "db-migrate.mjs" },
+  "persistence-status": { file: "db-status.mjs" },
   "shared-runtime-reanchor": { file: "shared-runtime-reanchor.mjs" },
   "shared-coordination-backup": { file: "shared-coordination-backup.mjs" },
   "shared-coordination-restore": { file: "shared-coordination-restore.mjs" },
@@ -148,6 +152,7 @@ function printUsage() {
   console.log("  aidn runtime shared-runtime-reanchor --target . --backend postgres --connection-ref env:AIDN_PG_URL --project-id project-main --workspace-id workspace-main --write --json");
   console.log("  aidn runtime db-migrate --target . --json");
   console.log("  aidn runtime db-backup --target . --json");
+  console.log("  aidn runtime persistence-adopt --target . --backend postgres --json");
   console.log("  aidn runtime shared-coordination-backup --target . --json");
   console.log("  aidn runtime shared-coordination-restore --target . --json");
   console.log("  aidn runtime shared-coordination-restore --target . --write --json");

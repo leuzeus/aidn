@@ -19,6 +19,7 @@ import {
   runArtifactImport,
   verifyArtifactImportOutputs,
 } from "./artifact-import-service.mjs";
+import { executeRuntimeBackendAdoption } from "../runtime/runtime-backend-adoption-service.mjs";
 import { migrateCustomFileWithCodex } from "../../adapters/codex/codex-migrate-custom.mjs";
 import {
   CUSTOMIZABLE_TARGET_PATTERNS,
@@ -107,7 +108,12 @@ function collectInstructionPrecedenceWarnings(targetRoot) {
   return warnings;
 }
 
-export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
+export async function runInstallUseCase({
+  args,
+  repoRoot,
+  targetRoot,
+  runtimeBackendAdoptionOptions = null,
+}) {
   const configRead = readAidnProjectConfig(targetRoot);
   let currentAidnConfigData = configRead.data ?? {};
   let aidnConfigExists = configRead.exists === true;
@@ -156,6 +162,10 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
     configSkipped: 0,
     generatedRendered: 0,
     generatedUnchanged: 0,
+    runtimeBackendAdoptionPlanned: 0,
+    runtimeBackendAdoptionApplied: 0,
+    runtimeBackendAdoptionSkipped: 0,
+    runtimeBackendAdoptionBlocked: 0,
   };
   const initialImportDefaults = resolveArtifactImportDefaults(args, currentAidnConfigData);
   const resolvedSourceBranch = await resolveInstallSourceBranch({
@@ -471,12 +481,46 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
         sourceBranch: templateVars.SOURCE_BRANCH ?? args.sourceBranch,
       },
     );
+    const runtimePersistenceConfig = nextAidnConfigData.runtime?.persistence ?? {};
+    let runtimeBackendAdoptionResult = null;
+    if (String(runtimePersistenceConfig.backend ?? "").trim().toLowerCase() === "postgres") {
+      runtimeBackendAdoptionResult = await executeRuntimeBackendAdoption({
+        targetRoot,
+        backend: runtimePersistenceConfig.backend,
+        connectionRef: runtimePersistenceConfig.connectionRef ?? "",
+        write: !args.dryRun,
+        ...(runtimeBackendAdoptionOptions ?? {}),
+      });
+      summary.runtimeBackendAdoptionPlanned += 1;
+      if (runtimeBackendAdoptionResult.ok === true && runtimeBackendAdoptionResult.attempted) {
+        summary.runtimeBackendAdoptionApplied += 1;
+      } else if (runtimeBackendAdoptionResult.ok !== true) {
+        summary.runtimeBackendAdoptionBlocked += 1;
+      } else {
+        summary.runtimeBackendAdoptionSkipped += 1;
+      }
+      const adoptionAction = runtimeBackendAdoptionResult.runtime_backend_adoption_plan?.action
+        ?? runtimeBackendAdoptionResult.action
+        ?? "unknown";
+      const adoptionReason = runtimeBackendAdoptionResult.runtime_backend_adoption_plan?.reason
+        ?? runtimeBackendAdoptionResult.reason
+        ?? "n/a";
+      console.log(
+        `${args.dryRun ? "[dry-run] " : ""}runtime persistence adoption: action=${adoptionAction}, status=${runtimeBackendAdoptionResult.execution_status ?? "unknown"}, reason=${adoptionReason}`,
+      );
+      if (runtimeBackendAdoptionResult.ok !== true && !args.dryRun) {
+        throw new Error(`Runtime persistence adoption blocked: ${adoptionReason}`);
+      }
+    } else {
+      summary.runtimeBackendAdoptionSkipped += 1;
+    }
+
     const currentConfigJson = JSON.stringify(currentAidnConfigData);
     const nextConfigJson = JSON.stringify(nextAidnConfigData);
     if (currentConfigJson !== nextConfigJson) {
       if (args.dryRun) {
         console.log(
-          `[dry-run] ${aidnConfigExists ? "update" : "create"} .aidn/config.json (profile=${nextAidnConfigData.profile}, runtime.stateMode=${nextAidnConfigData.runtime?.stateMode}, install.artifactImportStore=${nextAidnConfigData.install?.artifactImportStore}, workflow.sourceBranch=${nextAidnConfigData.workflow?.sourceBranch ?? "n/a"})`,
+          `[dry-run] ${aidnConfigExists ? "update" : "create"} .aidn/config.json (profile=${nextAidnConfigData.profile}, runtime.stateMode=${nextAidnConfigData.runtime?.stateMode}, runtime.persistence.backend=${nextAidnConfigData.runtime?.persistence?.backend ?? "n/a"}, install.artifactImportStore=${nextAidnConfigData.install?.artifactImportStore}, workflow.sourceBranch=${nextAidnConfigData.workflow?.sourceBranch ?? "n/a"})`,
         );
       } else {
         const configFilePath = writeAidnProjectConfig(targetRoot, nextAidnConfigData);
@@ -559,6 +603,10 @@ export async function runInstallUseCase({ args, repoRoot, targetRoot }) {
   console.log(`config_skipped: ${summary.configSkipped}`);
   console.log(`generated_rendered: ${summary.generatedRendered}`);
   console.log(`generated_unchanged: ${summary.generatedUnchanged}`);
+  console.log(`runtime_backend_adoption_planned: ${summary.runtimeBackendAdoptionPlanned}`);
+  console.log(`runtime_backend_adoption_applied: ${summary.runtimeBackendAdoptionApplied}`);
+  console.log(`runtime_backend_adoption_skipped: ${summary.runtimeBackendAdoptionSkipped}`);
+  console.log(`runtime_backend_adoption_blocked: ${summary.runtimeBackendAdoptionBlocked}`);
   if (artifactImportVerification.checked) {
     console.log(
       `artifact_import_verify: ${artifactImportVerification.ok ? "OK" : "FAIL"} (store=${artifactImportVerification.defaults?.store ?? "n/a"}, source=${artifactImportVerification.defaults?.source ?? "n/a"})`,

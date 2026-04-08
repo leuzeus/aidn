@@ -52,11 +52,11 @@ function printUsage() {
   console.log("  node tools/runtime/repair-layer-autofix.mjs --target . --session-id S102 --apply --json");
 }
 
-function main() {
+async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const output = runRepairLayerAutofixUseCase({ args, targetRoot });
+    const output = await runRepairLayerAutofixUseCase({ args, targetRoot });
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));
     } else {
@@ -69,4 +69,4 @@ function main() {
   }
 }
 
-main();
+await main();

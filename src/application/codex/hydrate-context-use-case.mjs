@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import {
   normalizeIndexStoreMode,
   normalizeStateMode,
@@ -15,6 +14,7 @@ import {
   repairFindingPriorityScore,
   resolveRepairRelationThresholds,
 } from "../../core/workflow/repair-layer-policy.mjs";
+import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "../runtime/runtime-snapshot-service.mjs";
 
 function resolveTargetPath(targetRoot, candidate) {
   if (!candidate) {
@@ -41,10 +41,7 @@ function decodeArtifactContent(artifact) {
 }
 
 function detectBackend(indexFile, backend) {
-  if (backend === "json" || backend === "sqlite") {
-    return backend;
-  }
-  return String(indexFile).toLowerCase().endsWith(".sqlite") ? "sqlite" : "json";
+  return detectRuntimeSnapshotBackend(indexFile, backend);
 }
 
 function readJsonIndex(indexFile) {
@@ -584,7 +581,7 @@ export function runHydrateContextUseCase({ args, hookContextStore, targetRoot })
     if (fs.existsSync(indexFile)) {
       const backend = detectBackend(indexFile, args.backend);
       const index = backend === "sqlite"
-        ? readIndexFromSqlite(indexFile)
+        ? readRuntimeSnapshot({ indexFile, backend })
         : readJsonIndex(indexFile);
       artifactSource = {
         backend,
