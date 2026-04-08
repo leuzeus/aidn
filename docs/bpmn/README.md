@@ -57,6 +57,11 @@ They are aligned with the current runtime baseline, not just the original target
   - `repair_layer_status`
   - admission-first workflow hooks (`start-session`, `close-session`, `pr-orchestrate`, `cycle-create`, `requirements-delta`, `promote-baseline`, `convert-to-spike`)
 - it does not assume a full scheduler or autonomous multi-agent planner yet
+- it does not model install/reinstall mechanics, deterministic adapter generation, or runtime backend adoption flows directly; those stay documented in:
+  - `docs/INSTALL.md`
+  - `docs/UPGRADE.md`
+  - `docs/MIGRATION_RUNTIME_PERSISTENCE_POSTGRESQL.md`
+  - `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md`
 
 ## Rules
 
@@ -80,6 +85,8 @@ They are aligned with the current runtime baseline, not just the original target
 - use the macro BPMN to discuss product direction
 - use the focused BPMN set to derive implementation slices that map directly to runtime modules
 - use the handoff BPMN to inspect the relay path in more detail when packet semantics matter
+- use `aidn project config` and `.aidn/project/workflow.adapter.json` for durable adapter policy; that lifecycle is adjacent to BPMN, not inside the swimlanes
+- use `runtime persistence-adopt` and `runtime shared-coordination-projects` for backend/admin visibility; these are operator surfaces around the BPMN, not replacements for it
 - use `docs/bpmn/IMPLEMENTATION_PLAN.md` to sequence the real repository changes from these BPMN targets
 - use `docs/bpmn/IMPLEMENTATION_PLAN.md` also to confirm continuity with the original path: `handoff-close -> role model -> orchestrator`
 - use runtime dispatch planning as the bridge between recommendation and future orchestration, not as an autonomous writer

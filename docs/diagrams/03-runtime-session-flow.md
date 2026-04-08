@@ -16,7 +16,7 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 3) Runtime Session Flow (v0.4.0 workflow baseline)
+%% 3) Runtime Session Flow (v0.5.1 runtime baseline)
 flowchart TD
   ST["Session start"] --> CR["context-reload"]
   CR --> RA["Read CURRENT-STATE + WORKFLOW-KERNEL"]
@@ -54,8 +54,8 @@ flowchart TD
 
   CLOSE -->|No| LOOP["Continue active work"]
   LOOP --> MODE
-  CLOSE -->|Relay| RELAY["handoff-close + handoff-admit"]
-  RELAY --> END_RELAY["Session paused or relayed"]
+  CLOSE -->|Relay| RELAY["handoff-close + handoff-admit + coordination relay"]
+  RELAY --> END_RELAY["Session paused, relayed, or ready for coordinator resume"]
 
   CLOSE -->|Yes| RESOLVE["Resolve open cycles R07: integrate report close-non-retained or cancel-close"]
   RESOLVE --> OK{"All open cycles resolved?"}
@@ -75,7 +75,7 @@ flowchart TD
   REC --> SYNC
   SYNC -->|Yes| END_DONE
 
-  MAP --> INC["Incident triage (R10)"]
+  MAP --> INC["Incident triage (R10) + user arbitration/coordinator-resume when escalated"]
   CONT --> INC
   RESOLVE --> INC
   PRG --> INC
