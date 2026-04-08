@@ -2,12 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { detectStructureProfile } from "../../lib/workflow/structure-profile-lib.mjs";
-import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import { readAidnProjectConfig, resolveConfigStateMode } from "../../lib/config/aidn-config-lib.mjs";
 import { resolveRuntimeTargetPath, writeRuntimeJsonFile } from "./runtime-path-service.mjs";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { decideReloadOutcome } from "../../core/workflow/reload-policy.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch, extractCycleIdFromBranch } from "../../lib/workflow/branch-kind-lib.mjs";
+import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
 
 const ACTIVE_STATES = new Set(["OPEN", "IMPLEMENTING", "VERIFYING"]);
 
@@ -48,10 +48,7 @@ function decodeArtifactContent(artifact) {
 }
 
 function detectBackend(indexFile, backend) {
-  if (backend === "json" || backend === "sqlite") {
-    return backend;
-  }
-  return String(indexFile).toLowerCase().endsWith(".sqlite") ? "sqlite" : "json";
+  return detectRuntimeSnapshotBackend(indexFile, backend);
 }
 
 function readJsonIndex(filePath) {
@@ -70,15 +67,9 @@ function readJsonIndex(filePath) {
 
 function readIndexPayload(indexFile, indexBackend) {
   const backend = detectBackend(indexFile, indexBackend);
-  if (backend === "sqlite") {
-    const out = readIndexFromSqlite(indexFile);
-    return {
-      backend,
-      absolute: out.absolute,
-      payload: out.payload,
-    };
-  }
-  const out = readJsonIndex(indexFile);
+  const out = backend === "sqlite"
+    ? readRuntimeSnapshot({ indexFile, backend })
+    : readJsonIndex(indexFile);
   return {
     backend,
     absolute: out.absolute,

@@ -1,14 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import { resolveRuntimePath } from "./runtime-path-resolution.mjs";
 import { collectRepairLayerSafeAutofixPlan } from "./repair-layer-autofix-plan-lib.mjs";
+import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
 
 function detectBackend(indexFile, backend) {
-  if (backend === "json" || backend === "sqlite") {
-    return backend;
-  }
-  return String(indexFile).toLowerCase().endsWith(".sqlite") ? "sqlite" : "json";
+  return detectRuntimeSnapshotBackend(indexFile, backend);
 }
 
 function readJsonIndex(indexFile) {
@@ -189,7 +186,7 @@ export function runRepairLayerTriageUseCase({ args, targetRoot }) {
   const indexFile = resolveRuntimePath(targetRoot, args.indexFile);
   const backend = detectBackend(indexFile, args.backend);
   const index = backend === "sqlite"
-    ? readIndexFromSqlite(indexFile)
+    ? readRuntimeSnapshot({ indexFile, backend })
     : readJsonIndex(indexFile);
   const payload = index.payload && typeof index.payload === "object" ? index.payload : {};
   const openFindings = collectOpenFindings(payload);

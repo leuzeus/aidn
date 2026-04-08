@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-adapter.mjs";
 import {
   buildIndexSyncCheckReasonCodes,
@@ -9,6 +8,7 @@ import {
 } from "../../core/workflow/index-sync-check-policy.mjs";
 import { resolveRuntimeTargetPath } from "./runtime-path-service.mjs";
 import { runWorkflowIndexSync } from "./workflow-runtime-service.mjs";
+import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
 
 function sortBy(rows, keyFn) {
   return [...rows].sort((a, b) => keyFn(a).localeCompare(keyFn(b)));
@@ -147,10 +147,7 @@ function digestPayload(payload) {
 }
 
 function detectBackend(indexFile, backend) {
-  if (backend === "json" || backend === "sqlite") {
-    return backend;
-  }
-  return String(indexFile).toLowerCase().endsWith(".sqlite") ? "sqlite" : "json";
+  return detectRuntimeSnapshotBackend(indexFile, backend);
 }
 
 function readIndex(indexFilePath, indexBackend) {
@@ -160,7 +157,10 @@ function readIndex(indexFilePath, indexBackend) {
     return { exists: false, absolute, digest: null, payload: null, backend };
   }
   if (backend === "sqlite") {
-    const out = readIndexFromSqlite(absolute);
+    const out = readRuntimeSnapshot({
+      indexFile: absolute,
+      backend: "sqlite",
+    });
     return {
       exists: true,
       absolute: out.absolute,

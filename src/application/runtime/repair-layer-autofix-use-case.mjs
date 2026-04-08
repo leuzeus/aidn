@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import { buildRepairLayerService } from "./repair-layer-service.mjs";
 import { createWorkflowStateStoreAdapter } from "../../adapters/runtime/workflow-state-store-adapter.mjs";
 import { persistWorkflowIndexProjection } from "./index-state-store-service.mjs";
@@ -8,12 +7,10 @@ import { buildRepairLayerInputDigest, mergeRepairLayerPayload } from "./repair-l
 import { resolveRuntimePath } from "./runtime-path-resolution.mjs";
 import { upsertRepairDecision } from "./repair-layer-decision-lib.mjs";
 import { collectRepairLayerSafeAutofixPlan } from "./repair-layer-autofix-plan-lib.mjs";
+import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
 
 function detectBackend(indexFile, backend) {
-  if (backend === "json" || backend === "sqlite") {
-    return backend;
-  }
-  return String(indexFile).toLowerCase().endsWith(".sqlite") ? "sqlite" : "json";
+  return detectRuntimeSnapshotBackend(indexFile, backend);
 }
 
 function readJsonIndex(indexFile) {
@@ -25,14 +22,16 @@ function readJsonIndex(indexFile) {
   return { absolute, payload };
 }
 
-function createStateStoreForBackend(indexFile, backend) {
+function createStateStoreForBackend(targetRoot, indexFile, backend) {
   if (backend === "sqlite") {
     return createWorkflowStateStoreAdapter({
+      targetRoot,
       mode: "sqlite",
       sqliteOutput: indexFile,
     });
   }
   return createWorkflowStateStoreAdapter({
+    targetRoot,
     mode: "file",
     jsonOutput: indexFile,
   });
@@ -46,7 +45,7 @@ function countOpenFindings(payload) {
   }).length;
 }
 
-export function runRepairLayerAutofixUseCase({ args, targetRoot }) {
+export async function runRepairLayerAutofixUseCase({ args, targetRoot }) {
   const auditRoot = path.join(targetRoot, "docs", "audit");
   if (!fs.existsSync(auditRoot)) {
     throw new Error(`Missing audit root: ${auditRoot}`);
@@ -55,7 +54,7 @@ export function runRepairLayerAutofixUseCase({ args, targetRoot }) {
   const indexFile = resolveRuntimePath(targetRoot, args.indexFile);
   const backend = detectBackend(indexFile, args.indexBackend);
   const index = backend === "sqlite"
-    ? readIndexFromSqlite(indexFile)
+    ? readRuntimeSnapshot({ indexFile, backend })
     : readJsonIndex(indexFile);
   const payload = index.payload && typeof index.payload === "object" ? index.payload : null;
   if (!payload || !Array.isArray(payload.artifacts) || !Array.isArray(payload.cycles)) {
@@ -129,8 +128,8 @@ export function runRepairLayerAutofixUseCase({ args, targetRoot }) {
     },
   };
   if (args.apply) {
-    const stateStore = createStateStoreForBackend(indexFile, backend);
-    applyResult = persistWorkflowIndexProjection({
+    const stateStore = createStateStoreForBackend(targetRoot, indexFile, backend);
+    applyResult = await persistWorkflowIndexProjection({
       stateStore,
       payload: mergedPayload,
       dryRun: false,

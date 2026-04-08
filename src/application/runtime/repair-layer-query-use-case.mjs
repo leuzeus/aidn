@@ -2,13 +2,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { evaluateRepairRelation } from "../../core/workflow/repair-layer-policy.mjs";
 import { resolveRuntimePath } from "./runtime-path-resolution.mjs";
-import { ensureWorkflowDbSchema, getDatabaseSync } from "../../lib/sqlite/workflow-db-schema-lib.mjs";
+import {
+  detectRuntimeSnapshotBackend,
+  openRuntimeSqliteSnapshotContext,
+  readRuntimeSnapshot,
+} from "./runtime-snapshot-service.mjs";
 
 function detectBackend(indexFile, backend) {
-  if (backend === "json" || backend === "sqlite") {
-    return backend;
-  }
-  return String(indexFile).toLowerCase().endsWith(".sqlite") ? "sqlite" : "json";
+  return detectRuntimeSnapshotBackend(indexFile, backend);
 }
 
 function readJsonIndex(indexFile) {
@@ -64,21 +65,10 @@ function mapSessionFromContextRow(row) {
 }
 
 function openSqliteQueryContext(indexFile) {
-  const DatabaseSync = getDatabaseSync();
-  const absolute = path.resolve(process.cwd(), indexFile);
-  if (!fs.existsSync(absolute)) {
-    throw new Error(`SQLite index file not found: ${absolute}`);
-  }
-  const db = new DatabaseSync(absolute);
-  ensureWorkflowDbSchema({
-    db,
-    sqliteFile: absolute,
+  return openRuntimeSqliteSnapshotContext({
+    indexFile,
     role: "repair-layer-query",
   });
-  return {
-    absolute,
-    db,
-  };
 }
 
 function querySessionCycleContextRows(db, whereSql, params) {
@@ -384,7 +374,10 @@ export function runRepairLayerQueryUseCase({ args, targetRoot }) {
       sqlite.db.close();
     }
   } else {
-    const index = readJsonIndex(indexFile);
+    const index = readRuntimeSnapshot({
+      indexFile,
+      backend: "json",
+    });
     indexAbsolute = index.absolute;
     result = runRepairLayerQuery(index.payload, args);
   }

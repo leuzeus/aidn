@@ -70,7 +70,7 @@ function readChangedAuditPaths(gitAdapter, targetRoot, auditRoot) {
   };
 }
 
-export function runSyncDbFirstSelectiveUseCase({
+export async function runSyncDbFirstSelectiveUseCase({
   args,
   targetRoot,
   gitAdapter,
@@ -172,7 +172,7 @@ export function runSyncDbFirstSelectiveUseCase({
   let repairLayerResult = null;
   let repairLayerTriageResult = null;
   if (fallback == null && stateMode !== "files") {
-    repairLayerResult = runRepairLayerUseCase({
+    repairLayerResult = await runRepairLayerUseCase({
       args: {
         indexFile: args.sqliteFile,
         indexBackend: "sqlite",

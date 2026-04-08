@@ -73,11 +73,11 @@ function printUsage() {
   console.log("  node tools/runtime/repair-layer-resolve.mjs --target . --session-id S102 --cycle-id C101 --decision accepted --apply --json");
 }
 
-function main() {
+async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const output = runRepairLayerResolveUseCase({ args, targetRoot });
+    const output = await runRepairLayerResolveUseCase({ args, targetRoot });
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));
     } else {
@@ -90,4 +90,4 @@ function main() {
   }
 }
 
-main();
+await main();
