@@ -360,7 +360,7 @@ function runRepairLayerQuerySqlite(db, args) {
   throw new Error(`Unsupported repair-layer query: ${args.query}`);
 }
 
-export function runRepairLayerQueryUseCase({ args, targetRoot }) {
+export async function runRepairLayerQueryUseCase({ args, targetRoot }) {
   const indexFile = resolveRuntimePath(targetRoot, args.indexFile);
   const backend = detectBackend(indexFile, args.backend);
   let indexAbsolute = null;
@@ -374,9 +374,12 @@ export function runRepairLayerQueryUseCase({ args, targetRoot }) {
       sqlite.db.close();
     }
   } else {
-    const index = readRuntimeSnapshot({
+    const index = backend === "json"
+      ? readJsonIndex(indexFile)
+      : await readRuntimeSnapshot({
       indexFile,
-      backend: "json",
+      backend,
+      targetRoot,
     });
     indexAbsolute = index.absolute;
     result = runRepairLayerQuery(index.payload, args);

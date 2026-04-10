@@ -1,7 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { resolveEffectiveStateMode } from "../../src/core/state-mode/state-mode-policy.mjs";
-import { loadSharedStateSnapshot } from "../../src/application/runtime/shared-state-backend-service.mjs";
+import {
+  loadSharedStateSnapshot,
+  loadSharedStateSnapshotAsync,
+} from "../../src/application/runtime/shared-state-backend-service.mjs";
 
 export function normalizeScalar(value) {
   const normalized = String(value ?? "").trim();
@@ -145,7 +148,35 @@ export function loadSqliteIndexPayloadSafe(targetRoot, options = {}) {
     targetRoot,
     includePayload,
     includeRuntimeHeads: true,
+    backend: options.backend,
+    connectionString: options.connectionString,
+    connectionRef: options.connectionRef,
+    localProjectionPolicy: options.localProjectionPolicy,
+    configData: options.configData ?? null,
+    env: options.env ?? process.env,
   });
+}
+
+export async function loadDbIndexPayloadSafe(targetRoot, options = {}) {
+  const includePayload = options.includePayload !== false;
+  return await loadSharedStateSnapshotAsync({
+    targetRoot,
+    includePayload,
+    includeRuntimeHeads: true,
+    backend: options.backend,
+    connectionString: options.connectionString,
+    connectionRef: options.connectionRef,
+    localProjectionPolicy: options.localProjectionPolicy,
+    configData: options.configData ?? null,
+    env: options.env ?? process.env,
+    clientFactory: options.clientFactory ?? null,
+    moduleLoader: options.moduleLoader ?? null,
+  });
+}
+
+export function resolveDbArtifactSourceName(snapshotBackend) {
+  const backendKind = String(snapshotBackend?.projection_backend_kind ?? "").trim().toLowerCase();
+  return backendKind === "postgres" ? "postgres" : "sqlite";
 }
 
 function findArtifactByPath(sqlitePayload, artifactPath) {
@@ -176,6 +207,7 @@ export function resolveAuditArtifactText({
   dbBacked = false,
   sqlitePayload = null,
   sqliteRuntimeHeads = null,
+  dbSource = "sqlite",
 } = {}) {
   const absolutePath = resolveTargetPath(targetRoot, candidatePath);
   if (exists(absolutePath)) {
@@ -203,7 +235,7 @@ export function resolveAuditArtifactText({
   if (runtimeHeadArtifact && runtimeHeadText) {
     return {
       exists: true,
-      source: "sqlite",
+      source: dbSource,
       absolutePath,
       logicalPath: toAuditArtifactPath(runtimeHeadArtifact.path),
       artifactPath: normalizeRelativeArtifactPath(runtimeHeadArtifact.path),
@@ -234,7 +266,7 @@ export function resolveAuditArtifactText({
   }
   return {
     exists: true,
-    source: "sqlite",
+    source: dbSource,
     absolutePath,
     logicalPath: toAuditArtifactPath(artifact.path),
     artifactPath: normalizeRelativeArtifactPath(artifact.path),
@@ -266,7 +298,7 @@ function findSessionArtifact(sqlitePayload, sessionId) {
   }) ?? null;
 }
 
-export function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = false, sqlitePayload = null } = {}) {
+export function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = false, sqlitePayload = null, dbSource = "sqlite" } = {}) {
   const filePath = findSessionFile(auditRoot, sessionId);
   if (filePath) {
     return {
@@ -299,7 +331,7 @@ export function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBac
   }
   return {
     exists: true,
-    source: "sqlite",
+    source: dbSource,
     filePath: null,
     logicalPath: toAuditArtifactPath(artifact.path),
     text,
@@ -337,7 +369,7 @@ function findCycleStatusArtifact(sqlitePayload, cycleId) {
   }) ?? null;
 }
 
-export function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbBacked = false, sqlitePayload = null } = {}) {
+export function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbBacked = false, sqlitePayload = null, dbSource = "sqlite" } = {}) {
   const filePath = findCycleStatusFile(auditRoot, cycleId);
   if (filePath) {
     return {
@@ -373,7 +405,7 @@ export function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbB
   }
   return {
     exists: true,
-    source: "sqlite",
+    source: dbSource,
     filePath: null,
     logicalPath: toAuditArtifactPath(artifact.path),
     artifactPath: normalizeRelativeArtifactPath(artifact.path),
@@ -387,6 +419,7 @@ export function resolveCyclePlanArtifact({
   cycleId,
   dbBacked = false,
   sqlitePayload = null,
+  dbSource = "sqlite",
 } = {}) {
   if (cycleStatusResolution?.filePath) {
     const filePath = path.join(path.dirname(cycleStatusResolution.filePath), "plan.md");
@@ -430,7 +463,7 @@ export function resolveCyclePlanArtifact({
   }
   return {
     exists: true,
-    source: "sqlite",
+    source: dbSource,
     filePath: null,
     logicalPath: toAuditArtifactPath(artifact.path),
     text,

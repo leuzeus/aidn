@@ -48,6 +48,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  npx aidn runtime db-backup --target . --json");
   console.log("  npx aidn runtime persistence-backup --target . --backend sqlite --json");
+  console.log("  npx aidn runtime persistence-backup --target . --backend postgres --json");
   console.log("  npx aidn runtime db-backup --target . --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json");
 }
 
@@ -100,7 +101,15 @@ async function main() {
       return;
     }
     console.log(`Runtime backend: ${payload.runtime_persistence?.backend ?? "unknown"} (${payload.runtime_persistence?.source ?? "unknown"})`);
-    console.log(`SQLite DB: ${payload.sqlite_file}`);
+    if (payload.sqlite_file) {
+      console.log(`SQLite projection DB: ${payload.sqlite_file}`);
+    }
+    if (payload.runtime_backend?.schema_version) {
+      console.log(`Schema version: ${payload.runtime_backend.schema_version}`);
+    }
+    if (payload.compatibility_fallback_used === true) {
+      console.log("Legacy compatibility fallback used: yes");
+    }
     console.log(`Backup created: ${payload.backup_created ? "yes" : "no"}`);
     console.log(`Backup file: ${payload.backup_file ?? "none"}`);
   } catch (error) {

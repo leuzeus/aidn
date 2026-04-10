@@ -1,5 +1,10 @@
 import path from "node:path";
+import { createRuntimeCanonicalSharedStateBackend } from "../../adapters/runtime/runtime-canonical-shared-state-backend.mjs";
 import { createSqliteSharedStateBackend } from "../../adapters/runtime/sqlite-shared-state-backend.mjs";
+import {
+  createRuntimeArtifactStore,
+  resolveEffectiveRuntimePersistence,
+} from "./runtime-persistence-service.mjs";
 import { assertSharedStateBackend } from "../../core/ports/shared-state-backend-port.mjs";
 import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
 
@@ -33,14 +38,56 @@ function resolveSharedProjectionSqliteFile(targetRoot, workspace) {
   };
 }
 
+function resolveLocalProjectionPolicy(value) {
+  return String(value ?? "").trim().toLowerCase() || "keep-local-sqlite";
+}
+
 export function resolveSharedStateBackend({
   targetRoot = ".",
   workspace = null,
+  backend = "",
+  connectionString = "",
+  connectionRef = "",
+  localProjectionPolicy = "",
+  configData = null,
+  env = process.env,
+  clientFactory = null,
+  moduleLoader = null,
 } = {}) {
   const resolvedWorkspace = workspace ?? resolveWorkspaceContext({
     targetRoot,
   });
   const target = path.resolve(process.cwd(), targetRoot ?? ".");
+  const runtimePersistence = resolveEffectiveRuntimePersistence({
+    targetRoot: target,
+    backend,
+    connectionRef,
+    configData,
+    env,
+  });
+  const effectiveLocalProjectionPolicy = resolveLocalProjectionPolicy(
+    localProjectionPolicy || runtimePersistence.config?.localProjectionPolicy,
+  );
+
+  if (runtimePersistence.backend === "postgres" && effectiveLocalProjectionPolicy === "none") {
+    return createRuntimeCanonicalSharedStateBackend({
+      runtimeArtifactStore: createRuntimeArtifactStore({
+        targetRoot: target,
+        backend: runtimePersistence.backend,
+        connectionString,
+        connectionRef: connectionRef || runtimePersistence.connectionRef || "",
+        configData,
+        env,
+        clientFactory,
+        moduleLoader,
+      }),
+      sharedRuntimeMode: resolvedWorkspace.shared_runtime_mode,
+      coordinationBackendKind: String(resolvedWorkspace.shared_backend_kind ?? "none").trim().toLowerCase() || "none",
+      projectionScope: "runtime-canonical",
+      logicalRoot: resolvedWorkspace.shared_runtime_root || null,
+    });
+  }
+
   const projection = resolveSharedProjectionSqliteFile(target, resolvedWorkspace);
   return assertSharedStateBackend(createSqliteSharedStateBackend({
     sqliteFile: projection.sqliteFile,
@@ -56,14 +103,65 @@ export function loadSharedStateSnapshot({
   workspace = null,
   includePayload = true,
   includeRuntimeHeads = true,
+  backend = "",
+  connectionString = "",
+  connectionRef = "",
+  localProjectionPolicy = "",
+  configData = null,
+  env = process.env,
 } = {}) {
-  const backend = resolveSharedStateBackend({
+  const sharedBackend = resolveSharedStateBackend({
     targetRoot,
     workspace,
+    backend,
+    connectionString,
+    connectionRef,
+    localProjectionPolicy,
+    configData,
+    env,
+  });
+  const backendDescription = sharedBackend.describeBackend();
+  if (backendDescription?.projection_scope === "runtime-canonical") {
+    throw new Error("Runtime canonical shared-state backends require loadSharedStateSnapshotAsync()");
+  }
+  return {
+    backend: backendDescription,
+    ...sharedBackend.loadSnapshot({
+      includePayload,
+      includeRuntimeHeads,
+    }),
+  };
+}
+
+export async function loadSharedStateSnapshotAsync({
+  targetRoot = ".",
+  workspace = null,
+  includePayload = true,
+  includeRuntimeHeads = true,
+  backend = "",
+  connectionString = "",
+  connectionRef = "",
+  localProjectionPolicy = "",
+  configData = null,
+  env = process.env,
+  clientFactory = null,
+  moduleLoader = null,
+} = {}) {
+  const sharedBackend = resolveSharedStateBackend({
+    targetRoot,
+    workspace,
+    backend,
+    connectionString,
+    connectionRef,
+    localProjectionPolicy,
+    configData,
+    env,
+    clientFactory,
+    moduleLoader,
   });
   return {
-    backend: backend.describeBackend(),
-    ...backend.loadSnapshot({
+    backend: sharedBackend.describeBackend(),
+    ...await sharedBackend.loadSnapshot({
       includePayload,
       includeRuntimeHeads,
     }),

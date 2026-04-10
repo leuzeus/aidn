@@ -150,16 +150,25 @@ function detectBackend(indexFile, backend) {
   return detectRuntimeSnapshotBackend(indexFile, backend);
 }
 
-function readIndex(indexFilePath, indexBackend) {
+function resolveFileProjectionPath(indexFilePath) {
+  const absolute = path.resolve(process.cwd(), indexFilePath);
+  if (absolute.toLowerCase().endsWith(".json")) {
+    return absolute;
+  }
+  return path.join(path.dirname(absolute), `${path.basename(absolute, path.extname(absolute))}.json`);
+}
+
+async function readIndex(targetRoot, indexFilePath, indexBackend) {
   const backend = detectBackend(indexFilePath, indexBackend);
   const absolute = path.resolve(process.cwd(), indexFilePath);
-  if (!fs.existsSync(absolute)) {
+  if (backend !== "postgres" && !fs.existsSync(absolute)) {
     return { exists: false, absolute, digest: null, payload: null, backend };
   }
-  if (backend === "sqlite") {
-    const out = readRuntimeSnapshot({
+  if (backend !== "json") {
+    const out = await readRuntimeSnapshot({
       indexFile: absolute,
-      backend: "sqlite",
+      backend,
+      targetRoot,
     });
     return {
       exists: true,
@@ -283,18 +292,19 @@ function compareArtifacts(expectedPayload, currentPayload) {
   };
 }
 
-export function runIndexSyncCheckUseCase({ args, targetRoot, runtimeDir }) {
+export async function runIndexSyncCheckUseCase({ args, targetRoot, runtimeDir }) {
   const processAdapter = createLocalProcessAdapter();
   const indexFilePath = resolveRuntimeTargetPath(targetRoot, args.indexFile);
   const indexBackend = detectBackend(indexFilePath, args.indexBackend);
+  const fileProjectionPath = resolveFileProjectionPath(indexFilePath);
   const expected = runWorkflowIndexSync({
     processAdapter,
     runtimeDir,
     targetRoot,
     store: indexBackend === "sqlite" ? "sqlite" : "file",
     output: indexBackend === "sqlite"
-      ? path.join(path.dirname(indexFilePath), `${path.basename(indexFilePath, path.extname(indexFilePath))}.json`)
-      : indexFilePath,
+      ? fileProjectionPath
+      : (indexBackend === "postgres" ? fileProjectionPath : indexFilePath),
     sqliteOutput: indexBackend === "sqlite" ? indexFilePath : "",
     dryRun: true,
     includePayload: true,
@@ -302,7 +312,7 @@ export function runIndexSyncCheckUseCase({ args, targetRoot, runtimeDir }) {
   const expectedDigest = expected?.payload
     ? digestPayload(expected.payload)
     : String(expected?.payload_digest ?? "");
-  const current = readIndex(indexFilePath, indexBackend);
+  const current = await readIndex(targetRoot, indexFilePath, indexBackend);
 
   const summaryMismatches = current.exists
     ? compareSummary(expected.summary, current.payload)
@@ -368,8 +378,8 @@ export function runIndexSyncCheckUseCase({ args, targetRoot, runtimeDir }) {
       targetRoot,
       store: indexBackend === "sqlite" ? "sqlite" : "file",
       output: indexBackend === "sqlite"
-        ? path.join(path.dirname(indexFilePath), `${path.basename(indexFilePath, path.extname(indexFilePath))}.json`)
-        : indexFilePath,
+        ? fileProjectionPath
+        : (indexBackend === "postgres" ? fileProjectionPath : indexFilePath),
       sqliteOutput: indexBackend === "sqlite" ? indexFilePath : "",
     });
     output.action = "applied";

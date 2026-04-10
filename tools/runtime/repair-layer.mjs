@@ -46,8 +46,8 @@ function parseArgs(argv) {
   if (!args.indexFile) {
     throw new Error("Missing value for --index-file");
   }
-  if (!["auto", "json", "sqlite"].includes(args.indexBackend)) {
-    throw new Error("Invalid --index-backend. Expected auto|json|sqlite");
+  if (!["auto", "json", "sqlite", "postgres"].includes(args.indexBackend)) {
+    throw new Error("Invalid --index-backend. Expected auto|json|sqlite|postgres");
   }
   return args;
 }

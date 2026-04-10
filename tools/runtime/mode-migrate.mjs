@@ -278,7 +278,7 @@ async function main() {
           });
         }
         if (args.repairLayerTriage) {
-          repairLayerTriageResult = writeRepairLayerTriageArtifacts({
+          repairLayerTriageResult = await writeRepairLayerTriageArtifacts({
             targetRoot,
             indexFile,
             backend: "sqlite",

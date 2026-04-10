@@ -6,18 +6,118 @@ function clone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
 }
 
+function createUndefinedTableError(tableName) {
+  const error = new Error(`relation "aidn_runtime.${tableName}" does not exist`);
+  error.code = "42P01";
+  return error;
+}
+
+function compareNullableStrings(left, right, direction = "asc") {
+  const leftValue = normalizeScalar(left);
+  const rightValue = normalizeScalar(right);
+  const result = leftValue.localeCompare(rightValue);
+  return direction === "desc" ? -result : result;
+}
+
+function sortRowsForTable(tableName, rows) {
+  const copy = rows.slice();
+  switch (tableName) {
+    case "index_meta":
+      return copy.sort((left, right) => compareNullableStrings(left.key, right.key));
+    case "cycles":
+      return copy.sort((left, right) => compareNullableStrings(left.cycle_id, right.cycle_id));
+    case "sessions":
+      return copy.sort((left, right) => compareNullableStrings(left.session_id, right.session_id));
+    case "artifacts":
+      return copy.sort((left, right) => compareNullableStrings(left.path, right.path));
+    case "artifact_blobs":
+      return copy.sort((left, right) => Number(left.artifact_id ?? 0) - Number(right.artifact_id ?? 0));
+    case "file_map":
+      return copy.sort((left, right) =>
+        compareNullableStrings(left.cycle_id, right.cycle_id) || compareNullableStrings(left.path, right.path));
+    case "tags":
+      return copy.sort((left, right) => compareNullableStrings(left.tag, right.tag));
+    case "artifact_tags":
+      return copy.sort((left, right) =>
+        (Number(left.artifact_id ?? 0) - Number(right.artifact_id ?? 0))
+        || (Number(left.tag_id ?? 0) - Number(right.tag_id ?? 0)));
+    case "run_metrics":
+      return copy.sort((left, right) =>
+        compareNullableStrings(left.started_at, right.started_at, "desc") || compareNullableStrings(left.run_id, right.run_id));
+    case "artifact_links":
+      return copy.sort((left, right) =>
+        compareNullableStrings(left.source_path, right.source_path)
+        || compareNullableStrings(left.target_path, right.target_path)
+        || compareNullableStrings(left.relation_type, right.relation_type));
+    case "cycle_links":
+      return copy.sort((left, right) =>
+        compareNullableStrings(left.source_cycle_id, right.source_cycle_id)
+        || compareNullableStrings(left.target_cycle_id, right.target_cycle_id)
+        || compareNullableStrings(left.relation_type, right.relation_type));
+    case "session_cycle_links":
+      return copy.sort((left, right) =>
+        compareNullableStrings(left.session_id, right.session_id)
+        || compareNullableStrings(left.cycle_id, right.cycle_id)
+        || compareNullableStrings(left.relation_type, right.relation_type));
+    case "session_links":
+      return copy.sort((left, right) =>
+        compareNullableStrings(left.source_session_id, right.source_session_id)
+        || compareNullableStrings(left.target_session_id, right.target_session_id)
+        || compareNullableStrings(left.relation_type, right.relation_type));
+    case "migration_runs":
+      return copy.sort((left, right) =>
+        compareNullableStrings(left.started_at, right.started_at, "desc") || compareNullableStrings(left.migration_run_id, right.migration_run_id));
+    case "migration_findings":
+      return copy.sort((left, right) =>
+        compareNullableStrings(left.created_at, right.created_at, "desc") || (Number(left.finding_id ?? 0) - Number(right.finding_id ?? 0)));
+    case "repair_decisions":
+      return copy.sort((left, right) =>
+        compareNullableStrings(left.relation_scope, right.relation_scope)
+        || compareNullableStrings(left.source_ref, right.source_ref)
+        || compareNullableStrings(left.target_ref, right.target_ref)
+        || compareNullableStrings(left.relation_type, right.relation_type));
+    case "runtime_heads":
+      return copy.sort((left, right) => compareNullableStrings(left.head_key, right.head_key));
+    default:
+      return copy;
+  }
+}
+
 export function createRuntimePersistenceFakePgClientFactory({
   initialTables = [],
   initialSchemaMigrations = [1],
   initialSnapshots = [],
   initialHeads = [],
 } = {}) {
+  const knownTables = [
+    "schema_migrations",
+    "runtime_snapshots",
+    "runtime_heads",
+    "adoption_events",
+    "index_meta",
+    "cycles",
+    "artifacts",
+    "sessions",
+    "file_map",
+    "tags",
+    "artifact_tags",
+    "run_metrics",
+    "artifact_links",
+    "cycle_links",
+    "session_cycle_links",
+    "session_links",
+    "repair_decisions",
+    "migration_runs",
+    "migration_findings",
+    "artifact_blobs",
+  ];
   const state = {
     tablesPresent: new Set(initialTables),
     schemaMigrations: Array.from(new Set(initialSchemaMigrations.map((value) => Number(value)).filter(Number.isFinite))).sort((left, right) => left - right),
     runtimeSnapshots: new Map(),
     runtimeHeads: new Map(),
     adoptionEvents: [],
+    relationalRows: Object.fromEntries(knownTables.map((tableName) => [tableName, []])),
     queryLog: [],
     sequence: 0,
   };
@@ -29,8 +129,14 @@ export function createRuntimePersistenceFakePgClientFactory({
   }
 
   function ensureAllRuntimeTables() {
-    for (const tableName of ["schema_migrations", "runtime_snapshots", "runtime_heads", "adoption_events"]) {
+    for (const tableName of knownTables) {
       state.tablesPresent.add(tableName);
+    }
+  }
+
+  function requireTable(tableName) {
+    if (!state.tablesPresent.has(tableName)) {
+      throw createUndefinedTableError(tableName);
     }
   }
 
@@ -85,11 +191,12 @@ export function createRuntimePersistenceFakePgClientFactory({
             return { rows: [] };
           }
           if (sql.includes("CREATE SCHEMA IF NOT EXISTS aidn_runtime")
-            || sql.includes("CREATE TABLE IF NOT EXISTS aidn_runtime.schema_migrations")
-            || sql.includes("CREATE TABLE IF NOT EXISTS aidn_runtime.runtime_snapshots")
-            || sql.includes("CREATE TABLE IF NOT EXISTS aidn_runtime.runtime_heads")
-            || sql.includes("CREATE TABLE IF NOT EXISTS aidn_runtime.adoption_events")) {
-            ensureAllRuntimeTables();
+            || sql.includes("CREATE TABLE IF NOT EXISTS aidn_runtime.")) {
+            for (const tableName of knownTables) {
+              if (sql.includes(`CREATE TABLE IF NOT EXISTS aidn_runtime.${tableName}`)) {
+                state.tablesPresent.add(tableName);
+              }
+            }
             return { rows: [] };
           }
           if (sql.includes("INSERT INTO aidn_runtime.schema_migrations")) {
@@ -111,6 +218,7 @@ export function createRuntimePersistenceFakePgClientFactory({
             };
           }
           if (sql.includes("FROM aidn_runtime.schema_migrations")) {
+            requireTable("schema_migrations");
             return {
               rows: state.schemaMigrations.map((schemaVersion) => ({
                 schema_version: schemaVersion,
@@ -119,20 +227,34 @@ export function createRuntimePersistenceFakePgClientFactory({
           }
           if (sql.includes("COUNT(*)::int AS count")
             && sql.includes("FROM aidn_runtime.runtime_snapshots")) {
+            requireTable("runtime_snapshots");
             const row = state.runtimeSnapshots.get(String(values[0] ?? "").trim());
             return {
               rows: [{ count: row ? 1 : 0 }],
             };
           }
-          if (sql.includes("SELECT scope_key, project_root_ref, payload_json, payload_digest, payload_schema_version, updated_at")
+          if (sql.includes("COUNT(*)::int AS count")
+            && sql.includes("FROM aidn_runtime.index_meta")) {
+            requireTable("index_meta");
+            const scopeKey = normalizeScalar(values[0]);
+            const rows = state.relationalRows.index_meta.filter((row) =>
+              normalizeScalar(row.scope_key) === scopeKey
+              && normalizeScalar(row.key) === "payload_schema_version");
+            return {
+              rows: [{ count: rows.length }],
+            };
+          }
+          if (sql.includes("SELECT scope_key, project_root_ref, payload_json, payload_digest, payload_schema_version")
             && sql.includes("FROM aidn_runtime.runtime_snapshots")) {
+            requireTable("runtime_snapshots");
             const row = state.runtimeSnapshots.get(String(values[0] ?? "").trim()) ?? null;
             return {
               rows: row ? [clone(row)] : [],
             };
           }
-          if (sql.includes("SELECT head_key, artifact_path, artifact_sha256, payload_json, updated_at")
-            && sql.includes("FROM aidn_runtime.runtime_heads")) {
+          if (sql.includes("FROM aidn_runtime.runtime_heads")
+            && sql.includes("WHERE scope_key = $1")) {
+            requireTable("runtime_heads");
             const scopeKey = normalizeScalar(values[0]);
             const rows = Array.from(state.runtimeHeads.values())
               .filter((row) => row.scope_key === scopeKey)
@@ -140,8 +262,22 @@ export function createRuntimePersistenceFakePgClientFactory({
               .map((row) => clone(row));
             return { rows };
           }
+          const scopedSelectMatch = sql.match(/^SELECT[\s\S]+FROM aidn_runtime\.([a-z_]+)\s+WHERE scope_key = \$1\s+ORDER BY[\s\S]*$/i);
+          if (scopedSelectMatch) {
+            const tableName = normalizeScalar(scopedSelectMatch[1]).toLowerCase();
+            if (!knownTables.includes(tableName) || ["runtime_snapshots", "adoption_events", "schema_migrations", "runtime_heads"].includes(tableName)) {
+              throw new Error(`Unhandled fake pg scoped select for table: ${tableName}`);
+            }
+            requireTable(tableName);
+            const scopeKey = normalizeScalar(values[0]);
+            const rows = sortRowsForTable(
+              tableName,
+              state.relationalRows[tableName].filter((row) => normalizeScalar(row.scope_key) === scopeKey),
+            ).map((row) => clone(row));
+            return { rows };
+          }
           if (sql.includes("INSERT INTO aidn_runtime.runtime_snapshots")) {
-            state.tablesPresent.add("runtime_snapshots");
+            requireTable("runtime_snapshots");
             const row = {
               scope_key: values[0],
               project_root_ref: values[1],
@@ -157,31 +293,58 @@ export function createRuntimePersistenceFakePgClientFactory({
             state.runtimeSnapshots.set(String(values[0]), row);
             return { rows: [clone(row)] };
           }
+          if (sql.includes("DELETE FROM aidn_runtime.runtime_snapshots")) {
+            requireTable("runtime_snapshots");
+            const scopeKey = normalizeScalar(values[0]);
+            state.runtimeSnapshots.delete(scopeKey);
+            return { rows: [] };
+          }
           if (sql.includes("DELETE FROM aidn_runtime.runtime_heads")) {
-            state.tablesPresent.add("runtime_heads");
+            requireTable("runtime_heads");
             const scopeKey = normalizeScalar(values[0]);
             for (const key of Array.from(state.runtimeHeads.keys())) {
               if (key.startsWith(`${scopeKey}:`)) {
                 state.runtimeHeads.delete(key);
               }
             }
+            state.relationalRows.runtime_heads = state.relationalRows.runtime_heads
+              .filter((row) => normalizeScalar(row.scope_key) !== scopeKey);
             return { rows: [] };
           }
           if (sql.includes("INSERT INTO aidn_runtime.runtime_heads")) {
-            state.tablesPresent.add("runtime_heads");
-            const row = {
-              scope_key: values[0],
-              head_key: values[1],
-              artifact_path: values[2],
-              artifact_sha256: values[3] ?? null,
-              payload_json: typeof values[4] === "string" ? JSON.parse(values[4]) : clone(values[4]),
-              updated_at: values[5] ?? nextTimestamp(),
-            };
+            requireTable("runtime_heads");
+            const insertMatch = sql.match(/^INSERT INTO aidn_runtime\.runtime_heads\s*\(([\s\S]+?)\)\s*VALUES/i);
+            if (!insertMatch) {
+              throw new Error("runtime_heads insert is missing a column list");
+            }
+            const columns = String(insertMatch[1])
+              .split(",")
+              .map((item) => normalizeScalar(item))
+              .filter(Boolean);
+            const row = {};
+            for (let index = 0; index < columns.length; index += 1) {
+              const column = columns[index];
+              const value = values[index];
+              row[column] = typeof value === "string" && column === "payload_json"
+                ? JSON.parse(value)
+                : clone(value);
+            }
+            row.scope_key = normalizeScalar(row.scope_key);
+            row.head_key = normalizeScalar(row.head_key);
+            row.artifact_path = normalizeScalar(row.artifact_path);
+            row.artifact_sha256 = normalizeScalar(row.artifact_sha256) || null;
+            row.updated_at = row.updated_at ?? nextTimestamp();
+            if (!row.scope_key || !row.head_key || !row.artifact_path) {
+              throw new Error("runtime_heads insert requires scope_key, head_key, and artifact_path");
+            }
             state.runtimeHeads.set(`${row.scope_key}:${row.head_key}`, row);
+            state.relationalRows.runtime_heads = state.relationalRows.runtime_heads
+              .filter((item) => !(normalizeScalar(item.scope_key) === normalizeScalar(row.scope_key) && normalizeScalar(item.head_key) === normalizeScalar(row.head_key)));
+            state.relationalRows.runtime_heads.push(clone(row));
             return { rows: [clone(row)] };
           }
           if (sql.includes("INSERT INTO aidn_runtime.adoption_events")) {
-            state.tablesPresent.add("adoption_events");
+            requireTable("adoption_events");
             const row = {
               event_id: values[0],
               scope_key: values[1],
@@ -195,6 +358,40 @@ export function createRuntimePersistenceFakePgClientFactory({
               created_at: nextTimestamp(),
             };
             state.adoptionEvents.push(row);
+            return { rows: [clone(row)] };
+          }
+          const deleteMatch = sql.match(/^DELETE FROM aidn_runtime\.([a-z_]+)\s+WHERE scope_key = \$1$/i);
+          if (deleteMatch) {
+            const tableName = normalizeScalar(deleteMatch[1]).toLowerCase();
+            if (!knownTables.includes(tableName)) {
+              throw new Error(`Unknown relational table delete in fake pg: ${tableName}`);
+            }
+            requireTable(tableName);
+            const scopeKey = normalizeScalar(values[0]);
+            state.relationalRows[tableName] = state.relationalRows[tableName]
+              .filter((row) => normalizeScalar(row.scope_key) !== scopeKey);
+            return { rows: [] };
+          }
+          const insertMatch = sql.match(/^INSERT INTO aidn_runtime\.([a-z_]+)\s*\(([\s\S]+?)\)\s*VALUES/i);
+          if (insertMatch) {
+            const tableName = normalizeScalar(insertMatch[1]).toLowerCase();
+            if (!knownTables.includes(tableName) || ["runtime_snapshots", "adoption_events", "schema_migrations"].includes(tableName)) {
+              throw new Error(`Unhandled fake pg insert for table: ${tableName}`);
+            }
+            requireTable(tableName);
+            const columns = String(insertMatch[2])
+              .split(",")
+              .map((item) => normalizeScalar(item))
+              .filter(Boolean);
+            const row = {};
+            for (let index = 0; index < columns.length; index += 1) {
+              const column = columns[index];
+              const value = values[index];
+              row[column] = typeof value === "string" && (column === "canonical_json" || column === "payload_json")
+                ? JSON.parse(value)
+                : clone(value);
+            }
+            state.relationalRows[tableName].push(row);
             return { rows: [clone(row)] };
           }
           throw new Error(`Unhandled fake pg query: ${sql}`);

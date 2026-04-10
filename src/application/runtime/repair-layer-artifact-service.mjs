@@ -12,7 +12,7 @@ function resolveRuntimeOutputPath(targetRoot, candidatePath) {
   return path.resolve(targetRoot, candidatePath);
 }
 
-export function writeRepairLayerTriageArtifacts({
+export async function writeRepairLayerTriageArtifacts({
   targetRoot,
   indexFile,
   backend,
@@ -21,7 +21,7 @@ export function writeRepairLayerTriageArtifacts({
   renderScript,
   runNodeScript,
 }) {
-  const triage = runRepairLayerTriageUseCase({
+  const triage = await runRepairLayerTriageUseCase({
     args: {
       indexFile,
       backend: backend || "auto",

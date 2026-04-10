@@ -59,8 +59,8 @@ function parseArgs(argv) {
   if (!args.sessionId || !args.cycleId || !args.decision) {
     throw new Error("Missing required values. Expected --session-id --cycle-id --decision.");
   }
-  if (!["auto", "json", "sqlite"].includes(args.indexBackend)) {
-    throw new Error("Invalid --index-backend. Expected auto|json|sqlite");
+  if (!["auto", "json", "sqlite", "postgres"].includes(args.indexBackend)) {
+    throw new Error("Invalid --index-backend. Expected auto|json|sqlite|postgres");
   }
   if (!["accepted", "rejected"].includes(args.decision)) {
     throw new Error("Invalid --decision. Expected accepted|rejected");

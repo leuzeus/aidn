@@ -3,8 +3,15 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { loadSharedStateSnapshot } from "../../src/application/runtime/shared-state-backend-service.mjs";
+import {
+  loadSharedStateSnapshot,
+  loadSharedStateSnapshotAsync,
+} from "../../src/application/runtime/shared-state-backend-service.mjs";
+import { assessDbOnlyReadiness } from "../../src/application/runtime/db-only-readiness-service.mjs";
+import { createRuntimeArtifactStore } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { writeSharedRuntimeLocator } from "../../src/lib/config/shared-runtime-locator-config-lib.mjs";
+import { projectRuntimeState } from "../runtime/project-runtime-state.mjs";
+import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persistence-fake-pg-lib.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function assert(condition, message) {
@@ -25,7 +32,26 @@ function runJson(script, args, env = {}) {
   return JSON.parse(stdout);
 }
 
-function main() {
+async function withEnv(overrides, fn) {
+  const previous = new Map();
+  for (const [key, value] of Object.entries(overrides)) {
+    previous.set(key, Object.prototype.hasOwnProperty.call(process.env, key) ? process.env[key] : undefined);
+    process.env[key] = value;
+  }
+  try {
+    return await fn();
+  } finally {
+    for (const [key, value] of previous.entries()) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
+async function main() {
   let tempRoot = "";
   try {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-shared-state-backend-"));
@@ -140,6 +166,78 @@ function main() {
     assert(postgresSnapshot.backend?.coordination_backend_kind === "postgres", "postgres compatibility snapshot should expose postgres coordination backend");
     assert(postgresSnapshot.backend?.projection_scope === "local-compat", "postgres compatibility snapshot should expose local-compat projection scope");
 
+    const postgresNoneTarget = path.join(tempRoot, "postgres-none");
+    fs.cpSync(path.resolve(process.cwd(), "tests/fixtures/perf-handoff/ready"), postgresNoneTarget, { recursive: true });
+    runJson("tools/perf/index-sync.mjs", [
+      "--target",
+      postgresNoneTarget,
+      "--store",
+      "sqlite",
+      "--with-content",
+      "--json",
+    ], {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
+    const postgresNoneLocalSnapshot = loadSharedStateSnapshot({
+      targetRoot: postgresNoneTarget,
+    });
+    const fakePg = createRuntimePersistenceFakePgClientFactory();
+    const postgresCanonicalStore = createRuntimeArtifactStore({
+      targetRoot: postgresNoneTarget,
+      backend: "postgres",
+      connectionString: "postgres://fake/runtime-none",
+      clientFactory: fakePg.factory,
+    });
+    await postgresCanonicalStore.writeIndexProjection({
+      payload: postgresNoneLocalSnapshot.payload,
+    });
+    fs.rmSync(path.join(postgresNoneTarget, ".aidn", "runtime", "index", "workflow-index.sqlite"), { force: true });
+    fs.rmSync(path.join(postgresNoneTarget, "docs", "audit", "CURRENT-STATE.md"), { force: true });
+    fs.rmSync(path.join(postgresNoneTarget, "docs", "audit", "RUNTIME-STATE.md"), { force: true });
+    fs.rmSync(path.join(postgresNoneTarget, "docs", "audit", "sessions", "S101-alpha.md"), { force: true });
+    fs.rmSync(path.join(postgresNoneTarget, "docs", "audit", "cycles", "C101-feature-alpha", "status.md"), { force: true });
+
+    const postgresCanonicalSnapshot = await loadSharedStateSnapshotAsync({
+      targetRoot: postgresNoneTarget,
+      backend: "postgres",
+      connectionString: "postgres://fake/runtime-none",
+      localProjectionPolicy: "none",
+      clientFactory: fakePg.factory,
+    });
+    assert(postgresCanonicalSnapshot.exists === true, "postgres runtime-canonical snapshot should load without a local sqlite projection");
+    assert(postgresCanonicalSnapshot.backend?.projection_backend_kind === "postgres", "postgres runtime-canonical snapshot should expose postgres as projection backend");
+    assert(postgresCanonicalSnapshot.backend?.projection_scope === "runtime-canonical", "postgres runtime-canonical snapshot should expose runtime-canonical projection scope");
+
+    const sharedStateOptions = {
+      backend: "postgres",
+      connectionString: "postgres://fake/runtime-none",
+      localProjectionPolicy: "none",
+      clientFactory: fakePg.factory,
+    };
+    const runtimeState = await withEnv({
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    }, async () => await projectRuntimeState({
+      targetRoot: postgresNoneTarget,
+      out: path.join(tempRoot, "postgres-none-runtime-state.md"),
+      sharedStateOptions,
+    }));
+    assert(runtimeState.shared_state_backend?.projection_scope === "runtime-canonical", "runtime-state should expose runtime-canonical projection when localProjectionPolicy=none");
+    assert(runtimeState.digest?.current_state_source === "postgres", "runtime-state should resolve CURRENT-STATE from postgres when localProjectionPolicy=none");
+    assert(runtimeState.digest?.cycle_status_source === "postgres", "runtime-state should resolve cycle status from postgres when localProjectionPolicy=none");
+
+    const readiness = await withEnv({
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    }, async () => await assessDbOnlyReadiness({
+      targetRoot: postgresNoneTarget,
+      sharedStateOptions,
+    }));
+    assert(readiness.status === "pass", "db-only readiness should pass through the postgres runtime-canonical projection");
+    assert(readiness.sqlite_index?.projection_scope === "runtime-canonical", "db-only readiness should report runtime-canonical projection scope when localProjectionPolicy=none");
+    assert(readiness.resolutions?.current_state?.source === "postgres", "db-only readiness should resolve CURRENT-STATE from postgres when localProjectionPolicy=none");
+
     console.log("PASS");
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
@@ -154,4 +252,7 @@ function main() {
   }
 }
 
-main();
+Promise.resolve().then(main).catch((error) => {
+  console.error(`ERROR: ${error.message}`);
+  process.exit(1);
+});

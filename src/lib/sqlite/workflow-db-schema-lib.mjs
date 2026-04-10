@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 const SQLITE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const BASELINE_WORKFLOW_SCHEMA_VERSION = 2;
-const LATEST_WORKFLOW_SCHEMA_VERSION = 6;
+const LATEST_WORKFLOW_SCHEMA_VERSION = 7;
 const LATEST_WORKFLOW_PAYLOAD_SCHEMA_VERSION = 2;
 
 export function getDatabaseSync() {
@@ -448,6 +448,24 @@ function ensureRuntimeHeadsTable(db) {
   `);
 }
 
+function ensureAdoptionEventsTable(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS adoption_events (
+      event_id TEXT PRIMARY KEY,
+      action TEXT NOT NULL,
+      status TEXT NOT NULL,
+      source_backend TEXT,
+      target_backend TEXT NOT NULL,
+      source_payload_digest TEXT,
+      target_payload_digest TEXT,
+      payload_json TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_adoption_events_created ON adoption_events(created_at DESC);
+  `);
+}
+
 function ensureArtifactBlobsTable(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS artifact_blobs (
@@ -838,6 +856,16 @@ function getWorkflowDbMigrations(schemaFile) {
         ensurePayloadSchemaVersionMeta(db);
       },
     },
+    {
+      id: "0006_sqlite_adoption_events",
+      description: "Add sqlite adoption_events for backend adoption/admin trace parity",
+      checksum: buildMigrationChecksum("0006|sqlite-adoption-events-v1"),
+      up(db) {
+        ensureAdoptionEventsTable(db);
+        setMeta(db, "schema_version", String(LATEST_WORKFLOW_SCHEMA_VERSION));
+        ensurePayloadSchemaVersionMeta(db);
+      },
+    },
   ];
 }
 
@@ -1013,6 +1041,58 @@ export function migrateWorkflowDbFile(options = {}) {
       schema_file: resolved.schemaFile,
       migration,
       status,
+    };
+  } finally {
+    try {
+      db.exec("PRAGMA foreign_keys=ON;");
+    } catch {
+    }
+    db.close();
+  }
+}
+
+export function recordWorkflowDbAdoptionEvent(options = {}) {
+  const resolved = resolveWorkflowSchemaOptions(options);
+  if (!resolved.sqliteFile) {
+    throw new Error("recordWorkflowDbAdoptionEvent requires sqliteFile");
+  }
+  fs.mkdirSync(path.dirname(resolved.sqliteFile), { recursive: true });
+  const DatabaseSync = getDatabaseSync();
+  const db = new DatabaseSync(resolved.sqliteFile);
+  try {
+    db.exec("PRAGMA foreign_keys=OFF;");
+    ensureWorkflowDbSchema({
+      db,
+      sqliteFile: resolved.sqliteFile,
+      role: resolved.role,
+      engineVersion: resolved.engineVersion,
+      schemaFile: resolved.schemaFile,
+      backupRoot: resolved.backupRoot,
+    });
+    ensureAdoptionEventsTable(db);
+    const eventId = String(options.eventId ?? "").trim()
+      || `sqlite-adoption-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO adoption_events (
+        event_id, action, status, source_backend, target_backend, source_payload_digest, target_payload_digest, payload_json, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      eventId,
+      String(options.action ?? "").trim() || "runtime-adoption",
+      String(options.status ?? "").trim() || "unknown",
+      String(options.sourceBackend ?? "").trim() || null,
+      String(options.targetBackend ?? "").trim() || "sqlite",
+      String(options.sourcePayloadDigest ?? "").trim() || null,
+      String(options.targetPayloadDigest ?? "").trim() || null,
+      JSON.stringify(options.payload && typeof options.payload === "object" ? options.payload : {}),
+      now,
+    );
+    return {
+      ok: true,
+      event_id: eventId,
+      created_at: now,
+      sqlite_file: resolved.sqliteFile,
     };
   } finally {
     try {

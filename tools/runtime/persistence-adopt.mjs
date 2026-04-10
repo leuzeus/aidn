@@ -97,9 +97,28 @@ function printHuman(result) {
   console.log(`- reason=${plan.reason}`);
   console.log(`- write_requested=${result.write_requested ? "yes" : "no"}`);
   console.log(`- source_has_payload=${plan.source?.has_payload ? "yes" : "no"}`);
-  console.log(`- target_payload_rows=${plan.target?.payload_rows ?? 0}`);
+  console.log(`- target_visible_payload_rows=${plan.target?.payload_rows ?? 0}`);
+  if (typeof plan.target?.canonical_payload_rows === "number") {
+    console.log(`- target_canonical_payload_rows=${plan.target.canonical_payload_rows}`);
+  }
+  if (typeof plan.target?.legacy_snapshot_rows === "number") {
+    console.log(`- target_legacy_snapshot_rows=${plan.target.legacy_snapshot_rows}`);
+  }
+  if (plan.target?.storage_policy) {
+    console.log(`- target_canonical_storage=${plan.target.storage_policy}`);
+  }
+  if (plan.target?.compatibility_status) {
+    console.log(`- target_compatibility_status=${plan.target.compatibility_status}`);
+  }
   if (plan.prerequisites?.length) {
     console.log(`- prerequisites=${plan.prerequisites.join(", ")}`);
+  }
+  if (Array.isArray(plan.source?.cycle_identity_collisions) && plan.source.cycle_identity_collisions.length > 0) {
+    console.log(`- source_cycle_identity_collision_count=${plan.source.cycle_identity_collisions.length}`);
+    console.log(`- source_collision_cycle_ids=${plan.source.cycle_identity_collisions.map((item) => item.cycle_id).join(", ")}`);
+    for (const collision of plan.source.cycle_identity_collisions) {
+      console.log(`- source_cycle ${collision.cycle_id}: directories=${Array.isArray(collision.directories) ? collision.directories.join(", ") : ""}`);
+    }
   }
   console.log(`- execution_status=${execution.execution_status}`);
   if (execution.event?.event_id) {

@@ -534,7 +534,7 @@ function resolveEffectiveStateMode(targetRoot, latest, requestedSkill) {
   };
 }
 
-export function runHydrateContextUseCase({ args, hookContextStore, targetRoot }) {
+export async function runHydrateContextUseCase({ args, hookContextStore, targetRoot }) {
   const context = hookContextStore.readContext({
     targetRoot,
     contextFile: args.contextFile,
@@ -580,9 +580,9 @@ export function runHydrateContextUseCase({ args, hookContextStore, targetRoot })
     const indexFile = resolveTargetPath(targetRoot, args.indexFile);
     if (fs.existsSync(indexFile)) {
       const backend = detectBackend(indexFile, args.backend);
-      const index = backend === "sqlite"
-        ? readRuntimeSnapshot({ indexFile, backend })
-        : readJsonIndex(indexFile);
+      const index = backend === "json"
+        ? readJsonIndex(indexFile)
+        : await readRuntimeSnapshot({ indexFile, backend, targetRoot });
       artifactSource = {
         backend,
         file: index.absolute,

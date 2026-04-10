@@ -14,13 +14,19 @@ function assert(condition, message) {
 }
 
 function runCli(args, env = {}) {
+  const mergedEnv = {
+    ...process.env,
+    ...env,
+  };
+  for (const [key, value] of Object.entries(env)) {
+    if (value == null) {
+      delete mergedEnv[key];
+    }
+  }
   const result = spawnSync(process.execPath, [path.resolve(process.cwd(), "bin/aidn.mjs"), ...args], {
     cwd: process.cwd(),
     encoding: "utf8",
-    env: {
-      ...process.env,
-      ...env,
-    },
+    env: mergedEnv,
   });
   return {
     status: result.status ?? 1,
@@ -257,7 +263,9 @@ async function main() {
     const backupFile = path.join(targetRoot, ".aidn", "runtime", "shared-coordination-backup.json");
     fs.writeFileSync(backupFile, JSON.stringify(createBackupPayload(), null, 2));
 
-    const missingEnv = runCli(["runtime", "shared-coordination-restore", "--target", targetRoot, "--json"]);
+    const missingEnv = runCli(["runtime", "shared-coordination-restore", "--target", targetRoot, "--json"], {
+      AIDN_PG_URL: null,
+    });
     assert(missingEnv.status === 1, "restore CLI should fail when PostgreSQL env is missing");
     assert(missingEnv.json?.status === "missing-env", "restore CLI should surface missing-env");
 

@@ -12,9 +12,10 @@ import { admitHandoff } from "./handoff-admit.mjs";
 import {
   canonicalNone,
   canonicalUnknown,
-  loadSqliteIndexPayloadSafe,
+  loadDbIndexPayloadSafe,
   normalizeScalar,
   parseSimpleMap,
+  resolveDbArtifactSourceName,
   resolveAuditArtifactText,
   resolveDbBackedMode,
 } from "./db-first-runtime-view-lib.mjs";
@@ -239,25 +240,28 @@ export async function computeCoordinatorNextAction({
   workspace = null,
   sharedCoordination = null,
   sharedCoordinationOptions = {},
+  sharedStateOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const effectiveWorkspace = workspace ?? resolveWorkspaceContext({
     targetRoot: absoluteTargetRoot,
   });
   const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+  const sqliteFallback = dbBackedMode ? await loadDbIndexPayloadSafe(absoluteTargetRoot, sharedStateOptions) : {
     exists: false,
     sqliteFile: "",
     payload: null,
     runtimeHeads: {},
     warning: "",
   };
+  const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
   const currentStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: currentStateFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   const runtimeStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
@@ -265,6 +269,7 @@ export async function computeCoordinatorNextAction({
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   const packetResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
@@ -272,6 +277,7 @@ export async function computeCoordinatorNextAction({
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   const currentStateText = currentStateResolution.text;
   const runtimeStateText = runtimeStateResolution.text;

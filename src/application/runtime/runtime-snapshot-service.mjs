@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { createRuntimeArtifactStore } from "./runtime-persistence-service.mjs";
+import { createRuntimeArtifactStore, createRuntimeCanonicalSnapshotReader } from "./runtime-persistence-service.mjs";
 import { openSqliteRuntimeQueryContext } from "../../adapters/runtime/sqlite-runtime-query-context.mjs";
 
 export function detectRuntimeSnapshotBackend(indexFile, backend = "") {
@@ -19,13 +19,37 @@ export function readJsonRuntimeSnapshot(indexFile) {
   return { backend: "json", absolute, payload };
 }
 
-export function readRuntimeSnapshot({ indexFile, backend = "", generatedAt } = {}) {
+function resolveRuntimeSnapshotAbsolute(indexFile) {
+  return path.resolve(process.cwd(), indexFile ?? ".");
+}
+
+export function resolveRuntimeSnapshotTargetRoot(indexFile, targetRoot = "") {
+  const explicit = String(targetRoot ?? "").trim();
+  if (explicit) {
+    return path.resolve(process.cwd(), explicit);
+  }
+  const absolute = resolveRuntimeSnapshotAbsolute(indexFile);
+  const indexDir = path.dirname(absolute);
+  const runtimeDir = path.dirname(indexDir);
+  const aidnDir = path.dirname(runtimeDir);
+  if (
+    path.basename(indexDir) === "index"
+    && path.basename(runtimeDir) === "runtime"
+    && path.basename(aidnDir) === ".aidn"
+  ) {
+    return path.dirname(aidnDir);
+  }
+  return process.cwd();
+}
+
+export function readRuntimeSnapshotSync({ indexFile, backend = "", generatedAt } = {}) {
   const resolvedBackend = detectRuntimeSnapshotBackend(indexFile, backend);
-  if (resolvedBackend === "sqlite" || resolvedBackend === "postgres") {
-    const absolute = path.resolve(process.cwd(), indexFile);
-    const targetRoot = path.resolve(process.cwd(), path.dirname(path.dirname(path.dirname(indexFile ?? "."))));
+  if (resolvedBackend === "postgres") {
+    throw new Error("PostgreSQL runtime snapshot reads require the async readRuntimeSnapshot() API");
+  }
+  if (resolvedBackend === "sqlite") {
+    const absolute = resolveRuntimeSnapshotAbsolute(indexFile);
     const store = createRuntimeArtifactStore({
-      targetRoot,
       backend: "sqlite",
       sqliteFile: absolute,
     });
@@ -49,6 +73,61 @@ export function readRuntimeSnapshot({ indexFile, backend = "", generatedAt } = {
   return readJsonRuntimeSnapshot(indexFile);
 }
 
+export async function readRuntimeSnapshot({
+  indexFile,
+  backend = "",
+  generatedAt,
+  targetRoot = "",
+  connectionString = "",
+  connectionRef = "",
+  configData = null,
+  env = process.env,
+  clientFactory = null,
+  moduleLoader = null,
+} = {}) {
+  const resolvedBackend = detectRuntimeSnapshotBackend(indexFile, backend);
+  if (resolvedBackend === "json") {
+    return readJsonRuntimeSnapshot(indexFile);
+  }
+  if (resolvedBackend === "sqlite") {
+    return readRuntimeSnapshotSync({
+      indexFile,
+      backend: resolvedBackend,
+      generatedAt,
+    });
+  }
+
+  const absolute = resolveRuntimeSnapshotAbsolute(indexFile);
+  const resolvedTargetRoot = resolveRuntimeSnapshotTargetRoot(indexFile, targetRoot);
+  const reader = createRuntimeCanonicalSnapshotReader({
+    targetRoot: resolvedTargetRoot,
+    backend: resolvedBackend,
+    sqliteFile: absolute,
+    connectionString,
+    connectionRef,
+    configData,
+    env,
+    clientFactory,
+    moduleLoader,
+  });
+  const snapshot = await reader.readCanonicalSnapshot({
+    includePayload: true,
+    includeRuntimeHeads: false,
+    generatedAt,
+  });
+  if (snapshot.warning) {
+    throw new Error(snapshot.warning);
+  }
+  if (!snapshot.exists) {
+    throw new Error(`Runtime index snapshot not found for backend "${resolvedBackend}" at ${absolute}`);
+  }
+  return {
+    backend: resolvedBackend,
+    absolute,
+    payload: snapshot.payload,
+  };
+}
+
 export function openRuntimeSqliteSnapshotContext({ indexFile, role = "runtime-snapshot-query" } = {}) {
   return openSqliteRuntimeQueryContext({
     indexFile,
@@ -56,8 +135,23 @@ export function openRuntimeSqliteSnapshotContext({ indexFile, role = "runtime-sn
   });
 }
 
-export function readRuntimeIndexPayload(indexFile, options = {}) {
-  return readRuntimeSnapshot({
+export async function readRuntimeIndexPayload(indexFile, options = {}) {
+  return await readRuntimeSnapshot({
+    indexFile,
+    backend: options.backend,
+    generatedAt: options.generatedAt,
+    targetRoot: options.targetRoot,
+    connectionString: options.connectionString,
+    connectionRef: options.connectionRef,
+    configData: options.configData ?? null,
+    env: options.env ?? process.env,
+    clientFactory: options.clientFactory ?? null,
+    moduleLoader: options.moduleLoader ?? null,
+  });
+}
+
+export function readRuntimeIndexPayloadSync(indexFile, options = {}) {
+  return readRuntimeSnapshotSync({
     indexFile,
     backend: options.backend,
     generatedAt: options.generatedAt,

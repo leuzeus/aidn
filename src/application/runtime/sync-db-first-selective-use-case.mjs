@@ -181,7 +181,7 @@ export async function runSyncDbFirstSelectiveUseCase({
       },
       targetRoot,
     });
-    repairLayerTriageResult = writeRepairLayerTriageArtifacts({
+    repairLayerTriageResult = await writeRepairLayerTriageArtifacts({
       targetRoot,
       indexFile: args.sqliteFile,
       backend: "sqlite",

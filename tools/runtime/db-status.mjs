@@ -53,6 +53,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  npx aidn runtime db-status --target . --json");
   console.log("  npx aidn runtime persistence-status --target . --backend sqlite --json");
+  console.log("  npx aidn runtime persistence-status --target . --backend postgres --json");
   console.log("  npx aidn runtime db-status --target . --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json");
 }
 
@@ -131,12 +132,36 @@ async function main() {
       console.log(`Status: ${payload.reason ?? payload.runtime_backend.reason}`);
       return;
     }
-    console.log(`SQLite DB: ${payload.sqlite_file ?? "missing"}`);
-    console.log(`SQLite scope: ${payload.sqlite_scope}`);
+    const resolvedProjectionBackendKind = String(payload.resolved_projection_backend?.projection_backend_kind ?? "").trim() || "unknown";
+    const resolvedProjectionScope = String(payload.resolved_projection_backend?.projection_scope ?? "").trim() || "unknown";
+    console.log(`Resolved projection backend: ${resolvedProjectionBackendKind}`);
+    console.log(`Resolved projection scope: ${resolvedProjectionScope}`);
+    if (resolvedProjectionBackendKind === "sqlite" && payload.sqlite_file) {
+      console.log(`SQLite projection DB: ${payload.sqlite_file}`);
+    }
+    console.log(`CLI sqlite inspection scope: ${payload.sqlite_scope}`);
     console.log(`Exists: ${payload.exists ? "yes" : "no"}`);
+    if (payload.storage_policy) {
+      console.log(`Canonical storage: ${payload.storage_policy}`);
+    }
+    if (payload.compatibility_status) {
+      console.log(`Compatibility status: ${payload.compatibility_status}`);
+    }
     console.log(`Schema version: ${payload.schema_version ?? "n/a"}`);
     console.log(`Applied migrations: ${payload.applied_ids.join(", ") || "none"}`);
     console.log(`Pending migrations: ${payload.pending_ids.join(", ") || "none"}`);
+    if (typeof payload.canonical_payload_rows === "number") {
+      console.log(`Canonical payload rows: ${payload.canonical_payload_rows}`);
+    }
+    if (typeof payload.legacy_snapshot_rows === "number") {
+      console.log(`Legacy snapshot rows: ${payload.legacy_snapshot_rows}`);
+    }
+    if (Array.isArray(payload.tables_missing)) {
+      console.log(`Canonical tables missing: ${payload.tables_missing.join(", ") || "none"}`);
+    }
+    if (Array.isArray(payload.legacy_tables_missing)) {
+      console.log(`Legacy tables missing: ${payload.legacy_tables_missing.join(", ") || "none"}`);
+    }
     console.log(`Adoption action: ${payload.runtime_backend_adoption_plan?.action ?? "unknown"}`);
   } catch (error) {
     console.error(`ERROR: ${error.message}`);

@@ -182,12 +182,12 @@ function buildTriageItem(finding, payload, targetRoot, indexFile, backend) {
   return item;
 }
 
-export function runRepairLayerTriageUseCase({ args, targetRoot }) {
+export async function runRepairLayerTriageUseCase({ args, targetRoot }) {
   const indexFile = resolveRuntimePath(targetRoot, args.indexFile);
   const backend = detectBackend(indexFile, args.backend);
-  const index = backend === "sqlite"
-    ? readRuntimeSnapshot({ indexFile, backend })
-    : readJsonIndex(indexFile);
+  const index = backend === "json"
+    ? readJsonIndex(indexFile)
+    : await readRuntimeSnapshot({ indexFile, backend, targetRoot });
   const payload = index.payload && typeof index.payload === "object" ? index.payload : {};
   const openFindings = collectOpenFindings(payload);
   const items = openFindings.map((finding) => buildTriageItem(

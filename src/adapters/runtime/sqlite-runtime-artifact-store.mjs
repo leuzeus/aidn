@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createIndexStore } from "../../lib/index/index-store.mjs";
 import { readIndexFromSqlite, readRuntimeHeadArtifactsFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
+import { recordWorkflowDbAdoptionEvent } from "../../lib/sqlite/workflow-db-schema-lib.mjs";
 import { assertRuntimeArtifactStore } from "../../core/ports/runtime-artifact-store-port.mjs";
 
 export function createSqliteRuntimeArtifactStore(options = {}) {
@@ -64,11 +65,34 @@ export function createSqliteRuntimeArtifactStore(options = {}) {
     return indexStore.write(payload);
   }
 
+  function recordAdoptionEvent({
+    action = "runtime-adoption",
+    status = "unknown",
+    sourceBackend = "",
+    targetBackend = "sqlite",
+    sourcePayloadDigest = "",
+    targetPayloadDigest = "",
+    payload = {},
+  } = {}) {
+    return recordWorkflowDbAdoptionEvent({
+      sqliteFile,
+      role: "runtime-artifact-store",
+      action,
+      status,
+      sourceBackend,
+      targetBackend,
+      sourcePayloadDigest,
+      targetPayloadDigest,
+      payload,
+    });
+  }
+
   return assertRuntimeArtifactStore({
     mode: indexStore.mode,
     describeBackend,
     loadSnapshot,
     loadRuntimeHeads,
     writeIndexProjection,
+    recordAdoptionEvent,
   }, "SqliteRuntimeArtifactStore");
 }

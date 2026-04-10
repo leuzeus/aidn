@@ -19,10 +19,11 @@ import {
   buildVirtualCurrentStateConsistency,
   canonicalNone,
   canonicalUnknown,
-  loadSqliteIndexPayloadSafe,
+  loadDbIndexPayloadSafe,
   normalizeScalar,
   parseSimpleMap,
   parseTimestamp,
+  resolveDbArtifactSourceName,
   resolveAuditArtifactText,
   resolveCycleStatusArtifact,
   resolveDbBackedMode,
@@ -142,22 +143,25 @@ export async function admitHandoff({
   runtimeStateFile = "docs/audit/RUNTIME-STATE.md",
   sharedCoordination = null,
   sharedCoordinationOptions = {},
+  sharedStateOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+  const sqliteFallback = dbBackedMode ? await loadDbIndexPayloadSafe(absoluteTargetRoot, sharedStateOptions) : {
     exists: false,
     sqliteFile: "",
     payload: null,
     runtimeHeads: {},
     warning: "",
   };
+  const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
   const packetResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: packetFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   const currentStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
@@ -165,6 +169,7 @@ export async function admitHandoff({
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   const runtimeStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
@@ -172,6 +177,7 @@ export async function admitHandoff({
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   if (!currentStateResolution.exists) {
     throw new Error(`Missing file: ${resolveTargetPath(absoluteTargetRoot, currentStateFile)}`);
@@ -230,6 +236,7 @@ export async function admitHandoff({
     cycleId: normalizeScalar(current.get("active_cycle") ?? "none") || "none",
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
   });
   const consistency = currentStateResolution.source === "file"
     ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })
@@ -396,6 +403,7 @@ export async function admitHandoff({
           dbBacked: dbBackedMode,
           sqlitePayload: sqliteFallback.payload,
           sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+          dbSource,
         }).exists;
       }
       return !fs.existsSync(resolveTargetPath(absoluteTargetRoot, item));
