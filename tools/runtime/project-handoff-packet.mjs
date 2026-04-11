@@ -21,10 +21,11 @@ import {
   buildVirtualCurrentStateConsistency,
   canonicalNone,
   canonicalUnknown,
-  loadSqliteIndexPayloadSafe,
+  loadDbIndexPayloadSafe,
   normalizeScalar,
   parseSimpleMap,
   parseTimestamp,
+  resolveDbArtifactSourceName,
   resolveAuditArtifactText,
   resolveCyclePlanArtifact,
   resolveCycleStatusArtifact,
@@ -355,6 +356,8 @@ function deriveSharedPlanningCandidate({
   sharedPlanningRead = null,
   dbBacked = false,
   sqlitePayload = null,
+  sqliteRuntimeHeads = null,
+  dbSource = "sqlite",
 }) {
   const sharedPlanningState = sharedPlanningRead?.planning_state ?? null;
   if (sharedPlanningRead?.ok === true && sharedPlanningState) {
@@ -439,6 +442,8 @@ function deriveSharedPlanningCandidate({
     candidatePath: normalizedBacklog,
     dbBacked,
     sqlitePayload,
+    sqliteRuntimeHeads,
+    dbSource,
   });
   if (!backlogResolution.exists) {
     return {
@@ -630,6 +635,7 @@ export async function projectHandoffPacket({
   fromAgentAction = "",
   sharedCoordination = null,
   sharedCoordinationOptions = {},
+  sharedStateOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const workspace = resolveWorkspaceContext({
@@ -646,19 +652,21 @@ export async function projectHandoffPacket({
   });
   const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+  const sqliteFallback = dbBackedMode ? await loadDbIndexPayloadSafe(absoluteTargetRoot, sharedStateOptions) : {
     exists: false,
     sqliteFile: "",
     payload: null,
     runtimeHeads: {},
     warning: "",
   };
+  const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
   const currentStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: currentStateFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   const runtimeStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
@@ -666,6 +674,7 @@ export async function projectHandoffPacket({
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   const currentStateText = currentStateResolution.text;
   const runtimeStateText = runtimeStateResolution.text;
@@ -680,6 +689,7 @@ export async function projectHandoffPacket({
     sessionId: activeSession,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
   });
   const cycleStatusResolution = resolveCycleStatusArtifact({
     targetRoot: absoluteTargetRoot,
@@ -687,6 +697,7 @@ export async function projectHandoffPacket({
     cycleId: activeCycle,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
   });
   const planResolution = resolveCyclePlanArtifact({
     targetRoot: absoluteTargetRoot,
@@ -694,6 +705,7 @@ export async function projectHandoffPacket({
     cycleId: activeCycle,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
   });
   const consistency = currentStateResolution.source === "file"
     ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })
@@ -763,6 +775,8 @@ export async function projectHandoffPacket({
       : null,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
 
   const packet = {

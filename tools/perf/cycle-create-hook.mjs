@@ -168,7 +168,7 @@ function main() {
       mode: args.mode,
     });
     const checkpoint = shouldRunCheckpoint(admission)
-      ? runCheckpointUseCase({
+      ? await runCheckpointUseCase({
         args,
         runtimeDir: PERF_DIR,
         targetRoot,

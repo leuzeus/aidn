@@ -5,10 +5,15 @@ import {
   resolveEffectiveRuntimePersistence,
   resolveRuntimeSqliteFile,
 } from "./runtime-persistence-service.mjs";
+import { POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION } from "./postgres-runtime-persistence-contract-service.mjs";
 import { createSqliteRuntimeArtifactStore } from "../../adapters/runtime/sqlite-runtime-artifact-store.mjs";
 import { createSqliteRuntimePersistenceAdmin } from "../../adapters/runtime/sqlite-runtime-persistence-admin.mjs";
 import { payloadDigest, stablePayloadProjection } from "../../adapters/runtime/artifact-projector-adapter.mjs";
 import { assertRuntimeBackendAdoption } from "../../core/ports/runtime-backend-adoption-port.mjs";
+import {
+  detectCycleIdentityCollisions,
+  detectRuntimeSourceScopeDrift,
+} from "./runtime-cycle-identity-diagnostics-service.mjs";
 
 function normalizeScalar(value) {
   return String(value ?? "").trim();
@@ -26,8 +31,10 @@ function resolveConnectionRef(explicitConnectionRef, resolvedConnectionRef) {
   return normalizeScalar(resolvedConnectionRef);
 }
 
-function summarizeSourceSnapshot(sourceStatus, sourceSnapshot, sqliteFile) {
+function summarizeSourceSnapshot(sourceStatus, sourceSnapshot, sqliteFile, targetRoot) {
   const payload = sourceSnapshot.exists && !sourceSnapshot.warning ? sourceSnapshot.payload : null;
+  const cycleIdentityCollisions = payload ? detectCycleIdentityCollisions(payload) : [];
+  const sourceScope = payload ? detectRuntimeSourceScopeDrift(payload, targetRoot) : null;
   return {
     backend: "sqlite",
     sqlite_file: sqliteFile,
@@ -41,6 +48,8 @@ function summarizeSourceSnapshot(sourceStatus, sourceSnapshot, sqliteFile) {
     payload,
     payload_digest: payload ? payloadDigest(payload) : null,
     payload_summary: payload?.summary ?? null,
+    cycle_identity_collisions: cycleIdentityCollisions,
+    source_scope: sourceScope,
   };
 }
 
@@ -81,10 +90,16 @@ function buildPlan({
       exists: Boolean(targetStatus?.exists),
       scope_key: targetStatus?.scope_key ?? absoluteTargetRoot,
       schema_name: targetStatus?.schema_name ?? "aidn_runtime",
-      schema_version: targetStatus?.schema_version ?? 1,
+      schema_version: targetStatus?.schema_version ?? POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION,
+      storage_policy: normalizeScalar(targetStatus?.storage_policy) || null,
+      compatibility_status: normalizeScalar(targetStatus?.compatibility_status) || null,
       tables_present: Array.isArray(targetStatus?.tables_present) ? targetStatus.tables_present : [],
       tables_missing: Array.isArray(targetStatus?.tables_missing) ? targetStatus.tables_missing : [],
+      legacy_tables_present: Array.isArray(targetStatus?.legacy_tables_present) ? targetStatus.legacy_tables_present : [],
+      legacy_tables_missing: Array.isArray(targetStatus?.legacy_tables_missing) ? targetStatus.legacy_tables_missing : [],
       payload_rows: Number(targetStatus?.payload_rows ?? 0) || 0,
+      canonical_payload_rows: Number(targetStatus?.canonical_payload_rows ?? 0) || 0,
+      legacy_snapshot_rows: Number(targetStatus?.legacy_snapshot_rows ?? 0) || 0,
       pending_ids: Array.isArray(targetStatus?.pending_ids) ? targetStatus.pending_ids : [],
       applied_ids: Array.isArray(targetStatus?.applied_ids) ? targetStatus.applied_ids : [],
       reason: normalizeScalar(targetStatus?.reason),
@@ -158,6 +173,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
         includeRuntimeHeads: false,
       }),
       sqliteFile,
+      targetRoot,
     );
 
     const targetAdmin = createRuntimePersistenceAdmin({
@@ -176,7 +192,8 @@ export function createRuntimeBackendAdoptionService(options = {}) {
     const tablesPresent = Array.isArray(targetStatus?.tables_present) ? targetStatus.tables_present : [];
     const tablesMissing = Array.isArray(targetStatus?.tables_missing) ? targetStatus.tables_missing : [];
     const pendingIds = Array.isArray(targetStatus?.pending_ids) ? targetStatus.pending_ids : [];
-    const payloadRows = Number(targetStatus?.payload_rows ?? 0) || 0;
+    const canonicalPayloadRows = Number(targetStatus?.canonical_payload_rows ?? targetStatus?.payload_rows ?? 0) || 0;
+    const legacySnapshotRows = Number(targetStatus?.legacy_snapshot_rows ?? 0) || 0;
 
     if (targetStatus?.ok !== true) {
       return buildPlan({
@@ -190,6 +207,36 @@ export function createRuntimeBackendAdoptionService(options = {}) {
         blocked: true,
         reason: normalizeScalar(targetStatus?.reason) || "postgres runtime target is unavailable",
         reasonCode: "target-unavailable",
+      });
+    }
+
+    if (source.has_payload && Array.isArray(source.cycle_identity_collisions) && source.cycle_identity_collisions.length > 0) {
+      return buildPlan({
+        absoluteTargetRoot: targetRoot,
+        backend: runtimePersistence.backend,
+        connectionRef: runtimePersistence.connectionRef,
+        source,
+        targetStatus,
+        targetSnapshot: null,
+        action: "blocked-conflict",
+        blocked: true,
+        reason: `sqlite source payload contains duplicated logical cycle identities (${source.cycle_identity_collisions.map((item) => item.cycle_id).join(", ")}) across multiple cycle directories`,
+        reasonCode: "source-cycle-identity-ambiguous",
+      });
+    }
+
+    if (source.has_payload && source.source_scope?.blocking === true) {
+      return buildPlan({
+        absoluteTargetRoot: targetRoot,
+        backend: runtimePersistence.backend,
+        connectionRef: runtimePersistence.connectionRef,
+        source,
+        targetStatus,
+        targetSnapshot: null,
+        action: "blocked-conflict",
+        blocked: true,
+        reason: `sqlite source payload points to a different runtime scope (payload.target_root=${source.source_scope?.payload_target_root ?? "none"}, payload.audit_root=${source.source_scope?.payload_audit_root ?? "none"})`,
+        reasonCode: "source-scope-drift",
       });
     }
 
@@ -210,6 +257,23 @@ export function createRuntimeBackendAdoptionService(options = {}) {
       });
     }
 
+    if (tablesMissing.length > 0 && canonicalPayloadRows === 0 && legacySnapshotRows > 0) {
+      return buildPlan({
+        absoluteTargetRoot: targetRoot,
+        backend: runtimePersistence.backend,
+        connectionRef: runtimePersistence.connectionRef,
+        source,
+        targetStatus,
+        targetSnapshot: null,
+        action: source.has_payload ? "transfer-from-sqlite" : "repair-target",
+        prerequisites: source.has_payload ? ["migrate-target"] : [],
+        reason: source.has_payload
+          ? "postgres runtime target only contains legacy snapshot compatibility rows and must be migrated before canonical sqlite transfer"
+          : "postgres runtime target only contains legacy snapshot compatibility rows and can be migrated back to canonical relational storage",
+        reasonCode: source.has_payload ? "legacy-only-target-transfer" : "legacy-only-target-repair",
+      });
+    }
+
     if (tablesMissing.length > 0) {
       return buildPlan({
         absoluteTargetRoot: targetRoot,
@@ -218,12 +282,12 @@ export function createRuntimeBackendAdoptionService(options = {}) {
         source,
         targetStatus,
         targetSnapshot: null,
-        action: (payloadRows === 0 && !source.has_payload) ? "repair-target" : "blocked-conflict",
-        blocked: !(payloadRows === 0 && !source.has_payload),
-        reason: (payloadRows === 0 && !source.has_payload)
+        action: (canonicalPayloadRows === 0 && !source.has_payload) ? "repair-target" : "blocked-conflict",
+        blocked: !(canonicalPayloadRows === 0 && !source.has_payload),
+        reason: (canonicalPayloadRows === 0 && !source.has_payload)
           ? "postgres runtime target schema is partial but can be repaired before first canonical write"
           : "postgres runtime target schema is partial and ambiguous; automatic merge is blocked",
-        reasonCode: (payloadRows === 0 && !source.has_payload) ? "partial-schema-repairable" : "partial-schema-ambiguous",
+        reasonCode: (canonicalPayloadRows === 0 && !source.has_payload) ? "partial-schema-repairable" : "partial-schema-ambiguous",
       });
     }
 
@@ -244,7 +308,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
       });
     }
 
-    if (payloadRows === 0) {
+    if (canonicalPayloadRows === 0) {
       return buildPlan({
         absoluteTargetRoot: targetRoot,
         backend: runtimePersistence.backend,
@@ -254,9 +318,15 @@ export function createRuntimeBackendAdoptionService(options = {}) {
         targetSnapshot: null,
         action: source.has_payload ? "transfer-from-sqlite" : "noop",
         reason: source.has_payload
-          ? "postgres runtime target is empty and sqlite source data is available"
-          : "postgres runtime target is ready but empty and no sqlite source payload is available",
-        reasonCode: source.has_payload ? "empty-target-transfer" : "empty-target-no-source",
+          ? (legacySnapshotRows > 0
+            ? "postgres runtime target only contains legacy snapshot compatibility rows and sqlite source data is available"
+            : "postgres runtime target is empty and sqlite source data is available")
+          : (legacySnapshotRows > 0
+            ? "postgres runtime target only contains legacy snapshot compatibility rows and no sqlite source payload is available"
+            : "postgres runtime target is ready but empty and no sqlite source payload is available"),
+        reasonCode: source.has_payload
+          ? (legacySnapshotRows > 0 ? "legacy-only-target-transfer" : "empty-target-transfer")
+          : (legacySnapshotRows > 0 ? "legacy-only-target-no-source" : "empty-target-no-source"),
       });
     }
 

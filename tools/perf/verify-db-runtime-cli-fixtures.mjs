@@ -157,6 +157,7 @@ function main() {
       persistence_alias_reports_sqlite_backend: persistenceAliasStatus.runtime_persistence?.backend === "sqlite" && persistenceAliasStatus.runtime_persistence?.source === "cli",
       persistence_adopt_alias_exposes_blocked_plan: adoptDryRunBlocked?.runtime_backend_adoption_plan?.action === "blocked-conflict"
         && adoptDryRunBlocked?.runtime_backend_adoption_plan?.reason_code === "target-unavailable"
+        && adoptDryRunBlocked?.runtime_backend_adoption_plan?.target?.compatibility_status === "target-unavailable"
         && adoptDryRunBlocked?.runtime_backend_adoption?.execution_status === "blocked",
       backup_fresh_created: typeof backupFresh?.backup_file === "string" && fs.existsSync(backupFresh.backup_file),
       legacy_migrate_creates_backup: typeof migrateLegacy?.migration?.backup_file === "string" && fs.existsSync(migrateLegacy.migration.backup_file),

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
 import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
+import { createSqliteRuntimeArtifactStore } from "../../src/adapters/runtime/sqlite-runtime-artifact-store.mjs";
 import { readIndexFromSqlite, readRuntimeHeadArtifactsFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
 import {
   getDatabaseSync,
@@ -228,6 +229,20 @@ function readRuntimeHeads(sqliteFile) {
   }
 }
 
+function readAdoptionEvents(sqliteFile) {
+  const DatabaseSync = getDatabaseSync();
+  const db = new DatabaseSync(sqliteFile);
+  try {
+    return db.prepare(`
+      SELECT event_id, action, status, source_backend, target_backend, source_payload_digest, target_payload_digest, payload_json, created_at
+      FROM adoption_events
+      ORDER BY created_at ASC, event_id ASC
+    `).all();
+  } finally {
+    db.close();
+  }
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -241,7 +256,7 @@ function main() {
     freshStore.close();
 
     const freshMigrations = readMigrationRows(freshSqlite);
-    assert.equal(freshMigrations.length, 5, "fresh DB should apply baseline, runtime-head, artifact-blob, materialization-view, and hot-subtype migrations");
+    assert.equal(freshMigrations.length, 6, "fresh DB should apply baseline, runtime-head, artifact-blob, materialization-view, hot-subtype, and sqlite adoption-event migrations");
     assert.equal(countBackupFiles(freshSqlite), 0, "fresh DB should not create a pre-migration backup");
     assert.equal(countRuntimeHeads(freshSqlite), 0, "fresh DB should create runtime_heads table even when no hot artifacts exist yet");
     assert.equal(countArtifactBlobs(freshSqlite), 0, "fresh DB should create artifact_blobs table even when no artifacts exist yet");
@@ -262,7 +277,7 @@ function main() {
     legacyStore.close();
 
     const legacyMigrations = readMigrationRows(legacySqlite);
-    assert.equal(legacyMigrations.length, 5, "legacy DB should record baseline, runtime-head, artifact-blob, materialization-view, and hot-subtype migration adoption");
+    assert.equal(legacyMigrations.length, 6, "legacy DB should record baseline, runtime-head, artifact-blob, materialization-view, hot-subtype, and sqlite adoption-event migration adoption");
     assert.equal(countBackupFiles(legacySqlite), 1, "legacy DB should create a pre-migration backup on first adoption");
     assert.equal(countArtifacts(legacySqlite), 2, "migration adoption should preserve existing artifact rows");
     assert.equal(countRuntimeHeads(legacySqlite), 2, "runtime-head migration should backfill the seeded hot artifacts");
@@ -271,7 +286,7 @@ function main() {
     const legacyPayload = readIndexFromSqlite(legacySqlite);
     const legacyMeta = readMetaValues(legacySqlite, ["schema_version", "payload_schema_version"]);
     assert.equal(Number(legacyPayload?.payload?.schema_version ?? 0), 2, "migrated DB reader should preserve logical payload schema version 2");
-    assert.equal(Number(legacyMeta?.schema_version ?? 0), 6, "migrated DB should expose physical schema version 6");
+    assert.equal(Number(legacyMeta?.schema_version ?? 0), 7, "migrated DB should expose physical schema version 7");
     assert.equal(Number(legacyMeta?.payload_schema_version ?? 0), 2, "migrated DB should record logical payload schema version 2");
     const runtimeHeadsPayload = readRuntimeHeadArtifactsFromSqlite(legacySqlite);
     const artifactBlobs = readArtifactBlobs(legacySqlite);
@@ -282,6 +297,21 @@ function main() {
     const currentStateArtifact = artifactSubtypes.find((row) => row.path === "CURRENT-STATE.md");
 
     const runtimeHeads = readRuntimeHeads(legacySqlite);
+    const sqliteStore = createSqliteRuntimeArtifactStore({
+      sqliteFile: legacySqlite,
+    });
+    const sqliteAdoptionEvent = sqliteStore.recordAdoptionEvent({
+      action: "transfer-from-sqlite",
+      status: "applied",
+      sourceBackend: "sqlite",
+      targetBackend: "sqlite",
+      sourcePayloadDigest: "source-digest-fixture",
+      targetPayloadDigest: "target-digest-fixture",
+      payload: {
+        reason_code: "sqlite-fixture",
+      },
+    });
+    const adoptionEvents = readAdoptionEvents(legacySqlite);
     const currentStateHead = runtimeHeads.find((row) => row.head_key === "current_state");
     const agentHealthHead = runtimeHeads.find((row) => row.head_key === "agent_health_summary");
     assert(currentStateHead, "legacy DB should backfill current_state head from path fallback");
@@ -327,13 +357,13 @@ function main() {
     const result = {
       ts: new Date().toISOString(),
       checks: {
-        fresh_baseline_runtime_heads_artifact_blobs_materialization_view_and_hot_subtype_migrations_recorded: freshMigrations.length === 5,
+        fresh_baseline_runtime_heads_artifact_blobs_materialization_view_hot_subtype_and_sqlite_adoption_event_migrations_recorded: freshMigrations.length === 6,
         fresh_backup_not_created: countBackupFiles(freshSqlite) === 0,
         fresh_runtime_heads_table_present: countRuntimeHeads(freshSqlite) === 0,
         fresh_artifact_blobs_table_present: countArtifactBlobs(freshSqlite) === 0,
         fresh_hot_artifact_indexes_present: readArtifactIndexNames(freshSqlite).length === 3,
         legacy_backup_created: countBackupFiles(legacySqlite) === 1,
-        legacy_migrations_recorded: legacyMigrations.length === 5,
+        legacy_migrations_recorded: legacyMigrations.length === 6,
         legacy_rows_preserved_during_adoption: countArtifacts(legacySqlite) === 2,
         runtime_heads_backfilled_from_legacy_artifacts: countRuntimeHeads(legacySqlite) === 2,
         artifact_blobs_backfilled_from_legacy_artifacts: countArtifactBlobs(legacySqlite) === 2,
@@ -344,8 +374,9 @@ function main() {
         runtime_head_only_resolution_works: runtimeHeadOnlyResolution.exists === true,
         materializable_view_exposes_reconstructible_content: /Current State/i.test(String(materializedCurrentState?.content ?? "")),
         dual_materialization_roundtrip_works: materializeResult.exported === 2 && fs.existsSync(materializedCurrentStateFile) && fs.existsSync(materializedAgentHealthFile),
+        sqlite_adoption_event_written: sqliteAdoptionEvent?.ok === true && adoptionEvents.length === 1,
         sqlite_reader_preserves_payload_schema_v2: Number(legacyPayload?.payload?.schema_version ?? 0) === 2,
-        sqlite_meta_exposes_schema_v6: Number(legacyMeta?.schema_version ?? 0) === 6,
+        sqlite_meta_exposes_schema_v7: Number(legacyMeta?.schema_version ?? 0) === 7,
         sqlite_meta_exposes_payload_schema_v2: Number(legacyMeta?.payload_schema_version ?? 0) === 2,
       },
       samples: {
@@ -357,6 +388,7 @@ function main() {
         legacy_artifact_subtypes: artifactSubtypes,
         legacy_artifact_indexes: artifactIndexNames,
         legacy_meta: legacyMeta,
+        legacy_adoption_events: adoptionEvents,
         legacy_artifact_blobs: artifactBlobs,
         legacy_materializable_artifacts: materializableArtifacts,
         materialize_result: materializeResult,

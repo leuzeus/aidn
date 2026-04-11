@@ -8,6 +8,7 @@ import { createSqliteRuntimeArtifactStore } from "../../adapters/runtime/sqlite-
 import { createSqliteRuntimePersistenceAdmin } from "../../adapters/runtime/sqlite-runtime-persistence-admin.mjs";
 import { createPostgresRuntimeArtifactStore } from "../../adapters/runtime/postgres-runtime-artifact-store.mjs";
 import { createPostgresRuntimePersistenceAdmin } from "../../adapters/runtime/postgres-runtime-persistence-admin.mjs";
+import { assertRuntimeCanonicalSnapshotReader } from "../../core/ports/runtime-canonical-snapshot-reader-port.mjs";
 
 function resolveBackendFromCompatibility(configData) {
   const configPersistence = resolveConfigRuntimePersistence(configData);
@@ -114,6 +115,18 @@ export function createRuntimeArtifactStore(options = {}) {
   }
 
   throw new Error(`Runtime artifact backend "${resolution.backend}" is not implemented yet`);
+}
+
+export function createRuntimeCanonicalSnapshotReader(options = {}) {
+  const store = createRuntimeArtifactStore(options);
+  return assertRuntimeCanonicalSnapshotReader({
+    describeBackend() {
+      return store.describeBackend();
+    },
+    async readCanonicalSnapshot(snapshotOptions = {}) {
+      return await store.loadSnapshot(snapshotOptions);
+    },
+  }, "RuntimeCanonicalSnapshotReader");
 }
 
 export function createRuntimePersistenceAdmin(options = {}) {

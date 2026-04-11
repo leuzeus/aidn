@@ -88,9 +88,12 @@ async function main() {
 
     const config = readAidnProjectConfig(targetRoot);
     const sqliteFile = path.join(targetRoot, ".aidn", "runtime", "index", "workflow-index.sqlite");
-    const compatSnapshot = readRuntimeSnapshot({
+    const compatSnapshot = await readRuntimeSnapshot({
       indexFile: sqliteFile,
       backend: "postgres",
+      targetRoot,
+      connectionString: process.env.AIDN_PG_URL,
+      clientFactory: fake.factory,
     });
 
     assert(config.exists === true, "install should write .aidn/config.json");
@@ -98,7 +101,8 @@ async function main() {
     assert(String(config.data?.runtime?.persistence?.connectionRef ?? "") === "env:AIDN_PG_URL", "config should persist the runtime connection ref");
     assert(fs.existsSync(sqliteFile), "install should preserve the local sqlite projection");
     assert(compatSnapshot.backend === "postgres" && compatSnapshot.payload?.summary?.artifacts_count > 0, "postgres runtime should keep a readable local sqlite compatibility snapshot");
-    assert(fake.state.runtimeSnapshots.size === 1, "install should transfer one canonical snapshot to postgres");
+    assert(fake.state.relationalRows.index_meta.some((row) => row.key === "payload_schema_version"), "install should transfer canonical runtime metadata to postgres");
+    assert(fake.state.relationalRows.artifacts.length > 0, "install should transfer canonical runtime artifacts to postgres");
     assert(fake.state.adoptionEvents.length === 1, "install should record one runtime adoption event");
 
     console.log("PASS");

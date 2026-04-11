@@ -4,9 +4,10 @@ import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
 import {
   canonicalNone,
   canonicalUnknown,
-  loadSqliteIndexPayloadSafe,
+  loadDbIndexPayloadSafe,
   normalizeScalar,
   parseSimpleMap,
+  resolveDbArtifactSourceName,
   resolveAuditArtifactText,
   resolveCycleStatusArtifact,
   resolveDbBackedMode,
@@ -51,6 +52,7 @@ export function assessDbOnlyReadiness({
   packetFile = "docs/audit/HANDOFF-PACKET.md",
   sharedCoordination = null,
   sharedCoordinationOptions = {},
+  sharedStateOptions = {},
 } = {}) {
   return Promise.resolve().then(async () => {
     const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
@@ -59,7 +61,8 @@ export function assessDbOnlyReadiness({
       targetRoot: absoluteTargetRoot,
     });
     const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-    const sqliteIndex = loadSqliteIndexPayloadSafe(absoluteTargetRoot);
+    const sqliteIndex = await loadDbIndexPayloadSafe(absoluteTargetRoot, sharedStateOptions);
+    const dbSource = resolveDbArtifactSourceName(sqliteIndex.backend);
     const sqliteContentArtifactsCount = countArtifactsWithContent(sqliteIndex.payload);
 
     const currentState = resolveAuditArtifactText({
@@ -68,6 +71,7 @@ export function assessDbOnlyReadiness({
       dbBacked: dbBackedMode,
       sqlitePayload: sqliteIndex.payload,
       sqliteRuntimeHeads: sqliteIndex.runtimeHeads,
+      dbSource,
     });
     const runtimeState = resolveAuditArtifactText({
       targetRoot: absoluteTargetRoot,
@@ -75,6 +79,7 @@ export function assessDbOnlyReadiness({
       dbBacked: dbBackedMode,
       sqlitePayload: sqliteIndex.payload,
       sqliteRuntimeHeads: sqliteIndex.runtimeHeads,
+      dbSource,
     });
     const handoffPacket = resolveAuditArtifactText({
       targetRoot: absoluteTargetRoot,
@@ -82,6 +87,7 @@ export function assessDbOnlyReadiness({
       dbBacked: dbBackedMode,
       sqlitePayload: sqliteIndex.payload,
       sqliteRuntimeHeads: sqliteIndex.runtimeHeads,
+      dbSource,
     });
 
     const currentMap = parseSimpleMap(currentState.text);
@@ -110,6 +116,7 @@ export function assessDbOnlyReadiness({
       sessionId: activeSession,
       dbBacked: dbBackedMode,
       sqlitePayload: sqliteIndex.payload,
+      dbSource,
     });
     const cycleStatus = resolveCycleStatusArtifact({
       targetRoot: absoluteTargetRoot,
@@ -117,6 +124,7 @@ export function assessDbOnlyReadiness({
       cycleId: activeCycle,
       dbBacked: dbBackedMode,
       sqlitePayload: sqliteIndex.payload,
+      dbSource,
     });
     const backlogPath = normalizeBacklogPath(effectiveActiveBacklog);
     const backlogArtifact = backlogPath
@@ -126,6 +134,7 @@ export function assessDbOnlyReadiness({
         dbBacked: dbBackedMode,
         sqlitePayload: sqliteIndex.payload,
         sqliteRuntimeHeads: sqliteIndex.runtimeHeads,
+        dbSource,
       })
       : createMissingResolution("none", "not_applicable");
     const backlogResolvableFromSharedPlanning = Boolean(backlogPath)

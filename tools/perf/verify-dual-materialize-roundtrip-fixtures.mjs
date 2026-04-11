@@ -141,7 +141,7 @@ function main() {
       workspace_seed_exists: fs.existsSync(SELFHOST_WORKSPACE),
       dual_install_ok: (install.status ?? 1) === 0,
       sqlite_created: fs.existsSync(sqliteFile),
-      schema_version_v6: readSchemaVersion(sqliteFile) === "6",
+      schema_version_v7: readSchemaVersion(sqliteFile) === "7",
       selected_files_deleted_before_materialize: deletedBeforeMaterialize,
       materialize_selected_count_ok: Number(materializeResult?.selected_count ?? 0) === hotFiles.length,
       materialize_exported_all_missing_files: Number(materializeResult?.exported ?? 0) === hotFiles.length,

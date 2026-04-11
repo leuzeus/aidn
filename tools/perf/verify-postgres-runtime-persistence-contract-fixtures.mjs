@@ -26,21 +26,24 @@ function main() {
     const schemaSql = fs.readFileSync(schemaFile, "utf8");
 
     assert(contract.backend_kind === "postgres", "expected postgres backend kind");
-    assert(contract.scope === "runtime-artifact-persistence-only", "expected explicit runtime artifact scope");
+    assert(contract.scope === "runtime-artifact-persistence", "expected runtime artifact persistence scope");
     assert(contract.driver.package_name === "pg", "expected pg driver selection");
     assert(contract.driver.packaging_decision === "optional-dependency", "expected optional packaging decision");
     assert(contract.driver.package_scope === "optionalDependencies", "expected optional dependency package scope");
     assert(POSTGRES_RUNTIME_PERSISTENCE_DRIVER.module_specifier === "pg", "expected pg module specifier");
-    assert(contract.schema_version === 1, "expected runtime persistence schema version 1");
+    assert(contract.schema_version === 2, "expected runtime persistence schema version 2");
 
-    for (const tableName of ["schema_migrations", "runtime_snapshots", "runtime_heads", "adoption_events"]) {
+    for (const tableName of ["schema_migrations", "index_meta", "artifacts", "runtime_heads", "adoption_events"]) {
       assert(tableNames.has(tableName), `expected contract table ${tableName}`);
       assert(schemaSql.includes(`aidn_runtime.${tableName}`), `expected schema to declare ${tableName}`);
     }
+    assert(contract.legacy_compatibility_tables.some((entity) => entity.name === "runtime_snapshots"), "expected runtime_snapshots legacy compatibility table");
 
     assert(contract.non_goals.some((item) => item.includes("shared coordination")), "expected shared coordination boundary non-goal");
     assert(contract.non_goals.some((item) => item.includes("docs/audit/*")), "expected docs/audit non-goal");
     assert(contract.bootstrap.connection.status === "resolved", "expected env-backed bootstrap resolution");
+    assert(contract.bootstrap.bootstrap_steps.some((item) => item.includes("runtime-artifacts-postgres-relational-v2.sql")), "expected bootstrap to mention relational v2 schema application");
+    assert(contract.bootstrap.bootstrap_steps.some((item) => item.includes("read runtime_snapshots through an explicit legacy compatibility fallback")), "expected bootstrap to classify runtime_snapshots as explicit legacy compatibility");
 
     const resolvedFromEnv = resolvePostgresRuntimePersistenceConnection({
       connectionRef: "env:AIDN_PG_URL",

@@ -96,6 +96,8 @@ const RUNTIME_ALIASES = {
   "db-status": { file: "db-status.mjs" },
   "persistence-backup": { file: "db-backup.mjs" },
   "persistence-adopt": { file: "persistence-adopt.mjs" },
+  "persistence-source-diagnose": { file: "persistence-source-diagnose.mjs" },
+  "persistence-source-normalize": { file: "persistence-source-normalize.mjs" },
   "persistence-migrate": { file: "db-migrate.mjs" },
   "persistence-status": { file: "db-status.mjs" },
   "shared-runtime-reanchor": { file: "shared-runtime-reanchor.mjs" },
@@ -153,6 +155,8 @@ function printUsage() {
   console.log("  aidn runtime db-migrate --target . --json");
   console.log("  aidn runtime db-backup --target . --json");
   console.log("  aidn runtime persistence-adopt --target . --backend postgres --json");
+  console.log("  aidn runtime persistence-source-diagnose --target . --json");
+  console.log("  aidn runtime persistence-source-normalize --target . --rename C004-old=C020-new --json");
   console.log("  aidn runtime shared-coordination-backup --target . --json");
   console.log("  aidn runtime shared-coordination-restore --target . --json");
   console.log("  aidn runtime shared-coordination-restore --target . --write --json");

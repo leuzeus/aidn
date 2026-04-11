@@ -12,9 +12,10 @@ import {
   buildVirtualCurrentStateConsistency,
   canonicalNone,
   canonicalUnknown,
-  loadSqliteIndexPayloadSafe,
+  loadDbIndexPayloadSafe,
   normalizeScalar,
   parseSimpleMap,
+  resolveDbArtifactSourceName,
   resolveAuditArtifactText,
   resolveCycleStatusArtifact,
   resolveDbBackedMode,
@@ -466,6 +467,7 @@ export async function projectRuntimeState({
   out = "docs/audit/RUNTIME-STATE.md",
   sharedCoordination = null,
   sharedCoordinationOptions = {},
+  sharedStateOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const hydratedPath = resolveTargetPath(absoluteTargetRoot, hydratedFile);
@@ -481,19 +483,21 @@ export async function projectRuntimeState({
     workspace,
   });
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+  const sqliteFallback = dbBackedMode ? await loadDbIndexPayloadSafe(absoluteTargetRoot, sharedStateOptions) : {
     exists: false,
     sqliteFile: "",
     payload: null,
     runtimeHeads: {},
     warning: "",
   };
+  const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
   const currentStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: "docs/audit/CURRENT-STATE.md",
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   const currentStateMap = parseSimpleMap(currentStateResolution.text);
   const activeSession = normalizeScalar(currentStateMap.get("active_session") ?? "none") || "none";
@@ -518,6 +522,7 @@ export async function projectRuntimeState({
     sessionId: activeSession,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
   });
   const cycleStatusResolution = resolveCycleStatusArtifact({
     targetRoot: absoluteTargetRoot,
@@ -525,6 +530,7 @@ export async function projectRuntimeState({
     cycleId: activeCycle,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
   });
   const consistency = currentStateResolution.source === "file"
     ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })

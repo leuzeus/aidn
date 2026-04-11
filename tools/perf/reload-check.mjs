@@ -60,8 +60,8 @@ function parseArgs(argv) {
   if (!args.indexFile) {
     throw new Error("Missing value for --index-file");
   }
-  if (!["auto", "json", "sqlite"].includes(args.indexBackend)) {
-    throw new Error("Invalid --index-backend. Expected auto|json|sqlite");
+  if (!["auto", "json", "sqlite", "postgres"].includes(args.indexBackend)) {
+    throw new Error("Invalid --index-backend. Expected auto|json|sqlite|postgres");
   }
 
   return args;
@@ -76,11 +76,11 @@ function printUsage() {
   console.log("  node tools/perf/reload-check.mjs --json");
 }
 
-function main() {
+async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const result = runReloadCheckUseCase({
+    const result = await runReloadCheckUseCase({
       args,
       targetRoot,
     });
@@ -98,4 +98,4 @@ function main() {
   }
 }
 
-main();
+await main();

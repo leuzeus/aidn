@@ -35,6 +35,14 @@ function readJsonIndex(indexFile) {
   return { absolute, payload };
 }
 
+function resolveFileProjectionPath(indexFile) {
+  const absolute = path.resolve(process.cwd(), indexFile);
+  if (absolute.toLowerCase().endsWith(".json")) {
+    return absolute;
+  }
+  return path.join(path.dirname(absolute), `${path.basename(absolute, path.extname(absolute))}.json`);
+}
+
 function writeJson(filePath, payload) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
@@ -51,7 +59,8 @@ function createStateStoreForBackend(targetRoot, indexFile, backend) {
   return createWorkflowStateStoreAdapter({
     targetRoot,
     mode: "file",
-    jsonOutput: indexFile,
+    jsonOutput: resolveFileProjectionPath(indexFile),
+    runtimePersistenceBackend: backend === "postgres" ? "postgres" : "",
   });
 }
 
@@ -63,9 +72,9 @@ export async function runRepairLayerUseCase({ args, targetRoot }) {
 
   const indexFile = resolveRuntimePath(targetRoot, args.indexFile);
   const backend = detectBackend(indexFile, args.indexBackend);
-  const index = backend === "sqlite"
-    ? readRuntimeSnapshot({ indexFile, backend })
-    : readJsonIndex(indexFile);
+  const index = backend === "json"
+    ? readJsonIndex(indexFile)
+    : await readRuntimeSnapshot({ indexFile, backend, targetRoot });
   const payload = index.payload && typeof index.payload === "object" ? index.payload : null;
   if (!payload) {
     throw new Error(`Invalid index payload: ${indexFile}`);

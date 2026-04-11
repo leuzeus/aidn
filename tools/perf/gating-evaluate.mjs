@@ -107,8 +107,8 @@ function parseArgs(argv) {
   if (!args.indexFile) {
     throw new Error("Missing value for --index-file");
   }
-  if (!["auto", "json", "sqlite"].includes(args.indexBackend)) {
-    throw new Error("Invalid --index-backend. Expected auto|json|sqlite");
+  if (!["auto", "json", "sqlite", "postgres"].includes(args.indexBackend)) {
+    throw new Error("Invalid --index-backend. Expected auto|json|sqlite|postgres");
   }
   if (!["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"].includes(args.mode)) {
     throw new Error("Invalid --mode. Expected THINKING|EXPLORING|COMMITTING|UNKNOWN");
@@ -134,11 +134,11 @@ function printUsage() {
   console.log("  node tools/perf/gating-evaluate.mjs --json");
 }
 
-function main() {
+async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const result = runGatingEvaluateUseCase({
+    const result = await runGatingEvaluateUseCase({
       args,
       targetRoot,
       runtimeDir: PERF_DIR,
@@ -159,4 +159,4 @@ function main() {
   }
 }
 
-main();
+await main();

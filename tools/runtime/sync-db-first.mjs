@@ -85,14 +85,14 @@ function printUsage() {
   console.log("  npx aidn runtime sync-db-first --target . --repair-layer-autofix-safe-only --json");
 }
 
-function main() {
+async function main() {
   let outputJson = false;
   try {
     const args = parseArgs(process.argv.slice(2));
     outputJson = args.json;
     const targetRoot = path.resolve(process.cwd(), args.target);
     const processAdapter = createLocalProcessAdapter();
-    const out = runSyncDbFirstUseCase({
+    const out = await runSyncDbFirstUseCase({
       args,
       targetRoot,
       processAdapter,
@@ -121,5 +121,5 @@ function main() {
   }
 }
 
-main();
+await main();
 

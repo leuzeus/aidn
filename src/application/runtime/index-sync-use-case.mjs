@@ -6,7 +6,7 @@ import { shouldEmbedArtifactContentByState } from "../../core/state-mode/runtime
 import { persistWorkflowIndexProjection } from "./index-state-store-service.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
 import { shouldPreserveDbFirstArtifactPath } from "../../lib/workflow/db-first-artifact-path-policy.mjs";
-import { readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
+import { readRuntimeSnapshotSync } from "./runtime-snapshot-service.mjs";
 
 function resolveTargetPath(targetRoot, candidatePath) {
   if (!candidatePath) {
@@ -65,7 +65,7 @@ function readExistingRepairDecisions(args) {
       continue;
     }
     try {
-      const payload = readRuntimeSnapshot({
+      const payload = readRuntimeSnapshotSync({
         indexFile: candidate,
         backend: "sqlite",
       }).payload;
@@ -96,7 +96,7 @@ function mergePreservedDbFirstArtifacts(args, payload) {
     return payload;
   }
   try {
-    const existing = readRuntimeSnapshot({
+    const existing = readRuntimeSnapshotSync({
       indexFile: sqliteFile,
       backend: "sqlite",
     }).payload;
