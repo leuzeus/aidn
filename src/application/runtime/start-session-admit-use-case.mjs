@@ -1,5 +1,6 @@
 import path from "node:path";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
+import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
 import {
@@ -54,6 +55,7 @@ function makeResult(base, overrides = {}) {
     blocking_reasons: overrides.blocking_reasons ?? [],
     warnings: overrides.warnings ?? [],
     recommended_next_action: overrides.recommended_next_action ?? null,
+    workspace: overrides.workspace ?? base.workspace ?? null,
     workflow_state: {
       active_session: base.active_session,
       active_cycle: base.active_cycle,
@@ -69,6 +71,10 @@ export function runStartSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
   const gitAdapter = createLocalGitAdapter();
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+    gitAdapter,
+  });
   const currentState = readCurrentState(absoluteTargetRoot);
   const auditRoot = currentState.audit_root;
   const sourceBranch = readSourceBranch(absoluteTargetRoot);
@@ -122,6 +128,7 @@ export function runStartSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
     current_state_branch_kind: currentState.branch_kind,
     mapped_session: mapping.mapped_session ? toSessionSummary(mapping.mapped_session) : null,
     mapped_cycle: mapping.mapped_cycle ? toCycleSummary(mapping.mapped_cycle) : null,
+    workspace,
     open_cycles: openCycles.map((cycle) => toCycleSummary(cycle)),
     candidate_sessions: mapping.candidate_sessions,
     candidate_cycles: mapping.candidate_cycles,

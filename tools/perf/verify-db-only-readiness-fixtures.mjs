@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function assert(condition, message) {
   if (!condition) {
@@ -62,6 +63,7 @@ function main() {
     assert(report.operational.status === "pass", "db-only readiness operational checks should pass in fileless SQLite mode");
     assert(report.operational.effective_state_mode === "db-only", "db-only readiness should resolve effective state mode from env");
     assert(report.operational.sqlite_index.exists === true, "db-only readiness should detect SQLite index");
+    assert(report.operational.sqlite_index.projection_scope === "local-target", "db-only readiness should keep local-target sqlite projection by default");
     assert(report.operational.sqlite_index.content_artifacts_count > 0, "db-only readiness should require embedded SQLite content");
     assert(report.operational.resolutions.current_state.source === "sqlite", "db-only readiness should resolve CURRENT-STATE from SQLite");
     assert(report.operational.resolutions.runtime_state.source === "sqlite", "db-only readiness should resolve RUNTIME-STATE from SQLite");
@@ -77,7 +79,7 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      removePathWithRetry(tempRoot);
     }
   }
 }

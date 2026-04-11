@@ -2,6 +2,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { readLatestSharedHandoffRelay, resolveSharedCoordinationStore } from "../../src/application/runtime/shared-coordination-store-service.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
+import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
 import {
   WORKFLOW_ADMISSION_STATUS,
 } from "../../src/application/runtime/workflow-transition-constants.mjs";
@@ -16,14 +19,21 @@ import {
   buildVirtualCurrentStateConsistency,
   canonicalNone,
   canonicalUnknown,
-  loadSqliteIndexPayloadSafe,
+  loadDbIndexPayloadSafe,
   normalizeScalar,
   parseSimpleMap,
   parseTimestamp,
+  resolveDbArtifactSourceName,
   resolveAuditArtifactText,
   resolveCycleStatusArtifact,
   resolveDbBackedMode,
 } from "./db-first-runtime-view-lib.mjs";
+import {
+  buildSharedRelayHandoff,
+  derivePacketResolution,
+  readPacketSummary,
+  readSharedRelaySummary,
+} from "./shared-handoff-relay-resolution-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -126,27 +136,32 @@ function addMismatch(issues, field, packetValue, liveValue) {
   issues.push(`${field} mismatch: packet=${packetValue || "missing"} live=${liveValue || "missing"}`);
 }
 
-export function admitHandoff({
+export async function admitHandoff({
   targetRoot,
   packetFile = "docs/audit/HANDOFF-PACKET.md",
   currentStateFile = "docs/audit/CURRENT-STATE.md",
   runtimeStateFile = "docs/audit/RUNTIME-STATE.md",
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
+  sharedStateOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+  const sqliteFallback = dbBackedMode ? await loadDbIndexPayloadSafe(absoluteTargetRoot, sharedStateOptions) : {
     exists: false,
     sqliteFile: "",
     payload: null,
     runtimeHeads: {},
     warning: "",
   };
+  const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
   const packetResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: packetFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   const currentStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
@@ -154,6 +169,7 @@ export function admitHandoff({
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   const runtimeStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
@@ -161,10 +177,8 @@ export function admitHandoff({
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
-  if (!packetResolution.exists) {
-    throw new Error(`Missing file: ${resolveTargetPath(absoluteTargetRoot, packetFile)}`);
-  }
   if (!currentStateResolution.exists) {
     throw new Error(`Missing file: ${resolveTargetPath(absoluteTargetRoot, currentStateFile)}`);
   }
@@ -172,19 +186,57 @@ export function admitHandoff({
     throw new Error(`Missing file: ${resolveTargetPath(absoluteTargetRoot, runtimeStateFile)}`);
   }
 
-  const packetText = packetResolution.text;
   const currentStateText = currentStateResolution.text;
   const runtimeStateText = runtimeStateResolution.text;
-  const packet = parseSimpleMap(packetText);
   const current = parseSimpleMap(currentStateText);
   const runtime = parseSimpleMap(runtimeStateText);
-  const prioritizedArtifacts = parseListSection(packetText, "prioritized_artifacts");
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const sharedRuntimeValidation = validateSharedRuntimeContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+  });
+  const sharedCoordinationResolution = sharedCoordination ?? await resolveSharedCoordinationStore({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    ...sharedCoordinationOptions,
+  });
+  const activeSession = normalizeScalar(current.get("active_session") ?? "none") || "none";
+  const activeCycle = normalizeScalar(current.get("active_cycle") ?? "none") || "none";
+  const sharedRelayRead = await readLatestSharedHandoffRelay(sharedCoordinationResolution, {
+    workspace,
+    sessionId: activeSession !== "none" ? activeSession : "",
+    scopeType: activeCycle !== "none" ? "cycle" : "",
+    scopeId: activeCycle !== "none" ? activeCycle : "",
+  });
+  const sharedRelay = sharedRelayRead.handoff_relay ?? null;
+  const packetResolutionInfo = derivePacketResolution(
+    readPacketSummary(packetResolution),
+    readSharedRelaySummary(sharedRelay),
+  );
+  const packetSource = packetResolutionInfo.selected_source === "shared-coordination"
+    ? "shared-coordination"
+    : packetResolution.source;
+  const handoffPacket = packetResolutionInfo.selected_source === "shared-coordination"
+    ? buildSharedRelayHandoff(sharedRelay)
+    : null;
+  if (!packetResolution.exists && !handoffPacket) {
+    throw new Error(`Missing file: ${resolveTargetPath(absoluteTargetRoot, packetFile)}`);
+  }
+  const packet = handoffPacket
+    ? new Map(Object.entries(handoffPacket.packet))
+    : parseSimpleMap(packetResolution.text);
+  const prioritizedArtifacts = handoffPacket
+    ? (handoffPacket.packet.prioritized_artifacts ?? [])
+    : parseListSection(packetResolution.text, "prioritized_artifacts");
   const cycleStatusResolution = resolveCycleStatusArtifact({
     targetRoot: absoluteTargetRoot,
     auditRoot: path.join(absoluteTargetRoot, "docs", "audit"),
     cycleId: normalizeScalar(current.get("active_cycle") ?? "none") || "none",
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
   });
   const consistency = currentStateResolution.source === "file"
     ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })
@@ -200,7 +252,7 @@ export function admitHandoff({
   const handoffStatus = normalizeScalar(packet.get("handoff_status") ?? "unknown").toLowerCase();
   const consistencyStatus = normalizeScalar(packet.get("consistency_status") ?? "unknown").toLowerCase();
   const packetFreshness = normalizeScalar(packet.get("current_state_freshness") ?? "unknown").toLowerCase();
-  const packetMode = normalizeScalar(packet.get("mode") ?? "unknown");
+  const packetMode = normalizeScalar(packet.get("mode") ?? current.get("mode") ?? "unknown");
   const packetFromRole = normalizeAgentRole(packet.get("handoff_from_agent_role") ?? "");
   const packetFromAction = normalizeAgentAction(packet.get("handoff_from_agent_action") ?? "");
   const packetRole = normalizeAgentRole(packet.get("recommended_next_agent_role") ?? "");
@@ -211,6 +263,7 @@ export function admitHandoff({
   const packetScopeId = normalizeScalar(packet.get("scope_id") ?? "none");
   const packetTargetBranch = normalizeScalar(packet.get("target_branch") ?? "none");
   const preferredDispatchSource = normalizeScalar(packet.get("preferred_dispatch_source") ?? "workflow") || "workflow";
+  const packetActiveBacklog = normalizeScalar(packet.get("active_backlog") ?? packet.get("backlog_refs") ?? "none") || "none";
   const sharedPlanningFreshness = normalizeScalar(packet.get("shared_planning_freshness") ?? "not_applicable") || "not_applicable";
   const sharedPlanningGateStatus = normalizeScalar(packet.get("shared_planning_gate_status") ?? "not_applicable") || "not_applicable";
   const sharedPlanningGateReason = normalizeScalar(packet.get("shared_planning_gate_reason") ?? "none") || "none";
@@ -233,6 +286,9 @@ export function admitHandoff({
   }
   if (sharedPlanningGateStatus === "blocked") {
     issues.push(`shared planning gate is blocked: ${sharedPlanningGateReason}`);
+  }
+  if (sharedRuntimeValidation.status === "reject") {
+    issues.push(...sharedRuntimeValidation.issues);
   }
   if (consistency.pass === false) {
     issues.push("live current-state consistency failed");
@@ -327,6 +383,19 @@ export function admitHandoff({
   const missingArtifacts = prioritizedArtifacts
     .filter(isConcreteArtifactPath)
     .filter((item) => {
+      const normalizedItem = String(item).replace(/\\/g, "/");
+      if (handoffPacket && normalizedItem === "docs/audit/HANDOFF-PACKET.md") {
+        return false;
+      }
+      if (
+        handoffPacket
+        && preferredDispatchSource === "shared_planning"
+        && !canonicalNone(packetActiveBacklog)
+        && !canonicalUnknown(packetActiveBacklog)
+        && normalizedItem === String(packetActiveBacklog).replace(/\\/g, "/")
+      ) {
+        return false;
+      }
       if (String(item).replace(/\\/g, "/").startsWith("docs/audit/")) {
         return !resolveAuditArtifactText({
           targetRoot: absoluteTargetRoot,
@@ -334,6 +403,7 @@ export function admitHandoff({
           dbBacked: dbBackedMode,
           sqlitePayload: sqliteFallback.payload,
           sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+          dbSource,
         }).exists;
       }
       return !fs.existsSync(resolveTargetPath(absoluteTargetRoot, item));
@@ -348,6 +418,7 @@ export function admitHandoff({
   if (sharedPlanningFreshness === "stale") {
     warnings.push("shared planning backlog is stale relative to CURRENT-STATE.md");
   }
+  warnings.push(...sharedRuntimeValidation.warnings);
 
   let admissionStatus = WORKFLOW_ADMISSION_STATUS.ADMITTED;
   let admitted = true;
@@ -389,7 +460,9 @@ export function admitHandoff({
 
   return {
     target_root: absoluteTargetRoot,
-    packet_file: packetResolution.logicalPath,
+    packet_file: handoffPacket
+      ? (normalizeScalar(sharedRelay?.handoff_packet_ref) || "shared-coordination://handoff_relays")
+      : packetResolution.logicalPath,
     admission_status: status.admission_status,
     admitted: status.admitted,
     recommended_action: route.action,
@@ -408,6 +481,9 @@ export function admitHandoff({
     scope_type: packetScopeType || "none",
     scope_id: packetScopeId || "none",
     target_branch: packetTargetBranch || "none",
+    workspace,
+    shared_state_backend: sqliteFallback.backend ?? null,
+    shared_runtime_validation: sharedRuntimeValidation,
     packet: Object.fromEntries(packet.entries()),
     transition_policy: transition,
     prioritized_artifacts: prioritizedArtifacts,
@@ -416,14 +492,15 @@ export function admitHandoff({
     warnings: status.warnings,
     current_state_source: currentStateResolution.source,
     runtime_state_source: runtimeStateResolution.source,
-    packet_source: packetResolution.source,
+    packet_source: packetSource,
+    packet_resolution: packetResolutionInfo,
   };
 }
 
 function main() {
-  try {
+  Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
-    const result = admitHandoff({
+    const result = await admitHandoff({
       targetRoot: args.target,
       packetFile: args.packetFile,
       currentStateFile: args.currentStateFile,
@@ -454,11 +531,11 @@ function main() {
     if (!result.admitted) {
       process.exit(1);
     }
-  } catch (error) {
+  }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
-  }
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

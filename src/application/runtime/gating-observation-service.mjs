@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import { buildNoChangeFastPath } from "../../core/gating/gating-signal-policy.mjs";
+import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
 
 function readTextSafe(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -195,15 +195,12 @@ function readJsonOptional(filePath) {
 }
 
 function detectIndexBackend(indexFile, backend) {
-  if (backend === "json" || backend === "sqlite") {
-    return backend;
-  }
-  return String(indexFile ?? "").toLowerCase().endsWith(".sqlite") ? "sqlite" : "json";
+  return detectRuntimeSnapshotBackend(indexFile, backend);
 }
 
-function readRepairLayerSummary(indexFile, backend) {
+async function readRepairLayerSummary(targetRoot, indexFile, backend) {
   const absolute = path.resolve(process.cwd(), indexFile);
-  if (!fs.existsSync(absolute)) {
+  if (detectIndexBackend(indexFile, backend) !== "postgres" && !fs.existsSync(absolute)) {
     return {
       exists: false,
       blocking: false,
@@ -213,8 +210,12 @@ function readRepairLayerSummary(indexFile, backend) {
     };
   }
   let payload = null;
-  if (detectIndexBackend(indexFile, backend) === "sqlite") {
-    payload = readIndexFromSqlite(absolute).payload;
+  if (detectIndexBackend(indexFile, backend) !== "json") {
+    payload = (await readRuntimeSnapshot({
+      indexFile: absolute,
+      backend: detectIndexBackend(indexFile, backend),
+      targetRoot,
+    })).payload;
   } else {
     try {
       payload = JSON.parse(fs.readFileSync(absolute, "utf8"));
@@ -247,7 +248,7 @@ function readRepairLayerSummary(indexFile, backend) {
   };
 }
 
-export function collectGatingObservations({ targetRoot, eventFile, indexSyncCheckFile, indexFile, indexBackend, stateMode, mode, reloadResult, gitAdapter }) {
+export async function collectGatingObservations({ targetRoot, eventFile, indexSyncCheckFile, indexFile, indexBackend, stateMode, mode, reloadResult, gitAdapter }) {
   const sessionsRoot = path.join(targetRoot, "docs", "audit", "sessions");
   const latestSession = getLatestFileByPattern(sessionsRoot, /^S\d+.*\.md$/i);
   const sessionObjective = extractSessionObjective(latestSession);
@@ -273,7 +274,7 @@ export function collectGatingObservations({ targetRoot, eventFile, indexSyncChec
       severityCounts: {},
       topFindings: [],
     }
-    : readRepairLayerSummary(indexFile, indexBackend);
+    : await readRepairLayerSummary(targetRoot, indexFile, indexBackend);
 
   return {
     sessionObjective,

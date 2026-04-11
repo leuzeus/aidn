@@ -2,6 +2,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { resolvePromotedSharedPlanningContext } from "../../src/application/runtime/shared-planning-resolution-service.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
+import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
 import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
@@ -9,9 +12,10 @@ import {
   buildVirtualCurrentStateConsistency,
   canonicalNone,
   canonicalUnknown,
-  loadSqliteIndexPayloadSafe,
+  loadDbIndexPayloadSafe,
   normalizeScalar,
   parseSimpleMap,
+  resolveDbArtifactSourceName,
   resolveAuditArtifactText,
   resolveCycleStatusArtifact,
   resolveDbBackedMode,
@@ -365,6 +369,16 @@ function derivePrioritizedArtifacts(consistency, hydrated, args) {
   return uniqueItems([...values, ...artifactPaths.slice(0, 6)]);
 }
 
+function normalizeBacklogArtifactPath(activeBacklog) {
+  const normalized = normalizeScalar(activeBacklog);
+  if (!normalized || canonicalNone(normalized) || canonicalUnknown(normalized)) {
+    return "";
+  }
+  return normalized.startsWith("docs/")
+    ? normalized.replace(/\\/g, "/")
+    : `docs/audit/${normalized.replace(/\\/g, "/").replace(/^\/+/, "")}`;
+}
+
 function buildMarkdown(digest) {
   const lines = [];
   lines.push("# Runtime State Digest");
@@ -384,12 +398,24 @@ function buildMarkdown(digest) {
   lines.push("## Summary");
   lines.push("");
   lines.push(`updated_at: ${digest.updated_at}`);
+  lines.push(`project_id: ${digest.project_id}`);
+  lines.push(`project_id_source: ${digest.project_id_source}`);
+  lines.push(`project_root: ${digest.project_root}`);
+  lines.push(`workspace_id: ${digest.workspace_id}`);
+  lines.push(`worktree_id: ${digest.worktree_id}`);
   lines.push(`runtime_state_mode: ${digest.runtime_state_mode}`);
   lines.push(`repair_layer_status: ${digest.repair_layer_status}`);
   lines.push(`repair_layer_advice: ${digest.repair_layer_advice}`);
   lines.push(`repair_primary_reason: ${digest.repair_primary_reason}`);
   lines.push(`repair_routing_hint: ${digest.repair_routing_hint}`);
   lines.push(`repair_routing_reason: ${digest.repair_routing_reason}`);
+  lines.push(`shared_runtime_validation_status: ${digest.shared_runtime_validation_status}`);
+  lines.push(`active_backlog: ${digest.active_backlog}`);
+  lines.push(`backlog_status: ${digest.backlog_status}`);
+  lines.push(`backlog_next_step: ${digest.backlog_next_step}`);
+  lines.push(`planning_arbitration_status: ${digest.planning_arbitration_status}`);
+  lines.push(`shared_planning_source: ${digest.shared_planning_source}`);
+  lines.push(`shared_planning_read_status: ${digest.shared_planning_read_status}`);
   lines.push("");
   lines.push("## Current State Freshness");
   lines.push("");
@@ -434,11 +460,14 @@ function buildMarkdown(digest) {
   return `${lines.join("\n")}\n`;
 }
 
-export function projectRuntimeState({
+export async function projectRuntimeState({
   targetRoot,
   hydratedFile = ".aidn/runtime/context/hydrated-context.json",
   contextFile = ".aidn/runtime/context/codex-context.json",
   out = "docs/audit/RUNTIME-STATE.md",
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
+  sharedStateOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const hydratedPath = resolveTargetPath(absoluteTargetRoot, hydratedFile);
@@ -446,30 +475,54 @@ export function projectRuntimeState({
   const hydrated = readJsonIfExists(hydratedPath);
   const fallbackContext = readJsonIfExists(contextPath);
   const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const sharedRuntimeValidation = validateSharedRuntimeContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+  });
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+  const sqliteFallback = dbBackedMode ? await loadDbIndexPayloadSafe(absoluteTargetRoot, sharedStateOptions) : {
     exists: false,
     sqliteFile: "",
     payload: null,
     runtimeHeads: {},
     warning: "",
   };
+  const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
   const currentStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: "docs/audit/CURRENT-STATE.md",
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   const currentStateMap = parseSimpleMap(currentStateResolution.text);
   const activeSession = normalizeScalar(currentStateMap.get("active_session") ?? "none") || "none";
   const activeCycle = normalizeScalar(currentStateMap.get("active_cycle") ?? "none") || "none";
+  const sharedPlanning = await resolvePromotedSharedPlanningContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    currentState: {
+      active_session: activeSession,
+      active_backlog: currentStateMap.get("active_backlog") ?? "none",
+      backlog_status: currentStateMap.get("backlog_status") ?? "unknown",
+      backlog_next_step: currentStateMap.get("backlog_next_step") ?? "unknown",
+      backlog_selected_execution_scope: currentStateMap.get("backlog_selected_execution_scope") ?? "none",
+      planning_arbitration_status: currentStateMap.get("planning_arbitration_status") ?? "none",
+    },
+    sharedCoordination,
+    sharedCoordinationOptions,
+  });
   const sessionResolution = resolveSessionArtifact({
     targetRoot: absoluteTargetRoot,
     auditRoot,
     sessionId: activeSession,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
   });
   const cycleStatusResolution = resolveCycleStatusArtifact({
     targetRoot: absoluteTargetRoot,
@@ -477,6 +530,7 @@ export function projectRuntimeState({
     cycleId: activeCycle,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
   });
   const consistency = currentStateResolution.source === "file"
     ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })
@@ -506,16 +560,31 @@ export function projectRuntimeState({
   }
   const digest = {
     updated_at: new Date().toISOString(),
+    project_id: workspace.project_id,
+    project_id_source: workspace.project_id_source,
+    project_root: workspace.project_root,
+    workspace_id: workspace.workspace_id,
+    worktree_id: workspace.worktree_id,
     runtime_state_mode: String(dbBackedMode ? effectiveStateMode : (hydrated?.state_mode ?? "files")),
     repair_layer_status: repairSummary.status,
     repair_layer_advice: repairSummary.advice,
     repair_primary_reason: deriveRepairPrimaryReason(repairSummary),
     repair_routing_hint: repairRouting.routing_hint,
     repair_routing_reason: repairRouting.routing_reason,
+    shared_runtime_validation_status: sharedRuntimeValidation.status,
+    active_backlog: sharedPlanning.active_backlog,
+    backlog_status: sharedPlanning.backlog_status,
+    backlog_next_step: sharedPlanning.backlog_next_step,
+    planning_arbitration_status: sharedPlanning.planning_arbitration_status,
+    shared_planning_source: sharedPlanning.shared_planning_source,
+    shared_planning_read_status: sharedPlanning.shared_planning_read_status,
     current_state_freshness: freshness.freshness,
     current_state_freshness_basis: freshness.basis,
     blocking_findings: blockingFindings,
-    prioritized_artifacts: derivePrioritizedArtifacts(consistency, hydrated, { hydratedFile, contextFile }),
+    prioritized_artifacts: uniqueItems([
+      ...derivePrioritizedArtifacts(consistency, hydrated, { hydratedFile, contextFile }),
+      normalizeBacklogArtifactPath(sharedPlanning.active_backlog),
+    ]),
     context_source: hydrated
       ? path.relative(absoluteTargetRoot, hydratedPath).replace(/\\/g, "/")
       : (fallbackContext ? path.relative(absoluteTargetRoot, contextPath).replace(/\\/g, "/") : "none"),
@@ -528,6 +597,9 @@ export function projectRuntimeState({
   const outWrite = writeUtf8IfChanged(resolveTargetPath(absoluteTargetRoot, out), markdown);
   return {
     target_root: absoluteTargetRoot,
+    workspace,
+    shared_state_backend: sqliteFallback.backend ?? null,
+    shared_runtime_validation: sharedRuntimeValidation,
     output_file: outWrite.path,
     written: outWrite.written,
     digest,
@@ -543,9 +615,9 @@ function printFreshnessHint(digest) {
 }
 
 function main() {
-  try {
+  Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
-    const output = projectRuntimeState({
+    const output = await projectRuntimeState({
       targetRoot: args.target,
       hydratedFile: args.hydratedFile,
       contextFile: args.contextFile,
@@ -563,11 +635,11 @@ function main() {
       console.log(`- consistency=${output.digest.consistency_status}`);
       printFreshnessHint(output.digest);
     }
-  } catch (error) {
+  }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
-  }
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

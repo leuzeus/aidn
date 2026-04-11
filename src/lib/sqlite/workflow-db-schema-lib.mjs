@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 const SQLITE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const BASELINE_WORKFLOW_SCHEMA_VERSION = 2;
-const LATEST_WORKFLOW_SCHEMA_VERSION = 6;
+const LATEST_WORKFLOW_SCHEMA_VERSION = 7;
 const LATEST_WORKFLOW_PAYLOAD_SCHEMA_VERSION = 2;
 
 export function getDatabaseSync() {
@@ -342,6 +342,22 @@ function normalizeArtifactPath(value) {
     .replace(/^docs\/audit\//i, "");
 }
 
+function parseJsonOrNull(value) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return null;
+  }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeEntityId(value, prefix) {
+  const match = String(value ?? "").trim().toUpperCase().match(new RegExp(`\\b(${prefix}\\d+)\\b`, "i"));
+  return match ? match[1].toUpperCase() : null;
+}
+
 const RUNTIME_HEAD_DEFINITIONS = [
   {
     headKey: "current_state",
@@ -413,17 +429,62 @@ export function normalizeHotArtifactSubtype(pathValue, subtypeValue) {
   return definition?.headKey ?? null;
 }
 
+function resolveRuntimeHeadCanonicalContexts(artifact) {
+  const canonical = parseJsonOrNull(artifact?.canonical_json);
+  return {
+    derived_runtime_context: canonical?.derived_runtime_context && typeof canonical.derived_runtime_context === "object"
+      ? canonical.derived_runtime_context
+      : null,
+    derived_session_context: canonical?.derived_session_context && typeof canonical.derived_session_context === "object"
+      ? canonical.derived_session_context
+      : null,
+  };
+}
+
+function resolveRuntimeHeadContractMetadata(artifact) {
+  const canonical = parseJsonOrNull(artifact?.canonical_json);
+  return {
+    contract_version: typeof canonical?.contract_version === "string" && canonical.contract_version.trim()
+      ? canonical.contract_version.trim()
+      : null,
+    contract_status: typeof canonical?.contract_status === "string" && canonical.contract_status.trim()
+      ? canonical.contract_status.trim()
+      : null,
+    legacy_shape_id: typeof canonical?.legacy_shape_id === "string" && canonical.legacy_shape_id.trim()
+      ? canonical.legacy_shape_id.trim()
+      : null,
+    contract_findings: Array.isArray(canonical?.contract_findings) ? canonical.contract_findings : [],
+  };
+}
+
+function resolveRuntimeHeadOwnership(artifact) {
+  const contexts = resolveRuntimeHeadCanonicalContexts(artifact);
+  return {
+    session_id: artifact?.session_id ?? normalizeEntityId(contexts.derived_runtime_context?.active_session, "S"),
+    cycle_id: artifact?.cycle_id ?? normalizeEntityId(contexts.derived_runtime_context?.active_cycle, "C"),
+    ...contexts,
+  };
+}
+
 function buildRuntimeHeadPayload(artifact, definition) {
+  const ownership = resolveRuntimeHeadOwnership(artifact);
+  const contractMetadata = resolveRuntimeHeadContractMetadata(artifact);
   return JSON.stringify({
     head_key: definition.headKey,
     artifact_id: Number(artifact?.artifact_id ?? 0) || null,
     artifact_path: artifact?.path ?? null,
     sha256: artifact?.sha256 ?? null,
-    session_id: artifact?.session_id ?? null,
-    cycle_id: artifact?.cycle_id ?? null,
+    session_id: ownership.session_id ?? null,
+    cycle_id: ownership.cycle_id ?? null,
     kind: artifact?.kind ?? null,
     subtype: artifact?.subtype ?? null,
     updated_at: artifact?.updated_at ?? null,
+    derived_runtime_context: ownership.derived_runtime_context,
+    derived_session_context: ownership.derived_session_context,
+    contract_version: contractMetadata.contract_version,
+    contract_status: contractMetadata.contract_status,
+    legacy_shape_id: contractMetadata.legacy_shape_id,
+    contract_findings: contractMetadata.contract_findings,
   });
 }
 
@@ -445,6 +506,24 @@ function ensureRuntimeHeadsTable(db) {
 
     CREATE INDEX IF NOT EXISTS idx_runtime_heads_artifact_path ON runtime_heads(artifact_path);
     CREATE INDEX IF NOT EXISTS idx_runtime_heads_session_cycle_updated ON runtime_heads(session_id, cycle_id, updated_at);
+  `);
+}
+
+function ensureAdoptionEventsTable(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS adoption_events (
+      event_id TEXT PRIMARY KEY,
+      action TEXT NOT NULL,
+      status TEXT NOT NULL,
+      source_backend TEXT,
+      target_backend TEXT NOT NULL,
+      source_payload_digest TEXT,
+      target_payload_digest TEXT,
+      payload_json TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_adoption_events_created ON adoption_events(created_at DESC);
   `);
 }
 
@@ -593,7 +672,7 @@ export function rebuildRuntimeHeads(db) {
   ensureRuntimeHeadsTable(db);
   db.exec("DELETE FROM runtime_heads;");
   const rows = db.prepare(`
-    SELECT artifact_id, path, kind, subtype, sha256, session_id, cycle_id, updated_at
+    SELECT artifact_id, path, kind, subtype, sha256, session_id, cycle_id, updated_at, canonical_json
     FROM artifacts
     ORDER BY updated_at DESC, artifact_id DESC
   `).all();
@@ -623,13 +702,14 @@ export function rebuildRuntimeHeads(db) {
     }
     seen.add(definition.headKey);
     matched += 1;
+    const ownership = resolveRuntimeHeadOwnership(row);
     upsert.run(
       definition.headKey,
       Number(row.artifact_id ?? 0) || null,
       String(row.path ?? ""),
       row.sha256 ?? null,
-      row.session_id ?? null,
-      row.cycle_id ?? null,
+      ownership.session_id ?? null,
+      ownership.cycle_id ?? null,
       row.kind ?? null,
       row.subtype ?? null,
       row.updated_at ?? new Date().toISOString(),
@@ -838,6 +918,16 @@ function getWorkflowDbMigrations(schemaFile) {
         ensurePayloadSchemaVersionMeta(db);
       },
     },
+    {
+      id: "0006_sqlite_adoption_events",
+      description: "Add sqlite adoption_events for backend adoption/admin trace parity",
+      checksum: buildMigrationChecksum("0006|sqlite-adoption-events-v1"),
+      up(db) {
+        ensureAdoptionEventsTable(db);
+        setMeta(db, "schema_version", String(LATEST_WORKFLOW_SCHEMA_VERSION));
+        ensurePayloadSchemaVersionMeta(db);
+      },
+    },
   ];
 }
 
@@ -1013,6 +1103,58 @@ export function migrateWorkflowDbFile(options = {}) {
       schema_file: resolved.schemaFile,
       migration,
       status,
+    };
+  } finally {
+    try {
+      db.exec("PRAGMA foreign_keys=ON;");
+    } catch {
+    }
+    db.close();
+  }
+}
+
+export function recordWorkflowDbAdoptionEvent(options = {}) {
+  const resolved = resolveWorkflowSchemaOptions(options);
+  if (!resolved.sqliteFile) {
+    throw new Error("recordWorkflowDbAdoptionEvent requires sqliteFile");
+  }
+  fs.mkdirSync(path.dirname(resolved.sqliteFile), { recursive: true });
+  const DatabaseSync = getDatabaseSync();
+  const db = new DatabaseSync(resolved.sqliteFile);
+  try {
+    db.exec("PRAGMA foreign_keys=OFF;");
+    ensureWorkflowDbSchema({
+      db,
+      sqliteFile: resolved.sqliteFile,
+      role: resolved.role,
+      engineVersion: resolved.engineVersion,
+      schemaFile: resolved.schemaFile,
+      backupRoot: resolved.backupRoot,
+    });
+    ensureAdoptionEventsTable(db);
+    const eventId = String(options.eventId ?? "").trim()
+      || `sqlite-adoption-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO adoption_events (
+        event_id, action, status, source_backend, target_backend, source_payload_digest, target_payload_digest, payload_json, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      eventId,
+      String(options.action ?? "").trim() || "runtime-adoption",
+      String(options.status ?? "").trim() || "unknown",
+      String(options.sourceBackend ?? "").trim() || null,
+      String(options.targetBackend ?? "").trim() || "sqlite",
+      String(options.sourcePayloadDigest ?? "").trim() || null,
+      String(options.targetPayloadDigest ?? "").trim() || null,
+      JSON.stringify(options.payload && typeof options.payload === "object" ? options.payload : {}),
+      now,
+    );
+    return {
+      ok: true,
+      event_id: eventId,
+      created_at: now,
+      sqlite_file: resolved.sqliteFile,
     };
   } finally {
     try {

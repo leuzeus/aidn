@@ -5,6 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { readAidnProjectConfig } from "../../src/lib/config/aidn-config-lib.mjs";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SELFHOST_WORKSPACE = path.resolve(REPO_ROOT, "tests", "workspaces", "selfhost-product");
@@ -154,7 +155,7 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      removePathWithRetry(tempRoot);
     }
   }
 }

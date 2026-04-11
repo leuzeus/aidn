@@ -274,6 +274,23 @@ Minimum adapter fields to fill before real work:
 - `dorPolicy`
 - snapshot policy fields that should survive reinstall
 
+Cross-usage convergence policy:
+
+- shared/high-risk validation policy can now be rendered from `.aidn/project/workflow.adapter.json` through `specializedGates.crossUsageConvergence`
+- intended use: declare shared-surface kinds, expected evidence artifacts, and minimum usage-class counts for shared/high-risk changes
+- this policy renders into generated `docs/audit/WORKFLOW.md`; do not maintain it by editing generated sections directly
+
+Typical structured fields:
+
+- `specializedGates.crossUsageConvergence.enabled`
+- `specializedGates.crossUsageConvergence.sharedSurfaceKinds`
+- `specializedGates.crossUsageConvergence.evidenceArtifacts`
+- `specializedGates.crossUsageConvergence.sharedSurfaceMinimumUsageClasses`
+- `specializedGates.crossUsageConvergence.highRiskMinimumUsageClasses`
+- `specializedGates.crossUsageConvergence.requireAlternateUsage`
+- `specializedGates.crossUsageConvergence.requireContextualUsageForHighRisk`
+- `specializedGates.crossUsageConvergence.overfitFixIsBlocking`
+
 Recommended practice:
 - Treat adapter config setup as part of baseline setup and commit or persist it with the repository.
 

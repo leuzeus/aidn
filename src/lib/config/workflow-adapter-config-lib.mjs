@@ -52,6 +52,14 @@ function normalizeStringArray(value) {
   );
 }
 
+function normalizePositiveInteger(value, fallback) {
+  if (Number.isInteger(value) && value > 0) {
+    return value;
+  }
+  const numeric = Number.parseInt(String(value ?? ""), 10);
+  return Number.isInteger(numeric) && numeric > 0 ? numeric : fallback;
+}
+
 export function resolveWorkflowAdapterConfigPath(targetRoot) {
   return path.resolve(targetRoot, ".aidn", "project", "workflow.adapter.json");
 }
@@ -166,6 +174,31 @@ export function createDefaultWorkflowAdapterConfig(options = {}) {
           false,
         ),
       },
+      crossUsageConvergence: {
+        enabled: normalizeBoolean(options.specializedGates?.crossUsageConvergence?.enabled, false),
+        sharedSurfaceKinds: normalizeStringArray(options.specializedGates?.crossUsageConvergence?.sharedSurfaceKinds),
+        evidenceArtifacts: normalizeStringArray(options.specializedGates?.crossUsageConvergence?.evidenceArtifacts),
+        sharedSurfaceMinimumUsageClasses: normalizePositiveInteger(
+          options.specializedGates?.crossUsageConvergence?.sharedSurfaceMinimumUsageClasses,
+          2,
+        ),
+        highRiskMinimumUsageClasses: normalizePositiveInteger(
+          options.specializedGates?.crossUsageConvergence?.highRiskMinimumUsageClasses,
+          3,
+        ),
+        requireAlternateUsage: normalizeBoolean(
+          options.specializedGates?.crossUsageConvergence?.requireAlternateUsage,
+          true,
+        ),
+        requireContextualUsageForHighRisk: normalizeBoolean(
+          options.specializedGates?.crossUsageConvergence?.requireContextualUsageForHighRisk,
+          true,
+        ),
+        overfitFixIsBlocking: normalizeBoolean(
+          options.specializedGates?.crossUsageConvergence?.overfitFixIsBlocking,
+          true,
+        ),
+      },
     },
     legacyPreserved: {
       projectConstraintsBullets: normalizeStringArray(options.legacyPreserved?.projectConstraintsBullets),
@@ -193,6 +226,9 @@ export function normalizeWorkflowAdapterConfig(data, options = {}) {
   const specializedGates = isPlainObject(base.specializedGates) ? base.specializedGates : {};
   const sharedCodegenBoundary = isPlainObject(specializedGates.sharedCodegenBoundary)
     ? specializedGates.sharedCodegenBoundary
+    : {};
+  const crossUsageConvergence = isPlainObject(specializedGates.crossUsageConvergence)
+    ? specializedGates.crossUsageConvergence
     : {};
   const legacyPreserved = isPlainObject(base.legacyPreserved) ? base.legacyPreserved : {};
   const transitionCleanlinessScopes = new Set(["session-topology"]);
@@ -307,6 +343,34 @@ export function normalizeWorkflowAdapterConfig(data, options = {}) {
         forbidComponentSpecificGeneratorFixes: normalizeBoolean(
           sharedCodegenBoundary.forbidComponentSpecificGeneratorFixes,
           defaults.specializedGates.sharedCodegenBoundary.forbidComponentSpecificGeneratorFixes,
+        ),
+      },
+      crossUsageConvergence: {
+        enabled: normalizeBoolean(
+          crossUsageConvergence.enabled,
+          defaults.specializedGates.crossUsageConvergence.enabled,
+        ),
+        sharedSurfaceKinds: normalizeStringArray(crossUsageConvergence.sharedSurfaceKinds),
+        evidenceArtifacts: normalizeStringArray(crossUsageConvergence.evidenceArtifacts),
+        sharedSurfaceMinimumUsageClasses: normalizePositiveInteger(
+          crossUsageConvergence.sharedSurfaceMinimumUsageClasses,
+          defaults.specializedGates.crossUsageConvergence.sharedSurfaceMinimumUsageClasses,
+        ),
+        highRiskMinimumUsageClasses: normalizePositiveInteger(
+          crossUsageConvergence.highRiskMinimumUsageClasses,
+          defaults.specializedGates.crossUsageConvergence.highRiskMinimumUsageClasses,
+        ),
+        requireAlternateUsage: normalizeBoolean(
+          crossUsageConvergence.requireAlternateUsage,
+          defaults.specializedGates.crossUsageConvergence.requireAlternateUsage,
+        ),
+        requireContextualUsageForHighRisk: normalizeBoolean(
+          crossUsageConvergence.requireContextualUsageForHighRisk,
+          defaults.specializedGates.crossUsageConvergence.requireContextualUsageForHighRisk,
+        ),
+        overfitFixIsBlocking: normalizeBoolean(
+          crossUsageConvergence.overfitFixIsBlocking,
+          defaults.specializedGates.crossUsageConvergence.overfitFixIsBlocking,
         ),
       },
     },

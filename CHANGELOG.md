@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add `Cross-Usage Convergence` as a validation doctrine for shared/high-risk implementation surfaces, including canonical `SPEC` wording, conditional anti-overfitting invariants, and `usage_matrix` support in cycle templates.
+- Add structured adapter rendering for cross-usage policy via `specializedGates.crossUsageConvergence`, plus migration/import recognition for generated `WORKFLOW.md`.
+- Update agent/reload/install documentation to surface `usage_matrix` expectations, shared/high-risk validation rules, and adapter configuration guidance.
+
 ## 0.5.1
 
 - Refactor workflow transition handling around shared constants and helpers for `start-session`, `close-session`, handoff routing, and repair routing.

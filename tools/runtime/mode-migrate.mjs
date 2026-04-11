@@ -7,11 +7,12 @@ import {
   normalizeStateMode,
   readAidnProjectConfig,
   resolveConfigStateMode,
+  resolveConfigRuntimePersistenceBackend,
   writeAidnProjectConfig,
 } from "../../src/lib/config/aidn-config-lib.mjs";
 import { writeRepairLayerTriageArtifacts } from "../../src/application/runtime/repair-layer-artifact-service.mjs";
 import { runRepairLayerAutofixUseCase } from "../../src/application/runtime/repair-layer-autofix-use-case.mjs";
-import { inspectWorkflowDbSchema, migrateWorkflowDbFile } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
+import { createRuntimePersistenceAdmin } from "../../src/application/runtime/runtime-persistence-service.mjs";
 
 const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PERF_INDEX_SYNC = path.resolve(RUNTIME_DIR, "..", "perf", "index-sync.mjs");
@@ -158,8 +159,12 @@ function updateConfigStateMode(targetRoot, toMode) {
   const cfg = readAidnProjectConfig(targetRoot);
   const data = cfg.data && typeof cfg.data === "object" ? cfg.data : {};
   const runtime = data.runtime && typeof data.runtime === "object" ? data.runtime : {};
+  const runtimePersistence = runtime.persistence && typeof runtime.persistence === "object" ? runtime.persistence : {};
   runtime.stateMode = toMode;
   runtime.indexStoreMode = defaultIndexStoreFromStateMode(toMode);
+  runtimePersistence.backend = resolveConfigRuntimePersistenceBackend(data) ?? "sqlite";
+  runtimePersistence.localProjectionPolicy = String(runtimePersistence.localProjectionPolicy ?? "").trim() || "keep-local-sqlite";
+  runtime.persistence = runtimePersistence;
   data.runtime = runtime;
   const saved = writeAidnProjectConfig(targetRoot, data);
   return {
@@ -172,7 +177,7 @@ function shouldRunSchemaMigration(fromMode, toMode) {
   return [fromMode, toMode].some((mode) => mode === "dual" || mode === "db-only");
 }
 
-function main() {
+async function main() {
   let outputJson = false;
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -192,32 +197,29 @@ function main() {
     let schemaStatusBefore = null;
     let schemaMigrationResult = null;
     let schemaStatusAfter = null;
+    const runtimePersistenceAdmin = createRuntimePersistenceAdmin({
+      targetRoot,
+      backend: "sqlite",
+      sqliteFile: indexFile,
+      role: "mode-migrate",
+    });
 
     if (shouldRunSchemaMigration(fromMode, toMode)) {
-      schemaStatusBefore = inspectWorkflowDbSchema({
-        sqliteFile: indexFile,
-        role: "mode-migrate",
-      });
+      schemaStatusBefore = runtimePersistenceAdmin.inspectSchema();
       steps.push({
         step: "schema_status_before",
         ok: true,
         exists: schemaStatusBefore.exists,
         pending_ids: schemaStatusBefore.pending_ids,
       });
-      schemaMigrationResult = migrateWorkflowDbFile({
-        sqliteFile: indexFile,
-        role: "mode-migrate",
-      });
+      schemaMigrationResult = runtimePersistenceAdmin.migrateSchema();
       steps.push({
         step: "schema_migrate",
         ok: true,
         backup_file: schemaMigrationResult?.migration?.backup_file ?? null,
         applied_ids: schemaMigrationResult?.migration?.applied_ids ?? [],
       });
-      schemaStatusAfter = schemaMigrationResult?.status ?? inspectWorkflowDbSchema({
-        sqliteFile: indexFile,
-        role: "mode-migrate",
-      });
+      schemaStatusAfter = schemaMigrationResult?.status ?? runtimePersistenceAdmin.inspectSchema();
       steps.push({
         step: "schema_status_after",
         ok: true,
@@ -259,7 +261,7 @@ function main() {
           report_file: repairLayerResult.report_file,
         });
         if (args.repairLayerAutofixSafeOnly) {
-          repairLayerAutofixResult = runRepairLayerAutofixUseCase({
+          repairLayerAutofixResult = await runRepairLayerAutofixUseCase({
             args: {
               indexFile,
               indexBackend: "sqlite",
@@ -276,7 +278,7 @@ function main() {
           });
         }
         if (args.repairLayerTriage) {
-          repairLayerTriageResult = writeRepairLayerTriageArtifacts({
+          repairLayerTriageResult = await writeRepairLayerTriageArtifacts({
             targetRoot,
             indexFile,
             backend: "sqlite",
@@ -366,5 +368,5 @@ function main() {
   }
 }
 
-main();
+await main();
 

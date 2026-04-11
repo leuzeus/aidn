@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { copyFixtureToTmp, initGitRepo } from "./test-git-fixture-lib.mjs";
+import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function runGit(target, args) {
   execFileSync("git", ["-C", target, ...args], {
@@ -348,6 +348,8 @@ function runCase(tmpRoot, testCase) {
     hook_action_expected: String(hook?.action ?? "") === testCase.expectedAction,
     hook_result_expected: String(hook?.result ?? "") === testCase.expectedResult,
     hook_workflow_hook_expected: Boolean(hook?.workflow_hook) === testCase.expectsWorkflowHook,
+    hook_workspace_present: String(hook?.workspace?.workspace_id ?? "").length > 0,
+    hook_worktree_present: String(hook?.workspace?.worktree_id ?? "").length > 0,
     codex_action_expected: String(codex?.action ?? "") === testCase.expectedAction,
     codex_result_expected: String(codex?.result ?? "") === testCase.expectedResult,
     codex_ok_matches_result: Boolean(codex?.ok) === (testCase.expectedResult === "ok"),
@@ -365,6 +367,8 @@ function runCase(tmpRoot, testCase) {
       hook_result: hook?.result ?? null,
       hook_reason_code: hook?.reason_code ?? null,
       hook_workflow_ran: Boolean(hook?.workflow_hook),
+      hook_workspace_id: hook?.workspace?.workspace_id ?? null,
+      hook_is_linked_worktree: hook?.workspace?.is_linked_worktree ?? null,
       codex_action: codex?.action ?? null,
       codex_result: codex?.result ?? null,
       codex_ok: codex?.ok ?? null,
@@ -402,7 +406,10 @@ function main() {
 
     if (!args.keepTmp) {
       for (const target of createdTargets) {
-        fs.rmSync(target, { recursive: true, force: true });
+        const cleanup = removePathWithRetry(target);
+        if (!cleanup.ok) {
+          throw cleanup.error;
+        }
       }
     }
 

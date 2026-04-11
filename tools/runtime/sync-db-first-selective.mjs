@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { normalizeStateMode } from "../../src/lib/config/aidn-config-lib.mjs";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 import { createLocalProcessAdapter } from "../../src/adapters/runtime/local-process-adapter.mjs";
@@ -76,7 +77,7 @@ function printUsage() {
   console.log("  npx aidn runtime sync-db-first-selective --target . --state-mode dual --json");
 }
 
-function main() {
+async function main() {
   let outputJson = false;
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -84,7 +85,7 @@ function main() {
     const targetRoot = path.resolve(process.cwd(), args.target);
     const gitAdapter = createLocalGitAdapter();
     const processAdapter = createLocalProcessAdapter();
-    const out = runSyncDbFirstSelectiveUseCase({
+    const out = await runSyncDbFirstSelectiveUseCase({
       args,
       targetRoot,
       gitAdapter,
@@ -115,5 +116,7 @@ function main() {
   }
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main();
+}
 

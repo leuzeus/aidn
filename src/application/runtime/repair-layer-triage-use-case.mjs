@@ -1,14 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import { resolveRuntimePath } from "./runtime-path-resolution.mjs";
 import { collectRepairLayerSafeAutofixPlan } from "./repair-layer-autofix-plan-lib.mjs";
+import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
 
 function detectBackend(indexFile, backend) {
-  if (backend === "json" || backend === "sqlite") {
-    return backend;
-  }
-  return String(indexFile).toLowerCase().endsWith(".sqlite") ? "sqlite" : "json";
+  return detectRuntimeSnapshotBackend(indexFile, backend);
 }
 
 function readJsonIndex(indexFile) {
@@ -185,12 +182,12 @@ function buildTriageItem(finding, payload, targetRoot, indexFile, backend) {
   return item;
 }
 
-export function runRepairLayerTriageUseCase({ args, targetRoot }) {
+export async function runRepairLayerTriageUseCase({ args, targetRoot }) {
   const indexFile = resolveRuntimePath(targetRoot, args.indexFile);
   const backend = detectBackend(indexFile, args.backend);
-  const index = backend === "sqlite"
-    ? readIndexFromSqlite(indexFile)
-    : readJsonIndex(indexFile);
+  const index = backend === "json"
+    ? readJsonIndex(indexFile)
+    : await readRuntimeSnapshot({ indexFile, backend, targetRoot });
   const payload = index.payload && typeof index.payload === "object" ? index.payload : {};
   const openFindings = collectOpenFindings(payload);
   const items = openFindings.map((finding) => buildTriageItem(

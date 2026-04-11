@@ -50,6 +50,7 @@ Session start:
 Committing execution:
 - Work must belong to a cycle (`SPEC-R03`)
 - DoR core/adaptive checks must be satisfied before implementation (`SPEC-R04`)
+- Shared or high-risk changes require a declared `usage_matrix` before implementation and must not close on single-usage evidence only
 - Drift suspicion requires `drift-check` (`SPEC-R05`)
 - `drift-check` uses generic gating as the canonical drift gate; its top-level hook result is authoritative when it returns `stop`
 - Cycle continuity rule must be explicit (`R1`/`R2`/`R3`, `SPEC-R06`)
@@ -62,6 +63,7 @@ Session close:
 - Resolve each open attached cycle explicitly (`integrate-to-session` | `report` | `close-non-retained` | `cancel-close`) (`SPEC-R07`)
 - Run `close-session`
 - `close-session` begins with blocking admission and does not delegate to generic session-close runtime work until all attached open-cycle decisions are explicit
+- After a review-ready close, run `pr-orchestrate` before opening any new session or cycle
 - In `dual`/`db-only`, session close MUST execute DB-backed constraint chain (`constraint-report -> thresholds -> actions -> history -> trend -> lot-plan -> summaries`)
 
 Relay / handoff:
@@ -69,6 +71,7 @@ Relay / handoff:
 - `handoff-close` exposes blocking checkpoint results directly; explicit relay semantics remain validated by `project-handoff-packet` and `handoff-admit`
 
 Merge/review:
+- `pr-orchestrate` owns the explicit bridge `push -> PR open/recover -> review/merge -> post-merge sync`
 - Codex review threads triaged with evidence (`SPEC-R08`)
 - Post-merge local sync required before new branch creation (`SPEC-R09`)
 - Project-specific CI capacity gates may apply (if defined in `WORKFLOW.md`)
@@ -96,3 +99,4 @@ Incident handling:
 - Confirm snapshot freshness
 - Confirm intended mode and required gates
 - Confirm first implementation step before durable write
+- Confirm `usage_matrix` status when the touched surface is shared or high-risk

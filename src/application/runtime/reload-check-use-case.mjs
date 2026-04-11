@@ -2,12 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { detectStructureProfile } from "../../lib/workflow/structure-profile-lib.mjs";
-import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import { readAidnProjectConfig, resolveConfigStateMode } from "../../lib/config/aidn-config-lib.mjs";
 import { resolveRuntimeTargetPath, writeRuntimeJsonFile } from "./runtime-path-service.mjs";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { decideReloadOutcome } from "../../core/workflow/reload-policy.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch, extractCycleIdFromBranch } from "../../lib/workflow/branch-kind-lib.mjs";
+import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
 
 const ACTIVE_STATES = new Set(["OPEN", "IMPLEMENTING", "VERIFYING"]);
 
@@ -48,10 +48,7 @@ function decodeArtifactContent(artifact) {
 }
 
 function detectBackend(indexFile, backend) {
-  if (backend === "json" || backend === "sqlite") {
-    return backend;
-  }
-  return String(indexFile).toLowerCase().endsWith(".sqlite") ? "sqlite" : "json";
+  return detectRuntimeSnapshotBackend(indexFile, backend);
 }
 
 function readJsonIndex(filePath) {
@@ -68,17 +65,11 @@ function readJsonIndex(filePath) {
   return { absolute, payload };
 }
 
-function readIndexPayload(indexFile, indexBackend) {
+async function readIndexPayload(targetRoot, indexFile, indexBackend) {
   const backend = detectBackend(indexFile, indexBackend);
-  if (backend === "sqlite") {
-    const out = readIndexFromSqlite(indexFile);
-    return {
-      backend,
-      absolute: out.absolute,
-      payload: out.payload,
-    };
-  }
-  const out = readJsonIndex(indexFile);
+  const out = backend === "json"
+    ? readJsonIndex(indexFile)
+    : await readRuntimeSnapshot({ indexFile, backend, targetRoot });
   return {
     backend,
     absolute: out.absolute,
@@ -386,9 +377,9 @@ function readSessionBranchFromArtifact(artifact) {
   return meta.session_branch ?? null;
 }
 
-function collectCurrentStateFromIndex(targetRoot, args, gitAdapter) {
+async function collectCurrentStateFromIndex(targetRoot, args, gitAdapter) {
   const indexFilePath = resolveRuntimeTargetPath(targetRoot, args.indexFile);
-  const index = readIndexPayload(indexFilePath, args.indexBackend);
+  const index = await readIndexPayload(targetRoot, indexFilePath, args.indexBackend);
   const payload = index.payload ?? {};
   const auditRoot = String(payload.audit_root ?? path.join(targetRoot, "docs", "audit"));
   const structureProfile = payload.structure_profile ?? {
@@ -550,12 +541,12 @@ function collectCurrentStateFromIndex(targetRoot, args, gitAdapter) {
   };
 }
 
-function collectCurrentState(targetRoot, args, gitAdapter) {
+async function collectCurrentState(targetRoot, args, gitAdapter) {
   if (args.stateMode === "files") {
     return collectCurrentStateFromFiles(targetRoot, gitAdapter);
   }
   try {
-    return collectCurrentStateFromIndex(targetRoot, args, gitAdapter);
+    return await collectCurrentStateFromIndex(targetRoot, args, gitAdapter);
   } catch (error) {
     if (args.stateMode === "dual") {
       const fallback = collectCurrentStateFromFiles(targetRoot, gitAdapter);
@@ -699,7 +690,7 @@ export function printHumanReloadResult(result, cacheFile) {
   console.log(`Cache file: ${cacheFile}`);
 }
 
-export function runReloadCheckUseCase({ args, targetRoot }) {
+export async function runReloadCheckUseCase({ args, targetRoot }) {
   const gitAdapter = createLocalGitAdapter();
   if (!args.stateModeExplicit && !String(process.env.AIDN_STATE_MODE ?? "").trim()) {
     const config = readAidnProjectConfig(targetRoot);
@@ -715,7 +706,7 @@ export function runReloadCheckUseCase({ args, targetRoot }) {
   if (args.stateMode !== "files") {
     args.indexFile = resolveRuntimeTargetPath(targetRoot, args.indexFile);
   }
-  const currentState = collectCurrentState(targetRoot, args, gitAdapter);
+  const currentState = await collectCurrentState(targetRoot, args, gitAdapter);
   const cacheStatus = readCache(args.cache);
   const diff = diffState(currentState, cacheStatus.data, cacheStatus);
   const outcome = decideReloadOutcome(diff.reasonCodes);

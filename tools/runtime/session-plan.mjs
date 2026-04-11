@@ -2,6 +2,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  readSharedPlanningState,
+  resolveSharedCoordinationStore,
+  summarizeSharedCoordinationResolution,
+  syncSharedPlanningState,
+} from "../../src/application/runtime/shared-coordination-store-service.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { writeJsonIfChanged, writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
@@ -389,6 +396,65 @@ function parseBacklogMarkdown(text) {
   };
 }
 
+function normalizeSharedPlanningStatePayload(planningState) {
+  if (!planningState || typeof planningState !== "object") {
+    return null;
+  }
+  const payload = planningState.payload && typeof planningState.payload === "object"
+    ? planningState.payload
+    : {};
+  return {
+    session_id: pickScalar(
+      [planningState.session_id, payload.session_id],
+      { allowNone: false, allowUnknown: false },
+    ) || "none",
+    session_branch: pickScalar(
+      [payload.session_branch],
+      { allowNone: false, allowUnknown: false },
+    ) || "none",
+    mode: pickScalar(
+      [payload.mode],
+      { allowNone: false, allowUnknown: false },
+    ) || "unknown",
+    planning_status: pickScalar(
+      [planningState.planning_status, payload.planning_status],
+      { allowNone: false, allowUnknown: false },
+    ) || "unknown",
+    linked_cycles: Array.isArray(payload.linked_cycles)
+      ? uniqueItems(payload.linked_cycles.map((item) => normalizeScalar(item)).filter(Boolean))
+      : [],
+    planning_arbitration_status: pickScalar(
+      [planningState.planning_arbitration_status, payload.planning_arbitration_status],
+      { allowNone: false, allowUnknown: false },
+    ) || "none",
+    next_dispatch_scope: pickScalar(
+      [planningState.next_dispatch_scope, payload.next_dispatch_scope],
+      { allowNone: false, allowUnknown: false },
+    ) || "none",
+    next_dispatch_action: pickScalar(
+      [planningState.next_dispatch_action, payload.next_dispatch_action],
+      { allowNone: false, allowUnknown: false },
+    ) || "none",
+    backlog_next_step: pickScalar(
+      [planningState.backlog_next_step, payload.backlog_next_step],
+      { allowNone: false, allowUnknown: false },
+    ) || "unknown",
+    selected_execution_scope: pickScalar(
+      [planningState.selected_execution_scope, payload.selected_execution_scope],
+      { allowNone: false, allowUnknown: false },
+    ) || "none",
+    backlog_items: Array.isArray(payload.backlog_items)
+      ? uniqueItems(payload.backlog_items.map((item) => normalizeScalar(item)).filter(Boolean))
+      : [],
+    open_questions: Array.isArray(payload.open_questions)
+      ? uniqueItems(payload.open_questions.map((item) => normalizeScalar(item)).filter(Boolean))
+      : [],
+    addenda: Array.isArray(payload.addenda)
+      ? payload.addenda
+      : [],
+  };
+}
+
 function slugify(value) {
   const normalized = String(value ?? "")
     .trim()
@@ -566,7 +632,7 @@ function shouldPersistDbFirst(stateMode, dbFirstFlag) {
   return stateMode === "dual" || stateMode === "db-only";
 }
 
-export function runSessionPlan({
+export async function runSessionPlan({
   targetRoot,
   currentStateFile = "docs/audit/CURRENT-STATE.md",
   draftFile = ".aidn/runtime/context/session-plan-draft.json",
@@ -590,8 +656,18 @@ export function runSessionPlan({
   items = [],
   questions = [],
   promote = false,
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const sharedCoordinationResolution = sharedCoordination ?? await resolveSharedCoordinationStore({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    ...sharedCoordinationOptions,
+  });
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, stateMode);
   const currentStatePath = resolveTargetPath(absoluteTargetRoot, currentStateFile);
   const currentStateText = readTextIfExists(currentStatePath);
@@ -601,22 +677,45 @@ export function runSessionPlan({
     throw new Error("No active session found; pass --session-id or update CURRENT-STATE.md first");
   }
 
+  const sharedPlanningRead = await readSharedPlanningState(sharedCoordinationResolution, {
+    workspace,
+    sessionId: resolvedSessionId,
+    planningKey: `session:${resolvedSessionId}`,
+  });
+  const sharedExistingBacklog = sharedPlanningRead?.ok === true
+    ? normalizeSharedPlanningStatePayload(sharedPlanningRead.planning_state)
+    : null;
+
   const resolvedPlanningStatus = normalizeScalar(planningStatus) || (promote ? "promoted" : "draft");
-  const resolvedNextStep = normalizeScalar(nextStep || currentMap.get("backlog_next_step") || currentMap.get("first_plan_step") || "unknown") || "unknown";
-  const resolvedSelectedExecutionScope = normalizeScalar(selectedExecutionScope || currentMap.get("backlog_selected_execution_scope") || "none") || "none";
-  const resolvedDispatchScope = normalizeScalar(dispatchScope) || "none";
-  const resolvedDispatchAction = normalizeScalar(dispatchAction) || "none";
+  const resolvedNextStep = normalizeScalar(
+    nextStep
+      || sharedExistingBacklog?.backlog_next_step
+      || currentMap.get("backlog_next_step")
+      || currentMap.get("first_plan_step")
+      || "unknown",
+  ) || "unknown";
+  const resolvedSelectedExecutionScope = normalizeScalar(
+    selectedExecutionScope
+      || sharedExistingBacklog?.selected_execution_scope
+      || currentMap.get("backlog_selected_execution_scope")
+      || "none",
+  ) || "none";
+  const resolvedDispatchScope = normalizeScalar(dispatchScope || sharedExistingBacklog?.next_dispatch_scope || "none") || "none";
+  const resolvedDispatchAction = normalizeScalar(dispatchAction || sharedExistingBacklog?.next_dispatch_action || "none") || "none";
   const resolvedQuestions = uniqueItems(questions);
   const resolvedItems = uniqueItems(items);
   const linkedCycles = uniqueItems(
-    [currentMap.get("active_cycle") ?? ""].filter((value) => !canonicalNone(value) && !canonicalUnknown(value)),
+    [
+      ...(sharedExistingBacklog?.linked_cycles ?? []),
+      currentMap.get("active_cycle") ?? "",
+    ].filter((value) => !canonicalNone(value) && !canonicalUnknown(value)),
   );
 
   const draftPayload = {
     updated_at: new Date().toISOString(),
     session_id: resolvedSessionId,
-    session_branch: normalizeScalar(currentMap.get("session_branch") ?? "none") || "none",
-    mode: normalizeScalar(currentMap.get("mode") ?? "unknown") || "unknown",
+    session_branch: normalizeScalar(currentMap.get("session_branch") ?? sharedExistingBacklog?.session_branch ?? "none") || "none",
+    mode: normalizeScalar(currentMap.get("mode") ?? sharedExistingBacklog?.mode ?? "unknown") || "unknown",
     planning_status: resolvedPlanningStatus,
     linked_cycles: linkedCycles,
     backlog_items: resolvedItems,
@@ -625,7 +724,12 @@ export function runSessionPlan({
     selected_execution_scope: resolvedSelectedExecutionScope,
     next_dispatch_scope: resolvedDispatchScope,
     next_dispatch_action: resolvedDispatchAction,
-    planning_arbitration_status: normalizeScalar(planningArbitrationStatus || currentMap.get("planning_arbitration_status") || "none") || "none",
+    planning_arbitration_status: normalizeScalar(
+      planningArbitrationStatus
+      || sharedExistingBacklog?.planning_arbitration_status
+      || currentMap.get("planning_arbitration_status")
+      || "none",
+    ) || "none",
     source_agent: normalizeScalar(sourceAgent) || "coordinator",
     addendum_rationale: normalizeScalar(rationale) || "planning update",
     affected_item: normalizeScalar(affectedItem) || "none",
@@ -652,9 +756,18 @@ export function runSessionPlan({
   let backlogWrite = null;
   let backlogRelative = "none";
   let backlogOperation = "none";
+  let backlogSeedSource = "none";
   let backlogPayload = null;
   let currentStateWrite = null;
   let dbFirstWrites = [];
+  let sharedCoordinationSync = {
+    attempted: false,
+    ok: false,
+    status: sharedCoordinationResolution.status,
+    reason: sharedCoordinationResolution.reason,
+    operation: "none",
+    backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
+  };
   if (promote) {
     backlogRelative = resolveBacklogRelativePath({
       sessionId: resolvedSessionId,
@@ -662,7 +775,11 @@ export function runSessionPlan({
       backlogFile,
     });
     const backlogAbsolute = resolveTargetPath(absoluteTargetRoot, backlogRelative);
-    const existingBacklog = fs.existsSync(backlogAbsolute) ? parseBacklogMarkdown(readTextIfExists(backlogAbsolute)) : null;
+    const fileBacklog = fs.existsSync(backlogAbsolute) ? parseBacklogMarkdown(readTextIfExists(backlogAbsolute)) : null;
+    const existingBacklog = fileBacklog ?? sharedExistingBacklog;
+    backlogSeedSource = fileBacklog
+      ? "file"
+      : (sharedExistingBacklog ? "shared-coordination" : "none");
     if (existingBacklog && isMeaningfulScalar(existingBacklog.session_id, { allowNone: false, allowUnknown: false }) && existingBacklog.session_id !== resolvedSessionId) {
       throw new Error(`Shared session backlog session mismatch: ${backlogRelative} belongs to ${existingBacklog.session_id}`);
     }
@@ -685,6 +802,7 @@ export function runSessionPlan({
 
     if (currentStateText) {
       let nextCurrentState = currentStateText;
+      nextCurrentState = setOrInsertScalar(nextCurrentState, "active_session", resolvedSessionId, "session_branch");
       nextCurrentState = setOrInsertScalar(nextCurrentState, "active_backlog", backlogRelative.replace(/^docs\/audit\//, ""), "first_plan_step");
       nextCurrentState = setOrInsertScalar(nextCurrentState, "backlog_status", backlogPayload.planning_status, "active_backlog");
       nextCurrentState = setOrInsertScalar(nextCurrentState, "backlog_next_step", backlogPayload.backlog_next_step, "backlog_status");
@@ -731,10 +849,20 @@ export function runSessionPlan({
         }));
       }
     }
+
+    sharedCoordinationSync = await syncSharedPlanningState(sharedCoordinationResolution, {
+      workspace,
+      payload: backlogPayload,
+      backlogFile: backlogRelative,
+      planningKey: `session:${resolvedSessionId}`,
+    });
   }
 
   return {
     target_root: absoluteTargetRoot,
+    workspace,
+    shared_coordination_backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
+    shared_coordination_sync: sharedCoordinationSync,
     state_mode: effectiveStateMode,
     current_state_file: fs.existsSync(currentStatePath) ? relPath(absoluteTargetRoot, currentStatePath) : "none",
     draft_file: relPath(absoluteTargetRoot, resolveTargetPath(absoluteTargetRoot, draftFile)),
@@ -743,6 +871,7 @@ export function runSessionPlan({
     backlog_file: backlogRelative,
     backlog_written: Boolean(backlogWrite?.written),
     backlog_operation: backlogOperation,
+    backlog_seed_source: backlogSeedSource,
     current_state_written: Boolean(currentStateWrite?.written),
     db_first_applied: dbFirstWrites.length > 0,
     db_first_writes: dbFirstWrites.map((item) => ({
@@ -755,9 +884,9 @@ export function runSessionPlan({
 }
 
 function main() {
-  try {
+  Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
-    const output = runSessionPlan({
+    const output = await runSessionPlan({
       targetRoot: args.target,
       currentStateFile: args.currentStateFile,
       draftFile: args.draftFile,
@@ -797,11 +926,11 @@ function main() {
       console.log(`- planning_arbitration_status=${output.payload.planning_arbitration_status}`);
       console.log(`- db_first_applied=${output.db_first_applied ? "yes" : "no"}`);
     }
-  } catch (error) {
+  }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
-  }
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

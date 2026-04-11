@@ -14,6 +14,7 @@ Rule/State boundary:
 
 ## Summary
 
+contract_version: critical-markdown-v1
 updated_at: 2026-03-09T00:00:00Z
 handoff_status: refresh_required
 handoff_from_agent_role: coordinator

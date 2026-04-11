@@ -5,8 +5,8 @@ import { assertArtifactProjector } from "../../core/ports/artifact-projector-por
 import { shouldEmbedArtifactContentByState } from "../../core/state-mode/runtime-index-policy.mjs";
 import { persistWorkflowIndexProjection } from "./index-state-store-service.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
-import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import { shouldPreserveDbFirstArtifactPath } from "../../lib/workflow/db-first-artifact-path-policy.mjs";
+import { readRuntimeSnapshotSync } from "./runtime-snapshot-service.mjs";
 
 function resolveTargetPath(targetRoot, candidatePath) {
   if (!candidatePath) {
@@ -65,7 +65,10 @@ function readExistingRepairDecisions(args) {
       continue;
     }
     try {
-      const payload = readIndexFromSqlite(candidate).payload;
+      const payload = readRuntimeSnapshotSync({
+        indexFile: candidate,
+        backend: "sqlite",
+      }).payload;
       if (Array.isArray(payload?.repair_decisions)) {
         return payload.repair_decisions;
       }
@@ -93,7 +96,10 @@ function mergePreservedDbFirstArtifacts(args, payload) {
     return payload;
   }
   try {
-    const existing = readIndexFromSqlite(sqliteFile).payload;
+    const existing = readRuntimeSnapshotSync({
+      indexFile: sqliteFile,
+      backend: "sqlite",
+    }).payload;
     const existingArtifacts = Array.isArray(existing?.artifacts) ? existing.artifacts : [];
     if (existingArtifacts.length === 0) {
       return payload;
@@ -131,7 +137,7 @@ function mergePreservedDbFirstArtifacts(args, payload) {
   }
 }
 
-export function runIndexSyncUseCase({
+export async function runIndexSyncUseCase({
   args,
   targetRoot,
   artifactProjector,
@@ -174,6 +180,7 @@ export function runIndexSyncUseCase({
   const digest = payloadDigest(payload);
 
   const stateStore = createWorkflowStateStoreAdapter({
+    targetRoot,
     mode: args.store,
     jsonOutput: args.output,
     sqlOutput: args.sqlOutput,
@@ -181,7 +188,7 @@ export function runIndexSyncUseCase({
     schemaFile: args.schemaFile,
     includeSchema: args.includeSchema,
   });
-  const { outputs, writes } = persistWorkflowIndexProjection({
+  const { outputs, writes } = await persistWorkflowIndexProjection({
     stateStore,
     payload,
     dryRun: args.dryRun,

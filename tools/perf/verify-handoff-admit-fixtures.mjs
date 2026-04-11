@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -87,6 +88,27 @@ function installSharedPlanningFixture(targetRoot) {
   ].join("\n"), "utf8");
 }
 
+function installSharedRuntimeLocator(targetRoot, {
+  workspaceId = "workspace-locator",
+  backendKind = "sqlite-file",
+  root = "docs/audit/shared-runtime",
+} = {}) {
+  const locatorDir = path.join(targetRoot, ".aidn", "project");
+  fs.mkdirSync(locatorDir, { recursive: true });
+  fs.writeFileSync(path.join(locatorDir, "shared-runtime.locator.json"), `${JSON.stringify({
+    version: 1,
+    enabled: true,
+    workspaceId,
+    backend: {
+      kind: backendKind,
+      root,
+    },
+    projection: {
+      localIndexMode: "preserve-current",
+    },
+  }, null, 2)}\n`, "utf8");
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -102,13 +124,16 @@ function main() {
     const tamperedTarget = path.join(tempRoot, "tampered");
     const staleTarget = path.join(tempRoot, "stale");
     const transitionRejectedTarget = path.join(tempRoot, "transition-rejected");
+    const invalidSharedRuntimeTarget = path.join(tempRoot, "invalid-shared-runtime");
     fs.cpSync(path.join(fixturesRoot, "ready"), readyTarget, { recursive: true });
     fs.cpSync(path.join(fixturesRoot, "blocked"), blockedTarget, { recursive: true });
     fs.cpSync(path.join(fixturesRoot, "ready"), tamperedTarget, { recursive: true });
     fs.cpSync(path.join(fixturesRoot, "ready"), staleTarget, { recursive: true });
     fs.cpSync(path.join(fixturesRoot, "ready"), transitionRejectedTarget, { recursive: true });
+    fs.cpSync(path.join(fixturesRoot, "ready"), invalidSharedRuntimeTarget, { recursive: true });
     installSharedPlanningFixture(readyTarget);
     installSharedPlanningFixture(staleTarget);
+    installSharedRuntimeLocator(invalidSharedRuntimeTarget);
     fs.writeFileSync(path.join(staleTarget, "docs", "audit", "backlog", "BL-S101-session-planning.md"), [
       "# Session Backlog - S101",
       "",
@@ -205,6 +230,16 @@ function main() {
       transitionRejectedTarget,
       "--json",
     ], repoRoot, 1);
+    const invalidSharedRuntimePacket = runNode(projectScript, [
+      "--target",
+      invalidSharedRuntimeTarget,
+      "--json",
+    ], repoRoot, 0);
+    const invalidSharedRuntimeAdmit = runNode(admitScript, [
+      "--target",
+      invalidSharedRuntimeTarget,
+      "--json",
+    ], repoRoot, 1);
 
     assert(readyPacket.packet.next_agent_goal === "implement alpha feature validation", "ready packet goal mismatch");
     assert(readyAdmit.admitted === true, "ready handoff should be admitted");
@@ -216,6 +251,7 @@ function main() {
     assert(readyAdmit.scope_type === "cycle", "ready handoff should expose cycle scope");
     assert(readyAdmit.scope_id === "C101", "ready handoff should expose active cycle scope");
     assert(readyPacket.packet.preferred_dispatch_source === "shared_planning", "ready packet should record shared planning provenance");
+    assert(readyPacket.packet.shared_runtime_validation_status === "clear", "ready packet should expose clear shared runtime validation");
     assert(readyPacket.packet.shared_planning_candidate_ready === "yes", "ready packet should expose a ready shared planning candidate");
     assert(readyPacket.packet.shared_planning_candidate_aligned === "yes", "ready packet should expose an aligned shared planning candidate");
     assert(readyAdmit.preferred_dispatch_source === "shared_planning", "ready admit should expose shared planning provenance");
@@ -263,6 +299,9 @@ function main() {
     assert(transitionRejectedAdmit.recommended_next_agent_role === "coordinator", "transition-rejected handoff should fall back to coordinator");
     assert(transitionRejectedAdmit.recommended_action === "reanchor", "transition-rejected handoff should fall back to reanchor");
     assert(transitionRejectedAdmit.issues.some((item) => String(item).includes("transition policy rejected handoff")), "transition-rejected handoff should expose transition rejection");
+    assert(invalidSharedRuntimePacket.packet.shared_runtime_validation_status === "reject", "invalid shared runtime packet should expose reject validation");
+    assert(invalidSharedRuntimeAdmit.admitted === false, "invalid shared runtime handoff should be rejected");
+    assert(invalidSharedRuntimeAdmit.issues.some((item) => String(item).includes("overlaps versioned workflow artifacts")), "invalid shared runtime handoff should expose root overlap");
 
     const output = {
       ts: new Date().toISOString(),
@@ -273,6 +312,7 @@ function main() {
       blocked: blockedAdmit,
       tampered: tamperedAdmit,
       transition_rejected: transitionRejectedAdmit,
+      invalid_shared_runtime: invalidSharedRuntimeAdmit,
       pass: true,
     };
 
@@ -288,7 +328,7 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      removePathWithRetry(tempRoot);
     }
   }
 }

@@ -67,8 +67,8 @@ When runtime output shows:
 
 For agent-to-agent work:
 - refresh `docs/audit/HANDOFF-PACKET.md` before pausing when another agent is expected to continue
-- if a handoff packet exists, read it before the standard re-anchor sequence and verify its pointers against the live artifacts
 - if `HANDOFF-PACKET.md.preferred_dispatch_source=shared_planning`, open `backlog_refs` before replacing the relay intent
+- if a handoff packet exists, read it before the standard re-anchor sequence and verify its pointers against the live artifacts
 - if `docs/audit/MULTI-AGENT-STATUS.md` exists, use it as the short digest before opening the detailed multi-agent artifacts
 
 For session planning:

@@ -3,10 +3,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
+import { loadSharedStateSnapshot } from "../../src/application/runtime/shared-state-backend-service.mjs";
+import { resolvePromotedSharedPlanningContext } from "../../src/application/runtime/shared-planning-resolution-service.mjs";
+import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
 import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { resolveEffectiveStateMode } from "../../src/core/state-mode/state-mode-policy.mjs";
-import { readIndexFromSqlite, readRuntimeHeadArtifactsFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
 
 const DEFAULT_POLICY = Object.freeze({
@@ -206,6 +209,35 @@ function canonicalNone(value) {
 
 function canonicalUnknown(value) {
   return normalizeScalar(value).toLowerCase() === "unknown";
+}
+
+function normalizeUsageMatrixScope(value) {
+  const normalized = normalizeScalar(value).toLowerCase();
+  if (normalized === "shared" || normalized === "high-risk") {
+    return normalized;
+  }
+  return "local";
+}
+
+function normalizeUsageMatrixState(value) {
+  const normalized = normalizeScalar(value).toUpperCase();
+  if (["NOT_DEFINED", "DECLARED", "PARTIAL", "VERIFIED", "WAIVED"].includes(normalized)) {
+    return normalized;
+  }
+  return "NOT_DEFINED";
+}
+
+function usageMatrixSatisfied({ scope, state, rationale }) {
+  if (scope === "local") {
+    return true;
+  }
+  if (state === "VERIFIED") {
+    return true;
+  }
+  if (state === "WAIVED" && String(rationale ?? "").trim().length > 0 && String(rationale ?? "").trim().toLowerCase() !== "none") {
+    return true;
+  }
+  return false;
 }
 
 function isResolvedPlanningArbitrationStatus(value) {
@@ -518,33 +550,11 @@ function relativePath(root, filePath) {
 }
 
 function loadSqliteIndexPayloadSafe(targetRoot) {
-  const sqliteFile = path.join(targetRoot, ".aidn", "runtime", "index", "workflow-index.sqlite");
-  if (!exists(sqliteFile)) {
-    return {
-      exists: false,
-      sqliteFile,
-      payload: null,
-      runtimeHeads: {},
-      warning: "",
-    };
-  }
-  try {
-    return {
-      exists: true,
-      sqliteFile,
-      payload: readIndexFromSqlite(sqliteFile).payload,
-      runtimeHeads: readRuntimeHeadArtifactsFromSqlite(sqliteFile).heads,
-      warning: "",
-    };
-  } catch (error) {
-    return {
-      exists: true,
-      sqliteFile,
-      payload: null,
-      runtimeHeads: {},
-      warning: `SQLite artifact fallback unavailable: ${error.message}`,
-    };
-  }
+  return loadSharedStateSnapshot({
+    targetRoot,
+    includePayload: true,
+    includeRuntimeHeads: true,
+  });
 }
 
 function findArtifactByPath(sqlitePayload, artifactPath) {
@@ -817,13 +827,22 @@ function addCheck(checks, key, pass, details) {
   };
 }
 
-export function preWriteAdmit({
+export async function preWriteAdmit({
   targetRoot,
   skill = "",
   currentStateFile = "docs/audit/CURRENT-STATE.md",
   runtimeStateFile = "docs/audit/RUNTIME-STATE.md",
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const sharedRuntimeValidation = validateSharedRuntimeContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+  });
   const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
   const effectiveStateMode = resolveEffectiveStateMode({
     targetRoot: absoluteTargetRoot,
@@ -857,6 +876,20 @@ export function preWriteAdmit({
   const runtimeStateText = runtimeStateResolution.text;
   const currentMap = parseSimpleMap(currentStateText);
   const runtimeMap = parseSimpleMap(runtimeStateText);
+  const sharedPlanning = await resolvePromotedSharedPlanningContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    currentState: {
+      active_session: currentMap.get("active_session") ?? "none",
+      active_backlog: currentMap.get("active_backlog") ?? "none",
+      backlog_status: currentMap.get("backlog_status") ?? "unknown",
+      backlog_next_step: currentMap.get("backlog_next_step") ?? "unknown",
+      backlog_selected_execution_scope: currentMap.get("backlog_selected_execution_scope") ?? "none",
+      planning_arbitration_status: currentMap.get("planning_arbitration_status") ?? "none",
+    },
+    sharedCoordination,
+    sharedCoordinationOptions,
+  });
   const policy = mergePolicy(skill);
   const checks = {};
   const blockingReasons = [];
@@ -894,11 +927,11 @@ export function preWriteAdmit({
   const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
   const dorState = normalizeScalar(currentMap.get("dor_state") ?? "unknown") || "unknown";
   const currentFirstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "unknown") || "unknown";
-  const activeBacklog = normalizeScalar(currentMap.get("active_backlog") ?? "none") || "none";
-  const backlogStatus = normalizeScalar(currentMap.get("backlog_status") ?? "unknown") || "unknown";
-  const backlogNextStep = normalizeScalar(currentMap.get("backlog_next_step") ?? "unknown") || "unknown";
-  const backlogSelectedExecutionScope = normalizeScalar(currentMap.get("backlog_selected_execution_scope") ?? "none") || "none";
-  const planningArbitrationStatus = normalizeScalar(currentMap.get("planning_arbitration_status") ?? "none") || "none";
+  const activeBacklog = normalizeScalar(sharedPlanning.active_backlog) || "none";
+  const backlogStatus = normalizeScalar(sharedPlanning.backlog_status) || "unknown";
+  const backlogNextStep = normalizeScalar(sharedPlanning.backlog_next_step) || "unknown";
+  const backlogSelectedExecutionScope = normalizeScalar(sharedPlanning.backlog_selected_execution_scope) || "none";
+  const planningArbitrationStatus = normalizeScalar(sharedPlanning.planning_arbitration_status) || "none";
   const cycleBranch = normalizeScalar(currentMap.get("cycle_branch") ?? "none") || "none";
   const sessionBranch = normalizeScalar(currentMap.get("session_branch") ?? "none") || "none";
 
@@ -944,6 +977,10 @@ export function preWriteAdmit({
   );
   const dorOverrideReason = normalizeScalar(cycleStatusMap.get("dor_override_reason") ?? "none") || "none";
   const mappedCycleBranch = normalizeScalar(cycleStatusMap.get("branch_name") ?? "none") || "none";
+  const usageMatrixScope = normalizeUsageMatrixScope(cycleStatusMap.get("usage_matrix_scope") ?? "local");
+  const usageMatrixState = normalizeUsageMatrixState(cycleStatusMap.get("usage_matrix_state") ?? "NOT_DEFINED");
+  const usageMatrixSummary = normalizeScalar(cycleStatusMap.get("usage_matrix_summary") ?? "none") || "none";
+  const usageMatrixRationale = normalizeScalar(cycleStatusMap.get("usage_matrix_rationale") ?? "none") || "none";
   const cycleCreateGitGate = skill === "cycle-create"
     ? evaluateCycleCreateGitGate(absoluteTargetRoot)
     : null;
@@ -1008,6 +1045,34 @@ export function preWriteAdmit({
     warnings.push(`DoR override in effect: ${dorOverrideReason}`);
   }
 
+  addCheck(
+    checks,
+    "usage_matrix_close_or_promotion_ready",
+    (skill !== "cycle-close" && skill !== "promote-baseline")
+      || normalizeScalar(cycleStatusMap.get("state") ?? "unknown").toUpperCase() !== "DONE"
+      || usageMatrixSatisfied({
+        scope: usageMatrixScope,
+        state: usageMatrixState,
+        rationale: usageMatrixRationale,
+      }),
+    `usage_matrix_scope=${usageMatrixScope}; usage_matrix_state=${usageMatrixState}`,
+  );
+  if (
+    (skill === "cycle-close" || skill === "promote-baseline")
+    && normalizeScalar(cycleStatusMap.get("state") ?? "unknown").toUpperCase() === "DONE"
+    && !usageMatrixSatisfied({
+      scope: usageMatrixScope,
+      state: usageMatrixState,
+      rationale: usageMatrixRationale,
+    })
+  ) {
+    blockingReasons.push(
+      skill === "promote-baseline"
+        ? `cycle ${activeCycle} is marked DONE but usage matrix is not complete for promote-baseline (scope=${usageMatrixScope}, state=${usageMatrixState})`
+        : `cycle ${activeCycle} is marked DONE but usage matrix is not complete for cycle-close (scope=${usageMatrixScope}, state=${usageMatrixState})`,
+    );
+  }
+
   addCheck(checks, "runtime_state_exists", runtimeStateExists, runtimeStateExists
     ? `runtime digest resolved via ${runtimeStateResolution.source}: ${runtimeStateResolution.logicalPath}`
     : "runtime digest missing");
@@ -1059,6 +1124,10 @@ export function preWriteAdmit({
     && cycleBranch !== mappedCycleBranch) {
     blockingReasons.push(`cycle branch mismatch: CURRENT-STATE=${cycleBranch} status.md=${mappedCycleBranch}`);
   }
+  if (sharedRuntimeValidation.status === "reject") {
+    blockingReasons.push(...sharedRuntimeValidation.issues);
+  }
+  warnings.push(...sharedRuntimeValidation.warnings);
 
   if (mode === "COMMITTING" && branchKind === "session") {
     warnings.push("COMMITTING work on a session branch should stay limited to integration, handoff, or orchestration unless explicitly documented");
@@ -1124,6 +1193,9 @@ export function preWriteAdmit({
     ok,
     admission_status: admissionStatus,
     target_root: absoluteTargetRoot,
+    workspace,
+    shared_state_backend: sqliteFallback.backend ?? null,
+    shared_runtime_validation: sharedRuntimeValidation,
     skill: skill || "generic",
     policy,
     current_state_file: currentStateExists ? currentStateResolution.logicalPath : "none",
@@ -1132,19 +1204,34 @@ export function preWriteAdmit({
     cycle_status_file: cycleStatusResolution.exists ? cycleStatusResolution.logicalPath : "none",
     plan_file: planResolution.exists ? planResolution.logicalPath : "none",
     context: {
+      workspace_id: workspace.workspace_id,
+      workspace_id_source: workspace.workspace_id_source,
+      worktree_id: workspace.worktree_id,
+      is_linked_worktree: workspace.is_linked_worktree ? "yes" : "no",
+      shared_runtime_mode: workspace.shared_runtime_mode,
+      shared_runtime_validation_status: sharedRuntimeValidation.status,
+      shared_runtime_locator_ref: workspace.shared_runtime_locator_ref,
+      shared_backend_kind: workspace.shared_backend_kind,
       mode,
       branch_kind: branchKind,
       active_session: activeSession,
       session_branch: sessionBranch,
       active_cycle: activeCycle,
       cycle_branch: cycleBranch,
+      cycle_state: normalizeScalar(cycleStatusMap.get("state") ?? "unknown").toUpperCase() || "UNKNOWN",
       dor_state: dorState,
+      usage_matrix_scope: usageMatrixScope,
+      usage_matrix_state: usageMatrixState,
+      usage_matrix_summary: usageMatrixSummary,
+      usage_matrix_rationale: usageMatrixRationale,
       first_plan_step: effectiveFirstPlanStep,
       active_backlog: activeBacklog,
       backlog_status: backlogStatus,
       backlog_next_step: backlogNextStep,
       backlog_selected_execution_scope: backlogSelectedExecutionScope,
       planning_arbitration_status: planningArbitrationStatus,
+      shared_planning_source: sharedPlanning.shared_planning_source,
+      shared_planning_read_status: sharedPlanning.shared_planning_read_status,
       current_state_freshness: currentStateFreshness,
       runtime_state_mode: runtimeStateMode,
       effective_state_mode: effectiveStateMode,
@@ -1210,9 +1297,9 @@ function printText(output) {
 }
 
 function main() {
-  try {
+  Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
-    const output = preWriteAdmit({
+    const output = await preWriteAdmit({
       targetRoot: args.target,
       skill: args.skill,
       currentStateFile: args.currentStateFile,
@@ -1226,11 +1313,11 @@ function main() {
     if (args.strict && !output.ok) {
       process.exit(1);
     }
-  } catch (error) {
+  }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
-  }
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

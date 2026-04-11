@@ -141,6 +141,18 @@ export function normalizeHookPayload(rawInput, options = {}) {
       gate.reason_code,
       null,
     ),
+    blocking_reasons: toArray(firstDefined(
+      payload.blocking_reasons,
+      payload.admission?.blocking_reasons,
+      input.blocking_reasons,
+      [],
+    )),
+    recommended_next_action: firstDefined(
+      payload.recommended_next_action,
+      payload.admission?.recommended_next_action,
+      input.recommended_next_action,
+      null,
+    ),
     gates_triggered: toArray(firstDefined(
       payload.gates_triggered,
       input.gates_triggered,

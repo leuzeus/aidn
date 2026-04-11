@@ -1,8 +1,18 @@
+import path from "node:path";
 import { runRepairLayerTriageUseCase } from "./repair-layer-triage-use-case.mjs";
 import { writeJsonIfChanged } from "../../lib/index/io-lib.mjs";
-import { resolveRuntimePath } from "./runtime-path-resolution.mjs";
 
-export function writeRepairLayerTriageArtifacts({
+function resolveRuntimeOutputPath(targetRoot, candidatePath) {
+  if (!candidatePath) {
+    return "";
+  }
+  if (path.isAbsolute(candidatePath)) {
+    return path.resolve(candidatePath);
+  }
+  return path.resolve(targetRoot, candidatePath);
+}
+
+export async function writeRepairLayerTriageArtifacts({
   targetRoot,
   indexFile,
   backend,
@@ -11,19 +21,19 @@ export function writeRepairLayerTriageArtifacts({
   renderScript,
   runNodeScript,
 }) {
-  const triage = runRepairLayerTriageUseCase({
+  const triage = await runRepairLayerTriageUseCase({
     args: {
       indexFile,
       backend: backend || "auto",
     },
     targetRoot,
   });
-  const triageTarget = resolveRuntimePath(targetRoot, triageFile);
+  const triageTarget = resolveRuntimeOutputPath(targetRoot, triageFile);
   const triageWrite = writeJsonIfChanged(triageTarget, triage);
 
   let summaryWrite = null;
   if (summaryFile && renderScript && typeof runNodeScript === "function") {
-    const summaryTarget = resolveRuntimePath(targetRoot, summaryFile);
+    const summaryTarget = resolveRuntimeOutputPath(targetRoot, summaryFile);
     runNodeScript(renderScript, [
       "--triage-file",
       triageWrite.path,

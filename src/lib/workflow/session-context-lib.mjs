@@ -9,6 +9,10 @@ import {
   resolveAuditArtifactText,
   resolveDbBackedMode,
 } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
+import {
+  analyzeStructuredArtifact,
+  parseStructuredMarkdownMap,
+} from "./structured-artifact-parser-lib.mjs";
 
 const OPEN_CYCLE_STATES = new Set(["OPEN", "IMPLEMENTING", "VERIFYING"]);
 const CLOSE_SESSION_DECISIONS = new Set(["integrate-to-session", "report", "close-non-retained", "cancel-close"]);
@@ -80,15 +84,7 @@ export function normalizePostMergeSyncStatus(value) {
 }
 
 export function parseSimpleMap(text) {
-  const map = new Map();
-  for (const line of String(text).split(/\r?\n/)) {
-    const match = line.match(/^([a-zA-Z0-9_ -]+):\s*(.+)$/);
-    if (!match) {
-      continue;
-    }
-    map.set(String(match[1]).trim().toLowerCase().replace(/\s+/g, "_"), normalizeScalar(match[2]));
-  }
-  return map;
+  return new Map(Object.entries(parseStructuredMarkdownMap(text)).map(([key, value]) => [key, normalizeScalar(value)]));
 }
 
 function decodeArtifactContent(artifact) {
@@ -189,6 +185,10 @@ function listCycleStatusesFromSqlite(auditRoot, sqlitePayload) {
         session_owner: normalizeScalar(map.get("session_owner") ?? "none") || "none",
         outcome: normalizeScalar(map.get("outcome") ?? "unknown") || "unknown",
         dor_state: normalizeScalar(map.get("dor_state") ?? "unknown") || "unknown",
+        usage_matrix_scope: normalizeScalar(map.get("usage_matrix_scope") ?? "local") || "local",
+        usage_matrix_state: normalizeScalar(map.get("usage_matrix_state") ?? "NOT_DEFINED") || "NOT_DEFINED",
+        usage_matrix_summary: normalizeScalar(map.get("usage_matrix_summary") ?? "none") || "none",
+        usage_matrix_rationale: normalizeScalar(map.get("usage_matrix_rationale") ?? "none") || "none",
         continuity_rule: normalizeScalar(map.get("continuity_rule") ?? "none") || "none",
         continuity_base_branch: normalizeScalar(map.get("continuity_base_branch") ?? "none") || "none",
         continuity_latest_cycle_branch: normalizeScalar(map.get("continuity_latest_cycle_branch") ?? "none") || "none",
@@ -219,53 +219,6 @@ export function readTextIfExists(filePath) {
   return fs.readFileSync(filePath, "utf8");
 }
 
-function extractSessionField(text, fieldName) {
-  if (typeof text !== "string" || text.length === 0) {
-    return null;
-  }
-  const pattern = new RegExp(`^[-*]?\\s*${fieldName}:\\s*` + "`?([^`\\n]+)`?", "im");
-  const match = text.match(pattern);
-  return match ? normalizeScalar(match[1]) : null;
-}
-
-function extractSessionListField(text, fieldName) {
-  if (typeof text !== "string" || text.length === 0) {
-    return [];
-  }
-  const lines = String(text).split(/\r?\n/);
-  const items = [];
-  const inlinePattern = new RegExp(`^[-*]?\\s*${fieldName}:\\s*(.*)$`, "i");
-  let collecting = false;
-
-  for (const line of lines) {
-    const inlineMatch = line.match(inlinePattern);
-    if (!collecting && inlineMatch) {
-      const remainder = normalizeScalar(inlineMatch[1] ?? "");
-      if (remainder) {
-        if (!canonicalNone(remainder)) {
-          items.push(...splitEntityList(remainder));
-        }
-        break;
-      }
-      collecting = true;
-      continue;
-    }
-    if (!collecting) {
-      continue;
-    }
-    if (/^##\s+/.test(line) || /^[-*]?\s*[a-zA-Z0-9_ -]+:\s*/.test(line)) {
-      break;
-    }
-    const bulletMatch = line.match(/^\s*-\s+(.+)$/);
-    if (!bulletMatch) {
-      continue;
-    }
-    items.push(...splitEntityList(String(bulletMatch[1] ?? "")));
-  }
-
-  return Array.from(new Set(items.map((item) => normalizeScalar(item)).filter(Boolean)));
-}
-
 function splitEntityList(value) {
   const normalized = normalizeScalar(value).replace(/[|]/g, " ").trim();
   if (!normalized || /^none$/i.test(normalized)) {
@@ -284,76 +237,36 @@ function extractIds(values, prefix) {
   return Array.from(new Set(matches.map((item) => String(item).toUpperCase()))).sort((a, b) => a.localeCompare(b));
 }
 
-function extractSessionMode(text) {
-  if (typeof text !== "string" || text.length === 0) {
-    return null;
-  }
-  if (/\[\s*x\s*\]\s*COMMITTING/i.test(text)) return "COMMITTING";
-  if (/\[\s*x\s*\]\s*EXPLORING/i.test(text)) return "EXPLORING";
-  if (/\[\s*x\s*\]\s*THINKING/i.test(text)) return "THINKING";
-  return null;
-}
-
-function extractSectionCheckbox(text, headingText) {
-  const lines = String(text).split(/\r?\n/);
-  let active = false;
-  for (const line of lines) {
-    if (line.trim().toLowerCase() === headingText.trim().toLowerCase()) {
-      active = true;
-      continue;
-    }
-    if (active && /^##\s+/.test(line)) {
-      break;
-    }
-    if (!active) {
-      continue;
-    }
-    const match = line.match(/^\s*-\s*\[(x| )\]\s*Yes\s*$/i);
-    if (match) {
-      return String(match[1]).toLowerCase() === "x";
-    }
-  }
-  return null;
-}
-
 export function parseSessionMetadata(text) {
-  const integrationTargetCycles = extractIds(extractSessionListField(text, "integration_target_cycles"), "C");
-  const attachedCycles = extractIds(extractSessionListField(text, "attached_cycles"), "C");
-  const reportedFromPreviousSession = extractIds(extractSessionListField(text, "reported_from_previous_session"), "C");
-  const primaryFocusCycle = extractIds(extractSessionField(text, "primary_focus_cycle") ?? "", "C").at(0) ?? null;
-  const legacyIntegrationTargetCycle = extractIds(extractSessionField(text, "integration_target_cycle") ?? "", "C");
-  const effectiveIntegrationTargets = integrationTargetCycles.length > 0 ? integrationTargetCycles : legacyIntegrationTargetCycle;
-  const prStatus = normalizeSessionPrStatus(extractSessionField(text, "pr_status"));
-  const prUrl = extractSessionField(text, "pr_url");
-  const prNumber = extractSessionField(text, "pr_number");
-  const prBaseBranch = extractSessionField(text, "pr_base_branch");
-  const prHeadBranch = extractSessionField(text, "pr_head_branch");
-  const prReviewStatus = normalizeSessionPrReviewStatus(extractSessionField(text, "pr_review_status"));
-  const postMergeSyncStatus = normalizePostMergeSyncStatus(extractSessionField(text, "post_merge_sync_status"));
-  const postMergeSyncBasis = extractSessionField(text, "post_merge_sync_basis");
+  const derived = analyzeStructuredArtifact(text, {
+    classification: { kind: "session", subtype: "session" },
+  }).derived_session_context ?? {};
+  const effectiveIntegrationTargets = Array.isArray(derived.integration_target_cycles)
+    ? derived.integration_target_cycles
+    : [];
   return {
-    mode: extractSessionMode(text),
-    session_branch: extractSessionField(text, "session_branch"),
-    parent_session: extractSessionField(text, "parent_session"),
-    branch_kind: extractSessionField(text, "branch_kind"),
-    cycle_branch: extractSessionField(text, "cycle_branch"),
-    intermediate_branch: extractSessionField(text, "intermediate_branch"),
-    integration_target_cycle: effectiveIntegrationTargets.length === 1 ? effectiveIntegrationTargets[0] : null,
+    mode: derived.mode ?? null,
+    session_branch: derived.session_branch ?? null,
+    parent_session: derived.parent_session ?? null,
+    branch_kind: derived.branch_kind ?? null,
+    cycle_branch: derived.cycle_branch ?? null,
+    intermediate_branch: derived.intermediate_branch ?? null,
+    integration_target_cycle: derived.primary_focus_cycle ?? (effectiveIntegrationTargets.length === 1 ? effectiveIntegrationTargets[0] : null),
     integration_target_cycles: effectiveIntegrationTargets,
-    primary_focus_cycle: primaryFocusCycle,
-    attached_cycles: attachedCycles,
-    reported_from_previous_session: reportedFromPreviousSession,
-    carry_over_pending: extractSessionField(text, "carry_over_pending"),
-    pr_status: prStatus,
-    pr_url: prUrl && !canonicalNone(prUrl) ? prUrl : null,
-    pr_number: prNumber && !canonicalNone(prNumber) ? prNumber : null,
-    pr_base_branch: prBaseBranch && !canonicalNone(prBaseBranch) ? prBaseBranch : null,
-    pr_head_branch: prHeadBranch && !canonicalNone(prHeadBranch) ? prHeadBranch : null,
-    pr_review_status: prReviewStatus,
-    post_merge_sync_status: postMergeSyncStatus,
-    post_merge_sync_basis: postMergeSyncBasis && !canonicalNone(postMergeSyncBasis) ? postMergeSyncBasis : null,
-    close_gate_satisfied: extractSectionCheckbox(text, "### Session close gate satisfied?"),
-    snapshot_updated: extractSectionCheckbox(text, "### Snapshot updated?"),
+    primary_focus_cycle: derived.primary_focus_cycle ?? null,
+    attached_cycles: Array.isArray(derived.attached_cycles) ? derived.attached_cycles : [],
+    reported_from_previous_session: Array.isArray(derived.reported_from_previous_session) ? derived.reported_from_previous_session : [],
+    carry_over_pending: derived.carry_over_pending ?? null,
+    pr_status: normalizeSessionPrStatus(derived.pr_status),
+    pr_url: derived.pr_url ?? null,
+    pr_number: derived.pr_number ?? null,
+    pr_base_branch: derived.pr_base_branch ?? null,
+    pr_head_branch: derived.pr_head_branch ?? null,
+    pr_review_status: normalizeSessionPrReviewStatus(derived.pr_review_status),
+    post_merge_sync_status: normalizePostMergeSyncStatus(derived.post_merge_sync_status),
+    post_merge_sync_basis: derived.post_merge_sync_basis ?? null,
+    close_gate_satisfied: derived.close_gate_satisfied ?? null,
+    snapshot_updated: derived.snapshot_updated ?? null,
   };
 }
 
@@ -580,6 +493,10 @@ export function listCycleStatuses(auditRoot) {
           session_owner: normalizeScalar(map.get("session_owner") ?? "none") || "none",
           outcome: normalizeScalar(map.get("outcome") ?? "unknown") || "unknown",
           dor_state: normalizeScalar(map.get("dor_state") ?? "unknown") || "unknown",
+          usage_matrix_scope: normalizeScalar(map.get("usage_matrix_scope") ?? "local") || "local",
+          usage_matrix_state: normalizeScalar(map.get("usage_matrix_state") ?? "NOT_DEFINED") || "NOT_DEFINED",
+          usage_matrix_summary: normalizeScalar(map.get("usage_matrix_summary") ?? "none") || "none",
+          usage_matrix_rationale: normalizeScalar(map.get("usage_matrix_rationale") ?? "none") || "none",
           continuity_rule: normalizeScalar(map.get("continuity_rule") ?? "none") || "none",
           continuity_base_branch: normalizeScalar(map.get("continuity_base_branch") ?? "none") || "none",
           continuity_latest_cycle_branch: normalizeScalar(map.get("continuity_latest_cycle_branch") ?? "none") || "none",

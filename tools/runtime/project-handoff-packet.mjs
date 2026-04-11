@@ -2,6 +2,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  appendSharedHandoffRelay,
+  readSharedPlanningState,
+  resolveSharedCoordinationStore,
+  summarizeSharedCoordinationResolution,
+} from "../../src/application/runtime/shared-coordination-store-service.mjs";
+import { resolvePromotedSharedPlanningContext } from "../../src/application/runtime/shared-planning-resolution-service.mjs";
+import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
 import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
@@ -12,10 +21,11 @@ import {
   buildVirtualCurrentStateConsistency,
   canonicalNone,
   canonicalUnknown,
-  loadSqliteIndexPayloadSafe,
+  loadDbIndexPayloadSafe,
   normalizeScalar,
   parseSimpleMap,
   parseTimestamp,
+  resolveDbArtifactSourceName,
   resolveAuditArtifactText,
   resolveCyclePlanArtifact,
   resolveCycleStatusArtifact,
@@ -278,7 +288,8 @@ function buildPrioritizedArtifacts({
   sessionArtifact,
   cycleStatusArtifact,
   planArtifact,
-  currentMap,
+  activeBacklog,
+  firstPlanStep,
 }) {
   const items = [
     "docs/audit/CURRENT-STATE.md",
@@ -287,10 +298,9 @@ function buildPrioritizedArtifacts({
     "docs/audit/WORKFLOW_SUMMARY.md",
   ];
   const runtimeArtifacts = parseListSection(runtimeStateText, "prioritized_artifacts");
-  const firstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "");
-  const activeBacklog = normalizeBacklogRef(currentMap.get("active_backlog") ?? "none");
-  if (activeBacklog !== "none") {
-    items.push(activeBacklog);
+  const normalizedBacklog = normalizeBacklogRef(activeBacklog);
+  if (normalizedBacklog !== "none") {
+    items.push(normalizedBacklog);
   }
   if (sessionArtifact?.exists) {
     items.push(sessionArtifact.logicalPath);
@@ -343,9 +353,69 @@ function deriveSharedPlanningCandidate({
   scope,
   nextRouting,
   currentStateUpdatedAtMs,
+  sharedPlanningRead = null,
   dbBacked = false,
   sqlitePayload = null,
+  sqliteRuntimeHeads = null,
+  dbSource = "sqlite",
 }) {
+  const sharedPlanningState = sharedPlanningRead?.planning_state ?? null;
+  if (sharedPlanningRead?.ok === true && sharedPlanningState) {
+    const payload = sharedPlanningState.payload && typeof sharedPlanningState.payload === "object"
+      ? sharedPlanningState.payload
+      : {};
+    const backlogLogicalPath = normalizeBacklogRef(sharedPlanningState.backlog_artifact_ref || activeBacklog);
+    const candidateReady = sharedPlanningState.dispatch_ready === true;
+    const actionAligned = candidateReady && sharedPlanningState.next_dispatch_action !== "none"
+      && (
+        sharedPlanningState.next_dispatch_action === nextRouting.action
+        || (nextRouting.role === "coordinator" && sharedPlanningState.next_dispatch_action === "coordinate")
+      );
+    const scopeAligned = candidateReady && sharedPlanningState.next_dispatch_scope !== "none"
+      && (
+        sharedPlanningState.next_dispatch_scope === scope.scope_type
+        || (nextRouting.role === "coordinator" && sharedPlanningState.next_dispatch_scope === "session")
+      );
+    const candidateAligned = actionAligned && scopeAligned;
+    const planningUpdatedAtMs = parseTimestamp(sharedPlanningState.updated_at ?? "");
+    let freshnessStatus = "unknown";
+    let freshnessBasis = "shared planning freshness could not be derived";
+    if (currentStateUpdatedAtMs !== null && planningUpdatedAtMs !== null) {
+      freshnessStatus = planningUpdatedAtMs >= currentStateUpdatedAtMs ? "ok" : "stale";
+      freshnessBasis = planningUpdatedAtMs >= currentStateUpdatedAtMs
+        ? "shared planning state updated_at is aligned with CURRENT-STATE.md"
+        : "shared planning state updated_at is older than CURRENT-STATE.md";
+    }
+    const planningArbitrationStatus = normalizeScalar(
+      sharedPlanningState.planning_arbitration_status
+        || payload.planning_arbitration_status
+        || "none",
+    ) || "none";
+    const arbitrationResolved = isResolvedPlanningArbitrationStatus(planningArbitrationStatus);
+    return {
+      enabled: true,
+      artifact_found: true,
+      preferred_dispatch_source: candidateAligned ? "shared_planning" : "workflow",
+      candidate_ready: candidateReady,
+      candidate_aligned: candidateAligned,
+      freshness_status: freshnessStatus,
+      freshness_basis: freshnessBasis,
+      gate_status: arbitrationResolved ? "ok" : "blocked",
+      gate_reason: arbitrationResolved
+        ? "shared planning arbitration is resolved"
+        : `planning arbitration remains unresolved: ${planningArbitrationStatus}`,
+      next_dispatch_scope: normalizeScalar(sharedPlanningState.next_dispatch_scope) || "none",
+      next_dispatch_action: normalizeScalar(sharedPlanningState.next_dispatch_action) || "none",
+      backlog_next_step: normalizeScalar(sharedPlanningState.backlog_next_step || payload.backlog_next_step) || "unknown",
+      planning_arbitration_status: planningArbitrationStatus,
+      linked_cycles: Array.isArray(payload.linked_cycles)
+        ? payload.linked_cycles.map((item) => normalizeScalar(item)).filter(Boolean)
+        : splitList(payload.linked_cycles ?? ""),
+      backlog_artifact_source: "shared-coordination",
+      backlog_logical_path: backlogLogicalPath,
+    };
+  }
+
   const normalizedBacklog = normalizeBacklogRef(activeBacklog);
   if (normalizedBacklog === "none") {
     return {
@@ -372,6 +442,8 @@ function deriveSharedPlanningCandidate({
     candidatePath: normalizedBacklog,
     dbBacked,
     sqlitePayload,
+    sqliteRuntimeHeads,
+    dbSource,
   });
   if (!backlogResolution.exists) {
     return {
@@ -457,6 +529,17 @@ function buildMarkdown(packet) {
   lines.push("## Summary");
   lines.push("");
   lines.push(`updated_at: ${packet.updated_at}`);
+  lines.push(`project_id: ${packet.project_id}`);
+  lines.push(`project_id_source: ${packet.project_id_source}`);
+  lines.push(`project_root: ${packet.project_root}`);
+  lines.push(`workspace_id: ${packet.workspace_id}`);
+  lines.push(`workspace_id_source: ${packet.workspace_id_source}`);
+  lines.push(`worktree_id: ${packet.worktree_id}`);
+  lines.push(`is_linked_worktree: ${packet.is_linked_worktree}`);
+  lines.push(`shared_runtime_mode: ${packet.shared_runtime_mode}`);
+  lines.push(`shared_runtime_validation_status: ${packet.shared_runtime_validation_status}`);
+  lines.push(`shared_runtime_locator_ref: ${packet.shared_runtime_locator_ref}`);
+  lines.push(`shared_backend_kind: ${packet.shared_backend_kind}`);
   lines.push(`handoff_status: ${packet.handoff_status}`);
   lines.push(`handoff_from_agent_role: ${packet.handoff_from_agent_role}`);
   lines.push(`handoff_from_agent_action: ${packet.handoff_from_agent_action}`);
@@ -541,7 +624,7 @@ function buildMarkdown(packet) {
   return `${lines.join("\n")}\n`;
 }
 
-export function projectHandoffPacket({
+export async function projectHandoffPacket({
   targetRoot,
   currentStateFile = "docs/audit/CURRENT-STATE.md",
   runtimeStateFile = "docs/audit/RUNTIME-STATE.md",
@@ -550,23 +633,40 @@ export function projectHandoffPacket({
   handoffNote = "",
   fromAgentRole = "",
   fromAgentAction = "",
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
+  sharedStateOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const sharedCoordinationResolution = sharedCoordination ?? await resolveSharedCoordinationStore({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    ...sharedCoordinationOptions,
+  });
+  const sharedRuntimeValidation = validateSharedRuntimeContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+  });
   const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+  const sqliteFallback = dbBackedMode ? await loadDbIndexPayloadSafe(absoluteTargetRoot, sharedStateOptions) : {
     exists: false,
     sqliteFile: "",
     payload: null,
     runtimeHeads: {},
     warning: "",
   };
+  const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
   const currentStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: currentStateFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   const runtimeStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
@@ -574,6 +674,7 @@ export function projectHandoffPacket({
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   const currentStateText = currentStateResolution.text;
   const runtimeStateText = runtimeStateResolution.text;
@@ -588,6 +689,7 @@ export function projectHandoffPacket({
     sessionId: activeSession,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
   });
   const cycleStatusResolution = resolveCycleStatusArtifact({
     targetRoot: absoluteTargetRoot,
@@ -595,6 +697,7 @@ export function projectHandoffPacket({
     cycleId: activeCycle,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
   });
   const planResolution = resolveCyclePlanArtifact({
     targetRoot: absoluteTargetRoot,
@@ -602,6 +705,7 @@ export function projectHandoffPacket({
     cycleId: activeCycle,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
   });
   const consistency = currentStateResolution.source === "file"
     ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })
@@ -623,10 +727,23 @@ export function projectHandoffPacket({
   const handoffStatus = deriveHandoffStatus({ consistency, runtimeMap, currentMap });
   const mode = normalizeScalar(currentMap.get("mode") ?? "unknown") || "unknown";
   const firstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "unknown") || "unknown";
-  const activeBacklog = normalizeBacklogRef(currentMap.get("active_backlog") ?? "none");
-  const backlogStatus = normalizeScalar(currentMap.get("backlog_status") ?? "unknown") || "unknown";
-  const backlogNextStep = normalizeScalar(currentMap.get("backlog_next_step") ?? "unknown") || "unknown";
-  const planningArbitrationStatus = normalizeScalar(currentMap.get("planning_arbitration_status") ?? "none") || "none";
+  const sharedPlanningContext = await resolvePromotedSharedPlanningContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    currentState: {
+      active_session: activeSession,
+      active_backlog: currentMap.get("active_backlog") ?? "none",
+      backlog_status: currentMap.get("backlog_status") ?? "unknown",
+      backlog_next_step: currentMap.get("backlog_next_step") ?? "unknown",
+      backlog_selected_execution_scope: currentMap.get("backlog_selected_execution_scope") ?? "none",
+      planning_arbitration_status: currentMap.get("planning_arbitration_status") ?? "none",
+    },
+    sharedCoordination: sharedCoordinationResolution,
+  });
+  const activeBacklog = normalizeBacklogRef(sharedPlanningContext.active_backlog);
+  const backlogStatus = normalizeScalar(sharedPlanningContext.backlog_status) || "unknown";
+  const backlogNextStep = normalizeScalar(sharedPlanningContext.backlog_next_step) || "unknown";
+  const planningArbitrationStatus = normalizeScalar(sharedPlanningContext.planning_arbitration_status) || "none";
   const blockingFindings = uniqueItems(parseListSection(runtimeStateText, "blocking_findings").slice(0, 5));
   const nextRouting = deriveNextAgentRouting({
     handoffStatus,
@@ -649,12 +766,32 @@ export function projectHandoffPacket({
     scope,
     nextRouting,
     currentStateUpdatedAtMs: parseTimestamp(currentMap.get("updated_at") ?? ""),
+    sharedPlanningRead: activeSession !== "none"
+      ? await readSharedPlanningState(sharedCoordinationResolution, {
+        workspace,
+        sessionId: activeSession,
+        planningKey: `session:${activeSession}`,
+      })
+      : null,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
 
   const packet = {
     updated_at: new Date().toISOString(),
+    project_id: workspace.project_id,
+    project_id_source: workspace.project_id_source,
+    project_root: workspace.project_root,
+    workspace_id: workspace.workspace_id,
+    workspace_id_source: workspace.workspace_id_source,
+    worktree_id: workspace.worktree_id,
+    is_linked_worktree: workspace.is_linked_worktree ? "yes" : "no",
+    shared_runtime_mode: workspace.shared_runtime_mode,
+    shared_runtime_validation_status: sharedRuntimeValidation.status,
+    shared_runtime_locator_ref: workspace.shared_runtime_locator_ref,
+    shared_backend_kind: workspace.shared_backend_kind,
     handoff_status: handoffStatus,
     handoff_from_agent_role: handoffFromAgentRole,
     handoff_from_agent_action: handoffFromAgentAction,
@@ -674,7 +811,7 @@ export function projectHandoffPacket({
     scope_id: scope.scope_id,
     target_branch: scope.target_branch,
     backlog_refs: activeBacklog,
-    planning_arbitration_status: sharedPlanning.artifact_found ? sharedPlanning.planning_arbitration_status : planningArbitrationStatus,
+    planning_arbitration_status: planningArbitrationStatus,
     preferred_dispatch_source: sharedPlanning.preferred_dispatch_source,
     shared_planning_candidate_ready: sharedPlanning.candidate_ready ? "yes" : "no",
     shared_planning_candidate_aligned: sharedPlanning.candidate_aligned ? "yes" : "no",
@@ -712,7 +849,8 @@ export function projectHandoffPacket({
       sessionArtifact: sessionResolution,
       cycleStatusArtifact: cycleStatusResolution,
       planArtifact: planResolution,
-      currentMap,
+      activeBacklog,
+      firstPlanStep,
     }),
     consistency_status: consistency.pass ? "pass" : "fail",
     session_file: sessionResolution.exists ? sessionResolution.logicalPath : "none",
@@ -732,8 +870,18 @@ export function projectHandoffPacket({
 
   const markdown = buildMarkdown(packet);
   const outWrite = writeUtf8IfChanged(resolveTargetPath(absoluteTargetRoot, out), markdown);
+  const sharedCoordinationSync = await appendSharedHandoffRelay(sharedCoordinationResolution, {
+    workspace,
+    packet,
+    outputFile: relativePath(absoluteTargetRoot, outWrite.path),
+  });
   return {
     target_root: absoluteTargetRoot,
+    workspace,
+    shared_state_backend: sqliteFallback.backend ?? null,
+    shared_coordination_backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
+    shared_coordination_sync: sharedCoordinationSync,
+    shared_runtime_validation: sharedRuntimeValidation,
     output_file: outWrite.path,
     written: outWrite.written,
     packet,
@@ -742,9 +890,9 @@ export function projectHandoffPacket({
 }
 
 function main() {
-  try {
+  Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
-    const output = projectHandoffPacket({
+    const output = await projectHandoffPacket({
       targetRoot: args.target,
       currentStateFile: args.currentStateFile,
       runtimeStateFile: args.runtimeStateFile,
@@ -769,11 +917,11 @@ function main() {
       console.log(`- active_session=${output.packet.active_session}`);
       console.log(`- active_cycle=${output.packet.active_cycle}`);
     }
-  } catch (error) {
+  }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
-  }
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

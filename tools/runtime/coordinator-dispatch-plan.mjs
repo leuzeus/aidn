@@ -2,10 +2,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { readSharedPlanningState, resolveSharedCoordinationStore } from "../../src/application/runtime/shared-coordination-store-service.mjs";
 import { buildWorkflowStatus } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { loadRegisteredAgentAdapters } from "../../src/application/runtime/agent-adapter-registry-service.mjs";
 import { loadAgentRoster } from "../../src/application/runtime/agent-roster-service.mjs";
 import { assessIntegrationRisk } from "../../src/application/runtime/integration-risk-service.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { selectAgentAdapter } from "../../src/core/agents/agent-selection-policy.mjs";
 import { computeCoordinatorLoopState } from "./coordinator-loop.mjs";
 import { buildAgentHealthMap, verifyAgentRoster } from "./verify-agent-roster.mjs";
@@ -394,7 +396,11 @@ function normalizeSharedPlanning(currentState) {
   };
 }
 
-function readSharedPlanning(targetRoot, currentStateFile) {
+async function readSharedPlanning(targetRoot, currentStateFile, {
+  workspace = null,
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
+} = {}) {
   const { dbBackedMode } = resolveDbBackedModeDb(targetRoot);
   const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafeDb(targetRoot) : {
     exists: false,
@@ -418,6 +424,94 @@ function readSharedPlanning(targetRoot, currentStateFile) {
     backlog_next_step: currentMap.get("backlog_next_step") ?? "unknown",
     planning_arbitration_status: currentMap.get("planning_arbitration_status") ?? "none",
   });
+  const effectiveWorkspace = workspace ?? resolveWorkspaceContext({
+    targetRoot,
+  });
+  const sharedCoordinationResolution = sharedCoordination ?? await resolveSharedCoordinationStore({
+    targetRoot,
+    workspace: effectiveWorkspace,
+    ...sharedCoordinationOptions,
+  });
+  const activeSession = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
+  const sharedPlanningRead = activeSession !== "none"
+    ? await readSharedPlanningState(sharedCoordinationResolution, {
+      workspace: effectiveWorkspace,
+      sessionId: activeSession,
+      planningKey: `session:${activeSession}`,
+    })
+    : null;
+  const sharedPlanningState = sharedPlanningRead?.planning_state ?? null;
+
+  if (sharedPlanningRead?.ok === true && sharedPlanningState) {
+    const payload = sharedPlanningState.payload && typeof sharedPlanningState.payload === "object"
+      ? sharedPlanningState.payload
+      : {};
+    const planningArbitrationStatus = pickScalar(
+      [sharedPlanningState.planning_arbitration_status, payload.planning_arbitration_status, currentState.planning_arbitration_status],
+      { allowNone: false, allowUnknown: false },
+    ) || "none";
+    const currentUpdatedAtMs = parseTimestamp(currentMap.get("updated_at") ?? "");
+    const planningUpdatedAtMs = parseTimestamp(sharedPlanningState.updated_at ?? "");
+    let freshnessStatus = "unknown";
+    let freshnessBasis = "shared planning freshness could not be derived";
+    if (currentUpdatedAtMs !== null && planningUpdatedAtMs !== null) {
+      freshnessStatus = planningUpdatedAtMs >= currentUpdatedAtMs ? "ok" : "stale";
+      freshnessBasis = planningUpdatedAtMs >= currentUpdatedAtMs
+        ? "shared planning state updated_at is aligned with CURRENT-STATE.md"
+        : "shared planning state updated_at is older than CURRENT-STATE.md";
+    } else if (sharedPlanningRead.status === "found") {
+      freshnessStatus = "ok";
+      freshnessBasis = "shared planning state exists but timestamp comparison is incomplete";
+    }
+    const arbitrationResolved = isResolvedPlanningArbitrationStatus(planningArbitrationStatus);
+    return {
+      active_backlog: pickScalar(
+        [sharedPlanningState.backlog_artifact_ref, currentState.active_backlog],
+        { allowNone: false, allowUnknown: false },
+      ) || "none",
+      backlog_status: pickScalar(
+        [sharedPlanningState.planning_status, payload.planning_status, currentState.backlog_status],
+        { allowNone: false, allowUnknown: false },
+      ) || "unknown",
+      backlog_next_step: pickScalar(
+        [sharedPlanningState.backlog_next_step, payload.backlog_next_step, currentState.backlog_next_step],
+        { allowNone: false, allowUnknown: false },
+      ) || "unknown",
+      planning_arbitration_status: planningArbitrationStatus,
+      enabled: true,
+      artifact_found: true,
+      artifact_path: pickScalar(
+        [sharedPlanningState.backlog_artifact_ref, currentState.active_backlog],
+        { allowNone: false, allowUnknown: false },
+      ) || "none",
+      backlog_items: Array.isArray(payload.backlog_items) ? payload.backlog_items.map((item) => normalizeScalar(item)).filter(Boolean) : [],
+      open_questions: Array.isArray(payload.open_questions) ? payload.open_questions.map((item) => normalizeScalar(item)).filter(Boolean) : [],
+      linked_cycles: Array.isArray(payload.linked_cycles)
+        ? payload.linked_cycles.map((item) => normalizeScalar(item)).filter(Boolean)
+        : splitList(payload.linked_cycles ?? ""),
+      addenda_count: Array.isArray(payload.addenda) ? payload.addenda.length : 0,
+      recent_addenda: Array.isArray(payload.addenda) ? payload.addenda.slice(-3) : [],
+      dispatch_ready: sharedPlanningState.dispatch_ready === true,
+      next_dispatch_scope: pickScalar(
+        [sharedPlanningState.next_dispatch_scope, payload.next_dispatch_scope],
+        { allowNone: false, allowUnknown: false },
+      ) || "none",
+      next_dispatch_action: pickScalar(
+        [sharedPlanningState.next_dispatch_action, payload.next_dispatch_action],
+        { allowNone: false, allowUnknown: false },
+      ) || "none",
+      freshness_status: freshnessStatus,
+      freshness_basis: freshnessBasis,
+      gate_status: arbitrationResolved ? "ok" : "blocked",
+      gate_reason: arbitrationResolved
+        ? "shared planning arbitration is resolved"
+        : `planning arbitration remains unresolved: ${planningArbitrationStatus}`,
+      current_state_source: currentStateResolution.source,
+      backlog_artifact_source: "shared-coordination",
+      shared_planning_source: "shared-coordination",
+    };
+  }
+
   const backlogArtifactRef = resolveActiveBacklogPath(targetRoot, currentState.active_backlog);
   const backlogResolution = resolveAuditArtifactTextDb({
     targetRoot,
@@ -501,6 +595,7 @@ function readSharedPlanning(targetRoot, currentStateFile) {
     gate_reason: gateReason,
     current_state_source: currentStateResolution.source,
     backlog_artifact_source: backlogResolution.source,
+    shared_planning_source: "artifact",
   };
 }
 
@@ -754,16 +849,28 @@ export async function computeCoordinatorDispatchPlan({
   runtimeStateFile = "docs/audit/RUNTIME-STATE.md",
   packetFile = "docs/audit/HANDOFF-PACKET.md",
   agentRosterFile = "docs/audit/AGENT-ROSTER.md",
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
-  const loopState = computeCoordinatorLoopState({
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const loopState = await computeCoordinatorLoopState({
     targetRoot: absoluteTargetRoot,
     currentStateFile,
     runtimeStateFile,
     packetFile,
+    workspace,
+    sharedCoordination,
+    sharedCoordinationOptions,
   });
   const recommendation = loopState.recommendation;
-  const sharedPlanning = readSharedPlanning(absoluteTargetRoot, currentStateFile);
+  const sharedPlanning = await readSharedPlanning(absoluteTargetRoot, currentStateFile, {
+    workspace,
+    sharedCoordination,
+    sharedCoordinationOptions,
+  });
   const integrationRisk = assessIntegrationRisk({
     targetRoot: absoluteTargetRoot,
     currentStateFile,

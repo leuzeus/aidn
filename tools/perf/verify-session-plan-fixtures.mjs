@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -66,14 +67,15 @@ function readText(filePath) {
 }
 
 function main() {
+  let tempTarget = null;
   try {
     const args = parseArgs(process.argv.slice(2));
     const repoRoot = process.cwd();
     const sourceTarget = path.resolve(repoRoot, args.target);
-    const tempTarget = path.resolve(repoRoot, args.tempRoot);
+    tempTarget = path.resolve(repoRoot, args.tempRoot);
     const sqliteFile = path.resolve(tempTarget, args.sqliteFile);
 
-    fs.rmSync(tempTarget, { recursive: true, force: true });
+    removePathWithRetry(tempTarget);
     copyFixture(sourceTarget, tempTarget);
 
     const dualResult = runJson("tools/runtime/session-plan.mjs", [
@@ -160,6 +162,7 @@ function main() {
     assert(fs.existsSync(backlogPath), "missing promoted backlog file");
     const currentStateText = readText(currentStatePath);
     const backlogText = readText(backlogPath);
+    assert(currentStateText.includes("active_session: S401"), "CURRENT-STATE missing active_session update");
     assert(currentStateText.includes("active_backlog: backlog/BL-S401-session-planning.md"), "CURRENT-STATE missing active_backlog update");
     assert(currentStateText.includes("backlog_status: promoted"), "CURRENT-STATE missing backlog_status update");
     assert(currentStateText.includes("backlog_next_step: select the coordinating agent and dispatch scope"), "CURRENT-STATE missing merged backlog_next_step update");
@@ -231,6 +234,10 @@ function main() {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
+  } finally {
+    if (tempTarget) {
+      removePathWithRetry(tempTarget);
+    }
   }
 }
 
