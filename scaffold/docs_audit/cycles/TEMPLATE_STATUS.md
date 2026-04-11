@@ -3,6 +3,7 @@
 state: OPEN
 owner: (name)
 current goal: (1 phrase)
+contract_version: critical-markdown-v1
 
 branch_name: (git branch name)
 session_owner: (ex: S065) # optional but recommended

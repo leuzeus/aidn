@@ -1,52 +1,9 @@
 import path from "node:path";
+import { analyzeStructuredArtifact } from "./structured-artifact-parser-lib.mjs";
+import { validateCriticalMarkdownContract } from "./markdown-contract-registry-lib.mjs";
 
 const GENERATED_MARKER = "aidn:generated-from-canonical";
 const MANAGED_BLOCK_IDS = ["artifact_metadata", "key_values", "headings", "checklist", "notes"];
-
-function normalizeKey(raw) {
-  return String(raw ?? "").trim().toLowerCase().replace(/\s+/g, "_");
-}
-
-function parseKeyValues(lines) {
-  const out = {};
-  for (const line of lines) {
-    const match = line.match(/^([A-Za-z_][A-Za-z0-9_ ]*):\s*(.*)$/);
-    if (!match) {
-      continue;
-    }
-    const key = normalizeKey(match[1]);
-    if (key) {
-      out[key] = String(match[2] ?? "").trim();
-    }
-  }
-  return out;
-}
-
-function parseHeadings(lines) {
-  const out = [];
-  for (const line of lines) {
-    const match = line.match(/^(#{1,6})\s+(.+)$/);
-    if (match) {
-      out.push({ level: match[1].length, text: String(match[2] ?? "").trim() });
-    }
-  }
-  return out;
-}
-
-function parseChecklist(lines) {
-  let total = 0;
-  let checked = 0;
-  for (const line of lines) {
-    const match = line.match(/^\s*[-*]\s+\[([ xX])\]\s+/);
-    if (match) {
-      total += 1;
-      if (String(match[1]).toLowerCase() === "x") {
-        checked += 1;
-      }
-    }
-  }
-  return { total, checked };
-}
 
 function inferArtifactClass(relativePath, classification = {}) {
   const normalized = String(relativePath ?? "").replace(/\\/g, "/");
@@ -78,14 +35,29 @@ export function buildCanonicalFromMarkdown(content, options = {}) {
   const lines = normalized.split("\n");
   const relPath = String(options.relativePath ?? "");
   const basename = path.basename(relPath || "artifact.md", path.extname(relPath || "artifact.md"));
+  const analysis = analyzeStructuredArtifact(normalized, options);
+  const contract = validateCriticalMarkdownContract(normalized, {
+    ...options,
+    analysis,
+  });
+  const normalizedLines = String(analysis.normalized_text ?? normalized).split("\n");
   return {
     schema_version: 1,
     format: "markdown-canonical-v1",
     artifact_class: inferArtifactClass(relPath, options.classification ?? {}),
-    title: firstTitle(lines, basename || "artifact"),
-    headings: parseHeadings(lines),
-    key_values: parseKeyValues(lines),
-    checklist: parseChecklist(lines),
+    title: firstTitle(normalizedLines, basename || "artifact"),
+    headings: analysis.headings,
+    key_values: analysis.key_values,
+    checklist: analysis.checklist,
+    structured_sections: analysis.structured_sections,
+    derived_runtime_context: analysis.derived_runtime_context,
+    derived_session_context: analysis.derived_session_context,
+    ...(contract ? {
+      contract_version: contract.contract_version,
+      contract_status: contract.contract_status,
+      contract_findings: contract.contract_findings,
+      legacy_shape_id: contract.legacy_shape_id,
+    } : {}),
     stats: {
       line_count: lines.length,
       non_empty_line_count: lines.filter((line) => line.trim().length > 0).length,

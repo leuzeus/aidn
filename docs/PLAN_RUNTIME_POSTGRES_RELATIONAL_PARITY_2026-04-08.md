@@ -17,8 +17,8 @@ Reference migration guide:
 Validation context:
 
 - product repository inspection in `G:\projets\aidn`
-- real recovery/rebuild validation on `G:\projets\gowire`
-- recovered artifact corpus from `G:\projets\last_artefact_gowire`
+- real recovery/rebuild validation on one local-only external pilot repository
+- recovered artifact corpus from one local-only external pilot export
 
 ## Problem Statement
 
@@ -80,7 +80,7 @@ The current migration guide explicitly preserves a local SQLite projection when 
 
 - `docs/MIGRATION_RUNTIME_PERSISTENCE_POSTGRESQL.md`
 
-On `G:\projets\gowire`, current runtime config is:
+On the local-only external pilot repository, current runtime config is:
 
 - `runtime.persistence.backend=postgres`
 - `runtime.persistence.localProjectionPolicy=keep-local-sqlite`
@@ -412,16 +412,179 @@ Add fixture coverage for:
 
 ### Real smoke validation
 
-Repeat real validation on `G:\projets\gowire` with:
+Repeat real validation on the local-only external pilot repository with:
 
 - canonical PostgreSQL backend
 - no canonical dependence on local SQLite
 - row-count parity checks
 - rematerialization checks from PostgreSQL-backed runtime state
 
-## Data Quality Risk Exposed By Gowire
+## Pilot-Driven Import Remediation
 
-The `gowire` recovered corpus revealed duplicated `cycle_id` ownership across multiple directories:
+The relational parity work exposed one remaining import-quality gap on the local-only pilot corpus that must be closed in the same runtime pipeline.
+
+Validated on the local-only external pilot repository on 2026-04-11:
+
+- root runtime artifacts such as `CURRENT-STATE.md`, `RUNTIME-STATE.md`, and `HANDOFF-PACKET.md` are imported with content, but still persist with `session_id=null` and `cycle_id=null`
+- flattened one-line session artifacts exist in the recovered pilot corpus, which breaks parsers that rely on start-of-line field anchoring
+- the current import path therefore loses recoverable operational context that already exists in the artifact body
+
+Required correction in this plan:
+
+1. introduce one shared structured-artifact parser for runtime/session Markdown
+2. normalize flattened Markdown into logical lines before field extraction
+3. derive session context from session content, not only from path layout
+4. derive runtime context from root runtime artifacts and persist it in canonical/runtime-head payloads
+5. backfill `session_id` and `cycle_id` for root runtime artifacts only when no stronger path ownership exists
+6. keep the current relational schema unchanged for this lot and store the enrichment in:
+   - `artifacts.canonical_json`
+   - `runtime_heads.payload_json`
+
+### Shared Parser Scope
+
+The parser must be shared across:
+
+- runtime import / artifact projection
+- session-context parsing already used by runtime services
+- runtime-head reconstruction / rehydration payload enrichment
+
+It must support, at minimum:
+
+- session fields:
+  - `session_branch`
+  - `parent_session`
+  - `branch_kind`
+  - `cycle_branch`
+  - `intermediate_branch`
+  - `integration_target_cycle`
+  - `integration_target_cycles`
+  - `primary_focus_cycle`
+  - `attached_cycles`
+  - `reported_from_previous_session`
+  - `carry_over_pending`
+  - `mode`
+- root runtime fields:
+  - `active_session`
+  - `active_cycle`
+  - `session_branch`
+  - `branch_kind`
+  - `mode`
+  - `dor_state`
+  - `runtime_state_mode`
+  - `repair_layer_status`
+  - `repair_primary_reason`
+  - `repair_routing_hint`
+  - `current_state_freshness`
+  - `prioritized_artifacts`
+  - `blocking_findings`
+
+### Canonical Contract Addendum
+
+`buildCanonicalFromMarkdown(...)` remains backward-compatible, but gains optional enrichment fields:
+
+- `structured_sections`
+- `derived_runtime_context`
+- `derived_session_context`
+
+These fields are additive and optional. If a Markdown artifact does not match the runtime/session shapes, the canonical contract must keep the current behavior.
+
+## Critical Markdown Contract With Pilot Compatibility
+
+The pilot remediation closed the immediate import gap, but the runtime parity plan still needs one explicit Markdown contract for the critical operational artifacts.
+
+This contract work must follow these rules:
+
+- the live corpus remains the immediate operational truth
+- templates under `scaffold/docs_audit` are the target convergence baseline, not an absolute historical truth
+- legacy shapes remain accepted during the transition, but must be surfaced explicitly as warnings
+- enforcement is `warn-only` in this lot
+- newly generated critical artifacts should carry an explicit `contract_version`
+- older artifacts without a version remain supported through contract-shape inference
+
+Scope is intentionally limited to the critical runtime artifacts already involved in parity and rehydration:
+
+- `CURRENT-STATE.md`
+- `RUNTIME-STATE.md`
+- `HANDOFF-PACKET.md`
+- session files derived from `TEMPLATE_SESSION_SXXX.md`
+- cycle `status.md` derived from `TEMPLATE_STATUS.md`
+
+### Contract Source Priority
+
+When template expectations and live corpus observations diverge, the plan must resolve them in this order:
+
+1. preserve support for the live operational form if it is still semantically valid
+2. classify the divergence explicitly as:
+   - template update required
+   - legacy tolerated shape
+   - non-conformant shape
+3. converge future generators/templates toward one explicit contract baseline
+
+This means the contract checker must validate structure and required data, not exact text identity against the template body.
+
+### Shared Contract Registry
+
+One shared registry must define the critical Markdown contract with, at minimum:
+
+- `artifact_type`
+- `contract_version`
+- `required_sections`
+- `required_fields`
+- `field_types`
+- `legacy_variants`
+
+The registry must be reused by:
+
+- Markdown canonicalization
+- artifact import / projection
+- runtime-head payload enrichment
+- any session/runtime parsing service that needs contract awareness
+
+### Validation Rules
+
+Validation remains `warn-only` and must produce one structured result per critical artifact with these states:
+
+- `conformant`
+- `legacy_tolerated`
+- `non_conformant`
+
+The validator must:
+
+- check required sections by normalized heading identity
+- check required fields by structured field extraction, not raw regex-only heuristics
+- check scalar vs list expectations where the contract is explicit
+- accept declared legacy variants without blocking import
+- mark missing or invalid explicit versions as findings, while keeping import operational
+
+### Canonical And Runtime Payload Addendum
+
+`buildCanonicalFromMarkdown(...)` remains backward-compatible and must add these optional fields for critical artifacts:
+
+- `contract_version`
+- `contract_status`
+- `contract_findings`
+- `legacy_shape_id`
+
+`runtime_heads.payload_json` must expose the same contract metadata for runtime root artifacts so SQLite and PostgreSQL rehydration stay aligned on contract visibility as well as ownership recovery.
+
+### Test Baseline For This Lot
+
+The test plan for this contract work must cover:
+
+- template-conformant critical artifacts
+- legacy live artifacts still accepted through inference
+- missing required section
+- missing required field
+- field-type mismatch
+- missing explicit version on a legacy artifact
+- invalid explicit version
+- import parity preserved despite warnings
+- SQLite and PostgreSQL parity on the new contract metadata
+- continued local pilot coverage
+
+## Data Quality Risk Exposed By The External Pilot
+
+The recovered pilot corpus revealed duplicated `cycle_id` ownership across multiple directories:
 
 - `C004`
 - `C005`
@@ -442,7 +605,7 @@ This decision must be made before declaring parity complete, because it affects 
 2. backend-neutral ports that still hide SQLite-only assumptions
 3. migration code that silently chooses between conflicting SQLite and PostgreSQL sources
 4. local-projection removal before PostgreSQL readers are truly complete
-5. data ambiguities in recovered repositories such as `gowire`
+5. data ambiguities in recovered pilot repositories
 
 ## Acceptance Criteria
 
@@ -453,7 +616,7 @@ This plan is complete only when all of the following are true:
 3. SQLite is optional compatibility projection, not hidden source of truth
 4. `persistence-status` no longer depends on comparing a PostgreSQL snapshot model to a richer SQLite model
 5. migration from existing PostgreSQL runtime snapshot installs is supported and verified
-6. real repository validation passes on `gowire`
+6. real repository validation passes on the local-only external pilot repository
 7. the runtime persistence area has explicit backend-neutral ports aligned with SOLID responsibilities
 8. canonical runtime application services no longer depend directly on SQLite helpers
 9. admin, migration, and canonical persistence concerns are separated clearly enough that the backend can evolve without application-layer rewrites
@@ -464,4 +627,4 @@ This plan is complete only when all of the following are true:
 2. PostgreSQL runtime schema v2 DDL
 3. backend-neutral runtime relational ports
 4. migration fixture set for snapshot-v1 to relational-v2
-5. real smoke checklist for `gowire`
+5. real smoke checklist for the local-only external pilot repository

@@ -342,6 +342,22 @@ function normalizeArtifactPath(value) {
     .replace(/^docs\/audit\//i, "");
 }
 
+function parseJsonOrNull(value) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return null;
+  }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeEntityId(value, prefix) {
+  const match = String(value ?? "").trim().toUpperCase().match(new RegExp(`\\b(${prefix}\\d+)\\b`, "i"));
+  return match ? match[1].toUpperCase() : null;
+}
+
 const RUNTIME_HEAD_DEFINITIONS = [
   {
     headKey: "current_state",
@@ -413,17 +429,62 @@ export function normalizeHotArtifactSubtype(pathValue, subtypeValue) {
   return definition?.headKey ?? null;
 }
 
+function resolveRuntimeHeadCanonicalContexts(artifact) {
+  const canonical = parseJsonOrNull(artifact?.canonical_json);
+  return {
+    derived_runtime_context: canonical?.derived_runtime_context && typeof canonical.derived_runtime_context === "object"
+      ? canonical.derived_runtime_context
+      : null,
+    derived_session_context: canonical?.derived_session_context && typeof canonical.derived_session_context === "object"
+      ? canonical.derived_session_context
+      : null,
+  };
+}
+
+function resolveRuntimeHeadContractMetadata(artifact) {
+  const canonical = parseJsonOrNull(artifact?.canonical_json);
+  return {
+    contract_version: typeof canonical?.contract_version === "string" && canonical.contract_version.trim()
+      ? canonical.contract_version.trim()
+      : null,
+    contract_status: typeof canonical?.contract_status === "string" && canonical.contract_status.trim()
+      ? canonical.contract_status.trim()
+      : null,
+    legacy_shape_id: typeof canonical?.legacy_shape_id === "string" && canonical.legacy_shape_id.trim()
+      ? canonical.legacy_shape_id.trim()
+      : null,
+    contract_findings: Array.isArray(canonical?.contract_findings) ? canonical.contract_findings : [],
+  };
+}
+
+function resolveRuntimeHeadOwnership(artifact) {
+  const contexts = resolveRuntimeHeadCanonicalContexts(artifact);
+  return {
+    session_id: artifact?.session_id ?? normalizeEntityId(contexts.derived_runtime_context?.active_session, "S"),
+    cycle_id: artifact?.cycle_id ?? normalizeEntityId(contexts.derived_runtime_context?.active_cycle, "C"),
+    ...contexts,
+  };
+}
+
 function buildRuntimeHeadPayload(artifact, definition) {
+  const ownership = resolveRuntimeHeadOwnership(artifact);
+  const contractMetadata = resolveRuntimeHeadContractMetadata(artifact);
   return JSON.stringify({
     head_key: definition.headKey,
     artifact_id: Number(artifact?.artifact_id ?? 0) || null,
     artifact_path: artifact?.path ?? null,
     sha256: artifact?.sha256 ?? null,
-    session_id: artifact?.session_id ?? null,
-    cycle_id: artifact?.cycle_id ?? null,
+    session_id: ownership.session_id ?? null,
+    cycle_id: ownership.cycle_id ?? null,
     kind: artifact?.kind ?? null,
     subtype: artifact?.subtype ?? null,
     updated_at: artifact?.updated_at ?? null,
+    derived_runtime_context: ownership.derived_runtime_context,
+    derived_session_context: ownership.derived_session_context,
+    contract_version: contractMetadata.contract_version,
+    contract_status: contractMetadata.contract_status,
+    legacy_shape_id: contractMetadata.legacy_shape_id,
+    contract_findings: contractMetadata.contract_findings,
   });
 }
 
@@ -611,7 +672,7 @@ export function rebuildRuntimeHeads(db) {
   ensureRuntimeHeadsTable(db);
   db.exec("DELETE FROM runtime_heads;");
   const rows = db.prepare(`
-    SELECT artifact_id, path, kind, subtype, sha256, session_id, cycle_id, updated_at
+    SELECT artifact_id, path, kind, subtype, sha256, session_id, cycle_id, updated_at, canonical_json
     FROM artifacts
     ORDER BY updated_at DESC, artifact_id DESC
   `).all();
@@ -641,13 +702,14 @@ export function rebuildRuntimeHeads(db) {
     }
     seen.add(definition.headKey);
     matched += 1;
+    const ownership = resolveRuntimeHeadOwnership(row);
     upsert.run(
       definition.headKey,
       Number(row.artifact_id ?? 0) || null,
       String(row.path ?? ""),
       row.sha256 ?? null,
-      row.session_id ?? null,
-      row.cycle_id ?? null,
+      ownership.session_id ?? null,
+      ownership.cycle_id ?? null,
       row.kind ?? null,
       row.subtype ?? null,
       row.updated_at ?? new Date().toISOString(),

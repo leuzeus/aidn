@@ -11,3 +11,4 @@ tmp/
 .aidn/runtime/
 tests/fixtures/tmp-*/
 tests/fixtures/**/.aidn/
+tests/fixtures/perf-structure/*runtime-import*/

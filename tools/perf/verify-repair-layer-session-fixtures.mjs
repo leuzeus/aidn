@@ -1,7 +1,9 @@
 #!/usr/bin/env node
+import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { readIndexFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
+import { resolveLocalPilotRuntimeImportTarget } from "./local-pilot-runtime-import-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -62,6 +64,18 @@ function loadPayloadForTarget(target, sqliteFile) {
   return readIndexFromSqlite(sqliteFile).payload;
 }
 
+function selectPrimarySessionSessionChecks(checks) {
+  const rows = Array.isArray(checks?.sessions) ? checks.sessions : [];
+  return rows.slice().sort((left, right) => {
+    const leftFocus = String(left?.integration_target_cycle ?? "").trim() ? 1 : 0;
+    const rightFocus = String(right?.integration_target_cycle ?? "").trim() ? 1 : 0;
+    if (rightFocus !== leftFocus) {
+      return rightFocus - leftFocus;
+    }
+    return String(left?.session_id ?? "").localeCompare(String(right?.session_id ?? ""), undefined, { numeric: true, sensitivity: "base" });
+  })[0] ?? null;
+}
+
 function buildSessionChecks(payload) {
   const sessions = Array.isArray(payload.sessions) ? payload.sessions : [];
   const links = Array.isArray(payload.session_cycle_links) ? payload.session_cycle_links : [];
@@ -90,14 +104,26 @@ function main() {
     const sqliteFile = resolveTargetPath(target, args.sqliteFile);
     const multiTarget = path.resolve(process.cwd(), "tests/fixtures/perf-structure/session-multi-cycle-explicit");
     const legacyTarget = path.resolve(process.cwd(), "tests/fixtures/perf-structure/session-legacy-multi-target");
+    const pilotResolution = resolveLocalPilotRuntimeImportTarget({
+      explicitRoot: process.env.AIDN_PILOT_RUNTIME_IMPORT_ROOT,
+    });
+    if (pilotResolution.status === "invalid") {
+      throw new Error(pilotResolution.reason);
+    }
+    const pilotTarget = pilotResolution.target;
 
     const basePayload = loadPayloadForTarget(target, sqliteFile);
     const multiPayload = loadPayloadForTarget(multiTarget, resolveTargetPath(multiTarget, args.sqliteFile));
     const legacyPayload = loadPayloadForTarget(legacyTarget, resolveTargetPath(legacyTarget, args.sqliteFile));
+    const pilotPayload = pilotTarget
+      ? loadPayloadForTarget(pilotTarget, resolveTargetPath(pilotTarget, args.sqliteFile))
+      : null;
 
     const base = buildSessionChecks(basePayload);
     const multi = buildSessionChecks(multiPayload);
     const legacy = buildSessionChecks(legacyPayload);
+    const pilot = pilotPayload ? buildSessionChecks(pilotPayload) : null;
+    const pilotPrimarySession = selectPrimarySessionSessionChecks(pilot);
 
     const checks = {
       session_s101_present: base.byId.has("S101"),
@@ -141,6 +167,29 @@ function main() {
       session_s104_target_c106: Boolean(legacy.linkFor("S104", "C106", "explicit", "integration_target_cycle")),
       session_s104_normalization_finding: legacy.findings.some((row) => String(row?.finding_type ?? "") === "SESSION_METADATA_NORMALIZATION_RECOMMENDED" && String(row?.entity_id ?? "") === "S104"),
       session_s104_no_ambiguous_finding: !legacy.findings.some((row) => String(row?.finding_type ?? "") === "AMBIGUOUS_RELATION" && String(row?.entity_id ?? "") === "S104"),
+      pilot_flattened_fixture_present: pilot ? pilot.sessions.length >= 2 : true,
+      pilot_primary_session_branch: pilotPrimarySession ? Boolean(String(pilotPrimarySession?.branch_name ?? "").trim()) : true,
+      pilot_primary_session_parent_session: pilotPrimarySession ? Boolean(String(pilotPrimarySession?.parent_session ?? "").trim()) : true,
+      pilot_primary_session_branch_kind: pilotPrimarySession ? String(pilotPrimarySession?.branch_kind ?? "") === "session" : true,
+      pilot_primary_session_focus_cycle: pilotPrimarySession ? Boolean(String(pilotPrimarySession?.integration_target_cycle ?? "").trim()) : true,
+      pilot_primary_session_attached_cycle: pilotPrimarySession
+        ? pilot.links.some((row) =>
+          String(row?.session_id ?? "") === String(pilotPrimarySession?.session_id ?? "")
+          && String(row?.relation_type ?? "") === "attached_cycle"
+          && String(row?.source_mode ?? "") === "explicit")
+        : true,
+      pilot_primary_session_target_cycle: pilotPrimarySession
+        ? pilot.links.some((row) =>
+          String(row?.session_id ?? "") === String(pilotPrimarySession?.session_id ?? "")
+          && String(row?.cycle_id ?? "") === String(pilotPrimarySession?.integration_target_cycle ?? "")
+          && String(row?.relation_type ?? "") === "integration_target_cycle"
+          && String(row?.source_mode ?? "") === "explicit")
+        : true,
+      pilot_primary_session_no_partial_metadata_finding: pilotPrimarySession
+        ? !pilot.findings.some((row) =>
+          String(row?.finding_type ?? "") === "SESSION_PARTIAL_METADATA"
+          && String(row?.entity_id ?? "") === String(pilotPrimarySession?.session_id ?? ""))
+        : true,
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {
@@ -151,6 +200,9 @@ function main() {
         base: target,
         multi: multiTarget,
         legacy: legacyTarget,
+        pilot: pilotTarget,
+        pilot_resolution_status: pilotResolution.status,
+        pilot_resolution_reason: pilotResolution.reason,
       },
       checks,
       base_sessions: base.sessions,
@@ -163,6 +215,9 @@ function main() {
       legacy_sessions: legacy.sessions,
       legacy_session_cycle_links: legacy.links,
       legacy_findings: legacy.findings,
+      pilot_sessions: pilot?.sessions ?? [],
+      pilot_session_cycle_links: pilot?.links ?? [],
+      pilot_findings: pilot?.findings ?? [],
       pass,
     };
 

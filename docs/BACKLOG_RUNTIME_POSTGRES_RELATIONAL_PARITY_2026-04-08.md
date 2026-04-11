@@ -21,8 +21,8 @@ Reference migration guide:
 Validation context:
 
 - repository analysis in `G:\projets\aidn`
-- real rebuild and drift validation in `G:\projets\gowire`
-- recovered artifact corpus in `G:\projets\last_artefact_gowire`
+- real rebuild and drift validation in one local-only external pilot repository
+- recovered artifact corpus in one local-only external pilot export
 
 ## Progress Snapshot
 
@@ -38,8 +38,8 @@ As of 2026-04-09:
 - PostgreSQL adoption now blocks SQLite sources that reuse one logical `cycle_id` across multiple cycle directories
 - runtime CLI now exposes `persistence-source-diagnose` to report duplicated logical `cycle_id` values before any PostgreSQL transfer
 - runtime CLI now exposes `persistence-source-normalize` to replay an approved cycle-identity rename mapping on the canonical `docs/audit` source corpus
-- real `gowire` source diagnostics confirm 3 blocking logical cycle identity collisions: `C004`, `C005`, `C032`
-- a non-destructive normalization proposal exists for `gowire`:
+- real external-pilot source diagnostics confirm 3 blocking logical cycle identity collisions: `C004`, `C005`, `C032`
+- a non-destructive normalization proposal exists for the local-only external pilot corpus:
   - `C004-spike-root-structure-investigation` -> `C020-spike-root-structure-investigation`
   - `C005-structural-root-simplification-lot1` -> `C021-structural-root-simplification-lot1`
   - `C032-corrective-component-review-hardening` -> `C034-corrective-component-review-hardening`
@@ -47,26 +47,26 @@ As of 2026-04-09:
   - SQLite source diagnostics converge to `diagnostic_status=ready`
   - PostgreSQL smoke on `aidn_smoke` converges to `storage_policy=relational-canonical`
   - adoption planner/result converge to `target-matches-source`
-- concrete 2026-04-10 CLI replay on `G:\projets\gowire\.aidn\runtime\recovery\2026-04-10-cli-normalized-workspace` is now recorded:
+- concrete 2026-04-10 CLI replay on one local-only normalized recovery copy is now recorded:
   - `persistence-source-normalize` rewrote `39` files and renamed `3` cycle directories
   - `index-sync --store dual-sqlite --with-content` rebuilt `89` cycles / `74` sessions / `891` artifacts
   - `persistence-adopt --backend postgres --connection-ref env:AIDN_PG_SMOKE_URL` applied successfully on `aidn_smoke`
   - the immediate follow-up dry-run converged to `action=noop` with `reason_code=target-matches-source`
   - target inspection converged to `compatibility_status=relational-ready` with `canonical_payload_rows=1` and `legacy_snapshot_rows=0`
-- concrete 2026-04-10 `localProjectionPolicy=none` replay on `G:\projets\gowire\.aidn\runtime\recovery\2026-04-10-postgres-none-smoke` is now recorded:
+- concrete 2026-04-10 `localProjectionPolicy=none` replay on one local-only PostgreSQL smoke copy is now recorded:
   - config switched to `runtime.stateMode=db-only`, `runtime.persistence.backend=postgres`, `runtime.persistence.localProjectionPolicy=none`
   - the local `workflow-index.sqlite` projection was removed after adoption
   - `persistence-status` converged to `projection_scope=runtime-canonical`, `compatibility_status=relational-ready`, `action=noop`
   - `project-runtime-state` converged to `shared_state_backend.projection_scope=runtime-canonical` and `current_state_source=postgres`
   - `db-only-readiness` passed with `projection_scope=runtime-canonical` and `current_state_source=postgres`
-- concrete 2026-04-10 promoted-copy replay on `G:\projets\gowire-promoted-live-copy-2026-04-10` is now recorded:
+- concrete 2026-04-10 promoted-copy replay on one local-only promoted copy is now recorded:
   - `artifact-store materialize` rebuilt the promoted copy corpus from the restored live SQLite source (`891` selected artifacts)
   - `persistence-source-normalize` + `index-sync --store dual-sqlite --with-content` converged to `diagnostic_status=ready` with `89` cycles / `74` sessions / `891` artifacts
   - because `index-sync` had already populated the relational target for that `scope_key`, the PostgreSQL scope was backed up then purged before adoption replay
   - `persistence-adopt --backend postgres --connection-ref env:AIDN_PG_URL` then applied successfully on the promoted copy
   - the immediate follow-up dry-run converged to `action=noop` with `reason_code=target-matches-source`
   - final target inspection converged to `compatibility_status=relational-ready` with `canonical_payload_rows=1` and `legacy_snapshot_rows=0`
-- concrete 2026-04-10 double-validation replay on `G:\projets\gowire-promoted-live-copy-2026-04-10-validation-2` is now recorded:
+- concrete 2026-04-10 double-validation replay on one second local-only promoted copy is now recorded:
   - the second promoted copy was rebuilt independently from the live `.aidn` payload
   - initial diagnostics reproduced the same source blockers as live: `source-cycle-identity-ambiguous` + `source-scope-drift`
   - `persistence-source-normalize` again converged with `directories_renamed=3`
@@ -76,7 +76,7 @@ As of 2026-04-09:
   - `persistence-adopt --backend postgres --connection-ref env:AIDN_PG_URL` again applied successfully
   - the immediate follow-up dry-run again converged to `action=noop` with `reason_code=target-matches-source`
   - final target inspection again converged to `compatibility_status=relational-ready` with `canonical_payload_rows=1` and `legacy_snapshot_rows=0`
-- concrete 2026-04-10 live replay on `G:\projets\gowire` is now recorded:
+- concrete 2026-04-10 live replay on the local-only external pilot repository is now recorded:
   - SQLite, PostgreSQL, and local audit backups were captured before any live rewrite
   - `artifact-store materialize` rebuilt the live `docs/audit` corpus from SQLite
   - `persistence-source-normalize` replayed the approved mapping directly on live and converged with `directories_renamed=3`
@@ -91,6 +91,12 @@ As of 2026-04-09:
 - live PostgreSQL smoke fixture now covers the post-transfer `localProjectionPolicy=none` cutover and validates runtime-canonical reads from PostgreSQL
 - remaining open work is concentrated in:
   - deciding whether to keep `runtime.persistence.localProjectionPolicy=keep-local-sqlite` on live, or to schedule a dedicated live `localProjectionPolicy=none` cutover
+- the external-pilot import-quality gap is now closed in the runtime pipeline:
+  - flattened pilot session artifacts are normalized and parsed through one shared structured-artifact parser
+  - root runtime artifacts now persist derived runtime context in canonical payloads
+  - root runtime artifacts now recover `session_id` / `cycle_id` from content when path ownership is absent
+  - SQLite and PostgreSQL runtime heads now carry the same derived runtime/session payload fields for these artifacts
+  - local-only pilot fixtures now lock the behavior without depending on the live pilot path
 
 ## Delivery Rules
 
@@ -488,13 +494,13 @@ Done when:
 
 - fixture coverage exists for success, blocked-conflict, partial-target, and rollback-safe cases
 
-### RPRP-21. Add Real Smoke Validation On Gowire
+### RPRP-21. Add Real Smoke Validation On External Pilot
 **Priority:** P2  
 **Status:** in-progress
 
 Goal:
 
-- validate canonical PostgreSQL runtime behavior on the real `gowire` repository
+- validate canonical PostgreSQL runtime behavior on the local-only external pilot repository
 
 Dependencies:
 
@@ -504,7 +510,7 @@ Dependencies:
 
 Done when:
 
-- `gowire` can run with PostgreSQL as canonical runtime backend
+- the external pilot repository can run with PostgreSQL as canonical runtime backend
 - local SQLite can be optional or disabled according to policy
 - real parity checks pass after rebuild/adoption
 
@@ -512,8 +518,198 @@ Current evidence:
 
 - dedicated recovery workspace replay passed on 2026-04-10 with normalization, rebuild, PostgreSQL transfer, and post-transfer `noop`
 - dedicated recovery workspace replay also passed on 2026-04-10 with `localProjectionPolicy=none` and runtime-canonical PostgreSQL reads after local SQLite removal
-- read-only validation on the current live `gowire` workspace shows the remaining blocker is still the un-applied cycle-identity normalization, not a PostgreSQL parity failure
+- read-only validation on the current live external pilot workspace shows the remaining blocker is still the un-applied cycle-identity normalization, not a PostgreSQL parity failure
 - the remaining gap is rollout execution on a promoted copy of the live workspace
+
+### RPRP-21A. Recover Structured Context From External Pilot Artifact Content
+**Priority:** P2  
+**Status:** completed
+
+Goal:
+
+- fix the runtime import gap exposed by the local-only external pilot corpus so flattened session artifacts and root runtime digests rehydrate with the structured fields already present in their content
+
+Dependencies:
+
+- RPRP-19
+- RPRP-21
+
+Done when:
+
+- flattened pilot-style session Markdown is normalized and parsed through a shared parser
+- representative flattened pilot sessions recover their structured fields on both SQLite and PostgreSQL relational paths
+- `CURRENT-STATE.md`, `RUNTIME-STATE.md`, and `HANDOFF-PACKET.md` persist derived runtime context in canonical/runtime-head payloads
+- root runtime artifacts can recover `session_id` / `cycle_id` from `active_session` / `active_cycle` when path ownership is absent
+- path-derived ownership still wins over content-derived ownership
+- the fix is locked by local-only pilot fixtures, not by a live dependency on the external pilot path
+
+Current evidence:
+
+- shared parser module now normalizes flattened session artifacts before extraction and is consumed by both session-context parsing and repair-layer session reconstruction
+- artifact projection now backfills root runtime artifact ownership from canonical derived runtime context only when path ownership is absent
+- SQLite runtime-head rebuild and PostgreSQL relational projection now persist the same derived runtime/session payload enrichment
+- local-only runtime-import fixture corpus now reproduces the real-world shape with flattened sessions and root runtime digests
+- 2026-04-11 targeted verification passed:
+  - `npm run perf:verify-repair-layer-session`
+  - `npm run perf:verify-pilot-runtime-import`
+  - `npm run perf:verify-runtime-relational-projection`
+  - `npm run perf:verify-runtime-persistence-parity`
+  - `npm run perf:verify-postgres-runtime-relational-store`
+
+### RPRP-21B. Freeze Markdown Contract Baseline
+**Priority:** P2  
+**Status:** completed
+
+Goal:
+
+- define one explicit critical-Markdown contract baseline that reconciles current pilot-style live artifacts with the current scaffold templates
+
+Dependencies:
+
+- RPRP-21A
+
+Done when:
+
+- the critical artifact scope is frozen
+- the source priority `live corpus > current template text` is documented
+- the baseline contract fields/sections and tolerated legacy variants are explicitly listed
+- the plan and backlog both define lot-by-lot status progression and evidence expectations
+
+Current evidence:
+
+- plan section `Critical Markdown Contract With Pilot Compatibility` now freezes source priority, scope, validation mode, and canonical/runtime payload addendum
+- backlog now tracks `RPRP-21B` through `RPRP-21F` plus the explicit lot progression rule
+- the baseline artifact scope is frozen to `CURRENT-STATE`, `RUNTIME-STATE`, `HANDOFF-PACKET`, session files, and cycle `status.md`
+
+### RPRP-21C. Implement Shared Markdown Contract Registry
+**Priority:** P2  
+**Status:** completed
+
+Goal:
+
+- introduce one shared registry describing critical Markdown artifact contracts and tolerated legacy variants
+
+Dependencies:
+
+- RPRP-21B
+
+Done when:
+
+- one shared module resolves the critical artifact contract
+- the registry exposes `artifact_type`, `contract_version`, `required_sections`, `required_fields`, `field_types`, and `legacy_variants`
+- no service needs to define its own local contract baseline for the covered artifacts
+
+Current evidence:
+
+- shared registry added in `src/lib/workflow/markdown-contract-registry-lib.mjs`
+- registry now resolves contracts for root runtime digests, sessions, and cycle status artifacts
+- scaffold templates now declare `contract_version: critical-markdown-v1` for the covered future-generated artifacts
+
+### RPRP-21D. Add Warn-Only Conformance Validation
+**Priority:** P2  
+**Status:** completed
+
+Goal:
+
+- validate critical Markdown artifacts against the shared contract without blocking import/runtime flows
+
+Dependencies:
+
+- RPRP-21C
+
+Done when:
+
+- validation emits `conformant`, `legacy_tolerated`, or `non_conformant`
+- missing sections, missing fields, invalid versions, and type mismatches become explicit findings
+- legacy shapes remain accepted in `warn-only`
+
+Current evidence:
+
+- `buildCanonicalFromMarkdown(...)` now runs the shared contract validator without blocking import
+- validation findings now cover invalid explicit versions, missing explicit versions, missing sections, missing fields, and field-type mismatches
+- `npm run perf:verify-markdown-contract` passed on 2026-04-11
+- `npm run perf:verify-pilot-runtime-import` passed on 2026-04-11 with `legacy_tolerated` visibility preserved for live-style digests
+
+### RPRP-21E. Persist Contract Metadata In Canonical Runtime Payloads
+**Priority:** P2  
+**Status:** completed
+
+Goal:
+
+- expose contract metadata in canonical Markdown payloads and runtime-head payloads without changing the relational schema
+
+Dependencies:
+
+- RPRP-21D
+
+Done when:
+
+- `canonical_json` exposes `contract_version`, `contract_status`, `contract_findings`, and `legacy_shape_id`
+- runtime-head payloads expose the same contract metadata for runtime root artifacts
+- SQLite and PostgreSQL keep parity on the enriched payloads
+
+Current evidence:
+
+- canonical Markdown payloads now expose `contract_version`, `contract_status`, `contract_findings`, and `legacy_shape_id`
+- runtime-head payloads now persist the same contract metadata on both SQLite rebuild and PostgreSQL relational projection paths
+- 2026-04-11 verification passed:
+  - `npm run perf:verify-runtime-relational-projection`
+  - `npm run perf:verify-runtime-persistence-parity`
+  - `npm run perf:verify-postgres-runtime-relational-store`
+
+### RPRP-21F. Add Fixture Coverage For Template Conformance
+**Priority:** P2  
+**Status:** completed
+
+Goal:
+
+- lock the contract behavior with repo fixtures that cover both target-template shapes and tolerated live legacy shapes
+
+Dependencies:
+
+- RPRP-21E
+
+Done when:
+
+- fixtures cover conformant, legacy-tolerated, non-conformant, missing-version, and invalid-version cases
+- verification explicitly covers continued local pilot compatibility
+- no SQLite/PostgreSQL regression is introduced by the contract metadata
+
+Current evidence:
+
+- new fixture corpus `tests/fixtures/perf-structure/markdown-contract-conformance` now covers:
+  - conformant explicit-version current state
+  - invalid explicit-version runtime state
+  - non-conformant missing-section handoff packet
+  - legacy-tolerated missing-version session and cycle status
+  - non-conformant missing-field and field-type-mismatch sessions
+- verification script `tools/perf/verify-markdown-contract-conformance-fixtures.mjs` now checks canonical metadata and SQLite/PostgreSQL runtime-head parity
+- continued live-style compatibility remains covered by one local-only pilot runtime-import corpus
+- 2026-04-11 targeted verification passed:
+  - `npm run perf:verify-markdown-contract`
+  - `npm run perf:verify-pilot-runtime-import`
+  - `npm run perf:verify-repair-layer-session`
+  - `npm run perf:verify-current-state-consistency-fixtures`
+  - `npm run perf:verify-handoff-packet`
+  - `npm run perf:verify-start-session-admission`
+  - `npm run perf:verify-branch-cycle-audit-admission`
+
+### RPRP-21 Status Progression Rule
+**Priority:** P2  
+**Status:** active
+
+Rule:
+
+- before starting a lot, move `proposed` to `in-progress`
+- only move a lot to `completed` after code, tests, and docs for that lot are done
+- if dependencies are not closed, the dependent lot remains `proposed`
+- every completed lot must include `Current evidence`
+
+`Current evidence` must list:
+
+- verification commands that passed
+- fixtures added or extended
+- the functional impact that was actually validated
 
 ## P3 - Rollout, Cleanup, And Documentation
 
@@ -597,5 +793,5 @@ The backlog is complete only when:
 2. PostgreSQL covers the same canonical runtime entities as `workflow-index.sqlite`
 3. SQLite is optional compatibility projection only
 4. migration from existing PostgreSQL snapshot installs is supported and verified
-5. real validation passes on `gowire`
+5. real validation passes on the local-only external pilot repository
 6. SOLID remediation is visible in the runtime persistence architecture, not just in documentation

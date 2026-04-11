@@ -163,6 +163,49 @@ function inferArtifactOwnership(relativePath) {
   };
 }
 
+function normalizeEntityId(value, prefix) {
+  const match = String(value ?? "").trim().toUpperCase().match(new RegExp(`\\b(${prefix}\\d+)\\b`, "i"));
+  return match ? match[1].toUpperCase() : null;
+}
+
+function deriveOwnershipFromCanonical(relativePath, ownership, canonical) {
+  if ((ownership?.session_id || ownership?.cycle_id) || !canonical || typeof canonical !== "object") {
+    return {
+      ownership,
+      metadata: null,
+    };
+  }
+  const normalized = String(relativePath ?? "").replace(/\\/g, "/");
+  if (normalized.includes("/")) {
+    return {
+      ownership,
+      metadata: null,
+    };
+  }
+  const runtimeContext = canonical?.derived_runtime_context && typeof canonical.derived_runtime_context === "object"
+    ? canonical.derived_runtime_context
+    : null;
+  const sessionId = normalizeEntityId(runtimeContext?.active_session, "S");
+  const cycleId = normalizeEntityId(runtimeContext?.active_cycle, "C");
+  if (!sessionId && !cycleId) {
+    return {
+      ownership,
+      metadata: null,
+    };
+  }
+  return {
+    ownership: {
+      session_id: sessionId,
+      cycle_id: cycleId,
+    },
+    metadata: {
+      source_mode: "inferred",
+      entity_confidence: 0.8,
+      legacy_origin: "runtime_artifact_content",
+    },
+  };
+}
+
 function inferOwnershipMetadata(relativePath, ownership) {
   const normalized = relativePath.replace(/\\/g, "/");
   const cycleMatch = normalized.match(/^cycles\/([^/]+)\//i);
@@ -373,8 +416,6 @@ function buildArtifactRows(auditRoot, options = {}) {
     const stats = fs.statSync(absolutePath);
     const raw = fs.readFileSync(absolutePath);
     const relativePath = path.relative(auditRoot, absolutePath).replace(/\\/g, "/");
-    const ownership = inferArtifactOwnership(relativePath);
-    const ownershipMetadata = inferOwnershipMetadata(relativePath, ownership);
     const classification = inferArtifactClassification(relativePath);
     const extension = path.extname(relativePath).toLowerCase();
     const textContent = extension === ".md" ? decodeUtf8OrNull(raw) : null;
@@ -384,6 +425,10 @@ function buildArtifactRows(auditRoot, options = {}) {
         classification,
       })
       : null;
+    const inferredOwnership = inferArtifactOwnership(relativePath);
+    const ownershipResolution = deriveOwnershipFromCanonical(relativePath, inferredOwnership, canonical);
+    const ownership = ownershipResolution.ownership;
+    const ownershipMetadata = ownershipResolution.metadata ?? inferOwnershipMetadata(relativePath, ownership);
     const contentPayload = embedContent
       ? encodeArtifactContent(raw)
       : { content_format: null, content: null };

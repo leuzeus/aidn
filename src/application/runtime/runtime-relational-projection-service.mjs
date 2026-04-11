@@ -2,6 +2,11 @@ function normalizeScalar(value) {
   return String(value ?? "").trim();
 }
 
+function normalizeEntityId(value, prefix) {
+  const match = String(value ?? "").trim().toUpperCase().match(new RegExp(`\\b(${prefix}\\d+)\\b`, "i"));
+  return match ? match[1].toUpperCase() : null;
+}
+
 function normalizeArtifactPath(value) {
   return String(value ?? "")
     .trim()
@@ -24,6 +29,44 @@ function normalizeMetaValue(value) {
     return JSON.stringify(value);
   }
   return String(value);
+}
+
+function resolveDerivedRuntimeContext(artifact) {
+  const canonical = artifact?.canonical_json && typeof artifact.canonical_json === "object"
+    ? artifact.canonical_json
+    : (artifact?.canonical && typeof artifact.canonical === "object" ? artifact.canonical : null);
+  return canonical?.derived_runtime_context && typeof canonical.derived_runtime_context === "object"
+    ? canonical.derived_runtime_context
+    : null;
+}
+
+function resolveDerivedSessionContext(artifact) {
+  const canonical = artifact?.canonical_json && typeof artifact.canonical_json === "object"
+    ? artifact.canonical_json
+    : (artifact?.canonical && typeof artifact.canonical === "object" ? artifact.canonical : null);
+  return canonical?.derived_session_context && typeof canonical.derived_session_context === "object"
+    ? canonical.derived_session_context
+    : null;
+}
+
+function resolveContractMetadata(artifact) {
+  const canonical = artifact?.canonical_json && typeof artifact.canonical_json === "object"
+    ? artifact.canonical_json
+    : (artifact?.canonical && typeof artifact.canonical === "object" ? artifact.canonical : null);
+  return {
+    contract_version: normalizeScalar(canonical?.contract_version) || null,
+    contract_status: normalizeScalar(canonical?.contract_status) || null,
+    legacy_shape_id: normalizeScalar(canonical?.legacy_shape_id) || null,
+    contract_findings: Array.isArray(canonical?.contract_findings) ? canonical.contract_findings : [],
+  };
+}
+
+function resolveArtifactRuntimeOwnership(artifact) {
+  const derivedRuntimeContext = resolveDerivedRuntimeContext(artifact);
+  return {
+    session_id: normalizeScalar(artifact?.session_id) || normalizeEntityId(derivedRuntimeContext?.active_session, "S"),
+    cycle_id: normalizeScalar(artifact?.cycle_id) || normalizeEntityId(derivedRuntimeContext?.active_cycle, "C"),
+  };
 }
 
 const RUNTIME_HEAD_DEFINITIONS = Object.freeze([
@@ -72,6 +115,8 @@ export function buildRuntimeHeadRows(input, options = {}) {
     if (!definition || seen.has(definition.headKey)) {
       continue;
     }
+    const runtimeOwnership = resolveArtifactRuntimeOwnership(artifact);
+    const contractMetadata = resolveContractMetadata(artifact);
     seen.add(definition.headKey);
     rows.push({
       scope_key: scopeKey || null,
@@ -79,8 +124,8 @@ export function buildRuntimeHeadRows(input, options = {}) {
       artifact_id: Number(artifact?.artifact_id ?? 0) || null,
       artifact_path: normalizeArtifactPath(artifact?.path),
       artifact_sha256: normalizeScalar(artifact?.sha256) || null,
-      session_id: normalizeScalar(artifact?.session_id) || null,
-      cycle_id: normalizeScalar(artifact?.cycle_id) || null,
+      session_id: runtimeOwnership.session_id || null,
+      cycle_id: runtimeOwnership.cycle_id || null,
       kind: normalizeScalar(artifact?.kind) || null,
       subtype: normalizeScalar(artifact?.subtype) || null,
       updated_at: normalizeScalar(artifact?.updated_at) || new Date().toISOString(),
@@ -90,11 +135,17 @@ export function buildRuntimeHeadRows(input, options = {}) {
         artifact_id: Number(artifact?.artifact_id ?? 0) || null,
         artifact_path: normalizeArtifactPath(artifact?.path),
         artifact_sha256: normalizeScalar(artifact?.sha256) || null,
-        session_id: normalizeScalar(artifact?.session_id) || null,
-        cycle_id: normalizeScalar(artifact?.cycle_id) || null,
+        session_id: runtimeOwnership.session_id || null,
+        cycle_id: runtimeOwnership.cycle_id || null,
         kind: normalizeScalar(artifact?.kind) || null,
         subtype: normalizeScalar(artifact?.subtype) || null,
         updated_at: normalizeScalar(artifact?.updated_at) || null,
+        derived_runtime_context: resolveDerivedRuntimeContext(artifact),
+        derived_session_context: resolveDerivedSessionContext(artifact),
+        contract_version: contractMetadata.contract_version,
+        contract_status: contractMetadata.contract_status,
+        legacy_shape_id: contractMetadata.legacy_shape_id,
+        contract_findings: contractMetadata.contract_findings,
       },
     });
   }
@@ -144,29 +195,33 @@ export function projectRuntimePayloadToRelationalRows(payload = {}, options = {}
 
   const cycleRows = cycles.map((row) => ({ ...row }));
   const sessionRows = sessions.map((row) => ({ ...row }));
-  const artifactRows = artifacts.map((row, index) => ({
-    scope_key: scopeKey || null,
-    artifact_id: index + 1,
-    path: normalizeArtifactPath(row?.path),
-    kind: row?.kind ?? null,
-    family: row?.family ?? "unknown",
-    subtype: row?.subtype ?? null,
-    gate_relevance: Number(row?.gate_relevance ?? 0),
-    classification_reason: row?.classification_reason ?? null,
-    content_format: row?.content_format ?? null,
-    content: row?.content ?? null,
-    canonical_format: row?.canonical_format ?? null,
-    canonical_json: row?.canonical ?? null,
-    sha256: row?.sha256 ?? null,
-    size_bytes: Number(row?.size_bytes ?? 0),
-    mtime_ns: Number(row?.mtime_ns ?? 0),
-    session_id: row?.session_id ?? null,
-    cycle_id: row?.cycle_id ?? null,
-    source_mode: row?.source_mode ?? "explicit",
-    entity_confidence: Number(row?.entity_confidence ?? 1),
-    legacy_origin: row?.legacy_origin ?? null,
-    updated_at: row?.updated_at ?? null,
-  }));
+  const artifactRows = artifacts.map((row, index) => {
+    const runtimeOwnership = resolveArtifactRuntimeOwnership(row);
+    const usedDerivedOwnership = !normalizeScalar(row?.session_id) && !normalizeScalar(row?.cycle_id)
+      && (runtimeOwnership.session_id || runtimeOwnership.cycle_id);
+    return {
+      ...runtimeOwnership,
+      scope_key: scopeKey || null,
+      artifact_id: index + 1,
+      path: normalizeArtifactPath(row?.path),
+      kind: row?.kind ?? null,
+      family: row?.family ?? "unknown",
+      subtype: row?.subtype ?? null,
+      gate_relevance: Number(row?.gate_relevance ?? 0),
+      classification_reason: row?.classification_reason ?? null,
+      content_format: row?.content_format ?? null,
+      content: row?.content ?? null,
+      canonical_format: row?.canonical_format ?? null,
+      canonical_json: row?.canonical ?? null,
+      sha256: row?.sha256 ?? null,
+      size_bytes: Number(row?.size_bytes ?? 0),
+      mtime_ns: Number(row?.mtime_ns ?? 0),
+      source_mode: row?.source_mode ?? (usedDerivedOwnership ? "inferred" : "explicit"),
+      entity_confidence: Number(row?.entity_confidence ?? (usedDerivedOwnership ? 0.8 : 1)),
+      legacy_origin: row?.legacy_origin ?? (usedDerivedOwnership ? "runtime_artifact_content" : null),
+      updated_at: row?.updated_at ?? null,
+    };
+  });
   const artifactByPath = new Map(artifactRows.map((row) => [row.path, row]));
 
   const tagRows = tags.map((row, index) => ({

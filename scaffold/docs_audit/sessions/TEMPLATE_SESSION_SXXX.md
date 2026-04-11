@@ -26,6 +26,7 @@ If COMMITTING:
 - scope_frozen: true | false
 
 ### Session Branch Continuity (required)
+- contract_version: critical-markdown-v1
 - session_branch: `SXXX-<short-slug>`
 - parent_session: SXXX (or `none` for first session in chain)
 - parent_branch:
