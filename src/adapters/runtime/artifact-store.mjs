@@ -269,8 +269,8 @@ export function createArtifactStore(options = {}) {
   const upsertCycleStmt = db.prepare(`
     INSERT INTO cycles (
       cycle_id, session_id, state, outcome, branch_name, dor_state,
-      continuity_rule, continuity_base_branch, continuity_latest_cycle_branch, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      continuity_rule, continuity_base_branch, continuity_latest_cycle_branch, continuity_decision_by, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(cycle_id) DO UPDATE SET
       session_id = excluded.session_id,
       state = excluded.state,
@@ -280,6 +280,7 @@ export function createArtifactStore(options = {}) {
       continuity_rule = excluded.continuity_rule,
       continuity_base_branch = excluded.continuity_base_branch,
       continuity_latest_cycle_branch = excluded.continuity_latest_cycle_branch,
+      continuity_decision_by = excluded.continuity_decision_by,
       updated_at = excluded.updated_at;
   `);
 
@@ -327,6 +328,7 @@ export function createArtifactStore(options = {}) {
           meta.continuity_rule ?? null,
           meta.continuity_base_branch ?? null,
           meta.continuity_latest_cycle_branch ?? null,
+          meta.continuity_decision_by ?? null,
           artifact.updated_at,
         );
       }

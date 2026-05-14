@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { readIndexFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
@@ -64,6 +65,12 @@ function loadPayloadForTarget(target, sqliteFile) {
   return readIndexFromSqlite(sqliteFile).payload;
 }
 
+function flattenMarkdownFixture(content) {
+  return String(content ?? "")
+    .replace(/\r?\n+/g, "  ")
+    .trim();
+}
+
 function selectPrimarySessionSessionChecks(checks) {
   const rows = Array.isArray(checks?.sessions) ? checks.sessions : [];
   return rows.slice().sort((left, right) => {
@@ -98,6 +105,7 @@ function buildSessionChecks(payload) {
 }
 
 function main() {
+  const tempRoots = [];
   try {
     const args = parseArgs(process.argv.slice(2));
     const target = path.resolve(process.cwd(), args.target);
@@ -111,10 +119,28 @@ function main() {
       throw new Error(pilotResolution.reason);
     }
     const pilotTarget = pilotResolution.target;
+    const flattenedCycleSource = path.resolve(process.cwd(), "tests/fixtures/perf-start-session/session-multi-choice");
+    const flattenedCycleTarget = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-flat-cycle-status-"));
+    tempRoots.push(flattenedCycleTarget);
+    fs.cpSync(flattenedCycleSource, flattenedCycleTarget, { recursive: true });
+    const flattenedCycleStatusPath = path.join(
+      flattenedCycleTarget,
+      "docs",
+      "audit",
+      "cycles",
+      "C201-feature-alpha",
+      "status.md",
+    );
+    fs.writeFileSync(
+      flattenedCycleStatusPath,
+      flattenMarkdownFixture(fs.readFileSync(flattenedCycleStatusPath, "utf8")),
+      "utf8",
+    );
 
     const basePayload = loadPayloadForTarget(target, sqliteFile);
     const multiPayload = loadPayloadForTarget(multiTarget, resolveTargetPath(multiTarget, args.sqliteFile));
     const legacyPayload = loadPayloadForTarget(legacyTarget, resolveTargetPath(legacyTarget, args.sqliteFile));
+    const flattenedCyclePayload = loadPayloadForTarget(flattenedCycleTarget, resolveTargetPath(flattenedCycleTarget, args.sqliteFile));
     const pilotPayload = pilotTarget
       ? loadPayloadForTarget(pilotTarget, resolveTargetPath(pilotTarget, args.sqliteFile))
       : null;
@@ -122,6 +148,9 @@ function main() {
     const base = buildSessionChecks(basePayload);
     const multi = buildSessionChecks(multiPayload);
     const legacy = buildSessionChecks(legacyPayload);
+    const flattenedCycle = Array.isArray(flattenedCyclePayload?.cycles)
+      ? flattenedCyclePayload.cycles.find((row) => String(row?.cycle_id ?? "") === "C201") ?? null
+      : null;
     const pilot = pilotPayload ? buildSessionChecks(pilotPayload) : null;
     const pilotPrimarySession = selectPrimarySessionSessionChecks(pilot);
 
@@ -167,6 +196,16 @@ function main() {
       session_s104_target_c106: Boolean(legacy.linkFor("S104", "C106", "explicit", "integration_target_cycle")),
       session_s104_normalization_finding: legacy.findings.some((row) => String(row?.finding_type ?? "") === "SESSION_METADATA_NORMALIZATION_RECOMMENDED" && String(row?.entity_id ?? "") === "S104"),
       session_s104_no_ambiguous_finding: !legacy.findings.some((row) => String(row?.finding_type ?? "") === "AMBIGUOUS_RELATION" && String(row?.entity_id ?? "") === "S104"),
+      flattened_cycle_status_present: Boolean(flattenedCycle),
+      flattened_cycle_status_state: String(flattenedCycle?.state ?? "") === "IMPLEMENTING",
+      flattened_cycle_status_branch: String(flattenedCycle?.branch_name ?? "") === "feature/C201-alpha",
+      flattened_cycle_status_session_owner: String(flattenedCycle?.session_id ?? "") === "S201",
+      flattened_cycle_status_outcome: String(flattenedCycle?.outcome ?? "") === "ACTIVE",
+      flattened_cycle_status_continuity_rule: String(flattenedCycle?.continuity_rule ?? "") === "R1_STRICT_CHAIN",
+      flattened_cycle_status_continuity_base_branch: String(flattenedCycle?.continuity_base_branch ?? "") === "dev",
+      flattened_cycle_status_continuity_latest_cycle_branch: String(flattenedCycle?.continuity_latest_cycle_branch ?? "") === "none",
+      flattened_cycle_status_continuity_decision_by: String(flattenedCycle?.continuity_decision_by ?? "") === "user",
+      flattened_cycle_status_dor_state: String(flattenedCycle?.dor_state ?? "") === "READY",
       pilot_flattened_fixture_present: pilot ? pilot.sessions.length >= 2 : true,
       pilot_primary_session_branch: pilotPrimarySession ? Boolean(String(pilotPrimarySession?.branch_name ?? "").trim()) : true,
       pilot_primary_session_parent_session: pilotPrimarySession ? Boolean(String(pilotPrimarySession?.parent_session ?? "").trim()) : true,
@@ -215,6 +254,8 @@ function main() {
       legacy_sessions: legacy.sessions,
       legacy_session_cycle_links: legacy.links,
       legacy_findings: legacy.findings,
+      flattened_cycle_target: flattenedCycleTarget,
+      flattened_cycle_row: flattenedCycle,
       pilot_sessions: pilot?.sessions ?? [],
       pilot_session_cycle_links: pilot?.links ?? [],
       pilot_findings: pilot?.findings ?? [],
@@ -238,6 +279,12 @@ function main() {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
+  } finally {
+    for (const root of tempRoots) {
+      if (root && fs.existsSync(root)) {
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    }
   }
 }
 

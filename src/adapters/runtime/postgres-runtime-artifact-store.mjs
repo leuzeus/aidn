@@ -130,7 +130,7 @@ async function bootstrapSchema(runtime) {
 
 const RELATIONAL_TABLE_SPECS = Object.freeze([
   ["index_meta", ["scope_key", "key", "value", "updated_at"]],
-  ["cycles", ["scope_key", "cycle_id", "session_id", "state", "outcome", "branch_name", "dor_state", "continuity_rule", "continuity_base_branch", "continuity_latest_cycle_branch", "updated_at"]],
+  ["cycles", ["scope_key", "cycle_id", "session_id", "state", "outcome", "branch_name", "dor_state", "continuity_rule", "continuity_base_branch", "continuity_latest_cycle_branch", "continuity_decision_by", "updated_at"]],
   ["sessions", ["scope_key", "session_id", "branch_name", "state", "owner", "parent_session", "branch_kind", "cycle_branch", "intermediate_branch", "integration_target_cycle", "carry_over_pending", "started_at", "ended_at", "source_artifact_path", "source_confidence", "source_mode", "updated_at"]],
   ["artifacts", ["scope_key", "artifact_id", "path", "kind", "family", "subtype", "gate_relevance", "classification_reason", "content_format", "content", "canonical_format", "canonical_json", "sha256", "size_bytes", "mtime_ns", "session_id", "cycle_id", "source_mode", "entity_confidence", "legacy_origin", "updated_at"]],
   ["file_map", ["scope_key", "cycle_id", "path", "role", "relation", "last_seen_at"]],
@@ -212,7 +212,7 @@ const RELATIONAL_SELECT_SPECS = Object.freeze({
     orderBy: "key ASC",
   }),
   cycles: Object.freeze({
-    columns: "cycle_id, session_id, state, outcome, branch_name, dor_state, continuity_rule, continuity_base_branch, continuity_latest_cycle_branch, updated_at",
+    columns: "cycle_id, session_id, state, outcome, branch_name, dor_state, continuity_rule, continuity_base_branch, continuity_latest_cycle_branch, continuity_decision_by, updated_at",
     orderBy: "cycle_id ASC",
   }),
   sessions: Object.freeze({

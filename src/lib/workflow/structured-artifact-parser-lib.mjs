@@ -63,6 +63,51 @@ function normalizeInlineMarkdown(text) {
   return normalized.trim();
 }
 
+function isCycleStatusArtifact(options = {}) {
+  const relativePath = String(options.relativePath ?? "").replace(/\\/g, "/");
+  const kind = normalizeKey(options.classification?.kind ?? options.kind ?? "");
+  const subtype = normalizeKey(options.classification?.subtype ?? options.subtype ?? "");
+  return kind === "cycle_status" || (subtype === "status" && /^cycles\/[^/]+\/status\.md$/i.test(relativePath));
+}
+
+function normalizeCycleStatusInlineFields(text) {
+  let normalized = String(text ?? "");
+  const fieldLabels = [
+    "cycle_id",
+    "state",
+    "type",
+    "owner",
+    "current goal",
+    "branch_name",
+    "session_owner",
+    "reported_to_session",
+    "outcome",
+    "continuity_rule",
+    "continuity_base_branch",
+    "continuity_latest_cycle_branch",
+    "continuity_decision_by",
+    "continuity_override_reason",
+    "dor_state",
+    "dor_last_check",
+    "dor_checked_by",
+    "dor_override_reason",
+    "usage_matrix_scope",
+    "usage_matrix_state",
+    "usage_matrix_summary",
+    "usage_matrix_rationale",
+    "scope_frozen",
+    "scope_freeze_reason",
+    "blockers",
+    "next step",
+    "last updated",
+  ];
+  for (const label of fieldLabels) {
+    const escaped = escapeRegExp(label);
+    normalized = normalized.replace(new RegExp(`\\s+${escaped}:\\s*`, "giu"), `\n${label}: `);
+  }
+  return normalized;
+}
+
 function extractFieldBlock(text, fieldName) {
   if (typeof text !== "string" || text.length === 0) {
     return null;
@@ -407,7 +452,10 @@ export function inspectStructuredField(text, fieldName) {
 }
 
 export function analyzeStructuredArtifact(content, options = {}) {
-  const normalizedText = normalizeStructuredMarkdown(content);
+  let normalizedText = normalizeStructuredMarkdown(content);
+  if (isCycleStatusArtifact(options)) {
+    normalizedText = normalizeCycleStatusInlineFields(normalizedText);
+  }
   return {
     normalized_text: normalizedText,
     headings: parseHeadings(normalizedText),

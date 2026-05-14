@@ -38,6 +38,7 @@ export function buildRepairLayerInputDigest(payload) {
       continuity_rule: row?.continuity_rule ?? null,
       continuity_base_branch: row?.continuity_base_branch ?? null,
       continuity_latest_cycle_branch: row?.continuity_latest_cycle_branch ?? null,
+      continuity_decision_by: row?.continuity_decision_by ?? null,
       updated_at: row?.updated_at ?? null,
     }));
   const repairDecisions = sortByKey(Array.isArray(payload?.repair_decisions) ? payload.repair_decisions : [], (row) =>

@@ -3,6 +3,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { detectStructureProfile } from "../../lib/workflow/structure-profile-lib.mjs";
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
+import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifact-parser-lib.mjs";
 import { assertArtifactProjector } from "../../core/ports/artifact-projector-port.mjs";
 import { buildRepairLayerService } from "../../application/runtime/repair-layer-service.mjs";
 import { buildRepairLayerInputDigest, buildRepairLayerMeta } from "../../application/runtime/repair-layer-payload-lib.mjs";
@@ -58,7 +59,7 @@ function normalizeKey(raw) {
   return raw.trim().toLowerCase().replace(/\s+/g, "_");
 }
 
-function parseStatusMetadata(content) {
+function parseStatusMetadata(content, options = {}) {
   const wanted = new Set([
     "state",
     "outcome",
@@ -71,18 +72,19 @@ function parseStatusMetadata(content) {
     "continuity_decision_by",
     "last_updated",
   ]);
+  const analysis = analyzeStructuredArtifact(content, {
+    relativePath: options.relativePath ?? "",
+    classification: {
+      kind: "cycle_status",
+      subtype: "status",
+    },
+  });
   const result = {};
-  const lines = content.replace(/\r\n/g, "\n").split("\n");
-  for (const line of lines) {
-    const match = line.match(/^([A-Za-z_][A-Za-z0-9_ ]*):\s*(.*)$/);
-    if (!match) {
-      continue;
-    }
-    const key = normalizeKey(match[1]);
+  for (const [key, value] of Object.entries(analysis.key_values ?? {})) {
     if (!wanted.has(key)) {
       continue;
     }
-    result[key] = match[2].trim();
+    result[key] = String(value ?? "").trim();
   }
   return result;
 }
@@ -357,7 +359,11 @@ function buildCycleTables(auditRoot) {
     const statusPath = path.join(cyclePath, "status.md");
     const statusExists = fs.existsSync(statusPath);
     const statusContent = statusExists ? fs.readFileSync(statusPath, "utf8") : "";
-    const metadata = statusExists ? parseStatusMetadata(statusContent) : {};
+    const metadata = statusExists
+      ? parseStatusMetadata(statusContent, {
+        relativePath: path.relative(auditRoot, statusPath).replace(/\\/g, "/"),
+      })
+      : {};
     const statusStats = statusExists ? fs.statSync(statusPath) : null;
 
     const cycleRow = {

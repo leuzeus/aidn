@@ -28,9 +28,13 @@ CREATE TABLE IF NOT EXISTS aidn_runtime.cycles (
   continuity_rule TEXT,
   continuity_base_branch TEXT,
   continuity_latest_cycle_branch TEXT,
+  continuity_decision_by TEXT,
   updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (scope_key, cycle_id)
 );
+
+ALTER TABLE IF EXISTS aidn_runtime.cycles
+  ADD COLUMN IF NOT EXISTS continuity_decision_by TEXT;
 
 CREATE TABLE IF NOT EXISTS aidn_runtime.artifacts (
   scope_key TEXT NOT NULL,

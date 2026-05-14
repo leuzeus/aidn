@@ -16,7 +16,7 @@ function sqlNumber(value) {
 function insertCycles(lines, cycles) {
   for (const cycle of cycles) {
     lines.push(
-      `INSERT INTO cycles (cycle_id, session_id, state, outcome, branch_name, dor_state, continuity_rule, continuity_base_branch, continuity_latest_cycle_branch, updated_at) VALUES (${sqlString(cycle.cycle_id)}, ${sqlString(cycle.session_id)}, ${sqlString(cycle.state)}, ${sqlString(cycle.outcome)}, ${sqlString(cycle.branch_name)}, ${sqlString(cycle.dor_state)}, ${sqlString(cycle.continuity_rule)}, ${sqlString(cycle.continuity_base_branch)}, ${sqlString(cycle.continuity_latest_cycle_branch)}, ${sqlString(cycle.updated_at)});`,
+      `INSERT INTO cycles (cycle_id, session_id, state, outcome, branch_name, dor_state, continuity_rule, continuity_base_branch, continuity_latest_cycle_branch, continuity_decision_by, updated_at) VALUES (${sqlString(cycle.cycle_id)}, ${sqlString(cycle.session_id)}, ${sqlString(cycle.state)}, ${sqlString(cycle.outcome)}, ${sqlString(cycle.branch_name)}, ${sqlString(cycle.dor_state)}, ${sqlString(cycle.continuity_rule)}, ${sqlString(cycle.continuity_base_branch)}, ${sqlString(cycle.continuity_latest_cycle_branch)}, ${sqlString(cycle.continuity_decision_by)}, ${sqlString(cycle.updated_at)});`,
     );
   }
 }

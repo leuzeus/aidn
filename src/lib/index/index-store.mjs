@@ -482,8 +482,8 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       const cycleStmt = db.prepare(`
         INSERT INTO cycles (
           cycle_id, session_id, state, outcome, branch_name, dor_state,
-          continuity_rule, continuity_base_branch, continuity_latest_cycle_branch, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          continuity_rule, continuity_base_branch, continuity_latest_cycle_branch, continuity_decision_by, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(cycle_id) DO UPDATE SET
           session_id = excluded.session_id,
           state = excluded.state,
@@ -493,6 +493,7 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
           continuity_rule = excluded.continuity_rule,
           continuity_base_branch = excluded.continuity_base_branch,
           continuity_latest_cycle_branch = excluded.continuity_latest_cycle_branch,
+          continuity_decision_by = excluded.continuity_decision_by,
           updated_at = excluded.updated_at;
       `);
       runInsert(cycleStmt, cycles, (row) => ([
@@ -505,6 +506,7 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
         row.continuity_rule ?? null,
         row.continuity_base_branch ?? null,
         row.continuity_latest_cycle_branch ?? null,
+        row.continuity_decision_by ?? null,
         row.updated_at ?? new Date().toISOString(),
       ]));
 

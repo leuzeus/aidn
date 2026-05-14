@@ -32,6 +32,7 @@ async function main() {
           continuity_rule: "inherit",
           continuity_base_branch: "main",
           continuity_latest_cycle_branch: "feature/c001",
+          continuity_decision_by: "agent",
           updated_at: "2026-04-08T14:00:00.000Z",
         },
       ],
@@ -213,6 +214,7 @@ async function main() {
     assert(fake.state.schemaMigrations.includes(2), "expected relational schema migration version 2");
     assert(fake.state.runtimeSnapshots.size === 0, "expected no legacy snapshot row during canonical relational writes");
     assert(fake.state.relationalRows.cycles.length === 1, "expected one relational cycle row");
+    assert(fake.state.relationalRows.cycles[0]?.continuity_decision_by === "agent", "expected relational cycle continuity_decision_by parity");
     assert(fake.state.relationalRows.sessions.length === 1, "expected one relational session row");
     assert(fake.state.relationalRows.artifacts.length === 2, "expected relational artifact parity");
     assert(fake.state.relationalRows.file_map.length === 1, "expected relational file_map row");

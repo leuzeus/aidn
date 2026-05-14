@@ -210,6 +210,7 @@ export function ensureRepairLayerTables(db) {
     CREATE INDEX IF NOT EXISTS idx_migration_findings_run ON migration_findings(migration_run_id);
     CREATE INDEX IF NOT EXISTS idx_repair_decisions_scope ON repair_decisions(relation_scope, decision);
   `);
+  ensureColumn(db, "cycles", "continuity_decision_by", "TEXT");
   db.exec(`
     DROP VIEW IF EXISTS v_session_cycle_context;
     CREATE VIEW v_session_cycle_context AS
@@ -1060,6 +1061,9 @@ export function ensureWorkflowDbSchema(options = {}) {
     ensureMetaTable(db);
     ensurePayloadSchemaVersionMeta(db);
   }
+
+  // Keep additive repair-layer columns idempotent for already-migrated SQLite files.
+  ensureRepairLayerTables(db);
 
   return {
     ok: true,
