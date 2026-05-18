@@ -38,10 +38,28 @@ Use these when you need targeted confidence on one subsystem:
 - repair-layer behavior
 - workflow admission
 - runtime projection
+- CLI JSON output contracts
 - shared-state behavior
 - generated-doc behavior
 
 These are usually the safest default for validating a code change.
+
+When a change affects public `--json` output or CLI read/write semantics, run:
+
+- `npm run perf:verify-cli-output-contracts`
+- `npm run perf:verify-cli-aliases`
+
+The CLI output contract verifier runs the public JSON commands against a temporary fixture copy and validates them against `src/core/contracts/cli-output/*.schema.json`. For projector commands, it also verifies that `--dry-run --json` does not mutate the projected Markdown artifact.
+
+When a change affects source-of-truth semantics or concept ownership, run:
+
+- `npm run perf:verify-source-of-truth-policy`
+- `npm run perf:verify-state-mode-parity`
+
+When a change affects governed metadata, critical Markdown contracts, or lifecycle/ownership rules, run:
+
+- `npm run perf:verify-metadata-policy`
+- `npm run perf:verify-markdown-contract`
 
 ### 2. Parity / Runtime Persistence Verifications
 

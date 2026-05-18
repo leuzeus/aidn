@@ -84,6 +84,19 @@ Maturité: `1` initial, `2` répétable, `3` défini, `4` géré, `5` optimisé.
 | CoordinationRecord | Historique de coordination agent/runtime. | `.aidn/runtime/context/*` ou shared coordination opt-in. | `record_id`, `actor`, `action`, `scope`, `status` | appended -> summarized -> archived |
 | ReferenceData | Vocabulaires stables: states, roles, modes, severities. | `src/core/*` et docs de contrats. | `code`, `label`, `version`, `status` | active -> deprecated |
 
+### Policy Metadata Canonique
+
+Les métadonnées obligatoires sont maintenant matérialisées dans `src/core/metadata/metadata-policy.mjs`.
+Cette policy est la référence produit pour les champs d'ownership, source, lifecycle et classification; les contrats Markdown critiques l'exposent via `src/lib/workflow/markdown-contract-registry-lib.mjs`.
+
+| Famille | Exemples | Champs gouvernés minimum | Tolérance legacy |
+|---|---|---|---|
+| Identité projet/workspace | `Project`, `Workspace` | `project_id`/`workspace_id`, `source_of_truth`, `updated_at`, `lifecycle_status` | faible |
+| Travail gouverné | `Session`, `Cycle` | id métier, `contract_version`, `owner`, `state`, `updated_at`, `source_of_truth`, `lifecycle_status` | owner/source/lifecycle tolérés en legacy |
+| Digests runtime | `CurrentState`, `RuntimeState`, `HandoffPacket` | `contract_version`, `updated_at`, mode/status, `source_of_truth`, `source_mode`, `lifecycle_status` | source/lifecycle/classification tolérés en legacy |
+| Contrats | `ArtifactContract`, CLI schemas | `artifact_type`, `contract_version`, `required_fields`, `owner`, `source_of_truth`, `lifecycle_status` | faible |
+| Gouvernance opérationnelle | `Decision`, `Incident`, `RepairFinding`, `CoordinationRecord` | id, type/status/severity, acteur responsable, dates, `source_of_truth`, `lifecycle_status` | legacy documenté si non bloquant |
+
 ### Relations Clés
 
 - `Project` possède un ou plusieurs `Workspace`; un `Workspace` possède un ou plusieurs `Worktree`.
@@ -160,6 +173,24 @@ Règles:
 | Agent | Lit et produit des artefacts sous gates. |
 | Reviewer | Vérifie conformité, risques, tests et traçabilité. |
 | Architect | Maintient principes, ADR, modèle d'information et boundaries. |
+
+### RACI Opérationnel
+
+| Surface | Accountable | Responsible | Consulted | Informed |
+|---|---|---|---|---|
+| Source de vérité et modèle d'information | Architect | Maintainer | Steward, Reviewer | Agent |
+| Métadonnées obligatoires | Steward | Maintainer | Owner, Architect | Agent, Reviewer |
+| Artefacts de session/cycle | Owner | Agent | Steward, Reviewer | Architect |
+| Contrats CLI/JSON et Markdown | Maintainer | Maintainer | Architect, Reviewer | Agent |
+| Gates admission/repair | Maintainer | Agent | Reviewer, Steward | Owner |
+| ADR et principes | Architect | Architect | Owner, Maintainer, Reviewer | Agent |
+
+Règles d'exécution pour agents:
+
+- avant mutation, lire les sources opérationnelles minimales: `CURRENT-STATE.md`, `WORKFLOW-KERNEL.md`, `WORKFLOW_SUMMARY.md`, `RUNTIME-STATE.md` si disponible, puis l'artefact session/cycle actif quand pertinent
+- respecter la distinction package source vs dépôt installé: dans ce dépôt, `scaffold/*` reste un template et `tests/fixtures/*` reste un corpus de test
+- ne promouvoir une donnée inférée en donnée gouvernée que si `source_of_truth`, `source_mode`, lifecycle et ownership sont explicites ou tolérés legacy
+- signaler les manques metadata via gates; ne les masquer ni par projection Markdown ni par import DB
 
 ### Règles Qualité
 

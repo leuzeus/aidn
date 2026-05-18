@@ -57,6 +57,9 @@ export function buildCanonicalFromMarkdown(content, options = {}) {
       contract_status: contract.contract_status,
       contract_findings: contract.contract_findings,
       legacy_shape_id: contract.legacy_shape_id,
+      metadata_policy_version: contract.metadata_policy_version,
+      metadata_status: contract.metadata_status,
+      metadata_findings: contract.metadata_findings,
     } : {}),
     stats: {
       line_count: lines.length,

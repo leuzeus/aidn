@@ -1,4 +1,5 @@
 import path from "node:path";
+import { getMetadataPolicy } from "../../core/metadata/metadata-policy.mjs";
 import { analyzeStructuredArtifact, inspectStructuredField } from "./structured-artifact-parser-lib.mjs";
 
 const CRITICAL_MARKDOWN_CONTRACT_VERSION = "critical-markdown-v1";
@@ -28,11 +29,16 @@ function buildVariant(definition) {
 }
 
 function buildContract(definition) {
+  const artifactType = normalizeKey(definition?.artifact_type);
+  const metadataPolicy = getMetadataPolicy(artifactType);
   return Object.freeze({
-    artifact_type: normalizeKey(definition?.artifact_type),
+    artifact_type: artifactType,
     contract_version: normalizeScalar(definition?.contract_version || CRITICAL_MARKDOWN_CONTRACT_VERSION),
     required_sections: Object.freeze(Array.isArray(definition?.required_sections) ? definition.required_sections.map(normalizeKey).filter(Boolean) : []),
     required_fields: Object.freeze(Array.isArray(definition?.required_fields) ? definition.required_fields.map(normalizeKey).filter(Boolean) : []),
+    metadata_policy_version: normalizeScalar(metadataPolicy?.policy_version),
+    governed_metadata_fields: Object.freeze(Array.isArray(metadataPolicy?.required_fields) ? metadataPolicy.required_fields.map(normalizeKey).filter(Boolean) : []),
+    legacy_tolerated_missing_metadata_fields: Object.freeze(Array.isArray(metadataPolicy?.legacy_tolerated_missing_fields) ? metadataPolicy.legacy_tolerated_missing_fields.map(normalizeKey).filter(Boolean) : []),
     field_types: Object.freeze(Object.fromEntries(Object.entries(definition?.field_types ?? {})
       .map(([fieldName, fieldType]) => [normalizeKey(fieldName), normalizeKey(fieldType)])
       .filter((entry) => entry[0] && entry[1]))),
@@ -405,6 +411,45 @@ function validateDefinition(definition, analysis, options = {}) {
   };
 }
 
+function validateMetadataCompleteness(contract, analysis) {
+  if (!contract?.metadata_policy_version) {
+    return {
+      metadata_policy_version: "",
+      metadata_status: "not_governed",
+      metadata_findings: [],
+    };
+  }
+  const toleratedMissingFields = new Set(contract.legacy_tolerated_missing_metadata_fields ?? []);
+  const findings = [];
+  for (const fieldName of contract.governed_metadata_fields ?? []) {
+    const details = inspectStructuredField(analysis?.normalized_text ?? "", fieldName);
+    if (details.present) {
+      continue;
+    }
+    const legacyTolerated = toleratedMissingFields.has(fieldName);
+    findings.push(createFinding({
+      code: legacyTolerated ? "MISSING_GOVERNED_METADATA_LEGACY_TOLERATED" : "MISSING_GOVERNED_METADATA",
+      severity: legacyTolerated ? "info" : "warning",
+      field: fieldName,
+      expected: "governed metadata field present",
+      actual: null,
+      message: legacyTolerated
+        ? `Governed metadata field ${fieldName} is missing under a tolerated legacy exception`
+        : `Governed metadata field ${fieldName} is missing`,
+    }));
+  }
+  const status = findings.length === 0
+    ? "complete"
+    : findings.every((finding) => finding.code === "MISSING_GOVERNED_METADATA_LEGACY_TOLERATED")
+      ? "legacy_tolerated"
+      : "incomplete";
+  return {
+    metadata_policy_version: contract.metadata_policy_version,
+    metadata_status: status,
+    metadata_findings: findings,
+  };
+}
+
 function resolveExplicitVersion(analysis) {
   const direct = normalizeScalar(analysis?.key_values?.contract_version);
   if (direct) {
@@ -435,12 +480,14 @@ export function validateCriticalMarkdownContract(content, options = {}) {
   const baseline = validateDefinition(contract, analysis, {
     skip_fields: explicitVersion ? [] : ["contract_version"],
   });
+  const metadataCompleteness = validateMetadataCompleteness(contract, analysis);
   const baseOutput = {
     artifact_type: contract.artifact_type,
     contract_version: explicitVersion || contract.contract_version,
     contract_status: "non_conformant",
     contract_findings: [],
     legacy_shape_id: null,
+    ...metadataCompleteness,
   };
 
   if (explicitVersion) {

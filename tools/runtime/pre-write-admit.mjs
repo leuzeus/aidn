@@ -9,6 +9,7 @@ import { validateSharedRuntimeContext } from "../../src/application/runtime/shar
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
 import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
+import { getSourceOfTruthPolicy } from "../../src/core/source-of-truth/source-of-truth-policy.mjs";
 import { resolveEffectiveStateMode } from "../../src/core/state-mode/state-mode-policy.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
 
@@ -820,11 +821,59 @@ function mergePolicy(skill) {
   return { ...DEFAULT_POLICY, ...specific };
 }
 
-function addCheck(checks, key, pass, details) {
+function addCheck(checks, key, pass, details, extra = {}) {
   checks[key] = {
     pass,
     details,
+    ...extra,
   };
+}
+
+const SOURCE_OF_TRUTH_ADMISSION_CONCEPTS = Object.freeze([
+  "session_state",
+  "cycle_state",
+  "runtime_digests",
+  "artifact_inventory",
+  "repair_findings",
+  "coordination_records",
+]);
+
+function knownStateMode(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return normalized === "files" || normalized === "dual" || normalized === "db-only";
+}
+
+function sourceOfTruthPoliciesForAdmission(stateMode) {
+  return Object.fromEntries(SOURCE_OF_TRUTH_ADMISSION_CONCEPTS.map((concept) => [
+    concept,
+    getSourceOfTruthPolicy(concept, stateMode),
+  ]));
+}
+
+function addSourceOfTruthIssue({
+  issues,
+  warnings,
+  blockingReasons,
+  repairActions,
+  severity,
+  reasonCode,
+  message,
+  repairAction,
+}) {
+  issues.push({
+    severity,
+    reason_code: reasonCode,
+    message,
+    repair_action: repairAction,
+  });
+  if (repairAction) {
+    repairActions.push(repairAction);
+  }
+  if (severity === "block") {
+    blockingReasons.push(`${reasonCode}: ${message}`);
+  } else {
+    warnings.push(`${reasonCode}: ${message}`);
+  }
 }
 
 export async function preWriteAdmit({
@@ -971,6 +1020,22 @@ export async function preWriteAdmit({
   const runtimeStateMode = normalizeScalar(runtimeMap.get("runtime_state_mode") ?? currentMap.get("runtime_state_mode") ?? effectiveStateMode ?? "unknown") || "unknown";
   const repairLayerStatus = normalizeScalar(runtimeMap.get("repair_layer_status") ?? currentMap.get("repair_layer_status") ?? "unknown") || "unknown";
   const currentStateFreshness = normalizeScalar(runtimeMap.get("current_state_freshness") ?? "unknown") || "unknown";
+  const sourceOfTruthIssues = [];
+  const sourceOfTruthRepairActions = [];
+  const sourceOfTruth = {
+    state_mode: effectiveStateMode,
+    runtime_state_mode: runtimeStateMode,
+    concepts: sourceOfTruthPoliciesForAdmission(effectiveStateMode),
+    observed_sources: {
+      current_state: currentStateResolution.source,
+      runtime_state: runtimeStateResolution.source,
+      session_artifact: sessionResolution.source,
+      cycle_status: cycleStatusResolution.source,
+      plan_artifact: planResolution.source,
+    },
+    issues: sourceOfTruthIssues,
+    repair_actions: sourceOfTruthRepairActions,
+  };
   const blockingFindings = uniqueItems(
     parseListSection(runtimeStateText, "blocking_findings")
       .filter((item) => item.toLowerCase() !== "none"),
@@ -1076,6 +1141,73 @@ export async function preWriteAdmit({
   addCheck(checks, "runtime_state_exists", runtimeStateExists, runtimeStateExists
     ? `runtime digest resolved via ${runtimeStateResolution.source}: ${runtimeStateResolution.logicalPath}`
     : "runtime digest missing");
+
+  const sourceOfTruthPoliciesResolved = Object.values(sourceOfTruth.concepts).every(Boolean);
+  addCheck(checks, "source_of_truth_policy_resolved", sourceOfTruthPoliciesResolved, sourceOfTruthPoliciesResolved
+    ? `source-of-truth policy resolved for ${Object.keys(sourceOfTruth.concepts).join(", ")}`
+    : "source-of-truth policy missing for one or more admission concepts", {
+      reason_code: sourceOfTruthPoliciesResolved ? "SOT_POLICY_RESOLVED" : "SOT_POLICY_MISSING",
+    });
+  if (!sourceOfTruthPoliciesResolved) {
+    addSourceOfTruthIssue({
+      issues: sourceOfTruthIssues,
+      warnings,
+      blockingReasons,
+      repairActions: sourceOfTruthRepairActions,
+      severity: "block",
+      reasonCode: "SOT_POLICY_MISSING",
+      message: "source-of-truth policy is incomplete for pre-write admission",
+      repairAction: "complete src/core/source-of-truth/source-of-truth-policy.mjs and rerun npm run perf:verify-source-of-truth-policy",
+    });
+  }
+
+  const normalizedRuntimeStateMode = runtimeStateMode.toLowerCase();
+  const runtimeModeAligned = !runtimeStateExists
+    || canonicalUnknown(runtimeStateMode)
+    || !knownStateMode(runtimeStateMode)
+    || normalizedRuntimeStateMode === effectiveStateMode;
+  addCheck(checks, "source_of_truth_state_mode_alignment", runtimeModeAligned, runtimeModeAligned
+    ? `effective_state_mode=${effectiveStateMode}; runtime_state_mode=${runtimeStateMode}`
+    : `effective_state_mode=${effectiveStateMode}; runtime_state_mode=${runtimeStateMode}`, {
+      reason_code: runtimeModeAligned ? "SOT_STATE_MODE_ALIGNED" : "SOT_STATE_MODE_MISMATCH",
+    });
+  if (!runtimeModeAligned) {
+    const severity = effectiveStateMode === "db-only" || normalizedRuntimeStateMode === "db-only" ? "block" : "warn";
+    addSourceOfTruthIssue({
+      issues: sourceOfTruthIssues,
+      warnings,
+      blockingReasons,
+      repairActions: sourceOfTruthRepairActions,
+      severity,
+      reasonCode: "SOT_STATE_MODE_MISMATCH",
+      message: `effective state mode ${effectiveStateMode} diverges from runtime digest mode ${runtimeStateMode}`,
+      repairAction: "regenerate or import the runtime digest for the selected state mode before mutating workflow artifacts",
+    });
+  }
+
+  const dbOnlyProjectionReads = effectiveStateMode === "db-only"
+    ? Object.entries(sourceOfTruth.observed_sources)
+      .filter(([key, value]) => key !== "plan_artifact" && value === "file")
+      .map(([key]) => key)
+    : [];
+  const dbOnlySourcesCanonical = dbOnlyProjectionReads.length === 0;
+  addCheck(checks, "source_of_truth_db_only_source_alignment", dbOnlySourcesCanonical, dbOnlySourcesCanonical
+    ? `effective_state_mode=${effectiveStateMode}; no db-only projection-only source reads detected`
+    : `db-only admission read Markdown projections for ${dbOnlyProjectionReads.join(", ")}`, {
+      reason_code: dbOnlySourcesCanonical ? "SOT_DB_ONLY_SOURCES_ALIGNED" : "SOT_DB_ONLY_PROJECTION_READ",
+    });
+  if (dbOnlyProjectionReads.length > 0) {
+    addSourceOfTruthIssue({
+      issues: sourceOfTruthIssues,
+      warnings,
+      blockingReasons,
+      repairActions: sourceOfTruthRepairActions,
+      severity: "warn",
+      reasonCode: "SOT_DB_ONLY_PROJECTION_READ",
+      message: `db-only mode resolved projection files for ${dbOnlyProjectionReads.join(", ")}`,
+      repairAction: "refresh the runtime DB/index and rerun the projector with explicit write semantics when a Markdown projection is required",
+    });
+  }
 
   addCheck(checks, "runtime_repair_status_known", !canonicalUnknown(repairLayerStatus), `repair_layer_status=${repairLayerStatus}`);
   addCheck(checks, "current_state_freshness_known", !canonicalUnknown(currentStateFreshness), `current_state_freshness=${currentStateFreshness}`);
@@ -1188,6 +1320,12 @@ export async function preWriteAdmit({
   const admissionStatus = ok
     ? (warnings.length > 0 ? "admitted_with_warnings" : "admitted")
     : "blocked";
+  const sourceOfTruthStatus = sourceOfTruthIssues.some((item) => item.severity === "block")
+    ? "block"
+    : sourceOfTruthIssues.some((item) => item.severity === "warn")
+      ? "warn"
+      : "clear";
+  sourceOfTruth.repair_actions = uniqueItems(sourceOfTruthRepairActions);
 
   return {
     ok,
@@ -1198,6 +1336,7 @@ export async function preWriteAdmit({
     shared_runtime_validation: sharedRuntimeValidation,
     skill: skill || "generic",
     policy,
+    source_of_truth: sourceOfTruth,
     current_state_file: currentStateExists ? currentStateResolution.logicalPath : "none",
     runtime_state_file: runtimeStateExists ? runtimeStateResolution.logicalPath : "none",
     session_file: sessionResolution.exists ? sessionResolution.logicalPath : "none",
@@ -1235,6 +1374,8 @@ export async function preWriteAdmit({
       current_state_freshness: currentStateFreshness,
       runtime_state_mode: runtimeStateMode,
       effective_state_mode: effectiveStateMode,
+      source_of_truth_status: sourceOfTruthStatus,
+      source_of_truth_reason_codes: uniqueItems(sourceOfTruthIssues.map((item) => item.reason_code)).join(", ") || "none",
       repair_layer_status: repairLayerStatus,
       current_state_source: currentStateResolution.source,
       runtime_state_source: runtimeStateResolution.source,
@@ -1276,6 +1417,7 @@ function printText(output) {
   console.log(`- dor_state=${output.context.dor_state}`);
   console.log(`- first_plan_step=${output.context.first_plan_step}`);
   console.log(`- runtime_state_mode=${output.context.runtime_state_mode}`);
+  console.log(`- source_of_truth_status=${output.context.source_of_truth_status}`);
   console.log(`- repair_layer_status=${output.context.repair_layer_status}`);
   console.log(`- current_state_freshness=${output.context.current_state_freshness}`);
   if (output.blocking_reasons.length > 0) {

@@ -80,9 +80,13 @@ async function main() {
     assert(String(currentState?.canonical?.contract_status ?? "") === "conformant", "expected CURRENT-STATE conformant status");
     assert(String(currentState?.canonical?.contract_version ?? "") === "critical-markdown-v1", "expected CURRENT-STATE contract version");
     assert(Array.isArray(currentState?.canonical?.contract_findings) && currentState.canonical.contract_findings.length === 0, "expected CURRENT-STATE no contract findings");
+    assert(String(currentState?.canonical?.metadata_policy_version ?? "") === "metadata-policy-v1", "expected CURRENT-STATE metadata policy version");
+    assert(String(currentState?.canonical?.metadata_status ?? "") === "legacy_tolerated", "expected CURRENT-STATE legacy metadata status");
+    assert(hasFinding(currentState?.canonical?.metadata_findings, "MISSING_GOVERNED_METADATA_LEGACY_TOLERATED"), "expected CURRENT-STATE tolerated missing metadata finding");
 
     assert(String(runtimeState?.canonical?.contract_status ?? "") === "non_conformant", "expected RUNTIME-STATE non_conformant status");
     assert(hasFinding(runtimeState?.canonical?.contract_findings, "INVALID_CONTRACT_VERSION"), "expected RUNTIME-STATE invalid version finding");
+    assert(hasFinding(runtimeState?.canonical?.metadata_findings, "MISSING_GOVERNED_METADATA_LEGACY_TOLERATED"), "expected RUNTIME-STATE tolerated missing metadata finding");
 
     assert(String(handoffPacket?.canonical?.contract_status ?? "") === "non_conformant", "expected HANDOFF-PACKET non_conformant status");
     assert(hasFinding(handoffPacket?.canonical?.contract_findings, "MISSING_REQUIRED_SECTION"), "expected HANDOFF-PACKET missing section finding");
@@ -98,10 +102,13 @@ async function main() {
     assert(hasFinding(sessionMissingField?.canonical?.contract_findings, "MISSING_REQUIRED_FIELD"), "expected S203 missing field finding");
 
     assert(String(cycleConformant?.canonical?.contract_status ?? "") === "conformant", "expected C201 status conformant");
+    assert(String(cycleConformant?.canonical?.metadata_status ?? "") === "legacy_tolerated", "expected C201 legacy metadata status");
+    assert(hasFinding(cycleConformant?.canonical?.metadata_findings, "MISSING_GOVERNED_METADATA_LEGACY_TOLERATED"), "expected C201 tolerated missing metadata finding");
     assert(String(cycleLegacy?.canonical?.contract_status ?? "") === "legacy_tolerated", "expected C202 status legacy_tolerated");
     assert(hasFinding(cycleLegacy?.canonical?.contract_findings, "MISSING_EXPLICIT_CONTRACT_VERSION"), "expected C202 missing explicit version finding");
 
     assert(String(sqliteRuntimeHeads.current_state?.contract_status ?? "") === "conformant", "expected SQLite current_state contract status");
+    assert(String(sqliteRuntimeHeads.current_state?.metadata_status ?? "") === "legacy_tolerated", "expected SQLite current_state metadata status");
     assert(String(sqliteRuntimeHeads.runtime_state?.contract_status ?? "") === "non_conformant", "expected SQLite runtime_state contract status");
     assert(String(sqliteRuntimeHeads.handoff_packet?.contract_status ?? "") === "non_conformant", "expected SQLite handoff contract status");
     assert(hasFinding(sqliteRuntimeHeads.runtime_state?.contract_findings, "INVALID_CONTRACT_VERSION"), "expected SQLite runtime_state invalid version finding");
@@ -122,6 +129,7 @@ async function main() {
     assert(String(postgresArtifactByPath.get("CURRENT-STATE.md")?.canonical?.contract_status ?? "") === "conformant", "expected PostgreSQL CURRENT-STATE contract parity");
     assert(String(postgresArtifactByPath.get("sessions/S201.md")?.canonical?.contract_status ?? "") === "legacy_tolerated", "expected PostgreSQL session legacy contract parity");
     assert(String(postgresSnapshot.runtimeHeads.current_state?.contract_status ?? "") === "conformant", "expected PostgreSQL current_state runtime head contract parity");
+    assert(String(postgresSnapshot.runtimeHeads.current_state?.metadata_status ?? "") === "legacy_tolerated", "expected PostgreSQL current_state runtime head metadata parity");
     assert(String(postgresSnapshot.runtimeHeads.runtime_state?.contract_status ?? "") === "non_conformant", "expected PostgreSQL runtime_state runtime head contract parity");
     assert(hasFinding(postgresSnapshot.runtimeHeads.runtime_state?.contract_findings, "INVALID_CONTRACT_VERSION"), "expected PostgreSQL runtime_state invalid version finding");
 

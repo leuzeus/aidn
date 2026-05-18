@@ -19,12 +19,12 @@ Ce backlog est conçu pour:
 | Epic | Sujet | Priorité | Statut | Dépend de |
 |---|---|---:|---|---|
 | EIA-1 | Modèle d'information et source de vérité | P0 | Done | - |
-| EIA-2 | Contrats CLI/JSON publics | P0 | In Progress | EIA-1 |
-| EIA-3 | Sémantique lecture/écriture CLI | P0 | In Progress | EIA-2 |
-| EIA-4 | Gates source de vérité par mode | P1 | Backlog | EIA-1 |
-| EIA-5 | Qualité metadata et gouvernance | P1 | Backlog | EIA-1 |
+| EIA-2 | Contrats CLI/JSON publics | P0 | Done | EIA-1 |
+| EIA-3 | Sémantique lecture/écriture CLI | P0 | Done | EIA-2 |
+| EIA-4 | Gates source de vérité par mode | P1 | Done | EIA-1 |
+| EIA-5 | Qualité metadata et gouvernance | P1 | Done | EIA-1 |
 | EIA-6 | Refactoring couches runtime restantes | P1 | Backlog | EIA-2 |
-| EIA-7 | ADR et principes de gouvernance | P1 | In Progress | EIA-1 |
+| EIA-7 | ADR et principes de gouvernance | P1 | Done | EIA-1 |
 | EIA-8 | Exploitation locale | P2 | Backlog | EIA-4 |
 | EIA-9 | Fédération local-first | P3 | Backlog | EIA-4, EIA-8 |
 
@@ -170,7 +170,7 @@ Tests attendus:
 ### EIA-2.2 - Stabiliser Les 10 Sorties JSON Critiques
 
 - priorité: `P0`
-- statut: `Partial`
+- statut: `Done`
 - objectif: versionner les contrats consommables les plus importants
 - dépend de: `EIA-2.1`
 - commandes concernées:
@@ -189,7 +189,7 @@ Avancement:
 
 - les 10 schemas v1 existent sous `src/core/contracts/cli-output/`
 - les schemas verrouillent les champs top-level et restent volontairement extensibles pour les sous-objets
-- les golden fixtures et le verifier automatisé restent à livrer dans `EIA-2.3`
+- les sorties réelles sont validées par `perf:verify-cli-output-contracts`
 
 Critères d'acceptation:
 
@@ -207,13 +207,20 @@ Tests attendus:
 ### EIA-2.3 - Ajouter Un Vérificateur De Contrats CLI
 
 - priorité: `P1`
-- statut: `Backlog`
+- statut: `Done`
 - objectif: empêcher la dérive silencieuse des sorties JSON
 - dépend de: `EIA-2.2`
 - artefacts à modifier:
   - `tools/perf/verify-cli-output-contracts-fixtures.mjs`
   - `package.json`
   - fixtures ciblées sous `tests/fixtures/*`
+
+Avancement:
+
+- `tools/perf/verify-cli-output-contracts-fixtures.mjs` exécute les 10 commandes critiques sur une copie temporaire de `repo-installed-core`
+- le verifier valide les sorties contre les schemas v1
+- le verifier contrôle que les projectors exécutés avec `--dry-run` ne modifient pas `RUNTIME-STATE.md` ou `HANDOFF-PACKET.md`
+- `package.json` expose `npm run perf:verify-cli-output-contracts`
 
 Critères d'acceptation:
 
@@ -261,13 +268,20 @@ Tests attendus:
 ### EIA-3.2 - Normaliser `project-runtime-state` Et `project-handoff-packet`
 
 - priorité: `P0`
-- statut: `Backlog`
+- statut: `Done`
 - objectif: éviter les mutations surprises lors d'une consultation JSON
 - dépend de: `EIA-3.1`
 - artefacts à modifier:
   - `tools/runtime/project-runtime-state.mjs`
   - `tools/runtime/project-handoff-packet.mjs`
   - fixtures associées
+
+Avancement:
+
+- les deux commandes acceptent maintenant `--dry-run`
+- en `--dry-run`, elles calculent la projection et retournent le payload JSON sans écrire le Markdown cible
+- `project-handoff-packet --dry-run` n'ajoute pas de relay shared coordination
+- le comportement historique sans `--dry-run` reste inchangé pour compatibilité
 
 Critères d'acceptation:
 
@@ -284,7 +298,7 @@ Tests attendus:
 ### EIA-3.3 - Documenter La Convention CLI
 
 - priorité: `P1`
-- statut: `Backlog`
+- statut: `Done`
 - objectif: rendre prévisible `--json`, `--dry-run`, `--write`, `--apply`, `--execute`
 - dépend de: `EIA-3.2`
 - artefacts à modifier:
@@ -292,6 +306,12 @@ Tests attendus:
   - `docs/INSTALL.md`
   - `docs/TESTING.md`
   - `docs/TROUBLESHOOTING.md`
+
+Avancement:
+
+- `README.md` documente la convention `--json`, `--dry-run`, `--write`, `--apply`, `--execute`
+- `docs/TESTING.md` indique quand lancer `perf:verify-cli-output-contracts`
+- le verifier confirme que les projectors en `--dry-run --json` ne modifient pas leurs projections Markdown
 
 Critères d'acceptation:
 
@@ -309,13 +329,19 @@ Tests attendus:
 ### EIA-4.1 - Ajouter Une Policy Source-Of-Truth Dans `src/core`
 
 - priorité: `P1`
-- statut: `Backlog`
+- statut: `Done`
 - objectif: centraliser la règle SoT par mode et surface
 - dépend de: `EIA-1.3`
 - artefacts à modifier:
   - `src/core/state-mode/`
   - nouveau module `src/core/source-of-truth/`
   - tests fixture ciblés
+
+Avancement:
+
+- `src/core/source-of-truth/source-of-truth-policy.mjs` centralise les concepts, modes et sources canoniques
+- `tools/perf/verify-source-of-truth-policy.mjs` vérifie que chaque concept couvre `files`, `dual` et `db-only`
+- `package.json` expose `npm run perf:verify-source-of-truth-policy`
 
 Critères d'acceptation:
 
@@ -332,7 +358,7 @@ Tests attendus:
 ### EIA-4.2 - Ajouter Des Checks De Cohérence SoT
 
 - priorité: `P1`
-- statut: `Backlog`
+- statut: `Done`
 - objectif: bloquer ou avertir quand les sources déclarées divergent
 - dépend de: `EIA-4.1`
 - artefacts à modifier:
@@ -346,6 +372,13 @@ Critères d'acceptation:
 - le résultat expose `reason_code`
 - les chemins de réparation sont proposés
 
+Avancement:
+
+- `tools/runtime/pre-write-admit.mjs` expose `source_of_truth`, `source_of_truth_status` et `source_of_truth_reason_codes`
+- les divergences critiques de mode produisent un blocage codé `SOT_STATE_MODE_MISMATCH`
+- les projections Markdown lues en `db-only` produisent un warning codé `SOT_DB_ONLY_PROJECTION_READ`
+- la fixture `source-of-truth-state-mode-mismatch` couvre le blocage admission
+
 Tests attendus:
 
 - `npm run perf:verify-pre-write-admit`
@@ -357,7 +390,7 @@ Tests attendus:
 ### EIA-5.1 - Définir Les Métadonnées Obligatoires Par Concept
 
 - priorité: `P1`
-- statut: `Backlog`
+- statut: `Done`
 - objectif: éviter owner/source/lifecycle implicites
 - dépend de: `EIA-1.4`
 - artefacts à modifier:
@@ -371,15 +404,23 @@ Critères d'acceptation:
 - exceptions legacy explicites
 - templates critiques alignés
 
+Avancement:
+
+- `src/core/metadata/metadata-policy.mjs` centralise les champs obligatoires, recommandés et tolérés legacy par concept
+- `src/lib/workflow/markdown-contract-registry-lib.mjs` rattache les contrats Markdown critiques à la policy metadata
+- `tools/perf/verify-metadata-policy.mjs` vérifie la cohérence de la policy et son exposition par les contrats critiques
+- le plan architecture informationnelle documente la policy metadata canonique
+
 Tests attendus:
 
+- `npm run perf:verify-metadata-policy`
 - `npm run perf:verify-markdown-contract`
 - `npm run perf:verify-generated-docs`
 
 ### EIA-5.2 - Ajouter Un Gate Metadata Completeness
 
 - priorité: `P1`
-- statut: `Backlog`
+- statut: `Done`
 - objectif: signaler les artefacts critiques incomplets
 - dépend de: `EIA-5.1`
 - artefacts à modifier:
@@ -392,6 +433,13 @@ Critères d'acceptation:
 - legacy tolerated reste visible mais non bloquant par défaut
 - les artefacts critiques futurs sont conformes
 
+Avancement:
+
+- les artefacts Markdown critiques exposent `metadata_policy_version`, `metadata_status` et `metadata_findings` dans leur forme canonique
+- les champs gouvernés manquants produisent `MISSING_GOVERNED_METADATA` ou `MISSING_GOVERNED_METADATA_LEGACY_TOLERATED`
+- les runtime heads SQLite/PostgreSQL propagent les metadata findings pour les digests critiques
+- `tools/perf/verify-markdown-contract-conformance-fixtures.mjs` couvre les statuts metadata legacy tolérés
+
 Tests attendus:
 
 - `npm run perf:verify-markdown-contract`
@@ -400,7 +448,7 @@ Tests attendus:
 ### EIA-5.3 - Documenter Rôles Owner/Steward/Maintainer/Agent/Reviewer/Architect
 
 - priorité: `P1`
-- statut: `Backlog`
+- statut: `Done`
 - objectif: clarifier responsabilités de gouvernance
 - dépend de: `EIA-5.1`
 - artefacts à modifier:
@@ -414,6 +462,12 @@ Critères d'acceptation:
 - les agents savent quoi lire avant mutation
 - le modèle reste compatible package source vs installed repo
 
+Avancement:
+
+- `docs/PLAN_AIDN_ENTERPRISE_INFORMATION_ARCHITECTURE_2026-05-18.md` contient un RACI opérationnel owner/steward/maintainer/agent/reviewer/architect
+- `scaffold/docs_audit/WORKFLOW_SUMMARY.md` expose les rôles installés et les lectures minimales avant mutation
+- la distinction package source vs dépôt installé reste portée par le root `AGENTS.md`, sans dupliquer la règle dans les templates installés
+
 Tests attendus:
 
 - revue docs
@@ -424,7 +478,7 @@ Tests attendus:
 ### EIA-6.1 - Extraire Les Projections Runtime Restantes En Use Cases
 
 - priorité: `P1`
-- statut: `Backlog`
+- statut: `Done`
 - objectif: réduire le couplage dans `tools/runtime`
 - dépend de: `EIA-3.2`
 - artefacts à modifier:
@@ -552,6 +606,12 @@ Critères d'acceptation:
 
 - information model gouverné comme actif produit
 - fédération future bornée sans cloud-first
+
+Avancement:
+
+- `docs/ADR/ADR-0006-information-model.md` documente le modèle informationnel comme actif produit gouverné
+- `docs/ADR/ADR-0007-local-first-federation-boundary.md` borne la fédération local-first et opt-in
+- `docs/ADR/README.md` référence les deux ADR
 
 Tests attendus:
 

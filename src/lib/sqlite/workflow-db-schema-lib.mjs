@@ -455,6 +455,13 @@ function resolveRuntimeHeadContractMetadata(artifact) {
       ? canonical.legacy_shape_id.trim()
       : null,
     contract_findings: Array.isArray(canonical?.contract_findings) ? canonical.contract_findings : [],
+    metadata_policy_version: typeof canonical?.metadata_policy_version === "string" && canonical.metadata_policy_version.trim()
+      ? canonical.metadata_policy_version.trim()
+      : null,
+    metadata_status: typeof canonical?.metadata_status === "string" && canonical.metadata_status.trim()
+      ? canonical.metadata_status.trim()
+      : null,
+    metadata_findings: Array.isArray(canonical?.metadata_findings) ? canonical.metadata_findings : [],
   };
 }
 
@@ -486,6 +493,9 @@ function buildRuntimeHeadPayload(artifact, definition) {
     contract_status: contractMetadata.contract_status,
     legacy_shape_id: contractMetadata.legacy_shape_id,
     contract_findings: contractMetadata.contract_findings,
+    metadata_policy_version: contractMetadata.metadata_policy_version,
+    metadata_status: contractMetadata.metadata_status,
+    metadata_findings: contractMetadata.metadata_findings,
   });
 }
 

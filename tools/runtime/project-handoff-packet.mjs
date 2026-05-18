@@ -44,6 +44,7 @@ function parseArgs(argv) {
     fromAgentRole: "",
     fromAgentAction: "",
     json: false,
+    dryRun: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -74,6 +75,8 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--json") {
       args.json = true;
+    } else if (token === "--dry-run") {
+      args.dryRun = true;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -93,6 +96,7 @@ function printUsage() {
   console.log("  node tools/runtime/project-handoff-packet.mjs --target .");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target . --from-agent-role coordinator --from-agent-action relay --next-agent-goal \"reanchor and continue cycle validation\"");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target tests/fixtures/repo-installed-core --json");
+  console.log("  node tools/runtime/project-handoff-packet.mjs --target tests/fixtures/repo-installed-core --dry-run --json");
 }
 
 function resolveTargetPath(targetRoot, candidate) {
@@ -636,6 +640,7 @@ export async function projectHandoffPacket({
   sharedCoordination = null,
   sharedCoordinationOptions = {},
   sharedStateOptions = {},
+  dryRun = false,
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const workspace = resolveWorkspaceContext({
@@ -869,14 +874,27 @@ export async function projectHandoffPacket({
   }
 
   const markdown = buildMarkdown(packet);
-  const outWrite = writeUtf8IfChanged(resolveTargetPath(absoluteTargetRoot, out), markdown);
-  const sharedCoordinationSync = await appendSharedHandoffRelay(sharedCoordinationResolution, {
-    workspace,
-    packet,
-    outputFile: relativePath(absoluteTargetRoot, outWrite.path),
-  });
+  const outputPath = resolveTargetPath(absoluteTargetRoot, out);
+  const outWrite = dryRun
+    ? { path: outputPath, written: false }
+    : writeUtf8IfChanged(outputPath, markdown);
+  const sharedCoordinationSync = dryRun
+    ? {
+        attempted: false,
+        ok: false,
+        status: "dry-run",
+        reason: "handoff packet dry-run does not write local projection or append shared relay",
+        operation: "appendHandoffRelay",
+        backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
+      }
+    : await appendSharedHandoffRelay(sharedCoordinationResolution, {
+        workspace,
+        packet,
+        outputFile: relativePath(absoluteTargetRoot, outWrite.path),
+      });
   return {
     target_root: absoluteTargetRoot,
+    dry_run: Boolean(dryRun),
     workspace,
     shared_state_backend: sqliteFallback.backend ?? null,
     shared_coordination_backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
@@ -901,6 +919,7 @@ function main() {
       handoffNote: args.handoffNote,
       fromAgentRole: args.fromAgentRole,
       fromAgentAction: args.fromAgentAction,
+      dryRun: args.dryRun,
     });
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));

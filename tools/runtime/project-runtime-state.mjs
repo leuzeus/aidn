@@ -29,6 +29,7 @@ function parseArgs(argv) {
     contextFile: ".aidn/runtime/context/codex-context.json",
     out: "docs/audit/RUNTIME-STATE.md",
     json: false,
+    dryRun: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -47,6 +48,8 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--json") {
       args.json = true;
+    } else if (token === "--dry-run") {
+      args.dryRun = true;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -65,6 +68,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/runtime/project-runtime-state.mjs --target .");
   console.log("  node tools/runtime/project-runtime-state.mjs --target tests/fixtures/repo-installed-core --json");
+  console.log("  node tools/runtime/project-runtime-state.mjs --target tests/fixtures/repo-installed-core --dry-run --json");
 }
 
 function resolveTargetPath(targetRoot, candidate) {
@@ -468,6 +472,7 @@ export async function projectRuntimeState({
   sharedCoordination = null,
   sharedCoordinationOptions = {},
   sharedStateOptions = {},
+  dryRun = false,
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const hydratedPath = resolveTargetPath(absoluteTargetRoot, hydratedFile);
@@ -594,9 +599,13 @@ export async function projectRuntimeState({
     cycle_status_source: cycleStatusResolution.source,
   };
   const markdown = buildMarkdown(digest);
-  const outWrite = writeUtf8IfChanged(resolveTargetPath(absoluteTargetRoot, out), markdown);
+  const outputPath = resolveTargetPath(absoluteTargetRoot, out);
+  const outWrite = dryRun
+    ? { path: outputPath, written: false }
+    : writeUtf8IfChanged(outputPath, markdown);
   return {
     target_root: absoluteTargetRoot,
+    dry_run: Boolean(dryRun),
     workspace,
     shared_state_backend: sqliteFallback.backend ?? null,
     shared_runtime_validation: sharedRuntimeValidation,
@@ -622,6 +631,7 @@ function main() {
       hydratedFile: args.hydratedFile,
       contextFile: args.contextFile,
       out: args.out,
+      dryRun: args.dryRun,
     });
 
     if (args.json) {

@@ -325,6 +325,7 @@ function main() {
     const dbOnlyCloseSessionTarget = path.join(tempRoot, "db-only-fileless-close-session");
     const invalidSharedRuntimeTarget = path.join(tempRoot, "invalid-shared-runtime");
     const locatorWorkspaceMismatchTarget = path.join(tempRoot, "locator-workspace-mismatch");
+    const stateModeMismatchTarget = path.join(tempRoot, "source-of-truth-state-mode-mismatch");
     fs.cpSync(readyTarget, cycleCreateTarget, { recursive: true });
     fs.cpSync(readyTarget, warningTarget, { recursive: true });
     fs.cpSync(readyTarget, dirtyCycleCreateTarget, { recursive: true });
@@ -338,6 +339,7 @@ function main() {
     fs.cpSync(readyTarget, dbOnlyCloseSessionTarget, { recursive: true });
     fs.cpSync(readyTarget, invalidSharedRuntimeTarget, { recursive: true });
     fs.cpSync(readyTarget, locatorWorkspaceMismatchTarget, { recursive: true });
+    fs.cpSync(readyTarget, stateModeMismatchTarget, { recursive: true });
     installSharedPlanningFixture(cycleCreateTarget, { selectedExecutionScope: "none" });
     installRepairWarningFixture(warningTarget);
     installGitCycleCreateFixtures(dirtyCycleCreateTarget, "dirty");
@@ -363,6 +365,12 @@ function main() {
     installInvalidSharedRuntimeLocator(locatorWorkspaceMismatchTarget, {
       root: ".aidn-shared",
     });
+    const mismatchRuntimeStateFile = path.join(stateModeMismatchTarget, "docs", "audit", "RUNTIME-STATE.md");
+    fs.writeFileSync(
+      mismatchRuntimeStateFile,
+      upsertScalarLine(fs.readFileSync(mismatchRuntimeStateFile, "utf8"), "runtime_state_mode", "db-only"),
+      "utf8",
+    );
     fs.rmSync(path.join(dbOnlyRequirementsTarget, "docs", "audit", "CURRENT-STATE.md"), { force: true });
     fs.rmSync(path.join(dbOnlyRequirementsTarget, "docs", "audit", "RUNTIME-STATE.md"), { force: true });
     fs.rmSync(path.join(dbOnlyRequirementsTarget, "docs", "audit", "cycles", "C101-feature-alpha", "status.md"), { force: true });
@@ -522,6 +530,16 @@ function main() {
     ], {
       AIDN_WORKSPACE_ID: "workspace-override",
     }, 1);
+    const stateModeMismatch = runAidn(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      stateModeMismatchTarget,
+      "--skill",
+      "requirements-delta",
+      "--strict",
+      "--json",
+    ], 1);
 
     assert(ready.ok === true, "ready pre-write admission should pass");
     assert(ready.admission_status === "admitted", "ready pre-write admission should be admitted");
@@ -534,6 +552,9 @@ function main() {
     assert(ready.context.shared_runtime_locator_ref === "none", "ready pre-write admission should expose no locator ref by default");
     assert(ready.context.active_cycle === "C101", "ready pre-write admission should expose active cycle");
     assert(ready.context.first_plan_step === "implement alpha feature validation", "ready pre-write admission should keep first plan step");
+    assert(ready.source_of_truth?.state_mode === "files", "ready pre-write admission should expose source-of-truth state mode");
+    assert(ready.context.source_of_truth_status === "clear", "ready pre-write admission should expose clear source-of-truth status");
+    assert(ready.checks?.source_of_truth_policy_resolved?.reason_code === "SOT_POLICY_RESOLVED", "ready pre-write admission should expose SoT policy reason code");
     assert(Array.isArray(ready.prioritized_artifacts) && ready.prioritized_artifacts.includes("docs/audit/CURRENT-STATE.md"), "ready pre-write admission should prioritize CURRENT-STATE.md");
 
     assert(blocked.ok === false, "blocked pre-write admission should fail");
@@ -579,6 +600,10 @@ function main() {
     assert(locatorWorkspaceMismatch.ok === false, "workspace mismatch override should block pre-write admission");
     assert(locatorWorkspaceMismatch.shared_runtime_validation?.status === "reject", "workspace mismatch override should expose reject validation status");
     assert(locatorWorkspaceMismatch.blocking_reasons.some((item) => String(item).includes("workspace_id mismatch")), "workspace mismatch override should explain the rejected workspace identity");
+    assert(stateModeMismatch.ok === false, "state mode mismatch should block pre-write admission");
+    assert(stateModeMismatch.context.source_of_truth_status === "block", "state mode mismatch should expose source-of-truth block status");
+    assert(stateModeMismatch.context.source_of_truth_reason_codes.includes("SOT_STATE_MODE_MISMATCH"), "state mode mismatch should expose SoT reason code");
+    assert(stateModeMismatch.blocking_reasons.some((item) => String(item).includes("SOT_STATE_MODE_MISMATCH")), "state mode mismatch should include a coded blocking reason");
     assert(dbOnlyRequirements.ok === true, "db-only fileless requirements admission should pass from SQLite artifacts");
     assert(String(dbOnlyRequirements.workspace?.workspace_id ?? "").length > 0, "db-only fileless requirements admission should expose workspace_id");
     assert(String(dbOnlyRequirements.workspace?.worktree_id ?? "").length > 0, "db-only fileless requirements admission should expose worktree_id");
@@ -606,6 +631,7 @@ function main() {
       db_only_close_session: dbOnlyCloseSession,
       invalid_shared_runtime: invalidSharedRuntime,
       locator_workspace_mismatch: locatorWorkspaceMismatch,
+      source_of_truth_state_mode_mismatch: stateModeMismatch,
       cycle_create_blocked: cycleCreateBlocked,
       cycle_create_dirty_blocked: dirtyCycleCreateBlocked,
       cycle_create_ahead_blocked: aheadCycleCreateBlocked,
