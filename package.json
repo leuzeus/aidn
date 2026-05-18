@@ -170,6 +170,7 @@
     "perf:verify-repair-layer-sqlite-views": "node tools/perf/verify-repair-layer-sqlite-views-fixtures.mjs",
     "perf:verify-repair-layer-triage": "node tools/perf/verify-repair-layer-triage-fixtures.mjs",
     "perf:verify-repair-layer-triage-summary": "node tools/perf/verify-repair-layer-triage-summary-fixtures.mjs",
+    "perf:verify-observability-surface-inventory": "node tools/perf/verify-observability-surface-inventory.mjs",
     "perf:verify-repair-layer-autofix": "node tools/perf/verify-repair-layer-autofix-fixtures.mjs",
     "perf:verify-gating-repair-layer-findings": "node tools/perf/verify-gating-repair-layer-findings-fixtures.mjs",
     "perf:verify-checkpoint-repair-layer-findings": "node tools/perf/verify-checkpoint-repair-layer-findings-fixtures.mjs",

@@ -525,10 +525,19 @@ Avancement:
 
 - `src/application/observability/repair-layer-triage-summary-use-case.mjs` porte le rendu Markdown du résumé repair-layer triage
 - `tools/perf/render-repair-layer-triage-summary.mjs` reste un wrapper lecture JSON + écriture fichier
-- les autres scripts `tools/perf/report-*` et `tools/perf/render-*` restent à inventorier avant fermeture de EIA-6.2
+- `src/application/observability/constraint-trend-summary-use-case.mjs` porte le rendu Markdown du résumé constraint trend
+- `tools/perf/render-constraint-trend-summary.mjs` reste un wrapper lecture JSON + écriture fichier
+- `src/application/observability/constraint-summary-use-case.mjs` porte le rendu Markdown du résumé constraint
+- `tools/perf/render-constraint-summary.mjs` reste un wrapper lecture JSON + écriture fichier
+- `src/application/observability/observability-surface-inventory.mjs` inventorie les scripts `tools/perf/render-*` et `tools/perf/report-*`, leur domaine, leur alias public et leur état de séparation
+- `tools/perf/verify-observability-surface-inventory.mjs` bloque les nouveaux scripts observability non classés ou les entrées d'inventaire obsolètes
+- les extractions restantes sont visibles par `separation_state`: `wrapper-extracted`, `legacy-wrapper-with-inline-builder`, `legacy-cli-orchestrator`
 
 Tests attendus:
 
+- `npm run perf:verify-observability-surface-inventory`
+- `npm run perf:verify-constraint-report`
+- `npm run perf:verify-constraint-trend`
 - checks perf ciblés selon fichier touché
 - `npm run perf:verify-cli-aliases`
 
