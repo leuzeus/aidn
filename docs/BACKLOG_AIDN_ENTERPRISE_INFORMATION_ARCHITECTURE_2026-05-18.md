@@ -507,7 +507,7 @@ Tests attendus:
 ### EIA-6.2 - Séparer Observabilité Et Runtime Engine
 
 - priorité: `P1`
-- statut: `Backlog`
+- statut: `In Progress`
 - objectif: isoler KPI/reporting des transitions workflow
 - dépend de: `EIA-2.3`
 - artefacts à modifier:
@@ -520,6 +520,12 @@ Critères d'acceptation:
 - collecte/reporting n'orchestre pas les gates
 - use cases observability séparés
 - wrappers existants restent compatibles
+
+Avancement:
+
+- `src/application/observability/repair-layer-triage-summary-use-case.mjs` porte le rendu Markdown du résumé repair-layer triage
+- `tools/perf/render-repair-layer-triage-summary.mjs` reste un wrapper lecture JSON + écriture fichier
+- les autres scripts `tools/perf/report-*` et `tools/perf/render-*` restent à inventorier avant fermeture de EIA-6.2
 
 Tests attendus:
 
