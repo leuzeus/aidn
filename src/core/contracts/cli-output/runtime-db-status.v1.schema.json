@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-db-status.v1",
+  "title": "aidn runtime db-status --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime db-status --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "ts",
+    "target_root",
+    "runtime_persistence",
+    "runtime_backend",
+    "sqlite_scope",
+    "workspace",
+    "resolved_projection_backend",
+    "runtime_backend_adoption_plan"
+  ],
+  "properties": {
+    "ts": { "type": "string" },
+    "target_root": { "type": "string" },
+    "runtime_persistence": { "type": "object", "additionalProperties": true },
+    "runtime_backend": { "type": "object", "additionalProperties": true },
+    "sqlite_scope": { "type": "string" },
+    "sqlite_scope_reason": { "type": "string" },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "resolved_projection_backend": { "type": "object", "additionalProperties": true },
+    "runtime_backend_adoption_plan": { "type": "object", "additionalProperties": true },
+    "schema_status": { "type": "string" },
+    "schema_version": { "type": ["string", "number", "null"] }
+  },
+  "additionalProperties": true
+}

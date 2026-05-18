@@ -4,4 +4,4 @@ os:
   - linux
   - mac
 codex_online: true
-notes: "Template-only install via Node installer"
+notes: "Workflow runtime platform install via Node installer"

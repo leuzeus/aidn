@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-coordinator-dispatch-plan.v1",
+  "title": "aidn runtime coordinator-dispatch-plan --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime coordinator-dispatch-plan --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "selected_agent",
+    "coordinator_recommendation",
+    "coordinator_status",
+    "dispatch_scope",
+    "dispatch_status",
+    "entrypoint_kind",
+    "entrypoint_name",
+    "steps",
+    "commands",
+    "preconditions",
+    "context"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "selected_agent": { "type": "object", "additionalProperties": true },
+    "agent_roster": { "type": "object", "additionalProperties": true },
+    "agent_roster_verification": { "type": "object", "additionalProperties": true },
+    "coordinator_recommendation": { "type": "object", "additionalProperties": true },
+    "coordinator_status": { "type": "object", "additionalProperties": true },
+    "dispatch_scope": { "type": "object", "additionalProperties": true },
+    "dispatch_status": { "type": "string" },
+    "entrypoint_kind": { "type": "string" },
+    "entrypoint_name": { "type": "string" },
+    "steps": { "type": "array" },
+    "commands": { "type": "array" },
+    "notes": { "type": "array" },
+    "preconditions": { "type": "array" },
+    "handoff": { "type": ["object", "null"], "additionalProperties": true },
+    "context": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": true
+}

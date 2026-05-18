@@ -38,6 +38,31 @@ Purpose:
 | PostgreSQL `handoff_relays` | `shared-candidate` | explicit only | shared backend | Shared handoff relay metadata while `HANDOFF-PACKET.md` remains local/versioned. |
 | PostgreSQL `coordination_records` | `shared-candidate` | explicit only | shared backend | Shared coordination history without externalizing `COORDINATION-SUMMARY.md`. |
 
+## Concept Source-Of-Truth Overlay
+
+This overlay names the logical owner of key information concepts. It complements the physical path matrix above.
+
+| Concept | `files` mode source | `dual` mode source | `db-only` mode source | Projection / cache |
+| --- | --- | --- | --- | --- |
+| Workflow rules | `docs/audit/SPEC.md` | same checkout-bound file | same checkout-bound file | generated summaries only |
+| Project policy | `.aidn/project/workflow.adapter.json` | same local/project file | same local/project file | `WORKFLOW.md`, `CODEX_ONLINE.md`, `index.md` |
+| Runtime defaults | `.aidn/config.json` | same worktree-local file | same worktree-local file | CLI status output |
+| Session state | `docs/audit/sessions/S*.md` | runtime DB/index plus required Markdown projection | runtime DB, materialized on demand | `CURRENT-STATE.md`, runtime heads |
+| Cycle state | `docs/audit/cycles/*/status.md` | runtime DB/index plus required Markdown projection | runtime DB, materialized on demand | `CURRENT-STATE.md`, runtime heads |
+| Artifact inventory | checkout scan | runtime artifact store | runtime artifact store | SQLite/local exports, materialized docs |
+| Runtime digests | generated Markdown files | runtime store plus generated Markdown | runtime store plus generated Markdown on demand | `RUNTIME-STATE.md`, `HANDOFF-PACKET.md` |
+| Repair findings | local scan/report | repair-layer runtime tables | repair-layer runtime tables | repair reports and summaries |
+| Coordination records | `.aidn/runtime/context/*` | local context or explicit shared backend | local context or explicit shared backend | `COORDINATION-LOG.md`, `COORDINATION-SUMMARY.md` |
+| Agent roster | `docs/audit/AGENT-ROSTER.md` | same checkout-bound file | same checkout-bound file | health and selection summaries |
+| CLI output contracts | package `src/core/contracts/cli-output/*.schema.json` | same package contract | same package contract | generated docs future |
+
+Rules:
+
+- checkout-bound artifacts remain local/versioned even when DB-backed runtime is enabled
+- DB-backed runtime may become canonical for operational state, but Markdown projections remain audited project artifacts
+- shared coordination stores only metadata explicitly listed in this matrix; they do not relocate `docs/audit/*`
+- local SQLite under `.aidn/runtime/index/` is never shared by default
+
 ## Explicit Non-Share List
 
 - `docs/audit/*`

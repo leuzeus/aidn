@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-pre-write-admit.v1",
+  "title": "aidn runtime pre-write-admit --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime pre-write-admit --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "ok",
+    "admission_status",
+    "target_root",
+    "skill",
+    "policy",
+    "context",
+    "checks",
+    "blocking_reasons",
+    "warnings",
+    "prioritized_artifacts"
+  ],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "admission_status": { "type": "string" },
+    "target_root": { "type": "string" },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "shared_state_backend": { "type": "object", "additionalProperties": true },
+    "shared_runtime_validation": { "type": "object", "additionalProperties": true },
+    "skill": { "type": "string" },
+    "policy": { "type": "object", "additionalProperties": true },
+    "context": { "type": "object", "additionalProperties": true },
+    "checks": { "type": "object", "additionalProperties": true },
+    "blocking_reasons": { "type": "array" },
+    "warnings": { "type": "array" },
+    "blocking_findings": { "type": "array" },
+    "prioritized_artifacts": { "type": "array" }
+  },
+  "additionalProperties": true
+}

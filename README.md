@@ -179,6 +179,8 @@ Migration and repair:
 - Target architecture ADR: `docs/ADR/ADR-0002-runtime-platform-architecture.md`
 - Remediation plan: `docs/PLAN_ARCHITECTURE_REMEDIATION_2026-03-07.md`
 - Executable backlog: `docs/BACKLOG_ARCHITECTURE_REMEDIATION_2026-03-07.md`
+- Enterprise information architecture plan: `docs/PLAN_AIDN_ENTERPRISE_INFORMATION_ARCHITECTURE_2026-05-18.md`
+- Enterprise information architecture backlog: `docs/BACKLOG_AIDN_ENTERPRISE_INFORMATION_ARCHITECTURE_2026-05-18.md`
 - GitHub issues ready: `docs/BACKLOG_ARCHITECTURE_GITHUB_ISSUES_2026-03-07.md`
 - GitHub project ready: `docs/BACKLOG_ARCHITECTURE_GITHUB_PROJECT_2026-03-07.md`
 

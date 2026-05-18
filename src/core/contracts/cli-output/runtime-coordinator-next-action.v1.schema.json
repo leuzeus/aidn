@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-coordinator-next-action.v1",
+  "title": "aidn runtime coordinator-next-action --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime coordinator-next-action --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "current_state_file",
+    "runtime_state_file",
+    "packet_file",
+    "packet_resolution",
+    "preferred_dispatch_source",
+    "recommendation",
+    "scope",
+    "context"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "current_state_file": { "type": "string" },
+    "runtime_state_file": { "type": "string" },
+    "packet_file": { "type": "string" },
+    "packet_resolution": { "type": "object", "additionalProperties": true },
+    "handoff": { "type": ["object", "null"], "additionalProperties": true },
+    "preferred_dispatch_source": { "type": "string" },
+    "shared_planning_candidate": { "type": ["object", "null"], "additionalProperties": true },
+    "recommendation": { "type": "object", "additionalProperties": true },
+    "scope": { "type": "object", "additionalProperties": true },
+    "context": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": true
+}

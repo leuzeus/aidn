@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-project-handoff-packet.v1",
+  "title": "aidn runtime project-handoff-packet --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime project-handoff-packet --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "workspace",
+    "shared_state_backend",
+    "shared_coordination_backend",
+    "shared_runtime_validation",
+    "output_file",
+    "written",
+    "packet",
+    "consistency"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "shared_state_backend": { "type": "object", "additionalProperties": true },
+    "shared_coordination_backend": { "type": "object", "additionalProperties": true },
+    "shared_coordination_sync": { "type": "object", "additionalProperties": true },
+    "shared_runtime_validation": { "type": "object", "additionalProperties": true },
+    "output_file": { "type": "string" },
+    "written": { "type": "boolean" },
+    "packet": { "type": "object", "additionalProperties": true },
+    "consistency": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-project-runtime-state.v1",
+  "title": "aidn runtime project-runtime-state --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime project-runtime-state --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "workspace",
+    "shared_state_backend",
+    "shared_runtime_validation",
+    "output_file",
+    "written",
+    "digest",
+    "consistency"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "shared_state_backend": { "type": "object", "additionalProperties": true },
+    "shared_runtime_validation": { "type": "object", "additionalProperties": true },
+    "output_file": { "type": "string" },
+    "written": { "type": "boolean" },
+    "digest": { "type": "object", "additionalProperties": true },
+    "consistency": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": true
+}
