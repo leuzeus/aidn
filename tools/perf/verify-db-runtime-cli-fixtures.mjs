@@ -149,10 +149,15 @@ function main() {
       status_before_reports_missing_db: statusBefore.exists === false,
       status_before_reports_runtime_backend_resolution: statusBefore.runtime_persistence?.backend === "sqlite",
       status_before_reports_local_scope: statusBefore.sqlite_scope === "explicit-path",
+      status_before_exposes_operations: statusBefore.operations?.schema_status === "missing"
+        && statusBefore.operations?.connection_secret_exposed === false
+        && statusBefore.operations?.backup_command === "aidn runtime db-backup --target . --json",
       status_before_reports_pending_baseline: Array.isArray(statusBefore.pending_ids) && statusBefore.pending_ids.includes("0001_workflow_index_baseline_v2"),
       migrate_fresh_applies_baseline: Array.isArray(migrateFresh?.migration?.applied_ids) && migrateFresh.migration.applied_ids.includes("0001_workflow_index_baseline_v2"),
       status_after_no_pending: Array.isArray(statusAfter.pending_ids) && statusAfter.pending_ids.length === 0,
       status_after_reports_applied: Array.isArray(statusAfter.applied_ids) && statusAfter.applied_ids.includes("0001_workflow_index_baseline_v2"),
+      status_after_operations_ready: statusAfter.operations?.schema_status === "ready"
+        && statusAfter.operations?.freshness_status === "inspectable",
       status_after_reports_resolved_projection: statusAfter.resolved_projection_backend?.projection_scope === "local-target",
       persistence_alias_reports_sqlite_backend: persistenceAliasStatus.runtime_persistence?.backend === "sqlite" && persistenceAliasStatus.runtime_persistence?.source === "cli",
       persistence_adopt_alias_exposes_blocked_plan: adoptDryRunBlocked?.runtime_backend_adoption_plan?.action === "blocked-conflict"

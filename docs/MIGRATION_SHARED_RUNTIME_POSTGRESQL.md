@@ -12,6 +12,38 @@ Scope: incremental adoption path from local SQLite-only runtime to optional shar
 - shared runtime is opt-in
 - rollback to local-only is supported
 
+## Backup / Restore Runbook
+
+Shared coordination backup protects coordination metadata only. It does not back up checkout-bound audit artifacts, local `.codex/*`, or the local SQLite runtime projection.
+
+| Surface | Backup command | Restore command | Notes |
+|---|---|---|---|
+| Shared coordination PostgreSQL/sqlite-file | `npx aidn runtime shared-coordination-backup --target . --json` | `npx aidn runtime shared-coordination-restore --target . --write --json` | Captures workspace registry, planning states, handoff relays and coordination records. |
+| Local runtime projection | `npx aidn runtime db-backup --target . --json` | regenerate or restore local SQLite backup | Remains target-root anchored and local. |
+| Checkout-bound workflow docs | Git commit/branch backup | Git restore/revert | Never externalized by shared runtime. |
+
+Safe sequence before mutating shared coordination:
+
+1. inspect `shared-coordination-status`
+2. capture `shared-coordination-backup`
+3. run the mutating command with `--dry-run` when available
+4. apply with `--write`
+5. run `shared-coordination-status` and `pre-write-admit` again
+
+Restore sequence:
+
+1. run `shared-coordination-restore --json` without `--write` to preview
+2. confirm backend kind, workspace id and backup schema version
+3. run `shared-coordination-restore --write --json`
+4. run `shared-coordination-status --json`
+5. rerun the workflow admission gate before durable writes
+
+Secrets:
+
+- use `env:AIDN_PG_URL` or another environment-backed connection reference
+- never commit raw PostgreSQL URLs, local absolute pilot paths, or backup files containing sensitive payloads
+- scrub support bundles before sharing outside the local machine
+
 ## Option 0 - Stay Local SQLite
 
 If you do not need multi-worktree shared coordination, do nothing.
@@ -44,6 +76,30 @@ Use this when:
 - the locator is malformed
 - `workspace_id` mismatches an override
 - you want to confirm whether the worktree is still `local-only` or already `shared-runtime`
+
+## Multi-Repo Opt-In Contract
+
+Multi-repo or multi-worktree federation is available only through explicit shared-runtime configuration.
+
+Required contract:
+
+- every participating project/worktree has a validated `.aidn/project/shared-runtime.locator.json`
+- the locator identifies the shared backend and workspace boundary
+- project/workspace/worktree identity is visible in `shared-coordination-status --json`
+- PostgreSQL credentials are referenced through `env:*`
+- shared coordination contains coordination metadata only; local audit artifacts remain in each checkout
+
+Before joining another repository or worktree to the same backend:
+
+```bash
+npx aidn runtime shared-runtime-reanchor --target . --json
+npx aidn runtime shared-coordination-status --target . --json
+npm run perf:verify-shared-runtime-locator
+npm run perf:verify-shared-coordination-multi-project
+npm run perf:verify-shared-coordination-worktree-concurrency
+```
+
+Do not copy locator files blindly between repositories. Re-anchor each target so `project_id`, `workspace_id`, `worktree_id`, backend kind and connection reference are checked against that target.
 
 ## Option 2 - Shared Runtime With `sqlite-file`
 

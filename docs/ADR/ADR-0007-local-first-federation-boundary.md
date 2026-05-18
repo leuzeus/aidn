@@ -27,6 +27,14 @@ Rules:
 - multi-repo or multi-worktree federation must use explicit workspace/worktree identity and locator configuration
 - no command may silently relocate audit artifacts into shared runtime
 
+Stable federation contract:
+
+- shared coordination is limited to `workspace_registry`, `worktree_registry`, `planning_states`, `handoff_relays` and `coordination_records`
+- the locator is required for every shared backend and must be validated before use
+- `project_id`, `workspace_id` and `worktree_id` are part of the public operational identity surface
+- `docs/audit/*`, `AGENTS.md`, `.codex/*`, `.aidn/config.json` and local runtime projections stay outside shared coordination
+- PostgreSQL connection material must be referenced through `env:*` or equivalent indirection, never embedded in tracked files
+
 ## Options Compared
 
 | Option | Result |
@@ -64,6 +72,6 @@ Negative:
 
 ## Follow-Up
 
-- finish local backup/restore/migration runbooks before expanding federation
 - keep shared runtime locator validation strict
-- require explicit multi-repo test fixtures before marking federation features stable
+- require explicit multi-repo test fixtures before expanding the shared-surface list
+- keep `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md` synchronized with this ADR

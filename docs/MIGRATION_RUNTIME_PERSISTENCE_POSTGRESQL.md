@@ -25,6 +25,64 @@ This does not change:
 - `docs/audit/*`, `AGENTS.md`, `.codex/*`
 - shared coordination schema ownership
 
+## Local Operations Runbook
+
+Use this sequence for a real repository. Treat it as an installed-project runbook; in this package source repository, validate it through fixtures unless an external pilot root is explicitly selected.
+
+### 1. Classify the operation
+
+| Operation | Canonical scope | Backup required before write | Restore target |
+|---|---|---|---|
+| SQLite-only runtime refresh | local `.aidn/runtime/index/workflow-index.sqlite` | local SQLite copy | same target root |
+| SQLite -> PostgreSQL adoption | runtime persistence backend | SQLite export and PostgreSQL backup when target has rows | selected runtime `scope_key` |
+| PostgreSQL migration | PostgreSQL relational schema | PostgreSQL backup | same PostgreSQL schema and scope |
+| Local projection cleanup | compatibility projection only | local SQLite copy if still used by tooling | regenerate projection from canonical backend |
+
+### 2. Capture pre-write evidence
+
+Run status first, then backup:
+
+```powershell
+aidn runtime db-status --target . --json
+aidn runtime persistence-status --target . --json
+aidn runtime db-backup --target . --json
+aidn runtime persistence-backup --target . --json
+```
+
+Rules:
+
+- store connection strings only through `connectionRef` such as `env:AIDN_PG_URL`
+- do not paste raw PostgreSQL secrets into tracked docs or backup manifests
+- keep backup files under local runtime backup directories unless intentionally exporting a sanitized support artifact
+- record the command output status, backend, schema state and `scope_key` before applying adoption or migration
+
+### 3. Preview then write
+
+Preview:
+
+```powershell
+aidn runtime persistence-adopt --target . --backend postgres --dry-run --json
+aidn runtime persistence-migrate --target . --dry-run --json
+```
+
+Write only after the preview is unblocked:
+
+```powershell
+aidn runtime persistence-adopt --target . --backend postgres --json
+aidn runtime persistence-migrate --target . --json
+```
+
+### 4. Restore or rollback
+
+Rollback is explicit:
+
+1. switch `runtime.persistence.backend` back to `sqlite`
+2. restore or regenerate the local SQLite projection
+3. keep the PostgreSQL backup until the source and target status both report the expected schema and `scope_key`
+4. rerun `db-status`, `project-runtime-state --dry-run --json`, and the relevant admission gate before new writes
+
+Do not purge PostgreSQL rows until a backup exists and the affected `scope_key` has been identified.
+
 ## Stay On SQLite
 
 If you want no backend change, keep:

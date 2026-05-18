@@ -57,6 +57,67 @@ function printUsage() {
   console.log("  npx aidn runtime db-status --target . --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json");
 }
 
+function redactConnectionRef(value) {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) {
+    return "none";
+  }
+  if (normalized.startsWith("env:")) {
+    return normalized;
+  }
+  return "<redacted>";
+}
+
+function deriveRuntimeOperations(payload) {
+  const pendingIds = Array.isArray(payload.pending_ids) ? payload.pending_ids : [];
+  const missingTables = Array.isArray(payload.tables_missing) ? payload.tables_missing : [];
+  const backend = payload.runtime_persistence?.backend ?? "unknown";
+  const compatibility = payload.compatibility_status ?? "unknown";
+  const targetUnavailable = compatibility === "target-unavailable" || payload.runtime_backend_adoption_plan?.reason_code === "target-unavailable";
+  const schemaStatus = targetUnavailable
+    ? "target-unavailable"
+    : payload.exists === false
+      ? "missing"
+      : missingTables.length > 0
+        ? "schema-incomplete"
+        : pendingIds.length > 0
+          ? "migration-required"
+          : "ready";
+  const recommendedActions = [];
+  if (schemaStatus === "missing" || schemaStatus === "migration-required" || schemaStatus === "schema-incomplete") {
+    recommendedActions.push("run aidn runtime db-migrate --target . --json after backing up the selected runtime surface");
+  }
+  if (targetUnavailable) {
+    recommendedActions.push("resolve the configured backend connection before migration or adoption");
+  }
+  if (payload.runtime_backend_adoption_plan?.action && payload.runtime_backend_adoption_plan.action !== "noop") {
+    recommendedActions.push("review runtime_backend_adoption_plan before changing runtime.persistence.backend");
+  }
+  if (recommendedActions.length === 0) {
+    recommendedActions.push("no immediate runtime persistence action required");
+  }
+  const connectionRef = redactConnectionRef(payload.runtime_persistence?.connectionRef ?? payload.runtime_persistence?.connection_ref);
+  return {
+    local_first: true,
+    backend,
+    backend_source: payload.runtime_persistence?.source ?? "unknown",
+    schema_status: schemaStatus,
+    compatibility_status: compatibility,
+    schema_version: payload.schema_version ?? null,
+    pending_migration_count: pendingIds.length,
+    applied_migration_count: Array.isArray(payload.applied_ids) ? payload.applied_ids.length : 0,
+    sqlite_scope: payload.sqlite_scope,
+    sqlite_scope_reason: payload.sqlite_scope_reason,
+    resolved_projection_scope: payload.resolved_projection_backend?.projection_scope ?? "unknown",
+    connection_ref: connectionRef,
+    connection_secret_exposed: false,
+    freshness_status: payload.exists === false ? "missing" : "inspectable",
+    backup_command: "aidn runtime db-backup --target . --json",
+    migration_command: "aidn runtime db-migrate --target . --json",
+    recommended_actions: recommendedActions,
+  };
+}
+
 export async function projectRuntimePersistenceStatus({
   targetRoot = ".",
   backend = "",
@@ -97,7 +158,7 @@ export async function projectRuntimePersistenceStatus({
     connectionRef: runtimePersistence.connectionRef ?? "",
     sqliteFile: absoluteSqliteFile,
   });
-  return {
+  const payload = {
     ts: new Date().toISOString(),
     target_root: absoluteTargetRoot,
     runtime_persistence: runtimePersistence,
@@ -110,6 +171,10 @@ export async function projectRuntimePersistenceStatus({
     resolved_projection_backend: resolvedProjection,
     runtime_backend_adoption_plan: adoptionPlan,
     ...status,
+  };
+  return {
+    ...payload,
+    operations: deriveRuntimeOperations(payload),
   };
 }
 
@@ -147,6 +212,8 @@ async function main() {
     if (payload.compatibility_status) {
       console.log(`Compatibility status: ${payload.compatibility_status}`);
     }
+    console.log(`Operational schema status: ${payload.operations?.schema_status ?? "unknown"}`);
+    console.log(`Operational freshness: ${payload.operations?.freshness_status ?? "unknown"}`);
     console.log(`Schema version: ${payload.schema_version ?? "n/a"}`);
     console.log(`Applied migrations: ${payload.applied_ids.join(", ") || "none"}`);
     console.log(`Pending migrations: ${payload.pending_ids.join(", ") || "none"}`);

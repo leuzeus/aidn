@@ -108,3 +108,56 @@ Rules:
 - shared runtime must be explicit; there is no implicit relocation of all `.aidn/*`
 - PostgreSQL shared coordination does not replace `workflow-index.sqlite` on day one
 - raw paths coming from locator or handoff metadata must pass canonical shared-runtime validation
+
+## Backup And Restore Boundaries
+
+| Operation | Covers | Does not cover | Verification |
+| --- | --- | --- | --- |
+| `runtime db-backup` | local runtime projection and SQLite-backed runtime payloads | shared coordination PostgreSQL rows, checkout-bound docs | `npm run perf:verify-db-runtime-cli` |
+| `runtime persistence-backup` | configured runtime persistence backend for the selected scope | shared coordination metadata | `npm run perf:verify-runtime-persistence-parity` |
+| `runtime shared-coordination-backup` | explicit shared coordination metadata | local `workflow-index.sqlite`, `docs/audit/*`, `.codex/*` | `npm run perf:verify-shared-coordination-backup` |
+| `runtime shared-coordination-restore` | selected shared coordination backup payload | checkout-bound artifacts and local runtime projection | `npm run perf:verify-shared-coordination-restore` |
+| schema migration fixtures | schema compatibility and migration behavior | live PostgreSQL availability | `npm run perf:verify-db-schema-migrations` |
+
+Operational rules:
+
+- backup the surface you are about to mutate; one backup family is not a substitute for another
+- preview restore/migration before write when the command supports it
+- keep connection strings behind `env:*` references and scrub support artifacts before sharing
+- rerun admission gates after restore because restored coordination metadata can be ahead of local Markdown projections
+
+## Multi-Repo Federation Contract
+
+Federation is an opt-in coordination contract, not a cloud mode and not a replacement for local audit artifacts.
+
+Required inputs:
+
+- a valid `.aidn/project/shared-runtime.locator.json`
+- explicit `project_id`, `workspace_id` and per-worktree `worktree_id`
+- an explicit backend: `sqlite-file` for controlled local experiments or `postgres` for multi-writer shared coordination
+- environment-backed secrets such as `env:AIDN_PG_URL` when PostgreSQL is used
+
+Allowed shared surfaces:
+
+- `workspace_registry`
+- `worktree_registry`
+- `planning_states`
+- `handoff_relays`
+- `coordination_records`
+
+Forbidden implicit sharing:
+
+- `docs/audit/*`
+- `AGENTS.md`
+- `.codex/*`
+- `.aidn/config.json`
+- `.aidn/runtime/index/workflow-index.sqlite`
+- local repair reports, local perf reports and hydrated context files
+
+Validation:
+
+- `npm run perf:verify-shared-runtime-locator`
+- `npm run perf:verify-shared-coordination-multi-project`
+- `npm run perf:verify-shared-coordination-worktree-concurrency`
+
+Any future shared surface must update this matrix, ADR-0007, CLI status output contracts and fixture coverage before it is treated as stable.

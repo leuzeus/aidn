@@ -59,6 +59,45 @@ Fix:
 - Or regenerate from install:
   - `node tools/install.mjs --target <repo> --pack core`
 
+## Runtime backup, restore, or migration is blocked
+
+Symptom:
+- `db-status`, `persistence-adopt`, `persistence-migrate`, `shared-coordination-backup`, or `shared-coordination-restore` returns `blocked`, `target-unavailable`, `schema-incomplete`, or a connection resolution error.
+
+Meaning:
+- local SQLite runtime state, PostgreSQL runtime persistence, and shared coordination are separate operational surfaces.
+- a shared coordination backup does not back up `docs/audit/*` or the local SQLite projection.
+- a runtime persistence backup does not make shared coordination safe to overwrite.
+
+Fix:
+- Inspect local runtime first:
+  - `npx aidn runtime db-status --target . --json`
+  - `npx aidn runtime persistence-status --target . --json`
+- Inspect shared coordination separately:
+  - `npx aidn runtime shared-coordination-status --target . --json`
+- Before applying a migration or restore, create the relevant backup:
+  - `npx aidn runtime db-backup --target . --json`
+  - `npx aidn runtime persistence-backup --target . --json`
+  - `npx aidn runtime shared-coordination-backup --target . --json`
+- Preview restore before writing:
+  - `npx aidn runtime shared-coordination-restore --target . --json`
+  - `npx aidn runtime shared-coordination-restore --target . --write --json`
+
+If the failure mentions schema compatibility:
+- run the migration preview first
+- verify the target `scope_key` and backend kind
+- do not purge or overwrite target rows until a backup exists
+
+If the failure mentions a missing PostgreSQL connection:
+- confirm the config uses `connectionRef` such as `env:AIDN_PG_URL`
+- confirm the environment variable is set in the current shell
+- do not paste raw connection strings into tracked files or issue output
+
+References:
+- `docs/MIGRATION_RUNTIME_PERSISTENCE_POSTGRESQL.md`
+- `docs/MIGRATION_SHARED_RUNTIME_POSTGRESQL.md`
+- `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md`
+
 ## Forgot to customize the project stub
 
 Symptom:

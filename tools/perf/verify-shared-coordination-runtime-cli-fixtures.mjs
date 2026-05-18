@@ -15,13 +15,19 @@ function assert(condition, message) {
 }
 
 function runJson(args, env = {}) {
+  const childEnv = {
+    ...process.env,
+    ...env,
+  };
+  for (const [key, value] of Object.entries(env)) {
+    if (value === null) {
+      delete childEnv[key];
+    }
+  }
   const stdout = execFileSync(process.execPath, [path.resolve(process.cwd(), "bin/aidn.mjs"), ...args], {
     cwd: process.cwd(),
     encoding: "utf8",
-    env: {
-      ...process.env,
-      ...env,
-    },
+    env: childEnv,
   });
   return JSON.parse(stdout);
 }
@@ -172,6 +178,8 @@ async function main() {
   try {
     const disabledStatus = runJson(["runtime", "shared-coordination-status", "--target", "tests/fixtures/repo-installed-core", "--json"]);
     assert(disabledStatus.shared_coordination_backend.status === "disabled", "status CLI should report disabled backend by default");
+    assert(disabledStatus.operations?.scope === "shared-coordination-only", "disabled status should expose shared coordination operations scope");
+    assert(disabledStatus.operations?.connection_secret_exposed === false, "disabled status should not expose connection secrets");
 
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-shared-coordination-cli-"));
     const targetRoot = path.join(tempRoot, "repo");
@@ -186,8 +194,12 @@ async function main() {
       },
     });
 
-    const missingEnvStatus = runJson(["runtime", "shared-coordination-status", "--target", targetRoot, "--json"]);
+    const missingEnvStatus = runJson(["runtime", "shared-coordination-status", "--target", targetRoot, "--json"], {
+      AIDN_PG_URL: null,
+    });
     assert(missingEnvStatus.shared_coordination_backend.status === "missing-env", "status CLI should surface missing postgres env");
+    assert(missingEnvStatus.operations?.schema_status === "missing-env", "missing env status should expose operational schema status");
+    assert(missingEnvStatus.operations?.connection_ref === "env:AIDN_PG_URL", "missing env status should expose env connection reference only");
 
     const fakeResolution = createFakeResolution();
     const directStatus = await projectSharedCoordinationStatus({
@@ -199,6 +211,9 @@ async function main() {
     assert(directStatus.health?.ok === true, "direct status projection should expose health");
     assert(directStatus.health?.schema_status === "ready", "direct status projection should expose ready schema status");
     assert(directStatus.health?.compatibility_status === "project-scoped", "direct status projection should expose compatibility status");
+    assert(directStatus.operations?.schema_status === "ready", "direct status should expose operational schema status");
+    assert(directStatus.operations?.freshness_status === "inspectable", "direct status should expose inspectable freshness");
+    assert(directStatus.operations?.backup_command === "aidn runtime shared-coordination-backup --target . --json", "direct status should expose backup command");
     assert(directStatus.snapshot?.handoff_read?.status === "found", "direct status projection should expose handoff snapshot");
     assert(directStatus.snapshot?.coordination_read?.status === "found", "direct status projection should expose coordination snapshot");
 

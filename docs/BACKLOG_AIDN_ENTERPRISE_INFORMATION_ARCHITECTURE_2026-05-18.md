@@ -25,8 +25,8 @@ Ce backlog est conçu pour:
 | EIA-5 | Qualité metadata et gouvernance | P1 | Done | EIA-1 |
 | EIA-6 | Refactoring couches runtime restantes | P1 | In Progress | EIA-2 |
 | EIA-7 | ADR et principes de gouvernance | P1 | Done | EIA-1 |
-| EIA-8 | Exploitation locale | P2 | Backlog | EIA-4 |
-| EIA-9 | Fédération local-first | P3 | Backlog | EIA-4, EIA-8 |
+| EIA-8 | Exploitation locale | P2 | Done | EIA-4 |
+| EIA-9 | Fédération local-first | P3 | Done | EIA-4, EIA-8 |
 
 ## Règles D'Exécution
 
@@ -608,7 +608,7 @@ Tests attendus:
 ### EIA-7.4 - Ajouter ADR-0006 Et ADR-0007
 
 - priorité: `P2`
-- statut: `Backlog`
+- statut: `Done`
 - dépend de: `EIA-1.4`, `EIA-8`
 - artefacts à modifier:
   - `docs/ADR/ADR-0006-information-model.md`
@@ -635,7 +635,7 @@ Tests attendus:
 ### EIA-8.1 - Clarifier Runbooks Backup/Restore/Migration
 
 - priorité: `P2`
-- statut: `Backlog`
+- statut: `Done`
 - dépend de: `EIA-4.2`
 - artefacts à modifier:
   - `docs/MIGRATION_RUNTIME_PERSISTENCE_POSTGRESQL.md`
@@ -649,6 +649,14 @@ Critères d'acceptation:
 - restore vérifie compatibilité schema
 - local SQLite vs shared coordination distingués
 
+Avancement:
+
+- `docs/MIGRATION_RUNTIME_PERSISTENCE_POSTGRESQL.md` documente la séquence status -> backup -> preview -> write -> rollback
+- `docs/MIGRATION_SHARED_RUNTIME_POSTGRESQL.md` distingue backup shared coordination, backup SQLite local et Git pour les artefacts checkout-bound
+- `docs/TROUBLESHOOTING.md` ajoute un diagnostic opérationnel backup/restore/migration
+- `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md` formalise les frontières de backup/restore par surface
+- `package.json` expose `npm run perf:verify-db-schema-migrations`
+
 Tests attendus:
 
 - `npm run perf:verify-shared-coordination-backup`
@@ -658,7 +666,7 @@ Tests attendus:
 ### EIA-8.2 - Ajouter Indicateurs D'Exploitation Locale
 
 - priorité: `P2`
-- statut: `Backlog`
+- statut: `Done`
 - dépend de: `EIA-2.3`
 - artefacts à modifier:
   - `tools/runtime/db-status.mjs`
@@ -671,6 +679,12 @@ Critères d'acceptation:
 - les indicateurs sont exploitables sans cloud
 - secrets restent masqués
 
+Avancement:
+
+- `tools/runtime/db-status.mjs` expose `operations` avec schema status, backend source, scope SQLite, freshness inspectable, commandes backup/migration et `connection_secret_exposed=false`
+- `tools/runtime/shared-coordination-status.mjs` expose `operations` avec scope `shared-coordination-only`, schema/compatibility status, freshness des lectures partagées, commandes backup/restore et référence de connexion sans secret
+- les fixtures runtime CLI vérifient les indicateurs et le masquage des secrets
+
 Tests attendus:
 
 - `npm run perf:verify-db-runtime-cli`
@@ -681,7 +695,7 @@ Tests attendus:
 ### EIA-9.1 - Formaliser Le Contrat Multi-Repo Opt-In
 
 - priorité: `P3`
-- statut: `Backlog`
+- statut: `Done`
 - dépend de: `EIA-8.1`
 - artefacts à modifier:
   - `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md`
@@ -693,6 +707,13 @@ Critères d'acceptation:
 - aucune externalisation implicite de `docs/audit/*`
 - coordination partagée limitée aux tables explicitement listées
 - locator requis pour toute fédération
+
+Avancement:
+
+- `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md` formalise le contrat federation multi-repo opt-in, les surfaces partagées autorisées et les surfaces interdites
+- `docs/ADR/ADR-0007-local-first-federation-boundary.md` liste le contrat stable de fédération local-first
+- `docs/MIGRATION_SHARED_RUNTIME_POSTGRESQL.md` documente la séquence d'entrée multi-repo/worktree avec locator validé
+- `package.json` expose `npm run perf:verify-shared-coordination-multi-project`
 
 Tests attendus:
 

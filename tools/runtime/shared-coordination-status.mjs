@@ -47,6 +47,43 @@ function printUsage() {
   console.log("  npx aidn runtime shared-coordination-status --target . --json");
 }
 
+function deriveSharedCoordinationOperations({ backend, health, snapshot }) {
+  const status = backend?.status ?? "disabled";
+  const schemaStatus = health?.schema_status ?? (status === "disabled" ? "disabled" : status);
+  const compatibilityStatus = health?.compatibility_status ?? "unknown";
+  const planningStatus = snapshot?.planning_read?.status ?? "not_applicable";
+  const handoffStatus = snapshot?.handoff_read?.status ?? "unknown";
+  const coordinationStatus = snapshot?.coordination_read?.status ?? "unknown";
+  const recommendedActions = [];
+  if (status === "missing-env") {
+    recommendedActions.push("set the environment variable referenced by shared_coordination_backend.connection_ref");
+  } else if (status === "disabled") {
+    recommendedActions.push("keep local-only mode or configure shared-runtime explicitly before using shared coordination");
+  } else if (schemaStatus !== "ready") {
+    recommendedActions.push("run aidn runtime shared-coordination-bootstrap --target . --json or inspect migration diagnostics");
+  } else {
+    recommendedActions.push("shared coordination is inspectable; back it up before mutating shared records");
+  }
+  return {
+    local_first: true,
+    scope: "shared-coordination-only",
+    backend_kind: backend?.backend_kind ?? "none",
+    backend_status: status,
+    schema_status: schemaStatus,
+    compatibility_status: compatibilityStatus,
+    latest_schema_version: health?.latest_applied_schema_version ?? 0,
+    connection_ref: backend?.connection_ref || "none",
+    connection_secret_exposed: false,
+    freshness_status: [planningStatus, handoffStatus, coordinationStatus].some((item) => item === "found") ? "inspectable" : "no-shared-records",
+    planning_read_status: planningStatus,
+    handoff_read_status: handoffStatus,
+    coordination_read_status: coordinationStatus,
+    backup_command: "aidn runtime shared-coordination-backup --target . --json",
+    restore_preview_command: "aidn runtime shared-coordination-restore --target . --json",
+    recommended_actions: recommendedActions,
+  };
+}
+
 export async function projectSharedCoordinationStatus({
   targetRoot = ".",
   sharedCoordination = null,
@@ -99,7 +136,7 @@ export async function projectSharedCoordinationStatus({
     sessionId: activeSession !== "none" ? activeSession : "",
     limit: 5,
   });
-  return {
+  const result = {
     target_root: absoluteTargetRoot,
     ok: resolution.store ? health?.ok === true : resolution.status === "disabled",
     workspace,
@@ -132,6 +169,14 @@ export async function projectSharedCoordinationStatus({
       }
       : null,
   };
+  return {
+    ...result,
+    operations: deriveSharedCoordinationOperations({
+      backend,
+      health,
+      snapshot: result.snapshot,
+    }),
+  };
 }
 
 function main() {
@@ -159,6 +204,8 @@ function main() {
         console.log(`- registered_project_count=${result.health.registered_project_count ?? 0}`);
         console.log(`- legacy_workspace_rows=${result.health.legacy_workspace_rows ?? 0}`);
       }
+      console.log(`- operational_schema_status=${result.operations?.schema_status ?? "unknown"}`);
+      console.log(`- operational_freshness=${result.operations?.freshness_status ?? "unknown"}`);
     }
   }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
