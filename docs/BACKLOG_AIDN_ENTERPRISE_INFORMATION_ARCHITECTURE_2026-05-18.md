@@ -23,7 +23,7 @@ Ce backlog est conçu pour:
 | EIA-3 | Sémantique lecture/écriture CLI | P0 | Done | EIA-2 |
 | EIA-4 | Gates source de vérité par mode | P1 | Done | EIA-1 |
 | EIA-5 | Qualité metadata et gouvernance | P1 | Done | EIA-1 |
-| EIA-6 | Refactoring couches runtime restantes | P1 | Backlog | EIA-2 |
+| EIA-6 | Refactoring couches runtime restantes | P1 | In Progress | EIA-2 |
 | EIA-7 | ADR et principes de gouvernance | P1 | Done | EIA-1 |
 | EIA-8 | Exploitation locale | P2 | Backlog | EIA-4 |
 | EIA-9 | Fédération local-first | P3 | Backlog | EIA-4, EIA-8 |
@@ -491,6 +491,13 @@ Critères d'acceptation:
 - scripts CLI deviennent wrappers minces
 - rendu Markdown et construction payload sont testables hors CLI
 - comportement de sortie conservé sauf changement explicite read/write
+
+Avancement:
+
+- `src/application/runtime/runtime-state-projector-use-case.mjs` porte le rendu Markdown du runtime-state digest
+- `src/application/runtime/handoff-packet-projector-use-case.mjs` porte le rendu Markdown du handoff packet
+- `tools/runtime/project-runtime-state.mjs` et `tools/runtime/project-handoff-packet.mjs` délèguent le rendu à la couche application
+- la construction complète des payloads reste encore dans les scripts CLI et sera extraite dans un incrément suivant
 
 Tests attendus:
 
