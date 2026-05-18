@@ -55,6 +55,7 @@ const PERF_ALIASES = {
   "verify-db-first-sync": { file: "verify-db-first-sync-coverage.mjs" },
   "verify-sync-db-first-selective": { file: "verify-sync-db-first-selective-fixtures.mjs" },
   "verify-install-import": { file: "verify-install-import-fixtures.mjs" },
+  "verify-project-config": { file: "verify-project-config-fixtures.mjs" },
   "verify-state-mode-parity": { file: "verify-state-mode-parity-fixtures.mjs" },
   "verify-constraint-report": { file: "verify-constraint-report-fixtures.mjs" },
   "verify-constraint-actions": { file: "verify-constraint-actions-fixtures.mjs" },
@@ -75,7 +76,7 @@ const PERF_ALIASES = {
   "render-summary": { file: "render-summary.mjs" },
   reset: { file: "reset-runtime.mjs" },
   hook: { file: "workflow-hook.mjs" },
-  "session-start": { file: "workflow-hook.mjs", fixedArgs: ["--phase", "session-start"] },
+  "session-start": { file: "start-session-hook.mjs" },
   "session-close": { file: "workflow-hook.mjs", fixedArgs: ["--phase", "session-close"] },
   "delivery-start": { file: "delivery-window.mjs", fixedArgs: ["--action", "start"] },
   "delivery-end": { file: "delivery-window.mjs", fixedArgs: ["--action", "end"] },
@@ -142,6 +143,7 @@ const PROJECT_ALIASES = {
 function printUsage() {
   console.log("Usage:");
   console.log("  aidn install --target ../repo --pack core");
+  console.log("  aidn install --target ../repo --pack core --init-defaults --project-name my-project");
   console.log("  aidn install --target ../repo --pack core --verify");
   console.log("  aidn build-release");
   console.log("  aidn perf checkpoint --target ../repo --mode COMMITTING --index-store all --index-sync-check --json");
@@ -188,6 +190,7 @@ function printUsage() {
   console.log("  aidn runtime session-plan --target . --item \"define session backlog\" --promote --json");
   console.log("  aidn project config --target . --list --json");
   console.log("  aidn project config --target . --wizard");
+  console.log("  aidn project config --target . --init-defaults --project-name my-project --json");
   console.log("  aidn project config --target . --migrate-adapter --json");
   console.log("");
   console.log("Perf subcommands:");
@@ -198,6 +201,51 @@ function printUsage() {
   console.log(`  ${Object.keys(RUNTIME_ALIASES).sort().join(", ")}`);
   console.log("Project subcommands:");
   console.log(`  ${Object.keys(PROJECT_ALIASES).sort().join(", ")}`);
+}
+
+function printGroupUsage(group, aliases, examples = []) {
+  console.log(`Usage: aidn ${group} <subcommand> [options]`);
+  console.log("");
+  if (examples.length > 0) {
+    console.log("Examples:");
+    for (const example of examples) {
+      console.log(`  ${example}`);
+    }
+    console.log("");
+  }
+  console.log("Subcommands:");
+  console.log(`  ${Object.keys(aliases).sort().join(", ")}`);
+}
+
+function printPerfUsage() {
+  printGroupUsage("perf", PERF_ALIASES, [
+    "aidn perf session-start --target . --mode COMMITTING --json",
+    "aidn perf checkpoint --target . --mode COMMITTING --index-store all --json",
+    "aidn perf index --target . --store sqlite",
+  ]);
+}
+
+function printCodexUsage() {
+  printGroupUsage("codex", CODEX_ALIASES, [
+    "aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json",
+    "aidn codex hydrate-context --target . --skill start-session --project-runtime-state --json",
+  ]);
+}
+
+function printRuntimeUsage() {
+  printGroupUsage("runtime", RUNTIME_ALIASES, [
+    "aidn runtime db-status --target . --json",
+    "aidn runtime pre-write-admit --target . --skill cycle-create --json",
+    "aidn runtime project-runtime-state --target . --json",
+  ]);
+}
+
+function printProjectUsage() {
+  printGroupUsage("project", PROJECT_ALIASES, [
+    "aidn project config --target . --init-defaults --project-name my-project --json",
+    "aidn project config --target . --list --json",
+    "aidn project config --target . --wizard",
+  ]);
 }
 
 function printVersion() {
@@ -311,8 +359,8 @@ function main() {
   if (command === "perf") {
     const subcommand = argv[1] ?? "";
     if (!subcommand || subcommand === "--help" || subcommand === "-h" || subcommand === "help") {
-      printUsage();
-      process.exit(1);
+      printPerfUsage();
+      return;
     }
     try {
       const perf = resolvePerfCommand(subcommand, argv.slice(2));
@@ -327,8 +375,8 @@ function main() {
   if (command === "codex") {
     const subcommand = argv[1] ?? "";
     if (!subcommand || subcommand === "--help" || subcommand === "-h" || subcommand === "help") {
-      printUsage();
-      process.exit(1);
+      printCodexUsage();
+      return;
     }
     try {
       const codex = resolveCodexCommand(subcommand, argv.slice(2));
@@ -343,8 +391,8 @@ function main() {
   if (command === "runtime") {
     const subcommand = argv[1] ?? "";
     if (!subcommand || subcommand === "--help" || subcommand === "-h" || subcommand === "help") {
-      printUsage();
-      process.exit(1);
+      printRuntimeUsage();
+      return;
     }
     try {
       const runtime = resolveRuntimeCommand(subcommand, argv.slice(2));
@@ -359,8 +407,8 @@ function main() {
   if (command === "project") {
     const subcommand = argv[1] ?? "";
     if (!subcommand || subcommand === "--help" || subcommand === "-h" || subcommand === "help") {
-      printUsage();
-      process.exit(1);
+      printProjectUsage();
+      return;
     }
     try {
       const project = resolveProjectCommand(subcommand, argv.slice(2));

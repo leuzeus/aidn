@@ -183,8 +183,9 @@ export async function runInstallUseCase({
     dryRun: args.dryRun,
     verifyOnly: args.verifyOnly,
     adapterFile: args.adapterFile,
+    initDefaults: args.initDefaults === true,
     defaults: {
-      projectName: path.basename(targetRoot),
+      projectName: String(args.projectName ?? "").trim() || path.basename(targetRoot),
       preferredStateMode: initialImportDefaults.stateMode,
       defaultIndexStore: initialImportDefaults.store,
     },

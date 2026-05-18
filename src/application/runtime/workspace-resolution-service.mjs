@@ -295,9 +295,18 @@ export function resolveWorkspaceContext({
   const linkedWorktree = supportsWorkspaceIdentity
     ? adapter.isLinkedWorktree(absoluteTargetRoot) === true
     : false;
-  const isGitRepo = repoRoot.length > 0 && repoRoot !== normalizeIdentityPath(absoluteTargetRoot)
+  const headCommit = typeof adapter.getHeadCommit === "function"
+    ? adapter.getHeadCommit(absoluteTargetRoot)
+    : "unknown";
+  const insideWorkTree = supportsWorkspaceIdentity
+    ? adapter.isInsideWorkTree(absoluteTargetRoot) === true
+    : false;
+  const isGitRepo = insideWorkTree
+    || (repoRoot.length > 0 && repoRoot !== normalizeIdentityPath(absoluteTargetRoot))
+    || Boolean(gitDir)
+    || Boolean(gitCommonDir)
     ? true
-    : Boolean(typeof adapter.getHeadCommit === "function" && adapter.getHeadCommit(absoluteTargetRoot) !== "unknown");
+    : Boolean(headCommit !== "unknown");
 
   const legacyWorkspaceIdentity = deriveLegacyWorkspaceIdentity({
     explicitWorkspaceId,
@@ -337,6 +346,7 @@ export function resolveWorkspaceContext({
     git_dir: gitDir || null,
     git_common_dir: gitCommonDir || null,
     is_git_repo: isGitRepo,
+    head_commit: headCommit || "unknown",
     is_linked_worktree: linkedWorktree,
     workspace_id: workspaceIdentity.workspace_id,
     workspace_id_source: workspaceIdentity.workspace_id_source,

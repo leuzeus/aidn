@@ -75,6 +75,9 @@ export function createLocalGitAdapter() {
     getGitCommonDir(targetRoot) {
       return runGitString(targetRoot, ["rev-parse", "--path-format=absolute", "--git-common-dir"]) || null;
     },
+    isInsideWorkTree(targetRoot) {
+      return runGitString(targetRoot, ["rev-parse", "--is-inside-work-tree"]) === "true";
+    },
     isLinkedWorktree(targetRoot) {
       const repoRoot = runGitString(targetRoot, ["rev-parse", "--show-toplevel"]);
       if (!repoRoot) {

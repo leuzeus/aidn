@@ -10,7 +10,7 @@ import { executeWorkflowAdapterMigration } from "./workflow-adapter-migration-se
 
 function buildDefaults(targetRoot, defaults = {}) {
   return {
-    projectName: path.basename(path.resolve(targetRoot)),
+    projectName: String(defaults.projectName ?? "").trim() || path.basename(path.resolve(targetRoot)),
     preferredStateMode: defaults.preferredStateMode,
     defaultIndexStore: defaults.defaultIndexStore,
   };
@@ -46,12 +46,38 @@ export function initializeWorkflowAdapterConfigFromFile({ targetRoot, sourceFile
   };
 }
 
+export function initializeWorkflowAdapterConfigDefaults({ targetRoot, defaults = {}, dryRun = false }) {
+  const targetState = loadWorkflowAdapterConfigState({ targetRoot, defaults });
+  if (targetState.exists) {
+    return {
+      exists: true,
+      created: false,
+      dryRun,
+      path: targetState.path,
+      data: targetState.data,
+      source: "target",
+    };
+  }
+  if (!dryRun) {
+    writeWorkflowAdapterConfig(targetRoot, targetState.data, buildDefaults(targetRoot, defaults));
+  }
+  return {
+    exists: !dryRun,
+    created: !dryRun,
+    dryRun,
+    path: targetState.path,
+    data: targetState.data,
+    source: "defaults",
+  };
+}
+
 export async function ensureWorkflowAdapterConfig({
   targetRoot,
   defaults = {},
   dryRun = false,
   verifyOnly = false,
   adapterFile = "",
+  initDefaults = false,
 }) {
   const state = loadWorkflowAdapterConfigState({ targetRoot, defaults });
   if (state.exists) {
@@ -73,6 +99,14 @@ export async function ensureWorkflowAdapterConfig({
     });
   }
 
+  if (initDefaults) {
+    return initializeWorkflowAdapterConfigDefaults({
+      targetRoot,
+      defaults,
+      dryRun,
+    });
+  }
+
   if (verifyOnly) {
     return {
       exists: false,
@@ -88,7 +122,7 @@ export async function ensureWorkflowAdapterConfig({
       [
         `Missing workflow adapter config: ${state.path}`,
         "Run the install in an interactive terminal to launch the wizard,",
-        "or provide --adapter-file <path> with an explicit adapter config.",
+        "provide --adapter-file <path>, or use --init-defaults for a minimal generated config.",
       ].join(" "),
     );
   }
@@ -116,6 +150,7 @@ export async function runProjectConfigUseCase({
   repoRoot = process.cwd(),
 }) {
   const defaults = {
+    projectName: args.projectName,
     preferredStateMode: args.preferredStateMode,
     defaultIndexStore: args.defaultIndexStore,
   };
@@ -156,6 +191,24 @@ export async function runProjectConfigUseCase({
       created: created.created,
       path: created.path,
       config: created.data,
+    };
+  }
+
+  if (args.initDefaults) {
+    const initialized = initializeWorkflowAdapterConfigDefaults({
+      targetRoot,
+      defaults,
+      dryRun: args.dryRun === true,
+    });
+    return {
+      ok: true,
+      action: initialized.created ? "init-defaults" : "init-defaults-existing",
+      target_root: targetRoot,
+      exists: initialized.exists,
+      created: initialized.created,
+      dry_run: initialized.dryRun,
+      path: initialized.path,
+      config: initialized.data,
     };
   }
 

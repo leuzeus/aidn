@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 
 function parseArgs(argv) {
   const args = {
@@ -140,6 +140,19 @@ function runNodeNoJson(scriptPath, args, cwd = process.cwd()) {
   });
 }
 
+function runCli(scriptPath, args, cwd = process.cwd()) {
+  const result = spawnSync(process.execPath, [scriptPath, ...args], {
+    encoding: "utf8",
+    cwd,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return {
+    status: result.status ?? 1,
+    stdout: String(result.stdout ?? ""),
+    stderr: String(result.stderr ?? ""),
+  };
+}
+
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -170,6 +183,11 @@ function main() {
     const indexSyncReportPassFile = path.resolve(targetRoot, args.indexSyncReportPassFile);
     const indexSyncThresholdsFile = path.resolve(targetRoot, args.indexSyncThresholdsFile);
     const runtimeStateAliasFile = path.resolve(targetRoot, ".aidn/runtime/context/fixtures/cli-aliases/runtime-state-alias.md");
+
+    const helpRuntime = runCli(aidnCli, ["runtime", "--help"], targetRoot);
+    const helpPerf = runCli(aidnCli, ["perf", "--help"], targetRoot);
+    const helpProject = runCli(aidnCli, ["project", "--help"], targetRoot);
+    const helpCodex = runCli(aidnCli, ["codex", "--help"], targetRoot);
 
     runNodeNoJson(aidnCli, [
       "perf",
@@ -517,8 +535,21 @@ function main() {
       && fs.readFileSync(constraintTrendSummaryFile, "utf8").includes("Trend Threshold Checks");
     const constraintLotSummaryContainsTitle = fs.existsSync(constraintLotSummaryFile)
       && fs.readFileSync(constraintLotSummaryFile, "utf8").includes("Constraint Lot Plan");
+    const groupHelpPass = helpRuntime.status === 0
+      && helpRuntime.stdout.includes("Usage: aidn runtime <subcommand>")
+      && helpRuntime.stdout.includes("pre-write-admit")
+      && helpPerf.status === 0
+      && helpPerf.stdout.includes("Usage: aidn perf <subcommand>")
+      && helpPerf.stdout.includes("session-start")
+      && helpProject.status === 0
+      && helpProject.stdout.includes("Usage: aidn project <subcommand>")
+      && helpProject.stdout.includes("config")
+      && helpCodex.status === 0
+      && helpCodex.stdout.includes("Usage: aidn codex <subcommand>")
+      && helpCodex.stdout.includes("run-json-hook");
 
-    const pass = canonicalCheck?.summary?.overall_status === "pass"
+    const pass = groupHelpPass
+      && canonicalCheck?.summary?.overall_status === "pass"
       && Number(campaign?.iterations_completed ?? 0) === 1
       && typeof constraintReport?.summary?.active_constraint?.skill === "string"
       && constraintSummaryContainsActive
@@ -622,6 +653,11 @@ function main() {
         runtime_state_alias_mode: runtimeStateAlias?.digest?.runtime_state_mode ?? null,
         runtime_state_alias_freshness: runtimeStateAlias?.digest?.current_state_freshness ?? null,
         arbitration_suggestion_preferred_decision: arbitrationSuggestionAlias?.preferred_decision ?? null,
+        group_help_pass: groupHelpPass,
+        help_runtime_status: helpRuntime.status,
+        help_perf_status: helpPerf.status,
+        help_project_status: helpProject.status,
+        help_codex_status: helpCodex.status,
       },
       pass,
     };

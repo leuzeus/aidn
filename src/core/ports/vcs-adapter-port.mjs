@@ -10,6 +10,7 @@ const WORKSPACE_IDENTITY_METHODS = [
   "getWorktreeRoot",
   "getGitDir",
   "getGitCommonDir",
+  "isInsideWorkTree",
   "isLinkedWorktree",
 ];
 

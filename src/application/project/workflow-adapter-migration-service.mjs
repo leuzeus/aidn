@@ -113,6 +113,13 @@ function extractCiCapacityLines(sections) {
   );
   return sessionCloseLines.filter((line) => ![
     "Session close and PR review gates are canonical in `docs/audit/SPEC.md` (`SPEC-R07`, `SPEC-R08`).",
+    "Local runtime order after a review-ready session close:",
+    "`close-session`",
+    "`pr-orchestrate`",
+    "push session branch",
+    "create/recover PR",
+    "review / merge",
+    "post-merge local sync",
     "Add local CI/review capacity policy here if your repository needs it.",
     "Project-specific CI/review capacity policy: `none`",
   ].includes(line));

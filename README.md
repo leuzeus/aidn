@@ -187,6 +187,7 @@ Migration and repair:
 ```bash
 npm install --save-dev github:leuzeus/aidn#v0.5.1
 npx aidn install --target ../client --pack core
+npx aidn install --target ../client --pack core --init-defaults --project-name my-project --verify
 npx aidn install --target ../client --pack extended
 npx aidn install --target ../client --pack core --source-branch main
 npx aidn install --target ../client --pack core --runtime-persistence-backend postgres --runtime-persistence-connection-ref env:AIDN_PG_URL
@@ -201,6 +202,7 @@ Notes:
 - `github-integration` installs optional GitHub repository automation on top of `core`
 - `extended` is the explicit composite profile (`core` + `runtime-local` + `codex-integration` + `github-integration`)
 - install creates or updates the project-layer `AGENTS.md`; it does not write `~/.codex/AGENTS.md`
+- clean non-interactive installs can create the minimal project adapter with `--init-defaults --project-name <name>`
 - install can set workflow adapter metadata explicitly with `--source-branch <name>`
 - install persists the resolved source branch in `../client/.aidn/config.json` under `workflow.sourceBranch`
 - install supports explicit runtime persistence selection with `--runtime-persistence-backend sqlite|postgres`

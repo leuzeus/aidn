@@ -151,6 +151,16 @@ function main() {
     assert(locatorLinkedContext.shared_runtime_root.endsWith("/.aidn-shared-locator"), "expected locator root to resolve from the linked worktree");
     assert(locatorLinkedContext.shared_backend_kind === "sqlite-file", "expected linked locator backend kind");
 
+    const emptyRepoRoot = path.join(tempRoot, "empty-repo");
+    fs.mkdirSync(emptyRepoRoot, { recursive: true });
+    runGit(emptyRepoRoot, ["init", "--initial-branch=main"]);
+    const emptyRepoContext = resolveWorkspaceContext({
+      targetRoot: emptyRepoRoot,
+      env: {},
+    });
+    assert(emptyRepoContext.is_git_repo === true, "expected empty git repo with no commits to be detected as git repo");
+    assert(emptyRepoContext.head_commit === "unknown", "expected empty git repo head commit to stay unknown");
+
     const monorepoRoot = path.join(tempRoot, "monorepo");
     const appAlphaRoot = path.join(monorepoRoot, "apps", "alpha");
     const appBetaRoot = path.join(monorepoRoot, "apps", "beta");

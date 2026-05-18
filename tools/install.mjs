@@ -14,6 +14,8 @@ function parseArgs(argv) {
     pack: "",
     sourceBranch: "",
     adapterFile: "",
+    initDefaults: false,
+    projectName: "",
     dryRun: false,
     verifyOnly: false,
     skipArtifactImport: false,
@@ -26,6 +28,7 @@ function parseArgs(argv) {
     skipAgents: false,
     forceAgentsMerge: false,
     codexMigrateCustom: true,
+    verifyAfterInstall: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -41,6 +44,11 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--adapter-file") {
       args.adapterFile = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--init-defaults") {
+      args.initDefaults = true;
+    } else if (token === "--project-name") {
+      args.projectName = String(argv[i + 1] ?? "").trim();
       i += 1;
     } else if (token === "--dry-run") {
       args.dryRun = true;
@@ -91,6 +99,10 @@ function parseArgs(argv) {
     && !normalizeRuntimeLocalProjectionPolicy(args.runtimePersistenceLocalProjectionPolicy)) {
     throw new Error("Invalid --runtime-persistence-local-projection-policy. Expected keep-local-sqlite|keep-json|keep-sql|none");
   }
+  if (args.verifyOnly && args.initDefaults) {
+    args.verifyOnly = false;
+    args.verifyAfterInstall = true;
+  }
 
   return args;
 }
@@ -101,6 +113,7 @@ function printUsage() {
   console.log("  node tools/install.mjs --target ../repo --pack core");
   console.log("  node tools/install.mjs --target ../repo --pack core --source-branch main");
   console.log("  node tools/install.mjs --target ../repo --pack core --adapter-file ./workflow.adapter.json");
+  console.log("  node tools/install.mjs --target ../repo --pack core --init-defaults --project-name my-project --verify");
   console.log("  node tools/install.mjs --target . --pack core --dry-run");
   console.log("  node tools/install.mjs --target . --pack core --verify");
   console.log("  node tools/install.mjs --target . --pack core --skip-artifact-import");

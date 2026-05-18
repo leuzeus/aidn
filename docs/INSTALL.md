@@ -54,6 +54,12 @@ From your client repository root:
 npx aidn install --target . --pack core
 ```
 
+Clean non-interactive install without a TTY wizard:
+
+```bash
+npx aidn install --target . --pack core --init-defaults --project-name my-project --verify
+```
+
 Install the explicit composite profile:
 
 ```bash
@@ -177,6 +183,7 @@ Use one of these entry points to manage the adapter config:
 
 ```bash
 npx aidn project config --target . --wizard
+npx aidn project config --target . --init-defaults --project-name my-project --json
 npx aidn project config --target . --list --json
 ```
 
@@ -222,6 +229,7 @@ Legacy note:
 Persistence rules:
 
 - install creates `.aidn/project/workflow.adapter.json` if missing
+- install can create a minimal default adapter non-interactively with `--init-defaults --project-name <name>`
 - reinstall and reinitialization never overwrite that file automatically
 - generated files may be rewritten deterministically
 - `seed-once` and `runtime-state` files are preserved

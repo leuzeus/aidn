@@ -95,6 +95,63 @@ function runInstall(repoRoot, targetRoot, codexStubBin, pack, extraArgs = []) {
   };
 }
 
+function runNpmPackDryRun(repoRoot) {
+  const command = process.platform === "win32" ? "cmd.exe" : "npm";
+  const commandArgs = process.platform === "win32"
+    ? ["/d", "/s", "/c", "npm pack --dry-run --json"]
+    : ["pack", "--dry-run", "--json"];
+  const result = spawnSync(command, commandArgs, {
+    cwd: repoRoot,
+    encoding: "utf8",
+    timeout: 180000,
+    maxBuffer: 20 * 1024 * 1024,
+  });
+  if ((result.status ?? 1) !== 0) {
+    throw new Error(`npm pack --dry-run failed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
+  }
+  const payload = JSON.parse(String(result.stdout ?? "[]"));
+  return payload[0]?.files ?? [];
+}
+
+function inspectPackageLeakGuard(repoRoot) {
+  const files = runNpmPackDryRun(repoRoot);
+  const guardedTerms = [
+    ["go", "wire"].join(""),
+    ["G:", "\\", "projets", "\\"].join(""),
+    ["pilot", "-main"].join(""),
+    ["pilot", "-linked"].join(""),
+    ["go", "wire", "-validation"].join(""),
+  ];
+  const sensitivePatterns = [
+    ...guardedTerms.map((term) => new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")),
+  ];
+  const violations = [];
+  for (const file of files) {
+    const packagePath = String(file?.path ?? "");
+    if (!packagePath) {
+      continue;
+    }
+    if (sensitivePatterns.some((pattern) => pattern.test(packagePath))) {
+      violations.push(`path:${packagePath}`);
+      continue;
+    }
+    const sourcePath = path.resolve(repoRoot, packagePath);
+    try {
+      const text = fs.readFileSync(sourcePath, "utf8");
+      if (sensitivePatterns.some((pattern) => pattern.test(text))) {
+        violations.push(`content:${packagePath}`);
+      }
+    } catch {
+      // Binary or generated package entries are ignored by the text leak guard.
+    }
+  }
+  return {
+    files,
+    violations,
+    pass: violations.length === 0,
+  };
+}
+
 function main() {
   const repoRoot = process.cwd();
   const tempRoot = fs.mkdtempSync(path.join(path.resolve(repoRoot, "tests", "fixtures"), "tmp-pack-topology-"));
@@ -141,6 +198,7 @@ function main() {
     fs.rmSync(path.join(extendedTarget, ".github"), { recursive: true, force: true });
     const extendedInstall = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
     const extendedVerify = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--verify"]);
+    const packageLeakGuard = inspectPackageLeakGuard(repoRoot);
 
     assert(/packs:\s*\r?\n\s*-\s*core/i.test(workflowManifest) || /packs:\s*\n\s*-\s*core/i.test(workflowManifest), "workflow manifest should default to core only");
     assert(/depends_on:\s*\[core]/i.test(runtimeLocalManifest), "runtime-local should depend on core");
@@ -176,6 +234,7 @@ function main() {
     assert(fs.existsSync(path.join(extendedTarget, ".codex", "skills", "start-session", "SKILL.md")), "extended should restore local skills");
     assert(fs.existsSync(path.join(extendedTarget, ".codex", "skills.yaml")), "extended should restore skills.yaml");
     assert(fs.existsSync(path.join(extendedTarget, ".github", "workflows", "branch-prune.yml")), "extended should restore branch pruning automation");
+    assert(packageLeakGuard.pass, `npm pack leak guard failed: ${packageLeakGuard.violations.slice(0, 20).join(", ")}`);
 
     console.log("PASS");
   } catch (error) {

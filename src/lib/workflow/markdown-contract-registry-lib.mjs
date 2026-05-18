@@ -70,8 +70,8 @@ const CRITICAL_MARKDOWN_CONTRACTS = Object.freeze({
     },
     legacy_variants: [
       {
-        id: "gowire_current_state_minimal",
-        description: "Root current-state digest without explicit contract version, accepted from live gowire recovery corpus.",
+        id: "pilot_current_state_minimal",
+        description: "Root current-state digest without explicit contract version, accepted from a recovered external pilot corpus.",
         required_sections: ["summary", "active_context", "blocking_findings"],
         required_fields: [
           "updated_at",
@@ -125,7 +125,7 @@ const CRITICAL_MARKDOWN_CONTRACTS = Object.freeze({
     },
     legacy_variants: [
       {
-        id: "gowire_runtime_state_minimal",
+        id: "pilot_runtime_state_minimal",
         description: "Legacy runtime-state digest without explicit contract version.",
         required_sections: ["summary", "current_state_freshness", "blocking_findings", "prioritized_reads"],
         required_fields: [
@@ -184,7 +184,7 @@ const CRITICAL_MARKDOWN_CONTRACTS = Object.freeze({
     },
     legacy_variants: [
       {
-        id: "gowire_handoff_packet_minimal",
+        id: "pilot_handoff_packet_minimal",
         description: "Legacy handoff packet without explicit contract version.",
         required_sections: ["summary", "active_context", "runtime_signals", "blocking_findings", "prioritized_reads"],
         required_fields: [
@@ -248,7 +248,7 @@ const CRITICAL_MARKDOWN_CONTRACTS = Object.freeze({
     legacy_variants: [
       {
         id: "flattened_session_markdown",
-        description: "Flattened one-line session markdown tolerated from recovered live corpora such as gowire.",
+        description: "Flattened one-line session markdown tolerated from recovered external pilot corpora.",
         required_sections: [
           "work_mode_-_committing",
           "session_branch_continuity_required",
