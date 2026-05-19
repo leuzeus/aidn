@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { buildConstraintTrendReport } from "../../src/application/observability/constraint-trend-report-use-case.mjs";
 import { isJsonEquivalent, writeJsonIfChanged } from "../../src/lib/index/io-lib.mjs";
 
 function parseArgs(argv) {
@@ -68,75 +69,6 @@ function readNdjson(filePath) {
   return { absolute, runs };
 }
 
-function topCounts(mapLike, keyLabel, limit = 10) {
-  return Array.from(mapLike.entries())
-    .map(([key, count]) => ({ [keyLabel]: key, count }))
-    .sort((a, b) => b.count - a.count || String(a[keyLabel]).localeCompare(String(b[keyLabel])))
-    .slice(0, limit);
-}
-
-function summarize(runs) {
-  const total = runs.length;
-  const constraints = new Map();
-  const actions = new Map();
-  let switches = 0;
-  let transitions = 0;
-  let avgControlShare = 0;
-  let avgActiveShare = 0;
-  let highSeverityRuns = 0;
-  let quickWinTopRuns = 0;
-
-  for (let i = 0; i < runs.length; i += 1) {
-    const run = runs[i];
-    const skill = String(run?.active_constraint_skill ?? "").trim() || "none";
-    const topAction = String(run?.top_action_id ?? "").trim();
-    const topActionBatch = String(run?.top_action_batch ?? "").trim();
-    const severity = String(run?.active_constraint_severity ?? "").trim();
-    constraints.set(skill, (constraints.get(skill) ?? 0) + 1);
-    if (topAction) {
-      actions.set(topAction, (actions.get(topAction) ?? 0) + 1);
-    }
-    if (severity === "high") {
-      highSeverityRuns += 1;
-    }
-    if (topActionBatch === "quick-win") {
-      quickWinTopRuns += 1;
-    }
-    avgControlShare += Number(run?.control_share_of_total ?? 0);
-    avgActiveShare += Number(run?.active_constraint_share ?? 0);
-
-    if (i > 0) {
-      transitions += 1;
-      const previousSkill = String(runs[i - 1]?.active_constraint_skill ?? "").trim() || "none";
-      if (previousSkill !== skill) {
-        switches += 1;
-      }
-    }
-  }
-
-  const topConstraints = topCounts(constraints, "skill", 10);
-  const topActions = topCounts(actions, "action_id", 10);
-  const dominant = topConstraints[0] ?? null;
-  const avgControl = total > 0 ? avgControlShare / total : 0;
-  const avgActive = total > 0 ? avgActiveShare / total : 0;
-  const stabilityRate = transitions > 0 ? (transitions - switches) / transitions : 1;
-
-  return {
-    runs_analyzed: total,
-    unique_constraints: constraints.size,
-    dominant_constraint_skill: dominant?.skill ?? null,
-    dominant_constraint_share: dominant ? dominant.count / total : 0,
-    constraint_switches: switches,
-    constraint_stability_rate: stabilityRate,
-    avg_control_share_of_total: avgControl,
-    avg_active_constraint_share: avgActive,
-    high_severity_runs: highSeverityRuns,
-    quick_win_top_runs: quickWinTopRuns,
-    top_constraints: topConstraints,
-    top_actions: topActions,
-  };
-}
-
 function writeJson(filePath, payload) {
   return writeJsonIfChanged(filePath, payload, {
     isEquivalent(previousContent) {
@@ -150,7 +82,7 @@ function main() {
     const args = parseArgs(process.argv.slice(2));
     const history = readNdjson(args.historyFile);
     const runs = args.limitRuns > 0 ? history.runs.slice(0, args.limitRuns) : history.runs;
-    const summary = summarize(runs);
+    const summary = buildConstraintTrendReport(runs);
     const payload = {
       ts: new Date().toISOString(),
       history_file: history.absolute,

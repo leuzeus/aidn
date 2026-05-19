@@ -507,7 +507,7 @@ Tests attendus:
 ### EIA-6.2 - Séparer Observabilité Et Runtime Engine
 
 - priorité: `P1`
-- statut: `In Progress`
+- statut: `Done`
 - objectif: isoler KPI/reporting des transitions workflow
 - dépend de: `EIA-2.3`
 - artefacts à modifier:
@@ -523,22 +523,84 @@ Critères d'acceptation:
 
 Avancement:
 
+- trace recommandation 2026-05-18: fermer `EIA-6.2` par lots observability petits, en priorisant `constraint`, puis `index`, puis `campaign`, et garder les orchestrateurs `report-constraints.mjs`, `report-index-sync.mjs`, `report-kpi.mjs` pour la fin
 - `src/application/observability/repair-layer-triage-summary-use-case.mjs` porte le rendu Markdown du résumé repair-layer triage
 - `tools/perf/render-repair-layer-triage-summary.mjs` reste un wrapper lecture JSON + écriture fichier
 - `src/application/observability/constraint-trend-summary-use-case.mjs` porte le rendu Markdown du résumé constraint trend
 - `tools/perf/render-constraint-trend-summary.mjs` reste un wrapper lecture JSON + écriture fichier
 - `src/application/observability/constraint-summary-use-case.mjs` porte le rendu Markdown du résumé constraint
 - `tools/perf/render-constraint-summary.mjs` reste un wrapper lecture JSON + écriture fichier
+- `src/application/observability/constraint-actions-report-use-case.mjs` porte la génération du backlog d'actions constraint
+- `tools/perf/report-constraint-actions.mjs` reste un wrapper lecture JSON + écriture fichier
+- `src/application/observability/constraint-lot-plan-report-use-case.mjs` porte la génération des lots constraint
+- `tools/perf/report-constraint-lot-plan.mjs` reste un wrapper lecture JSON + écriture fichier
+- `src/application/observability/constraint-lot-plan-summary-use-case.mjs` porte le rendu Markdown du résumé de lot constraint
+- `tools/perf/render-constraint-lot-plan-summary.mjs` reste un wrapper lecture JSON + écriture fichier
+- `src/application/observability/constraint-trend-report-use-case.mjs` porte la synthèse de trend constraint
+- `tools/perf/report-constraint-trend.mjs` reste un wrapper lecture NDJSON + écriture fichier
+- `src/application/observability/index-sync-summary-use-case.mjs` porte le rendu Markdown du check index sync
+- `tools/perf/render-index-sync-summary.mjs` reste un wrapper lecture JSON + écriture fichier
+- `src/application/observability/index-canonical-check-summary-use-case.mjs` porte le rendu Markdown du check canonical index
+- `tools/perf/render-index-canonical-check-summary.mjs` reste un wrapper lecture JSON + écriture fichier
+- `src/application/observability/index-sync-report-summary-use-case.mjs` porte le rendu Markdown du trend index sync
+- `tools/perf/render-index-sync-report-summary.mjs` reste un wrapper lecture JSON + écriture fichier
+- `src/application/observability/index-summary-use-case.mjs` porte le rendu Markdown du résumé qualité index
+- `tools/perf/render-index-summary.mjs` reste un wrapper lecture JSON + écriture fichier
+- `src/application/observability/index-regression-kpi-report-use-case.mjs` porte la construction du KPI de régression index
+- `tools/perf/report-index-regression-kpi.mjs` reste un wrapper lecture JSON + écriture fichier
+- `src/application/observability/index-report-use-case.mjs` porte la construction du rapport index
+- `tools/perf/report-index.mjs` reste un wrapper lecture JSON + écriture fichier
+- `src/application/observability/fallback-report-use-case.mjs` porte l'agrégation fallback par run
+- `tools/perf/report-fallbacks.mjs` reste un wrapper lecture NDJSON + écriture fichier
+- `src/application/observability/workflow-version-render-use-case.mjs` porte le remplacement de `workflow_version`
+- `tools/perf/render-workflow-version.mjs` reste un wrapper lecture fichier + écriture fichier
+- `src/application/observability/campaign-summary-use-case.mjs` porte le rendu Markdown du résumé KPI/perf campaign
+- `tools/perf/render-summary.mjs` reste un wrapper lecture JSON/NDJSON + écriture fichier
+- `src/application/observability/constraint-report-use-case.mjs` porte l'agrégation du rapport constraint
+- `tools/perf/report-constraints.mjs` reste un wrapper lecture NDJSON + écriture fichier
+- `src/application/observability/index-sync-report-use-case.mjs` porte l'agrégation du rapport index sync
+- `tools/perf/report-index-sync.mjs` reste un wrapper lecture NDJSON + écriture fichier
+- `src/application/observability/campaign-kpi-report-use-case.mjs` porte le calcul KPI campaign
+- `tools/perf/report-kpi.mjs` reste un wrapper lecture NDJSON + affichage JSON/table
 - `src/application/observability/observability-surface-inventory.mjs` inventorie les scripts `tools/perf/render-*` et `tools/perf/report-*`, leur domaine, leur alias public et leur état de séparation
 - `tools/perf/verify-observability-surface-inventory.mjs` bloque les nouveaux scripts observability non classés ou les entrées d'inventaire obsolètes
-- les extractions restantes sont visibles par `separation_state`: `wrapper-extracted`, `legacy-wrapper-with-inline-builder`, `legacy-cli-orchestrator`
+- les 19 scripts observability inventoriés sont en `wrapper-extracted`; les états legacy restent définis pour détecter une régression ou un nouveau script non extrait
+- reste recommandé après ce lot: traiter `EIA-6.3` pour extraire les payload builders runtime résiduels avant de passer l'epic `EIA-6` globalement en `Done`
 
 Tests attendus:
 
 - `npm run perf:verify-observability-surface-inventory`
 - `npm run perf:verify-constraint-report`
+- `npm run perf:verify-constraint-actions`
+- `npm run perf:verify-constraint-lot-plan`
 - `npm run perf:verify-constraint-trend`
 - checks perf ciblés selon fichier touché
+- `npm run perf:verify-cli-aliases`
+
+### EIA-6.3 - Extraire Les Payload Builders Runtime Résiduels
+
+- priorité: `P1`
+- statut: `Recommended`
+- objectif: fermer la dette résiduelle de `EIA-6.1` où la construction complète des payloads reste dans les scripts CLI
+- dépend de: `EIA-6.1`, `EIA-6.2`
+- artefacts à modifier:
+  - `tools/runtime/project-runtime-state.mjs`
+  - `tools/runtime/project-handoff-packet.mjs`
+  - `src/application/runtime/runtime-state-projector-use-case.mjs`
+  - `src/application/runtime/handoff-packet-projector-use-case.mjs`
+
+Critères d'acceptation:
+
+- la construction du payload JSON est testable hors CLI
+- les wrappers CLI gardent parsing args, lecture/écriture et formatage
+- les comportements `--dry-run`, `--json` et écriture historique restent compatibles
+- les contrats CLI v1 continuent de passer
+
+Tests attendus:
+
+- `npm run perf:verify-runtime-state-projector`
+- `npm run perf:verify-handoff-packet`
+- `npm run perf:verify-cli-output-contracts`
 - `npm run perf:verify-cli-aliases`
 
 ## EIA-7 - ADR Et Principes De Gouvernance

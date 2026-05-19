@@ -76,7 +76,7 @@ function main() {
       target_use_cases_named: missingTargetUseCases.length === 0,
       extracted_use_case_files_exist: missingExtractedUseCaseFiles.length === 0,
       repair_layer_triage_extracted: repairLayerEntry?.separation_state === "wrapper-extracted" && repairLayerUseCaseExists,
-      legacy_work_remaining_visible: summary.remaining_legacy_count > 0,
+      extraction_state_accounted_for: summary.extracted_count + summary.remaining_legacy_count === summary.total,
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {
