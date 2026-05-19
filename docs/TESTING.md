@@ -56,6 +56,7 @@ The CLI effect policy verifier checks the public command effect inventory in `sr
 When a change affects source-of-truth semantics or concept ownership, run:
 
 - `npm run perf:verify-source-of-truth-policy`
+- `npm run perf:verify-governance-completeness`
 - `npm run perf:verify-state-mode-parity`
 
 When a change affects governed metadata, critical Markdown contracts, or lifecycle/ownership rules, run:

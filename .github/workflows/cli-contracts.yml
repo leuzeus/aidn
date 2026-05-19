@@ -28,3 +28,6 @@ jobs:
 
       - name: Verify CLI Output Contracts
         run: npm run perf:verify-cli-output-contracts
+
+      - name: Verify Governance Completeness
+        run: npm run perf:verify-governance-completeness
