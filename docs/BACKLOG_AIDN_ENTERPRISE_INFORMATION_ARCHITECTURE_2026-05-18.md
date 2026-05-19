@@ -23,7 +23,7 @@ Ce backlog est conçu pour:
 | EIA-3 | Sémantique lecture/écriture CLI | P0 | Done | EIA-2 |
 | EIA-4 | Gates source de vérité par mode | P1 | Done | EIA-1 |
 | EIA-5 | Qualité metadata et gouvernance | P1 | Done | EIA-1 |
-| EIA-6 | Refactoring couches runtime restantes | P1 | In Progress | EIA-2 |
+| EIA-6 | Refactoring couches runtime restantes | P1 | Done | EIA-2 |
 | EIA-7 | ADR et principes de gouvernance | P1 | Done | EIA-1 |
 | EIA-8 | Exploitation locale | P2 | Done | EIA-4 |
 | EIA-9 | Fédération local-first | P3 | Done | EIA-4, EIA-8 |
@@ -565,7 +565,7 @@ Avancement:
 - `src/application/observability/observability-surface-inventory.mjs` inventorie les scripts `tools/perf/render-*` et `tools/perf/report-*`, leur domaine, leur alias public et leur état de séparation
 - `tools/perf/verify-observability-surface-inventory.mjs` bloque les nouveaux scripts observability non classés ou les entrées d'inventaire obsolètes
 - les 19 scripts observability inventoriés sont en `wrapper-extracted`; les états legacy restent définis pour détecter une régression ou un nouveau script non extrait
-- reste recommandé après ce lot: traiter `EIA-6.3` pour extraire les payload builders runtime résiduels avant de passer l'epic `EIA-6` globalement en `Done`
+- recommandation suivante traitée dans `EIA-6.3`: les payload builders runtime résiduels ont été extraits avant de passer l'epic `EIA-6` globalement en `Done`
 
 Tests attendus:
 
@@ -580,7 +580,7 @@ Tests attendus:
 ### EIA-6.3 - Extraire Les Payload Builders Runtime Résiduels
 
 - priorité: `P1`
-- statut: `Recommended`
+- statut: `Done`
 - objectif: fermer la dette résiduelle de `EIA-6.1` où la construction complète des payloads reste dans les scripts CLI
 - dépend de: `EIA-6.1`, `EIA-6.2`
 - artefacts à modifier:
@@ -596,8 +596,19 @@ Critères d'acceptation:
 - les comportements `--dry-run`, `--json` et écriture historique restent compatibles
 - les contrats CLI v1 continuent de passer
 
+Avancement:
+
+- `src/application/runtime/runtime-state-projector-use-case.mjs` expose `buildRuntimeStateDigest`
+- `tools/runtime/project-runtime-state.mjs` délègue la construction du digest JSON à la couche application
+- `src/application/runtime/handoff-packet-projector-use-case.mjs` expose `buildHandoffPacketPayload`
+- `tools/runtime/project-handoff-packet.mjs` délègue la construction du packet JSON à la couche application
+- le builder handoff reçoit des scalaires normalisés depuis le CLI, pas la structure `Map` issue du parsing
+- `tools/perf/verify-runtime-payload-builders-fixtures.mjs` vérifie directement les deux builders hors CLI
+- validation ciblée terminée: projecteurs runtime/handoff, contrats CLI v1, alias CLI et `git diff --check`
+
 Tests attendus:
 
+- `npm run perf:verify-runtime-payload-builders`
 - `npm run perf:verify-runtime-state-projector`
 - `npm run perf:verify-handoff-packet`
 - `npm run perf:verify-cli-output-contracts`

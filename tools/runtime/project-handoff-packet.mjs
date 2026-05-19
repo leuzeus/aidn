@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { buildHandoffPacketMarkdown } from "../../src/application/runtime/handoff-packet-projector-use-case.mjs";
+import { buildHandoffPacketMarkdown, buildHandoffPacketPayload } from "../../src/application/runtime/handoff-packet-projector-use-case.mjs";
 import {
   appendSharedHandoffRelay,
   readSharedPlanningState,
@@ -618,6 +618,8 @@ export async function projectHandoffPacket({
   const repairRoutingReason = normalizeScalar(runtimeMap.get("repair_routing_reason") ?? repairRouting.routing_reason) || "unknown";
   const handoffStatus = deriveHandoffStatus({ consistency, runtimeMap, currentMap });
   const mode = normalizeScalar(currentMap.get("mode") ?? "unknown") || "unknown";
+  const branchKind = normalizeScalar(currentMap.get("branch_kind") ?? "unknown") || "unknown";
+  const dorState = normalizeScalar(currentMap.get("dor_state") ?? "unknown") || "unknown";
   const firstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "unknown") || "unknown";
   const sharedPlanningContext = await resolvePromotedSharedPlanningContext({
     targetRoot: absoluteTargetRoot,
@@ -671,25 +673,14 @@ export async function projectHandoffPacket({
     dbSource,
   });
 
-  const packet = {
-    updated_at: new Date().toISOString(),
-    project_id: workspace.project_id,
-    project_id_source: workspace.project_id_source,
-    project_root: workspace.project_root,
-    workspace_id: workspace.workspace_id,
-    workspace_id_source: workspace.workspace_id_source,
-    worktree_id: workspace.worktree_id,
-    is_linked_worktree: workspace.is_linked_worktree ? "yes" : "no",
-    shared_runtime_mode: workspace.shared_runtime_mode,
-    shared_runtime_validation_status: sharedRuntimeValidation.status,
-    shared_runtime_locator_ref: workspace.shared_runtime_locator_ref,
-    shared_backend_kind: workspace.shared_backend_kind,
-    handoff_status: handoffStatus,
-    handoff_from_agent_role: handoffFromAgentRole,
-    handoff_from_agent_action: handoffFromAgentAction,
-    recommended_next_agent_role: nextRouting.role,
-    recommended_next_agent_action: nextRouting.action,
-    next_agent_goal: deriveNextAgentGoal({
+  const packet = buildHandoffPacketPayload({
+    workspace,
+    sharedRuntimeValidation,
+    handoffStatus,
+    handoffFromAgentRole,
+    handoffFromAgentAction,
+    nextRouting,
+    nextAgentGoal: deriveNextAgentGoal({
       explicitGoal: nextAgentGoal,
       handoffStatus,
       mode,
@@ -699,44 +690,31 @@ export async function projectHandoffPacket({
       backlogNextStep,
       blockingFindings,
     }),
-    scope_type: scope.scope_type,
-    scope_id: scope.scope_id,
-    target_branch: scope.target_branch,
-    backlog_refs: activeBacklog,
-    planning_arbitration_status: planningArbitrationStatus,
-    preferred_dispatch_source: sharedPlanning.preferred_dispatch_source,
-    shared_planning_candidate_ready: sharedPlanning.candidate_ready ? "yes" : "no",
-    shared_planning_candidate_aligned: sharedPlanning.candidate_aligned ? "yes" : "no",
-    shared_planning_dispatch_scope: sharedPlanning.next_dispatch_scope,
-    shared_planning_dispatch_action: sharedPlanning.next_dispatch_action,
-    shared_planning_freshness: sharedPlanning.freshness_status,
-    shared_planning_freshness_basis: sharedPlanning.freshness_basis,
-    shared_planning_gate_status: sharedPlanning.gate_status,
-    shared_planning_gate_reason: sharedPlanning.gate_reason,
-    handoff_note: normalizeScalar(handoffNote) || "none",
+    scope,
+    activeBacklog,
+    planningArbitrationStatus,
+    sharedPlanning,
+    handoffNote: normalizeScalar(handoffNote) || "none",
     mode,
-    branch_kind: normalizeScalar(currentMap.get("branch_kind") ?? "unknown") || "unknown",
-    active_session: activeSession,
-    active_cycle: activeCycle,
-    dor_state: normalizeScalar(currentMap.get("dor_state") ?? "unknown") || "unknown",
-    first_plan_step: firstPlanStep,
-    active_backlog: activeBacklog,
-    backlog_status: backlogStatus,
-    backlog_next_step: sharedPlanning.artifact_found && !canonicalUnknown(sharedPlanning.backlog_next_step) ? sharedPlanning.backlog_next_step : backlogNextStep,
-    linked_backlog_cycles: sharedPlanning.linked_cycles,
-    runtime_state_mode: normalizeScalar(
+    branchKind,
+    activeSession,
+    activeCycle,
+    dorState,
+    firstPlanStep,
+    backlogStatus,
+    backlogNextStep: sharedPlanning.artifact_found && !canonicalUnknown(sharedPlanning.backlog_next_step) ? sharedPlanning.backlog_next_step : backlogNextStep,
+    runtimeStateMode: normalizeScalar(
       dbBackedMode
         ? effectiveStateMode
         : (runtimeMap.get("runtime_state_mode") ?? currentMap.get("runtime_state_mode") ?? "unknown"),
     ) || "unknown",
-    repair_layer_status: repairStatus,
-    repair_primary_reason: repairPrimaryReason,
-    repair_routing_hint: repairRoutingHint,
-    current_state_freshness: normalizeScalar(runtimeMap.get("current_state_freshness") ?? "unknown") || "unknown",
-    transition_policy_status: transition.status,
-    transition_policy_reason: transition.reason,
-    blocking_findings: blockingFindings,
-    prioritized_artifacts: buildPrioritizedArtifacts({
+    repairStatus,
+    repairPrimaryReason,
+    repairRoutingHint,
+    currentStateFreshness: normalizeScalar(runtimeMap.get("current_state_freshness") ?? "unknown") || "unknown",
+    transition,
+    blockingFindings,
+    prioritizedArtifacts: buildPrioritizedArtifacts({
       runtimeStateText,
       sessionArtifact: sessionResolution,
       cycleStatusArtifact: cycleStatusResolution,
@@ -744,13 +722,12 @@ export async function projectHandoffPacket({
       activeBacklog,
       firstPlanStep,
     }),
-    consistency_status: consistency.pass ? "pass" : "fail",
-    session_file: sessionResolution.exists ? sessionResolution.logicalPath : "none",
-    cycle_status_file: cycleStatusResolution.exists ? cycleStatusResolution.logicalPath : "none",
-    current_state_source: currentStateResolution.source,
-    runtime_state_source: runtimeStateResolution.source,
-    shared_planning_artifact_source: sharedPlanning.backlog_artifact_source,
-  };
+    consistency,
+    sessionResolution,
+    cycleStatusResolution,
+    currentStateResolution,
+    runtimeStateResolution,
+  });
 
   if (!canAgentRolePerform(packet.recommended_next_agent_role, packet.recommended_next_agent_action)) {
     throw new Error(`Invalid handoff routing: role=${packet.recommended_next_agent_role} action=${packet.recommended_next_agent_action}`);

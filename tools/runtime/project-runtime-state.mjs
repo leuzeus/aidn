@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { buildRuntimeStateMarkdown } from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
+import { buildRuntimeStateDigest, buildRuntimeStateMarkdown } from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
 import { resolvePromotedSharedPlanningContext } from "../../src/application/runtime/shared-planning-resolution-service.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
@@ -483,41 +483,30 @@ export async function projectRuntimeState({
   if (repairSummary.blocking && blockingFindings.length === 0) {
     blockingFindings.push("repair layer marked blocking without detailed findings");
   }
-  const digest = {
-    updated_at: new Date().toISOString(),
-    project_id: workspace.project_id,
-    project_id_source: workspace.project_id_source,
-    project_root: workspace.project_root,
-    workspace_id: workspace.workspace_id,
-    worktree_id: workspace.worktree_id,
-    runtime_state_mode: String(dbBackedMode ? effectiveStateMode : (hydrated?.state_mode ?? "files")),
-    repair_layer_status: repairSummary.status,
-    repair_layer_advice: repairSummary.advice,
-    repair_primary_reason: deriveRepairPrimaryReason(repairSummary),
-    repair_routing_hint: repairRouting.routing_hint,
-    repair_routing_reason: repairRouting.routing_reason,
-    shared_runtime_validation_status: sharedRuntimeValidation.status,
-    active_backlog: sharedPlanning.active_backlog,
-    backlog_status: sharedPlanning.backlog_status,
-    backlog_next_step: sharedPlanning.backlog_next_step,
-    planning_arbitration_status: sharedPlanning.planning_arbitration_status,
-    shared_planning_source: sharedPlanning.shared_planning_source,
-    shared_planning_read_status: sharedPlanning.shared_planning_read_status,
-    current_state_freshness: freshness.freshness,
-    current_state_freshness_basis: freshness.basis,
-    blocking_findings: blockingFindings,
-    prioritized_artifacts: uniqueItems([
+  const digest = buildRuntimeStateDigest({
+    workspace,
+    dbBackedMode,
+    effectiveStateMode,
+    hydrated,
+    repairSummary,
+    repairPrimaryReason: deriveRepairPrimaryReason(repairSummary),
+    repairRouting,
+    sharedRuntimeValidation,
+    sharedPlanning,
+    freshness,
+    blockingFindings,
+    prioritizedArtifacts: uniqueItems([
       ...derivePrioritizedArtifacts(consistency, hydrated, { hydratedFile, contextFile }),
       normalizeBacklogArtifactPath(sharedPlanning.active_backlog),
     ]),
-    context_source: hydrated
+    contextSource: hydrated
       ? path.relative(absoluteTargetRoot, hydratedPath).replace(/\\/g, "/")
       : (fallbackContext ? path.relative(absoluteTargetRoot, contextPath).replace(/\\/g, "/") : "none"),
-    consistency_status: consistency.pass ? "pass" : "fail",
-    current_state_source: currentStateResolution.source,
-    session_artifact_source: sessionResolution.source,
-    cycle_status_source: cycleStatusResolution.source,
-  };
+    consistency,
+    currentStateResolution,
+    sessionResolution,
+    cycleStatusResolution,
+  });
   const markdown = buildRuntimeStateMarkdown(digest);
   const outputPath = resolveTargetPath(absoluteTargetRoot, out);
   const outWrite = dryRun
