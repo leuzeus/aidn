@@ -109,6 +109,7 @@ CLI effect semantics:
 - `--dry-run` is the non-mutating preview/read path where a command supports it.
 - `--write`, `--apply`, and `--execute` mark explicit mutation or command execution.
 - Runtime digest projectors such as `project-runtime-state` and `project-handoff-packet` support `--dry-run --json` for contract checks and automation that must not update Markdown projections.
+- Public command effect classes live in `src/core/cli/effect-policy.mjs` and are verified with `npm run perf:verify-cli-effect-policy` plus `npm run perf:verify-cli-no-implicit-write`.
 - Public JSON output contracts live under `src/core/contracts/cli-output/` and are verified with `npm run perf:verify-cli-output-contracts`.
 
 ## Git Workflow

@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-shared-coordination-status.v1",
+  "title": "aidn runtime shared-coordination-status --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime shared-coordination-status --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "ok",
+    "workspace",
+    "shared_coordination_backend",
+    "snapshot",
+    "operations"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "ok": { "type": "boolean" },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "shared_coordination_backend": { "type": "object", "additionalProperties": true },
+    "health": { "type": ["object", "null"], "additionalProperties": true },
+    "snapshot": { "type": "object", "additionalProperties": true },
+    "contract": { "type": ["object", "null"], "additionalProperties": true },
+    "operations": {
+      "type": "object",
+      "required": [
+        "local_first",
+        "scope",
+        "backend_kind",
+        "backend_status",
+        "schema_status",
+        "connection_secret_exposed",
+        "backup_command",
+        "restore_preview_command",
+        "recommended_actions"
+      ],
+      "properties": {
+        "local_first": { "type": "boolean" },
+        "scope": { "type": "string" },
+        "backend_kind": { "type": "string" },
+        "backend_status": { "type": "string" },
+        "schema_status": { "type": "string" },
+        "compatibility_status": { "type": "string" },
+        "latest_schema_version": { "type": "number" },
+        "connection_ref": { "type": "string" },
+        "connection_secret_exposed": { "type": "boolean" },
+        "freshness_status": { "type": "string" },
+        "backup_command": { "type": "string" },
+        "restore_preview_command": { "type": "string" },
+        "recommended_actions": { "type": "array" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

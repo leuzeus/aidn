@@ -46,10 +46,12 @@ These are usually the safest default for validating a code change.
 
 When a change affects public `--json` output or CLI read/write semantics, run:
 
+- `npm run perf:verify-cli-effect-policy`
+- `npm run perf:verify-cli-no-implicit-write`
 - `npm run perf:verify-cli-output-contracts`
 - `npm run perf:verify-cli-aliases`
 
-The CLI output contract verifier runs the public JSON commands against a temporary fixture copy and validates them against `src/core/contracts/cli-output/*.schema.json`. For projector commands, it also verifies that `--dry-run --json` does not mutate the projected Markdown artifact.
+The CLI effect policy verifier checks the public command effect inventory in `src/core/cli/effect-policy.mjs`. The no-implicit-write verifier runs stable read-only, preview, and projector dry-run commands against a temporary fixture copy and fails if checkout-bound or declared projection guard paths change. The CLI output contract verifier runs the public JSON commands against a temporary fixture copy and validates them against `src/core/contracts/cli-output/*.schema.json`. For projector commands, it also verifies that `--dry-run --json` does not mutate the projected Markdown artifact.
 
 When a change affects source-of-truth semantics or concept ownership, run:
 

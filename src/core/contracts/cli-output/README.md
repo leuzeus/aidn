@@ -9,6 +9,9 @@ The contracts are intentionally shallow in v1:
 - payloads do not yet need to embed `schema_version`; the schema file is the versioned contract
 - future versions may tighten nested structures after golden fixtures are in place
 
+Command effect classes are governed separately in `src/core/cli/effect-policy.mjs`.
+That policy records whether a public command is `read-only`, `preview`, `projector`, `mutating`, or `executor`, and provides the safe arguments used by the no-implicit-write fixture gate.
+
 Naming convention:
 
 - `<group>-<subcommand>.v<major>.schema.json`
@@ -29,6 +32,10 @@ Initial v1 commands:
 - `aidn runtime project-handoff-packet --json`
 - `aidn runtime pre-write-admit --json`
 - `aidn runtime db-status --json`
+- `aidn runtime shared-coordination-status --json`
+- `aidn runtime shared-coordination-projects --json`
+- `aidn runtime list-agent-adapters --json`
+- `aidn runtime verify-agent-roster --json`
 - `aidn runtime coordinator-next-action --json`
 - `aidn runtime coordinator-dispatch-plan --json`
 - `aidn runtime coordinator-orchestrate --json`

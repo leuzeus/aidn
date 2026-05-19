@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-verify-agent-roster.v1",
+  "title": "aidn runtime verify-agent-roster --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime verify-agent-roster --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "state_mode",
+    "db_backed_mode",
+    "roster_found",
+    "roster_file",
+    "default_requested_agent",
+    "entries",
+    "registered_inspections",
+    "issues",
+    "warnings",
+    "pass"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "state_mode": { "type": "string" },
+    "db_backed_mode": { "type": "boolean" },
+    "roster_found": { "type": "boolean" },
+    "roster_file": { "type": "string" },
+    "default_requested_agent": { "type": "string" },
+    "entries": { "type": "array" },
+    "registered_inspections": { "type": "array" },
+    "issues": { "type": "array" },
+    "warnings": { "type": "array" },
+    "pass": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

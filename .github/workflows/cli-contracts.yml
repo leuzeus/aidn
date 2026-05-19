@@ -1,0 +1,30 @@
+name: CLI Contracts
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cli-contracts:
+    name: Verify CLI Effects And Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify CLI Effect Policy
+        run: npm run perf:verify-cli-effect-policy
+
+      - name: Verify CLI No Implicit Write
+        run: npm run perf:verify-cli-no-implicit-write
+
+      - name: Verify CLI Output Contracts
+        run: npm run perf:verify-cli-output-contracts

@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-list-agent-adapters.v1",
+  "title": "aidn runtime list-agent-adapters --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime list-agent-adapters --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "state_mode",
+    "db_backed_mode",
+    "roster",
+    "roster_verification",
+    "adapters",
+    "auto_selection_preview"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "state_mode": { "type": "string" },
+    "db_backed_mode": { "type": "boolean" },
+    "roster": { "type": "object", "additionalProperties": true },
+    "roster_verification": { "type": "object", "additionalProperties": true },
+    "adapters": { "type": "array" },
+    "auto_selection_preview": { "type": "array" }
+  },
+  "additionalProperties": true
+}

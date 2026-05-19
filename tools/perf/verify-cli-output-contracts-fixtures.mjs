@@ -64,6 +64,28 @@ const CONTRACT_CASES = [
     args: ["runtime", "db-status", "--json"],
   },
   {
+    name: "runtime-shared-coordination-status",
+    schema: "runtime-shared-coordination-status.v1.schema.json",
+    args: ["runtime", "shared-coordination-status", "--json"],
+  },
+  {
+    name: "runtime-shared-coordination-projects",
+    schema: "runtime-shared-coordination-projects.v1.schema.json",
+    args: ["runtime", "shared-coordination-projects", "--json"],
+    allowNonZero: true,
+  },
+  {
+    name: "runtime-list-agent-adapters",
+    schema: "runtime-list-agent-adapters.v1.schema.json",
+    args: ["runtime", "list-agent-adapters", "--json"],
+  },
+  {
+    name: "runtime-verify-agent-roster",
+    schema: "runtime-verify-agent-roster.v1.schema.json",
+    args: ["runtime", "verify-agent-roster", "--json"],
+    allowNonZero: true,
+  },
+  {
     name: "runtime-coordinator-next-action",
     schema: "runtime-coordinator-next-action.v1.schema.json",
     args: ["runtime", "coordinator-next-action", "--json"],

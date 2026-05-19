@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-shared-coordination-projects.v1",
+  "title": "aidn runtime shared-coordination-projects --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime shared-coordination-projects --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "ok",
+    "status",
+    "reason",
+    "workspace",
+    "shared_coordination_backend",
+    "project_id_filter",
+    "projects",
+    "inspected_project",
+    "inspected_workspaces"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "ok": { "type": "boolean" },
+    "status": { "type": "string" },
+    "reason": { "type": "string" },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "shared_coordination_backend": { "type": "object", "additionalProperties": true },
+    "project_id_filter": { "type": "string" },
+    "projects": { "type": "array" },
+    "inspected_project": { "type": ["object", "null"], "additionalProperties": true },
+    "inspected_workspaces": { "type": "array" }
+  },
+  "additionalProperties": true
+}
