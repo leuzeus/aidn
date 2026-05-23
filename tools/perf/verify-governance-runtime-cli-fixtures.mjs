@@ -1,0 +1,49 @@
+#!/usr/bin/env node
+import { execFileSync } from "node:child_process";
+import path from "node:path";
+
+function assert(condition, message) {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+function runJson(args) {
+  const stdout = execFileSync(process.execPath, [path.resolve(process.cwd(), "bin/aidn.mjs"), ...args], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
+  return JSON.parse(stdout);
+}
+
+function runNodeJson(script, args = []) {
+  const stdout = execFileSync(process.execPath, [script, ...args], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
+  return JSON.parse(stdout);
+}
+
+function main() {
+  try {
+    const targetRoot = "tests/fixtures/repo-installed-core";
+    const runtimeDiagnostics = runJson(["runtime", "governance-diagnostics", "--target", targetRoot, "--json"]);
+    const perfDiagnostics = runNodeJson(path.resolve(process.cwd(), "tools/perf/verify-governance-completeness.mjs"), ["--json"]);
+
+    assert(runtimeDiagnostics.ok === perfDiagnostics.ok, "runtime governance diagnostics should match perf completeness ok flag");
+    assert(runtimeDiagnostics.governed_concepts === perfDiagnostics.governed_concepts, "runtime governance diagnostics should match governed concept count");
+    assert(runtimeDiagnostics.summary.complete === perfDiagnostics.summary.complete, "runtime governance diagnostics should match completeness summary");
+    assert(runtimeDiagnostics.operations?.local_first === true, "runtime governance diagnostics should expose local-first operations");
+    assert(typeof runtimeDiagnostics.workspace?.project_id === "string" && runtimeDiagnostics.workspace.project_id.length > 0, "runtime governance diagnostics should expose target workspace identity");
+    assert(typeof runtimeDiagnostics.workspace?.workspace_id === "string" && runtimeDiagnostics.workspace.workspace_id.length > 0, "runtime governance diagnostics should expose workspace id");
+    assert(Array.isArray(runtimeDiagnostics.concepts) && runtimeDiagnostics.concepts.length >= 1, "runtime governance diagnostics should expose concept details");
+    assert(Array.isArray(runtimeDiagnostics.issues), "runtime governance diagnostics should expose issues");
+
+    console.log("PASS");
+  } catch (error) {
+    console.error(`ERROR: ${error.message}`);
+    process.exit(1);
+  }
+}
+
+main();

@@ -75,6 +75,11 @@ const CONTRACT_CASES = [
     allowNonZero: true,
   },
   {
+    name: "runtime-governance-diagnostics",
+    schema: "runtime-governance-diagnostics.v1.schema.json",
+    args: ["runtime", "governance-diagnostics", "--json"],
+  },
+  {
     name: "runtime-list-agent-adapters",
     schema: "runtime-list-agent-adapters.v1.schema.json",
     args: ["runtime", "list-agent-adapters", "--json"],

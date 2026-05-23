@@ -109,6 +109,7 @@ const RUNTIME_ALIASES = {
   "shared-coordination-bootstrap": { file: "shared-coordination-bootstrap.mjs" },
   "shared-coordination-status": { file: "shared-coordination-status.mjs" },
   "shared-coordination-projects": { file: "shared-coordination-projects.mjs" },
+  "governance-diagnostics": { file: "governance-diagnostics.mjs" },
   "coordinator-dispatch-execute": { file: "coordinator-dispatch-execute.mjs" },
   "coordinator-dispatch-plan": { file: "coordinator-dispatch-plan.mjs" },
   "coordinator-loop": { file: "coordinator-loop.mjs" },
@@ -165,6 +166,7 @@ function printUsage() {
   console.log("  aidn runtime shared-coordination-doctor --target . --json");
   console.log("  aidn runtime shared-coordination-status --target . --json");
   console.log("  aidn runtime shared-coordination-projects --target . --json");
+  console.log("  aidn runtime governance-diagnostics --target . --json");
   console.log("  aidn runtime shared-coordination-migrate --target . --json");
   console.log("  aidn runtime shared-coordination-bootstrap --target . --json");
   console.log("  aidn runtime coordinator-dispatch-execute --target . --execute --json");

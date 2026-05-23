@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-governance-diagnostics.v1",
+  "title": "aidn runtime governance-diagnostics --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime governance-diagnostics --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "ts",
+    "target_root",
+    "ok",
+    "governed_concepts",
+    "summary",
+    "registry",
+    "concepts",
+    "issues",
+    "operations"
+  ],
+  "properties": {
+    "ts": { "type": "string" },
+    "target_root": { "type": "string" },
+    "workspace": { "type": ["object", "null"], "additionalProperties": true },
+    "ok": { "type": "boolean" },
+    "governed_concepts": { "type": "number" },
+    "summary": {
+      "type": "object",
+      "required": ["complete", "partial", "missing"],
+      "properties": {
+        "complete": { "type": "number" },
+        "partial": { "type": "number" },
+        "missing": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "registry": { "type": "object", "additionalProperties": true },
+    "concepts": { "type": "array" },
+    "issues": { "type": "array" },
+    "operations": {
+      "type": "object",
+      "required": [
+        "local_first",
+        "source_of_truth_coverage_status",
+        "metadata_coverage_status",
+        "cli_contract_coverage_status",
+        "overall_status",
+        "governed_concept_count",
+        "issue_count",
+        "recommended_actions"
+      ],
+      "properties": {
+        "local_first": { "type": "boolean" },
+        "source_of_truth_coverage_status": { "type": "string" },
+        "metadata_coverage_status": { "type": "string" },
+        "cli_contract_coverage_status": { "type": "string" },
+        "overall_status": { "type": "string" },
+        "governed_concept_count": { "type": "number" },
+        "issue_count": { "type": "number" },
+        "recommended_actions": { "type": "array" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

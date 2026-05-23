@@ -85,6 +85,14 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Enumerates shared coordination projects when a shared backend is explicitly configured.",
   }),
   commandPolicy({
+    id: "runtime-governance-diagnostics",
+    command: "aidn runtime governance-diagnostics --json",
+    effectClass: "read-only",
+    jsonContract: "runtime-governance-diagnostics.v1.schema.json",
+    safeArgs: ["runtime", "governance-diagnostics", "--json"],
+    notes: "Summarizes source-of-truth, metadata, and public CLI contract coverage without mutating the target.",
+  }),
+  commandPolicy({
     id: "runtime-list-agent-adapters",
     command: "aidn runtime list-agent-adapters --json",
     effectClass: "read-only",
