@@ -372,6 +372,14 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Attempts a changed-path selective db-first refresh with optional full-sync fallback.",
   }),
   commandPolicy({
+    id: "runtime-mode-migrate",
+    command: "aidn runtime mode-migrate --json",
+    effectClass: "mutating",
+    jsonContract: "runtime-mode-migrate.v1.schema.json",
+    safeArgs: ["runtime", "mode-migrate", "--to", "dual", "--json"],
+    notes: "Migrates runtime mode boundaries and updates config, schema, and projections as needed.",
+  }),
+  commandPolicy({
     id: "runtime-coordinator-loop",
     command: "aidn runtime coordinator-loop --json",
     effectClass: "read-only",

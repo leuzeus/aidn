@@ -209,6 +209,11 @@ const CONTRACT_CASES = [
     args: ["runtime", "sync-db-first-selective", "--json"],
   },
   {
+    name: "runtime-mode-migrate",
+    schema: "runtime-mode-migrate.v1.schema.json",
+    args: ["runtime", "mode-migrate", "--to", "dual", "--json"],
+  },
+  {
     name: "runtime-coordinator-select-agent",
     schema: "runtime-coordinator-select-agent.v1.schema.json",
     args: ["runtime", "coordinator-select-agent", "--role", "auditor", "--action", "audit", "--json"],

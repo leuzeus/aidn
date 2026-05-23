@@ -90,6 +90,8 @@ function main() {
       schema_status_after_no_pending: Array.isArray(migrated?.schema_status_after?.pending_ids) && migrated.schema_status_after.pending_ids.length === 0,
       repair_layer_step_present: Array.isArray(migrated?.steps) && migrated.steps.some((step) => String(step?.step ?? "") === "repair_layer"),
       repair_layer_completed: ["applied", "skipped"].includes(String(migrated?.repair_layer_result?.action ?? "")),
+      mode_migrate_exposes_diagnostic: migrated?.mode_migrate_diagnostic?.scope === "runtime-mode-migrate"
+        && migrated?.mode_migrate_diagnostic?.to_mode === "db-only",
       report_exists: fs.existsSync(reportFile),
       triage_exists: fs.existsSync(triageFile),
       triage_summary_exists: fs.existsSync(triageSummaryFile),

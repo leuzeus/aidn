@@ -20,6 +20,24 @@ const PERF_INDEX_EXPORT = path.resolve(RUNTIME_DIR, "..", "perf", "index-export-
 const RUNTIME_REPAIR_LAYER = path.resolve(RUNTIME_DIR, "repair-layer.mjs");
 const PERF_REPAIR_LAYER_TRIAGE_SUMMARY = path.resolve(RUNTIME_DIR, "..", "perf", "render-repair-layer-triage-summary.mjs");
 
+function buildModeMigrateDiagnostic(out) {
+  const steps = Array.isArray(out?.steps) ? out.steps : [];
+  const pendingAfter = Array.isArray(out?.schema_status_after?.pending_ids)
+    ? out.schema_status_after.pending_ids.length
+    : 0;
+  return {
+    scope: "runtime-mode-migrate",
+    from_mode: String(out?.from_mode ?? "").trim() || "unknown",
+    to_mode: String(out?.to_mode ?? "").trim() || "unknown",
+    step_count: steps.length,
+    schema_pending_after_count: pendingAfter,
+    repair_layer_status: String(out?.repair_layer_result?.action ?? "").trim() || "not-run",
+    export_status: out?.export_result ? "applied" : "not-run",
+    summary: `runtime mode migration prepared ${String(out?.to_mode ?? "unknown")} with ${steps.length} tracked step(s)`,
+    recommended_action: "review config, schema, and repair-layer outputs before relying on the migrated runtime mode",
+  };
+}
+
 function parseArgs(argv) {
   const args = {
     target: ".",
@@ -347,6 +365,7 @@ async function main() {
       export_result: exportResult,
       config_update: configUpdate,
     };
+    out.mode_migrate_diagnostic = buildModeMigrateDiagnostic(out);
     if (args.json) {
       console.log(JSON.stringify(out, null, 2));
     } else {
