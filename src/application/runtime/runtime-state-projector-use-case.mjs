@@ -79,6 +79,365 @@ export function buildRuntimeStateMarkdown(digest) {
   return `${lines.join("\n")}\n`;
 }
 
+function normalizeScalar(value) {
+  return String(value ?? "").trim();
+}
+
+function canonicalNone(value) {
+  const normalized = normalizeScalar(value).toLowerCase();
+  return normalized === "none" || normalized === "(none)";
+}
+
+function canonicalUnknown(value) {
+  return normalizeScalar(value).toLowerCase() === "unknown";
+}
+
+function uniqueItems(values) {
+  const out = [];
+  const seen = new Set();
+  for (const value of values) {
+    const normalized = String(value ?? "").trim();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    out.push(normalized);
+  }
+  return out;
+}
+
+function collectDecisionEntries(payload) {
+  const entries = payload && typeof payload.decisions === "object"
+    ? Object.entries(payload.decisions)
+    : [];
+  return entries
+    .filter(([, entry]) => entry && typeof entry === "object")
+    .map(([skill, entry]) => ({ skill, ...entry }));
+}
+
+function repairCandidateRank(entry) {
+  if (!entry || typeof entry !== "object") {
+    return 0;
+  }
+  let rank = 0;
+  if (!canonicalUnknown(entry.repair_layer_status) && normalizeScalar(entry.repair_layer_status)) {
+    rank += entry.repair_layer_status_inferred ? 2 : 4;
+  }
+  if (!canonicalUnknown(entry.repair_layer_advice) && normalizeScalar(entry.repair_layer_advice)) {
+    rank += entry.repair_layer_advice_inferred ? 1 : 3;
+  }
+  if (Array.isArray(entry.repair_layer_top_findings) && entry.repair_layer_top_findings.length > 0) {
+    rank += 1;
+  }
+  if (entry.repair_layer_blocking === true) {
+    rank += 2;
+  }
+  return rank;
+}
+
+function repairCandidateHasKnownStatus(entry) {
+  return !canonicalUnknown(entry?.repair_layer_status) && normalizeScalar(entry?.repair_layer_status).length > 0;
+}
+
+function latestRepairCandidate(entries) {
+  return entries
+    .slice()
+    .sort((left, right) => {
+      const knownStatusDelta = Number(repairCandidateHasKnownStatus(right)) - Number(repairCandidateHasKnownStatus(left));
+      if (knownStatusDelta !== 0) {
+        return knownStatusDelta;
+      }
+      const leftTs = Date.parse(String(left?.ts ?? left?.updated_at ?? ""));
+      const rightTs = Date.parse(String(right?.ts ?? right?.updated_at ?? ""));
+      const tsDelta = (Number.isNaN(rightTs) ? 0 : rightTs) - (Number.isNaN(leftTs) ? 0 : leftTs);
+      if (tsDelta !== 0) {
+        return tsDelta;
+      }
+      return repairCandidateRank(right) - repairCandidateRank(left);
+    })[0] ?? null;
+}
+
+function inferRepairStatus(status, findings, blocking) {
+  const normalizedStatus = String(status ?? "").trim().toLowerCase();
+  if (normalizedStatus) {
+    return normalizedStatus;
+  }
+  if (blocking === true) {
+    return "block";
+  }
+  const severities = Array.isArray(findings)
+    ? findings.map((item) => normalizeScalar(item?.severity).toLowerCase()).filter(Boolean)
+    : [];
+  if (severities.includes("error") || severities.includes("warning")) {
+    return "warn";
+  }
+  if (severities.length > 0) {
+    return "clean";
+  }
+  return "";
+}
+
+function inferRepairAdvice(advice, status) {
+  const normalizedAdvice = String(advice ?? "").trim();
+  if (normalizedAdvice) {
+    return normalizedAdvice;
+  }
+  const normalizedStatus = String(status ?? "").trim().toLowerCase();
+  if (normalizedStatus === "clean" || normalizedStatus === "ok") {
+    return "Repair layer is clean.";
+  }
+  if (normalizedStatus === "warn") {
+    return "Review open repair findings.";
+  }
+  if (normalizedStatus === "block") {
+    return "Resolve blocking repair findings before continuing.";
+  }
+  return "";
+}
+
+function normalizeRepairCandidate(entry, defaults = {}) {
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+  const rawStatus = String(
+    entry.repair_layer_status
+      ?? entry.status
+      ?? defaults.status
+      ?? "",
+  ).trim();
+  const rawAdvice = String(
+    entry.repair_layer_advice
+      ?? entry.advice
+      ?? defaults.advice
+      ?? "",
+  ).trim();
+  const findings = Array.isArray(entry.repair_layer_top_findings)
+    ? entry.repair_layer_top_findings
+    : (Array.isArray(entry.top_findings) ? entry.top_findings : []);
+  const blocking = entry.repair_layer_blocking === true
+    || entry.blocking === true
+    || defaults.blocking === true;
+  const status = inferRepairStatus(rawStatus, findings, blocking);
+  const advice = inferRepairAdvice(rawAdvice, status);
+  const ts = String(
+    entry.ts
+      ?? entry.updated_at
+      ?? defaults.ts
+      ?? "",
+  ).trim();
+  if (!status && !advice && findings.length === 0 && !blocking) {
+    return null;
+  }
+  return {
+    ts,
+    repair_layer_status: status || "unknown",
+    repair_layer_status_inferred: !rawStatus,
+    repair_layer_advice: advice || "unknown",
+    repair_layer_advice_inferred: !rawAdvice,
+    repair_layer_top_findings: findings,
+    repair_layer_blocking: blocking,
+  };
+}
+
+export function deriveRuntimeStateRepairSummary(hydrated, fallbackContext) {
+  const repairLayer = hydrated?.repair_layer && typeof hydrated.repair_layer === "object"
+    ? hydrated.repair_layer
+    : null;
+  const history = Array.isArray(hydrated?.recent_history) ? hydrated.recent_history : [];
+  const decisions = collectDecisionEntries(hydrated);
+  const fallbackEntries = fallbackContext?.latest && typeof fallbackContext.latest === "object"
+    ? Object.values(fallbackContext.latest).filter((entry) => entry && typeof entry === "object")
+    : [];
+  const source = latestRepairCandidate([
+    normalizeRepairCandidate(repairLayer, {
+      ts: hydrated?.ts,
+      blocking: repairLayer?.blocking === true,
+    }),
+    ...history.map((entry) => normalizeRepairCandidate(entry)),
+    ...decisions.map((entry) => normalizeRepairCandidate(entry)),
+    ...fallbackEntries.map((entry) => normalizeRepairCandidate(entry)),
+  ].filter(Boolean));
+  return {
+    status: String(source?.repair_layer_status ?? "unknown").trim() || "unknown",
+    advice: String(source?.repair_layer_advice ?? "unknown").trim() || "unknown",
+    findings: Array.isArray(source?.repair_layer_top_findings) ? source.repair_layer_top_findings : [],
+    blocking: source?.repair_layer_blocking === true,
+  };
+}
+
+export function deriveRuntimeStateFreshness(consistency) {
+  const activeCycle = normalizeScalar(consistency?.current_state?.active_cycle ?? "");
+  if (!activeCycle || canonicalNone(activeCycle) || canonicalUnknown(activeCycle)) {
+    return {
+      freshness: "unknown",
+      basis: "no active cycle declared in CURRENT-STATE.md",
+    };
+  }
+  const staleKeys = [
+    "updated_at_not_older_than_status",
+    "updated_at_not_older_than_dor_check",
+  ];
+  for (const key of staleKeys) {
+    const check = consistency?.checks?.[key];
+    if (check?.pass === false) {
+      return {
+        freshness: "stale",
+        basis: check.details || key,
+      };
+    }
+  }
+  const parseable = consistency?.checks?.updated_at_parseable?.pass === true;
+  const statusKnown = consistency?.checks?.active_cycle_status_exists?.pass === true;
+  if (parseable && statusKnown) {
+    return {
+      freshness: "ok",
+      basis: "CURRENT-STATE.md.updated_at is aligned with active cycle status timestamps",
+    };
+  }
+  return {
+    freshness: "unknown",
+    basis: "freshness prerequisites missing or not evaluable",
+  };
+}
+
+function formatFinding(item) {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+  const severity = String(item.severity ?? "").trim().toLowerCase();
+  const type = String(item.finding_type ?? item.type ?? "").trim();
+  const entity = String(item.entity_id ?? "").trim();
+  const message = String(item.message ?? "").trim();
+  const parts = [];
+  if (severity) {
+    parts.push(severity);
+  }
+  if (type) {
+    parts.push(type);
+  }
+  if (entity) {
+    parts.push(entity);
+  }
+  if (message) {
+    parts.push(message);
+  }
+  return parts.join(": ");
+}
+
+function deriveRepairPrimaryReason({ status, advice, findings }) {
+  const normalizedStatus = normalizeScalar(status).toLowerCase();
+  if (normalizedStatus === "clean" || normalizedStatus === "ok") {
+    return "repair layer reports no blocking findings for the current relay";
+  }
+  const topFinding = Array.isArray(findings) ? findings[0] : null;
+  const topFormatted = formatFinding(topFinding);
+  if (topFormatted) {
+    return topFormatted;
+  }
+  const normalizedAdvice = normalizeScalar(advice);
+  if (normalizedAdvice && !canonicalUnknown(normalizedAdvice)) {
+    return normalizedAdvice;
+  }
+  return "repair-layer reason is unknown";
+}
+
+function normalizeBacklogArtifactPath(activeBacklog) {
+  const normalized = normalizeScalar(activeBacklog);
+  if (!normalized || canonicalNone(normalized) || canonicalUnknown(normalized)) {
+    return "";
+  }
+  return normalized.startsWith("docs/")
+    ? normalized.replace(/\\/g, "/")
+    : `docs/audit/${normalized.replace(/\\/g, "/").replace(/^\/+/, "")}`;
+}
+
+export function deriveRuntimeStatePrioritizedArtifacts(consistency, hydrated, options = {}) {
+  const values = [
+    "docs/audit/HANDOFF-PACKET.md",
+    "docs/audit/CURRENT-STATE.md",
+    "docs/audit/snapshots/context-snapshot.md",
+  ];
+  const activeCycle = normalizeScalar(consistency?.current_state?.active_cycle ?? "");
+  const activeSession = normalizeScalar(consistency?.current_state?.active_session ?? "");
+  if (activeCycle && !canonicalNone(activeCycle) && !canonicalUnknown(activeCycle)) {
+    values.push(`docs/audit/cycles/${activeCycle}-*/status.md`);
+  }
+  if (activeSession && !canonicalNone(activeSession) && !canonicalUnknown(activeSession)) {
+    values.push(`docs/audit/sessions/${activeSession}*.md`);
+  }
+  if (options.hydratedFile) {
+    values.push(String(options.hydratedFile).replace(/\\/g, "/"));
+  }
+  if (options.contextFile) {
+    values.push(String(options.contextFile).replace(/\\/g, "/"));
+  }
+  const artifactPaths = Array.isArray(hydrated?.artifacts)
+    ? hydrated.artifacts.map((artifact) => String(artifact?.path ?? "").trim()).filter(Boolean)
+    : [];
+  return uniqueItems([...values, ...artifactPaths.slice(0, 6)]);
+}
+
+export function prepareRuntimeStateProjection({
+  workspace,
+  dbBackedMode = false,
+  effectiveStateMode = "",
+  hydrated = null,
+  fallbackContext = null,
+  repairRouting,
+  sharedRuntimeValidation,
+  sharedPlanning,
+  consistency,
+  currentStateResolution,
+  sessionResolution,
+  cycleStatusResolution,
+  contextSource = "none",
+  hydratedFile = "",
+  contextFile = "",
+} = {}) {
+  const repairSummary = deriveRuntimeStateRepairSummary(hydrated, fallbackContext);
+  const freshness = deriveRuntimeStateFreshness(consistency);
+  const prioritizedFindings = Array.isArray(repairSummary.findings)
+    ? repairSummary.findings.filter((item) => {
+      const severity = normalizeScalar(item?.severity).toLowerCase();
+      return severity === "warning" || severity === "error";
+    })
+    : [];
+  const blockingFindings = uniqueItems(
+    prioritizedFindings
+      .map((item) => formatFinding(item))
+      .filter(Boolean)
+      .slice(0, 5),
+  );
+  if (repairSummary.blocking && blockingFindings.length === 0) {
+    blockingFindings.push("repair layer marked blocking without detailed findings");
+  }
+  return buildRuntimeStateDigest({
+    workspace,
+    dbBackedMode,
+    effectiveStateMode,
+    hydrated,
+    repairSummary,
+    repairPrimaryReason: deriveRepairPrimaryReason(repairSummary),
+    repairRouting,
+    sharedRuntimeValidation,
+    sharedPlanning,
+    freshness,
+    blockingFindings,
+    prioritizedArtifacts: uniqueItems([
+      ...deriveRuntimeStatePrioritizedArtifacts(consistency, hydrated, {
+        hydratedFile,
+        contextFile,
+      }),
+      normalizeBacklogArtifactPath(sharedPlanning.active_backlog),
+    ]),
+    contextSource,
+    consistency,
+    currentStateResolution,
+    sessionResolution,
+    cycleStatusResolution,
+  });
+}
+
 export function buildRuntimeStateDigest({
   updatedAt,
   workspace,
