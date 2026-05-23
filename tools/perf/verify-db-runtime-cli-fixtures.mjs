@@ -150,8 +150,13 @@ function main() {
       status_before_reports_runtime_backend_resolution: statusBefore.runtime_persistence?.backend === "sqlite",
       status_before_reports_local_scope: statusBefore.sqlite_scope === "explicit-path",
       status_before_exposes_operations: statusBefore.operations?.schema_status === "missing"
+        && statusBefore.operations?.source_of_truth_status === "covered"
+        && typeof statusBefore.operations?.metadata_status === "string"
         && statusBefore.operations?.connection_secret_exposed === false
         && statusBefore.operations?.backup_command === "aidn runtime db-backup --target . --json",
+      status_before_exposes_governance: statusBefore.source_of_truth?.concept === "runtime_defaults"
+        && statusBefore.source_of_truth?.source_of_truth_status === "covered"
+        && statusBefore.metadata?.concept === "workspace",
       status_before_reports_pending_baseline: Array.isArray(statusBefore.pending_ids) && statusBefore.pending_ids.includes("0001_workflow_index_baseline_v2"),
       migrate_fresh_applies_baseline: Array.isArray(migrateFresh?.migration?.applied_ids) && migrateFresh.migration.applied_ids.includes("0001_workflow_index_baseline_v2"),
       status_after_no_pending: Array.isArray(statusAfter.pending_ids) && statusAfter.pending_ids.length === 0,
@@ -176,6 +181,8 @@ function main() {
         status_before: {
           exists: statusBefore.exists,
           runtime_persistence: statusBefore.runtime_persistence,
+          source_of_truth: statusBefore.source_of_truth,
+          metadata: statusBefore.metadata,
           sqlite_scope: statusBefore.sqlite_scope,
           pending_ids: statusBefore.pending_ids,
         },

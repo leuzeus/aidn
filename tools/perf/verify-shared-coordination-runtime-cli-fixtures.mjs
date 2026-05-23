@@ -200,6 +200,8 @@ async function main() {
     assert(missingEnvStatus.shared_coordination_backend.status === "missing-env", "status CLI should surface missing postgres env");
     assert(missingEnvStatus.operations?.schema_status === "missing-env", "missing env status should expose operational schema status");
     assert(missingEnvStatus.operations?.connection_ref === "env:AIDN_PG_URL", "missing env status should expose env connection reference only");
+    assert(missingEnvStatus.source_of_truth?.concept === "coordination_records", "status CLI should expose the governing source-of-truth concept");
+    assert(missingEnvStatus.metadata?.concept === "workspace", "status CLI should expose the governing metadata concept");
 
     const fakeResolution = createFakeResolution();
     const directStatus = await projectSharedCoordinationStatus({
@@ -212,8 +214,12 @@ async function main() {
     assert(directStatus.health?.schema_status === "ready", "direct status projection should expose ready schema status");
     assert(directStatus.health?.compatibility_status === "project-scoped", "direct status projection should expose compatibility status");
     assert(directStatus.operations?.schema_status === "ready", "direct status should expose operational schema status");
+    assert(directStatus.operations?.source_of_truth_status === "covered", "direct status should expose source-of-truth coverage");
+    assert(typeof directStatus.operations?.metadata_status === "string", "direct status should expose metadata status");
     assert(directStatus.operations?.freshness_status === "inspectable", "direct status should expose inspectable freshness");
     assert(directStatus.operations?.backup_command === "aidn runtime shared-coordination-backup --target . --json", "direct status should expose backup command");
+    assert(directStatus.source_of_truth?.source_of_truth_status === "covered", "direct status should resolve the source-of-truth policy");
+    assert(directStatus.metadata?.concept === "workspace", "direct status should project workspace metadata policy");
     assert(directStatus.snapshot?.handoff_read?.status === "found", "direct status projection should expose handoff snapshot");
     assert(directStatus.snapshot?.coordination_read?.status === "found", "direct status projection should expose coordination snapshot");
 

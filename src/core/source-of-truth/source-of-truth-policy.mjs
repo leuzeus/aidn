@@ -186,6 +186,23 @@ export function getSourceOfTruthPolicy(concept, stateMode = null) {
   };
 }
 
+export function evaluateSourceOfTruthPolicy(concept, stateMode = null) {
+  const resolved = getSourceOfTruthPolicy(concept, stateMode);
+  if (!resolved) {
+    return {
+      concept: normalizeKey(concept),
+      source_of_truth_status: "missing",
+      source_of_truth: null,
+    };
+  }
+  return {
+    ...resolved,
+    source_of_truth_status: stateMode
+      ? (String(resolved.source_of_truth ?? "").trim() ? "covered" : "missing")
+      : "covered",
+  };
+}
+
 export function validateSourceOfTruthPolicies() {
   const issues = [];
   const seen = new Set();

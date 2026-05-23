@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { evaluateMetadataPolicy } from "../../src/core/metadata/metadata-policy.mjs";
+import { evaluateSourceOfTruthPolicy } from "../../src/core/source-of-truth/source-of-truth-policy.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { resolveSharedStateBackend } from "../../src/application/runtime/shared-state-backend-service.mjs";
 import {
@@ -102,6 +104,8 @@ function deriveRuntimeOperations(payload) {
     backend,
     backend_source: payload.runtime_persistence?.source ?? "unknown",
     schema_status: schemaStatus,
+    source_of_truth_status: payload.source_of_truth?.source_of_truth_status ?? "missing",
+    metadata_status: payload.metadata?.metadata_status ?? "not_governed",
     compatibility_status: compatibility,
     schema_version: payload.schema_version ?? null,
     pending_migration_count: pendingIds.length,
@@ -158,10 +162,22 @@ export async function projectRuntimePersistenceStatus({
     connectionRef: runtimePersistence.connectionRef ?? "",
     sqliteFile: absoluteSqliteFile,
   });
+  const sourceOfTruth = evaluateSourceOfTruthPolicy("runtime_defaults");
+  const metadata = evaluateMetadataPolicy("workspace", {
+    workspace_id: workspace.workspace_id,
+    worktree_id: workspace.worktree_id,
+    source_of_truth: sourceOfTruth.concept,
+    updated_at: new Date().toISOString(),
+    lifecycle_status: workspace.shared_runtime_mode === "shared-runtime" ? "active" : "discovered",
+    owner: workspace.project_id,
+    shared_runtime_mode: workspace.shared_runtime_mode,
+  });
   const payload = {
     ts: new Date().toISOString(),
     target_root: absoluteTargetRoot,
     runtime_persistence: runtimePersistence,
+    source_of_truth: sourceOfTruth,
+    metadata,
     runtime_backend: describedBackend,
     sqlite_scope: sqliteFileExplicit ? "explicit-path" : "local-target-default",
     sqlite_scope_reason: sqliteFileExplicit

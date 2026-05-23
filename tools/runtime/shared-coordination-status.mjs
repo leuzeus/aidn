@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { evaluateMetadataPolicy } from "../../src/core/metadata/metadata-policy.mjs";
+import { evaluateSourceOfTruthPolicy } from "../../src/core/source-of-truth/source-of-truth-policy.mjs";
 import {
   readLatestSharedHandoffRelay,
   readSharedCoordinationRecords,
@@ -47,7 +49,20 @@ function printUsage() {
   console.log("  npx aidn runtime shared-coordination-status --target . --json");
 }
 
-function deriveSharedCoordinationOperations({ backend, health, snapshot }) {
+function deriveWorkspaceLifecycleStatus({ backendStatus, hasSharedRecords }) {
+  if (backendStatus === "ready" || hasSharedRecords) {
+    return "active";
+  }
+  return "discovered";
+}
+
+function deriveSharedCoordinationOperations({
+  backend,
+  health,
+  snapshot,
+  sourceOfTruth,
+  metadata,
+}) {
   const status = backend?.status ?? "disabled";
   const schemaStatus = health?.schema_status ?? (status === "disabled" ? "disabled" : status);
   const compatibilityStatus = health?.compatibility_status ?? "unknown";
@@ -70,6 +85,8 @@ function deriveSharedCoordinationOperations({ backend, health, snapshot }) {
     backend_kind: backend?.backend_kind ?? "none",
     backend_status: status,
     schema_status: schemaStatus,
+    source_of_truth_status: sourceOfTruth?.source_of_truth_status ?? "missing",
+    metadata_status: metadata?.metadata_status ?? "not_governed",
     compatibility_status: compatibilityStatus,
     latest_schema_version: health?.latest_applied_schema_version ?? 0,
     connection_ref: backend?.connection_ref || "none",
@@ -136,10 +153,30 @@ export async function projectSharedCoordinationStatus({
     sessionId: activeSession !== "none" ? activeSession : "",
     limit: 5,
   });
+  const latestObservedAt = planning?.planning_state?.updated_at
+    || handoff?.handoff_relay?.created_at
+    || coordination?.records?.[0]?.created_at
+    || "";
+  const hasSharedRecords = Boolean(planning?.planning_state || handoff?.handoff_relay || (coordination?.records?.length ?? 0) > 0);
+  const sourceOfTruth = evaluateSourceOfTruthPolicy("coordination_records");
+  const metadata = evaluateMetadataPolicy("workspace", {
+    workspace_id: workspace.workspace_id,
+    worktree_id: workspace.worktree_id,
+    source_of_truth: sourceOfTruth.concept,
+    updated_at: latestObservedAt,
+    lifecycle_status: deriveWorkspaceLifecycleStatus({
+      backendStatus: backend.status,
+      hasSharedRecords,
+    }),
+    owner: workspace.project_id,
+    shared_runtime_mode: workspace.shared_runtime_mode,
+  });
   const result = {
     target_root: absoluteTargetRoot,
     ok: resolution.store ? health?.ok === true : resolution.status === "disabled",
     workspace,
+    source_of_truth: sourceOfTruth,
+    metadata,
     shared_coordination_backend: backend,
     health,
     snapshot: {
@@ -175,6 +212,8 @@ export async function projectSharedCoordinationStatus({
       backend,
       health,
       snapshot: result.snapshot,
+      sourceOfTruth,
+      metadata,
     }),
   };
 }

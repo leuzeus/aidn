@@ -181,6 +181,84 @@ export function listRequiredMetadataFields(concept) {
   return getMetadataPolicy(concept)?.required_fields ?? [];
 }
 
+function hasGovernedValue(value) {
+  if (value == null) {
+    return false;
+  }
+  if (typeof value === "string") {
+    return value.trim().length > 0;
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  return true;
+}
+
+export function evaluateMetadataPolicy(concept, subject = {}) {
+  const policy = getMetadataPolicy(concept);
+  if (!policy) {
+    return {
+      concept: normalizeKey(concept),
+      metadata_status: "not_governed",
+      metadata_findings: [],
+      required_fields: [],
+      recommended_fields: [],
+      legacy_tolerated_missing_fields: [],
+      surfaced_fields: {},
+    };
+  }
+
+  const missingRequiredFields = [];
+  const missingRecommendedFields = [];
+  const metadataFindings = [];
+  const surfacedFields = {};
+
+  for (const fieldName of policy.required_fields) {
+    if (hasGovernedValue(subject[fieldName])) {
+      surfacedFields[fieldName] = subject[fieldName];
+      continue;
+    }
+    missingRequiredFields.push(fieldName);
+    metadataFindings.push({
+      severity: policy.legacy_tolerated_missing_fields.includes(fieldName) ? "warn" : "error",
+      code: policy.legacy_tolerated_missing_fields.includes(fieldName)
+        ? "MISSING_GOVERNED_METADATA_LEGACY_TOLERATED"
+        : "MISSING_GOVERNED_METADATA",
+      field: fieldName,
+    });
+  }
+
+  for (const fieldName of policy.recommended_fields) {
+    if (hasGovernedValue(subject[fieldName])) {
+      surfacedFields[fieldName] = subject[fieldName];
+      continue;
+    }
+    missingRecommendedFields.push(fieldName);
+  }
+
+  const metadataStatus = missingRequiredFields.length === 0
+    ? "complete"
+    : missingRequiredFields.every((fieldName) => policy.legacy_tolerated_missing_fields.includes(fieldName))
+      ? "legacy_tolerated"
+      : "missing";
+
+  return {
+    concept: policy.concept,
+    label: policy.label,
+    policy_version: policy.policy_version,
+    metadata_status: metadataStatus,
+    metadata_findings: metadataFindings,
+    required_fields: [...policy.required_fields],
+    recommended_fields: [...policy.recommended_fields],
+    legacy_tolerated_missing_fields: [...policy.legacy_tolerated_missing_fields],
+    missing_required_fields: missingRequiredFields,
+    missing_recommended_fields: missingRecommendedFields,
+    surfaced_fields: surfacedFields,
+    lifecycle: policy.lifecycle,
+    notes: policy.notes,
+  };
+}
+
 export function validateMetadataPolicies() {
   const issues = [];
   const seen = new Set();
