@@ -95,6 +95,21 @@ function printUsage() {
   console.log("  node tools/runtime/coordinator-orchestrate.mjs --target . --execute --max-iterations 2 --json");
 }
 
+function deriveOrchestrationDiagnostic(result) {
+  return {
+    scope: "coordinator-orchestrate",
+    orchestration_status: String(result?.orchestration_status ?? "unknown").trim() || "unknown",
+    execute_requested: result?.execute_requested === true,
+    iterations_completed: Number(result?.iterations_completed ?? 0) || 0,
+    max_iterations: Number(result?.max_iterations ?? 0) || 0,
+    can_continue: result?.can_continue === true,
+    stop_reason: String(result?.stop_reason ?? "").trim() || "",
+    preferred_decision: String(result?.preferred_decision ?? "").trim() || "",
+    summary: `coordinator orchestration is ${String(result?.orchestration_status ?? "unknown").trim() || "unknown"}`,
+    recommended_command: "aidn runtime coordinator-resume --json",
+  };
+}
+
 export async function orchestrateCoordinatorDispatch(options = {}) {
   const args = {
     target: path.resolve(process.cwd(), options.targetRoot ?? options.target ?? "."),
@@ -117,21 +132,29 @@ export async function orchestrateCoordinatorDispatch(options = {}) {
 
   const initialPreview = await resumeCoordinatorDispatch(buildCoordinatorResumeOptions(args, false));
   if (!args.execute) {
-    return buildCoordinatorOrchestrationDryRunResult({
+    const result = buildCoordinatorOrchestrationDryRunResult({
       args,
       effectiveStateMode,
       dbBackedMode,
       initialPreview,
     });
+    return {
+      ...result,
+      orchestration_diagnostic: deriveOrchestrationDiagnostic(result),
+    };
   }
 
   if (!initialPreview.can_resume) {
-    return buildCoordinatorOrchestrationInitialBlockedResult({
+    const result = buildCoordinatorOrchestrationInitialBlockedResult({
       args,
       effectiveStateMode,
       dbBackedMode,
       initialPreview,
     });
+    return {
+      ...result,
+      orchestration_diagnostic: deriveOrchestrationDiagnostic(result),
+    };
   }
 
   const runs = [];
@@ -173,7 +196,7 @@ export async function orchestrateCoordinatorDispatch(options = {}) {
     currentPreview = nextPreview;
   }
 
-  return buildCoordinatorOrchestrationResult({
+  const result = buildCoordinatorOrchestrationResult({
     args,
     effectiveStateMode,
     dbBackedMode,
@@ -183,6 +206,10 @@ export async function orchestrateCoordinatorDispatch(options = {}) {
     lastPreview,
     runs,
   });
+  return {
+    ...result,
+    orchestration_diagnostic: deriveOrchestrationDiagnostic(result),
+  };
 }
 
 function main() {

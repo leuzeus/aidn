@@ -222,6 +222,7 @@ function main() {
     assert(dryRun.iterations_completed === 0, "dry-run should not execute iterations");
     assert(Array.isArray(dryRun.runs) && dryRun.runs.length === 0, "dry-run should not produce executed runs");
     assert(dryRun.initial_preview.resume_status === "ready", "dry-run should preview a ready resume");
+    assert(dryRun.orchestration_diagnostic?.orchestration_status === "dry_run", "dry-run should expose orchestration status in the stable diagnostic");
     assert(dryRun.preferred_dispatch_source === "shared_planning", "dry-run should surface the aligned shared planning preference");
     assert(dryRun.shared_planning_candidate?.candidate_aligned === true, "dry-run should expose an aligned shared planning candidate");
 
@@ -230,6 +231,7 @@ function main() {
     assert(blocked.iterations_completed === 0, "blocked orchestration should not execute iterations");
     assert(Array.isArray(blocked.runs) && blocked.runs.length === 0, "blocked orchestration should not execute runs");
     assert(blocked.preferred_decision === "reanchor", "blocked orchestration should surface preferred arbitration decision");
+    assert(blocked.orchestration_diagnostic?.preferred_decision === "reanchor", "blocked orchestration should expose preferred decision in the stable diagnostic");
     assert(blocked.arbitration_suggestions?.preferred_decision === "reanchor", "blocked orchestration should surface arbitration suggestions");
 
     assert(resumed.orchestration_status === "blocked", "orchestrate should stop once the post-run loop requires a fresh arbitration");
@@ -240,6 +242,7 @@ function main() {
     assert(resumed.runs[0].preferred_dispatch_source === "shared_planning", "orchestrate should keep the aligned shared planning preference during execution");
     assert(resumed.runs[0].shared_planning_candidate?.candidate_aligned === true, "orchestrate should preserve the aligned shared planning candidate during execution");
     assert(resumed.runs[0].execution_status === "executed", "orchestrate should execute the resumed dispatch");
+    assert(resumed.orchestration_diagnostic?.iterations_completed === 1, "resumed orchestration should expose iteration count in the stable diagnostic");
     assert(fs.existsSync(resumedHistoryFile), "orchestrate should write coordination history");
     assert(fs.existsSync(resumedLogFile), "orchestrate should write coordination log");
     assert(fs.readFileSync(resumedHistoryFile, "utf8").includes("\"event\":\"user_arbitration\""), "orchestrate history should retain arbitration event");
@@ -249,6 +252,7 @@ function main() {
     assert(roleBlocked.iterations_completed === 0, "role-blocked orchestration should not execute iterations");
     assert(roleBlocked.initial_preview.dispatch.recommended_role_coverage?.status === "blocked", "role-blocked orchestration should expose blocked role coverage");
     assert(roleBlocked.preferred_decision === "reanchor", "role-blocked orchestration should prefer reanchor");
+    assert(roleBlocked.orchestration_diagnostic?.stop_reason === "resume_blocked_until_user_arbitration", "role-blocked orchestration should expose stop reason in the stable diagnostic");
     assert(roleBlocked.arbitration_suggestions?.suggestions?.some((item) => item.decision === "reanchor" && item.immediately_actionable === true), "role-blocked orchestration should expose actionable reanchor suggestion");
     assert(roleBlocked.arbitration_suggestions?.suggestions?.some((item) => item.decision === "continue" && item.immediately_actionable === false), "role-blocked orchestration should expose non-actionable continue suggestion");
 
