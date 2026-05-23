@@ -3,6 +3,31 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { normalizeRuntimeCycleIdentitySource } from "../../src/application/runtime/runtime-cycle-identity-normalization-service.mjs";
 
+function normalizeScalar(value) {
+  return String(value ?? "").trim();
+}
+
+function buildPersistenceSourceNormalizeDiagnostic(result) {
+  const mappings = Array.isArray(result?.mappings) ? result.mappings : [];
+  const filesUpdated = Number(result?.files_updated ?? 0);
+  const directoriesRenamed = Number(result?.directories_renamed ?? 0);
+  const writeRequested = result?.write_requested === true;
+  return {
+    scope: "runtime-persistence-normalization",
+    write_requested: writeRequested,
+    rename_count: mappings.length,
+    files_updated: filesUpdated,
+    directories_renamed: directoriesRenamed,
+    status: writeRequested ? "applied" : "preview",
+    summary: writeRequested
+      ? `normalized ${mappings.length} cycle mapping(s) across ${filesUpdated} file(s)`
+      : `previewed ${mappings.length} cycle mapping(s) across ${filesUpdated} file(s)`,
+    recommended_action: writeRequested
+      ? "review the rewritten audit sources and runtime references before further persistence operations"
+      : "rerun without --dry-run only after reviewing the planned cycle identity rewrites",
+  };
+}
+
 function parseArgs(argv) {
   const args = {
     target: ".",
@@ -47,11 +72,15 @@ export function normalizeRuntimePersistenceSource({
   write = true,
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
-  return normalizeRuntimeCycleIdentitySource({
+  const result = normalizeRuntimeCycleIdentitySource({
     targetRoot: absoluteTargetRoot,
     renameSpecs: rename,
     write,
   });
+  return {
+    ...result,
+    persistence_source_normalize_diagnostic: buildPersistenceSourceNormalizeDiagnostic(result),
+  };
 }
 
 function printHuman(result) {

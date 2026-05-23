@@ -124,6 +124,21 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Inspects sqlite source integrity before runtime backend adoption or transfer.",
   }),
   commandPolicy({
+    id: "runtime-persistence-source-normalize",
+    command: "aidn runtime persistence-source-normalize --json",
+    effectClass: "preview",
+    jsonContract: "runtime-persistence-source-normalize.v1.schema.json",
+    safeArgs: [
+      "runtime",
+      "persistence-source-normalize",
+      "--rename",
+      "C004-spike-root-structure-investigation=C020-spike-root-structure-investigation",
+      "--dry-run",
+      "--json",
+    ],
+    notes: "Previews cycle identity rewrites under docs/audit unless --dry-run is removed.",
+  }),
+  commandPolicy({
     id: "runtime-shared-coordination-migrate",
     command: "aidn runtime shared-coordination-migrate --json",
     effectClass: "preview",

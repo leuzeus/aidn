@@ -99,6 +99,18 @@ const CONTRACT_CASES = [
     args: ["runtime", "persistence-source-diagnose", "--json"],
   },
   {
+    name: "runtime-persistence-source-normalize",
+    schema: "runtime-persistence-source-normalize.v1.schema.json",
+    args: [
+      "runtime",
+      "persistence-source-normalize",
+      "--rename",
+      "C004-spike-root-structure-investigation=C020-spike-root-structure-investigation",
+      "--dry-run",
+      "--json",
+    ],
+  },
+  {
     name: "runtime-shared-coordination-status",
     schema: "runtime-shared-coordination-status.v1.schema.json",
     args: ["runtime", "shared-coordination-status", "--json"],

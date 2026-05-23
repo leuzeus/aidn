@@ -113,6 +113,7 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-db-status", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-persistence-status", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-persistence-adopt", linked_concepts: ["workspace", "coordination_record"] },
+  { id: "runtime-persistence-source-normalize", linked_concepts: ["cycle", "session", "workspace"] },
   { id: "runtime-db-migrate", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-persistence-migrate", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-db-backup", linked_concepts: ["workspace", "coordination_record"] },

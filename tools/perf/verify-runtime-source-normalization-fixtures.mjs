@@ -86,6 +86,27 @@ async function main() {
     assert(result.payload?.files_updated === 4, "expected four text files to be rewritten");
     assert(result.payload?.directories_renamed === 3, "expected three cycle directories to be renamed");
     assert(Array.isArray(result.payload?.skipped_binary_files) && result.payload.skipped_binary_files.length === 0, "expected no binary files to be scanned outside docs/audit");
+    assert(result.payload?.write_requested === true, "runtime source normalization should report a write run");
+    assert(result.payload?.persistence_source_normalize_diagnostic?.status === "applied", "runtime source normalization should expose applied diagnostic status");
+    assert(result.payload?.persistence_source_normalize_diagnostic?.rename_count === 3, "runtime source normalization should expose rename count diagnostic");
+
+    const dryRunTarget = path.join(tempRoot, "repo-dry-run");
+    fs.cpSync(targetRoot, dryRunTarget, { recursive: true });
+    const dryRunResult = runJson("bin/aidn.mjs", [
+      "runtime",
+      "persistence-source-normalize",
+      "--target",
+      dryRunTarget,
+      "--rename",
+      "C020-spike-root-structure-investigation=C040-spike-root-structure-investigation",
+      "--dry-run",
+      "--json",
+    ]);
+    assert(dryRunResult.status === 0, "runtime source normalization dry-run should succeed");
+    assert(dryRunResult.payload?.write_requested === false, "runtime source normalization dry-run should report preview mode");
+    assert(dryRunResult.payload?.persistence_source_normalize_diagnostic?.status === "preview", "runtime source normalization dry-run should expose preview diagnostic status");
+    assert(fs.existsSync(path.join(dryRunTarget, "docs", "audit", "cycles", "C020-spike-root-structure-investigation")), "runtime source normalization dry-run should not rename cycle directories");
+    assert(!fs.existsSync(path.join(dryRunTarget, "docs", "audit", "cycles", "C040-spike-root-structure-investigation")), "runtime source normalization dry-run should not create renamed cycle directories");
 
     const c020Status = fs.readFileSync(path.join(targetRoot, "docs", "audit", "cycles", "C020-spike-root-structure-investigation", "status.md"), "utf8");
     assert(c020Status.includes("cycle_id: C020"), "cycle-local status should rewrite the cycle id");
