@@ -4,9 +4,8 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 import {
-  addPreWriteSourceOfTruthIssue,
   buildPreWriteAdmissionResult,
-  knownPreWriteStateMode,
+  evaluatePreWriteSourceOfTruthAndRuntimeGates,
   mergePreWritePolicy,
   sourceOfTruthPoliciesForPreWriteAdmission,
 } from "../../src/application/runtime/pre-write-admit-use-case.mjs";
@@ -1035,115 +1034,31 @@ export async function preWriteAdmit({
     ? `runtime digest resolved via ${runtimeStateResolution.source}: ${runtimeStateResolution.logicalPath}`
     : "runtime digest missing");
 
-  const sourceOfTruthPoliciesResolved = Object.values(sourceOfTruth.concepts).every(Boolean);
-  addCheck(checks, "source_of_truth_policy_resolved", sourceOfTruthPoliciesResolved, sourceOfTruthPoliciesResolved
-    ? `source-of-truth policy resolved for ${Object.keys(sourceOfTruth.concepts).join(", ")}`
-    : "source-of-truth policy missing for one or more admission concepts", {
-      reason_code: sourceOfTruthPoliciesResolved ? "SOT_POLICY_RESOLVED" : "SOT_POLICY_MISSING",
-    });
-  if (!sourceOfTruthPoliciesResolved) {
-    addPreWriteSourceOfTruthIssue({
-      issues: sourceOfTruthIssues,
-      warnings,
-      blockingReasons,
-      repairActions: sourceOfTruthRepairActions,
-      severity: "block",
-      reasonCode: "SOT_POLICY_MISSING",
-      message: "source-of-truth policy is incomplete for pre-write admission",
-      repairAction: "complete src/core/source-of-truth/source-of-truth-policy.mjs and rerun npm run perf:verify-source-of-truth-policy",
-    });
-  }
-
-  const normalizedRuntimeStateMode = runtimeStateMode.toLowerCase();
-  const runtimeModeAligned = !runtimeStateExists
-    || canonicalUnknown(runtimeStateMode)
-    || !knownPreWriteStateMode(runtimeStateMode)
-    || normalizedRuntimeStateMode === effectiveStateMode;
-  addCheck(checks, "source_of_truth_state_mode_alignment", runtimeModeAligned, runtimeModeAligned
-    ? `effective_state_mode=${effectiveStateMode}; runtime_state_mode=${runtimeStateMode}`
-    : `effective_state_mode=${effectiveStateMode}; runtime_state_mode=${runtimeStateMode}`, {
-      reason_code: runtimeModeAligned ? "SOT_STATE_MODE_ALIGNED" : "SOT_STATE_MODE_MISMATCH",
-    });
-  if (!runtimeModeAligned) {
-    const severity = effectiveStateMode === "db-only" || normalizedRuntimeStateMode === "db-only" ? "block" : "warn";
-    addPreWriteSourceOfTruthIssue({
-      issues: sourceOfTruthIssues,
-      warnings,
-      blockingReasons,
-      repairActions: sourceOfTruthRepairActions,
-      severity,
-      reasonCode: "SOT_STATE_MODE_MISMATCH",
-      message: `effective state mode ${effectiveStateMode} diverges from runtime digest mode ${runtimeStateMode}`,
-      repairAction: "regenerate or import the runtime digest for the selected state mode before mutating workflow artifacts",
-    });
-  }
-
-  const dbOnlyProjectionReads = effectiveStateMode === "db-only"
-    ? Object.entries(sourceOfTruth.observed_sources)
-      .filter(([key, value]) => key !== "plan_artifact" && value === "file")
-      .map(([key]) => key)
-    : [];
-  const dbOnlySourcesCanonical = dbOnlyProjectionReads.length === 0;
-  addCheck(checks, "source_of_truth_db_only_source_alignment", dbOnlySourcesCanonical, dbOnlySourcesCanonical
-    ? `effective_state_mode=${effectiveStateMode}; no db-only projection-only source reads detected`
-    : `db-only admission read Markdown projections for ${dbOnlyProjectionReads.join(", ")}`, {
-      reason_code: dbOnlySourcesCanonical ? "SOT_DB_ONLY_SOURCES_ALIGNED" : "SOT_DB_ONLY_PROJECTION_READ",
-    });
-  if (dbOnlyProjectionReads.length > 0) {
-    addPreWriteSourceOfTruthIssue({
-      issues: sourceOfTruthIssues,
-      warnings,
-      blockingReasons,
-      repairActions: sourceOfTruthRepairActions,
-      severity: "warn",
-      reasonCode: "SOT_DB_ONLY_PROJECTION_READ",
-      message: `db-only mode resolved projection files for ${dbOnlyProjectionReads.join(", ")}`,
-      repairAction: "refresh the runtime DB/index and rerun the projector with explicit write semantics when a Markdown projection is required",
-    });
-  }
-
-  addCheck(checks, "runtime_repair_status_known", !canonicalUnknown(repairLayerStatus), `repair_layer_status=${repairLayerStatus}`);
-  addCheck(checks, "current_state_freshness_known", !canonicalUnknown(currentStateFreshness), `current_state_freshness=${currentStateFreshness}`);
-
   const repairRouting = evaluateRepairRouting({
     status: repairLayerStatus,
     advice: normalizeScalar(runtimeMap.get("repair_routing_reason") ?? runtimeMap.get("repair_layer_advice") ?? "unknown") || "unknown",
     blocking: repairLayerStatus.toLowerCase() === "block",
   });
-
-  if (repairRouting.routing_hint === WORKFLOW_REPAIR_HINT.REPAIR) {
-    blockingReasons.push(blockingFindings.length > 0
-      ? `repair layer is blocking: ${blockingFindings.join(", ")}`
-      : "repair layer is blocking");
-  } else if (repairRouting.routing_hint === WORKFLOW_REPAIR_HINT.AUDIT_FIRST) {
-    const repairSpecificWarning = blockingFindings
-      .map((item) => classifyRepairFindingSummary(item))
-      .find(Boolean);
-    if (repairSpecificWarning) {
-      warnings.push(repairSpecificWarning);
-    }
-  }
-
-  if (policy.requireFreshCurrentState) {
-    if (currentStateFreshness.toLowerCase() === "stale") {
-      blockingReasons.push("CURRENT-STATE.md is stale according to RUNTIME-STATE.md");
-    } else if (canonicalUnknown(currentStateFreshness)) {
-      if (["dual", "db-only"].includes(runtimeStateMode.toLowerCase())) {
-        blockingReasons.push("current state freshness is unknown in DB-backed mode");
-      } else {
-        warnings.push("current state freshness is unknown; confirm live session/cycle facts before writing");
-      }
-    }
-  }
-
-  if (policy.requireRuntimeClearInDbModes && ["dual", "db-only"].includes(runtimeStateMode.toLowerCase())) {
-    if (!runtimeStateExists) {
-      blockingReasons.push("runtime digest is missing in DB-backed mode");
-    }
-    if (canonicalUnknown(repairLayerStatus)) {
-      blockingReasons.push("repair layer status is unknown in DB-backed mode");
-    }
-  }
+  evaluatePreWriteSourceOfTruthAndRuntimeGates({
+    checks,
+    addCheck,
+    sourceOfTruth,
+    sourceOfTruthIssues,
+    sourceOfTruthRepairActions,
+    warnings,
+    blockingReasons,
+    runtimeStateExists,
+    runtimeStateResolution,
+    runtimeStateMode,
+    effectiveStateMode,
+    repairLayerStatus,
+    currentStateFreshness,
+    blockingFindings,
+    policy,
+    runtimeRepairRouting: repairRouting,
+    repairHints: WORKFLOW_REPAIR_HINT,
+    classifyRepairFindingSummary,
+  });
 
   if (!canonicalNone(cycleBranch) && !canonicalNone(mappedCycleBranch) && !canonicalUnknown(mappedCycleBranch)
     && cycleBranch !== mappedCycleBranch) {

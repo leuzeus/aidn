@@ -2,6 +2,7 @@
 import {
   addPreWriteSourceOfTruthIssue,
   buildPreWriteAdmissionResult,
+  evaluatePreWriteSourceOfTruthAndRuntimeGates,
   knownPreWriteStateMode,
   mergePreWritePolicy,
   sourceOfTruthPoliciesForPreWriteAdmission,
@@ -82,11 +83,58 @@ function verifySourceOfTruthHelpers() {
   assert(repairActions.includes("repair step"), "source-of-truth issue helper should keep repair action");
 }
 
+function verifySourceOfTruthRuntimeGates() {
+  const checks = {};
+  const warnings = [];
+  const blockingReasons = [];
+  const sourceOfTruthIssues = [];
+  const sourceOfTruthRepairActions = [];
+  const sourceOfTruth = {
+    concepts: sourceOfTruthPoliciesForPreWriteAdmission("db-only"),
+    observed_sources: {
+      current_state: "file",
+      runtime_state: "sqlite",
+      session_artifact: "sqlite",
+      cycle_status: "sqlite",
+      plan_artifact: "sqlite",
+    },
+  };
+  const addCheck = (target, key, pass, details, extra = {}) => {
+    target[key] = { pass, details, ...extra };
+  };
+  evaluatePreWriteSourceOfTruthAndRuntimeGates({
+    checks,
+    addCheck,
+    sourceOfTruth,
+    sourceOfTruthIssues,
+    sourceOfTruthRepairActions,
+    warnings,
+    blockingReasons,
+    runtimeStateExists: true,
+    runtimeStateMode: "files",
+    effectiveStateMode: "db-only",
+    repairLayerStatus: "warn",
+    currentStateFreshness: "unknown",
+    blockingFindings: [],
+    policy: mergePreWritePolicy("cycle-create"),
+    runtimeRepairRouting: { routing_hint: "audit-first" },
+    repairHints: { REPAIR: "repair", AUDIT_FIRST: "audit-first" },
+    classifyRepairFindingSummary() {
+      return null;
+    },
+  });
+  assert(checks.source_of_truth_policy_resolved.pass === true, "SoT/runtime gate should resolve policies");
+  assert(checks.source_of_truth_state_mode_alignment.pass === false, "SoT/runtime gate should detect state mode mismatch");
+  assert(blockingReasons.some((item) => item.includes("SOT_STATE_MODE_MISMATCH")), "SoT/runtime gate should emit mismatch block");
+  assert(warnings.some((item) => item.includes("SOT_DB_ONLY_PROJECTION_READ")), "SoT/runtime gate should warn on db-only projection reads");
+}
+
 function main() {
   try {
     verifyPolicyMerge();
     verifyResultAssembly();
     verifySourceOfTruthHelpers();
+    verifySourceOfTruthRuntimeGates();
     console.log("PASS");
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
