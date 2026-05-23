@@ -614,6 +614,19 @@ export async function projectHandoffPacket({
         reason: "handoff packet dry-run does not write local projection or append shared relay",
         operation: "appendHandoffRelay",
         backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
+        diagnostic: {
+          scope: "shared-coordination-only",
+          operation: "appendHandoffRelay",
+          sync_status: "dry-run",
+          backend_status: summarizeSharedCoordinationResolution(sharedCoordinationResolution).status,
+          readiness_status: "not_run",
+          schema_status: "unknown",
+          compatibility_status: "unknown",
+          artifact_family: "handoff_relay",
+          owner: workspace?.project_id ?? "unknown",
+          summary: "handoff packet dry-run does not write local projection or append shared relay",
+          recommended_action: "rerun without --dry-run when shared relay sync is explicitly desired",
+        },
       }
     : await appendSharedHandoffRelay(sharedCoordinationResolution, {
         workspace,

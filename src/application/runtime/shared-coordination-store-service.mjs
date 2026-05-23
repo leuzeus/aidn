@@ -44,6 +44,47 @@ function buildSyntheticId(prefix, workspace, suffix = "") {
   return `${prefix}:${worktreeId}:${tail}`;
 }
 
+function deriveSharedCoordinationSyncDiagnostic({
+  operation,
+  status,
+  reason,
+  backend,
+  readiness = null,
+  governance = null,
+} = {}) {
+  const backendStatus = normalizeScalar(backend?.status) || "disabled";
+  const readinessStatus = normalizeScalar(readiness?.status) || (status === "synced" ? "ready" : "unknown");
+  const schemaStatus = normalizeScalar(readiness?.health?.schema_status) || "unknown";
+  const compatibilityStatus = normalizeScalar(readiness?.health?.compatibility_status) || "unknown";
+  let recommendedAction = "inspect shared-coordination-status and doctor before retrying";
+  if (backendStatus === "missing-env") {
+    recommendedAction = "set the shared PostgreSQL env reference, then rerun the command";
+  } else if (backendStatus === "disabled") {
+    recommendedAction = "keep local-first mode or explicitly enable shared-runtime before syncing shared state";
+  } else if (readinessStatus === "schema-not-ready") {
+    recommendedAction = "run shared-coordination-migrate --dry-run, then apply the required schema upgrade before syncing";
+  } else if (readinessStatus === "compatibility-not-ready") {
+    recommendedAction = "finish the shared coordination compatibility migration before syncing shared state";
+  } else if (status === "write-failed") {
+    recommendedAction = "inspect backend health and write payload, then retry the shared sync";
+  } else if (status === "synced") {
+    recommendedAction = "shared coordination sync completed";
+  }
+  return {
+    scope: "shared-coordination-only",
+    operation: normalizeScalar(operation) || "unknown",
+    sync_status: normalizeScalar(status) || "unknown",
+    backend_status: backendStatus,
+    readiness_status: readinessStatus,
+    schema_status: schemaStatus,
+    compatibility_status: compatibilityStatus,
+    artifact_family: normalizeScalar(governance?.artifact_family) || "unknown",
+    owner: normalizeScalar(governance?.owner) || "unknown",
+    summary: normalizeScalar(reason) || "shared coordination sync status unavailable",
+    recommended_action: recommendedAction,
+  };
+}
+
 function evaluateSharedCoordinationHealthReadiness(health) {
   if (!health || health.ok !== true) {
     return {
@@ -336,6 +377,13 @@ export async function syncSharedPlanningState(resolution, {
   planningKey = "",
 } = {}) {
   const effectiveWorkspace = workspace ?? resolution?.workspace ?? null;
+  const governance = deriveSharedCoordinationArtifactWriteGovernance({
+    workspace: effectiveWorkspace,
+    family: "planning_state",
+    writeStatus: "unknown",
+    primaryTimestamp: payload?.updated_at,
+    recordCount: 1,
+  });
   const registration = await syncSharedWorkspaceRegistration(resolution, {
     workspace: effectiveWorkspace,
   });
@@ -347,6 +395,15 @@ export async function syncSharedPlanningState(resolution, {
       reason: registration.reason,
       operation: "upsertPlanningState",
       backend: registration.backend,
+      governance,
+      diagnostic: deriveSharedCoordinationSyncDiagnostic({
+        operation: "upsertPlanningState",
+        status: registration.status,
+        reason: registration.reason,
+        backend: registration.backend,
+        readiness: registration.readiness ?? null,
+        governance,
+      }),
     };
   }
 
@@ -369,6 +426,13 @@ export async function syncSharedPlanningState(resolution, {
   });
   const planningState = result.planning_state ?? null;
   const status = result.ok === true ? "synced" : "write-failed";
+  const finalGovernance = deriveSharedCoordinationArtifactWriteGovernance({
+    workspace: effectiveWorkspace,
+    family: "planning_state",
+    writeStatus: status,
+    primaryTimestamp: planningState?.updated_at || payload?.updated_at,
+    recordCount: planningState ? 1 : 0,
+  });
   return {
     attempted: true,
     ok: result.ok === true,
@@ -378,12 +442,14 @@ export async function syncSharedPlanningState(resolution, {
     registration,
     backend: registration.backend,
     result,
-    governance: deriveSharedCoordinationArtifactWriteGovernance({
-      workspace: effectiveWorkspace,
-      family: "planning_state",
-      writeStatus: status,
-      primaryTimestamp: planningState?.updated_at || payload?.updated_at,
-      recordCount: planningState ? 1 : 0,
+    governance: finalGovernance,
+    diagnostic: deriveSharedCoordinationSyncDiagnostic({
+      operation: "upsertPlanningState",
+      status,
+      reason: result.ok === true ? "shared planning state synchronized" : normalizeScalar(result.error?.message) || "shared planning sync failed",
+      backend: registration.backend,
+      readiness: registration.readiness ?? null,
+      governance: finalGovernance,
     }),
   };
 }
@@ -395,6 +461,13 @@ export async function appendSharedHandoffRelay(resolution, {
   packetSha256 = "",
 } = {}) {
   const effectiveWorkspace = workspace ?? resolution?.workspace ?? null;
+  const governance = deriveSharedCoordinationArtifactWriteGovernance({
+    workspace: effectiveWorkspace,
+    family: "handoff_relay",
+    writeStatus: "unknown",
+    primaryTimestamp: packet?.updated_at,
+    recordCount: 1,
+  });
   const registration = await syncSharedWorkspaceRegistration(resolution, {
     workspace: effectiveWorkspace,
   });
@@ -406,6 +479,15 @@ export async function appendSharedHandoffRelay(resolution, {
       reason: registration.reason,
       operation: "appendHandoffRelay",
       backend: registration.backend,
+      governance,
+      diagnostic: deriveSharedCoordinationSyncDiagnostic({
+        operation: "appendHandoffRelay",
+        status: registration.status,
+        reason: registration.reason,
+        backend: registration.backend,
+        readiness: registration.readiness ?? null,
+        governance,
+      }),
     };
   }
 
@@ -431,6 +513,13 @@ export async function appendSharedHandoffRelay(resolution, {
   });
   const handoffRelay = result.handoff_relay ?? null;
   const status = result.ok === true ? "synced" : "write-failed";
+  const finalGovernance = deriveSharedCoordinationArtifactWriteGovernance({
+    workspace: effectiveWorkspace,
+    family: "handoff_relay",
+    writeStatus: status,
+    primaryTimestamp: handoffRelay?.created_at || packet?.updated_at,
+    recordCount: handoffRelay ? 1 : 0,
+  });
   return {
     attempted: true,
     ok: result.ok === true,
@@ -440,12 +529,14 @@ export async function appendSharedHandoffRelay(resolution, {
     registration,
     backend: registration.backend,
     result,
-    governance: deriveSharedCoordinationArtifactWriteGovernance({
-      workspace: effectiveWorkspace,
-      family: "handoff_relay",
-      writeStatus: status,
-      primaryTimestamp: handoffRelay?.created_at || packet?.updated_at,
-      recordCount: handoffRelay ? 1 : 0,
+    governance: finalGovernance,
+    diagnostic: deriveSharedCoordinationSyncDiagnostic({
+      operation: "appendHandoffRelay",
+      status,
+      reason: result.ok === true ? "shared handoff relay synchronized" : normalizeScalar(result.error?.message) || "shared handoff sync failed",
+      backend: registration.backend,
+      readiness: registration.readiness ?? null,
+      governance: finalGovernance,
     }),
   };
 }
@@ -466,6 +557,13 @@ export async function appendSharedCoordinationRecord(resolution, {
   recordId = "",
 } = {}) {
   const effectiveWorkspace = workspace ?? resolution?.workspace ?? null;
+  const governance = deriveSharedCoordinationArtifactWriteGovernance({
+    workspace: effectiveWorkspace,
+    family: "coordination_record",
+    writeStatus: "unknown",
+    primaryTimestamp: payload?.ts,
+    recordCount: 1,
+  });
   const registration = await syncSharedWorkspaceRegistration(resolution, {
     workspace: effectiveWorkspace,
   });
@@ -477,6 +575,15 @@ export async function appendSharedCoordinationRecord(resolution, {
       reason: registration.reason,
       operation: "appendCoordinationRecord",
       backend: registration.backend,
+      governance,
+      diagnostic: deriveSharedCoordinationSyncDiagnostic({
+        operation: "appendCoordinationRecord",
+        status: registration.status,
+        reason: registration.reason,
+        backend: registration.backend,
+        readiness: registration.readiness ?? null,
+        governance,
+      }),
     };
   }
 
@@ -504,6 +611,13 @@ export async function appendSharedCoordinationRecord(resolution, {
   });
   const coordinationRecord = result.coordination_record ?? null;
   const writeStatus = result.ok === true ? "synced" : "write-failed";
+  const finalGovernance = deriveSharedCoordinationArtifactWriteGovernance({
+    workspace: effectiveWorkspace,
+    family: "coordination_record",
+    writeStatus,
+    primaryTimestamp: coordinationRecord?.created_at || payload?.ts,
+    recordCount: coordinationRecord ? 1 : 0,
+  });
   return {
     attempted: true,
     ok: result.ok === true,
@@ -513,12 +627,14 @@ export async function appendSharedCoordinationRecord(resolution, {
     registration,
     backend: registration.backend,
     result,
-    governance: deriveSharedCoordinationArtifactWriteGovernance({
-      workspace: effectiveWorkspace,
-      family: "coordination_record",
-      writeStatus,
-      primaryTimestamp: coordinationRecord?.created_at || payload?.ts,
-      recordCount: coordinationRecord ? 1 : 0,
+    governance: finalGovernance,
+    diagnostic: deriveSharedCoordinationSyncDiagnostic({
+      operation: "appendCoordinationRecord",
+      status: writeStatus,
+      reason: result.ok === true ? "shared coordination record synchronized" : normalizeScalar(result.error?.message) || "shared coordination sync failed",
+      backend: registration.backend,
+      readiness: registration.readiness ?? null,
+      governance: finalGovernance,
     }),
   };
 }

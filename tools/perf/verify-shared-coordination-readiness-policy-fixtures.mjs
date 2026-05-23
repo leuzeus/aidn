@@ -131,6 +131,7 @@ async function main() {
     });
     assert(blockedPlanningWrite.ok === false, "version-behind backend should block planning sync");
     assert(blockedPlanningWrite.status === "schema-not-ready", "version-behind backend should expose schema-not-ready status");
+    assert(blockedPlanningWrite.diagnostic?.recommended_action?.includes("shared-coordination-migrate --dry-run"), "version-behind backend should expose upgrade guidance in sync diagnostic");
     assert(versionBehind.state.workspaceRegistrations === 0, "version-behind backend should not register workspace");
     assert(versionBehind.state.planningWrites === 0, "version-behind backend should not write planning state");
 
@@ -163,6 +164,7 @@ async function main() {
     });
     assert(blockedHandoffWrite.ok === false, "legacy-only backend should block handoff sync");
     assert(blockedHandoffWrite.status === "compatibility-not-ready", "legacy-only backend should expose compatibility-not-ready status");
+    assert(blockedHandoffWrite.diagnostic?.recommended_action?.includes("compatibility migration"), "legacy-only backend should expose compatibility guidance in sync diagnostic");
     assert(legacyOnly.state.handoffWrites === 0, "legacy-only backend should not append handoff relay");
 
     console.log("PASS");

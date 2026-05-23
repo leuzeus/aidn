@@ -416,6 +416,7 @@ async function main() {
     assert(execute.preferred_dispatch_source === "shared_planning", "dispatch execute should preserve shared-planning provenance");
     assert(execute.shared_coordination_sync?.ok === true, "dispatch execute dry run should append a shared coordination projection record");
     assert(execute.shared_coordination_sync?.governance?.artifact_family === "coordination_record", "dispatch execute should expose coordination-record governance on shared sync");
+    assert(execute.shared_coordination_sync?.diagnostic?.sync_status === "synced", "dispatch execute should expose stable sync diagnostic status");
 
     const multiAgentStatus = await projectMultiAgentStatus({
       targetRoot,
