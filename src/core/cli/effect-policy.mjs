@@ -380,6 +380,14 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Migrates runtime mode boundaries and updates config, schema, and projections as needed.",
   }),
   commandPolicy({
+    id: "runtime-session-plan",
+    command: "aidn runtime session-plan --json",
+    effectClass: "mutating",
+    jsonContract: "runtime-session-plan.v1.schema.json",
+    safeArgs: ["runtime", "session-plan", "--session-id", "S401", "--item", "define session backlog", "--json"],
+    notes: "Refreshes the session planning draft and can promote it into backlog, current-state, db-first, and shared planning state surfaces.",
+  }),
+  commandPolicy({
     id: "runtime-coordinator-loop",
     command: "aidn runtime coordinator-loop --json",
     effectClass: "read-only",

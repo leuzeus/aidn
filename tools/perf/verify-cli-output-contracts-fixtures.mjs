@@ -214,6 +214,11 @@ const CONTRACT_CASES = [
     args: ["runtime", "mode-migrate", "--to", "dual", "--json"],
   },
   {
+    name: "runtime-session-plan",
+    schema: "runtime-session-plan.v1.schema.json",
+    args: ["runtime", "session-plan", "--session-id", "S401", "--item", "define session backlog", "--json"],
+  },
+  {
     name: "runtime-coordinator-select-agent",
     schema: "runtime-coordinator-select-agent.v1.schema.json",
     args: ["runtime", "coordinator-select-agent", "--role", "auditor", "--action", "audit", "--json"],

@@ -198,10 +198,14 @@ function main() {
     }
 
     assert(dualResult.db_first_applied === true, "expected dual promotion to apply db-first writes");
+    assert(dualResult.session_plan_diagnostic?.scope === "runtime-session-plan", "expected dual promotion to expose session-plan diagnostic");
+    assert(dualResult.session_plan_diagnostic?.backlog_operation === "created", "expected dual promotion to expose created backlog diagnostic");
     assert(Array.isArray(dualResult.db_first_writes) && dualResult.db_first_writes.length === 2, "expected two db-first writes for promote");
     assert(dualResult.backlog_operation === "created", "initial promotion should create the shared backlog");
     assert(draftResult.db_first_applied === false, "draft-only session-plan should not apply db-first writes");
+    assert(draftResult.session_plan_diagnostic?.promoted === false, "draft-only session-plan should expose non-promoted diagnostic");
     assert(updateResult.db_first_applied === true, "merged promotion should still apply db-first writes");
+    assert(updateResult.session_plan_diagnostic?.backlog_operation === "updated", "merged promotion should expose updated backlog diagnostic");
     assert(Array.isArray(updateResult.db_first_writes) && updateResult.db_first_writes.length === 2, "expected two db-first writes for backlog update");
     assert(updateResult.backlog_operation === "updated", "second promotion should update the shared backlog");
     assert(backlogArtifact && backlogArtifact.path === "backlog/BL-S401-session-planning.md", "missing backlog artifact in sqlite store");

@@ -17,6 +17,27 @@ import { writeJsonIfChanged, writeUtf8IfChanged } from "../../src/lib/index/io-l
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
 
+function buildSessionPlanDiagnostic(output) {
+  const payload = output?.payload ?? {};
+  const syncDiagnostic = output?.shared_coordination_sync?.diagnostic ?? null;
+  return {
+    scope: "runtime-session-plan",
+    promoted: output?.promoted === true,
+    state_mode: normalizeScalar(output?.state_mode) || "unknown",
+    session_id: normalizeScalar(payload?.session_id) || "unknown",
+    planning_status: normalizeScalar(payload?.planning_status) || "unknown",
+    backlog_operation: normalizeScalar(output?.backlog_operation) || "draft-only",
+    db_first_applied: output?.db_first_applied === true,
+    shared_sync_status: normalizeScalar(syncDiagnostic?.sync_status || output?.shared_coordination_sync?.status) || "not-attempted",
+    summary: output?.promoted === true
+      ? `session plan ${normalizeScalar(output?.backlog_operation) || "promoted"} for ${normalizeScalar(payload?.session_id) || "unknown"}`
+      : `session plan draft refreshed for ${normalizeScalar(payload?.session_id) || "unknown"}`,
+    recommended_action: output?.promoted === true
+      ? "review backlog, current-state, and shared sync outputs before dispatching work"
+      : "promote the session plan when the backlog is ready to become the active coordination surface",
+  };
+}
+
 function parseArgs(argv) {
   const args = {
     target: ".",
@@ -895,7 +916,7 @@ export async function runSessionPlan({
     });
   }
 
-  return {
+  const output = {
     target_root: absoluteTargetRoot,
     workspace,
     shared_coordination_backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
@@ -918,6 +939,8 @@ export async function runSessionPlan({
     })),
     payload: backlogPayload ?? draftPayload,
   };
+  output.session_plan_diagnostic = buildSessionPlanDiagnostic(output);
+  return output;
 }
 
 function main() {
