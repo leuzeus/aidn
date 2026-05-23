@@ -12,7 +12,8 @@
     "roster",
     "roster_verification",
     "adapters",
-    "auto_selection_preview"
+    "auto_selection_preview",
+    "adapters_diagnostic"
   ],
   "properties": {
     "target_root": { "type": "string" },
@@ -21,7 +22,31 @@
     "roster": { "type": "object", "additionalProperties": true },
     "roster_verification": { "type": "object", "additionalProperties": true },
     "adapters": { "type": "array" },
-    "auto_selection_preview": { "type": "array" }
+    "auto_selection_preview": { "type": "array" },
+    "adapters_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "state_mode",
+        "roster_found",
+        "adapter_count",
+        "unavailable_adapter_count",
+        "preview_error_count",
+        "summary",
+        "recommended_action"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "state_mode": { "type": "string" },
+        "roster_found": { "type": "boolean" },
+        "adapter_count": { "type": "number" },
+        "unavailable_adapter_count": { "type": "number" },
+        "preview_error_count": { "type": "number" },
+        "summary": { "type": "string" },
+        "recommended_action": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
   },
   "additionalProperties": true
 }

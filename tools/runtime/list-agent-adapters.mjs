@@ -43,6 +43,27 @@ function printUsage() {
   console.log("  node tools/runtime/list-agent-adapters.mjs --target . --json");
 }
 
+function deriveAdaptersDiagnostic(result) {
+  const adapters = Array.isArray(result?.adapters) ? result.adapters : [];
+  const preview = Array.isArray(result?.auto_selection_preview) ? result.auto_selection_preview : [];
+  const unavailableCount = adapters.filter((adapter) => adapter?.health_status === "unavailable").length;
+  const errorPreviewCount = preview.filter((entry) => entry?.status === "error").length;
+  return {
+    scope: "agent-adapter-registry",
+    state_mode: String(result?.state_mode ?? "unknown").trim() || "unknown",
+    roster_found: result?.roster?.found === true,
+    adapter_count: adapters.length,
+    unavailable_adapter_count: unavailableCount,
+    preview_error_count: errorPreviewCount,
+    summary: unavailableCount > 0
+      ? `${unavailableCount} adapter(s) are unavailable in the current roster`
+      : `${adapters.length} adapter(s) enumerated successfully`,
+    recommended_action: unavailableCount > 0 || errorPreviewCount > 0
+      ? "review verify-agent-roster output before relying on auto selection"
+      : "agent adapter registry is ready for auto selection preview",
+  };
+}
+
 function buildScenarioMatrix(adapters, roster, adapterHealth) {
   const scenarios = [];
   for (const role of AGENT_ROLES) {
@@ -160,7 +181,7 @@ export async function listAgentAdapters({
   const entries = [...entryMap.values()]
     .sort((left, right) => left.id.localeCompare(right.id));
 
-  return {
+  const result = {
     target_root: absoluteTargetRoot,
     state_mode: effectiveStateMode,
     db_backed_mode: dbBackedMode,
@@ -180,6 +201,10 @@ export async function listAgentAdapters({
     },
     adapters: entries,
     auto_selection_preview: buildScenarioMatrix(adapters, roster, adapterHealth),
+  };
+  return {
+    ...result,
+    adapters_diagnostic: deriveAdaptersDiagnostic(result),
   };
 }
 
