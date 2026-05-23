@@ -219,6 +219,23 @@ const CONTRACT_CASES = [
     args: ["runtime", "session-plan", "--session-id", "S401", "--item", "define session backlog", "--json"],
   },
   {
+    name: "runtime-db-first-artifact",
+    schema: "runtime-db-first-artifact.v1.schema.json",
+    args: [
+      "runtime",
+      "db-first-artifact",
+      "--path",
+      "snapshots/context-snapshot.md",
+      "--source-file",
+      "docs/audit/snapshots/context-snapshot.md",
+      "--kind",
+      "snapshot",
+      "--family",
+      "normative",
+      "--json",
+    ],
+  },
+  {
     name: "runtime-coordinator-select-agent",
     schema: "runtime-coordinator-select-agent.v1.schema.json",
     args: ["runtime", "coordinator-select-agent", "--role", "auditor", "--action", "audit", "--json"],

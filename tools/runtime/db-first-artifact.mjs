@@ -181,7 +181,22 @@ export function loadContent(targetRoot, sourceFile, inlineContent) {
 }
 
 export function upsertDbFirstArtifact(options = {}) {
-  return runDbFirstArtifactUseCase(options);
+  const out = runDbFirstArtifactUseCase(options);
+  return {
+    ...out,
+    db_first_artifact_diagnostic: {
+      scope: "runtime-db-first-artifact",
+      state_mode: String(out?.state_mode ?? "").trim() || "unknown",
+      materialized: out?.materialized === true,
+      artifact_path: String(out?.artifact?.path ?? "").trim() || "unknown",
+      artifact_kind: String(out?.artifact?.kind ?? "").trim() || "unknown",
+      artifact_family: String(out?.artifact?.family ?? "").trim() || "unknown",
+      summary: `db-first artifact refreshed for ${String(out?.artifact?.path ?? "unknown").trim() || "unknown"}`,
+      recommended_action: out?.materialized === true
+        ? "review the materialized audit artifact and sqlite payload before relying on the updated db-first state"
+        : "materialize the artifact if files or dual mode projections must be refreshed immediately",
+    },
+  };
 }
 
 function main() {

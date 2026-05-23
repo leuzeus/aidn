@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-db-first-artifact.v1",
+  "title": "aidn runtime db-first-artifact --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime db-first-artifact --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "ts",
+    "ok",
+    "target_root",
+    "state_mode",
+    "materialized",
+    "artifact",
+    "materialize_result",
+    "db_first_artifact_diagnostic"
+  ],
+  "properties": {
+    "ts": { "type": "string" },
+    "ok": { "type": "boolean" },
+    "target_root": { "type": "string" },
+    "state_mode": { "type": "string" },
+    "materialized": { "type": "boolean" },
+    "artifact": { "type": "object", "additionalProperties": true },
+    "materialize_result": { "type": ["object", "null"], "additionalProperties": true },
+    "db_first_artifact_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "state_mode",
+        "materialized",
+        "artifact_path",
+        "artifact_kind",
+        "artifact_family",
+        "summary",
+        "recommended_action"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "state_mode": { "type": "string" },
+        "materialized": { "type": "boolean" },
+        "artifact_path": { "type": "string" },
+        "artifact_kind": { "type": "string" },
+        "artifact_family": { "type": "string" },
+        "summary": { "type": "string" },
+        "recommended_action": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
