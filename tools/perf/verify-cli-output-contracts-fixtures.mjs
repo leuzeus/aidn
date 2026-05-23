@@ -135,6 +135,11 @@ const CONTRACT_CASES = [
     allowNonZero: true,
   },
   {
+    name: "runtime-coordinator-select-agent",
+    schema: "runtime-coordinator-select-agent.v1.schema.json",
+    args: ["runtime", "coordinator-select-agent", "--role", "auditor", "--action", "audit", "--json"],
+  },
+  {
     name: "runtime-coordinator-next-action",
     schema: "runtime-coordinator-next-action.v1.schema.json",
     args: ["runtime", "coordinator-next-action", "--json"],

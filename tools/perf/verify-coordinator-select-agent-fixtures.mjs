@@ -129,12 +129,16 @@ function main() {
     assert(defaultAudit.selection.selected_agent === "codex-auditor", "default audit selection should prefer codex-auditor");
     assert(Array.isArray(defaultAudit.candidates) && defaultAudit.candidates[0]?.id === "codex-auditor", "default ranking should put codex-auditor first");
     assert(defaultAudit.candidates[0]?.health_status === "ready", "default ranking should expose candidate health");
+    assert(defaultAudit.select_agent_diagnostic?.selected_agent === "codex-auditor", "default selection should expose selected agent in the stable diagnostic");
     assert(explicitCodex.selection.selected_agent === "codex", "explicit codex selection should stay supported");
+    assert(explicitCodex.select_agent_diagnostic?.selection_status === "selected", "explicit selection should expose status in the stable diagnostic");
     assert(externalAudit.selection.selected_agent === "external-auditor", "external audit selection should prefer the registered adapter");
     assert(Array.isArray(externalAudit.candidates) && externalAudit.candidates[0]?.id === "external-auditor", "external ranking should put the registered adapter first");
     assert(externalAudit.candidates[0]?.health_status === "ready", "external ranking should expose ready health");
+    assert(externalAudit.select_agent_diagnostic?.candidate_count >= 1, "external selection should expose candidate count in the stable diagnostic");
     assert(brokenAudit.selection.selected_agent === "codex-auditor", "broken external adapter should not win selection");
     assert(Array.isArray(brokenAudit.candidates) && brokenAudit.candidates.every((candidate) => candidate.id !== "broken-auditor"), "unavailable adapter should be excluded from candidates");
+    assert(brokenAudit.select_agent_diagnostic?.selected_agent === "codex-auditor", "broken external adapter should not change the stable diagnostic selection");
 
     const output = {
       ts: new Date().toISOString(),

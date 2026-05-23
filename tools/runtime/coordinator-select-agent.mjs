@@ -58,7 +58,21 @@ function printUsage() {
   console.log("  node tools/runtime/coordinator-select-agent.mjs --target . --role repair --action repair --agent auto --json");
 }
 
-export async function coordinatorSelectAgent({
+function deriveSelectAgentDiagnostic(result) {
+  return {
+    scope: "coordinator-select-agent",
+    requested_agent: String(result?.requested_agent ?? "auto").trim() || "auto",
+    role: String(result?.role ?? "unknown").trim() || "unknown",
+    action: String(result?.action ?? "unknown").trim() || "unknown",
+    selected_agent: String(result?.selection?.selected_agent ?? "unknown").trim() || "unknown",
+    selection_status: String(result?.selection?.status ?? "unknown").trim() || "unknown",
+    candidate_count: Array.isArray(result?.candidates) ? result.candidates.length : 0,
+    summary: `agent selection is ${String(result?.selection?.status ?? "unknown").trim() || "unknown"}`,
+    recommended_command: "aidn runtime coordinator-select-agent --role <role> --action <action> --json",
+  };
+}
+
+async function runCoordinatorSelectAgent({
   targetRoot,
   requestedAgent = "auto",
   role,
@@ -112,6 +126,14 @@ export async function coordinatorSelectAgent({
     ranking,
     adapterHealth,
   });
+}
+
+export async function coordinatorSelectAgent(options = {}) {
+  const result = await runCoordinatorSelectAgent(options);
+  return {
+    ...result,
+    select_agent_diagnostic: deriveSelectAgentDiagnostic(result),
+  };
 }
 
 function renderText(result) {
