@@ -135,6 +135,16 @@ const CONTRACT_CASES = [
     allowNonZero: true,
   },
   {
+    name: "runtime-project-agent-health-summary",
+    schema: "runtime-project-agent-health-summary.v1.schema.json",
+    args: ["runtime", "project-agent-health-summary", "--json"],
+  },
+  {
+    name: "runtime-project-agent-selection-summary",
+    schema: "runtime-project-agent-selection-summary.v1.schema.json",
+    args: ["runtime", "project-agent-selection-summary", "--json"],
+  },
+  {
     name: "runtime-coordinator-select-agent",
     schema: "runtime-coordinator-select-agent.v1.schema.json",
     args: ["runtime", "coordinator-select-agent", "--role", "auditor", "--action", "audit", "--json"],

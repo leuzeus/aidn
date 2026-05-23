@@ -46,6 +46,19 @@ function printUsage() {
   console.log("  node tools/runtime/project-agent-selection-summary.mjs --target . --json");
 }
 
+function deriveAgentSelectionSummaryDiagnostic(result) {
+  return {
+    scope: "project-agent-selection-summary",
+    state_mode: String(result?.state_mode ?? "unknown").trim() || "unknown",
+    roster_pass: result?.roster_verification?.pass === true,
+    adapter_count: Array.isArray(result?.summary?.adapters) ? result.summary.adapters.length : 0,
+    preview_count: Array.isArray(result?.summary?.auto_selection_preview) ? result.summary.auto_selection_preview.length : 0,
+    written: result?.written === true,
+    summary: `agent selection summary roster verification is ${result?.roster_verification?.pass === true ? "pass" : "fail"}`,
+    recommended_command: "aidn runtime list-agent-adapters --json",
+  };
+}
+
 function resolveTargetPath(targetRoot, candidate) {
   if (!candidate) {
     return "";
@@ -157,6 +170,18 @@ export async function projectAgentSelectionSummary({
       issues: rosterVerification.issues,
       warnings: rosterVerification.warnings,
     },
+    agent_selection_diagnostic: deriveAgentSelectionSummaryDiagnostic({
+      target_root: absoluteTargetRoot,
+      out_file: write.path,
+      written: write.written,
+      state_mode: effectiveStateMode,
+      summary: result,
+      roster_verification: {
+        pass: rosterVerification.pass,
+        issues: rosterVerification.issues,
+        warnings: rosterVerification.warnings,
+      },
+    }),
   };
 }
 

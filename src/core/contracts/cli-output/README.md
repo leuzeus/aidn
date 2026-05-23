@@ -45,6 +45,8 @@ Initial v1 commands:
 - `aidn runtime governance-diagnostics --json`
 - `aidn runtime list-agent-adapters --json`
 - `aidn runtime verify-agent-roster --json`
+- `aidn runtime project-agent-health-summary --json`
+- `aidn runtime project-agent-selection-summary --json`
 - `aidn runtime coordinator-select-agent --json`
 - `aidn runtime coordinator-next-action --json`
 - `aidn runtime coordinator-dispatch-plan --json`

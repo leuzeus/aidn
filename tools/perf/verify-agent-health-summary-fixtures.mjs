@@ -43,6 +43,7 @@ function main() {
     const healthy = runJson(script, ["--target", target, "--json"], repoRoot, 0);
     const healthyText = fs.readFileSync(healthy.output_file, "utf8");
     assert(healthy.verification.pass === true, "healthy fixture should pass");
+    assert(healthy.agent_health_diagnostic?.roster_pass === true, "healthy fixture should expose roster pass in the stable diagnostic");
     assert(healthyText.includes("# Agent Health Summary"), "health summary should include title");
     assert(healthyText.includes("codex: health=ready"), "health summary should mark codex as ready");
 
@@ -63,6 +64,7 @@ function main() {
     const broken = runJson(script, ["--target", target, "--json"], repoRoot, 0);
     const brokenText = fs.readFileSync(broken.output_file, "utf8");
     assert(broken.verification.pass === false, "broken fixture should fail verification");
+    assert(broken.agent_health_diagnostic?.issue_count >= 1, "broken fixture should expose issue count in the stable diagnostic");
     assert(brokenText.includes("broken-external: health=unavailable"), "health summary should mark missing external adapter unavailable");
     assert(brokenText.includes("adapter module missing"), "health summary should surface missing module");
 
@@ -96,6 +98,7 @@ function main() {
     const probeFailing = runJson(script, ["--target", target, "--json"], repoRoot, 0);
     const probeFailingText = fs.readFileSync(probeFailing.output_file, "utf8");
     assert(probeFailing.verification.pass === false, "probe-failing fixture should fail verification");
+    assert(probeFailing.agent_health_diagnostic?.warning_count >= 0, "probe-failing fixture should expose warning count in the stable diagnostic");
     assert(probeFailingText.includes("probe-failing: health=unavailable"), "health summary should mark environment-incompatible adapter unavailable");
     assert(probeFailingText.includes("environment: unavailable"), "health summary should expose environment status");
     assert(probeFailingText.includes("external runner is not configured"), "health summary should expose environment probe reason");
@@ -118,6 +121,7 @@ function main() {
     assert(dbOnly.state_mode === "db-only", "db-only health projection should resolve db-only state mode");
     assert(dbOnly.db_first_applied === true, "db-only health projection should write through SQLite");
     assert(dbOnly.db_first_materialized === false, "db-only health projection should not materialize markdown on disk");
+    assert(dbOnly.agent_health_diagnostic?.state_mode === "db-only", "db-only health projection should expose state mode in the stable diagnostic");
     assert(dbOnly.verification.pass === true, "db-only health projection should still verify the roster from SQLite");
     assert(fs.existsSync(path.join(dbOnlyTarget, "docs", "audit", "AGENT-HEALTH-SUMMARY.md")) === false, "db-only health projection should not recreate AGENT-HEALTH-SUMMARY.md");
 

@@ -259,6 +259,22 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Previews or executes the selected coordinator dispatch path depending on --execute.",
   }),
   commandPolicy({
+    id: "runtime-project-agent-health-summary",
+    command: "aidn runtime project-agent-health-summary --json",
+    effectClass: "projector",
+    jsonContract: "runtime-project-agent-health-summary.v1.schema.json",
+    safeArgs: ["runtime", "project-agent-health-summary", "--json"],
+    notes: "Projects the agent health summary artifact and returns the underlying roster verification snapshot.",
+  }),
+  commandPolicy({
+    id: "runtime-project-agent-selection-summary",
+    command: "aidn runtime project-agent-selection-summary --json",
+    effectClass: "projector",
+    jsonContract: "runtime-project-agent-selection-summary.v1.schema.json",
+    safeArgs: ["runtime", "project-agent-selection-summary", "--json"],
+    notes: "Projects the agent selection summary artifact and returns the adapter selection preview snapshot.",
+  }),
+  commandPolicy({
     id: "runtime-project-runtime-state",
     command: "aidn runtime project-runtime-state --json",
     effectClass: "projector",

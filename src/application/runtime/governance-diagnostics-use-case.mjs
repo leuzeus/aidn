@@ -122,6 +122,8 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-shared-coordination-doctor", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-governance-diagnostics", linked_concepts: ["cli_output_contract", "workspace"] },
   { id: "runtime-coordinator-select-agent", linked_concepts: ["agent_roster", "workspace"] },
+  { id: "runtime-project-agent-health-summary", linked_concepts: ["agent_roster", "workspace"] },
+  { id: "runtime-project-agent-selection-summary", linked_concepts: ["agent_roster", "workspace"] },
   { id: "runtime-pre-write-admit", linked_concepts: ["workspace", "session", "cycle"] },
   { id: "runtime-handoff-admit", linked_concepts: ["handoff_packet", "session", "cycle"] },
   { id: "runtime-coordinator-next-action", linked_concepts: ["current_state", "runtime_state", "handoff_packet"] },

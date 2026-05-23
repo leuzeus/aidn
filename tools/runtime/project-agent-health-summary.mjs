@@ -45,6 +45,20 @@ function printUsage() {
   console.log("  node tools/runtime/project-agent-health-summary.mjs --target . --json");
 }
 
+function deriveAgentHealthSummaryDiagnostic(result) {
+  return {
+    scope: "project-agent-health-summary",
+    state_mode: String(result?.state_mode ?? "unknown").trim() || "unknown",
+    roster_pass: result?.verification?.pass === true,
+    entry_count: Array.isArray(result?.verification?.entries) ? result.verification.entries.length : 0,
+    issue_count: Array.isArray(result?.verification?.issues) ? result.verification.issues.length : 0,
+    warning_count: Array.isArray(result?.verification?.warnings) ? result.verification.warnings.length : 0,
+    written: result?.written === true,
+    summary: `agent health summary verification is ${result?.verification?.pass === true ? "pass" : "fail"}`,
+    recommended_command: "aidn runtime verify-agent-roster --json",
+  };
+}
+
 function buildMarkdown(result) {
   const lines = [];
   lines.push("# Agent Health Summary");
@@ -138,6 +152,13 @@ export async function projectAgentHealthSummary({
     db_first_materialized: Boolean(dbFirstWrite?.materialized),
     db_first_artifact_path: dbFirstWrite?.artifact?.path ?? relativeOut,
     verification,
+    agent_health_diagnostic: deriveAgentHealthSummaryDiagnostic({
+      target_root: absoluteTargetRoot,
+      output_file: write.path,
+      written: write.written,
+      state_mode: effectiveStateMode,
+      verification,
+    }),
   };
 }
 
