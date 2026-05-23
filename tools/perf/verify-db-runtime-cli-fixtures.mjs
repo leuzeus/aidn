@@ -162,6 +162,8 @@ function main() {
         && statusBefore.metadata?.concept === "workspace",
       status_before_reports_pending_baseline: Array.isArray(statusBefore.pending_ids) && statusBefore.pending_ids.includes("0001_workflow_index_baseline_v2"),
       migrate_fresh_applies_baseline: Array.isArray(migrateFresh?.migration?.applied_ids) && migrateFresh.migration.applied_ids.includes("0001_workflow_index_baseline_v2"),
+      migrate_fresh_exposes_backend_diagnostic: migrateFresh?.runtime_backend_diagnostic?.scope === "runtime-persistence-migration"
+        && migrateFresh?.runtime_backend_diagnostic?.schema_status === "ready",
       status_after_no_pending: Array.isArray(statusAfter.pending_ids) && statusAfter.pending_ids.length === 0,
       status_after_reports_applied: Array.isArray(statusAfter.applied_ids) && statusAfter.applied_ids.includes("0001_workflow_index_baseline_v2"),
       status_after_operations_ready: statusAfter.operations?.schema_status === "ready"
@@ -180,6 +182,7 @@ function main() {
       backup_fresh_created: typeof backupFresh?.backup_file === "string" && fs.existsSync(backupFresh.backup_file),
       legacy_migrate_creates_backup: typeof migrateLegacy?.migration?.backup_file === "string" && fs.existsSync(migrateLegacy.migration.backup_file),
       legacy_migrate_applies_baseline: Array.isArray(migrateLegacy?.migration?.applied_ids) && migrateLegacy.migration.applied_ids.includes("0001_workflow_index_baseline_v2"),
+      legacy_migrate_exposes_backup_diagnostic: migrateLegacy?.runtime_backend_diagnostic?.backup_created === true,
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {

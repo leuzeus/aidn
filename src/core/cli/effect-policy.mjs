@@ -76,6 +76,14 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Builds a runtime backend adoption plan without applying it when --dry-run is supplied.",
   }),
   commandPolicy({
+    id: "runtime-db-migrate",
+    command: "aidn runtime db-migrate --json",
+    effectClass: "mutating",
+    jsonContract: "runtime-db-migrate.v1.schema.json",
+    safeArgs: ["runtime", "db-migrate", "--json"],
+    notes: "Applies the local runtime schema migration for the selected backend.",
+  }),
+  commandPolicy({
     id: "runtime-shared-coordination-status",
     command: "aidn runtime shared-coordination-status --json",
     effectClass: "read-only",

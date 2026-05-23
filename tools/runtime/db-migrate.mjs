@@ -55,6 +55,32 @@ function printUsage() {
   console.log("  npx aidn runtime db-migrate --target . --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json");
 }
 
+function deriveRuntimeBackendDiagnostic(payload) {
+  const migration = payload?.migration ?? {};
+  const status = payload?.status ?? {};
+  const appliedIds = Array.isArray(migration.applied_ids) ? migration.applied_ids : [];
+  const pendingIds = Array.isArray(status.pending_ids) ? status.pending_ids : [];
+  const schemaStatus = pendingIds.length === 0
+    ? "ready"
+    : (payload?.exists === true ? "pending" : "missing");
+  const recommendedAction = pendingIds.length === 0
+    ? "no further runtime schema migration is required"
+    : "review the remaining pending migrations before relying on the selected runtime backend";
+  return {
+    scope: "runtime-persistence-migration",
+    backend: String(payload?.runtime_persistence?.backend ?? "unknown").trim() || "unknown",
+    backend_source: String(payload?.runtime_persistence?.source ?? "unknown").trim() || "unknown",
+    schema_status: schemaStatus,
+    applied_migration_count: appliedIds.length,
+    pending_migration_count: pendingIds.length,
+    backup_created: typeof migration.backup_file === "string" && migration.backup_file.length > 0,
+    summary: pendingIds.length === 0
+      ? `runtime schema migration converged with ${appliedIds.length} applied migration(s)`
+      : `runtime schema migration left ${pendingIds.length} pending migration(s)`,
+    recommended_action: recommendedAction,
+  };
+}
+
 export async function migrateRuntimePersistence({
   targetRoot = ".",
   backend = "",
@@ -93,6 +119,10 @@ export async function migrateRuntimePersistence({
     runtime_persistence: runtimePersistence,
     runtime_backend: admin.describeBackend(),
     ...result,
+    runtime_backend_diagnostic: deriveRuntimeBackendDiagnostic({
+      runtime_persistence: runtimePersistence,
+      ...result,
+    }),
   };
 }
 
