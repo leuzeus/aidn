@@ -35,6 +35,7 @@ Initial v1 commands:
 - `aidn runtime db-migrate --json`
 - `aidn runtime db-backup --json`
 - `aidn runtime persistence-adopt --json`
+- `aidn runtime persistence-source-diagnose --json`
 - `aidn runtime shared-coordination-migrate --json`
 - `aidn runtime shared-coordination-status --json`
 - `aidn runtime shared-coordination-projects --json`

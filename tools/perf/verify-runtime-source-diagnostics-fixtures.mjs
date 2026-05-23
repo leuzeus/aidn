@@ -184,6 +184,7 @@ async function main() {
     ]);
     assert(jsonResult.status === 0, "runtime source diagnostics json should succeed");
     assert(jsonResult.payload?.source_diagnostics?.reason_code === "source-cycle-identity-ambiguous", "json diagnostics should expose the ambiguity reason code");
+    assert(jsonResult.payload?.source_diagnostic?.diagnostic_status === "ambiguous-cycle-identities", "json diagnostics should expose the stable source diagnostic status");
     assert(jsonResult.payload?.source_diagnostics?.cycle_identity_collision_count === 1, "json diagnostics should count one ambiguous logical cycle id");
     assert(String(jsonResult.payload?.source_diagnostics?.cycle_identity_collisions?.[0]?.cycle_id ?? "") === "C004", "json diagnostics should identify the ambiguous logical cycle id");
     assert(Array.isArray(jsonResult.payload?.source_diagnostics?.cycle_identity_collisions?.[0]?.directories)
@@ -242,6 +243,7 @@ async function main() {
     assert(driftJsonResult.payload?.source_diagnostics?.reason_code === "source-scope-drift", "json diagnostics should expose the scope drift reason code");
     assert(driftJsonResult.payload?.source_diagnostics?.source_scope?.blocking === true, "json diagnostics should flag blocking scope drift");
     assert(driftJsonResult.payload?.source_diagnostics?.diagnostic_status === "scope-drift", "json diagnostics should expose scope-drift status");
+    assert(driftJsonResult.payload?.source_diagnostic?.source_scope_blocking === true, "json diagnostics should expose stable source scope blocking");
 
     const driftHumanResult = runCommand("bin/aidn.mjs", [
       "runtime",

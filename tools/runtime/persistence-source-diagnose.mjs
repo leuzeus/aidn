@@ -35,6 +35,23 @@ function printUsage() {
   console.log("  npx aidn runtime persistence-source-diagnose --target . --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json");
 }
 
+function deriveSourceDiagnostic(result) {
+  const diagnostics = result?.source_diagnostics ?? {};
+  const reasonCode = String(diagnostics.reason_code ?? "none").trim() || "none";
+  const diagnosticStatus = String(diagnostics.diagnostic_status ?? "unknown").trim() || "unknown";
+  return {
+    scope: "runtime-persistence-source",
+    diagnostic_status: diagnosticStatus,
+    reason_code: reasonCode,
+    collision_count: Number(diagnostics.cycle_identity_collision_count ?? 0) || 0,
+    source_scope_blocking: diagnostics.source_scope?.blocking === true,
+    summary: `runtime persistence source diagnostic is ${diagnosticStatus}`,
+    recommended_action: diagnosticStatus === "ready"
+      ? "no runtime source repair is required"
+      : "review the reported source diagnostic before adopting or transferring runtime persistence state",
+  };
+}
+
 export function diagnoseRuntimePersistenceSource({
   targetRoot = ".",
   sqliteFile = ".aidn/runtime/index/workflow-index.sqlite",
@@ -43,13 +60,17 @@ export function diagnoseRuntimePersistenceSource({
   const absoluteSqliteFile = path.isAbsolute(sqliteFile)
     ? path.resolve(sqliteFile)
     : path.resolve(absoluteTargetRoot, sqliteFile);
-  return {
+  const result = {
     ts: new Date().toISOString(),
     target_root: absoluteTargetRoot,
     source_diagnostics: inspectSqliteRuntimeCycleIdentities({
       sqliteFile: absoluteSqliteFile,
       targetRoot: absoluteTargetRoot,
     }),
+  };
+  return {
+    ...result,
+    source_diagnostic: deriveSourceDiagnostic(result),
   };
 }
 

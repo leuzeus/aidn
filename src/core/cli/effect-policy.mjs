@@ -92,6 +92,14 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Creates a local backup snapshot for the selected runtime backend.",
   }),
   commandPolicy({
+    id: "runtime-persistence-source-diagnose",
+    command: "aidn runtime persistence-source-diagnose --json",
+    effectClass: "read-only",
+    jsonContract: "runtime-persistence-source-diagnose.v1.schema.json",
+    safeArgs: ["runtime", "persistence-source-diagnose", "--json"],
+    notes: "Inspects sqlite source integrity before runtime backend adoption or transfer.",
+  }),
+  commandPolicy({
     id: "runtime-shared-coordination-migrate",
     command: "aidn runtime shared-coordination-migrate --json",
     effectClass: "preview",
