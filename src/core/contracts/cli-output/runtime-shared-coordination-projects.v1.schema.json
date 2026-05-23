@@ -15,7 +15,8 @@
     "project_id_filter",
     "projects",
     "inspected_project",
-    "inspected_workspaces"
+    "inspected_workspaces",
+    "projects_diagnostic"
   ],
   "properties": {
     "target_root": { "type": "string" },
@@ -27,7 +28,33 @@
     "project_id_filter": { "type": "string" },
     "projects": { "type": "array" },
     "inspected_project": { "type": ["object", "null"], "additionalProperties": true },
-    "inspected_workspaces": { "type": "array" }
+    "inspected_workspaces": { "type": "array" },
+    "projects_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "backend_kind",
+        "backend_status",
+        "status",
+        "project_count",
+        "inspected_project_id",
+        "inspected_workspace_count",
+        "summary",
+        "recommended_action"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "backend_kind": { "type": "string" },
+        "backend_status": { "type": "string" },
+        "status": { "type": "string" },
+        "project_count": { "type": "number" },
+        "inspected_project_id": { "type": "string" },
+        "inspected_workspace_count": { "type": "number" },
+        "summary": { "type": "string" },
+        "recommended_action": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
   },
   "additionalProperties": true
 }

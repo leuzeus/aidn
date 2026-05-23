@@ -39,6 +39,37 @@ function printUsage() {
   console.log("  npx aidn runtime shared-coordination-projects --target . --project-id project-main --json");
 }
 
+function deriveProjectsDiagnostic(result) {
+  const backend = result?.shared_coordination_backend ?? {};
+  const projects = Array.isArray(result?.projects) ? result.projects : [];
+  const inspectedWorkspaces = Array.isArray(result?.inspected_workspaces) ? result.inspected_workspaces : [];
+  const status = String(result?.status ?? "unknown").trim() || "unknown";
+  const backendStatus = String(backend?.status ?? "disabled").trim() || "disabled";
+  let recommendedAction = "inspect shared coordination backend readiness before retrying project enumeration";
+  if (status === "ready") {
+    recommendedAction = result?.inspected_project
+      ? "shared coordination project inspection completed"
+      : "shared coordination project enumeration completed";
+  } else if (backendStatus === "missing-env") {
+    recommendedAction = "set the shared PostgreSQL env reference, then rerun shared-coordination-projects";
+  } else if (backendStatus === "disabled") {
+    recommendedAction = "keep local-first mode or explicitly enable shared-runtime before querying shared projects";
+  } else if (status === "unsupported") {
+    recommendedAction = "upgrade or replace the shared coordination store adapter to expose project enumeration";
+  }
+  return {
+    scope: "shared-coordination-projects",
+    backend_kind: String(backend?.backend_kind ?? "unknown").trim() || "unknown",
+    backend_status: backendStatus,
+    status,
+    project_count: projects.length,
+    inspected_project_id: String(result?.inspected_project?.project_id ?? "").trim() || "",
+    inspected_workspace_count: inspectedWorkspaces.length,
+    summary: String(result?.reason ?? "shared coordination projects status unavailable").trim() || "shared coordination projects status unavailable",
+    recommended_action: recommendedAction,
+  };
+}
+
 export async function sharedCoordinationProjects({
   targetRoot = ".",
   projectId = "",
@@ -63,7 +94,7 @@ export async function sharedCoordinationProjects({
     : null;
 
   if (!listProjects || !inspectProject) {
-    return {
+    const result = {
       target_root: absoluteTargetRoot,
       ok: false,
       status: resolution?.store ? "unsupported" : (resolution?.status || "disabled"),
@@ -77,12 +108,16 @@ export async function sharedCoordinationProjects({
       inspected_project: null,
       inspected_workspaces: [],
     };
+    return {
+      ...result,
+      projects_diagnostic: deriveProjectsDiagnostic(result),
+    };
   }
 
   const projectsResult = await listProjects();
   const inspectResult = projectId ? await inspectProject({ projectId }) : null;
   const ok = projectsResult.ok === true && (!inspectResult || inspectResult.ok === true);
-  return {
+  const result = {
     target_root: absoluteTargetRoot,
     ok,
     status: ok ? "ready" : "read-failed",
@@ -93,6 +128,10 @@ export async function sharedCoordinationProjects({
     projects: projectsResult.projects ?? [],
     inspected_project: inspectResult?.project ?? null,
     inspected_workspaces: inspectResult?.workspaces ?? [],
+  };
+  return {
+    ...result,
+    projects_diagnostic: deriveProjectsDiagnostic(result),
   };
 }
 

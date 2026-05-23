@@ -141,10 +141,13 @@ async function main() {
       },
     });
 
-    const missingEnv = runCli(["runtime", "shared-coordination-projects", "--target", targetRoot, "--json"]);
+    const missingEnv = runCli(["runtime", "shared-coordination-projects", "--target", targetRoot, "--json"], {
+      AIDN_PG_URL: "",
+    });
     assert(missingEnv.status === 1, "projects CLI should fail when PostgreSQL env is missing");
     assert(missingEnv.json?.ok === false, "projects CLI should fail when PostgreSQL env is missing");
     assert(missingEnv.json?.status === "missing-env", "projects CLI should surface missing-env status");
+    assert(missingEnv.json?.projects_diagnostic?.backend_status === "missing-env", "projects CLI should expose stable backend status in the diagnostic");
 
     const direct = await sharedCoordinationProjects({
       targetRoot,
@@ -152,6 +155,7 @@ async function main() {
     });
     assert(direct.ok === true, "direct projects projection should succeed");
     assert(direct.projects.length === 2, "projects projection should list registered projects");
+    assert(direct.projects_diagnostic?.project_count === 2, "projects projection should expose the project count in the diagnostic");
 
     const inspected = await sharedCoordinationProjects({
       targetRoot,
@@ -161,6 +165,7 @@ async function main() {
     assert(inspected.ok === true, "project inspect projection should succeed");
     assert(inspected.inspected_project?.project_id === "project-alpha", "project inspect should expose the requested project");
     assert(inspected.inspected_workspaces.length === 1, "project inspect should expose workspace details");
+    assert(inspected.projects_diagnostic?.inspected_project_id === "project-alpha", "project inspect should expose the inspected project id in the diagnostic");
 
     console.log("PASS");
   } catch (error) {
