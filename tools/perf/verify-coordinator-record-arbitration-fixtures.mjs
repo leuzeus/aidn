@@ -154,6 +154,8 @@ function main() {
     assert(arbitration.arbitration_log_appended === true, "arbitration command should append user arbitration log");
     assert(arbitration.coordination_history_appended === true, "arbitration command should append history");
     assert(fs.existsSync(arbitrationFile), "user arbitration file should exist");
+    assert(fs.readFileSync(arbitrationFile, "utf8").includes("contract_version: critical-markdown-v1"), "user arbitration file should expose governed contract version");
+    assert(fs.readFileSync(arbitrationFile, "utf8").includes("source_mode: explicit"), "user arbitration file should expose governed source mode");
     assert(fs.readFileSync(arbitrationFile, "utf8").includes("decision: continue"), "user arbitration file should record the decision");
     assert(fs.readFileSync(historyFile, "utf8").includes("\"event\":\"user_arbitration\""), "history should record user arbitration event");
     assert(fs.readFileSync(summaryFile, "utf8").includes("last_arbitration_decision: continue"), "summary should record last arbitration decision");
