@@ -209,6 +209,7 @@ function main() {
     assert(ready.preferred_dispatch_source === "shared_planning", "ready should expose shared planning provenance");
     assert(ready.shared_planning_candidate?.shared_planning_candidate_ready === "yes", "ready should expose a ready shared planning candidate");
     assert(ready.shared_planning_candidate?.shared_planning_candidate_aligned === "yes", "ready should expose an aligned shared planning candidate");
+    assert(ready.next_action_diagnostic?.recommended_role === "executor", "ready should expose the recommended role in the stable diagnostic");
     assert(ready.scope.scope_type === "cycle", "ready should preserve cycle scope");
     assert(ready.scope.scope_id === "C101", "ready should preserve active cycle id");
 
@@ -220,6 +221,7 @@ function main() {
     assert(blocked.recommendation.action === "repair", "blocked should route to repair action");
     assert(blocked.handoff?.status?.admission_status === "blocked", "blocked handoff should expose normalized status");
     assert(blocked.recommendation.stop_required === true, "blocked should require stop");
+    assert(blocked.next_action_diagnostic?.stop_required === true, "blocked should expose stop-required in the stable diagnostic");
     assert(blocked.scope.scope_type === "cycle", "blocked should preserve cycle scope");
 
     assert(tampered.recommendation.role === "coordinator", "tampered should fall back to coordinator");
@@ -233,6 +235,7 @@ function main() {
     assert(fallback.recommendation.role === "executor", "fallback should route to executor");
     assert(fallback.recommendation.action === "implement", "fallback should route to implement");
     assert(fallback.recommendation.source === "current-state", "fallback should come from current-state");
+    assert(fallback.next_action_diagnostic?.source === "current-state", "fallback should expose its source in the stable diagnostic");
     assert(fallback.scope.scope_type === "cycle", "fallback should derive cycle scope from current state");
     assert(dbOnlyFileless.recommendation.role === "executor", "db-only fileless should still route to executor");
     assert(dbOnlyFileless.recommendation.action === "implement", "db-only fileless should still route to implement");

@@ -14,7 +14,8 @@
     "preferred_dispatch_source",
     "recommendation",
     "scope",
-    "context"
+    "context",
+    "next_action_diagnostic"
   ],
   "properties": {
     "target_root": { "type": "string" },
@@ -27,7 +28,33 @@
     "shared_planning_candidate": { "type": ["object", "null"], "additionalProperties": true },
     "recommendation": { "type": "object", "additionalProperties": true },
     "scope": { "type": "object", "additionalProperties": true },
-    "context": { "type": "object", "additionalProperties": true }
+    "context": { "type": "object", "additionalProperties": true },
+    "next_action_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "recommended_role",
+        "recommended_action",
+        "source",
+        "stop_required",
+        "scope_type",
+        "scope_id",
+        "summary",
+        "recommended_command"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "recommended_role": { "type": "string" },
+        "recommended_action": { "type": "string" },
+        "source": { "type": "string" },
+        "stop_required": { "type": "boolean" },
+        "scope_type": { "type": "string" },
+        "scope_id": { "type": "string" },
+        "summary": { "type": "string" },
+        "recommended_command": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
   },
   "additionalProperties": true
 }

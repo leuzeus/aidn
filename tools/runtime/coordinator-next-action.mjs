@@ -74,6 +74,22 @@ function printUsage() {
   console.log("  node tools/runtime/coordinator-next-action.mjs --target tests/fixtures/repo-installed-core --json");
 }
 
+function deriveNextActionDiagnostic(result) {
+  const recommendation = result?.recommendation ?? {};
+  const scope = result?.scope ?? {};
+  return {
+    scope: "coordinator-next-action",
+    recommended_role: String(recommendation?.role ?? "unknown").trim() || "unknown",
+    recommended_action: String(recommendation?.action ?? "unknown").trim() || "unknown",
+    source: String(recommendation?.source ?? "unknown").trim() || "unknown",
+    stop_required: recommendation?.stop_required === true,
+    scope_type: String(scope?.scope_type ?? "none").trim() || "none",
+    scope_id: String(scope?.scope_id ?? "none").trim() || "none",
+    summary: String(recommendation?.reason ?? "coordinator recommendation unavailable").trim() || "coordinator recommendation unavailable",
+    recommended_command: "aidn runtime coordinator-dispatch-plan --json",
+  };
+}
+
 function resolveTargetPath(targetRoot, candidate) {
   if (!candidate) {
     return "";
@@ -282,7 +298,7 @@ export async function computeCoordinatorNextAction({
     throw new Error(`Invalid coordinator recommendation: role=${recommendation.role} action=${recommendation.action}`);
   }
 
-  return buildCoordinatorNextActionResult({
+  const result = buildCoordinatorNextActionResult({
     targetRoot: absoluteTargetRoot,
     currentStateResolution,
     runtimeStateResolution,
@@ -297,6 +313,10 @@ export async function computeCoordinatorNextAction({
     nextActions,
     sharedPlanning,
   });
+  return {
+    ...result,
+    next_action_diagnostic: deriveNextActionDiagnostic(result),
+  };
 }
 
 function main() {
