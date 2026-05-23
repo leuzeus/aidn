@@ -199,6 +199,16 @@ const CONTRACT_CASES = [
     args: ["runtime", "project-coordination-summary", "--json"],
   },
   {
+    name: "runtime-sync-db-first",
+    schema: "runtime-sync-db-first.v1.schema.json",
+    args: ["runtime", "sync-db-first", "--json"],
+  },
+  {
+    name: "runtime-sync-db-first-selective",
+    schema: "runtime-sync-db-first-selective.v1.schema.json",
+    args: ["runtime", "sync-db-first-selective", "--json"],
+  },
+  {
     name: "runtime-coordinator-select-agent",
     schema: "runtime-coordinator-select-agent.v1.schema.json",
     args: ["runtime", "coordinator-select-agent", "--role", "auditor", "--action", "audit", "--json"],

@@ -10,6 +10,26 @@ import { fileURLToPath } from "node:url";
 const TOOL_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPAIR_LAYER_TRIAGE_SUMMARY_SCRIPT = path.resolve(TOOL_DIR, "..", "perf", "render-repair-layer-triage-summary.mjs");
 
+function buildSyncDbFirstSelectiveDiagnostic(out) {
+  const summary = out?.summary ?? {};
+  return {
+    scope: "runtime-db-first-sync-selective",
+    state_mode: String(out?.state_mode ?? "").trim() || "unknown",
+    git_available: out?.git_available === true,
+    fallback_full_used: out?.fallback_full_used === true,
+    fallback_full_reason: String(out?.fallback_full_reason ?? "").trim() || "none",
+    synced_count: Number(summary?.synced_count ?? 0),
+    failed_count: Number(summary?.failed_count ?? 0),
+    repair_layer_status: String(out?.repair_layer_result?.action ?? "").trim() || "not-run",
+    summary: out?.fallback_full_used === true
+      ? `selective db-first sync escalated to full sync because ${String(out?.fallback_full_reason ?? "fallback-required")}`
+      : `selective db-first sync processed ${Number(summary?.synced_count ?? 0)} changed artifact(s)`,
+    recommended_action: out?.fallback_full_used === true
+      ? "inspect the fallback reason before relying on the full db-first refresh"
+      : "review any selective sync errors and repair-layer outputs before continuing",
+  };
+}
+
 function parseArgs(argv) {
   const args = {
     target: ".",
@@ -92,6 +112,7 @@ async function main() {
       processAdapter,
       repairLayerTriageSummaryScript: REPAIR_LAYER_TRIAGE_SUMMARY_SCRIPT,
     });
+    out.sync_db_first_selective_diagnostic = buildSyncDbFirstSelectiveDiagnostic(out);
 
     if (args.json) {
       console.log(JSON.stringify(out, null, 2));

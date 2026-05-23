@@ -133,6 +133,8 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-project-integration-risk", linked_concepts: ["current_state", "cycle", "session"] },
   { id: "runtime-project-multi-agent-status", linked_concepts: ["agent_roster", "current_state", "coordination_summary"] },
   { id: "runtime-project-coordination-summary", linked_concepts: ["coordination_summary", "coordination_record"] },
+  { id: "runtime-sync-db-first", linked_concepts: ["artifact", "workspace"] },
+  { id: "runtime-sync-db-first-selective", linked_concepts: ["artifact", "workspace"] },
   { id: "runtime-pre-write-admit", linked_concepts: ["workspace", "session", "cycle"] },
   { id: "runtime-handoff-admit", linked_concepts: ["handoff_packet", "session", "cycle"] },
   { id: "runtime-coordinator-next-action", linked_concepts: ["current_state", "runtime_state", "handoff_packet"] },

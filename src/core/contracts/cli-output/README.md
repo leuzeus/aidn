@@ -56,6 +56,8 @@ Initial v1 commands:
 - `aidn runtime project-integration-risk --json`
 - `aidn runtime project-multi-agent-status --json`
 - `aidn runtime project-coordination-summary --json`
+- `aidn runtime sync-db-first --json`
+- `aidn runtime sync-db-first-selective --json`
 - `aidn runtime coordinator-select-agent --json`
 - `aidn runtime coordinator-next-action --json`
 - `aidn runtime coordinator-loop --json`

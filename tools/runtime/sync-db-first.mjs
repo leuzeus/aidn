@@ -11,6 +11,26 @@ const RUNTIME_REPAIR_LAYER = path.resolve(RUNTIME_DIR, "repair-layer.mjs");
 const RUNTIME_REPAIR_LAYER_AUTOFIX = path.resolve(RUNTIME_DIR, "repair-layer-autofix.mjs");
 const PERF_REPAIR_LAYER_TRIAGE_SUMMARY = path.resolve(RUNTIME_DIR, "..", "perf", "render-repair-layer-triage-summary.mjs");
 
+function buildSyncDbFirstDiagnostic(out) {
+  const payload = out?.payload ?? {};
+  const outputs = Array.isArray(payload?.outputs) ? payload.outputs : [];
+  return {
+    scope: "runtime-db-first-sync",
+    state_mode: String(out?.state_mode ?? "").trim() || "unknown",
+    store: String(out?.store ?? "").trim() || "none",
+    skipped: out?.skipped === true,
+    output_count: outputs.length,
+    repair_layer_status: String(out?.repair_layer_result?.action ?? "").trim() || "not-run",
+    triage_status: out?.repair_layer_triage_result ? "written" : "not-run",
+    summary: out?.skipped === true
+      ? "db-first sync skipped because the workspace remains in files mode"
+      : `db-first sync refreshed ${outputs.length} output target(s)`,
+    recommended_action: out?.skipped === true
+      ? "rerun with --force-in-files only when an explicit db-first refresh is required"
+      : "review repair-layer and triage outputs before relying on the refreshed db-first state",
+  };
+}
+
 function parseArgs(argv) {
   const args = {
     target: ".",
@@ -101,6 +121,7 @@ async function main() {
       repairLayerAutofixScript: RUNTIME_REPAIR_LAYER_AUTOFIX,
       repairLayerTriageSummaryScript: PERF_REPAIR_LAYER_TRIAGE_SUMMARY,
     });
+    out.sync_db_first_diagnostic = buildSyncDbFirstDiagnostic(out);
     if (args.json) {
       console.log(JSON.stringify(out, null, 2));
     } else {

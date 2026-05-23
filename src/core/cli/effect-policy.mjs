@@ -356,6 +356,22 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Projects the coordination summary digest and returns the aggregated dispatch history snapshot.",
   }),
   commandPolicy({
+    id: "runtime-sync-db-first",
+    command: "aidn runtime sync-db-first --json",
+    effectClass: "mutating",
+    jsonContract: "runtime-sync-db-first.v1.schema.json",
+    safeArgs: ["runtime", "sync-db-first", "--json"],
+    notes: "Refreshes the db-first persistence/index state from the checkout and repair-layer outputs.",
+  }),
+  commandPolicy({
+    id: "runtime-sync-db-first-selective",
+    command: "aidn runtime sync-db-first-selective --json",
+    effectClass: "mutating",
+    jsonContract: "runtime-sync-db-first-selective.v1.schema.json",
+    safeArgs: ["runtime", "sync-db-first-selective", "--json"],
+    notes: "Attempts a changed-path selective db-first refresh with optional full-sync fallback.",
+  }),
+  commandPolicy({
     id: "runtime-coordinator-loop",
     command: "aidn runtime coordinator-loop --json",
     effectClass: "read-only",
