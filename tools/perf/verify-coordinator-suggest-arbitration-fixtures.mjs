@@ -130,6 +130,8 @@ function main() {
     assert(Array.isArray(ready.suggestions) && ready.suggestions.length === 1, "ready dispatch should emit a single continue suggestion");
     assert(ready.suggestions[0].decision === "continue", "ready suggestion should be continue");
     assert(ready.suggestions[0].immediately_actionable === true, "ready continue should be actionable");
+    assert(ready.arbitration_diagnostic?.arbitration_required === false, "ready dispatch should expose a stable arbitration diagnostic");
+    assert(ready.arbitration_diagnostic?.suggestion_count === 1, "ready dispatch should expose suggestion count in the stable diagnostic");
 
     assert(roleBlocked.arbitration_required === true, "role-blocked dispatch should require arbitration");
     assert(roleBlocked.dispatch_status === "escalated", "role-blocked dispatch should already be escalated");
@@ -139,11 +141,14 @@ function main() {
     assert(roleBlocked.suggestions.some((item) => item.decision === "continue" && item.immediately_actionable === false), "role-blocked suggestions should include a non-actionable continue");
     assert(roleBlocked.suggestions.every((item) => String(item.record_command ?? "").includes("coordinator-record-arbitration")), "suggestions should include record-arbitration commands");
     assert(/no runnable adapter remains for role auditor/i.test(roleBlocked.arbitration_reason), "role-blocked suggestions should explain the blocked auditor coverage");
+    assert(roleBlocked.arbitration_diagnostic?.preferred_decision === "reanchor", "role-blocked dispatch should expose preferred decision in the stable diagnostic");
+    assert(roleBlocked.arbitration_diagnostic?.actionable_suggestion_count >= 1, "role-blocked dispatch should expose actionable suggestion count in the stable diagnostic");
     assert(integrationCycle.arbitration_required === true, "integration-cycle strategy should require arbitration");
     assert(integrationCycle.dispatch.integration_risk.recommended_strategy === "integration_cycle", "integration-cycle suggestions should expose the integration strategy");
     assert(integrationCycle.preferred_decision === "integration_cycle", "integration-cycle suggestions should prefer an integration vehicle");
     assert(integrationCycle.suggestions.some((item) => item.decision === "integration_cycle" && item.recommended === true && item.immediately_actionable === true), "integration-cycle suggestions should include an actionable integration_cycle decision");
     assert(integrationCycle.suggestions.some((item) => item.decision === "report_forward"), "integration-cycle suggestions should include report_forward as an alternative");
+    assert(integrationCycle.arbitration_diagnostic?.recommended_suggestion_count === 1, "integration-cycle suggestions should expose recommended suggestion count in the stable diagnostic");
 
     const output = {
       ts: new Date().toISOString(),

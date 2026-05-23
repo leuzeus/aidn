@@ -155,6 +155,11 @@ const CONTRACT_CASES = [
     args: ["runtime", "coordinator-resume", "--json"],
   },
   {
+    name: "runtime-coordinator-suggest-arbitration",
+    schema: "runtime-coordinator-suggest-arbitration.v1.schema.json",
+    args: ["runtime", "coordinator-suggest-arbitration", "--json"],
+  },
+  {
     name: "runtime-handoff-admit",
     schema: "runtime-handoff-admit.v1.schema.json",
     args: ["runtime", "handoff-admit", "--json"],

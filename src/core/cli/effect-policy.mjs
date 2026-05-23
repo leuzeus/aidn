@@ -227,6 +227,14 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Previews the next coordinator resume path unless --execute is supplied.",
   }),
   commandPolicy({
+    id: "runtime-coordinator-suggest-arbitration",
+    command: "aidn runtime coordinator-suggest-arbitration --json",
+    effectClass: "read-only",
+    jsonContract: "runtime-coordinator-suggest-arbitration.v1.schema.json",
+    safeArgs: ["runtime", "coordinator-suggest-arbitration", "--json"],
+    notes: "Suggests user arbitration paths without recording a decision.",
+  }),
+  commandPolicy({
     id: "runtime-project-runtime-state",
     command: "aidn runtime project-runtime-state --json",
     effectClass: "projector",

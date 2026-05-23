@@ -59,7 +59,25 @@ function printUsage() {
   console.log("  node tools/runtime/coordinator-suggest-arbitration.mjs --target . --json");
 }
 
-export async function suggestCoordinatorArbitration({
+function deriveArbitrationSuggestionDiagnostic(result) {
+  return {
+    scope: "coordinator-suggest-arbitration",
+    dispatch_status: String(result?.dispatch_status ?? "unknown").trim() || "unknown",
+    arbitration_required: Boolean(result?.arbitration_required),
+    preferred_decision: String(result?.preferred_decision ?? "none").trim() || "none",
+    suggestion_count: Array.isArray(result?.suggestions) ? result.suggestions.length : 0,
+    actionable_suggestion_count: Array.isArray(result?.suggestions)
+      ? result.suggestions.filter((item) => item?.immediately_actionable === true).length
+      : 0,
+    recommended_suggestion_count: Array.isArray(result?.suggestions)
+      ? result.suggestions.filter((item) => item?.recommended === true).length
+      : 0,
+    summary: `coordinator arbitration is ${Boolean(result?.arbitration_required) ? "required" : "not required"}`,
+    recommended_command: "aidn runtime coordinator-record-arbitration --decision <decision> --note \"<note>\" --json",
+  };
+}
+
+async function runCoordinatorSuggestArbitration({
   targetRoot,
   agent = "auto",
   currentStateFile = "docs/audit/CURRENT-STATE.md",
@@ -90,6 +108,14 @@ export async function suggestCoordinatorArbitration({
     dispatch,
     suggestionBundle,
   });
+}
+
+export async function suggestCoordinatorArbitration(options = {}) {
+  const result = await runCoordinatorSuggestArbitration(options);
+  return {
+    ...result,
+    arbitration_diagnostic: deriveArbitrationSuggestionDiagnostic(result),
+  };
 }
 
 function renderText(result) {

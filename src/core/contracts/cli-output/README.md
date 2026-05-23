@@ -49,6 +49,7 @@ Initial v1 commands:
 - `aidn runtime coordinator-dispatch-plan --json`
 - `aidn runtime coordinator-orchestrate --json`
 - `aidn runtime coordinator-resume --json`
+- `aidn runtime coordinator-suggest-arbitration --json`
 - `aidn runtime handoff-admit --json`
 - `aidn project config --list --json`
 - `aidn codex hydrate-context --json`

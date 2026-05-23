@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-coordinator-suggest-arbitration.v1",
+  "title": "aidn runtime coordinator-suggest-arbitration --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime coordinator-suggest-arbitration --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "state_mode",
+    "db_backed_mode",
+    "dispatch_status",
+    "coordinator_recommendation",
+    "recommended_role_coverage",
+    "arbitration_required",
+    "arbitration_reason",
+    "preferred_decision",
+    "suggestions",
+    "dispatch",
+    "arbitration_diagnostic"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "state_mode": { "type": "string" },
+    "db_backed_mode": { "type": "boolean" },
+    "dispatch_status": { "type": "string" },
+    "coordinator_recommendation": { "type": "object", "additionalProperties": true },
+    "recommended_role_coverage": { "type": ["object", "null"], "additionalProperties": true },
+    "arbitration_required": { "type": "boolean" },
+    "arbitration_reason": { "type": "string" },
+    "preferred_decision": { "type": "string" },
+    "suggestions": { "type": "array" },
+    "dispatch": { "type": "object", "additionalProperties": true },
+    "arbitration_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "dispatch_status",
+        "arbitration_required",
+        "preferred_decision",
+        "suggestion_count",
+        "actionable_suggestion_count",
+        "recommended_suggestion_count",
+        "summary",
+        "recommended_command"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "dispatch_status": { "type": "string" },
+        "arbitration_required": { "type": "boolean" },
+        "preferred_decision": { "type": "string" },
+        "suggestion_count": { "type": "number" },
+        "actionable_suggestion_count": { "type": "number" },
+        "recommended_suggestion_count": { "type": "number" },
+        "summary": { "type": "string" },
+        "recommended_command": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
