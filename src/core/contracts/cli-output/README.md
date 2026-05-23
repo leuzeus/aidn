@@ -32,8 +32,11 @@ Initial v1 commands:
 - `aidn runtime project-handoff-packet --json`
 - `aidn runtime pre-write-admit --json`
 - `aidn runtime db-status --json`
+- `aidn runtime persistence-status --json`
 - `aidn runtime db-migrate --json`
+- `aidn runtime persistence-migrate --json`
 - `aidn runtime db-backup --json`
+- `aidn runtime persistence-backup --json`
 - `aidn runtime persistence-adopt --json`
 - `aidn runtime persistence-source-diagnose --json`
 - `aidn runtime shared-coordination-migrate --json`

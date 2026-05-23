@@ -111,9 +111,12 @@ export const GOVERNED_CONCEPTS = Object.freeze([
 
 export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-db-status", linked_concepts: ["workspace", "coordination_record"] },
+  { id: "runtime-persistence-status", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-persistence-adopt", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-db-migrate", linked_concepts: ["workspace", "coordination_record"] },
+  { id: "runtime-persistence-migrate", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-db-backup", linked_concepts: ["workspace", "coordination_record"] },
+  { id: "runtime-persistence-backup", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-persistence-source-diagnose", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-shared-coordination-migrate", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-shared-coordination-status", linked_concepts: ["workspace", "coordination_record"] },

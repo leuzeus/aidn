@@ -111,6 +111,15 @@ function main() {
       "sqlite",
       "--json",
     ]);
+    const persistenceAliasMigrate = runJson("bin/aidn.mjs", [
+      "runtime",
+      "persistence-migrate",
+      "--target",
+      targetRoot,
+      "--sqlite-file",
+      sqliteRelative,
+      "--json",
+    ]);
 
     const legacyTarget = path.join(tempRoot, "legacy");
     fs.mkdirSync(path.dirname(path.join(legacyTarget, sqliteRelative)), { recursive: true });
@@ -128,6 +137,15 @@ function main() {
     const backupFresh = runJson("bin/aidn.mjs", [
       "runtime",
       "db-backup",
+      "--target",
+      targetRoot,
+      "--sqlite-file",
+      sqliteRelative,
+      "--json",
+    ]);
+    const persistenceAliasBackup = runJson("bin/aidn.mjs", [
+      "runtime",
+      "persistence-backup",
       "--target",
       targetRoot,
       "--sqlite-file",
@@ -172,6 +190,8 @@ function main() {
         && typeof statusAfter.runtime_backend_diagnostic?.summary === "string",
       status_after_reports_resolved_projection: statusAfter.resolved_projection_backend?.projection_scope === "local-target",
       persistence_alias_reports_sqlite_backend: persistenceAliasStatus.runtime_persistence?.backend === "sqlite" && persistenceAliasStatus.runtime_persistence?.source === "cli",
+      persistence_migrate_alias_exposes_backend_diagnostic: persistenceAliasMigrate?.runtime_backend_diagnostic?.scope === "runtime-persistence-migration"
+        && persistenceAliasMigrate?.runtime_backend_diagnostic?.schema_status === "ready",
       persistence_adopt_alias_exposes_blocked_plan: adoptDryRunBlocked?.runtime_backend_adoption_plan?.action === "blocked-conflict"
         && adoptDryRunBlocked?.runtime_backend_adoption_plan?.reason_code === "target-unavailable"
         && adoptDryRunBlocked?.runtime_backend_adoption_plan?.target?.compatibility_status === "target-unavailable"
@@ -182,6 +202,8 @@ function main() {
       backup_fresh_created: typeof backupFresh?.backup_file === "string" && fs.existsSync(backupFresh.backup_file),
       backup_fresh_exposes_backend_diagnostic: backupFresh?.runtime_backend_diagnostic?.scope === "runtime-persistence-backup"
         && backupFresh?.runtime_backend_diagnostic?.backup_created === true,
+      persistence_backup_alias_exposes_backend_diagnostic: persistenceAliasBackup?.runtime_backend_diagnostic?.scope === "runtime-persistence-backup"
+        && persistenceAliasBackup?.runtime_backend_diagnostic?.backup_created === true,
       legacy_migrate_creates_backup: typeof migrateLegacy?.migration?.backup_file === "string" && fs.existsSync(migrateLegacy.migration.backup_file),
       legacy_migrate_applies_baseline: Array.isArray(migrateLegacy?.migration?.applied_ids) && migrateLegacy.migration.applied_ids.includes("0001_workflow_index_baseline_v2"),
       legacy_migrate_exposes_backup_diagnostic: migrateLegacy?.runtime_backend_diagnostic?.backup_created === true,
@@ -210,12 +232,18 @@ function main() {
         persistence_alias_status: {
           runtime_persistence: persistenceAliasStatus.runtime_persistence,
         },
+        persistence_alias_migrate: {
+          diagnostic: persistenceAliasMigrate?.runtime_backend_diagnostic ?? null,
+        },
         adopt_dry_run_blocked: {
           plan: adoptDryRunBlocked?.runtime_backend_adoption_plan ?? null,
           execution_status: adoptDryRunBlocked?.runtime_backend_adoption?.execution_status ?? null,
         },
         backup_fresh: {
           backup_file: backupFresh?.backup_file ?? null,
+        },
+        persistence_alias_backup: {
+          backup_file: persistenceAliasBackup?.backup_file ?? null,
         },
         migrate_legacy: {
           backup_file: migrateLegacy?.migration?.backup_file ?? null,

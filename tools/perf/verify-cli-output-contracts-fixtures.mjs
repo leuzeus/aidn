@@ -64,14 +64,29 @@ const CONTRACT_CASES = [
     args: ["runtime", "db-status", "--json"],
   },
   {
+    name: "runtime-persistence-status",
+    schema: "runtime-persistence-status.v1.schema.json",
+    args: ["runtime", "persistence-status", "--json"],
+  },
+  {
     name: "runtime-db-migrate",
     schema: "runtime-db-migrate.v1.schema.json",
     args: ["runtime", "db-migrate", "--json"],
   },
   {
+    name: "runtime-persistence-migrate",
+    schema: "runtime-persistence-migrate.v1.schema.json",
+    args: ["runtime", "persistence-migrate", "--json"],
+  },
+  {
     name: "runtime-db-backup",
     schema: "runtime-db-backup.v1.schema.json",
     args: ["runtime", "db-backup", "--json"],
+  },
+  {
+    name: "runtime-persistence-backup",
+    schema: "runtime-persistence-backup.v1.schema.json",
+    args: ["runtime", "persistence-backup", "--json"],
   },
   {
     name: "runtime-persistence-adopt",

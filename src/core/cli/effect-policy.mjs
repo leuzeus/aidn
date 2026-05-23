@@ -68,6 +68,14 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Reports local runtime persistence status without migration.",
   }),
   commandPolicy({
+    id: "runtime-persistence-status",
+    command: "aidn runtime persistence-status --json",
+    effectClass: "read-only",
+    jsonContract: "runtime-persistence-status.v1.schema.json",
+    safeArgs: ["runtime", "persistence-status", "--json"],
+    notes: "Alias of db-status for the public persistence-oriented runtime surface.",
+  }),
+  commandPolicy({
     id: "runtime-persistence-adopt",
     command: "aidn runtime persistence-adopt --json",
     effectClass: "preview",
@@ -84,12 +92,28 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Applies the local runtime schema migration for the selected backend.",
   }),
   commandPolicy({
+    id: "runtime-persistence-migrate",
+    command: "aidn runtime persistence-migrate --json",
+    effectClass: "mutating",
+    jsonContract: "runtime-persistence-migrate.v1.schema.json",
+    safeArgs: ["runtime", "persistence-migrate", "--json"],
+    notes: "Alias of db-migrate for the public persistence-oriented runtime surface.",
+  }),
+  commandPolicy({
     id: "runtime-db-backup",
     command: "aidn runtime db-backup --json",
     effectClass: "mutating",
     jsonContract: "runtime-db-backup.v1.schema.json",
     safeArgs: ["runtime", "db-backup", "--json"],
     notes: "Creates a local backup snapshot for the selected runtime backend.",
+  }),
+  commandPolicy({
+    id: "runtime-persistence-backup",
+    command: "aidn runtime persistence-backup --json",
+    effectClass: "mutating",
+    jsonContract: "runtime-persistence-backup.v1.schema.json",
+    safeArgs: ["runtime", "persistence-backup", "--json"],
+    notes: "Alias of db-backup for the public persistence-oriented runtime surface.",
   }),
   commandPolicy({
     id: "runtime-persistence-source-diagnose",
