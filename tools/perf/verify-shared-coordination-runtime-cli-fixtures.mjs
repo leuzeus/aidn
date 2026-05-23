@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { bootstrapSharedCoordination } from "../runtime/shared-coordination-bootstrap.mjs";
 import { projectSharedCoordinationStatus } from "../runtime/shared-coordination-status.mjs";
 import { writeSharedRuntimeLocator } from "../../src/lib/config/shared-runtime-locator-config-lib.mjs";
@@ -30,6 +30,24 @@ function runJson(args, env = {}) {
     env: childEnv,
   });
   return JSON.parse(stdout);
+}
+
+function runJsonAllowNonZero(args, env = {}) {
+  const childEnv = {
+    ...process.env,
+    ...env,
+  };
+  for (const [key, value] of Object.entries(env)) {
+    if (value === null) {
+      delete childEnv[key];
+    }
+  }
+  const result = spawnSync(process.execPath, [path.resolve(process.cwd(), "bin/aidn.mjs"), ...args], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    env: childEnv,
+  });
+  return JSON.parse(String(result.stdout || "{}"));
 }
 
 function createFakeResolution() {
@@ -231,6 +249,16 @@ async function main() {
     });
     assert(bootstrap.ok === true, "bootstrap projection should succeed with fake store");
     assert(bootstrap.shared_coordination_bootstrap.status === "registered", "bootstrap should register workspace/worktree");
+    assert(bootstrap.shared_coordination_bootstrap_diagnostic?.backend_kind === "postgres", "bootstrap should expose backend kind diagnostic");
+    assert(bootstrap.shared_coordination_bootstrap_diagnostic?.bootstrap_status === "registered", "bootstrap should expose bootstrap status diagnostic");
+    assert(bootstrap.shared_coordination_bootstrap_diagnostic?.readiness_status === "ready", "bootstrap should expose readiness status diagnostic");
+
+    const bootstrapCli = runJsonAllowNonZero(["runtime", "shared-coordination-bootstrap", "--target", targetRoot, "--json"], {
+      AIDN_PG_URL: null,
+    });
+    assert(bootstrapCli.ok === false, "bootstrap CLI should surface missing shared backend env");
+    assert(bootstrapCli.shared_coordination_bootstrap_diagnostic?.backend_status === "missing-env", "bootstrap CLI should expose missing env backend status");
+    assert(typeof bootstrapCli.shared_coordination_bootstrap_diagnostic?.recommended_action === "string", "bootstrap CLI should expose a recommended action diagnostic");
 
     console.log("PASS");
   } catch (error) {

@@ -185,6 +185,7 @@ function main() {
     assert(inspectMalformed.ok === false, "malformed locator inspect should fail");
     assert(inspectMalformed.current_locator.valid === false, "malformed locator inspect should expose invalid locator state");
     assert(inspectMalformed.current_validation.status === "reject", "malformed locator inspect should expose reject validation");
+    assert(inspectMalformed.shared_runtime_reanchor_diagnostic?.locator_status === "invalid", "malformed locator inspect should expose invalid locator diagnostic");
 
     const repairedMalformed = runAidn(repoRoot, [
       "runtime",
@@ -200,6 +201,7 @@ function main() {
     assert(repairedMalformed.applied_locator.data.enabled === false, "local-only fallback should disable shared runtime");
     assert(repairedMalformed.applied_locator.data.version === 2, "repair should rewrite malformed locator as v2");
     assert(repairedMalformed.applied_workspace.shared_runtime_mode === "local-only", "local-only fallback should restore local-only mode");
+    assert(repairedMalformed.shared_runtime_reanchor_diagnostic?.action === "fallback-local-only", "local-only fallback should expose the applied repair action");
     assertCheckoutBoundUnchanged(
       malformedCheckoutBoundBefore,
       snapshotCheckoutBoundArtifacts(malformedTarget),
@@ -228,6 +230,7 @@ function main() {
     ], {}, 1);
     assert(inspectInvalidPath.ok === false, "invalid path locator inspect should fail");
     assert(inspectInvalidPath.current_validation.issues.some((item) => String(item).includes("overlaps versioned workflow artifacts")), "invalid path locator inspect should explain docs/audit overlap");
+    assert(typeof inspectInvalidPath.shared_runtime_reanchor_diagnostic?.recommended_action === "string", "invalid path inspect should expose a recommended action diagnostic");
 
     const repairedInvalidPath = runAidn(repoRoot, [
       "runtime",
@@ -249,6 +252,7 @@ function main() {
     assert(repairedInvalidPath.applied_workspace.project_id === "project-reanchored", "trusted repair should expose the requested project id");
     assert(repairedInvalidPath.applied_workspace.shared_runtime_mode === "shared-runtime", "trusted sqlite-file repair should keep shared-runtime mode");
     assert(repairedInvalidPath.applied_validation.status === "clear", "trusted sqlite-file repair should validate cleanly");
+    assert(repairedInvalidPath.shared_runtime_reanchor_diagnostic?.backend_kind === "sqlite-file", "trusted sqlite-file repair should expose backend kind diagnostic");
     assertCheckoutBoundUnchanged(
       invalidPathCheckoutBoundBefore,
       snapshotCheckoutBoundArtifacts(invalidPathTarget),
@@ -304,6 +308,7 @@ function main() {
     assert(repairedMismatch.ok === true, "workspace mismatch should be repairable by re-anchoring to the override workspace id");
     assert(repairedMismatch.applied_workspace.project_id === "project-override", "workspace mismatch repair should expose the requested project id");
     assert(repairedMismatch.applied_validation.status === "clear", "workspace mismatch repair should validate cleanly");
+    assert(repairedMismatch.shared_runtime_reanchor_diagnostic?.current_status === "reject", "workspace mismatch repair should preserve the pre-repair current status diagnostic");
     assertCheckoutBoundUnchanged(
       mismatchCheckoutBoundBefore,
       snapshotCheckoutBoundArtifacts(mismatchTarget),
@@ -348,6 +353,7 @@ function main() {
     ]);
     assert(nestedProjectInspect.ok === true, "nested project root with its own locator should stay valid");
     assert(nestedProjectInspect.current_validation.status === "clear", "nested project root with its own locator should validate cleanly");
+    assert(nestedProjectInspect.shared_runtime_reanchor_diagnostic?.summary === "shared runtime locator is aligned with the current workspace", "healthy nested project should expose aligned diagnostic summary");
 
     console.log("PASS");
   } catch (error) {

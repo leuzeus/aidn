@@ -4,6 +4,29 @@ import { pathToFileURL } from "node:url";
 import { resolveSharedCoordinationStore, summarizeSharedCoordinationResolution, syncSharedWorkspaceRegistration } from "../../src/application/runtime/shared-coordination-store-service.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 
+function normalizeScalar(value) {
+  return String(value ?? "").trim();
+}
+
+function buildSharedCoordinationBootstrapDiagnostic(result) {
+  const backend = result?.shared_coordination_backend ?? {};
+  const bootstrap = result?.shared_coordination_bootstrap ?? {};
+  const readinessStatus = normalizeScalar(bootstrap?.readiness?.status) || "unknown";
+  return {
+    scope: "shared-coordination-only",
+    backend_kind: normalizeScalar(backend.backend_kind) || "none",
+    backend_status: normalizeScalar(backend.status) || "disabled",
+    bootstrap_status: normalizeScalar(bootstrap.status) || "unknown",
+    readiness_status: readinessStatus,
+    summary: normalizeScalar(bootstrap.reason) || "shared coordination bootstrap status unavailable",
+    recommended_action: result?.ok
+      ? "shared coordination registration is refreshed"
+      : (readinessStatus === "schema-not-ready"
+        ? "run shared-coordination-migrate before retrying bootstrap"
+        : "inspect shared-coordination-status and doctor before retrying bootstrap"),
+  };
+}
+
 function parseArgs(argv) {
   const args = {
     target: ".",
@@ -51,12 +74,16 @@ export async function bootstrapSharedCoordination({
   const registration = await syncSharedWorkspaceRegistration(resolution, {
     workspace,
   });
-  return {
+  const result = {
     target_root: absoluteTargetRoot,
     ok: registration.ok === true,
     workspace,
     shared_coordination_backend: summarizeSharedCoordinationResolution(resolution),
     shared_coordination_bootstrap: registration,
+  };
+  return {
+    ...result,
+    shared_coordination_bootstrap_diagnostic: buildSharedCoordinationBootstrapDiagnostic(result),
   };
 }
 

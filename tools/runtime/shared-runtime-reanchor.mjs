@@ -6,6 +6,31 @@ import {
   summarizeSharedRuntimeReanchorResult,
 } from "../../src/application/runtime/shared-runtime-reanchor-service.mjs";
 
+function normalizeScalar(value) {
+  return String(value ?? "").trim();
+}
+
+function buildSharedRuntimeReanchorDiagnostic(result) {
+  const summary = summarizeSharedRuntimeReanchorResult(result);
+  const locatorStatus = result?.current_locator?.valid === false
+    ? "invalid"
+    : (result?.current_locator?.exists ? "present" : "missing");
+  const workspace = result?.applied_workspace ?? result?.proposed_workspace ?? result?.workspace ?? {};
+  const backendKind = normalizeScalar(workspace?.shared_backend_kind || result?.current_locator?.data?.backend?.kind) || "none";
+  return {
+    scope: "shared-runtime-only",
+    action: summary.action || "inspect",
+    applied: summary.applied === true,
+    current_status: summary.current_status || "unknown",
+    locator_status: locatorStatus,
+    backend_kind: backendKind,
+    summary: summary.current_status === "clear"
+      ? "shared runtime locator is aligned with the current workspace"
+      : (summary.recommended_next_action || "shared runtime locator requires review"),
+    recommended_action: summary.recommended_next_action || "inspect shared runtime locator settings",
+  };
+}
+
 function parseArgs(argv) {
   const args = {
     target: ".",
@@ -74,7 +99,7 @@ function printUsage() {
 }
 
 export function runSharedRuntimeReanchor(options = {}) {
-  return repairSharedRuntimeReanchor({
+  const result = repairSharedRuntimeReanchor({
     targetRoot: options.target,
     env: process.env,
     projectId: options.projectId,
@@ -87,6 +112,10 @@ export function runSharedRuntimeReanchor(options = {}) {
     localOnly: options.localOnly === true,
     write: options.write === true,
   });
+  return {
+    ...result,
+    shared_runtime_reanchor_diagnostic: buildSharedRuntimeReanchorDiagnostic(result),
+  };
 }
 
 function main() {

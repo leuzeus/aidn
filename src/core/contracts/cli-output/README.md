@@ -39,6 +39,8 @@ Initial v1 commands:
 - `aidn runtime shared-coordination-migrate --json`
 - `aidn runtime shared-coordination-status --json`
 - `aidn runtime shared-coordination-projects --json`
+- `aidn runtime shared-runtime-reanchor --json`
+- `aidn runtime shared-coordination-bootstrap --json`
 - `aidn runtime shared-coordination-backup --json`
 - `aidn runtime shared-coordination-restore --json`
 - `aidn runtime shared-coordination-doctor --json`

@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-shared-runtime-reanchor.v1",
+  "title": "aidn runtime shared-runtime-reanchor --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime shared-runtime-reanchor --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "ok",
+    "action",
+    "applied",
+    "target_root",
+    "locator_path",
+    "current_locator",
+    "workspace",
+    "current_validation",
+    "recommended_next_action",
+    "shared_runtime_reanchor_diagnostic"
+  ],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "action": { "type": "string" },
+    "applied": { "type": "boolean" },
+    "target_root": { "type": "string" },
+    "locator_path": { "type": "string" },
+    "current_locator": { "type": "object", "additionalProperties": true },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "current_validation": { "type": "object", "additionalProperties": true },
+    "proposed_locator": { "type": ["object", "null"], "additionalProperties": true },
+    "proposed_workspace": { "type": ["object", "null"], "additionalProperties": true },
+    "proposed_validation": { "type": ["object", "null"], "additionalProperties": true },
+    "applied_locator": { "type": ["object", "null"], "additionalProperties": true },
+    "applied_workspace": { "type": ["object", "null"], "additionalProperties": true },
+    "applied_validation": { "type": ["object", "null"], "additionalProperties": true },
+    "recommended_next_action": { "type": "string" },
+    "shared_runtime_reanchor_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "action",
+        "applied",
+        "current_status",
+        "locator_status",
+        "backend_kind",
+        "summary",
+        "recommended_action"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "action": { "type": "string" },
+        "applied": { "type": "boolean" },
+        "current_status": { "type": "string" },
+        "locator_status": { "type": "string" },
+        "backend_kind": { "type": "string" },
+        "summary": { "type": "string" },
+        "recommended_action": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -101,6 +101,18 @@ const CONTRACT_CASES = [
     allowNonZero: true,
   },
   {
+    name: "runtime-shared-runtime-reanchor",
+    schema: "runtime-shared-runtime-reanchor.v1.schema.json",
+    args: ["runtime", "shared-runtime-reanchor", "--json"],
+    allowNonZero: true,
+  },
+  {
+    name: "runtime-shared-coordination-bootstrap",
+    schema: "runtime-shared-coordination-bootstrap.v1.schema.json",
+    args: ["runtime", "shared-coordination-bootstrap", "--json"],
+    allowNonZero: true,
+  },
+  {
     name: "runtime-shared-coordination-backup",
     schema: "runtime-shared-coordination-backup.v1.schema.json",
     args: ["runtime", "shared-coordination-backup", "--json"],
