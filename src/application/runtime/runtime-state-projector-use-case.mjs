@@ -1,6 +1,4 @@
-import { evaluateSourceOfTruthPolicy } from "../../core/source-of-truth/source-of-truth-policy.mjs";
-
-const CRITICAL_MARKDOWN_CONTRACT_VERSION = "critical-markdown-v1";
+import { deriveGovernedRuntimeArtifactMetadata } from "./governed-runtime-artifact-metadata-lib.mjs";
 
 export function buildRuntimeStateMarkdown(digest) {
   const lines = [];
@@ -469,9 +467,13 @@ export function buildRuntimeStateDigest({
   cycleStatusResolution,
 } = {}) {
   const runtimeStateMode = String(dbBackedMode ? effectiveStateMode : (hydrated?.state_mode ?? "files"));
-  const sourceOfTruth = evaluateSourceOfTruthPolicy("runtime_digests", runtimeStateMode);
+  const governanceMetadata = deriveGovernedRuntimeArtifactMetadata({
+    workspace,
+    runtimeStateMode,
+    lifecycleStatus: freshness.freshness === "stale" ? "stale" : "refreshed",
+  });
   return {
-    contract_version: CRITICAL_MARKDOWN_CONTRACT_VERSION,
+    contract_version: governanceMetadata.contract_version,
     updated_at: updatedAt ?? new Date().toISOString(),
     project_id: workspace.project_id,
     project_id_source: workspace.project_id_source,
@@ -491,11 +493,11 @@ export function buildRuntimeStateDigest({
     planning_arbitration_status: sharedPlanning.planning_arbitration_status,
     shared_planning_source: sharedPlanning.shared_planning_source,
     shared_planning_read_status: sharedPlanning.shared_planning_read_status,
-    source_of_truth: String(sourceOfTruth.source_of_truth ?? "").trim() || "generated Markdown digest files",
-    source_mode: "explicit",
-    lifecycle_status: freshness.freshness === "stale" ? "stale" : "refreshed",
-    owner: workspace.project_id,
-    steward: "aidn-runtime",
+    source_of_truth: governanceMetadata.source_of_truth,
+    source_mode: governanceMetadata.source_mode,
+    lifecycle_status: governanceMetadata.lifecycle_status,
+    owner: governanceMetadata.owner,
+    steward: governanceMetadata.steward,
     current_state_freshness: freshness.freshness,
     current_state_freshness_basis: freshness.basis,
     blocking_findings: blockingFindings,

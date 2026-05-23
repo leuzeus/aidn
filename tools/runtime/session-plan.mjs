@@ -8,13 +8,14 @@ import {
   summarizeSharedCoordinationResolution,
   syncSharedPlanningState,
 } from "../../src/application/runtime/shared-coordination-store-service.mjs";
-import { evaluateSourceOfTruthPolicy } from "../../src/core/source-of-truth/source-of-truth-policy.mjs";
+import {
+  CRITICAL_MARKDOWN_CONTRACT_VERSION,
+  deriveGovernedRuntimeArtifactMetadata,
+} from "../../src/application/runtime/governed-runtime-artifact-metadata-lib.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { writeJsonIfChanged, writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
-
-const CRITICAL_MARKDOWN_CONTRACT_VERSION = "critical-markdown-v1";
 
 function parseArgs(argv) {
   const args = {
@@ -504,19 +505,23 @@ function alignCurrentStateGovernance({
   workspace,
 } = {}) {
   let nextText = String(text ?? "");
-  const sourceOfTruth = evaluateSourceOfTruthPolicy("runtime_digests", runtimeStateMode);
+  const governanceMetadata = deriveGovernedRuntimeArtifactMetadata({
+    workspace,
+    runtimeStateMode,
+    lifecycleStatus: "refreshed",
+  });
   nextText = setOrInsertScalar(nextText, "contract_version", CRITICAL_MARKDOWN_CONTRACT_VERSION, "## Summary");
   nextText = setOrInsertScalar(nextText, "updated_at", updatedAt, "contract_version");
   nextText = setOrInsertScalar(
     nextText,
     "source_of_truth",
-    String(sourceOfTruth.source_of_truth ?? "").trim() || "runtime store plus generated Markdown",
+    governanceMetadata.source_of_truth,
     "repair_primary_reason",
   );
-  nextText = setOrInsertScalar(nextText, "source_mode", "explicit", "source_of_truth");
-  nextText = setOrInsertScalar(nextText, "lifecycle_status", "refreshed", "source_mode");
-  nextText = setOrInsertScalar(nextText, "owner", workspace?.project_id ?? "unknown", "lifecycle_status");
-  nextText = setOrInsertScalar(nextText, "steward", "aidn-runtime", "owner");
+  nextText = setOrInsertScalar(nextText, "source_mode", governanceMetadata.source_mode, "source_of_truth");
+  nextText = setOrInsertScalar(nextText, "lifecycle_status", governanceMetadata.lifecycle_status, "source_mode");
+  nextText = setOrInsertScalar(nextText, "owner", governanceMetadata.owner, "lifecycle_status");
+  nextText = setOrInsertScalar(nextText, "steward", governanceMetadata.steward, "owner");
   return nextText;
 }
 

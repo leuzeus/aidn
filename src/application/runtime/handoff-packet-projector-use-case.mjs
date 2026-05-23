@@ -1,6 +1,4 @@
-import { evaluateSourceOfTruthPolicy } from "../../core/source-of-truth/source-of-truth-policy.mjs";
-
-const CRITICAL_MARKDOWN_CONTRACT_VERSION = "critical-markdown-v1";
+import { deriveGovernedRuntimeArtifactMetadata } from "./governed-runtime-artifact-metadata-lib.mjs";
 
 export function buildHandoffPacketMarkdown(packet) {
   const lines = [];
@@ -495,9 +493,13 @@ export function buildHandoffPacketPayload({
   currentStateResolution,
   runtimeStateResolution,
 } = {}) {
-  const sourceOfTruth = evaluateSourceOfTruthPolicy("runtime_digests", runtimeStateMode);
+  const governanceMetadata = deriveGovernedRuntimeArtifactMetadata({
+    workspace,
+    runtimeStateMode,
+    lifecycleStatus: handoffStatus === "ready" ? "ready" : "draft",
+  });
   return {
-    contract_version: CRITICAL_MARKDOWN_CONTRACT_VERSION,
+    contract_version: governanceMetadata.contract_version,
     updated_at: updatedAt ?? new Date().toISOString(),
     project_id: workspace.project_id,
     project_id_source: workspace.project_id_source,
@@ -530,11 +532,11 @@ export function buildHandoffPacketPayload({
     shared_planning_freshness_basis: sharedPlanning.freshness_basis,
     shared_planning_gate_status: sharedPlanning.gate_status,
     shared_planning_gate_reason: sharedPlanning.gate_reason,
-    source_of_truth: String(sourceOfTruth.source_of_truth ?? "").trim() || "generated Markdown digest files",
-    source_mode: "explicit",
-    lifecycle_status: handoffStatus === "ready" ? "ready" : "draft",
-    owner: workspace.project_id,
-    steward: "aidn-runtime",
+    source_of_truth: governanceMetadata.source_of_truth,
+    source_mode: governanceMetadata.source_mode,
+    lifecycle_status: governanceMetadata.lifecycle_status,
+    owner: governanceMetadata.owner,
+    steward: governanceMetadata.steward,
     handoff_note: handoffNote,
     mode,
     branch_kind: branchKind,
