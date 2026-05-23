@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import {
   buildCoordinatorSelectAgentResult,
 } from "../../src/application/runtime/coordinator-select-agent-use-case.mjs";
+import { deriveCoordinatorSelectAgentDiagnostic } from "../../src/application/runtime/coordinator-diagnostics-lib.mjs";
 import { normalizeRequestedAgentAction, normalizeRequestedAgentRole } from "../../src/core/ports/agent-adapter-port.mjs";
 import { rankAgentAdapters, selectAgentAdapter } from "../../src/core/agents/agent-selection-policy.mjs";
 import { loadRegisteredAgentAdapters } from "../../src/application/runtime/agent-adapter-registry-service.mjs";
@@ -56,20 +57,6 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/runtime/coordinator-select-agent.mjs --target . --role auditor --action audit");
   console.log("  node tools/runtime/coordinator-select-agent.mjs --target . --role repair --action repair --agent auto --json");
-}
-
-function deriveSelectAgentDiagnostic(result) {
-  return {
-    scope: "coordinator-select-agent",
-    requested_agent: String(result?.requested_agent ?? "auto").trim() || "auto",
-    role: String(result?.role ?? "unknown").trim() || "unknown",
-    action: String(result?.action ?? "unknown").trim() || "unknown",
-    selected_agent: String(result?.selection?.selected_agent ?? "unknown").trim() || "unknown",
-    selection_status: String(result?.selection?.status ?? "unknown").trim() || "unknown",
-    candidate_count: Array.isArray(result?.candidates) ? result.candidates.length : 0,
-    summary: `agent selection is ${String(result?.selection?.status ?? "unknown").trim() || "unknown"}`,
-    recommended_command: "aidn runtime coordinator-select-agent --role <role> --action <action> --json",
-  };
 }
 
 async function runCoordinatorSelectAgent({
@@ -132,7 +119,7 @@ export async function coordinatorSelectAgent(options = {}) {
   const result = await runCoordinatorSelectAgent(options);
   return {
     ...result,
-    select_agent_diagnostic: deriveSelectAgentDiagnostic(result),
+    select_agent_diagnostic: deriveCoordinatorSelectAgentDiagnostic(result),
   };
 }
 

@@ -8,6 +8,7 @@ import {
   deriveCoordinatorFallbackScope,
   deriveCoordinatorSharedPlanningCandidate,
 } from "../../src/application/runtime/coordinator-next-action-use-case.mjs";
+import { deriveCoordinatorNextActionDiagnostic } from "../../src/application/runtime/coordinator-diagnostics-lib.mjs";
 import { resolvePromotedSharedPlanningContext } from "../../src/application/runtime/shared-planning-resolution-service.mjs";
 import { readLatestSharedHandoffRelay, resolveSharedCoordinationStore } from "../../src/application/runtime/shared-coordination-store-service.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
@@ -72,22 +73,6 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/runtime/coordinator-next-action.mjs --target .");
   console.log("  node tools/runtime/coordinator-next-action.mjs --target tests/fixtures/repo-installed-core --json");
-}
-
-function deriveNextActionDiagnostic(result) {
-  const recommendation = result?.recommendation ?? {};
-  const scope = result?.scope ?? {};
-  return {
-    scope: "coordinator-next-action",
-    recommended_role: String(recommendation?.role ?? "unknown").trim() || "unknown",
-    recommended_action: String(recommendation?.action ?? "unknown").trim() || "unknown",
-    source: String(recommendation?.source ?? "unknown").trim() || "unknown",
-    stop_required: recommendation?.stop_required === true,
-    scope_type: String(scope?.scope_type ?? "none").trim() || "none",
-    scope_id: String(scope?.scope_id ?? "none").trim() || "none",
-    summary: String(recommendation?.reason ?? "coordinator recommendation unavailable").trim() || "coordinator recommendation unavailable",
-    recommended_command: "aidn runtime coordinator-dispatch-plan --json",
-  };
 }
 
 function resolveTargetPath(targetRoot, candidate) {
@@ -315,7 +300,7 @@ export async function computeCoordinatorNextAction({
   });
   return {
     ...result,
-    next_action_diagnostic: deriveNextActionDiagnostic(result),
+    next_action_diagnostic: deriveCoordinatorNextActionDiagnostic(result),
   };
 }
 

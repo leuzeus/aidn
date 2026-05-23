@@ -11,6 +11,7 @@ import {
   buildCoordinatorRecordArbitrationResult,
   COORDINATOR_ALLOWED_ARBITRATION_DECISIONS,
 } from "../../src/application/runtime/coordinator-record-arbitration-use-case.mjs";
+import { deriveCoordinatorRecordArbitrationDiagnostic } from "../../src/application/runtime/coordinator-diagnostics-lib.mjs";
 import { deriveGovernedRuntimeArtifactMetadata } from "../../src/application/runtime/governed-runtime-artifact-metadata-lib.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
@@ -82,25 +83,6 @@ function printUsage() {
   console.log("  node tools/runtime/coordinator-record-arbitration.mjs --target . --decision continue --note \"validated by user\"");
   console.log("  node tools/runtime/coordinator-record-arbitration.mjs --target . --decision repair --note \"repair first\" --goal \"triage mismatch\" --json");
   console.log("  node tools/runtime/coordinator-record-arbitration.mjs --target . --decision integration_cycle --note \"use a dedicated integration vehicle\" --json");
-}
-
-function deriveRecordArbitrationDiagnostic(result) {
-  return {
-    scope: "coordinator-record-arbitration",
-    decision: String(result?.arbitration_event?.decision ?? "unknown").trim() || "unknown",
-    state_mode: String(result?.state_mode ?? "unknown").trim() || "unknown",
-    history_appended: Boolean(result?.coordination_history_appended),
-    arbitration_log_appended: Boolean(result?.arbitration_log_appended),
-    summary_written: Boolean(result?.coordination_summary_written),
-    db_first_applied: Boolean(result?.arbitration_db_first_applied),
-    shared_sync_status: String(
-      result?.shared_coordination_sync?.diagnostic?.sync_status
-      ?? result?.shared_coordination_sync?.status
-      ?? "unknown",
-    ).trim() || "unknown",
-    summary: `user arbitration ${String(result?.arbitration_event?.decision ?? "unknown").trim() || "unknown"} was recorded`,
-    recommended_command: "aidn runtime coordinator-resume --json",
-  };
 }
 
 function resolveTargetPath(targetRoot, candidate) {
@@ -316,7 +298,7 @@ export async function recordCoordinatorArbitration(options = {}) {
   const result = await runCoordinatorRecordArbitration(options);
   return {
     ...result,
-    record_arbitration_diagnostic: deriveRecordArbitrationDiagnostic(result),
+    record_arbitration_diagnostic: deriveCoordinatorRecordArbitrationDiagnostic(result),
   };
 }
 

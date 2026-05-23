@@ -6,6 +6,7 @@ import {
   buildCoordinatorResumeResult,
   deriveCoordinatorResumeState,
 } from "../../src/application/runtime/coordinator-resume-use-case.mjs";
+import { deriveCoordinatorResumeDiagnostic } from "../../src/application/runtime/coordinator-diagnostics-lib.mjs";
 import { resolveDbBackedMode } from "./db-first-runtime-view-lib.mjs";
 import { computeCoordinatorLoopState } from "./coordinator-loop.mjs";
 import { computeCoordinatorDispatchPlan } from "./coordinator-dispatch-plan.mjs";
@@ -87,24 +88,6 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/runtime/coordinator-resume.mjs --target .");
   console.log("  node tools/runtime/coordinator-resume.mjs --target . --execute --json");
-}
-
-function deriveResumeDiagnostic(result) {
-  return {
-    scope: "coordinator-resume",
-    resume_status: String(result?.resume_status ?? "unknown").trim() || "unknown",
-    execution_status: String(result?.execution_status ?? "unknown").trim() || "unknown",
-    arbitration_required: Boolean(result?.arbitration_required),
-    arbitration_satisfied: Boolean(result?.arbitration_satisfied),
-    preferred_decision: String(result?.preferred_decision ?? "none").trim() || "none",
-    preferred_dispatch_source: String(result?.preferred_dispatch_source ?? "unknown").trim() || "unknown",
-    can_resume: Boolean(result?.can_resume),
-    execute_requested: Boolean(result?.execute_requested),
-    summary: `coordinator resume is ${String(result?.resume_status ?? "unknown").trim() || "unknown"}`,
-    recommended_command: Boolean(result?.can_resume)
-      ? "aidn runtime coordinator-resume --execute --json"
-      : "aidn runtime coordinator-suggest-arbitration --json",
-  };
 }
 
 async function runCoordinatorResumeDispatch({
@@ -229,7 +212,7 @@ function main() {
       coordinationHistoryFile: args.coordinationHistoryFile,
       execute: args.execute,
     });
-    result.resume_diagnostic = deriveResumeDiagnostic(result);
+    result.resume_diagnostic = deriveCoordinatorResumeDiagnostic(result);
     if (args.json) {
       console.log(JSON.stringify(result, null, 2));
     } else {
@@ -256,7 +239,7 @@ export async function resumeCoordinatorDispatch(options = {}) {
   const result = await runCoordinatorResumeDispatch(options);
   return {
     ...result,
-    resume_diagnostic: deriveResumeDiagnostic(result),
+    resume_diagnostic: deriveCoordinatorResumeDiagnostic(result),
   };
 }
 

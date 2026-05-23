@@ -13,6 +13,7 @@ import {
   buildCoordinatorIntegrationRiskGate,
   buildCoordinatorRecommendedRoleCoverage,
 } from "../../src/application/runtime/coordinator-dispatch-plan-use-case.mjs";
+import { deriveCoordinatorDispatchPlanDiagnostic } from "../../src/application/runtime/coordinator-diagnostics-lib.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { selectAgentAdapter } from "../../src/core/agents/agent-selection-policy.mjs";
 import { computeCoordinatorLoopState } from "./coordinator-loop.mjs";
@@ -75,21 +76,6 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/runtime/coordinator-dispatch-plan.mjs --target .");
   console.log("  node tools/runtime/coordinator-dispatch-plan.mjs --target . --agent auto --json");
-}
-
-function deriveDispatchPlanDiagnostic(result) {
-  return {
-    scope: "coordinator-dispatch-plan",
-    selected_agent: String(result?.selected_agent?.id ?? "unknown").trim() || "unknown",
-    recommended_role: String(result?.coordinator_recommendation?.role ?? "unknown").trim() || "unknown",
-    recommended_action: String(result?.coordinator_recommendation?.action ?? "unknown").trim() || "unknown",
-    dispatch_status: String(result?.dispatch_status ?? "unknown").trim() || "unknown",
-    entrypoint_kind: String(result?.entrypoint_kind ?? "unknown").trim() || "unknown",
-    entrypoint_name: String(result?.entrypoint_name ?? "unknown").trim() || "unknown",
-    command_count: Array.isArray(result?.commands) ? result.commands.length : 0,
-    summary: `coordinator dispatch plan is ${String(result?.dispatch_status ?? "unknown").trim() || "unknown"}`,
-    recommended_command: "aidn runtime coordinator-orchestrate --max-iterations 1 --json",
-  };
 }
 
 function resolveTargetPath(targetRoot, candidate) {
@@ -692,7 +678,7 @@ export async function computeCoordinatorDispatchPlan({
   });
   return {
     ...result,
-    dispatch_plan_diagnostic: deriveDispatchPlanDiagnostic(result),
+    dispatch_plan_diagnostic: deriveCoordinatorDispatchPlanDiagnostic(result),
   };
 }
 

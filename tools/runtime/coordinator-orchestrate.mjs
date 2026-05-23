@@ -8,6 +8,7 @@ import {
   buildCoordinatorResumeOptions,
   sameCoordinatorDispatch,
 } from "../../src/application/runtime/coordinator-orchestrate-use-case.mjs";
+import { deriveCoordinatorOrchestrationDiagnostic } from "../../src/application/runtime/coordinator-diagnostics-lib.mjs";
 import { resolveDbBackedMode } from "./db-first-runtime-view-lib.mjs";
 import { resumeCoordinatorDispatch } from "./coordinator-resume.mjs";
 
@@ -95,21 +96,6 @@ function printUsage() {
   console.log("  node tools/runtime/coordinator-orchestrate.mjs --target . --execute --max-iterations 2 --json");
 }
 
-function deriveOrchestrationDiagnostic(result) {
-  return {
-    scope: "coordinator-orchestrate",
-    orchestration_status: String(result?.orchestration_status ?? "unknown").trim() || "unknown",
-    execute_requested: result?.execute_requested === true,
-    iterations_completed: Number(result?.iterations_completed ?? 0) || 0,
-    max_iterations: Number(result?.max_iterations ?? 0) || 0,
-    can_continue: result?.can_continue === true,
-    stop_reason: String(result?.stop_reason ?? "").trim() || "",
-    preferred_decision: String(result?.preferred_decision ?? "").trim() || "",
-    summary: `coordinator orchestration is ${String(result?.orchestration_status ?? "unknown").trim() || "unknown"}`,
-    recommended_command: "aidn runtime coordinator-resume --json",
-  };
-}
-
 export async function orchestrateCoordinatorDispatch(options = {}) {
   const args = {
     target: path.resolve(process.cwd(), options.targetRoot ?? options.target ?? "."),
@@ -140,7 +126,7 @@ export async function orchestrateCoordinatorDispatch(options = {}) {
     });
     return {
       ...result,
-      orchestration_diagnostic: deriveOrchestrationDiagnostic(result),
+      orchestration_diagnostic: deriveCoordinatorOrchestrationDiagnostic(result),
     };
   }
 
@@ -153,7 +139,7 @@ export async function orchestrateCoordinatorDispatch(options = {}) {
     });
     return {
       ...result,
-      orchestration_diagnostic: deriveOrchestrationDiagnostic(result),
+      orchestration_diagnostic: deriveCoordinatorOrchestrationDiagnostic(result),
     };
   }
 
@@ -208,7 +194,7 @@ export async function orchestrateCoordinatorDispatch(options = {}) {
   });
   return {
     ...result,
-    orchestration_diagnostic: deriveOrchestrationDiagnostic(result),
+    orchestration_diagnostic: deriveCoordinatorOrchestrationDiagnostic(result),
   };
 }
 

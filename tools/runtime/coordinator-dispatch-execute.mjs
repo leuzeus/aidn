@@ -6,6 +6,7 @@ import { loadRegisteredAgentAdapters } from "../../src/application/runtime/agent
 import { appendSharedCoordinationRecord, resolveSharedCoordinationStore, summarizeSharedCoordinationResolution } from "../../src/application/runtime/shared-coordination-store-service.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
+import { deriveCoordinatorDispatchExecuteDiagnostic } from "../../src/application/runtime/coordinator-diagnostics-lib.mjs";
 import { deriveGovernedRuntimeArtifactMetadata } from "../../src/application/runtime/governed-runtime-artifact-metadata-lib.mjs";
 import { loadAgentRoster } from "../../src/application/runtime/agent-roster-service.mjs";
 import { appendRuntimeNdjsonEvent } from "../../src/application/runtime/runtime-path-service.mjs";
@@ -90,28 +91,6 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/runtime/coordinator-dispatch-execute.mjs --target .");
   console.log("  node tools/runtime/coordinator-dispatch-execute.mjs --target . --execute --json");
-}
-
-function deriveDispatchExecuteDiagnostic(result) {
-  return {
-    scope: "coordinator-dispatch-execute",
-    dispatch_status: String(result?.dispatch_status ?? "unknown").trim() || "unknown",
-    execution_status: String(result?.execution_status ?? "unknown").trim() || "unknown",
-    executed: Boolean(result?.executed),
-    selected_agent: String(result?.selected_agent?.id ?? "unknown").trim() || "unknown",
-    recommended_role: String(result?.coordinator_recommendation?.role ?? "unknown").trim() || "unknown",
-    preferred_dispatch_source: String(result?.preferred_dispatch_source ?? "unknown").trim() || "unknown",
-    executed_step_count: Array.isArray(result?.executed_steps) ? result.executed_steps.length : 0,
-    shared_sync_status: String(
-      result?.shared_coordination_sync?.diagnostic?.sync_status
-      ?? result?.shared_coordination_sync?.status
-      ?? "unknown",
-    ).trim() || "unknown",
-    summary: `coordinator dispatch execute is ${String(result?.execution_status ?? "unknown").trim() || "unknown"}`,
-    recommended_command: Boolean(result?.executed)
-      ? "aidn runtime coordinator-orchestrate --max-iterations 1 --json"
-      : "aidn runtime coordinator-resume --json",
-  };
 }
 
 async function resolveAgentAdapter(agentId, options = {}) {
@@ -623,7 +602,7 @@ export async function executeCoordinatorDispatch(options = {}) {
   const result = await runCoordinatorDispatch(options);
   return {
     ...result,
-    dispatch_execute_diagnostic: deriveDispatchExecuteDiagnostic(result),
+    dispatch_execute_diagnostic: deriveCoordinatorDispatchExecuteDiagnostic(result),
   };
 }
 
