@@ -2,6 +2,7 @@
 import {
   addPreWriteSourceOfTruthIssue,
   buildPreWriteAdmissionResult,
+  evaluatePreWriteCycleCreateGates,
   evaluatePreWriteSourceOfTruthAndRuntimeGates,
   knownPreWriteStateMode,
   mergePreWritePolicy,
@@ -129,12 +130,65 @@ function verifySourceOfTruthRuntimeGates() {
   assert(warnings.some((item) => item.includes("SOT_DB_ONLY_PROJECTION_READ")), "SoT/runtime gate should warn on db-only projection reads");
 }
 
+function verifyCycleCreateGates() {
+  const checks = {};
+  const blockingReasons = [];
+  const warnings = [];
+  const addCheck = (target, key, pass, details, extra = {}) => {
+    target[key] = { pass, details, ...extra };
+  };
+  evaluatePreWriteCycleCreateGates({
+    checks,
+    addCheck,
+    blockingReasons,
+    warnings,
+    cycleCreateGitGate: {
+      dirty_entries: [" M docs/audit/CURRENT-STATE.md"],
+      upstream_branch: "origin/feature/C101-alpha",
+      upstream_ahead: 1,
+      upstream_behind: 0,
+      blocking_reasons: ["git working tree is not clean before cycle creation"],
+      warnings: [],
+    },
+    sessionIntegrationGate: {
+      applicable: true,
+      cycle_merged_into_session: "no",
+      session_upstream_branch: "origin/S101-alpha",
+      session_upstream_ahead: 0,
+      session_upstream_behind: 0,
+      cycle_upstream_branch: "origin/feature/C101-alpha",
+      cycle_upstream_ahead: 1,
+      cycle_upstream_behind: 0,
+      blocking_reasons: ["previous cycle branch feature/C101-alpha is not merged into session branch S101-alpha"],
+      warnings: [],
+    },
+    skill: "cycle-create",
+    activeBacklog: "backlog/BL-S101-session-planning.md",
+    backlogStatus: "promoted",
+    backlogSelectedExecutionScope: "none",
+    planningArbitrationStatus: "none",
+    canonicalNone(value) {
+      return String(value ?? "").trim().toLowerCase() === "none";
+    },
+    canonicalUnknown(value) {
+      return String(value ?? "").trim().toLowerCase() === "unknown";
+    },
+    summarizePorcelain(values) {
+      return values;
+    },
+  });
+  assert(checks.git_cycle_create_clean.pass === false, "cycle-create gates should expose dirty git check");
+  assert(checks.cycle_create_previous_cycle_merged_into_session.pass === false, "cycle-create gates should expose unmerged previous cycle");
+  assert(blockingReasons.some((item) => item.includes("selected execution scope")), "cycle-create gates should require execution scope");
+}
+
 function main() {
   try {
     verifyPolicyMerge();
     verifyResultAssembly();
     verifySourceOfTruthHelpers();
     verifySourceOfTruthRuntimeGates();
+    verifyCycleCreateGates();
     console.log("PASS");
   } catch (error) {
     console.error(`ERROR: ${error.message}`);

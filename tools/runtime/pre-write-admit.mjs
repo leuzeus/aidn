@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 import {
   buildPreWriteAdmissionResult,
+  evaluatePreWriteCycleCreateGates,
   evaluatePreWriteSourceOfTruthAndRuntimeGates,
   mergePreWritePolicy,
   sourceOfTruthPoliciesForPreWriteAdmission,
@@ -1073,45 +1074,22 @@ export async function preWriteAdmit({
     warnings.push("COMMITTING work on a session branch should stay limited to integration, handoff, or orchestration unless explicitly documented");
   }
 
-  if (cycleCreateGitGate) {
-    addCheck(checks, "git_cycle_create_clean", cycleCreateGitGate.dirty_entries.length === 0, cycleCreateGitGate.dirty_entries.length === 0
-      ? "git working tree is clean for cycle creation"
-      : `pending files detected before cycle creation: ${summarizePorcelain(cycleCreateGitGate.dirty_entries).join(", ")}`);
-    addCheck(checks, "git_cycle_create_upstream_sync", cycleCreateGitGate.upstream_ahead === 0 && cycleCreateGitGate.upstream_behind === 0, cycleCreateGitGate.upstream_branch === "none"
-      ? "upstream sync not configured"
-      : `upstream=${cycleCreateGitGate.upstream_branch}; ahead=${cycleCreateGitGate.upstream_ahead}; behind=${cycleCreateGitGate.upstream_behind}`);
-    blockingReasons.push(...cycleCreateGitGate.blocking_reasons);
-    warnings.push(...cycleCreateGitGate.warnings);
-  }
-  if (sessionIntegrationGate?.applicable) {
-    addCheck(checks, "cycle_create_previous_cycle_merged_into_session", sessionIntegrationGate.cycle_merged_into_session === "yes", `cycle_merged_into_session=${sessionIntegrationGate.cycle_merged_into_session}`);
-    addCheck(checks, "cycle_create_session_branch_reconciled", sessionIntegrationGate.session_upstream_ahead === 0 && sessionIntegrationGate.session_upstream_behind === 0, sessionIntegrationGate.session_upstream_branch === "none"
-      ? "session upstream sync not configured"
-      : `session_upstream=${sessionIntegrationGate.session_upstream_branch}; ahead=${sessionIntegrationGate.session_upstream_ahead}; behind=${sessionIntegrationGate.session_upstream_behind}`);
-    addCheck(checks, "cycle_create_previous_cycle_branch_pushed", sessionIntegrationGate.cycle_upstream_ahead === 0 && sessionIntegrationGate.cycle_upstream_behind === 0, sessionIntegrationGate.cycle_upstream_branch === "none"
-      ? "cycle upstream sync not configured"
-      : `cycle_upstream=${sessionIntegrationGate.cycle_upstream_branch}; ahead=${sessionIntegrationGate.cycle_upstream_ahead}; behind=${sessionIntegrationGate.cycle_upstream_behind}`);
-    blockingReasons.push(...sessionIntegrationGate.blocking_reasons);
-    warnings.push(...sessionIntegrationGate.warnings);
-  }
-
-  const promotedSharedPlanning = !canonicalNone(activeBacklog)
-    && !canonicalUnknown(activeBacklog)
-    && !canonicalNone(backlogStatus)
-    && !canonicalUnknown(backlogStatus)
-    && backlogStatus.toLowerCase() !== "closed"
-    && backlogStatus.toLowerCase() !== "consumed_by_cycle";
-  addCheck(checks, "shared_planning_scope_selected", !promotedSharedPlanning || (!canonicalNone(backlogSelectedExecutionScope) && !canonicalUnknown(backlogSelectedExecutionScope)), `backlog_selected_execution_scope=${backlogSelectedExecutionScope}`);
-  if (skill === "cycle-create" && promotedSharedPlanning) {
-    if (!isResolvedPlanningArbitrationStatus(planningArbitrationStatus)) {
-      blockingReasons.push(`shared planning arbitration remains unresolved: ${planningArbitrationStatus}`);
-    }
-    if (canonicalNone(backlogSelectedExecutionScope) || canonicalUnknown(backlogSelectedExecutionScope)) {
-      blockingReasons.push("shared planning does not define a selected execution scope for cycle creation");
-    } else if (backlogSelectedExecutionScope.toLowerCase() !== "new_cycle") {
-      blockingReasons.push(`shared planning selected execution scope is ${backlogSelectedExecutionScope}; cycle-create requires new_cycle`);
-    }
-  }
+  evaluatePreWriteCycleCreateGates({
+    checks,
+    addCheck,
+    blockingReasons,
+    warnings,
+    cycleCreateGitGate,
+    sessionIntegrationGate,
+    skill,
+    activeBacklog,
+    backlogStatus,
+    backlogSelectedExecutionScope,
+    planningArbitrationStatus,
+    canonicalNone,
+    canonicalUnknown,
+    summarizePorcelain,
+  });
 
   const prioritizedArtifacts = uniqueItems([
     "docs/audit/CURRENT-STATE.md",
