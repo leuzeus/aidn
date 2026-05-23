@@ -21,6 +21,7 @@ async function main() {
     });
     assert(installed.pass === true, "installed fixture roster should pass");
     assert(installed.entries.some((entry) => entry.id === "codex"), "installed fixture should expose codex entry");
+    assert(installed.roster_diagnostic?.pass === true, "installed fixture should expose a passing stable roster diagnostic");
 
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agent-roster-verify-"));
     const auditRoot = path.join(tempRoot, "docs", "audit");
@@ -71,6 +72,7 @@ async function main() {
     });
     assert(valid.pass === true, "valid external roster should pass");
     assert(valid.entries.some((entry) => entry.id === "external-auditor" && entry.ok), "external adapter entry should pass");
+    assert(valid.roster_diagnostic?.issue_count === 0, "valid external roster should expose zero issues in the stable diagnostic");
 
     fs.writeFileSync(path.join(auditRoot, "AGENT-ROSTER.md"), [
       "# Agent Roster",
@@ -103,6 +105,7 @@ async function main() {
     assert(invalid.issues.some((issue) => issue.includes("ghost-agent: unknown adapter id with no adapter_module")), "invalid roster should flag unknown agent id");
     assert(invalid.issues.some((issue) => issue.includes("broken-external: adapter module missing")), "invalid roster should flag missing module");
     assert(invalid.issues.some((issue) => issue.includes("codex-auditor: roster roles not supported by adapter: repair")), "invalid roster should flag unsupported roster roles");
+    assert(invalid.roster_diagnostic?.unavailable_adapter_count >= 1, "invalid roster should expose unavailable adapters in the stable diagnostic");
 
     const repoRoot = process.cwd();
     const dbOnlyTarget = path.join(tempRoot, "db-only-target");
@@ -131,6 +134,7 @@ async function main() {
     assert(dbOnly.roster_found === true, "db-only fileless roster should still be found");
     assert(dbOnly.roster_file === path.resolve(dbOnlyRosterPath), "db-only roster should preserve logical file path");
     assert(dbOnly.entries.some((entry) => entry.id === "codex"), "db-only roster should still expose built-in entries");
+    assert(dbOnly.roster_diagnostic?.state_mode === dbOnly.state_mode, "db-only roster should mirror the resolved state mode in the stable diagnostic");
 
     console.log("PASS");
   } catch (error) {

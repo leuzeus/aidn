@@ -16,7 +16,8 @@
     "registered_inspections",
     "issues",
     "warnings",
-    "pass"
+    "pass",
+    "roster_diagnostic"
   ],
   "properties": {
     "target_root": { "type": "string" },
@@ -29,7 +30,37 @@
     "registered_inspections": { "type": "array" },
     "issues": { "type": "array" },
     "warnings": { "type": "array" },
-    "pass": { "type": "boolean" }
+    "pass": { "type": "boolean" },
+    "roster_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "state_mode",
+        "roster_found",
+        "pass",
+        "entry_count",
+        "issue_count",
+        "warning_count",
+        "unavailable_adapter_count",
+        "degraded_adapter_count",
+        "summary",
+        "recommended_action"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "state_mode": { "type": "string" },
+        "roster_found": { "type": "boolean" },
+        "pass": { "type": "boolean" },
+        "entry_count": { "type": "number" },
+        "issue_count": { "type": "number" },
+        "warning_count": { "type": "number" },
+        "unavailable_adapter_count": { "type": "number" },
+        "degraded_adapter_count": { "type": "number" },
+        "summary": { "type": "string" },
+        "recommended_action": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
   },
   "additionalProperties": true
 }
