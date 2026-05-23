@@ -129,6 +129,7 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-coordinator-orchestrate", linked_concepts: ["coordination_record", "handoff_packet", "runtime_state"] },
   { id: "runtime-coordinator-resume", linked_concepts: ["coordination_record", "handoff_packet", "runtime_state"] },
   { id: "runtime-coordinator-suggest-arbitration", linked_concepts: ["coordination_record", "handoff_packet", "runtime_state"] },
+  { id: "runtime-coordinator-record-arbitration", linked_concepts: ["coordination_record", "user_arbitration", "coordination_summary"] },
   { id: "runtime-project-runtime-state", linked_concepts: ["runtime_state", "current_state"] },
   { id: "runtime-project-handoff-packet", linked_concepts: ["handoff_packet", "session", "cycle"] },
   { id: "runtime-verify-agent-roster", linked_concepts: ["agent_roster"] },

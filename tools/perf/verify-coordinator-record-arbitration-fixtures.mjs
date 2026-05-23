@@ -153,6 +153,8 @@ function main() {
     assert(beforeDispatch.dispatch_status === "escalated", "dispatch should be escalated before user arbitration");
     assert(arbitration.arbitration_log_appended === true, "arbitration command should append user arbitration log");
     assert(arbitration.coordination_history_appended === true, "arbitration command should append history");
+    assert(arbitration.record_arbitration_diagnostic?.decision === "continue", "arbitration command should expose decision in the stable diagnostic");
+    assert(arbitration.record_arbitration_diagnostic?.shared_sync_status === "disabled", "arbitration command should expose shared sync status in the stable diagnostic");
     assert(fs.existsSync(arbitrationFile), "user arbitration file should exist");
     assert(fs.readFileSync(arbitrationFile, "utf8").includes("contract_version: critical-markdown-v1"), "user arbitration file should expose governed contract version");
     assert(fs.readFileSync(arbitrationFile, "utf8").includes("source_mode: explicit"), "user arbitration file should expose governed source mode");
@@ -173,12 +175,14 @@ function main() {
     assert(integrationDispatch.integration_risk_gate.active === false, "integration-cycle arbitration should deactivate the integration gate");
     assert(integrationDispatch.integration_risk_gate.applied_decision === "integration_cycle", "dispatch should record the applied integration decision");
     assert(integrationDispatch.entrypoint_name === "start-session", "integration-cycle arbitration should keep the coordination entrypoint");
+    assert(integrationArbitration.record_arbitration_diagnostic?.decision === "integration_cycle", "integration arbitration should expose decision in the stable diagnostic");
     assert(dbOnlyArbitration.state_mode === "db-only", "db-only arbitration should resolve state mode");
     assert(dbOnlyArbitration.arbitration_db_first_applied === true, "db-only arbitration should upsert USER-ARBITRATION to SQLite");
     assert(dbOnlyArbitration.arbitration_db_first_materialized === false, "db-only arbitration should not materialize USER-ARBITRATION on disk");
     assert(fs.existsSync(dbOnlyArbitrationFile) === false, "db-only arbitration should stay fileless on disk");
     assert(dbOnlyLoop.loop.status === "arbitrated", "db-only arbitration should still affect loop state");
     assert(dbOnlyDispatch.dispatch_status === "ready", "db-only arbitration should still clear escalated dispatch state");
+    assert(dbOnlyArbitration.record_arbitration_diagnostic?.db_first_applied === true, "db-only arbitration should expose db-first write status in the stable diagnostic");
 
     const output = {
       ts: new Date().toISOString(),

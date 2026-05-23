@@ -243,6 +243,14 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Ranks and selects a runnable agent adapter without executing any work.",
   }),
   commandPolicy({
+    id: "runtime-coordinator-record-arbitration",
+    command: "aidn runtime coordinator-record-arbitration --json",
+    effectClass: "mutating",
+    jsonContract: "runtime-coordinator-record-arbitration.v1.schema.json",
+    safeArgs: ["runtime", "coordinator-record-arbitration", "--decision", "continue", "--note", "validated by user", "--json"],
+    notes: "Records a user arbitration decision and updates the related coordination artifacts.",
+  }),
+  commandPolicy({
     id: "runtime-project-runtime-state",
     command: "aidn runtime project-runtime-state --json",
     effectClass: "projector",
