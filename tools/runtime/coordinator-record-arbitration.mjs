@@ -4,6 +4,13 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { appendSharedCoordinationRecord, resolveSharedCoordinationStore, summarizeSharedCoordinationResolution } from "../../src/application/runtime/shared-coordination-store-service.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
+import {
+  buildCoordinatorArbitrationAppendedMarkdown,
+  buildCoordinatorArbitrationEvent,
+  buildCoordinatorArbitrationLogEntry,
+  buildCoordinatorRecordArbitrationResult,
+  COORDINATOR_ALLOWED_ARBITRATION_DECISIONS,
+} from "../../src/application/runtime/coordinator-record-arbitration-use-case.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
 import { appendRuntimeNdjsonEvent } from "../../src/application/runtime/runtime-path-service.mjs";
@@ -13,8 +20,6 @@ import {
   resolveDbBackedMode,
 } from "./db-first-runtime-view-lib.mjs";
 import { projectCoordinationSummary } from "./project-coordination-summary.mjs";
-
-const ALLOWED_DECISIONS = new Set(["continue", "reanchor", "repair", "audit", "integration_cycle", "report_forward", "rework_from_example"]);
 
 function parseArgs(argv) {
   const args = {
@@ -62,8 +67,8 @@ function parseArgs(argv) {
   if (!args.target) {
     throw new Error("Missing value for --target");
   }
-  if (!ALLOWED_DECISIONS.has(args.decision)) {
-    throw new Error(`Invalid or missing --decision. Allowed: ${Array.from(ALLOWED_DECISIONS).join(", ")}`);
+  if (!COORDINATOR_ALLOWED_ARBITRATION_DECISIONS.has(args.decision)) {
+    throw new Error(`Invalid or missing --decision. Allowed: ${Array.from(COORDINATOR_ALLOWED_ARBITRATION_DECISIONS).join(", ")}`);
   }
   if (!args.note) {
     throw new Error("Missing value for --note");
@@ -100,38 +105,6 @@ function appendArbitrationLog(logPath, entry) {
   fs.writeFileSync(logPath, next, "utf8");
 }
 
-function buildAppendedMarkdown(current, entry, header) {
-  const normalizedCurrent = String(current ?? "");
-  const base = normalizedCurrent.length > 0 ? normalizedCurrent : header;
-  return base.endsWith("\n\n") || base.length === 0
-    ? `${base}${entry}`
-    : `${base}\n${entry}`;
-}
-
-function buildArbitrationEvent({ decision, note, goal }) {
-  return {
-    ts: new Date().toISOString(),
-    event: "user_arbitration",
-    decision,
-    note,
-    goal: goal || "",
-    resolved: true,
-  };
-}
-
-function buildArbitrationLogEntry(event) {
-  const lines = [];
-  lines.push(`## Arbitration ${event.ts}`);
-  lines.push("");
-  lines.push(`timestamp: ${event.ts}`);
-  lines.push(`decision: ${event.decision}`);
-  lines.push(`note: ${event.note}`);
-  lines.push(`goal_override: ${event.goal || "none"}`);
-  lines.push(`resolved: ${event.resolved ? "yes" : "no"}`);
-  lines.push("");
-  return `${lines.join("\n")}\n`;
-}
-
 export async function recordCoordinatorArbitration({
   targetRoot,
   decision,
@@ -156,8 +129,8 @@ export async function recordCoordinatorArbitration({
   const arbitrationPath = resolveTargetPath(absoluteTargetRoot, arbitrationFile);
   const historyPath = resolveTargetPath(absoluteTargetRoot, coordinationHistoryFile);
   const summaryPath = resolveTargetPath(absoluteTargetRoot, coordinationSummaryFile);
-  const event = buildArbitrationEvent({ decision, note, goal });
-  const arbitrationMarkdown = buildArbitrationLogEntry(event);
+  const event = buildCoordinatorArbitrationEvent({ decision, note, goal });
+  const arbitrationMarkdown = buildCoordinatorArbitrationLogEntry(event);
   let arbitrationLogAppended = false;
   let arbitrationDbFirst = null;
   if (effectiveStateMode === "files") {
@@ -182,7 +155,7 @@ export async function recordCoordinatorArbitration({
       target: absoluteTargetRoot,
       auditRoot: "docs/audit",
       path: relativeArbitrationPath,
-      content: buildAppendedMarkdown(existingArbitration.text, arbitrationMarkdown, "# User Arbitration Log\n\n"),
+      content: buildCoordinatorArbitrationAppendedMarkdown(existingArbitration.text, arbitrationMarkdown, "# User Arbitration Log\n\n"),
       kind: "other",
       family: "normative",
       subtype: "user_arbitration",
@@ -211,23 +184,20 @@ export async function recordCoordinatorArbitration({
     actorAction: "arbitrate",
     coordinationSummaryRef: String(coordinationSummaryFile).replace(/\\/g, "/"),
   });
-  return {
-    target_root: absoluteTargetRoot,
+  return buildCoordinatorRecordArbitrationResult({
+    absoluteTargetRoot,
     workspace,
-    shared_coordination_backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
-    shared_coordination_sync: sharedCoordinationSync,
-    state_mode: effectiveStateMode,
-    arbitration_file: arbitrationPath,
-    coordination_history_file: historyPath,
-    coordination_summary_file: summaryPath,
-    arbitration_log_appended: arbitrationLogAppended,
-    arbitration_db_first_applied: Boolean(arbitrationDbFirst),
-    arbitration_db_first_materialized: Boolean(arbitrationDbFirst?.materialized),
-    coordination_history_appended: true,
-    coordination_summary_written: Boolean(summary?.written),
-    arbitration_event: event,
-    coordination_summary: summary,
-  };
+    sharedCoordinationBackend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
+    sharedCoordinationSync,
+    effectiveStateMode,
+    arbitrationPath,
+    historyPath,
+    summaryPath,
+    arbitrationLogAppended,
+    arbitrationDbFirst,
+    summary,
+    event,
+  });
 }
 
 function main() {
