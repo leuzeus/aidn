@@ -291,6 +291,22 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Projects the multi-agent status digest and returns the aggregated routing snapshot.",
   }),
   commandPolicy({
+    id: "runtime-project-coordination-summary",
+    command: "aidn runtime project-coordination-summary --json",
+    effectClass: "projector",
+    jsonContract: "runtime-project-coordination-summary.v1.schema.json",
+    safeArgs: ["runtime", "project-coordination-summary", "--json"],
+    notes: "Projects the coordination summary digest and returns the aggregated dispatch history snapshot.",
+  }),
+  commandPolicy({
+    id: "runtime-coordinator-loop",
+    command: "aidn runtime coordinator-loop --json",
+    effectClass: "read-only",
+    jsonContract: "runtime-coordinator-loop.v1.schema.json",
+    safeArgs: ["runtime", "coordinator-loop", "--json"],
+    notes: "Summarizes loop status, recovery, and escalation without mutating coordination state.",
+  }),
+  commandPolicy({
     id: "runtime-project-runtime-state",
     command: "aidn runtime project-runtime-state --json",
     effectClass: "projector",

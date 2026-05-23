@@ -155,6 +155,11 @@ const CONTRACT_CASES = [
     args: ["runtime", "project-multi-agent-status", "--json"],
   },
   {
+    name: "runtime-project-coordination-summary",
+    schema: "runtime-project-coordination-summary.v1.schema.json",
+    args: ["runtime", "project-coordination-summary", "--json"],
+  },
+  {
     name: "runtime-coordinator-select-agent",
     schema: "runtime-coordinator-select-agent.v1.schema.json",
     args: ["runtime", "coordinator-select-agent", "--role", "auditor", "--action", "audit", "--json"],
@@ -163,6 +168,11 @@ const CONTRACT_CASES = [
     name: "runtime-coordinator-next-action",
     schema: "runtime-coordinator-next-action.v1.schema.json",
     args: ["runtime", "coordinator-next-action", "--json"],
+  },
+  {
+    name: "runtime-coordinator-loop",
+    schema: "runtime-coordinator-loop.v1.schema.json",
+    args: ["runtime", "coordinator-loop", "--json"],
   },
   {
     name: "runtime-coordinator-dispatch-plan",

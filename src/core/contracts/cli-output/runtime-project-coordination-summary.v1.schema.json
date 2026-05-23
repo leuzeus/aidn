@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-project-coordination-summary.v1",
+  "title": "aidn runtime project-coordination-summary --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime project-coordination-summary --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "workspace",
+    "history_file",
+    "history_source",
+    "shared_coordination_backend",
+    "output_file",
+    "written",
+    "state_mode",
+    "db_first_applied",
+    "db_first_materialized",
+    "db_first_artifact_path",
+    "summary",
+    "coordination_summary_diagnostic"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "history_file": { "type": "string" },
+    "history_source": { "type": "string" },
+    "shared_coordination_backend": { "type": "object", "additionalProperties": true },
+    "output_file": { "type": "string" },
+    "written": { "type": "boolean" },
+    "state_mode": { "type": "string" },
+    "db_first_applied": { "type": "boolean" },
+    "db_first_materialized": { "type": "boolean" },
+    "db_first_artifact_path": { "type": "string" },
+    "summary": { "type": "object", "additionalProperties": true },
+    "coordination_summary_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "state_mode",
+        "history_source",
+        "history_status",
+        "total_dispatches",
+        "arbitration_count",
+        "written",
+        "summary",
+        "recommended_command"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "state_mode": { "type": "string" },
+        "history_source": { "type": "string" },
+        "history_status": { "type": "string" },
+        "total_dispatches": { "type": "number" },
+        "arbitration_count": { "type": "number" },
+        "written": { "type": "boolean" },
+        "summary": { "type": "string" },
+        "recommended_command": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

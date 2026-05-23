@@ -128,6 +128,7 @@ function main() {
     assert(readySummary.summary.total_dispatches >= 1, "ready summary should report dispatches");
     assert(readySummary.summary.last_recommended_role === "executor", "ready summary should track executor role");
     assert(readySummary.summary.last_execution_status === "executed", "ready summary should track execution status");
+    assert(readySummary.coordination_summary_diagnostic?.history_status === "available", "ready summary should expose history status in the stable diagnostic");
     assert(readySummaryText.includes("contract_version: critical-markdown-v1"), "ready summary markdown should include contract version");
     assert(readySummaryText.includes("source_of_truth:"), "ready summary markdown should include source_of_truth");
     assert(readySummaryText.includes("source_mode: explicit"), "ready summary markdown should include source_mode");
@@ -139,11 +140,13 @@ function main() {
     assert(blockedSummary.summary.total_dispatches >= 1, "blocked summary should report dispatches");
     assert(blockedSummary.summary.last_recommended_role === "repair", "blocked summary should track repair role");
     assert(blockedSummary.summary.last_execution_status === "executed", "blocked summary should track execution status");
+    assert(blockedSummary.coordination_summary_diagnostic?.total_dispatches >= 1, "blocked summary should expose total dispatches in the stable diagnostic");
     assert(blockedSummaryText.includes("contract_version: critical-markdown-v1"), "blocked summary markdown should include contract version");
     assert(blockedSummaryText.includes("repair"), "blocked summary markdown should mention repair");
     assert(dbOnlySummary.state_mode === "db-only", "db-only summary should resolve state mode");
     assert(dbOnlySummary.db_first_applied === true, "db-only summary should upsert artifact to SQLite");
     assert(dbOnlySummary.db_first_materialized === false, "db-only summary should not materialize file on disk");
+    assert(dbOnlySummary.coordination_summary_diagnostic?.state_mode === "db-only", "db-only summary should expose state mode in the stable diagnostic");
     assert(fs.existsSync(dbOnlySummaryFile) === false, "db-only summary should stay fileless on disk");
     assert(dbOnlyLoop.loop.summary_source === "sqlite", "db-only loop should resolve coordination summary from SQLite");
     assert(dbOnlyLoop.loop.summary_alignment.status === "aligned", "db-only loop should keep summary alignment from SQLite");

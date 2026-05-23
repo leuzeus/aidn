@@ -52,6 +52,20 @@ function printUsage() {
   console.log("  node tools/runtime/project-coordination-summary.mjs --target tests/fixtures/repo-installed-core --json");
 }
 
+function deriveCoordinationSummaryDiagnostic(result) {
+  return {
+    scope: "project-coordination-summary",
+    state_mode: String(result?.state_mode ?? "unknown").trim() || "unknown",
+    history_source: String(result?.history_source ?? "unknown").trim() || "unknown",
+    history_status: String(result?.summary?.history_status ?? "unknown").trim() || "unknown",
+    total_dispatches: Number(result?.summary?.total_dispatches ?? 0) || 0,
+    arbitration_count: Number(result?.summary?.arbitration_count ?? 0) || 0,
+    written: result?.written === true,
+    summary: `coordination summary history is ${String(result?.summary?.history_status ?? "unknown").trim() || "unknown"}`,
+    recommended_command: "aidn runtime coordinator-loop --json",
+  };
+}
+
 function resolveTargetPath(targetRoot, candidate) {
   if (!candidate) {
     return "";
@@ -310,6 +324,13 @@ export async function projectCoordinationSummary({
     db_first_materialized: Boolean(dbFirstWrite?.materialized),
     db_first_artifact_path: dbFirstWrite?.artifact?.path ?? relativeOut,
     summary,
+    coordination_summary_diagnostic: deriveCoordinationSummaryDiagnostic({
+      target_root: absoluteTargetRoot,
+      history_source: historySource,
+      written: write.written,
+      state_mode: effectiveStateMode,
+      summary,
+    }),
   };
 }
 

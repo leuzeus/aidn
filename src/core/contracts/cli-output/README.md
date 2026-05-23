@@ -49,8 +49,10 @@ Initial v1 commands:
 - `aidn runtime project-agent-selection-summary --json`
 - `aidn runtime project-integration-risk --json`
 - `aidn runtime project-multi-agent-status --json`
+- `aidn runtime project-coordination-summary --json`
 - `aidn runtime coordinator-select-agent --json`
 - `aidn runtime coordinator-next-action --json`
+- `aidn runtime coordinator-loop --json`
 - `aidn runtime coordinator-dispatch-plan --json`
 - `aidn runtime coordinator-dispatch-execute --json`
 - `aidn runtime coordinator-orchestrate --json`

@@ -66,6 +66,21 @@ function printUsage() {
   console.log("  node tools/runtime/coordinator-loop.mjs --target tests/fixtures/repo-installed-core --json");
 }
 
+function deriveCoordinatorLoopDiagnostic(result) {
+  return {
+    scope: "coordinator-loop",
+    loop_status: String(result?.loop?.status ?? "unknown").trim() || "unknown",
+    recommended_role: String(result?.recommendation?.role ?? "unknown").trim() || "unknown",
+    recommended_action: String(result?.recommendation?.action ?? "unknown").trim() || "unknown",
+    summary_alignment: String(result?.loop?.summary_alignment?.status ?? "unknown").trim() || "unknown",
+    escalation_level: String(result?.loop?.escalation?.level ?? "unknown").trim() || "unknown",
+    history_status: String(result?.loop?.history?.history_status ?? "unknown").trim() || "unknown",
+    repeated_dispatch_count: Number(result?.loop?.history?.repeated_dispatch_count ?? 0) || 0,
+    summary: `coordinator loop is ${String(result?.loop?.status ?? "unknown").trim() || "unknown"}`,
+    recommended_command: "aidn runtime coordinator-dispatch-plan --json",
+  };
+}
+
 function resolveTargetPath(targetRoot, candidate) {
   if (!candidate) {
     return "";
@@ -491,6 +506,15 @@ export async function computeCoordinatorLoopState({
       summary_alignment: summaryAlignment,
       escalation,
     },
+    coordinator_loop_diagnostic: deriveCoordinatorLoopDiagnostic({
+      recommendation,
+      loop: {
+        status: loopStatus,
+        history,
+        summary_alignment: summaryAlignment,
+        escalation,
+      },
+    }),
   };
 }
 

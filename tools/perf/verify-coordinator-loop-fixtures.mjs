@@ -207,33 +207,39 @@ function main() {
     assert(ready.loop.status === "history_empty", "ready loop should report empty history");
     assert(ready.recommendation.role === "executor", "ready loop should preserve executor relay");
     assert(ready.recommendation.action === "implement", "ready loop should preserve implement relay");
+    assert(ready.coordinator_loop_diagnostic?.loop_status === "history_empty", "ready loop should expose loop status in the stable diagnostic");
     assert(ready.loop.summary_alignment.status === "aligned" || ready.loop.summary_alignment.status === "not_required", "ready summary should be aligned or not required");
     assert(ready.loop.escalation.level === "none", "ready loop should not escalate");
 
     assert(blocked.loop.status === "gated", "blocked loop should stay gated");
     assert(blocked.recommendation.role === "repair", "blocked loop should route to repair");
     assert(blocked.recommendation.action === "repair", "blocked loop should keep repair action");
+    assert(blocked.coordinator_loop_diagnostic?.recommended_role === "repair", "blocked loop should expose recommended role in the stable diagnostic");
     assert(blocked.loop.escalation.level === "watch", "blocked loop should remain in watch escalation");
 
     assert(failed.loop.status === "reanchor_after_failure", "failed loop should require reanchor");
     assert(failed.recommendation.role === "coordinator", "failed loop should route back to coordinator");
     assert(failed.recommendation.action === "coordinate", "failed loop should route to coordination after escalation");
+    assert(failed.coordinator_loop_diagnostic?.escalation_level === "user_arbitration_required", "failed loop should expose escalation level in the stable diagnostic");
     assert(failed.recommendation.source === "coordination-escalation", "failed loop should cite escalation");
     assert(failed.loop.escalation.level === "user_arbitration_required", "failed loop should escalate after repeated failures");
 
     assert(repeated.loop.status === "repeat_detected", "repeated loop should detect repeated relay");
     assert(repeated.recommendation.role === "coordinator", "repeated loop should route to coordinator");
     assert(repeated.recommendation.action === "coordinate", "repeated loop should coordinate instead of replaying blindly");
+    assert(repeated.coordinator_loop_diagnostic?.repeated_dispatch_count === 3, "repeated loop should expose repeat count in the stable diagnostic");
     assert(repeated.loop.history.repeated_dispatch_count === 3, "repeated loop should count repeated relays");
     assert(repeated.loop.escalation.level === "none", "three repeated relays should not yet force human arbitration");
     assert(dbOnlyFileless.loop.status === "history_empty", "db-only fileless loop should still report empty history");
     assert(dbOnlyFileless.recommendation.role === "executor", "db-only fileless loop should preserve executor relay");
     assert(dbOnlyFileless.recommendation.action === "implement", "db-only fileless loop should preserve implement relay");
+    assert(dbOnlyFileless.coordinator_loop_diagnostic?.history_status === "empty", "db-only fileless loop should expose history status in the stable diagnostic");
     assert(dbOnlyFileless.context.current_state_source === "sqlite", "db-only fileless loop should load current state from SQLite");
     assert(dbOnlyFileless.context.packet_source === "sqlite", "db-only fileless loop should load packet from SQLite");
     assert(dbOnlySummaryFileless.loop.history.total_dispatches === 1, "db-only summary fileless loop should preserve history");
     assert(dbOnlySummaryFileless.loop.summary_source === "sqlite", "db-only summary fileless loop should load coordination summary from SQLite");
     assert(dbOnlySummaryFileless.loop.summary_alignment.status === "aligned", "db-only summary fileless loop should keep summary alignment");
+    assert(dbOnlySummaryFileless.coordinator_loop_diagnostic?.summary_alignment === "aligned", "db-only summary fileless loop should expose summary alignment in the stable diagnostic");
 
     const output = {
       ts: new Date().toISOString(),
