@@ -69,6 +69,11 @@ const CONTRACT_CASES = [
     args: ["runtime", "db-migrate", "--json"],
   },
   {
+    name: "runtime-db-backup",
+    schema: "runtime-db-backup.v1.schema.json",
+    args: ["runtime", "db-backup", "--json"],
+  },
+  {
     name: "runtime-persistence-adopt",
     schema: "runtime-persistence-adopt.v1.schema.json",
     args: ["runtime", "persistence-adopt", "--backend", "postgres", "--dry-run", "--json"],

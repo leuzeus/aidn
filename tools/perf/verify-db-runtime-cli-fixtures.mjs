@@ -180,6 +180,8 @@ function main() {
         && adoptDryRunBlocked?.runtime_backend_diagnostic?.reason_code === "target-unavailable"
         && typeof adoptDryRunBlocked?.runtime_backend_diagnostic?.recommended_action === "string",
       backup_fresh_created: typeof backupFresh?.backup_file === "string" && fs.existsSync(backupFresh.backup_file),
+      backup_fresh_exposes_backend_diagnostic: backupFresh?.runtime_backend_diagnostic?.scope === "runtime-persistence-backup"
+        && backupFresh?.runtime_backend_diagnostic?.backup_created === true,
       legacy_migrate_creates_backup: typeof migrateLegacy?.migration?.backup_file === "string" && fs.existsSync(migrateLegacy.migration.backup_file),
       legacy_migrate_applies_baseline: Array.isArray(migrateLegacy?.migration?.applied_ids) && migrateLegacy.migration.applied_ids.includes("0001_workflow_index_baseline_v2"),
       legacy_migrate_exposes_backup_diagnostic: migrateLegacy?.runtime_backend_diagnostic?.backup_created === true,

@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-db-backup.v1",
+  "title": "aidn runtime db-backup --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime db-backup --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "ts",
+    "target_root",
+    "runtime_persistence",
+    "runtime_backend",
+    "backup_created",
+    "backup_file",
+    "runtime_backend_diagnostic"
+  ],
+  "properties": {
+    "ts": { "type": "string" },
+    "target_root": { "type": "string" },
+    "runtime_persistence": { "type": "object", "additionalProperties": true },
+    "runtime_backend": { "type": "object", "additionalProperties": true },
+    "sqlite_file": { "type": "string" },
+    "backup_created": { "type": "boolean" },
+    "backup_file": { "type": ["string", "null"] },
+    "compatibility_fallback_used": { "type": "boolean" },
+    "runtime_backend_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "backend",
+        "backend_source",
+        "backup_created",
+        "compatibility_fallback_used",
+        "summary",
+        "recommended_action"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "backend": { "type": "string" },
+        "backend_source": { "type": "string" },
+        "backup_created": { "type": "boolean" },
+        "compatibility_fallback_used": { "type": "boolean" },
+        "summary": { "type": "string" },
+        "recommended_action": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

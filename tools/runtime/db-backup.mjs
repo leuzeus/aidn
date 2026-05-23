@@ -52,6 +52,24 @@ function printUsage() {
   console.log("  npx aidn runtime db-backup --target . --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json");
 }
 
+function deriveRuntimeBackendDiagnostic(payload) {
+  const backupCreated = payload?.backup_created === true;
+  const backupFile = String(payload?.backup_file ?? "").trim();
+  return {
+    scope: "runtime-persistence-backup",
+    backend: String(payload?.runtime_persistence?.backend ?? "unknown").trim() || "unknown",
+    backend_source: String(payload?.runtime_persistence?.source ?? "unknown").trim() || "unknown",
+    backup_created: backupCreated,
+    compatibility_fallback_used: payload?.compatibility_fallback_used === true,
+    summary: backupCreated
+      ? `runtime persistence backup created at ${backupFile || "the configured backup root"}`
+      : "runtime persistence backup did not produce an output file",
+    recommended_action: backupCreated
+      ? "retain the backup artifact before applying further runtime persistence changes"
+      : "inspect the selected runtime backend before retrying aidn runtime db-backup",
+  };
+}
+
 export async function backupRuntimePersistence({
   targetRoot = ".",
   backend = "",
@@ -84,6 +102,10 @@ export async function backupRuntimePersistence({
     runtime_persistence: runtimePersistence,
     runtime_backend: admin.describeBackend(),
     ...result,
+    runtime_backend_diagnostic: deriveRuntimeBackendDiagnostic({
+      runtime_persistence: runtimePersistence,
+      ...result,
+    }),
   };
 }
 

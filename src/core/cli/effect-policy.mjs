@@ -84,6 +84,14 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Applies the local runtime schema migration for the selected backend.",
   }),
   commandPolicy({
+    id: "runtime-db-backup",
+    command: "aidn runtime db-backup --json",
+    effectClass: "mutating",
+    jsonContract: "runtime-db-backup.v1.schema.json",
+    safeArgs: ["runtime", "db-backup", "--json"],
+    notes: "Creates a local backup snapshot for the selected runtime backend.",
+  }),
+  commandPolicy({
     id: "runtime-shared-coordination-status",
     command: "aidn runtime shared-coordination-status --json",
     effectClass: "read-only",

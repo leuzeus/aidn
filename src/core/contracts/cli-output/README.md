@@ -33,6 +33,7 @@ Initial v1 commands:
 - `aidn runtime pre-write-admit --json`
 - `aidn runtime db-status --json`
 - `aidn runtime db-migrate --json`
+- `aidn runtime db-backup --json`
 - `aidn runtime persistence-adopt --json`
 - `aidn runtime shared-coordination-status --json`
 - `aidn runtime shared-coordination-projects --json`
