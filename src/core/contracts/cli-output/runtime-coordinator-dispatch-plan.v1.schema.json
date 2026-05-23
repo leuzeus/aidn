@@ -17,7 +17,8 @@
     "steps",
     "commands",
     "preconditions",
-    "context"
+    "context",
+    "dispatch_plan_diagnostic"
   ],
   "properties": {
     "target_root": { "type": "string" },
@@ -35,7 +36,35 @@
     "notes": { "type": "array" },
     "preconditions": { "type": "array" },
     "handoff": { "type": ["object", "null"], "additionalProperties": true },
-    "context": { "type": "object", "additionalProperties": true }
+    "context": { "type": "object", "additionalProperties": true },
+    "dispatch_plan_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "selected_agent",
+        "recommended_role",
+        "recommended_action",
+        "dispatch_status",
+        "entrypoint_kind",
+        "entrypoint_name",
+        "command_count",
+        "summary",
+        "recommended_command"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "selected_agent": { "type": "string" },
+        "recommended_role": { "type": "string" },
+        "recommended_action": { "type": "string" },
+        "dispatch_status": { "type": "string" },
+        "entrypoint_kind": { "type": "string" },
+        "entrypoint_name": { "type": "string" },
+        "command_count": { "type": "number" },
+        "summary": { "type": "string" },
+        "recommended_command": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
   },
   "additionalProperties": true
 }
