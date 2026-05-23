@@ -66,6 +66,29 @@ function deriveSharedCoordinationReadGovernance({
   };
 }
 
+function deriveSharedCoordinationWriteGovernance({
+  workspace,
+  family,
+  writeStatus,
+  primaryTimestamp,
+  recordCount = 0,
+} = {}) {
+  const sourceOfTruth = evaluateSourceOfTruthPolicy("coordination_records");
+  return {
+    contract_version: SHARED_COORDINATION_READ_CONTRACT_VERSION,
+    artifact_family: normalizeScalar(family) || "shared_coordination_write",
+    source_of_truth_concept: sourceOfTruth.concept,
+    source_of_truth: normalizeScalar(sourceOfTruth.source_of_truth) || ".aidn/runtime/context/*",
+    source_of_truth_status: sourceOfTruth.source_of_truth_status,
+    source_mode: "explicit",
+    lifecycle_status: normalizeScalar(writeStatus) === "synced" ? "active" : "unknown",
+    owner: normalizeScalar(workspace?.project_id) || "unknown",
+    steward: "aidn-runtime",
+    updated_at: normalizeScalar(primaryTimestamp) || "",
+    record_count: Number(recordCount) || 0,
+  };
+}
+
 function evaluateSharedCoordinationHealthReadiness(health) {
   if (!health || health.ok !== true) {
     return {
@@ -389,15 +412,24 @@ export async function syncSharedPlanningState(resolution, {
     sourceWorktreeId: effectiveWorkspace?.worktree_id,
     payload,
   });
+  const planningState = result.planning_state ?? null;
+  const status = result.ok === true ? "synced" : "write-failed";
   return {
     attempted: true,
     ok: result.ok === true,
-    status: result.ok === true ? "synced" : "write-failed",
+    status,
     reason: result.ok === true ? "shared planning state synchronized" : normalizeScalar(result.error?.message) || "shared planning sync failed",
     operation: "upsertPlanningState",
     registration,
     backend: registration.backend,
     result,
+    governance: deriveSharedCoordinationWriteGovernance({
+      workspace: effectiveWorkspace,
+      family: "planning_state",
+      writeStatus: status,
+      primaryTimestamp: planningState?.updated_at || payload?.updated_at,
+      recordCount: planningState ? 1 : 0,
+    }),
   };
 }
 
@@ -442,15 +474,24 @@ export async function appendSharedHandoffRelay(resolution, {
     prioritizedArtifacts: Array.isArray(packet?.prioritized_artifacts) ? packet.prioritized_artifacts : [],
     metadata: packet,
   });
+  const handoffRelay = result.handoff_relay ?? null;
+  const status = result.ok === true ? "synced" : "write-failed";
   return {
     attempted: true,
     ok: result.ok === true,
-    status: result.ok === true ? "synced" : "write-failed",
+    status,
     reason: result.ok === true ? "shared handoff relay synchronized" : normalizeScalar(result.error?.message) || "shared handoff sync failed",
     operation: "appendHandoffRelay",
     registration,
     backend: registration.backend,
     result,
+    governance: deriveSharedCoordinationWriteGovernance({
+      workspace: effectiveWorkspace,
+      family: "handoff_relay",
+      writeStatus: status,
+      primaryTimestamp: handoffRelay?.created_at || packet?.updated_at,
+      recordCount: handoffRelay ? 1 : 0,
+    }),
   };
 }
 
@@ -506,15 +547,24 @@ export async function appendSharedCoordinationRecord(resolution, {
     coordinationSummaryRef,
     payload,
   });
+  const coordinationRecord = result.coordination_record ?? null;
+  const writeStatus = result.ok === true ? "synced" : "write-failed";
   return {
     attempted: true,
     ok: result.ok === true,
-    status: result.ok === true ? "synced" : "write-failed",
+    status: writeStatus,
     reason: result.ok === true ? "shared coordination record synchronized" : normalizeScalar(result.error?.message) || "shared coordination sync failed",
     operation: "appendCoordinationRecord",
     registration,
     backend: registration.backend,
     result,
+    governance: deriveSharedCoordinationWriteGovernance({
+      workspace: effectiveWorkspace,
+      family: "coordination_record",
+      writeStatus,
+      primaryTimestamp: coordinationRecord?.created_at || payload?.ts,
+      recordCount: coordinationRecord ? 1 : 0,
+    }),
   };
 }
 

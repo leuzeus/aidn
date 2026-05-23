@@ -113,6 +113,7 @@ async function main() {
       },
     });
     assert(readyPlanningWrite.ok === true, "ready backend should allow planning sync");
+    assert(readyPlanningWrite.governance?.artifact_family === "planning_state", "ready backend should expose planning governance on write");
     assert(ready.state.workspaceRegistrations === 1, "ready backend should register workspace once");
     assert(ready.state.planningWrites === 1, "ready backend should perform planning write");
 

@@ -137,6 +137,8 @@ async function main() {
       },
     });
     assert(alphaPlanning.ok === true && betaPlanning.ok === true, "multi-project planning sync should succeed for both projects");
+    assert(alphaPlanning.governance?.owner === "project-alpha", "project alpha planning sync should expose project ownership");
+    assert(betaPlanning.governance?.owner === "project-beta", "project beta planning sync should expose project ownership");
 
     const alphaHandoff = await appendSharedHandoffRelay(alphaResolution, {
       workspace: alphaWorkspace,
@@ -177,6 +179,8 @@ async function main() {
       },
     });
     assert(alphaHandoff.ok === true && betaHandoff.ok === true, "multi-project handoff sync should succeed for both projects");
+    assert(alphaHandoff.governance?.artifact_family === "handoff_relay", "project alpha handoff sync should expose handoff governance");
+    assert(betaHandoff.governance?.artifact_family === "handoff_relay", "project beta handoff sync should expose handoff governance");
 
     const alphaCoordination = await appendSharedCoordinationRecord(alphaResolution, {
       workspace: alphaWorkspace,
@@ -209,6 +213,8 @@ async function main() {
       },
     });
     assert(alphaCoordination.ok === true && betaCoordination.ok === true, "multi-project coordination sync should succeed for both projects");
+    assert(alphaCoordination.governance?.artifact_family === "coordination_record", "project alpha coordination sync should expose coordination governance");
+    assert(betaCoordination.governance?.artifact_family === "coordination_record", "project beta coordination sync should expose coordination governance");
 
     const alphaPlanningRead = await readSharedPlanningState(alphaResolution, {
       workspace: alphaWorkspace,

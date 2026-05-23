@@ -146,6 +146,7 @@ async function main() {
     });
     assert(sessionPlan.shared_coordination_backend.backend_kind === "postgres", "session-plan should expose postgres shared coordination backend");
     assert(sessionPlan.shared_coordination_sync.ok === true, "session-plan should sync shared planning");
+    assert(sessionPlan.shared_coordination_sync.governance?.artifact_family === "planning_state", "session-plan should expose planning-state governance on shared sync");
     assert(fake.state.planningStates.length === 1, "session-plan should write one shared planning state");
 
     const resumedSessionPlan = await runSessionPlan({
@@ -180,6 +181,7 @@ async function main() {
       sharedCoordination: fake.resolution,
     });
     assert(handoff.shared_coordination_sync.ok === true, "handoff should sync shared relay");
+    assert(handoff.shared_coordination_sync.governance?.artifact_family === "handoff_relay", "handoff should expose handoff-relay governance on shared sync");
     assert(fake.state.handoffRelays.length === 1, "handoff should append one shared relay");
 
     const arbitration = await recordCoordinatorArbitration({
@@ -189,6 +191,7 @@ async function main() {
       sharedCoordination: fake.resolution,
     });
     assert(arbitration.shared_coordination_sync.ok === true, "arbitration should sync shared coordination record");
+    assert(arbitration.shared_coordination_sync.governance?.artifact_family === "coordination_record", "arbitration should expose coordination-record governance on shared sync");
     assert(fake.state.coordinationRecords.length === 1, "arbitration should append one shared coordination record");
 
     console.log("PASS");
