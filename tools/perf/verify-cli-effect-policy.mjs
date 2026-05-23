@@ -33,6 +33,7 @@ function printUsage() {
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-output");
+const AIDN_BIN = path.join(REPO_ROOT, "bin", "aidn.mjs");
 
 function verifyContractsExist(policies) {
   const issues = [];
@@ -73,6 +74,32 @@ function verifySafeArgs(policies) {
   return issues;
 }
 
+function parseRuntimeAliases() {
+  const text = fs.readFileSync(AIDN_BIN, "utf8");
+  const match = text.match(/const RUNTIME_ALIASES = \{([\s\S]*?)\n\};/);
+  if (!match) {
+    throw new Error("Unable to parse RUNTIME_ALIASES from bin/aidn.mjs");
+  }
+  return [...match[1].matchAll(/"([a-z0-9-]+)": \{ file:/g)].map((item) => item[1]).sort();
+}
+
+function verifyRuntimeAliasCoverage(policies) {
+  const runtimeAliases = parseRuntimeAliases();
+  const covered = new Set(policies.map((policy) => policy.id.replace(/^runtime-/, "")));
+  const issues = [];
+  for (const alias of runtimeAliases) {
+    if (!covered.has(alias)) {
+      issues.push(`runtime alias missing from effect policy: ${alias}`);
+    }
+  }
+  return {
+    runtime_aliases: runtimeAliases.length,
+    covered_aliases: runtimeAliases.filter((alias) => covered.has(alias)).length,
+    missing_aliases: runtimeAliases.filter((alias) => !covered.has(alias)),
+    issues,
+  };
+}
+
 function summarizeByEffect(policies) {
   const summary = {};
   for (const policy of policies) {
@@ -85,14 +112,19 @@ function main() {
   const args = parseArgs(process.argv.slice(2));
   const validation = validateCliEffectPolicies();
   const policies = listCliEffectPolicies();
+  const runtimeAliasCoverage = verifyRuntimeAliasCoverage(policies.filter((policy) => policy.id.startsWith("runtime-")));
   const issues = [
     ...validation.issues,
     ...verifyContractsExist(policies),
     ...verifySafeArgs(policies),
+    ...runtimeAliasCoverage.issues,
   ];
   const output = {
     ok: issues.length === 0,
     checked_policies: policies.length,
+    runtime_aliases: runtimeAliasCoverage.runtime_aliases,
+    covered_runtime_aliases: runtimeAliasCoverage.covered_aliases,
+    missing_runtime_aliases: runtimeAliasCoverage.missing_aliases,
     by_effect_class: summarizeByEffect(policies),
     effect_classes: validation.effect_classes,
     stability_levels: validation.stability_levels,
