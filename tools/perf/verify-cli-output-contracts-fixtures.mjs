@@ -64,6 +64,11 @@ const CONTRACT_CASES = [
     args: ["runtime", "db-status", "--json"],
   },
   {
+    name: "runtime-persistence-adopt",
+    schema: "runtime-persistence-adopt.v1.schema.json",
+    args: ["runtime", "persistence-adopt", "--backend", "postgres", "--dry-run", "--json"],
+  },
+  {
     name: "runtime-shared-coordination-status",
     schema: "runtime-shared-coordination-status.v1.schema.json",
     args: ["runtime", "shared-coordination-status", "--json"],

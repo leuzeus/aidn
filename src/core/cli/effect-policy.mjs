@@ -68,6 +68,14 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Reports local runtime persistence status without migration.",
   }),
   commandPolicy({
+    id: "runtime-persistence-adopt",
+    command: "aidn runtime persistence-adopt --json",
+    effectClass: "preview",
+    jsonContract: "runtime-persistence-adopt.v1.schema.json",
+    safeArgs: ["runtime", "persistence-adopt", "--backend", "postgres", "--dry-run", "--json"],
+    notes: "Builds a runtime backend adoption plan without applying it when --dry-run is supplied.",
+  }),
+  commandPolicy({
     id: "runtime-shared-coordination-status",
     command: "aidn runtime shared-coordination-status --json",
     effectClass: "read-only",

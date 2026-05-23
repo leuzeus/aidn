@@ -174,6 +174,9 @@ function main() {
         && adoptDryRunBlocked?.runtime_backend_adoption_plan?.reason_code === "target-unavailable"
         && adoptDryRunBlocked?.runtime_backend_adoption_plan?.target?.compatibility_status === "target-unavailable"
         && adoptDryRunBlocked?.runtime_backend_adoption?.execution_status === "blocked",
+      persistence_adopt_exposes_backend_diagnostic: adoptDryRunBlocked?.runtime_backend_diagnostic?.scope === "runtime-persistence-adoption"
+        && adoptDryRunBlocked?.runtime_backend_diagnostic?.reason_code === "target-unavailable"
+        && typeof adoptDryRunBlocked?.runtime_backend_diagnostic?.recommended_action === "string",
       backup_fresh_created: typeof backupFresh?.backup_file === "string" && fs.existsSync(backupFresh.backup_file),
       legacy_migrate_creates_backup: typeof migrateLegacy?.migration?.backup_file === "string" && fs.existsSync(migrateLegacy.migration.backup_file),
       legacy_migrate_applies_baseline: Array.isArray(migrateLegacy?.migration?.applied_ids) && migrateLegacy.migration.applied_ids.includes("0001_workflow_index_baseline_v2"),

@@ -54,6 +54,41 @@ function printUsage() {
   console.log("  npx aidn runtime persistence-adopt --target . --backend postgres --connection-ref env:AIDN_PG_URL --json");
 }
 
+function deriveRuntimeBackendDiagnostic(plan, execution) {
+  const action = String(plan?.action ?? "unknown").trim() || "unknown";
+  const executionStatus = String(execution?.execution_status ?? (plan?.blocked ? "blocked" : "unknown")).trim() || "unknown";
+  const compatibilityStatus = String(plan?.target?.compatibility_status ?? "unknown").trim() || "unknown";
+  const reasonCode = String(plan?.reason_code ?? "none").trim() || "none";
+
+  let recommendedAction = "review the adoption plan JSON before applying runtime backend changes";
+  if (plan?.blocked === true) {
+    recommendedAction = compatibilityStatus === "target-unavailable"
+      ? "configure the requested runtime backend connection before retrying aidn runtime persistence-adopt"
+      : "resolve the reported adoption conflict before retrying aidn runtime persistence-adopt";
+  } else if (action === "transfer-from-sqlite") {
+    recommendedAction = "rerun aidn runtime persistence-adopt without --dry-run once the target backend is ready";
+  } else if (action === "migrate-target" || action === "bootstrap-target" || action === "repair-target") {
+    recommendedAction = "review the target backend migration prerequisites before applying the adoption plan";
+  } else if (action === "noop") {
+    recommendedAction = "no runtime backend adoption is required";
+  }
+
+  const summary = plan?.blocked === true
+    ? `runtime backend adoption is blocked: ${plan?.reason ?? "unknown reason"}`
+    : `runtime backend adoption plan is ${action} (${executionStatus})`;
+
+  return {
+    scope: "runtime-persistence-adoption",
+    requested_backend: String(plan?.requested_backend ?? "unknown").trim() || "unknown",
+    action,
+    execution_status: executionStatus,
+    compatibility_status: compatibilityStatus,
+    reason_code: reasonCode,
+    summary,
+    recommended_action: recommendedAction,
+  };
+}
+
 export async function adoptRuntimePersistence({
   targetRoot = ".",
   backend = "",
@@ -85,6 +120,7 @@ export async function adoptRuntimePersistence({
     write_requested: Boolean(write),
     runtime_backend_adoption_plan: plan,
     runtime_backend_adoption: execution,
+    runtime_backend_diagnostic: deriveRuntimeBackendDiagnostic(plan, execution),
   };
 }
 
