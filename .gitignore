@@ -1,4 +1,5 @@
 release/dist/
+release/manifest.json
 .codex/cache/
 .codex/local-*
 .idea/

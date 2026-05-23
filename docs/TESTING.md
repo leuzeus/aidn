@@ -64,6 +64,14 @@ When a change affects governed metadata, critical Markdown contracts, or lifecyc
 - `npm run perf:verify-metadata-policy`
 - `npm run perf:verify-markdown-contract`
 
+When a change affects release/versioning, install examples, or build-release provenance, run:
+
+- `npm run perf:verify-release-version`
+- `npm run build-release`
+- `npm run perf:verify-release-artifacts`
+
+The release version verifier checks that `VERSION`, `package.json`, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The release artifact verifier should be run after `npm run build-release`; it checks the generated zip path, `release/checksums.txt`, and `release/manifest.json`.
+
 ### 2. Parity / Runtime Persistence Verifications
 
 These commands validate backend or projection parity:

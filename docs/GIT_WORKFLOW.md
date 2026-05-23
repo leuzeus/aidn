@@ -82,6 +82,29 @@ git fetch origin
 git merge --ff-only origin/main
 ```
 
+## Release Version Provenance
+
+Release versioning has one explicit source value: `VERSION`.
+
+Before tagging or assembling a release:
+
+1. `VERSION` and `package.json` `version` must match exactly.
+2. README stable install examples must point to `github:leuzeus/aidn#v<VERSION>`.
+3. `tools/build-release.mjs` must produce `release/dist/aidn-workflow-<VERSION>.zip`.
+4. `release/checksums.txt` must reference the zip for the same `VERSION`.
+5. `release/manifest.json` must record package name, version, git commit, generation time, artifact path, artifact bytes, and artifact SHA-256.
+6. `dev` may carry in-flight integration work, but release tags and stable consumer instructions should be cut from the reviewed release baseline.
+
+Run:
+
+```bash
+npm run perf:verify-release-version
+npm run build-release
+npm run perf:verify-release-artifacts
+```
+
+These gates prevent silent drift between branch policy, package metadata, user-facing install docs, release artifact names, checksums, and release manifest provenance.
+
 ## When To Reset `dev`
 
 Do not recreate `dev` routinely.
