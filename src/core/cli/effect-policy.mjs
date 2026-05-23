@@ -92,6 +92,15 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Creates a local backup snapshot for the selected runtime backend.",
   }),
   commandPolicy({
+    id: "runtime-shared-coordination-migrate",
+    command: "aidn runtime shared-coordination-migrate --json",
+    effectClass: "preview",
+    jsonContract: "runtime-shared-coordination-migrate.v1.schema.json",
+    safeArgs: ["runtime", "shared-coordination-migrate", "--dry-run", "--json"],
+    allowNonZero: true,
+    notes: "Previews shared coordination schema migration unless --dry-run is removed.",
+  }),
+  commandPolicy({
     id: "runtime-shared-coordination-status",
     command: "aidn runtime shared-coordination-status --json",
     effectClass: "read-only",

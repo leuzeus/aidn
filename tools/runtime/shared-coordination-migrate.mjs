@@ -60,6 +60,32 @@ function printUsage() {
   console.log("  npx aidn runtime shared-coordination-migrate --target . --rollback-out .aidn/runtime/shared-coordination-rollback.json --json");
 }
 
+function deriveMigrationDiagnostic(result) {
+  const migration = result?.shared_coordination_migration ?? {};
+  const health = migration?.health ?? result?.pre_migration_health ?? {};
+  const plan = result?.migration_plan ?? {};
+  const schemaStatus = String(health?.schema_status ?? migration?.status ?? "unknown").trim() || "unknown";
+  const plannedAction = String(plan?.action ?? "unknown").trim() || "unknown";
+  const backendKind = String(result?.shared_coordination_backend?.backend_kind ?? "unknown").trim() || "unknown";
+  const recommendedAction = migration?.status === "dry-run"
+    ? "review the migration plan and rollback hint before rerunning without --dry-run"
+    : (migration?.status === "disabled" || migration?.status === "missing-env")
+      ? "configure the shared coordination backend before retrying aidn runtime shared-coordination-migrate"
+      : (schemaStatus === "ready"
+        ? "no additional shared coordination schema migration is required"
+        : "review the shared coordination schema status before extending the shared backend");
+  return {
+    scope: "shared-coordination-migration",
+    backend_kind: backendKind,
+    migration_status: String(migration?.status ?? "unknown").trim() || "unknown",
+    planned_action: plannedAction,
+    schema_status: schemaStatus,
+    rollback_planned: Boolean(result?.rollback_snapshot?.planned_output_file || result?.rollback_snapshot?.output_file),
+    summary: `shared coordination migration is ${String(migration?.status ?? "unknown").trim() || "unknown"} (${plannedAction})`,
+    recommended_action: recommendedAction,
+  };
+}
+
 export async function migrateSharedCoordination({
   targetRoot = ".",
   write = true,
@@ -95,7 +121,7 @@ export async function migrateSharedCoordination({
     : "";
 
   if (!resolution.store) {
-    return {
+    const result = {
       target_root: absoluteTargetRoot,
       ok: false,
       workspace,
@@ -123,10 +149,14 @@ export async function migrateSharedCoordination({
         }
         : null,
     };
+    return {
+      ...result,
+      migration_diagnostic: deriveMigrationDiagnostic(result),
+    };
   }
 
   if (!write || migrationPlan.blocked) {
-    return {
+    const result = {
       target_root: absoluteTargetRoot,
       ok: !migrationPlan.blocked,
       workspace,
@@ -165,6 +195,10 @@ export async function migrateSharedCoordination({
         }
         : null,
     };
+    return {
+      ...result,
+      migration_diagnostic: deriveMigrationDiagnostic(result),
+    };
   }
 
   const rollbackSnapshotResult = shouldCreateRollbackSnapshot
@@ -176,7 +210,7 @@ export async function migrateSharedCoordination({
     })
     : null;
   const migration = await ensureSharedCoordinationReady(resolution);
-  return {
+  const result = {
     target_root: absoluteTargetRoot,
     ok: migration.ok === true,
     workspace,
@@ -208,6 +242,10 @@ export async function migrateSharedCoordination({
         driver: resolution.contract.driver,
       }
       : null,
+  };
+  return {
+    ...result,
+    migration_diagnostic: deriveMigrationDiagnostic(result),
   };
 }
 

@@ -123,6 +123,7 @@ async function main() {
     const disabled = runCli(["runtime", "shared-coordination-migrate", "--target", "tests/fixtures/repo-installed-core", "--json"]);
     assert(disabled.status === 1, "migrate CLI should fail when shared coordination is disabled");
     assert(disabled.json?.shared_coordination_migration?.status === "disabled", "disabled migrate CLI should report disabled status");
+    assert(disabled.json?.migration_diagnostic?.migration_status === "disabled", "disabled migrate CLI should expose a stable migration diagnostic");
 
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-shared-coordination-migrate-"));
     const targetRoot = path.join(tempRoot, "repo");
@@ -137,10 +138,13 @@ async function main() {
       },
     });
 
-    const missingEnv = runCli(["runtime", "shared-coordination-migrate", "--target", targetRoot, "--json"]);
+    const missingEnv = runCli(["runtime", "shared-coordination-migrate", "--target", targetRoot, "--json"], {
+      AIDN_PG_URL: "",
+    });
     assert(missingEnv.status === 1, "migrate CLI should fail when PostgreSQL env is missing");
     assert(missingEnv.json?.shared_coordination_migration?.status === "missing-env", "migrate CLI should surface missing-env");
     assert(missingEnv.json?.shared_coordination_backend?.backend_kind === "postgres", "migrate CLI should still identify postgres backend");
+    assert(missingEnv.json?.migration_diagnostic?.backend_kind === "postgres", "missing-env migrate CLI should expose backend kind in the migration diagnostic");
 
     const directReady = await migrateSharedCoordination({
       targetRoot,
@@ -152,6 +156,7 @@ async function main() {
     assert(directReady.shared_coordination_migration?.health?.schema_status === "ready", "direct migrate projection should expose ready schema status");
     assert(directReady.contract?.schema_name === "aidn_shared", "direct migrate projection should expose schema contract");
     assert(directReady.shared_coordination_backend?.driver_package === "pg", "direct migrate projection should expose pg driver package");
+    assert(directReady.migration_diagnostic?.schema_status === "ready", "direct migrate projection should expose a ready migration diagnostic");
 
     const upgradeResolution = createFakeResolution();
     upgradeResolution.state.schemaStatus = "version-behind";
@@ -166,6 +171,7 @@ async function main() {
     assert(dryRun.shared_coordination_migration?.status === "dry-run", "dry-run upgrade projection should report dry-run");
     assert(dryRun.migration_plan?.action === "upgrade", "dry-run should report an upgrade migration plan");
     assert(dryRun.rollback_hint?.restore_command?.includes("shared-coordination-restore"), "dry-run should expose the planned rollback command");
+    assert(dryRun.migration_diagnostic?.rollback_planned === true, "dry-run should expose rollback planning in the migration diagnostic");
 
     const writeResult = await migrateSharedCoordination({
       targetRoot,
@@ -177,6 +183,7 @@ async function main() {
     assert(writeResult.shared_coordination_migration?.health?.schema_status === "ready", "upgrade migrate should converge to a ready schema");
     assert(writeResult.rollback_snapshot?.output_file?.endsWith("upgrade-rollback.json"), "upgrade migrate should write a rollback snapshot");
     assert(writeResult.rollback_hint?.restore_command?.includes("upgrade-rollback.json"), "upgrade migrate should expose the rollback restore command");
+    assert(writeResult.migration_diagnostic?.migration_status === "ready", "write migrate should expose a ready migration diagnostic");
 
     console.log("PASS");
   } catch (error) {

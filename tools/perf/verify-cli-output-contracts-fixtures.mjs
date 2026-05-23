@@ -84,6 +84,12 @@ const CONTRACT_CASES = [
     args: ["runtime", "shared-coordination-status", "--json"],
   },
   {
+    name: "runtime-shared-coordination-migrate",
+    schema: "runtime-shared-coordination-migrate.v1.schema.json",
+    args: ["runtime", "shared-coordination-migrate", "--dry-run", "--json"],
+    allowNonZero: true,
+  },
+  {
     name: "runtime-shared-coordination-projects",
     schema: "runtime-shared-coordination-projects.v1.schema.json",
     args: ["runtime", "shared-coordination-projects", "--json"],
