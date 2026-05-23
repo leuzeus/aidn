@@ -3,6 +3,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
+import {
+  buildPreWriteAdmissionResult,
+  mergePreWritePolicy,
+} from "../../src/application/runtime/pre-write-admit-use-case.mjs";
 import { loadSharedStateSnapshot } from "../../src/application/runtime/shared-state-backend-service.mjs";
 import { resolvePromotedSharedPlanningContext } from "../../src/application/runtime/shared-planning-resolution-service.mjs";
 import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
@@ -12,67 +16,6 @@ import { evaluateRepairRouting } from "../../src/application/runtime/workflow-tr
 import { getSourceOfTruthPolicy } from "../../src/core/source-of-truth/source-of-truth-policy.mjs";
 import { resolveEffectiveStateMode } from "../../src/core/state-mode/state-mode-policy.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
-
-const DEFAULT_POLICY = Object.freeze({
-  requireMode: true,
-  requireBranchKind: false,
-  requireActiveSession: false,
-  requireActiveCycle: false,
-  requireCycleStatus: false,
-  requireDorReady: false,
-  requireFirstPlanStep: false,
-  requireFreshCurrentState: false,
-  requireRuntimeClearInDbModes: false,
-});
-
-const SKILL_POLICIES = Object.freeze({
-  "start-session": {
-    requireMode: false,
-  },
-  "close-session": {
-    requireActiveSession: true,
-  },
-  "branch-cycle-audit": {
-    requireMode: false,
-  },
-  "drift-check": {
-    requireMode: false,
-  },
-  "handoff-close": {
-    requireActiveSession: false,
-  },
-  "cycle-create": {
-    requireFreshCurrentState: true,
-    requireRuntimeClearInDbModes: true,
-  },
-  "cycle-close": {
-    requireBranchKind: true,
-    requireActiveCycle: true,
-    requireCycleStatus: true,
-    requireFreshCurrentState: true,
-    requireRuntimeClearInDbModes: true,
-  },
-  "promote-baseline": {
-    requireBranchKind: true,
-    requireActiveCycle: true,
-    requireCycleStatus: true,
-    requireDorReady: true,
-    requireFreshCurrentState: true,
-    requireRuntimeClearInDbModes: true,
-  },
-  "requirements-delta": {
-    requireActiveCycle: true,
-    requireCycleStatus: true,
-    requireFreshCurrentState: true,
-    requireRuntimeClearInDbModes: true,
-  },
-  "convert-to-spike": {
-    requireActiveCycle: true,
-    requireCycleStatus: true,
-    requireFreshCurrentState: true,
-    requireRuntimeClearInDbModes: true,
-  },
-});
 
 function parseArgs(argv) {
   const args = {
@@ -816,11 +759,6 @@ function resolveCyclePlanArtifact({
   };
 }
 
-function mergePolicy(skill) {
-  const specific = SKILL_POLICIES[skill] ?? {};
-  return { ...DEFAULT_POLICY, ...specific };
-}
-
 function addCheck(checks, key, pass, details, extra = {}) {
   checks[key] = {
     pass,
@@ -939,7 +877,7 @@ export async function preWriteAdmit({
     sharedCoordination,
     sharedCoordinationOptions,
   });
-  const policy = mergePolicy(skill);
+  const policy = mergePreWritePolicy(skill);
   const checks = {};
   const blockingReasons = [];
   const warnings = [];
@@ -1316,32 +1254,21 @@ export async function preWriteAdmit({
     planFile && exists(planFile) ? relativePath(absoluteTargetRoot, planFile) : "",
   ]);
 
-  const ok = blockingReasons.length === 0;
-  const admissionStatus = ok
-    ? (warnings.length > 0 ? "admitted_with_warnings" : "admitted")
-    : "blocked";
-  const sourceOfTruthStatus = sourceOfTruthIssues.some((item) => item.severity === "block")
-    ? "block"
-    : sourceOfTruthIssues.some((item) => item.severity === "warn")
-      ? "warn"
-      : "clear";
-  sourceOfTruth.repair_actions = uniqueItems(sourceOfTruthRepairActions);
-
-  return {
-    ok,
-    admission_status: admissionStatus,
-    target_root: absoluteTargetRoot,
+  return buildPreWriteAdmissionResult({
+    targetRoot: absoluteTargetRoot,
     workspace,
-    shared_state_backend: sqliteFallback.backend ?? null,
-    shared_runtime_validation: sharedRuntimeValidation,
-    skill: skill || "generic",
+    sharedStateBackend: sqliteFallback.backend ?? null,
+    sharedRuntimeValidation,
+    skill,
     policy,
-    source_of_truth: sourceOfTruth,
-    current_state_file: currentStateExists ? currentStateResolution.logicalPath : "none",
-    runtime_state_file: runtimeStateExists ? runtimeStateResolution.logicalPath : "none",
-    session_file: sessionResolution.exists ? sessionResolution.logicalPath : "none",
-    cycle_status_file: cycleStatusResolution.exists ? cycleStatusResolution.logicalPath : "none",
-    plan_file: planResolution.exists ? planResolution.logicalPath : "none",
+    sourceOfTruth,
+    currentStateExists,
+    runtimeStateExists,
+    currentStateResolution,
+    runtimeStateResolution,
+    sessionResolution,
+    cycleStatusResolution,
+    planResolution,
     context: {
       workspace_id: workspace.workspace_id,
       workspace_id_source: workspace.workspace_id_source,
@@ -1374,8 +1301,6 @@ export async function preWriteAdmit({
       current_state_freshness: currentStateFreshness,
       runtime_state_mode: runtimeStateMode,
       effective_state_mode: effectiveStateMode,
-      source_of_truth_status: sourceOfTruthStatus,
-      source_of_truth_reason_codes: uniqueItems(sourceOfTruthIssues.map((item) => item.reason_code)).join(", ") || "none",
       repair_layer_status: repairLayerStatus,
       current_state_source: currentStateResolution.source,
       runtime_state_source: runtimeStateResolution.source,
@@ -1399,11 +1324,13 @@ export async function preWriteAdmit({
       session_merge_upstream_behind: sessionIntegrationGate?.session_upstream_behind ?? 0,
     },
     checks,
-    blocking_reasons: blockingReasons,
+    blockingReasons,
     warnings,
-    blocking_findings: blockingFindings,
-    prioritized_artifacts: prioritizedArtifacts,
-  };
+    blockingFindings,
+    prioritizedArtifacts,
+    sourceOfTruthIssues,
+    sourceOfTruthRepairActions,
+  });
 }
 
 function printText(output) {
