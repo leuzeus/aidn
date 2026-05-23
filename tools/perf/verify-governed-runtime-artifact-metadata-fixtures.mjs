@@ -20,6 +20,12 @@ function main() {
       runtimeStateMode: "db-only",
       lifecycleStatus: "ready",
     });
+    const coordination = deriveGovernedRuntimeArtifactMetadata({
+      workspace,
+      runtimeStateMode: "files",
+      sourceOfTruthConcept: "coordination_records",
+      lifecycleStatus: "refreshed",
+    });
     const fallback = deriveGovernedRuntimeArtifactMetadata({
       workspace: {},
       runtimeStateMode: "files",
@@ -34,6 +40,7 @@ function main() {
     assert(ready.lifecycle_status === "ready", "helper should preserve lifecycle_status");
     assert(ready.owner === "project-1", "helper should default owner from workspace project_id");
     assert(ready.steward === "aidn-runtime", "helper should default steward");
+    assert(typeof coordination.source_of_truth === "string" && coordination.source_of_truth.length > 0, "helper should support alternate source-of-truth concepts");
 
     assert(fallback.contract_version === CRITICAL_MARKDOWN_CONTRACT_VERSION, "helper fallback should keep contract version");
     assert(fallback.lifecycle_status === "refreshed", "helper fallback should default lifecycle_status");

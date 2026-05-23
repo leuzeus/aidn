@@ -7,6 +7,7 @@ import {
   resolveSharedCoordinationStore,
   summarizeSharedCoordinationResolution,
 } from "../../src/application/runtime/shared-coordination-store-service.mjs";
+import { deriveGovernedRuntimeArtifactMetadata } from "../../src/application/runtime/governed-runtime-artifact-metadata-lib.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
@@ -169,7 +170,7 @@ function renderCounts(label, counts) {
   ];
 }
 
-function buildMarkdown(summary, historyRelativePath) {
+function buildMarkdown(summary, historyRelativePath, governanceMetadata) {
   const lines = [];
   lines.push("# Coordination Summary");
   lines.push("");
@@ -188,6 +189,7 @@ function buildMarkdown(summary, historyRelativePath) {
   lines.push("");
   lines.push("## Summary");
   lines.push("");
+  lines.push(`contract_version: ${governanceMetadata.contract_version}`);
   lines.push(`updated_at: ${summary.updated_at}`);
   lines.push(`history_status: ${summary.history_status}`);
   lines.push(`total_dispatches: ${summary.total_dispatches}`);
@@ -198,6 +200,11 @@ function buildMarkdown(summary, historyRelativePath) {
   lines.push(`arbitration_count: ${summary.arbitration_count}`);
   lines.push(`last_arbitration_decision: ${summary.last_arbitration_decision}`);
   lines.push(`last_arbitration_ts: ${summary.last_arbitration_ts}`);
+  lines.push(`source_of_truth: ${governanceMetadata.source_of_truth}`);
+  lines.push(`source_mode: ${governanceMetadata.source_mode}`);
+  lines.push(`lifecycle_status: ${governanceMetadata.lifecycle_status}`);
+  lines.push(`owner: ${governanceMetadata.owner}`);
+  lines.push(`steward: ${governanceMetadata.steward}`);
   lines.push("");
   lines.push("## Aggregates");
   lines.push("");
@@ -264,7 +271,13 @@ export async function projectCoordinationSummary({
   const historyRelativePath = historySource === "shared-coordination"
     ? "shared-coordination://coordination_records"
     : (path.relative(absoluteTargetRoot, historyPath).replace(/\\/g, "/") || historyFile);
-  const markdown = buildMarkdown(summary, historyRelativePath);
+  const governanceMetadata = deriveGovernedRuntimeArtifactMetadata({
+    workspace: effectiveWorkspace,
+    runtimeStateMode: effectiveStateMode,
+    sourceOfTruthConcept: "coordination_records",
+    lifecycleStatus: "refreshed",
+  });
+  const markdown = buildMarkdown(summary, historyRelativePath, governanceMetadata);
   const relativeOut = String(out).replace(/\\/g, "/").replace(/^docs\/audit\//i, "");
   const dbFirstWrite = effectiveStateMode === "dual" || effectiveStateMode === "db-only"
     ? runDbFirstArtifactUseCase({

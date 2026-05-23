@@ -41,10 +41,11 @@ function main() {
     assert(typeof runtimeDiagnostics.operations?.runtime_surface_coverage_status === "string", "runtime governance diagnostics should expose runtime surface coverage status");
     assert(runtimeDiagnostics.runtime_surfaces.some((item) => item.id === "runtime-governance-diagnostics"), "runtime governance diagnostics should include its own public surface");
     assert(Array.isArray(runtimeDiagnostics.observed_artifacts) && runtimeDiagnostics.observed_artifacts.length >= 1, "runtime governance diagnostics should expose observed artifacts");
-    assert(runtimeDiagnostics.observed_artifact_summary?.complete === 3, "runtime governance diagnostics should report complete observed artifacts for the tracked fixture");
+    assert(runtimeDiagnostics.observed_artifact_summary?.complete === 4, "runtime governance diagnostics should report complete observed artifacts for the tracked fixture");
     assert(runtimeDiagnostics.observed_artifact_summary?.partial === 0, "runtime governance diagnostics should not keep partial observed artifacts for the tracked fixture");
     assert(typeof runtimeDiagnostics.operations?.observed_artifact_coverage_status === "string", "runtime governance diagnostics should expose observed artifact coverage status");
     assert(runtimeDiagnostics.operations?.observed_artifact_coverage_status === "covered", "runtime governance diagnostics should expose covered observed artifact status");
+    assert(runtimeDiagnostics.observed_artifacts.some((item) => item.id === "coordination_summary"), "runtime governance diagnostics should include coordination summary artifact");
     assert(runtimeDiagnostics.observed_artifacts.some((item) => item.id === "handoff_packet"), "runtime governance diagnostics should include handoff packet artifact");
     assert(runtimeDiagnostics.registry?.observed_artifacts_included === true, "runtime governance diagnostics should include observed artifact inspection");
     assert(perfDiagnostics.registry?.observed_artifacts_included === false, "perf completeness should stay registry-only");

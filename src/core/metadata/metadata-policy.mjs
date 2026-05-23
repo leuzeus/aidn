@@ -152,6 +152,14 @@ const METADATA_POLICIES = freezeDeep([
     recommended: ["session_id", "cycle_id", "result_ref", "privacy_classification", "retention_policy"],
     lifecycle: "created -> processed -> archived",
   }),
+  policy({
+    concept: "coordination_summary",
+    label: "Coordination summary",
+    required: ["contract_version", "updated_at", "history_status", "source_of_truth", "source_mode", "lifecycle_status"],
+    recommended: ["owner", "steward", "privacy_classification", "retention_policy"],
+    legacyTolerated: ["source_of_truth", "source_mode", "lifecycle_status", "owner", "steward", "privacy_classification", "retention_policy"],
+    lifecycle: "refreshed -> stale -> superseded",
+  }),
 ]);
 
 export function listMetadataPolicies() {

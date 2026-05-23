@@ -78,6 +78,12 @@ export const GOVERNED_CONCEPTS = Object.freeze([
     required: ["source_of_truth", "metadata"],
   },
   {
+    concept: "coordination_summary",
+    source_of_truth_concept: "coordination_records",
+    metadata_concept: "coordination_summary",
+    required: ["source_of_truth", "metadata"],
+  },
+  {
     concept: "cli_output_contract",
     source_of_truth_concept: "cli_output_contracts",
     metadata_concept: "artifact_contract",
@@ -117,6 +123,12 @@ const OBSERVED_GOVERNANCE_ARTIFACTS = Object.freeze([
     concept: "handoff_packet",
     source_of_truth_concept: "runtime_digests",
     relative_path: "docs/audit/HANDOFF-PACKET.md",
+  },
+  {
+    id: "coordination_summary",
+    concept: "coordination_summary",
+    source_of_truth_concept: "coordination_records",
+    relative_path: "docs/audit/COORDINATION-SUMMARY.md",
   },
 ]);
 
@@ -282,6 +294,7 @@ export function evaluateObservedGovernanceArtifact(entry, targetRoot) {
   const metadata = evaluateMetadataPolicy(entry.concept, {
     contract_version: normalizeScalar(fields.get("contract_version") ?? ""),
     updated_at: normalizeScalar(fields.get("updated_at") ?? ""),
+    history_status: normalizeScalar(fields.get("history_status") ?? ""),
     runtime_state_mode: normalizeScalar(fields.get("runtime_state_mode") ?? ""),
     active_session: normalizeScalar(fields.get("active_session") ?? ""),
     active_cycle: normalizeScalar(fields.get("active_cycle") ?? ""),

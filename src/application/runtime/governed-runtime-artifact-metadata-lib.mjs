@@ -9,11 +9,12 @@ function normalizeScalar(value) {
 export function deriveGovernedRuntimeArtifactMetadata({
   workspace,
   runtimeStateMode,
+  sourceOfTruthConcept = "runtime_digests",
   lifecycleStatus,
   owner,
   steward = "aidn-runtime",
 } = {}) {
-  const sourceOfTruth = evaluateSourceOfTruthPolicy("runtime_digests", runtimeStateMode);
+  const sourceOfTruth = evaluateSourceOfTruthPolicy(sourceOfTruthConcept, runtimeStateMode);
   return {
     contract_version: CRITICAL_MARKDOWN_CONTRACT_VERSION,
     source_of_truth: normalizeScalar(sourceOfTruth.source_of_truth) || "runtime store plus generated Markdown",
