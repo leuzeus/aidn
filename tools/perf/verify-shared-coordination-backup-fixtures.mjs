@@ -176,6 +176,8 @@ async function main() {
     assert(direct.backup?.workspace?.project_id === "project-backup", "direct backup should expose project identity");
     assert(direct.backup?.schema_snapshot?.latest_applied_schema_version === 2, "direct backup should expose the applied schema version snapshot");
     assert(direct.backup?.snapshot?.coordination_read?.record_count === 2, "direct backup should export coordination records");
+    assert(direct.backup?.snapshot?.handoff_read?.governance?.artifact_family === "handoff_relay", "direct backup should expose handoff governance family");
+    assert(direct.backup?.snapshot?.coordination_read?.governance?.artifact_family === "coordination_record", "direct backup should expose coordination governance family");
     assert(direct.operations?.restore_preview_command === "aidn runtime shared-coordination-restore --target . --json", "direct backup should expose restore preview command");
     assert(direct.operations?.connection_secret_exposed === false, "direct backup should not expose secrets");
     assert(fs.existsSync(outFile), "direct backup should write the backup file");

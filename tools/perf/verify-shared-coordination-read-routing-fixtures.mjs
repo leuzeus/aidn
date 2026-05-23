@@ -344,8 +344,11 @@ async function main() {
     });
     assert(status.snapshot?.planning_read?.status === "found", "status should expose the shared planning snapshot");
     assert(status.snapshot?.planning_read?.planning_state?.backlog_next_step === "implement alpha feature validation", "status should expose the shared planning next step");
+    assert(status.snapshot?.planning_read?.governance?.artifact_family === "planning_state", "status should expose planning governance family");
     assert(status.snapshot?.handoff_read?.status === "found", "status should expose the latest shared handoff relay");
+    assert(status.snapshot?.handoff_read?.governance?.artifact_family === "handoff_relay", "status should expose handoff governance family");
     assert(status.snapshot?.coordination_read?.status === "found", "status should expose recent shared coordination records");
+    assert(status.snapshot?.coordination_read?.governance?.artifact_family === "coordination_record", "status should expose coordination governance family");
 
     const preWrite = await preWriteAdmit({
       targetRoot,

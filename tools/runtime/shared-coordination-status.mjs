@@ -171,15 +171,18 @@ export async function projectSharedCoordinationStatus({
         ? {
           status: planning.status,
           planning_state: planning.planning_state,
+          governance: planning.governance,
         }
         : null,
       handoff_read: {
         status: handoff.status,
         handoff_relay: handoff.handoff_relay,
+        governance: handoff.governance,
       },
       coordination_read: {
         status: coordination.status,
         records: coordination.records,
+        governance: coordination.governance,
       },
     },
     contract: resolution.contract

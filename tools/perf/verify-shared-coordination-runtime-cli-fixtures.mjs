@@ -221,7 +221,9 @@ async function main() {
     assert(directStatus.source_of_truth?.source_of_truth_status === "covered", "direct status should resolve the source-of-truth policy");
     assert(directStatus.metadata?.concept === "workspace", "direct status should project workspace metadata policy");
     assert(directStatus.snapshot?.handoff_read?.status === "found", "direct status projection should expose handoff snapshot");
+    assert(directStatus.snapshot?.handoff_read?.governance?.artifact_family === "handoff_relay", "direct status projection should expose handoff governance family");
     assert(directStatus.snapshot?.coordination_read?.status === "found", "direct status projection should expose coordination snapshot");
+    assert(directStatus.snapshot?.coordination_read?.governance?.artifact_family === "coordination_record", "direct status projection should expose coordination governance family");
 
     const bootstrap = await bootstrapSharedCoordination({
       targetRoot,

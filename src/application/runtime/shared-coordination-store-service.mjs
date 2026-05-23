@@ -1,5 +1,6 @@
 import path from "node:path";
 import { createPostgresSharedCoordinationStore } from "../../adapters/runtime/postgres-shared-coordination-store.mjs";
+import { evaluateSourceOfTruthPolicy } from "../../core/source-of-truth/source-of-truth-policy.mjs";
 import {
   getPostgresSharedCoordinationContract,
   resolvePostgresSharedCoordinationConnection,
@@ -38,6 +39,31 @@ function buildSyntheticId(prefix, workspace, suffix = "") {
   const worktreeId = normalizeScalar(workspace?.worktree_id) || "worktree";
   const tail = normalizeScalar(suffix) || new Date().toISOString();
   return `${prefix}:${worktreeId}:${tail}`;
+}
+
+const SHARED_COORDINATION_READ_CONTRACT_VERSION = "shared-coordination-read-v1";
+
+function deriveSharedCoordinationReadGovernance({
+  workspace,
+  family,
+  readStatus,
+  primaryTimestamp,
+  recordCount = 0,
+} = {}) {
+  const sourceOfTruth = evaluateSourceOfTruthPolicy("coordination_records");
+  return {
+    contract_version: SHARED_COORDINATION_READ_CONTRACT_VERSION,
+    artifact_family: normalizeScalar(family) || "shared_coordination_read",
+    source_of_truth_concept: sourceOfTruth.concept,
+    source_of_truth: normalizeScalar(sourceOfTruth.source_of_truth) || ".aidn/runtime/context/*",
+    source_of_truth_status: sourceOfTruth.source_of_truth_status,
+    source_mode: "explicit",
+    lifecycle_status: normalizeScalar(readStatus) === "found" ? "active" : (normalizeScalar(readStatus) === "empty" ? "empty" : "unknown"),
+    owner: normalizeScalar(workspace?.project_id) || "unknown",
+    steward: "aidn-runtime",
+    updated_at: normalizeScalar(primaryTimestamp) || "",
+    record_count: Number(recordCount) || 0,
+  };
 }
 
 function evaluateSharedCoordinationHealthReadiness(health) {
@@ -534,18 +560,27 @@ export async function readSharedPlanningState(resolution, {
     workspaceId: effectiveWorkspace?.workspace_id,
     planningKey: resolvedPlanningKey,
   });
+  const planningState = result.planning_state ?? null;
+  const status = result.ok === true ? (planningState ? "found" : "empty") : "read-failed";
   return {
     attempted: true,
     ok: result.ok === true,
-    status: result.ok === true ? (result.planning_state ? "found" : "empty") : "read-failed",
+    status,
     reason: result.ok === true
-      ? (result.planning_state ? "shared planning state loaded" : "no shared planning state found")
+      ? (planningState ? "shared planning state loaded" : "no shared planning state found")
       : (normalizeScalar(result.error?.message) || "shared planning read failed"),
     operation: "getPlanningState",
     backend: registration.backend,
     registration,
     result,
-    planning_state: result.planning_state ?? null,
+    planning_state: planningState,
+    governance: deriveSharedCoordinationReadGovernance({
+      workspace: effectiveWorkspace,
+      family: "planning_state",
+      readStatus: status,
+      primaryTimestamp: planningState?.updated_at,
+      recordCount: planningState ? 1 : 0,
+    }),
   };
 }
 
@@ -593,18 +628,27 @@ export async function readLatestSharedHandoffRelay(resolution, {
     scopeType,
     scopeId,
   });
+  const handoffRelay = result.handoff_relay ?? null;
+  const status = result.ok === true ? (handoffRelay ? "found" : "empty") : "read-failed";
   return {
     attempted: true,
     ok: result.ok === true,
-    status: result.ok === true ? (result.handoff_relay ? "found" : "empty") : "read-failed",
+    status,
     reason: result.ok === true
-      ? (result.handoff_relay ? "shared handoff relay loaded" : "no shared handoff relay found")
+      ? (handoffRelay ? "shared handoff relay loaded" : "no shared handoff relay found")
       : (normalizeScalar(result.error?.message) || "shared handoff read failed"),
     operation: "getLatestHandoffRelay",
     backend: registration.backend,
     registration,
     result,
-    handoff_relay: result.handoff_relay ?? null,
+    handoff_relay: handoffRelay,
+    governance: deriveSharedCoordinationReadGovernance({
+      workspace: effectiveWorkspace,
+      family: "handoff_relay",
+      readStatus: status,
+      primaryTimestamp: handoffRelay?.created_at,
+      recordCount: handoffRelay ? 1 : 0,
+    }),
   };
 }
 
@@ -656,17 +700,26 @@ export async function readSharedCoordinationRecords(resolution, {
     scopeId,
     limit,
   });
+  const records = Array.isArray(result.records) ? result.records : [];
+  const status = result.ok === true ? (records.length > 0 ? "found" : "empty") : "read-failed";
   return {
     attempted: true,
     ok: result.ok === true,
-    status: result.ok === true ? (Array.isArray(result.records) && result.records.length > 0 ? "found" : "empty") : "read-failed",
+    status,
     reason: result.ok === true
-      ? (Array.isArray(result.records) && result.records.length > 0 ? "shared coordination records loaded" : "no shared coordination records found")
+      ? (records.length > 0 ? "shared coordination records loaded" : "no shared coordination records found")
       : (normalizeScalar(result.error?.message) || "shared coordination records read failed"),
     operation: "listCoordinationRecords",
     backend: registration.backend,
     registration,
     result,
-    records: Array.isArray(result.records) ? result.records : [],
+    records,
+    governance: deriveSharedCoordinationReadGovernance({
+      workspace: effectiveWorkspace,
+      family: "coordination_record",
+      readStatus: status,
+      primaryTimestamp: records[0]?.created_at,
+      recordCount: records.length,
+    }),
   };
 }

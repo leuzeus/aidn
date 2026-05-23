@@ -213,16 +213,19 @@ export async function backupSharedCoordination({
         ? {
           status: planning.status,
           planning_state: planning.planning_state,
+          governance: planning.governance,
         }
         : null,
       handoff_read: {
         status: handoff.status,
         handoff_relay: handoff.handoff_relay,
+        governance: handoff.governance,
       },
       coordination_read: {
         status: coordination.status,
         record_count: Array.isArray(coordination.records) ? coordination.records.length : 0,
         records: coordination.records,
+        governance: coordination.governance,
       },
     },
   };
