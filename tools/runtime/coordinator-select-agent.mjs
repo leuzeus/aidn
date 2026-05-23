@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  buildCoordinatorSelectAgentResult,
+} from "../../src/application/runtime/coordinator-select-agent-use-case.mjs";
 import { normalizeRequestedAgentAction, normalizeRequestedAgentRole } from "../../src/core/ports/agent-adapter-port.mjs";
 import { rankAgentAdapters, selectAgentAdapter } from "../../src/core/agents/agent-selection-policy.mjs";
 import { loadRegisteredAgentAdapters } from "../../src/application/runtime/agent-adapter-registry-service.mjs";
@@ -55,24 +58,6 @@ function printUsage() {
   console.log("  node tools/runtime/coordinator-select-agent.mjs --target . --role repair --action repair --agent auto --json");
 }
 
-function buildCandidateEntry(entry, roster, adapterHealth) {
-  const rosterEntry = roster?.agents?.[entry.profile.id] ?? null;
-  const health = adapterHealth?.[entry.profile.id] ?? null;
-  return {
-    id: entry.profile.id,
-    label: entry.profile.label,
-    score: entry.score,
-    default_role: entry.profile.default_role,
-    supported_roles: entry.profile.supported_roles,
-    roster_enabled: rosterEntry?.enabled ?? true,
-    roster_priority: Number.parseInt(String(rosterEntry?.priority ?? 0), 10) || 0,
-    roster_roles: Array.isArray(rosterEntry?.roles) ? rosterEntry.roles : [],
-    adapter_module: rosterEntry?.adapter_module ?? "",
-    health_status: health?.health_status ?? "unknown",
-    health_reason: health?.health_reason ?? "health not evaluated",
-  };
-}
-
 export async function coordinatorSelectAgent({
   targetRoot,
   requestedAgent = "auto",
@@ -114,30 +99,19 @@ export async function coordinatorSelectAgent({
     adapterHealth,
   });
 
-  return {
-    target_root: absoluteTargetRoot,
-    state_mode: effectiveStateMode,
-    db_backed_mode: dbBackedMode,
-    requested_agent: String(requestedAgent ?? "auto").trim().toLowerCase() || "auto",
-    role: normalizedRole,
-    action: normalizedAction,
-    roster: {
-      found: roster.found,
-      file_path: roster.file_path,
-      default_requested_agent: roster.default_requested_agent,
-    },
-    roster_verification: {
-      pass: rosterVerification.pass,
-      issue_count: rosterVerification.issues.length,
-      warning_count: rosterVerification.warnings.length,
-    },
-    selection: {
-      status: selection.status,
-      selected_agent: selection.selected_profile?.id ?? "unsupported",
-      reason: selection.reason,
-    },
-    candidates: ranking.map((entry) => buildCandidateEntry(entry, roster, adapterHealth)),
-  };
+  return buildCoordinatorSelectAgentResult({
+    absoluteTargetRoot,
+    effectiveStateMode,
+    dbBackedMode,
+    requestedAgent,
+    normalizedRole,
+    normalizedAction,
+    roster,
+    rosterVerification,
+    selection,
+    ranking,
+    adapterHealth,
+  });
 }
 
 function renderText(result) {
