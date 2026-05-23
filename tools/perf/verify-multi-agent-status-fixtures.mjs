@@ -60,6 +60,7 @@ function main() {
     assert(text.includes("repair_primary_reason:"), "status file should include repair primary reason");
     assert(typeof result.arbitration?.preferred_decision === "string", "projection should expose arbitration summary");
     assert(String(result.arbitration?.arbitration_status ?? "") === "ok", "healthy projection should expose arbitration_status=ok");
+    assert(result.multi_agent_status_diagnostic?.recommended_role === result.recommendation.role, "projection should expose recommended role in the stable diagnostic");
 
     fs.writeFileSync(path.join(target, "docs", "audit", "AGENT-ROSTER.md"), [
       "# Agent Roster",
@@ -76,6 +77,7 @@ function main() {
     const invalidText = fs.readFileSync(invalidResult.output_file, "utf8");
 
     assert(invalidResult.roster_verification.pass === false, "invalid roster should be surfaced in multi-agent status");
+    assert(invalidResult.multi_agent_status_diagnostic?.roster_pass === false, "invalid roster should expose roster failure in the stable diagnostic");
     assert(invalidText.includes("roster_verification: fail"), "status file should mark roster verification failure");
     assert(invalidText.includes("ghost-agent: unknown adapter id with no adapter_module"), "status file should surface roster issues");
 
@@ -151,6 +153,7 @@ function main() {
     assert(environmentResult.arbitration.arbitration_required === true, "blocked role coverage should require arbitration in multi-agent status");
     assert(environmentResult.arbitration.arbitration_status === "ok", "blocked role coverage should still expose arbitration_status=ok");
     assert(environmentResult.arbitration.preferred_decision === "reanchor", "blocked role coverage should prefer reanchor");
+    assert(environmentResult.multi_agent_status_diagnostic?.preferred_decision === "reanchor", "blocked role coverage should expose preferred decision in the stable diagnostic");
     assert(environmentText.includes("environment_unavailable_count: 1"), "status file should count environment-unavailable adapters");
     assert(environmentText.includes("recommended_role_coverage_status: blocked"), "status file should surface blocked role coverage");
     assert(environmentText.includes("recommendation: no runnable adapter remains for role auditor"), "status file should explain the blocked role coverage");
@@ -166,6 +169,7 @@ function main() {
     const integrationText = fs.readFileSync(integrationResult.output_file, "utf8");
     assert(integrationResult.integration_risk.recommended_strategy === "integration_cycle", "multi-agent status should expose the integration strategy");
     assert(integrationResult.arbitration.preferred_decision === "integration_cycle", "integration-cycle strategy should flow into arbitration");
+    assert(integrationResult.multi_agent_status_diagnostic?.integration_strategy === "integration_cycle", "integration-cycle strategy should surface in the stable diagnostic");
     assert(integrationText.includes("integration_strategy: integration_cycle"), "status file should surface the integration strategy in summary");
     assert(integrationText.includes("## Integration Strategy"), "status file should render integration strategy section");
     assert(integrationText.includes("recommended_strategy: integration_cycle"), "status file should expose the recommended integration strategy");
@@ -195,6 +199,7 @@ function main() {
     assert(dbOnlyResult.state_mode === "db-only", "db-only multi-agent status should resolve db-only state mode");
     assert(dbOnlyResult.db_first_applied === true, "db-only multi-agent status should write through SQLite");
     assert(dbOnlyResult.db_first_materialized === false, "db-only multi-agent status should not materialize markdown on disk");
+    assert(dbOnlyResult.multi_agent_status_diagnostic?.state_mode === "db-only", "db-only projection should expose state mode in the stable diagnostic");
     assert(dbOnlyResult.roster_verification.pass === true, "db-only multi-agent status should still verify roster from SQLite");
     assert(dbOnlyResult.agent_health_summary.written === true, "db-only multi-agent status should still refresh health summary through SQLite");
     assert(dbOnlyResult.agent_selection_summary.written === true, "db-only multi-agent status should still refresh selection summary through SQLite");

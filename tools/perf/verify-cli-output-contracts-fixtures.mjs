@@ -145,6 +145,16 @@ const CONTRACT_CASES = [
     args: ["runtime", "project-agent-selection-summary", "--json"],
   },
   {
+    name: "runtime-project-integration-risk",
+    schema: "runtime-project-integration-risk.v1.schema.json",
+    args: ["runtime", "project-integration-risk", "--json"],
+  },
+  {
+    name: "runtime-project-multi-agent-status",
+    schema: "runtime-project-multi-agent-status.v1.schema.json",
+    args: ["runtime", "project-multi-agent-status", "--json"],
+  },
+  {
     name: "runtime-coordinator-select-agent",
     schema: "runtime-coordinator-select-agent.v1.schema.json",
     args: ["runtime", "coordinator-select-agent", "--role", "auditor", "--action", "audit", "--json"],

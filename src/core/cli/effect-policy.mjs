@@ -275,6 +275,22 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Projects the agent selection summary artifact and returns the adapter selection preview snapshot.",
   }),
   commandPolicy({
+    id: "runtime-project-integration-risk",
+    command: "aidn runtime project-integration-risk --json",
+    effectClass: "projector",
+    jsonContract: "runtime-project-integration-risk.v1.schema.json",
+    safeArgs: ["runtime", "project-integration-risk", "--json"],
+    notes: "Projects the integration risk digest and returns the mergeability assessment snapshot.",
+  }),
+  commandPolicy({
+    id: "runtime-project-multi-agent-status",
+    command: "aidn runtime project-multi-agent-status --json",
+    effectClass: "projector",
+    jsonContract: "runtime-project-multi-agent-status.v1.schema.json",
+    safeArgs: ["runtime", "project-multi-agent-status", "--json"],
+    notes: "Projects the multi-agent status digest and returns the aggregated routing snapshot.",
+  }),
+  commandPolicy({
     id: "runtime-project-runtime-state",
     command: "aidn runtime project-runtime-state --json",
     effectClass: "projector",

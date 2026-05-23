@@ -56,6 +56,22 @@ function printUsage() {
   console.log("  node tools/runtime/project-multi-agent-status.mjs --target . --json");
 }
 
+function deriveMultiAgentStatusDiagnostic(result) {
+  return {
+    scope: "project-multi-agent-status",
+    state_mode: String(result?.state_mode ?? "unknown").trim() || "unknown",
+    recommended_role: String(result?.recommendation?.role ?? "unknown").trim() || "unknown",
+    recommended_action: String(result?.recommendation?.action ?? "unknown").trim() || "unknown",
+    roster_pass: result?.roster_verification?.pass === true,
+    arbitration_required: result?.arbitration?.arbitration_required === true,
+    preferred_decision: String(result?.arbitration?.preferred_decision ?? "none").trim() || "none",
+    integration_strategy: String(result?.integration_risk?.recommended_strategy ?? "unknown").trim() || "unknown",
+    written: result?.written === true,
+    summary: `multi-agent status recommends ${String(result?.recommendation?.role ?? "unknown").trim() || "unknown"} + ${String(result?.recommendation?.action ?? "unknown").trim() || "unknown"}`,
+    recommended_command: "aidn runtime coordinator-next-action --json",
+  };
+}
+
 function findSelectionPreview(selectionSummary, recommendation) {
   return selectionSummary.summary.auto_selection_preview.find((item) => (
     item.role === recommendation.role
@@ -457,6 +473,20 @@ export async function projectMultiAgentStatus({
       written: coordinationSummary.written,
       summary: coordinationSummary.summary,
     },
+    multi_agent_status_diagnostic: deriveMultiAgentStatusDiagnostic({
+      target_root: absoluteTargetRoot,
+      output_file: write.path,
+      written: write.written,
+      state_mode: effectiveStateMode,
+      recommendation: coordinator.recommendation,
+      integration_risk: integrationRisk,
+      arbitration,
+      roster_verification: {
+        pass: rosterVerification.pass,
+        issues: rosterVerification.issues,
+        warnings: rosterVerification.warnings,
+      },
+    }),
   };
 }
 

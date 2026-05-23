@@ -50,6 +50,20 @@ function printUsage() {
   console.log("  node tools/runtime/project-integration-risk.mjs --target . --json");
 }
 
+function deriveIntegrationRiskDiagnostic(result) {
+  return {
+    scope: "project-integration-risk",
+    state_mode: String(result?.state_mode ?? "unknown").trim() || "unknown",
+    recommended_strategy: String(result?.recommended_strategy ?? "unknown").trim() || "unknown",
+    mergeability: String(result?.mergeability ?? "unknown").trim() || "unknown",
+    candidate_cycle_count: Array.isArray(result?.candidate_cycles) ? result.candidate_cycles.length : 0,
+    arbitration_required: result?.arbitration_required === true,
+    written: result?.written === true,
+    summary: `integration risk strategy is ${String(result?.recommended_strategy ?? "unknown").trim() || "unknown"}`,
+    recommended_command: "aidn runtime coordinator-suggest-arbitration --json",
+  };
+}
+
 function buildMarkdown(result, out) {
   const lines = [];
   lines.push("# Integration Risk");
@@ -185,6 +199,12 @@ export function projectIntegrationRisk({
     db_first_applied: Boolean(dbFirstWrite),
     db_first_materialized: Boolean(dbFirstWrite?.materialized),
     db_first_artifact_path: dbFirstWrite?.artifact?.path ?? relativeOut,
+    integration_risk_diagnostic: deriveIntegrationRiskDiagnostic({
+      ...assessment,
+      output_file: write.path,
+      written: write.written,
+      state_mode: effectiveStateMode,
+    }),
   };
 }
 

@@ -47,6 +47,8 @@ Initial v1 commands:
 - `aidn runtime verify-agent-roster --json`
 - `aidn runtime project-agent-health-summary --json`
 - `aidn runtime project-agent-selection-summary --json`
+- `aidn runtime project-integration-risk --json`
+- `aidn runtime project-multi-agent-status --json`
 - `aidn runtime coordinator-select-agent --json`
 - `aidn runtime coordinator-next-action --json`
 - `aidn runtime coordinator-dispatch-plan --json`
