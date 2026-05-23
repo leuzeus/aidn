@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import {
+  addPreWriteSourceOfTruthIssue,
   buildPreWriteAdmissionResult,
+  knownPreWriteStateMode,
   mergePreWritePolicy,
+  sourceOfTruthPoliciesForPreWriteAdmission,
 } from "../../src/application/runtime/pre-write-admit-use-case.mjs";
 
 function assert(condition, message) {
@@ -55,10 +58,35 @@ function verifyResultAssembly() {
   assert(result.source_of_truth.repair_actions.includes("refresh policy"), "result should preserve repair actions");
 }
 
+function verifySourceOfTruthHelpers() {
+  const policies = sourceOfTruthPoliciesForPreWriteAdmission("dual");
+  assert(Boolean(policies.session_state), "pre-write source-of-truth helper should resolve session_state policy");
+  assert(knownPreWriteStateMode("db-only") === true, "db-only should be a known pre-write state mode");
+  assert(knownPreWriteStateMode("weird") === false, "unknown mode should not be accepted");
+  const issues = [];
+  const warnings = [];
+  const blockingReasons = [];
+  const repairActions = [];
+  addPreWriteSourceOfTruthIssue({
+    issues,
+    warnings,
+    blockingReasons,
+    repairActions,
+    severity: "warn",
+    reasonCode: "SOT_WARN",
+    message: "warn message",
+    repairAction: "repair step",
+  });
+  assert(issues.length === 1, "source-of-truth issue helper should collect issues");
+  assert(warnings.includes("SOT_WARN: warn message"), "source-of-truth issue helper should add warning text");
+  assert(repairActions.includes("repair step"), "source-of-truth issue helper should keep repair action");
+}
+
 function main() {
   try {
     verifyPolicyMerge();
     verifyResultAssembly();
+    verifySourceOfTruthHelpers();
     console.log("PASS");
   } catch (error) {
     console.error(`ERROR: ${error.message}`);

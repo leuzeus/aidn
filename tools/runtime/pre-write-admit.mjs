@@ -4,8 +4,11 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 import {
+  addPreWriteSourceOfTruthIssue,
   buildPreWriteAdmissionResult,
+  knownPreWriteStateMode,
   mergePreWritePolicy,
+  sourceOfTruthPoliciesForPreWriteAdmission,
 } from "../../src/application/runtime/pre-write-admit-use-case.mjs";
 import { loadSharedStateSnapshot } from "../../src/application/runtime/shared-state-backend-service.mjs";
 import { resolvePromotedSharedPlanningContext } from "../../src/application/runtime/shared-planning-resolution-service.mjs";
@@ -13,7 +16,6 @@ import { validateSharedRuntimeContext } from "../../src/application/runtime/shar
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
 import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
-import { getSourceOfTruthPolicy } from "../../src/core/source-of-truth/source-of-truth-policy.mjs";
 import { resolveEffectiveStateMode } from "../../src/core/state-mode/state-mode-policy.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
 
@@ -767,53 +769,6 @@ function addCheck(checks, key, pass, details, extra = {}) {
   };
 }
 
-const SOURCE_OF_TRUTH_ADMISSION_CONCEPTS = Object.freeze([
-  "session_state",
-  "cycle_state",
-  "runtime_digests",
-  "artifact_inventory",
-  "repair_findings",
-  "coordination_records",
-]);
-
-function knownStateMode(value) {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  return normalized === "files" || normalized === "dual" || normalized === "db-only";
-}
-
-function sourceOfTruthPoliciesForAdmission(stateMode) {
-  return Object.fromEntries(SOURCE_OF_TRUTH_ADMISSION_CONCEPTS.map((concept) => [
-    concept,
-    getSourceOfTruthPolicy(concept, stateMode),
-  ]));
-}
-
-function addSourceOfTruthIssue({
-  issues,
-  warnings,
-  blockingReasons,
-  repairActions,
-  severity,
-  reasonCode,
-  message,
-  repairAction,
-}) {
-  issues.push({
-    severity,
-    reason_code: reasonCode,
-    message,
-    repair_action: repairAction,
-  });
-  if (repairAction) {
-    repairActions.push(repairAction);
-  }
-  if (severity === "block") {
-    blockingReasons.push(`${reasonCode}: ${message}`);
-  } else {
-    warnings.push(`${reasonCode}: ${message}`);
-  }
-}
-
 export async function preWriteAdmit({
   targetRoot,
   skill = "",
@@ -963,7 +918,7 @@ export async function preWriteAdmit({
   const sourceOfTruth = {
     state_mode: effectiveStateMode,
     runtime_state_mode: runtimeStateMode,
-    concepts: sourceOfTruthPoliciesForAdmission(effectiveStateMode),
+    concepts: sourceOfTruthPoliciesForPreWriteAdmission(effectiveStateMode),
     observed_sources: {
       current_state: currentStateResolution.source,
       runtime_state: runtimeStateResolution.source,
@@ -1087,7 +1042,7 @@ export async function preWriteAdmit({
       reason_code: sourceOfTruthPoliciesResolved ? "SOT_POLICY_RESOLVED" : "SOT_POLICY_MISSING",
     });
   if (!sourceOfTruthPoliciesResolved) {
-    addSourceOfTruthIssue({
+    addPreWriteSourceOfTruthIssue({
       issues: sourceOfTruthIssues,
       warnings,
       blockingReasons,
@@ -1102,7 +1057,7 @@ export async function preWriteAdmit({
   const normalizedRuntimeStateMode = runtimeStateMode.toLowerCase();
   const runtimeModeAligned = !runtimeStateExists
     || canonicalUnknown(runtimeStateMode)
-    || !knownStateMode(runtimeStateMode)
+    || !knownPreWriteStateMode(runtimeStateMode)
     || normalizedRuntimeStateMode === effectiveStateMode;
   addCheck(checks, "source_of_truth_state_mode_alignment", runtimeModeAligned, runtimeModeAligned
     ? `effective_state_mode=${effectiveStateMode}; runtime_state_mode=${runtimeStateMode}`
@@ -1111,7 +1066,7 @@ export async function preWriteAdmit({
     });
   if (!runtimeModeAligned) {
     const severity = effectiveStateMode === "db-only" || normalizedRuntimeStateMode === "db-only" ? "block" : "warn";
-    addSourceOfTruthIssue({
+    addPreWriteSourceOfTruthIssue({
       issues: sourceOfTruthIssues,
       warnings,
       blockingReasons,
@@ -1135,7 +1090,7 @@ export async function preWriteAdmit({
       reason_code: dbOnlySourcesCanonical ? "SOT_DB_ONLY_SOURCES_ALIGNED" : "SOT_DB_ONLY_PROJECTION_READ",
     });
   if (dbOnlyProjectionReads.length > 0) {
-    addSourceOfTruthIssue({
+    addPreWriteSourceOfTruthIssue({
       issues: sourceOfTruthIssues,
       warnings,
       blockingReasons,

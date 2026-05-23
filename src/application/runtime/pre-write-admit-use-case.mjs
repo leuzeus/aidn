@@ -1,3 +1,5 @@
+import { getSourceOfTruthPolicy } from "../../core/source-of-truth/source-of-truth-policy.mjs";
+
 const DEFAULT_POLICY = Object.freeze({
   requireMode: true,
   requireBranchKind: false,
@@ -76,6 +78,53 @@ function uniqueItems(values) {
 export function mergePreWritePolicy(skill) {
   const specific = SKILL_POLICIES[skill] ?? {};
   return { ...DEFAULT_POLICY, ...specific };
+}
+
+const SOURCE_OF_TRUTH_ADMISSION_CONCEPTS = Object.freeze([
+  "session_state",
+  "cycle_state",
+  "runtime_digests",
+  "artifact_inventory",
+  "repair_findings",
+  "coordination_records",
+]);
+
+export function knownPreWriteStateMode(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return normalized === "files" || normalized === "dual" || normalized === "db-only";
+}
+
+export function sourceOfTruthPoliciesForPreWriteAdmission(stateMode) {
+  return Object.fromEntries(SOURCE_OF_TRUTH_ADMISSION_CONCEPTS.map((concept) => [
+    concept,
+    getSourceOfTruthPolicy(concept, stateMode),
+  ]));
+}
+
+export function addPreWriteSourceOfTruthIssue({
+  issues,
+  warnings,
+  blockingReasons,
+  repairActions,
+  severity,
+  reasonCode,
+  message,
+  repairAction,
+}) {
+  issues.push({
+    severity,
+    reason_code: reasonCode,
+    message,
+    repair_action: repairAction,
+  });
+  if (repairAction) {
+    repairActions.push(repairAction);
+  }
+  if (severity === "block") {
+    blockingReasons.push(`${reasonCode}: ${message}`);
+  } else {
+    warnings.push(`${reasonCode}: ${message}`);
+  }
 }
 
 export function buildPreWriteAdmissionResult({
