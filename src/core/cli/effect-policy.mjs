@@ -219,6 +219,14 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Stays a preview unless --execute is supplied.",
   }),
   commandPolicy({
+    id: "runtime-coordinator-resume",
+    command: "aidn runtime coordinator-resume --json",
+    effectClass: "preview",
+    jsonContract: "runtime-coordinator-resume.v1.schema.json",
+    safeArgs: ["runtime", "coordinator-resume", "--json"],
+    notes: "Previews the next coordinator resume path unless --execute is supplied.",
+  }),
+  commandPolicy({
     id: "runtime-project-runtime-state",
     command: "aidn runtime project-runtime-state --json",
     effectClass: "projector",

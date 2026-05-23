@@ -227,6 +227,8 @@ function main() {
     assert(blockedDryRun.preferred_decision === "reanchor", "blocked resume should expose the preferred arbitration decision");
     assert(blockedDryRun.arbitration_suggestions?.preferred_decision === "reanchor", "blocked resume should expose arbitration suggestions");
     assert(blockedDryRun.execute_requested === false, "blocked dry-run should report execute_requested=false");
+    assert(blockedDryRun.resume_diagnostic?.resume_status === "blocked", "blocked resume should expose a stable resume diagnostic");
+    assert(blockedDryRun.resume_diagnostic?.recommended_command === "aidn runtime coordinator-suggest-arbitration --json", "blocked resume should point to arbitration in the stable diagnostic");
     assert(Array.isArray(blockedDryRun.arbitration_suggestions?.suggestions) && blockedDryRun.arbitration_suggestions.suggestions.some((item) => String(item.record_command ?? "").includes("coordinator-record-arbitration")), "blocked resume suggestions should include record-arbitration commands");
     assert(blockedExecute.resume_status === "blocked", "blocked execute should stay blocked");
     assert(blockedExecute.execution_status === "blocked", "blocked execute should refuse execution");
@@ -242,9 +244,12 @@ function main() {
     assert(resumedDryRun.preferred_dispatch_source === "shared_planning", "continue arbitration should prefer the aligned shared planning relay");
     assert(resumedDryRun.shared_planning_candidate?.candidate_ready === true, "continue arbitration should expose a ready shared planning candidate");
     assert(resumedDryRun.shared_planning_candidate?.candidate_aligned === true, "continue arbitration should expose an aligned shared planning candidate");
+    assert(resumedDryRun.resume_diagnostic?.preferred_dispatch_source === "shared_planning", "ready resume should expose the preferred dispatch source in the stable diagnostic");
     assert(resumedExecute.resume_status === "resumed_after_arbitration", "executed resume should preserve arbitration resume status");
     assert(resumedExecute.execution_status === "executed", "executed resume should complete execution");
     assert(resumedExecute.executed === true, "executed resume should report executed");
+    assert(resumedExecute.resume_diagnostic?.execution_status === "executed", "executed resume should expose execution status in the stable diagnostic");
+    assert(resumedExecute.resume_diagnostic?.recommended_command === "aidn runtime coordinator-resume --execute --json", "ready resume should keep an execution recommendation in the stable diagnostic");
     assert(resumedExecute.preferred_dispatch_source === "shared_planning", "executed resume should keep the aligned shared planning preference");
     assert(resumedExecute.execution?.dispatch_status === "ready", "executed resume should execute a ready dispatch");
     assert(Array.isArray(resumedExecute.execution?.executed_steps) && resumedExecute.execution.executed_steps.length === 2, "executed resume should run the implementation dispatch");
