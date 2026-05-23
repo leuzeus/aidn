@@ -126,6 +126,7 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-handoff-admit", linked_concepts: ["handoff_packet", "session", "cycle"] },
   { id: "runtime-coordinator-next-action", linked_concepts: ["current_state", "runtime_state", "handoff_packet"] },
   { id: "runtime-coordinator-dispatch-plan", linked_concepts: ["current_state", "runtime_state", "handoff_packet", "coordination_record"] },
+  { id: "runtime-coordinator-dispatch-execute", linked_concepts: ["coordination_record", "coordination_summary", "coordination_log", "runtime_state"] },
   { id: "runtime-coordinator-orchestrate", linked_concepts: ["coordination_record", "handoff_packet", "runtime_state"] },
   { id: "runtime-coordinator-resume", linked_concepts: ["coordination_record", "handoff_packet", "runtime_state"] },
   { id: "runtime-coordinator-suggest-arbitration", linked_concepts: ["coordination_record", "handoff_packet", "runtime_state"] },

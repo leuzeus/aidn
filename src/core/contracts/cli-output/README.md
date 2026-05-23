@@ -48,6 +48,7 @@ Initial v1 commands:
 - `aidn runtime coordinator-select-agent --json`
 - `aidn runtime coordinator-next-action --json`
 - `aidn runtime coordinator-dispatch-plan --json`
+- `aidn runtime coordinator-dispatch-execute --json`
 - `aidn runtime coordinator-orchestrate --json`
 - `aidn runtime coordinator-resume --json`
 - `aidn runtime coordinator-suggest-arbitration --json`

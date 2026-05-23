@@ -251,6 +251,14 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Records a user arbitration decision and updates the related coordination artifacts.",
   }),
   commandPolicy({
+    id: "runtime-coordinator-dispatch-execute",
+    command: "aidn runtime coordinator-dispatch-execute --json",
+    effectClass: "executor",
+    jsonContract: "runtime-coordinator-dispatch-execute.v1.schema.json",
+    safeArgs: ["runtime", "coordinator-dispatch-execute", "--json"],
+    notes: "Previews or executes the selected coordinator dispatch path depending on --execute.",
+  }),
+  commandPolicy({
     id: "runtime-project-runtime-state",
     command: "aidn runtime project-runtime-state --json",
     effectClass: "projector",

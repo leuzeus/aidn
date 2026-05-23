@@ -92,6 +92,28 @@ function printUsage() {
   console.log("  node tools/runtime/coordinator-dispatch-execute.mjs --target . --execute --json");
 }
 
+function deriveDispatchExecuteDiagnostic(result) {
+  return {
+    scope: "coordinator-dispatch-execute",
+    dispatch_status: String(result?.dispatch_status ?? "unknown").trim() || "unknown",
+    execution_status: String(result?.execution_status ?? "unknown").trim() || "unknown",
+    executed: Boolean(result?.executed),
+    selected_agent: String(result?.selected_agent?.id ?? "unknown").trim() || "unknown",
+    recommended_role: String(result?.coordinator_recommendation?.role ?? "unknown").trim() || "unknown",
+    preferred_dispatch_source: String(result?.preferred_dispatch_source ?? "unknown").trim() || "unknown",
+    executed_step_count: Array.isArray(result?.executed_steps) ? result.executed_steps.length : 0,
+    shared_sync_status: String(
+      result?.shared_coordination_sync?.diagnostic?.sync_status
+      ?? result?.shared_coordination_sync?.status
+      ?? "unknown",
+    ).trim() || "unknown",
+    summary: `coordinator dispatch execute is ${String(result?.execution_status ?? "unknown").trim() || "unknown"}`,
+    recommended_command: Boolean(result?.executed)
+      ? "aidn runtime coordinator-orchestrate --max-iterations 1 --json"
+      : "aidn runtime coordinator-resume --json",
+  };
+}
+
 async function resolveAgentAdapter(agentId, options = {}) {
   const normalizedId = String(agentId ?? "").trim().toLowerCase();
   const adapters = await loadRegisteredAgentAdapters({
@@ -314,7 +336,7 @@ function buildCoordinationHistoryEvent(result) {
   };
 }
 
-export async function executeCoordinatorDispatch({
+async function runCoordinatorDispatch({
   targetRoot,
   agent = "auto",
   currentStateFile = "docs/audit/CURRENT-STATE.md",
@@ -595,6 +617,14 @@ export async function executeCoordinatorDispatch({
   });
   finalResult.multi_agent_status_written = Boolean(finalResult.multi_agent_status?.written);
   return decorateWithSharedCoordination(finalResult);
+}
+
+export async function executeCoordinatorDispatch(options = {}) {
+  const result = await runCoordinatorDispatch(options);
+  return {
+    ...result,
+    dispatch_execute_diagnostic: deriveDispatchExecuteDiagnostic(result),
+  };
 }
 
 function main() {

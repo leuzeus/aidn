@@ -150,6 +150,11 @@ const CONTRACT_CASES = [
     args: ["runtime", "coordinator-dispatch-plan", "--json"],
   },
   {
+    name: "runtime-coordinator-dispatch-execute",
+    schema: "runtime-coordinator-dispatch-execute.v1.schema.json",
+    args: ["runtime", "coordinator-dispatch-execute", "--json"],
+  },
+  {
     name: "runtime-coordinator-orchestrate",
     schema: "runtime-coordinator-orchestrate.v1.schema.json",
     args: ["runtime", "coordinator-orchestrate", "--max-iterations", "1", "--json"],
