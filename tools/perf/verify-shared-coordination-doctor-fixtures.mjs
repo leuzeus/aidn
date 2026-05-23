@@ -107,6 +107,7 @@ async function main() {
     assert(disabled.status === 0, "doctor CLI should succeed with informational disabled status");
     assert(disabled.json?.status === "pass", "disabled doctor CLI should remain pass/info");
     assert(disabled.json?.findings?.[0]?.code === "shared-runtime-disabled", "disabled doctor should explain the disabled state");
+    assert(disabled.json?.source_of_truth?.concept === "coordination_records", "disabled doctor should expose source-of-truth governance");
 
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-shared-coordination-doctor-"));
     const targetRoot = path.join(tempRoot, "repo");
@@ -137,6 +138,8 @@ async function main() {
     assert(ready.ok === true, "doctor should pass for a healthy aligned schema");
     assert(ready.health?.schema_status === "ready", "doctor should expose ready schema status");
     assert(ready.health?.compatibility_status === "project-scoped", "doctor should expose project-scoped compatibility status");
+    assert(ready.metadata?.concept === "workspace", "doctor should expose workspace metadata governance");
+    assert(ready.operations?.doctor_status === "pass", "doctor should expose operational doctor status");
 
     const behind = await doctorSharedCoordination({
       targetRoot,
@@ -148,6 +151,7 @@ async function main() {
     assert(behind.ok === false, "doctor should fail when the schema is behind");
     assert(behind.findings?.some((item) => item.code === "version-behind"), "doctor should report version-behind");
     assert(behind.recommended_actions?.some((item) => item.includes("shared-coordination-migrate --dry-run")), "doctor should recommend reviewing the upgrade plan before applying it");
+    assert(behind.operations?.backup_command === "aidn runtime shared-coordination-backup --target . --json", "doctor should expose backup command");
 
     const mixedState = await doctorSharedCoordination({
       targetRoot,

@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { evaluateMetadataPolicy } from "../../src/core/metadata/metadata-policy.mjs";
-import { evaluateSourceOfTruthPolicy } from "../../src/core/source-of-truth/source-of-truth-policy.mjs";
 import {
   readLatestSharedHandoffRelay,
   readSharedCoordinationRecords,
@@ -10,6 +8,7 @@ import {
   resolveSharedCoordinationStore,
   summarizeSharedCoordinationResolution,
 } from "../../src/application/runtime/shared-coordination-store-service.mjs";
+import { deriveSharedCoordinationGovernance } from "../../src/application/runtime/shared-coordination-governance-lib.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import {
   loadSqliteIndexPayloadSafe,
@@ -47,13 +46,6 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  npx aidn runtime shared-coordination-status --target . --json");
-}
-
-function deriveWorkspaceLifecycleStatus({ backendStatus, hasSharedRecords }) {
-  if (backendStatus === "ready" || hasSharedRecords) {
-    return "active";
-  }
-  return "discovered";
 }
 
 function deriveSharedCoordinationOperations({
@@ -158,25 +150,18 @@ export async function projectSharedCoordinationStatus({
     || coordination?.records?.[0]?.created_at
     || "";
   const hasSharedRecords = Boolean(planning?.planning_state || handoff?.handoff_relay || (coordination?.records?.length ?? 0) > 0);
-  const sourceOfTruth = evaluateSourceOfTruthPolicy("coordination_records");
-  const metadata = evaluateMetadataPolicy("workspace", {
-    workspace_id: workspace.workspace_id,
-    worktree_id: workspace.worktree_id,
-    source_of_truth: sourceOfTruth.concept,
-    updated_at: latestObservedAt,
-    lifecycle_status: deriveWorkspaceLifecycleStatus({
-      backendStatus: backend.status,
-      hasSharedRecords,
-    }),
-    owner: workspace.project_id,
-    shared_runtime_mode: workspace.shared_runtime_mode,
+  const governance = deriveSharedCoordinationGovernance({
+    workspace,
+    backend,
+    updatedAt: latestObservedAt,
+    hasSharedRecords,
   });
   const result = {
     target_root: absoluteTargetRoot,
     ok: resolution.store ? health?.ok === true : resolution.status === "disabled",
     workspace,
-    source_of_truth: sourceOfTruth,
-    metadata,
+    source_of_truth: governance.source_of_truth,
+    metadata: governance.metadata,
     shared_coordination_backend: backend,
     health,
     snapshot: {
@@ -212,8 +197,8 @@ export async function projectSharedCoordinationStatus({
       backend,
       health,
       snapshot: result.snapshot,
-      sourceOfTruth,
-      metadata,
+      sourceOfTruth: governance.source_of_truth,
+      metadata: governance.metadata,
     }),
   };
 }

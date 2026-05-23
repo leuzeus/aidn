@@ -8,6 +8,7 @@ import {
   resolveSharedCoordinationStore,
   summarizeSharedCoordinationResolution,
 } from "../../src/application/runtime/shared-coordination-store-service.mjs";
+import { deriveSharedCoordinationGovernance } from "../../src/application/runtime/shared-coordination-governance-lib.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import {
   loadSqliteIndexPayloadSafe,
@@ -18,6 +19,37 @@ import {
 } from "./db-first-runtime-view-lib.mjs";
 import { isJsonEquivalent, writeJsonIfChanged } from "../../src/lib/index/io-lib.mjs";
 import { resolveSharedCoordinationBackupSchemaInfo } from "../../src/application/runtime/shared-coordination-admin-service.mjs";
+
+function deriveSharedCoordinationBackupOperations({
+  backend,
+  health,
+  sourceOfTruth,
+  metadata,
+  backup,
+  outputFile,
+  writeApplied,
+}) {
+  const status = backend?.status ?? "disabled";
+  return {
+    local_first: true,
+    scope: "shared-coordination-only",
+    backend_kind: backend?.backend_kind ?? "none",
+    backend_status: status,
+    schema_status: health?.schema_status ?? (status === "disabled" ? "disabled" : status),
+    source_of_truth_status: sourceOfTruth?.source_of_truth_status ?? "missing",
+    metadata_status: metadata?.metadata_status ?? "not_governed",
+    compatibility_status: health?.compatibility_status ?? "unknown",
+    connection_ref: backend?.connection_ref || "none",
+    connection_secret_exposed: false,
+    write_applied: Boolean(writeApplied),
+    output_file: outputFile || "",
+    record_count: Number(backup?.snapshot?.coordination_read?.record_count ?? 0) || 0,
+    restore_preview_command: "aidn runtime shared-coordination-restore --target . --json",
+    recommended_actions: status === "ready"
+      ? ["verify the backup snapshot before using --write on shared-coordination-restore"]
+      : ["configure or repair the shared coordination backend before exporting a backup snapshot"],
+  };
+}
 
 function parseArgs(argv) {
   const args = {
@@ -100,8 +132,23 @@ export async function backupSharedCoordination({
   const backend = summarizeSharedCoordinationResolution(resolution);
   const health = resolution.store ? await resolution.store.healthcheck() : null;
   const activeContext = resolveActiveContext(absoluteTargetRoot);
+  const disabledGovernance = deriveSharedCoordinationGovernance({
+    workspace,
+    backend,
+    updatedAt: new Date().toISOString(),
+    hasSharedRecords: false,
+  });
 
   if (!resolution.store) {
+    const operations = deriveSharedCoordinationBackupOperations({
+      backend,
+      health,
+      sourceOfTruth: disabledGovernance.source_of_truth,
+      metadata: disabledGovernance.metadata,
+      backup: null,
+      outputFile: "",
+      writeApplied: false,
+    });
     return {
       target_root: absoluteTargetRoot,
       output_file: "",
@@ -110,9 +157,12 @@ export async function backupSharedCoordination({
       status: resolution.status || "disabled",
       reason: resolution.reason || "shared coordination backend is not available",
       workspace,
+      source_of_truth: disabledGovernance.source_of_truth,
+      metadata: disabledGovernance.metadata,
       shared_coordination_backend: backend,
       health,
       backup: null,
+      operations,
     };
   }
 
@@ -176,11 +226,26 @@ export async function backupSharedCoordination({
       },
     },
   };
+  const governance = deriveSharedCoordinationGovernance({
+    workspace,
+    backend,
+    updatedAt: backup.ts,
+    hasSharedRecords: Boolean(planning?.planning_state || handoff?.handoff_relay || (coordination?.records?.length ?? 0) > 0),
+  });
 
   const output = writeJsonIfChanged(path.resolve(absoluteTargetRoot, out), backup, {
     isEquivalent(previousContent) {
       return isJsonEquivalent(previousContent, backup, ["ts"]);
     },
+  });
+  const operations = deriveSharedCoordinationBackupOperations({
+    backend,
+    health,
+    sourceOfTruth: governance.source_of_truth,
+    metadata: governance.metadata,
+    backup,
+    outputFile: output.path,
+    writeApplied: output.written,
   });
   return {
     target_root: absoluteTargetRoot,
@@ -190,10 +255,13 @@ export async function backupSharedCoordination({
     status: "backed-up",
     reason: "shared coordination backup exported",
     workspace,
+    source_of_truth: governance.source_of_truth,
+    metadata: governance.metadata,
     shared_coordination_backend: backend,
     health,
     schema_compatibility: resolveSharedCoordinationBackupSchemaInfo(backup),
     backup,
+    operations,
   };
 }
 

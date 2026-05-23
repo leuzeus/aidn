@@ -34,6 +34,9 @@ Initial v1 commands:
 - `aidn runtime db-status --json`
 - `aidn runtime shared-coordination-status --json`
 - `aidn runtime shared-coordination-projects --json`
+- `aidn runtime shared-coordination-backup --json`
+- `aidn runtime shared-coordination-restore --json`
+- `aidn runtime shared-coordination-doctor --json`
 - `aidn runtime governance-diagnostics --json`
 - `aidn runtime list-agent-adapters --json`
 - `aidn runtime verify-agent-roster --json`

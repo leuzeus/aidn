@@ -246,6 +246,7 @@ async function main() {
     const disabled = runCli(["runtime", "shared-coordination-restore", "--target", "tests/fixtures/repo-installed-core", "--json"]);
     assert(disabled.status === 1, "restore CLI should fail when shared coordination is disabled");
     assert(disabled.json?.status === "disabled", "disabled restore CLI should report disabled status");
+    assert(disabled.json?.source_of_truth?.concept === "coordination_records", "disabled restore CLI should still expose source-of-truth governance");
 
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-shared-coordination-restore-"));
     const targetRoot = path.join(tempRoot, "repo");
@@ -286,6 +287,9 @@ async function main() {
     assert(dryRun.ok === true, "direct restore dry-run should succeed");
     assert(dryRun.status === "dry-run", "direct restore should default to dry-run");
     assert(dryRun.schema_compatibility?.status === "compatible", "direct restore dry-run should report schema compatibility");
+    assert(dryRun.source_of_truth?.concept === "coordination_records", "direct restore dry-run should expose source-of-truth governance");
+    assert(dryRun.metadata?.concept === "workspace", "direct restore dry-run should expose workspace metadata governance");
+    assert(dryRun.operations?.write_requested === false, "direct restore dry-run should expose write_requested=false");
     assert(state.planning === null, "dry-run should not mutate the backend");
 
     const writeResult = await restoreSharedCoordination({
@@ -297,6 +301,8 @@ async function main() {
     assert(writeResult.ok === true, "direct restore write should succeed");
     assert(writeResult.status === "restored", "direct restore write should report restored");
     assert(writeResult.schema_compatibility?.status === "compatible", "direct restore write should preserve schema compatibility");
+    assert(writeResult.operations?.restore_applied === true, "direct restore write should expose restore_applied=true");
+    assert(writeResult.operations?.backup_command === "aidn runtime shared-coordination-backup --target . --json", "direct restore should expose backup command");
     assert(state.workspace?.projectId === "project-restore", "restore should register project-aware workspace");
     assert(state.workspace?.workspaceId === "workspace-restore", "restore should register workspace");
     assert(state.worktree?.worktreeId, "restore should register worktree");

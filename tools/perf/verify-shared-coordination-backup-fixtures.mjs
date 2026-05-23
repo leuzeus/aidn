@@ -171,9 +171,13 @@ async function main() {
     });
     assert(direct.ok === true, "direct backup should succeed with fake store");
     assert(direct.health?.schema_status === "ready", "direct backup should expose schema status");
+    assert(direct.source_of_truth?.concept === "coordination_records", "direct backup should expose source-of-truth governance");
+    assert(direct.metadata?.concept === "workspace", "direct backup should expose workspace metadata governance");
     assert(direct.backup?.workspace?.project_id === "project-backup", "direct backup should expose project identity");
     assert(direct.backup?.schema_snapshot?.latest_applied_schema_version === 2, "direct backup should expose the applied schema version snapshot");
     assert(direct.backup?.snapshot?.coordination_read?.record_count === 2, "direct backup should export coordination records");
+    assert(direct.operations?.restore_preview_command === "aidn runtime shared-coordination-restore --target . --json", "direct backup should expose restore preview command");
+    assert(direct.operations?.connection_secret_exposed === false, "direct backup should not expose secrets");
     assert(fs.existsSync(outFile), "direct backup should write the backup file");
 
     const writtenPayload = JSON.parse(fs.readFileSync(outFile, "utf8"));

@@ -8,6 +8,7 @@ import {
   syncSharedWorkspaceRegistration,
 } from "../../src/application/runtime/shared-coordination-store-service.mjs";
 import { resolveSharedCoordinationRestoreCompatibility } from "../../src/application/runtime/shared-coordination-admin-service.mjs";
+import { deriveSharedCoordinationGovernance } from "../../src/application/runtime/shared-coordination-governance-lib.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 
 function normalizeScalar(value) {
@@ -110,6 +111,37 @@ function checkWorkspaceMatch(workspace, payload) {
   };
 }
 
+function deriveSharedCoordinationRestoreOperations({
+  backend,
+  health,
+  sourceOfTruth,
+  metadata,
+  preview,
+  writeRequested,
+  restore,
+}) {
+  const status = backend?.status ?? "disabled";
+  return {
+    local_first: true,
+    scope: "shared-coordination-only",
+    backend_kind: backend?.backend_kind ?? "none",
+    backend_status: status,
+    schema_status: health?.schema_status ?? (status === "disabled" ? "disabled" : status),
+    source_of_truth_status: sourceOfTruth?.source_of_truth_status ?? "missing",
+    metadata_status: metadata?.metadata_status ?? "not_governed",
+    compatibility_status: health?.compatibility_status ?? "unknown",
+    connection_ref: backend?.connection_ref || "none",
+    connection_secret_exposed: false,
+    write_requested: Boolean(writeRequested),
+    restore_applied: Boolean(restore),
+    preview_record_count: Number(preview?.coordination_record_count ?? 0) || 0,
+    backup_command: "aidn runtime shared-coordination-backup --target . --json",
+    recommended_actions: writeRequested
+      ? ["validate the restored shared coordination state with shared-coordination-status and doctor"]
+      : ["review schema compatibility and workspace identity before using --write"],
+  };
+}
+
 export async function restoreSharedCoordination({
   targetRoot = ".",
   input = ".aidn/runtime/shared-coordination-backup.json",
@@ -129,8 +161,23 @@ export async function restoreSharedCoordination({
   });
   const backend = summarizeSharedCoordinationResolution(resolution);
   const health = resolution.store ? await resolution.store.healthcheck() : null;
+  const disabledGovernance = deriveSharedCoordinationGovernance({
+    workspace,
+    backend,
+    updatedAt: new Date().toISOString(),
+    hasSharedRecords: false,
+  });
 
   if (!resolution.store) {
+    const operations = deriveSharedCoordinationRestoreOperations({
+      backend,
+      health,
+      sourceOfTruth: disabledGovernance.source_of_truth,
+      metadata: disabledGovernance.metadata,
+      preview: null,
+      writeRequested: write,
+      restore: null,
+    });
     return {
       target_root: absoluteTargetRoot,
       input_file: absoluteInput,
@@ -139,10 +186,13 @@ export async function restoreSharedCoordination({
       reason: resolution.reason || "shared coordination backend is not available",
       write_requested: Boolean(write),
       workspace,
+      source_of_truth: disabledGovernance.source_of_truth,
+      metadata: disabledGovernance.metadata,
       shared_coordination_backend: backend,
       health,
       preview: null,
       restore: null,
+      operations,
     };
   }
 
@@ -152,8 +202,15 @@ export async function restoreSharedCoordination({
     resolution,
     health,
   });
+  const governance = deriveSharedCoordinationGovernance({
+    workspace,
+    backend,
+    updatedAt: normalizeScalar(snapshot.payload?.ts) || new Date().toISOString(),
+    hasSharedRecords: snapshot.coordinationRecords.length > 0 || Boolean(snapshot.planningState) || Boolean(snapshot.handoffRelay),
+  });
   const workspaceMatch = checkWorkspaceMatch(workspace, snapshot.payload);
   if (!workspaceMatch.ok) {
+    const preview = buildPreview(snapshot);
     return {
       target_root: absoluteTargetRoot,
       input_file: absoluteInput,
@@ -164,11 +221,22 @@ export async function restoreSharedCoordination({
         : `backup workspace_id ${workspaceMatch.backup_workspace_id} does not match current workspace_id ${workspace.workspace_id}`,
       write_requested: Boolean(write),
       workspace,
+      source_of_truth: governance.source_of_truth,
+      metadata: governance.metadata,
       shared_coordination_backend: backend,
       health,
-      preview: buildPreview(snapshot),
+      preview,
       schema_compatibility: schemaCompatibility,
       restore: null,
+      operations: deriveSharedCoordinationRestoreOperations({
+        backend,
+        health,
+        sourceOfTruth: governance.source_of_truth,
+        metadata: governance.metadata,
+        preview,
+        writeRequested: write,
+        restore: null,
+      }),
     };
   }
 
@@ -182,11 +250,22 @@ export async function restoreSharedCoordination({
       reason: schemaCompatibility.reason,
       write_requested: Boolean(write),
       workspace,
+      source_of_truth: governance.source_of_truth,
+      metadata: governance.metadata,
       shared_coordination_backend: backend,
       health,
       preview,
       schema_compatibility: schemaCompatibility,
       restore: null,
+      operations: deriveSharedCoordinationRestoreOperations({
+        backend,
+        health,
+        sourceOfTruth: governance.source_of_truth,
+        metadata: governance.metadata,
+        preview,
+        writeRequested: write,
+        restore: null,
+      }),
     };
   }
   if (!write) {
@@ -198,11 +277,22 @@ export async function restoreSharedCoordination({
       reason: "shared coordination restore preview generated",
       write_requested: false,
       workspace,
+      source_of_truth: governance.source_of_truth,
+      metadata: governance.metadata,
       shared_coordination_backend: backend,
       health,
       preview,
       schema_compatibility: schemaCompatibility,
       restore: null,
+      operations: deriveSharedCoordinationRestoreOperations({
+        backend,
+        health,
+        sourceOfTruth: governance.source_of_truth,
+        metadata: governance.metadata,
+        preview,
+        writeRequested: false,
+        restore: null,
+      }),
     };
   }
 
@@ -210,6 +300,12 @@ export async function restoreSharedCoordination({
     workspace,
   });
   if (!registration.ok) {
+    const restoreResult = {
+      registration,
+      planning: null,
+      handoff: null,
+      coordination: [],
+    };
     return {
       target_root: absoluteTargetRoot,
       input_file: absoluteInput,
@@ -218,16 +314,22 @@ export async function restoreSharedCoordination({
       reason: registration.reason,
       write_requested: true,
       workspace,
+      source_of_truth: governance.source_of_truth,
+      metadata: governance.metadata,
       shared_coordination_backend: backend,
       health,
       preview,
       schema_compatibility: schemaCompatibility,
-      restore: {
-        registration,
-        planning: null,
-        handoff: null,
-        coordination: [],
-      },
+      restore: restoreResult,
+      operations: deriveSharedCoordinationRestoreOperations({
+        backend,
+        health,
+        sourceOfTruth: governance.source_of_truth,
+        metadata: governance.metadata,
+        preview,
+        writeRequested: true,
+        restore: restoreResult,
+      }),
     };
   }
 
@@ -297,6 +399,12 @@ export async function restoreSharedCoordination({
   const ok = (planning ? planning.ok === true : true)
     && (handoff ? handoff.ok === true : true)
     && coordination.every((item) => item.ok === true);
+  const restoreResult = {
+    registration,
+    planning,
+    handoff,
+    coordination,
+  };
 
   return {
     target_root: absoluteTargetRoot,
@@ -306,16 +414,22 @@ export async function restoreSharedCoordination({
     reason: ok ? "shared coordination snapshot replayed" : "shared coordination snapshot replay failed",
     write_requested: true,
     workspace,
+    source_of_truth: governance.source_of_truth,
+    metadata: governance.metadata,
     shared_coordination_backend: backend,
     health,
     preview,
     schema_compatibility: schemaCompatibility,
-    restore: {
-      registration,
-      planning,
-      handoff,
-      coordination,
-    },
+    restore: restoreResult,
+    operations: deriveSharedCoordinationRestoreOperations({
+      backend,
+      health,
+      sourceOfTruth: governance.source_of_truth,
+      metadata: governance.metadata,
+      preview,
+      writeRequested: true,
+      restore: restoreResult,
+    }),
   };
 }
 

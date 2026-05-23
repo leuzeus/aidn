@@ -2,6 +2,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { resolveSharedCoordinationStore, summarizeSharedCoordinationResolution } from "../../src/application/runtime/shared-coordination-store-service.mjs";
+import { deriveSharedCoordinationGovernance } from "../../src/application/runtime/shared-coordination-governance-lib.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 
 function parseArgs(argv) {
@@ -121,6 +122,33 @@ function buildDoctorReport({ resolution, workspace, health }) {
   };
 }
 
+function deriveSharedCoordinationDoctorOperations({
+  backend,
+  health,
+  sourceOfTruth,
+  metadata,
+  status,
+  findings,
+  recommendedActions,
+}) {
+  return {
+    local_first: true,
+    scope: "shared-coordination-only",
+    backend_kind: backend?.backend_kind ?? "none",
+    backend_status: backend?.status ?? "disabled",
+    schema_status: health?.schema_status ?? (backend?.status ?? "disabled"),
+    source_of_truth_status: sourceOfTruth?.source_of_truth_status ?? "missing",
+    metadata_status: metadata?.metadata_status ?? "not_governed",
+    compatibility_status: health?.compatibility_status ?? "unknown",
+    connection_ref: backend?.connection_ref || "none",
+    connection_secret_exposed: false,
+    doctor_status: status || "unknown",
+    finding_count: Array.isArray(findings) ? findings.length : 0,
+    backup_command: "aidn runtime shared-coordination-backup --target . --json",
+    recommended_actions: Array.isArray(recommendedActions) ? recommendedActions : [],
+  };
+}
+
 export async function doctorSharedCoordination({
   targetRoot = ".",
   sharedCoordination = null,
@@ -136,12 +164,30 @@ export async function doctorSharedCoordination({
     ...sharedCoordinationOptions,
   });
   const health = resolution.store ? await resolution.store.healthcheck() : null;
+  const report = buildDoctorReport({
+    resolution,
+    workspace,
+    health,
+  });
+  const governance = deriveSharedCoordinationGovernance({
+    workspace,
+    backend: report.shared_coordination_backend,
+    updatedAt: new Date().toISOString(),
+    hasSharedRecords: false,
+  });
   return {
     target_root: absoluteTargetRoot,
-    ...buildDoctorReport({
-      resolution,
-      workspace,
+    ...report,
+    source_of_truth: governance.source_of_truth,
+    metadata: governance.metadata,
+    operations: deriveSharedCoordinationDoctorOperations({
+      backend: report.shared_coordination_backend,
       health,
+      sourceOfTruth: governance.source_of_truth,
+      metadata: governance.metadata,
+      status: report.status,
+      findings: report.findings,
+      recommendedActions: report.recommended_actions,
     }),
   };
 }

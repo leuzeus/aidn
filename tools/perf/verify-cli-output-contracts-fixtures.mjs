@@ -75,6 +75,24 @@ const CONTRACT_CASES = [
     allowNonZero: true,
   },
   {
+    name: "runtime-shared-coordination-backup",
+    schema: "runtime-shared-coordination-backup.v1.schema.json",
+    args: ["runtime", "shared-coordination-backup", "--json"],
+    allowNonZero: true,
+  },
+  {
+    name: "runtime-shared-coordination-restore",
+    schema: "runtime-shared-coordination-restore.v1.schema.json",
+    args: ["runtime", "shared-coordination-restore", "--json"],
+    allowNonZero: true,
+  },
+  {
+    name: "runtime-shared-coordination-doctor",
+    schema: "runtime-shared-coordination-doctor.v1.schema.json",
+    args: ["runtime", "shared-coordination-doctor", "--json"],
+    allowNonZero: true,
+  },
+  {
     name: "runtime-governance-diagnostics",
     schema: "runtime-governance-diagnostics.v1.schema.json",
     args: ["runtime", "governance-diagnostics", "--json"],
