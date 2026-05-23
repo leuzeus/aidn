@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  buildCoordinatorResumeBlockedResult,
+  buildCoordinatorResumeResult,
+  deriveCoordinatorResumeState,
+} from "../../src/application/runtime/coordinator-resume-use-case.mjs";
 import { resolveDbBackedMode } from "./db-first-runtime-view-lib.mjs";
 import { computeCoordinatorLoopState } from "./coordinator-loop.mjs";
 import { computeCoordinatorDispatchPlan } from "./coordinator-dispatch-plan.mjs";
@@ -84,72 +89,6 @@ function printUsage() {
   console.log("  node tools/runtime/coordinator-resume.mjs --target . --execute --json");
 }
 
-function buildBlockedResult({
-  absoluteTargetRoot,
-  effectiveStateMode,
-  dbBackedMode,
-  dispatch,
-  loopState,
-  arbitrationSuggestions,
-  executeRequested,
-}) {
-  const sharedPlanningCandidate = deriveSharedPlanningCandidate(dispatch);
-  const escalationReason = arbitrationSuggestions?.arbitration_reason
-    || loopState.loop?.escalation?.reason
-    || "user arbitration is required before resuming this escalated dispatch";
-  return {
-    target_root: absoluteTargetRoot,
-    state_mode: effectiveStateMode,
-    db_backed_mode: dbBackedMode,
-    resume_status: "blocked",
-    resume_reason: escalationReason,
-    arbitration_required: true,
-    arbitration_satisfied: false,
-    preferred_decision: arbitrationSuggestions?.preferred_decision ?? null,
-    preferred_dispatch_source: sharedPlanningCandidate.preferred_source,
-    arbitration_suggestions: arbitrationSuggestions,
-    shared_planning_candidate: sharedPlanningCandidate,
-    execute_requested: Boolean(executeRequested),
-    can_resume: false,
-    loop: loopState.loop,
-    context: loopState.context,
-    handoff: loopState.handoff,
-    dispatch,
-    execution_status: "blocked",
-    executed: false,
-    execution: null,
-  };
-}
-
-function deriveSharedPlanningCandidate(dispatch) {
-  const sharedPlanning = dispatch?.shared_planning ?? {};
-  const recommendation = dispatch?.coordinator_recommendation ?? {};
-  const dispatchScope = String(dispatch?.dispatch_scope?.scope_type ?? "none").trim();
-  const nextDispatchScope = String(sharedPlanning.next_dispatch_scope ?? "none").trim();
-  const nextDispatchAction = String(sharedPlanning.next_dispatch_action ?? "none").trim();
-  const candidateReady = Boolean(sharedPlanning.enabled) && sharedPlanning.dispatch_ready === true;
-  const actionAligned = candidateReady && nextDispatchAction !== "none"
-    && (
-      nextDispatchAction === String(recommendation.action ?? "").trim()
-      || (String(recommendation.role ?? "").trim() === "coordinator" && nextDispatchAction === "coordinate")
-    );
-  const scopeAligned = candidateReady && nextDispatchScope !== "none"
-    && (
-      nextDispatchScope === dispatchScope
-      || (String(recommendation.role ?? "").trim() === "coordinator" && nextDispatchScope === "session")
-    );
-  const candidateAligned = actionAligned && scopeAligned;
-  return {
-    enabled: Boolean(sharedPlanning.enabled),
-    candidate_ready: candidateReady,
-    candidate_aligned: candidateAligned,
-    preferred_source: candidateAligned ? "shared_planning" : "workflow",
-    next_dispatch_scope: nextDispatchScope,
-    next_dispatch_action: nextDispatchAction,
-    backlog_next_step: String(sharedPlanning.backlog_next_step ?? "unknown").trim() || "unknown",
-  };
-}
-
 export async function resumeCoordinatorDispatch({
   targetRoot,
   agent = "auto",
@@ -200,7 +139,7 @@ export async function resumeCoordinatorDispatch({
       sharedCoordination,
       sharedCoordinationOptions,
     });
-    return buildBlockedResult({
+    return buildCoordinatorResumeBlockedResult({
       absoluteTargetRoot,
       effectiveStateMode,
       dbBackedMode,
@@ -211,42 +150,21 @@ export async function resumeCoordinatorDispatch({
     });
   }
 
-  const arbitrationSatisfied = Boolean(loopState.loop?.history?.arbitration_applied);
-  const sharedPlanningCandidate = deriveSharedPlanningCandidate(dispatch);
-  const resumeStatus = arbitrationSatisfied ? "resumed_after_arbitration" : "ready";
-  const resumeReason = sharedPlanningCandidate.candidate_aligned
-    ? (
-      arbitrationSatisfied
-        ? "shared planning dispatch candidate is ready after user arbitration"
-        : "shared planning dispatch candidate is ready"
-    )
-    : (
-      arbitrationSatisfied
-        ? "user arbitration is newer than the last escalated dispatch"
-        : "no pending escalation blocks this dispatch"
-    );
+  const resumeState = deriveCoordinatorResumeState({
+    loopState,
+    dispatch,
+  });
 
   if (!execute) {
-    return {
-      target_root: absoluteTargetRoot,
-      state_mode: effectiveStateMode,
-      db_backed_mode: dbBackedMode,
-      resume_status: resumeStatus,
-      resume_reason: resumeReason,
-      arbitration_required: false,
-      arbitration_satisfied: arbitrationSatisfied,
-      preferred_dispatch_source: sharedPlanningCandidate.preferred_source,
-      shared_planning_candidate: sharedPlanningCandidate,
-      execute_requested: false,
-      can_resume: true,
-      loop: loopState.loop,
-      context: loopState.context,
-      handoff: loopState.handoff,
+    return buildCoordinatorResumeResult({
+      absoluteTargetRoot,
+      effectiveStateMode,
+      dbBackedMode,
+      loopState,
       dispatch,
-      execution_status: "dry_run",
-      executed: false,
-      execution: null,
-    };
+      resumeState,
+      executeRequested: false,
+    });
   }
 
   const execution = await executeCoordinatorDispatch({
@@ -264,26 +182,16 @@ export async function resumeCoordinatorDispatch({
     sharedCoordinationOptions,
   });
 
-  return {
-    target_root: absoluteTargetRoot,
-    state_mode: effectiveStateMode,
-    db_backed_mode: dbBackedMode,
-    resume_status: resumeStatus,
-    resume_reason: resumeReason,
-    arbitration_required: false,
-    arbitration_satisfied: arbitrationSatisfied,
-    preferred_dispatch_source: sharedPlanningCandidate.preferred_source,
-    shared_planning_candidate: sharedPlanningCandidate,
-    execute_requested: true,
-    can_resume: true,
-    loop: loopState.loop,
-    context: loopState.context,
-    handoff: loopState.handoff,
+  return buildCoordinatorResumeResult({
+    absoluteTargetRoot,
+    effectiveStateMode,
+    dbBackedMode,
+    loopState,
     dispatch,
-    execution_status: execution.execution_status,
-    executed: Boolean(execution.executed),
+    resumeState,
+    executeRequested: true,
     execution,
-  };
+  });
 }
 
 function main() {
