@@ -15,6 +15,11 @@ structure_profile: modern
 runtime_state_mode: dual
 repair_layer_status: unknown
 repair_primary_reason: unknown
+source_of_truth: runtime store plus generated Markdown
+source_mode: explicit
+lifecycle_status: refreshed
+owner: {{project_id}}
+steward: aidn-runtime
 
 ## Active Context
 

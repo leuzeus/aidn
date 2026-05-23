@@ -163,6 +163,10 @@ function main() {
     const currentStateText = readText(currentStatePath);
     const backlogText = readText(backlogPath);
     assert(currentStateText.includes("active_session: S401"), "CURRENT-STATE missing active_session update");
+    assert(currentStateText.includes("contract_version: critical-markdown-v1"), "CURRENT-STATE missing explicit contract version");
+    assert(currentStateText.includes("source_of_truth:"), "CURRENT-STATE missing source_of_truth");
+    assert(currentStateText.includes("source_mode: explicit"), "CURRENT-STATE missing source_mode");
+    assert(currentStateText.includes("lifecycle_status: refreshed"), "CURRENT-STATE missing lifecycle_status");
     assert(currentStateText.includes("active_backlog: backlog/BL-S401-session-planning.md"), "CURRENT-STATE missing active_backlog update");
     assert(currentStateText.includes("backlog_status: promoted"), "CURRENT-STATE missing backlog_status update");
     assert(currentStateText.includes("backlog_next_step: select the coordinating agent and dispatch scope"), "CURRENT-STATE missing merged backlog_next_step update");
