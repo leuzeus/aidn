@@ -1,6 +1,9 @@
 import path from "node:path";
 import { createPostgresSharedCoordinationStore } from "../../adapters/runtime/postgres-shared-coordination-store.mjs";
-import { evaluateSourceOfTruthPolicy } from "../../core/source-of-truth/source-of-truth-policy.mjs";
+import {
+  deriveSharedCoordinationArtifactReadGovernance,
+  deriveSharedCoordinationArtifactWriteGovernance,
+} from "./shared-coordination-governance-lib.mjs";
 import {
   getPostgresSharedCoordinationContract,
   resolvePostgresSharedCoordinationConnection,
@@ -39,54 +42,6 @@ function buildSyntheticId(prefix, workspace, suffix = "") {
   const worktreeId = normalizeScalar(workspace?.worktree_id) || "worktree";
   const tail = normalizeScalar(suffix) || new Date().toISOString();
   return `${prefix}:${worktreeId}:${tail}`;
-}
-
-const SHARED_COORDINATION_READ_CONTRACT_VERSION = "shared-coordination-read-v1";
-
-function deriveSharedCoordinationReadGovernance({
-  workspace,
-  family,
-  readStatus,
-  primaryTimestamp,
-  recordCount = 0,
-} = {}) {
-  const sourceOfTruth = evaluateSourceOfTruthPolicy("coordination_records");
-  return {
-    contract_version: SHARED_COORDINATION_READ_CONTRACT_VERSION,
-    artifact_family: normalizeScalar(family) || "shared_coordination_read",
-    source_of_truth_concept: sourceOfTruth.concept,
-    source_of_truth: normalizeScalar(sourceOfTruth.source_of_truth) || ".aidn/runtime/context/*",
-    source_of_truth_status: sourceOfTruth.source_of_truth_status,
-    source_mode: "explicit",
-    lifecycle_status: normalizeScalar(readStatus) === "found" ? "active" : (normalizeScalar(readStatus) === "empty" ? "empty" : "unknown"),
-    owner: normalizeScalar(workspace?.project_id) || "unknown",
-    steward: "aidn-runtime",
-    updated_at: normalizeScalar(primaryTimestamp) || "",
-    record_count: Number(recordCount) || 0,
-  };
-}
-
-function deriveSharedCoordinationWriteGovernance({
-  workspace,
-  family,
-  writeStatus,
-  primaryTimestamp,
-  recordCount = 0,
-} = {}) {
-  const sourceOfTruth = evaluateSourceOfTruthPolicy("coordination_records");
-  return {
-    contract_version: SHARED_COORDINATION_READ_CONTRACT_VERSION,
-    artifact_family: normalizeScalar(family) || "shared_coordination_write",
-    source_of_truth_concept: sourceOfTruth.concept,
-    source_of_truth: normalizeScalar(sourceOfTruth.source_of_truth) || ".aidn/runtime/context/*",
-    source_of_truth_status: sourceOfTruth.source_of_truth_status,
-    source_mode: "explicit",
-    lifecycle_status: normalizeScalar(writeStatus) === "synced" ? "active" : "unknown",
-    owner: normalizeScalar(workspace?.project_id) || "unknown",
-    steward: "aidn-runtime",
-    updated_at: normalizeScalar(primaryTimestamp) || "",
-    record_count: Number(recordCount) || 0,
-  };
 }
 
 function evaluateSharedCoordinationHealthReadiness(health) {
@@ -423,7 +378,7 @@ export async function syncSharedPlanningState(resolution, {
     registration,
     backend: registration.backend,
     result,
-    governance: deriveSharedCoordinationWriteGovernance({
+    governance: deriveSharedCoordinationArtifactWriteGovernance({
       workspace: effectiveWorkspace,
       family: "planning_state",
       writeStatus: status,
@@ -485,7 +440,7 @@ export async function appendSharedHandoffRelay(resolution, {
     registration,
     backend: registration.backend,
     result,
-    governance: deriveSharedCoordinationWriteGovernance({
+    governance: deriveSharedCoordinationArtifactWriteGovernance({
       workspace: effectiveWorkspace,
       family: "handoff_relay",
       writeStatus: status,
@@ -558,7 +513,7 @@ export async function appendSharedCoordinationRecord(resolution, {
     registration,
     backend: registration.backend,
     result,
-    governance: deriveSharedCoordinationWriteGovernance({
+    governance: deriveSharedCoordinationArtifactWriteGovernance({
       workspace: effectiveWorkspace,
       family: "coordination_record",
       writeStatus,
@@ -624,7 +579,7 @@ export async function readSharedPlanningState(resolution, {
     registration,
     result,
     planning_state: planningState,
-    governance: deriveSharedCoordinationReadGovernance({
+    governance: deriveSharedCoordinationArtifactReadGovernance({
       workspace: effectiveWorkspace,
       family: "planning_state",
       readStatus: status,
@@ -692,7 +647,7 @@ export async function readLatestSharedHandoffRelay(resolution, {
     registration,
     result,
     handoff_relay: handoffRelay,
-    governance: deriveSharedCoordinationReadGovernance({
+    governance: deriveSharedCoordinationArtifactReadGovernance({
       workspace: effectiveWorkspace,
       family: "handoff_relay",
       readStatus: status,
@@ -764,7 +719,7 @@ export async function readSharedCoordinationRecords(resolution, {
     registration,
     result,
     records,
-    governance: deriveSharedCoordinationReadGovernance({
+    governance: deriveSharedCoordinationArtifactReadGovernance({
       workspace: effectiveWorkspace,
       family: "coordination_record",
       readStatus: status,
