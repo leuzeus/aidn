@@ -61,6 +61,10 @@ Initial v1 commands:
 - `aidn runtime mode-migrate --json`
 - `aidn runtime session-plan --json`
 - `aidn runtime db-first-artifact --json`
+- `aidn runtime artifact-store list --json`
+- `aidn runtime artifact-store get --json`
+- `aidn runtime artifact-store upsert --json`
+- `aidn runtime artifact-store materialize --json`
 - `aidn runtime coordinator-select-agent --json`
 - `aidn runtime coordinator-next-action --json`
 - `aidn runtime coordinator-loop --json`

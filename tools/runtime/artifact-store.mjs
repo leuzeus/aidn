@@ -4,9 +4,70 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
 
+function normalizeScalar(value) {
+  return String(value ?? "").trim();
+}
+
+function buildArtifactStoreDiagnostic(action, payload, args) {
+  const normalizedAction = normalizeScalar(action) || "unknown";
+  if (normalizedAction === "list") {
+    const artifacts = Array.isArray(payload?.artifacts) ? payload.artifacts : [];
+    return {
+      scope: "runtime-artifact-store-list",
+      action: normalizedAction,
+      artifact_count: artifacts.length,
+      path: "",
+      dry_run: false,
+      summary: `listed ${artifacts.length} artifact store row(s)`,
+      recommended_action: "use get for a specific artifact path or upsert to refresh stored content",
+    };
+  }
+  if (normalizedAction === "get") {
+    return {
+      scope: "runtime-artifact-store-get",
+      action: normalizedAction,
+      artifact_count: payload?.artifact ? 1 : 0,
+      path: normalizeScalar(payload?.artifact?.path || args?.path),
+      dry_run: false,
+      summary: payload?.artifact
+        ? `loaded artifact ${normalizeScalar(payload.artifact.path) || "unknown"}`
+        : `artifact ${normalizeScalar(args?.path) || "unknown"} is not present in the store`,
+      recommended_action: payload?.artifact
+        ? "inspect the canonical payload or materialize when a file projection is needed"
+        : "upsert the artifact before retrying get",
+    };
+  }
+  if (normalizedAction === "upsert") {
+    return {
+      scope: "runtime-artifact-store-upsert",
+      action: normalizedAction,
+      artifact_count: payload?.artifact ? 1 : 0,
+      path: normalizeScalar(payload?.artifact?.path || args?.path),
+      dry_run: false,
+      summary: `upserted artifact ${normalizeScalar(payload?.artifact?.path || args?.path) || "unknown"}`,
+      recommended_action: "materialize the artifact if filesystem projections must be refreshed immediately",
+    };
+  }
+  const materializedCount = Number(payload?.result?.materialized_count ?? 0);
+  return {
+    scope: "runtime-artifact-store-materialize",
+    action: normalizedAction,
+    artifact_count: materializedCount,
+    path: Array.isArray(args?.onlyPaths) && args.onlyPaths.length === 1 ? normalizeScalar(args.onlyPaths[0]) : "",
+    dry_run: args?.dryRun === true,
+    summary: args?.dryRun === true
+      ? `previewed materialization for ${materializedCount} artifact(s)`
+      : `materialized ${materializedCount} artifact(s)`,
+    recommended_action: args?.dryRun === true
+      ? "rerun without --dry-run only after reviewing the materialization plan"
+      : "review the written audit files and store contents for consistency",
+  };
+}
+
 function parseArgs(argv) {
   const args = {
     action: "",
+    target: ".",
     sqliteFile: ".aidn/runtime/index/workflow-index.sqlite",
     path: "",
     kind: "other",
@@ -23,6 +84,9 @@ function parseArgs(argv) {
     const token = argv[i];
     if (token === "upsert" || token === "get" || token === "list" || token === "materialize") {
       args.action = token;
+    } else if (token === "--target") {
+      args.target = argv[i + 1] ?? "";
+      i += 1;
     } else if (token === "--sqlite-file") {
       args.sqliteFile = argv[i + 1] ?? "";
       i += 1;
@@ -73,22 +137,26 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
-  console.log("  npx aidn runtime artifact-store list --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json");
-  console.log("  npx aidn runtime artifact-store get --path snapshots/context-snapshot.md --json");
-  console.log("  npx aidn runtime artifact-store upsert --path snapshots/context-snapshot.md --kind snapshot --family normative --content-file docs/audit/snapshots/context-snapshot.md --json");
-  console.log("  npx aidn runtime artifact-store materialize --audit-root docs/audit --only-path snapshots/context-snapshot.md --json");
+  console.log("  npx aidn runtime artifact-store list --target . --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json");
+  console.log("  npx aidn runtime artifact-store get --target . --path snapshots/context-snapshot.md --json");
+  console.log("  npx aidn runtime artifact-store upsert --target . --path snapshots/context-snapshot.md --kind snapshot --family normative --content-file docs/audit/snapshots/context-snapshot.md --json");
+  console.log("  npx aidn runtime artifact-store materialize --target . --audit-root docs/audit --only-path snapshots/context-snapshot.md --json");
 }
 
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
+    const targetRoot = path.resolve(process.cwd(), args.target || ".");
     const store = createArtifactStore({
-      sqliteFile: args.sqliteFile,
+      sqliteFile: path.isAbsolute(args.sqliteFile)
+        ? args.sqliteFile
+        : path.resolve(targetRoot, args.sqliteFile),
     });
     try {
       let payload = null;
       if (args.action === "list") {
         payload = {
+          action: args.action,
           sqlite_file: store.sqlite_file,
           artifacts: store.listArtifacts(args.limit),
         };
@@ -97,6 +165,7 @@ function main() {
           throw new Error("Missing value for --path");
         }
         payload = {
+          action: args.action,
           sqlite_file: store.sqlite_file,
           artifact: store.getArtifact(args.path),
         };
@@ -107,7 +176,9 @@ function main() {
         if (!args.contentFile) {
           throw new Error("Missing value for --content-file");
         }
-        const absolute = path.resolve(process.cwd(), args.contentFile);
+        const absolute = path.isAbsolute(args.contentFile)
+          ? args.contentFile
+          : path.resolve(targetRoot, args.contentFile);
         if (!fs.existsSync(absolute)) {
           throw new Error(`Content file not found: ${absolute}`);
         }
@@ -120,14 +191,16 @@ function main() {
           content_format: args.contentFormat === "base64" ? "base64" : "utf8",
         });
         payload = {
+          action: args.action,
           sqlite_file: store.sqlite_file,
           artifact,
         };
       } else if (args.action === "materialize") {
         payload = {
+          action: args.action,
           sqlite_file: store.sqlite_file,
           result: store.materializeArtifacts({
-            targetRoot: ".",
+            targetRoot,
             auditRoot: args.auditRoot,
             onlyPaths: args.onlyPaths,
             dryRun: args.dryRun,
@@ -135,6 +208,7 @@ function main() {
           }),
         };
       }
+      payload.artifact_store_diagnostic = buildArtifactStoreDiagnostic(args.action, payload, args);
       if (args.json) {
         console.log(JSON.stringify(payload, null, 2));
       } else {
