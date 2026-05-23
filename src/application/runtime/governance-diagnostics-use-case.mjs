@@ -84,6 +84,12 @@ export const GOVERNED_CONCEPTS = Object.freeze([
     required: ["source_of_truth", "metadata"],
   },
   {
+    concept: "coordination_log",
+    source_of_truth_concept: "coordination_records",
+    metadata_concept: "coordination_log",
+    required: ["source_of_truth", "metadata"],
+  },
+  {
     concept: "cli_output_contract",
     source_of_truth_concept: "cli_output_contracts",
     metadata_concept: "artifact_contract",
@@ -129,6 +135,12 @@ const OBSERVED_GOVERNANCE_ARTIFACTS = Object.freeze([
     concept: "coordination_summary",
     source_of_truth_concept: "coordination_records",
     relative_path: "docs/audit/COORDINATION-SUMMARY.md",
+  },
+  {
+    id: "coordination_log",
+    concept: "coordination_log",
+    source_of_truth_concept: "coordination_records",
+    relative_path: "docs/audit/COORDINATION-LOG.md",
   },
 ]);
 

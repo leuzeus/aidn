@@ -6,6 +6,7 @@ import { loadRegisteredAgentAdapters } from "../../src/application/runtime/agent
 import { appendSharedCoordinationRecord, resolveSharedCoordinationStore, summarizeSharedCoordinationResolution } from "../../src/application/runtime/shared-coordination-store-service.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
+import { deriveGovernedRuntimeArtifactMetadata } from "../../src/application/runtime/governed-runtime-artifact-metadata-lib.mjs";
 import { loadAgentRoster } from "../../src/application/runtime/agent-roster-service.mjs";
 import { appendRuntimeNdjsonEvent } from "../../src/application/runtime/runtime-path-service.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
@@ -187,15 +188,92 @@ function buildCoordinationLogEntry(result) {
   return `${lines.join("\n")}\n`;
 }
 
-function appendCoordinationLog(logPath, entry) {
-  fs.mkdirSync(path.dirname(logPath), { recursive: true });
-  if (!fs.existsSync(logPath)) {
-    fs.writeFileSync(logPath, "# Coordination Log\n\n", "utf8");
+function buildCoordinationLogSummaryBlock({ updatedAt, governanceMetadata }) {
+  const lines = [];
+  lines.push("## Summary");
+  lines.push("");
+  lines.push(`contract_version: ${governanceMetadata.contract_version}`);
+  lines.push(`updated_at: ${updatedAt}`);
+  lines.push(`source_of_truth: ${governanceMetadata.source_of_truth}`);
+  lines.push(`source_mode: ${governanceMetadata.source_mode}`);
+  lines.push(`lifecycle_status: ${governanceMetadata.lifecycle_status}`);
+  lines.push(`owner: ${governanceMetadata.owner}`);
+  lines.push(`steward: ${governanceMetadata.steward}`);
+  lines.push("");
+  return lines.join("\n");
+}
+
+function buildCoordinationLogHeader({ updatedAt, governanceMetadata }) {
+  const lines = [];
+  lines.push("# Coordination Log");
+  lines.push("");
+  lines.push("Purpose:");
+  lines.push("");
+  lines.push("- record coordinator dispatch decisions and executions");
+  lines.push("- keep a short trace of multi-agent routing over time");
+  lines.push("- preserve a human-readable coordination trail without redefining workflow rules");
+  lines.push("");
+  lines.push("Rule/State boundary:");
+  lines.push("");
+  lines.push("- this file is a coordination state log");
+  lines.push("- canonical workflow rules remain in `SPEC.md`");
+  lines.push("- execution contract remains in `AGENTS.md`");
+  lines.push("");
+  lines.push(buildCoordinationLogSummaryBlock({ updatedAt, governanceMetadata }));
+  lines.push("## Entries");
+  lines.push("");
+  lines.push("Append one section per explicit coordinator dispatch execution.");
+  lines.push("");
+  lines.push("Recommended fields:");
+  lines.push("");
+  lines.push("- timestamp");
+  lines.push("- selected agent");
+  lines.push("- recommended role/action");
+  lines.push("- dispatch status");
+  lines.push("- execution status");
+  lines.push("- entrypoint");
+  lines.push("- key notes");
+  lines.push("- executed step summary");
+  lines.push("");
+  lines.push("## Notes");
+  lines.push("");
+  lines.push("- `coordinator-dispatch-plan` stays read-only and should not mutate this file");
+  lines.push("- `coordinator-dispatch-execute --execute` may append to this log");
+  lines.push("- `dry-run` should describe the planned log entry without writing it");
+  lines.push("- structured runtime history may also be appended under `.aidn/runtime/context/coordination-history.ndjson`");
+  lines.push("- refresh `COORDINATION-SUMMARY.md` after each executed dispatch");
+  lines.push("");
+  return lines.join("\n");
+}
+
+function alignCoordinationLogDocument({ current, entry, updatedAt, governanceMetadata }) {
+  const summaryBlock = buildCoordinationLogSummaryBlock({ updatedAt, governanceMetadata });
+  let base = String(current ?? "");
+  if (!base.trim()) {
+    base = buildCoordinationLogHeader({ updatedAt, governanceMetadata });
+  } else if (/^## Summary\b/m.test(base)) {
+    base = base.replace(
+      /## Summary\b[\s\S]*?(?=\n## Entries\b|\n## Notes\b|$)/m,
+      `${summaryBlock}\n`,
+    );
+  } else if (/\n## Entries\b/m.test(base)) {
+    base = base.replace(/\n## Entries\b/m, `\n${summaryBlock}\n## Entries`);
+  } else {
+    base = `${base.replace(/\s*$/u, "")}\n\n${summaryBlock}\n`;
   }
-  const current = fs.readFileSync(logPath, "utf8");
-  const next = current.endsWith("\n\n") || current.length === 0
-    ? `${current}${entry}`
-    : `${current}\n${entry}`;
+  return buildAppendedMarkdown(base, entry, buildCoordinationLogHeader({ updatedAt, governanceMetadata }));
+}
+
+function appendCoordinationLog(logPath, entry, options = {}) {
+  const { updatedAt, governanceMetadata } = options;
+  fs.mkdirSync(path.dirname(logPath), { recursive: true });
+  const current = fs.existsSync(logPath) ? fs.readFileSync(logPath, "utf8") : "";
+  const next = alignCoordinationLogDocument({
+    current,
+    entry,
+    updatedAt: updatedAt || new Date().toISOString(),
+    governanceMetadata,
+  });
   fs.writeFileSync(logPath, next, "utf8");
 }
 
@@ -262,6 +340,12 @@ export async function executeCoordinatorDispatch({
   });
   const sharedCoordinationBackend = summarizeSharedCoordinationResolution(sharedCoordinationResolution);
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
+  const governanceMetadata = deriveGovernedRuntimeArtifactMetadata({
+    workspace,
+    runtimeStateMode: effectiveStateMode,
+    sourceOfTruthConcept: "coordination_records",
+    lifecycleStatus: "refreshed",
+  });
   const roster = loadAgentRoster({
     targetRoot: absoluteTargetRoot,
     rosterFile: agentRosterFile,
@@ -454,8 +538,12 @@ export async function executeCoordinatorDispatch({
   };
   finalResult.coordination_log_entry = buildCoordinationLogEntry(finalResult);
   finalResult.coordination_history_event = buildCoordinationHistoryEvent(finalResult);
+  const updatedAt = new Date().toISOString();
   if (effectiveStateMode === "files") {
-    appendCoordinationLog(coordinationLogPath, finalResult.coordination_log_entry);
+    appendCoordinationLog(coordinationLogPath, finalResult.coordination_log_entry, {
+      updatedAt,
+      governanceMetadata,
+    });
     finalResult.coordination_log_appended = true;
   } else {
     const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot, effectiveStateMode);
@@ -476,7 +564,12 @@ export async function executeCoordinatorDispatch({
       target: absoluteTargetRoot,
       auditRoot: "docs/audit",
       path: relativeLogPath,
-      content: buildAppendedMarkdown(existingLog.text, finalResult.coordination_log_entry, "# Coordination Log\n\n"),
+      content: alignCoordinationLogDocument({
+        current: existingLog.text,
+        entry: finalResult.coordination_log_entry,
+        updatedAt,
+        governanceMetadata,
+      }),
       kind: "other",
       family: "normative",
       subtype: "coordination_log",

@@ -353,6 +353,8 @@ function main() {
     assert(fs.existsSync(readyLogFile), "ready execution should write coordination log");
     assert(fs.existsSync(readySummaryFile), "ready execution should write coordination summary");
     assert(fs.existsSync(readyHistoryFile), "ready execution should write coordination history");
+    assert(fs.readFileSync(readyLogFile, "utf8").includes("contract_version: critical-markdown-v1"), "ready coordination log should expose governed contract version");
+    assert(fs.readFileSync(readyLogFile, "utf8").includes("source_mode: explicit"), "ready coordination log should expose governed source mode");
     assert(fs.readFileSync(readyLogFile, "utf8").includes("recommended_role: executor"), "ready coordination log should record executor relay");
     assert(fs.readFileSync(readyLogFile, "utf8").includes("preferred_dispatch_source: shared_planning"), "ready coordination log should record shared planning provenance");
     assert(fs.readFileSync(readySummaryFile, "utf8").includes("last_recommended_role: executor"), "ready coordination summary should record executor relay");
@@ -372,6 +374,7 @@ function main() {
     assert(fs.existsSync(warnLogFile), "warn execution should write coordination log");
     assert(fs.existsSync(warnSummaryFile), "warn execution should write coordination summary");
     assert(fs.existsSync(warnHistoryFile), "warn execution should write coordination history");
+    assert(fs.readFileSync(warnLogFile, "utf8").includes("contract_version: critical-markdown-v1"), "warn coordination log should expose governed contract version");
     assert(fs.readFileSync(warnLogFile, "utf8").includes("selected_agent: external-auditor"), "warn coordination log should record the external auditor adapter");
     assert(fs.readFileSync(warnSummaryFile, "utf8").includes("last_recommended_role: auditor"), "warn coordination summary should record auditor relay");
     assert(fs.readFileSync(warnSummaryFile, "utf8").includes("last_execution_status: failed"), "warn coordination summary should record the failed audit relay");
@@ -388,6 +391,7 @@ function main() {
     assert(fs.existsSync(blockedLogFile), "blocked execution should write coordination log");
     assert(fs.existsSync(blockedSummaryFile), "blocked execution should write coordination summary");
     assert(fs.existsSync(blockedHistoryFile), "blocked execution should write coordination history");
+    assert(fs.readFileSync(blockedLogFile, "utf8").includes("source_of_truth: .aidn/runtime/context/*"), "blocked coordination log should expose governed source of truth");
     assert(fs.readFileSync(blockedLogFile, "utf8").includes("recommended_role: repair"), "blocked coordination log should record repair relay");
     assert(fs.readFileSync(blockedSummaryFile, "utf8").includes("last_recommended_role: repair"), "blocked coordination summary should record repair relay");
     assert(fs.readFileSync(blockedHistoryFile, "utf8").includes("\"recommended_role\":\"repair\""), "blocked coordination history should record repair relay");
