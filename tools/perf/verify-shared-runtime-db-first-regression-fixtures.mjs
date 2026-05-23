@@ -131,6 +131,7 @@ function main() {
     assert(sqliteReadiness.operational?.resolutions?.handoff_packet?.source === "sqlite", "sqlite-file readiness should resolve HANDOFF-PACKET from SQLite");
     assert(sqliteDbStatus.exists === true, "sqlite-file db-status should inspect the shared sqlite file when requested explicitly");
     assert(sqliteDbStatus.resolved_projection_backend?.projection_scope === "shared-runtime-root", "sqlite-file db-status should expose shared-runtime-root projection backend");
+    assert(sqliteDbStatus.runtime_backend_diagnostic?.projection_scope === "shared-runtime-root", "sqlite-file db-status should expose stable backend diagnostic projection scope");
     assertRepairSummaryStable(sqliteRepairBefore, sqliteRepairAfter, "sqlite-file");
 
     const postgresTarget = path.join(tempRoot, "postgres");
@@ -186,6 +187,7 @@ function main() {
     assert(postgresReadiness.operational?.resolutions?.session_artifact?.source === "sqlite", "postgres readiness should resolve session artifacts from SQLite");
     assert(postgresDbStatus.exists === true, "postgres db-status should keep inspecting the local SQLite projection");
     assert(postgresDbStatus.resolved_projection_backend?.projection_scope === "local-compat", "postgres db-status should expose local-compat resolved projection");
+    assert(postgresDbStatus.runtime_backend_diagnostic?.projection_scope === "local-compat", "postgres db-status should expose stable backend diagnostic projection scope");
     assertRepairSummaryStable(postgresRepairBefore, postgresRepairAfter, "postgres");
 
     console.log("PASS");

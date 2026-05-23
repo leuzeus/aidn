@@ -122,6 +122,40 @@ function deriveRuntimeOperations(payload) {
   };
 }
 
+function deriveRuntimeBackendDiagnostic(payload) {
+  const backend = payload.runtime_persistence?.backend ?? "unknown";
+  const backendSource = payload.runtime_persistence?.source ?? "unknown";
+  const compatibilityStatus = payload.compatibility_status ?? "unknown";
+  const schemaStatus = payload.operations?.schema_status ?? "unknown";
+  const projectionScope = payload.resolved_projection_backend?.projection_scope ?? "unknown";
+  const adoptionAction = payload.runtime_backend_adoption_plan?.action ?? "noop";
+  const reasonCode = payload.runtime_backend_adoption_plan?.reason_code ?? "none";
+  let recommendedAction = "no immediate runtime backend action required";
+  if (schemaStatus === "missing" || schemaStatus === "migration-required" || schemaStatus === "schema-incomplete") {
+    recommendedAction = "migrate or repair the selected runtime backend before relying on runtime projections";
+  } else if (compatibilityStatus === "target-unavailable" || reasonCode === "target-unavailable") {
+    recommendedAction = "resolve the configured target backend before attempting runtime backend adoption";
+  } else if (adoptionAction && adoptionAction !== "noop") {
+    recommendedAction = "review the adoption plan before changing runtime.persistence.backend";
+  } else if (projectionScope === "shared-runtime-root" || projectionScope === "local-compat") {
+    recommendedAction = "keep the current local-first projection policy unless a runtime backend switch is explicitly required";
+  }
+  return {
+    scope: "runtime-persistence",
+    backend,
+    backend_source: backendSource,
+    schema_status: schemaStatus,
+    compatibility_status: compatibilityStatus,
+    projection_scope: projectionScope,
+    adoption_action: adoptionAction,
+    reason_code: reasonCode,
+    summary: payload.reason
+      || payload.runtime_backend_adoption_plan?.reason
+      || `runtime backend ${backend} is ${schemaStatus}`,
+    recommended_action: recommendedAction,
+  };
+}
+
 export async function projectRuntimePersistenceStatus({
   targetRoot = ".",
   backend = "",
@@ -188,9 +222,14 @@ export async function projectRuntimePersistenceStatus({
     runtime_backend_adoption_plan: adoptionPlan,
     ...status,
   };
+  const operations = deriveRuntimeOperations(payload);
   return {
     ...payload,
-    operations: deriveRuntimeOperations(payload),
+    operations,
+    runtime_backend_diagnostic: deriveRuntimeBackendDiagnostic({
+      ...payload,
+      operations,
+    }),
   };
 }
 

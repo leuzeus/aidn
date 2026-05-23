@@ -4,6 +4,12 @@ import { fileURLToPath } from "node:url";
 import { listCliEffectPolicies } from "../../core/cli/effect-policy.mjs";
 import { evaluateMetadataPolicy, getMetadataPolicy, listMetadataPolicies } from "../../core/metadata/metadata-policy.mjs";
 import { evaluateSourceOfTruthPolicy, getSourceOfTruthPolicy, listSourceOfTruthPolicies } from "../../core/source-of-truth/source-of-truth-policy.mjs";
+import {
+  loadSqliteIndexPayloadSafe,
+  resolveAuditArtifactText,
+  resolveDbArtifactSourceName,
+  resolveDbBackedMode,
+} from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-output");
@@ -311,11 +317,31 @@ export function evaluateGovernanceRuntimeSurface(entry, conceptIndex = new Map()
   };
 }
 
-export function evaluateObservedGovernanceArtifact(entry, targetRoot) {
-  const absolutePath = path.resolve(targetRoot, entry.relative_path);
-  const exists = fs.existsSync(absolutePath);
-  const text = exists ? fs.readFileSync(absolutePath, "utf8") : "";
-  const fields = parseSimpleMap(text);
+function createObservedArtifactResolver(targetRoot) {
+  const absoluteTargetRoot = path.resolve(targetRoot);
+  const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
+  const sqliteIndex = dbBackedMode
+    ? loadSqliteIndexPayloadSafe(absoluteTargetRoot)
+    : { payload: null, runtimeHeads: null, backend: null };
+  const dbSource = resolveDbArtifactSourceName(sqliteIndex.backend);
+  return (relativePath) => resolveAuditArtifactText({
+    targetRoot: absoluteTargetRoot,
+    candidatePath: relativePath,
+    dbBacked: dbBackedMode,
+    sqlitePayload: sqliteIndex.payload,
+    sqliteRuntimeHeads: sqliteIndex.runtimeHeads,
+    dbSource,
+  });
+}
+
+export function evaluateObservedGovernanceArtifact(entry, targetRoot, resolveArtifactText = null) {
+  const resolution = typeof resolveArtifactText === "function"
+    ? resolveArtifactText(entry.relative_path)
+    : resolveAuditArtifactText({
+      targetRoot: path.resolve(targetRoot),
+      candidatePath: entry.relative_path,
+    });
+  const fields = parseSimpleMap(resolution.text);
   const runtimeStateMode = normalizeScalar(fields.get("runtime_state_mode") ?? "files") || "files";
   const sourceOfTruth = evaluateSourceOfTruthPolicy(entry.source_of_truth_concept, runtimeStateMode);
   const metadata = evaluateMetadataPolicy(entry.concept, {
@@ -336,7 +362,7 @@ export function evaluateObservedGovernanceArtifact(entry, targetRoot) {
     retention_policy: normalizeScalar(fields.get("retention_policy") ?? ""),
   });
   const issues = [];
-  if (!exists) {
+  if (!resolution.exists) {
     issues.push(`${entry.id}: artifact missing at ${entry.relative_path}`);
   }
   if (metadata.metadata_status !== "complete") {
@@ -346,7 +372,8 @@ export function evaluateObservedGovernanceArtifact(entry, targetRoot) {
     id: entry.id,
     concept: entry.concept,
     relative_path: entry.relative_path,
-    exists,
+    exists: resolution.exists,
+    source: resolution.source,
     runtime_state_mode: runtimeStateMode,
     source_of_truth: {
       concept: sourceOfTruth.concept,
@@ -452,8 +479,11 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
   const concepts = GOVERNED_CONCEPTS.map(evaluateGovernedConcept);
   const conceptIndex = new Map(concepts.map((item) => [item.concept, item]));
   const runtimeSurfaces = GOVERNANCE_RUNTIME_SURFACES.map((entry) => evaluateGovernanceRuntimeSurface(entry, conceptIndex));
+  const resolveObservedArtifactText = includeObservedArtifacts
+    ? createObservedArtifactResolver(targetRoot)
+    : null;
   const observedArtifacts = includeObservedArtifacts
-    ? OBSERVED_GOVERNANCE_ARTIFACTS.map((entry) => evaluateObservedGovernanceArtifact(entry, targetRoot))
+    ? OBSERVED_GOVERNANCE_ARTIFACTS.map((entry) => evaluateObservedGovernanceArtifact(entry, targetRoot, resolveObservedArtifactText))
     : [];
   const issues = [
     ...concepts.flatMap((item) => item.issues),

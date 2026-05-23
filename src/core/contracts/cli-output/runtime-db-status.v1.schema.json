@@ -30,6 +30,7 @@
     "workspace": { "type": "object", "additionalProperties": true },
     "resolved_projection_backend": { "type": "object", "additionalProperties": true },
     "runtime_backend_adoption_plan": { "type": "object", "additionalProperties": true },
+    "runtime_backend_diagnostic": { "type": "object", "additionalProperties": true },
     "schema_status": { "type": "string" },
     "schema_version": { "type": ["string", "number", "null"] },
     "operations": {
