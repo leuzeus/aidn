@@ -64,6 +64,15 @@ When a change affects governed metadata, critical Markdown contracts, or lifecyc
 - `npm run perf:verify-metadata-policy`
 - `npm run perf:verify-markdown-contract`
 
+When a change affects local operations, backup/restore, doctor output, or migration safety, run:
+
+- `npm run perf:verify-db-schema-migrations`
+- `npm run perf:verify-shared-coordination-backup`
+- `npm run perf:verify-shared-coordination-restore`
+- `npm run perf:verify-shared-coordination-doctor`
+
+These checks are also split into `.github/workflows/runtime-ops.yml` so operational regressions are visible independently from broader KPI/perf coverage.
+
 When a change affects release/versioning, install examples, or build-release provenance, run:
 
 - `npm run perf:verify-release-version`

@@ -14,13 +14,19 @@ function assert(condition, message) {
 }
 
 function runCli(args, env = {}) {
+  const childEnv = {
+    ...process.env,
+    ...env,
+  };
+  for (const [key, value] of Object.entries(env)) {
+    if (value == null) {
+      delete childEnv[key];
+    }
+  }
   const result = spawnSync(process.execPath, [path.resolve(process.cwd(), "bin/aidn.mjs"), ...args], {
     cwd: process.cwd(),
     encoding: "utf8",
-    env: {
-      ...process.env,
-      ...env,
-    },
+    env: childEnv,
   });
   return {
     status: result.status ?? 1,
@@ -115,7 +121,9 @@ async function main() {
       },
     });
 
-    const missingEnv = runCli(["runtime", "shared-coordination-doctor", "--target", targetRoot, "--json"]);
+    const missingEnv = runCli(["runtime", "shared-coordination-doctor", "--target", targetRoot, "--json"], {
+      AIDN_PG_URL: null,
+    });
     assert(missingEnv.status === 1, "doctor CLI should fail when PostgreSQL env is missing");
     assert(missingEnv.json?.findings?.some((item) => item.code === "missing-env"), "doctor CLI should surface missing-env");
 
