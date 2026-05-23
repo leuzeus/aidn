@@ -310,6 +310,120 @@ export function evaluatePreWriteCycleCreateGates({
   }
 }
 
+export function evaluatePreWriteGenericWorkflowGates({
+  checks,
+  addCheck,
+  blockingReasons,
+  warnings,
+  policy,
+  skill = "",
+  mode,
+  branchKind,
+  activeSession,
+  activeCycle,
+  sessionResolution,
+  cycleStatusResolution,
+  effectiveFirstPlanStep,
+  currentFirstPlanStep,
+  derivedFirstPlanStep,
+  dorState,
+  dorOverrideReason,
+  cycleState = "UNKNOWN",
+  usageMatrixScope = "local",
+  usageMatrixState = "NOT_DEFINED",
+  usageMatrixRationale = "none",
+  activeCycleLabel = "unknown",
+  cycleBranch = "none",
+  mappedCycleBranch = "none",
+  canonicalNone,
+  canonicalUnknown,
+  usageMatrixSatisfied,
+} = {}) {
+  addCheck(checks, "mode_known", !canonicalUnknown(mode), `mode=${mode}`);
+  if (policy.requireMode && canonicalUnknown(mode)) {
+    blockingReasons.push("mode is unknown");
+  }
+
+  addCheck(checks, "branch_kind_known", !canonicalUnknown(branchKind), `branch_kind=${branchKind}`);
+  if (policy.requireBranchKind && canonicalUnknown(branchKind)) {
+    blockingReasons.push("branch kind is unknown");
+  }
+
+  addCheck(checks, "active_session_known", !canonicalUnknown(activeSession), `active_session=${activeSession}`);
+  if (policy.requireActiveSession && (canonicalUnknown(activeSession) || canonicalNone(activeSession))) {
+    blockingReasons.push("active session is missing");
+  }
+
+  addCheck(checks, "active_cycle_known", !canonicalUnknown(activeCycle) && !canonicalNone(activeCycle), `active_cycle=${activeCycle}`);
+  if (policy.requireActiveCycle && (canonicalUnknown(activeCycle) || canonicalNone(activeCycle))) {
+    blockingReasons.push("active cycle is missing");
+  }
+
+  addCheck(checks, "session_file_exists", sessionResolution.exists, sessionResolution.exists
+    ? `session artifact resolved via ${sessionResolution.source}: ${sessionResolution.logicalPath}`
+    : "session file not resolved");
+  if (policy.requireActiveSession && !sessionResolution.exists) {
+    blockingReasons.push("active session file is missing");
+  }
+
+  addCheck(checks, "cycle_status_exists", cycleStatusResolution.exists, cycleStatusResolution.exists
+    ? `cycle status resolved via ${cycleStatusResolution.source}: ${cycleStatusResolution.logicalPath}`
+    : "cycle status file not resolved");
+  if (policy.requireCycleStatus && !cycleStatusResolution.exists) {
+    blockingReasons.push("active cycle status file is missing");
+  }
+
+  addCheck(checks, "first_plan_step_known", !canonicalUnknown(effectiveFirstPlanStep) && !canonicalNone(effectiveFirstPlanStep), `first_plan_step=${effectiveFirstPlanStep}`);
+  if (policy.requireFirstPlanStep && (canonicalUnknown(effectiveFirstPlanStep) || canonicalNone(effectiveFirstPlanStep))) {
+    blockingReasons.push("first implementation step is unknown");
+  }
+  if (!canonicalUnknown(currentFirstPlanStep) && !canonicalUnknown(derivedFirstPlanStep)
+    && !canonicalNone(currentFirstPlanStep) && !canonicalNone(derivedFirstPlanStep)
+    && currentFirstPlanStep !== derivedFirstPlanStep) {
+    warnings.push("CURRENT-STATE.md first_plan_step differs from the first parseable plan task");
+  }
+
+  addCheck(checks, "dor_ready_or_override", dorState === "READY" || !canonicalNone(dorOverrideReason), `dor_state=${dorState}; dor_override_reason=${dorOverrideReason}`);
+  if (policy.requireDorReady && dorState !== "READY" && canonicalNone(dorOverrideReason)) {
+    blockingReasons.push("dor_state is not READY and no override reason is documented");
+  } else if (policy.requireDorReady && dorState !== "READY" && !canonicalNone(dorOverrideReason)) {
+    warnings.push(`DoR override in effect: ${dorOverrideReason}`);
+  }
+
+  addCheck(
+    checks,
+    "usage_matrix_close_or_promotion_ready",
+    (skill !== "cycle-close" && skill !== "promote-baseline")
+      || String(cycleState).toUpperCase() !== "DONE"
+      || usageMatrixSatisfied({
+        scope: usageMatrixScope,
+        state: usageMatrixState,
+        rationale: usageMatrixRationale,
+      }),
+    `usage_matrix_scope=${usageMatrixScope}; usage_matrix_state=${usageMatrixState}`,
+  );
+  if (
+    (skill === "cycle-close" || skill === "promote-baseline")
+    && String(cycleState).toUpperCase() === "DONE"
+    && !usageMatrixSatisfied({
+      scope: usageMatrixScope,
+      state: usageMatrixState,
+      rationale: usageMatrixRationale,
+    })
+  ) {
+    blockingReasons.push(
+      skill === "promote-baseline"
+        ? `cycle ${activeCycleLabel} is marked DONE but usage matrix is not complete for promote-baseline (scope=${usageMatrixScope}, state=${usageMatrixState})`
+        : `cycle ${activeCycleLabel} is marked DONE but usage matrix is not complete for cycle-close (scope=${usageMatrixScope}, state=${usageMatrixState})`,
+    );
+  }
+
+  if (!canonicalNone(cycleBranch) && !canonicalNone(mappedCycleBranch) && !canonicalUnknown(mappedCycleBranch)
+    && cycleBranch !== mappedCycleBranch) {
+    blockingReasons.push(`cycle branch mismatch: CURRENT-STATE=${cycleBranch} status.md=${mappedCycleBranch}`);
+  }
+}
+
 function normalizedScalarLocal(value) {
   return String(value ?? "").trim();
 }

@@ -3,6 +3,7 @@ import {
   addPreWriteSourceOfTruthIssue,
   buildPreWriteAdmissionResult,
   evaluatePreWriteCycleCreateGates,
+  evaluatePreWriteGenericWorkflowGates,
   evaluatePreWriteSourceOfTruthAndRuntimeGates,
   knownPreWriteStateMode,
   mergePreWritePolicy,
@@ -182,6 +183,56 @@ function verifyCycleCreateGates() {
   assert(blockingReasons.some((item) => item.includes("selected execution scope")), "cycle-create gates should require execution scope");
 }
 
+function verifyGenericWorkflowGates() {
+  const checks = {};
+  const blockingReasons = [];
+  const warnings = [];
+  const addCheck = (target, key, pass, details, extra = {}) => {
+    target[key] = { pass, details, ...extra };
+  };
+  evaluatePreWriteGenericWorkflowGates({
+    checks,
+    addCheck,
+    blockingReasons,
+    warnings,
+    policy: mergePreWritePolicy("promote-baseline"),
+    skill: "promote-baseline",
+    mode: "COMMITTING",
+    branchKind: "unknown",
+    activeSession: "S101",
+    activeCycle: "C101",
+    sessionResolution: { exists: true, source: "file", logicalPath: "docs/audit/sessions/S101.md" },
+    cycleStatusResolution: { exists: true, source: "file", logicalPath: "docs/audit/cycles/C101/status.md" },
+    effectiveFirstPlanStep: "implement alpha feature validation",
+    currentFirstPlanStep: "step-a",
+    derivedFirstPlanStep: "step-b",
+    dorState: "NOT_READY",
+    dorOverrideReason: "none",
+    cycleState: "DONE",
+    usageMatrixScope: "shared",
+    usageMatrixState: "NOT_DEFINED",
+    usageMatrixRationale: "none",
+    activeCycleLabel: "C101",
+    cycleBranch: "feature/C101-alpha",
+    mappedCycleBranch: "feature/C101-other",
+    canonicalNone(value) {
+      return String(value ?? "").trim().toLowerCase() === "none";
+    },
+    canonicalUnknown(value) {
+      return String(value ?? "").trim().toLowerCase() === "unknown";
+    },
+    usageMatrixSatisfied() {
+      return false;
+    },
+  });
+  assert(checks.branch_kind_known.pass === false, "generic gates should expose branch kind drift");
+  assert(blockingReasons.some((item) => item.includes("branch kind is unknown")), "generic gates should require branch kind when policy does");
+  assert(blockingReasons.some((item) => item.includes("dor_state is not READY")), "generic gates should enforce DoR");
+  assert(blockingReasons.some((item) => item.includes("usage matrix is not complete")), "generic gates should enforce usage matrix");
+  assert(blockingReasons.some((item) => item.includes("cycle branch mismatch")), "generic gates should surface branch mismatch");
+  assert(warnings.some((item) => item.includes("first_plan_step differs")), "generic gates should warn on plan step drift");
+}
+
 function main() {
   try {
     verifyPolicyMerge();
@@ -189,6 +240,7 @@ function main() {
     verifySourceOfTruthHelpers();
     verifySourceOfTruthRuntimeGates();
     verifyCycleCreateGates();
+    verifyGenericWorkflowGates();
     console.log("PASS");
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
