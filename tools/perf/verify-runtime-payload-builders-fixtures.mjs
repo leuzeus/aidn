@@ -1,5 +1,8 @@
 #!/usr/bin/env node
-import { buildHandoffPacketPayload } from "../../src/application/runtime/handoff-packet-projector-use-case.mjs";
+import {
+  buildHandoffPacketPayload,
+  prepareHandoffPacketProjection,
+} from "../../src/application/runtime/handoff-packet-projector-use-case.mjs";
 import { buildRuntimeStateDigest } from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
 
 function printUsage() {
@@ -127,10 +130,90 @@ function verifyHandoffPacketPayload() {
   assert(packet.runtime_state_source === "fixture", "handoff packet should expose runtime source");
 }
 
+function verifyHandoffPacketProjection() {
+  const packet = prepareHandoffPacketProjection({
+    workspace,
+    sharedRuntimeValidation: { status: "clear" },
+    repairHints: {
+      REPAIR: "repair",
+      AUDIT_FIRST: "audit_first",
+    },
+    nextAgentGoal: "",
+    handoffNote: "none",
+    handoffFromAgentRole: "coordinator",
+    handoffFromAgentAction: "relay",
+    mode: "COMMITTING",
+    branchKind: "feature",
+    activeSession: "S001",
+    activeCycle: "C001",
+    dorState: "ready",
+    firstPlanStep: "implement",
+    backlogStatus: "ready",
+    backlogNextStep: "continue backlog execution",
+    runtimeStateMode: "dual",
+    repairStatus: "warn",
+    repairPrimaryReason: "warning: relay",
+    repairRoutingHint: "continue",
+    repairRoutingReason: "clear",
+    planningArbitrationStatus: "none",
+    activeBacklog: "docs/audit/backlog/example.md",
+    currentStateFreshness: "ok",
+    runtimeStateText: [
+      "blocking_findings:",
+      "- warning: relay: fixture finding",
+      "",
+      "prioritized_artifacts:",
+      "- docs/audit/custom.md",
+    ].join("\n"),
+    currentMap: new Map([
+      ["mode", "COMMITTING"],
+      ["active_session", "S001"],
+      ["active_cycle", "C001"],
+      ["cycle_branch", "dev"],
+    ]),
+    runtimeMap: new Map([
+      ["repair_layer_status", "warn"],
+      ["current_state_freshness", "ok"],
+    ]),
+    sharedPlanning: {
+      artifact_found: true,
+      backlog_next_step: "continue backlog execution",
+      preferred_dispatch_source: "shared_planning",
+      candidate_ready: true,
+      candidate_aligned: true,
+      next_dispatch_scope: "cycle",
+      next_dispatch_action: "implement",
+      freshness_status: "ok",
+      freshness_basis: "fixture",
+      gate_status: "ok",
+      gate_reason: "clear",
+      linked_cycles: ["C001"],
+      backlog_artifact_source: "fixture",
+    },
+    consistency: { pass: true },
+    sessionResolution: { exists: true, logicalPath: "docs/audit/sessions/S001.md" },
+    cycleStatusResolution: { exists: true, logicalPath: "docs/audit/cycles/C001/status.md" },
+    planResolution: { exists: true, logicalPath: "docs/audit/cycles/C001/plan.md" },
+    currentStateResolution: { source: "fixture" },
+    runtimeStateResolution: { source: "fixture" },
+    transitionEvaluator: () => ({ status: "pass", reason: "clear" }),
+  });
+
+  assert(packet.handoff_status === "ready", "prepared handoff packet should derive ready status");
+  assert(packet.recommended_next_agent_role === "executor", "prepared handoff packet should derive executor role");
+  assert(packet.recommended_next_agent_action === "implement", "prepared handoff packet should derive implement action");
+  assert(packet.scope_type === "cycle", "prepared handoff packet should derive cycle scope");
+  assert(packet.target_branch === "dev", "prepared handoff packet should preserve target branch");
+  assert(packet.next_agent_goal === "continue backlog execution", "prepared handoff packet should derive backlog next step");
+  assert(packet.blocking_findings.includes("warning: relay: fixture finding"), "prepared handoff packet should keep blocking findings");
+  assert(packet.prioritized_artifacts.includes("docs/audit/custom.md"), "prepared handoff packet should keep prioritized artifacts");
+}
+
 function main() {
   try {
     verifyRuntimeStateDigest();
     verifyHandoffPacketPayload();
+    verifyHandoffPacketProjection();
     console.log("PASS");
   } catch (error) {
     console.error(`ERROR: ${error.message}`);

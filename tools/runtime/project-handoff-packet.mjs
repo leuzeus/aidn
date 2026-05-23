@@ -2,7 +2,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { buildHandoffPacketMarkdown, buildHandoffPacketPayload } from "../../src/application/runtime/handoff-packet-projector-use-case.mjs";
+import {
+  buildHandoffPacketMarkdown,
+  deriveHandoffStatus,
+  deriveNextAgentRouting,
+  prepareHandoffPacketProjection,
+} from "../../src/application/runtime/handoff-packet-projector-use-case.mjs";
 import {
   appendSharedHandoffRelay,
   readSharedPlanningState,
@@ -202,154 +207,6 @@ function relativePath(root, filePath) {
     return "";
   }
   return path.relative(root, filePath).replace(/\\/g, "/");
-}
-
-function deriveHandoffStatus({ consistency, runtimeMap, currentMap }) {
-  const repairStatus = normalizeScalar(runtimeMap.get("repair_layer_status") ?? "unknown").toLowerCase();
-  const freshness = normalizeScalar(runtimeMap.get("current_state_freshness") ?? "unknown").toLowerCase();
-  const mode = normalizeScalar(currentMap.get("mode") ?? "unknown").toLowerCase();
-  const activeSession = normalizeScalar(currentMap.get("active_session") ?? "none").toLowerCase();
-  const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none").toLowerCase();
-  if (repairStatus === "block") {
-    return "blocked";
-  }
-  if (mode === "unknown" || (activeSession === "none" && activeCycle === "none")) {
-    return "refresh_required";
-  }
-  if (freshness === "stale" || consistency.pass === false) {
-    return "refresh_required";
-  }
-  return "ready";
-}
-
-function deriveNextAgentRouting({ handoffStatus, mode, repairStatus }) {
-  const normalizedRepair = String(repairStatus ?? "").trim().toLowerCase();
-  if (handoffStatus === "blocked" || normalizedRepair === "block" || normalizedRepair === WORKFLOW_REPAIR_HINT.REPAIR) {
-    return { role: "repair", action: "repair" };
-  }
-  if (normalizedRepair === WORKFLOW_REPAIR_HINT.AUDIT_FIRST) {
-    return { role: "auditor", action: "audit" };
-  }
-  if (handoffStatus === "refresh_required") {
-    return { role: "coordinator", action: "reanchor" };
-  }
-  if (mode === "COMMITTING") {
-    return { role: "executor", action: "implement" };
-  }
-  if (mode === "EXPLORING") {
-    return { role: "auditor", action: "analyze" };
-  }
-  return { role: "coordinator", action: "coordinate" };
-}
-
-function deriveNextAgentGoal({
-  explicitGoal,
-  handoffStatus,
-  mode,
-  repairStatus,
-  repairAdvice,
-  firstPlanStep,
-  backlogNextStep,
-  blockingFindings,
-}) {
-  const manualGoal = normalizeScalar(explicitGoal);
-  if (manualGoal) {
-    return manualGoal;
-  }
-  if (handoffStatus === "blocked" || repairStatus === "block" || repairStatus === WORKFLOW_REPAIR_HINT.REPAIR) {
-    const topFinding = normalizeScalar(blockingFindings[0] ?? "");
-    if (topFinding) {
-      return `resolve blocking finding: ${topFinding}`;
-    }
-    return "resolve blocking repair-layer or workflow findings before continuing";
-  }
-  if (repairStatus === WORKFLOW_REPAIR_HINT.AUDIT_FIRST) {
-    const normalizedAdvice = normalizeScalar(repairAdvice);
-    if (normalizedAdvice && normalizedAdvice.toLowerCase() !== "unknown") {
-      return `review runtime warnings first: ${normalizedAdvice}`;
-    }
-    return "review runtime warnings and validate the relay before implementation";
-  }
-  if (handoffStatus === "refresh_required") {
-    return "reanchor current session, cycle, and runtime facts before any durable write";
-  }
-  if (backlogNextStep && !canonicalUnknown(backlogNextStep) && !canonicalNone(backlogNextStep)) {
-    return backlogNextStep;
-  }
-  if (mode === "COMMITTING" && firstPlanStep && !canonicalUnknown(firstPlanStep) && !canonicalNone(firstPlanStep)) {
-    return firstPlanStep;
-  }
-  if (mode === "EXPLORING") {
-    return "continue analysis and validate the next hypothesis before durable write";
-  }
-  if (mode === "THINKING") {
-    return "restate the objective, active constraints, and the smallest compliant next step";
-  }
-  return "reload the prioritized artifacts and choose the next compliant action";
-}
-
-function buildPrioritizedArtifacts({
-  runtimeStateText,
-  sessionArtifact,
-  cycleStatusArtifact,
-  planArtifact,
-  activeBacklog,
-  firstPlanStep,
-}) {
-  const items = [
-    "docs/audit/CURRENT-STATE.md",
-    "docs/audit/WORKFLOW-KERNEL.md",
-    "docs/audit/RUNTIME-STATE.md",
-    "docs/audit/WORKFLOW_SUMMARY.md",
-  ];
-  const runtimeArtifacts = parseListSection(runtimeStateText, "prioritized_artifacts");
-  const normalizedBacklog = normalizeBacklogRef(activeBacklog);
-  if (normalizedBacklog !== "none") {
-    items.push(normalizedBacklog);
-  }
-  if (sessionArtifact?.exists) {
-    items.push(sessionArtifact.logicalPath);
-  }
-  if (cycleStatusArtifact?.exists) {
-    items.push(cycleStatusArtifact.logicalPath);
-  }
-  if (firstPlanStep && planArtifact?.exists) {
-    items.push(planArtifact.logicalPath);
-  }
-  return uniqueItems([...items, ...runtimeArtifacts]);
-}
-
-function deriveDispatchScope({ currentMap, nextRouting }) {
-  const activeSession = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
-  const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
-  const sessionBranch = normalizeScalar(currentMap.get("session_branch") ?? "none") || "none";
-  const cycleBranch = normalizeScalar(currentMap.get("cycle_branch") ?? "none") || "none";
-  if (!canonicalNone(activeCycle) && !canonicalUnknown(activeCycle)) {
-    return {
-      scope_type: "cycle",
-      scope_id: activeCycle,
-      target_branch: !canonicalNone(cycleBranch) && !canonicalUnknown(cycleBranch) ? cycleBranch : "none",
-    };
-  }
-  if (!canonicalNone(activeSession) && !canonicalUnknown(activeSession)) {
-    return {
-      scope_type: "session",
-      scope_id: activeSession,
-      target_branch: !canonicalNone(sessionBranch) && !canonicalUnknown(sessionBranch) ? sessionBranch : "none",
-    };
-  }
-  if (nextRouting.role === "coordinator") {
-    return {
-      scope_type: "session",
-      scope_id: !canonicalNone(activeSession) && !canonicalUnknown(activeSession) ? activeSession : "none",
-      target_branch: !canonicalNone(sessionBranch) && !canonicalUnknown(sessionBranch) ? sessionBranch : "none",
-    };
-  }
-  return {
-    scope_type: "none",
-    scope_id: "none",
-    target_branch: "none",
-  };
 }
 
 function deriveSharedPlanningCandidate({
@@ -616,7 +473,6 @@ export async function projectHandoffPacket({
   });
   const repairRoutingHint = normalizeScalar(runtimeMap.get("repair_routing_hint") ?? repairRouting.routing_hint) || "unknown";
   const repairRoutingReason = normalizeScalar(runtimeMap.get("repair_routing_reason") ?? repairRouting.routing_reason) || "unknown";
-  const handoffStatus = deriveHandoffStatus({ consistency, runtimeMap, currentMap });
   const mode = normalizeScalar(currentMap.get("mode") ?? "unknown") || "unknown";
   const branchKind = normalizeScalar(currentMap.get("branch_kind") ?? "unknown") || "unknown";
   const dorState = normalizeScalar(currentMap.get("dor_state") ?? "unknown") || "unknown";
@@ -638,26 +494,50 @@ export async function projectHandoffPacket({
   const backlogStatus = normalizeScalar(sharedPlanningContext.backlog_status) || "unknown";
   const backlogNextStep = normalizeScalar(sharedPlanningContext.backlog_next_step) || "unknown";
   const planningArbitrationStatus = normalizeScalar(sharedPlanningContext.planning_arbitration_status) || "none";
-  const blockingFindings = uniqueItems(parseListSection(runtimeStateText, "blocking_findings").slice(0, 5));
+  const handoffStatus = deriveHandoffStatus({ consistency, runtimeMap, currentMap });
   const nextRouting = deriveNextAgentRouting({
     handoffStatus,
     mode,
     repairStatus: repairRoutingHint,
+    repairHints: WORKFLOW_REPAIR_HINT,
   });
   const handoffFromAgentRole = normalizeScalar(fromAgentRole) || "coordinator";
   const handoffFromAgentAction = normalizeScalar(fromAgentAction) || "relay";
-  const transition = evaluateAgentTransition({
-    mode,
-    fromRole: handoffFromAgentRole,
-    fromAction: handoffFromAgentAction,
-    toRole: nextRouting.role,
-    toAction: nextRouting.action,
-  });
-  const scope = deriveDispatchScope({ currentMap, nextRouting });
   const sharedPlanning = deriveSharedPlanningCandidate({
     targetRoot: absoluteTargetRoot,
     activeBacklog,
-    scope,
+    scope: (() => {
+      const activeSessionScope = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
+      const activeCycleScope = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
+      const sessionBranch = normalizeScalar(currentMap.get("session_branch") ?? "none") || "none";
+      const cycleBranch = normalizeScalar(currentMap.get("cycle_branch") ?? "none") || "none";
+      if (!canonicalNone(activeCycleScope) && !canonicalUnknown(activeCycleScope)) {
+        return {
+          scope_type: "cycle",
+          scope_id: activeCycleScope,
+          target_branch: !canonicalNone(cycleBranch) && !canonicalUnknown(cycleBranch) ? cycleBranch : "none",
+        };
+      }
+      if (!canonicalNone(activeSessionScope) && !canonicalUnknown(activeSessionScope)) {
+        return {
+          scope_type: "session",
+          scope_id: activeSessionScope,
+          target_branch: !canonicalNone(sessionBranch) && !canonicalUnknown(sessionBranch) ? sessionBranch : "none",
+        };
+      }
+      if (nextRouting.role === "coordinator") {
+        return {
+          scope_type: "session",
+          scope_id: !canonicalNone(activeSessionScope) && !canonicalUnknown(activeSessionScope) ? activeSessionScope : "none",
+          target_branch: !canonicalNone(sessionBranch) && !canonicalUnknown(sessionBranch) ? sessionBranch : "none",
+        };
+      }
+      return {
+        scope_type: "none",
+        scope_id: "none",
+        target_branch: "none",
+      };
+    })(),
     nextRouting,
     currentStateUpdatedAtMs: parseTimestamp(currentMap.get("updated_at") ?? ""),
     sharedPlanningRead: activeSession !== "none"
@@ -672,29 +552,14 @@ export async function projectHandoffPacket({
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
     dbSource,
   });
-
-  const packet = buildHandoffPacketPayload({
+  const packet = prepareHandoffPacketProjection({
     workspace,
     sharedRuntimeValidation,
-    handoffStatus,
+    repairHints: WORKFLOW_REPAIR_HINT,
+    nextAgentGoal,
+    handoffNote,
     handoffFromAgentRole,
     handoffFromAgentAction,
-    nextRouting,
-    nextAgentGoal: deriveNextAgentGoal({
-      explicitGoal: nextAgentGoal,
-      handoffStatus,
-      mode,
-      repairStatus: repairRoutingHint,
-      repairAdvice: repairRoutingReason,
-      firstPlanStep,
-      backlogNextStep,
-      blockingFindings,
-    }),
-    scope,
-    activeBacklog,
-    planningArbitrationStatus,
-    sharedPlanning,
-    handoffNote: normalizeScalar(handoffNote) || "none",
     mode,
     branchKind,
     activeSession,
@@ -702,7 +567,7 @@ export async function projectHandoffPacket({
     dorState,
     firstPlanStep,
     backlogStatus,
-    backlogNextStep: sharedPlanning.artifact_found && !canonicalUnknown(sharedPlanning.backlog_next_step) ? sharedPlanning.backlog_next_step : backlogNextStep,
+    backlogNextStep,
     runtimeStateMode: normalizeScalar(
       dbBackedMode
         ? effectiveStateMode
@@ -711,22 +576,21 @@ export async function projectHandoffPacket({
     repairStatus,
     repairPrimaryReason,
     repairRoutingHint,
+    repairRoutingReason,
+    planningArbitrationStatus,
+    activeBacklog,
     currentStateFreshness: normalizeScalar(runtimeMap.get("current_state_freshness") ?? "unknown") || "unknown",
-    transition,
-    blockingFindings,
-    prioritizedArtifacts: buildPrioritizedArtifacts({
-      runtimeStateText,
-      sessionArtifact: sessionResolution,
-      cycleStatusArtifact: cycleStatusResolution,
-      planArtifact: planResolution,
-      activeBacklog,
-      firstPlanStep,
-    }),
+    runtimeStateText,
+    currentMap,
+    runtimeMap,
+    sharedPlanning,
     consistency,
     sessionResolution,
     cycleStatusResolution,
+    planResolution,
     currentStateResolution,
     runtimeStateResolution,
+    transitionEvaluator: evaluateAgentTransition,
   });
 
   if (!canAgentRolePerform(packet.recommended_next_agent_role, packet.recommended_next_agent_action)) {

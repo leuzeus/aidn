@@ -54,12 +54,27 @@ function runJson(script, args, env = {}) {
   return JSON.parse(stdout);
 }
 
+function copyFixture(sourceRoot) {
+  const stamp = new Date().toISOString().replace(/[-:.]/g, "").replace("T", "T").replace("Z", "Z");
+  const tmpRoot = path.join(process.cwd(), "tests", "fixtures", `tmp-handoff-packet-${stamp}`);
+  fs.rmSync(tmpRoot, { recursive: true, force: true });
+  fs.cpSync(sourceRoot, tmpRoot, {
+    recursive: true,
+    filter(source) {
+      const normalized = source.replace(/\\/g, "/");
+      return !normalized.includes("/.git/");
+    },
+  });
+  return tmpRoot;
+}
+
 function main() {
   let tempRoot = "";
   try {
     const args = parseArgs(process.argv.slice(2));
     const repoRoot = process.cwd();
-    const target = path.resolve(repoRoot, args.target);
+    const sourceTarget = path.resolve(repoRoot, args.target);
+    const target = copyFixture(sourceTarget);
     const script = path.resolve(repoRoot, "tools", "runtime", "project-handoff-packet.mjs");
     const outFile = path.join(target, "docs", "audit", "HANDOFF-PACKET.md");
 
@@ -187,7 +202,7 @@ function main() {
     assert(filelessText.includes("workspace_id:"), "db-only fileless handoff markdown should record workspace_id");
     const output = {
       ts: new Date().toISOString(),
-      target,
+      target: sourceTarget,
       output_file: outFile,
       packet: payload.packet,
       pass: true,
@@ -206,6 +221,14 @@ function main() {
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       removePathWithRetry(tempRoot);
+    }
+    const targetTempRoots = fs.readdirSync(path.join(process.cwd(), "tests", "fixtures"), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && entry.name.startsWith("tmp-handoff-packet-"))
+      .map((entry) => path.join(process.cwd(), "tests", "fixtures", entry.name));
+    for (const targetTempRoot of targetTempRoots) {
+      if (fs.existsSync(targetTempRoot)) {
+        removePathWithRetry(targetTempRoot);
+      }
     }
   }
 }

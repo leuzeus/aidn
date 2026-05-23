@@ -112,6 +112,343 @@ export function buildHandoffPacketMarkdown(packet) {
   return `${lines.join("\n")}\n`;
 }
 
+function normalizeScalar(value) {
+  return String(value ?? "").trim();
+}
+
+function canonicalNone(value) {
+  const normalized = normalizeScalar(value).toLowerCase();
+  return normalized === "none" || normalized === "(none)";
+}
+
+function canonicalUnknown(value) {
+  return normalizeScalar(value).toLowerCase() === "unknown";
+}
+
+function uniqueItems(values) {
+  const out = [];
+  const seen = new Set();
+  for (const value of values) {
+    const normalized = normalizeScalar(value);
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    out.push(normalized);
+  }
+  return out;
+}
+
+function parseListSection(text, header) {
+  const lines = String(text).split(/\r?\n/);
+  const items = [];
+  let active = false;
+  for (const line of lines) {
+    if (line.trim() === `${header}:`) {
+      active = true;
+      continue;
+    }
+    if (active && (/^[A-Za-z0-9_]+:\s*/.test(line) || /^##\s+/.test(line))) {
+      break;
+    }
+    if (active) {
+      const match = line.match(/^\s*-\s+(.+)$/);
+      if (match) {
+        const item = normalizeArtifactRef(match[1]);
+        if (item && item.toLowerCase() !== "none") {
+          items.push(item);
+        }
+      }
+    }
+  }
+  return items;
+}
+
+function normalizeArtifactRef(value) {
+  const normalized = normalizeScalar(value).replace(/^`+|`+$/g, "");
+  return normalized;
+}
+
+function normalizeBacklogRef(value) {
+  const normalized = normalizeScalar(value);
+  if (!normalized || canonicalNone(normalized) || canonicalUnknown(normalized)) {
+    return "none";
+  }
+  if (normalized.startsWith("docs/audit/")) {
+    return normalized;
+  }
+  if (normalized.startsWith("backlog/")) {
+    return `docs/audit/${normalized}`;
+  }
+  return normalized;
+}
+
+export function deriveHandoffStatus({ consistency, runtimeMap, currentMap }) {
+  const repairStatus = normalizeScalar(runtimeMap.get("repair_layer_status") ?? "unknown").toLowerCase();
+  const freshness = normalizeScalar(runtimeMap.get("current_state_freshness") ?? "unknown").toLowerCase();
+  const mode = normalizeScalar(currentMap.get("mode") ?? "unknown").toLowerCase();
+  const activeSession = normalizeScalar(currentMap.get("active_session") ?? "none").toLowerCase();
+  const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none").toLowerCase();
+  if (repairStatus === "block") {
+    return "blocked";
+  }
+  if (mode === "unknown" || (activeSession === "none" && activeCycle === "none")) {
+    return "refresh_required";
+  }
+  if (freshness === "stale" || consistency.pass === false) {
+    return "refresh_required";
+  }
+  return "ready";
+}
+
+export function deriveNextAgentRouting({ handoffStatus, mode, repairStatus, repairHints }) {
+  const normalizedRepair = normalizeScalar(repairStatus).toLowerCase();
+  if (
+    handoffStatus === "blocked"
+    || normalizedRepair === "block"
+    || normalizedRepair === repairHints.REPAIR
+  ) {
+    return { role: "repair", action: "repair" };
+  }
+  if (normalizedRepair === repairHints.AUDIT_FIRST) {
+    return { role: "auditor", action: "audit" };
+  }
+  if (handoffStatus === "refresh_required") {
+    return { role: "coordinator", action: "reanchor" };
+  }
+  if (mode === "COMMITTING") {
+    return { role: "executor", action: "implement" };
+  }
+  if (mode === "EXPLORING") {
+    return { role: "auditor", action: "analyze" };
+  }
+  return { role: "coordinator", action: "coordinate" };
+}
+
+export function deriveNextAgentGoal({
+  explicitGoal,
+  handoffStatus,
+  mode,
+  repairStatus,
+  repairHints,
+  repairAdvice,
+  firstPlanStep,
+  backlogNextStep,
+  blockingFindings,
+}) {
+  const manualGoal = normalizeScalar(explicitGoal);
+  if (manualGoal) {
+    return manualGoal;
+  }
+  if (
+    handoffStatus === "blocked"
+    || repairStatus === "block"
+    || repairStatus === repairHints.REPAIR
+  ) {
+    const topFinding = normalizeScalar(blockingFindings[0] ?? "");
+    if (topFinding) {
+      return `resolve blocking finding: ${topFinding}`;
+    }
+    return "resolve blocking repair-layer or workflow findings before continuing";
+  }
+  if (repairStatus === repairHints.AUDIT_FIRST) {
+    const normalizedAdvice = normalizeScalar(repairAdvice);
+    if (normalizedAdvice && normalizedAdvice.toLowerCase() !== "unknown") {
+      return `review runtime warnings first: ${normalizedAdvice}`;
+    }
+    return "review runtime warnings and validate the relay before implementation";
+  }
+  if (handoffStatus === "refresh_required") {
+    return "reanchor current session, cycle, and runtime facts before any durable write";
+  }
+  if (backlogNextStep && !canonicalUnknown(backlogNextStep) && !canonicalNone(backlogNextStep)) {
+    return backlogNextStep;
+  }
+  if (mode === "COMMITTING" && firstPlanStep && !canonicalUnknown(firstPlanStep) && !canonicalNone(firstPlanStep)) {
+    return firstPlanStep;
+  }
+  if (mode === "EXPLORING") {
+    return "continue analysis and validate the next hypothesis before durable write";
+  }
+  if (mode === "THINKING") {
+    return "restate the objective, active constraints, and the smallest compliant next step";
+  }
+  return "reload the prioritized artifacts and choose the next compliant action";
+}
+
+export function buildHandoffPrioritizedArtifacts({
+  runtimeStateText,
+  sessionArtifact,
+  cycleStatusArtifact,
+  planArtifact,
+  activeBacklog,
+  firstPlanStep,
+}) {
+  const items = [
+    "docs/audit/CURRENT-STATE.md",
+    "docs/audit/WORKFLOW-KERNEL.md",
+    "docs/audit/RUNTIME-STATE.md",
+    "docs/audit/WORKFLOW_SUMMARY.md",
+  ];
+  const runtimeArtifacts = parseListSection(runtimeStateText, "prioritized_artifacts");
+  const normalizedBacklog = normalizeBacklogRef(activeBacklog);
+  if (normalizedBacklog !== "none") {
+    items.push(normalizedBacklog);
+  }
+  if (sessionArtifact?.exists) {
+    items.push(sessionArtifact.logicalPath);
+  }
+  if (cycleStatusArtifact?.exists) {
+    items.push(cycleStatusArtifact.logicalPath);
+  }
+  if (firstPlanStep && planArtifact?.exists) {
+    items.push(planArtifact.logicalPath);
+  }
+  return uniqueItems([...items, ...runtimeArtifacts]);
+}
+
+export function prepareHandoffPacketProjection({
+  workspace,
+  sharedRuntimeValidation,
+  repairHints,
+  nextAgentGoal = "",
+  handoffNote = "",
+  handoffFromAgentRole = "coordinator",
+  handoffFromAgentAction = "relay",
+  mode = "unknown",
+  branchKind = "unknown",
+  activeSession = "none",
+  activeCycle = "none",
+  dorState = "unknown",
+  firstPlanStep = "unknown",
+  backlogStatus = "unknown",
+  backlogNextStep = "unknown",
+  runtimeStateMode = "unknown",
+  repairStatus = "unknown",
+  repairPrimaryReason = "unknown",
+  repairRoutingHint = "unknown",
+  repairRoutingReason = "unknown",
+  planningArbitrationStatus = "none",
+  activeBacklog = "none",
+  currentStateFreshness = "unknown",
+  runtimeStateText = "",
+  currentMap,
+  runtimeMap,
+  sharedPlanning,
+  consistency,
+  sessionResolution,
+  cycleStatusResolution,
+  planResolution,
+  currentStateResolution,
+  runtimeStateResolution,
+  transitionEvaluator,
+} = {}) {
+  const handoffStatus = deriveHandoffStatus({ consistency, runtimeMap, currentMap });
+  const blockingFindings = uniqueItems(parseListSection(runtimeStateText, "blocking_findings").slice(0, 5));
+  const nextRouting = deriveNextAgentRouting({
+    handoffStatus,
+    mode,
+    repairStatus: repairRoutingHint,
+    repairHints,
+  });
+  const transition = transitionEvaluator({
+    mode,
+    fromRole: handoffFromAgentRole,
+    fromAction: handoffFromAgentAction,
+    toRole: nextRouting.role,
+    toAction: nextRouting.action,
+  });
+  return buildHandoffPacketPayload({
+    workspace,
+    sharedRuntimeValidation,
+    handoffStatus,
+    handoffFromAgentRole,
+    handoffFromAgentAction,
+    nextRouting,
+    nextAgentGoal: deriveNextAgentGoal({
+      explicitGoal: nextAgentGoal,
+      handoffStatus,
+      mode,
+      repairStatus: repairRoutingHint,
+      repairHints,
+      repairAdvice: repairRoutingReason,
+      firstPlanStep,
+      backlogNextStep: sharedPlanning.artifact_found && !canonicalUnknown(sharedPlanning.backlog_next_step)
+        ? sharedPlanning.backlog_next_step
+        : backlogNextStep,
+      blockingFindings,
+    }),
+    scope: deriveDispatchScope({ currentMap, nextRouting }),
+    activeBacklog,
+    planningArbitrationStatus,
+    sharedPlanning,
+    handoffNote: normalizeScalar(handoffNote) || "none",
+    mode,
+    branchKind,
+    activeSession,
+    activeCycle,
+    dorState,
+    firstPlanStep,
+    backlogStatus,
+    backlogNextStep: sharedPlanning.artifact_found && !canonicalUnknown(sharedPlanning.backlog_next_step)
+      ? sharedPlanning.backlog_next_step
+      : backlogNextStep,
+    runtimeStateMode,
+    repairStatus,
+    repairPrimaryReason,
+    repairRoutingHint,
+    currentStateFreshness,
+    transition,
+    blockingFindings,
+    prioritizedArtifacts: buildHandoffPrioritizedArtifacts({
+      runtimeStateText,
+      sessionArtifact: sessionResolution,
+      cycleStatusArtifact: cycleStatusResolution,
+      planArtifact: planResolution,
+      activeBacklog,
+      firstPlanStep,
+    }),
+    consistency,
+    sessionResolution,
+    cycleStatusResolution,
+    currentStateResolution,
+    runtimeStateResolution,
+  });
+}
+
+function deriveDispatchScope({ currentMap, nextRouting }) {
+  const activeSession = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
+  const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
+  const sessionBranch = normalizeScalar(currentMap.get("session_branch") ?? "none") || "none";
+  const cycleBranch = normalizeScalar(currentMap.get("cycle_branch") ?? "none") || "none";
+  if (!canonicalNone(activeCycle) && !canonicalUnknown(activeCycle)) {
+    return {
+      scope_type: "cycle",
+      scope_id: activeCycle,
+      target_branch: !canonicalNone(cycleBranch) && !canonicalUnknown(cycleBranch) ? cycleBranch : "none",
+    };
+  }
+  if (!canonicalNone(activeSession) && !canonicalUnknown(activeSession)) {
+    return {
+      scope_type: "session",
+      scope_id: activeSession,
+      target_branch: !canonicalNone(sessionBranch) && !canonicalUnknown(sessionBranch) ? sessionBranch : "none",
+    };
+  }
+  if (nextRouting.role === "coordinator") {
+    return {
+      scope_type: "session",
+      scope_id: !canonicalNone(activeSession) && !canonicalUnknown(activeSession) ? activeSession : "none",
+      target_branch: !canonicalNone(sessionBranch) && !canonicalUnknown(sessionBranch) ? sessionBranch : "none",
+    };
+  }
+  return {
+    scope_type: "none",
+    scope_id: "none",
+    target_branch: "none",
+  };
+}
+
 export function buildHandoffPacketPayload({
   updatedAt,
   workspace,
