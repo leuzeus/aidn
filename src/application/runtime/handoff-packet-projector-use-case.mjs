@@ -1,3 +1,7 @@
+import { evaluateSourceOfTruthPolicy } from "../../core/source-of-truth/source-of-truth-policy.mjs";
+
+const CRITICAL_MARKDOWN_CONTRACT_VERSION = "critical-markdown-v1";
+
 export function buildHandoffPacketMarkdown(packet) {
   const lines = [];
   lines.push("# Handoff Packet");
@@ -16,6 +20,7 @@ export function buildHandoffPacketMarkdown(packet) {
   lines.push("");
   lines.push("## Summary");
   lines.push("");
+  lines.push(`contract_version: ${packet.contract_version}`);
   lines.push(`updated_at: ${packet.updated_at}`);
   lines.push(`project_id: ${packet.project_id}`);
   lines.push(`project_id_source: ${packet.project_id_source}`);
@@ -50,6 +55,11 @@ export function buildHandoffPacketMarkdown(packet) {
   lines.push(`shared_planning_gate_reason: ${packet.shared_planning_gate_reason}`);
   lines.push(`transition_policy_status: ${packet.transition_policy_status}`);
   lines.push(`transition_policy_reason: ${packet.transition_policy_reason}`);
+  lines.push(`source_of_truth: ${packet.source_of_truth}`);
+  lines.push(`source_mode: ${packet.source_mode}`);
+  lines.push(`lifecycle_status: ${packet.lifecycle_status}`);
+  lines.push(`owner: ${packet.owner}`);
+  lines.push(`steward: ${packet.steward}`);
   lines.push("");
   lines.push("## Active Context");
   lines.push("");
@@ -485,7 +495,9 @@ export function buildHandoffPacketPayload({
   currentStateResolution,
   runtimeStateResolution,
 } = {}) {
+  const sourceOfTruth = evaluateSourceOfTruthPolicy("runtime_digests", runtimeStateMode);
   return {
+    contract_version: CRITICAL_MARKDOWN_CONTRACT_VERSION,
     updated_at: updatedAt ?? new Date().toISOString(),
     project_id: workspace.project_id,
     project_id_source: workspace.project_id_source,
@@ -518,6 +530,11 @@ export function buildHandoffPacketPayload({
     shared_planning_freshness_basis: sharedPlanning.freshness_basis,
     shared_planning_gate_status: sharedPlanning.gate_status,
     shared_planning_gate_reason: sharedPlanning.gate_reason,
+    source_of_truth: String(sourceOfTruth.source_of_truth ?? "").trim() || "generated Markdown digest files",
+    source_mode: "explicit",
+    lifecycle_status: handoffStatus === "ready" ? "ready" : "draft",
+    owner: workspace.project_id,
+    steward: "aidn-runtime",
     handoff_note: handoffNote,
     mode,
     branch_kind: branchKind,

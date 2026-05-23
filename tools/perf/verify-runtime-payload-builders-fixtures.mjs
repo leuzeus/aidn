@@ -59,7 +59,11 @@ function verifyRuntimeStateDigest() {
   });
 
   assert(digest.updated_at === "2026-05-18T00:00:00.000Z", "runtime digest updated_at should be injectable");
+  assert(digest.contract_version === "critical-markdown-v1", "runtime digest should expose explicit contract version");
   assert(digest.runtime_state_mode === "db-only", "runtime digest should prefer effective db-backed state mode");
+  assert(typeof digest.source_of_truth === "string" && digest.source_of_truth.length > 0, "runtime digest should expose source_of_truth");
+  assert(digest.source_mode === "explicit", "runtime digest should expose source_mode");
+  assert(digest.lifecycle_status === "refreshed", "runtime digest should expose lifecycle_status");
   assert(digest.repair_layer_status === "pass", "runtime digest should expose repair status");
   assert(digest.shared_runtime_validation_status === "clear", "runtime digest should expose shared runtime status");
   assert(digest.active_backlog === "EIA-6.3", "runtime digest should expose shared planning backlog");
@@ -119,7 +123,11 @@ function verifyHandoffPacketPayload() {
   });
 
   assert(packet.updated_at === "2026-05-18T00:00:00.000Z", "handoff packet updated_at should be injectable");
+  assert(packet.contract_version === "critical-markdown-v1", "handoff packet should expose explicit contract version");
   assert(packet.handoff_status === "ready", "handoff packet should expose handoff status");
+  assert(typeof packet.source_of_truth === "string" && packet.source_of_truth.length > 0, "handoff packet should expose source_of_truth");
+  assert(packet.source_mode === "explicit", "handoff packet should expose source_mode");
+  assert(packet.lifecycle_status === "ready", "handoff packet should expose lifecycle_status");
   assert(packet.recommended_next_agent_role === "implementer", "handoff packet should expose next role");
   assert(packet.scope_id === "EIA-6.3", "handoff packet should expose dispatch scope");
   assert(packet.shared_planning_candidate_ready === "yes", "handoff packet should normalize shared planning readiness");

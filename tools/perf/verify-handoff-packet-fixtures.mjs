@@ -100,6 +100,7 @@ function main() {
 
     assert(String(payload.workspace?.workspace_id ?? "").length > 0, "expected workspace_id in handoff output envelope");
     assert(String(payload.workspace?.worktree_id ?? "").length > 0, "expected worktree_id in handoff output envelope");
+    assert(payload.packet.contract_version === "critical-markdown-v1", "expected explicit contract version in handoff packet");
     assert(String(payload.packet.project_id ?? "").length > 0, "expected project_id in handoff packet");
     assert(String(payload.packet.workspace_id ?? "").length > 0, "expected workspace_id in handoff packet");
     assert(String(payload.packet.worktree_id ?? "").length > 0, "expected worktree_id in handoff packet");
@@ -116,6 +117,9 @@ function main() {
     assert(payload.packet.scope_id === "none", "expected none scope_id for idle fixture");
     assert(payload.packet.target_branch === "none", "expected none target_branch for idle fixture");
     assert(payload.packet.transition_policy_status === "unknown_mode", "expected unknown_mode transition policy for idle fixture");
+    assert(typeof payload.packet.source_of_truth === "string" && payload.packet.source_of_truth.length > 0, "expected source_of_truth in handoff packet");
+    assert(payload.packet.source_mode === "explicit", "expected explicit source_mode in handoff packet");
+    assert(payload.packet.lifecycle_status === "draft", "expected draft lifecycle for idle fixture");
     assert(payload.packet.preferred_dispatch_source === "workflow", "expected workflow dispatch source for idle fixture");
     assert(payload.packet.shared_planning_candidate_ready === "no", "expected no shared planning candidate for idle fixture");
     assert(payload.packet.shared_planning_candidate_aligned === "no", "expected non-aligned shared planning candidate for idle fixture");
@@ -125,6 +129,7 @@ function main() {
     assert(String(payload.packet.next_agent_goal ?? "").length > 0, "expected explicit next_agent_goal");
     assert(payload.packet.prioritized_artifacts.includes("docs/audit/CURRENT-STATE.md"), "missing CURRENT-STATE priority");
     assert(text.includes("handoff_status: refresh_required"), "packet file missing refresh_required");
+    assert(text.includes("contract_version: critical-markdown-v1"), "packet file missing explicit contract version");
     assert(text.includes("project_id:"), "packet file missing project_id");
     assert(text.includes("workspace_id:"), "packet file missing workspace_id");
     assert(text.includes("worktree_id:"), "packet file missing worktree_id");
@@ -139,6 +144,8 @@ function main() {
     assert(text.includes("scope_type: session"), "packet file missing session scope");
     assert(text.includes("scope_id: none"), "packet file missing scope id");
     assert(text.includes("transition_policy_status: unknown_mode"), "packet file missing transition policy status");
+    assert(text.includes("source_of_truth:"), "packet file missing source_of_truth");
+    assert(text.includes("source_mode: explicit"), "packet file missing source_mode");
     assert(text.includes("preferred_dispatch_source: workflow"), "packet file missing dispatch source");
     assert(text.includes("shared_planning_candidate_ready: no"), "packet file missing shared planning candidate flag");
     assert(text.includes("shared_planning_freshness: not_applicable"), "packet file missing shared planning freshness");
@@ -187,8 +194,10 @@ function main() {
     assert(String(filelessPayload.packet.project_id ?? "").length > 0, "db-only fileless handoff should expose project_id");
     assert(String(filelessPayload.packet.workspace_id ?? "").length > 0, "db-only fileless handoff should expose workspace_id");
     assert(String(filelessPayload.packet.worktree_id ?? "").length > 0, "db-only fileless handoff should expose worktree_id");
+    assert(filelessPayload.packet.contract_version === "critical-markdown-v1", "db-only fileless handoff should expose explicit contract version");
     assert(filelessPayload.packet.shared_runtime_mode === "local-only", "db-only fileless handoff should stay local-only by default");
     assert(filelessPayload.packet.handoff_status === "ready", "db-only fileless handoff should stay ready");
+    assert(filelessPayload.packet.lifecycle_status === "ready", "db-only fileless handoff should expose ready lifecycle");
     assert(filelessPayload.packet.recommended_next_agent_role === "executor", "db-only fileless handoff should route to executor");
     assert(filelessPayload.packet.recommended_next_agent_action === "implement", "db-only fileless handoff should route to implement");
     assert(filelessPayload.packet.scope_type === "cycle", "db-only fileless handoff should preserve cycle scope");
@@ -198,6 +207,7 @@ function main() {
     assert(filelessPayload.packet.session_file === "docs/audit/sessions/S101-alpha.md", "db-only fileless handoff should recover the session artifact path");
     assert(filelessPayload.packet.cycle_status_file === "docs/audit/cycles/C101-feature-alpha/status.md", "db-only fileless handoff should recover the cycle status path");
     assert(filelessText.includes("handoff_status: ready"), "db-only fileless handoff markdown should record ready status");
+    assert(filelessText.includes("contract_version: critical-markdown-v1"), "db-only fileless handoff markdown should record explicit contract version");
     assert(filelessText.includes("project_id:"), "db-only fileless handoff markdown should record project_id");
     assert(filelessText.includes("workspace_id:"), "db-only fileless handoff markdown should record workspace_id");
     const output = {

@@ -1,3 +1,7 @@
+import { evaluateSourceOfTruthPolicy } from "../../core/source-of-truth/source-of-truth-policy.mjs";
+
+const CRITICAL_MARKDOWN_CONTRACT_VERSION = "critical-markdown-v1";
+
 export function buildRuntimeStateMarkdown(digest) {
   const lines = [];
   lines.push("# Runtime State Digest");
@@ -16,6 +20,7 @@ export function buildRuntimeStateMarkdown(digest) {
   lines.push("");
   lines.push("## Summary");
   lines.push("");
+  lines.push(`contract_version: ${digest.contract_version}`);
   lines.push(`updated_at: ${digest.updated_at}`);
   lines.push(`project_id: ${digest.project_id}`);
   lines.push(`project_id_source: ${digest.project_id_source}`);
@@ -35,6 +40,11 @@ export function buildRuntimeStateMarkdown(digest) {
   lines.push(`planning_arbitration_status: ${digest.planning_arbitration_status}`);
   lines.push(`shared_planning_source: ${digest.shared_planning_source}`);
   lines.push(`shared_planning_read_status: ${digest.shared_planning_read_status}`);
+  lines.push(`source_of_truth: ${digest.source_of_truth}`);
+  lines.push(`source_mode: ${digest.source_mode}`);
+  lines.push(`lifecycle_status: ${digest.lifecycle_status}`);
+  lines.push(`owner: ${digest.owner}`);
+  lines.push(`steward: ${digest.steward}`);
   lines.push("");
   lines.push("## Current State Freshness");
   lines.push("");
@@ -458,14 +468,17 @@ export function buildRuntimeStateDigest({
   sessionResolution,
   cycleStatusResolution,
 } = {}) {
+  const runtimeStateMode = String(dbBackedMode ? effectiveStateMode : (hydrated?.state_mode ?? "files"));
+  const sourceOfTruth = evaluateSourceOfTruthPolicy("runtime_digests", runtimeStateMode);
   return {
+    contract_version: CRITICAL_MARKDOWN_CONTRACT_VERSION,
     updated_at: updatedAt ?? new Date().toISOString(),
     project_id: workspace.project_id,
     project_id_source: workspace.project_id_source,
     project_root: workspace.project_root,
     workspace_id: workspace.workspace_id,
     worktree_id: workspace.worktree_id,
-    runtime_state_mode: String(dbBackedMode ? effectiveStateMode : (hydrated?.state_mode ?? "files")),
+    runtime_state_mode: runtimeStateMode,
     repair_layer_status: repairSummary.status,
     repair_layer_advice: repairSummary.advice,
     repair_primary_reason: repairPrimaryReason,
@@ -478,6 +491,11 @@ export function buildRuntimeStateDigest({
     planning_arbitration_status: sharedPlanning.planning_arbitration_status,
     shared_planning_source: sharedPlanning.shared_planning_source,
     shared_planning_read_status: sharedPlanning.shared_planning_read_status,
+    source_of_truth: String(sourceOfTruth.source_of_truth ?? "").trim() || "generated Markdown digest files",
+    source_mode: "explicit",
+    lifecycle_status: freshness.freshness === "stale" ? "stale" : "refreshed",
+    owner: workspace.project_id,
+    steward: "aidn-runtime",
     current_state_freshness: freshness.freshness,
     current_state_freshness_basis: freshness.basis,
     blocking_findings: blockingFindings,

@@ -14,6 +14,7 @@ Rule/State boundary:
 
 ## Summary
 
+contract_version: critical-markdown-v1
 updated_at: 2026-04-04T05:01:47.754Z
 project_id: git-9447929f5071671f
 project_id_source: legacy-git-common-dir
@@ -48,6 +49,11 @@ shared_planning_gate_status: not_applicable
 shared_planning_gate_reason: no active shared planning backlog
 transition_policy_status: unknown_mode
 transition_policy_reason: unknown mode: unknown
+source_of_truth: runtime store plus generated Markdown
+source_mode: explicit
+lifecycle_status: draft
+owner: git-9447929f5071671f
+steward: aidn-runtime
 
 ## Active Context
 
@@ -106,4 +112,3 @@ handoff_note: none
 - Cycle status: none
 - Refresh this packet after significant session/cycle state changes when work is likely to continue in another agent.
 - In `dual` / `db-only`, refresh this packet after refreshing `docs/audit/RUNTIME-STATE.md`.
-
