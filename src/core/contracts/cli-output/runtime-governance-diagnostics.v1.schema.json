@@ -13,6 +13,8 @@
     "summary",
     "registry",
     "concepts",
+    "runtime_surfaces",
+    "runtime_surface_summary",
     "issues",
     "operations"
   ],
@@ -34,6 +36,17 @@
     },
     "registry": { "type": "object", "additionalProperties": true },
     "concepts": { "type": "array" },
+    "runtime_surfaces": { "type": "array" },
+    "runtime_surface_summary": {
+      "type": "object",
+      "required": ["covered", "partial", "missing"],
+      "properties": {
+        "covered": { "type": "number" },
+        "partial": { "type": "number" },
+        "missing": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
     "issues": { "type": "array" },
     "operations": {
       "type": "object",
@@ -42,6 +55,7 @@
         "source_of_truth_coverage_status",
         "metadata_coverage_status",
         "cli_contract_coverage_status",
+        "runtime_surface_coverage_status",
         "overall_status",
         "governed_concept_count",
         "issue_count",
@@ -52,6 +66,7 @@
         "source_of_truth_coverage_status": { "type": "string" },
         "metadata_coverage_status": { "type": "string" },
         "cli_contract_coverage_status": { "type": "string" },
+        "runtime_surface_coverage_status": { "type": "string" },
         "overall_status": { "type": "string" },
         "governed_concept_count": { "type": "number" },
         "issue_count": { "type": "number" },

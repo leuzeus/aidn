@@ -47,11 +47,19 @@ export function renderGovernanceDiagnosticsText(result) {
   lines.push(`- source_of_truth_coverage=${result.operations?.source_of_truth_coverage_status ?? "unknown"}`);
   lines.push(`- metadata_coverage=${result.operations?.metadata_coverage_status ?? "unknown"}`);
   lines.push(`- cli_contract_coverage=${result.operations?.cli_contract_coverage_status ?? "unknown"}`);
+  lines.push(`- runtime_surface_coverage=${result.operations?.runtime_surface_coverage_status ?? "unknown"}`);
   lines.push(`- issue_count=${result.operations?.issue_count ?? 0}`);
+  lines.push(`- runtime_surfaces=${result.registry?.runtime_surface_count ?? 0}`);
   if (Array.isArray(result.issues) && result.issues.length > 0) {
     lines.push("- issues:");
     for (const issue of result.issues.slice(0, 10)) {
       lines.push(`  - ${issue}`);
+    }
+  }
+  if (Array.isArray(result.runtime_surfaces) && result.runtime_surfaces.length > 0) {
+    lines.push("- runtime_surfaces:");
+    for (const surface of result.runtime_surfaces.slice(0, 8)) {
+      lines.push(`  - ${surface.id}: ${surface.status} effect=${surface.effect_class} contract=${surface.json_contract_status} linked=${surface.linked_concept_coverage_status}`);
     }
   }
   return `${lines.join("\n")}\n`;

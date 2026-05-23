@@ -85,6 +85,20 @@ export const GOVERNED_CONCEPTS = Object.freeze([
   },
 ]);
 
+export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
+  { id: "runtime-db-status", linked_concepts: ["workspace", "coordination_record"] },
+  { id: "runtime-shared-coordination-status", linked_concepts: ["workspace", "coordination_record"] },
+  { id: "runtime-governance-diagnostics", linked_concepts: ["cli_output_contract", "workspace"] },
+  { id: "runtime-pre-write-admit", linked_concepts: ["workspace", "session", "cycle"] },
+  { id: "runtime-handoff-admit", linked_concepts: ["handoff_packet", "session", "cycle"] },
+  { id: "runtime-coordinator-next-action", linked_concepts: ["current_state", "runtime_state", "handoff_packet"] },
+  { id: "runtime-coordinator-dispatch-plan", linked_concepts: ["current_state", "runtime_state", "handoff_packet", "coordination_record"] },
+  { id: "runtime-coordinator-orchestrate", linked_concepts: ["coordination_record", "handoff_packet", "runtime_state"] },
+  { id: "runtime-project-runtime-state", linked_concepts: ["runtime_state", "current_state"] },
+  { id: "runtime-project-handoff-packet", linked_concepts: ["handoff_packet", "session", "cycle"] },
+  { id: "runtime-verify-agent-roster", linked_concepts: ["agent_roster"] },
+]);
+
 function contractExists(fileName) {
   return Boolean(fileName) && fs.existsSync(path.join(CONTRACT_DIR, fileName));
 }
@@ -174,6 +188,53 @@ export function summarizeGovernedConcepts(items) {
   return summary;
 }
 
+export function evaluateGovernanceRuntimeSurface(entry, conceptIndex = new Map()) {
+  const policy = listCliEffectPolicies().find((item) => item.id === entry.id) ?? null;
+  const linkedConcepts = (entry.linked_concepts ?? []).map((conceptId) => {
+    const concept = conceptIndex.get(conceptId) ?? null;
+    return {
+      concept: conceptId,
+      status: concept?.status ?? "missing",
+    };
+  });
+  const linkedStatuses = linkedConcepts.map((item) => item.status);
+  const linkedConceptCoverageStatus = linkedStatuses.includes("missing")
+    ? "gaps-detected"
+    : (linkedStatuses.includes("partial") ? "partial" : "covered");
+  const issues = [];
+  if (!policy) {
+    issues.push(`${entry.id}: missing CLI effect policy`);
+  }
+  if (policy && !policy.json_contract) {
+    issues.push(`${entry.id}: missing CLI JSON contract mapping`);
+  }
+  if (policy?.json_contract && !contractExists(policy.json_contract)) {
+    issues.push(`${entry.id}: missing CLI JSON contract file ${policy.json_contract}`);
+  }
+  for (const linkedConcept of linkedConcepts) {
+    if (linkedConcept.status !== "complete") {
+      issues.push(`${entry.id}: linked concept ${linkedConcept.concept} is ${linkedConcept.status}`);
+    }
+  }
+  const status = issues.length === 0
+    ? "covered"
+    : (policy ? "partial" : "missing");
+  return {
+    id: entry.id,
+    command: policy?.command ?? "",
+    effect_class: policy?.effect_class ?? "missing",
+    stability: policy?.stability ?? "missing",
+    json_contract: policy?.json_contract ?? "",
+    json_contract_status: policy?.json_contract
+      ? (contractExists(policy.json_contract) ? "covered" : "missing")
+      : "missing",
+    linked_concepts: linkedConcepts,
+    linked_concept_coverage_status: linkedConceptCoverageStatus,
+    status,
+    issues,
+  };
+}
+
 function deriveCoverageStatus(summary, field) {
   const total = (summary.complete ?? 0) + (summary.partial ?? 0) + (summary.missing ?? 0);
   if (total === 0) {
@@ -221,14 +282,44 @@ export function deriveGovernanceOperations({ concepts, issues }) {
   };
 }
 
+export function summarizeGovernanceRuntimeSurfaces(items) {
+  const summary = {
+    covered: 0,
+    partial: 0,
+    missing: 0,
+  };
+  for (const item of items) {
+    summary[item.status] = (summary[item.status] ?? 0) + 1;
+  }
+  return summary;
+}
+
+function deriveRuntimeSurfaceCoverageStatus(summary) {
+  if ((summary.missing ?? 0) > 0) {
+    return "gaps-detected";
+  }
+  if ((summary.partial ?? 0) > 0) {
+    return "partial";
+  }
+  return "covered";
+}
+
 export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = null } = {}) {
   const concepts = GOVERNED_CONCEPTS.map(evaluateGovernedConcept);
+  const conceptIndex = new Map(concepts.map((item) => [item.concept, item]));
+  const runtimeSurfaces = GOVERNANCE_RUNTIME_SURFACES.map((entry) => evaluateGovernanceRuntimeSurface(entry, conceptIndex));
   const issues = [
     ...concepts.flatMap((item) => item.issues),
+    ...runtimeSurfaces.flatMap((item) => item.issues),
     ...findGovernanceContractCoverageIssues(),
     ...findGovernanceRegistryCoverageIssues(),
   ];
   const summary = summarizeGovernedConcepts(concepts);
+  const runtimeSurfaceSummary = summarizeGovernanceRuntimeSurfaces(runtimeSurfaces);
+  const operations = deriveGovernanceOperations({
+    concepts,
+    issues,
+  });
   return {
     ts: new Date().toISOString(),
     target_root: targetRoot,
@@ -240,13 +331,16 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
       source_of_truth_policy_count: listSourceOfTruthPolicies().length,
       metadata_policy_count: listMetadataPolicies().length,
       cli_effect_policy_count: listCliEffectPolicies().length,
+      runtime_surface_count: runtimeSurfaces.length,
       cli_contract_directory: "src/core/contracts/cli-output",
     },
     concepts,
+    runtime_surfaces: runtimeSurfaces,
+    runtime_surface_summary: runtimeSurfaceSummary,
     issues,
-    operations: deriveGovernanceOperations({
-      concepts,
-      issues,
-    }),
+    operations: {
+      ...operations,
+      runtime_surface_coverage_status: deriveRuntimeSurfaceCoverageStatus(runtimeSurfaceSummary),
+    },
   };
 }
