@@ -30,7 +30,6 @@ function main() {
     const runtimeDiagnostics = runJson(["runtime", "governance-diagnostics", "--target", targetRoot, "--json"]);
     const perfDiagnostics = runNodeJson(path.resolve(process.cwd(), "tools/perf/verify-governance-completeness.mjs"), ["--json"]);
 
-    assert(runtimeDiagnostics.ok === perfDiagnostics.ok, "runtime governance diagnostics should match perf completeness ok flag");
     assert(runtimeDiagnostics.governed_concepts === perfDiagnostics.governed_concepts, "runtime governance diagnostics should match governed concept count");
     assert(runtimeDiagnostics.summary.complete === perfDiagnostics.summary.complete, "runtime governance diagnostics should match completeness summary");
     assert(runtimeDiagnostics.operations?.local_first === true, "runtime governance diagnostics should expose local-first operations");
@@ -41,6 +40,12 @@ function main() {
     assert(typeof runtimeDiagnostics.runtime_surface_summary?.covered === "number", "runtime governance diagnostics should expose runtime surface summary");
     assert(typeof runtimeDiagnostics.operations?.runtime_surface_coverage_status === "string", "runtime governance diagnostics should expose runtime surface coverage status");
     assert(runtimeDiagnostics.runtime_surfaces.some((item) => item.id === "runtime-governance-diagnostics"), "runtime governance diagnostics should include its own public surface");
+    assert(Array.isArray(runtimeDiagnostics.observed_artifacts) && runtimeDiagnostics.observed_artifacts.length >= 1, "runtime governance diagnostics should expose observed artifacts");
+    assert(typeof runtimeDiagnostics.observed_artifact_summary?.partial === "number", "runtime governance diagnostics should expose observed artifact summary");
+    assert(typeof runtimeDiagnostics.operations?.observed_artifact_coverage_status === "string", "runtime governance diagnostics should expose observed artifact coverage status");
+    assert(runtimeDiagnostics.observed_artifacts.some((item) => item.id === "handoff_packet"), "runtime governance diagnostics should include handoff packet artifact");
+    assert(runtimeDiagnostics.registry?.observed_artifacts_included === true, "runtime governance diagnostics should include observed artifact inspection");
+    assert(perfDiagnostics.registry?.observed_artifacts_included === false, "perf completeness should stay registry-only");
     assert(Array.isArray(runtimeDiagnostics.issues), "runtime governance diagnostics should expose issues");
 
     console.log("PASS");

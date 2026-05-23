@@ -15,6 +15,8 @@
     "concepts",
     "runtime_surfaces",
     "runtime_surface_summary",
+    "observed_artifacts",
+    "observed_artifact_summary",
     "issues",
     "operations"
   ],
@@ -47,6 +49,17 @@
       },
       "additionalProperties": true
     },
+    "observed_artifacts": { "type": "array" },
+    "observed_artifact_summary": {
+      "type": "object",
+      "required": ["complete", "partial", "missing"],
+      "properties": {
+        "complete": { "type": "number" },
+        "partial": { "type": "number" },
+        "missing": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
     "issues": { "type": "array" },
     "operations": {
       "type": "object",
@@ -56,6 +69,7 @@
         "metadata_coverage_status",
         "cli_contract_coverage_status",
         "runtime_surface_coverage_status",
+        "observed_artifact_coverage_status",
         "overall_status",
         "governed_concept_count",
         "issue_count",
@@ -67,6 +81,7 @@
         "metadata_coverage_status": { "type": "string" },
         "cli_contract_coverage_status": { "type": "string" },
         "runtime_surface_coverage_status": { "type": "string" },
+        "observed_artifact_coverage_status": { "type": "string" },
         "overall_status": { "type": "string" },
         "governed_concept_count": { "type": "number" },
         "issue_count": { "type": "number" },

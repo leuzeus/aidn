@@ -48,8 +48,10 @@ export function renderGovernanceDiagnosticsText(result) {
   lines.push(`- metadata_coverage=${result.operations?.metadata_coverage_status ?? "unknown"}`);
   lines.push(`- cli_contract_coverage=${result.operations?.cli_contract_coverage_status ?? "unknown"}`);
   lines.push(`- runtime_surface_coverage=${result.operations?.runtime_surface_coverage_status ?? "unknown"}`);
+  lines.push(`- observed_artifact_coverage=${result.operations?.observed_artifact_coverage_status ?? "unknown"}`);
   lines.push(`- issue_count=${result.operations?.issue_count ?? 0}`);
   lines.push(`- runtime_surfaces=${result.registry?.runtime_surface_count ?? 0}`);
+  lines.push(`- observed_artifacts=${result.registry?.observed_artifact_count ?? 0}`);
   if (Array.isArray(result.issues) && result.issues.length > 0) {
     lines.push("- issues:");
     for (const issue of result.issues.slice(0, 10)) {
@@ -60,6 +62,12 @@ export function renderGovernanceDiagnosticsText(result) {
     lines.push("- runtime_surfaces:");
     for (const surface of result.runtime_surfaces.slice(0, 8)) {
       lines.push(`  - ${surface.id}: ${surface.status} effect=${surface.effect_class} contract=${surface.json_contract_status} linked=${surface.linked_concept_coverage_status}`);
+    }
+  }
+  if (Array.isArray(result.observed_artifacts) && result.observed_artifacts.length > 0) {
+    lines.push("- observed_artifacts:");
+    for (const artifact of result.observed_artifacts) {
+      lines.push(`  - ${artifact.id}: exists=${artifact.exists ? "yes" : "no"} metadata=${artifact.metadata?.metadata_status ?? "unknown"} source_of_truth=${artifact.source_of_truth?.source_of_truth_status ?? "unknown"}`);
     }
   }
   return `${lines.join("\n")}\n`;

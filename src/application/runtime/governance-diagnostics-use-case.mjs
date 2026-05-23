@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listCliEffectPolicies } from "../../core/cli/effect-policy.mjs";
-import { getMetadataPolicy, listMetadataPolicies } from "../../core/metadata/metadata-policy.mjs";
-import { getSourceOfTruthPolicy, listSourceOfTruthPolicies } from "../../core/source-of-truth/source-of-truth-policy.mjs";
+import { evaluateMetadataPolicy, getMetadataPolicy, listMetadataPolicies } from "../../core/metadata/metadata-policy.mjs";
+import { evaluateSourceOfTruthPolicy, getSourceOfTruthPolicy, listSourceOfTruthPolicies } from "../../core/source-of-truth/source-of-truth-policy.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-output");
@@ -99,8 +99,45 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-verify-agent-roster", linked_concepts: ["agent_roster"] },
 ]);
 
+const OBSERVED_GOVERNANCE_ARTIFACTS = Object.freeze([
+  {
+    id: "current_state",
+    concept: "current_state",
+    source_of_truth_concept: "runtime_digests",
+    relative_path: "docs/audit/CURRENT-STATE.md",
+  },
+  {
+    id: "runtime_state",
+    concept: "runtime_state",
+    source_of_truth_concept: "runtime_digests",
+    relative_path: "docs/audit/RUNTIME-STATE.md",
+  },
+  {
+    id: "handoff_packet",
+    concept: "handoff_packet",
+    source_of_truth_concept: "runtime_digests",
+    relative_path: "docs/audit/HANDOFF-PACKET.md",
+  },
+]);
+
 function contractExists(fileName) {
   return Boolean(fileName) && fs.existsSync(path.join(CONTRACT_DIR, fileName));
+}
+
+function normalizeScalar(value) {
+  return String(value ?? "").trim();
+}
+
+function parseSimpleMap(text) {
+  const map = new Map();
+  for (const line of String(text ?? "").split(/\r?\n/)) {
+    const match = line.match(/^([a-zA-Z0-9_]+):\s*(.+)$/);
+    if (!match) {
+      continue;
+    }
+    map.set(match[1], normalizeScalar(match[2]));
+  }
+  return map;
 }
 
 function deriveStatus({ required, checks }) {
@@ -235,6 +272,58 @@ export function evaluateGovernanceRuntimeSurface(entry, conceptIndex = new Map()
   };
 }
 
+export function evaluateObservedGovernanceArtifact(entry, targetRoot) {
+  const absolutePath = path.resolve(targetRoot, entry.relative_path);
+  const exists = fs.existsSync(absolutePath);
+  const text = exists ? fs.readFileSync(absolutePath, "utf8") : "";
+  const fields = parseSimpleMap(text);
+  const runtimeStateMode = normalizeScalar(fields.get("runtime_state_mode") ?? "files") || "files";
+  const sourceOfTruth = evaluateSourceOfTruthPolicy(entry.source_of_truth_concept, runtimeStateMode);
+  const metadata = evaluateMetadataPolicy(entry.concept, {
+    contract_version: normalizeScalar(fields.get("contract_version") ?? ""),
+    updated_at: normalizeScalar(fields.get("updated_at") ?? ""),
+    runtime_state_mode: normalizeScalar(fields.get("runtime_state_mode") ?? ""),
+    active_session: normalizeScalar(fields.get("active_session") ?? ""),
+    active_cycle: normalizeScalar(fields.get("active_cycle") ?? ""),
+    handoff_status: normalizeScalar(fields.get("handoff_status") ?? ""),
+    repair_layer_status: normalizeScalar(fields.get("repair_layer_status") ?? ""),
+    source_of_truth: normalizeScalar(fields.get("source_of_truth") ?? ""),
+    source_mode: normalizeScalar(fields.get("source_mode") ?? ""),
+    lifecycle_status: normalizeScalar(fields.get("lifecycle_status") ?? ""),
+    owner: normalizeScalar(fields.get("owner") ?? ""),
+    steward: normalizeScalar(fields.get("steward") ?? ""),
+    privacy_classification: normalizeScalar(fields.get("privacy_classification") ?? ""),
+    retention_policy: normalizeScalar(fields.get("retention_policy") ?? ""),
+  });
+  const issues = [];
+  if (!exists) {
+    issues.push(`${entry.id}: artifact missing at ${entry.relative_path}`);
+  }
+  if (metadata.metadata_status !== "complete") {
+    issues.push(...metadata.metadata_findings.map((item) => `${entry.id}: ${item.code}:${item.field}`));
+  }
+  return {
+    id: entry.id,
+    concept: entry.concept,
+    relative_path: entry.relative_path,
+    exists,
+    runtime_state_mode: runtimeStateMode,
+    source_of_truth: {
+      concept: sourceOfTruth.concept,
+      source_of_truth_status: sourceOfTruth.source_of_truth_status,
+      source_of_truth: sourceOfTruth.source_of_truth ?? null,
+    },
+    metadata: {
+      concept: metadata.concept,
+      metadata_status: metadata.metadata_status,
+      missing_required_fields: metadata.missing_required_fields,
+      missing_recommended_fields: metadata.missing_recommended_fields,
+      surfaced_fields: metadata.surfaced_fields,
+    },
+    issues,
+  };
+}
+
 function deriveCoverageStatus(summary, field) {
   const total = (summary.complete ?? 0) + (summary.partial ?? 0) + (summary.missing ?? 0);
   if (total === 0) {
@@ -304,18 +393,38 @@ function deriveRuntimeSurfaceCoverageStatus(summary) {
   return "covered";
 }
 
-export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = null } = {}) {
+function summarizeObservedArtifacts(items) {
+  const summary = {
+    complete: 0,
+    partial: 0,
+    missing: 0,
+  };
+  for (const item of items) {
+    const status = !item.exists
+      ? "missing"
+      : (item.metadata.metadata_status === "complete" ? "complete" : "partial");
+    summary[status] = (summary[status] ?? 0) + 1;
+  }
+  return summary;
+}
+
+export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = null, includeObservedArtifacts = true } = {}) {
   const concepts = GOVERNED_CONCEPTS.map(evaluateGovernedConcept);
   const conceptIndex = new Map(concepts.map((item) => [item.concept, item]));
   const runtimeSurfaces = GOVERNANCE_RUNTIME_SURFACES.map((entry) => evaluateGovernanceRuntimeSurface(entry, conceptIndex));
+  const observedArtifacts = includeObservedArtifacts
+    ? OBSERVED_GOVERNANCE_ARTIFACTS.map((entry) => evaluateObservedGovernanceArtifact(entry, targetRoot))
+    : [];
   const issues = [
     ...concepts.flatMap((item) => item.issues),
     ...runtimeSurfaces.flatMap((item) => item.issues),
+    ...observedArtifacts.flatMap((item) => item.issues),
     ...findGovernanceContractCoverageIssues(),
     ...findGovernanceRegistryCoverageIssues(),
   ];
   const summary = summarizeGovernedConcepts(concepts);
   const runtimeSurfaceSummary = summarizeGovernanceRuntimeSurfaces(runtimeSurfaces);
+  const observedArtifactSummary = summarizeObservedArtifacts(observedArtifacts);
   const operations = deriveGovernanceOperations({
     concepts,
     issues,
@@ -332,15 +441,22 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
       metadata_policy_count: listMetadataPolicies().length,
       cli_effect_policy_count: listCliEffectPolicies().length,
       runtime_surface_count: runtimeSurfaces.length,
+      observed_artifact_count: observedArtifacts.length,
+      observed_artifacts_included: includeObservedArtifacts,
       cli_contract_directory: "src/core/contracts/cli-output",
     },
     concepts,
     runtime_surfaces: runtimeSurfaces,
     runtime_surface_summary: runtimeSurfaceSummary,
+    observed_artifacts: observedArtifacts,
+    observed_artifact_summary: observedArtifactSummary,
     issues,
     operations: {
       ...operations,
       runtime_surface_coverage_status: deriveRuntimeSurfaceCoverageStatus(runtimeSurfaceSummary),
+      observed_artifact_coverage_status: includeObservedArtifacts
+        ? deriveCoverageStatus(observedArtifactSummary, "overall")
+        : "not_included",
     },
   };
 }

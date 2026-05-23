@@ -32,6 +32,7 @@ function main() {
   const output = projectGovernanceDiagnostics({
     targetRoot: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".."),
     workspace: null,
+    includeObservedArtifacts: false,
   });
   if (args.json) {
     console.log(JSON.stringify(output, null, 2));
