@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -89,6 +90,53 @@ function writeValidLocator(targetRoot, {
   }, null, 2)}\n`, "utf8");
 }
 
+function sha256File(filePath) {
+  const hash = crypto.createHash("sha256");
+  hash.update(fs.readFileSync(filePath));
+  return hash.digest("hex");
+}
+
+function writeCheckoutBoundSentinels(targetRoot) {
+  const files = {
+    agents: path.join(targetRoot, "AGENTS.md"),
+    audit: path.join(targetRoot, "docs", "audit", "shared-boundary-sentinel.md"),
+    codex: path.join(targetRoot, ".codex", "shared-boundary-sentinel.txt"),
+  };
+  fs.mkdirSync(path.dirname(files.audit), { recursive: true });
+  fs.mkdirSync(path.dirname(files.codex), { recursive: true });
+  if (!fs.existsSync(files.agents)) {
+    fs.writeFileSync(files.agents, "# Agent Instructions\n", "utf8");
+  }
+  fs.writeFileSync(files.audit, "# Shared Boundary Sentinel\n\ncheckout-bound=true\n", "utf8");
+  fs.writeFileSync(files.codex, "checkout-bound=true\n", "utf8");
+}
+
+function snapshotCheckoutBoundArtifacts(targetRoot) {
+  const relativePaths = [
+    "AGENTS.md",
+    "docs/audit/shared-boundary-sentinel.md",
+    ".codex/shared-boundary-sentinel.txt",
+  ];
+  return Object.fromEntries(relativePaths.map((relativePath) => {
+    const absolutePath = path.join(targetRoot, relativePath);
+    return [
+      relativePath,
+      {
+        exists: fs.existsSync(absolutePath),
+        sha256: fs.existsSync(absolutePath) ? sha256File(absolutePath) : "",
+      },
+    ];
+  }));
+}
+
+function assertCheckoutBoundUnchanged(before, after, label) {
+  for (const [relativePath, expected] of Object.entries(before)) {
+    const actual = after[relativePath];
+    assert(actual?.exists === expected.exists, `${label}: checkout-bound artifact existence changed for ${relativePath}`);
+    assert(actual?.sha256 === expected.sha256, `${label}: checkout-bound artifact content changed for ${relativePath}`);
+  }
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -107,6 +155,9 @@ function main() {
     fs.cpSync(readyTarget, mismatchTarget, { recursive: true });
     fs.mkdirSync(appAlphaRoot, { recursive: true });
     fs.mkdirSync(appBetaRoot, { recursive: true });
+    for (const targetRoot of [malformedTarget, invalidPathTarget, mismatchTarget]) {
+      writeCheckoutBoundSentinels(targetRoot);
+    }
 
     writeMalformedLocator(malformedTarget);
     writeInvalidLocator(invalidPathTarget);
@@ -120,6 +171,9 @@ function main() {
     writeValidLocator(appBetaRoot, {
       projectId: "project-beta",
     });
+    const malformedCheckoutBoundBefore = snapshotCheckoutBoundArtifacts(malformedTarget);
+    const invalidPathCheckoutBoundBefore = snapshotCheckoutBoundArtifacts(invalidPathTarget);
+    const mismatchCheckoutBoundBefore = snapshotCheckoutBoundArtifacts(mismatchTarget);
 
     const inspectMalformed = runAidn(repoRoot, [
       "runtime",
@@ -146,6 +200,11 @@ function main() {
     assert(repairedMalformed.applied_locator.data.enabled === false, "local-only fallback should disable shared runtime");
     assert(repairedMalformed.applied_locator.data.version === 2, "repair should rewrite malformed locator as v2");
     assert(repairedMalformed.applied_workspace.shared_runtime_mode === "local-only", "local-only fallback should restore local-only mode");
+    assertCheckoutBoundUnchanged(
+      malformedCheckoutBoundBefore,
+      snapshotCheckoutBoundArtifacts(malformedTarget),
+      "malformed locator repair",
+    );
 
     const malformedAdmission = runAidn(repoRoot, [
       "runtime",
@@ -190,6 +249,11 @@ function main() {
     assert(repairedInvalidPath.applied_workspace.project_id === "project-reanchored", "trusted repair should expose the requested project id");
     assert(repairedInvalidPath.applied_workspace.shared_runtime_mode === "shared-runtime", "trusted sqlite-file repair should keep shared-runtime mode");
     assert(repairedInvalidPath.applied_validation.status === "clear", "trusted sqlite-file repair should validate cleanly");
+    assertCheckoutBoundUnchanged(
+      invalidPathCheckoutBoundBefore,
+      snapshotCheckoutBoundArtifacts(invalidPathTarget),
+      "invalid path repair",
+    );
 
     const repairedInvalidPathAdmission = runAidn(repoRoot, [
       "runtime",
@@ -240,6 +304,11 @@ function main() {
     assert(repairedMismatch.ok === true, "workspace mismatch should be repairable by re-anchoring to the override workspace id");
     assert(repairedMismatch.applied_workspace.project_id === "project-override", "workspace mismatch repair should expose the requested project id");
     assert(repairedMismatch.applied_validation.status === "clear", "workspace mismatch repair should validate cleanly");
+    assertCheckoutBoundUnchanged(
+      mismatchCheckoutBoundBefore,
+      snapshotCheckoutBoundArtifacts(mismatchTarget),
+      "workspace mismatch repair",
+    );
 
     const mismatchAfter = runAidn(repoRoot, [
       "runtime",

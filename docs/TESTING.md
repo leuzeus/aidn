@@ -73,6 +73,13 @@ When a change affects local operations, backup/restore, doctor output, or migrat
 
 These checks are also split into `.github/workflows/runtime-ops.yml` so operational regressions are visible independently from broader KPI/perf coverage.
 
+When a change affects shared-runtime locator, re-anchor, or local-first boundary behavior, run:
+
+- `npm run perf:verify-shared-runtime-reanchor`
+- `npm run perf:verify-shared-runtime-path`
+
+The re-anchor fixture includes checkout-bound sentinels for `docs/audit/*`, `AGENTS.md`, and `.codex/*` so locator repair cannot silently rewrite or relocate those local artifacts.
+
 When a change affects release/versioning, install examples, or build-release provenance, run:
 
 - `npm run perf:verify-release-version`
