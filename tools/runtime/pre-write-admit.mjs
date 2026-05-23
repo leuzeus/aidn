@@ -5,11 +5,11 @@ import { pathToFileURL } from "node:url";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 import {
   buildPreWriteAdmissionResult,
+  derivePreWriteObservedContext,
   evaluatePreWriteCycleCreateGates,
   evaluatePreWriteGenericWorkflowGates,
   evaluatePreWriteSourceOfTruthAndRuntimeGates,
   mergePreWritePolicy,
-  sourceOfTruthPoliciesForPreWriteAdmission,
 } from "../../src/application/runtime/pre-write-admit-use-case.mjs";
 import { loadSharedStateSnapshot } from "../../src/application/runtime/shared-state-backend-service.mjs";
 import { resolvePromotedSharedPlanningContext } from "../../src/application/runtime/shared-planning-resolution-service.mjs";
@@ -864,31 +864,19 @@ export async function preWriteAdmit({
     warnings.push("CURRENT-STATE.md consistency checks reported issues; verify session/cycle facts before writing");
   }
 
-  const mode = normalizeScalar(currentMap.get("mode") ?? "unknown") || "unknown";
-  const branchKind = normalizeScalar(currentMap.get("branch_kind") ?? "unknown") || "unknown";
-  const activeSession = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
-  const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
-  const dorState = normalizeScalar(currentMap.get("dor_state") ?? "unknown") || "unknown";
-  const currentFirstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "unknown") || "unknown";
-  const activeBacklog = normalizeScalar(sharedPlanning.active_backlog) || "none";
-  const backlogStatus = normalizeScalar(sharedPlanning.backlog_status) || "unknown";
-  const backlogNextStep = normalizeScalar(sharedPlanning.backlog_next_step) || "unknown";
-  const backlogSelectedExecutionScope = normalizeScalar(sharedPlanning.backlog_selected_execution_scope) || "none";
-  const planningArbitrationStatus = normalizeScalar(sharedPlanning.planning_arbitration_status) || "none";
-  const cycleBranch = normalizeScalar(currentMap.get("cycle_branch") ?? "none") || "none";
-  const sessionBranch = normalizeScalar(currentMap.get("session_branch") ?? "none") || "none";
-
+  const rawActiveSession = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
+  const rawActiveCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
   const sessionResolution = resolveSessionArtifact({
     targetRoot: absoluteTargetRoot,
     auditRoot,
-    sessionId: activeSession,
+    sessionId: rawActiveSession,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
   });
   const cycleStatusResolution = resolveCycleStatusArtifact({
     targetRoot: absoluteTargetRoot,
     auditRoot,
-    cycleId: activeCycle,
+    cycleId: rawActiveCycle,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
   });
@@ -899,47 +887,65 @@ export async function preWriteAdmit({
   const planResolution = resolveCyclePlanArtifact({
     targetRoot: absoluteTargetRoot,
     cycleStatusResolution,
-    cycleId: activeCycle,
+    cycleId: rawActiveCycle,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
   });
   const planFile = planResolution.filePath;
   const planText = planResolution.text;
   const derivedFirstPlanStep = deriveFirstPlanStep(planText);
-  const effectiveFirstPlanStep = !canonicalUnknown(currentFirstPlanStep) && !canonicalNone(currentFirstPlanStep)
-    ? currentFirstPlanStep
+  const rawCurrentFirstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "unknown") || "unknown";
+  const effectiveFirstPlanStep = !canonicalUnknown(rawCurrentFirstPlanStep) && !canonicalNone(rawCurrentFirstPlanStep)
+    ? rawCurrentFirstPlanStep
     : derivedFirstPlanStep;
-
+  const observed = derivePreWriteObservedContext({
+    currentMap,
+    runtimeMap,
+    sharedPlanning,
+    cycleStatusMap,
+    effectiveStateMode,
+    currentStateResolution,
+    runtimeStateResolution,
+    sessionResolution,
+    cycleStatusResolution,
+    planResolution,
+    effectiveFirstPlanStep,
+    normalizeUsageMatrixScope,
+    normalizeUsageMatrixState,
+  });
+  const {
+    mode,
+    branchKind,
+    activeSession,
+    activeCycle,
+    dorState,
+    currentFirstPlanStep,
+    activeBacklog,
+    backlogStatus,
+    backlogNextStep,
+    backlogSelectedExecutionScope,
+    planningArbitrationStatus,
+    cycleBranch,
+    sessionBranch,
+    runtimeStateMode,
+    repairLayerStatus,
+    currentStateFreshness,
+    dorOverrideReason,
+    mappedCycleBranch,
+    usageMatrixScope,
+    usageMatrixState,
+    usageMatrixSummary,
+    usageMatrixRationale,
+    cycleState,
+    sourceOfTruth,
+    sourceOfTruthIssues,
+    sourceOfTruthRepairActions,
+  } = observed;
   const runtimeStateExists = runtimeStateResolution.exists;
-  const runtimeStateMode = normalizeScalar(runtimeMap.get("runtime_state_mode") ?? currentMap.get("runtime_state_mode") ?? effectiveStateMode ?? "unknown") || "unknown";
-  const repairLayerStatus = normalizeScalar(runtimeMap.get("repair_layer_status") ?? currentMap.get("repair_layer_status") ?? "unknown") || "unknown";
-  const currentStateFreshness = normalizeScalar(runtimeMap.get("current_state_freshness") ?? "unknown") || "unknown";
-  const sourceOfTruthIssues = [];
-  const sourceOfTruthRepairActions = [];
-  const sourceOfTruth = {
-    state_mode: effectiveStateMode,
-    runtime_state_mode: runtimeStateMode,
-    concepts: sourceOfTruthPoliciesForPreWriteAdmission(effectiveStateMode),
-    observed_sources: {
-      current_state: currentStateResolution.source,
-      runtime_state: runtimeStateResolution.source,
-      session_artifact: sessionResolution.source,
-      cycle_status: cycleStatusResolution.source,
-      plan_artifact: planResolution.source,
-    },
-    issues: sourceOfTruthIssues,
-    repair_actions: sourceOfTruthRepairActions,
-  };
   const blockingFindings = uniqueItems(
     parseListSection(runtimeStateText, "blocking_findings")
       .filter((item) => item.toLowerCase() !== "none"),
   );
-  const dorOverrideReason = normalizeScalar(cycleStatusMap.get("dor_override_reason") ?? "none") || "none";
-  const mappedCycleBranch = normalizeScalar(cycleStatusMap.get("branch_name") ?? "none") || "none";
-  const usageMatrixScope = normalizeUsageMatrixScope(cycleStatusMap.get("usage_matrix_scope") ?? "local");
-  const usageMatrixState = normalizeUsageMatrixState(cycleStatusMap.get("usage_matrix_state") ?? "NOT_DEFINED");
-  const usageMatrixSummary = normalizeScalar(cycleStatusMap.get("usage_matrix_summary") ?? "none") || "none";
-  const usageMatrixRationale = normalizeScalar(cycleStatusMap.get("usage_matrix_rationale") ?? "none") || "none";
   const cycleCreateGitGate = skill === "cycle-create"
     ? evaluateCycleCreateGitGate(absoluteTargetRoot)
     : null;
@@ -971,7 +977,7 @@ export async function preWriteAdmit({
     derivedFirstPlanStep,
     dorState,
     dorOverrideReason,
-    cycleState: normalizeScalar(cycleStatusMap.get("state") ?? "unknown").toUpperCase() || "UNKNOWN",
+    cycleState,
     usageMatrixScope,
     usageMatrixState,
     usageMatrixRationale,

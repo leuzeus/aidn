@@ -127,6 +127,91 @@ export function addPreWriteSourceOfTruthIssue({
   }
 }
 
+export function derivePreWriteObservedContext({
+  currentMap,
+  runtimeMap,
+  sharedPlanning,
+  cycleStatusMap,
+  effectiveStateMode,
+  currentStateResolution,
+  runtimeStateResolution,
+  sessionResolution,
+  cycleStatusResolution,
+  planResolution,
+  effectiveFirstPlanStep,
+  normalizeUsageMatrixScope,
+  normalizeUsageMatrixState,
+} = {}) {
+  const mode = normalizeScalarLocal(currentMap.get("mode") ?? "unknown") || "unknown";
+  const branchKind = normalizeScalarLocal(currentMap.get("branch_kind") ?? "unknown") || "unknown";
+  const activeSession = normalizeScalarLocal(currentMap.get("active_session") ?? "none") || "none";
+  const activeCycle = normalizeScalarLocal(currentMap.get("active_cycle") ?? "none") || "none";
+  const dorState = normalizeScalarLocal(currentMap.get("dor_state") ?? "unknown") || "unknown";
+  const currentFirstPlanStep = normalizeScalarLocal(currentMap.get("first_plan_step") ?? "unknown") || "unknown";
+  const activeBacklog = normalizeScalarLocal(sharedPlanning.active_backlog) || "none";
+  const backlogStatus = normalizeScalarLocal(sharedPlanning.backlog_status) || "unknown";
+  const backlogNextStep = normalizeScalarLocal(sharedPlanning.backlog_next_step) || "unknown";
+  const backlogSelectedExecutionScope = normalizeScalarLocal(sharedPlanning.backlog_selected_execution_scope) || "none";
+  const planningArbitrationStatus = normalizeScalarLocal(sharedPlanning.planning_arbitration_status) || "none";
+  const cycleBranch = normalizeScalarLocal(currentMap.get("cycle_branch") ?? "none") || "none";
+  const sessionBranch = normalizeScalarLocal(currentMap.get("session_branch") ?? "none") || "none";
+  const runtimeStateMode = normalizeScalarLocal(runtimeMap.get("runtime_state_mode") ?? currentMap.get("runtime_state_mode") ?? effectiveStateMode ?? "unknown") || "unknown";
+  const repairLayerStatus = normalizeScalarLocal(runtimeMap.get("repair_layer_status") ?? currentMap.get("repair_layer_status") ?? "unknown") || "unknown";
+  const currentStateFreshness = normalizeScalarLocal(runtimeMap.get("current_state_freshness") ?? "unknown") || "unknown";
+  const dorOverrideReason = normalizeScalarLocal(cycleStatusMap.get("dor_override_reason") ?? "none") || "none";
+  const mappedCycleBranch = normalizeScalarLocal(cycleStatusMap.get("branch_name") ?? "none") || "none";
+  const usageMatrixScope = normalizeUsageMatrixScope(cycleStatusMap.get("usage_matrix_scope") ?? "local");
+  const usageMatrixState = normalizeUsageMatrixState(cycleStatusMap.get("usage_matrix_state") ?? "NOT_DEFINED");
+  const usageMatrixSummary = normalizeScalarLocal(cycleStatusMap.get("usage_matrix_summary") ?? "none") || "none";
+  const usageMatrixRationale = normalizeScalarLocal(cycleStatusMap.get("usage_matrix_rationale") ?? "none") || "none";
+  const cycleState = normalizeScalarLocal(cycleStatusMap.get("state") ?? "unknown").toUpperCase() || "UNKNOWN";
+  const sourceOfTruthIssues = [];
+  const sourceOfTruthRepairActions = [];
+  const sourceOfTruth = {
+    state_mode: effectiveStateMode,
+    runtime_state_mode: runtimeStateMode,
+    concepts: sourceOfTruthPoliciesForPreWriteAdmission(effectiveStateMode),
+    observed_sources: {
+      current_state: currentStateResolution.source,
+      runtime_state: runtimeStateResolution.source,
+      session_artifact: sessionResolution.source,
+      cycle_status: cycleStatusResolution.source,
+      plan_artifact: planResolution.source,
+    },
+    issues: sourceOfTruthIssues,
+    repair_actions: sourceOfTruthRepairActions,
+  };
+  return {
+    mode,
+    branchKind,
+    activeSession,
+    activeCycle,
+    dorState,
+    currentFirstPlanStep,
+    effectiveFirstPlanStep,
+    activeBacklog,
+    backlogStatus,
+    backlogNextStep,
+    backlogSelectedExecutionScope,
+    planningArbitrationStatus,
+    cycleBranch,
+    sessionBranch,
+    runtimeStateMode,
+    repairLayerStatus,
+    currentStateFreshness,
+    dorOverrideReason,
+    mappedCycleBranch,
+    usageMatrixScope,
+    usageMatrixState,
+    usageMatrixSummary,
+    usageMatrixRationale,
+    cycleState,
+    sourceOfTruth,
+    sourceOfTruthIssues,
+    sourceOfTruthRepairActions,
+  };
+}
+
 export function evaluatePreWriteSourceOfTruthAndRuntimeGates({
   checks,
   addCheck,
@@ -231,7 +316,7 @@ export function evaluatePreWriteSourceOfTruthAndRuntimeGates({
   }
 
   if (policy.requireFreshCurrentState) {
-    if (normalizedScalarLocal(currentStateFreshness).toLowerCase() === "stale") {
+    if (normalizeScalarLocal(currentStateFreshness).toLowerCase() === "stale") {
       blockingReasons.push("CURRENT-STATE.md is stale according to RUNTIME-STATE.md");
     } else if (canonicalUnknownLocal(currentStateFreshness)) {
       if (["dual", "db-only"].includes(normalizedRuntimeStateMode)) {
@@ -424,16 +509,16 @@ export function evaluatePreWriteGenericWorkflowGates({
   }
 }
 
-function normalizedScalarLocal(value) {
+function normalizeScalarLocal(value) {
   return String(value ?? "").trim();
 }
 
 function canonicalUnknownLocal(value) {
-  return normalizedScalarLocal(value).toLowerCase() === "unknown";
+  return normalizeScalarLocal(value).toLowerCase() === "unknown";
 }
 
 function isResolvedPlanningArbitrationStatusLocal(value) {
-  const normalized = normalizedScalarLocal(value).toLowerCase();
+  const normalized = normalizeScalarLocal(value).toLowerCase();
   return !normalized
     || normalized === "none"
     || normalized === "resolved"
