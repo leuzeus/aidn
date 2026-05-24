@@ -331,7 +331,7 @@ Livrables:
 - plan/backlog architecture informationnelle
 - matrice SoT par concept
 - inventaire CLI JSON public
-- ADR-0003 à ADR-0005 proposés
+- ADR-0003 à ADR-0007 acceptés; ADR-0008 et ADR-0009 draftés
 
 Indicateurs:
 
@@ -387,12 +387,12 @@ Indicateurs:
 
 | ADR | Titre | Contexte | Décision | Options comparées | Critères | Impacts | Risques | Statut recommandé |
 |---|---|---|---|---|---|---|---|---|
-| ADR-0003 | Source Of Truth Policy | Modes multiples et projections. | Définir SoT par concept/mode. | files-first, db-first, hybrid explicite. | auditabilité, simplicité, compat. | Moins d'ambiguïté. | migration progressive. | Proposed |
-| ADR-0004 | Public CLI JSON Contracts | Sorties JSON consommables mais implicites. | Schemas versionnés sous `src/core/contracts`. | ad hoc, docs-only, registry central. | stabilité, tests, coût. | API locale plus fiable. | rigidité initiale. | Proposed |
-| ADR-0005 | Read/Write CLI Semantics | Certaines commandes lecture écrivent. | Écriture explicite ou nom de commande clairement projecteur. | write-by-default, preview-by-default, dual mode. | sécurité locale, compat. | Moins de mutations surprise. | breaking change à gérer. | Proposed |
-| ADR-0006 | Information Model | Concepts dispersés. | Modèle informationnel maintenu comme actif produit. | docs-only, code registry, schemas. | maintenabilité. | Gouvernance plus claire. | dette de synchronisation. | Proposed |
-| ADR-0007 | Local-First Federation Boundary | Shared runtime mature mais optionnel. | Fédération opt-in, pas cloud-first. | local only, cloud, opt-in shared. | OSS petite équipe, sécurité. | Extension future contrôlée. | limites multi-org. | Proposed |
-| ADR-0002 update | Runtime Platform Architecture | ADR cible encore Proposed. | Revoir statut et écarts actuels. | keep proposed, accept, supersede. | alignement réel. | Direction clarifiée. | acceptation prématurée. | Update |
+| ADR-0003 | Source Of Truth Policy | Modes multiples et projections. | Définir SoT par concept/mode. | files-first, db-first, hybrid explicite. | auditabilité, simplicité, compat. | Moins d'ambiguïté. | migration progressive. | Accepted |
+| ADR-0004 | Public CLI JSON Contracts | Sorties JSON consommables mais implicites. | Schemas versionnés sous `src/core/contracts`. | ad hoc, docs-only, registry central. | stabilité, tests, coût. | API locale plus fiable. | rigidité initiale. | Accepted |
+| ADR-0005 | Read/Write CLI Semantics | Certaines commandes lecture écrivent. | Écriture explicite ou nom de commande clairement projecteur. | write-by-default, preview-by-default, dual mode. | sécurité locale, compat. | Moins de mutations surprise. | breaking change à gérer. | Accepted |
+| ADR-0006 | Information Model | Concepts dispersés. | Modèle informationnel maintenu comme actif produit. | docs-only, code registry, schemas. | maintenabilité. | Gouvernance plus claire. | dette de synchronisation. | Accepted |
+| ADR-0007 | Local-First Federation Boundary | Shared runtime mature mais optionnel. | Fédération opt-in, pas cloud-first. | local only, cloud, opt-in shared. | OSS petite équipe, sécurité. | Extension future contrôlée. | limites multi-org. | Accepted |
+| ADR-0002 | Runtime Platform Architecture | ADR cible encore Proposed. | Revoir statut et écarts actuels. | keep proposed, accept, supersede. | alignement réel. | Direction clarifiée. | acceptation prématurée. | Accepted |
 
 ## 11. Principes D'Architecture
 
@@ -433,7 +433,7 @@ Modifier ou créer:
 
 - ce plan
 - `docs/BACKLOG_AIDN_ENTERPRISE_INFORMATION_ARCHITECTURE_2026-05-18.md`
-- futurs ADR `ADR-0003` à `ADR-0007`
+- futurs ADR `ADR-0008` et `ADR-0009`
 
 Livrables:
 
