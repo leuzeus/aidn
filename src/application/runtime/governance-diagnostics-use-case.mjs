@@ -458,7 +458,21 @@ function deriveCoverageStatus(summary, field) {
   return "covered";
 }
 
-export function deriveGovernanceOperations({ concepts, issues }) {
+function deriveProjectionFreshnessStatus(summary) {
+  if (!summary) {
+    return "unknown";
+  }
+  const staleCount = Number(summary.partial ?? 0) + Number(summary.missing ?? 0);
+  return staleCount === 0 ? "fresh" : "stale";
+}
+
+function countNoWritePolicies() {
+  return listCliEffectPolicies()
+    .filter((policy) => ["read-only", "preview", "projector"].includes(policy.effect_class))
+    .length;
+}
+
+export function deriveGovernanceOperations({ concepts, issues, observedArtifactSummary = null, noWritePolicyCount = null }) {
   const sourceOfTruthSummary = summarizeGovernedConcepts(concepts.map((item) => ({
     status: item.source_of_truth_status === "covered" ? "complete" : "missing",
   })));
@@ -484,6 +498,12 @@ export function deriveGovernanceOperations({ concepts, issues }) {
     source_of_truth_coverage_status: deriveCoverageStatus(sourceOfTruthSummary, "source_of_truth"),
     metadata_coverage_status: deriveCoverageStatus(metadataSummary, "metadata"),
     cli_contract_coverage_status: deriveCoverageStatus(cliContractSummary, "cli_contract"),
+    projection_freshness_status: deriveProjectionFreshnessStatus(observedArtifactSummary),
+    stale_projection_count: observedArtifactSummary
+      ? Number(observedArtifactSummary.partial ?? 0) + Number(observedArtifactSummary.missing ?? 0)
+      : 0,
+    no_write_coverage_status: (noWritePolicyCount ?? countNoWritePolicies()) > 0 ? "covered" : "missing",
+    no_write_coverage_count: noWritePolicyCount ?? countNoWritePolicies(),
     overall_status: issues.length === 0 ? "covered" : "gaps-detected",
     governed_concept_count: concepts.length,
     issue_count: issues.length,
@@ -584,9 +604,12 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
   const runtimeSurfaceSummary = summarizeGovernanceRuntimeSurfaces(runtimeSurfaces);
   const commandCoverageSummary = summarizeCommandCoverage(commandCoverage);
   const observedArtifactSummary = summarizeObservedArtifacts(observedArtifacts);
+  const noWritePolicyCount = countNoWritePolicies();
   const operations = deriveGovernanceOperations({
     concepts,
     issues,
+    observedArtifactSummary,
+    noWritePolicyCount,
   });
   return {
     ts: new Date().toISOString(),

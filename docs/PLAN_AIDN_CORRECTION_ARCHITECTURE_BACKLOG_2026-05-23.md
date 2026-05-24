@@ -343,7 +343,7 @@ Avancement:
 - Priorité: P1.
 - Labels suggérés: `governance`, `information-architecture`, `runtime`, `P1`.
 - Fichiers probables: `src/application/runtime/governance-diagnostics-use-case.mjs`, `tools/runtime/governance-diagnostics.mjs`.
-- Avancement: `governance-diagnostics` expose déjà `command_coverage`, `command_coverage_count` et `command_coverage_summary`; les vérifications runtime/CLI valident cette surface.
+- Avancement: `governance-diagnostics` expose déjà `command_coverage`, `command_coverage_count` et `command_coverage_summary`; les vérifications runtime/CLI valident cette surface; les métriques d'opération ajoutent désormais `projection_freshness_status`, `stale_projection_count` et `no_write_coverage_*`.
 
 ### 7. Extraire une première tranche de `pre-write-admit`
 

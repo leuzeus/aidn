@@ -47,6 +47,10 @@ export function renderGovernanceDiagnosticsText(result) {
   lines.push(`- source_of_truth_coverage=${result.operations?.source_of_truth_coverage_status ?? "unknown"}`);
   lines.push(`- metadata_coverage=${result.operations?.metadata_coverage_status ?? "unknown"}`);
   lines.push(`- cli_contract_coverage=${result.operations?.cli_contract_coverage_status ?? "unknown"}`);
+  lines.push(`- projection_freshness=${result.operations?.projection_freshness_status ?? "unknown"}`);
+  lines.push(`- stale_projection_count=${result.operations?.stale_projection_count ?? 0}`);
+  lines.push(`- no_write_coverage=${result.operations?.no_write_coverage_status ?? "unknown"}`);
+  lines.push(`- no_write_coverage_count=${result.operations?.no_write_coverage_count ?? 0}`);
   lines.push(`- runtime_surface_coverage=${result.operations?.runtime_surface_coverage_status ?? "unknown"}`);
   lines.push(`- command_coverage=${result.operations?.command_coverage_status ?? "unknown"}`);
   lines.push(`- observed_artifact_coverage=${result.operations?.observed_artifact_coverage_status ?? "unknown"}`);

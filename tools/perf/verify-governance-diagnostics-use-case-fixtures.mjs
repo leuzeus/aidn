@@ -41,8 +41,11 @@ function main() {
     const operations = deriveGovernanceOperations({
       concepts: diagnostics.concepts,
       issues: diagnostics.issues,
+      observedArtifactSummary: diagnostics.observed_artifact_summary,
     });
     assert(typeof operations.source_of_truth_coverage_status === "string", "operations should expose source-of-truth coverage status");
+    assert(typeof operations.projection_freshness_status === "string", "operations should expose projection freshness status");
+    assert(typeof operations.no_write_coverage_status === "string", "operations should expose no-write coverage status");
     assert(Array.isArray(operations.recommended_actions) && operations.recommended_actions.length >= 1, "operations should expose recommended actions");
 
     const surface = evaluateGovernanceRuntimeSurface(
