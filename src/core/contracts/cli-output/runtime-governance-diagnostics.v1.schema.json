@@ -36,9 +36,91 @@
       },
       "additionalProperties": true
     },
-    "registry": { "type": "object", "additionalProperties": true },
-    "concepts": { "type": "array" },
-    "runtime_surfaces": { "type": "array" },
+    "registry": {
+      "type": "object",
+      "required": [
+        "source_of_truth_policy_count",
+        "metadata_policy_count",
+        "cli_effect_policy_count",
+        "runtime_surface_count",
+        "observed_artifact_count",
+        "observed_artifacts_included",
+        "cli_contract_directory"
+      ],
+      "properties": {
+        "source_of_truth_policy_count": { "type": "number" },
+        "metadata_policy_count": { "type": "number" },
+        "cli_effect_policy_count": { "type": "number" },
+        "runtime_surface_count": { "type": "number" },
+        "observed_artifact_count": { "type": "number" },
+        "observed_artifacts_included": { "type": "boolean" },
+        "cli_contract_directory": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "concepts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "concept",
+          "status",
+          "required",
+          "source_of_truth_concept",
+          "source_of_truth_status",
+          "metadata_concept",
+          "metadata_status",
+          "cli_contract_status",
+          "issues"
+        ],
+        "properties": {
+          "concept": { "type": "string" },
+          "status": { "type": "string" },
+          "required": { "type": "array" },
+          "source_of_truth_concept": { "type": "string" },
+          "source_of_truth_status": { "type": "string" },
+          "source_of_truth": { "type": ["string", "null"] },
+          "metadata_concept": { "type": "string" },
+          "metadata_status": { "type": "string" },
+          "lifecycle_status": { "type": "string" },
+          "cli_contract": { "type": "string" },
+          "cli_contract_status": { "type": "string" },
+          "issues": { "type": "array" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "runtime_surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "command",
+          "effect_class",
+          "stability",
+          "json_contract",
+          "json_contract_status",
+          "linked_concepts",
+          "linked_concept_coverage_status",
+          "status",
+          "issues"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "command": { "type": "string" },
+          "effect_class": { "type": "string" },
+          "stability": { "type": "string" },
+          "json_contract": { "type": "string" },
+          "json_contract_status": { "type": "string" },
+          "linked_concepts": { "type": "array" },
+          "linked_concept_coverage_status": { "type": "string" },
+          "status": { "type": "string" },
+          "issues": { "type": "array" }
+        },
+        "additionalProperties": true
+      }
+    },
     "runtime_surface_summary": {
       "type": "object",
       "required": ["covered", "partial", "missing"],
@@ -49,7 +131,37 @@
       },
       "additionalProperties": true
     },
-    "observed_artifacts": { "type": "array" },
+    "observed_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "concept",
+          "relative_path",
+          "exists",
+          "source",
+          "runtime_state_mode",
+          "source_of_truth",
+          "metadata",
+          "lifecycle_status",
+          "issues"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "concept": { "type": "string" },
+          "relative_path": { "type": "string" },
+          "exists": { "type": "boolean" },
+          "source": { "type": "string" },
+          "runtime_state_mode": { "type": "string" },
+          "source_of_truth": { "type": "object", "additionalProperties": true },
+          "metadata": { "type": "object", "additionalProperties": true },
+          "lifecycle_status": { "type": "string" },
+          "issues": { "type": "array" }
+        },
+        "additionalProperties": true
+      }
+    },
     "observed_artifact_summary": {
       "type": "object",
       "required": ["complete", "partial", "missing"],

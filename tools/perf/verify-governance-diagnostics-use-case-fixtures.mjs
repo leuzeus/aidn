@@ -36,8 +36,10 @@ function main() {
     assert(diagnostics.registry.observed_artifact_count >= 1, "diagnostics should expose observed artifact registry size");
     assert(Array.isArray(diagnostics.runtime_surfaces) && diagnostics.runtime_surfaces.length >= 1, "diagnostics should expose runtime surface coverage");
     assert(typeof diagnostics.runtime_surface_summary.covered === "number", "diagnostics should summarize runtime surface coverage");
+    assert(diagnostics.runtime_surfaces.every((item) => typeof item.status === "string" && typeof item.linked_concept_coverage_status === "string"), "diagnostics runtime surfaces should expose status fields");
     assert(Array.isArray(diagnostics.observed_artifacts) && diagnostics.observed_artifacts.length >= 1, "diagnostics should expose observed artifact coverage");
     assert(typeof diagnostics.observed_artifact_summary.partial === "number", "diagnostics should summarize observed artifact coverage");
+    assert(diagnostics.observed_artifacts.every((item) => typeof item.lifecycle_status === "string" && item.metadata?.metadata_status), "diagnostics observed artifacts should expose lifecycle and metadata status");
 
     const operations = deriveGovernanceOperations({
       concepts: diagnostics.concepts,
@@ -47,6 +49,7 @@ function main() {
     assert(typeof operations.source_of_truth_coverage_status === "string", "operations should expose source-of-truth coverage status");
     assert(typeof operations.projection_freshness_status === "string", "operations should expose projection freshness status");
     assert(typeof operations.no_write_coverage_status === "string", "operations should expose no-write coverage status");
+    assert(typeof operations.metadata_coverage_status === "string", "operations should expose metadata coverage status");
     assert(Array.isArray(operations.recommended_actions) && operations.recommended_actions.length >= 1, "operations should expose recommended actions");
 
     const surface = evaluateGovernanceRuntimeSurface(
