@@ -27,7 +27,34 @@ This does not change:
 
 ## Local Operations Runbook
 
-Use this sequence for a real repository. Treat it as an installed-project runbook; in this package source repository, validate it through fixtures unless an external pilot root is explicitly selected.
+Use this sequence for a real repository. Treat it as an installed-project runbook; in this package source repository, validate it through fixtures unless a separate local validation corpus is explicitly selected.
+
+Operational checklist:
+
+1. classify the change as local SQLite refresh, PostgreSQL adoption, PostgreSQL migration, or projection cleanup
+2. capture `db-status`, `persistence-status`, and the required backups
+3. preview adoption or migration with `--dry-run`
+4. apply only when the preview is safe
+5. rerun status, projection, and admission gates after the write
+6. keep the rollback sequence ready before any destructive step
+
+Decision guide:
+
+- use local SQLite refresh when the runtime stays local-only
+- use PostgreSQL adoption when the backend must become canonical for runtime persistence
+- use PostgreSQL migration when canonical relational rows already exist and need schema evolution
+- use projection cleanup only when the local SQLite compatibility projection is stale but the canonical backend is healthy
+
+### Verification Surface
+
+Before changing runtime persistence behavior, run the smallest relevant checks:
+
+- `npm run perf:verify-db-runtime-cli`
+- `npm run perf:verify-runtime-persistence-parity`
+- `npm run perf:verify-postgres-runtime-persistence-contract`
+- `npm run perf:verify-postgres-runtime-relational-contract`
+- `npm run perf:verify-postgres-runtime-relational-store`
+- `npm run perf:verify-db-schema-migrations`
 
 ### 1. Classify the operation
 
@@ -72,6 +99,19 @@ aidn runtime persistence-adopt --target . --backend postgres --json
 aidn runtime persistence-migrate --target . --json
 ```
 
+If the change touches the local SQLite compatibility projection, also rerun:
+
+- `aidn runtime db-status --target . --json`
+- `aidn runtime project-runtime-state --target . --dry-run --json`
+- the relevant admission gate for the target skill
+
+Post-write checks:
+
+- the backend reported by `persistence-status` matches the intended target
+- the canonical scope key is preserved after adoption or migration
+- the local projection still materializes the expected runtime digest when compatibility mode is enabled
+- any restore plan can be previewed before the next write
+
 ### 4. Restore or rollback
 
 Rollback is explicit:
@@ -82,6 +122,15 @@ Rollback is explicit:
 4. rerun `db-status`, `project-runtime-state --dry-run --json`, and the relevant admission gate before new writes
 
 Do not purge PostgreSQL rows until a backup exists and the affected `scope_key` has been identified.
+
+### 5. Rollback Discipline
+
+Rollback should preserve evidence:
+
+1. capture a fresh `persistence-backup`
+2. switch the backend back to `sqlite` only when the migration target is confirmed
+3. restore or regenerate the local projection
+4. rerun the status and admission checks before allowing new writes
 
 ## Stay On SQLite
 
@@ -206,6 +255,13 @@ Recommended rollback sequence:
 2. switch `runtime.persistence.backend` back to `sqlite`
 3. keep the local SQLite projection as the active canonical backend
 4. inspect the PostgreSQL target before any later re-adoption
+
+Surface-specific rollback rules:
+
+- if the breakage is only in local projection materialization, regenerate the projection before touching PostgreSQL
+- if the breakage is in canonical PostgreSQL rows, restore PostgreSQL first and then refresh the local projection
+- if the breakage is in checkout-bound docs, use git rollback and leave the backend untouched
+- keep rollback steps narrow and reversible; do not bundle adoption, migration and cleanup into one write
 
 ## Observability
 
@@ -353,4 +409,4 @@ Earliest cleanup target:
 
 - `0.8.0`
 
-Cleanup is gated on successful pilot validation of PostgreSQL runtime adoption outside fixtures.
+Cleanup is gated on successful local validation of PostgreSQL runtime adoption outside fixtures.

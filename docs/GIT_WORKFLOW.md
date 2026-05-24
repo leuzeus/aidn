@@ -95,6 +95,16 @@ Before tagging or assembling a release:
 5. `release/manifest.json` must record package name, version, git commit, generation time, artifact path, artifact bytes, and artifact SHA-256.
 6. `dev` may carry in-flight integration work, but release tags and stable consumer instructions should be cut from the reviewed release baseline.
 
+## Release Checklist
+
+Before shipping or publishing a release artifact, verify:
+
+1. the release workflow runs `perf:verify-release-version`, `build-release`, `perf:verify-release-artifacts`, and `perf:verify-pack-topology`
+2. `package.json` does not introduce new published paths that leak internal docs or local-only pilot corpus material
+3. `docs/` entries included in the package are intentionally published and user-facing
+4. `release/dist/`, `release/checksums.txt`, and `release/manifest.json` are treated as generated release outputs, not source inputs
+5. any new published path is justified in the release review before it becomes part of the package surface
+
 Run:
 
 ```bash

@@ -12,9 +12,35 @@ Scope: incremental adoption path from local SQLite-only runtime to optional shar
 - shared runtime is opt-in
 - rollback to local-only is supported
 
+## Verification Surface
+
+Use the smallest relevant verification set for the boundary you are changing:
+
+- locator and path validity: `npm run perf:verify-shared-runtime-locator`, `npm run perf:verify-shared-runtime-path`
+- re-anchor behavior: `npm run perf:verify-shared-runtime-reanchor`
+- coordination backup and restore: `npm run perf:verify-shared-coordination-backup`, `npm run perf:verify-shared-coordination-restore`
+- shared coordination doctoring: `npm run perf:verify-shared-coordination-doctor`
+- multi-project federation: `npm run perf:verify-shared-coordination-multi-project`, `npm run perf:verify-shared-coordination-worktree-concurrency`
+
 ## Backup / Restore Runbook
 
 Shared coordination backup protects coordination metadata only. It does not back up checkout-bound audit artifacts, local `.codex/*`, or the local SQLite runtime projection.
+
+Operational checklist:
+
+1. identify the target scope and backend kind
+2. run the matching status check
+3. capture the family-specific backup
+4. preview the change if a `--dry-run` path exists
+5. apply the change only after the preview is clean
+6. rerun status and admission checks immediately after the write
+
+Decision points:
+
+- if the change only touches local checkout artifacts, use the git rollback path instead of shared-runtime restore
+- if the change only touches the local SQLite projection, use `db-backup` / local restore instead of shared-coordination restore
+- if the change touches shared coordination metadata, keep a shared backup before every write
+- if the change needs a new backend or workspace boundary, re-anchor first and only then migrate
 
 | Surface | Backup command | Restore command | Notes |
 |---|---|---|---|
@@ -30,6 +56,19 @@ Safe sequence before mutating shared coordination:
 4. apply with `--write`
 5. run `shared-coordination-status` and `pre-write-admit` again
 
+Post-write verification:
+
+- `shared-coordination-status --json` reports the expected backend kind and workspace identity
+- `shared-coordination-doctor --json` reports a clean state or only expected warnings
+- `pre-write-admit --skill requirements-delta --strict --json` remains admitted for the target checkout
+- any restored coordination record still matches the local checkout’s active session and cycle
+
+For write-adjacent shared-runtime changes, preview first when the command supports it:
+
+- `shared-runtime-reanchor --json` before `--write`
+- `shared-coordination-restore --json` before `--write`
+- `shared-coordination-migrate --dry-run --json` before a live migration
+
 Restore sequence:
 
 1. run `shared-coordination-restore --json` without `--write` to preview
@@ -38,10 +77,23 @@ Restore sequence:
 4. run `shared-coordination-status --json`
 5. rerun the workflow admission gate before durable writes
 
+Rollback command families:
+
+- `shared-runtime-reanchor --local-only --write --json` to return a target to local-only mode
+- `shared-coordination-restore --write --json` to restore shared coordination metadata
+- `db-backup` to preserve the local SQLite projection before any destructive reset
+
+Rollback expectations:
+
+- prefer the narrowest rollback that matches the affected surface
+- never use shared-coordination restore to fix a local doc-only mistake
+- never use git revert to fix a corrupted shared coordination backend
+- if both shared metadata and local projection are affected, restore the shared metadata first and then regenerate the local projection
+
 Secrets:
 
 - use `env:AIDN_PG_URL` or another environment-backed connection reference
-- never commit raw PostgreSQL URLs, local absolute pilot paths, or backup files containing sensitive payloads
+- never commit raw PostgreSQL URLs, local absolute validation paths, or backup files containing sensitive payloads
 - scrub support bundles before sharing outside the local machine
 
 ## Option 0 - Stay Local SQLite
