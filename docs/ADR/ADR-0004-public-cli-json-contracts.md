@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -35,6 +35,7 @@ Initial v1 schemas cover:
 - `aidn runtime project-runtime-state --json`
 - `aidn runtime project-handoff-packet --json`
 - `aidn runtime pre-write-admit --json`
+- `aidn runtime db-only-readiness --json`
 - `aidn runtime db-status --json`
 - `aidn runtime coordinator-next-action --json`
 - `aidn runtime coordinator-dispatch-plan --json`
