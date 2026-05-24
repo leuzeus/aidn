@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 function parseArgs(argv) {
   const args = {
@@ -43,6 +44,18 @@ function sha256File(filePath) {
   const hash = crypto.createHash("sha256");
   hash.update(fs.readFileSync(filePath));
   return hash.digest("hex");
+}
+
+function getGitCommit(repoRoot) {
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "unknown";
+  }
 }
 
 function verify() {
@@ -89,6 +102,8 @@ function verify() {
     }
     if (!manifest.git_commit) {
       issues.push("manifest git_commit is missing");
+    } else if (manifest.git_commit !== getGitCommit(REPO_ROOT)) {
+      issues.push(`manifest git_commit ${manifest.git_commit} does not match HEAD ${getGitCommit(REPO_ROOT)}`);
     }
     if (!manifest.generated_at || Number.isNaN(Date.parse(manifest.generated_at))) {
       issues.push("manifest generated_at must be an ISO timestamp");

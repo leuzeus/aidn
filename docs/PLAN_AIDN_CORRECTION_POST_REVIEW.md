@@ -14,6 +14,7 @@ Statut d'exécution actuel:
 - `P0-04` complétion de `source-of-truth-policy` livrée sur `dev`, avec couverture explicite et statuts `covered / subsumed`
 - `P1-01` `baseline` et `snapshot` sont désormais classés comme artefacts locaux gouvernés, hors partage implicite
 - `P1-04` la surface CLI est maintenant classée en `stable`, `advanced`, `experimental` et `internal`
+- `P2-01` la provenance release est maintenant vérifiée contre les fingerprints source et le commit HEAD
 - les lots suivants du backlog restent à dérouler à partir de cette base stabilisée
 
 ## 1. Résumé du diagnostic

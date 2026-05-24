@@ -25,6 +25,7 @@ Rules:
 - `tools/build-release.mjs` produces release artifacts from the checked-in source state
 - `release/manifest.json` and `release/checksums.txt` are the release provenance outputs
 - the manifest records source fingerprints for `VERSION` and `package.json` so the source of truth can be verified from the build output itself
+- the manifest records the git commit used for the build so provenance can be verified against the current source tree
 - `npm pack --dry-run` remains part of the publish-surface guard
 - internal docs, pilot-specific details and non-published fixtures must not leak into the package payload
 
@@ -34,6 +35,7 @@ Release provenance should answer:
 - which source files were included
 - which checks ran before publish
 - which checksum set matches the artifact payload
+- which git commit produced the manifest
 
 ## Options Compared
 
