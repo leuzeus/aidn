@@ -14,12 +14,15 @@ Purpose:
 
 - [Documentation index](./README.md)
 - [CI gate families](./CI_GATE_FAMILIES.md)
-- [Execution plan post EA/IA review](./PLAN_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md)
-- [Executable backlog post EA/IA review](./BACKLOG_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md)
 - [CLI surface inventory](./CLI_SURFACE_INVENTORY.md)
 - [Runtime surface scope matrix](./RUNTIME_SURFACE_SCOPE_MATRIX.md)
 - [Testing guide](./TESTING.md)
 - [Shared runtime migration guide](./MIGRATION_SHARED_RUNTIME_POSTGRESQL.md)
+
+## EA/IA Closure Trace
+
+- [Execution plan post EA/IA review](./PLAN_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md)
+- [Executable backlog post EA/IA review](./BACKLOG_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md)
 
 ## Architectural References
 

@@ -211,7 +211,7 @@ Migration and repair:
 ## Architecture Direction
 
 - Documentation index: `docs/README.md`
-- Active execution stream: `docs/PLAN_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md` and `docs/BACKLOG_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md`
+- Closed EA/IA execution trace: `docs/PLAN_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md` and `docs/BACKLOG_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md`
 - Target architecture ADR: `docs/ADR/ADR-0002-runtime-platform-architecture.md`
 - Architecture cockpit: `docs/ARCHITECTURE_COCKPIT.md`
 - Historical plans and backlogs remain cataloged in `docs/README.md`
