@@ -26,9 +26,92 @@
     "workspace": { "type": "object", "additionalProperties": true },
     "shared_coordination_backend": { "type": "object", "additionalProperties": true },
     "project_id_filter": { "type": "string" },
-    "projects": { "type": "array" },
-    "inspected_project": { "type": ["object", "null"], "additionalProperties": true },
-    "inspected_workspaces": { "type": "array" },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "project_id",
+          "project_root_ref",
+          "shared_backend_kind",
+          "workspace_count",
+          "worktree_count",
+          "planning_state_count",
+          "handoff_relay_count",
+          "coordination_record_count",
+          "updated_at"
+        ],
+        "properties": {
+          "project_id": { "type": "string" },
+          "project_id_source": { "type": "string" },
+          "project_root_ref": { "type": "string" },
+          "locator_ref": { "type": "string" },
+          "shared_backend_kind": { "type": "string" },
+          "workspace_count": { "type": "number" },
+          "worktree_count": { "type": "number" },
+          "planning_state_count": { "type": "number" },
+          "handoff_relay_count": { "type": "number" },
+          "coordination_record_count": { "type": "number" },
+          "updated_at": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "inspected_project": {
+      "type": ["object", "null"],
+      "required": [
+        "project_id",
+        "project_root_ref",
+        "shared_backend_kind",
+        "workspace_count",
+        "worktree_count",
+        "planning_state_count",
+        "handoff_relay_count",
+        "coordination_record_count"
+      ],
+      "properties": {
+        "project_id": { "type": "string" },
+        "project_id_source": { "type": "string" },
+        "project_root_ref": { "type": "string" },
+        "locator_ref": { "type": "string" },
+        "shared_backend_kind": { "type": "string" },
+        "workspace_count": { "type": "number" },
+        "worktree_count": { "type": "number" },
+        "planning_state_count": { "type": "number" },
+        "handoff_relay_count": { "type": "number" },
+        "coordination_record_count": { "type": "number" },
+        "updated_at": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "inspected_workspaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "workspace_id_source",
+          "project_id_source",
+          "project_root_ref",
+          "git_common_dir",
+          "repo_root",
+          "shared_backend_kind"
+        ],
+        "properties": {
+          "project_id": { "type": "string" },
+          "workspace_id": { "type": "string" },
+          "workspace_id_source": { "type": "string" },
+          "project_id_source": { "type": "string" },
+          "project_root_ref": { "type": "string" },
+          "locator_ref": { "type": "string" },
+          "git_common_dir": { "type": "string" },
+          "repo_root": { "type": "string" },
+          "shared_backend_kind": { "type": "string" },
+          "updated_at": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
     "projects_diagnostic": {
       "type": "object",
       "required": [
