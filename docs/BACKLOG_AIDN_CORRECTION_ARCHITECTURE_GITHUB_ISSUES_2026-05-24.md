@@ -10,7 +10,7 @@ Important:
 - this file is not the implementation source of truth
 - current delivery status still lives in the dated backlog plan
 - if these issue drafts diverge from the repository state, treat them as a stale export until refreshed
-- ADR-0008 and ADR-0009 are now drafted and should be reflected in new or revised issue exports
+- ADR-0008 and ADR-0009 are now accepted and should be reflected in new or revised issue exports
 - the first ten drafts were synchronized to GitHub issues #24 through #33 on 2026-05-24
 
 Recommended labels:
