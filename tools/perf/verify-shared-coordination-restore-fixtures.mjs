@@ -301,6 +301,8 @@ async function main() {
     assert(writeResult.ok === true, "direct restore write should succeed");
     assert(writeResult.status === "restored", "direct restore write should report restored");
     assert(writeResult.schema_compatibility?.status === "compatible", "direct restore write should preserve schema compatibility");
+    assert(writeResult.source_of_truth?.concept === "coordination_records", "direct restore write should expose source-of-truth governance");
+    assert(writeResult.metadata?.concept === "workspace", "direct restore write should expose workspace metadata governance");
     assert(writeResult.operations?.restore_applied === true, "direct restore write should expose restore_applied=true");
     assert(writeResult.operations?.backup_command === "aidn runtime shared-coordination-backup --target . --json", "direct restore should expose backup command");
     assert(state.workspace?.projectId === "project-restore", "restore should register project-aware workspace");

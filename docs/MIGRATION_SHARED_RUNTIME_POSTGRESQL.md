@@ -26,6 +26,14 @@ Use the smallest relevant verification set for the boundary you are changing:
 
 Shared coordination backup protects coordination metadata only. It does not back up checkout-bound audit artifacts, local `.codex/*`, or the local SQLite runtime projection.
 
+### Quick Reference
+
+| Command | Default effect | Explicit write / sync flag | Primary use |
+| --- | --- | --- | --- |
+| `shared-coordination-backup` | read-only snapshot export | none | capture shared coordination state before a risky change |
+| `shared-coordination-restore` | preview only | `--write` | replay a vetted snapshot into the shared backend |
+| `shared-coordination-doctor` | read-only diagnostics | none | explain backend health, schema state, and next actions |
+
 Operational checklist:
 
 1. identify the target scope and backend kind
@@ -76,6 +84,15 @@ Restore sequence:
 3. run `shared-coordination-restore --write --json`
 4. run `shared-coordination-status --json`
 5. rerun the workflow admission gate before durable writes
+
+Post-restore validation:
+
+1. confirm the restore report exposes the expected `source_of_truth` and `metadata`
+2. confirm `restore_applied=true` and the preview counts match the backup snapshot
+3. run `shared-coordination-doctor --json`
+4. run `shared-coordination-status --json`
+5. run the local admission gate(s) for the affected workflow scope
+6. verify the local digest/projection that consumes the restored shared state
 
 Rollback command families:
 
