@@ -16,7 +16,8 @@ Statut d'exécution actuel:
 - `P1-04` la surface CLI est maintenant classée en `stable`, `advanced`, `experimental` et `internal`
 - `P2-01` la provenance release est maintenant vérifiée contre les fingerprints source et le commit HEAD
 - `P2-02` un baseline sécurité CI minimal est maintenant branché via un workflow dédié
-- les lots suivants du backlog restent à dérouler à partir de cette base stabilisée
+- le plan est maintenant une trace de clôture: les lots suivis ici ont été livrés sur `dev`
+- aucun lot ouvert n'est laissé dans ce plan; un nouveau cadrage sera nécessaire si la portée change
 
 ## 1. Résumé du diagnostic
 

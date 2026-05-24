@@ -24,7 +24,8 @@ Les lots suivants ont déjà été traités sur `dev` et ne doivent pas être re
 
 Toutes les lignes de backlog ci-dessous sont désormais marquées `done` pour refléter l’état livré sur `dev`.
 
-Les sections ci-dessous restent le backlog de référence pour les lots encore ouverts ou à reprendre plus tard.
+Les sections ci-dessous constituent désormais une trace de clôture de ce backlog de référence.
+Il ne reste pas de lot ouvert dans ce document; un éventuel nouveau travail doit partir d'un nouveau cadrage.
 
 ## P0 - Sécuriser la sémantique des commandes
 
