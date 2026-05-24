@@ -59,6 +59,13 @@ export const GOVERNED_CONCEPTS = Object.freeze([
     required: ["source_of_truth", "metadata", "cli_contract"],
   },
   {
+    concept: "db_only_readiness",
+    source_of_truth_concept: "runtime_digests",
+    metadata_concept: "runtime_state",
+    cli_contract: "runtime-db-only-readiness.v1.schema.json",
+    required: ["source_of_truth", "metadata", "cli_contract"],
+  },
+  {
     concept: "handoff_packet",
     source_of_truth_concept: "runtime_digests",
     metadata_concept: "handoff_packet",
@@ -127,6 +134,7 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-shared-runtime-reanchor", linked_concepts: ["workspace"] },
   { id: "runtime-shared-coordination-bootstrap", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-governance-diagnostics", linked_concepts: ["cli_output_contract", "workspace"] },
+  { id: "runtime-db-only-readiness", linked_concepts: ["db_only_readiness", "workspace", "runtime_state"] },
   { id: "runtime-coordinator-select-agent", linked_concepts: ["agent_roster", "workspace"] },
   { id: "runtime-project-agent-health-summary", linked_concepts: ["agent_roster", "workspace"] },
   { id: "runtime-project-agent-selection-summary", linked_concepts: ["agent_roster", "workspace"] },
@@ -156,6 +164,19 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-project-runtime-state", linked_concepts: ["runtime_state", "current_state"] },
   { id: "runtime-project-handoff-packet", linked_concepts: ["handoff_packet", "session", "cycle"] },
   { id: "runtime-verify-agent-roster", linked_concepts: ["agent_roster"] },
+]);
+
+export const GOVERNANCE_COMMAND_COVERAGE = Object.freeze([
+  { id: "runtime-governance-diagnostics", linked_concepts: ["cli_output_contract", "workspace"] },
+  { id: "runtime-db-only-readiness", linked_concepts: ["db_only_readiness", "workspace", "runtime_state"] },
+  { id: "runtime-session-plan", linked_concepts: ["current_state", "session", "coordination_record"] },
+  { id: "runtime-pre-write-admit", linked_concepts: ["workspace", "session", "cycle"] },
+  { id: "runtime-handoff-admit", linked_concepts: ["handoff_packet", "session", "cycle"] },
+  { id: "runtime-coordinator-loop", linked_concepts: ["current_state", "runtime_state", "handoff_packet", "coordination_summary"] },
+  { id: "runtime-coordinator-dispatch-plan", linked_concepts: ["current_state", "runtime_state", "handoff_packet", "coordination_record"] },
+  { id: "runtime-coordinator-dispatch-execute", linked_concepts: ["coordination_record", "coordination_summary", "coordination_log", "runtime_state"] },
+  { id: "runtime-coordinator-resume", linked_concepts: ["coordination_record", "handoff_packet", "runtime_state"] },
+  { id: "runtime-coordinator-orchestrate", linked_concepts: ["coordination_record", "handoff_packet", "runtime_state"] },
 ]);
 
 const OBSERVED_GOVERNANCE_ARTIFACTS = Object.freeze([
@@ -492,6 +513,37 @@ function deriveRuntimeSurfaceCoverageStatus(summary) {
   return "covered";
 }
 
+function summarizeCommandCoverage(items) {
+  const summary = {
+    covered: 0,
+    partial: 0,
+    missing: 0,
+  };
+  for (const item of items) {
+    summary[item.linked_concept_coverage_status === "covered" ? "covered" : (item.linked_concept_coverage_status === "partial" ? "partial" : "missing")] += 1;
+  }
+  return summary;
+}
+
+function evaluateGovernanceCommandCoverage(entry, conceptIndex = new Map()) {
+  const linkedConcepts = (entry.linked_concepts ?? []).map((conceptId) => {
+    const concept = conceptIndex.get(conceptId) ?? null;
+    return {
+      concept: conceptId,
+      status: concept?.status ?? "missing",
+    };
+  });
+  const linkedStatuses = linkedConcepts.map((item) => item.status);
+  const linkedConceptCoverageStatus = linkedStatuses.includes("missing")
+    ? "gaps-detected"
+    : (linkedStatuses.includes("partial") ? "partial" : "covered");
+  return {
+    id: entry.id,
+    linked_concepts: linkedConcepts,
+    linked_concept_coverage_status: linkedConceptCoverageStatus,
+  };
+}
+
 function summarizeObservedArtifacts(items) {
   const summary = {
     complete: 0,
@@ -511,6 +563,7 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
   const concepts = GOVERNED_CONCEPTS.map(evaluateGovernedConcept);
   const conceptIndex = new Map(concepts.map((item) => [item.concept, item]));
   const runtimeSurfaces = GOVERNANCE_RUNTIME_SURFACES.map((entry) => evaluateGovernanceRuntimeSurface(entry, conceptIndex));
+  const commandCoverage = GOVERNANCE_COMMAND_COVERAGE.map((entry) => evaluateGovernanceCommandCoverage(entry, conceptIndex));
   const resolveObservedArtifactText = includeObservedArtifacts
     ? createObservedArtifactResolver(targetRoot)
     : null;
@@ -520,12 +573,16 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
   const issues = [
     ...concepts.flatMap((item) => item.issues),
     ...runtimeSurfaces.flatMap((item) => item.issues),
+    ...commandCoverage.flatMap((item) => item.linked_concepts
+      .filter((linkedConcept) => linkedConcept.status !== "complete")
+      .map((linkedConcept) => `${item.id}: linked concept ${linkedConcept.concept} is ${linkedConcept.status}`)),
     ...observedArtifacts.flatMap((item) => item.issues),
     ...findGovernanceContractCoverageIssues(),
     ...findGovernanceRegistryCoverageIssues(),
   ];
   const summary = summarizeGovernedConcepts(concepts);
   const runtimeSurfaceSummary = summarizeGovernanceRuntimeSurfaces(runtimeSurfaces);
+  const commandCoverageSummary = summarizeCommandCoverage(commandCoverage);
   const observedArtifactSummary = summarizeObservedArtifacts(observedArtifacts);
   const operations = deriveGovernanceOperations({
     concepts,
@@ -549,6 +606,7 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
     },
     concepts,
     runtime_surfaces: runtimeSurfaces,
+    command_coverage: commandCoverage,
     runtime_surface_summary: runtimeSurfaceSummary,
     observed_artifacts: observedArtifacts,
     observed_artifact_summary: observedArtifactSummary,
@@ -556,6 +614,9 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
     operations: {
       ...operations,
       runtime_surface_coverage_status: deriveRuntimeSurfaceCoverageStatus(runtimeSurfaceSummary),
+      command_coverage_status: deriveRuntimeSurfaceCoverageStatus(commandCoverageSummary),
+      command_coverage_count: commandCoverage.length,
+      command_coverage_summary: commandCoverageSummary,
       observed_artifact_coverage_status: includeObservedArtifacts
         ? deriveCoverageStatus(observedArtifactSummary, "overall")
         : "not_included",

@@ -48,6 +48,7 @@ export function renderGovernanceDiagnosticsText(result) {
   lines.push(`- metadata_coverage=${result.operations?.metadata_coverage_status ?? "unknown"}`);
   lines.push(`- cli_contract_coverage=${result.operations?.cli_contract_coverage_status ?? "unknown"}`);
   lines.push(`- runtime_surface_coverage=${result.operations?.runtime_surface_coverage_status ?? "unknown"}`);
+  lines.push(`- command_coverage=${result.operations?.command_coverage_status ?? "unknown"}`);
   lines.push(`- observed_artifact_coverage=${result.operations?.observed_artifact_coverage_status ?? "unknown"}`);
   lines.push(`- issue_count=${result.operations?.issue_count ?? 0}`);
   lines.push(`- runtime_surfaces=${result.registry?.runtime_surface_count ?? 0}`);
@@ -62,6 +63,12 @@ export function renderGovernanceDiagnosticsText(result) {
     lines.push("- runtime_surfaces:");
     for (const surface of result.runtime_surfaces.slice(0, 8)) {
       lines.push(`  - ${surface.id}: ${surface.status} effect=${surface.effect_class} contract=${surface.json_contract_status} linked=${surface.linked_concept_coverage_status}`);
+    }
+  }
+  if (Array.isArray(result.command_coverage) && result.command_coverage.length > 0) {
+    lines.push("- command_coverage:");
+    for (const command of result.command_coverage.slice(0, 10)) {
+      lines.push(`  - ${command.id}: ${command.linked_concept_coverage_status} linked=${command.linked_concepts.map((item) => `${item.concept}:${item.status}`).join(", ")}`);
     }
   }
   if (Array.isArray(result.observed_artifacts) && result.observed_artifacts.length > 0) {

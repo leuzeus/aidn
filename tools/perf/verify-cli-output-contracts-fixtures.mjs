@@ -64,6 +64,11 @@ const CONTRACT_CASES = [
     args: ["runtime", "db-status", "--json"],
   },
   {
+    name: "runtime-db-only-readiness",
+    schema: "runtime-db-only-readiness.v1.schema.json",
+    args: ["runtime", "db-only-readiness", "--json"],
+  },
+  {
     name: "runtime-persistence-status",
     schema: "runtime-persistence-status.v1.schema.json",
     args: ["runtime", "persistence-status", "--json"],

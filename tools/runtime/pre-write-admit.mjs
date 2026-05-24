@@ -5,10 +5,15 @@ import { pathToFileURL } from "node:url";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 import {
   buildPreWriteAdmissionResult,
+  deriveFirstPlanStep,
   derivePreWriteObservedContext,
+  findCycleStatus,
+  findSessionFile,
+  evaluateCycleCreateGitGate,
   evaluatePreWriteCycleCreateGates,
   evaluatePreWriteGenericWorkflowGates,
   evaluatePreWriteSourceOfTruthAndRuntimeGates,
+  evaluateSessionIntegrationGate,
   mergePreWritePolicy,
 } from "../../src/application/runtime/pre-write-admit-use-case.mjs";
 import { loadSharedStateSnapshot } from "../../src/application/runtime/shared-state-backend-service.mjs";
@@ -234,66 +239,6 @@ function parseListSection(text, header) {
   return items;
 }
 
-function findSessionFile(auditRoot, sessionId) {
-  if (!sessionId || canonicalNone(sessionId) || canonicalUnknown(sessionId)) {
-    return null;
-  }
-  const sessionsDir = path.join(auditRoot, "sessions");
-  if (!exists(sessionsDir)) {
-    return null;
-  }
-  const entries = fs.readdirSync(sessionsDir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && /^S\d+.*\.md$/i.test(entry.name));
-  const direct = entries.find((entry) => entry.name.startsWith(sessionId));
-  return direct ? path.join(sessionsDir, direct.name) : null;
-}
-
-function findCycleStatus(auditRoot, cycleId) {
-  if (!cycleId || canonicalNone(cycleId) || canonicalUnknown(cycleId)) {
-    return null;
-  }
-  const cyclesDir = path.join(auditRoot, "cycles");
-  if (!exists(cyclesDir)) {
-    return null;
-  }
-  const entries = fs.readdirSync(cyclesDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name.startsWith(`${cycleId}-`));
-  for (const entry of entries) {
-    const statusPath = path.join(cyclesDir, entry.name, "status.md");
-    if (exists(statusPath)) {
-      return statusPath;
-    }
-  }
-  return null;
-}
-
-function deriveFirstPlanStep(planText) {
-  const lines = String(planText).split(/\r?\n/);
-  let inTasks = false;
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (line === "## Tasks") {
-      inTasks = true;
-      continue;
-    }
-    if (inTasks && /^##\s+/.test(line)) {
-      break;
-    }
-    if (!inTasks) {
-      continue;
-    }
-    const numbered = line.match(/^\d+\.\s+(.+)$/);
-    if (numbered && normalizeScalar(numbered[1])) {
-      return normalizeScalar(numbered[1]);
-    }
-    const bullet = line.match(/^-\s+(.+)$/);
-    if (bullet && normalizeScalar(bullet[1])) {
-      return normalizeScalar(bullet[1]);
-    }
-  }
-  return "unknown";
-}
-
 function uniqueItems(values) {
   const out = [];
   const seen = new Set();
@@ -310,169 +255,6 @@ function uniqueItems(values) {
 
 function summarizePorcelain(lines, limit = 3) {
   return lines.slice(0, limit).map((line) => normalizeScalar(line));
-}
-
-function evaluateCycleCreateGitGate(targetRoot) {
-  const git = createLocalGitAdapter();
-  const currentBranch = normalizeScalar(git.getCurrentBranch(targetRoot) ?? "unknown") || "unknown";
-  const repoRoot = normalizeScalar(typeof git.getRepoRoot === "function" ? git.getRepoRoot(targetRoot) : "") || "none";
-  const repoScoped = repoRoot !== "none" && path.resolve(repoRoot) === path.resolve(targetRoot);
-  const output = {
-    branch: currentBranch,
-    repo_root: repoRoot,
-    repo_scoped: repoScoped,
-    upstream_branch: "none",
-    upstream_ahead: 0,
-    upstream_behind: 0,
-    dirty_entries: [],
-    blocking_reasons: [],
-    warnings: [],
-  };
-
-  try {
-    const statusOutput = git.execStatusPorcelain(targetRoot, ".", true);
-    output.dirty_entries = String(statusOutput)
-      .split(/\r?\n/)
-      .map((line) => line.trimEnd())
-      .filter(Boolean);
-  } catch {
-    output.warnings.push("git status is unavailable; cycle-create hygiene could not be verified automatically");
-    return output;
-  }
-
-  if (output.dirty_entries.length > 0) {
-    const samples = summarizePorcelain(output.dirty_entries).join(", ");
-    output.blocking_reasons.push(
-      `git working tree is not clean before cycle creation; reconcile pending files first (${samples}${output.dirty_entries.length > 3 ? ", ..." : ""})`,
-    );
-  }
-
-  if (!repoScoped) {
-    output.warnings.push("target is not the git repository root; upstream sync gate is skipped for this pre-write check");
-    return output;
-  }
-
-  if (typeof git.getUpstreamBranch !== "function" || typeof git.getAheadBehind !== "function") {
-    output.warnings.push("upstream sync check is unavailable in the current git adapter");
-    return output;
-  }
-
-  const upstreamBranch = normalizeScalar(git.getUpstreamBranch(targetRoot) ?? "") || "none";
-  output.upstream_branch = upstreamBranch;
-  if (upstreamBranch === "none" || currentBranch === "unknown") {
-    output.warnings.push("no upstream tracking branch is configured; push/merge reconciliation cannot be verified automatically");
-    return output;
-  }
-
-  const divergence = git.getAheadBehind(targetRoot, "HEAD", upstreamBranch);
-  if (divergence?.known !== true) {
-    output.warnings.push(`upstream divergence for ${currentBranch} could not be determined automatically`);
-    return output;
-  }
-
-  output.upstream_ahead = Number(divergence.ahead ?? 0);
-  output.upstream_behind = Number(divergence.behind ?? 0);
-  if (output.upstream_ahead > 0 || output.upstream_behind > 0) {
-    output.blocking_reasons.push(
-      `current branch ${currentBranch} diverges from ${upstreamBranch}: ahead ${output.upstream_ahead}, behind ${output.upstream_behind}; push/reconcile before creating a new cycle`,
-    );
-  }
-  return output;
-}
-
-function evaluateSessionIntegrationGate(targetRoot, {
-  branchKind,
-  sessionBranch,
-  cycleBranch,
-} = {}) {
-  const output = {
-    applicable: false,
-    session_branch: normalizeScalar(sessionBranch ?? "") || "none",
-    cycle_branch: normalizeScalar(cycleBranch ?? "") || "none",
-    session_upstream_branch: "none",
-    session_upstream_ahead: 0,
-    session_upstream_behind: 0,
-    cycle_upstream_branch: "none",
-    cycle_upstream_ahead: 0,
-    cycle_upstream_behind: 0,
-    cycle_merged_into_session: "unknown",
-    blocking_reasons: [],
-    warnings: [],
-  };
-  if (String(branchKind).toLowerCase() !== "session") {
-    return output;
-  }
-  output.applicable = true;
-  if (canonicalNone(output.session_branch) || canonicalUnknown(output.session_branch)) {
-    output.warnings.push("session integration gate could not verify the session branch");
-    return output;
-  }
-  if (canonicalNone(output.cycle_branch) || canonicalUnknown(output.cycle_branch)) {
-    output.warnings.push("session integration gate could not verify the previous cycle branch");
-    return output;
-  }
-
-  const git = createLocalGitAdapter();
-  const repoRoot = normalizeScalar(typeof git.getRepoRoot === "function" ? git.getRepoRoot(targetRoot) : "") || "none";
-  if (repoRoot === "none" || path.resolve(repoRoot) !== path.resolve(targetRoot)) {
-    output.warnings.push("session integration gate is skipped because the target is not the git repository root");
-    return output;
-  }
-  if (typeof git.refExists !== "function" || typeof git.isAncestor !== "function") {
-    output.warnings.push("session integration gate is unavailable in the current git adapter");
-    return output;
-  }
-  if (!git.refExists(targetRoot, output.session_branch)) {
-    output.warnings.push(`session branch ${output.session_branch} is not available locally`);
-    return output;
-  }
-  if (!git.refExists(targetRoot, output.cycle_branch)) {
-    output.warnings.push(`previous cycle branch ${output.cycle_branch} is not available locally`);
-    return output;
-  }
-
-  const cycleUpstreamBranch = normalizeScalar(typeof git.getUpstreamBranch === "function" ? git.getUpstreamBranch(targetRoot, output.cycle_branch) : "") || "none";
-  output.cycle_upstream_branch = cycleUpstreamBranch;
-  if (cycleUpstreamBranch !== "none" && typeof git.getAheadBehind === "function") {
-    const divergence = git.getAheadBehind(targetRoot, output.cycle_branch, cycleUpstreamBranch);
-    if (divergence?.known === true) {
-      output.cycle_upstream_ahead = Number(divergence.ahead ?? 0);
-      output.cycle_upstream_behind = Number(divergence.behind ?? 0);
-      if (output.cycle_upstream_ahead > 0 || output.cycle_upstream_behind > 0) {
-        output.blocking_reasons.push(
-          `previous cycle branch ${output.cycle_branch} diverges from ${cycleUpstreamBranch}: ahead ${output.cycle_upstream_ahead}, behind ${output.cycle_upstream_behind}; push/reconcile the previous cycle before creating a new one`,
-        );
-      }
-    }
-  } else {
-    output.warnings.push(`previous cycle branch ${output.cycle_branch} has no upstream tracking branch; push status cannot be verified automatically`);
-  }
-
-  output.cycle_merged_into_session = git.isAncestor(targetRoot, output.cycle_branch, output.session_branch) ? "yes" : "no";
-  if (output.cycle_merged_into_session !== "yes") {
-    output.blocking_reasons.push(
-      `previous cycle branch ${output.cycle_branch} is not merged into session branch ${output.session_branch}; merge or close/report the cycle before creating a new one`,
-    );
-  }
-
-  const sessionUpstreamBranch = normalizeScalar(typeof git.getUpstreamBranch === "function" ? git.getUpstreamBranch(targetRoot, output.session_branch) : "") || "none";
-  output.session_upstream_branch = sessionUpstreamBranch;
-  if (sessionUpstreamBranch !== "none" && typeof git.getAheadBehind === "function") {
-    const divergence = git.getAheadBehind(targetRoot, output.session_branch, sessionUpstreamBranch);
-    if (divergence?.known === true) {
-      output.session_upstream_ahead = Number(divergence.ahead ?? 0);
-      output.session_upstream_behind = Number(divergence.behind ?? 0);
-      if (output.session_upstream_ahead > 0 || output.session_upstream_behind > 0) {
-        output.blocking_reasons.push(
-          `session branch ${output.session_branch} diverges from ${sessionUpstreamBranch}: ahead ${output.session_upstream_ahead}, behind ${output.session_upstream_behind}; reconcile the merged session branch before creating a new cycle`,
-        );
-      }
-    }
-  } else {
-    output.warnings.push(`session branch ${output.session_branch} has no upstream tracking branch; post-merge reconciliation cannot be verified automatically`);
-  }
-
-  return output;
 }
 
 function classifyRepairFindingSummary(item) {
@@ -631,7 +413,7 @@ function findCyclePlanArtifact(sqlitePayload, cycleId, cycleStatusArtifactPath =
 }
 
 function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = false, sqlitePayload = null } = {}) {
-  const filePath = findSessionFile(auditRoot, sessionId);
+  const filePath = findSessionFile(auditRoot, sessionId, targetRoot);
   if (filePath) {
     return {
       exists: true,
@@ -671,7 +453,7 @@ function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = f
 }
 
 function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbBacked = false, sqlitePayload = null } = {}) {
-  const filePath = findCycleStatus(auditRoot, cycleId);
+  const filePath = findCycleStatus(auditRoot, cycleId, targetRoot);
   if (filePath) {
     return {
       exists: true,
@@ -779,6 +561,7 @@ export async function preWriteAdmit({
   sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const git = createLocalGitAdapter();
   const workspace = resolveWorkspaceContext({
     targetRoot: absoluteTargetRoot,
   });
@@ -947,10 +730,15 @@ export async function preWriteAdmit({
       .filter((item) => item.toLowerCase() !== "none"),
   );
   const cycleCreateGitGate = skill === "cycle-create"
-    ? evaluateCycleCreateGitGate(absoluteTargetRoot)
+    ? evaluateCycleCreateGitGate({
+      git,
+      targetRoot: absoluteTargetRoot,
+    })
     : null;
   const sessionIntegrationGate = skill === "cycle-create"
-    ? evaluateSessionIntegrationGate(absoluteTargetRoot, {
+    ? evaluateSessionIntegrationGate({
+      git,
+      targetRoot: absoluteTargetRoot,
       branchKind,
       sessionBranch,
       cycleBranch: !canonicalNone(mappedCycleBranch) && !canonicalUnknown(mappedCycleBranch)
