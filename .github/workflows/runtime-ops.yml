@@ -37,3 +37,6 @@ jobs:
 
       - name: Verify Shared Coordination Doctor
         run: npm run perf:verify-shared-coordination-doctor
+
+      - name: Verify Shared Coordination Store Port
+        run: npm run perf:verify-shared-coordination-store-port

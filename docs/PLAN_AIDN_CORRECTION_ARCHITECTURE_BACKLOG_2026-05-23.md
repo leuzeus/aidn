@@ -287,6 +287,7 @@ Avancement:
 - `ARCH-P2-03` a renforcé la checklist release/provenance avec la validation explicite du bloc `source` et `build` du manifest de release
 - `ARCH-P2-04` a neutralisé les chemins de pilote réels dans le runbook persistence PostgreSQL tout en gardant le déroulé opérationnel
 - `ARCH-P2-05` est synchronisé sur GitHub avec les issues #24 à #33 et les labels de backlog dédiés
+- `ARCH-P3-01` est maintenant matérialisé par le port `src/core/ports/shared-coordination-store-port.mjs`, l’adapter PostgreSQL conforme et un verifier dédié de contrat minimal
 | P2 | ARCH-P2-05 | Backlog GitHub synchronisé | Plans existants non consolidés | Transformer ce document en issues et labels GitHub | `docs/BACKLOG_*`, GitHub project docs | 10 premières issues créées ou prêtes | Review docs | Doublons avec anciens backlogs | Ce plan | S |
 | P3 | ARCH-P3-01 | Fédération multi-repo avancée | Extension shared future | N'ajouter aucune surface avant stabilisation P0/P1; préparer ADR si besoin réel | ADR-0007, shared stores, tests multi-project | Nouvelle surface = ADR/matrix/contracts/tests | shared multi-project fixtures | Cloudification implicite | ARCH-P0-06 | L |
 | P3 | ARCH-P3-02 | Live PostgreSQL CI optionnel | Live smoke local seulement | Évaluer self-hosted/ephemeral PostgreSQL CI sans rendre PG obligatoire | `.github/workflows/runtime-ops.yml`, `.github/workflows/runtime-ops-live-smoke.yml`, live smoke docs | CI SKIP/PASS clair; secrets protégés | live smoke optional | Maintenance CI | P1 ops runbooks | M |

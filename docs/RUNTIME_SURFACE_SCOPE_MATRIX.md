@@ -163,3 +163,5 @@ Validation:
 Any future shared surface must update this matrix, ADR-0007, CLI status output contracts and fixture coverage before it is treated as stable.
 
 Shared coordination access is expected to pass through the port contract described in `docs/ADR/ADR-0008-shared-coordination-ports.md` before any new shared behavior is considered stable.
+
+That port contract is implemented by `src/core/ports/shared-coordination-store-port.mjs` and asserted by the PostgreSQL shared coordination adapter; future shared behavior should extend that contract rather than bypass it.

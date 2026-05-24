@@ -236,6 +236,7 @@
     "perf:verify-shared-coordination-runtime-cli": "node tools/perf/verify-shared-coordination-runtime-cli-fixtures.mjs",
     "perf:verify-shared-coordination-backup": "node tools/perf/verify-shared-coordination-backup-fixtures.mjs",
     "perf:verify-shared-coordination-restore": "node tools/perf/verify-shared-coordination-restore-fixtures.mjs",
+    "perf:verify-shared-coordination-store-port": "node tools/perf/verify-shared-coordination-store-port.mjs",
     "perf:verify-db-schema-migrations": "node tools/perf/verify-db-schema-migrations-fixtures.mjs",
     "perf:verify-shared-coordination-doctor": "node tools/perf/verify-shared-coordination-doctor-fixtures.mjs",
     "perf:verify-shared-coordination-migrate": "node tools/perf/verify-shared-coordination-migrate-fixtures.mjs",
