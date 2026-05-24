@@ -82,8 +82,10 @@ function main() {
     const repoRoot = process.cwd();
     const matrixPath = path.join(repoRoot, "docs", "RUNTIME_SURFACE_SCOPE_MATRIX.md");
     const adrPath = path.join(repoRoot, "docs", "ADR", "ADR-0007-local-first-federation-boundary.md");
+    const adr8Path = path.join(repoRoot, "docs", "ADR", "ADR-0008-shared-coordination-ports.md");
     const matrixText = readText(matrixPath);
     const adrText = readText(adrPath);
+    const adr8Text = readText(adr8Path);
     const sharedCandidateLines = extractSharedCandidateLines(matrixText).map(normalizeSurfaceLine);
     const expectedSharedCandidates = EXPECTED_SHARED_CANDIDATES.map(normalizeSurfaceLine);
 
@@ -91,15 +93,21 @@ function main() {
     const unexpectedShared = sharedCandidateLines.filter((entry) => !expectedSharedCandidates.includes(entry));
     const missingNonShare = REQUIRED_NON_SHARE_LIST.filter((entry) => !matrixText.includes(entry));
     const missingBoundaryReminder = !matrixText.includes("Any future shared surface must update this matrix, ADR-0007, CLI status output contracts and fixture coverage before it is treated as stable.");
+    const missingPortContractReminder = !matrixText.includes("Shared coordination access is expected to pass through the port contract described in `docs/ADR/ADR-0008-shared-coordination-ports.md` before any new shared behavior is considered stable.");
     const adrMentionsOptIn = /opt-in/i.test(adrText) && /local-first/i.test(adrText);
     const adrMentionsNoDocsAuditSharing = /docs\/audit/i.test(adrText) || /checkout-bound/i.test(adrText);
+    const adr8MentionsPorts = /shared coordination ports/i.test(adr8Text) && /src\/core\/ports/i.test(adr8Text);
+    const adr8MentionsLocalFirst = /local-first/i.test(adr8Text) && /shared runtime/i.test(adr8Text);
 
     const checks = {
       matrix_has_expected_shared_candidates: missingRequiredShared.length === 0 && unexpectedShared.length === 0,
       matrix_has_required_non_share_list: missingNonShare.length === 0,
       matrix_has_boundary_reminder: !missingBoundaryReminder,
+      matrix_has_port_contract_reminder: !missingPortContractReminder,
       adr_mentions_local_first_opt_in: adrMentionsOptIn,
       adr_mentions_checkout_bound_but_not_share: adrMentionsNoDocsAuditSharing,
+      adr8_mentions_shared_ports: adr8MentionsPorts,
+      adr8_mentions_local_first_runtime_boundary: adr8MentionsLocalFirst,
     };
 
     const issues = [];
@@ -115,11 +123,20 @@ function main() {
     if (missingBoundaryReminder) {
       issues.push("missing future shared-surface reminder in matrix");
     }
+    if (missingPortContractReminder) {
+      issues.push("missing ADR-0008 port-contract reminder in matrix");
+    }
     if (!adrMentionsOptIn) {
       issues.push("ADR-0007 does not clearly mention local-first opt-in boundary");
     }
     if (!adrMentionsNoDocsAuditSharing) {
       issues.push("ADR-0007 does not mention checkout-bound or docs/audit boundary language");
+    }
+    if (!adr8MentionsPorts) {
+      issues.push("ADR-0008 does not clearly mention shared coordination ports and src/core/ports");
+    }
+    if (!adr8MentionsLocalFirst) {
+      issues.push("ADR-0008 does not clearly mention the local-first shared runtime boundary");
     }
 
     const output = {
@@ -127,6 +144,7 @@ function main() {
       checks,
       matrix_path: matrixPath,
       adr_path: adrPath,
+      adr8_path: adr8Path,
       shared_candidate_lines: sharedCandidateLines,
       issues,
     };
