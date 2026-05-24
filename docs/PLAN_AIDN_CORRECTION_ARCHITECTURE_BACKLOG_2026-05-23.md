@@ -286,6 +286,10 @@ Avancement:
 | P3 | ARCH-P3-02 | Live PostgreSQL CI optionnel | Live smoke local seulement | Évaluer self-hosted/ephemeral PostgreSQL CI sans rendre PG obligatoire | `.github/workflows/runtime-ops.yml`, live smoke docs | CI SKIP/PASS clair; secrets protégés | live smoke optional | Maintenance CI | P1 ops runbooks | M |
 | P3 | ARCH-P3-03 | Observability avancée des agents | Coordination richer future | Ajouter métriques agent/routing seulement après contracts stables | coordinator use cases, reports | Contrats existants non cassés | coordinator fixtures | Feature creep | P1 coordinateurs | M |
 
+Avancement:
+
+- un seed d'issues daté existe dans [docs/BACKLOG_AIDN_CORRECTION_ARCHITECTURE_GITHUB_ISSUES_2026-05-24.md](/g:/projets/aidn/docs/BACKLOG_AIDN_CORRECTION_ARCHITECTURE_GITHUB_ISSUES_2026-05-24.md) avec les 10 premières issues prêtes
+
 ## Premières issues GitHub prêtes à créer
 
 ### 1. Classer toutes les surfaces CLI publiques, expérimentales et internes
