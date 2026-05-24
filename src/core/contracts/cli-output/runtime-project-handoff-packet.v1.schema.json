@@ -10,6 +10,7 @@
     "workspace",
     "shared_state_backend",
     "shared_coordination_backend",
+    "shared_coordination_sync",
     "shared_runtime_validation",
     "output_file",
     "written",
@@ -202,7 +203,10 @@
         "scope_type": { "type": "string" },
         "scope_id": { "type": "string" },
         "target_branch": { "type": ["string", "null"] },
-        "backlog_refs": { "type": "string" },
+        "backlog_refs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "planning_arbitration_status": { "type": "string" },
         "preferred_dispatch_source": { "type": ["string", "null"] },
         "shared_planning_candidate_ready": { "type": "string" },
@@ -228,7 +232,10 @@
         "active_backlog": { "type": ["string", "null"] },
         "backlog_status": { "type": ["string", "null"] },
         "backlog_next_step": { "type": ["string", "null"] },
-        "linked_backlog_cycles": { "type": "array" },
+        "linked_backlog_cycles": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "runtime_state_mode": { "type": "string" },
         "repair_layer_status": { "type": "string" },
         "repair_primary_reason": { "type": ["string", "null"] },
@@ -236,8 +243,14 @@
         "current_state_freshness": { "type": "string" },
         "transition_policy_status": { "type": ["string", "null"] },
         "transition_policy_reason": { "type": ["string", "null"] },
-        "blocking_findings": { "type": "array" },
-        "prioritized_artifacts": { "type": "array" },
+        "blocking_findings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "prioritized_artifacts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "consistency_status": { "type": "string" },
         "session_file": { "type": ["string", "null"] },
         "cycle_status_file": { "type": ["string", "null"] },
@@ -254,10 +267,13 @@
         "ts": { "type": "string" },
         "target_root": { "type": "string" },
         "audit_root": { "type": "string" },
-        "missing_files": { "type": "array" },
+        "missing_files": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "current_state": { "type": "object", "additionalProperties": true },
         "snapshot": { "type": "object", "additionalProperties": true },
-        "checks": { "type": "object" },
+        "checks": { "type": "object", "additionalProperties": { "type": "boolean" } },
         "pass": { "type": "boolean" }
       },
       "additionalProperties": true
