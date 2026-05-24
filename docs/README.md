@@ -8,6 +8,7 @@ Use this page as the first stop when you need to navigate the repository docs.
 ## Start Here
 
 - [Architecture cockpit](./ARCHITECTURE_COCKPIT.md)
+- [CI gate families](./CI_GATE_FAMILIES.md)
 - [Execution plan post EA/IA review](./PLAN_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md)
 - [Executable backlog post EA/IA review](./BACKLOG_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md)
 - [Testing guide](./TESTING.md)

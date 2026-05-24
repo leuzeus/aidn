@@ -1,0 +1,127 @@
+name: Architecture Gates
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: Verify Contract Gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify CLI Effect Policy
+        run: npm run perf:verify-cli-effect-policy
+
+      - name: Verify CLI Surface Inventory
+        run: npm run perf:verify-cli-surface-inventory
+
+      - name: Verify No Implicit Write
+        run: npm run perf:verify-cli-no-implicit-write
+
+      - name: Verify CLI Output Contracts
+        run: npm run perf:verify-cli-output-contracts
+
+  runtime:
+    name: Verify Runtime Gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify Source-Of-Truth Policy
+        run: npm run perf:verify-source-of-truth-policy
+
+      - name: Verify Metadata Policy
+        run: npm run perf:verify-metadata-policy
+
+      - name: Verify Governance Completeness
+        run: npm run perf:verify-governance-completeness
+
+      - name: Verify State Mode Parity
+        run: npm run perf:verify-state-mode-parity
+
+      - name: Verify Governance Runtime CLI
+        run: npm run perf:verify-governance-runtime-cli
+
+  ops:
+    name: Verify Ops Gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify DB Schema Migrations
+        run: npm run perf:verify-db-schema-migrations
+
+      - name: Verify DB Runtime CLI
+        run: npm run perf:verify-db-runtime-cli
+
+      - name: Verify Runtime Persistence Parity
+        run: npm run perf:verify-runtime-persistence-parity
+
+      - name: Verify Shared Coordination Backup
+        run: npm run perf:verify-shared-coordination-backup
+
+      - name: Verify Shared Coordination Restore
+        run: npm run perf:verify-shared-coordination-restore
+
+      - name: Verify Shared Coordination Doctor
+        run: npm run perf:verify-shared-coordination-doctor
+
+  release:
+    name: Verify Release Gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify Release Version
+        run: npm run perf:verify-release-version
+
+      - name: Build Release
+        run: npm run build-release
+
+      - name: Verify Release Artifacts
+        run: npm run perf:verify-release-artifacts
+
+  docs:
+    name: Verify Documentation Gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify Markdown Contract
+        run: npm run perf:verify-markdown-contract
+

@@ -13,6 +13,7 @@ Purpose:
 ## Primary Entry Points
 
 - [Documentation index](./README.md)
+- [CI gate families](./CI_GATE_FAMILIES.md)
 - [Execution plan post EA/IA review](./PLAN_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md)
 - [Executable backlog post EA/IA review](./BACKLOG_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md)
 - [CLI surface inventory](./CLI_SURFACE_INVENTORY.md)
