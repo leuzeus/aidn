@@ -4,6 +4,20 @@ Référence de cadrage: [docs/PLAN_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.m
 
 Ce backlog transforme le diagnostic EA/IA en lots exécutables, petits et reviewables. L’ordre est volontairement conservateur: sécuriser d’abord la sémantique des commandes et les contrats, puis faire descendre la gouvernance d’information dans les producteurs d’artefacts, ensuite renforcer l’exploitation locale et la release.
 
+## Statut d’exécution
+
+Les lots suivants ont déjà été traités sur `dev` et ne doivent pas être replanifiés comme du nouveau travail:
+- `project-runtime-state` et `project-handoff-packet` sont read-only par défaut, avec écriture explicite;
+- les politiques d’effet CLI, les contrats critiques et les fixtures runtime ont été durcis;
+- la gouvernance `source_of_truth` / `metadata` a été propagée dans les sorties runtime critiques;
+- les familles de gates CI sont branchées via un workflow dédié et documentées;
+- le flux release a été rendu plus atomique et mieux vérifiable;
+- les runbooks shared coordination backup / restore / doctor ont été productisés;
+- le cockpit architecture, l’index documentaire et les renvois actifs/archivés ont été ajoutés;
+- `runtime-project-coordination-summary` et les artefacts multi-agent associés ont été durcis et validés par fixture.
+
+Les sections ci-dessous restent le backlog de référence pour les lots encore ouverts ou à reprendre plus tard.
+
 ## P0 - Sécuriser la sémantique des commandes
 
 | ID | Titre | Problème adressé | Description | Fichiers probables à modifier | Critères d’acceptation | Tests ou gates à ajouter | Risques | Dépendances | Taille |
