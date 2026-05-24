@@ -297,7 +297,7 @@ Avancement:
 
 - un seed d'issues daté existe dans [docs/BACKLOG_AIDN_CORRECTION_ARCHITECTURE_GITHUB_ISSUES_2026-05-24.md](/g:/projets/aidn/docs/BACKLOG_AIDN_CORRECTION_ARCHITECTURE_GITHUB_ISSUES_2026-05-24.md) avec les 10 premières issues prêtes
 - `ARCH-P3-02` est désormais matérialisé par un workflow manuel optionnel [`.github/workflows/runtime-ops-live-smoke.yml`](/g:/projets/aidn/.github/workflows/runtime-ops-live-smoke.yml), et les docs de test l’annoncent comme `SKIP` quand aucune URL live n’est fournie
-- `ARCH-P3-03` a commencé via une observability additive sur `project-multi-agent-status` avec métriques agent/routing exposées dans le JSON et dans le digest markdown
+- `ARCH-P3-03` est matérialisé par l’observability additive sur `project-multi-agent-status`, avec métriques agent/routing exposées dans le JSON, le digest markdown et le verifier dédié
 
 ## Premières issues GitHub prêtes à créer
 
@@ -406,7 +406,7 @@ Avancement:
 | ADR-0006 Information Model | Mise à jour | Modèle conceptuel gouverné | Inclure backup/restore set, diagnostics, release/provenance | Modèle docs-only, registry code, hybride | Testabilité, simplicité | Concepts nommés et gouvernés | ARCH-P1-02, ARCH-P2-02 | Accepted |
 | ADR-0007 Local-First Federation Boundary | Mise à jour | Gate d'extension shared runtime | Empêcher shared expansion implicite | Liste statique, process ADR, cloud-first | Local-first, auditabilité, rollback | Shared runtime borné | ARCH-P0-06, ARCH-P3-01 | Accepted |
 | ADR-0008 Ports Shared Coordination | Nouvelle | Ports et contrats shared coordination | Stabiliser store/service/adapters avant extension | Adapter direct, port minimal, event store | Scope limité, testabilité | Extensions plus sûres | ARCH-P3-01 | Drafted |
-| ADR-0009 Release Versioning Provenance | Nouvelle | `VERSION`, package, manifest, checksums, npm pack | Regrouper politique release | Git tag source, VERSION source, package source | Reproductibilité, simplicité | Release supportable | ARCH-P2-03 | Drafted |
+| ADR-0009 Release Versioning Provenance | Nouvelle | `VERSION`, package, manifest, checksums, npm pack | Regrouper politique release | Git tag source, VERSION source, package source | Reproductibilité, simplicité | Release supportable | ARCH-P2-03 | Accepted |
 
 ## Roadmap
 
