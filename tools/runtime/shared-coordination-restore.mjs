@@ -9,6 +9,8 @@ import {
 } from "../../src/application/runtime/shared-coordination-store-service.mjs";
 import { resolveSharedCoordinationRestoreCompatibility } from "../../src/application/runtime/shared-coordination-admin-service.mjs";
 import { deriveSharedCoordinationGovernance } from "../../src/application/runtime/shared-coordination-governance-lib.mjs";
+import { doctorSharedCoordination } from "./shared-coordination-doctor.mjs";
+import { projectSharedCoordinationStatus } from "./shared-coordination-status.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 
 function normalizeScalar(value) {
@@ -139,6 +141,38 @@ function deriveSharedCoordinationRestoreOperations({
     recommended_actions: writeRequested
       ? ["validate the restored shared coordination state with shared-coordination-status and doctor"]
       : ["review schema compatibility and workspace identity before using --write"],
+  };
+}
+
+async function buildPostRestoreValidation({
+  targetRoot,
+  resolution,
+}) {
+  const status = await projectSharedCoordinationStatus({
+    targetRoot,
+    sharedCoordination: resolution,
+  });
+  const doctor = await doctorSharedCoordination({
+    targetRoot,
+    sharedCoordination: resolution,
+  });
+  const ok = Boolean(status?.ok) && Boolean(doctor?.ok);
+
+  return {
+    ok,
+    status: ok ? "pass" : "fail",
+    status_report: status,
+    doctor_report: doctor,
+    signals: {
+      runtime_state: String(status?.snapshot?.planning_read?.status ?? "") === "found"
+        || String(status?.snapshot?.handoff_read?.status ?? "") === "found"
+        || String(status?.snapshot?.coordination_read?.status ?? "") === "found",
+      source_of_truth: String(status?.source_of_truth?.source_of_truth_status ?? "") === "covered",
+      metadata: String(status?.metadata?.metadata_status ?? "") === "complete",
+      shared_boundary: String(doctor?.operations?.scope ?? "") === "shared-coordination-only",
+      digests: Boolean(status?.snapshot?.coordination_read?.records?.length || status?.snapshot?.planning_read?.planning_state || status?.snapshot?.handoff_read?.handoff_relay),
+    },
+    recommended_actions: Array.isArray(doctor?.recommended_actions) ? doctor.recommended_actions : [],
   };
 }
 
@@ -405,6 +439,10 @@ export async function restoreSharedCoordination({
     handoff,
     coordination,
   };
+  const postRestoreValidation = await buildPostRestoreValidation({
+    targetRoot: absoluteTargetRoot,
+    resolution,
+  });
 
   return {
     target_root: absoluteTargetRoot,
@@ -421,6 +459,7 @@ export async function restoreSharedCoordination({
     preview,
     schema_compatibility: schemaCompatibility,
     restore: restoreResult,
+    post_restore_validation: postRestoreValidation,
     operations: deriveSharedCoordinationRestoreOperations({
       backend,
       health,

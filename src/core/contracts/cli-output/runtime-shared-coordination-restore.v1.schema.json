@@ -54,6 +54,7 @@
       },
       "additionalProperties": true
     },
+    "post_restore_validation": { "type": ["object", "null"], "additionalProperties": true },
     "operations": {
       "type": "object",
       "required": [

@@ -13,6 +13,7 @@ Les lots suivants ont déjà été traités sur `dev` et ne doivent pas être re
 - les familles de gates CI sont branchées via un workflow dédié et documentées;
 - le flux release a été rendu plus atomique et mieux vérifiable;
 - les runbooks shared coordination backup / restore / doctor ont été productisés;
+- la restauration shared coordination expose désormais une validation post-restore explicite et testée;
 - le cockpit architecture, l’index documentaire et les renvois actifs/archivés ont été ajoutés;
 - `runtime-project-coordination-summary` et les artefacts multi-agent associés ont été durcis et validés par fixture.
 - `project-coordination-summary` a été extrait vers un use case applicatif direct avec garde de non-régression, tandis que le wrapper CLI est redevenu un routage mince.

@@ -221,6 +221,18 @@ function createFakeResolution(state) {
         state.worktree = input;
         return { ok: true, worktree: input };
       },
+      async getPlanningState(input) {
+        const planningState = state.planning && input?.planningKey === state.planning.planningKey
+          ? state.planning
+          : null;
+        return { ok: true, planning_state: planningState };
+      },
+      async getLatestHandoffRelay() {
+        return { ok: true, handoff_relay: state.handoff || null };
+      },
+      async listCoordinationRecords() {
+        return { ok: true, records: state.coordination.slice() };
+      },
       async upsertPlanningState(input) {
         state.planning = input;
         return { ok: true, planning_state: input };
@@ -305,6 +317,15 @@ async function main() {
     assert(writeResult.metadata?.concept === "workspace", "direct restore write should expose workspace metadata governance");
     assert(writeResult.operations?.restore_applied === true, "direct restore write should expose restore_applied=true");
     assert(writeResult.operations?.backup_command === "aidn runtime shared-coordination-backup --target . --json", "direct restore should expose backup command");
+    assert(writeResult.post_restore_validation?.ok === true, "direct restore write should expose a passing post-restore validation");
+    assert(writeResult.post_restore_validation?.status === "pass", "direct restore write should report post-restore validation pass");
+    assert(writeResult.post_restore_validation?.status_report?.ok === true, "post-restore validation should include a passing status report");
+    assert(writeResult.post_restore_validation?.doctor_report?.ok === true, "post-restore validation should include a passing doctor report");
+    assert(writeResult.post_restore_validation?.signals?.source_of_truth === true, "post-restore validation should recheck source-of-truth governance");
+    assert(writeResult.post_restore_validation?.signals?.metadata === true, "post-restore validation should recheck metadata governance");
+    assert(writeResult.post_restore_validation?.signals?.shared_boundary === true, "post-restore validation should recheck the shared boundary");
+    assert(writeResult.post_restore_validation?.signals?.digests === true, "post-restore validation should recheck the restored digests");
+    assert(Array.isArray(writeResult.post_restore_validation?.recommended_actions), "post-restore validation should expose recommended actions");
     assert(state.workspace?.projectId === "project-restore", "restore should register project-aware workspace");
     assert(state.workspace?.workspaceId === "workspace-restore", "restore should register workspace");
     assert(state.worktree?.worktreeId, "restore should register worktree");

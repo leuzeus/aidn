@@ -88,6 +88,8 @@ For shared coordination restore work specifically, validate the preview and the 
 
 The restore fixture checks both the dry-run preview and the `--write` replay path, including the restored planning, handoff, and coordination payloads plus the source-of-truth and metadata surfaces that should be revalidated immediately after restore.
 
+The restore JSON output now also carries a `post_restore_validation` block so the restore result can surface the follow-up status and doctor checks without requiring a separate manual command in the same validation flow.
+
 When a change affects workspace resolution, state-mode parity, db-only hooks, or shared runtime boundary checks, run the dedicated `.github/workflows/runtime-mode.yml` checks instead of relying on `perf-kpi`.
 
 Optional live PostgreSQL smoke is kept out of the required CI path. When you have a live PostgreSQL target and want a manual smoke run, use `.github/workflows/runtime-ops-live-smoke.yml` or run:
