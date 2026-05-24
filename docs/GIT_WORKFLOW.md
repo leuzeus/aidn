@@ -99,7 +99,7 @@ Before tagging or assembling a release:
 
 Before shipping or publishing a release artifact, verify:
 
-1. the release workflow runs `perf:verify-release-flow`, which chains `perf:verify-release-version`, `build-release`, `perf:verify-release-artifacts`, and `perf:verify-pack-topology`
+1. the release workflow runs `perf:verify-release-provenance`, which chains `perf:verify-release-version`, `build-release`, `perf:verify-release-artifacts`, and `perf:verify-pack-topology`
 2. `package.json` does not introduce new published paths that leak internal docs or local-only pilot corpus material
 3. `docs/` entries included in the package are intentionally published and user-facing
 4. `release/dist/`, `release/checksums.txt`, and `release/manifest.json` are treated as generated release outputs, not source inputs
@@ -108,6 +108,7 @@ Before shipping or publishing a release artifact, verify:
 Run:
 
 ```bash
+npm run perf:verify-release-provenance
 npm run perf:verify-release-flow
 npm run perf:verify-release-version
 npm run build-release

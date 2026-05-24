@@ -21,6 +21,7 @@ function isExcluded(relativePath) {
     normalized === ".idea" ||
     normalized.startsWith(".idea/") ||
     normalized.endsWith(".tmp") ||
+    normalized.startsWith("tests/fixtures/tmp-") ||
     normalized === "release/dist" ||
     normalized.startsWith("release/dist/") ||
     normalized === "release/checksums.txt" ||
@@ -184,6 +185,7 @@ function writeAtomicFile(filePath, content, encoding = null) {
   } else {
     fs.writeFileSync(tempPath, content);
   }
+  fs.rmSync(filePath, { force: true });
   fs.renameSync(tempPath, filePath);
 }
 

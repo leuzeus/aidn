@@ -20,5 +20,5 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Verify Release Flow
-        run: npm run perf:verify-release-flow
+      - name: Verify Release Provenance
+        run: npm run perf:verify-release-provenance

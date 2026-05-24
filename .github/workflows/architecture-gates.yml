@@ -104,14 +104,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Verify Release Version
-        run: npm run perf:verify-release-version
-
-      - name: Build Release
-        run: npm run build-release
-
-      - name: Verify Release Artifacts
-        run: npm run perf:verify-release-artifacts
+      - name: Verify Release Provenance
+        run: npm run perf:verify-release-provenance
 
   docs:
     name: Verify Documentation Gates
