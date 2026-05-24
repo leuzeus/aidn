@@ -32,9 +32,28 @@
     "metadata": { "type": "object", "additionalProperties": true },
     "shared_coordination_backend": { "type": "object", "additionalProperties": true },
     "health": { "type": ["object", "null"], "additionalProperties": true },
-    "preview": { "type": ["object", "null"], "additionalProperties": true },
+    "preview": {
+      "type": ["object", "null"],
+      "required": ["planning_read", "handoff_read", "coordination_read"],
+      "properties": {
+        "planning_read": { "type": ["object", "null"], "additionalProperties": true },
+        "handoff_read": { "type": "object", "additionalProperties": true },
+        "coordination_read": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
     "schema_compatibility": { "type": ["object", "null"], "additionalProperties": true },
-    "restore": { "type": ["object", "null"], "additionalProperties": true },
+    "restore": {
+      "type": ["object", "null"],
+      "required": ["registration", "planning", "handoff", "coordination"],
+      "properties": {
+        "registration": { "type": ["object", "null"], "additionalProperties": true },
+        "planning": { "type": ["object", "null"], "additionalProperties": true },
+        "handoff": { "type": ["object", "null"], "additionalProperties": true },
+        "coordination": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
     "operations": {
       "type": "object",
       "required": [
