@@ -38,6 +38,9 @@
         "connection_secret_exposed",
         "backup_command",
         "restore_preview_command",
+        "planning_read_status",
+        "handoff_read_status",
+        "coordination_read_status",
         "recommended_actions"
       ],
       "properties": {
@@ -55,6 +58,9 @@
         "freshness_status": { "type": "string" },
         "backup_command": { "type": "string" },
         "restore_preview_command": { "type": "string" },
+        "planning_read_status": { "type": "string" },
+        "handoff_read_status": { "type": "string" },
+        "coordination_read_status": { "type": "string" },
         "recommended_actions": { "type": "array" }
       },
       "additionalProperties": true

@@ -235,6 +235,9 @@ async function main() {
     assert(directStatus.operations?.source_of_truth_status === "covered", "direct status should expose source-of-truth coverage");
     assert(typeof directStatus.operations?.metadata_status === "string", "direct status should expose metadata status");
     assert(directStatus.operations?.freshness_status === "inspectable", "direct status should expose inspectable freshness");
+    assert(typeof directStatus.operations?.planning_read_status === "string", "direct status should expose planning read status");
+    assert(typeof directStatus.operations?.handoff_read_status === "string", "direct status should expose handoff read status");
+    assert(typeof directStatus.operations?.coordination_read_status === "string", "direct status should expose coordination read status");
     assert(directStatus.operations?.backup_command === "aidn runtime shared-coordination-backup --target . --json", "direct status should expose backup command");
     assert(directStatus.source_of_truth?.source_of_truth_status === "covered", "direct status should resolve the source-of-truth policy");
     assert(directStatus.metadata?.concept === "workspace", "direct status should project workspace metadata policy");
