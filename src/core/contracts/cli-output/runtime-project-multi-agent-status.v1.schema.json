@@ -41,6 +41,26 @@
     "agent_health_summary": { "type": "object", "additionalProperties": true },
     "agent_selection_summary": { "type": "object", "additionalProperties": true },
     "coordination_summary": { "type": "object", "additionalProperties": true },
+    "observability": {
+      "type": "object",
+      "required": [
+        "adapter_count",
+        "runnable_adapter_count",
+        "environment_status",
+        "role_coverage_status",
+        "routing_status",
+        "coordination_history_status"
+      ],
+      "properties": {
+        "adapter_count": { "type": "number" },
+        "runnable_adapter_count": { "type": "number" },
+        "environment_status": { "type": "string" },
+        "role_coverage_status": { "type": "string" },
+        "routing_status": { "type": "string" },
+        "coordination_history_status": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
     "multi_agent_status_diagnostic": {
       "type": "object",
       "required": [
@@ -52,6 +72,11 @@
         "arbitration_required",
         "preferred_decision",
         "integration_strategy",
+        "adapter_count",
+        "runnable_adapter_count",
+        "environment_status",
+        "role_coverage_status",
+        "routing_status",
         "written",
         "summary",
         "recommended_command"
@@ -65,6 +90,11 @@
         "arbitration_required": { "type": "boolean" },
         "preferred_decision": { "type": "string" },
         "integration_strategy": { "type": "string" },
+        "adapter_count": { "type": "number" },
+        "runnable_adapter_count": { "type": "number" },
+        "environment_status": { "type": "string" },
+        "role_coverage_status": { "type": "string" },
+        "routing_status": { "type": "string" },
         "written": { "type": "boolean" },
         "summary": { "type": "string" },
         "recommended_command": { "type": "string" }

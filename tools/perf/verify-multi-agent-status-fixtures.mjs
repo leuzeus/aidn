@@ -55,12 +55,17 @@ function main() {
     assert(text.includes("## Role Coverage"), "status file should include role coverage section");
     assert(text.includes("## Integration Strategy"), "status file should include integration strategy section");
     assert(text.includes("## Coordination"), "status file should include coordination section");
+    assert(text.includes("observability_environment_status:"), "status file should include observability summary");
     assert(text.includes("## Arbitration"), "status file should include arbitration section");
     assert(text.includes("recommended_source:"), "status file should include recommendation source");
     assert(text.includes("repair_primary_reason:"), "status file should include repair primary reason");
     assert(typeof result.arbitration?.preferred_decision === "string", "projection should expose arbitration summary");
     assert(String(result.arbitration?.arbitration_status ?? "") === "ok", "healthy projection should expose arbitration_status=ok");
     assert(result.multi_agent_status_diagnostic?.recommended_role === result.recommendation.role, "projection should expose recommended role in the stable diagnostic");
+    assert(typeof result.observability?.adapter_count === "number", "projection should expose observability adapter count");
+    assert(typeof result.observability?.runnable_adapter_count === "number", "projection should expose observability runnable adapter count");
+    assert(typeof result.multi_agent_status_diagnostic?.adapter_count === "number", "diagnostic should expose adapter count");
+    assert(typeof result.multi_agent_status_diagnostic?.routing_status === "string", "diagnostic should expose routing status");
 
     fs.writeFileSync(path.join(target, "docs", "audit", "AGENT-ROSTER.md"), [
       "# Agent Roster",
@@ -154,8 +159,11 @@ function main() {
     assert(environmentResult.arbitration.arbitration_status === "ok", "blocked role coverage should still expose arbitration_status=ok");
     assert(environmentResult.arbitration.preferred_decision === "reanchor", "blocked role coverage should prefer reanchor");
     assert(environmentResult.multi_agent_status_diagnostic?.preferred_decision === "reanchor", "blocked role coverage should expose preferred decision in the stable diagnostic");
+    assert(environmentResult.observability.environment_status === "blocked", "blocked role coverage should expose observability environment status");
+    assert(environmentResult.observability.routing_status === (environmentResult.coordinator.recommendation.stop_required ? "blocked" : "ready"), "blocked role coverage should keep routing status aligned with stop requirement");
     assert(environmentText.includes("environment_unavailable_count: 1"), "status file should count environment-unavailable adapters");
     assert(environmentText.includes("recommended_role_coverage_status: blocked"), "status file should surface blocked role coverage");
+    assert(environmentText.includes("observability_environment_status: blocked"), "status file should surface observability environment status");
     assert(environmentText.includes("recommendation: no runnable adapter remains for role auditor"), "status file should explain the blocked role coverage");
     assert(environmentText.includes("blocked_adapter: probe-failing -> external runner is not configured"), "status file should surface blocked adapter reasons");
     assert(environmentText.includes("arbitration_required: yes"), "status file should expose arbitration requirement");
@@ -170,6 +178,7 @@ function main() {
     assert(integrationResult.integration_risk.recommended_strategy === "integration_cycle", "multi-agent status should expose the integration strategy");
     assert(integrationResult.arbitration.preferred_decision === "integration_cycle", "integration-cycle strategy should flow into arbitration");
     assert(integrationResult.multi_agent_status_diagnostic?.integration_strategy === "integration_cycle", "integration-cycle strategy should surface in the stable diagnostic");
+    assert(typeof integrationResult.observability.coordination_history_status === "string", "integration-cycle strategy should expose coordination history observability");
     assert(integrationText.includes("integration_strategy: integration_cycle"), "status file should surface the integration strategy in summary");
     assert(integrationText.includes("## Integration Strategy"), "status file should render integration strategy section");
     assert(integrationText.includes("recommended_strategy: integration_cycle"), "status file should expose the recommended integration strategy");

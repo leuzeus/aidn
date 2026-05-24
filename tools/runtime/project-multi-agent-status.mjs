@@ -66,6 +66,11 @@ function deriveMultiAgentStatusDiagnostic(result) {
     arbitration_required: result?.arbitration?.arbitration_required === true,
     preferred_decision: String(result?.arbitration?.preferred_decision ?? "none").trim() || "none",
     integration_strategy: String(result?.integration_risk?.recommended_strategy ?? "unknown").trim() || "unknown",
+    adapter_count: Number(result?.observability?.adapter_count ?? 0) || 0,
+    runnable_adapter_count: Number(result?.observability?.runnable_adapter_count ?? 0) || 0,
+    environment_status: String(result?.observability?.environment_status ?? "unknown").trim() || "unknown",
+    role_coverage_status: String(result?.observability?.role_coverage_status ?? "unknown").trim() || "unknown",
+    routing_status: String(result?.observability?.routing_status ?? "unknown").trim() || "unknown",
     written: result?.written === true,
     summary: `multi-agent status recommends ${String(result?.recommendation?.role ?? "unknown").trim() || "unknown"} + ${String(result?.recommendation?.action ?? "unknown").trim() || "unknown"}`,
     recommended_command: "aidn runtime coordinator-next-action --json",
@@ -95,6 +100,23 @@ function summarizeAdapterEnvironment(entries = []) {
     }
   }
   return summary;
+}
+
+function countRunnableAdapters(entries = []) {
+  return entries.filter((entry) => {
+    const status = String(entry.health_status ?? "").trim().toLowerCase();
+    return status === "ready" || status === "degraded";
+  }).length;
+}
+
+function deriveEnvironmentCompatibilityStatus(summary) {
+  if ((summary.unavailable ?? 0) > 0) {
+    return "blocked";
+  }
+  if ((summary.degraded ?? 0) > 0) {
+    return "degraded";
+  }
+  return "healthy";
 }
 
 function buildRoleCoverage(entries = []) {
@@ -169,6 +191,7 @@ function buildMarkdown({
   integrationRisk,
   roleCoverage,
   effectiveRecommendedRoleCoverage,
+  observability,
   out,
 }) {
   const selectionPreview = findSelectionPreview(selectionSummary, coordinator.recommendation);
@@ -219,6 +242,10 @@ function buildMarkdown({
   lines.push(`arbitration_required: ${arbitration.arbitration_required ? "yes" : "no"}`);
   lines.push(`arbitration_status: ${arbitration.arbitration_status ?? "ok"}`);
   lines.push(`preferred_decision: ${arbitration.preferred_decision}`);
+  lines.push(`observability_environment_status: ${observability.environment_status}`);
+  lines.push(`observability_runnable_adapter_count: ${observability.runnable_adapter_count}`);
+  lines.push(`observability_role_coverage_status: ${observability.role_coverage_status}`);
+  lines.push(`observability_routing_status: ${observability.routing_status}`);
   lines.push("");
   lines.push("## Coordinator Recommendation");
   lines.push("");
@@ -316,6 +343,10 @@ function buildMarkdown({
   lines.push(`- total_dispatches: ${coordinationSummary.summary.total_dispatches}`);
   lines.push(`- arbitration_count: ${coordinationSummary.summary.arbitration_count}`);
   lines.push(`- last_arbitration_decision: ${coordinationSummary.summary.last_arbitration_decision}`);
+  lines.push(`- observability_environment_status: ${observability.environment_status}`);
+  lines.push(`- observability_runnable_adapter_count: ${observability.runnable_adapter_count}`);
+  lines.push(`- observability_role_coverage_status: ${observability.role_coverage_status}`);
+  lines.push(`- observability_routing_status: ${observability.routing_status}`);
   lines.push("");
   lines.push("## Priority Reads");
   lines.push("");
@@ -401,6 +432,15 @@ export async function projectMultiAgentStatus({
     sharedCoordination,
     sharedCoordinationOptions,
   });
+  const environmentSummary = summarizeAdapterEnvironment(healthSummary.verification.entries);
+  const observability = {
+    adapter_count: healthSummary.verification.entries.length,
+    runnable_adapter_count: countRunnableAdapters(healthSummary.verification.entries),
+    environment_status: deriveEnvironmentCompatibilityStatus(environmentSummary),
+    role_coverage_status: effectiveRecommendedRoleCoverage.status,
+    routing_status: coordinator.recommendation.stop_required ? "blocked" : "ready",
+    coordination_history_status: coordinationSummary.summary.history_status,
+  };
   const outPath = path.resolve(absoluteTargetRoot, out);
   const markdown = buildMarkdown({
     coordinator,
@@ -412,6 +452,7 @@ export async function projectMultiAgentStatus({
     integrationRisk,
     roleCoverage,
     effectiveRecommendedRoleCoverage,
+    observability,
     out,
   });
   const relativeOut = String(out).replace(/\\/g, "/").replace(/^docs\/audit\//i, "");
@@ -473,6 +514,7 @@ export async function projectMultiAgentStatus({
       written: coordinationSummary.written,
       summary: coordinationSummary.summary,
     },
+    observability,
     multi_agent_status_diagnostic: deriveMultiAgentStatusDiagnostic({
       target_root: absoluteTargetRoot,
       output_file: write.path,
@@ -481,6 +523,7 @@ export async function projectMultiAgentStatus({
       recommendation: coordinator.recommendation,
       integration_risk: integrationRisk,
       arbitration,
+      observability,
       roster_verification: {
         pass: rosterVerification.pass,
         issues: rosterVerification.issues,
