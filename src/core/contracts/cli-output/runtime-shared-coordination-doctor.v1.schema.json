@@ -26,8 +26,23 @@
     "metadata": { "type": "object", "additionalProperties": true },
     "shared_coordination_backend": { "type": "object", "additionalProperties": true },
     "health": { "type": ["object", "null"], "additionalProperties": true },
-    "findings": { "type": "array" },
-    "recommended_actions": { "type": "array" },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "code", "message"],
+        "properties": {
+          "severity": { "type": "string" },
+          "code": { "type": "string" },
+          "message": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "recommended_actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
     "operations": {
       "type": "object",
       "required": [
@@ -57,7 +72,10 @@
         "doctor_status": { "type": "string" },
         "finding_count": { "type": "number" },
         "backup_command": { "type": "string" },
-        "recommended_actions": { "type": "array" }
+        "recommended_actions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
       },
       "additionalProperties": true
     }
