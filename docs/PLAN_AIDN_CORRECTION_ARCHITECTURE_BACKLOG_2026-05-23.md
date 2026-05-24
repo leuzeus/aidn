@@ -283,12 +283,13 @@ Avancement:
 - la terminologie des docs d’exploitation et de test a été resserrée vers un vocabulaire local-only de référence
 | P2 | ARCH-P2-05 | Backlog GitHub synchronisé | Plans existants non consolidés | Transformer ce document en issues et labels GitHub | `docs/BACKLOG_*`, GitHub project docs | 10 premières issues créées ou prêtes | Review docs | Doublons avec anciens backlogs | Ce plan | S |
 | P3 | ARCH-P3-01 | Fédération multi-repo avancée | Extension shared future | N'ajouter aucune surface avant stabilisation P0/P1; préparer ADR si besoin réel | ADR-0007, shared stores, tests multi-project | Nouvelle surface = ADR/matrix/contracts/tests | shared multi-project fixtures | Cloudification implicite | ARCH-P0-06 | L |
-| P3 | ARCH-P3-02 | Live PostgreSQL CI optionnel | Live smoke local seulement | Évaluer self-hosted/ephemeral PostgreSQL CI sans rendre PG obligatoire | `.github/workflows/runtime-ops.yml`, live smoke docs | CI SKIP/PASS clair; secrets protégés | live smoke optional | Maintenance CI | P1 ops runbooks | M |
+| P3 | ARCH-P3-02 | Live PostgreSQL CI optionnel | Live smoke local seulement | Évaluer self-hosted/ephemeral PostgreSQL CI sans rendre PG obligatoire | `.github/workflows/runtime-ops.yml`, `.github/workflows/runtime-ops-live-smoke.yml`, live smoke docs | CI SKIP/PASS clair; secrets protégés | live smoke optional | Maintenance CI | P1 ops runbooks | M |
 | P3 | ARCH-P3-03 | Observability avancée des agents | Coordination richer future | Ajouter métriques agent/routing seulement après contracts stables | coordinator use cases, reports | Contrats existants non cassés | coordinator fixtures | Feature creep | P1 coordinateurs | M |
 
 Avancement:
 
 - un seed d'issues daté existe dans [docs/BACKLOG_AIDN_CORRECTION_ARCHITECTURE_GITHUB_ISSUES_2026-05-24.md](/g:/projets/aidn/docs/BACKLOG_AIDN_CORRECTION_ARCHITECTURE_GITHUB_ISSUES_2026-05-24.md) avec les 10 premières issues prêtes
+- `ARCH-P3-02` est désormais matérialisé par un workflow manuel optionnel [`.github/workflows/runtime-ops-live-smoke.yml`](/g:/projets/aidn/.github/workflows/runtime-ops-live-smoke.yml), et les docs de test l’annoncent comme `SKIP` quand aucune URL live n’est fournie
 
 ## Premières issues GitHub prêtes à créer
 

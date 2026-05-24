@@ -252,6 +252,7 @@ AIDN_PG_SMOKE_URL="$AIDN_PG_URL" npm run perf:verify-postgres-shared-coordinatio
 ```
 
 This smoke is intended to run locally against a PostgreSQL instance reachable from your machine.
+If you want a manually triggered CI path, use `.github/workflows/runtime-ops-live-smoke.yml`.
 
 ## Repair and Re-anchor
 
