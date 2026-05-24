@@ -281,6 +281,8 @@ Avancement:
 Avancement:
 
 - la terminologie des docs d’exploitation et de test a été resserrée vers un vocabulaire local-only de référence
+- plusieurs schémas JSON v1 critiques ont été resserrés sur les champs déjà exercés par leurs fixtures: `runtime-db-status`, `runtime-project-runtime-state`, `runtime-project-handoff-packet`, `runtime-shared-coordination-status`, `runtime-shared-coordination-projects`, `runtime-shared-coordination-backup`, `runtime-shared-coordination-restore`, `runtime-shared-coordination-doctor`, `runtime-shared-coordination-migrate`, `runtime-project-multi-agent-status`
+- les contrats et fixtures associées restent en cohérence avec les verifiers ciblés
 | P2 | ARCH-P2-05 | Backlog GitHub synchronisé | Plans existants non consolidés | Transformer ce document en issues et labels GitHub | `docs/BACKLOG_*`, GitHub project docs | 10 premières issues créées ou prêtes | Review docs | Doublons avec anciens backlogs | Ce plan | S |
 | P3 | ARCH-P3-01 | Fédération multi-repo avancée | Extension shared future | N'ajouter aucune surface avant stabilisation P0/P1; préparer ADR si besoin réel | ADR-0007, shared stores, tests multi-project | Nouvelle surface = ADR/matrix/contracts/tests | shared multi-project fixtures | Cloudification implicite | ARCH-P0-06 | L |
 | P3 | ARCH-P3-02 | Live PostgreSQL CI optionnel | Live smoke local seulement | Évaluer self-hosted/ephemeral PostgreSQL CI sans rendre PG obligatoire | `.github/workflows/runtime-ops.yml`, `.github/workflows/runtime-ops-live-smoke.yml`, live smoke docs | CI SKIP/PASS clair; secrets protégés | live smoke optional | Maintenance CI | P1 ops runbooks | M |
