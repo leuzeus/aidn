@@ -52,15 +52,109 @@
       "additionalProperties": false
     },
     "coordinator": { "type": "object", "additionalProperties": true },
-    "recommendation": { "type": "object", "additionalProperties": true },
+    "recommendation": {
+      "type": "object",
+      "required": ["role", "action", "goal", "source", "reason", "stop_required"],
+      "properties": {
+        "role": { "type": "string" },
+        "action": { "type": "string" },
+        "goal": { "type": "string" },
+        "source": { "type": "string" },
+        "reason": { "type": "string" },
+        "stop_required": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
     "handoff_status": { "type": ["object", "null"], "additionalProperties": true },
     "integration_risk": { "type": "object", "additionalProperties": true },
-    "arbitration": { "type": "object", "additionalProperties": true },
-    "recommended_role_coverage": { "type": "object", "additionalProperties": true },
-    "roster_verification": { "type": "object", "additionalProperties": true },
-    "agent_health_summary": { "type": "object", "additionalProperties": true },
-    "agent_selection_summary": { "type": "object", "additionalProperties": true },
-    "coordination_summary": { "type": "object", "additionalProperties": true },
+    "arbitration": {
+      "type": "object",
+      "required": [
+        "arbitration_required",
+        "arbitration_status",
+        "arbitration_reason",
+        "preferred_decision",
+        "suggestions"
+      ],
+      "properties": {
+        "arbitration_required": { "type": "boolean" },
+        "arbitration_status": { "type": "string" },
+        "arbitration_reason": { "type": "string" },
+        "preferred_decision": { "type": "string" },
+        "suggestions": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
+    "recommended_role_coverage": {
+      "type": "object",
+      "required": ["status", "reason"],
+      "properties": {
+        "status": { "type": "string" },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "roster_verification": {
+      "type": "object",
+      "required": ["pass", "issues", "warnings"],
+      "properties": {
+        "pass": { "type": "boolean" },
+        "issues": { "type": "array" },
+        "warnings": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
+    "agent_health_summary": {
+      "type": "object",
+      "required": ["output_file", "written", "verification"],
+      "properties": {
+        "output_file": { "type": "string" },
+        "written": { "type": "boolean" },
+        "verification": {
+          "type": "object",
+          "required": ["pass", "issues", "warnings", "environment_summary", "role_coverage", "recommended_role_coverage"],
+          "properties": {
+            "pass": { "type": "boolean" },
+            "issues": { "type": "array" },
+            "warnings": { "type": "array" },
+            "environment_summary": {
+              "type": "object",
+              "required": ["ready", "degraded", "unavailable", "unknown"],
+              "properties": {
+                "ready": { "type": "number" },
+                "degraded": { "type": "number" },
+                "unavailable": { "type": "number" },
+                "unknown": { "type": "number" }
+              },
+              "additionalProperties": true
+            },
+            "role_coverage": { "type": "object", "additionalProperties": true },
+            "recommended_role_coverage": { "type": "object", "additionalProperties": true }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "agent_selection_summary": {
+      "type": "object",
+      "required": ["output_file", "written"],
+      "properties": {
+        "output_file": { "type": "string" },
+        "written": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "coordination_summary": {
+      "type": "object",
+      "required": ["output_file", "written", "summary"],
+      "properties": {
+        "output_file": { "type": "string" },
+        "written": { "type": "boolean" },
+        "summary": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
     "observability": {
       "type": "object",
       "required": [

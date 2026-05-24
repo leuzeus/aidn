@@ -62,6 +62,10 @@ function main() {
     assert(typeof result.arbitration?.preferred_decision === "string", "projection should expose arbitration summary");
     assert(String(result.arbitration?.arbitration_status ?? "") === "ok", "healthy projection should expose arbitration_status=ok");
     assert(result.multi_agent_status_diagnostic?.recommended_role === result.recommendation.role, "projection should expose recommended role in the stable diagnostic");
+    assert(typeof result.recommendation?.reason === "string" && typeof result.recommendation?.source === "string", "projection should expose normalized recommendation fields");
+    assert(typeof result.agent_health_summary?.verification?.environment_summary?.unavailable === "number", "projection should expose environment summary");
+    assert(typeof result.agent_selection_summary?.written === "boolean", "projection should expose selection summary write flag");
+    assert(typeof result.coordination_summary?.summary?.history_status === "string", "projection should expose coordination summary");
     assert(typeof result.observability?.adapter_count === "number", "projection should expose observability adapter count");
     assert(typeof result.observability?.runnable_adapter_count === "number", "projection should expose observability runnable adapter count");
     assert(typeof result.multi_agent_status_diagnostic?.adapter_count === "number", "diagnostic should expose adapter count");
