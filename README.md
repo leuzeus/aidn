@@ -202,6 +202,7 @@ Migration and repair:
 
 ## Architecture Direction
 
+- Documentation index: `docs/README.md`
 - Target architecture ADR: `docs/ADR/ADR-0002-runtime-platform-architecture.md`
 - Remediation plan: `docs/PLAN_ARCHITECTURE_REMEDIATION_2026-03-07.md`
 - Executable backlog: `docs/BACKLOG_ARCHITECTURE_REMEDIATION_2026-03-07.md`
