@@ -56,6 +56,23 @@ This overlay names the logical owner of key information concepts. It complements
 | Agent roster | `docs/audit/AGENT-ROSTER.md` | same checkout-bound file | same checkout-bound file | health and selection summaries |
 | CLI output contracts | package `src/core/contracts/cli-output/*.schema.json` | same package contract | same package contract | generated docs future |
 
+## Mode Contract Summary
+
+The overlay above describes where each concept lives. These are the operational guarantees the modes must preserve:
+
+- `files`
+  - checkout-bound artifacts are authoritative
+  - local runtime projections are derived from the checkout
+  - shared runtime is ignored unless a locator explicitly opts in
+- `dual`
+  - runtime DB and checkout-bound artifacts coexist
+  - local SQLite/projection artifacts remain valid and must stay reconstructible
+  - shared coordination may be enabled explicitly, but it never relocates checkout-bound paths
+- `db-only`
+  - the runtime DB becomes the primary source for supported runtime state
+  - Markdown and other human-facing projections are materialized on demand
+  - shared runtime remains opt-in and does not imply wholesale relocation of `.aidn/*`
+
 Rules:
 
 - checkout-bound artifacts remain local/versioned even when DB-backed runtime is enabled
