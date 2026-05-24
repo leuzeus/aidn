@@ -37,6 +37,7 @@ function main() {
       "--target", fixture,
       "--out", outFile,
       "--json",
+      "--write",
     ]);
 
     const markdown = fs.readFileSync(outFile, "utf8");
@@ -85,6 +86,7 @@ function main() {
       "--target", filelessRepo,
       "--out", filelessOut,
       "--json",
+      "--write",
     ], {
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",

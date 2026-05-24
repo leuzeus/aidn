@@ -57,6 +57,7 @@ function verifyScenario(tempRoot, name, payload, expectations, options = {}) {
     "--target",
     repo,
     "--json",
+    "--write",
   ]);
   const markdown = fs.readFileSync(outFile, "utf8");
   assert(markdown.includes(`repair_layer_status: ${expectations.status}`), `${name}: status missing`);

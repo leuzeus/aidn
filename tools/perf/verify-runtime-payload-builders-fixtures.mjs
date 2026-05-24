@@ -3,7 +3,10 @@ import {
   buildHandoffPacketPayload,
   prepareHandoffPacketProjection,
 } from "../../src/application/runtime/handoff-packet-projector-use-case.mjs";
-import { buildRuntimeStateDigest } from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
+import {
+  buildRuntimeStateDigest,
+  prepareRuntimeStateProjection,
+} from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
 
 function printUsage() {
   console.log("Usage:");
@@ -70,6 +73,38 @@ function verifyRuntimeStateDigest() {
   assert(digest.consistency_status === "pass", "runtime digest should map consistency pass");
   assert(digest.current_state_source === "fixture", "runtime digest should expose source diagnostics");
   assert(Array.isArray(digest.prioritized_artifacts), "runtime digest should keep prioritized artifacts as array");
+}
+
+function verifyRuntimeStateProjection() {
+  const projection = prepareRuntimeStateProjection({
+    workspace,
+    dbBackedMode: true,
+    effectiveStateMode: "db-only",
+    hydrated: { state_mode: "files" },
+    fallbackContext: { latest: {} },
+    repairRouting: { routing_hint: "continue", routing_reason: "clear" },
+    sharedRuntimeValidation: { status: "clear" },
+    sharedPlanning: {
+      active_backlog: "EIA-6.3",
+      backlog_status: "done",
+      backlog_next_step: "none",
+      planning_arbitration_status: "none",
+      shared_planning_source: "fixture",
+      shared_planning_read_status: "not-applicable",
+    },
+    consistency: { pass: true, current_state: { active_cycle: "C001" }, checks: {} },
+    currentStateResolution: { source: "fixture" },
+    sessionResolution: { source: "fixture" },
+    cycleStatusResolution: { source: "fixture" },
+    hydratedFile: ".aidn/runtime/context/hydrated-context.json",
+    contextFile: ".aidn/runtime/context/codex-context.json",
+  });
+
+  assert(projection.contract_version === "critical-markdown-v1", "runtime projection should expose explicit contract version");
+  assert(projection.runtime_state_mode === "db-only", "runtime projection should preserve effective runtime state mode");
+  assert(projection.source_mode === "explicit", "runtime projection should expose source_mode");
+  assert(projection.shared_planning_source === "fixture", "runtime projection should keep shared planning source");
+  assert(Array.isArray(projection.prioritized_artifacts) && projection.prioritized_artifacts.length > 0, "runtime projection should keep prioritized artifacts");
 }
 
 function verifyHandoffPacketPayload() {
@@ -220,6 +255,7 @@ function verifyHandoffPacketProjection() {
 function main() {
   try {
     verifyRuntimeStateDigest();
+    verifyRuntimeStateProjection();
     verifyHandoffPacketPayload();
     verifyHandoffPacketProjection();
     console.log("PASS");
