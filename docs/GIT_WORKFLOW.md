@@ -92,7 +92,7 @@ Before tagging or assembling a release:
 2. README stable install examples must point to `github:leuzeus/aidn#v<VERSION>`.
 3. `tools/build-release.mjs` must produce `release/dist/aidn-workflow-<VERSION>.zip`.
 4. `release/checksums.txt` must reference the zip for the same `VERSION`.
-5. `release/manifest.json` must record package name, version, git commit, generation time, artifact path, artifact bytes, and artifact SHA-256.
+5. `release/manifest.json` must record package name, version, git commit, generation time, source provenance, build provenance, artifact path, artifact bytes, and artifact SHA-256.
 6. `dev` may carry in-flight integration work, but release tags and stable consumer instructions should be cut from the reviewed release baseline.
 
 ## Release Checklist

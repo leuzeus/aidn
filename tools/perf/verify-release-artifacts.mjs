@@ -69,7 +69,9 @@ function verify() {
   const zipBytes = fs.existsSync(zipPath) ? fs.statSync(zipPath).size : 0;
   const checksumText = fs.existsSync(checksumsPath) ? fs.readFileSync(checksumsPath, "utf8").trim() : "";
   const expectedChecksumLine = zipHash ? `${zipHash}  ${zipRelativePath}` : "";
-  if (checksumText && checksumText !== expectedChecksumLine) {
+  if (!checksumText && fs.existsSync(checksumsPath)) {
+    issues.push("release/checksums.txt is empty");
+  } else if (checksumText && checksumText !== expectedChecksumLine) {
     issues.push("release/checksums.txt does not match the current release zip");
   }
 
@@ -91,9 +93,26 @@ function verify() {
     if (!manifest.generated_at || Number.isNaN(Date.parse(manifest.generated_at))) {
       issues.push("manifest generated_at must be an ISO timestamp");
     }
-    const artifact = Array.isArray(manifest.artifacts)
-      ? manifest.artifacts.find((item) => item.path === zipRelativePath)
-      : null;
+    if (!manifest.source || manifest.source.version_file !== "VERSION" || manifest.source.package_file !== "package.json") {
+      issues.push("manifest source block must declare VERSION and package.json provenance");
+    }
+    if (!manifest.build || manifest.build.tool !== "tools/build-release.mjs") {
+      issues.push("manifest build block must declare tools/build-release.mjs provenance");
+    } else {
+      if (!Number.isInteger(manifest.build.input_files) || manifest.build.input_files < 0) {
+        issues.push("manifest build.input_files must be a non-negative integer");
+      }
+      if (!Number.isInteger(manifest.build.input_bytes) || manifest.build.input_bytes < 0) {
+        issues.push("manifest build.input_bytes must be a non-negative integer");
+      }
+    }
+    const artifacts = Array.isArray(manifest.artifacts) ? manifest.artifacts : null;
+    if (!artifacts) {
+      issues.push("manifest artifacts must be an array");
+    } else if (artifacts.length !== 1) {
+      issues.push(`manifest artifacts must contain exactly one entry, got ${artifacts.length}`);
+    }
+    const artifact = artifacts ? artifacts.find((item) => item.path === zipRelativePath) : null;
     if (!artifact) {
       issues.push(`manifest is missing artifact ${zipRelativePath}`);
     } else {
