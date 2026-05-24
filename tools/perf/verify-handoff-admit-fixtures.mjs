@@ -159,6 +159,7 @@ function main() {
       "--next-agent-goal",
       "implement alpha feature validation",
       "--json",
+      "--write",
     ], repoRoot, 0);
     const readyAdmit = runNode(admitScript, [
       "--target",
@@ -171,6 +172,7 @@ function main() {
       "--next-agent-goal",
       "implement alpha feature validation",
       "--json",
+      "--write",
     ], repoRoot, 0);
     const staleAdmit = runNode(admitScript, [
       "--target",
@@ -182,6 +184,7 @@ function main() {
       "--target",
       blockedTarget,
       "--json",
+      "--write",
     ], repoRoot, 0);
     const warnTarget = path.join(tempRoot, "warn");
     fs.cpSync(path.join(fixturesRoot, "warn"), warnTarget, { recursive: true });
@@ -189,6 +192,7 @@ function main() {
       "--target",
       warnTarget,
       "--json",
+      "--write",
     ], repoRoot, 0);
     const warnAdmit = runNode(admitScript, [
       "--target",
@@ -208,6 +212,7 @@ function main() {
       "--next-agent-goal",
       "implement alpha feature validation",
       "--json",
+      "--write",
     ], repoRoot, 0);
     const tamperedText = fs.readFileSync(tamperedPacketPath, "utf8").replace("active_cycle: C101", "active_cycle: C999");
     fs.writeFileSync(tamperedPacketPath, tamperedText, "utf8");
@@ -224,6 +229,7 @@ function main() {
       "--from-agent-action",
       "repair",
       "--json",
+      "--write",
     ], repoRoot, 0);
     const transitionRejectedAdmit = runNode(admitScript, [
       "--target",
@@ -234,6 +240,7 @@ function main() {
       "--target",
       invalidSharedRuntimeTarget,
       "--json",
+      "--write",
     ], repoRoot, 0);
     const invalidSharedRuntimeAdmit = runNode(admitScript, [
       "--target",
