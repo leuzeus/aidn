@@ -45,8 +45,25 @@
       },
       "additionalProperties": false
     },
-    "summary": { "type": "object", "additionalProperties": true },
-    "roster_verification": { "type": "object", "additionalProperties": true },
+    "summary": {
+      "type": "object",
+      "required": ["adapters", "auto_selection_preview"],
+      "properties": {
+        "adapters": { "type": "array" },
+        "auto_selection_preview": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
+    "roster_verification": {
+      "type": "object",
+      "required": ["pass", "issues", "warnings"],
+      "properties": {
+        "pass": { "type": "boolean" },
+        "issues": { "type": "array" },
+        "warnings": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
     "agent_selection_diagnostic": {
       "type": "object",
       "required": [

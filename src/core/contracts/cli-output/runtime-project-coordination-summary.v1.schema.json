@@ -52,7 +52,27 @@
       },
       "additionalProperties": false
     },
-    "summary": { "type": "object", "additionalProperties": true },
+    "summary": {
+      "type": "object",
+      "required": [
+        "history_status",
+        "total_dispatches",
+        "arbitration_count",
+        "last_recommended_role",
+        "last_execution_status",
+        "last_arbitration_decision"
+      ],
+      "properties": {
+        "history_status": { "type": "string" },
+        "total_dispatches": { "type": "number" },
+        "arbitration_count": { "type": "number" },
+        "last_recommended_role": { "type": "string" },
+        "last_execution_status": { "type": "string" },
+        "last_arbitration_decision": { "type": "string" },
+        "recommended_role_counts": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
     "coordination_summary_diagnostic": {
       "type": "object",
       "required": [

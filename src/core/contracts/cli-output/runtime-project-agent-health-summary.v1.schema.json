@@ -44,7 +44,17 @@
       },
       "additionalProperties": false
     },
-    "verification": { "type": "object", "additionalProperties": true },
+    "verification": {
+      "type": "object",
+      "required": ["pass", "issues", "warnings", "entries"],
+      "properties": {
+        "pass": { "type": "boolean" },
+        "issues": { "type": "array" },
+        "warnings": { "type": "array" },
+        "entries": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
     "agent_health_diagnostic": {
       "type": "object",
       "required": [

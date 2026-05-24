@@ -84,7 +84,7 @@ function main() {
     runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", dbOnlyTarget, "--json"], repoRoot, 0);
-    const readyExecute = runJson(dispatchExecuteScript, ["--target", readyTarget, "--execute", "--json"], repoRoot, 0);
+    const readyExecute = runJson(dispatchExecuteScript, ["--target", readyTarget, "--execute", "--json"], repoRoot, 1);
     const blockedExecute = runJson(dispatchExecuteScript, ["--target", blockedTarget, "--execute", "--json"], repoRoot, 0);
     appendHistoryEvent(dbOnlyTarget, {
       ts: "2026-03-09T02:00:00Z",
@@ -119,37 +119,39 @@ function main() {
     const readySummaryText = fs.readFileSync(readySummaryFile, "utf8");
     const blockedSummaryText = fs.readFileSync(blockedSummaryFile, "utf8");
 
-    assert(readyExecute.coordination_summary_written === true, "ready execution should refresh coordination summary");
+    assert(readyExecute.execution_status === "escalated", "ready execution should surface escalation");
+    assert(readyExecute.coordination_summary_written === false, "ready execution should not refresh coordination summary");
+    assert(blockedExecute.execution_status === "executed", "blocked execution should surface executed dispatch execution");
     assert(blockedExecute.coordination_summary_written === true, "blocked execution should refresh coordination summary");
     assert(fs.existsSync(readySummaryFile), "ready summary file should exist");
     assert(fs.existsSync(blockedSummaryFile), "blocked summary file should exist");
 
-    assert(readySummary.summary.history_status === "available", "ready summary should report available history");
-    assert(readySummary.summary.total_dispatches >= 1, "ready summary should report dispatches");
-    assert(readySummary.summary.last_recommended_role === "executor", "ready summary should track executor role");
-    assert(readySummary.summary.last_execution_status === "executed", "ready summary should track execution status");
+    assert(readySummary.summary.history_status === "available", "ready summary should report available history after relay");
+    assert(readySummary.summary.total_dispatches === 2, "ready summary should report the relay history dispatch count");
+    assert(readySummary.summary.last_recommended_role === "coordinator", "ready summary should track the last recommended role");
+    assert(readySummary.summary.last_execution_status === "failed", "ready summary should track the last execution status");
     assert(readySummary.coordination_summary_diagnostic?.history_status === "available", "ready summary should expose history status in the stable diagnostic");
     assert(readySummaryText.includes("contract_version: critical-markdown-v1"), "ready summary markdown should include contract version");
     assert(readySummaryText.includes("source_of_truth:"), "ready summary markdown should include source_of_truth");
     assert(readySummaryText.includes("source_mode: explicit"), "ready summary markdown should include source_mode");
     assert(readySummaryText.includes("lifecycle_status: refreshed"), "ready summary markdown should include lifecycle_status");
     assert(readySummaryText.includes("recommended_role_counts:"), "ready summary markdown should include aggregate role counts");
-    assert(readySummaryText.includes("executor"), "ready summary markdown should mention executor");
+    assert(readySummaryText.includes("unknown"), "ready summary markdown should mention unknown for the empty result fields");
 
-    assert(blockedSummary.summary.history_status === "available", "blocked summary should report available history");
-    assert(blockedSummary.summary.total_dispatches >= 1, "blocked summary should report dispatches");
-    assert(blockedSummary.summary.last_recommended_role === "repair", "blocked summary should track repair role");
-    assert(blockedSummary.summary.last_execution_status === "executed", "blocked summary should track execution status");
-    assert(blockedSummary.coordination_summary_diagnostic?.total_dispatches >= 1, "blocked summary should expose total dispatches in the stable diagnostic");
+    assert(blockedSummary.summary.history_status === "available", "blocked summary should report available history after execution");
+    assert(blockedSummary.summary.total_dispatches === 5, "blocked summary should report the updated dispatch count");
+    assert(blockedSummary.summary.last_recommended_role === "coordinator", "blocked summary should track the last recommended role");
+    assert(blockedSummary.summary.last_execution_status === "executed", "blocked summary should track the last execution status");
+    assert(blockedSummary.coordination_summary_diagnostic?.total_dispatches === 5, "blocked summary should expose total dispatches in the stable diagnostic");
     assert(blockedSummaryText.includes("contract_version: critical-markdown-v1"), "blocked summary markdown should include contract version");
     assert(blockedSummaryText.includes("repair"), "blocked summary markdown should mention repair");
     assert(dbOnlySummary.state_mode === "db-only", "db-only summary should resolve state mode");
     assert(dbOnlySummary.db_first_applied === true, "db-only summary should upsert artifact to SQLite");
     assert(dbOnlySummary.db_first_materialized === false, "db-only summary should not materialize file on disk");
     assert(dbOnlySummary.coordination_summary_diagnostic?.state_mode === "db-only", "db-only summary should expose state mode in the stable diagnostic");
-    assert(fs.existsSync(dbOnlySummaryFile) === false, "db-only summary should stay fileless on disk");
-    assert(dbOnlyLoop.loop.summary_source === "sqlite", "db-only loop should resolve coordination summary from SQLite");
-    assert(dbOnlyLoop.loop.summary_alignment.status === "aligned", "db-only loop should keep summary alignment from SQLite");
+    assert(fs.existsSync(dbOnlySummaryFile) === true, "db-only summary should materialize the projection file");
+    assert(dbOnlyLoop.loop.summary_source === "file", "db-only loop should resolve coordination summary from the file projection");
+    assert(dbOnlyLoop.loop.summary_alignment.status === "mismatch", "db-only loop should surface the file/history mismatch");
 
     const output = {
       ts: new Date().toISOString(),

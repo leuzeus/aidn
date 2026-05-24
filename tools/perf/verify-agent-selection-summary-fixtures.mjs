@@ -71,6 +71,7 @@ function main() {
 
     const defaultResult = runJson(script, ["--target", target, "--json"], repoRoot, 0);
     const defaultSummaryText = fs.readFileSync(defaultResult.out_file, "utf8");
+    assert(Array.isArray(defaultResult.summary.adapters), "default selection should expose adapters array");
 
     const externalAgentDir = path.join(target, ".aidn", "runtime", "agents");
     fs.mkdirSync(externalAgentDir, { recursive: true });
@@ -118,6 +119,7 @@ function main() {
     assert(defaultSummaryText.includes("codex-auditor"), "default summary should include codex-auditor");
     assert(defaultSummaryText.includes("health=ready"), "default summary should expose adapter health");
     assert(externalResult.summary.adapters.some((adapter) => adapter.id === "external-auditor"), "external projection should include the registered adapter");
+    assert(Array.isArray(externalResult.summary.auto_selection_preview), "external selection should expose auto selection preview");
     assert(externalResult.roster_verification.pass === true, "external projection should pass roster verification");
     assert(externalResult.agent_selection_diagnostic?.adapter_count >= 1, "external projection should expose adapter count in the stable diagnostic");
     assert(externalSummaryText.includes("external-auditor"), "external summary should include the registered adapter");
