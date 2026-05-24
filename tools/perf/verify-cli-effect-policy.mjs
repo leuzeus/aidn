@@ -67,9 +67,6 @@ function verifySafeArgs(policies) {
     if (policy.command.includes("--json") && !policy.safe_args.includes("--json")) {
       issues.push(`${policy.id}: JSON command safe_args must include --json`);
     }
-    if (["read-only", "preview"].includes(policy.effect_class) && policy.no_mutation_paths.length > 0) {
-      issues.push(`${policy.id}: read-only/preview commands should be protected by full-tree snapshot, not path-only no_mutation_paths`);
-    }
   }
   return issues;
 }

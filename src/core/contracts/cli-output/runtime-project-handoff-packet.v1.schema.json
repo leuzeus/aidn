@@ -14,6 +14,7 @@
     "shared_runtime_validation",
     "output_file",
     "written",
+    "write",
     "packet",
     "consistency"
   ],
@@ -147,6 +148,7 @@
     },
     "output_file": { "type": "string" },
     "written": { "type": "boolean" },
+    "write": { "type": "boolean" },
     "packet": {
       "type": "object",
       "required": [

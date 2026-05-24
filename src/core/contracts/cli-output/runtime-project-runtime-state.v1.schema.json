@@ -12,6 +12,7 @@
     "shared_runtime_validation",
     "output_file",
     "written",
+    "write",
     "digest",
     "consistency"
   ],
@@ -99,6 +100,7 @@
     },
     "output_file": { "type": "string" },
     "written": { "type": "boolean" },
+    "write": { "type": "boolean" },
     "digest": {
       "type": "object",
       "required": [

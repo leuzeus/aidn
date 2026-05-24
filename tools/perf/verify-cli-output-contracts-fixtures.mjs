@@ -44,13 +44,13 @@ const CONTRACT_CASES = [
   {
     name: "runtime-project-runtime-state",
     schema: "runtime-project-runtime-state.v1.schema.json",
-    args: ["runtime", "project-runtime-state", "--dry-run", "--json"],
+    args: ["runtime", "project-runtime-state", "--json"],
     noMutationPaths: ["docs/audit/RUNTIME-STATE.md"],
   },
   {
     name: "runtime-project-handoff-packet",
     schema: "runtime-project-handoff-packet.v1.schema.json",
-    args: ["runtime", "project-handoff-packet", "--dry-run", "--json"],
+    args: ["runtime", "project-handoff-packet", "--json"],
     noMutationPaths: ["docs/audit/HANDOFF-PACKET.md"],
   },
   {
@@ -413,7 +413,8 @@ function validateAgainstSchema(payload, schema, location = "$") {
     issues.push(`${location}: expected ${allowedTypes.join("|")}, got ${valueType(payload)}`);
     return issues;
   }
-  if (schema.type === "object" || allowedTypes.includes("object")) {
+  const isObjectLike = payload !== null && typeof payload === "object" && !Array.isArray(payload);
+  if ((schema.type === "object" || allowedTypes.includes("object")) && isObjectLike) {
     const required = Array.isArray(schema.required) ? schema.required : [];
     for (const fieldName of required) {
       if (!Object.prototype.hasOwnProperty.call(payload, fieldName)) {
@@ -547,6 +548,9 @@ try {
   main();
 } catch (error) {
   console.error(`ERROR: ${error.message}`);
+  if (error && error.stack) {
+    console.error(error.stack);
+  }
   printUsage();
   process.exit(1);
 }

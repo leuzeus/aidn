@@ -51,6 +51,7 @@ function parseArgs(argv) {
     fromAgentAction: "",
     json: false,
     dryRun: false,
+    write: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -83,6 +84,8 @@ function parseArgs(argv) {
       args.json = true;
     } else if (token === "--dry-run") {
       args.dryRun = true;
+    } else if (token === "--write") {
+      args.write = true;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -100,6 +103,7 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target .");
+  console.log("  node tools/runtime/project-handoff-packet.mjs --target . --write");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target . --from-agent-role coordinator --from-agent-action relay --next-agent-goal \"reanchor and continue cycle validation\"");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target tests/fixtures/repo-installed-core --json");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target tests/fixtures/repo-installed-core --dry-run --json");
@@ -385,6 +389,7 @@ export async function projectHandoffPacket({
   sharedCoordinationOptions = {},
   sharedStateOptions = {},
   dryRun = false,
+  write = false,
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const workspace = resolveWorkspaceContext({
@@ -603,10 +608,11 @@ export async function projectHandoffPacket({
 
   const markdown = buildHandoffPacketMarkdown(packet);
   const outputPath = resolveTargetPath(absoluteTargetRoot, out);
-  const outWrite = dryRun
-    ? { path: outputPath, written: false }
-    : writeUtf8IfChanged(outputPath, markdown);
-  const sharedCoordinationSync = dryRun
+  const shouldWrite = Boolean(write) && !dryRun;
+  const outWrite = shouldWrite
+    ? writeUtf8IfChanged(outputPath, markdown)
+    : { path: outputPath, written: false };
+  const sharedCoordinationSync = shouldWrite
     ? {
         attempted: false,
         ok: false,
@@ -636,6 +642,7 @@ export async function projectHandoffPacket({
   return {
     target_root: absoluteTargetRoot,
     dry_run: Boolean(dryRun),
+    write: shouldWrite,
     workspace,
     shared_state_backend: sqliteFallback.backend ?? null,
     shared_coordination_backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
@@ -661,6 +668,7 @@ function main() {
       fromAgentRole: args.fromAgentRole,
       fromAgentAction: args.fromAgentAction,
       dryRun: args.dryRun,
+      write: args.write,
     });
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));

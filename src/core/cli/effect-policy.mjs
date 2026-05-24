@@ -468,18 +468,18 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     command: "aidn runtime project-runtime-state --json",
     effectClass: "projector",
     jsonContract: "runtime-project-runtime-state.v1.schema.json",
-    safeArgs: ["runtime", "project-runtime-state", "--dry-run", "--json"],
+    safeArgs: ["runtime", "project-runtime-state", "--json"],
     noMutationPaths: ["docs/audit/RUNTIME-STATE.md"],
-    notes: "Historical projector; --dry-run is the non-mutating automation path.",
+    notes: "Historical projector; the default path is read-only and --write is required to update the projection.",
   }),
   commandPolicy({
     id: "runtime-project-handoff-packet",
     command: "aidn runtime project-handoff-packet --json",
     effectClass: "projector",
     jsonContract: "runtime-project-handoff-packet.v1.schema.json",
-    safeArgs: ["runtime", "project-handoff-packet", "--dry-run", "--json"],
+    safeArgs: ["runtime", "project-handoff-packet", "--json"],
     noMutationPaths: ["docs/audit/HANDOFF-PACKET.md"],
-    notes: "Historical projector; --dry-run must not write local projection or shared relay.",
+    notes: "Historical projector; the default path is read-only and --write is required to update the projection or shared relay.",
   }),
   commandPolicy({
     id: "codex-hydrate-context",
@@ -544,9 +544,6 @@ export function validateCliEffectPolicies() {
     }
     if (item.stability === "stable" && item.safe_args.length === 0) {
       issues.push(`${item.id}: stable command missing safe_args`);
-    }
-    if (item.effect_class === "projector" && item.no_mutation_paths.length > 0 && !item.safe_args.includes("--dry-run")) {
-      issues.push(`${item.id}: projector with no_mutation_paths must include --dry-run in safe_args`);
     }
     if (item.json_contract && !item.json_contract.endsWith(".schema.json")) {
       issues.push(`${item.id}: json_contract must be a schema file`);

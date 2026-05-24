@@ -40,7 +40,7 @@ export function buildHandoffPacketMarkdown(packet) {
   lines.push(`scope_type: ${packet.scope_type}`);
   lines.push(`scope_id: ${packet.scope_id}`);
   lines.push(`target_branch: ${packet.target_branch}`);
-  lines.push(`backlog_refs: ${packet.backlog_refs}`);
+  lines.push(`backlog_refs: ${packet.backlog_refs.length > 0 ? packet.backlog_refs.join(", ") : "none"}`);
   lines.push(`planning_arbitration_status: ${packet.planning_arbitration_status}`);
   lines.push(`preferred_dispatch_source: ${packet.preferred_dispatch_source}`);
   lines.push(`shared_planning_candidate_ready: ${packet.shared_planning_candidate_ready}`);
@@ -521,7 +521,7 @@ export function buildHandoffPacketPayload({
     scope_type: scope.scope_type,
     scope_id: scope.scope_id,
     target_branch: scope.target_branch,
-    backlog_refs: activeBacklog,
+    backlog_refs: activeBacklog ? [activeBacklog] : [],
     planning_arbitration_status: planningArbitrationStatus,
     preferred_dispatch_source: sharedPlanning.preferred_dispatch_source,
     shared_planning_candidate_ready: sharedPlanning.candidate_ready ? "yes" : "no",

@@ -110,9 +110,24 @@ CLI effect semantics:
 - `--json` selects machine-readable output; it does not imply read-only behavior.
 - `--dry-run` is the non-mutating preview/read path where a command supports it.
 - `--write`, `--apply`, and `--execute` mark explicit mutation or command execution.
-- Runtime digest projectors such as `project-runtime-state` and `project-handoff-packet` support `--dry-run --json` for contract checks and automation that must not update Markdown projections.
+- Runtime digest projectors such as `project-runtime-state` and `project-handoff-packet` are read-only by default; pass `--write` explicitly when you want to update Markdown projections or shared relay state.
 - Public command effect classes live in `src/core/cli/effect-policy.mjs` and are verified with `npm run perf:verify-cli-effect-policy` plus `npm run perf:verify-cli-no-implicit-write`.
 - Public JSON output contracts live under `src/core/contracts/cli-output/` and are verified with `npm run perf:verify-cli-output-contracts`.
+
+Runtime state modes:
+
+| Mode | Canonical source | Local projections | Shared runtime |
+| --- | --- | --- | --- |
+| `files` | checkout-bound Markdown and project files | generated locally when requested | no shared runtime unless explicitly configured |
+| `dual` | runtime DB plus checked-in audit artifacts | local SQLite/projection artifacts remain available | explicit shared surfaces may be enabled, but checkout-bound files stay local |
+| `db-only` | runtime DB is primary for supported runtime state | Markdown can be materialized on demand | shared runtime stays opt-in and never relocates checkout-bound artifacts |
+
+Rules:
+
+- `files`, `dual`, and `db-only` are supported operating modes, not interchangeable aliases.
+- `dual` keeps local projections for compatibility and verification.
+- `db-only` removes the need for file-backed runtime state, but not the need for reconstructible Markdown projections.
+- shared PostgreSQL coordination remains explicit opt-in and never becomes the default path for checkout-bound artifacts.
 
 ## Git Workflow
 

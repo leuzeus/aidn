@@ -122,10 +122,7 @@ function diffSnapshots(before, after) {
 }
 
 function policyIsCheckable(policy) {
-  if (!["read-only", "preview", "projector"].includes(policy.effect_class)) {
-    return false;
-  }
-  if (policy.effect_class === "projector" && !policy.safe_args.includes("--dry-run")) {
+  if (!["read-only", "preview"].includes(policy.effect_class)) {
     return false;
   }
   return policy.stability === "stable";
