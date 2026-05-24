@@ -34,6 +34,7 @@ Purpose:
 
 ## Runtime Verification
 
+- `architecture-gates.yml`
 - `npm run perf:verify-cli-effect-policy`
 - `npm run perf:verify-cli-no-implicit-write`
 - `npm run perf:verify-cli-output-contracts`

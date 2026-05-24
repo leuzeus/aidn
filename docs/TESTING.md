@@ -67,6 +67,8 @@ When a change affects governed metadata, critical Markdown contracts, or lifecyc
 - `npm run perf:verify-metadata-policy`
 - `npm run perf:verify-markdown-contract`
 
+When a change affects architecture gate routing, family separation, or the visible CI surface for the active EA/IA backlog, run the dedicated `.github/workflows/architecture-gates.yml` checks instead of relying on `perf-kpi`.
+
 When a change affects local operations, backup/restore, doctor output, or migration safety, run:
 
 - `npm run perf:verify-db-schema-migrations`
