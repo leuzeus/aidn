@@ -20,14 +20,5 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Verify Release Version Policy
-        run: npm run perf:verify-release-version
-
-      - name: Build Release Artifacts
-        run: npm run build-release
-
-      - name: Verify Release Artifacts
-        run: npm run perf:verify-release-artifacts
-
-      - name: Verify Pack Topology
-        run: npm run perf:verify-pack-topology
+      - name: Verify Release Flow
+        run: npm run perf:verify-release-flow

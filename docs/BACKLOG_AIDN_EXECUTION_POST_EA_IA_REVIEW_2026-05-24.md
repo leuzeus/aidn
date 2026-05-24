@@ -12,6 +12,7 @@ Les lots suivants ont déjà été traités sur `dev` et ne doivent pas être re
 - la gouvernance `source_of_truth` / `metadata` a été propagée dans les sorties runtime critiques;
 - les familles de gates CI sont branchées via un workflow dédié et documentées;
 - le flux release a été rendu plus atomique et mieux vérifiable;
+- le flux release a désormais un gate unique `perf:verify-release-flow` qui enchaîne version, build, artifacts et pack topology;
 - les runbooks shared coordination backup / restore / doctor ont été productisés;
 - la restauration shared coordination expose désormais une validation post-restore explicite et testée;
 - les modes `files`, `dual` et `db-only` sont documentés avec des checks recommandés;
