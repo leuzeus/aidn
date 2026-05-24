@@ -69,7 +69,11 @@ function verifyDocsSurface(issues) {
   const readme = readText("README.md");
   mustContain(inventory, "aidn runtime project-runtime-state --json` and `--write`", "CLI inventory runtime-state", issues);
   mustContain(inventory, "aidn runtime project-handoff-packet --json`, `--write` for projection writes, and `--sync-relay` for shared relay sync writes", "CLI inventory handoff", issues);
+  mustContain(inventory, "Advanced public command families", "CLI inventory advanced classification", issues);
+  mustContain(inventory, "aidn runtime shared-coordination-backup --json", "CLI inventory advanced shared coordination", issues);
+  mustContain(inventory, "aidn runtime coordinator-dispatch-execute --json", "CLI inventory advanced coordinator", issues);
   mustContain(readme, "pass `--write` explicitly when you want to update Markdown projections and `--sync-relay` when you want to append shared relay state.", "README runtime digest projector guidance", issues);
+  mustContain(readme, "stable/advanced/internal classification", "README CLI surface classification", issues);
 }
 
 function verifyEffectPolicy(issues) {

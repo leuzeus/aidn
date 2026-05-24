@@ -40,15 +40,23 @@ These command families are intended for users and are covered by public effect p
 - `aidn runtime persistence-source-normalize --json`
 - `aidn runtime shared-coordination-status --json`
 - `aidn runtime shared-coordination-projects --json`
+- `aidn runtime governance-diagnostics --json`
+- `aidn runtime list-agent-adapters --json`
+- `aidn runtime verify-agent-roster --json`
+- `aidn runtime handoff-admit --json`
+- `aidn runtime pre-write-admit --json`
+- `aidn codex hydrate-context --json`
+
+## Advanced public command families
+
+These surfaces are public and contract-backed, but they are more operational or coordination-sensitive than the stable core families above:
+
 - `aidn runtime shared-runtime-reanchor --json`
 - `aidn runtime shared-coordination-bootstrap --json`
 - `aidn runtime shared-coordination-backup --json`
 - `aidn runtime shared-coordination-restore --json`
 - `aidn runtime shared-coordination-doctor --json`
 - `aidn runtime shared-coordination-migrate --json`
-- `aidn runtime governance-diagnostics --json`
-- `aidn runtime list-agent-adapters --json`
-- `aidn runtime verify-agent-roster --json`
 - `aidn runtime project-agent-health-summary --json`
 - `aidn runtime project-agent-selection-summary --json`
 - `aidn runtime project-integration-risk --json`
@@ -72,11 +80,8 @@ These command families are intended for users and are covered by public effect p
 - `aidn runtime coordinator-resume --json`
 - `aidn runtime coordinator-suggest-arbitration --json`
 - `aidn runtime coordinator-record-arbitration --json`
-- `aidn runtime handoff-admit --json`
-- `aidn runtime pre-write-admit --json`
 - `aidn runtime project-runtime-state --json` and `--write` for projection writes
 - `aidn runtime project-handoff-packet --json`, `--write` for projection writes, and `--sync-relay` for shared relay sync writes
-- `aidn codex hydrate-context --json`
 
 ## Stable public aliases
 
