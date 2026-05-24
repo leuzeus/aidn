@@ -26,6 +26,9 @@ jobs:
       - name: Verify CLI Surface Inventory
         run: npm run perf:verify-cli-surface-inventory
 
+      - name: Verify CLI Surface Parity
+        run: npm run perf:verify-cli-surface-parity
+
       - name: Verify CLI No Implicit Write
         run: npm run perf:verify-cli-no-implicit-write
 

@@ -195,6 +195,7 @@
     "perf:verify-constraint-lot-plan": "node tools/perf/verify-constraint-lot-plan-fixtures.mjs",
     "perf:verify-cli-aliases": "node tools/perf/verify-perf-cli-aliases-fixtures.mjs",
     "perf:verify-cli-surface-inventory": "node tools/perf/verify-cli-surface-inventory.mjs",
+    "perf:verify-cli-surface-parity": "node tools/perf/verify-cli-surface-parity.mjs",
     "perf:verify-cli-effect-policy": "node tools/perf/verify-cli-effect-policy.mjs",
     "perf:verify-cli-no-implicit-write": "node tools/perf/verify-cli-no-implicit-write-fixtures.mjs",
     "perf:verify-cli-output-contracts": "node tools/perf/verify-cli-output-contracts-fixtures.mjs",

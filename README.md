@@ -110,7 +110,7 @@ CLI effect semantics:
 - `--json` selects machine-readable output; it does not imply read-only behavior.
 - `--dry-run` is the non-mutating preview/read path where a command supports it.
 - `--write`, `--apply`, and `--execute` mark explicit mutation or command execution.
-- Runtime digest projectors such as `project-runtime-state` and `project-handoff-packet` are read-only by default; pass `--write` explicitly when you want to update Markdown projections or shared relay state.
+- Runtime digest projectors such as `project-runtime-state` and `project-handoff-packet` are read-only by default; pass `--write` explicitly when you want to update Markdown projections and `--sync-relay` when you want to append shared relay state.
 - Public command effect classes live in `src/core/cli/effect-policy.mjs` and are verified with `npm run perf:verify-cli-effect-policy` plus `npm run perf:verify-cli-no-implicit-write`.
 - Public JSON output contracts live under `src/core/contracts/cli-output/` and are verified with `npm run perf:verify-cli-output-contracts`.
 

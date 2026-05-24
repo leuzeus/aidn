@@ -42,6 +42,13 @@ function assert(condition, message) {
   }
 }
 
+function digestOrNull(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  return fs.readFileSync(filePath, "utf8");
+}
+
 function runJson(script, args, env = {}) {
   const stdout = execFileSync(process.execPath, [script, ...args], {
     cwd: process.cwd(),
@@ -70,89 +77,126 @@ function copyFixture(sourceRoot) {
 
 function main() {
   let tempRoot = "";
+  const tempRoots = [];
   try {
     const args = parseArgs(process.argv.slice(2));
     const repoRoot = process.cwd();
     const sourceTarget = path.resolve(repoRoot, args.target);
-    const target = copyFixture(sourceTarget);
     const script = path.resolve(repoRoot, "tools", "runtime", "project-handoff-packet.mjs");
-    const outFile = path.join(target, "docs", "audit", "HANDOFF-PACKET.md");
 
-    const result = spawnSync(process.execPath, [
-      script,
-      "--target",
-      target,
-      "--json",
-    ], {
-      cwd: repoRoot,
-      env: { ...process.env },
-      encoding: "utf8",
-      timeout: 180000,
-      maxBuffer: 10 * 1024 * 1024,
+    const runScenario = (scenarioRoot, extraArgs = [], env = {}) => {
+      const outFile = path.join(scenarioRoot, "docs", "audit", "HANDOFF-PACKET.md");
+      const before = digestOrNull(outFile);
+      const result = spawnSync(process.execPath, [
+        script,
+        "--target",
+        scenarioRoot,
+        ...extraArgs,
+      ], {
+        cwd: repoRoot,
+        env: { ...process.env, ...env },
+        encoding: "utf8",
+        timeout: 180000,
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      if ((result.status ?? 1) !== 0) {
+        throw new Error(`project-handoff-packet failed: ${String(result.stderr ?? result.stdout ?? "").trim()}`);
+      }
+      const payload = JSON.parse(String(result.stdout ?? "{}"));
+      const after = digestOrNull(outFile);
+      return {
+        payload,
+        outFile,
+        before,
+        after,
+      };
+    };
+
+    const readOnlyRoot = copyFixture(sourceTarget);
+    tempRoots.push(readOnlyRoot);
+    const readOnly = runScenario(readOnlyRoot, ["--json"]);
+    assert(readOnly.payload.write === false, "read-only handoff should not report local write");
+    assert(readOnly.payload.sync_relay === false, "read-only handoff should not request relay sync");
+    assert(readOnly.payload.shared_coordination_sync?.requested === false, "read-only handoff should not request relay sync");
+    assert(readOnly.payload.shared_coordination_sync?.status === "not-requested", "read-only handoff should report not-requested sync");
+    assert(readOnly.before === readOnly.after, "read-only handoff should not modify HANDOFF-PACKET.md");
+    assert(String(readOnly.payload.workspace?.workspace_id ?? "").length > 0, "expected workspace_id in handoff output envelope");
+    assert(String(readOnly.payload.workspace?.worktree_id ?? "").length > 0, "expected worktree_id in handoff output envelope");
+    assert(readOnly.payload.packet.contract_version === "critical-markdown-v1", "expected explicit contract version in handoff packet");
+    assert(String(readOnly.payload.packet.project_id ?? "").length > 0, "expected project_id in handoff packet");
+    assert(String(readOnly.payload.packet.workspace_id ?? "").length > 0, "expected workspace_id in handoff packet");
+    assert(String(readOnly.payload.packet.worktree_id ?? "").length > 0, "expected worktree_id in handoff packet");
+    assert(readOnly.payload.packet.shared_runtime_mode === "local-only", "expected local-only runtime mode in handoff packet");
+    assert(readOnly.payload.packet.shared_runtime_validation_status === "clear", "expected clear shared runtime validation in handoff packet");
+    assert(readOnly.payload.packet.shared_runtime_locator_ref === "none", "expected no locator ref in default handoff packet");
+    assert(readOnly.payload.packet.shared_backend_kind === "none", "expected no shared backend kind in handoff packet");
+    assert(readOnly.payload.packet.handoff_status === "refresh_required", "expected refresh_required handoff status for idle fixture");
+    assert(readOnly.payload.packet.handoff_from_agent_role === "coordinator", "expected default handoff source role");
+    assert(readOnly.payload.packet.handoff_from_agent_action === "relay", "expected default handoff source action");
+    assert(readOnly.payload.packet.recommended_next_agent_role === "coordinator", "expected coordinator next agent role");
+    assert(readOnly.payload.packet.recommended_next_agent_action === "reanchor", "expected reanchor next agent action");
+    assert(readOnly.payload.packet.scope_type === "session", "expected session scope for idle fixture");
+    assert(readOnly.payload.packet.scope_id === "none", "expected none scope_id for idle fixture");
+    assert(readOnly.payload.packet.target_branch === "none", "expected none target_branch for idle fixture");
+    assert(readOnly.payload.packet.transition_policy_status === "unknown_mode", "expected unknown_mode transition policy for idle fixture");
+    assert(typeof readOnly.payload.packet.source_of_truth === "string" && readOnly.payload.packet.source_of_truth.length > 0, "expected source_of_truth in handoff packet");
+    assert(readOnly.payload.packet.source_mode === "explicit", "expected explicit source_mode in handoff packet");
+    assert(readOnly.payload.packet.lifecycle_status === "draft", "expected draft lifecycle for idle fixture");
+    assert(readOnly.payload.packet.preferred_dispatch_source === "workflow", "expected workflow dispatch source for idle fixture");
+    assert(readOnly.payload.packet.shared_planning_candidate_ready === "no", "expected no shared planning candidate for idle fixture");
+    assert(readOnly.payload.packet.shared_planning_candidate_aligned === "no", "expected non-aligned shared planning candidate for idle fixture");
+    assert(readOnly.payload.packet.shared_planning_freshness === "not_applicable", "expected no shared planning freshness for idle fixture");
+    assert(readOnly.payload.packet.shared_planning_gate_status === "not_applicable", "expected no shared planning gate for idle fixture");
+    assert(readOnly.payload.packet.repair_primary_reason === "unknown", "expected unknown repair primary reason for idle fixture");
+    assert(String(readOnly.payload.packet.next_agent_goal ?? "").length > 0, "expected explicit next_agent_goal");
+    assert(readOnly.payload.packet.prioritized_artifacts.includes("docs/audit/CURRENT-STATE.md"), "missing CURRENT-STATE priority");
+
+    const writeRoot = copyFixture(sourceTarget);
+    tempRoots.push(writeRoot);
+    const writeScenario = runScenario(writeRoot, ["--write", "--json"]);
+    assert(writeScenario.payload.write === true, "explicit write should be reported");
+    assert(writeScenario.payload.sync_relay === false, "write-only should not request relay sync");
+    assert(writeScenario.payload.shared_coordination_sync?.requested === false, "write-only should not request relay sync");
+    assert(fs.existsSync(writeScenario.outFile), "explicit write should materialize HANDOFF-PACKET.md");
+    assert(writeScenario.payload.written === true || writeScenario.after !== null, "explicit write should materialize or refresh HANDOFF-PACKET.md");
+    const writeText = fs.readFileSync(writeScenario.outFile, "utf8");
+    assert(writeText.includes("handoff_status: refresh_required"), "packet file missing refresh_required");
+    assert(writeText.includes("contract_version: critical-markdown-v1"), "packet file missing explicit contract version");
+    assert(writeText.includes("project_id:"), "packet file missing project_id");
+    assert(writeText.includes("workspace_id:"), "packet file missing workspace_id");
+    assert(writeText.includes("worktree_id:"), "packet file missing worktree_id");
+    assert(writeText.includes("shared_runtime_mode: local-only"), "packet file missing local-only runtime mode");
+    assert(writeText.includes("shared_runtime_validation_status: clear"), "packet file missing shared runtime validation status");
+    assert(writeText.includes("shared_runtime_locator_ref: none"), "packet file missing locator ref");
+    assert(writeText.includes("shared_backend_kind: none"), "packet file missing shared backend kind");
+    assert(writeText.includes("handoff_from_agent_role: coordinator"), "packet file missing source role");
+    assert(writeText.includes("handoff_from_agent_action: relay"), "packet file missing source action");
+    assert(writeText.includes("recommended_next_agent_role: coordinator"), "packet file missing coordinator role");
+    assert(writeText.includes("recommended_next_agent_action: reanchor"), "packet file missing reanchor action");
+    assert(writeText.includes("scope_type: session"), "packet file missing session scope");
+    assert(writeText.includes("scope_id: none"), "packet file missing scope id");
+    assert(writeText.includes("transition_policy_status: unknown_mode"), "packet file missing transition policy status");
+    assert(writeText.includes("source_of_truth:"), "packet file missing source_of_truth");
+    assert(writeText.includes("source_mode: explicit"), "packet file missing source_mode");
+    assert(writeText.includes("preferred_dispatch_source: workflow"), "packet file missing dispatch source");
+    assert(writeText.includes("shared_planning_candidate_ready: no"), "packet file missing shared planning candidate flag");
+    assert(writeText.includes("shared_planning_freshness: not_applicable"), "packet file missing shared planning freshness");
+    assert(writeText.includes("shared_planning_gate_status: not_applicable"), "packet file missing shared planning gate");
+    assert(writeText.includes("repair_primary_reason: unknown"), "packet file missing repair primary reason");
+    assert(writeText.includes("next_agent_goal:"), "packet file missing next_agent_goal");
+    assert(writeText.includes("`docs/audit/WORKFLOW-KERNEL.md`"), "packet file missing workflow kernel");
+
+    const syncRoot = copyFixture(sourceTarget);
+    tempRoots.push(syncRoot);
+    const syncScenario = runScenario(syncRoot, ["--sync-relay", "--json"], {
+      AIDN_SHARED_RUNTIME_ENABLED: "true",
+      AIDN_SHARED_BACKEND_KIND: "postgres",
     });
-
-    if ((result.status ?? 1) !== 0) {
-      throw new Error(`project-handoff-packet failed: ${String(result.stderr ?? result.stdout ?? "").trim()}`);
-    }
-
-    const payload = JSON.parse(String(result.stdout ?? "{}"));
-    const text = fs.readFileSync(outFile, "utf8");
-
-    assert(String(payload.workspace?.workspace_id ?? "").length > 0, "expected workspace_id in handoff output envelope");
-    assert(String(payload.workspace?.worktree_id ?? "").length > 0, "expected worktree_id in handoff output envelope");
-    assert(payload.packet.contract_version === "critical-markdown-v1", "expected explicit contract version in handoff packet");
-    assert(String(payload.packet.project_id ?? "").length > 0, "expected project_id in handoff packet");
-    assert(String(payload.packet.workspace_id ?? "").length > 0, "expected workspace_id in handoff packet");
-    assert(String(payload.packet.worktree_id ?? "").length > 0, "expected worktree_id in handoff packet");
-    assert(payload.packet.shared_runtime_mode === "local-only", "expected local-only runtime mode in handoff packet");
-    assert(payload.packet.shared_runtime_validation_status === "clear", "expected clear shared runtime validation in handoff packet");
-    assert(payload.packet.shared_runtime_locator_ref === "none", "expected no locator ref in default handoff packet");
-    assert(payload.packet.shared_backend_kind === "none", "expected no shared backend kind in handoff packet");
-    assert(payload.packet.handoff_status === "refresh_required", "expected refresh_required handoff status for idle fixture");
-    assert(payload.packet.handoff_from_agent_role === "coordinator", "expected default handoff source role");
-    assert(payload.packet.handoff_from_agent_action === "relay", "expected default handoff source action");
-    assert(payload.packet.recommended_next_agent_role === "coordinator", "expected coordinator next agent role");
-    assert(payload.packet.recommended_next_agent_action === "reanchor", "expected reanchor next agent action");
-    assert(payload.packet.scope_type === "session", "expected session scope for idle fixture");
-    assert(payload.packet.scope_id === "none", "expected none scope_id for idle fixture");
-    assert(payload.packet.target_branch === "none", "expected none target_branch for idle fixture");
-    assert(payload.packet.transition_policy_status === "unknown_mode", "expected unknown_mode transition policy for idle fixture");
-    assert(typeof payload.packet.source_of_truth === "string" && payload.packet.source_of_truth.length > 0, "expected source_of_truth in handoff packet");
-    assert(payload.packet.source_mode === "explicit", "expected explicit source_mode in handoff packet");
-    assert(payload.packet.lifecycle_status === "draft", "expected draft lifecycle for idle fixture");
-    assert(payload.packet.preferred_dispatch_source === "workflow", "expected workflow dispatch source for idle fixture");
-    assert(payload.packet.shared_planning_candidate_ready === "no", "expected no shared planning candidate for idle fixture");
-    assert(payload.packet.shared_planning_candidate_aligned === "no", "expected non-aligned shared planning candidate for idle fixture");
-    assert(payload.packet.shared_planning_freshness === "not_applicable", "expected no shared planning freshness for idle fixture");
-    assert(payload.packet.shared_planning_gate_status === "not_applicable", "expected no shared planning gate for idle fixture");
-    assert(payload.packet.repair_primary_reason === "unknown", "expected unknown repair primary reason for idle fixture");
-    assert(String(payload.packet.next_agent_goal ?? "").length > 0, "expected explicit next_agent_goal");
-    assert(payload.packet.prioritized_artifacts.includes("docs/audit/CURRENT-STATE.md"), "missing CURRENT-STATE priority");
-    assert(text.includes("handoff_status: refresh_required"), "packet file missing refresh_required");
-    assert(text.includes("contract_version: critical-markdown-v1"), "packet file missing explicit contract version");
-    assert(text.includes("project_id:"), "packet file missing project_id");
-    assert(text.includes("workspace_id:"), "packet file missing workspace_id");
-    assert(text.includes("worktree_id:"), "packet file missing worktree_id");
-    assert(text.includes("shared_runtime_mode: local-only"), "packet file missing local-only runtime mode");
-    assert(text.includes("shared_runtime_validation_status: clear"), "packet file missing shared runtime validation status");
-    assert(text.includes("shared_runtime_locator_ref: none"), "packet file missing locator ref");
-    assert(text.includes("shared_backend_kind: none"), "packet file missing shared backend kind");
-    assert(text.includes("handoff_from_agent_role: coordinator"), "packet file missing source role");
-    assert(text.includes("handoff_from_agent_action: relay"), "packet file missing source action");
-    assert(text.includes("recommended_next_agent_role: coordinator"), "packet file missing coordinator role");
-    assert(text.includes("recommended_next_agent_action: reanchor"), "packet file missing reanchor action");
-    assert(text.includes("scope_type: session"), "packet file missing session scope");
-    assert(text.includes("scope_id: none"), "packet file missing scope id");
-    assert(text.includes("transition_policy_status: unknown_mode"), "packet file missing transition policy status");
-    assert(text.includes("source_of_truth:"), "packet file missing source_of_truth");
-    assert(text.includes("source_mode: explicit"), "packet file missing source_mode");
-    assert(text.includes("preferred_dispatch_source: workflow"), "packet file missing dispatch source");
-    assert(text.includes("shared_planning_candidate_ready: no"), "packet file missing shared planning candidate flag");
-    assert(text.includes("shared_planning_freshness: not_applicable"), "packet file missing shared planning freshness");
-    assert(text.includes("shared_planning_gate_status: not_applicable"), "packet file missing shared planning gate");
-    assert(text.includes("repair_primary_reason: unknown"), "packet file missing repair primary reason");
-    assert(text.includes("next_agent_goal:"), "packet file missing next_agent_goal");
-    assert(text.includes("`docs/audit/WORKFLOW-KERNEL.md`"), "packet file missing workflow kernel");
+    assert(syncScenario.payload.sync_relay === true, "explicit sync should be reported");
+    assert(syncScenario.payload.shared_coordination_sync?.requested === true, "explicit sync should be requested");
+    assert(syncScenario.payload.shared_coordination_sync?.attempted === false, "missing shared connection should not attempt the relay write");
+    assert(syncScenario.payload.shared_coordination_sync?.status === "not-configured", "explicit sync should surface missing shared configuration");
+    assert(syncScenario.before === syncScenario.after, "sync-only should not modify HANDOFF-PACKET.md");
 
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-handoff-packet-"));
     const filelessRepo = path.join(tempRoot, "db-only-fileless");
@@ -174,6 +218,7 @@ function main() {
       script,
       "--target",
       filelessRepo,
+      "--write",
       "--json",
     ], {
       cwd: repoRoot,
@@ -210,18 +255,17 @@ function main() {
     assert(filelessText.includes("contract_version: critical-markdown-v1"), "db-only fileless handoff markdown should record explicit contract version");
     assert(filelessText.includes("project_id:"), "db-only fileless handoff markdown should record project_id");
     assert(filelessText.includes("workspace_id:"), "db-only fileless handoff markdown should record workspace_id");
+
     const output = {
       ts: new Date().toISOString(),
       target: sourceTarget,
-      output_file: outFile,
-      packet: payload.packet,
       pass: true,
     };
 
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));
     } else {
-      console.log(`Target: ${target}`);
+      console.log(`Target: ${sourceTarget}`);
       console.log("Result: PASS");
     }
   } catch (error) {
@@ -231,6 +275,11 @@ function main() {
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       removePathWithRetry(tempRoot);
+    }
+    for (const targetTempRoot of tempRoots) {
+      if (targetTempRoot && fs.existsSync(targetTempRoot)) {
+        removePathWithRetry(targetTempRoot);
+      }
     }
     const targetTempRoots = fs.readdirSync(path.join(process.cwd(), "tests", "fixtures"), { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && entry.name.startsWith("tmp-handoff-packet-"))

@@ -479,7 +479,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     jsonContract: "runtime-project-handoff-packet.v1.schema.json",
     safeArgs: ["runtime", "project-handoff-packet", "--json"],
     noMutationPaths: ["docs/audit/HANDOFF-PACKET.md"],
-    notes: "Historical projector; the default path is read-only and --write is required to update the projection or shared relay.",
+    notes: "Historical projector; the default path is read-only, --write updates the Markdown projection, and --sync-relay explicitly appends the shared relay.",
   }),
   commandPolicy({
     id: "codex-hydrate-context",

@@ -75,7 +75,7 @@ These command families are intended for users and are covered by public effect p
 - `aidn runtime handoff-admit --json`
 - `aidn runtime pre-write-admit --json`
 - `aidn runtime project-runtime-state --json` and `--write` for projection writes
-- `aidn runtime project-handoff-packet --json` and `--write` for projection / relay sync writes
+- `aidn runtime project-handoff-packet --json`, `--write` for projection writes, and `--sync-relay` for shared relay sync writes
 - `aidn codex hydrate-context --json`
 
 ## Stable public aliases

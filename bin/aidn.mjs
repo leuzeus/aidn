@@ -188,7 +188,7 @@ function printUsage() {
   console.log("  aidn runtime pre-write-admit --target . --skill cycle-create --json");
   console.log("  aidn runtime project-coordination-summary --target . --json");
   console.log("  aidn runtime project-handoff-packet --target . --json");
-  console.log("  aidn runtime project-handoff-packet --target . --write --json");
+  console.log("  aidn runtime project-handoff-packet --target . --write --sync-relay --json");
   console.log("  aidn runtime project-runtime-state --target . --json");
   console.log("  aidn runtime project-runtime-state --target . --write --json");
   console.log("  aidn runtime session-plan --target . --item \"define session backlog\" --promote --json");

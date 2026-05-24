@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import crypto from "node:crypto";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -52,6 +53,7 @@ function parseArgs(argv) {
     json: false,
     dryRun: false,
     write: false,
+    syncRelay: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -86,6 +88,8 @@ function parseArgs(argv) {
       args.dryRun = true;
     } else if (token === "--write") {
       args.write = true;
+    } else if (token === "--sync-relay") {
+      args.syncRelay = true;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -104,6 +108,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target .");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target . --write");
+  console.log("  node tools/runtime/project-handoff-packet.mjs --target . --write --sync-relay");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target . --from-agent-role coordinator --from-agent-action relay --next-agent-goal \"reanchor and continue cycle validation\"");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target tests/fixtures/repo-installed-core --json");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target tests/fixtures/repo-installed-core --dry-run --json");
@@ -390,6 +395,7 @@ export async function projectHandoffPacket({
   sharedStateOptions = {},
   dryRun = false,
   write = false,
+  syncRelay = false,
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const workspace = resolveWorkspaceContext({
@@ -609,40 +615,54 @@ export async function projectHandoffPacket({
   const markdown = buildHandoffPacketMarkdown(packet);
   const outputPath = resolveTargetPath(absoluteTargetRoot, out);
   const shouldWrite = Boolean(write) && !dryRun;
+  const shouldSyncRelay = Boolean(syncRelay) && !dryRun;
   const outWrite = shouldWrite
     ? writeUtf8IfChanged(outputPath, markdown)
     : { path: outputPath, written: false };
-  const sharedCoordinationSync = shouldWrite
+  const packetSha256 = crypto.createHash("sha256").update(markdown).digest("hex");
+  const sharedCoordinationSync = shouldSyncRelay
     ? {
+        ...(await appendSharedHandoffRelay(sharedCoordinationResolution, {
+          workspace,
+          packet,
+          outputFile: relativePath(absoluteTargetRoot, outWrite.path),
+          packetSha256,
+        })),
+        requested: true,
+      }
+    : {
         attempted: false,
         ok: false,
-        status: "dry-run",
-        reason: "handoff packet dry-run does not write local projection or append shared relay",
+        status: syncRelay ? "dry-run" : "not-requested",
+        reason: syncRelay
+          ? "handoff packet dry-run does not append shared relay"
+          : "shared relay sync not requested",
         operation: "appendHandoffRelay",
         backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
         diagnostic: {
           scope: "shared-coordination-only",
           operation: "appendHandoffRelay",
-          sync_status: "dry-run",
+          sync_status: syncRelay ? "dry-run" : "not-requested",
           backend_status: summarizeSharedCoordinationResolution(sharedCoordinationResolution).status,
           readiness_status: "not_run",
           schema_status: "unknown",
           compatibility_status: "unknown",
           artifact_family: "handoff_relay",
           owner: workspace?.project_id ?? "unknown",
-          summary: "handoff packet dry-run does not write local projection or append shared relay",
-          recommended_action: "rerun without --dry-run when shared relay sync is explicitly desired",
+          summary: syncRelay
+            ? "handoff packet dry-run does not append shared relay"
+            : "shared relay sync not requested",
+          recommended_action: syncRelay
+            ? "rerun without --dry-run when shared relay sync is explicitly desired"
+            : "rerun with --sync-relay when shared relay sync is explicitly desired",
         },
-      }
-    : await appendSharedHandoffRelay(sharedCoordinationResolution, {
-        workspace,
-        packet,
-        outputFile: relativePath(absoluteTargetRoot, outWrite.path),
-      });
+        requested: Boolean(syncRelay),
+      };
   return {
     target_root: absoluteTargetRoot,
     dry_run: Boolean(dryRun),
     write: shouldWrite,
+    sync_relay: Boolean(syncRelay),
     workspace,
     shared_state_backend: sqliteFallback.backend ?? null,
     shared_coordination_backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
@@ -669,6 +689,7 @@ function main() {
       fromAgentAction: args.fromAgentAction,
       dryRun: args.dryRun,
       write: args.write,
+      syncRelay: args.syncRelay,
     });
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));
