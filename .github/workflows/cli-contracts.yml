@@ -32,5 +32,23 @@ jobs:
       - name: Verify CLI Output Contracts
         run: npm run perf:verify-cli-output-contracts
 
+      - name: Verify Source-Of-Truth Policy
+        run: npm run perf:verify-source-of-truth-policy
+
+      - name: Verify Metadata Policy
+        run: npm run perf:verify-metadata-policy
+
       - name: Verify Governance Completeness
         run: npm run perf:verify-governance-completeness
+
+      - name: Verify Governance Runtime CLI
+        run: npm run perf:verify-governance-runtime-cli
+
+      - name: Verify Release Version
+        run: npm run perf:verify-release-version
+
+      - name: Verify Release Artifacts
+        run: npm run perf:verify-release-artifacts
+
+      - name: Verify Shared Surface Boundary
+        run: npm run perf:verify-shared-surface-boundary
