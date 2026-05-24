@@ -293,18 +293,18 @@ Normalization guidance:
 
 Validated recovery sequence on 2026-04-10:
 
-- workspace: `G:\projets\gowire\.aidn\runtime\recovery\2026-04-10-cli-normalized-workspace`
+- workspace: external pilot recovery workspace
 - normalization: `files_scanned=891`, `files_updated=39`, `directories_renamed=3`
 - index rebuild: `cycles_count=89`, `sessions_count=74`, `artifacts_count=891`
 - source diagnostics after normalization: `diagnostic_status=ready`, `cycle_identity_collision_count=0`, `adoption_blocked=false`
-- PostgreSQL smoke target: `postgres://root:***@192.168.1.173:5433/aidn_smoke`
+- PostgreSQL smoke target: `postgres://user:***@host:5432/aidn_smoke`
 - adoption write: `action=transfer-from-sqlite`, `verification.ok=true`
 - second dry-run after write: `action=noop`, `reason_code=target-matches-source`
 - target status after write: `storage_policy=relational-canonical`, `compatibility_status=relational-ready`, `canonical_payload_rows=1`, `legacy_snapshot_rows=0`
 
 Validated `localProjectionPolicy=none` recovery sequence on 2026-04-10:
 
-- workspace: `G:\projets\gowire\.aidn\runtime\recovery\2026-04-10-postgres-none-smoke`
+- workspace: external pilot recovery workspace
 - config: `runtime.stateMode=db-only`, `runtime.persistence.backend=postgres`, `runtime.persistence.localProjectionPolicy=none`
 - after PostgreSQL adoption, the local `workflow-index.sqlite` projection was removed from the recovery copy
 - `persistence-status` resolved `projection_backend=postgres`, `projection_scope=runtime-canonical`, `compatibility_status=relational-ready`, `adoption_action=noop`
