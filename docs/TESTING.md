@@ -78,6 +78,8 @@ When a change affects local operations, backup/restore, doctor output, or migrat
 
 These checks are also split into `.github/workflows/runtime-ops.yml` so runtime-persistence and shared-coordination regressions are visible independently from broader KPI/perf coverage.
 
+When a change affects workspace resolution, state-mode parity, db-only hooks, or shared runtime boundary checks, run the dedicated `.github/workflows/runtime-mode.yml` checks instead of relying on `perf-kpi`.
+
 Optional live PostgreSQL smoke is kept out of the required CI path. When you have a live PostgreSQL target and want a manual smoke run, use `.github/workflows/runtime-ops-live-smoke.yml` or run:
 
 - `npm run perf:verify-postgres-runtime-persistence-live-smoke`

@@ -155,21 +155,6 @@ jobs:
       - name: Verify VCS Adapter Fixtures
         run: npm run perf:verify-vcs-adapter
 
-      - name: Verify Workspace Resolution Fixtures
-        run: npm run perf:verify-workspace-resolution
-
-      - name: Verify Shared Runtime DB-First Regression Fixtures
-        run: npm run perf:verify-shared-runtime-db-first-regression
-
-      - name: Verify Shared SQLite Boundary Fixtures
-        run: npm run perf:verify-shared-sqlite-boundary
-
-      - name: Verify State Mode Parity Fixtures
-        run: npm run perf:verify-state-mode-parity
-
-      - name: Verify DB-Only Hooks Fixtures
-        run: npm run perf:verify-db-only-hooks
-
       - name: Reset Perf Runtime
         run: npm run perf:reset -- --root "$PERF_RUNTIME"
 

@@ -1,0 +1,36 @@
+name: Runtime Mode
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-mode:
+    name: Verify Runtime Mode Fixtures
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify Workspace Resolution Fixtures
+        run: npm run perf:verify-workspace-resolution
+
+      - name: Verify Shared Runtime DB-First Regression Fixtures
+        run: npm run perf:verify-shared-runtime-db-first-regression
+
+      - name: Verify Shared SQLite Boundary Fixtures
+        run: npm run perf:verify-shared-sqlite-boundary
+
+      - name: Verify State Mode Parity Fixtures
+        run: npm run perf:verify-state-mode-parity
+
+      - name: Verify DB-Only Hooks Fixtures
+        run: npm run perf:verify-db-only-hooks
