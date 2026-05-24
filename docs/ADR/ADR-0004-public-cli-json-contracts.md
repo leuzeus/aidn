@@ -82,4 +82,5 @@ Negative:
 
 - add `perf:verify-cli-output-contracts`
 - add golden fixtures for the v1 commands
+- keep `runtime-governance-diagnostics` residual coverage tables optional and descriptive rather than canonical
 - decide whether output payloads should embed `schema_version` in a later major contract

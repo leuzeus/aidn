@@ -40,6 +40,10 @@ function main() {
     assert(Array.isArray(diagnostics.concepts) && diagnostics.concepts.some((item) => item.concept === "baseline"), "diagnostics should include baseline concept coverage");
     assert(diagnostics.concepts.some((item) => item.concept === "snapshot" && item.coverage_kind === "subsumed"), "diagnostics should classify snapshot coverage");
     assert(diagnostics.concepts.some((item) => item.concept === "decision" && item.coverage_kind === "subsumed"), "diagnostics should classify decision coverage");
+    assert(Array.isArray(diagnostics.coverage_exceptions) && diagnostics.coverage_exceptions.length >= 1, "diagnostics should expose residual coverage exceptions");
+    assert(diagnostics.coverage_exceptions.some((item) => item.concept === "worktree" && item.coverage_kind === "subsumed"), "diagnostics should classify worktree as subsumed coverage");
+    assert(diagnostics.coverage_exceptions.some((item) => item.concept === "migration_run" && item.coverage_kind === "excluded"), "diagnostics should classify migration_run as excluded coverage");
+    assert(diagnostics.coverage_exception_summary?.total === diagnostics.coverage_exceptions.length, "diagnostics should summarize residual coverage exceptions");
     assert(Array.isArray(diagnostics.observed_artifacts) && diagnostics.observed_artifacts.length >= 1, "diagnostics should expose observed artifact coverage");
     assert(typeof diagnostics.observed_artifact_summary.partial === "number", "diagnostics should summarize observed artifact coverage");
     assert(diagnostics.observed_artifacts.every((item) => typeof item.lifecycle_status === "string" && item.metadata?.metadata_status), "diagnostics observed artifacts should expose lifecycle and metadata status");
@@ -52,6 +56,7 @@ function main() {
     assert(typeof operations.source_of_truth_coverage_status === "string", "operations should expose source-of-truth coverage status");
     assert(typeof operations.projection_freshness_status === "string", "operations should expose projection freshness status");
     assert(typeof operations.no_write_coverage_status === "string", "operations should expose no-write coverage status");
+    assert(typeof operations.residual_concept_coverage_status === "string", "operations should expose residual concept coverage status");
     assert(typeof operations.metadata_coverage_status === "string", "operations should expose metadata coverage status");
     assert(Array.isArray(operations.recommended_actions) && operations.recommended_actions.length >= 1, "operations should expose recommended actions");
 

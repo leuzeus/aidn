@@ -1,3 +1,5 @@
+import { listGovernanceCoverageExceptions } from "../governance/concept-coverage.mjs";
+
 const STATE_MODES = Object.freeze(["files", "dual", "db-only"]);
 
 function freezeDeep(value) {
@@ -298,3 +300,5 @@ export function validateSourceOfTruthPolicies() {
     issues,
   };
 }
+
+export { listGovernanceCoverageExceptions };

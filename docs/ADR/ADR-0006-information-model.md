@@ -29,6 +29,20 @@ Rules:
 - baseline and snapshot are governed as local-first artifact families, not as implicit shared runtime primitives
 - decision, incident and coordination records are governed through explicit source-of-truth policies and metadata rules, even when the runtime stores are shared-opt-in only
 
+The current core governance model deliberately stops short of promoting every operational object to a first-class concept.
+Some items are surfaced as residual coverage because they are represented by a parent surface or belong to an orthogonal telemetry layer.
+
+Residual coverage classification:
+
+| Concept | Classification | Rationale |
+|---|---|---|
+| `worktree` | subsumed | Covered through workspace identity and shared-boundary locator rules. |
+| `handoff_relay` | subsumed | Covered through handoff packet and coordination-record projections. |
+| `repair_decision` | subsumed | Covered through repair findings and coordination history, not a separate product concept. |
+| `migration_run` | excluded | Operational telemetry for migrations, not governed product state. |
+| `gate_result` | excluded | CI workflow telemetry, not part of the runtime information model. |
+| `reference_data` | excluded | Fixture and test-corpus material, not live workflow state. |
+
 ## Options Compared
 
 | Option | Result |

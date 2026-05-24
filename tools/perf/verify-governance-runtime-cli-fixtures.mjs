@@ -36,11 +36,13 @@ function main() {
     assert(typeof runtimeDiagnostics.workspace?.project_id === "string" && runtimeDiagnostics.workspace.project_id.length > 0, "runtime governance diagnostics should expose target workspace identity");
     assert(typeof runtimeDiagnostics.workspace?.workspace_id === "string" && runtimeDiagnostics.workspace.workspace_id.length > 0, "runtime governance diagnostics should expose workspace id");
     assert(Array.isArray(runtimeDiagnostics.concepts) && runtimeDiagnostics.concepts.length >= 1, "runtime governance diagnostics should expose concept details");
+    assert(Array.isArray(runtimeDiagnostics.coverage_exceptions) && runtimeDiagnostics.coverage_exceptions.length >= 1, "runtime governance diagnostics should expose residual coverage exceptions");
     assert(Array.isArray(runtimeDiagnostics.runtime_surfaces) && runtimeDiagnostics.runtime_surfaces.length >= 1, "runtime governance diagnostics should expose runtime surface details");
     assert(typeof runtimeDiagnostics.runtime_surface_summary?.covered === "number", "runtime governance diagnostics should expose runtime surface summary");
     assert(typeof runtimeDiagnostics.operations?.runtime_surface_coverage_status === "string", "runtime governance diagnostics should expose runtime surface coverage status");
     assert(typeof runtimeDiagnostics.operations?.projection_freshness_status === "string", "runtime governance diagnostics should expose projection freshness status");
     assert(typeof runtimeDiagnostics.operations?.no_write_coverage_status === "string", "runtime governance diagnostics should expose no-write coverage status");
+    assert(runtimeDiagnostics.operations?.residual_concept_coverage_status === "documented", "runtime governance diagnostics should expose residual concept coverage status");
     assert(runtimeDiagnostics.runtime_surfaces.some((item) => item.id === "runtime-governance-diagnostics"), "runtime governance diagnostics should include its own public surface");
     assert(Array.isArray(runtimeDiagnostics.observed_artifacts) && runtimeDiagnostics.observed_artifacts.length >= 1, "runtime governance diagnostics should expose observed artifacts");
     assert(runtimeDiagnostics.observed_artifact_summary?.complete === 6, "runtime governance diagnostics should report complete observed artifacts for the tracked fixture");

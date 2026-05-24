@@ -27,6 +27,7 @@ Compatibility policy:
 - adding optional fields is allowed in the same major schema
 - legacy fields should stay accepted until the related migration ticket explicitly removes them
 - local machine paths and secrets must never be encoded as schema constants
+- `runtime-governance-diagnostics` may add optional coverage tables for residual concepts, but those tables must remain descriptive and must not reclassify excluded concepts as governed runtime state
 
 Initial v1 commands:
 

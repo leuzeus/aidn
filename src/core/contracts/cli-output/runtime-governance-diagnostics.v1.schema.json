@@ -26,6 +26,43 @@
     "workspace": { "type": ["object", "null"], "additionalProperties": true },
     "ok": { "type": "boolean" },
     "governed_concepts": { "type": "number" },
+    "coverage_exceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "concept",
+          "coverage_kind",
+          "governed_by",
+          "source_of_truth_relation",
+          "metadata_relation",
+          "lifecycle_status",
+          "scope",
+          "rationale"
+        ],
+        "properties": {
+          "concept": { "type": "string" },
+          "coverage_kind": { "type": "string" },
+          "governed_by": { "type": "string" },
+          "source_of_truth_relation": { "type": "string" },
+          "metadata_relation": { "type": "string" },
+          "lifecycle_status": { "type": "string" },
+          "scope": { "type": "string" },
+          "rationale": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "coverage_exception_summary": {
+      "type": "object",
+      "required": ["subsumed", "excluded", "total"],
+      "properties": {
+        "subsumed": { "type": "number" },
+        "excluded": { "type": "number" },
+        "total": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
     "summary": {
       "type": "object",
       "required": ["complete", "partial", "missing"],
@@ -182,6 +219,8 @@
         "source_of_truth_coverage_status",
         "metadata_coverage_status",
         "cli_contract_coverage_status",
+        "residual_concept_coverage_status",
+        "residual_concept_count",
         "runtime_surface_coverage_status",
         "observed_artifact_coverage_status",
         "overall_status",
@@ -194,6 +233,8 @@
         "source_of_truth_coverage_status": { "type": "string" },
         "metadata_coverage_status": { "type": "string" },
         "cli_contract_coverage_status": { "type": "string" },
+        "residual_concept_coverage_status": { "type": "string" },
+        "residual_concept_count": { "type": "number" },
         "runtime_surface_coverage_status": { "type": "string" },
         "observed_artifact_coverage_status": { "type": "string" },
         "overall_status": { "type": "string" },

@@ -51,6 +51,8 @@ export function renderGovernanceDiagnosticsText(result) {
   lines.push(`- stale_projection_count=${result.operations?.stale_projection_count ?? 0}`);
   lines.push(`- no_write_coverage=${result.operations?.no_write_coverage_status ?? "unknown"}`);
   lines.push(`- no_write_coverage_count=${result.operations?.no_write_coverage_count ?? 0}`);
+  lines.push(`- residual_concept_coverage=${result.operations?.residual_concept_coverage_status ?? "unknown"}`);
+  lines.push(`- residual_concept_count=${result.operations?.residual_concept_count ?? 0}`);
   lines.push(`- runtime_surface_coverage=${result.operations?.runtime_surface_coverage_status ?? "unknown"}`);
   lines.push(`- command_coverage=${result.operations?.command_coverage_status ?? "unknown"}`);
   lines.push(`- observed_artifact_coverage=${result.operations?.observed_artifact_coverage_status ?? "unknown"}`);
@@ -73,6 +75,12 @@ export function renderGovernanceDiagnosticsText(result) {
     lines.push("- concepts:");
     for (const concept of result.concepts.slice(0, 14)) {
       lines.push(`  - ${concept.concept}: ${concept.status} coverage=${concept.coverage_kind ?? "covered"} sot=${concept.source_of_truth_status} metadata=${concept.metadata_status} contract=${concept.cli_contract_status ?? "not_applicable"}`);
+    }
+  }
+  if (Array.isArray(result.coverage_exceptions) && result.coverage_exceptions.length > 0) {
+    lines.push("- coverage_exceptions:");
+    for (const exception of result.coverage_exceptions) {
+      lines.push(`  - ${exception.concept}: ${exception.coverage_kind} governed_by=${exception.governed_by} lifecycle=${exception.lifecycle_status}`);
     }
   }
   if (Array.isArray(result.command_coverage) && result.command_coverage.length > 0) {

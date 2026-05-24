@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listCliEffectPolicies } from "../../core/cli/effect-policy.mjs";
 import { evaluateMetadataPolicy, getMetadataPolicy, listMetadataPolicies } from "../../core/metadata/metadata-policy.mjs";
+import { listGovernanceCoverageExceptions } from "../../core/governance/concept-coverage.mjs";
 import { evaluateSourceOfTruthPolicy, getSourceOfTruthPolicy, listSourceOfTruthPolicies } from "../../core/source-of-truth/source-of-truth-policy.mjs";
 import {
   loadSqliteIndexPayloadSafe,
@@ -360,6 +361,19 @@ export function summarizeGovernedConcepts(items) {
   return summary;
 }
 
+export function summarizeCoverageExceptions(items) {
+  const summary = {
+    subsumed: 0,
+    excluded: 0,
+    total: 0,
+  };
+  for (const item of items) {
+    summary.total += 1;
+    summary[item.coverage_kind] = (summary[item.coverage_kind] ?? 0) + 1;
+  }
+  return summary;
+}
+
 export function evaluateGovernanceRuntimeSurface(entry, conceptIndex = new Map()) {
   const policy = listCliEffectPolicies().find((item) => item.id === entry.id) ?? null;
   const linkedConcepts = (entry.linked_concepts ?? []).map((conceptId) => {
@@ -511,7 +525,13 @@ function countNoWritePolicies() {
     .length;
 }
 
-export function deriveGovernanceOperations({ concepts, issues, observedArtifactSummary = null, noWritePolicyCount = null }) {
+export function deriveGovernanceOperations({
+  concepts,
+  issues,
+  observedArtifactSummary = null,
+  noWritePolicyCount = null,
+  coverageExceptions = [],
+}) {
   const sourceOfTruthSummary = summarizeGovernedConcepts(concepts.map((item) => ({
     status: item.source_of_truth_status === "covered" ? "complete" : "missing",
   })));
@@ -532,6 +552,7 @@ export function deriveGovernanceOperations({ concepts, issues, observedArtifactS
   } else {
     recommendedActions.push("governance coverage is complete for the currently tracked concepts");
   }
+  const coverageExceptionSummary = summarizeCoverageExceptions(coverageExceptions);
   return {
     local_first: true,
     source_of_truth_coverage_status: deriveCoverageStatus(sourceOfTruthSummary, "source_of_truth"),
@@ -543,6 +564,8 @@ export function deriveGovernanceOperations({ concepts, issues, observedArtifactS
       : 0,
     no_write_coverage_status: (noWritePolicyCount ?? countNoWritePolicies()) > 0 ? "covered" : "missing",
     no_write_coverage_count: noWritePolicyCount ?? countNoWritePolicies(),
+    residual_concept_coverage_status: coverageExceptionSummary.total > 0 ? "documented" : "none",
+    residual_concept_count: coverageExceptionSummary.total,
     overall_status: issues.length === 0 ? "covered" : "gaps-detected",
     governed_concept_count: concepts.length,
     issue_count: issues.length,
@@ -623,6 +646,7 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
   const conceptIndex = new Map(concepts.map((item) => [item.concept, item]));
   const runtimeSurfaces = GOVERNANCE_RUNTIME_SURFACES.map((entry) => evaluateGovernanceRuntimeSurface(entry, conceptIndex));
   const commandCoverage = GOVERNANCE_COMMAND_COVERAGE.map((entry) => evaluateGovernanceCommandCoverage(entry, conceptIndex));
+  const coverageExceptions = listGovernanceCoverageExceptions();
   const resolveObservedArtifactText = includeObservedArtifacts
     ? createObservedArtifactResolver(targetRoot)
     : null;
@@ -640,6 +664,7 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
     ...findGovernanceRegistryCoverageIssues(),
   ];
   const summary = summarizeGovernedConcepts(concepts);
+  const coverageExceptionSummary = summarizeCoverageExceptions(coverageExceptions);
   const runtimeSurfaceSummary = summarizeGovernanceRuntimeSurfaces(runtimeSurfaces);
   const commandCoverageSummary = summarizeCommandCoverage(commandCoverage);
   const observedArtifactSummary = summarizeObservedArtifacts(observedArtifacts);
@@ -649,6 +674,7 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
     issues,
     observedArtifactSummary,
     noWritePolicyCount,
+    coverageExceptions,
   });
   return {
     ts: new Date().toISOString(),
@@ -656,6 +682,8 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
     workspace,
     ok: issues.length === 0,
     governed_concepts: concepts.length,
+    coverage_exceptions: coverageExceptions,
+    coverage_exception_summary: coverageExceptionSummary,
     summary,
     registry: {
       source_of_truth_policy_count: listSourceOfTruthPolicies().length,

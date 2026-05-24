@@ -1,3 +1,5 @@
+import { listGovernanceCoverageExceptions } from "../governance/concept-coverage.mjs";
+
 const METADATA_POLICY_VERSION = "metadata-policy-v1";
 
 function normalizeKey(value) {
@@ -307,3 +309,5 @@ export function validateMetadataPolicies() {
     issues,
   };
 }
+
+export { listGovernanceCoverageExceptions };
