@@ -398,8 +398,8 @@ Avancement:
 | ADR-0005 Read/Write CLI Semantics | Mise à jour | Effets CLI + no implicit write élargi | Verrouiller `--json` != read-only | Rupture immédiate, transition projectors, maintien legacy | Sécurité locale et compat | Moins de mutation surprise | ARCH-P0-04 | Accepted |
 | ADR-0006 Information Model | Mise à jour | Modèle conceptuel gouverné | Inclure backup/restore set, diagnostics, release/provenance | Modèle docs-only, registry code, hybride | Testabilité, simplicité | Concepts nommés et gouvernés | ARCH-P1-02, ARCH-P2-02 | Accepted |
 | ADR-0007 Local-First Federation Boundary | Mise à jour | Gate d'extension shared runtime | Empêcher shared expansion implicite | Liste statique, process ADR, cloud-first | Local-first, auditabilité, rollback | Shared runtime borné | ARCH-P0-06, ARCH-P3-01 | Accepted |
-| ADR-0008 Ports Shared Coordination | Nouvelle | Ports et contrats shared coordination | Stabiliser store/service/adapters avant extension | Adapter direct, port minimal, event store | Scope limité, testabilité | Extensions plus sûres | ARCH-P3-01 | Proposed later |
-| ADR-0009 Release Versioning Provenance | Nouvelle | `VERSION`, package, manifest, checksums, npm pack | Regrouper politique release | Git tag source, VERSION source, package source | Reproductibilité, simplicité | Release supportable | ARCH-P2-03 | Proposed |
+| ADR-0008 Ports Shared Coordination | Nouvelle | Ports et contrats shared coordination | Stabiliser store/service/adapters avant extension | Adapter direct, port minimal, event store | Scope limité, testabilité | Extensions plus sûres | ARCH-P3-01 | Drafted |
+| ADR-0009 Release Versioning Provenance | Nouvelle | `VERSION`, package, manifest, checksums, npm pack | Regrouper politique release | Git tag source, VERSION source, package source | Reproductibilité, simplicité | Release supportable | ARCH-P2-03 | Drafted |
 
 ## Roadmap
 
