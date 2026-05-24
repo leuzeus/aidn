@@ -204,6 +204,11 @@ function buildMarkdown(summary, historyRelativePath, governanceMetadata) {
   lines.push("## Summary");
   lines.push("");
   lines.push(`contract_version: ${governanceMetadata.contract_version}`);
+  lines.push(`source_of_truth: ${governanceMetadata.source_of_truth}`);
+  lines.push(`source_mode: ${governanceMetadata.source_mode}`);
+  lines.push(`lifecycle_status: ${governanceMetadata.lifecycle_status}`);
+  lines.push(`owner: ${governanceMetadata.owner}`);
+  lines.push(`steward: ${governanceMetadata.steward}`);
   lines.push(`updated_at: ${summary.updated_at}`);
   lines.push(`history_status: ${summary.history_status}`);
   lines.push(`total_dispatches: ${summary.total_dispatches}`);
@@ -323,6 +328,7 @@ export async function projectCoordinationSummary({
     db_first_applied: Boolean(dbFirstWrite),
     db_first_materialized: Boolean(dbFirstWrite?.materialized),
     db_first_artifact_path: dbFirstWrite?.artifact?.path ?? relativeOut,
+    governance_metadata: governanceMetadata,
     summary,
     coordination_summary_diagnostic: deriveCoordinationSummaryDiagnostic({
       target_root: absoluteTargetRoot,

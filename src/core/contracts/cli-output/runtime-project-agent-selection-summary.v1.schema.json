@@ -25,6 +25,26 @@
     "db_first_applied": { "type": "boolean" },
     "db_first_materialized": { "type": "boolean" },
     "db_first_artifact_path": { "type": "string" },
+    "governance_metadata": {
+      "type": "object",
+      "required": [
+        "contract_version",
+        "source_of_truth",
+        "source_mode",
+        "lifecycle_status",
+        "owner",
+        "steward"
+      ],
+      "properties": {
+        "contract_version": { "type": "string" },
+        "source_of_truth": { "type": "string" },
+        "source_mode": { "type": "string" },
+        "lifecycle_status": { "type": "string" },
+        "owner": { "type": "string" },
+        "steward": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
     "summary": { "type": "object", "additionalProperties": true },
     "roster_verification": { "type": "object", "additionalProperties": true },
     "agent_selection_diagnostic": {

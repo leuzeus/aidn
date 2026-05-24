@@ -19,6 +19,7 @@ function main() {
     const concept = evaluateGovernedConcept(GOVERNED_CONCEPTS.find((item) => item.concept === "runtime_state"));
     assert(concept.concept === "runtime_state", "runtime_state concept should be evaluated");
     assert(typeof concept.cli_contract_status === "string", "runtime_state concept should expose cli contract status");
+    assert(typeof concept.lifecycle_status === "string", "runtime_state concept should expose lifecycle status");
 
     const diagnostics = projectGovernanceDiagnostics({
       targetRoot: "G:/fixture/project",

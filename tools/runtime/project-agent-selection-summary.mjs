@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { deriveGovernedRuntimeArtifactMetadata } from "../../src/application/runtime/governed-runtime-artifact-metadata-lib.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
@@ -69,12 +70,17 @@ function resolveTargetPath(targetRoot, candidate) {
   return path.resolve(targetRoot, candidate);
 }
 
-function renderSummary(result, rosterVerification) {
+function renderSummary(result, rosterVerification, governanceMetadata) {
   const lines = [];
   lines.push("# Agent Selection Summary");
   lines.push("");
   lines.push("## Summary");
   lines.push("");
+  lines.push(`source_of_truth: ${governanceMetadata.source_of_truth}`);
+  lines.push(`source_mode: ${governanceMetadata.source_mode}`);
+  lines.push(`lifecycle_status: ${governanceMetadata.lifecycle_status}`);
+  lines.push(`owner: ${governanceMetadata.owner}`);
+  lines.push(`steward: ${governanceMetadata.steward}`);
   lines.push(`updated_at: ${new Date().toISOString()}`);
   lines.push(`roster_found: ${result.roster.found ? "yes" : "no"}`);
   lines.push(`default_requested_agent: ${result.roster.default_requested_agent}`);
@@ -126,6 +132,11 @@ export async function projectAgentSelectionSummary({
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
+  const governanceMetadata = deriveGovernedRuntimeArtifactMetadata({
+    runtimeStateMode: effectiveStateMode,
+    owner: "aidn-runtime",
+    steward: "aidn-runtime",
+  });
   const rosterVerification = await verifyAgentRoster({
     targetRoot: absoluteTargetRoot,
     rosterFile,
@@ -135,7 +146,7 @@ export async function projectAgentSelectionSummary({
     rosterFile,
   });
   const outputPath = resolveTargetPath(absoluteTargetRoot, out);
-  const markdown = renderSummary(result, rosterVerification);
+  const markdown = renderSummary(result, rosterVerification, governanceMetadata);
   const renderedMarkdown = `${markdown}\n`;
   const relativeOut = String(out).replace(/\\/g, "/").replace(/^docs\/audit\//i, "");
   const dbFirstWrite = effectiveStateMode === "dual" || effectiveStateMode === "db-only"
@@ -164,6 +175,7 @@ export async function projectAgentSelectionSummary({
     db_first_applied: Boolean(dbFirstWrite),
     db_first_materialized: Boolean(dbFirstWrite?.materialized),
     db_first_artifact_path: dbFirstWrite?.artifact?.path ?? relativeOut,
+    governance_metadata: governanceMetadata,
     summary: result,
     roster_verification: {
       pass: rosterVerification.pass,

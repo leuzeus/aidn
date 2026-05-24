@@ -272,8 +272,10 @@ export function evaluateGovernedConcept(entry) {
     required,
     source_of_truth_concept: entry.source_of_truth_concept ?? "",
     source_of_truth_status: checks.source_of_truth ? "covered" : "missing",
+    source_of_truth: sourceOfTruth?.source_of_truth ?? null,
     metadata_concept: entry.metadata_concept ?? "",
     metadata_status: entry.metadata_concept ? (checks.metadata ? "covered" : "missing") : "not_applicable",
+    lifecycle_status: metadata?.lifecycle ?? "",
     cli_contract: entry.cli_contract ?? "",
     cli_contract_status: entry.cli_contract ? (cliContract ? "covered" : "missing") : "not_applicable",
     issues: required
@@ -436,10 +438,12 @@ export function evaluateObservedGovernanceArtifact(entry, targetRoot, resolveArt
     metadata: {
       concept: metadata.concept,
       metadata_status: metadata.metadata_status,
+      lifecycle_status: metadata.lifecycle ?? "",
       missing_required_fields: metadata.missing_required_fields,
       missing_recommended_fields: metadata.missing_recommended_fields,
       surfaced_fields: metadata.surfaced_fields,
     },
+    lifecycle_status: normalizeScalar(fields.get("lifecycle_status") ?? "") || "unknown",
     issues,
   };
 }

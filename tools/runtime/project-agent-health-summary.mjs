@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { deriveGovernedRuntimeArtifactMetadata } from "../../src/application/runtime/governed-runtime-artifact-metadata-lib.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
@@ -59,7 +60,7 @@ function deriveAgentHealthSummaryDiagnostic(result) {
   };
 }
 
-function buildMarkdown(result) {
+function buildMarkdown(result, governanceMetadata) {
   const lines = [];
   lines.push("# Agent Health Summary");
   lines.push("");
@@ -71,6 +72,11 @@ function buildMarkdown(result) {
   lines.push("");
   lines.push("## Summary");
   lines.push("");
+  lines.push(`source_of_truth: ${governanceMetadata.source_of_truth}`);
+  lines.push(`source_mode: ${governanceMetadata.source_mode}`);
+  lines.push(`lifecycle_status: ${governanceMetadata.lifecycle_status}`);
+  lines.push(`owner: ${governanceMetadata.owner}`);
+  lines.push(`steward: ${governanceMetadata.steward}`);
   lines.push(`updated_at: ${new Date().toISOString()}`);
   lines.push(`roster_found: ${result.roster_found ? "yes" : "no"}`);
   lines.push(`default_requested_agent: ${result.default_requested_agent}`);
@@ -118,12 +124,17 @@ export async function projectAgentHealthSummary({
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
+  const governanceMetadata = deriveGovernedRuntimeArtifactMetadata({
+    runtimeStateMode: effectiveStateMode,
+    owner: "aidn-runtime",
+    steward: "aidn-runtime",
+  });
   const verification = await verifyAgentRoster({
     targetRoot: absoluteTargetRoot,
     rosterFile,
   });
   const outPath = path.resolve(absoluteTargetRoot, out);
-  const markdown = buildMarkdown(verification);
+  const markdown = buildMarkdown(verification, governanceMetadata);
   const relativeOut = String(out).replace(/\\/g, "/").replace(/^docs\/audit\//i, "");
   const dbFirstWrite = effectiveStateMode === "dual" || effectiveStateMode === "db-only"
     ? runDbFirstArtifactUseCase({
@@ -151,6 +162,7 @@ export async function projectAgentHealthSummary({
     db_first_applied: Boolean(dbFirstWrite),
     db_first_materialized: Boolean(dbFirstWrite?.materialized),
     db_first_artifact_path: dbFirstWrite?.artifact?.path ?? relativeOut,
+    governance_metadata: governanceMetadata,
     verification,
     agent_health_diagnostic: deriveAgentHealthSummaryDiagnostic({
       target_root: absoluteTargetRoot,

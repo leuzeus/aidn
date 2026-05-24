@@ -2,6 +2,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { AGENT_ROLES } from "../../src/core/agents/agent-role-model.mjs";
+import { deriveGovernedRuntimeArtifactMetadata } from "../../src/application/runtime/governed-runtime-artifact-metadata-lib.mjs";
 import { assessIntegrationRisk } from "../../src/application/runtime/integration-risk-service.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
@@ -193,6 +194,7 @@ function buildMarkdown({
   roleCoverage,
   effectiveRecommendedRoleCoverage,
   observability,
+  governanceMetadata,
   out,
 }) {
   const selectionPreview = findSelectionPreview(selectionSummary, coordinator.recommendation);
@@ -216,6 +218,11 @@ function buildMarkdown({
   lines.push("");
   lines.push("## Summary");
   lines.push("");
+  lines.push(`source_of_truth: ${governanceMetadata.source_of_truth}`);
+  lines.push(`source_mode: ${governanceMetadata.source_mode}`);
+  lines.push(`lifecycle_status: ${governanceMetadata.lifecycle_status}`);
+  lines.push(`owner: ${governanceMetadata.owner}`);
+  lines.push(`steward: ${governanceMetadata.steward}`);
   lines.push(`updated_at: ${new Date().toISOString()}`);
   lines.push(`recommended_role: ${coordinator.recommendation.role}`);
   lines.push(`recommended_action: ${coordinator.recommendation.action}`);
@@ -381,6 +388,11 @@ export async function projectMultiAgentStatus({
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
+  const governanceMetadata = deriveGovernedRuntimeArtifactMetadata({
+    runtimeStateMode: effectiveStateMode,
+    owner: "aidn-runtime",
+    steward: "aidn-runtime",
+  });
   const coordinator = await computeCoordinatorNextAction({
     targetRoot: absoluteTargetRoot,
     sharedCoordination,
@@ -454,6 +466,7 @@ export async function projectMultiAgentStatus({
     roleCoverage,
     effectiveRecommendedRoleCoverage,
     observability,
+    governanceMetadata,
     out,
   });
   const relativeOut = String(out).replace(/\\/g, "/").replace(/^docs\/audit\//i, "");
@@ -480,6 +493,7 @@ export async function projectMultiAgentStatus({
     output_file: write.path,
     written: write.written,
     state_mode: effectiveStateMode,
+    governance_metadata: governanceMetadata,
     db_first_applied: Boolean(dbFirstWrite),
     db_first_materialized: Boolean(dbFirstWrite?.materialized),
     db_first_artifact_path: dbFirstWrite?.artifact?.path ?? relativeOut,

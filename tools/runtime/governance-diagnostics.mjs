@@ -78,7 +78,7 @@ export function renderGovernanceDiagnosticsText(result) {
   if (Array.isArray(result.observed_artifacts) && result.observed_artifacts.length > 0) {
     lines.push("- observed_artifacts:");
     for (const artifact of result.observed_artifacts) {
-      lines.push(`  - ${artifact.id}: exists=${artifact.exists ? "yes" : "no"} metadata=${artifact.metadata?.metadata_status ?? "unknown"} source_of_truth=${artifact.source_of_truth?.source_of_truth_status ?? "unknown"}`);
+      lines.push(`  - ${artifact.id}: exists=${artifact.exists ? "yes" : "no"} metadata=${artifact.metadata?.metadata_status ?? "unknown"} lifecycle=${artifact.lifecycle_status ?? "unknown"} source_of_truth=${artifact.source_of_truth?.source_of_truth_status ?? "unknown"}`);
     }
   }
   return `${lines.join("\n")}\n`;
