@@ -10,6 +10,7 @@ Important:
 - this file is not the implementation source of truth
 - current delivery status still lives in the dated backlog plan
 - if these issue drafts diverge from the repository state, treat them as a stale export until refreshed
+- ADR-0008 and ADR-0009 are now drafted and should be reflected in new or revised issue exports
 
 Recommended labels:
 
@@ -66,6 +67,7 @@ The repository already exposes many runtime commands. Their status must be expli
 ## References
 
 - `docs/PLAN_AIDN_CORRECTION_ARCHITECTURE_BACKLOG_2026-05-23.md`
+- `docs/ADR/ADR-0009-release-versioning-provenance.md`
 ```
 
 Labels:
@@ -435,6 +437,54 @@ Milestone:
 
 - `M3 CI And Release Boundaries`
 
+### Issue 11 - Define shared coordination ports
+
+Title:
+
+`[Architecture] ADR-0008 - Define shared coordination ports`
+
+Body:
+
+```md
+## Summary
+
+Define a minimal shared coordination port contract before expanding the shared runtime surface.
+
+## Why
+
+Shared coordination already exists in runtime validation and backend adapters. The boundary should become explicit before new shared behavior lands.
+
+## Scope
+
+- `src/core/ports/*`
+- `src/application/runtime/shared-*`
+- `src/adapters/runtime/postgres-shared-coordination-store.mjs`
+- `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md`
+- `docs/ADR/ADR-0007-local-first-federation-boundary.md`
+- `docs/ADR/ADR-0008-shared-coordination-ports.md`
+
+## Acceptance Criteria
+
+- port methods are documented and minimal
+- adapter implementations match the port contract
+- the matrix and boundary ADR stay in sync
+
+## References
+
+- `docs/PLAN_AIDN_CORRECTION_ARCHITECTURE_BACKLOG_2026-05-23.md`
+```
+
+Labels:
+
+- `architecture`
+- `shared-runtime`
+- `runtime`
+- `P3`
+
+Milestone:
+
+- `M2 Governance And Runtime Hardening`
+
 ### Issue 10 - Add release and provenance checklist
 
 Title:
@@ -480,4 +530,3 @@ Labels:
 Milestone:
 
 - `M3 CI And Release Boundaries`
-
