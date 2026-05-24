@@ -11,6 +11,8 @@ Statut d'exécution actuel:
 - `P0-01` alignement de `project-runtime-state` livré sur `dev`
 - `P0-02` alignement de `project-handoff-packet` livré sur `dev`
 - `P0-03` gate `perf:verify-cli-surface-parity` livré et branché en CI
+- `P0-04` complétion de `source-of-truth-policy` livrée sur `dev`, avec couverture explicite et statuts `covered / subsumed`
+- `P1-01` `baseline` et `snapshot` sont désormais classés comme artefacts locaux gouvernés, hors partage implicite
 - les lots suivants du backlog restent à dérouler à partir de cette base stabilisée
 
 ## 1. Résumé du diagnostic

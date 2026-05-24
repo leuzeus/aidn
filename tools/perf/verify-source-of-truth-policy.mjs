@@ -31,6 +31,27 @@ function main() {
   const validation = validateSourceOfTruthPolicies();
   const policies = listSourceOfTruthPolicies();
   const modes = listStateModes();
+  const expectedConcepts = [
+    "workflow_rules",
+    "project_policy",
+    "runtime_defaults",
+    "workspace_identity",
+    "session_state",
+    "cycle_state",
+    "artifact_inventory",
+    "decision",
+    "incident",
+    "coordination_summary",
+    "coordination_log",
+    "user_arbitration",
+    "baseline",
+    "snapshot",
+    "runtime_digests",
+    "repair_findings",
+    "coordination_records",
+    "agent_roster",
+    "cli_output_contracts",
+  ];
   const matrixIssues = [];
   for (const policy of policies) {
     for (const mode of modes) {
@@ -38,6 +59,11 @@ function main() {
       if (!resolved?.source_of_truth) {
         matrixIssues.push(`${policy.concept}: unresolved source for ${mode}`);
       }
+    }
+  }
+  for (const concept of expectedConcepts) {
+    if (!getSourceOfTruthPolicy(concept)) {
+      matrixIssues.push(`missing expected concept: ${concept}`);
     }
   }
   const output = {

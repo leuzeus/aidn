@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-AIDN manipulates sessions, cycles, runtime digests, handoff packets, artifacts, repair findings, decisions, incidents, coordination records and CLI contracts. Historically, the effective model was inferred from Markdown templates, parsers, SQL schemas, runtime payloads and CLI output.
+AIDN manipulates sessions, cycles, runtime digests, handoff packets, artifacts, repair findings, decisions, incidents, coordination records, baselines, snapshots and CLI contracts. Historically, the effective model was inferred from Markdown templates, parsers, SQL schemas, runtime payloads and CLI output.
 
 This makes governance expensive: a field can exist in a projection without a clear owner, lifecycle, metadata policy or source of truth.
 
@@ -26,6 +26,8 @@ Rules:
 - critical Markdown contracts live in `src/lib/workflow/markdown-contract-registry-lib.mjs`
 - public CLI JSON contracts live under `src/core/contracts/cli-output/`
 - runtime projections may expose derived views, but must not become undocumented canonical sources
+- baseline and snapshot are governed as local-first artifact families, not as implicit shared runtime primitives
+- decision, incident and coordination records are governed through explicit source-of-truth policies and metadata rules, even when the runtime stores are shared-opt-in only
 
 ## Options Compared
 

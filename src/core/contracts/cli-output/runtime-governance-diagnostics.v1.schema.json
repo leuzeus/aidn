@@ -76,6 +76,8 @@
         "properties": {
           "concept": { "type": "string" },
           "status": { "type": "string" },
+          "coverage_kind": { "type": "string" },
+          "coverage_note": { "type": "string" },
           "required": { "type": "array" },
           "source_of_truth_concept": { "type": "string" },
           "source_of_truth_status": { "type": "string" },

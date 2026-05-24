@@ -69,6 +69,12 @@ export function renderGovernanceDiagnosticsText(result) {
       lines.push(`  - ${surface.id}: ${surface.status} effect=${surface.effect_class} contract=${surface.json_contract_status} linked=${surface.linked_concept_coverage_status}`);
     }
   }
+  if (Array.isArray(result.concepts) && result.concepts.length > 0) {
+    lines.push("- concepts:");
+    for (const concept of result.concepts.slice(0, 14)) {
+      lines.push(`  - ${concept.concept}: ${concept.status} coverage=${concept.coverage_kind ?? "covered"} sot=${concept.source_of_truth_status} metadata=${concept.metadata_status} contract=${concept.cli_contract_status ?? "not_applicable"}`);
+    }
+  }
   if (Array.isArray(result.command_coverage) && result.command_coverage.length > 0) {
     lines.push("- command_coverage:");
     for (const command of result.command_coverage.slice(0, 10)) {

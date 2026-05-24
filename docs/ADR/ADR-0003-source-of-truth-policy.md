@@ -27,6 +27,8 @@ Rules:
 - in `dual`, runtime DB/index is canonical for runtime state and Markdown projection is required
 - in `db-only`, runtime DB is canonical and Markdown is materialized on demand
 - shared runtime is opt-in and limited to explicitly listed coordination metadata
+- decision, incident, coordination_summary, coordination_log and user_arbitration are governed through the coordination record family
+- baseline and snapshot are governed as local-first artifact families and remain checkout-bound unless explicitly projected
 
 The living matrices are:
 
@@ -72,3 +74,4 @@ Negative:
 - add source-of-truth policy helpers under `src/core`
 - add gate checks for source/projection drift
 - keep ADR-0003 aligned with runtime scope matrix updates
+- keep baseline and snapshot decisions aligned with the runtime artifact store and governance diagnostics
