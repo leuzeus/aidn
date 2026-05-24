@@ -152,6 +152,49 @@ function inspectPackageLeakGuard(repoRoot) {
   };
 }
 
+function inspectPackageDocsAllowlist(files) {
+  const packagePaths = files
+    .map((file) => String(file?.path ?? "").trim())
+    .filter(Boolean);
+  const expectedDocs = new Set([
+    "docs/INSTALL.md",
+    "docs/MIGRATION_SHARED_RUNTIME_POSTGRESQL.md",
+    "docs/MULTI_PROJECT_POSTGRESQL_MIGRATION_GUIDE.md",
+    "docs/RUNTIME_SURFACE_SCOPE_MATRIX.md",
+    "docs/SPEC.md",
+    "docs/TESTING.md",
+    "docs/TROUBLESHOOTING.md",
+    "docs/UPGRADE.md",
+  ]);
+  const allowedDocPrefixes = [
+    "docs/performance/",
+  ];
+  const blockedDocPrefixes = [
+    "docs/audit/",
+    "docs/ADR/",
+    "docs/PLAN_",
+  ];
+  const docs = packagePaths.filter((filePath) => filePath.startsWith("docs/"));
+  const missingDocs = [...expectedDocs].filter((docPath) => !packagePaths.includes(docPath));
+  const unexpectedDocs = docs.filter((docPath) => {
+    if (expectedDocs.has(docPath)) {
+      return false;
+    }
+    return !allowedDocPrefixes.some((prefix) => docPath.startsWith(prefix));
+  });
+  const blockedDocs = docs.filter((docPath) => blockedDocPrefixes.some((prefix) => docPath.startsWith(prefix)));
+  const violations = [
+    ...missingDocs.map((docPath) => `missing:${docPath}`),
+    ...unexpectedDocs.map((docPath) => `unexpected:${docPath}`),
+    ...blockedDocs.map((docPath) => `blocked:${docPath}`),
+  ];
+  return {
+    files: docs,
+    violations,
+    pass: violations.length === 0,
+  };
+}
+
 function main() {
   const repoRoot = process.cwd();
   const tempRoot = fs.mkdtempSync(path.join(path.resolve(repoRoot, "tests", "fixtures"), "tmp-pack-topology-"));
@@ -199,6 +242,7 @@ function main() {
     const extendedInstall = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
     const extendedVerify = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--verify"]);
     const packageLeakGuard = inspectPackageLeakGuard(repoRoot);
+    const packageDocsAllowlist = inspectPackageDocsAllowlist(packageLeakGuard.files);
 
     assert(/packs:\s*\r?\n\s*-\s*core/i.test(workflowManifest) || /packs:\s*\n\s*-\s*core/i.test(workflowManifest), "workflow manifest should default to core only");
     assert(/depends_on:\s*\[core]/i.test(runtimeLocalManifest), "runtime-local should depend on core");
@@ -235,6 +279,7 @@ function main() {
     assert(fs.existsSync(path.join(extendedTarget, ".codex", "skills.yaml")), "extended should restore skills.yaml");
     assert(fs.existsSync(path.join(extendedTarget, ".github", "workflows", "branch-prune.yml")), "extended should restore branch pruning automation");
     assert(packageLeakGuard.pass, `npm pack leak guard failed: ${packageLeakGuard.violations.slice(0, 20).join(", ")}`);
+    assert(packageDocsAllowlist.pass, `package docs allowlist failed: ${packageDocsAllowlist.violations.slice(0, 20).join(", ")}`);
 
     console.log("PASS");
   } catch (error) {

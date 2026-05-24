@@ -97,7 +97,7 @@ When a change affects release/versioning, install examples, or build-release pro
 - `npm run perf:verify-pack-topology`
 
 The release version verifier checks that `VERSION`, `package.json`, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The release artifact verifier should be run after `npm run build-release`; it checks the generated zip path, `release/checksums.txt`, and `release/manifest.json`.
-The pack topology verifier checks the package tarball surface and the leak guard for guarded terms in package paths and contents.
+The pack topology verifier checks the package tarball surface, the published docs allowlist, and the leak guard for guarded terms in package paths and contents.
 
 ### 2. Parity / Runtime Persistence Verifications
 

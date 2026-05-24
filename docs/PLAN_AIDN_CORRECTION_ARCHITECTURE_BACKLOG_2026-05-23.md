@@ -379,6 +379,7 @@ Avancement:
 - Critères d'acceptation: gate release vérifie version, artifacts, manifest et absence de docs internes/pilotes dans le package.
 - Priorité: P2.
 - Labels suggérés: `release`, `security`, `packaging`, `P2`.
+- Avancement: `perf:verify-pack-topology` couvre déjà `npm pack --dry-run`, la leak guard et l'allowlist des docs publiées; le workflow release appelle ce gate.
 - Fichiers probables: `tools/build-release.mjs`, `tools/perf/verify-release-artifacts.mjs`, `package.json`, `docs/GIT_WORKFLOW.md`.
 
 ## ADR à créer ou mettre à jour
