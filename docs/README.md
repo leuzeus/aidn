@@ -41,10 +41,9 @@ Use this page as the first stop when you need to navigate the repository docs.
 
 ## Historical Context
 
-These documents remain useful as history, but they are not the current working entry point for the EA/IA execution stream:
+These documents remain useful as history, but they are superseded for the current EA/IA execution stream and should not be used as the primary entry point for the active backlog:
 
 - [Architecture remediation plan](./PLAN_ARCHITECTURE_REMEDIATION_2026-03-07.md)
 - [Enterprise information architecture plan](./PLAN_AIDN_ENTERPRISE_INFORMATION_ARCHITECTURE_2026-05-18.md)
 - [Correction architecture backlog](./PLAN_AIDN_CORRECTION_ARCHITECTURE_BACKLOG_2026-05-23.md)
 - [Correction architecture backlog 2026-05-23](./BACKLOG_AIDN_CORRECTION_ARCHITECTURE_BACKLOG_2026-05-23.md)
-

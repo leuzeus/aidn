@@ -8,9 +8,11 @@ Purpose:
 - provide a single entry point for the architectural working set
 - reduce the need to hunt across plans, matrices, ADRs, and runtime inventories
 - keep the local-first / shared-runtime boundary visible
+- defer broad documentation navigation to [docs/README.md](./README.md)
 
 ## Primary Entry Points
 
+- [Documentation index](./README.md)
 - [Execution plan post EA/IA review](./PLAN_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md)
 - [Executable backlog post EA/IA review](./BACKLOG_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md)
 - [CLI surface inventory](./CLI_SURFACE_INVENTORY.md)
@@ -50,4 +52,3 @@ Purpose:
 - `files`, `dual`, and `db-only` remain supported operating modes.
 - PostgreSQL shared coordination stays explicit opt-in.
 - release/provenance must stay tied to `VERSION`, `package.json`, manifest, and checksums.
-
