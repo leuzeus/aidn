@@ -106,11 +106,13 @@ Rules:
 
 - runtime readers continue to resolve from checkout/worktree-local files first
 - no shared runtime is consulted unless explicitly configured by locator/env/CLI
+- recommended checks: `npm run perf:verify-cli-no-implicit-write`, `npm run perf:verify-cli-output-contracts`
 
 ### `dual`
 
 - local projection artifacts remain valid under `.aidn/runtime/index/*`
 - DB-first readers may use local SQLite fallback, but checkout-bound artifacts remain local/versioned
+- recommended checks: `npm run perf:verify-state-mode-parity`, `npm run perf:verify-runtime-payload-builders`
 
 ### `db-only`
 
@@ -119,6 +121,7 @@ Rules:
   - `sqlite-file` shared projection
   - `postgres` shared coordination with local SQLite compat projection
 - repair-layer SQLite flows remain local-projection based
+- recommended checks: `npm run perf:verify-state-mode-parity`, `npm run perf:verify-db-only-readiness`
 
 ## Guardrails
 
