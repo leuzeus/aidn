@@ -71,6 +71,7 @@ function deriveMultiAgentStatusDiagnostic(result) {
     environment_status: String(result?.observability?.environment_status ?? "unknown").trim() || "unknown",
     role_coverage_status: String(result?.observability?.role_coverage_status ?? "unknown").trim() || "unknown",
     routing_status: String(result?.observability?.routing_status ?? "unknown").trim() || "unknown",
+    coordination_history_status: String(result?.observability?.coordination_history_status ?? "unknown").trim() || "unknown",
     written: result?.written === true,
     summary: `multi-agent status recommends ${String(result?.recommendation?.role ?? "unknown").trim() || "unknown"} + ${String(result?.recommendation?.action ?? "unknown").trim() || "unknown"}`,
     recommended_command: "aidn runtime coordinator-next-action --json",
