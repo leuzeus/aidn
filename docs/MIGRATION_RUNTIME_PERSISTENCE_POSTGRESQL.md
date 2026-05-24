@@ -319,25 +319,25 @@ Live smoke fixture coverage on 2026-04-10 also validates the same cutover:
   - `db-only-readiness` resolves `CURRENT-STATE` and `HANDOFF-PACKET` from PostgreSQL
   - `project-handoff-packet` runs with `projection_scope=runtime-canonical`
 
-Read-only validation on the current live `gowire` workspace on 2026-04-10:
+Read-only validation on the current live external pilot workspace on 2026-04-10:
 
-- workspace: `G:\projets\gowire`
+- workspace: external pilot workspace
 - current config already declares `runtime.persistence.backend=postgres`, `runtime.persistence.localProjectionPolicy=keep-local-sqlite`, `runtime.stateMode=db-only`
 - `persistence-source-diagnose` still reports `diagnostic_status=ambiguous-cycle-identities`
 - blocking logical cycle identities remain `C004`, `C005`, `C032`
 - the same diagnostics now also expose `reason_codes=source-cycle-identity-ambiguous, source-scope-drift`
-- `payload.audit_root` still points to `G:\projets\gowire\.aidn\runtime\recovery\2026-04-08-postgres-recovery\merged-workspace\docs\audit`, not to `G:\projets\gowire\docs\audit`
+- `payload.audit_root` still points to the recovery workspace audit root, not to the live workspace audit root
 - `persistence-status` therefore still plans `action=blocked-conflict`; the first blocking reason remains `source-cycle-identity-ambiguous`
 
 Promoted-copy replay on 2026-04-10:
 
-- workspace: `G:\projets\gowire-promoted-live-copy-2026-04-10`
+- workspace: promoted live copy workspace
 - the promoted copy first rematerialized `docs/audit` from the restored SQLite source (`selected_count=891`, `exported=849`, `unchanged=42`)
 - the approved normalization mapping was then replayed on the promoted corpus:
   - `C004-spike-root-structure-investigation` -> `C020-spike-root-structure-investigation`
   - `C005-structural-root-simplification-lot1` -> `C021-structural-root-simplification-lot1`
   - `C032-corrective-component-review-hardening` -> `C034-corrective-component-review-hardening`
-- `index-sync --store dual-sqlite --with-content` rebuilt `89` cycles / `74` sessions / `891` artifacts and re-anchored the SQLite source to `target_root=G:\projets\gowire-promoted-live-copy-2026-04-10`
+- `index-sync --store dual-sqlite --with-content` rebuilt `89` cycles / `74` sessions / `891` artifacts and re-anchored the SQLite source to the promoted copy target root
 - `persistence-source-diagnose` then converged to `diagnostic_status=ready`, `cycle_identity_collision_count=0`, `adoption_blocked=false`
 - because the relational scope had already been populated during rebuild, the PostgreSQL target was backed up then purged for this exact `scope_key`
 - after purge, `persistence-adopt --backend postgres --connection-ref env:AIDN_PG_URL` converged on the promoted copy
@@ -346,7 +346,7 @@ Promoted-copy replay on 2026-04-10:
 
 Independent replay for double validation on 2026-04-10:
 
-- workspace: `G:\projets\gowire-promoted-live-copy-2026-04-10-validation-2`
+- workspace: second promoted live copy workspace
 - the second promoted copy was rebuilt independently from the live `.aidn` payload, not cloned from the first validated copy
 - rematerialization converged with `selected_count=891`, `exported=891`, `unchanged=0`
 - initial source diagnostics reproduced the same blockers as live: `diagnostic_status=ambiguous-cycle-identities`, `reason_codes=source-cycle-identity-ambiguous, source-scope-drift`
@@ -358,14 +358,14 @@ Independent replay for double validation on 2026-04-10:
 - the follow-up dry-run again returned `action=noop`, `reason_code=target-matches-source`
 - final target status again converged to `storage_policy=relational-canonical`, `compatibility_status=relational-ready`, `canonical_payload_rows=1`, `legacy_snapshot_rows=0`
 
-Live `gowire` replay on 2026-04-10:
+Live external pilot replay on 2026-04-10:
 
-- workspace: `G:\projets\gowire`
+- workspace: live external pilot workspace
 - pre-write backups were captured for:
-  - SQLite: `G:\projets\gowire\.aidn\runtime\index\backups\workflow-index.2026-04-10T03-55-24-577Z.pre-migration.sqlite`
-  - PostgreSQL: `G:\projets\gowire\.aidn\runtime\backups\runtime-postgres.2026-04-10T03-55-24-824Z.json`
-  - pre-adoption PostgreSQL drift snapshot: `G:\projets\gowire\.aidn\runtime\backups\runtime-postgres.2026-04-10T04-27-50-372Z.json`
-  - local audit snapshot: `G:\projets\gowire\.aidn\runtime\recovery\2026-04-10-live-replay-before\docs-audit-before`
+  - SQLite backup from the live external pilot workspace
+  - PostgreSQL backup from the live external pilot workspace
+  - pre-adoption PostgreSQL drift snapshot from the live external pilot workspace
+  - local audit snapshot from the live external pilot workspace
 - `artifact-store materialize` rebuilt the live `docs/audit` corpus from SQLite (`selected_count=891`, `exported=849`, `unchanged=42`)
 - `persistence-source-normalize` then replayed the approved mapping directly on the live source corpus and converged with `files_scanned=891`, `files_updated=0`, `directories_renamed=3`
 - `index-sync --store dual-sqlite --with-content` rebuilt the live SQLite source as `89` cycles / `74` sessions / `891` artifacts
@@ -378,7 +378,7 @@ Live `gowire` replay on 2026-04-10:
 Operational implication:
 
 - the PostgreSQL runtime path is validated
-- the current live `gowire` workspace is no longer blocked by source normalization policy
+- the current live external pilot workspace is no longer blocked by source normalization policy
 - the approved normalization/adoption path now converges on dedicated recovery workspaces, two independent promoted copies, and the live workspace itself
 - the remaining operational decision is whether to keep `localProjectionPolicy=keep-local-sqlite` on live or schedule a dedicated live `localProjectionPolicy=none` cutover
 
