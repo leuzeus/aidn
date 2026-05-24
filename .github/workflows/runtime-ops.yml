@@ -23,6 +23,12 @@ jobs:
       - name: Verify DB Schema Migrations
         run: npm run perf:verify-db-schema-migrations
 
+      - name: Verify DB Runtime CLI
+        run: npm run perf:verify-db-runtime-cli
+
+      - name: Verify Runtime Persistence Parity
+        run: npm run perf:verify-runtime-persistence-parity
+
       - name: Verify Shared Coordination Backup
         run: npm run perf:verify-shared-coordination-backup
 

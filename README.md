@@ -94,6 +94,8 @@ Codex instruction layering after install:
 - `aidn codex`
   - Codex hook and context helpers used by workflow automation
 
+The current public/internal classification lives in [docs/CLI_SURFACE_INVENTORY.md](G:/projets/aidn/docs/CLI_SURFACE_INVENTORY.md).
+
 Representative commands:
 
 ```bash

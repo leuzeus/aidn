@@ -12,6 +12,8 @@ The contracts are intentionally shallow in v1:
 Command effect classes are governed separately in `src/core/cli/effect-policy.mjs`.
 That policy records whether a public command is `read-only`, `preview`, `projector`, `mutating`, or `executor`, and provides the safe arguments used by the no-implicit-write fixture gate.
 
+For a current public/internal inventory of the CLI surface, see `docs/CLI_SURFACE_INVENTORY.md`.
+
 Naming convention:
 
 - `<group>-<subcommand>.v<major>.schema.json`
@@ -32,6 +34,7 @@ Initial v1 commands:
 - `aidn runtime project-handoff-packet --json`
 - `aidn runtime pre-write-admit --json`
 - `aidn runtime db-status --json`
+- `aidn runtime db-only-readiness --json`
 - `aidn runtime persistence-status --json`
 - `aidn runtime db-migrate --json`
 - `aidn runtime persistence-migrate --json`

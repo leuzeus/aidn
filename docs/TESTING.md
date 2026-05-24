@@ -11,7 +11,7 @@ Testing here is used for several different intents:
 - confirm a behavioral hypothesis
 - compare SQLite and PostgreSQL behavior
 - replay fixture-based installed-project scenarios
-- optionally validate a local-only external pilot corpus
+- optionally validate a local-only reference corpus
 
 This guide explains which kind of verification to run for each intent and how to interpret the result.
 
@@ -22,7 +22,7 @@ Important distinctions:
 - current repository root = package source
 - `scaffold/*` = source templates
 - `tests/fixtures/*` = tracked test corpora
-- local external pilot corpora = optional, local-only, not required for a clean checkout
+- local-only reference corpora = optional, not required for a clean checkout
 
 Do not assume a fixture run means the current repo root is an installed target.
 
@@ -47,11 +47,14 @@ These are usually the safest default for validating a code change.
 When a change affects public `--json` output or CLI read/write semantics, run:
 
 - `npm run perf:verify-cli-effect-policy`
+- `npm run perf:verify-cli-surface-inventory`
 - `npm run perf:verify-cli-no-implicit-write`
 - `npm run perf:verify-cli-output-contracts`
 - `npm run perf:verify-cli-aliases`
 
 The CLI effect policy verifier checks the public command effect inventory in `src/core/cli/effect-policy.mjs`. The no-implicit-write verifier runs stable read-only, preview, and projector dry-run commands against a temporary fixture copy and fails if checkout-bound or declared projection guard paths change. The CLI output contract verifier runs the public JSON commands against a temporary fixture copy and validates them against `src/core/contracts/cli-output/*.schema.json`. For projector commands, it also verifies that `--dry-run --json` does not mutate the projected Markdown artifact.
+
+The CLI surface inventory verifier checks that `repair-layer` commands remain classified as internal and are not exposed as public runtime aliases or effect-policy entries.
 
 When a change affects source-of-truth semantics or concept ownership, run:
 
@@ -67,16 +70,22 @@ When a change affects governed metadata, critical Markdown contracts, or lifecyc
 When a change affects local operations, backup/restore, doctor output, or migration safety, run:
 
 - `npm run perf:verify-db-schema-migrations`
+- `npm run perf:verify-db-runtime-cli`
+- `npm run perf:verify-runtime-persistence-parity`
 - `npm run perf:verify-shared-coordination-backup`
 - `npm run perf:verify-shared-coordination-restore`
 - `npm run perf:verify-shared-coordination-doctor`
 
-These checks are also split into `.github/workflows/runtime-ops.yml` so operational regressions are visible independently from broader KPI/perf coverage.
+These checks are also split into `.github/workflows/runtime-ops.yml` so runtime-persistence and shared-coordination regressions are visible independently from broader KPI/perf coverage.
+
+When a change affects shared-boundary locator/path/reanchor behavior, run the dedicated `.github/workflows/shared-boundary.yml` checks instead of relying on `perf-kpi`.
 
 When a change affects shared-runtime locator, re-anchor, or local-first boundary behavior, run:
 
-- `npm run perf:verify-shared-runtime-reanchor`
+- `npm run perf:verify-shared-runtime-locator`
 - `npm run perf:verify-shared-runtime-path`
+- `npm run perf:verify-shared-runtime-reanchor`
+- `npm run perf:verify-shared-surface-boundary`
 
 The re-anchor fixture includes checkout-bound sentinels for `docs/audit/*`, `AGENTS.md`, and `.codex/*` so locator repair cannot silently rewrite or relocate those local artifacts.
 
@@ -85,8 +94,10 @@ When a change affects release/versioning, install examples, or build-release pro
 - `npm run perf:verify-release-version`
 - `npm run build-release`
 - `npm run perf:verify-release-artifacts`
+- `npm run perf:verify-pack-topology`
 
 The release version verifier checks that `VERSION`, `package.json`, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The release artifact verifier should be run after `npm run build-release`; it checks the generated zip path, `release/checksums.txt`, and `release/manifest.json`.
+The pack topology verifier checks the package tarball surface and the leak guard for guarded terms in package paths and contents.
 
 ### 2. Parity / Runtime Persistence Verifications
 
@@ -111,6 +122,7 @@ These commands validate enforcement behavior:
 - `npm run perf:verify-start-session-admission`
 - `npm run perf:verify-branch-cycle-audit-admission`
 - `npm run perf:verify-handoff-packet`
+- `npm run perf:verify-session-plan`
 - `npm run perf:verify-repair-layer-session`
 - `npm run perf:verify-repair-layer-*`
 
@@ -137,9 +149,9 @@ Use them when a change affects:
 - rendered managed blocks
 - output formatting contracts
 
-### 5. Local-Only External Pilot Verifications
+### 5. Local-Only Reference Verifications
 
-Some checks are designed to validate behavior against a local-only pilot corpus.
+Some checks are designed to validate behavior against a local-only reference corpus.
 
 Current example:
 
@@ -147,11 +159,11 @@ Current example:
 
 Rules:
 
-- these checks must not require a tracked pilot corpus
-- they may `SKIP` on a clean checkout when no local pilot corpus is configured
-- if several local pilot corpora exist, select one explicitly with `AIDN_PILOT_RUNTIME_IMPORT_ROOT`
+- these checks must not require a tracked reference corpus
+- they may `SKIP` on a clean checkout when no local reference corpus is configured
+- if several local reference corpora exist, select one explicitly with `AIDN_PILOT_RUNTIME_IMPORT_ROOT`
 
-Use them when fixture coverage is not enough and you want to confirm behavior on a local pilot corpus with real degraded shapes.
+Use them when fixture coverage is not enough and you want to confirm behavior on a local reference corpus with real degraded shapes.
 
 ## Which Tests To Run
 
@@ -189,7 +201,7 @@ Typical progression:
 1. targeted fixture check
 2. adjacent repair/admission check
 3. relational/parity check
-4. optional local pilot replay
+4. optional local reference replay
 
 ### Confirm a hypothesis
 
@@ -203,7 +215,7 @@ Examples:
   - `npm run perf:verify-markdown-contract`
   - `npm run perf:verify-runtime-persistence-parity`
 - “root runtime artifacts recover ownership from content”:
-  - `npm run perf:verify-pilot-runtime-import` if a local pilot corpus is available
+  - `npm run perf:verify-pilot-runtime-import` if a local reference corpus is available
 
 ### Confirm SQLite/PostgreSQL parity
 
@@ -227,17 +239,17 @@ Interpret results conservatively:
 
 Important:
 
-- `SKIP` is acceptable for local-only pilot checks on a clean checkout
+- `SKIP` is acceptable for local-only reference checks on a clean checkout
 - `SKIP` is not a substitute for the CI-safe fixture checks required by the lot
 - when reporting validation, separate `PASS` commands from `SKIP` commands explicitly
 
-## Local-Only Pilot Checks
+## Local-Only Reference Checks
 
-For pilot checks:
+For local-only reference checks:
 
-- use `AIDN_PILOT_RUNTIME_IMPORT_ROOT` when more than one local pilot corpus exists
-- do not commit pilot corpora unless the user explicitly wants a published synthetic fixture
-- do not rely on pilot checks as the only evidence for a lot when tracked fixture coverage can exist
+- use `AIDN_PILOT_RUNTIME_IMPORT_ROOT` when more than one local reference corpus exists
+- do not commit reference corpora unless the user explicitly wants a published synthetic fixture
+- do not rely on reference checks as the only evidence for a lot when tracked fixture coverage can exist
 
 Example:
 
@@ -251,7 +263,7 @@ npm run perf:verify-pilot-runtime-import
 When adding a new verification:
 
 - prefer tracked fixtures for reproducible repo validation
-- use local-only pilot checks only when tracked fixtures cannot represent the shape well enough
+- use local-only reference checks only when tracked fixtures cannot represent the shape well enough
 - keep one verification focused on one behavioral contract
 - if a test is local-only, make that explicit in its name, docs, or output
 - if a test can legitimately skip, make the skip condition explicit and deterministic
@@ -262,4 +274,4 @@ When closing a lot, report:
 
 - which commands passed
 - which commands were skipped and why
-- whether the evidence came from tracked fixtures, parity checks, or a local-only pilot corpus
+- whether the evidence came from tracked fixtures, parity checks, or a local-only reference corpus

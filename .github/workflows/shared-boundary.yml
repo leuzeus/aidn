@@ -1,0 +1,33 @@
+name: Shared Boundary
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shared-boundary:
+    name: Verify Shared Runtime Boundary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify Shared Runtime Locator
+        run: npm run perf:verify-shared-runtime-locator
+
+      - name: Verify Shared Runtime Path
+        run: npm run perf:verify-shared-runtime-path
+
+      - name: Verify Shared Runtime Reanchor
+        run: npm run perf:verify-shared-runtime-reanchor
+
+      - name: Verify Shared Surface Boundary
+        run: npm run perf:verify-shared-surface-boundary

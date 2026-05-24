@@ -23,6 +23,9 @@ jobs:
       - name: Verify CLI Effect Policy
         run: npm run perf:verify-cli-effect-policy
 
+      - name: Verify CLI Surface Inventory
+        run: npm run perf:verify-cli-surface-inventory
+
       - name: Verify CLI No Implicit Write
         run: npm run perf:verify-cli-no-implicit-write
 
@@ -31,12 +34,3 @@ jobs:
 
       - name: Verify Governance Completeness
         run: npm run perf:verify-governance-completeness
-
-      - name: Verify Release Version Policy
-        run: npm run perf:verify-release-version
-
-      - name: Build Release Artifacts
-        run: npm run build-release
-
-      - name: Verify Release Artifacts
-        run: npm run perf:verify-release-artifacts

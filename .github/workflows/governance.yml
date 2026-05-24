@@ -1,0 +1,33 @@
+name: Governance
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  governance:
+    name: Verify Governance Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify Source of Truth Policy
+        run: npm run perf:verify-source-of-truth-policy
+
+      - name: Verify Metadata Policy
+        run: npm run perf:verify-metadata-policy
+
+      - name: Verify Governance Completeness
+        run: npm run perf:verify-governance-completeness
+
+      - name: Verify Governance Runtime CLI
+        run: npm run perf:verify-governance-runtime-cli

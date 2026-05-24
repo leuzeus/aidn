@@ -68,6 +68,14 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Reports local runtime persistence status without migration.",
   }),
   commandPolicy({
+    id: "runtime-db-only-readiness",
+    command: "aidn runtime db-only-readiness --json",
+    effectClass: "read-only",
+    jsonContract: "runtime-db-only-readiness.v1.schema.json",
+    safeArgs: ["runtime", "db-only-readiness", "--json"],
+    notes: "Reports db-only readiness for the selected target without mutating runtime state.",
+  }),
+  commandPolicy({
     id: "runtime-persistence-status",
     command: "aidn runtime persistence-status --json",
     effectClass: "read-only",

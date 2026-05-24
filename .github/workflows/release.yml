@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Verify Release Surface
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify Release Version Policy
+        run: npm run perf:verify-release-version
+
+      - name: Build Release Artifacts
+        run: npm run build-release
+
+      - name: Verify Release Artifacts
+        run: npm run perf:verify-release-artifacts
+
+      - name: Verify Pack Topology
+        run: npm run perf:verify-pack-topology
