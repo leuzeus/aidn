@@ -13,6 +13,7 @@ Les lots suivants ont déjà été traités sur `dev` et ne doivent pas être re
 - les familles de gates CI sont branchées via un workflow dédié et documentées;
 - le flux release a été rendu plus atomique et mieux vérifiable;
 - le flux release a désormais un gate unique `perf:verify-release-flow` qui enchaîne version, build, artifacts et pack topology;
+- un baseline sécurité CI minimal est désormais branché via un workflow dédié et un gate agrégé;
 - les runbooks shared coordination backup / restore / doctor ont été productisés;
 - la restauration shared coordination expose désormais une validation post-restore explicite et testée;
 - les modes `files`, `dual` et `db-only` sont documentés avec des checks recommandés;

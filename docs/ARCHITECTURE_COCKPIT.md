@@ -45,6 +45,7 @@ Purpose:
 - `npm run perf:verify-shared-coordination-backup`
 - `npm run perf:verify-shared-coordination-restore`
 - `npm run perf:verify-shared-coordination-doctor`
+- `npm run perf:verify-security-baseline`
 - `npm run perf:verify-release-version`
 - `npm run perf:verify-release-artifacts`
 

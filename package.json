@@ -227,6 +227,7 @@
     "perf:verify-shared-runtime-path": "node tools/perf/verify-shared-runtime-path-fixtures.mjs",
     "perf:verify-shared-runtime-reanchor": "node tools/perf/verify-shared-runtime-reanchor-fixtures.mjs",
     "perf:verify-shared-surface-boundary": "node tools/perf/verify-shared-surface-boundary.mjs",
+    "perf:verify-security-baseline": "npm run perf:verify-pack-topology && npm run perf:verify-shared-surface-boundary && npm run perf:verify-cli-no-implicit-write",
     "perf:verify-shared-runtime-db-first-regression": "node tools/perf/verify-shared-runtime-db-first-regression-fixtures.mjs",
     "perf:verify-shared-state-backend": "node tools/perf/verify-shared-state-backend-fixtures.mjs",
     "perf:verify-shared-sqlite-boundary": "node tools/perf/verify-shared-sqlite-boundary-fixtures.mjs",
