@@ -206,7 +206,9 @@ function readPackage(repoRoot) {
 function main() {
   const scriptDir = path.dirname(fileURLToPath(import.meta.url));
   const repoRoot = path.resolve(scriptDir, "..");
-  const version = fs.readFileSync(path.join(repoRoot, "VERSION"), "utf8").trim();
+  const versionPath = path.join(repoRoot, "VERSION");
+  const packagePath = path.join(repoRoot, "package.json");
+  const version = fs.readFileSync(versionPath, "utf8").trim();
   const packageJson = readPackage(repoRoot);
   if (packageJson.version !== version) {
     throw new Error(`package.json version ${packageJson.version} does not match VERSION ${version}`);
@@ -233,7 +235,9 @@ function main() {
     generated_at: new Date().toISOString(),
     source: {
       version_file: "VERSION",
+      version_file_sha256: sha256File(versionPath),
       package_file: "package.json",
+      package_file_sha256: sha256File(packagePath),
     },
     build: {
       tool: "tools/build-release.mjs",

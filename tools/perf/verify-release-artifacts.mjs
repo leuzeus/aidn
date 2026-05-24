@@ -95,6 +95,15 @@ function verify() {
     }
     if (!manifest.source || manifest.source.version_file !== "VERSION" || manifest.source.package_file !== "package.json") {
       issues.push("manifest source block must declare VERSION and package.json provenance");
+    } else {
+      const versionPath = path.join(REPO_ROOT, "VERSION");
+      const packagePath = path.join(REPO_ROOT, "package.json");
+      if (manifest.source.version_file_sha256 !== sha256File(versionPath)) {
+        issues.push("manifest source.version_file_sha256 does not match VERSION");
+      }
+      if (manifest.source.package_file_sha256 !== sha256File(packagePath)) {
+        issues.push("manifest source.package_file_sha256 does not match package.json");
+      }
     }
     if (!manifest.build || manifest.build.tool !== "tools/build-release.mjs") {
       issues.push("manifest build block must declare tools/build-release.mjs provenance");

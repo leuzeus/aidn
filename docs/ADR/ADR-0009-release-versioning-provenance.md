@@ -24,6 +24,7 @@ Rules:
 - `package.json` must stay aligned with `VERSION`
 - `tools/build-release.mjs` produces release artifacts from the checked-in source state
 - `release/manifest.json` and `release/checksums.txt` are the release provenance outputs
+- the manifest records source fingerprints for `VERSION` and `package.json` so the source of truth can be verified from the build output itself
 - `npm pack --dry-run` remains part of the publish-surface guard
 - internal docs, pilot-specific details and non-published fixtures must not leak into the package payload
 
@@ -72,4 +73,5 @@ Negative:
 
 - keep `perf:verify-release-version` and `perf:verify-pack-topology` in the release path
 - ensure release manifests and checksums stay in the same atomic publish flow
+- keep source fingerprints in the manifest in sync with the checked-in files
 - update the release workflow when the publish surface changes
