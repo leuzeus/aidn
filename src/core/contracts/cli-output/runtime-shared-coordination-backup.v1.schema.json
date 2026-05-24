@@ -29,7 +29,52 @@
     "shared_coordination_backend": { "type": "object", "additionalProperties": true },
     "health": { "type": ["object", "null"], "additionalProperties": true },
     "schema_compatibility": { "type": ["object", "null"], "additionalProperties": true },
-    "backup": { "type": ["object", "null"], "additionalProperties": true },
+    "backup": {
+      "type": ["object", "null"],
+      "required": [
+        "ts",
+        "workspace",
+        "shared_coordination_backend",
+        "schema_snapshot",
+        "active_context",
+        "snapshot"
+      ],
+      "properties": {
+        "ts": { "type": "string" },
+        "workspace": { "type": "object", "additionalProperties": true },
+        "shared_coordination_backend": { "type": "object", "additionalProperties": true },
+        "health": { "type": ["object", "null"], "additionalProperties": true },
+        "schema_snapshot": {
+          "type": "object",
+          "required": [
+            "schema_name",
+            "expected_schema_version",
+            "latest_applied_schema_version",
+            "schema_status"
+          ],
+          "properties": {
+            "schema_name": { "type": "string" },
+            "expected_schema_version": { "type": "number" },
+            "latest_applied_schema_version": { "type": "number" },
+            "schema_status": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "active_context": { "type": "object", "additionalProperties": true },
+        "contract": { "type": ["object", "null"], "additionalProperties": true },
+        "snapshot": {
+          "type": "object",
+          "required": ["planning_read", "handoff_read", "coordination_read"],
+          "properties": {
+            "planning_read": { "type": ["object", "null"], "additionalProperties": true },
+            "handoff_read": { "type": "object", "additionalProperties": true },
+            "coordination_read": { "type": "object", "additionalProperties": true }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
     "operations": {
       "type": "object",
       "required": [
