@@ -282,6 +282,7 @@
     "perf:verify-integration-risk": "node tools/perf/verify-integration-risk-fixtures.mjs",
     "perf:verify-multi-agent-status": "node tools/perf/verify-multi-agent-status-fixtures.mjs",
     "perf:verify-coordination-summary": "node tools/perf/verify-coordination-summary-fixtures.mjs",
+    "perf:verify-coordination-summary-use-case": "node tools/perf/verify-coordination-summary-use-case-fixtures.mjs",
     "perf:verify-list-agent-adapters": "node tools/perf/verify-list-agent-adapters-fixtures.mjs",
     "perf:verify-current-state-skill-coverage": "node tools/perf/verify-current-state-skill-coverage.mjs",
     "perf:verify-pre-write-admit-skill-coverage": "node tools/perf/verify-pre-write-admit-skill-coverage.mjs",

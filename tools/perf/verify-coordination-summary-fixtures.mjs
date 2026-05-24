@@ -149,9 +149,9 @@ function main() {
     assert(dbOnlySummary.db_first_applied === true, "db-only summary should upsert artifact to SQLite");
     assert(dbOnlySummary.db_first_materialized === false, "db-only summary should not materialize file on disk");
     assert(dbOnlySummary.coordination_summary_diagnostic?.state_mode === "db-only", "db-only summary should expose state mode in the stable diagnostic");
-    assert(fs.existsSync(dbOnlySummaryFile) === true, "db-only summary should materialize the projection file");
-    assert(dbOnlyLoop.loop.summary_source === "file", "db-only loop should resolve coordination summary from the file projection");
-    assert(dbOnlyLoop.loop.summary_alignment.status === "mismatch", "db-only loop should surface the file/history mismatch");
+    assert(fs.existsSync(dbOnlySummaryFile) === false, "db-only summary should stay fileless on disk");
+    assert(dbOnlyLoop.loop.summary_source === "sqlite", "db-only loop should resolve coordination summary from SQLite");
+    assert(dbOnlyLoop.loop.summary_alignment.status === "aligned", "db-only loop should keep summary alignment from SQLite");
 
     const output = {
       ts: new Date().toISOString(),
