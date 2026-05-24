@@ -17,6 +17,7 @@ Les lots suivants ont déjà été traités sur `dev` et ne doivent pas être re
 - la restauration shared coordination expose désormais une validation post-restore explicite et testée;
 - les modes `files`, `dual` et `db-only` sont documentés avec des checks recommandés;
 - le cockpit architecture, l’index documentaire et les renvois actifs/archivés ont été ajoutés;
+- la navigation documentaire racine a été simplifiée pour éviter de réafficher des plans historiques dans l’entrée active;
 - `runtime-project-coordination-summary` et les artefacts multi-agent associés ont été durcis et validés par fixture.
 - `project-coordination-summary` a été extrait vers un use case applicatif direct avec garde de non-régression, tandis que le wrapper CLI est redevenu un routage mince.
 

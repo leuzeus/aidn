@@ -40,7 +40,7 @@ Use this page as the first stop when you need to navigate the repository docs.
 - [Performance plan](./performance/WORKFLOW_PERFORMANCE_PLAN.md)
 - [Prioritization matrix](./performance/PRIORITIZATION_MATRIX.md)
 
-## Historical Context
+## Archive
 
 These documents remain useful as history, but they are superseded for the current EA/IA execution stream and should not be used as the primary entry point for the active backlog:
 

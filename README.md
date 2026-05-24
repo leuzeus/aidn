@@ -211,14 +211,10 @@ Migration and repair:
 ## Architecture Direction
 
 - Documentation index: `docs/README.md`
+- Active execution stream: `docs/PLAN_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md` and `docs/BACKLOG_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md`
 - Target architecture ADR: `docs/ADR/ADR-0002-runtime-platform-architecture.md`
-- Remediation plan: `docs/PLAN_ARCHITECTURE_REMEDIATION_2026-03-07.md`
-- Executable backlog: `docs/BACKLOG_ARCHITECTURE_REMEDIATION_2026-03-07.md`
-- Enterprise information architecture plan: `docs/PLAN_AIDN_ENTERPRISE_INFORMATION_ARCHITECTURE_2026-05-18.md`
-- Enterprise information architecture backlog: `docs/BACKLOG_AIDN_ENTERPRISE_INFORMATION_ARCHITECTURE_2026-05-18.md`
 - Architecture cockpit: `docs/ARCHITECTURE_COCKPIT.md`
-- GitHub issues ready: `docs/BACKLOG_ARCHITECTURE_GITHUB_ISSUES_2026-03-07.md`
-- GitHub project ready: `docs/BACKLOG_ARCHITECTURE_GITHUB_PROJECT_2026-03-07.md`
+- Historical plans and backlogs remain cataloged in `docs/README.md`
 
 ## Installation
 
