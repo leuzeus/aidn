@@ -20,6 +20,7 @@ function isExcluded(relativePath) {
     normalized.startsWith(".git/") ||
     normalized === ".idea" ||
     normalized.startsWith(".idea/") ||
+    normalized.endsWith(".tmp") ||
     normalized === "release/dist" ||
     normalized.startsWith("release/dist/") ||
     normalized === "release/checksums.txt" ||
@@ -135,7 +136,7 @@ function makeEndOfCentralDirectory(entryCount, centralSize, centralOffset) {
   return record;
 }
 
-function buildZip(files, outputPath) {
+function buildZip(files) {
   const localChunks = [];
   const centralChunks = [];
   const centralEntries = [];
@@ -166,14 +167,24 @@ function buildZip(files, outputPath) {
   }
 
   const eocd = makeEndOfCentralDirectory(centralEntries.length, centralSize, offset);
-  const output = Buffer.concat([...localChunks, ...centralChunks, eocd]);
-  fs.writeFileSync(outputPath, output);
+  return Buffer.concat([...localChunks, ...centralChunks, eocd]);
 }
 
 function sha256File(filePath) {
   const hash = crypto.createHash("sha256");
   hash.update(fs.readFileSync(filePath));
   return hash.digest("hex");
+}
+
+function writeAtomicFile(filePath, content, encoding = null) {
+  const directory = path.dirname(filePath);
+  const tempPath = path.join(directory, `${path.basename(filePath)}.tmp`);
+  if (encoding) {
+    fs.writeFileSync(tempPath, content, encoding);
+  } else {
+    fs.writeFileSync(tempPath, content);
+  }
+  fs.renameSync(tempPath, filePath);
 }
 
 function getGitCommit(repoRoot) {
@@ -208,12 +219,12 @@ function main() {
 
   fs.mkdirSync(distDir, { recursive: true });
   const files = listFiles(repoRoot);
-  buildZip(files, zipPath);
+  writeAtomicFile(zipPath, buildZip(files));
 
   const hash = sha256File(zipPath);
   const zipStats = fs.statSync(zipPath);
   const checksumLine = `${hash}  release/dist/${zipName}\n`;
-  fs.writeFileSync(checksumsPath, checksumLine, "utf8");
+  writeAtomicFile(checksumsPath, checksumLine, "utf8");
   const manifest = {
     schema_version: 1,
     package_name: packageJson.name,
@@ -238,7 +249,7 @@ function main() {
       },
     ],
   };
-  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  writeAtomicFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 
   console.log(`zip: ${path.relative(repoRoot, zipPath)}`);
   console.log(`checksums: ${path.relative(repoRoot, checksumsPath)}`);
