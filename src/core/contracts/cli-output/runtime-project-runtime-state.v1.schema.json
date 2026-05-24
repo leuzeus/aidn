@@ -130,6 +130,8 @@
         "project_root": { "type": "string" },
         "workspace_id": { "type": "string" },
         "worktree_id": { "type": "string" },
+        "shared_planning_source": { "type": ["string", "null"] },
+        "shared_planning_read_status": { "type": ["string", "null"] },
         "runtime_state_mode": { "type": "string" },
         "repair_layer_status": { "type": "string" },
         "repair_layer_advice": { "type": "string" },
@@ -150,8 +152,14 @@
         "steward": { "type": "string" },
         "current_state_freshness": { "type": "string" },
         "current_state_freshness_basis": { "type": ["string", "null"] },
-        "blocking_findings": { "type": "array" },
-        "prioritized_artifacts": { "type": "array" },
+        "blocking_findings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "prioritized_artifacts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "context_source": { "type": ["string", "null"] },
         "consistency_status": { "type": "string" },
         "current_state_source": { "type": ["string", "null"] },
@@ -167,10 +175,16 @@
         "ts": { "type": "string" },
         "target_root": { "type": "string" },
         "audit_root": { "type": "string" },
-        "missing_files": { "type": "array" },
+        "missing_files": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "current_state": { "type": "object", "additionalProperties": true },
         "snapshot": { "type": "object", "additionalProperties": true },
-        "checks": { "type": "object" },
+        "checks": {
+          "type": "object",
+          "additionalProperties": { "type": "boolean" }
+        },
         "pass": { "type": "boolean" }
       },
       "additionalProperties": true
