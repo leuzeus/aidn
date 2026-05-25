@@ -29,6 +29,7 @@
       </bpmn:lane>
       <bpmn:lane id="Lane_Admission_Audit" name="Audit Agent">
         <bpmn:flowNodeRef>Task_AdmissionCheckBranchCycle</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_AdmissionCycleTopology</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_AdmissionCheckPreWrite</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Gateway_AdmissionDorReady</bpmn:flowNodeRef>
       </bpmn:lane>
@@ -41,11 +42,12 @@
     <bpmn:exclusiveGateway id="Gateway_AdmissionClarifyMerge" name="Clarification path" />
     <bpmn:exclusiveGateway id="Gateway_AdmissionEntryMerge" name="Resume admission" />
     <bpmn:exclusiveGateway id="Gateway_AdmissionUserReady" name="User context ready?" default="Flow_AdmissionClarifyLoop" />
-    <bpmn:task id="Task_AdmissionReanchor" name="Reload runtime context" />
-    <bpmn:exclusiveGateway id="Gateway_AdmissionContextComplete" name="Context complete?" default="Flow_AdmissionClarifyBack" />
-    <bpmn:task id="Task_AdmissionAssign" name="Admit session and assign work" />
-    <bpmn:task id="Task_AdmissionLoadCycleContext" name="Load session and cycle context" />
-    <bpmn:task id="Task_AdmissionCheckBranchCycle" name="Validate branch-cycle mapping" />
+    <bpmn:task id="Task_AdmissionReanchor" name="Reload runtime and session history" />
+    <bpmn:exclusiveGateway id="Gateway_AdmissionContextComplete" name="Context and continuity complete?" default="Flow_AdmissionClarifyBack" />
+    <bpmn:task id="Task_AdmissionAssign" name="Admit session after continuity checks" />
+    <bpmn:task id="Task_AdmissionLoadCycleContext" name="Load session and cycle topology" />
+    <bpmn:task id="Task_AdmissionCheckBranchCycle" name="Validate branch-cycle continuity" />
+    <bpmn:exclusiveGateway id="Gateway_AdmissionCycleTopology" name="Open-cycle topology clear?" default="Flow_AdmissionCycleTopologyDeferred" />
     <bpmn:task id="Task_AdmissionCheckPreWrite" name="Validate write prerequisites" />
     <bpmn:exclusiveGateway id="Gateway_AdmissionDorReady" name="Ready to write?" default="Flow_AdmissionPlanOnly" />
     <bpmn:task id="Task_AdmissionPlanOnly" name="Update plan in read-only mode" />
@@ -76,7 +78,11 @@
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_AdmissionLoadContext" sourceRef="Task_AdmissionAssign" targetRef="Task_AdmissionLoadCycleContext" />
     <bpmn:sequenceFlow id="Flow_AdmissionCheckBranchCycle" sourceRef="Task_AdmissionLoadCycleContext" targetRef="Task_AdmissionCheckBranchCycle" />
-    <bpmn:sequenceFlow id="Flow_AdmissionCheckPreWrite" sourceRef="Task_AdmissionCheckBranchCycle" targetRef="Task_AdmissionCheckPreWrite" />
+    <bpmn:sequenceFlow id="Flow_AdmissionCycleTopologyGate" sourceRef="Task_AdmissionCheckBranchCycle" targetRef="Gateway_AdmissionCycleTopology" />
+    <bpmn:sequenceFlow id="Flow_AdmissionCheckPreWrite" sourceRef="Gateway_AdmissionCycleTopology" targetRef="Task_AdmissionCheckPreWrite">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[topology_clear]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_AdmissionCycleTopologyDeferred" sourceRef="Gateway_AdmissionCycleTopology" targetRef="Task_AdmissionPlanOnly" />
     <bpmn:sequenceFlow id="Flow_AdmissionDorGate" sourceRef="Task_AdmissionCheckPreWrite" targetRef="Gateway_AdmissionDorReady" />
     <bpmn:sequenceFlow id="Flow_AdmissionPlanOnly" sourceRef="Gateway_AdmissionDorReady" targetRef="Task_AdmissionPlanOnly">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[dor_not_ready]]></bpmn:conditionExpression>
@@ -106,6 +112,7 @@
       <bpmndi:BPMNShape id="Task_AdmissionAssign_di" bpmnElement="Task_AdmissionAssign"><dc:Bounds x="1080" y="235" width="220" height="80" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_AdmissionLoadCycleContext_di" bpmnElement="Task_AdmissionLoadCycleContext"><dc:Bounds x="1420" y="370" width="190" height="80" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_AdmissionCheckBranchCycle_di" bpmnElement="Task_AdmissionCheckBranchCycle"><dc:Bounds x="1750" y="500" width="190" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_AdmissionCycleTopology_di" bpmnElement="Gateway_AdmissionCycleTopology" isMarkerVisible="true"><dc:Bounds x="1940" y="515" width="50" height="50" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_AdmissionCheckPreWrite_di" bpmnElement="Task_AdmissionCheckPreWrite"><dc:Bounds x="2050" y="500" width="190" height="80" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Gateway_AdmissionDorReady_di" bpmnElement="Gateway_AdmissionDorReady" isMarkerVisible="true"><dc:Bounds x="2360" y="515" width="50" height="50" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_AdmissionPlanOnly_di" bpmnElement="Task_AdmissionPlanOnly"><dc:Bounds x="2300" y="235" width="200" height="80" /></bpmndi:BPMNShape>
@@ -125,7 +132,9 @@
       <bpmndi:BPMNEdge id="Flow_AdmissionAssignWork_di" bpmnElement="Flow_AdmissionAssignWork"><di:waypoint x="950" y="275" /><di:waypoint x="1080" y="275" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_AdmissionLoadContext_di" bpmnElement="Flow_AdmissionLoadContext"><di:waypoint x="1300" y="275" /><di:waypoint x="1515" y="275" /><di:waypoint x="1515" y="370" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_AdmissionCheckBranchCycle_di" bpmnElement="Flow_AdmissionCheckBranchCycle"><di:waypoint x="1610" y="410" /><di:waypoint x="1845" y="410" /><di:waypoint x="1845" y="500" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_AdmissionCheckPreWrite_di" bpmnElement="Flow_AdmissionCheckPreWrite"><di:waypoint x="1940" y="540" /><di:waypoint x="2050" y="540" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AdmissionCycleTopologyGate_di" bpmnElement="Flow_AdmissionCycleTopologyGate"><di:waypoint x="1940" y="540" /><di:waypoint x="1940" y="540" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AdmissionCheckPreWrite_di" bpmnElement="Flow_AdmissionCheckPreWrite"><di:waypoint x="1990" y="540" /><di:waypoint x="2050" y="540" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AdmissionCycleTopologyDeferred_di" bpmnElement="Flow_AdmissionCycleTopologyDeferred"><di:waypoint x="1965" y="515" /><di:waypoint x="1965" y="275" /><di:waypoint x="2300" y="275" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_AdmissionDorGate_di" bpmnElement="Flow_AdmissionDorGate"><di:waypoint x="2240" y="540" /><di:waypoint x="2360" y="540" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_AdmissionPlanOnly_di" bpmnElement="Flow_AdmissionPlanOnly"><di:waypoint x="2385" y="515" /><di:waypoint x="2385" y="275" /><di:waypoint x="2300" y="275" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_AdmissionPlanOnlyEnd_di" bpmnElement="Flow_AdmissionPlanOnlyEnd"><di:waypoint x="2500" y="275" /><di:waypoint x="2520" y="275" /></bpmndi:BPMNEdge>

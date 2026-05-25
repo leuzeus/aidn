@@ -1,63 +1,86 @@
-# AGENTS.md
+# AIDN Agent Instructions
 
-## Purpose
+## Project Identity
 
-This root file records repository-wide constraints that agents must keep in mind across sessions.
+AIDN is a local-first workflow governance system for AI-assisted development. It is governed by executable architecture.
 
-It is intentionally short. It does not replace the workflow rules under `docs/audit/*`.
+## Core Rule
 
-## Repository Type
+AIDN changes are accepted only when architecture intent and executable behavior remain aligned.
 
-This repository is the package source repository, not an installed client repository.
+A change is complete only when code, CLI behavior, policies, contracts, tests or gates, documentation, and ADRs remain aligned.
 
-Rules:
+## Mandatory Workflow
 
-- do not assume the current working tree is an installed `aidn` target
-- treat `scaffold/*` as package templates/source assets, not as the live state of an installed project
-- treat `tests/fixtures/*` as test corpora, not as the live workflow state of the current repository
-- when referring to installed-project behavior, be explicit that it is fixture-based, scaffold-based, or validated on an external/local pilot
-- do not apply installed-repo assumptions to the current root unless the user explicitly says the task concerns an installed test target
+Before editing anything:
 
-## Local-Only Pilot Corpus
+- identify the task category
+- read the always-required docs:
+  - `docs/agents/00-agent-operating-model.md`
+  - `docs/agents/01-architecture-executable.md`
+  - `docs/agents/06-validation-and-dod.md`
+- read the task-specific docs from the routing matrix
+- verify the current executable behavior before changing code or docs
+- load only the files that are relevant to the task; do not open the whole repo blindly
+- use `docs/TESTING.md` to choose and interpret the smallest relevant verification set
 
-Some work may rely on a real external pilot repository or on local fixtures derived from it.
+Repository boundary:
 
-Rules:
+- this repository is package source, not an installed client repo
+- treat `scaffold/*` as source assets and `tests/fixtures/*` as test corpora, not live workflow state
+- when referring to installed behavior, be explicit about whether it is fixture-based, scaffold-based, or validated on an external or local pilot
 
-- the word `gowire` is allowed as a high-level reference when it is useful context
-- the same protection rules apply to any external project used as a pilot, not only to `gowire`
-- do not copy sensitive pilot details into tracked files unless they are strictly necessary
-- avoid committing real pilot paths, real branch names, real project-specific slugs, or business-specific content extracted from the pilot corpus
-- prefer neutral wording in tracked files:
-  - `external pilot`
-  - `local-only pilot corpus`
-  - `pilot fixture`
-- if a local pilot-derived fixture is useful for development but should not be published, keep it local and add it to `.gitignore`
-- if sensitive pilot-derived content was already tracked, explicitly flag that history cleanup may be required instead of silently ignoring it
-- when a new external pilot is introduced, default to these same local-only and leak-minimization rules unless the user explicitly states otherwise
+Local-only pilot corpus:
+
+- keep pilot-derived details neutral in tracked files
+- avoid committing sensitive pilot paths, branch names, or business-specific content unless strictly necessary
+- prefer `external pilot`, `local-only pilot corpus`, or `pilot fixture` in tracked docs
 
 ## Editing Guidance
 
-When touching docs, fixtures, or verification scripts related to pilot validation:
-
-- minimize retained pilot-specific detail
+- when touching docs, fixtures, or verification scripts related to pilot validation, minimize retained pilot-specific detail
 - keep only the structure and identifiers needed to reproduce the technical behavior under test
 - prefer generic script names such as `pilot` over project-specific names when there is no functional reason to keep the original label
+- if sensitive pilot-derived content was already tracked, explicitly flag that history cleanup may be required instead of silently ignoring it
+
+## Documentation Coherence
+
+- if runtime behavior changes, update the smallest affected docs in the same change set
+- if a focused diagram or BPMN changes meaningfully, mirror the intent in the related macro or rule docs
+- if docs and behavior cannot be aligned immediately, call out the drift explicitly instead of leaving it implicit
+- treat `AGENTS.md` as the policy layer, not as a complete inventory of every artifact
 
 ## Testing Guidance
 
-For test selection and interpretation, use `docs/TESTING.md`.
-
-Agents should:
-
+- use `docs/TESTING.md` for intent-based test selection and result interpretation
 - choose the smallest relevant verification set for the change
 - distinguish tracked fixture checks from local-only pilot checks
 - report `SKIP` separately from `PASS`
 
-## Precedence
+## Task Routing Matrix
 
-For workflow execution and mutation rules, follow:
+| Task type | Must read |
+|---|---|
+| CLI command or flag | `docs/agents/02-cli-effect-policy.md`, `docs/CLI_SURFACE_INVENTORY.md`, `src/core/cli/effect-policy.mjs` |
+| JSON output or contract | `docs/agents/04-json-contracts.md`, `src/core/contracts/cli-output/` |
+| Information concept, metadata, source of truth | `docs/agents/03-information-governance.md`, `src/core/source-of-truth/source-of-truth-policy.mjs`, `src/core/metadata/metadata-policy.mjs` |
+| Runtime modes or shared coordination | `docs/agents/05-local-first-shared-runtime.md`, `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md`, `docs/ADR/ADR-0007-local-first-federation-boundary.md`, `docs/ADR/ADR-0008-shared-coordination-ports.md` |
+| CI, gates, release | `docs/agents/06-validation-and-dod.md`, `package.json`, `.github/workflows/`, `docs/ADR/ADR-0009-release-versioning-provenance.md` |
+| ADR or architecture decision | relevant `docs/ADR/*` plus `docs/agents/01-architecture-executable.md` |
 
-1. `docs/audit/SPEC.md`
-2. `docs/audit/WORKFLOW.md`
-3. this file
+## Non-Negotiable Rules
+
+- `--json` must never imply mutation.
+- Read-only and preview commands must not modify the checkout.
+- Local writes require explicit intent such as `--write`.
+- Shared runtime synchronization requires explicit intent such as `--sync-relay`.
+- PostgreSQL must remain optional.
+- Public JSON outputs require contracts and fixtures.
+- New governed information concepts require source-of-truth and metadata coverage.
+- Do not mark a task done unless validation proves alignment.
+
+## Definition Of Done
+
+Follow `docs/agents/06-validation-and-dod.md`.
+
+A task is done only when behavior is verified, docs are aligned, policies are aligned, required contracts and fixtures are updated if needed, relevant gates pass, and any architectural decision change is reflected in the ADR.
