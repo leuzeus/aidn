@@ -11,6 +11,7 @@ Use this page as the first stop when you need to navigate the repository docs.
 - [CI gate families](./CI_GATE_FAMILIES.md)
 - [Testing guide](./TESTING.md)
 - [Runtime surface scope matrix](./RUNTIME_SURFACE_SCOPE_MATRIX.md)
+- [Agent instruction index](./agents/README.md)
 
 ## Historical EA/IA Trace
 
