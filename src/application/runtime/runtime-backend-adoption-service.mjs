@@ -364,6 +364,22 @@ export function createRuntimeBackendAdoptionService(options = {}) {
         action: "noop",
         reason: "postgres runtime target already contains canonical data and no sqlite transfer source is available",
         reasonCode: "target-ready",
+        });
+    }
+
+    if (options.ignoreSourceDriftWhenTargetReady === true
+      && targetSnapshot.exists
+      && !targetSnapshot.warning) {
+      return buildPlan({
+        absoluteTargetRoot: targetRoot,
+        backend: runtimePersistence.backend,
+        connectionRef: runtimePersistence.connectionRef,
+        source,
+        targetStatus,
+        targetSnapshot,
+        action: "noop",
+        reason: "postgres runtime target already contains canonical data; local sqlite compatibility drift is ignored for install compatibility",
+        reasonCode: "target-ready",
       });
     }
 

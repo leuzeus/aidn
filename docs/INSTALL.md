@@ -163,6 +163,7 @@ Notes:
 - Runtime persistence policy:
   - if `.aidn/config.json` configures `runtime.persistence.backend=postgres`, the selected backend is PostgreSQL and the status commands report the PostgreSQL structure as canonical,
   - the local `.aidn/runtime/index/workflow-index.sqlite` file remains a compatibility projection or migration source when PostgreSQL is configured,
+  - if PostgreSQL is already canonical and ready, `aidn install` treats a stale local SQLite compatibility projection as non-blocking instead of forcing a migration conflict,
   - if PostgreSQL is not configured, SQLite remains the fallback legacy backend,
   - `install.artifactImportStore` stays a compatibility/migration knob and does not override the configured runtime backend.
 - Optional Codex project config:

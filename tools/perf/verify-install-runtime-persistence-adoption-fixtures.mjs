@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { runInstallUseCase } from "../../src/application/install/install-use-case.mjs";
+import { createRuntimeArtifactStore } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { readRuntimeSnapshot } from "../../src/application/runtime/runtime-snapshot-service.mjs";
 import { readAidnProjectConfig } from "../../src/lib/config/aidn-config-lib.mjs";
 import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persistence-fake-pg-lib.mjs";
@@ -42,6 +43,28 @@ function makeCodexStub(tmpRoot) {
   }
   return binDir;
 }
+
+const READY_RELATIONAL_TABLES = [
+  "schema_migrations",
+  "runtime_heads",
+  "adoption_events",
+  "index_meta",
+  "cycles",
+  "artifacts",
+  "sessions",
+  "file_map",
+  "tags",
+  "artifact_tags",
+  "run_metrics",
+  "artifact_links",
+  "cycle_links",
+  "session_cycle_links",
+  "session_links",
+  "repair_decisions",
+  "migration_runs",
+  "migration_findings",
+  "artifact_blobs",
+];
 
 async function main() {
   let tempRoot = "";
@@ -104,6 +127,58 @@ async function main() {
     assert(fake.state.relationalRows.index_meta.some((row) => row.key === "payload_schema_version"), "install should transfer canonical runtime metadata to postgres");
     assert(fake.state.relationalRows.artifacts.length > 0, "install should transfer canonical runtime artifacts to postgres");
     assert(fake.state.adoptionEvents.length === 1, "install should record one runtime adoption event");
+
+    const driftTargetRoot = path.join(tempRoot, "repo-drift");
+    fs.cpSync(path.resolve(process.cwd(), "tests", "fixtures", "repo-installed-core"), driftTargetRoot, { recursive: true });
+    const driftSqliteFile = path.join(driftTargetRoot, ".aidn", "runtime", "index", "workflow-index.sqlite");
+    const driftSourceSnapshot = await readRuntimeSnapshot({
+      indexFile: driftSqliteFile,
+      backend: "sqlite",
+    });
+    const driftSourcePayload = JSON.parse(JSON.stringify(driftSourceSnapshot.payload));
+    driftSourcePayload.artifacts[0].sha256 = "sha-drifted-target";
+
+    const driftFake = createRuntimePersistenceFakePgClientFactory({
+      initialTables: READY_RELATIONAL_TABLES,
+      initialSchemaMigrations: [2],
+    });
+    const driftSeedStore = createRuntimeArtifactStore({
+      targetRoot: driftTargetRoot,
+      backend: "postgres",
+      connectionRef: "env:AIDN_PG_URL",
+      clientFactory: driftFake.factory,
+    });
+    await driftSeedStore.writeIndexProjection({ payload: driftSourcePayload });
+
+    await runInstallUseCase({
+      repoRoot: process.cwd(),
+      targetRoot: driftTargetRoot,
+      args: {
+        target: driftTargetRoot,
+        pack: "core",
+        sourceBranch: "",
+        adapterFile: "",
+        dryRun: false,
+        verifyOnly: false,
+        skipArtifactImport: false,
+        artifactImportStore: "",
+        runtimePersistenceBackend: "postgres",
+        runtimePersistenceConnectionRef: "env:AIDN_PG_URL",
+        runtimePersistenceLocalProjectionPolicy: "keep-local-sqlite",
+        assist: false,
+        strict: false,
+        skipAgents: false,
+        forceAgentsMerge: false,
+        codexMigrateCustom: false,
+      },
+      runtimeBackendAdoptionOptions: {
+        connectionString: process.env.AIDN_PG_URL,
+        clientFactory: driftFake.factory,
+      },
+    });
+
+    assert(driftFake.state.relationalRows.artifacts.length > 0, "install should keep canonical postgres rows when local sqlite drifts");
+    assert(driftFake.state.adoptionEvents.length === 0, "install should skip runtime adoption when target postgres is already ready");
 
     console.log("PASS");
   } catch (error) {

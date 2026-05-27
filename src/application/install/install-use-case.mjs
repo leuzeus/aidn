@@ -485,12 +485,16 @@ export async function runInstallUseCase({
     const runtimePersistenceConfig = nextAidnConfigData.runtime?.persistence ?? {};
     let runtimeBackendAdoptionResult = null;
     if (String(runtimePersistenceConfig.backend ?? "").trim().toLowerCase() === "postgres") {
+      const resolvedRuntimeBackendAdoptionOptions = {
+        ignoreSourceDriftWhenTargetReady: true,
+        ...(runtimeBackendAdoptionOptions ?? {}),
+      };
       runtimeBackendAdoptionResult = await executeRuntimeBackendAdoption({
         targetRoot,
         backend: runtimePersistenceConfig.backend,
         connectionRef: runtimePersistenceConfig.connectionRef ?? "",
         write: !args.dryRun,
-        ...(runtimeBackendAdoptionOptions ?? {}),
+        ...resolvedRuntimeBackendAdoptionOptions,
       });
       summary.runtimeBackendAdoptionPlanned += 1;
       if (runtimeBackendAdoptionResult.ok === true && runtimeBackendAdoptionResult.attempted) {
