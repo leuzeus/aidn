@@ -55,6 +55,21 @@ function toIsoFromStat(stats) {
   return new Date(stats.mtimeMs).toISOString();
 }
 
+function readPreciseMtimeNs(absolutePath, fallbackStats) {
+  try {
+    const bigintStats = fs.statSync(absolutePath, { bigint: true });
+    if (typeof bigintStats?.mtimeNs === "bigint") {
+      return bigintStats.mtimeNs.toString();
+    }
+    if (typeof bigintStats?.mtimeNs === "number" && Number.isFinite(bigintStats.mtimeNs)) {
+      return String(Math.trunc(bigintStats.mtimeNs));
+    }
+  } catch {
+    // Fall back to the regular stats path below.
+  }
+  return String(Math.round(Number(fallbackStats?.mtimeMs ?? 0) * 1_000_000));
+}
+
 function normalizeKey(raw) {
   return raw.trim().toLowerCase().replace(/\s+/g, "_");
 }
@@ -421,6 +436,7 @@ function buildArtifactRows(auditRoot, options = {}) {
   for (const absolutePath of files) {
     const stats = fs.statSync(absolutePath);
     const raw = fs.readFileSync(absolutePath);
+    const mtimeNs = readPreciseMtimeNs(absolutePath, stats);
     const relativePath = path.relative(auditRoot, absolutePath).replace(/\\/g, "/");
     const classification = inferArtifactClassification(relativePath);
     const extension = path.extname(relativePath).toLowerCase();
@@ -447,7 +463,7 @@ function buildArtifactRows(auditRoot, options = {}) {
       classification_reason: classification.classification_reason,
       sha256: sha256Buffer(raw),
       size_bytes: stats.size,
-      mtime_ns: Math.round(stats.mtimeMs * 1_000_000),
+      mtime_ns: mtimeNs,
       session_id: ownership.session_id,
       cycle_id: ownership.cycle_id,
       source_mode: ownershipMetadata.source_mode,
@@ -525,11 +541,45 @@ function buildRunMetrics(kpiFilePath) {
     }));
 }
 
-export function stablePayloadProjection(payload) {
+function stableSortValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => stableSortValue(item));
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+  const out = {};
+  for (const key of Object.keys(value).sort()) {
+    out[key] = stableSortValue(value[key]);
+  }
+  return out;
+}
+
+function canonicalizePayloadCollections(payload) {
   if (!payload || typeof payload !== "object") {
     return payload;
   }
   const clone = JSON.parse(JSON.stringify(payload));
+  for (const [key, value] of Object.entries(clone)) {
+    if (!Array.isArray(value)) {
+      continue;
+    }
+    clone[key] = value
+      .map((item) => stableSortValue(item))
+      .sort((left, right) => {
+        const leftJson = JSON.stringify(left);
+        const rightJson = JSON.stringify(right);
+        return leftJson < rightJson ? -1 : leftJson > rightJson ? 1 : 0;
+      });
+  }
+  return clone;
+}
+
+export function stablePayloadProjection(payload) {
+  if (!payload || typeof payload !== "object") {
+    return payload;
+  }
+  const clone = canonicalizePayloadCollections(payload);
   delete clone.generated_at;
   if (clone.repair_layer_meta && typeof clone.repair_layer_meta === "object") {
     delete clone.repair_layer_meta.applied_at;

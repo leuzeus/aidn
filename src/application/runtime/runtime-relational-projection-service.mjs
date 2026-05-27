@@ -228,7 +228,7 @@ export function projectRuntimePayloadToRelationalRows(payload = {}, options = {}
       canonical_json: row?.canonical ?? null,
       sha256: row?.sha256 ?? null,
       size_bytes: Number(row?.size_bytes ?? 0),
-      mtime_ns: Number(row?.mtime_ns ?? 0),
+      mtime_ns: row?.mtime_ns == null ? null : String(row.mtime_ns),
       source_mode: row?.source_mode ?? (usedDerivedOwnership ? "inferred" : "explicit"),
       entity_confidence: Number(row?.entity_confidence ?? (usedDerivedOwnership ? 0.8 : 1)),
       legacy_origin: row?.legacy_origin ?? (usedDerivedOwnership ? "runtime_artifact_content" : null),

@@ -26,11 +26,45 @@ function getDatabaseSync() {
   }
 }
 
-function stableIndexProjection(indexPayload) {
+function stableSortValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => stableSortValue(item));
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+  const out = {};
+  for (const key of Object.keys(value).sort()) {
+    out[key] = stableSortValue(value[key]);
+  }
+  return out;
+}
+
+function canonicalizeIndexCollections(indexPayload) {
   if (!indexPayload || typeof indexPayload !== "object") {
     return indexPayload;
   }
   const clone = JSON.parse(JSON.stringify(indexPayload));
+  for (const [key, value] of Object.entries(clone)) {
+    if (!Array.isArray(value)) {
+      continue;
+    }
+    clone[key] = value
+      .map((item) => stableSortValue(item))
+      .sort((left, right) => {
+        const leftJson = JSON.stringify(left);
+        const rightJson = JSON.stringify(right);
+        return leftJson < rightJson ? -1 : leftJson > rightJson ? 1 : 0;
+      });
+  }
+  return clone;
+}
+
+function stableIndexProjection(indexPayload) {
+  if (!indexPayload || typeof indexPayload !== "object") {
+    return indexPayload;
+  }
+  const clone = canonicalizeIndexCollections(indexPayload);
   delete clone.generated_at;
   if (clone.repair_layer_meta && typeof clone.repair_layer_meta === "object") {
     delete clone.repair_layer_meta.applied_at;

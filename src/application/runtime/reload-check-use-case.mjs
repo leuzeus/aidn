@@ -15,8 +15,33 @@ function sha256(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 
+function readPreciseMtimeNs(filePath, fallbackStats = null) {
+  try {
+    const bigintStats = fs.statSync(filePath, { bigint: true });
+    if (typeof bigintStats?.mtimeNs === "bigint") {
+      return bigintStats.mtimeNs.toString();
+    }
+    if (typeof bigintStats?.mtimeNs === "number" && Number.isFinite(bigintStats.mtimeNs)) {
+      return String(Math.trunc(bigintStats.mtimeNs));
+    }
+  } catch {
+    // Fall back to the regular stats path below.
+  }
+  return String(Math.round(Number(fallbackStats?.mtimeMs ?? 0) * 1_000_000));
+}
+
+function readPreciseMtimeNsFromStats(stats) {
+  if (typeof stats?.mtimeNs === "bigint") {
+    return stats.mtimeNs.toString();
+  }
+  if (typeof stats?.mtimeNs === "number" && Number.isFinite(stats.mtimeNs)) {
+    return String(Math.trunc(stats.mtimeNs));
+  }
+  return String(Math.round(Number(stats?.mtimeMs ?? 0) * 1_000_000));
+}
+
 function statFingerprint(stats) {
-  const mtimeNs = Math.round(Number(stats.mtimeMs ?? 0) * 1_000_000);
+  const mtimeNs = readPreciseMtimeNsFromStats(stats);
   const size = Number(stats.size ?? 0);
   return `stat:${size}:${mtimeNs}`;
 }
@@ -240,12 +265,13 @@ function collectCurrentStateFromFiles(targetRoot, gitAdapter) {
       continue;
     }
     const stats = fs.statSync(absolute);
+    const mtimeNs = readPreciseMtimeNs(absolute, stats);
     requiredArtifacts.push({
       rel: relative,
       path: absolute,
       hash: sha256File(absolute),
       size_bytes: stats.size,
-      mtime_ns: Math.round(stats.mtimeMs * 1_000_000),
+      mtime_ns: mtimeNs,
     });
   }
 
@@ -260,34 +286,37 @@ function collectCurrentStateFromFiles(targetRoot, gitAdapter) {
       continue;
     }
     const stats = fs.statSync(absolute);
+    const mtimeNs = readPreciseMtimeNs(absolute, stats);
     trackedArtifacts.push({
       rel: relative,
       path: absolute,
       hash: sha256File(absolute),
       size_bytes: stats.size,
-      mtime_ns: Math.round(stats.mtimeMs * 1_000_000),
+      mtime_ns: mtimeNs,
     });
     trackedRel.add(relative);
   }
   for (const cycle of activeCycles) {
     const stats = fs.statSync(cycle.status_path);
+    const mtimeNs = readPreciseMtimeNs(cycle.status_path, stats);
     trackedArtifacts.push({
       rel: cycle.status_rel,
       path: cycle.status_path,
       hash: cycle.status_hash,
       size_bytes: stats.size,
-      mtime_ns: Math.round(stats.mtimeMs * 1_000_000),
+      mtime_ns: mtimeNs,
     });
   }
   if (latestSession) {
     const fullPath = path.join(auditRoot, latestSession.rel);
     const stats = fs.statSync(fullPath);
+    const mtimeNs = readPreciseMtimeNs(fullPath, stats);
     trackedArtifacts.push({
       rel: latestSession.rel,
       path: fullPath,
       hash: latestSession.hash,
       size_bytes: stats.size,
-      mtime_ns: Math.round(stats.mtimeMs * 1_000_000),
+      mtime_ns: mtimeNs,
     });
   }
   trackedArtifacts.sort((a, b) => a.rel.localeCompare(b.rel));

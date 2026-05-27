@@ -12,6 +12,7 @@ function assert(condition, message) {
 async function main() {
   try {
     const fake = createRuntimePersistenceFakePgClientFactory();
+    const preciseMtimeNs = "1779919956699223552";
     const store = createPostgresRuntimeArtifactStore({
       targetRoot: "/tmp/runtime-relational-store",
       connectionString: "postgres://aidn:test@localhost:5432/aidn",
@@ -70,7 +71,7 @@ async function main() {
           canonical: { state: "active" },
           sha256: "sha-current",
           size_bytes: 15,
-          mtime_ns: 123456,
+          mtime_ns: preciseMtimeNs,
           session_id: "S001",
           cycle_id: "C001",
           source_mode: "explicit",
@@ -217,6 +218,7 @@ async function main() {
     assert(fake.state.relationalRows.cycles[0]?.continuity_decision_by === "agent", "expected relational cycle continuity_decision_by parity");
     assert(fake.state.relationalRows.sessions.length === 1, "expected one relational session row");
     assert(fake.state.relationalRows.artifacts.length === 2, "expected relational artifact parity");
+    assert(fake.state.relationalRows.artifacts[0]?.mtime_ns === preciseMtimeNs, "expected exact artifact mtime_ns preservation");
     assert(fake.state.relationalRows.file_map.length === 1, "expected relational file_map row");
     assert(fake.state.relationalRows.tags.length === 1, "expected relational tag row");
     assert(fake.state.relationalRows.artifact_tags.length === 1, "expected relational artifact_tag row");
@@ -248,6 +250,7 @@ async function main() {
     assert(rehydrated.exists === true, "expected relational snapshot rehydration without legacy snapshot row");
     assert(rehydrated.payload?.target_root === path.resolve("/tmp/runtime-relational-store"), "expected relational payload target_root");
     assert(rehydrated.payload?.summary?.artifacts_count === 2, "expected relational payload summary parity");
+    assert(rehydrated.payload?.artifacts?.[0]?.mtime_ns === preciseMtimeNs, "expected exact rehydrated artifact mtime_ns preservation");
     assert(rehydrated.payload?.repair_layer_meta == null, "expected null repair_layer_meta when absent");
     assert(rehydrated.source_backend === "sqlite", "expected relational metadata source_backend parity");
     assert(rehydrated.adoption_status === "transferred", "expected relational metadata adoption_status parity");

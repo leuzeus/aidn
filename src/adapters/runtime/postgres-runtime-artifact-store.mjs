@@ -446,7 +446,7 @@ export function createPostgresRuntimeArtifactStore({
       return {
         exists: Boolean(snapshot.hasRelationalPayload),
         payload: parsedPayload,
-        payload_digest: normalizeScalar(snapshot.meta?.payload_digest) || (parsedPayload ? payloadDigest(parsedPayload) : null),
+        payload_digest: parsedPayload ? payloadDigest(parsedPayload) : (normalizeScalar(snapshot.meta?.payload_digest) || null),
         payload_schema_version: Number(snapshot.meta?.payload_schema_version ?? 0) || null,
         source_backend: normalizeScalar(snapshot.meta?.source_backend) || null,
         source_sqlite_file: normalizeScalar(snapshot.meta?.source_sqlite_file) || null,
