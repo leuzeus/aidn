@@ -7,6 +7,7 @@ import {
   payloadDigest,
   stablePayloadProjection,
 } from "./artifact-projector-adapter.mjs";
+import { normalizeRepairLayerPayload } from "../../application/runtime/repair-layer-normalization-lib.mjs";
 import { projectRuntimePayloadToRelationalRows } from "../../application/runtime/runtime-relational-projection-service.mjs";
 import {
   buildRuntimeMetaMap,
@@ -478,14 +479,19 @@ export function createPostgresRuntimeArtifactStore({
       throw new Error(connection.message);
     }
     const stablePayload = stablePayloadProjection(payload);
-    const digest = payloadDigest(stablePayload);
+    const normalizedPayload = normalizeRepairLayerPayload({
+      sourcePayload: stablePayload,
+      payload: stablePayload,
+      dryRun: false,
+    }).payload;
+    const digest = payloadDigest(normalizedPayload);
     const sourceBackendValue = normalizeScalar(sourceBackend) || "postgres";
     const sourceSqliteFileValue = normalizeScalar(sourceSqliteFile) || null;
     const adoptionStatusValue = normalizeScalar(adoptionStatus) || "ready";
     const adoptionMetadataValue = adoptionMetadata && typeof adoptionMetadata === "object"
       ? adoptionMetadata
       : { payload_digest: digest };
-    const relationalRows = projectRuntimePayloadToRelationalRows(stablePayload, {
+    const relationalRows = projectRuntimePayloadToRelationalRows(normalizedPayload, {
       scopeKey,
       generatedAt: payload?.generated_at,
       projectRootRef: absoluteTargetRoot,

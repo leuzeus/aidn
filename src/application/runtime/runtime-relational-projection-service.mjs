@@ -1,3 +1,5 @@
+import { normalizeRepairLayerPayload } from "./repair-layer-normalization-lib.mjs";
+
 function normalizeScalar(value) {
   return String(value ?? "").trim();
 }
@@ -183,21 +185,26 @@ export function buildRuntimeIndexMetaRows(payload = {}, options = {}) {
 }
 
 export function projectRuntimePayloadToRelationalRows(payload = {}, options = {}) {
+  const normalizedPayload = normalizeRepairLayerPayload({
+    sourcePayload: payload,
+    payload,
+    dryRun: false,
+  }).payload;
   const scopeKey = normalizeScalar(options.scopeKey);
-  const cycles = Array.isArray(payload?.cycles) ? payload.cycles : [];
-  const sessions = Array.isArray(payload?.sessions) ? payload.sessions : [];
-  const artifacts = Array.isArray(payload?.artifacts) ? payload.artifacts : [];
-  const fileMap = Array.isArray(payload?.file_map) ? payload.file_map : [];
-  const tags = Array.isArray(payload?.tags) ? payload.tags : [];
-  const artifactTags = Array.isArray(payload?.artifact_tags) ? payload.artifact_tags : [];
-  const runMetrics = Array.isArray(payload?.run_metrics) ? payload.run_metrics : [];
-  const artifactLinks = Array.isArray(payload?.artifact_links) ? payload.artifact_links : [];
-  const cycleLinks = Array.isArray(payload?.cycle_links) ? payload.cycle_links : [];
-  const sessionCycleLinks = Array.isArray(payload?.session_cycle_links) ? payload.session_cycle_links : [];
-  const sessionLinks = Array.isArray(payload?.session_links) ? payload.session_links : [];
-  const repairDecisions = Array.isArray(payload?.repair_decisions) ? payload.repair_decisions : [];
-  const migrationRuns = Array.isArray(payload?.migration_runs) ? payload.migration_runs : [];
-  const migrationFindings = Array.isArray(payload?.migration_findings) ? payload.migration_findings : [];
+  const cycles = Array.isArray(normalizedPayload?.cycles) ? normalizedPayload.cycles : [];
+  const sessions = Array.isArray(normalizedPayload?.sessions) ? normalizedPayload.sessions : [];
+  const artifacts = Array.isArray(normalizedPayload?.artifacts) ? normalizedPayload.artifacts : [];
+  const fileMap = Array.isArray(normalizedPayload?.file_map) ? normalizedPayload.file_map : [];
+  const tags = Array.isArray(normalizedPayload?.tags) ? normalizedPayload.tags : [];
+  const artifactTags = Array.isArray(normalizedPayload?.artifact_tags) ? normalizedPayload.artifact_tags : [];
+  const runMetrics = Array.isArray(normalizedPayload?.run_metrics) ? normalizedPayload.run_metrics : [];
+  const artifactLinks = Array.isArray(normalizedPayload?.artifact_links) ? normalizedPayload.artifact_links : [];
+  const cycleLinks = Array.isArray(normalizedPayload?.cycle_links) ? normalizedPayload.cycle_links : [];
+  const sessionCycleLinks = Array.isArray(normalizedPayload?.session_cycle_links) ? normalizedPayload.session_cycle_links : [];
+  const sessionLinks = Array.isArray(normalizedPayload?.session_links) ? normalizedPayload.session_links : [];
+  const repairDecisions = Array.isArray(normalizedPayload?.repair_decisions) ? normalizedPayload.repair_decisions : [];
+  const migrationRuns = Array.isArray(normalizedPayload?.migration_runs) ? normalizedPayload.migration_runs : [];
+  const migrationFindings = Array.isArray(normalizedPayload?.migration_findings) ? normalizedPayload.migration_findings : [];
 
   const cycleRows = cycles.map((row) => ({ ...row }));
   const sessionRows = sessions.map((row) => ({ ...row }));

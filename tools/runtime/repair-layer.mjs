@@ -68,6 +68,10 @@ function printHuman(output) {
   console.log(`Artifact links: ${output.summary.artifact_links_count}`);
   console.log(`Session cycle links: ${output.summary.session_cycle_links_count}`);
   console.log(`Findings: ${output.summary.migration_findings_count}`);
+  if (output.normalization_report?.summary) {
+    const summary = output.normalization_report.summary;
+    console.log(`Normalization: reconstructed=${summary.reconstructed ?? 0} inferred=${summary.inferred ?? 0} conflicted=${summary.conflicted ?? 0} needs_review=${summary.needs_review ?? 0}`);
+  }
   console.log(`Report: ${output.report_file ?? "disabled"}`);
   if (output.action === "applied") {
     console.log(`Write: files=${output.apply_result.writes.files_written_count} bytes=${output.apply_result.writes.bytes_written}`);

@@ -30,7 +30,7 @@ Purpose:
 | `.aidn/runtime/index/*.json` | `worktree-local` | no | current target root | Local JSON/SQL/index exports remain target-root anchored. |
 | `.aidn/runtime/context/*` | `worktree-local` | no | current target root | Hydrated context and runtime snapshots stay local to the executing worktree. |
 | `.aidn/runtime/perf/*` | `ephemeral` | no | current target root | KPI, reports, thresholds, and scratch perf outputs are local runtime artifacts. |
-| `.aidn/runtime/index/repair-layer*` | `ephemeral` | no | current target root | Repair-layer reports and triage outputs remain local and disposable. |
+| `.aidn/runtime/index/repair-layer*` | `ephemeral` | no | current target root | Repair-layer reports, triage outputs, and normalization summaries remain local and disposable. |
 | shared locator `backend.kind=sqlite-file` root | `shared-candidate` | explicit only | locator target | Only the explicitly configured shared SQLite projection is shared. |
 | shared locator `backend.kind=postgres` connection | `shared-candidate` | explicit only | locator target + env | Used only for shared coordination tables, not checkout-bound artifacts. |
 | PostgreSQL `workspace_registry` / `worktree_registry` | `shared-candidate` | explicit only | shared backend | Shared workspace identity and worktree heartbeat state. |

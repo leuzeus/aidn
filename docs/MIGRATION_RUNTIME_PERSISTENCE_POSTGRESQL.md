@@ -290,6 +290,12 @@ Normalization guidance:
 - the command now scopes its rewrites to the canonical source corpus under `docs/audit`
 - provide only approved rename mappings; the tool does not decide merge-vs-rename policy for you
 - the command rewrites structured cycle references and cycle-local identifiers, then renames the mapped cycle directories
+- `runtime repair-layer --json` now reports deterministic normalization states for repaired rows and relations:
+  - `reconstructed`
+  - `inferred`
+  - `conflicted`
+  - `needs_review`
+- the same normalization summary is preserved in `repair_layer_meta.normalization` so replayed writes stay idempotent
 - for live execution, back up SQLite, PostgreSQL, and any local recovery traces before replaying it on the repository root
 
 Validated recovery sequence on 2026-04-10:

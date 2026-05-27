@@ -9,6 +9,7 @@ import {
   REPAIR_LAYER_ENGINE_VERSION,
   summarizeRepairLayer,
 } from "./repair-layer-payload-lib.mjs";
+import { normalizeRepairLayerPayload } from "./repair-layer-normalization-lib.mjs";
 import { resolveRuntimePath } from "./runtime-path-resolution.mjs";
 import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
 
@@ -109,6 +110,19 @@ export async function runRepairLayerUseCase({ args, targetRoot }) {
       repairDecisions,
       inputDigest,
     });
+    const normalizationReport = normalizeRepairLayerPayload({
+      sourcePayload: payload,
+      payload: {
+        ...payload,
+        sessions: Array.isArray(payload.sessions) ? payload.sessions : [],
+        artifact_links: Array.isArray(payload.artifact_links) ? payload.artifact_links : [],
+        session_cycle_links: Array.isArray(payload.session_cycle_links) ? payload.session_cycle_links : [],
+        session_links: Array.isArray(payload.session_links) ? payload.session_links : [],
+        migration_runs: Array.isArray(payload.migration_runs) ? payload.migration_runs : [],
+        migration_findings: Array.isArray(payload.migration_findings) ? payload.migration_findings : [],
+      },
+      dryRun: !args.apply,
+    }).report;
     let reportFile = null;
     if (args.reportFile) {
       reportFile = resolveRuntimeOutputPath(targetRoot, args.reportFile);
@@ -121,6 +135,7 @@ export async function runRepairLayerUseCase({ args, targetRoot }) {
         action: "skipped",
         skip_reason: "input_unchanged",
         summary,
+        normalization_report: normalizationReport,
         migration_runs: repairLayer.migration_runs,
         migration_findings: repairLayer.migration_findings,
       });
@@ -156,11 +171,17 @@ export async function runRepairLayerUseCase({ args, targetRoot }) {
   const mergedPayload = mergeRepairLayerPayload(payload, repairLayer, {
     repairDecisions,
     inputDigest,
+    dryRun: !args.apply,
   });
   const summary = summarizeRepairLayer(repairLayer, {
     repairDecisions,
     inputDigest,
   });
+  const normalizationReport = normalizeRepairLayerPayload({
+    sourcePayload: payload,
+    payload: mergedPayload,
+    dryRun: !args.apply,
+  }).report;
 
   let applyResult = {
     outputs: [],
@@ -189,6 +210,7 @@ export async function runRepairLayerUseCase({ args, targetRoot }) {
       index_backend: backend,
       action: args.apply ? "applied" : "preview",
       summary,
+      normalization_report: normalizationReport,
       migration_runs: repairLayer.migration_runs,
       migration_findings: repairLayer.migration_findings,
     });
@@ -203,6 +225,7 @@ export async function runRepairLayerUseCase({ args, targetRoot }) {
     action: args.apply ? "applied" : "preview",
     report_file: reportFile,
     summary,
+    normalization_report: normalizationReport,
     apply_result: applyResult,
   };
 }
