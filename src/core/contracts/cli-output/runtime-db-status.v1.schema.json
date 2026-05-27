@@ -58,6 +58,17 @@
       },
       "additionalProperties": true
     },
+    "runtime_structures": {
+      "type": "object",
+      "properties": {
+        "selected_backend": { "type": "string" },
+        "active": { "type": "object", "additionalProperties": true },
+        "sqlite": { "type": "object", "additionalProperties": true },
+        "postgres": { "type": "object", "additionalProperties": true },
+        "migration": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
     "pending_ids": {
       "type": "array",
       "items": { "type": "string" }

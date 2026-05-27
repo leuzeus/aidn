@@ -26,6 +26,7 @@ Rules:
 - in `files`, session/cycle state is file-first
 - in `dual`, runtime DB/index is canonical for runtime state and Markdown projection is required
 - in `db-only`, runtime DB is canonical and Markdown is materialized on demand
+- when `runtime.persistence.backend=postgres`, PostgreSQL is canonical for runtime persistence and local SQLite remains compatibility or migration state only
 - shared runtime is opt-in and limited to explicitly listed coordination metadata
 - decision, incident, coordination_summary, coordination_log and user_arbitration are governed through the coordination record family
 - baseline and snapshot are governed as local-first artifact families and remain checkout-bound unless explicitly projected

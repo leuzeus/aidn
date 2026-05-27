@@ -17,6 +17,7 @@ Current PostgreSQL meaning:
 - PostgreSQL is the canonical relational runtime backend
 - canonical runtime reads and writes use the relational runtime schema in `aidn_runtime`
 - `runtime_snapshots` is not canonical storage and is only used by admin compatibility flows when migrating older PostgreSQL installs
+- `runtime persistence status` now exposes the selected backend structure, the SQLite compatibility structure, the PostgreSQL target structure, and the migration/adoption plan separately
 
 This does not change:
 

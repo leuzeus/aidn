@@ -31,6 +31,17 @@
     "resolved_projection_backend": { "type": "object", "additionalProperties": true },
     "runtime_backend_adoption_plan": { "type": "object", "additionalProperties": true },
     "runtime_backend_diagnostic": { "type": "object", "additionalProperties": true },
+    "runtime_structures": {
+      "type": "object",
+      "properties": {
+        "selected_backend": { "type": "string" },
+        "active": { "type": "object", "additionalProperties": true },
+        "sqlite": { "type": "object", "additionalProperties": true },
+        "postgres": { "type": "object", "additionalProperties": true },
+        "migration": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
     "schema_status": { "type": "string" },
     "schema_version": { "type": ["string", "number", "null"] },
     "operations": {

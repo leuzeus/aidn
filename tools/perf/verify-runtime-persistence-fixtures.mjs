@@ -71,10 +71,20 @@ function main() {
       config_builder_sets_runtime_persistence_backend: String(nextConfig?.runtime?.persistence?.backend ?? "") === "sqlite",
       config_builder_sets_local_projection_policy: String(nextConfig?.runtime?.persistence?.localProjectionPolicy ?? "") === "keep-local-sqlite",
       sqlite_status_uses_config_runtime_backend: sqliteStatus?.runtime_persistence?.backend === "sqlite" && sqliteStatus?.runtime_persistence?.source === "config-runtime-persistence",
+      sqlite_status_exposes_runtime_structures: sqliteStatus?.runtime_structures?.selected_backend === "sqlite"
+        && sqliteStatus?.runtime_structures?.sqlite?.backend === "sqlite"
+        && sqliteStatus?.runtime_structures?.migration?.action === "noop",
       postgres_status_uses_config_runtime_backend: postgresStatus?.runtime_persistence?.backend === "postgres" && postgresStatus?.runtime_persistence?.source === "config-runtime-persistence",
+      postgres_status_exposes_runtime_structures: postgresStatus?.runtime_structures?.selected_backend === "postgres"
+        && postgresStatus?.runtime_structures?.sqlite?.backend === "sqlite"
+        && postgresStatus?.runtime_structures?.sqlite?.role === "migration-source"
+        && postgresStatus?.runtime_structures?.postgres?.backend === "postgres"
+        && postgresStatus?.runtime_structures?.migration?.action === "blocked-conflict",
       postgres_status_reports_missing_connection: postgresStatus?.supported === false && /connection reference configured/i.test(String(postgresStatus?.reason ?? "")),
       postgres_status_exposes_adoption_plan: postgresStatus?.runtime_backend_adoption_plan?.action === "blocked-conflict" && postgresStatus?.runtime_backend_adoption_plan?.reason_code === "target-unavailable",
       env_override_wins_over_config: envOverrideStatus?.runtime_persistence?.backend === "sqlite" && envOverrideStatus?.runtime_persistence?.source === "env",
+      env_override_exposes_runtime_structures: envOverrideStatus?.runtime_structures?.selected_backend === "sqlite"
+        && envOverrideStatus?.runtime_structures?.sqlite?.backend === "sqlite",
     };
 
     const pass = Object.values(checks).every((value) => value === true);
@@ -86,15 +96,18 @@ function main() {
         sqlite_status: {
           runtime_persistence: sqliteStatus?.runtime_persistence ?? null,
           runtime_backend: sqliteStatus?.runtime_backend ?? null,
+          runtime_structures: sqliteStatus?.runtime_structures ?? null,
         },
         postgres_status: {
           runtime_persistence: postgresStatus?.runtime_persistence ?? null,
           runtime_backend: postgresStatus?.runtime_backend ?? null,
           reason: postgresStatus?.reason ?? null,
           adoption_plan: postgresStatus?.runtime_backend_adoption_plan ?? null,
+          runtime_structures: postgresStatus?.runtime_structures ?? null,
         },
         env_override_status: {
           runtime_persistence: envOverrideStatus?.runtime_persistence ?? null,
+          runtime_structures: envOverrideStatus?.runtime_structures ?? null,
         },
       },
       pass,

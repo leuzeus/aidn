@@ -70,6 +70,172 @@ function redactConnectionRef(value) {
   return "<redacted>";
 }
 
+function normalizeList(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function buildSelectedStructureSummary(payload) {
+  const backend = payload?.runtime_persistence?.backend ?? "unknown";
+  const schemaStatus = payload?.operations?.schema_status
+    ?? payload?.runtime_backend_diagnostic?.schema_status
+    ?? (payload?.exists === false ? "missing" : "unknown");
+  return {
+    backend,
+    role: "selected-backend",
+    available: payload?.runtime_backend?.supported === false ? false : payload?.exists !== false,
+    schema_status: schemaStatus,
+    compatibility_status: payload?.operations?.compatibility_status
+      ?? payload?.runtime_backend_diagnostic?.compatibility_status
+      ?? payload?.compatibility_status
+      ?? null,
+    backend_source: payload?.runtime_persistence?.source ?? "unknown",
+    runtime_backend: payload?.runtime_backend ?? null,
+    sqlite_scope: payload?.sqlite_scope ?? null,
+    sqlite_scope_reason: payload?.sqlite_scope_reason ?? null,
+    scope_key: payload?.runtime_backend?.scope_key ?? null,
+    storage_policy: payload?.storage_policy ?? null,
+    table_count: Number(payload?.table_count ?? 0) || 0,
+    tables_present: normalizeList(payload?.tables_present),
+    tables_missing: normalizeList(payload?.tables_missing),
+    legacy_tables_present: normalizeList(payload?.legacy_tables_present),
+    legacy_tables_missing: normalizeList(payload?.legacy_tables_missing),
+    pending_ids: normalizeList(payload?.pending_ids),
+    applied_ids: normalizeList(payload?.applied_ids),
+    reason: payload?.reason ?? null,
+  };
+}
+
+function buildSqliteStructureSummary(payload, adoptionPlan) {
+  const source = adoptionPlan?.source ?? null;
+  if (source) {
+    return {
+      backend: "sqlite",
+      role: "migration-source",
+      available: source.exists === true && !source.warning,
+      schema_status: source.schema_exists ? "ready" : "missing",
+      compatibility_status: source.exists === true
+        ? (source.warning ? "warning" : "ready")
+        : "missing",
+      sqlite_file: source.sqlite_file ?? null,
+      exists: Boolean(source.exists),
+      has_payload: Boolean(source.has_payload),
+      payload_digest: source.payload_digest ?? null,
+      payload_summary: source.payload_summary ?? null,
+      source_backend: source.backend ?? "sqlite",
+      source_scope: source.source_scope ?? null,
+      warning: source.warning ?? "",
+      cycle_identity_collisions: normalizeList(source.cycle_identity_collisions),
+      pending_ids: normalizeList(source.pending_ids),
+      applied_ids: normalizeList(source.applied_ids),
+    };
+  }
+
+  return {
+    backend: "sqlite",
+    role: "selected-backend",
+    available: payload?.runtime_persistence?.backend === "sqlite" && payload?.exists !== false,
+    schema_status: payload?.operations?.schema_status
+      ?? payload?.runtime_backend_diagnostic?.schema_status
+      ?? (payload?.exists === false ? "missing" : "unknown"),
+    compatibility_status: payload?.compatibility_status ?? null,
+    sqlite_file: payload?.runtime_backend?.sqlite_file ?? null,
+    exists: payload?.exists === true,
+    table_count: Number(payload?.table_count ?? 0) || 0,
+    schema_version: payload?.schema_version ?? null,
+    schema_migrations_present: payload?.schema_migrations_present === true,
+    pending_ids: normalizeList(payload?.pending_ids),
+    applied_ids: normalizeList(payload?.applied_ids),
+    reason: payload?.reason ?? null,
+  };
+}
+
+function buildPostgresStructureSummary(payload, adoptionPlan) {
+  const target = adoptionPlan?.target ?? null;
+  if (!target) {
+    return {
+      backend: "postgres",
+      role: "migration-target",
+      available: false,
+      schema_status: payload?.runtime_persistence?.backend === "postgres" ? "target-unavailable" : "not-configured",
+      compatibility_status: payload?.runtime_persistence?.backend === "postgres" ? "target-unavailable" : "not-configured",
+      reason: payload?.runtime_persistence?.backend === "postgres"
+        ? "postgres target is unavailable or has not been inspected"
+        : "postgres backend is not configured",
+    };
+  }
+
+  return {
+    backend: "postgres",
+    role: "migration-target",
+    available: target.compatibility_status !== "target-unavailable",
+    schema_status: target.compatibility_status === "target-unavailable"
+      ? "target-unavailable"
+      : (normalizeList(target.pending_ids).length > 0 || normalizeList(target.tables_missing).length > 0
+        ? "migration-required"
+        : "ready"),
+    compatibility_status: target.compatibility_status ?? null,
+    scope_key: target.scope_key ?? null,
+    storage_policy: target.storage_policy ?? null,
+    tables_present: normalizeList(target.tables_present),
+    tables_missing: normalizeList(target.tables_missing),
+    legacy_tables_present: normalizeList(target.legacy_tables_present),
+    legacy_tables_missing: normalizeList(target.legacy_tables_missing),
+    payload_rows: Number(target.payload_rows ?? 0) || 0,
+    canonical_payload_rows: Number(target.canonical_payload_rows ?? 0) || 0,
+    legacy_snapshot_rows: Number(target.legacy_snapshot_rows ?? 0) || 0,
+    pending_ids: normalizeList(target.pending_ids),
+    applied_ids: normalizeList(target.applied_ids),
+    reason: target.reason ?? null,
+    source_backend: target.source_backend ?? null,
+    source_sqlite_file: target.source_sqlite_file ?? null,
+  };
+}
+
+function buildRuntimeStructures(payload) {
+  const adoptionPlan = payload?.runtime_backend_adoption_plan ?? null;
+  const selectedBackend = payload?.runtime_persistence?.backend ?? "unknown";
+  const selected = buildSelectedStructureSummary(payload);
+  const sqlite = selectedBackend === "postgres"
+    ? buildSqliteStructureSummary(payload, adoptionPlan)
+    : selected;
+  const postgres = selectedBackend === "postgres"
+    ? buildPostgresStructureSummary(payload, adoptionPlan)
+    : {
+        backend: "postgres",
+        role: "migration-target",
+        available: false,
+        schema_status: "not-configured",
+        compatibility_status: "not-configured",
+        reason: "postgres backend is not configured",
+      };
+
+  return {
+    selected_backend: selectedBackend,
+    active: selected,
+    sqlite,
+    postgres,
+    migration: selectedBackend === "postgres"
+      ? {
+          available: true,
+          action: adoptionPlan?.action ?? "noop",
+          blocked: Boolean(adoptionPlan?.blocked),
+          reason_code: adoptionPlan?.reason_code ?? "none",
+          reason: adoptionPlan?.reason ?? null,
+          source: adoptionPlan?.source ?? null,
+          target: adoptionPlan?.target ?? null,
+        }
+      : {
+          available: false,
+          action: "noop",
+          blocked: false,
+          reason_code: "sqlite-active",
+          reason: "postgres backend is not configured",
+          source: null,
+          target: null,
+        },
+  };
+}
+
 function deriveRuntimeOperations(payload) {
   const pendingIds = Array.isArray(payload.pending_ids) ? payload.pending_ids : [];
   const missingTables = Array.isArray(payload.tables_missing) ? payload.tables_missing : [];
@@ -216,19 +382,27 @@ export async function projectRuntimePersistenceStatus({
     sqlite_scope: sqliteFileExplicit ? "explicit-path" : "local-target-default",
     sqlite_scope_reason: sqliteFileExplicit
       ? "db-status is inspecting the explicit sqlite file requested by the caller"
-      : "db-status defaults to the local SQLite projection/cache unless an explicit sqlite file is requested",
+      : (runtimePersistence.backend === "postgres"
+        ? "db-status inspects the local SQLite compatibility projection while PostgreSQL remains the canonical backend"
+        : "db-status defaults to the local SQLite projection/cache unless an explicit sqlite file is requested"),
     workspace,
     resolved_projection_backend: resolvedProjection,
     runtime_backend_adoption_plan: adoptionPlan,
     ...status,
   };
   const operations = deriveRuntimeOperations(payload);
+  const runtimeStructures = buildRuntimeStructures({
+    ...payload,
+    operations,
+  });
   return {
     ...payload,
     operations,
+    runtime_structures: runtimeStructures,
     runtime_backend_diagnostic: deriveRuntimeBackendDiagnostic({
       ...payload,
       operations,
+      runtime_structures: runtimeStructures,
     }),
   };
 }
@@ -256,6 +430,12 @@ async function main() {
     const resolvedProjectionScope = String(payload.resolved_projection_backend?.projection_scope ?? "").trim() || "unknown";
     console.log(`Resolved projection backend: ${resolvedProjectionBackendKind}`);
     console.log(`Resolved projection scope: ${resolvedProjectionScope}`);
+    if (payload.runtime_structures?.active) {
+      console.log(`Active structure status: ${payload.runtime_structures.active.schema_status ?? "unknown"}`);
+    }
+    if (payload.runtime_structures?.migration?.available) {
+      console.log(`Migration action: ${payload.runtime_structures.migration.action ?? "unknown"}`);
+    }
     if (resolvedProjectionBackendKind === "sqlite" && payload.sqlite_file) {
       console.log(`SQLite projection DB: ${payload.sqlite_file}`);
     }

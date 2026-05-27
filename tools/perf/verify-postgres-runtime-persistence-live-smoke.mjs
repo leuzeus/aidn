@@ -151,6 +151,9 @@ async function main() {
       "--json",
     ], env);
     assert(status.status === 0, "live persistence-status should succeed");
+    assert(status.payload?.runtime_structures?.selected_backend === "postgres", "live persistence-status should expose the selected postgres backend structure");
+    assert(status.payload?.runtime_structures?.sqlite?.backend === "sqlite", "live persistence-status should expose the sqlite compatibility structure");
+    assert(status.payload?.runtime_structures?.migration?.action === "noop", "live persistence-status should show noop migration after postgres adoption");
 
     const backup = runJson(repoRoot, "bin/aidn.mjs", [
       "runtime",

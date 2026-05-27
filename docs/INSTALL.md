@@ -160,6 +160,11 @@ Notes:
   - installer auto-creates or updates `.aidn/config.json` (non-destructive merge) to persist runtime defaults,
   - installer also persists the resolved project source branch in `.aidn/config.json` under `workflow.sourceBranch`,
   - runtime source-branch readers use `.aidn/config.json` first, then fall back to installed workflow artifacts for backward compatibility.
+- Runtime persistence policy:
+  - if `.aidn/config.json` configures `runtime.persistence.backend=postgres`, the selected backend is PostgreSQL and the status commands report the PostgreSQL structure as canonical,
+  - the local `.aidn/runtime/index/workflow-index.sqlite` file remains a compatibility projection or migration source when PostgreSQL is configured,
+  - if PostgreSQL is not configured, SQLite remains the fallback legacy backend,
+  - `install.artifactImportStore` stays a compatibility/migration knob and does not override the configured runtime backend.
 - Optional Codex project config:
   - `aidn` does not install `.codex/config.toml` by default,
   - use a project Codex config only when you need non-default `project_doc_fallback_filenames` or `project_doc_max_bytes`.

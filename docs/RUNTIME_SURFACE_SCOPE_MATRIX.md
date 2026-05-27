@@ -26,7 +26,7 @@ Purpose:
 | `.aidn/project/workflow.adapter.json` | `checkout-bound` or `worktree-local` | no | client repo decision | Durable project config; may be versioned by the client repository. |
 | `.aidn/project/shared-runtime.locator.json` | `worktree-local` | no | current target root | Explicit locator for opting into shared runtime; not a shared store itself. |
 | `.aidn/config.json` | `worktree-local` | no | current target root | Host-local/runtime-local defaults; not the shared-runtime contract. |
-| `.aidn/runtime/index/workflow-index.sqlite` | `worktree-local` | no | current target root | Default local SQLite projection/cache. Under `postgres`, this remains the local compat projection. |
+| `.aidn/runtime/index/workflow-index.sqlite` | `worktree-local` | no | current target root | Default local SQLite projection/cache. When PostgreSQL is configured, it remains the local compatibility projection unless migration or localProjectionPolicy disable it. |
 | `.aidn/runtime/index/*.json` | `worktree-local` | no | current target root | Local JSON/SQL/index exports remain target-root anchored. |
 | `.aidn/runtime/context/*` | `worktree-local` | no | current target root | Hydrated context and runtime snapshots stay local to the executing worktree. |
 | `.aidn/runtime/perf/*` | `ephemeral` | no | current target root | KPI, reports, thresholds, and scratch perf outputs are local runtime artifacts. |
@@ -72,13 +72,14 @@ The overlay above describes where each concept lives. These are the operational 
   - the runtime DB becomes the primary source for supported runtime state
   - Markdown and other human-facing projections are materialized on demand
   - shared runtime remains opt-in and does not imply wholesale relocation of `.aidn/*`
+  - when `runtime.persistence.backend=postgres`, adoption and status commands inspect the SQLite source and PostgreSQL target separately during migration
 
 Rules:
 
 - checkout-bound artifacts remain local/versioned even when DB-backed runtime is enabled
 - DB-backed runtime may become canonical for operational state, but Markdown projections remain audited project artifacts
 - shared coordination stores only metadata explicitly listed in this matrix; they do not relocate `docs/audit/*`
-- local SQLite under `.aidn/runtime/index/` is never shared by default
+- local SQLite under `.aidn/runtime/index/` is never shared by default and is treated as compatibility state when PostgreSQL is configured
 
 ## Explicit Non-Share List
 

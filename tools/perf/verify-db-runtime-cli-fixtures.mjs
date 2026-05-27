@@ -167,6 +167,9 @@ function main() {
       status_before_reports_missing_db: statusBefore.exists === false,
       status_before_reports_runtime_backend_resolution: statusBefore.runtime_persistence?.backend === "sqlite",
       status_before_reports_local_scope: statusBefore.sqlite_scope === "explicit-path",
+      status_before_exposes_runtime_structures: statusBefore.runtime_structures?.selected_backend === "sqlite"
+        && statusBefore.runtime_structures?.sqlite?.backend === "sqlite"
+        && statusBefore.runtime_structures?.migration?.action === "noop",
       status_before_exposes_operations: statusBefore.operations?.schema_status === "missing"
         && statusBefore.operations?.source_of_truth_status === "covered"
         && typeof statusBefore.operations?.metadata_status === "string"
@@ -186,10 +189,14 @@ function main() {
       status_after_reports_applied: Array.isArray(statusAfter.applied_ids) && statusAfter.applied_ids.includes("0001_workflow_index_baseline_v2"),
       status_after_operations_ready: statusAfter.operations?.schema_status === "ready"
         && statusAfter.operations?.freshness_status === "inspectable",
+      status_after_exposes_runtime_structures: statusAfter.runtime_structures?.selected_backend === "sqlite"
+        && statusAfter.runtime_structures?.sqlite?.backend === "sqlite",
       status_after_exposes_backend_diagnostic: statusAfter.runtime_backend_diagnostic?.schema_status === "ready"
         && typeof statusAfter.runtime_backend_diagnostic?.summary === "string",
       status_after_reports_resolved_projection: statusAfter.resolved_projection_backend?.projection_scope === "local-target",
       persistence_alias_reports_sqlite_backend: persistenceAliasStatus.runtime_persistence?.backend === "sqlite" && persistenceAliasStatus.runtime_persistence?.source === "cli",
+      persistence_alias_exposes_runtime_structures: persistenceAliasStatus.runtime_structures?.selected_backend === "sqlite"
+        && persistenceAliasStatus.runtime_structures?.sqlite?.backend === "sqlite",
       persistence_migrate_alias_exposes_backend_diagnostic: persistenceAliasMigrate?.runtime_backend_diagnostic?.scope === "runtime-persistence-migration"
         && persistenceAliasMigrate?.runtime_backend_diagnostic?.schema_status === "ready",
       persistence_adopt_alias_exposes_blocked_plan: adoptDryRunBlocked?.runtime_backend_adoption_plan?.action === "blocked-conflict"
@@ -226,11 +233,13 @@ function main() {
           exists: statusAfter.exists,
           runtime_persistence: statusAfter.runtime_persistence,
           resolved_projection_backend: statusAfter.resolved_projection_backend,
+          runtime_structures: statusAfter.runtime_structures,
           applied_ids: statusAfter.applied_ids,
           pending_ids: statusAfter.pending_ids,
         },
         persistence_alias_status: {
           runtime_persistence: persistenceAliasStatus.runtime_persistence,
+          runtime_structures: persistenceAliasStatus.runtime_structures,
         },
         persistence_alias_migrate: {
           diagnostic: persistenceAliasMigrate?.runtime_backend_diagnostic ?? null,
