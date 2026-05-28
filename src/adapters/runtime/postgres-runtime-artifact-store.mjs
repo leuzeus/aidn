@@ -226,39 +226,21 @@ async function readRelationalSnapshotForScope(client, scopeKey, {
       ? await selectScopedRows(client, "runtime_heads", scopeKey)
       : [];
     if (includePayload && hasRelationalPayload) {
-      const [
-        cycleRows,
-        sessionRows,
-        artifactRows,
-        artifactBlobRows,
-        fileMapRows,
-        tagRows,
-        artifactTagRows,
-        runMetricRows,
-        artifactLinkRows,
-        cycleLinkRows,
-        sessionCycleLinkRows,
-        sessionLinkRows,
-        migrationRunRows,
-        migrationFindingRows,
-        repairDecisionRows,
-      ] = await Promise.all([
-        selectScopedRows(client, "cycles", scopeKey),
-        selectScopedRows(client, "sessions", scopeKey),
-        selectScopedRows(client, "artifacts", scopeKey),
-        selectScopedRows(client, "artifact_blobs", scopeKey),
-        selectScopedRows(client, "file_map", scopeKey),
-        selectScopedRows(client, "tags", scopeKey),
-        selectScopedRows(client, "artifact_tags", scopeKey),
-        selectScopedRows(client, "run_metrics", scopeKey),
-        selectScopedRows(client, "artifact_links", scopeKey),
-        selectScopedRows(client, "cycle_links", scopeKey),
-        selectScopedRows(client, "session_cycle_links", scopeKey),
-        selectScopedRows(client, "session_links", scopeKey),
-        selectScopedRows(client, "migration_runs", scopeKey),
-        selectScopedRows(client, "migration_findings", scopeKey),
-        selectScopedRows(client, "repair_decisions", scopeKey),
-      ]);
+      const cycleRows = await selectScopedRows(client, "cycles", scopeKey);
+      const sessionRows = await selectScopedRows(client, "sessions", scopeKey);
+      const artifactRows = await selectScopedRows(client, "artifacts", scopeKey);
+      const artifactBlobRows = await selectScopedRows(client, "artifact_blobs", scopeKey);
+      const fileMapRows = await selectScopedRows(client, "file_map", scopeKey);
+      const tagRows = await selectScopedRows(client, "tags", scopeKey);
+      const artifactTagRows = await selectScopedRows(client, "artifact_tags", scopeKey);
+      const runMetricRows = await selectScopedRows(client, "run_metrics", scopeKey);
+      const artifactLinkRows = await selectScopedRows(client, "artifact_links", scopeKey);
+      const cycleLinkRows = await selectScopedRows(client, "cycle_links", scopeKey);
+      const sessionCycleLinkRows = await selectScopedRows(client, "session_cycle_links", scopeKey);
+      const sessionLinkRows = await selectScopedRows(client, "session_links", scopeKey);
+      const migrationRunRows = await selectScopedRows(client, "migration_runs", scopeKey);
+      const migrationFindingRows = await selectScopedRows(client, "migration_findings", scopeKey);
+      const repairDecisionRows = await selectScopedRows(client, "repair_decisions", scopeKey);
       payload = rehydrateRuntimePayloadFromRelationalRows({
         scopeKey,
         meta,
