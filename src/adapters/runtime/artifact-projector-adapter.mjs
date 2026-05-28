@@ -541,6 +541,48 @@ function buildRunMetrics(kpiFilePath) {
     }));
 }
 
+const DIGEST_IGNORED_FIELDS = new Set([
+  "mtime_ns",
+]);
+
+const DIGEST_TEMPORAL_FIELDS = new Set([
+  "created_at",
+  "decided_at",
+  "ended_at",
+  "last_seen_at",
+  "started_at",
+  "updated_at",
+]);
+
+function padDatePart(value) {
+  return String(value).padStart(2, "0");
+}
+
+function formatLocalDate(date) {
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+}
+
+function normalizeDigestScalar(key, value) {
+  if (!DIGEST_TEMPORAL_FIELDS.has(key) || typeof value !== "string") {
+    return value;
+  }
+  const scalar = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(scalar)) {
+    return scalar;
+  }
+  const date = new Date(scalar);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  if (date.getHours() === 0
+    && date.getMinutes() === 0
+    && date.getSeconds() === 0
+    && date.getMilliseconds() === 0) {
+    return formatLocalDate(date);
+  }
+  return date.toISOString();
+}
+
 function stableSortValue(value) {
   if (Array.isArray(value)) {
     return value.map((item) => stableSortValue(item));
@@ -551,6 +593,23 @@ function stableSortValue(value) {
   const out = {};
   for (const key of Object.keys(value).sort()) {
     out[key] = stableSortValue(value[key]);
+  }
+  return out;
+}
+
+function stableDigestValue(value, key = "") {
+  if (Array.isArray(value)) {
+    return value.map((item) => stableDigestValue(item, key));
+  }
+  if (!value || typeof value !== "object") {
+    return normalizeDigestScalar(key, value);
+  }
+  const out = {};
+  for (const childKey of Object.keys(value).sort()) {
+    if (DIGEST_IGNORED_FIELDS.has(childKey)) {
+      continue;
+    }
+    out[childKey] = stableDigestValue(value[childKey], childKey);
   }
   return out;
 }
@@ -587,8 +646,13 @@ export function stablePayloadProjection(payload) {
   return clone;
 }
 
+function digestPayloadProjection(payload) {
+  const projected = stablePayloadProjection(payload);
+  return stableDigestValue(projected);
+}
+
 export function payloadDigest(payload) {
-  const stable = stablePayloadProjection(payload);
+  const stable = digestPayloadProjection(payload);
   return crypto.createHash("sha256").update(JSON.stringify(stable)).digest("hex");
 }
 

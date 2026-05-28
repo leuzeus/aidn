@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import path from "node:path";
+import { payloadDigest } from "../../src/adapters/runtime/artifact-projector-adapter.mjs";
 import { createPostgresRuntimeArtifactStore } from "../../src/adapters/runtime/postgres-runtime-artifact-store.mjs";
 import { POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION } from "../../src/application/runtime/postgres-runtime-persistence-contract-service.mjs";
 import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persistence-fake-pg-lib.mjs";
@@ -203,6 +204,23 @@ async function main() {
         },
       ],
     };
+    const localMidnightIso = (dateText) => new Date(`${dateText}T00:00:00`).toISOString();
+    const dateOnlyPayload = {
+      schema_version: 2,
+      cycles: [{ cycle_id: "C001", updated_at: "2026-02-17" }],
+      artifacts: [{
+        path: "CURRENT-STATE.md",
+        sha256: "sha-current",
+        mtime_ns: "1779919956699223552",
+        updated_at: "2026-04-08T14:00:00.000Z",
+      }],
+      session_cycle_links: [{ session_id: "S001", cycle_id: "C001", updated_at: "2026-02-24" }],
+    };
+    const postgresRoundTripEquivalentPayload = JSON.parse(JSON.stringify(dateOnlyPayload));
+    postgresRoundTripEquivalentPayload.artifacts[0].mtime_ns = "1779919956699223500";
+    postgresRoundTripEquivalentPayload.cycles[0].updated_at = localMidnightIso("2026-02-17");
+    postgresRoundTripEquivalentPayload.session_cycle_links[0].updated_at = localMidnightIso("2026-02-24");
+    assert(payloadDigest(dateOnlyPayload) === payloadDigest(postgresRoundTripEquivalentPayload), "stable payload digest should ignore host mtime precision and normalize date-only timestamps");
 
     await store.writeIndexProjection({
       payload,
