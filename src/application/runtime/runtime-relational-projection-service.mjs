@@ -1,4 +1,5 @@
 import { normalizeRepairLayerPayload } from "./repair-layer-normalization-lib.mjs";
+import { buildRuntimeScopeRegistryRow } from "./runtime-project-context-service.mjs";
 
 function normalizeScalar(value) {
   return String(value ?? "").trim();
@@ -166,6 +167,9 @@ export function buildRuntimeIndexMetaRows(payload = {}, options = {}) {
   const structureProfile = payload?.structure_profile && typeof payload.structure_profile === "object"
     ? payload.structure_profile
     : null;
+  const projectContext = options.runtimeProjectContext && typeof options.runtimeProjectContext === "object"
+    ? options.runtimeProjectContext
+    : null;
   const rows = [
     { scope_key: scopeKey || null, key: "schema_version", value: normalizeMetaValue(payload?.schema_version ?? 1), updated_at: updatedAt },
     { scope_key: scopeKey || null, key: "payload_schema_version", value: normalizeMetaValue(payload?.schema_version ?? 1), updated_at: updatedAt },
@@ -180,6 +184,11 @@ export function buildRuntimeIndexMetaRows(payload = {}, options = {}) {
     { scope_key: scopeKey || null, key: "source_sqlite_file", value: normalizeMetaValue(options.sourceSqliteFile), updated_at: updatedAt },
     { scope_key: scopeKey || null, key: "adoption_status", value: normalizeMetaValue(options.adoptionStatus), updated_at: updatedAt },
     { scope_key: scopeKey || null, key: "adoption_metadata_json", value: normalizeMetaValue(options.adoptionMetadata), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "runtime_scope_id", value: normalizeMetaValue(projectContext?.runtime_scope_id), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "legacy_scope_key", value: normalizeMetaValue(projectContext?.legacy_scope_key), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "project_id", value: normalizeMetaValue(projectContext?.project_id), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "workspace_id", value: normalizeMetaValue(projectContext?.workspace_id), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "worktree_id", value: normalizeMetaValue(projectContext?.worktree_id), updated_at: updatedAt },
   ];
   return rows.filter((row) => row.value != null);
 }
@@ -191,6 +200,7 @@ export function projectRuntimePayloadToRelationalRows(payload = {}, options = {}
     dryRun: false,
   }).payload;
   const scopeKey = normalizeScalar(options.scopeKey);
+  const updatedAt = normalizeScalar(options.generatedAt ?? normalizedPayload?.generated_at) || new Date().toISOString();
   const cycles = Array.isArray(normalizedPayload?.cycles) ? normalizedPayload.cycles : [];
   const sessions = Array.isArray(normalizedPayload?.sessions) ? normalizedPayload.sessions : [];
   const artifacts = Array.isArray(normalizedPayload?.artifacts) ? normalizedPayload.artifacts : [];
@@ -272,6 +282,9 @@ export function projectRuntimePayloadToRelationalRows(payload = {}, options = {}
   }));
 
   return {
+    runtime_scope_registry: options.runtimeProjectContext
+      ? [buildRuntimeScopeRegistryRow(options.runtimeProjectContext, { updatedAt })]
+      : [],
     index_meta: buildRuntimeIndexMetaRows(payload, options),
     cycles: cycleRows.map((row) => ({ scope_key: scopeKey || null, ...row })),
     sessions: sessionRows.map((row) => ({ scope_key: scopeKey || null, ...row })),

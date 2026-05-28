@@ -86,6 +86,16 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     sharedRuntime: "workspace/worktree registry metadata only when explicitly configured",
   }),
   policy({
+    concept: "runtime_project_context",
+    label: "Runtime project context",
+    files: "workspace resolver with optional shared-runtime locator or env identity",
+    dual: "runtime_scope_registry plus workspace resolver",
+    dbOnly: "runtime_scope_registry plus workspace resolver",
+    projection: "project_context fields in runtime JSON status outputs",
+    sharedRuntime: "project_id/workspace_id/worktree_id registry metadata when explicitly configured",
+    notes: "PostgreSQL runtime rows use runtime_scope_id as the durable partition key; absolute path scope is legacy migration evidence only.",
+  }),
+  policy({
     concept: "session_state",
     label: "Session state",
     files: "docs/audit/sessions/S*.md",

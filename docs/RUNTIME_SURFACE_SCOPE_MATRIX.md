@@ -27,6 +27,8 @@ Purpose:
 | `.aidn/project/shared-runtime.locator.json` | `worktree-local` | no | current target root | Explicit locator for opting into shared runtime; not a shared store itself. |
 | `.aidn/config.json` | `worktree-local` | no | current target root | Host-local/runtime-local defaults; not the shared-runtime contract. |
 | `.aidn/runtime/index/workflow-index.sqlite` | `worktree-local` | no | current target root | Default local SQLite projection/cache. When PostgreSQL is configured, it remains the local compatibility projection unless migration or localProjectionPolicy disable it. |
+| PostgreSQL `aidn_runtime.runtime_scope_registry` | `worktree-local` with project context | explicit backend only | runtime project context | Maps `runtime_scope_id` to `project_id`, `workspace_id`, `worktree_id` and legacy absolute-path scope aliases. |
+| PostgreSQL `aidn_runtime` scoped runtime tables | `worktree-local` with project context | explicit backend only | runtime persistence backend | Rows use `runtime_scope_id` as the durable partition key; absolute `target_root` scope values are migration aliases only. |
 | `.aidn/runtime/index/*.json` | `worktree-local` | no | current target root | Local JSON/SQL/index exports remain target-root anchored. |
 | `.aidn/runtime/context/*` | `worktree-local` | no | current target root | Hydrated context and runtime snapshots stay local to the executing worktree. |
 | `.aidn/runtime/perf/*` | `ephemeral` | no | current target root | KPI, reports, thresholds, and scratch perf outputs are local runtime artifacts. |
@@ -47,6 +49,7 @@ This overlay names the logical owner of key information concepts. It complements
 | Workflow rules | `docs/audit/SPEC.md` | same checkout-bound file | same checkout-bound file | generated summaries only |
 | Project policy | `.aidn/project/workflow.adapter.json` | same local/project file | same local/project file | `WORKFLOW.md`, `CODEX_ONLINE.md`, `index.md` |
 | Runtime defaults | `.aidn/config.json` | same worktree-local file | same worktree-local file | CLI status output |
+| Runtime project context | workspace resolver plus optional locator/env IDs | runtime DB registry plus workspace resolver | runtime DB registry plus workspace resolver | `project_context` JSON output, `runtime_scope_registry` |
 | Session state | `docs/audit/sessions/S*.md` | runtime DB/index plus required Markdown projection | runtime DB, materialized on demand | `CURRENT-STATE.md`, runtime heads |
 | Cycle state | `docs/audit/cycles/*/status.md` | runtime DB/index plus required Markdown projection | runtime DB, materialized on demand | `CURRENT-STATE.md`, runtime heads |
 | Artifact inventory | checkout scan | runtime artifact store | runtime artifact store | SQLite/local exports, materialized docs |
@@ -78,6 +81,7 @@ Rules:
 
 - checkout-bound artifacts remain local/versioned even when DB-backed runtime is enabled
 - DB-backed runtime may become canonical for operational state, but Markdown projections remain audited project artifacts
+- PostgreSQL runtime persistence must resolve rows through `runtime_scope_id`; path-based `scope_key` values are legacy aliases during migration
 - shared coordination stores only metadata explicitly listed in this matrix; they do not relocate `docs/audit/*`
 - local SQLite under `.aidn/runtime/index/` is never shared by default and is treated as compatibility state when PostgreSQL is configured
 
@@ -155,6 +159,7 @@ Required inputs:
 
 - a valid `.aidn/project/shared-runtime.locator.json`
 - explicit `project_id`, `workspace_id` and per-worktree `worktree_id`
+- PostgreSQL runtime persistence must expose the same `project_id` and `workspace_id` through `project_context`
 - an explicit backend: `sqlite-file` for controlled local experiments or `postgres` for multi-writer shared coordination
 - environment-backed secrets such as `env:AIDN_PG_URL` when PostgreSQL is used
 

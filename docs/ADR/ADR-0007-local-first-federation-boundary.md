@@ -26,12 +26,14 @@ Rules:
 - PostgreSQL is an optional backend for persistence and shared coordination, not a required service
 - multi-repo or multi-worktree federation must use explicit workspace/worktree identity and locator configuration
 - no command may silently relocate audit artifacts into shared runtime
+- PostgreSQL runtime persistence rows must be contextualized by durable `project_id` and `workspace_id`, not by absolute filesystem paths
 
 Stable federation contract:
 
 - shared coordination is limited to `workspace_registry`, `worktree_registry`, `planning_states`, `handoff_relays` and `coordination_records`
 - the locator is required for every shared backend and must be validated before use
 - `project_id`, `workspace_id` and `worktree_id` are part of the public operational identity surface
+- runtime persistence exposes the same identity through `project_context` and `runtime_scope_id`
 - `docs/audit/*`, `AGENTS.md`, `.codex/*`, `.aidn/config.json` and local runtime projections stay outside shared coordination
 - PostgreSQL connection material must be referenced through `env:*` or equivalent indirection, never embedded in tracked files
 

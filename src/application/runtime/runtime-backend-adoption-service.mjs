@@ -14,6 +14,10 @@ import {
   detectCycleIdentityCollisions,
   detectRuntimeSourceScopeDrift,
 } from "./runtime-cycle-identity-diagnostics-service.mjs";
+import {
+  buildRuntimeProjectContextDiagnostics,
+  resolveRuntimeProjectContext,
+} from "./runtime-project-context-service.mjs";
 
 function normalizeScalar(value) {
   return String(value ?? "").trim();
@@ -60,6 +64,7 @@ function buildPlan({
   source,
   targetStatus,
   targetSnapshot,
+  projectContext,
   action,
   reason,
   reasonCode,
@@ -71,6 +76,10 @@ function buildPlan({
   return {
     ts: new Date().toISOString(),
     target_root: absoluteTargetRoot,
+    project_context: projectContext ?? targetStatus?.project_context ?? targetSnapshot?.project_context ?? null,
+    project_context_diagnostic: projectContext
+      ? buildRuntimeProjectContextDiagnostics(projectContext)
+      : null,
     requested_backend: backend,
     connection_ref: connectionRef || null,
     action,
@@ -89,6 +98,9 @@ function buildPlan({
       backend: "postgres",
       exists: Boolean(targetStatus?.exists),
       scope_key: targetStatus?.scope_key ?? absoluteTargetRoot,
+      legacy_scope_key: targetStatus?.legacy_scope_key ?? null,
+      runtime_scope_id: targetStatus?.runtime_scope_id ?? targetStatus?.scope_key ?? absoluteTargetRoot,
+      project_context: targetStatus?.project_context ?? projectContext ?? null,
       schema_name: targetStatus?.schema_name ?? "aidn_runtime",
       schema_version: targetStatus?.schema_version ?? POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION,
       storage_policy: normalizeScalar(targetStatus?.storage_policy) || null,
@@ -99,6 +111,7 @@ function buildPlan({
       legacy_tables_missing: Array.isArray(targetStatus?.legacy_tables_missing) ? targetStatus.legacy_tables_missing : [],
       payload_rows: Number(targetStatus?.payload_rows ?? 0) || 0,
       canonical_payload_rows: Number(targetStatus?.canonical_payload_rows ?? 0) || 0,
+      legacy_alias_payload_rows: Number(targetStatus?.legacy_alias_payload_rows ?? 0) || 0,
       legacy_snapshot_rows: Number(targetStatus?.legacy_snapshot_rows ?? 0) || 0,
       pending_ids: Array.isArray(targetStatus?.pending_ids) ? targetStatus.pending_ids : [],
       applied_ids: Array.isArray(targetStatus?.applied_ids) ? targetStatus.applied_ids : [],
@@ -122,6 +135,14 @@ async function recordEventIfSupported(targetStore, payload) {
 
 export function createRuntimeBackendAdoptionService(options = {}) {
   const targetRoot = path.resolve(process.cwd(), options.targetRoot ?? ".");
+  const projectContext = options.runtimeProjectContext ?? resolveRuntimeProjectContext({
+    targetRoot,
+    env: options.env ?? process.env,
+  });
+  const buildContextualPlan = (planOptions) => buildPlan({
+    projectContext,
+    ...planOptions,
+  });
   const runtimePersistence = resolveEffectiveRuntimePersistence({
     targetRoot,
     backend: options.backend,
@@ -136,7 +157,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
 
   async function planAdoption() {
     if (runtimePersistence.backend !== "postgres") {
-      return buildPlan({
+      return buildContextualPlan({
         absoluteTargetRoot: targetRoot,
         backend: runtimePersistence.backend,
         connectionRef: runtimePersistence.connectionRef,
@@ -181,12 +202,14 @@ export function createRuntimeBackendAdoptionService(options = {}) {
       targetRoot,
       backend: "postgres",
       connectionRef: resolveConnectionRef(options.connectionRef, runtimePersistence.connectionRef),
+      runtimeProjectContext: projectContext,
     });
     const targetStore = createRuntimeArtifactStore({
       ...options,
       targetRoot,
       backend: "postgres",
       connectionRef: resolveConnectionRef(options.connectionRef, runtimePersistence.connectionRef),
+      runtimeProjectContext: projectContext,
     });
     const targetStatus = await targetAdmin.inspectSchema();
     const tablesPresent = Array.isArray(targetStatus?.tables_present) ? targetStatus.tables_present : [];
@@ -196,7 +219,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
     const legacySnapshotRows = Number(targetStatus?.legacy_snapshot_rows ?? 0) || 0;
 
     if (targetStatus?.ok !== true) {
-      return buildPlan({
+      return buildContextualPlan({
         absoluteTargetRoot: targetRoot,
         backend: runtimePersistence.backend,
         connectionRef: runtimePersistence.connectionRef,
@@ -211,7 +234,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
     }
 
     if (source.has_payload && Array.isArray(source.cycle_identity_collisions) && source.cycle_identity_collisions.length > 0) {
-      return buildPlan({
+      return buildContextualPlan({
         absoluteTargetRoot: targetRoot,
         backend: runtimePersistence.backend,
         connectionRef: runtimePersistence.connectionRef,
@@ -226,7 +249,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
     }
 
     if (source.has_payload && source.source_scope?.blocking === true) {
-      return buildPlan({
+      return buildContextualPlan({
         absoluteTargetRoot: targetRoot,
         backend: runtimePersistence.backend,
         connectionRef: runtimePersistence.connectionRef,
@@ -241,7 +264,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
     }
 
     if (tablesPresent.length === 0) {
-      return buildPlan({
+      return buildContextualPlan({
         absoluteTargetRoot: targetRoot,
         backend: runtimePersistence.backend,
         connectionRef: runtimePersistence.connectionRef,
@@ -258,7 +281,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
     }
 
     if (tablesMissing.length > 0 && canonicalPayloadRows === 0 && legacySnapshotRows > 0) {
-      return buildPlan({
+      return buildContextualPlan({
         absoluteTargetRoot: targetRoot,
         backend: runtimePersistence.backend,
         connectionRef: runtimePersistence.connectionRef,
@@ -274,8 +297,25 @@ export function createRuntimeBackendAdoptionService(options = {}) {
       });
     }
 
+    if (tablesMissing.length > 0 && canonicalPayloadRows === 0 && pendingIds.length > 0) {
+      return buildContextualPlan({
+        absoluteTargetRoot: targetRoot,
+        backend: runtimePersistence.backend,
+        connectionRef: runtimePersistence.connectionRef,
+        source,
+        targetStatus,
+        targetSnapshot: null,
+        action: source.has_payload ? "transfer-from-sqlite" : "migrate-target",
+        prerequisites: source.has_payload ? ["migrate-target"] : [],
+        reason: source.has_payload
+          ? "postgres runtime target schema requires migration before first canonical sqlite transfer"
+          : "postgres runtime target schema requires migration before first canonical write",
+        reasonCode: source.has_payload ? "target-migrate-and-transfer" : "target-migrate-only",
+      });
+    }
+
     if (tablesMissing.length > 0) {
-      return buildPlan({
+      return buildContextualPlan({
         absoluteTargetRoot: targetRoot,
         backend: runtimePersistence.backend,
         connectionRef: runtimePersistence.connectionRef,
@@ -292,7 +332,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
     }
 
     if (pendingIds.length > 0) {
-      return buildPlan({
+      return buildContextualPlan({
         absoluteTargetRoot: targetRoot,
         backend: runtimePersistence.backend,
         connectionRef: runtimePersistence.connectionRef,
@@ -309,7 +349,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
     }
 
     if (canonicalPayloadRows === 0) {
-      return buildPlan({
+      return buildContextualPlan({
         absoluteTargetRoot: targetRoot,
         backend: runtimePersistence.backend,
         connectionRef: runtimePersistence.connectionRef,
@@ -335,7 +375,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
       includeRuntimeHeads: false,
     });
     if (!targetSnapshot.exists || targetSnapshot.warning) {
-      return buildPlan({
+      return buildContextualPlan({
         absoluteTargetRoot: targetRoot,
         backend: runtimePersistence.backend,
         connectionRef: runtimePersistence.connectionRef,
@@ -354,7 +394,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
     const targetDigest = targetSnapshot.payload_digest
       ?? (targetSnapshot.payload ? payloadDigest(targetSnapshot.payload) : null);
     if (!source.has_payload) {
-      return buildPlan({
+      return buildContextualPlan({
         absoluteTargetRoot: targetRoot,
         backend: runtimePersistence.backend,
         connectionRef: runtimePersistence.connectionRef,
@@ -370,7 +410,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
     if (options.ignoreSourceDriftWhenTargetReady === true
       && targetSnapshot.exists
       && !targetSnapshot.warning) {
-      return buildPlan({
+      return buildContextualPlan({
         absoluteTargetRoot: targetRoot,
         backend: runtimePersistence.backend,
         connectionRef: runtimePersistence.connectionRef,
@@ -384,7 +424,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
     }
 
     if (targetDigest === source.payload_digest) {
-      return buildPlan({
+      return buildContextualPlan({
         absoluteTargetRoot: targetRoot,
         backend: runtimePersistence.backend,
         connectionRef: runtimePersistence.connectionRef,
@@ -397,7 +437,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
       });
     }
 
-    return buildPlan({
+    return buildContextualPlan({
       absoluteTargetRoot: targetRoot,
       backend: runtimePersistence.backend,
       connectionRef: runtimePersistence.connectionRef,
@@ -432,12 +472,14 @@ export function createRuntimeBackendAdoptionService(options = {}) {
       targetRoot,
       backend: "postgres",
       connectionRef: resolveConnectionRef(options.connectionRef, runtimePersistence.connectionRef),
+      runtimeProjectContext: projectContext,
     });
     const targetStore = createRuntimeArtifactStore({
       ...options,
       targetRoot,
       backend: "postgres",
       connectionRef: resolveConnectionRef(options.connectionRef, runtimePersistence.connectionRef),
+      runtimeProjectContext: projectContext,
     });
 
     let migration = null;
@@ -503,6 +545,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
         reason_code: resolvedPlan.reason_code,
         reason: resolvedPlan.reason,
         prerequisites: resolvedPlan.prerequisites,
+        project_context: projectContext,
       },
     });
 
@@ -526,6 +569,7 @@ export function createRuntimeBackendAdoptionService(options = {}) {
         connection_ref: runtimePersistence.connectionRef ?? null,
         target_root: targetRoot,
         sqlite_file: sqliteFile,
+        project_context: projectContext,
       };
     },
     planAdoption,

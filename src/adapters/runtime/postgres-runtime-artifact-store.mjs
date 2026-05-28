@@ -8,6 +8,7 @@ import {
   stablePayloadProjection,
 } from "./artifact-projector-adapter.mjs";
 import { normalizeRepairLayerPayload } from "../../application/runtime/repair-layer-normalization-lib.mjs";
+import { resolveRuntimeProjectContext } from "../../application/runtime/runtime-project-context-service.mjs";
 import { projectRuntimePayloadToRelationalRows } from "../../application/runtime/runtime-relational-projection-service.mjs";
 import {
   buildRuntimeMetaMap,
@@ -130,6 +131,7 @@ async function bootstrapSchema(runtime) {
 }
 
 const RELATIONAL_TABLE_SPECS = Object.freeze([
+  ["runtime_scope_registry", ["scope_key", "runtime_scope_id", "legacy_scope_key", "project_id", "project_id_source", "workspace_id", "workspace_id_source", "worktree_id", "worktree_id_source", "runtime_profile", "project_root_ref", "target_root_ref", "locator_ref", "identity_source", "explicit_project_context", "is_legacy_scope", "updated_at"]],
   ["index_meta", ["scope_key", "key", "value", "updated_at"]],
   ["cycles", ["scope_key", "cycle_id", "session_id", "state", "outcome", "branch_name", "dor_state", "continuity_rule", "continuity_base_branch", "continuity_latest_cycle_branch", "continuity_decision_by", "updated_at"]],
   ["sessions", ["scope_key", "session_id", "branch_name", "state", "owner", "parent_session", "branch_kind", "cycle_branch", "intermediate_branch", "integration_target_cycle", "carry_over_pending", "started_at", "ended_at", "source_artifact_path", "source_confidence", "source_mode", "updated_at"]],
@@ -205,6 +207,123 @@ async function purgeLegacySnapshotRow(client, scopeKey) {
       throw error;
     }
   }
+}
+
+async function readRelationalSnapshotForScope(client, scopeKey, {
+  includePayload = true,
+  includeRuntimeHeads = true,
+} = {}) {
+  let metaRows = [];
+  let runtimeHeadRows = [];
+  let meta = {};
+  let hasRelationalPayload = false;
+  let payload = null;
+  try {
+    metaRows = await selectScopedRows(client, "index_meta", scopeKey);
+    meta = buildRuntimeMetaMap(metaRows);
+    hasRelationalPayload = metaRows.length > 0;
+    runtimeHeadRows = includeRuntimeHeads
+      ? await selectScopedRows(client, "runtime_heads", scopeKey)
+      : [];
+    if (includePayload && hasRelationalPayload) {
+      const [
+        cycleRows,
+        sessionRows,
+        artifactRows,
+        artifactBlobRows,
+        fileMapRows,
+        tagRows,
+        artifactTagRows,
+        runMetricRows,
+        artifactLinkRows,
+        cycleLinkRows,
+        sessionCycleLinkRows,
+        sessionLinkRows,
+        migrationRunRows,
+        migrationFindingRows,
+        repairDecisionRows,
+      ] = await Promise.all([
+        selectScopedRows(client, "cycles", scopeKey),
+        selectScopedRows(client, "sessions", scopeKey),
+        selectScopedRows(client, "artifacts", scopeKey),
+        selectScopedRows(client, "artifact_blobs", scopeKey),
+        selectScopedRows(client, "file_map", scopeKey),
+        selectScopedRows(client, "tags", scopeKey),
+        selectScopedRows(client, "artifact_tags", scopeKey),
+        selectScopedRows(client, "run_metrics", scopeKey),
+        selectScopedRows(client, "artifact_links", scopeKey),
+        selectScopedRows(client, "cycle_links", scopeKey),
+        selectScopedRows(client, "session_cycle_links", scopeKey),
+        selectScopedRows(client, "session_links", scopeKey),
+        selectScopedRows(client, "migration_runs", scopeKey),
+        selectScopedRows(client, "migration_findings", scopeKey),
+        selectScopedRows(client, "repair_decisions", scopeKey),
+      ]);
+      payload = rehydrateRuntimePayloadFromRelationalRows({
+        scopeKey,
+        meta,
+        cycles: cycleRows,
+        sessions: sessionRows,
+        artifacts: artifactRows,
+        artifactBlobs: artifactBlobRows,
+        fileMap: fileMapRows,
+        tags: tagRows,
+        artifactTags: artifactTagRows,
+        runMetrics: runMetricRows,
+        artifactLinks: artifactLinkRows,
+        cycleLinks: cycleLinkRows,
+        sessionCycleLinks: sessionCycleLinkRows,
+        sessionLinks: sessionLinkRows,
+        migrationRuns: migrationRunRows,
+        migrationFindings: migrationFindingRows,
+        repairDecisions: repairDecisionRows,
+      });
+    }
+  } catch (error) {
+    const classification = classifyPostgresRuntimePersistenceError(error);
+    if (classification.category !== "schema") {
+      throw error;
+    }
+  }
+  if (includeRuntimeHeads && runtimeHeadRows.length === 0) {
+    try {
+      runtimeHeadRows = await selectScopedRows(client, "runtime_heads", scopeKey);
+    } catch (error) {
+      const classification = classifyPostgresRuntimePersistenceError(error);
+      if (classification.category !== "schema") {
+        throw error;
+      }
+    }
+  }
+  const heads = {};
+  if (includeRuntimeHeads) {
+    for (const headRow of runtimeHeadRows) {
+      try {
+        heads[String(headRow.head_key ?? "")] = typeof headRow.payload_json === "object"
+          ? headRow.payload_json
+          : JSON.parse(String(headRow.payload_json ?? "{}"));
+      } catch {
+        heads[String(headRow.head_key ?? "")] = {
+          head_key: headRow.head_key ?? null,
+          artifact_id: Number(headRow.artifact_id ?? 0) || null,
+          artifact_path: headRow.artifact_path ?? null,
+          artifact_sha256: headRow.artifact_sha256 ?? null,
+          session_id: headRow.session_id ?? null,
+          cycle_id: headRow.cycle_id ?? null,
+          kind: headRow.kind ?? null,
+          subtype: headRow.subtype ?? null,
+          updated_at: headRow.updated_at ?? null,
+        };
+      }
+    }
+  }
+  return {
+    scopeKey,
+    meta,
+    payload,
+    hasRelationalPayload,
+    heads,
+  };
 }
 
 const RELATIONAL_SELECT_SPECS = Object.freeze({
@@ -302,8 +421,13 @@ export function createPostgresRuntimeArtifactStore({
   env = process.env,
   clientFactory = null,
   moduleLoader = null,
+  runtimeProjectContext = null,
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const projectContext = runtimeProjectContext ?? resolveRuntimeProjectContext({
+    targetRoot: absoluteTargetRoot,
+    env,
+  });
   const connection = resolvePostgresRuntimePersistenceConnection({
     connectionString,
     connectionRef,
@@ -314,7 +438,9 @@ export function createPostgresRuntimeArtifactStore({
     clientFactory,
     moduleLoader,
   };
-  const scopeKey = absoluteTargetRoot;
+  const scopeKey = normalizeScalar(projectContext.runtime_scope_id) || absoluteTargetRoot;
+  const legacyScopeKey = normalizeScalar(projectContext.legacy_scope_key) || absoluteTargetRoot;
+  const scopeCandidates = Array.from(new Set([scopeKey, legacyScopeKey].filter(Boolean)));
 
   async function loadSnapshot({
     includePayload = true,
@@ -325,124 +451,34 @@ export function createPostgresRuntimeArtifactStore({
         exists: false,
         payload: null,
         runtimeHeads: {},
+        scope_key: scopeKey,
+        runtime_scope_id: scopeKey,
+        legacy_scope_key: legacyScopeKey,
+        project_context: projectContext,
         warning: connection.message,
       };
     }
     try {
       const snapshot = await withClient(runtime, async (client) => {
-        let metaRows = [];
-        let runtimeHeadRows = [];
-        let meta = {};
-        let hasRelationalPayload = false;
-        let payload = null;
-        try {
-          metaRows = await selectScopedRows(client, "index_meta", scopeKey);
-          meta = buildRuntimeMetaMap(metaRows);
-          hasRelationalPayload = metaRows.length > 0;
-          runtimeHeadRows = includeRuntimeHeads
-            ? await selectScopedRows(client, "runtime_heads", scopeKey)
-            : [];
-          if (includePayload && hasRelationalPayload) {
-            const [
-              cycleRows,
-              sessionRows,
-              artifactRows,
-              artifactBlobRows,
-              fileMapRows,
-              tagRows,
-              artifactTagRows,
-              runMetricRows,
-              artifactLinkRows,
-              cycleLinkRows,
-              sessionCycleLinkRows,
-              sessionLinkRows,
-              migrationRunRows,
-              migrationFindingRows,
-              repairDecisionRows,
-            ] = await Promise.all([
-              selectScopedRows(client, "cycles", scopeKey),
-              selectScopedRows(client, "sessions", scopeKey),
-              selectScopedRows(client, "artifacts", scopeKey),
-              selectScopedRows(client, "artifact_blobs", scopeKey),
-              selectScopedRows(client, "file_map", scopeKey),
-              selectScopedRows(client, "tags", scopeKey),
-              selectScopedRows(client, "artifact_tags", scopeKey),
-              selectScopedRows(client, "run_metrics", scopeKey),
-              selectScopedRows(client, "artifact_links", scopeKey),
-              selectScopedRows(client, "cycle_links", scopeKey),
-              selectScopedRows(client, "session_cycle_links", scopeKey),
-              selectScopedRows(client, "session_links", scopeKey),
-              selectScopedRows(client, "migration_runs", scopeKey),
-              selectScopedRows(client, "migration_findings", scopeKey),
-              selectScopedRows(client, "repair_decisions", scopeKey),
-            ]);
-            payload = rehydrateRuntimePayloadFromRelationalRows({
-              scopeKey,
-              meta,
-              cycles: cycleRows,
-              sessions: sessionRows,
-              artifacts: artifactRows,
-              artifactBlobs: artifactBlobRows,
-              fileMap: fileMapRows,
-              tags: tagRows,
-              artifactTags: artifactTagRows,
-              runMetrics: runMetricRows,
-              artifactLinks: artifactLinkRows,
-              cycleLinks: cycleLinkRows,
-              sessionCycleLinks: sessionCycleLinkRows,
-              sessionLinks: sessionLinkRows,
-              migrationRuns: migrationRunRows,
-              migrationFindings: migrationFindingRows,
-              repairDecisions: repairDecisionRows,
-            });
-          }
-        } catch (error) {
-          const classification = classifyPostgresRuntimePersistenceError(error);
-          if (classification.category !== "schema") {
-            throw error;
+        let fallback = null;
+        for (const candidateScopeKey of scopeCandidates) {
+          const candidate = await readRelationalSnapshotForScope(client, candidateScopeKey, {
+            includePayload,
+            includeRuntimeHeads,
+          });
+          fallback ??= candidate;
+          if (candidate.hasRelationalPayload) {
+            return candidate;
           }
         }
-        if (includeRuntimeHeads && runtimeHeadRows.length === 0) {
-          try {
-            runtimeHeadRows = await selectScopedRows(client, "runtime_heads", scopeKey);
-          } catch (error) {
-            const classification = classifyPostgresRuntimePersistenceError(error);
-            if (classification.category !== "schema") {
-              throw error;
-            }
-          }
-        }
-        let heads = {};
-        if (includeRuntimeHeads) {
-          for (const headRow of runtimeHeadRows) {
-            try {
-              heads[String(headRow.head_key ?? "")] = typeof headRow.payload_json === "object"
-                ? headRow.payload_json
-                : JSON.parse(String(headRow.payload_json ?? "{}"));
-            } catch {
-              heads[String(headRow.head_key ?? "")] = {
-                head_key: headRow.head_key ?? null,
-                artifact_id: Number(headRow.artifact_id ?? 0) || null,
-                artifact_path: headRow.artifact_path ?? null,
-                artifact_sha256: headRow.artifact_sha256 ?? null,
-                session_id: headRow.session_id ?? null,
-                cycle_id: headRow.cycle_id ?? null,
-                kind: headRow.kind ?? null,
-                subtype: headRow.subtype ?? null,
-                updated_at: headRow.updated_at ?? null,
-              };
-            }
-          }
-        }
-        return {
-          meta,
-          payload,
-          hasRelationalPayload,
-          heads,
-        };
+        return fallback ?? await readRelationalSnapshotForScope(client, scopeKey, {
+          includePayload,
+          includeRuntimeHeads,
+        });
       });
       const parsedPayload = snapshot.payload ?? null;
       const adoptionMetadata = parseJsonOrNull(snapshot.meta?.adoption_metadata_json);
+      const legacyScopeUsed = normalizeScalar(snapshot.scopeKey) !== scopeKey;
       return {
         exists: Boolean(snapshot.hasRelationalPayload),
         payload: parsedPayload,
@@ -456,6 +492,15 @@ export function createPostgresRuntimeArtifactStore({
         storage_policy: "relational-canonical",
         updated_at: snapshot.meta?.generated_at ?? null,
         runtimeHeads: snapshot.heads,
+        scope_key: snapshot.scopeKey ?? scopeKey,
+        runtime_scope_id: scopeKey,
+        legacy_scope_key: legacyScopeKey,
+        legacy_scope_used: legacyScopeUsed,
+        project_context: {
+          ...projectContext,
+          scope_key: snapshot.scopeKey ?? scopeKey,
+          legacy_scope_used: legacyScopeUsed,
+        },
         warning: "",
       };
     } catch (error) {
@@ -463,6 +508,10 @@ export function createPostgresRuntimeArtifactStore({
         exists: false,
         payload: null,
         runtimeHeads: {},
+        scope_key: scopeKey,
+        runtime_scope_id: scopeKey,
+        legacy_scope_key: legacyScopeKey,
+        project_context: projectContext,
         warning: classifyPostgresRuntimePersistenceError(error).message,
       };
     }
@@ -495,6 +544,7 @@ export function createPostgresRuntimeArtifactStore({
       scopeKey,
       generatedAt: payload?.generated_at,
       projectRootRef: absoluteTargetRoot,
+      runtimeProjectContext: projectContext,
       payloadDigest: digest,
       sourceBackend: sourceBackendValue,
       sourceSqliteFile: sourceSqliteFileValue,
@@ -506,7 +556,9 @@ export function createPostgresRuntimeArtifactStore({
       await client.query("BEGIN");
       try {
         await replaceRelationalProjectionRows(client, scopeKey, relationalRows);
-        await purgeLegacySnapshotRow(client, scopeKey);
+        for (const candidateScopeKey of scopeCandidates) {
+          await purgeLegacySnapshotRow(client, candidateScopeKey);
+        }
         await client.query("COMMIT");
       } catch (error) {
         await client.query("ROLLBACK");
@@ -517,6 +569,8 @@ export function createPostgresRuntimeArtifactStore({
       kind: "postgres",
       path: `postgres://${POSTGRES_RUNTIME_PERSISTENCE_SCHEMA_NAME}/${scopeKey}`,
       written: true,
+      scope_key: scopeKey,
+      project_context: projectContext,
       bytes_written: Buffer.byteLength(JSON.stringify(stablePayload), "utf8"),
     }];
   }
@@ -567,7 +621,10 @@ export function createPostgresRuntimeArtifactStore({
           normalizeScalar(targetBackend) || "postgres",
           normalizeScalar(sourcePayloadDigest) || null,
           normalizeScalar(targetPayloadDigest) || null,
-          JSON.stringify(payload && typeof payload === "object" ? payload : {}),
+          JSON.stringify(payload && typeof payload === "object" ? {
+            project_context: projectContext,
+            ...payload,
+          } : { project_context: projectContext }),
         ],
       );
     });
@@ -575,6 +632,7 @@ export function createPostgresRuntimeArtifactStore({
       ok: true,
       event_id: eventId,
       scope_key: scopeKey,
+      project_context: projectContext,
     };
   }
 
@@ -588,6 +646,9 @@ export function createPostgresRuntimeArtifactStore({
         schema_version: POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION,
         connection,
         scope_key: scopeKey,
+        legacy_scope_key: legacyScopeKey,
+        runtime_scope_id: scopeKey,
+        project_context: projectContext,
         target_root: absoluteTargetRoot,
       };
     },

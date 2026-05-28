@@ -12,7 +12,7 @@ const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 export const POSTGRES_RUNTIME_PERSISTENCE_SCHEMA_NAME = "aidn_runtime";
 export const POSTGRES_RUNTIME_LEGACY_COMPAT_SCHEMA_VERSION = 1;
-export const POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION = 2;
+export const POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION = 3;
 export const POSTGRES_RUNTIME_PERSISTENCE_SCHEMA_VERSION = POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION;
 export const POSTGRES_RUNTIME_PERSISTENCE_DRIVER = Object.freeze({
   backend_kind: "postgres",
@@ -45,7 +45,9 @@ const POSTGRES_RUNTIME_PERSISTENCE_TABLES = Object.freeze(
         ? ["schema_name", "schema_version"]
         : (entity.name === "runtime_snapshots"
           ? ["scope_key"]
-          : (entity.name === "runtime_heads" ? ["scope_key", "head_key"] : ["event_id"])),
+          : (entity.name === "runtime_heads"
+            ? ["scope_key", "head_key"]
+            : (entity.name === "runtime_scope_registry" ? ["scope_key"] : ["event_id"]))),
       classification: entity.classification,
       parity_required: entity.parity_required,
     })));
@@ -192,6 +194,7 @@ export function describePostgresRuntimePersistenceBootstrap(options = {}) {
       `Create schema ${POSTGRES_RUNTIME_PERSISTENCE_SCHEMA_NAME} if it does not exist.`,
       "Apply runtime-artifacts-postgres-relational-v2.sql inside a bootstrap transaction.",
       "Record the relational canonical schema version in aidn_runtime.schema_migrations.",
+      "Register the canonical runtime project context before treating PostgreSQL rows as current.",
       "Validate relational canonical tables first and only read runtime_snapshots through an explicit legacy compatibility fallback when it already exists.",
     ],
   };
@@ -212,6 +215,7 @@ export function getPostgresRuntimePersistenceContract(options = {}) {
       "Do not replace shared coordination tables or ownership with runtime artifact persistence.",
       "Do not externalize docs/audit/*, AGENTS.md, or .codex/* into PostgreSQL.",
       "Do not overload install.artifactImportStore or runtime.stateMode with canonical backend meaning.",
+      "Do not use absolute target paths as durable project identity once explicit project context is configured.",
     ],
   };
 }

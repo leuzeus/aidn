@@ -17,6 +17,27 @@ CREATE TABLE IF NOT EXISTS aidn_runtime.index_meta (
   PRIMARY KEY (scope_key, key)
 );
 
+CREATE TABLE IF NOT EXISTS aidn_runtime.runtime_scope_registry (
+  scope_key TEXT PRIMARY KEY,
+  runtime_scope_id TEXT NOT NULL,
+  legacy_scope_key TEXT,
+  project_id TEXT NOT NULL,
+  project_id_source TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
+  workspace_id_source TEXT NOT NULL,
+  worktree_id TEXT,
+  worktree_id_source TEXT,
+  runtime_profile TEXT NOT NULL DEFAULT 'default',
+  project_root_ref TEXT,
+  target_root_ref TEXT,
+  locator_ref TEXT NOT NULL DEFAULT 'none',
+  identity_source TEXT NOT NULL,
+  explicit_project_context BOOLEAN NOT NULL DEFAULT FALSE,
+  is_legacy_scope BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS aidn_runtime.cycles (
   scope_key TEXT NOT NULL,
   cycle_id TEXT NOT NULL,
@@ -273,6 +294,8 @@ CREATE INDEX IF NOT EXISTS idx_artifact_blobs_updated_at ON aidn_runtime.artifac
 CREATE INDEX IF NOT EXISTS idx_runtime_heads_artifact_path ON aidn_runtime.runtime_heads(scope_key, artifact_path);
 CREATE INDEX IF NOT EXISTS idx_runtime_heads_session_cycle_updated ON aidn_runtime.runtime_heads(scope_key, session_id, cycle_id, updated_at);
 CREATE INDEX IF NOT EXISTS idx_adoption_events_scope_created ON aidn_runtime.adoption_events(scope_key, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_runtime_scope_registry_project ON aidn_runtime.runtime_scope_registry(project_id, workspace_id, runtime_profile);
+CREATE INDEX IF NOT EXISTS idx_runtime_scope_registry_legacy_scope ON aidn_runtime.runtime_scope_registry(legacy_scope_key);
 
 CREATE OR REPLACE VIEW aidn_runtime.v_session_cycle_context AS
 SELECT

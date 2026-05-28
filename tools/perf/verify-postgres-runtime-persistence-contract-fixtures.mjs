@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import {
   POSTGRES_RUNTIME_PERSISTENCE_DRIVER,
+  POSTGRES_RUNTIME_PERSISTENCE_SCHEMA_VERSION,
   getPostgresRuntimePersistenceContract,
   getPostgresRuntimePersistenceSchemaFile,
   resolvePostgresRuntimePersistenceConnection,
@@ -31,9 +32,9 @@ function main() {
     assert(contract.driver.packaging_decision === "optional-dependency", "expected optional packaging decision");
     assert(contract.driver.package_scope === "optionalDependencies", "expected optional dependency package scope");
     assert(POSTGRES_RUNTIME_PERSISTENCE_DRIVER.module_specifier === "pg", "expected pg module specifier");
-    assert(contract.schema_version === 2, "expected runtime persistence schema version 2");
+    assert(contract.schema_version === POSTGRES_RUNTIME_PERSISTENCE_SCHEMA_VERSION, "expected runtime persistence schema version");
 
-    for (const tableName of ["schema_migrations", "index_meta", "artifacts", "runtime_heads", "adoption_events"]) {
+    for (const tableName of ["schema_migrations", "runtime_scope_registry", "index_meta", "artifacts", "runtime_heads", "adoption_events"]) {
       assert(tableNames.has(tableName), `expected contract table ${tableName}`);
       assert(schemaSql.includes(`aidn_runtime.${tableName}`), `expected schema to declare ${tableName}`);
     }

@@ -12,6 +12,7 @@
     "source_of_truth",
     "metadata",
     "runtime_backend",
+    "project_context",
     "sqlite_scope",
     "workspace",
     "resolved_projection_backend",
@@ -25,6 +26,19 @@
     "source_of_truth": { "type": "object", "additionalProperties": true },
     "metadata": { "type": "object", "additionalProperties": true },
     "runtime_backend": { "type": "object", "additionalProperties": true },
+    "project_context": {
+      "type": "object",
+      "required": [
+        "project_id",
+        "workspace_id",
+        "worktree_id",
+        "runtime_scope_id",
+        "identity_source",
+        "is_legacy_scope"
+      ],
+      "additionalProperties": true
+    },
+    "project_context_diagnostic": { "type": "object", "additionalProperties": true },
     "sqlite_scope": { "type": "string" },
     "sqlite_scope_reason": { "type": "string" },
     "workspace": { "type": "object", "additionalProperties": true },

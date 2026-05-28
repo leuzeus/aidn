@@ -10,6 +10,10 @@ import {
   resolveEffectiveRuntimePersistence,
 } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { planRuntimeBackendAdoption } from "../../src/application/runtime/runtime-backend-adoption-service.mjs";
+import {
+  buildRuntimeProjectContextDiagnostics,
+  resolveRuntimeProjectContext,
+} from "../../src/application/runtime/runtime-project-context-service.mjs";
 import { normalizeRuntimePersistenceBackend } from "../../src/lib/config/aidn-config-lib.mjs";
 
 function parseArgs(argv) {
@@ -279,6 +283,8 @@ function deriveRuntimeOperations(payload) {
     sqlite_scope: payload.sqlite_scope,
     sqlite_scope_reason: payload.sqlite_scope_reason,
     resolved_projection_scope: payload.resolved_projection_backend?.projection_scope ?? "unknown",
+    runtime_scope_id: payload.project_context?.runtime_scope_id ?? null,
+    project_context_status: payload.project_context_diagnostic?.status ?? "unknown",
     connection_ref: connectionRef,
     connection_secret_exposed: false,
     freshness_status: payload.exists === false ? "missing" : "inspectable",
@@ -347,11 +353,17 @@ export async function projectRuntimePersistenceStatus({
     targetRoot: absoluteTargetRoot,
     backend,
   });
+  const projectContext = resolveRuntimeProjectContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+  });
+  const projectContextDiagnostic = buildRuntimeProjectContextDiagnostics(projectContext);
   const admin = createRuntimePersistenceAdmin({
     targetRoot: absoluteTargetRoot,
     backend: runtimePersistence.backend,
     connectionRef: runtimePersistence.connectionRef ?? "",
     sqliteFile: absoluteSqliteFile,
+    runtimeProjectContext: projectContext,
     ...(absoluteSchemaFile ? { schemaFile: absoluteSchemaFile } : {}),
   });
   const describedBackend = admin.describeBackend();
@@ -361,6 +373,7 @@ export async function projectRuntimePersistenceStatus({
     backend: runtimePersistence.backend,
     connectionRef: runtimePersistence.connectionRef ?? "",
     sqliteFile: absoluteSqliteFile,
+    runtimeProjectContext: projectContext,
   });
   const sourceOfTruth = evaluateSourceOfTruthPolicy("runtime_defaults");
   const metadata = evaluateMetadataPolicy("workspace", {
@@ -379,6 +392,8 @@ export async function projectRuntimePersistenceStatus({
     source_of_truth: sourceOfTruth,
     metadata,
     runtime_backend: describedBackend,
+    project_context: projectContext,
+    project_context_diagnostic: projectContextDiagnostic,
     sqlite_scope: sqliteFileExplicit ? "explicit-path" : "local-target-default",
     sqlite_scope_reason: sqliteFileExplicit
       ? "db-status is inspecting the explicit sqlite file requested by the caller"
@@ -435,6 +450,10 @@ async function main() {
     }
     if (payload.runtime_structures?.migration?.available) {
       console.log(`Migration action: ${payload.runtime_structures.migration.action ?? "unknown"}`);
+    }
+    if (payload.project_context?.runtime_scope_id) {
+      console.log(`Runtime scope: ${payload.project_context.runtime_scope_id}`);
+      console.log(`Project context: ${payload.project_context_diagnostic?.status ?? "unknown"}`);
     }
     if (resolvedProjectionBackendKind === "sqlite" && payload.sqlite_file) {
       console.log(`SQLite projection DB: ${payload.sqlite_file}`);

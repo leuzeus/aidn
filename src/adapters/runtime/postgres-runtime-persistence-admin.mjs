@@ -12,6 +12,7 @@ import {
 import { assertRuntimePersistenceAdmin } from "../../core/ports/runtime-persistence-admin-port.mjs";
 import { payloadDigest } from "./artifact-projector-adapter.mjs";
 import { createPostgresRuntimeArtifactStore } from "./postgres-runtime-artifact-store.mjs";
+import { resolveRuntimeProjectContext } from "../../application/runtime/runtime-project-context-service.mjs";
 
 const require = createRequire(import.meta.url);
 
@@ -216,8 +217,13 @@ export function createPostgresRuntimePersistenceAdmin({
   env = process.env,
   clientFactory = null,
   moduleLoader = null,
+  runtimeProjectContext = null,
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const projectContext = runtimeProjectContext ?? resolveRuntimeProjectContext({
+    targetRoot: absoluteTargetRoot,
+    env,
+  });
   const connection = resolvePostgresRuntimePersistenceConnection({
     connectionString,
     connectionRef,
@@ -228,7 +234,8 @@ export function createPostgresRuntimePersistenceAdmin({
     clientFactory,
     moduleLoader,
   };
-  const scopeKey = absoluteTargetRoot;
+  const scopeKey = normalizeScalar(projectContext.runtime_scope_id) || absoluteTargetRoot;
+  const legacyScopeKey = normalizeScalar(projectContext.legacy_scope_key) || absoluteTargetRoot;
   const expectedLegacyTables = listPostgresRuntimeLegacyCompatibilityTableNames();
   const expectedCanonicalTables = listPostgresRuntimeRelationalTargetStructures()
     .filter((entity) => entity.kind === "table")
@@ -240,6 +247,22 @@ export function createPostgresRuntimePersistenceAdmin({
     env,
     clientFactory,
     moduleLoader,
+    runtimeProjectContext: projectContext,
+  });
+  const legacyRuntimeStore = createPostgresRuntimeArtifactStore({
+    targetRoot: absoluteTargetRoot,
+    connectionString,
+    connectionRef,
+    env,
+    clientFactory,
+    moduleLoader,
+    runtimeProjectContext: {
+      ...projectContext,
+      runtime_scope_id: legacyScopeKey,
+      scope_key: legacyScopeKey,
+      legacy_scope_key: legacyScopeKey,
+      is_legacy_scope: true,
+    },
   });
 
   async function inspectSchema() {
@@ -253,12 +276,16 @@ export function createPostgresRuntimePersistenceAdmin({
         schema_name: POSTGRES_RUNTIME_PERSISTENCE_SCHEMA_NAME,
         schema_version: POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION,
         scope_key: scopeKey,
+        legacy_scope_key: legacyScopeKey,
+        runtime_scope_id: scopeKey,
+        project_context: projectContext,
         tables_present: [],
         tables_missing: expectedCanonicalTables,
         legacy_tables_present: [],
         legacy_tables_missing: expectedLegacyTables,
         payload_rows: 0,
         canonical_payload_rows: 0,
+        legacy_alias_payload_rows: 0,
         legacy_snapshot_rows: 0,
         storage_policy: "relational-canonical",
         compatibility_status: "target-unavailable",
@@ -304,6 +331,17 @@ export function createPostgresRuntimePersistenceAdmin({
             [scopeKey],
           )
           : { rows: [{ count: 0 }] };
+        const legacyAliasPayloadResult = tablesPresent.includes("index_meta") && legacyScopeKey !== scopeKey
+          ? await client.query(
+            `
+            SELECT COUNT(*)::int AS count
+            FROM aidn_runtime.index_meta
+            WHERE scope_key = $1
+              AND key = 'payload_schema_version'
+            `,
+            [legacyScopeKey],
+          )
+          : { rows: [{ count: 0 }] };
         const legacyPayloadResult = tablesPresent.includes("runtime_snapshots")
           ? await client.query(
             `
@@ -311,13 +349,14 @@ export function createPostgresRuntimePersistenceAdmin({
             FROM aidn_runtime.runtime_snapshots
             WHERE scope_key = $1
             `,
-            [scopeKey],
+            [legacyScopeKey],
           )
           : { rows: [{ count: 0 }] };
         const appliedIds = Array.isArray(migrationResult.rows)
           ? migrationResult.rows.map((row) => String(row.schema_version))
           : [];
         const canonicalPayloadRows = Number(canonicalPayloadResult.rows?.[0]?.count ?? 0) || 0;
+        const legacyAliasPayloadRows = Number(legacyAliasPayloadResult.rows?.[0]?.count ?? 0) || 0;
         const legacySnapshotRows = Number(legacyPayloadResult.rows?.[0]?.count ?? 0) || 0;
         return {
           tablesPresent,
@@ -325,6 +364,7 @@ export function createPostgresRuntimePersistenceAdmin({
           legacyTablesMissing: expectedLegacyTables.filter((table) => !tablesPresent.includes(table)),
           appliedIds,
           canonicalPayloadRows,
+          legacyAliasPayloadRows,
           legacySnapshotRows,
         };
       });
@@ -342,6 +382,9 @@ export function createPostgresRuntimePersistenceAdmin({
         schema_name: POSTGRES_RUNTIME_PERSISTENCE_SCHEMA_NAME,
         schema_version: POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION,
         scope_key: scopeKey,
+        legacy_scope_key: legacyScopeKey,
+        runtime_scope_id: scopeKey,
+        project_context: projectContext,
         storage_policy: "relational-canonical",
         tables_present: out.tablesPresent.filter((tableName) => expectedCanonicalTables.includes(tableName)),
         tables_missing: out.canonicalTablesMissing,
@@ -349,6 +392,7 @@ export function createPostgresRuntimePersistenceAdmin({
         legacy_tables_missing: out.legacyTablesMissing,
         payload_rows: out.canonicalPayloadRows || out.legacySnapshotRows,
         canonical_payload_rows: out.canonicalPayloadRows,
+        legacy_alias_payload_rows: out.legacyAliasPayloadRows,
         legacy_snapshot_rows: out.legacySnapshotRows,
         applied_ids: out.appliedIds,
         compatibility_status: compatibilityStatus,
@@ -365,12 +409,16 @@ export function createPostgresRuntimePersistenceAdmin({
         schema_name: POSTGRES_RUNTIME_PERSISTENCE_SCHEMA_NAME,
         schema_version: POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION,
         scope_key: scopeKey,
+        legacy_scope_key: legacyScopeKey,
+        runtime_scope_id: scopeKey,
+        project_context: projectContext,
         tables_present: [],
         tables_missing: expectedCanonicalTables,
         legacy_tables_present: [],
         legacy_tables_missing: expectedLegacyTables,
         payload_rows: 0,
         canonical_payload_rows: 0,
+        legacy_alias_payload_rows: 0,
         legacy_snapshot_rows: 0,
         storage_policy: "relational-canonical",
         compatibility_status: "target-unavailable",
@@ -388,7 +436,34 @@ export function createPostgresRuntimePersistenceAdmin({
     await bootstrapSchema(runtime);
     let backfill = null;
     if (Number(statusBefore.canonical_payload_rows ?? 0) === 0) {
-      const legacySnapshot = await readLegacySnapshotCompatibility(runtime, scopeKey);
+      const legacyAliasSnapshot = legacyScopeKey !== scopeKey
+        ? await legacyRuntimeStore.loadSnapshot({
+          includePayload: true,
+          includeRuntimeHeads: false,
+        })
+        : null;
+      if (legacyAliasSnapshot?.exists === true && !legacyAliasSnapshot.warning && legacyAliasSnapshot.payload) {
+        await runtimeStore.writeIndexProjection({
+          payload: legacyAliasSnapshot.payload,
+          sourceBackend: normalizeScalar(legacyAliasSnapshot.source_backend) || "postgres-legacy-scope",
+          sourceSqliteFile: normalizeScalar(legacyAliasSnapshot.source_sqlite_file) || "",
+          adoptionStatus: "legacy-scope-backfill",
+          adoptionMetadata: {
+            legacy_scope_backfill: true,
+            legacy_scope_key: legacyScopeKey,
+            migrated_at: new Date().toISOString(),
+            prior_adoption_metadata: legacyAliasSnapshot.adoption_metadata ?? null,
+          },
+        });
+        backfill = {
+          legacy_scope_backfill: true,
+          legacy_scope_key: legacyScopeKey,
+          source_backend: normalizeScalar(legacyAliasSnapshot.source_backend) || "postgres-legacy-scope",
+        };
+      }
+    }
+    if (Number(statusBefore.canonical_payload_rows ?? 0) === 0 && backfill == null) {
+      const legacySnapshot = await readLegacySnapshotCompatibility(runtime, legacyScopeKey);
       if (legacySnapshot.exists === true && !legacySnapshot.warning && legacySnapshot.payload) {
         await runtimeStore.writeIndexProjection({
           payload: legacySnapshot.payload,
@@ -405,7 +480,7 @@ export function createPostgresRuntimePersistenceAdmin({
           legacy_snapshot_backfill: true,
           source_backend: normalizeScalar(legacySnapshot.source_backend) || "postgres-legacy-snapshot",
         };
-        await purgeLegacySnapshot(runtime, scopeKey);
+        await purgeLegacySnapshot(runtime, legacyScopeKey);
       }
     }
     const status = await inspectSchema();
@@ -413,6 +488,9 @@ export function createPostgresRuntimePersistenceAdmin({
       ok: true,
       schema_name: POSTGRES_RUNTIME_PERSISTENCE_SCHEMA_NAME,
       scope_key: scopeKey,
+      legacy_scope_key: legacyScopeKey,
+      runtime_scope_id: scopeKey,
+      project_context: projectContext,
       migration: {
         ok: true,
         had_existing_schema: statusBefore.exists,
@@ -435,7 +513,7 @@ export function createPostgresRuntimePersistenceAdmin({
       includeRuntimeHeads: true,
     });
     if (snapshot.exists !== true || snapshot.payload == null) {
-      snapshot = await readLegacySnapshotCompatibility(runtime, scopeKey);
+      snapshot = await readLegacySnapshotCompatibility(runtime, legacyScopeKey);
     }
     const backupFile = buildBackupFile(absoluteTargetRoot);
     fs.writeFileSync(backupFile, `${JSON.stringify({
@@ -446,6 +524,8 @@ export function createPostgresRuntimePersistenceAdmin({
       storage_policy: "relational-canonical",
       compatibility_fallback_used: snapshot.compatibility_fallback_used === true,
       scope_key: scopeKey,
+      legacy_scope_key: legacyScopeKey,
+      project_context: projectContext,
       snapshot,
     }, null, 2)}\n`, "utf8");
     return {
@@ -460,14 +540,17 @@ export function createPostgresRuntimePersistenceAdmin({
   return assertRuntimePersistenceAdmin({
     describeBackend() {
       return {
-        backend_kind: "postgres",
-        scope: "runtime-artifact-persistence",
-        schema_name: POSTGRES_RUNTIME_PERSISTENCE_SCHEMA_NAME,
-        schema_version: POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION,
-        connection,
-        scope_key: scopeKey,
-        target_root: absoluteTargetRoot,
-      };
+      backend_kind: "postgres",
+      scope: "runtime-artifact-persistence",
+      schema_name: POSTGRES_RUNTIME_PERSISTENCE_SCHEMA_NAME,
+      schema_version: POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION,
+      connection,
+      scope_key: scopeKey,
+      legacy_scope_key: legacyScopeKey,
+      runtime_scope_id: scopeKey,
+      project_context: projectContext,
+      target_root: absoluteTargetRoot,
+    };
     },
     inspectSchema,
     migrateSchema,

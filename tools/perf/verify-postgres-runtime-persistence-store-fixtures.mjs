@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import { createPostgresRuntimeArtifactStore } from "../../src/adapters/runtime/postgres-runtime-artifact-store.mjs";
 import { createPostgresRuntimePersistenceAdmin } from "../../src/adapters/runtime/postgres-runtime-persistence-admin.mjs";
+import { POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION } from "../../src/application/runtime/postgres-runtime-persistence-contract-service.mjs";
 import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persistence-fake-pg-lib.mjs";
 
 function assert(condition, message) {
@@ -32,8 +33,8 @@ async function main() {
     const migrated = await admin.migrateSchema();
     assert(migrated.ok === true, "migrate should succeed");
     assert(migrated.status.tables_missing.length === 0, "migrate should materialize runtime tables");
-    assert(migrated.status.schema_version === 2, "migrate should expose relational target schema version");
-    assert(migrated.status.applied_ids.includes("2"), "migrate should record relational target schema version");
+    assert(migrated.status.schema_version === POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION, "migrate should expose relational target schema version");
+    assert(migrated.status.applied_ids.includes(String(POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION)), "migrate should record relational target schema version");
     assert(migrated.status.pending_ids.length === 0, "migrate should not leave canonical migrations pending");
     assert(migrated.status.compatibility_status === "empty-relational", "migrate should report an empty relational-ready schema");
 
@@ -85,6 +86,7 @@ async function main() {
     assert(snapshot.source_backend === "sqlite", "snapshot should retain source backend");
     assert(snapshot.source_sqlite_file?.endsWith("workflow-index.sqlite"), "snapshot should retain source sqlite file");
     assert(snapshot.adoption_status === "transferred", "snapshot should retain adoption status");
+    assert(snapshot.project_context?.runtime_scope_id === store.describeBackend().runtime_scope_id, "snapshot should expose canonical runtime project context");
 
     const event = await store.recordAdoptionEvent({
       action: "transfer-from-sqlite",
@@ -99,6 +101,7 @@ async function main() {
     });
     assert(event.ok === true, "adoption event should be recorded");
     assert(fake.state.adoptionEvents.length === 1, "fake state should capture adoption events");
+    assert(fake.state.relationalRows.runtime_scope_registry.length === 1, "canonical writes should register runtime project context");
 
     const backup = await admin.backupPersistence();
     assert(backup.ok === true, "backup should succeed");
@@ -207,6 +210,52 @@ async function main() {
     assert(legacyOnlyFake.state.runtimeSnapshots.size === 0, "legacy backfill should purge legacy runtime_snapshots rows");
     const postMigrationBackup = await legacyAdmin.backupPersistence();
     assert(postMigrationBackup.compatibility_fallback_used === false, "post-migration backup should no longer require legacy compatibility fallback");
+
+    const legacyScopeRoot = "G:\\tmp\\runtime-store-legacy-scope";
+    const legacyScopeFake = createRuntimePersistenceFakePgClientFactory();
+    const legacyScopeSeedStore = createPostgresRuntimeArtifactStore({
+      targetRoot: legacyScopeRoot,
+      connectionString: "postgres://aidn:test@localhost:5432/aidn",
+      clientFactory: legacyScopeFake.factory,
+      runtimeProjectContext: {
+        project_id: "legacy-project",
+        project_id_source: "legacy",
+        workspace_id: "legacy-workspace",
+        workspace_id_source: "legacy",
+        worktree_id: "legacy-worktree",
+        worktree_id_source: "legacy",
+        runtime_scope_id: legacyScopeRoot,
+        runtime_profile: "default",
+        legacy_scope_key: legacyScopeRoot,
+        scope_key: legacyScopeRoot,
+        target_root_ref: legacyScopeRoot,
+        project_root_ref: legacyScopeRoot,
+        locator_ref: "none",
+        identity_source: "legacy",
+        explicit_project_context: false,
+        is_legacy_scope: true,
+      },
+    });
+    await legacyScopeSeedStore.writeIndexProjection({
+      payload,
+      sourceBackend: "sqlite",
+      adoptionStatus: "transferred",
+    });
+    const canonicalScopeAdmin = createPostgresRuntimePersistenceAdmin({
+      targetRoot: legacyScopeRoot,
+      connectionString: "postgres://aidn:test@localhost:5432/aidn",
+      env: {
+        AIDN_PROJECT_ID: "gowire",
+        AIDN_WORKSPACE_ID: "gowire-main",
+      },
+      clientFactory: legacyScopeFake.factory,
+    });
+    const legacyScopeStatusBefore = await canonicalScopeAdmin.inspectSchema();
+    assert(legacyScopeStatusBefore.canonical_payload_rows === 0, "canonical project scope should start empty before legacy scope backfill");
+    assert(legacyScopeStatusBefore.legacy_alias_payload_rows === 1, "legacy absolute scope should be detected as a migration alias");
+    const legacyScopeMigrated = await canonicalScopeAdmin.migrateSchema();
+    assert(legacyScopeMigrated.migration.backfill?.legacy_scope_backfill === true, "migrate should backfill canonical rows from legacy absolute scope");
+    assert(legacyScopeMigrated.status.canonical_payload_rows === 1, "legacy scope backfill should materialize canonical project-scoped rows");
 
     console.log("PASS");
   } catch (error) {

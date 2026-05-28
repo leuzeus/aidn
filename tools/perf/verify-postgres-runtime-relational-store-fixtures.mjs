@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { createPostgresRuntimeArtifactStore } from "../../src/adapters/runtime/postgres-runtime-artifact-store.mjs";
+import { POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION } from "../../src/application/runtime/postgres-runtime-persistence-contract-service.mjs";
 import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persistence-fake-pg-lib.mjs";
 
 function assert(condition, message) {
@@ -212,7 +213,7 @@ async function main() {
     });
 
     assert(fake.state.schemaMigrations.includes(1), "expected snapshot schema migration version 1");
-    assert(fake.state.schemaMigrations.includes(2), "expected relational schema migration version 2");
+    assert(fake.state.schemaMigrations.includes(POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION), "expected relational schema migration version");
     assert(fake.state.runtimeSnapshots.size === 0, "expected no legacy snapshot row during canonical relational writes");
     assert(fake.state.relationalRows.cycles.length === 1, "expected one relational cycle row");
     assert(fake.state.relationalRows.cycles[0]?.continuity_decision_by === "agent", "expected relational cycle continuity_decision_by parity");
@@ -232,7 +233,10 @@ async function main() {
     assert(fake.state.relationalRows.artifact_blobs.length === 2, "expected relational artifact_blob parity");
     assert(fake.state.relationalRows.runtime_heads.length === 2, "expected relational runtime head parity");
     assert(fake.state.relationalRows.index_meta.some((row) => row.key === "schema_version"), "expected schema_version meta row");
+    assert(fake.state.relationalRows.runtime_scope_registry.length === 1, "expected runtime project context registry row");
+    assert(fake.state.relationalRows.runtime_scope_registry[0]?.project_id, "expected registry project_id");
     assert(fake.state.tablesPresent.has("artifacts"), "expected relational artifacts table to be materialized");
+    assert(fake.state.tablesPresent.has("runtime_scope_registry"), "expected runtime_scope_registry table to be materialized");
     assert(fake.state.tablesPresent.has("runtime_heads"), "expected relational runtime_heads table to be materialized");
 
     const currentStateHead = fake.state.relationalRows.runtime_heads.find((row) => row.head_key === "current_state");
@@ -255,6 +259,45 @@ async function main() {
     assert(rehydrated.source_backend === "sqlite", "expected relational metadata source_backend parity");
     assert(rehydrated.adoption_status === "transferred", "expected relational metadata adoption_status parity");
     assert(rehydrated.runtimeHeads.current_state?.artifact_id === 1, "expected relational runtime head artifact_id parity");
+    assert(rehydrated.project_context?.runtime_scope_id === store.describeBackend().runtime_scope_id, "expected rehydrated runtime project context");
+
+    const scopedFake = createRuntimePersistenceFakePgClientFactory();
+    const alphaStore = createPostgresRuntimeArtifactStore({
+      targetRoot: "C:\\work\\alpha",
+      connectionString: "postgres://aidn:test@localhost:5432/aidn",
+      env: {
+        AIDN_PROJECT_ID: "alpha",
+        AIDN_WORKSPACE_ID: "main",
+      },
+      clientFactory: scopedFake.factory,
+    });
+    const betaStore = createPostgresRuntimeArtifactStore({
+      targetRoot: "C:\\work\\beta",
+      connectionString: "postgres://aidn:test@localhost:5432/aidn",
+      env: {
+        AIDN_PROJECT_ID: "beta",
+        AIDN_WORKSPACE_ID: "main",
+      },
+      clientFactory: scopedFake.factory,
+    });
+    await alphaStore.writeIndexProjection({ payload, sourceBackend: "sqlite" });
+    await betaStore.writeIndexProjection({ payload, sourceBackend: "sqlite" });
+    assert(alphaStore.describeBackend().runtime_scope_id !== betaStore.describeBackend().runtime_scope_id, "different project ids should resolve distinct runtime scopes");
+    assert(scopedFake.state.relationalRows.runtime_scope_registry.length === 2, "two projects should keep distinct runtime scope registry rows");
+    assert(new Set(scopedFake.state.relationalRows.artifacts.map((row) => row.scope_key)).size === 2, "same artifact paths in different projects should not collide");
+
+    const alphaLinuxStore = createPostgresRuntimeArtifactStore({
+      targetRoot: "/srv/alpha",
+      connectionString: "postgres://aidn:test@localhost:5432/aidn",
+      env: {
+        AIDN_PROJECT_ID: "alpha",
+        AIDN_WORKSPACE_ID: "main",
+      },
+      clientFactory: scopedFake.factory,
+    });
+    assert(alphaLinuxStore.describeBackend().runtime_scope_id === alphaStore.describeBackend().runtime_scope_id, "explicit project/workspace identity should be cross-platform stable");
+    const alphaLinuxSnapshot = await alphaLinuxStore.loadSnapshot({ includePayload: true, includeRuntimeHeads: false });
+    assert(alphaLinuxSnapshot.exists === true, "cross-platform explicit identity should read the same runtime scope");
 
     console.log("PASS");
   } catch (error) {

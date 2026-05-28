@@ -48,6 +48,7 @@ const POSTGRES_RUNTIME_SNAPSHOT_V1_ENTITIES = Object.freeze([
 const POSTGRES_RUNTIME_RELATIONAL_V2_ENTITIES = Object.freeze([
   Object.freeze({ name: "schema_migrations", kind: "table", classification: "admin", parity_required: true }),
   Object.freeze({ name: "index_meta", kind: "table", classification: "admin", parity_required: false }),
+  Object.freeze({ name: "runtime_scope_registry", kind: "table", classification: "admin", parity_required: true }),
   Object.freeze({ name: "cycles", kind: "table", classification: "canonical", parity_required: true }),
   Object.freeze({ name: "artifacts", kind: "table", classification: "canonical", parity_required: true }),
   Object.freeze({ name: "sessions", kind: "table", classification: "canonical", parity_required: true }),

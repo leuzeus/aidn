@@ -70,6 +70,13 @@ const METADATA_POLICIES = freezeDeep([
     lifecycle: "discovered -> active -> archived",
   }),
   policy({
+    concept: "runtime_project_context",
+    label: "Runtime project context",
+    required: ["project_id", "workspace_id", "worktree_id", "runtime_scope_id", "source_of_truth", "updated_at", "lifecycle_status"],
+    recommended: ["identity_source", "legacy_scope_key", "privacy_classification"],
+    lifecycle: "resolved -> active -> migrated -> archived",
+  }),
+  policy({
     concept: "session",
     label: "Session",
     required: ["session_id", "contract_version", "owner", "state", "updated_at", "source_of_truth", "lifecycle_status"],

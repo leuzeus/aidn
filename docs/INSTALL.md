@@ -162,6 +162,8 @@ Notes:
   - runtime source-branch readers use `.aidn/config.json` first, then fall back to installed workflow artifacts for backward compatibility.
 - Runtime persistence policy:
   - if `.aidn/config.json` configures `runtime.persistence.backend=postgres`, the selected backend is PostgreSQL and the status commands report the PostgreSQL structure as canonical,
+  - PostgreSQL runtime rows are scoped by `project_context.runtime_scope_id`, derived from `project_id` and `workspace_id`,
+  - use `.aidn/project/shared-runtime.locator.json` or env identity when a project must keep the same PostgreSQL identity across devices or platforms,
   - the local `.aidn/runtime/index/workflow-index.sqlite` file remains a compatibility projection or migration source when PostgreSQL is configured,
   - if PostgreSQL is already canonical and ready, `aidn install` treats a stale local SQLite compatibility projection as non-blocking instead of forcing a migration conflict,
   - if PostgreSQL is not configured, SQLite remains the fallback legacy backend,

@@ -22,6 +22,7 @@ Rules:
 
 - shared coordination must pass through minimal ports in `src/core/ports`
 - the port surface must require explicit workspace, worktree and project identity
+- runtime PostgreSQL and shared coordination must resolve project context through the same workspace identity model
 - locator validation is mandatory before any shared backend access
 - shared coordination is limited to registry, planning, handoff and coordination records
 - checkout-bound artifacts such as `docs/audit/*`, `AGENTS.md`, `.codex/*` and `.aidn/config.json` remain outside shared coordination
@@ -73,3 +74,4 @@ Negative:
 - map the port methods to adapter implementations and runtime use cases
 - keep `ADR-0007` and the shared-surface gate synchronized with any port change
 - the minimal shared coordination store port is implemented in `src/core/ports/shared-coordination-store-port.mjs` and asserted by the PostgreSQL shared coordination adapter
+- runtime PostgreSQL now records `runtime_scope_id` and `project_context` separately from shared coordination rows so future platform dashboards can join by `project_id` without confusing projects

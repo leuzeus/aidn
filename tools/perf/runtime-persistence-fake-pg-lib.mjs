@@ -24,6 +24,8 @@ function sortRowsForTable(tableName, rows) {
   switch (tableName) {
     case "index_meta":
       return copy.sort((left, right) => compareNullableStrings(left.key, right.key));
+    case "runtime_scope_registry":
+      return copy.sort((left, right) => compareNullableStrings(left.scope_key, right.scope_key));
     case "cycles":
       return copy.sort((left, right) => compareNullableStrings(left.cycle_id, right.cycle_id));
     case "sessions":
@@ -94,6 +96,7 @@ export function createRuntimePersistenceFakePgClientFactory({
     "runtime_snapshots",
     "runtime_heads",
     "adoption_events",
+    "runtime_scope_registry",
     "index_meta",
     "cycles",
     "artifacts",

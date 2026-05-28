@@ -15,10 +15,13 @@ Canonical runtime artifact persistence is now explicit:
 Current PostgreSQL meaning:
 
 - PostgreSQL is the canonical relational runtime backend
+- PostgreSQL runtime rows are partitioned by `runtime_scope_id`, derived from `project_id` and `workspace_id`
+- absolute-path `scope_key` values are legacy migration aliases, not durable project identity
 - canonical runtime reads and writes use the relational runtime schema in `aidn_runtime`
 - `runtime_snapshots` is not canonical storage and is only used by admin compatibility flows when migrating older PostgreSQL installs
 - `runtime persistence status` now exposes the selected backend structure, the SQLite compatibility structure, the PostgreSQL target structure, and the migration/adoption plan separately
 - relational projection preserves artifact `mtime_ns` as an exact string-safe nanosecond value so source and target payload digests stay aligned
+- `runtime persistence-status --json` exposes `project_context` with `project_id`, `workspace_id`, `worktree_id`, `runtime_scope_id`, `identity_source`, and the legacy scope alias
 
 This does not change:
 
@@ -63,8 +66,8 @@ Before changing runtime persistence behavior, run the smallest relevant checks:
 | Operation | Canonical scope | Backup required before write | Restore target |
 |---|---|---|---|
 | SQLite-only runtime refresh | local `.aidn/runtime/index/workflow-index.sqlite` | local SQLite copy | same target root |
-| SQLite -> PostgreSQL adoption | runtime persistence backend | SQLite export and PostgreSQL backup when target has rows | selected runtime `scope_key` |
-| PostgreSQL migration | PostgreSQL relational schema | PostgreSQL backup | same PostgreSQL schema and scope |
+| SQLite -> PostgreSQL adoption | runtime persistence backend | SQLite export and PostgreSQL backup when target has rows | selected `runtime_scope_id` plus legacy `scope_key` alias |
+| PostgreSQL migration | PostgreSQL relational schema | PostgreSQL backup | same PostgreSQL schema and `runtime_scope_id` |
 | Local projection cleanup | compatibility projection only | local SQLite copy if still used by tooling | regenerate projection from canonical backend |
 
 ### 2. Capture pre-write evidence
@@ -83,7 +86,7 @@ Rules:
 - store connection strings only through `connectionRef` such as `env:AIDN_PG_URL`
 - do not paste raw PostgreSQL secrets into tracked docs or backup manifests
 - keep backup files under local runtime backup directories unless intentionally exporting a sanitized support artifact
-- record the command output status, backend, schema state and `scope_key` before applying adoption or migration
+- record the command output status, backend, schema state, `project_context.runtime_scope_id`, and legacy `scope_key` before applying adoption or migration
 
 ### 3. Preview then write
 
@@ -110,7 +113,7 @@ If the change touches the local SQLite compatibility projection, also rerun:
 Post-write checks:
 
 - the backend reported by `persistence-status` matches the intended target
-- the canonical scope key is preserved after adoption or migration
+- the canonical `runtime_scope_id` is preserved after adoption or migration
 - the local projection still materializes the expected runtime digest when compatibility mode is enabled
 - any restore plan can be previewed before the next write
 
@@ -227,6 +230,8 @@ Legacy PostgreSQL handling:
 - successful migration drains legacy `runtime_snapshots` rows for the target scope
 - canonical runtime paths do not read `runtime_snapshots`
 - admin backup/migration can still read an old snapshot row when no canonical relational payload exists yet
+- relational rows keyed by an older absolute-path `scope_key` are readable as a migration alias and can be backfilled into the canonical `runtime_scope_id`
+- `runtime_scope_registry` maps `runtime_scope_id` to `project_id`, `workspace_id`, `worktree_id`, project root reference, locator reference, and legacy scope alias
 
 ## Install-Time Adoption
 

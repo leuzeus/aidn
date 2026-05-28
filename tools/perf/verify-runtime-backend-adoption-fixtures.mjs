@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { planRuntimeBackendAdoption, executeRuntimeBackendAdoption } from "../../src/application/runtime/runtime-backend-adoption-service.mjs";
+import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
 import { createIndexStore } from "../../src/lib/index/index-store.mjs";
 import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persistence-fake-pg-lib.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
@@ -17,6 +18,7 @@ const READY_RELATIONAL_TABLES = [
   "schema_migrations",
   "runtime_heads",
   "adoption_events",
+  "runtime_scope_registry",
   "index_meta",
   "cycles",
   "artifacts",
@@ -71,7 +73,7 @@ async function main() {
 
     const emptyReadyFake = createRuntimePersistenceFakePgClientFactory({
       initialTables: READY_RELATIONAL_TABLES,
-      initialSchemaMigrations: [2],
+      initialSchemaMigrations: [3],
     });
     const emptyReadyPlan = await planRuntimeBackendAdoption({
       targetRoot: "tests/fixtures/repo-empty",
@@ -94,8 +96,30 @@ async function main() {
       connectionString: "postgres://aidn:test@localhost:5432/aidn",
       clientFactory: partialSchemaFake.factory,
     });
-    assert(partialSchemaPlan.action === "blocked-conflict", "partial target schema with sqlite source should block");
-    assert(partialSchemaPlan.blocked === true, "partial target schema should be marked blocked");
+    assert(partialSchemaPlan.action === "transfer-from-sqlite", "empty partial target schema with sqlite source should migrate then transfer");
+    assert(partialSchemaPlan.reason_code === "target-migrate-and-transfer", "empty partial target schema should expose migrate-and-transfer reason");
+    assert(partialSchemaPlan.prerequisites.includes("migrate-target"), "empty partial target schema should require target migration first");
+
+    const partialDataTargetRoot = path.resolve(process.cwd(), "tests/fixtures/repo-installed-core");
+    const partialDataScope = resolveRuntimeProjectContext({ targetRoot: partialDataTargetRoot }).runtime_scope_id;
+    const partialSchemaWithDataFake = createRuntimePersistenceFakePgClientFactory({
+      initialTables: READY_RELATIONAL_TABLES.filter((tableName) => tableName !== "runtime_scope_registry"),
+      initialSchemaMigrations: [1, 2],
+    });
+    partialSchemaWithDataFake.state.relationalRows.index_meta.push({
+      scope_key: partialDataScope,
+      key: "payload_schema_version",
+      value: "2",
+      updated_at: "2030-01-01T00:00:00.000Z",
+    });
+    const partialSchemaWithDataPlan = await planRuntimeBackendAdoption({
+      targetRoot: partialDataTargetRoot,
+      backend: "postgres",
+      connectionString: "postgres://aidn:test@localhost:5432/aidn",
+      clientFactory: partialSchemaWithDataFake.factory,
+    });
+    assert(partialSchemaWithDataPlan.action === "blocked-conflict", "partial target schema with canonical rows and sqlite source should block");
+    assert(partialSchemaWithDataPlan.blocked === true, "partial target schema with canonical rows should be marked blocked");
 
     const legacyRepairFake = createRuntimePersistenceFakePgClientFactory({
       initialTables: ["schema_migrations", "runtime_snapshots", "runtime_heads", "adoption_events"],

@@ -5,6 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { Client } from "pg";
 import { buildNextAidnProjectConfig } from "../../src/application/install/project-config-service.mjs";
+import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
 import { readAidnProjectConfig, writeAidnProjectConfig } from "../../src/lib/config/aidn-config-lib.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
@@ -65,6 +66,7 @@ async function cleanupScope(connectionString, scopeKey) {
       "sessions",
       "cycles",
       "index_meta",
+      "runtime_scope_registry",
     ]) {
       try {
         await client.query(`DELETE FROM aidn_runtime.${tableName} WHERE scope_key = $1`, [scopeKey]);
@@ -106,12 +108,15 @@ async function main() {
     const targetRoot = path.join(tempRoot, "repo");
     fs.cpSync(path.resolve(repoRoot, "tests", "fixtures", "repo-installed-core"), targetRoot, { recursive: true });
     fs.rmSync(path.join(targetRoot, ".aidn", "runtime"), { recursive: true, force: true });
+    const projectContext = resolveRuntimeProjectContext({ targetRoot });
+    const canonicalScopeKey = projectContext.runtime_scope_id;
 
     const env = {
       AIDN_RUNTIME_PG_SMOKE_URL: connectionString,
     };
 
     await cleanupScope(connectionString, targetRoot);
+    await cleanupScope(connectionString, canonicalScopeKey);
 
     const indexSync = runJson(repoRoot, "tools/perf/index-sync.mjs", [
       "--target",
@@ -205,6 +210,7 @@ async function main() {
     let eventRows = [];
     let canonicalMetaRows = [];
     let canonicalArtifactRows = [];
+    let registryRows = [];
     try {
       try {
         snapshotRows = (await client.query(
@@ -227,7 +233,7 @@ async function main() {
         WHERE scope_key = $1
         ORDER BY key ASC
         `,
-        [targetRoot],
+        [canonicalScopeKey],
       )).rows;
       canonicalArtifactRows = (await client.query(
         `
@@ -236,7 +242,16 @@ async function main() {
         WHERE scope_key = $1
         ORDER BY path ASC
         `,
-        [targetRoot],
+        [canonicalScopeKey],
+      )).rows;
+      registryRows = (await client.query(
+        `
+        SELECT scope_key, runtime_scope_id, legacy_scope_key, project_id, workspace_id, explicit_project_context, is_legacy_scope, updated_at
+        FROM aidn_runtime.runtime_scope_registry
+        WHERE scope_key = $1
+        ORDER BY updated_at DESC
+        `,
+        [canonicalScopeKey],
       )).rows;
       eventRows = (await client.query(
         `
@@ -245,7 +260,7 @@ async function main() {
         WHERE scope_key = $1
         ORDER BY created_at DESC
         `,
-        [targetRoot],
+        [canonicalScopeKey],
       )).rows;
     } finally {
       await client.end();
@@ -255,6 +270,8 @@ async function main() {
       ok: true,
       skipped: false,
       target_root: targetRoot,
+      runtime_scope_id: canonicalScopeKey,
+      project_context: projectContext,
       index_sync: {
         status: indexSync.status,
         payload_digest: indexSync.payload?.payload_digest ?? null,
@@ -275,6 +292,7 @@ async function main() {
         compatibility_status: status.payload?.compatibility_status ?? null,
         tables_missing: status.payload?.tables_missing ?? null,
         adoption_plan_action: status.payload?.runtime_backend_adoption_plan?.action ?? null,
+        project_context: status.payload?.project_context ?? null,
       },
       backup: {
         status: backup.status,
@@ -305,6 +323,7 @@ async function main() {
         runtime_snapshot_rows: snapshotRows,
         canonical_index_meta_rows: canonicalMetaRows,
         canonical_artifact_rows: canonicalArtifactRows,
+        runtime_scope_registry_rows: registryRows,
         adoption_events: eventRows,
       },
     };
@@ -322,6 +341,9 @@ async function main() {
       backup_ok: backup.payload?.ok === true && typeof backup.payload?.backup_file === "string",
       live_canonical_meta_written: canonicalMetaRows.some((row) => normalizeScalar(row.key) === "payload_schema_version"),
       live_canonical_artifacts_written: canonicalArtifactRows.length > 0,
+      live_runtime_scope_registry_written: registryRows.length === 1
+        && normalizeScalar(registryRows[0]?.runtime_scope_id) === canonicalScopeKey
+        && normalizeScalar(registryRows[0]?.legacy_scope_key) === targetRoot,
       live_snapshot_compat_optional: snapshotRows.length === 0
         || (snapshotRows.length === 1 && normalizeScalar(snapshotRows[0]?.adoption_status) === "transferred"),
       live_event_recorded: eventRows.length >= 1 && normalizeScalar(eventRows[0]?.action) === "transfer-from-sqlite",
@@ -351,6 +373,7 @@ async function main() {
     if (connectionString && targetRoot) {
       try {
         await cleanupScope(connectionString, targetRoot);
+        await cleanupScope(connectionString, resolveRuntimeProjectContext({ targetRoot }).runtime_scope_id);
       } catch {
       }
     }
