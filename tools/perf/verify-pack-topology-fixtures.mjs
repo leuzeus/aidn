@@ -43,6 +43,12 @@ function makeCodexStub(tmpRoot) {
   return binDir;
 }
 
+function normalizeCleanFixtureCopy(targetRoot) {
+  fs.rmSync(path.join(targetRoot, ".aidn", "runtime"), { recursive: true, force: true });
+  fs.rmSync(path.join(targetRoot, ".aidn", "project", "workflow.adapter.legacy-source.md"), { force: true });
+  fs.rmSync(path.join(targetRoot, ".aidn", "project", "workflow.adapter.migration-report.json"), { force: true });
+}
+
 function runInstallDry(repoRoot, targetRoot, codexStubBin, pack) {
   const separator = process.platform === "win32" ? ";" : ":";
   const result = spawnSync(process.execPath, [
@@ -216,6 +222,9 @@ function main() {
     fs.cpSync(sourceTarget, codexTarget, { recursive: true });
     fs.cpSync(sourceTarget, githubTarget, { recursive: true });
     fs.cpSync(sourceTarget, extendedTarget, { recursive: true });
+    for (const copiedTarget of [targetRoot, runtimeLocalTarget, codexTarget, githubTarget, extendedTarget]) {
+      normalizeCleanFixtureCopy(copiedTarget);
+    }
     const codexStubBin = makeCodexStub(tempRoot);
 
     const runtimeLocalDry = runInstallDry(repoRoot, targetRoot, codexStubBin, "runtime-local");
@@ -225,23 +234,23 @@ function main() {
 
     fs.rmSync(path.join(runtimeLocalTarget, ".aidn", "runtime", "agents"), { recursive: true, force: true });
     const runtimeLocalInstall = runInstall(repoRoot, runtimeLocalTarget, codexStubBin, "runtime-local", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
-    const runtimeLocalVerify = runInstall(repoRoot, runtimeLocalTarget, codexStubBin, "runtime-local", ["--verify"]);
+    const runtimeLocalVerify = runInstall(repoRoot, runtimeLocalTarget, codexStubBin, "runtime-local", ["--verify", "--skip-artifact-import"]);
 
     fs.rmSync(path.join(codexTarget, ".codex", "skills"), { recursive: true, force: true });
     fs.rmSync(path.join(codexTarget, ".codex", "skills.yaml"), { force: true });
     const codexInstall = runInstall(repoRoot, codexTarget, codexStubBin, "codex-integration", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
-    const codexVerify = runInstall(repoRoot, codexTarget, codexStubBin, "codex-integration", ["--verify"]);
+    const codexVerify = runInstall(repoRoot, codexTarget, codexStubBin, "codex-integration", ["--verify", "--skip-artifact-import"]);
 
     fs.rmSync(path.join(githubTarget, ".github"), { recursive: true, force: true });
     const githubInstall = runInstall(repoRoot, githubTarget, codexStubBin, "github-integration", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
-    const githubVerify = runInstall(repoRoot, githubTarget, codexStubBin, "github-integration", ["--verify"]);
+    const githubVerify = runInstall(repoRoot, githubTarget, codexStubBin, "github-integration", ["--verify", "--skip-artifact-import"]);
 
     fs.rmSync(path.join(extendedTarget, ".aidn", "runtime", "agents"), { recursive: true, force: true });
     fs.rmSync(path.join(extendedTarget, ".codex", "skills"), { recursive: true, force: true });
     fs.rmSync(path.join(extendedTarget, ".codex", "skills.yaml"), { force: true });
     fs.rmSync(path.join(extendedTarget, ".github"), { recursive: true, force: true });
     const extendedInstall = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
-    const extendedVerify = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--verify"]);
+    const extendedVerify = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--verify", "--skip-artifact-import"]);
     const packageLeakGuard = inspectPackageLeakGuard(repoRoot);
     const packageDocsAllowlist = inspectPackageDocsAllowlist(packageLeakGuard.files);
 
