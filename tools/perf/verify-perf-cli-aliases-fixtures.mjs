@@ -515,6 +515,7 @@ function main() {
       ".",
       "--out",
       runtimeStateAliasFile,
+      "--write",
       "--json",
     ], targetRoot);
     const arbitrationSuggestionAlias = runNodeWithJson(aidnCli, [

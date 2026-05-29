@@ -21,15 +21,43 @@ function runJson(script, args, repoRoot, expectStatus = 0, env = {}) {
     maxBuffer: 20 * 1024 * 1024,
   });
   if ((result.status ?? 1) !== expectStatus) {
-    throw new Error(`Command failed (${path.basename(script)}): ${String(result.stderr ?? result.stdout ?? "").trim()}`);
+    const stderr = String(result.stderr ?? "").trim();
+    const stdout = String(result.stdout ?? "").trim();
+    throw new Error(`Command failed (${path.basename(script)} ${args.join(" ")}): ${stderr || stdout}`);
   }
   return JSON.parse(String(result.stdout ?? "{}"));
+}
+
+function normalizeCleanFixtureCopy(targetRoot) {
+  fs.rmSync(path.join(targetRoot, ".aidn", "runtime"), { recursive: true, force: true });
+  fs.rmSync(path.join(targetRoot, ".aidn", "project", "workflow.adapter.legacy-source.md"), { force: true });
+  fs.rmSync(path.join(targetRoot, ".aidn", "project", "workflow.adapter.migration-report.json"), { force: true });
 }
 
 function appendHistoryEvent(targetRoot, event) {
   const historyFile = path.join(targetRoot, ".aidn", "runtime", "context", "coordination-history.ndjson");
   fs.mkdirSync(path.dirname(historyFile), { recursive: true });
   fs.appendFileSync(historyFile, `${JSON.stringify(event)}\n`, "utf8");
+}
+
+function appendEscalationSeedHistory(targetRoot) {
+  for (const ts of ["2026-03-09T01:00:00Z", "2026-03-09T01:05:00Z"]) {
+    appendHistoryEvent(targetRoot, {
+      ts,
+      event: "coordinator_dispatch",
+      selected_agent: "codex",
+      recommended_role: "coordinator",
+      recommended_action: "reanchor",
+      goal: "implement alpha feature validation",
+      dispatch_status: "ready",
+      execution_status: "failed",
+      entrypoint_kind: "manual",
+      entrypoint_name: "user-arbitration",
+      stop_required: false,
+      executed: false,
+      executed_steps: [],
+    });
+  }
 }
 
 async function main() {
@@ -47,6 +75,9 @@ async function main() {
     fs.cpSync(path.join(repoRoot, "tests", "fixtures", "perf-handoff", "ready"), readyTarget, { recursive: true });
     fs.cpSync(path.join(repoRoot, "tests", "fixtures", "perf-handoff", "blocked"), blockedTarget, { recursive: true });
     fs.cpSync(path.join(repoRoot, "tests", "fixtures", "perf-handoff", "ready"), dbOnlyTarget, { recursive: true });
+    for (const copiedTarget of [readyTarget, blockedTarget, dbOnlyTarget]) {
+      normalizeCleanFixtureCopy(copiedTarget);
+    }
     initGitRepo(readyTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(blockedTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(dbOnlyTarget, { workingBranch: "feature/C101-alpha" });
@@ -54,6 +85,7 @@ async function main() {
     runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", dbOnlyTarget, "--json"], repoRoot, 0);
+    appendEscalationSeedHistory(readyTarget);
 
     const readyExecute = runJson(dispatchExecuteScript, ["--target", readyTarget, "--execute", "--json"], repoRoot, 1);
     const blockedExecute = runJson(dispatchExecuteScript, ["--target", blockedTarget, "--execute", "--json"], repoRoot, 0);
