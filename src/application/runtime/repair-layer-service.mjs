@@ -3,6 +3,10 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { deriveRepairRelationStatus, normalizeRepairConfidence, repairSourceModeRank } from "../../core/workflow/repair-layer-policy.mjs";
 import { REPAIR_LAYER_ENGINE_VERSION } from "./repair-layer-payload-lib.mjs";
+import {
+  analyzeStructuredArtifact,
+  extractStructuredField,
+} from "../../lib/workflow/structured-artifact-parser-lib.mjs";
 
 function decodeEmbeddedArtifactContent(artifact) {
   if (typeof artifact?.content !== "string" || artifact.content.length === 0) {
@@ -70,12 +74,7 @@ function resolveArtifactLinkTarget(sourcePath, rawLink) {
 }
 
 function extractSessionField(text, fieldName) {
-  if (typeof text !== "string" || text.length === 0) {
-    return null;
-  }
-  const pattern = new RegExp(`^[-*]?\\s*${fieldName}:\\s*` + "`?([^`\\n]+)`?", "im");
-  const match = text.match(pattern);
-  return match ? match[1].trim() : null;
+  return extractStructuredField(text, fieldName);
 }
 
 function hasSessionField(text, fieldName) {
@@ -147,45 +146,29 @@ function splitEntityList(value) {
 }
 
 function parseSessionMetadata(text) {
-  const sessionBranch = extractSessionField(text, "session_branch");
-  const parentSession = extractSessionField(text, "parent_session");
-  const branchKind = extractSessionField(text, "branch_kind");
-  const cycleBranch = extractSessionField(text, "cycle_branch");
-  const intermediateBranch = extractSessionField(text, "intermediate_branch");
-  const integrationTargetCycleLegacy = extractSessionField(text, "integration_target_cycle");
-  const integrationTargetCycles = extractSessionListField(text, "integration_target_cycles", (value) =>
-    extractCycleIdsFromText(splitEntityList(value).join(" ")));
-  const primaryFocusCycleRaw = extractSessionField(text, "primary_focus_cycle");
-  const attachedCycles = extractSessionListField(text, "attached_cycles", (value) =>
-    extractCycleIdsFromText(splitEntityList(value).join(" ")));
-  const reportedCycles = extractSessionListField(text, "reported_from_previous_session", (value) =>
-    extractCycleIdsFromText(splitEntityList(value).join(" ")));
-  const carryOverPending = extractSessionField(text, "carry_over_pending");
-  const sessionMode = extractSessionMode(text);
-  const legacyIntegrationTargetCycles = extractCycleIdsFromText(splitEntityList(integrationTargetCycleLegacy).join(" "));
-  const effectiveIntegrationTargetCycles = integrationTargetCycles.length > 0
-    ? integrationTargetCycles
-    : legacyIntegrationTargetCycles;
-  const primaryFocusCycle = extractCycleIdsFromText(primaryFocusCycleRaw ?? "").at(0)
-    ?? (effectiveIntegrationTargetCycles.length === 1 ? effectiveIntegrationTargetCycles[0] : null);
-  const cycleBranchCycles = extractCycleIdsFromText([cycleBranch, intermediateBranch].filter(Boolean).join(" "));
+  const derived = analyzeStructuredArtifact(text, {
+    classification: { kind: "session", subtype: "session" },
+  }).derived_session_context ?? {};
+  const effectiveIntegrationTargetCycles = Array.isArray(derived.integration_target_cycles)
+    ? derived.integration_target_cycles
+    : [];
   return {
-    session_branch: sessionBranch,
-    parent_session: parentSession,
-    branch_kind: branchKind,
-    cycle_branch: cycleBranch,
-    intermediate_branch: intermediateBranch,
-    integration_target_cycle: primaryFocusCycle ?? (legacyIntegrationTargetCycles.length === 1 ? integrationTargetCycleLegacy : null),
+    session_branch: derived.session_branch ?? null,
+    parent_session: derived.parent_session ?? null,
+    branch_kind: derived.branch_kind ?? null,
+    cycle_branch: derived.cycle_branch ?? null,
+    intermediate_branch: derived.intermediate_branch ?? null,
+    integration_target_cycle: derived.primary_focus_cycle ?? (effectiveIntegrationTargetCycles.length === 1 ? effectiveIntegrationTargetCycles[0] : null),
     integration_target_cycles: effectiveIntegrationTargetCycles,
-    integration_target_cycles_declared: hasSessionField(text, "integration_target_cycles"),
-    primary_focus_cycle: primaryFocusCycle,
-    legacy_integration_target_cycle: integrationTargetCycleLegacy,
-    legacy_multi_target_scalar: integrationTargetCycles.length === 0 && legacyIntegrationTargetCycles.length > 1,
-    attached_cycles: attachedCycles,
-    reported_cycles: reportedCycles,
-    branch_cycles: cycleBranchCycles,
-    carry_over_pending: carryOverPending,
-    mode: sessionMode,
+    integration_target_cycles_declared: derived.integration_target_cycles_declared === true,
+    primary_focus_cycle: derived.primary_focus_cycle ?? null,
+    legacy_integration_target_cycle: derived.legacy_integration_target_cycle ?? null,
+    legacy_multi_target_scalar: derived.legacy_multi_target_scalar === true,
+    attached_cycles: Array.isArray(derived.attached_cycles) ? derived.attached_cycles : [],
+    reported_cycles: Array.isArray(derived.reported_cycles) ? derived.reported_cycles : [],
+    branch_cycles: Array.isArray(derived.branch_cycles) ? derived.branch_cycles : [],
+    carry_over_pending: derived.carry_over_pending ?? null,
+    mode: derived.mode ?? null,
   };
 }
 

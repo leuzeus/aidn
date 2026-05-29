@@ -39,8 +39,9 @@ jobs:
       (
         github.event_name == 'pull_request' &&
         github.event.pull_request.merged == true &&
-        github.event.pull_request.base.ref == 'main' &&
-        github.event.pull_request.head.ref == 'dev'
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.pull_request.base.ref == (vars.AIDN_BRANCH_PRUNE_BASE_BRANCH || 'main') &&
+        github.event.pull_request.head.ref == (vars.AIDN_BRANCH_PRUNE_SOURCE_BRANCH || 'dev')
       )
     runs-on: ubuntu-latest
     env:
@@ -58,13 +59,19 @@ jobs:
             const executeInput = context.payload.inputs?.execute;
             const baseBranch = context.payload.inputs?.base_branch || process.env.DEFAULT_BASE_BRANCH;
             const sourceBranch = context.payload.inputs?.source_branch || process.env.DEFAULT_SOURCE_BRANCH;
-            const minAgeDays = Number(context.payload.inputs?.min_age_days || process.env.DEFAULT_MIN_AGE_DAYS || "14");
+            const rawMinAgeDays = context.payload.inputs?.min_age_days || process.env.DEFAULT_MIN_AGE_DAYS || "14";
+            const minAgeDays = Number(rawMinAgeDays);
             const execute = String(executeInput ?? process.env.DEFAULT_EXECUTE).toLowerCase() === "true";
             const candidateRegex = new RegExp(process.env.CANDIDATE_REGEX);
             const keepRegex = new RegExp(process.env.KEEP_REGEX);
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const now = Date.now();
+
+            if (!Number.isFinite(minAgeDays) || minAgeDays < 0) {
+              core.setFailed(`Invalid min_age_days value: ${rawMinAgeDays}`);
+              return;
+            }
 
             function ageInDays(isoDate) {
               const ts = Date.parse(isoDate);

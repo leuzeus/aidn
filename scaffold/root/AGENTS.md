@@ -33,6 +33,9 @@ If a required skill is unavailable, the agent MUST:
 - report the missing skill
 - STOP the session
 
+Optional recovery skill:
+- `crash-recovery` for abrupt-stop, partial-write, and shared-runtime recovery situations
+
 ## Source Of Truth
 
 - Workflow specification (canonical): `docs/audit/SPEC.md`
@@ -41,6 +44,7 @@ If a required skill is unavailable, the agent MUST:
 - Current state summary: `docs/audit/CURRENT-STATE.md`
 - Runtime digest: `docs/audit/RUNTIME-STATE.md`
 - Multi-agent handoff packet: `docs/audit/HANDOFF-PACKET.md`
+- Crash recovery runbook: `docs/audit/CRASH-RECOVERY-RUNBOOK.md`
 - Integration risk digest: `docs/audit/INTEGRATION-RISK.md`
 - Agent adapter contract: `docs/audit/AGENT-ADAPTERS.md`
 - Fast snapshot: `docs/audit/snapshots/context-snapshot.md`
@@ -104,6 +108,7 @@ Before any durable write, the agent MUST restate:
 - first implementation step from `plan.md` when `COMMITTING`
 - workflow artifacts verified
 - missing or uncertain context, if any
+- `usage_matrix` status when the touched surface is shared or high-risk
 
 Before any durable write, the agent MUST also:
 
@@ -125,6 +130,7 @@ If one required field is missing, ambiguous, or contradictory, the agent MUST:
 - stop durable write
 - continue with read-only context reload only
 - use `docs/audit/REANCHOR_PROMPT.md` for the restart protocol when context was partially lost
+- use `docs/audit/CRASH-RECOVERY-RUNBOOK.md` when an abrupt stop may have left shared coordination ahead of local artifacts
 - report the smallest compliant next step
 
 Special note for recent Codex Windows app flows:
@@ -153,6 +159,14 @@ The agent MUST STOP and request user decision when:
 
 If `status.md` indicates `state=IMPLEMENTING`, scope is frozen.
 New objectives belong in a change request or a new cycle, not in an untracked expansion of the current cycle.
+
+For shared or high-risk implementation surfaces, the agent MUST:
+
+- avoid declaring a fix generic from the triggering scenario alone
+- confirm the cycle has a declared `usage_matrix` before durable implementation work continues
+- prefer generalization of the shared contract/path over caller-specific patching
+- treat regression on another declared usage class as evidence of overfitting, not as an acceptable local tradeoff
+- keep closure blocked until the declared usage classes are covered or explicitly reduced with rationale
 
 ## Runtime And Handoff Expectations
 

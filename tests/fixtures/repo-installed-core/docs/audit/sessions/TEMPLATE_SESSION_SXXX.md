@@ -49,6 +49,16 @@ If COMMITTING:
 - reported_from_previous_session: `none` | `CYYY, CZZZ`
 - carry_over_pending: yes | no
 
+### PR Orchestration (required once session close is attempted)
+- pr_status: `none` | `open` | `merged` | `closed_not_merged` | `unknown`
+- pr_url: `<https://...>` | `none`
+- pr_number: `<123>` | `none`
+- pr_base_branch: `<source-branch>` | `none`
+- pr_head_branch: `SXXX-<short-slug>` | `none`
+- pr_review_status: `unknown` | `pending` | `approved` | `changes_requested` | `resolved`
+- post_merge_sync_status: `not_needed` | `required` | `done`
+- post_merge_sync_basis: `none` | `local-source-aligned origin/<source-branch>`
+
 ------------------------------------------------------------
 ## CONTEXT RELOAD (auto)
 

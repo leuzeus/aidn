@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function assert(condition, message) {
   if (!condition) {
@@ -76,10 +77,12 @@ function main() {
     assert(direct.mergeability === "merge_safe", "direct fixture should be merge_safe");
     assert(direct.overlap.overall_overlap === "none", "direct fixture should have no overlap");
     assert(direct.semantic.semantic_risk === "low", "direct fixture should have low semantic risk");
+    assert(direct.integration_risk_diagnostic?.recommended_strategy === "direct_merge", "direct fixture should expose strategy in the stable diagnostic");
 
     assert(integration.recommended_strategy === "integration_cycle", "feature+refactor fixture should recommend integration_cycle");
     assert(integration.mergeability === "merge_risky", "feature+refactor fixture should be merge_risky");
     assert(integration.overlap.overall_overlap === "medium", "feature+refactor fixture should detect medium overlap");
+    assert(integration.integration_risk_diagnostic?.candidate_cycle_count >= 2, "integration fixture should expose candidate cycle count in the stable diagnostic");
     assert(fileless.recommended_strategy === "integration_cycle", "db-only fileless fixture should preserve integration_cycle strategy");
     assert(fileless.mergeability === "merge_risky", "db-only fileless fixture should preserve mergeability");
     assert(fileless.overlap.overall_overlap === "medium", "db-only fileless fixture should preserve overlap classification");
@@ -90,11 +93,13 @@ function main() {
     assert(rework.recommended_strategy === "rework_from_example", "spike fixture should recommend rework_from_example");
     assert(rework.mergeability === "merge_not_recommended", "spike fixture should reject mechanical merge");
     assert(rework.semantic.semantic_risk === "high", "spike fixture should have high semantic risk");
+    assert(rework.integration_risk_diagnostic?.recommended_strategy === "rework_from_example", "rework fixture should expose strategy in the stable diagnostic");
 
     assert(report.recommended_strategy === "report_forward", "blocked fixture should recommend report_forward");
     assert(report.mergeability === "merge_not_recommended", "blocked fixture should reject direct merge");
     assert(report.readiness === "blocked", "blocked fixture should report blocked readiness");
     assert(report.candidate_cycles.some((cycle) => cycle.readiness === "blocked"), "blocked fixture should expose blocked cycle detail");
+    assert(report.integration_risk_diagnostic?.arbitration_required === false, "blocked fixture should expose arbitration requirement in the stable diagnostic");
 
     const directText = fs.readFileSync(direct.output_file, "utf8");
     assert(directText.includes("# Integration Risk"), "integration risk digest should include title");
@@ -107,7 +112,7 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      removePathWithRetry(tempRoot);
     }
   }
 }

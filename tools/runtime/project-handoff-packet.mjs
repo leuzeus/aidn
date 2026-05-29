@@ -1,7 +1,23 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import crypto from "node:crypto";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  buildHandoffPacketMarkdown,
+  deriveHandoffStatus,
+  deriveNextAgentRouting,
+  prepareHandoffPacketProjection,
+} from "../../src/application/runtime/handoff-packet-projector-use-case.mjs";
+import {
+  appendSharedHandoffRelay,
+  readSharedPlanningState,
+  resolveSharedCoordinationStore,
+  summarizeSharedCoordinationResolution,
+} from "../../src/application/runtime/shared-coordination-store-service.mjs";
+import { resolvePromotedSharedPlanningContext } from "../../src/application/runtime/shared-planning-resolution-service.mjs";
+import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
 import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
@@ -12,10 +28,11 @@ import {
   buildVirtualCurrentStateConsistency,
   canonicalNone,
   canonicalUnknown,
-  loadSqliteIndexPayloadSafe,
+  loadDbIndexPayloadSafe,
   normalizeScalar,
   parseSimpleMap,
   parseTimestamp,
+  resolveDbArtifactSourceName,
   resolveAuditArtifactText,
   resolveCyclePlanArtifact,
   resolveCycleStatusArtifact,
@@ -34,6 +51,9 @@ function parseArgs(argv) {
     fromAgentRole: "",
     fromAgentAction: "",
     json: false,
+    dryRun: false,
+    write: false,
+    syncRelay: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -64,6 +84,12 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--json") {
       args.json = true;
+    } else if (token === "--dry-run") {
+      args.dryRun = true;
+    } else if (token === "--write") {
+      args.write = true;
+    } else if (token === "--sync-relay") {
+      args.syncRelay = true;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -81,8 +107,11 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target .");
+  console.log("  node tools/runtime/project-handoff-packet.mjs --target . --write");
+  console.log("  node tools/runtime/project-handoff-packet.mjs --target . --write --sync-relay");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target . --from-agent-role coordinator --from-agent-action relay --next-agent-goal \"reanchor and continue cycle validation\"");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target tests/fixtures/repo-installed-core --json");
+  console.log("  node tools/runtime/project-handoff-packet.mjs --target tests/fixtures/repo-installed-core --dry-run --json");
 }
 
 function resolveTargetPath(targetRoot, candidate) {
@@ -189,163 +218,75 @@ function relativePath(root, filePath) {
   return path.relative(root, filePath).replace(/\\/g, "/");
 }
 
-function deriveHandoffStatus({ consistency, runtimeMap, currentMap }) {
-  const repairStatus = normalizeScalar(runtimeMap.get("repair_layer_status") ?? "unknown").toLowerCase();
-  const freshness = normalizeScalar(runtimeMap.get("current_state_freshness") ?? "unknown").toLowerCase();
-  const mode = normalizeScalar(currentMap.get("mode") ?? "unknown").toLowerCase();
-  const activeSession = normalizeScalar(currentMap.get("active_session") ?? "none").toLowerCase();
-  const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none").toLowerCase();
-  if (repairStatus === "block") {
-    return "blocked";
-  }
-  if (mode === "unknown" || (activeSession === "none" && activeCycle === "none")) {
-    return "refresh_required";
-  }
-  if (freshness === "stale" || consistency.pass === false) {
-    return "refresh_required";
-  }
-  return "ready";
-}
-
-function deriveNextAgentRouting({ handoffStatus, mode, repairStatus }) {
-  const normalizedRepair = String(repairStatus ?? "").trim().toLowerCase();
-  if (handoffStatus === "blocked" || normalizedRepair === "block" || normalizedRepair === WORKFLOW_REPAIR_HINT.REPAIR) {
-    return { role: "repair", action: "repair" };
-  }
-  if (normalizedRepair === WORKFLOW_REPAIR_HINT.AUDIT_FIRST) {
-    return { role: "auditor", action: "audit" };
-  }
-  if (handoffStatus === "refresh_required") {
-    return { role: "coordinator", action: "reanchor" };
-  }
-  if (mode === "COMMITTING") {
-    return { role: "executor", action: "implement" };
-  }
-  if (mode === "EXPLORING") {
-    return { role: "auditor", action: "analyze" };
-  }
-  return { role: "coordinator", action: "coordinate" };
-}
-
-function deriveNextAgentGoal({
-  explicitGoal,
-  handoffStatus,
-  mode,
-  repairStatus,
-  repairAdvice,
-  firstPlanStep,
-  backlogNextStep,
-  blockingFindings,
-}) {
-  const manualGoal = normalizeScalar(explicitGoal);
-  if (manualGoal) {
-    return manualGoal;
-  }
-  if (handoffStatus === "blocked" || repairStatus === "block" || repairStatus === WORKFLOW_REPAIR_HINT.REPAIR) {
-    const topFinding = normalizeScalar(blockingFindings[0] ?? "");
-    if (topFinding) {
-      return `resolve blocking finding: ${topFinding}`;
-    }
-    return "resolve blocking repair-layer or workflow findings before continuing";
-  }
-  if (repairStatus === WORKFLOW_REPAIR_HINT.AUDIT_FIRST) {
-    const normalizedAdvice = normalizeScalar(repairAdvice);
-    if (normalizedAdvice && normalizedAdvice.toLowerCase() !== "unknown") {
-      return `review runtime warnings first: ${normalizedAdvice}`;
-    }
-    return "review runtime warnings and validate the relay before implementation";
-  }
-  if (handoffStatus === "refresh_required") {
-    return "reanchor current session, cycle, and runtime facts before any durable write";
-  }
-  if (backlogNextStep && !canonicalUnknown(backlogNextStep) && !canonicalNone(backlogNextStep)) {
-    return backlogNextStep;
-  }
-  if (mode === "COMMITTING" && firstPlanStep && !canonicalUnknown(firstPlanStep) && !canonicalNone(firstPlanStep)) {
-    return firstPlanStep;
-  }
-  if (mode === "EXPLORING") {
-    return "continue analysis and validate the next hypothesis before durable write";
-  }
-  if (mode === "THINKING") {
-    return "restate the objective, active constraints, and the smallest compliant next step";
-  }
-  return "reload the prioritized artifacts and choose the next compliant action";
-}
-
-function buildPrioritizedArtifacts({
-  runtimeStateText,
-  sessionArtifact,
-  cycleStatusArtifact,
-  planArtifact,
-  currentMap,
-}) {
-  const items = [
-    "docs/audit/CURRENT-STATE.md",
-    "docs/audit/WORKFLOW-KERNEL.md",
-    "docs/audit/RUNTIME-STATE.md",
-    "docs/audit/WORKFLOW_SUMMARY.md",
-  ];
-  const runtimeArtifacts = parseListSection(runtimeStateText, "prioritized_artifacts");
-  const firstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "");
-  const activeBacklog = normalizeBacklogRef(currentMap.get("active_backlog") ?? "none");
-  if (activeBacklog !== "none") {
-    items.push(activeBacklog);
-  }
-  if (sessionArtifact?.exists) {
-    items.push(sessionArtifact.logicalPath);
-  }
-  if (cycleStatusArtifact?.exists) {
-    items.push(cycleStatusArtifact.logicalPath);
-  }
-  if (firstPlanStep && planArtifact?.exists) {
-    items.push(planArtifact.logicalPath);
-  }
-  return uniqueItems([...items, ...runtimeArtifacts]);
-}
-
-function deriveDispatchScope({ currentMap, nextRouting }) {
-  const activeSession = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
-  const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
-  const sessionBranch = normalizeScalar(currentMap.get("session_branch") ?? "none") || "none";
-  const cycleBranch = normalizeScalar(currentMap.get("cycle_branch") ?? "none") || "none";
-  if (!canonicalNone(activeCycle) && !canonicalUnknown(activeCycle)) {
-    return {
-      scope_type: "cycle",
-      scope_id: activeCycle,
-      target_branch: !canonicalNone(cycleBranch) && !canonicalUnknown(cycleBranch) ? cycleBranch : "none",
-    };
-  }
-  if (!canonicalNone(activeSession) && !canonicalUnknown(activeSession)) {
-    return {
-      scope_type: "session",
-      scope_id: activeSession,
-      target_branch: !canonicalNone(sessionBranch) && !canonicalUnknown(sessionBranch) ? sessionBranch : "none",
-    };
-  }
-  if (nextRouting.role === "coordinator") {
-    return {
-      scope_type: "session",
-      scope_id: !canonicalNone(activeSession) && !canonicalUnknown(activeSession) ? activeSession : "none",
-      target_branch: !canonicalNone(sessionBranch) && !canonicalUnknown(sessionBranch) ? sessionBranch : "none",
-    };
-  }
-  return {
-    scope_type: "none",
-    scope_id: "none",
-    target_branch: "none",
-  };
-}
-
 function deriveSharedPlanningCandidate({
   targetRoot,
   activeBacklog,
   scope,
   nextRouting,
   currentStateUpdatedAtMs,
+  sharedPlanningRead = null,
   dbBacked = false,
   sqlitePayload = null,
+  sqliteRuntimeHeads = null,
+  dbSource = "sqlite",
 }) {
+  const sharedPlanningState = sharedPlanningRead?.planning_state ?? null;
+  if (sharedPlanningRead?.ok === true && sharedPlanningState) {
+    const payload = sharedPlanningState.payload && typeof sharedPlanningState.payload === "object"
+      ? sharedPlanningState.payload
+      : {};
+    const backlogLogicalPath = normalizeBacklogRef(sharedPlanningState.backlog_artifact_ref || activeBacklog);
+    const candidateReady = sharedPlanningState.dispatch_ready === true;
+    const actionAligned = candidateReady && sharedPlanningState.next_dispatch_action !== "none"
+      && (
+        sharedPlanningState.next_dispatch_action === nextRouting.action
+        || (nextRouting.role === "coordinator" && sharedPlanningState.next_dispatch_action === "coordinate")
+      );
+    const scopeAligned = candidateReady && sharedPlanningState.next_dispatch_scope !== "none"
+      && (
+        sharedPlanningState.next_dispatch_scope === scope.scope_type
+        || (nextRouting.role === "coordinator" && sharedPlanningState.next_dispatch_scope === "session")
+      );
+    const candidateAligned = actionAligned && scopeAligned;
+    const planningUpdatedAtMs = parseTimestamp(sharedPlanningState.updated_at ?? "");
+    let freshnessStatus = "unknown";
+    let freshnessBasis = "shared planning freshness could not be derived";
+    if (currentStateUpdatedAtMs !== null && planningUpdatedAtMs !== null) {
+      freshnessStatus = planningUpdatedAtMs >= currentStateUpdatedAtMs ? "ok" : "stale";
+      freshnessBasis = planningUpdatedAtMs >= currentStateUpdatedAtMs
+        ? "shared planning state updated_at is aligned with CURRENT-STATE.md"
+        : "shared planning state updated_at is older than CURRENT-STATE.md";
+    }
+    const planningArbitrationStatus = normalizeScalar(
+      sharedPlanningState.planning_arbitration_status
+        || payload.planning_arbitration_status
+        || "none",
+    ) || "none";
+    const arbitrationResolved = isResolvedPlanningArbitrationStatus(planningArbitrationStatus);
+    return {
+      enabled: true,
+      artifact_found: true,
+      preferred_dispatch_source: candidateAligned ? "shared_planning" : "workflow",
+      candidate_ready: candidateReady,
+      candidate_aligned: candidateAligned,
+      freshness_status: freshnessStatus,
+      freshness_basis: freshnessBasis,
+      gate_status: arbitrationResolved ? "ok" : "blocked",
+      gate_reason: arbitrationResolved
+        ? "shared planning arbitration is resolved"
+        : `planning arbitration remains unresolved: ${planningArbitrationStatus}`,
+      next_dispatch_scope: normalizeScalar(sharedPlanningState.next_dispatch_scope) || "none",
+      next_dispatch_action: normalizeScalar(sharedPlanningState.next_dispatch_action) || "none",
+      backlog_next_step: normalizeScalar(sharedPlanningState.backlog_next_step || payload.backlog_next_step) || "unknown",
+      planning_arbitration_status: planningArbitrationStatus,
+      linked_cycles: Array.isArray(payload.linked_cycles)
+        ? payload.linked_cycles.map((item) => normalizeScalar(item)).filter(Boolean)
+        : splitList(payload.linked_cycles ?? ""),
+      backlog_artifact_source: "shared-coordination",
+      backlog_logical_path: backlogLogicalPath,
+    };
+  }
+
   const normalizedBacklog = normalizeBacklogRef(activeBacklog);
   if (normalizedBacklog === "none") {
     return {
@@ -372,6 +313,8 @@ function deriveSharedPlanningCandidate({
     candidatePath: normalizedBacklog,
     dbBacked,
     sqlitePayload,
+    sqliteRuntimeHeads,
+    dbSource,
   });
   if (!backlogResolution.exists) {
     return {
@@ -438,110 +381,7 @@ function deriveSharedPlanningCandidate({
   };
 }
 
-function buildMarkdown(packet) {
-  const lines = [];
-  lines.push("# Handoff Packet");
-  lines.push("");
-  lines.push("Purpose:");
-  lines.push("");
-  lines.push("- provide a short, deterministic handoff digest between agents");
-  lines.push("- reduce restart cost for long sessions or multi-window work");
-  lines.push("- point the next agent to the minimum artifact set before acting");
-  lines.push("");
-  lines.push("Rule/State boundary:");
-  lines.push("");
-  lines.push("- this file is a state digest, not a canonical workflow rules file");
-  lines.push("- keep canonical workflow rules in `docs/audit/SPEC.md`");
-  lines.push("- keep local policy extensions in `docs/audit/WORKFLOW.md`");
-  lines.push("");
-  lines.push("## Summary");
-  lines.push("");
-  lines.push(`updated_at: ${packet.updated_at}`);
-  lines.push(`handoff_status: ${packet.handoff_status}`);
-  lines.push(`handoff_from_agent_role: ${packet.handoff_from_agent_role}`);
-  lines.push(`handoff_from_agent_action: ${packet.handoff_from_agent_action}`);
-  lines.push(`recommended_next_agent_role: ${packet.recommended_next_agent_role}`);
-  lines.push(`recommended_next_agent_action: ${packet.recommended_next_agent_action}`);
-  lines.push(`next_agent_goal: ${packet.next_agent_goal}`);
-  lines.push(`scope_type: ${packet.scope_type}`);
-  lines.push(`scope_id: ${packet.scope_id}`);
-  lines.push(`target_branch: ${packet.target_branch}`);
-  lines.push(`backlog_refs: ${packet.backlog_refs}`);
-  lines.push(`planning_arbitration_status: ${packet.planning_arbitration_status}`);
-  lines.push(`preferred_dispatch_source: ${packet.preferred_dispatch_source}`);
-  lines.push(`shared_planning_candidate_ready: ${packet.shared_planning_candidate_ready}`);
-  lines.push(`shared_planning_candidate_aligned: ${packet.shared_planning_candidate_aligned}`);
-  lines.push(`shared_planning_dispatch_scope: ${packet.shared_planning_dispatch_scope}`);
-  lines.push(`shared_planning_dispatch_action: ${packet.shared_planning_dispatch_action}`);
-  lines.push(`shared_planning_freshness: ${packet.shared_planning_freshness}`);
-  lines.push(`shared_planning_freshness_basis: ${packet.shared_planning_freshness_basis}`);
-  lines.push(`shared_planning_gate_status: ${packet.shared_planning_gate_status}`);
-  lines.push(`shared_planning_gate_reason: ${packet.shared_planning_gate_reason}`);
-  lines.push(`transition_policy_status: ${packet.transition_policy_status}`);
-  lines.push(`transition_policy_reason: ${packet.transition_policy_reason}`);
-  lines.push("");
-  lines.push("## Active Context");
-  lines.push("");
-  lines.push(`mode: ${packet.mode}`);
-  lines.push(`branch_kind: ${packet.branch_kind}`);
-  lines.push(`active_session: ${packet.active_session}`);
-  lines.push(`active_cycle: ${packet.active_cycle}`);
-  lines.push(`dor_state: ${packet.dor_state}`);
-  lines.push(`first_plan_step: ${packet.first_plan_step}`);
-  lines.push(`active_backlog: ${packet.active_backlog}`);
-  lines.push(`backlog_status: ${packet.backlog_status}`);
-  lines.push(`backlog_next_step: ${packet.backlog_next_step}`);
-  lines.push(`linked_backlog_cycles: ${packet.linked_backlog_cycles.length > 0 ? packet.linked_backlog_cycles.join(", ") : "none"}`);
-  lines.push("");
-  lines.push("## Runtime Signals");
-  lines.push("");
-  lines.push(`runtime_state_mode: ${packet.runtime_state_mode}`);
-  lines.push(`repair_layer_status: ${packet.repair_layer_status}`);
-  lines.push(`repair_primary_reason: ${packet.repair_primary_reason}`);
-  lines.push(`repair_routing_hint: ${packet.repair_routing_hint}`);
-  lines.push(`current_state_freshness: ${packet.current_state_freshness}`);
-  lines.push("");
-  lines.push("## Blocking Findings");
-  lines.push("");
-  lines.push("blocking_findings:");
-  if (packet.blocking_findings.length === 0) {
-    lines.push("- none");
-  } else {
-    for (const item of packet.blocking_findings) {
-      lines.push(`- ${item}`);
-    }
-  }
-  lines.push("");
-  lines.push("## Prioritized Reads");
-  lines.push("");
-  lines.push("prioritized_artifacts:");
-  for (const item of packet.prioritized_artifacts) {
-    lines.push(`- \`${item}\``);
-  }
-  lines.push("");
-  lines.push("## Handoff Guidance");
-  lines.push("");
-  lines.push("- `ready`: the next agent can resume from the prioritized artifacts and restate the workflow context before writing");
-  lines.push("- `refresh_required`: the next agent must reload session/cycle facts before any durable write");
-  lines.push("- `blocked`: the next agent must resolve runtime blocking findings or workflow contradictions before continuing");
-  lines.push("- stale shared planning is a warning signal; reload the referenced backlog before replacing the relay intent");
-  lines.push("");
-  lines.push("## Handoff Intent");
-  lines.push("");
-  lines.push(`handoff_note: ${packet.handoff_note}`);
-  lines.push("");
-  lines.push("## Notes");
-  lines.push("");
-  lines.push(`- Current-state consistency: ${packet.consistency_status}`);
-  lines.push(`- Session file: ${packet.session_file}`);
-  lines.push(`- Cycle status: ${packet.cycle_status_file}`);
-  lines.push("- Refresh this packet after significant session/cycle state changes when work is likely to continue in another agent.");
-  lines.push("- In `dual` / `db-only`, refresh this packet after refreshing `docs/audit/RUNTIME-STATE.md`.");
-  lines.push("");
-  return `${lines.join("\n")}\n`;
-}
-
-export function projectHandoffPacket({
+export async function projectHandoffPacket({
   targetRoot,
   currentStateFile = "docs/audit/CURRENT-STATE.md",
   runtimeStateFile = "docs/audit/RUNTIME-STATE.md",
@@ -550,23 +390,43 @@ export function projectHandoffPacket({
   handoffNote = "",
   fromAgentRole = "",
   fromAgentAction = "",
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
+  sharedStateOptions = {},
+  dryRun = false,
+  write = false,
+  syncRelay = false,
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const sharedCoordinationResolution = sharedCoordination ?? await resolveSharedCoordinationStore({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    ...sharedCoordinationOptions,
+  });
+  const sharedRuntimeValidation = validateSharedRuntimeContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+  });
   const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+  const sqliteFallback = dbBackedMode ? await loadDbIndexPayloadSafe(absoluteTargetRoot, sharedStateOptions) : {
     exists: false,
     sqliteFile: "",
     payload: null,
     runtimeHeads: {},
     warning: "",
   };
+  const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
   const currentStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: currentStateFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   const runtimeStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
@@ -574,6 +434,7 @@ export function projectHandoffPacket({
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
   const currentStateText = currentStateResolution.text;
   const runtimeStateText = runtimeStateResolution.text;
@@ -588,6 +449,7 @@ export function projectHandoffPacket({
     sessionId: activeSession,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
   });
   const cycleStatusResolution = resolveCycleStatusArtifact({
     targetRoot: absoluteTargetRoot,
@@ -595,6 +457,7 @@ export function projectHandoffPacket({
     cycleId: activeCycle,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
   });
   const planResolution = resolveCyclePlanArtifact({
     targetRoot: absoluteTargetRoot,
@@ -602,6 +465,7 @@ export function projectHandoffPacket({
     cycleId: activeCycle,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
   });
   const consistency = currentStateResolution.source === "file"
     ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })
@@ -620,107 +484,125 @@ export function projectHandoffPacket({
   });
   const repairRoutingHint = normalizeScalar(runtimeMap.get("repair_routing_hint") ?? repairRouting.routing_hint) || "unknown";
   const repairRoutingReason = normalizeScalar(runtimeMap.get("repair_routing_reason") ?? repairRouting.routing_reason) || "unknown";
-  const handoffStatus = deriveHandoffStatus({ consistency, runtimeMap, currentMap });
   const mode = normalizeScalar(currentMap.get("mode") ?? "unknown") || "unknown";
+  const branchKind = normalizeScalar(currentMap.get("branch_kind") ?? "unknown") || "unknown";
+  const dorState = normalizeScalar(currentMap.get("dor_state") ?? "unknown") || "unknown";
   const firstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "unknown") || "unknown";
-  const activeBacklog = normalizeBacklogRef(currentMap.get("active_backlog") ?? "none");
-  const backlogStatus = normalizeScalar(currentMap.get("backlog_status") ?? "unknown") || "unknown";
-  const backlogNextStep = normalizeScalar(currentMap.get("backlog_next_step") ?? "unknown") || "unknown";
-  const planningArbitrationStatus = normalizeScalar(currentMap.get("planning_arbitration_status") ?? "none") || "none";
-  const blockingFindings = uniqueItems(parseListSection(runtimeStateText, "blocking_findings").slice(0, 5));
+  const sharedPlanningContext = await resolvePromotedSharedPlanningContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    currentState: {
+      active_session: activeSession,
+      active_backlog: currentMap.get("active_backlog") ?? "none",
+      backlog_status: currentMap.get("backlog_status") ?? "unknown",
+      backlog_next_step: currentMap.get("backlog_next_step") ?? "unknown",
+      backlog_selected_execution_scope: currentMap.get("backlog_selected_execution_scope") ?? "none",
+      planning_arbitration_status: currentMap.get("planning_arbitration_status") ?? "none",
+    },
+    sharedCoordination: sharedCoordinationResolution,
+  });
+  const activeBacklog = normalizeBacklogRef(sharedPlanningContext.active_backlog);
+  const backlogStatus = normalizeScalar(sharedPlanningContext.backlog_status) || "unknown";
+  const backlogNextStep = normalizeScalar(sharedPlanningContext.backlog_next_step) || "unknown";
+  const planningArbitrationStatus = normalizeScalar(sharedPlanningContext.planning_arbitration_status) || "none";
+  const handoffStatus = deriveHandoffStatus({ consistency, runtimeMap, currentMap });
   const nextRouting = deriveNextAgentRouting({
     handoffStatus,
     mode,
     repairStatus: repairRoutingHint,
+    repairHints: WORKFLOW_REPAIR_HINT,
   });
   const handoffFromAgentRole = normalizeScalar(fromAgentRole) || "coordinator";
   const handoffFromAgentAction = normalizeScalar(fromAgentAction) || "relay";
-  const transition = evaluateAgentTransition({
-    mode,
-    fromRole: handoffFromAgentRole,
-    fromAction: handoffFromAgentAction,
-    toRole: nextRouting.role,
-    toAction: nextRouting.action,
-  });
-  const scope = deriveDispatchScope({ currentMap, nextRouting });
   const sharedPlanning = deriveSharedPlanningCandidate({
     targetRoot: absoluteTargetRoot,
     activeBacklog,
-    scope,
+    scope: (() => {
+      const activeSessionScope = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
+      const activeCycleScope = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
+      const sessionBranch = normalizeScalar(currentMap.get("session_branch") ?? "none") || "none";
+      const cycleBranch = normalizeScalar(currentMap.get("cycle_branch") ?? "none") || "none";
+      if (!canonicalNone(activeCycleScope) && !canonicalUnknown(activeCycleScope)) {
+        return {
+          scope_type: "cycle",
+          scope_id: activeCycleScope,
+          target_branch: !canonicalNone(cycleBranch) && !canonicalUnknown(cycleBranch) ? cycleBranch : "none",
+        };
+      }
+      if (!canonicalNone(activeSessionScope) && !canonicalUnknown(activeSessionScope)) {
+        return {
+          scope_type: "session",
+          scope_id: activeSessionScope,
+          target_branch: !canonicalNone(sessionBranch) && !canonicalUnknown(sessionBranch) ? sessionBranch : "none",
+        };
+      }
+      if (nextRouting.role === "coordinator") {
+        return {
+          scope_type: "session",
+          scope_id: !canonicalNone(activeSessionScope) && !canonicalUnknown(activeSessionScope) ? activeSessionScope : "none",
+          target_branch: !canonicalNone(sessionBranch) && !canonicalUnknown(sessionBranch) ? sessionBranch : "none",
+        };
+      }
+      return {
+        scope_type: "none",
+        scope_id: "none",
+        target_branch: "none",
+      };
+    })(),
     nextRouting,
     currentStateUpdatedAtMs: parseTimestamp(currentMap.get("updated_at") ?? ""),
+    sharedPlanningRead: activeSession !== "none"
+      ? await readSharedPlanningState(sharedCoordinationResolution, {
+        workspace,
+        sessionId: activeSession,
+        planningKey: `session:${activeSession}`,
+      })
+      : null,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
   });
-
-  const packet = {
-    updated_at: new Date().toISOString(),
-    handoff_status: handoffStatus,
-    handoff_from_agent_role: handoffFromAgentRole,
-    handoff_from_agent_action: handoffFromAgentAction,
-    recommended_next_agent_role: nextRouting.role,
-    recommended_next_agent_action: nextRouting.action,
-    next_agent_goal: deriveNextAgentGoal({
-      explicitGoal: nextAgentGoal,
-      handoffStatus,
-      mode,
-      repairStatus: repairRoutingHint,
-      repairAdvice: repairRoutingReason,
-      firstPlanStep,
-      backlogNextStep,
-      blockingFindings,
-    }),
-    scope_type: scope.scope_type,
-    scope_id: scope.scope_id,
-    target_branch: scope.target_branch,
-    backlog_refs: activeBacklog,
-    planning_arbitration_status: sharedPlanning.artifact_found ? sharedPlanning.planning_arbitration_status : planningArbitrationStatus,
-    preferred_dispatch_source: sharedPlanning.preferred_dispatch_source,
-    shared_planning_candidate_ready: sharedPlanning.candidate_ready ? "yes" : "no",
-    shared_planning_candidate_aligned: sharedPlanning.candidate_aligned ? "yes" : "no",
-    shared_planning_dispatch_scope: sharedPlanning.next_dispatch_scope,
-    shared_planning_dispatch_action: sharedPlanning.next_dispatch_action,
-    shared_planning_freshness: sharedPlanning.freshness_status,
-    shared_planning_freshness_basis: sharedPlanning.freshness_basis,
-    shared_planning_gate_status: sharedPlanning.gate_status,
-    shared_planning_gate_reason: sharedPlanning.gate_reason,
-    handoff_note: normalizeScalar(handoffNote) || "none",
+  const packet = prepareHandoffPacketProjection({
+    workspace,
+    sharedRuntimeValidation,
+    repairHints: WORKFLOW_REPAIR_HINT,
+    nextAgentGoal,
+    handoffNote,
+    handoffFromAgentRole,
+    handoffFromAgentAction,
     mode,
-    branch_kind: normalizeScalar(currentMap.get("branch_kind") ?? "unknown") || "unknown",
-    active_session: activeSession,
-    active_cycle: activeCycle,
-    dor_state: normalizeScalar(currentMap.get("dor_state") ?? "unknown") || "unknown",
-    first_plan_step: firstPlanStep,
-    active_backlog: activeBacklog,
-    backlog_status: backlogStatus,
-    backlog_next_step: sharedPlanning.artifact_found && !canonicalUnknown(sharedPlanning.backlog_next_step) ? sharedPlanning.backlog_next_step : backlogNextStep,
-    linked_backlog_cycles: sharedPlanning.linked_cycles,
-    runtime_state_mode: normalizeScalar(
+    branchKind,
+    activeSession,
+    activeCycle,
+    dorState,
+    firstPlanStep,
+    backlogStatus,
+    backlogNextStep,
+    runtimeStateMode: normalizeScalar(
       dbBackedMode
         ? effectiveStateMode
         : (runtimeMap.get("runtime_state_mode") ?? currentMap.get("runtime_state_mode") ?? "unknown"),
     ) || "unknown",
-    repair_layer_status: repairStatus,
-    repair_primary_reason: repairPrimaryReason,
-    repair_routing_hint: repairRoutingHint,
-    current_state_freshness: normalizeScalar(runtimeMap.get("current_state_freshness") ?? "unknown") || "unknown",
-    transition_policy_status: transition.status,
-    transition_policy_reason: transition.reason,
-    blocking_findings: blockingFindings,
-    prioritized_artifacts: buildPrioritizedArtifacts({
-      runtimeStateText,
-      sessionArtifact: sessionResolution,
-      cycleStatusArtifact: cycleStatusResolution,
-      planArtifact: planResolution,
-      currentMap,
-    }),
-    consistency_status: consistency.pass ? "pass" : "fail",
-    session_file: sessionResolution.exists ? sessionResolution.logicalPath : "none",
-    cycle_status_file: cycleStatusResolution.exists ? cycleStatusResolution.logicalPath : "none",
-    current_state_source: currentStateResolution.source,
-    runtime_state_source: runtimeStateResolution.source,
-    shared_planning_artifact_source: sharedPlanning.backlog_artifact_source,
-  };
+    repairStatus,
+    repairPrimaryReason,
+    repairRoutingHint,
+    repairRoutingReason,
+    planningArbitrationStatus,
+    activeBacklog,
+    currentStateFreshness: normalizeScalar(runtimeMap.get("current_state_freshness") ?? "unknown") || "unknown",
+    runtimeStateText,
+    currentMap,
+    runtimeMap,
+    sharedPlanning,
+    consistency,
+    sessionResolution,
+    cycleStatusResolution,
+    planResolution,
+    currentStateResolution,
+    runtimeStateResolution,
+    transitionEvaluator: evaluateAgentTransition,
+  });
 
   if (!canAgentRolePerform(packet.recommended_next_agent_role, packet.recommended_next_agent_action)) {
     throw new Error(`Invalid handoff routing: role=${packet.recommended_next_agent_role} action=${packet.recommended_next_agent_action}`);
@@ -730,10 +612,62 @@ export function projectHandoffPacket({
     packet.blocking_findings.push("runtime or workflow blocking condition detected without detailed finding list");
   }
 
-  const markdown = buildMarkdown(packet);
-  const outWrite = writeUtf8IfChanged(resolveTargetPath(absoluteTargetRoot, out), markdown);
+  const markdown = buildHandoffPacketMarkdown(packet);
+  const outputPath = resolveTargetPath(absoluteTargetRoot, out);
+  const shouldWrite = Boolean(write) && !dryRun;
+  const shouldSyncRelay = Boolean(syncRelay) && !dryRun;
+  const outWrite = shouldWrite
+    ? writeUtf8IfChanged(outputPath, markdown)
+    : { path: outputPath, written: false };
+  const packetSha256 = crypto.createHash("sha256").update(markdown).digest("hex");
+  const sharedCoordinationSync = shouldSyncRelay
+    ? {
+        ...(await appendSharedHandoffRelay(sharedCoordinationResolution, {
+          workspace,
+          packet,
+          outputFile: relativePath(absoluteTargetRoot, outWrite.path),
+          packetSha256,
+        })),
+        requested: true,
+      }
+    : {
+        attempted: false,
+        ok: false,
+        status: syncRelay ? "dry-run" : "not-requested",
+        reason: syncRelay
+          ? "handoff packet dry-run does not append shared relay"
+          : "shared relay sync not requested",
+        operation: "appendHandoffRelay",
+        backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
+        diagnostic: {
+          scope: "shared-coordination-only",
+          operation: "appendHandoffRelay",
+          sync_status: syncRelay ? "dry-run" : "not-requested",
+          backend_status: summarizeSharedCoordinationResolution(sharedCoordinationResolution).status,
+          readiness_status: "not_run",
+          schema_status: "unknown",
+          compatibility_status: "unknown",
+          artifact_family: "handoff_relay",
+          owner: workspace?.project_id ?? "unknown",
+          summary: syncRelay
+            ? "handoff packet dry-run does not append shared relay"
+            : "shared relay sync not requested",
+          recommended_action: syncRelay
+            ? "rerun without --dry-run when shared relay sync is explicitly desired"
+            : "rerun with --sync-relay when shared relay sync is explicitly desired",
+        },
+        requested: Boolean(syncRelay),
+      };
   return {
     target_root: absoluteTargetRoot,
+    dry_run: Boolean(dryRun),
+    write: shouldWrite,
+    sync_relay: Boolean(syncRelay),
+    workspace,
+    shared_state_backend: sqliteFallback.backend ?? null,
+    shared_coordination_backend: summarizeSharedCoordinationResolution(sharedCoordinationResolution),
+    shared_coordination_sync: sharedCoordinationSync,
+    shared_runtime_validation: sharedRuntimeValidation,
     output_file: outWrite.path,
     written: outWrite.written,
     packet,
@@ -742,9 +676,9 @@ export function projectHandoffPacket({
 }
 
 function main() {
-  try {
+  Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
-    const output = projectHandoffPacket({
+    const output = await projectHandoffPacket({
       targetRoot: args.target,
       currentStateFile: args.currentStateFile,
       runtimeStateFile: args.runtimeStateFile,
@@ -753,6 +687,9 @@ function main() {
       handoffNote: args.handoffNote,
       fromAgentRole: args.fromAgentRole,
       fromAgentAction: args.fromAgentAction,
+      dryRun: args.dryRun,
+      write: args.write,
+      syncRelay: args.syncRelay,
     });
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));
@@ -769,11 +706,11 @@ function main() {
       console.log(`- active_session=${output.packet.active_session}`);
       console.log(`- active_cycle=${output.packet.active_cycle}`);
     }
-  } catch (error) {
+  }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
-  }
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -60,8 +60,8 @@ function runReloadCheck(runtimeDir, targetRoot, cachePath, stateMode, indexFile,
   });
 }
 
-function detectSignals(targetRoot, args, reloadResult, gitAdapter) {
-  const observations = collectGatingObservations({
+async function detectSignals(targetRoot, args, reloadResult, gitAdapter) {
+  const observations = await collectGatingObservations({
     targetRoot,
     eventFile: args.eventFile,
     indexSyncCheckFile: args.indexSyncCheckFile,
@@ -126,7 +126,7 @@ export function printHumanGatingResult(result) {
   }
 }
 
-export function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir }) {
+export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir }) {
   const started = Date.now();
   const gitAdapter = createLocalGitAdapter();
   args.cache = resolveRuntimeTargetPath(targetRoot, args.cache);
@@ -162,7 +162,7 @@ export function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir }) {
       args.indexBackend,
     );
   }
-  const levels = detectSignals(targetRoot, args, reload, gitAdapter);
+  const levels = await detectSignals(targetRoot, args, reload, gitAdapter);
   const decision = deriveGatingAction(levels);
 
   const result = {

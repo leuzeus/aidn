@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-pre-write-admit.v1",
+  "title": "aidn runtime pre-write-admit --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime pre-write-admit --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "ok",
+    "admission_status",
+    "target_root",
+    "skill",
+    "policy",
+    "source_of_truth",
+    "context",
+    "checks",
+    "blocking_reasons",
+    "warnings",
+    "prioritized_artifacts"
+  ],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "admission_status": { "type": "string" },
+    "target_root": { "type": "string" },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "shared_state_backend": { "type": "object", "additionalProperties": true },
+    "shared_runtime_validation": { "type": "object", "additionalProperties": true },
+    "skill": { "type": "string" },
+    "policy": { "type": "object", "additionalProperties": true },
+    "source_of_truth": {
+      "type": "object",
+      "required": [
+        "state_mode",
+        "runtime_state_mode",
+        "concepts",
+        "observed_sources",
+        "issues",
+        "repair_actions"
+      ],
+      "properties": {
+        "state_mode": { "type": "string" },
+        "runtime_state_mode": { "type": "string" },
+        "concepts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "concept",
+              "label",
+              "state_mode",
+              "source_of_truth",
+              "projection",
+              "shared_runtime"
+            ],
+            "properties": {
+              "concept": { "type": "string" },
+              "label": { "type": "string" },
+              "state_mode": { "type": "string" },
+              "source_of_truth": { "type": ["string", "null"] },
+              "projection": { "type": "string" },
+              "shared_runtime": { "type": "string" },
+              "notes": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "observed_sources": {
+          "type": "object",
+          "required": [
+            "current_state",
+            "runtime_state",
+            "session_artifact",
+            "cycle_status",
+            "plan_artifact"
+          ],
+          "properties": {
+            "current_state": { "type": "string" },
+            "runtime_state": { "type": "string" },
+            "session_artifact": { "type": "string" },
+            "cycle_status": { "type": "string" },
+            "plan_artifact": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "issues": { "type": "array" },
+        "repair_actions": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
+    "context": { "type": "object", "additionalProperties": true },
+    "checks": { "type": "object", "additionalProperties": true },
+    "blocking_reasons": { "type": "array" },
+    "warnings": { "type": "array" },
+    "blocking_findings": { "type": "array" },
+    "prioritized_artifacts": { "type": "array" }
+  },
+  "additionalProperties": true
+}

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function assert(condition, message) {
   if (!condition) {
@@ -54,11 +55,22 @@ function main() {
     assert(text.includes("## Role Coverage"), "status file should include role coverage section");
     assert(text.includes("## Integration Strategy"), "status file should include integration strategy section");
     assert(text.includes("## Coordination"), "status file should include coordination section");
+    assert(text.includes("observability_environment_status:"), "status file should include observability summary");
     assert(text.includes("## Arbitration"), "status file should include arbitration section");
     assert(text.includes("recommended_source:"), "status file should include recommendation source");
     assert(text.includes("repair_primary_reason:"), "status file should include repair primary reason");
     assert(typeof result.arbitration?.preferred_decision === "string", "projection should expose arbitration summary");
     assert(String(result.arbitration?.arbitration_status ?? "") === "ok", "healthy projection should expose arbitration_status=ok");
+    assert(result.multi_agent_status_diagnostic?.recommended_role === result.recommendation.role, "projection should expose recommended role in the stable diagnostic");
+    assert(typeof result.recommendation?.reason === "string" && typeof result.recommendation?.source === "string", "projection should expose normalized recommendation fields");
+    assert(typeof result.agent_health_summary?.verification?.environment_summary?.unavailable === "number", "projection should expose environment summary");
+    assert(typeof result.agent_selection_summary?.written === "boolean", "projection should expose selection summary write flag");
+    assert(typeof result.coordination_summary?.summary?.history_status === "string", "projection should expose coordination summary");
+    assert(typeof result.observability?.adapter_count === "number", "projection should expose observability adapter count");
+    assert(typeof result.observability?.runnable_adapter_count === "number", "projection should expose observability runnable adapter count");
+    assert(typeof result.multi_agent_status_diagnostic?.adapter_count === "number", "diagnostic should expose adapter count");
+    assert(typeof result.multi_agent_status_diagnostic?.routing_status === "string", "diagnostic should expose routing status");
+    assert(typeof result.multi_agent_status_diagnostic?.coordination_history_status === "string", "diagnostic should expose coordination history status");
 
     fs.writeFileSync(path.join(target, "docs", "audit", "AGENT-ROSTER.md"), [
       "# Agent Roster",
@@ -75,6 +87,7 @@ function main() {
     const invalidText = fs.readFileSync(invalidResult.output_file, "utf8");
 
     assert(invalidResult.roster_verification.pass === false, "invalid roster should be surfaced in multi-agent status");
+    assert(invalidResult.multi_agent_status_diagnostic?.roster_pass === false, "invalid roster should expose roster failure in the stable diagnostic");
     assert(invalidText.includes("roster_verification: fail"), "status file should mark roster verification failure");
     assert(invalidText.includes("ghost-agent: unknown adapter id with no adapter_module"), "status file should surface roster issues");
 
@@ -150,8 +163,13 @@ function main() {
     assert(environmentResult.arbitration.arbitration_required === true, "blocked role coverage should require arbitration in multi-agent status");
     assert(environmentResult.arbitration.arbitration_status === "ok", "blocked role coverage should still expose arbitration_status=ok");
     assert(environmentResult.arbitration.preferred_decision === "reanchor", "blocked role coverage should prefer reanchor");
+    assert(environmentResult.multi_agent_status_diagnostic?.preferred_decision === "reanchor", "blocked role coverage should expose preferred decision in the stable diagnostic");
+    assert(environmentResult.observability.environment_status === "blocked", "blocked role coverage should expose observability environment status");
+    assert(environmentResult.observability.routing_status === (environmentResult.coordinator.recommendation.stop_required ? "blocked" : "ready"), "blocked role coverage should keep routing status aligned with stop requirement");
+    assert(typeof environmentResult.multi_agent_status_diagnostic?.coordination_history_status === "string", "blocked role coverage should expose coordination history status");
     assert(environmentText.includes("environment_unavailable_count: 1"), "status file should count environment-unavailable adapters");
     assert(environmentText.includes("recommended_role_coverage_status: blocked"), "status file should surface blocked role coverage");
+    assert(environmentText.includes("observability_environment_status: blocked"), "status file should surface observability environment status");
     assert(environmentText.includes("recommendation: no runnable adapter remains for role auditor"), "status file should explain the blocked role coverage");
     assert(environmentText.includes("blocked_adapter: probe-failing -> external runner is not configured"), "status file should surface blocked adapter reasons");
     assert(environmentText.includes("arbitration_required: yes"), "status file should expose arbitration requirement");
@@ -165,6 +183,9 @@ function main() {
     const integrationText = fs.readFileSync(integrationResult.output_file, "utf8");
     assert(integrationResult.integration_risk.recommended_strategy === "integration_cycle", "multi-agent status should expose the integration strategy");
     assert(integrationResult.arbitration.preferred_decision === "integration_cycle", "integration-cycle strategy should flow into arbitration");
+    assert(integrationResult.multi_agent_status_diagnostic?.integration_strategy === "integration_cycle", "integration-cycle strategy should surface in the stable diagnostic");
+    assert(typeof integrationResult.observability.coordination_history_status === "string", "integration-cycle strategy should expose coordination history observability");
+    assert(typeof integrationResult.multi_agent_status_diagnostic?.coordination_history_status === "string", "integration-cycle strategy should expose coordination history status");
     assert(integrationText.includes("integration_strategy: integration_cycle"), "status file should surface the integration strategy in summary");
     assert(integrationText.includes("## Integration Strategy"), "status file should render integration strategy section");
     assert(integrationText.includes("recommended_strategy: integration_cycle"), "status file should expose the recommended integration strategy");
@@ -194,6 +215,7 @@ function main() {
     assert(dbOnlyResult.state_mode === "db-only", "db-only multi-agent status should resolve db-only state mode");
     assert(dbOnlyResult.db_first_applied === true, "db-only multi-agent status should write through SQLite");
     assert(dbOnlyResult.db_first_materialized === false, "db-only multi-agent status should not materialize markdown on disk");
+    assert(dbOnlyResult.multi_agent_status_diagnostic?.state_mode === "db-only", "db-only projection should expose state mode in the stable diagnostic");
     assert(dbOnlyResult.roster_verification.pass === true, "db-only multi-agent status should still verify roster from SQLite");
     assert(dbOnlyResult.agent_health_summary.written === true, "db-only multi-agent status should still refresh health summary through SQLite");
     assert(dbOnlyResult.agent_selection_summary.written === true, "db-only multi-agent status should still refresh selection summary through SQLite");
@@ -205,7 +227,10 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok) {
+        throw cleanup.error;
+      }
     }
   }
 }

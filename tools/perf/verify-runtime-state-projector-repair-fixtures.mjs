@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function printUsage() {
   console.log("Usage:");
@@ -56,6 +57,7 @@ function verifyScenario(tempRoot, name, payload, expectations, options = {}) {
     "--target",
     repo,
     "--json",
+    "--write",
   ]);
   const markdown = fs.readFileSync(outFile, "utf8");
   assert(markdown.includes(`repair_layer_status: ${expectations.status}`), `${name}: status missing`);
@@ -247,7 +249,7 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      removePathWithRetry(tempRoot);
     }
   }
 }

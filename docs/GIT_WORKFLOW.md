@@ -82,6 +82,42 @@ git fetch origin
 git merge --ff-only origin/main
 ```
 
+## Release Version Provenance
+
+Release versioning has one explicit source value: `VERSION`.
+
+Before tagging or assembling a release:
+
+1. `VERSION` and `package.json` `version` must match exactly.
+2. README stable install examples must point to `github:leuzeus/aidn#v<VERSION>`.
+3. `tools/build-release.mjs` must produce `release/dist/aidn-workflow-<VERSION>.zip`.
+4. `release/checksums.txt` must reference the zip for the same `VERSION`.
+5. `release/manifest.json` must record package name, version, git commit, generation time, source provenance, build provenance, artifact path, artifact bytes, and artifact SHA-256.
+6. `dev` may carry in-flight integration work, but release tags and stable consumer instructions should be cut from the reviewed release baseline.
+
+## Release Checklist
+
+Before shipping or publishing a release artifact, verify:
+
+1. the release workflow runs `perf:verify-release-provenance`, which chains `perf:verify-release-version`, `build-release`, `perf:verify-release-artifacts`, and `perf:verify-pack-topology`
+2. `package.json` does not introduce new published paths that leak internal docs or local-only pilot corpus material
+3. `docs/` entries included in the package are intentionally published and user-facing
+4. `release/dist/`, `release/checksums.txt`, and `release/manifest.json` are treated as generated release outputs, not source inputs
+5. any new published path is justified in the release review before it becomes part of the package surface
+
+Run:
+
+```bash
+npm run perf:verify-release-provenance
+npm run perf:verify-release-flow
+npm run perf:verify-release-version
+npm run build-release
+npm run perf:verify-release-artifacts
+npm run perf:verify-pack-topology
+```
+
+These gates prevent silent drift between branch policy, package metadata, user-facing install docs, release artifact names, checksums, and release manifest provenance.
+
 ## When To Reset `dev`
 
 Do not recreate `dev` routinely.

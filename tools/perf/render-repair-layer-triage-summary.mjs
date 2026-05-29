@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { buildRepairLayerTriageSummaryMarkdown } from "../../src/application/observability/repair-layer-triage-summary-use-case.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
 
 function parseArgs(argv) {
@@ -55,75 +56,11 @@ function readJson(filePath) {
   }
 }
 
-function renderStep(step) {
-  if (!step || typeof step !== "object") {
-    return null;
-  }
-  if (step.kind === "query" && step.command) {
-    return `- Query: \`${step.command}\``;
-  }
-  if (step.kind === "autofix_safe_only" && step.command) {
-    return `- Safe autofix: \`${step.command}\``;
-  }
-  if (step.kind === "resolve" && Array.isArray(step.commands) && step.commands.length > 0) {
-    const commands = step.commands
-      .slice(0, 3)
-      .map((command) => `\`${command.accept}\``)
-      .join(", ");
-    return `- Resolve candidates: ${commands}`;
-  }
-  return null;
-}
-
-function buildMarkdown(triage, topLimit) {
-  const summary = triage?.summary ?? {};
-  const items = Array.isArray(triage?.items) ? triage.items.slice(0, topLimit) : [];
-  const severityCounts = summary?.severity_counts ?? {};
-  const lines = [];
-  lines.push("## Repair Layer Triage");
-  lines.push("");
-  lines.push(`- Open findings: ${summary?.open_findings_count ?? 0}`);
-  lines.push(`- Actionable findings: ${summary?.actionable_count ?? 0}`);
-  lines.push(`- Severity counts: error=${severityCounts.error ?? 0}, warning=${severityCounts.warning ?? 0}, info=${severityCounts.info ?? 0}`);
-  lines.push("");
-  if (items.length === 0) {
-    lines.push("No open repair findings.");
-    lines.push("");
-    return `${lines.join("\n")}\n`;
-  }
-  for (const item of items) {
-    lines.push(`### ${item.finding_type ?? "UNKNOWN"}${item.entity_id ? ` ${item.entity_id}` : ""}`);
-    lines.push("");
-    lines.push(`- Severity: ${item.severity ?? "n/a"}`);
-    lines.push(`- Confidence: ${item.confidence ?? "n/a"}`);
-    if (item.artifact_path) {
-      lines.push(`- Artifact: ${item.artifact_path}`);
-    }
-    if (item.message) {
-      lines.push(`- Message: ${item.message}`);
-    }
-    if (item.suggested_action) {
-      lines.push(`- Suggested action: ${item.suggested_action}`);
-    }
-    if (Array.isArray(item.next_steps) && item.next_steps.length > 0) {
-      lines.push("- Next steps:");
-      for (const step of item.next_steps) {
-        const rendered = renderStep(step);
-        if (rendered) {
-          lines.push(`  ${rendered}`);
-        }
-      }
-    }
-    lines.push("");
-  }
-  return `${lines.join("\n")}\n`;
-}
-
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const triage = readJson(args.triageFile);
-    const content = buildMarkdown(triage, args.top);
+    const content = buildRepairLayerTriageSummaryMarkdown(triage, args.top);
     const outWrite = writeUtf8IfChanged(args.out, content);
     console.log(`Repair triage summary written: ${outWrite.path} (${outWrite.written ? "written" : "unchanged"})`);
   } catch (error) {

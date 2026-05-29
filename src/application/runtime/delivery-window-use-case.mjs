@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
+import { removePathWithRetry } from "../../lib/fs/remove-path-with-retry.mjs";
 import {
   appendRuntimeNdjsonEvent,
   resolveRuntimeTargetPath,
@@ -125,7 +126,7 @@ export function runDeliveryWindowUseCase({ args, targetRoot }) {
     durationMs,
   });
   const eventFile = appendRuntimeNdjsonEvent(eventFilePath, event);
-  fs.rmSync(stateFilePath, { force: true });
+  removePathWithRetry(stateFilePath);
   return {
     action: "end",
     run_id: state.run_id,

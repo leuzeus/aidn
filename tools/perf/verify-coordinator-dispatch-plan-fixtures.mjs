@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -384,6 +385,7 @@ function main() {
     assert(ready.coordinator_status?.admission_status === "admitted", "ready dispatch should expose normalized coordinator status");
     assert(ready.entrypoint_name === "branch-cycle-audit", "ready dispatch should use branch-cycle-audit");
     assert(ready.selected_agent.id === "codex", "ready dispatch should use the general codex adapter");
+    assert(ready.dispatch_plan_diagnostic?.selected_agent === "codex", "ready dispatch should expose selected agent in the stable diagnostic");
     assert(ready.dispatch_scope.scope_type === "cycle", "ready dispatch should expose cycle scope");
     assert(ready.dispatch_scope.scope_id === "C101", "ready dispatch should expose active cycle id");
     assert(ready.commands.some((item) => item.includes("--skill branch-cycle-audit")), "ready dispatch should include branch-cycle-audit command");
@@ -398,12 +400,14 @@ function main() {
     assert(blocked.coordinator_status?.admission_status === "blocked", "blocked dispatch should expose blocked coordinator status");
     assert(blocked.entrypoint_kind === "runtime", "blocked dispatch should use runtime entrypoint");
     assert(blocked.selected_agent.id === "codex-repair", "blocked dispatch should prefer the specialized repair adapter");
+    assert(blocked.dispatch_plan_diagnostic?.dispatch_status === "gated", "blocked dispatch should expose gated status in the stable diagnostic");
     assert(blocked.dispatch_scope.scope_type === "cycle", "blocked dispatch should preserve cycle scope");
     assert(blocked.commands.some((item) => item.includes("runtime project-runtime-state")), "blocked dispatch should refresh runtime state");
 
     assert(fallback.dispatch_status === "escalated", "fallback dispatch should escalate when shared planning arbitration is unresolved");
     assert(fallback.entrypoint_kind === "manual", "fallback dispatch should become manual when shared planning arbitration is unresolved");
     assert(fallback.entrypoint_name === "user-arbitration", "fallback dispatch should point to user arbitration when shared planning arbitration is unresolved");
+    assert(fallback.dispatch_plan_diagnostic?.entrypoint_name === "user-arbitration", "fallback dispatch should expose the manual entrypoint in the stable diagnostic");
     assert(fallback.shared_planning.enabled === true, "fallback dispatch should expose active shared planning");
     assert(fallback.shared_planning.active_backlog === "backlog/BL-S101-session-planning.md", "fallback dispatch should expose the active backlog path");
     assert(fallback.shared_planning.artifact_found === true, "fallback dispatch should load the backlog artifact");
@@ -487,7 +491,10 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok) {
+        throw cleanup.error;
+      }
     }
   }
 }

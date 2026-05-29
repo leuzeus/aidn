@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-db-migrate.v1",
+  "title": "aidn runtime db-migrate --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime db-migrate --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "ts",
+    "target_root",
+    "runtime_persistence",
+    "runtime_backend",
+    "ok",
+    "migration",
+    "status",
+    "runtime_backend_diagnostic"
+  ],
+  "properties": {
+    "ts": { "type": "string" },
+    "target_root": { "type": "string" },
+    "runtime_persistence": { "type": "object", "additionalProperties": true },
+    "runtime_backend": { "type": "object", "additionalProperties": true },
+    "ok": { "type": "boolean" },
+    "sqlite_file": { "type": "string" },
+    "schema_file": { "type": "string" },
+    "migration": { "type": "object", "additionalProperties": true },
+    "status": { "type": "object", "additionalProperties": true },
+    "runtime_backend_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "backend",
+        "backend_source",
+        "schema_status",
+        "applied_migration_count",
+        "pending_migration_count",
+        "backup_created",
+        "summary",
+        "recommended_action"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "backend": { "type": "string" },
+        "backend_source": { "type": "string" },
+        "schema_status": { "type": "string" },
+        "applied_migration_count": { "type": "number" },
+        "pending_migration_count": { "type": "number" },
+        "backup_created": { "type": "boolean" },
+        "summary": { "type": "string" },
+        "recommended_action": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

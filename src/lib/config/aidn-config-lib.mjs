@@ -3,6 +3,8 @@ import path from "node:path";
 
 export const VALID_STATE_MODES = new Set(["files", "dual", "db-only"]);
 export const VALID_INDEX_STORE_MODES = new Set(["file", "sql", "dual", "sqlite", "dual-sqlite", "all"]);
+export const VALID_RUNTIME_PERSISTENCE_BACKENDS = new Set(["sqlite", "postgres"]);
+export const VALID_RUNTIME_LOCAL_PROJECTION_POLICIES = new Set(["keep-local-sqlite", "keep-json", "keep-sql", "none"]);
 
 function isPlainObject(value) {
   return value != null && typeof value === "object" && !Array.isArray(value);
@@ -19,6 +21,22 @@ export function normalizeStateMode(value) {
 export function normalizeIndexStoreMode(value) {
   const normalized = String(value ?? "").trim().toLowerCase();
   if (!VALID_INDEX_STORE_MODES.has(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+export function normalizeRuntimePersistenceBackend(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (!VALID_RUNTIME_PERSISTENCE_BACKENDS.has(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+export function normalizeRuntimeLocalProjectionPolicy(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (!VALID_RUNTIME_LOCAL_PROJECTION_POLICIES.has(normalized)) {
     return null;
   }
   return normalized;
@@ -114,6 +132,27 @@ export function resolveConfigIndexStore(configData) {
     return installStore;
   }
   return null;
+}
+
+export function resolveConfigRuntimePersistence(configData) {
+  if (!isPlainObject(configData)) {
+    return null;
+  }
+  const runtime = isPlainObject(configData.runtime) ? configData.runtime : {};
+  const persistence = isPlainObject(runtime.persistence) ? runtime.persistence : {};
+  const backend = normalizeRuntimePersistenceBackend(persistence.backend);
+  if (!backend) {
+    return null;
+  }
+  return {
+    backend,
+    localProjectionPolicy: normalizeRuntimeLocalProjectionPolicy(persistence.localProjectionPolicy),
+    connectionRef: String(persistence.connectionRef ?? "").trim() || null,
+  };
+}
+
+export function resolveConfigRuntimePersistenceBackend(configData) {
+  return resolveConfigRuntimePersistence(configData)?.backend ?? null;
 }
 
 export function resolveConfigSourceBranch(configData) {

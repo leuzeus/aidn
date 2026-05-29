@@ -1,0 +1,310 @@
+import { normalizeRepairLayerPayload } from "./repair-layer-normalization-lib.mjs";
+import { buildRuntimeScopeRegistryRow } from "./runtime-project-context-service.mjs";
+
+function normalizeScalar(value) {
+  return String(value ?? "").trim();
+}
+
+function normalizeEntityId(value, prefix) {
+  const match = String(value ?? "").trim().toUpperCase().match(new RegExp(`\\b(${prefix}\\d+)\\b`, "i"));
+  return match ? match[1].toUpperCase() : null;
+}
+
+function normalizeArtifactPath(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/^\.?\//, "");
+}
+
+function normalizeMetaValue(value) {
+  if (value == null) {
+    return null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+function resolveDerivedRuntimeContext(artifact) {
+  const canonical = artifact?.canonical_json && typeof artifact.canonical_json === "object"
+    ? artifact.canonical_json
+    : (artifact?.canonical && typeof artifact.canonical === "object" ? artifact.canonical : null);
+  return canonical?.derived_runtime_context && typeof canonical.derived_runtime_context === "object"
+    ? canonical.derived_runtime_context
+    : null;
+}
+
+function resolveDerivedSessionContext(artifact) {
+  const canonical = artifact?.canonical_json && typeof artifact.canonical_json === "object"
+    ? artifact.canonical_json
+    : (artifact?.canonical && typeof artifact.canonical === "object" ? artifact.canonical : null);
+  return canonical?.derived_session_context && typeof canonical.derived_session_context === "object"
+    ? canonical.derived_session_context
+    : null;
+}
+
+function resolveContractMetadata(artifact) {
+  const canonical = artifact?.canonical_json && typeof artifact.canonical_json === "object"
+    ? artifact.canonical_json
+    : (artifact?.canonical && typeof artifact.canonical === "object" ? artifact.canonical : null);
+  return {
+    contract_version: normalizeScalar(canonical?.contract_version) || null,
+    contract_status: normalizeScalar(canonical?.contract_status) || null,
+    legacy_shape_id: normalizeScalar(canonical?.legacy_shape_id) || null,
+    contract_findings: Array.isArray(canonical?.contract_findings) ? canonical.contract_findings : [],
+    metadata_policy_version: normalizeScalar(canonical?.metadata_policy_version) || null,
+    metadata_status: normalizeScalar(canonical?.metadata_status) || null,
+    metadata_findings: Array.isArray(canonical?.metadata_findings) ? canonical.metadata_findings : [],
+  };
+}
+
+function resolveArtifactRuntimeOwnership(artifact) {
+  const derivedRuntimeContext = resolveDerivedRuntimeContext(artifact);
+  return {
+    session_id: normalizeScalar(artifact?.session_id) || normalizeEntityId(derivedRuntimeContext?.active_session, "S"),
+    cycle_id: normalizeScalar(artifact?.cycle_id) || normalizeEntityId(derivedRuntimeContext?.active_cycle, "C"),
+  };
+}
+
+const RUNTIME_HEAD_DEFINITIONS = Object.freeze([
+  ["current_state", ["current_state"], ["CURRENT-STATE.md"]],
+  ["runtime_state", ["runtime_state"], ["RUNTIME-STATE.md"]],
+  ["handoff_packet", ["handoff_packet"], ["HANDOFF-PACKET.md"]],
+  ["agent_roster", ["agent_roster"], ["AGENT-ROSTER.md"]],
+  ["agent_health_summary", ["agent_health_summary"], ["AGENT-HEALTH-SUMMARY.md"]],
+  ["agent_selection_summary", ["agent_selection_summary"], ["AGENT-SELECTION-SUMMARY.md"]],
+  ["multi_agent_status", ["multi_agent_status"], ["MULTI-AGENT-STATUS.md"]],
+  ["coordination_summary", ["coordination_summary"], ["COORDINATION-SUMMARY.md"]],
+]);
+
+function resolveRuntimeHeadDefinition(artifact) {
+  const subtype = normalizeScalar(artifact?.subtype).toLowerCase();
+  if (subtype) {
+    for (const [headKey, subtypes] of RUNTIME_HEAD_DEFINITIONS) {
+      if (subtypes.includes(subtype)) {
+        return { headKey };
+      }
+    }
+  }
+  const fileName = normalizeArtifactPath(artifact?.path).split("/").pop() ?? "";
+  if (!fileName) {
+    return null;
+  }
+  for (const [headKey, , fileNames] of RUNTIME_HEAD_DEFINITIONS) {
+    if (fileNames.includes(fileName)) {
+      return { headKey };
+    }
+  }
+  return null;
+}
+
+export function buildRuntimeHeadRows(input, options = {}) {
+  const artifacts = Array.isArray(input)
+    ? input
+    : (Array.isArray(input?.artifacts) ? input.artifacts : []);
+  const scopeKey = normalizeScalar(options.scopeKey);
+  const rows = [];
+  const seen = new Set();
+  const ordered = artifacts.slice().sort((left, right) =>
+    String(right?.updated_at ?? "").localeCompare(String(left?.updated_at ?? "")));
+  for (const artifact of ordered) {
+    const definition = resolveRuntimeHeadDefinition(artifact);
+    if (!definition || seen.has(definition.headKey)) {
+      continue;
+    }
+    const runtimeOwnership = resolveArtifactRuntimeOwnership(artifact);
+    const contractMetadata = resolveContractMetadata(artifact);
+    seen.add(definition.headKey);
+    rows.push({
+      scope_key: scopeKey || null,
+      head_key: definition.headKey,
+      artifact_id: Number(artifact?.artifact_id ?? 0) || null,
+      artifact_path: normalizeArtifactPath(artifact?.path),
+      artifact_sha256: normalizeScalar(artifact?.sha256) || null,
+      session_id: runtimeOwnership.session_id || null,
+      cycle_id: runtimeOwnership.cycle_id || null,
+      kind: normalizeScalar(artifact?.kind) || null,
+      subtype: normalizeScalar(artifact?.subtype) || null,
+      updated_at: normalizeScalar(artifact?.updated_at) || new Date().toISOString(),
+      payload_json: {
+        scope_key: scopeKey || null,
+        head_key: definition.headKey,
+        artifact_id: Number(artifact?.artifact_id ?? 0) || null,
+        artifact_path: normalizeArtifactPath(artifact?.path),
+        artifact_sha256: normalizeScalar(artifact?.sha256) || null,
+        session_id: runtimeOwnership.session_id || null,
+        cycle_id: runtimeOwnership.cycle_id || null,
+        kind: normalizeScalar(artifact?.kind) || null,
+        subtype: normalizeScalar(artifact?.subtype) || null,
+        updated_at: normalizeScalar(artifact?.updated_at) || null,
+        derived_runtime_context: resolveDerivedRuntimeContext(artifact),
+        derived_session_context: resolveDerivedSessionContext(artifact),
+        contract_version: contractMetadata.contract_version,
+        contract_status: contractMetadata.contract_status,
+        legacy_shape_id: contractMetadata.legacy_shape_id,
+        contract_findings: contractMetadata.contract_findings,
+        metadata_policy_version: contractMetadata.metadata_policy_version,
+        metadata_status: contractMetadata.metadata_status,
+        metadata_findings: contractMetadata.metadata_findings,
+      },
+    });
+  }
+  return rows;
+}
+
+export function buildRuntimeIndexMetaRows(payload = {}, options = {}) {
+  const scopeKey = normalizeScalar(options.scopeKey);
+  const updatedAt = normalizeScalar(options.generatedAt ?? payload?.generated_at) || new Date().toISOString();
+  const structureProfile = payload?.structure_profile && typeof payload.structure_profile === "object"
+    ? payload.structure_profile
+    : null;
+  const projectContext = options.runtimeProjectContext && typeof options.runtimeProjectContext === "object"
+    ? options.runtimeProjectContext
+    : null;
+  const rows = [
+    { scope_key: scopeKey || null, key: "schema_version", value: normalizeMetaValue(payload?.schema_version ?? 1), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "payload_schema_version", value: normalizeMetaValue(payload?.schema_version ?? 1), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "generated_at", value: normalizeMetaValue(options.generatedAt ?? payload?.generated_at ?? updatedAt), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "target_root", value: normalizeMetaValue(options.projectRootRef ?? payload?.target_root), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "audit_root", value: normalizeMetaValue(payload?.audit_root), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "structure_kind", value: normalizeMetaValue(payload?.summary?.structure_kind ?? structureProfile?.kind ?? "unknown"), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "structure_profile_json", value: normalizeMetaValue(structureProfile), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "repair_layer_meta_json", value: normalizeMetaValue(payload?.repair_layer_meta), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "payload_digest", value: normalizeMetaValue(options.payloadDigest), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "source_backend", value: normalizeMetaValue(options.sourceBackend), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "source_sqlite_file", value: normalizeMetaValue(options.sourceSqliteFile), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "adoption_status", value: normalizeMetaValue(options.adoptionStatus), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "adoption_metadata_json", value: normalizeMetaValue(options.adoptionMetadata), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "runtime_scope_id", value: normalizeMetaValue(projectContext?.runtime_scope_id), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "legacy_scope_key", value: normalizeMetaValue(projectContext?.legacy_scope_key), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "project_id", value: normalizeMetaValue(projectContext?.project_id), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "workspace_id", value: normalizeMetaValue(projectContext?.workspace_id), updated_at: updatedAt },
+    { scope_key: scopeKey || null, key: "worktree_id", value: normalizeMetaValue(projectContext?.worktree_id), updated_at: updatedAt },
+  ];
+  return rows.filter((row) => row.value != null);
+}
+
+export function projectRuntimePayloadToRelationalRows(payload = {}, options = {}) {
+  const normalizedPayload = normalizeRepairLayerPayload({
+    sourcePayload: payload,
+    payload,
+    dryRun: false,
+  }).payload;
+  const scopeKey = normalizeScalar(options.scopeKey);
+  const updatedAt = normalizeScalar(options.generatedAt ?? normalizedPayload?.generated_at) || new Date().toISOString();
+  const cycles = Array.isArray(normalizedPayload?.cycles) ? normalizedPayload.cycles : [];
+  const sessions = Array.isArray(normalizedPayload?.sessions) ? normalizedPayload.sessions : [];
+  const artifacts = Array.isArray(normalizedPayload?.artifacts) ? normalizedPayload.artifacts : [];
+  const fileMap = Array.isArray(normalizedPayload?.file_map) ? normalizedPayload.file_map : [];
+  const tags = Array.isArray(normalizedPayload?.tags) ? normalizedPayload.tags : [];
+  const artifactTags = Array.isArray(normalizedPayload?.artifact_tags) ? normalizedPayload.artifact_tags : [];
+  const runMetrics = Array.isArray(normalizedPayload?.run_metrics) ? normalizedPayload.run_metrics : [];
+  const artifactLinks = Array.isArray(normalizedPayload?.artifact_links) ? normalizedPayload.artifact_links : [];
+  const cycleLinks = Array.isArray(normalizedPayload?.cycle_links) ? normalizedPayload.cycle_links : [];
+  const sessionCycleLinks = Array.isArray(normalizedPayload?.session_cycle_links) ? normalizedPayload.session_cycle_links : [];
+  const sessionLinks = Array.isArray(normalizedPayload?.session_links) ? normalizedPayload.session_links : [];
+  const repairDecisions = Array.isArray(normalizedPayload?.repair_decisions) ? normalizedPayload.repair_decisions : [];
+  const migrationRuns = Array.isArray(normalizedPayload?.migration_runs) ? normalizedPayload.migration_runs : [];
+  const migrationFindings = Array.isArray(normalizedPayload?.migration_findings) ? normalizedPayload.migration_findings : [];
+
+  const cycleRows = cycles.map((row) => ({ ...row }));
+  const sessionRows = sessions.map((row) => ({ ...row }));
+  const artifactRows = artifacts.map((row, index) => {
+    const runtimeOwnership = resolveArtifactRuntimeOwnership(row);
+    const usedDerivedOwnership = !normalizeScalar(row?.session_id) && !normalizeScalar(row?.cycle_id)
+      && (runtimeOwnership.session_id || runtimeOwnership.cycle_id);
+    return {
+      ...runtimeOwnership,
+      scope_key: scopeKey || null,
+      artifact_id: index + 1,
+      path: normalizeArtifactPath(row?.path),
+      kind: row?.kind ?? null,
+      family: row?.family ?? "unknown",
+      subtype: row?.subtype ?? null,
+      gate_relevance: Number(row?.gate_relevance ?? 0),
+      classification_reason: row?.classification_reason ?? null,
+      content_format: row?.content_format ?? null,
+      content: row?.content ?? null,
+      canonical_format: row?.canonical_format ?? null,
+      canonical_json: row?.canonical ?? null,
+      sha256: row?.sha256 ?? null,
+      size_bytes: Number(row?.size_bytes ?? 0),
+      mtime_ns: row?.mtime_ns == null ? null : String(row.mtime_ns),
+      source_mode: row?.source_mode ?? (usedDerivedOwnership ? "inferred" : "explicit"),
+      entity_confidence: Number(row?.entity_confidence ?? (usedDerivedOwnership ? 0.8 : 1)),
+      legacy_origin: row?.legacy_origin ?? (usedDerivedOwnership ? "runtime_artifact_content" : null),
+      updated_at: row?.updated_at ?? null,
+    };
+  });
+  const artifactByPath = new Map(artifactRows.map((row) => [row.path, row]));
+
+  const tagRows = tags.map((row, index) => ({
+    scope_key: scopeKey || null,
+    tag_id: index + 1,
+    tag: normalizeScalar(row?.tag),
+  }));
+  const tagByValue = new Map(tagRows.map((row) => [row.tag, row]));
+
+  const artifactTagRows = artifactTags
+    .map((row) => {
+      const artifact = artifactByPath.get(normalizeArtifactPath(row?.path));
+      const tag = tagByValue.get(normalizeScalar(row?.tag));
+      if (!artifact || !tag) {
+        return null;
+      }
+      return {
+        scope_key: scopeKey || null,
+        artifact_id: artifact.artifact_id,
+        tag_id: tag.tag_id,
+      };
+    })
+    .filter(Boolean);
+
+  const artifactBlobRows = artifactRows.map((row) => ({
+    scope_key: scopeKey || null,
+    artifact_id: row.artifact_id,
+    content_format: row.content_format,
+    content: row.content,
+    canonical_format: row.canonical_format,
+    canonical_json: row.canonical_json,
+    sha256: row.sha256,
+    size_bytes: row.size_bytes,
+    updated_at: row.updated_at ?? new Date().toISOString(),
+  }));
+
+  return {
+    runtime_scope_registry: options.runtimeProjectContext
+      ? [buildRuntimeScopeRegistryRow(options.runtimeProjectContext, { updatedAt })]
+      : [],
+    index_meta: buildRuntimeIndexMetaRows(payload, options),
+    cycles: cycleRows.map((row) => ({ scope_key: scopeKey || null, ...row })),
+    sessions: sessionRows.map((row) => ({ scope_key: scopeKey || null, ...row })),
+    artifacts: artifactRows,
+    file_map: fileMap.map((row) => ({ scope_key: scopeKey || null, ...row })),
+    tags: tagRows,
+    artifact_tags: artifactTagRows,
+    run_metrics: runMetrics.map((row) => ({ scope_key: scopeKey || null, ...row })),
+    artifact_links: artifactLinks.map((row) => ({ scope_key: scopeKey || null, ...row })),
+    cycle_links: cycleLinks.map((row) => ({ scope_key: scopeKey || null, ...row })),
+    session_cycle_links: sessionCycleLinks.map((row) => ({ scope_key: scopeKey || null, ...row })),
+    session_links: sessionLinks.map((row) => ({ scope_key: scopeKey || null, ...row })),
+    repair_decisions: repairDecisions.map((row) => ({ scope_key: scopeKey || null, ...row })),
+    migration_runs: migrationRuns.map((row) => ({ scope_key: scopeKey || null, ...row })),
+    migration_findings: migrationFindings.map((row, index) => ({
+      scope_key: scopeKey || null,
+      finding_id: index + 1,
+      ...row,
+    })),
+    artifact_blobs: artifactBlobRows,
+    runtime_heads: buildRuntimeHeadRows(artifactRows, { scopeKey }),
+  };
+}

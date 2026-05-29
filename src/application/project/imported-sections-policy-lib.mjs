@@ -108,6 +108,13 @@ export const IMPORTED_SECTION_POLICIES = freezeItems([
     nativeTarget: "specializedGates.sharedCodegenBoundary",
     canonicalParity: "project-only",
   },
+  {
+    heading: "Cross-Usage Convergence Policy (Project Policy, adapter extension to `SPEC-R04` / `SPEC-R11`)",
+    classification: "adapter-structured",
+    multiAgentScope: "shared-integration-surface",
+    nativeTarget: "specializedGates.crossUsageConvergence",
+    canonicalParity: "project-only",
+  },
 ]);
 
 export function findImportedSectionPolicy(heading) {
@@ -127,6 +134,10 @@ function hasSharedCodegenBoundary(adapterData) {
   return adapterData?.specializedGates?.sharedCodegenBoundary?.enabled === true;
 }
 
+function hasCrossUsageConvergence(adapterData) {
+  return adapterData?.specializedGates?.crossUsageConvergence?.enabled === true;
+}
+
 export function isImportedSectionSatisfiedByStructuredConfig(sectionOrHeading, adapterData = null) {
   const heading = extractImportedSectionHeading(sectionOrHeading);
   const policy = findImportedSectionPolicy(heading);
@@ -143,6 +154,8 @@ export function isImportedSectionSatisfiedByStructuredConfig(sectionOrHeading, a
       return hasExecutionPolicy(adapterData);
     case "specializedGates.sharedCodegenBoundary":
       return hasSharedCodegenBoundary(adapterData);
+    case "specializedGates.crossUsageConvergence":
+      return hasCrossUsageConvergence(adapterData);
     default:
       return false;
   }

@@ -3,10 +3,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadRegisteredAgentAdapters } from "../../src/application/runtime/agent-adapter-registry-service.mjs";
+import { appendSharedCoordinationRecord, resolveSharedCoordinationStore, summarizeSharedCoordinationResolution } from "../../src/application/runtime/shared-coordination-store-service.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
+import { deriveCoordinatorDispatchExecuteDiagnostic } from "../../src/application/runtime/coordinator-diagnostics-lib.mjs";
+import { deriveGovernedRuntimeArtifactMetadata } from "../../src/application/runtime/governed-runtime-artifact-metadata-lib.mjs";
 import { loadAgentRoster } from "../../src/application/runtime/agent-roster-service.mjs";
 import { appendRuntimeNdjsonEvent } from "../../src/application/runtime/runtime-path-service.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import {
   loadSqliteIndexPayloadSafe,
   resolveAuditArtifactText,
@@ -15,6 +19,10 @@ import {
 import { computeCoordinatorDispatchPlan } from "./coordinator-dispatch-plan.mjs";
 import { projectCoordinationSummary } from "./project-coordination-summary.mjs";
 import { projectMultiAgentStatus } from "./project-multi-agent-status.mjs";
+import {
+  buildCoordinationHistoryEvent,
+  buildCoordinationLogEntry,
+} from "../../src/application/runtime/coordinator-dispatch-execute-use-case.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -146,54 +154,92 @@ function deriveSharedPlanningCandidate(dispatch) {
   };
 }
 
-function buildCoordinationLogEntry(result) {
-  const ts = new Date().toISOString();
+function buildCoordinationLogSummaryBlock({ updatedAt, governanceMetadata }) {
   const lines = [];
-  lines.push(`## Dispatch ${ts}`);
+  lines.push("## Summary");
   lines.push("");
-  lines.push(`timestamp: ${ts}`);
-  lines.push(`selected_agent: ${result.selected_agent.id}`);
-  lines.push(`recommended_role: ${result.coordinator_recommendation.role}`);
-  lines.push(`recommended_action: ${result.coordinator_recommendation.action}`);
-  lines.push(`dispatch_status: ${result.dispatch_status}`);
-  lines.push(`execution_status: ${result.execution_status}`);
-  lines.push(`entrypoint: ${result.entrypoint_kind}:${result.entrypoint_name}`);
-  lines.push(`goal: ${result.coordinator_recommendation.goal}`);
-  lines.push(`preferred_dispatch_source: ${result.preferred_dispatch_source ?? "workflow"}`);
-  if (result.shared_planning_candidate?.candidate_ready) {
-    lines.push(`shared_planning_candidate: ${result.shared_planning_candidate.next_dispatch_scope} + ${result.shared_planning_candidate.next_dispatch_action}`);
-  }
+  lines.push(`contract_version: ${governanceMetadata.contract_version}`);
+  lines.push(`updated_at: ${updatedAt}`);
+  lines.push(`source_of_truth: ${governanceMetadata.source_of_truth}`);
+  lines.push(`source_mode: ${governanceMetadata.source_mode}`);
+  lines.push(`lifecycle_status: ${governanceMetadata.lifecycle_status}`);
+  lines.push(`owner: ${governanceMetadata.owner}`);
+  lines.push(`steward: ${governanceMetadata.steward}`);
   lines.push("");
-  lines.push("notes:");
-  if (Array.isArray(result.notes) && result.notes.length > 0) {
-    for (const note of result.notes) {
-      lines.push(`- ${note}`);
-    }
-  } else {
-    lines.push("- none");
-  }
-  lines.push("");
-  lines.push("executed_steps:");
-  if (Array.isArray(result.executed_steps) && result.executed_steps.length > 0) {
-    for (const step of result.executed_steps) {
-      lines.push(`- ${step.label}: exit=${step.exit_code} ok=${step.ok ? "yes" : "no"}`);
-    }
-  } else {
-    lines.push("- none");
-  }
-  lines.push("");
-  return `${lines.join("\n")}\n`;
+  return lines.join("\n");
 }
 
-function appendCoordinationLog(logPath, entry) {
-  fs.mkdirSync(path.dirname(logPath), { recursive: true });
-  if (!fs.existsSync(logPath)) {
-    fs.writeFileSync(logPath, "# Coordination Log\n\n", "utf8");
+function buildCoordinationLogHeader({ updatedAt, governanceMetadata }) {
+  const lines = [];
+  lines.push("# Coordination Log");
+  lines.push("");
+  lines.push("Purpose:");
+  lines.push("");
+  lines.push("- record coordinator dispatch decisions and executions");
+  lines.push("- keep a short trace of multi-agent routing over time");
+  lines.push("- preserve a human-readable coordination trail without redefining workflow rules");
+  lines.push("");
+  lines.push("Rule/State boundary:");
+  lines.push("");
+  lines.push("- this file is a coordination state log");
+  lines.push("- canonical workflow rules remain in `SPEC.md`");
+  lines.push("- execution contract remains in `AGENTS.md`");
+  lines.push("");
+  lines.push(buildCoordinationLogSummaryBlock({ updatedAt, governanceMetadata }));
+  lines.push("## Entries");
+  lines.push("");
+  lines.push("Append one section per explicit coordinator dispatch execution.");
+  lines.push("");
+  lines.push("Recommended fields:");
+  lines.push("");
+  lines.push("- timestamp");
+  lines.push("- selected agent");
+  lines.push("- recommended role/action");
+  lines.push("- dispatch status");
+  lines.push("- execution status");
+  lines.push("- entrypoint");
+  lines.push("- key notes");
+  lines.push("- executed step summary");
+  lines.push("");
+  lines.push("## Notes");
+  lines.push("");
+  lines.push("- `coordinator-dispatch-plan` stays read-only and should not mutate this file");
+  lines.push("- `coordinator-dispatch-execute --execute` may append to this log");
+  lines.push("- `dry-run` should describe the planned log entry without writing it");
+  lines.push("- structured runtime history may also be appended under `.aidn/runtime/context/coordination-history.ndjson`");
+  lines.push("- refresh `COORDINATION-SUMMARY.md` after each executed dispatch");
+  lines.push("");
+  return lines.join("\n");
+}
+
+function alignCoordinationLogDocument({ current, entry, updatedAt, governanceMetadata }) {
+  const summaryBlock = buildCoordinationLogSummaryBlock({ updatedAt, governanceMetadata });
+  let base = String(current ?? "");
+  if (!base.trim()) {
+    base = buildCoordinationLogHeader({ updatedAt, governanceMetadata });
+  } else if (/^## Summary\b/m.test(base)) {
+    base = base.replace(
+      /## Summary\b[\s\S]*?(?=\n## Entries\b|\n## Notes\b|$)/m,
+      `${summaryBlock}\n`,
+    );
+  } else if (/\n## Entries\b/m.test(base)) {
+    base = base.replace(/\n## Entries\b/m, `\n${summaryBlock}\n## Entries`);
+  } else {
+    base = `${base.replace(/\s*$/u, "")}\n\n${summaryBlock}\n`;
   }
-  const current = fs.readFileSync(logPath, "utf8");
-  const next = current.endsWith("\n\n") || current.length === 0
-    ? `${current}${entry}`
-    : `${current}\n${entry}`;
+  return buildAppendedMarkdown(base, entry, buildCoordinationLogHeader({ updatedAt, governanceMetadata }));
+}
+
+function appendCoordinationLog(logPath, entry, options = {}) {
+  const { updatedAt, governanceMetadata } = options;
+  fs.mkdirSync(path.dirname(logPath), { recursive: true });
+  const current = fs.existsSync(logPath) ? fs.readFileSync(logPath, "utf8") : "";
+  const next = alignCoordinationLogDocument({
+    current,
+    entry,
+    updatedAt: updatedAt || new Date().toISOString(),
+    governanceMetadata,
+  });
   fs.writeFileSync(logPath, next, "utf8");
 }
 
@@ -205,36 +251,7 @@ function buildAppendedMarkdown(current, entry, header) {
     : `${base}\n${entry}`;
 }
 
-function buildCoordinationHistoryEvent(result) {
-  return {
-    ts: new Date().toISOString(),
-    event: "coordinator_dispatch",
-    selected_agent: result.selected_agent.id,
-    recommended_role: result.coordinator_recommendation.role,
-    recommended_action: result.coordinator_recommendation.action,
-    goal: result.coordinator_recommendation.goal,
-    dispatch_status: result.dispatch_status,
-    execution_status: result.execution_status,
-    entrypoint_kind: result.entrypoint_kind,
-    entrypoint_name: result.entrypoint_name,
-    preferred_dispatch_source: result.preferred_dispatch_source ?? "workflow",
-    shared_planning_candidate_ready: Boolean(result.shared_planning_candidate?.candidate_ready),
-    shared_planning_candidate_aligned: Boolean(result.shared_planning_candidate?.candidate_aligned),
-    shared_planning_next_dispatch_scope: result.shared_planning_candidate?.next_dispatch_scope ?? "none",
-    shared_planning_next_dispatch_action: result.shared_planning_candidate?.next_dispatch_action ?? "none",
-    stop_required: Boolean(result.coordinator_recommendation.stop_required),
-    executed: Boolean(result.executed),
-    executed_steps: Array.isArray(result.executed_steps)
-      ? result.executed_steps.map((step) => ({
-        label: step.label,
-        exit_code: step.exit_code,
-        ok: Boolean(step.ok),
-      }))
-      : [],
-  };
-}
-
-export async function executeCoordinatorDispatch({
+async function runCoordinatorDispatch({
   targetRoot,
   agent = "auto",
   currentStateFile = "docs/audit/CURRENT-STATE.md",
@@ -246,9 +263,26 @@ export async function executeCoordinatorDispatch({
   multiAgentStatusFile = "docs/audit/MULTI-AGENT-STATUS.md",
   coordinationHistoryFile = ".aidn/runtime/context/coordination-history.ndjson",
   execute = false,
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const sharedCoordinationResolution = sharedCoordination ?? await resolveSharedCoordinationStore({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    ...sharedCoordinationOptions,
+  });
+  const sharedCoordinationBackend = summarizeSharedCoordinationResolution(sharedCoordinationResolution);
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
+  const governanceMetadata = deriveGovernedRuntimeArtifactMetadata({
+    workspace,
+    runtimeStateMode: effectiveStateMode,
+    sourceOfTruthConcept: "coordination_records",
+    lifecycleStatus: "refreshed",
+  });
   const roster = loadAgentRoster({
     targetRoot: absoluteTargetRoot,
     rosterFile: agentRosterFile,
@@ -260,11 +294,34 @@ export async function executeCoordinatorDispatch({
     runtimeStateFile,
     packetFile,
     agentRosterFile,
+    sharedCoordination: sharedCoordinationResolution,
   });
   const sharedPlanningCandidate = deriveSharedPlanningCandidate(dispatch);
   const coordinationLogPath = resolveTargetPath(absoluteTargetRoot, coordinationLogFile);
   const coordinationSummaryPath = resolveTargetPath(absoluteTargetRoot, coordinationSummaryFile);
   const coordinationHistoryPath = resolveTargetPath(absoluteTargetRoot, coordinationHistoryFile);
+  const decorateWithSharedCoordination = async (result) => {
+    const sharedCoordinationSync = await appendSharedCoordinationRecord(sharedCoordinationResolution, {
+      workspace,
+      recordType: "coordinator_dispatch",
+      status: result.execution_status ?? result.dispatch_status ?? "unknown",
+      payload: result.coordination_history_event ?? buildCoordinationHistoryEvent(result),
+      sessionId: result.active_session ?? "",
+      cycleId: result.active_cycle ?? "",
+      scopeType: result.dispatch_scope?.scope_type ?? "none",
+      scopeId: result.dispatch_scope?.scope_id ?? "none",
+      actorRole: "coordinator",
+      actorAction: result.coordinator_recommendation?.action ?? "coordinate",
+      coordinationLogRef: String(coordinationLogFile).replace(/\\/g, "/"),
+      coordinationSummaryRef: String(coordinationSummaryFile).replace(/\\/g, "/"),
+    });
+    return {
+      ...result,
+      workspace,
+      shared_coordination_backend: sharedCoordinationBackend,
+      shared_coordination_sync: sharedCoordinationSync,
+    };
+  };
 
   if (!execute) {
     const dryRunResult = {
@@ -288,9 +345,7 @@ export async function executeCoordinatorDispatch({
     };
     dryRunResult.coordination_log_entry = buildCoordinationLogEntry(dryRunResult);
     dryRunResult.coordination_history_event = buildCoordinationHistoryEvent(dryRunResult);
-    return {
-      ...dryRunResult,
-    };
+    return decorateWithSharedCoordination(dryRunResult);
   }
 
   if (dispatch.dispatch_status === "unsupported") {
@@ -315,7 +370,7 @@ export async function executeCoordinatorDispatch({
     };
     unsupportedResult.coordination_log_entry = buildCoordinationLogEntry(unsupportedResult);
     unsupportedResult.coordination_history_event = buildCoordinationHistoryEvent(unsupportedResult);
-    return unsupportedResult;
+    return decorateWithSharedCoordination(unsupportedResult);
   }
 
   if (dispatch.dispatch_status === "escalated") {
@@ -340,7 +395,7 @@ export async function executeCoordinatorDispatch({
     };
     escalatedResult.coordination_log_entry = buildCoordinationLogEntry(escalatedResult);
     escalatedResult.coordination_history_event = buildCoordinationHistoryEvent(escalatedResult);
-    return escalatedResult;
+    return decorateWithSharedCoordination(escalatedResult);
   }
 
   if (!Array.isArray(dispatch.steps) || dispatch.steps.length === 0) {
@@ -365,7 +420,7 @@ export async function executeCoordinatorDispatch({
     };
     noStepsResult.coordination_log_entry = buildCoordinationLogEntry(noStepsResult);
     noStepsResult.coordination_history_event = buildCoordinationHistoryEvent(noStepsResult);
-    return noStepsResult;
+    return decorateWithSharedCoordination(noStepsResult);
   }
 
   const agentAdapter = await resolveAgentAdapter(dispatch.selected_agent.id, {
@@ -420,8 +475,12 @@ export async function executeCoordinatorDispatch({
   };
   finalResult.coordination_log_entry = buildCoordinationLogEntry(finalResult);
   finalResult.coordination_history_event = buildCoordinationHistoryEvent(finalResult);
+  const updatedAt = new Date().toISOString();
   if (effectiveStateMode === "files") {
-    appendCoordinationLog(coordinationLogPath, finalResult.coordination_log_entry);
+    appendCoordinationLog(coordinationLogPath, finalResult.coordination_log_entry, {
+      updatedAt,
+      governanceMetadata,
+    });
     finalResult.coordination_log_appended = true;
   } else {
     const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot, effectiveStateMode);
@@ -442,7 +501,12 @@ export async function executeCoordinatorDispatch({
       target: absoluteTargetRoot,
       auditRoot: "docs/audit",
       path: relativeLogPath,
-      content: buildAppendedMarkdown(existingLog.text, finalResult.coordination_log_entry, "# Coordination Log\n\n"),
+      content: alignCoordinationLogDocument({
+        current: existingLog.text,
+        entry: finalResult.coordination_log_entry,
+        updatedAt,
+        governanceMetadata,
+      }),
       kind: "other",
       family: "normative",
       subtype: "coordination_log",
@@ -452,19 +516,30 @@ export async function executeCoordinatorDispatch({
   }
   appendRuntimeNdjsonEvent(coordinationHistoryPath, finalResult.coordination_history_event);
   finalResult.coordination_history_appended = true;
-  finalResult.coordination_summary = projectCoordinationSummary({
+  finalResult.coordination_summary = await projectCoordinationSummary({
     targetRoot: absoluteTargetRoot,
     historyFile: coordinationHistoryFile,
     out: coordinationSummaryFile,
+    workspace,
+    sharedCoordination: sharedCoordinationResolution,
   });
   finalResult.coordination_summary_written = Boolean(finalResult.coordination_summary?.written);
   finalResult.multi_agent_status = await projectMultiAgentStatus({
     targetRoot: absoluteTargetRoot,
     coordinationHistoryFile,
     out: multiAgentStatusFile,
+    sharedCoordination: sharedCoordinationResolution,
   });
   finalResult.multi_agent_status_written = Boolean(finalResult.multi_agent_status?.written);
-  return finalResult;
+  return decorateWithSharedCoordination(finalResult);
+}
+
+export async function executeCoordinatorDispatch(options = {}) {
+  const result = await runCoordinatorDispatch(options);
+  return {
+    ...result,
+    dispatch_execute_diagnostic: deriveCoordinatorDispatchExecuteDiagnostic(result),
+  };
 }
 
 function main() {

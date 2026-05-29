@@ -54,6 +54,12 @@ From your client repository root:
 npx aidn install --target . --pack core
 ```
 
+Clean non-interactive install without a TTY wizard:
+
+```bash
+npx aidn install --target . --pack core --init-defaults --project-name my-project --verify
+```
+
 Install the explicit composite profile:
 
 ```bash
@@ -154,6 +160,16 @@ Notes:
   - installer auto-creates or updates `.aidn/config.json` (non-destructive merge) to persist runtime defaults,
   - installer also persists the resolved project source branch in `.aidn/config.json` under `workflow.sourceBranch`,
   - runtime source-branch readers use `.aidn/config.json` first, then fall back to installed workflow artifacts for backward compatibility.
+- Runtime persistence policy:
+  - if `.aidn/config.json` configures `runtime.persistence.backend=postgres`, the selected backend is PostgreSQL and the status commands report the PostgreSQL structure as canonical,
+  - PostgreSQL runtime rows are scoped by `project_context.runtime_scope_id`, derived from `project_id` and `workspace_id`,
+  - use `.aidn/project/shared-runtime.locator.json` or env identity when a project must keep the same PostgreSQL identity across devices or platforms,
+  - shared PostgreSQL coordination is still explicit opt-in; when a DB-backed PostgreSQL project has a locator that explicitly disables shared runtime, `shared-coordination-status`, `shared-coordination-doctor`, and `shared-runtime-reanchor` report an alignment warning instead of silently treating the setup as healthy shared coordination,
+  - enable shared coordination intentionally with `aidn runtime shared-runtime-reanchor --target . --backend postgres --connection-ref env:AIDN_PG_URL --project-id <project> --workspace-id <workspace> --write --json`,
+  - the local `.aidn/runtime/index/workflow-index.sqlite` file remains a compatibility projection or migration source when PostgreSQL is configured,
+  - if PostgreSQL is already canonical and ready, `aidn install` treats a stale local SQLite compatibility projection as non-blocking instead of forcing a migration conflict,
+  - if PostgreSQL is not configured, SQLite remains the fallback legacy backend,
+  - `install.artifactImportStore` stays a compatibility/migration knob and does not override the configured runtime backend.
 - Optional Codex project config:
   - `aidn` does not install `.codex/config.toml` by default,
   - use a project Codex config only when you need non-default `project_doc_fallback_filenames` or `project_doc_max_bytes`.
@@ -177,6 +193,7 @@ Use one of these entry points to manage the adapter config:
 
 ```bash
 npx aidn project config --target . --wizard
+npx aidn project config --target . --init-defaults --project-name my-project --json
 npx aidn project config --target . --list --json
 ```
 
@@ -222,6 +239,7 @@ Legacy note:
 Persistence rules:
 
 - install creates `.aidn/project/workflow.adapter.json` if missing
+- install can create a minimal default adapter non-interactively with `--init-defaults --project-name <name>`
 - reinstall and reinitialization never overwrite that file automatically
 - generated files may be rewritten deterministically
 - `seed-once` and `runtime-state` files are preserved
@@ -273,6 +291,23 @@ Minimum adapter fields to fill before real work:
 - `runtimePolicy.defaultIndexStore`
 - `dorPolicy`
 - snapshot policy fields that should survive reinstall
+
+Cross-usage convergence policy:
+
+- shared/high-risk validation policy can now be rendered from `.aidn/project/workflow.adapter.json` through `specializedGates.crossUsageConvergence`
+- intended use: declare shared-surface kinds, expected evidence artifacts, and minimum usage-class counts for shared/high-risk changes
+- this policy renders into generated `docs/audit/WORKFLOW.md`; do not maintain it by editing generated sections directly
+
+Typical structured fields:
+
+- `specializedGates.crossUsageConvergence.enabled`
+- `specializedGates.crossUsageConvergence.sharedSurfaceKinds`
+- `specializedGates.crossUsageConvergence.evidenceArtifacts`
+- `specializedGates.crossUsageConvergence.sharedSurfaceMinimumUsageClasses`
+- `specializedGates.crossUsageConvergence.highRiskMinimumUsageClasses`
+- `specializedGates.crossUsageConvergence.requireAlternateUsage`
+- `specializedGates.crossUsageConvergence.requireContextualUsageForHighRisk`
+- `specializedGates.crossUsageConvergence.overfitFixIsBlocking`
 
 Recommended practice:
 - Treat adapter config setup as part of baseline setup and commit or persist it with the repository.

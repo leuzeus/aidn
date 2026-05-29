@@ -14,6 +14,7 @@ Rule/State boundary:
 
 ## Summary
 
+contract_version: critical-markdown-v1
 updated_at: 2026-03-09T00:00:00Z
 runtime_state_mode: dual
 repair_layer_status: unknown

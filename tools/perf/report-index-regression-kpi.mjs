@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { buildIndexRegressionKpiRun } from "../../src/application/observability/index-regression-kpi-report-use-case.mjs";
 import { isJsonEquivalent, writeJsonIfChanged } from "../../src/lib/index/io-lib.mjs";
 
 function parseArgs(argv) {
@@ -55,42 +56,6 @@ function readJson(filePath, label) {
   }
 }
 
-function toNumberOrZero(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function buildRun(report) {
-  const ts = String(report?.ts ?? new Date().toISOString());
-  const projection = report?.summary?.projection ?? {};
-  const rows = report?.summary?.rows ?? {};
-  const canonicalCoverage = toNumberOrZero(projection.canonical_coverage_ratio);
-  const canonicalCoverageMarkdown = toNumberOrZero(projection.canonical_coverage_ratio_markdown);
-  const artifactsWithCanonical = toNumberOrZero(projection.artifacts_with_canonical);
-  const artifactsWithCanonicalMarkdown = toNumberOrZero(projection.artifacts_markdown_with_canonical);
-  const artifactsTotal = toNumberOrZero(rows.artifacts);
-  const artifactsMarkdown = toNumberOrZero(projection.artifacts_markdown);
-  const artifactsWithoutCanonical = Math.max(0, artifactsTotal - artifactsWithCanonical);
-  const artifactsWithoutCanonicalMarkdown = Math.max(0, artifactsMarkdown - artifactsWithCanonicalMarkdown);
-  const runId = `index-${ts}`;
-
-  return {
-    run_id: runId,
-    started_at: ts,
-    ended_at: ts,
-    canonical_coverage_ratio: canonicalCoverage,
-    canonical_coverage_ratio_markdown: canonicalCoverageMarkdown,
-    canonical_gap_all: Number((1 - canonicalCoverage).toFixed(6)),
-    canonical_gap_markdown: Number((1 - canonicalCoverageMarkdown).toFixed(6)),
-    artifacts_total: artifactsTotal,
-    artifacts_markdown: artifactsMarkdown,
-    artifacts_with_canonical: artifactsWithCanonical,
-    artifacts_markdown_with_canonical: artifactsWithCanonicalMarkdown,
-    artifacts_without_canonical: artifactsWithoutCanonical,
-    artifacts_without_canonical_markdown: artifactsWithoutCanonicalMarkdown,
-  };
-}
-
 function writeJson(filePath, payload) {
   return writeJsonIfChanged(filePath, payload, {
     isEquivalent(previousContent) {
@@ -103,7 +68,7 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const report = readJson(args.indexReportFile, "Index report");
-    const run = buildRun(report.data);
+    const run = buildIndexRegressionKpiRun(report.data);
 
     const payload = {
       ts: new Date().toISOString(),

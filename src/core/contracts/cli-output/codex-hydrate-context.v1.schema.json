@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/codex-hydrate-context.v1",
+  "title": "aidn codex hydrate-context --json",
+  "type": "object",
+  "x-aidn-command": "aidn codex hydrate-context --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "state_mode",
+    "recent_history",
+    "artifacts"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "state_mode": { "type": "string" },
+    "output_file": { "type": "string" },
+    "recent_history": { "type": "array" },
+    "artifacts": { "type": "array" },
+    "runtime_state": { "type": "object", "additionalProperties": true },
+    "handoff_packet": { "type": "object", "additionalProperties": true },
+    "multi_agent_status": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": true
+}

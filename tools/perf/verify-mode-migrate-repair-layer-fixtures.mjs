@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { readIndexFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
 import { readAidnProjectConfig } from "../../src/lib/config/aidn-config-lib.mjs";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const MODE_MIGRATE = path.resolve(REPO_ROOT, "tools", "runtime", "mode-migrate.mjs");
@@ -89,6 +90,8 @@ function main() {
       schema_status_after_no_pending: Array.isArray(migrated?.schema_status_after?.pending_ids) && migrated.schema_status_after.pending_ids.length === 0,
       repair_layer_step_present: Array.isArray(migrated?.steps) && migrated.steps.some((step) => String(step?.step ?? "") === "repair_layer"),
       repair_layer_completed: ["applied", "skipped"].includes(String(migrated?.repair_layer_result?.action ?? "")),
+      mode_migrate_exposes_diagnostic: migrated?.mode_migrate_diagnostic?.scope === "runtime-mode-migrate"
+        && migrated?.mode_migrate_diagnostic?.to_mode === "db-only",
       report_exists: fs.existsSync(reportFile),
       triage_exists: fs.existsSync(triageFile),
       triage_summary_exists: fs.existsSync(triageSummaryFile),
@@ -129,7 +132,7 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      removePathWithRetry(tempRoot);
     }
   }
 }

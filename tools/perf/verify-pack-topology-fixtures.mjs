@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function assert(condition, message) {
   if (!condition) {
@@ -40,6 +41,12 @@ function makeCodexStub(tmpRoot) {
     fs.chmodSync(filePath, 0o755);
   }
   return binDir;
+}
+
+function normalizeCleanFixtureCopy(targetRoot) {
+  fs.rmSync(path.join(targetRoot, ".aidn", "runtime"), { recursive: true, force: true });
+  fs.rmSync(path.join(targetRoot, ".aidn", "project", "workflow.adapter.legacy-source.md"), { force: true });
+  fs.rmSync(path.join(targetRoot, ".aidn", "project", "workflow.adapter.migration-report.json"), { force: true });
 }
 
 function runInstallDry(repoRoot, targetRoot, codexStubBin, pack) {
@@ -94,6 +101,107 @@ function runInstall(repoRoot, targetRoot, codexStubBin, pack, extraArgs = []) {
   };
 }
 
+function runNpmPackDryRun(repoRoot) {
+  const command = process.platform === "win32" ? "cmd.exe" : "npm";
+  const commandArgs = process.platform === "win32"
+    ? ["/d", "/s", "/c", "npm pack --dry-run --json"]
+    : ["pack", "--dry-run", "--json"];
+  const result = spawnSync(command, commandArgs, {
+    cwd: repoRoot,
+    encoding: "utf8",
+    timeout: 180000,
+    maxBuffer: 20 * 1024 * 1024,
+  });
+  if ((result.status ?? 1) !== 0) {
+    throw new Error(`npm pack --dry-run failed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
+  }
+  const payload = JSON.parse(String(result.stdout ?? "[]"));
+  return payload[0]?.files ?? [];
+}
+
+function inspectPackageLeakGuard(repoRoot) {
+  const files = runNpmPackDryRun(repoRoot);
+  const guardedTerms = [
+    ["go", "wire"].join(""),
+    ["G:", "\\", "projets", "\\"].join(""),
+    ["pilot", "-main"].join(""),
+    ["pilot", "-linked"].join(""),
+    ["go", "wire", "-validation"].join(""),
+  ];
+  const sensitivePatterns = [
+    ...guardedTerms.map((term) => new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")),
+  ];
+  const violations = [];
+  for (const file of files) {
+    const packagePath = String(file?.path ?? "");
+    if (!packagePath) {
+      continue;
+    }
+    if (sensitivePatterns.some((pattern) => pattern.test(packagePath))) {
+      violations.push(`path:${packagePath}`);
+      continue;
+    }
+    const sourcePath = path.resolve(repoRoot, packagePath);
+    try {
+      const text = fs.readFileSync(sourcePath, "utf8");
+      if (sensitivePatterns.some((pattern) => pattern.test(text))) {
+        violations.push(`content:${packagePath}`);
+      }
+    } catch {
+      // Binary or generated package entries are ignored by the text leak guard.
+    }
+  }
+  return {
+    files,
+    violations,
+    pass: violations.length === 0,
+  };
+}
+
+function inspectPackageDocsAllowlist(files) {
+  const packagePaths = files
+    .map((file) => String(file?.path ?? "").trim())
+    .filter(Boolean);
+  const expectedDocs = new Set([
+    "docs/INSTALL.md",
+    "docs/README.md",
+    "docs/MIGRATION_SHARED_RUNTIME_POSTGRESQL.md",
+    "docs/MULTI_PROJECT_POSTGRESQL_MIGRATION_GUIDE.md",
+    "docs/RUNTIME_SURFACE_SCOPE_MATRIX.md",
+    "docs/SPEC.md",
+    "docs/TESTING.md",
+    "docs/TROUBLESHOOTING.md",
+    "docs/UPGRADE.md",
+  ]);
+  const allowedDocPrefixes = [
+    "docs/performance/",
+  ];
+  const blockedDocPrefixes = [
+    "docs/audit/",
+    "docs/ADR/",
+    "docs/PLAN_",
+  ];
+  const docs = packagePaths.filter((filePath) => filePath.startsWith("docs/"));
+  const missingDocs = [...expectedDocs].filter((docPath) => !packagePaths.includes(docPath));
+  const unexpectedDocs = docs.filter((docPath) => {
+    if (expectedDocs.has(docPath)) {
+      return false;
+    }
+    return !allowedDocPrefixes.some((prefix) => docPath.startsWith(prefix));
+  });
+  const blockedDocs = docs.filter((docPath) => blockedDocPrefixes.some((prefix) => docPath.startsWith(prefix)));
+  const violations = [
+    ...missingDocs.map((docPath) => `missing:${docPath}`),
+    ...unexpectedDocs.map((docPath) => `unexpected:${docPath}`),
+    ...blockedDocs.map((docPath) => `blocked:${docPath}`),
+  ];
+  return {
+    files: docs,
+    violations,
+    pass: violations.length === 0,
+  };
+}
+
 function main() {
   const repoRoot = process.cwd();
   const tempRoot = fs.mkdtempSync(path.join(path.resolve(repoRoot, "tests", "fixtures"), "tmp-pack-topology-"));
@@ -114,6 +222,9 @@ function main() {
     fs.cpSync(sourceTarget, codexTarget, { recursive: true });
     fs.cpSync(sourceTarget, githubTarget, { recursive: true });
     fs.cpSync(sourceTarget, extendedTarget, { recursive: true });
+    for (const copiedTarget of [targetRoot, runtimeLocalTarget, codexTarget, githubTarget, extendedTarget]) {
+      normalizeCleanFixtureCopy(copiedTarget);
+    }
     const codexStubBin = makeCodexStub(tempRoot);
 
     const runtimeLocalDry = runInstallDry(repoRoot, targetRoot, codexStubBin, "runtime-local");
@@ -123,23 +234,25 @@ function main() {
 
     fs.rmSync(path.join(runtimeLocalTarget, ".aidn", "runtime", "agents"), { recursive: true, force: true });
     const runtimeLocalInstall = runInstall(repoRoot, runtimeLocalTarget, codexStubBin, "runtime-local", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
-    const runtimeLocalVerify = runInstall(repoRoot, runtimeLocalTarget, codexStubBin, "runtime-local", ["--verify"]);
+    const runtimeLocalVerify = runInstall(repoRoot, runtimeLocalTarget, codexStubBin, "runtime-local", ["--verify", "--skip-artifact-import"]);
 
     fs.rmSync(path.join(codexTarget, ".codex", "skills"), { recursive: true, force: true });
     fs.rmSync(path.join(codexTarget, ".codex", "skills.yaml"), { force: true });
     const codexInstall = runInstall(repoRoot, codexTarget, codexStubBin, "codex-integration", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
-    const codexVerify = runInstall(repoRoot, codexTarget, codexStubBin, "codex-integration", ["--verify"]);
+    const codexVerify = runInstall(repoRoot, codexTarget, codexStubBin, "codex-integration", ["--verify", "--skip-artifact-import"]);
 
     fs.rmSync(path.join(githubTarget, ".github"), { recursive: true, force: true });
     const githubInstall = runInstall(repoRoot, githubTarget, codexStubBin, "github-integration", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
-    const githubVerify = runInstall(repoRoot, githubTarget, codexStubBin, "github-integration", ["--verify"]);
+    const githubVerify = runInstall(repoRoot, githubTarget, codexStubBin, "github-integration", ["--verify", "--skip-artifact-import"]);
 
     fs.rmSync(path.join(extendedTarget, ".aidn", "runtime", "agents"), { recursive: true, force: true });
     fs.rmSync(path.join(extendedTarget, ".codex", "skills"), { recursive: true, force: true });
     fs.rmSync(path.join(extendedTarget, ".codex", "skills.yaml"), { force: true });
     fs.rmSync(path.join(extendedTarget, ".github"), { recursive: true, force: true });
     const extendedInstall = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
-    const extendedVerify = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--verify"]);
+    const extendedVerify = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--verify", "--skip-artifact-import"]);
+    const packageLeakGuard = inspectPackageLeakGuard(repoRoot);
+    const packageDocsAllowlist = inspectPackageDocsAllowlist(packageLeakGuard.files);
 
     assert(/packs:\s*\r?\n\s*-\s*core/i.test(workflowManifest) || /packs:\s*\n\s*-\s*core/i.test(workflowManifest), "workflow manifest should default to core only");
     assert(/depends_on:\s*\[core]/i.test(runtimeLocalManifest), "runtime-local should depend on core");
@@ -175,13 +288,15 @@ function main() {
     assert(fs.existsSync(path.join(extendedTarget, ".codex", "skills", "start-session", "SKILL.md")), "extended should restore local skills");
     assert(fs.existsSync(path.join(extendedTarget, ".codex", "skills.yaml")), "extended should restore skills.yaml");
     assert(fs.existsSync(path.join(extendedTarget, ".github", "workflows", "branch-prune.yml")), "extended should restore branch pruning automation");
+    assert(packageLeakGuard.pass, `npm pack leak guard failed: ${packageLeakGuard.violations.slice(0, 20).join(", ")}`);
+    assert(packageDocsAllowlist.pass, `package docs allowlist failed: ${packageDocsAllowlist.violations.slice(0, 20).join(", ")}`);
 
     console.log("PASS");
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     process.exit(1);
   } finally {
-    fs.rmSync(tempRoot, { recursive: true, force: true });
+    removePathWithRetry(tempRoot);
   }
 }
 

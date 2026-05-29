@@ -55,6 +55,7 @@ const PERF_ALIASES = {
   "verify-db-first-sync": { file: "verify-db-first-sync-coverage.mjs" },
   "verify-sync-db-first-selective": { file: "verify-sync-db-first-selective-fixtures.mjs" },
   "verify-install-import": { file: "verify-install-import-fixtures.mjs" },
+  "verify-project-config": { file: "verify-project-config-fixtures.mjs" },
   "verify-state-mode-parity": { file: "verify-state-mode-parity-fixtures.mjs" },
   "verify-constraint-report": { file: "verify-constraint-report-fixtures.mjs" },
   "verify-constraint-actions": { file: "verify-constraint-actions-fixtures.mjs" },
@@ -75,7 +76,7 @@ const PERF_ALIASES = {
   "render-summary": { file: "render-summary.mjs" },
   reset: { file: "reset-runtime.mjs" },
   hook: { file: "workflow-hook.mjs" },
-  "session-start": { file: "workflow-hook.mjs", fixedArgs: ["--phase", "session-start"] },
+  "session-start": { file: "start-session-hook.mjs" },
   "session-close": { file: "workflow-hook.mjs", fixedArgs: ["--phase", "session-close"] },
   "delivery-start": { file: "delivery-window.mjs", fixedArgs: ["--action", "start"] },
   "delivery-end": { file: "delivery-window.mjs", fixedArgs: ["--action", "end"] },
@@ -94,6 +95,21 @@ const RUNTIME_ALIASES = {
   "db-backup": { file: "db-backup.mjs" },
   "db-migrate": { file: "db-migrate.mjs" },
   "db-status": { file: "db-status.mjs" },
+  "persistence-backup": { file: "db-backup.mjs" },
+  "persistence-adopt": { file: "persistence-adopt.mjs" },
+  "persistence-source-diagnose": { file: "persistence-source-diagnose.mjs" },
+  "persistence-source-normalize": { file: "persistence-source-normalize.mjs" },
+  "persistence-migrate": { file: "db-migrate.mjs" },
+  "persistence-status": { file: "db-status.mjs" },
+  "shared-runtime-reanchor": { file: "shared-runtime-reanchor.mjs" },
+  "shared-coordination-backup": { file: "shared-coordination-backup.mjs" },
+  "shared-coordination-restore": { file: "shared-coordination-restore.mjs" },
+  "shared-coordination-doctor": { file: "shared-coordination-doctor.mjs" },
+  "shared-coordination-migrate": { file: "shared-coordination-migrate.mjs" },
+  "shared-coordination-bootstrap": { file: "shared-coordination-bootstrap.mjs" },
+  "shared-coordination-status": { file: "shared-coordination-status.mjs" },
+  "shared-coordination-projects": { file: "shared-coordination-projects.mjs" },
+  "governance-diagnostics": { file: "governance-diagnostics.mjs" },
   "coordinator-dispatch-execute": { file: "coordinator-dispatch-execute.mjs" },
   "coordinator-dispatch-plan": { file: "coordinator-dispatch-plan.mjs" },
   "coordinator-loop": { file: "coordinator-loop.mjs" },
@@ -128,6 +144,7 @@ const PROJECT_ALIASES = {
 function printUsage() {
   console.log("Usage:");
   console.log("  aidn install --target ../repo --pack core");
+  console.log("  aidn install --target ../repo --pack core --init-defaults --project-name my-project");
   console.log("  aidn install --target ../repo --pack core --verify");
   console.log("  aidn build-release");
   console.log("  aidn perf checkpoint --target ../repo --mode COMMITTING --index-store all --index-sync-check --json");
@@ -135,8 +152,23 @@ function printUsage() {
   console.log("  aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json");
   console.log("  aidn runtime sync-db-first-selective --target . --json");
   console.log("  aidn runtime db-status --target . --json");
+  console.log("  aidn runtime shared-runtime-reanchor --target . --json");
+  console.log("  aidn runtime shared-runtime-reanchor --target . --local-only --write --json");
+  console.log("  aidn runtime shared-runtime-reanchor --target . --backend postgres --connection-ref env:AIDN_PG_URL --project-id project-main --workspace-id workspace-main --write --json");
   console.log("  aidn runtime db-migrate --target . --json");
   console.log("  aidn runtime db-backup --target . --json");
+  console.log("  aidn runtime persistence-adopt --target . --backend postgres --json");
+  console.log("  aidn runtime persistence-source-diagnose --target . --json");
+  console.log("  aidn runtime persistence-source-normalize --target . --rename C004-old=C020-new --json");
+  console.log("  aidn runtime shared-coordination-backup --target . --json");
+  console.log("  aidn runtime shared-coordination-restore --target . --json");
+  console.log("  aidn runtime shared-coordination-restore --target . --write --json");
+  console.log("  aidn runtime shared-coordination-doctor --target . --json");
+  console.log("  aidn runtime shared-coordination-status --target . --json");
+  console.log("  aidn runtime shared-coordination-projects --target . --json");
+  console.log("  aidn runtime governance-diagnostics --target . --json");
+  console.log("  aidn runtime shared-coordination-migrate --target . --json");
+  console.log("  aidn runtime shared-coordination-bootstrap --target . --json");
   console.log("  aidn runtime coordinator-dispatch-execute --target . --execute --json");
   console.log("  aidn runtime coordinator-dispatch-plan --target . --json");
   console.log("  aidn runtime coordinator-loop --target . --json");
@@ -156,10 +188,13 @@ function printUsage() {
   console.log("  aidn runtime pre-write-admit --target . --skill cycle-create --json");
   console.log("  aidn runtime project-coordination-summary --target . --json");
   console.log("  aidn runtime project-handoff-packet --target . --json");
+  console.log("  aidn runtime project-handoff-packet --target . --write --sync-relay --json");
   console.log("  aidn runtime project-runtime-state --target . --json");
+  console.log("  aidn runtime project-runtime-state --target . --write --json");
   console.log("  aidn runtime session-plan --target . --item \"define session backlog\" --promote --json");
   console.log("  aidn project config --target . --list --json");
   console.log("  aidn project config --target . --wizard");
+  console.log("  aidn project config --target . --init-defaults --project-name my-project --json");
   console.log("  aidn project config --target . --migrate-adapter --json");
   console.log("");
   console.log("Perf subcommands:");
@@ -170,6 +205,51 @@ function printUsage() {
   console.log(`  ${Object.keys(RUNTIME_ALIASES).sort().join(", ")}`);
   console.log("Project subcommands:");
   console.log(`  ${Object.keys(PROJECT_ALIASES).sort().join(", ")}`);
+}
+
+function printGroupUsage(group, aliases, examples = []) {
+  console.log(`Usage: aidn ${group} <subcommand> [options]`);
+  console.log("");
+  if (examples.length > 0) {
+    console.log("Examples:");
+    for (const example of examples) {
+      console.log(`  ${example}`);
+    }
+    console.log("");
+  }
+  console.log("Subcommands:");
+  console.log(`  ${Object.keys(aliases).sort().join(", ")}`);
+}
+
+function printPerfUsage() {
+  printGroupUsage("perf", PERF_ALIASES, [
+    "aidn perf session-start --target . --mode COMMITTING --json",
+    "aidn perf checkpoint --target . --mode COMMITTING --index-store all --json",
+    "aidn perf index --target . --store sqlite",
+  ]);
+}
+
+function printCodexUsage() {
+  printGroupUsage("codex", CODEX_ALIASES, [
+    "aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json",
+    "aidn codex hydrate-context --target . --skill start-session --project-runtime-state --json",
+  ]);
+}
+
+function printRuntimeUsage() {
+  printGroupUsage("runtime", RUNTIME_ALIASES, [
+    "aidn runtime db-status --target . --json",
+    "aidn runtime pre-write-admit --target . --skill cycle-create --json",
+    "aidn runtime project-runtime-state --target . --json",
+  ]);
+}
+
+function printProjectUsage() {
+  printGroupUsage("project", PROJECT_ALIASES, [
+    "aidn project config --target . --init-defaults --project-name my-project --json",
+    "aidn project config --target . --list --json",
+    "aidn project config --target . --wizard",
+  ]);
 }
 
 function printVersion() {
@@ -283,8 +363,8 @@ function main() {
   if (command === "perf") {
     const subcommand = argv[1] ?? "";
     if (!subcommand || subcommand === "--help" || subcommand === "-h" || subcommand === "help") {
-      printUsage();
-      process.exit(1);
+      printPerfUsage();
+      return;
     }
     try {
       const perf = resolvePerfCommand(subcommand, argv.slice(2));
@@ -299,8 +379,8 @@ function main() {
   if (command === "codex") {
     const subcommand = argv[1] ?? "";
     if (!subcommand || subcommand === "--help" || subcommand === "-h" || subcommand === "help") {
-      printUsage();
-      process.exit(1);
+      printCodexUsage();
+      return;
     }
     try {
       const codex = resolveCodexCommand(subcommand, argv.slice(2));
@@ -315,8 +395,8 @@ function main() {
   if (command === "runtime") {
     const subcommand = argv[1] ?? "";
     if (!subcommand || subcommand === "--help" || subcommand === "-h" || subcommand === "help") {
-      printUsage();
-      process.exit(1);
+      printRuntimeUsage();
+      return;
     }
     try {
       const runtime = resolveRuntimeCommand(subcommand, argv.slice(2));
@@ -331,8 +411,8 @@ function main() {
   if (command === "project") {
     const subcommand = argv[1] ?? "";
     if (!subcommand || subcommand === "--help" || subcommand === "-h" || subcommand === "help") {
-      printUsage();
-      process.exit(1);
+      printProjectUsage();
+      return;
     }
     try {
       const project = resolveProjectCommand(subcommand, argv.slice(2));

@@ -279,7 +279,7 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
       repair_layer_meta: parseJsonOrNull(meta.repair_layer_meta_json),
       cycles: readRows(db, `
         SELECT cycle_id, session_id, state, outcome, branch_name, dor_state,
-               continuity_rule, continuity_base_branch, continuity_latest_cycle_branch, updated_at
+               continuity_rule, continuity_base_branch, continuity_latest_cycle_branch, continuity_decision_by, updated_at
         FROM cycles
         ORDER BY cycle_id ASC
       `),

@@ -50,6 +50,7 @@ Session start:
 Committing execution:
 - Work must belong to a cycle (`SPEC-R03`)
 - DoR core/adaptive checks must be satisfied before implementation (`SPEC-R04`)
+- Shared or high-risk changes require a declared `usage_matrix` before implementation and must not close on single-usage evidence only
 - Drift suspicion requires `drift-check` (`SPEC-R05`)
 - `drift-check` uses generic gating as the canonical drift gate; its top-level hook result is authoritative when it returns `stop`
 - Cycle continuity rule must be explicit (`R1`/`R2`/`R3`, `SPEC-R06`)
@@ -78,6 +79,17 @@ Merge/review:
 Incident handling:
 - Severity-based incident policy applies (`SPEC-R10`)
 
+## Governance Roles
+
+- Owner: decides purpose, priority, and acceptance of a governed session, cycle, decision, or incident.
+- Steward: keeps metadata quality, definitions, freshness, lifecycle, and source-of-truth declarations coherent.
+- Maintainer: implements workflow contracts, runtime services, schemas, migrations, and verification scripts.
+- Agent: reads the required context, executes through gates, and records traceable work without bypassing admission.
+- Reviewer: checks risks, tests, traceability, contract stability, and source-of-truth consistency before validation.
+- Architect: maintains ADRs, information model boundaries, layering principles, and federation constraints.
+
+Before mutation, agents must read the minimal operational sources above, then inspect the active session/cycle artifact when relevant. Missing owner, steward, lifecycle, source-of-truth, or source-mode metadata must remain visible as a finding or explicit legacy tolerance.
+
 ## Stop Conditions (Quick)
 - Branch mapping ambiguous/unmapped in COMMITTING
 - Structural/architecture, DB schema, security, or medium/high-impact CR without explicit decision
@@ -98,3 +110,4 @@ Incident handling:
 - Confirm snapshot freshness
 - Confirm intended mode and required gates
 - Confirm first implementation step before durable write
+- Confirm `usage_matrix` status when the touched surface is shared or high-risk

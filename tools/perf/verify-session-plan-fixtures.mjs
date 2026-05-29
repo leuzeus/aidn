@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -66,14 +67,15 @@ function readText(filePath) {
 }
 
 function main() {
+  let tempTarget = null;
   try {
     const args = parseArgs(process.argv.slice(2));
     const repoRoot = process.cwd();
     const sourceTarget = path.resolve(repoRoot, args.target);
-    const tempTarget = path.resolve(repoRoot, args.tempRoot);
+    tempTarget = path.resolve(repoRoot, args.tempRoot);
     const sqliteFile = path.resolve(tempTarget, args.sqliteFile);
 
-    fs.rmSync(tempTarget, { recursive: true, force: true });
+    removePathWithRetry(tempTarget);
     copyFixture(sourceTarget, tempTarget);
 
     const dualResult = runJson("tools/runtime/session-plan.mjs", [
@@ -160,6 +162,11 @@ function main() {
     assert(fs.existsSync(backlogPath), "missing promoted backlog file");
     const currentStateText = readText(currentStatePath);
     const backlogText = readText(backlogPath);
+    assert(currentStateText.includes("active_session: S401"), "CURRENT-STATE missing active_session update");
+    assert(currentStateText.includes("contract_version: critical-markdown-v1"), "CURRENT-STATE missing explicit contract version");
+    assert(currentStateText.includes("source_of_truth:"), "CURRENT-STATE missing source_of_truth");
+    assert(currentStateText.includes("source_mode: explicit"), "CURRENT-STATE missing source_mode");
+    assert(currentStateText.includes("lifecycle_status: refreshed"), "CURRENT-STATE missing lifecycle_status");
     assert(currentStateText.includes("active_backlog: backlog/BL-S401-session-planning.md"), "CURRENT-STATE missing active_backlog update");
     assert(currentStateText.includes("backlog_status: promoted"), "CURRENT-STATE missing backlog_status update");
     assert(currentStateText.includes("backlog_next_step: select the coordinating agent and dispatch scope"), "CURRENT-STATE missing merged backlog_next_step update");
@@ -191,10 +198,14 @@ function main() {
     }
 
     assert(dualResult.db_first_applied === true, "expected dual promotion to apply db-first writes");
+    assert(dualResult.session_plan_diagnostic?.scope === "runtime-session-plan", "expected dual promotion to expose session-plan diagnostic");
+    assert(dualResult.session_plan_diagnostic?.backlog_operation === "created", "expected dual promotion to expose created backlog diagnostic");
     assert(Array.isArray(dualResult.db_first_writes) && dualResult.db_first_writes.length === 2, "expected two db-first writes for promote");
     assert(dualResult.backlog_operation === "created", "initial promotion should create the shared backlog");
     assert(draftResult.db_first_applied === false, "draft-only session-plan should not apply db-first writes");
+    assert(draftResult.session_plan_diagnostic?.promoted === false, "draft-only session-plan should expose non-promoted diagnostic");
     assert(updateResult.db_first_applied === true, "merged promotion should still apply db-first writes");
+    assert(updateResult.session_plan_diagnostic?.backlog_operation === "updated", "merged promotion should expose updated backlog diagnostic");
     assert(Array.isArray(updateResult.db_first_writes) && updateResult.db_first_writes.length === 2, "expected two db-first writes for backlog update");
     assert(updateResult.backlog_operation === "updated", "second promotion should update the shared backlog");
     assert(backlogArtifact && backlogArtifact.path === "backlog/BL-S401-session-planning.md", "missing backlog artifact in sqlite store");
@@ -231,6 +242,10 @@ function main() {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
+  } finally {
+    if (tempTarget) {
+      removePathWithRetry(tempTarget);
+    }
   }
 }
 

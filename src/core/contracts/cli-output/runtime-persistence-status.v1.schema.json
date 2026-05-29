@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-persistence-status.v1",
+  "title": "aidn runtime persistence-status --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime persistence-status --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "ts",
+    "target_root",
+    "runtime_persistence",
+    "source_of_truth",
+    "metadata",
+    "runtime_backend",
+    "project_context",
+    "sqlite_scope",
+    "workspace",
+    "resolved_projection_backend",
+    "runtime_backend_adoption_plan",
+    "operations"
+  ],
+  "properties": {
+    "ts": { "type": "string" },
+    "target_root": { "type": "string" },
+    "runtime_persistence": { "type": "object", "additionalProperties": true },
+    "source_of_truth": { "type": "object", "additionalProperties": true },
+    "metadata": { "type": "object", "additionalProperties": true },
+    "runtime_backend": { "type": "object", "additionalProperties": true },
+    "project_context": {
+      "type": "object",
+      "required": [
+        "project_id",
+        "workspace_id",
+        "worktree_id",
+        "runtime_scope_id",
+        "identity_source",
+        "is_legacy_scope"
+      ],
+      "additionalProperties": true
+    },
+    "project_context_diagnostic": { "type": "object", "additionalProperties": true },
+    "sqlite_scope": { "type": "string" },
+    "sqlite_scope_reason": { "type": "string" },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "resolved_projection_backend": { "type": "object", "additionalProperties": true },
+    "runtime_backend_adoption_plan": { "type": "object", "additionalProperties": true },
+    "runtime_backend_diagnostic": { "type": "object", "additionalProperties": true },
+    "runtime_structures": {
+      "type": "object",
+      "properties": {
+        "selected_backend": { "type": "string" },
+        "active": { "type": "object", "additionalProperties": true },
+        "sqlite": { "type": "object", "additionalProperties": true },
+        "postgres": { "type": "object", "additionalProperties": true },
+        "migration": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
+    "schema_status": { "type": "string" },
+    "schema_version": { "type": ["string", "number", "null"] },
+    "operations": {
+      "type": "object",
+      "required": [
+        "local_first",
+        "backend",
+        "backend_source",
+        "schema_status",
+        "source_of_truth_status",
+        "metadata_status",
+        "connection_secret_exposed",
+        "backup_command",
+        "migration_command",
+        "recommended_actions"
+      ],
+      "properties": {
+        "local_first": { "type": "boolean" },
+        "backend": { "type": "string" },
+        "backend_source": { "type": "string" },
+        "schema_status": { "type": "string" },
+        "source_of_truth_status": { "type": "string" },
+        "metadata_status": { "type": "string" },
+        "compatibility_status": { "type": "string" },
+        "schema_version": { "type": ["string", "number", "null"] },
+        "pending_migration_count": { "type": "number" },
+        "applied_migration_count": { "type": "number" },
+        "sqlite_scope": { "type": "string" },
+        "sqlite_scope_reason": { "type": "string" },
+        "resolved_projection_scope": { "type": "string" },
+        "connection_ref": { "type": "string" },
+        "connection_secret_exposed": { "type": "boolean" },
+        "freshness_status": { "type": "string" },
+        "backup_command": { "type": "string" },
+        "migration_command": { "type": "string" },
+        "recommended_actions": { "type": "array" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

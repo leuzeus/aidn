@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-handoff-admit.v1",
+  "title": "aidn runtime handoff-admit --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime handoff-admit --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "packet_file",
+    "admission_status",
+    "admitted",
+    "recommended_action",
+    "recommended_next_agent_role",
+    "route",
+    "status",
+    "workspace",
+    "packet",
+    "issues",
+    "warnings",
+    "prioritized_artifacts"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "packet_file": { "type": "string" },
+    "admission_status": { "type": "string" },
+    "admitted": { "type": "boolean" },
+    "recommended_action": { "type": "string" },
+    "recommended_next_agent_role": { "type": "string" },
+    "next_agent_goal": { "type": "string" },
+    "route": {
+      "type": "object",
+      "required": [
+        "role",
+        "action",
+        "goal",
+        "source",
+        "reason",
+        "stop_required"
+      ],
+      "properties": {
+        "role": { "type": "string" },
+        "action": { "type": "string" },
+        "goal": { "type": "string" },
+        "source": { "type": "string" },
+        "reason": { "type": "string" },
+        "stop_required": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "status": {
+      "type": "object",
+      "required": [
+        "admission_status",
+        "admitted",
+        "issues",
+        "warnings"
+      ],
+      "properties": {
+        "admission_status": { "type": "string" },
+        "admitted": { "type": "boolean" },
+        "issues": { "type": "array" },
+        "warnings": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "shared_state_backend": { "type": ["object", "null"], "additionalProperties": true },
+    "shared_runtime_validation": { "type": "object", "additionalProperties": true },
+    "packet": {
+      "type": "object",
+      "required": [
+        "contract_version",
+        "updated_at",
+        "handoff_status",
+        "recommended_next_agent_role",
+        "recommended_next_agent_action",
+        "next_agent_goal",
+        "mode",
+        "branch_kind",
+        "active_session",
+        "active_cycle",
+        "runtime_state_mode",
+        "repair_layer_status",
+        "current_state_freshness"
+      ],
+      "properties": {
+        "contract_version": { "type": "string" },
+        "updated_at": { "type": "string" },
+        "handoff_status": { "type": "string" },
+        "recommended_next_agent_role": { "type": "string" },
+        "recommended_next_agent_action": { "type": "string" },
+        "next_agent_goal": { "type": "string" },
+        "mode": { "type": "string" },
+        "branch_kind": { "type": "string" },
+        "active_session": { "type": "string" },
+        "active_cycle": { "type": "string" },
+        "runtime_state_mode": { "type": "string" },
+        "repair_layer_status": { "type": "string" },
+        "current_state_freshness": { "type": "string" },
+        "source_of_truth": { "type": "string" },
+        "source_mode": { "type": "string" },
+        "lifecycle_status": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "transition_policy": { "type": "object", "additionalProperties": true },
+    "prioritized_artifacts": { "type": "array" },
+    "consistency": { "type": "object", "additionalProperties": true },
+    "issues": { "type": "array" },
+    "warnings": { "type": "array" }
+  },
+  "additionalProperties": true
+}

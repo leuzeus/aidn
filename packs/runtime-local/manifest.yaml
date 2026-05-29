@@ -1,5 +1,5 @@
 name: runtime-local
-version: 0.5.1
+version: 0.6.0
 depends_on: [core]
 
 install:

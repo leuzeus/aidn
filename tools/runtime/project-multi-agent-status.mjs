@@ -2,6 +2,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { AGENT_ROLES } from "../../src/core/agents/agent-role-model.mjs";
+import { deriveGovernedRuntimeArtifactMetadata } from "../../src/application/runtime/governed-runtime-artifact-metadata-lib.mjs";
 import { assessIntegrationRisk } from "../../src/application/runtime/integration-risk-service.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
@@ -56,6 +57,28 @@ function printUsage() {
   console.log("  node tools/runtime/project-multi-agent-status.mjs --target . --json");
 }
 
+function deriveMultiAgentStatusDiagnostic(result) {
+  return {
+    scope: "project-multi-agent-status",
+    state_mode: String(result?.state_mode ?? "unknown").trim() || "unknown",
+    recommended_role: String(result?.recommendation?.role ?? "unknown").trim() || "unknown",
+    recommended_action: String(result?.recommendation?.action ?? "unknown").trim() || "unknown",
+    roster_pass: result?.roster_verification?.pass === true,
+    arbitration_required: result?.arbitration?.arbitration_required === true,
+    preferred_decision: String(result?.arbitration?.preferred_decision ?? "none").trim() || "none",
+    integration_strategy: String(result?.integration_risk?.recommended_strategy ?? "unknown").trim() || "unknown",
+    adapter_count: Number(result?.observability?.adapter_count ?? 0) || 0,
+    runnable_adapter_count: Number(result?.observability?.runnable_adapter_count ?? 0) || 0,
+    environment_status: String(result?.observability?.environment_status ?? "unknown").trim() || "unknown",
+    role_coverage_status: String(result?.observability?.role_coverage_status ?? "unknown").trim() || "unknown",
+    routing_status: String(result?.observability?.routing_status ?? "unknown").trim() || "unknown",
+    coordination_history_status: String(result?.observability?.coordination_history_status ?? "unknown").trim() || "unknown",
+    written: result?.written === true,
+    summary: `multi-agent status recommends ${String(result?.recommendation?.role ?? "unknown").trim() || "unknown"} + ${String(result?.recommendation?.action ?? "unknown").trim() || "unknown"}`,
+    recommended_command: "aidn runtime coordinator-next-action --json",
+  };
+}
+
 function findSelectionPreview(selectionSummary, recommendation) {
   return selectionSummary.summary.auto_selection_preview.find((item) => (
     item.role === recommendation.role
@@ -79,6 +102,23 @@ function summarizeAdapterEnvironment(entries = []) {
     }
   }
   return summary;
+}
+
+function countRunnableAdapters(entries = []) {
+  return entries.filter((entry) => {
+    const status = String(entry.health_status ?? "").trim().toLowerCase();
+    return status === "ready" || status === "degraded";
+  }).length;
+}
+
+function deriveEnvironmentCompatibilityStatus(summary) {
+  if ((summary.unavailable ?? 0) > 0) {
+    return "blocked";
+  }
+  if ((summary.degraded ?? 0) > 0) {
+    return "degraded";
+  }
+  return "healthy";
 }
 
 function buildRoleCoverage(entries = []) {
@@ -153,6 +193,8 @@ function buildMarkdown({
   integrationRisk,
   roleCoverage,
   effectiveRecommendedRoleCoverage,
+  observability,
+  governanceMetadata,
   out,
 }) {
   const selectionPreview = findSelectionPreview(selectionSummary, coordinator.recommendation);
@@ -176,6 +218,11 @@ function buildMarkdown({
   lines.push("");
   lines.push("## Summary");
   lines.push("");
+  lines.push(`source_of_truth: ${governanceMetadata.source_of_truth}`);
+  lines.push(`source_mode: ${governanceMetadata.source_mode}`);
+  lines.push(`lifecycle_status: ${governanceMetadata.lifecycle_status}`);
+  lines.push(`owner: ${governanceMetadata.owner}`);
+  lines.push(`steward: ${governanceMetadata.steward}`);
   lines.push(`updated_at: ${new Date().toISOString()}`);
   lines.push(`recommended_role: ${coordinator.recommendation.role}`);
   lines.push(`recommended_action: ${coordinator.recommendation.action}`);
@@ -203,6 +250,10 @@ function buildMarkdown({
   lines.push(`arbitration_required: ${arbitration.arbitration_required ? "yes" : "no"}`);
   lines.push(`arbitration_status: ${arbitration.arbitration_status ?? "ok"}`);
   lines.push(`preferred_decision: ${arbitration.preferred_decision}`);
+  lines.push(`observability_environment_status: ${observability.environment_status}`);
+  lines.push(`observability_runnable_adapter_count: ${observability.runnable_adapter_count}`);
+  lines.push(`observability_role_coverage_status: ${observability.role_coverage_status}`);
+  lines.push(`observability_routing_status: ${observability.routing_status}`);
   lines.push("");
   lines.push("## Coordinator Recommendation");
   lines.push("");
@@ -300,6 +351,10 @@ function buildMarkdown({
   lines.push(`- total_dispatches: ${coordinationSummary.summary.total_dispatches}`);
   lines.push(`- arbitration_count: ${coordinationSummary.summary.arbitration_count}`);
   lines.push(`- last_arbitration_decision: ${coordinationSummary.summary.last_arbitration_decision}`);
+  lines.push(`- observability_environment_status: ${observability.environment_status}`);
+  lines.push(`- observability_runnable_adapter_count: ${observability.runnable_adapter_count}`);
+  lines.push(`- observability_role_coverage_status: ${observability.role_coverage_status}`);
+  lines.push(`- observability_routing_status: ${observability.routing_status}`);
   lines.push("");
   lines.push("## Priority Reads");
   lines.push("");
@@ -328,11 +383,20 @@ export async function projectMultiAgentStatus({
   rosterFile = "docs/audit/AGENT-ROSTER.md",
   coordinationHistoryFile = ".aidn/runtime/context/coordination-history.ndjson",
   out = "docs/audit/MULTI-AGENT-STATUS.md",
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
-  const coordinator = computeCoordinatorNextAction({
+  const governanceMetadata = deriveGovernedRuntimeArtifactMetadata({
+    runtimeStateMode: effectiveStateMode,
+    owner: "aidn-runtime",
+    steward: "aidn-runtime",
+  });
+  const coordinator = await computeCoordinatorNextAction({
     targetRoot: absoluteTargetRoot,
+    sharedCoordination,
+    sharedCoordinationOptions,
   });
   const integrationRisk = assessIntegrationRisk({
     targetRoot: absoluteTargetRoot,
@@ -340,6 +404,8 @@ export async function projectMultiAgentStatus({
   const arbitration = await suggestCoordinatorArbitration({
     targetRoot: absoluteTargetRoot,
     agentRosterFile: rosterFile,
+    sharedCoordination,
+    sharedCoordinationOptions,
   }).then((result) => ({
     arbitration_status: "ok",
     ...result,
@@ -373,10 +439,21 @@ export async function projectMultiAgentStatus({
     targetRoot: absoluteTargetRoot,
     rosterFile,
   });
-  const coordinationSummary = projectCoordinationSummary({
+  const coordinationSummary = await projectCoordinationSummary({
     targetRoot: absoluteTargetRoot,
     historyFile: coordinationHistoryFile,
+    sharedCoordination,
+    sharedCoordinationOptions,
   });
+  const environmentSummary = summarizeAdapterEnvironment(healthSummary.verification.entries);
+  const observability = {
+    adapter_count: healthSummary.verification.entries.length,
+    runnable_adapter_count: countRunnableAdapters(healthSummary.verification.entries),
+    environment_status: deriveEnvironmentCompatibilityStatus(environmentSummary),
+    role_coverage_status: effectiveRecommendedRoleCoverage.status,
+    routing_status: coordinator.recommendation.stop_required ? "blocked" : "ready",
+    coordination_history_status: coordinationSummary.summary.history_status,
+  };
   const outPath = path.resolve(absoluteTargetRoot, out);
   const markdown = buildMarkdown({
     coordinator,
@@ -388,6 +465,8 @@ export async function projectMultiAgentStatus({
     integrationRisk,
     roleCoverage,
     effectiveRecommendedRoleCoverage,
+    observability,
+    governanceMetadata,
     out,
   });
   const relativeOut = String(out).replace(/\\/g, "/").replace(/^docs\/audit\//i, "");
@@ -414,6 +493,7 @@ export async function projectMultiAgentStatus({
     output_file: write.path,
     written: write.written,
     state_mode: effectiveStateMode,
+    governance_metadata: governanceMetadata,
     db_first_applied: Boolean(dbFirstWrite),
     db_first_materialized: Boolean(dbFirstWrite?.materialized),
     db_first_artifact_path: dbFirstWrite?.artifact?.path ?? relativeOut,
@@ -449,6 +529,22 @@ export async function projectMultiAgentStatus({
       written: coordinationSummary.written,
       summary: coordinationSummary.summary,
     },
+    observability,
+    multi_agent_status_diagnostic: deriveMultiAgentStatusDiagnostic({
+      target_root: absoluteTargetRoot,
+      output_file: write.path,
+      written: write.written,
+      state_mode: effectiveStateMode,
+      recommendation: coordinator.recommendation,
+      integration_risk: integrationRisk,
+      arbitration,
+      observability,
+      roster_verification: {
+        pass: rosterVerification.pass,
+        issues: rosterVerification.issues,
+        warnings: rosterVerification.warnings,
+      },
+    }),
   };
 }
 

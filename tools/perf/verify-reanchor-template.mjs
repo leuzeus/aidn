@@ -62,6 +62,7 @@ function main() {
       coordinationLog: path.join(root, "scaffold", "docs_audit", "COORDINATION-LOG.md"),
       userArbitration: path.join(root, "scaffold", "docs_audit", "USER-ARBITRATION.md"),
       reanchorPrompt: path.join(root, "scaffold", "docs_audit", "REANCHOR_PROMPT.md"),
+      crashRecoveryRunbook: path.join(root, "scaffold", "docs_audit", "CRASH-RECOVERY-RUNBOOK.md"),
       artifactManifest: path.join(root, "scaffold", "docs_audit", "ARTIFACT_MANIFEST.md"),
       workflowSummary: path.join(root, "scaffold", "docs_audit", "WORKFLOW_SUMMARY.md"),
       projectWorkflow: path.join(root, "scaffold", "docs_audit", "PROJECT_WORKFLOW.md"),
@@ -80,6 +81,7 @@ function main() {
     const currentStateText = exists(files.currentState) ? readText(files.currentState) : "";
     const runtimeStateText = exists(files.runtimeState) ? readText(files.runtimeState) : "";
     const reanchorPromptText = exists(files.reanchorPrompt) ? readText(files.reanchorPrompt) : "";
+    const crashRecoveryRunbookText = exists(files.crashRecoveryRunbook) ? readText(files.crashRecoveryRunbook) : "";
 
     const checks = {
       workflow_kernel_present: exists(files.kernel),
@@ -97,6 +99,7 @@ function main() {
       coordination_log_present: exists(files.coordinationLog),
       user_arbitration_present: exists(files.userArbitration),
       reanchor_prompt_present: exists(files.reanchorPrompt),
+      crash_recovery_runbook_present: exists(files.crashRecoveryRunbook),
       artifact_manifest_present: exists(files.artifactManifest),
       summary_references_handoff_packet: workflowSummaryText.includes("HANDOFF-PACKET.md"),
       summary_references_kernel: workflowSummaryText.includes("WORKFLOW-KERNEL.md"),
@@ -107,6 +110,7 @@ function main() {
       project_workflow_references_kernel: projectWorkflowText.includes("WORKFLOW-KERNEL.md"),
       project_workflow_references_current_state: projectWorkflowText.includes("CURRENT-STATE.md"),
       project_workflow_references_reanchor_prompt: projectWorkflowText.includes("REANCHOR_PROMPT.md"),
+      project_workflow_references_crash_recovery_runbook: projectWorkflowText.includes("CRASH-RECOVERY-RUNBOOK.md"),
       index_references_handoff_packet: indexText.includes("HANDOFF-PACKET.md"),
       index_references_agent_roster: indexText.includes("AGENT-ROSTER.md"),
       index_references_agent_adapters: indexText.includes("AGENT-ADAPTERS.md"),
@@ -120,6 +124,7 @@ function main() {
       index_references_current_state: indexText.includes("CURRENT-STATE.md"),
       index_references_runtime_state: indexText.includes("RUNTIME-STATE.md"),
       index_references_integration_risk: indexText.includes("INTEGRATION-RISK.md"),
+      index_references_crash_recovery_runbook: indexText.includes("CRASH-RECOVERY-RUNBOOK.md"),
       index_references_manifest: indexText.includes("ARTIFACT_MANIFEST.md"),
       agents_references_handoff_packet: agentsText.includes("HANDOFF-PACKET.md"),
       agents_references_agent_adapters: agentsText.includes("AGENT-ADAPTERS.md"),
@@ -127,6 +132,7 @@ function main() {
       agents_references_current_state: agentsText.includes("CURRENT-STATE.md"),
       agents_references_runtime_state: agentsText.includes("RUNTIME-STATE.md"),
       agents_references_reanchor_prompt: agentsText.includes("REANCHOR_PROMPT.md"),
+      agents_references_crash_recovery_runbook: agentsText.includes("CRASH-RECOVERY-RUNBOOK.md"),
       agents_mentions_shared_planning_handoff: agentsText.includes("prefer `backlog_refs` first when `preferred_dispatch_source=shared_planning`"),
       agents_has_pre_write_gate: agentsText.includes("## Pre-Write Gate (MANDATORY)"),
       agents_mentions_apply_patch: agentsText.includes("`apply_patch`"),
@@ -136,9 +142,14 @@ function main() {
       current_state_references_runtime_state: currentStateText.includes("RUNTIME-STATE.md"),
       runtime_state_references_handoff_packet: runtimeStateText.includes("HANDOFF-PACKET.md"),
       runtime_state_mentions_freshness: runtimeStateText.includes("current_state_freshness"),
+      reanchor_prompt_references_crash_recovery_runbook: reanchorPromptText.includes("CRASH-RECOVERY-RUNBOOK.md"),
       reanchor_prompt_mentions_dispatch_source: reanchorPromptText.includes("preferred dispatch source"),
       reanchor_prompt_mentions_shared_planning_candidate: reanchorPromptText.includes("shared planning candidate readiness/alignment"),
       reanchor_prompt_mentions_backlog_refs: reanchorPromptText.includes("backlog_refs"),
+      crash_recovery_runbook_mentions_skill: crashRecoveryRunbookText.includes("`crash-recovery` skill"),
+      crash_recovery_runbook_mentions_handoff_admit: crashRecoveryRunbookText.includes("handoff-admit"),
+      crash_recovery_runbook_mentions_session_plan_promote: crashRecoveryRunbookText.includes("session-plan --target . --session-id S###"),
+      crash_recovery_runbook_mentions_reanchor: crashRecoveryRunbookText.includes("shared-runtime-reanchor"),
       codex_online_references_handoff_packet: codexOnlineText.includes("HANDOFF-PACKET.md"),
       codex_online_references_kernel: codexOnlineText.includes("WORKFLOW-KERNEL.md"),
       codex_online_references_current_state: codexOnlineText.includes("CURRENT-STATE.md"),

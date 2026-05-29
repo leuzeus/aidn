@@ -1,5 +1,7 @@
 import path from "node:path";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
+import { resolvePromotedSharedPlanningContext } from "./shared-planning-resolution-service.mjs";
+import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { resolveBranchMapping } from "../../lib/workflow/branch-mapping-lib.mjs";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
@@ -31,12 +33,19 @@ function makeResult(base, overrides = {}) {
     active_cycle: base.active_cycle,
     session_branch: base.session_branch,
     latest_active_cycle_branch: base.latest_active_cycle_branch,
+    active_backlog: base.active_backlog,
+    backlog_status: base.backlog_status,
+    backlog_next_step: base.backlog_next_step,
+    backlog_selected_execution_scope: base.backlog_selected_execution_scope,
+    planning_arbitration_status: base.planning_arbitration_status,
+    shared_planning_source: base.shared_planning_source ?? "current-state",
     continuity_rule: overrides.continuity_rule ?? null,
     continuity_base_branch: overrides.continuity_base_branch ?? null,
     required_user_choice: overrides.required_user_choice ?? [],
     blocking_reasons: overrides.blocking_reasons ?? [],
     warnings: overrides.warnings ?? [],
     recommended_next_action: overrides.recommended_next_action ?? null,
+    workspace: overrides.workspace ?? base.workspace ?? null,
   };
 }
 
@@ -214,11 +223,35 @@ function resolveLatestSessionCycle(targetSession, openCycles) {
   return ownerCycles[ownerCycles.length - 1];
 }
 
-export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) {
+export async function runCycleCreateAdmitUseCase({
+  targetRoot,
+  mode = "COMMITTING",
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
+} = {}) {
   const gitAdapter = createLocalGitAdapter();
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+    gitAdapter,
+  });
   const currentState = readCurrentState(absoluteTargetRoot);
+  const sharedPlanning = await resolvePromotedSharedPlanningContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    currentState,
+    sharedCoordination,
+    sharedCoordinationOptions,
+  });
+  const effectiveCurrentState = {
+    ...currentState,
+    active_backlog: sharedPlanning.active_backlog,
+    backlog_status: sharedPlanning.backlog_status,
+    backlog_next_step: sharedPlanning.backlog_next_step,
+    backlog_selected_execution_scope: sharedPlanning.backlog_selected_execution_scope,
+    planning_arbitration_status: sharedPlanning.planning_arbitration_status,
+  };
   const auditRoot = currentState.audit_root;
   const sourceBranch = readSourceBranch(absoluteTargetRoot);
   const branch = gitAdapter.getCurrentBranch(absoluteTargetRoot);
@@ -236,14 +269,14 @@ export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) 
     cycles,
   });
   const targetSession = resolveTargetSession({
-    currentState,
+    currentState: effectiveCurrentState,
     sessions,
     branchKind,
     mapping,
   });
   const latestActiveCycle = resolveLatestSessionCycle(targetSession, openCycles);
   const sessionBranch = targetSession?.metadata.session_branch
-    ?? (findSessionFile(auditRoot, currentState.active_session) ? currentState.session_branch : currentState.session_branch)
+    ?? (findSessionFile(auditRoot, effectiveCurrentState.active_session) ? effectiveCurrentState.session_branch : effectiveCurrentState.session_branch)
     ?? "none";
 
   const base = {
@@ -253,15 +286,17 @@ export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) 
     branch_kind: branchKind,
     source_branch: sourceBranch,
     mode,
-    active_session: String(currentState.active_session ?? "none"),
-    active_cycle: String(currentState.active_cycle ?? "none"),
+    active_session: String(effectiveCurrentState.active_session ?? "none"),
+    active_cycle: String(effectiveCurrentState.active_cycle ?? "none"),
     session_branch: sessionBranch,
     latest_active_cycle_branch: latestActiveCycle?.branch_name ?? "none",
-    active_backlog: String(currentState.active_backlog ?? "none"),
-    backlog_status: String(currentState.backlog_status ?? "unknown"),
-    backlog_next_step: String(currentState.backlog_next_step ?? "unknown"),
-    backlog_selected_execution_scope: String(currentState.backlog_selected_execution_scope ?? "none"),
-    planning_arbitration_status: String(currentState.planning_arbitration_status ?? "none"),
+    active_backlog: String(effectiveCurrentState.active_backlog ?? "none"),
+    backlog_status: String(effectiveCurrentState.backlog_status ?? "unknown"),
+    backlog_next_step: String(effectiveCurrentState.backlog_next_step ?? "unknown"),
+    backlog_selected_execution_scope: String(effectiveCurrentState.backlog_selected_execution_scope ?? "none"),
+    planning_arbitration_status: String(effectiveCurrentState.planning_arbitration_status ?? "none"),
+    shared_planning_source: sharedPlanning.shared_planning_source,
+    workspace,
   };
 
   if ([AIDN_BRANCH_KIND.UNKNOWN, AIDN_BRANCH_KIND.OTHER].includes(branchKind)) {
@@ -278,7 +313,7 @@ export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) 
 
   if (branchKind === AIDN_BRANCH_KIND.CYCLE || branchKind === AIDN_BRANCH_KIND.INTERMEDIATE) {
     if (branch === latestActiveCycle?.branch_name) {
-    return applySharedPlanningCycleCreateGate(base, currentState, applyModeGate(base, makeResult(base, {
+    return applySharedPlanningCycleCreateGate(base, effectiveCurrentState, applyModeGate(base, makeResult(base, {
       action: "proceed_r1_strict_chain",
       continuity_rule: "R1_STRICT_CHAIN",
       continuity_base_branch: branch,
@@ -301,7 +336,7 @@ export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) 
   }
 
   if (branchKind === AIDN_BRANCH_KIND.SESSION) {
-    return applySharedPlanningCycleCreateGate(base, currentState, applyModeGate(base, makeResult(base, {
+    return applySharedPlanningCycleCreateGate(base, effectiveCurrentState, applyModeGate(base, makeResult(base, {
       action: "proceed_r2_session_base_with_import",
       continuity_rule: "R2_SESSION_BASE_WITH_IMPORT",
       continuity_base_branch: branch,
@@ -311,7 +346,7 @@ export function runCycleCreateAdmitUseCase({ targetRoot, mode = "COMMITTING" }) 
 
   if (branchKind === AIDN_BRANCH_KIND.SOURCE) {
     if (!latestActiveCycle && (!sessionBranch || sessionBranch === "none")) {
-      return applySharedPlanningCycleCreateGate(base, currentState, applyModeGate(base, makeResult(base, {
+      return applySharedPlanningCycleCreateGate(base, effectiveCurrentState, applyModeGate(base, makeResult(base, {
         action: "create_cycle_allowed",
         continuity_rule: "R2_SESSION_BASE_WITH_IMPORT",
         continuity_base_branch: branch,

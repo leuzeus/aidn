@@ -131,12 +131,12 @@ function printUsage() {
   console.log("  node tools/perf/index-sync.mjs --target . --json --dry-run");
 }
 
-function main() {
+async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
     const artifactProjector = createArtifactProjectorAdapter();
-    const result = runIndexSyncUseCase({
+    const result = await runIndexSyncUseCase({
       args,
       targetRoot,
       artifactProjector,
@@ -170,4 +170,4 @@ function main() {
   }
 }
 
-main();
+await main();

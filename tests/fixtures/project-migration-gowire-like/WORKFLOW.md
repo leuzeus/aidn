@@ -325,6 +325,28 @@ Hard stop:
   1. relocate change to patch/mutation/component layer, or
   2. open an explicit exception CR with impact >= medium and user approval.
 
+## Cross-Usage Convergence Policy (Project Policy, adapter extension to `SPEC-R04` / `SPEC-R11`)
+
+- Treat cross-usage convergence as a validation rule for shared or high-risk implementation surfaces.
+- A shared or high-risk change SHOULD declare a minimal `usage_matrix` before `IMPLEMENTING`.
+- A shared or high-risk change MUST NOT be considered stable from single-usage evidence only.
+- Default minimum usage classes:
+  - shared surface: `2`
+  - high-risk surface: `3`
+- At least one non-primary usage should exercise a different caller, business path, or contract shape.
+- High-risk changes should include at least one context, edge, or adversarial usage.
+- If a fix resolves the triggering scenario but regresses another declared usage class, treat it as overfitted and block closure.
+- Prefer reusing canonical scenarios for shared surfaces instead of multiplying near-duplicate tests.
+- Shared-surface defaults apply to:
+  - `runtime`
+  - `hydration`
+  - `dispatch`
+  - `codegen`
+- Expected evidence artifacts:
+  - `plan.md`
+  - `traceability.md`
+  - `status.md`
+
 ## Session Close & PR Review
 
 - Session close and PR review gates are canonical in `docs/audit/SPEC.md` (`SPEC-R07`, `SPEC-R08`).

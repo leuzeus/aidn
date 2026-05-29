@@ -69,6 +69,7 @@ Rules:
 5) Update traceability.md:
 - Ensure each new/changed REQ has a TEST or justification.
 - If tests not ready yet: add as planned, and add a validation plan note.
+- If the delta changes a shared or high-risk surface, update the cycle `usage_matrix` so alternate/context usages remain explicit.
 
 6) If code already diverged:
 - Recommend drift-check

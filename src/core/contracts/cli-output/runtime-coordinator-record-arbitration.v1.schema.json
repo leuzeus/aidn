@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-coordinator-record-arbitration.v1",
+  "title": "aidn runtime coordinator-record-arbitration --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime coordinator-record-arbitration --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "workspace",
+    "shared_coordination_backend",
+    "shared_coordination_sync",
+    "state_mode",
+    "arbitration_file",
+    "coordination_history_file",
+    "coordination_summary_file",
+    "arbitration_log_appended",
+    "arbitration_db_first_applied",
+    "arbitration_db_first_materialized",
+    "coordination_history_appended",
+    "coordination_summary_written",
+    "arbitration_event",
+    "coordination_summary",
+    "record_arbitration_diagnostic"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "shared_coordination_backend": { "type": "object", "additionalProperties": true },
+    "shared_coordination_sync": { "type": ["object", "null"], "additionalProperties": true },
+    "state_mode": { "type": "string" },
+    "arbitration_file": { "type": "string" },
+    "coordination_history_file": { "type": "string" },
+    "coordination_summary_file": { "type": "string" },
+    "arbitration_log_appended": { "type": "boolean" },
+    "arbitration_db_first_applied": { "type": "boolean" },
+    "arbitration_db_first_materialized": { "type": "boolean" },
+    "coordination_history_appended": { "type": "boolean" },
+    "coordination_summary_written": { "type": "boolean" },
+    "arbitration_event": { "type": "object", "additionalProperties": true },
+    "coordination_summary": { "type": ["object", "null"], "additionalProperties": true },
+    "record_arbitration_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "decision",
+        "state_mode",
+        "history_appended",
+        "arbitration_log_appended",
+        "summary_written",
+        "db_first_applied",
+        "shared_sync_status",
+        "summary",
+        "recommended_command"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "decision": { "type": "string" },
+        "state_mode": { "type": "string" },
+        "history_appended": { "type": "boolean" },
+        "arbitration_log_appended": { "type": "boolean" },
+        "summary_written": { "type": "boolean" },
+        "db_first_applied": { "type": "boolean" },
+        "shared_sync_status": { "type": "string" },
+        "summary": { "type": "string" },
+        "recommended_command": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

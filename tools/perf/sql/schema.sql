@@ -8,6 +8,7 @@ CREATE TABLE cycles (
   continuity_rule TEXT,
   continuity_base_branch TEXT,
   continuity_latest_cycle_branch TEXT,
+  continuity_decision_by TEXT,
   updated_at TEXT NOT NULL
 );
 

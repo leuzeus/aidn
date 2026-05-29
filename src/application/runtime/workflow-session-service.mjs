@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { removePathWithRetry } from "../../lib/fs/remove-path-with-retry.mjs";
 
 export function toRunId(prefix) {
   const stamp = new Date().toISOString().replace(/[-:.TZ]/g, "");
@@ -24,7 +25,7 @@ export function writeRunIdFile(filePath, runId) {
 
 export function removeRunIdFile(filePath) {
   const absolute = path.resolve(process.cwd(), filePath);
-  fs.rmSync(absolute, { force: true });
+  removePathWithRetry(absolute);
   return absolute;
 }
 

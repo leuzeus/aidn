@@ -44,6 +44,31 @@ function printUsage() {
   console.log("  node tools/runtime/verify-agent-roster.mjs --target . --json");
 }
 
+function deriveRosterDiagnostic(result) {
+  const entries = Array.isArray(result?.entries) ? result.entries : [];
+  const issues = Array.isArray(result?.issues) ? result.issues : [];
+  const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
+  const unavailableCount = entries.filter((entry) => entry?.health_status === "unavailable").length;
+  const degradedCount = entries.filter((entry) => entry?.health_status === "degraded").length;
+  return {
+    scope: "agent-roster",
+    state_mode: String(result?.state_mode ?? "unknown").trim() || "unknown",
+    roster_found: result?.roster_found === true,
+    pass: result?.pass === true,
+    entry_count: entries.length,
+    issue_count: issues.length,
+    warning_count: warnings.length,
+    unavailable_adapter_count: unavailableCount,
+    degraded_adapter_count: degradedCount,
+    summary: result?.pass === true
+      ? `agent roster verification passed for ${entries.length} entry(ies)`
+      : `agent roster verification found ${issues.length} issue(s)`,
+    recommended_action: result?.pass === true
+      ? "agent roster is ready for adapter selection"
+      : "fix roster issues before relying on runtime adapter selection",
+  };
+}
+
 function uniq(values) {
   return [...new Set(values)];
 }
@@ -283,7 +308,7 @@ export async function verifyAgentRoster({
     }
   }
 
-  return {
+  const result = {
     target_root: absoluteTargetRoot,
     state_mode: effectiveStateMode,
     db_backed_mode: dbBackedMode,
@@ -302,6 +327,10 @@ export async function verifyAgentRoster({
     issues,
     warnings,
     pass: issues.length === 0,
+  };
+  return {
+    ...result,
+    roster_diagnostic: deriveRosterDiagnostic(result),
   };
 }
 

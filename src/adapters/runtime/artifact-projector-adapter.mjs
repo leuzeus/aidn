@@ -3,6 +3,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { detectStructureProfile } from "../../lib/workflow/structure-profile-lib.mjs";
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
+import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifact-parser-lib.mjs";
 import { assertArtifactProjector } from "../../core/ports/artifact-projector-port.mjs";
 import { buildRepairLayerService } from "../../application/runtime/repair-layer-service.mjs";
 import { buildRepairLayerInputDigest, buildRepairLayerMeta } from "../../application/runtime/repair-layer-payload-lib.mjs";
@@ -54,11 +55,26 @@ function toIsoFromStat(stats) {
   return new Date(stats.mtimeMs).toISOString();
 }
 
+function readPreciseMtimeNs(absolutePath, fallbackStats) {
+  try {
+    const bigintStats = fs.statSync(absolutePath, { bigint: true });
+    if (typeof bigintStats?.mtimeNs === "bigint") {
+      return bigintStats.mtimeNs.toString();
+    }
+    if (typeof bigintStats?.mtimeNs === "number" && Number.isFinite(bigintStats.mtimeNs)) {
+      return String(Math.trunc(bigintStats.mtimeNs));
+    }
+  } catch {
+    // Fall back to the regular stats path below.
+  }
+  return String(Math.round(Number(fallbackStats?.mtimeMs ?? 0) * 1_000_000));
+}
+
 function normalizeKey(raw) {
   return raw.trim().toLowerCase().replace(/\s+/g, "_");
 }
 
-function parseStatusMetadata(content) {
+function parseStatusMetadata(content, options = {}) {
   const wanted = new Set([
     "state",
     "outcome",
@@ -71,18 +87,19 @@ function parseStatusMetadata(content) {
     "continuity_decision_by",
     "last_updated",
   ]);
+  const analysis = analyzeStructuredArtifact(content, {
+    relativePath: options.relativePath ?? "",
+    classification: {
+      kind: "cycle_status",
+      subtype: "status",
+    },
+  });
   const result = {};
-  const lines = content.replace(/\r\n/g, "\n").split("\n");
-  for (const line of lines) {
-    const match = line.match(/^([A-Za-z_][A-Za-z0-9_ ]*):\s*(.*)$/);
-    if (!match) {
-      continue;
-    }
-    const key = normalizeKey(match[1]);
+  for (const [key, value] of Object.entries(analysis.key_values ?? {})) {
     if (!wanted.has(key)) {
       continue;
     }
-    result[key] = match[2].trim();
+    result[key] = String(value ?? "").trim();
   }
   return result;
 }
@@ -160,6 +177,49 @@ function inferArtifactOwnership(relativePath) {
   return {
     session_id: sessionMatch ? sessionMatch[1].toUpperCase() : null,
     cycle_id: cycleMatch ? extractCycleId(cycleMatch[1]) : null,
+  };
+}
+
+function normalizeEntityId(value, prefix) {
+  const match = String(value ?? "").trim().toUpperCase().match(new RegExp(`\\b(${prefix}\\d+)\\b`, "i"));
+  return match ? match[1].toUpperCase() : null;
+}
+
+function deriveOwnershipFromCanonical(relativePath, ownership, canonical) {
+  if ((ownership?.session_id || ownership?.cycle_id) || !canonical || typeof canonical !== "object") {
+    return {
+      ownership,
+      metadata: null,
+    };
+  }
+  const normalized = String(relativePath ?? "").replace(/\\/g, "/");
+  if (normalized.includes("/")) {
+    return {
+      ownership,
+      metadata: null,
+    };
+  }
+  const runtimeContext = canonical?.derived_runtime_context && typeof canonical.derived_runtime_context === "object"
+    ? canonical.derived_runtime_context
+    : null;
+  const sessionId = normalizeEntityId(runtimeContext?.active_session, "S");
+  const cycleId = normalizeEntityId(runtimeContext?.active_cycle, "C");
+  if (!sessionId && !cycleId) {
+    return {
+      ownership,
+      metadata: null,
+    };
+  }
+  return {
+    ownership: {
+      session_id: sessionId,
+      cycle_id: cycleId,
+    },
+    metadata: {
+      source_mode: "inferred",
+      entity_confidence: 0.8,
+      legacy_origin: "runtime_artifact_content",
+    },
   };
 }
 
@@ -314,7 +374,11 @@ function buildCycleTables(auditRoot) {
     const statusPath = path.join(cyclePath, "status.md");
     const statusExists = fs.existsSync(statusPath);
     const statusContent = statusExists ? fs.readFileSync(statusPath, "utf8") : "";
-    const metadata = statusExists ? parseStatusMetadata(statusContent) : {};
+    const metadata = statusExists
+      ? parseStatusMetadata(statusContent, {
+        relativePath: path.relative(auditRoot, statusPath).replace(/\\/g, "/"),
+      })
+      : {};
     const statusStats = statusExists ? fs.statSync(statusPath) : null;
 
     const cycleRow = {
@@ -372,9 +436,8 @@ function buildArtifactRows(auditRoot, options = {}) {
   for (const absolutePath of files) {
     const stats = fs.statSync(absolutePath);
     const raw = fs.readFileSync(absolutePath);
+    const mtimeNs = readPreciseMtimeNs(absolutePath, stats);
     const relativePath = path.relative(auditRoot, absolutePath).replace(/\\/g, "/");
-    const ownership = inferArtifactOwnership(relativePath);
-    const ownershipMetadata = inferOwnershipMetadata(relativePath, ownership);
     const classification = inferArtifactClassification(relativePath);
     const extension = path.extname(relativePath).toLowerCase();
     const textContent = extension === ".md" ? decodeUtf8OrNull(raw) : null;
@@ -384,6 +447,10 @@ function buildArtifactRows(auditRoot, options = {}) {
         classification,
       })
       : null;
+    const inferredOwnership = inferArtifactOwnership(relativePath);
+    const ownershipResolution = deriveOwnershipFromCanonical(relativePath, inferredOwnership, canonical);
+    const ownership = ownershipResolution.ownership;
+    const ownershipMetadata = ownershipResolution.metadata ?? inferOwnershipMetadata(relativePath, ownership);
     const contentPayload = embedContent
       ? encodeArtifactContent(raw)
       : { content_format: null, content: null };
@@ -396,7 +463,7 @@ function buildArtifactRows(auditRoot, options = {}) {
       classification_reason: classification.classification_reason,
       sha256: sha256Buffer(raw),
       size_bytes: stats.size,
-      mtime_ns: Math.round(stats.mtimeMs * 1_000_000),
+      mtime_ns: mtimeNs,
       session_id: ownership.session_id,
       cycle_id: ownership.cycle_id,
       source_mode: ownershipMetadata.source_mode,
@@ -474,11 +541,104 @@ function buildRunMetrics(kpiFilePath) {
     }));
 }
 
-export function stablePayloadProjection(payload) {
+const DIGEST_IGNORED_FIELDS = new Set([
+  "mtime_ns",
+]);
+
+const DIGEST_TEMPORAL_FIELDS = new Set([
+  "created_at",
+  "decided_at",
+  "ended_at",
+  "last_seen_at",
+  "started_at",
+  "updated_at",
+]);
+
+function padDatePart(value) {
+  return String(value).padStart(2, "0");
+}
+
+function formatLocalDate(date) {
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+}
+
+function normalizeDigestScalar(key, value) {
+  if (!DIGEST_TEMPORAL_FIELDS.has(key) || typeof value !== "string") {
+    return value;
+  }
+  const scalar = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(scalar)) {
+    return scalar;
+  }
+  const date = new Date(scalar);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  if (date.getHours() === 0
+    && date.getMinutes() === 0
+    && date.getSeconds() === 0
+    && date.getMilliseconds() === 0) {
+    return formatLocalDate(date);
+  }
+  return date.toISOString();
+}
+
+function stableSortValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => stableSortValue(item));
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+  const out = {};
+  for (const key of Object.keys(value).sort()) {
+    out[key] = stableSortValue(value[key]);
+  }
+  return out;
+}
+
+function stableDigestValue(value, key = "") {
+  if (Array.isArray(value)) {
+    return value.map((item) => stableDigestValue(item, key));
+  }
+  if (!value || typeof value !== "object") {
+    return normalizeDigestScalar(key, value);
+  }
+  const out = {};
+  for (const childKey of Object.keys(value).sort()) {
+    if (DIGEST_IGNORED_FIELDS.has(childKey)) {
+      continue;
+    }
+    out[childKey] = stableDigestValue(value[childKey], childKey);
+  }
+  return out;
+}
+
+function canonicalizePayloadCollections(payload) {
   if (!payload || typeof payload !== "object") {
     return payload;
   }
   const clone = JSON.parse(JSON.stringify(payload));
+  for (const [key, value] of Object.entries(clone)) {
+    if (!Array.isArray(value)) {
+      continue;
+    }
+    clone[key] = value
+      .map((item) => stableSortValue(item))
+      .sort((left, right) => {
+        const leftJson = JSON.stringify(left);
+        const rightJson = JSON.stringify(right);
+        return leftJson < rightJson ? -1 : leftJson > rightJson ? 1 : 0;
+      });
+  }
+  return clone;
+}
+
+export function stablePayloadProjection(payload) {
+  if (!payload || typeof payload !== "object") {
+    return payload;
+  }
+  const clone = canonicalizePayloadCollections(payload);
   delete clone.generated_at;
   if (clone.repair_layer_meta && typeof clone.repair_layer_meta === "object") {
     delete clone.repair_layer_meta.applied_at;
@@ -486,8 +646,13 @@ export function stablePayloadProjection(payload) {
   return clone;
 }
 
+function digestPayloadProjection(payload) {
+  const projected = stablePayloadProjection(payload);
+  return stableDigestValue(projected);
+}
+
 export function payloadDigest(payload) {
-  const stable = stablePayloadProjection(payload);
+  const stable = digestPayloadProjection(payload);
   return crypto.createHash("sha256").update(JSON.stringify(stable)).digest("hex");
 }
 

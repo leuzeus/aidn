@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-shared-coordination-backup.v1",
+  "title": "aidn runtime shared-coordination-backup --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime shared-coordination-backup --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "ok",
+    "status",
+    "reason",
+    "workspace",
+    "source_of_truth",
+    "metadata",
+    "shared_coordination_backend",
+    "operations"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "output_file": { "type": "string" },
+    "written": { "type": "boolean" },
+    "ok": { "type": "boolean" },
+    "status": { "type": "string" },
+    "reason": { "type": "string" },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "source_of_truth": { "type": "object", "additionalProperties": true },
+    "metadata": { "type": "object", "additionalProperties": true },
+    "shared_coordination_backend": { "type": "object", "additionalProperties": true },
+    "health": { "type": ["object", "null"], "additionalProperties": true },
+    "schema_compatibility": { "type": ["object", "null"], "additionalProperties": true },
+    "backup": {
+      "type": ["object", "null"],
+      "required": [
+        "ts",
+        "workspace",
+        "shared_coordination_backend",
+        "schema_snapshot",
+        "active_context",
+        "snapshot"
+      ],
+      "properties": {
+        "ts": { "type": "string" },
+        "workspace": { "type": "object", "additionalProperties": true },
+        "shared_coordination_backend": { "type": "object", "additionalProperties": true },
+        "health": { "type": ["object", "null"], "additionalProperties": true },
+        "schema_snapshot": {
+          "type": "object",
+          "required": [
+            "schema_name",
+            "expected_schema_version",
+            "latest_applied_schema_version",
+            "schema_status"
+          ],
+          "properties": {
+            "schema_name": { "type": "string" },
+            "expected_schema_version": { "type": "number" },
+            "latest_applied_schema_version": { "type": "number" },
+            "schema_status": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "active_context": { "type": "object", "additionalProperties": true },
+        "contract": { "type": ["object", "null"], "additionalProperties": true },
+        "snapshot": {
+          "type": "object",
+          "required": ["planning_read", "handoff_read", "coordination_read"],
+          "properties": {
+            "planning_read": { "type": ["object", "null"], "additionalProperties": true },
+            "handoff_read": { "type": "object", "additionalProperties": true },
+            "coordination_read": { "type": "object", "additionalProperties": true }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "operations": {
+      "type": "object",
+      "required": [
+        "local_first",
+        "scope",
+        "backend_kind",
+        "backend_status",
+        "schema_status",
+        "source_of_truth_status",
+        "metadata_status",
+        "connection_secret_exposed",
+        "write_applied",
+        "restore_preview_command",
+        "recommended_actions"
+      ],
+      "properties": {
+        "local_first": { "type": "boolean" },
+        "scope": { "type": "string" },
+        "backend_kind": { "type": "string" },
+        "backend_status": { "type": "string" },
+        "schema_status": { "type": "string" },
+        "source_of_truth_status": { "type": "string" },
+        "metadata_status": { "type": "string" },
+        "compatibility_status": { "type": "string" },
+        "connection_ref": { "type": "string" },
+        "connection_secret_exposed": { "type": "boolean" },
+        "write_applied": { "type": "boolean" },
+        "output_file": { "type": "string" },
+        "record_count": { "type": "number" },
+        "restore_preview_command": { "type": "string" },
+        "recommended_actions": { "type": "array" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

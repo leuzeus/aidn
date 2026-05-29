@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -70,6 +71,7 @@ function main() {
 
     const defaultResult = runJson(script, ["--target", target, "--json"], repoRoot, 0);
     const defaultSummaryText = fs.readFileSync(defaultResult.out_file, "utf8");
+    assert(Array.isArray(defaultResult.summary.adapters), "default selection should expose adapters array");
 
     const externalAgentDir = path.join(target, ".aidn", "runtime", "agents");
     fs.mkdirSync(externalAgentDir, { recursive: true });
@@ -111,12 +113,15 @@ function main() {
     const externalSummaryText = fs.readFileSync(externalResult.out_file, "utf8");
 
     assert(defaultResult.written === true, "default projection should write the summary");
+    assert(defaultResult.agent_selection_diagnostic?.roster_pass === true, "default projection should expose roster pass in the stable diagnostic");
     assert(defaultSummaryText.includes("# Agent Selection Summary"), "default summary should include the title");
     assert(defaultSummaryText.includes("roster_verification: pass"), "default summary should include roster verification status");
     assert(defaultSummaryText.includes("codex-auditor"), "default summary should include codex-auditor");
     assert(defaultSummaryText.includes("health=ready"), "default summary should expose adapter health");
     assert(externalResult.summary.adapters.some((adapter) => adapter.id === "external-auditor"), "external projection should include the registered adapter");
+    assert(Array.isArray(externalResult.summary.auto_selection_preview), "external selection should expose auto selection preview");
     assert(externalResult.roster_verification.pass === true, "external projection should pass roster verification");
+    assert(externalResult.agent_selection_diagnostic?.adapter_count >= 1, "external projection should expose adapter count in the stable diagnostic");
     assert(externalSummaryText.includes("external-auditor"), "external summary should include the registered adapter");
     assert(externalSummaryText.includes("auditor + audit: external-auditor"), "external summary should show the auto selection preview for the external adapter");
 
@@ -138,6 +143,7 @@ function main() {
     assert(dbOnlyResult.state_mode === "db-only", "db-only selection projection should resolve db-only state mode");
     assert(dbOnlyResult.db_first_applied === true, "db-only selection projection should write through SQLite");
     assert(dbOnlyResult.db_first_materialized === false, "db-only selection projection should not materialize markdown on disk");
+    assert(dbOnlyResult.agent_selection_diagnostic?.state_mode === "db-only", "db-only selection projection should expose state mode in the stable diagnostic");
     assert(dbOnlyResult.roster_verification.pass === true, "db-only selection projection should still validate roster from SQLite");
     assert(dbOnlyResult.summary.adapters.some((adapter) => adapter.id === "codex"), "db-only selection projection should still expose adapter summary");
     assert(fs.existsSync(path.join(dbOnlyTarget, "docs", "audit", "AGENT-SELECTION-SUMMARY.md")) === false, "db-only selection projection should not recreate AGENT-SELECTION-SUMMARY.md");
@@ -160,7 +166,10 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok) {
+        throw cleanup.error;
+      }
     }
   }
 }

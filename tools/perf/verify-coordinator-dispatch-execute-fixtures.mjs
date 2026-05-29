@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { initGitRepo } from "./test-git-fixture-lib.mjs";
+import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -338,6 +338,8 @@ function main() {
     assert(String(dryRun.coordination_history_event?.event ?? "") === "coordinator_dispatch", "dry run should expose coordination history preview");
     assert(dryRun.preferred_dispatch_source === "shared_planning", "dry run should expose shared planning provenance");
     assert(dryRun.shared_planning_candidate?.candidate_aligned === true, "dry run should expose aligned shared planning candidate");
+    assert(dryRun.dispatch_execute_diagnostic?.execution_status === "dry_run", "dry run should expose execution status in the stable diagnostic");
+    assert(dryRun.dispatch_execute_diagnostic?.preferred_dispatch_source === "shared_planning", "dry run should expose dispatch provenance in the stable diagnostic");
 
     assert(executed.execution_status === "executed", "ready execution should report executed");
     assert(executed.executed === true, "ready execution should execute");
@@ -350,9 +352,13 @@ function main() {
     assert(executed.coordination_history_appended === true, "ready execution should append coordination history");
     assert(executed.preferred_dispatch_source === "shared_planning", "ready execution should record shared planning provenance");
     assert(executed.shared_planning_candidate?.candidate_aligned === true, "ready execution should keep aligned shared planning candidate");
+    assert(executed.dispatch_execute_diagnostic?.executed === true, "ready execution should expose executed=true in the stable diagnostic");
+    assert(executed.dispatch_execute_diagnostic?.executed_step_count === 2, "ready execution should expose executed step count in the stable diagnostic");
     assert(fs.existsSync(readyLogFile), "ready execution should write coordination log");
     assert(fs.existsSync(readySummaryFile), "ready execution should write coordination summary");
     assert(fs.existsSync(readyHistoryFile), "ready execution should write coordination history");
+    assert(fs.readFileSync(readyLogFile, "utf8").includes("contract_version: critical-markdown-v1"), "ready coordination log should expose governed contract version");
+    assert(fs.readFileSync(readyLogFile, "utf8").includes("source_mode: explicit"), "ready coordination log should expose governed source mode");
     assert(fs.readFileSync(readyLogFile, "utf8").includes("recommended_role: executor"), "ready coordination log should record executor relay");
     assert(fs.readFileSync(readyLogFile, "utf8").includes("preferred_dispatch_source: shared_planning"), "ready coordination log should record shared planning provenance");
     assert(fs.readFileSync(readySummaryFile, "utf8").includes("last_recommended_role: executor"), "ready coordination summary should record executor relay");
@@ -369,9 +375,12 @@ function main() {
     assert(warnLocalShellExecuted.coordination_log_appended === true, "warn execution should append coordination log");
     assert(warnLocalShellExecuted.coordination_summary_written === true, "warn execution should refresh coordination summary");
     assert(warnLocalShellExecuted.coordination_history_appended === true, "warn execution should append coordination history");
+    assert(warnLocalShellExecuted.dispatch_execute_diagnostic?.selected_agent === "external-auditor", "warn execution should expose selected agent in the stable diagnostic");
+    assert(warnLocalShellExecuted.dispatch_execute_diagnostic?.execution_status === "failed", "warn execution should expose failed status in the stable diagnostic");
     assert(fs.existsSync(warnLogFile), "warn execution should write coordination log");
     assert(fs.existsSync(warnSummaryFile), "warn execution should write coordination summary");
     assert(fs.existsSync(warnHistoryFile), "warn execution should write coordination history");
+    assert(fs.readFileSync(warnLogFile, "utf8").includes("contract_version: critical-markdown-v1"), "warn coordination log should expose governed contract version");
     assert(fs.readFileSync(warnLogFile, "utf8").includes("selected_agent: external-auditor"), "warn coordination log should record the external auditor adapter");
     assert(fs.readFileSync(warnSummaryFile, "utf8").includes("last_recommended_role: auditor"), "warn coordination summary should record auditor relay");
     assert(fs.readFileSync(warnSummaryFile, "utf8").includes("last_execution_status: failed"), "warn coordination summary should record the failed audit relay");
@@ -385,9 +394,11 @@ function main() {
     assert(blockedExecuted.coordination_log_appended === true, "blocked execution should append coordination log");
     assert(blockedExecuted.coordination_summary_written === true, "blocked execution should refresh coordination summary");
     assert(blockedExecuted.coordination_history_appended === true, "blocked execution should append coordination history");
+    assert(blockedExecuted.dispatch_execute_diagnostic?.recommended_role === "repair", "blocked execution should expose repair relay in the stable diagnostic");
     assert(fs.existsSync(blockedLogFile), "blocked execution should write coordination log");
     assert(fs.existsSync(blockedSummaryFile), "blocked execution should write coordination summary");
     assert(fs.existsSync(blockedHistoryFile), "blocked execution should write coordination history");
+    assert(fs.readFileSync(blockedLogFile, "utf8").includes("source_of_truth: .aidn/runtime/context/*"), "blocked coordination log should expose governed source of truth");
     assert(fs.readFileSync(blockedLogFile, "utf8").includes("recommended_role: repair"), "blocked coordination log should record repair relay");
     assert(fs.readFileSync(blockedSummaryFile, "utf8").includes("last_recommended_role: repair"), "blocked coordination summary should record repair relay");
     assert(fs.readFileSync(blockedHistoryFile, "utf8").includes("\"recommended_role\":\"repair\""), "blocked coordination history should record repair relay");
@@ -401,6 +412,7 @@ function main() {
     assert(escalatedExecute.coordination_log_appended === false, "escalated execute should not append coordination log");
     assert(escalatedExecute.coordination_history_appended === false, "escalated execute should not append coordination history");
     assert(escalatedExecute.coordination_summary_written === false, "escalated execute should not rewrite coordination summary");
+    assert(escalatedExecute.dispatch_execute_diagnostic?.execution_status === "escalated", "escalated execute should expose escalated status in the stable diagnostic");
     assert(fs.existsSync(escalatedHistoryFile), "escalated fixture should retain original history");
     assert(!fs.existsSync(escalatedLogFile), "escalated execute should not create coordination log");
     assert(roleBlockedDryRun.dispatch_status === "escalated", "role-blocked dry run should expose escalated dispatch");
@@ -410,6 +422,7 @@ function main() {
     assert(roleBlockedExecute.coordination_log_appended === false, "role-blocked execute should not append coordination log");
     assert(roleBlockedExecute.coordination_history_appended === false, "role-blocked execute should not append coordination history");
     assert(roleBlockedExecute.recommended_role_coverage.status === "blocked", "role-blocked execute should expose blocked coverage");
+    assert(String(roleBlockedExecute.dispatch_execute_diagnostic?.selected_agent ?? "").trim().length > 0, "role-blocked execute should expose selected agent in the stable diagnostic");
     assert(!fs.existsSync(roleBlockedLogFile), "role-blocked execute should not create coordination log");
 
     const output = {
@@ -436,7 +449,10 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok) {
+        throw cleanup.error;
+      }
     }
   }
 }

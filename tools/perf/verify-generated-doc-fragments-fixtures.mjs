@@ -73,6 +73,25 @@ function main() {
           ],
           forbidComponentSpecificGeneratorFixes: true,
         },
+        crossUsageConvergence: {
+          enabled: true,
+          sharedSurfaceKinds: [
+            "runtime",
+            "hydration",
+            "dispatch",
+            "codegen",
+          ],
+          evidenceArtifacts: [
+            "plan.md",
+            "traceability.md",
+            "status.md",
+          ],
+          sharedSurfaceMinimumUsageClasses: 2,
+          highRiskMinimumUsageClasses: 3,
+          requireAlternateUsage: true,
+          requireContextualUsageForHighRisk: true,
+          overfitFixIsBlocking: true,
+        },
       },
     },
   };
@@ -102,9 +121,16 @@ function main() {
       && enabledVars.SHARED_CODEGEN_BOUNDARY_BLOCK.includes("shared integration surface")
       && enabledVars.SHARED_CODEGEN_BOUNDARY_BLOCK.includes("impact >= medium and user approval")
       && !/\{\{[A-Z0-9_]+\}\}/.test(enabledVars.SHARED_CODEGEN_BOUNDARY_BLOCK),
+    cross_usage_fragment_rendered: enabledVars.CROSS_USAGE_CONVERGENCE_BLOCK.includes("## Cross-Usage Convergence Policy (Project Policy, adapter extension to `SPEC-R04` / `SPEC-R11`)")
+      && enabledVars.CROSS_USAGE_CONVERGENCE_BLOCK.includes("shared surface: `2`")
+      && enabledVars.CROSS_USAGE_CONVERGENCE_BLOCK.includes("high-risk surface: `3`")
+      && enabledVars.CROSS_USAGE_CONVERGENCE_BLOCK.includes("`runtime`")
+      && enabledVars.CROSS_USAGE_CONVERGENCE_BLOCK.includes("`traceability.md`")
+      && !/\{\{[A-Z0-9_]+\}\}/.test(enabledVars.CROSS_USAGE_CONVERGENCE_BLOCK),
     disabled_fragments_empty: disabledVars.SESSION_TRANSITION_CLEANLINESS_BLOCK === ""
       && disabledVars.EXECUTION_POLICY_BLOCK === ""
-      && disabledVars.SHARED_CODEGEN_BOUNDARY_BLOCK === "",
+      && disabledVars.SHARED_CODEGEN_BOUNDARY_BLOCK === ""
+      && disabledVars.CROSS_USAGE_CONVERGENCE_BLOCK === "",
   };
 
   const pass = Object.values(checks).every((value) => value === true);
@@ -123,6 +149,12 @@ function main() {
         line.includes("Shared Codegen Boundary Gate")
         || line.includes("shared integration surface")
         || line.includes("impact >= medium")
+      ),
+      cross_usage_excerpt: enabledVars.CROSS_USAGE_CONVERGENCE_BLOCK.split(/\r?\n/).filter((line) =>
+        line.includes("Cross-Usage Convergence Policy")
+        || line.includes("shared surface:")
+        || line.includes("high-risk surface:")
+        || line.includes("`runtime`")
       ),
     },
     pass,

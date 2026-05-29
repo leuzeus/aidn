@@ -1,7 +1,10 @@
 #!/usr/bin/env node
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { readIndexFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
+import { resolveLocalPilotRuntimeImportTarget } from "./local-pilot-runtime-import-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -62,6 +65,24 @@ function loadPayloadForTarget(target, sqliteFile) {
   return readIndexFromSqlite(sqliteFile).payload;
 }
 
+function flattenMarkdownFixture(content) {
+  return String(content ?? "")
+    .replace(/\r?\n+/g, "  ")
+    .trim();
+}
+
+function selectPrimarySessionSessionChecks(checks) {
+  const rows = Array.isArray(checks?.sessions) ? checks.sessions : [];
+  return rows.slice().sort((left, right) => {
+    const leftFocus = String(left?.integration_target_cycle ?? "").trim() ? 1 : 0;
+    const rightFocus = String(right?.integration_target_cycle ?? "").trim() ? 1 : 0;
+    if (rightFocus !== leftFocus) {
+      return rightFocus - leftFocus;
+    }
+    return String(left?.session_id ?? "").localeCompare(String(right?.session_id ?? ""), undefined, { numeric: true, sensitivity: "base" });
+  })[0] ?? null;
+}
+
 function buildSessionChecks(payload) {
   const sessions = Array.isArray(payload.sessions) ? payload.sessions : [];
   const links = Array.isArray(payload.session_cycle_links) ? payload.session_cycle_links : [];
@@ -84,20 +105,54 @@ function buildSessionChecks(payload) {
 }
 
 function main() {
+  const tempRoots = [];
   try {
     const args = parseArgs(process.argv.slice(2));
     const target = path.resolve(process.cwd(), args.target);
     const sqliteFile = resolveTargetPath(target, args.sqliteFile);
     const multiTarget = path.resolve(process.cwd(), "tests/fixtures/perf-structure/session-multi-cycle-explicit");
     const legacyTarget = path.resolve(process.cwd(), "tests/fixtures/perf-structure/session-legacy-multi-target");
+    const pilotResolution = resolveLocalPilotRuntimeImportTarget({
+      explicitRoot: process.env.AIDN_PILOT_RUNTIME_IMPORT_ROOT,
+    });
+    if (pilotResolution.status === "invalid") {
+      throw new Error(pilotResolution.reason);
+    }
+    const pilotTarget = pilotResolution.target;
+    const flattenedCycleSource = path.resolve(process.cwd(), "tests/fixtures/perf-start-session/session-multi-choice");
+    const flattenedCycleTarget = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-flat-cycle-status-"));
+    tempRoots.push(flattenedCycleTarget);
+    fs.cpSync(flattenedCycleSource, flattenedCycleTarget, { recursive: true });
+    const flattenedCycleStatusPath = path.join(
+      flattenedCycleTarget,
+      "docs",
+      "audit",
+      "cycles",
+      "C201-feature-alpha",
+      "status.md",
+    );
+    fs.writeFileSync(
+      flattenedCycleStatusPath,
+      flattenMarkdownFixture(fs.readFileSync(flattenedCycleStatusPath, "utf8")),
+      "utf8",
+    );
 
     const basePayload = loadPayloadForTarget(target, sqliteFile);
     const multiPayload = loadPayloadForTarget(multiTarget, resolveTargetPath(multiTarget, args.sqliteFile));
     const legacyPayload = loadPayloadForTarget(legacyTarget, resolveTargetPath(legacyTarget, args.sqliteFile));
+    const flattenedCyclePayload = loadPayloadForTarget(flattenedCycleTarget, resolveTargetPath(flattenedCycleTarget, args.sqliteFile));
+    const pilotPayload = pilotTarget
+      ? loadPayloadForTarget(pilotTarget, resolveTargetPath(pilotTarget, args.sqliteFile))
+      : null;
 
     const base = buildSessionChecks(basePayload);
     const multi = buildSessionChecks(multiPayload);
     const legacy = buildSessionChecks(legacyPayload);
+    const flattenedCycle = Array.isArray(flattenedCyclePayload?.cycles)
+      ? flattenedCyclePayload.cycles.find((row) => String(row?.cycle_id ?? "") === "C201") ?? null
+      : null;
+    const pilot = pilotPayload ? buildSessionChecks(pilotPayload) : null;
+    const pilotPrimarySession = selectPrimarySessionSessionChecks(pilot);
 
     const checks = {
       session_s101_present: base.byId.has("S101"),
@@ -141,6 +196,39 @@ function main() {
       session_s104_target_c106: Boolean(legacy.linkFor("S104", "C106", "explicit", "integration_target_cycle")),
       session_s104_normalization_finding: legacy.findings.some((row) => String(row?.finding_type ?? "") === "SESSION_METADATA_NORMALIZATION_RECOMMENDED" && String(row?.entity_id ?? "") === "S104"),
       session_s104_no_ambiguous_finding: !legacy.findings.some((row) => String(row?.finding_type ?? "") === "AMBIGUOUS_RELATION" && String(row?.entity_id ?? "") === "S104"),
+      flattened_cycle_status_present: Boolean(flattenedCycle),
+      flattened_cycle_status_state: String(flattenedCycle?.state ?? "") === "IMPLEMENTING",
+      flattened_cycle_status_branch: String(flattenedCycle?.branch_name ?? "") === "feature/C201-alpha",
+      flattened_cycle_status_session_owner: String(flattenedCycle?.session_id ?? "") === "S201",
+      flattened_cycle_status_outcome: String(flattenedCycle?.outcome ?? "") === "ACTIVE",
+      flattened_cycle_status_continuity_rule: String(flattenedCycle?.continuity_rule ?? "") === "R1_STRICT_CHAIN",
+      flattened_cycle_status_continuity_base_branch: String(flattenedCycle?.continuity_base_branch ?? "") === "dev",
+      flattened_cycle_status_continuity_latest_cycle_branch: String(flattenedCycle?.continuity_latest_cycle_branch ?? "") === "none",
+      flattened_cycle_status_continuity_decision_by: String(flattenedCycle?.continuity_decision_by ?? "") === "user",
+      flattened_cycle_status_dor_state: String(flattenedCycle?.dor_state ?? "") === "READY",
+      pilot_flattened_fixture_present: pilot ? pilot.sessions.length >= 2 : true,
+      pilot_primary_session_branch: pilotPrimarySession ? Boolean(String(pilotPrimarySession?.branch_name ?? "").trim()) : true,
+      pilot_primary_session_parent_session: pilotPrimarySession ? Boolean(String(pilotPrimarySession?.parent_session ?? "").trim()) : true,
+      pilot_primary_session_branch_kind: pilotPrimarySession ? String(pilotPrimarySession?.branch_kind ?? "") === "session" : true,
+      pilot_primary_session_focus_cycle: pilotPrimarySession ? Boolean(String(pilotPrimarySession?.integration_target_cycle ?? "").trim()) : true,
+      pilot_primary_session_attached_cycle: pilotPrimarySession
+        ? pilot.links.some((row) =>
+          String(row?.session_id ?? "") === String(pilotPrimarySession?.session_id ?? "")
+          && String(row?.relation_type ?? "") === "attached_cycle"
+          && String(row?.source_mode ?? "") === "explicit")
+        : true,
+      pilot_primary_session_target_cycle: pilotPrimarySession
+        ? pilot.links.some((row) =>
+          String(row?.session_id ?? "") === String(pilotPrimarySession?.session_id ?? "")
+          && String(row?.cycle_id ?? "") === String(pilotPrimarySession?.integration_target_cycle ?? "")
+          && String(row?.relation_type ?? "") === "integration_target_cycle"
+          && String(row?.source_mode ?? "") === "explicit")
+        : true,
+      pilot_primary_session_no_partial_metadata_finding: pilotPrimarySession
+        ? !pilot.findings.some((row) =>
+          String(row?.finding_type ?? "") === "SESSION_PARTIAL_METADATA"
+          && String(row?.entity_id ?? "") === String(pilotPrimarySession?.session_id ?? ""))
+        : true,
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {
@@ -151,6 +239,9 @@ function main() {
         base: target,
         multi: multiTarget,
         legacy: legacyTarget,
+        pilot: pilotTarget,
+        pilot_resolution_status: pilotResolution.status,
+        pilot_resolution_reason: pilotResolution.reason,
       },
       checks,
       base_sessions: base.sessions,
@@ -163,6 +254,11 @@ function main() {
       legacy_sessions: legacy.sessions,
       legacy_session_cycle_links: legacy.links,
       legacy_findings: legacy.findings,
+      flattened_cycle_target: flattenedCycleTarget,
+      flattened_cycle_row: flattenedCycle,
+      pilot_sessions: pilot?.sessions ?? [],
+      pilot_session_cycle_links: pilot?.links ?? [],
+      pilot_findings: pilot?.findings ?? [],
       pass,
     };
 
@@ -183,6 +279,12 @@ function main() {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
+  } finally {
+    for (const root of tempRoots) {
+      if (root && fs.existsSync(root)) {
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    }
   }
 }
 

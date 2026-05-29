@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
 import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SELFHOST_WORKSPACE = path.resolve(REPO_ROOT, "tests", "workspaces", "selfhost-product");
@@ -140,7 +141,7 @@ function main() {
       workspace_seed_exists: fs.existsSync(SELFHOST_WORKSPACE),
       dual_install_ok: (install.status ?? 1) === 0,
       sqlite_created: fs.existsSync(sqliteFile),
-      schema_version_v6: readSchemaVersion(sqliteFile) === "6",
+      schema_version_v7: readSchemaVersion(sqliteFile) === "7",
       selected_files_deleted_before_materialize: deletedBeforeMaterialize,
       materialize_selected_count_ok: Number(materializeResult?.selected_count ?? 0) === hotFiles.length,
       materialize_exported_all_missing_files: Number(materializeResult?.exported ?? 0) === hotFiles.length,
@@ -171,7 +172,7 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      removePathWithRetry(tempRoot);
     }
   }
 }

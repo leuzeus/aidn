@@ -34,3 +34,27 @@ export function initGitRepo(target, options = {}) {
     working_branch: workingBranch,
   };
 }
+
+function sleep(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+export function removePathWithRetry(target, options = {}) {
+  const retries = Number(options.retries ?? 5);
+  const delayMs = Number(options.delayMs ?? 75);
+  let lastError = null;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      fs.rmSync(target, { recursive: true, force: true });
+      return { ok: true, attempts: attempt + 1, error: null };
+    } catch (error) {
+      lastError = error;
+      const code = String(error?.code ?? "");
+      if (!["EPERM", "EBUSY", "ENOTEMPTY"].includes(code) || attempt === retries) {
+        break;
+      }
+      sleep(delayMs * (attempt + 1));
+    }
+  }
+  return { ok: false, attempts: retries + 1, error: lastError };
+}

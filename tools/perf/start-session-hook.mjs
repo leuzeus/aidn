@@ -15,6 +15,8 @@ function parseArgs(argv) {
     mode: "UNKNOWN",
     strict: false,
     noAutoSkipGate: false,
+    startLightGate: false,
+    startLightGateExplicit: false,
     json: false,
     eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
     runIdFile: ".aidn/runtime/perf/current-run-id.txt",
@@ -85,6 +87,12 @@ function parseArgs(argv) {
       args.constraintLoopStrict = true;
     } else if (token === "--strict") {
       args.strict = true;
+    } else if (token === "--start-light-gate") {
+      args.startLightGate = true;
+      args.startLightGateExplicit = true;
+    } else if (token === "--full-start-gate") {
+      args.startLightGate = false;
+      args.startLightGateExplicit = true;
     } else if (token === "--no-auto-skip-gate") {
       args.noAutoSkipGate = true;
     } else if (token === "--json") {
@@ -130,6 +138,7 @@ function printUsage() {
   console.log("  node tools/perf/start-session-hook.mjs --target . --mode COMMITTING --json");
   console.log("  node tools/perf/start-session-hook.mjs --target . --mode COMMITTING --index-store dual --json");
   console.log("  AIDN_STATE_MODE=db-only node tools/perf/start-session-hook.mjs --target . --mode COMMITTING --strict --json");
+  console.log("  node tools/perf/start-session-hook.mjs --target . --mode COMMITTING --start-light-gate --json");
 }
 
 function shouldRunWorkflowHook(admission) {
@@ -188,7 +197,7 @@ function main() {
           indexSyncCheckOut: args.indexSyncCheckOut,
           constraintLoopMode: args.constraintLoopMode,
           constraintLoopStrict: args.constraintLoopStrict,
-          startLightGate: true,
+          startLightGate: args.startLightGate === true,
           autoSkipGateOnNoSignal: !args.noAutoSkipGate,
           strict: args.strict,
           json: true,
@@ -212,6 +221,7 @@ function main() {
       reason_code: admission.reason_code,
       branch: admission.branch,
       branch_kind: admission.branch_kind,
+      workspace: admission.workspace ?? null,
       admission,
       checkpoint: workflowHook?.checkpoint ?? null,
       checkpoint_error: workflowHook?.checkpoint_error ?? null,

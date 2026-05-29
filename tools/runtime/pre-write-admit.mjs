@@ -3,72 +3,27 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
+import {
+  buildPreWriteAdmissionResult,
+  deriveFirstPlanStep,
+  derivePreWriteObservedContext,
+  findCycleStatus,
+  findSessionFile,
+  evaluateCycleCreateGitGate,
+  evaluatePreWriteCycleCreateGates,
+  evaluatePreWriteGenericWorkflowGates,
+  evaluatePreWriteSourceOfTruthAndRuntimeGates,
+  evaluateSessionIntegrationGate,
+  mergePreWritePolicy,
+} from "../../src/application/runtime/pre-write-admit-use-case.mjs";
+import { loadSharedStateSnapshot } from "../../src/application/runtime/shared-state-backend-service.mjs";
+import { resolvePromotedSharedPlanningContext } from "../../src/application/runtime/shared-planning-resolution-service.mjs";
+import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
+import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
 import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { resolveEffectiveStateMode } from "../../src/core/state-mode/state-mode-policy.mjs";
-import { readIndexFromSqlite, readRuntimeHeadArtifactsFromSqlite } from "../../src/lib/sqlite/index-sqlite-lib.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
-
-const DEFAULT_POLICY = Object.freeze({
-  requireMode: true,
-  requireBranchKind: false,
-  requireActiveSession: false,
-  requireActiveCycle: false,
-  requireCycleStatus: false,
-  requireDorReady: false,
-  requireFirstPlanStep: false,
-  requireFreshCurrentState: false,
-  requireRuntimeClearInDbModes: false,
-});
-
-const SKILL_POLICIES = Object.freeze({
-  "start-session": {
-    requireMode: false,
-  },
-  "close-session": {
-    requireActiveSession: true,
-  },
-  "branch-cycle-audit": {
-    requireMode: false,
-  },
-  "drift-check": {
-    requireMode: false,
-  },
-  "handoff-close": {
-    requireActiveSession: false,
-  },
-  "cycle-create": {
-    requireFreshCurrentState: true,
-    requireRuntimeClearInDbModes: true,
-  },
-  "cycle-close": {
-    requireBranchKind: true,
-    requireActiveCycle: true,
-    requireCycleStatus: true,
-    requireFreshCurrentState: true,
-    requireRuntimeClearInDbModes: true,
-  },
-  "promote-baseline": {
-    requireBranchKind: true,
-    requireActiveCycle: true,
-    requireCycleStatus: true,
-    requireDorReady: true,
-    requireFreshCurrentState: true,
-    requireRuntimeClearInDbModes: true,
-  },
-  "requirements-delta": {
-    requireActiveCycle: true,
-    requireCycleStatus: true,
-    requireFreshCurrentState: true,
-    requireRuntimeClearInDbModes: true,
-  },
-  "convert-to-spike": {
-    requireActiveCycle: true,
-    requireCycleStatus: true,
-    requireFreshCurrentState: true,
-    requireRuntimeClearInDbModes: true,
-  },
-});
 
 function parseArgs(argv) {
   const args = {
@@ -208,6 +163,35 @@ function canonicalUnknown(value) {
   return normalizeScalar(value).toLowerCase() === "unknown";
 }
 
+function normalizeUsageMatrixScope(value) {
+  const normalized = normalizeScalar(value).toLowerCase();
+  if (normalized === "shared" || normalized === "high-risk") {
+    return normalized;
+  }
+  return "local";
+}
+
+function normalizeUsageMatrixState(value) {
+  const normalized = normalizeScalar(value).toUpperCase();
+  if (["NOT_DEFINED", "DECLARED", "PARTIAL", "VERIFIED", "WAIVED"].includes(normalized)) {
+    return normalized;
+  }
+  return "NOT_DEFINED";
+}
+
+function usageMatrixSatisfied({ scope, state, rationale }) {
+  if (scope === "local") {
+    return true;
+  }
+  if (state === "VERIFIED") {
+    return true;
+  }
+  if (state === "WAIVED" && String(rationale ?? "").trim().length > 0 && String(rationale ?? "").trim().toLowerCase() !== "none") {
+    return true;
+  }
+  return false;
+}
+
 function isResolvedPlanningArbitrationStatus(value) {
   const normalized = normalizeScalar(value).toLowerCase();
   return !normalized
@@ -255,66 +239,6 @@ function parseListSection(text, header) {
   return items;
 }
 
-function findSessionFile(auditRoot, sessionId) {
-  if (!sessionId || canonicalNone(sessionId) || canonicalUnknown(sessionId)) {
-    return null;
-  }
-  const sessionsDir = path.join(auditRoot, "sessions");
-  if (!exists(sessionsDir)) {
-    return null;
-  }
-  const entries = fs.readdirSync(sessionsDir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && /^S\d+.*\.md$/i.test(entry.name));
-  const direct = entries.find((entry) => entry.name.startsWith(sessionId));
-  return direct ? path.join(sessionsDir, direct.name) : null;
-}
-
-function findCycleStatus(auditRoot, cycleId) {
-  if (!cycleId || canonicalNone(cycleId) || canonicalUnknown(cycleId)) {
-    return null;
-  }
-  const cyclesDir = path.join(auditRoot, "cycles");
-  if (!exists(cyclesDir)) {
-    return null;
-  }
-  const entries = fs.readdirSync(cyclesDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name.startsWith(`${cycleId}-`));
-  for (const entry of entries) {
-    const statusPath = path.join(cyclesDir, entry.name, "status.md");
-    if (exists(statusPath)) {
-      return statusPath;
-    }
-  }
-  return null;
-}
-
-function deriveFirstPlanStep(planText) {
-  const lines = String(planText).split(/\r?\n/);
-  let inTasks = false;
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (line === "## Tasks") {
-      inTasks = true;
-      continue;
-    }
-    if (inTasks && /^##\s+/.test(line)) {
-      break;
-    }
-    if (!inTasks) {
-      continue;
-    }
-    const numbered = line.match(/^\d+\.\s+(.+)$/);
-    if (numbered && normalizeScalar(numbered[1])) {
-      return normalizeScalar(numbered[1]);
-    }
-    const bullet = line.match(/^-\s+(.+)$/);
-    if (bullet && normalizeScalar(bullet[1])) {
-      return normalizeScalar(bullet[1]);
-    }
-  }
-  return "unknown";
-}
-
 function uniqueItems(values) {
   const out = [];
   const seen = new Set();
@@ -331,169 +255,6 @@ function uniqueItems(values) {
 
 function summarizePorcelain(lines, limit = 3) {
   return lines.slice(0, limit).map((line) => normalizeScalar(line));
-}
-
-function evaluateCycleCreateGitGate(targetRoot) {
-  const git = createLocalGitAdapter();
-  const currentBranch = normalizeScalar(git.getCurrentBranch(targetRoot) ?? "unknown") || "unknown";
-  const repoRoot = normalizeScalar(typeof git.getRepoRoot === "function" ? git.getRepoRoot(targetRoot) : "") || "none";
-  const repoScoped = repoRoot !== "none" && path.resolve(repoRoot) === path.resolve(targetRoot);
-  const output = {
-    branch: currentBranch,
-    repo_root: repoRoot,
-    repo_scoped: repoScoped,
-    upstream_branch: "none",
-    upstream_ahead: 0,
-    upstream_behind: 0,
-    dirty_entries: [],
-    blocking_reasons: [],
-    warnings: [],
-  };
-
-  try {
-    const statusOutput = git.execStatusPorcelain(targetRoot, ".", true);
-    output.dirty_entries = String(statusOutput)
-      .split(/\r?\n/)
-      .map((line) => line.trimEnd())
-      .filter(Boolean);
-  } catch {
-    output.warnings.push("git status is unavailable; cycle-create hygiene could not be verified automatically");
-    return output;
-  }
-
-  if (output.dirty_entries.length > 0) {
-    const samples = summarizePorcelain(output.dirty_entries).join(", ");
-    output.blocking_reasons.push(
-      `git working tree is not clean before cycle creation; reconcile pending files first (${samples}${output.dirty_entries.length > 3 ? ", ..." : ""})`,
-    );
-  }
-
-  if (!repoScoped) {
-    output.warnings.push("target is not the git repository root; upstream sync gate is skipped for this pre-write check");
-    return output;
-  }
-
-  if (typeof git.getUpstreamBranch !== "function" || typeof git.getAheadBehind !== "function") {
-    output.warnings.push("upstream sync check is unavailable in the current git adapter");
-    return output;
-  }
-
-  const upstreamBranch = normalizeScalar(git.getUpstreamBranch(targetRoot) ?? "") || "none";
-  output.upstream_branch = upstreamBranch;
-  if (upstreamBranch === "none" || currentBranch === "unknown") {
-    output.warnings.push("no upstream tracking branch is configured; push/merge reconciliation cannot be verified automatically");
-    return output;
-  }
-
-  const divergence = git.getAheadBehind(targetRoot, "HEAD", upstreamBranch);
-  if (divergence?.known !== true) {
-    output.warnings.push(`upstream divergence for ${currentBranch} could not be determined automatically`);
-    return output;
-  }
-
-  output.upstream_ahead = Number(divergence.ahead ?? 0);
-  output.upstream_behind = Number(divergence.behind ?? 0);
-  if (output.upstream_ahead > 0 || output.upstream_behind > 0) {
-    output.blocking_reasons.push(
-      `current branch ${currentBranch} diverges from ${upstreamBranch}: ahead ${output.upstream_ahead}, behind ${output.upstream_behind}; push/reconcile before creating a new cycle`,
-    );
-  }
-  return output;
-}
-
-function evaluateSessionIntegrationGate(targetRoot, {
-  branchKind,
-  sessionBranch,
-  cycleBranch,
-} = {}) {
-  const output = {
-    applicable: false,
-    session_branch: normalizeScalar(sessionBranch ?? "") || "none",
-    cycle_branch: normalizeScalar(cycleBranch ?? "") || "none",
-    session_upstream_branch: "none",
-    session_upstream_ahead: 0,
-    session_upstream_behind: 0,
-    cycle_upstream_branch: "none",
-    cycle_upstream_ahead: 0,
-    cycle_upstream_behind: 0,
-    cycle_merged_into_session: "unknown",
-    blocking_reasons: [],
-    warnings: [],
-  };
-  if (String(branchKind).toLowerCase() !== "session") {
-    return output;
-  }
-  output.applicable = true;
-  if (canonicalNone(output.session_branch) || canonicalUnknown(output.session_branch)) {
-    output.warnings.push("session integration gate could not verify the session branch");
-    return output;
-  }
-  if (canonicalNone(output.cycle_branch) || canonicalUnknown(output.cycle_branch)) {
-    output.warnings.push("session integration gate could not verify the previous cycle branch");
-    return output;
-  }
-
-  const git = createLocalGitAdapter();
-  const repoRoot = normalizeScalar(typeof git.getRepoRoot === "function" ? git.getRepoRoot(targetRoot) : "") || "none";
-  if (repoRoot === "none" || path.resolve(repoRoot) !== path.resolve(targetRoot)) {
-    output.warnings.push("session integration gate is skipped because the target is not the git repository root");
-    return output;
-  }
-  if (typeof git.refExists !== "function" || typeof git.isAncestor !== "function") {
-    output.warnings.push("session integration gate is unavailable in the current git adapter");
-    return output;
-  }
-  if (!git.refExists(targetRoot, output.session_branch)) {
-    output.warnings.push(`session branch ${output.session_branch} is not available locally`);
-    return output;
-  }
-  if (!git.refExists(targetRoot, output.cycle_branch)) {
-    output.warnings.push(`previous cycle branch ${output.cycle_branch} is not available locally`);
-    return output;
-  }
-
-  const cycleUpstreamBranch = normalizeScalar(typeof git.getUpstreamBranch === "function" ? git.getUpstreamBranch(targetRoot, output.cycle_branch) : "") || "none";
-  output.cycle_upstream_branch = cycleUpstreamBranch;
-  if (cycleUpstreamBranch !== "none" && typeof git.getAheadBehind === "function") {
-    const divergence = git.getAheadBehind(targetRoot, output.cycle_branch, cycleUpstreamBranch);
-    if (divergence?.known === true) {
-      output.cycle_upstream_ahead = Number(divergence.ahead ?? 0);
-      output.cycle_upstream_behind = Number(divergence.behind ?? 0);
-      if (output.cycle_upstream_ahead > 0 || output.cycle_upstream_behind > 0) {
-        output.blocking_reasons.push(
-          `previous cycle branch ${output.cycle_branch} diverges from ${cycleUpstreamBranch}: ahead ${output.cycle_upstream_ahead}, behind ${output.cycle_upstream_behind}; push/reconcile the previous cycle before creating a new one`,
-        );
-      }
-    }
-  } else {
-    output.warnings.push(`previous cycle branch ${output.cycle_branch} has no upstream tracking branch; push status cannot be verified automatically`);
-  }
-
-  output.cycle_merged_into_session = git.isAncestor(targetRoot, output.cycle_branch, output.session_branch) ? "yes" : "no";
-  if (output.cycle_merged_into_session !== "yes") {
-    output.blocking_reasons.push(
-      `previous cycle branch ${output.cycle_branch} is not merged into session branch ${output.session_branch}; merge or close/report the cycle before creating a new one`,
-    );
-  }
-
-  const sessionUpstreamBranch = normalizeScalar(typeof git.getUpstreamBranch === "function" ? git.getUpstreamBranch(targetRoot, output.session_branch) : "") || "none";
-  output.session_upstream_branch = sessionUpstreamBranch;
-  if (sessionUpstreamBranch !== "none" && typeof git.getAheadBehind === "function") {
-    const divergence = git.getAheadBehind(targetRoot, output.session_branch, sessionUpstreamBranch);
-    if (divergence?.known === true) {
-      output.session_upstream_ahead = Number(divergence.ahead ?? 0);
-      output.session_upstream_behind = Number(divergence.behind ?? 0);
-      if (output.session_upstream_ahead > 0 || output.session_upstream_behind > 0) {
-        output.blocking_reasons.push(
-          `session branch ${output.session_branch} diverges from ${sessionUpstreamBranch}: ahead ${output.session_upstream_ahead}, behind ${output.session_upstream_behind}; reconcile the merged session branch before creating a new cycle`,
-        );
-      }
-    }
-  } else {
-    output.warnings.push(`session branch ${output.session_branch} has no upstream tracking branch; post-merge reconciliation cannot be verified automatically`);
-  }
-
-  return output;
 }
 
 function classifyRepairFindingSummary(item) {
@@ -518,33 +279,11 @@ function relativePath(root, filePath) {
 }
 
 function loadSqliteIndexPayloadSafe(targetRoot) {
-  const sqliteFile = path.join(targetRoot, ".aidn", "runtime", "index", "workflow-index.sqlite");
-  if (!exists(sqliteFile)) {
-    return {
-      exists: false,
-      sqliteFile,
-      payload: null,
-      runtimeHeads: {},
-      warning: "",
-    };
-  }
-  try {
-    return {
-      exists: true,
-      sqliteFile,
-      payload: readIndexFromSqlite(sqliteFile).payload,
-      runtimeHeads: readRuntimeHeadArtifactsFromSqlite(sqliteFile).heads,
-      warning: "",
-    };
-  } catch (error) {
-    return {
-      exists: true,
-      sqliteFile,
-      payload: null,
-      runtimeHeads: {},
-      warning: `SQLite artifact fallback unavailable: ${error.message}`,
-    };
-  }
+  return loadSharedStateSnapshot({
+    targetRoot,
+    includePayload: true,
+    includeRuntimeHeads: true,
+  });
 }
 
 function findArtifactByPath(sqlitePayload, artifactPath) {
@@ -674,7 +413,7 @@ function findCyclePlanArtifact(sqlitePayload, cycleId, cycleStatusArtifactPath =
 }
 
 function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = false, sqlitePayload = null } = {}) {
-  const filePath = findSessionFile(auditRoot, sessionId);
+  const filePath = findSessionFile(auditRoot, sessionId, targetRoot);
   if (filePath) {
     return {
       exists: true,
@@ -714,7 +453,7 @@ function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = f
 }
 
 function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbBacked = false, sqlitePayload = null } = {}) {
-  const filePath = findCycleStatus(auditRoot, cycleId);
+  const filePath = findCycleStatus(auditRoot, cycleId, targetRoot);
   if (filePath) {
     return {
       exists: true,
@@ -805,25 +544,31 @@ function resolveCyclePlanArtifact({
   };
 }
 
-function mergePolicy(skill) {
-  const specific = SKILL_POLICIES[skill] ?? {};
-  return { ...DEFAULT_POLICY, ...specific };
-}
-
-function addCheck(checks, key, pass, details) {
+function addCheck(checks, key, pass, details, extra = {}) {
   checks[key] = {
     pass,
     details,
+    ...extra,
   };
 }
 
-export function preWriteAdmit({
+export async function preWriteAdmit({
   targetRoot,
   skill = "",
   currentStateFile = "docs/audit/CURRENT-STATE.md",
   runtimeStateFile = "docs/audit/RUNTIME-STATE.md",
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const git = createLocalGitAdapter();
+  const workspace = resolveWorkspaceContext({
+    targetRoot: absoluteTargetRoot,
+  });
+  const sharedRuntimeValidation = validateSharedRuntimeContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+  });
   const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
   const effectiveStateMode = resolveEffectiveStateMode({
     targetRoot: absoluteTargetRoot,
@@ -857,7 +602,21 @@ export function preWriteAdmit({
   const runtimeStateText = runtimeStateResolution.text;
   const currentMap = parseSimpleMap(currentStateText);
   const runtimeMap = parseSimpleMap(runtimeStateText);
-  const policy = mergePolicy(skill);
+  const sharedPlanning = await resolvePromotedSharedPlanningContext({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    currentState: {
+      active_session: currentMap.get("active_session") ?? "none",
+      active_backlog: currentMap.get("active_backlog") ?? "none",
+      backlog_status: currentMap.get("backlog_status") ?? "unknown",
+      backlog_next_step: currentMap.get("backlog_next_step") ?? "unknown",
+      backlog_selected_execution_scope: currentMap.get("backlog_selected_execution_scope") ?? "none",
+      planning_arbitration_status: currentMap.get("planning_arbitration_status") ?? "none",
+    },
+    sharedCoordination,
+    sharedCoordinationOptions,
+  });
+  const policy = mergePreWritePolicy(skill);
   const checks = {};
   const blockingReasons = [];
   const warnings = [];
@@ -888,31 +647,19 @@ export function preWriteAdmit({
     warnings.push("CURRENT-STATE.md consistency checks reported issues; verify session/cycle facts before writing");
   }
 
-  const mode = normalizeScalar(currentMap.get("mode") ?? "unknown") || "unknown";
-  const branchKind = normalizeScalar(currentMap.get("branch_kind") ?? "unknown") || "unknown";
-  const activeSession = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
-  const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
-  const dorState = normalizeScalar(currentMap.get("dor_state") ?? "unknown") || "unknown";
-  const currentFirstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "unknown") || "unknown";
-  const activeBacklog = normalizeScalar(currentMap.get("active_backlog") ?? "none") || "none";
-  const backlogStatus = normalizeScalar(currentMap.get("backlog_status") ?? "unknown") || "unknown";
-  const backlogNextStep = normalizeScalar(currentMap.get("backlog_next_step") ?? "unknown") || "unknown";
-  const backlogSelectedExecutionScope = normalizeScalar(currentMap.get("backlog_selected_execution_scope") ?? "none") || "none";
-  const planningArbitrationStatus = normalizeScalar(currentMap.get("planning_arbitration_status") ?? "none") || "none";
-  const cycleBranch = normalizeScalar(currentMap.get("cycle_branch") ?? "none") || "none";
-  const sessionBranch = normalizeScalar(currentMap.get("session_branch") ?? "none") || "none";
-
+  const rawActiveSession = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
+  const rawActiveCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
   const sessionResolution = resolveSessionArtifact({
     targetRoot: absoluteTargetRoot,
     auditRoot,
-    sessionId: activeSession,
+    sessionId: rawActiveSession,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
   });
   const cycleStatusResolution = resolveCycleStatusArtifact({
     targetRoot: absoluteTargetRoot,
     auditRoot,
-    cycleId: activeCycle,
+    cycleId: rawActiveCycle,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
   });
@@ -923,32 +670,75 @@ export function preWriteAdmit({
   const planResolution = resolveCyclePlanArtifact({
     targetRoot: absoluteTargetRoot,
     cycleStatusResolution,
-    cycleId: activeCycle,
+    cycleId: rawActiveCycle,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
   });
   const planFile = planResolution.filePath;
   const planText = planResolution.text;
   const derivedFirstPlanStep = deriveFirstPlanStep(planText);
-  const effectiveFirstPlanStep = !canonicalUnknown(currentFirstPlanStep) && !canonicalNone(currentFirstPlanStep)
-    ? currentFirstPlanStep
+  const rawCurrentFirstPlanStep = normalizeScalar(currentMap.get("first_plan_step") ?? "unknown") || "unknown";
+  const effectiveFirstPlanStep = !canonicalUnknown(rawCurrentFirstPlanStep) && !canonicalNone(rawCurrentFirstPlanStep)
+    ? rawCurrentFirstPlanStep
     : derivedFirstPlanStep;
-
+  const observed = derivePreWriteObservedContext({
+    currentMap,
+    runtimeMap,
+    sharedPlanning,
+    cycleStatusMap,
+    effectiveStateMode,
+    currentStateResolution,
+    runtimeStateResolution,
+    sessionResolution,
+    cycleStatusResolution,
+    planResolution,
+    effectiveFirstPlanStep,
+    normalizeUsageMatrixScope,
+    normalizeUsageMatrixState,
+  });
+  const {
+    mode,
+    branchKind,
+    activeSession,
+    activeCycle,
+    dorState,
+    currentFirstPlanStep,
+    activeBacklog,
+    backlogStatus,
+    backlogNextStep,
+    backlogSelectedExecutionScope,
+    planningArbitrationStatus,
+    cycleBranch,
+    sessionBranch,
+    runtimeStateMode,
+    repairLayerStatus,
+    currentStateFreshness,
+    dorOverrideReason,
+    mappedCycleBranch,
+    usageMatrixScope,
+    usageMatrixState,
+    usageMatrixSummary,
+    usageMatrixRationale,
+    cycleState,
+    sourceOfTruth,
+    sourceOfTruthIssues,
+    sourceOfTruthRepairActions,
+  } = observed;
   const runtimeStateExists = runtimeStateResolution.exists;
-  const runtimeStateMode = normalizeScalar(runtimeMap.get("runtime_state_mode") ?? currentMap.get("runtime_state_mode") ?? effectiveStateMode ?? "unknown") || "unknown";
-  const repairLayerStatus = normalizeScalar(runtimeMap.get("repair_layer_status") ?? currentMap.get("repair_layer_status") ?? "unknown") || "unknown";
-  const currentStateFreshness = normalizeScalar(runtimeMap.get("current_state_freshness") ?? "unknown") || "unknown";
   const blockingFindings = uniqueItems(
     parseListSection(runtimeStateText, "blocking_findings")
       .filter((item) => item.toLowerCase() !== "none"),
   );
-  const dorOverrideReason = normalizeScalar(cycleStatusMap.get("dor_override_reason") ?? "none") || "none";
-  const mappedCycleBranch = normalizeScalar(cycleStatusMap.get("branch_name") ?? "none") || "none";
   const cycleCreateGitGate = skill === "cycle-create"
-    ? evaluateCycleCreateGitGate(absoluteTargetRoot)
+    ? evaluateCycleCreateGitGate({
+      git,
+      targetRoot: absoluteTargetRoot,
+    })
     : null;
   const sessionIntegrationGate = skill === "cycle-create"
-    ? evaluateSessionIntegrationGate(absoluteTargetRoot, {
+    ? evaluateSessionIntegrationGate({
+      git,
+      targetRoot: absoluteTargetRoot,
       branchKind,
       sessionBranch,
       cycleBranch: !canonicalNone(mappedCycleBranch) && !canonicalUnknown(mappedCycleBranch)
@@ -957,152 +747,91 @@ export function preWriteAdmit({
     })
     : null;
 
-  addCheck(checks, "mode_known", !canonicalUnknown(mode), `mode=${mode}`);
-  if (policy.requireMode && canonicalUnknown(mode)) {
-    blockingReasons.push("mode is unknown");
-  }
-
-  addCheck(checks, "branch_kind_known", !canonicalUnknown(branchKind), `branch_kind=${branchKind}`);
-  if (policy.requireBranchKind && canonicalUnknown(branchKind)) {
-    blockingReasons.push("branch kind is unknown");
-  }
-
-  addCheck(checks, "active_session_known", !canonicalUnknown(activeSession), `active_session=${activeSession}`);
-  if (policy.requireActiveSession && (canonicalUnknown(activeSession) || canonicalNone(activeSession))) {
-    blockingReasons.push("active session is missing");
-  }
-
-  addCheck(checks, "active_cycle_known", !canonicalUnknown(activeCycle) && !canonicalNone(activeCycle), `active_cycle=${activeCycle}`);
-  if (policy.requireActiveCycle && (canonicalUnknown(activeCycle) || canonicalNone(activeCycle))) {
-    blockingReasons.push("active cycle is missing");
-  }
-
-  addCheck(checks, "session_file_exists", sessionResolution.exists, sessionResolution.exists
-    ? `session artifact resolved via ${sessionResolution.source}: ${sessionResolution.logicalPath}`
-    : "session file not resolved");
-  if (policy.requireActiveSession && !sessionResolution.exists) {
-    blockingReasons.push("active session file is missing");
-  }
-
-  addCheck(checks, "cycle_status_exists", cycleStatusResolution.exists, cycleStatusResolution.exists
-    ? `cycle status resolved via ${cycleStatusResolution.source}: ${cycleStatusResolution.logicalPath}`
-    : "cycle status file not resolved");
-  if (policy.requireCycleStatus && !cycleStatusResolution.exists) {
-    blockingReasons.push("active cycle status file is missing");
-  }
-
-  addCheck(checks, "first_plan_step_known", !canonicalUnknown(effectiveFirstPlanStep) && !canonicalNone(effectiveFirstPlanStep), `first_plan_step=${effectiveFirstPlanStep}`);
-  if (policy.requireFirstPlanStep && (canonicalUnknown(effectiveFirstPlanStep) || canonicalNone(effectiveFirstPlanStep))) {
-    blockingReasons.push("first implementation step is unknown");
-  }
-  if (!canonicalUnknown(currentFirstPlanStep) && !canonicalUnknown(derivedFirstPlanStep)
-    && !canonicalNone(currentFirstPlanStep) && !canonicalNone(derivedFirstPlanStep)
-    && currentFirstPlanStep !== derivedFirstPlanStep) {
-    warnings.push("CURRENT-STATE.md first_plan_step differs from the first parseable plan task");
-  }
-
-  addCheck(checks, "dor_ready_or_override", dorState === "READY" || !canonicalNone(dorOverrideReason), `dor_state=${dorState}; dor_override_reason=${dorOverrideReason}`);
-  if (policy.requireDorReady && dorState !== "READY" && canonicalNone(dorOverrideReason)) {
-    blockingReasons.push("dor_state is not READY and no override reason is documented");
-  } else if (policy.requireDorReady && dorState !== "READY" && !canonicalNone(dorOverrideReason)) {
-    warnings.push(`DoR override in effect: ${dorOverrideReason}`);
-  }
+  evaluatePreWriteGenericWorkflowGates({
+    checks,
+    addCheck,
+    blockingReasons,
+    warnings,
+    policy,
+    skill,
+    mode,
+    branchKind,
+    activeSession,
+    activeCycle,
+    sessionResolution,
+    cycleStatusResolution,
+    effectiveFirstPlanStep,
+    currentFirstPlanStep,
+    derivedFirstPlanStep,
+    dorState,
+    dorOverrideReason,
+    cycleState,
+    usageMatrixScope,
+    usageMatrixState,
+    usageMatrixRationale,
+    activeCycleLabel: activeCycle,
+    cycleBranch,
+    mappedCycleBranch,
+    canonicalNone,
+    canonicalUnknown,
+    usageMatrixSatisfied,
+  });
 
   addCheck(checks, "runtime_state_exists", runtimeStateExists, runtimeStateExists
     ? `runtime digest resolved via ${runtimeStateResolution.source}: ${runtimeStateResolution.logicalPath}`
     : "runtime digest missing");
-
-  addCheck(checks, "runtime_repair_status_known", !canonicalUnknown(repairLayerStatus), `repair_layer_status=${repairLayerStatus}`);
-  addCheck(checks, "current_state_freshness_known", !canonicalUnknown(currentStateFreshness), `current_state_freshness=${currentStateFreshness}`);
 
   const repairRouting = evaluateRepairRouting({
     status: repairLayerStatus,
     advice: normalizeScalar(runtimeMap.get("repair_routing_reason") ?? runtimeMap.get("repair_layer_advice") ?? "unknown") || "unknown",
     blocking: repairLayerStatus.toLowerCase() === "block",
   });
+  evaluatePreWriteSourceOfTruthAndRuntimeGates({
+    checks,
+    addCheck,
+    sourceOfTruth,
+    sourceOfTruthIssues,
+    sourceOfTruthRepairActions,
+    warnings,
+    blockingReasons,
+    runtimeStateExists,
+    runtimeStateResolution,
+    runtimeStateMode,
+    effectiveStateMode,
+    repairLayerStatus,
+    currentStateFreshness,
+    blockingFindings,
+    policy,
+    runtimeRepairRouting: repairRouting,
+    repairHints: WORKFLOW_REPAIR_HINT,
+    classifyRepairFindingSummary,
+  });
 
-  if (repairRouting.routing_hint === WORKFLOW_REPAIR_HINT.REPAIR) {
-    blockingReasons.push(blockingFindings.length > 0
-      ? `repair layer is blocking: ${blockingFindings.join(", ")}`
-      : "repair layer is blocking");
-  } else if (repairRouting.routing_hint === WORKFLOW_REPAIR_HINT.AUDIT_FIRST) {
-    const repairSpecificWarning = blockingFindings
-      .map((item) => classifyRepairFindingSummary(item))
-      .find(Boolean);
-    if (repairSpecificWarning) {
-      warnings.push(repairSpecificWarning);
-    }
+  if (sharedRuntimeValidation.status === "reject") {
+    blockingReasons.push(...sharedRuntimeValidation.issues);
   }
-
-  if (policy.requireFreshCurrentState) {
-    if (currentStateFreshness.toLowerCase() === "stale") {
-      blockingReasons.push("CURRENT-STATE.md is stale according to RUNTIME-STATE.md");
-    } else if (canonicalUnknown(currentStateFreshness)) {
-      if (["dual", "db-only"].includes(runtimeStateMode.toLowerCase())) {
-        blockingReasons.push("current state freshness is unknown in DB-backed mode");
-      } else {
-        warnings.push("current state freshness is unknown; confirm live session/cycle facts before writing");
-      }
-    }
-  }
-
-  if (policy.requireRuntimeClearInDbModes && ["dual", "db-only"].includes(runtimeStateMode.toLowerCase())) {
-    if (!runtimeStateExists) {
-      blockingReasons.push("runtime digest is missing in DB-backed mode");
-    }
-    if (canonicalUnknown(repairLayerStatus)) {
-      blockingReasons.push("repair layer status is unknown in DB-backed mode");
-    }
-  }
-
-  if (!canonicalNone(cycleBranch) && !canonicalNone(mappedCycleBranch) && !canonicalUnknown(mappedCycleBranch)
-    && cycleBranch !== mappedCycleBranch) {
-    blockingReasons.push(`cycle branch mismatch: CURRENT-STATE=${cycleBranch} status.md=${mappedCycleBranch}`);
-  }
+  warnings.push(...sharedRuntimeValidation.warnings);
 
   if (mode === "COMMITTING" && branchKind === "session") {
     warnings.push("COMMITTING work on a session branch should stay limited to integration, handoff, or orchestration unless explicitly documented");
   }
 
-  if (cycleCreateGitGate) {
-    addCheck(checks, "git_cycle_create_clean", cycleCreateGitGate.dirty_entries.length === 0, cycleCreateGitGate.dirty_entries.length === 0
-      ? "git working tree is clean for cycle creation"
-      : `pending files detected before cycle creation: ${summarizePorcelain(cycleCreateGitGate.dirty_entries).join(", ")}`);
-    addCheck(checks, "git_cycle_create_upstream_sync", cycleCreateGitGate.upstream_ahead === 0 && cycleCreateGitGate.upstream_behind === 0, cycleCreateGitGate.upstream_branch === "none"
-      ? "upstream sync not configured"
-      : `upstream=${cycleCreateGitGate.upstream_branch}; ahead=${cycleCreateGitGate.upstream_ahead}; behind=${cycleCreateGitGate.upstream_behind}`);
-    blockingReasons.push(...cycleCreateGitGate.blocking_reasons);
-    warnings.push(...cycleCreateGitGate.warnings);
-  }
-  if (sessionIntegrationGate?.applicable) {
-    addCheck(checks, "cycle_create_previous_cycle_merged_into_session", sessionIntegrationGate.cycle_merged_into_session === "yes", `cycle_merged_into_session=${sessionIntegrationGate.cycle_merged_into_session}`);
-    addCheck(checks, "cycle_create_session_branch_reconciled", sessionIntegrationGate.session_upstream_ahead === 0 && sessionIntegrationGate.session_upstream_behind === 0, sessionIntegrationGate.session_upstream_branch === "none"
-      ? "session upstream sync not configured"
-      : `session_upstream=${sessionIntegrationGate.session_upstream_branch}; ahead=${sessionIntegrationGate.session_upstream_ahead}; behind=${sessionIntegrationGate.session_upstream_behind}`);
-    addCheck(checks, "cycle_create_previous_cycle_branch_pushed", sessionIntegrationGate.cycle_upstream_ahead === 0 && sessionIntegrationGate.cycle_upstream_behind === 0, sessionIntegrationGate.cycle_upstream_branch === "none"
-      ? "cycle upstream sync not configured"
-      : `cycle_upstream=${sessionIntegrationGate.cycle_upstream_branch}; ahead=${sessionIntegrationGate.cycle_upstream_ahead}; behind=${sessionIntegrationGate.cycle_upstream_behind}`);
-    blockingReasons.push(...sessionIntegrationGate.blocking_reasons);
-    warnings.push(...sessionIntegrationGate.warnings);
-  }
-
-  const promotedSharedPlanning = !canonicalNone(activeBacklog)
-    && !canonicalUnknown(activeBacklog)
-    && !canonicalNone(backlogStatus)
-    && !canonicalUnknown(backlogStatus)
-    && backlogStatus.toLowerCase() !== "closed"
-    && backlogStatus.toLowerCase() !== "consumed_by_cycle";
-  addCheck(checks, "shared_planning_scope_selected", !promotedSharedPlanning || (!canonicalNone(backlogSelectedExecutionScope) && !canonicalUnknown(backlogSelectedExecutionScope)), `backlog_selected_execution_scope=${backlogSelectedExecutionScope}`);
-  if (skill === "cycle-create" && promotedSharedPlanning) {
-    if (!isResolvedPlanningArbitrationStatus(planningArbitrationStatus)) {
-      blockingReasons.push(`shared planning arbitration remains unresolved: ${planningArbitrationStatus}`);
-    }
-    if (canonicalNone(backlogSelectedExecutionScope) || canonicalUnknown(backlogSelectedExecutionScope)) {
-      blockingReasons.push("shared planning does not define a selected execution scope for cycle creation");
-    } else if (backlogSelectedExecutionScope.toLowerCase() !== "new_cycle") {
-      blockingReasons.push(`shared planning selected execution scope is ${backlogSelectedExecutionScope}; cycle-create requires new_cycle`);
-    }
-  }
+  evaluatePreWriteCycleCreateGates({
+    checks,
+    addCheck,
+    blockingReasons,
+    warnings,
+    cycleCreateGitGate,
+    sessionIntegrationGate,
+    skill,
+    activeBacklog,
+    backlogStatus,
+    backlogSelectedExecutionScope,
+    planningArbitrationStatus,
+    canonicalNone,
+    canonicalUnknown,
+    summarizePorcelain,
+  });
 
   const prioritizedArtifacts = uniqueItems([
     "docs/audit/CURRENT-STATE.md",
@@ -1115,36 +844,50 @@ export function preWriteAdmit({
     planFile && exists(planFile) ? relativePath(absoluteTargetRoot, planFile) : "",
   ]);
 
-  const ok = blockingReasons.length === 0;
-  const admissionStatus = ok
-    ? (warnings.length > 0 ? "admitted_with_warnings" : "admitted")
-    : "blocked";
-
-  return {
-    ok,
-    admission_status: admissionStatus,
-    target_root: absoluteTargetRoot,
-    skill: skill || "generic",
+  return buildPreWriteAdmissionResult({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    sharedStateBackend: sqliteFallback.backend ?? null,
+    sharedRuntimeValidation,
+    skill,
     policy,
-    current_state_file: currentStateExists ? currentStateResolution.logicalPath : "none",
-    runtime_state_file: runtimeStateExists ? runtimeStateResolution.logicalPath : "none",
-    session_file: sessionResolution.exists ? sessionResolution.logicalPath : "none",
-    cycle_status_file: cycleStatusResolution.exists ? cycleStatusResolution.logicalPath : "none",
-    plan_file: planResolution.exists ? planResolution.logicalPath : "none",
+    sourceOfTruth,
+    currentStateExists,
+    runtimeStateExists,
+    currentStateResolution,
+    runtimeStateResolution,
+    sessionResolution,
+    cycleStatusResolution,
+    planResolution,
     context: {
+      workspace_id: workspace.workspace_id,
+      workspace_id_source: workspace.workspace_id_source,
+      worktree_id: workspace.worktree_id,
+      is_linked_worktree: workspace.is_linked_worktree ? "yes" : "no",
+      shared_runtime_mode: workspace.shared_runtime_mode,
+      shared_runtime_validation_status: sharedRuntimeValidation.status,
+      shared_runtime_locator_ref: workspace.shared_runtime_locator_ref,
+      shared_backend_kind: workspace.shared_backend_kind,
       mode,
       branch_kind: branchKind,
       active_session: activeSession,
       session_branch: sessionBranch,
       active_cycle: activeCycle,
       cycle_branch: cycleBranch,
+      cycle_state: normalizeScalar(cycleStatusMap.get("state") ?? "unknown").toUpperCase() || "UNKNOWN",
       dor_state: dorState,
+      usage_matrix_scope: usageMatrixScope,
+      usage_matrix_state: usageMatrixState,
+      usage_matrix_summary: usageMatrixSummary,
+      usage_matrix_rationale: usageMatrixRationale,
       first_plan_step: effectiveFirstPlanStep,
       active_backlog: activeBacklog,
       backlog_status: backlogStatus,
       backlog_next_step: backlogNextStep,
       backlog_selected_execution_scope: backlogSelectedExecutionScope,
       planning_arbitration_status: planningArbitrationStatus,
+      shared_planning_source: sharedPlanning.shared_planning_source,
+      shared_planning_read_status: sharedPlanning.shared_planning_read_status,
       current_state_freshness: currentStateFreshness,
       runtime_state_mode: runtimeStateMode,
       effective_state_mode: effectiveStateMode,
@@ -1171,11 +914,13 @@ export function preWriteAdmit({
       session_merge_upstream_behind: sessionIntegrationGate?.session_upstream_behind ?? 0,
     },
     checks,
-    blocking_reasons: blockingReasons,
+    blockingReasons,
     warnings,
-    blocking_findings: blockingFindings,
-    prioritized_artifacts: prioritizedArtifacts,
-  };
+    blockingFindings,
+    prioritizedArtifacts,
+    sourceOfTruthIssues,
+    sourceOfTruthRepairActions,
+  });
 }
 
 function printText(output) {
@@ -1189,6 +934,7 @@ function printText(output) {
   console.log(`- dor_state=${output.context.dor_state}`);
   console.log(`- first_plan_step=${output.context.first_plan_step}`);
   console.log(`- runtime_state_mode=${output.context.runtime_state_mode}`);
+  console.log(`- source_of_truth_status=${output.context.source_of_truth_status}`);
   console.log(`- repair_layer_status=${output.context.repair_layer_status}`);
   console.log(`- current_state_freshness=${output.context.current_state_freshness}`);
   if (output.blocking_reasons.length > 0) {
@@ -1210,9 +956,9 @@ function printText(output) {
 }
 
 function main() {
-  try {
+  Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
-    const output = preWriteAdmit({
+    const output = await preWriteAdmit({
       targetRoot: args.target,
       skill: args.skill,
       currentStateFile: args.currentStateFile,
@@ -1226,11 +972,11 @@ function main() {
     if (args.strict && !output.ok) {
       process.exit(1);
     }
-  } catch (error) {
+  }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);
-  }
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

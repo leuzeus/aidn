@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function printUsage() {
   console.log("Usage:");
@@ -75,6 +76,33 @@ function main() {
       "--no-codex-migrate-custom",
     ]);
 
+    const initDefaultsTarget = path.join(tempRoot, "repo-init-defaults");
+    fs.mkdirSync(initDefaultsTarget, { recursive: true });
+    const initDefaults = run(repoRoot, "tools/project/config.mjs", [
+      "--target",
+      initDefaultsTarget,
+      "--init-defaults",
+      "--project-name",
+      "init-defaults-project",
+      "--json",
+    ]);
+    const initDefaultsPayload = JSON.parse(initDefaults.stdout || "{}");
+
+    const installInitDefaultsTarget = path.join(tempRoot, "repo-install-init-defaults");
+    fs.mkdirSync(installInitDefaultsTarget, { recursive: true });
+    const installWithInitDefaults = run(repoRoot, "tools/install.mjs", [
+      "--target",
+      installInitDefaultsTarget,
+      "--pack",
+      "core",
+      "--init-defaults",
+      "--project-name",
+      "install-defaults-project",
+      "--verify",
+      "--skip-artifact-import",
+      "--no-codex-migrate-custom",
+    ]);
+
     const createFromFile = run(repoRoot, "tools/project/config.mjs", [
       "--target",
       target,
@@ -110,6 +138,12 @@ function main() {
       list_existing_project_name: String(listExistingPayload?.config?.projectName ?? "") === "repo-installed-core",
       install_missing_fails_non_interactive: installMissing.status !== 0,
       install_missing_mentions_adapter_config: installMissing.stderr.includes("Missing workflow adapter config"),
+      init_defaults_ok: initDefaults.status === 0,
+      init_defaults_action: String(initDefaultsPayload?.action ?? "") === "init-defaults",
+      init_defaults_project_name: String(initDefaultsPayload?.config?.projectName ?? "") === "init-defaults-project",
+      install_with_init_defaults_ok: installWithInitDefaults.status === 0,
+      install_with_init_defaults_created_adapter: fs.existsSync(path.join(installInitDefaultsTarget, ".aidn", "project", "workflow.adapter.json")),
+      install_with_init_defaults_created_aidn_config: fs.existsSync(path.join(installInitDefaultsTarget, ".aidn", "config.json")),
       create_from_file_ok: createFromFile.status === 0,
       create_from_file_action: String(createFromFilePayload?.action ?? "") === "init-from-file",
       list_created_ok: listCreated.status === 0,
@@ -127,6 +161,7 @@ function main() {
       checks,
       samples: {
         install_missing_stderr: installMissing.stderr.trim(),
+        install_with_init_defaults_stdout: installWithInitDefaults.stdout.trim().split(/\r?\n/).slice(0, 12),
         install_with_adapter_stdout: installWithAdapter.stdout.trim().split(/\r?\n/).slice(0, 12),
       },
       pass,
@@ -142,7 +177,10 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok) {
+        throw cleanup.error;
+      }
     }
   }
 }

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 const TOOL_FILE = fileURLToPath(import.meta.url);
 const REPO_ROOT = path.resolve(path.dirname(TOOL_FILE), "..", "..");
@@ -130,15 +131,21 @@ function main() {
       full_init_ok: fullInit.ok === true,
       full_init_repair_layer_completed: ["applied", "skipped"].includes(String(fullInit?.repair_layer_result?.action ?? "")),
       full_init_repair_layer_findings_field: Number(fullInit?.repair_layer_result?.summary?.migration_findings_count ?? -1) >= 0,
+      full_init_exposes_diagnostic: fullInit?.sync_db_first_diagnostic?.scope === "runtime-db-first-sync"
+        && typeof fullInit?.sync_db_first_diagnostic?.output_count === "number",
       full_init_triage_written: fs.existsSync(triageFile),
       full_init_triage_summary_written: fs.existsSync(triageSummaryFile),
       selective_update_ok: selectiveUpdate.ok === true,
       selective_update_synced: Number(selectiveUpdate?.summary?.synced_count ?? 0) >= 1,
       selective_update_no_fallback: selectiveUpdate.fallback_full_used === false,
+      selective_update_exposes_diagnostic: selectiveUpdate?.sync_db_first_selective_diagnostic?.scope === "runtime-db-first-sync-selective"
+        && selectiveUpdate?.sync_db_first_selective_diagnostic?.fallback_full_used === false,
       selective_update_repair_layer_completed: ["applied", "skipped"].includes(String(selectiveUpdate?.repair_layer_result?.action ?? "")),
       selective_update_triage_written: fs.existsSync(triageFile),
       selective_delete_triggers_fallback: selectiveDelete.fallback_full_used === true,
       selective_delete_fallback_reason: selectiveDelete.fallback_full_reason === "git_status_requires_full",
+      selective_delete_exposes_diagnostic: selectiveDelete?.sync_db_first_selective_diagnostic?.fallback_full_used === true
+        && selectiveDelete?.sync_db_first_selective_diagnostic?.fallback_full_reason === "git_status_requires_full",
       selective_rename_triggers_fallback: selectiveRename.fallback_full_used === true,
       selective_rename_fallback_reason: selectiveRename.fallback_full_reason === "git_status_requires_full",
     };
@@ -153,11 +160,13 @@ function main() {
           synced_count: selectiveUpdate?.summary?.synced_count ?? 0,
           fallback_full_used: selectiveUpdate?.fallback_full_used ?? null,
           repair_layer_action: selectiveUpdate?.repair_layer_result?.action ?? null,
+          diagnostic: selectiveUpdate?.sync_db_first_selective_diagnostic ?? null,
           triage_file: selectiveUpdate?.repair_layer_triage_result?.triage_file ?? null,
         },
         full_init: {
           repair_layer_action: fullInit?.repair_layer_result?.action ?? null,
           repair_layer_findings: fullInit?.repair_layer_result?.summary?.migration_findings_count ?? null,
+          diagnostic: fullInit?.sync_db_first_diagnostic ?? null,
           triage_file: fullInit?.repair_layer_triage_result?.triage_file ?? null,
           triage_summary_file: fullInit?.repair_layer_triage_result?.summary_file ?? null,
         },
@@ -186,7 +195,7 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      removePathWithRetry(tempRoot);
     }
   }
 }

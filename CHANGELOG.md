@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+No unreleased changes.
+
+## 0.6.0
+
+- Add PostgreSQL-backed runtime persistence as the canonical backend path when explicitly configured, while keeping SQLite for legacy, compatibility, and migration paths.
+- Add project-scoped runtime identity with `project_id`, `workspace_id`, `worktree_id`, and `runtime_scope_id` so PostgreSQL rows cannot be confused across projects or worktrees.
+- Add shared coordination alignment diagnostics for PostgreSQL locator/backend mismatches and expose them through status, doctor, and re-anchor surfaces.
+- Add deterministic repair-layer normalization and reconstruction support for duplicate, partial, or degraded runtime artifact imports.
+- Extend public runtime CLI JSON contracts, fixtures, and validation gates for PostgreSQL runtime/shared coordination and project context behavior.
+- Harden release/version provenance with aligned `VERSION`, package metadata, release manifests, checksums, and package topology checks.
+- Add `Cross-Usage Convergence` as a validation doctrine for shared/high-risk implementation surfaces, including canonical `SPEC` wording, conditional anti-overfitting invariants, and `usage_matrix` support in cycle templates.
+- Add structured adapter rendering for cross-usage policy via `specializedGates.crossUsageConvergence`, plus migration/import recognition for generated `WORKFLOW.md`.
+- Update agent/reload/install documentation to surface `usage_matrix` expectations, shared/high-risk validation rules, and adapter configuration guidance.
+
 ## 0.5.1
 
 - Refactor workflow transition handling around shared constants and helpers for `start-session`, `close-session`, handoff routing, and repair routing.

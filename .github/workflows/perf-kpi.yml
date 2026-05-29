@@ -152,11 +152,8 @@ jobs:
       - name: Verify Install Import Fixtures
         run: npm run perf:verify-install-import
 
-      - name: Verify State Mode Parity Fixtures
-        run: npm run perf:verify-state-mode-parity
-
-      - name: Verify DB-Only Hooks Fixtures
-        run: npm run perf:verify-db-only-hooks
+      - name: Verify VCS Adapter Fixtures
+        run: npm run perf:verify-vcs-adapter
 
       - name: Reset Perf Runtime
         run: npm run perf:reset -- --root "$PERF_RUNTIME"

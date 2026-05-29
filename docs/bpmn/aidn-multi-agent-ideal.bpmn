@@ -16,7 +16,9 @@
         <bpmn:flowNodeRef>Task_DriftAndTraceabilityReview</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Gateway_HandoffNeeded</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Gateway_CloseSession</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_CloseSessionBlocks</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_CloseArtifacts</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_CloseDeferred</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_Execution" name="Execution Agent">
         <bpmn:flowNodeRef>Task_LoadCycleContext</bpmn:flowNodeRef>
@@ -35,6 +37,7 @@
         <bpmn:flowNodeRef>EndEvent_HandoffComplete</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_PublishSessionState</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>EndEvent_SessionPublished</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_TopologyClear</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_User" name="User / Operator">
         <bpmn:flowNodeRef>StartEvent_Request</bpmn:flowNodeRef>
@@ -47,11 +50,12 @@
     <bpmn:exclusiveGateway id="Gateway_ReanchorLoopMerge" name="Resume loop" />
     <bpmn:exclusiveGateway id="Gateway_ReanchorMerge" name="Reload workflow path" />
     <bpmn:task id="Task_ReanchorContext" name="Reload runtime context" />
-    <bpmn:exclusiveGateway id="Gateway_ContextComplete" name="Context complete?" default="Flow_ContextNo" />
+    <bpmn:exclusiveGateway id="Gateway_ContextComplete" name="Context and continuity complete?" default="Flow_ContextNo" />
     <bpmn:task id="Task_ClarifyIntent" name="Clarify scope" />
     <bpmn:task id="Task_AssignWork" name="Admit session and assign work" />
-    <bpmn:task id="Task_LoadCycleContext" name="Load session and cycle context" />
-    <bpmn:task id="Task_CheckBranchAndCycle" name="Validate branch-cycle mapping" />
+    <bpmn:task id="Task_LoadCycleContext" name="Load session and cycle topology" />
+    <bpmn:task id="Task_CheckBranchAndCycle" name="Validate branch-cycle continuity" />
+    <bpmn:exclusiveGateway id="Gateway_TopologyClear" name="Open-cycle topology clear?" default="Flow_TopologyDeferred" />
     <bpmn:task id="Task_CheckPreWriteGate" name="Validate write prerequisites" />
     <bpmn:exclusiveGateway id="Gateway_DorReady" name="Ready to write?" default="Flow_DorNo" />
     <bpmn:task id="Task_PreparePlanOnly" name="Update plan in read-only mode" />
@@ -67,10 +71,12 @@
     <bpmn:exclusiveGateway id="Gateway_HandoffNeeded" name="Need another agent?" default="Flow_HandoffNo" />
     <bpmn:task id="Task_ProjectHandoffPacket" name="Prepare handoff packet" />
     <bpmn:exclusiveGateway id="Gateway_CloseSession" name="Close session now?" default="Flow_CloseNo" />
+    <bpmn:exclusiveGateway id="Gateway_CloseSessionBlocks" name="Close decisions resolved?" default="Flow_CloseBlocksNo" />
     <bpmn:task id="Task_CloseArtifacts" name="Close session and orchestrate PR" />
     <bpmn:task id="Task_PublishSessionState" name="Publish session state" />
     <bpmn:endEvent id="EndEvent_HandoffComplete" name="Handoff prepared" />
     <bpmn:endEvent id="EndEvent_SessionPublished" name="Session state published" />
+    <bpmn:endEvent id="EndEvent_CloseDeferred" name="Close deferred" />
     <bpmn:dataObjectReference id="Data_CurrentState" name="CURRENT-STATE.md" dataObjectRef="DataObject_CurrentState" />
     <bpmn:dataObject id="DataObject_CurrentState" />
     <bpmn:dataObjectReference id="Data_CurrentState_Publish" name="CURRENT-STATE.md" dataObjectRef="DataObject_CurrentState" />
@@ -96,7 +102,11 @@
     <bpmn:sequenceFlow id="Flow_ClarifyBack" sourceRef="Task_ClarifyIntent" targetRef="Gateway_ReanchorUserMerge" />
     <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_AssignWork" targetRef="Task_LoadCycleContext" />
     <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_LoadCycleContext" targetRef="Task_CheckBranchAndCycle" />
-    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_CheckBranchAndCycle" targetRef="Task_CheckPreWriteGate" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_CheckBranchAndCycle" targetRef="Gateway_TopologyClear" />
+    <bpmn:sequenceFlow id="Flow_TopologyClear" sourceRef="Gateway_TopologyClear" targetRef="Task_CheckPreWriteGate">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">topology_clear</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_TopologyDeferred" sourceRef="Gateway_TopologyClear" targetRef="Task_PreparePlanOnly" />
     <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_CheckPreWriteGate" targetRef="Gateway_DorReady" />
     <bpmn:sequenceFlow id="Flow_DorNo" sourceRef="Gateway_DorReady" targetRef="Task_PreparePlanOnly">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">dor_not_ready</bpmn:conditionExpression>
@@ -131,8 +141,14 @@
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">continue_same_agent</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_HandoffLoop" sourceRef="Task_ProjectHandoffPacket" targetRef="EndEvent_HandoffComplete" />
-    <bpmn:sequenceFlow id="Flow_CloseYes" sourceRef="Gateway_CloseSession" targetRef="Task_CloseArtifacts">
+    <bpmn:sequenceFlow id="Flow_CloseYes" sourceRef="Gateway_CloseSession" targetRef="Gateway_CloseSessionBlocks">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">close_now</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_CloseBlocksYes" sourceRef="Gateway_CloseSessionBlocks" targetRef="Task_CloseArtifacts">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">close_resolved</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_CloseBlocksNo" sourceRef="Gateway_CloseSessionBlocks" targetRef="EndEvent_CloseDeferred">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">close_deferred</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_CloseNo" sourceRef="Gateway_CloseSession" targetRef="Gateway_ImplementMerge">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">continue_working</bpmn:conditionExpression>
@@ -209,6 +225,12 @@
       <bpmndi:BPMNShape id="Task_CheckBranchAndCycle_di" bpmnElement="Task_CheckBranchAndCycle">
         <dc:Bounds x="960" y="620" width="150" height="80" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_TopologyClear_di" bpmnElement="Gateway_TopologyClear" isMarkerVisible="true">
+        <dc:Bounds x="1110" y="635" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1098" y="685" width="74" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_CheckPreWriteGate_di" bpmnElement="Task_CheckPreWriteGate">
         <dc:Bounds x="1160" y="620" width="150" height="80" />
       </bpmndi:BPMNShape>
@@ -275,6 +297,12 @@
           <dc:Bounds x="2711" y="685" width="69" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_CloseSessionBlocks_di" bpmnElement="Gateway_CloseSessionBlocks" isMarkerVisible="true">
+        <dc:Bounds x="2770" y="635" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2749" y="597.5" width="92" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_CloseArtifacts_di" bpmnElement="Task_CloseArtifacts">
         <dc:Bounds x="2820" y="620" width="150" height="80" />
       </bpmndi:BPMNShape>
@@ -291,6 +319,12 @@
         <dc:Bounds x="3270" y="367" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="3255" y="403" width="67" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_CloseDeferred_di" bpmnElement="EndEvent_CloseDeferred">
+        <dc:Bounds x="2920" y="680" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2898" y="716" width="81" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Data_CurrentState_di" bpmnElement="Data_CurrentState">
@@ -379,7 +413,17 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
         <di:waypoint x="1110" y="660" />
+        <di:waypoint x="1110" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TopologyClear_di" bpmnElement="Flow_TopologyClear">
+        <di:waypoint x="1135" y="635" />
+        <di:waypoint x="1135" y="660" />
         <di:waypoint x="1160" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TopologyDeferred_di" bpmnElement="Flow_TopologyDeferred">
+        <di:waypoint x="1135" y="635" />
+        <di:waypoint x="1135" y="385" />
+        <di:waypoint x="1460" y="385" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
         <di:waypoint x="1310" y="660" />
@@ -466,7 +510,15 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_CloseYes_di" bpmnElement="Flow_CloseYes">
         <di:waypoint x="2770" y="660" />
+        <di:waypoint x="2770" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CloseBlocksYes_di" bpmnElement="Flow_CloseBlocksYes">
+        <di:waypoint x="2795" y="660" />
         <di:waypoint x="2820" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CloseBlocksNo_di" bpmnElement="Flow_CloseBlocksNo">
+        <di:waypoint x="2795" y="685" />
+        <di:waypoint x="2920" y="698" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_CloseNo_di" bpmnElement="Flow_CloseNo">
         <di:waypoint x="2745" y="685" />

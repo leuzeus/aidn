@@ -11,6 +11,35 @@ import {
   readTextIfExists,
 } from "../../lib/workflow/session-context-lib.mjs";
 
+function normalizeUsageMatrixScope(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "shared" || normalized === "high-risk") {
+    return normalized;
+  }
+  return "local";
+}
+
+function normalizeUsageMatrixState(value) {
+  const normalized = String(value ?? "").trim().toUpperCase();
+  if (["NOT_DEFINED", "DECLARED", "PARTIAL", "VERIFIED", "WAIVED"].includes(normalized)) {
+    return normalized;
+  }
+  return "NOT_DEFINED";
+}
+
+function usageMatrixSatisfied({ scope, state, rationale }) {
+  if (scope === "local") {
+    return true;
+  }
+  if (state === "VERIFIED") {
+    return true;
+  }
+  if (state === "WAIVED" && String(rationale ?? "").trim().length > 0 && String(rationale ?? "").trim().toLowerCase() !== "none") {
+    return true;
+  }
+  return false;
+}
+
 function makeResult(base, overrides = {}) {
   const action = overrides.action ?? base.action ?? "blocked_missing_target_cycle";
   const result = overrides.result ?? (action === "promote_baseline_allowed" ? "ok" : "stop");
@@ -139,6 +168,10 @@ export function runPromoteBaselineAdmitUseCase({ targetRoot, mode = "COMMITTING"
     traceability_complete: traceabilityLooksComplete(traceabilityText),
     gap_report_present: Boolean(gapReportText),
     gap_report_open_count: openGapCount,
+    usage_matrix_scope: normalizeUsageMatrixScope(targetCycle.usage_matrix_scope),
+    usage_matrix_state: normalizeUsageMatrixState(targetCycle.usage_matrix_state),
+    usage_matrix_summary: String(targetCycle.usage_matrix_summary ?? "none"),
+    usage_matrix_rationale: String(targetCycle.usage_matrix_rationale ?? "none"),
   };
 
   if (!validationSummary.traceability_present || !validationSummary.traceability_complete) {
@@ -162,6 +195,24 @@ export function runPromoteBaselineAdmitUseCase({ targetRoot, mode = "COMMITTING"
         `Cycle ${targetCycle.cycle_id} still has ${openGapCount} open GAP item(s).`,
       ],
       recommended_next_action: "Resolve or explicitly justify remaining GAP items before promoting baseline.",
+    });
+  }
+
+  if (!usageMatrixSatisfied({
+    scope: validationSummary.usage_matrix_scope,
+    state: validationSummary.usage_matrix_state,
+    rationale: validationSummary.usage_matrix_rationale,
+  })) {
+    return makeResult(base, {
+      action: "blocked_validation_incomplete",
+      reason_code: "PROMOTE_BASELINE_USAGE_MATRIX_INCOMPLETE",
+      validation_summary: validationSummary,
+      blocking_reasons: [
+        `Cycle ${targetCycle.cycle_id} requires verified cross-usage evidence before promotion (scope=${validationSummary.usage_matrix_scope}, state=${validationSummary.usage_matrix_state}).`,
+      ],
+      recommended_next_action: validationSummary.usage_matrix_scope === "high-risk"
+        ? "Verify the declared usage matrix for the high-risk surface or record an explicit waiver rationale before promoting baseline."
+        : "Verify the declared usage matrix for the shared surface or record an explicit waiver rationale before promoting baseline.",
     });
   }
 

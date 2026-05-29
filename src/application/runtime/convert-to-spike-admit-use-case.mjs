@@ -1,9 +1,16 @@
 import { runCycleCreateAdmitUseCase } from "./cycle-create-admit-use-case.mjs";
 
-export function runConvertToSpikeAdmitUseCase({ targetRoot, mode = "EXPLORING" }) {
-  const admission = runCycleCreateAdmitUseCase({
+export async function runConvertToSpikeAdmitUseCase({
+  targetRoot,
+  mode = "EXPLORING",
+  sharedCoordination = null,
+  sharedCoordinationOptions = {},
+} = {}) {
+  const admission = await runCycleCreateAdmitUseCase({
     targetRoot,
     mode,
+    sharedCoordination,
+    sharedCoordinationOptions,
   });
 
   return {

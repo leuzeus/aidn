@@ -61,8 +61,8 @@ function parseArgs(argv) {
     }
   }
 
-  if (!["auto", "json", "sqlite"].includes(args.backend)) {
-    throw new Error("Invalid --backend. Expected auto|json|sqlite");
+  if (!["auto", "json", "sqlite", "postgres"].includes(args.backend)) {
+    throw new Error("Invalid --backend. Expected auto|json|sqlite|postgres");
   }
   if (![
     "relevant-cycles-for-session",
@@ -104,11 +104,11 @@ function printHuman(output) {
   }
 }
 
-function main() {
+async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const output = runRepairLayerQueryUseCase({ args, targetRoot });
+    const output = await runRepairLayerQueryUseCase({ args, targetRoot });
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));
     } else {
@@ -121,4 +121,4 @@ function main() {
   }
 }
 
-main();
+await main();

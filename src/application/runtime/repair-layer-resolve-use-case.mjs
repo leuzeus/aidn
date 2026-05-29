@@ -1,18 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
-import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import { buildRepairLayerService } from "./repair-layer-service.mjs";
 import { createWorkflowStateStoreAdapter } from "../../adapters/runtime/workflow-state-store-adapter.mjs";
 import { persistWorkflowIndexProjection } from "./index-state-store-service.mjs";
 import { buildRepairLayerInputDigest, mergeRepairLayerPayload } from "./repair-layer-payload-lib.mjs";
 import { resolveRuntimePath } from "./runtime-path-resolution.mjs";
 import { upsertRepairDecision } from "./repair-layer-decision-lib.mjs";
+import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
 
 function detectBackend(indexFile, backend) {
-  if (backend === "json" || backend === "sqlite") {
-    return backend;
-  }
-  return String(indexFile).toLowerCase().endsWith(".sqlite") ? "sqlite" : "json";
+  return detectRuntimeSnapshotBackend(indexFile, backend);
 }
 
 function readJsonIndex(indexFile) {
@@ -24,20 +21,31 @@ function readJsonIndex(indexFile) {
   return { absolute, payload };
 }
 
-function createStateStoreForBackend(indexFile, backend) {
+function resolveFileProjectionPath(indexFile) {
+  const absolute = path.resolve(process.cwd(), indexFile);
+  if (absolute.toLowerCase().endsWith(".json")) {
+    return absolute;
+  }
+  return path.join(path.dirname(absolute), `${path.basename(absolute, path.extname(absolute))}.json`);
+}
+
+function createStateStoreForBackend(targetRoot, indexFile, backend) {
   if (backend === "sqlite") {
     return createWorkflowStateStoreAdapter({
+      targetRoot,
       mode: "sqlite",
       sqliteOutput: indexFile,
     });
   }
   return createWorkflowStateStoreAdapter({
+    targetRoot,
     mode: "file",
-    jsonOutput: indexFile,
+    jsonOutput: resolveFileProjectionPath(indexFile),
+    runtimePersistenceBackend: backend === "postgres" ? "postgres" : "",
   });
 }
 
-export function runRepairLayerResolveUseCase({ args, targetRoot }) {
+export async function runRepairLayerResolveUseCase({ args, targetRoot }) {
   const auditRoot = path.join(targetRoot, "docs", "audit");
   if (!fs.existsSync(auditRoot)) {
     throw new Error(`Missing audit root: ${auditRoot}`);
@@ -45,9 +53,9 @@ export function runRepairLayerResolveUseCase({ args, targetRoot }) {
 
   const indexFile = resolveRuntimePath(targetRoot, args.indexFile);
   const backend = detectBackend(indexFile, args.indexBackend);
-  const index = backend === "sqlite"
-    ? readIndexFromSqlite(indexFile)
-    : readJsonIndex(indexFile);
+  const index = backend === "json"
+    ? readJsonIndex(indexFile)
+    : await readRuntimeSnapshot({ indexFile, backend, targetRoot });
   const payload = index.payload && typeof index.payload === "object" ? index.payload : null;
   if (!payload || !Array.isArray(payload.artifacts) || !Array.isArray(payload.cycles)) {
     throw new Error("Repair layer resolution requires an index payload with artifacts and cycles.");
@@ -88,8 +96,8 @@ export function runRepairLayerResolveUseCase({ args, targetRoot }) {
     },
   };
   if (args.apply) {
-    const stateStore = createStateStoreForBackend(indexFile, backend);
-    applyResult = persistWorkflowIndexProjection({
+    const stateStore = createStateStoreForBackend(targetRoot, indexFile, backend);
+    applyResult = await persistWorkflowIndexProjection({
       stateStore,
       payload: mergedPayload,
       dryRun: false,

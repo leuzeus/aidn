@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-shared-coordination-migrate.v1",
+  "title": "aidn runtime shared-coordination-migrate --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime shared-coordination-migrate --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "ok",
+    "shared_coordination_backend",
+    "shared_coordination_migration",
+    "migration_plan",
+    "write_requested",
+    "migration_diagnostic"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "ok": { "type": "boolean" },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "shared_coordination_backend": { "type": "object", "additionalProperties": true },
+    "shared_coordination_migration": { "type": "object", "additionalProperties": true },
+    "pre_migration_health": { "type": ["object", "null"], "additionalProperties": true },
+    "migration_plan": {
+      "type": "object",
+      "required": ["action", "mutating", "blocked", "status", "reason"],
+      "properties": {
+        "action": { "type": "string" },
+        "mutating": { "type": "boolean" },
+        "blocked": { "type": "boolean" },
+        "status": { "type": "string" },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "rollback_snapshot": {
+      "type": ["object", "null"],
+      "required": ["planned_output_file", "limit", "enabled"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "output_file": { "type": "string" },
+        "written": { "type": "boolean" },
+        "health": { "type": ["object", "null"], "additionalProperties": true },
+        "planned_output_file": { "type": "string" },
+        "limit": { "type": "number" },
+        "enabled": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "rollback_hint": {
+      "type": ["object", "null"],
+      "required": ["restore_command"],
+      "properties": {
+        "restore_command": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "write_requested": { "type": "boolean" },
+    "contract": { "type": ["object", "null"], "additionalProperties": true },
+    "migration_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "backend_kind",
+        "migration_status",
+        "planned_action",
+        "schema_status",
+        "rollback_planned",
+        "summary",
+        "recommended_action"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "backend_kind": { "type": "string" },
+        "migration_status": { "type": "string" },
+        "planned_action": { "type": "string" },
+        "schema_status": { "type": "string" },
+        "rollback_planned": { "type": "boolean" },
+        "summary": { "type": "string" },
+        "recommended_action": { "type": "string" },
+        "write_requested": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

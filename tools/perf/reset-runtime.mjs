@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -42,7 +43,7 @@ function printUsage() {
 
 function removeIfExists(target) {
   if (fs.existsSync(target)) {
-    fs.rmSync(target, { recursive: true, force: true });
+    removePathWithRetry(target);
     return true;
   }
   return false;
@@ -57,7 +58,7 @@ function cleanPerfDir(perfDir, keepHistory) {
     return false;
   }
   if (!keepHistory) {
-    fs.rmSync(perfDir, { recursive: true, force: true });
+    removePathWithRetry(perfDir);
     return true;
   }
   const entries = fs.readdirSync(perfDir, { withFileTypes: true });
@@ -67,7 +68,7 @@ function cleanPerfDir(perfDir, keepHistory) {
       continue;
     }
     const absolute = path.join(perfDir, entry.name);
-    fs.rmSync(absolute, { recursive: true, force: true });
+    removePathWithRetry(absolute);
     removedAny = true;
   }
   return removedAny;

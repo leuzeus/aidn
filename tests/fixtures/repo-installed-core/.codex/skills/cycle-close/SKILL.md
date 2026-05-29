@@ -44,6 +44,7 @@ Before the first durable write in this skill, run:
 ### Tests / Validation
 - Traceability matrix updated OR justification provided for non-testable REQs.
 - TEST references exist or validation steps documented.
+- If the cycle touched a shared or high-risk surface, confirm the declared `usage_matrix` is either verified or explicitly reduced with rationale.
 
 ### Gaps
 - If gap-report.md exists:
@@ -60,6 +61,7 @@ Before the first durable write in this skill, run:
 3) Update status.md:
 - state: VERIFYING (if remaining validations), DONE (if retained), or NO_GO/DROPPED (if non-retained)
 - scope_frozen: true
+- `usage_matrix_state`: `PARTIAL | VERIFIED | WAIVED` as appropriate
 - last updated: (today)
 - next step:
   - VERIFYING: list remaining validations

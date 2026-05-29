@@ -15,15 +15,22 @@ Rule/State boundary:
 
 ## Summary
 
+contract_version: critical-markdown-v1
 updated_at: unknown
 history_status: empty
 total_dispatches: 0
 last_recommended_role: unknown
 last_recommended_action: unknown
+last_preferred_dispatch_source: workflow
 last_execution_status: unknown
 arbitration_count: 0
 last_arbitration_decision: unknown
 last_arbitration_ts: unknown
+source_of_truth: local runtime context or explicit shared backend
+source_mode: explicit
+lifecycle_status: refreshed
+owner: {{project_id}}
+steward: aidn-runtime
 
 ## Aggregates
 

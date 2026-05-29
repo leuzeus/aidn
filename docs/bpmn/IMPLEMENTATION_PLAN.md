@@ -18,12 +18,16 @@ Already available in the repository:
 - pre-write gate in `AGENTS.md`
 - runtime hydration and repair-layer refresh
 - deterministic handoff packet projection
+- deterministic workflow adapter generation through `.aidn/project/workflow.adapter.json` and `aidn project config`
 - admission-first workflow hooks for `start-session`, `close-session`, `cycle-create`, `requirements-delta`, `promote-baseline`, and `convert-to-spike`
 - explicit session PR lifecycle orchestration via `pr-orchestrate`
 - explicit `handoff-close` runtime exposure with blocking checkpoint results surfaced at the skill boundary
+- shared coordination inventory/status/admin commands including `shared-coordination-projects`
+- runtime persistence adoption planning/execution for `sqlite | postgres`
 
 This means the BPMN is not starting from zero.
 The next work should focus on turning these artifacts into a true multi-agent operating model.
+These adjacent install/config/backend surfaces should stay documented next to the BPMN, but not collapsed into the BPMN choreography itself.
 
 ## Current Status
 

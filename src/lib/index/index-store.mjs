@@ -26,11 +26,45 @@ function getDatabaseSync() {
   }
 }
 
-function stableIndexProjection(indexPayload) {
+function stableSortValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => stableSortValue(item));
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+  const out = {};
+  for (const key of Object.keys(value).sort()) {
+    out[key] = stableSortValue(value[key]);
+  }
+  return out;
+}
+
+function canonicalizeIndexCollections(indexPayload) {
   if (!indexPayload || typeof indexPayload !== "object") {
     return indexPayload;
   }
   const clone = JSON.parse(JSON.stringify(indexPayload));
+  for (const [key, value] of Object.entries(clone)) {
+    if (!Array.isArray(value)) {
+      continue;
+    }
+    clone[key] = value
+      .map((item) => stableSortValue(item))
+      .sort((left, right) => {
+        const leftJson = JSON.stringify(left);
+        const rightJson = JSON.stringify(right);
+        return leftJson < rightJson ? -1 : leftJson > rightJson ? 1 : 0;
+      });
+  }
+  return clone;
+}
+
+function stableIndexProjection(indexPayload) {
+  if (!indexPayload || typeof indexPayload !== "object") {
+    return indexPayload;
+  }
+  const clone = canonicalizeIndexCollections(indexPayload);
   delete clone.generated_at;
   if (clone.repair_layer_meta && typeof clone.repair_layer_meta === "object") {
     delete clone.repair_layer_meta.applied_at;
@@ -482,8 +516,8 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
       const cycleStmt = db.prepare(`
         INSERT INTO cycles (
           cycle_id, session_id, state, outcome, branch_name, dor_state,
-          continuity_rule, continuity_base_branch, continuity_latest_cycle_branch, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          continuity_rule, continuity_base_branch, continuity_latest_cycle_branch, continuity_decision_by, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(cycle_id) DO UPDATE SET
           session_id = excluded.session_id,
           state = excluded.state,
@@ -493,6 +527,7 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
           continuity_rule = excluded.continuity_rule,
           continuity_base_branch = excluded.continuity_base_branch,
           continuity_latest_cycle_branch = excluded.continuity_latest_cycle_branch,
+          continuity_decision_by = excluded.continuity_decision_by,
           updated_at = excluded.updated_at;
       `);
       runInsert(cycleStmt, cycles, (row) => ([
@@ -505,6 +540,7 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
         row.continuity_rule ?? null,
         row.continuity_base_branch ?? null,
         row.continuity_latest_cycle_branch ?? null,
+        row.continuity_decision_by ?? null,
         row.updated_at ?? new Date().toISOString(),
       ]));
 

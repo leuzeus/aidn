@@ -99,8 +99,8 @@ function parseArgs(argv) {
   if (!["files", "dual", "db-only"].includes(args.stateMode)) {
     throw new Error("Invalid --state-mode. Expected files|dual|db-only");
   }
-  if (!["auto", "json", "sqlite"].includes(args.indexBackend)) {
-    throw new Error("Invalid --index-backend. Expected auto|json|sqlite");
+  if (!["auto", "json", "sqlite", "postgres"].includes(args.indexBackend)) {
+    throw new Error("Invalid --index-backend. Expected auto|json|sqlite|postgres");
   }
   if (!["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"].includes(args.mode)) {
     throw new Error("Invalid --mode. Expected THINKING|EXPLORING|COMMITTING|UNKNOWN");
@@ -142,7 +142,7 @@ function buildSummary(result) {
   };
 }
 
-function main() {
+async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
@@ -152,7 +152,7 @@ function main() {
     });
 
     const gating = shouldRunGating(admission)
-      ? runGatingEvaluateUseCase({
+      ? await runGatingEvaluateUseCase({
         args,
         targetRoot,
         runtimeDir: PERF_DIR,
@@ -210,4 +210,4 @@ function main() {
   }
 }
 
-main();
+await main();

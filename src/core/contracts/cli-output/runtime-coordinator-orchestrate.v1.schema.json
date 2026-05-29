@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-coordinator-orchestrate.v1",
+  "title": "aidn runtime coordinator-orchestrate --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime coordinator-orchestrate --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "state_mode",
+    "db_backed_mode",
+    "orchestration_status",
+    "execute_requested",
+    "max_iterations",
+    "iterations_completed",
+    "can_continue",
+    "runs",
+    "orchestration_diagnostic"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "state_mode": { "type": "string" },
+    "db_backed_mode": { "type": "boolean" },
+    "orchestration_status": { "type": "string" },
+    "stop_reason": { "type": ["string", "null"] },
+    "execute_requested": { "type": "boolean" },
+    "max_iterations": { "type": "number" },
+    "iterations_completed": { "type": "number" },
+    "can_continue": { "type": "boolean" },
+    "initial_preview": { "type": ["object", "null"], "additionalProperties": true },
+    "last_preview": { "type": ["object", "null"], "additionalProperties": true },
+    "runs": { "type": "array" },
+    "orchestration_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "orchestration_status",
+        "execute_requested",
+        "iterations_completed",
+        "max_iterations",
+        "can_continue",
+        "stop_reason",
+        "preferred_decision",
+        "summary",
+        "recommended_command"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "orchestration_status": { "type": "string" },
+        "execute_requested": { "type": "boolean" },
+        "iterations_completed": { "type": "number" },
+        "max_iterations": { "type": "number" },
+        "can_continue": { "type": "boolean" },
+        "stop_reason": { "type": "string" },
+        "preferred_decision": { "type": "string" },
+        "summary": { "type": "string" },
+        "recommended_command": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

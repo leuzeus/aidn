@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 const ZIP_STORE = 0;
 const DOS_DATE = ((2020 - 1980) << 9) | (1 << 5) | 1;
@@ -19,8 +20,12 @@ function isExcluded(relativePath) {
     normalized.startsWith(".git/") ||
     normalized === ".idea" ||
     normalized.startsWith(".idea/") ||
+    normalized.endsWith(".tmp") ||
+    normalized.startsWith("tests/fixtures/tmp-") ||
     normalized === "release/dist" ||
     normalized.startsWith("release/dist/") ||
+    normalized === "release/checksums.txt" ||
+    normalized === "release/manifest.json" ||
     normalized === "node_modules" ||
     normalized.startsWith("node_modules/")
   );
@@ -132,7 +137,7 @@ function makeEndOfCentralDirectory(entryCount, centralSize, centralOffset) {
   return record;
 }
 
-function buildZip(files, outputPath) {
+function buildZip(files) {
   const localChunks = [];
   const centralChunks = [];
   const centralEntries = [];
@@ -163,8 +168,7 @@ function buildZip(files, outputPath) {
   }
 
   const eocd = makeEndOfCentralDirectory(centralEntries.length, centralSize, offset);
-  const output = Buffer.concat([...localChunks, ...centralChunks, eocd]);
-  fs.writeFileSync(outputPath, output);
+  return Buffer.concat([...localChunks, ...centralChunks, eocd]);
 }
 
 function sha256File(filePath) {
@@ -173,25 +177,89 @@ function sha256File(filePath) {
   return hash.digest("hex");
 }
 
+function writeAtomicFile(filePath, content, encoding = null) {
+  const directory = path.dirname(filePath);
+  const tempPath = path.join(directory, `${path.basename(filePath)}.tmp`);
+  if (encoding) {
+    fs.writeFileSync(tempPath, content, encoding);
+  } else {
+    fs.writeFileSync(tempPath, content);
+  }
+  fs.rmSync(filePath, { force: true });
+  fs.renameSync(tempPath, filePath);
+}
+
+function getGitCommit(repoRoot) {
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+
+function readPackage(repoRoot) {
+  return JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
+}
+
 function main() {
   const scriptDir = path.dirname(fileURLToPath(import.meta.url));
   const repoRoot = path.resolve(scriptDir, "..");
-  const version = fs.readFileSync(path.join(repoRoot, "VERSION"), "utf8").trim();
+  const versionPath = path.join(repoRoot, "VERSION");
+  const packagePath = path.join(repoRoot, "package.json");
+  const version = fs.readFileSync(versionPath, "utf8").trim();
+  const packageJson = readPackage(repoRoot);
+  if (packageJson.version !== version) {
+    throw new Error(`package.json version ${packageJson.version} does not match VERSION ${version}`);
+  }
   const distDir = path.join(repoRoot, "release", "dist");
   const zipName = `aidn-workflow-${version}.zip`;
   const zipPath = path.join(distDir, zipName);
   const checksumsPath = path.join(repoRoot, "release", "checksums.txt");
+  const manifestPath = path.join(repoRoot, "release", "manifest.json");
 
   fs.mkdirSync(distDir, { recursive: true });
   const files = listFiles(repoRoot);
-  buildZip(files, zipPath);
+  writeAtomicFile(zipPath, buildZip(files));
 
   const hash = sha256File(zipPath);
+  const zipStats = fs.statSync(zipPath);
   const checksumLine = `${hash}  release/dist/${zipName}\n`;
-  fs.writeFileSync(checksumsPath, checksumLine, "utf8");
+  writeAtomicFile(checksumsPath, checksumLine, "utf8");
+  const manifest = {
+    schema_version: 1,
+    package_name: packageJson.name,
+    version,
+    git_commit: getGitCommit(repoRoot),
+    generated_at: new Date().toISOString(),
+    source: {
+      version_file: "VERSION",
+      version_file_sha256: sha256File(versionPath),
+      package_file: "package.json",
+      package_file_sha256: sha256File(packagePath),
+    },
+    build: {
+      tool: "tools/build-release.mjs",
+      input_files: files.length,
+      input_bytes: files.reduce((total, file) => total + fs.statSync(file.absolutePath).size, 0),
+    },
+    artifacts: [
+      {
+        name: zipName,
+        path: `release/dist/${zipName}`,
+        sha256: hash,
+        bytes: zipStats.size,
+      },
+    ],
+  };
+  writeAtomicFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 
   console.log(`zip: ${path.relative(repoRoot, zipPath)}`);
   console.log(`checksums: ${path.relative(repoRoot, checksumsPath)}`);
+  console.log(`manifest: ${path.relative(repoRoot, manifestPath)}`);
 }
 
 main();

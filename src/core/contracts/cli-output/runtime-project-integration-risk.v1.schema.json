@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-project-integration-risk.v1",
+  "title": "aidn runtime project-integration-risk --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime project-integration-risk --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "output_file",
+    "written",
+    "state_mode",
+    "db_first_applied",
+    "db_first_materialized",
+    "db_first_artifact_path",
+    "recommended_strategy",
+    "mergeability",
+    "candidate_cycles",
+    "integration_risk_diagnostic"
+  ],
+  "properties": {
+    "output_file": { "type": "string" },
+    "written": { "type": "boolean" },
+    "state_mode": { "type": "string" },
+    "db_first_applied": { "type": "boolean" },
+    "db_first_materialized": { "type": "boolean" },
+    "db_first_artifact_path": { "type": "string" },
+    "governance_metadata": {
+      "type": "object",
+      "required": [
+        "contract_version",
+        "source_of_truth",
+        "source_mode",
+        "lifecycle_status",
+        "owner",
+        "steward"
+      ],
+      "properties": {
+        "contract_version": { "type": "string" },
+        "source_of_truth": { "type": "string" },
+        "source_mode": { "type": "string" },
+        "lifecycle_status": { "type": "string" },
+        "owner": { "type": "string" },
+        "steward": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "recommended_strategy": { "type": "string" },
+    "mergeability": { "type": "string" },
+    "candidate_cycles": { "type": "array" },
+    "integration_risk_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "state_mode",
+        "recommended_strategy",
+        "mergeability",
+        "candidate_cycle_count",
+        "arbitration_required",
+        "written",
+        "summary",
+        "recommended_command"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "state_mode": { "type": "string" },
+        "recommended_strategy": { "type": "string" },
+        "mergeability": { "type": "string" },
+        "candidate_cycle_count": { "type": "number" },
+        "arbitration_required": { "type": "boolean" },
+        "written": { "type": "boolean" },
+        "summary": { "type": "string" },
+        "recommended_command": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

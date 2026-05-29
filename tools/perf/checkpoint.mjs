@@ -153,12 +153,12 @@ function printUsage() {
   console.log("  node tools/perf/checkpoint.mjs --json");
 }
 
-function main() {
+async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const runtimeDir = path.dirname(fileURLToPath(import.meta.url));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const result = runCheckpointUseCase({ args, runtimeDir, targetRoot });
+    const result = await runCheckpointUseCase({ args, runtimeDir, targetRoot });
 
     if (args.json) {
       console.log(JSON.stringify(result, null, 2));
@@ -200,4 +200,4 @@ function main() {
   }
 }
 
-main();
+await main();

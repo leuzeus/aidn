@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { initGitRepo } from "./test-git-fixture-lib.mjs";
+import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -255,6 +255,54 @@ function installDbOnlyIndexFixture(repoRoot, targetRoot) {
   ], env);
 }
 
+function upsertScalarLine(text, key, value) {
+  const pattern = new RegExp(`^${key}:\\s*.*$`, "im");
+  if (pattern.test(text)) {
+    return text.replace(pattern, `${key}: ${value}`);
+  }
+  const normalized = text.endsWith("\n") ? text : `${text}\n`;
+  return `${normalized}${key}: ${value}\n`;
+}
+
+function installCycleCloseUsageMatrixFixture(targetRoot, {
+  scope = "shared",
+  state = "NOT_DEFINED",
+  summary = "nominal + alternate",
+  rationale = "none",
+} = {}) {
+  const statusFile = path.join(targetRoot, "docs", "audit", "cycles", "C101-feature-alpha", "status.md");
+  let statusText = fs.readFileSync(statusFile, "utf8");
+  statusText = upsertScalarLine(statusText, "state", "DONE");
+  statusText = upsertScalarLine(statusText, "usage_matrix_scope", scope);
+  statusText = upsertScalarLine(statusText, "usage_matrix_state", state);
+  statusText = upsertScalarLine(statusText, "usage_matrix_summary", summary);
+  statusText = upsertScalarLine(statusText, "usage_matrix_rationale", rationale);
+  fs.writeFileSync(statusFile, statusText, "utf8");
+}
+
+function installInvalidSharedRuntimeLocator(targetRoot, {
+  workspaceId = "workspace-locator",
+  backendKind = "sqlite-file",
+  root = "docs/audit/shared-runtime",
+  connectionRef = "",
+} = {}) {
+  const locatorDir = path.join(targetRoot, ".aidn", "project");
+  fs.mkdirSync(locatorDir, { recursive: true });
+  fs.writeFileSync(path.join(locatorDir, "shared-runtime.locator.json"), `${JSON.stringify({
+    version: 1,
+    enabled: true,
+    workspaceId,
+    backend: {
+      kind: backendKind,
+      root,
+      connectionRef,
+    },
+    projection: {
+      localIndexMode: "preserve-current",
+    },
+  }, null, 2)}\n`, "utf8");
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -269,22 +317,60 @@ function main() {
     const dirtyCycleCreateTarget = path.join(tempRoot, "cycle-create-dirty");
     const aheadCycleCreateTarget = path.join(tempRoot, "cycle-create-ahead");
     const unmergedSessionCycleCreateTarget = path.join(tempRoot, "cycle-create-session-unmerged");
+    const cycleCloseBlockedTarget = path.join(tempRoot, "cycle-close-usage-matrix-blocked");
+    const cycleCloseWaivedTarget = path.join(tempRoot, "cycle-close-usage-matrix-waived");
+    const promoteBaselineBlockedTarget = path.join(tempRoot, "promote-baseline-usage-matrix-blocked");
+    const promoteBaselineWaivedTarget = path.join(tempRoot, "promote-baseline-usage-matrix-waived");
     const dbOnlyRequirementsTarget = path.join(tempRoot, "db-only-fileless-requirements");
     const dbOnlyCloseSessionTarget = path.join(tempRoot, "db-only-fileless-close-session");
+    const invalidSharedRuntimeTarget = path.join(tempRoot, "invalid-shared-runtime");
+    const locatorWorkspaceMismatchTarget = path.join(tempRoot, "locator-workspace-mismatch");
+    const stateModeMismatchTarget = path.join(tempRoot, "source-of-truth-state-mode-mismatch");
     fs.cpSync(readyTarget, cycleCreateTarget, { recursive: true });
     fs.cpSync(readyTarget, warningTarget, { recursive: true });
     fs.cpSync(readyTarget, dirtyCycleCreateTarget, { recursive: true });
     fs.cpSync(readyTarget, aheadCycleCreateTarget, { recursive: true });
     fs.cpSync(readyTarget, unmergedSessionCycleCreateTarget, { recursive: true });
+    fs.cpSync(readyTarget, cycleCloseBlockedTarget, { recursive: true });
+    fs.cpSync(readyTarget, cycleCloseWaivedTarget, { recursive: true });
+    fs.cpSync(readyTarget, promoteBaselineBlockedTarget, { recursive: true });
+    fs.cpSync(readyTarget, promoteBaselineWaivedTarget, { recursive: true });
     fs.cpSync(readyTarget, dbOnlyRequirementsTarget, { recursive: true });
     fs.cpSync(readyTarget, dbOnlyCloseSessionTarget, { recursive: true });
+    fs.cpSync(readyTarget, invalidSharedRuntimeTarget, { recursive: true });
+    fs.cpSync(readyTarget, locatorWorkspaceMismatchTarget, { recursive: true });
+    fs.cpSync(readyTarget, stateModeMismatchTarget, { recursive: true });
     installSharedPlanningFixture(cycleCreateTarget, { selectedExecutionScope: "none" });
     installRepairWarningFixture(warningTarget);
     installGitCycleCreateFixtures(dirtyCycleCreateTarget, "dirty");
     installGitCycleCreateFixtures(aheadCycleCreateTarget, "ahead");
     installSessionMergeFixture(unmergedSessionCycleCreateTarget);
+    installCycleCloseUsageMatrixFixture(cycleCloseBlockedTarget);
+    installCycleCloseUsageMatrixFixture(cycleCloseWaivedTarget, {
+      scope: "high-risk",
+      state: "WAIVED",
+      summary: "nominal + adversarial pending",
+      rationale: "explicit temporary waiver approved in cycle decisions",
+    });
+    installCycleCloseUsageMatrixFixture(promoteBaselineBlockedTarget);
+    installCycleCloseUsageMatrixFixture(promoteBaselineWaivedTarget, {
+      scope: "high-risk",
+      state: "WAIVED",
+      summary: "nominal + adversarial pending",
+      rationale: "explicit temporary waiver approved in cycle decisions",
+    });
     installDbOnlyIndexFixture(repoRoot, dbOnlyRequirementsTarget);
     installDbOnlyIndexFixture(repoRoot, dbOnlyCloseSessionTarget);
+    installInvalidSharedRuntimeLocator(invalidSharedRuntimeTarget);
+    installInvalidSharedRuntimeLocator(locatorWorkspaceMismatchTarget, {
+      root: ".aidn-shared",
+    });
+    const mismatchRuntimeStateFile = path.join(stateModeMismatchTarget, "docs", "audit", "RUNTIME-STATE.md");
+    fs.writeFileSync(
+      mismatchRuntimeStateFile,
+      upsertScalarLine(fs.readFileSync(mismatchRuntimeStateFile, "utf8"), "runtime_state_mode", "db-only"),
+      "utf8",
+    );
     fs.rmSync(path.join(dbOnlyRequirementsTarget, "docs", "audit", "CURRENT-STATE.md"), { force: true });
     fs.rmSync(path.join(dbOnlyRequirementsTarget, "docs", "audit", "RUNTIME-STATE.md"), { force: true });
     fs.rmSync(path.join(dbOnlyRequirementsTarget, "docs", "audit", "cycles", "C101-feature-alpha", "status.md"), { force: true });
@@ -384,11 +470,91 @@ function main() {
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",
     }, 0);
+    const cycleCloseBlocked = runAidn(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      cycleCloseBlockedTarget,
+      "--skill",
+      "cycle-close",
+      "--strict",
+      "--json",
+    ], 1);
+    const cycleCloseWaived = runAidn(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      cycleCloseWaivedTarget,
+      "--skill",
+      "cycle-close",
+      "--json",
+    ], 0);
+    const promoteBaselineBlocked = runAidn(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      promoteBaselineBlockedTarget,
+      "--skill",
+      "promote-baseline",
+      "--strict",
+      "--json",
+    ], 1);
+    const promoteBaselineWaived = runAidn(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      promoteBaselineWaivedTarget,
+      "--skill",
+      "promote-baseline",
+      "--json",
+    ], 0);
+    const invalidSharedRuntime = runAidn(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      invalidSharedRuntimeTarget,
+      "--skill",
+      "requirements-delta",
+      "--strict",
+      "--json",
+    ], 1);
+    const locatorWorkspaceMismatch = runAidnWithEnv(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      locatorWorkspaceMismatchTarget,
+      "--skill",
+      "requirements-delta",
+      "--strict",
+      "--json",
+    ], {
+      AIDN_WORKSPACE_ID: "workspace-override",
+    }, 1);
+    const stateModeMismatch = runAidn(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      stateModeMismatchTarget,
+      "--skill",
+      "requirements-delta",
+      "--strict",
+      "--json",
+    ], 1);
 
     assert(ready.ok === true, "ready pre-write admission should pass");
     assert(ready.admission_status === "admitted", "ready pre-write admission should be admitted");
+    assert(String(ready.workspace?.workspace_id ?? "").length > 0, "ready pre-write admission should expose workspace_id");
+    assert(String(ready.workspace?.worktree_id ?? "").length > 0, "ready pre-write admission should expose worktree_id");
+    assert(ready.context.workspace_id === ready.workspace.workspace_id, "ready pre-write admission should mirror workspace_id in context");
+    assert(ready.context.worktree_id === ready.workspace.worktree_id, "ready pre-write admission should mirror worktree_id in context");
+    assert(ready.context.shared_runtime_mode === "local-only", "ready pre-write admission should default to local-only runtime mode");
+    assert(ready.context.shared_runtime_validation_status === "clear", "ready pre-write admission should expose clear shared runtime validation");
+    assert(ready.context.shared_runtime_locator_ref === "none", "ready pre-write admission should expose no locator ref by default");
     assert(ready.context.active_cycle === "C101", "ready pre-write admission should expose active cycle");
     assert(ready.context.first_plan_step === "implement alpha feature validation", "ready pre-write admission should keep first plan step");
+    assert(ready.source_of_truth?.state_mode === "files", "ready pre-write admission should expose source-of-truth state mode");
+    assert(ready.context.source_of_truth_status === "clear", "ready pre-write admission should expose clear source-of-truth status");
+    assert(ready.checks?.source_of_truth_policy_resolved?.reason_code === "SOT_POLICY_RESOLVED", "ready pre-write admission should expose SoT policy reason code");
     assert(Array.isArray(ready.prioritized_artifacts) && ready.prioritized_artifacts.includes("docs/audit/CURRENT-STATE.md"), "ready pre-write admission should prioritize CURRENT-STATE.md");
 
     assert(blocked.ok === false, "blocked pre-write admission should fail");
@@ -412,13 +578,42 @@ function main() {
     assert(warning.ok === true, "warning pre-write admission should stay admitted");
     assert(warning.context.repair_layer_status === "warn", "warning pre-write admission should expose repair warn status");
     assert(warning.warnings.some((item) => String(item).includes("locally present cycle status artifact")), "warning pre-write admission should explain local-but-untracked repair state");
+    assert(cycleCloseBlocked.ok === false, "cycle-close pre-write admission should fail when usage matrix is incomplete on DONE");
+    assert(cycleCloseBlocked.context.cycle_state === "DONE", "cycle-close pre-write admission should expose DONE cycle state");
+    assert(cycleCloseBlocked.context.usage_matrix_scope === "shared", "cycle-close pre-write admission should expose usage matrix scope");
+    assert(cycleCloseBlocked.context.usage_matrix_state === "NOT_DEFINED", "cycle-close pre-write admission should expose usage matrix state");
+    assert(cycleCloseBlocked.blocking_reasons.some((item) => String(item).includes("usage matrix is not complete")), "cycle-close pre-write admission should explain the missing usage matrix evidence");
+    assert(cycleCloseWaived.ok === true, "cycle-close pre-write admission should allow an explicit waiver");
+    assert(cycleCloseWaived.context.usage_matrix_scope === "high-risk", "cycle-close waiver pre-write admission should expose high-risk scope");
+    assert(cycleCloseWaived.context.usage_matrix_state === "WAIVED", "cycle-close waiver pre-write admission should expose waived state");
+    assert(promoteBaselineBlocked.ok === false, "promote-baseline pre-write admission should fail when usage matrix is incomplete on DONE");
+    assert(promoteBaselineBlocked.context.cycle_state === "DONE", "promote-baseline pre-write admission should expose DONE cycle state");
+    assert(promoteBaselineBlocked.context.usage_matrix_scope === "shared", "promote-baseline pre-write admission should expose usage matrix scope");
+    assert(promoteBaselineBlocked.context.usage_matrix_state === "NOT_DEFINED", "promote-baseline pre-write admission should expose usage matrix state");
+    assert(promoteBaselineBlocked.blocking_reasons.some((item) => String(item).includes("promote-baseline")), "promote-baseline pre-write admission should explain the missing usage matrix evidence");
+    assert(promoteBaselineWaived.ok === true, "promote-baseline pre-write admission should allow an explicit waiver");
+    assert(promoteBaselineWaived.context.usage_matrix_scope === "high-risk", "promote-baseline waiver pre-write admission should expose high-risk scope");
+    assert(promoteBaselineWaived.context.usage_matrix_state === "WAIVED", "promote-baseline waiver pre-write admission should expose waived state");
+    assert(invalidSharedRuntime.ok === false, "invalid shared runtime locator should block pre-write admission");
+    assert(invalidSharedRuntime.shared_runtime_validation?.status === "reject", "invalid shared runtime locator should expose reject validation status");
+    assert(invalidSharedRuntime.blocking_reasons.some((item) => String(item).includes("overlaps versioned workflow artifacts")), "invalid shared runtime locator should explain the rejected path overlap");
+    assert(locatorWorkspaceMismatch.ok === false, "workspace mismatch override should block pre-write admission");
+    assert(locatorWorkspaceMismatch.shared_runtime_validation?.status === "reject", "workspace mismatch override should expose reject validation status");
+    assert(locatorWorkspaceMismatch.blocking_reasons.some((item) => String(item).includes("workspace_id mismatch")), "workspace mismatch override should explain the rejected workspace identity");
+    assert(stateModeMismatch.ok === false, "state mode mismatch should block pre-write admission");
+    assert(stateModeMismatch.context.source_of_truth_status === "block", "state mode mismatch should expose source-of-truth block status");
+    assert(stateModeMismatch.context.source_of_truth_reason_codes.includes("SOT_STATE_MODE_MISMATCH"), "state mode mismatch should expose SoT reason code");
+    assert(stateModeMismatch.blocking_reasons.some((item) => String(item).includes("SOT_STATE_MODE_MISMATCH")), "state mode mismatch should include a coded blocking reason");
     assert(dbOnlyRequirements.ok === true, "db-only fileless requirements admission should pass from SQLite artifacts");
+    assert(String(dbOnlyRequirements.workspace?.workspace_id ?? "").length > 0, "db-only fileless requirements admission should expose workspace_id");
+    assert(String(dbOnlyRequirements.workspace?.worktree_id ?? "").length > 0, "db-only fileless requirements admission should expose worktree_id");
     assert(dbOnlyRequirements.context.effective_state_mode === "db-only", "db-only fileless requirements admission should expose the effective state mode");
     assert(dbOnlyRequirements.context.current_state_source === "sqlite", "db-only fileless requirements admission should load CURRENT-STATE from SQLite");
     assert(dbOnlyRequirements.context.runtime_state_source === "sqlite", "db-only fileless requirements admission should load RUNTIME-STATE from SQLite");
     assert(dbOnlyRequirements.context.cycle_status_source === "sqlite", "db-only fileless requirements admission should load cycle status from SQLite");
     assert(dbOnlyRequirements.blocking_reasons.every((item) => !String(item).includes("missing docs/audit/CURRENT-STATE.md")), "db-only fileless requirements admission should not block on missing CURRENT-STATE.md when SQLite is populated");
     assert(dbOnlyCloseSession.ok === true, "db-only fileless close-session admission should pass from SQLite artifacts");
+    assert(String(dbOnlyCloseSession.workspace?.workspace_id ?? "").length > 0, "db-only fileless close-session admission should expose workspace_id");
     assert(dbOnlyCloseSession.context.current_state_source === "sqlite", "db-only fileless close-session admission should load CURRENT-STATE from SQLite");
     assert(dbOnlyCloseSession.context.session_artifact_source === "sqlite", "db-only fileless close-session admission should load the session artifact from SQLite");
 
@@ -428,8 +623,15 @@ function main() {
       ready,
       blocked,
       warning,
+      cycle_close_blocked: cycleCloseBlocked,
+      cycle_close_waived: cycleCloseWaived,
+      promote_baseline_blocked: promoteBaselineBlocked,
+      promote_baseline_waived: promoteBaselineWaived,
       db_only_requirements: dbOnlyRequirements,
       db_only_close_session: dbOnlyCloseSession,
+      invalid_shared_runtime: invalidSharedRuntime,
+      locator_workspace_mismatch: locatorWorkspaceMismatch,
+      source_of_truth_state_mode_mismatch: stateModeMismatch,
       cycle_create_blocked: cycleCreateBlocked,
       cycle_create_dirty_blocked: dirtyCycleCreateBlocked,
       cycle_create_ahead_blocked: aheadCycleCreateBlocked,
@@ -449,7 +651,10 @@ function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok) {
+        throw cleanup.error;
+      }
     }
   }
 }

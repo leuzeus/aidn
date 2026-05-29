@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-sync-db-first-selective.v1",
+  "title": "aidn runtime sync-db-first-selective --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime sync-db-first-selective --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "ts",
+    "ok",
+    "target_root",
+    "state_mode",
+    "strict",
+    "git_available",
+    "fallback_full_enabled",
+    "fallback_full_used",
+    "summary",
+    "synced",
+    "errors",
+    "sync_db_first_selective_diagnostic"
+  ],
+  "properties": {
+    "ts": { "type": "string" },
+    "ok": { "type": "boolean" },
+    "target_root": { "type": "string" },
+    "state_mode": { "type": "string" },
+    "strict": { "type": "boolean" },
+    "git_available": { "type": "boolean" },
+    "fallback_full_enabled": { "type": "boolean" },
+    "fallback_full_used": { "type": "boolean" },
+    "fallback_full_reason": { "type": ["string", "null"] },
+    "summary": { "type": "object", "additionalProperties": true },
+    "synced": { "type": "array" },
+    "errors": { "type": "array" },
+    "fallback": { "type": ["object", "null"], "additionalProperties": true },
+    "repair_layer_result": { "type": ["object", "null"], "additionalProperties": true },
+    "repair_layer_triage_result": { "type": ["object", "null"], "additionalProperties": true },
+    "sync_db_first_selective_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "state_mode",
+        "git_available",
+        "fallback_full_used",
+        "fallback_full_reason",
+        "synced_count",
+        "failed_count",
+        "repair_layer_status",
+        "summary",
+        "recommended_action"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "state_mode": { "type": "string" },
+        "git_available": { "type": "boolean" },
+        "fallback_full_used": { "type": "boolean" },
+        "fallback_full_reason": { "type": "string" },
+        "synced_count": { "type": "number" },
+        "failed_count": { "type": "number" },
+        "repair_layer_status": { "type": "string" },
+        "summary": { "type": "string" },
+        "recommended_action": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

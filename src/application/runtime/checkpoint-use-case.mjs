@@ -48,7 +48,7 @@ function toIsoNowCompact() {
   return new Date().toISOString().replace(/[-:.TZ]/g, "");
 }
 
-export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
+export async function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
   const processAdapter = createLocalProcessAdapter();
   const gitAdapter = createLocalGitAdapter();
   const started = Date.now();
@@ -100,7 +100,7 @@ export function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
   });
   if (!args.skipGateEvaluate && !noSignalGateSkip) {
     const gateStarted = Date.now();
-    gate = runGatingEvaluateUseCase({
+    gate = await runGatingEvaluateUseCase({
       args: {
         target: targetRoot,
         cache: cachePath,

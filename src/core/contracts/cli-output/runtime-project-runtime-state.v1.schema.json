@@ -1,0 +1,196 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-project-runtime-state.v1",
+  "title": "aidn runtime project-runtime-state --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime project-runtime-state --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "workspace",
+    "shared_state_backend",
+    "shared_runtime_validation",
+    "output_file",
+    "written",
+    "write",
+    "digest",
+    "consistency"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "workspace": {
+      "type": "object",
+      "required": [
+        "target_root",
+        "project_id",
+        "project_root",
+        "worktree_root",
+        "repo_root",
+        "is_git_repo",
+        "head_commit",
+        "workspace_id",
+        "worktree_id",
+        "shared_runtime_enabled",
+        "shared_runtime_mode",
+        "shared_backend_kind",
+        "shared_runtime_locator_exists",
+        "shared_runtime_locator_ref"
+      ],
+      "properties": {
+        "target_root": { "type": "string" },
+        "project_id": { "type": "string" },
+        "project_root": { "type": "string" },
+        "worktree_root": { "type": "string" },
+        "repo_root": { "type": "string" },
+        "is_git_repo": { "type": "boolean" },
+        "head_commit": { "type": ["string", "null"] },
+        "workspace_id": { "type": "string" },
+        "worktree_id": { "type": "string" },
+        "shared_runtime_enabled": { "type": "boolean" },
+        "shared_runtime_mode": { "type": "string" },
+        "shared_backend_kind": { "type": "string" },
+        "shared_runtime_locator_exists": { "type": "boolean" },
+        "shared_runtime_locator_ref": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "shared_state_backend": {
+      "type": "object",
+      "required": [
+        "shared_runtime_mode",
+        "coordination_backend_kind",
+        "projection_backend_kind",
+        "projection_scope",
+        "sqlite_file",
+        "logical_root",
+        "exists"
+      ],
+      "properties": {
+        "shared_runtime_mode": { "type": "string" },
+        "coordination_backend_kind": { "type": "string" },
+        "projection_backend_kind": { "type": "string" },
+        "projection_scope": { "type": "string" },
+        "sqlite_file": { "type": ["string", "null"] },
+        "logical_root": { "type": ["string", "null"] },
+        "exists": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "shared_runtime_validation": {
+      "type": "object",
+      "required": [
+        "ok",
+        "status",
+        "issues",
+        "warnings",
+        "checks",
+        "locator_exists",
+        "locator_ref"
+      ],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "status": { "type": "string" },
+        "issues": { "type": "array" },
+        "warnings": { "type": "array" },
+        "checks": { "type": "object" },
+        "locator_exists": { "type": "boolean" },
+        "locator_ref": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "output_file": { "type": "string" },
+    "written": { "type": "boolean" },
+    "write": { "type": "boolean" },
+    "digest": {
+      "type": "object",
+      "required": [
+        "contract_version",
+        "updated_at",
+        "project_id",
+        "workspace_id",
+        "worktree_id",
+        "runtime_state_mode",
+        "repair_layer_status",
+        "shared_runtime_validation_status",
+        "active_backlog",
+        "backlog_status",
+        "backlog_next_step",
+        "planning_arbitration_status",
+        "source_of_truth",
+        "source_mode",
+        "lifecycle_status",
+        "owner",
+        "steward",
+        "current_state_freshness",
+        "consistency_status"
+      ],
+      "properties": {
+        "contract_version": { "type": "string" },
+        "updated_at": { "type": "string" },
+        "project_id": { "type": "string" },
+        "project_id_source": { "type": "string" },
+        "project_root": { "type": "string" },
+        "workspace_id": { "type": "string" },
+        "worktree_id": { "type": "string" },
+        "shared_planning_source": { "type": ["string", "null"] },
+        "shared_planning_read_status": { "type": ["string", "null"] },
+        "runtime_state_mode": { "type": "string" },
+        "repair_layer_status": { "type": "string" },
+        "repair_layer_advice": { "type": "string" },
+        "repair_primary_reason": { "type": ["string", "null"] },
+        "repair_routing_hint": { "type": ["string", "null"] },
+        "repair_routing_reason": { "type": ["string", "null"] },
+        "shared_runtime_validation_status": { "type": "string" },
+        "active_backlog": { "type": "string" },
+        "backlog_status": { "type": "string" },
+        "backlog_next_step": { "type": "string" },
+        "planning_arbitration_status": { "type": "string" },
+        "shared_planning_source": { "type": ["string", "null"] },
+        "shared_planning_read_status": { "type": ["string", "null"] },
+        "source_of_truth": { "type": "string" },
+        "source_mode": { "type": "string" },
+        "lifecycle_status": { "type": "string" },
+        "owner": { "type": "string" },
+        "steward": { "type": "string" },
+        "current_state_freshness": { "type": "string" },
+        "current_state_freshness_basis": { "type": ["string", "null"] },
+        "blocking_findings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "prioritized_artifacts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "context_source": { "type": ["string", "null"] },
+        "consistency_status": { "type": "string" },
+        "current_state_source": { "type": ["string", "null"] },
+        "session_artifact_source": { "type": ["string", "null"] },
+        "cycle_status_source": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "consistency": {
+      "type": "object",
+      "required": ["ts", "target_root", "audit_root", "missing_files", "current_state", "snapshot", "checks", "pass"],
+      "properties": {
+        "ts": { "type": "string" },
+        "target_root": { "type": "string" },
+        "audit_root": { "type": "string" },
+        "missing_files": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "current_state": { "type": "object", "additionalProperties": true },
+        "snapshot": { "type": "object", "additionalProperties": true },
+        "checks": {
+          "type": "object",
+          "additionalProperties": { "type": "boolean" }
+        },
+        "pass": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

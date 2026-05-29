@@ -9,11 +9,17 @@ Rule/State boundary:
 
 ## Summary
 
+contract_version: critical-markdown-v1
 updated_at: 2026-03-09T00:00:00Z
 structure_profile: modern
 runtime_state_mode: dual
 repair_layer_status: unknown
 repair_primary_reason: unknown
+source_of_truth: runtime store plus generated Markdown
+source_mode: explicit
+lifecycle_status: refreshed
+owner: git-9447929f5071671f
+steward: aidn-runtime
 
 ## Active Context
 
@@ -21,6 +27,9 @@ active_session: none
 session_branch: none
 branch_kind: unknown
 mode: unknown
+session_pr_status: none
+session_pr_review_status: unknown
+post_merge_sync_status: not_needed
 
 active_cycle: none
 cycle_branch: none

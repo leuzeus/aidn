@@ -1,0 +1,42 @@
+name: Runtime Ops
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-ops:
+    name: Verify Runtime Ops Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify DB Schema Migrations
+        run: npm run perf:verify-db-schema-migrations
+
+      - name: Verify DB Runtime CLI
+        run: npm run perf:verify-db-runtime-cli
+
+      - name: Verify Runtime Persistence Parity
+        run: npm run perf:verify-runtime-persistence-parity
+
+      - name: Verify Shared Coordination Backup
+        run: npm run perf:verify-shared-coordination-backup
+
+      - name: Verify Shared Coordination Restore
+        run: npm run perf:verify-shared-coordination-restore
+
+      - name: Verify Shared Coordination Doctor
+        run: npm run perf:verify-shared-coordination-doctor
+
+      - name: Verify Shared Coordination Store Port
+        run: npm run perf:verify-shared-coordination-store-port

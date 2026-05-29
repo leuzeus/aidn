@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { renderWorkflowVersion } from "../../src/application/observability/workflow-version-render-use-case.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -56,11 +57,7 @@ function main() {
     }
 
     const source = String(fs.readFileSync(filePath, "utf8"));
-    const pattern = /^(\s*workflow_version:\s*).+$/im;
-    if (!pattern.test(source)) {
-      throw new Error(`workflow_version field not found in: ${filePath}`);
-    }
-    const next = source.replace(pattern, `$1${version}`);
+    const next = renderWorkflowVersion(source, version);
 
     fs.writeFileSync(filePath, next, "utf8");
     console.log(`Rendered workflow_version=${version} in ${filePath}`);

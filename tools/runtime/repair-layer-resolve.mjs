@@ -59,8 +59,8 @@ function parseArgs(argv) {
   if (!args.sessionId || !args.cycleId || !args.decision) {
     throw new Error("Missing required values. Expected --session-id --cycle-id --decision.");
   }
-  if (!["auto", "json", "sqlite"].includes(args.indexBackend)) {
-    throw new Error("Invalid --index-backend. Expected auto|json|sqlite");
+  if (!["auto", "json", "sqlite", "postgres"].includes(args.indexBackend)) {
+    throw new Error("Invalid --index-backend. Expected auto|json|sqlite|postgres");
   }
   if (!["accepted", "rejected"].includes(args.decision)) {
     throw new Error("Invalid --decision. Expected accepted|rejected");
@@ -73,11 +73,11 @@ function printUsage() {
   console.log("  node tools/runtime/repair-layer-resolve.mjs --target . --session-id S102 --cycle-id C101 --decision accepted --apply --json");
 }
 
-function main() {
+async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const output = runRepairLayerResolveUseCase({ args, targetRoot });
+    const output = await runRepairLayerResolveUseCase({ args, targetRoot });
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));
     } else {
@@ -90,4 +90,4 @@ function main() {
   }
 }
 
-main();
+await main();

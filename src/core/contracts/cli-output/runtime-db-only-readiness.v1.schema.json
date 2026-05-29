@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-db-only-readiness.v1",
+  "title": "aidn runtime db-only-readiness --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime db-only-readiness --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "ts",
+    "target_root",
+    "summary",
+    "operational",
+    "source_scan"
+  ],
+  "properties": {
+    "ts": { "type": "string" },
+    "target_root": { "type": "string" },
+    "summary": {
+      "type": "object",
+      "required": ["status", "reason"],
+      "properties": {
+        "status": { "type": "string" },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "operational": {
+      "type": "object",
+      "required": [
+        "status",
+        "effective_state_mode",
+        "sqlite_index",
+        "resolutions",
+        "checks"
+      ],
+      "properties": {
+        "status": { "type": "string" },
+        "effective_state_mode": { "type": "string" },
+        "sqlite_index": {
+          "type": "object",
+          "required": ["exists", "projection_scope", "content_artifacts_count"],
+          "properties": {
+            "exists": { "type": "boolean" },
+            "projection_scope": { "type": "string" },
+            "content_artifacts_count": { "type": "number" }
+          },
+          "additionalProperties": true
+        },
+        "resolutions": {
+          "type": "object",
+          "required": [
+            "current_state",
+            "runtime_state",
+            "handoff_packet",
+            "session_artifact",
+            "cycle_status"
+          ],
+          "additionalProperties": true
+        },
+        "checks": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
+    "source_scan": {
+      "type": "object",
+      "required": [
+        "scanned_files_count",
+        "db_first_aware_count",
+        "likely_file_bound_count",
+        "manual_review_count"
+      ],
+      "properties": {
+        "scanned_files_count": { "type": "number" },
+        "db_first_aware_count": { "type": "number" },
+        "likely_file_bound_count": { "type": "number" },
+        "manual_review_count": { "type": "number" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

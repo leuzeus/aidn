@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-verify-agent-roster.v1",
+  "title": "aidn runtime verify-agent-roster --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime verify-agent-roster --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "state_mode",
+    "db_backed_mode",
+    "roster_found",
+    "roster_file",
+    "default_requested_agent",
+    "entries",
+    "registered_inspections",
+    "issues",
+    "warnings",
+    "pass",
+    "roster_diagnostic"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "state_mode": { "type": "string" },
+    "db_backed_mode": { "type": "boolean" },
+    "roster_found": { "type": "boolean" },
+    "roster_file": { "type": "string" },
+    "default_requested_agent": { "type": "string" },
+    "entries": { "type": "array" },
+    "registered_inspections": { "type": "array" },
+    "issues": { "type": "array" },
+    "warnings": { "type": "array" },
+    "pass": { "type": "boolean" },
+    "roster_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "state_mode",
+        "roster_found",
+        "pass",
+        "entry_count",
+        "issue_count",
+        "warning_count",
+        "unavailable_adapter_count",
+        "degraded_adapter_count",
+        "summary",
+        "recommended_action"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "state_mode": { "type": "string" },
+        "roster_found": { "type": "boolean" },
+        "pass": { "type": "boolean" },
+        "entry_count": { "type": "number" },
+        "issue_count": { "type": "number" },
+        "warning_count": { "type": "number" },
+        "unavailable_adapter_count": { "type": "number" },
+        "degraded_adapter_count": { "type": "number" },
+        "summary": { "type": "string" },
+        "recommended_action": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -141,8 +141,8 @@ function parseArgs(argv) {
   if (!Number.isFinite(args.historyLimit) || args.historyLimit < 1) {
     throw new Error("Invalid --history-limit. Expected a positive integer.");
   }
-  if (!["auto", "json", "sqlite"].includes(args.backend)) {
-    throw new Error("Invalid --backend. Expected auto|json|sqlite");
+  if (!["auto", "json", "sqlite", "postgres"].includes(args.backend)) {
+    throw new Error("Invalid --backend. Expected auto|json|sqlite|postgres");
   }
   if (!Number.isFinite(args.maxArtifactBytes) || args.maxArtifactBytes < 128) {
     throw new Error("Invalid --max-artifact-bytes. Expected at least 128.");
@@ -246,7 +246,7 @@ async function main() {
     const args = parseArgs(process.argv.slice(2));
     const hookContextStore = createHookContextStoreAdapter();
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const hydrated = runHydrateContextUseCase({
+    const hydrated = await runHydrateContextUseCase({
       args,
       hookContextStore,
       targetRoot,
@@ -257,7 +257,7 @@ async function main() {
     let agentSelectionSummary = null;
     let multiAgentStatus = null;
     if (shouldProjectRuntimeState(args, hydrated, targetRoot)) {
-      runtimeState = projectRuntimeState({
+      runtimeState = await projectRuntimeState({
         targetRoot,
         hydratedFile: args.out,
         contextFile: args.contextFile,
@@ -299,7 +299,7 @@ async function main() {
       };
     }
     if (shouldProjectHandoffPacket(args, hydrated, targetRoot)) {
-      handoffPacket = projectHandoffPacket({
+      handoffPacket = await projectHandoffPacket({
         targetRoot,
         currentStateFile: "docs/audit/CURRENT-STATE.md",
         runtimeStateFile: args.runtimeStateOut,

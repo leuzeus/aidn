@@ -39,7 +39,7 @@ Adapter rules in this file extend (but do not redefine) canonical mechanics from
 
 ```yaml
 workflow_product: aidn-workflow
-workflow_version: 0.4.0
+workflow_version: 0.5.1
 installed_pack: core
 project_name: repo-installed-core
 source_branch: dev
@@ -77,6 +77,7 @@ source_branch: dev
 
 - Runtime enforcement path: `start-session` admission runs before generic `session-start` checkpoint/index/repair work.
 - Before creating a new session branch `SXXX-*`, check previous session PR status against source branch.
+- `pr-orchestrate` owns the explicit bridge `push -> PR open/recover -> review/merge -> post-merge sync`.
 - Decision order:
   - `PR OPEN`: continue on existing session branch by default.
   - `PR OPEN` + explicit user override: new session branch allowed with documented rationale.
@@ -113,6 +114,19 @@ source_branch: dev
 
 - After merge, verify local/remote alignment before any new cycle/session branch creation.
 - If divergence exists, stop and reconcile explicitly.
+
+### Optional Branch Pruning Policy (Project Policy)
+
+- If this repository uses a durable integration branch such as `dev`, branch cleanup SHOULD run only after `dev` is merged into `dev`.
+- Do not prune branches on baseline proposal alone.
+- Baseline promotion may mark exploration or spike branches as review candidates, but deletion requires Git-level confirmation.
+- CI pruning, when enabled, SHOULD be conservative:
+  - only short-lived branches
+  - already fully absorbed by `dev`
+  - no open pull request
+  - minimum age window
+  - protected/kept branch patterns excluded
+- Keep the integration branch itself persistent unless an explicit repository decision says otherwise.
 
 ## Workflow Incident Handling (Project Policy, adapter extension to `SPEC-R10`)
 
@@ -158,6 +172,13 @@ source_branch: dev
 ## Session Close & PR Review
 
 - Session close and PR review gates are canonical in `docs/audit/SPEC.md` (`SPEC-R07`, `SPEC-R08`).
+- Local runtime order after a review-ready session close:
+  - `close-session`
+  - `pr-orchestrate`
+  - push session branch
+  - create/recover PR
+  - review / merge
+  - post-merge local sync
 - Add local CI/review capacity policy here if your repository needs it.
 - Project-specific CI/review capacity policy: `none`
 

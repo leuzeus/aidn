@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -48,6 +49,9 @@ function copyFixtureToTmp(source, tmpRoot) {
   const destination = path.resolve(tmpRoot, `tmp-db-only-hooks-${stamp}`);
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.cpSync(source, destination, { recursive: true });
+  fs.rmSync(path.join(destination, ".aidn", "runtime"), { recursive: true, force: true });
+  fs.rmSync(path.join(destination, ".aidn", "project", "workflow.adapter.legacy-source.md"), { force: true });
+  fs.rmSync(path.join(destination, ".aidn", "project", "workflow.adapter.migration-report.json"), { force: true });
   return destination;
 }
 
@@ -81,6 +85,26 @@ function runWithStatus(script, scriptArgs, env = {}) {
   };
 }
 
+function bootstrapSqliteIndex(targetRoot, env = {}) {
+  const result = runWithStatus("tools/perf/index-sync.mjs", [
+    "--target",
+    targetRoot,
+    "--store",
+    "sqlite",
+    "--output",
+    ".aidn/runtime/index/workflow-index.json",
+    "--sqlite-output",
+    ".aidn/runtime/index/workflow-index.sqlite",
+    "--schema-file",
+    path.resolve(process.cwd(), "tools/perf/sql/schema.sql"),
+    "--json",
+  ], env);
+  if (result.status !== 0) {
+    throw new Error(`SQLite bootstrap failed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
+  }
+  return result;
+}
+
 function readNdjson(filePath) {
   if (!fs.existsSync(filePath)) {
     return [];
@@ -111,6 +135,7 @@ function main() {
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",
     };
+    bootstrapSqliteIndex(tmpTarget, env);
 
     const start = runJson("tools/perf/workflow-hook.mjs", [
       "--phase",
@@ -235,7 +260,10 @@ function main() {
     }
 
     if (!keepTmp) {
-      fs.rmSync(tmpTarget, { recursive: true, force: true });
+      const cleanup = removePathWithRetry(tmpTarget);
+      if (!cleanup.ok) {
+        throw cleanup.error;
+      }
       tmpTarget = null;
     }
 
@@ -244,7 +272,7 @@ function main() {
     }
   } catch (error) {
     if (tmpTarget != null && !keepTmp) {
-      fs.rmSync(tmpTarget, { recursive: true, force: true });
+      removePathWithRetry(tmpTarget);
     }
     console.error(`ERROR: ${error.message}`);
     printUsage();

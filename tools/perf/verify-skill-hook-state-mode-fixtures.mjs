@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { copyFixtureToTmp, initGitRepo } from "./test-git-fixture-lib.mjs";
+import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { readSourceBranch } from "../../src/lib/workflow/session-context-lib.mjs";
 
 const SKILL_CASES = [
@@ -231,7 +231,10 @@ function main() {
     }
 
     if (!keepTmp) {
-      fs.rmSync(tmpTarget, { recursive: true, force: true });
+      const cleanup = removePathWithRetry(tmpTarget);
+      if (!cleanup.ok) {
+        throw cleanup.error;
+      }
       tmpTarget = null;
     }
 
@@ -240,7 +243,7 @@ function main() {
     }
   } catch (error) {
     if (tmpTarget != null && !keepTmp) {
-      fs.rmSync(tmpTarget, { recursive: true, force: true });
+      removePathWithRetry(tmpTarget);
     }
     console.error(`ERROR: ${error.message}`);
     printUsage();

@@ -26,7 +26,7 @@ function resolveRepairLayerTarget(payload, args) {
   };
 }
 
-export function runSyncDbFirstUseCase({
+export async function runSyncDbFirstUseCase({
   args,
   targetRoot,
   processAdapter,
@@ -94,7 +94,7 @@ export function runSyncDbFirstUseCase({
       ]);
     }
     if (args.repairLayerTriage !== false) {
-      repairLayerTriageResult = writeRepairLayerTriageArtifacts({
+      repairLayerTriageResult = await writeRepairLayerTriageArtifacts({
         targetRoot,
         indexFile: repairTarget.indexFile,
         backend: repairTarget.indexBackend,

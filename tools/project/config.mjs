@@ -9,6 +9,8 @@ function parseArgs(argv) {
     list: false,
     json: false,
     adapterFile: "",
+    initDefaults: false,
+    projectName: "",
     preferredStateMode: "",
     defaultIndexStore: "",
     migrateAdapter: false,
@@ -24,6 +26,11 @@ function parseArgs(argv) {
       args.list = true;
     } else if (token === "--adapter-file") {
       args.adapterFile = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--init-defaults") {
+      args.initDefaults = true;
+    } else if (token === "--project-name") {
+      args.projectName = String(argv[i + 1] ?? "").trim();
       i += 1;
     } else if (token === "--preferred-state-mode") {
       args.preferredStateMode = String(argv[i + 1] ?? "").trim();
@@ -59,6 +66,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/project/config.mjs --target . --list --json");
   console.log("  node tools/project/config.mjs --target . --wizard");
+  console.log("  node tools/project/config.mjs --target . --init-defaults --project-name my-project --json");
   console.log("  node tools/project/config.mjs --target . --adapter-file ./workflow.adapter.json");
   console.log("  node tools/project/config.mjs --target . --migrate-adapter --json");
 }

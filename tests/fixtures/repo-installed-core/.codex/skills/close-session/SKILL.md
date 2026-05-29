@@ -87,6 +87,7 @@ Update:
 ### Open loops
 ### Blockers
 ### Cycle Resolution At Session Close
+### PR Orchestration
 ### Session close gate satisfied?
 ### Next Entry Point
 ### Snapshot updated? (checked)
@@ -115,4 +116,5 @@ Update:
 
 Do not promote baseline automatically.
 If cycle DONE, recommend using promote-baseline workflow.
+If the session is review-ready, recommend running `pr-orchestrate` immediately after `close-session`.
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { deriveGovernedRuntimeArtifactMetadata } from "../../src/application/runtime/governed-runtime-artifact-metadata-lib.mjs";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
 import { resolveStateMode } from "../../src/application/runtime/db-first-artifact-lib.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
@@ -50,7 +51,21 @@ function printUsage() {
   console.log("  node tools/runtime/project-integration-risk.mjs --target . --json");
 }
 
-function buildMarkdown(result, out) {
+function deriveIntegrationRiskDiagnostic(result) {
+  return {
+    scope: "project-integration-risk",
+    state_mode: String(result?.state_mode ?? "unknown").trim() || "unknown",
+    recommended_strategy: String(result?.recommended_strategy ?? "unknown").trim() || "unknown",
+    mergeability: String(result?.mergeability ?? "unknown").trim() || "unknown",
+    candidate_cycle_count: Array.isArray(result?.candidate_cycles) ? result.candidate_cycles.length : 0,
+    arbitration_required: result?.arbitration_required === true,
+    written: result?.written === true,
+    summary: `integration risk strategy is ${String(result?.recommended_strategy ?? "unknown").trim() || "unknown"}`,
+    recommended_command: "aidn runtime coordinator-suggest-arbitration --json",
+  };
+}
+
+function buildMarkdown(result, out, governanceMetadata) {
   const lines = [];
   lines.push("# Integration Risk");
   lines.push("");
@@ -68,6 +83,11 @@ function buildMarkdown(result, out) {
   lines.push("");
   lines.push("## Summary");
   lines.push("");
+  lines.push(`source_of_truth: ${governanceMetadata.source_of_truth}`);
+  lines.push(`source_mode: ${governanceMetadata.source_mode}`);
+  lines.push(`lifecycle_status: ${governanceMetadata.lifecycle_status}`);
+  lines.push(`owner: ${governanceMetadata.owner}`);
+  lines.push(`steward: ${governanceMetadata.steward}`);
   lines.push(`updated_at: ${new Date().toISOString()}`);
   lines.push(`active_session: ${result.active_session}`);
   lines.push(`active_cycle: ${result.active_cycle}`);
@@ -150,6 +170,11 @@ export function projectIntegrationRisk({
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
+  const governanceMetadata = deriveGovernedRuntimeArtifactMetadata({
+    runtimeStateMode: effectiveStateMode,
+    owner: "aidn-runtime",
+    steward: "aidn-runtime",
+  });
   const assessment = assessIntegrationRisk({
     targetRoot: absoluteTargetRoot,
     currentStateFile,
@@ -157,7 +182,7 @@ export function projectIntegrationRisk({
     cyclesDir,
   });
   const outputPath = path.resolve(absoluteTargetRoot, out);
-  const markdown = buildMarkdown(assessment, out);
+  const markdown = buildMarkdown(assessment, out, governanceMetadata);
   const relativeOut = String(out).replace(/\\/g, "/").replace(/^docs\/audit\//i, "");
   const dbFirstWrite = effectiveStateMode === "dual" || effectiveStateMode === "db-only"
     ? runDbFirstArtifactUseCase({
@@ -185,6 +210,13 @@ export function projectIntegrationRisk({
     db_first_applied: Boolean(dbFirstWrite),
     db_first_materialized: Boolean(dbFirstWrite?.materialized),
     db_first_artifact_path: dbFirstWrite?.artifact?.path ?? relativeOut,
+    governance_metadata: governanceMetadata,
+    integration_risk_diagnostic: deriveIntegrationRiskDiagnostic({
+      ...assessment,
+      output_file: write.path,
+      written: write.written,
+      state_mode: effectiveStateMode,
+    }),
   };
 }
 

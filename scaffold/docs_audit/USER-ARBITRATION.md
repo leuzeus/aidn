@@ -12,6 +12,16 @@ Rule/State boundary:
 - canonical workflow rules remain in `SPEC.md`
 - agent execution rules remain in `AGENTS.md`
 
+## Summary
+
+contract_version: critical-markdown-v1
+updated_at: unknown
+source_of_truth: .aidn/runtime/context/*
+source_mode: explicit
+lifecycle_status: refreshed
+owner: unknown
+steward: aidn-runtime
+
 ## Entries
 
 Append one section per explicit arbitration outcome.

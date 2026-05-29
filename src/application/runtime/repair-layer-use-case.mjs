@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { readIndexFromSqlite } from "../../lib/sqlite/index-sqlite-lib.mjs";
 import { buildRepairLayerService } from "./repair-layer-service.mjs";
 import { createWorkflowStateStoreAdapter } from "../../adapters/runtime/workflow-state-store-adapter.mjs";
 import { persistWorkflowIndexProjection } from "./index-state-store-service.mjs";
@@ -10,13 +9,22 @@ import {
   REPAIR_LAYER_ENGINE_VERSION,
   summarizeRepairLayer,
 } from "./repair-layer-payload-lib.mjs";
+import { normalizeRepairLayerPayload } from "./repair-layer-normalization-lib.mjs";
 import { resolveRuntimePath } from "./runtime-path-resolution.mjs";
+import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
+
+function resolveRuntimeOutputPath(targetRoot, candidatePath) {
+  if (!candidatePath) {
+    return "";
+  }
+  if (path.isAbsolute(candidatePath)) {
+    return path.resolve(candidatePath);
+  }
+  return path.resolve(targetRoot, candidatePath);
+}
 
 function detectBackend(indexFile, backend) {
-  if (backend === "json" || backend === "sqlite") {
-    return backend;
-  }
-  return String(indexFile).toLowerCase().endsWith(".sqlite") ? "sqlite" : "json";
+  return detectRuntimeSnapshotBackend(indexFile, backend);
 }
 
 function readJsonIndex(indexFile) {
@@ -28,25 +36,36 @@ function readJsonIndex(indexFile) {
   return { absolute, payload };
 }
 
+function resolveFileProjectionPath(indexFile) {
+  const absolute = path.resolve(process.cwd(), indexFile);
+  if (absolute.toLowerCase().endsWith(".json")) {
+    return absolute;
+  }
+  return path.join(path.dirname(absolute), `${path.basename(absolute, path.extname(absolute))}.json`);
+}
+
 function writeJson(filePath, payload) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
 
-function createStateStoreForBackend(indexFile, backend) {
+function createStateStoreForBackend(targetRoot, indexFile, backend) {
   if (backend === "sqlite") {
     return createWorkflowStateStoreAdapter({
+      targetRoot,
       mode: "sqlite",
       sqliteOutput: indexFile,
     });
   }
   return createWorkflowStateStoreAdapter({
+    targetRoot,
     mode: "file",
-    jsonOutput: indexFile,
+    jsonOutput: resolveFileProjectionPath(indexFile),
+    runtimePersistenceBackend: backend === "postgres" ? "postgres" : "",
   });
 }
 
-export function runRepairLayerUseCase({ args, targetRoot }) {
+export async function runRepairLayerUseCase({ args, targetRoot }) {
   const auditRoot = path.join(targetRoot, "docs", "audit");
   if (!fs.existsSync(auditRoot)) {
     throw new Error(`Missing audit root: ${auditRoot}`);
@@ -54,9 +73,9 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
 
   const indexFile = resolveRuntimePath(targetRoot, args.indexFile);
   const backend = detectBackend(indexFile, args.indexBackend);
-  const index = backend === "sqlite"
-    ? readIndexFromSqlite(indexFile)
-    : readJsonIndex(indexFile);
+  const index = backend === "json"
+    ? readJsonIndex(indexFile)
+    : await readRuntimeSnapshot({ indexFile, backend, targetRoot });
   const payload = index.payload && typeof index.payload === "object" ? index.payload : null;
   if (!payload) {
     throw new Error(`Invalid index payload: ${indexFile}`);
@@ -91,9 +110,22 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
       repairDecisions,
       inputDigest,
     });
+    const normalizationReport = normalizeRepairLayerPayload({
+      sourcePayload: payload,
+      payload: {
+        ...payload,
+        sessions: Array.isArray(payload.sessions) ? payload.sessions : [],
+        artifact_links: Array.isArray(payload.artifact_links) ? payload.artifact_links : [],
+        session_cycle_links: Array.isArray(payload.session_cycle_links) ? payload.session_cycle_links : [],
+        session_links: Array.isArray(payload.session_links) ? payload.session_links : [],
+        migration_runs: Array.isArray(payload.migration_runs) ? payload.migration_runs : [],
+        migration_findings: Array.isArray(payload.migration_findings) ? payload.migration_findings : [],
+      },
+      dryRun: !args.apply,
+    }).report;
     let reportFile = null;
     if (args.reportFile) {
-      reportFile = resolveRuntimePath(targetRoot, args.reportFile);
+      reportFile = resolveRuntimeOutputPath(targetRoot, args.reportFile);
       writeJson(reportFile, {
         ts: new Date().toISOString(),
         target_root: targetRoot,
@@ -103,6 +135,7 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
         action: "skipped",
         skip_reason: "input_unchanged",
         summary,
+        normalization_report: normalizationReport,
         migration_runs: repairLayer.migration_runs,
         migration_findings: repairLayer.migration_findings,
       });
@@ -138,11 +171,17 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
   const mergedPayload = mergeRepairLayerPayload(payload, repairLayer, {
     repairDecisions,
     inputDigest,
+    dryRun: !args.apply,
   });
   const summary = summarizeRepairLayer(repairLayer, {
     repairDecisions,
     inputDigest,
   });
+  const normalizationReport = normalizeRepairLayerPayload({
+    sourcePayload: payload,
+    payload: mergedPayload,
+    dryRun: !args.apply,
+  }).report;
 
   let applyResult = {
     outputs: [],
@@ -152,8 +191,8 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
     },
   };
   if (args.apply) {
-    const stateStore = createStateStoreForBackend(indexFile, backend);
-    applyResult = persistWorkflowIndexProjection({
+    const stateStore = createStateStoreForBackend(targetRoot, indexFile, backend);
+    applyResult = await persistWorkflowIndexProjection({
       stateStore,
       payload: mergedPayload,
       dryRun: false,
@@ -162,7 +201,7 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
 
   let reportFile = null;
   if (args.reportFile) {
-    reportFile = resolveRuntimePath(targetRoot, args.reportFile);
+    reportFile = resolveRuntimeOutputPath(targetRoot, args.reportFile);
     writeJson(reportFile, {
       ts: new Date().toISOString(),
       target_root: targetRoot,
@@ -171,6 +210,7 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
       index_backend: backend,
       action: args.apply ? "applied" : "preview",
       summary,
+      normalization_report: normalizationReport,
       migration_runs: repairLayer.migration_runs,
       migration_findings: repairLayer.migration_findings,
     });
@@ -185,6 +225,7 @@ export function runRepairLayerUseCase({ args, targetRoot }) {
     action: args.apply ? "applied" : "preview",
     report_file: reportFile,
     summary,
+    normalization_report: normalizationReport,
     apply_result: applyResult,
   };
 }

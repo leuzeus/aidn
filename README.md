@@ -3,7 +3,7 @@
 aid’n is an audit-informed workflow runtime platform for structured AI-assisted development.
 It combines a continuous audit philosophy with an audit-driven control layer, deterministic template distribution, and local runtime state management to regulate entropy, preserve long-term coherence, and stabilize AI-assisted execution.
 The model structures work through bounded cycles, session discipline, baseline anchoring, snapshot reload, canonical state handling, and clear separation between product specification and project adapter.
-The current runtime baseline also includes admission-first workflow hooks for session start/close, cycle continuity, requirements delta, baseline promotion, spike conversion, and explicit multi-agent handoff relays.
+The current runtime baseline also includes admission-first workflow hooks for session start/close, cycle continuity, requirements delta, baseline promotion, spike conversion, explicit multi-agent handoff relays, bounded coordinator/orchestration commands, deterministic project adapter generation, and runtime persistence/shared-coordination operations for SQLite and PostgreSQL-backed deployments.
 
 ## Philosophy
 
@@ -23,8 +23,7 @@ The current runtime baseline also includes admission-first workflow hooks for se
   - Installation scaffold: `scaffold/`
 - Client repositories receive:
   - Managed spec snapshot at `docs/audit/SPEC.md`
-  - Quick summary at `docs/audit/WORKFLOW_SUMMARY.md`
-  - Project adapter stub at `docs/audit/WORKFLOW.md`
+  - Generated adapter outputs at `docs/audit/WORKFLOW.md`, `docs/audit/WORKFLOW_SUMMARY.md`, `docs/audit/CODEX_ONLINE.md`, and `docs/audit/index.md`
   - Audit artifacts and skill mapping used by day-to-day execution
 
 ## Architecture Overview
@@ -34,23 +33,33 @@ Product repository:
 - Installation scaffold (`scaffold/`)
 - Packs (`packs/core`, `packs/runtime-local`, `packs/codex-integration`, `packs/github-integration`, `packs/extended`)
 - Runtime, installer, and release tooling (`tools/`)
+- Implementation layers:
+  - `src/core`: canonical workflow, gating, agent, and port contracts
+  - `src/application`: runtime, install, project-config, and Codex use cases
+  - `src/adapters`: runtime, Codex, manifest, and local adapter implementations
+  - `src/lib`: config, workflow rendering, index, SQLite, and FS helpers
 
 Client repository after install:
 - `AGENTS.md`
   - root project startup contract for Codex in the installed repo
   - keeps stable write-stop rules and points toward workflow state and runtime checks
 - `docs/audit/SPEC.md` (managed spec snapshot)
-- `docs/audit/WORKFLOW_SUMMARY.md` (quick reload)
-- `docs/audit/WORKFLOW.md` (project adapter stub)
+- `docs/audit/WORKFLOW_SUMMARY.md` (generated quick reload)
+- `docs/audit/WORKFLOW.md` (generated project adapter view)
+- `docs/audit/CODEX_ONLINE.md` and `docs/audit/index.md` (generated support views)
 - `docs/audit/baseline/`
 - `docs/audit/snapshots/`
 - `docs/audit/cycles/`
 - `docs/audit/sessions/`
 - `docs/audit/incidents/`
+- `.aidn/project/workflow.adapter.json`
+  - durable project adapter input used by `aidn project config`
 - `.codex/skills.yaml`
-  - rendered with pinned `remote.ref` matching the installed aidn tag (for example `v0.4.0`)
+  - rendered with pinned `remote.ref` matching the installed aidn tag (for example `v0.6.0`)
 - `.codex/skills/*`
   - local skill source folders copied during install (offline/local fallback)
+- `.aidn/config.json`
+  - runtime/install defaults such as source branch and persistence preferences
 - `.aidn/runtime/*`
   - local runtime state, index, context, and observability artifacts
 
@@ -62,6 +71,7 @@ Codex instruction layering after install:
 
 ## Workflow Diagrams
 
+- Mermaid diagrams in `docs/diagrams/` are aligned with the current `0.6.0` runtime baseline.
 - Global system architecture: `docs/diagrams/01-global-system-architecture.md`
 - Cycle state machine: `docs/diagrams/02-cycle-state-machine.md`
 - Runtime session flow: `docs/diagrams/03-runtime-session-flow.md`
@@ -70,6 +80,62 @@ Codex instruction layering after install:
 - BPMN overview and usage notes: `docs/bpmn/README.md`
 - BPMN macro workflow: `docs/bpmn/aidn-multi-agent-ideal.bpmn`
 - BPMN handoff detail: `docs/bpmn/aidn-multi-agent-handoff-detail.bpmn`
+
+## CLI Surface
+
+- `aidn install`
+  - scaffold/packs install, verify, and runtime bootstrap
+- `aidn project config`
+  - manages `.aidn/project/workflow.adapter.json` and regenerates workflow adapter outputs
+- `aidn runtime`
+  - runtime state, repair-layer, handoff, shared coordination, persistence, and coordinator commands
+- `aidn perf`
+  - verification fixtures, gating, checkpoint, and KPI/report tooling
+- `aidn codex`
+  - Codex hook and context helpers used by workflow automation
+
+The current stable/advanced/internal classification lives in [docs/CLI_SURFACE_INVENTORY.md](G:/projets/aidn/docs/CLI_SURFACE_INVENTORY.md).
+
+Representative commands:
+
+```bash
+npx aidn project config --target ../client --wizard
+npx aidn runtime shared-coordination-projects --target ../client --json
+npx aidn runtime persistence-adopt --target ../client --backend postgres --dry-run --json
+npx aidn runtime coordinator-orchestrate --target ../client --json
+```
+
+CLI effect semantics:
+
+- `--json` selects machine-readable output; it does not imply read-only behavior.
+- `--dry-run` is the non-mutating preview/read path where a command supports it.
+- `--write`, `--apply`, and `--execute` mark explicit mutation or command execution.
+- Runtime digest projectors such as `project-runtime-state` and `project-handoff-packet` are read-only by default; pass `--write` explicitly when you want to update Markdown projections and `--sync-relay` when you want to append shared relay state.
+- Public command effect classes live in `src/core/cli/effect-policy.mjs` and are verified with `npm run perf:verify-cli-effect-policy` plus `npm run perf:verify-cli-no-implicit-write`.
+- Public JSON output contracts live under `src/core/contracts/cli-output/` and are verified with `npm run perf:verify-cli-output-contracts`.
+
+Runtime state modes:
+
+| Mode | Canonical source | Local projections | Shared runtime |
+| --- | --- | --- | --- |
+| `files` | checkout-bound Markdown and project files | generated locally when requested | no shared runtime unless explicitly configured |
+| `dual` | runtime DB plus checked-in audit artifacts | local SQLite/projection artifacts remain available | explicit shared surfaces may be enabled, but checkout-bound files stay local |
+| `db-only` | runtime DB is primary for supported runtime state | Markdown can be materialized on demand | shared runtime stays opt-in and never relocates checkout-bound artifacts |
+
+Mode at a glance:
+
+| Mode | Source of truth | What to inspect first | Recommended checks |
+| --- | --- | --- | --- |
+| `files` | checkout-bound Markdown and project files | `docs/audit/*`, `docs/`, workspace-local files | `npm run perf:verify-cli-no-implicit-write`, `npm run perf:verify-cli-output-contracts` |
+| `dual` | runtime DB plus checkout-bound audit files | local SQLite projections plus audit Markdown | `npm run perf:verify-state-mode-parity`, `npm run perf:verify-runtime-payload-builders` |
+| `db-only` | runtime DB for supported runtime state, with Markdown projections on demand | SQLite-backed runtime state and generated projections | `npm run perf:verify-state-mode-parity`, `npm run perf:verify-db-only-readiness` |
+
+Rules:
+
+- `files`, `dual`, and `db-only` are supported operating modes, not interchangeable aliases.
+- `dual` keeps local projections for compatibility and verification.
+- `db-only` removes the need for file-backed runtime state, but not the need for reconstructible Markdown projections.
+- shared PostgreSQL coordination remains explicit opt-in and never becomes the default path for checkout-bound artifacts.
 
 ## Git Workflow
 
@@ -86,21 +152,80 @@ Codex instruction layering after install:
 - RFC: `docs/rfc/RFC-0001-reload-incremental-gating-index.md`
 - Tooling quickstart: `docs/performance/README.md`
 
+## Shared Coordination Verification
+
+Local verification:
+
+```bash
+npm run perf:verify-vcs-adapter
+npm run perf:verify-shared-runtime-locator
+npm run perf:verify-workspace-resolution
+npm run perf:verify-shared-runtime-path
+npm run perf:verify-shared-runtime-reanchor
+npm run perf:verify-shared-runtime-db-first-regression
+npm run perf:verify-shared-state-backend
+npm run perf:verify-shared-sqlite-boundary
+npm run perf:verify-shared-coordination-concurrency
+npm run perf:verify-shared-coordination-worktree-concurrency
+npm run perf:verify-shared-coordination-sync
+npm run perf:verify-shared-coordination-runtime-cli
+npm run perf:verify-shared-coordination-backup
+npm run perf:verify-shared-coordination-restore
+npm run perf:verify-shared-coordination-doctor
+npm run perf:verify-shared-coordination-migrate
+npm run perf:verify-postgres-shared-coordination-contract
+npm run perf:verify-postgres-runtime-persistence-contract
+```
+
+Optional live PostgreSQL smoke:
+
+```bash
+AIDN_PG_SMOKE_URL=postgres://user:pass@host:5432/db npm run perf:verify-postgres-shared-coordination-live-smoke
+```
+
+Latest known live result:
+
+- manual live smoke passed on 2026-03-29 against a real PostgreSQL server
+- returned `schema_status=ready`, `latest_schema_version=1`, and successful concurrent shared writes
+- this smoke is intentionally treated as a local/manual validation, not a GitHub-hosted CI check
+
+CI integration:
+
+- `.github/workflows/perf-kpi.yml` runs the linked-worktree shared-coordination fixture on every PR
+- the live PostgreSQL smoke is not run in GitHub CI and should stay local unless a self-hosted or ephemeral PostgreSQL setup is introduced later
+
+Migration and repair:
+
+- `npx aidn runtime shared-coordination-migrate --target . --json`
+- `npx aidn runtime shared-coordination-backup --target . --json`
+- `npx aidn runtime shared-coordination-restore --target . --json`
+- `npx aidn runtime shared-coordination-restore --target . --write --json`
+- `npx aidn runtime shared-coordination-doctor --target . --json`
+- `npx aidn runtime shared-coordination-projects --target . --json`
+- `npx aidn runtime shared-runtime-reanchor --target . --json`
+- `npx aidn runtime persistence-adopt --target . --backend postgres --dry-run --json`
+- `docs/MIGRATION_SHARED_RUNTIME_POSTGRESQL.md`
+- `docs/MIGRATION_RUNTIME_PERSISTENCE_POSTGRESQL.md`
+- `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md`
+
 ## Architecture Direction
 
+- Documentation index: `docs/README.md`
+- Closed EA/IA execution trace: `docs/PLAN_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md` and `docs/BACKLOG_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md`
 - Target architecture ADR: `docs/ADR/ADR-0002-runtime-platform-architecture.md`
-- Remediation plan: `docs/PLAN_ARCHITECTURE_REMEDIATION_2026-03-07.md`
-- Executable backlog: `docs/BACKLOG_ARCHITECTURE_REMEDIATION_2026-03-07.md`
-- GitHub issues ready: `docs/BACKLOG_ARCHITECTURE_GITHUB_ISSUES_2026-03-07.md`
-- GitHub project ready: `docs/BACKLOG_ARCHITECTURE_GITHUB_PROJECT_2026-03-07.md`
+- Architecture cockpit: `docs/ARCHITECTURE_COCKPIT.md`
+- Historical plans and backlogs remain cataloged in `docs/README.md`
 
 ## Installation
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#v0.4.0
+npm install --save-dev github:leuzeus/aidn#v0.6.0
 npx aidn install --target ../client --pack core
+npx aidn install --target ../client --pack core --init-defaults --project-name my-project --verify
 npx aidn install --target ../client --pack extended
 npx aidn install --target ../client --pack core --source-branch main
+npx aidn install --target ../client --pack core --runtime-persistence-backend postgres --runtime-persistence-connection-ref env:AIDN_PG_URL
+npx aidn project config --target ../client --wizard
 npx aidn install --target ../client --pack core --verify
 ```
 
@@ -111,15 +236,21 @@ Notes:
 - `github-integration` installs optional GitHub repository automation on top of `core`
 - `extended` is the explicit composite profile (`core` + `runtime-local` + `codex-integration` + `github-integration`)
 - install creates or updates the project-layer `AGENTS.md`; it does not write `~/.codex/AGENTS.md`
+- clean non-interactive installs can create the minimal project adapter with `--init-defaults --project-name <name>`
 - install can set workflow adapter metadata explicitly with `--source-branch <name>`
 - install persists the resolved source branch in `../client/.aidn/config.json` under `workflow.sourceBranch`
+- install supports explicit runtime persistence selection with `--runtime-persistence-backend sqlite|postgres`
+- install supports explicit local compatibility projection policy with `--runtime-persistence-local-projection-policy keep-local-sqlite|keep-json|keep-sql|none`
+- `aidn project config` manages `.aidn/project/workflow.adapter.json` and regenerates `WORKFLOW.md`, `WORKFLOW_SUMMARY.md`, `CODEX_ONLINE.md`, and `index.md`
 - install auto-imports `docs/audit/*` artifacts into `../client/.aidn/runtime/index/*`
 - import backend precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE`
 - default fresh install profile is DB-backed (`runtime.stateMode=dual`, `install.artifactImportStore=dual-sqlite`)
+- `aidn runtime persistence-adopt` can inspect or execute post-install SQLite/PostgreSQL backend adoption
+- `aidn runtime shared-coordination-projects` exposes shared backend visibility per workspace/project
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a tagged install (`#v0.4.0`) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a tagged install (`#v0.6.0`) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 

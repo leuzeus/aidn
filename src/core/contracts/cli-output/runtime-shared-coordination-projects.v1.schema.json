@@ -1,0 +1,143 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-shared-coordination-projects.v1",
+  "title": "aidn runtime shared-coordination-projects --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime shared-coordination-projects --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "ok",
+    "status",
+    "reason",
+    "workspace",
+    "shared_coordination_backend",
+    "project_id_filter",
+    "projects",
+    "inspected_project",
+    "inspected_workspaces",
+    "projects_diagnostic"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "ok": { "type": "boolean" },
+    "status": { "type": "string" },
+    "reason": { "type": "string" },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "shared_coordination_backend": { "type": "object", "additionalProperties": true },
+    "project_id_filter": { "type": "string" },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "project_id",
+          "project_root_ref",
+          "shared_backend_kind",
+          "workspace_count",
+          "worktree_count",
+          "planning_state_count",
+          "handoff_relay_count",
+          "coordination_record_count",
+          "updated_at"
+        ],
+        "properties": {
+          "project_id": { "type": "string" },
+          "project_id_source": { "type": "string" },
+          "project_root_ref": { "type": "string" },
+          "locator_ref": { "type": "string" },
+          "shared_backend_kind": { "type": "string" },
+          "workspace_count": { "type": "number" },
+          "worktree_count": { "type": "number" },
+          "planning_state_count": { "type": "number" },
+          "handoff_relay_count": { "type": "number" },
+          "coordination_record_count": { "type": "number" },
+          "updated_at": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "inspected_project": {
+      "type": ["object", "null"],
+      "required": [
+        "project_id",
+        "project_root_ref",
+        "shared_backend_kind",
+        "workspace_count",
+        "worktree_count",
+        "planning_state_count",
+        "handoff_relay_count",
+        "coordination_record_count"
+      ],
+      "properties": {
+        "project_id": { "type": "string" },
+        "project_id_source": { "type": "string" },
+        "project_root_ref": { "type": "string" },
+        "locator_ref": { "type": "string" },
+        "shared_backend_kind": { "type": "string" },
+        "workspace_count": { "type": "number" },
+        "worktree_count": { "type": "number" },
+        "planning_state_count": { "type": "number" },
+        "handoff_relay_count": { "type": "number" },
+        "coordination_record_count": { "type": "number" },
+        "updated_at": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "inspected_workspaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "workspace_id_source",
+          "project_id_source",
+          "project_root_ref",
+          "git_common_dir",
+          "repo_root",
+          "shared_backend_kind"
+        ],
+        "properties": {
+          "project_id": { "type": "string" },
+          "workspace_id": { "type": "string" },
+          "workspace_id_source": { "type": "string" },
+          "project_id_source": { "type": "string" },
+          "project_root_ref": { "type": "string" },
+          "locator_ref": { "type": "string" },
+          "git_common_dir": { "type": "string" },
+          "repo_root": { "type": "string" },
+          "shared_backend_kind": { "type": "string" },
+          "updated_at": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "projects_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "backend_kind",
+        "backend_status",
+        "status",
+        "project_count",
+        "inspected_project_id",
+        "inspected_workspace_count",
+        "summary",
+        "recommended_action"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "backend_kind": { "type": "string" },
+        "backend_status": { "type": "string" },
+        "status": { "type": "string" },
+        "project_count": { "type": "number" },
+        "inspected_project_id": { "type": "string" },
+        "inspected_workspace_count": { "type": "number" },
+        "summary": { "type": "string" },
+        "recommended_action": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { normalizeRepairLayerPayload } from "./repair-layer-normalization-lib.mjs";
 
 export const REPAIR_LAYER_ENGINE_VERSION = "repair-layer-v2";
 
@@ -38,6 +39,7 @@ export function buildRepairLayerInputDigest(payload) {
       continuity_rule: row?.continuity_rule ?? null,
       continuity_base_branch: row?.continuity_base_branch ?? null,
       continuity_latest_cycle_branch: row?.continuity_latest_cycle_branch ?? null,
+      continuity_decision_by: row?.continuity_decision_by ?? null,
       updated_at: row?.updated_at ?? null,
     }));
   const repairDecisions = sortByKey(Array.isArray(payload?.repair_decisions) ? payload.repair_decisions : [], (row) =>
@@ -68,6 +70,7 @@ export function buildRepairLayerMeta(payload, options = {}) {
     engine_version: REPAIR_LAYER_ENGINE_VERSION,
     input_digest: inputDigest,
     applied_at: appliedAt,
+    normalization: options.normalization ?? null,
   };
 }
 
@@ -86,8 +89,9 @@ export function mergeRepairLayerPayload(payload, repairLayer, options = {}) {
   }, {
     appliedAt: options.appliedAt,
     inputDigest: options.inputDigest,
+    normalization: null,
   });
-  return {
+  const mergedPayload = {
     ...stableClone(payload),
     schema_version: Math.max(Number(payload?.schema_version ?? 1), 2),
     sessions: repairLayer.sessions,
@@ -116,6 +120,42 @@ export function mergeRepairLayerPayload(payload, repairLayer, options = {}) {
       repair_decisions_count: repairDecisions.length,
     },
   };
+  const normalization = normalizeRepairLayerPayload({
+    sourcePayload: payload,
+    payload: {
+      ...mergedPayload,
+      repair_layer_meta: {
+        ...repairLayerMeta,
+      },
+    },
+    dryRun: options.dryRun === true,
+  });
+  const normalizedPayload = normalization.payload;
+  normalizedPayload.summary = {
+    ...(payload?.summary && typeof payload.summary === "object" ? payload.summary : {}),
+    cycles_count: Array.isArray(normalizedPayload.cycles) ? normalizedPayload.cycles.length : 0,
+    sessions_count: Array.isArray(normalizedPayload.sessions) ? normalizedPayload.sessions.length : 0,
+    artifacts_count: Array.isArray(normalizedPayload.artifacts) ? normalizedPayload.artifacts.length : 0,
+    file_map_count: Array.isArray(normalizedPayload.file_map) ? normalizedPayload.file_map.length : 0,
+    tags_count: Array.isArray(normalizedPayload.tags) ? normalizedPayload.tags.length : 0,
+    run_metrics_count: Array.isArray(normalizedPayload.run_metrics) ? normalizedPayload.run_metrics.length : 0,
+    artifact_links_count: Array.isArray(normalizedPayload.artifact_links) ? normalizedPayload.artifact_links.length : 0,
+    cycle_links_count: Array.isArray(normalizedPayload.cycle_links) ? normalizedPayload.cycle_links.length : 0,
+    session_cycle_links_count: Array.isArray(normalizedPayload.session_cycle_links) ? normalizedPayload.session_cycle_links.length : 0,
+    session_links_count: Array.isArray(normalizedPayload.session_links) ? normalizedPayload.session_links.length : 0,
+    migration_runs_count: Array.isArray(normalizedPayload.migration_runs) ? normalizedPayload.migration_runs.length : 0,
+    migration_findings_count: Array.isArray(normalizedPayload.migration_findings) ? normalizedPayload.migration_findings.length : 0,
+    repair_decisions_count: Array.isArray(normalizedPayload.repair_decisions) ? normalizedPayload.repair_decisions.length : 0,
+  };
+  normalizedPayload.repair_layer_meta = buildRepairLayerMeta({
+    ...payload,
+    repair_decisions: repairDecisions,
+  }, {
+    appliedAt: options.appliedAt,
+    inputDigest: options.inputDigest,
+    normalization: normalization.report?.summary ?? null,
+  });
+  return normalizedPayload;
 }
 
 export function summarizeRepairLayer(repairLayer, options = {}) {

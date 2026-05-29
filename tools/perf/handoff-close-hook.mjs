@@ -153,11 +153,11 @@ function buildSummary(result) {
   };
 }
 
-function main() {
+async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const checkpoint = runCheckpointUseCase({
+    const checkpoint = await runCheckpointUseCase({
       args,
       runtimeDir: PERF_DIR,
       targetRoot,
@@ -193,4 +193,4 @@ function main() {
   }
 }
 
-main();
+await main();

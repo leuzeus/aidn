@@ -9,6 +9,7 @@ import {
 import { loadAgentRoster } from "../../src/application/runtime/agent-roster-service.mjs";
 import { selectAgentAdapter } from "../../src/core/agents/agent-selection-policy.mjs";
 import { buildAgentHealthMap, verifyAgentRoster } from "../../tools/runtime/verify-agent-roster.mjs";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function assert(condition, message) {
   if (!condition) {
@@ -364,7 +365,7 @@ async function main() {
     process.exit(1);
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      removePathWithRetry(tempRoot);
     }
   }
 }

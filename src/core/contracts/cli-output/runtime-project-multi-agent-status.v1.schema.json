@@ -1,0 +1,222 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-project-multi-agent-status.v1",
+  "title": "aidn runtime project-multi-agent-status --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime project-multi-agent-status --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "target_root",
+    "output_file",
+    "written",
+    "state_mode",
+    "db_first_applied",
+    "db_first_materialized",
+    "db_first_artifact_path",
+    "coordinator",
+    "recommendation",
+    "integration_risk",
+    "arbitration",
+    "roster_verification",
+    "agent_health_summary",
+    "agent_selection_summary",
+    "coordination_summary",
+    "multi_agent_status_diagnostic"
+  ],
+  "properties": {
+    "target_root": { "type": "string" },
+    "output_file": { "type": "string" },
+    "written": { "type": "boolean" },
+    "state_mode": { "type": "string" },
+    "db_first_applied": { "type": "boolean" },
+    "db_first_materialized": { "type": "boolean" },
+    "db_first_artifact_path": { "type": "string" },
+    "governance_metadata": {
+      "type": "object",
+      "required": [
+        "contract_version",
+        "source_of_truth",
+        "source_mode",
+        "lifecycle_status",
+        "owner",
+        "steward"
+      ],
+      "properties": {
+        "contract_version": { "type": "string" },
+        "source_of_truth": { "type": "string" },
+        "source_mode": { "type": "string" },
+        "lifecycle_status": { "type": "string" },
+        "owner": { "type": "string" },
+        "steward": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "coordinator": { "type": "object", "additionalProperties": true },
+    "recommendation": {
+      "type": "object",
+      "required": ["role", "action", "goal", "source", "reason", "stop_required"],
+      "properties": {
+        "role": { "type": "string" },
+        "action": { "type": "string" },
+        "goal": { "type": "string" },
+        "source": { "type": "string" },
+        "reason": { "type": "string" },
+        "stop_required": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "handoff_status": { "type": ["object", "null"], "additionalProperties": true },
+    "integration_risk": { "type": "object", "additionalProperties": true },
+    "arbitration": {
+      "type": "object",
+      "required": [
+        "arbitration_required",
+        "arbitration_status",
+        "arbitration_reason",
+        "preferred_decision",
+        "suggestions"
+      ],
+      "properties": {
+        "arbitration_required": { "type": "boolean" },
+        "arbitration_status": { "type": "string" },
+        "arbitration_reason": { "type": "string" },
+        "preferred_decision": { "type": "string" },
+        "suggestions": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
+    "recommended_role_coverage": {
+      "type": "object",
+      "required": ["status", "reason"],
+      "properties": {
+        "status": { "type": "string" },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "roster_verification": {
+      "type": "object",
+      "required": ["pass", "issues", "warnings"],
+      "properties": {
+        "pass": { "type": "boolean" },
+        "issues": { "type": "array" },
+        "warnings": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
+    "agent_health_summary": {
+      "type": "object",
+      "required": ["output_file", "written", "verification"],
+      "properties": {
+        "output_file": { "type": "string" },
+        "written": { "type": "boolean" },
+        "verification": {
+          "type": "object",
+          "required": ["pass", "issues", "warnings", "environment_summary", "role_coverage", "recommended_role_coverage"],
+          "properties": {
+            "pass": { "type": "boolean" },
+            "issues": { "type": "array" },
+            "warnings": { "type": "array" },
+            "environment_summary": {
+              "type": "object",
+              "required": ["ready", "degraded", "unavailable", "unknown"],
+              "properties": {
+                "ready": { "type": "number" },
+                "degraded": { "type": "number" },
+                "unavailable": { "type": "number" },
+                "unknown": { "type": "number" }
+              },
+              "additionalProperties": true
+            },
+            "role_coverage": { "type": "object", "additionalProperties": true },
+            "recommended_role_coverage": { "type": "object", "additionalProperties": true }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "agent_selection_summary": {
+      "type": "object",
+      "required": ["output_file", "written"],
+      "properties": {
+        "output_file": { "type": "string" },
+        "written": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "coordination_summary": {
+      "type": "object",
+      "required": ["output_file", "written", "summary"],
+      "properties": {
+        "output_file": { "type": "string" },
+        "written": { "type": "boolean" },
+        "summary": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
+    "observability": {
+      "type": "object",
+      "required": [
+        "adapter_count",
+        "runnable_adapter_count",
+        "environment_status",
+        "role_coverage_status",
+        "routing_status",
+        "coordination_history_status"
+      ],
+      "properties": {
+        "adapter_count": { "type": "number" },
+        "runnable_adapter_count": { "type": "number" },
+        "environment_status": { "type": "string" },
+        "role_coverage_status": { "type": "string" },
+        "routing_status": { "type": "string" },
+        "coordination_history_status": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "multi_agent_status_diagnostic": {
+      "type": "object",
+      "required": [
+        "scope",
+        "state_mode",
+        "recommended_role",
+        "recommended_action",
+        "roster_pass",
+        "arbitration_required",
+        "preferred_decision",
+        "integration_strategy",
+        "adapter_count",
+        "runnable_adapter_count",
+        "environment_status",
+        "role_coverage_status",
+        "routing_status",
+        "coordination_history_status",
+        "written",
+        "summary",
+        "recommended_command"
+      ],
+      "properties": {
+        "scope": { "type": "string" },
+        "state_mode": { "type": "string" },
+        "recommended_role": { "type": "string" },
+        "recommended_action": { "type": "string" },
+        "roster_pass": { "type": "boolean" },
+        "arbitration_required": { "type": "boolean" },
+        "preferred_decision": { "type": "string" },
+        "integration_strategy": { "type": "string" },
+        "adapter_count": { "type": "number" },
+        "runnable_adapter_count": { "type": "number" },
+        "environment_status": { "type": "string" },
+        "role_coverage_status": { "type": "string" },
+        "routing_status": { "type": "string" },
+        "coordination_history_status": { "type": "string" },
+        "written": { "type": "boolean" },
+        "summary": { "type": "string" },
+        "recommended_command": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,31 @@
+name: Runtime Ops Live Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-smoke:
+    name: Verify Optional Live PostgreSQL Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify Runtime Persistence Live Smoke
+        env:
+          AIDN_RUNTIME_PG_SMOKE_URL: ${{ secrets.AIDN_RUNTIME_PG_SMOKE_URL }}
+          AIDN_PG_SMOKE_URL: ${{ secrets.AIDN_PG_SMOKE_URL }}
+        run: npm run perf:verify-postgres-runtime-persistence-live-smoke
+
+      - name: Verify Shared Coordination Live Smoke
+        env:
+          AIDN_PG_SMOKE_URL: ${{ secrets.AIDN_PG_SMOKE_URL }}
+        run: npm run perf:verify-postgres-shared-coordination-live-smoke
