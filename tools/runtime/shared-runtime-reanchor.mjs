@@ -17,16 +17,22 @@ function buildSharedRuntimeReanchorDiagnostic(result) {
     : (result?.current_locator?.exists ? "present" : "missing");
   const workspace = result?.applied_workspace ?? result?.proposed_workspace ?? result?.workspace ?? {};
   const backendKind = normalizeScalar(workspace?.shared_backend_kind || result?.current_locator?.data?.backend?.kind) || "none";
+  const alignment = result?.applied_shared_coordination_alignment ?? result?.shared_coordination_alignment ?? null;
+  const alignmentStatus = normalizeScalar(alignment?.status) || "unknown";
+  const alignmentSummary = alignmentStatus === "warn" || alignmentStatus === "block"
+    ? (alignment?.findings?.[0]?.message || result?.recommended_next_action || "")
+    : "";
   return {
     scope: "shared-runtime-only",
     action: summary.action || "inspect",
     applied: summary.applied === true,
     current_status: summary.current_status || "unknown",
+    alignment_status: alignmentStatus,
     locator_status: locatorStatus,
     backend_kind: backendKind,
-    summary: summary.current_status === "clear"
+    summary: alignmentSummary || (summary.current_status === "clear"
       ? "shared runtime locator is aligned with the current workspace"
-      : (summary.recommended_next_action || "shared runtime locator requires review"),
+      : (summary.recommended_next_action || "shared runtime locator requires review")),
     recommended_action: summary.recommended_next_action || "inspect shared runtime locator settings",
   };
 }

@@ -100,6 +100,26 @@ function createFakeResolution({
   };
 }
 
+function writePostgresRuntimeConfig(targetRoot) {
+  const configPath = path.join(targetRoot, ".aidn", "config.json");
+  fs.mkdirSync(path.dirname(configPath), { recursive: true });
+  fs.writeFileSync(configPath, `${JSON.stringify({
+    version: 1,
+    install: {
+      artifactImportStore: "sqlite",
+    },
+    runtime: {
+      stateMode: "db-only",
+      persistence: {
+        backend: "postgres",
+        connectionRef: "env:AIDN_PG_URL",
+        localProjectionPolicy: "keep-local-sqlite",
+      },
+    },
+    profile: "db-only",
+  }, null, 2)}\n`, "utf8");
+}
+
 async function main() {
   let tempRoot = "";
   try {
@@ -110,6 +130,31 @@ async function main() {
     assert(disabled.json?.source_of_truth?.concept === "coordination_records", "disabled doctor should expose source-of-truth governance");
 
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-shared-coordination-doctor-"));
+    const disabledPostgresRoot = path.join(tempRoot, "postgres-runtime-disabled-shared");
+    fs.cpSync(path.resolve(process.cwd(), "tests", "fixtures", "repo-installed-core"), disabledPostgresRoot, { recursive: true });
+    writePostgresRuntimeConfig(disabledPostgresRoot);
+    writeSharedRuntimeLocator(disabledPostgresRoot, {
+      enabled: false,
+      projectId: "project-doctor-disabled",
+      workspaceId: "workspace-doctor-disabled",
+      backend: {
+        kind: "none",
+        connectionRef: "",
+      },
+    });
+    const disabledPostgres = runCli(["runtime", "shared-coordination-doctor", "--target", disabledPostgresRoot, "--json"]);
+    assert(disabledPostgres.status === 0, "disabled PostgreSQL-aligned doctor should warn without failing local-first operation");
+    assert(disabledPostgres.json?.status === "warn", "disabled PostgreSQL-aligned doctor should expose warn status");
+    assert(disabledPostgres.json?.shared_coordination_alignment?.status === "warn", "disabled PostgreSQL-aligned doctor should expose alignment warning");
+    assert(
+      disabledPostgres.json?.findings?.some((item) => item.code === "postgres-runtime-shared-coordination-disabled"),
+      "disabled PostgreSQL-aligned doctor should report the explicit disabled shared locator",
+    );
+    assert(
+      disabledPostgres.json?.recommended_actions?.some((item) => item.includes("shared-runtime-reanchor") && item.includes("--backend postgres")),
+      "disabled PostgreSQL-aligned doctor should recommend explicit postgres re-anchor",
+    );
+
     const targetRoot = path.join(tempRoot, "repo");
     fs.mkdirSync(targetRoot, { recursive: true });
     writeSharedRuntimeLocator(targetRoot, {

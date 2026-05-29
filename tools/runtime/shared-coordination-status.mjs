@@ -17,6 +17,7 @@ import {
   resolveAuditArtifactText,
   resolveDbBackedMode,
 } from "./db-first-runtime-view-lib.mjs";
+import { assessSharedCoordinationAlignment } from "../../src/application/runtime/shared-coordination-alignment-service.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -54,6 +55,7 @@ function deriveSharedCoordinationOperations({
   snapshot,
   sourceOfTruth,
   metadata,
+  alignment,
 }) {
   const status = backend?.status ?? "disabled";
   const schemaStatus = health?.schema_status ?? (status === "disabled" ? "disabled" : status);
@@ -71,6 +73,13 @@ function deriveSharedCoordinationOperations({
   } else {
     recommendedActions.push("shared coordination is inspectable; back it up before mutating shared records");
   }
+  if (alignment?.status === "warn" || alignment?.status === "block") {
+    for (const action of alignment.recommended_actions ?? []) {
+      if (action && !recommendedActions.includes(action)) {
+        recommendedActions.push(action);
+      }
+    }
+  }
   return {
     local_first: true,
     scope: "shared-coordination-only",
@@ -80,6 +89,7 @@ function deriveSharedCoordinationOperations({
     source_of_truth_status: sourceOfTruth?.source_of_truth_status ?? "missing",
     metadata_status: metadata?.metadata_status ?? "not_governed",
     compatibility_status: compatibilityStatus,
+    alignment_status: alignment?.status ?? "unknown",
     latest_schema_version: health?.latest_applied_schema_version ?? 0,
     connection_ref: backend?.connection_ref || "none",
     connection_secret_exposed: false,
@@ -109,6 +119,10 @@ export async function projectSharedCoordinationStatus({
   });
   const backend = summarizeSharedCoordinationResolution(resolution);
   const health = resolution.store ? await resolution.store.healthcheck() : null;
+  const alignment = assessSharedCoordinationAlignment({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+  });
   const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
   const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
     exists: false,
@@ -163,6 +177,7 @@ export async function projectSharedCoordinationStatus({
     source_of_truth: governance.source_of_truth,
     metadata: governance.metadata,
     shared_coordination_backend: backend,
+    shared_coordination_alignment: alignment,
     health,
     snapshot: {
       active_session: activeSession,
@@ -202,6 +217,7 @@ export async function projectSharedCoordinationStatus({
       snapshot: result.snapshot,
       sourceOfTruth: governance.source_of_truth,
       metadata: governance.metadata,
+      alignment,
     }),
   };
 }

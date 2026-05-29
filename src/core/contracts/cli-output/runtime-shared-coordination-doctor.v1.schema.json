@@ -25,6 +25,7 @@
     "source_of_truth": { "type": "object", "additionalProperties": true },
     "metadata": { "type": "object", "additionalProperties": true },
     "shared_coordination_backend": { "type": "object", "additionalProperties": true },
+    "shared_coordination_alignment": { "type": "object", "additionalProperties": true },
     "health": { "type": ["object", "null"], "additionalProperties": true },
     "findings": {
       "type": "array",
@@ -67,6 +68,7 @@
         "source_of_truth_status": { "type": "string" },
         "metadata_status": { "type": "string" },
         "compatibility_status": { "type": "string" },
+        "alignment_status": { "type": "string" },
         "connection_ref": { "type": "string" },
         "connection_secret_exposed": { "type": "boolean" },
         "doctor_status": { "type": "string" },

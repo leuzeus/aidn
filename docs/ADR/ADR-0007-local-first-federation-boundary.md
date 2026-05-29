@@ -34,6 +34,7 @@ Stable federation contract:
 - the locator is required for every shared backend and must be validated before use
 - `project_id`, `workspace_id` and `worktree_id` are part of the public operational identity surface
 - runtime persistence exposes the same identity through `project_context` and `runtime_scope_id`
+- DB-backed PostgreSQL projects that explicitly disable the shared-runtime locator remain local-first, but shared coordination diagnostics must warn that shared PostgreSQL coordination is not active
 - `docs/audit/*`, `AGENTS.md`, `.codex/*`, `.aidn/config.json` and local runtime projections stay outside shared coordination
 - PostgreSQL connection material must be referenced through `env:*` or equivalent indirection, never embedded in tracked files
 

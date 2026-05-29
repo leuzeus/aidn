@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { resolveSharedCoordinationStore, summarizeSharedCoordinationResolution } from "../../src/application/runtime/shared-coordination-store-service.mjs";
 import { deriveSharedCoordinationGovernance } from "../../src/application/runtime/shared-coordination-governance-lib.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
+import { assessSharedCoordinationAlignment } from "../../src/application/runtime/shared-coordination-alignment-service.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -43,7 +44,7 @@ function normalizeStatusCode(value) {
     .replace(/^-+|-+$/g, "") || "unknown";
 }
 
-function buildDoctorReport({ resolution, workspace, health }) {
+function buildDoctorReport({ resolution, workspace, health, alignment }) {
   const backend = summarizeSharedCoordinationResolution(resolution);
   const findings = [];
   const recommendedActions = [];
@@ -110,12 +111,27 @@ function buildDoctorReport({ resolution, workspace, health }) {
     }
   }
 
+  for (const finding of alignment?.findings ?? []) {
+    findings.push({
+      severity: finding.severity,
+      code: finding.code,
+      message: finding.message,
+    });
+  }
+  for (const action of alignment?.recommended_actions ?? []) {
+    if (action && action !== "no shared coordination alignment action required") {
+      recommendedActions.push(action);
+    }
+  }
+
   const ok = findings.every((item) => item.severity !== "error");
+  const hasWarning = findings.some((item) => item.severity === "warning");
   return {
     ok,
-    status: ok ? "pass" : "fail",
+    status: ok ? (hasWarning ? "warn" : "pass") : "fail",
     workspace,
     shared_coordination_backend: backend,
+    shared_coordination_alignment: alignment,
     health: health ?? null,
     findings,
     recommended_actions: recommendedActions,
@@ -130,6 +146,7 @@ function deriveSharedCoordinationDoctorOperations({
   status,
   findings,
   recommendedActions,
+  alignment,
 }) {
   return {
     local_first: true,
@@ -140,6 +157,7 @@ function deriveSharedCoordinationDoctorOperations({
     source_of_truth_status: sourceOfTruth?.source_of_truth_status ?? "missing",
     metadata_status: metadata?.metadata_status ?? "not_governed",
     compatibility_status: health?.compatibility_status ?? "unknown",
+    alignment_status: alignment?.status ?? "unknown",
     connection_ref: backend?.connection_ref || "none",
     connection_secret_exposed: false,
     doctor_status: status || "unknown",
@@ -158,6 +176,10 @@ export async function doctorSharedCoordination({
   const workspace = resolveWorkspaceContext({
     targetRoot: absoluteTargetRoot,
   });
+  const alignment = assessSharedCoordinationAlignment({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+  });
   const resolution = sharedCoordination ?? await resolveSharedCoordinationStore({
     targetRoot: absoluteTargetRoot,
     workspace,
@@ -168,6 +190,7 @@ export async function doctorSharedCoordination({
     resolution,
     workspace,
     health,
+    alignment,
   });
   const governance = deriveSharedCoordinationGovernance({
     workspace,
@@ -188,6 +211,7 @@ export async function doctorSharedCoordination({
       status: report.status,
       findings: report.findings,
       recommendedActions: report.recommended_actions,
+      alignment,
     }),
   };
 }

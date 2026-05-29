@@ -90,6 +90,52 @@ function writeValidLocator(targetRoot, {
   }, null, 2)}\n`, "utf8");
 }
 
+function writeDisabledLocator(targetRoot, {
+  projectId = "project-disabled",
+  workspaceId = "workspace-disabled",
+} = {}) {
+  const locatorFile = path.join(targetRoot, ".aidn", "project", "shared-runtime.locator.json");
+  fs.mkdirSync(path.dirname(locatorFile), { recursive: true });
+  fs.writeFileSync(locatorFile, `${JSON.stringify({
+    version: 2,
+    enabled: false,
+    projectId,
+    workspaceId,
+    project: {
+      root: "",
+      rootRef: "none",
+    },
+    backend: {
+      kind: "none",
+      root: "",
+      connectionRef: "",
+    },
+    projection: {
+      localIndexMode: "preserve-current",
+    },
+  }, null, 2)}\n`, "utf8");
+}
+
+function writePostgresRuntimeConfig(targetRoot) {
+  const configPath = path.join(targetRoot, ".aidn", "config.json");
+  fs.mkdirSync(path.dirname(configPath), { recursive: true });
+  fs.writeFileSync(configPath, `${JSON.stringify({
+    version: 1,
+    install: {
+      artifactImportStore: "sqlite",
+    },
+    runtime: {
+      stateMode: "db-only",
+      persistence: {
+        backend: "postgres",
+        connectionRef: "env:AIDN_PG_URL",
+        localProjectionPolicy: "keep-local-sqlite",
+      },
+    },
+    profile: "db-only",
+  }, null, 2)}\n`, "utf8");
+}
+
 function sha256File(filePath) {
   const hash = crypto.createHash("sha256");
   hash.update(fs.readFileSync(filePath));
@@ -146,6 +192,7 @@ function main() {
     const malformedTarget = path.join(tempRoot, "malformed-locator");
     const invalidPathTarget = path.join(tempRoot, "invalid-path-locator");
     const mismatchTarget = path.join(tempRoot, "workspace-mismatch-locator");
+    const disabledPostgresTarget = path.join(tempRoot, "postgres-runtime-disabled-shared");
     const monorepoRoot = path.join(tempRoot, "ambiguous-monorepo");
     const appAlphaRoot = path.join(monorepoRoot, "apps", "alpha");
     const appBetaRoot = path.join(monorepoRoot, "apps", "beta");
@@ -153,9 +200,10 @@ function main() {
     fs.cpSync(readyTarget, malformedTarget, { recursive: true });
     fs.cpSync(readyTarget, invalidPathTarget, { recursive: true });
     fs.cpSync(readyTarget, mismatchTarget, { recursive: true });
+    fs.cpSync(readyTarget, disabledPostgresTarget, { recursive: true });
     fs.mkdirSync(appAlphaRoot, { recursive: true });
     fs.mkdirSync(appBetaRoot, { recursive: true });
-    for (const targetRoot of [malformedTarget, invalidPathTarget, mismatchTarget]) {
+    for (const targetRoot of [malformedTarget, invalidPathTarget, mismatchTarget, disabledPostgresTarget]) {
       writeCheckoutBoundSentinels(targetRoot);
     }
 
@@ -164,6 +212,11 @@ function main() {
     writeInvalidLocator(mismatchTarget, {
       workspaceId: "workspace-locator",
       root: "../aidn-shared-before-fix",
+    });
+    writePostgresRuntimeConfig(disabledPostgresTarget);
+    writeDisabledLocator(disabledPostgresTarget, {
+      projectId: "project-disabled",
+      workspaceId: "workspace-disabled",
     });
     writeValidLocator(appAlphaRoot, {
       projectId: "project-alpha",
@@ -174,6 +227,7 @@ function main() {
     const malformedCheckoutBoundBefore = snapshotCheckoutBoundArtifacts(malformedTarget);
     const invalidPathCheckoutBoundBefore = snapshotCheckoutBoundArtifacts(invalidPathTarget);
     const mismatchCheckoutBoundBefore = snapshotCheckoutBoundArtifacts(mismatchTarget);
+    const disabledPostgresCheckoutBoundBefore = snapshotCheckoutBoundArtifacts(disabledPostgresTarget);
 
     const inspectMalformed = runAidn(repoRoot, [
       "runtime",
@@ -329,6 +383,26 @@ function main() {
     });
     assert(mismatchAfter.ok === true, "workspace mismatch should stop blocking pre-write admission after re-anchor");
     assert(mismatchAfter.shared_runtime_validation.status === "clear", "workspace mismatch repair should restore clear validation");
+
+    const inspectDisabledPostgres = runAidn(repoRoot, [
+      "runtime",
+      "shared-runtime-reanchor",
+      "--target",
+      disabledPostgresTarget,
+      "--json",
+    ]);
+    assert(inspectDisabledPostgres.ok === true, "disabled shared locator remains local-first valid");
+    assert(inspectDisabledPostgres.current_validation.status === "clear", "disabled shared locator should remain structurally clear");
+    assert(inspectDisabledPostgres.shared_coordination_alignment?.status === "warn", "postgres runtime with disabled shared locator should expose alignment warning");
+    assert(
+      inspectDisabledPostgres.shared_runtime_reanchor_diagnostic?.summary.includes("runtime persistence is PostgreSQL"),
+      "reanchor diagnostic should summarize the postgres/shared mismatch",
+    );
+    assertCheckoutBoundUnchanged(
+      disabledPostgresCheckoutBoundBefore,
+      snapshotCheckoutBoundArtifacts(disabledPostgresTarget),
+      "disabled postgres inspect",
+    );
 
     const ambiguousMonorepoInspect = runAidn(repoRoot, [
       "runtime",

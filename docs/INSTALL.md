@@ -164,6 +164,8 @@ Notes:
   - if `.aidn/config.json` configures `runtime.persistence.backend=postgres`, the selected backend is PostgreSQL and the status commands report the PostgreSQL structure as canonical,
   - PostgreSQL runtime rows are scoped by `project_context.runtime_scope_id`, derived from `project_id` and `workspace_id`,
   - use `.aidn/project/shared-runtime.locator.json` or env identity when a project must keep the same PostgreSQL identity across devices or platforms,
+  - shared PostgreSQL coordination is still explicit opt-in; when a DB-backed PostgreSQL project has a locator that explicitly disables shared runtime, `shared-coordination-status`, `shared-coordination-doctor`, and `shared-runtime-reanchor` report an alignment warning instead of silently treating the setup as healthy shared coordination,
+  - enable shared coordination intentionally with `aidn runtime shared-runtime-reanchor --target . --backend postgres --connection-ref env:AIDN_PG_URL --project-id <project> --workspace-id <workspace> --write --json`,
   - the local `.aidn/runtime/index/workflow-index.sqlite` file remains a compatibility projection or migration source when PostgreSQL is configured,
   - if PostgreSQL is already canonical and ready, `aidn install` treats a stale local SQLite compatibility projection as non-blocking instead of forcing a migration conflict,
   - if PostgreSQL is not configured, SQLite remains the fallback legacy backend,

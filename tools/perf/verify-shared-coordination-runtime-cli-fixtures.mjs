@@ -191,6 +191,26 @@ function createFakeResolution() {
   };
 }
 
+function writePostgresRuntimeConfig(targetRoot) {
+  const configPath = path.join(targetRoot, ".aidn", "config.json");
+  fs.mkdirSync(path.dirname(configPath), { recursive: true });
+  fs.writeFileSync(configPath, `${JSON.stringify({
+    version: 1,
+    install: {
+      artifactImportStore: "sqlite",
+    },
+    runtime: {
+      stateMode: "db-only",
+      persistence: {
+        backend: "postgres",
+        connectionRef: "env:AIDN_PG_URL",
+        localProjectionPolicy: "keep-local-sqlite",
+      },
+    },
+    profile: "db-only",
+  }, null, 2)}\n`, "utf8");
+}
+
 async function main() {
   let tempRoot = "";
   try {
@@ -220,6 +240,27 @@ async function main() {
     assert(missingEnvStatus.operations?.connection_ref === "env:AIDN_PG_URL", "missing env status should expose env connection reference only");
     assert(missingEnvStatus.source_of_truth?.concept === "coordination_records", "status CLI should expose the governing source-of-truth concept");
     assert(missingEnvStatus.metadata?.concept === "workspace", "status CLI should expose the governing metadata concept");
+
+    const disabledSharedTargetRoot = path.join(tempRoot, "postgres-runtime-disabled-shared");
+    fs.mkdirSync(disabledSharedTargetRoot, { recursive: true });
+    writePostgresRuntimeConfig(disabledSharedTargetRoot);
+    writeSharedRuntimeLocator(disabledSharedTargetRoot, {
+      enabled: false,
+      projectId: "project-cli-disabled",
+      workspaceId: "workspace-cli-disabled",
+      backend: {
+        kind: "none",
+        connectionRef: "",
+      },
+    });
+    const disabledSharedStatus = runJson(["runtime", "shared-coordination-status", "--target", disabledSharedTargetRoot, "--json"]);
+    assert(disabledSharedStatus.ok === true, "status CLI should stay readable when shared coordination is explicitly disabled");
+    assert(disabledSharedStatus.shared_coordination_alignment?.status === "warn", "status CLI should warn on postgres runtime with disabled shared locator");
+    assert(disabledSharedStatus.operations?.alignment_status === "warn", "status operations should expose alignment status");
+    assert(
+      disabledSharedStatus.operations?.recommended_actions?.some((item) => String(item).includes("shared-runtime-reanchor") && String(item).includes("--backend postgres")),
+      "status CLI should recommend explicit postgres re-anchor for disabled shared locator",
+    );
 
     const fakeResolution = createFakeResolution();
     const directStatus = await projectSharedCoordinationStatus({

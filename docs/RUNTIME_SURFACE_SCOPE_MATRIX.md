@@ -163,6 +163,12 @@ Required inputs:
 - an explicit backend: `sqlite-file` for controlled local experiments or `postgres` for multi-writer shared coordination
 - environment-backed secrets such as `env:AIDN_PG_URL` when PostgreSQL is used
 
+Alignment diagnostics:
+
+- `runtime.persistence.backend=postgres` does not automatically enable shared coordination
+- if a DB-backed PostgreSQL project carries a locator that explicitly disables shared runtime, shared coordination commands surface `shared_coordination_alignment.status=warn`
+- the warning is resolved by either keeping the project intentionally local-only for shared coordination, or by re-anchoring the locator with `backend.kind=postgres` and an env-backed connection reference
+
 Allowed shared surfaces:
 
 - `workspace_registry`

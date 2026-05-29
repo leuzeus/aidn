@@ -7,6 +7,7 @@ import {
   resolveSharedRuntimeLocatorRef,
   writeSharedRuntimeLocator,
 } from "../../lib/config/shared-runtime-locator-config-lib.mjs";
+import { assessSharedCoordinationAlignment } from "./shared-coordination-alignment-service.mjs";
 import { validateSharedRuntimeContext } from "./shared-runtime-validation-service.mjs";
 import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
 
@@ -145,6 +146,10 @@ function buildProposedLocator(inspectResult, options = {}) {
 }
 
 function buildRecommendedAction(inspectResult) {
+  if (inspectResult.shared_coordination_alignment?.status === "warn") {
+    return inspectResult.shared_coordination_alignment.recommended_actions?.[0]
+      || "align the shared-runtime locator with the PostgreSQL runtime coordination mode";
+  }
   if (inspectResult.current_locator?.valid === false) {
     return "run shared-runtime-reanchor with --local-only --write or provide explicit backend settings";
   }
@@ -174,6 +179,11 @@ export function inspectSharedRuntimeReanchor({
       locatorState: resolutionLocatorState,
     })
     : buildValidationForBrokenLocator(safeLocatorState);
+  const alignment = assessSharedCoordinationAlignment({
+    targetRoot: absoluteTargetRoot,
+    workspace,
+    env,
+  });
 
   return {
     ok: validation.ok === true && safeLocatorState.valid !== false,
@@ -182,10 +192,12 @@ export function inspectSharedRuntimeReanchor({
     current_locator: summarizeLocatorState(safeLocatorState),
     workspace,
     current_validation: validation,
+    shared_coordination_alignment: alignment,
     recommended_next_action: buildRecommendedAction({
       current_locator: safeLocatorState,
       current_validation: validation,
       workspace,
+      shared_coordination_alignment: alignment,
     }),
   };
 }
@@ -284,6 +296,11 @@ export function repairSharedRuntimeReanchor({
     env,
     locatorState: appliedResolutionLocatorState,
   });
+  const appliedAlignment = assessSharedCoordinationAlignment({
+    targetRoot: inspectResult.target_root,
+    workspace: appliedWorkspace,
+    env,
+  });
 
   return {
     ok: appliedValidation.ok === true && appliedLocatorState.valid === true,
@@ -293,6 +310,7 @@ export function repairSharedRuntimeReanchor({
     locator_path: inspectResult.locator_path,
     current_locator: inspectResult.current_locator,
     current_validation: inspectResult.current_validation,
+    shared_coordination_alignment: inspectResult.shared_coordination_alignment,
     workspace: inspectResult.workspace,
     proposed_locator: proposedLocator,
     proposed_workspace: proposedWorkspace,
@@ -300,6 +318,7 @@ export function repairSharedRuntimeReanchor({
     applied_locator: summarizeLocatorState(appliedLocatorState),
     applied_workspace: appliedWorkspace,
     applied_validation: appliedValidation,
+    applied_shared_coordination_alignment: appliedAlignment,
     recommended_next_action: appliedValidation.ok === true
       ? "re-run pre-write or handoff admission on the repaired worktree"
       : "shared runtime locator still requires manual review",
