@@ -1,5 +1,5 @@
 product_name: aidn-workflow
-version: 0.5.1
+version: 0.6.0
 packs:
   - core
 compatibility:

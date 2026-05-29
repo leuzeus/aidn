@@ -289,7 +289,7 @@ function main() {
       dryRun: true,
     });
     const relationalRows = projectRuntimePayloadToRelationalRows(payload, {
-      scopeKey: "G:\\projets\\gowire",
+      scopeKey: "C:\\fixtures\\sample-project",
     });
 
     const summary = normalized.report?.summary ?? {};

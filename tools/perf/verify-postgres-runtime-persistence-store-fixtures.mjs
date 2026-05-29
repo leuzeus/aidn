@@ -110,7 +110,7 @@ async function main() {
     assert(backupPayload.storage_policy === "relational-canonical", "backup should declare relational canonical storage policy");
     assert(backupPayload.snapshot?.payload?.summary?.artifacts_count === 2, "backup should materialize the canonical payload snapshot");
 
-    const staleLegacyTargetRoot = "G:\\tmp\\runtime-store-stale-legacy";
+    const staleLegacyTargetRoot = "C:\\fixtures\\runtime-store-stale-legacy";
     const staleLegacyFake = createRuntimePersistenceFakePgClientFactory({
       initialTables: ["schema_migrations", "runtime_snapshots", "runtime_heads", "adoption_events", "index_meta", "artifacts"],
       initialSchemaMigrations: [1, 2],
@@ -144,7 +144,7 @@ async function main() {
     await staleLegacyStore.writeIndexProjection({
       payload,
       sourceBackend: "sqlite",
-      sourceSqliteFile: "G:\\tmp\\runtime-store-stale-legacy\\.aidn\\runtime\\index\\workflow-index.sqlite",
+      sourceSqliteFile: "C:\\fixtures\\runtime-store-stale-legacy\\.aidn\\runtime\\index\\workflow-index.sqlite",
       adoptionStatus: "transferred",
       adoptionMetadata: {
         planner_action: "transfer-from-sqlite",
@@ -156,14 +156,14 @@ async function main() {
       initialTables: ["schema_migrations", "runtime_snapshots", "runtime_heads", "adoption_events"],
       initialSchemaMigrations: [1],
       initialSnapshots: [{
-        scope_key: "G:\\tmp\\runtime-store-legacy",
-        project_root_ref: "G:\\tmp\\runtime-store-legacy",
+        scope_key: "C:\\fixtures\\runtime-store-legacy",
+        project_root_ref: "C:\\fixtures\\runtime-store-legacy",
         source_backend: "sqlite",
         adoption_status: "transferred",
         payload: {
           schema_version: 2,
           generated_at: "2026-04-05T12:10:00.000Z",
-          target_root: "G:\\tmp\\runtime-store-legacy",
+          target_root: "C:\\fixtures\\runtime-store-legacy",
           artifacts: [
             {
               path: "CURRENT-STATE.md",
@@ -180,12 +180,12 @@ async function main() {
       }],
     });
     const legacyAdmin = createPostgresRuntimePersistenceAdmin({
-      targetRoot: "G:\\tmp\\runtime-store-legacy",
+      targetRoot: "C:\\fixtures\\runtime-store-legacy",
       connectionString: "postgres://aidn:test@localhost:5432/aidn",
       clientFactory: legacyOnlyFake.factory,
     });
     const legacyStore = createPostgresRuntimeArtifactStore({
-      targetRoot: "G:\\tmp\\runtime-store-legacy",
+      targetRoot: "C:\\fixtures\\runtime-store-legacy",
       connectionString: "postgres://aidn:test@localhost:5432/aidn",
       clientFactory: legacyOnlyFake.factory,
     });
@@ -211,7 +211,7 @@ async function main() {
     const postMigrationBackup = await legacyAdmin.backupPersistence();
     assert(postMigrationBackup.compatibility_fallback_used === false, "post-migration backup should no longer require legacy compatibility fallback");
 
-    const legacyScopeRoot = "G:\\tmp\\runtime-store-legacy-scope";
+    const legacyScopeRoot = "C:\\fixtures\\runtime-store-legacy-scope";
     const legacyScopeFake = createRuntimePersistenceFakePgClientFactory();
     const legacyScopeSeedStore = createPostgresRuntimeArtifactStore({
       targetRoot: legacyScopeRoot,
@@ -245,8 +245,8 @@ async function main() {
       targetRoot: legacyScopeRoot,
       connectionString: "postgres://aidn:test@localhost:5432/aidn",
       env: {
-        AIDN_PROJECT_ID: "gowire",
-        AIDN_WORKSPACE_ID: "gowire-main",
+        AIDN_PROJECT_ID: "sample-project",
+        AIDN_WORKSPACE_ID: "sample-main",
       },
       clientFactory: legacyScopeFake.factory,
     });

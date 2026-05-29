@@ -1,9 +1,15 @@
 # Upgrade Guide
 
-## Upgrade to 0.5.1
+## Upgrade to 0.6.0
 
-This baseline consolidates the current product/runtime surface:
+This baseline extends the product/runtime surface with project-scoped PostgreSQL runtime behavior and stricter release provenance:
 
+- PostgreSQL-backed runtime persistence is the canonical backend path when explicitly configured.
+- SQLite remains supported for legacy, compatibility, and explicit migration paths.
+- runtime and shared coordination rows are contextualized by stable project/workspace/worktree identity.
+- shared coordination status, doctor, and re-anchor surfaces diagnose PostgreSQL locator/backend mismatches.
+- deterministic repair-layer normalization supports duplicate and partial runtime artifact imports.
+- release provenance validates aligned `VERSION`, package metadata, release artifacts, checksums, and package topology.
 - generated workflow adapter outputs driven by `.aidn/project/workflow.adapter.json`
 - `aidn project config` as the durable adapter management entrypoint
 - bounded coordinator/orchestration runtime commands
@@ -44,7 +50,7 @@ Recent workflow resilience updates also add:
 1. Install or upgrade the package to the matching product tag:
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#v0.5.1
+npm install --save-dev github:leuzeus/aidn#v0.6.0
 ```
 
 2. Reinstall the desired pack from the workflow product repo:
@@ -64,7 +70,7 @@ npx aidn install --target <client-repo> --pack github-integration --verify
 
 ```bash
 npx aidn project config --target <client-repo> --wizard
-npx aidn project config --target <client-repo> --migrate-adapter --version 0.5.1 --json
+npx aidn project config --target <client-repo> --migrate-adapter --version 0.6.0 --json
 ```
 
 4. Verify installation and current runtime/admin surfaces:

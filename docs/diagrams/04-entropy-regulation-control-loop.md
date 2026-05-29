@@ -16,7 +16,7 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 4) Entropy Regulation Control Loop (v0.5.1 runtime baseline)
+%% 4) Entropy Regulation Control Loop (v0.6.0 runtime baseline)
 flowchart TD
   subgraph PRE["Pre-Decision Regulation"]
     IN["Candidate change"]

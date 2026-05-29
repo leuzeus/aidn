@@ -55,7 +55,7 @@ Client repository after install:
 - `.aidn/project/workflow.adapter.json`
   - durable project adapter input used by `aidn project config`
 - `.codex/skills.yaml`
-  - rendered with pinned `remote.ref` matching the installed aidn tag (for example `v0.5.1`)
+  - rendered with pinned `remote.ref` matching the installed aidn tag (for example `v0.6.0`)
 - `.codex/skills/*`
   - local skill source folders copied during install (offline/local fallback)
 - `.aidn/config.json`
@@ -71,7 +71,7 @@ Codex instruction layering after install:
 
 ## Workflow Diagrams
 
-- Mermaid diagrams in `docs/diagrams/` are aligned with the current `0.5.1` runtime baseline.
+- Mermaid diagrams in `docs/diagrams/` are aligned with the current `0.6.0` runtime baseline.
 - Global system architecture: `docs/diagrams/01-global-system-architecture.md`
 - Cycle state machine: `docs/diagrams/02-cycle-state-machine.md`
 - Runtime session flow: `docs/diagrams/03-runtime-session-flow.md`
@@ -219,7 +219,7 @@ Migration and repair:
 ## Installation
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#v0.5.1
+npm install --save-dev github:leuzeus/aidn#v0.6.0
 npx aidn install --target ../client --pack core
 npx aidn install --target ../client --pack core --init-defaults --project-name my-project --verify
 npx aidn install --target ../client --pack extended
@@ -250,7 +250,7 @@ Notes:
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a tagged install (`#v0.5.1`) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a tagged install (`#v0.6.0`) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 
