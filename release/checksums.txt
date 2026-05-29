@@ -1,1 +1,1 @@
-c39b0710b98ea51e67e649ea7667f2effa45bd91e6dc9212ba46bd69ccac6b34  release/dist/aidn-workflow-0.6.0.zip
+def50fe5ce7612f547ea1f984dd1e831090a84afe991bd03894b8d4fc4e65a10  release/dist/aidn-workflow-0.6.0.zip
