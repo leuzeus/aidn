@@ -25,7 +25,7 @@ Purpose:
 | `.codex/*` | `checkout-bound` visible export | no | worktree checkout or explicit materialization | In strict `db-only`, `.codex/*` is not refreshed automatically. |
 | `.aidn/project/workflow.adapter.json` | `checkout-bound` or `worktree-local` | no | client repo decision | Durable project config; may be versioned by the client repository. |
 | `.aidn/project/shared-runtime.locator.json` | `worktree-local` | no | current target root | Explicit locator for opting into shared runtime; not a shared store itself. |
-| `.aidn/config.json` | `worktree-local` | no | current target root | Host-local/runtime-local defaults; not the shared-runtime contract. |
+| `.aidn/config.json` | `worktree-local` | no | current target root | Host-local/runtime-local defaults; not the shared-runtime contract. In strict `db-only`, it must carry `runtime.dbOnly.strict=true`, disabled automatic visible materialization, backup/quarantine policy, hidden bundle source-of-truth metadata, and artifact-import compatibility metadata pointing back to `runtime.persistence.backend`. |
 | `.aidn/runtime/index/workflow-index.sqlite` | `worktree-local` | no | current target root | Hidden local SQLite backend when PostgreSQL is not configured; compatibility/migration projection only when PostgreSQL is canonical. |
 | PostgreSQL `aidn_runtime.runtime_scope_registry` | `worktree-local` with project context | explicit backend only | runtime project context | Maps `runtime_scope_id` to `project_id`, `workspace_id`, `worktree_id` and legacy absolute-path scope aliases. |
 | PostgreSQL `aidn_runtime` scoped runtime tables | `worktree-local` with project context | explicit backend only | runtime persistence backend | Rows use `runtime_scope_id` as the durable partition key; absolute `target_root` scope values are migration aliases only. |
@@ -48,7 +48,7 @@ This overlay names the logical owner of key information concepts. It complements
 | --- | --- | --- | --- | --- |
 | Workflow rules | `docs/audit/SPEC.md` | same checkout-bound file | package/scaffold rules plus hidden runtime config | generated summaries/materialized SPEC on demand |
 | Project policy | `.aidn/project/workflow.adapter.json` | same local/project file | same local/project file | `WORKFLOW.md`, `CODEX_ONLINE.md`, `index.md` on demand |
-| Runtime defaults | `.aidn/config.json` | same worktree-local file | same worktree-local file | CLI status output |
+| Runtime defaults | `.aidn/config.json` | same worktree-local file | same worktree-local file with explicit `runtime.dbOnly` strict policy | CLI status output |
 | Runtime project context | workspace resolver plus optional locator/env IDs | runtime DB registry plus workspace resolver | runtime DB registry plus workspace resolver | `project_context` JSON output, `runtime_scope_registry` |
 | Session state | `docs/audit/sessions/S*.md` | runtime DB/index plus visible Markdown projection | runtime DB, materialized on demand | `CURRENT-STATE.md`, runtime heads |
 | Cycle state | `docs/audit/cycles/*/status.md` | runtime DB/index plus visible Markdown projection | runtime DB, materialized on demand | `CURRENT-STATE.md`, runtime heads |
@@ -73,6 +73,8 @@ The overlay above describes where each concept lives. These are the operational 
   - shared coordination may be enabled explicitly, but it never relocates checkout-bound paths
 - `db-only`
   - the runtime DB becomes the primary source for supported runtime state
+  - `.aidn/config.json` explicitly declares strict behavior through `runtime.dbOnly.strict=true`
+  - `runtime.dbOnly.artifactImport.canonicalBackendField=runtime.persistence.backend` makes the backend boundary explicit even when `install.artifactImportStore` remains a legacy local-index value
   - Markdown, `.codex/*`, and other visible projections are materialized on demand only
   - automatic writes are limited to `.aidn/` in the standard install/runtime path
   - shared runtime remains opt-in and does not imply wholesale relocation of `.aidn/*`
@@ -123,6 +125,8 @@ Rules:
 ### `db-only`
 
 - DB-first readers may reconstruct supported visible artifacts from the active backend
+- `.aidn/config.json` must expose the strict `runtime.dbOnly` marker and hidden bundle policy
+- `runtime.dbOnly.artifactImport` must classify import-store settings as compatibility or migration metadata, not canonical backend selection
 - standard install/runtime paths do not auto-write outside `.aidn/`
 - SQLite is the hidden local backend only when PostgreSQL is not configured
 - when PostgreSQL is configured, SQLite is used only for explicit migration, compatibility or diagnostics

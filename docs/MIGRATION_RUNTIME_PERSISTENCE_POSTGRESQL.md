@@ -34,6 +34,11 @@ This does not change:
 Strict `db-only` note:
 
 - `db-only` is a state mode, not a backend
+- `.aidn/config.json` must make strictness explicit through `runtime.dbOnly.strict=true`
+- `runtime.dbOnly.visibleArtifacts.automaticMaterialization=false` means visible managed artifacts are exports, not implicit install outputs
+- `runtime.dbOnly.cleanup.backupRequired=true` and `runtime.dbOnly.cleanup.quarantine=external` are required before moving managed visible artifacts
+- `runtime.dbOnly.codexBundle.sourceOfTruth=runtime-backend` keeps the hidden Codex bundle as a regenerable cache, not canonical state
+- `runtime.dbOnly.artifactImport.canonicalBackendField=runtime.persistence.backend` prevents the legacy `install.artifactImportStore` value from being read as the canonical backend
 - strict `db-only` does not write visible managed artifacts during install or verify
 - visible Markdown or `.codex/*` surfaces are materialized only by explicit projection/export commands
 - before cleanup or migration of existing visible artifacts, use `aidn runtime visible-artifacts-cleanup --target . --json` and apply only after reviewing the external backup/quarantine plan
@@ -177,10 +182,36 @@ $env:AIDN_PG_URL="postgres://user:pass@host:5432/dbname"
 ```json
 {
   "runtime": {
+    "stateMode": "db-only",
     "persistence": {
       "backend": "postgres",
       "connectionRef": "env:AIDN_PG_URL",
       "localProjectionPolicy": "none"
+    },
+    "dbOnly": {
+      "strict": true,
+      "visibleArtifacts": {
+        "automaticMaterialization": false,
+        "materializeFlag": "--materialize-visible-artifacts"
+      },
+      "cleanup": {
+        "backupRequired": true,
+        "backupRoot": "<parent-du-projet>/.aidn-backups/<project_id>/<timestamp>/",
+        "quarantine": "external"
+      },
+      "codexBundle": {
+        "enabled": true,
+        "path": ".aidn/runtime/context/hydrated-context.json",
+        "sourceOfTruth": "runtime-backend"
+      },
+      "artifactImport": {
+        "role": "compatibility-or-migration",
+        "legacyStoreField": "install.artifactImportStore",
+        "legacyStoreRole": "local-index-import",
+        "canonicalBackend": "postgres",
+        "canonicalBackendField": "runtime.persistence.backend",
+        "canonicalBackendWins": true
+      }
     }
   }
 }

@@ -169,6 +169,7 @@ Notes:
   - `AIDN_STATE_MODE` mapping remains: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite`,
   - default install profile is DB-backed: `runtime.stateMode=dual` and `install.artifactImportStore=dual-sqlite`,
   - in strict `db-only`, install does not create or refresh managed visible exports (`docs/audit/*`, `.codex/*`, `AGENTS.md`) unless `--materialize-visible-artifacts` is supplied,
+  - strict `db-only` configuration is explicit in `.aidn/config.json` through `runtime.dbOnly.strict=true`, `runtime.dbOnly.visibleArtifacts.automaticMaterialization=false`, `runtime.dbOnly.cleanup.backupRequired=true`, `runtime.dbOnly.codexBundle.sourceOfTruth=runtime-backend`, and `runtime.dbOnly.artifactImport.canonicalBackendField=runtime.persistence.backend`,
   - strict `db-only` verification validates the hidden `.aidn/` surfaces and does not require visible Markdown projections,
   - disable automatic import with `--skip-artifact-import`,
   - installer auto-creates or updates `.aidn/config.json` (non-destructive merge) to persist runtime defaults,
@@ -189,6 +190,41 @@ Notes:
   - apply only with `--write`, which creates an external backup before moving managed visible roots to quarantine,
   - default backup root is `<parent-du-projet>/.aidn-backups/<project_id>/<timestamp>/`,
   - restore can be previewed with `aidn runtime visible-artifacts-restore --target . --from <backup-root> --json` and applied with `--write`.
+
+Expected strict `db-only` config marker:
+
+```json
+{
+  "runtime": {
+    "stateMode": "db-only",
+    "dbOnly": {
+      "strict": true,
+      "visibleArtifacts": {
+        "automaticMaterialization": false,
+        "materializeFlag": "--materialize-visible-artifacts"
+      },
+      "cleanup": {
+        "backupRequired": true,
+        "backupRoot": "<parent-du-projet>/.aidn-backups/<project_id>/<timestamp>/",
+        "quarantine": "external"
+      },
+      "codexBundle": {
+        "enabled": true,
+        "path": ".aidn/runtime/context/hydrated-context.json",
+        "sourceOfTruth": "runtime-backend"
+      },
+      "artifactImport": {
+        "role": "compatibility-or-migration",
+        "legacyStoreField": "install.artifactImportStore",
+        "legacyStoreRole": "local-index-import",
+        "canonicalBackend": "postgres",
+        "canonicalBackendField": "runtime.persistence.backend",
+        "canonicalBackendWins": true
+      }
+    }
+  }
+}
+```
 - Optional Codex project config:
   - `aidn` does not install `.codex/config.toml` by default,
   - use a project Codex config only when you need non-default `project_doc_fallback_filenames` or `project_doc_max_bytes`.

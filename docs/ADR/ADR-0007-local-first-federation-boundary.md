@@ -23,6 +23,8 @@ Rules:
 - checkout-bound workflow artifacts remain local and versioned by the installed project
 - shared runtime may store coordination metadata only when explicitly configured
 - strict `db-only` does not write managed visible artifacts outside `.aidn/` automatically
+- strict `db-only` must be explicit in `.aidn/config.json` through `runtime.dbOnly.strict=true`, not inferred only from `runtime.stateMode`
+- strict `db-only` config must state that `runtime.persistence.backend` is canonical and `install.artifactImportStore` is compatibility/migration metadata
 - SQLite remains the hidden local backend only when PostgreSQL is not configured
 - PostgreSQL is optional generally, but canonical for a project once `runtime.persistence.backend=postgres` is configured
 - multi-repo or multi-worktree federation must use explicit workspace/worktree identity and locator configuration
@@ -40,6 +42,8 @@ Stable federation contract:
 - `docs/audit/*`, `AGENTS.md`, `.codex/*`, `.aidn/config.json` and local runtime projections stay outside shared coordination
 - managed visible artifacts are exports/materializations in strict `db-only`, not the source of truth
 - hidden Codex context bundles under `.aidn/runtime/context/` are regenerable caches from the active backend
+- strict `db-only` config declares disabled automatic visible materialization, mandatory external backup/quarantine, and `runtime-backend` as the hidden bundle source of truth
+- strict `db-only` config carries `runtime.dbOnly.artifactImport` metadata so legacy local-index import settings cannot be confused with the canonical backend
 - backup/quarantine of managed visible artifacts must use an external backup root before cleanup
 - PostgreSQL connection material must be referenced through `env:*` or equivalent indirection, never embedded in tracked files
 

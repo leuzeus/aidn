@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { buildNextAidnProjectConfig } from "../../src/application/install/project-config-service.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function printUsage() {
@@ -52,6 +53,17 @@ function verifyStrictInstall(tempRoot) {
     "--no-codex-migrate-custom",
   ], { env });
   assert(fs.existsSync(path.join(target, ".aidn", "config.json")), "strict install should create hidden .aidn/config.json");
+  const config = JSON.parse(fs.readFileSync(path.join(target, ".aidn", "config.json"), "utf8"));
+  assert(config.runtime?.stateMode === "db-only", "strict install config should declare runtime.stateMode=db-only");
+  assert(config.runtime?.dbOnly?.strict === true, "strict install config should declare runtime.dbOnly.strict=true");
+  assert(config.runtime?.dbOnly?.visibleArtifacts?.automaticMaterialization === false, "strict install config should disable automatic visible materialization");
+  assert(config.runtime?.dbOnly?.cleanup?.backupRequired === true, "strict install config should require external backup before cleanup");
+  assert(config.runtime?.dbOnly?.cleanup?.quarantine === "external", "strict install config should declare external quarantine");
+  assert(config.runtime?.dbOnly?.codexBundle?.sourceOfTruth === "runtime-backend", "strict install config should make runtime backend the bundle source of truth");
+  assert(config.runtime?.dbOnly?.artifactImport?.role === "compatibility-or-migration", "strict install config should classify artifact import as compatibility/migration");
+  assert(config.runtime?.dbOnly?.artifactImport?.canonicalBackend === "sqlite", "strict install config should record the canonical backend");
+  assert(config.runtime?.dbOnly?.artifactImport?.canonicalBackendField === "runtime.persistence.backend", "strict install config should point artifact import to the backend field");
+  assert(config.runtime?.dbOnly?.artifactImport?.canonicalBackendWins === true, "strict install config should make the runtime backend canonical");
   assert(fs.existsSync(path.join(target, ".aidn", "project", "workflow.adapter.json")), "strict install should create hidden workflow adapter config");
   assert(fs.existsSync(path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite")), "strict install should prepare hidden sqlite runtime store");
   assert(fs.existsSync(path.join(target, ".aidn", "runtime", "agents", "example-external-auditor.mjs")), "strict install should copy hidden runtime agent scaffold");
@@ -67,6 +79,34 @@ function verifyStrictInstall(tempRoot) {
     "--verify",
     "--no-codex-migrate-custom",
   ], { env });
+}
+
+function verifyStrictPostgresConfigBuilder() {
+  const config = buildNextAidnProjectConfig(
+    {
+      install: {
+        artifactImportStore: "sqlite",
+      },
+      runtime: {
+        stateMode: "db-only",
+      },
+    },
+    {
+      store: "sqlite",
+      stateMode: "db-only",
+    },
+    {
+      runtimePersistenceBackend: "postgres",
+      runtimePersistenceConnectionRef: "env:AIDN_PG_URL",
+      runtimePersistenceLocalProjectionPolicy: "none",
+    },
+  );
+  assert(config.install?.artifactImportStore === "sqlite", "legacy artifactImportStore should remain a local index value");
+  assert(config.runtime?.persistence?.backend === "postgres", "strict postgres config should select postgres as runtime backend");
+  assert(config.runtime?.persistence?.localProjectionPolicy === "none", "strict postgres config should disable local projection by default");
+  assert(config.runtime?.dbOnly?.artifactImport?.canonicalBackend === "postgres", "strict postgres config should mark postgres as canonical backend");
+  assert(config.runtime?.dbOnly?.artifactImport?.legacyStoreField === "install.artifactImportStore", "strict postgres config should identify the legacy import store field");
+  assert(config.runtime?.dbOnly?.artifactImport?.canonicalBackendWins === true, "strict postgres config should make runtime.persistence.backend win");
 }
 
 function verifyHydrateBundle(tempRoot) {
@@ -197,6 +237,7 @@ function main() {
   let tempRoot = "";
   try {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-db-only-strict-"));
+    verifyStrictPostgresConfigBuilder();
     verifyStrictInstall(tempRoot);
     verifyHydrateBundle(tempRoot);
     verifyCleanupRestore(tempRoot);
