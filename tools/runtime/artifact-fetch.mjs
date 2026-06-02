@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import {
   readAidnProjectConfig,
-  resolveConfigRuntimePersistenceBackend,
+  resolveConfigRuntimePersistence,
 } from "../../src/lib/config/aidn-config-lib.mjs";
 import { readRuntimeSnapshot } from "../../src/application/runtime/runtime-snapshot-service.mjs";
 
@@ -138,13 +138,16 @@ async function main() {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
     const config = readAidnProjectConfig(targetRoot);
-    const configuredBackend = resolveConfigRuntimePersistenceBackend(config.data);
+    const configuredPersistence = resolveConfigRuntimePersistence(config.data);
+    const configuredBackend = configuredPersistence?.backend ?? null;
     const backend = args.backend === "auto" && configuredBackend ? configuredBackend : args.backend;
+    const connectionRef = backend === "postgres" ? (configuredPersistence?.connectionRef ?? "") : "";
     const indexFile = path.resolve(targetRoot, args.indexFile);
     const snapshot = await readRuntimeSnapshot({
       indexFile,
       backend,
       targetRoot,
+      connectionRef,
       configData: config.data,
     });
     const artifact = findArtifact(snapshot.payload, args);

@@ -6,6 +6,7 @@ import {
   normalizeStateMode,
   readAidnProjectConfig,
   resolveConfigIndexStore,
+  resolveConfigRuntimePersistence,
   resolveConfigStateMode,
   stateModeFromIndexStore,
 } from "../../lib/config/aidn-config-lib.mjs";
@@ -122,8 +123,20 @@ function enforceHardArtifactBudget(selected, omittedCount, targetBytes, hardLimi
   };
 }
 
-function detectBackend(indexFile, backend) {
-  return detectRuntimeSnapshotBackend(indexFile, backend);
+function resolveArtifactSnapshotBackend(indexFile, backend, configData) {
+  const configPersistence = resolveConfigRuntimePersistence(configData);
+  const requested = String(backend ?? "").trim().toLowerCase();
+  if (requested === "auto" && configPersistence?.backend) {
+    return {
+      backend: configPersistence.backend,
+      connectionRef: configPersistence.connectionRef ?? "",
+    };
+  }
+  const resolvedBackend = detectRuntimeSnapshotBackend(indexFile, backend);
+  return {
+    backend: resolvedBackend,
+    connectionRef: resolvedBackend === "postgres" ? (configPersistence?.connectionRef ?? "") : "",
+  };
 }
 
 function readJsonIndex(indexFile) {
@@ -715,11 +728,19 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
   let repairLayer = null;
   if (args.includeArtifacts) {
     const indexFile = resolveTargetPath(targetRoot, args.indexFile);
-    if (fs.existsSync(indexFile)) {
-      const backend = detectBackend(indexFile, args.backend);
+    const config = readAidnProjectConfig(targetRoot);
+    const { backend, connectionRef } = resolveArtifactSnapshotBackend(indexFile, args.backend, config.data);
+    const canReadArtifactSnapshot = backend === "postgres" || fs.existsSync(indexFile);
+    if (canReadArtifactSnapshot) {
       const index = backend === "json"
         ? readJsonIndex(indexFile)
-        : await readRuntimeSnapshot({ indexFile, backend, targetRoot });
+        : await readRuntimeSnapshot({
+          indexFile,
+          backend,
+          targetRoot,
+          connectionRef,
+          configData: config.data,
+        });
       artifactSource = {
         backend,
         file: index.absolute,
