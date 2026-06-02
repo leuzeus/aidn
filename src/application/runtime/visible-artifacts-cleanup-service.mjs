@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { readSharedRuntimeLocatorSafe } from "../../lib/config/shared-runtime-locator-config-lib.mjs";
+import { removePathWithRetry } from "../../lib/fs/remove-path-with-retry.mjs";
 
 const MANAGED_VISIBLE_ROOTS = [
   "docs/audit",
@@ -76,16 +77,21 @@ function copyPath(sourcePath, destinationPath) {
   fs.cpSync(sourcePath, destinationPath, { recursive: true, force: true });
 }
 
-function movePath(sourcePath, destinationPath) {
+function shouldFallbackToCopyRemove(error) {
+  return ["EXDEV", "EPERM", "EACCES", "EBUSY", "ENOTEMPTY"].includes(String(error?.code ?? ""));
+}
+
+export function movePath(sourcePath, destinationPath, options = {}) {
+  const renameSync = typeof options.renameSync === "function" ? options.renameSync : fs.renameSync;
   fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
   try {
-    fs.renameSync(sourcePath, destinationPath);
+    renameSync(sourcePath, destinationPath);
   } catch (error) {
-    if (error?.code !== "EXDEV") {
+    if (!shouldFallbackToCopyRemove(error)) {
       throw error;
     }
     fs.cpSync(sourcePath, destinationPath, { recursive: true, force: true });
-    fs.rmSync(sourcePath, { recursive: true, force: true });
+    removePathWithRetry(sourcePath);
   }
 }
 

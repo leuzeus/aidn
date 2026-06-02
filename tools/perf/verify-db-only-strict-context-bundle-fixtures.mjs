@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { buildNextAidnProjectConfig } from "../../src/application/install/project-config-service.mjs";
+import { movePath } from "../../src/application/runtime/visible-artifacts-cleanup-service.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function printUsage() {
@@ -233,6 +234,22 @@ function verifyCleanupRestore(tempRoot) {
   assert(fs.existsSync(path.join(target, ".codex", "skills.yaml")), "restore should restore .codex content");
 }
 
+function verifyCleanupMoveFallback(tempRoot) {
+  const source = path.join(tempRoot, "move-fallback-source");
+  const destination = path.join(tempRoot, "move-fallback-destination");
+  fs.mkdirSync(source, { recursive: true });
+  fs.writeFileSync(path.join(source, "locked.txt"), "content\n", "utf8");
+  const error = new Error("simulated Windows rename failure");
+  error.code = "EPERM";
+  movePath(source, destination, {
+    renameSync: () => {
+      throw error;
+    },
+  });
+  assert(!fs.existsSync(source), "move fallback should remove source after copy");
+  assert(fs.existsSync(path.join(destination, "locked.txt")), "move fallback should copy destination content");
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -241,6 +258,7 @@ function main() {
     verifyStrictInstall(tempRoot);
     verifyHydrateBundle(tempRoot);
     verifyCleanupRestore(tempRoot);
+    verifyCleanupMoveFallback(tempRoot);
     console.log("PASS");
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
