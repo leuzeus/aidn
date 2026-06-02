@@ -144,17 +144,39 @@ function findRuntimeHeadArtifact(runtimeHeads, artifactPath) {
 
 export function loadSqliteIndexPayloadSafe(targetRoot, options = {}) {
   const includePayload = options.includePayload !== false;
-  return loadSharedStateSnapshot({
-    targetRoot,
-    includePayload,
-    includeRuntimeHeads: true,
-    backend: options.backend,
-    connectionString: options.connectionString,
-    connectionRef: options.connectionRef,
-    localProjectionPolicy: options.localProjectionPolicy,
-    configData: options.configData ?? null,
-    env: options.env ?? process.env,
-  });
+  try {
+    return loadSharedStateSnapshot({
+      targetRoot,
+      includePayload,
+      includeRuntimeHeads: true,
+      backend: options.backend,
+      connectionString: options.connectionString,
+      connectionRef: options.connectionRef,
+      localProjectionPolicy: options.localProjectionPolicy,
+      configData: options.configData ?? null,
+      env: options.env ?? process.env,
+    });
+  } catch (error) {
+    const message = String(error?.message ?? error);
+    if (!message.includes("Runtime canonical shared-state backends require loadSharedStateSnapshotAsync()")) {
+      throw error;
+    }
+    return {
+      exists: false,
+      sqliteFile: "",
+      payload: null,
+      runtimeHeads: {},
+      warning: "Runtime canonical PostgreSQL shared-state backend requires async snapshot loading; sync SQLite fallback is unavailable.",
+      backend: {
+        shared_runtime_mode: "local-only",
+        coordination_backend_kind: "none",
+        projection_backend_kind: "postgres",
+        projection_scope: "runtime-canonical",
+        logical_root: null,
+        exists: false,
+      },
+    };
+  }
 }
 
 export async function loadDbIndexPayloadSafe(targetRoot, options = {}) {

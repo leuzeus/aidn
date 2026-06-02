@@ -7,6 +7,7 @@ import {
   loadSharedStateSnapshot,
   loadSharedStateSnapshotAsync,
 } from "../../src/application/runtime/shared-state-backend-service.mjs";
+import { loadSqliteIndexPayloadSafe } from "../runtime/db-first-runtime-view-lib.mjs";
 import { assessDbOnlyReadiness } from "../../src/application/runtime/db-only-readiness-service.mjs";
 import { createRuntimeArtifactStore } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { writeSharedRuntimeLocator } from "../../src/lib/config/shared-runtime-locator-config-lib.mjs";
@@ -226,6 +227,16 @@ async function main() {
     assert(postgresCanonicalSnapshot.exists === true, "postgres runtime-canonical snapshot should load without a local sqlite projection");
     assert(postgresCanonicalSnapshot.backend?.projection_backend_kind === "postgres", "postgres runtime-canonical snapshot should expose postgres as projection backend");
     assert(postgresCanonicalSnapshot.backend?.projection_scope === "runtime-canonical", "postgres runtime-canonical snapshot should expose runtime-canonical projection scope");
+
+    const syncCompatibilitySnapshot = loadSqliteIndexPayloadSafe(postgresNoneTarget, {
+      backend: "postgres",
+      connectionString: "postgres://fake/runtime-none",
+      localProjectionPolicy: "none",
+      clientFactory: fakePg.factory,
+    });
+    assert(syncCompatibilitySnapshot.exists === false, "sync sqlite compatibility helper should not throw on runtime-canonical postgres");
+    assert(syncCompatibilitySnapshot.backend?.projection_scope === "runtime-canonical", "sync sqlite compatibility helper should expose runtime-canonical projection scope when unavailable");
+    assert(String(syncCompatibilitySnapshot.warning ?? "").includes("async snapshot loading"), "sync sqlite compatibility helper should explain that async loading is required");
 
     const sharedStateOptions = {
       backend: "postgres",
