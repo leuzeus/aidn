@@ -9,6 +9,8 @@
     "target_root",
     "state_mode",
     "recent_history",
+    "bundle_budget",
+    "source_backend",
     "artifacts"
   ],
   "properties": {
@@ -16,7 +18,44 @@
     "state_mode": { "type": "string" },
     "output_file": { "type": "string" },
     "recent_history": { "type": "array" },
-    "artifacts": { "type": "array" },
+    "bundle_budget": {
+      "type": ["object", "null"],
+      "properties": {
+        "budget_status": { "type": "string" },
+        "selected_count": { "type": "number" },
+        "metadata_only_count": { "type": "number" },
+        "truncated_count": { "type": "number" },
+        "omitted_count": { "type": "number" },
+        "total_bytes": { "type": "number" },
+        "hard_limit_bytes": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "source_backend": { "type": ["string", "null"] },
+    "source_revision": { "type": ["string", "null"] },
+    "runtime_scope_id": { "type": ["string", "null"] },
+    "project_id": { "type": ["string", "null"] },
+    "workspace_id": { "type": ["string", "null"] },
+    "visible_projection_policy": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string" },
+        "materialize_visible_artifacts": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "selection_tier": { "type": "string" },
+          "content_state": { "type": "string" },
+          "excerpt_bytes": { "type": "number" }
+        },
+        "additionalProperties": true
+      }
+    },
     "runtime_state": { "type": "object", "additionalProperties": true },
     "handoff_packet": { "type": "object", "additionalProperties": true },
     "multi_agent_status": { "type": "object", "additionalProperties": true }

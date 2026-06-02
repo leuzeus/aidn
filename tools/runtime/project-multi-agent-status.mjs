@@ -385,6 +385,7 @@ export async function projectMultiAgentStatus({
   out = "docs/audit/MULTI-AGENT-STATUS.md",
   sharedCoordination = null,
   sharedCoordinationOptions = {},
+  materializeVisibleArtifacts = false,
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
@@ -426,6 +427,7 @@ export async function projectMultiAgentStatus({
   const healthSummary = await projectAgentHealthSummary({
     targetRoot: absoluteTargetRoot,
     rosterFile,
+    materializeVisibleArtifacts,
   });
   const roleCoverage = buildRoleCoverage(healthSummary.verification.entries);
   const roleCoverageRecommendation = buildRoleCoverageRecommendation(roleCoverage, coordinator.recommendation.role);
@@ -438,6 +440,7 @@ export async function projectMultiAgentStatus({
   const selectionSummary = await projectAgentSelectionSummary({
     targetRoot: absoluteTargetRoot,
     rosterFile,
+    materializeVisibleArtifacts,
   });
   const coordinationSummary = await projectCoordinationSummary({
     targetRoot: absoluteTargetRoot,
@@ -482,7 +485,7 @@ export async function projectMultiAgentStatus({
       stateMode: effectiveStateMode,
     })
     : null;
-  const write = effectiveStateMode === "files"
+  const write = effectiveStateMode === "files" || materializeVisibleArtifacts === true
     ? writeUtf8IfChanged(outPath, markdown)
     : {
       path: outPath,

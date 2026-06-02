@@ -22,11 +22,13 @@ Rules:
 
 - checkout-bound workflow artifacts remain local and versioned by the installed project
 - shared runtime may store coordination metadata only when explicitly configured
-- SQLite remains the default local runtime backend for DB-backed modes
-- PostgreSQL is an optional backend for persistence and shared coordination, not a required service
+- strict `db-only` does not write managed visible artifacts outside `.aidn/` automatically
+- SQLite remains the hidden local backend only when PostgreSQL is not configured
+- PostgreSQL is optional generally, but canonical for a project once `runtime.persistence.backend=postgres` is configured
 - multi-repo or multi-worktree federation must use explicit workspace/worktree identity and locator configuration
 - no command may silently relocate audit artifacts into shared runtime
 - PostgreSQL runtime persistence rows must be contextualized by durable `project_id` and `workspace_id`, not by absolute filesystem paths
+- SQLite and PostgreSQL together are allowed only for explicit migration, compatibility or diagnostics
 
 Stable federation contract:
 
@@ -36,6 +38,9 @@ Stable federation contract:
 - runtime persistence exposes the same identity through `project_context` and `runtime_scope_id`
 - DB-backed PostgreSQL projects that explicitly disable the shared-runtime locator remain local-first, but shared coordination diagnostics must warn that shared PostgreSQL coordination is not active
 - `docs/audit/*`, `AGENTS.md`, `.codex/*`, `.aidn/config.json` and local runtime projections stay outside shared coordination
+- managed visible artifacts are exports/materializations in strict `db-only`, not the source of truth
+- hidden Codex context bundles under `.aidn/runtime/context/` are regenerable caches from the active backend
+- backup/quarantine of managed visible artifacts must use an external backup root before cleanup
 - PostgreSQL connection material must be referenced through `env:*` or equivalent indirection, never embedded in tracked files
 
 ## Options Compared

@@ -638,7 +638,19 @@ export function stablePayloadProjection(payload) {
   if (!payload || typeof payload !== "object") {
     return payload;
   }
-  const clone = canonicalizePayloadCollections(payload);
+  const rawClone = JSON.parse(JSON.stringify(payload));
+  delete rawClone.project_context;
+  if (Array.isArray(rawClone.artifacts)) {
+    rawClone.artifacts = rawClone.artifacts.map((artifact) => {
+      if (!artifact || typeof artifact !== "object") {
+        return artifact;
+      }
+      const next = { ...artifact };
+      delete next.artifact_id;
+      return next;
+    });
+  }
+  const clone = canonicalizePayloadCollections(rawClone);
   delete clone.generated_at;
   if (clone.repair_layer_meta && typeof clone.repair_layer_meta === "object") {
     delete clone.repair_layer_meta.applied_at;

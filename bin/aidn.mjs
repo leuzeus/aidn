@@ -91,6 +91,7 @@ const CODEX_ALIASES = {
 };
 
 const RUNTIME_ALIASES = {
+  "artifact-fetch": { file: "artifact-fetch.mjs" },
   "artifact-store": { file: "artifact-store.mjs" },
   "db-backup": { file: "db-backup.mjs" },
   "db-migrate": { file: "db-migrate.mjs" },
@@ -101,6 +102,8 @@ const RUNTIME_ALIASES = {
   "persistence-source-normalize": { file: "persistence-source-normalize.mjs" },
   "persistence-migrate": { file: "db-migrate.mjs" },
   "persistence-status": { file: "db-status.mjs" },
+  "visible-artifacts-cleanup": { file: "visible-artifacts-cleanup.mjs" },
+  "visible-artifacts-restore": { file: "visible-artifacts-restore.mjs" },
   "shared-runtime-reanchor": { file: "shared-runtime-reanchor.mjs" },
   "shared-coordination-backup": { file: "shared-coordination-backup.mjs" },
   "shared-coordination-restore": { file: "shared-coordination-restore.mjs" },
@@ -152,6 +155,10 @@ function printUsage() {
   console.log("  aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json");
   console.log("  aidn runtime sync-db-first-selective --target . --json");
   console.log("  aidn runtime db-status --target . --json");
+  console.log("  aidn runtime artifact-fetch --target . --path CURRENT-STATE.md --json");
+  console.log("  aidn runtime visible-artifacts-cleanup --target . --json");
+  console.log("  aidn runtime visible-artifacts-cleanup --target . --write --json");
+  console.log("  aidn runtime visible-artifacts-restore --target . --from ../.aidn-backups/project/timestamp --json");
   console.log("  aidn runtime shared-runtime-reanchor --target . --json");
   console.log("  aidn runtime shared-runtime-reanchor --target . --local-only --write --json");
   console.log("  aidn runtime shared-runtime-reanchor --target . --backend postgres --connection-ref env:AIDN_PG_URL --project-id project-main --workspace-id workspace-main --write --json");
@@ -239,6 +246,8 @@ function printCodexUsage() {
 function printRuntimeUsage() {
   printGroupUsage("runtime", RUNTIME_ALIASES, [
     "aidn runtime db-status --target . --json",
+    "aidn runtime artifact-fetch --target . --path CURRENT-STATE.md --json",
+    "aidn runtime visible-artifacts-cleanup --target . --json",
     "aidn runtime pre-write-admit --target . --skill cycle-create --json",
     "aidn runtime project-runtime-state --target . --json",
   ]);

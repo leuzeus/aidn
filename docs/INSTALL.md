@@ -102,6 +102,18 @@ Artifact import store override example:
 npx aidn install --target . --pack core --artifact-import-store dual-sqlite
 ```
 
+Strict `db-only` visible materialization example:
+
+```bash
+AIDN_STATE_MODE=db-only npx aidn install --target . --pack core --init-defaults --project-name my-project
+```
+
+In strict `db-only`, install writes only hidden AIDN state under `.aidn/` by default. To intentionally render managed visible exports during install, add:
+
+```bash
+npx aidn install --target . --pack core --materialize-visible-artifacts
+```
+
 Notes:
 - The installer resolves `depends_on` recursively (for example `extended` installs `core` first).
 - Pack intent is:
@@ -156,6 +168,8 @@ Notes:
   - import store precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE` mapping,
   - `AIDN_STATE_MODE` mapping remains: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite`,
   - default install profile is DB-backed: `runtime.stateMode=dual` and `install.artifactImportStore=dual-sqlite`,
+  - in strict `db-only`, install does not create or refresh managed visible exports (`docs/audit/*`, `.codex/*`, `AGENTS.md`) unless `--materialize-visible-artifacts` is supplied,
+  - strict `db-only` verification validates the hidden `.aidn/` surfaces and does not require visible Markdown projections,
   - disable automatic import with `--skip-artifact-import`,
   - installer auto-creates or updates `.aidn/config.json` (non-destructive merge) to persist runtime defaults,
   - installer also persists the resolved project source branch in `.aidn/config.json` under `workflow.sourceBranch`,
@@ -166,10 +180,15 @@ Notes:
   - use `.aidn/project/shared-runtime.locator.json` or env identity when a project must keep the same PostgreSQL identity across devices or platforms,
   - shared PostgreSQL coordination is still explicit opt-in; when a DB-backed PostgreSQL project has a locator that explicitly disables shared runtime, `shared-coordination-status`, `shared-coordination-doctor`, and `shared-runtime-reanchor` report an alignment warning instead of silently treating the setup as healthy shared coordination,
   - enable shared coordination intentionally with `aidn runtime shared-runtime-reanchor --target . --backend postgres --connection-ref env:AIDN_PG_URL --project-id <project> --workspace-id <workspace> --write --json`,
-  - the local `.aidn/runtime/index/workflow-index.sqlite` file remains a compatibility projection or migration source when PostgreSQL is configured,
+  - when PostgreSQL is configured, the normal path is PostgreSQL-only; local SQLite is a compatibility projection or migration source only when explicitly requested,
   - if PostgreSQL is already canonical and ready, `aidn install` treats a stale local SQLite compatibility projection as non-blocking instead of forcing a migration conflict,
-  - if PostgreSQL is not configured, SQLite remains the fallback legacy backend,
+  - if PostgreSQL is not configured, SQLite remains the fallback local backend hidden under `.aidn/runtime/index/`,
   - `install.artifactImportStore` stays a compatibility/migration knob and does not override the configured runtime backend.
+- Visible artifact cleanup policy:
+  - before reinstalling or migrating a visible-artifact repository into strict `db-only`, preview external backup and quarantine with `aidn runtime visible-artifacts-cleanup --target . --json`,
+  - apply only with `--write`, which creates an external backup before moving managed visible roots to quarantine,
+  - default backup root is `<parent-du-projet>/.aidn-backups/<project_id>/<timestamp>/`,
+  - restore can be previewed with `aidn runtime visible-artifacts-restore --target . --from <backup-root> --json` and applied with `--write`.
 - Optional Codex project config:
   - `aidn` does not install `.codex/config.toml` by default,
   - use a project Codex config only when you need non-default `project_doc_fallback_filenames` or `project_doc_max_bytes`.
@@ -188,6 +207,8 @@ The generated outputs are:
 - `docs/audit/WORKFLOW_SUMMARY.md`
 - `docs/audit/CODEX_ONLINE.md`
 - `docs/audit/index.md`
+
+In strict `db-only`, these are managed visible materializations. They are not written automatically by install unless visible materialization is explicitly requested.
 
 Use one of these entry points to manage the adapter config:
 
@@ -242,6 +263,7 @@ Persistence rules:
 - install can create a minimal default adapter non-interactively with `--init-defaults --project-name <name>`
 - reinstall and reinitialization never overwrite that file automatically
 - generated files may be rewritten deterministically
+- in strict `db-only`, generated visible files are skipped unless `--materialize-visible-artifacts` is supplied
 - `seed-once` and `runtime-state` files are preserved
 
 If your repository ignores `.aidn/`, carve out an exception for `.aidn/project/workflow.adapter.json` when you want team-shared persistence across clones.

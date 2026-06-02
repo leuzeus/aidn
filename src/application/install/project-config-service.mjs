@@ -54,6 +54,8 @@ export function buildNextAidnProjectConfig(existingData, defaults, args) {
   const explicitLocalProjectionPolicy = normalizeRuntimeLocalProjectionPolicy(args?.runtimePersistenceLocalProjectionPolicy);
   if (explicitLocalProjectionPolicy) {
     base.runtime.persistence.localProjectionPolicy = explicitLocalProjectionPolicy;
+  } else if (base.runtime.persistence.backend === "postgres") {
+    base.runtime.persistence.localProjectionPolicy = "none";
   } else if (!normalizeRuntimeLocalProjectionPolicy(base.runtime.persistence.localProjectionPolicy)) {
     base.runtime.persistence.localProjectionPolicy = "keep-local-sqlite";
   }

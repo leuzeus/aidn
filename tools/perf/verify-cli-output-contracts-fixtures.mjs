@@ -269,9 +269,35 @@ const CONTRACT_CASES = [
     args: ["runtime", "artifact-store", "get", "--path", "snapshots/context-snapshot.md", "--json"],
   },
   {
+    name: "runtime-artifact-fetch",
+    schema: "runtime-artifact-fetch.v1.schema.json",
+    args: ["runtime", "artifact-fetch", "--path", "snapshots/context-snapshot.md", "--json"],
+  },
+  {
     name: "runtime-artifact-store-materialize",
     schema: "runtime-artifact-store-materialize.v1.schema.json",
     args: ["runtime", "artifact-store", "materialize", "--audit-root", "docs/audit", "--only-path", "snapshots/context-snapshot.md", "--dry-run", "--json"],
+  },
+  {
+    name: "runtime-visible-artifacts-cleanup",
+    schema: "runtime-visible-artifacts-cleanup.v1.schema.json",
+    args: ["runtime", "visible-artifacts-cleanup", "--json"],
+  },
+  {
+    name: "runtime-visible-artifacts-restore",
+    schema: "runtime-visible-artifacts-restore.v1.schema.json",
+    args(tmpRoot) {
+      const backupRoot = path.join(tmpRoot, ".tmp-visible-artifacts-restore-backup");
+      fs.rmSync(backupRoot, { recursive: true, force: true });
+      fs.mkdirSync(path.join(backupRoot, "quarantine"), { recursive: true });
+      for (const relative of ["docs/audit", ".codex"]) {
+        const source = path.join(tmpRoot, relative);
+        if (fs.existsSync(source)) {
+          fs.cpSync(source, path.join(backupRoot, "quarantine", relative), { recursive: true, force: true });
+        }
+      }
+      return ["runtime", "visible-artifacts-restore", "--from", backupRoot, "--json"];
+    },
   },
   {
     name: "runtime-coordinator-select-agent",
@@ -454,10 +480,11 @@ function extractJson(stdout) {
 function runCase(tmpRoot, testCase) {
   const schemaPath = path.join(CONTRACT_DIR, testCase.schema);
   const schema = readJson(schemaPath);
+  const caseArgs = typeof testCase.args === "function" ? testCase.args(tmpRoot) : testCase.args;
   const beforeSnapshot = snapshotPaths(tmpRoot, testCase.noMutationPaths ?? []);
   const result = spawnSync(process.execPath, [
     AIDN_BIN,
-    ...testCase.args,
+    ...caseArgs,
     "--target",
     tmpRoot,
   ], {

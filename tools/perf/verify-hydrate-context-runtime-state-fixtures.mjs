@@ -128,16 +128,43 @@ function main() {
     });
     assert(String(dbOnlyAutoProject?.state_mode ?? "") === "db-only", "env db-only should override stale context state mode");
     assert(String(dbOnlyAutoProject?.state_mode_source ?? "") === "env-state-mode", "state mode source should report env override");
-    assert(String(dbOnlyAutoProject?.runtime_state?.mode ?? "") === "auto", "runtime_state should auto-project in db-only without preexisting file");
-    assert(String(dbOnlyAutoProject?.handoff_packet?.mode ?? "") === "auto", "handoff packet should auto-project in db-only without preexisting file");
-    assert(String(dbOnlyAutoProject?.agent_health_summary?.mode ?? "") === "auto", "agent health summary should auto-project in db-only without preexisting file");
-    assert(String(dbOnlyAutoProject?.agent_selection_summary?.mode ?? "") === "auto", "agent selection summary should auto-project in db-only without preexisting file");
-    assert(String(dbOnlyAutoProject?.multi_agent_status?.mode ?? "") === "auto", "multi-agent status should auto-project in db-only without preexisting file");
-    assert(fs.existsSync(String(dbOnlyAutoProject?.runtime_state?.output_file ?? "")), "runtime_state output file should be recreated in db-only");
-    assert(fs.existsSync(String(dbOnlyAutoProject?.handoff_packet?.output_file ?? "")), "handoff packet output file should be recreated in db-only");
-    assert(dbOnlyAutoProject?.agent_health_summary?.written === true, "agent health summary should still be projected in db-only");
-    assert(dbOnlyAutoProject?.agent_selection_summary?.written === true, "agent selection summary should still be projected in db-only");
-    assert(dbOnlyAutoProject?.multi_agent_status?.written === true, "multi-agent status should still be projected in db-only");
+    assert(dbOnlyAutoProject?.visible_projection_policy?.materialize_visible_artifacts === false, "db-only should default to hidden-only materialization policy");
+    assert(!("runtime_state" in dbOnlyAutoProject), "runtime_state should not auto-project in db-only without explicit materialization");
+    assert(!("handoff_packet" in dbOnlyAutoProject), "handoff packet should not auto-project in db-only without explicit materialization");
+    assert(!("agent_health_summary" in dbOnlyAutoProject), "agent health summary should not auto-project in db-only without explicit materialization");
+    assert(!("agent_selection_summary" in dbOnlyAutoProject), "agent selection summary should not auto-project in db-only without explicit materialization");
+    assert(!("multi_agent_status" in dbOnlyAutoProject), "multi-agent status should not auto-project in db-only without explicit materialization");
+    assert(!fs.existsSync(path.join(target, "docs", "audit", "RUNTIME-STATE.md")), "runtime_state output file should not be recreated in db-only hidden mode");
+    assert(!fs.existsSync(path.join(target, "docs", "audit", "HANDOFF-PACKET.md")), "handoff packet output file should not be recreated in db-only hidden mode");
+    assert(!fs.existsSync(path.join(target, "docs", "audit", "AGENT-HEALTH-SUMMARY.md")), "agent health summary should not be recreated in db-only hidden mode");
+    assert(!fs.existsSync(path.join(target, "docs", "audit", "AGENT-SELECTION-SUMMARY.md")), "agent selection summary should not be recreated in db-only hidden mode");
+    assert(!fs.existsSync(path.join(target, "docs", "audit", "MULTI-AGENT-STATUS.md")), "multi-agent status should not be recreated in db-only hidden mode");
+
+    const dbOnlyExplicitProject = runJson("tools/codex/hydrate-context.mjs", [
+      "--target",
+      target,
+      "--skill",
+      "context-reload",
+      "--materialize-visible-artifacts",
+      "--project-runtime-state",
+      "--project-handoff-packet",
+      "--project-agent-health-summary",
+      "--project-agent-selection-summary",
+      "--project-multi-agent-status",
+      "--json",
+    ], {
+      env: {
+        AIDN_STATE_MODE: "db-only",
+      },
+    });
+    assert(dbOnlyExplicitProject?.visible_projection_policy?.materialize_visible_artifacts === true, "explicit materialization should be exposed");
+    assert(String(dbOnlyExplicitProject?.runtime_state?.mode ?? "") === "forced", "runtime_state should materialize when explicit");
+    assert(String(dbOnlyExplicitProject?.handoff_packet?.mode ?? "") === "forced", "handoff packet should materialize when explicit");
+    assert(String(dbOnlyExplicitProject?.agent_health_summary?.mode ?? "") === "forced", "agent health summary should materialize when explicit");
+    assert(String(dbOnlyExplicitProject?.agent_selection_summary?.mode ?? "") === "forced", "agent selection summary should materialize when explicit");
+    assert(String(dbOnlyExplicitProject?.multi_agent_status?.mode ?? "") === "forced", "multi-agent status should materialize when explicit");
+    assert(fs.existsSync(String(dbOnlyExplicitProject?.runtime_state?.output_file ?? "")), "runtime_state output file should be recreated by explicit materialization");
+    assert(fs.existsSync(String(dbOnlyExplicitProject?.handoff_packet?.output_file ?? "")), "handoff packet output file should be recreated by explicit materialization");
 
     console.log("PASS");
   } catch (error) {

@@ -121,6 +121,7 @@ export async function projectAgentHealthSummary({
   targetRoot,
   rosterFile = "docs/audit/AGENT-ROSTER.md",
   out = "docs/audit/AGENT-HEALTH-SUMMARY.md",
+  materializeVisibleArtifacts = false,
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const effectiveStateMode = resolveStateMode(absoluteTargetRoot, "");
@@ -148,7 +149,7 @@ export async function projectAgentHealthSummary({
       stateMode: effectiveStateMode,
     })
     : null;
-  const write = effectiveStateMode === "files"
+  const write = effectiveStateMode === "files" || materializeVisibleArtifacts === true
     ? writeUtf8IfChanged(outPath, markdown)
     : {
       path: outPath,

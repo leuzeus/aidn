@@ -80,7 +80,7 @@ function main() {
 
   assert(fs.existsSync(path.join(dualRoot, "docs", "audit", "WORKFLOW.md")), "dual workspace should render WORKFLOW.md");
   assert(fs.existsSync(path.join(dualRoot, ".aidn", "runtime", "index", "workflow-index.sqlite")), "dual workspace should produce sqlite index");
-  assert(fs.existsSync(path.join(dbOnlyRoot, "docs", "audit", "WORKFLOW.md")), "db-only workspace should render WORKFLOW.md");
+  assert(!fs.existsSync(path.join(dbOnlyRoot, "docs", "audit", "WORKFLOW.md")), "db-only workspace should not render WORKFLOW.md without explicit visible materialization");
   assert(fs.existsSync(path.join(dbOnlyRoot, ".aidn", "runtime", "index", "workflow-index.sqlite")), "db-only workspace should produce sqlite index");
 
   const out = {
@@ -93,7 +93,7 @@ function main() {
       db_only_verify_ok: dbOnly.verify.status === 0,
       dual_workflow_rendered: fs.existsSync(path.join(dualRoot, "docs", "audit", "WORKFLOW.md")),
       dual_sqlite_index_present: fs.existsSync(path.join(dualRoot, ".aidn", "runtime", "index", "workflow-index.sqlite")),
-      db_only_workflow_rendered: fs.existsSync(path.join(dbOnlyRoot, "docs", "audit", "WORKFLOW.md")),
+      db_only_workflow_not_rendered: !fs.existsSync(path.join(dbOnlyRoot, "docs", "audit", "WORKFLOW.md")),
       db_only_sqlite_index_present: fs.existsSync(path.join(dbOnlyRoot, ".aidn", "runtime", "index", "workflow-index.sqlite")),
     },
     samples: {

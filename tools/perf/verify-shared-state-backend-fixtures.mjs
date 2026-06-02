@@ -70,6 +70,24 @@ async function main() {
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",
     });
+    await withEnv({
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    }, async () => await projectRuntimeState({
+      targetRoot,
+      write: true,
+    }));
+    runJson("tools/perf/index-sync.mjs", [
+      "--target",
+      targetRoot,
+      "--store",
+      "sqlite",
+      "--with-content",
+      "--json",
+    ], {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    });
 
     const localSnapshot = loadSharedStateSnapshot({
       targetRoot,

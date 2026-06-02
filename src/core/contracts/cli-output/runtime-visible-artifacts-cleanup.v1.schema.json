@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-visible-artifacts-cleanup.v1",
+  "title": "aidn runtime visible-artifacts-cleanup --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime visible-artifacts-cleanup --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "kind",
+    "target_root",
+    "backup_root",
+    "quarantine_root",
+    "backup_outside_project",
+    "candidates",
+    "protected_files",
+    "write_requested",
+    "status"
+  ],
+  "properties": {
+    "kind": { "const": "runtime-visible-artifacts-cleanup" },
+    "target_root": { "type": "string" },
+    "project_id": { "type": "string" },
+    "backup_root": { "type": "string" },
+    "original_root": { "type": "string" },
+    "quarantine_root": { "type": "string" },
+    "backup_outside_project": { "type": "boolean" },
+    "candidates": { "type": "array" },
+    "candidate_files": { "type": "array" },
+    "protected_files": { "type": "array" },
+    "unknown_files": { "type": "array" },
+    "already_conformant": { "type": "boolean" },
+    "write_requested": { "type": "boolean" },
+    "backup_created": { "type": "boolean" },
+    "quarantined_count": { "type": "number" },
+    "status": { "type": "string" },
+    "errors": { "type": "array" }
+  },
+  "additionalProperties": true
+}

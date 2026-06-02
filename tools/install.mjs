@@ -29,6 +29,7 @@ function parseArgs(argv) {
     forceAgentsMerge: false,
     codexMigrateCustom: true,
     verifyAfterInstall: false,
+    materializeVisibleArtifacts: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -78,6 +79,8 @@ function parseArgs(argv) {
       args.forceAgentsMerge = true;
     } else if (token === "--no-codex-migrate-custom") {
       args.codexMigrateCustom = false;
+    } else if (token === "--materialize-visible-artifacts") {
+      args.materializeVisibleArtifacts = true;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -118,6 +121,7 @@ function printUsage() {
   console.log("  node tools/install.mjs --target . --pack core --verify");
   console.log("  node tools/install.mjs --target . --pack core --skip-artifact-import");
   console.log("  node tools/install.mjs --target . --pack core --artifact-import-store dual-sqlite");
+  console.log("  node tools/install.mjs --target . --pack core --materialize-visible-artifacts");
   console.log("  node tools/install.mjs --target . --pack core --runtime-persistence-backend postgres --runtime-persistence-connection-ref env:AIDN_PG_URL");
   console.log("  node tools/install.mjs --target ../repo --pack core --assist");
   console.log("  node tools/install.mjs --target ../repo --pack core --strict");

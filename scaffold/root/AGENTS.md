@@ -173,7 +173,7 @@ For shared or high-risk implementation surfaces, the agent MUST:
 For `dual` / `db-only` projects, the runtime chain is authoritative for mutating enforcement:
 
 - `npx aidn codex run-json-hook ... --strict --json`
-- `npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json`
+- `npx aidn codex hydrate-context --target . --skill <skill> --json`
 - `npx aidn runtime sync-db-first-selective --target . --json` for mutating skills
 - `npx aidn runtime repair-layer-triage --target . --json` when `repair_layer_status` is `warn` or `block`
 - `npx aidn runtime repair-layer-autofix --target . --apply --json` only for safe-only autofix cases
@@ -194,8 +194,8 @@ When work is likely to continue in another agent, the agent SHOULD:
 
 - run skill: `handoff-close`
 - refresh `docs/audit/CURRENT-STATE.md`
-- refresh `docs/audit/RUNTIME-STATE.md` when in `dual` / `db-only`
-- project `docs/audit/HANDOFF-PACKET.md`
+- refresh `docs/audit/RUNTIME-STATE.md` in `dual`, or only with explicit visible materialization in strict `db-only`
+- project `docs/audit/HANDOFF-PACKET.md` in `dual`, or only with explicit visible materialization in strict `db-only`
 
 The receiving agent MAY start from `docs/audit/HANDOFF-PACKET.md`, but MUST still:
 
