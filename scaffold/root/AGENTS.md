@@ -42,19 +42,19 @@ Optional recovery skill:
 - Workflow adapter (project-local): `docs/audit/WORKFLOW.md`
 - Workflow kernel (minimal re-anchor): `docs/audit/WORKFLOW-KERNEL.md`
 - Current state summary:
-  - `docs/audit/CURRENT-STATE.md` in `files` or `dual`
-  - runtime backend plus `.aidn/runtime/context/hydrated-context.json` in strict `db-only`
+  - `docs/audit/CURRENT-STATE.md` as a protected minimal re-anchor anchor
+  - runtime backend plus `.aidn/runtime/context/hydrated-context.json` as canonical state in strict `db-only`
 - Runtime digest:
-  - `docs/audit/RUNTIME-STATE.md` when visibly materialized
-  - `.aidn/runtime/context/hydrated-context.json` in strict `db-only`
+  - `docs/audit/RUNTIME-STATE.md` as a protected minimal re-anchor anchor
+  - `.aidn/runtime/context/hydrated-context.json` as the regenerable runtime cache in strict `db-only`
 - Multi-agent handoff packet:
-  - `docs/audit/HANDOFF-PACKET.md` when visibly materialized
+  - `docs/audit/HANDOFF-PACKET.md` as a protected minimal handoff anchor
   - runtime backend or shared coordination relay in strict `db-only`
 - Crash recovery runbook: `docs/audit/CRASH-RECOVERY-RUNBOOK.md`
 - Integration risk digest: `docs/audit/INTEGRATION-RISK.md` when visibly materialized
 - Agent adapter contract: `docs/audit/AGENT-ADAPTERS.md`
-- Fast snapshot: `docs/audit/snapshots/context-snapshot.md` when visibly materialized
-- Ideas parking: `docs/audit/parking-lot.md` when visibly materialized
+- Fast snapshot: `docs/audit/snapshots/context-snapshot.md` as a protected minimal re-anchor anchor
+- Ideas parking: `docs/audit/parking-lot.md` as a protected minimal re-anchor anchor
 
 > Precedence inside workflow rules: `docs/audit/SPEC.md` > `docs/audit/WORKFLOW.md` > `AGENTS.md`.
 
@@ -201,8 +201,8 @@ When work is likely to continue in another agent, the agent SHOULD:
 
 - run skill: `handoff-close`
 - refresh `docs/audit/CURRENT-STATE.md`
-- refresh `docs/audit/RUNTIME-STATE.md` in `dual`, or only with explicit visible materialization in strict `db-only`
-- project `docs/audit/HANDOFF-PACKET.md` in `dual`, or only with explicit visible materialization in strict `db-only`
+- refresh `docs/audit/RUNTIME-STATE.md` as a minimal runtime-backed anchor
+- project `docs/audit/HANDOFF-PACKET.md` as a minimal runtime-backed handoff anchor when a relay matters
 
 The receiving agent MAY start from `docs/audit/HANDOFF-PACKET.md`, but MUST still:
 

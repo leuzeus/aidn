@@ -120,7 +120,7 @@ Runtime state modes:
 | --- | --- | --- | --- |
 | `files` | checkout-bound Markdown and project files | generated locally when requested | no shared runtime unless explicitly configured |
 | `dual` | runtime DB plus checked-in audit artifacts | local SQLite/projection artifacts remain available | explicit shared surfaces may be enabled, but checkout-bound files stay local |
-| `db-only` | runtime DB is primary for supported runtime state | Markdown can be materialized on demand | shared runtime stays opt-in and never relocates checkout-bound artifacts |
+| `db-only` | runtime DB is primary for supported runtime state | minimal re-anchor anchors stay visible; detailed Markdown can be materialized on demand | shared runtime stays opt-in and never relocates checkout-bound artifacts |
 
 Mode at a glance:
 
@@ -128,13 +128,13 @@ Mode at a glance:
 | --- | --- | --- | --- |
 | `files` | checkout-bound Markdown and project files | `docs/audit/*`, `docs/`, workspace-local files | `npm run perf:verify-cli-no-implicit-write`, `npm run perf:verify-cli-output-contracts` |
 | `dual` | runtime DB plus checkout-bound audit files | local SQLite projections plus audit Markdown | `npm run perf:verify-state-mode-parity`, `npm run perf:verify-runtime-payload-builders` |
-| `db-only` | runtime DB for supported runtime state, with Markdown projections on demand | SQLite-backed runtime state and generated projections | `npm run perf:verify-state-mode-parity`, `npm run perf:verify-db-only-readiness` |
+| `db-only` | runtime DB for supported runtime state, with protected re-anchor anchors and Markdown projections on demand | `.aidn/runtime/context/*`, minimal audit anchors, and the configured runtime backend | `npm run perf:verify-state-mode-parity`, `npm run perf:verify-db-only-readiness` |
 
 Rules:
 
 - `files`, `dual`, and `db-only` are supported operating modes, not interchangeable aliases.
 - `dual` keeps local projections for compatibility and verification.
-- `db-only` removes the need for file-backed runtime state, but not the need for reconstructible Markdown projections.
+- `db-only` removes the need for file-backed runtime state, but keeps protected re-anchor anchors so agents can restart safely; detailed projections remain reconstructible from the runtime backend.
 - shared PostgreSQL coordination remains explicit opt-in and never becomes the default path for checkout-bound artifacts.
 
 ## Git Workflow

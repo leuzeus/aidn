@@ -63,7 +63,10 @@ function verifyStrictInstall(tempRoot) {
   assert(config.runtime?.dbOnly?.strict === true, "strict install config should declare runtime.dbOnly.strict=true");
   assert(config.runtime?.dbOnly?.visibleArtifacts?.automaticMaterialization === false, "strict install config should disable automatic visible materialization");
   assert(Array.isArray(config.runtime?.dbOnly?.visibleArtifacts?.managedRuntimePaths), "strict install config should list managed runtime materializations");
-  assert(config.runtime.dbOnly.visibleArtifacts.managedRuntimePaths.includes("docs/audit/CURRENT-STATE.md"), "strict install config should classify CURRENT-STATE as runtime materialization");
+  assert(!config.runtime.dbOnly.visibleArtifacts.managedRuntimePaths.includes("docs/audit/CURRENT-STATE.md"), "strict install config should not classify CURRENT-STATE as cleanup materialization");
+  assert(config.runtime.dbOnly.visibleArtifacts.protectedReanchorPaths.includes("docs/audit/CURRENT-STATE.md"), "strict install config should protect CURRENT-STATE as a reanchor path");
+  assert(config.runtime.dbOnly.visibleArtifacts.protectedReanchorPaths.includes("docs/audit/RUNTIME-STATE.md"), "strict install config should protect RUNTIME-STATE as a reanchor path");
+  assert(config.runtime.dbOnly.visibleArtifacts.protectedReanchorPaths.includes("docs/audit/HANDOFF-PACKET.md"), "strict install config should protect HANDOFF-PACKET as a reanchor path");
   assert(config.runtime.dbOnly.visibleArtifacts.protectedWorkflowPaths.includes(".codex"), "strict install config should protect local Codex skills");
   assert(config.runtime?.dbOnly?.cleanup?.backupRequired === true, "strict install config should require external backup before cleanup");
   assert(config.runtime?.dbOnly?.cleanup?.quarantine === "external", "strict install config should declare external quarantine");
@@ -75,9 +78,18 @@ function verifyStrictInstall(tempRoot) {
   assert(fs.existsSync(path.join(target, ".aidn", "project", "workflow.adapter.json")), "strict install should create hidden workflow adapter config");
   assert(fs.existsSync(path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite")), "strict install should prepare hidden sqlite runtime store");
   assert(fs.existsSync(path.join(target, ".aidn", "runtime", "agents", "example-external-auditor.mjs")), "strict install should copy hidden runtime agent scaffold");
-  assertNotExists(path.join(target, "docs", "audit"), "strict install should not create docs/audit");
-  assertNotExists(path.join(target, ".codex"), "strict install should not create .codex");
-  assertNotExists(path.join(target, "AGENTS.md"), "strict install should not write AGENTS.md");
+  assert(fs.existsSync(path.join(target, "AGENTS.md")), "strict install should write visible AGENTS workflow bootstrap");
+  assert(fs.existsSync(path.join(target, ".codex", "skills.yaml")), "strict install should write visible Codex skill bootstrap");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "SPEC.md")), "strict install should write visible SPEC bootstrap");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "WORKFLOW.md")), "strict install should write visible WORKFLOW bootstrap");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "WORKFLOW-KERNEL.md")), "strict install should write visible workflow kernel");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "CURRENT-STATE.md")), "strict install should write minimal CURRENT-STATE reanchor");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "RUNTIME-STATE.md")), "strict install should write minimal RUNTIME-STATE reanchor");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "HANDOFF-PACKET.md")), "strict install should write minimal HANDOFF-PACKET reanchor");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "snapshots", "context-snapshot.md")), "strict install should write minimal snapshot reanchor");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "baseline", "current.md")), "strict install should write minimal baseline reanchor");
+  assertNotExists(path.join(target, "docs", "audit", "COORDINATION-SUMMARY.md"), "strict install should not write coordination summary projection");
+  assertNotExists(path.join(target, "docs", "audit", "AGENT-HEALTH-SUMMARY.md"), "strict install should not write agent health projection");
 
   runText("tools/install.mjs", [
     "--target",
@@ -251,8 +263,21 @@ function verifyHydrateBundle(tempRoot) {
 function verifyCleanupRestore(tempRoot) {
   const target = path.join(tempRoot, "cleanup-target");
   fs.mkdirSync(path.join(target, "docs", "audit"), { recursive: true });
+  fs.mkdirSync(path.join(target, "docs", "audit", "sessions"), { recursive: true });
+  fs.mkdirSync(path.join(target, "docs", "audit", "cycles", "C777-active"), { recursive: true });
   fs.mkdirSync(path.join(target, ".codex"), { recursive: true });
-  fs.writeFileSync(path.join(target, "docs", "audit", "CURRENT-STATE.md"), "# State\n", "utf8");
+  fs.writeFileSync(path.join(target, "docs", "audit", "CURRENT-STATE.md"), [
+    "# State",
+    "",
+    "active_session: S777",
+    "active_cycle: C777-active",
+    "",
+  ].join("\n"), "utf8");
+  fs.writeFileSync(path.join(target, "docs", "audit", "RUNTIME-STATE.md"), "# Runtime\n", "utf8");
+  fs.writeFileSync(path.join(target, "docs", "audit", "HANDOFF-PACKET.md"), "# Handoff\n", "utf8");
+  fs.writeFileSync(path.join(target, "docs", "audit", "COORDINATION-SUMMARY.md"), "# Coordination\n", "utf8");
+  fs.writeFileSync(path.join(target, "docs", "audit", "sessions", "S777.md"), "# Active session\n", "utf8");
+  fs.writeFileSync(path.join(target, "docs", "audit", "cycles", "C777-active", "status.md"), "# Active cycle\n", "utf8");
   fs.writeFileSync(path.join(target, "docs", "audit", "SPEC.md"), "# Spec\n", "utf8");
   fs.writeFileSync(path.join(target, ".codex", "skills.yaml"), "skills: []\n", "utf8");
   fs.writeFileSync(path.join(target, "AGENTS.md"), "# Protected\n", "utf8");
@@ -263,8 +288,13 @@ function verifyCleanupRestore(tempRoot) {
     "--json",
   ]);
   assert(preview.write_requested === false, "cleanup default should be preview");
-  assert(preview.candidates.length === 1, "cleanup preview should list only managed runtime materializations");
-  assert(preview.candidates[0]?.relative === "docs/audit/CURRENT-STATE.md", "cleanup preview should target CURRENT-STATE");
+  assert(preview.candidates.length === 1, "cleanup preview should list only non-anchor runtime materializations");
+  assert(preview.candidates[0]?.relative === "docs/audit/COORDINATION-SUMMARY.md", "cleanup preview should target coordination summary");
+  assert(preview.protected_files.includes("docs/audit/CURRENT-STATE.md"), "cleanup preview should protect CURRENT-STATE");
+  assert(preview.protected_files.includes("docs/audit/RUNTIME-STATE.md"), "cleanup preview should protect RUNTIME-STATE");
+  assert(preview.protected_files.includes("docs/audit/HANDOFF-PACKET.md"), "cleanup preview should protect HANDOFF-PACKET");
+  assert(preview.protected_files.includes("docs/audit/sessions/S777.md"), "cleanup preview should protect active session");
+  assert(preview.protected_files.includes("docs/audit/cycles/C777-active"), "cleanup preview should protect active cycle");
   assert(preview.protected_files.includes("AGENTS.md"), "cleanup preview should mark AGENTS.md protected");
   assert(preview.protected_files.includes(".codex"), "cleanup preview should mark .codex skills protected");
   assert(preview.protected_files.includes("docs/audit/SPEC.md"), "cleanup preview should mark SPEC protected");
@@ -279,11 +309,16 @@ function verifyCleanupRestore(tempRoot) {
   ]);
   assert(applied.status === "applied", "cleanup write should apply");
   assert(applied.backup_created === true, "cleanup write should create backup");
-  assert(!fs.existsSync(path.join(target, "docs", "audit", "CURRENT-STATE.md")), "cleanup write should quarantine runtime state materialization");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "CURRENT-STATE.md")), "cleanup write should keep CURRENT-STATE reanchor");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "RUNTIME-STATE.md")), "cleanup write should keep RUNTIME-STATE reanchor");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "HANDOFF-PACKET.md")), "cleanup write should keep HANDOFF-PACKET reanchor");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "sessions", "S777.md")), "cleanup write should keep active session");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "cycles", "C777-active", "status.md")), "cleanup write should keep active cycle status");
+  assert(!fs.existsSync(path.join(target, "docs", "audit", "COORDINATION-SUMMARY.md")), "cleanup write should quarantine non-anchor runtime projection");
   assert(fs.existsSync(path.join(target, "docs", "audit", "SPEC.md")), "cleanup write should keep workflow SPEC");
   assert(fs.existsSync(path.join(target, ".codex")), "cleanup write should keep .codex skills");
   assert(fs.existsSync(path.join(target, "AGENTS.md")), "cleanup write should keep AGENTS.md");
-  assert(fs.existsSync(path.join(applied.quarantine_root, "docs", "audit", "CURRENT-STATE.md")), "cleanup should move runtime materialization to quarantine");
+  assert(fs.existsSync(path.join(applied.quarantine_root, "docs", "audit", "COORDINATION-SUMMARY.md")), "cleanup should move non-anchor projection to quarantine");
 
   const restorePreview = runJson("tools/runtime/visible-artifacts-restore.mjs", [
     "--target",
@@ -304,7 +339,7 @@ function verifyCleanupRestore(tempRoot) {
     "--json",
   ]);
   assert(restored.status === "applied", "restore write should apply");
-  assert(fs.existsSync(path.join(target, "docs", "audit", "CURRENT-STATE.md")), "restore should restore runtime materialization content");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "COORDINATION-SUMMARY.md")), "restore should restore runtime materialization content");
   assert(fs.existsSync(path.join(target, ".codex", "skills.yaml")), "restore should have left protected .codex content in place");
 }
 

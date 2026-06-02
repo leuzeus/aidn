@@ -2,20 +2,29 @@ import fs from "node:fs";
 import path from "node:path";
 import { readSharedRuntimeLocatorSafe } from "../../lib/config/shared-runtime-locator-config-lib.mjs";
 import { removePathWithRetry } from "../../lib/fs/remove-path-with-retry.mjs";
+import {
+  collectDynamicReanchorProtectedPathsFromText,
+  isPathProtectedByVisiblePolicy,
+  listDbOnlyStrictProtectedVisiblePaths,
+  normalizeVisibleRelative,
+} from "./db-only-visible-surface-policy.mjs";
 
 const MANAGED_VISIBLE_PATHS = [
   "docs/audit/AGENT-HEALTH-SUMMARY.md",
   "docs/audit/AGENT-SELECTION-SUMMARY.md",
-  "docs/audit/ARTIFACT_MANIFEST.md",
   "docs/audit/COORDINATION-LOG.md",
   "docs/audit/COORDINATION-SUMMARY.md",
-  "docs/audit/CURRENT-STATE.md",
-  "docs/audit/HANDOFF-PACKET.md",
   "docs/audit/INTEGRATION-RISK.md",
   "docs/audit/MULTI-AGENT-STATUS.md",
-  "docs/audit/RUNTIME-STATE.md",
   "docs/audit/USER-ARBITRATION.md",
   "docs/audit/backlog/legacy-derived.md",
+];
+
+const LEGACY_RESTORABLE_VISIBLE_PATHS = [
+  "docs/audit/ARTIFACT_MANIFEST.md",
+  "docs/audit/CURRENT-STATE.md",
+  "docs/audit/HANDOFF-PACKET.md",
+  "docs/audit/RUNTIME-STATE.md",
   "docs/audit/baseline/current.md",
   "docs/audit/baseline/history.md",
   "docs/audit/parking-lot.md",
@@ -31,44 +40,12 @@ const MANAGED_VISIBLE_CHILD_PATTERNS = [
 ];
 
 const PROTECTED_VISIBLE_FILES = [
-  "AGENTS.md",
-  ".gitignore",
-  ".codex",
-  "docs/audit/AGENT-ADAPTERS.md",
-  "docs/audit/AGENT-ROSTER.md",
-  "docs/audit/CODEX_ONLINE.md",
-  "docs/audit/CONTINUITY_GATE.md",
-  "docs/audit/CRASH-RECOVERY-RUNBOOK.md",
-  "docs/audit/REANCHOR_PROMPT.md",
-  "docs/audit/RULE_STATE_BOUNDARY.md",
-  "docs/audit/SPEC.md",
-  "docs/audit/WORKFLOW-KERNEL.md",
-  "docs/audit/WORKFLOW.md",
-  "docs/audit/WORKFLOW_SUMMARY.md",
-  "docs/audit/backlog/TEMPLATE_SESSION_BACKLOG.md",
-  "docs/audit/cycles/TEMPLATE_CYCLE.md",
-  "docs/audit/cycles/TEMPLATE_STATUS.md",
-  "docs/audit/cycles/TEMPLATE_audit-spec.md",
-  "docs/audit/cycles/TEMPLATE_brief.md",
-  "docs/audit/cycles/TEMPLATE_change-requests.md",
-  "docs/audit/cycles/TEMPLATE_decisions.md",
-  "docs/audit/cycles/TEMPLATE_gap-report.md",
-  "docs/audit/cycles/TEMPLATE_hypotheses.md",
-  "docs/audit/cycles/TEMPLATE_plan.md",
-  "docs/audit/cycles/TEMPLATE_traceability.md",
-  "docs/audit/cycles/cycle-status.md",
+  ...listDbOnlyStrictProtectedVisiblePaths(),
   "docs/audit/fragments",
-  "docs/audit/glossary.md",
-  "docs/audit/incidents/TEMPLATE_INC_TMP.md",
-  "docs/audit/index.md",
-  "docs/audit/sessions/TEMPLATE_SESSION_SXXX.md",
 ];
 
 function normalizeRelative(value) {
-  return String(value ?? "")
-    .replace(/\\/g, "/")
-    .replace(/^\.\/+/, "")
-    .replace(/\/+/g, "/");
+  return normalizeVisibleRelative(value);
 }
 
 function toSafeSegment(value, fallback = "project") {
@@ -159,10 +136,13 @@ function pushCandidate(candidates, candidateFiles, targetRoot, relative) {
   candidateFiles.push(...listFilesRecursive(absolute, relative));
 }
 
-function collectManagedVisibleCandidates(targetRoot) {
+function collectManagedVisibleCandidates(targetRoot, options = {}) {
   const candidates = [];
   const candidateFiles = [];
   const seen = new Set();
+  const managedVisiblePaths = options.includeLegacyReanchorAnchors === true
+    ? [...MANAGED_VISIBLE_PATHS, ...LEGACY_RESTORABLE_VISIBLE_PATHS]
+    : MANAGED_VISIBLE_PATHS;
 
   function add(relative) {
     const normalized = normalizeRelative(relative);
@@ -174,7 +154,7 @@ function collectManagedVisibleCandidates(targetRoot) {
     pushCandidate(candidates, candidateFiles, targetRoot, normalized);
   }
 
-  for (const relative of MANAGED_VISIBLE_PATHS) {
+  for (const relative of managedVisiblePaths) {
     add(relative);
   }
   for (const item of MANAGED_VISIBLE_CHILD_PATTERNS) {
@@ -198,13 +178,41 @@ function collectManagedVisibleCandidates(targetRoot) {
   };
 }
 
+function readExistingText(targetRoot, relative) {
+  // protected-reanchor-anchor-inspection: filesystem read is used only to avoid quarantining active anchors.
+  const absolute = path.resolve(targetRoot, relative);
+  if (!fs.existsSync(absolute) || !fs.statSync(absolute).isFile()) {
+    return "";
+  }
+  return fs.readFileSync(absolute, "utf8");
+}
+
+function collectProtectedVisibleFiles(targetRoot) {
+  const protectedPaths = new Set(PROTECTED_VISIBLE_FILES.map(normalizeRelative));
+  for (const relative of [
+    "docs/audit/CURRENT-STATE.md",
+    "docs/audit/HANDOFF-PACKET.md",
+  ]) {
+    const text = readExistingText(targetRoot, relative);
+    for (const protectedPath of collectDynamicReanchorProtectedPathsFromText(text)) {
+      protectedPaths.add(protectedPath);
+    }
+  }
+  return Array.from(protectedPaths).sort((left, right) => left.localeCompare(right));
+}
+
 function classifyVisibleArtifacts(targetRoot) {
   const {
     candidates,
     candidateFiles,
   } = collectManagedVisibleCandidates(targetRoot);
+  const protectedVisiblePaths = collectProtectedVisibleFiles(targetRoot);
+  const filteredCandidates = candidates.filter((candidate) =>
+    !isPathProtectedByVisiblePolicy(candidate.relative, protectedVisiblePaths));
+  const filteredCandidateFiles = candidateFiles.filter((relative) =>
+    !isPathProtectedByVisiblePolicy(relative, protectedVisiblePaths));
   const protectedFiles = [];
-  for (const relative of PROTECTED_VISIBLE_FILES) {
+  for (const relative of protectedVisiblePaths) {
     const absolute = path.resolve(targetRoot, relative);
     if (!fs.existsSync(absolute)) {
       continue;
@@ -212,11 +220,11 @@ function classifyVisibleArtifacts(targetRoot) {
     protectedFiles.push(relative);
   }
   return {
-    candidates,
-    candidate_files: Array.from(new Set(candidateFiles)).sort((left, right) => left.localeCompare(right)),
+    candidates: filteredCandidates,
+    candidate_files: Array.from(new Set(filteredCandidateFiles)).sort((left, right) => left.localeCompare(right)),
     protected_files: protectedFiles,
     unknown_files: [],
-    already_conformant: candidates.length === 0,
+    already_conformant: filteredCandidates.length === 0,
   };
 }
 
@@ -310,7 +318,9 @@ export function planVisibleArtifactsRestore({
   const originalRoot = path.resolve(backupRoot, "original");
   const sourceRoot = fs.existsSync(quarantineRoot) ? quarantineRoot : originalRoot;
   const restoreItems = [];
-  const { candidates } = collectManagedVisibleCandidates(sourceRoot);
+  const { candidates } = collectManagedVisibleCandidates(sourceRoot, {
+    includeLegacyReanchorAnchors: true,
+  });
   for (const candidate of candidates) {
     const relative = candidate.relative;
     const sourcePath = path.resolve(sourceRoot, relative);

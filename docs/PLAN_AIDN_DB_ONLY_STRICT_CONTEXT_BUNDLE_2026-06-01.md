@@ -4,9 +4,11 @@ Date: 2026-06-01
 
 ## Objectif
 
-Faire de `db-only` un mode strict pour l'etat runtime: AIDN ne doit plus produire automatiquement de materialisations runtime visibles dans le projet. Les artefacts visibles de session, cycle, coordination ou digest restent possibles, mais uniquement comme exports ou materialisations explicites.
+Faire de `db-only` un mode strict pour l'etat runtime: AIDN ne doit plus produire automatiquement de materialisations runtime visibles detaillees dans le projet. Les artefacts visibles de session, cycle, coordination ou digest restent possibles, mais uniquement comme exports ou materialisations explicites.
 
 Le socle workflow issu du scaffold n'est pas une materialisation runtime. `AGENTS.md`, les skills `.codex`, `SPEC.md`, `WORKFLOW.md`, `WORKFLOW-KERNEL.md`, `WORKFLOW_SUMMARY.md` et `CODEX_ONLINE.md` restent des surfaces de bootstrap protegees tant qu'un contrat de bootstrap cache sous `.aidn/` n'est pas implemente.
+
+Les ancres minimales de rechargement (`CURRENT-STATE.md`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md`, snapshot, baseline et parking-lot) restent visibles et protegees. Elles ne sont pas la source de verite: en `db-only`, elles pointent vers le backend runtime canonique et doivent etre regenerables depuis celui-ci.
 
 Le backend canonique reste separe du mode d'etat:
 
@@ -18,18 +20,17 @@ Le backend canonique reste separe du mode d'etat:
 
 ### `db-only` strict
 
-En `db-only`, les commandes standard ne doivent pas creer ni rafraichir automatiquement les materialisations runtime/state:
+En `db-only`, les commandes standard ne doivent pas creer ni rafraichir automatiquement les materialisations runtime/state detaillees:
 
-- `docs/audit/CURRENT-STATE.md`;
-- `docs/audit/RUNTIME-STATE.md`;
-- `docs/audit/HANDOFF-PACKET.md`;
 - `docs/audit/cycles/C*`;
 - `docs/audit/sessions/S*.md`;
+- coordination summaries;
+- agent health summaries;
 - projections Markdown runtime visibles.
 
-Les surfaces visibles deviennent des materialisations explicites. Une commande ou option dediee doit porter l'intention, par exemple `--materialize-visible-artifacts` ou une commande runtime de projection.
+Les surfaces visibles detaillees deviennent des materialisations explicites. Une commande ou option dediee doit porter l'intention, par exemple `--materialize-visible-artifacts` ou une commande runtime de projection.
 
-Le cleanup strict ne doit pas quarantiner les assets scaffold qui permettent encore a Codex de comprendre et executer le workflow.
+Le cleanup strict ne doit pas quarantiner les assets scaffold qui permettent encore a Codex de comprendre et executer le workflow. Il ne doit pas non plus quarantiner les ancres minimales ni la session/le cycle actifs lorsqu'ils sont references par l'etat courant.
 
 ### Backend canonique
 
@@ -109,9 +110,9 @@ Les fichiers proteges ou inconnus ne sont pas deplaces sans intention explicite.
 
 `aidn install` en `db-only` strict:
 
-- ecrit uniquement sous `.aidn/` en chemin normal;
-- ne copie pas automatiquement les artefacts visibles du pack core;
-- ne rend pas les docs generees visibles;
+  - ecrit sous `.aidn/` et rend le bootstrap workflow visible minimal;
+  - cree ou preserve les ancres minimales de rechargement;
+  - ne copie pas automatiquement les materialisations runtime visibles detaillees;
 - preserve `AGENTS.md` par defaut;
 - preserve les assets scaffold workflow et ne les traite pas comme des candidats de cleanup;
 - conserve la verification du backend, du project context et des surfaces cachees.

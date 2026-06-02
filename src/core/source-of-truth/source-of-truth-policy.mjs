@@ -54,7 +54,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     label: "Workflow rules",
     files: "docs/audit/SPEC.md projected from package docs/SPEC.md",
     dual: "docs/audit/SPEC.md projected from package docs/SPEC.md",
-    dbOnly: "protected workflow bootstrap rules plus hidden runtime config; visible runtime state is materialized on demand",
+    dbOnly: "protected workflow bootstrap rules, hidden runtime config and minimal re-anchor anchors; detailed visible runtime state is materialized on demand",
     projection: "WORKFLOW_SUMMARY.md and WORKFLOW-KERNEL.md are generated summaries",
     notes: "Rules remain checkout-bound in every mode.",
   }),
@@ -100,7 +100,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     label: "Session state",
     files: "docs/audit/sessions/S*.md",
     dual: "runtime DB/index canonical state with visible Markdown projection",
-    dbOnly: "runtime DB canonical state materialized to Markdown on demand",
+    dbOnly: "runtime DB canonical state with protected minimal Markdown re-anchor pointer",
     projection: "CURRENT-STATE.md and runtime heads",
   }),
   policy({
@@ -108,7 +108,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     label: "Cycle state",
     files: "docs/audit/cycles/*/status.md",
     dual: "runtime DB/index canonical state with visible Markdown projection",
-    dbOnly: "runtime DB canonical state materialized to Markdown on demand",
+    dbOnly: "runtime DB canonical state with protected minimal Markdown re-anchor pointer",
     projection: "CURRENT-STATE.md and runtime heads",
   }),
   policy({
@@ -193,7 +193,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     label: "Runtime digests",
     files: "generated Markdown digest files",
     dual: "runtime store plus generated Markdown",
-    dbOnly: "runtime store plus generated Markdown on demand",
+    dbOnly: "runtime store plus protected minimal digest anchors and generated Markdown on demand",
     projection: "RUNTIME-STATE.md and HANDOFF-PACKET.md",
   }),
   policy({

@@ -42,6 +42,10 @@ import {
 } from "./template-merge-service.mjs";
 import { readUtf8 } from "./template-io.mjs";
 import { migrateWorkflowDbFile } from "../../lib/sqlite/workflow-db-schema-lib.mjs";
+import {
+  hasDbOnlyStrictVisibleInstallAllowedUnder,
+  isDbOnlyStrictVisibleInstallAllowed,
+} from "../runtime/db-only-visible-surface-policy.mjs";
 
 function verifyPaths(targetRoot, pathsToCheck) {
   const missing = [];
@@ -77,11 +81,21 @@ function filterDbOnlyStrictVerifyEntries(entries) {
     ".aidn/project/workflow.adapter.json",
   ]);
   for (const entry of entries) {
-    if (isHiddenAidnTarget(entry)) {
+    if (isHiddenAidnTarget(entry) || isDbOnlyStrictVisibleInstallAllowed(entry)) {
       filtered.add(entry);
     }
   }
   return Array.from(filtered);
+}
+
+function shouldSkipDbOnlyStrictVisibleOperation(relativeTarget, sourceStat) {
+  if (isHiddenAidnTarget(relativeTarget)) {
+    return false;
+  }
+  if (!sourceStat?.isDirectory?.()) {
+    return !isDbOnlyStrictVisibleInstallAllowed(relativeTarget);
+  }
+  return !hasDbOnlyStrictVisibleInstallAllowedUnder(relativeTarget);
 }
 
 const KNOWN_OVERRIDE_SCAN_ROOTS = [
@@ -275,7 +289,7 @@ export async function runInstallUseCase({
     );
   }
   if (dbOnlyStrict) {
-    console.log("DB-only visible materialization: strict-hidden (use --materialize-visible-artifacts to write managed visible exports)");
+    console.log("DB-only visible materialization: strict-reanchor (workflow bootstrap and minimal state anchors only; use --materialize-visible-artifacts for managed exports)");
   } else if (args.materializeVisibleArtifacts === true) {
     console.log("DB-only visible materialization: explicit");
   }
@@ -313,7 +327,7 @@ export async function runInstallUseCase({
         }
 
         const sourceStat = fs.statSync(sourcePath);
-        if (dbOnlyStrict && !isHiddenAidnTarget(op.to)) {
+        if (dbOnlyStrict && shouldSkipDbOnlyStrictVisibleOperation(op.to, sourceStat)) {
           console.log(
             `${args.dryRun ? "[dry-run] " : ""}skip visible copy in db-only strict: ${op.from} -> ${op.to} (pack ${packName})`,
           );
@@ -356,6 +370,9 @@ export async function runInstallUseCase({
             );
           },
         };
+        if (dbOnlyStrict && !isHiddenAidnTarget(op.to)) {
+          copyPolicy.shouldCopyTargetRelative = isDbOnlyStrictVisibleInstallAllowed;
+        }
         if (sourceStat.isDirectory()) {
           copyRecursive(
             sourcePath,
@@ -377,7 +394,7 @@ export async function runInstallUseCase({
         if (!fs.existsSync(sourcePath)) {
           throw new Error(`Merge source does not exist: ${op.from}`);
         }
-        if (dbOnlyStrict && !isHiddenAidnTarget(op.to)) {
+        if (dbOnlyStrict && shouldSkipDbOnlyStrictVisibleOperation(op.to, fs.statSync(sourcePath))) {
           console.log(
             `${args.dryRun ? "[dry-run] " : ""}skip visible merge in db-only strict: ${op.from} -> ${op.to} (${op.strategy}, pack ${packName})`,
           );
@@ -426,27 +443,22 @@ export async function runInstallUseCase({
       }
     }
 
-    if (dbOnlyStrict) {
-      console.log(`${args.dryRun ? "[dry-run] " : ""}skip generated visible docs in db-only strict`);
-      summary.strictVisibleSkipped += 1;
-    } else {
-      const generatedDocs = renderManagedInstallDocs({
-        repoRoot,
-        targetRoot,
-        dryRun: args.dryRun,
-        templateVars,
-        existingContentByTarget: generatedDocExistingContent,
-        workflowAdapterConfig,
-      });
-      for (const item of generatedDocs) {
-        console.log(
-          `${args.dryRun ? "[dry-run] " : ""}render generated doc: ${item.targetRelative} (${item.changed ? "updated" : "unchanged"})`,
-        );
-        if (item.changed) {
-          summary.generatedRendered += 1;
-        } else {
-          summary.generatedUnchanged += 1;
-        }
+    const generatedDocs = renderManagedInstallDocs({
+      repoRoot,
+      targetRoot,
+      dryRun: args.dryRun,
+      templateVars,
+      existingContentByTarget: generatedDocExistingContent,
+      workflowAdapterConfig,
+    });
+    for (const item of generatedDocs) {
+      console.log(
+        `${args.dryRun ? "[dry-run] " : ""}render generated doc: ${item.targetRelative} (${item.changed ? "updated" : "unchanged"})`,
+      );
+      if (item.changed) {
+        summary.generatedRendered += 1;
+      } else {
+        summary.generatedUnchanged += 1;
       }
     }
 

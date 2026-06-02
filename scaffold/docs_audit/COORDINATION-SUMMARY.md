@@ -29,7 +29,7 @@ last_arbitration_ts: unknown
 source_of_truth: local runtime context or explicit shared backend
 source_mode: explicit
 lifecycle_status: refreshed
-owner: {{project_id}}
+owner: {{PROJECT_NAME}}
 steward: aidn-runtime
 
 ## Aggregates

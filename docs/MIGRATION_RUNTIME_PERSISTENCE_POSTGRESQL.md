@@ -40,8 +40,9 @@ Strict `db-only` note:
 - `runtime.dbOnly.cleanup.backupRequired=true` and `runtime.dbOnly.cleanup.quarantine=external` are required before moving managed visible artifacts
 - `runtime.dbOnly.codexBundle.sourceOfTruth=runtime-backend` keeps the hidden Codex bundle as a regenerable cache, not canonical state
 - `runtime.dbOnly.artifactImport.canonicalBackendField=runtime.persistence.backend` prevents the legacy `install.artifactImportStore` value from being read as the canonical backend
-- strict `db-only` does not write runtime/state visible materializations during install or verify
-- visible runtime Markdown surfaces are materialized only by explicit projection/export commands
+- strict `db-only` writes protected workflow bootstrap and minimal re-anchor anchors during install or verify, but does not write detailed runtime/state visible materializations automatically
+- detailed visible runtime Markdown surfaces are materialized only by explicit projection/export commands
+- cleanup protects `CURRENT-STATE.md`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md`, snapshot, baseline, parking-lot, and active session/cycle paths referenced by the current state
 - before cleanup or migration of existing visible artifacts, use `aidn runtime visible-artifacts-cleanup --target . --json` and apply only after reviewing the external backup/quarantine plan
 
 ## Local Operations Runbook

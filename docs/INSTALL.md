@@ -108,7 +108,7 @@ Strict `db-only` visible materialization example:
 AIDN_STATE_MODE=db-only npx aidn install --target . --pack core --init-defaults --project-name my-project
 ```
 
-In strict `db-only`, install writes only hidden AIDN state under `.aidn/` by default. To intentionally render managed visible exports during install, add:
+In strict `db-only`, install writes hidden AIDN state under `.aidn/` plus protected visible workflow bootstrap and minimal re-anchor anchors by default. To intentionally render managed visible exports beyond those anchors during install, add:
 
 ```bash
 npx aidn install --target . --pack core --materialize-visible-artifacts
@@ -168,10 +168,10 @@ Notes:
   - import store precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE` mapping,
   - `AIDN_STATE_MODE` mapping remains: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite`,
   - default install profile is DB-backed: `runtime.stateMode=dual` and `install.artifactImportStore=dual-sqlite`,
-  - in strict `db-only`, install does not create or refresh runtime/state materializations automatically (`CURRENT-STATE.md`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md`, session/cycle projections, coordination summaries) unless `--materialize-visible-artifacts` or a dedicated projection command is supplied,
+  - in strict `db-only`, install creates or preserves the minimal re-anchor anchors (`CURRENT-STATE.md`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md`, snapshot and baseline pointers) but does not create or refresh detailed session/cycle projections, coordination summaries, agent health summaries, or other runtime/state exports unless `--materialize-visible-artifacts` or a dedicated projection command is supplied,
   - workflow bootstrap assets from the scaffold (`AGENTS.md`, `.codex` skills, `SPEC.md`, `WORKFLOW.md`, `WORKFLOW-KERNEL.md`, `WORKFLOW_SUMMARY.md`, `CODEX_ONLINE.md`) are protected workflow surfaces, not cleanup candidates,
   - strict `db-only` configuration is explicit in `.aidn/config.json` through `runtime.dbOnly.strict=true`, `runtime.dbOnly.visibleArtifacts.automaticMaterialization=false`, `runtime.dbOnly.cleanup.backupRequired=true`, `runtime.dbOnly.codexBundle.sourceOfTruth=runtime-backend`, and `runtime.dbOnly.artifactImport.canonicalBackendField=runtime.persistence.backend`,
-  - strict `db-only` verification validates the hidden `.aidn/` surfaces and does not require visible Markdown projections,
+  - strict `db-only` verification validates hidden `.aidn/` surfaces plus protected visible workflow/re-anchor anchors, and does not require detailed visible Markdown projections,
   - disable automatic import with `--skip-artifact-import`,
   - installer auto-creates or updates `.aidn/config.json` (non-destructive merge) to persist runtime defaults,
   - installer also persists the resolved project source branch in `.aidn/config.json` under `workflow.sourceBranch`,
@@ -190,6 +190,7 @@ Notes:
   - before reinstalling or migrating a visible-artifact repository into strict `db-only`, preview external backup and quarantine with `aidn runtime visible-artifacts-cleanup --target . --json`,
   - apply only with `--write`, which creates an external backup before moving managed runtime/state materializations to quarantine,
   - cleanup must not quarantine scaffold workflow assets such as `AGENTS.md`, `.codex` skills, `SPEC.md`, `WORKFLOW.md`, `WORKFLOW-KERNEL.md`, `WORKFLOW_SUMMARY.md`, or `CODEX_ONLINE.md`,
+  - cleanup must not quarantine minimal re-anchor anchors such as `CURRENT-STATE.md`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md`, `snapshots/context-snapshot.md`, `baseline/current.md`, `baseline/history.md`, `parking-lot.md`, or the active session/cycle paths referenced by the current state,
   - default backup root is `<parent-du-projet>/.aidn-backups/<project_id>/<timestamp>/`,
   - restore can be previewed with `aidn runtime visible-artifacts-restore --target . --from <backup-root> --json` and applied with `--write`.
 
@@ -206,13 +207,22 @@ Expected strict `db-only` config marker:
         "materializeFlag": "--materialize-visible-artifacts",
         "managedRoots": [],
         "managedRuntimePaths": [
-          "docs/audit/CURRENT-STATE.md",
-          "docs/audit/RUNTIME-STATE.md",
-          "docs/audit/HANDOFF-PACKET.md",
           "docs/audit/COORDINATION-SUMMARY.md",
           "docs/audit/COORDINATION-LOG.md",
           "docs/audit/cycles/C*",
-          "docs/audit/sessions/S*.md"
+          "docs/audit/sessions/S*.md",
+          "docs/audit/baseline/v*"
+        ],
+        "protectedReanchorPaths": [
+          "docs/audit/CURRENT-STATE.md",
+          "docs/audit/RUNTIME-STATE.md",
+          "docs/audit/HANDOFF-PACKET.md",
+          "docs/audit/snapshots/context-snapshot.md",
+          "docs/audit/baseline/current.md",
+          "docs/audit/baseline/history.md",
+          "docs/audit/parking-lot.md",
+          "active session file referenced by CURRENT-STATE.md",
+          "active cycle directory referenced by CURRENT-STATE.md"
         ],
         "protectedWorkflowPaths": [
           "AGENTS.md",
@@ -222,6 +232,7 @@ Expected strict `db-only` config marker:
           "docs/audit/WORKFLOW-KERNEL.md",
           "docs/audit/WORKFLOW_SUMMARY.md",
           "docs/audit/CODEX_ONLINE.md",
+          "docs/audit/ARTIFACT_MANIFEST.md",
           "docs/audit/fragments"
         ]
       },
@@ -266,7 +277,7 @@ The generated outputs are:
 - `docs/audit/CODEX_ONLINE.md`
 - `docs/audit/index.md`
 
-In strict `db-only`, these are managed visible materializations. They are not written automatically by install unless visible materialization is explicitly requested.
+In strict `db-only`, these workflow bootstrap outputs are protected visible anchors and may be written during install. Detailed runtime/state exports remain explicit materializations and require `--materialize-visible-artifacts` or a dedicated projection command.
 
 Use one of these entry points to manage the adapter config:
 

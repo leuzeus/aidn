@@ -21,7 +21,8 @@ Purpose:
 | Path or surface | Scope | Shared by default | Current source of truth | Notes |
 | --- | --- | --- | --- | --- |
 | `docs/audit/SPEC.md`, `docs/audit/WORKFLOW.md`, `docs/audit/WORKFLOW-KERNEL.md`, `docs/audit/WORKFLOW_SUMMARY.md`, `docs/audit/CODEX_ONLINE.md` | `checkout-bound` workflow bootstrap | no | worktree checkout or scaffold materialization | Protected workflow surfaces; strict `db-only` cleanup must not quarantine them. |
-| `docs/audit/CURRENT-STATE.md`, `docs/audit/RUNTIME-STATE.md`, `docs/audit/HANDOFF-PACKET.md`, `docs/audit/cycles/C*`, `docs/audit/sessions/S*.md` | `checkout-bound` runtime/state materialization | no | runtime backend with explicit materialization | In strict `db-only`, managed runtime files are not written automatically and may be quarantined after external backup. |
+| `docs/audit/CURRENT-STATE.md`, `docs/audit/RUNTIME-STATE.md`, `docs/audit/HANDOFF-PACKET.md`, `docs/audit/snapshots/context-snapshot.md`, `docs/audit/baseline/current.md`, `docs/audit/baseline/history.md`, `docs/audit/parking-lot.md` | `checkout-bound` minimal re-anchor anchors | no | runtime backend plus protected visible anchor | In strict `db-only`, these anchors stay visible/protected so agents can re-anchor; the runtime DB remains canonical. |
+| `docs/audit/cycles/C*`, `docs/audit/sessions/S*.md`, coordination summaries, agent health summaries, detailed runtime projections | `checkout-bound` runtime/state materialization | no | runtime backend with explicit materialization | In strict `db-only`, detailed managed runtime files are not written automatically and may be quarantined after external backup, except active session/cycle paths referenced by current state. |
 | `AGENTS.md` | `checkout-bound` | no | worktree checkout | Treated as workflow policy visible in the current checkout. |
 | `.codex/*` | `checkout-bound` workflow bootstrap | no | worktree checkout or scaffold materialization | Local workflow skills/config; strict `db-only` cleanup must not quarantine them. |
 | `.aidn/project/workflow.adapter.json` | `checkout-bound` or `worktree-local` | no | client repo decision | Durable project config; may be versioned by the client repository. |
@@ -51,10 +52,10 @@ This overlay names the logical owner of key information concepts. It complements
 | Project policy | `.aidn/project/workflow.adapter.json` | same local/project file | same local/project file | `WORKFLOW.md`, `CODEX_ONLINE.md`, `index.md` on demand |
 | Runtime defaults | `.aidn/config.json` | same worktree-local file | same worktree-local file with explicit `runtime.dbOnly` strict policy | CLI status output |
 | Runtime project context | workspace resolver plus optional locator/env IDs | runtime DB registry plus workspace resolver | runtime DB registry plus workspace resolver | `project_context` JSON output, `runtime_scope_registry` |
-| Session state | `docs/audit/sessions/S*.md` | runtime DB/index plus visible Markdown projection | runtime DB, materialized on demand | `CURRENT-STATE.md`, runtime heads |
-| Cycle state | `docs/audit/cycles/*/status.md` | runtime DB/index plus visible Markdown projection | runtime DB, materialized on demand | `CURRENT-STATE.md`, runtime heads |
+| Session state | `docs/audit/sessions/S*.md` | runtime DB/index plus visible Markdown projection | runtime DB with protected minimal re-anchor pointer | `CURRENT-STATE.md`, runtime heads, active session materialization when explicitly available |
+| Cycle state | `docs/audit/cycles/*/status.md` | runtime DB/index plus visible Markdown projection | runtime DB with protected minimal re-anchor pointer | `CURRENT-STATE.md`, runtime heads, active cycle materialization when explicitly available |
 | Artifact inventory | checkout scan | runtime artifact store | runtime artifact store | SQLite/local exports, materialized docs |
-| Runtime digests | generated Markdown files | runtime store plus generated Markdown | hidden bundle plus generated Markdown on demand | `.aidn/runtime/context/hydrated-context.json`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md` |
+| Runtime digests | generated Markdown files | runtime store plus generated Markdown | runtime backend plus protected minimal digest anchors | `.aidn/runtime/context/hydrated-context.json`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md` |
 | Repair findings | local scan/report | repair-layer runtime tables | repair-layer runtime tables | repair reports and summaries |
 | Coordination records | `.aidn/runtime/context/*` | local context or explicit shared backend | local context or explicit shared backend | `COORDINATION-LOG.md`, `COORDINATION-SUMMARY.md` |
 | Agent roster | `docs/audit/AGENT-ROSTER.md` | same checkout-bound file | runtime/configured agent registry, materialized on demand | health and selection summaries |
@@ -76,16 +77,16 @@ The overlay above describes where each concept lives. These are the operational 
   - the runtime DB becomes the primary source for supported runtime state
   - `.aidn/config.json` explicitly declares strict behavior through `runtime.dbOnly.strict=true`
   - `runtime.dbOnly.artifactImport.canonicalBackendField=runtime.persistence.backend` makes the backend boundary explicit even when `install.artifactImportStore` remains a legacy local-index value
-  - runtime/state Markdown projections are materialized on demand only
+  - minimal visible re-anchor anchors are protected, while detailed runtime/state Markdown projections are materialized on demand only
   - scaffold workflow bootstrap assets remain protected unless a future hidden workflow-bootstrap contract replaces them
-  - automatic writes are limited to `.aidn/` in the standard install/runtime path
+  - automatic standard writes are limited to `.aidn/` plus protected workflow bootstrap and minimal re-anchor anchors
   - shared runtime remains opt-in and does not imply wholesale relocation of `.aidn/*`
   - when `runtime.persistence.backend=postgres`, the normal runtime path is PostgreSQL-only and SQLite is inspected separately only for migration, compatibility or diagnostics
 
 Rules:
 
 - checkout-bound artifacts remain local/versioned even when DB-backed runtime is enabled
-- DB-backed runtime may become canonical for operational state; runtime/state Markdown projections are explicit exports in strict `db-only`
+- DB-backed runtime may become canonical for operational state; minimal re-anchor anchors remain visible/protected while detailed runtime/state Markdown projections are explicit exports in strict `db-only`
 - PostgreSQL runtime persistence must resolve rows through `runtime_scope_id`; path-based `scope_key` values are legacy aliases during migration
 - shared coordination stores only metadata explicitly listed in this matrix; they do not relocate `docs/audit/*`
 - local SQLite under `.aidn/runtime/index/` is never shared by default and is treated as fallback backend only when PostgreSQL is not configured
@@ -148,7 +149,7 @@ Rules:
 | `runtime persistence-backup` | configured runtime persistence backend for the selected scope | shared coordination metadata | `npm run perf:verify-runtime-persistence-parity` |
 | `runtime shared-coordination-backup` | explicit shared coordination metadata | local `workflow-index.sqlite`, `docs/audit/*`, `.codex/*` | `npm run perf:verify-shared-coordination-backup` |
 | `runtime shared-coordination-restore` | selected shared coordination backup payload | checkout-bound artifacts and local runtime projection | `npm run perf:verify-shared-coordination-restore` |
-| `runtime visible-artifacts-cleanup` | managed runtime/state materializations copied to external backup and moved to quarantine | protected workflow bootstrap assets or unknown files without explicit option | `npm run perf:verify-db-only-strict-context-bundle` |
+| `runtime visible-artifacts-cleanup` | managed runtime/state materializations copied to external backup and moved to quarantine | protected workflow bootstrap assets, minimal re-anchor anchors, active session/cycle paths, or unknown files without explicit option | `npm run perf:verify-db-only-strict-context-bundle` |
 | `runtime visible-artifacts-restore` | managed runtime/state materializations from external backup/quarantine | canonical runtime DB state or protected workflow bootstrap assets | `npm run perf:verify-db-only-strict-context-bundle` |
 | schema migration fixtures | schema compatibility and migration behavior | live PostgreSQL availability | `npm run perf:verify-db-schema-migrations` |
 
