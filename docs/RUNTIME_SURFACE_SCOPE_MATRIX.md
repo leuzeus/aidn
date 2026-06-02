@@ -32,7 +32,7 @@ Purpose:
 | PostgreSQL `aidn_runtime.runtime_scope_registry` | `worktree-local` with project context | explicit backend only | runtime project context | Maps `runtime_scope_id` to `project_id`, `workspace_id`, `worktree_id` and legacy absolute-path scope aliases. |
 | PostgreSQL `aidn_runtime` scoped runtime tables | `worktree-local` with project context | explicit backend only | runtime persistence backend | Rows use `runtime_scope_id` as the durable partition key; absolute `target_root` scope values are migration aliases only. |
 | `.aidn/runtime/index/*.json` | `worktree-local` | no | current target root | Local JSON/SQL/index exports remain target-root anchored. |
-| `.aidn/runtime/context/*` | `worktree-local` | no | current target root | Hydrated context bundle is a hidden cache regenerated from the active backend, never the source of truth. |
+| `.aidn/runtime/context/*` | `worktree-local` | no | current target root | Hydrated context bundle is a hidden cache regenerated from the active backend, never the source of truth. In PostgreSQL-canonical projects it must identify PostgreSQL as `source_backend` and expose any local SQLite path only as compatibility or migration metadata. |
 | `.aidn/runtime/perf/*` | `ephemeral` | no | current target root | KPI, reports, thresholds, and scratch perf outputs are local runtime artifacts. |
 | `.aidn/runtime/index/repair-layer*` | `ephemeral` | no | current target root | Repair-layer reports, triage outputs, and normalization summaries remain local and disposable. |
 | shared locator `backend.kind=sqlite-file` root | `shared-candidate` | explicit only | locator target | Only the explicitly configured shared SQLite projection is shared. |
@@ -133,6 +133,7 @@ Rules:
 - standard install/runtime paths do not auto-write outside `.aidn/`
 - SQLite is the hidden local backend only when PostgreSQL is not configured
 - when PostgreSQL is configured, SQLite is used only for explicit migration, compatibility or diagnostics
+- Codex artifact reads in PostgreSQL-canonical projects go through `aidn runtime artifact-fetch --backend postgres`; direct `.aidn/runtime/index/workflow-index.sqlite` inspection is only diagnostic or migration behavior
 - recommended checks: `npm run perf:verify-state-mode-parity`, `npm run perf:verify-db-only-readiness`, `npm run perf:verify-db-only-strict-context-bundle`
 
 ## Guardrails

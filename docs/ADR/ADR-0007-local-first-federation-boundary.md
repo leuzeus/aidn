@@ -46,7 +46,7 @@ Stable federation contract:
 - DB-backed PostgreSQL projects that explicitly disable the shared-runtime locator remain local-first, but shared coordination diagnostics must warn that shared PostgreSQL coordination is not active
 - `docs/audit/*`, `AGENTS.md`, `.codex/*`, `.aidn/config.json` and local runtime projections stay outside shared coordination
 - managed runtime/state visible artifacts are exports/materializations in strict `db-only`, not the source of truth; minimal re-anchor anchors are protected pointers to the runtime backend
-- hidden Codex context bundles under `.aidn/runtime/context/` are regenerable caches from the active backend
+- hidden Codex context bundles under `.aidn/runtime/context/` are regenerable caches from the active backend and must not expose a local SQLite path as the active source when PostgreSQL is canonical
 - strict `db-only` config declares disabled automatic visible materialization, mandatory external backup/quarantine, and `runtime-backend` as the hidden bundle source of truth
 - strict `db-only` config carries `runtime.dbOnly.artifactImport` metadata so legacy local-index import settings cannot be confused with the canonical backend
 - backup/quarantine of managed runtime/state visible artifacts must use an external backup root before cleanup

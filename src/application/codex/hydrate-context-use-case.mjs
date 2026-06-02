@@ -591,6 +591,41 @@ function writeJson(filePath, payload) {
   fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
 
+export function buildArtifactSourceDescriptor({
+  backend,
+  indexAbsolute,
+  payload,
+  connectionRef = "",
+} = {}) {
+  const normalizedBackend = String(backend ?? "").trim().toLowerCase() || null;
+  const projectContext = payload?.project_context && typeof payload.project_context === "object"
+    ? payload.project_context
+    : {};
+  const runtimeScopeId = projectContext?.runtime_scope_id ?? null;
+  const descriptor = {
+    backend: normalizedBackend,
+    canonical_backend: normalizedBackend,
+    source_role: normalizedBackend === "postgres" ? "canonical-runtime-backend" : "local-index",
+    canonical_ref: normalizedBackend === "postgres"
+      ? `postgres:${runtimeScopeId || "runtime-snapshot"}`
+      : (indexAbsolute ?? null),
+    runtime_scope_id: runtimeScopeId,
+    project_id: projectContext?.project_id ?? null,
+    workspace_id: projectContext?.workspace_id ?? null,
+    agent_read_guidance: normalizedBackend === "postgres"
+      ? "Use aidn runtime artifact-fetch --backend postgres for artifact reads; do not query .aidn/runtime/index/workflow-index.sqlite as canonical state unless running explicit migration or diagnostic."
+      : "Use the local index file for artifact reads.",
+  };
+  if (normalizedBackend === "postgres") {
+    descriptor.compat_local_index_file = indexAbsolute ?? null;
+    descriptor.connection_ref = connectionRef || null;
+  } else {
+    descriptor.file = indexAbsolute ?? null;
+    descriptor.local_index_file = indexAbsolute ?? null;
+  }
+  return descriptor;
+}
+
 function summarizeRepairLayer(payload, selection = null) {
   const migrationRuns = Array.isArray(payload?.migration_runs) ? payload.migration_runs : [];
   const migrationFindings = Array.isArray(payload?.migration_findings) ? payload.migration_findings : [];
@@ -741,13 +776,12 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
           connectionRef,
           configData: config.data,
         });
-      artifactSource = {
+      artifactSource = buildArtifactSourceDescriptor({
         backend,
-        file: index.absolute,
-        runtime_scope_id: index.payload?.project_context?.runtime_scope_id ?? null,
-        project_id: index.payload?.project_context?.project_id ?? null,
-        workspace_id: index.payload?.project_context?.workspace_id ?? null,
-      };
+        indexAbsolute: index.absolute,
+        payload: index.payload,
+        connectionRef,
+      });
       const selection = selectArtifacts(index.payload, args.maxArtifactBytes, {
         minRelationConfidence: args.minRelationConfidence,
         relationThresholds: args.relationThresholds,

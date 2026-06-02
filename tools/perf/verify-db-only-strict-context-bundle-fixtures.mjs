@@ -8,6 +8,7 @@ import {
   runArtifactImport,
   verifyArtifactImportOutputs,
 } from "../../src/application/install/artifact-import-service.mjs";
+import { buildArtifactSourceDescriptor } from "../../src/application/codex/hydrate-context-use-case.mjs";
 import { movePath } from "../../src/application/runtime/visible-artifacts-cleanup-service.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
@@ -260,6 +261,34 @@ function verifyHydrateBundle(tempRoot) {
   assert(fetched.artifact?.path === "CURRENT-STATE.md", "artifact-fetch should return the selected artifact path");
 }
 
+function verifyArtifactSourceDescriptor() {
+  const postgresDescriptor = buildArtifactSourceDescriptor({
+    backend: "postgres",
+    indexAbsolute: "G:/project/.aidn/runtime/index/workflow-index.sqlite",
+    connectionRef: "env:AIDN_PG_URL",
+    payload: {
+      project_context: {
+        runtime_scope_id: "runtime:project=example:workspace=main:profile=default",
+        project_id: "example",
+        workspace_id: "main",
+      },
+    },
+  });
+  assert(postgresDescriptor.backend === "postgres", "postgres descriptor should expose postgres backend");
+  assert(postgresDescriptor.canonical_backend === "postgres", "postgres descriptor should expose canonical backend");
+  assert(!Object.prototype.hasOwnProperty.call(postgresDescriptor, "file"), "postgres descriptor must not expose a sqlite file as artifact_source.file");
+  assert(String(postgresDescriptor.compat_local_index_file ?? "").endsWith("workflow-index.sqlite"), "postgres descriptor should keep sqlite path only as compatibility metadata");
+  assert(String(postgresDescriptor.agent_read_guidance ?? "").includes("--backend postgres"), "postgres descriptor should guide agents to postgres artifact-fetch");
+
+  const sqliteDescriptor = buildArtifactSourceDescriptor({
+    backend: "sqlite",
+    indexAbsolute: "G:/project/.aidn/runtime/index/workflow-index.sqlite",
+    payload: {},
+  });
+  assert(String(sqliteDescriptor.file ?? "").endsWith("workflow-index.sqlite"), "sqlite descriptor should keep file as active local index source");
+  assert(sqliteDescriptor.compat_local_index_file === undefined, "sqlite descriptor should not classify its active source as compatibility metadata");
+}
+
 function verifyCleanupRestore(tempRoot) {
   const target = path.join(tempRoot, "cleanup-target");
   fs.mkdirSync(path.join(target, "docs", "audit"), { recursive: true });
@@ -367,6 +396,7 @@ function main() {
     verifyStrictPostgresInstallSkipsHiddenSqlite(tempRoot);
     verifyStrictPostgresSkipsImplicitArtifactImport(tempRoot);
     verifyStrictInstall(tempRoot);
+    verifyArtifactSourceDescriptor();
     verifyHydrateBundle(tempRoot);
     verifyCleanupRestore(tempRoot);
     verifyCleanupMoveFallback(tempRoot);

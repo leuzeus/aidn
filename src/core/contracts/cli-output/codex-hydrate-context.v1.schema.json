@@ -33,6 +33,21 @@
     },
     "source_backend": { "type": ["string", "null"] },
     "source_revision": { "type": ["string", "null"] },
+    "artifact_source": {
+      "type": ["object", "null"],
+      "properties": {
+        "backend": { "type": ["string", "null"] },
+        "canonical_backend": { "type": ["string", "null"] },
+        "source_role": { "type": ["string", "null"] },
+        "canonical_ref": { "type": ["string", "null"] },
+        "file": { "type": ["string", "null"] },
+        "local_index_file": { "type": ["string", "null"] },
+        "compat_local_index_file": { "type": ["string", "null"] },
+        "connection_ref": { "type": ["string", "null"] },
+        "agent_read_guidance": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
     "runtime_scope_id": { "type": ["string", "null"] },
     "project_id": { "type": ["string", "null"] },
     "workspace_id": { "type": ["string", "null"] },

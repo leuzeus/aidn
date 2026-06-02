@@ -166,7 +166,7 @@ Notes:
 - Artifact import policy:
   - after install (non-verify mode), installer automatically imports `docs/audit/*` artifacts into `.aidn/runtime/index/*`,
   - import store precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE` mapping,
-  - `AIDN_STATE_MODE` mapping remains: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite`,
+  - `AIDN_STATE_MODE` fallback import mapping remains: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite` when no PostgreSQL runtime backend is configured,
   - default install profile is DB-backed: `runtime.stateMode=dual` and `install.artifactImportStore=dual-sqlite`,
   - in strict `db-only`, install creates or preserves the minimal re-anchor anchors (`CURRENT-STATE.md`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md`, snapshot and baseline pointers) but does not create or refresh detailed session/cycle projections, coordination summaries, agent health summaries, or other runtime/state exports unless `--materialize-visible-artifacts` or a dedicated projection command is supplied,
   - workflow bootstrap assets from the scaffold (`AGENTS.md`, `.codex` skills, `SPEC.md`, `WORKFLOW.md`, `WORKFLOW-KERNEL.md`, `WORKFLOW_SUMMARY.md`, `CODEX_ONLINE.md`) are protected workflow surfaces, not cleanup candidates,
@@ -183,6 +183,8 @@ Notes:
   - shared PostgreSQL coordination is still explicit opt-in; when a DB-backed PostgreSQL project has a locator that explicitly disables shared runtime, `shared-coordination-status`, `shared-coordination-doctor`, and `shared-runtime-reanchor` report an alignment warning instead of silently treating the setup as healthy shared coordination,
   - enable shared coordination intentionally with `aidn runtime shared-runtime-reanchor --target . --backend postgres --connection-ref env:AIDN_PG_URL --project-id <project> --workspace-id <workspace> --write --json`,
   - when PostgreSQL is configured, the normal path is PostgreSQL-only; local SQLite is a compatibility projection or migration source only when explicitly requested,
+  - for PostgreSQL-canonical projects, `aidn codex hydrate-context --json` reports `source_backend=postgres`; any `.aidn/runtime/index/workflow-index.sqlite` path in the bundle is compatibility metadata only and must not be queried as canonical state,
+  - agents should fetch omitted or truncated artifacts through `npx aidn runtime artifact-fetch --target . --backend postgres --path <artifact> --json`, not by invoking `sqlite3` directly,
   - if PostgreSQL is already canonical and ready, `aidn install` treats a stale local SQLite compatibility projection as non-blocking instead of forcing a migration conflict,
   - if PostgreSQL is not configured, SQLite remains the fallback local backend hidden under `.aidn/runtime/index/`,
   - `install.artifactImportStore` stays a compatibility/migration knob and does not override the configured runtime backend.
@@ -479,7 +481,7 @@ Recommended first reload path in client repos:
 - Runtime artifacts are written under `<target>/.aidn/runtime/*` (not in `<target>/tools`).
 - Optional runtime state mode:
   - `AIDN_STATE_MODE=files|dual|db-only`
-  - default mapping: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite`
+  - fallback import mapping: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite` only when PostgreSQL is not configured as the canonical runtime backend
   - default fresh install uses `dual` (DB-backed) when no override is provided
   - explicit CLI `--index-store` still has priority.
   - in `dual`/`db-only`, index payload content embedding is enabled by default so files can be reconstructed from DB.
