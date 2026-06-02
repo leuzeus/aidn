@@ -42,7 +42,8 @@ Criteres d'acceptation:
 - `db-only` est defini comme mode strict sans ecriture visible automatique;
 - PostgreSQL est canonique quand configure;
 - SQLite est limite au fallback local cache ou a la migration explicite;
-- les projections visibles sont decrites comme exports/materialisations.
+- les projections visibles runtime/state sont decrites comme exports/materialisations;
+- les assets scaffold workflow sont explicitement proteges contre le cleanup strict.
 
 Gates cibles:
 
@@ -62,7 +63,8 @@ Surfaces:
 
 Criteres d'acceptation:
 
-- en `db-only` strict, `aidn install` ne copie/rend pas automatiquement `docs/audit/*`, `.codex/*`, `AGENTS.md` ou `.gitignore`;
+- en `db-only` strict, `aidn install` ne copie/rend pas automatiquement les materialisations runtime/state (`CURRENT-STATE.md`, `RUNTIME-STATE.md`, sessions/cycles, handoff, coordination);
+- les assets de bootstrap workflow (`AGENTS.md`, `.codex`, `SPEC.md`, `WORKFLOW.md`, `WORKFLOW-KERNEL.md`, `WORKFLOW_SUMMARY.md`, `CODEX_ONLINE.md`) sont proteges et ne sont pas des candidats de cleanup;
 - `--materialize-visible-artifacts` active explicitement l'ancien comportement visible;
 - `--json` ou `--verify` seuls ne mutent jamais le checkout.
 
@@ -107,7 +109,8 @@ Criteres d'acceptation:
 
 - le dry-run liste backup, quarantaine, candidats, proteges, inconnus et deja conformes;
 - `--write` cree d'abord le backup externe;
-- les artefacts visibles geres sont deplaces en quarantaine externe;
+- les materialisations runtime/state visibles gerees sont deplacees en quarantaine externe;
+- les assets scaffold workflow sont listes comme proteges et restent en place;
 - aucune suppression directe n'est faite;
 - la destination par defaut est `<parent-du-projet>/.aidn-backups/<project_id>/<timestamp>/`.
 

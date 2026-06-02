@@ -535,18 +535,6 @@ export async function runInstallUseCase({
       }
     }
 
-    if (dbOnlyStrict && resolvedImportDefaults.store === "sqlite") {
-      const sqliteFile = path.resolve(targetRoot, ".aidn", "runtime", "index", "workflow-index.sqlite");
-      if (args.dryRun) {
-        console.log(`[dry-run] prepare hidden sqlite runtime store: ${path.relative(targetRoot, sqliteFile)}`);
-      } else {
-        fs.mkdirSync(path.dirname(sqliteFile), { recursive: true });
-        migrateWorkflowDbFile({ sqliteFile });
-        console.log(`prepare hidden sqlite runtime store: ${path.relative(targetRoot, sqliteFile)}`);
-      }
-      summary.hiddenRuntimeStorePrepared += 1;
-    }
-
     const nextAidnConfigData = buildNextAidnProjectConfig(
       currentAidnConfigData,
       resolvedImportDefaults,
@@ -556,6 +544,21 @@ export async function runInstallUseCase({
       },
     );
     const runtimePersistenceConfig = nextAidnConfigData.runtime?.persistence ?? {};
+    const canonicalRuntimeBackend = String(runtimePersistenceConfig.backend ?? "").trim().toLowerCase();
+
+    if (dbOnlyStrict && resolvedImportDefaults.store === "sqlite" && canonicalRuntimeBackend !== "postgres") {
+      const sqliteFile = path.resolve(targetRoot, ".aidn", "runtime", "index", "workflow-index.sqlite");
+      if (args.dryRun) {
+        console.log(`[dry-run] prepare hidden sqlite runtime store: ${path.relative(targetRoot, sqliteFile)}`);
+      } else {
+        fs.mkdirSync(path.dirname(sqliteFile), { recursive: true });
+        migrateWorkflowDbFile({ sqliteFile });
+        console.log(`prepare hidden sqlite runtime store: ${path.relative(targetRoot, sqliteFile)}`);
+      }
+      summary.hiddenRuntimeStorePrepared += 1;
+    } else if (dbOnlyStrict && resolvedImportDefaults.store === "sqlite" && canonicalRuntimeBackend === "postgres") {
+      console.log("skip hidden sqlite runtime store in db-only strict: runtime.persistence.backend=postgres");
+    }
     let runtimeBackendAdoptionResult = null;
     if (String(runtimePersistenceConfig.backend ?? "").trim().toLowerCase() === "postgres") {
       const resolvedRuntimeBackendAdoptionOptions = {

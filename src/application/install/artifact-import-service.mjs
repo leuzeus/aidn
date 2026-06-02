@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import {
   defaultIndexStoreFromStateMode,
   normalizeIndexStoreMode,
+  normalizeRuntimePersistenceBackend,
   normalizeStateMode,
   resolveConfigIndexStore,
   resolveConfigStateMode,
@@ -71,8 +72,26 @@ export function resolveArtifactImportDefaults(args, configData = {}) {
   };
 }
 
+function isStrictCanonicalPostgres(configData = {}) {
+  return normalizeStateMode(configData?.runtime?.stateMode) === "db-only"
+    && configData?.runtime?.dbOnly?.strict === true
+    && normalizeRuntimePersistenceBackend(configData?.runtime?.persistence?.backend) === "postgres";
+}
+
+function isExplicitArtifactImport(defaults) {
+  return defaults?.source === "cli" || defaults?.source === "env-index-store";
+}
+
 export function runArtifactImport(repoRoot, targetRoot, dryRun, args, configData = {}) {
   const defaults = resolveArtifactImportDefaults(args, configData);
+  if (isStrictCanonicalPostgres(configData) && !isExplicitArtifactImport(defaults)) {
+    return {
+      attempted: false,
+      skipped: true,
+      reason: "canonical postgres db-only strict; artifact import store is compatibility/migration metadata",
+      defaults,
+    };
+  }
   const auditRoot = path.resolve(targetRoot, "docs", "audit");
   if (!fs.existsSync(auditRoot)) {
     return {
@@ -190,12 +209,13 @@ function expectedArtifactImportFilesForStore(store) {
 }
 
 export function verifyArtifactImportOutputs(targetRoot, args, configData = {}) {
+  const defaults = resolveArtifactImportDefaults(args, configData);
   if (args.dryRun) {
     return {
       checked: false,
       skipped: true,
       reason: "dry-run",
-      defaults: resolveArtifactImportDefaults(args, configData),
+      defaults,
       expected_files: [],
       missing_files: [],
     };
@@ -205,7 +225,17 @@ export function verifyArtifactImportOutputs(targetRoot, args, configData = {}) {
       checked: false,
       skipped: true,
       reason: "explicit --skip-artifact-import",
-      defaults: resolveArtifactImportDefaults(args, configData),
+      defaults,
+      expected_files: [],
+      missing_files: [],
+    };
+  }
+  if (isStrictCanonicalPostgres(configData) && !isExplicitArtifactImport(defaults)) {
+    return {
+      checked: false,
+      skipped: true,
+      reason: "canonical postgres db-only strict; artifact import store is compatibility/migration metadata",
+      defaults,
       expected_files: [],
       missing_files: [],
     };
@@ -216,12 +246,11 @@ export function verifyArtifactImportOutputs(targetRoot, args, configData = {}) {
       checked: false,
       skipped: true,
       reason: "docs/audit not found",
-      defaults: resolveArtifactImportDefaults(args, configData),
+      defaults,
       expected_files: [],
       missing_files: [],
     };
   }
-  const defaults = resolveArtifactImportDefaults(args, configData);
   const expected = expectedArtifactImportFilesForStore(defaults.store);
   const missing = expected.filter((relativePath) => !fs.existsSync(path.resolve(targetRoot, relativePath)));
   return {

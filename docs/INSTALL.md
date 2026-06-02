@@ -168,7 +168,8 @@ Notes:
   - import store precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE` mapping,
   - `AIDN_STATE_MODE` mapping remains: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite`,
   - default install profile is DB-backed: `runtime.stateMode=dual` and `install.artifactImportStore=dual-sqlite`,
-  - in strict `db-only`, install does not create or refresh managed visible exports (`docs/audit/*`, `.codex/*`, `AGENTS.md`) unless `--materialize-visible-artifacts` is supplied,
+  - in strict `db-only`, install does not create or refresh runtime/state materializations automatically (`CURRENT-STATE.md`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md`, session/cycle projections, coordination summaries) unless `--materialize-visible-artifacts` or a dedicated projection command is supplied,
+  - workflow bootstrap assets from the scaffold (`AGENTS.md`, `.codex` skills, `SPEC.md`, `WORKFLOW.md`, `WORKFLOW-KERNEL.md`, `WORKFLOW_SUMMARY.md`, `CODEX_ONLINE.md`) are protected workflow surfaces, not cleanup candidates,
   - strict `db-only` configuration is explicit in `.aidn/config.json` through `runtime.dbOnly.strict=true`, `runtime.dbOnly.visibleArtifacts.automaticMaterialization=false`, `runtime.dbOnly.cleanup.backupRequired=true`, `runtime.dbOnly.codexBundle.sourceOfTruth=runtime-backend`, and `runtime.dbOnly.artifactImport.canonicalBackendField=runtime.persistence.backend`,
   - strict `db-only` verification validates the hidden `.aidn/` surfaces and does not require visible Markdown projections,
   - disable automatic import with `--skip-artifact-import`,
@@ -187,7 +188,8 @@ Notes:
   - `install.artifactImportStore` stays a compatibility/migration knob and does not override the configured runtime backend.
 - Visible artifact cleanup policy:
   - before reinstalling or migrating a visible-artifact repository into strict `db-only`, preview external backup and quarantine with `aidn runtime visible-artifacts-cleanup --target . --json`,
-  - apply only with `--write`, which creates an external backup before moving managed visible roots to quarantine,
+  - apply only with `--write`, which creates an external backup before moving managed runtime/state materializations to quarantine,
+  - cleanup must not quarantine scaffold workflow assets such as `AGENTS.md`, `.codex` skills, `SPEC.md`, `WORKFLOW.md`, `WORKFLOW-KERNEL.md`, `WORKFLOW_SUMMARY.md`, or `CODEX_ONLINE.md`,
   - default backup root is `<parent-du-projet>/.aidn-backups/<project_id>/<timestamp>/`,
   - restore can be previewed with `aidn runtime visible-artifacts-restore --target . --from <backup-root> --json` and applied with `--write`.
 
@@ -201,7 +203,27 @@ Expected strict `db-only` config marker:
       "strict": true,
       "visibleArtifacts": {
         "automaticMaterialization": false,
-        "materializeFlag": "--materialize-visible-artifacts"
+        "materializeFlag": "--materialize-visible-artifacts",
+        "managedRoots": [],
+        "managedRuntimePaths": [
+          "docs/audit/CURRENT-STATE.md",
+          "docs/audit/RUNTIME-STATE.md",
+          "docs/audit/HANDOFF-PACKET.md",
+          "docs/audit/COORDINATION-SUMMARY.md",
+          "docs/audit/COORDINATION-LOG.md",
+          "docs/audit/cycles/C*",
+          "docs/audit/sessions/S*.md"
+        ],
+        "protectedWorkflowPaths": [
+          "AGENTS.md",
+          ".codex",
+          "docs/audit/SPEC.md",
+          "docs/audit/WORKFLOW.md",
+          "docs/audit/WORKFLOW-KERNEL.md",
+          "docs/audit/WORKFLOW_SUMMARY.md",
+          "docs/audit/CODEX_ONLINE.md",
+          "docs/audit/fragments"
+        ]
       },
       "cleanup": {
         "backupRequired": true,

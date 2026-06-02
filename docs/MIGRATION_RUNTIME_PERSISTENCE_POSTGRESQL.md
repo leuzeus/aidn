@@ -35,12 +35,13 @@ Strict `db-only` note:
 
 - `db-only` is a state mode, not a backend
 - `.aidn/config.json` must make strictness explicit through `runtime.dbOnly.strict=true`
-- `runtime.dbOnly.visibleArtifacts.automaticMaterialization=false` means visible managed artifacts are exports, not implicit install outputs
+- `runtime.dbOnly.visibleArtifacts.automaticMaterialization=false` means runtime/state Markdown materializations are exports, not implicit install outputs
+- scaffold workflow assets such as `AGENTS.md`, `.codex` skills, `SPEC.md`, `WORKFLOW.md`, `WORKFLOW-KERNEL.md`, `WORKFLOW_SUMMARY.md`, and `CODEX_ONLINE.md` are protected workflow bootstrap surfaces, not cleanup candidates
 - `runtime.dbOnly.cleanup.backupRequired=true` and `runtime.dbOnly.cleanup.quarantine=external` are required before moving managed visible artifacts
 - `runtime.dbOnly.codexBundle.sourceOfTruth=runtime-backend` keeps the hidden Codex bundle as a regenerable cache, not canonical state
 - `runtime.dbOnly.artifactImport.canonicalBackendField=runtime.persistence.backend` prevents the legacy `install.artifactImportStore` value from being read as the canonical backend
-- strict `db-only` does not write visible managed artifacts during install or verify
-- visible Markdown or `.codex/*` surfaces are materialized only by explicit projection/export commands
+- strict `db-only` does not write runtime/state visible materializations during install or verify
+- visible runtime Markdown surfaces are materialized only by explicit projection/export commands
 - before cleanup or migration of existing visible artifacts, use `aidn runtime visible-artifacts-cleanup --target . --json` and apply only after reviewing the external backup/quarantine plan
 
 ## Local Operations Runbook

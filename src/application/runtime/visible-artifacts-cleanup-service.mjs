@@ -3,14 +3,65 @@ import path from "node:path";
 import { readSharedRuntimeLocatorSafe } from "../../lib/config/shared-runtime-locator-config-lib.mjs";
 import { removePathWithRetry } from "../../lib/fs/remove-path-with-retry.mjs";
 
-const MANAGED_VISIBLE_ROOTS = [
-  "docs/audit",
-  ".codex",
+const MANAGED_VISIBLE_PATHS = [
+  "docs/audit/AGENT-HEALTH-SUMMARY.md",
+  "docs/audit/AGENT-SELECTION-SUMMARY.md",
+  "docs/audit/ARTIFACT_MANIFEST.md",
+  "docs/audit/COORDINATION-LOG.md",
+  "docs/audit/COORDINATION-SUMMARY.md",
+  "docs/audit/CURRENT-STATE.md",
+  "docs/audit/HANDOFF-PACKET.md",
+  "docs/audit/INTEGRATION-RISK.md",
+  "docs/audit/MULTI-AGENT-STATUS.md",
+  "docs/audit/RUNTIME-STATE.md",
+  "docs/audit/USER-ARBITRATION.md",
+  "docs/audit/backlog/legacy-derived.md",
+  "docs/audit/baseline/current.md",
+  "docs/audit/baseline/history.md",
+  "docs/audit/parking-lot.md",
+  "docs/audit/snapshots/context-snapshot.md",
+];
+
+const MANAGED_VISIBLE_CHILD_PATTERNS = [
+  { root: "docs/audit/baseline", pattern: /^v\d+/i },
+  { root: "docs/audit/cycles", pattern: /^C\d+/i },
+  { root: "docs/audit/migration", pattern: /.+/ },
+  { root: "docs/audit/reports", pattern: /.+/ },
+  { root: "docs/audit/sessions", pattern: /^S\d+.*\.md$/i },
 ];
 
 const PROTECTED_VISIBLE_FILES = [
   "AGENTS.md",
   ".gitignore",
+  ".codex",
+  "docs/audit/AGENT-ADAPTERS.md",
+  "docs/audit/AGENT-ROSTER.md",
+  "docs/audit/CODEX_ONLINE.md",
+  "docs/audit/CONTINUITY_GATE.md",
+  "docs/audit/CRASH-RECOVERY-RUNBOOK.md",
+  "docs/audit/REANCHOR_PROMPT.md",
+  "docs/audit/RULE_STATE_BOUNDARY.md",
+  "docs/audit/SPEC.md",
+  "docs/audit/WORKFLOW-KERNEL.md",
+  "docs/audit/WORKFLOW.md",
+  "docs/audit/WORKFLOW_SUMMARY.md",
+  "docs/audit/backlog/TEMPLATE_SESSION_BACKLOG.md",
+  "docs/audit/cycles/TEMPLATE_CYCLE.md",
+  "docs/audit/cycles/TEMPLATE_STATUS.md",
+  "docs/audit/cycles/TEMPLATE_audit-spec.md",
+  "docs/audit/cycles/TEMPLATE_brief.md",
+  "docs/audit/cycles/TEMPLATE_change-requests.md",
+  "docs/audit/cycles/TEMPLATE_decisions.md",
+  "docs/audit/cycles/TEMPLATE_gap-report.md",
+  "docs/audit/cycles/TEMPLATE_hypotheses.md",
+  "docs/audit/cycles/TEMPLATE_plan.md",
+  "docs/audit/cycles/TEMPLATE_traceability.md",
+  "docs/audit/cycles/cycle-status.md",
+  "docs/audit/fragments",
+  "docs/audit/glossary.md",
+  "docs/audit/incidents/TEMPLATE_INC_TMP.md",
+  "docs/audit/index.md",
+  "docs/audit/sessions/TEMPLATE_SESSION_SXXX.md",
 ];
 
 function normalizeRelative(value) {
@@ -95,27 +146,70 @@ export function movePath(sourcePath, destinationPath, options = {}) {
   }
 }
 
-function classifyVisibleArtifacts(targetRoot) {
+function pushCandidate(candidates, candidateFiles, targetRoot, relative) {
+  const absolute = path.resolve(targetRoot, relative);
+  if (!fs.existsSync(absolute)) {
+    return;
+  }
+  candidates.push({
+    relative: normalizeRelative(relative),
+    absolute,
+    file_count: listFilesRecursive(absolute, relative).length,
+  });
+  candidateFiles.push(...listFilesRecursive(absolute, relative));
+}
+
+function collectManagedVisibleCandidates(targetRoot) {
   const candidates = [];
   const candidateFiles = [];
-  for (const relative of MANAGED_VISIBLE_ROOTS) {
+  const seen = new Set();
+
+  function add(relative) {
+    const normalized = normalizeRelative(relative);
+    const key = normalized.toLowerCase();
+    if (!normalized || seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    pushCandidate(candidates, candidateFiles, targetRoot, normalized);
+  }
+
+  for (const relative of MANAGED_VISIBLE_PATHS) {
+    add(relative);
+  }
+  for (const item of MANAGED_VISIBLE_CHILD_PATTERNS) {
+    const absoluteRoot = path.resolve(targetRoot, item.root);
+    if (!fs.existsSync(absoluteRoot) || !fs.statSync(absoluteRoot).isDirectory()) {
+      continue;
+    }
+    const entries = fs.readdirSync(absoluteRoot, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!item.pattern.test(entry.name)) {
+        continue;
+      }
+      add(path.join(item.root, entry.name));
+    }
+  }
+
+  candidates.sort((left, right) => left.relative.localeCompare(right.relative));
+  return {
+    candidates,
+    candidateFiles,
+  };
+}
+
+function classifyVisibleArtifacts(targetRoot) {
+  const {
+    candidates,
+    candidateFiles,
+  } = collectManagedVisibleCandidates(targetRoot);
+  const protectedFiles = [];
+  for (const relative of PROTECTED_VISIBLE_FILES) {
     const absolute = path.resolve(targetRoot, relative);
     if (!fs.existsSync(absolute)) {
       continue;
     }
-    candidates.push({
-      relative,
-      absolute,
-      file_count: listFilesRecursive(absolute, relative).length,
-    });
-    candidateFiles.push(...listFilesRecursive(absolute, relative));
-  }
-  const protectedFiles = [];
-  for (const relative of PROTECTED_VISIBLE_FILES) {
-    const absolute = path.resolve(targetRoot, relative);
-    if (fs.existsSync(absolute)) {
-      protectedFiles.push(relative);
-    }
+    protectedFiles.push(relative);
   }
   return {
     candidates,
@@ -216,11 +310,10 @@ export function planVisibleArtifactsRestore({
   const originalRoot = path.resolve(backupRoot, "original");
   const sourceRoot = fs.existsSync(quarantineRoot) ? quarantineRoot : originalRoot;
   const restoreItems = [];
-  for (const relative of MANAGED_VISIBLE_ROOTS) {
+  const { candidates } = collectManagedVisibleCandidates(sourceRoot);
+  for (const candidate of candidates) {
+    const relative = candidate.relative;
     const sourcePath = path.resolve(sourceRoot, relative);
-    if (!fs.existsSync(sourcePath)) {
-      continue;
-    }
     restoreItems.push({
       relative,
       source: sourcePath,

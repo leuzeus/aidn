@@ -4,6 +4,10 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { buildNextAidnProjectConfig } from "../../src/application/install/project-config-service.mjs";
+import {
+  runArtifactImport,
+  verifyArtifactImportOutputs,
+} from "../../src/application/install/artifact-import-service.mjs";
 import { movePath } from "../../src/application/runtime/visible-artifacts-cleanup-service.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
@@ -58,6 +62,9 @@ function verifyStrictInstall(tempRoot) {
   assert(config.runtime?.stateMode === "db-only", "strict install config should declare runtime.stateMode=db-only");
   assert(config.runtime?.dbOnly?.strict === true, "strict install config should declare runtime.dbOnly.strict=true");
   assert(config.runtime?.dbOnly?.visibleArtifacts?.automaticMaterialization === false, "strict install config should disable automatic visible materialization");
+  assert(Array.isArray(config.runtime?.dbOnly?.visibleArtifacts?.managedRuntimePaths), "strict install config should list managed runtime materializations");
+  assert(config.runtime.dbOnly.visibleArtifacts.managedRuntimePaths.includes("docs/audit/CURRENT-STATE.md"), "strict install config should classify CURRENT-STATE as runtime materialization");
+  assert(config.runtime.dbOnly.visibleArtifacts.protectedWorkflowPaths.includes(".codex"), "strict install config should protect local Codex skills");
   assert(config.runtime?.dbOnly?.cleanup?.backupRequired === true, "strict install config should require external backup before cleanup");
   assert(config.runtime?.dbOnly?.cleanup?.quarantine === "external", "strict install config should declare external quarantine");
   assert(config.runtime?.dbOnly?.codexBundle?.sourceOfTruth === "runtime-backend", "strict install config should make runtime backend the bundle source of truth");
@@ -108,6 +115,68 @@ function verifyStrictPostgresConfigBuilder() {
   assert(config.runtime?.dbOnly?.artifactImport?.canonicalBackend === "postgres", "strict postgres config should mark postgres as canonical backend");
   assert(config.runtime?.dbOnly?.artifactImport?.legacyStoreField === "install.artifactImportStore", "strict postgres config should identify the legacy import store field");
   assert(config.runtime?.dbOnly?.artifactImport?.canonicalBackendWins === true, "strict postgres config should make runtime.persistence.backend win");
+}
+
+function verifyStrictPostgresInstallSkipsHiddenSqlite(tempRoot) {
+  const target = path.join(tempRoot, "strict-postgres-install");
+  fs.mkdirSync(path.join(target, ".aidn"), { recursive: true });
+  fs.writeFileSync(path.join(target, ".aidn", "config.json"), JSON.stringify({
+    version: 1,
+    install: {
+      artifactImportStore: "sqlite",
+    },
+    runtime: {
+      stateMode: "db-only",
+      persistence: {
+        backend: "postgres",
+        connectionRef: "env:AIDN_PG_URL",
+        localProjectionPolicy: "none",
+      },
+    },
+  }, null, 2), "utf8");
+  const out = runText("tools/install.mjs", [
+    "--target",
+    target,
+    "--pack",
+    "core",
+    "--dry-run",
+    "--skip-artifact-import",
+    "--no-codex-migrate-custom",
+    "--init-defaults",
+    "--project-name",
+    "strict-postgres-install",
+  ]);
+  assert(out.includes("skip hidden sqlite runtime store in db-only strict: runtime.persistence.backend=postgres"), "strict postgres install should skip hidden sqlite preparation");
+  assert(out.includes("hidden_runtime_store_prepared: 0"), "strict postgres install should not prepare hidden sqlite");
+  assert(!out.includes("prepare hidden sqlite runtime store:"), "strict postgres install should not log sqlite preparation");
+  assertNotExists(path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite"), "strict postgres dry-run should not create hidden sqlite");
+}
+
+function verifyStrictPostgresSkipsImplicitArtifactImport(tempRoot) {
+  const repoRoot = process.cwd();
+  const target = path.join(tempRoot, "strict-postgres-import-skip");
+  fs.mkdirSync(path.join(target, "docs", "audit"), { recursive: true });
+  fs.writeFileSync(path.join(target, "docs", "audit", "SPEC.md"), "# Spec\n", "utf8");
+  const configData = {
+    install: {
+      artifactImportStore: "sqlite",
+    },
+    runtime: {
+      stateMode: "db-only",
+      persistence: {
+        backend: "postgres",
+      },
+      dbOnly: {
+        strict: true,
+      },
+    },
+  };
+  const imported = runArtifactImport(repoRoot, target, false, {}, configData);
+  assert(imported.skipped === true, "strict postgres implicit artifact import should skip");
+  assert(String(imported.reason).includes("canonical postgres db-only strict"), "strict postgres import skip should explain canonical backend");
+  const verified = verifyArtifactImportOutputs(target, {}, configData);
+  assert(verified.checked === false, "strict postgres artifact import verify should not require sqlite");
+  assert(String(verified.reason).includes("compatibility/migration"), "strict postgres artifact verify skip should explain compatibility role");
 }
 
 function verifyHydrateBundle(tempRoot) {
@@ -184,6 +253,7 @@ function verifyCleanupRestore(tempRoot) {
   fs.mkdirSync(path.join(target, "docs", "audit"), { recursive: true });
   fs.mkdirSync(path.join(target, ".codex"), { recursive: true });
   fs.writeFileSync(path.join(target, "docs", "audit", "CURRENT-STATE.md"), "# State\n", "utf8");
+  fs.writeFileSync(path.join(target, "docs", "audit", "SPEC.md"), "# Spec\n", "utf8");
   fs.writeFileSync(path.join(target, ".codex", "skills.yaml"), "skills: []\n", "utf8");
   fs.writeFileSync(path.join(target, "AGENTS.md"), "# Protected\n", "utf8");
 
@@ -193,8 +263,11 @@ function verifyCleanupRestore(tempRoot) {
     "--json",
   ]);
   assert(preview.write_requested === false, "cleanup default should be preview");
-  assert(preview.candidates.length === 2, "cleanup preview should list managed visible roots");
+  assert(preview.candidates.length === 1, "cleanup preview should list only managed runtime materializations");
+  assert(preview.candidates[0]?.relative === "docs/audit/CURRENT-STATE.md", "cleanup preview should target CURRENT-STATE");
   assert(preview.protected_files.includes("AGENTS.md"), "cleanup preview should mark AGENTS.md protected");
+  assert(preview.protected_files.includes(".codex"), "cleanup preview should mark .codex skills protected");
+  assert(preview.protected_files.includes("docs/audit/SPEC.md"), "cleanup preview should mark SPEC protected");
   assert(preview.backup_outside_project === true, "cleanup backup should default outside project");
   assert(fs.existsSync(path.join(target, "docs", "audit", "CURRENT-STATE.md")), "cleanup preview should not mutate docs/audit");
 
@@ -206,10 +279,11 @@ function verifyCleanupRestore(tempRoot) {
   ]);
   assert(applied.status === "applied", "cleanup write should apply");
   assert(applied.backup_created === true, "cleanup write should create backup");
-  assert(!fs.existsSync(path.join(target, "docs", "audit")), "cleanup write should quarantine docs/audit");
-  assert(!fs.existsSync(path.join(target, ".codex")), "cleanup write should quarantine .codex");
+  assert(!fs.existsSync(path.join(target, "docs", "audit", "CURRENT-STATE.md")), "cleanup write should quarantine runtime state materialization");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "SPEC.md")), "cleanup write should keep workflow SPEC");
+  assert(fs.existsSync(path.join(target, ".codex")), "cleanup write should keep .codex skills");
   assert(fs.existsSync(path.join(target, "AGENTS.md")), "cleanup write should keep AGENTS.md");
-  assert(fs.existsSync(path.join(applied.quarantine_root, "docs", "audit", "CURRENT-STATE.md")), "cleanup should move docs/audit to quarantine");
+  assert(fs.existsSync(path.join(applied.quarantine_root, "docs", "audit", "CURRENT-STATE.md")), "cleanup should move runtime materialization to quarantine");
 
   const restorePreview = runJson("tools/runtime/visible-artifacts-restore.mjs", [
     "--target",
@@ -219,7 +293,7 @@ function verifyCleanupRestore(tempRoot) {
     "--json",
   ]);
   assert(restorePreview.write_requested === false, "restore default should be preview");
-  assert(restorePreview.restore_items.length === 2, "restore preview should list quarantined roots");
+  assert(restorePreview.restore_items.length === 1, "restore preview should list quarantined runtime materializations");
 
   const restored = runJson("tools/runtime/visible-artifacts-restore.mjs", [
     "--target",
@@ -230,8 +304,8 @@ function verifyCleanupRestore(tempRoot) {
     "--json",
   ]);
   assert(restored.status === "applied", "restore write should apply");
-  assert(fs.existsSync(path.join(target, "docs", "audit", "CURRENT-STATE.md")), "restore should restore docs/audit content");
-  assert(fs.existsSync(path.join(target, ".codex", "skills.yaml")), "restore should restore .codex content");
+  assert(fs.existsSync(path.join(target, "docs", "audit", "CURRENT-STATE.md")), "restore should restore runtime materialization content");
+  assert(fs.existsSync(path.join(target, ".codex", "skills.yaml")), "restore should have left protected .codex content in place");
 }
 
 function verifyCleanupMoveFallback(tempRoot) {
@@ -255,6 +329,8 @@ function main() {
   try {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-db-only-strict-"));
     verifyStrictPostgresConfigBuilder();
+    verifyStrictPostgresInstallSkipsHiddenSqlite(tempRoot);
+    verifyStrictPostgresSkipsImplicitArtifactImport(tempRoot);
     verifyStrictInstall(tempRoot);
     verifyHydrateBundle(tempRoot);
     verifyCleanupRestore(tempRoot);

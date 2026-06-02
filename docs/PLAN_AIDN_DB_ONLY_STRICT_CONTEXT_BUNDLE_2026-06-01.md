@@ -4,7 +4,9 @@ Date: 2026-06-01
 
 ## Objectif
 
-Faire de `db-only` un mode strict: AIDN ne doit plus produire automatiquement d'artefacts visibles dans le projet. Les seules ecritures automatiques autorisees en chemin normal sont sous `.aidn/`. Les artefacts visibles comme `docs/audit/*`, `.codex/*` ou des projections Markdown restent possibles, mais uniquement comme exports ou materialisations explicites.
+Faire de `db-only` un mode strict pour l'etat runtime: AIDN ne doit plus produire automatiquement de materialisations runtime visibles dans le projet. Les artefacts visibles de session, cycle, coordination ou digest restent possibles, mais uniquement comme exports ou materialisations explicites.
+
+Le socle workflow issu du scaffold n'est pas une materialisation runtime. `AGENTS.md`, les skills `.codex`, `SPEC.md`, `WORKFLOW.md`, `WORKFLOW-KERNEL.md`, `WORKFLOW_SUMMARY.md` et `CODEX_ONLINE.md` restent des surfaces de bootstrap protegees tant qu'un contrat de bootstrap cache sous `.aidn/` n'est pas implemente.
 
 Le backend canonique reste separe du mode d'etat:
 
@@ -16,14 +18,18 @@ Le backend canonique reste separe du mode d'etat:
 
 ### `db-only` strict
 
-En `db-only`, les commandes standard ne doivent pas creer ni rafraichir automatiquement:
+En `db-only`, les commandes standard ne doivent pas creer ni rafraichir automatiquement les materialisations runtime/state:
 
-- `docs/audit/*`;
-- `.codex/*`;
-- projections Markdown visibles;
-- `AGENTS.md`, sauf intention explicite et controlee.
+- `docs/audit/CURRENT-STATE.md`;
+- `docs/audit/RUNTIME-STATE.md`;
+- `docs/audit/HANDOFF-PACKET.md`;
+- `docs/audit/cycles/C*`;
+- `docs/audit/sessions/S*.md`;
+- projections Markdown runtime visibles.
 
 Les surfaces visibles deviennent des materialisations explicites. Une commande ou option dediee doit porter l'intention, par exemple `--materialize-visible-artifacts` ou une commande runtime de projection.
+
+Le cleanup strict ne doit pas quarantiner les assets scaffold qui permettent encore a Codex de comprendre et executer le workflow.
 
 ### Backend canonique
 
@@ -77,7 +83,7 @@ Si le bundle est absent, stale ou incoherent, il est regenere depuis la BDD. Il 
 
 ## Migration et reinstallation
 
-Avant toute migration ou reinstallation vers `db-only`, AIDN doit produire un backup externe complet des artefacts visibles geres, puis placer ces artefacts en quarantaine externe apres verification du backup.
+Avant toute migration ou reinstallation vers `db-only`, AIDN doit produire un backup externe complet des materialisations runtime/state visibles gerees, puis placer ces artefacts en quarantaine externe apres verification du backup.
 
 Emplacement par defaut:
 
@@ -107,6 +113,7 @@ Les fichiers proteges ou inconnus ne sont pas deplaces sans intention explicite.
 - ne copie pas automatiquement les artefacts visibles du pack core;
 - ne rend pas les docs generees visibles;
 - preserve `AGENTS.md` par defaut;
+- preserve les assets scaffold workflow et ne les traite pas comme des candidats de cleanup;
 - conserve la verification du backend, du project context et des surfaces cachees.
 
 Les artefacts visibles ne sont ecrits qu'avec une option explicite de materialisation.

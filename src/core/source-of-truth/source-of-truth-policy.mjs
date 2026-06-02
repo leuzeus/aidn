@@ -54,7 +54,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     label: "Workflow rules",
     files: "docs/audit/SPEC.md projected from package docs/SPEC.md",
     dual: "docs/audit/SPEC.md projected from package docs/SPEC.md",
-    dbOnly: "package/scaffold rules plus hidden runtime config; visible SPEC.md is materialized on demand",
+    dbOnly: "protected workflow bootstrap rules plus hidden runtime config; visible runtime state is materialized on demand",
     projection: "WORKFLOW_SUMMARY.md and WORKFLOW-KERNEL.md are generated summaries",
     notes: "Rules remain checkout-bound in every mode.",
   }),
