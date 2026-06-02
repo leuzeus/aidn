@@ -596,12 +596,14 @@ export function buildArtifactSourceDescriptor({
   indexAbsolute,
   payload,
   connectionRef = "",
+  includeCompatLocalIndex = false,
 } = {}) {
   const normalizedBackend = String(backend ?? "").trim().toLowerCase() || null;
   const projectContext = payload?.project_context && typeof payload.project_context === "object"
     ? payload.project_context
     : {};
   const runtimeScopeId = projectContext?.runtime_scope_id ?? null;
+  const effectiveReadBackend = normalizedBackend === "postgres" ? "postgres" : (normalizedBackend || "auto");
   const descriptor = {
     backend: normalizedBackend,
     canonical_backend: normalizedBackend,
@@ -612,13 +614,20 @@ export function buildArtifactSourceDescriptor({
     runtime_scope_id: runtimeScopeId,
     project_id: projectContext?.project_id ?? null,
     workspace_id: projectContext?.workspace_id ?? null,
-    agent_read_guidance: normalizedBackend === "postgres"
-      ? "Use aidn runtime artifact-fetch --backend postgres for artifact reads; do not query .aidn/runtime/index/workflow-index.sqlite as canonical state unless running explicit migration or diagnostic."
-      : "Use the local index file for artifact reads.",
+    artifact_read_contract: {
+      authority: "aidn",
+      selection: "backend-resolved-by-aidn",
+      backend: effectiveReadBackend,
+      command: `npx aidn runtime artifact-fetch --target . --backend ${effectiveReadBackend} --path <artifact> --json`,
+      direct_store_access: normalizedBackend === "postgres" ? "forbidden" : "allowed-local-index",
+      diagnostic_compat_access: normalizedBackend === "postgres" ? "requires --include-compat-local-index or a dedicated migration/diagnostic command" : "not_applicable",
+    },
   };
   if (normalizedBackend === "postgres") {
-    descriptor.compat_local_index_file = indexAbsolute ?? null;
     descriptor.connection_ref = connectionRef || null;
+    if (includeCompatLocalIndex) {
+      descriptor.compat_local_index_file = indexAbsolute ?? null;
+    }
   } else {
     descriptor.file = indexAbsolute ?? null;
     descriptor.local_index_file = indexAbsolute ?? null;
@@ -781,6 +790,7 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
         indexAbsolute: index.absolute,
         payload: index.payload,
         connectionRef,
+        includeCompatLocalIndex: args.includeCompatLocalIndex === true,
       });
       const selection = selectArtifacts(index.payload, args.maxArtifactBytes, {
         minRelationConfidence: args.minRelationConfidence,

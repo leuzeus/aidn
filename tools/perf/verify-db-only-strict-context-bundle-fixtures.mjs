@@ -277,8 +277,19 @@ function verifyArtifactSourceDescriptor() {
   assert(postgresDescriptor.backend === "postgres", "postgres descriptor should expose postgres backend");
   assert(postgresDescriptor.canonical_backend === "postgres", "postgres descriptor should expose canonical backend");
   assert(!Object.prototype.hasOwnProperty.call(postgresDescriptor, "file"), "postgres descriptor must not expose a sqlite file as artifact_source.file");
-  assert(String(postgresDescriptor.compat_local_index_file ?? "").endsWith("workflow-index.sqlite"), "postgres descriptor should keep sqlite path only as compatibility metadata");
-  assert(String(postgresDescriptor.agent_read_guidance ?? "").includes("--backend postgres"), "postgres descriptor should guide agents to postgres artifact-fetch");
+  assert(!Object.prototype.hasOwnProperty.call(postgresDescriptor, "compat_local_index_file"), "postgres descriptor must not expose sqlite compatibility paths unless diagnostics request them");
+  assert(postgresDescriptor.artifact_read_contract?.authority === "aidn", "postgres descriptor should make AIDN the artifact read authority");
+  assert(postgresDescriptor.artifact_read_contract?.backend === "postgres", "postgres descriptor should force postgres artifact reads");
+  assert(String(postgresDescriptor.artifact_read_contract?.command ?? "").includes("--backend postgres"), "postgres descriptor should provide a postgres artifact-fetch command");
+  assert(postgresDescriptor.artifact_read_contract?.direct_store_access === "forbidden", "postgres descriptor should forbid direct store access");
+
+  const postgresDiagnosticDescriptor = buildArtifactSourceDescriptor({
+    backend: "postgres",
+    indexAbsolute: "G:/project/.aidn/runtime/index/workflow-index.sqlite",
+    includeCompatLocalIndex: true,
+    payload: {},
+  });
+  assert(String(postgresDiagnosticDescriptor.compat_local_index_file ?? "").endsWith("workflow-index.sqlite"), "postgres diagnostic descriptor should expose sqlite path only on explicit request");
 
   const sqliteDescriptor = buildArtifactSourceDescriptor({
     backend: "sqlite",

@@ -32,7 +32,7 @@ Purpose:
 | PostgreSQL `aidn_runtime.runtime_scope_registry` | `worktree-local` with project context | explicit backend only | runtime project context | Maps `runtime_scope_id` to `project_id`, `workspace_id`, `worktree_id` and legacy absolute-path scope aliases. |
 | PostgreSQL `aidn_runtime` scoped runtime tables | `worktree-local` with project context | explicit backend only | runtime persistence backend | Rows use `runtime_scope_id` as the durable partition key; absolute `target_root` scope values are migration aliases only. |
 | `.aidn/runtime/index/*.json` | `worktree-local` | no | current target root | Local JSON/SQL/index exports remain target-root anchored. |
-| `.aidn/runtime/context/*` | `worktree-local` | no | current target root | Hydrated context bundle is a hidden cache regenerated from the active backend, never the source of truth. In PostgreSQL-canonical projects it must identify PostgreSQL as `source_backend` and expose any local SQLite path only as compatibility or migration metadata. |
+| `.aidn/runtime/context/*` | `worktree-local` | no | current target root | Hydrated context bundle is a hidden cache regenerated from the active backend, never the source of truth. In PostgreSQL-canonical projects it must identify PostgreSQL as `source_backend`, omit local SQLite paths by default, and expose an AIDN-owned artifact read contract. |
 | `.aidn/runtime/perf/*` | `ephemeral` | no | current target root | KPI, reports, thresholds, and scratch perf outputs are local runtime artifacts. |
 | `.aidn/runtime/index/repair-layer*` | `ephemeral` | no | current target root | Repair-layer reports, triage outputs, and normalization summaries remain local and disposable. |
 | shared locator `backend.kind=sqlite-file` root | `shared-candidate` | explicit only | locator target | Only the explicitly configured shared SQLite projection is shared. |
@@ -87,6 +87,7 @@ Rules:
 
 - checkout-bound artifacts remain local/versioned even when DB-backed runtime is enabled
 - DB-backed runtime may become canonical for operational state; minimal re-anchor anchors remain visible/protected while detailed runtime/state Markdown projections are explicit exports in strict `db-only`
+- when the protected visible anchors are stale, missing, or contradictory, `aidn runtime state-reanchor --json` is the diagnostic path and `aidn runtime state-reanchor --write` is the explicit repair path for `CURRENT-STATE.md`, `RUNTIME-STATE.md`, and `HANDOFF-PACKET.md`
 - PostgreSQL runtime persistence must resolve rows through `runtime_scope_id`; path-based `scope_key` values are legacy aliases during migration
 - shared coordination stores only metadata explicitly listed in this matrix; they do not relocate `docs/audit/*`
 - local SQLite under `.aidn/runtime/index/` is never shared by default and is treated as fallback backend only when PostgreSQL is not configured
@@ -133,7 +134,7 @@ Rules:
 - standard install/runtime paths do not auto-write outside `.aidn/`
 - SQLite is the hidden local backend only when PostgreSQL is not configured
 - when PostgreSQL is configured, SQLite is used only for explicit migration, compatibility or diagnostics
-- Codex artifact reads in PostgreSQL-canonical projects go through `aidn runtime artifact-fetch --backend postgres`; direct `.aidn/runtime/index/workflow-index.sqlite` inspection is only diagnostic or migration behavior
+- Codex artifact reads in PostgreSQL-canonical projects go through the bundle `artifact_read_contract`, normally `aidn runtime artifact-fetch --backend postgres`; direct `.aidn/runtime/index/workflow-index.sqlite` inspection is only explicit diagnostic or migration behavior
 - recommended checks: `npm run perf:verify-state-mode-parity`, `npm run perf:verify-db-only-readiness`, `npm run perf:verify-db-only-strict-context-bundle`
 
 ## Guardrails
@@ -152,6 +153,7 @@ Rules:
 | `runtime shared-coordination-restore` | selected shared coordination backup payload | checkout-bound artifacts and local runtime projection | `npm run perf:verify-shared-coordination-restore` |
 | `runtime visible-artifacts-cleanup` | managed runtime/state materializations copied to external backup and moved to quarantine | protected workflow bootstrap assets, minimal re-anchor anchors, active session/cycle paths, or unknown files without explicit option | `npm run perf:verify-db-only-strict-context-bundle` |
 | `runtime visible-artifacts-restore` | managed runtime/state materializations from external backup/quarantine | canonical runtime DB state or protected workflow bootstrap assets | `npm run perf:verify-db-only-strict-context-bundle` |
+| `runtime state-reanchor` | explicit repair of protected recovery anchors from the active runtime backend | detailed session/cycle materialization, shared coordination relay writes, or backend migration | `npm run perf:verify-runtime-state-reanchor` |
 | schema migration fixtures | schema compatibility and migration behavior | live PostgreSQL availability | `npm run perf:verify-db-schema-migrations` |
 
 Operational rules:

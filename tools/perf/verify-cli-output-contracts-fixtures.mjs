@@ -139,6 +139,16 @@ const CONTRACT_CASES = [
     allowNonZero: true,
   },
   {
+    name: "runtime-state-reanchor",
+    schema: "runtime-state-reanchor.v1.schema.json",
+    args: ["runtime", "state-reanchor", "--json"],
+    noMutationPaths: [
+      "docs/audit/CURRENT-STATE.md",
+      "docs/audit/RUNTIME-STATE.md",
+      "docs/audit/HANDOFF-PACKET.md",
+    ],
+  },
+  {
     name: "runtime-shared-coordination-bootstrap",
     schema: "runtime-shared-coordination-bootstrap.v1.schema.json",
     args: ["runtime", "shared-coordination-bootstrap", "--json"],

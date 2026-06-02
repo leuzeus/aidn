@@ -44,7 +44,19 @@
         "local_index_file": { "type": ["string", "null"] },
         "compat_local_index_file": { "type": ["string", "null"] },
         "connection_ref": { "type": ["string", "null"] },
-        "agent_read_guidance": { "type": ["string", "null"] }
+        "agent_read_guidance": { "type": ["string", "null"] },
+        "artifact_read_contract": {
+          "type": ["object", "null"],
+          "properties": {
+            "authority": { "type": ["string", "null"] },
+            "selection": { "type": ["string", "null"] },
+            "backend": { "type": ["string", "null"] },
+            "command": { "type": ["string", "null"] },
+            "direct_store_access": { "type": ["string", "null"] },
+            "diagnostic_compat_access": { "type": ["string", "null"] }
+          },
+          "additionalProperties": true
+        }
       },
       "additionalProperties": true
     },

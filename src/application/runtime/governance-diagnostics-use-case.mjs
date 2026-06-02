@@ -166,6 +166,7 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-shared-coordination-restore", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-shared-coordination-doctor", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-shared-runtime-reanchor", linked_concepts: ["workspace"] },
+  { id: "runtime-state-reanchor", linked_concepts: ["current_state", "runtime_state", "handoff_packet"] },
   { id: "runtime-shared-coordination-bootstrap", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-governance-diagnostics", linked_concepts: ["cli_output_contract", "workspace"] },
   { id: "runtime-db-only-readiness", linked_concepts: ["db_only_readiness", "workspace", "runtime_state"] },

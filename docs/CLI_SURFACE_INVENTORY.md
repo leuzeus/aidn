@@ -41,6 +41,7 @@ These command families are intended for users and are covered by public effect p
 - `aidn runtime artifact-fetch --json`
 - `aidn runtime visible-artifacts-cleanup --json`
 - `aidn runtime visible-artifacts-restore --json`
+- `aidn runtime state-reanchor --json`
 - `aidn runtime shared-coordination-status --json`
 - `aidn runtime shared-coordination-projects --json`
 - `aidn runtime governance-diagnostics --json`
@@ -88,6 +89,7 @@ These surfaces are public and contract-backed, but they are more operational or 
 - `aidn runtime coordinator-record-arbitration --json`
 - `aidn runtime project-runtime-state --json` and `--write` for projection writes
 - `aidn runtime project-handoff-packet --json`, `--write` for projection writes, and `--sync-relay` for shared relay sync writes
+- `aidn runtime state-reanchor --json` and `--write` for explicit repair of `CURRENT-STATE.md`, `RUNTIME-STATE.md`, and `HANDOFF-PACKET.md` from the active runtime backend
 
 ## Stable public aliases
 

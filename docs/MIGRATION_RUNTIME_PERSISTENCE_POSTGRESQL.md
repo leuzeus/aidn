@@ -236,6 +236,7 @@ Recommended rollout policy today:
 - use `localProjectionPolicy = none` for normal PostgreSQL-canonical projects
 - keep `keep-local-sqlite` only for explicit migration, compatibility or diagnostic windows
 - do not treat local SQLite as the runtime backend when PostgreSQL is configured and ready
+- if `CURRENT-STATE.md`, `RUNTIME-STATE.md`, or `HANDOFF-PACKET.md` no longer match the canonical runtime rows, run `aidn runtime state-reanchor --target . --json` and then `--write` after review; this repairs the visible recovery anchors from PostgreSQL and writes the corrected anchors back into PostgreSQL
 
 ## Planner Outcomes
 

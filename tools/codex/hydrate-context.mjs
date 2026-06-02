@@ -27,6 +27,7 @@ function parseArgs(argv) {
     minRelationConfidence: 0.65,
     relationThresholds: {},
     allowAmbiguousLinks: false,
+    includeCompatLocalIndex: false,
     materializeVisibleArtifacts: false,
     projectRuntimeState: null,
     runtimeStateOut: "docs/audit/RUNTIME-STATE.md",
@@ -93,6 +94,8 @@ function parseArgs(argv) {
       args.relationThresholds[key] = n;
     } else if (token === "--allow-ambiguous-links") {
       args.allowAmbiguousLinks = true;
+    } else if (token === "--include-compat-local-index") {
+      args.includeCompatLocalIndex = true;
     } else if (token === "--materialize-visible-artifacts") {
       args.materializeVisibleArtifacts = true;
     } else if (token === "--project-runtime-state") {
@@ -279,6 +282,7 @@ function printUsage() {
   console.log("  npx aidn codex hydrate-context --target . --skill handoff-close --project-runtime-state --project-handoff-packet --project-agent-health-summary --project-agent-selection-summary --project-multi-agent-status --handoff-next-agent-goal \"reanchor and continue validation\" --json");
   console.log("  npx aidn codex hydrate-context --target . --skill context-reload --no-project-runtime-state --no-project-handoff-packet --no-project-agent-health-summary --no-project-agent-selection-summary --no-project-multi-agent-status --json");
   console.log("  npx aidn codex hydrate-context --target . --relation-threshold attached_cycle=0.35 --allow-ambiguous-links --json");
+  console.log("  npx aidn codex hydrate-context --target . --include-compat-local-index --json");
 }
 
 async function main() {

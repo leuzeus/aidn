@@ -194,7 +194,8 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     files: "generated Markdown digest files",
     dual: "runtime store plus generated Markdown",
     dbOnly: "runtime store plus protected minimal digest anchors and generated Markdown on demand",
-    projection: "RUNTIME-STATE.md and HANDOFF-PACKET.md",
+    projection: "RUNTIME-STATE.md and HANDOFF-PACKET.md; aidn runtime state-reanchor repairs CURRENT-STATE.md, RUNTIME-STATE.md and HANDOFF-PACKET.md from canonical runtime evidence",
+    notes: "The runtime backend wins over stale visible digest anchors. Reanchor writes are explicit and require --write.",
   }),
   policy({
     concept: "repair_findings",

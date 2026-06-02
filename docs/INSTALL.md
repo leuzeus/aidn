@@ -183,11 +183,18 @@ Notes:
   - shared PostgreSQL coordination is still explicit opt-in; when a DB-backed PostgreSQL project has a locator that explicitly disables shared runtime, `shared-coordination-status`, `shared-coordination-doctor`, and `shared-runtime-reanchor` report an alignment warning instead of silently treating the setup as healthy shared coordination,
   - enable shared coordination intentionally with `aidn runtime shared-runtime-reanchor --target . --backend postgres --connection-ref env:AIDN_PG_URL --project-id <project> --workspace-id <workspace> --write --json`,
   - when PostgreSQL is configured, the normal path is PostgreSQL-only; local SQLite is a compatibility projection or migration source only when explicitly requested,
-  - for PostgreSQL-canonical projects, `aidn codex hydrate-context --json` reports `source_backend=postgres`; any `.aidn/runtime/index/workflow-index.sqlite` path in the bundle is compatibility metadata only and must not be queried as canonical state,
-  - agents should fetch omitted or truncated artifacts through `npx aidn runtime artifact-fetch --target . --backend postgres --path <artifact> --json`, not by invoking `sqlite3` directly,
+  - for PostgreSQL-canonical projects, `aidn codex hydrate-context --json` reports `source_backend=postgres`, omits local SQLite paths by default, and exposes an AIDN-owned `artifact_read_contract`,
+  - agents should follow that contract and fetch omitted or truncated artifacts through `npx aidn runtime artifact-fetch --target . --backend postgres --path <artifact> --json`, not by invoking `sqlite3` directly,
+  - local SQLite compatibility paths are exposed by `hydrate-context` only with the explicit diagnostic flag `--include-compat-local-index`,
   - if PostgreSQL is already canonical and ready, `aidn install` treats a stale local SQLite compatibility projection as non-blocking instead of forcing a migration conflict,
   - if PostgreSQL is not configured, SQLite remains the fallback local backend hidden under `.aidn/runtime/index/`,
   - `install.artifactImportStore` stays a compatibility/migration knob and does not override the configured runtime backend.
+- Runtime state reanchor policy:
+  - if AIDN cannot prove where the project actually stopped, use `aidn runtime state-reanchor --target . --json` before asking an agent to inspect local SQLite or guess from visible files,
+  - the preview reads the active runtime backend, identifies the best session/cycle evidence, and reports the three recovery anchors it would refresh,
+  - apply only with `--write`; the write path rewrites `docs/audit/CURRENT-STATE.md`, regenerates `docs/audit/RUNTIME-STATE.md` and `docs/audit/HANDOFF-PACKET.md`, then stores those corrected anchors back into the canonical runtime backend,
+  - in PostgreSQL-configured projects, this uses PostgreSQL as the backend; local SQLite remains diagnostic/migration-only,
+  - this is an explicit recovery operation, not automatic install materialization, so it does not weaken strict `db-only`.
 - Visible artifact cleanup policy:
   - before reinstalling or migrating a visible-artifact repository into strict `db-only`, preview external backup and quarantine with `aidn runtime visible-artifacts-cleanup --target . --json`,
   - apply only with `--write`, which creates an external backup before moving managed runtime/state materializations to quarantine,

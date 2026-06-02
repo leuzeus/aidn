@@ -246,6 +246,19 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Inspects or previews shared runtime locator repair unless explicit write flags are supplied.",
   }),
   commandPolicy({
+    id: "runtime-state-reanchor",
+    command: "aidn runtime state-reanchor --json",
+    effectClass: "preview",
+    jsonContract: "runtime-state-reanchor.v1.schema.json",
+    safeArgs: ["runtime", "state-reanchor", "--json"],
+    noMutationPaths: [
+      "docs/audit/CURRENT-STATE.md",
+      "docs/audit/RUNTIME-STATE.md",
+      "docs/audit/HANDOFF-PACKET.md",
+    ],
+    notes: "Diagnoses runtime state reanchor and only rewrites canonical state plus recovery anchors when --write is supplied.",
+  }),
+  commandPolicy({
     id: "runtime-shared-coordination-bootstrap",
     command: "aidn runtime shared-coordination-bootstrap --json",
     effectClass: "mutating",
