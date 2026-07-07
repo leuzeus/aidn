@@ -273,7 +273,12 @@ async function main() {
     assert(handoff.packet.shared_planning_candidate_aligned === "yes", "handoff should expose an aligned shared planning candidate");
     assert(handoff.packet.shared_planning_artifact_source === "shared-coordination", "handoff should mark shared planning as coming from shared coordination");
     assert(handoff.packet.active_backlog === "docs/audit/backlog/BL-S101-session-planning.md", "handoff should project the shared backlog ref when the local backlog is absent");
-    assert(handoff.packet.backlog_refs === "docs/audit/backlog/BL-S101-session-planning.md", "handoff should keep backlog_refs aligned with the shared backlog ref");
+    assert(
+      Array.isArray(handoff.packet.backlog_refs)
+        && handoff.packet.backlog_refs.length === 1
+        && handoff.packet.backlog_refs[0] === "docs/audit/backlog/BL-S101-session-planning.md",
+      "handoff should keep backlog_refs aligned with the shared backlog ref",
+    );
     assert(handoff.packet.backlog_status === "promoted", "handoff should project the shared backlog status");
     assert(handoff.packet.prioritized_artifacts.includes("docs/audit/backlog/BL-S101-session-planning.md"), "handoff should prioritize the shared backlog ref even when it is not materialized locally");
     assert(handoff.packet.backlog_next_step === "implement alpha feature validation", "handoff should expose the shared planning next step");
@@ -390,7 +395,7 @@ async function main() {
     assert(loop.loop.history_source === "shared-coordination", "coordinator loop should prefer shared coordination history");
     assert(loop.loop.history.total_dispatches === 1, "coordinator loop should see the shared dispatch record");
     assert(loop.loop.summary_source === "shared-coordination" || loop.loop.summary_source === "file", "coordinator loop should surface a valid shared-aware summary source");
-    assert(fake.state.handoffRelays.length >= 2, "handoff projection should append a new shared relay");
+    assert(fake.state.handoffRelays.length === 1, "read-only handoff projection should not append a new shared relay");
 
     const arbitration = await suggestCoordinatorArbitration({
       targetRoot,

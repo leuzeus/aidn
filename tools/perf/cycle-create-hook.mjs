@@ -167,6 +167,10 @@ function main() {
       targetRoot,
       mode: args.mode,
     });
+    args.stateMode = admission.state_mode ?? args.stateMode;
+    if (!args.indexStoreExplicit) {
+      args.indexStore = resolveDefaultIndexStore(args.stateMode);
+    }
     const checkpoint = shouldRunCheckpoint(admission)
       ? await runCheckpointUseCase({
         args,
@@ -181,7 +185,7 @@ function main() {
       skill: "cycle-create",
       target_root: targetRoot,
       mode: args.mode,
-      state_mode: checkpoint?.state_mode ?? args.stateMode,
+      state_mode: checkpoint?.state_mode ?? admission.state_mode ?? args.stateMode,
       action: admission.action,
       result: admission.result,
       reason_code: admission.reason_code,

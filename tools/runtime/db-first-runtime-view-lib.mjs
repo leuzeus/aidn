@@ -23,6 +23,24 @@ export function canonicalUnknown(value) {
   return normalizeScalar(value).toLowerCase() === "unknown";
 }
 
+export function redactRuntimeConnectionSecrets(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => redactRuntimeConnectionSecrets(item));
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+  const redacted = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (key === "connection_string" || key === "connectionString") {
+      redacted[key] = item ? "[redacted]" : "";
+      continue;
+    }
+    redacted[key] = redactRuntimeConnectionSecrets(item);
+  }
+  return redacted;
+}
+
 export function parseTimestamp(value) {
   const normalized = normalizeScalar(value);
   if (!normalized) {
@@ -181,7 +199,7 @@ export function loadSqliteIndexPayloadSafe(targetRoot, options = {}) {
 
 export async function loadDbIndexPayloadSafe(targetRoot, options = {}) {
   const includePayload = options.includePayload !== false;
-  return await loadSharedStateSnapshotAsync({
+  const snapshot = await loadSharedStateSnapshotAsync({
     targetRoot,
     includePayload,
     includeRuntimeHeads: true,
@@ -194,6 +212,10 @@ export async function loadDbIndexPayloadSafe(targetRoot, options = {}) {
     clientFactory: options.clientFactory ?? null,
     moduleLoader: options.moduleLoader ?? null,
   });
+  return {
+    ...snapshot,
+    backend: redactRuntimeConnectionSecrets(snapshot.backend),
+  };
 }
 
 export function resolveDbArtifactSourceName(snapshotBackend) {

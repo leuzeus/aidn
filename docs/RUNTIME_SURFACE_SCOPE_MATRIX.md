@@ -82,6 +82,8 @@ The overlay above describes where each concept lives. These are the operational 
   - automatic standard writes are limited to `.aidn/` plus protected workflow bootstrap and minimal re-anchor anchors
   - shared runtime remains opt-in and does not imply wholesale relocation of `.aidn/*`
   - when `runtime.persistence.backend=postgres`, the normal runtime path is PostgreSQL-only and SQLite is inspected separately only for migration, compatibility or diagnostics
+  - workflow continuity admission reads sessions and cycles from the configured canonical runtime backend; missing detailed visible session/cycle projections do not force a file or SQLite fallback
+  - if the canonical runtime backend is unavailable or contains multiple unresolved active-session/cycle candidates, continuity-changing operations stop explicitly instead of guessing from stale visible anchors or latest-row timestamps
 
 Rules:
 
@@ -89,6 +91,7 @@ Rules:
 - DB-backed runtime may become canonical for operational state; minimal re-anchor anchors remain visible/protected while detailed runtime/state Markdown projections are explicit exports in strict `db-only`
 - when the protected visible anchors are stale, missing, or contradictory, `aidn runtime state-reanchor --json` is the diagnostic path and `aidn runtime state-reanchor --write` is the explicit repair path for `CURRENT-STATE.md`, `RUNTIME-STATE.md`, and `HANDOFF-PACKET.md`
 - PostgreSQL runtime persistence must resolve rows through `runtime_scope_id`; path-based `scope_key` values are legacy aliases during migration
+- public runtime status output must redact resolved connection strings recursively; only environment-backed connection references may remain visible
 - shared coordination stores only metadata explicitly listed in this matrix; they do not relocate `docs/audit/*`
 - local SQLite under `.aidn/runtime/index/` is never shared by default and is treated as fallback backend only when PostgreSQL is not configured
 

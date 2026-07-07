@@ -72,7 +72,20 @@
         "projection_scope": { "type": "string" },
         "sqlite_file": { "type": ["string", "null"] },
         "logical_root": { "type": ["string", "null"] },
-        "exists": { "type": "boolean" }
+        "exists": { "type": "boolean" },
+        "runtime_backend": {
+          "type": ["object", "null"],
+          "properties": {
+            "connection": {
+              "type": ["object", "null"],
+              "properties": {
+                "connection_string": { "type": "string", "enum": ["", "[redacted]"] }
+              },
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        }
       },
       "additionalProperties": true
     },

@@ -33,6 +33,7 @@ Rules:
 - strict `db-only` config must state that `runtime.persistence.backend` is canonical and `install.artifactImportStore` is compatibility/migration metadata
 - SQLite remains the hidden local backend only when PostgreSQL is not configured
 - PostgreSQL is optional generally, but canonical for a project once `runtime.persistence.backend=postgres` is configured
+- workflow continuity gates must read the configured canonical runtime backend before visible projections; a required canonical backend outage or ambiguous active-session/cycle set blocks continuity-changing operations instead of permitting an implicit file, SQLite, or latest-row guess
 - multi-repo or multi-worktree federation must use explicit workspace/worktree identity and locator configuration
 - no command may silently relocate audit artifacts into shared runtime
 - PostgreSQL runtime persistence rows must be contextualized by durable `project_id` and `workspace_id`, not by absolute filesystem paths
@@ -53,6 +54,7 @@ Stable federation contract:
 - strict `db-only` config carries `runtime.dbOnly.artifactImport` metadata so legacy local-index import settings cannot be confused with the canonical backend
 - backup/quarantine of managed runtime/state visible artifacts must use an external backup root before cleanup
 - PostgreSQL connection material must be referenced through `env:*` or equivalent indirection, never embedded in tracked files
+- public JSON status and diagnostic outputs must recursively redact resolved PostgreSQL connection strings
 
 ## Options Compared
 

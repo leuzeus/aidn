@@ -23,7 +23,25 @@
     "admission_status": { "type": "string" },
     "target_root": { "type": "string" },
     "workspace": { "type": "object", "additionalProperties": true },
-    "shared_state_backend": { "type": "object", "additionalProperties": true },
+    "shared_state_backend": {
+      "type": "object",
+      "properties": {
+        "runtime_backend": {
+          "type": ["object", "null"],
+          "properties": {
+            "connection": {
+              "type": ["object", "null"],
+              "properties": {
+                "connection_string": { "type": "string", "enum": ["", "[redacted]"] }
+              },
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
     "shared_runtime_validation": { "type": "object", "additionalProperties": true },
     "skill": { "type": "string" },
     "policy": { "type": "object", "additionalProperties": true },

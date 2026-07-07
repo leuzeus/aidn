@@ -113,6 +113,9 @@ docs/audit/cycles/CXXX-[type]-<short-title>/
 9) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill cycle-create --mode COMMITTING --target . --json`
 - the runtime `cycle-create` hook applies continuity admission before delegating to generic checkpoint/index/repair behavior
+- in DB-backed modes, continuity admission reads the configured canonical runtime backend before visible session/cycle projections and reports `continuity_context_source`, `continuity_context_backend`, `canonical_continuity_status`, and any `canonical_continuity_ambiguities`
+- in strict `db-only`, STOP when the canonical runtime is unavailable or has ambiguous active session/cycle candidates; do not infer continuity from stale visible anchors or latest-row timestamps
+- a current cycle branch that is not registered yet is treated as a new-cycle candidate and still requires an explicit R1/R2/R3 choice when its continuity base cannot be proven
 - expect machine-visible continuity outcomes such as `proceed_r1_strict_chain`, `proceed_r2_session_base_with_import`, or `stop_choose_continuity_rule`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
