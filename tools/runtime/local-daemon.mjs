@@ -4,6 +4,9 @@ import http from "node:http";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { createCodexAgentAdapter } from "../../src/adapters/codex/codex-agent-adapter.mjs";
+import { createHookContextStoreAdapter } from "../../src/adapters/codex/hook-context-store-adapter.mjs";
+import { runJsonHookUseCase } from "../../src/application/codex/run-json-hook-use-case.mjs";
 import { getAidnProjectConfigCacheStats } from "../../src/lib/config/aidn-config-lib.mjs";
 import { runWorkflowStep } from "../codex/workflow-step.mjs";
 
@@ -145,7 +148,7 @@ function healthPayload(server = null, meta = {}) {
       port: typeof address === "object" && address ? address.port : null,
       endpoint_file: meta.endpointFile ?? null,
       target_root: meta.targetRoot ?? null,
-      capabilities: ["health", "codex.workflow-step"],
+      capabilities: ["health", "codex.workflow-step", "codex.run-json-hook"],
     },
     caches: {
       aidn_project_config: getAidnProjectConfigCacheStats(),
@@ -187,7 +190,7 @@ function writeJson(response, statusCode, payload) {
 async function handleExecute(request) {
   const body = await readRequestJson(request);
   const operation = String(body?.operation ?? "").trim();
-  if (operation !== "codex.workflow-step") {
+  if (!["codex.workflow-step", "codex.run-json-hook"].includes(operation)) {
     return {
       statusCode: 400,
       payload: {
@@ -199,6 +202,27 @@ async function handleExecute(request) {
   }
   const args = body?.args && typeof body.args === "object" ? body.args : {};
   const targetRoot = path.resolve(String(body?.targetRoot ?? args.target ?? "."));
+  if (operation === "codex.run-json-hook") {
+    const payload = runJsonHookUseCase({
+      args: {
+        ...args,
+        target: targetRoot,
+        useDaemon: false,
+      },
+      targetRoot,
+      agentAdapter: createCodexAgentAdapter(),
+      hookContextStore: createHookContextStoreAdapter(),
+    });
+    return {
+      statusCode: 200,
+      payload: {
+        ok: true,
+        contract_version: CONTRACT_VERSION,
+        operation,
+        payload,
+      },
+    };
+  }
   const payload = await runWorkflowStep({
     args: {
       ...args,

@@ -101,12 +101,42 @@ async function main() {
       "--daemon-timeout-ms",
       "60000",
     ]);
+    const delegatedHook = runAidnJson([
+      "codex",
+      "run-json-hook",
+      "--target",
+      targetRoot,
+      "--skill",
+      "context-reload",
+      "--mode",
+      "THINKING",
+      "--json",
+      "--use-daemon",
+      "--daemon-timeout-ms",
+      "60000",
+    ]);
     const fallback = runAidnJson([
       "codex",
       "workflow-step",
       "--target",
       targetRoot,
       "--skills",
+      "context-reload",
+      "--mode",
+      "THINKING",
+      "--json",
+      "--use-daemon",
+      "--daemon-endpoint-file",
+      ".aidn/runtime/daemon/missing-endpoint.json",
+      "--daemon-timeout-ms",
+      "200",
+    ]);
+    const fallbackHook = runAidnJson([
+      "codex",
+      "run-json-hook",
+      "--target",
+      targetRoot,
+      "--skill",
       "context-reload",
       "--mode",
       "THINKING",
@@ -142,13 +172,22 @@ async function main() {
         && Number(status.daemon?.port ?? 0) === Number(started.daemon?.port ?? -1),
       status_reports_capability: Array.isArray(status.daemon?.capabilities)
         && status.daemon.capabilities.includes("codex.workflow-step"),
+      status_reports_run_json_hook_capability: Array.isArray(status.daemon?.capabilities)
+        && status.daemon.capabilities.includes("codex.run-json-hook"),
       delegated_preserves_workflow_contract: delegated.contract_version === "codex-workflow-step.v1",
       delegated_uses_daemon: delegated.daemon?.used === true && delegated.daemon?.fallback === false,
       delegated_uses_endpoint_file: String(delegated.daemon?.endpoint_file ?? "").replace(/\\/g, "/").endsWith(".aidn/runtime/daemon/endpoint.json"),
       delegated_preserves_steps: delegated.steps?.some((step) => step.id === "coordinator-next-action") === true,
+      delegated_hook_uses_daemon: delegatedHook.daemon?.used === true && delegatedHook.daemon?.fallback === false,
+      delegated_hook_uses_endpoint_file: String(delegatedHook.daemon?.endpoint_file ?? "").replace(/\\/g, "/").endsWith(".aidn/runtime/daemon/endpoint.json"),
+      delegated_hook_preserves_compact_output: delegatedHook.output_mode === "compact"
+        && delegatedHook.skill === "context-reload"
+        && delegatedHook.normalized?.raw == null,
       fallback_preserves_workflow_contract: fallback.contract_version === "codex-workflow-step.v1",
       fallback_reports_batch_fallback: fallback.daemon?.used === false && fallback.daemon?.fallback === true,
       fallback_reason_present: String(fallback.daemon?.reason ?? "").length > 0,
+      fallback_hook_reports_batch_fallback: fallbackHook.daemon?.used === false && fallbackHook.daemon?.fallback === true,
+      fallback_hook_reason_present: String(fallbackHook.daemon?.reason ?? "").length > 0,
       stop_reports_stopped: stopped.ok === true && stopped.stopped === true,
       stop_removes_endpoint: !fs.existsSync(endpointFile),
       status_after_stop_unavailable: statusAfterStop.status === 1
@@ -163,6 +202,8 @@ async function main() {
         started_port: started?.daemon?.port ?? null,
         status_port: status?.daemon?.port ?? null,
         delegated_daemon: delegated?.daemon ?? null,
+        delegated_hook_daemon: delegatedHook?.daemon ?? null,
+        fallback_hook_daemon: fallbackHook?.daemon ?? null,
         stopped: stopped ?? null,
         status_after_stop: statusAfterStop?.json ?? null,
       })}`);

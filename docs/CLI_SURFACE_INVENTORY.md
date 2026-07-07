@@ -117,7 +117,7 @@ These are currently implemented as package scripts, tools, or internal wrappers,
   - experimental opt-in local daemon prototype
   - `--start`, `--status`, and `--stop` use a worktree-local endpoint file under `.aidn/runtime/daemon/`
   - current stable behavior remains batch unless a client command is explicitly run with daemon flags
-  - first supported delegated operation is `aidn codex workflow-step --use-daemon ...`
+  - first supported delegated operations are `aidn codex workflow-step --use-daemon ...` and `aidn codex run-json-hook --use-daemon ...`
   - no command starts the daemon implicitly
 - `aidn runtime repair-layer`
 - `aidn runtime repair-layer-query`
