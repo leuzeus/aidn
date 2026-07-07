@@ -37,6 +37,8 @@ function parseArgs(argv) {
     rawDir: ".aidn/runtime/context/raw",
     maxEntries: 50,
     json: false,
+    verbose: false,
+    includeRaw: false,
     dbSync: null,
     dbSyncExplicit: false,
     command,
@@ -77,6 +79,10 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--json") {
       args.json = true;
+    } else if (token === "--verbose") {
+      args.verbose = true;
+    } else if (token === "--include-raw") {
+      args.includeRaw = true;
     } else if (token === "--db-sync") {
       args.dbSync = true;
       args.dbSyncExplicit = true;
@@ -111,6 +117,8 @@ function printUsage() {
   console.log("  npx aidn codex run-json-hook --skill cycle-create --mode COMMITTING --target . --db-sync --json");
   console.log("  npx aidn codex run-json-hook --skill close-session --mode COMMITTING --target . --no-auto-skip-gate --json");
   console.log("  npx aidn codex run-json-hook --skill close-session --mode COMMITTING --target . --fail-on-repair-block");
+  console.log("  npx aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json --verbose");
+  console.log("  npx aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json --include-raw");
 }
 
 function resolveRuntimeStateHint(targetRoot, requestedStateMode = "") {

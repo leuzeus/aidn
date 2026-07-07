@@ -155,6 +155,7 @@ function main() {
       "sqlite",
       "--skill",
       "close-session",
+      "--materialize-visible-artifacts",
       "--json",
     ], env);
     const runtimeStateFile = path.join(target, "docs", "audit", "RUNTIME-STATE.md");

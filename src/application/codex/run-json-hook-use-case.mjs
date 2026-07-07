@@ -183,6 +183,75 @@ function mergeRepairLayerSummary(normalized, dbSyncPayload) {
   };
 }
 
+function compactNormalizedPayload(normalized) {
+  if (!normalized || typeof normalized !== "object") {
+    return normalized;
+  }
+  const { raw: _raw, ...compact } = normalized;
+  return compact;
+}
+
+function compactRepairLayerResult(result) {
+  if (!result || typeof result !== "object") {
+    return result ?? null;
+  }
+  return {
+    ok: result.ok ?? null,
+    action: result.action ?? null,
+    skipped: result.skipped ?? null,
+    skip_reason: result.skip_reason ?? null,
+    summary: result.summary ?? null,
+  };
+}
+
+function compactRepairLayerTriageResult(result) {
+  if (!result || typeof result !== "object") {
+    return result ?? null;
+  }
+  return {
+    ok: result.ok ?? null,
+    skipped: result.skipped ?? null,
+    skip_reason: result.skip_reason ?? null,
+    triage: result.triage && typeof result.triage === "object"
+      ? {
+        summary: result.triage.summary ?? null,
+      }
+      : null,
+  };
+}
+
+function compactDbSyncPayload(payload) {
+  if (!payload || typeof payload !== "object") {
+    return payload ?? null;
+  }
+  return {
+    ok: payload.ok ?? null,
+    state_mode: payload.state_mode ?? null,
+    store: payload.store ?? null,
+    skipped: payload.skipped ?? null,
+    reason: payload.reason ?? null,
+    fallback_full_used: payload.fallback_full_used ?? null,
+    fallback_full_reason: payload.fallback_full_reason ?? null,
+    fast_path: payload.fast_path ?? null,
+    summary: payload.summary ?? null,
+    repair_layer_result: compactRepairLayerResult(payload.repair_layer_result),
+    repair_layer_triage_result: compactRepairLayerTriageResult(payload.repair_layer_triage_result),
+  };
+}
+
+function compactDbSync(dbSync) {
+  if (!dbSync || typeof dbSync !== "object") {
+    return dbSync;
+  }
+  return {
+    enabled: dbSync.enabled === true,
+    skipped: dbSync.skipped === true,
+    reason: dbSync.reason ?? null,
+    error: dbSync.error ?? null,
+    payload: compactDbSyncPayload(dbSync.payload),
+  };
+}
+
 export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContextStore }) {
   const stateMode = resolveEffectiveStateMode({
     targetRoot,
@@ -289,6 +358,7 @@ export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContext
   });
 
   const output = {
+    output_mode: "verbose",
     ts: new Date().toISOString(),
     ok: effectiveNormalized.ok,
     skill: effectiveNormalized.skill,
@@ -319,5 +389,17 @@ export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContext
     normalized: effectiveNormalized,
   };
   output.summary = buildRunJsonHookSummary(output);
-  return output;
+  if (args.verbose || args.includeRaw) {
+    return output;
+  }
+
+  const compactOutput = {
+    ...output,
+    output_mode: "compact",
+    raw_payload_ref: contextWrite.raw_file,
+    db_sync: compactDbSync(dbSync),
+    normalized: compactNormalizedPayload(effectiveNormalized),
+  };
+  compactOutput.summary = buildRunJsonHookSummary(compactOutput);
+  return compactOutput;
 }
