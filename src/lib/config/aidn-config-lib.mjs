@@ -6,8 +6,53 @@ export const VALID_INDEX_STORE_MODES = new Set(["file", "sql", "dual", "sqlite",
 export const VALID_RUNTIME_PERSISTENCE_BACKENDS = new Set(["sqlite", "postgres"]);
 export const VALID_RUNTIME_LOCAL_PROJECTION_POLICIES = new Set(["keep-local-sqlite", "keep-json", "keep-sql", "none"]);
 
+const projectConfigCache = new Map();
+const projectConfigCacheStats = {
+  hits: 0,
+  misses: 0,
+  invalidations: 0,
+  writes: 0,
+};
+
 function isPlainObject(value) {
   return value != null && typeof value === "object" && !Array.isArray(value);
+}
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value ?? {}));
+}
+
+function getConfigFileSignature(filePath) {
+  try {
+    const stat = fs.statSync(filePath);
+    if (!stat.isFile()) {
+      return {
+        exists: false,
+        mtimeMs: 0,
+        size: 0,
+      };
+    }
+    return {
+      exists: true,
+      mtimeMs: stat.mtimeMs,
+      size: stat.size,
+    };
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
+    return {
+      exists: false,
+      mtimeMs: 0,
+      size: 0,
+    };
+  }
+}
+
+function signaturesMatch(left, right) {
+  return left?.exists === right?.exists
+    && Number(left?.mtimeMs ?? 0) === Number(right?.mtimeMs ?? 0)
+    && Number(left?.size ?? 0) === Number(right?.size ?? 0);
 }
 
 export function normalizeStateMode(value) {
@@ -70,11 +115,31 @@ export function resolveAidnConfigPath(targetRoot) {
 
 export function readAidnProjectConfig(targetRoot) {
   const filePath = resolveAidnConfigPath(targetRoot);
-  if (!fs.existsSync(filePath)) {
+  const signature = getConfigFileSignature(filePath);
+  const cached = projectConfigCache.get(filePath);
+  if (cached && signaturesMatch(cached.signature, signature)) {
+    projectConfigCacheStats.hits += 1;
+    return {
+      exists: cached.exists,
+      path: filePath,
+      data: cloneJson(cached.data),
+    };
+  }
+  if (cached) {
+    projectConfigCacheStats.invalidations += 1;
+  }
+  projectConfigCacheStats.misses += 1;
+  if (!signature.exists) {
+    const data = {};
+    projectConfigCache.set(filePath, {
+      signature,
+      exists: false,
+      data,
+    });
     return {
       exists: false,
       path: filePath,
-      data: {},
+      data: cloneJson(data),
     };
   }
   let parsed;
@@ -86,10 +151,15 @@ export function readAidnProjectConfig(targetRoot) {
   if (!isPlainObject(parsed)) {
     throw new Error(`Invalid config root in ${filePath}: expected JSON object`);
   }
+  projectConfigCache.set(filePath, {
+    signature,
+    exists: true,
+    data: parsed,
+  });
   return {
     exists: true,
     path: filePath,
-    data: parsed,
+    data: cloneJson(parsed),
   };
 }
 
@@ -98,7 +168,28 @@ export function writeAidnProjectConfig(targetRoot, data) {
   const parent = path.dirname(filePath);
   fs.mkdirSync(parent, { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+  projectConfigCache.delete(filePath);
+  projectConfigCacheStats.invalidations += 1;
+  projectConfigCacheStats.writes += 1;
   return filePath;
+}
+
+export function resetAidnProjectConfigCache() {
+  projectConfigCache.clear();
+  projectConfigCacheStats.hits = 0;
+  projectConfigCacheStats.misses = 0;
+  projectConfigCacheStats.invalidations = 0;
+  projectConfigCacheStats.writes = 0;
+}
+
+export function getAidnProjectConfigCacheStats() {
+  return {
+    entries: projectConfigCache.size,
+    hits: projectConfigCacheStats.hits,
+    misses: projectConfigCacheStats.misses,
+    invalidations: projectConfigCacheStats.invalidations,
+    writes: projectConfigCacheStats.writes,
+  };
 }
 
 export function resolveConfigStateMode(configData) {

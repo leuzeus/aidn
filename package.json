@@ -266,6 +266,7 @@
     "perf:verify-runtime-persistence-parity": "node tools/perf/verify-runtime-persistence-parity-fixtures.mjs",
     "perf:verify-runtime-relational-projection": "node tools/perf/verify-runtime-relational-projection-fixtures.mjs",
     "perf:verify-postgres-shared-coordination-live-smoke": "node tools/perf/verify-postgres-shared-coordination-live-smoke.mjs",
+    "perf:verify-aidn-config-cache": "node tools/perf/verify-aidn-config-cache-fixtures.mjs",
     "perf:verify-workspace-resolution": "node tools/perf/verify-workspace-resolution-fixtures.mjs",
     "perf:verify-selfhost-workspace": "node tools/perf/verify-selfhost-workspace-fixtures.mjs",
     "perf:verify-state-mode-parity": "node tools/perf/verify-state-mode-parity-fixtures.mjs",
