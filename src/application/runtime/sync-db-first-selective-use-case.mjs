@@ -10,6 +10,10 @@ import {
 import { writeRepairLayerTriageArtifacts } from "./repair-layer-artifact-service.mjs";
 import { runRepairLayerUseCase } from "./repair-layer-use-case.mjs";
 import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
+import {
+  readAidnProjectConfig,
+  resolveConfigRuntimePersistenceBackend,
+} from "../../lib/config/aidn-config-lib.mjs";
 
 const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url));
 const FULL_SYNC_SCRIPT = path.resolve(RUNTIME_DIR, "..", "..", "..", "tools", "runtime", "sync-db-first.mjs");
@@ -91,6 +95,71 @@ function emptyFastPath({ used = false, reason = "not_evaluated", diagnostics = {
   };
 }
 
+function resolveRuntimePersistenceBackend(targetRoot) {
+  const config = readAidnProjectConfig(targetRoot);
+  return resolveConfigRuntimePersistenceBackend(config.data) ?? "sqlite";
+}
+
+function findLocalCycleStatusPath(targetRoot, cycleId) {
+  const normalizedCycleId = String(cycleId ?? "").trim().toUpperCase();
+  if (!normalizedCycleId) {
+    return "";
+  }
+  const cyclesRoot = path.join(targetRoot, "docs", "audit", "cycles");
+  if (!fs.existsSync(cyclesRoot)) {
+    return "";
+  }
+  const entries = fs.readdirSync(cyclesRoot, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !entry.name.toUpperCase().startsWith(`${normalizedCycleId}-`)) {
+      continue;
+    }
+    const repoPath = `docs/audit/cycles/${entry.name}/status.md`;
+    const absolute = path.join(cyclesRoot, entry.name, "status.md");
+    if (fs.existsSync(absolute)) {
+      return repoPath;
+    }
+  }
+  return "";
+}
+
+function referencedCycleIdFromFinding(item) {
+  const direct = String(item?.referenced_cycle_id ?? "").trim().toUpperCase();
+  if (direct) {
+    return direct;
+  }
+  const message = String(item?.message ?? "");
+  const match = message.match(/\bC\d+\b/i);
+  return match ? match[0].toUpperCase() : "";
+}
+
+function summarizeRepairRefreshNeed(findings, targetRoot) {
+  const rows = Array.isArray(findings) ? findings : [];
+  const refreshableFindingTypes = new Set([
+    "UNINDEXED_CYCLE_STATUS_REFERENCE",
+    "UNRESOLVED_CYCLE_REFERENCE",
+    "UNRESOLVED_SESSION_CYCLE",
+  ]);
+  const trackedNotIndexed = rows.filter((item) => {
+    const findingType = String(item?.finding_type ?? "");
+    if (!refreshableFindingTypes.has(findingType)) {
+      return false;
+    }
+    if (
+      String(item?.reference_resolution_state ?? "") === "tracked_not_indexed"
+      || String(item?.git_tracking ?? "") === "tracked"
+    ) {
+      return true;
+    }
+    return Boolean(findLocalCycleStatusPath(targetRoot, referencedCycleIdFromFinding(item)));
+  });
+  return {
+    required: trackedNotIndexed.length > 0,
+    reason: trackedNotIndexed.length > 0 ? "repair_layer_tracked_not_indexed" : "none",
+    findings_count: trackedNotIndexed.length,
+  };
+}
+
 async function evaluateNoChangeFastPath({
   args,
   targetRoot,
@@ -98,6 +167,7 @@ async function evaluateNoChangeFastPath({
   gitAvailable,
   changedPaths,
   requiresFullSync,
+  runtimePersistenceBackend = "sqlite",
 } = {}) {
   const baseDiagnostics = {
     changed_paths_count: Array.isArray(changedPaths) ? changedPaths.length : 0,
@@ -109,6 +179,10 @@ async function evaluateNoChangeFastPath({
     repair_findings_count: null,
     repair_warning_count: null,
     repair_error_count: null,
+    repair_refresh_required: false,
+    repair_refresh_reason: "none",
+    repair_refresh_findings_count: 0,
+    runtime_persistence_backend: runtimePersistenceBackend,
   };
 
   if (!["dual", "db-only"].includes(stateMode)) {
@@ -133,6 +207,15 @@ async function evaluateNoChangeFastPath({
     return emptyFastPath({
       reason: "changed_workflow_artifacts",
       diagnostics: baseDiagnostics,
+    });
+  }
+  if (runtimePersistenceBackend === "postgres") {
+    return emptyFastPath({
+      reason: "postgres_canonical_backend",
+      diagnostics: {
+        ...baseDiagnostics,
+        sqlite_decision_source: "not_used",
+      },
     });
   }
 
@@ -197,6 +280,10 @@ async function evaluateNoChangeFastPath({
   baseDiagnostics.repair_findings_count = findings.length;
   baseDiagnostics.repair_warning_count = warningCount;
   baseDiagnostics.repair_error_count = errorCount;
+  const repairRefresh = summarizeRepairRefreshNeed(findings, targetRoot);
+  baseDiagnostics.repair_refresh_required = repairRefresh.required;
+  baseDiagnostics.repair_refresh_reason = repairRefresh.reason;
+  baseDiagnostics.repair_refresh_findings_count = repairRefresh.findings_count;
   if (warningCount > 0 || errorCount > 0 || findings.length > 0) {
     return emptyFastPath({
       reason: "repair_findings_open",
@@ -221,6 +308,7 @@ export async function runSyncDbFirstSelectiveUseCase({
   const stateMode = resolveStateMode(targetRoot, args.stateMode);
   const strictByState = stateMode === "dual" || stateMode === "db-only";
   const strict = args.strict || strictByState;
+  const runtimePersistenceBackend = resolveRuntimePersistenceBackend(targetRoot);
 
   if (stateMode === "files" && !args.forceInFiles) {
     return {
@@ -258,6 +346,47 @@ export async function runSyncDbFirstSelectiveUseCase({
   };
   const synced = [];
   const errors = [];
+
+  if (runtimePersistenceBackend === "postgres") {
+    const fastPath = emptyFastPath({
+      reason: "postgres_canonical_backend",
+      diagnostics: {
+        changed_paths_count: changedPaths.length,
+        git_available: gitAvailable === true,
+        requires_full_sync: requiresFullSync === true,
+        runtime_persistence_backend: "postgres",
+        sqlite_decision_source: "not_used",
+      },
+    });
+    return {
+      ts: new Date().toISOString(),
+      ok: true,
+      skipped: true,
+      reason: "postgres_canonical_backend",
+      target_root: targetRoot,
+      state_mode: stateMode,
+      strict,
+      runtime_persistence_backend: runtimePersistenceBackend,
+      git_available: gitAvailable,
+      fallback_full_enabled: args.fallbackFull,
+      fallback_full_used: false,
+      fallback_full_reason: null,
+      fast_path: fastPath,
+      summary,
+      synced,
+      errors,
+      fallback: null,
+      repair_layer_result: {
+        action: "skipped",
+        skipped: true,
+        skip_reason: "postgres_canonical_backend",
+      },
+      repair_layer_triage_result: {
+        skipped: true,
+        skip_reason: "postgres_canonical_backend",
+      },
+    };
+  }
 
   if (gitAvailable) {
     const auditRootAbs = path.resolve(targetRoot, auditRoot);
@@ -304,6 +433,7 @@ export async function runSyncDbFirstSelectiveUseCase({
     gitAvailable,
     changedPaths,
     requiresFullSync,
+    runtimePersistenceBackend,
   });
   if (fastPath.used) {
     return {
@@ -312,6 +442,7 @@ export async function runSyncDbFirstSelectiveUseCase({
       target_root: targetRoot,
       state_mode: stateMode,
       strict,
+      runtime_persistence_backend: runtimePersistenceBackend,
       git_available: gitAvailable,
       fallback_full_enabled: args.fallbackFull,
       fallback_full_used: false,
@@ -334,8 +465,9 @@ export async function runSyncDbFirstSelectiveUseCase({
   }
 
   let fallback = null;
+  const repairRefreshRequired = fastPath?.diagnostics?.repair_refresh_required === true;
   const shouldFallback = args.fallbackFull
-    && (!gitAvailable || summary.failed_count > 0 || requiresFullSync);
+    && (!gitAvailable || summary.failed_count > 0 || requiresFullSync || repairRefreshRequired);
   if (shouldFallback) {
     fallback = processAdapter.runJsonNodeScript(FULL_SYNC_SCRIPT, [
       "--target",
@@ -377,11 +509,18 @@ export async function runSyncDbFirstSelectiveUseCase({
     target_root: targetRoot,
     state_mode: stateMode,
     strict,
+    runtime_persistence_backend: runtimePersistenceBackend,
     git_available: gitAvailable,
     fallback_full_enabled: args.fallbackFull,
     fallback_full_used: fallback != null,
     fallback_full_reason: fallback != null
-      ? (!gitAvailable ? "git_unavailable" : (summary.failed_count > 0 ? "selective_failed" : "git_status_requires_full"))
+      ? (!gitAvailable
+        ? "git_unavailable"
+        : (summary.failed_count > 0
+          ? "selective_failed"
+          : (requiresFullSync
+            ? "git_status_requires_full"
+            : "repair_layer_tracked_not_indexed")))
       : null,
     fast_path: fastPath,
     summary,

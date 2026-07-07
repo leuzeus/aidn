@@ -195,6 +195,48 @@ function main() {
       "--json",
     ], REPO_ROOT);
 
+    const postgresRepoRoot = path.join(tempRoot, "postgres-canonical-repo");
+    fs.mkdirSync(postgresRepoRoot, { recursive: true });
+    run("git", ["init"], postgresRepoRoot);
+    run("git", ["config", "user.email", "aidn@example.com"], postgresRepoRoot);
+    run("git", ["config", "user.name", "aidn-ci"], postgresRepoRoot);
+    writeFile(path.join(postgresRepoRoot, ".aidn", "config.json"), `${JSON.stringify({
+      runtime: {
+        stateMode: "db-only",
+        dbOnly: {
+          strict: true,
+        },
+        persistence: {
+          backend: "postgres",
+          localProjectionPolicy: "none",
+          connectionRef: "env:AIDN_PG_URL",
+        },
+      },
+    }, null, 2)}\n`);
+    writeFile(path.join(postgresRepoRoot, "docs", "audit", "snapshots", "context-snapshot.md"), [
+      "# Snapshot",
+      "",
+      "- active_session: S301",
+      "- active_cycles: C301",
+      "",
+    ].join("\n"));
+    run("git", ["add", "."], postgresRepoRoot);
+    run("git", ["commit", "-m", "postgres canonical fixture"], postgresRepoRoot);
+    const postgresCanonicalNoChange = runJson(process.execPath, [
+      normalizePathForNode(RUNTIME_SYNC_SELECTIVE),
+      "--target",
+      postgresRepoRoot,
+      "--json",
+    ], REPO_ROOT);
+    const postgresCanonicalChangedFile = path.join(postgresRepoRoot, "docs", "audit", "reports", "R301.md");
+    writeFile(postgresCanonicalChangedFile, "# Report\n\npostgres canonical changed path\n");
+    const postgresCanonicalChanged = runJson(process.execPath, [
+      normalizePathForNode(RUNTIME_SYNC_SELECTIVE),
+      "--target",
+      postgresRepoRoot,
+      "--json",
+    ], REPO_ROOT);
+
     const checks = {
       full_init_ok: fullInit.ok === true,
       full_init_repair_layer_completed: ["applied", "skipped"].includes(String(fullInit?.repair_layer_result?.action ?? "")),
@@ -227,7 +269,17 @@ function main() {
       warning_full_init_has_repair_finding: Number(warningFullInit?.repair_layer_result?.summary?.migration_findings_count ?? 0) > 0,
       warning_no_change_fast_path_disabled: warningNoChange?.fast_path?.used === false
         && warningNoChange?.fast_path?.reason === "repair_findings_open",
-      warning_no_change_no_fallback: warningNoChange.fallback_full_used === false,
+      warning_no_change_refreshes_index: warningNoChange.fallback_full_used === true
+        && warningNoChange.fallback_full_reason === "repair_layer_tracked_not_indexed",
+      warning_no_change_final_repair_clean: Number(warningNoChange?.repair_layer_result?.summary?.migration_findings_count ?? -1) === 0,
+      postgres_canonical_no_change_skips_sqlite: postgresCanonicalNoChange?.skipped === true
+        && postgresCanonicalNoChange?.reason === "postgres_canonical_backend"
+        && postgresCanonicalNoChange?.fast_path?.reason === "postgres_canonical_backend",
+      postgres_canonical_no_fallback: postgresCanonicalNoChange?.fallback_full_used === false,
+      postgres_canonical_no_repair_layer_sqlite: postgresCanonicalNoChange?.repair_layer_result?.skip_reason === "postgres_canonical_backend",
+      postgres_canonical_changed_skips_sqlite_sync: postgresCanonicalChanged?.skipped === true
+        && postgresCanonicalChanged?.summary?.synced_count === 0
+        && postgresCanonicalChanged?.summary?.changed_paths_count === 1,
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {
@@ -264,8 +316,27 @@ function main() {
           fallback_full_reason: selectiveRename?.fallback_full_reason ?? null,
         },
         warning_no_change: {
+          initial_top_findings: warningFullInit?.repair_layer_result?.summary?.top_findings ?? null,
           fast_path: warningNoChange?.fast_path ?? null,
+          fallback_full_used: warningNoChange?.fallback_full_used ?? null,
+          fallback_full_reason: warningNoChange?.fallback_full_reason ?? null,
           repair_layer_action: warningNoChange?.repair_layer_result?.action ?? null,
+          repair_findings: warningNoChange?.repair_layer_result?.summary?.migration_findings_count ?? null,
+        },
+        postgres_canonical: {
+          no_change: {
+            skipped: postgresCanonicalNoChange?.skipped ?? null,
+            reason: postgresCanonicalNoChange?.reason ?? null,
+            fast_path: postgresCanonicalNoChange?.fast_path ?? null,
+            fallback_full_used: postgresCanonicalNoChange?.fallback_full_used ?? null,
+            repair_layer_skip_reason: postgresCanonicalNoChange?.repair_layer_result?.skip_reason ?? null,
+          },
+          changed: {
+            skipped: postgresCanonicalChanged?.skipped ?? null,
+            reason: postgresCanonicalChanged?.reason ?? null,
+            changed_paths_count: postgresCanonicalChanged?.summary?.changed_paths_count ?? null,
+            synced_count: postgresCanonicalChanged?.summary?.synced_count ?? null,
+          },
         },
       },
     };
