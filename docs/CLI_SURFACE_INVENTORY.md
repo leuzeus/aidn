@@ -113,6 +113,10 @@ These are currently implemented as package scripts, tools, or internal wrappers,
 
 - direct `tools/runtime/*.mjs` entrypoints
 - direct `tools/perf/*.mjs` entrypoints
+- `aidn runtime local-daemon`
+  - experimental opt-in local daemon prototype
+  - current stable behavior remains batch unless a client command is explicitly run with daemon flags
+  - first supported delegated operation is `aidn codex workflow-step --use-daemon ...`
 - `aidn runtime repair-layer`
 - `aidn runtime repair-layer-query`
 - `aidn runtime repair-layer-resolve`

@@ -312,6 +312,15 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Lists available agent adapters and auto-selection previews.",
   }),
   commandPolicy({
+    id: "runtime-local-daemon",
+    command: "aidn runtime local-daemon --json",
+    effectClass: "executor",
+    stability: "experimental",
+    safeArgs: ["runtime", "local-daemon", "--status", "--json"],
+    allowNonZero: true,
+    notes: "Experimental opt-in local daemon surface. --status is diagnostic; --serve keeps a local process warm and never starts implicitly.",
+  }),
+  commandPolicy({
     id: "runtime-verify-agent-roster",
     command: "aidn runtime verify-agent-roster --json",
     effectClass: "read-only",

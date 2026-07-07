@@ -1,5 +1,7 @@
 #!/usr/bin/env node
+import http from "node:http";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { createHookContextStoreAdapter } from "../../src/adapters/codex/hook-context-store-adapter.mjs";
 import { runHydrateContextUseCase } from "../../src/application/codex/hydrate-context-use-case.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
@@ -26,7 +28,7 @@ function unique(values) {
   return out;
 }
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const args = {
     target: ".",
     skills: [],
@@ -49,6 +51,10 @@ function parseArgs(argv) {
     allowAmbiguousLinks: false,
     includeCompatLocalIndex: false,
     strict: false,
+    useDaemon: false,
+    daemonHost: "127.0.0.1",
+    daemonPort: 0,
+    daemonTimeoutMs: 30000,
     json: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -122,6 +128,17 @@ function parseArgs(argv) {
       args.includeArtifacts = false;
     } else if (token === "--strict") {
       args.strict = true;
+    } else if (token === "--use-daemon") {
+      args.useDaemon = true;
+    } else if (token === "--daemon-host") {
+      args.daemonHost = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--daemon-port") {
+      args.daemonPort = Number(argv[i + 1] ?? 0);
+      i += 1;
+    } else if (token === "--daemon-timeout-ms") {
+      args.daemonTimeoutMs = Number(argv[i + 1] ?? 1500);
+      i += 1;
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -144,6 +161,12 @@ function parseArgs(argv) {
   if (!["auto", "json", "sqlite", "postgres"].includes(args.backend)) {
     throw new Error("Invalid --backend. Expected auto|json|sqlite|postgres");
   }
+  if (args.useDaemon && (!args.daemonHost || !Number.isInteger(args.daemonPort) || args.daemonPort < 1)) {
+    throw new Error("Invalid daemon endpoint. Expected --daemon-host and --daemon-port when --use-daemon is supplied.");
+  }
+  if (!Number.isFinite(args.daemonTimeoutMs) || args.daemonTimeoutMs < 100) {
+    throw new Error("Invalid --daemon-timeout-ms. Expected at least 100.");
+  }
   return args;
 }
 
@@ -151,6 +174,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  npx aidn codex workflow-step --target . --skills close-session,pr-orchestrate --mode COMMITTING --json");
   console.log("  npx aidn codex workflow-step --target . --skill requirements-delta --mode COMMITTING --json");
+  console.log("  npx aidn codex workflow-step --target . --skills context-reload --json --use-daemon --daemon-port 48173");
 }
 
 function summarizeAdmission(payload) {
@@ -304,13 +328,88 @@ export async function runWorkflowStep({ args, targetRoot }) {
   };
 }
 
+function requestDaemonWorkflowStep({ args, targetRoot }) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({
+      operation: "codex.workflow-step",
+      targetRoot,
+      args: {
+        ...args,
+        useDaemon: false,
+      },
+    });
+    const request = http.request({
+      host: args.daemonHost,
+      port: args.daemonPort,
+      method: "POST",
+      path: "/v1/execute",
+      timeout: args.daemonTimeoutMs,
+      headers: {
+        "content-type": "application/json",
+        "content-length": Buffer.byteLength(body),
+      },
+    }, (response) => {
+      let responseBody = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => {
+        responseBody += chunk;
+      });
+      response.on("end", () => {
+        let parsed;
+        try {
+          parsed = JSON.parse(responseBody || "{}");
+        } catch (error) {
+          reject(new Error(`daemon returned invalid JSON: ${error.message}`));
+          return;
+        }
+        if ((response.statusCode ?? 500) >= 400 || parsed.ok === false) {
+          reject(new Error(parsed.message || `daemon request failed with status ${response.statusCode}`));
+          return;
+        }
+        resolve(parsed.payload ?? parsed);
+      });
+    });
+    request.on("timeout", () => {
+      request.destroy(new Error("daemon request timed out"));
+    });
+    request.on("error", reject);
+    request.write(body);
+    request.end();
+  });
+}
+
 async function main() {
   let outputJson = false;
   try {
     const args = parseArgs(process.argv.slice(2));
     outputJson = args.json;
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const output = await runWorkflowStep({ args, targetRoot });
+    let output;
+    if (args.useDaemon) {
+      try {
+        output = await requestDaemonWorkflowStep({ args, targetRoot });
+        output.daemon = {
+          used: true,
+          endpoint: `${args.daemonHost}:${args.daemonPort}`,
+          fallback: false,
+        };
+      } catch (error) {
+        output = await runWorkflowStep({ args, targetRoot });
+        output.daemon = {
+          used: false,
+          endpoint: `${args.daemonHost}:${args.daemonPort}`,
+          fallback: true,
+          reason: String(error.message ?? error),
+        };
+      }
+    } else {
+      output = await runWorkflowStep({ args, targetRoot });
+      output.daemon = {
+        used: false,
+        fallback: false,
+        reason: "not_requested",
+      };
+    }
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));
     } else {
@@ -335,4 +434,6 @@ async function main() {
   }
 }
 
-await main();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  await main();
+}

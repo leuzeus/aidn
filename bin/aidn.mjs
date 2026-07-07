@@ -125,6 +125,7 @@ const RUNTIME_ALIASES = {
   "coordinator-select-agent": { file: "coordinator-select-agent.mjs" },
   "coordinator-suggest-arbitration": { file: "coordinator-suggest-arbitration.mjs" },
   "list-agent-adapters": { file: "list-agent-adapters.mjs" },
+  "local-daemon": { file: "local-daemon.mjs" },
   "verify-agent-roster": { file: "verify-agent-roster.mjs" },
   "project-agent-health-summary": { file: "project-agent-health-summary.mjs" },
   "project-agent-selection-summary": { file: "project-agent-selection-summary.mjs" },
@@ -191,6 +192,7 @@ function printUsage() {
   console.log("  aidn runtime coordinator-select-agent --target . --role auditor --action audit --json");
   console.log("  aidn runtime coordinator-suggest-arbitration --target . --json");
   console.log("  aidn runtime list-agent-adapters --target . --json");
+  console.log("  aidn runtime local-daemon --status --json");
   console.log("  aidn runtime verify-agent-roster --target . --json");
   console.log("  aidn runtime project-agent-health-summary --target . --json");
   console.log("  aidn runtime project-agent-selection-summary --target . --json");
