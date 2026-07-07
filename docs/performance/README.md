@@ -126,8 +126,9 @@ Runtime resolution cache note:
 - workspace/runtime identity resolution is cached within a single Node process and invalidates when the Git head/ref or `.aidn/project/shared-runtime.locator.json` signature changes.
 - `resolveWorkspaceContext` returns a `cache_diagnostic` object, and the local daemon health output exposes aggregate `workspace_resolution` cache stats.
 - the local daemon also keeps a process-local runtime snapshot summary cache for its target; it invalidates on `.aidn/config.json`, `.aidn/project/shared-runtime.locator.json`, or local SQLite index signature changes and refreshes after delegated commands.
+- when the configured runtime persistence backend is PostgreSQL, daemon runtime snapshot reads reuse a process-local PostgreSQL pool and expose redacted aggregate `postgres_pool` stats in daemon health output.
 - the cache is local diagnostic/runtime state only; it does not change the canonical source of truth for workspace identity, shared runtime locator data, or PostgreSQL-backed runtime state.
-- PostgreSQL remains optional; this cache is not a PostgreSQL connection pool.
+- PostgreSQL remains optional and no command starts or requires PostgreSQL unless the target is explicitly configured for it.
 
 Repair-layer traceability note:
 - cycle reference findings now distinguish:

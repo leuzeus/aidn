@@ -184,6 +184,9 @@ async function main() {
         && status.daemon.capabilities.includes("codex.run-json-hook"),
       status_reports_runtime_snapshot_cache: status.runtime_snapshot != null
         && typeof status.caches?.runtime_snapshot?.entries === "number",
+      status_reports_postgres_pool_cache: typeof status.caches?.postgres_pool?.entries === "number"
+        && typeof status.caches?.postgres_pool?.pool_hits === "number"
+        && typeof status.caches?.postgres_pool?.pool_misses === "number",
       status_runtime_snapshot_cache_non_blocking: ["ready", "missing", "warning", "error"].includes(String(status.runtime_snapshot?.status ?? "")),
       delegated_preserves_workflow_contract: delegated.contract_version === "codex-workflow-step.v1",
       delegated_uses_daemon: delegated.daemon?.used === true && delegated.daemon?.fallback === false,

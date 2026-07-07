@@ -192,6 +192,7 @@
     "perf:verify-codex-context-repair-layer": "node tools/perf/verify-codex-context-repair-layer-fixtures.mjs",
     "perf:verify-codex-workflow-step": "node tools/perf/verify-codex-workflow-step-fixtures.mjs",
     "perf:verify-local-daemon": "node tools/perf/verify-local-daemon-fixtures.mjs",
+    "perf:verify-daemon-postgres-pool": "node tools/perf/verify-daemon-postgres-pool-fixtures.mjs",
     "perf:verify-run-json-hook-compact": "node tools/perf/verify-run-json-hook-compact-fixtures.mjs",
     "perf:verify-hydrate-context-repair-focus": "node tools/perf/verify-hydrate-context-repair-focus-fixtures.mjs",
     "perf:verify-agent-hook-repair-block": "node tools/perf/verify-agent-hook-repair-block-fixtures.mjs",

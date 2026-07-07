@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { createCodexAgentAdapter } from "../../src/adapters/codex/codex-agent-adapter.mjs";
 import { createHookContextStoreAdapter } from "../../src/adapters/codex/hook-context-store-adapter.mjs";
 import { runJsonHookUseCase } from "../../src/application/codex/run-json-hook-use-case.mjs";
+import { createDaemonPostgresPool } from "../../src/application/runtime/daemon-postgres-pool-service.mjs";
 import {
   createRuntimeArtifactStore,
   resolveEffectiveRuntimePersistence,
@@ -19,6 +20,7 @@ const CONTRACT_VERSION = "runtime-local-daemon.v1";
 const TOOL_FILE = fileURLToPath(import.meta.url);
 const DEFAULT_ENDPOINT_FILE = ".aidn/runtime/daemon/endpoint.json";
 const DEFAULT_RUNTIME_INDEX_FILE = ".aidn/runtime/index/workflow-index.sqlite";
+const daemonPostgresPool = createDaemonPostgresPool();
 const runtimeSnapshotCache = new Map();
 const runtimeSnapshotCacheStats = {
   hits: 0,
@@ -236,6 +238,9 @@ async function warmRuntimeSnapshotCache(targetRoot, { force = false } = {}) {
       backend: runtimePersistence.backend,
       connectionRef: runtimePersistence.connectionRef ?? "",
       sqliteFile,
+      ...(runtimePersistence.backend === "postgres"
+        ? { clientFactory: daemonPostgresPool.getClientFactory() }
+        : {}),
     });
     const backendDescription = store.describeBackend();
     const snapshot = await store.loadSnapshot({
@@ -303,6 +308,7 @@ async function healthPayload(server = null, meta = {}) {
       aidn_project_config: getAidnProjectConfigCacheStats(),
       workspace_resolution: getWorkspaceResolutionCacheStats(),
       runtime_snapshot: getRuntimeSnapshotCacheStats(),
+      postgres_pool: daemonPostgresPool.getStats(),
     },
     runtime_snapshot: runtimeSnapshot,
   };
@@ -420,7 +426,13 @@ function createDaemonServer(meta = {}) {
           },
         });
         setTimeout(() => {
-          server.close(() => process.exit(0));
+          server.close(async () => {
+            try {
+              await daemonPostgresPool.closeAll();
+            } finally {
+              process.exit(0);
+            }
+          });
         }, 25);
         return;
       }
