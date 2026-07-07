@@ -195,6 +195,7 @@
     "perf:verify-local-daemon": "node tools/perf/verify-local-daemon-fixtures.mjs",
     "perf:verify-daemon-postgres-pool": "node tools/perf/verify-daemon-postgres-pool-fixtures.mjs",
     "perf:verify-run-json-hook-compact": "node tools/perf/verify-run-json-hook-compact-fixtures.mjs",
+    "perf:verify-issue-43-closure": "node tools/perf/verify-issue-43-closure-fixtures.mjs",
     "perf:verify-hydrate-context-repair-focus": "node tools/perf/verify-hydrate-context-repair-focus-fixtures.mjs",
     "perf:verify-agent-hook-repair-block": "node tools/perf/verify-agent-hook-repair-block-fixtures.mjs",
     "perf:verify-skill-hook-state-mode": "node tools/perf/verify-skill-hook-state-mode-fixtures.mjs",

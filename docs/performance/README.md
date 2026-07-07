@@ -287,6 +287,7 @@ npm run perf:constraint-loop -- --target ../client-repo --event-file .aidn/runti
 npm run perf:check-fallbacks
 npm run perf:campaign -- --iterations 30 --target tests/fixtures/repo-installed-core
 npm run perf:measure-issue-43-latency -- --target tests/fixtures/repo-installed-core --iterations 3 --warmup 1 --json
+npm run perf:verify-issue-43-closure
 npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --regression-file .aidn/runtime/perf/kpi-regression.json --fallback-report-file .aidn/runtime/perf/fallback-report.json --fallback-thresholds-file .aidn/runtime/perf/fallback-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
 npm run perf:audit-review -- --target ../client-repo --json
 npm run runtime:sync-db-first -- --target ../client-repo --json
@@ -309,6 +310,8 @@ npm run perf:reset -- --keep-history
 The output reports median/average/p90 timings, JSON output size, fast-path usage, and daemon fallback status. No timing threshold is enforced because local Node startup, disk, antivirus, and PostgreSQL availability can vary by machine. Use this evidence to compare local batches before and after optimization, while keeping `perf:verify-*` commands as the authoritative functional gates.
 
 Daemon-backed `codex run-json-hook` keeps the same JSON contract and auto DB sync semantics as the batch command. The daemon can execute selected pure admission hooks, currently `pr-orchestrate`, in-process to avoid an extra `npx aidn perf skill-hook` subprocess. Hooks that can checkpoint, rewrite runtime artifacts, or need unsupported arguments fall back to the existing subprocess path. When repair findings are open and selective DB sync must re-run repair/triage work, local timings can still be dominated by that guarded sync path rather than daemon dispatch.
+
+`perf:verify-issue-43-closure` is the functional closure check for issue 43. It does not enforce wall-clock thresholds. It verifies that the no-change DB sync fast path is reported, compact `run-json-hook` output preserves the fast-path decision, `workflow-step` returns its batch contract, daemon delegation works for `run-json-hook` and `workflow-step`, and daemon cache diagnostics are exposed. Pair it with `perf:measure-issue-43-latency` when you need local timing evidence.
 
 Default runtime outputs:
 - `.aidn/runtime/perf/workflow-events.ndjson`
