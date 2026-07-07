@@ -7,9 +7,19 @@ import { readSharedRuntimeLocator } from "../../lib/config/shared-runtime-locato
 import { canonicalizeRuntimePath, resolveRuntimePath } from "./shared-runtime-path-lib.mjs";
 
 const SHARED_BACKEND_KINDS = new Set(["none", "sqlite-file", "postgres", "unknown"]);
+const workspaceContextCache = new Map();
+const workspaceContextCacheStats = {
+  hits: 0,
+  misses: 0,
+  invalidations: 0,
+};
 
 function normalizeScalar(value) {
   return String(value ?? "").trim();
+}
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value ?? {}));
 }
 
 function parseBooleanLike(value) {
@@ -54,6 +64,171 @@ function safeRealpath(candidatePath) {
 
 function normalizeIdentityPath(candidatePath) {
   return canonicalizeRuntimePath(safeRealpath(candidatePath));
+}
+
+function fileSignature(filePath, { includeContent = false } = {}) {
+  if (!filePath) {
+    return {
+      path: "",
+      exists: false,
+      mtimeMs: 0,
+      size: 0,
+      content: "",
+    };
+  }
+  try {
+    const stat = fs.statSync(filePath);
+    if (!stat.isFile() && !stat.isDirectory()) {
+      return {
+        path: path.resolve(filePath),
+        exists: false,
+        mtimeMs: 0,
+        size: 0,
+        content: "",
+      };
+    }
+    return {
+      path: path.resolve(filePath),
+      exists: true,
+      mtimeMs: stat.mtimeMs,
+      size: stat.size,
+      content: includeContent && stat.isFile() ? fs.readFileSync(filePath, "utf8") : "",
+    };
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
+    return {
+      path: path.resolve(filePath),
+      exists: false,
+      mtimeMs: 0,
+      size: 0,
+      content: "",
+    };
+  }
+}
+
+function signaturesMatch(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function findGitMarker(startRoot) {
+  let current = path.resolve(startRoot);
+  while (true) {
+    const marker = path.join(current, ".git");
+    if (fs.existsSync(marker)) {
+      return marker;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return "";
+    }
+    current = parent;
+  }
+}
+
+function resolveGitDirFromMarker(markerPath) {
+  if (!markerPath) {
+    return "";
+  }
+  const stat = fs.statSync(markerPath);
+  if (stat.isDirectory()) {
+    return markerPath;
+  }
+  const text = fs.readFileSync(markerPath, "utf8").trim();
+  const match = text.match(/^gitdir:\s*(.+)$/i);
+  if (!match) {
+    return "";
+  }
+  const rawGitDir = match[1].trim();
+  return path.isAbsolute(rawGitDir)
+    ? path.resolve(rawGitDir)
+    : path.resolve(path.dirname(markerPath), rawGitDir);
+}
+
+function resolveGitCommonDir(gitDir) {
+  if (!gitDir) {
+    return "";
+  }
+  const commonDirFile = path.join(gitDir, "commondir");
+  if (!fs.existsSync(commonDirFile)) {
+    return gitDir;
+  }
+  const raw = fs.readFileSync(commonDirFile, "utf8").trim();
+  if (!raw) {
+    return gitDir;
+  }
+  return path.isAbsolute(raw)
+    ? path.resolve(raw)
+    : path.resolve(gitDir, raw);
+}
+
+function resolveHeadRefPath(gitDir, gitCommonDir) {
+  const headFile = path.join(gitDir, "HEAD");
+  let headText = "";
+  try {
+    headText = fs.readFileSync(headFile, "utf8").trim();
+  } catch {
+    return "";
+  }
+  const match = headText.match(/^ref:\s*(.+)$/i);
+  if (!match) {
+    return "";
+  }
+  const ref = match[1].trim();
+  const localRef = path.resolve(gitDir, ref);
+  if (fs.existsSync(localRef)) {
+    return localRef;
+  }
+  return path.resolve(gitCommonDir || gitDir, ref);
+}
+
+function buildWorkspaceResolutionSignature(absoluteTargetRoot) {
+  const locatorPath = path.resolve(absoluteTargetRoot, ".aidn", "project", "shared-runtime.locator.json");
+  const gitMarker = findGitMarker(absoluteTargetRoot);
+  const gitDir = resolveGitDirFromMarker(gitMarker);
+  const gitCommonDir = resolveGitCommonDir(gitDir);
+  const headFile = gitDir ? path.join(gitDir, "HEAD") : "";
+  const headRefFile = resolveHeadRefPath(gitDir, gitCommonDir);
+  return {
+    locator: fileSignature(locatorPath),
+    git_marker: fileSignature(gitMarker, { includeContent: true }),
+    git_head: fileSignature(headFile, { includeContent: true }),
+    git_head_ref: fileSignature(headRefFile, { includeContent: true }),
+    git_common_dir: gitCommonDir ? path.resolve(gitCommonDir) : "",
+  };
+}
+
+function buildWorkspaceResolutionCacheKey({
+  absoluteTargetRoot,
+  env,
+  projectId,
+  projectRoot,
+  workspaceId,
+  sharedRuntimeRoot,
+  sharedBackendKind,
+  sharedRuntimeEnabled,
+}) {
+  return JSON.stringify({
+    target_root: absoluteTargetRoot,
+    env: {
+      AIDN_PROJECT_ID: normalizeScalar(env.AIDN_PROJECT_ID),
+      AIDN_PROJECT_ROOT: normalizeScalar(env.AIDN_PROJECT_ROOT),
+      AIDN_WORKSPACE_ID: normalizeScalar(env.AIDN_WORKSPACE_ID),
+      AIDN_SHARED_RUNTIME_ROOT: normalizeScalar(env.AIDN_SHARED_RUNTIME_ROOT),
+      AIDN_SHARED_BACKEND_KIND: normalizeScalar(env.AIDN_SHARED_BACKEND_KIND),
+      AIDN_SHARED_RUNTIME_CONNECTION_REF: normalizeScalar(env.AIDN_SHARED_RUNTIME_CONNECTION_REF),
+      AIDN_SHARED_RUNTIME_ENABLED: normalizeScalar(env.AIDN_SHARED_RUNTIME_ENABLED),
+    },
+    explicit: {
+      projectId: normalizeScalar(projectId),
+      projectRoot: normalizeScalar(projectRoot),
+      workspaceId: normalizeScalar(workspaceId),
+      sharedRuntimeRoot: normalizeScalar(sharedRuntimeRoot),
+      sharedBackendKind: normalizeScalar(sharedBackendKind),
+      sharedRuntimeEnabled: sharedRuntimeEnabled == null ? null : String(sharedRuntimeEnabled),
+    },
+  });
 }
 
 function hashIdentity(prefix, value) {
@@ -267,6 +442,35 @@ export function resolveWorkspaceContext({
 } = {}) {
   const adapter = assertVcsAdapter(gitAdapter, "WorkspaceResolutionGitAdapter");
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
+  const cacheKey = buildWorkspaceResolutionCacheKey({
+    absoluteTargetRoot,
+    env,
+    projectId,
+    projectRoot,
+    workspaceId,
+    sharedRuntimeRoot,
+    sharedBackendKind,
+    sharedRuntimeEnabled,
+  });
+  const cacheSignature = locatorState == null
+    ? buildWorkspaceResolutionSignature(absoluteTargetRoot)
+    : null;
+  const cached = locatorState == null ? workspaceContextCache.get(cacheKey) : null;
+  if (cached && signaturesMatch(cached.signature, cacheSignature)) {
+    workspaceContextCacheStats.hits += 1;
+    return {
+      ...cloneJson(cached.context),
+      cache_diagnostic: {
+        kind: "workspace-resolution",
+        cache_hit: true,
+        cache_key: "target-env-explicit-overrides",
+      },
+    };
+  }
+  if (cached) {
+    workspaceContextCacheStats.invalidations += 1;
+  }
+  workspaceContextCacheStats.misses += 1;
   const explicitProjectId = normalizeScalar(projectId);
   const explicitProjectRoot = normalizeScalar(projectRoot);
   const explicitWorkspaceId = normalizeScalar(workspaceId);
@@ -335,7 +539,7 @@ export function resolveWorkspaceContext({
     projectIdentity,
   });
 
-  return {
+  const context = {
     target_root: absoluteTargetRoot,
     project_id: projectIdentity.project_id,
     project_id_source: projectIdentity.project_id_source,
@@ -366,5 +570,33 @@ export function resolveWorkspaceContext({
       locatorConnectionRef: locatorData.backend?.connectionRef ?? "",
       locatorProjectionPolicy: locatorData.projection?.localIndexMode ?? "",
     }),
+    cache_diagnostic: {
+      kind: "workspace-resolution",
+      cache_hit: false,
+      cache_key: locatorState == null ? "target-env-explicit-overrides" : "bypass-explicit-locator-state",
+    },
+  };
+  if (locatorState == null) {
+    workspaceContextCache.set(cacheKey, {
+      signature: cacheSignature,
+      context: cloneJson(context),
+    });
+  }
+  return context;
+}
+
+export function resetWorkspaceResolutionCache() {
+  workspaceContextCache.clear();
+  workspaceContextCacheStats.hits = 0;
+  workspaceContextCacheStats.misses = 0;
+  workspaceContextCacheStats.invalidations = 0;
+}
+
+export function getWorkspaceResolutionCacheStats() {
+  return {
+    entries: workspaceContextCache.size,
+    hits: workspaceContextCacheStats.hits,
+    misses: workspaceContextCacheStats.misses,
+    invalidations: workspaceContextCacheStats.invalidations,
   };
 }

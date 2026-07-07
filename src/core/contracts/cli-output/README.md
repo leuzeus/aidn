@@ -81,3 +81,4 @@ Initial v1 commands:
 - `aidn runtime handoff-admit --json`
 - `aidn project config --list --json`
 - `aidn codex hydrate-context --json`
+- `aidn codex workflow-step --json`

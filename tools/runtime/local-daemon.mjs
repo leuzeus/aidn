@@ -1,0 +1,720 @@
+#!/usr/bin/env node
+import fs from "node:fs";
+import http from "node:http";
+import path from "node:path";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { createHookContextStoreAdapter } from "../../src/adapters/codex/hook-context-store-adapter.mjs";
+import { createDaemonRunJsonHookAgentAdapter } from "../../src/application/codex/daemon-run-json-hook-agent-adapter.mjs";
+import { runJsonHookUseCase } from "../../src/application/codex/run-json-hook-use-case.mjs";
+import { createDaemonPostgresPool } from "../../src/application/runtime/daemon-postgres-pool-service.mjs";
+import {
+  createRuntimeArtifactStore,
+  resolveEffectiveRuntimePersistence,
+} from "../../src/application/runtime/runtime-persistence-service.mjs";
+import { getWorkspaceResolutionCacheStats } from "../../src/application/runtime/workspace-resolution-service.mjs";
+import { getAidnProjectConfigCacheStats } from "../../src/lib/config/aidn-config-lib.mjs";
+import { runWorkflowStep } from "../codex/workflow-step.mjs";
+
+const CONTRACT_VERSION = "runtime-local-daemon.v1";
+const TOOL_FILE = fileURLToPath(import.meta.url);
+const DEFAULT_ENDPOINT_FILE = ".aidn/runtime/daemon/endpoint.json";
+const DEFAULT_RUNTIME_INDEX_FILE = ".aidn/runtime/index/workflow-index.sqlite";
+const daemonPostgresPool = createDaemonPostgresPool();
+const runtimeSnapshotCache = new Map();
+const runtimeSnapshotCacheStats = {
+  hits: 0,
+  misses: 0,
+  refreshes: 0,
+  invalidations: 0,
+};
+
+function parseArgs(argv) {
+  const args = {
+    start: false,
+    serve: false,
+    status: false,
+    stop: false,
+    target: ".",
+    host: "127.0.0.1",
+    hostExplicit: false,
+    port: 48173,
+    portExplicit: false,
+    endpointFile: DEFAULT_ENDPOINT_FILE,
+    readyFile: "",
+    json: false,
+  };
+  for (let i = 0; i < argv.length; i += 1) {
+    const token = argv[i];
+    if (token === "--start") {
+      args.start = true;
+    } else if (token === "--serve") {
+      args.serve = true;
+    } else if (token === "--status") {
+      args.status = true;
+    } else if (token === "--stop") {
+      args.stop = true;
+    } else if (token === "--target") {
+      args.target = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--host") {
+      args.host = String(argv[i + 1] ?? "").trim();
+      args.hostExplicit = true;
+      i += 1;
+    } else if (token === "--port") {
+      args.port = Number(argv[i + 1] ?? 48173);
+      args.portExplicit = true;
+      i += 1;
+    } else if (token === "--endpoint-file") {
+      args.endpointFile = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--ready-file") {
+      args.readyFile = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--json") {
+      args.json = true;
+    } else if (token === "--help" || token === "-h") {
+      printUsage();
+      process.exit(0);
+    } else {
+      throw new Error(`Unknown argument: ${token}`);
+    }
+  }
+  if (!args.host) {
+    throw new Error("Missing value for --host");
+  }
+  if (!Number.isInteger(args.port) || args.port < 0 || args.port > 65535) {
+    throw new Error("Invalid --port. Expected 0..65535.");
+  }
+  const selectedActions = [args.start, args.serve, args.status, args.stop].filter(Boolean).length;
+  if (selectedActions > 1) {
+    throw new Error("Choose only one of --start, --serve, --status, or --stop.");
+  }
+  if (!args.serve && !args.status && !args.start && !args.stop) {
+    args.status = true;
+  }
+  if (!args.target) {
+    throw new Error("Missing value for --target");
+  }
+  if (!args.endpointFile) {
+    throw new Error("Missing value for --endpoint-file");
+  }
+  return args;
+}
+
+function printUsage() {
+  console.log("Usage:");
+  console.log("  npx aidn runtime local-daemon --start --target . --json");
+  console.log("  npx aidn runtime local-daemon --status --target . --json");
+  console.log("  npx aidn runtime local-daemon --stop --target . --json");
+  console.log("  npx aidn runtime local-daemon --serve --host 127.0.0.1 --port 48173 --json");
+  console.log("  node tools/runtime/local-daemon.mjs --serve --port 0 --ready-file .aidn/runtime/daemon-ready.json");
+}
+
+function resolveTargetPath(targetRoot, candidate) {
+  if (!candidate) {
+    return "";
+  }
+  if (path.isAbsolute(candidate)) {
+    return path.resolve(candidate);
+  }
+  return path.resolve(targetRoot, candidate);
+}
+
+function resolveEndpointFile(targetRoot, endpointFile) {
+  return resolveTargetPath(targetRoot, endpointFile || DEFAULT_ENDPOINT_FILE);
+}
+
+function readEndpointFile(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return null;
+  }
+  try {
+    const payload = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    const host = String(payload?.daemon?.host ?? payload?.host ?? "").trim();
+    const port = Number(payload?.daemon?.port ?? payload?.port ?? 0);
+    if (!host || !Number.isInteger(port) || port < 1) {
+      return null;
+    }
+    return {
+      ...payload,
+      host,
+      port,
+      pid: Number(payload?.daemon?.pid ?? payload?.pid ?? 0) || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function fileSignature(filePath) {
+  if (!filePath) {
+    return {
+      path: "",
+      exists: false,
+      mtimeMs: 0,
+      size: 0,
+    };
+  }
+  try {
+    const stat = fs.statSync(filePath);
+    return {
+      path: path.resolve(filePath),
+      exists: true,
+      mtimeMs: stat.mtimeMs,
+      size: stat.size,
+    };
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
+    return {
+      path: path.resolve(filePath),
+      exists: false,
+      mtimeMs: 0,
+      size: 0,
+    };
+  }
+}
+
+function signaturesMatch(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function buildRuntimeSnapshotSignature(targetRoot) {
+  return {
+    config: fileSignature(path.join(targetRoot, ".aidn", "config.json")),
+    locator: fileSignature(path.join(targetRoot, ".aidn", "project", "shared-runtime.locator.json")),
+    sqlite_index: fileSignature(resolveTargetPath(targetRoot, DEFAULT_RUNTIME_INDEX_FILE)),
+  };
+}
+
+function summarizeRuntimeSnapshot(snapshot, backendDescription, runtimePersistence, targetRoot, cacheHit) {
+  const runtimeHeads = snapshot?.runtimeHeads && typeof snapshot.runtimeHeads === "object"
+    ? snapshot.runtimeHeads
+    : {};
+  return {
+    target_root: targetRoot,
+    backend: runtimePersistence.backend,
+    backend_source: runtimePersistence.source,
+    status: snapshot?.warning ? "warning" : (snapshot?.exists === true ? "ready" : "missing"),
+    exists: snapshot?.exists === true,
+    cache_hit: cacheHit === true,
+    refreshed_at: new Date().toISOString(),
+    runtime_head_count: Object.keys(runtimeHeads).length,
+    payload_digest: snapshot?.payload_digest ?? null,
+    runtime_scope_id: snapshot?.runtime_scope_id ?? backendDescription?.runtime_scope_id ?? null,
+    scope_key: snapshot?.scope_key ?? backendDescription?.scope_key ?? null,
+    storage_policy: snapshot?.storage_policy ?? null,
+    warning: snapshot?.warning ?? "",
+  };
+}
+
+async function warmRuntimeSnapshotCache(targetRoot, { force = false } = {}) {
+  const absoluteTargetRoot = path.resolve(targetRoot);
+  const signature = buildRuntimeSnapshotSignature(absoluteTargetRoot);
+  const cached = runtimeSnapshotCache.get(absoluteTargetRoot);
+  if (!force && cached && signaturesMatch(cached.signature, signature)) {
+    runtimeSnapshotCacheStats.hits += 1;
+    return {
+      ...cached.summary,
+      cache_hit: true,
+    };
+  }
+  if (cached) {
+    runtimeSnapshotCacheStats.invalidations += 1;
+  }
+  runtimeSnapshotCacheStats.misses += 1;
+  runtimeSnapshotCacheStats.refreshes += 1;
+
+  let summary;
+  try {
+    const runtimePersistence = resolveEffectiveRuntimePersistence({
+      targetRoot: absoluteTargetRoot,
+    });
+    const sqliteFile = resolveTargetPath(absoluteTargetRoot, DEFAULT_RUNTIME_INDEX_FILE);
+    const store = createRuntimeArtifactStore({
+      targetRoot: absoluteTargetRoot,
+      backend: runtimePersistence.backend,
+      connectionRef: runtimePersistence.connectionRef ?? "",
+      sqliteFile,
+      ...(runtimePersistence.backend === "postgres"
+        ? { clientFactory: daemonPostgresPool.getClientFactory() }
+        : {}),
+    });
+    const backendDescription = store.describeBackend();
+    const snapshot = await store.loadSnapshot({
+      includePayload: false,
+      includeRuntimeHeads: true,
+    });
+    summary = summarizeRuntimeSnapshot(snapshot, backendDescription, runtimePersistence, absoluteTargetRoot, false);
+  } catch (error) {
+    summary = {
+      target_root: absoluteTargetRoot,
+      backend: "unknown",
+      backend_source: "unknown",
+      status: "error",
+      exists: false,
+      cache_hit: false,
+      refreshed_at: new Date().toISOString(),
+      runtime_head_count: 0,
+      payload_digest: null,
+      runtime_scope_id: null,
+      scope_key: null,
+      storage_policy: null,
+      warning: String(error.message ?? error),
+    };
+  }
+  runtimeSnapshotCache.set(absoluteTargetRoot, {
+    signature,
+    summary,
+  });
+  return summary;
+}
+
+function getRuntimeSnapshotCacheStats() {
+  return {
+    entries: runtimeSnapshotCache.size,
+    hits: runtimeSnapshotCacheStats.hits,
+    misses: runtimeSnapshotCacheStats.misses,
+    refreshes: runtimeSnapshotCacheStats.refreshes,
+    invalidations: runtimeSnapshotCacheStats.invalidations,
+  };
+}
+
+async function healthPayload(server = null, meta = {}) {
+  const address = server?.address?.() ?? null;
+  const targetRoot = meta.targetRoot ? path.resolve(meta.targetRoot) : null;
+  const runtimeSnapshot = targetRoot
+    ? await warmRuntimeSnapshotCache(targetRoot)
+    : null;
+  return {
+    ts: new Date().toISOString(),
+    ok: true,
+    contract_version: CONTRACT_VERSION,
+    command: "aidn runtime local-daemon --json",
+    effect_class: "executor",
+    daemon: {
+      status: "ready",
+      pid: process.pid,
+      uptime_ms: Math.round(process.uptime() * 1000),
+      host: typeof address === "object" && address ? address.address : null,
+      port: typeof address === "object" && address ? address.port : null,
+      endpoint_file: meta.endpointFile ?? null,
+      target_root: targetRoot,
+      capabilities: ["health", "codex.workflow-step", "codex.run-json-hook"],
+    },
+    caches: {
+      aidn_project_config: getAidnProjectConfigCacheStats(),
+      workspace_resolution: getWorkspaceResolutionCacheStats(),
+      runtime_snapshot: getRuntimeSnapshotCacheStats(),
+      postgres_pool: daemonPostgresPool.getStats(),
+    },
+    runtime_snapshot: runtimeSnapshot,
+  };
+}
+
+function readRequestJson(request) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    request.setEncoding("utf8");
+    request.on("data", (chunk) => {
+      body += chunk;
+      if (Buffer.byteLength(body, "utf8") > 1048576) {
+        reject(new Error("request body too large"));
+        request.destroy();
+      }
+    });
+    request.on("end", () => {
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch (error) {
+        reject(new Error(`invalid JSON request body: ${error.message}`));
+      }
+    });
+    request.on("error", reject);
+  });
+}
+
+function writeJson(response, statusCode, payload) {
+  const body = `${JSON.stringify(payload, null, 2)}\n`;
+  response.writeHead(statusCode, {
+    "content-type": "application/json; charset=utf-8",
+    "content-length": Buffer.byteLength(body),
+  });
+  response.end(body);
+}
+
+function shouldRefreshRuntimeSnapshotAfterRunJsonHook(payload) {
+  const dbSync = payload?.db_sync;
+  if (!dbSync || dbSync.enabled !== true || dbSync.skipped === true) {
+    return false;
+  }
+  const syncPayload = dbSync.payload;
+  if (!syncPayload || syncPayload.skipped === true) {
+    return false;
+  }
+  if (syncPayload.fast_path?.used === true) {
+    return false;
+  }
+  return true;
+}
+
+async function handleExecute(request) {
+  const body = await readRequestJson(request);
+  const operation = String(body?.operation ?? "").trim();
+  if (!["codex.workflow-step", "codex.run-json-hook"].includes(operation)) {
+    return {
+      statusCode: 400,
+      payload: {
+        ok: false,
+        contract_version: CONTRACT_VERSION,
+        message: `unsupported daemon operation: ${operation || "none"}`,
+      },
+    };
+  }
+  const args = body?.args && typeof body.args === "object" ? body.args : {};
+  const targetRoot = path.resolve(String(body?.targetRoot ?? args.target ?? "."));
+  await warmRuntimeSnapshotCache(targetRoot);
+  if (operation === "codex.run-json-hook") {
+    const payload = await runJsonHookUseCase({
+      args: {
+        ...args,
+        target: targetRoot,
+        useDaemon: false,
+      },
+      targetRoot,
+      agentAdapter: createDaemonRunJsonHookAgentAdapter(),
+      hookContextStore: createHookContextStoreAdapter(),
+    });
+    if (shouldRefreshRuntimeSnapshotAfterRunJsonHook(payload)) {
+      await warmRuntimeSnapshotCache(targetRoot, { force: true });
+    }
+    return {
+      statusCode: 200,
+      payload: {
+        ok: true,
+        contract_version: CONTRACT_VERSION,
+        operation,
+        payload,
+      },
+    };
+  }
+  const payload = await runWorkflowStep({
+    args: {
+      ...args,
+      target: targetRoot,
+      useDaemon: false,
+    },
+    targetRoot,
+  });
+  return {
+    statusCode: 200,
+    payload: {
+      ok: true,
+      contract_version: CONTRACT_VERSION,
+      operation,
+      payload,
+    },
+  };
+}
+
+function createDaemonServer(meta = {}) {
+  let server;
+  server = http.createServer(async (request, response) => {
+    try {
+      if (request.method === "GET" && request.url === "/health") {
+        writeJson(response, 200, await healthPayload(server, meta));
+        return;
+      }
+      if (request.method === "POST" && request.url === "/v1/execute") {
+        const result = await handleExecute(request);
+        writeJson(response, result.statusCode, result.payload);
+        return;
+      }
+      if (request.method === "POST" && request.url === "/shutdown") {
+        writeJson(response, 200, {
+          ok: true,
+          contract_version: CONTRACT_VERSION,
+          daemon: {
+            status: "stopping",
+            pid: process.pid,
+          },
+        });
+        setTimeout(() => {
+          server.close(async () => {
+            try {
+              await daemonPostgresPool.closeAll();
+            } finally {
+              process.exit(0);
+            }
+          });
+        }, 25);
+        return;
+      }
+      writeJson(response, 404, {
+        ok: false,
+        contract_version: CONTRACT_VERSION,
+        message: "not found",
+      });
+    } catch (error) {
+      writeJson(response, 500, {
+        ok: false,
+        contract_version: CONTRACT_VERSION,
+        message: String(error.message ?? error),
+      });
+    }
+  });
+  return server;
+}
+
+function writeReadyFile(filePath, payload) {
+  if (!filePath) {
+    return;
+  }
+  fs.mkdirSync(path.dirname(path.resolve(filePath)), { recursive: true });
+  fs.writeFileSync(path.resolve(filePath), `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+}
+
+function requestJson({ host, port, method = "GET", requestPath = "/health", timeoutMs = 1500 }) {
+  return new Promise((resolve, reject) => {
+    const request = http.request({
+      host,
+      port,
+      method,
+      path: requestPath,
+      timeout: timeoutMs,
+    }, (response) => {
+      let body = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => {
+        body += chunk;
+      });
+      response.on("end", () => {
+        try {
+          resolve(JSON.parse(body || "{}"));
+        } catch (error) {
+          reject(new Error(`daemon status returned invalid JSON: ${error.message}`));
+        }
+      });
+    });
+    request.on("timeout", () => request.destroy(new Error("daemon request timed out")));
+    request.on("error", reject);
+    request.end();
+  });
+}
+
+function endpointForArgs(args, targetRoot) {
+  const endpointFile = resolveEndpointFile(targetRoot, args.endpointFile);
+  const endpoint = readEndpointFile(endpointFile);
+  if (endpoint && !args.portExplicit && !args.hostExplicit) {
+    return {
+      host: endpoint.host,
+      port: endpoint.port,
+      endpointFile,
+      endpoint,
+    };
+  }
+  return {
+    host: args.host,
+    port: args.port,
+    endpointFile,
+    endpoint,
+  };
+}
+
+async function startDaemon(args, targetRoot) {
+  const endpointFile = resolveEndpointFile(targetRoot, args.endpointFile);
+  const existing = readEndpointFile(endpointFile);
+  if (existing) {
+    try {
+      const status = await requestJson({
+        host: existing.host,
+        port: existing.port,
+        requestPath: "/health",
+        timeoutMs: 750,
+      });
+      if (status?.ok === true) {
+        return {
+          ...status,
+          command: "aidn runtime local-daemon --start --json",
+          started: false,
+          reused_existing: true,
+          endpoint_file: endpointFile,
+        };
+      }
+    } catch {
+      // Stale endpoint; starting a fresh daemon below will overwrite it.
+    }
+  }
+
+  fs.mkdirSync(path.dirname(endpointFile), { recursive: true });
+  const child = spawn(process.execPath, [
+    TOOL_FILE,
+    "--serve",
+    "--target",
+    targetRoot,
+    "--host",
+    args.host,
+    "--port",
+    String(args.port),
+    "--ready-file",
+    endpointFile,
+    "--endpoint-file",
+    endpointFile,
+  ], {
+    cwd: process.cwd(),
+    detached: true,
+    stdio: "ignore",
+    windowsHide: true,
+  });
+  child.unref();
+
+  const started = Date.now();
+  while (Date.now() - started < 10000) {
+    const endpoint = readEndpointFile(endpointFile);
+    if (endpoint) {
+      try {
+        const status = await requestJson({
+          host: endpoint.host,
+          port: endpoint.port,
+          requestPath: "/health",
+          timeoutMs: 750,
+        });
+        if (status?.ok === true) {
+          return {
+            ...status,
+            command: "aidn runtime local-daemon --start --json",
+            started: true,
+            reused_existing: false,
+            endpoint_file: endpointFile,
+          };
+        }
+      } catch {
+        // Retry until the daemon is ready or the startup timeout expires.
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`daemon did not become ready: ${endpointFile}`);
+}
+
+async function stopDaemon(args, targetRoot) {
+  const endpoint = endpointForArgs(args, targetRoot);
+  const unavailablePayload = {
+    ts: new Date().toISOString(),
+    ok: false,
+    contract_version: CONTRACT_VERSION,
+    command: "aidn runtime local-daemon --stop --json",
+    effect_class: "executor",
+    endpoint_file: endpoint.endpointFile,
+    daemon: {
+      status: "unavailable",
+      host: endpoint.host,
+      port: endpoint.port,
+    },
+  };
+  if (!endpoint.endpoint && !args.portExplicit) {
+    return {
+      ...unavailablePayload,
+      message: "daemon endpoint file not found",
+    };
+  }
+  try {
+    const payload = await requestJson({
+      host: endpoint.host,
+      port: endpoint.port,
+      method: "POST",
+      requestPath: "/shutdown",
+      timeoutMs: 1500,
+    });
+    try {
+      fs.rmSync(endpoint.endpointFile, { force: true });
+    } catch {
+      // Endpoint cleanup is best-effort; status will still report the daemon shutdown response.
+    }
+    return {
+      ...payload,
+      command: "aidn runtime local-daemon --stop --json",
+      endpoint_file: endpoint.endpointFile,
+      stopped: true,
+    };
+  } catch (error) {
+    return {
+      ...unavailablePayload,
+      message: String(error.message ?? error),
+    };
+  }
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const targetRoot = path.resolve(process.cwd(), args.target);
+  if (args.start) {
+    const payload = await startDaemon(args, targetRoot);
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+  if (args.serve) {
+    const endpointFile = resolveEndpointFile(targetRoot, args.readyFile || args.endpointFile);
+    const server = createDaemonServer({
+      endpointFile,
+      targetRoot,
+    });
+    await new Promise((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(args.port, args.host, resolve);
+    });
+    const payload = await healthPayload(server, {
+      endpointFile,
+      targetRoot,
+    });
+    writeReadyFile(args.readyFile, payload);
+    if (args.json) {
+      console.log(JSON.stringify(payload, null, 2));
+    }
+    return;
+  }
+  if (args.stop) {
+    const payload = await stopDaemon(args, targetRoot);
+    console.log(JSON.stringify(payload, null, 2));
+    if (payload.ok === false) {
+      process.exit(1);
+    }
+    return;
+  }
+
+  try {
+    const endpoint = endpointForArgs(args, targetRoot);
+    const payload = await requestJson({
+      host: endpoint.host,
+      port: endpoint.port,
+      requestPath: "/health",
+      timeoutMs: 1500,
+    });
+    console.log(JSON.stringify({
+      ...payload,
+      endpoint_file: endpoint.endpointFile,
+    }, null, 2));
+  } catch (error) {
+    const endpoint = endpointForArgs(args, targetRoot);
+    const payload = {
+      ts: new Date().toISOString(),
+      ok: false,
+      contract_version: CONTRACT_VERSION,
+      command: "aidn runtime local-daemon --status --json",
+      effect_class: "read-only",
+      endpoint_file: endpoint.endpointFile,
+      daemon: {
+        status: "unavailable",
+        host: endpoint.host,
+        port: endpoint.port,
+      },
+      message: String(error.message ?? error),
+    };
+    console.log(JSON.stringify(payload, null, 2));
+    process.exit(1);
+  }
+}
+
+await main();

@@ -26,6 +26,8 @@ const DB_FIRST_MARKERS = [
   "loadSqliteIndexPayloadSafe",
   "readIndexFromSqlite",
   "decodeEmbeddedArtifactContent(",
+  "preWriteAdmit(",
+  "runHydrateContextUseCase(",
 ];
 
 const DB_ONLY_SAFE_FILE_READ_MARKERS = [

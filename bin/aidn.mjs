@@ -87,6 +87,7 @@ const CODEX_ALIASES = {
   "run-json-hook": { file: "run-json-hook.mjs" },
   "normalize-hook-payload": { file: "normalize-hook-payload.mjs" },
   "hydrate-context": { file: "hydrate-context.mjs" },
+  "workflow-step": { file: "workflow-step.mjs" },
   "context-store": { file: "context-store.mjs" },
 };
 
@@ -124,6 +125,7 @@ const RUNTIME_ALIASES = {
   "coordinator-select-agent": { file: "coordinator-select-agent.mjs" },
   "coordinator-suggest-arbitration": { file: "coordinator-suggest-arbitration.mjs" },
   "list-agent-adapters": { file: "list-agent-adapters.mjs" },
+  "local-daemon": { file: "local-daemon.mjs" },
   "verify-agent-roster": { file: "verify-agent-roster.mjs" },
   "project-agent-health-summary": { file: "project-agent-health-summary.mjs" },
   "project-agent-selection-summary": { file: "project-agent-selection-summary.mjs" },
@@ -154,6 +156,7 @@ function printUsage() {
   console.log("  aidn perf checkpoint --target ../repo --mode COMMITTING --index-store all --index-sync-check --json");
   console.log("  aidn perf session-start --target ../repo --mode COMMITTING --json");
   console.log("  aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json");
+  console.log("  aidn codex workflow-step --target . --skills close-session,pr-orchestrate --mode COMMITTING --json");
   console.log("  aidn runtime sync-db-first-selective --target . --json");
   console.log("  aidn runtime db-status --target . --json");
   console.log("  aidn runtime artifact-fetch --target . --path CURRENT-STATE.md --json");
@@ -189,6 +192,9 @@ function printUsage() {
   console.log("  aidn runtime coordinator-select-agent --target . --role auditor --action audit --json");
   console.log("  aidn runtime coordinator-suggest-arbitration --target . --json");
   console.log("  aidn runtime list-agent-adapters --target . --json");
+  console.log("  aidn runtime local-daemon --start --target . --json");
+  console.log("  aidn runtime local-daemon --status --json");
+  console.log("  aidn runtime local-daemon --stop --target . --json");
   console.log("  aidn runtime verify-agent-roster --target . --json");
   console.log("  aidn runtime project-agent-health-summary --target . --json");
   console.log("  aidn runtime project-agent-selection-summary --target . --json");
@@ -242,6 +248,7 @@ function printPerfUsage() {
 function printCodexUsage() {
   printGroupUsage("codex", CODEX_ALIASES, [
     "aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json",
+    "aidn codex workflow-step --target . --skills close-session,pr-orchestrate --mode COMMITTING --json",
     "aidn codex hydrate-context --target . --skill start-session --project-runtime-state --json",
   ]);
 }

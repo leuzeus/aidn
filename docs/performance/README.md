@@ -95,6 +95,7 @@ The following scripts were added under `tools/perf/`:
 - `render-constraint-lot-plan-summary.mjs` - render concise Markdown summary of lot execution plan
 - `render-constraint-summary.mjs` - generate Markdown summary from constraint report for CI/job summary
 - `constraint-loop.mjs` - run full constraint chain (`report -> checks -> actions -> history -> trend -> lot-plan -> summaries`) in one orchestrator
+- `measure-issue-43-latency.mjs` - collect local no-change latency evidence for issue 43 paths without enforcing timing thresholds
 - `run-kpi-campaign.mjs` - run repeated session/delivery cycles and emit KPI/threshold campaign summary
 - `render-summary.mjs` - generate Markdown summary from KPI + threshold/regression/fallback reports
 - `audit-review.mjs` - evaluate post-optimization process drift and emit PASS/WARN/FAIL + replanification decision
@@ -121,6 +122,14 @@ Runtime transition scripts (`tools/runtime/`):
 - `repair-layer-resolve.mjs` - persist human decisions for ambiguous repair-layer relations
 - `artifact-store.mjs` - minimal DB artifact upsert/read/list API (foundation for DB-first write-through)
 - `db-first-artifact.mjs` - upsert one artifact directly into DB runtime index with optional projection to `docs/audit` (write-through helper)
+
+Runtime resolution cache note:
+- workspace/runtime identity resolution is cached within a single Node process and invalidates when the Git head/ref or `.aidn/project/shared-runtime.locator.json` signature changes.
+- `resolveWorkspaceContext` returns a `cache_diagnostic` object, and the local daemon health output exposes aggregate `workspace_resolution` cache stats.
+- the local daemon also keeps a process-local runtime snapshot summary cache for its target; it invalidates on `.aidn/config.json`, `.aidn/project/shared-runtime.locator.json`, or local SQLite index signature changes and refreshes after delegated commands.
+- when the configured runtime persistence backend is PostgreSQL, daemon runtime snapshot reads reuse a process-local PostgreSQL pool and expose redacted aggregate `postgres_pool` stats in daemon health output.
+- the cache is local diagnostic/runtime state only; it does not change the canonical source of truth for workspace identity, shared runtime locator data, or PostgreSQL-backed runtime state.
+- PostgreSQL remains optional and no command starts or requires PostgreSQL unless the target is explicitly configured for it.
 
 Repair-layer traceability note:
 - cycle reference findings now distinguish:
@@ -277,6 +286,8 @@ npm run perf:constraint-summary -- --report-file .aidn/runtime/perf/constraint-r
 npm run perf:constraint-loop -- --target ../client-repo --event-file .aidn/runtime/perf/workflow-events.ndjson --json
 npm run perf:check-fallbacks
 npm run perf:campaign -- --iterations 30 --target tests/fixtures/repo-installed-core
+npm run perf:measure-issue-43-latency -- --target tests/fixtures/repo-installed-core --iterations 3 --warmup 1 --json
+npm run perf:verify-issue-43-closure
 npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --regression-file .aidn/runtime/perf/kpi-regression.json --fallback-report-file .aidn/runtime/perf/fallback-report.json --fallback-thresholds-file .aidn/runtime/perf/fallback-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
 npm run perf:audit-review -- --target ../client-repo --json
 npm run runtime:sync-db-first -- --target ../client-repo --json
@@ -285,6 +296,22 @@ npm run runtime:mode-migrate -- --target ../client-repo --to db-only --json
 npm run perf:reset
 npm run perf:reset -- --keep-history
 ```
+
+## Issue 43 Latency Evidence
+
+`perf:measure-issue-43-latency` is a local measurement helper, not a CI gate. It copies the selected target to a temporary working tree, initializes a clean `dual` SQLite runtime index, then measures repeated no-change runs for:
+
+- `runtime sync-db-first-selective`
+- `runtime pre-write-admit`
+- `codex run-json-hook`
+- `codex workflow-step`
+- daemon-backed `run-json-hook` and `workflow-step` when daemon measurement is enabled
+
+The output reports median/average/p90 timings, JSON output size, fast-path usage, and daemon fallback status. No timing threshold is enforced because local Node startup, disk, antivirus, and PostgreSQL availability can vary by machine. Use this evidence to compare local batches before and after optimization, while keeping `perf:verify-*` commands as the authoritative functional gates.
+
+Daemon-backed `codex run-json-hook` keeps the same JSON contract and auto DB sync semantics as the batch command. The daemon can execute selected pure admission hooks, currently `pr-orchestrate`, in-process to avoid an extra `npx aidn perf skill-hook` subprocess. Hooks that can checkpoint, rewrite runtime artifacts, or need unsupported arguments fall back to the existing subprocess path. When repair findings are open and selective DB sync must re-run repair/triage work, local timings can still be dominated by that guarded sync path rather than daemon dispatch.
+
+`perf:verify-issue-43-closure` is the functional closure check for issue 43. It does not enforce wall-clock thresholds. It verifies that the no-change DB sync fast path is reported, compact `run-json-hook` output preserves the fast-path decision, `workflow-step` returns its batch contract, daemon delegation works for `run-json-hook` and `workflow-step`, and daemon cache diagnostics are exposed. Pair it with `perf:measure-issue-43-latency` when you need local timing evidence.
 
 Default runtime outputs:
 - `.aidn/runtime/perf/workflow-events.ndjson`

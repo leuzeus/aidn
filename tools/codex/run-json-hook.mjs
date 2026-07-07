@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import http from "node:http";
 import path from "node:path";
 import { createCodexAgentAdapter } from "../../src/adapters/codex/codex-agent-adapter.mjs";
 import { createHookContextStoreAdapter } from "../../src/adapters/codex/hook-context-store-adapter.mjs";
@@ -9,6 +10,8 @@ import {
   resolveAuditArtifactText,
   resolveDbBackedMode,
 } from "../runtime/db-first-runtime-view-lib.mjs";
+
+const DEFAULT_DAEMON_ENDPOINT_FILE = ".aidn/runtime/daemon/endpoint.json";
 
 function splitArgs(argv) {
   const idx = argv.indexOf("--");
@@ -37,8 +40,15 @@ function parseArgs(argv) {
     rawDir: ".aidn/runtime/context/raw",
     maxEntries: 50,
     json: false,
+    verbose: false,
+    includeRaw: false,
     dbSync: null,
     dbSyncExplicit: false,
+    useDaemon: false,
+    daemonHost: "127.0.0.1",
+    daemonPort: 0,
+    daemonEndpointFile: DEFAULT_DAEMON_ENDPOINT_FILE,
+    daemonTimeoutMs: 30000,
     command,
   };
 
@@ -77,12 +87,30 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--json") {
       args.json = true;
+    } else if (token === "--verbose") {
+      args.verbose = true;
+    } else if (token === "--include-raw") {
+      args.includeRaw = true;
     } else if (token === "--db-sync") {
       args.dbSync = true;
       args.dbSyncExplicit = true;
     } else if (token === "--no-db-sync") {
       args.dbSync = false;
       args.dbSyncExplicit = true;
+    } else if (token === "--use-daemon") {
+      args.useDaemon = true;
+    } else if (token === "--daemon-host") {
+      args.daemonHost = String(options[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--daemon-port") {
+      args.daemonPort = Number(options[i + 1] ?? 0);
+      i += 1;
+    } else if (token === "--daemon-endpoint-file") {
+      args.daemonEndpointFile = String(options[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--daemon-timeout-ms") {
+      args.daemonTimeoutMs = Number(options[i + 1] ?? 30000);
+      i += 1;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -100,6 +128,12 @@ function parseArgs(argv) {
   if (!Number.isFinite(args.maxEntries) || args.maxEntries < 1) {
     throw new Error("Invalid --max-entries. Expected a positive integer.");
   }
+  if (args.useDaemon && !args.daemonEndpointFile && (!args.daemonHost || !Number.isInteger(args.daemonPort) || args.daemonPort < 1)) {
+    throw new Error("Invalid daemon endpoint. Expected --daemon-endpoint-file or --daemon-host plus --daemon-port when --use-daemon is supplied.");
+  }
+  if (!Number.isFinite(args.daemonTimeoutMs) || args.daemonTimeoutMs < 100) {
+    throw new Error("Invalid --daemon-timeout-ms. Expected at least 100.");
+  }
   return args;
 }
 
@@ -111,6 +145,9 @@ function printUsage() {
   console.log("  npx aidn codex run-json-hook --skill cycle-create --mode COMMITTING --target . --db-sync --json");
   console.log("  npx aidn codex run-json-hook --skill close-session --mode COMMITTING --target . --no-auto-skip-gate --json");
   console.log("  npx aidn codex run-json-hook --skill close-session --mode COMMITTING --target . --fail-on-repair-block");
+  console.log("  npx aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json --verbose");
+  console.log("  npx aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json --include-raw");
+  console.log("  npx aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json --use-daemon");
 }
 
 function resolveRuntimeStateHint(targetRoot, requestedStateMode = "") {
@@ -155,18 +192,155 @@ function printCurrentStateStaleHint(targetRoot, requestedStateMode = "") {
   console.log("Current state stale: docs/audit/CURRENT-STATE.md");
 }
 
-function main() {
+function resolveDaemonEndpointFile(targetRoot, endpointFile) {
+  if (!endpointFile) {
+    return "";
+  }
+  if (path.isAbsolute(endpointFile)) {
+    return path.resolve(endpointFile);
+  }
+  return path.resolve(targetRoot, endpointFile);
+}
+
+function readDaemonEndpoint(targetRoot, endpointFile) {
+  const filePath = resolveDaemonEndpointFile(targetRoot, endpointFile);
+  if (!filePath || !fs.existsSync(filePath)) {
+    return null;
+  }
+  const payload = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  const host = String(payload?.daemon?.host ?? payload?.host ?? "").trim();
+  const port = Number(payload?.daemon?.port ?? payload?.port ?? 0);
+  if (!host || !Number.isInteger(port) || port < 1) {
+    throw new Error(`Invalid daemon endpoint file: ${filePath}`);
+  }
+  return {
+    host,
+    port,
+    endpoint_file: filePath,
+  };
+}
+
+function resolveDaemonEndpoint(args, targetRoot) {
+  if (Number.isInteger(args.daemonPort) && args.daemonPort > 0) {
+    return {
+      host: args.daemonHost,
+      port: args.daemonPort,
+      endpoint_file: null,
+    };
+  }
+  const endpoint = readDaemonEndpoint(targetRoot, args.daemonEndpointFile);
+  if (!endpoint) {
+    throw new Error(`daemon endpoint file not found: ${resolveDaemonEndpointFile(targetRoot, args.daemonEndpointFile)}`);
+  }
+  return endpoint;
+}
+
+function requestDaemonRunJsonHook({ args, targetRoot }) {
+  return new Promise((resolve, reject) => {
+    let endpoint;
+    try {
+      endpoint = resolveDaemonEndpoint(args, targetRoot);
+    } catch (error) {
+      reject(error);
+      return;
+    }
+    const body = JSON.stringify({
+      operation: "codex.run-json-hook",
+      targetRoot,
+      args: {
+        ...args,
+        target: targetRoot,
+        useDaemon: false,
+      },
+    });
+    const request = http.request({
+      host: endpoint.host,
+      port: endpoint.port,
+      method: "POST",
+      path: "/v1/execute",
+      agent: false,
+      headers: {
+        "connection": "close",
+        "content-type": "application/json",
+        "content-length": Buffer.byteLength(body),
+      },
+    }, (response) => {
+      let responseBody = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => {
+        responseBody += chunk;
+      });
+      response.on("end", () => {
+        let parsed;
+        try {
+          parsed = JSON.parse(responseBody || "{}");
+        } catch (error) {
+          reject(new Error(`daemon returned invalid JSON: ${error.message}`));
+          return;
+        }
+        if ((response.statusCode ?? 500) >= 400 || parsed.ok === false) {
+          reject(new Error(parsed.message || `daemon request failed with status ${response.statusCode}`));
+          return;
+        }
+        const payload = parsed.payload ?? parsed;
+        payload.__daemon_endpoint = endpoint;
+        resolve(payload);
+      });
+    });
+    request.setTimeout(args.daemonTimeoutMs, () => {
+      request.destroy(new Error("daemon request timed out"));
+    });
+    request.on("error", reject);
+    request.write(body);
+    request.end();
+  });
+}
+
+async function runLocalJsonHook(args, targetRoot) {
+  const agentAdapter = createCodexAgentAdapter();
+  const hookContextStore = createHookContextStoreAdapter();
+  return runJsonHookUseCase({
+    args,
+    targetRoot,
+    agentAdapter,
+    hookContextStore,
+  });
+}
+
+async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
-    const agentAdapter = createCodexAgentAdapter();
-    const hookContextStore = createHookContextStoreAdapter();
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const output = runJsonHookUseCase({
-      args,
-      targetRoot,
-      agentAdapter,
-      hookContextStore,
-    });
+    let output;
+    if (args.useDaemon) {
+      try {
+        output = await requestDaemonRunJsonHook({ args, targetRoot });
+        const endpoint = output.__daemon_endpoint ?? null;
+        delete output.__daemon_endpoint;
+        output.daemon = {
+          used: true,
+          endpoint: endpoint ? `${endpoint.host}:${endpoint.port}` : `${args.daemonHost}:${args.daemonPort}`,
+          endpoint_file: endpoint?.endpoint_file ?? null,
+          fallback: false,
+        };
+      } catch (error) {
+        output = await runLocalJsonHook(args, targetRoot);
+        output.daemon = {
+          used: false,
+          endpoint: args.daemonPort > 0 ? `${args.daemonHost}:${args.daemonPort}` : null,
+          endpoint_file: resolveDaemonEndpointFile(targetRoot, args.daemonEndpointFile),
+          fallback: true,
+          reason: String(error.message ?? error),
+        };
+      }
+    } else {
+      output = await runLocalJsonHook(args, targetRoot);
+      output.daemon = {
+        used: false,
+        fallback: false,
+        reason: "not_requested",
+      };
+    }
 
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));
@@ -206,4 +380,4 @@ function main() {
   }
 }
 
-main();
+await main();

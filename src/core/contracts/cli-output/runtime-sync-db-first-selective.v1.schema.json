@@ -25,6 +25,9 @@
     "target_root": { "type": "string" },
     "state_mode": { "type": "string" },
     "strict": { "type": "boolean" },
+    "skipped": { "type": "boolean" },
+    "reason": { "type": "string" },
+    "runtime_persistence_backend": { "type": "string" },
     "git_available": { "type": "boolean" },
     "fallback_full_enabled": { "type": "boolean" },
     "fallback_full_used": { "type": "boolean" },
@@ -32,6 +35,43 @@
     "summary": { "type": "object", "additionalProperties": true },
     "synced": { "type": "array" },
     "errors": { "type": "array" },
+    "fast_path": {
+      "type": "object",
+      "required": [
+        "used",
+        "reason",
+        "skipped_operations"
+      ],
+      "properties": {
+        "used": { "type": "boolean" },
+        "reason": { "type": "string" },
+        "skipped_operations": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "diagnostics": {
+          "type": "object",
+          "properties": {
+            "changed_paths_count": { "type": "number" },
+            "git_available": { "type": "boolean" },
+            "requires_full_sync": { "type": "boolean" },
+            "index_backend": { "type": "string" },
+            "index_exists": { "type": "boolean" },
+            "repair_layer_meta_current": { "type": "boolean" },
+            "repair_findings_count": { "type": ["number", "null"] },
+            "repair_warning_count": { "type": ["number", "null"] },
+            "repair_error_count": { "type": ["number", "null"] },
+            "repair_refresh_required": { "type": "boolean" },
+            "repair_refresh_reason": { "type": "string" },
+            "repair_refresh_findings_count": { "type": "number" },
+            "runtime_persistence_backend": { "type": "string" },
+            "sqlite_decision_source": { "type": "string" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
     "fallback": { "type": ["object", "null"], "additionalProperties": true },
     "repair_layer_result": { "type": ["object", "null"], "additionalProperties": true },
     "repair_layer_triage_result": { "type": ["object", "null"], "additionalProperties": true },
@@ -43,6 +83,8 @@
         "git_available",
         "fallback_full_used",
         "fallback_full_reason",
+        "skipped",
+        "skip_reason",
         "synced_count",
         "failed_count",
         "repair_layer_status",
@@ -55,6 +97,8 @@
         "git_available": { "type": "boolean" },
         "fallback_full_used": { "type": "boolean" },
         "fallback_full_reason": { "type": "string" },
+        "skipped": { "type": "boolean" },
+        "skip_reason": { "type": "string" },
         "synced_count": { "type": "number" },
         "failed_count": { "type": "number" },
         "repair_layer_status": { "type": "string" },

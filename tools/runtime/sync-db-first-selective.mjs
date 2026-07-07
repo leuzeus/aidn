@@ -18,14 +18,24 @@ function buildSyncDbFirstSelectiveDiagnostic(out) {
     git_available: out?.git_available === true,
     fallback_full_used: out?.fallback_full_used === true,
     fallback_full_reason: String(out?.fallback_full_reason ?? "").trim() || "none",
+    skipped: out?.skipped === true,
+    skip_reason: String(out?.reason ?? "").trim() || "none",
     synced_count: Number(summary?.synced_count ?? 0),
     failed_count: Number(summary?.failed_count ?? 0),
     repair_layer_status: String(out?.repair_layer_result?.action ?? "").trim() || "not-run",
-    summary: out?.fallback_full_used === true
+    summary: out?.skipped === true
+      ? `selective db-first sync skipped because ${String(out?.reason ?? "skip-required")}`
+      : out?.fallback_full_used === true
       ? `selective db-first sync escalated to full sync because ${String(out?.fallback_full_reason ?? "fallback-required")}`
+      : out?.fast_path?.used === true
+        ? `selective db-first sync used fast path because ${String(out?.fast_path?.reason ?? "unchanged")}`
       : `selective db-first sync processed ${Number(summary?.synced_count ?? 0)} changed artifact(s)`,
-    recommended_action: out?.fallback_full_used === true
+    recommended_action: out?.skipped === true && out?.reason === "postgres_canonical_backend"
+      ? "use the configured PostgreSQL runtime backend for continuity reads; local SQLite is migration or diagnostic state only"
+      : out?.fallback_full_used === true
       ? "inspect the fallback reason before relying on the full db-first refresh"
+      : out?.fast_path?.used === true
+        ? "continue; cached runtime index and repair-layer state were clean"
       : "review any selective sync errors and repair-layer outputs before continuing",
   };
 }

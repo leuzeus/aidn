@@ -53,6 +53,10 @@ These command families are intended for users and are covered by public effect p
   - hidden bundle output defaults to `.aidn/runtime/context/hydrated-context.json`
   - strict `db-only` does not auto-project visible files
   - use `--materialize-visible-artifacts` to intentionally write managed visible exports
+- `aidn codex workflow-step --json`
+  - batches pre-write admission, hidden context hydration, and coordinator next-action computation in one process
+  - does not execute skill hooks or materialize visible artifacts
+  - shared runtime synchronization remains explicit and is not implied by `--json`
 
 ## Advanced public command families
 
@@ -109,6 +113,12 @@ These are currently implemented as package scripts, tools, or internal wrappers,
 
 - direct `tools/runtime/*.mjs` entrypoints
 - direct `tools/perf/*.mjs` entrypoints
+- `aidn runtime local-daemon`
+  - experimental opt-in local daemon prototype
+  - `--start`, `--status`, and `--stop` use a worktree-local endpoint file under `.aidn/runtime/daemon/`
+  - current stable behavior remains batch unless a client command is explicitly run with daemon flags
+  - first supported delegated operations are `aidn codex workflow-step --use-daemon ...` and `aidn codex run-json-hook --use-daemon ...`
+  - no command starts the daemon implicitly
 - `aidn runtime repair-layer`
 - `aidn runtime repair-layer-query`
 - `aidn runtime repair-layer-resolve`
