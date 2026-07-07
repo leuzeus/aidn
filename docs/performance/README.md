@@ -308,6 +308,8 @@ npm run perf:reset -- --keep-history
 
 The output reports median/average/p90 timings, JSON output size, fast-path usage, and daemon fallback status. No timing threshold is enforced because local Node startup, disk, antivirus, and PostgreSQL availability can vary by machine. Use this evidence to compare local batches before and after optimization, while keeping `perf:verify-*` commands as the authoritative functional gates.
 
+Daemon-backed `codex run-json-hook` keeps the same JSON contract and auto DB sync semantics as the batch command. The daemon can execute selected pure admission hooks, currently `pr-orchestrate`, in-process to avoid an extra `npx aidn perf skill-hook` subprocess. Hooks that can checkpoint, rewrite runtime artifacts, or need unsupported arguments fall back to the existing subprocess path. When repair findings are open and selective DB sync must re-run repair/triage work, local timings can still be dominated by that guarded sync path rather than daemon dispatch.
+
 Default runtime outputs:
 - `.aidn/runtime/perf/workflow-events.ndjson`
 - `.aidn/runtime/index/workflow-index.json`

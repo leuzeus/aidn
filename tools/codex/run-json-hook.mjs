@@ -258,8 +258,9 @@ function requestDaemonRunJsonHook({ args, targetRoot }) {
       port: endpoint.port,
       method: "POST",
       path: "/v1/execute",
-      timeout: args.daemonTimeoutMs,
+      agent: false,
       headers: {
+        "connection": "close",
         "content-type": "application/json",
         "content-length": Buffer.byteLength(body),
       },
@@ -286,7 +287,7 @@ function requestDaemonRunJsonHook({ args, targetRoot }) {
         resolve(payload);
       });
     });
-    request.on("timeout", () => {
+    request.setTimeout(args.daemonTimeoutMs, () => {
       request.destroy(new Error("daemon request timed out"));
     });
     request.on("error", reject);
@@ -295,7 +296,7 @@ function requestDaemonRunJsonHook({ args, targetRoot }) {
   });
 }
 
-function runLocalJsonHook(args, targetRoot) {
+async function runLocalJsonHook(args, targetRoot) {
   const agentAdapter = createCodexAgentAdapter();
   const hookContextStore = createHookContextStoreAdapter();
   return runJsonHookUseCase({
@@ -323,7 +324,7 @@ async function main() {
           fallback: false,
         };
       } catch (error) {
-        output = runLocalJsonHook(args, targetRoot);
+        output = await runLocalJsonHook(args, targetRoot);
         output.daemon = {
           used: false,
           endpoint: args.daemonPort > 0 ? `${args.daemonHost}:${args.daemonPort}` : null,
@@ -333,7 +334,7 @@ async function main() {
         };
       }
     } else {
-      output = runLocalJsonHook(args, targetRoot);
+      output = await runLocalJsonHook(args, targetRoot);
       output.daemon = {
         used: false,
         fallback: false,

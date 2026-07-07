@@ -4,8 +4,8 @@ import http from "node:http";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { createCodexAgentAdapter } from "../../src/adapters/codex/codex-agent-adapter.mjs";
 import { createHookContextStoreAdapter } from "../../src/adapters/codex/hook-context-store-adapter.mjs";
+import { createDaemonRunJsonHookAgentAdapter } from "../../src/application/codex/daemon-run-json-hook-agent-adapter.mjs";
 import { runJsonHookUseCase } from "../../src/application/codex/run-json-hook-use-case.mjs";
 import { createDaemonPostgresPool } from "../../src/application/runtime/daemon-postgres-pool-service.mjs";
 import {
@@ -345,6 +345,21 @@ function writeJson(response, statusCode, payload) {
   response.end(body);
 }
 
+function shouldRefreshRuntimeSnapshotAfterRunJsonHook(payload) {
+  const dbSync = payload?.db_sync;
+  if (!dbSync || dbSync.enabled !== true || dbSync.skipped === true) {
+    return false;
+  }
+  const syncPayload = dbSync.payload;
+  if (!syncPayload || syncPayload.skipped === true) {
+    return false;
+  }
+  if (syncPayload.fast_path?.used === true) {
+    return false;
+  }
+  return true;
+}
+
 async function handleExecute(request) {
   const body = await readRequestJson(request);
   const operation = String(body?.operation ?? "").trim();
@@ -362,17 +377,19 @@ async function handleExecute(request) {
   const targetRoot = path.resolve(String(body?.targetRoot ?? args.target ?? "."));
   await warmRuntimeSnapshotCache(targetRoot);
   if (operation === "codex.run-json-hook") {
-    const payload = runJsonHookUseCase({
+    const payload = await runJsonHookUseCase({
       args: {
         ...args,
         target: targetRoot,
         useDaemon: false,
       },
       targetRoot,
-      agentAdapter: createCodexAgentAdapter(),
+      agentAdapter: createDaemonRunJsonHookAgentAdapter(),
       hookContextStore: createHookContextStoreAdapter(),
     });
-    await warmRuntimeSnapshotCache(targetRoot, { force: true });
+    if (shouldRefreshRuntimeSnapshotAfterRunJsonHook(payload)) {
+      await warmRuntimeSnapshotCache(targetRoot, { force: true });
+    }
     return {
       statusCode: 200,
       payload: {
@@ -391,7 +408,6 @@ async function handleExecute(request) {
     },
     targetRoot,
   });
-  await warmRuntimeSnapshotCache(targetRoot, { force: true });
   return {
     statusCode: 200,
     payload: {

@@ -94,8 +94,15 @@ function buildErrorPayload(args, targetRoot, stateMode, commandLine, result, par
   };
 }
 
-function runDbSync(agentAdapter, targetRoot, stateMode) {
-  const result = agentAdapter.runCommand({
+async function runAgentCommand(agentAdapter, commandSpec) {
+  if (typeof agentAdapter.runCommandAsync === "function") {
+    return await agentAdapter.runCommandAsync(commandSpec);
+  }
+  return agentAdapter.runCommand(commandSpec);
+}
+
+async function runDbSync(agentAdapter, targetRoot, stateMode) {
+  const result = await runAgentCommand(agentAdapter, {
     command: process.execPath,
     commandArgs: [
       RUNTIME_SYNC_SCRIPT,
@@ -252,7 +259,7 @@ function compactDbSync(dbSync) {
   };
 }
 
-export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContextStore }) {
+export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContextStore }) {
   const stateMode = resolveEffectiveStateMode({
     targetRoot,
     stateMode: args.stateMode || "files",
@@ -274,7 +281,7 @@ export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContext
     ? ensureJsonArg(commandSpec.commandArgs)
     : commandSpec.commandArgs;
   const commandLine = toCommandLine(commandSpec.command, commandArgs);
-  const result = agentAdapter.runCommand({
+  const result = await runAgentCommand(agentAdapter, {
     command: commandSpec.command,
     commandArgs,
     commandLine,
@@ -317,7 +324,7 @@ export function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContext
     dbSync.skipped = false;
     dbSync.reason = null;
     try {
-      const sync = runDbSync(agentAdapter, targetRoot, stateMode);
+      const sync = await runDbSync(agentAdapter, targetRoot, stateMode);
       dbSync.payload = sync.payload;
       if (sync.status !== 0 || dbSync.payload?.ok === false) {
         dbSync.error = {

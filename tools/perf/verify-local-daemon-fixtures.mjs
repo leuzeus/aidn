@@ -115,6 +115,22 @@ async function main() {
       "--daemon-timeout-ms",
       "60000",
     ]);
+    const delegatedPrHookResult = runAidn([
+      "codex",
+      "run-json-hook",
+      "--target",
+      targetRoot,
+      "--skill",
+      "pr-orchestrate",
+      "--mode",
+      "COMMITTING",
+      "--json",
+      "--use-daemon",
+      "--no-db-sync",
+      "--daemon-timeout-ms",
+      "60000",
+    ]);
+    const delegatedPrHook = delegatedPrHookResult.json;
     const fallback = runAidnJson([
       "codex",
       "workflow-step",
@@ -197,6 +213,12 @@ async function main() {
       delegated_hook_preserves_compact_output: delegatedHook.output_mode === "compact"
         && delegatedHook.skill === "context-reload"
         && delegatedHook.normalized?.raw == null,
+      delegated_pr_hook_exit_status_expected: delegatedPrHookResult.status === 1,
+      delegated_pr_hook_uses_daemon: delegatedPrHook?.daemon?.used === true && delegatedPrHook?.daemon?.fallback === false,
+      delegated_pr_hook_preserves_compact_output: delegatedPrHook?.output_mode === "compact"
+        && delegatedPrHook?.skill === "pr-orchestrate"
+        && delegatedPrHook?.db_sync?.enabled === false
+        && delegatedPrHook?.normalized?.raw == null,
       fallback_preserves_workflow_contract: fallback.contract_version === "codex-workflow-step.v1",
       fallback_reports_batch_fallback: fallback.daemon?.used === false && fallback.daemon?.fallback === true,
       fallback_reason_present: String(fallback.daemon?.reason ?? "").length > 0,
@@ -219,6 +241,7 @@ async function main() {
         status_port: status?.daemon?.port ?? null,
         delegated_daemon: delegated?.daemon ?? null,
         delegated_hook_daemon: delegatedHook?.daemon ?? null,
+        delegated_pr_hook_daemon: delegatedPrHook?.daemon ?? null,
         fallback_hook_daemon: fallbackHook?.daemon ?? null,
         runtime_snapshot: statusAfterDelegation?.runtime_snapshot ?? null,
         runtime_snapshot_cache: statusAfterDelegation?.caches?.runtime_snapshot ?? null,
