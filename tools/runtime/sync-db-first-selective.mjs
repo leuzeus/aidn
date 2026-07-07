@@ -23,9 +23,13 @@ function buildSyncDbFirstSelectiveDiagnostic(out) {
     repair_layer_status: String(out?.repair_layer_result?.action ?? "").trim() || "not-run",
     summary: out?.fallback_full_used === true
       ? `selective db-first sync escalated to full sync because ${String(out?.fallback_full_reason ?? "fallback-required")}`
+      : out?.fast_path?.used === true
+        ? `selective db-first sync used fast path because ${String(out?.fast_path?.reason ?? "unchanged")}`
       : `selective db-first sync processed ${Number(summary?.synced_count ?? 0)} changed artifact(s)`,
     recommended_action: out?.fallback_full_used === true
       ? "inspect the fallback reason before relying on the full db-first refresh"
+      : out?.fast_path?.used === true
+        ? "continue; cached runtime index and repair-layer state were clean"
       : "review any selective sync errors and repair-layer outputs before continuing",
   };
 }

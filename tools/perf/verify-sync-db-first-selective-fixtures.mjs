@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
@@ -55,6 +56,10 @@ function writeFile(file, content) {
   fs.writeFileSync(file, content, "utf8");
 }
 
+function digestFile(file) {
+  return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+}
+
 function normalizePathForNode(absolutePath) {
   return process.platform === "win32" && absolutePath.startsWith("/") && absolutePath[2] === ":"
     ? absolutePath.slice(1)
@@ -87,10 +92,25 @@ function main() {
       repoRoot,
       "--state-mode",
       "dual",
+      "--store",
+      "sqlite",
       "--json",
     ], REPO_ROOT);
     const triageFile = path.join(repoRoot, ".aidn/runtime/index/repair-layer-triage.json");
     const triageSummaryFile = path.join(repoRoot, ".aidn/runtime/index/repair-layer-triage-summary.md");
+    const triageDigestBeforeFastPath = digestFile(triageFile);
+    const triageSummaryDigestBeforeFastPath = digestFile(triageSummaryFile);
+
+    const selectiveNoChange = runJson(process.execPath, [
+      normalizePathForNode(RUNTIME_SYNC_SELECTIVE),
+      "--target",
+      repoRoot,
+      "--state-mode",
+      "dual",
+      "--json",
+    ], REPO_ROOT);
+    const triageDigestAfterFastPath = digestFile(triageFile);
+    const triageSummaryDigestAfterFastPath = digestFile(triageSummaryFile);
 
     writeFile(fileA, "# Snapshot\n\nv2\n");
     const selectiveUpdate = runJson(process.execPath, [
@@ -127,6 +147,54 @@ function main() {
       "--json",
     ], REPO_ROOT);
 
+    const warningRepoRoot = path.join(tempRoot, "warning-repo");
+    fs.mkdirSync(warningRepoRoot, { recursive: true });
+    run("git", ["init"], warningRepoRoot);
+    run("git", ["config", "user.email", "aidn@example.com"], warningRepoRoot);
+    run("git", ["config", "user.name", "aidn-ci"], warningRepoRoot);
+    const warningAuditRoot = path.join(warningRepoRoot, "docs", "audit");
+    const warningSnapshot = path.join(warningAuditRoot, "snapshots", "context-snapshot.md");
+    writeFile(warningSnapshot, [
+      "# Snapshot",
+      "",
+      "- active_session: S201",
+      "- active_cycles: C902",
+      "- referenced_cycles: C902",
+      "",
+    ].join("\n"));
+    run("git", ["add", "."], warningRepoRoot);
+    run("git", ["commit", "-m", "warning snapshot"], warningRepoRoot);
+    const warningFullInit = runJson(process.execPath, [
+      normalizePathForNode(RUNTIME_SYNC_FULL),
+      "--target",
+      warningRepoRoot,
+      "--state-mode",
+      "dual",
+      "--store",
+      "sqlite",
+      "--json",
+    ], REPO_ROOT);
+    const warningStatus = path.join(warningAuditRoot, "cycles", "C902-tracked-late", "status.md");
+    writeFile(warningStatus, [
+      "# C902 Status",
+      "",
+      "state: IN_PROGRESS",
+      "outcome: pending",
+      "branch_name: feature/test-warning",
+      "session_owner: S201",
+      "",
+    ].join("\n"));
+    run("git", ["add", "."], warningRepoRoot);
+    run("git", ["commit", "-m", "tracked late cycle"], warningRepoRoot);
+    const warningNoChange = runJson(process.execPath, [
+      normalizePathForNode(RUNTIME_SYNC_SELECTIVE),
+      "--target",
+      warningRepoRoot,
+      "--state-mode",
+      "dual",
+      "--json",
+    ], REPO_ROOT);
+
     const checks = {
       full_init_ok: fullInit.ok === true,
       full_init_repair_layer_completed: ["applied", "skipped"].includes(String(fullInit?.repair_layer_result?.action ?? "")),
@@ -135,9 +203,17 @@ function main() {
         && typeof fullInit?.sync_db_first_diagnostic?.output_count === "number",
       full_init_triage_written: fs.existsSync(triageFile),
       full_init_triage_summary_written: fs.existsSync(triageSummaryFile),
+      selective_no_change_ok: selectiveNoChange.ok === true,
+      selective_no_change_fast_path_used: selectiveNoChange?.fast_path?.used === true,
+      selective_no_change_fast_path_reason: selectiveNoChange?.fast_path?.reason === "unchanged_clean_runtime_index",
+      selective_no_change_skips_repair: selectiveNoChange?.repair_layer_result?.skip_reason === "fast_path_unchanged_clean_runtime_index",
+      selective_no_change_triage_unchanged: triageDigestBeforeFastPath === triageDigestAfterFastPath
+        && triageSummaryDigestBeforeFastPath === triageSummaryDigestAfterFastPath,
       selective_update_ok: selectiveUpdate.ok === true,
       selective_update_synced: Number(selectiveUpdate?.summary?.synced_count ?? 0) >= 1,
       selective_update_no_fallback: selectiveUpdate.fallback_full_used === false,
+      selective_update_fast_path_disabled: selectiveUpdate?.fast_path?.used === false
+        && selectiveUpdate?.fast_path?.reason === "changed_workflow_artifacts",
       selective_update_exposes_diagnostic: selectiveUpdate?.sync_db_first_selective_diagnostic?.scope === "runtime-db-first-sync-selective"
         && selectiveUpdate?.sync_db_first_selective_diagnostic?.fallback_full_used === false,
       selective_update_repair_layer_completed: ["applied", "skipped"].includes(String(selectiveUpdate?.repair_layer_result?.action ?? "")),
@@ -148,6 +224,10 @@ function main() {
         && selectiveDelete?.sync_db_first_selective_diagnostic?.fallback_full_reason === "git_status_requires_full",
       selective_rename_triggers_fallback: selectiveRename.fallback_full_used === true,
       selective_rename_fallback_reason: selectiveRename.fallback_full_reason === "git_status_requires_full",
+      warning_full_init_has_repair_finding: Number(warningFullInit?.repair_layer_result?.summary?.migration_findings_count ?? 0) > 0,
+      warning_no_change_fast_path_disabled: warningNoChange?.fast_path?.used === false
+        && warningNoChange?.fast_path?.reason === "repair_findings_open",
+      warning_no_change_no_fallback: warningNoChange.fallback_full_used === false,
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {
@@ -159,9 +239,14 @@ function main() {
         selective_update: {
           synced_count: selectiveUpdate?.summary?.synced_count ?? 0,
           fallback_full_used: selectiveUpdate?.fallback_full_used ?? null,
+          fast_path: selectiveUpdate?.fast_path ?? null,
           repair_layer_action: selectiveUpdate?.repair_layer_result?.action ?? null,
           diagnostic: selectiveUpdate?.sync_db_first_selective_diagnostic ?? null,
           triage_file: selectiveUpdate?.repair_layer_triage_result?.triage_file ?? null,
+        },
+        selective_no_change: {
+          fast_path: selectiveNoChange?.fast_path ?? null,
+          repair_layer_skip_reason: selectiveNoChange?.repair_layer_result?.skip_reason ?? null,
         },
         full_init: {
           repair_layer_action: fullInit?.repair_layer_result?.action ?? null,
@@ -177,6 +262,10 @@ function main() {
         selective_rename: {
           fallback_full_used: selectiveRename?.fallback_full_used ?? null,
           fallback_full_reason: selectiveRename?.fallback_full_reason ?? null,
+        },
+        warning_no_change: {
+          fast_path: warningNoChange?.fast_path ?? null,
+          repair_layer_action: warningNoChange?.repair_layer_result?.action ?? null,
         },
       },
     };
