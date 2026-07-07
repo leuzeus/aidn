@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { createCodexAgentAdapter } from "../../src/adapters/codex/codex-agent-adapter.mjs";
 import { createHookContextStoreAdapter } from "../../src/adapters/codex/hook-context-store-adapter.mjs";
 import { runJsonHookUseCase } from "../../src/application/codex/run-json-hook-use-case.mjs";
+import { getWorkspaceResolutionCacheStats } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { getAidnProjectConfigCacheStats } from "../../src/lib/config/aidn-config-lib.mjs";
 import { runWorkflowStep } from "../codex/workflow-step.mjs";
 
@@ -152,6 +153,7 @@ function healthPayload(server = null, meta = {}) {
     },
     caches: {
       aidn_project_config: getAidnProjectConfigCacheStats(),
+      workspace_resolution: getWorkspaceResolutionCacheStats(),
     },
   };
 }

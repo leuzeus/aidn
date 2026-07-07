@@ -3,7 +3,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
+import {
+  getWorkspaceResolutionCacheStats,
+  resetWorkspaceResolutionCache,
+  resolveWorkspaceContext,
+} from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { writeSharedRuntimeLocator } from "../../src/lib/config/shared-runtime-locator-config-lib.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
@@ -44,7 +48,12 @@ function main() {
     runGit(mainRoot, ["commit", "-m", "initial"]);
     runGit(mainRoot, ["worktree", "add", linkedRoot, "-b", "feature/worktree-resolution"]);
 
+    resetWorkspaceResolutionCache();
     const mainContext = resolveWorkspaceContext({
+      targetRoot: mainRoot,
+      env: {},
+    });
+    const mainContextCached = resolveWorkspaceContext({
       targetRoot: mainRoot,
       env: {},
     });
@@ -61,6 +70,9 @@ function main() {
     });
 
     assert(mainContext.is_git_repo === true, "expected main checkout to be detected as git repo");
+    assert(mainContext.cache_diagnostic?.cache_hit === false, "expected first main workspace resolution to miss cache");
+    assert(mainContextCached.cache_diagnostic?.cache_hit === true, "expected repeated main workspace resolution to hit cache");
+    assert(mainContextCached.workspace_id === mainContext.workspace_id, "expected cached workspace id to match uncached resolution");
     assert(mainContext.is_linked_worktree === false, "expected main checkout not to be linked worktree");
     assert(linkedContext.is_linked_worktree === true, "expected linked checkout to be detected as linked worktree");
     assert(String(mainContext.project_id).length > 0, "expected derived project id to be present");
@@ -135,12 +147,19 @@ function main() {
       targetRoot: mainRoot,
       env: {},
     });
+    const locatorMainContextCached = resolveWorkspaceContext({
+      targetRoot: mainRoot,
+      env: {},
+    });
     const locatorLinkedContext = resolveWorkspaceContext({
       targetRoot: linkedRoot,
       env: {},
     });
 
     assert(locatorMainContext.project_id === "project-locator", "expected locator project id to override derived identity");
+    assert(locatorMainContext.cache_diagnostic?.cache_hit === false, "expected locator write to invalidate cached main workspace resolution");
+    assert(locatorMainContextCached.cache_diagnostic?.cache_hit === true, "expected repeated locator workspace resolution to hit cache");
+    assert(locatorMainContextCached.project_id === locatorMainContext.project_id, "expected cached locator project id to match uncached resolution");
     assert(locatorMainContext.project_id_source === "locator", "expected locator project id source");
     assert(locatorMainContext.workspace_id === "workspace-locator", "expected locator workspace id to override git-derived identity");
     assert(locatorMainContext.workspace_id_source === "locator", "expected locator workspace id source");
@@ -208,6 +227,9 @@ function main() {
     assert(canonicalizePath(appAlphaContext.repo_root) === canonicalizePath(monorepoRoot), "expected nested project alpha repo root to resolve to the monorepo root");
     assert(canonicalizePath(appBetaContext.repo_root) === canonicalizePath(monorepoRoot), "expected nested project beta repo root to resolve to the monorepo root");
     assert(canonicalizePath(appAlphaContext.git_common_dir) === canonicalizePath(appBetaContext.git_common_dir), "expected nested projects in one repo to share the same git common dir");
+    const cacheStats = getWorkspaceResolutionCacheStats();
+    assert(Number(cacheStats.hits ?? 0) >= 2, "expected workspace resolution cache hit diagnostics");
+    assert(Number(cacheStats.invalidations ?? 0) >= 1, "expected workspace resolution cache invalidation diagnostics");
 
     console.log("PASS");
   } catch (error) {

@@ -122,6 +122,11 @@ Runtime transition scripts (`tools/runtime/`):
 - `artifact-store.mjs` - minimal DB artifact upsert/read/list API (foundation for DB-first write-through)
 - `db-first-artifact.mjs` - upsert one artifact directly into DB runtime index with optional projection to `docs/audit` (write-through helper)
 
+Runtime resolution cache note:
+- workspace/runtime identity resolution is cached within a single Node process and invalidates when the Git head/ref or `.aidn/project/shared-runtime.locator.json` signature changes.
+- `resolveWorkspaceContext` returns a `cache_diagnostic` object, and the local daemon health output exposes aggregate `workspace_resolution` cache stats.
+- the cache is local diagnostic/runtime state only; it does not change the canonical source of truth for workspace identity, shared runtime locator data, or PostgreSQL-backed runtime state.
+
 Repair-layer traceability note:
 - cycle reference findings now distinguish:
   - `UNRESOLVED_CYCLE_REFERENCE` for truly missing `status.md`
