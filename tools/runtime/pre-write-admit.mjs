@@ -628,12 +628,13 @@ export async function preWriteAdmit({
   skill = "",
   currentStateFile = "docs/audit/CURRENT-STATE.md",
   runtimeStateFile = "docs/audit/RUNTIME-STATE.md",
+  workspace: providedWorkspace = null,
   sharedCoordination = null,
   sharedCoordinationOptions = {},
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const git = createLocalGitAdapter();
-  const workspace = resolveWorkspaceContext({
+  const workspace = providedWorkspace ?? resolveWorkspaceContext({
     targetRoot: absoluteTargetRoot,
   });
   const sharedRuntimeValidation = validateSharedRuntimeContext({

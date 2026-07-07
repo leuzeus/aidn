@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/codex-workflow-step.v1",
+  "title": "aidn codex workflow-step --json",
+  "type": "object",
+  "x-aidn-command": "aidn codex workflow-step --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "ts",
+    "ok",
+    "contract_version",
+    "command",
+    "effect_class",
+    "target_root",
+    "skills",
+    "summary",
+    "steps",
+    "admissions",
+    "hydrations",
+    "next_action"
+  ],
+  "properties": {
+    "ts": { "type": "string" },
+    "ok": { "type": "boolean" },
+    "contract_version": { "type": "string" },
+    "command": { "type": "string" },
+    "effect_class": { "type": "string" },
+    "target_root": { "type": "string" },
+    "mode": { "type": ["string", "null"] },
+    "skills": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "skill_count",
+        "step_count",
+        "admission_count",
+        "blocked_skill_count",
+        "hydrate_count",
+        "next_action_status"
+      ],
+      "properties": {
+        "skill_count": { "type": "number" },
+        "step_count": { "type": "number" },
+        "admission_count": { "type": "number" },
+        "blocked_skill_count": { "type": "number" },
+        "hydrate_count": { "type": "number" },
+        "next_action_status": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "ok",
+          "status",
+          "summary"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "type": "string" },
+          "skill": { "type": ["string", "null"] },
+          "ok": { "type": "boolean" },
+          "status": { "type": "string" },
+          "summary": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "admissions": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "hydrations": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "next_action": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -538,6 +538,14 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     ],
     notes: "Hydrates the hidden context bundle; db-only does not auto-project visible files unless --materialize-visible-artifacts is supplied.",
   }),
+  commandPolicy({
+    id: "codex-workflow-step",
+    command: "aidn codex workflow-step --json",
+    effectClass: "projector",
+    jsonContract: "codex-workflow-step.v1.schema.json",
+    safeArgs: ["codex", "workflow-step", "--skills", "context-reload", "--mode", "THINKING", "--json"],
+    notes: "Batches pre-write admission, hidden context hydration, and coordinator next-action computation in one process without visible projection writes.",
+  }),
 ]);
 
 export function listEffectClasses() {

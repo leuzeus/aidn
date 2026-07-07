@@ -87,6 +87,7 @@ const CODEX_ALIASES = {
   "run-json-hook": { file: "run-json-hook.mjs" },
   "normalize-hook-payload": { file: "normalize-hook-payload.mjs" },
   "hydrate-context": { file: "hydrate-context.mjs" },
+  "workflow-step": { file: "workflow-step.mjs" },
   "context-store": { file: "context-store.mjs" },
 };
 
@@ -154,6 +155,7 @@ function printUsage() {
   console.log("  aidn perf checkpoint --target ../repo --mode COMMITTING --index-store all --index-sync-check --json");
   console.log("  aidn perf session-start --target ../repo --mode COMMITTING --json");
   console.log("  aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json");
+  console.log("  aidn codex workflow-step --target . --skills close-session,pr-orchestrate --mode COMMITTING --json");
   console.log("  aidn runtime sync-db-first-selective --target . --json");
   console.log("  aidn runtime db-status --target . --json");
   console.log("  aidn runtime artifact-fetch --target . --path CURRENT-STATE.md --json");
@@ -242,6 +244,7 @@ function printPerfUsage() {
 function printCodexUsage() {
   printGroupUsage("codex", CODEX_ALIASES, [
     "aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json",
+    "aidn codex workflow-step --target . --skills close-session,pr-orchestrate --mode COMMITTING --json",
     "aidn codex hydrate-context --target . --skill start-session --project-runtime-state --json",
   ]);
 }

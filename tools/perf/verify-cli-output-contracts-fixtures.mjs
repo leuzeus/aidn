@@ -370,6 +370,11 @@ const CONTRACT_CASES = [
     schema: "codex-hydrate-context.v1.schema.json",
     args: ["codex", "hydrate-context", "--skill", "context-reload", "--json"],
   },
+  {
+    name: "codex-workflow-step",
+    schema: "codex-workflow-step.v1.schema.json",
+    args: ["codex", "workflow-step", "--skills", "context-reload", "--mode", "THINKING", "--json"],
+  },
 ];
 
 function copyFixture(sourceRoot) {
