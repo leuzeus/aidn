@@ -7,6 +7,10 @@ import { fileURLToPath } from "node:url";
 import { createCodexAgentAdapter } from "../../src/adapters/codex/codex-agent-adapter.mjs";
 import { createHookContextStoreAdapter } from "../../src/adapters/codex/hook-context-store-adapter.mjs";
 import { runJsonHookUseCase } from "../../src/application/codex/run-json-hook-use-case.mjs";
+import {
+  createRuntimeArtifactStore,
+  resolveEffectiveRuntimePersistence,
+} from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { getWorkspaceResolutionCacheStats } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { getAidnProjectConfigCacheStats } from "../../src/lib/config/aidn-config-lib.mjs";
 import { runWorkflowStep } from "../codex/workflow-step.mjs";
@@ -14,6 +18,14 @@ import { runWorkflowStep } from "../codex/workflow-step.mjs";
 const CONTRACT_VERSION = "runtime-local-daemon.v1";
 const TOOL_FILE = fileURLToPath(import.meta.url);
 const DEFAULT_ENDPOINT_FILE = ".aidn/runtime/daemon/endpoint.json";
+const DEFAULT_RUNTIME_INDEX_FILE = ".aidn/runtime/index/workflow-index.sqlite";
+const runtimeSnapshotCache = new Map();
+const runtimeSnapshotCacheStats = {
+  hits: 0,
+  misses: 0,
+  refreshes: 0,
+  invalidations: 0,
+};
 
 function parseArgs(argv) {
   const args = {
@@ -133,8 +145,144 @@ function readEndpointFile(filePath) {
   }
 }
 
-function healthPayload(server = null, meta = {}) {
+function fileSignature(filePath) {
+  if (!filePath) {
+    return {
+      path: "",
+      exists: false,
+      mtimeMs: 0,
+      size: 0,
+    };
+  }
+  try {
+    const stat = fs.statSync(filePath);
+    return {
+      path: path.resolve(filePath),
+      exists: true,
+      mtimeMs: stat.mtimeMs,
+      size: stat.size,
+    };
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
+    return {
+      path: path.resolve(filePath),
+      exists: false,
+      mtimeMs: 0,
+      size: 0,
+    };
+  }
+}
+
+function signaturesMatch(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function buildRuntimeSnapshotSignature(targetRoot) {
+  return {
+    config: fileSignature(path.join(targetRoot, ".aidn", "config.json")),
+    locator: fileSignature(path.join(targetRoot, ".aidn", "project", "shared-runtime.locator.json")),
+    sqlite_index: fileSignature(resolveTargetPath(targetRoot, DEFAULT_RUNTIME_INDEX_FILE)),
+  };
+}
+
+function summarizeRuntimeSnapshot(snapshot, backendDescription, runtimePersistence, targetRoot, cacheHit) {
+  const runtimeHeads = snapshot?.runtimeHeads && typeof snapshot.runtimeHeads === "object"
+    ? snapshot.runtimeHeads
+    : {};
+  return {
+    target_root: targetRoot,
+    backend: runtimePersistence.backend,
+    backend_source: runtimePersistence.source,
+    status: snapshot?.warning ? "warning" : (snapshot?.exists === true ? "ready" : "missing"),
+    exists: snapshot?.exists === true,
+    cache_hit: cacheHit === true,
+    refreshed_at: new Date().toISOString(),
+    runtime_head_count: Object.keys(runtimeHeads).length,
+    payload_digest: snapshot?.payload_digest ?? null,
+    runtime_scope_id: snapshot?.runtime_scope_id ?? backendDescription?.runtime_scope_id ?? null,
+    scope_key: snapshot?.scope_key ?? backendDescription?.scope_key ?? null,
+    storage_policy: snapshot?.storage_policy ?? null,
+    warning: snapshot?.warning ?? "",
+  };
+}
+
+async function warmRuntimeSnapshotCache(targetRoot, { force = false } = {}) {
+  const absoluteTargetRoot = path.resolve(targetRoot);
+  const signature = buildRuntimeSnapshotSignature(absoluteTargetRoot);
+  const cached = runtimeSnapshotCache.get(absoluteTargetRoot);
+  if (!force && cached && signaturesMatch(cached.signature, signature)) {
+    runtimeSnapshotCacheStats.hits += 1;
+    return {
+      ...cached.summary,
+      cache_hit: true,
+    };
+  }
+  if (cached) {
+    runtimeSnapshotCacheStats.invalidations += 1;
+  }
+  runtimeSnapshotCacheStats.misses += 1;
+  runtimeSnapshotCacheStats.refreshes += 1;
+
+  let summary;
+  try {
+    const runtimePersistence = resolveEffectiveRuntimePersistence({
+      targetRoot: absoluteTargetRoot,
+    });
+    const sqliteFile = resolveTargetPath(absoluteTargetRoot, DEFAULT_RUNTIME_INDEX_FILE);
+    const store = createRuntimeArtifactStore({
+      targetRoot: absoluteTargetRoot,
+      backend: runtimePersistence.backend,
+      connectionRef: runtimePersistence.connectionRef ?? "",
+      sqliteFile,
+    });
+    const backendDescription = store.describeBackend();
+    const snapshot = await store.loadSnapshot({
+      includePayload: false,
+      includeRuntimeHeads: true,
+    });
+    summary = summarizeRuntimeSnapshot(snapshot, backendDescription, runtimePersistence, absoluteTargetRoot, false);
+  } catch (error) {
+    summary = {
+      target_root: absoluteTargetRoot,
+      backend: "unknown",
+      backend_source: "unknown",
+      status: "error",
+      exists: false,
+      cache_hit: false,
+      refreshed_at: new Date().toISOString(),
+      runtime_head_count: 0,
+      payload_digest: null,
+      runtime_scope_id: null,
+      scope_key: null,
+      storage_policy: null,
+      warning: String(error.message ?? error),
+    };
+  }
+  runtimeSnapshotCache.set(absoluteTargetRoot, {
+    signature,
+    summary,
+  });
+  return summary;
+}
+
+function getRuntimeSnapshotCacheStats() {
+  return {
+    entries: runtimeSnapshotCache.size,
+    hits: runtimeSnapshotCacheStats.hits,
+    misses: runtimeSnapshotCacheStats.misses,
+    refreshes: runtimeSnapshotCacheStats.refreshes,
+    invalidations: runtimeSnapshotCacheStats.invalidations,
+  };
+}
+
+async function healthPayload(server = null, meta = {}) {
   const address = server?.address?.() ?? null;
+  const targetRoot = meta.targetRoot ? path.resolve(meta.targetRoot) : null;
+  const runtimeSnapshot = targetRoot
+    ? await warmRuntimeSnapshotCache(targetRoot)
+    : null;
   return {
     ts: new Date().toISOString(),
     ok: true,
@@ -148,13 +296,15 @@ function healthPayload(server = null, meta = {}) {
       host: typeof address === "object" && address ? address.address : null,
       port: typeof address === "object" && address ? address.port : null,
       endpoint_file: meta.endpointFile ?? null,
-      target_root: meta.targetRoot ?? null,
+      target_root: targetRoot,
       capabilities: ["health", "codex.workflow-step", "codex.run-json-hook"],
     },
     caches: {
       aidn_project_config: getAidnProjectConfigCacheStats(),
       workspace_resolution: getWorkspaceResolutionCacheStats(),
+      runtime_snapshot: getRuntimeSnapshotCacheStats(),
     },
+    runtime_snapshot: runtimeSnapshot,
   };
 }
 
@@ -204,6 +354,7 @@ async function handleExecute(request) {
   }
   const args = body?.args && typeof body.args === "object" ? body.args : {};
   const targetRoot = path.resolve(String(body?.targetRoot ?? args.target ?? "."));
+  await warmRuntimeSnapshotCache(targetRoot);
   if (operation === "codex.run-json-hook") {
     const payload = runJsonHookUseCase({
       args: {
@@ -215,6 +366,7 @@ async function handleExecute(request) {
       agentAdapter: createCodexAgentAdapter(),
       hookContextStore: createHookContextStoreAdapter(),
     });
+    await warmRuntimeSnapshotCache(targetRoot, { force: true });
     return {
       statusCode: 200,
       payload: {
@@ -233,6 +385,7 @@ async function handleExecute(request) {
     },
     targetRoot,
   });
+  await warmRuntimeSnapshotCache(targetRoot, { force: true });
   return {
     statusCode: 200,
     payload: {
@@ -244,12 +397,12 @@ async function handleExecute(request) {
   };
 }
 
-function createDaemonServer() {
+function createDaemonServer(meta = {}) {
   let server;
   server = http.createServer(async (request, response) => {
     try {
       if (request.method === "GET" && request.url === "/health") {
-        writeJson(response, 200, healthPayload(server));
+        writeJson(response, 200, await healthPayload(server, meta));
         return;
       }
       if (request.method === "POST" && request.url === "/v1/execute") {
@@ -475,13 +628,16 @@ async function main() {
     return;
   }
   if (args.serve) {
-    const server = createDaemonServer();
+    const endpointFile = resolveEndpointFile(targetRoot, args.readyFile || args.endpointFile);
+    const server = createDaemonServer({
+      endpointFile,
+      targetRoot,
+    });
     await new Promise((resolve, reject) => {
       server.once("error", reject);
       server.listen(args.port, args.host, resolve);
     });
-    const endpointFile = resolveEndpointFile(targetRoot, args.readyFile || args.endpointFile);
-    const payload = healthPayload(server, {
+    const payload = await healthPayload(server, {
       endpointFile,
       targetRoot,
     });

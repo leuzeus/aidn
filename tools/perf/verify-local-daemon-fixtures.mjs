@@ -147,6 +147,14 @@ async function main() {
       "--daemon-timeout-ms",
       "200",
     ]);
+    const statusAfterDelegation = runAidnJson([
+      "runtime",
+      "local-daemon",
+      "--status",
+      "--target",
+      targetRoot,
+      "--json",
+    ]);
     const stopped = runAidnJson([
       "runtime",
       "local-daemon",
@@ -174,6 +182,9 @@ async function main() {
         && status.daemon.capabilities.includes("codex.workflow-step"),
       status_reports_run_json_hook_capability: Array.isArray(status.daemon?.capabilities)
         && status.daemon.capabilities.includes("codex.run-json-hook"),
+      status_reports_runtime_snapshot_cache: status.runtime_snapshot != null
+        && typeof status.caches?.runtime_snapshot?.entries === "number",
+      status_runtime_snapshot_cache_non_blocking: ["ready", "missing", "warning", "error"].includes(String(status.runtime_snapshot?.status ?? "")),
       delegated_preserves_workflow_contract: delegated.contract_version === "codex-workflow-step.v1",
       delegated_uses_daemon: delegated.daemon?.used === true && delegated.daemon?.fallback === false,
       delegated_uses_endpoint_file: String(delegated.daemon?.endpoint_file ?? "").replace(/\\/g, "/").endsWith(".aidn/runtime/daemon/endpoint.json"),
@@ -188,6 +199,8 @@ async function main() {
       fallback_reason_present: String(fallback.daemon?.reason ?? "").length > 0,
       fallback_hook_reports_batch_fallback: fallbackHook.daemon?.used === false && fallbackHook.daemon?.fallback === true,
       fallback_hook_reason_present: String(fallbackHook.daemon?.reason ?? "").length > 0,
+      runtime_snapshot_cache_refreshes_after_delegation: Number(statusAfterDelegation.caches?.runtime_snapshot?.entries ?? 0) >= 1
+        && Number(statusAfterDelegation.caches?.runtime_snapshot?.refreshes ?? 0) >= 1,
       stop_reports_stopped: stopped.ok === true && stopped.stopped === true,
       stop_removes_endpoint: !fs.existsSync(endpointFile),
       status_after_stop_unavailable: statusAfterStop.status === 1
@@ -204,6 +217,8 @@ async function main() {
         delegated_daemon: delegated?.daemon ?? null,
         delegated_hook_daemon: delegatedHook?.daemon ?? null,
         fallback_hook_daemon: fallbackHook?.daemon ?? null,
+        runtime_snapshot: statusAfterDelegation?.runtime_snapshot ?? null,
+        runtime_snapshot_cache: statusAfterDelegation?.caches?.runtime_snapshot ?? null,
         stopped: stopped ?? null,
         status_after_stop: statusAfterStop?.json ?? null,
       })}`);
