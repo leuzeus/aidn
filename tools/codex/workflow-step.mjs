@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -7,6 +8,8 @@ import { runHydrateContextUseCase } from "../../src/application/codex/hydrate-co
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { computeCoordinatorNextAction } from "../runtime/coordinator-next-action.mjs";
+
+const DEFAULT_DAEMON_ENDPOINT_FILE = ".aidn/runtime/daemon/endpoint.json";
 
 function parseSkillList(value) {
   return String(value ?? "")
@@ -54,6 +57,7 @@ export function parseArgs(argv) {
     useDaemon: false,
     daemonHost: "127.0.0.1",
     daemonPort: 0,
+    daemonEndpointFile: DEFAULT_DAEMON_ENDPOINT_FILE,
     daemonTimeoutMs: 30000,
     json: false,
   };
@@ -136,6 +140,9 @@ export function parseArgs(argv) {
     } else if (token === "--daemon-port") {
       args.daemonPort = Number(argv[i + 1] ?? 0);
       i += 1;
+    } else if (token === "--daemon-endpoint-file") {
+      args.daemonEndpointFile = String(argv[i + 1] ?? "").trim();
+      i += 1;
     } else if (token === "--daemon-timeout-ms") {
       args.daemonTimeoutMs = Number(argv[i + 1] ?? 1500);
       i += 1;
@@ -161,8 +168,8 @@ export function parseArgs(argv) {
   if (!["auto", "json", "sqlite", "postgres"].includes(args.backend)) {
     throw new Error("Invalid --backend. Expected auto|json|sqlite|postgres");
   }
-  if (args.useDaemon && (!args.daemonHost || !Number.isInteger(args.daemonPort) || args.daemonPort < 1)) {
-    throw new Error("Invalid daemon endpoint. Expected --daemon-host and --daemon-port when --use-daemon is supplied.");
+  if (args.useDaemon && !args.daemonEndpointFile && (!args.daemonHost || !Number.isInteger(args.daemonPort) || args.daemonPort < 1)) {
+    throw new Error("Invalid daemon endpoint. Expected --daemon-endpoint-file or --daemon-host plus --daemon-port when --use-daemon is supplied.");
   }
   if (!Number.isFinite(args.daemonTimeoutMs) || args.daemonTimeoutMs < 100) {
     throw new Error("Invalid --daemon-timeout-ms. Expected at least 100.");
@@ -174,7 +181,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  npx aidn codex workflow-step --target . --skills close-session,pr-orchestrate --mode COMMITTING --json");
   console.log("  npx aidn codex workflow-step --target . --skill requirements-delta --mode COMMITTING --json");
-  console.log("  npx aidn codex workflow-step --target . --skills context-reload --json --use-daemon --daemon-port 48173");
+  console.log("  npx aidn codex workflow-step --target . --skills context-reload --json --use-daemon");
 }
 
 function summarizeAdmission(payload) {
@@ -328,8 +335,58 @@ export async function runWorkflowStep({ args, targetRoot }) {
   };
 }
 
+function resolveDaemonEndpointFile(targetRoot, endpointFile) {
+  if (!endpointFile) {
+    return "";
+  }
+  if (path.isAbsolute(endpointFile)) {
+    return path.resolve(endpointFile);
+  }
+  return path.resolve(targetRoot, endpointFile);
+}
+
+function readDaemonEndpoint(targetRoot, endpointFile) {
+  const filePath = resolveDaemonEndpointFile(targetRoot, endpointFile);
+  if (!filePath || !fs.existsSync(filePath)) {
+    return null;
+  }
+  const payload = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  const host = String(payload?.daemon?.host ?? payload?.host ?? "").trim();
+  const port = Number(payload?.daemon?.port ?? payload?.port ?? 0);
+  if (!host || !Number.isInteger(port) || port < 1) {
+    throw new Error(`Invalid daemon endpoint file: ${filePath}`);
+  }
+  return {
+    host,
+    port,
+    endpoint_file: filePath,
+  };
+}
+
+function resolveDaemonEndpoint(args, targetRoot) {
+  if (Number.isInteger(args.daemonPort) && args.daemonPort > 0) {
+    return {
+      host: args.daemonHost,
+      port: args.daemonPort,
+      endpoint_file: null,
+    };
+  }
+  const endpoint = readDaemonEndpoint(targetRoot, args.daemonEndpointFile);
+  if (!endpoint) {
+    throw new Error(`daemon endpoint file not found: ${resolveDaemonEndpointFile(targetRoot, args.daemonEndpointFile)}`);
+  }
+  return endpoint;
+}
+
 function requestDaemonWorkflowStep({ args, targetRoot }) {
   return new Promise((resolve, reject) => {
+    let endpoint;
+    try {
+      endpoint = resolveDaemonEndpoint(args, targetRoot);
+    } catch (error) {
+      reject(error);
+      return;
+    }
     const body = JSON.stringify({
       operation: "codex.workflow-step",
       targetRoot,
@@ -339,8 +396,8 @@ function requestDaemonWorkflowStep({ args, targetRoot }) {
       },
     });
     const request = http.request({
-      host: args.daemonHost,
-      port: args.daemonPort,
+      host: endpoint.host,
+      port: endpoint.port,
       method: "POST",
       path: "/v1/execute",
       timeout: args.daemonTimeoutMs,
@@ -366,7 +423,9 @@ function requestDaemonWorkflowStep({ args, targetRoot }) {
           reject(new Error(parsed.message || `daemon request failed with status ${response.statusCode}`));
           return;
         }
-        resolve(parsed.payload ?? parsed);
+        const payload = parsed.payload ?? parsed;
+        payload.__daemon_endpoint = endpoint;
+        resolve(payload);
       });
     });
     request.on("timeout", () => {
@@ -388,16 +447,20 @@ async function main() {
     if (args.useDaemon) {
       try {
         output = await requestDaemonWorkflowStep({ args, targetRoot });
+        const endpoint = output.__daemon_endpoint ?? null;
+        delete output.__daemon_endpoint;
         output.daemon = {
           used: true,
-          endpoint: `${args.daemonHost}:${args.daemonPort}`,
+          endpoint: endpoint ? `${endpoint.host}:${endpoint.port}` : `${args.daemonHost}:${args.daemonPort}`,
+          endpoint_file: endpoint?.endpoint_file ?? null,
           fallback: false,
         };
       } catch (error) {
         output = await runWorkflowStep({ args, targetRoot });
         output.daemon = {
           used: false,
-          endpoint: `${args.daemonHost}:${args.daemonPort}`,
+          endpoint: args.daemonPort > 0 ? `${args.daemonHost}:${args.daemonPort}` : null,
+          endpoint_file: resolveDaemonEndpointFile(targetRoot, args.daemonEndpointFile),
           fallback: true,
           reason: String(error.message ?? error),
         };

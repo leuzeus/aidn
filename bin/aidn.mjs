@@ -192,7 +192,9 @@ function printUsage() {
   console.log("  aidn runtime coordinator-select-agent --target . --role auditor --action audit --json");
   console.log("  aidn runtime coordinator-suggest-arbitration --target . --json");
   console.log("  aidn runtime list-agent-adapters --target . --json");
+  console.log("  aidn runtime local-daemon --start --target . --json");
   console.log("  aidn runtime local-daemon --status --json");
+  console.log("  aidn runtime local-daemon --stop --target . --json");
   console.log("  aidn runtime verify-agent-roster --target . --json");
   console.log("  aidn runtime project-agent-health-summary --target . --json");
   console.log("  aidn runtime project-agent-selection-summary --target . --json");
