@@ -123,6 +123,7 @@
     "perf:constraint-summary": "node tools/perf/render-constraint-summary.mjs",
     "perf:repair-layer-triage-summary": "node tools/perf/render-repair-layer-triage-summary.mjs",
     "perf:constraint-loop": "node tools/perf/constraint-loop.mjs",
+    "perf:measure-issue-43-latency": "node tools/perf/measure-issue-43-latency.mjs",
     "perf:check-constraints": "node tools/perf/check-thresholds-defaults.mjs --preset constraint",
     "perf:index": "node tools/perf/index-sync.mjs",
     "perf:index-check": "node tools/perf/index-sync-check.mjs",

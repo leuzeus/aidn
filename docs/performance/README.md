@@ -95,6 +95,7 @@ The following scripts were added under `tools/perf/`:
 - `render-constraint-lot-plan-summary.mjs` - render concise Markdown summary of lot execution plan
 - `render-constraint-summary.mjs` - generate Markdown summary from constraint report for CI/job summary
 - `constraint-loop.mjs` - run full constraint chain (`report -> checks -> actions -> history -> trend -> lot-plan -> summaries`) in one orchestrator
+- `measure-issue-43-latency.mjs` - collect local no-change latency evidence for issue 43 paths without enforcing timing thresholds
 - `run-kpi-campaign.mjs` - run repeated session/delivery cycles and emit KPI/threshold campaign summary
 - `render-summary.mjs` - generate Markdown summary from KPI + threshold/regression/fallback reports
 - `audit-review.mjs` - evaluate post-optimization process drift and emit PASS/WARN/FAIL + replanification decision
@@ -285,6 +286,7 @@ npm run perf:constraint-summary -- --report-file .aidn/runtime/perf/constraint-r
 npm run perf:constraint-loop -- --target ../client-repo --event-file .aidn/runtime/perf/workflow-events.ndjson --json
 npm run perf:check-fallbacks
 npm run perf:campaign -- --iterations 30 --target tests/fixtures/repo-installed-core
+npm run perf:measure-issue-43-latency -- --target tests/fixtures/repo-installed-core --iterations 3 --warmup 1 --json
 npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --history-file .aidn/runtime/perf/kpi-history.ndjson --thresholds-file .aidn/runtime/perf/kpi-thresholds.json --regression-file .aidn/runtime/perf/kpi-regression.json --fallback-report-file .aidn/runtime/perf/fallback-report.json --fallback-thresholds-file .aidn/runtime/perf/fallback-thresholds.json --out .aidn/runtime/perf/kpi-summary.md
 npm run perf:audit-review -- --target ../client-repo --json
 npm run runtime:sync-db-first -- --target ../client-repo --json
@@ -293,6 +295,18 @@ npm run runtime:mode-migrate -- --target ../client-repo --to db-only --json
 npm run perf:reset
 npm run perf:reset -- --keep-history
 ```
+
+## Issue 43 Latency Evidence
+
+`perf:measure-issue-43-latency` is a local measurement helper, not a CI gate. It copies the selected target to a temporary working tree, initializes a clean `dual` SQLite runtime index, then measures repeated no-change runs for:
+
+- `runtime sync-db-first-selective`
+- `runtime pre-write-admit`
+- `codex run-json-hook`
+- `codex workflow-step`
+- daemon-backed `run-json-hook` and `workflow-step` when daemon measurement is enabled
+
+The output reports median/average/p90 timings, JSON output size, fast-path usage, and daemon fallback status. No timing threshold is enforced because local Node startup, disk, antivirus, and PostgreSQL availability can vary by machine. Use this evidence to compare local batches before and after optimization, while keeping `perf:verify-*` commands as the authoritative functional gates.
 
 Default runtime outputs:
 - `.aidn/runtime/perf/workflow-events.ndjson`
