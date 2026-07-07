@@ -121,7 +121,8 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     effectClass: "read-only",
     jsonContract: "runtime-artifact-fetch.v1.schema.json",
     safeArgs: ["runtime", "artifact-fetch", "--path", "CURRENT-STATE.md", "--json"],
-    notes: "Reads one canonical runtime artifact from the active backend without materializing visible files.",
+    allowNonZero: true,
+    notes: "Reads one canonical runtime artifact from the active backend without materializing visible files; exits non-zero when the selector is absent.",
   }),
   commandPolicy({
     id: "runtime-artifact-store-list",
