@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-artifact-fetch.v1",
+  "title": "aidn runtime artifact-fetch --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime artifact-fetch --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "kind",
+    "target_root",
+    "selector",
+    "found",
+    "source_backend",
+    "artifact"
+  ],
+  "properties": {
+    "kind": { "const": "runtime-artifact-fetch" },
+    "target_root": { "type": "string" },
+    "selector": { "type": "object", "additionalProperties": true },
+    "found": { "type": "boolean" },
+    "source_backend": { "type": "string" },
+    "source_file": { "type": "string" },
+    "source_revision": { "type": ["string", "null"] },
+    "project_context": { "type": ["object", "null"], "additionalProperties": true },
+    "artifact": { "type": ["object", "null"], "additionalProperties": true }
+  },
+  "additionalProperties": true
+}

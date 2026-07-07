@@ -12,13 +12,13 @@ Rule/State boundary:
 contract_version: critical-markdown-v1
 updated_at: 2026-03-09T00:00:00Z
 structure_profile: modern
-runtime_state_mode: dual
+runtime_state_mode: {{PREFERRED_STATE_MODE}}
 repair_layer_status: unknown
 repair_primary_reason: unknown
 source_of_truth: runtime store plus generated Markdown
 source_mode: explicit
 lifecycle_status: refreshed
-owner: {{project_id}}
+owner: {{PROJECT_NAME}}
 steward: aidn-runtime
 
 ## Active Context

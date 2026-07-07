@@ -38,6 +38,10 @@ These command families are intended for users and are covered by public effect p
 - `aidn runtime persistence-backup --json`
 - `aidn runtime persistence-source-diagnose --json`
 - `aidn runtime persistence-source-normalize --json`
+- `aidn runtime artifact-fetch --json`
+- `aidn runtime visible-artifacts-cleanup --json`
+- `aidn runtime visible-artifacts-restore --json`
+- `aidn runtime state-reanchor --json`
 - `aidn runtime shared-coordination-status --json`
 - `aidn runtime shared-coordination-projects --json`
 - `aidn runtime governance-diagnostics --json`
@@ -46,6 +50,9 @@ These command families are intended for users and are covered by public effect p
 - `aidn runtime handoff-admit --json`
 - `aidn runtime pre-write-admit --json`
 - `aidn codex hydrate-context --json`
+  - hidden bundle output defaults to `.aidn/runtime/context/hydrated-context.json`
+  - strict `db-only` does not auto-project visible files
+  - use `--materialize-visible-artifacts` to intentionally write managed visible exports
 
 ## Advanced public command families
 
@@ -82,6 +89,7 @@ These surfaces are public and contract-backed, but they are more operational or 
 - `aidn runtime coordinator-record-arbitration --json`
 - `aidn runtime project-runtime-state --json` and `--write` for projection writes
 - `aidn runtime project-handoff-packet --json`, `--write` for projection writes, and `--sync-relay` for shared relay sync writes
+- `aidn runtime state-reanchor --json` and `--write` for explicit repair of `CURRENT-STATE.md`, `RUNTIME-STATE.md`, and `HANDOFF-PACKET.md` from the active runtime backend
 
 ## Stable public aliases
 

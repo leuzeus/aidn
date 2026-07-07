@@ -30,6 +30,17 @@ export function copyFile(sourcePath, targetPath, dryRun, templateVars = null, op
   const targetRelative = targetRoot
     ? normalizeRelativePath(path.relative(targetRoot, targetPath))
     : "";
+  if (targetRelative && typeof options?.shouldCopyTargetRelative === "function"
+    && !options.shouldCopyTargetRelative(targetRelative)) {
+    if (typeof options?.onOwnershipSkip === "function") {
+      options.onOwnershipSkip({
+        targetRelative,
+        targetPath,
+        ownership: "db-only-strict-visible-filter",
+      });
+    }
+    return;
+  }
   const isCustomizable = targetRelative && isCustomizableProjectFile(targetRelative);
   const targetExists = fs.existsSync(targetPath);
   const ownershipDecision = targetRelative

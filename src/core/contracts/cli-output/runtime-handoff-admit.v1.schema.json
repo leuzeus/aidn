@@ -65,7 +65,25 @@
       "additionalProperties": true
     },
     "workspace": { "type": "object", "additionalProperties": true },
-    "shared_state_backend": { "type": ["object", "null"], "additionalProperties": true },
+    "shared_state_backend": {
+      "type": ["object", "null"],
+      "properties": {
+        "runtime_backend": {
+          "type": ["object", "null"],
+          "properties": {
+            "connection": {
+              "type": ["object", "null"],
+              "properties": {
+                "connection_string": { "type": "string", "enum": ["", "[redacted]"] }
+              },
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
     "shared_runtime_validation": { "type": "object", "additionalProperties": true },
     "packet": {
       "type": "object",

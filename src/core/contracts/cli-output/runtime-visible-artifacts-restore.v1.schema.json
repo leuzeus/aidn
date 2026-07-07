@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-visible-artifacts-restore.v1",
+  "title": "aidn runtime visible-artifacts-restore --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime visible-artifacts-restore --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "kind",
+    "target_root",
+    "backup_root",
+    "source_root",
+    "restore_items",
+    "write_requested",
+    "status"
+  ],
+  "properties": {
+    "kind": { "const": "runtime-visible-artifacts-restore" },
+    "target_root": { "type": "string" },
+    "backup_root": { "type": "string" },
+    "source_root": { "type": "string" },
+    "restore_items": { "type": "array" },
+    "write_requested": { "type": "boolean" },
+    "restored_count": { "type": "number" },
+    "status": { "type": "string" },
+    "errors": { "type": "array" }
+  },
+  "additionalProperties": true
+}

@@ -56,6 +56,20 @@ function main() {
       "--json",
     ]);
 
+    const postgresSecret = "postgres://aidn:fixture-secret@127.0.0.1:1/aidn";
+    postgresConfig.runtime.persistence.connectionRef = "env:AIDN_PG_URL";
+    writeAidnProjectConfig(targetRoot, postgresConfig);
+    const postgresResolvedStatus = runJson([
+      "runtime",
+      "persistence-status",
+      "--target",
+      targetRoot,
+      "--json",
+    ], {
+      ...process.env,
+      AIDN_PG_URL: postgresSecret,
+    });
+
     const envOverrideStatus = runJson([
       "runtime",
       "persistence-status",
@@ -82,6 +96,10 @@ function main() {
         && postgresStatus?.runtime_structures?.migration?.action === "blocked-conflict",
       postgres_status_reports_missing_connection: postgresStatus?.supported === false && /connection reference configured/i.test(String(postgresStatus?.reason ?? "")),
       postgres_status_exposes_adoption_plan: postgresStatus?.runtime_backend_adoption_plan?.action === "blocked-conflict" && postgresStatus?.runtime_backend_adoption_plan?.reason_code === "target-unavailable",
+      postgres_status_redacts_resolved_connection: postgresResolvedStatus?.runtime_backend?.connection?.connection_string === "[redacted]"
+        && !JSON.stringify(postgresResolvedStatus).includes(postgresSecret)
+        && !JSON.stringify(postgresResolvedStatus).includes("fixture-secret"),
+      postgres_status_declares_secret_not_exposed: postgresResolvedStatus?.operations?.connection_secret_exposed === false,
       env_override_wins_over_config: envOverrideStatus?.runtime_persistence?.backend === "sqlite" && envOverrideStatus?.runtime_persistence?.source === "env",
       env_override_exposes_runtime_structures: envOverrideStatus?.runtime_structures?.selected_backend === "sqlite"
         && envOverrideStatus?.runtime_structures?.sqlite?.backend === "sqlite",
@@ -104,6 +122,11 @@ function main() {
           reason: postgresStatus?.reason ?? null,
           adoption_plan: postgresStatus?.runtime_backend_adoption_plan ?? null,
           runtime_structures: postgresStatus?.runtime_structures ?? null,
+        },
+        postgres_resolved_status: {
+          runtime_persistence: postgresResolvedStatus?.runtime_persistence ?? null,
+          runtime_backend: postgresResolvedStatus?.runtime_backend ?? null,
+          operations: postgresResolvedStatus?.operations ?? null,
         },
         env_override_status: {
           runtime_persistence: envOverrideStatus?.runtime_persistence ?? null,

@@ -80,6 +80,7 @@ function mapArtifacts(rows = [], blobRows = []) {
     const artifactId = Number(row?.artifact_id ?? 0) || null;
     const blob = blobByArtifactId.get(artifactId) ?? null;
     return {
+      artifact_id: artifactId,
       path: row?.path ?? null,
       kind: row?.kind ?? "other",
       family: row?.family ?? "unknown",
@@ -139,6 +140,14 @@ export function rehydrateRuntimePayloadFromRelationalRows({
     generated_at: normalizeScalar(meta.generated_at) || null,
     target_root: normalizeScalar(meta.target_root) || normalizeScalar(scopeKey) || null,
     audit_root: normalizeScalar(meta.audit_root) || null,
+    project_context: {
+      scope_key: normalizeScalar(scopeKey) || normalizeScalar(meta.runtime_scope_id) || null,
+      runtime_scope_id: normalizeScalar(meta.runtime_scope_id) || normalizeScalar(scopeKey) || null,
+      legacy_scope_key: normalizeScalar(meta.legacy_scope_key) || null,
+      project_id: normalizeScalar(meta.project_id) || null,
+      workspace_id: normalizeScalar(meta.workspace_id) || null,
+      worktree_id: normalizeScalar(meta.worktree_id) || null,
+    },
     structure_profile: structureProfile ?? null,
     repair_layer_meta: parseJsonOrNull(meta.repair_layer_meta_json),
     cycles: cycles.map((row) => ({

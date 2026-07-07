@@ -1,10 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import {
   normalizeIndexStoreMode,
   normalizeStateMode,
   readAidnProjectConfig,
   resolveConfigIndexStore,
+  resolveConfigRuntimePersistence,
   resolveConfigStateMode,
   stateModeFromIndexStore,
 } from "../../lib/config/aidn-config-lib.mjs";
@@ -40,8 +42,101 @@ function decodeArtifactContent(artifact) {
   return null;
 }
 
-function detectBackend(indexFile, backend) {
-  return detectRuntimeSnapshotBackend(indexFile, backend);
+function sha256Text(value) {
+  return crypto.createHash("sha256").update(String(value ?? ""), "utf8").digest("hex");
+}
+
+function classifySelectionTier(reasons = []) {
+  const set = new Set(Array.isArray(reasons) ? reasons : []);
+  if (
+    set.has("priority_artifact")
+    || set.has("active_cycle_status")
+    || set.has("repair_finding_artifact")
+    || set.has("repair_finding_session")
+    || set.has("repair_finding_cycle_status")
+  ) {
+    return "active";
+  }
+  if (
+    set.has("linked_from_snapshot_or_baseline")
+    || set.has("related_session")
+    || set.has("continuity_session")
+    || set.has("continuity_cycle_status")
+    || set.has("latest_session_fallback")
+  ) {
+    return "continuity";
+  }
+  return "history";
+}
+
+function countSelectedArtifacts(selected, omittedCount, targetBytes, hardLimitBytes, maxArtifactBytes, maxArtifacts) {
+  const totalBytes = Buffer.byteLength(JSON.stringify({ artifacts: selected }), "utf8");
+  return {
+    budget_status: totalBytes <= targetBytes ? "within-target" : "over-target",
+    selected_count: selected.length,
+    metadata_only_count: selected.filter((artifact) => artifact.content_state === "metadata_only").length,
+    truncated_count: selected.filter((artifact) => artifact.content_state === "truncated").length,
+    omitted_count: omittedCount,
+    total_bytes: totalBytes,
+    target_bytes: targetBytes,
+    hard_limit_bytes: hardLimitBytes,
+    max_artifact_bytes: maxArtifactBytes,
+    max_artifacts: maxArtifacts,
+  };
+}
+
+function enforceHardArtifactBudget(selected, omittedCount, targetBytes, hardLimitBytes, maxArtifactBytes, maxArtifacts) {
+  const tierOrder = new Map([
+    ["history", 0],
+    ["continuity", 1],
+    ["active", 2],
+  ]);
+  let budget = countSelectedArtifacts(selected, omittedCount, targetBytes, hardLimitBytes, maxArtifactBytes, maxArtifacts);
+  if (budget.total_bytes <= hardLimitBytes) {
+    return budget;
+  }
+  const candidates = selected
+    .filter((artifact) => typeof artifact.content_excerpt === "string" && artifact.content_excerpt.length > 0)
+    .sort((left, right) => {
+      const tierDelta = Number(tierOrder.get(left.selection_tier) ?? 0) - Number(tierOrder.get(right.selection_tier) ?? 0);
+      if (tierDelta !== 0) {
+        return tierDelta;
+      }
+      return Number(left.selection_score ?? 0) - Number(right.selection_score ?? 0);
+    });
+  for (const artifact of candidates) {
+    artifact.content_excerpt = null;
+    artifact.content_state = "metadata_only";
+    artifact.excerpt_bytes = 0;
+    artifact.budget_trimmed = true;
+    budget = countSelectedArtifacts(selected, omittedCount, targetBytes, hardLimitBytes, maxArtifactBytes, maxArtifacts);
+    if (budget.total_bytes <= hardLimitBytes) {
+      return {
+        ...budget,
+        budget_status: "hard-limit-trimmed",
+      };
+    }
+  }
+  return {
+    ...budget,
+    budget_status: "hard-limit-exceeded",
+  };
+}
+
+function resolveArtifactSnapshotBackend(indexFile, backend, configData) {
+  const configPersistence = resolveConfigRuntimePersistence(configData);
+  const requested = String(backend ?? "").trim().toLowerCase();
+  if (requested === "auto" && configPersistence?.backend) {
+    return {
+      backend: configPersistence.backend,
+      connectionRef: configPersistence.connectionRef ?? "",
+    };
+  }
+  const resolvedBackend = detectRuntimeSnapshotBackend(indexFile, backend);
+  return {
+    backend: resolvedBackend,
+    connectionRef: resolvedBackend === "postgres" ? (configPersistence?.connectionRef ?? "") : "",
+  };
 }
 
 function readJsonIndex(indexFile) {
@@ -70,6 +165,9 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
     minConfidence: options.minRelationConfidence,
     relationThresholds: options.relationThresholds,
   });
+  const maxArtifacts = Math.max(1, Math.floor(Number(options.maxArtifacts ?? 24)));
+  const targetBytes = Math.max(8192, Math.floor(Number(options.bundleTargetBytes ?? 262144)));
+  const hardLimitBytes = Math.max(targetBytes, Math.floor(Number(options.bundleHardLimitBytes ?? 1048576)));
   const relationEvaluation = {
     thresholds: relationThresholds,
     accepted_count: 0,
@@ -289,6 +387,7 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
   const seen = new Set();
   const artifactScore = new Map();
   const artifactReasons = new Map();
+  let excerptBudgetBytes = 0;
 
   const mark = (artifact, score, reason) => {
     if (!artifact || typeof artifact !== "object") {
@@ -319,14 +418,33 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
     const selectionReasons = artifactReasons.get(rel) ?? [];
     const selectionScore = Number(artifactScore.get(rel) ?? 0);
     const content = decodeArtifactContent(artifact);
+    const selectionTier = classifySelectionTier(selectionReasons);
     let excerpt = null;
+    let excerptBytes = 0;
+    let contentState = "metadata_only";
     if (content) {
-      const bytes = content.length > maxArtifactBytes
+      if (selectionTier === "history") {
+        contentState = "metadata_only";
+      } else if (excerptBudgetBytes >= hardLimitBytes) {
+        contentState = "budget_omitted";
+      } else {
+        const bytes = content.length > maxArtifactBytes
         ? content.subarray(0, maxArtifactBytes)
         : content;
-      excerpt = bytes.toString("utf8");
+        if (excerptBudgetBytes + bytes.length <= hardLimitBytes) {
+          excerpt = bytes.toString("utf8");
+          excerptBytes = bytes.length;
+          excerptBudgetBytes += bytes.length;
+          contentState = content.length > maxArtifactBytes ? "truncated" : "included";
+        } else {
+          contentState = "budget_omitted";
+        }
+      }
+    } else {
+      contentState = "no_content";
     }
     selected.push({
+      artifact_id: artifact.artifact_id ?? null,
       path: rel,
       kind: artifact.kind ?? "other",
       family: artifact.family ?? "unknown",
@@ -337,6 +455,12 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
       has_content: content != null,
       selection_score: selectionScore,
       selection_reasons: selectionReasons,
+      selection_tier: selectionTier,
+      content_state: contentState,
+      excerpt_bytes: excerptBytes,
+      size_bytes: Number(artifact.size_bytes ?? (content?.length ?? 0)),
+      sha256: artifact.sha256 ?? (content ? sha256Text(content.toString("utf8")) : null),
+      updated_at: artifact.updated_at ?? null,
       content_excerpt: excerpt,
       canonical: artifact.canonical ?? null,
     });
@@ -417,12 +541,38 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
       return leftPath.localeCompare(rightPath);
     });
 
-  for (const artifact of selectedArtifacts) {
+  const limitedArtifacts = selectedArtifacts.slice(0, maxArtifacts);
+  const omittedCount = Math.max(0, selectedArtifacts.length - limitedArtifacts.length);
+  for (const artifact of limitedArtifacts) {
     pick(artifact);
   }
+  const bundleBudget = enforceHardArtifactBudget(
+    selected,
+    omittedCount,
+    targetBytes,
+    hardLimitBytes,
+    maxArtifactBytes,
+    maxArtifacts,
+  );
 
   return {
     selected,
+    bundle_budget: bundleBudget,
+    source_revision: sha256Text(JSON.stringify({
+      generated_at: payload?.generated_at ?? null,
+      schema_version: payload?.schema_version ?? null,
+      summary: {
+        artifacts: artifacts.length,
+        cycles: Array.isArray(payload?.cycles) ? payload.cycles.length : 0,
+        sessions: Array.isArray(payload?.sessions) ? payload.sessions.length : 0,
+        findings: migrationFindings.length,
+      },
+      selected: selected.map((artifact) => ({
+        path: artifact.path,
+        sha256: artifact.sha256,
+        updated_at: artifact.updated_at,
+      })),
+    })),
     relation_evaluation: relationEvaluation,
     finding_focus: {
       artifact_paths: Array.from(findingsByArtifactPath.keys()).sort((a, b) => a.localeCompare(b)).slice(0, 10),
@@ -439,6 +589,50 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
 function writeJson(filePath, payload) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+}
+
+export function buildArtifactSourceDescriptor({
+  backend,
+  indexAbsolute,
+  payload,
+  connectionRef = "",
+  includeCompatLocalIndex = false,
+} = {}) {
+  const normalizedBackend = String(backend ?? "").trim().toLowerCase() || null;
+  const projectContext = payload?.project_context && typeof payload.project_context === "object"
+    ? payload.project_context
+    : {};
+  const runtimeScopeId = projectContext?.runtime_scope_id ?? null;
+  const effectiveReadBackend = normalizedBackend === "postgres" ? "postgres" : (normalizedBackend || "auto");
+  const descriptor = {
+    backend: normalizedBackend,
+    canonical_backend: normalizedBackend,
+    source_role: normalizedBackend === "postgres" ? "canonical-runtime-backend" : "local-index",
+    canonical_ref: normalizedBackend === "postgres"
+      ? `postgres:${runtimeScopeId || "runtime-snapshot"}`
+      : (indexAbsolute ?? null),
+    runtime_scope_id: runtimeScopeId,
+    project_id: projectContext?.project_id ?? null,
+    workspace_id: projectContext?.workspace_id ?? null,
+    artifact_read_contract: {
+      authority: "aidn",
+      selection: "backend-resolved-by-aidn",
+      backend: effectiveReadBackend,
+      command: `npx aidn runtime artifact-fetch --target . --backend ${effectiveReadBackend} --path <artifact> --json`,
+      direct_store_access: normalizedBackend === "postgres" ? "forbidden" : "allowed-local-index",
+      diagnostic_compat_access: normalizedBackend === "postgres" ? "requires --include-compat-local-index or a dedicated migration/diagnostic command" : "not_applicable",
+    },
+  };
+  if (normalizedBackend === "postgres") {
+    descriptor.connection_ref = connectionRef || null;
+    if (includeCompatLocalIndex) {
+      descriptor.compat_local_index_file = indexAbsolute ?? null;
+    }
+  } else {
+    descriptor.file = indexAbsolute ?? null;
+    descriptor.local_index_file = indexAbsolute ?? null;
+  }
+  return descriptor;
 }
 
 function summarizeRepairLayer(payload, selection = null) {
@@ -578,22 +772,38 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
   let repairLayer = null;
   if (args.includeArtifacts) {
     const indexFile = resolveTargetPath(targetRoot, args.indexFile);
-    if (fs.existsSync(indexFile)) {
-      const backend = detectBackend(indexFile, args.backend);
+    const config = readAidnProjectConfig(targetRoot);
+    const { backend, connectionRef } = resolveArtifactSnapshotBackend(indexFile, args.backend, config.data);
+    const canReadArtifactSnapshot = backend === "postgres" || fs.existsSync(indexFile);
+    if (canReadArtifactSnapshot) {
       const index = backend === "json"
         ? readJsonIndex(indexFile)
-        : await readRuntimeSnapshot({ indexFile, backend, targetRoot });
-      artifactSource = {
+        : await readRuntimeSnapshot({
+          indexFile,
+          backend,
+          targetRoot,
+          connectionRef,
+          configData: config.data,
+        });
+      artifactSource = buildArtifactSourceDescriptor({
         backend,
-        file: index.absolute,
-      };
+        indexAbsolute: index.absolute,
+        payload: index.payload,
+        connectionRef,
+        includeCompatLocalIndex: args.includeCompatLocalIndex === true,
+      });
       const selection = selectArtifacts(index.payload, args.maxArtifactBytes, {
         minRelationConfidence: args.minRelationConfidence,
         relationThresholds: args.relationThresholds,
         allowAmbiguousLinks: args.allowAmbiguousLinks,
+        maxArtifacts: args.maxArtifacts,
+        bundleTargetBytes: args.bundleTargetBytes,
+        bundleHardLimitBytes: args.bundleHardLimitBytes,
       });
       selectedArtifacts = selection.selected;
       repairLayer = summarizeRepairLayer(index.payload, selection);
+      artifactSource.bundle_budget = selection.bundle_budget;
+      artifactSource.source_revision = selection.source_revision;
     }
   }
 
@@ -608,6 +818,12 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
     recent_history: recentHistory,
     artifact_source: artifactSource,
     repair_layer: repairLayer,
+    bundle_budget: artifactSource?.bundle_budget ?? null,
+    source_backend: artifactSource?.backend ?? null,
+    runtime_scope_id: artifactSource?.runtime_scope_id ?? null,
+    project_id: artifactSource?.project_id ?? null,
+    workspace_id: artifactSource?.workspace_id ?? null,
+    source_revision: artifactSource?.source_revision ?? null,
     artifacts: selectedArtifacts,
   };
 

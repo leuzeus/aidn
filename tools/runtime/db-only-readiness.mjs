@@ -28,6 +28,10 @@ const DB_FIRST_MARKERS = [
   "decodeEmbeddedArtifactContent(",
 ];
 
+const DB_ONLY_SAFE_FILE_READ_MARKERS = [
+  "protected-reanchor-anchor-inspection",
+];
+
 const FILESYSTEM_MARKERS = [
   "fs.existsSync(",
   "fs.readFileSync(",
@@ -105,6 +109,7 @@ function scanFileForDbOnly(packageRoot, absolutePath) {
     return null;
   }
   const hasDbFirstSupport = DB_FIRST_MARKERS.some((marker) => text.includes(marker));
+  const hasDbOnlySafeFileRead = DB_ONLY_SAFE_FILE_READ_MARKERS.some((marker) => text.includes(marker));
   const hasFileSystemReads = FILESYSTEM_MARKERS.some((marker) => text.includes(marker));
 
   let status = "manual-review";
@@ -112,6 +117,9 @@ function scanFileForDbOnly(packageRoot, absolutePath) {
   if (hasDbFirstSupport) {
     status = "db-first-aware";
     reasons.push("imports or references DB-first helpers");
+  } else if (hasDbOnlySafeFileRead) {
+    status = "db-first-aware";
+    reasons.push("uses filesystem reads only for protected re-anchor cleanup safeguards");
   } else if (hasFileSystemReads) {
     status = "likely-file-bound";
     reasons.push("reads audit artifacts through filesystem calls without DB-first helpers");

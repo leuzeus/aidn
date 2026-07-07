@@ -8,7 +8,7 @@ This installed repository uses a **Session-Based, Skill-Driven, Audit-Driven wor
 This file is a **startup contract**, not the full live workflow engine.
 
 Agents MUST:
-- treat `docs/audit/*` and hydrated runtime context as the live workflow state
+- treat workflow bootstrap docs, hydrated runtime context, and the active backend as the live workflow state
 - treat workflow skills and runtime hooks as the mutating enforcement path
 - use this file for stable startup rules, precedence, and write-stop conditions
 
@@ -41,14 +41,20 @@ Optional recovery skill:
 - Workflow specification (canonical): `docs/audit/SPEC.md`
 - Workflow adapter (project-local): `docs/audit/WORKFLOW.md`
 - Workflow kernel (minimal re-anchor): `docs/audit/WORKFLOW-KERNEL.md`
-- Current state summary: `docs/audit/CURRENT-STATE.md`
-- Runtime digest: `docs/audit/RUNTIME-STATE.md`
-- Multi-agent handoff packet: `docs/audit/HANDOFF-PACKET.md`
+- Current state summary:
+  - `docs/audit/CURRENT-STATE.md` as a protected minimal re-anchor anchor
+  - runtime backend plus `.aidn/runtime/context/hydrated-context.json` as canonical state in strict `db-only`
+- Runtime digest:
+  - `docs/audit/RUNTIME-STATE.md` as a protected minimal re-anchor anchor
+  - `.aidn/runtime/context/hydrated-context.json` as the regenerable runtime cache in strict `db-only`
+- Multi-agent handoff packet:
+  - `docs/audit/HANDOFF-PACKET.md` as a protected minimal handoff anchor
+  - runtime backend or shared coordination relay in strict `db-only`
 - Crash recovery runbook: `docs/audit/CRASH-RECOVERY-RUNBOOK.md`
-- Integration risk digest: `docs/audit/INTEGRATION-RISK.md`
+- Integration risk digest: `docs/audit/INTEGRATION-RISK.md` when visibly materialized
 - Agent adapter contract: `docs/audit/AGENT-ADAPTERS.md`
-- Fast snapshot: `docs/audit/snapshots/context-snapshot.md`
-- Ideas parking: `docs/audit/parking-lot.md`
+- Fast snapshot: `docs/audit/snapshots/context-snapshot.md` as a protected minimal re-anchor anchor
+- Ideas parking: `docs/audit/parking-lot.md` as a protected minimal re-anchor anchor
 
 > Precedence inside workflow rules: `docs/audit/SPEC.md` > `docs/audit/WORKFLOW.md` > `AGENTS.md`.
 
@@ -58,7 +64,8 @@ At the beginning of a session, the agent MUST:
 
 1. Run skill: `context-reload`
 2. Re-anchor in this order:
-   - `docs/audit/CURRENT-STATE.md`
+   - `.aidn/runtime/context/hydrated-context.json` when strict `db-only` is configured
+   - `docs/audit/CURRENT-STATE.md` when present or visibly materialized
    - `docs/audit/WORKFLOW-KERNEL.md`
    - `docs/audit/WORKFLOW_SUMMARY.md`
    - `docs/audit/RUNTIME-STATE.md` when runtime freshness or repair signals matter
@@ -173,7 +180,7 @@ For shared or high-risk implementation surfaces, the agent MUST:
 For `dual` / `db-only` projects, the runtime chain is authoritative for mutating enforcement:
 
 - `npx aidn codex run-json-hook ... --strict --json`
-- `npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json`
+- `npx aidn codex hydrate-context --target . --skill <skill> --json`
 - `npx aidn runtime sync-db-first-selective --target . --json` for mutating skills
 - `npx aidn runtime repair-layer-triage --target . --json` when `repair_layer_status` is `warn` or `block`
 - `npx aidn runtime repair-layer-autofix --target . --apply --json` only for safe-only autofix cases
@@ -194,8 +201,8 @@ When work is likely to continue in another agent, the agent SHOULD:
 
 - run skill: `handoff-close`
 - refresh `docs/audit/CURRENT-STATE.md`
-- refresh `docs/audit/RUNTIME-STATE.md` when in `dual` / `db-only`
-- project `docs/audit/HANDOFF-PACKET.md`
+- refresh `docs/audit/RUNTIME-STATE.md` as a minimal runtime-backed anchor
+- project `docs/audit/HANDOFF-PACKET.md` as a minimal runtime-backed handoff anchor when a relay matters
 
 The receiving agent MAY start from `docs/audit/HANDOFF-PACKET.md`, but MUST still:
 

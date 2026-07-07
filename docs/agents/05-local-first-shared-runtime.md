@@ -9,9 +9,11 @@ Shared runtime is opt-in and must not weaken checkout-bound auditability or loca
 ## Core Rules
 
 - PostgreSQL is optional
+- once `runtime.persistence.backend=postgres` is configured, runtime continuity reads use PostgreSQL as the canonical backend and stop on unavailable or ambiguous canonical context
 - shared runtime is opt-in
 - local checkout-bound artifacts stay local unless a rule explicitly says otherwise
 - shared runtime may carry coordination metadata, not implicit copies of checkout-bound state
+- public runtime JSON outputs may expose connection references but must recursively redact resolved connection strings
 
 ## Do Not Move Implicitly
 

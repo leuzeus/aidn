@@ -102,6 +102,18 @@ Artifact import store override example:
 npx aidn install --target . --pack core --artifact-import-store dual-sqlite
 ```
 
+Strict `db-only` visible materialization example:
+
+```bash
+AIDN_STATE_MODE=db-only npx aidn install --target . --pack core --init-defaults --project-name my-project
+```
+
+In strict `db-only`, install writes hidden AIDN state under `.aidn/` plus protected visible workflow bootstrap and minimal re-anchor anchors by default. To intentionally render managed visible exports beyond those anchors during install, add:
+
+```bash
+npx aidn install --target . --pack core --materialize-visible-artifacts
+```
+
 Notes:
 - The installer resolves `depends_on` recursively (for example `extended` installs `core` first).
 - Pack intent is:
@@ -154,8 +166,12 @@ Notes:
 - Artifact import policy:
   - after install (non-verify mode), installer automatically imports `docs/audit/*` artifacts into `.aidn/runtime/index/*`,
   - import store precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE` mapping,
-  - `AIDN_STATE_MODE` mapping remains: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite`,
+  - `AIDN_STATE_MODE` fallback import mapping remains: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite` when no PostgreSQL runtime backend is configured,
   - default install profile is DB-backed: `runtime.stateMode=dual` and `install.artifactImportStore=dual-sqlite`,
+  - in strict `db-only`, install creates or preserves the minimal re-anchor anchors (`CURRENT-STATE.md`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md`, snapshot and baseline pointers) but does not create or refresh detailed session/cycle projections, coordination summaries, agent health summaries, or other runtime/state exports unless `--materialize-visible-artifacts` or a dedicated projection command is supplied,
+  - workflow bootstrap assets from the scaffold (`AGENTS.md`, `.codex` skills, `SPEC.md`, `WORKFLOW.md`, `WORKFLOW-KERNEL.md`, `WORKFLOW_SUMMARY.md`, `CODEX_ONLINE.md`) are protected workflow surfaces, not cleanup candidates,
+  - strict `db-only` configuration is explicit in `.aidn/config.json` through `runtime.dbOnly.strict=true`, `runtime.dbOnly.visibleArtifacts.automaticMaterialization=false`, `runtime.dbOnly.cleanup.backupRequired=true`, `runtime.dbOnly.codexBundle.sourceOfTruth=runtime-backend`, and `runtime.dbOnly.artifactImport.canonicalBackendField=runtime.persistence.backend`,
+  - strict `db-only` verification validates hidden `.aidn/` surfaces plus protected visible workflow/re-anchor anchors, and does not require detailed visible Markdown projections,
   - disable automatic import with `--skip-artifact-import`,
   - installer auto-creates or updates `.aidn/config.json` (non-destructive merge) to persist runtime defaults,
   - installer also persists the resolved project source branch in `.aidn/config.json` under `workflow.sourceBranch`,
@@ -166,10 +182,94 @@ Notes:
   - use `.aidn/project/shared-runtime.locator.json` or env identity when a project must keep the same PostgreSQL identity across devices or platforms,
   - shared PostgreSQL coordination is still explicit opt-in; when a DB-backed PostgreSQL project has a locator that explicitly disables shared runtime, `shared-coordination-status`, `shared-coordination-doctor`, and `shared-runtime-reanchor` report an alignment warning instead of silently treating the setup as healthy shared coordination,
   - enable shared coordination intentionally with `aidn runtime shared-runtime-reanchor --target . --backend postgres --connection-ref env:AIDN_PG_URL --project-id <project> --workspace-id <workspace> --write --json`,
-  - the local `.aidn/runtime/index/workflow-index.sqlite` file remains a compatibility projection or migration source when PostgreSQL is configured,
+  - when PostgreSQL is configured, the normal path is PostgreSQL-only; local SQLite is a compatibility projection or migration source only when explicitly requested,
+  - continuity-changing hooks such as `cycle-create` read sessions and cycles from the configured canonical runtime backend; in strict `db-only`, an unavailable or ambiguous canonical context blocks the hook instead of falling back to stale visible projections or guessing the latest row,
+  - a new cycle branch that is not registered yet remains a valid creation candidate, but requires an explicit R1/R2/R3 continuity choice when its base cannot be proven,
+  - public runtime JSON outputs expose connection references but recursively redact resolved connection strings,
+  - for PostgreSQL-canonical projects, `aidn codex hydrate-context --json` reports `source_backend=postgres`, omits local SQLite paths by default, and exposes an AIDN-owned `artifact_read_contract`,
+  - agents should follow that contract and fetch omitted or truncated artifacts through `npx aidn runtime artifact-fetch --target . --backend postgres --path <artifact> --json`, not by invoking `sqlite3` directly,
+  - local SQLite compatibility paths are exposed by `hydrate-context` only with the explicit diagnostic flag `--include-compat-local-index`,
   - if PostgreSQL is already canonical and ready, `aidn install` treats a stale local SQLite compatibility projection as non-blocking instead of forcing a migration conflict,
-  - if PostgreSQL is not configured, SQLite remains the fallback legacy backend,
+  - if PostgreSQL is not configured, SQLite remains the fallback local backend hidden under `.aidn/runtime/index/`,
   - `install.artifactImportStore` stays a compatibility/migration knob and does not override the configured runtime backend.
+- Runtime state reanchor policy:
+  - if AIDN cannot prove where the project actually stopped, use `aidn runtime state-reanchor --target . --json` before asking an agent to inspect local SQLite or guess from visible files,
+  - the preview reads the active runtime backend, identifies the best session/cycle evidence, and reports the three recovery anchors it would refresh,
+  - apply only with `--write`; the write path rewrites `docs/audit/CURRENT-STATE.md`, regenerates `docs/audit/RUNTIME-STATE.md` and `docs/audit/HANDOFF-PACKET.md`, then stores those corrected anchors back into the canonical runtime backend,
+  - in PostgreSQL-configured projects, this uses PostgreSQL as the backend; local SQLite remains diagnostic/migration-only,
+  - this is an explicit recovery operation, not automatic install materialization, so it does not weaken strict `db-only`.
+- Visible artifact cleanup policy:
+  - before reinstalling or migrating a visible-artifact repository into strict `db-only`, preview external backup and quarantine with `aidn runtime visible-artifacts-cleanup --target . --json`,
+  - apply only with `--write`, which creates an external backup before moving managed runtime/state materializations to quarantine,
+  - cleanup must not quarantine scaffold workflow assets such as `AGENTS.md`, `.codex` skills, `SPEC.md`, `WORKFLOW.md`, `WORKFLOW-KERNEL.md`, `WORKFLOW_SUMMARY.md`, or `CODEX_ONLINE.md`,
+  - cleanup must not quarantine minimal re-anchor anchors such as `CURRENT-STATE.md`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md`, `snapshots/context-snapshot.md`, `baseline/current.md`, `baseline/history.md`, `parking-lot.md`, or the active session/cycle paths referenced by the current state,
+  - default backup root is `<parent-du-projet>/.aidn-backups/<project_id>/<timestamp>/`,
+  - restore can be previewed with `aidn runtime visible-artifacts-restore --target . --from <backup-root> --json` and applied with `--write`.
+
+Expected strict `db-only` config marker:
+
+```json
+{
+  "runtime": {
+    "stateMode": "db-only",
+    "dbOnly": {
+      "strict": true,
+      "visibleArtifacts": {
+        "automaticMaterialization": false,
+        "materializeFlag": "--materialize-visible-artifacts",
+        "managedRoots": [],
+        "managedRuntimePaths": [
+          "docs/audit/COORDINATION-SUMMARY.md",
+          "docs/audit/COORDINATION-LOG.md",
+          "docs/audit/cycles/C*",
+          "docs/audit/sessions/S*.md",
+          "docs/audit/baseline/v*"
+        ],
+        "protectedReanchorPaths": [
+          "docs/audit/CURRENT-STATE.md",
+          "docs/audit/RUNTIME-STATE.md",
+          "docs/audit/HANDOFF-PACKET.md",
+          "docs/audit/snapshots/context-snapshot.md",
+          "docs/audit/baseline/current.md",
+          "docs/audit/baseline/history.md",
+          "docs/audit/parking-lot.md",
+          "active session file referenced by CURRENT-STATE.md",
+          "active cycle directory referenced by CURRENT-STATE.md"
+        ],
+        "protectedWorkflowPaths": [
+          "AGENTS.md",
+          ".codex",
+          "docs/audit/SPEC.md",
+          "docs/audit/WORKFLOW.md",
+          "docs/audit/WORKFLOW-KERNEL.md",
+          "docs/audit/WORKFLOW_SUMMARY.md",
+          "docs/audit/CODEX_ONLINE.md",
+          "docs/audit/ARTIFACT_MANIFEST.md",
+          "docs/audit/fragments"
+        ]
+      },
+      "cleanup": {
+        "backupRequired": true,
+        "backupRoot": "<parent-du-projet>/.aidn-backups/<project_id>/<timestamp>/",
+        "quarantine": "external"
+      },
+      "codexBundle": {
+        "enabled": true,
+        "path": ".aidn/runtime/context/hydrated-context.json",
+        "sourceOfTruth": "runtime-backend"
+      },
+      "artifactImport": {
+        "role": "compatibility-or-migration",
+        "legacyStoreField": "install.artifactImportStore",
+        "legacyStoreRole": "local-index-import",
+        "canonicalBackend": "postgres",
+        "canonicalBackendField": "runtime.persistence.backend",
+        "canonicalBackendWins": true
+      }
+    }
+  }
+}
+```
 - Optional Codex project config:
   - `aidn` does not install `.codex/config.toml` by default,
   - use a project Codex config only when you need non-default `project_doc_fallback_filenames` or `project_doc_max_bytes`.
@@ -188,6 +288,8 @@ The generated outputs are:
 - `docs/audit/WORKFLOW_SUMMARY.md`
 - `docs/audit/CODEX_ONLINE.md`
 - `docs/audit/index.md`
+
+In strict `db-only`, these workflow bootstrap outputs are protected visible anchors and may be written during install. Detailed runtime/state exports remain explicit materializations and require `--materialize-visible-artifacts` or a dedicated projection command.
 
 Use one of these entry points to manage the adapter config:
 
@@ -242,6 +344,7 @@ Persistence rules:
 - install can create a minimal default adapter non-interactively with `--init-defaults --project-name <name>`
 - reinstall and reinitialization never overwrite that file automatically
 - generated files may be rewritten deterministically
+- in strict `db-only`, generated visible files are skipped unless `--materialize-visible-artifacts` is supplied
 - `seed-once` and `runtime-state` files are preserved
 
 If your repository ignores `.aidn/`, carve out an exception for `.aidn/project/workflow.adapter.json` when you want team-shared persistence across clones.
@@ -388,7 +491,7 @@ Recommended first reload path in client repos:
 - Runtime artifacts are written under `<target>/.aidn/runtime/*` (not in `<target>/tools`).
 - Optional runtime state mode:
   - `AIDN_STATE_MODE=files|dual|db-only`
-  - default mapping: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite`
+  - fallback import mapping: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite` only when PostgreSQL is not configured as the canonical runtime backend
   - default fresh install uses `dual` (DB-backed) when no override is provided
   - explicit CLI `--index-store` still has priority.
   - in `dual`/`db-only`, index payload content embedding is enabled by default so files can be reconstructed from DB.

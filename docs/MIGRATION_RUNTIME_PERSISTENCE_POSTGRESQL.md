@@ -2,7 +2,7 @@
 
 Date: 2026-04-09
 Status: active, relational-canonical
-Scope: safe adoption of canonical runtime persistence from local SQLite to PostgreSQL for runtime artifacts, while preserving local checkout-bound files and an optional local SQLite compatibility projection.
+Scope: safe adoption of canonical runtime persistence from local SQLite to PostgreSQL for runtime artifacts, while preserving strict `db-only` hidden-state semantics and using local SQLite only as fallback, compatibility, diagnostic or explicit migration input.
 
 ## What Changes
 
@@ -22,13 +22,28 @@ Current PostgreSQL meaning:
 - `runtime persistence status` now exposes the selected backend structure, the SQLite compatibility structure, the PostgreSQL target structure, and the migration/adoption plan separately
 - relational projection preserves artifact `mtime_ns` as an exact string-safe nanosecond value so source and target payload digests stay aligned
 - `runtime persistence-status --json` exposes `project_context` with `project_id`, `workspace_id`, `worktree_id`, `runtime_scope_id`, `identity_source`, and the legacy scope alias
+- when `runtime.persistence.backend=postgres`, the normal runtime path is PostgreSQL-only; local SQLite is not a substitute backend
 
 This does not change:
 
 - `runtime.stateMode`
 - `install.artifactImportStore`
-- `docs/audit/*`, `AGENTS.md`, `.codex/*`
+- explicit visible exports such as `docs/audit/*`, `AGENTS.md`, `.codex/*`
 - shared coordination schema ownership
+
+Strict `db-only` note:
+
+- `db-only` is a state mode, not a backend
+- `.aidn/config.json` must make strictness explicit through `runtime.dbOnly.strict=true`
+- `runtime.dbOnly.visibleArtifacts.automaticMaterialization=false` means runtime/state Markdown materializations are exports, not implicit install outputs
+- scaffold workflow assets such as `AGENTS.md`, `.codex` skills, `SPEC.md`, `WORKFLOW.md`, `WORKFLOW-KERNEL.md`, `WORKFLOW_SUMMARY.md`, and `CODEX_ONLINE.md` are protected workflow bootstrap surfaces, not cleanup candidates
+- `runtime.dbOnly.cleanup.backupRequired=true` and `runtime.dbOnly.cleanup.quarantine=external` are required before moving managed visible artifacts
+- `runtime.dbOnly.codexBundle.sourceOfTruth=runtime-backend` keeps the hidden Codex bundle as a regenerable cache, not canonical state
+- `runtime.dbOnly.artifactImport.canonicalBackendField=runtime.persistence.backend` prevents the legacy `install.artifactImportStore` value from being read as the canonical backend
+- strict `db-only` writes protected workflow bootstrap and minimal re-anchor anchors during install or verify, but does not write detailed runtime/state visible materializations automatically
+- detailed visible runtime Markdown surfaces are materialized only by explicit projection/export commands
+- cleanup protects `CURRENT-STATE.md`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md`, snapshot, baseline, parking-lot, and active session/cycle paths referenced by the current state
+- before cleanup or migration of existing visible artifacts, use `aidn runtime visible-artifacts-cleanup --target . --json` and apply only after reviewing the external backup/quarantine plan
 
 ## Local Operations Runbook
 
@@ -69,6 +84,7 @@ Before changing runtime persistence behavior, run the smallest relevant checks:
 | SQLite -> PostgreSQL adoption | runtime persistence backend | SQLite export and PostgreSQL backup when target has rows | selected `runtime_scope_id` plus legacy `scope_key` alias |
 | PostgreSQL migration | PostgreSQL relational schema | PostgreSQL backup | same PostgreSQL schema and `runtime_scope_id` |
 | Local projection cleanup | compatibility projection only | local SQLite copy if still used by tooling | regenerate projection from canonical backend |
+| Strict `db-only` visible cleanup | managed visible exports | external backup under `<parent>/.aidn-backups/<project_id>/<timestamp>/` | `visible-artifacts-restore` from backup/quarantine |
 
 ### 2. Capture pre-write evidence
 
@@ -79,6 +95,7 @@ aidn runtime db-status --target . --json
 aidn runtime persistence-status --target . --json
 aidn runtime db-backup --target . --json
 aidn runtime persistence-backup --target . --json
+aidn runtime visible-artifacts-cleanup --target . --json
 ```
 
 Rules:
@@ -167,10 +184,36 @@ $env:AIDN_PG_URL="postgres://user:pass@host:5432/dbname"
 ```json
 {
   "runtime": {
+    "stateMode": "db-only",
     "persistence": {
       "backend": "postgres",
       "connectionRef": "env:AIDN_PG_URL",
-      "localProjectionPolicy": "keep-local-sqlite"
+      "localProjectionPolicy": "none"
+    },
+    "dbOnly": {
+      "strict": true,
+      "visibleArtifacts": {
+        "automaticMaterialization": false,
+        "materializeFlag": "--materialize-visible-artifacts"
+      },
+      "cleanup": {
+        "backupRequired": true,
+        "backupRoot": "<parent-du-projet>/.aidn-backups/<project_id>/<timestamp>/",
+        "quarantine": "external"
+      },
+      "codexBundle": {
+        "enabled": true,
+        "path": ".aidn/runtime/context/hydrated-context.json",
+        "sourceOfTruth": "runtime-backend"
+      },
+      "artifactImport": {
+        "role": "compatibility-or-migration",
+        "legacyStoreField": "install.artifactImportStore",
+        "legacyStoreRole": "local-index-import",
+        "canonicalBackend": "postgres",
+        "canonicalBackendField": "runtime.persistence.backend",
+        "canonicalBackendWins": true
+      }
     }
   }
 }
@@ -190,9 +233,10 @@ aidn runtime persistence-adopt --target . --backend postgres --json
 
 Recommended rollout policy today:
 
-- use `localProjectionPolicy = keep-local-sqlite` for normal adoption
-- `localProjectionPolicy = none` is supported for canonical PostgreSQL runtime reads when the repository is ready to drop the local SQLite compatibility projection
-- keep `keep-local-sqlite` when you still rely on legacy sync-only or local SQLite inspection flows outside the canonical runtime path
+- use `localProjectionPolicy = none` for normal PostgreSQL-canonical projects
+- keep `keep-local-sqlite` only for explicit migration, compatibility or diagnostic windows
+- do not treat local SQLite as the runtime backend when PostgreSQL is configured and ready
+- if `CURRENT-STATE.md`, `RUNTIME-STATE.md`, or `HANDOFF-PACKET.md` no longer match the canonical runtime rows, run `aidn runtime state-reanchor --target . --json` and then `--write` after review; this repairs the visible recovery anchors from PostgreSQL and writes the corrected anchors back into PostgreSQL
 
 ## Planner Outcomes
 
@@ -243,10 +287,11 @@ node tools/install.mjs --target ../repo --pack core --runtime-persistence-backen
 
 Behavior:
 
-- artifact import can still prepare a local runtime projection for compatibility flows
+- artifact import can still prepare a local runtime projection for compatibility flows when explicitly requested
 - install then plans runtime backend adoption explicitly
 - a blocked adoption aborts the install before persisting the new backend config
 - a successful transfer records adoption metadata in `aidn_runtime`
+- in strict `db-only`, install does not create or refresh visible managed artifacts unless `--materialize-visible-artifacts` is supplied
 
 ## Rollback Expectations
 

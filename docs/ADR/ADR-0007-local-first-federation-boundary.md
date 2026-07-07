@@ -22,11 +22,22 @@ Rules:
 
 - checkout-bound workflow artifacts remain local and versioned by the installed project
 - shared runtime may store coordination metadata only when explicitly configured
-- SQLite remains the default local runtime backend for DB-backed modes
-- PostgreSQL is an optional backend for persistence and shared coordination, not a required service
+- strict `db-only` does not write detailed managed runtime exports outside `.aidn/` automatically
+- strict `db-only` cleanup distinguishes runtime/state materializations from scaffold workflow bootstrap assets
+- strict `db-only` install may write protected visible workflow bootstrap and minimal re-anchor anchors because Codex needs a checkout-bound restart path
+- minimal re-anchor anchors include `CURRENT-STATE.md`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md`, snapshot, baseline and parking-lot pointers; they are derived from runtime state and are not the canonical source of truth
+- if those anchors are missing, stale or contradictory, `aidn runtime state-reanchor --json` diagnoses the runtime evidence and `aidn runtime state-reanchor --write` is the explicit repair path; agents must not choose SQLite or visible files by themselves
+- strict cleanup must protect the active session and active cycle paths when they are referenced by current state or handoff state
+- scaffold workflow bootstrap assets such as `AGENTS.md`, `.codex` skills, `SPEC.md`, `WORKFLOW.md`, `WORKFLOW-KERNEL.md`, `WORKFLOW_SUMMARY.md` and `CODEX_ONLINE.md` are protected until a hidden workflow-bootstrap contract exists
+- strict `db-only` must be explicit in `.aidn/config.json` through `runtime.dbOnly.strict=true`, not inferred only from `runtime.stateMode`
+- strict `db-only` config must state that `runtime.persistence.backend` is canonical and `install.artifactImportStore` is compatibility/migration metadata
+- SQLite remains the hidden local backend only when PostgreSQL is not configured
+- PostgreSQL is optional generally, but canonical for a project once `runtime.persistence.backend=postgres` is configured
+- workflow continuity gates must read the configured canonical runtime backend before visible projections; a required canonical backend outage or ambiguous active-session/cycle set blocks continuity-changing operations instead of permitting an implicit file, SQLite, or latest-row guess
 - multi-repo or multi-worktree federation must use explicit workspace/worktree identity and locator configuration
 - no command may silently relocate audit artifacts into shared runtime
 - PostgreSQL runtime persistence rows must be contextualized by durable `project_id` and `workspace_id`, not by absolute filesystem paths
+- SQLite and PostgreSQL together are allowed only for explicit migration, compatibility or diagnostics
 
 Stable federation contract:
 
@@ -36,7 +47,14 @@ Stable federation contract:
 - runtime persistence exposes the same identity through `project_context` and `runtime_scope_id`
 - DB-backed PostgreSQL projects that explicitly disable the shared-runtime locator remain local-first, but shared coordination diagnostics must warn that shared PostgreSQL coordination is not active
 - `docs/audit/*`, `AGENTS.md`, `.codex/*`, `.aidn/config.json` and local runtime projections stay outside shared coordination
+- managed runtime/state visible artifacts are exports/materializations in strict `db-only`, not the source of truth; minimal re-anchor anchors are protected pointers to the runtime backend
+- the runtime backend wins over stale visible digest anchors; reanchor repairs update the visible anchors and then write the corrected anchors back to the active runtime backend
+- hidden Codex context bundles under `.aidn/runtime/context/` are regenerable caches from the active backend; when PostgreSQL is canonical, the standard bundle must omit local SQLite paths and expose an AIDN-owned artifact read contract instead
+- strict `db-only` config declares disabled automatic visible materialization, mandatory external backup/quarantine, and `runtime-backend` as the hidden bundle source of truth
+- strict `db-only` config carries `runtime.dbOnly.artifactImport` metadata so legacy local-index import settings cannot be confused with the canonical backend
+- backup/quarantine of managed runtime/state visible artifacts must use an external backup root before cleanup
 - PostgreSQL connection material must be referenced through `env:*` or equivalent indirection, never embedded in tracked files
+- public JSON status and diagnostic outputs must recursively redact resolved PostgreSQL connection strings
 
 ## Options Compared
 

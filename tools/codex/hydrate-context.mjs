@@ -21,9 +21,14 @@ function parseArgs(argv) {
     indexFile: ".aidn/runtime/index/workflow-index.sqlite",
     backend: "auto",
     maxArtifactBytes: 4096,
+    maxArtifacts: 24,
+    bundleTargetBytes: 262144,
+    bundleHardLimitBytes: 1048576,
     minRelationConfidence: 0.65,
     relationThresholds: {},
     allowAmbiguousLinks: false,
+    includeCompatLocalIndex: false,
+    materializeVisibleArtifacts: false,
     projectRuntimeState: null,
     runtimeStateOut: "docs/audit/RUNTIME-STATE.md",
     projectHandoffPacket: null,
@@ -65,6 +70,15 @@ function parseArgs(argv) {
     } else if (token === "--max-artifact-bytes") {
       args.maxArtifactBytes = Number(argv[i + 1] ?? 4096);
       i += 1;
+    } else if (token === "--max-artifacts") {
+      args.maxArtifacts = Number(argv[i + 1] ?? 24);
+      i += 1;
+    } else if (token === "--bundle-target-bytes") {
+      args.bundleTargetBytes = Number(argv[i + 1] ?? 262144);
+      i += 1;
+    } else if (token === "--bundle-hard-limit-bytes") {
+      args.bundleHardLimitBytes = Number(argv[i + 1] ?? 1048576);
+      i += 1;
     } else if (token === "--min-relation-confidence") {
       args.minRelationConfidence = Number(argv[i + 1] ?? 0.65);
       i += 1;
@@ -80,6 +94,10 @@ function parseArgs(argv) {
       args.relationThresholds[key] = n;
     } else if (token === "--allow-ambiguous-links") {
       args.allowAmbiguousLinks = true;
+    } else if (token === "--include-compat-local-index") {
+      args.includeCompatLocalIndex = true;
+    } else if (token === "--materialize-visible-artifacts") {
+      args.materializeVisibleArtifacts = true;
     } else if (token === "--project-runtime-state") {
       args.projectRuntimeState = true;
     } else if (token === "--no-project-runtime-state") {
@@ -147,6 +165,15 @@ function parseArgs(argv) {
   if (!Number.isFinite(args.maxArtifactBytes) || args.maxArtifactBytes < 128) {
     throw new Error("Invalid --max-artifact-bytes. Expected at least 128.");
   }
+  if (!Number.isFinite(args.maxArtifacts) || args.maxArtifacts < 1) {
+    throw new Error("Invalid --max-artifacts. Expected a positive integer.");
+  }
+  if (!Number.isFinite(args.bundleTargetBytes) || args.bundleTargetBytes < 8192) {
+    throw new Error("Invalid --bundle-target-bytes. Expected at least 8192.");
+  }
+  if (!Number.isFinite(args.bundleHardLimitBytes) || args.bundleHardLimitBytes < args.bundleTargetBytes) {
+    throw new Error("Invalid --bundle-hard-limit-bytes. Expected a value greater than or equal to --bundle-target-bytes.");
+  }
   if (!Number.isFinite(args.minRelationConfidence) || args.minRelationConfidence < 0 || args.minRelationConfidence > 1) {
     throw new Error("Invalid --min-relation-confidence. Expected a number between 0 and 1.");
   }
@@ -158,42 +185,51 @@ function resolveEffectiveStateMode(targetRoot, hydrated) {
 }
 
 function shouldProjectRuntimeState(args, hydrated, targetRoot) {
+  const stateMode = resolveEffectiveStateMode(targetRoot, hydrated);
   if (args.projectRuntimeState === true) {
-    return true;
+    return stateMode === "db-only" ? args.materializeVisibleArtifacts === true : true;
   }
   if (args.projectRuntimeState === false) {
     return false;
   }
-  const stateMode = resolveEffectiveStateMode(targetRoot, hydrated);
-  if (!["dual", "db-only"].includes(stateMode)) {
+  if (stateMode === "db-only") {
+    return args.materializeVisibleArtifacts === true;
+  }
+  if (stateMode !== "dual") {
     return false;
   }
   return true;
 }
 
 function shouldProjectHandoffPacket(args, hydrated, targetRoot) {
+  const stateMode = resolveEffectiveStateMode(targetRoot, hydrated);
   if (args.projectHandoffPacket === true) {
-    return true;
+    return stateMode === "db-only" ? args.materializeVisibleArtifacts === true : true;
   }
   if (args.projectHandoffPacket === false) {
     return false;
   }
-  const stateMode = resolveEffectiveStateMode(targetRoot, hydrated);
-  if (!["dual", "db-only"].includes(stateMode)) {
+  if (stateMode === "db-only") {
+    return args.materializeVisibleArtifacts === true;
+  }
+  if (stateMode !== "dual") {
     return false;
   }
   return true;
 }
 
 function shouldProjectAgentSelectionSummary(args, hydrated, targetRoot) {
+  const stateMode = resolveEffectiveStateMode(targetRoot, hydrated);
   if (args.projectAgentSelectionSummary === true) {
-    return true;
+    return stateMode === "db-only" ? args.materializeVisibleArtifacts === true : true;
   }
   if (args.projectAgentSelectionSummary === false) {
     return false;
   }
-  const stateMode = resolveEffectiveStateMode(targetRoot, hydrated);
-  if (["dual", "db-only"].includes(stateMode)) {
+  if (stateMode === "db-only") {
+    return args.materializeVisibleArtifacts === true;
+  }
+  if (stateMode === "dual") {
     return true;
   }
   const summaryFile = path.resolve(targetRoot, args.agentSelectionSummaryOut);
@@ -201,14 +237,17 @@ function shouldProjectAgentSelectionSummary(args, hydrated, targetRoot) {
 }
 
 function shouldProjectAgentHealthSummary(args, hydrated, targetRoot) {
+  const stateMode = resolveEffectiveStateMode(targetRoot, hydrated);
   if (args.projectAgentHealthSummary === true) {
-    return true;
+    return stateMode === "db-only" ? args.materializeVisibleArtifacts === true : true;
   }
   if (args.projectAgentHealthSummary === false) {
     return false;
   }
-  const stateMode = resolveEffectiveStateMode(targetRoot, hydrated);
-  if (["dual", "db-only"].includes(stateMode)) {
+  if (stateMode === "db-only") {
+    return args.materializeVisibleArtifacts === true;
+  }
+  if (stateMode === "dual") {
     return true;
   }
   const summaryFile = path.resolve(targetRoot, args.agentHealthSummaryOut);
@@ -216,14 +255,17 @@ function shouldProjectAgentHealthSummary(args, hydrated, targetRoot) {
 }
 
 function shouldProjectMultiAgentStatus(args, hydrated, targetRoot) {
+  const stateMode = resolveEffectiveStateMode(targetRoot, hydrated);
   if (args.projectMultiAgentStatus === true) {
-    return true;
+    return stateMode === "db-only" ? args.materializeVisibleArtifacts === true : true;
   }
   if (args.projectMultiAgentStatus === false) {
     return false;
   }
-  const stateMode = resolveEffectiveStateMode(targetRoot, hydrated);
-  if (["dual", "db-only"].includes(stateMode)) {
+  if (stateMode === "db-only") {
+    return args.materializeVisibleArtifacts === true;
+  }
+  if (stateMode === "dual") {
     return true;
   }
   const summaryFile = path.resolve(targetRoot, args.multiAgentStatusOut);
@@ -235,10 +277,12 @@ function printUsage() {
   console.log("  npx aidn codex hydrate-context --target . --json");
   console.log("  npx aidn codex hydrate-context --target . --skill context-reload --history-limit 10");
   console.log("  npx aidn codex hydrate-context --target . --skill start-session --project-runtime-state --json");
+  console.log("  npx aidn codex hydrate-context --target . --skill start-session --materialize-visible-artifacts --project-runtime-state --json");
   console.log("  npx aidn codex hydrate-context --target . --skill start-session --project-runtime-state --project-handoff-packet --project-agent-health-summary --project-agent-selection-summary --project-multi-agent-status --json");
   console.log("  npx aidn codex hydrate-context --target . --skill handoff-close --project-runtime-state --project-handoff-packet --project-agent-health-summary --project-agent-selection-summary --project-multi-agent-status --handoff-next-agent-goal \"reanchor and continue validation\" --json");
   console.log("  npx aidn codex hydrate-context --target . --skill context-reload --no-project-runtime-state --no-project-handoff-packet --no-project-agent-health-summary --no-project-agent-selection-summary --no-project-multi-agent-status --json");
   console.log("  npx aidn codex hydrate-context --target . --relation-threshold attached_cycle=0.35 --allow-ambiguous-links --json");
+  console.log("  npx aidn codex hydrate-context --target . --include-compat-local-index --json");
 }
 
 async function main() {
@@ -256,12 +300,17 @@ async function main() {
     let agentHealthSummary = null;
     let agentSelectionSummary = null;
     let multiAgentStatus = null;
+    hydrated.visible_projection_policy = {
+      mode: args.materializeVisibleArtifacts ? "explicit-materialization" : "strict-hidden-default",
+      materialize_visible_artifacts: args.materializeVisibleArtifacts === true,
+    };
     if (shouldProjectRuntimeState(args, hydrated, targetRoot)) {
       runtimeState = await projectRuntimeState({
         targetRoot,
         hydratedFile: args.out,
         contextFile: args.contextFile,
         out: args.runtimeStateOut,
+        write: args.materializeVisibleArtifacts === true,
       });
       hydrated.runtime_state = {
         output_file: runtimeState.output_file,
@@ -274,6 +323,7 @@ async function main() {
       agentHealthSummary = await projectAgentHealthSummary({
         targetRoot,
         out: args.agentHealthSummaryOut,
+        materializeVisibleArtifacts: args.materializeVisibleArtifacts === true,
       });
       hydrated.agent_health_summary = {
         output_file: agentHealthSummary.output_file,
@@ -290,6 +340,7 @@ async function main() {
       agentSelectionSummary = await projectAgentSelectionSummary({
         targetRoot,
         out: args.agentSelectionSummaryOut,
+        materializeVisibleArtifacts: args.materializeVisibleArtifacts === true,
       });
       hydrated.agent_selection_summary = {
         output_file: agentSelectionSummary.out_file,
@@ -306,6 +357,7 @@ async function main() {
         out: args.handoffPacketOut,
         nextAgentGoal: args.handoffNextAgentGoal,
         handoffNote: args.handoffNote,
+        write: args.materializeVisibleArtifacts === true,
       });
       hydrated.handoff_packet = {
         output_file: handoffPacket.output_file,
@@ -318,6 +370,7 @@ async function main() {
       multiAgentStatus = await projectMultiAgentStatus({
         targetRoot,
         out: args.multiAgentStatusOut,
+        materializeVisibleArtifacts: args.materializeVisibleArtifacts === true,
       });
       hydrated.multi_agent_status = {
         output_file: multiAgentStatus.output_file,

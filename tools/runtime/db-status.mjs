@@ -15,6 +15,7 @@ import {
   resolveRuntimeProjectContext,
 } from "../../src/application/runtime/runtime-project-context-service.mjs";
 import { normalizeRuntimePersistenceBackend } from "../../src/lib/config/aidn-config-lib.mjs";
+import { redactRuntimeConnectionSecrets } from "./db-first-runtime-view-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -410,7 +411,7 @@ export async function projectRuntimePersistenceStatus({
     ...payload,
     operations,
   });
-  return {
+  return redactRuntimeConnectionSecrets({
     ...payload,
     operations,
     runtime_structures: runtimeStructures,
@@ -419,7 +420,7 @@ export async function projectRuntimePersistenceStatus({
       operations,
       runtime_structures: runtimeStructures,
     }),
-  };
+  });
 }
 
 async function main() {

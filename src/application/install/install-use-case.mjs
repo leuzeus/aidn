@@ -41,6 +41,11 @@ import {
   shouldSkipAgentsMerge,
 } from "./template-merge-service.mjs";
 import { readUtf8 } from "./template-io.mjs";
+import { migrateWorkflowDbFile } from "../../lib/sqlite/workflow-db-schema-lib.mjs";
+import {
+  hasDbOnlyStrictVisibleInstallAllowedUnder,
+  isDbOnlyStrictVisibleInstallAllowed,
+} from "../runtime/db-only-visible-surface-policy.mjs";
 
 function verifyPaths(targetRoot, pathsToCheck) {
   const missing = [];
@@ -51,6 +56,46 @@ function verifyPaths(targetRoot, pathsToCheck) {
     }
   }
   return { ok: missing.length === 0, missing };
+}
+
+function normalizeInstallRelativePath(relativePath) {
+  return String(relativePath ?? "")
+    .replace(/\\/g, "/")
+    .replace(/^\.\/+/, "")
+    .replace(/\/+/g, "/");
+}
+
+function isHiddenAidnTarget(relativePath) {
+  const normalized = normalizeInstallRelativePath(relativePath).toLowerCase();
+  return normalized === ".aidn" || normalized.startsWith(".aidn/");
+}
+
+function isDbOnlyStrictInstall(args, importDefaults) {
+  return String(importDefaults?.stateMode ?? "").trim().toLowerCase() === "db-only"
+    && args?.materializeVisibleArtifacts !== true;
+}
+
+function filterDbOnlyStrictVerifyEntries(entries) {
+  const filtered = new Set([
+    ".aidn/config.json",
+    ".aidn/project/workflow.adapter.json",
+  ]);
+  for (const entry of entries) {
+    if (isHiddenAidnTarget(entry) || isDbOnlyStrictVisibleInstallAllowed(entry)) {
+      filtered.add(entry);
+    }
+  }
+  return Array.from(filtered);
+}
+
+function shouldSkipDbOnlyStrictVisibleOperation(relativeTarget, sourceStat) {
+  if (isHiddenAidnTarget(relativeTarget)) {
+    return false;
+  }
+  if (!sourceStat?.isDirectory?.()) {
+    return !isDbOnlyStrictVisibleInstallAllowed(relativeTarget);
+  }
+  return !hasDbOnlyStrictVisibleInstallAllowedUnder(relativeTarget);
 }
 
 const KNOWN_OVERRIDE_SCAN_ROOTS = [
@@ -162,12 +207,16 @@ export async function runInstallUseCase({
     configSkipped: 0,
     generatedRendered: 0,
     generatedUnchanged: 0,
+    strictVisibleSkipped: 0,
+    strictVerifyFiltered: 0,
+    hiddenRuntimeStorePrepared: 0,
     runtimeBackendAdoptionPlanned: 0,
     runtimeBackendAdoptionApplied: 0,
     runtimeBackendAdoptionSkipped: 0,
     runtimeBackendAdoptionBlocked: 0,
   };
   const initialImportDefaults = resolveArtifactImportDefaults(args, currentAidnConfigData);
+  const dbOnlyStrict = isDbOnlyStrictInstall(args, initialImportDefaults);
   const resolvedSourceBranch = await resolveInstallSourceBranch({
     explicitSourceBranch: args.sourceBranch,
     configData: currentAidnConfigData,
@@ -239,6 +288,11 @@ export async function runInstallUseCase({
       `Workflow adapter config: ${workflowAdapterConfig.path} (${workflowAdapterConfig.source}${workflowAdapterConfig.created ? ", created" : ""})`,
     );
   }
+  if (dbOnlyStrict) {
+    console.log("DB-only visible materialization: strict-reanchor (workflow bootstrap and minimal state anchors only; use --materialize-visible-artifacts for managed exports)");
+  } else if (args.materializeVisibleArtifacts === true) {
+    console.log("DB-only visible materialization: explicit");
+  }
   if (args.dryRun) {
     console.log("Mode: dry-run");
   } else if (args.verifyOnly) {
@@ -273,6 +327,14 @@ export async function runInstallUseCase({
         }
 
         const sourceStat = fs.statSync(sourcePath);
+        if (dbOnlyStrict && shouldSkipDbOnlyStrictVisibleOperation(op.to, sourceStat)) {
+          console.log(
+            `${args.dryRun ? "[dry-run] " : ""}skip visible copy in db-only strict: ${op.from} -> ${op.to} (pack ${packName})`,
+          );
+          summary.strictVisibleSkipped += 1;
+          summary.skipped += 1;
+          continue;
+        }
         await resolveMissingPlaceholdersForCopyOp({
           sourcePath,
           targetPath,
@@ -308,6 +370,9 @@ export async function runInstallUseCase({
             );
           },
         };
+        if (dbOnlyStrict && !isHiddenAidnTarget(op.to)) {
+          copyPolicy.shouldCopyTargetRelative = isDbOnlyStrictVisibleInstallAllowed;
+        }
         if (sourceStat.isDirectory()) {
           copyRecursive(
             sourcePath,
@@ -328,6 +393,14 @@ export async function runInstallUseCase({
         const targetPath = path.resolve(targetRoot, op.to);
         if (!fs.existsSync(sourcePath)) {
           throw new Error(`Merge source does not exist: ${op.from}`);
+        }
+        if (dbOnlyStrict && shouldSkipDbOnlyStrictVisibleOperation(op.to, fs.statSync(sourcePath))) {
+          console.log(
+            `${args.dryRun ? "[dry-run] " : ""}skip visible merge in db-only strict: ${op.from} -> ${op.to} (${op.strategy}, pack ${packName})`,
+          );
+          summary.strictVisibleSkipped += 1;
+          summary.skipped += 1;
+          continue;
         }
         const agentsPolicy = shouldSkipAgentsMerge(targetPath, args);
         if (agentsPolicy.skip) {
@@ -483,6 +556,21 @@ export async function runInstallUseCase({
       },
     );
     const runtimePersistenceConfig = nextAidnConfigData.runtime?.persistence ?? {};
+    const canonicalRuntimeBackend = String(runtimePersistenceConfig.backend ?? "").trim().toLowerCase();
+
+    if (dbOnlyStrict && resolvedImportDefaults.store === "sqlite" && canonicalRuntimeBackend !== "postgres") {
+      const sqliteFile = path.resolve(targetRoot, ".aidn", "runtime", "index", "workflow-index.sqlite");
+      if (args.dryRun) {
+        console.log(`[dry-run] prepare hidden sqlite runtime store: ${path.relative(targetRoot, sqliteFile)}`);
+      } else {
+        fs.mkdirSync(path.dirname(sqliteFile), { recursive: true });
+        migrateWorkflowDbFile({ sqliteFile });
+        console.log(`prepare hidden sqlite runtime store: ${path.relative(targetRoot, sqliteFile)}`);
+      }
+      summary.hiddenRuntimeStorePrepared += 1;
+    } else if (dbOnlyStrict && resolvedImportDefaults.store === "sqlite" && canonicalRuntimeBackend === "postgres") {
+      console.log("skip hidden sqlite runtime store in db-only strict: runtime.persistence.backend=postgres");
+    }
     let runtimeBackendAdoptionResult = null;
     if (String(runtimePersistenceConfig.backend ?? "").trim().toLowerCase() === "postgres") {
       const resolvedRuntimeBackendAdoptionOptions = {
@@ -553,10 +641,18 @@ export async function runInstallUseCase({
       verifyEntriesSet.add(entry);
     }
   }
-  const verifyEntries = Array.from(verifyEntriesSet);
+  const rawVerifyEntries = Array.from(verifyEntriesSet);
+  const verifyEntries = dbOnlyStrict
+    ? filterDbOnlyStrictVerifyEntries(rawVerifyEntries)
+    : rawVerifyEntries;
+  if (dbOnlyStrict) {
+    summary.strictVerifyFiltered = rawVerifyEntries.length - verifyEntries.length;
+  }
   const verification = verifyPaths(targetRoot, verifyEntries);
   const artifactImportVerification = verifyArtifactImportOutputs(targetRoot, args, currentAidnConfigData);
-  const workflowPlaceholders = getWorkflowPlaceholders(targetRoot);
+  const workflowPlaceholders = fs.existsSync(path.join(targetRoot, "docs", "audit", "WORKFLOW.md"))
+    ? getWorkflowPlaceholders(targetRoot)
+    : [];
   if (!verification.ok) {
     for (const missing of verification.missing) {
       console.error(`missing: ${missing}`);
@@ -608,6 +704,9 @@ export async function runInstallUseCase({
   console.log(`config_skipped: ${summary.configSkipped}`);
   console.log(`generated_rendered: ${summary.generatedRendered}`);
   console.log(`generated_unchanged: ${summary.generatedUnchanged}`);
+  console.log(`strict_visible_skipped: ${summary.strictVisibleSkipped}`);
+  console.log(`strict_verify_filtered: ${summary.strictVerifyFiltered}`);
+  console.log(`hidden_runtime_store_prepared: ${summary.hiddenRuntimeStorePrepared}`);
   console.log(`runtime_backend_adoption_planned: ${summary.runtimeBackendAdoptionPlanned}`);
   console.log(`runtime_backend_adoption_applied: ${summary.runtimeBackendAdoptionApplied}`);
   console.log(`runtime_backend_adoption_skipped: ${summary.runtimeBackendAdoptionSkipped}`);

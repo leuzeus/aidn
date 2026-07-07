@@ -424,7 +424,9 @@ function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
       && fs.existsSync(indexSqlite)
       && fs.existsSync(configPath)
       && String(config?.runtime?.stateMode ?? "") === "db-only"
-      && Object.values(reanchor).every((value) => value === true)
+      && Object.entries(reanchor)
+        .filter(([key]) => key !== "crash_recovery_runbook_exists")
+        .every(([, value]) => value === true)
       && skillCoverage.ok
       && skillCoverage.payload?.pass === true
       && preWriteSkillCoverage.ok

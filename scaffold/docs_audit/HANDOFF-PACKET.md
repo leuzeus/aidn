@@ -54,7 +54,7 @@ linked_backlog_cycles: none
 
 ## Runtime Signals
 
-runtime_state_mode: dual
+runtime_state_mode: {{PREFERRED_STATE_MODE}}
 repair_layer_status: unknown
 repair_primary_reason: unknown
 repair_routing_hint: reanchor

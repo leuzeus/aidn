@@ -159,6 +159,8 @@ async function main() {
     assert(status.payload?.runtime_structures?.selected_backend === "postgres", "live persistence-status should expose the selected postgres backend structure");
     assert(status.payload?.runtime_structures?.sqlite?.backend === "sqlite", "live persistence-status should expose the sqlite compatibility structure");
     assert(status.payload?.runtime_structures?.migration?.action === "noop", "live persistence-status should show noop migration after postgres adoption");
+    assert(status.payload?.runtime_backend?.connection?.connection_string === "[redacted]", "live persistence-status should redact the resolved postgres connection string");
+    assert(!JSON.stringify(status.payload).includes(connectionString), "live persistence-status should not serialize the resolved postgres connection string");
 
     const backup = runJson(repoRoot, "bin/aidn.mjs", [
       "runtime",
@@ -189,6 +191,8 @@ async function main() {
       "--json",
     ], env);
     assert(runtimeState.status === 0, "live runtime-state should succeed with runtime-canonical postgres projection");
+    assert(runtimeState.payload?.shared_state_backend?.runtime_backend?.connection?.connection_string === "[redacted]", "live runtime-state should redact the canonical postgres connection string");
+    assert(!JSON.stringify(runtimeState.payload).includes(connectionString), "live runtime-state should not serialize the resolved postgres connection string");
 
     const dbOnlyReadiness = runJson(repoRoot, "tools/runtime/db-only-readiness.mjs", [
       "--target",
@@ -203,6 +207,8 @@ async function main() {
       "--json",
     ], env);
     assert(handoff.status === 0, "live handoff packet should succeed with runtime-canonical postgres projection");
+    assert(handoff.payload?.shared_state_backend?.runtime_backend?.connection?.connection_string === "[redacted]", "live handoff should redact the canonical postgres connection string");
+    assert(!JSON.stringify(handoff.payload).includes(connectionString), "live handoff should not serialize the resolved postgres connection string");
 
     const client = new Client({ connectionString });
     await client.connect();

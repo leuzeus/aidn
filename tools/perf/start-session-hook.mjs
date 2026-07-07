@@ -165,10 +165,59 @@ function buildSummary(result) {
   };
 }
 
+function buildErrorResult(args, targetRoot, error) {
+  const now = new Date().toISOString();
+  return {
+    ts: now,
+    ok: false,
+    phase: "session-start",
+    skill: "start-session",
+    target_root: targetRoot,
+    mode: args?.mode ?? "UNKNOWN",
+    state_mode: args?.stateMode ?? "files",
+    strict: args?.strict === true,
+    action: "blocked_hook_error",
+    result: "stop",
+    reason_code: "START_SESSION_HOOK_ERROR",
+    branch: null,
+    branch_kind: null,
+    admission: null,
+    checkpoint: null,
+    checkpoint_error: null,
+    constraint_loop_required: false,
+    constraint_loop_strict: false,
+    constraint_loop: null,
+    constraint_loop_error: null,
+    workflow_hook: null,
+    error: {
+      message: String(error?.message ?? error),
+    },
+    summary: {
+      result: "stop",
+      reason_code: "START_SESSION_HOOK_ERROR",
+      action: "blocked_hook_error",
+      admitted: false,
+      workflow_hook_ran: false,
+      workflow_hook_result: null,
+      repair_layer_open_count: 0,
+      repair_layer_blocking: false,
+      repair_layer_status: "unknown",
+      repair_layer_advice: "Start-session hook failed before admission completed.",
+      repair_primary_reason: String(error?.message ?? error),
+      repair_layer_top_findings: [],
+    },
+  };
+}
+
 function main() {
+  const wantsJson = process.argv.includes("--json");
+  let parsedArgs = null;
+  let parsedTargetRoot = path.resolve(process.cwd(), ".");
   try {
     const args = parseArgs(process.argv.slice(2));
+    parsedArgs = args;
     const targetRoot = path.resolve(process.cwd(), args.target);
+    parsedTargetRoot = targetRoot;
     const admission = runStartSessionAdmitUseCase({
       targetRoot,
       mode: args.mode,
@@ -260,6 +309,10 @@ function main() {
     }
     process.exit(0);
   } catch (error) {
+    if (wantsJson) {
+      console.log(JSON.stringify(buildErrorResult(parsedArgs, parsedTargetRoot, error), null, 2));
+      process.exit(1);
+    }
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);

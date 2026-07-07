@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-state-reanchor.v1",
+  "title": "aidn runtime state-reanchor --json",
+  "type": "object",
+  "x-aidn-command": "aidn runtime state-reanchor --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "ts",
+    "ok",
+    "target_root",
+    "dry_run",
+    "write",
+    "requested_write",
+    "status",
+    "backend",
+    "workspace",
+    "project_context",
+    "effective_state_mode",
+    "plan",
+    "visible_write",
+    "canonical_write"
+  ],
+  "properties": {
+    "ts": { "type": "string" },
+    "ok": { "type": "boolean" },
+    "target_root": { "type": "string" },
+    "dry_run": { "type": "boolean" },
+    "write": { "type": "boolean" },
+    "requested_write": { "type": "boolean" },
+    "status": { "type": "string" },
+    "backend": {
+      "type": "object",
+      "properties": {
+        "backend_kind": { "type": ["string", "null"] },
+        "projection_backend_kind": { "type": ["string", "null"] },
+        "runtime_scope_id": { "type": ["string", "null"] },
+        "scope_key": { "type": ["string", "null"] },
+        "project_context": { "type": ["object", "null"], "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
+    "workspace": {
+      "type": "object",
+      "required": [
+        "target_root",
+        "project_id",
+        "workspace_id",
+        "worktree_id"
+      ],
+      "properties": {
+        "target_root": { "type": "string" },
+        "project_id": { "type": "string" },
+        "workspace_id": { "type": "string" },
+        "worktree_id": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "project_context": { "type": ["object", "null"], "additionalProperties": true },
+    "effective_state_mode": { "type": "string" },
+    "plan": {
+      "type": "object",
+      "required": [
+        "status",
+        "reason",
+        "confidence",
+        "evidence",
+        "anchors"
+      ],
+      "properties": {
+        "status": { "type": "string" },
+        "reason": { "type": "string" },
+        "confidence": { "type": "string" },
+        "evidence": { "type": "object", "additionalProperties": true },
+        "anchors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "artifact_path",
+              "source",
+              "required",
+              "planned_action"
+            ],
+            "properties": {
+              "path": { "type": "string" },
+              "artifact_path": { "type": "string" },
+              "source": { "type": "string" },
+              "required": { "type": "boolean" },
+              "planned_action": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "visible_write": {
+      "type": "object",
+      "required": [
+        "attempted",
+        "current_state",
+        "runtime_state",
+        "handoff_packet"
+      ],
+      "properties": {
+        "attempted": { "type": "boolean" },
+        "current_state": { "type": "object", "additionalProperties": true },
+        "runtime_state": { "type": "object", "additionalProperties": true },
+        "handoff_packet": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
+    "canonical_write": {
+      "type": "object",
+      "required": [
+        "attempted",
+        "written",
+        "outputs",
+        "anchors",
+        "reason"
+      ],
+      "properties": {
+        "attempted": { "type": "boolean" },
+        "written": { "type": "boolean" },
+        "outputs": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": true }
+        },
+        "anchors": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": true }
+        },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

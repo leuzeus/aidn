@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { runCycleCreateAdmitUseCase } from "../../src/application/runtime/cycle-create-admit-use-case.mjs";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 const CASES = [
@@ -106,6 +107,62 @@ const CASES = [
   },
 ];
 
+const CANONICAL_CASES = [
+  {
+    id: "db_only_canonical_cycle_allows_r1",
+    workingBranch: "feature/C104-delta",
+    snapshotAvailable: true,
+    expectedAction: "proceed_r1_strict_chain",
+    expectedReasonCode: null,
+    expectedActiveSession: "S103",
+    expectedActiveCycle: "C104",
+    expectedContinuityStatus: "resolved",
+  },
+  {
+    id: "files_mode_configured_postgres_stays_canonical",
+    workingBranch: "feature/C104-delta",
+    configuredStateMode: "files",
+    snapshotAvailable: true,
+    expectedAction: "proceed_r1_strict_chain",
+    expectedReasonCode: null,
+    expectedActiveSession: "S103",
+    expectedActiveCycle: "C104",
+    expectedContinuityStatus: "resolved",
+  },
+  {
+    id: "db_only_unregistered_cycle_is_explicit",
+    workingBranch: "feature/C105-unregistered",
+    snapshotAvailable: true,
+    expectedAction: "stop_choose_continuity_rule",
+    expectedReasonCode: "CYCLE_CREATE_CONTINUITY_CHOICE_REQUIRED",
+    expectedActiveSession: "S103",
+    expectedActiveCycle: "C104",
+    expectedContinuityStatus: "resolved",
+    expectedWarningContains: "must be treated as an explicit continuity choice",
+  },
+  {
+    id: "db_only_ambiguous_canonical_continuity_blocks",
+    workingBranch: "main",
+    snapshotAvailable: true,
+    ambiguousSnapshot: true,
+    expectedAction: "stop_repair_canonical_continuity",
+    expectedReasonCode: "CYCLE_CREATE_CANONICAL_CONTINUITY_AMBIGUOUS",
+    expectedActiveSession: "none",
+    expectedActiveCycle: "none",
+    expectedContinuityStatus: "ambiguous",
+  },
+  {
+    id: "db_only_canonical_runtime_unavailable_blocks",
+    workingBranch: "main",
+    snapshotAvailable: false,
+    expectedAction: "stop_repair_canonical_runtime",
+    expectedReasonCode: "CYCLE_CREATE_CANONICAL_RUNTIME_UNAVAILABLE",
+    expectedActiveSession: "none",
+    expectedActiveCycle: "none",
+    expectedContinuityStatus: "unavailable",
+  },
+];
+
 function writeDualConfig(targetRoot) {
   const configDir = path.join(targetRoot, ".aidn");
   fs.mkdirSync(configDir, { recursive: true });
@@ -122,6 +179,144 @@ function writeDualConfig(targetRoot) {
       sourceBranch: "main",
     },
   }, null, 2)}\n`, "utf8");
+}
+
+function writePostgresConfig(targetRoot, stateMode = "db-only") {
+  const configDir = path.join(targetRoot, ".aidn");
+  fs.mkdirSync(configDir, { recursive: true });
+  fs.writeFileSync(path.join(configDir, "config.json"), `${JSON.stringify({
+    version: 1,
+    profile: stateMode,
+    runtime: {
+      stateMode,
+      persistence: {
+        backend: "postgres",
+        localProjectionPolicy: "none",
+        connectionRef: "env:AIDN_PG_URL",
+      },
+    },
+    workflow: {
+      sourceBranch: "main",
+    },
+  }, null, 2)}\n`, "utf8");
+}
+
+function installFilelessVisibleState(targetRoot) {
+  const auditRoot = path.join(targetRoot, "docs", "audit");
+  fs.rmSync(path.join(auditRoot, "sessions"), { recursive: true, force: true });
+  fs.rmSync(path.join(auditRoot, "cycles"), { recursive: true, force: true });
+  fs.mkdirSync(auditRoot, { recursive: true });
+  fs.writeFileSync(path.join(auditRoot, "CURRENT-STATE.md"), [
+    "# Current State",
+    "",
+    "active_session: none",
+    "session_branch: none",
+    "branch_kind: unknown",
+    "mode: unknown",
+    "active_cycle: none",
+    "cycle_branch: none",
+    "dor_state: unknown",
+    "",
+  ].join("\n"), "utf8");
+}
+
+function createCanonicalRuntimePayload({ ambiguous = false } = {}) {
+  const payload = {
+    schema_version: 2,
+    generated_at: "2026-06-04T00:00:00.000Z",
+    sessions: [
+      {
+        session_id: "S103",
+        branch_name: "S103-multi",
+        state: "COMMITTING",
+        branch_kind: "session",
+        integration_target_cycle: "C104",
+        source_artifact_path: "sessions/S103.md",
+        updated_at: "2026-06-04T00:01:00.000Z",
+      },
+    ],
+    cycles: [
+      {
+        cycle_id: "C103",
+        session_id: "S103",
+        state: "DONE",
+        outcome: "DONE",
+        branch_name: "feature/C103-gamma",
+        dor_state: "READY",
+        updated_at: "2026-06-03T00:00:00.000Z",
+      },
+      {
+        cycle_id: "C104",
+        session_id: "S103",
+        state: "IMPLEMENTING",
+        outcome: "ACTIVE",
+        branch_name: "feature/C104-delta",
+        dor_state: "READY",
+        continuity_rule: "R1_STRICT_CHAIN",
+        continuity_base_branch: "feature/C103-gamma",
+        updated_at: "2026-06-04T00:02:00.000Z",
+      },
+    ],
+    artifacts: [
+      {
+        path: "CURRENT-STATE.md",
+        subtype: "current_state",
+        content_format: "utf8",
+        content: [
+          "# Current State",
+          "",
+          "active_session: none",
+          "active_cycle: none",
+          "mode: unknown",
+          "",
+        ].join("\n"),
+      },
+    ],
+  };
+  if (ambiguous) {
+    payload.cycles[1].state = "DONE";
+    payload.cycles[1].outcome = "DONE";
+    payload.sessions.push({
+      session_id: "S104",
+      branch_name: "S104-ambiguous",
+      state: "COMMITTING",
+      branch_kind: "session",
+      integration_target_cycle: null,
+      source_artifact_path: "sessions/S104.md",
+      updated_at: "2026-06-04T00:03:00.000Z",
+    });
+  }
+  return payload;
+}
+
+function createCanonicalRuntimeReaderFactory({ available, ambiguous = false }) {
+  return () => ({
+    describeBackend() {
+      return {
+        backend_kind: "postgres",
+        scope: "runtime-artifact-persistence",
+      };
+    },
+    async readCanonicalSnapshot() {
+      return available
+        ? {
+            exists: true,
+            payload: createCanonicalRuntimePayload({ ambiguous }),
+            runtimeHeads: {
+              current_state: {
+                artifact_path: "CURRENT-STATE.md",
+              },
+            },
+            warning: "",
+          }
+        : {
+            exists: false,
+            payload: null,
+            runtimeHeads: {},
+            warning: "fixture canonical postgres runtime unavailable",
+          };
+    },
+  });
 }
 
 function installSharedPlanningFixture(targetRoot, { selectedExecutionScope = "none" } = {}) {
@@ -278,6 +473,9 @@ function runCase(tmpRoot, testCase) {
     hook_action_expected: String(hook?.action ?? "") === testCase.expectedAction,
     hook_result_expected: String(hook?.result ?? "") === testCase.expectedResult,
     hook_checkpoint_expected: Boolean(hook?.checkpoint) === testCase.expectsCheckpoint,
+    hook_state_mode_expected: hook?.state_mode === "dual",
+    hook_admission_state_mode_expected: hook?.admission?.state_mode === "dual",
+    hook_checkpoint_state_mode_expected: hook?.checkpoint ? hook.checkpoint.state_mode === "dual" : true,
     hook_workspace_present: String(hook?.workspace?.workspace_id ?? "").length > 0,
     hook_worktree_present: String(hook?.workspace?.worktree_id ?? "").length > 0,
     codex_action_expected: String(codexAction ?? "") === testCase.expectedAction,
@@ -292,6 +490,8 @@ function runCase(tmpRoot, testCase) {
       hook_action: hook?.action ?? null,
       hook_result: hook?.result ?? null,
       hook_checkpoint_ran: Boolean(hook?.checkpoint),
+      hook_state_mode: hook?.state_mode ?? null,
+      hook_checkpoint_state_mode: hook?.checkpoint?.state_mode ?? null,
       hook_workspace_id: hook?.workspace?.workspace_id ?? null,
       hook_is_linked_worktree: hook?.workspace?.is_linked_worktree ?? null,
       codex_action: codexAction,
@@ -302,16 +502,77 @@ function runCase(tmpRoot, testCase) {
   };
 }
 
-function main() {
+async function runCanonicalCase(tmpRoot, testCase) {
+  const sourceTarget = path.resolve(process.cwd(), "tests/fixtures/perf-structure/session-multi-cycle-explicit");
+  const targetRoot = copyFixtureToTmp(sourceTarget, tmpRoot, `tmp-cycle-create-${testCase.id}`);
+  writePostgresConfig(targetRoot, testCase.configuredStateMode ?? "db-only");
+  installFilelessVisibleState(targetRoot);
+  initGitRepo(targetRoot, {
+    workingBranch: testCase.workingBranch,
+  });
+  const admission = await runCycleCreateAdmitUseCase({
+    targetRoot,
+    mode: "COMMITTING",
+    runtimeSnapshotReaderFactory: createCanonicalRuntimeReaderFactory({
+      available: testCase.snapshotAvailable,
+      ambiguous: testCase.ambiguousSnapshot === true,
+    }),
+  });
+  const checks = {
+    action_expected: admission.action === testCase.expectedAction,
+    reason_code_expected: (admission.reason_code ?? null) === testCase.expectedReasonCode,
+    active_session_expected: admission.active_session === testCase.expectedActiveSession,
+    active_cycle_expected: admission.active_cycle === testCase.expectedActiveCycle,
+    canonical_source_expected: testCase.snapshotAvailable
+      ? admission.continuity_context_source === "runtime-canonical-postgres"
+      : admission.continuity_context_source === "visible-files-fallback",
+    canonical_backend_expected: admission.continuity_context_backend === "postgres",
+    canonical_required: admission.canonical_runtime_required === true,
+    canonical_available_expected: admission.canonical_runtime_available === testCase.snapshotAvailable,
+    canonical_continuity_status_expected: admission.canonical_continuity_status === testCase.expectedContinuityStatus,
+    canonical_ambiguity_expected: testCase.expectedContinuityStatus === "ambiguous"
+      ? admission.canonical_continuity_ambiguities.length > 0
+      : admission.canonical_continuity_ambiguities.length === 0,
+    warning_expected: testCase.expectedWarningContains
+      ? admission.warnings.some((item) => String(item).includes(testCase.expectedWarningContains))
+      : true,
+  };
+  return {
+    id: testCase.id,
+    source_target: sourceTarget,
+    target_root: targetRoot,
+    checks,
+    sample: {
+      action: admission.action,
+      reason_code: admission.reason_code,
+      active_session: admission.active_session,
+      active_cycle: admission.active_cycle,
+      continuity_context_source: admission.continuity_context_source,
+      continuity_context_backend: admission.continuity_context_backend,
+      canonical_continuity_status: admission.canonical_continuity_status,
+      canonical_continuity_ambiguities: admission.canonical_continuity_ambiguities,
+    },
+    pass: Object.values(checks).every((value) => value === true),
+  };
+}
+
+async function main() {
   const createdTargets = [];
   try {
     const args = parseArgs(process.argv.slice(2));
     const tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
-    const runs = CASES.map((testCase) => {
+    const fileRuns = CASES.map((testCase) => {
       const run = runCase(tmpRoot, testCase);
       createdTargets.push(run.target_root);
       return run;
     });
+    const canonicalRuns = [];
+    for (const testCase of CANONICAL_CASES) {
+      const run = await runCanonicalCase(tmpRoot, testCase);
+      createdTargets.push(run.target_root);
+      canonicalRuns.push(run);
+    }
+    const runs = [...fileRuns, ...canonicalRuns];
     const pass = runs.every((run) => run.pass === true);
     const output = {
       ts: new Date().toISOString(),
@@ -347,4 +608,4 @@ function main() {
   }
 }
 
-main();
+await main();

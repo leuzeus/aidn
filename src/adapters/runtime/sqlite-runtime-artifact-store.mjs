@@ -9,6 +9,7 @@ export function createSqliteRuntimeArtifactStore(options = {}) {
   const sqliteFile = path.resolve(process.cwd(), options.sqliteFile ?? ".aidn/runtime/index/workflow-index.sqlite");
   const indexStore = createIndexStore({
     ...options,
+    mode: options.mode ?? "sqlite",
     sqliteOutput: sqliteFile,
   });
 

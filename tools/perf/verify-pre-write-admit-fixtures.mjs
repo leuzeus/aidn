@@ -321,6 +321,7 @@ function main() {
     const cycleCloseWaivedTarget = path.join(tempRoot, "cycle-close-usage-matrix-waived");
     const promoteBaselineBlockedTarget = path.join(tempRoot, "promote-baseline-usage-matrix-blocked");
     const promoteBaselineWaivedTarget = path.join(tempRoot, "promote-baseline-usage-matrix-waived");
+    const dbOnlyDbFirstTarget = path.join(tempRoot, "db-only-db-first");
     const dbOnlyRequirementsTarget = path.join(tempRoot, "db-only-fileless-requirements");
     const dbOnlyCloseSessionTarget = path.join(tempRoot, "db-only-fileless-close-session");
     const invalidSharedRuntimeTarget = path.join(tempRoot, "invalid-shared-runtime");
@@ -335,6 +336,7 @@ function main() {
     fs.cpSync(readyTarget, cycleCloseWaivedTarget, { recursive: true });
     fs.cpSync(readyTarget, promoteBaselineBlockedTarget, { recursive: true });
     fs.cpSync(readyTarget, promoteBaselineWaivedTarget, { recursive: true });
+    fs.cpSync(readyTarget, dbOnlyDbFirstTarget, { recursive: true });
     fs.cpSync(readyTarget, dbOnlyRequirementsTarget, { recursive: true });
     fs.cpSync(readyTarget, dbOnlyCloseSessionTarget, { recursive: true });
     fs.cpSync(readyTarget, invalidSharedRuntimeTarget, { recursive: true });
@@ -361,6 +363,7 @@ function main() {
     });
     installDbOnlyIndexFixture(repoRoot, dbOnlyRequirementsTarget);
     installDbOnlyIndexFixture(repoRoot, dbOnlyCloseSessionTarget);
+    installDbOnlyIndexFixture(repoRoot, dbOnlyDbFirstTarget);
     installInvalidSharedRuntimeLocator(invalidSharedRuntimeTarget);
     installInvalidSharedRuntimeLocator(locatorWorkspaceMismatchTarget, {
       root: ".aidn-shared",
@@ -377,6 +380,18 @@ function main() {
     fs.rmSync(path.join(dbOnlyCloseSessionTarget, "docs", "audit", "CURRENT-STATE.md"), { force: true });
     fs.rmSync(path.join(dbOnlyCloseSessionTarget, "docs", "audit", "RUNTIME-STATE.md"), { force: true });
     fs.rmSync(path.join(dbOnlyCloseSessionTarget, "docs", "audit", "sessions", "S101-alpha.md"), { force: true });
+    const dbOnlyDbFirstCurrentStateFile = path.join(dbOnlyDbFirstTarget, "docs", "audit", "CURRENT-STATE.md");
+    fs.writeFileSync(
+      dbOnlyDbFirstCurrentStateFile,
+      upsertScalarLine(fs.readFileSync(dbOnlyDbFirstCurrentStateFile, "utf8"), "mode", "unknown"),
+      "utf8",
+    );
+    const dbOnlyDbFirstRuntimeStateFile = path.join(dbOnlyDbFirstTarget, "docs", "audit", "RUNTIME-STATE.md");
+    fs.writeFileSync(
+      dbOnlyDbFirstRuntimeStateFile,
+      upsertScalarLine(fs.readFileSync(dbOnlyDbFirstRuntimeStateFile, "utf8"), "runtime_state_mode", "dual"),
+      "utf8",
+    );
 
     const ready = runAidn(repoRoot, [
       "runtime",
@@ -446,6 +461,18 @@ function main() {
       "--strict",
       "--json",
     ], 1);
+    const dbOnlyDbFirst = runAidnWithEnv(repoRoot, [
+      "runtime",
+      "pre-write-admit",
+      "--target",
+      dbOnlyDbFirstTarget,
+      "--skill",
+      "requirements-delta",
+      "--json",
+    ], {
+      AIDN_STATE_MODE: "db-only",
+      AIDN_INDEX_STORE_MODE: "sqlite",
+    }, 0);
     const dbOnlyRequirements = runAidnWithEnv(repoRoot, [
       "runtime",
       "pre-write-admit",
@@ -604,6 +631,11 @@ function main() {
     assert(stateModeMismatch.context.source_of_truth_status === "block", "state mode mismatch should expose source-of-truth block status");
     assert(stateModeMismatch.context.source_of_truth_reason_codes.includes("SOT_STATE_MODE_MISMATCH"), "state mode mismatch should expose SoT reason code");
     assert(stateModeMismatch.blocking_reasons.some((item) => String(item).includes("SOT_STATE_MODE_MISMATCH")), "state mode mismatch should include a coded blocking reason");
+    assert(dbOnlyDbFirst.ok === true, "db-only admission should prefer database artifacts over stale visible projections");
+    assert(dbOnlyDbFirst.context.effective_state_mode === "db-only", "db-only db-first admission should expose the effective state mode");
+    assert(dbOnlyDbFirst.context.current_state_source === "sqlite", "db-only db-first admission should load CURRENT-STATE from SQLite even when a visible projection exists");
+    assert(dbOnlyDbFirst.context.runtime_state_source === "sqlite", "db-only db-first admission should load RUNTIME-STATE from SQLite even when a visible projection exists");
+    assert(dbOnlyDbFirst.context.source_of_truth_status === "clear", "db-only db-first admission should ignore stale visible source-of-truth projections");
     assert(dbOnlyRequirements.ok === true, "db-only fileless requirements admission should pass from SQLite artifacts");
     assert(String(dbOnlyRequirements.workspace?.workspace_id ?? "").length > 0, "db-only fileless requirements admission should expose workspace_id");
     assert(String(dbOnlyRequirements.workspace?.worktree_id ?? "").length > 0, "db-only fileless requirements admission should expose worktree_id");
@@ -627,6 +659,7 @@ function main() {
       cycle_close_waived: cycleCloseWaived,
       promote_baseline_blocked: promoteBaselineBlocked,
       promote_baseline_waived: promoteBaselineWaived,
+      db_only_db_first: dbOnlyDbFirst,
       db_only_requirements: dbOnlyRequirements,
       db_only_close_session: dbOnlyCloseSession,
       invalid_shared_runtime: invalidSharedRuntime,

@@ -18,7 +18,7 @@ The source of truth, metadata, lifecycle status, and scope of each concept must 
 
 - `files`: checkout-bound Markdown and project files are authoritative
 - `dual`: runtime DB/index is canonical for runtime state and Markdown projection is required
-- `db-only`: runtime DB is canonical and Markdown is materialized on demand
+- `db-only`: runtime DB is canonical; minimal re-anchor Markdown anchors may stay visible, while detailed Markdown projections are materialized on demand
 
 ## New Concept Rule
 

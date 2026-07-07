@@ -16,7 +16,6 @@ import {
   evaluateSessionIntegrationGate,
   mergePreWritePolicy,
 } from "../../src/application/runtime/pre-write-admit-use-case.mjs";
-import { loadSharedStateSnapshot } from "../../src/application/runtime/shared-state-backend-service.mjs";
 import { resolvePromotedSharedPlanningContext } from "../../src/application/runtime/shared-planning-resolution-service.mjs";
 import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
@@ -24,6 +23,10 @@ import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-tra
 import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { resolveEffectiveStateMode } from "../../src/core/state-mode/state-mode-policy.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
+import {
+  loadDbIndexPayloadSafe,
+  resolveDbArtifactSourceName,
+} from "./db-first-runtime-view-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -278,11 +281,9 @@ function relativePath(root, filePath) {
   return path.relative(root, filePath).replace(/\\/g, "/");
 }
 
-function loadSqliteIndexPayloadSafe(targetRoot) {
-  return loadSharedStateSnapshot({
-    targetRoot,
+async function loadRuntimeIndexPayloadSafe(targetRoot) {
+  return await loadDbIndexPayloadSafe(targetRoot, {
     includePayload: true,
-    includeRuntimeHeads: true,
   });
 }
 
@@ -303,8 +304,36 @@ function resolveAuditArtifactText({
   dbBacked = false,
   sqlitePayload = null,
   sqliteRuntimeHeads = null,
+  dbSource = "sqlite",
+  preferDb = false,
 } = {}) {
   const absolutePath = resolveTargetPath(targetRoot, candidatePath);
+  if (dbBacked && preferDb) {
+    const runtimeHeadArtifact = findRuntimeHeadArtifact(sqliteRuntimeHeads, candidatePath);
+    const runtimeHeadText = decodeArtifactContent(runtimeHeadArtifact);
+    if (runtimeHeadArtifact && runtimeHeadText) {
+      return {
+        exists: true,
+        source: dbSource,
+        absolutePath,
+        logicalPath: toAuditArtifactPath(runtimeHeadArtifact.path),
+        artifactPath: normalizeRelativeArtifactPath(runtimeHeadArtifact.path),
+        text: runtimeHeadText,
+      };
+    }
+    const artifact = findArtifactByPath(sqlitePayload, candidatePath);
+    const text = decodeArtifactContent(artifact);
+    if (artifact && text) {
+      return {
+        exists: true,
+        source: dbSource,
+        absolutePath,
+        logicalPath: toAuditArtifactPath(artifact.path),
+        artifactPath: normalizeRelativeArtifactPath(artifact.path),
+        text,
+      };
+    }
+  }
   if (exists(absolutePath)) {
     return {
       exists: true,
@@ -330,7 +359,7 @@ function resolveAuditArtifactText({
   if (runtimeHeadArtifact && runtimeHeadText) {
     return {
       exists: true,
-      source: "sqlite",
+      source: dbSource,
       absolutePath,
       logicalPath: toAuditArtifactPath(runtimeHeadArtifact.path),
       artifactPath: normalizeRelativeArtifactPath(runtimeHeadArtifact.path),
@@ -361,7 +390,7 @@ function resolveAuditArtifactText({
   }
   return {
     exists: true,
-    source: "sqlite",
+    source: dbSource,
     absolutePath,
     logicalPath: toAuditArtifactPath(artifact.path),
     artifactPath: normalizeRelativeArtifactPath(artifact.path),
@@ -412,7 +441,20 @@ function findCyclePlanArtifact(sqlitePayload, cycleId, cycleStatusArtifactPath =
   }) ?? null;
 }
 
-function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = false, sqlitePayload = null } = {}) {
+function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = false, sqlitePayload = null, dbSource = "sqlite", preferDb = false } = {}) {
+  if (dbBacked && preferDb) {
+    const artifact = findSessionArtifact(sqlitePayload, sessionId);
+    const text = decodeArtifactContent(artifact);
+    if (artifact && text) {
+      return {
+        exists: true,
+        source: dbSource,
+        filePath: null,
+        logicalPath: toAuditArtifactPath(artifact.path),
+        text,
+      };
+    }
+  }
   const filePath = findSessionFile(auditRoot, sessionId, targetRoot);
   if (filePath) {
     return {
@@ -445,14 +487,28 @@ function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = f
   }
   return {
     exists: true,
-    source: "sqlite",
+    source: dbSource,
     filePath: null,
     logicalPath: toAuditArtifactPath(artifact.path),
     text,
   };
 }
 
-function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbBacked = false, sqlitePayload = null } = {}) {
+function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbBacked = false, sqlitePayload = null, dbSource = "sqlite", preferDb = false } = {}) {
+  if (dbBacked && preferDb) {
+    const artifact = findCycleStatusArtifact(sqlitePayload, cycleId);
+    const text = decodeArtifactContent(artifact);
+    if (artifact && text) {
+      return {
+        exists: true,
+        source: dbSource,
+        filePath: null,
+        logicalPath: toAuditArtifactPath(artifact.path),
+        artifactPath: normalizeRelativeArtifactPath(artifact.path),
+        text,
+      };
+    }
+  }
   const filePath = findCycleStatus(auditRoot, cycleId, targetRoot);
   if (filePath) {
     return {
@@ -488,7 +544,7 @@ function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbBacked =
   }
   return {
     exists: true,
-    source: "sqlite",
+    source: dbSource,
     filePath: null,
     logicalPath: toAuditArtifactPath(artifact.path),
     artifactPath: normalizeRelativeArtifactPath(artifact.path),
@@ -502,7 +558,22 @@ function resolveCyclePlanArtifact({
   cycleId,
   dbBacked = false,
   sqlitePayload = null,
+  dbSource = "sqlite",
+  preferDb = false,
 } = {}) {
+  if (dbBacked && preferDb) {
+    const artifact = findCyclePlanArtifact(sqlitePayload, cycleId, cycleStatusResolution?.artifactPath);
+    const text = decodeArtifactContent(artifact);
+    if (artifact && text) {
+      return {
+        exists: true,
+        source: dbSource,
+        filePath: null,
+        logicalPath: toAuditArtifactPath(artifact.path),
+        text,
+      };
+    }
+  }
   if (cycleStatusResolution?.filePath) {
     const filePath = path.join(path.dirname(cycleStatusResolution.filePath), "plan.md");
     if (exists(filePath)) {
@@ -537,7 +608,7 @@ function resolveCyclePlanArtifact({
   }
   return {
     exists: true,
-    source: "sqlite",
+    source: dbSource,
     filePath: null,
     logicalPath: toAuditArtifactPath(artifact.path),
     text,
@@ -575,19 +646,23 @@ export async function preWriteAdmit({
     stateMode: "files",
   });
   const dbBackedMode = effectiveStateMode === "dual" || effectiveStateMode === "db-only";
-  const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
+  const sqliteFallback = dbBackedMode ? await loadRuntimeIndexPayloadSafe(absoluteTargetRoot) : {
     exists: false,
     sqliteFile: "",
     payload: null,
     runtimeHeads: {},
     warning: "",
   };
+  const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
+  const preferDb = effectiveStateMode === "db-only";
   const currentStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: currentStateFile,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
+    preferDb,
   });
   const runtimeStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
@@ -595,6 +670,8 @@ export async function preWriteAdmit({
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
+    dbSource,
+    preferDb,
   });
   const currentStatePath = currentStateResolution.absolutePath;
   const runtimeStatePath = runtimeStateResolution.absolutePath;
@@ -640,7 +717,7 @@ export async function preWriteAdmit({
       : { pass: false, checks: {} };
   addCheck(checks, "current_state_consistency", consistency.pass === true, consistency.pass
     ? (consistency.skipped_in_db_mode
-      ? "CURRENT-STATE consistency checks deferred because the artifact was resolved from SQLite"
+      ? `CURRENT-STATE consistency checks deferred because the artifact was resolved from ${currentStateResolution.source}`
       : "CURRENT-STATE.md consistency checks passed")
     : "CURRENT-STATE.md consistency checks reported issues");
   if (currentStateResolution.source === "file" && currentStateExists && consistency.pass !== true) {
@@ -655,6 +732,8 @@ export async function preWriteAdmit({
     sessionId: rawActiveSession,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
+    preferDb,
   });
   const cycleStatusResolution = resolveCycleStatusArtifact({
     targetRoot: absoluteTargetRoot,
@@ -662,6 +741,8 @@ export async function preWriteAdmit({
     cycleId: rawActiveCycle,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
+    preferDb,
   });
   const sessionFile = sessionResolution.filePath;
   const cycleStatusFile = cycleStatusResolution.filePath;
@@ -673,6 +754,8 @@ export async function preWriteAdmit({
     cycleId: rawActiveCycle,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
+    dbSource,
+    preferDb,
   });
   const planFile = planResolution.filePath;
   const planText = planResolution.text;

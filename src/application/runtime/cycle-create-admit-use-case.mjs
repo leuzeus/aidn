@@ -2,6 +2,7 @@ import path from "node:path";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { resolvePromotedSharedPlanningContext } from "./shared-planning-resolution-service.mjs";
 import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
+import { resolveWorkflowContinuityContext } from "./workflow-continuity-context-service.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { resolveBranchMapping } from "../../lib/workflow/branch-mapping-lib.mjs";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
@@ -39,11 +40,17 @@ function makeResult(base, overrides = {}) {
     backlog_selected_execution_scope: base.backlog_selected_execution_scope,
     planning_arbitration_status: base.planning_arbitration_status,
     shared_planning_source: base.shared_planning_source ?? "current-state",
+    continuity_context_source: base.continuity_context_source ?? "visible-files",
+    continuity_context_backend: base.continuity_context_backend ?? "files",
+    canonical_runtime_available: base.canonical_runtime_available === true,
+    canonical_runtime_required: base.canonical_runtime_required === true,
+    canonical_continuity_status: base.canonical_continuity_status ?? "visible-files",
+    canonical_continuity_ambiguities: base.canonical_continuity_ambiguities ?? [],
     continuity_rule: overrides.continuity_rule ?? null,
     continuity_base_branch: overrides.continuity_base_branch ?? null,
     required_user_choice: overrides.required_user_choice ?? [],
     blocking_reasons: overrides.blocking_reasons ?? [],
-    warnings: overrides.warnings ?? [],
+    warnings: overrides.warnings ?? base.warnings ?? [],
     recommended_next_action: overrides.recommended_next_action ?? null,
     workspace: overrides.workspace ?? base.workspace ?? null,
   };
@@ -185,7 +192,13 @@ function applyModeGate(base, candidate) {
   });
 }
 
-function resolveTargetSession({ currentState, sessions, branchKind, mapping }) {
+function resolveTargetSession({
+  currentState,
+  sessions,
+  branchKind,
+  mapping,
+  allowImplicitFallback = true,
+}) {
   const activeSessionId = String(currentState.active_session ?? "none").toUpperCase();
   if (activeSessionId && activeSessionId !== "NONE") {
     return sessions.find((session) => session.session_id === activeSessionId) ?? null;
@@ -197,7 +210,7 @@ function resolveTargetSession({ currentState, sessions, branchKind, mapping }) {
   if (mappedCycleOwner) {
     return sessions.find((session) => session.session_id === mappedCycleOwner) ?? null;
   }
-  if (sessions.length > 0) {
+  if (allowImplicitFallback && sessions.length > 0) {
     return sessions[sessions.length - 1];
   }
   return null;
@@ -228,6 +241,7 @@ export async function runCycleCreateAdmitUseCase({
   mode = "COMMITTING",
   sharedCoordination = null,
   sharedCoordinationOptions = {},
+  runtimeSnapshotReaderFactory = undefined,
 } = {}) {
   const gitAdapter = createLocalGitAdapter();
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
@@ -236,7 +250,19 @@ export async function runCycleCreateAdmitUseCase({
     targetRoot: absoluteTargetRoot,
     gitAdapter,
   });
-  const currentState = readCurrentState(absoluteTargetRoot);
+  const visibleCurrentState = readCurrentState(absoluteTargetRoot);
+  const auditRoot = visibleCurrentState.audit_root;
+  const visibleSessions = listSessionArtifacts(auditRoot);
+  const visibleCycles = listCycleStatuses(auditRoot);
+  const continuityContext = await resolveWorkflowContinuityContext({
+    targetRoot: absoluteTargetRoot,
+    effectiveStateMode,
+    visibleCurrentState,
+    visibleSessions,
+    visibleCycles,
+    ...(runtimeSnapshotReaderFactory ? { runtimeSnapshotReaderFactory } : {}),
+  });
+  const currentState = continuityContext.current_state;
   const sharedPlanning = await resolvePromotedSharedPlanningContext({
     targetRoot: absoluteTargetRoot,
     workspace,
@@ -252,15 +278,14 @@ export async function runCycleCreateAdmitUseCase({
     backlog_selected_execution_scope: sharedPlanning.backlog_selected_execution_scope,
     planning_arbitration_status: sharedPlanning.planning_arbitration_status,
   };
-  const auditRoot = currentState.audit_root;
   const sourceBranch = readSourceBranch(absoluteTargetRoot);
   const branch = gitAdapter.getCurrentBranch(absoluteTargetRoot);
   const branchKind = classifyAidnBranch(branch, {
     sourceBranch,
     includeSource: true,
   });
-  const sessions = listSessionArtifacts(auditRoot);
-  const cycles = listCycleStatuses(auditRoot);
+  const sessions = continuityContext.sessions;
+  const cycles = continuityContext.cycles;
   const openCycles = collectOpenCycles(cycles);
   const mapping = resolveBranchMapping({
     branch,
@@ -273,11 +298,22 @@ export async function runCycleCreateAdmitUseCase({
     sessions,
     branchKind,
     mapping,
+    allowImplicitFallback: !continuityContext.canonical_available,
   });
   const latestActiveCycle = resolveLatestSessionCycle(targetSession, openCycles);
   const sessionBranch = targetSession?.metadata.session_branch
     ?? (findSessionFile(auditRoot, effectiveCurrentState.active_session) ? effectiveCurrentState.session_branch : effectiveCurrentState.session_branch)
     ?? "none";
+  const continuityWarnings = continuityContext.warning ? [continuityContext.warning] : [];
+  if (
+    continuityContext.canonical_available
+    && mapping.missing
+    && (branchKind === AIDN_BRANCH_KIND.CYCLE || branchKind === AIDN_BRANCH_KIND.INTERMEDIATE)
+  ) {
+    continuityWarnings.push(
+      `Current branch ${branch} is not registered in canonical ${continuityContext.backend_kind} runtime state and must be treated as an explicit continuity choice.`,
+    );
+  }
 
   const base = {
     branch,
@@ -296,8 +332,43 @@ export async function runCycleCreateAdmitUseCase({
     backlog_selected_execution_scope: String(effectiveCurrentState.backlog_selected_execution_scope ?? "none"),
     planning_arbitration_status: String(effectiveCurrentState.planning_arbitration_status ?? "none"),
     shared_planning_source: sharedPlanning.shared_planning_source,
+    continuity_context_source: continuityContext.source,
+    continuity_context_backend: continuityContext.backend_kind,
+    canonical_runtime_available: continuityContext.canonical_available,
+    canonical_runtime_required: continuityContext.canonical_required,
+    canonical_continuity_status: continuityContext.canonical_continuity_status,
+    canonical_continuity_ambiguities: continuityContext.canonical_continuity_ambiguities,
+    warnings: continuityWarnings,
     workspace,
   };
+
+  if (continuityContext.canonical_required && !continuityContext.canonical_available) {
+    return makeResult(base, {
+      action: "stop_repair_canonical_runtime",
+      reason_code: "CYCLE_CREATE_CANONICAL_RUNTIME_UNAVAILABLE",
+      required_user_choice: [
+        "restore_canonical_runtime",
+        "repair_runtime_configuration",
+      ],
+      blocking_reasons: [
+        `Canonical ${continuityContext.backend_kind} runtime state is required but unavailable.`,
+      ],
+      recommended_next_action: "Restore or repair the configured canonical runtime backend before creating cycle artifacts.",
+    });
+  }
+
+  if (continuityContext.canonical_available && continuityContext.canonical_continuity_status === "ambiguous") {
+    return makeResult(base, {
+      action: "stop_repair_canonical_continuity",
+      reason_code: "CYCLE_CREATE_CANONICAL_CONTINUITY_AMBIGUOUS",
+      required_user_choice: [
+        "repair_canonical_current_state",
+        "resolve_active_session_cycle",
+      ],
+      blocking_reasons: continuityContext.canonical_continuity_ambiguities,
+      recommended_next_action: "Run `aidn runtime state-reanchor --target . --json`, review the low-confidence candidate, then apply an explicit repair before choosing cycle continuity.",
+    });
+  }
 
   if ([AIDN_BRANCH_KIND.UNKNOWN, AIDN_BRANCH_KIND.OTHER].includes(branchKind)) {
     return applyModeGate(base, makeResult(base, {
@@ -313,12 +384,12 @@ export async function runCycleCreateAdmitUseCase({
 
   if (branchKind === AIDN_BRANCH_KIND.CYCLE || branchKind === AIDN_BRANCH_KIND.INTERMEDIATE) {
     if (branch === latestActiveCycle?.branch_name) {
-    return applySharedPlanningCycleCreateGate(base, effectiveCurrentState, applyModeGate(base, makeResult(base, {
-      action: "proceed_r1_strict_chain",
-      continuity_rule: "R1_STRICT_CHAIN",
-      continuity_base_branch: branch,
-      recommended_next_action: `Create the next cycle from ${branch} using strict chain continuity.`,
-    })));
+      return applySharedPlanningCycleCreateGate(base, effectiveCurrentState, applyModeGate(base, makeResult(base, {
+        action: "proceed_r1_strict_chain",
+        continuity_rule: "R1_STRICT_CHAIN",
+        continuity_base_branch: branch,
+        recommended_next_action: `Create the next cycle from ${branch} using strict chain continuity.`,
+      })));
     }
     return applyModeGate(base, makeResult(base, {
       action: "stop_choose_continuity_rule",
