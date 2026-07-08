@@ -2,13 +2,16 @@ name: Release
 
 on:
   pull_request:
+  push:
+    tags:
+      - "v*.*.*"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  release:
+  verify:
     name: Verify Release Surface
     runs-on: ubuntu-latest
     steps:
@@ -22,3 +25,54 @@ jobs:
 
       - name: Verify Release Provenance
         run: npm run perf:verify-release-provenance
+
+  publish:
+    name: Publish GitHub Release
+    needs: verify
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify Tag Matches VERSION
+        id: release-version
+        shell: bash
+        run: |
+          VERSION="$(cat VERSION)"
+          TAG="${GITHUB_REF_NAME}"
+          if [ "${TAG}" != "v${VERSION}" ]; then
+            echo "Tag ${TAG} does not match VERSION ${VERSION}" >&2
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build And Verify Release Provenance
+        run: npm run perf:verify-release-provenance
+
+      - name: Publish Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.release-version.outputs.version }}
+        shell: bash
+        run: |
+          RELEASE_FLAGS=(
+            --title "AIDN v${VERSION}"
+            --generate-notes
+            --verify-tag
+          )
+          if [[ "${VERSION}" == *-* ]]; then
+            RELEASE_FLAGS+=(--prerelease)
+          fi
+          gh release create "v${VERSION}" \
+            "release/dist/aidn-workflow-${VERSION}.zip" \
+            "release/checksums.txt" \
+            "release/manifest.json" \
+            "${RELEASE_FLAGS[@]}"

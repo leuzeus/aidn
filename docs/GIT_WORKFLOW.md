@@ -94,6 +94,8 @@ Before tagging or assembling a release:
 4. `release/checksums.txt` must reference the zip for the same `VERSION`.
 5. `release/manifest.json` must record package name, version, git commit, generation time, source provenance, build provenance, artifact path, artifact bytes, and artifact SHA-256.
 6. `dev` may carry in-flight integration work, but release tags and stable consumer instructions should be cut from the reviewed release baseline.
+7. GitHub release tags must match `v<VERSION>` exactly.
+8. Pushing a matching `v*.*.*` tag runs the release workflow, rebuilds the release provenance outputs, and publishes a GitHub Release with the zip, checksum file, and manifest attached.
 
 ## Release Checklist
 
@@ -104,6 +106,7 @@ Before shipping or publishing a release artifact, verify:
 3. `docs/` entries included in the package are intentionally published and user-facing
 4. `release/dist/`, `release/checksums.txt`, and `release/manifest.json` are treated as generated release outputs, not source inputs
 5. any new published path is justified in the release review before it becomes part of the package surface
+6. the Git tag matches `v$(cat VERSION)` before publishing
 
 Run:
 
@@ -115,6 +118,15 @@ npm run build-release
 npm run perf:verify-release-artifacts
 npm run perf:verify-pack-topology
 ```
+
+Publish by pushing the matching tag from the reviewed release baseline:
+
+```bash
+git tag v<VERSION>
+git push origin v<VERSION>
+```
+
+The tag-triggered release workflow verifies provenance again before creating the GitHub Release. The publish job fails if the tag does not match `VERSION`.
 
 These gates prevent silent drift between branch policy, package metadata, user-facing install docs, release artifact names, checksums, and release manifest provenance.
 
