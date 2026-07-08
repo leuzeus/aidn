@@ -31,6 +31,7 @@
     "packs/",
     "src/",
     "scaffold/",
+    "scripts/",
     "tools/",
     "!tools/perf/verify-g*-like-*",
     "!tools/perf/verify-imported-sections-policy-fixtures.mjs",
@@ -49,6 +50,7 @@
   },
   "scripts": {
     "aidn": "node bin/aidn.mjs",
+    "bootstrap": "node tools/bootstrap.mjs",
     "install-pack": "node tools/install.mjs",
     "build-release": "node tools/build-release.mjs",
     "codex:run-json-hook": "node tools/codex/run-json-hook.mjs",
@@ -221,6 +223,7 @@
     "perf:verify-release-provenance": "npm run perf:verify-release-version && npm run build-release && npm run perf:verify-release-artifacts && npm run perf:verify-pack-topology",
     "perf:verify-release-flow": "npm run perf:verify-release-provenance",
     "perf:verify-install-import": "node tools/perf/verify-install-import-fixtures.mjs",
+    "perf:verify-bootstrap": "node tools/perf/verify-bootstrap-fixtures.mjs",
     "perf:verify-project-config": "node tools/perf/verify-project-config-fixtures.mjs",
     "perf:verify-install-runtime-persistence-adoption": "node tools/perf/verify-install-runtime-persistence-adoption-fixtures.mjs",
     "perf:verify-pack-topology": "node tools/perf/verify-pack-topology-fixtures.mjs",

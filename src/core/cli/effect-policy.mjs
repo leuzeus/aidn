@@ -52,6 +52,22 @@ function commandPolicy({
 
 const CLI_EFFECT_POLICIES = freezeDeep([
   commandPolicy({
+    id: "bootstrap-preview",
+    command: "aidn bootstrap --dry-run --json",
+    effectClass: "preview",
+    jsonContract: "bootstrap-preview.v1.schema.json",
+    safeArgs: ["bootstrap", "--target", ".", "--profile", "minimal", "--dry-run", "--json"],
+    notes: "Builds and executes a dry-run install/upgrade orchestration plan without mutating the target.",
+  }),
+  commandPolicy({
+    id: "bootstrap",
+    command: "aidn bootstrap --json",
+    effectClass: "mutating",
+    jsonContract: "bootstrap.v1.schema.json",
+    safeArgs: ["bootstrap", "--target", ".", "--profile", "minimal", "--json"],
+    notes: "Orchestrates install or upgrade by composing aidn install, project config, migration, and verification steps.",
+  }),
+  commandPolicy({
     id: "project-config-list",
     command: "aidn project config --list --json",
     effectClass: "read-only",

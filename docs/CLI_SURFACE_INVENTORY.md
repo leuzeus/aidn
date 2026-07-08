@@ -14,6 +14,7 @@ Purpose:
 These are the durable surfaces exposed through `aidn` today:
 
 - `aidn install`
+- `aidn bootstrap`
 - `aidn build-release`
 - `aidn perf`
 - `aidn codex`
@@ -25,6 +26,8 @@ These are the durable surfaces exposed through `aidn` today:
 These command families are intended for users and are covered by public effect policies and/or JSON contracts:
 
 - `aidn project config --list --json`
+- `aidn bootstrap --json`
+- `aidn bootstrap --dry-run --json`
 - `aidn project config --wizard`
 - `aidn project config --init-defaults --project-name <name> --json`
 - `aidn project config --migrate-adapter --json`

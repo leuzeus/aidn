@@ -42,6 +42,11 @@ const AIDN_BIN = path.join(REPO_ROOT, "bin", "aidn.mjs");
 
 const CONTRACT_CASES = [
   {
+    name: "bootstrap-preview",
+    schema: "bootstrap-preview.v1.schema.json",
+    args: ["bootstrap", "--profile", "minimal", "--dry-run", "--json"],
+  },
+  {
     name: "runtime-project-runtime-state",
     schema: "runtime-project-runtime-state.v1.schema.json",
     args: ["runtime", "project-runtime-state", "--json"],

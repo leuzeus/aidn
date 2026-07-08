@@ -31,6 +31,8 @@ Compatibility policy:
 
 Initial v1 commands:
 
+- `aidn bootstrap --json`
+- `aidn bootstrap --dry-run --json`
 - `aidn runtime project-runtime-state --json`
 - `aidn runtime project-handoff-packet --json`
 - `aidn runtime pre-write-admit --json`

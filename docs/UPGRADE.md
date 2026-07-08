@@ -53,15 +53,28 @@ Recent workflow resilience updates also add:
 npm install --save-dev github:leuzeus/aidn#v0.6.0
 ```
 
-2. Reinstall the desired pack from the workflow product repo:
+2. Run the recommended upgrade orchestrator:
+
+```bash
+npx aidn bootstrap --target <client-repo> --mode upgrade --profile default
+```
+
+Use profile `full` when the client repo intentionally carries all optional integration layers:
+
+```bash
+npx aidn bootstrap --target <client-repo> --mode upgrade --profile full
+```
+
+Use profile `postgres` only when PostgreSQL runtime persistence is explicitly configured:
+
+```bash
+npx aidn bootstrap --target <client-repo> --mode upgrade --profile postgres --runtime-persistence-connection-ref env:AIDN_PG_URL
+```
+
+Advanced lower-level pack reinstall remains available:
 
 ```bash
 npx aidn install --target <client-repo> --pack core
-```
-
-If the client repo uses the optional GitHub automation layer:
-
-```bash
 npx aidn install --target <client-repo> --pack github-integration
 npx aidn install --target <client-repo> --pack github-integration --verify
 ```

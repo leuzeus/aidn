@@ -149,6 +149,8 @@ const PROJECT_ALIASES = {
 
 function printUsage() {
   console.log("Usage:");
+  console.log("  aidn bootstrap --target . --profile default");
+  console.log("  aidn bootstrap --target . --mode upgrade --profile default");
   console.log("  aidn install --target ../repo --pack core");
   console.log("  aidn install --target ../repo --pack core --init-defaults --project-name my-project");
   console.log("  aidn install --target ../repo --pack core --verify");
@@ -372,6 +374,11 @@ function main() {
 
   if (command === "install") {
     runNodeScript(path.join("tools", "install.mjs"), argv.slice(1));
+    return;
+  }
+
+  if (command === "bootstrap") {
+    runNodeScript(path.join("tools", "bootstrap.mjs"), argv.slice(1));
     return;
   }
 

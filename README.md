@@ -83,8 +83,10 @@ Codex instruction layering after install:
 
 ## CLI Surface
 
+- `aidn bootstrap`
+  - recommended install/upgrade orchestrator with user-facing profiles
 - `aidn install`
-  - scaffold/packs install, verify, and runtime bootstrap
+  - lower-level scaffold/pack install, verify, and runtime bootstrap engine
 - `aidn project config`
   - manages `.aidn/project/workflow.adapter.json` and regenerates workflow adapter outputs
 - `aidn runtime`
@@ -99,6 +101,7 @@ The current stable/advanced/internal classification lives in [docs/CLI_SURFACE_I
 Representative commands:
 
 ```bash
+npx aidn bootstrap --target ../client --profile default
 npx aidn project config --target ../client --wizard
 npx aidn runtime shared-coordination-projects --target ../client --json
 npx aidn runtime persistence-adopt --target ../client --backend postgres --dry-run --json
@@ -220,6 +223,24 @@ Migration and repair:
 
 ```bash
 npm install --save-dev github:leuzeus/aidn#v0.6.0
+npx aidn bootstrap --target ../client --profile default
+npx aidn bootstrap --target ../client --mode upgrade --profile default
+npx aidn bootstrap --target ../client --profile full
+npx aidn bootstrap --target ../client --profile postgres --runtime-persistence-connection-ref env:AIDN_PG_URL
+npx aidn bootstrap --target ../client --profile db-only
+```
+
+URL wrapper example:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/leuzeus/aidn/dev/scripts/install.sh | sh -s -- --target ../client --profile default
+```
+
+Set `AIDN_REF=v<VERSION>` when the wrapper should install a tagged release instead of `dev`.
+
+Advanced install engine examples:
+
+```bash
 npx aidn install --target ../client --pack core
 npx aidn install --target ../client --pack core --init-defaults --project-name my-project --verify
 npx aidn install --target ../client --pack extended
@@ -230,6 +251,8 @@ npx aidn install --target ../client --pack core --verify
 ```
 
 Notes:
+- `bootstrap` auto-detects install vs upgrade from existing AIDN markers and maps profiles to the existing install/config/migration commands
+- `minimal`, `default`, `full`, `postgres`, and `db-only` are user-facing bootstrap profiles
 - `core` remains the compatibility/default install profile
 - `runtime-local` refreshes local runtime adapter examples on top of `core`
 - `codex-integration` refreshes local Codex skill assets on top of `core`
