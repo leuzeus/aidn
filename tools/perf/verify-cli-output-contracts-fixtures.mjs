@@ -522,16 +522,26 @@ function runCase(tmpRoot, testCase) {
     cwd: REPO_ROOT,
     env: process.env,
     encoding: "utf8",
+    timeout: 120000,
+    maxBuffer: 20 * 1024 * 1024,
+    windowsHide: true,
   });
-  const exitOk = result.status === 0 || testCase.allowNonZero === true;
+  const processCompleted = Number.isInteger(result.status);
+  const exitOk = processCompleted && (result.status === 0 || testCase.allowNonZero === true);
   if (!exitOk) {
+    const processError = result.error instanceof Error ? result.error.message : "";
+    const signal = String(result.signal ?? "").trim();
     return {
       name: testCase.name,
       ok: false,
       status: "command-failed",
       exit_code: result.status,
+      signal: signal || null,
       stderr: String(result.stderr ?? "").trim(),
-      issues: [`command exited with ${result.status}`],
+      issues: [
+        processError || `command did not complete with an integer exit code (status=${String(result.status)})`,
+        ...(signal ? [`command terminated by signal ${signal}`] : []),
+      ],
     };
   }
   let payload = null;
