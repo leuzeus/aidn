@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "outcomes": ["PASS", "FAIL", "SKIP"],
+  "obligation_values": ["required", "optional", "skip"],
+  "required_families": [
+    "contracts",
+    "effects",
+    "governance",
+    "docs",
+    "codex",
+    "runtime",
+    "security",
+    "release",
+    "cleanliness"
+  ],
+  "gates": [
+    {
+      "id": "contracts-json",
+      "family": "contracts",
+      "script": "perf:verify-cli-output-contracts",
+      "job": "architecture-gates/contracts",
+      "surfaces": ["src/core/contracts/cli-output", "public JSON output"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "contracts-surface-catalog",
+      "family": "contracts",
+      "script": "perf:verify-surface-catalog",
+      "job": "architecture-gates/contracts",
+      "surfaces": ["package/catalogs/surfaces.v1.json", "public references"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "effects-policy",
+      "family": "effects",
+      "script": "perf:verify-cli-effect-policy",
+      "job": "architecture-gates/contracts",
+      "surfaces": ["CLI effects", "--json", "--write"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "effects-no-implicit-write",
+      "family": "effects",
+      "script": "perf:verify-cli-no-implicit-write",
+      "job": "architecture-gates/contracts",
+      "surfaces": ["read-only CLI", "preview CLI"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "governance-source",
+      "family": "governance",
+      "script": "perf:verify-source-of-truth-policy",
+      "job": "architecture-gates/governance",
+      "surfaces": ["information concepts", "state modes"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "governance-metadata",
+      "family": "governance",
+      "script": "perf:verify-metadata-policy",
+      "job": "architecture-gates/governance",
+      "surfaces": ["metadata", "lifecycle", "retention"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "governance-completeness",
+      "family": "governance",
+      "script": "perf:verify-governance-completeness",
+      "job": "architecture-gates/governance",
+      "surfaces": ["governed concepts", "coverage exceptions"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "docs-contract",
+      "family": "docs",
+      "script": "perf:verify-markdown-contract",
+      "job": "architecture-gates/docs",
+      "surfaces": ["managed Markdown", "documentation contracts"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "docs-cli-inventory",
+      "family": "docs",
+      "script": "perf:verify-cli-surface-inventory",
+      "job": "architecture-gates/docs",
+      "surfaces": ["docs/CLI_SURFACE_INVENTORY.md", "bin/aidn.mjs"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "codex-pack-topology",
+      "family": "codex",
+      "script": "perf:verify-pack-topology",
+      "job": "architecture-gates/codex",
+      "surfaces": ["packs", "scaffold", "package allowlist"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "codex-installed-client",
+      "family": "codex",
+      "script": "perf:verify-codex-client-install",
+      "job": "architecture-gates/codex",
+      "surfaces": [".agents/skills", ".codex/agents", ".codex/hooks.json"],
+      "condition": "npm pack and isolated client available",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-state-modes",
+      "family": "runtime",
+      "script": "perf:verify-state-mode-parity",
+      "job": "architecture-gates/runtime",
+      "surfaces": ["files", "dual", "db-only"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-governance-cli",
+      "family": "runtime",
+      "script": "perf:verify-governance-runtime-cli",
+      "job": "architecture-gates/runtime",
+      "surfaces": ["runtime governance JSON", "shared sync opt-in"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "security-shared-boundary",
+      "family": "security",
+      "script": "perf:verify-shared-surface-boundary",
+      "job": "architecture-gates/security",
+      "surfaces": ["checkout-bound state", "shared runtime"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "release-version",
+      "family": "release",
+      "script": "perf:verify-release-version",
+      "job": "release/verify",
+      "surfaces": ["VERSION", "package.json", "stable install refs"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "release-reproducibility",
+      "family": "release",
+      "script": "perf:verify-release-reproducibility",
+      "job": "release/verify",
+      "surfaces": ["GITHUB_SHA", "release zip", "checksums", "provenance"],
+      "condition": "clean Git commit available",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "release-workflow-policy",
+      "family": "release",
+      "script": "perf:verify-release-workflow-policy",
+      "job": "release/verify",
+      "surfaces": [".github/workflows/release.yml", "main", "release/*", "GitHub Release"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "cleanliness-branch-policy",
+      "family": "cleanliness",
+      "script": "perf:verify-branch-policy",
+      "job": "architecture-gates/cleanliness",
+      "surfaces": ["main", "dev", "feature branches", "release branches"],
+      "condition": "Git repository available",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "cleanliness-gate-catalog",
+      "family": "cleanliness",
+      "script": "perf:verify-gate-catalog",
+      "job": "architecture-gates/cleanliness",
+      "surfaces": ["package/catalogs/gates.v1.json", "package.json", ".github/workflows"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "cleanliness-worktree",
+      "family": "cleanliness",
+      "script": "perf:verify-repository-cleanliness",
+      "job": "local/verify-all",
+      "surfaces": ["tracked worktree"],
+      "condition": "local full verification after commits",
+      "obligation": { "dev": "optional", "main": "required", "release": "required" }
+    }
+  ]
+}

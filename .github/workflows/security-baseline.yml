@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22.13"
 
-      - name: Verify Security Baseline
-        run: npm run perf:verify-security-baseline
+      - name: Verify Security
+        run: npm run verify:security

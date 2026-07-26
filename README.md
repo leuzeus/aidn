@@ -148,8 +148,9 @@ Rules:
 
 - `main` is the stable/release branch.
 - `dev` is the integration branch and may accumulate multiple workstreams.
-- clean PRs should be opened from short-lived branches created from `main`.
-- if a change exists on `dev` but needs a narrow PR, create a fresh branch from `main` and cherry-pick the relevant commit(s).
+- feature-family branches are created from current `dev` and open pull requests to `dev`.
+- release branches are created from reviewed `dev`; only `release/*` pull requests target `main`.
+- release PRs verify without publishing; publication runs only after the release PR merges to `main`.
 - full policy: `docs/GIT_WORKFLOW.md`
 
 ## Performance Rollout

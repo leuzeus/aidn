@@ -124,11 +124,11 @@ These are currently implemented as package scripts, tools, or internal wrappers,
   - current stable behavior remains batch unless a client command is explicitly run with daemon flags
   - first supported delegated operations are `aidn codex workflow-step --use-daemon ...` and `aidn codex run-json-hook --use-daemon ...`
   - no command starts the daemon implicitly
-- `aidn runtime repair-layer`
-- `aidn runtime repair-layer-query`
-- `aidn runtime repair-layer-resolve`
-- `aidn runtime repair-layer-triage`
-- `aidn runtime repair-layer-autofix`
+- `node tools/runtime/repair-layer.mjs`
+- `node tools/runtime/repair-layer-query.mjs`
+- `node tools/runtime/repair-layer-resolve.mjs`
+- `node tools/runtime/repair-layer-triage.mjs`
+- `node tools/runtime/repair-layer-autofix.mjs`
 - implementation helpers under `src/application/`, `src/adapters/`, and `src/lib/`
 
 Repair-layer commands are operational/internal surfaces. They may be used by CI, recovery tooling, or fixture-driven tests, but they are not promoted as stable public contracts in this backlog.

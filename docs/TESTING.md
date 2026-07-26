@@ -120,13 +120,15 @@ The re-anchor fixture includes checkout-bound sentinels for `docs/audit/*`, `AGE
 When a change affects release/versioning, install examples, or build-release provenance, run:
 
 - `npm run perf:verify-release-version`
-- `npm run build-release`
-- `npm run perf:verify-release-artifacts`
+- `npm run perf:verify-release-reproducibility`
+- `npm run perf:verify-release-workflow-policy`
 - `npm run perf:verify-release-provenance`
 - `npm run perf:verify-pack-topology`
 
-The release version verifier checks that `VERSION`, `package.json`, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The release provenance gate chains version, build, artifacts, and pack topology into one explicit release check. The release artifact verifier should be run after `npm run build-release`; it checks the generated zip path, `release/checksums.txt`, and `release/manifest.json`, including the manifest source and build provenance blocks.
+The release version verifier checks that `VERSION`, `package.json`, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The reproducibility verifier builds the exact clean tracked commit twice in isolated output roots, compares bytes, checks the npm package topology, and rejects sensitive inputs. `perf:verify-release-artifacts` remains the post-build check used by the main publication job.
 The pack topology verifier checks the package tarball surface, the published docs allowlist, and the leak guard for guarded terms in package paths and contents.
+
+Stable family wrappers are cataloged in `package/catalogs/gates.v1.json`: `verify:contracts`, `verify:governance`, `verify:runtime`, `verify:codex`, `verify:release`, and `verify:all`. Run `verify:all` only at a clean commit boundary so the cleanliness family is meaningful. Report `SKIP` separately from `PASS`.
 
 ### 2. Parity / Runtime Persistence Verifications
 

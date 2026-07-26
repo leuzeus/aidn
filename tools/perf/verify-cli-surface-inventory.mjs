@@ -78,7 +78,7 @@ function main() {
     const publicPolicyIds = effectPolicies.map((policy) => policy.id);
     const internalSection = findSection(inventoryText, "## Experimental or internal");
     const stableSection = findSection(inventoryText, "## Stable public command families");
-    const repairLayerLineHits = REPAIR_LAYER_COMMANDS.filter((command) => internalSection.some((line) => line.includes(`aidn runtime ${command}`)));
+    const repairLayerLineHits = REPAIR_LAYER_COMMANDS.filter((command) => internalSection.some((line) => line.includes(`tools/runtime/${command}.mjs`)));
     const repairLayerLeakHits = REPAIR_LAYER_COMMANDS.filter((command) => stableSection.some((line) => line.includes(`aidn runtime ${command}`)));
     const repairLayerAliasHits = REPAIR_LAYER_COMMANDS.filter((command) => runtimeAliases.includes(command));
     const repairLayerPolicyHits = REPAIR_LAYER_COMMANDS.filter((command) => publicPolicyIds.includes(`runtime-${command}`));
