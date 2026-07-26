@@ -93,12 +93,12 @@ function main() {
     fs.cpSync(path.join(integrationFixturesRoot, "integration-cycle"), integrationCycleTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlyFilelessTarget, { recursive: true });
 
-    runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", warnTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", escalatedTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", roleBlockedTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", dbOnlyFilelessTarget, "--json"], repoRoot, 0, {
+    runJson(handoffProjectScript, ["--target", readyTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", warnTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", blockedTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", escalatedTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", roleBlockedTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", dbOnlyFilelessTarget, "--write", "--json"], repoRoot, 0, {
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",
     });

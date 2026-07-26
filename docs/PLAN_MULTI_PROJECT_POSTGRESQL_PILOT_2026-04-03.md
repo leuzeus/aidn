@@ -6,10 +6,10 @@ Scope: validate the current multi-project PostgreSQL implementation against at l
 
 Execution note 2026-04-04:
 
-- completed on dedicated gowire pilot worktrees
-- closure evidence: `docs/MULTI_PROJECT_POSTGRESQL_GOWIRE_PILOT_2026-04-04.md`
-- external evidence root: `G:\projets\gowire-validation\2026-04-04-multi-project-postgresql`
-- external evidence root: `G:\projets\gowire-validation\2026-04-04-multi-project-postgresql-monorepo`
+- completed on dedicated external-pilot pilot worktrees
+- closure evidence: `docs/MULTI_PROJECT_POSTGRESQL_EXTERNAL_PILOT_2026-04-04.md`
+- external evidence root: `<local-evidence-root>\2026-04-04-multi-project-postgresql`
+- external evidence root: `<local-evidence-root>\2026-04-04-multi-project-postgresql-monorepo`
 
 Reference backlog:
 
@@ -110,15 +110,15 @@ PowerShell example:
 
 ```powershell
 New-Item -ItemType Directory -Force <EVIDENCE_ROOT> | Out-Null
-git -C <REPO_A_SOURCE> worktree add <REPO_A_PILOT> -b pilot/aidn-multi-project-a
-git -C <REPO_B_SOURCE> worktree add <REPO_B_PILOT> -b pilot/aidn-multi-project-b
+git -C <REPO_A_SOURCE> worktree add <REPO_A_PILOT> -b <PILOT_BRANCH_A>
+git -C <REPO_B_SOURCE> worktree add <REPO_B_PILOT> -b <PILOT_BRANCH_B>
 ```
 
 If using one monorepo pilot instead:
 
 ```powershell
 New-Item -ItemType Directory -Force <EVIDENCE_ROOT> | Out-Null
-git -C <MONOREPO_SOURCE> worktree add <MONOREPO_PILOT> -b pilot/aidn-multi-project
+git -C <MONOREPO_SOURCE> worktree add <MONOREPO_PILOT> -b <MONOREPO_PILOT_BRANCH>
 ```
 
 ### Evidence To Capture
@@ -145,7 +145,7 @@ Ensure every pilot root uses the same current `aidn` package and the `pg` driver
 Run in each pilot root:
 
 ```powershell
-npm install --save-dev G:\projets\aidn
+npm install --save-dev <local-source-root>
 npm install --save-dev pg@^8
 npx aidn install --target . --pack extended --force-agents-merge
 npx aidn install --target . --pack extended --verify
@@ -392,8 +392,8 @@ If the pilot must be discarded after analysis:
 ```powershell
 git -C <REPO_A_SOURCE> worktree remove <REPO_A_PILOT> --force
 git -C <REPO_B_SOURCE> worktree remove <REPO_B_PILOT> --force
-git -C <REPO_A_SOURCE> branch -D pilot/aidn-multi-project-a
-git -C <REPO_B_SOURCE> branch -D pilot/aidn-multi-project-b
+git -C <REPO_A_SOURCE> branch -D <PILOT_BRANCH_A>
+git -C <REPO_B_SOURCE> branch -D <PILOT_BRANCH_B>
 ```
 
 Adapt those commands if the chosen pilot shape is a monorepo.

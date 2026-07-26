@@ -20,13 +20,28 @@ function resultFromError(error) {
   };
 }
 
-function commandMatchesAidnSkillHook(command, commandArgs = []) {
+function normalizeAidnSkillHookCommandArgs(command, commandArgs = []) {
   const normalized = String(command ?? "").toLowerCase();
   const executableLooksLikeNpx = normalized === "npx" || normalized.endsWith("npx.cmd");
-  return executableLooksLikeNpx
+  if (
+    executableLooksLikeNpx
     && commandArgs[0] === "aidn"
     && commandArgs[1] === "perf"
-    && commandArgs[2] === "skill-hook";
+    && commandArgs[2] === "skill-hook"
+  ) {
+    return commandArgs;
+  }
+  const executableLooksLikeNode = path.resolve(String(command ?? "")) === path.resolve(process.execPath);
+  const aidnBin = String(commandArgs[0] ?? "").replaceAll("\\", "/").toLowerCase();
+  if (
+    executableLooksLikeNode
+    && aidnBin.endsWith("/bin/aidn.mjs")
+    && commandArgs[1] === "perf"
+    && commandArgs[2] === "skill-hook"
+  ) {
+    return ["aidn", ...commandArgs.slice(1)];
+  }
+  return null;
 }
 
 function parseSkillHookArgs(commandArgs = []) {
@@ -142,8 +157,9 @@ export function createDaemonRunJsonHookAgentAdapter() {
     },
     async runCommandAsync({ command, commandArgs = [], commandLine = "", envOverrides = {} }) {
       try {
-        if (commandMatchesAidnSkillHook(command, commandArgs)) {
-          const result = await runSkillHookInProcess(commandArgs, envOverrides);
+        const normalizedCommandArgs = normalizeAidnSkillHookCommandArgs(command, commandArgs);
+        if (normalizedCommandArgs) {
+          const result = await runSkillHookInProcess(normalizedCommandArgs, envOverrides);
           if (result) {
             return result;
           }

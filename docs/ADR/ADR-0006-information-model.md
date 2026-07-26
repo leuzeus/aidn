@@ -28,6 +28,13 @@ Rules:
 - runtime projections may expose derived views, but must not become undocumented canonical sources
 - baseline and snapshot are governed as local-first artifact families, not as implicit shared runtime primitives
 - decision, incident and coordination records are governed through explicit source-of-truth policies and metadata rules, even when the runtime stores are shared-opt-in only
+- `runtime_project_context` is governed explicitly so durable
+  `runtime_scope_id` partitioning cannot be confused with legacy absolute-path evidence
+- each policy carries concept-specific owner, retention, migration, replacement
+  and evidence targets
+- the governance gate closes the registries bidirectionally across
+  source-of-truth policy, metadata policy, governed diagnostics and public
+  JSON/effect surfaces
 
 The current core governance model deliberately stops short of promoting every operational object to a first-class concept.
 Some items are surfaced as residual coverage because they are represented by a parent surface or belong to an orthogonal telemetry layer.

@@ -113,6 +113,7 @@ function runInstall(repoRoot, targetRoot, codexStubBin, extraArgs = [], extraEnv
   });
   return {
     status: result.status ?? 1,
+    spawnError: result.error?.message ?? "",
     stdout: String(result.stdout ?? ""),
     stderr: String(result.stderr ?? ""),
   };
@@ -319,6 +320,7 @@ function tail(text, maxChars = 800) {
 function installDiagnostics(out) {
   return {
     exit_status: out.status,
+    spawn_error: out.spawnError || null,
     stdout_tail: tail(out.stdout),
     stderr_tail: tail(out.stderr),
   };
@@ -353,9 +355,9 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
-  const skillPath = path.join(target, ".codex", "skills", "context-reload", "SKILL.md");
-  const crashRecoverySkillPath = path.join(target, ".codex", "skills", "crash-recovery", "SKILL.md");
-  const installedSkillsRoot = path.join(target, ".codex", "skills");
+  const skillPath = path.join(target, ".agents", "skills", "context-reload", "SKILL.md");
+  const crashRecoverySkillPath = path.join(target, ".agents", "skills", "crash-recovery", "SKILL.md");
+  const installedSkillsRoot = path.join(target, ".agents", "skills");
   const config = readConfigSafe(configPath);
   const reanchor = collectReanchorArtifactDetails(target);
   const skillCoverage = runCurrentStateSkillCoverageJson(repoRoot, installedSkillsRoot);
@@ -409,7 +411,7 @@ function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const out = runInstall(repoRoot, target, codexStubBin, [], { AIDN_STATE_MODE: "db-only" });
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
-  const installedSkillsRoot = path.join(target, ".codex", "skills");
+  const installedSkillsRoot = path.join(target, ".agents", "skills");
   const config = readConfigSafe(configPath);
   const reanchor = collectReanchorArtifactDetails(target);
   const skillCoverage = runCurrentStateSkillCoverageJson(repoRoot, installedSkillsRoot);
@@ -463,7 +465,7 @@ function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
-  const installedSkillsRoot = path.join(target, ".codex", "skills");
+  const installedSkillsRoot = path.join(target, ".agents", "skills");
   const config = readConfigSafe(configPath);
   const reanchor = collectReanchorArtifactDetails(target);
   const skillCoverage = runCurrentStateSkillCoverageJson(repoRoot, installedSkillsRoot);
@@ -517,7 +519,7 @@ function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
-  const installedSkillsRoot = path.join(target, ".codex", "skills");
+  const installedSkillsRoot = path.join(target, ".agents", "skills");
   const config = readConfigSafe(configPath);
   const checkpoint = runCheckpointJson(repoRoot, target);
   const reanchor = collectReanchorArtifactDetails(target);
@@ -578,7 +580,7 @@ function checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
-  const installedSkillsRoot = path.join(target, ".codex", "skills");
+  const installedSkillsRoot = path.join(target, ".agents", "skills");
   const config = readConfigSafe(configPath);
   const reanchor = collectReanchorArtifactDetails(target);
   const skillCoverage = runCurrentStateSkillCoverageJson(repoRoot, installedSkillsRoot);

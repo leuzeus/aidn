@@ -107,7 +107,7 @@ Purpose:
 
 Examples:
 
-- SSR vs hydration
+- server rendering vs hydration
 - sync vs async completion
 - ordered vs out-of-order completion
 
@@ -146,9 +146,9 @@ By stabilization value, the default order is:
 4. input variation
 5. adversarial usage when the surface is shared or concurrency-sensitive
 
-For Gowire-like shared runtime work, context and adversarial usages are often mandatory.
+For External Pilot-like shared runtime work, context and adversarial usages are often mandatory.
 
-## Gowire-Oriented Examples
+## External Pilot-Oriented Examples
 
 ### Example 1 - Shared Dispatch Ordering Fix
 
@@ -178,11 +178,11 @@ Minimum matrix:
 
 - nominal: primary component hydrates and preserves expected interaction
 - alternate: another component using the same shared helper hydrates correctly
-- context: SSR output and hydration behavior remain aligned
+- context: server rendering output and hydration behavior remain aligned
 
 Expected evidence:
 
-- SSR validation
+- server rendering validation
 - hydration validation
 - one second component or page path using the same helper
 
@@ -295,7 +295,7 @@ Tasks:
 
 - define default matrix profiles for `LOW`, `MEDIUM`, `HIGH`
 - define a mandatory shared-surface profile
-- define examples for Gowire-style runtime/hydration/dispatch changes
+- define examples for External Pilot-style runtime/hydration/dispatch changes
 
 Acceptance:
 

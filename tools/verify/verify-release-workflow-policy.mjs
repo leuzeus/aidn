@@ -8,7 +8,7 @@ const issues = [];
 
 const requiredTokens = [
   "pull_request:",
-  "branches: [main]",
+  "branches: [dev, main]",
   "push:",
   "github.event_name == 'pull_request'",
   "github.event_name == 'push' && github.ref == 'refs/heads/main'",
@@ -29,6 +29,9 @@ if (/refs\/tags\/v\*/.test(workflow) || /^\s+tags:/m.test(workflow)) {
   issues.push("release publication must not be triggered by a pre-created tag");
 }
 const verifyBlock = workflow.split(/\n  publish:\n/)[0] ?? "";
+if (!verifyBlock.includes("branches: [dev, main]")) {
+  issues.push("release verification must run for feature PRs to dev and release PRs to main");
+}
 if (/gh release create|git tag -a/.test(verifyBlock)) {
   issues.push("release PR verify job must not tag or publish");
 }

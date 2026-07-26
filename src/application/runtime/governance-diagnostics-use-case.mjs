@@ -17,6 +17,12 @@ const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-outpu
 
 export const GOVERNED_CONCEPTS = Object.freeze([
   {
+    concept: "workflow_rules",
+    source_of_truth_concept: "workflow_rules",
+    metadata_concept: "workflow_rules",
+    required: ["source_of_truth", "metadata"],
+  },
+  {
     concept: "project",
     source_of_truth_concept: "project_policy",
     metadata_concept: "project",
@@ -27,6 +33,20 @@ export const GOVERNED_CONCEPTS = Object.freeze([
     source_of_truth_concept: "workspace_identity",
     metadata_concept: "workspace",
     required: ["source_of_truth", "metadata"],
+  },
+  {
+    concept: "runtime_defaults",
+    source_of_truth_concept: "runtime_defaults",
+    metadata_concept: "runtime_defaults",
+    cli_contract: "project-config-list.v1.schema.json",
+    required: ["source_of_truth", "metadata", "cli_contract"],
+  },
+  {
+    concept: "runtime_project_context",
+    source_of_truth_concept: "runtime_project_context",
+    metadata_concept: "runtime_project_context",
+    cli_contract: "runtime-project-runtime-state.v1.schema.json",
+    required: ["source_of_truth", "metadata", "cli_contract"],
   },
   {
     concept: "session",
@@ -78,14 +98,16 @@ export const GOVERNED_CONCEPTS = Object.freeze([
   {
     concept: "baseline",
     source_of_truth_concept: "baseline",
-    required: ["source_of_truth"],
+    metadata_concept: "baseline",
+    required: ["source_of_truth", "metadata"],
     coverage_kind: "subsumed",
     coverage_note: "Baseline is a local audit artifact family, not a shared runtime surface.",
   },
   {
     concept: "snapshot",
     source_of_truth_concept: "snapshot",
-    required: ["source_of_truth"],
+    metadata_concept: "snapshot",
+    required: ["source_of_truth", "metadata"],
     coverage_kind: "subsumed",
     coverage_note: "Snapshot is a local point-in-time projection used by reload and hydration flows.",
   },
@@ -106,8 +128,9 @@ export const GOVERNED_CONCEPTS = Object.freeze([
   {
     concept: "agent_roster",
     source_of_truth_concept: "agent_roster",
+    metadata_concept: "agent_roster",
     cli_contract: "runtime-verify-agent-roster.v1.schema.json",
-    required: ["source_of_truth", "cli_contract"],
+    required: ["source_of_truth", "metadata", "cli_contract"],
   },
   {
     concept: "repair_finding",
@@ -123,21 +146,21 @@ export const GOVERNED_CONCEPTS = Object.freeze([
   },
   {
     concept: "coordination_summary",
-    source_of_truth_concept: "coordination_records",
+    source_of_truth_concept: "coordination_summary",
     metadata_concept: "coordination_summary",
     required: ["source_of_truth", "metadata"],
     coverage_kind: "covered",
   },
   {
     concept: "coordination_log",
-    source_of_truth_concept: "coordination_records",
+    source_of_truth_concept: "coordination_log",
     metadata_concept: "coordination_log",
     required: ["source_of_truth", "metadata"],
     coverage_kind: "covered",
   },
   {
     concept: "user_arbitration",
-    source_of_truth_concept: "coordination_records",
+    source_of_truth_concept: "user_arbitration",
     metadata_concept: "user_arbitration",
     required: ["source_of_truth", "metadata"],
     coverage_kind: "covered",
@@ -151,6 +174,11 @@ export const GOVERNED_CONCEPTS = Object.freeze([
 ]);
 
 export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
+  { id: "bootstrap-preview", linked_concepts: ["workflow_rules", "project", "runtime_defaults"] },
+  { id: "bootstrap", linked_concepts: ["workflow_rules", "project", "runtime_defaults"] },
+  { id: "project-config-list", linked_concepts: ["project", "runtime_defaults"] },
+  { id: "project-config-preview", linked_concepts: ["project", "runtime_defaults"] },
+  { id: "project-config-write", linked_concepts: ["project", "runtime_defaults"] },
   { id: "runtime-db-status", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-persistence-status", linked_concepts: ["workspace", "coordination_record"] },
   { id: "runtime-persistence-adopt", linked_concepts: ["workspace", "coordination_record"] },
@@ -168,7 +196,10 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-shared-runtime-reanchor", linked_concepts: ["workspace"] },
   { id: "runtime-state-reanchor", linked_concepts: ["current_state", "runtime_state", "handoff_packet"] },
   { id: "runtime-shared-coordination-bootstrap", linked_concepts: ["workspace", "coordination_record"] },
-  { id: "runtime-governance-diagnostics", linked_concepts: ["cli_output_contract", "workspace"] },
+  {
+    id: "runtime-governance-diagnostics",
+    linked_concepts: GOVERNED_CONCEPTS.map((item) => item.concept),
+  },
   { id: "runtime-db-only-readiness", linked_concepts: ["db_only_readiness", "workspace", "runtime_state"] },
   { id: "runtime-coordinator-select-agent", linked_concepts: ["agent_roster", "workspace"] },
   { id: "runtime-project-agent-health-summary", linked_concepts: ["agent_roster", "workspace"] },
@@ -182,10 +213,13 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-session-plan", linked_concepts: ["current_state", "session", "coordination_record"] },
   { id: "runtime-db-first-artifact", linked_concepts: ["artifact", "workspace"] },
   { id: "runtime-artifact-store", linked_concepts: ["artifact", "workspace"] },
+  { id: "runtime-artifact-fetch", linked_concepts: ["artifact", "workspace"] },
   { id: "runtime-artifact-store-list", linked_concepts: ["artifact", "workspace"] },
   { id: "runtime-artifact-store-get", linked_concepts: ["artifact", "workspace"] },
   { id: "runtime-artifact-store-upsert", linked_concepts: ["artifact", "workspace"] },
   { id: "runtime-artifact-store-materialize", linked_concepts: ["artifact", "workspace"] },
+  { id: "runtime-visible-artifacts-cleanup", linked_concepts: ["artifact", "workspace"] },
+  { id: "runtime-visible-artifacts-restore", linked_concepts: ["artifact", "workspace"] },
   { id: "runtime-pre-write-admit", linked_concepts: ["workspace", "session", "cycle"] },
   { id: "runtime-handoff-admit", linked_concepts: ["handoff_packet", "session", "cycle"] },
   { id: "runtime-coordinator-next-action", linked_concepts: ["current_state", "runtime_state", "handoff_packet"] },
@@ -198,21 +232,14 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-coordinator-record-arbitration", linked_concepts: ["coordination_record", "user_arbitration", "coordination_summary"] },
   { id: "runtime-project-runtime-state", linked_concepts: ["runtime_state", "current_state"] },
   { id: "runtime-project-handoff-packet", linked_concepts: ["handoff_packet", "session", "cycle"] },
+  { id: "runtime-shared-coordination-projects", linked_concepts: ["runtime_project_context", "workspace", "coordination_record"] },
+  { id: "runtime-list-agent-adapters", linked_concepts: ["agent_roster", "workspace"] },
   { id: "runtime-verify-agent-roster", linked_concepts: ["agent_roster"] },
+  { id: "codex-hydrate-context", linked_concepts: ["runtime_project_context", "current_state", "runtime_state", "handoff_packet"] },
+  { id: "codex-workflow-step", linked_concepts: ["runtime_project_context", "session", "cycle", "runtime_state"] },
 ]);
 
-export const GOVERNANCE_COMMAND_COVERAGE = Object.freeze([
-  { id: "runtime-governance-diagnostics", linked_concepts: ["cli_output_contract", "workspace"] },
-  { id: "runtime-db-only-readiness", linked_concepts: ["db_only_readiness", "workspace", "runtime_state"] },
-  { id: "runtime-session-plan", linked_concepts: ["current_state", "session", "coordination_record"] },
-  { id: "runtime-pre-write-admit", linked_concepts: ["workspace", "session", "cycle"] },
-  { id: "runtime-handoff-admit", linked_concepts: ["handoff_packet", "session", "cycle"] },
-  { id: "runtime-coordinator-loop", linked_concepts: ["current_state", "runtime_state", "handoff_packet", "coordination_summary"] },
-  { id: "runtime-coordinator-dispatch-plan", linked_concepts: ["current_state", "runtime_state", "handoff_packet", "coordination_record"] },
-  { id: "runtime-coordinator-dispatch-execute", linked_concepts: ["coordination_record", "coordination_summary", "coordination_log", "runtime_state"] },
-  { id: "runtime-coordinator-resume", linked_concepts: ["coordination_record", "handoff_packet", "runtime_state"] },
-  { id: "runtime-coordinator-orchestrate", linked_concepts: ["coordination_record", "handoff_packet", "runtime_state"] },
-]);
+export const GOVERNANCE_COMMAND_COVERAGE = GOVERNANCE_RUNTIME_SURFACES;
 
 const OBSERVED_GOVERNANCE_ARTIFACTS = Object.freeze([
   {
@@ -236,19 +263,19 @@ const OBSERVED_GOVERNANCE_ARTIFACTS = Object.freeze([
   {
     id: "coordination_summary",
     concept: "coordination_summary",
-    source_of_truth_concept: "coordination_records",
+    source_of_truth_concept: "coordination_summary",
     relative_path: "docs/audit/COORDINATION-SUMMARY.md",
   },
   {
     id: "coordination_log",
     concept: "coordination_log",
-    source_of_truth_concept: "coordination_records",
+    source_of_truth_concept: "coordination_log",
     relative_path: "docs/audit/COORDINATION-LOG.md",
   },
   {
     id: "user_arbitration",
     concept: "user_arbitration",
-    source_of_truth_concept: "coordination_records",
+    source_of_truth_concept: "user_arbitration",
     relative_path: "docs/audit/USER-ARBITRATION.md",
   },
 ]);
@@ -337,14 +364,87 @@ export function findGovernanceContractCoverageIssues() {
 
 export function findGovernanceRegistryCoverageIssues() {
   const issues = [];
-  const sotConcepts = new Set(listSourceOfTruthPolicies().map((item) => item.concept));
-  const metadataConcepts = new Set(listMetadataPolicies().map((item) => item.concept));
+  const sourcePolicies = listSourceOfTruthPolicies();
+  const metadataPolicies = listMetadataPolicies();
+  const effectPolicies = listCliEffectPolicies().filter((item) => item.json_contract);
+  const sotConcepts = new Set(sourcePolicies.map((item) => item.concept));
+  const metadataConcepts = new Set(metadataPolicies.map((item) => item.concept));
+  const governedConcepts = new Set(GOVERNED_CONCEPTS.map((item) => item.concept));
+  const referencedSotConcepts = new Set();
+  const referencedMetadataConcepts = new Set();
+  const surfaceIds = new Set();
+  const linkedGovernedConcepts = new Set();
   for (const entry of GOVERNED_CONCEPTS) {
     if (entry.source_of_truth_concept && !sotConcepts.has(entry.source_of_truth_concept)) {
       issues.push(`${entry.concept}: source-of-truth concept is not registered: ${entry.source_of_truth_concept}`);
     }
+    if (entry.source_of_truth_concept) {
+      referencedSotConcepts.add(entry.source_of_truth_concept);
+    }
     if (entry.metadata_concept && !metadataConcepts.has(entry.metadata_concept)) {
       issues.push(`${entry.concept}: metadata concept is not registered: ${entry.metadata_concept}`);
+    }
+    if (entry.metadata_concept) {
+      referencedMetadataConcepts.add(entry.metadata_concept);
+      const metadataPolicy = metadataPolicies.find((item) => item.concept === entry.metadata_concept);
+      if (metadataPolicy
+        && metadataPolicy.source_of_truth_concept !== entry.source_of_truth_concept) {
+        issues.push(
+          `${entry.concept}: metadata/source-of-truth mismatch `
+          + `(${metadataPolicy.source_of_truth_concept} != ${entry.source_of_truth_concept})`,
+        );
+      }
+    }
+  }
+  for (const policy of sourcePolicies) {
+    if (!referencedSotConcepts.has(policy.concept)) {
+      issues.push(`${policy.concept}: source-of-truth policy is not exposed by GOVERNED_CONCEPTS`);
+    }
+    for (const target of policy.evidence_targets ?? []) {
+      if (!fs.existsSync(path.resolve(REPO_ROOT, target))) {
+        issues.push(`${policy.concept}: source-of-truth evidence target missing: ${target}`);
+      }
+    }
+  }
+  for (const policy of metadataPolicies) {
+    if (!referencedMetadataConcepts.has(policy.concept)) {
+      issues.push(`${policy.concept}: metadata policy is not exposed by GOVERNED_CONCEPTS`);
+    }
+    for (const target of policy.evidence_targets ?? []) {
+      if (!fs.existsSync(path.resolve(REPO_ROOT, target))) {
+        issues.push(`${policy.concept}: metadata evidence target missing: ${target}`);
+      }
+    }
+  }
+  for (const surface of GOVERNANCE_RUNTIME_SURFACES) {
+    if (surfaceIds.has(surface.id)) {
+      issues.push(`${surface.id}: duplicate governed runtime surface`);
+    }
+    surfaceIds.add(surface.id);
+    if (!Array.isArray(surface.linked_concepts) || surface.linked_concepts.length === 0) {
+      issues.push(`${surface.id}: no linked governed concepts`);
+    }
+    for (const concept of surface.linked_concepts ?? []) {
+      linkedGovernedConcepts.add(concept);
+      if (!governedConcepts.has(concept)) {
+        issues.push(`${surface.id}: linked concept is not governed: ${concept}`);
+      }
+    }
+  }
+  for (const policy of effectPolicies) {
+    if (!surfaceIds.has(policy.id)) {
+      issues.push(`${policy.id}: public JSON/effect surface is not linked to governed concepts`);
+    }
+  }
+  const effectPolicyIds = new Set(effectPolicies.map((item) => item.id));
+  for (const surfaceId of surfaceIds) {
+    if (!effectPolicyIds.has(surfaceId)) {
+      issues.push(`${surfaceId}: governed surface has no public JSON/effect policy`);
+    }
+  }
+  for (const concept of governedConcepts) {
+    if (!linkedGovernedConcepts.has(concept)) {
+      issues.push(`${concept}: governed concept is not consumed by any public diagnostic or CLI surface`);
     }
   }
   return issues;

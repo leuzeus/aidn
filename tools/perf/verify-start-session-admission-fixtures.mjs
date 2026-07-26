@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
@@ -261,9 +262,10 @@ const CASES = [
 
 function parseArgs(argv) {
   const args = {
-    tmpRoot: "tests/fixtures",
+    tmpRoot: os.tmpdir(),
     keepTmp: false,
     json: false,
+    caseId: null,
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
@@ -274,6 +276,9 @@ function parseArgs(argv) {
       args.keepTmp = true;
     } else if (token === "--json") {
       args.json = true;
+    } else if (token === "--case") {
+      args.caseId = argv[i + 1] ?? "";
+      i += 1;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -286,7 +291,7 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
-  console.log("  node tools/perf/verify-start-session-admission-fixtures.mjs");
+  console.log("  node tools/perf/verify-start-session-admission-fixtures.mjs [--case <id>] [--json] [--keep-tmp]");
 }
 
 function runJson(script, scriptArgs, env = {}) {
@@ -310,7 +315,13 @@ function runJson(script, scriptArgs, env = {}) {
     if (stderr.startsWith("{")) {
       return JSON.parse(stderr);
     }
-    throw error;
+    const details = [
+      String(error?.message ?? error),
+      `status=${String(error?.status ?? "unknown")} signal=${String(error?.signal ?? "none")} code=${String(error?.code ?? "none")}`,
+      stdout ? `stdout:\n${stdout}` : "",
+      stderr ? `stderr:\n${stderr}` : "",
+    ].filter(Boolean).join("\n");
+    throw new Error(details, { cause: error });
   }
 }
 
@@ -388,6 +399,8 @@ function runCase(tmpRoot, testCase) {
       codex_result: codex?.result ?? null,
       codex_ok: codex?.ok ?? null,
       codex_reason_code: codex?.normalized?.reason_code ?? null,
+      codex_command_status: codex?.command_status ?? null,
+      codex_error: codex?.error ?? codex?.normalized?.error ?? null,
     },
     pass: Object.values(checks).every((value) => value === true),
   };
@@ -398,7 +411,13 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
-    const runs = CASES.map((testCase) => {
+    const selectedCases = args.caseId
+      ? CASES.filter((testCase) => testCase.id === args.caseId)
+      : CASES;
+    if (selectedCases.length === 0) {
+      throw new Error(`Unknown case: ${args.caseId}`);
+    }
+    const runs = selectedCases.map((testCase) => {
       const run = runCase(tmpRoot, testCase);
       createdTargets.push(run.target_root);
       return run;

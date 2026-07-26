@@ -35,8 +35,8 @@ function main() {
     const repoRoot = process.cwd();
     const version = readText(path.join(repoRoot, "VERSION")).trim();
     const sourceFixture = path.join(repoRoot, "tests", "fixtures", "repo-installed-core");
-    const workflowFixture = path.join(repoRoot, "tests", "fixtures", "project-migration-pilot-fixture", "WORKFLOW.md");
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-pilot-parity-"));
+    const workflowFixture = path.join(repoRoot, "tests", "fixtures", "project-migration-synthetic-fixture", "WORKFLOW.md");
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-synthetic-parity-"));
     const targetRoot = path.join(tempRoot, "repo");
     fs.cpSync(sourceFixture, targetRoot, { recursive: true });
 
@@ -104,8 +104,8 @@ function main() {
         && migratedWorkflow.includes("dispatch/local execution scope")
         && migratedWorkflow.includes("shared integration surface"),
       migrated_workflow_keeps_shared_codegen_constraint_block: migratedWorkflow.includes("- Shared codegen boundary constraints:")
-        && migratedWorkflow.includes("internal/components/manifest.json")
-        && migratedWorkflow.includes("generated SSR tests"),
+        && migratedWorkflow.includes("src/contracts/component-manifest.json")
+        && migratedWorkflow.includes("tests/generated/runtime-rendering.test.mjs"),
     };
 
     const pass = Object.values(checks).every((value) => value === true);

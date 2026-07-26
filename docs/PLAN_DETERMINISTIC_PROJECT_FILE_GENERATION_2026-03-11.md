@@ -13,7 +13,7 @@ Observed consequences:
 - reinstall duration scales with the number and size of preserved custom files
 - migration outcome depends on free-form Codex rewriting instead of a stable renderer
 - install, reinstall, and reinitialization can touch files that are actually project data or runtime state
-- projects like `gowire` accumulate valid local workflow content that is not clearly separated into:
+- projects like `external-pilot` accumulate valid local workflow content that is not clearly separated into:
   - project configuration
   - managed/generated documentation
   - project-owned business data
@@ -29,7 +29,7 @@ Introduce a deterministic generation model that:
 - separates stable project metadata from project business data and runtime state
 - makes generated files reproducible from canonical templates plus explicit config inputs
 - preserves project-owned data without loss during reinstall or reinitialization
-- remains resilient for already-installed repositories such as `gowire`
+- remains resilient for already-installed repositories such as `external-pilot`
 - keeps install behavior fast, predictable, and idempotent
 
 ## Non-Goals
@@ -39,7 +39,7 @@ Introduce a deterministic generation model that:
 - no lossful migration that rewrites project history or baseline content into a reduced schema
 - no hidden fallback to LLM/Codex migration when deterministic rendering is available
 
-## Current Findings from `gowire`
+## Current Findings from `external-pilot`
 
 The preserved-file comparison shows three different classes of differences.
 
@@ -584,13 +584,13 @@ Expected result:
 
 - existing repositories adopt the deterministic model without data loss
 
-## `gowire` Conversion Plan
+## `external-pilot` Conversion Plan
 
-`gowire` needs a no-loss migration path.
+`external-pilot` needs a no-loss migration path.
 
 ### Step 1 - Extract stable adapter fields
 
-Read current `gowire` files and extract into adapter config:
+Read current `external-pilot` files and extract into adapter config:
 
 - project name
 - source branch
@@ -669,7 +669,7 @@ Assertions:
 
 ### Required migration coverage
 
-Add fixture coverage for a `gowire`-like installed project:
+Add fixture coverage for a `external-pilot`-like installed project:
 
 - existing enriched `WORKFLOW.md`
 - non-trivial baseline files
@@ -719,7 +719,7 @@ The plan is complete when:
 - baseline/history/parking-lot are preserved on reinstall
 - snapshot/runtime-state files are not overwritten by reinstall
 - the default install path no longer uses Codex migration for managed files
-- `gowire` can be migrated without data loss
+- `external-pilot` can be migrated without data loss
 - repeated install + verify + reinit runs are idempotent for preserved files
 
 ## Recommended Delivery Order
@@ -729,7 +729,7 @@ The plan is complete when:
 3. implement deterministic generators for managed files
 4. remove managed files from preserved custom migration path
 5. add migration helper for already-installed projects
-6. migrate `gowire`
+6. migrate `external-pilot`
 7. add reinstall/reinit idempotence tests
 8. update documentation and changelog
 
@@ -738,12 +738,12 @@ The plan is complete when:
 After the plan is accepted:
 
 1. write an implementation backlog with atomic items
-2. execute the migration helper on `gowire`
+2. execute the migration helper on `external-pilot`
 3. validate that future reinstall operations no longer depend on Codex-based document migration
 
 ## Progress Notes
 
 - 2026-03-11: `DPG-01` through `DPG-07` completed. Ownership classes, adapter config foundation, wizard, CLI surface, and install integration are in place.
 - 2026-03-11: `DPG-08` through `DPG-16` completed. Managed workflow docs are now rendered deterministically and removed from the default Codex migration path.
-- 2026-03-11: `DPG-17` through `DPG-19` completed. A migration helper now extracts adapter config from legacy installed workflow docs, preserves project-owned data, regenerates managed docs, and has been exercised against `gowire` without data loss.
+- 2026-03-11: `DPG-17` through `DPG-19` completed. A migration helper now extracts adapter config from legacy installed workflow docs, preserves project-owned data, regenerates managed docs, and has been exercised against `external-pilot` without data loss.
 - 2026-03-12: `DPG-20` through `DPG-22` completed. Golden renderer checks, install/reinstall idempotence checks, and install/docs ownership guidance are now in place.

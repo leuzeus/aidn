@@ -1,8 +1,8 @@
-# Imported Sections Mapping Matrix - `gowire`
+# Imported Sections Mapping Matrix - External Pilot
 
 Date: 2026-03-12
 Status: active reference
-Scope: classify each current `gowire` imported section by native target, parity status, and multi-agent scope before legacy retirement.
+Scope: classify each current `external-pilot` imported section by native target, parity status, and multi-agent scope before legacy retirement.
 
 Reference plan:
 

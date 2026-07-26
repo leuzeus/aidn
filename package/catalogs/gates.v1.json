@@ -1,7 +1,14 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "outcomes": ["PASS", "FAIL", "SKIP"],
   "obligation_values": ["required", "optional", "skip"],
+  "condition_values": [
+    "always",
+    "git-repository",
+    "git-clean-commit",
+    "git-clean-worktree",
+    "codex-cli-available"
+  ],
   "required_families": [
     "contracts",
     "effects",
@@ -110,8 +117,26 @@
       "script": "perf:verify-codex-client-install",
       "job": "architecture-gates/codex",
       "surfaces": [".agents/skills", ".codex/agents", ".codex/hooks.json"],
-      "condition": "npm pack and isolated client available",
+      "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "codex-context-resilience",
+      "family": "codex",
+      "script": "perf:verify-context-resilience",
+      "job": "architecture-gates/codex",
+      "surfaces": [".agents/skills", "runtime re-anchor", "handoff and coordination fixtures"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "codex-real-discovery",
+      "family": "codex",
+      "script": "perf:verify-codex-client-discovery",
+      "job": "architecture-gates/codex",
+      "surfaces": ["Codex app-server skills/list", "isolated CODEX_HOME", ".agents/skills"],
+      "condition": "codex-cli-available",
+      "obligation": { "dev": "optional", "main": "optional", "release": "skip" }
     },
     {
       "id": "runtime-state-modes",
@@ -141,6 +166,15 @@
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
     {
+      "id": "security-tracked-sensitivity",
+      "family": "security",
+      "script": "perf:verify-tracked-sensitivity",
+      "job": "architecture-gates/security",
+      "surfaces": ["all Git-tracked paths and text", "synthetic migration fixture", "pilot sensitivity"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
       "id": "release-version",
       "family": "release",
       "script": "perf:verify-release-version",
@@ -155,7 +189,7 @@
       "script": "perf:verify-release-reproducibility",
       "job": "release/verify",
       "surfaces": ["GITHUB_SHA", "release zip", "checksums", "provenance"],
-      "condition": "clean Git commit available",
+      "condition": "git-clean-commit",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
     {
@@ -173,7 +207,16 @@
       "script": "perf:verify-branch-policy",
       "job": "architecture-gates/cleanliness",
       "surfaces": ["main", "dev", "feature branches", "release branches"],
-      "condition": "Git repository available",
+      "condition": "git-repository",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "cleanliness-branch-policy-fixtures",
+      "family": "cleanliness",
+      "script": "perf:verify-branch-policy-fixtures",
+      "job": "architecture-gates/cleanliness",
+      "surfaces": ["feature -> dev", "release/* -> main", "detached provenance"],
+      "condition": "git-repository",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
     {
@@ -191,7 +234,7 @@
       "script": "perf:verify-repository-cleanliness",
       "job": "local/verify-all",
       "surfaces": ["tracked worktree"],
-      "condition": "local full verification after commits",
+      "condition": "git-clean-worktree",
       "obligation": { "dev": "optional", "main": "required", "release": "required" }
     }
   ]

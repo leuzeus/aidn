@@ -1,24 +1,18 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import {
+  NON_SHARED_PROJECT_SURFACES,
+  SHARED_COORDINATION_METHOD_TABLE,
+  SHARED_COORDINATION_TABLES,
+} from "../../src/core/ports/shared-coordination-store-port.mjs";
+import { listSourceOfTruthPolicies } from "../../src/core/source-of-truth/source-of-truth-policy.mjs";
 
 const EXPECTED_SHARED_CANDIDATES = [
   ".aidn/project/shared-runtime.locator.json as an opt-in locator only",
   "explicit `sqlite-file` shared projection root",
   "PostgreSQL shared coordination tables:",
-  "workspace_registry",
-  "worktree_registry",
-  "planning_states",
-  "handoff_relays",
-  "coordination_records",
-];
-
-const REQUIRED_NON_SHARE_LIST = [
-  "docs/audit/*",
-  "AGENTS.md",
-  ".codex/*",
-  ".aidn/config.json",
-  ".aidn/runtime/index/workflow-index.sqlite",
+  ...SHARED_COORDINATION_TABLES,
 ];
 
 function normalizeSurfaceLine(value) {
@@ -56,9 +50,9 @@ function readText(filePath) {
   return fs.readFileSync(filePath, "utf8");
 }
 
-function extractSharedCandidateLines(text) {
+function extractSectionBulletLines(text, heading) {
   const lines = String(text).split(/\r?\n/);
-  const start = lines.findIndex((line) => line.trim() === "## Explicit Shared-Candidate List");
+  const start = lines.findIndex((line) => line.trim() === `## ${heading}`);
   if (start < 0) {
     return [];
   }
@@ -86,22 +80,74 @@ function main() {
     const matrixText = readText(matrixPath);
     const adrText = readText(adrPath);
     const adr8Text = readText(adr8Path);
-    const sharedCandidateLines = extractSharedCandidateLines(matrixText).map(normalizeSurfaceLine);
+    const agentPolicyText = readText(path.join(repoRoot, "docs", "agents", "05-local-first-shared-runtime.md"));
+    const sharedCandidateLines = extractSectionBulletLines(
+      matrixText,
+      "Explicit Shared-Candidate List",
+    ).map(normalizeSurfaceLine);
+    const nonShareLines = extractSectionBulletLines(
+      matrixText,
+      "Explicit Non-Share List",
+    ).map(normalizeSurfaceLine);
     const expectedSharedCandidates = EXPECTED_SHARED_CANDIDATES.map(normalizeSurfaceLine);
+    const expectedNonShare = NON_SHARED_PROJECT_SURFACES.map(normalizeSurfaceLine);
 
     const missingRequiredShared = expectedSharedCandidates.filter((entry) => !sharedCandidateLines.includes(entry));
     const unexpectedShared = sharedCandidateLines.filter((entry) => !expectedSharedCandidates.includes(entry));
-    const missingNonShare = REQUIRED_NON_SHARE_LIST.filter((entry) => !matrixText.includes(entry));
+    const missingNonShare = expectedNonShare.filter((entry) => !nonShareLines.includes(entry));
+    const unexpectedNonShare = nonShareLines.filter((entry) => !expectedNonShare.includes(entry));
     const missingBoundaryReminder = !matrixText.includes("Any future shared surface must update this matrix, ADR-0007, CLI status output contracts and fixture coverage before it is treated as stable.");
     const missingPortContractReminder = !matrixText.includes("Shared coordination access is expected to pass through the port contract described in `docs/ADR/ADR-0008-shared-coordination-ports.md` before any new shared behavior is considered stable.");
     const adrMentionsOptIn = /opt-in/i.test(adrText) && /local-first/i.test(adrText);
     const adrMentionsNoDocsAuditSharing = /docs\/audit/i.test(adrText) || /checkout-bound/i.test(adrText);
     const adr8MentionsPorts = /shared coordination ports/i.test(adr8Text) && /src\/core\/ports/i.test(adr8Text);
     const adr8MentionsLocalFirst = /local-first/i.test(adr8Text) && /shared runtime/i.test(adr8Text);
+    const docsWithBoundaries = [
+      ["matrix", matrixText],
+      ["agent-policy", agentPolicyText],
+      ["ADR-0007", adrText],
+      ["ADR-0008", adr8Text],
+    ];
+    const missingDocumentedBoundaries = docsWithBoundaries.flatMap(([name, text]) => (
+      NON_SHARED_PROJECT_SURFACES
+        .filter((surface) => !text.includes(surface))
+        .map((surface) => `${name}:${surface}`)
+    ));
+    const methodTables = Object.values(SHARED_COORDINATION_METHOD_TABLE);
+    const missingPortTables = SHARED_COORDINATION_TABLES.filter(
+      (table) => !methodTables.includes(table),
+    );
+    const unexpectedPortTables = methodTables.filter(
+      (table) => !SHARED_COORDINATION_TABLES.includes(table),
+    );
+    const sourcePolicies = listSourceOfTruthPolicies();
+    const sourcePolicyIssues = [];
+    for (const policy of sourcePolicies) {
+      const sharedRuntime = String(policy.shared_runtime ?? "");
+      if (["repair_findings", "incident"].includes(policy.concept)
+        && sharedRuntime !== "not_shared") {
+        sourcePolicyIssues.push(`${policy.concept}: must remain not_shared`);
+      }
+      if (sharedRuntime !== "not_shared"
+        && !SHARED_COORDINATION_TABLES.some((table) => sharedRuntime.includes(table))) {
+        sourcePolicyIssues.push(
+          `${policy.concept}: shared_runtime does not map to a port table: ${sharedRuntime}`,
+        );
+      }
+    }
+    const conservativeBoundaryStated = docsWithBoundaries.every(
+      ([, text]) => text.includes("repair_findings")
+        && text.includes("incident")
+        && /not shared|not_shared/.test(text),
+    );
 
     const checks = {
       matrix_has_expected_shared_candidates: missingRequiredShared.length === 0 && unexpectedShared.length === 0,
-      matrix_has_required_non_share_list: missingNonShare.length === 0,
+      matrix_has_required_non_share_list: missingNonShare.length === 0 && unexpectedNonShare.length === 0,
+      all_boundary_documents_match_non_share_port: missingDocumentedBoundaries.length === 0,
+      shared_port_tables_are_closed: missingPortTables.length === 0 && unexpectedPortTables.length === 0,
+      source_of_truth_shared_policies_map_to_port: sourcePolicyIssues.length === 0,
+      repair_and_incident_are_explicitly_not_shared: conservativeBoundaryStated,
       matrix_has_boundary_reminder: !missingBoundaryReminder,
       matrix_has_port_contract_reminder: !missingPortContractReminder,
       adr_mentions_local_first_opt_in: adrMentionsOptIn,
@@ -119,6 +165,22 @@ function main() {
     }
     if (missingNonShare.length > 0) {
       issues.push(`missing non-share list entries: ${missingNonShare.join(", ")}`);
+    }
+    if (unexpectedNonShare.length > 0) {
+      issues.push(`unexpected non-share list entries: ${unexpectedNonShare.join(", ")}`);
+    }
+    if (missingDocumentedBoundaries.length > 0) {
+      issues.push(`boundary docs missing port-defined non-share entries: ${missingDocumentedBoundaries.join(", ")}`);
+    }
+    if (missingPortTables.length > 0 || unexpectedPortTables.length > 0) {
+      issues.push(
+        `shared port/table closure mismatch: missing=${missingPortTables.join(",")} `
+        + `unexpected=${unexpectedPortTables.join(",")}`,
+      );
+    }
+    issues.push(...sourcePolicyIssues);
+    if (!conservativeBoundaryStated) {
+      issues.push("repair_findings and incident must be explicitly not shared in every boundary document");
     }
     if (missingBoundaryReminder) {
       issues.push("missing future shared-surface reminder in matrix");
@@ -146,6 +208,8 @@ function main() {
       adr_path: adrPath,
       adr8_path: adr8Path,
       shared_candidate_lines: sharedCandidateLines,
+      non_share_lines: nonShareLines,
+      shared_port_tables: SHARED_COORDINATION_TABLES,
       issues,
     };
 

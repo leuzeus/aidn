@@ -48,7 +48,11 @@ function runJson(script, args, repoRoot, expectStatus = 0, env = {}) {
     maxBuffer: 20 * 1024 * 1024,
   });
   if ((result.status ?? 1) !== expectStatus) {
-    throw new Error(`Command failed (${path.basename(script)}): ${String(result.stderr ?? result.stdout ?? "").trim()}`);
+    const stderr = String(result.stderr ?? "").trim();
+    const stdout = String(result.stdout ?? "").trim();
+    throw new Error(
+      `Command status mismatch (${path.basename(script)}): expected=${expectStatus} actual=${String(result.status ?? 1)} ${stderr || stdout}`,
+    );
   }
   return JSON.parse(String(result.stdout ?? "{}"));
 }
@@ -57,6 +61,26 @@ function appendHistoryEvent(targetRoot, event) {
   const historyFile = path.join(targetRoot, ".aidn", "runtime", "context", "coordination-history.ndjson");
   fs.mkdirSync(path.dirname(historyFile), { recursive: true });
   fs.appendFileSync(historyFile, `${JSON.stringify(event)}\n`, "utf8");
+}
+
+function appendEscalationSeedHistory(targetRoot) {
+  for (const ts of ["2026-03-09T01:00:00Z", "2026-03-09T01:05:00Z"]) {
+    appendHistoryEvent(targetRoot, {
+      ts,
+      event: "coordinator_dispatch",
+      selected_agent: "codex",
+      recommended_role: "coordinator",
+      recommended_action: "reanchor",
+      goal: "implement alpha feature validation",
+      dispatch_status: "ready",
+      execution_status: "failed",
+      entrypoint_kind: "manual",
+      entrypoint_name: "user-arbitration",
+      stop_required: false,
+      executed: false,
+      executed_steps: [],
+    });
+  }
 }
 
 function main() {
@@ -81,9 +105,10 @@ function main() {
     initGitRepo(blockedTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(dbOnlyTarget, { workingBranch: "feature/C101-alpha" });
 
-    runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", dbOnlyTarget, "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", readyTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", blockedTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", dbOnlyTarget, "--write", "--json"], repoRoot, 0);
+    appendEscalationSeedHistory(readyTarget);
     const readyExecute = runJson(dispatchExecuteScript, ["--target", readyTarget, "--execute", "--json"], repoRoot, 1);
     const blockedExecute = runJson(dispatchExecuteScript, ["--target", blockedTarget, "--execute", "--json"], repoRoot, 0);
     appendHistoryEvent(dbOnlyTarget, {
@@ -127,7 +152,10 @@ function main() {
     assert(fs.existsSync(blockedSummaryFile), "blocked summary file should exist");
 
     assert(readySummary.summary.history_status === "available", "ready summary should report available history after relay");
-    assert(readySummary.summary.total_dispatches === 2, "ready summary should report the relay history dispatch count");
+    assert(
+      readySummary.summary.total_dispatches === 2,
+      `ready summary should report the relay history dispatch count (actual=${String(readySummary.summary.total_dispatches)})`,
+    );
     assert(readySummary.summary.last_recommended_role === "coordinator", "ready summary should track the last recommended role");
     assert(readySummary.summary.last_execution_status === "failed", "ready summary should track the last execution status");
     assert(readySummary.coordination_summary_diagnostic?.history_status === "available", "ready summary should expose history status in the stable diagnostic");
@@ -139,10 +167,19 @@ function main() {
     assert(readySummaryText.includes("unknown"), "ready summary markdown should mention unknown for the empty result fields");
 
     assert(blockedSummary.summary.history_status === "available", "blocked summary should report available history after execution");
-    assert(blockedSummary.summary.total_dispatches === 5, "blocked summary should report the updated dispatch count");
-    assert(blockedSummary.summary.last_recommended_role === "coordinator", "blocked summary should track the last recommended role");
+    assert(
+      blockedSummary.summary.total_dispatches === 1,
+      `blocked summary should report the single executed dispatch (actual=${String(blockedSummary.summary.total_dispatches)})`,
+    );
+    assert(
+      blockedSummary.summary.last_recommended_role === "repair",
+      `blocked summary should track the executed dispatch role (actual=${String(blockedSummary.summary.last_recommended_role)})`,
+    );
     assert(blockedSummary.summary.last_execution_status === "executed", "blocked summary should track the last execution status");
-    assert(blockedSummary.coordination_summary_diagnostic?.total_dispatches === 5, "blocked summary should expose total dispatches in the stable diagnostic");
+    assert(
+      blockedSummary.coordination_summary_diagnostic?.total_dispatches === 1,
+      "blocked summary should expose total dispatches in the stable diagnostic",
+    );
     assert(blockedSummaryText.includes("contract_version: critical-markdown-v1"), "blocked summary markdown should include contract version");
     assert(blockedSummaryText.includes("repair"), "blocked summary markdown should mention repair");
     assert(dbOnlySummary.state_mode === "db-only", "db-only summary should resolve state mode");

@@ -76,8 +76,8 @@ function main() {
     fs.cpSync(path.join(fixturesRoot, "warn"), roleBlockedTarget, { recursive: true });
     fs.cpSync(path.join(integrationFixturesRoot, "integration-cycle"), integrationCycleTarget, { recursive: true });
 
-    runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", roleBlockedTarget, "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", readyTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", roleBlockedTarget, "--write", "--json"], repoRoot, 0);
 
     const roleBlockedAgentDir = path.join(roleBlockedTarget, ".aidn", "runtime", "agents");
     fs.mkdirSync(roleBlockedAgentDir, { recursive: true });
@@ -133,7 +133,16 @@ function main() {
     assert(ready.arbitration_diagnostic?.arbitration_required === false, "ready dispatch should expose a stable arbitration diagnostic");
     assert(ready.arbitration_diagnostic?.suggestion_count === 1, "ready dispatch should expose suggestion count in the stable diagnostic");
 
-    assert(roleBlocked.arbitration_required === true, "role-blocked dispatch should require arbitration");
+    assert(
+      roleBlocked.arbitration_required === true,
+      `role-blocked dispatch should require arbitration: ${JSON.stringify({
+        dispatch_status: roleBlocked.dispatch_status,
+        arbitration_required: roleBlocked.arbitration_required,
+        preferred_decision: roleBlocked.preferred_decision,
+        recommended_role_coverage: roleBlocked.recommended_role_coverage,
+        coordinator_recommendation: roleBlocked.coordinator_recommendation,
+      })}`,
+    );
     assert(roleBlocked.dispatch_status === "escalated", "role-blocked dispatch should already be escalated");
     assert(roleBlocked.preferred_decision === "reanchor", "role-blocked dispatch should prefer reanchor");
     assert(roleBlocked.recommended_role_coverage.status === "blocked", "role-blocked dispatch should expose blocked coverage");

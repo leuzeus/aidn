@@ -34,7 +34,8 @@ Purpose:
 | `docs/audit/CURRENT-STATE.md`, `docs/audit/RUNTIME-STATE.md`, `docs/audit/HANDOFF-PACKET.md`, `docs/audit/snapshots/context-snapshot.md`, `docs/audit/baseline/current.md`, `docs/audit/baseline/history.md`, `docs/audit/parking-lot.md` | `checkout-bound` minimal re-anchor anchors | no | runtime backend plus protected visible anchor | In strict `db-only`, these anchors stay visible/protected so agents can re-anchor; the runtime DB remains canonical. |
 | `docs/audit/cycles/C*`, `docs/audit/sessions/S*.md`, coordination summaries, agent health summaries, detailed runtime projections | `checkout-bound` runtime/state materialization | no | runtime backend with explicit materialization | In strict `db-only`, detailed managed runtime files are not written automatically and may be quarantined after external backup, except active session/cycle paths referenced by current state. |
 | `AGENTS.md` | `checkout-bound` | no | worktree checkout | Treated as workflow policy visible in the current checkout. |
-| `.codex/*` | `checkout-bound` workflow bootstrap | no | worktree checkout or scaffold materialization | Local workflow skills/config; strict `db-only` cleanup must not quarantine them. |
+| `.agents/*` | `checkout-bound` workflow bootstrap | no | worktree checkout or scaffold materialization | Repo-scoped Codex skills; strict `db-only` cleanup must not quarantine them. |
+| `.codex/*` | `checkout-bound` workflow bootstrap | no | worktree checkout or scaffold materialization | Codex agents, hooks and project config; strict `db-only` cleanup must not quarantine them. |
 | `.aidn/project/workflow.adapter.json` | `checkout-bound` or `worktree-local` | no | client repo decision | Durable project config; may be versioned by the client repository. |
 | `.aidn/project/shared-runtime.locator.json` | `worktree-local` | no | current target root | Explicit locator for opting into shared runtime; not a shared store itself. |
 | `.aidn/config.json` | `worktree-local` | no | current target root | Host-local/runtime-local defaults; not the shared-runtime contract. In strict `db-only`, it must carry `runtime.dbOnly.strict=true`, disabled automatic visible materialization, backup/quarantine policy, hidden bundle source-of-truth metadata, and artifact-import compatibility metadata pointing back to `runtime.persistence.backend`. |
@@ -109,10 +110,16 @@ Rules:
 
 - `docs/audit/*`
 - `AGENTS.md`
+- `.agents/*`
 - `.codex/*`
 - `.aidn/config.json`
+- `.aidn/runtime/index/workflow-index.sqlite`
 - `.aidn/runtime/context/*`
-- local repair reports, triage files, and perf outputs
+- `repair_findings`
+- `incident`
+
+`repair_findings` and `incident` are explicitly not shared. Neither appears in
+ADR-0008 or in the shared coordination port.
 
 ## Explicit Shared-Candidate List
 
@@ -206,10 +213,13 @@ Forbidden implicit sharing:
 
 - `docs/audit/*`
 - `AGENTS.md`
+- `.agents/*`
 - `.codex/*`
 - `.aidn/config.json`
 - `.aidn/runtime/index/workflow-index.sqlite`
-- local repair reports, local perf reports and hydrated context files
+- `.aidn/runtime/context/*`
+- `repair_findings`
+- `incident`
 
 Validation:
 

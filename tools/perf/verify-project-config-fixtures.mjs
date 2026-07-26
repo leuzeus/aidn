@@ -10,6 +10,18 @@ function printUsage() {
   console.log("  node tools/perf/verify-project-config-fixtures.mjs");
 }
 
+function parseArgs(argv) {
+  const args = { help: false };
+  for (const token of argv) {
+    if (token === "--help" || token === "-h") {
+      args.help = true;
+    } else {
+      throw new Error(`Unknown argument: ${token}`);
+    }
+  }
+  return args;
+}
+
 function run(repoRoot, relativeScript, argv, codexStubBin = "") {
   const separator = process.platform === "win32" ? ";" : ":";
   const result = spawnSync(process.execPath, [
@@ -70,6 +82,11 @@ function writeAdapterFile(tempRoot, projectName = "tmp-project") {
 }
 
 function main() {
+  const args = parseArgs(process.argv.slice(2));
+  if (args.help) {
+    printUsage();
+    return;
+  }
   let tempRoot = "";
   try {
     const repoRoot = process.cwd();

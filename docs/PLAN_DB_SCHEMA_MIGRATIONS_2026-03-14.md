@@ -17,7 +17,7 @@ Delivered so far:
 Follow-up:
 
 - broad table resets still exist for rebuildable projection tables
-- upgrade/no-loss fixtures now cover legacy adoption, `mode-migrate`, reinstall, reinitialization, and a `gowire`-like client upgrade path
+- upgrade/no-loss fixtures now cover legacy adoption, `mode-migrate`, reinstall, reinitialization, and a `external-pilot`-like client upgrade path
 - a future split `workflow-index.sqlite` / `workflow-state.sqlite` remains a redesign option if mixed ownership inside `artifacts` becomes too costly to maintain
 
 ## Problem Statement
@@ -51,7 +51,7 @@ This creates a structural risk:
 - durable DB-backed data can be lost if a rebuild path is triggered
 - reinstall/reinit can still behave like reset + projection instead of migration + reconciliation
 
-The user-facing symptom is exactly the one observed in real repositories such as `gowire`:
+The user-facing symptom is exactly the one observed in real repositories such as `external-pilot`:
 
 - after updates or reinitialization, the database can be overwritten instead of migrated and preserved
 
@@ -399,7 +399,7 @@ Deliverables:
 
 - fixture coverage from old schema to new schema
 - reinstall / reinit / update upgrade scenarios
-- `gowire`-like migration scenarios
+- `external-pilot`-like migration scenarios
 
 ## BPMN-Style Flow
 
@@ -436,7 +436,7 @@ The migration model must be validated on:
 - empty installs
 - already-installed fixtures
 - inter-mode transitions
-- `gowire`-like repositories
+- `external-pilot`-like repositories
 
 ## Acceptance Criteria
 

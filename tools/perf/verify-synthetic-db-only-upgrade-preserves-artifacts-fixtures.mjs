@@ -10,7 +10,7 @@ import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const VERSION = fs.readFileSync(path.join(REPO_ROOT, "VERSION"), "utf8").trim();
 const SOURCE_FIXTURE = path.join(REPO_ROOT, "tests", "fixtures", "repo-installed-core");
-const PILOT_WORKFLOW_FIXTURE = path.join(REPO_ROOT, "tests", "fixtures", "project-migration-pilot-fixture", "WORKFLOW.md");
+const SYNTHETIC_WORKFLOW_FIXTURE = path.join(REPO_ROOT, "tests", "fixtures", "project-migration-synthetic-fixture", "WORKFLOW.md");
 
 function parseArgs(argv) {
   const args = {
@@ -32,7 +32,7 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
-  console.log("  node tools/perf/verify-pilot-db-only-upgrade-preserves-artifacts-fixtures.mjs");
+  console.log("  node tools/perf/verify-synthetic-db-only-upgrade-preserves-artifacts-fixtures.mjs");
 }
 
 function makeCodexStub(tempRoot) {
@@ -104,14 +104,14 @@ function readArtifactRow(sqliteFile, artifactPath) {
   }
 }
 
-function preparePilotFixtureTarget(targetRoot) {
+function prepareSyntheticFixtureTarget(targetRoot) {
   const workflowPath = path.join(targetRoot, "docs", "audit", "WORKFLOW.md");
   const summaryPath = path.join(targetRoot, "docs", "audit", "WORKFLOW_SUMMARY.md");
   const codexOnlinePath = path.join(targetRoot, "docs", "audit", "CODEX_ONLINE.md");
   const indexPath = path.join(targetRoot, "docs", "audit", "index.md");
   const configPath = path.join(targetRoot, ".aidn", "config.json");
 
-  fs.writeFileSync(workflowPath, fs.readFileSync(PILOT_WORKFLOW_FIXTURE, "utf8"), "utf8");
+    fs.writeFileSync(workflowPath, fs.readFileSync(SYNTHETIC_WORKFLOW_FIXTURE, "utf8"), "utf8");
   fs.writeFileSync(summaryPath, "# stale summary\n", "utf8");
   fs.writeFileSync(codexOnlinePath, "# stale codex\n", "utf8");
   fs.writeFileSync(indexPath, "# stale index\n", "utf8");
@@ -125,12 +125,12 @@ function main() {
   let tempRoot = "";
   try {
     const args = parseArgs(process.argv.slice(2));
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-pilot-db-upgrade-"));
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-synthetic-db-upgrade-"));
     const targetRoot = path.join(tempRoot, "repo");
     fs.cpSync(SOURCE_FIXTURE, targetRoot, { recursive: true });
     fs.rmSync(path.join(targetRoot, ".aidn", "project", "workflow.adapter.legacy-source.md"), { force: true });
     fs.rmSync(path.join(targetRoot, ".aidn", "project", "workflow.adapter.migration-report.json"), { force: true });
-    preparePilotFixtureTarget(targetRoot);
+    prepareSyntheticFixtureTarget(targetRoot);
 
     const codexStubBin = makeCodexStub(tempRoot);
     const env = {
@@ -167,15 +167,15 @@ function main() {
       throw new Error(`first install failed\nstdout:\n${firstInstall.stdout}\nstderr:\n${firstInstall.stderr}`);
     }
 
-    const artifactPath = "backlog/BL-S503-pilot-upgrade-preservation.md";
+    const artifactPath = "backlog/BL-S503-synthetic-upgrade-preservation.md";
     const artifactContent = [
       "# Session Backlog",
       "",
       "session_id: S503",
       "planning_status: promoted",
-      "backlog_next_step: verify-pilot-upgrade-no-loss",
+      "backlog_next_step: verify-synthetic-upgrade-no-loss",
       "",
-      "- item: preserve DB-first artifact across pilot-fixture upgrade",
+      "- item: preserve DB-first artifact across synthetic fixture upgrade",
       "",
     ].join("\n");
     const writeArtifact = runNode("tools/runtime/db-first-artifact.mjs", [
@@ -209,9 +209,9 @@ function main() {
     const workflowText = fs.readFileSync(path.join(targetRoot, "docs", "audit", "WORKFLOW.md"), "utf8");
     const checks = {
       source_fixture_exists: fs.existsSync(SOURCE_FIXTURE),
-      pilot_fixture_exists: fs.existsSync(PILOT_WORKFLOW_FIXTURE),
+      synthetic_fixture_exists: fs.existsSync(SYNTHETIC_WORKFLOW_FIXTURE),
       adapter_migration_ok: (migrateAdapter.status ?? 1) === 0 && migratePayload.ok === true,
-      migrated_adapter_project_name: String(migratePayload?.extracted_config?.projectName ?? "") === "pilot-fixture",
+      migrated_adapter_project_name: String(migratePayload?.extracted_config?.projectName ?? "") === "synthetic-migration-fixture",
       first_install_ok: (firstInstall.status ?? 1) === 0,
       sqlite_created: fs.existsSync(sqliteFile),
       db_first_write_ok: (writeArtifact.status ?? 1) === 0,
@@ -221,7 +221,7 @@ function main() {
       artifact_rowid_stable: Number(artifactBeforeUpgrade?.artifact_id ?? 0) > 0
         && Number(artifactBeforeUpgrade?.artifact_id) === Number(artifactAfterUpgrade?.artifact_id),
       artifact_content_preserved: String(artifactAfterUpgrade?.content ?? "") === artifactContent,
-      workflow_regenerated_for_pilot_fixture: workflowText.includes("### Session Transition Cleanliness Gate (Mandatory)")
+      workflow_regenerated_for_synthetic_fixture: workflowText.includes("### Session Transition Cleanliness Gate (Mandatory)")
         && workflowText.includes("## Shared Codegen Boundary Gate"),
     };
     const pass = Object.values(checks).every((value) => value === true);

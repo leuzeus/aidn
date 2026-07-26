@@ -154,11 +154,11 @@ function main() {
     initGitRepo(escalatedTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(roleBlockedTarget, { workingBranch: "feature/C101-alpha" });
 
-    runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", warnTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", escalatedTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", roleBlockedTarget, "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", readyTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", warnTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", blockedTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", escalatedTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", roleBlockedTarget, "--write", "--json"], repoRoot, 0);
 
     const escalatedHistory = path.join(escalatedTarget, ".aidn", "runtime", "context", "coordination-history.ndjson");
     fs.mkdirSync(path.dirname(escalatedHistory), { recursive: true });

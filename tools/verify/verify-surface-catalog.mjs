@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import {
   buildSurfaceCatalog,
   INFORMATION_CLASSES,
+  parserOptionsFor,
   PROOF_CLASSES,
   SURFACE_CATALOG_PATH,
   SURFACE_STATUSES,
@@ -49,6 +51,62 @@ function commandReferenceIssues(catalog) {
       if (![...commands].some((command) => command === family || command.startsWith(`${family} `))) {
         issues.push(`${relativeDoc}: public command reference has no active target: ${family}`);
       }
+    }
+  }
+  return issues;
+}
+
+function parserClosureIssues(catalog) {
+  const issues = [];
+  const activeCommands = catalog.entries.filter(
+    (entry) => entry.kind === "command" && entry.status === "active",
+  );
+  const activeOptions = catalog.entries.filter(
+    (entry) => entry.kind === "option" && entry.status === "active",
+  );
+  const optionTokensByCommand = new Map();
+  for (const option of activeOptions) {
+    const commandId = option.id.slice("option:".length, option.id.lastIndexOf(":"));
+    const token = option.id.slice(option.id.lastIndexOf(":") + 1);
+    const current = optionTokensByCommand.get(commandId) ?? [];
+    current.push(token);
+    optionTokensByCommand.set(commandId, current);
+  }
+  for (const command of activeCommands) {
+    if (command.implementation === "bin/aidn.mjs") {
+      continue;
+    }
+    const parserOptions = parserOptionsFor(path.resolve(repoRoot, command.implementation));
+    const catalogOptions = (optionTokensByCommand.get(command.entrypoint) ?? []).sort();
+    if (JSON.stringify(catalogOptions) !== JSON.stringify(parserOptions)) {
+      issues.push(
+        `${command.entrypoint}: parser/catalog option closure mismatch `
+        + `(parser=${parserOptions.join(",")}; catalog=${catalogOptions.join(",")})`,
+      );
+    }
+  }
+
+  const childOnlyTokens = ["--format", "--name-only", "--porcelain", "--untracked-files"];
+  for (const token of childOnlyTokens) {
+    if (activeOptions.some((entry) => entry.id.endsWith(`:${token}`))) {
+      issues.push(`child-process option leaked into the public catalog: ${token}`);
+    }
+  }
+
+  const implementations = [...new Set(activeCommands.map((entry) => entry.implementation))];
+  for (const implementation of implementations) {
+    const result = spawnSync(
+      process.execPath,
+      [path.resolve(repoRoot, implementation), "--aidn-catalog-invalid-option"],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+        timeout: 5000,
+        maxBuffer: 1024 * 1024,
+      },
+    );
+    if (result.status === 0) {
+      issues.push(`${implementation}: effective parser accepted an uncatalogued option`);
     }
   }
   return issues;
@@ -102,6 +160,7 @@ function main() {
     }
   }
   issues.push(...commandReferenceIssues(actual));
+  issues.push(...parserClosureIssues(actual));
   const byKind = {};
   for (const entry of actual.entries ?? []) {
     byKind[entry.kind] = (byKind[entry.kind] ?? 0) + 1;
@@ -112,6 +171,15 @@ function main() {
     catalog: SURFACE_CATALOG_PATH,
     entries: actual.entries?.length ?? 0,
     by_kind: byKind,
+    parser_closure: {
+      active_commands: actual.entries?.filter(
+        (entry) => entry.kind === "command" && entry.status === "active",
+      ).length ?? 0,
+      active_options: actual.entries?.filter(
+        (entry) => entry.kind === "option" && entry.status === "active",
+      ).length ?? 0,
+      child_process_options_excluded: ["--format", "--name-only", "--porcelain", "--untracked-files"],
+    },
     issues,
   };
   console.log(JSON.stringify(result, null, 2));

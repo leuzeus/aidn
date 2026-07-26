@@ -60,6 +60,24 @@ function runNoJson(script, scriptArgs, env = {}) {
   });
 }
 
+function makeInstallerPrerequisiteStub(tempRoot) {
+  const binDir = path.join(tempRoot, "installer-prerequisite-stub");
+  fs.mkdirSync(binDir, { recursive: true });
+  if (process.platform === "win32") {
+    fs.writeFileSync(path.join(binDir, "codex.cmd"), [
+      "@echo off",
+      "if \"%1\"==\"login\" if \"%2\"==\"status\" echo Logged in",
+      "exit /b 0",
+      "",
+    ].join("\r\n"), "utf8");
+  } else {
+    const commandPath = path.join(binDir, "codex");
+    fs.writeFileSync(commandPath, "#!/usr/bin/env sh\necho \"Logged in\"\n", "utf8");
+    fs.chmodSync(commandPath, 0o755);
+  }
+  return binDir;
+}
+
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
@@ -103,6 +121,8 @@ function main() {
     const sourceTarget = path.resolve(process.cwd(), args.target);
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-codex-context-repair-"));
     const target = path.join(tempRoot, "repo");
+    const installerPrerequisiteStub = makeInstallerPrerequisiteStub(tempRoot);
+    const pathSeparator = process.platform === "win32" ? ";" : ":";
     fs.cpSync(sourceTarget, target, { recursive: true });
     fs.rmSync(path.join(target, ".aidn"), { recursive: true, force: true });
     adapterFile = writeAdapterFile(tempRoot);
@@ -114,7 +134,9 @@ function main() {
       "--adapter-file",
       adapterFile,
       "--force-agents-merge",
-    ]);
+    ], {
+      PATH: `${installerPrerequisiteStub}${pathSeparator}${String(process.env.PATH ?? "")}`,
+    });
 
     runJson("tools/perf/index-sync.mjs", [
       "--target",

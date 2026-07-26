@@ -101,8 +101,8 @@ function main() {
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), escalatedTarget, { recursive: true });
     fs.cpSync(path.join(integrationFixturesRoot, "integration-cycle"), integrationTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlyTarget, { recursive: true });
-    runJson(handoffProjectScript, ["--target", escalatedTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", dbOnlyTarget, "--json"], repoRoot, 0, {
+    runJson(handoffProjectScript, ["--target", escalatedTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", dbOnlyTarget, "--write", "--json"], repoRoot, 0, {
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",
     });

@@ -20,7 +20,7 @@ Reference migration guide:
 
 Validation context:
 
-- repository analysis in `G:\projets\aidn`
+- repository analysis in `<local-source-root>`
 - real rebuild and drift validation in one local-only external pilot repository
 - recovered artifact corpus in one local-only external pilot export
 
@@ -435,7 +435,7 @@ Done when:
 - ambiguous states produce explicit blocked outcomes
 - no automatic merge path exists for conflicting canonical sources
 
-### RPRP-18. Handle Recovered Data Ambiguities Exposed By Gowire
+### RPRP-18. Handle Recovered Data Ambiguities Exposed By External Pilot
 **Priority:** P2  
 **Status:** completed
 

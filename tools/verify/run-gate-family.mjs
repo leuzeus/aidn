@@ -2,14 +2,27 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { findCodexLauncher } from "./codex-discovery-lib.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const catalog = JSON.parse(fs.readFileSync(path.join(repoRoot, "package", "catalogs", "gates.v1.json"), "utf8"));
 const requested = process.argv[2] ?? "";
 const json = process.argv.includes("--json");
+const contextIndex = process.argv.indexOf("--context");
+const explicitContext = contextIndex >= 0 ? String(process.argv[contextIndex + 1] ?? "") : "";
+const gateIndex = process.argv.indexOf("--gate");
+const explicitGate = gateIndex >= 0 ? String(process.argv[gateIndex + 1] ?? "") : "";
 
 if (!requested || ![...catalog.required_families, "all"].includes(requested)) {
-  console.error(`Usage: node tools/verify/run-gate-family.mjs <${[...catalog.required_families, "all"].join("|")}> [--json]`);
+  console.error(`Usage: node tools/verify/run-gate-family.mjs <${[...catalog.required_families, "all"].join("|")}> [--json] [--context dev|main|release]`);
+  process.exit(1);
+}
+if (gateIndex >= 0 && !explicitGate) {
+  console.error("Missing value for --gate");
+  process.exit(1);
+}
+if (explicitContext && !["dev", "main", "release"].includes(explicitContext)) {
+  console.error(`Invalid gate context: ${explicitContext}`);
   process.exit(1);
 }
 
@@ -17,18 +30,113 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json
 const npmCli = path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
 const npmCommand = fs.existsSync(npmCli) ? process.execPath : "npm";
 const npmPrefix = fs.existsSync(npmCli) ? [npmCli] : [];
-const selected = catalog.gates.filter((gate) => requested === "all" || gate.family === requested);
+const selected = catalog.gates.filter(
+  (gate) => (requested === "all" || gate.family === requested)
+    && (!explicitGate || gate.id === explicitGate),
+);
+if (explicitGate && selected.length !== 1) {
+  console.error(`Unknown gate for ${requested}: ${explicitGate}`);
+  process.exit(1);
+}
 const results = [];
 const executed = new Map();
 
+function git(args) {
+  return spawnSync("git", args, {
+    cwd: repoRoot,
+    encoding: "utf8",
+    shell: false,
+  });
+}
+
+function inferContext() {
+  if (explicitContext) {
+    return explicitContext;
+  }
+  if (["dev", "main", "release"].includes(process.env.AIDN_GATE_CONTEXT)) {
+    return process.env.AIDN_GATE_CONTEXT;
+  }
+  if (process.env.GITHUB_EVENT_NAME === "push" && process.env.GITHUB_REF === "refs/heads/main") {
+    return "main";
+  }
+  if (process.env.GITHUB_EVENT_NAME === "pull_request") {
+    return process.env.GITHUB_BASE_REF === "main" ? "release" : "dev";
+  }
+  const branchResult = git(["branch", "--show-current"]);
+  const branch = branchResult.status === 0 ? String(branchResult.stdout).trim() : "";
+  return branch.startsWith("release/") ? "release" : "dev";
+}
+
+function evaluateCondition(condition) {
+  if (condition === "always") {
+    return { met: true, reason: "always" };
+  }
+  if (condition === "git-repository") {
+    const result = git(["rev-parse", "--is-inside-work-tree"]);
+    return {
+      met: result.status === 0 && String(result.stdout).trim() === "true",
+      reason: "Git repository is required",
+    };
+  }
+  if (condition === "git-clean-commit" || condition === "git-clean-worktree") {
+    const head = git(["rev-parse", "--verify", "HEAD"]);
+    const status = git(["status", "--porcelain=v1", "--untracked-files=all"]);
+    return {
+      met: head.status === 0 && status.status === 0 && String(status.stdout).trim() === "",
+      reason: "a clean Git commit is required",
+    };
+  }
+  if (condition === "codex-cli-available") {
+    return {
+      met: Boolean(findCodexLauncher(process.env)),
+      reason: "real Codex CLI is unavailable",
+    };
+  }
+  return {
+    met: false,
+    reason: `unknown condition: ${condition}`,
+  };
+}
+
+const context = inferContext();
 for (const gate of selected) {
   const started = Date.now();
-  if (!packageJson.scripts?.[gate.script]) {
+  const obligation = gate.obligation?.[context] ?? "required";
+  if (obligation === "skip") {
     results.push({
       id: gate.id,
       family: gate.family,
       script: gate.script,
       status: "SKIP",
+      obligation,
+      condition: gate.condition,
+      duration_ms: 0,
+      reason: `catalog obligation is skip for ${context}`,
+    });
+    continue;
+  }
+  const condition = evaluateCondition(gate.condition);
+  if (!condition.met) {
+    results.push({
+      id: gate.id,
+      family: gate.family,
+      script: gate.script,
+      status: "SKIP",
+      obligation,
+      condition: gate.condition,
+      duration_ms: 0,
+      reason: condition.reason,
+    });
+    continue;
+  }
+  if (!packageJson.scripts?.[gate.script]) {
+    results.push({
+      id: gate.id,
+      family: gate.family,
+      script: gate.script,
+      status: "FAIL",
+      obligation,
+      condition: gate.condition,
       duration_ms: 0,
       reason: "script is not available",
     });
@@ -40,6 +148,8 @@ for (const gate of selected) {
       family: gate.family,
       script: gate.script,
       status: executed.get(gate.script),
+      obligation,
+      condition: gate.condition,
       duration_ms: 0,
       reason: "deduplicated",
     });
@@ -47,7 +157,10 @@ for (const gate of selected) {
   }
   const result = spawnSync(npmCommand, [...npmPrefix, "run", gate.script], {
     cwd: repoRoot,
-    env: process.env,
+    env: {
+      ...process.env,
+      AIDN_GATE_CONTEXT: context,
+    },
     encoding: "utf8",
     timeout: 900000,
     maxBuffer: 30 * 1024 * 1024,
@@ -64,6 +177,8 @@ for (const gate of selected) {
     family: gate.family,
     script: gate.script,
     status,
+    obligation,
+    condition: gate.condition,
     duration_ms: Date.now() - started,
     exit_code: result.status,
   });
@@ -74,8 +189,10 @@ const counts = Object.fromEntries(catalog.outcomes.map((status) => [
   results.filter((item) => item.status === status).length,
 ]));
 const output = {
-  ok: counts.FAIL === 0 && counts.SKIP === 0,
+  ok: counts.FAIL === 0
+    && results.every((item) => item.status !== "SKIP" || item.obligation !== "required"),
   requested,
+  context,
   outcomes: catalog.outcomes,
   counts,
   results,
@@ -85,7 +202,7 @@ if (json) {
 } else {
   console.log(`Gate family ${requested}: ${output.ok ? "PASS" : "FAIL"}`);
   for (const item of results) {
-    console.log(`- ${item.id}: ${item.status} (${item.duration_ms} ms)`);
+    console.log(`- ${item.id}: ${item.status} obligation=${item.obligation} (${item.duration_ms} ms)`);
   }
 }
 if (!output.ok) {

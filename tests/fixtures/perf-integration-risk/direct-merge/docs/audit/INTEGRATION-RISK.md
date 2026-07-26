@@ -28,7 +28,7 @@ missing_context: no
 
 ## Session Topology
 
-- session_file: G:\projets\aidn\tests\fixtures\perf-integration-risk\direct-merge\docs\audit\sessions\S301.md
+- session_file: <local-source-root>\tests\fixtures\perf-integration-risk\direct-merge\docs\audit\sessions\S301.md
 - attached_cycles: C301, C302
 - integration_target_cycles: C301, C302
 - primary_focus_cycle: none
@@ -36,11 +36,11 @@ missing_context: no
 ## Candidate Cycles
 
 - C301: type=feature readiness=ready outcome=DONE dor_state=READY
-  status: G:\projets\aidn\tests\fixtures\perf-integration-risk\direct-merge\docs\audit\cycles\C301-feature-alpha\status.md
+  status: <local-source-root>\tests\fixtures\perf-integration-risk\direct-merge\docs\audit\cycles\C301-feature-alpha\status.md
   blockers: none
   referenced_paths: src/api/alpha.js, tests/api/alpha.test.js
 - C302: type=feature readiness=ready outcome=DONE dor_state=READY
-  status: G:\projets\aidn\tests\fixtures\perf-integration-risk\direct-merge\docs\audit\cycles\C302-feature-beta\status.md
+  status: <local-source-root>\tests\fixtures\perf-integration-risk\direct-merge\docs\audit\cycles\C302-feature-beta\status.md
   blockers: none
   referenced_paths: src/ui/beta.js, tests/ui/beta.test.js
 

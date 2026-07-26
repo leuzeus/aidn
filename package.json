@@ -35,6 +35,8 @@
     "scripts/",
     "tools/",
     "!tools/perf/*pilot*",
+    "!tools/perf/verify-synthetic-workflow-parity-fixtures.mjs",
+    "!tools/perf/verify-synthetic-db-only-upgrade-preserves-artifacts-fixtures.mjs",
     "!tools/perf/verify-imported-sections-policy-fixtures.mjs",
     "!tools/perf/local-pilot-runtime-import-lib.mjs",
     "!tools/perf/verify-pilot-runtime-import-fixtures.mjs",
@@ -251,7 +253,7 @@
     "perf:verify-generated-docs": "node tools/perf/verify-generated-docs-fixtures.mjs",
     "perf:verify-generated-doc-golden": "node tools/perf/verify-generated-doc-golden-fixtures.mjs",
     "perf:verify-generated-doc-fragments": "node tools/perf/verify-generated-doc-fragments-fixtures.mjs",
-    "perf:verify-pilot-workflow-parity": "node tools/perf/verify-pilot-workflow-parity-fixtures.mjs",
+    "perf:verify-synthetic-workflow-parity": "node tools/perf/verify-synthetic-workflow-parity-fixtures.mjs",
     "perf:verify-pilot-runtime-import": "node tools/perf/verify-pilot-runtime-import-fixtures.mjs",
     "perf:verify-markdown-contract": "node tools/perf/verify-markdown-contract-conformance-fixtures.mjs",
     "perf:verify-promoted-workflow-section-visibility": "node tools/perf/verify-promoted-workflow-section-visibility-fixtures.mjs",
@@ -263,7 +265,7 @@
     "perf:verify-shared-runtime-path": "node tools/perf/verify-shared-runtime-path-fixtures.mjs",
     "perf:verify-shared-runtime-reanchor": "node tools/perf/verify-shared-runtime-reanchor-fixtures.mjs",
     "perf:verify-shared-surface-boundary": "node tools/perf/verify-shared-surface-boundary.mjs",
-    "perf:verify-security-baseline": "npm run perf:verify-pack-topology && npm run perf:verify-shared-surface-boundary && npm run perf:verify-cli-no-implicit-write",
+    "perf:verify-security-baseline": "npm run perf:verify-tracked-sensitivity && npm run perf:verify-pack-topology && npm run perf:verify-shared-surface-boundary && npm run perf:verify-cli-no-implicit-write",
     "perf:verify-shared-runtime-db-first-regression": "node tools/perf/verify-shared-runtime-db-first-regression-fixtures.mjs",
     "perf:verify-shared-state-backend": "node tools/perf/verify-shared-state-backend-fixtures.mjs",
     "perf:verify-shared-sqlite-boundary": "node tools/perf/verify-shared-sqlite-boundary-fixtures.mjs",
@@ -335,7 +337,7 @@
     "perf:verify-runtime-state-projector-repair": "node tools/perf/verify-runtime-state-projector-repair-fixtures.mjs",
     "perf:verify-runtime-state-reanchor": "node tools/perf/verify-runtime-state-reanchor-fixtures.mjs",
     "perf:verify-runtime-digest-hints": "node tools/perf/verify-runtime-digest-hints-fixtures.mjs",
-    "perf:verify-context-resilience": "node tools/perf/verify-reanchor-template.mjs && node tools/perf/verify-current-state-skill-coverage.mjs --root scaffold/codex && node tools/perf/verify-pre-write-admit-skill-coverage.mjs --root scaffold/codex && node tools/perf/verify-codex-db-only-skill-readiness.mjs --root scaffold/codex --agents scaffold/root/AGENTS.md && node tools/perf/verify-start-session-admission-fixtures.mjs && node tools/perf/verify-branch-cycle-audit-admission-fixtures.mjs && node tools/perf/verify-reanchor-artifacts-fixtures.mjs --target tests/fixtures/repo-installed-core && node tools/perf/verify-agent-role-model.mjs && node tools/perf/verify-agent-roster-fixtures.mjs && node tools/perf/verify-agent-health-summary-fixtures.mjs && node tools/perf/verify-agent-selection-policy.mjs && node tools/perf/verify-agent-transition-policy.mjs && node tools/perf/verify-coordinator-escalation-policy.mjs && node tools/perf/verify-handoff-packet-fixtures.mjs && node tools/perf/verify-handoff-admit-fixtures.mjs && node tools/perf/verify-pre-write-admit-fixtures.mjs && node tools/perf/verify-integration-risk-fixtures.mjs && node tools/perf/verify-coordinator-next-action-fixtures.mjs && node tools/perf/verify-coordinator-select-agent-fixtures.mjs && node tools/perf/verify-coordinator-suggest-arbitration-fixtures.mjs && node tools/perf/verify-coordinator-loop-fixtures.mjs && node tools/perf/verify-coordinator-record-arbitration-fixtures.mjs && node tools/perf/verify-coordinator-resume-fixtures.mjs && node tools/perf/verify-coordinator-orchestrate-fixtures.mjs && node tools/perf/verify-coordinator-dispatch-plan-fixtures.mjs && node tools/perf/verify-coordinator-dispatch-execute-fixtures.mjs && node tools/perf/verify-coordination-summary-fixtures.mjs && node tools/perf/verify-list-agent-adapters-fixtures.mjs && node tools/perf/verify-agent-selection-summary-fixtures.mjs && node tools/perf/verify-multi-agent-status-fixtures.mjs && node tools/perf/verify-current-state-consistency-fixtures.mjs && node tools/perf/verify-runtime-state-projector-fixtures.mjs && node tools/perf/verify-runtime-state-projector-repair-fixtures.mjs && node tools/perf/verify-hydrate-context-runtime-state-fixtures.mjs && node tools/perf/verify-codex-context-repair-layer-fixtures.mjs && node tools/perf/verify-runtime-digest-hints-fixtures.mjs && node tools/perf/verify-current-state-skill-coverage.mjs --root tests/fixtures/repo-installed-core/.codex/skills && node tools/perf/verify-codex-db-only-skill-readiness.mjs --root tests/fixtures/repo-installed-core/.codex/skills --agents tests/fixtures/repo-installed-core/AGENTS.md && node tools/perf/verify-install-import-fixtures.mjs && node tools/perf/verify-install-source-branch-fixtures.mjs",
+    "perf:verify-context-resilience": "node tools/perf/verify-reanchor-template.mjs && node tools/perf/verify-current-state-skill-coverage.mjs --root scaffold/codex && node tools/perf/verify-pre-write-admit-skill-coverage.mjs --root scaffold/codex && node tools/perf/verify-codex-db-only-skill-readiness.mjs --root scaffold/codex --agents scaffold/root/AGENTS.md && node tools/perf/verify-start-session-admission-fixtures.mjs && node tools/perf/verify-branch-cycle-audit-admission-fixtures.mjs && node tools/perf/verify-reanchor-artifacts-fixtures.mjs --target tests/fixtures/repo-installed-core && node tools/perf/verify-agent-role-model.mjs && node tools/perf/verify-agent-roster-fixtures.mjs && node tools/perf/verify-agent-health-summary-fixtures.mjs && node tools/perf/verify-agent-selection-policy.mjs && node tools/perf/verify-agent-transition-policy.mjs && node tools/perf/verify-coordinator-escalation-policy.mjs && node tools/perf/verify-handoff-packet-fixtures.mjs && node tools/perf/verify-handoff-admit-fixtures.mjs && node tools/perf/verify-pre-write-admit-fixtures.mjs && node tools/perf/verify-integration-risk-fixtures.mjs && node tools/perf/verify-coordinator-next-action-fixtures.mjs && node tools/perf/verify-coordinator-select-agent-fixtures.mjs && node tools/perf/verify-coordinator-suggest-arbitration-fixtures.mjs && node tools/perf/verify-coordinator-loop-fixtures.mjs && node tools/perf/verify-coordinator-record-arbitration-fixtures.mjs && node tools/perf/verify-coordinator-resume-fixtures.mjs && node tools/perf/verify-coordinator-orchestrate-fixtures.mjs && node tools/perf/verify-coordinator-dispatch-plan-fixtures.mjs && node tools/perf/verify-coordinator-dispatch-execute-fixtures.mjs && node tools/perf/verify-coordination-summary-fixtures.mjs && node tools/perf/verify-list-agent-adapters-fixtures.mjs && node tools/perf/verify-agent-selection-summary-fixtures.mjs && node tools/perf/verify-multi-agent-status-fixtures.mjs && node tools/perf/verify-current-state-consistency-fixtures.mjs && node tools/perf/verify-runtime-state-projector-fixtures.mjs && node tools/perf/verify-runtime-state-projector-repair-fixtures.mjs && node tools/perf/verify-hydrate-context-runtime-state-fixtures.mjs && node tools/perf/verify-codex-context-repair-layer-fixtures.mjs && node tools/perf/verify-runtime-digest-hints-fixtures.mjs && node tools/perf/verify-current-state-skill-coverage.mjs --root tests/fixtures/repo-installed-core/.agents/skills && node tools/perf/verify-codex-db-only-skill-readiness.mjs --root tests/fixtures/repo-installed-core/.agents/skills --manifest tests/fixtures/repo-installed-core/.aidn/codex/skills.yaml --agents tests/fixtures/repo-installed-core/AGENTS.md && node tools/perf/verify-install-import-fixtures.mjs && node tools/perf/verify-install-source-branch-fixtures.mjs",
     "perf:reload-check": "node tools/perf/reload-check.mjs",
     "perf:gate": "node tools/perf/gating-evaluate.mjs",
     "perf:checkpoint": "node tools/perf/checkpoint.mjs",
@@ -352,6 +354,9 @@
     "perf:session-close": "node tools/perf/workflow-hook.mjs --phase session-close",
     "perf:delivery-start": "node tools/perf/delivery-window.mjs --action start",
     "perf:delivery-end": "node tools/perf/delivery-window.mjs --action end",
-    "perf:audit-review": "node tools/perf/audit-review.mjs"
+    "perf:audit-review": "node tools/perf/audit-review.mjs",
+    "perf:verify-codex-client-discovery": "node tools/verify/verify-codex-client-install.mjs --require-codex-discovery",
+    "perf:verify-branch-policy-fixtures": "node tools/verify/verify-branch-policy-fixtures.mjs",
+    "perf:verify-tracked-sensitivity": "node tools/verify/verify-tracked-sensitivity.mjs"
   }
 }

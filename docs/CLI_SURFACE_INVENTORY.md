@@ -16,10 +16,18 @@ These are the durable surfaces exposed through `aidn` today:
 - `aidn install`
 - `aidn bootstrap`
 - `aidn build-release`
+- `aidn help` / `aidn --help` / `aidn -h`
+- `aidn version` / `aidn --version` / `aidn -v`
 - `aidn perf`
 - `aidn codex`
 - `aidn runtime`
 - `aidn project`
+
+The machine-readable catalog derives command names from the dispatch descriptors in
+`bin/aidn.mjs` and derives options only from each command's effective `parseArgs`
+function. `tools/verify/verify-surface-catalog.mjs` enforces the closure in both
+directions, rejects unknown options through the real entrypoints, and excludes
+arguments passed to child processes.
 
 ## Stable public command families
 

@@ -98,12 +98,83 @@ function effectFor(command, policies) {
   return family?.effect_class ?? "unclassified-internal";
 }
 
-function optionsFor(filePath) {
+function namedFunctionBody(text, functionName) {
+  const declaration = new RegExp(`(?:export\\s+)?function\\s+${functionName}\\s*\\([^)]*\\)\\s*\\{`, "m");
+  const match = declaration.exec(text);
+  if (!match) {
+    return "";
+  }
+  const start = match.index + match[0].length - 1;
+  let depth = 0;
+  let quote = "";
+  let lineComment = false;
+  let blockComment = false;
+  let escaped = false;
+  for (let index = start; index < text.length; index += 1) {
+    const current = text[index];
+    const next = text[index + 1] ?? "";
+    if (lineComment) {
+      if (current === "\n") {
+        lineComment = false;
+      }
+      continue;
+    }
+    if (blockComment) {
+      if (current === "*" && next === "/") {
+        blockComment = false;
+        index += 1;
+      }
+      continue;
+    }
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+      } else if (current === "\\") {
+        escaped = true;
+      } else if (current === quote) {
+        quote = "";
+      }
+      continue;
+    }
+    if (current === "/" && next === "/") {
+      lineComment = true;
+      index += 1;
+      continue;
+    }
+    if (current === "/" && next === "*") {
+      blockComment = true;
+      index += 1;
+      continue;
+    }
+    if (current === "\"" || current === "'" || current === "`") {
+      quote = current;
+      continue;
+    }
+    if (current === "{") {
+      depth += 1;
+    } else if (current === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return text.slice(start + 1, index);
+      }
+    }
+  }
+  throw new Error(`Unclosed ${functionName} function`);
+}
+
+export function parserOptionsFor(filePath) {
   if (!fs.existsSync(filePath)) {
     return [];
   }
   const text = fs.readFileSync(filePath, "utf8");
-  return [...new Set([...text.matchAll(/--[a-z][a-z0-9-]*/g)].map((match) => match[0]))].sort();
+  const parserBody = namedFunctionBody(text, "parseArgs");
+  if (!parserBody) {
+    return [];
+  }
+  return [...new Set(
+    [...parserBody.matchAll(/(["'])(-{1,2}[a-z][a-z0-9-]*)\1/g)]
+      .map((match) => match[2]),
+  )].sort();
 }
 
 function buildCommands(repoRoot) {
@@ -115,6 +186,14 @@ function buildCommands(repoRoot) {
     { command: "aidn bootstrap", implementation: "tools/bootstrap.mjs", visibility: "public" },
     { command: "aidn install", implementation: "tools/install.mjs", visibility: "public" },
     { command: "aidn build-release", implementation: "tools/build-release.mjs", visibility: "public" },
+    { command: "aidn help", implementation: "bin/aidn.mjs", visibility: "public", options: [] },
+    { command: "aidn version", implementation: "bin/aidn.mjs", visibility: "public", options: [] },
+    {
+      command: "aidn",
+      implementation: "bin/aidn.mjs",
+      visibility: "public",
+      options: ["--help", "-h", "--version", "-v"],
+    },
   ];
   const groups = [
     ["perf", "PERF_ALIASES"],
@@ -124,6 +203,18 @@ function buildCommands(repoRoot) {
   ];
   for (const [group, constantName] of groups) {
     const aliasByName = new Map(parseAliasBlock(binText, constantName).map((item) => [item.name, item]));
+    commands.push({
+      command: `aidn ${group}`,
+      implementation: "bin/aidn.mjs",
+      visibility: "public",
+      options: ["--help", "-h"],
+    });
+    commands.push({
+      command: `aidn ${group} help`,
+      implementation: "bin/aidn.mjs",
+      visibility: "public",
+      options: [],
+    });
     for (const name of aliasByName.keys()) {
       const alias = aliasByName.get(name);
       commands.push({
@@ -154,7 +245,8 @@ function buildCommands(repoRoot) {
       proofClass,
       proofTarget,
     }));
-    for (const option of optionsFor(path.join(repoRoot, item.implementation))) {
+    const options = item.options ?? parserOptionsFor(path.join(repoRoot, item.implementation));
+    for (const option of options) {
       entries.push(catalogEntry({
         id: `option:${item.command}:${option}`,
         kind: "option",

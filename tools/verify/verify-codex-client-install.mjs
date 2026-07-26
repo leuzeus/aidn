@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { discoverRepoSkills } from "./codex-discovery-lib.mjs";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
 const REQUIRED_SKILLS = [
@@ -47,8 +48,8 @@ function run(command, argv, options = {}) {
   return result;
 }
 
-function makeCodexStub(tempRoot) {
-  const binDir = path.join(tempRoot, "codex-stub");
+function makeInstallerPrerequisiteStub(tempRoot) {
+  const binDir = path.join(tempRoot, "installer-prerequisite-stub");
   fs.mkdirSync(binDir, { recursive: true });
   if (process.platform === "win32") {
     fs.writeFileSync(path.join(binDir, "codex.cmd"), [
@@ -65,13 +66,50 @@ function makeCodexStub(tempRoot) {
   return binDir;
 }
 
+function runHookCommand(command, { cwd, env, input }) {
+  const result = spawnSync(command, {
+    cwd,
+    env,
+    input,
+    encoding: "utf8",
+    timeout: 30000,
+    maxBuffer: 2 * 1024 * 1024,
+    shell: true,
+  });
+  if (result.status !== 0) {
+    throw new Error([
+      `hook command failed from ${cwd} with ${result.status}`,
+      command,
+      String(result.stdout ?? "").trim(),
+      String(result.stderr ?? "").trim(),
+    ].filter(Boolean).join("\n"));
+  }
+  return result;
+}
+
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
 }
 
-function main() {
+function parseArgs(argv) {
+  const args = { requireCodexDiscovery: false };
+  for (const token of argv) {
+    if (token === "--require-codex-discovery") {
+      args.requireCodexDiscovery = true;
+    } else if (token === "--help" || token === "-h") {
+      console.log("Usage: node tools/verify/verify-codex-client-install.mjs [--require-codex-discovery]");
+      process.exit(0);
+    } else {
+      throw new Error(`Unknown argument: ${token}`);
+    }
+  }
+  return args;
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
   const started = Date.now();
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-installed-client-"));
   try {
@@ -89,6 +127,7 @@ function main() {
       name: "aidn-isolated-client-proof",
       private: true,
     }, null, 2)}\n`, "utf8");
+    run("git", ["init", "--quiet"], { cwd: clientRoot });
     run(npmCommand, [...npmPrefix, "install", "--ignore-scripts", "--no-audit", "--no-fund", tarball], {
       cwd: clientRoot,
     });
@@ -96,11 +135,11 @@ function main() {
     const installedRoot = path.join(clientRoot, "node_modules", "aidn-workflow");
     const installedBin = path.join(installedRoot, "bin", "aidn.mjs");
     assert(fs.existsSync(installedBin), "packed AIDN binary was not installed");
-    const codexStub = makeCodexStub(tempRoot);
+    const installerPrerequisiteStub = makeInstallerPrerequisiteStub(tempRoot);
     const separator = process.platform === "win32" ? ";" : ":";
     const env = {
       ...process.env,
-      PATH: `${codexStub}${separator}${process.env.PATH ?? ""}`,
+      PATH: `${installerPrerequisiteStub}${separator}${process.env.PATH ?? ""}`,
     };
     run(process.execPath, [
       installedBin,
@@ -135,17 +174,56 @@ function main() {
     assert(fs.existsSync(hookScript), "client hook implementation missing");
     const hookContract = JSON.parse(fs.readFileSync(hooksPath, "utf8"));
     assert(Array.isArray(hookContract?.hooks?.SessionStart), "SessionStart hook is not declared");
-    const hookResult = run(process.execPath, [hookScript], {
-      cwd: clientRoot,
-      env,
-      input: `${JSON.stringify({ hook_event_name: "SessionStart", cwd: clientRoot })}\n`,
-    });
-    const hookPayload = JSON.parse(hookResult.stdout);
-    assert(
-      hookPayload?.hookSpecificOutput?.hookEventName === "SessionStart",
-      "SessionStart hook output contract mismatch",
-    );
+    const hookDescriptor = hookContract.hooks.SessionStart[0]?.hooks?.[0];
+    const exactHookCommand = process.platform === "win32"
+      ? hookDescriptor?.commandWindows
+      : hookDescriptor?.command;
+    assert(typeof exactHookCommand === "string" && exactHookCommand.trim(), "SessionStart hook command missing");
+    const invocationRoots = [
+      clientRoot,
+      path.join(clientRoot, "src"),
+      path.join(clientRoot, "src", "nested", "deeper"),
+    ];
+    for (const invocationRoot of invocationRoots) {
+      fs.mkdirSync(invocationRoot, { recursive: true });
+      const hookResult = runHookCommand(exactHookCommand, {
+        cwd: invocationRoot,
+        env,
+        input: `${JSON.stringify({ hook_event_name: "SessionStart", cwd: invocationRoot })}\n`,
+      });
+      const hookPayload = JSON.parse(hookResult.stdout);
+      assert(
+        hookPayload?.hookSpecificOutput?.hookEventName === "SessionStart",
+        `SessionStart hook output contract mismatch from ${invocationRoot}`,
+      );
+      assert(
+        hookPayload?.aidnDiagnostics?.projectRoot === path.resolve(clientRoot),
+        `SessionStart hook resolved the wrong project root from ${invocationRoot}`,
+      );
+      assert(
+        hookPayload?.aidnDiagnostics?.invocationCwd === path.resolve(invocationRoot),
+        `SessionStart hook reported the wrong invocation cwd from ${invocationRoot}`,
+      );
+      assert(
+        hookPayload?.aidnDiagnostics?.missing?.length === 0,
+        `SessionStart hook reported missing installed assets from ${invocationRoot}`,
+      );
+    }
     assert(fs.existsSync(path.join(clientRoot, "AGENTS.md")), "client policy layer missing");
+    const codexDiscovery = await discoverRepoSkills({
+      cwd: clientRoot,
+      codexHome: path.join(tempRoot, "isolated-codex-home"),
+    });
+    if (args.requireCodexDiscovery && codexDiscovery.status === "SKIP") {
+      throw new Error(`real Codex discovery is required: ${codexDiscovery.reason}`);
+    }
+    if (codexDiscovery.status !== "SKIP") {
+      assert(codexDiscovery.status === "PASS", `Codex discovery errors: ${JSON.stringify(codexDiscovery.errors)}`);
+      const discoveredNames = new Set(codexDiscovery.skills.map((skill) => skill.name));
+      for (const skill of REQUIRED_SKILLS) {
+        assert(discoveredNames.has(skill), `Codex did not discover installed repo skill: ${skill}`);
+      }
+    }
 
     console.log(JSON.stringify({
       ok: true,
@@ -154,9 +232,20 @@ function main() {
       package_source: "npm-pack-tarball",
       installed_package_root: installedRoot,
       client_root: clientRoot,
-      skills_discovered: REQUIRED_SKILLS.length,
-      agents_discovered: REQUIRED_AGENTS.length,
-      hooks_discovered: 1,
+      installer_prerequisite: "isolated-stub-only",
+      skills_present: REQUIRED_SKILLS.length,
+      agents_present: REQUIRED_AGENTS.length,
+      hooks_present: 1,
+      exact_hook_command: exactHookCommand,
+      hook_invocation_roots: invocationRoots.length,
+      codex_discovery: codexDiscovery.status === "PASS"
+        ? {
+          status: "PASS",
+          proof: "Codex app-server skills/list",
+          isolated_codex_home: true,
+          repo_skills_discovered: codexDiscovery.skills.length,
+        }
+        : codexDiscovery,
       duration_ms: Date.now() - started,
     }, null, 2));
   } finally {
@@ -165,7 +254,7 @@ function main() {
 }
 
 try {
-  main();
+  await main();
 } catch (error) {
   console.error(`FAIL: ${error.message}`);
   process.exitCode = 1;

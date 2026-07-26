@@ -2,7 +2,7 @@ name: Release
 
 on:
   pull_request:
-    branches: [main]
+    branches: [dev, main]
   push:
     branches: [main]
 
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   verify:
-    name: Verify Release PR
+    name: Verify Release Without Publishing
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     steps:

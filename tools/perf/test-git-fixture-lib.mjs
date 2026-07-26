@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { readSourceBranch } from "../../src/lib/workflow/session-context-lib.mjs";
 
@@ -11,8 +12,8 @@ function runGit(target, args) {
 }
 
 export function copyFixtureToTmp(source, tmpRoot, prefix) {
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
-  const destination = path.resolve(tmpRoot, `${prefix}-${stamp}`);
+  const stamp = new Date().toISOString().replace(/[-:.]/g, "");
+  const destination = path.resolve(tmpRoot, `${prefix}-${stamp}-${randomUUID().slice(0, 8)}`);
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.cpSync(source, destination, { recursive: true });
   return destination;

@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { findSensitivityMatches } from "../verify/sensitivity-policy.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function assert(condition, message) {
@@ -121,30 +122,30 @@ function runNpmPackDryRun(repoRoot) {
 
 function inspectPackageLeakGuard(repoRoot) {
   const files = runNpmPackDryRun(repoRoot);
-  const guardedTerms = [
-    ["go", "wire"].join(""),
-    ["G:", "\\", "projets", "\\"].join(""),
+  const packageOnlyTerms = [
     ["pilot", "-main"].join(""),
     ["pilot", "-linked"].join(""),
-    ["go", "wire", "-validation"].join(""),
   ];
-  const sensitivePatterns = [
-    ...guardedTerms.map((term) => new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")),
-  ];
+  const packageOnlyPatterns = packageOnlyTerms.map(
+    (term) => new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+  );
+  const hasSensitiveContent = (value) =>
+    findSensitivityMatches(value).length > 0 ||
+    packageOnlyPatterns.some((pattern) => pattern.test(String(value ?? "")));
   const violations = [];
   for (const file of files) {
     const packagePath = String(file?.path ?? "");
     if (!packagePath) {
       continue;
     }
-    if (sensitivePatterns.some((pattern) => pattern.test(packagePath))) {
+    if (hasSensitiveContent(packagePath)) {
       violations.push(`path:${packagePath}`);
       continue;
     }
     const sourcePath = path.resolve(repoRoot, packagePath);
     try {
       const text = fs.readFileSync(sourcePath, "utf8");
-      if (sensitivePatterns.some((pattern) => pattern.test(text))) {
+      if (hasSensitiveContent(text)) {
         violations.push(`content:${packagePath}`);
       }
     } catch {

@@ -6,8 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .codex/hooks/aidn-session-start.mjs",
-            "commandWindows": "node .codex/hooks/aidn-session-start.mjs",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/aidn-session-start.mjs\"",
+            "commandWindows": "powershell.exe -NoProfile -NonInteractive -Command \"$root = git rev-parse --show-toplevel; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; node (Join-Path $root '.codex/hooks/aidn-session-start.mjs')\"",
             "timeout": 10
           }
         ]

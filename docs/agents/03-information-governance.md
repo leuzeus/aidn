@@ -17,6 +17,11 @@ The source of truth, metadata, lifecycle status, and scope of each concept must 
 - projections, fixtures, caches, and exports are never canonical by implication
 - proof distinguishes package source, scaffold, fixture corpus, installed client, and external pilot
 - PostgreSQL remains optional and shared synchronization remains opt-in
+- owner, retention, migration, replacement, and evidence targets are
+  concept-specific policy data; generic fallback text is not acceptable evidence
+- governance diagnostics enforce bidirectional closure: every source-of-truth and
+  metadata policy is exposed by a governed concept, and every public JSON/effect
+  surface links back to governed concepts
 
 ## Modes
 
@@ -40,6 +45,7 @@ Do not introduce a new information concept until you have checked:
 |---|---|---|
 | project | governed | Project identity and policy surface. |
 | workspace | governed | Workspace identity and worktree identity are explicit. |
+| runtime_project_context | governed | Durable runtime scope identity is distinct from legacy absolute-path evidence. |
 | session | governed | Session state has a lifecycle and source of truth. |
 | cycle | governed | Use the cycle state and cycle status policies. |
 | artifact | governed | Artifact inventory and scope are governed. |

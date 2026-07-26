@@ -1,4 +1,5 @@
 import { listGovernanceCoverageExceptions } from "../governance/concept-coverage.mjs";
+import { getSourceOfTruthPolicy } from "../source-of-truth/source-of-truth-policy.mjs";
 
 const METADATA_POLICY_VERSION = "metadata-policy-v1";
 
@@ -20,11 +21,20 @@ function policy({
   concept,
   label,
   required,
+  sourceOfTruthConcept,
+  evidenceTargets,
   recommended = [],
   legacyTolerated = [],
   lifecycle = "draft -> active -> verified -> archived",
   notes = "",
 }) {
+  const sourcePolicy = getSourceOfTruthPolicy(sourceOfTruthConcept);
+  if (!sourcePolicy) {
+    throw new Error(`Missing source-of-truth policy for metadata concept ${concept}: ${sourceOfTruthConcept}`);
+  }
+  if (!Array.isArray(evidenceTargets) || evidenceTargets.length === 0) {
+    throw new Error(`Missing concept-specific evidence targets for metadata concept ${concept}`);
+  }
   return freezeDeep({
     concept: normalizeKey(concept),
     label,
@@ -33,6 +43,13 @@ function policy({
     recommended_fields: [...recommended].map(normalizeKey).filter(Boolean),
     legacy_tolerated_missing_fields: [...legacyTolerated].map(normalizeKey).filter(Boolean),
     lifecycle,
+    source_of_truth_concept: sourcePolicy.concept,
+    owner: sourcePolicy.owner,
+    scope: sourcePolicy.scope,
+    retention: sourcePolicy.retention,
+    migration: sourcePolicy.migration,
+    replacement: sourcePolicy.replacement,
+    evidence_targets: [...evidenceTargets],
     notes,
   });
 }
@@ -56,9 +73,20 @@ const GOVERNED_CONTENT_FIELDS = Object.freeze([
 
 const METADATA_POLICIES = freezeDeep([
   policy({
+    concept: "workflow_rules",
+    label: "Workflow rules",
+    required: ["contract_version", "owner", "source_of_truth", "updated_at", "lifecycle_status"],
+    sourceOfTruthConcept: "workflow_rules",
+    evidenceTargets: ["docs/agents/01-architecture-executable.md"],
+    recommended: ["steward", "retention_policy"],
+    lifecycle: "authored -> active -> superseded -> archived",
+  }),
+  policy({
     concept: "project",
     label: "Project",
     required: ["project_id", "owner", "source_of_truth", "updated_at", "lifecycle_status"],
+    sourceOfTruthConcept: "project_policy",
+    evidenceTargets: ["src/lib/config/workflow-adapter-config-lib.mjs"],
     recommended: ["steward", "privacy_classification", "retention_policy"],
     lifecycle: "draft -> active -> archived",
   }),
@@ -66,6 +94,8 @@ const METADATA_POLICIES = freezeDeep([
     concept: "workspace",
     label: "Workspace",
     required: ["workspace_id", "worktree_id", "source_of_truth", "updated_at", "lifecycle_status"],
+    sourceOfTruthConcept: "workspace_identity",
+    evidenceTargets: ["src/application/runtime/workspace-resolution-service.mjs"],
     recommended: ["owner", "shared_runtime_mode", "privacy_classification"],
     lifecycle: "discovered -> active -> archived",
   }),
@@ -73,6 +103,8 @@ const METADATA_POLICIES = freezeDeep([
     concept: "runtime_project_context",
     label: "Runtime project context",
     required: ["project_id", "workspace_id", "worktree_id", "runtime_scope_id", "source_of_truth", "updated_at", "lifecycle_status"],
+    sourceOfTruthConcept: "runtime_project_context",
+    evidenceTargets: ["src/application/runtime/runtime-project-context-service.mjs"],
     recommended: ["identity_source", "legacy_scope_key", "privacy_classification"],
     lifecycle: "resolved -> active -> migrated -> archived",
   }),
@@ -80,6 +112,8 @@ const METADATA_POLICIES = freezeDeep([
     concept: "session",
     label: "Session",
     required: ["session_id", "contract_version", "owner", "state", "updated_at", "source_of_truth", "lifecycle_status"],
+    sourceOfTruthConcept: "session_state",
+    evidenceTargets: ["tools/perf/start-session-hook.mjs"],
     recommended: ["steward", "privacy_classification", "retention_policy"],
     legacyTolerated: ["owner", "source_of_truth", "lifecycle_status", "privacy_classification", "retention_policy"],
     lifecycle: "draft -> active -> closing -> closed -> archived",
@@ -88,6 +122,8 @@ const METADATA_POLICIES = freezeDeep([
     concept: "cycle_status",
     label: "Cycle status",
     required: ["cycle_id", "contract_version", "owner", "state", "branch_name", "dor_state", "updated_at", "source_of_truth", "lifecycle_status"],
+    sourceOfTruthConcept: "cycle_state",
+    evidenceTargets: ["tools/perf/cycle-create-hook.mjs"],
     recommended: ["steward", "privacy_classification", "retention_policy"],
     legacyTolerated: ["cycle_id", "owner", "updated_at", "source_of_truth", "lifecycle_status", "privacy_classification", "retention_policy"],
     lifecycle: "open -> implementing -> verifying -> done -> promoted|archived",
@@ -96,6 +132,8 @@ const METADATA_POLICIES = freezeDeep([
     concept: "artifact",
     label: "Artifact",
     required: [...COMMON_OPERATIONAL_FIELDS, "sha256", "scope"],
+    sourceOfTruthConcept: "artifact_inventory",
+    evidenceTargets: ["src/adapters/runtime/artifact-store.mjs"],
     recommended: [...GOVERNED_CONTENT_FIELDS, "confidence"],
     legacyTolerated: ["owner", "steward", "privacy_classification", "retention_policy"],
     lifecycle: "draft -> active -> verified -> promoted|archived -> superseded",
@@ -104,6 +142,8 @@ const METADATA_POLICIES = freezeDeep([
     concept: "current_state",
     label: "Current state digest",
     required: ["contract_version", "updated_at", "runtime_state_mode", "active_session", "active_cycle", "source_of_truth", "source_mode", "lifecycle_status"],
+    sourceOfTruthConcept: "runtime_digests",
+    evidenceTargets: ["tools/runtime/state-reanchor.mjs"],
     recommended: ["owner", "steward", "privacy_classification", "retention_policy"],
     legacyTolerated: ["source_of_truth", "source_mode", "lifecycle_status", "owner", "steward", "privacy_classification", "retention_policy"],
     lifecycle: "refreshed -> stale -> superseded",
@@ -112,6 +152,8 @@ const METADATA_POLICIES = freezeDeep([
     concept: "runtime_state",
     label: "Runtime state digest",
     required: ["contract_version", "updated_at", "runtime_state_mode", "repair_layer_status", "source_of_truth", "source_mode", "lifecycle_status"],
+    sourceOfTruthConcept: "runtime_digests",
+    evidenceTargets: ["tools/runtime/project-runtime-state.mjs"],
     recommended: ["owner", "steward", "privacy_classification", "retention_policy"],
     legacyTolerated: ["source_of_truth", "source_mode", "lifecycle_status", "owner", "steward", "privacy_classification", "retention_policy"],
     lifecycle: "refreshed -> stale -> superseded",
@@ -120,6 +162,8 @@ const METADATA_POLICIES = freezeDeep([
     concept: "handoff_packet",
     label: "Handoff packet",
     required: ["contract_version", "updated_at", "handoff_status", "active_session", "active_cycle", "source_of_truth", "source_mode", "lifecycle_status"],
+    sourceOfTruthConcept: "runtime_digests",
+    evidenceTargets: ["tools/runtime/project-handoff-packet.mjs"],
     recommended: ["owner", "steward", "privacy_classification", "retention_policy"],
     legacyTolerated: ["source_of_truth", "source_mode", "lifecycle_status", "owner", "steward", "privacy_classification", "retention_policy"],
     lifecycle: "draft -> ready -> consumed -> archived",
@@ -128,6 +172,8 @@ const METADATA_POLICIES = freezeDeep([
     concept: "artifact_contract",
     label: "Artifact contract",
     required: ["artifact_type", "contract_version", "required_fields", "owner", "source_of_truth", "lifecycle_status"],
+    sourceOfTruthConcept: "cli_output_contracts",
+    evidenceTargets: ["src/core/contracts/cli-output"],
     recommended: ["steward", "deprecation_policy"],
     lifecycle: "proposed -> active -> deprecated -> retired",
   }),
@@ -135,6 +181,8 @@ const METADATA_POLICIES = freezeDeep([
     concept: "decision",
     label: "Decision",
     required: ["decision_id", "type", "owner", "decided_at", "source_of_truth", "lifecycle_status"],
+    sourceOfTruthConcept: "decision",
+    evidenceTargets: ["tools/runtime/coordinator-record-arbitration.mjs"],
     recommended: ["steward", "linked_session", "linked_cycle", "traceability_links"],
     legacyTolerated: ["owner", "source_of_truth", "lifecycle_status"],
     lifecycle: "proposed -> accepted|rejected -> superseded",
@@ -143,6 +191,8 @@ const METADATA_POLICIES = freezeDeep([
     concept: "incident",
     label: "Incident",
     required: ["incident_id", "severity", "owner", "status", "created_at", "updated_at", "source_of_truth", "lifecycle_status"],
+    sourceOfTruthConcept: "incident",
+    evidenceTargets: ["scaffold/docs_audit/incidents/TEMPLATE_INC_TMP.md"],
     recommended: ["steward", "resolution", "privacy_classification", "retention_policy"],
     legacyTolerated: ["source_of_truth", "lifecycle_status", "privacy_classification", "retention_policy"],
     lifecycle: "opened -> triaged -> mitigated -> closed -> archived",
@@ -151,6 +201,8 @@ const METADATA_POLICIES = freezeDeep([
     concept: "repair_finding",
     label: "Repair finding",
     required: ["finding_id", "finding_type", "severity", "status", "source_of_truth", "updated_at", "lifecycle_status"],
+    sourceOfTruthConcept: "repair_findings",
+    evidenceTargets: ["src/application/runtime/repair-layer-use-case.mjs"],
     recommended: ["owner", "steward", "repair_action", "traceability_links"],
     lifecycle: "open -> triaged -> resolved|waived -> archived",
   }),
@@ -158,6 +210,8 @@ const METADATA_POLICIES = freezeDeep([
     concept: "coordination_record",
     label: "Coordination record",
     required: ["record_id", "agent_id", "action", "status", "created_at", "source_of_truth", "lifecycle_status"],
+    sourceOfTruthConcept: "coordination_records",
+    evidenceTargets: ["src/core/ports/shared-coordination-store-port.mjs"],
     recommended: ["session_id", "cycle_id", "result_ref", "privacy_classification", "retention_policy"],
     lifecycle: "created -> processed -> archived",
   }),
@@ -165,6 +219,8 @@ const METADATA_POLICIES = freezeDeep([
     concept: "coordination_summary",
     label: "Coordination summary",
     required: ["contract_version", "updated_at", "history_status", "source_of_truth", "source_mode", "lifecycle_status"],
+    sourceOfTruthConcept: "coordination_summary",
+    evidenceTargets: ["tools/runtime/project-coordination-summary.mjs"],
     recommended: ["owner", "steward", "privacy_classification", "retention_policy"],
     legacyTolerated: ["source_of_truth", "source_mode", "lifecycle_status", "owner", "steward", "privacy_classification", "retention_policy"],
     lifecycle: "refreshed -> stale -> superseded",
@@ -173,6 +229,8 @@ const METADATA_POLICIES = freezeDeep([
     concept: "coordination_log",
     label: "Coordination log",
     required: ["contract_version", "updated_at", "source_of_truth", "source_mode", "lifecycle_status"],
+    sourceOfTruthConcept: "coordination_log",
+    evidenceTargets: ["scaffold/docs_audit/COORDINATION-LOG.md"],
     recommended: ["owner", "steward", "privacy_classification", "retention_policy"],
     legacyTolerated: ["source_of_truth", "source_mode", "lifecycle_status", "owner", "steward", "privacy_classification", "retention_policy"],
     lifecycle: "refreshed -> stale -> superseded",
@@ -181,9 +239,47 @@ const METADATA_POLICIES = freezeDeep([
     concept: "user_arbitration",
     label: "User arbitration log",
     required: ["contract_version", "updated_at", "source_of_truth", "source_mode", "lifecycle_status"],
+    sourceOfTruthConcept: "user_arbitration",
+    evidenceTargets: ["scaffold/docs_audit/USER-ARBITRATION.md"],
     recommended: ["owner", "steward", "privacy_classification", "retention_policy"],
     legacyTolerated: ["source_of_truth", "source_mode", "lifecycle_status", "owner", "steward", "privacy_classification", "retention_policy"],
     lifecycle: "refreshed -> stale -> superseded",
+  }),
+  policy({
+    concept: "runtime_defaults",
+    label: "Runtime defaults",
+    required: ["contract_version", "owner", "source_of_truth", "updated_at", "lifecycle_status"],
+    sourceOfTruthConcept: "runtime_defaults",
+    evidenceTargets: ["src/lib/config/aidn-config-lib.mjs"],
+    recommended: ["steward", "retention_policy"],
+    lifecycle: "initialized -> active -> revised -> retired",
+  }),
+  policy({
+    concept: "baseline",
+    label: "Baseline",
+    required: ["contract_version", "owner", "source_of_truth", "updated_at", "lifecycle_status"],
+    sourceOfTruthConcept: "baseline",
+    evidenceTargets: ["tools/perf/promote-baseline-hook.mjs"],
+    recommended: ["steward", "retention_policy"],
+    lifecycle: "candidate -> current -> superseded -> archived",
+  }),
+  policy({
+    concept: "snapshot",
+    label: "Snapshot",
+    required: ["contract_version", "owner", "source_of_truth", "updated_at", "lifecycle_status"],
+    sourceOfTruthConcept: "snapshot",
+    evidenceTargets: ["tools/perf/reload-check.mjs"],
+    recommended: ["steward", "retention_policy"],
+    lifecycle: "captured -> current -> stale -> archived",
+  }),
+  policy({
+    concept: "agent_roster",
+    label: "Agent roster",
+    required: ["contract_version", "owner", "source_of_truth", "updated_at", "lifecycle_status"],
+    sourceOfTruthConcept: "agent_roster",
+    evidenceTargets: ["tools/runtime/verify-agent-roster.mjs"],
+    recommended: ["steward", "retention_policy"],
+    lifecycle: "declared -> verified -> unavailable|retired",
   }),
 ]);
 
@@ -193,6 +289,7 @@ export function listMetadataPolicies() {
     required_fields: [...item.required_fields],
     recommended_fields: [...item.recommended_fields],
     legacy_tolerated_missing_fields: [...item.legacy_tolerated_missing_fields],
+    evidence_targets: [...item.evidence_targets],
   }));
 }
 
@@ -207,6 +304,7 @@ export function getMetadataPolicy(concept) {
     required_fields: [...item.required_fields],
     recommended_fields: [...item.recommended_fields],
     legacy_tolerated_missing_fields: [...item.legacy_tolerated_missing_fields],
+    evidence_targets: [...item.evidence_targets],
   };
 }
 
@@ -288,6 +386,13 @@ export function evaluateMetadataPolicy(concept, subject = {}) {
     missing_recommended_fields: missingRecommendedFields,
     surfaced_fields: surfacedFields,
     lifecycle: policy.lifecycle,
+    source_of_truth_concept: policy.source_of_truth_concept,
+    owner: policy.owner,
+    scope: policy.scope,
+    retention: policy.retention,
+    migration: policy.migration,
+    replacement: policy.replacement,
+    evidence_targets: [...policy.evidence_targets],
     notes: policy.notes,
   };
 }
@@ -303,7 +408,18 @@ export function validateMetadataPolicies() {
       issues.push(`duplicate concept: ${item.concept}`);
     }
     seen.add(item.concept);
-    for (const fieldName of ["policy_version", "required_fields", "lifecycle"]) {
+    for (const fieldName of [
+      "policy_version",
+      "required_fields",
+      "lifecycle",
+      "source_of_truth_concept",
+      "owner",
+      "scope",
+      "retention",
+      "migration",
+      "replacement",
+      "evidence_targets",
+    ]) {
       if (!item[fieldName] || (Array.isArray(item[fieldName]) && item[fieldName].length === 0)) {
         issues.push(`${item.concept}: missing ${fieldName}`);
       }

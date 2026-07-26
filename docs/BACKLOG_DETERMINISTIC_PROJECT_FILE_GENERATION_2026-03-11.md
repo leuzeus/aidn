@@ -2,7 +2,7 @@
 
 ## Goal
 
-Track concrete implementation work for deterministic project file generation, adapter config persistence, and no-loss migration of existing repositories such as `gowire`.
+Track concrete implementation work for deterministic project file generation, adapter config persistence, and no-loss migration of existing repositories such as `external-pilot`.
 
 Reference plan:
 
@@ -251,7 +251,7 @@ Files:
 
 Why:
 
-- current `gowire` drift in `index.md` is stale managed content, not valuable project-owned data
+- current `external-pilot` drift in `index.md` is stale managed content, not valuable project-owned data
 
 Done when:
 
@@ -382,7 +382,7 @@ Done when:
   - regenerate managed files
   - emit a migration report
 
-### DPG-18 - Implement `gowire` Extraction Mapping
+### DPG-18 - Implement `external-pilot` Extraction Mapping
 
 Status: completed
 Priority: high
@@ -394,11 +394,11 @@ Files:
 
 Why:
 
-- `gowire` is the primary real-world migration target and contains the patterns this remediation is meant to solve
+- `external-pilot` is the primary real-world migration target and contains the patterns this remediation is meant to solve
 
 Done when:
 
-- stable `gowire` adapter fields are extracted from current docs
+- stable `external-pilot` adapter fields are extracted from current docs
 - extracted fields cover:
   - project name
   - source branch
@@ -407,16 +407,16 @@ Done when:
   - CI policy
   - continuity/snapshot policy where applicable
 
-### DPG-19 - Migrate `gowire` Without Data Loss
+### DPG-19 - Migrate `external-pilot` Without Data Loss
 
 Status: completed
 Priority: high
 
 Files:
 
-- `G:/projets/gowire/.aidn/project/workflow.adapter.json`
-- generated workflow docs in `gowire`
-- preserved data files in `gowire`
+- `<external-pilot-root>/.aidn/project/workflow.adapter.json`
+- generated workflow docs in `external-pilot`
+- preserved data files in `external-pilot`
 
 Why:
 
@@ -424,7 +424,7 @@ Why:
 
 Done when:
 
-- `gowire` receives adapter config
+- `external-pilot` receives adapter config
 - generated files are regenerated deterministically
 - `baseline/current.md`, `baseline/history.md`, `parking-lot.md`, and snapshot survive unchanged unless explicit migration logic says otherwise
 
@@ -459,7 +459,7 @@ Priority: high
 Files:
 
 - install fixture tests
-- `gowire`-like fixtures
+- `external-pilot`-like fixtures
 
 Why:
 

@@ -8,6 +8,16 @@
 - The separately distributed `aidn-codex-plugin` is not embedded in this repository or implied by an AIDN pack install.
 - External pilot evidence is reported separately and never replaced by scaffold or fixture checks.
 
+The Codex proof reports these levels separately:
+
+- `*_present` means a tarball-installed client contains the expected files.
+- the exact command from `.codex/hooks.json` must run from the project root and nested directories.
+- `codex_discovery.status=PASS` means a real Codex app-server answered `skills/list`
+  from an isolated `CODEX_HOME` and discovered the installed `.agents/skills/*`
+  as repo-scoped skills.
+- `SKIP` is reported when a real Codex executable is unavailable; it is never
+  relabelled as discovery and never inferred from the installer prerequisite stub.
+
 ## Purpose
 
 This note documents a recurring integration issue observed with conservative Codex desktop/app or online instruction stacks.

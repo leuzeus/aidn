@@ -19,8 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22.13"
-      - run: npm run perf:verify-branch-policy
-      - run: npm run perf:verify-gate-catalog
+      - run: npm run verify:cleanliness
 
   contracts:
     name: Verify Contracts And Effects

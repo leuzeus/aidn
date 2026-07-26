@@ -124,9 +124,10 @@ When a change affects release/versioning, install examples, or build-release pro
 - `npm run perf:verify-release-workflow-policy`
 - `npm run perf:verify-release-provenance`
 - `npm run perf:verify-pack-topology`
+- `npm run perf:verify-tracked-sensitivity`
 
 The release version verifier checks that `VERSION`, `package.json`, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The reproducibility verifier builds the exact clean tracked commit twice in isolated output roots, compares bytes, checks the npm package topology, and rejects sensitive inputs. `perf:verify-release-artifacts` remains the post-build check used by the main publication job.
-The pack topology verifier checks the package tarball surface, the published docs allowlist, and the leak guard for guarded terms in package paths and contents.
+The pack topology verifier checks the package tarball surface, the published docs allowlist, and the leak guard for guarded terms in package paths and contents. The tracked-sensitivity verifier separately scans the complete Git-tracked tree, including historical planning documents and fixtures. It uses exact negative probes so weakening or bypassing the detector fails the gate. Current tracked content is neutralized, but older Git objects can retain prior pilot names and local paths; history cleanup may therefore still be required before wider archival or publication.
 
 Stable family wrappers are cataloged in `package/catalogs/gates.v1.json`: `verify:contracts`, `verify:governance`, `verify:runtime`, `verify:codex`, `verify:release`, and `verify:all`. Run `verify:all` only at a clean commit boundary so the cleanliness family is meaningful. Report `SKIP` separately from `PASS`.
 

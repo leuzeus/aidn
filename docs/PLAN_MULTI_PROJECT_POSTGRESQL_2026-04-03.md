@@ -21,9 +21,9 @@ Execution snapshot:
 - identity, locator v2, PostgreSQL schema v2, and project-scoped services are implemented
 - admin/status/doctor/backup/restore surfaces are project-aware
 - dedicated fixtures now cover multi-project isolation and nested-project monorepo resolution
-- a real pilot on dedicated `G:\projets\gowire` worktrees validates logical project isolation on one shared backend
-- a second real pilot on nested roots inside `G:\projets\gowire-pilot-main` validates project scoping against the same `git_common_dir` and the same `worktree_id`
-- execution evidence is summarized in `docs/MULTI_PROJECT_POSTGRESQL_GOWIRE_PILOT_2026-04-04.md`
+- a real pilot on dedicated `<external-pilot-root>` worktrees validates logical project isolation on one shared backend
+- a second real pilot on nested roots inside `<pilot-worktree-a>` validates project scoping against the same `git_common_dir` and the same `worktree_id`
+- execution evidence is summarized in `docs/MULTI_PROJECT_POSTGRESQL_EXTERNAL_PILOT_2026-04-04.md`
 
 ## Problem Statement
 
