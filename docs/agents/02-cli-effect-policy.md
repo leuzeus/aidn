@@ -19,6 +19,9 @@ The classification keeps automation from confusing output format with write perm
 - `--json` controls output format only and must never imply mutation.
 - Read-only and preview commands must not modify the checkout.
 - Local writes require explicit intent such as `--write`.
+- `runtime db-migrate` and `runtime persistence-migrate` are preview-only by
+  default; schema application requires `--write`, while `--json` remains
+  formatting-only.
 - Shared runtime synchronization requires explicit intent such as `--sync-relay`.
 - Every public stable command must have an effect class.
 - Any mismatch between CLI behavior, docs, and effect-policy is architectural drift.

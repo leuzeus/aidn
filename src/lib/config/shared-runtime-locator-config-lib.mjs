@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { writeFileAtomicSync } from "../fs/atomic-write-lib.mjs";
 
 export const SHARED_RUNTIME_LOCATOR_VERSION = 2;
 const SUPPORTED_SHARED_RUNTIME_LOCATOR_VERSIONS = new Set([1, 2]);
@@ -158,11 +159,13 @@ export function readSharedRuntimeLocatorSafe(targetRoot) {
   }
 }
 
-export function writeSharedRuntimeLocator(targetRoot, data) {
+export function writeSharedRuntimeLocator(targetRoot, data, options = {}) {
   const filePath = resolveSharedRuntimeLocatorPath(targetRoot);
   const normalized = normalizeSharedRuntimeLocator(data);
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
+  writeFileAtomicSync(filePath, `${JSON.stringify(normalized, null, 2)}\n`, {
+    encoding: "utf8",
+    ...(options.fsImpl ? { fsImpl: options.fsImpl } : {}),
+  });
   return filePath;
 }
 

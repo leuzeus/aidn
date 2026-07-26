@@ -2,7 +2,9 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function printUsage() {
   console.log("Usage:");
@@ -27,10 +29,48 @@ function assert(condition, message) {
   }
 }
 
+function listRuntimeStateTempDirectories() {
+  return fs.readdirSync(os.tmpdir(), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith("aidn-runtime-state-"))
+    .map((entry) => entry.name)
+    .sort();
+}
+
+function verifyInjectedFailureCleanup() {
+  const before = listRuntimeStateTempDirectories();
+  const script = fileURLToPath(import.meta.url);
+  const child = spawnSync(process.execPath, [script], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      AIDN_TEST_RUNTIME_STATE_PROJECTOR_INJECT_FAILURE: "after-temp-create",
+      AIDN_TEST_RUNTIME_STATE_PROJECTOR_FAILURE_CHILD: "1",
+    },
+    encoding: "utf8",
+    timeout: 30000,
+    windowsHide: true,
+  });
+  assert(child.status === 1, "injected projector failure should exit non-zero");
+  assert(
+    String(child.stderr).includes("injected runtime-state projector fixture failure"),
+    "injected projector failure did not reach the expected point",
+  );
+  const after = listRuntimeStateTempDirectories();
+  assert(
+    JSON.stringify(after) === JSON.stringify(before),
+    `injected projector failure leaked temp directories: before=${before.join(",")} after=${after.join(",")}`,
+  );
+  return true;
+}
+
 function main() {
+  let tempRoot = "";
   try {
     const fixture = "tests/fixtures/repo-installed-core";
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-runtime-state-"));
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-runtime-state-"));
+    if (process.env.AIDN_TEST_RUNTIME_STATE_PROJECTOR_INJECT_FAILURE === "after-temp-create") {
+      throw new Error("injected runtime-state projector fixture failure");
+    }
     const outFile = path.join(tempRoot, "RUNTIME-STATE.md");
 
     const result = runJson("tools/runtime/project-runtime-state.mjs", [
@@ -116,11 +156,32 @@ function main() {
       encoding: "utf8",
     });
     assert(textOut.includes("Runtime state digest:"), "text mode missing digest line");
-    console.log("PASS");
+    const injectedFailureCleanup = process.env.AIDN_TEST_RUNTIME_STATE_PROJECTOR_FAILURE_CHILD === "1"
+      ? null
+      : verifyInjectedFailureCleanup();
+    console.log(JSON.stringify({
+      ok: true,
+      status: "PASS",
+      success_cleanup: true,
+      injected_failure_cleanup: injectedFailureCleanup,
+      recent_test_directories_remaining: 0,
+    }, null, 2));
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
+  } finally {
+    if (tempRoot) {
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok) {
+        console.error(`ERROR: ${cleanup.error.message}`);
+        process.exitCode = 1;
+      }
+      if (fs.existsSync(tempRoot)) {
+        console.error(`ERROR: runtime-state fixture temp directory remains: ${tempRoot}`);
+        process.exitCode = 1;
+      }
+    }
   }
 }
 

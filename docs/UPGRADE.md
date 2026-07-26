@@ -41,7 +41,7 @@ Recent workflow resilience updates also add:
    - `node tools/install.mjs --target tests/fixtures/repo-installed-core --pack core --verify`
 4. Re-run current verification coverage:
    - `npm run perf:verify-context-resilience`
-   - `npm run perf:verify-project-config-fixtures`
+   - `npm run perf:verify-project-config`
    - `npm run perf:verify-shared-coordination-runtime-cli`
    - `npm run perf:verify-runtime-backend-adoption`
 

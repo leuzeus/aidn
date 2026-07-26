@@ -43,9 +43,9 @@ Current available commands include:
 The current `package.json` does not define all requested wrapper names as literal scripts.
 
 - `npm test` is not defined today
-- `npm run perf:verify-no-implicit-write` is implemented as `npm run perf:verify-cli-no-implicit-write`
-- `npm run perf:verify-runtime-modes` has no literal wrapper today; use `npm run perf:verify-state-mode-parity` and the shared-boundary checks
-- `npm run perf:verify-golden-fixtures` has no literal wrapper today; use the closest gates for the surface under change, such as `npm run perf:verify-cli-output-contracts`, `npm run perf:verify-governance-runtime-cli`, `npm run perf:verify-governance-completeness`, and `npm run perf:verify-generated-doc-golden`
+- the historical `perf:verify-no-implicit-write` name is implemented as `npm run perf:verify-cli-no-implicit-write`
+- the historical `perf:verify-runtime-modes` name has no literal wrapper today; use `npm run perf:verify-state-mode-parity` and the shared-boundary checks
+- the historical `perf:verify-golden-fixtures` name has no literal wrapper today; use the closest gates for the surface under change, such as `npm run perf:verify-cli-output-contracts`, `npm run perf:verify-governance-runtime-cli`, `npm run perf:verify-governance-completeness`, and `npm run perf:verify-generated-doc-golden`
 
 If a command is documented but missing, do not pretend it ran. Use the nearest existing gate, and update the docs or scripts in a follow-up if the missing wrapper is important enough to keep.
 

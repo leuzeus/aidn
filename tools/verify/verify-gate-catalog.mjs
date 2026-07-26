@@ -33,6 +33,60 @@ function extractJobBlock(workflowText, jobName) {
   return lines.slice(start, end).join("\n");
 }
 
+function publicationContractIssues({
+  candidateCatalog,
+  candidatePackageJson,
+  releaseWorkflow,
+  runner,
+}) {
+  const publicationIssues = [];
+  const criticalGateIds = [
+    "codex-pack-topology",
+    "security-tracked-sensitivity",
+  ];
+  for (const gateId of criticalGateIds) {
+    const gate = candidateCatalog.gates?.find((item) => item.id === gateId);
+    if (!gate) {
+      publicationIssues.push(`publication-critical gate missing: ${gateId}`);
+      continue;
+    }
+    for (const context of ["main", "release"]) {
+      if (gate.obligation?.[context] !== "required") {
+        publicationIssues.push(`${gateId}: ${context} publication obligation must be required`);
+      }
+    }
+  }
+  const releaseWrapper = String(candidatePackageJson.scripts?.["verify:release"] ?? "");
+  if (!releaseWrapper.includes("run-gate-family.mjs obligations")) {
+    publicationIssues.push("verify:release must execute contextual catalog obligations");
+  }
+  if (!runner.includes('requested === "obligations"')) {
+    publicationIssues.push("gate runner must select every catalog gate for obligations mode");
+  }
+  if (!releaseWorkflow.includes("pull_request:")
+    || !releaseWorkflow.includes("branches: [dev, main]")) {
+    publicationIssues.push("release verification must trigger for PRs to dev and main");
+  }
+  if (!releaseWorkflow.includes("push:")
+    || !releaseWorkflow.includes("branches: [main]")) {
+    publicationIssues.push("release publication must trigger only from a push to main");
+  }
+  for (const job of ["verify", "publish"]) {
+    const block = extractJobBlock(releaseWorkflow, job);
+    if (!block.includes("npm run verify:release")) {
+      publicationIssues.push(`release/${job} must execute verify:release obligations`);
+    }
+    if (!block.includes("AIDN_BRANCH_POLICY_EXPECTED_SHA")
+      || !block.includes("AIDN_BRANCH_POLICY_CONTAINS_REF")) {
+      publicationIssues.push(`release/${job} must bind immutable remote provenance`);
+    }
+  }
+  if (/\bnpm\s+publish\b/.test(releaseWorkflow)) {
+    publicationIssues.push("release workflow must never run npm publish");
+  }
+  return publicationIssues;
+}
+
 for (const gate of catalog.gates ?? []) {
   if (ids.has(gate.id)) issues.push(`${gate.id}: duplicate gate id`);
   ids.add(gate.id);
@@ -92,11 +146,57 @@ for (const token of ["evaluateCondition", "gate.obligation?.[context]", "status:
     issues.push(`gate runner does not enforce catalog semantics: missing ${token}`);
   }
 }
+issues.push(...publicationContractIssues({
+  candidateCatalog: catalog,
+  candidatePackageJson: packageJson,
+  releaseWorkflow: workflowTexts.release,
+  runner: runnerText,
+}));
+
+const catalogMutation = structuredClone(catalog);
+catalogMutation.gates.find((gate) => gate.id === "codex-pack-topology").obligation.release = "optional";
+const catalogMutationRejected = publicationContractIssues({
+  candidateCatalog: catalogMutation,
+  candidatePackageJson: packageJson,
+  releaseWorkflow: workflowTexts.release,
+  runner: runnerText,
+}).length > 0;
+const workflowCommandMutationRejected = publicationContractIssues({
+  candidateCatalog: catalog,
+  candidatePackageJson: packageJson,
+  releaseWorkflow: workflowTexts.release.replaceAll("npm run verify:release", "npm run perf:verify-release-version"),
+  runner: runnerText,
+}).length > 0;
+const workflowTriggerMutationRejected = publicationContractIssues({
+  candidateCatalog: catalog,
+  candidatePackageJson: packageJson,
+  releaseWorkflow: workflowTexts.release.replace("branches: [dev, main]", "branches: [main]"),
+  runner: runnerText,
+}).length > 0;
+if (!catalogMutationRejected) {
+  issues.push("negative probe failed: weakened publication catalog obligation was accepted");
+}
+if (!workflowCommandMutationRejected) {
+  issues.push("negative probe failed: partial release command was accepted");
+}
+if (!workflowTriggerMutationRejected) {
+  issues.push("negative probe failed: missing dev PR trigger was accepted");
+}
 const output = {
   ok: issues.length === 0,
   status: issues.length === 0 ? "PASS" : "FAIL",
   gates: catalog.gates?.length ?? 0,
   families: [...families].sort(),
+  publication_obligations: {
+    selector: "obligations",
+    contexts: ["main", "release"],
+    critical_gates: ["codex-pack-topology", "security-tracked-sensitivity"],
+  },
+  negative_probes: {
+    weakened_catalog_obligation_rejected: catalogMutationRejected,
+    partial_workflow_command_rejected: workflowCommandMutationRejected,
+    missing_dev_pr_trigger_rejected: workflowTriggerMutationRejected,
+  },
   issues,
 };
 console.log(JSON.stringify(output, null, 2));

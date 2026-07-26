@@ -15,11 +15,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+      - name: Fetch Announced Remote Head
+        if: ${{ github.event_name == 'pull_request' }}
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            "+refs/heads/${GITHUB_HEAD_REF}:refs/remotes/origin/${GITHUB_HEAD_REF}"
       - uses: actions/setup-node@v4
         with:
           node-version: "22.13"
-      - run: npm run verify:cleanliness
+      - name: Verify Cleanliness With Remote Provenance
+        env:
+          AIDN_BRANCH_POLICY_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/${{ github.head_ref }}
+        run: npm run verify:cleanliness
 
   contracts:
     name: Verify Contracts And Effects

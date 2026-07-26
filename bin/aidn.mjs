@@ -172,6 +172,7 @@ function printUsage() {
   console.log("  aidn runtime shared-runtime-reanchor --target . --local-only --write --json");
   console.log("  aidn runtime shared-runtime-reanchor --target . --backend postgres --connection-ref env:AIDN_PG_URL --project-id project-main --workspace-id workspace-main --write --json");
   console.log("  aidn runtime db-migrate --target . --json");
+  console.log("  aidn runtime db-migrate --target . --write --json");
   console.log("  aidn runtime db-backup --target . --json");
   console.log("  aidn runtime persistence-adopt --target . --backend postgres --json");
   console.log("  aidn runtime persistence-source-diagnose --target . --json");

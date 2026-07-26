@@ -1,12 +1,19 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import {
+  listCliEffectPolicies,
+  listEffectClasses,
+} from "../../src/core/cli/effect-policy.mjs";
+import { removePathWithRetry } from "../perf/test-git-fixture-lib.mjs";
 import {
   buildSurfaceCatalog,
   INFORMATION_CLASSES,
   parserOptionsFor,
   PROOF_CLASSES,
+  resolveEffectClassFromProfile,
   SURFACE_CATALOG_PATH,
   SURFACE_STATUSES,
 } from "../governance/surface-catalog-lib.mjs";
@@ -112,6 +119,144 @@ function parserClosureIssues(catalog) {
   return issues;
 }
 
+function semanticEffectIssues(catalog) {
+  const issues = [];
+  const effectClasses = new Set(listEffectClasses());
+  const publicCommands = new Map(
+    catalog.entries
+      .filter((entry) => entry.kind === "command"
+        && entry.status === "active"
+        && entry.visibility === "public")
+      .map((entry) => [entry.entrypoint, entry]),
+  );
+  for (const entry of catalog.entries) {
+    if (JSON.stringify(entry.effects).includes("unclassified-internal")) {
+      issues.push(`${entry.id}: forbidden unclassified effect sentinel`);
+    }
+  }
+  for (const command of publicCommands.values()) {
+    const profile = command.effects;
+    if (!profile || typeof profile !== "object" || !effectClasses.has(profile.default)) {
+      issues.push(`${command.entrypoint}: public command lacks an exact default effect class`);
+      continue;
+    }
+    for (const variant of profile.variants ?? []) {
+      if (!effectClasses.has(variant.effect_class)
+        || !Array.isArray(variant.when_args)
+        || variant.when_args.length === 0
+        || !variant.policy) {
+        issues.push(`${command.entrypoint}: malformed conditional effect variant`);
+      }
+    }
+  }
+  for (const policy of listCliEffectPolicies()) {
+    const command = publicCommands.get(policy.surface);
+    if (!command) {
+      issues.push(`${policy.id}: public effect policy has no exact catalogued surface ${policy.surface}`);
+      continue;
+    }
+    let resolved = "";
+    try {
+      resolved = resolveEffectClassFromProfile(command.effects, policy.safe_args);
+    } catch (error) {
+      issues.push(`${policy.id}: ${error.message}`);
+      continue;
+    }
+    if (resolved !== policy.effect_class) {
+      issues.push(
+        `${policy.id}: semantic effect mismatch for safe_args `
+        + `(policy=${policy.effect_class}; resolved=${resolved})`,
+      );
+    }
+  }
+  return issues;
+}
+
+function parseJsonOutput(stdout) {
+  const text = String(stdout ?? "").trim();
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) {
+    throw new Error("bootstrap probe did not emit JSON");
+  }
+  return JSON.parse(text.slice(start, end + 1));
+}
+
+function runBootstrapEffectProbes(catalog) {
+  const command = catalog.entries.find((entry) => entry.id === "command:aidn bootstrap");
+  if (!command) {
+    throw new Error("bootstrap command is absent from the catalog");
+  }
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-bootstrap-effect-probes-"));
+  try {
+    const dryTarget = path.join(tempRoot, "dry-run-target");
+    const dryRun = spawnSync(process.execPath, [
+      path.join(repoRoot, "bin", "aidn.mjs"),
+      "bootstrap",
+      "--target",
+      dryTarget,
+      "--mode",
+      "install",
+      "--profile",
+      "minimal",
+      "--dry-run",
+      "--json",
+    ], {
+      cwd: repoRoot,
+      env: process.env,
+      encoding: "utf8",
+      timeout: 240000,
+      maxBuffer: 20 * 1024 * 1024,
+      windowsHide: true,
+    });
+    const dryPayload = parseJsonOutput(dryRun.stdout);
+    const normalTarget = path.join(tempRoot, "normal-target");
+    const normal = spawnSync(process.execPath, [
+      path.join(repoRoot, "bin", "aidn.mjs"),
+      "bootstrap",
+      "--target",
+      normalTarget,
+      "--mode",
+      "install",
+      "--profile",
+      "minimal",
+      "--json",
+    ], {
+      cwd: repoRoot,
+      env: process.env,
+      encoding: "utf8",
+      timeout: 240000,
+      maxBuffer: 20 * 1024 * 1024,
+      windowsHide: true,
+    });
+    const normalPayload = parseJsonOutput(normal.stdout);
+    const checks = {
+      normal_is_mutating: normalPayload.effect_class === "mutating"
+        && resolveEffectClassFromProfile(command.effects, ["--json"]) === "mutating",
+      dry_run_is_preview: dryPayload.effect_class === "preview"
+        && resolveEffectClassFromProfile(command.effects, ["--dry-run", "--json"]) === "preview",
+      json_is_format_only: catalog.entries.find(
+        (entry) => entry.id === "option:aidn bootstrap:--json",
+      )?.effects === "format-only",
+      dry_run_target_unchanged: !fs.existsSync(dryTarget),
+      prefix_ambiguity_absent: !catalog.entries.some(
+        (entry) => entry.id === "command:aidn bootstrapper",
+      ),
+    };
+    return {
+      ok: Object.values(checks).every(Boolean),
+      checks,
+      normal_exit_code: normal.status,
+      dry_run_exit_code: dryRun.status,
+    };
+  } finally {
+    const cleanup = removePathWithRetry(tempRoot);
+    if (!cleanup.ok) {
+      throw cleanup.error;
+    }
+  }
+}
+
 function main() {
   const catalogPath = path.join(repoRoot, SURFACE_CATALOG_PATH);
   const issues = [];
@@ -161,6 +306,16 @@ function main() {
   }
   issues.push(...commandReferenceIssues(actual));
   issues.push(...parserClosureIssues(actual));
+  issues.push(...semanticEffectIssues(actual));
+  let bootstrapEffectProbes = null;
+  try {
+    bootstrapEffectProbes = runBootstrapEffectProbes(actual);
+    if (!bootstrapEffectProbes.ok) {
+      issues.push("bootstrap semantic effect probes failed");
+    }
+  } catch (error) {
+    issues.push(`bootstrap semantic effect probes failed: ${error.message}`);
+  }
   const byKind = {};
   for (const entry of actual.entries ?? []) {
     byKind[entry.kind] = (byKind[entry.kind] ?? 0) + 1;
@@ -179,6 +334,15 @@ function main() {
         (entry) => entry.kind === "option" && entry.status === "active",
       ).length ?? 0,
       child_process_options_excluded: ["--format", "--name-only", "--porcelain", "--untracked-files"],
+    },
+    semantic_effect_closure: {
+      public_commands: actual.entries?.filter(
+        (entry) => entry.kind === "command"
+          && entry.status === "active"
+          && entry.visibility === "public",
+      ).length ?? 0,
+      forbidden_sentinel: "unclassified-internal",
+      bootstrap_probes: bootstrapEffectProbes,
     },
     issues,
   };

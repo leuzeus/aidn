@@ -13,8 +13,8 @@ const explicitContext = contextIndex >= 0 ? String(process.argv[contextIndex + 1
 const gateIndex = process.argv.indexOf("--gate");
 const explicitGate = gateIndex >= 0 ? String(process.argv[gateIndex + 1] ?? "") : "";
 
-if (!requested || ![...catalog.required_families, "all"].includes(requested)) {
-  console.error(`Usage: node tools/verify/run-gate-family.mjs <${[...catalog.required_families, "all"].join("|")}> [--json] [--context dev|main|release]`);
+if (!requested || ![...catalog.required_families, "all", "obligations"].includes(requested)) {
+  console.error(`Usage: node tools/verify/run-gate-family.mjs <${[...catalog.required_families, "all", "obligations"].join("|")}> [--json] [--context dev|main|release]`);
   process.exit(1);
 }
 if (gateIndex >= 0 && !explicitGate) {
@@ -30,14 +30,6 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json
 const npmCli = path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
 const npmCommand = fs.existsSync(npmCli) ? process.execPath : "npm";
 const npmPrefix = fs.existsSync(npmCli) ? [npmCli] : [];
-const selected = catalog.gates.filter(
-  (gate) => (requested === "all" || gate.family === requested)
-    && (!explicitGate || gate.id === explicitGate),
-);
-if (explicitGate && selected.length !== 1) {
-  console.error(`Unknown gate for ${requested}: ${explicitGate}`);
-  process.exit(1);
-}
 const results = [];
 const executed = new Map();
 
@@ -92,6 +84,12 @@ function evaluateCondition(condition) {
       reason: "real Codex CLI is unavailable",
     };
   }
+  if (condition === "postgres-smoke-url-available") {
+    return {
+      met: Boolean(String(process.env.AIDN_PG_SMOKE_URL ?? "").trim()),
+      reason: "optional PostgreSQL live smoke URL is unavailable",
+    };
+  }
   return {
     met: false,
     reason: `unknown condition: ${condition}`,
@@ -99,6 +97,16 @@ function evaluateCondition(condition) {
 }
 
 const context = inferContext();
+const selected = catalog.gates.filter(
+  (gate) => (requested === "all"
+      || requested === "obligations"
+      || gate.family === requested)
+    && (!explicitGate || gate.id === explicitGate),
+);
+if (explicitGate && selected.length !== 1) {
+  console.error(`Unknown gate for ${requested}: ${explicitGate}`);
+  process.exit(1);
+}
 for (const gate of selected) {
   const started = Date.now();
   const obligation = gate.obligation?.[context] ?? "required";

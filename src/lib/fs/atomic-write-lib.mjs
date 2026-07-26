@@ -3,11 +3,12 @@ import path from "node:path";
 import crypto from "node:crypto";
 
 export function writeFileAtomicSync(filePath, content, options = {}) {
+  const fsImpl = options.fsImpl ?? fs;
   const absolutePath = path.resolve(filePath);
   const directory = path.dirname(absolutePath);
   const encoding = options.encoding ?? null;
   const mode = options.mode;
-  fs.mkdirSync(directory, { recursive: true });
+  fsImpl.mkdirSync(directory, { recursive: true });
 
   const temporaryPath = path.join(
     directory,
@@ -15,21 +16,23 @@ export function writeFileAtomicSync(filePath, content, options = {}) {
   );
   let fileDescriptor = null;
   try {
-    fileDescriptor = fs.openSync(temporaryPath, "wx", mode);
+    fileDescriptor = fsImpl.openSync(temporaryPath, "wx", mode);
     if (encoding) {
-      fs.writeFileSync(fileDescriptor, content, { encoding });
+      fsImpl.writeFileSync(fileDescriptor, content, { encoding });
     } else {
-      fs.writeFileSync(fileDescriptor, content);
+      fsImpl.writeFileSync(fileDescriptor, content);
     }
-    fs.fsyncSync(fileDescriptor);
-    fs.closeSync(fileDescriptor);
+    if (typeof fsImpl.fsyncSync === "function") {
+      fsImpl.fsyncSync(fileDescriptor);
+    }
+    fsImpl.closeSync(fileDescriptor);
     fileDescriptor = null;
-    fs.renameSync(temporaryPath, absolutePath);
+    fsImpl.renameSync(temporaryPath, absolutePath);
   } catch (error) {
     if (fileDescriptor != null) {
-      fs.closeSync(fileDescriptor);
+      fsImpl.closeSync(fileDescriptor);
     }
-    fs.rmSync(temporaryPath, { force: true });
+    fsImpl.rmSync(temporaryPath, { force: true });
     throw error;
   }
   return absolutePath;

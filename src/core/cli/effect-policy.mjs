@@ -26,20 +26,59 @@ function normalizeToken(value) {
   return String(value ?? "").trim();
 }
 
+function commandSurface(command) {
+  const tokens = normalizeToken(command).split(/\s+/).filter(Boolean);
+  if (["perf", "codex", "runtime", "project"].includes(tokens[1])) {
+    return tokens.slice(0, 3).join(" ");
+  }
+  return tokens.slice(0, 2).join(" ");
+}
+
+function commandSelectorArgs(command, surface) {
+  const commandTokens = normalizeToken(command).split(/\s+/).filter(Boolean);
+  const surfaceTokens = normalizeToken(surface).split(/\s+/).filter(Boolean);
+  return commandTokens
+    .slice(surfaceTokens.length)
+    .filter((token) => token !== "--json");
+}
+
 function commandPolicy({
   id,
   command,
   effectClass,
   stability = "stable",
+  surface = "",
+  surfaceDefault = false,
+  surfaceDefaultEffect = "",
+  effectVariants = [],
+  whenArgs = null,
+  unlessArgs = [],
   jsonContract = "",
   safeArgs = [],
   noMutationPaths = [],
   allowNonZero = false,
   notes = "",
 }) {
+  const normalizedCommand = normalizeToken(command);
+  const normalizedSurface = normalizeToken(surface) || commandSurface(normalizedCommand);
   return freezeDeep({
     id: normalizeToken(id),
-    command: normalizeToken(command),
+    command: normalizedCommand,
+    surface: normalizedSurface,
+    surface_default: Boolean(surfaceDefault),
+    surface_default_effect: normalizeToken(surfaceDefaultEffect),
+    effect_variants: effectVariants.map((variant, index) => ({
+      id: normalizeToken(variant.id) || `variant-${index + 1}`,
+      when_args: (variant.whenArgs ?? []).map(normalizeToken).filter(Boolean),
+      unless_args: (variant.unlessArgs ?? []).map(normalizeToken).filter(Boolean),
+      effect_class: normalizeToken(variant.effectClass),
+    })),
+    when_args: (Array.isArray(whenArgs)
+      ? whenArgs
+      : commandSelectorArgs(normalizedCommand, normalizedSurface))
+      .map(normalizeToken)
+      .filter(Boolean),
+    unless_args: unlessArgs.map(normalizeToken).filter(Boolean),
     effect_class: normalizeToken(effectClass),
     stability: normalizeToken(stability),
     json_contract: normalizeToken(jsonContract),
@@ -63,9 +102,24 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "bootstrap",
     command: "aidn bootstrap --json",
     effectClass: "mutating",
+    unlessArgs: ["--dry-run"],
     jsonContract: "bootstrap.v1.schema.json",
     safeArgs: ["bootstrap", "--target", ".", "--profile", "minimal", "--json"],
     notes: "Orchestrates install or upgrade by composing aidn install, project config, migration, and verification steps.",
+  }),
+  commandPolicy({
+    id: "install",
+    command: "aidn install",
+    effectClass: "mutating",
+    safeArgs: ["install", "--target", ".", "--profile", "minimal"],
+    notes: "Installs or upgrades tracked scaffold projections in the explicit target repository.",
+  }),
+  commandPolicy({
+    id: "build-release",
+    command: "aidn build-release --json",
+    effectClass: "mutating",
+    safeArgs: ["build-release", "--json"],
+    notes: "Builds release artifacts in the repository release output directory.",
   }),
   commandPolicy({
     id: "project-config-list",
@@ -79,6 +133,8 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "project-config-preview",
     command: "aidn project config --init-defaults --json",
     effectClass: "preview",
+    surfaceDefault: true,
+    unlessArgs: ["--list", "--write"],
     jsonContract: "project-config-preview.v1.schema.json",
     safeArgs: ["project", "config", "--init-defaults", "--project-name", "preview-project", "--json"],
     notes: "Plans project adapter generation. JSON formatting never implies a write.",
@@ -119,6 +175,8 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "runtime-persistence-adopt",
     command: "aidn runtime persistence-adopt --json",
     effectClass: "preview",
+    whenArgs: ["--dry-run"],
+    surfaceDefaultEffect: "mutating",
     jsonContract: "runtime-persistence-adopt.v1.schema.json",
     safeArgs: ["runtime", "persistence-adopt", "--backend", "postgres", "--dry-run", "--json"],
     notes: "Builds a runtime backend adoption plan without applying it when --dry-run is supplied.",
@@ -126,23 +184,42 @@ const CLI_EFFECT_POLICIES = freezeDeep([
   commandPolicy({
     id: "runtime-db-migrate",
     command: "aidn runtime db-migrate --json",
-    effectClass: "mutating",
+    effectClass: "preview",
+    unlessArgs: ["--write"],
     jsonContract: "runtime-db-migrate.v1.schema.json",
     safeArgs: ["runtime", "db-migrate", "--json"],
-    notes: "Applies the local runtime schema migration for the selected backend.",
+    notes: "Previews pending runtime schema migrations without creating or modifying the selected backend.",
+  }),
+  commandPolicy({
+    id: "runtime-db-migrate-write",
+    command: "aidn runtime db-migrate --write --json",
+    effectClass: "mutating",
+    jsonContract: "runtime-db-migrate.v1.schema.json",
+    safeArgs: ["runtime", "db-migrate", "--write", "--json"],
+    notes: "Applies pending runtime schema migrations only after explicit --write intent.",
   }),
   commandPolicy({
     id: "runtime-persistence-migrate",
     command: "aidn runtime persistence-migrate --json",
-    effectClass: "mutating",
+    effectClass: "preview",
+    unlessArgs: ["--write"],
     jsonContract: "runtime-persistence-migrate.v1.schema.json",
     safeArgs: ["runtime", "persistence-migrate", "--json"],
-    notes: "Alias of db-migrate for the public persistence-oriented runtime surface.",
+    notes: "Preview-only alias of db-migrate unless --write is supplied.",
+  }),
+  commandPolicy({
+    id: "runtime-persistence-migrate-write",
+    command: "aidn runtime persistence-migrate --write --json",
+    effectClass: "mutating",
+    jsonContract: "runtime-persistence-migrate.v1.schema.json",
+    safeArgs: ["runtime", "persistence-migrate", "--write", "--json"],
+    notes: "Applies the persistence migration alias only after explicit --write intent.",
   }),
   commandPolicy({
     id: "runtime-artifact-store",
     command: "aidn runtime artifact-store list --json",
     effectClass: "read-only",
+    surfaceDefault: true,
     jsonContract: "runtime-artifact-store-list.v1.schema.json",
     safeArgs: ["runtime", "artifact-store", "list", "--json"],
     notes: "Umbrella public surface for artifact-store; list is the representative non-mutating entrypoint.",
@@ -184,6 +261,13 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "runtime-artifact-store-materialize",
     command: "aidn runtime artifact-store materialize --json",
     effectClass: "preview",
+    whenArgs: ["materialize", "--dry-run"],
+    effectVariants: [{
+      id: "materialize-write",
+      whenArgs: ["materialize"],
+      unlessArgs: ["--dry-run"],
+      effectClass: "mutating",
+    }],
     jsonContract: "runtime-artifact-store-materialize.v1.schema.json",
     safeArgs: ["runtime", "artifact-store", "materialize", "--audit-root", "docs/audit", "--only-path", "snapshots/context-snapshot.md", "--dry-run", "--json"],
     notes: "Previews filesystem materialization from stored runtime artifacts unless --dry-run is removed.",
@@ -216,6 +300,8 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "runtime-persistence-source-normalize",
     command: "aidn runtime persistence-source-normalize --json",
     effectClass: "preview",
+    whenArgs: ["--dry-run"],
+    surfaceDefaultEffect: "mutating",
     jsonContract: "runtime-persistence-source-normalize.v1.schema.json",
     safeArgs: [
       "runtime",
@@ -231,6 +317,11 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "runtime-visible-artifacts-cleanup",
     command: "aidn runtime visible-artifacts-cleanup --json",
     effectClass: "preview",
+    effectVariants: [{
+      id: "write",
+      whenArgs: ["--write"],
+      effectClass: "mutating",
+    }],
     jsonContract: "runtime-visible-artifacts-cleanup.v1.schema.json",
     safeArgs: ["runtime", "visible-artifacts-cleanup", "--json"],
     notes: "Previews external backup and quarantine of managed visible artifacts; --write is required to apply.",
@@ -239,6 +330,11 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "runtime-visible-artifacts-restore",
     command: "aidn runtime visible-artifacts-restore --json",
     effectClass: "preview",
+    effectVariants: [{
+      id: "write",
+      whenArgs: ["--write"],
+      effectClass: "mutating",
+    }],
     jsonContract: "runtime-visible-artifacts-restore.v1.schema.json",
     safeArgs: ["runtime", "visible-artifacts-restore", "--from", "../.aidn-backups/project/timestamp", "--json"],
     notes: "Previews restore from external backup/quarantine; --write is required to apply.",
@@ -247,6 +343,8 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "runtime-shared-coordination-migrate",
     command: "aidn runtime shared-coordination-migrate --json",
     effectClass: "preview",
+    whenArgs: ["--dry-run"],
+    surfaceDefaultEffect: "mutating",
     jsonContract: "runtime-shared-coordination-migrate.v1.schema.json",
     safeArgs: ["runtime", "shared-coordination-migrate", "--dry-run", "--json"],
     allowNonZero: true,
@@ -273,6 +371,11 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "runtime-shared-runtime-reanchor",
     command: "aidn runtime shared-runtime-reanchor --json",
     effectClass: "preview",
+    effectVariants: [{
+      id: "write",
+      whenArgs: ["--write"],
+      effectClass: "mutating",
+    }],
     jsonContract: "runtime-shared-runtime-reanchor.v1.schema.json",
     safeArgs: ["runtime", "shared-runtime-reanchor", "--json"],
     allowNonZero: true,
@@ -282,6 +385,11 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "runtime-state-reanchor",
     command: "aidn runtime state-reanchor --json",
     effectClass: "preview",
+    effectVariants: [{
+      id: "write",
+      whenArgs: ["--write"],
+      effectClass: "mutating",
+    }],
     jsonContract: "runtime-state-reanchor.v1.schema.json",
     safeArgs: ["runtime", "state-reanchor", "--json"],
     noMutationPaths: [
@@ -398,6 +506,11 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "runtime-coordinator-orchestrate",
     command: "aidn runtime coordinator-orchestrate --json",
     effectClass: "preview",
+    effectVariants: [{
+      id: "execute",
+      whenArgs: ["--execute"],
+      effectClass: "executor",
+    }],
     jsonContract: "runtime-coordinator-orchestrate.v1.schema.json",
     safeArgs: ["runtime", "coordinator-orchestrate", "--max-iterations", "1", "--json"],
     notes: "Stays a preview unless --execute is supplied.",
@@ -406,6 +519,11 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "runtime-coordinator-resume",
     command: "aidn runtime coordinator-resume --json",
     effectClass: "preview",
+    effectVariants: [{
+      id: "execute",
+      whenArgs: ["--execute"],
+      effectClass: "executor",
+    }],
     jsonContract: "runtime-coordinator-resume.v1.schema.json",
     safeArgs: ["runtime", "coordinator-resume", "--json"],
     notes: "Previews the next coordinator resume path unless --execute is supplied.",
@@ -437,7 +555,12 @@ const CLI_EFFECT_POLICIES = freezeDeep([
   commandPolicy({
     id: "runtime-coordinator-dispatch-execute",
     command: "aidn runtime coordinator-dispatch-execute --json",
-    effectClass: "executor",
+    effectClass: "preview",
+    effectVariants: [{
+      id: "execute",
+      whenArgs: ["--execute"],
+      effectClass: "executor",
+    }],
     jsonContract: "runtime-coordinator-dispatch-execute.v1.schema.json",
     safeArgs: ["runtime", "coordinator-dispatch-execute", "--json"],
     notes: "Previews or executes the selected coordinator dispatch path depending on --execute.",
@@ -554,7 +677,12 @@ const CLI_EFFECT_POLICIES = freezeDeep([
   commandPolicy({
     id: "runtime-project-runtime-state",
     command: "aidn runtime project-runtime-state --json",
-    effectClass: "projector",
+    effectClass: "read-only",
+    effectVariants: [{
+      id: "project",
+      whenArgs: ["--write"],
+      effectClass: "projector",
+    }],
     jsonContract: "runtime-project-runtime-state.v1.schema.json",
     safeArgs: ["runtime", "project-runtime-state", "--json"],
     noMutationPaths: ["docs/audit/RUNTIME-STATE.md"],
@@ -563,7 +691,24 @@ const CLI_EFFECT_POLICIES = freezeDeep([
   commandPolicy({
     id: "runtime-project-handoff-packet",
     command: "aidn runtime project-handoff-packet --json",
-    effectClass: "projector",
+    effectClass: "read-only",
+    effectVariants: [
+      {
+        id: "project",
+        whenArgs: ["--write"],
+        effectClass: "projector",
+      },
+      {
+        id: "sync-relay",
+        whenArgs: ["--sync-relay"],
+        effectClass: "mutating",
+      },
+      {
+        id: "project-and-sync-relay",
+        whenArgs: ["--write", "--sync-relay"],
+        effectClass: "mutating",
+      },
+    ],
     jsonContract: "runtime-project-handoff-packet.v1.schema.json",
     safeArgs: ["runtime", "project-handoff-packet", "--json"],
     noMutationPaths: ["docs/audit/HANDOFF-PACKET.md"],
@@ -609,6 +754,14 @@ export function listStabilityLevels() {
 export function listCliEffectPolicies() {
   return CLI_EFFECT_POLICIES.map((item) => ({
     ...item,
+    when_args: [...item.when_args],
+    unless_args: [...item.unless_args],
+    surface_default: Boolean(item.surface_default),
+    effect_variants: item.effect_variants.map((variant) => ({
+      ...variant,
+      when_args: [...variant.when_args],
+      unless_args: [...variant.unless_args],
+    })),
     safe_args: [...item.safe_args],
     no_mutation_paths: [...item.no_mutation_paths],
     allow_non_zero: Boolean(item.allow_non_zero),
@@ -623,6 +776,14 @@ export function getCliEffectPolicy(id) {
   }
   return {
     ...item,
+    when_args: [...item.when_args],
+    unless_args: [...item.unless_args],
+    surface_default: Boolean(item.surface_default),
+    effect_variants: item.effect_variants.map((variant) => ({
+      ...variant,
+      when_args: [...variant.when_args],
+      unless_args: [...variant.unless_args],
+    })),
     safe_args: [...item.safe_args],
     no_mutation_paths: [...item.no_mutation_paths],
     allow_non_zero: Boolean(item.allow_non_zero),
@@ -642,6 +803,29 @@ export function validateCliEffectPolicies() {
     seen.add(item.id);
     if (!item.command.startsWith("aidn ")) {
       issues.push(`${item.id}: command must start with aidn`);
+    }
+    if (!item.surface.startsWith("aidn ")) {
+      issues.push(`${item.id}: surface must start with aidn`);
+    }
+    if (!item.command.startsWith(item.surface)) {
+      issues.push(`${item.id}: command must belong to declared surface ${item.surface}`);
+    }
+    if (item.surface_default_effect
+      && !EFFECT_CLASSES.includes(item.surface_default_effect)) {
+      issues.push(`${item.id}: invalid surface_default_effect ${item.surface_default_effect}`);
+    }
+    for (const variant of item.effect_variants) {
+      if (variant.when_args.length === 0) {
+        issues.push(`${item.id}/${variant.id}: effect variant requires when_args`);
+      }
+      if (!EFFECT_CLASSES.includes(variant.effect_class)) {
+        issues.push(`${item.id}/${variant.id}: invalid effect class ${variant.effect_class}`);
+      }
+    }
+    for (const token of item.when_args) {
+      if (!item.safe_args.includes(token) && !item.command.includes(token)) {
+        issues.push(`${item.id}: semantic selector ${token} is absent from command and safe_args`);
+      }
     }
     if (!EFFECT_CLASSES.includes(item.effect_class)) {
       issues.push(`${item.id}: invalid effect_class ${item.effect_class}`);

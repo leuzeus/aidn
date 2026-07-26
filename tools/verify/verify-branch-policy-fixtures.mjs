@@ -33,6 +33,7 @@ function policyEnv(overrides) {
     GITHUB_EVENT_NAME: "",
     GITHUB_HEAD_REF: "",
     GITHUB_BASE_REF: "",
+    GITHUB_REF: "",
     AIDN_BRANCH_POLICY_EVENT_NAME: "",
     AIDN_BRANCH_POLICY_HEAD_REF: "",
     AIDN_BRANCH_POLICY_BASE_REF: "",
@@ -51,18 +52,51 @@ function assertStatus(name, result, expected) {
   }
 }
 
+function recordCase(results, name, result, expected, {
+  containmentProved = null,
+} = {}) {
+  assertStatus(name, result, expected);
+  const payload = JSON.parse(String(result.stdout).trim());
+  if (containmentProved != null
+    && payload.provenance?.containment_proved !== containmentProved) {
+    throw new Error(
+      `${name}: expected containment_proved=${containmentProved}, got `
+      + `${String(payload.provenance?.containment_proved)}`,
+    );
+  }
+  results.push({
+    name,
+    status: expected === 0 ? "PASS" : "EXPECTED_FAIL",
+    containment_proved: payload.provenance?.containment_proved ?? false,
+  });
+}
+
 function main() {
   const results = [];
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-branch-policy-"));
   try {
-    git(["init", "--initial-branch=dev", "--quiet"], tempRoot);
-    git(["config", "user.name", "aidn-tests"], tempRoot);
-    git(["config", "user.email", "aidn-tests@example.invalid"], tempRoot);
-    fs.writeFileSync(path.join(tempRoot, "fixture.txt"), "branch policy fixture\n", "utf8");
-    git(["add", "fixture.txt"], tempRoot);
-    git(["commit", "--quiet", "-m", "fixture"], tempRoot);
-    git(["checkout", "--quiet", "-b", "codex/fixture"], tempRoot);
-    const candidateSha = git(["rev-parse", "HEAD"], tempRoot);
+    const remoteRoot = path.join(tempRoot, "remote.git");
+    const sourceRoot = path.join(tempRoot, "source");
+    const clientRoot = path.join(tempRoot, "client");
+    fs.mkdirSync(sourceRoot, { recursive: true });
+    git(["init", "--bare", "--quiet", remoteRoot], tempRoot);
+    git(["init", "--initial-branch=dev", "--quiet"], sourceRoot);
+    git(["config", "user.name", "aidn-tests"], sourceRoot);
+    git(["config", "user.email", "aidn-tests@example.invalid"], sourceRoot);
+    fs.writeFileSync(path.join(sourceRoot, "fixture.txt"), "branch policy fixture\n", "utf8");
+    git(["add", "fixture.txt"], sourceRoot);
+    git(["commit", "--quiet", "-m", "base fixture"], sourceRoot);
+    const devSha = git(["rev-parse", "HEAD"], sourceRoot);
+    git(["checkout", "--quiet", "-b", "codex/fixture"], sourceRoot);
+    fs.writeFileSync(path.join(sourceRoot, "candidate.txt"), "candidate\n", "utf8");
+    git(["add", "candidate.txt"], sourceRoot);
+    git(["commit", "--quiet", "-m", "candidate fixture"], sourceRoot);
+    const candidateSha = git(["rev-parse", "HEAD"], sourceRoot);
+    git(["remote", "add", "origin", remoteRoot], sourceRoot);
+    git(["push", "--quiet", "origin", "dev:dev", "codex/fixture:codex/fixture"], sourceRoot);
+    git(["push", "--quiet", "origin", "dev:main"], sourceRoot);
+    git(["clone", "--quiet", remoteRoot, clientRoot], tempRoot);
+    git(["fetch", "--quiet", "origin"], clientRoot);
 
     const cases = [
       {
@@ -94,29 +128,100 @@ function main() {
       },
     ];
     for (const item of cases) {
-      const result = run(process.execPath, [policyScript], tempRoot, policyEnv(item.env));
-      assertStatus(item.name, result, item.expected);
-      results.push({ name: item.name, status: item.expected === 0 ? "PASS" : "EXPECTED_FAIL" });
+      const result = run(process.execPath, [policyScript], sourceRoot, policyEnv(item.env));
+      recordCase(results, item.name, result, item.expected);
     }
 
-    git(["update-ref", "refs/remotes/origin/codex/fixture", candidateSha], tempRoot);
-    git(["checkout", "--quiet", "--detach", candidateSha], tempRoot);
-
-    const explicitResult = run(process.execPath, [policyScript], tempRoot, policyEnv({
-      AIDN_BRANCH_POLICY_HEAD_REF: "codex/fixture",
-      AIDN_BRANCH_POLICY_BASE_REF: "dev",
-      AIDN_BRANCH_POLICY_EXPECTED_SHA: candidateSha,
-    }));
-    assertStatus("detached_exact_sha_explicit_refs_pass", explicitResult, 0);
-    results.push({ name: "detached_exact_sha_explicit_refs_pass", status: "PASS" });
-
-    const containmentResult = run(process.execPath, [policyScript], tempRoot, policyEnv({
+    git(["checkout", "--quiet", "--detach", candidateSha], clientRoot);
+    const containmentResult = run(process.execPath, [policyScript], clientRoot, policyEnv({
       AIDN_BRANCH_POLICY_BASE_REF: "dev",
       AIDN_BRANCH_POLICY_EXPECTED_SHA: candidateSha,
       AIDN_BRANCH_POLICY_CONTAINS_REF: "origin/codex/fixture",
     }));
-    assertStatus("detached_remote_containment_pass", containmentResult, 0);
-    results.push({ name: "detached_remote_containment_pass", status: "PASS" });
+    recordCase(
+      results,
+      "detached_exact_sha_remote_containment_pass",
+      containmentResult,
+      0,
+      { containmentProved: true },
+    );
+
+    const missingRemoteResult = run(process.execPath, [policyScript], clientRoot, policyEnv({
+      AIDN_BRANCH_POLICY_BASE_REF: "dev",
+      AIDN_BRANCH_POLICY_EXPECTED_SHA: candidateSha,
+      AIDN_BRANCH_POLICY_CONTAINS_REF: "origin/missing",
+    }));
+    recordCase(
+      results,
+      "detached_missing_remote_ref_fail",
+      missingRemoteResult,
+      1,
+      { containmentProved: false },
+    );
+
+    const mismatchRemoteResult = run(process.execPath, [policyScript], clientRoot, policyEnv({
+      AIDN_BRANCH_POLICY_BASE_REF: "dev",
+      AIDN_BRANCH_POLICY_EXPECTED_SHA: candidateSha,
+      AIDN_BRANCH_POLICY_CONTAINS_REF: "origin/dev",
+    }));
+    recordCase(
+      results,
+      "detached_remote_mismatch_fail",
+      mismatchRemoteResult,
+      1,
+      { containmentProved: false },
+    );
+
+    const expectedMismatchResult = run(process.execPath, [policyScript], clientRoot, policyEnv({
+      AIDN_BRANCH_POLICY_BASE_REF: "dev",
+      AIDN_BRANCH_POLICY_EXPECTED_SHA: devSha,
+      AIDN_BRANCH_POLICY_CONTAINS_REF: "origin/codex/fixture",
+    }));
+    recordCase(
+      results,
+      "detached_expected_sha_mismatch_fail",
+      expectedMismatchResult,
+      1,
+      { containmentProved: true },
+    );
+
+    git(["checkout", "--quiet", "--detach", devSha], clientRoot);
+    const mainPushResult = run(process.execPath, [policyScript], clientRoot, policyEnv({
+      GITHUB_EVENT_NAME: "push",
+      GITHUB_REF: "refs/heads/main",
+      AIDN_BRANCH_POLICY_EXPECTED_SHA: devSha,
+      AIDN_BRANCH_POLICY_CONTAINS_REF: "origin/main",
+    }));
+    recordCase(
+      results,
+      "detached_main_push_remote_pass",
+      mainPushResult,
+      0,
+      { containmentProved: true },
+    );
+
+    const localOnlyRoot = path.join(tempRoot, "local-only");
+    fs.mkdirSync(localOnlyRoot, { recursive: true });
+    git(["init", "--initial-branch=codex/local-only", "--quiet"], localOnlyRoot);
+    git(["config", "user.name", "aidn-tests"], localOnlyRoot);
+    git(["config", "user.email", "aidn-tests@example.invalid"], localOnlyRoot);
+    fs.writeFileSync(path.join(localOnlyRoot, "fixture.txt"), "local only\n", "utf8");
+    git(["add", "fixture.txt"], localOnlyRoot);
+    git(["commit", "--quiet", "-m", "local-only fixture"], localOnlyRoot);
+    const localOnlySha = git(["rev-parse", "HEAD"], localOnlyRoot);
+    git(["checkout", "--quiet", "--detach", localOnlySha], localOnlyRoot);
+    const localOnlyResult = run(process.execPath, [policyScript], localOnlyRoot, policyEnv({
+      AIDN_BRANCH_POLICY_HEAD_REF: "codex/local-only",
+      AIDN_BRANCH_POLICY_BASE_REF: "dev",
+      AIDN_BRANCH_POLICY_EXPECTED_SHA: localOnlySha,
+    }));
+    recordCase(
+      results,
+      "detached_local_only_ref_fail",
+      localOnlyResult,
+      1,
+      { containmentProved: false },
+    );
   } finally {
     const cleanup = removePathWithRetry(tempRoot);
     if (!cleanup.ok) {

@@ -9,6 +9,13 @@
 
 The executable branch policy is `tools/verify/verify-branch-policy.mjs`.
 
+For a normal branch checkout, the policy derives the head from the configured
+remote before comparing it with the announced base. For an immutable detached
+certification, both proofs are mandatory: the exact expected commit SHA and
+containment by an explicitly announced remote-tracking ref from a configured
+remote. A local branch or local ref alone is never accepted as detached
+provenance.
+
 ## Required Flows
 
 ### Product change
@@ -60,6 +67,12 @@ The release workflow has two mutually exclusive paths:
 
 1. A pull request from `release/*` to `main` runs `npm run verify:release` and does not publish.
 2. A push to `main` publishes only when GitHub associates `GITHUB_SHA` with exactly one merged `release/*` pull request targeting `main`.
+
+`verify:release` executes the complete obligation set for the announced release
+or main context. This includes the release family plus required contract,
+effects, governance, documentation, Codex/runtime, security, topology, and
+cleanliness gates. The workflow must not replace this aggregate with a partial
+list that merely has a release-oriented job name.
 
 The publish job refuses:
 

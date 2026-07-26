@@ -9,6 +9,17 @@ The contracts are intentionally shallow in v1:
 - payloads do not yet need to embed `schema_version`; the schema file is the versioned contract
 - future versions may tighten nested structures after golden fixtures are in place
 
+`src/core/contracts/json-schema-validator.mjs` is the deterministic executable
+validator for this registry. It recursively implements every validation keyword
+currently present in these schemas: `type`, `required`, `properties`, `const`,
+`enum`, `items`, and `additionalProperties`. Unsupported validation keywords
+are rejected instead of being silently ignored.
+
+The fixture gate enforces exact schema-to-case closure. Every active schema has
+one isolated real-command case, every case has one schema, and negative fixtures
+exercise every supported keyword plus redaction. A fixture never inherits a
+checkout or database mutation from another contract case.
+
 Command effect classes are governed separately in `src/core/cli/effect-policy.mjs`.
 That policy records whether a public command is `read-only`, `preview`, `projector`, `mutating`, or `executor`, and provides the safe arguments used by the no-implicit-write fixture gate.
 

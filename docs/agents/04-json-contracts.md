@@ -43,6 +43,22 @@ Do not rename those fields in place without a version bump and fixture update.
 - do not encode local paths or secrets as schema constants
 - keep nested objects extensible until the fixtures and gates are ready to tighten them
 
+The executable contract verifier validates every schema keyword used by this
+registry, recursively. The supported validation vocabulary is `type`,
+`required`, `properties`, `const`, `enum`, `items`, and
+`additionalProperties`; schema annotations remain descriptive. Adding another
+validation keyword requires implementing it in the deterministic validator and
+adding a rejecting fixture before that keyword can appear in a public schema.
+
+Contract coverage is closed in both directions:
+
+- every active public contract has exactly one isolated executable case
+- every executable case resolves to exactly one active schema
+- each case validates an output produced by the real command
+- negative fixtures prove that each supported validation keyword rejects an
+  invalid payload
+- redaction checks remain separate from structural schema validation
+
 ## Change Rule
 
 If the payload shape changes, update the schema, the fixture coverage, and the relevant gate in the same change set.

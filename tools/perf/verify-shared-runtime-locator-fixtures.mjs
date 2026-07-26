@@ -60,6 +60,47 @@ function main() {
     assert(roundTrip.data.projection.localIndexMode === "preserve-current", "expected projection policy to round-trip");
 
     const invalidPath = resolveSharedRuntimeLocatorPath(targetRoot);
+    const atomicBaseline = fs.readFileSync(invalidPath);
+    let injectedFailure = "";
+    const failingFs = {
+      ...fs,
+      renameSync() {
+        throw new Error("injected atomic rename failure");
+      },
+    };
+    try {
+      writeSharedRuntimeLocator(targetRoot, {
+        enabled: false,
+        projectId: "must-not-replace-baseline",
+        backend: { kind: "none" },
+      }, { fsImpl: failingFs });
+    } catch (error) {
+      injectedFailure = String(error.message ?? error);
+    }
+    assert(injectedFailure === "injected atomic rename failure", "expected injected atomic failure");
+    assert(
+      Buffer.compare(fs.readFileSync(invalidPath), atomicBaseline) === 0,
+      "atomic failure must preserve the old locator byte-for-byte",
+    );
+    const temporarySiblings = fs.readdirSync(path.dirname(invalidPath))
+      .filter((name) => name.endsWith(".tmp"));
+    assert(temporarySiblings.length === 0, "atomic failure left a temporary locator sibling");
+
+    let validationFailure = "";
+    try {
+      writeSharedRuntimeLocator(targetRoot, {
+        enabled: true,
+        backend: { kind: "mysql" },
+      });
+    } catch (error) {
+      validationFailure = String(error.message ?? error);
+    }
+    assert(validationFailure.includes("Invalid shared runtime backend kind"), "expected pre-write validation failure");
+    assert(
+      Buffer.compare(fs.readFileSync(invalidPath), atomicBaseline) === 0,
+      "validation failure must preserve the old locator byte-for-byte",
+    );
+
     fs.writeFileSync(invalidPath, `${JSON.stringify({
       version: 1,
       enabled: true,
@@ -94,7 +135,15 @@ function main() {
     }
     assert(invalidError.includes("Invalid shared runtime backend kind"), "expected invalid backend kind to be rejected");
 
-    console.log("PASS");
+    console.log(JSON.stringify({
+      ok: true,
+      status: "PASS",
+      atomic_replace: true,
+      fsync_when_supported: true,
+      injected_failure_preserved_old_bytes: true,
+      validation_failure_preserved_old_bytes: true,
+      temporary_siblings_after_failure: 0,
+    }, null, 2));
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     process.exit(1);

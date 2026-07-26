@@ -15,6 +15,96 @@ const PUBLIC_DOCS = [
   "docs/CODEX_APP_COMPATIBILITY.md",
 ];
 
+const EXPLICIT_INTERNAL_ALIAS_SURFACES = new Set([
+  "aidn codex normalize-hook-payload",
+  "aidn codex run-json-hook",
+  "aidn perf audit-review",
+  "aidn perf campaign",
+  "aidn perf check-constraint-trend",
+  "aidn perf check-constraints",
+  "aidn perf check-fallbacks",
+  "aidn perf check-regression",
+  "aidn perf check-thresholds",
+  "aidn perf checkpoint",
+  "aidn perf collect",
+  "aidn perf constraint-actions",
+  "aidn perf constraint-history",
+  "aidn perf constraint-loop",
+  "aidn perf constraint-lot-advance",
+  "aidn perf constraint-lot-plan",
+  "aidn perf constraint-lot-summary",
+  "aidn perf constraint-lot-update",
+  "aidn perf constraint-report",
+  "aidn perf constraint-summary",
+  "aidn perf constraint-trend",
+  "aidn perf constraint-trend-summary",
+  "aidn perf delivery-end",
+  "aidn perf delivery-start",
+  "aidn perf fallback-report",
+  "aidn perf gate",
+  "aidn perf hook",
+  "aidn perf index",
+  "aidn perf index-canonical-check",
+  "aidn perf index-canonical-summary",
+  "aidn perf index-check",
+  "aidn perf index-export-files",
+  "aidn perf index-from-sqlite",
+  "aidn perf index-query",
+  "aidn perf index-reconcile",
+  "aidn perf index-regression",
+  "aidn perf index-regression-history",
+  "aidn perf index-regression-kpi",
+  "aidn perf index-report",
+  "aidn perf index-select-paths",
+  "aidn perf index-sql",
+  "aidn perf index-sync-history",
+  "aidn perf index-sync-report",
+  "aidn perf index-sync-thresholds",
+  "aidn perf index-thresholds",
+  "aidn perf index-verify",
+  "aidn perf index-verify-sqlite",
+  "aidn perf reload-check",
+  "aidn perf render-summary",
+  "aidn perf report",
+  "aidn perf reset",
+  "aidn perf session-close",
+  "aidn perf session-start",
+  "aidn perf skill-hook",
+  "aidn perf structure",
+  "aidn perf sync-history",
+  "aidn perf verify-cli-aliases",
+  "aidn perf verify-constraint-actions",
+  "aidn perf verify-constraint-lot-plan",
+  "aidn perf verify-constraint-report",
+  "aidn perf verify-constraint-trend",
+  "aidn perf verify-db-first-sync",
+  "aidn perf verify-index-canonical-check",
+  "aidn perf verify-index-reconcile",
+  "aidn perf verify-index-regression",
+  "aidn perf verify-index-sqlite",
+  "aidn perf verify-index-sync",
+  "aidn perf verify-index-sync-select-paths",
+  "aidn perf verify-install-import",
+  "aidn perf verify-project-config",
+  "aidn perf verify-skill-hook-context",
+  "aidn perf verify-skill-hooks",
+  "aidn perf verify-state-mode-parity",
+  "aidn perf verify-structure",
+  "aidn perf verify-sync-db-first-selective",
+]);
+
+const SPECIAL_PUBLIC_EFFECTS = new Map([
+  ["aidn", { default: "read-only", variants: [] }],
+  ["aidn help", { default: "read-only", variants: [] }],
+  ["aidn version", { default: "read-only", variants: [] }],
+  ["aidn codex", { default: "read-only", variants: [] }],
+  ["aidn codex help", { default: "read-only", variants: [] }],
+  ["aidn project", { default: "read-only", variants: [] }],
+  ["aidn project help", { default: "read-only", variants: [] }],
+  ["aidn runtime", { default: "read-only", variants: [] }],
+  ["aidn runtime help", { default: "read-only", variants: [] }],
+]);
+
 function posix(value) {
   return String(value).replace(/\\/g, "/");
 }
@@ -89,13 +179,91 @@ function parseAliasBlock(binText, constantName) {
   return aliases;
 }
 
-function effectFor(command, policies) {
-  const exact = policies.find((policy) => policy.command === command);
-  if (exact) {
-    return exact.effect_class;
+function effectProfileFor(command, policies) {
+  if (SPECIAL_PUBLIC_EFFECTS.has(command)) {
+    return SPECIAL_PUBLIC_EFFECTS.get(command);
   }
-  const family = policies.find((policy) => policy.command.startsWith(`${command} `));
-  return family?.effect_class ?? "unclassified-internal";
+  const candidates = policies.filter((policy) => policy.surface === command);
+  if (candidates.length === 0) {
+    throw new Error(`${command}: public surface has no exact effect policy`);
+  }
+  const defaults = candidates.filter(
+    (policy) => policy.surface_default === true || policy.when_args.length === 0,
+  );
+  const explicitDefaultClasses = candidates
+    .map((policy) => policy.surface_default_effect)
+    .filter(Boolean);
+  const defaultClasses = [...new Set(
+    explicitDefaultClasses.length > 0
+      ? explicitDefaultClasses
+      : defaults.map((policy) => policy.effect_class),
+  )];
+  if (defaultClasses.length !== 1) {
+    throw new Error(
+      `${command}: effect policy must declare exactly one unambiguous default class `
+      + `(found ${defaultClasses.join(", ") || "none"})`,
+    );
+  }
+  return {
+    default: defaultClasses[0],
+    variants: [
+      ...candidates
+      .filter((policy) => policy.when_args.length > 0)
+      .map((policy) => ({
+        when_args: [...policy.when_args],
+        unless_args: [...policy.unless_args],
+        effect_class: policy.effect_class,
+        policy: policy.id,
+      })),
+      ...candidates.flatMap((policy) => policy.effect_variants.map((variant) => ({
+        when_args: [...variant.when_args],
+        unless_args: [...variant.unless_args],
+        effect_class: variant.effect_class,
+        policy: `${policy.id}/${variant.id}`,
+      }))),
+    ]
+      .sort((left, right) => left.policy.localeCompare(right.policy)),
+  };
+}
+
+export function resolveEffectClassFromProfile(effectProfile, argv = []) {
+  if (!effectProfile || typeof effectProfile !== "object") {
+    throw new Error("effect profile must be an object");
+  }
+  const tokens = new Set(argv.map((token) => String(token)));
+  const matches = (effectProfile.variants ?? []).filter(
+    (variant) => variant.when_args.every((token) => tokens.has(token))
+      && variant.unless_args.every((token) => !tokens.has(token)),
+  );
+  if (matches.length === 0) {
+    return effectProfile.default;
+  }
+  const specificity = Math.max(...matches.map((variant) => variant.when_args.length));
+  const mostSpecific = matches.filter((variant) => variant.when_args.length === specificity);
+  const classes = [...new Set(mostSpecific.map((variant) => variant.effect_class))];
+  if (classes.length !== 1) {
+    throw new Error(`ambiguous effect variants: ${mostSpecific.map((item) => item.policy).join(", ")}`);
+  }
+  return classes[0];
+}
+
+function optionEffect(option, effectProfile) {
+  if (option === "--json") {
+    return "format-only";
+  }
+  const matchingVariants = effectProfile.variants.filter(
+    (variant) => variant.when_args.includes(option),
+  );
+  if (matchingVariants.length === 0) {
+    return effectProfile.default;
+  }
+  const classes = [...new Set(matchingVariants.map((variant) => variant.effect_class))];
+  return classes.length === 1
+    ? classes[0]
+    : {
+      default: effectProfile.default,
+      variants: matchingVariants,
+    };
 }
 
 function namedFunctionBody(text, functionName) {
@@ -206,25 +374,37 @@ function buildCommands(repoRoot) {
     commands.push({
       command: `aidn ${group}`,
       implementation: "bin/aidn.mjs",
-      visibility: "public",
+      visibility: group === "perf" ? "internal" : "public",
       options: ["--help", "-h"],
     });
     commands.push({
       command: `aidn ${group} help`,
       implementation: "bin/aidn.mjs",
-      visibility: "public",
+      visibility: group === "perf" ? "internal" : "public",
       options: [],
     });
     for (const name of aliasByName.keys()) {
       const alias = aliasByName.get(name);
+      const command = `aidn ${group} ${name}`;
+      const hasEffectPolicy = policies.some((policy) => policy.surface === command);
+      const explicitlyInternal = EXPLICIT_INTERNAL_ALIAS_SURFACES.has(command);
+      if (hasEffectPolicy === explicitlyInternal) {
+        throw new Error(
+          `${command}: alias must have exactly one visibility source `
+          + `(public effect policy or explicit internal declaration)`,
+        );
+      }
       commands.push({
-        command: `aidn ${group} ${name}`,
+        command,
         implementation: `tools/${group}/${alias.file}`,
-        visibility: "public",
+        visibility: hasEffectPolicy ? "public" : "internal",
       });
     }
   }
   for (const item of commands.sort((a, b) => a.command.localeCompare(b.command))) {
+    const effects = item.visibility === "public"
+      ? effectProfileFor(item.command, policies)
+      : "internal/non-public";
     const proofClass = item.visibility === "public" && item.command.startsWith("aidn codex")
       ? "installed-client"
       : "source";
@@ -239,7 +419,7 @@ function buildCommands(repoRoot) {
       source: "bin/aidn.mjs",
       entrypoint: item.command,
       implementation: item.implementation,
-      effects: effectFor(item.command, policies),
+      effects,
       consumer: item.visibility === "public" ? "installed client and automation" : "repository maintainers",
       docs: "docs/CLI_SURFACE_INVENTORY.md",
       proofClass,
@@ -255,7 +435,9 @@ function buildCommands(repoRoot) {
         source: item.implementation,
         entrypoint: `${item.command} ${option}`,
         implementation: item.implementation,
-        effects: option === "--json" ? "format-only" : effectFor(item.command, policies),
+        effects: item.visibility === "public"
+          ? optionEffect(option, effects)
+          : "internal/non-public",
         consumer: item.visibility === "public" ? "installed client and automation" : "repository maintainers",
         docs: "docs/CLI_SURFACE_INVENTORY.md",
         proofTarget: item.implementation,

@@ -18,7 +18,6 @@ These are the durable surfaces exposed through `aidn` today:
 - `aidn build-release`
 - `aidn help` / `aidn --help` / `aidn -h`
 - `aidn version` / `aidn --version` / `aidn -v`
-- `aidn perf`
 - `aidn codex`
 - `aidn runtime`
 - `aidn project`
@@ -45,8 +44,8 @@ These command families are intended for users and are covered by public effect p
 - `aidn runtime db-only-readiness --json`
 - `aidn runtime persistence-status --json`
 - `aidn runtime persistence-adopt --json`
-- `aidn runtime db-migrate --json`
-- `aidn runtime persistence-migrate --json`
+- `aidn runtime db-migrate --json` (preview) and `--write --json` (apply)
+- `aidn runtime persistence-migrate --json` (preview alias) and `--write --json` (apply)
 - `aidn runtime db-backup --json`
 - `aidn runtime persistence-backup --json`
 - `aidn runtime persistence-source-diagnose --json`
@@ -108,9 +107,12 @@ These surfaces are public and contract-backed, but they are more operational or 
 - `aidn runtime project-handoff-packet --json`, `--write` for projection writes, and `--sync-relay` for shared relay sync writes
 - `aidn runtime state-reanchor --json` and `--write` for explicit repair of `CURRENT-STATE.md`, `RUNTIME-STATE.md`, and `HANDOFF-PACKET.md` from the active runtime backend
 
-## Stable public aliases
+## Repository-internal aliases
 
-These `aidn perf` aliases are public because they are part of the executable CLI surface and are validated by alias coverage fixtures:
+The `aidn perf` dispatcher and every alias currently listed in `PERF_ALIASES`
+are repository tooling. They remain executable for maintainers and fixtures, but
+they are classified explicitly as internal/non-public in the machine-readable
+surface catalog. In particular, this includes:
 
 - `aidn perf checkpoint`
 - `aidn perf session-start`
@@ -118,7 +120,7 @@ These `aidn perf` aliases are public because they are part of the executable CLI
 - `aidn perf delivery-start`
 - `aidn perf delivery-end`
 - `aidn perf audit-review`
-- the `perf:*` alias set listed in `bin/aidn.mjs`
+- every other alias in the closed `PERF_ALIASES` descriptor
 
 ## Experimental or internal
 
@@ -126,6 +128,8 @@ These are currently implemented as package scripts, tools, or internal wrappers,
 
 - direct `tools/runtime/*.mjs` entrypoints
 - direct `tools/perf/*.mjs` entrypoints
+- `aidn perf` and its explicitly catalogued internal aliases
+- `aidn codex run-json-hook` and `aidn codex normalize-hook-payload`
 - `aidn runtime local-daemon`
   - experimental opt-in local daemon prototype
   - `--start`, `--status`, and `--stop` use a worktree-local endpoint file under `.aidn/runtime/daemon/`

@@ -5,6 +5,11 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import {
+  collectUnsupportedSchemaKeywords,
+  listSupportedSchemaKeywords,
+  validateJsonSchema,
+} from "../../src/core/contracts/json-schema-validator.mjs";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
@@ -43,6 +48,30 @@ const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-outpu
 const AIDN_BIN = path.join(REPO_ROOT, "bin", "aidn.mjs");
 
 const CONTRACT_CASES = [
+  {
+    name: "bootstrap",
+    schema: "bootstrap.v1.schema.json",
+    args: ["bootstrap", "--profile", "minimal", "--json"],
+    env(tmpRoot) {
+      const binDir = path.join(tmpRoot, ".contract-prerequisite-bin");
+      fs.mkdirSync(binDir, { recursive: true });
+      if (process.platform === "win32") {
+        fs.writeFileSync(path.join(binDir, "codex.cmd"), [
+          "@echo off",
+          "if \"%1\"==\"login\" if \"%2\"==\"status\" echo Logged in",
+          "exit /b 0",
+          "",
+        ].join("\r\n"), "utf8");
+      } else {
+        const commandPath = path.join(binDir, "codex");
+        fs.writeFileSync(commandPath, "#!/usr/bin/env sh\necho \"Logged in\"\n", "utf8");
+        fs.chmodSync(commandPath, 0o755);
+      }
+      return {
+        PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+      };
+    },
+  },
   {
     name: "bootstrap-preview",
     schema: "bootstrap-preview.v1.schema.json",
@@ -477,61 +506,6 @@ function comparePathSnapshot(root, beforeSnapshot = {}) {
   return issues;
 }
 
-function normalizeTypes(typeSpec) {
-  if (Array.isArray(typeSpec)) {
-    return typeSpec;
-  }
-  if (typeof typeSpec === "string" && typeSpec.trim()) {
-    return [typeSpec.trim()];
-  }
-  return [];
-}
-
-function valueType(value) {
-  if (value === null) return "null";
-  if (Array.isArray(value)) return "array";
-  return typeof value;
-}
-
-function typeMatches(value, allowedTypes) {
-  if (allowedTypes.length === 0) {
-    return true;
-  }
-  const actual = valueType(value);
-  if (actual === "number" && allowedTypes.includes("integer") && Number.isInteger(value)) {
-    return true;
-  }
-  return allowedTypes.includes(actual);
-}
-
-function validateAgainstSchema(payload, schema, location = "$") {
-  const issues = [];
-  const allowedTypes = normalizeTypes(schema.type);
-  if (!typeMatches(payload, allowedTypes)) {
-    issues.push(`${location}: expected ${allowedTypes.join("|")}, got ${valueType(payload)}`);
-    return issues;
-  }
-  const isObjectLike = payload !== null && typeof payload === "object" && !Array.isArray(payload);
-  if ((schema.type === "object" || allowedTypes.includes("object")) && isObjectLike) {
-    const required = Array.isArray(schema.required) ? schema.required : [];
-    for (const fieldName of required) {
-      if (!Object.prototype.hasOwnProperty.call(payload, fieldName)) {
-        issues.push(`${location}.${fieldName}: missing required field`);
-      }
-    }
-    const properties = schema.properties && typeof schema.properties === "object"
-      ? schema.properties
-      : {};
-    for (const [fieldName, fieldSchema] of Object.entries(properties)) {
-      if (!Object.prototype.hasOwnProperty.call(payload, fieldName)) {
-        continue;
-      }
-      issues.push(...validateAgainstSchema(payload[fieldName], fieldSchema, `${location}.${fieldName}`));
-    }
-  }
-  return issues;
-}
-
 function extractJson(stdout) {
   const text = String(stdout ?? "").trim();
   if (!text) {
@@ -553,6 +527,7 @@ function runCase(tmpRoot, testCase) {
   const schemaPath = path.join(CONTRACT_DIR, testCase.schema);
   const schema = readJson(schemaPath);
   const caseArgs = typeof testCase.args === "function" ? testCase.args(tmpRoot) : testCase.args;
+  const caseEnv = typeof testCase.env === "function" ? testCase.env(tmpRoot) : (testCase.env ?? {});
   const beforeSnapshot = snapshotPaths(tmpRoot, testCase.noMutationPaths ?? []);
   const result = spawnSync(process.execPath, [
     AIDN_BIN,
@@ -561,7 +536,10 @@ function runCase(tmpRoot, testCase) {
     tmpRoot,
   ], {
     cwd: REPO_ROOT,
-    env: process.env,
+    env: {
+      ...process.env,
+      ...caseEnv,
+    },
     encoding: "utf8",
     timeout: 120000,
     maxBuffer: 20 * 1024 * 1024,
@@ -600,7 +578,7 @@ function runCase(tmpRoot, testCase) {
     };
   }
   const issues = [
-    ...validateAgainstSchema(payload, schema),
+    ...validateJsonSchema(payload, schema),
     ...comparePathSnapshot(tmpRoot, beforeSnapshot),
   ];
   return {
@@ -614,6 +592,106 @@ function runCase(tmpRoot, testCase) {
   };
 }
 
+function schemaFiles() {
+  return fs.readdirSync(CONTRACT_DIR)
+    .filter((name) => name.endsWith(".schema.json"))
+    .sort();
+}
+
+function verifyContractClosure() {
+  const schemas = schemaFiles();
+  const cases = CONTRACT_CASES.map((item) => item.schema).sort();
+  const issues = [];
+  const duplicateCases = cases.filter((name, index) => cases.indexOf(name) !== index);
+  for (const name of [...new Set(duplicateCases)]) {
+    issues.push(`${name}: schema has more than one executable contract case`);
+  }
+  for (const schema of schemas) {
+    if (!cases.includes(schema)) {
+      issues.push(`${schema}: active public contract has no executable case`);
+    }
+    issues.push(...collectUnsupportedSchemaKeywords(readJson(path.join(CONTRACT_DIR, schema)))
+      .map((issue) => `${schema}: ${issue}`));
+  }
+  for (const schema of cases) {
+    if (!schemas.includes(schema)) {
+      issues.push(`${schema}: executable case is orphaned from the contract directory`);
+    }
+  }
+  return {
+    schemas: schemas.length,
+    cases: cases.length,
+    issues,
+  };
+}
+
+function runValidatorNegativeFixtures() {
+  const combinedSchema = {
+    type: "object",
+    required: ["contract_version", "records", "redaction"],
+    properties: {
+      contract_version: { const: "v1" },
+      records: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["kind"],
+          properties: {
+            kind: { type: "string", enum: ["safe"] },
+          },
+          additionalProperties: false,
+        },
+      },
+      redaction: {
+        type: "object",
+        required: ["connection_string"],
+        properties: {
+          connection_string: { type: "string", enum: ["", "[redacted]"] },
+        },
+        additionalProperties: false,
+      },
+    },
+    additionalProperties: false,
+  };
+  const validPayload = {
+    contract_version: "v1",
+    records: [{ kind: "safe" }],
+    redaction: { connection_string: "[redacted]" },
+  };
+  const fixtures = [
+    ["type", { ...validPayload, records: "not-an-array" }],
+    ["required", { records: [], redaction: validPayload.redaction }],
+    ["properties", { ...validPayload, records: [{ kind: 17 }] }],
+    ["const", { ...validPayload, contract_version: "v2" }],
+    ["enum", { ...validPayload, records: [{ kind: "unsafe" }] }],
+    ["items", { ...validPayload, records: [17] }],
+    ["additionalProperties", { ...validPayload, unexpected: true }],
+    ["redaction", {
+      ...validPayload,
+      redaction: { connection_string: "postgres://secret@example.invalid/db" },
+    }],
+    ["combined", {
+      contract_version: "v2",
+      records: [{ kind: "unsafe", leaked: true }],
+      redaction: { connection_string: "postgres://secret@example.invalid/db" },
+      unexpected: true,
+    }],
+  ];
+  const results = fixtures.map(([name, payload]) => {
+    const issues = validateJsonSchema(payload, combinedSchema);
+    return {
+      name,
+      rejected: issues.length > 0,
+      issue_count: issues.length,
+    };
+  });
+  return {
+    ok: validateJsonSchema(validPayload, combinedSchema).length === 0
+      && results.every((item) => item.rejected),
+    results,
+  };
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const sourceRoot = path.resolve(REPO_ROOT, args.target);
@@ -623,6 +701,8 @@ function main() {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-cli-output-contracts-"));
   let baseRoot = "";
   const results = [];
+  const closure = verifyContractClosure();
+  const validatorNegativeFixtures = runValidatorNegativeFixtures();
   try {
     baseRoot = prepareBaseFixture(sourceRoot, tempRoot);
     for (const [index, testCase] of CONTRACT_CASES.entries()) {
@@ -638,11 +718,18 @@ function main() {
     }
   }
   const output = {
-    ok: results.every((item) => item.ok),
+    ok: results.every((item) => item.ok)
+      && closure.issues.length === 0
+      && validatorNegativeFixtures.ok,
     target_root: sourceRoot,
-    fixture_setup: "isolated Git repository with a derived dual-sqlite projection per contract case",
+    fixture_setup: "isolated Git repository with a derived dual-sqlite projection per contract case; bootstrap uses only a local prerequisite command stub and is not installed-client proof",
     tmp_root: args.keepTmp ? tempRoot : "removed",
     checked_contracts: results.length,
+    contract_closure: closure,
+    validator: {
+      supported_keywords: listSupportedSchemaKeywords(),
+      negative_fixtures: validatorNegativeFixtures,
+    },
     results,
   };
   if (args.json) {

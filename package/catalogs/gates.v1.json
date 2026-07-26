@@ -7,7 +7,8 @@
     "git-repository",
     "git-clean-commit",
     "git-clean-worktree",
-    "codex-cli-available"
+    "codex-cli-available",
+    "postgres-smoke-url-available"
   ],
   "required_families": [
     "contracts",
@@ -58,6 +59,15 @@
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
     {
+      "id": "effects-db-migrate-write-boundary",
+      "family": "effects",
+      "script": "perf:verify-db-migrate-write-boundary",
+      "job": "architecture-gates/contracts",
+      "surfaces": ["runtime db-migrate", "runtime persistence-migrate", "--write"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
       "id": "governance-source",
       "family": "governance",
       "script": "perf:verify-source-of-truth-policy",
@@ -99,6 +109,15 @@
       "script": "perf:verify-cli-surface-inventory",
       "job": "architecture-gates/docs",
       "surfaces": ["docs/CLI_SURFACE_INVENTORY.md", "bin/aidn.mjs"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "docs-references",
+      "family": "docs",
+      "script": "perf:verify-doc-references",
+      "job": "architecture-gates/docs",
+      "surfaces": ["active Markdown local links", "documented npm scripts"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
@@ -155,6 +174,33 @@
       "surfaces": ["runtime governance JSON", "shared sync opt-in"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-shared-locator-atomicity",
+      "family": "runtime",
+      "script": "perf:verify-shared-runtime-locator",
+      "job": "architecture-gates/runtime",
+      "surfaces": ["shared runtime locator", "atomic replacement", "failure preservation"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-state-projector-cleanup",
+      "family": "runtime",
+      "script": "perf:verify-runtime-state-projector",
+      "job": "architecture-gates/runtime",
+      "surfaces": ["runtime state projector fixture", "temporary directory cleanup"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-postgres-shared-live-cleanup",
+      "family": "runtime",
+      "script": "perf:verify-postgres-shared-coordination-live-smoke",
+      "job": "architecture-gates/runtime",
+      "surfaces": ["optional PostgreSQL shared coordination", "synthetic row cleanup"],
+      "condition": "postgres-smoke-url-available",
+      "obligation": { "dev": "optional", "main": "optional", "release": "optional" }
     },
     {
       "id": "security-shared-boundary",

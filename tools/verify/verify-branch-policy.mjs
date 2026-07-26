@@ -41,29 +41,37 @@ function parseArgs(argv) {
   return args;
 }
 
-function resolveRefSha(refName) {
-  const candidates = refName.startsWith("refs/")
-    ? [refName]
-    : [
-      `refs/heads/${refName}`,
-      `refs/remotes/${refName}`,
-      `refs/remotes/origin/${refName}`,
-      refName,
-    ];
-  for (const candidate of candidates) {
-    try {
-      return {
-        ref: candidate,
-        sha: git(["rev-parse", "--verify", `${candidate}^{commit}`]),
-      };
-    } catch {
-      // Try the next unambiguous ref spelling.
-    }
-  }
-  return null;
+function firstNonEmpty(...values) {
+  return values.map((value) => String(value ?? "").trim()).find(Boolean) ?? "";
 }
 
-export function evaluateBranchShape({ eventName, base, head }) {
+function resolveRemoteRef(refName) {
+  const normalized = String(refName ?? "").trim();
+  const candidate = normalized.startsWith("refs/remotes/")
+    ? normalized
+    : (normalized.includes("/") ? `refs/remotes/${normalized}` : "");
+  if (!candidate) {
+    return null;
+  }
+  const remoteMatch = candidate.match(/^refs\/remotes\/([^/]+)\/(.+)$/);
+  if (!remoteMatch) {
+    return null;
+  }
+  const [, remote, branch] = remoteMatch;
+  try {
+    git(["remote", "get-url", remote]);
+    return {
+      ref: candidate,
+      remote,
+      branch,
+      sha: git(["rev-parse", "--verify", `${candidate}^{commit}`]),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function evaluateBranchShape({ eventName, base, head, ref = "" }) {
   const issues = [];
   if (eventName === "pull_request") {
     if (base === "dev") {
@@ -76,6 +84,10 @@ export function evaluateBranchShape({ eventName, base, head }) {
       }
     } else {
       issues.push(`unsupported PR base ${base || "missing"}; expected dev or main`);
+    }
+  } else if (eventName === "push" && ref === "refs/heads/main") {
+    if (head !== "main") {
+      issues.push(`main publication certification must prove origin/main; got ${head || "detached"}`);
     }
   } else if (!head) {
     issues.push("local branch policy requires a branch name or explicit detached-HEAD provenance");
@@ -92,24 +104,19 @@ export function verifyBranchPolicy({
   const args = parseArgs(argv);
   const actualSha = git(["rev-parse", "HEAD"]);
   const localBranch = git(["branch", "--show-current"]);
-  const explicitHead = args.headRef
-    ?? env.AIDN_BRANCH_POLICY_HEAD_REF
-    ?? "";
-  const explicitBase = args.baseRef
-    ?? env.AIDN_BRANCH_POLICY_BASE_REF
-    ?? "";
-  const expectedSha = args.expectedSha
-    ?? env.AIDN_BRANCH_POLICY_EXPECTED_SHA
-    ?? "";
-  const containsRef = args.containsRef
-    ?? env.AIDN_BRANCH_POLICY_CONTAINS_REF
-    ?? "";
-  const eventName = args.eventName
-    ?? env.AIDN_BRANCH_POLICY_EVENT_NAME
-    ?? env.GITHUB_EVENT_NAME
-    ?? "local";
-  const githubHead = env.GITHUB_HEAD_REF ?? "";
-  const githubBase = env.GITHUB_BASE_REF ?? "";
+  const explicitHead = firstNonEmpty(args.headRef, env.AIDN_BRANCH_POLICY_HEAD_REF);
+  const explicitBase = firstNonEmpty(args.baseRef, env.AIDN_BRANCH_POLICY_BASE_REF);
+  const expectedSha = firstNonEmpty(args.expectedSha, env.AIDN_BRANCH_POLICY_EXPECTED_SHA);
+  const containsRef = firstNonEmpty(args.containsRef, env.AIDN_BRANCH_POLICY_CONTAINS_REF);
+  const eventName = firstNonEmpty(
+    args.eventName,
+    env.AIDN_BRANCH_POLICY_EVENT_NAME,
+    env.GITHUB_EVENT_NAME,
+    "local",
+  );
+  const githubHead = firstNonEmpty(env.GITHUB_HEAD_REF);
+  const githubBase = firstNonEmpty(env.GITHUB_BASE_REF);
+  const githubRef = firstNonEmpty(env.GITHUB_REF);
   const detached = !localBranch;
   const provenanceIssues = [];
   const provenance = {
@@ -134,38 +141,39 @@ export function verifyBranchPolicy({
     if (!expectedSha) {
       provenanceIssues.push("detached HEAD certification requires --expected-sha or AIDN_BRANCH_POLICY_EXPECTED_SHA");
     }
-    if (explicitHead) {
-      const resolved = resolveRefSha(explicitHead);
-      if (!resolved) {
-        provenanceIssues.push(`explicit head ref cannot be resolved: ${explicitHead}`);
-      } else {
-        provenance.resolved_head_ref = resolved.ref;
-        provenance.resolved_head_sha = resolved.sha;
-        if (resolved.sha !== actualSha) {
-          provenanceIssues.push(`explicit head ref ${explicitHead} does not resolve to detached HEAD`);
-        }
-      }
-    } else if (containsRef) {
-      const resolved = resolveRefSha(containsRef);
+    if (!containsRef) {
+      provenanceIssues.push(
+        "detached HEAD certification requires --contains-ref or "
+        + "AIDN_BRANCH_POLICY_CONTAINS_REF naming a configured remote-tracking ref",
+      );
+    } else {
+      const resolved = resolveRemoteRef(containsRef);
       if (!resolved || !resolved.ref.startsWith("refs/remotes/")) {
-        provenanceIssues.push(`detached containment ref must resolve to a remote ref: ${containsRef}`);
+        provenanceIssues.push(
+          `detached containment ref must resolve through a configured remote: ${containsRef}`,
+        );
       } else {
         provenance.resolved_head_ref = resolved.ref;
         provenance.resolved_head_sha = resolved.sha;
         try {
           git(["merge-base", "--is-ancestor", actualSha, resolved.ref]);
           provenance.containment_proved = true;
-          head = resolved.ref
-            .replace(/^refs\/remotes\/origin\//, "")
-            .replace(/^refs\/remotes\/[^/]+\//, "");
+          head = resolved.branch;
+          if (explicitHead && explicitHead !== resolved.branch) {
+            provenanceIssues.push(
+              `explicit head ${explicitHead} does not match remote containment branch ${resolved.branch}`,
+            );
+          }
         } catch {
           provenanceIssues.push(`detached HEAD ${actualSha} is not contained by ${resolved.ref}`);
         }
       }
-    } else {
-      provenanceIssues.push("detached HEAD certification requires an explicit head ref or remote containment ref");
     }
-    if (!base) {
+    if (!provenance.containment_proved) {
+      provenanceIssues.push("detached HEAD remote containment was not proved");
+    }
+    const isMainPush = eventName === "push" && githubRef === "refs/heads/main";
+    if (!base && !isMainPush) {
       provenanceIssues.push("detached HEAD certification requires an explicit base ref");
     }
   }
@@ -177,6 +185,7 @@ export function verifyBranchPolicy({
       eventName: effectiveEventName,
       base,
       head,
+      ref: githubRef,
     }),
   ];
   return {

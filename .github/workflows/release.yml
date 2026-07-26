@@ -17,13 +17,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+      - name: Fetch Announced Remote Head
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            "+refs/heads/${GITHUB_HEAD_REF}:refs/remotes/origin/${GITHUB_HEAD_REF}"
       - uses: actions/setup-node@v4
         with:
           node-version: "22.13"
-      - name: Verify Release Branch Policy
-        run: npm run perf:verify-branch-policy
-      - name: Verify Without Publishing
+      - name: Verify All Context Obligations Without Publishing
+        env:
+          AIDN_BRANCH_POLICY_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/${{ github.head_ref }}
         run: npm run verify:release
 
   publish:
@@ -61,6 +68,9 @@ jobs:
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
 
       - name: Verify Version, Provenance, Topology, And Sensitivity
+        env:
+          AIDN_BRANCH_POLICY_EXPECTED_SHA: ${{ github.sha }}
+          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/main
         run: npm run verify:release
 
       - name: Refuse Existing Tag Or Release
