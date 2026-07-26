@@ -47,8 +47,11 @@ function verifyContractsExist(policies) {
       continue;
     }
     const schema = JSON.parse(fs.readFileSync(contractPath, "utf8"));
-    if (schema["x-aidn-command"] !== policy.command) {
-      issues.push(`${policy.id}: schema command mismatch (${schema["x-aidn-command"] ?? "missing"} != ${policy.command})`);
+    const contractCommands = Array.isArray(schema["x-aidn-commands"])
+      ? schema["x-aidn-commands"]
+      : [schema["x-aidn-command"]];
+    if (!contractCommands.includes(policy.command)) {
+      issues.push(`${policy.id}: schema command mismatch (${contractCommands.filter(Boolean).join(" | ") || "missing"} != ${policy.command})`);
     }
   }
   return issues;

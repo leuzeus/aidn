@@ -3,11 +3,20 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { Client } from "pg";
 import { buildNextAidnProjectConfig } from "../../src/application/install/project-config-service.mjs";
 import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
 import { readAidnProjectConfig, writeAidnProjectConfig } from "../../src/lib/config/aidn-config-lib.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+
+let postgresClientClass = null;
+
+async function loadPostgresClientClass() {
+  if (postgresClientClass == null) {
+    const postgresModule = await import("pg");
+    postgresClientClass = postgresModule.Client;
+  }
+  return postgresClientClass;
+}
 
 function normalizeScalar(value) {
   return String(value ?? "").trim();
@@ -45,6 +54,7 @@ function runJson(repoRoot, scriptRelative, args, env = {}) {
 }
 
 async function cleanupScope(connectionString, scopeKey) {
+  const Client = await loadPostgresClientClass();
   const client = new Client({ connectionString });
   await client.connect();
   try {
@@ -103,6 +113,7 @@ async function main() {
       return;
     }
 
+    const Client = await loadPostgresClientClass();
     const repoRoot = process.cwd();
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-runtime-pg-smoke-"));
     const targetRoot = path.join(tempRoot, "repo");

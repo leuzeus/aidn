@@ -64,7 +64,7 @@ Initial v1 commands:
 - `aidn runtime project-coordination-summary --json`
 - `aidn runtime sync-db-first --json`
 - `aidn runtime sync-db-first-selective --json`
-- `aidn runtime mode-migrate --json`
+- `aidn runtime mode-migrate --json` (read-only preview) and `aidn runtime mode-migrate --write --json` (explicit apply)
 - `aidn runtime session-plan --json`
 - `aidn runtime db-first-artifact --json`
 - `aidn runtime artifact-store list --json`

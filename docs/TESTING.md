@@ -59,7 +59,7 @@ When a change affects the simplified install/upgrade orchestrator, run:
 - `npm run perf:verify-project-config`
 - `npm run perf:verify-install-idempotence`
 
-The CLI effect policy verifier checks the public command effect inventory in `src/core/cli/effect-policy.mjs`. The no-implicit-write verifier runs stable read-only, preview, and projector dry-run commands against a temporary fixture copy and fails if checkout-bound or declared projection guard paths change. The CLI output contract verifier runs the public JSON commands against a temporary fixture copy and validates them against `src/core/contracts/cli-output/*.schema.json`. For projector commands, it also verifies that `--dry-run --json` does not mutate the projected Markdown artifact.
+The CLI effect policy verifier checks the public command effect inventory in `src/core/cli/effect-policy.mjs`. The no-implicit-write verifier runs stable read-only, preview, and projector dry-run commands against a temporary fixture copy and fails if checkout-bound paths, including `.agents/*` and `.aidn/runtime/*`, change. The CLI output contract verifier gives every public JSON command its own isolated Git fixture with an explicitly derived dual-SQLite projection, then validates the result against `src/core/contracts/cli-output/*.schema.json`; commands never inherit mutations from a previously checked contract. For projector commands, it also verifies that `--dry-run --json` does not mutate the projected Markdown artifact.
 
 The CLI surface inventory verifier checks that `repair-layer` commands remain classified as internal and are not exposed as public runtime aliases or effect-policy entries.
 

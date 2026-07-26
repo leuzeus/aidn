@@ -501,10 +501,19 @@ const CLI_EFFECT_POLICIES = freezeDeep([
   commandPolicy({
     id: "runtime-mode-migrate",
     command: "aidn runtime mode-migrate --json",
-    effectClass: "mutating",
+    effectClass: "preview",
     jsonContract: "runtime-mode-migrate.v1.schema.json",
     safeArgs: ["runtime", "mode-migrate", "--to", "dual", "--json"],
-    notes: "Migrates runtime mode boundaries and updates config, schema, and projections as needed.",
+    noMutationPaths: [".aidn/runtime"],
+    notes: "Previews runtime mode config, schema, and projection changes; --json never implies mutation.",
+  }),
+  commandPolicy({
+    id: "runtime-mode-migrate-write",
+    command: "aidn runtime mode-migrate --write --json",
+    effectClass: "mutating",
+    jsonContract: "runtime-mode-migrate.v1.schema.json",
+    safeArgs: ["runtime", "mode-migrate", "--to", "dual", "--write", "--json"],
+    notes: "Applies runtime mode boundaries and atomically updates config only after explicit --write intent.",
   }),
   commandPolicy({
     id: "runtime-session-plan",

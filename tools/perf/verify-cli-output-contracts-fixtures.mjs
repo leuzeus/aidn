@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -232,6 +234,14 @@ const CONTRACT_CASES = [
     name: "runtime-mode-migrate",
     schema: "runtime-mode-migrate.v1.schema.json",
     args: ["runtime", "mode-migrate", "--to", "dual", "--json"],
+    noMutationPaths: [
+      ".aidn/config.json",
+      ".aidn/runtime/index/workflow-index.json",
+      ".aidn/runtime/index/workflow-index.sqlite",
+      ".aidn/runtime/index/repair-layer-report.json",
+      ".aidn/runtime/index/repair-layer-triage.json",
+      ".aidn/runtime/index/repair-layer-triage-summary.md",
+    ],
   },
   {
     name: "runtime-session-plan",
@@ -393,18 +403,49 @@ const CONTRACT_CASES = [
   },
 ];
 
-function copyFixture(sourceRoot) {
-  const stamp = new Date().toISOString().replace(/[-:.]/g, "").replace("T", "T").replace("Z", "Z");
-  const tmpRoot = path.join(REPO_ROOT, "tests", "fixtures", `tmp-cli-output-contracts-${stamp}`);
-  fs.rmSync(tmpRoot, { recursive: true, force: true });
-  fs.cpSync(sourceRoot, tmpRoot, {
+function prepareBaseFixture(sourceRoot, tempRoot) {
+  const baseRoot = path.join(tempRoot, "base");
+  fs.cpSync(sourceRoot, baseRoot, {
     recursive: true,
     filter(source) {
       const normalized = source.replace(/\\/g, "/");
       return !normalized.includes("/.git/");
     },
   });
-  return tmpRoot;
+  initGitRepo(baseRoot, {
+    sourceBranch: "dev",
+    workingBranch: "feature/C101-contracts",
+  });
+  const seed = spawnSync(process.execPath, [
+    path.join(REPO_ROOT, "tools", "perf", "index-sync.mjs"),
+    "--target",
+    baseRoot,
+    "--store",
+    "dual-sqlite",
+    "--with-content",
+    "--json",
+  ], {
+    cwd: REPO_ROOT,
+    env: process.env,
+    encoding: "utf8",
+    timeout: 120000,
+    maxBuffer: 20 * 1024 * 1024,
+    windowsHide: true,
+  });
+  if (seed.status !== 0) {
+    throw new Error(`Unable to seed isolated contract fixture: ${String(seed.stderr || seed.stdout).trim()}`);
+  }
+  return baseRoot;
+}
+
+function copyCaseFixture(baseRoot, tempRoot, testCase, index) {
+  const safeName = String(testCase.name ?? `case-${index}`)
+    .replace(/[^a-z0-9-]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+  const caseRoot = path.join(tempRoot, `${String(index).padStart(2, "0")}-${safeName}`);
+  fs.cpSync(baseRoot, caseRoot, { recursive: true });
+  return caseRoot;
 }
 
 function readJson(filePath) {
@@ -537,6 +578,7 @@ function runCase(tmpRoot, testCase) {
       status: "command-failed",
       exit_code: result.status,
       signal: signal || null,
+      stdout: String(result.stdout ?? "").trim(),
       stderr: String(result.stderr ?? "").trim(),
       issues: [
         processError || `command did not complete with an integer exit code (status=${String(result.status)})`,
@@ -578,21 +620,28 @@ function main() {
   if (!fs.existsSync(sourceRoot)) {
     throw new Error(`Target fixture not found: ${sourceRoot}`);
   }
-  const tmpRoot = copyFixture(sourceRoot);
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-cli-output-contracts-"));
+  let baseRoot = "";
   const results = [];
   try {
-    for (const testCase of CONTRACT_CASES) {
-      results.push(runCase(tmpRoot, testCase));
+    baseRoot = prepareBaseFixture(sourceRoot, tempRoot);
+    for (const [index, testCase] of CONTRACT_CASES.entries()) {
+      const caseRoot = copyCaseFixture(baseRoot, tempRoot, testCase, index);
+      results.push(runCase(caseRoot, testCase));
     }
   } finally {
     if (!args.keepTmp) {
-      fs.rmSync(tmpRoot, { recursive: true, force: true });
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok) {
+        throw cleanup.error;
+      }
     }
   }
   const output = {
     ok: results.every((item) => item.ok),
     target_root: sourceRoot,
-    tmp_root: args.keepTmp ? tmpRoot : "removed",
+    fixture_setup: "isolated Git repository with a derived dual-sqlite projection per contract case",
+    tmp_root: args.keepTmp ? tempRoot : "removed",
     checked_contracts: results.length,
     results,
   };

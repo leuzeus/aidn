@@ -210,6 +210,7 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-sync-db-first", linked_concepts: ["artifact", "workspace"] },
   { id: "runtime-sync-db-first-selective", linked_concepts: ["artifact", "workspace"] },
   { id: "runtime-mode-migrate", linked_concepts: ["artifact", "workspace"] },
+  { id: "runtime-mode-migrate-write", linked_concepts: ["artifact", "workspace"] },
   { id: "runtime-session-plan", linked_concepts: ["current_state", "session", "coordination_record"] },
   { id: "runtime-db-first-artifact", linked_concepts: ["artifact", "workspace"] },
   { id: "runtime-artifact-store", linked_concepts: ["artifact", "workspace"] },

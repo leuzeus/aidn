@@ -2767,7 +2767,7 @@
       "source": "bin/aidn.mjs",
       "entrypoint": "aidn runtime mode-migrate",
       "implementation": "tools/runtime/mode-migrate.mjs",
-      "effects": "mutating",
+      "effects": "preview",
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
       "proof": {
@@ -26476,7 +26476,7 @@
       "source": "tools/runtime/mode-migrate.mjs",
       "entrypoint": "aidn runtime mode-migrate --audit-root",
       "implementation": "tools/runtime/mode-migrate.mjs",
-      "effects": "mutating",
+      "effects": "preview",
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
       "proof": {
@@ -26497,7 +26497,7 @@
       "source": "tools/runtime/mode-migrate.mjs",
       "entrypoint": "aidn runtime mode-migrate --from",
       "implementation": "tools/runtime/mode-migrate.mjs",
-      "effects": "mutating",
+      "effects": "preview",
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
       "proof": {
@@ -26518,7 +26518,7 @@
       "source": "tools/runtime/mode-migrate.mjs",
       "entrypoint": "aidn runtime mode-migrate --help",
       "implementation": "tools/runtime/mode-migrate.mjs",
-      "effects": "mutating",
+      "effects": "preview",
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
       "proof": {
@@ -26539,7 +26539,7 @@
       "source": "tools/runtime/mode-migrate.mjs",
       "entrypoint": "aidn runtime mode-migrate --index-file",
       "implementation": "tools/runtime/mode-migrate.mjs",
-      "effects": "mutating",
+      "effects": "preview",
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
       "proof": {
@@ -26581,7 +26581,7 @@
       "source": "tools/runtime/mode-migrate.mjs",
       "entrypoint": "aidn runtime mode-migrate --no-repair-layer",
       "implementation": "tools/runtime/mode-migrate.mjs",
-      "effects": "mutating",
+      "effects": "preview",
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
       "proof": {
@@ -26602,7 +26602,7 @@
       "source": "tools/runtime/mode-migrate.mjs",
       "entrypoint": "aidn runtime mode-migrate --no-repair-layer-triage",
       "implementation": "tools/runtime/mode-migrate.mjs",
-      "effects": "mutating",
+      "effects": "preview",
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
       "proof": {
@@ -26623,7 +26623,7 @@
       "source": "tools/runtime/mode-migrate.mjs",
       "entrypoint": "aidn runtime mode-migrate --repair-layer-autofix-safe-only",
       "implementation": "tools/runtime/mode-migrate.mjs",
-      "effects": "mutating",
+      "effects": "preview",
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
       "proof": {
@@ -26644,7 +26644,7 @@
       "source": "tools/runtime/mode-migrate.mjs",
       "entrypoint": "aidn runtime mode-migrate --repair-layer-report-file",
       "implementation": "tools/runtime/mode-migrate.mjs",
-      "effects": "mutating",
+      "effects": "preview",
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
       "proof": {
@@ -26665,7 +26665,7 @@
       "source": "tools/runtime/mode-migrate.mjs",
       "entrypoint": "aidn runtime mode-migrate --repair-layer-triage-file",
       "implementation": "tools/runtime/mode-migrate.mjs",
-      "effects": "mutating",
+      "effects": "preview",
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
       "proof": {
@@ -26686,7 +26686,7 @@
       "source": "tools/runtime/mode-migrate.mjs",
       "entrypoint": "aidn runtime mode-migrate --repair-layer-triage-summary-file",
       "implementation": "tools/runtime/mode-migrate.mjs",
-      "effects": "mutating",
+      "effects": "preview",
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
       "proof": {
@@ -26707,7 +26707,7 @@
       "source": "tools/runtime/mode-migrate.mjs",
       "entrypoint": "aidn runtime mode-migrate --strict",
       "implementation": "tools/runtime/mode-migrate.mjs",
-      "effects": "mutating",
+      "effects": "preview",
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
       "proof": {
@@ -26728,7 +26728,7 @@
       "source": "tools/runtime/mode-migrate.mjs",
       "entrypoint": "aidn runtime mode-migrate --target",
       "implementation": "tools/runtime/mode-migrate.mjs",
-      "effects": "mutating",
+      "effects": "preview",
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
       "proof": {
@@ -26749,7 +26749,28 @@
       "source": "tools/runtime/mode-migrate.mjs",
       "entrypoint": "aidn runtime mode-migrate --to",
       "implementation": "tools/runtime/mode-migrate.mjs",
-      "effects": "mutating",
+      "effects": "preview",
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/mode-migrate.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn runtime mode-migrate:--write",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/runtime/mode-migrate.mjs",
+      "entrypoint": "aidn runtime mode-migrate --write",
+      "implementation": "tools/runtime/mode-migrate.mjs",
+      "effects": "preview",
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
       "proof": {
@@ -26770,7 +26791,7 @@
       "source": "tools/runtime/mode-migrate.mjs",
       "entrypoint": "aidn runtime mode-migrate -h",
       "implementation": "tools/runtime/mode-migrate.mjs",
-      "effects": "mutating",
+      "effects": "preview",
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
       "proof": {

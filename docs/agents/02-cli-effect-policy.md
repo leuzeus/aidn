@@ -28,6 +28,7 @@ The classification keeps automation from confusing output format with write perm
 - `aidn runtime project-runtime-state --json` must be read-only by default.
 - `aidn runtime project-runtime-state --json --write` may project or write only when the command documents that behavior.
 - `aidn runtime project-handoff-packet --json` must be read-only by default.
+- `aidn runtime mode-migrate --json` must only preview config, schema, and projection changes; `--write` is required to apply them.
 - Shared sync must stay explicit; it must never happen just because `--json` is present.
 
 ## Practical Reading

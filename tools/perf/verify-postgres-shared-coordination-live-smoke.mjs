@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import os from "node:os";
 import path from "node:path";
-import { createPostgresSharedCoordinationStore } from "../../src/adapters/runtime/postgres-shared-coordination-store.mjs";
 
 function normalizeScalar(value) {
   return String(value ?? "").trim();
@@ -25,6 +24,9 @@ async function main() {
       return;
     }
 
+    const { createPostgresSharedCoordinationStore } = await import(
+      "../../src/adapters/runtime/postgres-shared-coordination-store.mjs"
+    );
     const stamp = Date.now();
     const workspaceId = `workspace-smoke-${stamp}`;
     const worktreeIdA = `worktree-smoke-a-${stamp}`;

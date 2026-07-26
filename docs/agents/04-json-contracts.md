@@ -39,6 +39,7 @@ Do not rename those fields in place without a version bump and fixture update.
 
 - keep the schema file as the versioned contract
 - keep `x-aidn-command` and `x-aidn-contract-version` aligned with the command name
+- when preview and explicit-write variants share one additive payload, keep the preview in `x-aidn-command` and enumerate both exact forms in `x-aidn-commands`
 - do not encode local paths or secrets as schema constants
 - keep nested objects extensible until the fixtures and gates are ready to tighten them
 

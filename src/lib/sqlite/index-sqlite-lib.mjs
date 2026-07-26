@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
-  ensureWorkflowDbSchema,
   getDatabaseSync,
   getLatestWorkflowPayloadSchemaVersion,
 } from "./workflow-db-schema-lib.mjs";
@@ -184,13 +183,8 @@ export function readRuntimeHeadArtifactsFromSqlite(sqliteFile) {
     throw new Error(`SQLite index file not found: ${absolute}`);
   }
 
-  const db = new DatabaseSync(absolute);
+  const db = new DatabaseSync(absolute, { readOnly: true });
   try {
-    ensureWorkflowDbSchema({
-      db,
-      sqliteFile: absolute,
-      role: "runtime-head-reader",
-    });
     if (!hasTable(db, "runtime_heads")) {
       return { absolute, heads: {} };
     }
@@ -255,13 +249,8 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
     throw new Error(`SQLite index file not found: ${absolute}`);
   }
 
-  const db = new DatabaseSync(absolute);
+  const db = new DatabaseSync(absolute, { readOnly: true });
   try {
-    ensureWorkflowDbSchema({
-      db,
-      sqliteFile: absolute,
-      role: "index-sqlite-reader",
-    });
     const meta = readMetaMap(db);
     const artifactQuery = buildArtifactPayloadQueryParts(db, "a", "ab");
     const fileMapColumns = getTableColumns(db, "file_map");

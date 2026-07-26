@@ -88,7 +88,7 @@ These surfaces are public and contract-backed, but they are more operational or 
 - `aidn runtime project-coordination-summary --json`
 - `aidn runtime sync-db-first --json`
 - `aidn runtime sync-db-first-selective --json`
-- `aidn runtime mode-migrate --json`
+- `aidn runtime mode-migrate --json` previews the config, schema, and projection plan; add `--write` to apply it
 - `aidn runtime session-plan --json`
 - `aidn runtime db-first-artifact --json`
 - `aidn runtime artifact-store list --json`
