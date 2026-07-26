@@ -18,6 +18,7 @@
   "files": [
     "bin/",
     "docs/INSTALL.md",
+    "docs/README.md",
     "docs/MIGRATION_SHARED_RUNTIME_POSTGRESQL.md",
     "docs/MULTI_PROJECT_POSTGRESQL_MIGRATION_GUIDE.md",
     "docs/RUNTIME_SURFACE_SCOPE_MATRIX.md",
@@ -35,6 +36,8 @@
     "tools/",
     "!tools/perf/verify-g*-like-*",
     "!tools/perf/verify-imported-sections-policy-fixtures.mjs",
+    "!tools/perf/local-pilot-runtime-import-lib.mjs",
+    "!tools/perf/verify-pilot-runtime-import-fixtures.mjs",
     "!tools/perf/verify-pilot-workflow-parity-fixtures.mjs",
     "!tools/perf/verify-workflow-adapter-migration-fixtures.mjs",
     "CHANGELOG.md",
