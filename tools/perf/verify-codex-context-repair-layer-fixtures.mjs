@@ -2,8 +2,11 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 function parseArgs(argv) {
   const args = {
@@ -33,14 +36,18 @@ function printUsage() {
 }
 
 function runJson(script, scriptArgs, env = {}, expectStatus = 0) {
-  const file = path.resolve(process.cwd(), script);
+  const file = path.resolve(REPO_ROOT, script);
   const result = spawnSync(process.execPath, [file, ...scriptArgs], {
+    cwd: REPO_ROOT,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
     env: {
       ...process.env,
       ...env,
     },
+    timeout: 180000,
+    maxBuffer: 20 * 1024 * 1024,
+    windowsHide: true,
   });
   if ((result.status ?? 1) !== expectStatus) {
     throw new Error(`Command failed: ${process.execPath} ${file} ${scriptArgs.join(" ")}`);
@@ -49,15 +56,22 @@ function runJson(script, scriptArgs, env = {}, expectStatus = 0) {
 }
 
 function runNoJson(script, scriptArgs, env = {}) {
-  const file = path.resolve(process.cwd(), script);
-  execFileSync(process.execPath, [file, ...scriptArgs], {
+  const file = path.resolve(REPO_ROOT, script);
+  const result = spawnSync(process.execPath, [file, ...scriptArgs], {
+    cwd: REPO_ROOT,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
     env: {
       ...process.env,
       ...env,
     },
+    timeout: 180000,
+    maxBuffer: 20 * 1024 * 1024,
+    windowsHide: true,
   });
+  if (result.status !== 0) {
+    throw new Error(`Command failed: ${process.execPath} ${file} ${scriptArgs.join(" ")}`);
+  }
 }
 
 function makeInstallerPrerequisiteStub(tempRoot) {
@@ -116,9 +130,13 @@ function resolveDbSyncOpenCount(hookOutput) {
 function main() {
   let tempRoot = "";
   let adapterFile = "";
+  let args = null;
+  let output = null;
+  let primaryError = null;
+  let cleanupError = null;
   try {
-    const args = parseArgs(process.argv.slice(2));
-    const sourceTarget = path.resolve(process.cwd(), args.target);
+    args = parseArgs(process.argv.slice(2));
+    const sourceTarget = path.resolve(REPO_ROOT, args.target);
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-codex-context-repair-"));
     const target = path.join(tempRoot, "repo");
     const installerPrerequisiteStub = makeInstallerPrerequisiteStub(tempRoot);
@@ -220,7 +238,7 @@ function main() {
       hydrate_runtime_state_markdown_mentions_primary_reason: runtimeStateText.includes(`repair_primary_reason: ${String(decision?.repair_primary_reason ?? "")}`),
     };
     const pass = Object.values(checks).every((value) => value === true);
-    const output = {
+    output = {
       ts: new Date().toISOString(),
       source_target: sourceTarget,
       target_root: target,
@@ -252,30 +270,38 @@ function main() {
       pass,
     };
 
-    if (args.json) {
-      console.log(JSON.stringify(output, null, 2));
-    } else {
-      console.log(`Target: ${sourceTarget}`);
-      for (const [name, value] of Object.entries(checks)) {
-        console.log(`${value ? "PASS" : "FAIL"} ${name}`);
-      }
-      console.log(`Result: ${pass ? "PASS" : "FAIL"}`);
-    }
-
     if (!pass) {
-      process.exit(1);
+      throw new Error("one or more Codex context repair assertions failed");
     }
   } catch (error) {
-    console.error(`ERROR: ${error.message}`);
-    printUsage();
-    process.exit(1);
+    primaryError = error;
   } finally {
-    if (adapterFile && fs.existsSync(adapterFile)) {
-      fs.rmSync(adapterFile, { force: true });
-    }
     if (tempRoot && fs.existsSync(tempRoot)) {
-      removePathWithRetry(tempRoot);
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok || fs.existsSync(tempRoot)) {
+        cleanupError = cleanup.error ?? new Error("Codex context repair temp root remains");
+      }
     }
+  }
+  if (primaryError || cleanupError) {
+    const details = [primaryError?.message, cleanupError?.message].filter(Boolean).join("; ");
+    console.error(`ERROR: ${details}`);
+    printUsage();
+    process.exitCode = 1;
+    return;
+  }
+  output.cleanup = {
+    temp_removed: tempRoot ? !fs.existsSync(tempRoot) : true,
+  };
+  if (args.json) {
+    console.log(JSON.stringify(output, null, 2));
+  } else {
+    console.log(`Target: ${output.source_target}`);
+    for (const [name, value] of Object.entries(output.checks)) {
+      console.log(`${value ? "PASS" : "FAIL"} ${name}`);
+    }
+    console.log(`Cleanup: ${output.cleanup.temp_removed ? "PASS" : "FAIL"}`);
+    console.log("Result: PASS");
   }
 }
 

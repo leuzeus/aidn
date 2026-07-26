@@ -6,10 +6,11 @@ import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
-  collectUnsupportedSchemaKeywords,
   listSupportedSchemaKeywords,
   validateJsonSchema,
+  validateJsonSchemaDefinition,
 } from "../../src/core/contracts/json-schema-validator.mjs";
+import { listDispatchableCommandDescriptors } from "../../src/core/cli/command-registry.mjs";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
@@ -601,6 +602,11 @@ function schemaFiles() {
 function verifyContractClosure() {
   const schemas = schemaFiles();
   const cases = CONTRACT_CASES.map((item) => item.schema).sort();
+  const registryContracts = [...new Set(
+    listDispatchableCommandDescriptors()
+      .filter((item) => item.visibility === "public")
+      .flatMap((item) => item.json_contracts),
+  )].sort();
   const issues = [];
   const duplicateCases = cases.filter((name, index) => cases.indexOf(name) !== index);
   for (const name of [...new Set(duplicateCases)]) {
@@ -610,23 +616,110 @@ function verifyContractClosure() {
     if (!cases.includes(schema)) {
       issues.push(`${schema}: active public contract has no executable case`);
     }
-    issues.push(...collectUnsupportedSchemaKeywords(readJson(path.join(CONTRACT_DIR, schema)))
+    const definition = readJson(path.join(CONTRACT_DIR, schema));
+    issues.push(...validateJsonSchemaDefinition(definition)
       .map((issue) => `${schema}: ${issue}`));
+    const expectedId = `aidn://contracts/cli-output/${schema.replace(/\.schema\.json$/, "")}`;
+    if (definition.$id !== expectedId) {
+      issues.push(`${schema}: $id mismatch (${String(definition.$id)} != ${expectedId})`);
+    }
   }
   for (const schema of cases) {
     if (!schemas.includes(schema)) {
       issues.push(`${schema}: executable case is orphaned from the contract directory`);
     }
   }
+  for (const schema of schemas) {
+    if (!registryContracts.includes(schema)) {
+      issues.push(`${schema}: active schema is absent from the dispatch registry`);
+    }
+  }
+  for (const schema of registryContracts) {
+    if (!schemas.includes(schema)) {
+      issues.push(`${schema}: registry contract is absent from the contract directory`);
+    }
+  }
   return {
     schemas: schemas.length,
     cases: cases.length,
+    registry_contracts: registryContracts.length,
+    executable_outputs: cases.length,
     issues,
+  };
+}
+
+function runMetaSchemaMutationFixtures() {
+  const valid = {
+    $schema: "http://json-schema.org/draft-07/schema#",
+    $id: "aidn://contracts/cli-output/meta-probe.v1",
+    title: "meta probe",
+    type: "object",
+    required: ["value"],
+    properties: {
+      value: { type: "string", enum: ["safe"] },
+      records: { type: "array", items: { type: "integer" } },
+    },
+    additionalProperties: false,
+    "x-aidn-command": "aidn meta-probe --json",
+    "x-aidn-contract-version": "cli-output-v1",
+  };
+  const mutations = [
+    ["type-number", { ...valid, type: 42 }],
+    ["type-invalid-array", { ...valid, type: ["object", "object"] }],
+    ["required-string", { ...valid, required: "value" }],
+    ["required-duplicate", { ...valid, required: ["value", "value"] }],
+    ["properties-array", { ...valid, properties: [] }],
+    ["enum-string", { ...valid, properties: { value: { enum: "safe" } } }],
+    ["enum-empty", { ...valid, properties: { value: { enum: [] } } }],
+    ["items-array", { ...valid, properties: { records: { type: "array", items: [] } } }],
+    ["additional-properties-string", { ...valid, additionalProperties: "false" }],
+    ["minimum-string", { ...valid, minimum: "0" }],
+    ["min-length-negative", { ...valid, minLength: -1 }],
+    ["pattern-invalid", { ...valid, pattern: "[" }],
+    ["format-unsupported", { ...valid, format: "secret" }],
+    ["one-of-object", { ...valid, oneOf: {} }],
+    ["unknown-keyword", { ...valid, ignoredKeyword: true }],
+    ["nested-invalid", {
+      ...valid,
+      properties: { value: { type: 42 } },
+    }],
+    ["schema-missing", { ...valid, $schema: undefined }],
+    ["schema-draft", { ...valid, $schema: "https://json-schema.org/draft/2020-12/schema" }],
+    ["id-missing", { ...valid, $id: undefined }],
+    ["id-shape", { ...valid, $id: "https://example.invalid/schema" }],
+    ["commands-shape", {
+      ...valid,
+      "x-aidn-command": undefined,
+      "x-aidn-commands": "aidn meta-probe --json",
+    }],
+  ];
+  const results = mutations.map(([name, schema]) => {
+    const cleaned = Object.fromEntries(
+      Object.entries(schema).filter(([, value]) => value !== undefined),
+    );
+    const issues = validateJsonSchemaDefinition(cleaned);
+    return { name, rejected: issues.length > 0, issue_count: issues.length };
+  });
+  const schemas = schemaFiles();
+  const forward = schemas.map((name) => validateJsonSchemaDefinition(
+    readJson(path.join(CONTRACT_DIR, name)),
+  ).length);
+  const reverse = [...schemas].reverse().map((name) => validateJsonSchemaDefinition(
+    readJson(path.join(CONTRACT_DIR, name)),
+  ).length).reverse();
+  return {
+    ok: validateJsonSchemaDefinition(valid).length === 0
+      && results.every((item) => item.rejected)
+      && JSON.stringify(forward) === JSON.stringify(reverse),
+    results,
+    reverse_order_deterministic: JSON.stringify(forward) === JSON.stringify(reverse),
   };
 }
 
 function runValidatorNegativeFixtures() {
   const combinedSchema = {
+    $schema: "http://json-schema.org/draft-07/schema#",
+    $id: "aidn://contracts/cli-output/combined-negative-probe.v1",
     type: "object",
     required: ["contract_version", "records", "redaction"],
     properties: {
@@ -703,6 +796,7 @@ function main() {
   const results = [];
   const closure = verifyContractClosure();
   const validatorNegativeFixtures = runValidatorNegativeFixtures();
+  const metaSchemaMutationFixtures = runMetaSchemaMutationFixtures();
   try {
     baseRoot = prepareBaseFixture(sourceRoot, tempRoot);
     for (const [index, testCase] of CONTRACT_CASES.entries()) {
@@ -720,7 +814,8 @@ function main() {
   const output = {
     ok: results.every((item) => item.ok)
       && closure.issues.length === 0
-      && validatorNegativeFixtures.ok,
+      && validatorNegativeFixtures.ok
+      && metaSchemaMutationFixtures.ok,
     target_root: sourceRoot,
     fixture_setup: "isolated Git repository with a derived dual-sqlite projection per contract case; bootstrap uses only a local prerequisite command stub and is not installed-client proof",
     tmp_root: args.keepTmp ? tempRoot : "removed",
@@ -729,6 +824,7 @@ function main() {
     validator: {
       supported_keywords: listSupportedSchemaKeywords(),
       negative_fixtures: validatorNegativeFixtures,
+      meta_schema_mutations: metaSchemaMutationFixtures,
     },
     results,
   };

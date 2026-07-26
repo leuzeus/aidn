@@ -12,6 +12,7 @@ import { deriveSharedCoordinationGovernance } from "../../src/application/runtim
 import { doctorSharedCoordination } from "./shared-coordination-doctor.mjs";
 import { projectSharedCoordinationStatus } from "./shared-coordination-status.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
+import { resolveCliEffectClass } from "../../src/core/cli/effect-policy.mjs";
 
 function normalizeScalar(value) {
   return String(value ?? "").trim();
@@ -495,18 +496,26 @@ function printHuman(result) {
 
 function main() {
   Promise.resolve().then(async () => {
-    const args = parseArgs(process.argv.slice(2));
+    const originalArgv = Object.freeze([...process.argv.slice(2)]);
+    const args = parseArgs(originalArgv);
     const result = await restoreSharedCoordination({
       targetRoot: args.target,
       input: args.input,
       write: args.write,
     });
+    const output = {
+      ...result,
+      effect_class: resolveCliEffectClass(
+        "aidn runtime shared-coordination-restore",
+        originalArgv,
+      ),
+    };
     if (args.json) {
-      console.log(JSON.stringify(result, null, 2));
+      console.log(JSON.stringify(output, null, 2));
     } else {
-      printHuman(result);
+      printHuman(output);
     }
-    if (!result.ok) {
+    if (!output.ok) {
       process.exit(1);
     }
   }).catch((error) => {

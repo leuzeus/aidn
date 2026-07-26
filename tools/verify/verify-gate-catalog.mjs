@@ -1,202 +1,176 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import {
+  loadWorkflowModels,
+  parseWorkflowYaml,
+  validateGateAndWorkflowPolicy,
+} from "./workflow-policy-lib.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
-const catalog = JSON.parse(fs.readFileSync(path.join(repoRoot, "package", "catalogs", "gates.v1.json"), "utf8"));
-const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
+const catalogPath = path.join(repoRoot, "package", "catalogs", "gates.v1.json");
+const packagePath = path.join(repoRoot, "package.json");
+const catalog = JSON.parse(fs.readFileSync(catalogPath, "utf8"));
+const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+const workflowModels = loadWorkflowModels(repoRoot);
 const issues = [];
 const families = new Set();
-const ids = new Set();
-const workflowFiles = {
-  "architecture-gates": ".github/workflows/architecture-gates.yml",
-  release: ".github/workflows/release.yml",
-};
-const workflowTexts = Object.fromEntries(
-  Object.entries(workflowFiles).map(([name, relativePath]) => [
-    name,
-    fs.readFileSync(path.join(repoRoot, relativePath), "utf8"),
-  ]),
-);
 
-function extractJobBlock(workflowText, jobName) {
-  const lines = workflowText.split(/\r?\n/);
-  const start = lines.findIndex((line) => line === `  ${jobName}:`);
-  if (start < 0) return "";
-  let end = lines.length;
-  for (let index = start + 1; index < lines.length; index += 1) {
-    if (/^  [a-zA-Z0-9_-]+:\s*$/.test(lines[index])) {
-      end = index;
-      break;
-    }
-  }
-  return lines.slice(start, end).join("\n");
+function clone(value) {
+  return structuredClone(value);
 }
 
-function publicationContractIssues({
-  candidateCatalog,
-  candidatePackageJson,
-  releaseWorkflow,
-  runner,
+function replaceWorkflow(models, relativePath, text) {
+  return models.map((model) => model.path === relativePath
+    ? parseWorkflowYaml(text, relativePath)
+    : model);
+}
+
+function candidateRejected({
+  candidateCatalog = catalog,
+  candidatePackageJson = packageJson,
+  candidateWorkflows = workflowModels,
 }) {
-  const publicationIssues = [];
-  const criticalGateIds = [
-    "codex-pack-topology",
-    "security-tracked-sensitivity",
-  ];
-  for (const gateId of criticalGateIds) {
-    const gate = candidateCatalog.gates?.find((item) => item.id === gateId);
-    if (!gate) {
-      publicationIssues.push(`publication-critical gate missing: ${gateId}`);
-      continue;
-    }
-    for (const context of ["main", "release"]) {
-      if (gate.obligation?.[context] !== "required") {
-        publicationIssues.push(`${gateId}: ${context} publication obligation must be required`);
-      }
-    }
-  }
-  const releaseWrapper = String(candidatePackageJson.scripts?.["verify:release"] ?? "");
-  if (!releaseWrapper.includes("run-gate-family.mjs obligations")) {
-    publicationIssues.push("verify:release must execute contextual catalog obligations");
-  }
-  if (!runner.includes('requested === "obligations"')) {
-    publicationIssues.push("gate runner must select every catalog gate for obligations mode");
-  }
-  if (!releaseWorkflow.includes("pull_request:")
-    || !releaseWorkflow.includes("branches: [dev, main]")) {
-    publicationIssues.push("release verification must trigger for PRs to dev and main");
-  }
-  if (!releaseWorkflow.includes("push:")
-    || !releaseWorkflow.includes("branches: [main]")) {
-    publicationIssues.push("release publication must trigger only from a push to main");
-  }
-  for (const job of ["verify", "publish"]) {
-    const block = extractJobBlock(releaseWorkflow, job);
-    if (!block.includes("npm run verify:release")) {
-      publicationIssues.push(`release/${job} must execute verify:release obligations`);
-    }
-    if (!block.includes("AIDN_BRANCH_POLICY_EXPECTED_SHA")
-      || !block.includes("AIDN_BRANCH_POLICY_CONTAINS_REF")) {
-      publicationIssues.push(`release/${job} must bind immutable remote provenance`);
-    }
-  }
-  if (/\bnpm\s+publish\b/.test(releaseWorkflow)) {
-    publicationIssues.push("release workflow must never run npm publish");
-  }
-  return publicationIssues;
+  return validateGateAndWorkflowPolicy({
+    catalog: candidateCatalog,
+    packageJson: candidatePackageJson,
+    workflowModels: candidateWorkflows,
+  }).length > 0;
 }
 
-for (const gate of catalog.gates ?? []) {
-  if (ids.has(gate.id)) issues.push(`${gate.id}: duplicate gate id`);
-  ids.add(gate.id);
-  families.add(gate.family);
-  for (const field of ["family", "script", "job", "surfaces", "condition", "obligation"]) {
-    if (gate[field] == null || gate[field] === "") issues.push(`${gate.id}: missing ${field}`);
-  }
-  if (!packageJson.scripts?.[gate.script]) issues.push(`${gate.id}: package script missing: ${gate.script}`);
-  if (!Array.isArray(gate.surfaces) || gate.surfaces.length === 0) issues.push(`${gate.id}: surfaces must be non-empty`);
-  if (!catalog.condition_values?.includes(gate.condition)) {
-    issues.push(`${gate.id}: invalid condition ${gate.condition}`);
-  }
-  for (const branch of ["dev", "main", "release"]) {
-    if (!catalog.obligation_values.includes(gate.obligation?.[branch])) {
-      issues.push(`${gate.id}: invalid ${branch} obligation`);
-    }
-  }
-  const [workflowName, jobName] = String(gate.job).split("/");
-  if (workflowFiles[workflowName]) {
-    const workflowText = workflowTexts[workflowName];
-    if (!new RegExp(`^  ${jobName}:`, "m").test(workflowText)) {
-      issues.push(`${gate.id}: declared job does not exist: ${gate.job}`);
-    } else {
-      const jobBlock = extractJobBlock(workflowText, jobName);
-      const directCommand = `npm run ${gate.script}`;
-      const familyCommand = `npm run verify:${gate.family}`;
-      if (!jobBlock.includes(directCommand) && !jobBlock.includes(familyCommand)) {
-        issues.push(
-          `${gate.id}: ${gate.job} runs neither ${directCommand} nor ${familyCommand}`,
-        );
-      }
-    }
-    if (gate.obligation?.dev === "required" && !workflowText.includes("branches: [dev, main]")) {
-      issues.push(`${gate.id}: required dev gate workflow is not triggered for PRs to dev`);
-    }
-    if (gate.obligation?.release === "required" && !workflowText.includes("branches: [dev, main]")) {
-      issues.push(`${gate.id}: required release gate workflow is not triggered for PRs to main`);
-    }
-  }
-}
-for (const family of catalog.required_families ?? []) {
-  if (!families.has(family)) issues.push(`required family missing: ${family}`);
-  if (!packageJson.scripts?.[`verify:${family}`]) issues.push(`stable wrapper missing: verify:${family}`);
-}
-for (const wrapper of ["verify:contracts", "verify:governance", "verify:runtime", "verify:codex", "verify:release", "verify:all"]) {
-  if (!packageJson.scripts?.[wrapper]) issues.push(`required stable wrapper missing: ${wrapper}`);
+if (catalog.schema_version !== 2) {
+  issues.push("gate catalog schema_version must be 2");
 }
 if (JSON.stringify(catalog.outcomes) !== JSON.stringify(["PASS", "FAIL", "SKIP"])) {
   issues.push("outcomes must be exactly PASS, FAIL, SKIP");
 }
-if (catalog.schema_version !== 2) {
-  issues.push("gate catalog schema_version must be 2");
-}
-const runnerText = fs.readFileSync(path.join(repoRoot, "tools", "verify", "run-gate-family.mjs"), "utf8");
-for (const token of ["evaluateCondition", "gate.obligation?.[context]", "status: \"SKIP\"", "item.obligation !== \"required\""]) {
-  if (!runnerText.includes(token)) {
-    issues.push(`gate runner does not enforce catalog semantics: missing ${token}`);
+for (const gate of catalog.gates ?? []) {
+  families.add(gate.family);
+  for (const field of ["id", "family", "script", "job", "surfaces", "condition", "obligation"]) {
+    if (gate[field] == null || gate[field] === "") {
+      issues.push(`${gate.id ?? "unknown"}: missing ${field}`);
+    }
+  }
+  if (!Array.isArray(gate.surfaces) || gate.surfaces.length === 0) {
+    issues.push(`${gate.id}: surfaces must be non-empty`);
+  }
+  if (!catalog.condition_values?.includes(gate.condition)) {
+    issues.push(`${gate.id}: invalid condition ${gate.condition}`);
+  }
+  for (const context of ["dev", "main", "release"]) {
+    if (!catalog.obligation_values?.includes(gate.obligation?.[context])) {
+      issues.push(`${gate.id}: invalid ${context} obligation`);
+    }
   }
 }
-issues.push(...publicationContractIssues({
-  candidateCatalog: catalog,
-  candidatePackageJson: packageJson,
-  releaseWorkflow: workflowTexts.release,
-  runner: runnerText,
+for (const family of catalog.required_families ?? []) {
+  if (!families.has(family)) {
+    issues.push(`required family missing: ${family}`);
+  }
+  if (!packageJson.scripts?.[`verify:${family}`]) {
+    issues.push(`stable wrapper missing: verify:${family}`);
+  }
+}
+for (const wrapper of [
+  "verify:contracts",
+  "verify:governance",
+  "verify:runtime",
+  "verify:codex",
+  "verify:release",
+  "verify:all",
+]) {
+  if (!packageJson.scripts?.[wrapper]) {
+    issues.push(`required stable wrapper missing: ${wrapper}`);
+  }
+}
+if (packageJson.scripts?.["verify:release"]
+  !== "node tools/verify/run-gate-family.mjs obligations") {
+  issues.push("verify:release must execute contextual catalog obligations");
+}
+issues.push(...validateGateAndWorkflowPolicy({
+  catalog,
+  packageJson,
+  workflowModels,
 }));
 
-const catalogMutation = structuredClone(catalog);
-catalogMutation.gates.find((gate) => gate.id === "codex-pack-topology").obligation.release = "optional";
-const catalogMutationRejected = publicationContractIssues({
-  candidateCatalog: catalogMutation,
-  candidatePackageJson: packageJson,
-  releaseWorkflow: workflowTexts.release,
-  runner: runnerText,
-}).length > 0;
-const workflowCommandMutationRejected = publicationContractIssues({
-  candidateCatalog: catalog,
-  candidatePackageJson: packageJson,
-  releaseWorkflow: workflowTexts.release.replaceAll("npm run verify:release", "npm run perf:verify-release-version"),
-  runner: runnerText,
-}).length > 0;
-const workflowTriggerMutationRejected = publicationContractIssues({
-  candidateCatalog: catalog,
-  candidatePackageJson: packageJson,
-  releaseWorkflow: workflowTexts.release.replace("branches: [dev, main]", "branches: [main]"),
-  runner: runnerText,
-}).length > 0;
-if (!catalogMutationRejected) {
-  issues.push("negative probe failed: weakened publication catalog obligation was accepted");
+const releasePath = ".github/workflows/release.yml";
+const releaseText = fs.readFileSync(path.join(repoRoot, releasePath), "utf8");
+const releaseModel = workflowModels.find((item) => item.path === releasePath);
+const releaseCommands = Object.values(releaseModel?.jobs ?? {})
+  .flatMap((job) => job.commands);
+if (releaseCommands.includes("npm:publish") || /\bnpm\s+publish\b/.test(releaseText)) {
+  issues.push("release workflow must never run npm publish");
 }
-if (!workflowCommandMutationRejected) {
-  issues.push("negative probe failed: partial release command was accepted");
+for (const requiredToken of [
+  "GITHUB_SHA",
+  "git tag -a",
+  "gh release create",
+  "release/checksums.txt",
+  "perf:verify-release-artifacts",
+]) {
+  if (!releaseText.includes(requiredToken)) {
+    issues.push(`release workflow missing publication invariant: ${requiredToken}`);
+  }
 }
-if (!workflowTriggerMutationRejected) {
-  issues.push("negative probe failed: missing dev PR trigger was accepted");
+
+const weakenedCatalog = clone(catalog);
+weakenedCatalog.gates.find((gate) => gate.id === "cleanliness-worktree").obligation.main = "skip";
+weakenedCatalog.gates.find((gate) => gate.id === "cleanliness-worktree").obligation.release = "skip";
+
+const substitutedScriptCatalog = clone(catalog);
+substitutedScriptCatalog.gates.find((gate) => gate.id === "runtime-db-runtime-cli").script
+  = "perf:verify-db-schema-migrations";
+
+const devTriggerCommentMutation = releaseText.replace(
+  "branches: [dev, main]",
+  "branches: [main]\n    # branches: [dev, main]",
+);
+const commandCommentMutation = releaseText.replaceAll(
+  "run: npm run verify:release",
+  "run: npm run perf:verify-release-version\n        # run: npm run verify:release",
+);
+const missingJobMutation = releaseText.replace("  verify:\n", "  verify_removed:\n");
+const duplicateJobMutation = `${releaseText}\n  verify:\n    runs-on: ubuntu-latest\n    steps: []\n`;
+
+const negativeProbes = {
+  required_to_skip_rejected: candidateRejected({ candidateCatalog: weakenedCatalog }),
+  substituted_script_rejected: candidateRejected({ candidateCatalog: substitutedScriptCatalog }),
+  comment_only_dev_trigger_rejected: candidateRejected({
+    candidateWorkflows: replaceWorkflow(workflowModels, releasePath, devTriggerCommentMutation),
+  }),
+  comment_only_release_command_rejected: candidateRejected({
+    candidateWorkflows: replaceWorkflow(workflowModels, releasePath, commandCommentMutation),
+  }),
+  missing_job_rejected: candidateRejected({
+    candidateWorkflows: replaceWorkflow(workflowModels, releasePath, missingJobMutation),
+  }),
+  duplicate_job_rejected: candidateRejected({
+    candidateWorkflows: replaceWorkflow(workflowModels, releasePath, duplicateJobMutation),
+  }),
+};
+for (const [probe, rejected] of Object.entries(negativeProbes)) {
+  if (!rejected) {
+    issues.push(`negative probe accepted: ${probe}`);
+  }
 }
+
 const output = {
   ok: issues.length === 0,
   status: issues.length === 0 ? "PASS" : "FAIL",
   gates: catalog.gates?.length ?? 0,
   families: [...families].sort(),
+  workflows: workflowModels.map((workflow) => ({
+    path: workflow.path,
+    triggers: Object.keys(workflow.triggers).sort(),
+    jobs: Object.keys(workflow.jobs).sort(),
+    npm_commands: Object.values(workflow.jobs).flatMap((job) => job.commands).length,
+  })),
   publication_obligations: {
     selector: "obligations",
     contexts: ["main", "release"],
     critical_gates: ["codex-pack-topology", "security-tracked-sensitivity"],
   },
-  negative_probes: {
-    weakened_catalog_obligation_rejected: catalogMutationRejected,
-    partial_workflow_command_rejected: workflowCommandMutationRejected,
-    missing_dev_pr_trigger_rejected: workflowTriggerMutationRejected,
-  },
+  negative_probes: negativeProbes,
   issues,
 };
 console.log(JSON.stringify(output, null, 2));

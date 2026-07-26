@@ -11,10 +11,13 @@ function runGit(target, args) {
   });
 }
 
-export function copyFixtureToTmp(source, tmpRoot, prefix) {
+export function copyFixtureToTmp(source, tmpRoot, prefix, options = {}) {
   const stamp = new Date().toISOString().replace(/[-:.]/g, "");
   const destination = path.resolve(tmpRoot, `${prefix}-${stamp}-${randomUUID().slice(0, 8)}`);
-  fs.mkdirSync(path.dirname(destination), { recursive: true });
+  fs.mkdirSync(destination, { recursive: true });
+  if (typeof options.onDestinationCreated === "function") {
+    options.onDestinationCreated(destination);
+  }
   fs.cpSync(source, destination, { recursive: true });
   return destination;
 }
@@ -43,11 +46,14 @@ function sleep(ms) {
 export function removePathWithRetry(target, options = {}) {
   const retries = Number(options.retries ?? 5);
   const delayMs = Number(options.delayMs ?? 75);
+  const rmSyncImpl = options.rmSyncImpl ?? fs.rmSync;
   let lastError = null;
+  let attempts = 0;
   for (let attempt = 0; attempt <= retries; attempt += 1) {
+    attempts = attempt + 1;
     try {
-      fs.rmSync(target, { recursive: true, force: true });
-      return { ok: true, attempts: attempt + 1, error: null };
+      rmSyncImpl(target, { recursive: true, force: true });
+      return { ok: true, attempts, error: null };
     } catch (error) {
       lastError = error;
       const code = String(error?.code ?? "");
@@ -57,5 +63,5 @@ export function removePathWithRetry(target, options = {}) {
       sleep(delayMs * (attempt + 1));
     }
   }
-  return { ok: false, attempts: retries + 1, error: lastError };
+  return { ok: false, attempts, error: lastError };
 }

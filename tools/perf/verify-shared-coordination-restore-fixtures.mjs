@@ -258,6 +258,7 @@ async function main() {
     const disabled = runCli(["runtime", "shared-coordination-restore", "--target", "tests/fixtures/repo-installed-core", "--json"]);
     assert(disabled.status === 1, "restore CLI should fail when shared coordination is disabled");
     assert(disabled.json?.status === "disabled", "disabled restore CLI should report disabled status");
+    assert(disabled.json?.effect_class === "preview", "disabled restore preview must keep preview effect");
     assert(disabled.json?.source_of_truth?.concept === "coordination_records", "disabled restore CLI should still expose source-of-truth governance");
 
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-shared-coordination-restore-"));
@@ -281,6 +282,23 @@ async function main() {
     });
     assert(missingEnv.status === 1, "restore CLI should fail when PostgreSQL env is missing");
     assert(missingEnv.json?.status === "missing-env", "restore CLI should surface missing-env");
+    assert(missingEnv.json?.effect_class === "preview", "missing-env restore preview must keep preview effect");
+
+    const missingEnvWrite = runCli([
+      "runtime",
+      "shared-coordination-restore",
+      "--target",
+      targetRoot,
+      "--write",
+      "--json",
+    ], {
+      AIDN_PG_URL: null,
+    });
+    assert(missingEnvWrite.status === 1, "restore write should fail when PostgreSQL env is missing");
+    assert(
+      missingEnvWrite.json?.effect_class === "mutating",
+      "restore --write must keep mutating effect even when the backend is unavailable",
+    );
 
     const state = {
       workspace: null,

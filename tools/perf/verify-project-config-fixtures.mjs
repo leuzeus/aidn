@@ -204,6 +204,9 @@ function main() {
       install_with_init_defaults_created_aidn_config: fs.existsSync(path.join(installInitDefaultsTarget, ".aidn", "config.json")),
       create_from_file_ok: createFromFile.status === 0,
       create_from_file_action: String(createFromFilePayload?.action ?? "") === "init-from-file",
+      create_from_file_effect_mutating:
+        String(createFromFilePayload?.effect_class ?? "") === "mutating",
+      create_from_file_written: createFromFilePayload?.written === true,
       list_created_ok: listCreated.status === 0,
       list_created_exists: listCreatedPayload?.exists === true,
       list_created_project_name: String(listCreatedPayload?.config?.projectName ?? "") === "fixture-project",

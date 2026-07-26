@@ -91,6 +91,41 @@ function commandPolicy({
 
 const CLI_EFFECT_POLICIES = freezeDeep([
   commandPolicy({
+    id: "help",
+    command: "aidn help",
+    effectClass: "read-only",
+    safeArgs: ["help"],
+    notes: "Prints the root command inventory without executing a child command.",
+  }),
+  commandPolicy({
+    id: "version",
+    command: "aidn version",
+    effectClass: "read-only",
+    safeArgs: ["version"],
+    notes: "Reads the repository VERSION source without mutating the checkout.",
+  }),
+  commandPolicy({
+    id: "codex-help",
+    command: "aidn codex help",
+    effectClass: "read-only",
+    safeArgs: ["codex", "help"],
+    notes: "Prints the Codex subcommand inventory.",
+  }),
+  commandPolicy({
+    id: "project-help",
+    command: "aidn project help",
+    effectClass: "read-only",
+    safeArgs: ["project", "help"],
+    notes: "Prints the project subcommand inventory.",
+  }),
+  commandPolicy({
+    id: "runtime-help",
+    command: "aidn runtime help",
+    effectClass: "read-only",
+    safeArgs: ["runtime", "help"],
+    notes: "Prints the runtime subcommand inventory.",
+  }),
+  commandPolicy({
     id: "bootstrap-preview",
     command: "aidn bootstrap --dry-run --json",
     effectClass: "preview",
@@ -111,6 +146,11 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "install",
     command: "aidn install",
     effectClass: "mutating",
+    effectVariants: [{
+      id: "dry-run",
+      whenArgs: ["--dry-run"],
+      effectClass: "preview",
+    }],
     safeArgs: ["install", "--target", ".", "--profile", "minimal"],
     notes: "Installs or upgrades tracked scaffold projections in the explicit target repository.",
   }),
@@ -135,6 +175,23 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     effectClass: "preview",
     surfaceDefault: true,
     unlessArgs: ["--list", "--write"],
+    effectVariants: [
+      {
+        id: "list",
+        whenArgs: ["--list"],
+        effectClass: "read-only",
+      },
+      {
+        id: "write",
+        whenArgs: ["--write"],
+        effectClass: "mutating",
+      },
+      {
+        id: "dry-run",
+        whenArgs: ["--dry-run"],
+        effectClass: "preview",
+      },
+    ],
     jsonContract: "project-config-preview.v1.schema.json",
     safeArgs: ["project", "config", "--init-defaults", "--project-name", "preview-project", "--json"],
     notes: "Plans project adapter generation. JSON formatting never implies a write.",
@@ -421,6 +478,11 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "runtime-shared-coordination-restore",
     command: "aidn runtime shared-coordination-restore --json",
     effectClass: "preview",
+    effectVariants: [{
+      id: "write",
+      whenArgs: ["--write"],
+      effectClass: "mutating",
+    }],
     jsonContract: "runtime-shared-coordination-restore.v1.schema.json",
     safeArgs: ["runtime", "shared-coordination-restore", "--json"],
     allowNonZero: true,
@@ -454,7 +516,24 @@ const CLI_EFFECT_POLICIES = freezeDeep([
   commandPolicy({
     id: "runtime-local-daemon",
     command: "aidn runtime local-daemon --json",
-    effectClass: "executor",
+    effectClass: "read-only",
+    effectVariants: [
+      {
+        id: "start",
+        whenArgs: ["--start"],
+        effectClass: "executor",
+      },
+      {
+        id: "serve",
+        whenArgs: ["--serve"],
+        effectClass: "executor",
+      },
+      {
+        id: "stop",
+        whenArgs: ["--stop"],
+        effectClass: "executor",
+      },
+    ],
     stability: "experimental",
     safeArgs: ["runtime", "local-daemon", "--status", "--json"],
     allowNonZero: true,
@@ -742,6 +821,139 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Batches pre-write admission, hidden context hydration, and coordinator next-action computation in one process without visible projection writes.",
   }),
 ]);
+
+function profileForSurface(surface) {
+  const normalizedSurface = normalizeToken(surface);
+  const candidates = CLI_EFFECT_POLICIES.filter((policy) => policy.surface === normalizedSurface);
+  if (candidates.length === 0) {
+    throw new Error(`${normalizedSurface}: public surface has no exact effect policy`);
+  }
+  const explicitDefaults = candidates
+    .map((policy) => policy.surface_default_effect)
+    .filter(Boolean);
+  const implicitDefaults = candidates
+    .filter((policy) => policy.surface_default || policy.when_args.length === 0)
+    .map((policy) => policy.effect_class);
+  const defaults = [...new Set(explicitDefaults.length > 0 ? explicitDefaults : implicitDefaults)];
+  if (defaults.length !== 1) {
+    throw new Error(
+      `${normalizedSurface}: expected one default effect class, found ${defaults.join(",") || "none"}`,
+    );
+  }
+  const variants = [
+    ...candidates
+      .filter((policy) => policy.when_args.length > 0)
+      .map((policy) => ({
+        id: policy.id,
+        when_args: [...policy.when_args],
+        unless_args: [...policy.unless_args],
+        effect_class: policy.effect_class,
+        policy: policy.id,
+      })),
+    ...candidates.flatMap((policy) => policy.effect_variants.map((variant) => ({
+      id: `${policy.id}/${variant.id}`,
+      when_args: [...variant.when_args],
+      unless_args: [...variant.unless_args],
+      effect_class: variant.effect_class,
+      policy: `${policy.id}/${variant.id}`,
+    }))),
+  ].sort((left, right) => left.policy.localeCompare(right.policy));
+  return freezeDeep({
+    surface: normalizedSurface,
+    default: defaults[0],
+    global_rules: [
+      { id: "help", when_args: ["--help"], effect_class: "read-only" },
+      { id: "short-help", when_args: ["-h"], effect_class: "read-only" },
+      { id: "dry-run", when_args: ["--dry-run"], effect_class: "preview" },
+      { id: "json", when_args: ["--json"], role: "format-only" },
+    ],
+    variants,
+  });
+}
+
+export function getCliEffectProfile(surface) {
+  const profile = profileForSurface(surface);
+  return {
+    ...profile,
+    global_rules: profile.global_rules.map((item) => ({ ...item, when_args: [...item.when_args] })),
+    variants: profile.variants.map((item) => ({
+      ...item,
+      when_args: [...item.when_args],
+      unless_args: [...item.unless_args],
+    })),
+  };
+}
+
+export function resolveCliEffectClass(surface, argv = []) {
+  return resolveEffectClassFromProfile(profileForSurface(surface), argv);
+}
+
+export function resolveEffectClassFromProfile(profile, argv = []) {
+  if (!profile || typeof profile !== "object") {
+    throw new Error("effect profile must be an object");
+  }
+  const originalArgv = Object.freeze([...argv].map((token) => String(token)));
+  const tokens = new Set(originalArgv);
+  if (tokens.has("--help") || tokens.has("-h")) {
+    return "read-only";
+  }
+  if (tokens.has("--dry-run")) {
+    return "preview";
+  }
+  const matches = (profile.variants ?? []).filter(
+    (variant) => variant.when_args.every((token) => tokens.has(token))
+      && variant.unless_args.every((token) => !tokens.has(token)),
+  );
+  if (matches.length === 0) {
+    return profile.default;
+  }
+  const specificity = Math.max(...matches.map((variant) => variant.when_args.length));
+  const mostSpecific = matches.filter((variant) => variant.when_args.length === specificity);
+  const classes = [...new Set(mostSpecific.map((variant) => variant.effect_class))];
+  if (classes.length !== 1) {
+    throw new Error(`ambiguous effect variants: ${mostSpecific.map((item) => item.policy).join(", ")}`);
+  }
+  return classes[0];
+}
+
+export function classifyCliOptionEffect(surface, option) {
+  const token = normalizeToken(option);
+  if (token === "--json") {
+    return "format-only";
+  }
+  if (token === "--help" || token === "-h") {
+    return {
+      role: "effect-override",
+      rule: "help-is-read-only",
+      effect_class: "read-only",
+    };
+  }
+  if (token === "--dry-run") {
+    return {
+      role: "effect-override",
+      rule: "dry-run-is-preview",
+      effect_class: "preview",
+    };
+  }
+  const profile = profileForSurface(surface);
+  const variants = profile.variants.filter((variant) => variant.when_args.includes(token));
+  if (variants.length === 0) {
+    return {
+      role: "effect-neutral",
+      rule: "invocation-profile",
+    };
+  }
+  return {
+    role: "effect-selector",
+    default: profile.default,
+    variants: variants.map((variant) => ({
+      when_args: [...variant.when_args],
+      unless_args: [...variant.unless_args],
+      effect_class: variant.effect_class,
+      policy: variant.policy,
+    })),
+  };
+}
 
 export function listEffectClasses() {
   return [...EFFECT_CLASSES];

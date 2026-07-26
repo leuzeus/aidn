@@ -54,6 +54,7 @@ function assertStatus(name, result, expected) {
 
 function recordCase(results, name, result, expected, {
   containmentProved = null,
+  remoteRefExact = null,
 } = {}) {
   assertStatus(name, result, expected);
   const payload = JSON.parse(String(result.stdout).trim());
@@ -64,10 +65,18 @@ function recordCase(results, name, result, expected, {
       + `${String(payload.provenance?.containment_proved)}`,
     );
   }
+  if (remoteRefExact != null
+    && payload.provenance?.remote_ref_exact !== remoteRefExact) {
+    throw new Error(
+      `${name}: expected remote_ref_exact=${remoteRefExact}, got `
+      + `${String(payload.provenance?.remote_ref_exact)}`,
+    );
+  }
   results.push({
     name,
     status: expected === 0 ? "PASS" : "EXPECTED_FAIL",
     containment_proved: payload.provenance?.containment_proved ?? false,
+    remote_ref_exact: payload.provenance?.remote_ref_exact ?? false,
   });
 }
 
@@ -143,8 +152,23 @@ function main() {
       "detached_exact_sha_remote_containment_pass",
       containmentResult,
       0,
-      { containmentProved: true },
+      { containmentProved: true, remoteRefExact: true },
     );
+
+    git(["checkout", "--quiet", "--detach", devSha], clientRoot);
+    const ancestorOnlyResult = run(process.execPath, [policyScript], clientRoot, policyEnv({
+      AIDN_BRANCH_POLICY_BASE_REF: "dev",
+      AIDN_BRANCH_POLICY_EXPECTED_SHA: devSha,
+      AIDN_BRANCH_POLICY_CONTAINS_REF: "origin/codex/fixture",
+    }));
+    recordCase(
+      results,
+      "detached_ancestor_of_remote_ref_fail",
+      ancestorOnlyResult,
+      1,
+      { containmentProved: true, remoteRefExact: false },
+    );
+    git(["checkout", "--quiet", "--detach", candidateSha], clientRoot);
 
     const missingRemoteResult = run(process.execPath, [policyScript], clientRoot, policyEnv({
       AIDN_BRANCH_POLICY_BASE_REF: "dev",
@@ -182,7 +206,7 @@ function main() {
       "detached_expected_sha_mismatch_fail",
       expectedMismatchResult,
       1,
-      { containmentProved: true },
+      { containmentProved: true, remoteRefExact: true },
     );
 
     git(["checkout", "--quiet", "--detach", devSha], clientRoot);
@@ -197,7 +221,7 @@ function main() {
       "detached_main_push_remote_pass",
       mainPushResult,
       0,
-      { containmentProved: true },
+      { containmentProved: true, remoteRefExact: true },
     );
 
     const localOnlyRoot = path.join(tempRoot, "local-only");

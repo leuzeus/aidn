@@ -28,7 +28,7 @@
     "dry_run": { "type": "boolean" },
     "path": { "type": "string" },
     "config": { "type": "object", "additionalProperties": true },
-    "effect_class": { "type": "string" },
+    "effect_class": { "type": "string", "const": "preview" },
     "written": { "type": "boolean" },
     "write_targets": { "type": "array" },
     "planned_write_targets": { "type": "array" }

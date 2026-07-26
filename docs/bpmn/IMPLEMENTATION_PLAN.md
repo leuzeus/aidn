@@ -257,7 +257,7 @@ Expected implementation:
 Likely touchpoints:
 
 - `scaffold/root/AGENTS.md`
-- `scaffold/docs_audit/WORKFLOW.md`
+- `scaffold/docs_audit/PROJECT_WORKFLOW.md`
 - maybe a dedicated policy artifact later if needed
 
 Acceptance criteria:

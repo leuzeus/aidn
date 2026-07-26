@@ -31,7 +31,6 @@ const npmCli = path.join(path.dirname(process.execPath), "node_modules", "npm", 
 const npmCommand = fs.existsSync(npmCli) ? process.execPath : "npm";
 const npmPrefix = fs.existsSync(npmCli) ? [npmCli] : [];
 const results = [];
-const executed = new Map();
 
 function git(args) {
   return spawnSync("git", args, {
@@ -90,6 +89,16 @@ function evaluateCondition(condition) {
       reason: "optional PostgreSQL live smoke URL is unavailable",
     };
   }
+  if (condition === "postgres-runtime-smoke-url-available") {
+    return {
+      met: Boolean(String(
+        process.env.AIDN_RUNTIME_PG_SMOKE_URL
+          ?? process.env.AIDN_PG_SMOKE_URL
+          ?? "",
+      ).trim()),
+      reason: "optional PostgreSQL runtime live smoke URL is unavailable",
+    };
+  }
   return {
     met: false,
     reason: `unknown condition: ${condition}`,
@@ -97,10 +106,14 @@ function evaluateCondition(condition) {
 }
 
 function diagnosticTail(value) {
-  const postgresUrl = String(process.env.AIDN_PG_SMOKE_URL ?? "").trim();
-  const redacted = postgresUrl
-    ? String(value ?? "").replaceAll(postgresUrl, "[redacted]")
-    : String(value ?? "");
+  let redacted = String(value ?? "");
+  for (const secret of [
+    process.env.AIDN_PG_SMOKE_URL,
+    process.env.AIDN_RUNTIME_PG_SMOKE_URL,
+  ].map((item) => String(item ?? "").trim()).filter(Boolean)) {
+    redacted = redacted.replaceAll(secret, "[redacted]");
+  }
+  redacted = redacted.replace(/postgres(?:ql)?:\/\/[^\s"']+/gi, "[redacted-postgres-url]");
   return redacted.slice(-8000);
 }
 
@@ -158,19 +171,6 @@ for (const gate of selected) {
     });
     continue;
   }
-  if (executed.has(gate.script)) {
-    results.push({
-      id: gate.id,
-      family: gate.family,
-      script: gate.script,
-      status: executed.get(gate.script),
-      obligation,
-      condition: gate.condition,
-      duration_ms: 0,
-      reason: "deduplicated",
-    });
-    continue;
-  }
   const result = spawnSync(npmCommand, [...npmPrefix, "run", gate.script], {
     cwd: repoRoot,
     env: {
@@ -187,7 +187,6 @@ for (const gate of selected) {
     process.stderr.write(String(result.stderr ?? ""));
   }
   const status = result.status === 0 ? "PASS" : "FAIL";
-  executed.set(gate.script, status);
   results.push({
     id: gate.id,
     family: gate.family,

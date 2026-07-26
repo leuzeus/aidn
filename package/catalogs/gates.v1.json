@@ -8,7 +8,8 @@
     "git-clean-commit",
     "git-clean-worktree",
     "codex-cli-available",
-    "postgres-smoke-url-available"
+    "postgres-smoke-url-available",
+    "postgres-runtime-smoke-url-available"
   ],
   "required_families": [
     "contracts",
@@ -194,6 +195,132 @@
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
     {
+      "id": "runtime-db-schema-migrations",
+      "family": "runtime",
+      "script": "perf:verify-db-schema-migrations",
+      "job": "runtime-ops/runtime-ops",
+      "surfaces": ["SQLite schema migrations", "migration registry"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-db-runtime-cli",
+      "family": "runtime",
+      "script": "perf:verify-db-runtime-cli",
+      "job": "runtime-ops/runtime-ops",
+      "surfaces": ["db-status", "db-migrate preview and write", "persistence aliases"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-persistence-parity",
+      "family": "runtime",
+      "script": "perf:verify-runtime-persistence-parity",
+      "job": "runtime-ops/runtime-ops",
+      "surfaces": ["SQLite and PostgreSQL persistence parity"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-shared-coordination-backup",
+      "family": "runtime",
+      "script": "perf:verify-shared-coordination-backup",
+      "job": "runtime-ops/runtime-ops",
+      "surfaces": ["shared coordination backup fixture"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-shared-coordination-restore",
+      "family": "runtime",
+      "script": "perf:verify-shared-coordination-restore",
+      "job": "runtime-ops/runtime-ops",
+      "surfaces": ["shared coordination restore preview and write"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-shared-coordination-doctor",
+      "family": "runtime",
+      "script": "perf:verify-shared-coordination-doctor",
+      "job": "runtime-ops/runtime-ops",
+      "surfaces": ["shared coordination diagnostics"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-shared-coordination-store-port",
+      "family": "runtime",
+      "script": "perf:verify-shared-coordination-store-port",
+      "job": "runtime-ops/runtime-ops",
+      "surfaces": ["shared coordination port contract"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-workspace-resolution",
+      "family": "runtime",
+      "script": "perf:verify-workspace-resolution",
+      "job": "runtime-mode/runtime-mode",
+      "surfaces": ["project workspace and worktree identity"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-shared-db-first-regression",
+      "family": "runtime",
+      "script": "perf:verify-shared-runtime-db-first-regression",
+      "job": "runtime-mode/runtime-mode",
+      "surfaces": ["db-first shared runtime regression"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-shared-sqlite-boundary",
+      "family": "runtime",
+      "script": "perf:verify-shared-sqlite-boundary",
+      "job": "runtime-mode/runtime-mode",
+      "surfaces": ["SQLite local boundary", "shared opt-in"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-db-only-hooks",
+      "family": "runtime",
+      "script": "perf:verify-db-only-hooks",
+      "job": "runtime-mode/runtime-mode",
+      "surfaces": ["db-only hook behavior"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-shared-runtime-path",
+      "family": "runtime",
+      "script": "perf:verify-shared-runtime-path",
+      "job": "shared-boundary/shared-boundary",
+      "surfaces": ["shared runtime path resolution"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-shared-runtime-reanchor",
+      "family": "runtime",
+      "script": "perf:verify-shared-runtime-reanchor",
+      "job": "shared-boundary/shared-boundary",
+      "surfaces": ["shared runtime reanchor preview and write"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-postgres-persistence-live-cleanup",
+      "family": "runtime",
+      "script": "perf:verify-postgres-runtime-persistence-live-smoke",
+      "job": "runtime-ops-live-smoke/live-smoke",
+      "surfaces": ["optional PostgreSQL runtime persistence", "synthetic row cleanup"],
+      "condition": "postgres-runtime-smoke-url-available",
+      "obligation": { "dev": "optional", "main": "optional", "release": "optional" }
+    },
+    {
       "id": "runtime-postgres-shared-live-cleanup",
       "family": "runtime",
       "script": "perf:verify-postgres-shared-coordination-live-smoke",
@@ -283,5 +410,87 @@
       "condition": "git-clean-worktree",
       "obligation": { "dev": "optional", "main": "required", "release": "required" }
     }
-  ]
+  ],
+  "workflow_inventory": [
+    {
+      "path": ".github/workflows/architecture-gates.yml",
+      "classification": "gate"
+    },
+    {
+      "path": ".github/workflows/cli-contracts.yml",
+      "classification": "gate"
+    },
+    {
+      "path": ".github/workflows/governance.yml",
+      "classification": "gate"
+    },
+    {
+      "path": ".github/workflows/perf-kpi.yml",
+      "classification": "observability"
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "classification": "release"
+    },
+    {
+      "path": ".github/workflows/runtime-mode.yml",
+      "classification": "gate"
+    },
+    {
+      "path": ".github/workflows/runtime-ops-live-smoke.yml",
+      "classification": "optional-live"
+    },
+    {
+      "path": ".github/workflows/runtime-ops.yml",
+      "classification": "gate"
+    },
+    {
+      "path": ".github/workflows/security-baseline.yml",
+      "classification": "gate"
+    },
+    {
+      "path": ".github/workflows/shared-boundary.yml",
+      "classification": "gate"
+    }
+  ],
+  "documentation_policy": {
+    "historical_patterns": [
+      "docs/PLAN_*.md",
+      "docs/BACKLOG_*.md",
+      "docs/TEMPLATE_*.md",
+      "docs/performance/LOT*.md"
+    ],
+    "derived_roots": [
+      "scaffold/",
+      "tests/fixtures/"
+    ],
+    "projection_rules": [
+      {
+        "target": "docs/audit/SPEC.md",
+        "source": "docs/SPEC.md",
+        "producer": "packs/core/manifest.yaml"
+      },
+      {
+        "target": "docs/audit/WORKFLOW.md",
+        "source": "scaffold/docs_audit/PROJECT_WORKFLOW.md",
+        "producer": "src/application/install/generated-doc-render-service.mjs"
+      },
+      {
+        "target": "docs/audit/CODEX_ONLINE.md",
+        "source": "scaffold/codex/README_CodexOnline.md",
+        "producer": "src/application/install/generated-doc-render-service.mjs"
+      },
+      {
+        "target": "docs/audit/sessions/SXXX.md",
+        "source": "scaffold/docs_audit/sessions/TEMPLATE_SESSION_SXXX.md",
+        "producer": "packs/core/manifest.yaml"
+      },
+      {
+        "target_prefix": "docs/audit/",
+        "source_prefix": "scaffold/docs_audit/",
+        "producer": "packs/core/manifest.yaml"
+      }
+    ],
+    "marker_source": "package/catalogs/gates.v1.json"
+  }
 }

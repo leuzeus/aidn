@@ -91,12 +91,36 @@ export async function discoverRepoSkills({
       clearTimeout(timer);
       lines.close();
       child.stdin.end();
-      if (child.exitCode === null && child.signalCode === null) {
-        child.once("close", callback);
-        child.kill();
-      } else {
+      if (child.exitCode !== null || child.signalCode !== null) {
         callback();
+        return;
       }
+      let closed = false;
+      let forceTimer = null;
+      let abandonTimer = null;
+      const complete = () => {
+        if (closed) {
+          return;
+        }
+        closed = true;
+        clearTimeout(forceTimer);
+        clearTimeout(abandonTimer);
+        callback();
+      };
+      child.once("close", complete);
+      child.kill();
+      forceTimer = setTimeout(() => {
+        if (child.exitCode === null && child.signalCode === null) {
+          child.kill("SIGKILL");
+        }
+      }, 1000);
+      abandonTimer = setTimeout(() => {
+        if (!closed) {
+          closed = true;
+          clearTimeout(forceTimer);
+          reject(new Error("Codex app-server did not exit after bounded termination"));
+        }
+      }, 5000);
     };
     const timer = setTimeout(() => {
       finish(() => reject(new Error(`Codex skills/list timed out after ${timeoutMs} ms`)));

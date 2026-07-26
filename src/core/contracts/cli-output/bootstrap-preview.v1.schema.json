@@ -26,7 +26,7 @@
   "properties": {
     "contract_version": { "type": "string" },
     "command": { "type": "string" },
-    "effect_class": { "type": "string" },
+    "effect_class": { "type": "string", "const": "preview" },
     "ok": { "type": "boolean" },
     "ts": { "type": "string" },
     "target_root": { "type": "string" },

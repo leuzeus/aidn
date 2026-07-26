@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { discoverRepoSkills } from "./codex-discovery-lib.mjs";
+import { removePathWithRetry } from "../perf/test-git-fixture-lib.mjs";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
 const REQUIRED_SKILLS = [
@@ -27,6 +28,29 @@ const REQUIRED_AGENTS = [
   "aidn-validator",
   "aidn-reviewer",
 ];
+const launchedPids = new Set();
+
+function isProcessAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) {
+    return false;
+  }
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function recordCompletedProcess(result) {
+  if (!Number.isInteger(result.pid)) {
+    return;
+  }
+  launchedPids.add(result.pid);
+  if (isProcessAlive(result.pid)) {
+    throw new Error(`child process ${result.pid} remained alive after synchronous completion`);
+  }
+}
 
 function run(command, argv, options = {}) {
   const result = spawnSync(command, argv, {
@@ -37,7 +61,9 @@ function run(command, argv, options = {}) {
     timeout: 240000,
     maxBuffer: 20 * 1024 * 1024,
     shell: false,
+    windowsHide: true,
   });
+  recordCompletedProcess(result);
   if (result.status !== 0) {
     throw new Error([
       `${command} ${argv.join(" ")} failed with ${result.status}`,
@@ -75,7 +101,9 @@ function runHookCommand(command, { cwd, env, input }) {
     timeout: 30000,
     maxBuffer: 2 * 1024 * 1024,
     shell: true,
+    windowsHide: true,
   });
+  recordCompletedProcess(result);
   if (result.status !== 0) {
     throw new Error([
       `hook command failed from ${cwd} with ${result.status}`,
@@ -112,6 +140,9 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const started = Date.now();
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-installed-client-"));
+  let output = null;
+  let primaryError = null;
+  let cleanupError = null;
   try {
     const npmCli = path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
     const npmCommand = fs.existsSync(npmCli) ? process.execPath : "npm";
@@ -225,7 +256,7 @@ async function main() {
       }
     }
 
-    console.log(JSON.stringify({
+    output = {
       ok: true,
       status: "PASS",
       proof_class: "installed-client",
@@ -247,10 +278,31 @@ async function main() {
         }
         : codexDiscovery,
       duration_ms: Date.now() - started,
-    }, null, 2));
+    };
+  } catch (error) {
+    primaryError = error;
   } finally {
-    fs.rmSync(tempRoot, { recursive: true, force: true });
+    const cleanup = removePathWithRetry(tempRoot);
+    if (!cleanup.ok || fs.existsSync(tempRoot)) {
+      cleanupError = cleanup.error ?? new Error("installed-client temp root remains");
+    }
   }
+  const processesClean = [...launchedPids].every((pid) => !isProcessAlive(pid));
+  if (!processesClean) {
+    cleanupError ??= new Error("installed-client proof left a child process running");
+  }
+  if (primaryError || cleanupError) {
+    if (primaryError && cleanupError) {
+      throw new AggregateError(
+        [primaryError, cleanupError],
+        `installed-client proof failed and cleanup also failed: ${primaryError.message}; ${cleanupError.message}`,
+      );
+    }
+    throw primaryError ?? cleanupError;
+  }
+  output.temp_removed = !fs.existsSync(tempRoot);
+  output.child_processes_exited = processesClean;
+  console.log(JSON.stringify(output, null, 2));
 }
 
 try {

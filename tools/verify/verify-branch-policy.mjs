@@ -128,6 +128,7 @@ export function verifyBranchPolicy({
     contains_ref: containsRef || null,
     resolved_head_ref: null,
     resolved_head_sha: null,
+    remote_ref_exact: false,
     containment_proved: false,
   };
 
@@ -155,6 +156,12 @@ export function verifyBranchPolicy({
       } else {
         provenance.resolved_head_ref = resolved.ref;
         provenance.resolved_head_sha = resolved.sha;
+        provenance.remote_ref_exact = resolved.sha === actualSha;
+        if (!provenance.remote_ref_exact) {
+          provenanceIssues.push(
+            `remote ref ${resolved.ref} resolves to ${resolved.sha}, not exact HEAD ${actualSha}`,
+          );
+        }
         try {
           git(["merge-base", "--is-ancestor", actualSha, resolved.ref]);
           provenance.containment_proved = true;
@@ -171,6 +178,9 @@ export function verifyBranchPolicy({
     }
     if (!provenance.containment_proved) {
       provenanceIssues.push("detached HEAD remote containment was not proved");
+    }
+    if (!provenance.remote_ref_exact) {
+      provenanceIssues.push("detached HEAD remote ref equality was not proved");
     }
     const isMainPush = eventName === "push" && githubRef === "refs/heads/main";
     if (!base && !isMainPush) {

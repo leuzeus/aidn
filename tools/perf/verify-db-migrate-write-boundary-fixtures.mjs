@@ -6,6 +6,10 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import {
+  getDatabaseSync,
+  migrateWorkflowDbFile,
+} from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const AIDN_BIN = path.join(REPO_ROOT, "bin", "aidn.mjs");
@@ -40,6 +44,25 @@ function snapshotTree(root) {
   }
   visit(root);
   return out;
+}
+
+function migrationTemps(root) {
+  if (!fs.existsSync(root)) {
+    return [];
+  }
+  const names = [];
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const absolute = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        visit(absolute);
+      } else if (entry.name.includes(".migration.tmp")) {
+        names.push(absolute);
+      }
+    }
+  }
+  visit(root);
+  return names;
 }
 
 function run(args, { expectStatus = 0 } = {}) {
@@ -150,6 +173,98 @@ function verifyFailureAtomicity(targetRoot) {
   };
 }
 
+function verifyFailureAfterOpenAndLateStages(tempRoot, existingTarget) {
+  const invalidTarget = path.join(tempRoot, "invalid-existing");
+  const invalidDb = path.join(invalidTarget, SQLITE_RELATIVE);
+  fs.mkdirSync(path.dirname(invalidDb), { recursive: true });
+  const DatabaseSync = getDatabaseSync();
+  const legacyDb = new DatabaseSync(invalidDb);
+  legacyDb.exec("CREATE TABLE legacy_probe (id INTEGER PRIMARY KEY);");
+  legacyDb.close();
+  const invalidSchema = path.join(tempRoot, "invalid-after-open.sql");
+  fs.writeFileSync(invalidSchema, "THIS IS NOT VALID SQL;", "utf8");
+  const originalDigest = digestFile(invalidDb);
+  const originalTree = snapshotTree(invalidTarget);
+  let invalidError = null;
+  try {
+    migrateWorkflowDbFile({
+      sqliteFile: invalidDb,
+      schemaFile: invalidSchema,
+      role: "atomicity-probe",
+    });
+  } catch (error) {
+    invalidError = error;
+  }
+  assert(invalidError, "invalid SQL after opening did not fail");
+  assert(digestFile(invalidDb) === originalDigest, "invalid SQL changed the existing database");
+  assert(
+    JSON.stringify(snapshotTree(invalidTarget)) === JSON.stringify(originalTree),
+    "invalid SQL left a backup, sidecar, or temp artifact",
+  );
+
+  const existingDb = path.join(existingTarget, SQLITE_RELATIVE);
+  const stages = ["after-open", "after-migrations", "after-verify", "before-replace"];
+  for (const stage of stages) {
+    const before = snapshotTree(existingTarget);
+    let stageError = null;
+    try {
+      migrateWorkflowDbFile({
+        sqliteFile: existingDb,
+        role: "atomicity-probe",
+        failureStage: stage,
+      });
+    } catch (error) {
+      stageError = error;
+    }
+    assert(stageError, `${stage} injection did not fail`);
+    assert(
+      JSON.stringify(snapshotTree(existingTarget)) === JSON.stringify(before),
+      `${stage} injection changed the existing database or left artifacts`,
+    );
+  }
+  const sidecar = `${existingDb}-wal`;
+  fs.writeFileSync(sidecar, "synthetic-stale-sidecar", "utf8");
+  const sidecarTree = snapshotTree(existingTarget);
+  let sidecarError = null;
+  try {
+    migrateWorkflowDbFile({
+      sqliteFile: existingDb,
+      role: "atomicity-probe",
+    });
+  } catch (error) {
+    sidecarError = error;
+  }
+  assert(sidecarError, "existing SQLite sidecar bundle was not rejected");
+  assert(
+    JSON.stringify(snapshotTree(existingTarget)) === JSON.stringify(sidecarTree),
+    "sidecar rejection changed the existing SQLite bundle",
+  );
+  fs.rmSync(sidecar, { force: true });
+
+  const freshRoot = path.join(tempRoot, "failure-after-open-fresh");
+  const freshDb = path.join(freshRoot, SQLITE_RELATIVE);
+  let freshError = null;
+  try {
+    migrateWorkflowDbFile({
+      sqliteFile: freshDb,
+      schemaFile: invalidSchema,
+      role: "atomicity-probe",
+    });
+  } catch (error) {
+    freshError = error;
+  }
+  assert(freshError, "fresh invalid SQL after opening did not fail");
+  assert(!fs.existsSync(freshRoot), "fresh failure left .aidn/database/directories");
+  assert(migrationTemps(tempRoot).length === 0, "migration temp artifacts remain after failure");
+  return {
+    invalid_sql_after_open_preserved: true,
+    injected_late_stages_preserved: stages,
+    existing_sidecars_rejected_unchanged: true,
+    fresh_failure_left_no_target: true,
+    migration_temp_count: 0,
+  };
+}
+
 function main() {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-db-migrate-write-boundary-"));
   try {
@@ -162,12 +277,17 @@ function main() {
       verifyWrite("persistence-migrate", path.join(tempRoot, "write-alias")),
     ];
     const failureAtomicity = verifyFailureAtomicity(path.join(tempRoot, "write-db"));
+    const failureAfterOpen = verifyFailureAfterOpenAndLateStages(
+      tempRoot,
+      path.join(tempRoot, "write-db"),
+    );
     console.log(JSON.stringify({
       ok: true,
       status: "PASS",
       preview: previews,
       write: writes,
       failure_atomicity: failureAtomicity,
+      failure_after_open_and_late_stages: failureAfterOpen,
       temp_root: "removed",
     }, null, 2));
   } finally {

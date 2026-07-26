@@ -2,6 +2,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runProjectConfigUseCase } from "../../src/application/project/project-config-use-case.mjs";
+import { resolveCliEffectClass } from "../../src/core/cli/effect-policy.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -81,11 +82,18 @@ function printUsage() {
 
 async function main() {
   try {
-    const args = parseArgs(process.argv.slice(2));
+    const originalArgv = Object.freeze([...process.argv.slice(2)]);
+    const args = parseArgs(originalArgv);
     const scriptDir = path.dirname(fileURLToPath(import.meta.url));
     const repoRoot = path.resolve(scriptDir, "..", "..");
     const targetRoot = path.resolve(process.cwd(), args.target);
     const result = await runProjectConfigUseCase({ args, targetRoot, repoRoot });
+    const expectedEffect = resolveCliEffectClass("aidn project config", originalArgv);
+    if (result.effect_class !== expectedEffect) {
+      throw new Error(
+        `Effect policy mismatch: behavior=${result.effect_class}; policy=${expectedEffect}`,
+      );
+    }
 
     if (args.json) {
       console.log(JSON.stringify(result, null, 2));
