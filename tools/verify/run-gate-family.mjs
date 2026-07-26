@@ -96,6 +96,14 @@ function evaluateCondition(condition) {
   };
 }
 
+function diagnosticTail(value) {
+  const postgresUrl = String(process.env.AIDN_PG_SMOKE_URL ?? "").trim();
+  const redacted = postgresUrl
+    ? String(value ?? "").replaceAll(postgresUrl, "[redacted]")
+    : String(value ?? "");
+  return redacted.slice(-8000);
+}
+
 const context = inferContext();
 const selected = catalog.gates.filter(
   (gate) => (requested === "all"
@@ -189,6 +197,12 @@ for (const gate of selected) {
     condition: gate.condition,
     duration_ms: Date.now() - started,
     exit_code: result.status,
+    ...(status === "FAIL" ? {
+      error: result.error?.message ?? null,
+      signal: result.signal ?? null,
+      stdout_tail: diagnosticTail(result.stdout),
+      stderr_tail: diagnosticTail(result.stderr),
+    } : {}),
   });
 }
 

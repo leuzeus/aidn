@@ -52,9 +52,53 @@ function runJson(script, args, repoRoot, expectStatus = 0) {
     maxBuffer: 20 * 1024 * 1024,
   });
   if ((result.status ?? 1) !== expectStatus) {
-    throw new Error(`Command failed (${path.basename(script)}): ${String(result.stderr ?? result.stdout ?? "").trim()}`);
+    const details = [
+      result.error?.message,
+      result.signal ? `signal=${result.signal}` : "",
+      String(result.stderr ?? "").trim(),
+      String(result.stdout ?? "").trim(),
+    ].filter(Boolean).join("\n");
+    throw new Error(
+      `Command failed (${path.basename(script)}; status=${String(result.status)}): ${details || "no diagnostic output"}`,
+    );
   }
   return JSON.parse(String(result.stdout ?? "{}"));
+}
+
+function listFixtureTempDirectories() {
+  return new Set(
+    fs.readdirSync(os.tmpdir(), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && entry.name.startsWith("aidn-suggest-arbitration-"))
+      .map((entry) => path.join(os.tmpdir(), entry.name)),
+  );
+}
+
+function verifyInjectedFailureCleanup(args, repoRoot) {
+  const before = listFixtureTempDirectories();
+  const result = spawnSync(process.execPath, [
+    path.resolve(repoRoot, "tools", "perf", "verify-coordinator-suggest-arbitration-fixtures.mjs"),
+    "--handoff-fixtures-root",
+    args.handoffFixturesRoot,
+    "--integration-fixtures-root",
+    args.integrationFixturesRoot,
+  ], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      AIDN_TEST_SUGGEST_ARBITRATION_FAIL_AFTER_SETUP: "1",
+    },
+    encoding: "utf8",
+    timeout: 30000,
+    maxBuffer: 2 * 1024 * 1024,
+  });
+  const after = listFixtureTempDirectories();
+  const leaked = [...after].filter((directory) => !before.has(directory));
+  assert(result.status === 1, `injected failure should exit 1; got ${String(result.status)}`);
+  assert(leaked.length === 0, `injected failure leaked temporary directories: ${leaked.join(", ")}`);
+  return {
+    expected_exit_code: 1,
+    leaked_directories: 0,
+  };
 }
 
 function main() {
@@ -75,6 +119,9 @@ function main() {
     fs.cpSync(path.join(fixturesRoot, "ready"), readyTarget, { recursive: true });
     fs.cpSync(path.join(fixturesRoot, "warn"), roleBlockedTarget, { recursive: true });
     fs.cpSync(path.join(integrationFixturesRoot, "integration-cycle"), integrationCycleTarget, { recursive: true });
+    if (process.env.AIDN_TEST_SUGGEST_ARBITRATION_FAIL_AFTER_SETUP === "1") {
+      throw new Error("injected failure after arbitration fixture setup");
+    }
 
     runJson(handoffProjectScript, ["--target", readyTarget, "--write", "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", roleBlockedTarget, "--write", "--json"], repoRoot, 0);
@@ -159,11 +206,13 @@ function main() {
     assert(integrationCycle.suggestions.some((item) => item.decision === "report_forward"), "integration-cycle suggestions should include report_forward as an alternative");
     assert(integrationCycle.arbitration_diagnostic?.recommended_suggestion_count === 1, "integration-cycle suggestions should expose recommended suggestion count in the stable diagnostic");
 
+    const failureCleanupProbe = verifyInjectedFailureCleanup(args, repoRoot);
     const output = {
       ts: new Date().toISOString(),
       ready,
       role_blocked: roleBlocked,
       integration_cycle: integrationCycle,
+      failure_cleanup_probe: failureCleanupProbe,
       pass: true,
     };
 
@@ -175,12 +224,19 @@ function main() {
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      const cleanup = removePathWithRetry(tempRoot);
+      const cleanup = removePathWithRetry(tempRoot, {
+        retries: 20,
+        delayMs: 100,
+      });
       if (!cleanup.ok) {
-        throw cleanup.error;
+        console.error(
+          `ERROR: arbitration fixture cleanup failed after ${cleanup.attempts} attempts: `
+          + `${String(cleanup.error?.message ?? cleanup.error)}`,
+        );
+        process.exitCode = 1;
       }
     }
   }
