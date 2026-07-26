@@ -35,8 +35,8 @@ function main() {
     const repoRoot = process.cwd();
     const version = readText(path.join(repoRoot, "VERSION")).trim();
     const sourceFixture = path.join(repoRoot, "tests", "fixtures", "repo-installed-core");
-    const workflowFixture = path.join(repoRoot, "tests", "fixtures", "project-migration-gowire-like", "WORKFLOW.md");
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-gowire-parity-"));
+    const workflowFixture = path.join(repoRoot, "tests", "fixtures", "project-migration-pilot-fixture", "WORKFLOW.md");
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-pilot-parity-"));
     const targetRoot = path.join(tempRoot, "repo");
     fs.cpSync(sourceFixture, targetRoot, { recursive: true });
 
@@ -52,6 +52,7 @@ function main() {
       "--migrate-adapter",
       "--version",
       version,
+      "--write",
       "--json",
     ]);
     const payload = JSON.parse(result.stdout || "{}");

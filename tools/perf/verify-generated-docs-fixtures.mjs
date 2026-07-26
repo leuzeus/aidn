@@ -6,7 +6,8 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
-function run(repoRoot, argv) {
+function run(repoRoot, argv, codexStubBin) {
+  const separator = process.platform === "win32" ? ";" : ":";
   const result = spawnSync(process.execPath, [
     path.join(repoRoot, "tools", "install.mjs"),
     ...argv,
@@ -17,6 +18,7 @@ function run(repoRoot, argv) {
     maxBuffer: 20 * 1024 * 1024,
     env: {
       ...process.env,
+      PATH: `${codexStubBin}${separator}${process.env.PATH ?? ""}`,
     },
   });
   return {
@@ -24,6 +26,24 @@ function run(repoRoot, argv) {
     stdout: String(result.stdout ?? ""),
     stderr: String(result.stderr ?? ""),
   };
+}
+
+function makeCodexStub(tempRoot) {
+  const binDir = path.join(tempRoot, ".codex-stub-bin");
+  fs.mkdirSync(binDir, { recursive: true });
+  if (process.platform === "win32") {
+    fs.writeFileSync(path.join(binDir, "codex.cmd"), [
+      "@echo off",
+      "if \"%1\"==\"login\" if \"%2\"==\"status\" echo Logged in",
+      "exit /b 0",
+      "",
+    ].join("\r\n"), "utf8");
+  } else {
+    const commandPath = path.join(binDir, "codex");
+    fs.writeFileSync(commandPath, "#!/usr/bin/env sh\necho \"Logged in\"\n", "utf8");
+    fs.chmodSync(commandPath, 0o755);
+  }
+  return binDir;
 }
 
 function sha256(filePath) {
@@ -40,6 +60,7 @@ function main() {
     const repoRoot = process.cwd();
     const fixtureRoot = path.resolve(repoRoot, "tests", "fixtures", "repo-installed-core");
     tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-generated-docs-"));
+    const codexStubBin = makeCodexStub(tmpRoot);
     const targetRoot = path.join(tmpRoot, "repo");
     fs.cpSync(fixtureRoot, targetRoot, { recursive: true });
 
@@ -78,7 +99,7 @@ function main() {
       "--force-agents-merge",
     ];
 
-    const first = run(repoRoot, installArgs);
+    const first = run(repoRoot, installArgs, codexStubBin);
 
     const afterFirst = {
       workflow: read(workflowPath),
@@ -98,7 +119,7 @@ function main() {
       index: sha256(indexPath),
     };
 
-    const second = run(repoRoot, installArgs);
+    const second = run(repoRoot, installArgs, codexStubBin);
 
     const generatedHashesAfterSecond = {
       workflow: sha256(workflowPath),

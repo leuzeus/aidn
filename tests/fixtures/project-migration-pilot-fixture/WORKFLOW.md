@@ -35,7 +35,7 @@ Adapter rules in this file extend (but do not redefine) canonical mechanics from
 workflow_product: aidn-workflow
 workflow_version: 0.4.0
 installed_pack: core
-project_name: gowire
+project_name: pilot-fixture
 source_branch: dev
 ```
 

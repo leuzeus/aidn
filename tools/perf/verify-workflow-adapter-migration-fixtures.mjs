@@ -40,7 +40,7 @@ function main() {
     const repoRoot = process.cwd();
     const version = readText(path.join(repoRoot, "VERSION")).trim();
     const sourceFixture = path.join(repoRoot, "tests", "fixtures", "repo-installed-core");
-    const workflowFixture = path.join(repoRoot, "tests", "fixtures", "project-migration-gowire-like", "WORKFLOW.md");
+    const workflowFixture = path.join(repoRoot, "tests", "fixtures", "project-migration-pilot-fixture", "WORKFLOW.md");
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-migrate-adapter-"));
     const targetRoot = path.join(tempRoot, "repo");
     fs.cpSync(sourceFixture, targetRoot, { recursive: true });
@@ -75,8 +75,15 @@ function main() {
       parkingLot: sha256(parkingLotPath),
       snapshot: sha256(snapshotPath),
     };
-
-    const first = run(repoRoot, [
+    const adapterPath = path.join(targetRoot, ".aidn", "project", "workflow.adapter.json");
+    const reportPath = path.join(targetRoot, ".aidn", "project", "workflow.adapter.migration-report.json");
+    const legacyWorkflowSourcePath = path.join(targetRoot, ".aidn", "project", "workflow.adapter.legacy-source.md");
+    const beforePreviewHashes = {
+      config: sha256(configPath),
+      workflow: sha256(workflowPath),
+      adapter: sha256(adapterPath),
+    };
+    const preview = run(repoRoot, [
       "--target",
       targetRoot,
       "--migrate-adapter",
@@ -84,10 +91,23 @@ function main() {
       version,
       "--json",
     ]);
+    const previewPayload = JSON.parse(preview.stdout || "{}");
+    const previewDidNotWrite = beforePreviewHashes.config === sha256(configPath)
+      && beforePreviewHashes.workflow === sha256(workflowPath)
+      && beforePreviewHashes.adapter === sha256(adapterPath)
+      && !fs.existsSync(reportPath)
+      && !fs.existsSync(legacyWorkflowSourcePath);
+
+    const first = run(repoRoot, [
+      "--target",
+      targetRoot,
+      "--migrate-adapter",
+      "--version",
+      version,
+      "--write",
+      "--json",
+    ]);
     const firstPayload = JSON.parse(first.stdout || "{}");
-    const adapterPath = path.join(targetRoot, ".aidn", "project", "workflow.adapter.json");
-    const reportPath = path.join(targetRoot, ".aidn", "project", "workflow.adapter.migration-report.json");
-    const legacyWorkflowSourcePath = path.join(targetRoot, ".aidn", "project", "workflow.adapter.legacy-source.md");
     const afterConfig = JSON.parse(readText(configPath));
     const adapterConfig = JSON.parse(readText(adapterPath));
     const workflowText = readText(workflowPath);
@@ -110,6 +130,7 @@ function main() {
       "--migrate-adapter",
       "--version",
       version,
+      "--write",
       "--json",
     ]);
     const secondPayload = JSON.parse(second.stdout || "{}");
@@ -128,6 +149,7 @@ function main() {
       "--migrate-adapter",
       "--version",
       version,
+      "--write",
       "--json",
     ]);
 
@@ -139,6 +161,9 @@ function main() {
     };
 
     const checks = {
+      preview_ok: preview.status === 0 && previewPayload.ok === true,
+      preview_effect: previewPayload.effect_class === "preview" && previewPayload.written === false,
+      preview_did_not_write: previewDidNotWrite,
       first_ok: first.status === 0 && firstPayload.ok === true,
       second_ok: second.status === 0 && secondPayload.ok === true,
       third_ok: third.status === 0,
@@ -147,7 +172,7 @@ function main() {
       legacy_source_written: fs.existsSync(legacyWorkflowSourcePath)
         && readText(legacyWorkflowSourcePath).includes("### Session Transition Cleanliness Gate (Mandatory)"),
       source_branch_restored_in_config: String(afterConfig.workflow?.sourceBranch ?? "") === "dev",
-      adapter_project_name: String(adapterConfig.projectName ?? "") === "gowire",
+      adapter_project_name: String(adapterConfig.projectName ?? "") === "pilot-fixture",
       adapter_runtime_constraint: String(adapterConfig.constraints?.runtime ?? "").includes("TinyGo-compatible WASM runtime"),
       adapter_architecture_constraint: String(adapterConfig.constraints?.architecture ?? "").includes("SSR-first custom elements"),
       adapter_delivery_constraint: String(adapterConfig.constraints?.delivery ?? "").includes("CI orchestration is managed by Drone"),
@@ -233,7 +258,7 @@ function main() {
         && !workflowTextAfterSecond.includes("## Imported Local Extensions"),
       summary_regenerated: summaryText.includes("- Configured source branch: `dev`"),
       codex_online_regenerated: codexOnlineText.includes("- source branch: `dev`"),
-      index_regenerated: indexText.includes("- Project: `gowire`"),
+      index_regenerated: indexText.includes("- Project: `pilot-fixture`"),
       baseline_current_preserved: beforeHashes.baselineCurrent === sha256(baselineCurrentPath),
       baseline_history_preserved: beforeHashes.baselineHistory === sha256(baselineHistoryPath),
       parking_lot_preserved: beforeHashes.parkingLot === sha256(parkingLotPath),

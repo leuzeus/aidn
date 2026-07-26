@@ -34,7 +34,7 @@
     "scaffold/",
     "scripts/",
     "tools/",
-    "!tools/perf/verify-g*-like-*",
+    "!tools/perf/*pilot*",
     "!tools/perf/verify-imported-sections-policy-fixtures.mjs",
     "!tools/perf/local-pilot-runtime-import-lib.mjs",
     "!tools/perf/verify-pilot-runtime-import-fixtures.mjs",

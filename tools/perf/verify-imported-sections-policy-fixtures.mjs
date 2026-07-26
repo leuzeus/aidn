@@ -18,7 +18,7 @@ function main() {
     const scriptDir = path.dirname(fileURLToPath(import.meta.url));
     const repoRoot = path.resolve(scriptDir, "..", "..");
     const sourceFixture = path.resolve(repoRoot, "tests", "fixtures", "repo-installed-core");
-    const fixtureRoot = path.resolve(repoRoot, "tests", "fixtures", "project-migration-gowire-like");
+    const fixtureRoot = path.resolve(repoRoot, "tests", "fixtures", "project-migration-pilot-fixture");
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-imported-sections-"));
     const migrationTarget = path.join(tempRoot, "repo");
     fs.cpSync(sourceFixture, migrationTarget, { recursive: true });
