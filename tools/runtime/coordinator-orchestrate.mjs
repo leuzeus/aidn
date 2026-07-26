@@ -228,12 +228,12 @@ function main() {
       }
     }
     if (args.execute && result.orchestration_status !== "executed" && result.orchestration_status !== "paused") {
-      process.exit(1);
+      process.exitCode = 1;
     }
   }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   });
 }
 

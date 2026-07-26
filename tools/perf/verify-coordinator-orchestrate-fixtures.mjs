@@ -5,6 +5,8 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
+const CI_TRUNCATION_CHARACTER_COUNT = 219264;
+
 function parseArgs(argv) {
   const args = {
     handoffFixturesRoot: "tests/fixtures/perf-handoff",
@@ -39,7 +41,7 @@ function assert(condition, message) {
   }
 }
 
-function runJson(script, args, repoRoot, expectStatus = 0) {
+function runJsonWithEvidence(script, args, repoRoot, expectStatus = 0) {
   const result = spawnSync(process.execPath, [script, ...args], {
     cwd: repoRoot,
     env: { ...process.env },
@@ -47,10 +49,35 @@ function runJson(script, args, repoRoot, expectStatus = 0) {
     timeout: 240000,
     maxBuffer: 20 * 1024 * 1024,
   });
-  if ((result.status ?? 1) !== expectStatus) {
-    throw new Error(`Command failed (${path.basename(script)}): ${String(result.stderr ?? result.stdout ?? "").trim()}`);
+  const status = result.status ?? 1;
+  const stdout = String(result.stdout ?? "");
+  const stderr = String(result.stderr ?? "").trim();
+  if (status !== expectStatus) {
+    throw new Error(
+      `Command failed (${path.basename(script)}): exit=${status}, expected=${expectStatus}, `
+      + `stdout_characters=${stdout.length}${stderr ? `, stderr=${stderr}` : ""}`,
+    );
   }
-  return JSON.parse(String(result.stdout ?? "{}"));
+  let payload;
+  try {
+    payload = JSON.parse(stdout);
+  } catch (error) {
+    throw new Error(
+      `Command returned incomplete JSON (${path.basename(script)}): exit=${status}, `
+      + `stdout_characters=${stdout.length}: ${error.message}`,
+    );
+  }
+  return {
+    payload,
+    status,
+    stdout_characters: stdout.length,
+    stdout_bytes: Buffer.byteLength(stdout, "utf8"),
+    stdout_terminated: stdout.endsWith("\n"),
+  };
+}
+
+function runJson(script, args, repoRoot, expectStatus = 0) {
+  return runJsonWithEvidence(script, args, repoRoot, expectStatus).payload;
 }
 
 function appendHistoryEvent(targetRoot, event) {
@@ -187,6 +214,7 @@ function main() {
     const summaryScript = path.resolve(repoRoot, "tools", "runtime", "project-coordination-summary.mjs");
     const arbitrationScript = path.resolve(repoRoot, "tools", "runtime", "coordinator-record-arbitration.mjs");
     const orchestrateScript = path.resolve(repoRoot, "tools", "runtime", "coordinator-orchestrate.mjs");
+    const aidnScript = path.resolve(repoRoot, "bin", "aidn.mjs");
 
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-coordinator-orchestrate-"));
     const readyTarget = path.join(tempRoot, "ready");
@@ -212,7 +240,13 @@ function main() {
 
     const dryRun = runJson(orchestrateScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     const blocked = runJson(orchestrateScript, ["--target", escalatedTarget, "--execute", "--json"], repoRoot, 1);
-    const resumed = runJson(orchestrateScript, ["--target", resumedTarget, "--execute", "--max-iterations", "3", "--json"], repoRoot, 1);
+    const resumedRun = runJsonWithEvidence(
+      aidnScript,
+      ["runtime", "coordinator-orchestrate", "--target", resumedTarget, "--execute", "--max-iterations", "3", "--json"],
+      repoRoot,
+      1,
+    );
+    const resumed = resumedRun.payload;
     const roleBlocked = runJson(orchestrateScript, ["--target", roleBlockedTarget, "--execute", "--json"], repoRoot, 1);
 
     const resumedHistoryFile = path.join(resumedTarget, ".aidn", "runtime", "context", "coordination-history.ndjson");
@@ -243,6 +277,11 @@ function main() {
     assert(resumed.runs[0].shared_planning_candidate?.candidate_aligned === true, "orchestrate should preserve the aligned shared planning candidate during execution");
     assert(resumed.runs[0].execution_status === "executed", "orchestrate should execute the resumed dispatch");
     assert(resumed.orchestration_diagnostic?.iterations_completed === 1, "resumed orchestration should expose iteration count in the stable diagnostic");
+    assert(
+      resumedRun.stdout_characters > CI_TRUNCATION_CHARACTER_COUNT,
+      `resumed-then-blocked public CLI output should exceed the observed CI truncation size (${resumedRun.stdout_characters} <= ${CI_TRUNCATION_CHARACTER_COUNT})`,
+    );
+    assert(resumedRun.stdout_terminated, "resumed-then-blocked public CLI output should terminate after the complete JSON document");
     assert(fs.existsSync(resumedHistoryFile), "orchestrate should write coordination history");
     assert(fs.existsSync(resumedLogFile), "orchestrate should write coordination log");
     assert(fs.readFileSync(resumedHistoryFile, "utf8").includes("\"event\":\"user_arbitration\""), "orchestrate history should retain arbitration event");
@@ -260,6 +299,15 @@ function main() {
       ts: new Date().toISOString(),
       dry_run: dryRun,
       blocked,
+      blocked_stdout_evidence: {
+        scenario: "resumed_then_blocked",
+        exit_status: resumedRun.status,
+        characters: resumedRun.stdout_characters,
+        bytes: resumedRun.stdout_bytes,
+        complete_json: true,
+        terminated: resumedRun.stdout_terminated,
+        exceeds_observed_ci_truncation: resumedRun.stdout_characters > CI_TRUNCATION_CHARACTER_COUNT,
+      },
       resumed,
       role_blocked: roleBlocked,
       pass: true,
@@ -273,7 +321,7 @@ function main() {
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       const cleanup = removePathWithRetry(tempRoot);
