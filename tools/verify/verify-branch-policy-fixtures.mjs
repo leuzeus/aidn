@@ -53,41 +53,6 @@ function assertStatus(name, result, expected) {
 
 function main() {
   const results = [];
-  const cases = [
-    {
-      name: "feature_to_dev_pass",
-      env: {
-        GITHUB_EVENT_NAME: "pull_request",
-        GITHUB_HEAD_REF: "codex/example-feature",
-        GITHUB_BASE_REF: "dev",
-      },
-      expected: 0,
-    },
-    {
-      name: "release_to_main_pass",
-      env: {
-        GITHUB_EVENT_NAME: "pull_request",
-        GITHUB_HEAD_REF: "release/0.7.0",
-        GITHUB_BASE_REF: "main",
-      },
-      expected: 0,
-    },
-    {
-      name: "feature_to_main_fail",
-      env: {
-        GITHUB_EVENT_NAME: "pull_request",
-        GITHUB_HEAD_REF: "codex/example-feature",
-        GITHUB_BASE_REF: "main",
-      },
-      expected: 1,
-    },
-  ];
-  for (const item of cases) {
-    const result = run(process.execPath, [policyScript], repoRoot, policyEnv(item.env));
-    assertStatus(item.name, result, item.expected);
-    results.push({ name: item.name, status: item.expected === 0 ? "PASS" : "EXPECTED_FAIL" });
-  }
-
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-branch-policy-"));
   try {
     git(["init", "--initial-branch=dev", "--quiet"], tempRoot);
@@ -98,6 +63,42 @@ function main() {
     git(["commit", "--quiet", "-m", "fixture"], tempRoot);
     git(["checkout", "--quiet", "-b", "codex/fixture"], tempRoot);
     const candidateSha = git(["rev-parse", "HEAD"], tempRoot);
+
+    const cases = [
+      {
+        name: "feature_to_dev_pass",
+        env: {
+          GITHUB_EVENT_NAME: "pull_request",
+          GITHUB_HEAD_REF: "codex/example-feature",
+          GITHUB_BASE_REF: "dev",
+        },
+        expected: 0,
+      },
+      {
+        name: "release_to_main_pass",
+        env: {
+          GITHUB_EVENT_NAME: "pull_request",
+          GITHUB_HEAD_REF: "release/0.7.0",
+          GITHUB_BASE_REF: "main",
+        },
+        expected: 0,
+      },
+      {
+        name: "feature_to_main_fail",
+        env: {
+          GITHUB_EVENT_NAME: "pull_request",
+          GITHUB_HEAD_REF: "codex/example-feature",
+          GITHUB_BASE_REF: "main",
+        },
+        expected: 1,
+      },
+    ];
+    for (const item of cases) {
+      const result = run(process.execPath, [policyScript], tempRoot, policyEnv(item.env));
+      assertStatus(item.name, result, item.expected);
+      results.push({ name: item.name, status: item.expected === 0 ? "PASS" : "EXPECTED_FAIL" });
+    }
+
     git(["update-ref", "refs/remotes/origin/codex/fixture", candidateSha], tempRoot);
     git(["checkout", "--quiet", "--detach", candidateSha], tempRoot);
 
