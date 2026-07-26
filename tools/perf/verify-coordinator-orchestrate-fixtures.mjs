@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 const CI_TRUNCATION_CHARACTER_COUNT = 219264;
@@ -39,6 +40,177 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+function tokenizeJavaScript(source) {
+  const tokens = [];
+  let index = 0;
+  while (index < source.length) {
+    const token = source[index];
+    const next = source[index + 1] ?? "";
+    if (/\s/.test(token)) {
+      index += 1;
+      continue;
+    }
+    if (token === "/" && next === "/") {
+      index += 2;
+      while (index < source.length && source[index] !== "\n") {
+        index += 1;
+      }
+      continue;
+    }
+    if (token === "/" && next === "*") {
+      index += 2;
+      while (index < source.length && !(source[index] === "*" && source[index + 1] === "/")) {
+        index += 1;
+      }
+      index += 2;
+      continue;
+    }
+    if (token === "'" || token === "\"" || token === "`") {
+      const quote = token;
+      index += 1;
+      while (index < source.length) {
+        if (source[index] === "\\") {
+          index += 2;
+          continue;
+        }
+        if (source[index] === quote) {
+          index += 1;
+          break;
+        }
+        index += 1;
+      }
+      continue;
+    }
+    if (/[A-Za-z_$]/.test(token)) {
+      const start = index;
+      index += 1;
+      while (index < source.length && /[A-Za-z0-9_$]/.test(source[index])) {
+        index += 1;
+      }
+      tokens.push(source.slice(start, index));
+      continue;
+    }
+    if (/[0-9]/.test(token)) {
+      const start = index;
+      index += 1;
+      while (index < source.length && /[0-9A-Za-z_.]/.test(source[index])) {
+        index += 1;
+      }
+      tokens.push(source.slice(start, index));
+      continue;
+    }
+    tokens.push(token);
+    index += 1;
+  }
+  return tokens;
+}
+
+function immediateProcessExitArguments(source) {
+  const tokens = tokenizeJavaScript(source);
+  const argumentsFound = [];
+  for (let index = 0; index < tokens.length - 4; index += 1) {
+    if (
+      tokens[index] === "process"
+      && tokens[index + 1] === "."
+      && tokens[index + 2] === "exit"
+      && tokens[index + 3] === "("
+    ) {
+      argumentsFound.push(tokens[index + 4]);
+    }
+  }
+  return argumentsFound;
+}
+
+function runExitPolicyModuleProbe(policyModulePath) {
+  const moduleUrl = pathToFileURL(policyModulePath).href;
+  const probe = [
+    `import { COORDINATOR_ORCHESTRATE_EXIT_POLICY, deferCoordinatorOrchestrateFailureExit } from ${JSON.stringify(moduleUrl)};`,
+    "deferCoordinatorOrchestrateFailureExit();",
+    "const observedExitCode = process.exitCode;",
+    "process.stdout.write(JSON.stringify({ policy: COORDINATOR_ORCHESTRATE_EXIT_POLICY, observed_exit_code: observedExitCode }));",
+    "process.exitCode = 0;",
+  ].join("\n");
+  return spawnSync(process.execPath, ["--input-type=module", "--eval", probe], {
+    encoding: "utf8",
+    shell: false,
+    timeout: 30000,
+    maxBuffer: 1024 * 1024,
+  });
+}
+
+function verifyDeferredExitPolicy(repoRoot, tempRoot) {
+  const runtimePath = path.join(repoRoot, "tools", "runtime", "coordinator-orchestrate.mjs");
+  const policyPath = path.join(
+    repoRoot,
+    "tools",
+    "runtime",
+    "coordinator-orchestrate-exit-policy.mjs",
+  );
+  const runtimeSource = fs.readFileSync(runtimePath, "utf8");
+  const policySource = fs.readFileSync(policyPath, "utf8");
+  const runtimeExitArguments = immediateProcessExitArguments(runtimeSource);
+  const policyExitArguments = immediateProcessExitArguments(policySource);
+  assert(
+    runtimeExitArguments.every((argument) => argument === "0"),
+    `coordinator-orchestrate may only use immediate process.exit(0) for help; found ${runtimeExitArguments.join(", ")}`,
+  );
+  assert(
+    policyExitArguments.length === 0,
+    `coordinator exit policy must not use immediate process.exit; found ${policyExitArguments.join(", ")}`,
+  );
+
+  const mutationNeedle = "process.exitCode = 1;";
+  const mutationCount = policySource.split(mutationNeedle).length - 1;
+  assert(mutationCount === 1, `exit policy should expose exactly one deferred failure assignment, found ${mutationCount}`);
+  const policyProbeRoot = path.join(tempRoot, "exit-policy-probe");
+  fs.mkdirSync(policyProbeRoot, { recursive: true });
+  const originalCopy = path.join(policyProbeRoot, "original-policy.mjs");
+  const mutatedCopy = path.join(policyProbeRoot, "mutated-policy.mjs");
+  fs.writeFileSync(originalCopy, policySource, "utf8");
+  fs.writeFileSync(
+    mutatedCopy,
+    policySource.replace(mutationNeedle, "process.exit(1);"),
+    "utf8",
+  );
+
+  const mutatedExitArguments = immediateProcessExitArguments(
+    fs.readFileSync(mutatedCopy, "utf8"),
+  );
+  assert(
+    mutatedExitArguments.includes("1"),
+    "structured exit guard should identify the injected immediate process.exit(1)",
+  );
+
+  const originalProbe = runExitPolicyModuleProbe(originalCopy);
+  assert(originalProbe.status === 0, "deferred exit policy probe should reach its sentinel");
+  const originalPayload = JSON.parse(String(originalProbe.stdout ?? ""));
+  assert(
+    originalPayload.observed_exit_code === 1,
+    "deferred exit policy should assign process.exitCode=1",
+  );
+  assert(
+    originalPayload.policy?.nonzero_failure_termination === "deferred-process-exit-code",
+    "deferred exit policy metadata should remain explicit",
+  );
+  assert(
+    originalPayload.policy?.immediate_nonzero_process_exit_allowed === false,
+    "deferred exit policy should forbid immediate nonzero process exit",
+  );
+
+  const mutatedProbe = runExitPolicyModuleProbe(mutatedCopy);
+  assert(
+    mutatedProbe.status === 1 && String(mutatedProbe.stdout ?? "") === "",
+    "process.exit(1) mutant should be killed before the semantic sentinel on every platform",
+  );
+  return {
+    runtime_immediate_exit_arguments: runtimeExitArguments,
+    policy_immediate_exit_arguments: policyExitArguments,
+    deferred_exit_code_observed: originalPayload.observed_exit_code,
+    process_exit_1_mutant_rejected: true,
+    mutant_rejected_before_pipe_behavior: true,
+  };
 }
 
 function runJsonWithEvidence(script, args, repoRoot, expectStatus = 0) {
@@ -217,6 +389,7 @@ function main() {
     const aidnScript = path.resolve(repoRoot, "bin", "aidn.mjs");
 
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-coordinator-orchestrate-"));
+    const exitPolicyEvidence = verifyDeferredExitPolicy(repoRoot, tempRoot);
     const readyTarget = path.join(tempRoot, "ready");
     const escalatedTarget = path.join(tempRoot, "escalated");
     const resumedTarget = path.join(tempRoot, "resumed");
@@ -308,6 +481,7 @@ function main() {
         terminated: resumedRun.stdout_terminated,
         exceeds_observed_ci_truncation: resumedRun.stdout_characters > CI_TRUNCATION_CHARACTER_COUNT,
       },
+      exit_policy_evidence: exitPolicyEvidence,
       resumed,
       role_blocked: roleBlocked,
       pass: true,
