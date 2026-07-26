@@ -5,6 +5,7 @@ import {
   normalizeIndexStoreMode,
   normalizeStateMode,
 } from "./aidn-config-lib.mjs";
+import { writeFileAtomicSync } from "../fs/atomic-write-lib.mjs";
 
 const WORKFLOW_ADAPTER_CONFIG_VERSION = 1;
 
@@ -415,8 +416,11 @@ export function readWorkflowAdapterConfig(targetRoot, options = {}) {
 export function writeWorkflowAdapterConfigFile(filePath, data, options = {}) {
   const absolutePath = path.resolve(filePath);
   const normalized = normalizeWorkflowAdapterConfig(data, options);
-  fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
-  fs.writeFileSync(absolutePath, `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
+  writeFileAtomicSync(
+    absolutePath,
+    `${JSON.stringify(normalized, null, 2)}\n`,
+    { encoding: "utf8" },
+  );
   return absolutePath;
 }
 

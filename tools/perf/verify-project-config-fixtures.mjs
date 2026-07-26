@@ -10,7 +10,8 @@ function printUsage() {
   console.log("  node tools/perf/verify-project-config-fixtures.mjs");
 }
 
-function run(repoRoot, relativeScript, argv) {
+function run(repoRoot, relativeScript, argv, codexStubBin = "") {
+  const separator = process.platform === "win32" ? ";" : ":";
   const result = spawnSync(process.execPath, [
     path.resolve(repoRoot, relativeScript),
     ...argv,
@@ -21,6 +22,7 @@ function run(repoRoot, relativeScript, argv) {
     maxBuffer: 20 * 1024 * 1024,
     env: {
       ...process.env,
+      ...(codexStubBin ? { PATH: `${codexStubBin}${separator}${process.env.PATH ?? ""}` } : {}),
     },
   });
   return {
@@ -28,6 +30,24 @@ function run(repoRoot, relativeScript, argv) {
     stdout: String(result.stdout ?? ""),
     stderr: String(result.stderr ?? ""),
   };
+}
+
+function makeCodexStub(tempRoot) {
+  const binDir = path.join(tempRoot, ".codex-stub-bin");
+  fs.mkdirSync(binDir, { recursive: true });
+  if (process.platform === "win32") {
+    fs.writeFileSync(path.join(binDir, "codex.cmd"), [
+      "@echo off",
+      "if \"%1\"==\"login\" if \"%2\"==\"status\" echo Logged in",
+      "exit /b 0",
+      "",
+    ].join("\r\n"), "utf8");
+  } else {
+    const filePath = path.join(binDir, "codex");
+    fs.writeFileSync(filePath, "#!/usr/bin/env sh\necho \"Logged in\"\n", "utf8");
+    fs.chmodSync(filePath, 0o755);
+  }
+  return binDir;
 }
 
 function writeAdapterFile(tempRoot, projectName = "tmp-project") {
@@ -54,10 +74,23 @@ function main() {
   try {
     const repoRoot = process.cwd();
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-project-config-"));
+    const codexStubBin = makeCodexStub(tempRoot);
     const target = path.join(tempRoot, "repo");
     fs.mkdirSync(target, { recursive: true });
 
     const adapterFile = writeAdapterFile(tempRoot, "fixture-project");
+
+    const previewTarget = path.join(tempRoot, "repo-preview");
+    fs.mkdirSync(previewTarget, { recursive: true });
+    const preview = run(repoRoot, "tools/project/config.mjs", [
+      "--target",
+      previewTarget,
+      "--init-defaults",
+      "--project-name",
+      "preview-project",
+      "--json",
+    ]);
+    const previewPayload = JSON.parse(preview.stdout || "{}");
 
     const listExisting = run(repoRoot, "tools/project/config.mjs", [
       "--target",
@@ -74,7 +107,7 @@ function main() {
       "core",
       "--skip-artifact-import",
       "--no-codex-migrate-custom",
-    ]);
+    ], codexStubBin);
 
     const initDefaultsTarget = path.join(tempRoot, "repo-init-defaults");
     fs.mkdirSync(initDefaultsTarget, { recursive: true });
@@ -84,6 +117,7 @@ function main() {
       "--init-defaults",
       "--project-name",
       "init-defaults-project",
+      "--write",
       "--json",
     ]);
     const initDefaultsPayload = JSON.parse(initDefaults.stdout || "{}");
@@ -101,13 +135,14 @@ function main() {
       "--verify",
       "--skip-artifact-import",
       "--no-codex-migrate-custom",
-    ]);
+    ], codexStubBin);
 
     const createFromFile = run(repoRoot, "tools/project/config.mjs", [
       "--target",
       target,
       "--adapter-file",
       adapterFile,
+      "--write",
       "--json",
     ]);
     const createFromFilePayload = JSON.parse(createFromFile.stdout || "{}");
@@ -130,9 +165,13 @@ function main() {
       "--skip-artifact-import",
       "--no-codex-migrate-custom",
       "--force-agents-merge",
-    ]);
+    ], codexStubBin);
 
     const checks = {
+      preview_ok: preview.status === 0,
+      preview_effect: String(previewPayload?.effect_class ?? "") === "preview",
+      preview_written_false: previewPayload?.written === false,
+      preview_json_did_not_write: !fs.existsSync(path.join(previewTarget, ".aidn", "project", "workflow.adapter.json")),
       list_existing_ok: listExisting.status === 0,
       list_existing_has_config: listExistingPayload?.exists === true,
       list_existing_project_name: String(listExistingPayload?.config?.projectName ?? "") === "repo-installed-core",
@@ -140,6 +179,8 @@ function main() {
       install_missing_mentions_adapter_config: installMissing.stderr.includes("Missing workflow adapter config"),
       init_defaults_ok: initDefaults.status === 0,
       init_defaults_action: String(initDefaultsPayload?.action ?? "") === "init-defaults",
+      init_defaults_effect: String(initDefaultsPayload?.effect_class ?? "") === "mutating",
+      init_defaults_written: initDefaultsPayload?.written === true,
       init_defaults_project_name: String(initDefaultsPayload?.config?.projectName ?? "") === "init-defaults-project",
       install_with_init_defaults_ok: installWithInitDefaults.status === 0,
       install_with_init_defaults_created_adapter: fs.existsSync(path.join(installInitDefaultsTarget, ".aidn", "project", "workflow.adapter.json")),

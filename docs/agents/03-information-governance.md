@@ -13,6 +13,10 @@ The source of truth, metadata, lifecycle status, and scope of each concept must 
 - lifecycle status is part of the contract for governed concepts
 - concepts can be governed, subsumed, or excluded
 - files / dual / db-only are supported modes and must remain distinguishable
+- every exposed concept declares owner, lifecycle, scope, retention, projections, migration, and replacement
+- projections, fixtures, caches, and exports are never canonical by implication
+- proof distinguishes package source, scaffold, fixture corpus, installed client, and external pilot
+- PostgreSQL remains optional and shared synchronization remains opt-in
 
 ## Modes
 

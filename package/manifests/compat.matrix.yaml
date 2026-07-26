@@ -1,4 +1,4 @@
-node_min: 18
+node_min: "22.13"
 os:
   - windows
   - linux

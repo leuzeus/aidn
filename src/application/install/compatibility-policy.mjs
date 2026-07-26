@@ -113,17 +113,27 @@ function asStringArray(value, label) {
   return out;
 }
 
-function asNumber(value, label) {
+function asNodeVersion(value, label) {
   if (value == null) {
     return null;
   }
-  if (typeof value === "number" && Number.isInteger(value)) {
-    return value;
+  const text = String(value).trim();
+  const match = text.match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?$/);
+  if (match) {
+    return [Number(match[1]), Number(match[2] ?? 0), Number(match[3] ?? 0)].join(".");
   }
-  if (typeof value === "string" && /^-?\d+$/.test(value.trim())) {
-    return Number(value.trim());
+  throw new Error(`${label} must be a Node version such as 22.13`);
+}
+
+function compareVersions(left, right) {
+  const a = String(left).split(".").map(Number);
+  const b = String(right).split(".").map(Number);
+  for (let index = 0; index < 3; index += 1) {
+    if (a[index] !== b[index]) {
+      return a[index] - b[index];
+    }
   }
-  throw new Error(`${label} must be an integer`);
+  return 0;
 }
 
 function asBoolean(value, label) {
@@ -143,8 +153,8 @@ function intersectOrdered(primary, secondary) {
 
 export function resolveCompatibility(workflowManifest, compatMatrix) {
   const workflowCompat = workflowManifest?.compatibility ?? null;
-  const nodeMinWorkflow = asNumber(workflowCompat?.node_min, "workflow.compatibility.node_min");
-  const nodeMinMatrix = asNumber(compatMatrix?.node_min, "compat.matrix.node_min");
+  const nodeMinWorkflow = asNodeVersion(workflowCompat?.node_min, "workflow.compatibility.node_min");
+  const nodeMinMatrix = asNodeVersion(compatMatrix?.node_min, "compat.matrix.node_min");
   const codexWorkflow = asBoolean(workflowCompat?.codex_online, "workflow.compatibility.codex_online");
   const codexMatrix = asBoolean(compatMatrix?.codex_online, "compat.matrix.codex_online");
   const osWorkflow = asStringArray(workflowCompat?.os, "workflow.compatibility.os");
@@ -202,10 +212,9 @@ export function validateRuntimeCompatibility(compatibility) {
   }
 
   if (compatibility.nodeMin != null) {
-    const currentMajor = Number(runtime.node.split(".")[0]);
-    if (currentMajor < compatibility.nodeMin) {
+    if (compareVersions(runtime.node, compatibility.nodeMin) < 0) {
       throw new Error(
-        `Node ${currentMajor} is not supported (requires >= ${compatibility.nodeMin})`,
+        `Node ${runtime.node} is not supported (requires >= ${compatibility.nodeMin})`,
       );
     }
   }

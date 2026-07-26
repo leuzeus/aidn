@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { writeFileAtomicSync } from "../fs/atomic-write-lib.mjs";
 
 export const VALID_STATE_MODES = new Set(["files", "dual", "db-only"]);
 export const VALID_INDEX_STORE_MODES = new Set(["file", "sql", "dual", "sqlite", "dual-sqlite", "all"]);
@@ -165,9 +166,11 @@ export function readAidnProjectConfig(targetRoot) {
 
 export function writeAidnProjectConfig(targetRoot, data) {
   const filePath = resolveAidnConfigPath(targetRoot);
-  const parent = path.dirname(filePath);
-  fs.mkdirSync(parent, { recursive: true });
-  fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+  writeFileAtomicSync(
+    filePath,
+    `${JSON.stringify(data, null, 2)}\n`,
+    { encoding: "utf8" },
+  );
   projectConfigCache.delete(filePath);
   projectConfigCacheStats.invalidations += 1;
   projectConfigCacheStats.writes += 1;

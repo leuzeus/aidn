@@ -11,8 +11,9 @@ export const DB_ONLY_STRICT_REANCHOR_PATHS = Object.freeze([
 export const DB_ONLY_STRICT_WORKFLOW_BOOTSTRAP_PATHS = Object.freeze([
   "AGENTS.md",
   ".gitignore",
+  ".agents",
   ".codex",
-  ".codex/skills.yaml",
+  ".aidn/codex/skills.yaml",
   "docs/audit/AGENT-ADAPTERS.md",
   "docs/audit/AGENT-ROSTER.md",
   "docs/audit/ARTIFACT_MANIFEST.md",
@@ -44,7 +45,9 @@ export const DB_ONLY_STRICT_WORKFLOW_BOOTSTRAP_PATHS = Object.freeze([
 ]);
 
 export const DB_ONLY_STRICT_VISIBLE_INSTALL_PREFIXES = Object.freeze([
-  ".codex/skills/",
+  ".agents/skills/",
+  ".codex/agents/",
+  ".codex/hooks/",
   "docs/audit/fragments/",
 ]);
 

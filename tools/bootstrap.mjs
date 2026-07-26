@@ -149,7 +149,7 @@ function profilePlan(args, targetRoot) {
   if (args.wizard) {
     operations.push({
       id: "project-config-wizard",
-      command: [...configArgs, "--wizard"],
+      command: [...configArgs, "--wizard", ...(args.dryRun ? [] : ["--write"])],
       env: {},
       mutates: !args.dryRun,
       optional: false,
@@ -198,7 +198,7 @@ function profilePlan(args, targetRoot) {
         targetRoot,
         "--migrate-adapter",
         "--json",
-        ...(args.dryRun ? ["--dry-run"] : []),
+        ...(args.dryRun ? ["--dry-run"] : ["--write"]),
       ],
       env: {},
       mutates: !args.dryRun,

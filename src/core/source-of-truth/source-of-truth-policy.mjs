@@ -32,6 +32,12 @@ function policy({
   dbOnly,
   projection = "none",
   sharedRuntime = "not_shared",
+  owner = "AIDN information governance steward",
+  lifecycle = "active -> superseded -> archived",
+  scope = "installed project or package source as declared",
+  retention = "retain while active; archive or delete according to the owning project policy",
+  migration = "State-mode changes use explicit migration commands; no implicit canonical-source promotion.",
+  replacement = "none",
   notes = "",
 }) {
   return freezeDeep({
@@ -42,7 +48,23 @@ function policy({
       dual,
       "db-only": dbOnly,
     },
+    canonical_mode_by_state: {
+      files: "files",
+      dual: "dual",
+      "db-only": "db-only",
+    },
+    owner,
+    lifecycle,
+    scope,
+    retention,
     projection,
+    projection_is_canonical: false,
+    projections: projection === "none" ? [] : [projection],
+    migration,
+    replacement,
+    proof_classes: ["source", "scaffold", "fixture", "installed-client", "external-pilot"],
+    postgresql: "optional",
+    shared_sync: "opt-in",
     shared_runtime: sharedRuntime,
     notes,
   });
@@ -240,6 +262,9 @@ export function listSourceOfTruthPolicies() {
   return SOURCE_OF_TRUTH_POLICIES.map((item) => ({
     ...item,
     by_mode: { ...item.by_mode },
+    canonical_mode_by_state: { ...item.canonical_mode_by_state },
+    projections: [...item.projections],
+    proof_classes: [...item.proof_classes],
   }));
 }
 
@@ -254,6 +279,9 @@ export function getSourceOfTruthPolicy(concept, stateMode = null) {
     return {
       ...item,
       by_mode: { ...item.by_mode },
+      canonical_mode_by_state: { ...item.canonical_mode_by_state },
+      projections: [...item.projections],
+      proof_classes: [...item.proof_classes],
     };
   }
   return {
@@ -261,7 +289,19 @@ export function getSourceOfTruthPolicy(concept, stateMode = null) {
     label: item.label,
     state_mode: normalizedMode,
     source_of_truth: item.by_mode[normalizedMode],
+    canonical_mode: item.canonical_mode_by_state[normalizedMode],
+    owner: item.owner,
+    lifecycle: item.lifecycle,
+    scope: item.scope,
+    retention: item.retention,
     projection: item.projection,
+    projection_is_canonical: item.projection_is_canonical,
+    projections: [...item.projections],
+    migration: item.migration,
+    replacement: item.replacement,
+    proof_classes: [...item.proof_classes],
+    postgresql: item.postgresql,
+    shared_sync: item.shared_sync,
     shared_runtime: item.shared_runtime,
     notes: item.notes,
   };
@@ -302,6 +342,23 @@ export function validateSourceOfTruthPolicies() {
     }
     if (String(item.shared_runtime ?? "").trim().length === 0) {
       issues.push(`${item.concept}: missing shared_runtime policy`);
+    }
+    for (const field of ["owner", "lifecycle", "scope", "retention", "migration", "replacement"]) {
+      if (!String(item[field] ?? "").trim()) {
+        issues.push(`${item.concept}: missing ${field}`);
+      }
+    }
+    if (item.projection_is_canonical !== false) {
+      issues.push(`${item.concept}: projections must not be implicitly canonical`);
+    }
+    if (item.postgresql !== "optional") {
+      issues.push(`${item.concept}: PostgreSQL must remain optional`);
+    }
+    if (item.shared_sync !== "opt-in") {
+      issues.push(`${item.concept}: shared sync must remain opt-in`);
+    }
+    if (JSON.stringify(item.proof_classes) !== JSON.stringify(["source", "scaffold", "fixture", "installed-client", "external-pilot"])) {
+      issues.push(`${item.concept}: proof class boundary is incomplete`);
     }
   }
   return {

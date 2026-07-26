@@ -93,7 +93,7 @@ npm run perf:verify-current-state-skill-coverage -- --root scaffold/codex
 Installed skills:
 
 ```bash
-npm run perf:verify-current-state-skill-coverage -- --root tests/fixtures/repo-installed-core/.codex/skills
+npm run perf:verify-current-state-skill-coverage -- --root tests/fixtures/repo-installed-core/.agents/skills
 ```
 
 This check ensures mutating skills keep `CURRENT-STATE.md` in scope instead of silently diverging from it.

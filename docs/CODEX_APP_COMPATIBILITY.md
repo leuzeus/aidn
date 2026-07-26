@@ -1,5 +1,13 @@
 # Codex App Compatibility Notes
 
+## Product and client boundaries
+
+- `scaffold/codex/*`, `scaffold/codex_agents/*`, and `scaffold/codex_hooks/*` are package source assets.
+- `.agents/skills/*`, `.codex/agents/*`, and `.codex/hooks.json` in a target repository are installed-client surfaces.
+- `tests/fixtures/*` are tracked test corpora, not evidence of discovery by a real installed client.
+- The separately distributed `aidn-codex-plugin` is not embedded in this repository or implied by an AIDN pack install.
+- External pilot evidence is reported separately and never replaced by scaffold or fixture checks.
+
 ## Purpose
 
 This note documents a recurring integration issue observed with conservative Codex desktop/app or online instruction stacks.

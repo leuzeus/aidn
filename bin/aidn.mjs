@@ -51,6 +51,7 @@ const PERF_ALIASES = {
   "verify-cli-aliases": { file: "verify-perf-cli-aliases-fixtures.mjs" },
   "verify-structure": { file: "verify-structure-profile-fixtures.mjs" },
   "verify-skill-hooks": { file: "verify-skill-hook-coverage.mjs" },
+  "skill-hook": { file: "skill-hook.mjs" },
   "verify-skill-hook-context": { file: "verify-skill-hook-context-injection.mjs" },
   "verify-db-first-sync": { file: "verify-db-first-sync-coverage.mjs" },
   "verify-sync-db-first-selective": { file: "verify-sync-db-first-selective-fixtures.mjs" },
@@ -88,7 +89,6 @@ const CODEX_ALIASES = {
   "normalize-hook-payload": { file: "normalize-hook-payload.mjs" },
   "hydrate-context": { file: "hydrate-context.mjs" },
   "workflow-step": { file: "workflow-step.mjs" },
-  "context-store": { file: "context-store.mjs" },
 };
 
 const RUNTIME_ALIASES = {
@@ -97,6 +97,7 @@ const RUNTIME_ALIASES = {
   "db-backup": { file: "db-backup.mjs" },
   "db-migrate": { file: "db-migrate.mjs" },
   "db-status": { file: "db-status.mjs" },
+  "db-only-readiness": { file: "db-only-readiness.mjs" },
   "persistence-backup": { file: "db-backup.mjs" },
   "persistence-adopt": { file: "persistence-adopt.mjs" },
   "persistence-source-diagnose": { file: "persistence-source-diagnose.mjs" },
@@ -115,6 +116,11 @@ const RUNTIME_ALIASES = {
   "shared-coordination-status": { file: "shared-coordination-status.mjs" },
   "shared-coordination-projects": { file: "shared-coordination-projects.mjs" },
   "governance-diagnostics": { file: "governance-diagnostics.mjs" },
+  "repair-layer": { file: "repair-layer.mjs" },
+  "repair-layer-query": { file: "repair-layer-query.mjs" },
+  "repair-layer-resolve": { file: "repair-layer-resolve.mjs" },
+  "repair-layer-triage": { file: "repair-layer-triage.mjs" },
+  "repair-layer-autofix": { file: "repair-layer-autofix.mjs" },
   "coordinator-dispatch-execute": { file: "coordinator-dispatch-execute.mjs" },
   "coordinator-dispatch-plan": { file: "coordinator-dispatch-plan.mjs" },
   "coordinator-loop": { file: "coordinator-loop.mjs" },
@@ -211,9 +217,10 @@ function printUsage() {
   console.log("  aidn runtime project-runtime-state --target . --write --json");
   console.log("  aidn runtime session-plan --target . --item \"define session backlog\" --promote --json");
   console.log("  aidn project config --target . --list --json");
-  console.log("  aidn project config --target . --wizard");
+  console.log("  aidn project config --target . --wizard --write");
   console.log("  aidn project config --target . --init-defaults --project-name my-project --json");
-  console.log("  aidn project config --target . --migrate-adapter --json");
+  console.log("  aidn project config --target . --init-defaults --project-name my-project --write --json");
+  console.log("  aidn project config --target . --migrate-adapter --write --json");
   console.log("");
   console.log("Perf subcommands:");
   console.log(`  ${Object.keys(PERF_ALIASES).sort().join(", ")}`);
@@ -270,7 +277,7 @@ function printProjectUsage() {
   printGroupUsage("project", PROJECT_ALIASES, [
     "aidn project config --target . --init-defaults --project-name my-project --json",
     "aidn project config --target . --list --json",
-    "aidn project config --target . --wizard",
+    "aidn project config --target . --wizard --write",
   ]);
 }
 
@@ -352,11 +359,7 @@ function resolveToolCommand({ aliases, group, rootDir, subcommand, args }) {
   if (!/^[a-z0-9-]+$/.test(subcommand)) {
     throw new Error(`Invalid ${group} subcommand: ${subcommand}`);
   }
-  const fallbackFile = `${subcommand}.mjs`;
-  return {
-    relativePath: path.join(rootDir, fallbackFile),
-    argv: args,
-  };
+  throw new Error(`Unknown ${group} subcommand: ${subcommand}`);
 }
 
 function main() {

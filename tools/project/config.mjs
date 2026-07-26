@@ -15,6 +15,7 @@ function parseArgs(argv) {
     defaultIndexStore: "",
     migrateAdapter: false,
     dryRun: false,
+    write: false,
     version: "",
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -42,6 +43,8 @@ function parseArgs(argv) {
       args.migrateAdapter = true;
     } else if (token === "--dry-run") {
       args.dryRun = true;
+    } else if (token === "--write") {
+      args.write = true;
     } else if (token === "--version") {
       args.version = String(argv[i + 1] ?? "").trim();
       i += 1;
@@ -59,16 +62,21 @@ function parseArgs(argv) {
   if (!args.target) {
     throw new Error("Missing value for --target");
   }
+  if (args.dryRun && args.write) {
+    throw new Error("--dry-run and --write cannot be combined");
+  }
   return args;
 }
 
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/project/config.mjs --target . --list --json");
-  console.log("  node tools/project/config.mjs --target . --wizard");
   console.log("  node tools/project/config.mjs --target . --init-defaults --project-name my-project --json");
-  console.log("  node tools/project/config.mjs --target . --adapter-file ./workflow.adapter.json");
+  console.log("  node tools/project/config.mjs --target . --init-defaults --project-name my-project --write --json");
+  console.log("  node tools/project/config.mjs --target . --wizard --write");
+  console.log("  node tools/project/config.mjs --target . --adapter-file ./workflow.adapter.json --write");
   console.log("  node tools/project/config.mjs --target . --migrate-adapter --json");
+  console.log("  node tools/project/config.mjs --target . --migrate-adapter --write --json");
 }
 
 async function main() {
@@ -86,6 +94,7 @@ async function main() {
 
     console.log(`Target: ${result.target_root}`);
     console.log(`Action: ${result.action}`);
+    console.log(`Written: ${result.written === true ? "yes" : "no"}`);
     console.log(`Path: ${result.path ?? result.adapter_path ?? "n/a"}`);
     if (result.exists) {
       console.log(`Exists: yes`);

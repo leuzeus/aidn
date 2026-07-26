@@ -10,9 +10,15 @@ install:
     - from: scaffold/docs_audit/PROJECT_WORKFLOW.md
       to: docs/audit/WORKFLOW.md
     - from: scaffold/codex/skills.yaml
-      to: .codex/skills.yaml
+      to: .aidn/codex/skills.yaml
     - from: scaffold/codex/
-      to: .codex/skills/
+      to: .agents/skills/
+    - from: scaffold/codex_agents/
+      to: .codex/agents/
+    - from: scaffold/codex_hooks/hooks.json
+      to: .codex/hooks.json
+    - from: scaffold/codex_hooks/scripts/
+      to: .codex/hooks/
     - from: scaffold/codex/README_CodexOnline.md
       to: docs/audit/CODEX_ONLINE.md
     - from: scaffold/runtime_agents/
@@ -55,14 +61,20 @@ verify:
     - docs/audit/baseline/current.md
     - docs/audit/snapshots/context-snapshot.md
     - docs/audit/parking-lot.md
-    - .codex/skills.yaml
-    - .codex/skills/branch-cycle-audit/SKILL.md
-    - .codex/skills/close-session/SKILL.md
-    - .codex/skills/context-reload/SKILL.md
-    - .codex/skills/convert-to-spike/SKILL.md
-    - .codex/skills/cycle-close/SKILL.md
-    - .codex/skills/cycle-create/SKILL.md
-    - .codex/skills/drift-check/SKILL.md
-    - .codex/skills/promote-baseline/SKILL.md
-    - .codex/skills/requirements-delta/SKILL.md
-    - .codex/skills/start-session/SKILL.md
+    - .aidn/codex/skills.yaml
+    - .agents/skills/branch-cycle-audit/SKILL.md
+    - .agents/skills/close-session/SKILL.md
+    - .agents/skills/context-reload/SKILL.md
+    - .agents/skills/convert-to-spike/SKILL.md
+    - .agents/skills/cycle-close/SKILL.md
+    - .agents/skills/cycle-create/SKILL.md
+    - .agents/skills/drift-check/SKILL.md
+    - .agents/skills/promote-baseline/SKILL.md
+    - .agents/skills/requirements-delta/SKILL.md
+    - .agents/skills/start-session/SKILL.md
+    - .codex/agents/aidn-explorer.toml
+    - .codex/agents/aidn-executor.toml
+    - .codex/agents/aidn-validator.toml
+    - .codex/agents/aidn-reviewer.toml
+    - .codex/hooks.json
+    - .codex/hooks/aidn-session-start.mjs

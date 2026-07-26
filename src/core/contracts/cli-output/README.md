@@ -82,5 +82,7 @@ Initial v1 commands:
 - `aidn runtime coordinator-record-arbitration --json`
 - `aidn runtime handoff-admit --json`
 - `aidn project config --list --json`
+- `aidn project config --init-defaults --json` (preview only)
+- `aidn project config --init-defaults --write --json`
 - `aidn codex hydrate-context --json`
 - `aidn codex workflow-step --json`

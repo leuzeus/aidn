@@ -28,9 +28,11 @@ These command families are intended for users and are covered by public effect p
 - `aidn project config --list --json`
 - `aidn bootstrap --json`
 - `aidn bootstrap --dry-run --json`
-- `aidn project config --wizard`
-- `aidn project config --init-defaults --project-name <name> --json`
-- `aidn project config --migrate-adapter --json`
+- `aidn project config --wizard --write`
+- `aidn project config --init-defaults --project-name <name> --json` (preview)
+- `aidn project config --init-defaults --project-name <name> --write --json`
+- `aidn project config --migrate-adapter --json` (preview)
+- `aidn project config --migrate-adapter --write --json`
 - `aidn runtime db-status --json`
 - `aidn runtime db-only-readiness --json`
 - `aidn runtime persistence-status --json`

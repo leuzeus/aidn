@@ -236,8 +236,11 @@ function main() {
     const runtimeLocalInstall = runInstall(repoRoot, runtimeLocalTarget, codexStubBin, "runtime-local", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
     const runtimeLocalVerify = runInstall(repoRoot, runtimeLocalTarget, codexStubBin, "runtime-local", ["--verify", "--skip-artifact-import"]);
 
-    fs.rmSync(path.join(codexTarget, ".codex", "skills"), { recursive: true, force: true });
-    fs.rmSync(path.join(codexTarget, ".codex", "skills.yaml"), { force: true });
+    fs.rmSync(path.join(codexTarget, ".agents", "skills"), { recursive: true, force: true });
+    fs.rmSync(path.join(codexTarget, ".codex", "agents"), { recursive: true, force: true });
+    fs.rmSync(path.join(codexTarget, ".codex", "hooks"), { recursive: true, force: true });
+    fs.rmSync(path.join(codexTarget, ".codex", "hooks.json"), { force: true });
+    fs.rmSync(path.join(codexTarget, ".aidn", "codex"), { recursive: true, force: true });
     const codexInstall = runInstall(repoRoot, codexTarget, codexStubBin, "codex-integration", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
     const codexVerify = runInstall(repoRoot, codexTarget, codexStubBin, "codex-integration", ["--verify", "--skip-artifact-import"]);
 
@@ -246,8 +249,11 @@ function main() {
     const githubVerify = runInstall(repoRoot, githubTarget, codexStubBin, "github-integration", ["--verify", "--skip-artifact-import"]);
 
     fs.rmSync(path.join(extendedTarget, ".aidn", "runtime", "agents"), { recursive: true, force: true });
-    fs.rmSync(path.join(extendedTarget, ".codex", "skills"), { recursive: true, force: true });
-    fs.rmSync(path.join(extendedTarget, ".codex", "skills.yaml"), { force: true });
+    fs.rmSync(path.join(extendedTarget, ".agents", "skills"), { recursive: true, force: true });
+    fs.rmSync(path.join(extendedTarget, ".codex", "agents"), { recursive: true, force: true });
+    fs.rmSync(path.join(extendedTarget, ".codex", "hooks"), { recursive: true, force: true });
+    fs.rmSync(path.join(extendedTarget, ".codex", "hooks.json"), { force: true });
+    fs.rmSync(path.join(extendedTarget, ".aidn", "codex"), { recursive: true, force: true });
     fs.rmSync(path.join(extendedTarget, ".github"), { recursive: true, force: true });
     const extendedInstall = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
     const extendedVerify = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--verify", "--skip-artifact-import"]);
@@ -277,16 +283,20 @@ function main() {
     assert(fs.existsSync(path.join(runtimeLocalTarget, ".aidn", "runtime", "agents", "example-external-auditor.mjs")), "runtime-local should restore runtime agent examples");
     assert(codexInstall.status === 0, `codex-integration refresh failed\nstdout:\n${codexInstall.stdout}\nstderr:\n${codexInstall.stderr}`);
     assert(codexVerify.status === 0, `codex-integration verify failed\nstdout:\n${codexVerify.stdout}\nstderr:\n${codexVerify.stderr}`);
-    assert(fs.existsSync(path.join(codexTarget, ".codex", "skills", "start-session", "SKILL.md")), "codex-integration should restore local skills");
-    assert(fs.existsSync(path.join(codexTarget, ".codex", "skills.yaml")), "codex-integration should restore skills.yaml");
+    assert(fs.existsSync(path.join(codexTarget, ".agents", "skills", "start-session", "SKILL.md")), "codex-integration should restore native project skills");
+    assert(fs.existsSync(path.join(codexTarget, ".aidn", "codex", "skills.yaml")), "codex-integration should restore AIDN skill inventory");
+    assert(fs.existsSync(path.join(codexTarget, ".codex", "agents", "aidn-reviewer.toml")), "codex-integration should restore bounded agents");
+    assert(fs.existsSync(path.join(codexTarget, ".codex", "hooks.json")), "codex-integration should restore the supported hook contract");
     assert(githubInstall.status === 0, `github-integration refresh failed\nstdout:\n${githubInstall.stdout}\nstderr:\n${githubInstall.stderr}`);
     assert(githubVerify.status === 0, `github-integration verify failed\nstdout:\n${githubVerify.stdout}\nstderr:\n${githubVerify.stderr}`);
     assert(fs.existsSync(path.join(githubTarget, ".github", "workflows", "branch-prune.yml")), "github-integration should restore branch pruning automation");
     assert(extendedInstall.status === 0, `extended refresh failed\nstdout:\n${extendedInstall.stdout}\nstderr:\n${extendedInstall.stderr}`);
     assert(extendedVerify.status === 0, `extended verify failed\nstdout:\n${extendedVerify.stdout}\nstderr:\n${extendedVerify.stderr}`);
     assert(fs.existsSync(path.join(extendedTarget, ".aidn", "runtime", "agents", "example-external-auditor.mjs")), "extended should restore runtime agent examples");
-    assert(fs.existsSync(path.join(extendedTarget, ".codex", "skills", "start-session", "SKILL.md")), "extended should restore local skills");
-    assert(fs.existsSync(path.join(extendedTarget, ".codex", "skills.yaml")), "extended should restore skills.yaml");
+    assert(fs.existsSync(path.join(extendedTarget, ".agents", "skills", "start-session", "SKILL.md")), "extended should restore native project skills");
+    assert(fs.existsSync(path.join(extendedTarget, ".aidn", "codex", "skills.yaml")), "extended should restore AIDN skill inventory");
+    assert(fs.existsSync(path.join(extendedTarget, ".codex", "agents", "aidn-reviewer.toml")), "extended should restore bounded agents");
+    assert(fs.existsSync(path.join(extendedTarget, ".codex", "hooks.json")), "extended should restore the supported hook contract");
     assert(fs.existsSync(path.join(extendedTarget, ".github", "workflows", "branch-prune.yml")), "extended should restore branch pruning automation");
     assert(packageLeakGuard.pass, `npm pack leak guard failed: ${packageLeakGuard.violations.slice(0, 20).join(", ")}`);
     assert(packageDocsAllowlist.pass, `package docs allowlist failed: ${packageDocsAllowlist.violations.slice(0, 20).join(", ")}`);

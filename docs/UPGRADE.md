@@ -82,8 +82,8 @@ npx aidn install --target <client-repo> --pack github-integration --verify
 3. Refresh or migrate the durable project adapter when needed:
 
 ```bash
-npx aidn project config --target <client-repo> --wizard
-npx aidn project config --target <client-repo> --migrate-adapter --version 0.6.0 --json
+npx aidn project config --target <client-repo> --wizard --write
+npx aidn project config --target <client-repo> --migrate-adapter --version 0.6.0 --write --json
 ```
 
 4. Verify installation and current runtime/admin surfaces:

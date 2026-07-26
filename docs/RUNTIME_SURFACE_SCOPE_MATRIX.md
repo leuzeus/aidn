@@ -1,5 +1,15 @@
 # Runtime Surface Scope Matrix
 
+Evidence labels used in reviews and gates are deliberately distinct:
+
+- `source`: package implementation or policy;
+- `scaffold`: install source asset;
+- `fixture`: tracked test corpus;
+- `installed-client`: an isolated client populated from the packed package;
+- `external-pilot`: separately controlled pilot evidence.
+
+No scaffold, fixture, cache, projection, or export is promoted to canonical state merely because it exists. PostgreSQL and shared synchronization remain explicit opt-ins.
+
 Date: 2026-03-28  
 Status: current codebase inventory
 

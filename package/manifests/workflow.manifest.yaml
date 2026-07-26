@@ -4,5 +4,5 @@ packs:
   - core
 compatibility:
   os: [windows, linux, mac]
-  node_min: 18
+  node_min: "22.13"
   codex_online: true

@@ -371,6 +371,17 @@ const CONTRACT_CASES = [
     args: ["project", "config", "--list", "--json"],
   },
   {
+    name: "project-config-preview",
+    schema: "project-config-preview.v1.schema.json",
+    args: ["project", "config", "--init-defaults", "--project-name", "preview-project", "--json"],
+    noMutationPaths: [".aidn/project/workflow.adapter.json"],
+  },
+  {
+    name: "project-config-write",
+    schema: "project-config-write.v1.schema.json",
+    args: ["project", "config", "--init-defaults", "--project-name", "write-project", "--write", "--json"],
+  },
+  {
     name: "codex-hydrate-context",
     schema: "codex-hydrate-context.v1.schema.json",
     args: ["codex", "hydrate-context", "--skill", "context-reload", "--json"],
