@@ -1,15 +1,19 @@
 #!/usr/bin/env node
-import { execFileSync } from "node:child_process";
+import { captureGitWorktreeStatus } from "./git-worktree-state-lib.mjs";
 
-const porcelain = execFileSync("git", ["status", "--porcelain=v1", "--untracked-files=all"], {
-  encoding: "utf8",
-  stdio: ["ignore", "pipe", "ignore"],
-}).trim();
-const entries = porcelain ? porcelain.split(/\r?\n/) : [];
+const worktree = captureGitWorktreeStatus(process.cwd());
+const ok = worktree.ok && worktree.clean;
 const output = {
-  ok: entries.length === 0,
-  status: entries.length === 0 ? "PASS" : "FAIL",
-  entries,
+  ok,
+  status: ok ? "PASS" : "FAIL",
+  failure_kind: worktree.failure_kind,
+  reason: !worktree.ok
+    ? "git status failed"
+    : (worktree.clean ? "Git worktree is clean" : "Git worktree contains tracked or untracked changes"),
+  entries: worktree.entries,
+  entry_count: worktree.entry_count,
+  entries_truncated: worktree.entries_truncated,
+  git_status: worktree.command,
 };
 console.log(JSON.stringify(output, null, 2));
 if (!output.ok) {

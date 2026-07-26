@@ -402,13 +402,22 @@
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
     {
+      "id": "cleanliness-gate-runner-fixtures",
+      "family": "cleanliness",
+      "script": "perf:verify-gate-runner-fixtures",
+      "job": "architecture-gates/cleanliness",
+      "surfaces": ["gate runner", "Git worktree state"],
+      "condition": "git-repository",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
       "id": "cleanliness-worktree",
       "family": "cleanliness",
       "script": "perf:verify-repository-cleanliness",
-      "job": "local/verify-all",
+      "job": "architecture-gates/cleanliness",
       "surfaces": ["tracked worktree"],
-      "condition": "git-clean-worktree",
-      "obligation": { "dev": "optional", "main": "required", "release": "required" }
+      "condition": "git-repository",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
     }
   ],
   "workflow_inventory": [

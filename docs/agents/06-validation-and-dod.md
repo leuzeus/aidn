@@ -17,6 +17,8 @@ A task is done only when:
 - policies are aligned
 - contracts and fixtures are updated if needed
 - relevant gates pass
+- every executed gate leaves the tracked and untracked, non-ignored checkout state unchanged
+- required gate preconditions fail diagnostically when unavailable; they are not reported as `SKIP`
 - any architectural decision change is reflected in the ADR
 
 ## Validation Commands
@@ -35,6 +37,7 @@ Current available commands include:
 - `npm run perf:verify-governance-runtime-cli`
 - `npm run perf:verify-shared-surface-boundary`
 - `npm run perf:verify-state-mode-parity`
+- `npm run perf:verify-gate-runner-fixtures`
 - `npm run perf:verify-release-version`
 - `npm run perf:verify-release-provenance`
 
@@ -54,6 +57,7 @@ If a command is documented but missing, do not pretend it ran. Use the nearest e
 - if a gate does not exist, identify the nearest existing check and report the gap explicitly
 - if a script exists but fails, fix the underlying issue before marking the task complete
 - if a check is intentionally skipped, record `SKIP` separately from `PASS`
+- if a gate introduces a checkout change, attribute the failure to that gate and report only bounded path/status diagnostics, never file contents or secrets
 - if the task touches a public surface, prefer one contract or fixture check in addition to the behavioral check
 
 ## Reporting

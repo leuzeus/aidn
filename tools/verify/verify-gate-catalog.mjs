@@ -114,8 +114,13 @@ for (const requiredToken of [
 }
 
 const weakenedCatalog = clone(catalog);
+weakenedCatalog.gates.find((gate) => gate.id === "cleanliness-worktree").obligation.dev = "skip";
 weakenedCatalog.gates.find((gate) => gate.id === "cleanliness-worktree").obligation.main = "skip";
 weakenedCatalog.gates.find((gate) => gate.id === "cleanliness-worktree").obligation.release = "skip";
+
+const selfCancellingCleanlinessCatalog = clone(catalog);
+selfCancellingCleanlinessCatalog.gates.find((gate) => gate.id === "cleanliness-worktree").condition
+  = "git-clean-worktree";
 
 const substitutedScriptCatalog = clone(catalog);
 substitutedScriptCatalog.gates.find((gate) => gate.id === "runtime-db-runtime-cli").script
@@ -134,6 +139,9 @@ const duplicateJobMutation = `${releaseText}\n  verify:\n    runs-on: ubuntu-lat
 
 const negativeProbes = {
   required_to_skip_rejected: candidateRejected({ candidateCatalog: weakenedCatalog }),
+  self_cancelling_cleanliness_condition_rejected: candidateRejected({
+    candidateCatalog: selfCancellingCleanlinessCatalog,
+  }),
   substituted_script_rejected: candidateRejected({ candidateCatalog: substitutedScriptCatalog }),
   comment_only_dev_trigger_rejected: candidateRejected({
     candidateWorkflows: replaceWorkflow(workflowModels, releasePath, devTriggerCommentMutation),

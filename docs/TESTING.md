@@ -148,6 +148,20 @@ negative probes prove that a missing link and a missing script are rejected.
 
 Stable family wrappers are cataloged in `package/catalogs/gates.v1.json`: `verify:contracts`, `verify:governance`, `verify:runtime`, `verify:codex`, `verify:release`, and `verify:all`. The first four select their named family. `verify:release` executes every gate whose obligation is required or optional in the announced `main` or `release` context, including topology and tracked-tree sensitivity; it is not a release-family-only shortcut. Run `verify:all` only at a clean commit boundary so the cleanliness family is meaningful. Report `SKIP` separately from `PASS`.
 
+Every cataloged verification gate is non-mutating with respect to the checkout.
+The family runner snapshots `git status --porcelain=v2 --untracked-files=all`
+before and after each executed gate. A gate that introduces a tracked change or
+an untracked, non-ignored path fails immediately under its own gate id, with a
+bounded path/status list. Git command failures are reported separately with
+redacted exit/stdout/stderr diagnostics. An unmet required condition is `FAIL`;
+only an unmet optional condition or an explicit catalog `skip` remains `SKIP`.
+`cleanliness-worktree` executes in `dev`, `main`, and `release` instead of using
+cleanliness as its own precondition. When changing this behavior, run:
+
+- `npm run perf:verify-gate-runner-fixtures`
+- `npm run perf:verify-gate-catalog`
+- `npm run verify:cleanliness`
+
 ### 2. Parity / Runtime Persistence Verifications
 
 These commands validate backend or projection parity:

@@ -19,7 +19,8 @@ const REQUIRED_OBLIGATIONS = Object.freeze({
   "release-workflow-policy": ["dev", "main", "release"],
   "cleanliness-branch-policy": ["dev", "main", "release"],
   "cleanliness-gate-catalog": ["dev", "main", "release"],
-  "cleanliness-worktree": ["main", "release"],
+  "cleanliness-gate-runner-fixtures": ["dev", "main", "release"],
+  "cleanliness-worktree": ["dev", "main", "release"],
 });
 
 const REQUIRED_GATE_SCRIPTS = Object.freeze({
@@ -33,6 +34,14 @@ const REQUIRED_GATE_SCRIPTS = Object.freeze({
   "release-workflow-policy": "perf:verify-release-workflow-policy",
   "cleanliness-branch-policy": "perf:verify-branch-policy",
   "cleanliness-gate-catalog": "perf:verify-gate-catalog",
+  "cleanliness-gate-runner-fixtures": "perf:verify-gate-runner-fixtures",
+  "cleanliness-worktree": "perf:verify-repository-cleanliness",
+});
+
+const REQUIRED_GATE_CONDITIONS = Object.freeze({
+  "release-reproducibility": "git-clean-commit",
+  "cleanliness-gate-runner-fixtures": "git-repository",
+  "cleanliness-worktree": "git-repository",
 });
 
 const REQUIRED_WORKFLOW_POLICY = Object.freeze({
@@ -253,6 +262,11 @@ export function validateGateAndWorkflowPolicy({
   for (const [gateId, script] of Object.entries(REQUIRED_GATE_SCRIPTS)) {
     if (gateById.get(gateId)?.script !== script) {
       issues.push(`${gateId}: immutable script must be ${script}`);
+    }
+  }
+  for (const [gateId, condition] of Object.entries(REQUIRED_GATE_CONDITIONS)) {
+    if (gateById.get(gateId)?.condition !== condition) {
+      issues.push(`${gateId}: immutable condition must be ${condition}`);
     }
   }
 
