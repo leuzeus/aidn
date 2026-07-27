@@ -4,6 +4,9 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { inspectImmediateProcessExitArguments } from "../verify/spawn-sync-evidence-lib.mjs";
+
+const INJECT_CLEANUP_FAILURE_ARG = "--inject-cleanup-failure";
 
 function printUsage() {
   console.log("Usage:");
@@ -62,6 +65,51 @@ function assert(condition, message) {
   }
 }
 
+function listOwnedTempRoots() {
+  return new Set(
+    fs.readdirSync(os.tmpdir(), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && entry.name.startsWith("aidn-runtime-digest-hints-"))
+      .map((entry) => entry.name),
+  );
+}
+
+function verifyFailureCleanup() {
+  const scriptPath = path.resolve(process.argv[1]);
+  const source = fs.readFileSync(scriptPath, "utf8");
+  const immediateExitArguments = inspectImmediateProcessExitArguments(source);
+  assert(
+    !immediateExitArguments.includes("1"),
+    `runtime-digest-hints fixture contains an immediate failure exit: ${immediateExitArguments.join(",")}`,
+  );
+
+  const mutantSource = source.replace(
+    /\n    process\.exitCode = 1;\n/u,
+    "\n    process.exit(1);\n",
+  );
+  assert(mutantSource !== source, "runtime-digest-hints mutant did not change the executable source");
+  const mutantExitArguments = inspectImmediateProcessExitArguments(mutantSource);
+  assert(
+    mutantExitArguments.includes("1"),
+    "runtime-digest-hints immediate-exit mutant was not detected",
+  );
+
+  const before = listOwnedTempRoots();
+  const result = spawnSync(process.execPath, [scriptPath, INJECT_CLEANUP_FAILURE_ARG], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  assert(result.status === 1, `injected cleanup failure returned ${result.status}`);
+  assert(
+    String(result.stderr ?? "").includes("injected runtime-digest-hints cleanup failure"),
+    "injected cleanup failure did not preserve the primary diagnostic",
+  );
+  const introduced = [...listOwnedTempRoots()].filter((name) => !before.has(name));
+  assert(
+    introduced.length === 0,
+    `injected cleanup failure left owned temp roots: ${introduced.join(",")}`,
+  );
+}
+
 function writeAdapterFile(tempRoot) {
   const filePath = path.join(tempRoot, "workflow.adapter.json");
   fs.writeFileSync(filePath, `${JSON.stringify({
@@ -102,6 +150,9 @@ function main() {
   try {
     const sourceTarget = path.resolve(process.cwd(), "tests/fixtures/perf-structure/session-rich");
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-runtime-digest-hints-"));
+    if (process.argv.includes(INJECT_CLEANUP_FAILURE_ARG)) {
+      throw new Error("injected runtime-digest-hints cleanup failure");
+    }
     const target = path.join(tempRoot, "repo");
     const installerPrerequisiteStub = makeInstallerPrerequisiteStub(tempRoot);
     const pathSeparator = process.platform === "win32" ? ";" : ":";
@@ -175,7 +226,7 @@ function main() {
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (adapterFile && fs.existsSync(adapterFile)) {
       fs.rmSync(adapterFile, { force: true });
@@ -189,4 +240,7 @@ function main() {
   }
 }
 
+if (!process.argv.includes(INJECT_CLEANUP_FAILURE_ARG)) {
+  verifyFailureCleanup();
+}
 main();
