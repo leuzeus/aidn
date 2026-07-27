@@ -159,6 +159,9 @@ ancestry from `dev`, hotfix ancestry from `main`, and exact main-to-dev
 synchronization. They also reject non-patch hotfix versions, mismatched
 synchronization version suffixes, version-mismatched publication branches,
 reversed synchronization, and divergent remote provenance. The release
+publication cases derive their matching and mismatching branch versions from
+the tracked `VERSION`, so a valid version bump cannot stale the positive fixture.
+The release
 workflow-policy gate parses the workflow structure and requires exact
 single-command calls to
 `tools/ci/fetch-branch-policy-sources.mjs` and
