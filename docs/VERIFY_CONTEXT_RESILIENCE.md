@@ -25,7 +25,9 @@ reuse from being mistaken for a leaked original child. Cleanup proof remains
 resource-based: every owned temporary root must be removed on success and on
 injected failure. The branch-cycle admission check also requires JSON-producing
 success paths to terminate naturally after stdout is flushed; only the early
-help path may use immediate `process.exit(0)`.
+help path may use immediate `process.exit(0)`. Coordinator-arbitration fixture
+failures preserve bounded child-process diagnostics and clean their owned
+temporary root before returning a nonzero status.
 
 ## Focused Commands
 

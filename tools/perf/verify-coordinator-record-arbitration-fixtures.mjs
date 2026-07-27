@@ -2,8 +2,12 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+
+const FAILURE_INJECTION_ENV = "AIDN_COORDINATOR_ARBITRATION_FIXTURE_INJECT_FAILURE";
+const FAILURE_PROBE_TOKEN_ENV = "AIDN_COORDINATOR_ARBITRATION_FIXTURE_PROBE_TOKEN";
 
 function parseArgs(argv) {
   const args = {
@@ -52,9 +56,59 @@ function runJson(script, args, repoRoot, expectStatus = 0, env = {}) {
     maxBuffer: 20 * 1024 * 1024,
   });
   if ((result.status ?? 1) !== expectStatus) {
-    throw new Error(`Command failed (${path.basename(script)}): ${String(result.stderr ?? result.stdout ?? "").trim()}`);
+    const stderr = String(result.stderr ?? "").trim();
+    const stdout = String(result.stdout ?? "").trim();
+    const details = [
+      `status=${result.status ?? "null"}`,
+      `signal=${result.signal ?? "none"}`,
+      result.error?.code ? `error_code=${result.error.code}` : "",
+      result.error?.message ? `error=${result.error.message}` : "",
+      stderr ? `stderr_tail=${stderr.slice(-2000)}` : "",
+      stdout ? `stdout_tail=${stdout.slice(-2000)}` : "",
+    ].filter(Boolean);
+    throw new Error(`Command failed (${path.basename(script)}): ${details.join(" | ")}`);
   }
   return JSON.parse(String(result.stdout ?? "{}"));
+}
+
+function verifyInjectedFailureCleanup(repoRoot) {
+  const token = randomUUID();
+  const ownedPrefix = `aidn-coordinator-arbitration-probe-${token}-`;
+  const script = path.join(
+    repoRoot,
+    "tools",
+    "perf",
+    "verify-coordinator-record-arbitration-fixtures.mjs",
+  );
+  const result = spawnSync(process.execPath, [script, "--json"], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      [FAILURE_INJECTION_ENV]: "after-temp-root",
+      [FAILURE_PROBE_TOKEN_ENV]: token,
+    },
+    encoding: "utf8",
+    shell: false,
+    timeout: 30000,
+    maxBuffer: 1024 * 1024,
+  });
+  assert(result.status === 1, "injected coordinator arbitration failure should exit 1");
+  assert(
+    String(result.stderr ?? "").includes("injected failure after temp root"),
+    "injected coordinator arbitration failure should preserve the primary error",
+  );
+  const remaining = fs.readdirSync(os.tmpdir(), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith(ownedPrefix))
+    .map((entry) => entry.name);
+  assert(
+    remaining.length === 0,
+    `injected coordinator arbitration failure should clean its owned temp root: ${remaining.join(", ")}`,
+  );
+  return {
+    injected_failure_exit_code: result.status,
+    primary_error_preserved: true,
+    owned_test_directories_remaining: remaining.length,
+  };
 }
 
 function appendHistoryEvent(targetRoot, event) {
@@ -83,9 +137,18 @@ function buildDispatchEvent(ts) {
 
 function main() {
   let tempRoot = "";
+  let args = null;
+  let output = null;
+  let primaryError = null;
+  let cleanupError = null;
   try {
-    const args = parseArgs(process.argv.slice(2));
+    args = parseArgs(process.argv.slice(2));
     const repoRoot = process.cwd();
+    const failureInjection = String(process.env[FAILURE_INJECTION_ENV] ?? "").trim();
+    const failureProbeToken = String(process.env[FAILURE_PROBE_TOKEN_ENV] ?? "").trim();
+    const failureCleanupProbe = failureInjection
+      ? null
+      : verifyInjectedFailureCleanup(repoRoot);
     const handoffFixturesRoot = path.resolve(repoRoot, args.handoffFixturesRoot);
     const integrationFixturesRoot = path.resolve(repoRoot, args.integrationFixturesRoot);
     const handoffProjectScript = path.resolve(repoRoot, "tools", "runtime", "project-handoff-packet.mjs");
@@ -94,7 +157,13 @@ function main() {
     const dispatchPlanScript = path.resolve(repoRoot, "tools", "runtime", "coordinator-dispatch-plan.mjs");
     const recordArbitrationScript = path.resolve(repoRoot, "tools", "runtime", "coordinator-record-arbitration.mjs");
 
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-coordinator-arbitration-"));
+    const tempPrefix = failureProbeToken
+      ? `aidn-coordinator-arbitration-probe-${failureProbeToken}-`
+      : "aidn-coordinator-arbitration-";
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), tempPrefix));
+    if (failureInjection === "after-temp-root") {
+      throw new Error("injected failure after temp root");
+    }
     const escalatedTarget = path.join(tempRoot, "escalated");
     const integrationTarget = path.join(tempRoot, "integration-cycle");
     const dbOnlyTarget = path.join(tempRoot, "db-only-escalated");
@@ -184,7 +253,7 @@ function main() {
     assert(dbOnlyDispatch.dispatch_status === "ready", "db-only arbitration should still clear escalated dispatch state");
     assert(dbOnlyArbitration.record_arbitration_diagnostic?.db_first_applied === true, "db-only arbitration should expose db-first write status in the stable diagnostic");
 
-    const output = {
+    output = {
       ts: new Date().toISOString(),
       before_loop: beforeLoop,
       before_dispatch: beforeDispatch,
@@ -197,25 +266,37 @@ function main() {
       db_only_arbitration: dbOnlyArbitration,
       db_only_loop: dbOnlyLoop,
       db_only_dispatch: dbOnlyDispatch,
+      failure_cleanup_probe: failureCleanupProbe,
       pass: true,
     };
-
-    if (args.json) {
-      console.log(JSON.stringify(output, null, 2));
-    } else {
-      console.log("PASS");
-    }
   } catch (error) {
-    console.error(`ERROR: ${error.message}`);
-    printUsage();
-    process.exit(1);
+    primaryError = error;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       const cleanup = removePathWithRetry(tempRoot);
       if (!cleanup.ok) {
-        throw cleanup.error;
+        cleanupError = cleanup.error ?? new Error("coordinator arbitration temp root remains");
       }
     }
+  }
+  if (primaryError || cleanupError) {
+    if (primaryError && cleanupError) {
+      console.error(
+        `ERROR: ${primaryError.message} | cleanup_error=${cleanupError.message}`,
+      );
+    } else {
+      console.error(`ERROR: ${(primaryError ?? cleanupError).message}`);
+    }
+    if (primaryError) {
+      printUsage();
+    }
+    process.exitCode = 1;
+    return;
+  }
+  if (args.json) {
+    console.log(JSON.stringify(output, null, 2));
+  } else {
+    console.log("PASS");
   }
 }
 
