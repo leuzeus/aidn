@@ -5,7 +5,7 @@
 This baseline makes AIDN's governed architecture and release path executable end to end:
 
 - machine-readable catalogs cover CLI surfaces, effects, public JSON contracts, governed concepts, gate obligations, and workflows.
-- the removed `aidn codex context-store` command is replaced by `aidn codex hydrate-context` for context bundles or `aidn codex workflow-step` for the batched admission/hydration path.
+- the public Codex `context-store` subcommand is removed; use `aidn codex hydrate-context` for context bundles or `aidn codex workflow-step` for the batched admission/hydration path.
 - Node.js 22.13 or newer is required by the package and installer compatibility policy.
 - `--json` is format-only; writes require explicit `--write`, `--apply`, `--execute`, or the documented equivalent, and atomic replacements preserve the previous state on failure.
 - public machine-readable commands emit one complete JSON document on `stdout`, while bounded diagnostics remain on `stderr`.
