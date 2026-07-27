@@ -162,6 +162,14 @@ cleanliness as its own precondition. When changing this behavior, run:
 - `npm run perf:verify-gate-catalog`
 - `npm run verify:cleanliness`
 
+The start-session and installed-Codex-client verifiers execute child commands
+with `spawnSync`. Their process evidence records synchronous call returns and
+never re-probes a numeric PID after the call, because an operating system may
+reuse that number for an unrelated process. Process-leak evidence remains tied
+to owned resources and timeout results, while temporary directory cleanup is
+verified independently. The `--case --json` start-session result always emits
+a boolean `pass` value.
+
 ### 2. Parity / Runtime Persistence Verifications
 
 These commands validate backend or projection parity:

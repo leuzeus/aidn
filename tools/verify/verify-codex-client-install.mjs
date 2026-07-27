@@ -5,6 +5,10 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { discoverRepoSkills } from "./codex-discovery-lib.mjs";
 import { removePathWithRetry } from "../perf/test-git-fixture-lib.mjs";
+import {
+  createSpawnSyncEvidenceTracker,
+  verifySpawnSyncOraclePolicy,
+} from "./spawn-sync-evidence-lib.mjs";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
 const REQUIRED_SKILLS = [
@@ -28,29 +32,7 @@ const REQUIRED_AGENTS = [
   "aidn-validator",
   "aidn-reviewer",
 ];
-const launchedPids = new Set();
-
-function isProcessAlive(pid) {
-  if (!Number.isInteger(pid) || pid <= 0) {
-    return false;
-  }
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function recordCompletedProcess(result) {
-  if (!Number.isInteger(result.pid)) {
-    return;
-  }
-  launchedPids.add(result.pid);
-  if (isProcessAlive(result.pid)) {
-    throw new Error(`child process ${result.pid} remained alive after synchronous completion`);
-  }
-}
+const spawnSyncEvidence = createSpawnSyncEvidenceTracker();
 
 function run(command, argv, options = {}) {
   const result = spawnSync(command, argv, {
@@ -63,7 +45,7 @@ function run(command, argv, options = {}) {
     shell: false,
     windowsHide: true,
   });
-  recordCompletedProcess(result);
+  spawnSyncEvidence.recordReturn();
   if (result.status !== 0) {
     throw new Error([
       `${command} ${argv.join(" ")} failed with ${result.status}`,
@@ -103,7 +85,7 @@ function runHookCommand(command, { cwd, env, input }) {
     shell: true,
     windowsHide: true,
   });
-  recordCompletedProcess(result);
+  spawnSyncEvidence.recordReturn();
   if (result.status !== 0) {
     throw new Error([
       `hook command failed from ${cwd} with ${result.status}`,
@@ -138,6 +120,10 @@ function parseArgs(argv) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  const oracleRegression = verifySpawnSyncOraclePolicy({
+    source: fs.readFileSync(import.meta.filename, "utf8"),
+    label: "verify-codex-client-install",
+  });
   const started = Date.now();
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-installed-client-"));
   let output = null;
@@ -287,10 +273,6 @@ async function main() {
       cleanupError = cleanup.error ?? new Error("installed-client temp root remains");
     }
   }
-  const processesClean = [...launchedPids].every((pid) => !isProcessAlive(pid));
-  if (!processesClean) {
-    cleanupError ??= new Error("installed-client proof left a child process running");
-  }
   if (primaryError || cleanupError) {
     if (primaryError && cleanupError) {
       throw new AggregateError(
@@ -301,7 +283,8 @@ async function main() {
     throw primaryError ?? cleanupError;
   }
   output.temp_removed = !fs.existsSync(tempRoot);
-  output.child_processes_exited = processesClean;
+  output.processes = spawnSyncEvidence.snapshot();
+  output.oracle_regression = oracleRegression;
   console.log(JSON.stringify(output, null, 2));
 }
 

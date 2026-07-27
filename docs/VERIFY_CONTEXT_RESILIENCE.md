@@ -19,6 +19,12 @@ This command verifies:
 5. `CURRENT-STATE.md` coverage in installed skills
 6. temporary install/import scenarios across supported state-mode and import-store combinations
 
+The start-session and installed-client checks report `spawnSync` return
+evidence instead of re-checking numeric child PIDs later. This prevents PID
+reuse from being mistaken for a leaked original child. Cleanup proof remains
+resource-based: every owned temporary root must be removed on success and on
+injected failure.
+
 ## Focused Commands
 
 Use targeted checks when iterating on one specific layer.

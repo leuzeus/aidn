@@ -5,23 +5,16 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import {
+  createSpawnSyncEvidenceTracker,
+  isSpawnSyncEvidence,
+  verifySpawnSyncOraclePolicy,
+} from "../verify/spawn-sync-evidence-lib.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const launchedPids = new Set();
+const spawnSyncEvidence = createSpawnSyncEvidenceTracker();
 let jsonCallCount = 0;
 let injectedFailureCall = 0;
-
-function isProcessAlive(pid) {
-  if (!Number.isInteger(pid) || pid <= 0) {
-    return false;
-  }
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function runProcess(command, argv, options = {}) {
   const result = spawnSync(command, argv, {
@@ -33,12 +26,7 @@ function runProcess(command, argv, options = {}) {
     maxBuffer: options.maxBuffer ?? 20 * 1024 * 1024,
     windowsHide: true,
   });
-  if (Number.isInteger(result.pid)) {
-    launchedPids.add(result.pid);
-    if (isProcessAlive(result.pid)) {
-      throw new Error(`child process ${result.pid} remained alive after synchronous completion`);
-    }
-  }
+  spawnSyncEvidence.recordReturn();
   return result;
 }
 
@@ -528,6 +516,7 @@ function runFailureCleanupProbe(args) {
     const timeoutObserved = timeoutResult.error?.code === "ETIMEDOUT"
       || timeoutResult.signal != null
       || timeoutResult.status == null;
+    const childCompletionEvidenceValid = isSpawnSyncEvidence(payload?.processes);
     const retryProbePass = transientRetry.ok
       && transientRetry.attempts === 3
       && !persistentRetry.ok
@@ -536,20 +525,18 @@ function runFailureCleanupProbe(args) {
       pass: result.status !== 0
         && payload?.injected_failure_observed === true
         && payload?.cleanup?.all_removed === true
-        && payload?.processes?.all_exited === true
+        && childCompletionEvidenceValid
         && residualTargets.length === 0
         && timeoutObserved
-        && !isProcessAlive(timeoutResult.pid)
         && retryProbePass,
       expected_nonzero_exit: result.status !== 0,
       injected_failure_observed: payload?.injected_failure_observed === true,
       child_cleanup_reported: payload?.cleanup?.all_removed === true,
-      child_processes_reported_exited: payload?.processes?.all_exited === true,
+      child_completion_evidence_valid: childCompletionEvidenceValid,
       residual_target_count: residualTargets.length,
-      child_pid_exited: !isProcessAlive(result.pid),
       timeout_probe: {
         timeout_observed: timeoutObserved,
-        child_pid_exited: !isProcessAlive(timeoutResult.pid),
+        spawn_sync_returned: true,
       },
       retry_probe: {
         pass: retryProbePass,
@@ -569,6 +556,10 @@ function runFailureCleanupProbe(args) {
 }
 
 function main() {
+  const oracleRegression = verifySpawnSyncOraclePolicy({
+    source: fs.readFileSync(fileURLToPath(import.meta.url), "utf8"),
+    label: "verify-start-session-admission-fixtures",
+  });
   const createdTargets = [];
   const cleanupResults = [];
   let args = null;
@@ -626,12 +617,13 @@ function main() {
   }
   const injectedFailureObserved = injectedFailureCall > 0
     && primaryError?.code === "AIDN_START_SESSION_INJECTED_CHILD_FAILURE";
-  const allProcessesExited = [...launchedPids].every((pid) => !isProcessAlive(pid));
-  const finalPass = primaryError == null
+  const autoProbeSatisfied = Boolean(
+    args?.skipAutoProbe || args?.caseId || failureProbe?.pass === true,
+  );
+  const finalPass = Boolean(primaryError == null
     && pass
     && allTargetsRemoved
-    && allProcessesExited
-    && (args?.skipAutoProbe || args?.caseId || failureProbe?.pass === true);
+    && autoProbeSatisfied);
   const output = {
     ts: new Date().toISOString(),
     runs,
@@ -641,10 +633,8 @@ function main() {
       all_removed: allTargetsRemoved,
       results: cleanupResults,
     },
-    processes: {
-      launched: launchedPids.size,
-      all_exited: allProcessesExited,
-    },
+    processes: spawnSyncEvidence.snapshot(),
+    oracle_regression: oracleRegression,
     failure_probe: failureProbe,
     injected_failure_observed: injectedFailureObserved,
     error: primaryError
