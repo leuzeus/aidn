@@ -23,7 +23,9 @@ The start-session and installed-client checks report `spawnSync` return
 evidence instead of re-checking numeric child PIDs later. This prevents PID
 reuse from being mistaken for a leaked original child. Cleanup proof remains
 resource-based: every owned temporary root must be removed on success and on
-injected failure.
+injected failure. The branch-cycle admission check also requires JSON-producing
+success paths to terminate naturally after stdout is flushed; only the early
+help path may use immediate `process.exit(0)`.
 
 ## Focused Commands
 

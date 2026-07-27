@@ -73,6 +73,22 @@ function countSequence(tokens, sequence) {
   return count;
 }
 
+export function inspectImmediateProcessExitArguments(source) {
+  const tokens = tokenizeJavaScript(String(source ?? ""));
+  const argumentsFound = [];
+  for (let index = 0; index < tokens.length - 4; index += 1) {
+    if (
+      tokens[index] === "process"
+      && tokens[index + 1] === "."
+      && tokens[index + 2] === "exit"
+      && tokens[index + 3] === "("
+    ) {
+      argumentsFound.push(tokens[index + 4]);
+    }
+  }
+  return argumentsFound;
+}
+
 export function inspectSpawnSyncOracleSource(source) {
   const tokens = tokenizeJavaScript(String(source ?? ""));
   const forbiddenIdentifiers = [
