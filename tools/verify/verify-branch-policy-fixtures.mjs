@@ -7,6 +7,21 @@ import { removePathWithRetry } from "../perf/test-git-fixture-lib.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const policyScript = path.join(repoRoot, "tools", "verify", "verify-branch-policy.mjs");
+const productVersion = fs.readFileSync(path.join(repoRoot, "VERSION"), "utf8").trim();
+const productVersionMatch = /^(\d+)\.(\d+)\.(\d+)$/.exec(productVersion);
+if (!productVersionMatch) {
+  throw new Error(`VERSION must be a stable semantic version, got ${productVersion}`);
+}
+const productMajor = Number.parseInt(productVersionMatch[1], 10);
+const productMinor = Number.parseInt(productVersionMatch[2], 10);
+const productPatch = Number.parseInt(productVersionMatch[3], 10);
+const nextPatchVersion = `${productMajor}.${productMinor}.${productPatch + 1}`;
+const skippedPatchVersion = `${productMajor}.${productMinor}.${productPatch + 2}`;
+const nextMinorVersion = `${productMajor}.${productMinor + 1}.0`;
+const nextMajorVersion = `${productMajor + 1}.0.0`;
+const nextPatchPrereleaseVersion = `${nextPatchVersion}-rc.1`;
+const exactSyncBranch = `sync/main-to-dev-v${productVersion}`;
+const divergedSyncBranch = `${exactSyncBranch}-diverged`;
 
 function run(command, args, cwd, env = process.env) {
   return spawnSync(command, args, {
@@ -130,7 +145,7 @@ function main() {
     git(["config", "user.name", "aidn-tests"], sourceRoot);
     git(["config", "user.email", "aidn-tests@example.invalid"], sourceRoot);
     fs.writeFileSync(path.join(sourceRoot, "fixture.txt"), "branch policy fixture\n", "utf8");
-    fs.writeFileSync(path.join(sourceRoot, "VERSION"), "0.7.0\n", "utf8");
+    fs.writeFileSync(path.join(sourceRoot, "VERSION"), `${productVersion}\n`, "utf8");
     git(["add", "fixture.txt", "VERSION"], sourceRoot);
     git(["commit", "--quiet", "-m", "base fixture"], sourceRoot);
     const devSha = git(["rev-parse", "HEAD"], sourceRoot);
@@ -142,8 +157,8 @@ function main() {
     const candidateTree = git(["rev-parse", `${candidateSha}^{tree}`], sourceRoot);
     const unrelatedSha = git(["commit-tree", candidateTree, "-m", "unrelated fixture"], sourceRoot);
     git(["branch", "codex/unrelated", unrelatedSha], sourceRoot);
-    git(["branch", "sync/main-to-dev-v0.7.0", devSha], sourceRoot);
-    git(["branch", "sync/main-to-dev-v0.7.0-diverged", candidateSha], sourceRoot);
+    git(["branch", exactSyncBranch, devSha], sourceRoot);
+    git(["branch", divergedSyncBranch, candidateSha], sourceRoot);
     git(["remote", "add", "origin", remoteRoot], sourceRoot);
     git([
       "push",
@@ -152,8 +167,8 @@ function main() {
       "dev:dev",
       "codex/fixture:codex/fixture",
       "codex/unrelated:codex/unrelated",
-      "sync/main-to-dev-v0.7.0:sync/main-to-dev-v0.7.0",
-      "sync/main-to-dev-v0.7.0-diverged:sync/main-to-dev-v0.7.0-diverged",
+      `${exactSyncBranch}:${exactSyncBranch}`,
+      `${divergedSyncBranch}:${divergedSyncBranch}`,
     ], sourceRoot);
     git(["push", "--quiet", "origin", "dev:main"], sourceRoot);
     git(["clone", "--quiet", remoteRoot, clientRoot], tempRoot);
@@ -173,7 +188,7 @@ function main() {
         name: "release_to_main_pass",
         env: {
           GITHUB_EVENT_NAME: "pull_request",
-          GITHUB_HEAD_REF: "release/v0.7.0",
+          GITHUB_HEAD_REF: `release/v${productVersion}`,
           GITHUB_BASE_REF: "main",
         },
         expected: 0,
@@ -182,9 +197,9 @@ function main() {
         name: "hotfix_to_main_pass",
         env: {
           GITHUB_EVENT_NAME: "pull_request",
-          GITHUB_HEAD_REF: "hotfix/v0.7.1",
+          GITHUB_HEAD_REF: `hotfix/v${nextPatchVersion}`,
           GITHUB_BASE_REF: "main",
-          AIDN_BRANCH_POLICY_VERSION: "0.7.1",
+          AIDN_BRANCH_POLICY_VERSION: nextPatchVersion,
         },
         expected: 0,
         options: {
@@ -195,9 +210,9 @@ function main() {
         name: "hotfix_minor_increment_fail",
         env: {
           GITHUB_EVENT_NAME: "pull_request",
-          GITHUB_HEAD_REF: "hotfix/v0.8.0",
+          GITHUB_HEAD_REF: `hotfix/v${nextMinorVersion}`,
           GITHUB_BASE_REF: "main",
-          AIDN_BRANCH_POLICY_VERSION: "0.8.0",
+          AIDN_BRANCH_POLICY_VERSION: nextMinorVersion,
         },
         expected: 1,
         options: {
@@ -209,9 +224,9 @@ function main() {
         name: "hotfix_skipped_patch_fail",
         env: {
           GITHUB_EVENT_NAME: "pull_request",
-          GITHUB_HEAD_REF: "hotfix/v0.7.2",
+          GITHUB_HEAD_REF: `hotfix/v${skippedPatchVersion}`,
           GITHUB_BASE_REF: "main",
-          AIDN_BRANCH_POLICY_VERSION: "0.7.2",
+          AIDN_BRANCH_POLICY_VERSION: skippedPatchVersion,
         },
         expected: 1,
         options: {
@@ -223,9 +238,9 @@ function main() {
         name: "hotfix_major_increment_fail",
         env: {
           GITHUB_EVENT_NAME: "pull_request",
-          GITHUB_HEAD_REF: "hotfix/v1.0.0",
+          GITHUB_HEAD_REF: `hotfix/v${nextMajorVersion}`,
           GITHUB_BASE_REF: "main",
-          AIDN_BRANCH_POLICY_VERSION: "1.0.0",
+          AIDN_BRANCH_POLICY_VERSION: nextMajorVersion,
         },
         expected: 1,
         options: {
@@ -237,9 +252,9 @@ function main() {
         name: "hotfix_prerelease_fail",
         env: {
           GITHUB_EVENT_NAME: "pull_request",
-          GITHUB_HEAD_REF: "hotfix/v0.7.1-rc.1",
+          GITHUB_HEAD_REF: `hotfix/v${nextPatchPrereleaseVersion}`,
           GITHUB_BASE_REF: "main",
-          AIDN_BRANCH_POLICY_VERSION: "0.7.1-rc.1",
+          AIDN_BRANCH_POLICY_VERSION: nextPatchPrereleaseVersion,
         },
         expected: 1,
         options: {
@@ -251,7 +266,7 @@ function main() {
         name: "version_mismatched_release_to_main_fail",
         env: {
           GITHUB_EVENT_NAME: "pull_request",
-          GITHUB_HEAD_REF: "release/v0.7.1",
+          GITHUB_HEAD_REF: `release/v${nextPatchVersion}`,
           GITHUB_BASE_REF: "main",
         },
         expected: 1,
@@ -269,7 +284,7 @@ function main() {
         name: "hotfix_to_dev_fail",
         env: {
           GITHUB_EVENT_NAME: "pull_request",
-          GITHUB_HEAD_REF: "hotfix/v0.7.0",
+          GITHUB_HEAD_REF: `hotfix/v${nextPatchVersion}`,
           GITHUB_BASE_REF: "dev",
         },
         expected: 1,
@@ -278,7 +293,7 @@ function main() {
         name: "sync_to_main_fail",
         env: {
           GITHUB_EVENT_NAME: "pull_request",
-          GITHUB_HEAD_REF: "sync/main-to-dev-v0.7.0",
+          GITHUB_HEAD_REF: exactSyncBranch,
           GITHUB_BASE_REF: "main",
         },
         expected: 1,
@@ -287,7 +302,7 @@ function main() {
         name: "misnamed_sync_to_dev_fail",
         env: {
           GITHUB_EVENT_NAME: "pull_request",
-          GITHUB_HEAD_REF: "sync/dev-to-main-v0.7.0",
+          GITHUB_HEAD_REF: `sync/dev-to-main-v${productVersion}`,
           GITHUB_BASE_REF: "dev",
         },
         expected: 1,
@@ -298,10 +313,10 @@ function main() {
       recordCase(results, item.name, result, item.expected, item.options);
     }
 
-    git(["checkout", "--quiet", "sync/main-to-dev-v0.7.0"], sourceRoot);
+    git(["checkout", "--quiet", exactSyncBranch], sourceRoot);
     const exactSyncResult = run(process.execPath, [policyScript], sourceRoot, policyEnv({
       GITHUB_EVENT_NAME: "pull_request",
-      GITHUB_HEAD_REF: "sync/main-to-dev-v0.7.0",
+      GITHUB_HEAD_REF: exactSyncBranch,
       GITHUB_BASE_REF: "dev",
     }));
     recordCase(
@@ -314,7 +329,7 @@ function main() {
 
     const wrongVersionSyncResult = run(process.execPath, [policyScript], sourceRoot, policyEnv({
       GITHUB_EVENT_NAME: "pull_request",
-      GITHUB_HEAD_REF: "sync/main-to-dev-v9.9.9",
+      GITHUB_HEAD_REF: `sync/main-to-dev-v${nextPatchVersion}`,
       GITHUB_BASE_REF: "dev",
     }));
     recordCase(
@@ -324,13 +339,13 @@ function main() {
       1,
       {
         syncSourceExact: true,
-        expectedIssueIncludes: "expected sync/main-to-dev-v0.7.0",
+        expectedIssueIncludes: `expected ${exactSyncBranch}`,
       },
     );
 
     const prereleaseSyncResult = run(process.execPath, [policyScript], sourceRoot, policyEnv({
       GITHUB_EVENT_NAME: "pull_request",
-      GITHUB_HEAD_REF: "sync/main-to-dev-v0.7.0-rc.1",
+      GITHUB_HEAD_REF: `${exactSyncBranch}-rc.1`,
       GITHUB_BASE_REF: "dev",
     }));
     recordCase(
@@ -340,14 +355,14 @@ function main() {
       1,
       {
         syncSourceExact: true,
-        expectedIssueIncludes: "expected sync/main-to-dev-v0.7.0",
+        expectedIssueIncludes: `expected ${exactSyncBranch}`,
       },
     );
 
-    git(["checkout", "--quiet", "sync/main-to-dev-v0.7.0-diverged"], sourceRoot);
+    git(["checkout", "--quiet", divergedSyncBranch], sourceRoot);
     const divergedSyncResult = run(process.execPath, [policyScript], sourceRoot, policyEnv({
       GITHUB_EVENT_NAME: "pull_request",
-      GITHUB_HEAD_REF: "sync/main-to-dev-v0.7.0-diverged",
+      GITHUB_HEAD_REF: divergedSyncBranch,
       GITHUB_BASE_REF: "dev",
     }));
     recordCase(
@@ -375,9 +390,9 @@ function main() {
 
     const unrelatedHotfixResult = run(process.execPath, [policyScript], sourceRoot, policyEnv({
       GITHUB_EVENT_NAME: "pull_request",
-      GITHUB_HEAD_REF: "hotfix/v0.7.1",
+      GITHUB_HEAD_REF: `hotfix/v${nextPatchVersion}`,
       GITHUB_BASE_REF: "main",
-      AIDN_BRANCH_POLICY_VERSION: "0.7.1",
+      AIDN_BRANCH_POLICY_VERSION: nextPatchVersion,
     }));
     recordCase(
       results,

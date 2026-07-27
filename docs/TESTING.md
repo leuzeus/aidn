@@ -66,6 +66,11 @@ When a change affects the simplified install/upgrade orchestrator, run:
 - `npm run perf:verify-install-idempotence`
 
 The CLI effect policy verifier checks the public command effect inventory in `src/core/cli/effect-policy.mjs`. The no-implicit-write verifier runs stable read-only, preview, and projector dry-run commands against a temporary fixture copy and fails if checkout-bound paths, including `.agents/*` and `.aidn/runtime/*`, change. The CLI output contract verifier gives every public JSON command its own isolated Git fixture with an explicitly derived dual-SQLite projection, then validates the result against `src/core/contracts/cli-output/*.schema.json`; commands never inherit mutations from a previously checked contract. For projector commands, it also verifies that `--dry-run --json` does not mutate the projected Markdown artifact.
+When a contract command child fails, the verifier reports its exit status,
+signal, timeout/error code, and independently bounded, redacted stdout and
+stderr tails. Deterministic probes cover a nonzero stdout-only child, configured
+secret redaction, and an `ETIMEDOUT` timeout so an intermittent command failure
+cannot collapse into an ambiguous contract result.
 
 The CLI surface inventory verifier checks that `repair-layer` commands remain classified as internal and are not exposed as public runtime aliases or effect-policy entries.
 
@@ -159,6 +164,9 @@ ancestry from `dev`, hotfix ancestry from `main`, and exact main-to-dev
 synchronization. They also reject non-patch hotfix versions, mismatched
 synchronization version suffixes, version-mismatched publication branches,
 reversed synchronization, and divergent remote provenance. The release
+publication cases derive their matching and mismatching branch versions from
+the tracked `VERSION`, so a valid version bump cannot stale the positive fixture.
+The release
 workflow-policy gate parses the workflow structure and requires exact
 single-command calls to
 `tools/ci/fetch-branch-policy-sources.mjs` and

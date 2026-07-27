@@ -72,7 +72,7 @@ Recent workflow resilience updates also add:
 1. Install or upgrade the package to the matching product tag:
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#v0.7.0
+npm install --save-dev github:leuzeus/aidn#v0.7.1
 ```
 
 2. Run the recommended upgrade orchestrator:
@@ -105,7 +105,7 @@ npx aidn install --target <client-repo> --pack github-integration --verify
 
 ```bash
 npx aidn project config --target <client-repo> --wizard --write
-npx aidn project config --target <client-repo> --migrate-adapter --version 0.7.0 --write --json
+npx aidn project config --target <client-repo> --migrate-adapter --version 0.7.1 --write --json
 ```
 
 4. Verify installation and current runtime/admin surfaces:
