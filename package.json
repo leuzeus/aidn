@@ -75,6 +75,7 @@
     "perf:verify-doc-references": "node tools/verify/verify-doc-references.mjs",
     "perf:verify-gate-catalog": "node tools/verify/verify-gate-catalog.mjs",
     "perf:verify-gate-runner-fixtures": "node tools/verify/verify-gate-runner-fixtures.mjs",
+    "perf:verify-codex-context-diagnostics": "node tools/perf/verify-codex-context-repair-diagnostics-fixtures.mjs",
     "perf:verify-branch-policy": "node tools/verify/verify-branch-policy.mjs",
     "perf:verify-repository-cleanliness": "node tools/verify/verify-repository-cleanliness.mjs",
     "perf:verify-db-migrate-write-boundary": "node tools/perf/verify-db-migrate-write-boundary-fixtures.mjs",

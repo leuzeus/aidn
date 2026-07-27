@@ -141,6 +141,15 @@
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
     {
+      "id": "codex-context-diagnostics",
+      "family": "codex",
+      "script": "perf:verify-codex-context-diagnostics",
+      "job": "architecture-gates/codex",
+      "surfaces": ["Codex context failure output", "child stage diagnostics", "gate family failure summary"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
       "id": "codex-context-resilience",
       "family": "codex",
       "script": "perf:verify-context-resilience",

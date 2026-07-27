@@ -383,6 +383,7 @@ export function runGateFamily({
       } : {}),
       ...(status === "FAIL" ? {
         error: result?.error ? resultTail(result.error.message, env) : null,
+        error_code: result?.error?.code ? String(result.error.code) : null,
         signal: result?.signal ?? null,
         stdout_tail: resultTail(result?.stdout, env),
         stderr_tail: resultTail(result?.stderr, env),
@@ -423,6 +424,20 @@ function formatGitDiagnostic(diagnostic) {
   return pieces.join(" ");
 }
 
+function formatGateProcessDiagnostic(item) {
+  const pieces = [
+    `exit=${item.exit_code ?? "null"}`,
+    `signal=${item.signal ?? "null"}`,
+  ];
+  if (item.error_code) {
+    pieces.push(`error_code=${item.error_code}`);
+  }
+  if (item.error) {
+    pieces.push(`error=${JSON.stringify(item.error)}`);
+  }
+  return pieces.join(" ");
+}
+
 export function formatGateFamilySummary(output) {
   const lines = [`Gate family ${output.requested}: ${output.ok ? "PASS" : "FAIL"}`];
   for (const item of output.results) {
@@ -442,6 +457,15 @@ export function formatGateFamilySummary(output) {
     }
     if ((item.introduced_worktree_changes ?? []).length > 0) {
       lines.push(`  introduced_worktree_changes=${item.introduced_worktree_changes.map((entry) => `${entry.status} ${entry.path}`).join(", ")}`);
+    }
+    if (item.status === "FAIL" && Object.hasOwn(item, "exit_code")) {
+      lines.push(`  process=${formatGateProcessDiagnostic(item)}`);
+      if (item.stdout_tail) {
+        lines.push(`  stdout_tail=${JSON.stringify(item.stdout_tail)}`);
+      }
+      if (item.stderr_tail) {
+        lines.push(`  stderr_tail=${JSON.stringify(item.stderr_tail)}`);
+      }
     }
   }
   return `${lines.join("\n")}\n`;

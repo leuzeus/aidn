@@ -143,6 +143,76 @@ function main() {
     assert(cleanGate.results[0].worktree_guard.before_clean, "clean gate should record a clean before snapshot");
     assert(cleanGate.results[0].worktree_guard.after_clean, "clean gate should record a clean after snapshot");
 
+    const configuredSecret = "postgresql://fixture:secret@localhost/db";
+    const failedCommand = runFixtureGate(
+      tempRoot,
+      { id: "failed-command-diagnostics" },
+      {
+        env: {
+          ...cleanEnvironment(),
+          AIDN_PG_SMOKE_URL: configuredSecret,
+        },
+        commandRunner() {
+          return {
+            status: 9,
+            signal: null,
+            error: null,
+            stdout: "synthetic failed stdout\n",
+            stderr: `synthetic failed stderr ${configuredSecret}\n`,
+          };
+        },
+      },
+    );
+    const failedCommandResult = failedCommand.results[0];
+    assert(!failedCommand.ok && failedCommandResult.status === "FAIL", "failed command must fail");
+    assert(failedCommandResult.exit_code === 9, "failed command must retain exit code 9");
+    assert(failedCommandResult.signal == null, "failed command must retain a null signal");
+    assert(
+      failedCommandResult.stdout_tail.includes("synthetic failed stdout"),
+      "failed command must retain bounded stdout",
+    );
+    assert(
+      failedCommandResult.stderr_tail.includes("[redacted]")
+      && !failedCommandResult.stderr_tail.includes("fixture:secret"),
+      "failed command must retain redacted stderr",
+    );
+    const failedCommandSummary = formatGateFamilySummary(failedCommand);
+    assert(
+      failedCommandSummary.includes("process=exit=9 signal=null")
+      && failedCommandSummary.includes("stdout_tail=")
+      && failedCommandSummary.includes("stderr_tail=")
+      && failedCommandSummary.includes("[redacted]"),
+      "text summary must retain exit, signal, and redacted output tails",
+    );
+    JSON.parse(JSON.stringify(failedCommand));
+
+    const signalledCommand = runFixtureGate(
+      tempRoot,
+      { id: "signalled-command-diagnostics" },
+      {
+        commandRunner() {
+          const error = new Error("synthetic timeout");
+          error.code = "ETIMEDOUT";
+          return {
+            status: null,
+            signal: "SIGTERM",
+            error,
+            stdout: "synthetic timeout stdout\n",
+            stderr: "synthetic timeout stderr\n",
+          };
+        },
+      },
+    );
+    const signalledResult = signalledCommand.results[0];
+    assert(signalledResult.exit_code == null, "signalled command must retain null exit code");
+    assert(signalledResult.signal === "SIGTERM", "signalled command must retain SIGTERM");
+    assert(signalledResult.error_code === "ETIMEDOUT", "signalled command must retain ETIMEDOUT");
+    const signalledSummary = formatGateFamilySummary(signalledCommand);
+    assert(
+      signalledSummary.includes("process=exit=null signal=SIGTERM error_code=ETIMEDOUT"),
+      "text summary must retain signal and timeout error code",
+    );
+
     const polluter = runFixtureGate(
       tempRoot,
       { id: "polluter-claims-pass", script: "fixture:dirty" },
@@ -302,6 +372,8 @@ function main() {
         required_condition_not_met_failed: true,
         optional_condition_not_met_skipped: true,
         cleanliness_script_executed_clean_and_dirty: true,
+        failed_command_exit_signal_tails_preserved: true,
+        signalled_command_error_code_preserved: true,
       },
       final_repository_clean: true,
     };

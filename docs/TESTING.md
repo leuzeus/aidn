@@ -164,14 +164,25 @@ The family runner snapshots `git status --porcelain=v2 --untracked-files=all`
 before and after each executed gate. A gate that introduces a tracked change or
 an untracked, non-ignored path fails immediately under its own gate id, with a
 bounded path/status list. Git command failures are reported separately with
-redacted exit/stdout/stderr diagnostics. An unmet required condition is `FAIL`;
-only an unmet optional condition or an explicit catalog `skip` remains `SKIP`.
+redacted exit/stdout/stderr diagnostics. Command failures likewise retain the
+exit code, signal, and bounded redacted stdout/stderr tails in both the JSON
+result and text summary. An unmet required condition is `FAIL`; only an unmet
+optional condition or an explicit catalog `skip` remains `SKIP`.
 `cleanliness-worktree` executes in `dev`, `main`, and `release` instead of using
 cleanliness as its own precondition. When changing this behavior, run:
 
 - `npm run perf:verify-gate-runner-fixtures`
 - `npm run perf:verify-gate-catalog`
 - `npm run verify:cleanliness`
+
+The Codex context repair fixture emits one structured result document on every
+normal or failing execution. Named assertion failures preserve expected and
+observed values plus cleanup status. Child process failures preserve the stage,
+status, signal, timeout/error code, and bounded redacted output tails. The
+deterministic diagnostic gate forces one named assertion false and proves that
+the same evidence survives direct execution and the family runner:
+
+- `npm run perf:verify-codex-context-diagnostics`
 
 The start-session and installed-Codex-client verifiers execute child commands
 with `spawnSync`. Their process evidence records synchronous call returns and
