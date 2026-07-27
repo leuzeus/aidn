@@ -54,16 +54,19 @@ git switch -c hotfix/v<patch-version>
 ```
 
 The branch name must equal `hotfix/v${VERSION}` after the patch version is
-prepared. A hotfix PR runs the same full release verification as a normal
-release and publishes the patch release automatically after merge. It never
-publishes to npm.
+prepared. The executable gate reads `VERSION` from `origin/main` and requires
+the candidate to keep the same major and minor numbers while incrementing the
+patch number by exactly one. A hotfix PR runs the same full release
+verification as a normal release and publishes the patch release automatically
+after merge. It never publishes to npm.
 
 ### Production resynchronization
 
 After any release or hotfix publication, create
 `sync/main-to-dev-v<version>` at the exact current `origin/main` commit. Do not
 add a commit or modify its tree. Open that branch only toward `dev`; the branch
-policy proves byte-for-byte SHA equality with `origin/main`.
+policy proves byte-for-byte SHA equality with `origin/main` and requires the
+version suffix to equal `VERSION` at that exact source commit.
 
 ## Branch Rules
 

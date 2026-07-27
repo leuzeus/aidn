@@ -37,10 +37,12 @@ Rules:
 - internal docs, pilot-specific details and non-published fixtures must not leak into the package payload
 - release and hotfix pull requests verify without publishing
 - `release/vX.Y.Z` must contain current `origin/dev`
-- `hotfix/vX.Y.Z` must contain current `origin/main`, increment the patch
-  version, and follow the same verification and publication contract
+- `hotfix/vX.Y.Z` must contain current `origin/main`, preserve its major and
+  minor version numbers, increment its patch number by exactly one, and follow
+  the same verification and publication contract
 - `sync/main-to-dev-vX.Y.Z` must equal current `origin/main` and target only
-  `dev`; it never publishes
+  `dev`; its version suffix must equal `VERSION` at that exact source commit and
+  it never publishes
 - publication occurs only on a push to `main` associated with exactly one
   merged PR whose source is exactly `release/v${VERSION}` or
   `hotfix/v${VERSION}`

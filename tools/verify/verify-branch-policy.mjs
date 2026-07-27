@@ -113,6 +113,50 @@ function readRepositoryVersion() {
   return fs.readFileSync(path.join(repoRoot, "VERSION"), "utf8").trim();
 }
 
+function parseStableVersion(value) {
+  const match = String(value ?? "").trim().match(/^(\d+)\.(\d+)\.(\d+)$/);
+  if (!match) {
+    return null;
+  }
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+  };
+}
+
+function verifyHotfixPatchVersion({
+  sourceRef,
+  version,
+  provenance,
+}) {
+  const issues = [];
+  let sourceVersion = "";
+  try {
+    sourceVersion = git(["show", `${sourceRef}:VERSION`]);
+  } catch {
+    issues.push(`hotfix source ${sourceRef} must expose a readable VERSION`);
+    return issues;
+  }
+  provenance.hotfix_source_version = sourceVersion;
+  const source = parseStableVersion(sourceVersion);
+  const candidate = parseStableVersion(version);
+  provenance.hotfix_patch_increment = Boolean(
+    source
+    && candidate
+    && candidate.major === source.major
+    && candidate.minor === source.minor
+    && candidate.patch === source.patch + 1,
+  );
+  if (!provenance.hotfix_patch_increment) {
+    issues.push(
+      `hotfix VERSION ${version} must increment exactly one patch from `
+      + `${sourceRef} VERSION ${sourceVersion}`,
+    );
+  }
+  return issues;
+}
+
 export function evaluateBranchShape({
   eventName,
   base,
@@ -132,12 +176,16 @@ export function evaluateBranchShape({
           + `from a non-release, non-hotfix branch; got ${head || "detached"}`,
         );
       }
-      if (head?.startsWith("sync/")
-        && !/^sync\/main-to-dev-v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(head)) {
-        issues.push(
-          "synchronization PRs must use sync/main-to-dev-vX.Y.Z and target dev; "
-          + `got ${head}`,
-        );
+      if (head?.startsWith("sync/")) {
+        const expectedSync = version ? `sync/main-to-dev-v${version}` : "";
+        if (!version) {
+          issues.push("synchronization PR validation requires the repository VERSION");
+        } else if (head !== expectedSync) {
+          issues.push(
+            "synchronization PRs must use the exact source version and target dev; "
+            + `expected ${expectedSync}, got ${head}`,
+          );
+        }
       }
     } else if (base === "main") {
       const allowed = version
@@ -216,6 +264,8 @@ export function verifyBranchPolicy({
     branch_source_sha: null,
     branch_source_exact: false,
     branch_source_ancestor: false,
+    hotfix_source_version: null,
+    hotfix_patch_increment: false,
   };
 
   if (expectedSha && expectedSha !== actualSha) {
@@ -312,6 +362,13 @@ export function verifyBranchPolicy({
         label: "hotfix branch",
         provenance,
       }));
+      if (provenance.branch_source_ref) {
+        branchSourceIssues.push(...verifyHotfixPatchVersion({
+          sourceRef: provenance.branch_source_ref,
+          version,
+          provenance,
+        }));
+      }
     }
   }
   const issues = [

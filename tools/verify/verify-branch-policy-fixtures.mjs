@@ -113,7 +113,8 @@ function main() {
     git(["config", "user.name", "aidn-tests"], sourceRoot);
     git(["config", "user.email", "aidn-tests@example.invalid"], sourceRoot);
     fs.writeFileSync(path.join(sourceRoot, "fixture.txt"), "branch policy fixture\n", "utf8");
-    git(["add", "fixture.txt"], sourceRoot);
+    fs.writeFileSync(path.join(sourceRoot, "VERSION"), "0.7.0\n", "utf8");
+    git(["add", "fixture.txt", "VERSION"], sourceRoot);
     git(["commit", "--quiet", "-m", "base fixture"], sourceRoot);
     const devSha = git(["rev-parse", "HEAD"], sourceRoot);
     git(["checkout", "--quiet", "-b", "codex/fixture"], sourceRoot);
@@ -164,10 +165,31 @@ function main() {
         name: "hotfix_to_main_pass",
         env: {
           GITHUB_EVENT_NAME: "pull_request",
-          GITHUB_HEAD_REF: "hotfix/v0.7.0",
+          GITHUB_HEAD_REF: "hotfix/v0.7.1",
           GITHUB_BASE_REF: "main",
+          AIDN_BRANCH_POLICY_VERSION: "0.7.1",
         },
         expected: 0,
+      },
+      {
+        name: "hotfix_minor_increment_fail",
+        env: {
+          GITHUB_EVENT_NAME: "pull_request",
+          GITHUB_HEAD_REF: "hotfix/v0.8.0",
+          GITHUB_BASE_REF: "main",
+          AIDN_BRANCH_POLICY_VERSION: "0.8.0",
+        },
+        expected: 1,
+      },
+      {
+        name: "hotfix_skipped_patch_fail",
+        env: {
+          GITHUB_EVENT_NAME: "pull_request",
+          GITHUB_HEAD_REF: "hotfix/v0.7.2",
+          GITHUB_BASE_REF: "main",
+          AIDN_BRANCH_POLICY_VERSION: "0.7.2",
+        },
+        expected: 1,
       },
       {
         name: "version_mismatched_release_to_main_fail",
@@ -210,6 +232,15 @@ function main() {
         env: {
           GITHUB_EVENT_NAME: "pull_request",
           GITHUB_HEAD_REF: "sync/dev-to-main-v0.7.0",
+          GITHUB_BASE_REF: "dev",
+        },
+        expected: 1,
+      },
+      {
+        name: "version_mismatched_sync_to_dev_fail",
+        env: {
+          GITHUB_EVENT_NAME: "pull_request",
+          GITHUB_HEAD_REF: "sync/main-to-dev-v9.9.9",
           GITHUB_BASE_REF: "dev",
         },
         expected: 1,
@@ -265,8 +296,9 @@ function main() {
 
     const unrelatedHotfixResult = run(process.execPath, [policyScript], sourceRoot, policyEnv({
       GITHUB_EVENT_NAME: "pull_request",
-      GITHUB_HEAD_REF: "hotfix/v0.7.0",
+      GITHUB_HEAD_REF: "hotfix/v0.7.1",
       GITHUB_BASE_REF: "main",
+      AIDN_BRANCH_POLICY_VERSION: "0.7.1",
     }));
     recordCase(
       results,

@@ -150,13 +150,14 @@ Rules:
 - `dev` is the integration branch and may accumulate multiple workstreams.
 - feature-family branches are created from current `dev` and open pull requests to `dev`.
 - release branches are created from reviewed `dev`; production hotfix branches
-  are created from current `main`.
+  are created from current `main` and increment its patch version by exactly
+  one.
 - only exact version-matched `release/vX.Y.Z` or `hotfix/vX.Y.Z` pull requests
   target `main`.
 - release and hotfix PRs verify without publishing; publication runs only after
   the matching PR merges to `main`.
-- `sync/main-to-dev-vX.Y.Z` must equal current `main`, targets only `dev`, and
-  never publishes.
+- `sync/main-to-dev-vX.Y.Z` must equal current `main`, use that commit's exact
+  `VERSION`, target only `dev`, and never publish.
 - full policy: `docs/GIT_WORKFLOW.md`
 
 ## Performance Rollout
