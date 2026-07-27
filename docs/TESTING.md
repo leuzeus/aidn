@@ -143,6 +143,8 @@ left behind.
 
 When a change affects release/versioning, install examples, or build-release provenance, run:
 
+- `npm run perf:verify-branch-policy`
+- `npm run perf:verify-branch-policy-fixtures`
 - `npm run perf:verify-release-version`
 - `npm run perf:verify-release-reproducibility`
 - `npm run perf:verify-release-workflow-policy`
@@ -152,6 +154,10 @@ When a change affects release/versioning, install examples, or build-release pro
 - `npm run perf:verify-doc-references`
 
 The release version verifier checks that `VERSION`, `package.json`, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The reproducibility verifier builds the exact clean tracked commit twice in isolated output roots, compares bytes, checks the npm package topology, and rejects sensitive inputs. `perf:verify-release-artifacts` remains the post-build check used by the main publication job.
+The branch-policy fixtures distinguish feature ancestry from `dev`, release
+ancestry from `dev`, hotfix ancestry from `main`, and exact main-to-dev
+synchronization. They also reject version-mismatched publication branches,
+reversed synchronization, and divergent remote provenance.
 The pack topology verifier checks the package tarball surface, the published docs allowlist, and the leak guard for guarded terms in package paths and contents. The tracked-sensitivity verifier separately scans the complete Git-tracked tree, including historical planning documents and fixtures. It uses exact negative probes so weakening or bypassing the detector fails the gate. Current tracked content is neutralized, but older Git objects can retain prior pilot names and local paths; history cleanup may therefore still be required before wider archival or publication.
 The documentation-reference verifier resolves active local Markdown links and
 literal `npm run` references against the tracked tree and `package.json`; its

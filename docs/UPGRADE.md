@@ -11,7 +11,11 @@ This baseline makes AIDN's governed architecture and release path executable end
 - public machine-readable commands emit one complete JSON document on `stdout`, while bounded diagnostics remain on `stderr`.
 - installed Codex integration includes project skills, bounded custom agents, a trusted-project session hook, real installed-client discovery, and preserved failure/cleanup diagnostics.
 - `files`, `dual`, and `db-only` remain distinct modes; PostgreSQL persistence is optional, SQLite remains available for local compatibility and migration, and shared coordination is explicit opt-in.
-- protected-branch CI and the release workflow verify from locked dependencies; a merged `release/*` PR is published from exact `main` `GITHUB_SHA` with an annotated tag, checksums, and provenance assets, never with `npm publish`.
+- protected-branch CI and the release workflow verify from locked dependencies;
+  a merged, version-matched `release/vX.Y.Z` or `hotfix/vX.Y.Z` PR is published
+  from exact `main` `GITHUB_SHA` with an annotated tag, checksums, and
+  provenance assets, never with `npm publish`; exact
+  `sync/main-to-dev-vX.Y.Z` branches only resynchronize `dev`.
 - generated workflow adapter outputs driven by `.aidn/project/workflow.adapter.json`
 - `aidn project config` as the durable adapter management entrypoint
 - bounded coordinator/orchestration runtime commands

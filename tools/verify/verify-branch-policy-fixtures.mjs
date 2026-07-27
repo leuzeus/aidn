@@ -39,6 +39,8 @@ function policyEnv(overrides) {
     AIDN_BRANCH_POLICY_BASE_REF: "",
     AIDN_BRANCH_POLICY_EXPECTED_SHA: "",
     AIDN_BRANCH_POLICY_CONTAINS_REF: "",
+    AIDN_BRANCH_POLICY_SYNC_SOURCE_REF: "",
+    AIDN_BRANCH_POLICY_VERSION: "",
     ...overrides,
   };
 }
@@ -55,6 +57,8 @@ function assertStatus(name, result, expected) {
 function recordCase(results, name, result, expected, {
   containmentProved = null,
   remoteRefExact = null,
+  syncSourceExact = null,
+  branchSourceAncestor = null,
 } = {}) {
   assertStatus(name, result, expected);
   const payload = JSON.parse(String(result.stdout).trim());
@@ -72,11 +76,27 @@ function recordCase(results, name, result, expected, {
       + `${String(payload.provenance?.remote_ref_exact)}`,
     );
   }
+  if (syncSourceExact != null
+    && payload.provenance?.sync_source_exact !== syncSourceExact) {
+    throw new Error(
+      `${name}: expected sync_source_exact=${syncSourceExact}, got `
+      + `${String(payload.provenance?.sync_source_exact)}`,
+    );
+  }
+  if (branchSourceAncestor != null
+    && payload.provenance?.branch_source_ancestor !== branchSourceAncestor) {
+    throw new Error(
+      `${name}: expected branch_source_ancestor=${branchSourceAncestor}, got `
+      + `${String(payload.provenance?.branch_source_ancestor)}`,
+    );
+  }
   results.push({
     name,
     status: expected === 0 ? "PASS" : "EXPECTED_FAIL",
     containment_proved: payload.provenance?.containment_proved ?? false,
     remote_ref_exact: payload.provenance?.remote_ref_exact ?? false,
+    sync_source_exact: payload.provenance?.sync_source_exact ?? false,
+    branch_source_ancestor: payload.provenance?.branch_source_ancestor ?? false,
   });
 }
 
@@ -101,8 +121,22 @@ function main() {
     git(["add", "candidate.txt"], sourceRoot);
     git(["commit", "--quiet", "-m", "candidate fixture"], sourceRoot);
     const candidateSha = git(["rev-parse", "HEAD"], sourceRoot);
+    const candidateTree = git(["rev-parse", `${candidateSha}^{tree}`], sourceRoot);
+    const unrelatedSha = git(["commit-tree", candidateTree, "-m", "unrelated fixture"], sourceRoot);
+    git(["branch", "codex/unrelated", unrelatedSha], sourceRoot);
+    git(["branch", "sync/main-to-dev-v0.7.0", devSha], sourceRoot);
+    git(["branch", "sync/main-to-dev-v0.7.0-diverged", candidateSha], sourceRoot);
     git(["remote", "add", "origin", remoteRoot], sourceRoot);
-    git(["push", "--quiet", "origin", "dev:dev", "codex/fixture:codex/fixture"], sourceRoot);
+    git([
+      "push",
+      "--quiet",
+      "origin",
+      "dev:dev",
+      "codex/fixture:codex/fixture",
+      "codex/unrelated:codex/unrelated",
+      "sync/main-to-dev-v0.7.0:sync/main-to-dev-v0.7.0",
+      "sync/main-to-dev-v0.7.0-diverged:sync/main-to-dev-v0.7.0-diverged",
+    ], sourceRoot);
     git(["push", "--quiet", "origin", "dev:main"], sourceRoot);
     git(["clone", "--quiet", remoteRoot, clientRoot], tempRoot);
     git(["fetch", "--quiet", "origin"], clientRoot);
@@ -121,10 +155,28 @@ function main() {
         name: "release_to_main_pass",
         env: {
           GITHUB_EVENT_NAME: "pull_request",
-          GITHUB_HEAD_REF: "release/0.7.0",
+          GITHUB_HEAD_REF: "release/v0.7.0",
           GITHUB_BASE_REF: "main",
         },
         expected: 0,
+      },
+      {
+        name: "hotfix_to_main_pass",
+        env: {
+          GITHUB_EVENT_NAME: "pull_request",
+          GITHUB_HEAD_REF: "hotfix/v0.7.0",
+          GITHUB_BASE_REF: "main",
+        },
+        expected: 0,
+      },
+      {
+        name: "version_mismatched_release_to_main_fail",
+        env: {
+          GITHUB_EVENT_NAME: "pull_request",
+          GITHUB_HEAD_REF: "release/v0.7.1",
+          GITHUB_BASE_REF: "main",
+        },
+        expected: 1,
       },
       {
         name: "feature_to_main_fail",
@@ -135,11 +187,95 @@ function main() {
         },
         expected: 1,
       },
+      {
+        name: "hotfix_to_dev_fail",
+        env: {
+          GITHUB_EVENT_NAME: "pull_request",
+          GITHUB_HEAD_REF: "hotfix/v0.7.0",
+          GITHUB_BASE_REF: "dev",
+        },
+        expected: 1,
+      },
+      {
+        name: "sync_to_main_fail",
+        env: {
+          GITHUB_EVENT_NAME: "pull_request",
+          GITHUB_HEAD_REF: "sync/main-to-dev-v0.7.0",
+          GITHUB_BASE_REF: "main",
+        },
+        expected: 1,
+      },
+      {
+        name: "misnamed_sync_to_dev_fail",
+        env: {
+          GITHUB_EVENT_NAME: "pull_request",
+          GITHUB_HEAD_REF: "sync/dev-to-main-v0.7.0",
+          GITHUB_BASE_REF: "dev",
+        },
+        expected: 1,
+      },
     ];
     for (const item of cases) {
       const result = run(process.execPath, [policyScript], sourceRoot, policyEnv(item.env));
       recordCase(results, item.name, result, item.expected);
     }
+
+    git(["checkout", "--quiet", "sync/main-to-dev-v0.7.0"], sourceRoot);
+    const exactSyncResult = run(process.execPath, [policyScript], sourceRoot, policyEnv({
+      GITHUB_EVENT_NAME: "pull_request",
+      GITHUB_HEAD_REF: "sync/main-to-dev-v0.7.0",
+      GITHUB_BASE_REF: "dev",
+    }));
+    recordCase(
+      results,
+      "exact_main_to_dev_sync_pass",
+      exactSyncResult,
+      0,
+      { syncSourceExact: true },
+    );
+
+    git(["checkout", "--quiet", "sync/main-to-dev-v0.7.0-diverged"], sourceRoot);
+    const divergedSyncResult = run(process.execPath, [policyScript], sourceRoot, policyEnv({
+      GITHUB_EVENT_NAME: "pull_request",
+      GITHUB_HEAD_REF: "sync/main-to-dev-v0.7.0-diverged",
+      GITHUB_BASE_REF: "dev",
+    }));
+    recordCase(
+      results,
+      "diverged_main_to_dev_sync_fail",
+      divergedSyncResult,
+      1,
+      { syncSourceExact: false },
+    );
+    git(["checkout", "--quiet", "codex/fixture"], sourceRoot);
+
+    git(["checkout", "--quiet", "codex/unrelated"], sourceRoot);
+    const unrelatedFeatureResult = run(process.execPath, [policyScript], sourceRoot, policyEnv({
+      GITHUB_EVENT_NAME: "pull_request",
+      GITHUB_HEAD_REF: "codex/unrelated",
+      GITHUB_BASE_REF: "dev",
+    }));
+    recordCase(
+      results,
+      "feature_without_dev_ancestry_fail",
+      unrelatedFeatureResult,
+      1,
+      { branchSourceAncestor: false },
+    );
+
+    const unrelatedHotfixResult = run(process.execPath, [policyScript], sourceRoot, policyEnv({
+      GITHUB_EVENT_NAME: "pull_request",
+      GITHUB_HEAD_REF: "hotfix/v0.7.0",
+      GITHUB_BASE_REF: "main",
+    }));
+    recordCase(
+      results,
+      "hotfix_without_main_ancestry_fail",
+      unrelatedHotfixResult,
+      1,
+      { branchSourceAncestor: false },
+    );
+    git(["checkout", "--quiet", "codex/fixture"], sourceRoot);
 
     git(["checkout", "--quiet", "--detach", candidateSha], clientRoot);
     const containmentResult = run(process.execPath, [policyScript], clientRoot, policyEnv({

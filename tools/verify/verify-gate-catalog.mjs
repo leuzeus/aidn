@@ -192,8 +192,25 @@ const duplicateJobMutation = `${releaseText}\n  verify:\n    runs-on: ubuntu-lat
 
 const architecturePath = ".github/workflows/architecture-gates.yml";
 const architectureText = fs.readFileSync(path.join(repoRoot, architecturePath), "utf8");
+function evaluateArchitectureBranchSourceFetch(source) {
+  const sourceIssues = [];
+  for (const sourceRef of [
+    "+refs/heads/dev:refs/remotes/origin/dev",
+    "+refs/heads/main:refs/remotes/origin/main",
+  ]) {
+    if (!source.includes(sourceRef)) {
+      sourceIssues.push(`architecture branch gate missing source provenance fetch: ${sourceRef}`);
+    }
+  }
+  return sourceIssues;
+}
+issues.push(...evaluateArchitectureBranchSourceFetch(architectureText));
 const missingGateDependencyInstallMutation = architectureText.replace(
   /      - name: Install Locked Gate Dependencies\r?\n        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund\r?\n/,
+  "",
+);
+const missingBranchSourceFetchMutation = architectureText.replace(
+  / \\\r?\n            "\+refs\/heads\/dev:refs\/remotes\/origin\/dev" \\\r?\n            "\+refs\/heads\/main:refs\/remotes\/origin\/main"/,
   "",
 );
 
@@ -270,6 +287,8 @@ const negativeProbes = {
       missingGateDependencyInstallMutation,
     ),
   }),
+  branch_source_fetch_required:
+    evaluateArchitectureBranchSourceFetch(missingBranchSourceFetchMutation).length > 0,
   live_smoke_install_required: candidateRejected({
     candidateWorkflowSources: replaceWorkflowSource(
       workflowSources,

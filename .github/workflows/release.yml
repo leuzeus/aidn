@@ -23,7 +23,9 @@ jobs:
         shell: bash
         run: |
           git fetch --no-tags origin \
-            "+refs/heads/${GITHUB_HEAD_REF}:refs/remotes/origin/${GITHUB_HEAD_REF}"
+            "+refs/heads/${GITHUB_HEAD_REF}:refs/remotes/origin/${GITHUB_HEAD_REF}" \
+            "+refs/heads/dev:refs/remotes/origin/dev" \
+            "+refs/heads/main:refs/remotes/origin/main"
       - uses: actions/setup-node@v4
         with:
           node-version: "22.13"
@@ -53,7 +55,8 @@ jobs:
       - name: Install Locked Gate Dependencies
         run: npm ci --include=dev --ignore-scripts --no-audit --no-fund
 
-      - name: Prove Main And Merged Release PR
+      - name: Prove Main And Merged Publication PR
+        id: publication_source
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -62,13 +65,32 @@ jobs:
           git fetch --no-tags origin main
           test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
           test "$(git rev-parse origin/main)" = "${GITHUB_SHA}"
-          RELEASE_PR_COUNT="$(
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          EXPECTED_RELEASE_BRANCH="release/v${VERSION}"
+          EXPECTED_HOTFIX_BRANCH="hotfix/v${VERSION}"
+          MERGED_MAIN_PRS_JSON="$(
             gh api \
               -H "Accept: application/vnd.github+json" \
               "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
-              --jq '[.[] | select(.base.ref == "main" and (.head.ref | startswith("release/")) and .merged_at != null)] | length'
+              --jq '[.[] | select(.base.ref == "main" and .merged_at != null)]'
           )"
-          test "${RELEASE_PR_COUNT}" = "1"
+          MERGED_MAIN_PR_COUNT="$(jq 'length' <<<"${MERGED_MAIN_PRS_JSON}")"
+          test "${MERGED_MAIN_PR_COUNT}" = "1"
+          SOURCE_BRANCH="$(jq -r '.[0].head.ref' <<<"${MERGED_MAIN_PRS_JSON}")"
+          case "${SOURCE_BRANCH}" in
+            "${EXPECTED_RELEASE_BRANCH}")
+              SOURCE_KIND="release"
+              ;;
+            "${EXPECTED_HOTFIX_BRANCH}")
+              SOURCE_KIND="hotfix"
+              ;;
+            *)
+              echo "Expected ${EXPECTED_RELEASE_BRANCH} or ${EXPECTED_HOTFIX_BRANCH}; got ${SOURCE_BRANCH}" >&2
+              exit 1
+              ;;
+          esac
+          echo "kind=${SOURCE_KIND}" >> "${GITHUB_OUTPUT}"
+          echo "branch=${SOURCE_BRANCH}" >> "${GITHUB_OUTPUT}"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
 
       - name: Verify Version, Provenance, Topology, And Sensitivity
