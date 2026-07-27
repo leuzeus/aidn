@@ -202,6 +202,12 @@ the same evidence survives direct execution and the family runner:
 
 - `npm run perf:verify-codex-context-diagnostics`
 
+The coordinator next-action fixture likewise preserves bounded, redacted child
+status, signal, error code, stdout tail, and stderr tail on failure. Its
+deterministic probes cover a nonzero child with stdout-only evidence, a timeout,
+secret redaction, and cleanup after an injected failure immediately after
+creating the owned temporary root.
+
 The start-session and installed-Codex-client verifiers execute child commands
 with `spawnSync`. Their process evidence records synchronous call returns and
 never re-probes a numeric PID after the call, because an operating system may

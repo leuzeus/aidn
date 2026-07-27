@@ -6,7 +6,8 @@
   `sync/main-to-dev-vX.Y.Z` resynchronization, including remote ancestry,
   canonical and behavior-tested CI provenance helpers, blocking workflow-step
   metadata, exact merged-PR SHA classification, negative fixtures,
-  documentation, and machine-readable gate coverage.
+  bounded coordinator child diagnostics and failure cleanup, documentation, and
+  machine-readable gate coverage.
 
 ## 0.7.0
 
