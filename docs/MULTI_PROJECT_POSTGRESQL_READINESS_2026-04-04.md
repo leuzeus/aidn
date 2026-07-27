@@ -45,7 +45,7 @@ Documentation:
 - executable backlog: `docs/BACKLOG_MULTI_PROJECT_POSTGRESQL_2026-04-03.md`
 - RFC: `docs/rfc/RFC-0002-multi-project-identity-and-shared-runtime-v2.md`
 - migration guide: `docs/MULTI_PROJECT_POSTGRESQL_MIGRATION_GUIDE.md`
-- pilot closure: `docs/MULTI_PROJECT_POSTGRESQL_GOWIRE_PILOT_2026-04-04.md`
+- pilot closure: `docs/MULTI_PROJECT_POSTGRESQL_EXTERNAL_PILOT_2026-04-04.md`
 
 ## Validation Summary
 
@@ -68,8 +68,8 @@ Real pilot evidence passed for:
 
 Evidence roots:
 
-- `G:\projets\gowire-validation\2026-04-04-multi-project-postgresql`
-- `G:\projets\gowire-validation\2026-04-04-multi-project-postgresql-monorepo`
+- `<local-evidence-root>\2026-04-04-multi-project-postgresql`
+- `<local-evidence-root>\2026-04-04-multi-project-postgresql-monorepo`
 
 ## Remaining Risk
 

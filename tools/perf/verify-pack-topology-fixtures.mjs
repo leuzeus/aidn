@@ -2,7 +2,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { findSensitivityMatches } from "../verify/sensitivity-policy.mjs";
+import { inspectImmediateProcessExitArguments } from "../verify/spawn-sync-evidence-lib.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+
+const SELF_FILE = fileURLToPath(import.meta.url);
+const CLEANUP_PROBE_ENV = "AIDN_PACK_TOPOLOGY_CLEANUP_PROBE";
+const CLEANUP_PROBE_PREFIX = "tmp-pack-topology-cleanup-probe-";
 
 function assert(condition, message) {
   if (!condition) {
@@ -121,30 +128,30 @@ function runNpmPackDryRun(repoRoot) {
 
 function inspectPackageLeakGuard(repoRoot) {
   const files = runNpmPackDryRun(repoRoot);
-  const guardedTerms = [
-    ["go", "wire"].join(""),
-    ["G:", "\\", "projets", "\\"].join(""),
+  const packageOnlyTerms = [
     ["pilot", "-main"].join(""),
     ["pilot", "-linked"].join(""),
-    ["go", "wire", "-validation"].join(""),
   ];
-  const sensitivePatterns = [
-    ...guardedTerms.map((term) => new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")),
-  ];
+  const packageOnlyPatterns = packageOnlyTerms.map(
+    (term) => new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+  );
+  const hasSensitiveContent = (value) =>
+    findSensitivityMatches(value).length > 0 ||
+    packageOnlyPatterns.some((pattern) => pattern.test(String(value ?? "")));
   const violations = [];
   for (const file of files) {
     const packagePath = String(file?.path ?? "");
     if (!packagePath) {
       continue;
     }
-    if (sensitivePatterns.some((pattern) => pattern.test(packagePath))) {
+    if (hasSensitiveContent(packagePath)) {
       violations.push(`path:${packagePath}`);
       continue;
     }
     const sourcePath = path.resolve(repoRoot, packagePath);
     try {
       const text = fs.readFileSync(sourcePath, "utf8");
-      if (sensitivePatterns.some((pattern) => pattern.test(text))) {
+      if (hasSensitiveContent(text)) {
         violations.push(`content:${packagePath}`);
       }
     } catch {
@@ -202,9 +209,80 @@ function inspectPackageDocsAllowlist(files) {
   };
 }
 
+function listFixtureDirectories(repoRoot, prefix) {
+  const fixturesRoot = path.resolve(repoRoot, "tests", "fixtures");
+  return fs.readdirSync(fixturesRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith(prefix))
+    .map((entry) => path.resolve(fixturesRoot, entry.name))
+    .sort();
+}
+
+function verifyExitPolicy() {
+  const source = fs.readFileSync(SELF_FILE, "utf8");
+  const immediateExitArguments = inspectImmediateProcessExitArguments(source);
+  assert(
+    immediateExitArguments.length === 0,
+    `pack topology verifier must defer nonzero exit until cleanup; found process.exit(${immediateExitArguments.join("), process.exit(")})`,
+  );
+  const mutantArguments = inspectImmediateProcessExitArguments(`${source}\nprocess.exit(1);\n`);
+  assert(
+    mutantArguments.length === immediateExitArguments.length + 1
+      && mutantArguments.at(-1) === "1",
+    "pack topology immediate-exit mutant was not detected",
+  );
+  return {
+    immediate_exit_arguments: immediateExitArguments,
+    immediate_exit_mutant_rejected: true,
+  };
+}
+
+function verifyInjectedFailureCleanup(repoRoot) {
+  const before = listFixtureDirectories(repoRoot, CLEANUP_PROBE_PREFIX);
+  assert(
+    before.length === 0,
+    `pack topology cleanup probe requires no pre-existing owned roots: ${before.join(", ")}`,
+  );
+  const result = spawnSync(process.execPath, [SELF_FILE], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      [CLEANUP_PROBE_ENV]: "1",
+    },
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 180000,
+    maxBuffer: 20 * 1024 * 1024,
+  });
+  const after = listFixtureDirectories(repoRoot, CLEANUP_PROBE_PREFIX);
+  const stderr = String(result.stderr ?? "");
+  assert(
+    (result.status ?? 1) === 1,
+    `pack topology cleanup probe should exit 1; status=${result.status} signal=${result.signal ?? "none"} error=${result.error?.message ?? "none"}`,
+  );
+  assert(
+    stderr.includes("injected pack topology failure after source copy"),
+    `pack topology cleanup probe should preserve the primary error; stderr=${stderr.slice(-2000)}`,
+  );
+  assert(
+    after.length === 0,
+    `pack topology cleanup probe left owned roots: ${after.join(", ")}`,
+  );
+  return {
+    exit_code: 1,
+    primary_error_preserved: true,
+    owned_roots_remaining: 0,
+  };
+}
+
 function main() {
   const repoRoot = process.cwd();
-  const tempRoot = fs.mkdtempSync(path.join(path.resolve(repoRoot, "tests", "fixtures"), "tmp-pack-topology-"));
+  const cleanupProbe = process.env[CLEANUP_PROBE_ENV] === "1";
+  const exitPolicy = cleanupProbe ? null : verifyExitPolicy();
+  const injectedFailureCleanup = cleanupProbe ? null : verifyInjectedFailureCleanup(repoRoot);
+  const tempPrefix = cleanupProbe ? CLEANUP_PROBE_PREFIX : "tmp-pack-topology-";
+  const tempRoot = fs.mkdtempSync(path.join(path.resolve(repoRoot, "tests", "fixtures"), tempPrefix));
+  let primaryError = null;
+  let cleanupResult = null;
   try {
     const workflowManifest = readYamlText(repoRoot, "package/manifests/workflow.manifest.yaml");
     const runtimeLocalManifest = readYamlText(repoRoot, "packs/runtime-local/manifest.yaml");
@@ -214,6 +292,9 @@ function main() {
     const sourceTarget = path.resolve(repoRoot, "tests/fixtures/repo-installed-core");
     const targetRoot = path.join(tempRoot, "repo");
     fs.cpSync(sourceTarget, targetRoot, { recursive: true });
+    if (cleanupProbe) {
+      throw new Error("injected pack topology failure after source copy");
+    }
     const runtimeLocalTarget = path.join(tempRoot, "runtime-local-refresh");
     const codexTarget = path.join(tempRoot, "codex-refresh");
     const githubTarget = path.join(tempRoot, "github-refresh");
@@ -236,8 +317,11 @@ function main() {
     const runtimeLocalInstall = runInstall(repoRoot, runtimeLocalTarget, codexStubBin, "runtime-local", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
     const runtimeLocalVerify = runInstall(repoRoot, runtimeLocalTarget, codexStubBin, "runtime-local", ["--verify", "--skip-artifact-import"]);
 
-    fs.rmSync(path.join(codexTarget, ".codex", "skills"), { recursive: true, force: true });
-    fs.rmSync(path.join(codexTarget, ".codex", "skills.yaml"), { force: true });
+    fs.rmSync(path.join(codexTarget, ".agents", "skills"), { recursive: true, force: true });
+    fs.rmSync(path.join(codexTarget, ".codex", "agents"), { recursive: true, force: true });
+    fs.rmSync(path.join(codexTarget, ".codex", "hooks"), { recursive: true, force: true });
+    fs.rmSync(path.join(codexTarget, ".codex", "hooks.json"), { force: true });
+    fs.rmSync(path.join(codexTarget, ".aidn", "codex"), { recursive: true, force: true });
     const codexInstall = runInstall(repoRoot, codexTarget, codexStubBin, "codex-integration", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
     const codexVerify = runInstall(repoRoot, codexTarget, codexStubBin, "codex-integration", ["--verify", "--skip-artifact-import"]);
 
@@ -246,8 +330,11 @@ function main() {
     const githubVerify = runInstall(repoRoot, githubTarget, codexStubBin, "github-integration", ["--verify", "--skip-artifact-import"]);
 
     fs.rmSync(path.join(extendedTarget, ".aidn", "runtime", "agents"), { recursive: true, force: true });
-    fs.rmSync(path.join(extendedTarget, ".codex", "skills"), { recursive: true, force: true });
-    fs.rmSync(path.join(extendedTarget, ".codex", "skills.yaml"), { force: true });
+    fs.rmSync(path.join(extendedTarget, ".agents", "skills"), { recursive: true, force: true });
+    fs.rmSync(path.join(extendedTarget, ".codex", "agents"), { recursive: true, force: true });
+    fs.rmSync(path.join(extendedTarget, ".codex", "hooks"), { recursive: true, force: true });
+    fs.rmSync(path.join(extendedTarget, ".codex", "hooks.json"), { force: true });
+    fs.rmSync(path.join(extendedTarget, ".aidn", "codex"), { recursive: true, force: true });
     fs.rmSync(path.join(extendedTarget, ".github"), { recursive: true, force: true });
     const extendedInstall = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--skip-artifact-import", "--no-codex-migrate-custom"]);
     const extendedVerify = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--verify", "--skip-artifact-import"]);
@@ -277,26 +364,54 @@ function main() {
     assert(fs.existsSync(path.join(runtimeLocalTarget, ".aidn", "runtime", "agents", "example-external-auditor.mjs")), "runtime-local should restore runtime agent examples");
     assert(codexInstall.status === 0, `codex-integration refresh failed\nstdout:\n${codexInstall.stdout}\nstderr:\n${codexInstall.stderr}`);
     assert(codexVerify.status === 0, `codex-integration verify failed\nstdout:\n${codexVerify.stdout}\nstderr:\n${codexVerify.stderr}`);
-    assert(fs.existsSync(path.join(codexTarget, ".codex", "skills", "start-session", "SKILL.md")), "codex-integration should restore local skills");
-    assert(fs.existsSync(path.join(codexTarget, ".codex", "skills.yaml")), "codex-integration should restore skills.yaml");
+    assert(fs.existsSync(path.join(codexTarget, ".agents", "skills", "start-session", "SKILL.md")), "codex-integration should restore native project skills");
+    assert(fs.existsSync(path.join(codexTarget, ".aidn", "codex", "skills.yaml")), "codex-integration should restore AIDN skill inventory");
+    assert(fs.existsSync(path.join(codexTarget, ".codex", "agents", "aidn-reviewer.toml")), "codex-integration should restore bounded agents");
+    assert(fs.existsSync(path.join(codexTarget, ".codex", "hooks.json")), "codex-integration should restore the supported hook contract");
     assert(githubInstall.status === 0, `github-integration refresh failed\nstdout:\n${githubInstall.stdout}\nstderr:\n${githubInstall.stderr}`);
     assert(githubVerify.status === 0, `github-integration verify failed\nstdout:\n${githubVerify.stdout}\nstderr:\n${githubVerify.stderr}`);
     assert(fs.existsSync(path.join(githubTarget, ".github", "workflows", "branch-prune.yml")), "github-integration should restore branch pruning automation");
     assert(extendedInstall.status === 0, `extended refresh failed\nstdout:\n${extendedInstall.stdout}\nstderr:\n${extendedInstall.stderr}`);
     assert(extendedVerify.status === 0, `extended verify failed\nstdout:\n${extendedVerify.stdout}\nstderr:\n${extendedVerify.stderr}`);
     assert(fs.existsSync(path.join(extendedTarget, ".aidn", "runtime", "agents", "example-external-auditor.mjs")), "extended should restore runtime agent examples");
-    assert(fs.existsSync(path.join(extendedTarget, ".codex", "skills", "start-session", "SKILL.md")), "extended should restore local skills");
-    assert(fs.existsSync(path.join(extendedTarget, ".codex", "skills.yaml")), "extended should restore skills.yaml");
+    assert(fs.existsSync(path.join(extendedTarget, ".agents", "skills", "start-session", "SKILL.md")), "extended should restore native project skills");
+    assert(fs.existsSync(path.join(extendedTarget, ".aidn", "codex", "skills.yaml")), "extended should restore AIDN skill inventory");
+    assert(fs.existsSync(path.join(extendedTarget, ".codex", "agents", "aidn-reviewer.toml")), "extended should restore bounded agents");
+    assert(fs.existsSync(path.join(extendedTarget, ".codex", "hooks.json")), "extended should restore the supported hook contract");
     assert(fs.existsSync(path.join(extendedTarget, ".github", "workflows", "branch-prune.yml")), "extended should restore branch pruning automation");
     assert(packageLeakGuard.pass, `npm pack leak guard failed: ${packageLeakGuard.violations.slice(0, 20).join(", ")}`);
     assert(packageDocsAllowlist.pass, `package docs allowlist failed: ${packageDocsAllowlist.violations.slice(0, 20).join(", ")}`);
 
-    console.log("PASS");
   } catch (error) {
-    console.error(`ERROR: ${error.message}`);
-    process.exit(1);
+    primaryError = error;
   } finally {
-    removePathWithRetry(tempRoot);
+    cleanupResult = removePathWithRetry(tempRoot);
+  }
+
+  if (primaryError) {
+    console.error(`ERROR: ${primaryError.message}`);
+  }
+  if (!cleanupResult?.ok) {
+    console.error(
+      `ERROR: pack topology cleanup failed after ${cleanupResult?.attempts ?? 0} attempts: `
+      + `${cleanupResult?.error?.message ?? "unknown error"}`,
+    );
+  }
+  if (primaryError || !cleanupResult?.ok) {
+    process.exitCode = 1;
+    return;
+  }
+
+  if (!cleanupProbe) {
+    console.log("PASS");
+    console.log(JSON.stringify({
+      exit_policy: exitPolicy,
+      injected_failure_cleanup: injectedFailureCleanup,
+      cleanup: {
+        temporary_root_removed: true,
+        attempts: cleanupResult.attempts,
+      },
+    }, null, 2));
   }
 }
 

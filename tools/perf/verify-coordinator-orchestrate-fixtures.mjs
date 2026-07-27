@@ -3,7 +3,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+
+const CI_TRUNCATION_CHARACTER_COUNT = 219264;
 
 function parseArgs(argv) {
   const args = {
@@ -39,7 +42,178 @@ function assert(condition, message) {
   }
 }
 
-function runJson(script, args, repoRoot, expectStatus = 0) {
+function tokenizeJavaScript(source) {
+  const tokens = [];
+  let index = 0;
+  while (index < source.length) {
+    const token = source[index];
+    const next = source[index + 1] ?? "";
+    if (/\s/.test(token)) {
+      index += 1;
+      continue;
+    }
+    if (token === "/" && next === "/") {
+      index += 2;
+      while (index < source.length && source[index] !== "\n") {
+        index += 1;
+      }
+      continue;
+    }
+    if (token === "/" && next === "*") {
+      index += 2;
+      while (index < source.length && !(source[index] === "*" && source[index + 1] === "/")) {
+        index += 1;
+      }
+      index += 2;
+      continue;
+    }
+    if (token === "'" || token === "\"" || token === "`") {
+      const quote = token;
+      index += 1;
+      while (index < source.length) {
+        if (source[index] === "\\") {
+          index += 2;
+          continue;
+        }
+        if (source[index] === quote) {
+          index += 1;
+          break;
+        }
+        index += 1;
+      }
+      continue;
+    }
+    if (/[A-Za-z_$]/.test(token)) {
+      const start = index;
+      index += 1;
+      while (index < source.length && /[A-Za-z0-9_$]/.test(source[index])) {
+        index += 1;
+      }
+      tokens.push(source.slice(start, index));
+      continue;
+    }
+    if (/[0-9]/.test(token)) {
+      const start = index;
+      index += 1;
+      while (index < source.length && /[0-9A-Za-z_.]/.test(source[index])) {
+        index += 1;
+      }
+      tokens.push(source.slice(start, index));
+      continue;
+    }
+    tokens.push(token);
+    index += 1;
+  }
+  return tokens;
+}
+
+function immediateProcessExitArguments(source) {
+  const tokens = tokenizeJavaScript(source);
+  const argumentsFound = [];
+  for (let index = 0; index < tokens.length - 4; index += 1) {
+    if (
+      tokens[index] === "process"
+      && tokens[index + 1] === "."
+      && tokens[index + 2] === "exit"
+      && tokens[index + 3] === "("
+    ) {
+      argumentsFound.push(tokens[index + 4]);
+    }
+  }
+  return argumentsFound;
+}
+
+function runExitPolicyModuleProbe(policyModulePath) {
+  const moduleUrl = pathToFileURL(policyModulePath).href;
+  const probe = [
+    `import { COORDINATOR_ORCHESTRATE_EXIT_POLICY, deferCoordinatorOrchestrateFailureExit } from ${JSON.stringify(moduleUrl)};`,
+    "deferCoordinatorOrchestrateFailureExit();",
+    "const observedExitCode = process.exitCode;",
+    "process.stdout.write(JSON.stringify({ policy: COORDINATOR_ORCHESTRATE_EXIT_POLICY, observed_exit_code: observedExitCode }));",
+    "process.exitCode = 0;",
+  ].join("\n");
+  return spawnSync(process.execPath, ["--input-type=module", "--eval", probe], {
+    encoding: "utf8",
+    shell: false,
+    timeout: 30000,
+    maxBuffer: 1024 * 1024,
+  });
+}
+
+function verifyDeferredExitPolicy(repoRoot, tempRoot) {
+  const runtimePath = path.join(repoRoot, "tools", "runtime", "coordinator-orchestrate.mjs");
+  const policyPath = path.join(
+    repoRoot,
+    "tools",
+    "runtime",
+    "coordinator-orchestrate-exit-policy.mjs",
+  );
+  const runtimeSource = fs.readFileSync(runtimePath, "utf8");
+  const policySource = fs.readFileSync(policyPath, "utf8");
+  const runtimeExitArguments = immediateProcessExitArguments(runtimeSource);
+  const policyExitArguments = immediateProcessExitArguments(policySource);
+  assert(
+    runtimeExitArguments.every((argument) => argument === "0"),
+    `coordinator-orchestrate may only use immediate process.exit(0) for help; found ${runtimeExitArguments.join(", ")}`,
+  );
+  assert(
+    policyExitArguments.length === 0,
+    `coordinator exit policy must not use immediate process.exit; found ${policyExitArguments.join(", ")}`,
+  );
+
+  const mutationNeedle = "process.exitCode = 1;";
+  const mutationCount = policySource.split(mutationNeedle).length - 1;
+  assert(mutationCount === 1, `exit policy should expose exactly one deferred failure assignment, found ${mutationCount}`);
+  const policyProbeRoot = path.join(tempRoot, "exit-policy-probe");
+  fs.mkdirSync(policyProbeRoot, { recursive: true });
+  const originalCopy = path.join(policyProbeRoot, "original-policy.mjs");
+  const mutatedCopy = path.join(policyProbeRoot, "mutated-policy.mjs");
+  fs.writeFileSync(originalCopy, policySource, "utf8");
+  fs.writeFileSync(
+    mutatedCopy,
+    policySource.replace(mutationNeedle, "process.exit(1);"),
+    "utf8",
+  );
+
+  const mutatedExitArguments = immediateProcessExitArguments(
+    fs.readFileSync(mutatedCopy, "utf8"),
+  );
+  assert(
+    mutatedExitArguments.includes("1"),
+    "structured exit guard should identify the injected immediate process.exit(1)",
+  );
+
+  const originalProbe = runExitPolicyModuleProbe(originalCopy);
+  assert(originalProbe.status === 0, "deferred exit policy probe should reach its sentinel");
+  const originalPayload = JSON.parse(String(originalProbe.stdout ?? ""));
+  assert(
+    originalPayload.observed_exit_code === 1,
+    "deferred exit policy should assign process.exitCode=1",
+  );
+  assert(
+    originalPayload.policy?.nonzero_failure_termination === "deferred-process-exit-code",
+    "deferred exit policy metadata should remain explicit",
+  );
+  assert(
+    originalPayload.policy?.immediate_nonzero_process_exit_allowed === false,
+    "deferred exit policy should forbid immediate nonzero process exit",
+  );
+
+  const mutatedProbe = runExitPolicyModuleProbe(mutatedCopy);
+  assert(
+    mutatedProbe.status === 1 && String(mutatedProbe.stdout ?? "") === "",
+    "process.exit(1) mutant should be killed before the semantic sentinel on every platform",
+  );
+  return {
+    runtime_immediate_exit_arguments: runtimeExitArguments,
+    policy_immediate_exit_arguments: policyExitArguments,
+    deferred_exit_code_observed: originalPayload.observed_exit_code,
+    process_exit_1_mutant_rejected: true,
+    mutant_rejected_before_pipe_behavior: true,
+  };
+}
+
+function runJsonWithEvidence(script, args, repoRoot, expectStatus = 0) {
   const result = spawnSync(process.execPath, [script, ...args], {
     cwd: repoRoot,
     env: { ...process.env },
@@ -47,10 +221,35 @@ function runJson(script, args, repoRoot, expectStatus = 0) {
     timeout: 240000,
     maxBuffer: 20 * 1024 * 1024,
   });
-  if ((result.status ?? 1) !== expectStatus) {
-    throw new Error(`Command failed (${path.basename(script)}): ${String(result.stderr ?? result.stdout ?? "").trim()}`);
+  const status = result.status ?? 1;
+  const stdout = String(result.stdout ?? "");
+  const stderr = String(result.stderr ?? "").trim();
+  if (status !== expectStatus) {
+    throw new Error(
+      `Command failed (${path.basename(script)}): exit=${status}, expected=${expectStatus}, `
+      + `stdout_characters=${stdout.length}${stderr ? `, stderr=${stderr}` : ""}`,
+    );
   }
-  return JSON.parse(String(result.stdout ?? "{}"));
+  let payload;
+  try {
+    payload = JSON.parse(stdout);
+  } catch (error) {
+    throw new Error(
+      `Command returned incomplete JSON (${path.basename(script)}): exit=${status}, `
+      + `stdout_characters=${stdout.length}: ${error.message}`,
+    );
+  }
+  return {
+    payload,
+    status,
+    stdout_characters: stdout.length,
+    stdout_bytes: Buffer.byteLength(stdout, "utf8"),
+    stdout_terminated: stdout.endsWith("\n"),
+  };
+}
+
+function runJson(script, args, repoRoot, expectStatus = 0) {
+  return runJsonWithEvidence(script, args, repoRoot, expectStatus).payload;
 }
 
 function appendHistoryEvent(targetRoot, event) {
@@ -78,7 +277,7 @@ function buildDispatchEvent(ts) {
 }
 
 function buildEscalatedFixture(targetRoot, repoRoot, handoffProjectScript, summaryScript) {
-  runJson(handoffProjectScript, ["--target", targetRoot, "--json"], repoRoot, 0);
+  runJson(handoffProjectScript, ["--target", targetRoot, "--write", "--json"], repoRoot, 0);
   appendHistoryEvent(targetRoot, buildDispatchEvent("2026-03-09T02:00:00Z"));
   appendHistoryEvent(targetRoot, buildDispatchEvent("2026-03-09T02:05:00Z"));
   appendHistoryEvent(targetRoot, buildDispatchEvent("2026-03-09T02:10:00Z"));
@@ -88,7 +287,7 @@ function buildEscalatedFixture(targetRoot, repoRoot, handoffProjectScript, summa
 }
 
 function buildRoleBlockedFixture(targetRoot, repoRoot, handoffProjectScript) {
-  runJson(handoffProjectScript, ["--target", targetRoot, "--json"], repoRoot, 0);
+  runJson(handoffProjectScript, ["--target", targetRoot, "--write", "--json"], repoRoot, 0);
   const roleBlockedAgentDir = path.join(targetRoot, ".aidn", "runtime", "agents");
   fs.mkdirSync(roleBlockedAgentDir, { recursive: true });
   fs.writeFileSync(path.join(roleBlockedAgentDir, "probe-failing-auditor.mjs"), [
@@ -187,8 +386,10 @@ function main() {
     const summaryScript = path.resolve(repoRoot, "tools", "runtime", "project-coordination-summary.mjs");
     const arbitrationScript = path.resolve(repoRoot, "tools", "runtime", "coordinator-record-arbitration.mjs");
     const orchestrateScript = path.resolve(repoRoot, "tools", "runtime", "coordinator-orchestrate.mjs");
+    const aidnScript = path.resolve(repoRoot, "bin", "aidn.mjs");
 
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-coordinator-orchestrate-"));
+    const exitPolicyEvidence = verifyDeferredExitPolicy(repoRoot, tempRoot);
     const readyTarget = path.join(tempRoot, "ready");
     const escalatedTarget = path.join(tempRoot, "escalated");
     const resumedTarget = path.join(tempRoot, "resumed");
@@ -204,7 +405,7 @@ function main() {
 
     installSharedPlanningFixture(readyTarget);
     installSharedPlanningFixture(resumedTarget);
-    runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", readyTarget, "--write", "--json"], repoRoot, 0);
     buildEscalatedFixture(escalatedTarget, repoRoot, handoffProjectScript, summaryScript);
     buildEscalatedFixture(resumedTarget, repoRoot, handoffProjectScript, summaryScript);
     buildRoleBlockedFixture(roleBlockedTarget, repoRoot, handoffProjectScript);
@@ -212,7 +413,13 @@ function main() {
 
     const dryRun = runJson(orchestrateScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     const blocked = runJson(orchestrateScript, ["--target", escalatedTarget, "--execute", "--json"], repoRoot, 1);
-    const resumed = runJson(orchestrateScript, ["--target", resumedTarget, "--execute", "--max-iterations", "3", "--json"], repoRoot, 1);
+    const resumedRun = runJsonWithEvidence(
+      aidnScript,
+      ["runtime", "coordinator-orchestrate", "--target", resumedTarget, "--execute", "--max-iterations", "3", "--json"],
+      repoRoot,
+      1,
+    );
+    const resumed = resumedRun.payload;
     const roleBlocked = runJson(orchestrateScript, ["--target", roleBlockedTarget, "--execute", "--json"], repoRoot, 1);
 
     const resumedHistoryFile = path.join(resumedTarget, ".aidn", "runtime", "context", "coordination-history.ndjson");
@@ -243,6 +450,11 @@ function main() {
     assert(resumed.runs[0].shared_planning_candidate?.candidate_aligned === true, "orchestrate should preserve the aligned shared planning candidate during execution");
     assert(resumed.runs[0].execution_status === "executed", "orchestrate should execute the resumed dispatch");
     assert(resumed.orchestration_diagnostic?.iterations_completed === 1, "resumed orchestration should expose iteration count in the stable diagnostic");
+    assert(
+      resumedRun.stdout_characters > CI_TRUNCATION_CHARACTER_COUNT,
+      `resumed-then-blocked public CLI output should exceed the observed CI truncation size (${resumedRun.stdout_characters} <= ${CI_TRUNCATION_CHARACTER_COUNT})`,
+    );
+    assert(resumedRun.stdout_terminated, "resumed-then-blocked public CLI output should terminate after the complete JSON document");
     assert(fs.existsSync(resumedHistoryFile), "orchestrate should write coordination history");
     assert(fs.existsSync(resumedLogFile), "orchestrate should write coordination log");
     assert(fs.readFileSync(resumedHistoryFile, "utf8").includes("\"event\":\"user_arbitration\""), "orchestrate history should retain arbitration event");
@@ -260,6 +472,16 @@ function main() {
       ts: new Date().toISOString(),
       dry_run: dryRun,
       blocked,
+      blocked_stdout_evidence: {
+        scenario: "resumed_then_blocked",
+        exit_status: resumedRun.status,
+        characters: resumedRun.stdout_characters,
+        bytes: resumedRun.stdout_bytes,
+        complete_json: true,
+        terminated: resumedRun.stdout_terminated,
+        exceeds_observed_ci_truncation: resumedRun.stdout_characters > CI_TRUNCATION_CHARACTER_COUNT,
+      },
+      exit_policy_evidence: exitPolicyEvidence,
       resumed,
       role_blocked: roleBlocked,
       pass: true,
@@ -273,7 +495,7 @@ function main() {
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       const cleanup = removePathWithRetry(tempRoot);

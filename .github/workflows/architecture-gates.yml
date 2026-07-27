@@ -2,122 +2,95 @@ name: Architecture Gates
 
 on:
   pull_request:
+    branches: [dev, main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  contracts:
-    name: Verify Contract Gates
+  cleanliness:
+    name: Verify Branch And Gate Policy
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
         with:
-          node-version: "22"
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Fetch Announced Remote Head
+        if: ${{ github.event_name == 'pull_request' }}
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            "+refs/heads/${GITHUB_HEAD_REF}:refs/remotes/origin/${GITHUB_HEAD_REF}"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.13"
+      - name: Install Locked Gate Dependencies
+        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund
+      - name: Verify Cleanliness With Remote Provenance
+        env:
+          AIDN_BRANCH_POLICY_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/${{ github.head_ref }}
+        run: npm run verify:cleanliness
 
-      - name: Verify CLI Effect Policy
-        run: npm run perf:verify-cli-effect-policy
+  contracts:
+    name: Verify Contracts And Effects
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.13"
+      - run: npm run verify:contracts
+      - run: npm run verify:effects
 
-      - name: Verify CLI Surface Inventory
-        run: npm run perf:verify-cli-surface-inventory
-
-      - name: Verify No Implicit Write
-        run: npm run perf:verify-cli-no-implicit-write
-
-      - name: Verify CLI Output Contracts
-        run: npm run perf:verify-cli-output-contracts
+  governance:
+    name: Verify Information Governance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.13"
+      - run: npm run verify:governance
 
   runtime:
-    name: Verify Runtime Gates
+    name: Verify Runtime Boundaries
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22.13"
+      - run: npm run verify:runtime
 
-      - name: Verify Source-Of-Truth Policy
-        run: npm run perf:verify-source-of-truth-policy
-
-      - name: Verify Metadata Policy
-        run: npm run perf:verify-metadata-policy
-
-      - name: Verify Governance Completeness
-        run: npm run perf:verify-governance-completeness
-
-      - name: Verify State Mode Parity
-        run: npm run perf:verify-state-mode-parity
-
-      - name: Verify Governance Runtime CLI
-        run: npm run perf:verify-governance-runtime-cli
-
-      - name: Verify Coordination Summary Use Case
-        run: npm run perf:verify-coordination-summary-use-case
-
-  ops:
-    name: Verify Ops Gates
+  codex:
+    name: Verify Codex Installed Client
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22.13"
+      - run: npm run verify:codex
 
-      - name: Verify DB Schema Migrations
-        run: npm run perf:verify-db-schema-migrations
-
-      - name: Verify DB Runtime CLI
-        run: npm run perf:verify-db-runtime-cli
-
-      - name: Verify Runtime Persistence Parity
-        run: npm run perf:verify-runtime-persistence-parity
-
-      - name: Verify Shared Coordination Backup
-        run: npm run perf:verify-shared-coordination-backup
-
-      - name: Verify Shared Coordination Restore
-        run: npm run perf:verify-shared-coordination-restore
-
-      - name: Verify Shared Coordination Doctor
-        run: npm run perf:verify-shared-coordination-doctor
-
-  release:
-    name: Verify Release Gates
+  security:
+    name: Verify Security Boundaries
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-
-      - name: Verify Release Provenance
-        run: npm run perf:verify-release-provenance
+          node-version: "22.13"
+      - run: npm run verify:security
 
   docs:
-    name: Verify Documentation Gates
+    name: Verify Documentation
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-
-      - name: Verify Markdown Contract
-        run: npm run perf:verify-markdown-contract
+          node-version: "22.13"
+      - run: npm run verify:docs

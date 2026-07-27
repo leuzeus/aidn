@@ -14,6 +14,7 @@ import {
 import { normalizeHookPayload } from "./normalize-hook-payload.mjs";
 
 const CODEX_DIR = path.dirname(fileURLToPath(import.meta.url));
+const AIDN_BIN_SCRIPT = path.resolve(CODEX_DIR, "..", "..", "..", "bin", "aidn.mjs");
 const RUNTIME_SYNC_SCRIPT = path.resolve(CODEX_DIR, "..", "..", "..", "tools", "runtime", "sync-db-first-selective.mjs");
 function ensureJsonArg(commandArgs) {
   if (commandArgs.includes("--json")) {
@@ -23,9 +24,9 @@ function ensureJsonArg(commandArgs) {
 }
 
 function buildDefaultCommand(args) {
-  const command = process.platform === "win32" ? "npx.cmd" : "npx";
+  const command = process.execPath;
   const commandArgs = [
-    "aidn",
+    AIDN_BIN_SCRIPT,
     "perf",
     "skill-hook",
     "--skill",

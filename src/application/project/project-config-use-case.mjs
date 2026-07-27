@@ -16,6 +16,21 @@ function buildDefaults(targetRoot, defaults = {}) {
   };
 }
 
+function withEffect(result, {
+  effectClass,
+  written = false,
+  writeTargets = [],
+  plannedWriteTargets = [],
+}) {
+  return {
+    ...result,
+    effect_class: effectClass,
+    written: Boolean(written),
+    write_targets: written ? [...writeTargets] : [],
+    planned_write_targets: [...plannedWriteTargets],
+  };
+}
+
 export function loadWorkflowAdapterConfigState({ targetRoot, defaults = {} }) {
   return readWorkflowAdapterConfig(targetRoot, buildDefaults(targetRoot, defaults));
 }
@@ -156,24 +171,46 @@ export async function runProjectConfigUseCase({
   };
 
   if (args.migrateAdapter) {
-    return executeWorkflowAdapterMigration({
+    const write = args.write === true;
+    const result = executeWorkflowAdapterMigration({
       repoRoot,
       targetRoot,
       version: args.version ?? "",
-      dryRun: args.dryRun === true,
+      dryRun: !write,
+    });
+    return withEffect(result, {
+      effectClass: write ? "mutating" : "preview",
+      written: write,
+      writeTargets: [
+        result.adapter_path,
+        result.report_path,
+        result.legacy_workflow_source_path,
+        ...result.generated_docs.map((item) => path.resolve(targetRoot, item.target)),
+      ],
+      plannedWriteTargets: [
+        result.adapter_path,
+        result.report_path,
+        result.legacy_workflow_source_path,
+        ...result.generated_docs.map((item) => path.resolve(targetRoot, item.target)),
+      ],
     });
   }
 
   if (args.list) {
+    if (args.write) {
+      throw new Error("--list is read-only and cannot be combined with --write");
+    }
     const state = loadWorkflowAdapterConfigState({ targetRoot, defaults });
-    return {
+    return withEffect({
       ok: true,
       action: "list",
       target_root: targetRoot,
       exists: state.exists,
       path: state.path,
       config: state.exists ? state.data : null,
-    };
+    }, {
+      effectClass: "read-only",
+    });
   }
 
   if (args.adapterFile) {
@@ -181,44 +218,66 @@ export async function runProjectConfigUseCase({
       targetRoot,
       sourceFile: args.adapterFile,
       defaults,
-      dryRun: false,
+      dryRun: args.write !== true,
     });
-    return {
+    const writeRequested = args.write === true;
+    const written = writeRequested && created.created === true;
+    return withEffect({
       ok: true,
-      action: "init-from-file",
+      action: written ? "init-from-file" : "preview-init-from-file",
       target_root: targetRoot,
-      exists: true,
+      exists: written,
       created: created.created,
+      dry_run: !written,
       path: created.path,
       config: created.data,
-    };
+    }, {
+      effectClass: writeRequested ? "mutating" : "preview",
+      written,
+      writeTargets: [created.path],
+      plannedWriteTargets: [created.path],
+    });
   }
 
   if (args.initDefaults) {
     const initialized = initializeWorkflowAdapterConfigDefaults({
       targetRoot,
       defaults,
-      dryRun: args.dryRun === true,
+      dryRun: args.write !== true,
     });
-    return {
+    const writeRequested = args.write === true;
+    const written = writeRequested && initialized.created === true;
+    return withEffect({
       ok: true,
-      action: initialized.created ? "init-defaults" : "init-defaults-existing",
+      action: initialized.created
+        ? "init-defaults"
+        : initialized.exists
+          ? "init-defaults-existing"
+          : "preview-init-defaults",
       target_root: targetRoot,
       exists: initialized.exists,
       created: initialized.created,
-      dry_run: initialized.dryRun,
+      dry_run: !written,
       path: initialized.path,
       config: initialized.data,
-    };
+    }, {
+      effectClass: writeRequested ? "mutating" : "preview",
+      written,
+      writeTargets: [initialized.path],
+      plannedWriteTargets: [initialized.path],
+    });
   }
 
+  if (args.write !== true) {
+    throw new Error("Project config wizard writes configuration; rerun with --write");
+  }
   const state = loadWorkflowAdapterConfigState({ targetRoot, defaults });
   const wizard = await runWorkflowAdapterConfigWizard({
     initialConfig: state.data,
     defaults: buildDefaults(targetRoot, defaults),
   });
   if (!wizard.saved) {
-    return {
+    return withEffect({
       ok: false,
       action: "cancelled",
       target_root: targetRoot,
@@ -226,12 +285,14 @@ export async function runProjectConfigUseCase({
       created: false,
       path: state.path,
       config: state.exists ? state.data : null,
-    };
+    }, {
+      effectClass: "mutating",
+    });
   }
   const filePath = state.exists
     ? writeWorkflowAdapterConfig(targetRoot, wizard.data, buildDefaults(targetRoot, defaults))
     : writeWorkflowAdapterConfig(targetRoot, wizard.data, buildDefaults(targetRoot, defaults));
-  return {
+  return withEffect({
     ok: true,
     action: state.exists ? "updated" : "created",
     target_root: targetRoot,
@@ -239,5 +300,10 @@ export async function runProjectConfigUseCase({
     created: !state.exists,
     path: filePath,
     config: wizard.data,
-  };
+  }, {
+    effectClass: "mutating",
+    written: true,
+    writeTargets: [filePath],
+    plannedWriteTargets: [filePath],
+  });
 }

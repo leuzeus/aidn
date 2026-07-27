@@ -36,6 +36,7 @@ function main() {
     "project_policy",
     "runtime_defaults",
     "workspace_identity",
+    "runtime_project_context",
     "session_state",
     "cycle_state",
     "artifact_inventory",

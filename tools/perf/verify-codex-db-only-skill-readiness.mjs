@@ -16,6 +16,7 @@ const MUTATING_SKILLS = new Set([
 function parseArgs(argv) {
   const args = {
     root: "scaffold/codex",
+    manifest: "",
     agents: "scaffold/root/AGENTS.md",
     json: false,
   };
@@ -24,6 +25,9 @@ function parseArgs(argv) {
     const token = argv[index];
     if (token === "--root") {
       args.root = argv[index + 1] ?? "";
+      index += 1;
+    } else if (token === "--manifest") {
+      args.manifest = argv[index + 1] ?? "";
       index += 1;
     } else if (token === "--agents") {
       args.agents = argv[index + 1] ?? "";
@@ -51,6 +55,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-codex-db-only-skill-readiness.mjs");
   console.log("  node tools/perf/verify-codex-db-only-skill-readiness.mjs --root scaffold/codex --agents scaffold/root/AGENTS.md --json");
+  console.log("  node tools/perf/verify-codex-db-only-skill-readiness.mjs --root .agents/skills --manifest .aidn/codex/skills.yaml --agents AGENTS.md --json");
 }
 
 function readRequired(filePath) {
@@ -72,7 +77,18 @@ function parseSkillsYaml(filePath) {
   return skills;
 }
 
-function resolveSkillsLayout(root) {
+function resolveSkillsLayout(root, explicitManifest = "") {
+  if (explicitManifest) {
+    const skillsYaml = path.resolve(process.cwd(), explicitManifest);
+    if (!fs.existsSync(skillsYaml)) {
+      throw new Error(`Missing skills manifest: ${skillsYaml}`);
+    }
+    return {
+      skillsYaml,
+      skillsDir: root,
+    };
+  }
+
   const rootSkillsYaml = path.join(root, "skills.yaml");
   const nestedSkillsYaml = path.join(root, ".codex", "skills.yaml");
   const nestedSkillsDir = path.join(root, ".codex", "skills");
@@ -119,7 +135,7 @@ function main() {
     const args = parseArgs(process.argv.slice(2));
     const root = path.resolve(process.cwd(), args.root);
     const agentsFile = path.resolve(process.cwd(), args.agents);
-    const layout = resolveSkillsLayout(root);
+    const layout = resolveSkillsLayout(root, args.manifest);
     const skillsYaml = layout.skillsYaml;
     const skillsDir = layout.skillsDir;
     const skills = parseSkillsYaml(skillsYaml);

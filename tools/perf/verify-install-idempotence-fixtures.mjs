@@ -165,6 +165,7 @@ function main() {
       "--migrate-adapter",
       "--version",
       version,
+      "--write",
       "--json",
     ]);
     const migrationPayload = JSON.parse(migration.stdout || "{}");

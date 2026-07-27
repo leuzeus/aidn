@@ -10,6 +10,9 @@ import {
 } from "../../src/application/runtime/coordinator-orchestrate-use-case.mjs";
 import { deriveCoordinatorOrchestrationDiagnostic } from "../../src/application/runtime/coordinator-diagnostics-lib.mjs";
 import { resolveDbBackedMode } from "./db-first-runtime-view-lib.mjs";
+import {
+  deferCoordinatorOrchestrateFailureExit,
+} from "./coordinator-orchestrate-exit-policy.mjs";
 import { resumeCoordinatorDispatch } from "./coordinator-resume.mjs";
 
 function parseArgs(argv) {
@@ -228,12 +231,12 @@ function main() {
       }
     }
     if (args.execute && result.orchestration_status !== "executed" && result.orchestration_status !== "paused") {
-      process.exit(1);
+      deferCoordinatorOrchestrateFailureExit();
     }
   }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    deferCoordinatorOrchestrateFailureExit();
   });
 }
 

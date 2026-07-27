@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { inspectImmediateProcessExitArguments } from "../verify/spawn-sync-evidence-lib.mjs";
 
 const CASES = [
   {
@@ -69,6 +70,31 @@ function printUsage() {
   console.log("  node tools/perf/verify-branch-cycle-audit-admission-fixtures.mjs");
 }
 
+function verifyHookExitPolicy() {
+  const hookFile = path.resolve(process.cwd(), "tools", "perf", "branch-cycle-audit-hook.mjs");
+  const source = fs.readFileSync(hookFile, "utf8");
+  const immediateExitArguments = inspectImmediateProcessExitArguments(source);
+  if (
+    immediateExitArguments.length !== 1
+    || immediateExitArguments[0] !== "0"
+  ) {
+    throw new Error(
+      "branch-cycle-audit hook may only use immediate process.exit(0) for help; "
+      + `found ${immediateExitArguments.join(", ")}`,
+    );
+  }
+  const oldSuccessExitMutant = `${source}\nprocess.exit(0);\n`;
+  const mutantArguments = inspectImmediateProcessExitArguments(oldSuccessExitMutant);
+  if (mutantArguments.length === immediateExitArguments.length) {
+    throw new Error("branch-cycle-audit immediate-success-exit mutant was not detected");
+  }
+  return {
+    immediate_exit_arguments: immediateExitArguments,
+    help_exit_only: true,
+    immediate_success_exit_mutant_rejected: true,
+  };
+}
+
 function runJson(script, scriptArgs, env = {}) {
   const file = path.resolve(process.cwd(), script);
   const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
@@ -131,6 +157,8 @@ function runCase(tmpRoot, testCase) {
       codex_result: codex?.result ?? null,
       codex_ok: codex?.ok ?? null,
       codex_reason_code: codex?.normalized?.reason_code ?? null,
+      codex_command_status: codex?.command_status ?? null,
+      codex_error: codex?.error ?? null,
     },
     pass: Object.values(checks).every((value) => value === true),
   };
@@ -140,6 +168,7 @@ function main() {
   const createdTargets = [];
   try {
     const args = parseArgs(process.argv.slice(2));
+    const hookExitPolicy = verifyHookExitPolicy();
     const tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
     const runs = CASES.map((testCase) => {
       const run = runCase(tmpRoot, testCase);
@@ -150,6 +179,7 @@ function main() {
     const output = {
       ts: new Date().toISOString(),
       runs,
+      hook_exit_policy: hookExitPolicy,
       pass,
     };
 
@@ -172,12 +202,12 @@ function main() {
     }
 
     if (!pass) {
-      process.exit(1);
+      process.exitCode = 1;
     }
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 

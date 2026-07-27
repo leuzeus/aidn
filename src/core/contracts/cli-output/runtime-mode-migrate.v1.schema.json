@@ -4,6 +4,10 @@
   "title": "aidn runtime mode-migrate --json",
   "type": "object",
   "x-aidn-command": "aidn runtime mode-migrate --json",
+  "x-aidn-commands": [
+    "aidn runtime mode-migrate --json",
+    "aidn runtime mode-migrate --write --json"
+  ],
   "x-aidn-contract-version": "cli-output-v1",
   "required": [
     "ts",
@@ -23,6 +27,8 @@
     "from_mode": { "type": "string" },
     "to_mode": { "type": "string" },
     "strict": { "type": "boolean" },
+    "preview": { "type": "boolean" },
+    "write_requested": { "type": "boolean" },
     "schema_status_before": { "type": ["object", "null"], "additionalProperties": true },
     "schema_migration_result": { "type": ["object", "null"], "additionalProperties": true },
     "schema_status_after": { "type": ["object", "null"], "additionalProperties": true },

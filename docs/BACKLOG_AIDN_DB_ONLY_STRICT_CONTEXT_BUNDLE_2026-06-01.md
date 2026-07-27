@@ -18,7 +18,7 @@ Criteres d'acceptation:
 - le contrat cible est documente;
 - la separation backend/mode d'etat est explicite;
 - le backup externe et la quarantaine externe sont decrits;
-- `gowire` est positionne comme lot separe.
+- `external-pilot` est positionne comme lot separe.
 
 Gates cibles:
 
@@ -256,17 +256,17 @@ Gates cibles:
 - `npm run perf:verify-codex-db-only-skill-readiness`
 - `npm run perf:verify-skill-hooks`
 
-## P2 - Application pilote Gowire
+## P2 - Application pilote External Pilot
 
-### P2-01 - Migrer `gowire` apres validation AIDN
+### P2-01 - Migrer `external-pilot` apres validation AIDN
 
 Priorite: P2
 
 Surfaces:
 
-- `G:\projets\gowire` en repo installe;
-- BDD PostgreSQL AIDN de `gowire`;
-- backup externe `G:\projets\.aidn-backups\gowire\<timestamp>\`.
+- `<external-pilot-root>` en repo installe;
+- BDD PostgreSQL AIDN de `external-pilot`;
+- backup externe `<local-backup-root>\<timestamp>\`.
 
 Criteres d'acceptation:
 
@@ -278,7 +278,7 @@ Criteres d'acceptation:
 
 Gates cibles:
 
-- `aidn runtime persistence-status --target G:\projets\gowire --json`
-- `aidn install --target G:\projets\gowire --pack core --dry-run --no-codex-migrate-custom`
-- `aidn install --target G:\projets\gowire --pack core --verify`
+- `aidn runtime persistence-status --target <external-pilot-root> --json`
+- `aidn install --target <external-pilot-root> --pack core --dry-run --no-codex-migrate-custom`
+- `aidn install --target <external-pilot-root> --pack core --verify`
 - diagnostics SQL doublons runtime et shared.

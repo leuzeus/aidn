@@ -28,7 +28,7 @@ missing_context: no
 
 ## Session Topology
 
-- session_file: G:\projets\aidn\tests\fixtures\perf-integration-risk\integration-cycle\docs\audit\sessions\S311.md
+- session_file: <local-source-root>\tests\fixtures\perf-integration-risk\integration-cycle\docs\audit\sessions\S311.md
 - attached_cycles: C311, C312
 - integration_target_cycles: C311, C312
 - primary_focus_cycle: none
@@ -36,11 +36,11 @@ missing_context: no
 ## Candidate Cycles
 
 - C311: type=feature readiness=ready outcome=DONE dor_state=READY
-  status: G:\projets\aidn\tests\fixtures\perf-integration-risk\integration-cycle\docs\audit\cycles\C311-feature-auth\status.md
+  status: <local-source-root>\tests\fixtures\perf-integration-risk\integration-cycle\docs\audit\cycles\C311-feature-auth\status.md
   blockers: none
   referenced_paths: src/auth/controller.js, src/auth/service.js
 - C312: type=refactor readiness=ready outcome=DONE dor_state=READY
-  status: G:\projets\aidn\tests\fixtures\perf-integration-risk\integration-cycle\docs\audit\cycles\C312-refactor-auth-core\status.md
+  status: <local-source-root>\tests\fixtures\perf-integration-risk\integration-cycle\docs\audit\cycles\C312-refactor-auth-core\status.md
   blockers: none
   referenced_paths: src/auth/service.js, src/auth/store.js
 

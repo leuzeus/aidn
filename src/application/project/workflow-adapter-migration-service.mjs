@@ -285,7 +285,8 @@ function promoteStructuredPoliciesFromImportedSections(importedSections, extract
     ? {
       enabled: true,
       evaluationScope: "dispatch-or-local-scope",
-      escalateOnParallelAttachedCycles: extractedConfig.executionPolicy?.escalateOnParallelAttachedCycles === true,
+      escalateOnParallelAttachedCycles: extractedConfig.executionPolicy?.escalateOnParallelAttachedCycles === true
+        || /multi-agent contexts, evaluate fast-path eligibility/i.test(executionOverviewSection),
       escalateOnSharedIntegrationSurface: /shared runtime\/codegen boundary is touched/i.test(executionFastPathSection),
       hardGates: parseExecutionGateLine(
         executionGateClassesSection,
@@ -337,7 +338,9 @@ function promoteStructuredPoliciesFromImportedSections(importedSections, extract
     ? {
       enabled: true,
       sharedSurfaceKinds: parseNestedBacktickBullets(
-        String(crossUsageSection).split(/Shared-surface defaults apply to:/i)[1] ?? "",
+        String(crossUsageSection)
+          .split(/Shared-surface defaults apply to:/i)[1]
+          ?.split(/Expected evidence artifacts:/i)[0] ?? "",
       ),
       evidenceArtifacts: parseNestedBacktickBullets(
         String(crossUsageSection).split(/Expected evidence artifacts:/i)[1] ?? "",

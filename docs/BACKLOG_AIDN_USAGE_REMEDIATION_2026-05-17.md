@@ -27,7 +27,7 @@ Scope:
 
 - Narrow package docs to consumer/runtime documentation.
 - Keep internal rollout plans, local pilot evidence, and sensitive local validation paths out of the npm tarball.
-- Add a tarball inspection guard covering `gowire`, `G:\projets\`, `pilot-main`, `pilot-linked`, and local validation path terms.
+- Add tarball and tracked-tree guards covering named clients, local project roots, dedicated pilot worktree names, and pilot-specific technology terms.
 
 Done when:
 

@@ -208,24 +208,67 @@ function buildArtifactSelectSql() {
   `;
 }
 
+function createMissingReadOnlyArtifactStore(sqliteFile) {
+  return {
+    sqlite_file: sqliteFile,
+    read_only: true,
+    exists: false,
+    upsertArtifact() {
+      throw new Error("Artifact store is read-only");
+    },
+    getArtifact() {
+      return null;
+    },
+    listArtifacts() {
+      return [];
+    },
+    materializeArtifacts(options = {}) {
+      if (options.dryRun !== true) {
+        throw new Error("Artifact store is read-only; materialization requires an explicit write path");
+      }
+      const targetRoot = path.resolve(process.cwd(), options.targetRoot ?? ".");
+      return {
+        target_root: targetRoot,
+        audit_root: path.resolve(targetRoot, options.auditRoot ?? "docs/audit"),
+        dry_run: true,
+        selected_count: 0,
+        exported: 0,
+        unchanged: 0,
+        missing_content: 0,
+        skipped_unsafe_path: 0,
+        bytes_written: 0,
+      };
+    },
+    close() {},
+  };
+}
+
 export function createArtifactStore(options = {}) {
   const sqliteFile = path.resolve(process.cwd(), options.sqliteFile ?? ".aidn/runtime/index/workflow-index.sqlite");
+  const readOnly = options.readOnly === true;
   const schemaFile = options.schemaFile
     ? path.resolve(process.cwd(), options.schemaFile)
     : getDefaultWorkflowSchemaFile();
   const DatabaseSync = getDatabaseSync();
 
-  fs.mkdirSync(path.dirname(sqliteFile), { recursive: true });
-  const db = new DatabaseSync(sqliteFile);
-  db.exec("PRAGMA foreign_keys=OFF;");
-  ensureWorkflowDbSchema({
-    db,
-    sqliteFile,
-    schemaFile,
-    role: "artifact-store-adapter",
-  });
+  if (readOnly && !fs.existsSync(sqliteFile)) {
+    return createMissingReadOnlyArtifactStore(sqliteFile);
+  }
+  if (!readOnly) {
+    fs.mkdirSync(path.dirname(sqliteFile), { recursive: true });
+  }
+  const db = new DatabaseSync(sqliteFile, readOnly ? { readOnly: true } : {});
+  if (!readOnly) {
+    db.exec("PRAGMA foreign_keys=OFF;");
+    ensureWorkflowDbSchema({
+      db,
+      sqliteFile,
+      schemaFile,
+      role: "artifact-store-adapter",
+    });
+  }
 
-  const upsertStmt = db.prepare(`
+  const upsertStmt = readOnly ? null : db.prepare(`
     INSERT INTO artifacts (
       path, kind, family, subtype, gate_relevance, classification_reason, content_format, content, canonical_format, canonical_json, sha256, size_bytes, mtime_ns, session_id, cycle_id, source_mode, entity_confidence, legacy_origin, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -266,7 +309,7 @@ export function createArtifactStore(options = {}) {
     WHERE path = ?
   `);
 
-  const upsertCycleStmt = db.prepare(`
+  const upsertCycleStmt = readOnly ? null : db.prepare(`
     INSERT INTO cycles (
       cycle_id, session_id, state, outcome, branch_name, dor_state,
       continuity_rule, continuity_base_branch, continuity_latest_cycle_branch, continuity_decision_by, updated_at
@@ -286,7 +329,12 @@ export function createArtifactStore(options = {}) {
 
   return {
     sqlite_file: sqliteFile,
+    read_only: readOnly,
+    exists: true,
     upsertArtifact(input) {
+      if (readOnly) {
+        throw new Error("Artifact store is read-only");
+      }
       const artifact = normalizeArtifact(input);
       if (!artifact.path) {
         throw new Error("Artifact path is required");
@@ -352,6 +400,9 @@ export function createArtifactStore(options = {}) {
         ? options.onlyPaths.map((item) => String(item).replace(/\\/g, "/")).filter((item) => item.length > 0)
         : [];
       const dryRun = options.dryRun === true;
+      if (readOnly && !dryRun) {
+        throw new Error("Artifact store is read-only; materialization requires an explicit write path");
+      }
       const rows = onlyPaths.length > 0
         ? onlyPaths.map((rel) => listByPathsStmt.get(rel)).filter((row) => row != null)
         : listStmt.all(Number(options.limit ?? 500));
@@ -373,7 +424,6 @@ export function createArtifactStore(options = {}) {
           continue;
         }
         const absolute = path.resolve(auditRoot, rel);
-        fs.mkdirSync(path.dirname(absolute), { recursive: true });
         if (fs.existsSync(absolute)) {
           const previous = fs.readFileSync(absolute);
           if (previous.equals(content)) {
@@ -382,6 +432,7 @@ export function createArtifactStore(options = {}) {
           }
         }
         if (!dryRun) {
+          fs.mkdirSync(path.dirname(absolute), { recursive: true });
           fs.writeFileSync(absolute, content);
         }
         exported += 1;
@@ -485,6 +536,9 @@ function main() {
     const args = parseArgs(process.argv.slice(2));
     const store = createArtifactStore({
       sqliteFile: args.sqliteFile,
+      readOnly: args.action === "list"
+        || args.action === "get"
+        || (args.action === "materialize" && args.dryRun),
     });
     try {
       let payload = null;

@@ -6,7 +6,7 @@ Symptom:
 - `node` command is not recognized.
 
 Fix:
-- Install Node.js 18+.
+- Install Node.js 22.13+.
 - Reopen your terminal and run `node -v`.
 
 ## Codex CLI missing (codex_online=true)

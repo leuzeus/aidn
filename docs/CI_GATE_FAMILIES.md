@@ -9,12 +9,19 @@ This page maps the architectural verification surface to the workflows that now 
 
 | Family | Workflow | Primary checks |
 | --- | --- | --- |
-| Contracts | [`.github/workflows/architecture-gates.yml`](../.github/workflows/architecture-gates.yml) | CLI effect policy, CLI surface inventory, no implicit write, CLI output contracts |
-| Runtime | [`.github/workflows/architecture-gates.yml`](../.github/workflows/architecture-gates.yml) | source-of-truth policy, metadata policy, governance completeness, state-mode parity, governance runtime CLI |
-| Ops | [`.github/workflows/architecture-gates.yml`](../.github/workflows/architecture-gates.yml) | DB schema migrations, DB runtime CLI, runtime persistence parity, shared coordination backup/restore/doctor |
-| Security | [`.github/workflows/security-baseline.yml`](../.github/workflows/security-baseline.yml) | package leak guard, shared surface boundary, no implicit write |
-| Release | [`.github/workflows/architecture-gates.yml`](../.github/workflows/architecture-gates.yml) | release version, build-release, release artifacts |
-| Docs | [`.github/workflows/architecture-gates.yml`](../.github/workflows/architecture-gates.yml) | markdown contract conformance |
+| Contracts | [`.github/workflows/architecture-gates.yml`](../.github/workflows/architecture-gates.yml) | JSON contracts and exhaustive surface catalog |
+| Effects | [`.github/workflows/architecture-gates.yml`](../.github/workflows/architecture-gates.yml) | effect policy and no implicit write |
+| Governance | [`.github/workflows/architecture-gates.yml`](../.github/workflows/architecture-gates.yml) | source of truth, metadata, completeness |
+| Docs | [`.github/workflows/architecture-gates.yml`](../.github/workflows/architecture-gates.yml) | Markdown contracts and CLI inventory |
+| Codex | [`.github/workflows/architecture-gates.yml`](../.github/workflows/architecture-gates.yml) | pack topology and isolated installed-client discovery |
+| Runtime | [`.github/workflows/architecture-gates.yml`](../.github/workflows/architecture-gates.yml) | state modes, governance CLI, shared boundary |
+| Security | [`.github/workflows/architecture-gates.yml`](../.github/workflows/architecture-gates.yml) | full Git-tracked sensitivity scan plus package/surface boundary checks |
+| Release | [`.github/workflows/release.yml`](../.github/workflows/release.yml) | version, reproducibility, topology, sensitivity, workflow policy |
+| Cleanliness | [`.github/workflows/architecture-gates.yml`](../.github/workflows/architecture-gates.yml) | branch policy, gate catalog, clean local full run |
+
+The executable catalog is `package/catalogs/gates.v1.json`. Every entry declares family, script, job, surfaces, condition, obligations for `dev`, `main`, and release, and reports one of `PASS`, `FAIL`, or `SKIP`.
+
+The tracked-tree sensitivity gate inspects every Git-tracked path and every tracked text file. Package topology independently applies the same policy to the npm tarball. Tracked documentation now uses neutral external-pilot labels and placeholder roots; because earlier commits contained pilot-specific names and local paths, a separate Git history cleanup may still be required before broader archival or publication.
 
 ## Relationship To Existing Workflows
 

@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/project-config-preview.v1",
+  "title": "aidn project config --init-defaults --json",
+  "type": "object",
+  "x-aidn-command": "aidn project config --init-defaults --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "ok",
+    "action",
+    "target_root",
+    "exists",
+    "created",
+    "dry_run",
+    "path",
+    "config",
+    "effect_class",
+    "written",
+    "write_targets",
+    "planned_write_targets"
+  ],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "action": { "type": "string" },
+    "target_root": { "type": "string" },
+    "exists": { "type": "boolean" },
+    "created": { "type": "boolean" },
+    "dry_run": { "type": "boolean" },
+    "path": { "type": "string" },
+    "config": { "type": "object", "additionalProperties": true },
+    "effect_class": { "type": "string", "const": "preview" },
+    "written": { "type": "boolean" },
+    "write_targets": { "type": "array" },
+    "planned_write_targets": { "type": "array" }
+  },
+  "additionalProperties": true
+}

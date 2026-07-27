@@ -3,7 +3,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { inspectImmediateProcessExitArguments } from "../verify/spawn-sync-evidence-lib.mjs";
+
+const SELF_FILE = fileURLToPath(import.meta.url);
+const CLEANUP_PROBE_ENV = "AIDN_PRE_WRITE_ADMIT_CLEANUP_PROBE";
+const TEMP_PREFIX = "aidn-pre-write-admit-";
 
 function parseArgs(argv) {
   const args = {
@@ -303,15 +309,118 @@ function installInvalidSharedRuntimeLocator(targetRoot, {
   }, null, 2)}\n`, "utf8");
 }
 
+function listOwnedTempRoots() {
+  return fs.readdirSync(os.tmpdir(), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith(TEMP_PREFIX))
+    .map((entry) => path.resolve(os.tmpdir(), entry.name))
+    .sort();
+}
+
+function verifyExitPolicy(repoRoot) {
+  const runtimePath = path.resolve(repoRoot, "tools", "runtime", "pre-write-admit.mjs");
+  const runtimeSource = fs.readFileSync(runtimePath, "utf8");
+  const fixtureSource = fs.readFileSync(SELF_FILE, "utf8");
+  const runtimeImmediateExitArguments = inspectImmediateProcessExitArguments(runtimeSource);
+  const fixtureImmediateExitArguments = inspectImmediateProcessExitArguments(fixtureSource);
+  assert(
+    runtimeImmediateExitArguments.length === 1 && runtimeImmediateExitArguments[0] === "0",
+    "pre-write-admit may only use immediate process.exit(0) for help; "
+      + `found ${runtimeImmediateExitArguments.join(", ")}`,
+  );
+  assert(
+    fixtureImmediateExitArguments.length === 1 && fixtureImmediateExitArguments[0] === "0",
+    "pre-write-admit fixture may only use immediate process.exit(0) for help; "
+      + `found ${fixtureImmediateExitArguments.join(", ")}`,
+  );
+
+  const mutationNeedle = "process.exitCode = 1;";
+  assert(
+    runtimeSource.includes(mutationNeedle),
+    "pre-write-admit must defer nonzero termination through process.exitCode",
+  );
+  assert(
+    fixtureSource.includes(mutationNeedle),
+    "pre-write-admit fixture must defer nonzero termination through process.exitCode",
+  );
+  const runtimeMutantArguments = inspectImmediateProcessExitArguments(
+    runtimeSource.replace(mutationNeedle, "process.exit(1);"),
+  );
+  const fixtureMutantLines = fixtureSource.split(/\r?\n/);
+  const fixtureMutationIndex = fixtureMutantLines.findIndex(
+    (line, index) => line.trim() === mutationNeedle
+      && fixtureMutantLines[index + 1]?.trim() === "} finally {",
+  );
+  assert(
+    fixtureMutationIndex >= 0,
+    "pre-write-admit fixture deferred catch exit was not found for mutation",
+  );
+  fixtureMutantLines[fixtureMutationIndex] = "    process.exit(1);";
+  const fixtureMutantArguments = inspectImmediateProcessExitArguments(
+    fixtureMutantLines.join("\n"),
+  );
+  assert(
+    runtimeMutantArguments.includes("1"),
+    "pre-write-admit immediate-exit mutant was not detected",
+  );
+  assert(
+    fixtureMutantArguments.includes("1"),
+    "pre-write-admit fixture immediate-exit mutant was not detected",
+  );
+  return {
+    runtime_immediate_exit_arguments: runtimeImmediateExitArguments,
+    fixture_immediate_exit_arguments: fixtureImmediateExitArguments,
+    deferred_nonzero_exit: true,
+    runtime_process_exit_1_mutant_rejected: true,
+    fixture_process_exit_1_mutant_rejected: true,
+  };
+}
+
+function verifyInjectedFailureCleanup(repoRoot) {
+  const before = listOwnedTempRoots();
+  const result = spawnSync(process.execPath, [SELF_FILE], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      [CLEANUP_PROBE_ENV]: "1",
+    },
+    encoding: "utf8",
+    timeout: 30000,
+    maxBuffer: 1024 * 1024,
+    windowsHide: true,
+  });
+  const after = listOwnedTempRoots();
+  const introduced = after.filter((item) => !before.includes(item));
+  assert(result.status === 1, "pre-write-admit injected cleanup probe should exit 1");
+  assert(
+    String(result.stderr ?? "").includes("injected pre-write-admit fixture failure"),
+    "pre-write-admit injected cleanup probe should preserve its primary error",
+  );
+  assert(
+    introduced.length === 0,
+    `pre-write-admit injected cleanup probe leaked owned roots: ${introduced.join(", ")}`,
+  );
+  return {
+    exit_code: result.status,
+    primary_error_preserved: true,
+    introduced_owned_roots_remaining: introduced.length,
+  };
+}
+
 function main() {
   let tempRoot = "";
+  let primaryError = null;
   try {
     const args = parseArgs(process.argv.slice(2));
     const repoRoot = process.cwd();
     const fixturesRoot = path.resolve(repoRoot, args.fixturesRoot);
     const readyTarget = path.join(fixturesRoot, "ready");
     const blockedTarget = path.join(fixturesRoot, "blocked");
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-pre-write-admit-"));
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), TEMP_PREFIX));
+    if (process.env[CLEANUP_PROBE_ENV] === "1") {
+      throw new Error("injected pre-write-admit fixture failure");
+    }
+    const exitPolicyEvidence = verifyExitPolicy(repoRoot);
+    const injectedFailureCleanup = verifyInjectedFailureCleanup(repoRoot);
     const cycleCreateTarget = path.join(tempRoot, "cycle-create");
     const warningTarget = path.join(tempRoot, "repair-warning");
     const dirtyCycleCreateTarget = path.join(tempRoot, "cycle-create-dirty");
@@ -669,6 +778,8 @@ function main() {
       cycle_create_dirty_blocked: dirtyCycleCreateBlocked,
       cycle_create_ahead_blocked: aheadCycleCreateBlocked,
       cycle_create_session_unmerged_blocked: unmergedSessionCycleCreateBlocked,
+      exit_policy: exitPolicyEvidence,
+      injected_failure_cleanup: injectedFailureCleanup,
       pass: true,
     };
 
@@ -679,14 +790,19 @@ function main() {
       console.log("Result: PASS");
     }
   } catch (error) {
+    primaryError = error;
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       const cleanup = removePathWithRetry(tempRoot);
       if (!cleanup.ok) {
-        throw cleanup.error;
+        console.error(`CLEANUP ERROR: ${cleanup.error.message}`);
+        process.exitCode = 1;
+        if (!primaryError) {
+          primaryError = cleanup.error;
+        }
       }
     }
   }

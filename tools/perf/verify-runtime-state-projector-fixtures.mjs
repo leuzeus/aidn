@@ -2,7 +2,10 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { execFileSync, spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function printUsage() {
   console.log("Usage:");
@@ -27,10 +30,73 @@ function assert(condition, message) {
   }
 }
 
+function createOwnedTempRoot() {
+  const requested = String(process.env.AIDN_TEST_RUNTIME_STATE_PROJECTOR_TEMP_ROOT ?? "").trim();
+  if (!requested) {
+    return fs.mkdtempSync(path.join(os.tmpdir(), "aidn-runtime-state-"));
+  }
+
+  const tempBase = path.resolve(os.tmpdir());
+  const absolute = path.resolve(requested);
+  const relative = path.relative(tempBase, absolute);
+  assert(
+    relative !== ""
+      && !relative.startsWith(`..${path.sep}`)
+      && relative !== ".."
+      && !path.isAbsolute(relative),
+    "injected runtime-state projector temp root must be below the operating-system temp directory",
+  );
+  assert(
+    path.basename(absolute).startsWith("aidn-runtime-state-injected-"),
+    "injected runtime-state projector temp root must use the governed test prefix",
+  );
+  assert(!fs.existsSync(absolute), `injected runtime-state projector temp root already exists: ${absolute}`);
+  fs.mkdirSync(absolute);
+  return absolute;
+}
+
+function verifyInjectedFailureCleanup() {
+  const injectedTempRoot = path.join(
+    os.tmpdir(),
+    `aidn-runtime-state-injected-${process.pid}-${randomUUID()}`,
+  );
+  assert(!fs.existsSync(injectedTempRoot), "injected projector temp root must start absent");
+  const script = fileURLToPath(import.meta.url);
+  const child = spawnSync(process.execPath, [script], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      AIDN_TEST_RUNTIME_STATE_PROJECTOR_INJECT_FAILURE: "after-temp-create",
+      AIDN_TEST_RUNTIME_STATE_PROJECTOR_FAILURE_CHILD: "1",
+      AIDN_TEST_RUNTIME_STATE_PROJECTOR_TEMP_ROOT: injectedTempRoot,
+    },
+    encoding: "utf8",
+    timeout: 30000,
+    windowsHide: true,
+  });
+  assert(child.status === 1, "injected projector failure should exit non-zero");
+  assert(
+    String(child.stderr).includes("injected runtime-state projector fixture failure"),
+    "injected projector failure did not reach the expected point",
+  );
+  assert(
+    !fs.existsSync(injectedTempRoot),
+    `injected projector failure leaked its owned temp directory: ${injectedTempRoot}`,
+  );
+  return true;
+}
+
 function main() {
+  let tempRoot = "";
+  let resultPayload = null;
+  let primaryError = null;
+  let cleanupError = null;
   try {
     const fixture = "tests/fixtures/repo-installed-core";
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-runtime-state-"));
+    tempRoot = createOwnedTempRoot();
+    if (process.env.AIDN_TEST_RUNTIME_STATE_PROJECTOR_INJECT_FAILURE === "after-temp-create") {
+      throw new Error("injected runtime-state projector fixture failure");
+    }
     const outFile = path.join(tempRoot, "RUNTIME-STATE.md");
 
     const result = runJson("tools/runtime/project-runtime-state.mjs", [
@@ -116,12 +182,43 @@ function main() {
       encoding: "utf8",
     });
     assert(textOut.includes("Runtime state digest:"), "text mode missing digest line");
-    console.log("PASS");
+    const injectedFailureCleanup = process.env.AIDN_TEST_RUNTIME_STATE_PROJECTOR_FAILURE_CHILD === "1"
+      ? null
+      : verifyInjectedFailureCleanup();
+    resultPayload = {
+      ok: true,
+      status: "PASS",
+      success_cleanup: true,
+      injected_failure_cleanup: injectedFailureCleanup,
+      cleanup_scope: "process-owned",
+      owned_test_directories_remaining: 0,
+    };
   } catch (error) {
-    console.error(`ERROR: ${error.message}`);
-    printUsage();
-    process.exit(1);
+    primaryError = error;
+  } finally {
+    if (tempRoot) {
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok) {
+        cleanupError = cleanup.error;
+      } else if (fs.existsSync(tempRoot)) {
+        cleanupError = new Error(`runtime-state fixture temp directory remains: ${tempRoot}`);
+      }
+    }
   }
+
+  if (primaryError || cleanupError) {
+    if (primaryError) {
+      console.error(`ERROR: ${primaryError.message}`);
+    }
+    if (cleanupError) {
+      console.error(`ERROR: ${cleanupError.message}`);
+    }
+    printUsage();
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log(JSON.stringify(resultPayload, null, 2));
 }
 
 main();

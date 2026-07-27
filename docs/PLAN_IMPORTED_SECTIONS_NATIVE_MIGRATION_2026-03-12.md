@@ -14,14 +14,14 @@ This solves immediate data-loss risk, but it has three long-term drawbacks:
 - canonical `aidn` rules and project-local extensions can drift or duplicate each other
 - the adapter config remains partially legacy-shaped, which blocks the goal of a fully deterministic, non-legacy project workflow model
 
-For `gowire`, `importedSections` still contains several meaningful policy blocks. Some are now redundant with `aidn` core workflow rules. Others are still useful project-specific extensions. A few are strong candidates for structured promotion.
+For `external-pilot`, `importedSections` still contains several meaningful policy blocks. Some are now redundant with `aidn` core workflow rules. Others are still useful project-specific extensions. A few are strong candidates for structured promotion.
 
 The target is not to delete legacy text aggressively. The target is to retire `importedSections` only after every retained rule has a native home.
 
 ## Goals
 
 - remove dependency on `legacyPreserved.importedSections` for active project policy
-- preserve all still-useful `gowire` workflow rules during migration
+- preserve all still-useful `external-pilot` workflow rules during migration
 - distinguish canonical workflow rules from project adapter rules
 - promote reusable rules only when they are truly generic
 - promote project-only rules into explicit adapter schema instead of opaque prose
@@ -98,7 +98,7 @@ Native target behavior:
 - no promoted adapter field assumes singular session ownership where `aidn` already supports multi-cycle sessions
 - execution policy rendering distinguishes session policy from dispatch-scope decision logic
 - promoted specialized gates do not conflict with existing multi-agent integration and handoff plans
-- `gowire` migration outcome remains compatible with future relay/coordinator runtime work
+- `external-pilot` migration outcome remains compatible with future relay/coordinator runtime work
 
 ## Dual / DB-Only Artifact Addendum
 
@@ -123,9 +123,9 @@ For the purposes of this migration:
 
 Any promoted policy is incomplete until both surfaces stay coherent.
 
-## Current Imported Sections in `gowire`
+## Current Imported Sections in `external-pilot`
 
-`gowire` currently stores these legacy imported blocks:
+`external-pilot` currently stores these legacy imported blocks:
 
 1. `Session Transition Cleanliness Gate`
 2. `Incident Trigger Conditions`
@@ -266,9 +266,9 @@ Recommended new adapter sections:
       "sharedIntegrationSurface": true,
       "escalateOnMultiAgentOverlap": true,
       "generatorPaths": [
-        "internal/builder/engines/components.go",
-        "internal/components/manifest.json",
-        "web/ce/elements.js"
+        "src/generators/shared-component.mjs",
+        "src/contracts/component-manifest.json",
+        "dist/runtime-elements.js"
       ],
       "requiredEvidence": [
         "decisions.md",
@@ -309,7 +309,7 @@ Blocks:
 
 Action:
 
-1. compare `gowire` wording against installed canonical wording
+1. compare `external-pilot` wording against installed canonical wording
 2. identify any missing nuance
 3. if nuance matters and is generic, update canonical docs/templates
 4. once parity is reached, stop rendering these blocks from `importedSections`
@@ -336,7 +336,7 @@ Action:
 1. define schema additions in `workflow.adapter.json`
 2. align field semantics with the existing multi-agent runtime and integration-collision plans
 3. write deterministic render helpers for those sections
-4. migrate `gowire` values from `importedSections` into the new structured fields
+4. migrate `external-pilot` values from `importedSections` into the new structured fields
 5. regenerate `WORKFLOW.md`
 6. verify semantic parity with prior rendered output
 
@@ -373,7 +373,7 @@ Mitigation:
 
 ### Risk 2 - Promoting project-specific rules into core canon
 
-This would overfit `aidn` to `gowire`.
+This would overfit `aidn` to `external-pilot`.
 
 Mitigation:
 
@@ -422,7 +422,7 @@ Mitigation:
 
 ### Lot 1 - Mapping and parity
 
-1. create a block-by-block mapping matrix for `gowire importedSections`
+1. create a block-by-block mapping matrix for `external-pilot importedSections`
 2. mark each block as `native-core | adapter-structured | keep-temporary`
 3. patch canonical docs only where truly generic wording is missing
 4. annotate each retained block with its multi-agent scope: `session-topology | dispatch-scope | shared-integration-surface`
@@ -440,7 +440,7 @@ Mitigation:
 
 ### Lot 3 - Repository migration
 
-1. migrate `gowire`
+1. migrate `external-pilot`
 2. regenerate installed docs
 3. diff old vs new `WORKFLOW.md`
 4. verify no effective rule loss
@@ -461,11 +461,11 @@ Mitigation:
 
 ## Acceptance Criteria
 
-- `gowire` renders all currently meaningful workflow rules without relying on `importedSections`
+- `external-pilot` renders all currently meaningful workflow rules without relying on `importedSections`
 - duplicated incident and continuity prose is removed from legacy storage
 - project-specific retained policy is present in explicit adapter fields
 - reinstall and reinitialization keep `WORKFLOW.md` deterministic
-- no meaningful section from current `gowire` workflow disappears in the migration diff
+- no meaningful section from current `external-pilot` workflow disappears in the migration diff
 - `importedSections` becomes empty or fully deprecated for migrated repos
 - promoted project policy remains coherent with multi-agent session topology and dispatch-scope rules already adopted by `aidn`
 - promoted project policy remains visible in generated workflow artifacts so `dual` / `db-only` consultation paths keep working
@@ -477,7 +477,7 @@ This migration is worth doing.
 Reason:
 
 - there is real value in eliminating `legacy` from the adapter config
-- `gowire` contains enough useful project policy that keeping `importedSections` indefinitely would lock in a second-class configuration model
+- `external-pilot` contains enough useful project policy that keeping `importedSections` indefinitely would lock in a second-class configuration model
 - the safest path is selective promotion, not blanket canonization
 
 The recommended next artifact after this plan is a backlog with explicit items for:
@@ -486,14 +486,14 @@ The recommended next artifact after this plan is a backlog with explicit items f
 - schema extensions
 - deterministic render updates
 - migration helper changes
-- `gowire` conversion
+- `external-pilot` conversion
 - parity and idempotence tests
 
 ## Outcome
 
 Completed outcome:
 
-- `gowire` imported policy is now promoted into native adapter fields
-- `legacyPreserved.importedSections` is drained for migrated `gowire`
+- `external-pilot` imported policy is now promoted into native adapter fields
+- `legacyPreserved.importedSections` is drained for migrated `external-pilot`
 - parity and multi-agent visibility tests cover both file-backed and DB-backed consultation paths
 - reader compatibility remains in place for older repositories while new/migrated repositories stay non-legacy

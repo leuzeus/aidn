@@ -114,6 +114,7 @@ function main() {
       "db-only",
       "--to",
       "dual",
+      "--write",
       "--json",
     ], { codexStubBin });
     if ((migrate.status ?? 1) !== 0) {

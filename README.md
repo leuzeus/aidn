@@ -54,10 +54,14 @@ Client repository after install:
 - `docs/audit/incidents/`
 - `.aidn/project/workflow.adapter.json`
   - durable project adapter input used by `aidn project config`
-- `.codex/skills.yaml`
-  - rendered with pinned `remote.ref` matching the installed aidn tag (for example `v0.6.0`)
-- `.codex/skills/*`
-  - local skill source folders copied during install (offline/local fallback)
+- `.agents/skills/*`
+  - project-native Codex skill folders copied from product scaffold source
+- `.codex/agents/*`
+  - bounded explorer, executor, validator, and reviewer roles with explicit model, effort, and sandbox policy
+- `.codex/hooks.json` and `.codex/hooks/*`
+  - trusted-project `SessionStart` discovery hook and its local command implementation
+- `.aidn/codex/skills.yaml`
+  - AIDN-owned skill inventory metadata; it is not a Codex discovery surface
 - `.aidn/config.json`
   - runtime/install defaults such as source branch and persistence preferences
 - `.aidn/runtime/*`
@@ -88,7 +92,7 @@ Codex instruction layering after install:
 - `aidn install`
   - lower-level scaffold/pack install, verify, and runtime bootstrap engine
 - `aidn project config`
-  - manages `.aidn/project/workflow.adapter.json` and regenerates workflow adapter outputs
+  - previews or explicitly writes `.aidn/project/workflow.adapter.json`; install and adapter migration regenerate workflow outputs
 - `aidn runtime`
   - runtime state, repair-layer, handoff, shared coordination, persistence, and coordinator commands
 - `aidn perf`
@@ -96,13 +100,13 @@ Codex instruction layering after install:
 - `aidn codex`
   - Codex hook and context helpers used by workflow automation
 
-The current stable/advanced/internal classification lives in [docs/CLI_SURFACE_INVENTORY.md](G:/projets/aidn/docs/CLI_SURFACE_INVENTORY.md).
+The current stable/advanced/internal classification lives in [docs/CLI_SURFACE_INVENTORY.md](docs/CLI_SURFACE_INVENTORY.md).
 
 Representative commands:
 
 ```bash
 npx aidn bootstrap --target ../client --profile default
-npx aidn project config --target ../client --wizard
+npx aidn project config --target ../client --wizard --write
 npx aidn runtime shared-coordination-projects --target ../client --json
 npx aidn runtime persistence-adopt --target ../client --backend postgres --dry-run --json
 npx aidn runtime coordinator-orchestrate --target ../client --json
@@ -144,8 +148,9 @@ Rules:
 
 - `main` is the stable/release branch.
 - `dev` is the integration branch and may accumulate multiple workstreams.
-- clean PRs should be opened from short-lived branches created from `main`.
-- if a change exists on `dev` but needs a narrow PR, create a fresh branch from `main` and cherry-pick the relevant commit(s).
+- feature-family branches are created from current `dev` and open pull requests to `dev`.
+- release branches are created from reviewed `dev`; only `release/*` pull requests target `main`.
+- release PRs verify without publishing; publication runs only after the release PR merges to `main`.
 - full policy: `docs/GIT_WORKFLOW.md`
 
 ## Performance Rollout
@@ -246,7 +251,7 @@ npx aidn install --target ../client --pack core --init-defaults --project-name m
 npx aidn install --target ../client --pack extended
 npx aidn install --target ../client --pack core --source-branch main
 npx aidn install --target ../client --pack core --runtime-persistence-backend postgres --runtime-persistence-connection-ref env:AIDN_PG_URL
-npx aidn project config --target ../client --wizard
+npx aidn project config --target ../client --wizard --write
 npx aidn install --target ../client --pack core --verify
 ```
 
@@ -264,7 +269,8 @@ Notes:
 - install persists the resolved source branch in `../client/.aidn/config.json` under `workflow.sourceBranch`
 - install supports explicit runtime persistence selection with `--runtime-persistence-backend sqlite|postgres`
 - install supports explicit local compatibility projection policy with `--runtime-persistence-local-projection-policy keep-local-sqlite|keep-json|keep-sql|none`
-- `aidn project config` manages `.aidn/project/workflow.adapter.json` and regenerates `WORKFLOW.md`, `WORKFLOW_SUMMARY.md`, `CODEX_ONLINE.md`, and `index.md`
+- `aidn project config` previews adapter creation or migration by default and writes only with `--write`
+- install and `project config --migrate-adapter --write` regenerate `WORKFLOW.md`, `WORKFLOW_SUMMARY.md`, `CODEX_ONLINE.md`, and `index.md`
 - install auto-imports `docs/audit/*` artifacts into `../client/.aidn/runtime/index/*`
 - import backend precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE`
 - default fresh install profile is DB-backed (`runtime.stateMode=dual`, `install.artifactImportStore=dual-sqlite`)

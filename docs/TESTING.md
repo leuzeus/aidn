@@ -49,8 +49,14 @@ When a change affects public `--json` output or CLI read/write semantics, run:
 - `npm run perf:verify-cli-effect-policy`
 - `npm run perf:verify-cli-surface-inventory`
 - `npm run perf:verify-cli-no-implicit-write`
+- `npm run perf:verify-db-migrate-write-boundary`
 - `npm run perf:verify-cli-output-contracts`
 - `npm run perf:verify-cli-aliases`
+
+The database migration boundary verifier proves that both `runtime db-migrate`
+and `runtime persistence-migrate` are byte-for-byte read-only previews without
+`--write`, including with `--json`, and that only the explicit-write form
+applies migrations.
 
 When a change affects the simplified install/upgrade orchestrator, run:
 
@@ -59,7 +65,7 @@ When a change affects the simplified install/upgrade orchestrator, run:
 - `npm run perf:verify-project-config`
 - `npm run perf:verify-install-idempotence`
 
-The CLI effect policy verifier checks the public command effect inventory in `src/core/cli/effect-policy.mjs`. The no-implicit-write verifier runs stable read-only, preview, and projector dry-run commands against a temporary fixture copy and fails if checkout-bound or declared projection guard paths change. The CLI output contract verifier runs the public JSON commands against a temporary fixture copy and validates them against `src/core/contracts/cli-output/*.schema.json`. For projector commands, it also verifies that `--dry-run --json` does not mutate the projected Markdown artifact.
+The CLI effect policy verifier checks the public command effect inventory in `src/core/cli/effect-policy.mjs`. The no-implicit-write verifier runs stable read-only, preview, and projector dry-run commands against a temporary fixture copy and fails if checkout-bound paths, including `.agents/*` and `.aidn/runtime/*`, change. The CLI output contract verifier gives every public JSON command its own isolated Git fixture with an explicitly derived dual-SQLite projection, then validates the result against `src/core/contracts/cli-output/*.schema.json`; commands never inherit mutations from a previously checked contract. For projector commands, it also verifies that `--dry-run --json` does not mutate the projected Markdown artifact.
 
 The CLI surface inventory verifier checks that `repair-layer` commands remain classified as internal and are not exposed as public runtime aliases or effect-policy entries.
 
@@ -105,6 +111,21 @@ Optional live PostgreSQL smoke is kept out of the required CI path. When you hav
 - `npm run perf:verify-postgres-shared-coordination-live-smoke`
 
 Those commands skip cleanly when the live smoke URL is not configured.
+The manual workflow still performs a locked
+`npm ci --include=optional --ignore-scripts --no-audit --no-fund` installation
+and proves that `import('pg')` resolves before either smoke command. The
+workflow-policy gate validates the semantic step order, so removing the install,
+omitting optional dependencies, skipping the driver preflight, or moving a
+smoke ahead of those prerequisites is a failure even when live URLs are absent.
+The gate first parses every tracked `.github/workflows/*.{yml,yaml}` file with
+the exact locked `yaml` dev dependency. Its separate structural model then
+checks triggers, jobs, commands, and step ordering. A malformed plain scalar
+containing `: ` fails the syntax phase even if the structural model can still
+recognize nearby fields.
+The shared-coordination smoke uses only run-unique synthetic identifiers,
+removes those exact rows in foreign-key order from a `finally` block, and
+verifies zero remaining rows after both success and injected failure. It never
+prints the configured connection URL.
 
 When a change affects shared-boundary locator/path/reanchor behavior, run the dedicated `.github/workflows/shared-boundary.yml` checks instead of relying on `perf-kpi`.
 
@@ -116,17 +137,60 @@ When a change affects shared-runtime locator, re-anchor, or local-first boundary
 - `npm run perf:verify-shared-surface-boundary`
 
 The re-anchor fixture includes checkout-bound sentinels for `docs/audit/*`, `AGENTS.md`, and `.codex/*` so locator repair cannot silently rewrite or relocate those local artifacts.
+The locator-config fixture injects a replacement failure and proves that the
+previous file remains byte-for-byte intact and no adjacent temporary file is
+left behind.
 
 When a change affects release/versioning, install examples, or build-release provenance, run:
 
 - `npm run perf:verify-release-version`
-- `npm run build-release`
-- `npm run perf:verify-release-artifacts`
+- `npm run perf:verify-release-reproducibility`
+- `npm run perf:verify-release-workflow-policy`
 - `npm run perf:verify-release-provenance`
-- `npm run perf:verify-pack-topology`
+- `npm run perf:verify-pack-topology` (also injects an early copy failure and proves that the primary diagnostic is preserved, the nonzero exit is deferred, and the owned fixture root is removed)
+- `npm run perf:verify-tracked-sensitivity`
+- `npm run perf:verify-doc-references`
 
-The release version verifier checks that `VERSION`, `package.json`, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The release provenance gate chains version, build, artifacts, and pack topology into one explicit release check. The release artifact verifier should be run after `npm run build-release`; it checks the generated zip path, `release/checksums.txt`, and `release/manifest.json`, including the manifest source and build provenance blocks.
-The pack topology verifier checks the package tarball surface, the published docs allowlist, and the leak guard for guarded terms in package paths and contents.
+The release version verifier checks that `VERSION`, `package.json`, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The reproducibility verifier builds the exact clean tracked commit twice in isolated output roots, compares bytes, checks the npm package topology, and rejects sensitive inputs. `perf:verify-release-artifacts` remains the post-build check used by the main publication job.
+The pack topology verifier checks the package tarball surface, the published docs allowlist, and the leak guard for guarded terms in package paths and contents. The tracked-sensitivity verifier separately scans the complete Git-tracked tree, including historical planning documents and fixtures. It uses exact negative probes so weakening or bypassing the detector fails the gate. Current tracked content is neutralized, but older Git objects can retain prior pilot names and local paths; history cleanup may therefore still be required before wider archival or publication.
+The documentation-reference verifier resolves active local Markdown links and
+literal `npm run` references against the tracked tree and `package.json`; its
+negative probes prove that a missing link and a missing script are rejected.
+
+Stable family wrappers are cataloged in `package/catalogs/gates.v1.json`: `verify:contracts`, `verify:governance`, `verify:runtime`, `verify:codex`, `verify:release`, and `verify:all`. The first four select their named family. `verify:release` executes every gate whose obligation is required or optional in the announced `main` or `release` context, including topology and tracked-tree sensitivity; it is not a release-family-only shortcut. Run `verify:all` only at a clean commit boundary so the cleanliness family is meaningful. Report `SKIP` separately from `PASS`.
+
+Every cataloged verification gate is non-mutating with respect to the checkout.
+The family runner snapshots `git status --porcelain=v2 --untracked-files=all`
+before and after each executed gate. A gate that introduces a tracked change or
+an untracked, non-ignored path fails immediately under its own gate id, with a
+bounded path/status list. Git command failures are reported separately with
+redacted exit/stdout/stderr diagnostics. Command failures likewise retain the
+exit code, signal, and bounded redacted stdout/stderr tails in both the JSON
+result and text summary. An unmet required condition is `FAIL`; only an unmet
+optional condition or an explicit catalog `skip` remains `SKIP`.
+`cleanliness-worktree` executes in `dev`, `main`, and `release` instead of using
+cleanliness as its own precondition. When changing this behavior, run:
+
+- `npm run perf:verify-gate-runner-fixtures`
+- `npm run perf:verify-gate-catalog`
+- `npm run verify:cleanliness`
+
+The Codex context repair fixture emits one structured result document on every
+normal or failing execution. Named assertion failures preserve expected and
+observed values plus cleanup status. Child process failures preserve the stage,
+status, signal, timeout/error code, and bounded redacted output tails. The
+deterministic diagnostic gate forces one named assertion false and proves that
+the same evidence survives direct execution and the family runner:
+
+- `npm run perf:verify-codex-context-diagnostics`
+
+The start-session and installed-Codex-client verifiers execute child commands
+with `spawnSync`. Their process evidence records synchronous call returns and
+never re-probes a numeric PID after the call, because an operating system may
+reuse that number for an unrelated process. Process-leak evidence remains tied
+to owned resources and timeout results, while temporary directory cleanup is
+verified independently. The `--case --json` start-session result always emits
+a boolean `pass` value.
 
 ### 2. Parity / Runtime Persistence Verifications
 
@@ -170,6 +234,7 @@ Examples:
 - `npm run perf:verify-generated-doc-golden`
 - `npm run perf:verify-generated-doc-fragments`
 - `npm run perf:verify-markdown-contract`
+- `npm run perf:verify-doc-references`
 
 Use them when a change affects:
 

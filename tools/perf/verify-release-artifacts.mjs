@@ -91,8 +91,8 @@ function verify() {
   let manifest = null;
   if (fs.existsSync(manifestPath)) {
     manifest = readJson("release/manifest.json");
-    if (manifest.schema_version !== 1) {
-      issues.push(`manifest schema_version must be 1, got ${manifest.schema_version}`);
+    if (manifest.schema_version !== 2) {
+      issues.push(`manifest schema_version must be 2, got ${manifest.schema_version}`);
     }
     if (manifest.package_name !== packageJson.name) {
       issues.push(`manifest package_name ${manifest.package_name} does not match package.json ${packageJson.name}`);
@@ -104,6 +104,9 @@ function verify() {
       issues.push("manifest git_commit is missing");
     } else if (manifest.git_commit !== getGitCommit(REPO_ROOT)) {
       issues.push(`manifest git_commit ${manifest.git_commit} does not match HEAD ${getGitCommit(REPO_ROOT)}`);
+    }
+    if (!manifest.git_tree) {
+      issues.push("manifest git_tree is missing");
     }
     if (!manifest.generated_at || Number.isNaN(Date.parse(manifest.generated_at))) {
       issues.push("manifest generated_at must be an ISO timestamp");
@@ -119,6 +122,9 @@ function verify() {
       if (manifest.source.package_file_sha256 !== sha256File(packagePath)) {
         issues.push("manifest source.package_file_sha256 does not match package.json");
       }
+      if (manifest.source.tracked_tree_only !== true) {
+        issues.push("manifest source.tracked_tree_only must be true");
+      }
     }
     if (!manifest.build || manifest.build.tool !== "tools/build-release.mjs") {
       issues.push("manifest build block must declare tools/build-release.mjs provenance");
@@ -128,6 +134,12 @@ function verify() {
       }
       if (!Number.isInteger(manifest.build.input_bytes) || manifest.build.input_bytes < 0) {
         issues.push("manifest build.input_bytes must be a non-negative integer");
+      }
+      if (manifest.build.deterministic !== true) {
+        issues.push("manifest build.deterministic must be true");
+      }
+      if (!Array.isArray(manifest.build.inputs) || manifest.build.inputs.length !== manifest.build.input_files) {
+        issues.push("manifest build.inputs must enumerate every input file");
       }
     }
     const artifacts = Array.isArray(manifest.artifacts) ? manifest.artifacts : null;

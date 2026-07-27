@@ -954,6 +954,8 @@ function resolveWorkflowSchemaOptions(options = {}) {
       options.schemaFile ?? getDefaultWorkflowSchemaFile(),
     ),
     backupRoot: options.backupRoot ?? "",
+    createBackup: options.createBackup !== false,
+    failureStage: String(options.failureStage ?? ""),
   };
 }
 
@@ -1041,7 +1043,7 @@ export function ensureWorkflowDbSchema(options = {}) {
   const pending = migrations.filter((migration) => !applied.has(migration.id));
 
   let backupFile = null;
-  if (pending.length > 0 && hadExistingSchema && sqliteFile) {
+  if (resolved.createBackup && pending.length > 0 && hadExistingSchema && sqliteFile) {
     backupFile = createBackupIfNeeded(sqliteFile, backupRoot);
   }
 
@@ -1091,39 +1093,183 @@ export function migrateWorkflowDbFile(options = {}) {
   if (!resolved.sqliteFile) {
     throw new Error("migrateWorkflowDbFile requires sqliteFile");
   }
-  fs.mkdirSync(path.dirname(resolved.sqliteFile), { recursive: true });
-  const DatabaseSync = getDatabaseSync();
-  const db = new DatabaseSync(resolved.sqliteFile);
-  try {
-    db.exec("PRAGMA foreign_keys=OFF;");
-    const migration = ensureWorkflowDbSchema({
-      db,
-      sqliteFile: resolved.sqliteFile,
-      role: resolved.role,
-      engineVersion: resolved.engineVersion,
-      schemaFile: resolved.schemaFile,
-      backupRoot: resolved.backupRoot,
-    });
-    const status = inspectWorkflowDbSchema({
-      sqliteFile: resolved.sqliteFile,
-      schemaFile: resolved.schemaFile,
-      role: resolved.role,
-      engineVersion: resolved.engineVersion,
-      backupRoot: resolved.backupRoot,
-    });
-    return {
-      ok: true,
-      sqlite_file: resolved.sqliteFile,
-      schema_file: resolved.schemaFile,
-      migration,
-      status,
-    };
-  } finally {
-    try {
-      db.exec("PRAGMA foreign_keys=ON;");
-    } catch {
+  // Validate the schema before creating any target directory or SQLite artifact.
+  readSchemaFile(resolved.schemaFile);
+  const targetFile = resolved.sqliteFile;
+  const targetDir = path.dirname(targetFile);
+  const targetExisted = fs.existsSync(targetFile);
+  const targetSidecars = ["-wal", "-shm", "-journal"]
+    .map((extension) => `${targetFile}${extension}`)
+    .filter((candidate) => fs.existsSync(candidate));
+  if (targetSidecars.length > 0) {
+    throw new Error(
+      "SQLite migration requires a closed, checkpointed target without WAL/SHM/journal sidecars",
+    );
+  }
+  let existingAncestor = targetDir;
+  while (!fs.existsSync(existingAncestor)) {
+    const parent = path.dirname(existingAncestor);
+    if (parent === existingAncestor) {
+      break;
     }
-    db.close();
+    existingAncestor = parent;
+  }
+  fs.mkdirSync(targetDir, { recursive: true });
+  const suffix = `${process.pid}-${crypto.randomBytes(8).toString("hex")}`;
+  const tempFile = path.join(targetDir, `.${path.basename(targetFile)}.${suffix}.migration.tmp`);
+  const backupCandidate = `${tempFile}.pre-migration`;
+  const tempArtifacts = [
+    tempFile,
+    `${tempFile}-wal`,
+    `${tempFile}-shm`,
+    `${tempFile}-journal`,
+    backupCandidate,
+    `${backupCandidate}-wal`,
+    `${backupCandidate}-shm`,
+    `${backupCandidate}-journal`,
+  ];
+  let backupFile = null;
+  let replacementCommitted = false;
+
+  function inject(stage) {
+    if (resolved.failureStage === stage) {
+      throw new Error(`Injected SQLite migration failure at ${stage}`);
+    }
+  }
+
+  function copyBundle(source, destination) {
+    fs.copyFileSync(source, destination);
+  }
+
+  function cleanupArtifacts() {
+    for (const artifact of tempArtifacts) {
+      try {
+        fs.rmSync(artifact, { force: true });
+      } catch {
+        // Preserve the primary migration error; a remaining temp is detected by the gate.
+      }
+    }
+  }
+
+  function pruneFreshDirectories() {
+    if (targetExisted || fs.existsSync(targetFile)) {
+      return;
+    }
+    let current = targetDir;
+    while (current !== existingAncestor && current.startsWith(`${existingAncestor}${path.sep}`)) {
+      try {
+        fs.rmdirSync(current);
+      } catch {
+        break;
+      }
+      current = path.dirname(current);
+    }
+  }
+
+  const DatabaseSync = getDatabaseSync();
+  try {
+    if (targetExisted) {
+      copyBundle(targetFile, tempFile);
+    }
+    let db = new DatabaseSync(tempFile);
+    try {
+      inject("after-open");
+      db.exec("PRAGMA wal_checkpoint(TRUNCATE);");
+      db.exec("PRAGMA journal_mode=DELETE;");
+    } finally {
+      db.close();
+    }
+    if (targetExisted) {
+      fs.copyFileSync(tempFile, backupCandidate);
+    }
+
+    db = new DatabaseSync(tempFile);
+    let migration;
+    db.exec("PRAGMA foreign_keys=OFF;");
+    try {
+      migration = ensureWorkflowDbSchema({
+        db,
+        sqliteFile: tempFile,
+        role: resolved.role,
+        engineVersion: resolved.engineVersion,
+        schemaFile: resolved.schemaFile,
+        backupRoot: resolved.backupRoot,
+        createBackup: false,
+      });
+      inject("after-migrations");
+      const integrity = db.prepare("PRAGMA integrity_check;").all();
+      if (integrity.length !== 1 || String(integrity[0]?.integrity_check ?? "") !== "ok") {
+        throw new Error("SQLite migration integrity_check failed");
+      }
+      const foreignKeyIssues = db.prepare("PRAGMA foreign_key_check;").all();
+      if (foreignKeyIssues.length > 0) {
+        throw new Error(`SQLite migration foreign_key_check failed (${foreignKeyIssues.length} issue(s))`);
+      }
+      db.exec("PRAGMA wal_checkpoint(TRUNCATE);");
+      db.exec("PRAGMA journal_mode=DELETE;");
+      inject("after-verify");
+    } finally {
+      try {
+        db.exec("PRAGMA foreign_keys=ON;");
+      } catch {
+      }
+      db.close();
+    }
+
+    const tempStatus = inspectWorkflowDbSchema({
+      sqliteFile: tempFile,
+      schemaFile: resolved.schemaFile,
+      role: resolved.role,
+      engineVersion: resolved.engineVersion,
+      backupRoot: resolved.backupRoot,
+    });
+    if (!tempStatus.ok || tempStatus.pending_ids.length > 0) {
+      throw new Error("SQLite migration verification left pending migrations");
+    }
+    inject("before-replace");
+
+    if (targetExisted && migration.pending_before.length > 0) {
+      backupFile = resolveBackupFile(targetFile, resolved.backupRoot);
+      fs.copyFileSync(backupCandidate, backupFile);
+    }
+    for (const artifact of tempArtifacts.filter((candidate) => candidate !== tempFile)) {
+      fs.rmSync(artifact, { force: true });
+    }
+    const result = {
+      ok: true,
+      sqlite_file: targetFile,
+      schema_file: resolved.schemaFile,
+      migration: {
+        ...migration,
+        backup_file: backupFile,
+      },
+      status: {
+        ...tempStatus,
+        sqlite_file: targetFile,
+      },
+    };
+    try {
+      fs.renameSync(tempFile, targetFile);
+    } catch (error) {
+      if (backupFile) {
+        fs.rmSync(backupFile, { force: true });
+        backupFile = null;
+      }
+      throw error;
+    }
+    replacementCommitted = true;
+    return result;
+  } finally {
+    cleanupArtifacts();
+    if (!replacementCommitted) {
+      if (backupFile) {
+        try {
+          fs.rmSync(backupFile, { force: true });
+        } catch {
+        }
+      }
+      pruneFreshDirectories();
+    }
   }
 }
 

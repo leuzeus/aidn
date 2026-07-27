@@ -12,6 +12,8 @@ install:
 verify:
   must_exist:
     - .aidn/runtime/agents/example-external-auditor.mjs
-    - .codex/skills.yaml
-    - .codex/skills/start-session/SKILL.md
+    - .aidn/codex/skills.yaml
+    - .agents/skills/start-session/SKILL.md
+    - .codex/agents/aidn-explorer.toml
+    - .codex/hooks.json
     - .github/workflows/branch-prune.yml

@@ -65,7 +65,7 @@ They are aligned with the current runtime baseline, not just the original target
 
 ## Rules
 
-- use [BPMN_RULES.md](/G:/projets/aidn/docs/bpmn/BPMN_RULES.md) as the editing contract for structure, naming, layout, and update procedure
+- use [BPMN_RULES.md](./BPMN_RULES.md) as the editing contract for structure, naming, layout, and update procedure
 - if a future BPMN update breaks one of those rules, either fix the diagram or update the rule explicitly
 - prefer changing the focused view first, then reflect the result into the macro view
 

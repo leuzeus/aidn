@@ -19,6 +19,16 @@ This command verifies:
 5. `CURRENT-STATE.md` coverage in installed skills
 6. temporary install/import scenarios across supported state-mode and import-store combinations
 
+The start-session and installed-client checks report `spawnSync` return
+evidence instead of re-checking numeric child PIDs later. This prevents PID
+reuse from being mistaken for a leaked original child. Cleanup proof remains
+resource-based: every owned temporary root must be removed on success and on
+injected failure. The branch-cycle admission check also requires JSON-producing
+success paths to terminate naturally after stdout is flushed; only the early
+help path may use immediate `process.exit(0)`. Coordinator-arbitration fixture
+failures preserve bounded child-process diagnostics and clean their owned
+temporary root before returning a nonzero status.
+
 ## Focused Commands
 
 Use targeted checks when iterating on one specific layer.
@@ -93,7 +103,7 @@ npm run perf:verify-current-state-skill-coverage -- --root scaffold/codex
 Installed skills:
 
 ```bash
-npm run perf:verify-current-state-skill-coverage -- --root tests/fixtures/repo-installed-core/.codex/skills
+npm run perf:verify-current-state-skill-coverage -- --root tests/fixtures/repo-installed-core/.agents/skills
 ```
 
 This check ensures mutating skills keep `CURRENT-STATE.md` in scope instead of silently diverging from it.

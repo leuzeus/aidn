@@ -11,7 +11,11 @@
     "target_root",
     "exists",
     "path",
-    "config"
+    "config",
+    "effect_class",
+    "written",
+    "write_targets",
+    "planned_write_targets"
   ],
   "properties": {
     "ok": { "type": "boolean" },
@@ -20,6 +24,11 @@
     "exists": { "type": "boolean" },
     "path": { "type": "string" },
     "config": { "type": "object", "additionalProperties": true }
+    ,
+    "effect_class": { "type": "string", "const": "read-only" },
+    "written": { "type": "boolean" },
+    "write_targets": { "type": "array" },
+    "planned_write_targets": { "type": "array" }
   },
   "additionalProperties": true
 }

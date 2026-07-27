@@ -63,9 +63,9 @@ function main() {
           sharedIntegrationSurface: true,
           escalateOnMultiAgentOverlap: true,
           generatorPaths: [
-            "internal/builder/engines/components.go",
-            "internal/components/manifest.json",
-            "web/ce/elements.js",
+            "src/generators/shared-component.mjs",
+            "src/contracts/component-manifest.json",
+            "dist/runtime-elements.js",
           ],
           requiredEvidence: [
             "decisions.md",

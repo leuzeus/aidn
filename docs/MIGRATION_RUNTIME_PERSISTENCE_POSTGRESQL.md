@@ -111,14 +111,14 @@ Preview:
 
 ```powershell
 aidn runtime persistence-adopt --target . --backend postgres --dry-run --json
-aidn runtime persistence-migrate --target . --dry-run --json
+aidn runtime persistence-migrate --target . --json
 ```
 
 Write only after the preview is unblocked:
 
 ```powershell
 aidn runtime persistence-adopt --target . --backend postgres --json
-aidn runtime persistence-migrate --target . --json
+aidn runtime persistence-migrate --target . --write --json
 ```
 
 If the change touches the local SQLite compatibility projection, also rerun:
@@ -325,6 +325,9 @@ aidn runtime persistence-migrate --target . --json
 aidn runtime persistence-backup --target . --json
 aidn runtime persistence-adopt --target . --dry-run --json
 ```
+
+The migration command in this observability sequence is preview-only. Add
+`--write` only after reviewing its pending migration plan.
 
 If adoption is blocked by duplicated logical cycle identities in the SQLite source:
 

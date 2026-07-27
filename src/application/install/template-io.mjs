@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { writeFileAtomicSync } from "../../lib/fs/atomic-write-lib.mjs";
 
 export function ensureDir(dirPath, dryRun) {
   if (dryRun) {
@@ -24,8 +25,7 @@ export function writeUtf8(filePath, content, dryRun) {
   if (dryRun) {
     return;
   }
-  ensureDir(path.dirname(filePath), dryRun);
-  fs.writeFileSync(filePath, content, "utf8");
+  writeFileAtomicSync(filePath, content, { encoding: "utf8" });
 }
 
 export function renderTemplateVariables(content, templateVars) {

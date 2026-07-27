@@ -18,7 +18,8 @@
     "shared_coordination_backend",
     "preview",
     "restore",
-    "operations"
+    "operations",
+    "effect_class"
   ],
   "properties": {
     "target_root": { "type": "string" },
@@ -89,7 +90,8 @@
         "recommended_actions": { "type": "array" }
       },
       "additionalProperties": true
-    }
+    },
+    "effect_class": { "type": "string", "enum": ["preview", "mutating"] }
   },
   "additionalProperties": true
 }

@@ -22,12 +22,17 @@ Rules:
 
 - `VERSION` is the primary version source for the repository release line
 - `package.json` must stay aligned with `VERSION`
-- `tools/build-release.mjs` produces release artifacts from the checked-in source state
+- `tools/build-release.mjs` produces release artifacts only from the exact tracked Git tree at the selected commit
 - `release/manifest.json` and `release/checksums.txt` are the release provenance outputs
 - the manifest records source fingerprints for `VERSION` and `package.json` so the source of truth can be verified from the build output itself
 - the manifest records the git commit used for the build so provenance can be verified against the current source tree
 - `npm pack --dry-run` remains part of the publish-surface guard
 - internal docs, pilot-specific details and non-published fixtures must not leak into the package payload
+- release pull requests verify without publishing
+- publication occurs only on a push to `main` associated with exactly one merged `release/*` pull request
+- the publish job creates an annotated tag and GitHub Release only after clean-commit, reproducibility, topology, sensitivity, checksum, and provenance checks
+- an existing tag or release is a hard failure
+- the release workflow never runs `npm publish`
 
 Release provenance should answer:
 
@@ -36,6 +41,7 @@ Release provenance should answer:
 - which checks ran before publish
 - which checksum set matches the artifact payload
 - which git commit produced the manifest
+- which Git tree and deterministic package input inventory produced the artifact
 
 ## Options Compared
 
@@ -74,6 +80,7 @@ Negative:
 ## Follow-Up
 
 - keep `perf:verify-release-version` and `perf:verify-pack-topology` in the release path
+- keep `perf:verify-release-reproducibility` and `perf:verify-release-workflow-policy` in the release path
 - ensure release manifests and checksums stay in the same atomic publish flow
 - keep source fingerprints in the manifest in sync with the checked-in files
 - update the release workflow when the publish surface changes

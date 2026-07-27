@@ -295,7 +295,7 @@ The migration work is complete only when the following are verified.
 
 ### 1. Schema migration fixtures
 
-Extend [tools/perf/verify-db-schema-migrations-fixtures.mjs](G:/projets/aidn/tools/perf/verify-db-schema-migrations-fixtures.mjs) to cover:
+Extend [tools/perf/verify-db-schema-migrations-fixtures.mjs](<local-source-root>/tools/perf/verify-db-schema-migrations-fixtures.mjs) to cover:
 
 - fresh DB bootstrap
 - legacy DB adoption
@@ -319,7 +319,7 @@ Validate:
 
 ### 4. Real target validation
 
-Validate against a real installed target such as `gowire`:
+Validate against a real installed target such as `external-pilot`:
 
 - DB migration runs cleanly
 - readiness remains green

@@ -4,9 +4,15 @@
   "title": "aidn runtime persistence-migrate --json",
   "type": "object",
   "x-aidn-command": "aidn runtime persistence-migrate --json",
+  "x-aidn-commands": [
+    "aidn runtime persistence-migrate --json",
+    "aidn runtime persistence-migrate --write --json"
+  ],
   "x-aidn-contract-version": "cli-output-v1",
   "required": [
     "ts",
+    "effect_class",
+    "write_requested",
     "target_root",
     "runtime_persistence",
     "runtime_backend",
@@ -17,6 +23,8 @@
   ],
   "properties": {
     "ts": { "type": "string" },
+    "effect_class": { "type": "string", "enum": ["preview", "mutating"] },
+    "write_requested": { "type": "boolean" },
     "target_root": { "type": "string" },
     "runtime_persistence": { "type": "object", "additionalProperties": true },
     "runtime_backend": { "type": "object", "additionalProperties": true },

@@ -2,153 +2,106 @@
 
 ## Branch Roles
 
-- `main`
-  - stable branch
-  - release base
-  - only clean, reviewable pull requests should merge here
+- `main` is the production branch. Only reviewed `release/*` pull requests merge into it.
+- `dev` is the integration branch. Feature, fix, chore, documentation, and Codex work branches merge into it.
+- `feature/*`, `fix/*`, `chore/*`, `docs/*`, and `codex/*` are short-lived branches created from current `dev`.
+- `release/*` branches are cut from a reviewed `dev`, contain only release preparation, and target `main`.
 
-- `dev`
-  - integration branch
-  - may accumulate several workstreams
-  - useful for assembling, testing, and validating larger batches
-  - should not be assumed to be a small review unit
+The executable branch policy is `tools/verify/verify-branch-policy.mjs`.
 
-- `feature/*`, `fix/*`, `chore/*`, `docs/*`, `release/*`
-  - short-lived branches
-  - created from `main`
-  - one clear intent per branch
-  - one clean pull request per branch
+For a normal branch checkout, the policy derives the head from the configured
+remote before comparing it with the announced base. For an immutable detached
+certification, both proofs are mandatory: the exact expected commit SHA and
+containment by an explicitly announced remote-tracking ref from a configured
+remote. A local branch or local ref alone is never accepted as detached
+provenance.
 
-## Core Rules
+## Required Flows
 
-1. Any pull request meant for clean review starts from `main`.
-2. `dev` is for integration, not for automatically producing narrow PRs.
-3. If a change already exists on `dev` but needs a clean PR:
-   - create a new branch from `main`
-   - cherry-pick the relevant commit(s)
-   - open the PR from that branch
-4. Resync `dev` from `main` regularly after merges.
-5. Do not let `dev` drift for too long without resync.
-6. Avoid mixed-scope commits on short-lived PR branches.
-
-## Recommended Flows
-
-### Standard Change
-
-```bash
-git switch main
-git pull --ff-only origin main
-git switch -c feature/<topic>
-```
-
-Then:
-- implement the change
-- commit
-- push
-- open a PR to `main`
-
-### Integration / Exploration
+### Product change
 
 ```bash
 git switch dev
 git pull --ff-only origin dev
+git switch -c feature/<topic>
 ```
 
-Use `dev` to:
-- assemble multiple changes
-- test broader interactions
-- work on larger in-progress batches
+Open the pull request from the feature branch to `dev`.
 
-If one subset must become a clean PR:
-
-```bash
-git switch main
-git pull --ff-only origin main
-git switch -c chore/<topic>
-git cherry-pick <commit-or-range>
-```
-
-Then:
-- push
-- open the PR to `main`
-
-### After Merge to `main`
-
-Resync `dev`:
+### Release preparation
 
 ```bash
 git switch dev
-git fetch origin
-git merge --ff-only origin/main
+git pull --ff-only origin dev
+git switch -c release/<version>
 ```
+
+Align `VERSION`, `package.json`, current stable documentation, and release notes on the release branch. Open the pull request from `release/<version>` to `main`. A release PR verifies but never tags or publishes.
+
+After the release PR merges, resynchronize `dev` from `main` through a reviewed integration operation appropriate to the repository protections.
+
+## Branch Rules
+
+1. Feature-family branches target `dev`, never `main`.
+2. Only `release/*` branches target `main`.
+3. `main` and `dev` are protected integration surfaces; implementation does not occur directly on either branch.
+4. A release branch must not contain unrelated feature work.
+5. Publication is an automated consequence of a successful release PR merge to `main`; a manually pushed version tag is not a release trigger.
 
 ## Release Version Provenance
 
-Release versioning has one explicit source value: `VERSION`.
+`VERSION` is the primary release version source. It remains aligned with `package.json` and current stable install references.
 
-Before tagging or assembling a release:
+Release provenance is built from the exact clean commit:
 
-1. `VERSION` and `package.json` `version` must match exactly.
-2. README stable install examples must point to `github:leuzeus/aidn#v<VERSION>`.
-3. `tools/build-release.mjs` must produce `release/dist/aidn-workflow-<VERSION>.zip`.
-4. `release/checksums.txt` must reference the zip for the same `VERSION`.
-5. `release/manifest.json` must record package name, version, git commit, generation time, source provenance, build provenance, artifact path, artifact bytes, and artifact SHA-256.
-6. `dev` may carry in-flight integration work, but release tags and stable consumer instructions should be cut from the reviewed release baseline.
-7. GitHub release tags must match `v<VERSION>` exactly.
-8. Pushing a matching `v*.*.*` tag runs the release workflow, rebuilds the release provenance outputs, and publishes a GitHub Release with the zip, checksum file, and manifest attached.
+- CI checks out `GITHUB_SHA` with full Git history.
+- `tools/build-release.mjs` reads only the tracked tree at that commit.
+- The package allowlist in `package.json#files` defines the zip topology.
+- The manifest records commit, tree, deterministic input inventory, version fingerprints, checksum, and artifact bytes.
+- Two isolated builds must be byte-for-byte reproducible.
+- Package topology and sensitivity checks reject fixtures, historical plans/backlogs, pilot-derived material, workflow files, and release outputs.
 
-## Release Checklist
+## Automatic Publication
 
-Before shipping or publishing a release artifact, verify:
+The release workflow has two mutually exclusive paths:
 
-1. the release workflow runs `perf:verify-release-provenance`, which chains `perf:verify-release-version`, `build-release`, `perf:verify-release-artifacts`, and `perf:verify-pack-topology`
-2. `package.json` does not introduce new published paths that leak internal docs or local-only pilot corpus material
-3. `docs/` entries included in the package are intentionally published and user-facing
-4. `release/dist/`, `release/checksums.txt`, and `release/manifest.json` are treated as generated release outputs, not source inputs
-5. any new published path is justified in the release review before it becomes part of the package surface
-6. the Git tag matches `v$(cat VERSION)` before publishing
+1. A pull request from `release/*` to `main` runs `npm run verify:release` and does not publish.
+2. A push to `main` publishes only when GitHub associates `GITHUB_SHA` with exactly one merged `release/*` pull request targeting `main`.
 
-Run:
+`verify:release` executes the complete obligation set for the announced release
+or main context. This includes the release family plus required contract,
+effects, governance, documentation, Codex/runtime, security, topology, and
+cleanliness gates. The workflow must not replace this aggregate with a partial
+list that merely has a release-oriented job name.
+
+The publish job refuses:
+
+- a non-`main` ref;
+- a checkout or `origin/main` that differs from `GITHUB_SHA`;
+- a dirty checkout;
+- a missing or ambiguous merged release PR;
+- version drift or non-reproducible output;
+- package topology or sensitivity drift;
+- an existing tag or GitHub Release.
+
+After the checks pass, automation builds from `GITHUB_SHA`, creates an annotated `v<VERSION>` tag, pushes it, and creates the GitHub Release with the zip, checksums, and manifest. It never runs `npm publish`.
+
+## Local Verification
+
+Run the smallest affected family during implementation:
 
 ```bash
-npm run perf:verify-release-provenance
-npm run perf:verify-release-flow
-npm run perf:verify-release-version
-npm run build-release
-npm run perf:verify-release-artifacts
-npm run perf:verify-pack-topology
+npm run verify:contracts
+npm run verify:governance
+npm run verify:runtime
+npm run verify:codex
+npm run verify:release
 ```
 
-Publish by pushing the matching tag from the reviewed release baseline:
+At a clean commit boundary:
 
 ```bash
-git tag v<VERSION>
-git push origin v<VERSION>
+npm run verify:all
 ```
 
-The tag-triggered release workflow verifies provenance again before creating the GitHub Release. The publish job fails if the tag does not match `VERSION`.
-
-These gates prevent silent drift between branch policy, package metadata, user-facing install docs, release artifact names, checksums, and release manifest provenance.
-
-## When To Reset `dev`
-
-Do not recreate `dev` routinely.
-
-Consider resetting or recreating it only if:
-- it has become too noisy to be useful
-- it has drifted too far from `main`
-- work can no longer be isolated cleanly
-
-In normal operation, keep `dev` and give it a clear role as the integration branch.
-
-## Naming Examples
-
-- `feature/runtime-repair-triage`
-- `fix/render-workflow-version-noop`
-- `chore/release-0.4.0-diagrams`
-- `docs/git-workflow`
-
-## Decision Rule
-
-- If the goal is integration and accumulation: use `dev`
-- If the goal is a clean reviewable PR: branch from `main`
+The machine-readable obligations and their `PASS|FAIL|SKIP` outcomes are cataloged in `package/catalogs/gates.v1.json`.

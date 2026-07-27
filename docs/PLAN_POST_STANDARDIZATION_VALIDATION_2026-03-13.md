@@ -2,7 +2,7 @@
 
 Date: 2026-03-13
 Status: completed
-Scope: finish the validation work that remains after product self-host standardization, then revalidate the updated package in the real `gowire` client repository.
+Scope: finish the validation work that remains after product self-host standardization, then revalidate the updated package in the real `external-pilot` client repository.
 
 ## Problem Statement
 
@@ -15,13 +15,13 @@ The observed failure currently lands in:
 - `tools/perf/verify-coordinator-dispatch-execute-fixtures.mjs`
 - with a `Usage:` fallback emitted by `coordinator-dispatch-execute.mjs`
 
-In parallel, the package should now be revalidated in `gowire`, because the internal product namespace changed from `template/` to `scaffold/`, even though the installed client contract stayed stable.
+In parallel, the package should now be revalidated in `external-pilot`, because the internal product namespace changed from `template/` to `scaffold/`, even though the installed client contract stayed stable.
 
 ## Goals
 
 - restore a green `perf:verify-context-resilience`
 - identify whether the remaining failure is a pre-existing defect or a regression exposed by the recent product refactor
-- reinstall the current branch in `gowire`
+- reinstall the current branch in `external-pilot`
 - rerun install/verify there and confirm stable project behavior
 
 ## Non-Goals
@@ -49,11 +49,11 @@ Acceptance:
 - the direct fixture passes
 - `perf:verify-context-resilience` passes end-to-end
 
-### 2. Revalidate Installed Package In `gowire`
+### 2. Revalidate Installed Package In `external-pilot`
 
 Tasks:
 
-- reinstall the package from the current GitHub branch in `gowire`
+- reinstall the package from the current GitHub branch in `external-pilot`
 - rerun:
   - `npx aidn install --target . --pack core`
   - `npx aidn install --target . --pack core --verify`
@@ -68,7 +68,7 @@ Acceptance:
 - install passes
 - verify passes
 - generated docs remain deterministic
-- `gowire` preserved project-owned files remain intact
+- `external-pilot` preserved project-owned files remain intact
 
 ### 3. Record The Validation Outcome
 
@@ -93,20 +93,20 @@ Mitigation:
 - treat it as required closure work for the post-standardization lot
 - isolate the minimal failing command first
 
-### Risk 2 - `gowire` reveals a real client-facing regression
+### Risk 2 - `external-pilot` reveals a real client-facing regression
 
 Mitigation:
 
 - reinstall and verify immediately after restoring the global test line
-- treat `gowire` as the real-world guardrail
+- treat `external-pilot` as the real-world guardrail
 
 ## Acceptance Criteria
 
 This post-standardization validation lot is complete when:
 
 - `npm run perf:verify-context-resilience` passes
-- the current branch is reinstalled successfully in `gowire`
-- `gowire` install and verify pass
+- the current branch is reinstalled successfully in `external-pilot`
+- `external-pilot` install and verify pass
 - the validation outcome is documented clearly
 
 ## Outcome
@@ -114,8 +114,8 @@ This post-standardization validation lot is complete when:
 Result:
 
 - `npm run perf:verify-context-resilience` now passes end-to-end
-- `gowire` reinstall + install + verify pass against branch head `5ccd27c`
-- preserved project-owned files in `gowire` stayed byte-identical for:
+- `external-pilot` reinstall + install + verify pass against branch head `5ccd27c`
+- preserved project-owned files in `external-pilot` stayed byte-identical for:
   - `docs/audit/baseline/current.md`
   - `docs/audit/baseline/history.md`
   - `docs/audit/parking-lot.md`
@@ -133,8 +133,8 @@ Classification of the failures:
 
 1. reproduce and fix `verify-coordinator-dispatch-execute-fixtures`
 2. rerun full `perf:verify-context-resilience`
-3. reinstall package in `gowire`
-4. rerun install/verify in `gowire`
+3. reinstall package in `external-pilot`
+4. rerun install/verify in `external-pilot`
 5. record the outcome
 
 ## Recommendation

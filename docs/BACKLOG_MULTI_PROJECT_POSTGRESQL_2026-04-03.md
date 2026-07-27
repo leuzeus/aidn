@@ -27,7 +27,7 @@ Progress snapshot:
 - normal coordination traffic is now explicitly blocked until schema and compatibility status are fully ready
 - MPG-18 is covered for deterministic nested-project resolution, and ambiguous monorepo roots with multiple nested locators now fail explicitly
 - real pilot evidence now covers both dedicated-worktree and nested-monorepo project roots on one shared PostgreSQL backend
-- execution evidence is summarized in `docs/MULTI_PROJECT_POSTGRESQL_GOWIRE_PILOT_2026-04-04.md`
+- execution evidence is summarized in `docs/MULTI_PROJECT_POSTGRESQL_EXTERNAL_PILOT_2026-04-04.md`
 
 ## Delivery Rules
 
@@ -468,9 +468,9 @@ Done when:
 
 Status today:
 
-- a real pilot on `G:\projets\gowire-pilot-main` and `G:\projets\gowire-pilot-linked` validated shared-backend project isolation, project-aware admin visibility, and restore-side `project-mismatch` rejection using two logical project identities on dedicated pilot worktrees
-- a second real pilot on `G:\projets\gowire-pilot-main\apps\web` and `G:\projets\gowire-pilot-main\packages\ui-kit` validated two maintained project roots inside the same monorepo worktree, with one shared `git_common_dir`, one shared `worktree_id`, distinct `project_id` values, isolated planning and handoff state, project-aware admin enumeration, and restore-side `project-mismatch` rejection
-- evidence is recorded in `docs/MULTI_PROJECT_POSTGRESQL_GOWIRE_PILOT_2026-04-04.md` and in `G:\projets\gowire-validation\2026-04-04-multi-project-postgresql-monorepo\pilot-evidence.md`
+- a real pilot on `<pilot-worktree-a>` and `<pilot-worktree-b>` validated shared-backend project isolation, project-aware admin visibility, and restore-side `project-mismatch` rejection using two logical project identities on dedicated pilot worktrees
+- a second real pilot on `<pilot-worktree-a>\apps\web` and `<pilot-worktree-a>\packages\ui-kit` validated two maintained project roots inside the same monorepo worktree, with one shared `git_common_dir`, one shared `worktree_id`, distinct `project_id` values, isolated planning and handoff state, project-aware admin enumeration, and restore-side `project-mismatch` rejection
+- evidence is recorded in `docs/MULTI_PROJECT_POSTGRESQL_EXTERNAL_PILOT_2026-04-04.md` and in `<local-evidence-root>/multi-project-postgresql-monorepo/pilot-evidence.md`
 
 ### MPG-23. Define Cleanup And Compatibility Window
 **Priority:** P3

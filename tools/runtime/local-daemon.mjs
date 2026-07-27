@@ -13,11 +13,21 @@ import {
   resolveEffectiveRuntimePersistence,
 } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { getWorkspaceResolutionCacheStats } from "../../src/application/runtime/workspace-resolution-service.mjs";
+import { resolveCliEffectClass } from "../../src/core/cli/effect-policy.mjs";
 import { getAidnProjectConfigCacheStats } from "../../src/lib/config/aidn-config-lib.mjs";
 import { runWorkflowStep } from "../codex/workflow-step.mjs";
 
 const CONTRACT_VERSION = "runtime-local-daemon.v1";
 const TOOL_FILE = fileURLToPath(import.meta.url);
+
+function invocationEffect(originalArgv) {
+  const action = ["--start", "--serve", "--status", "--stop"]
+    .find((token) => originalArgv.includes(token));
+  return {
+    command: `aidn runtime local-daemon${action ? ` ${action}` : ""} --json`,
+    effect_class: resolveCliEffectClass("aidn runtime local-daemon", originalArgv),
+  };
+}
 const DEFAULT_ENDPOINT_FILE = ".aidn/runtime/daemon/endpoint.json";
 const DEFAULT_RUNTIME_INDEX_FILE = ".aidn/runtime/index/workflow-index.sqlite";
 const daemonPostgresPool = createDaemonPostgresPool();
@@ -648,11 +658,13 @@ async function stopDaemon(args, targetRoot) {
 }
 
 async function main() {
-  const args = parseArgs(process.argv.slice(2));
+  const originalArgv = Object.freeze([...process.argv.slice(2)]);
+  const args = parseArgs(originalArgv);
+  const invocation = invocationEffect(originalArgv);
   const targetRoot = path.resolve(process.cwd(), args.target);
   if (args.start) {
     const payload = await startDaemon(args, targetRoot);
-    console.log(JSON.stringify(payload, null, 2));
+    console.log(JSON.stringify({ ...payload, ...invocation }, null, 2));
     return;
   }
   if (args.serve) {
@@ -669,15 +681,15 @@ async function main() {
       endpointFile,
       targetRoot,
     });
-    writeReadyFile(args.readyFile, payload);
+    writeReadyFile(args.readyFile, { ...payload, ...invocation });
     if (args.json) {
-      console.log(JSON.stringify(payload, null, 2));
+      console.log(JSON.stringify({ ...payload, ...invocation }, null, 2));
     }
     return;
   }
   if (args.stop) {
     const payload = await stopDaemon(args, targetRoot);
-    console.log(JSON.stringify(payload, null, 2));
+    console.log(JSON.stringify({ ...payload, ...invocation }, null, 2));
     if (payload.ok === false) {
       process.exit(1);
     }
@@ -694,6 +706,7 @@ async function main() {
     });
     console.log(JSON.stringify({
       ...payload,
+      ...invocation,
       endpoint_file: endpoint.endpointFile,
     }, null, 2));
   } catch (error) {
@@ -702,8 +715,7 @@ async function main() {
       ts: new Date().toISOString(),
       ok: false,
       contract_version: CONTRACT_VERSION,
-      command: "aidn runtime local-daemon --status --json",
-      effect_class: "read-only",
+      ...invocation,
       endpoint_file: endpoint.endpointFile,
       daemon: {
         status: "unavailable",

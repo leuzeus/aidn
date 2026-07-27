@@ -5,7 +5,7 @@ if ([string]::IsNullOrWhiteSpace($aidnRef)) {
 }
 
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-  Write-Error "node is required. Install Node.js 18 or newer."
+  Write-Error "node is required. Install Node.js 22.13 or newer."
   exit 1
 }
 

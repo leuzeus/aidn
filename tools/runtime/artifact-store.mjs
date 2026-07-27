@@ -151,6 +151,9 @@ function main() {
       sqliteFile: path.isAbsolute(args.sqliteFile)
         ? args.sqliteFile
         : path.resolve(targetRoot, args.sqliteFile),
+      readOnly: args.action === "list"
+        || args.action === "get"
+        || (args.action === "materialize" && args.dryRun),
     });
     try {
       let payload = null;

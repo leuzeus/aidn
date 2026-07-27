@@ -2,6 +2,7 @@ name: Governance
 
 on:
   pull_request:
+    branches: [dev, main]
   workflow_dispatch:
 
 permissions:
@@ -18,16 +19,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22.13"
 
-      - name: Verify Source of Truth Policy
-        run: npm run perf:verify-source-of-truth-policy
-
-      - name: Verify Metadata Policy
-        run: npm run perf:verify-metadata-policy
-
-      - name: Verify Governance Completeness
-        run: npm run perf:verify-governance-completeness
-
-      - name: Verify Governance Runtime CLI
-        run: npm run perf:verify-governance-runtime-cli
+      - name: Verify Governance
+        run: npm run verify:governance

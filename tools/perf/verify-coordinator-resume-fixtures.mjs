@@ -78,7 +78,7 @@ function buildDispatchEvent(ts) {
 }
 
 function buildEscalatedFixture(targetRoot, repoRoot, handoffProjectScript, summaryScript) {
-  runJson(handoffProjectScript, ["--target", targetRoot, "--json"], repoRoot, 0);
+  runJson(handoffProjectScript, ["--target", targetRoot, "--write", "--json"], repoRoot, 0);
   appendHistoryEvent(targetRoot, buildDispatchEvent("2026-03-09T02:00:00Z"));
   appendHistoryEvent(targetRoot, buildDispatchEvent("2026-03-09T02:05:00Z"));
   appendHistoryEvent(targetRoot, buildDispatchEvent("2026-03-09T02:10:00Z"));
@@ -88,7 +88,7 @@ function buildEscalatedFixture(targetRoot, repoRoot, handoffProjectScript, summa
 }
 
 function buildRoleBlockedFixture(targetRoot, repoRoot, handoffProjectScript) {
-  runJson(handoffProjectScript, ["--target", targetRoot, "--json"], repoRoot, 0);
+  runJson(handoffProjectScript, ["--target", targetRoot, "--write", "--json"], repoRoot, 0);
   const roleBlockedAgentDir = path.join(targetRoot, ".aidn", "runtime", "agents");
   fs.mkdirSync(roleBlockedAgentDir, { recursive: true });
   fs.writeFileSync(path.join(roleBlockedAgentDir, "probe-failing-auditor.mjs"), [

@@ -16,10 +16,18 @@ These are the durable surfaces exposed through `aidn` today:
 - `aidn install`
 - `aidn bootstrap`
 - `aidn build-release`
-- `aidn perf`
+- `aidn help` / `aidn --help` / `aidn -h`
+- `aidn version` / `aidn --version` / `aidn -v`
 - `aidn codex`
 - `aidn runtime`
 - `aidn project`
+
+The single dispatch registry is `src/core/cli/command-registry.mjs`.
+`bin/aidn.mjs` and the machine-readable catalog import that same structured
+registry. Options are derived only from each command's effective `parseArgs`
+function. `tools/verify/verify-surface-catalog.mjs` enforces the closure in both
+directions, rejects incomplete or duplicate descriptors and unknown options
+through the real entrypoints, and excludes arguments passed to child processes.
 
 ## Stable public command families
 
@@ -28,15 +36,19 @@ These command families are intended for users and are covered by public effect p
 - `aidn project config --list --json`
 - `aidn bootstrap --json`
 - `aidn bootstrap --dry-run --json`
-- `aidn project config --wizard`
-- `aidn project config --init-defaults --project-name <name> --json`
-- `aidn project config --migrate-adapter --json`
+- `aidn project config --wizard --write`
+- `aidn project config --adapter-file <file> --json` (preview)
+- `aidn project config --adapter-file <file> --write --json` (apply)
+- `aidn project config --init-defaults --project-name <name> --json` (preview)
+- `aidn project config --init-defaults --project-name <name> --write --json`
+- `aidn project config --migrate-adapter --json` (preview)
+- `aidn project config --migrate-adapter --write --json`
 - `aidn runtime db-status --json`
 - `aidn runtime db-only-readiness --json`
 - `aidn runtime persistence-status --json`
 - `aidn runtime persistence-adopt --json`
-- `aidn runtime db-migrate --json`
-- `aidn runtime persistence-migrate --json`
+- `aidn runtime db-migrate --json` (preview) and `--write --json` (apply)
+- `aidn runtime persistence-migrate --json` (preview alias) and `--write --json` (apply)
 - `aidn runtime db-backup --json`
 - `aidn runtime persistence-backup --json`
 - `aidn runtime persistence-source-diagnose --json`
@@ -68,7 +80,8 @@ These surfaces are public and contract-backed, but they are more operational or 
 - `aidn runtime shared-runtime-reanchor --json`
 - `aidn runtime shared-coordination-bootstrap --json`
 - `aidn runtime shared-coordination-backup --json`
-- `aidn runtime shared-coordination-restore --json`
+- `aidn runtime shared-coordination-restore --json` (preview) and
+  `--write --json` (apply)
 - `aidn runtime shared-coordination-doctor --json`
 - `aidn runtime shared-coordination-migrate --json`
 - `aidn runtime project-agent-health-summary --json`
@@ -78,7 +91,7 @@ These surfaces are public and contract-backed, but they are more operational or 
 - `aidn runtime project-coordination-summary --json`
 - `aidn runtime sync-db-first --json`
 - `aidn runtime sync-db-first-selective --json`
-- `aidn runtime mode-migrate --json`
+- `aidn runtime mode-migrate --json` previews the config, schema, and projection plan; add `--write` to apply it
 - `aidn runtime session-plan --json`
 - `aidn runtime db-first-artifact --json`
 - `aidn runtime artifact-store list --json`
@@ -98,9 +111,13 @@ These surfaces are public and contract-backed, but they are more operational or 
 - `aidn runtime project-handoff-packet --json`, `--write` for projection writes, and `--sync-relay` for shared relay sync writes
 - `aidn runtime state-reanchor --json` and `--write` for explicit repair of `CURRENT-STATE.md`, `RUNTIME-STATE.md`, and `HANDOFF-PACKET.md` from the active runtime backend
 
-## Stable public aliases
+## Repository-internal aliases
 
-These `aidn perf` aliases are public because they are part of the executable CLI surface and are validated by alias coverage fixtures:
+The `aidn perf` dispatcher and every alias declared as internal in
+`src/core/cli/command-registry.mjs`
+are repository tooling. They remain executable for maintainers and fixtures, but
+they are classified explicitly as internal/non-public in the machine-readable
+surface catalog. In particular, this includes:
 
 - `aidn perf checkpoint`
 - `aidn perf session-start`
@@ -108,7 +125,7 @@ These `aidn perf` aliases are public because they are part of the executable CLI
 - `aidn perf delivery-start`
 - `aidn perf delivery-end`
 - `aidn perf audit-review`
-- the `perf:*` alias set listed in `bin/aidn.mjs`
+- every other alias in the closed internal registry
 
 ## Experimental or internal
 
@@ -116,17 +133,21 @@ These are currently implemented as package scripts, tools, or internal wrappers,
 
 - direct `tools/runtime/*.mjs` entrypoints
 - direct `tools/perf/*.mjs` entrypoints
-- `aidn runtime local-daemon`
+- `aidn perf` and its explicitly catalogued internal aliases
+- `aidn codex run-json-hook` and `aidn codex normalize-hook-payload`
+- `aidn runtime local-daemon` (public, experimental)
   - experimental opt-in local daemon prototype
   - `--start`, `--status`, and `--stop` use a worktree-local endpoint file under `.aidn/runtime/daemon/`
+  - `--status` is always read-only, whether the daemon is present or absent;
+    `--start`, `--serve`, and `--stop` are executor invocations
   - current stable behavior remains batch unless a client command is explicitly run with daemon flags
   - first supported delegated operations are `aidn codex workflow-step --use-daemon ...` and `aidn codex run-json-hook --use-daemon ...`
   - no command starts the daemon implicitly
-- `aidn runtime repair-layer`
-- `aidn runtime repair-layer-query`
-- `aidn runtime repair-layer-resolve`
-- `aidn runtime repair-layer-triage`
-- `aidn runtime repair-layer-autofix`
+- `node tools/runtime/repair-layer.mjs`
+- `node tools/runtime/repair-layer-query.mjs`
+- `node tools/runtime/repair-layer-resolve.mjs`
+- `node tools/runtime/repair-layer-triage.mjs`
+- `node tools/runtime/repair-layer-autofix.mjs`
 - implementation helpers under `src/application/`, `src/adapters/`, and `src/lib/`
 
 Repair-layer commands are operational/internal surfaces. They may be used by CI, recovery tooling, or fixture-driven tests, but they are not promoted as stable public contracts in this backlog.
@@ -136,6 +157,7 @@ Repair-layer commands are operational/internal surfaces. They may be used by CI,
 This inventory is derived from:
 
 - `bin/aidn.mjs`
+- `src/core/cli/command-registry.mjs`
 - `package.json`
 - `README.md`
 - `src/core/cli/effect-policy.mjs`

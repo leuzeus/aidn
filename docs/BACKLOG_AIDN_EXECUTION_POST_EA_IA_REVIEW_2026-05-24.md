@@ -1,6 +1,6 @@
 # Backlog exécutable post-analyse EA/IA AIDN
 
-Référence de cadrage: [docs/PLAN_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md](/g:/projets/aidn/docs/PLAN_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md)
+Référence de cadrage: [docs/PLAN_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md](./PLAN_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md)
 
 Ce backlog transforme le diagnostic EA/IA en lots exécutables, petits et reviewables. L’ordre est volontairement conservateur: sécuriser d’abord la sémantique des commandes et les contrats, puis faire descendre la gouvernance d’information dans les producteurs d’artefacts, ensuite renforcer l’exploitation locale et la release.
 

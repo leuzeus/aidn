@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { ensureWorkflowDbSchema, getDatabaseSync } from "../../lib/sqlite/workflow-db-schema-lib.mjs";
+import { getDatabaseSync } from "../../lib/sqlite/workflow-db-schema-lib.mjs";
 
 export function openSqliteRuntimeQueryContext({
   indexFile,
@@ -11,14 +11,10 @@ export function openSqliteRuntimeQueryContext({
     throw new Error(`SQLite index file not found: ${absolute}`);
   }
   const DatabaseSync = getDatabaseSync();
-  const db = new DatabaseSync(absolute);
-  ensureWorkflowDbSchema({
-    db,
-    sqliteFile: absolute,
-    role,
-  });
+  const db = new DatabaseSync(absolute, { readOnly: true });
   return {
     absolute,
     db,
+    role,
   };
 }

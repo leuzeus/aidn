@@ -1054,12 +1054,12 @@ function main() {
       printText(output);
     }
     if (args.strict && !output.ok) {
-      process.exit(1);
+      process.exitCode = 1;
     }
   }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   });
 }
 

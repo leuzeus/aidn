@@ -143,12 +143,12 @@ Runtime et shared doivent resoudre le meme contexte projet. `project_id`, `works
 - Une configuration PostgreSQL incomplete peut faire retomber implicitement vers SQLite si le contrat n'est pas strictement applique.
 - Un bundle trop volumineux peut deteriorer les longues sessions.
 
-## Gowire
+## External Pilot
 
-`gowire` sera traite comme lot separe apres mise a jour et validation AIDN:
+`external-pilot` sera traite comme lot separe apres mise a jour et validation AIDN:
 
-- dry-run migration/cleanup sur `G:\projets\gowire`;
-- backup externe sous `G:\projets\.aidn-backups\gowire\<timestamp>\`;
+- dry-run migration/cleanup sur `<external-pilot-root>`;
+- backup externe sous `<local-backup-root>\<timestamp>\`;
 - validation PostgreSQL et project context;
 - quarantaine externe des artefacts visibles geres;
 - verification absence de doublons apres reinstallation/import/adoption.
@@ -164,4 +164,4 @@ Le lot est complet uniquement si:
 - les sorties JSON publiques ont leurs contrats et fixtures;
 - les commandes read-only ou preview ne mutent pas;
 - les gates ciblees passent;
-- la migration `gowire` reste explicitement separee.
+- la migration `external-pilot` reste explicitement separee.
