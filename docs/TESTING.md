@@ -136,7 +136,7 @@ When a change affects release/versioning, install examples, or build-release pro
 - `npm run perf:verify-release-reproducibility`
 - `npm run perf:verify-release-workflow-policy`
 - `npm run perf:verify-release-provenance`
-- `npm run perf:verify-pack-topology`
+- `npm run perf:verify-pack-topology` (also injects an early copy failure and proves that the primary diagnostic is preserved, the nonzero exit is deferred, and the owned fixture root is removed)
 - `npm run perf:verify-tracked-sensitivity`
 - `npm run perf:verify-doc-references`
 

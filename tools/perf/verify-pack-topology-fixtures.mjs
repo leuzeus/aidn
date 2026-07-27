@@ -2,8 +2,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { findSensitivityMatches } from "../verify/sensitivity-policy.mjs";
+import { inspectImmediateProcessExitArguments } from "../verify/spawn-sync-evidence-lib.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+
+const SELF_FILE = fileURLToPath(import.meta.url);
+const CLEANUP_PROBE_ENV = "AIDN_PACK_TOPOLOGY_CLEANUP_PROBE";
+const CLEANUP_PROBE_PREFIX = "tmp-pack-topology-cleanup-probe-";
 
 function assert(condition, message) {
   if (!condition) {
@@ -203,9 +209,80 @@ function inspectPackageDocsAllowlist(files) {
   };
 }
 
+function listFixtureDirectories(repoRoot, prefix) {
+  const fixturesRoot = path.resolve(repoRoot, "tests", "fixtures");
+  return fs.readdirSync(fixturesRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith(prefix))
+    .map((entry) => path.resolve(fixturesRoot, entry.name))
+    .sort();
+}
+
+function verifyExitPolicy() {
+  const source = fs.readFileSync(SELF_FILE, "utf8");
+  const immediateExitArguments = inspectImmediateProcessExitArguments(source);
+  assert(
+    immediateExitArguments.length === 0,
+    `pack topology verifier must defer nonzero exit until cleanup; found process.exit(${immediateExitArguments.join("), process.exit(")})`,
+  );
+  const mutantArguments = inspectImmediateProcessExitArguments(`${source}\nprocess.exit(1);\n`);
+  assert(
+    mutantArguments.length === immediateExitArguments.length + 1
+      && mutantArguments.at(-1) === "1",
+    "pack topology immediate-exit mutant was not detected",
+  );
+  return {
+    immediate_exit_arguments: immediateExitArguments,
+    immediate_exit_mutant_rejected: true,
+  };
+}
+
+function verifyInjectedFailureCleanup(repoRoot) {
+  const before = listFixtureDirectories(repoRoot, CLEANUP_PROBE_PREFIX);
+  assert(
+    before.length === 0,
+    `pack topology cleanup probe requires no pre-existing owned roots: ${before.join(", ")}`,
+  );
+  const result = spawnSync(process.execPath, [SELF_FILE], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      [CLEANUP_PROBE_ENV]: "1",
+    },
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 180000,
+    maxBuffer: 20 * 1024 * 1024,
+  });
+  const after = listFixtureDirectories(repoRoot, CLEANUP_PROBE_PREFIX);
+  const stderr = String(result.stderr ?? "");
+  assert(
+    (result.status ?? 1) === 1,
+    `pack topology cleanup probe should exit 1; status=${result.status} signal=${result.signal ?? "none"} error=${result.error?.message ?? "none"}`,
+  );
+  assert(
+    stderr.includes("injected pack topology failure after source copy"),
+    `pack topology cleanup probe should preserve the primary error; stderr=${stderr.slice(-2000)}`,
+  );
+  assert(
+    after.length === 0,
+    `pack topology cleanup probe left owned roots: ${after.join(", ")}`,
+  );
+  return {
+    exit_code: 1,
+    primary_error_preserved: true,
+    owned_roots_remaining: 0,
+  };
+}
+
 function main() {
   const repoRoot = process.cwd();
-  const tempRoot = fs.mkdtempSync(path.join(path.resolve(repoRoot, "tests", "fixtures"), "tmp-pack-topology-"));
+  const cleanupProbe = process.env[CLEANUP_PROBE_ENV] === "1";
+  const exitPolicy = cleanupProbe ? null : verifyExitPolicy();
+  const injectedFailureCleanup = cleanupProbe ? null : verifyInjectedFailureCleanup(repoRoot);
+  const tempPrefix = cleanupProbe ? CLEANUP_PROBE_PREFIX : "tmp-pack-topology-";
+  const tempRoot = fs.mkdtempSync(path.join(path.resolve(repoRoot, "tests", "fixtures"), tempPrefix));
+  let primaryError = null;
+  let cleanupResult = null;
   try {
     const workflowManifest = readYamlText(repoRoot, "package/manifests/workflow.manifest.yaml");
     const runtimeLocalManifest = readYamlText(repoRoot, "packs/runtime-local/manifest.yaml");
@@ -215,6 +292,9 @@ function main() {
     const sourceTarget = path.resolve(repoRoot, "tests/fixtures/repo-installed-core");
     const targetRoot = path.join(tempRoot, "repo");
     fs.cpSync(sourceTarget, targetRoot, { recursive: true });
+    if (cleanupProbe) {
+      throw new Error("injected pack topology failure after source copy");
+    }
     const runtimeLocalTarget = path.join(tempRoot, "runtime-local-refresh");
     const codexTarget = path.join(tempRoot, "codex-refresh");
     const githubTarget = path.join(tempRoot, "github-refresh");
@@ -302,12 +382,36 @@ function main() {
     assert(packageLeakGuard.pass, `npm pack leak guard failed: ${packageLeakGuard.violations.slice(0, 20).join(", ")}`);
     assert(packageDocsAllowlist.pass, `package docs allowlist failed: ${packageDocsAllowlist.violations.slice(0, 20).join(", ")}`);
 
-    console.log("PASS");
   } catch (error) {
-    console.error(`ERROR: ${error.message}`);
-    process.exit(1);
+    primaryError = error;
   } finally {
-    removePathWithRetry(tempRoot);
+    cleanupResult = removePathWithRetry(tempRoot);
+  }
+
+  if (primaryError) {
+    console.error(`ERROR: ${primaryError.message}`);
+  }
+  if (!cleanupResult?.ok) {
+    console.error(
+      `ERROR: pack topology cleanup failed after ${cleanupResult?.attempts ?? 0} attempts: `
+      + `${cleanupResult?.error?.message ?? "unknown error"}`,
+    );
+  }
+  if (primaryError || !cleanupResult?.ok) {
+    process.exitCode = 1;
+    return;
+  }
+
+  if (!cleanupProbe) {
+    console.log("PASS");
+    console.log(JSON.stringify({
+      exit_policy: exitPolicy,
+      injected_failure_cleanup: injectedFailureCleanup,
+      cleanup: {
+        temporary_root_removed: true,
+        attempts: cleanupResult.attempts,
+      },
+    }, null, 2));
   }
 }
 
