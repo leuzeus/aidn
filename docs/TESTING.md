@@ -159,9 +159,12 @@ ancestry from `dev`, hotfix ancestry from `main`, and exact main-to-dev
 synchronization. They also reject non-patch hotfix versions, mismatched
 synchronization version suffixes, version-mismatched publication branches,
 reversed synchronization, and divergent remote provenance. The release
-workflow-policy gate parses the workflow structure and active shell lines; its
-negative probes prove that comments cannot preserve a disabled hotfix route or
-a weakened unique-PR assertion.
+workflow-policy gate parses the workflow structure and requires exact
+single-command calls to
+`tools/ci/fetch-branch-policy-sources.mjs` and
+`tools/ci/prove-publication-source.mjs`. The helpers are tested through injected
+Git and GitHub responses, so comments, dormant shell blocks, wildcard hotfix
+routes, or weakened unique-PR assertions cannot satisfy the gate.
 The pack topology verifier checks the package tarball surface, the published docs allowlist, and the leak guard for guarded terms in package paths and contents. The tracked-sensitivity verifier separately scans the complete Git-tracked tree, including historical planning documents and fixtures. It uses exact negative probes so weakening or bypassing the detector fails the gate. Current tracked content is neutralized, but older Git objects can retain prior pilot names and local paths; history cleanup may therefore still be required before wider archival or publication.
 The documentation-reference verifier resolves active local Markdown links and
 literal `npm run` references against the tracked tree and `package.json`; its

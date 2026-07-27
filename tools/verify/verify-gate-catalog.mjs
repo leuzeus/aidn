@@ -7,6 +7,10 @@ import {
   validateGateAndWorkflowPolicy,
   validateWorkflowYamlSyntax,
 } from "./workflow-policy-lib.mjs";
+import {
+  branchSourceRefspecs,
+  fetchBranchPolicySources,
+} from "../ci/fetch-branch-policy-sources.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const catalogPath = path.join(repoRoot, "package", "catalogs", "gates.v1.json");
@@ -192,26 +196,67 @@ const duplicateJobMutation = `${releaseText}\n  verify:\n    runs-on: ubuntu-lat
 
 const architecturePath = ".github/workflows/architecture-gates.yml";
 const architectureText = fs.readFileSync(path.join(repoRoot, architecturePath), "utf8");
+const canonicalBranchFetchCommand = "node tools/ci/fetch-branch-policy-sources.mjs";
 function evaluateArchitectureBranchSourceFetch(source) {
   const sourceIssues = [];
-  for (const sourceRef of [
-    "+refs/heads/dev:refs/remotes/origin/dev",
-    "+refs/heads/main:refs/remotes/origin/main",
-  ]) {
-    if (!source.includes(sourceRef)) {
-      sourceIssues.push(`architecture branch gate missing source provenance fetch: ${sourceRef}`);
-    }
+  const model = parseWorkflowStructure(source, architecturePath);
+  const fetchSteps = model.jobs?.cleanliness?.steps?.filter(
+    (step) => step.name === "Fetch Announced Remote Head",
+  ) ?? [];
+  if (fetchSteps.length !== 1
+    || fetchSteps[0].run.trim() !== canonicalBranchFetchCommand) {
+    sourceIssues.push(
+      `architecture branch gate must call only the canonical provenance helper: `
+      + canonicalBranchFetchCommand,
+    );
   }
   return sourceIssues;
 }
 issues.push(...evaluateArchitectureBranchSourceFetch(architectureText));
+const capturedFetchCalls = [];
+const fetchHelperResult = fetchBranchPolicySources({
+  headRef: "codex/governance-probe",
+  runGit(args) {
+    capturedFetchCalls.push(args);
+    return "";
+  },
+});
+const expectedFetchRefspecs = [
+  "+refs/heads/codex/governance-probe:refs/remotes/origin/codex/governance-probe",
+  "+refs/heads/dev:refs/remotes/origin/dev",
+  "+refs/heads/main:refs/remotes/origin/main",
+];
+const fetchHelperBehavior = {
+  exact_refspecs: JSON.stringify(fetchHelperResult.refspecs)
+    === JSON.stringify(expectedFetchRefspecs),
+  one_canonical_git_call: JSON.stringify(capturedFetchCalls) === JSON.stringify([[
+    "fetch",
+    "--no-tags",
+    "origin",
+    ...expectedFetchRefspecs,
+  ]]),
+  unsafe_head_rejected: false,
+};
+try {
+  branchSourceRefspecs("../main");
+} catch {
+  fetchHelperBehavior.unsafe_head_rejected = true;
+}
+for (const [proof, passed] of Object.entries(fetchHelperBehavior)) {
+  if (!passed) {
+    issues.push(`canonical branch-source fetch helper proof failed: ${proof}`);
+  }
+}
 const missingGateDependencyInstallMutation = architectureText.replace(
   /      - name: Install Locked Gate Dependencies\r?\n        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund\r?\n/,
   "",
 );
 const missingBranchSourceFetchMutation = architectureText.replace(
-  / \\\r?\n            "\+refs\/heads\/dev:refs\/remotes\/origin\/dev" \\\r?\n            "\+refs\/heads\/main:refs\/remotes\/origin\/main"/,
-  "",
+  `        run: ${canonicalBranchFetchCommand}`,
+  "        run: |\n"
+    + "          if false; then\n"
+    + `            ${canonicalBranchFetchCommand}\n`
+    + "          fi",
 );
 
 const liveSmokePath = ".github/workflows/runtime-ops-live-smoke.yml";
@@ -342,6 +387,7 @@ const output = {
     pg_version: packageLock?.packages?.["node_modules/pg"]?.version ?? null,
     yaml_version: packageLock?.packages?.["node_modules/yaml"]?.version ?? null,
   },
+  branch_source_fetch_helper: fetchHelperBehavior,
   workflow_syntax: {
     parser: `yaml@${packageJson.devDependencies?.yaml ?? "missing"}`,
     files: workflowSyntaxResults.length,

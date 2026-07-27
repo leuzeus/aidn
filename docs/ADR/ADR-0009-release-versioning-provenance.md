@@ -46,6 +46,9 @@ Rules:
 - publication occurs only on a push to `main` associated with exactly one
   merged PR whose source is exactly `release/v${VERSION}` or
   `hotfix/v${VERSION}`
+- workflow-critical remote fetch and publication-source proof run through
+  canonical one-command Node helpers whose behavior is tested with injected Git
+  and GitHub responses; retained text or dormant shell blocks are not evidence
 - the publish job creates an annotated tag and GitHub Release only after clean-commit, reproducibility, topology, sensitivity, checksum, and provenance checks
 - an existing tag or release is a hard failure
 - the release workflow never runs `npm publish`
@@ -99,6 +102,8 @@ Negative:
 - keep `perf:verify-release-reproducibility` and `perf:verify-release-workflow-policy` in the release path
 - keep branch-policy fixtures for release, hotfix, exact main-to-dev sync, and
   rejected provenance mutations
+- keep the canonical CI helper calls exact and preserve their fail-closed
+  behavioral probes
 - ensure release manifests and checksums stay in the same atomic publish flow
 - keep source fingerprints in the manifest in sync with the checked-in files
 - update the release workflow when the publish surface changes

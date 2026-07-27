@@ -13,6 +13,10 @@
   `main` and target only `dev`.
 
 The executable branch policy is `tools/verify/verify-branch-policy.mjs`.
+CI obtains the three remote provenance refs through the single-command helper
+`tools/ci/fetch-branch-policy-sources.mjs`; publication source classification is
+owned by `tools/ci/prove-publication-source.mjs`. Workflow gates reject inline
+shell substitutes or dormant wrappers around either helper.
 
 For a normal branch checkout, the policy derives the head from the configured
 remote before comparing it with the announced base. For an immutable detached

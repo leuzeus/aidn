@@ -59,6 +59,8 @@ function recordCase(results, name, result, expected, {
   remoteRefExact = null,
   syncSourceExact = null,
   branchSourceAncestor = null,
+  hotfixPatchIncrement = null,
+  expectedIssueIncludes = null,
 } = {}) {
   assertStatus(name, result, expected);
   const payload = JSON.parse(String(result.stdout).trim());
@@ -90,6 +92,20 @@ function recordCase(results, name, result, expected, {
       + `${String(payload.provenance?.branch_source_ancestor)}`,
     );
   }
+  if (hotfixPatchIncrement != null
+    && payload.provenance?.hotfix_patch_increment !== hotfixPatchIncrement) {
+    throw new Error(
+      `${name}: expected hotfix_patch_increment=${hotfixPatchIncrement}, got `
+      + `${String(payload.provenance?.hotfix_patch_increment)}`,
+    );
+  }
+  if (expectedIssueIncludes != null
+    && !payload.issues?.some((issue) => issue.includes(expectedIssueIncludes))) {
+    throw new Error(
+      `${name}: expected an issue containing ${JSON.stringify(expectedIssueIncludes)}, got `
+      + JSON.stringify(payload.issues),
+    );
+  }
   results.push({
     name,
     status: expected === 0 ? "PASS" : "EXPECTED_FAIL",
@@ -97,6 +113,7 @@ function recordCase(results, name, result, expected, {
     remote_ref_exact: payload.provenance?.remote_ref_exact ?? false,
     sync_source_exact: payload.provenance?.sync_source_exact ?? false,
     branch_source_ancestor: payload.provenance?.branch_source_ancestor ?? false,
+    hotfix_patch_increment: payload.provenance?.hotfix_patch_increment ?? false,
   });
 }
 
@@ -170,6 +187,9 @@ function main() {
           AIDN_BRANCH_POLICY_VERSION: "0.7.1",
         },
         expected: 0,
+        options: {
+          hotfixPatchIncrement: true,
+        },
       },
       {
         name: "hotfix_minor_increment_fail",
@@ -180,6 +200,10 @@ function main() {
           AIDN_BRANCH_POLICY_VERSION: "0.8.0",
         },
         expected: 1,
+        options: {
+          hotfixPatchIncrement: false,
+          expectedIssueIncludes: "must increment exactly one patch",
+        },
       },
       {
         name: "hotfix_skipped_patch_fail",
@@ -190,6 +214,38 @@ function main() {
           AIDN_BRANCH_POLICY_VERSION: "0.7.2",
         },
         expected: 1,
+        options: {
+          hotfixPatchIncrement: false,
+          expectedIssueIncludes: "must increment exactly one patch",
+        },
+      },
+      {
+        name: "hotfix_major_increment_fail",
+        env: {
+          GITHUB_EVENT_NAME: "pull_request",
+          GITHUB_HEAD_REF: "hotfix/v1.0.0",
+          GITHUB_BASE_REF: "main",
+          AIDN_BRANCH_POLICY_VERSION: "1.0.0",
+        },
+        expected: 1,
+        options: {
+          hotfixPatchIncrement: false,
+          expectedIssueIncludes: "must increment exactly one patch",
+        },
+      },
+      {
+        name: "hotfix_prerelease_fail",
+        env: {
+          GITHUB_EVENT_NAME: "pull_request",
+          GITHUB_HEAD_REF: "hotfix/v0.7.1-rc.1",
+          GITHUB_BASE_REF: "main",
+          AIDN_BRANCH_POLICY_VERSION: "0.7.1-rc.1",
+        },
+        expected: 1,
+        options: {
+          hotfixPatchIncrement: false,
+          expectedIssueIncludes: "must increment exactly one patch",
+        },
       },
       {
         name: "version_mismatched_release_to_main_fail",
@@ -236,19 +292,10 @@ function main() {
         },
         expected: 1,
       },
-      {
-        name: "version_mismatched_sync_to_dev_fail",
-        env: {
-          GITHUB_EVENT_NAME: "pull_request",
-          GITHUB_HEAD_REF: "sync/main-to-dev-v9.9.9",
-          GITHUB_BASE_REF: "dev",
-        },
-        expected: 1,
-      },
     ];
     for (const item of cases) {
       const result = run(process.execPath, [policyScript], sourceRoot, policyEnv(item.env));
-      recordCase(results, item.name, result, item.expected);
+      recordCase(results, item.name, result, item.expected, item.options);
     }
 
     git(["checkout", "--quiet", "sync/main-to-dev-v0.7.0"], sourceRoot);
@@ -263,6 +310,38 @@ function main() {
       exactSyncResult,
       0,
       { syncSourceExact: true },
+    );
+
+    const wrongVersionSyncResult = run(process.execPath, [policyScript], sourceRoot, policyEnv({
+      GITHUB_EVENT_NAME: "pull_request",
+      GITHUB_HEAD_REF: "sync/main-to-dev-v9.9.9",
+      GITHUB_BASE_REF: "dev",
+    }));
+    recordCase(
+      results,
+      "exact_main_wrong_sync_version_fail",
+      wrongVersionSyncResult,
+      1,
+      {
+        syncSourceExact: true,
+        expectedIssueIncludes: "expected sync/main-to-dev-v0.7.0",
+      },
+    );
+
+    const prereleaseSyncResult = run(process.execPath, [policyScript], sourceRoot, policyEnv({
+      GITHUB_EVENT_NAME: "pull_request",
+      GITHUB_HEAD_REF: "sync/main-to-dev-v0.7.0-rc.1",
+      GITHUB_BASE_REF: "dev",
+    }));
+    recordCase(
+      results,
+      "exact_main_prerelease_sync_version_fail",
+      prereleaseSyncResult,
+      1,
+      {
+        syncSourceExact: true,
+        expectedIssueIncludes: "expected sync/main-to-dev-v0.7.0",
+      },
     );
 
     git(["checkout", "--quiet", "sync/main-to-dev-v0.7.0-diverged"], sourceRoot);

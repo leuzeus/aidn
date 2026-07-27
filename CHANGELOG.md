@@ -4,8 +4,9 @@
 
 - Govern version-matched `hotfix/vX.Y.Z` patch publication and exact
   `sync/main-to-dev-vX.Y.Z` resynchronization, including remote ancestry,
-  workflow-source classification, negative fixtures, documentation, and
-  machine-readable gate coverage.
+  canonical and behavior-tested CI provenance helpers, workflow-source
+  classification, negative fixtures, documentation, and machine-readable gate
+  coverage.
 
 ## 0.7.0
 

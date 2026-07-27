@@ -2,17 +2,56 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parseDocument } from "yaml";
+import {
+  classifyPublicationSource,
+  provePublicationSource,
+} from "../ci/prove-publication-source.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const workflowPath = ".github/workflows/release.yml";
 const workflow = fs.readFileSync(path.join(repoRoot, workflowPath), "utf8");
 const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
+const fetchCommand = "node tools/ci/fetch-branch-policy-sources.mjs";
+const publicationProofCommand = "node tools/ci/prove-publication-source.mjs";
+const refusalScript = `VERSION="$(cat VERSION)"
+TAG="v\${VERSION}"
+if git ls-remote --exit-code --tags origin "refs/tags/\${TAG}" >/dev/null 2>&1; then
+  echo "Tag \${TAG} already exists" >&2
+  exit 1
+fi
+if gh release view "\${TAG}" >/dev/null 2>&1; then
+  echo "GitHub Release \${TAG} already exists" >&2
+  exit 1
+fi
+echo "value=\${VERSION}" >> "\${GITHUB_OUTPUT}"
+echo "tag=\${TAG}" >> "\${GITHUB_OUTPUT}"`;
+const publicationScript = `git config user.name "github-actions[bot]"
+git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+git tag -a "\${TAG}" "\${GITHUB_SHA}" -m "AIDN \${TAG}"
+git push origin "refs/tags/\${TAG}"
+gh release create "\${TAG}" \\
+  "release/dist/aidn-workflow-\${VERSION}.zip" \\
+  "release/checksums.txt" \\
+  "release/manifest.json" \\
+  --title "AIDN \${TAG}" \\
+  --generate-notes \\
+  --verify-tag`;
 
-function activeShell(script) {
-  return String(script ?? "")
-    .split(/\r?\n/u)
-    .filter((line) => !line.trimStart().startsWith("#"))
-    .join("\n");
+function parseWorkflow(candidate) {
+  const document = parseDocument(candidate, {
+    prettyErrors: true,
+    strict: true,
+    uniqueKeys: true,
+  });
+  if (document.errors.length > 0) {
+    return {
+      model: null,
+      issues: document.errors.map((error) => (
+        `release workflow YAML is invalid: ${String(error.message).replace(/\s+/gu, " ").trim()}`
+      )),
+    };
+  }
+  return { model: document.toJS(), issues: [] };
 }
 
 function sameSet(actual, expected) {
@@ -20,143 +59,328 @@ function sameSet(actual, expected) {
     === JSON.stringify([...new Set(expected)].sort());
 }
 
-function exactLineCount(script, expected) {
-  return activeShell(script)
-    .split("\n")
-    .filter((line) => line.trim() === expected)
-    .length;
+function namedStep(job, name) {
+  const matches = (Array.isArray(job?.steps) ? job.steps : [])
+    .filter((step) => step?.name === name);
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function exactRun(step, command) {
+  return String(step?.run ?? "").trim() === command.trim();
 }
 
 function evaluateWorkflow(candidate) {
-  const candidateIssues = [];
-  const document = parseDocument(candidate, {
-    prettyErrors: true,
-    strict: true,
-    uniqueKeys: true,
-  });
-  if (document.errors.length > 0) {
-    return document.errors.map((error) => (
-      `release workflow YAML is invalid: ${String(error.message).replace(/\s+/gu, " ").trim()}`
-    ));
+  const parsed = parseWorkflow(candidate);
+  if (!parsed.model) {
+    return parsed.issues;
   }
-  const model = document.toJS();
+  const issues = [];
+  const { model } = parsed;
   if (!sameSet(model?.on?.pull_request?.branches, ["dev", "main"])) {
-    candidateIssues.push("release verification must trigger on PRs to dev and main");
+    issues.push("release verification must trigger on PRs to dev and main");
   }
-  if (!sameSet(model?.on?.push?.branches, ["main"])) {
-    candidateIssues.push("release publication must trigger only on pushes to main");
+  if (!sameSet(model?.on?.push?.branches, ["main"]) || model?.on?.push?.tags != null) {
+    issues.push("release publication must trigger only on pushes to main");
   }
   const verifyJob = model?.jobs?.verify;
   const publishJob = model?.jobs?.publish;
   if (verifyJob?.if !== "${{ github.event_name == 'pull_request' }}") {
-    candidateIssues.push("release verify job must be restricted to pull_request");
+    issues.push("release verify job must be restricted to pull_request");
   }
   if (publishJob?.if
     !== "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}") {
-    candidateIssues.push("release publish job must be restricted to pushes on refs/heads/main");
-  }
-  const verifySteps = Array.isArray(verifyJob?.steps) ? verifyJob.steps : [];
-  const publishSteps = Array.isArray(publishJob?.steps) ? publishJob.steps : [];
-  if (!verifySteps.some((step) => String(step?.run ?? "").trim() === "npm run verify:release")) {
-    candidateIssues.push("release PR verify job must run the complete verify:release aggregate");
-  }
-  const verifyScripts = verifySteps.map((step) => activeShell(step?.run)).join("\n");
-  for (const sourceRef of [
-    "+refs/heads/dev:refs/remotes/origin/dev",
-    "+refs/heads/main:refs/remotes/origin/main",
-  ]) {
-    if (!verifyScripts.includes(sourceRef)) {
-      candidateIssues.push(`release verification must fetch provenance source ${sourceRef}`);
-    }
+    issues.push("release publish job must be restricted to pushes on refs/heads/main");
   }
 
-  const publicationSourceSteps = publishSteps.filter(
-    (step) => step?.name === "Prove Main And Merged Publication PR",
-  );
-  if (publicationSourceSteps.length !== 1) {
-    candidateIssues.push("release publish job must have exactly one publication-source proof step");
+  const fetchStep = namedStep(verifyJob, "Fetch Announced Remote Head");
+  if (!fetchStep || !exactRun(fetchStep, fetchCommand)) {
+    issues.push(`release verification must call only the canonical fetch helper: ${fetchCommand}`);
   }
-  const publicationScript = activeShell(publicationSourceSteps[0]?.run);
-  for (const line of [
-    "test \"${GITHUB_REF}\" = \"refs/heads/main\"",
-    "test \"$(git rev-parse HEAD)\" = \"${GITHUB_SHA}\"",
-    "test \"$(git rev-parse origin/main)\" = \"${GITHUB_SHA}\"",
-    "EXPECTED_RELEASE_BRANCH=\"release/v${VERSION}\"",
-    "EXPECTED_HOTFIX_BRANCH=\"hotfix/v${VERSION}\"",
-    "MERGED_MAIN_PR_COUNT=\"$(jq 'length' <<<\"${MERGED_MAIN_PRS_JSON}\")\"",
-    "test \"${MERGED_MAIN_PR_COUNT}\" = \"1\"",
-    "SOURCE_BRANCH=\"$(jq -r '.[0].head.ref' <<<\"${MERGED_MAIN_PRS_JSON}\")\"",
-    "test -z \"$(git status --porcelain=v1 --untracked-files=all)\"",
-  ]) {
-    if (exactLineCount(publicationScript, line) !== 1) {
-      candidateIssues.push(`publication-source proof requires one active line: ${line}`);
-    }
+  const verifyStep = namedStep(verifyJob, "Verify All Context Obligations Without Publishing");
+  if (!verifyStep || !exactRun(verifyStep, "npm run verify:release")) {
+    issues.push("release PR verify job must run only the complete verify:release aggregate");
   }
-  if (!publicationScript.includes(
-    "select(.base.ref == \"main\" and .merged_at != null)",
-  )) {
-    candidateIssues.push("publication-source proof must select merged PRs targeting main");
+  const proofStep = namedStep(publishJob, "Prove Main And Merged Publication PR");
+  if (!proofStep || !exactRun(proofStep, publicationProofCommand)) {
+    issues.push(`release publication must call only the canonical proof helper: ${publicationProofCommand}`);
   }
-  const sourceCase = publicationScript.match(
-    /case\s+"\$\{SOURCE_BRANCH\}"\s+in([\s\S]*?)\besac\b/u,
-  )?.[1] ?? "";
-  if (!/"\$\{EXPECTED_RELEASE_BRANCH\}"\)\s*\n\s*SOURCE_KIND="release"/u.test(sourceCase)) {
-    candidateIssues.push("publication-source case must actively classify the exact release branch");
+  if (proofStep?.env?.GH_TOKEN !== "${{ github.token }}") {
+    issues.push("publication-source proof must receive the scoped github.token");
   }
-  if (!/"\$\{EXPECTED_HOTFIX_BRANCH\}"\)\s*\n\s*SOURCE_KIND="hotfix"/u.test(sourceCase)) {
-    candidateIssues.push("publication-source case must actively classify the exact hotfix branch");
+  const buildStep = namedStep(publishJob, "Build Exact Main Commit");
+  if (!buildStep
+    || !exactRun(
+      buildStep,
+      "node tools/build-release.mjs --source-ref \"${GITHUB_SHA}\" --require-clean",
+    )) {
+    issues.push("release build must use the exact clean GITHUB_SHA");
   }
-  if (!/\*\)\s*\n[\s\S]*?exit 1/u.test(sourceCase)) {
-    candidateIssues.push("publication-source case must fail closed for every other branch");
+  const artifactStep = namedStep(publishJob, "Verify Built Checksums And Provenance");
+  if (!artifactStep || !exactRun(artifactStep, "npm run perf:verify-release-artifacts")) {
+    issues.push("release publication must verify built checksums and provenance");
   }
-
-  const publishScripts = publishSteps.map((step) => activeShell(step?.run)).join("\n");
-  if (/\bnpm\s+publish\b/u.test(publishScripts)) {
-    candidateIssues.push("release workflow must never run npm publish");
+  const refusalStep = namedStep(publishJob, "Refuse Existing Tag Or Release");
+  if (!refusalStep || !exactRun(refusalStep, refusalScript)) {
+    issues.push("tag/release refusal must match the canonical fail-closed script");
   }
-  if (/refs\/tags\/v\*/u.test(publishScripts) || model?.on?.push?.tags != null) {
-    candidateIssues.push("release publication must not be triggered by a pre-created tag");
+  const createStep = namedStep(publishJob, "Create Annotated Tag And GitHub Release");
+  if (!createStep || !exactRun(createStep, publicationScript)) {
+    issues.push("annotated-tag and GitHub Release creation must match the canonical script");
   }
-  for (const invariant of [
-    "npm run verify:release",
-    "node tools/build-release.mjs --source-ref \"${GITHUB_SHA}\" --require-clean",
-    "npm run perf:verify-release-artifacts",
-    "git ls-remote --exit-code --tags origin \"refs/tags/${TAG}\"",
-    "git tag -a \"${TAG}\" \"${GITHUB_SHA}\" -m \"AIDN ${TAG}\"",
-    "gh release create \"${TAG}\"",
-  ]) {
-    if (!publishScripts.includes(invariant)) {
-      candidateIssues.push(`release publish job missing active invariant: ${invariant}`);
-    }
+  const activeRuns = [
+    ...(Array.isArray(verifyJob?.steps) ? verifyJob.steps : []),
+    ...(Array.isArray(publishJob?.steps) ? publishJob.steps : []),
+  ].map((step) => String(step?.run ?? "")).join("\n");
+  if (/\bnpm\s+publish\b/u.test(activeRuns)) {
+    issues.push("release workflow must never run npm publish");
   }
-  if (/\bgh\s+release\s+create\b|\bgit\s+tag\s+-a\b/u.test(verifyScripts)) {
-    candidateIssues.push("release PR verify job must not tag or publish");
-  }
-  return candidateIssues;
+  return issues;
 }
 
-const issues = evaluateWorkflow(workflow);
-if (!String(packageJson.scripts?.["verify:release"] ?? "").includes("run-gate-family.mjs obligations")) {
+function pullRequest(branch, {
+  base = "main",
+  mergedAt = "2026-07-27T00:00:00Z",
+} = {}) {
+  return {
+    base: { ref: base },
+    head: { ref: branch },
+    merged_at: mergedAt,
+  };
+}
+
+async function evaluateHelperBehavior() {
+  const issues = [];
+  const cases = [];
+  const version = "0.7.0";
+  const scenarios = [
+    {
+      name: "exact_release_pass",
+      pullRequests: [pullRequest("release/v0.7.0")],
+      expectedKind: "release",
+    },
+    {
+      name: "exact_hotfix_pass",
+      pullRequests: [pullRequest("hotfix/v0.7.0")],
+      expectedKind: "hotfix",
+    },
+    { name: "zero_merged_main_pr_fail", pullRequests: [], expectedError: true },
+    {
+      name: "ambiguous_merged_main_pr_fail",
+      pullRequests: [
+        pullRequest("release/v0.7.0"),
+        pullRequest("hotfix/v0.7.0"),
+      ],
+      expectedError: true,
+    },
+    {
+      name: "unmerged_pr_fail",
+      pullRequests: [pullRequest("release/v0.7.0", { mergedAt: null })],
+      expectedError: true,
+    },
+    {
+      name: "wrong_base_fail",
+      pullRequests: [pullRequest("release/v0.7.0", { base: "dev" })],
+      expectedError: true,
+    },
+    {
+      name: "foreign_branch_fail",
+      pullRequests: [pullRequest("feature/not-release")],
+      expectedError: true,
+    },
+    {
+      name: "hotfix_lookalike_fail",
+      pullRequests: [pullRequest("hotfix/v0.7.0-extra")],
+      expectedError: true,
+    },
+    {
+      name: "version_mismatched_release_fail",
+      pullRequests: [pullRequest("release/v0.7.1")],
+      expectedError: true,
+    },
+  ];
+  for (const scenario of scenarios) {
+    let result = null;
+    let error = null;
+    try {
+      result = classifyPublicationSource({
+        pullRequests: scenario.pullRequests,
+        version,
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    const passed = scenario.expectedError
+      ? Boolean(error)
+      : !error && result?.kind === scenario.expectedKind;
+    if (!passed) {
+      issues.push(`${scenario.name}: publication-source classification did not fail closed`);
+    }
+    cases.push({
+      name: scenario.name,
+      status: passed ? (scenario.expectedError ? "EXPECTED_FAIL" : "PASS") : "FAIL",
+    });
+  }
+
+  const sha = "a".repeat(40);
+  const gitCalls = [];
+  let requestedUrl = "";
+  let output = "";
+  const proofResult = await provePublicationSource({
+    env: {
+      GITHUB_REF: "refs/heads/main",
+      GITHUB_SHA: sha,
+      GITHUB_REPOSITORY: "fixture/aidn",
+      GITHUB_API_URL: "https://api.github.invalid",
+      GITHUB_OUTPUT: "fixture-output",
+      GH_TOKEN: "fixture-token",
+    },
+    runGit(args) {
+      gitCalls.push(args);
+      if (args[0] === "rev-parse") return sha;
+      if (args[0] === "status") return "";
+      return "";
+    },
+    readFile: () => "0.7.0\n",
+    appendFile: (_path, content) => {
+      output += content;
+    },
+    request: async (url) => {
+      requestedUrl = url;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => [pullRequest("release/v0.7.0")],
+      };
+    },
+  });
+  const expectedGitCalls = [
+    ["fetch", "--no-tags", "origin", "main"],
+    ["rev-parse", "HEAD"],
+    ["rev-parse", "origin/main"],
+    ["status", "--porcelain=v1", "--untracked-files=all"],
+  ];
+  const proofPassed = proofResult.kind === "release"
+    && JSON.stringify(gitCalls) === JSON.stringify(expectedGitCalls)
+    && requestedUrl.endsWith(`/repos/fixture/aidn/commits/${sha}/pulls?per_page=100`)
+    && output === "kind=release\nbranch=release/v0.7.0\n";
+  if (!proofPassed) {
+    issues.push("publication helper did not prove exact ref/SHA/API/cleanliness/output plumbing");
+  }
+  cases.push({
+    name: "publication_helper_plumbing_pass",
+    status: proofPassed ? "PASS" : "FAIL",
+  });
+
+  const baseProofOptions = {
+    env: {
+      GITHUB_REF: "refs/heads/main",
+      GITHUB_SHA: sha,
+      GITHUB_REPOSITORY: "fixture/aidn",
+      GITHUB_API_URL: "https://api.github.invalid",
+      GITHUB_OUTPUT: "fixture-output",
+      GH_TOKEN: "fixture-token",
+    },
+    readFile: () => "0.7.0\n",
+    appendFile: () => {},
+    request: async () => ({
+      ok: true,
+      status: 200,
+      json: async () => [pullRequest("release/v0.7.0")],
+    }),
+  };
+  const proofFailureScenarios = [
+    {
+      name: "publication_wrong_ref_fail",
+      options: {
+        ...baseProofOptions,
+        env: { ...baseProofOptions.env, GITHUB_REF: "refs/heads/dev" },
+        runGit: () => "",
+      },
+    },
+    {
+      name: "publication_sha_mismatch_fail",
+      options: {
+        ...baseProofOptions,
+        runGit: (args) => (args[0] === "rev-parse" ? "b".repeat(40) : ""),
+      },
+    },
+    {
+      name: "publication_dirty_checkout_fail",
+      options: {
+        ...baseProofOptions,
+        runGit: (args) => {
+          if (args[0] === "rev-parse") return sha;
+          if (args[0] === "status") return "?? untracked";
+          return "";
+        },
+      },
+    },
+    {
+      name: "publication_api_failure_fail",
+      options: {
+        ...baseProofOptions,
+        runGit: (args) => (args[0] === "rev-parse" ? sha : ""),
+        request: async () => ({ ok: false, status: 503 }),
+      },
+    },
+  ];
+  for (const scenario of proofFailureScenarios) {
+    let rejected = false;
+    try {
+      await provePublicationSource(scenario.options);
+    } catch {
+      rejected = true;
+    }
+    if (!rejected) {
+      issues.push(`${scenario.name}: publication helper did not fail closed`);
+    }
+    cases.push({
+      name: scenario.name,
+      status: rejected ? "EXPECTED_FAIL" : "FAIL",
+    });
+  }
+  return { issues, cases };
+}
+
+const helperBehavior = await evaluateHelperBehavior();
+const issues = [...evaluateWorkflow(workflow), ...helperBehavior.issues];
+if (packageJson.scripts?.["verify:release"]
+  !== "node tools/verify/run-gate-family.mjs obligations") {
   issues.push("verify:release must execute every contextual catalog obligation");
 }
 
+function candidateRejected(candidate) {
+  return evaluateWorkflow(candidate).length > 0;
+}
+
 const negativeProbes = {
-  comment_only_hotfix_route_rejected: evaluateWorkflow(workflow.replace(
-    "            \"${EXPECTED_HOTFIX_BRANCH}\")",
-    "            \"__disabled_hotfix__\")\n"
-      + "              # \"${EXPECTED_HOTFIX_BRANCH}\")",
-  )).length > 0,
-  comment_only_ambiguous_main_pr_count_rejected: evaluateWorkflow(workflow.replace(
-    "test \"${MERGED_MAIN_PR_COUNT}\" = \"1\"",
-    "test \"${MERGED_MAIN_PR_COUNT}\" -ge \"1\"\n"
-      + "          # test \"${MERGED_MAIN_PR_COUNT}\" = \"1\"",
-  )).length > 0,
-  npm_publish_rejected: evaluateWorkflow(workflow.replace(
+  dormant_publication_helper_rejected: candidateRejected(workflow.replace(
+    `        run: ${publicationProofCommand}`,
+    "        run: |\n"
+      + "          if false; then\n"
+      + `            ${publicationProofCommand}\n`
+      + "          fi\n"
+      + "          echo bypassed",
+  )),
+  dormant_fetch_helper_rejected: candidateRejected(workflow.replace(
+    `        run: ${fetchCommand}`,
+    "        run: |\n"
+      + "          if false; then\n"
+      + `            ${fetchCommand}\n`
+      + "          fi",
+  )),
+  ambiguous_main_pr_logic_rejected: helperBehavior.cases
+    .some((item) => item.name === "ambiguous_merged_main_pr_fail"
+      && item.status === "EXPECTED_FAIL"),
+  hotfix_lookalike_rejected: helperBehavior.cases
+    .some((item) => item.name === "hotfix_lookalike_fail"
+      && item.status === "EXPECTED_FAIL"),
+  npm_publish_rejected: candidateRejected(workflow.replace(
     "        run: npm run perf:verify-release-artifacts",
     "        run: |\n"
       + "          npm run perf:verify-release-artifacts\n"
       + "          npm publish",
-  )).length > 0,
+  )),
 };
 for (const [probe, rejected] of Object.entries(negativeProbes)) {
   if (!rejected) {
@@ -172,6 +396,7 @@ const output = {
   npm_publish: false,
   verification_selector: "catalog obligations",
   publication_sources: ["release/vX.Y.Z", "hotfix/vX.Y.Z"],
+  helper_behavior: helperBehavior.cases,
   negative_probes: negativeProbes,
   issues,
 };
