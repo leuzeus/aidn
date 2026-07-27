@@ -2,8 +2,12 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+
+const FAILURE_INJECTION_ENV = "AIDN_COORDINATOR_EXECUTE_FIXTURE_INJECT_FAILURE";
+const FAILURE_PROBE_TOKEN_ENV = "AIDN_COORDINATOR_EXECUTE_FIXTURE_PROBE_TOKEN";
 
 function parseArgs(argv) {
   const args = {
@@ -124,16 +128,62 @@ function installSharedPlanningFixture(targetRoot) {
   ].join("\n"), "utf8");
 }
 
+function verifyInjectedFailureCleanup(repoRoot) {
+  const token = randomUUID();
+  const ownedPrefix = `aidn-coordinator-execute-probe-${token}-`;
+  const script = path.join(repoRoot, "tools", "perf", "verify-coordinator-dispatch-execute-fixtures.mjs");
+  const result = spawnSync(process.execPath, [script, "--json"], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      [FAILURE_INJECTION_ENV]: "after-temp-root",
+      [FAILURE_PROBE_TOKEN_ENV]: token,
+    },
+    encoding: "utf8",
+    shell: false,
+    timeout: 30000,
+    maxBuffer: 1024 * 1024,
+  });
+  assert(result.status === 1, "injected coordinator execute fixture failure should exit 1");
+  assert(
+    String(result.stderr ?? "").includes("injected failure after temp root"),
+    "injected coordinator execute fixture failure should preserve the primary error",
+  );
+  const remaining = fs.readdirSync(os.tmpdir(), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith(ownedPrefix))
+    .map((entry) => entry.name);
+  assert(
+    remaining.length === 0,
+    `injected coordinator execute fixture failure should clean its owned temp root: ${remaining.join(", ")}`,
+  );
+  return {
+    injected_failure_exit_code: result.status,
+    primary_error_preserved: true,
+    owned_test_directories_remaining: remaining.length,
+  };
+}
+
 function main() {
   let tempRoot = "";
   try {
     const args = parseArgs(process.argv.slice(2));
     const repoRoot = process.cwd();
+    const failureInjection = String(process.env[FAILURE_INJECTION_ENV] ?? "").trim();
+    const failureProbeToken = String(process.env[FAILURE_PROBE_TOKEN_ENV] ?? "").trim();
+    const failureCleanupProbe = failureInjection
+      ? null
+      : verifyInjectedFailureCleanup(repoRoot);
     const handoffFixturesRoot = path.resolve(repoRoot, args.handoffFixturesRoot);
     const handoffProjectScript = path.resolve(repoRoot, "tools", "runtime", "project-handoff-packet.mjs");
     const dispatchExecuteScript = path.resolve(repoRoot, "tools", "runtime", "coordinator-dispatch-execute.mjs");
 
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-coordinator-execute-"));
+    const tempPrefix = failureProbeToken
+      ? `aidn-coordinator-execute-probe-${failureProbeToken}-`
+      : "aidn-coordinator-execute-";
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), tempPrefix));
+    if (failureInjection === "after-temp-root") {
+      throw new Error("injected failure after temp root");
+    }
     const readyTarget = path.join(tempRoot, "ready");
     const warnTarget = path.join(tempRoot, "warn");
     const blockedTarget = path.join(tempRoot, "blocked");
@@ -435,6 +485,7 @@ function main() {
       escalated_execute: escalatedExecute,
       role_blocked_dry_run: roleBlockedDryRun,
       role_blocked_execute: roleBlockedExecute,
+      failure_cleanup_probe: failureCleanupProbe,
       pass: true,
     };
 
@@ -446,7 +497,7 @@ function main() {
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       const cleanup = removePathWithRetry(tempRoot);
