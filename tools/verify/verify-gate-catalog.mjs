@@ -1,12 +1,17 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { parseDocument } from "yaml";
 import {
   loadWorkflowSources,
   parseWorkflowStructure,
   validateGateAndWorkflowPolicy,
   validateWorkflowYamlSyntax,
 } from "./workflow-policy-lib.mjs";
+import {
+  branchSourceRefspecs,
+  fetchBranchPolicySources,
+} from "../ci/fetch-branch-policy-sources.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const catalogPath = path.join(repoRoot, "package", "catalogs", "gates.v1.json");
@@ -192,9 +197,165 @@ const duplicateJobMutation = `${releaseText}\n  verify:\n    runs-on: ubuntu-lat
 
 const architecturePath = ".github/workflows/architecture-gates.yml";
 const architectureText = fs.readFileSync(path.join(repoRoot, architecturePath), "utf8");
+const canonicalBranchFetchCommand = "node tools/ci/fetch-branch-policy-sources.mjs";
+function hasOwn(value, key) {
+  return value != null && Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function mutateNamedStepProperty(source, name, property, value) {
+  const marker = `      - name: ${name}\n`;
+  if (!source.includes(marker)) {
+    throw new Error(`unable to find workflow step for mutation: ${name}`);
+  }
+  return source.replace(marker, `${marker}        ${property}: ${value}\n`);
+}
+
+function mutateNamedJobProperty(source, name, property, value) {
+  const marker = `  ${name}:\n`;
+  if (!source.includes(marker)) {
+    throw new Error(`unable to find workflow job for mutation: ${name}`);
+  }
+  return source.replace(marker, `${marker}    ${property}: ${value}\n`);
+}
+
+function evaluateArchitectureBranchSourceFetch(source) {
+  const sourceIssues = [];
+  const document = parseDocument(source, {
+    prettyErrors: true,
+    strict: true,
+    uniqueKeys: true,
+  });
+  if (document.errors.length > 0) {
+    return document.errors.map((error) => (
+      `${architecturePath}: invalid YAML while evaluating branch-source fetch `
+      + `(${String(error.message).replace(/\s+/gu, " ").trim()})`
+    ));
+  }
+  const model = document.toJS();
+  const cleanlinessJob = model.jobs?.cleanliness;
+  if (hasOwn(cleanlinessJob, "if")) {
+    sourceIssues.push("architecture cleanliness job must not declare job.if");
+  }
+  if (hasOwn(cleanlinessJob, "continue-on-error")) {
+    sourceIssues.push("architecture cleanliness job must not declare continue-on-error");
+  }
+  const fetchSteps = cleanlinessJob?.steps?.filter(
+    (step) => step.name === "Fetch Announced Remote Head",
+  ) ?? [];
+  if (fetchSteps.length !== 1
+    || String(fetchSteps[0].run ?? "").trim() !== canonicalBranchFetchCommand) {
+    sourceIssues.push(
+      `architecture branch gate must call only the canonical provenance helper: `
+      + canonicalBranchFetchCommand,
+    );
+  }
+  const fetchStep = fetchSteps.length === 1 ? fetchSteps[0] : null;
+  if (fetchStep?.if !== "${{ github.event_name == 'pull_request' }}") {
+    sourceIssues.push(
+      "architecture branch-source fetch must use exactly "
+      + "if: ${{ github.event_name == 'pull_request' }}",
+    );
+  }
+  if (hasOwn(fetchStep, "continue-on-error")) {
+    sourceIssues.push("architecture branch-source fetch must not declare continue-on-error");
+  }
+  const cleanlinessSteps = cleanlinessJob?.steps?.filter(
+    (step) => step.name === "Verify Cleanliness With Remote Provenance",
+  ) ?? [];
+  const cleanlinessStep = cleanlinessSteps.length === 1 ? cleanlinessSteps[0] : null;
+  if (cleanlinessSteps.length !== 1
+    || String(cleanlinessStep?.run ?? "").trim() !== "npm run verify:cleanliness") {
+    sourceIssues.push(
+      "architecture branch gate must run exactly one blocking verify:cleanliness step",
+    );
+  }
+  if (hasOwn(cleanlinessStep, "if")) {
+    sourceIssues.push("architecture verify:cleanliness step must not declare step.if");
+  }
+  if (hasOwn(cleanlinessStep, "continue-on-error")) {
+    sourceIssues.push("architecture verify:cleanliness step must not declare continue-on-error");
+  }
+  return sourceIssues;
+}
+issues.push(...evaluateArchitectureBranchSourceFetch(architectureText));
+const capturedFetchCalls = [];
+const fetchHelperResult = fetchBranchPolicySources({
+  headRef: "codex/governance-probe",
+  runGit(args) {
+    capturedFetchCalls.push(args);
+    return "";
+  },
+});
+const expectedFetchRefspecs = [
+  "+refs/heads/codex/governance-probe:refs/remotes/origin/codex/governance-probe",
+  "+refs/heads/dev:refs/remotes/origin/dev",
+  "+refs/heads/main:refs/remotes/origin/main",
+];
+const fetchHelperBehavior = {
+  exact_refspecs: JSON.stringify(fetchHelperResult.refspecs)
+    === JSON.stringify(expectedFetchRefspecs),
+  one_canonical_git_call: JSON.stringify(capturedFetchCalls) === JSON.stringify([[
+    "fetch",
+    "--no-tags",
+    "origin",
+    ...expectedFetchRefspecs,
+  ]]),
+  unsafe_head_rejected: false,
+};
+try {
+  branchSourceRefspecs("../main");
+} catch {
+  fetchHelperBehavior.unsafe_head_rejected = true;
+}
+for (const [proof, passed] of Object.entries(fetchHelperBehavior)) {
+  if (!passed) {
+    issues.push(`canonical branch-source fetch helper proof failed: ${proof}`);
+  }
+}
 const missingGateDependencyInstallMutation = architectureText.replace(
   /      - name: Install Locked Gate Dependencies\r?\n        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund\r?\n/,
   "",
+);
+const missingBranchSourceFetchMutation = architectureText.replace(
+  `        run: ${canonicalBranchFetchCommand}`,
+  "        run: |\n"
+    + "          if false; then\n"
+    + `            ${canonicalBranchFetchCommand}\n`
+    + "          fi",
+);
+const architectureFetchIfFalseMutation = architectureText.replace(
+  "        if: ${{ github.event_name == 'pull_request' }}",
+  "        if: ${{ false }}",
+);
+const architectureFetchContinueOnErrorMutation = mutateNamedStepProperty(
+  architectureText,
+  "Fetch Announced Remote Head",
+  "continue-on-error",
+  "true",
+);
+const architectureJobIfFalseMutation = mutateNamedJobProperty(
+  architectureText,
+  "cleanliness",
+  "if",
+  "${{ false }}",
+);
+const architectureJobContinueOnErrorMutation = mutateNamedJobProperty(
+  architectureText,
+  "cleanliness",
+  "continue-on-error",
+  "true",
+);
+const architectureCleanlinessIfFalseMutation = mutateNamedStepProperty(
+  architectureText,
+  "Verify Cleanliness With Remote Provenance",
+  "if",
+  "${{ false }}",
+);
+const architectureCleanlinessContinueOnErrorMutation = mutateNamedStepProperty(
+  architectureText,
+  "Verify Cleanliness With Remote Provenance",
+  "continue-on-error",
+  "true",
 );
 
 const liveSmokePath = ".github/workflows/runtime-ops-live-smoke.yml";
@@ -270,6 +431,24 @@ const negativeProbes = {
       missingGateDependencyInstallMutation,
     ),
   }),
+  branch_source_fetch_required:
+    evaluateArchitectureBranchSourceFetch(missingBranchSourceFetchMutation).length > 0,
+  architecture_fetch_if_false_rejected:
+    evaluateArchitectureBranchSourceFetch(architectureFetchIfFalseMutation).length > 0,
+  architecture_fetch_continue_on_error_rejected:
+    evaluateArchitectureBranchSourceFetch(
+      architectureFetchContinueOnErrorMutation,
+    ).length > 0,
+  architecture_job_if_false_rejected:
+    evaluateArchitectureBranchSourceFetch(architectureJobIfFalseMutation).length > 0,
+  architecture_job_continue_on_error_rejected:
+    evaluateArchitectureBranchSourceFetch(architectureJobContinueOnErrorMutation).length > 0,
+  architecture_cleanliness_if_false_rejected:
+    evaluateArchitectureBranchSourceFetch(architectureCleanlinessIfFalseMutation).length > 0,
+  architecture_cleanliness_continue_on_error_rejected:
+    evaluateArchitectureBranchSourceFetch(
+      architectureCleanlinessContinueOnErrorMutation,
+    ).length > 0,
   live_smoke_install_required: candidateRejected({
     candidateWorkflowSources: replaceWorkflowSource(
       workflowSources,
@@ -323,6 +502,7 @@ const output = {
     pg_version: packageLock?.packages?.["node_modules/pg"]?.version ?? null,
     yaml_version: packageLock?.packages?.["node_modules/yaml"]?.version ?? null,
   },
+  branch_source_fetch_helper: fetchHelperBehavior,
   workflow_syntax: {
     parser: `yaml@${packageJson.devDependencies?.yaml ?? "missing"}`,
     files: workflowSyntaxResults.length,

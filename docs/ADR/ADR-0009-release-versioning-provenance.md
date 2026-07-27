@@ -8,6 +8,13 @@ Accepted
 
 2026-05-24
 
+## Amendment
+
+2026-07-27: publication-source governance now treats normal releases and
+production hotfixes as explicit, version-matched publication classes.
+Main-to-dev synchronization is a distinct non-publication class and may never
+target `main`.
+
 ## Context
 
 AIDN ships as a package source repository with local release artifacts, manifests and checksums. The release surface is already validated by `build-release`, `npm pack --dry-run` and topology checks, but the source of version truth and the provenance of published artifacts still need an explicit architectural home.
@@ -28,8 +35,22 @@ Rules:
 - the manifest records the git commit used for the build so provenance can be verified against the current source tree
 - `npm pack --dry-run` remains part of the publish-surface guard
 - internal docs, pilot-specific details and non-published fixtures must not leak into the package payload
-- release pull requests verify without publishing
-- publication occurs only on a push to `main` associated with exactly one merged `release/*` pull request
+- release and hotfix pull requests verify without publishing
+- `release/vX.Y.Z` must contain current `origin/dev`
+- `hotfix/vX.Y.Z` must contain current `origin/main`, preserve its major and
+  minor version numbers, increment its patch number by exactly one, and follow
+  the same verification and publication contract
+- `sync/main-to-dev-vX.Y.Z` must equal current `origin/main` and target only
+  `dev`; its version suffix must equal `VERSION` at that exact source commit and
+  it never publishes
+- publication occurs only on a push to `main` associated with exactly one
+  merged PR whose `merge_commit_sha` equals `GITHUB_SHA` and whose source is
+  exactly `release/v${VERSION}` or `hotfix/v${VERSION}`
+- workflow-critical remote fetch and publication-source proof run through
+  canonical one-command Node helpers in blocking steps whose exact `if` and
+  `continue-on-error` metadata is governed; their behavior is tested with
+  injected Git and GitHub responses, and retained text or dormant shell blocks
+  are not evidence
 - the publish job creates an annotated tag and GitHub Release only after clean-commit, reproducibility, topology, sensitivity, checksum, and provenance checks
 - an existing tag or release is a hard failure
 - the release workflow never runs `npm publish`
@@ -81,6 +102,10 @@ Negative:
 
 - keep `perf:verify-release-version` and `perf:verify-pack-topology` in the release path
 - keep `perf:verify-release-reproducibility` and `perf:verify-release-workflow-policy` in the release path
+- keep branch-policy fixtures for release, hotfix, exact main-to-dev sync, and
+  rejected provenance mutations
+- keep the canonical CI helper calls exact and preserve their fail-closed
+  behavioral probes
 - ensure release manifests and checksums stay in the same atomic publish flow
 - keep source fingerprints in the manifest in sync with the checked-in files
 - update the release workflow when the publish surface changes
