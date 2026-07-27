@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 import { pathToFileURL } from "node:url";
+
+const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 
 function git(args) {
   return execFileSync("git", args, {
@@ -17,6 +21,8 @@ function parseArgs(argv) {
     "--head-ref",
     "--expected-sha",
     "--contains-ref",
+    "--sync-source-ref",
+    "--version",
   ]);
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
@@ -24,7 +30,8 @@ function parseArgs(argv) {
       console.log(
         "Usage: node tools/verify/verify-branch-policy.mjs "
         + "[--event-name NAME] [--base-ref BRANCH] [--head-ref BRANCH] "
-        + "[--expected-sha SHA] [--contains-ref REMOTE_REF]",
+        + "[--expected-sha SHA] [--contains-ref REMOTE_REF] "
+        + "[--sync-source-ref REMOTE_REF] [--version VERSION]",
       );
       process.exit(0);
     }
@@ -71,16 +78,126 @@ function resolveRemoteRef(refName) {
   }
 }
 
-export function evaluateBranchShape({ eventName, base, head, ref = "" }) {
+function verifyRemoteSource({
+  refName,
+  actualSha,
+  exact,
+  label,
+  provenance,
+}) {
+  const issues = [];
+  provenance.branch_source_ref = refName;
+  const source = resolveRemoteRef(refName);
+  if (!source) {
+    issues.push(`${label} must resolve through a configured remote: ${refName}`);
+    return issues;
+  }
+  provenance.branch_source_ref = source.ref;
+  provenance.branch_source_sha = source.sha;
+  provenance.branch_source_exact = source.sha === actualSha;
+  try {
+    git(["merge-base", "--is-ancestor", source.sha, actualSha]);
+    provenance.branch_source_ancestor = true;
+  } catch {
+    provenance.branch_source_ancestor = false;
+  }
+  if (exact && !provenance.branch_source_exact) {
+    issues.push(`${label} HEAD ${actualSha} must equal ${source.ref} ${source.sha}`);
+  } else if (!exact && !provenance.branch_source_ancestor) {
+    issues.push(`${label} HEAD ${actualSha} must contain ${source.ref} ${source.sha}`);
+  }
+  return issues;
+}
+
+function readRepositoryVersion() {
+  return fs.readFileSync(path.join(repoRoot, "VERSION"), "utf8").trim();
+}
+
+function parseStableVersion(value) {
+  const match = String(value ?? "").trim().match(/^(\d+)\.(\d+)\.(\d+)$/);
+  if (!match) {
+    return null;
+  }
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+  };
+}
+
+function verifyHotfixPatchVersion({
+  sourceRef,
+  version,
+  provenance,
+}) {
+  const issues = [];
+  let sourceVersion = "";
+  try {
+    sourceVersion = git(["show", `${sourceRef}:VERSION`]);
+  } catch {
+    issues.push(`hotfix source ${sourceRef} must expose a readable VERSION`);
+    return issues;
+  }
+  provenance.hotfix_source_version = sourceVersion;
+  const source = parseStableVersion(sourceVersion);
+  const candidate = parseStableVersion(version);
+  provenance.hotfix_patch_increment = Boolean(
+    source
+    && candidate
+    && candidate.major === source.major
+    && candidate.minor === source.minor
+    && candidate.patch === source.patch + 1,
+  );
+  if (!provenance.hotfix_patch_increment) {
+    issues.push(
+      `hotfix VERSION ${version} must increment exactly one patch from `
+      + `${sourceRef} VERSION ${sourceVersion}`,
+    );
+  }
+  return issues;
+}
+
+export function evaluateBranchShape({
+  eventName,
+  base,
+  head,
+  ref = "",
+  version = "",
+}) {
   const issues = [];
   if (eventName === "pull_request") {
     if (base === "dev") {
-      if (!head || ["main", "dev"].includes(head) || head.startsWith("release/")) {
-        issues.push(`feature integration PRs must target dev from a non-release branch; got ${head || "detached"}`);
+      if (!head
+        || ["main", "dev"].includes(head)
+        || head.startsWith("release/")
+        || head.startsWith("hotfix/")) {
+        issues.push(
+          "feature integration and main-to-dev synchronization PRs must target dev "
+          + `from a non-release, non-hotfix branch; got ${head || "detached"}`,
+        );
+      }
+      if (head?.startsWith("sync/")) {
+        const expectedSync = version ? `sync/main-to-dev-v${version}` : "";
+        if (!version) {
+          issues.push("synchronization PR validation requires the repository VERSION");
+        } else if (head !== expectedSync) {
+          issues.push(
+            "synchronization PRs must use the exact source version and target dev; "
+            + `expected ${expectedSync}, got ${head}`,
+          );
+        }
       }
     } else if (base === "main") {
-      if (!head.startsWith("release/")) {
-        issues.push(`only release/* PRs may target main; got ${head || "detached"}`);
+      const allowed = version
+        ? new Set([`release/v${version}`, `hotfix/v${version}`])
+        : new Set();
+      if (!version) {
+        issues.push("release or hotfix PR validation requires the repository VERSION");
+      } else if (!allowed.has(head)) {
+        issues.push(
+          "only the version-matched release/vX.Y.Z or hotfix/vX.Y.Z PR may target main; "
+          + `expected ${[...allowed].join(" or ")}, got ${head || "detached"}`,
+        );
       }
     } else {
       issues.push(`unsupported PR base ${base || "missing"}; expected dev or main`);
@@ -108,6 +225,16 @@ export function verifyBranchPolicy({
   const explicitBase = firstNonEmpty(args.baseRef, env.AIDN_BRANCH_POLICY_BASE_REF);
   const expectedSha = firstNonEmpty(args.expectedSha, env.AIDN_BRANCH_POLICY_EXPECTED_SHA);
   const containsRef = firstNonEmpty(args.containsRef, env.AIDN_BRANCH_POLICY_CONTAINS_REF);
+  const syncSourceRef = firstNonEmpty(
+    args.syncSourceRef,
+    env.AIDN_BRANCH_POLICY_SYNC_SOURCE_REF,
+    "origin/main",
+  );
+  const version = firstNonEmpty(
+    args.version,
+    env.AIDN_BRANCH_POLICY_VERSION,
+    readRepositoryVersion(),
+  );
   const eventName = firstNonEmpty(
     args.eventName,
     env.AIDN_BRANCH_POLICY_EVENT_NAME,
@@ -130,6 +257,15 @@ export function verifyBranchPolicy({
     resolved_head_sha: null,
     remote_ref_exact: false,
     containment_proved: false,
+    sync_source_ref: null,
+    sync_source_sha: null,
+    sync_source_exact: false,
+    branch_source_ref: null,
+    branch_source_sha: null,
+    branch_source_exact: false,
+    branch_source_ancestor: false,
+    hotfix_source_version: null,
+    hotfix_patch_increment: false,
   };
 
   if (expectedSha && expectedSha !== actualSha) {
@@ -189,6 +325,52 @@ export function verifyBranchPolicy({
   }
 
   const effectiveEventName = base ? "pull_request" : eventName;
+  const branchSourceIssues = [];
+  if (effectiveEventName === "pull_request") {
+    if (base === "dev" && head?.startsWith("sync/")) {
+      branchSourceIssues.push(...verifyRemoteSource({
+        refName: syncSourceRef,
+        actualSha,
+        exact: true,
+        label: "main-to-dev synchronization",
+        provenance,
+      }));
+      provenance.sync_source_ref = provenance.branch_source_ref;
+      provenance.sync_source_sha = provenance.branch_source_sha;
+      provenance.sync_source_exact = provenance.branch_source_exact;
+    } else if (base === "dev") {
+      branchSourceIssues.push(...verifyRemoteSource({
+        refName: "origin/dev",
+        actualSha,
+        exact: false,
+        label: "development branch",
+        provenance,
+      }));
+    } else if (base === "main" && head?.startsWith("release/")) {
+      branchSourceIssues.push(...verifyRemoteSource({
+        refName: "origin/dev",
+        actualSha,
+        exact: false,
+        label: "release branch",
+        provenance,
+      }));
+    } else if (base === "main" && head?.startsWith("hotfix/")) {
+      branchSourceIssues.push(...verifyRemoteSource({
+        refName: "origin/main",
+        actualSha,
+        exact: false,
+        label: "hotfix branch",
+        provenance,
+      }));
+      if (provenance.branch_source_ref) {
+        branchSourceIssues.push(...verifyHotfixPatchVersion({
+          sourceRef: provenance.branch_source_ref,
+          version,
+          provenance,
+        }));
+      }
+    }
+  }
   const issues = [
     ...provenanceIssues,
     ...evaluateBranchShape({
@@ -196,7 +378,9 @@ export function verifyBranchPolicy({
       base,
       head,
       ref: githubRef,
+      version,
     }),
+    ...branchSourceIssues,
   ];
   return {
     ok: issues.length === 0,
@@ -209,7 +393,14 @@ export function verifyBranchPolicy({
       production: "main",
       integration: "dev",
       feature_target: "dev",
+      feature_source: "origin/dev",
       release_target: "main",
+      release_source: "origin/dev",
+      hotfix_target: "main",
+      hotfix_source: "origin/main",
+      sync_target: "dev",
+      sync_source: syncSourceRef,
+      version,
     },
     issues,
   };

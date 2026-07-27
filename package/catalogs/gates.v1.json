@@ -379,7 +379,7 @@
       "family": "release",
       "script": "perf:verify-release-workflow-policy",
       "job": "release/verify",
-      "surfaces": [".github/workflows/release.yml", "main", "release/*", "GitHub Release"],
+      "surfaces": [".github/workflows/release.yml", "tools/ci/prove-publication-source.mjs", "main", "release/vX.Y.Z", "exact patch hotfix/vX.Y.Z", "unique merged publication PR", "GitHub Release"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
@@ -388,7 +388,7 @@
       "family": "cleanliness",
       "script": "perf:verify-branch-policy",
       "job": "architecture-gates/cleanliness",
-      "surfaces": ["main", "dev", "feature branches", "release branches"],
+      "surfaces": ["main", "dev", "tools/ci/fetch-branch-policy-sources.mjs", "feature branches", "release branches", "exact patch hotfix branches", "version-matched main-to-dev sync branches"],
       "condition": "git-repository",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
@@ -397,7 +397,7 @@
       "family": "cleanliness",
       "script": "perf:verify-branch-policy-fixtures",
       "job": "architecture-gates/cleanliness",
-      "surfaces": ["feature -> dev", "release/* -> main", "detached provenance"],
+      "surfaces": ["feature -> dev", "release/vX.Y.Z -> main", "one-patch hotfix/vX.Y.Z -> main", "exact version-matched main -> sync/main-to-dev-vX.Y.Z -> dev", "detached provenance"],
       "condition": "git-repository",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },

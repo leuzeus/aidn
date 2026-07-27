@@ -1,5 +1,19 @@
 # Upgrade Guide
 
+## Upgrade to 0.7.1
+
+This governance correction makes the future production maintenance paths
+executable and fail-closed:
+
+- a `hotfix/vX.Y.Z` PR must start from current `main`, increment its patch
+  version by exactly one, and follows the same GitHub Release path as a normal
+  release;
+- a `sync/main-to-dev-vX.Y.Z` PR must use the source commit's exact `VERSION`,
+  equal current `main` byte-for-byte, and target only `dev`;
+- publication proves one merged, version-matched release or hotfix PR whose
+  `merge_commit_sha` equals the exact `main` `GITHUB_SHA`, and never invokes
+  `npm publish`.
+
 ## Upgrade to 0.7.0
 
 This baseline makes AIDN's governed architecture and release path executable end to end:
@@ -11,7 +25,10 @@ This baseline makes AIDN's governed architecture and release path executable end
 - public machine-readable commands emit one complete JSON document on `stdout`, while bounded diagnostics remain on `stderr`.
 - installed Codex integration includes project skills, bounded custom agents, a trusted-project session hook, real installed-client discovery, and preserved failure/cleanup diagnostics.
 - `files`, `dual`, and `db-only` remain distinct modes; PostgreSQL persistence is optional, SQLite remains available for local compatibility and migration, and shared coordination is explicit opt-in.
-- protected-branch CI and the release workflow verify from locked dependencies; a merged `release/*` PR is published from exact `main` `GITHUB_SHA` with an annotated tag, checksums, and provenance assets, never with `npm publish`.
+- protected-branch CI and the release workflow verify from locked dependencies;
+  a merged, version-matched `release/vX.Y.Z` PR is published from exact `main`
+  `GITHUB_SHA` with an annotated tag, checksums, and provenance assets, never
+  with `npm publish`.
 - generated workflow adapter outputs driven by `.aidn/project/workflow.adapter.json`
 - `aidn project config` as the durable adapter management entrypoint
 - bounded coordinator/orchestration runtime commands
@@ -55,7 +72,7 @@ Recent workflow resilience updates also add:
 1. Install or upgrade the package to the matching product tag:
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#v0.7.0
+npm install --save-dev github:leuzeus/aidn#v0.7.1
 ```
 
 2. Run the recommended upgrade orchestrator:
@@ -88,7 +105,7 @@ npx aidn install --target <client-repo> --pack github-integration --verify
 
 ```bash
 npx aidn project config --target <client-repo> --wizard --write
-npx aidn project config --target <client-repo> --migrate-adapter --version 0.7.0 --write --json
+npx aidn project config --target <client-repo> --migrate-adapter --version 0.7.1 --write --json
 ```
 
 4. Verify installation and current runtime/admin surfaces:

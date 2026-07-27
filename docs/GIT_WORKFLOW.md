@@ -2,12 +2,21 @@
 
 ## Branch Roles
 
-- `main` is the production branch. Only reviewed `release/*` pull requests merge into it.
+- `main` is the production branch. Only reviewed, version-matched
+  `release/vX.Y.Z` or `hotfix/vX.Y.Z` pull requests merge into it.
 - `dev` is the integration branch. Feature, fix, chore, documentation, and Codex work branches merge into it.
 - `feature/*`, `fix/*`, `chore/*`, `docs/*`, and `codex/*` are short-lived branches created from current `dev`.
-- `release/*` branches are cut from a reviewed `dev`, contain only release preparation, and target `main`.
+- `release/vX.Y.Z` branches are cut from a reviewed `dev`, contain only release preparation, and target `main`.
+- `hotfix/vX.Y.Z` branches are cut from current `main`, contain one urgent patch
+  release, increment the patch version, and target `main`.
+- `sync/main-to-dev-vX.Y.Z` branches are exact, unmodified pointers to current
+  `main` and target only `dev`.
 
 The executable branch policy is `tools/verify/verify-branch-policy.mjs`.
+CI obtains the three remote provenance refs through the single-command helper
+`tools/ci/fetch-branch-policy-sources.mjs`; publication source classification is
+owned by `tools/ci/prove-publication-source.mjs`. Workflow gates reject inline
+shell substitutes or dormant wrappers around either helper.
 
 For a normal branch checkout, the policy derives the head from the configured
 remote before comparing it with the announced base. For an immutable detached
@@ -33,20 +42,50 @@ Open the pull request from the feature branch to `dev`.
 ```bash
 git switch dev
 git pull --ff-only origin dev
-git switch -c release/<version>
+git switch -c release/v<version>
 ```
 
-Align `VERSION`, `package.json`, current stable documentation, and release notes on the release branch. Open the pull request from `release/<version>` to `main`. A release PR verifies but never tags or publishes.
+Align `VERSION`, `package.json`, current stable documentation, and release notes
+on the release branch. Open the pull request from `release/v<version>` to
+`main`. A release PR verifies but never tags or publishes.
 
-After the release PR merges, resynchronize `dev` from `main` through a reviewed integration operation appropriate to the repository protections.
+### Production hotfix
+
+```bash
+git switch main
+git pull --ff-only origin main
+git switch -c hotfix/v<patch-version>
+```
+
+The branch name must equal `hotfix/v${VERSION}` after the patch version is
+prepared. The executable gate reads `VERSION` from `origin/main` and requires
+the candidate to keep the same major and minor numbers while incrementing the
+patch number by exactly one. A hotfix PR runs the same full release
+verification as a normal release and publishes the patch release automatically
+after merge. It never publishes to npm.
+
+### Production resynchronization
+
+After any release or hotfix publication, create
+`sync/main-to-dev-v<version>` at the exact current `origin/main` commit. Do not
+add a commit or modify its tree. Open that branch only toward `dev`; the branch
+policy proves byte-for-byte SHA equality with `origin/main` and requires the
+version suffix to equal `VERSION` at that exact source commit.
 
 ## Branch Rules
 
 1. Feature-family branches target `dev`, never `main`.
-2. Only `release/*` branches target `main`.
+2. Only the exact version-matched `release/vX.Y.Z` or `hotfix/vX.Y.Z` branch targets `main`.
 3. `main` and `dev` are protected integration surfaces; implementation does not occur directly on either branch.
 4. A release branch must not contain unrelated feature work.
-5. Publication is an automated consequence of a successful release PR merge to `main`; a manually pushed version tag is not a release trigger.
+5. A release branch must contain current `origin/dev`; a hotfix branch must
+   contain current `origin/main`.
+6. A `sync/main-to-dev-vX.Y.Z` branch targets only `dev` and must equal current
+   `origin/main`; divergent or differently named synchronization branches fail.
+7. Publication is an automated consequence of a successful release or hotfix
+   PR merge to `main`; a manually pushed version tag is not a release trigger.
+8. GitHub auto-merge may be armed only for the reviewed SHA and completes only
+   after all required checks succeed.
 
 ## Release Version Provenance
 
@@ -65,8 +104,13 @@ Release provenance is built from the exact clean commit:
 
 The release workflow has two mutually exclusive paths:
 
-1. A pull request from `release/*` to `main` runs `npm run verify:release` and does not publish.
-2. A push to `main` publishes only when GitHub associates `GITHUB_SHA` with exactly one merged `release/*` pull request targeting `main`.
+1. A pull request from exact `release/v${VERSION}` or
+   `hotfix/v${VERSION}` to `main` runs `npm run verify:release` and does not
+   publish.
+2. A push to `main` publishes only when GitHub associates `GITHUB_SHA` with
+   exactly one merged PR targeting `main`, that PR's `merge_commit_sha` equals
+   `GITHUB_SHA`, and its source is exactly `release/v${VERSION}` or
+   `hotfix/v${VERSION}`.
 
 `verify:release` executes the complete obligation set for the announced release
 or main context. This includes the release family plus required contract,
@@ -79,7 +123,9 @@ The publish job refuses:
 - a non-`main` ref;
 - a checkout or `origin/main` that differs from `GITHUB_SHA`;
 - a dirty checkout;
-- a missing or ambiguous merged release PR;
+- a missing or ambiguous merged publication PR;
+- a publication PR whose `merge_commit_sha` differs from `GITHUB_SHA`;
+- a source branch that is not the exact version-matched release or hotfix branch;
 - version drift or non-reproducible output;
 - package topology or sensitivity drift;
 - an existing tag or GitHub Release.

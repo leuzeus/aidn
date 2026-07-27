@@ -75,7 +75,7 @@ Codex instruction layering after install:
 
 ## Workflow Diagrams
 
-- Mermaid diagrams in `docs/diagrams/` are aligned with the current `0.7.0` runtime baseline.
+- Mermaid diagrams in `docs/diagrams/` are aligned with the current `0.7.1` runtime baseline.
 - Global system architecture: `docs/diagrams/01-global-system-architecture.md`
 - Cycle state machine: `docs/diagrams/02-cycle-state-machine.md`
 - Runtime session flow: `docs/diagrams/03-runtime-session-flow.md`
@@ -149,8 +149,15 @@ Rules:
 - `main` is the stable/release branch.
 - `dev` is the integration branch and may accumulate multiple workstreams.
 - feature-family branches are created from current `dev` and open pull requests to `dev`.
-- release branches are created from reviewed `dev`; only `release/*` pull requests target `main`.
-- release PRs verify without publishing; publication runs only after the release PR merges to `main`.
+- release branches are created from reviewed `dev`; production hotfix branches
+  are created from current `main` and increment its patch version by exactly
+  one.
+- only exact version-matched `release/vX.Y.Z` or `hotfix/vX.Y.Z` pull requests
+  target `main`.
+- release and hotfix PRs verify without publishing; publication runs only after
+  the matching PR merges to `main`.
+- `sync/main-to-dev-vX.Y.Z` must equal current `main`, use that commit's exact
+  `VERSION`, target only `dev`, and never publish.
 - full policy: `docs/GIT_WORKFLOW.md`
 
 ## Performance Rollout
@@ -227,7 +234,7 @@ Migration and repair:
 ## Installation
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#v0.7.0
+npm install --save-dev github:leuzeus/aidn#v0.7.1
 npx aidn bootstrap --target ../client --profile default
 npx aidn bootstrap --target ../client --mode upgrade --profile default
 npx aidn bootstrap --target ../client --profile full
@@ -279,7 +286,7 @@ Notes:
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a tagged install (`#v0.7.0`) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a tagged install (`#v0.7.1`) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 

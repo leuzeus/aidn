@@ -16,7 +16,7 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 3) Runtime Session Flow (v0.7.0 runtime baseline)
+%% 3) Runtime Session Flow (v0.7.1 runtime baseline)
 flowchart TD
   ST["Session start"] --> CR["context-reload"]
   CR --> RA["Read CURRENT-STATE + WORKFLOW-KERNEL"]

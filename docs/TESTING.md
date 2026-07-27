@@ -66,6 +66,11 @@ When a change affects the simplified install/upgrade orchestrator, run:
 - `npm run perf:verify-install-idempotence`
 
 The CLI effect policy verifier checks the public command effect inventory in `src/core/cli/effect-policy.mjs`. The no-implicit-write verifier runs stable read-only, preview, and projector dry-run commands against a temporary fixture copy and fails if checkout-bound paths, including `.agents/*` and `.aidn/runtime/*`, change. The CLI output contract verifier gives every public JSON command its own isolated Git fixture with an explicitly derived dual-SQLite projection, then validates the result against `src/core/contracts/cli-output/*.schema.json`; commands never inherit mutations from a previously checked contract. For projector commands, it also verifies that `--dry-run --json` does not mutate the projected Markdown artifact.
+When a contract command child fails, the verifier reports its exit status,
+signal, timeout/error code, and independently bounded, redacted stdout and
+stderr tails. Deterministic probes cover a nonzero stdout-only child, configured
+secret redaction, and an `ETIMEDOUT` timeout so an intermittent command failure
+cannot collapse into an ambiguous contract result.
 
 The CLI surface inventory verifier checks that `repair-layer` commands remain classified as internal and are not exposed as public runtime aliases or effect-policy entries.
 
@@ -143,6 +148,8 @@ left behind.
 
 When a change affects release/versioning, install examples, or build-release provenance, run:
 
+- `npm run perf:verify-branch-policy`
+- `npm run perf:verify-branch-policy-fixtures`
 - `npm run perf:verify-release-version`
 - `npm run perf:verify-release-reproducibility`
 - `npm run perf:verify-release-workflow-policy`
@@ -152,6 +159,25 @@ When a change affects release/versioning, install examples, or build-release pro
 - `npm run perf:verify-doc-references`
 
 The release version verifier checks that `VERSION`, `package.json`, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The reproducibility verifier builds the exact clean tracked commit twice in isolated output roots, compares bytes, checks the npm package topology, and rejects sensitive inputs. `perf:verify-release-artifacts` remains the post-build check used by the main publication job.
+The branch-policy fixtures distinguish feature ancestry from `dev`, release
+ancestry from `dev`, hotfix ancestry from `main`, and exact main-to-dev
+synchronization. They also reject non-patch hotfix versions, mismatched
+synchronization version suffixes, version-mismatched publication branches,
+reversed synchronization, and divergent remote provenance. The release
+publication cases derive their matching and mismatching branch versions from
+the tracked `VERSION`, so a valid version bump cannot stale the positive fixture.
+The release
+workflow-policy gate parses the workflow structure and requires exact
+single-command calls to
+`tools/ci/fetch-branch-policy-sources.mjs` and
+`tools/ci/prove-publication-source.mjs`. The helpers are tested through injected
+Git and GitHub responses. The three workflow call sites also enforce their
+exact blocking step metadata: the architecture fetch keeps only its required PR
+condition, while the release fetch and publication proof have no step condition,
+and none may declare `continue-on-error`. Publication classification requires
+the unique merged PR's `merge_commit_sha` to equal `GITHUB_SHA`. Comments,
+dormant shell blocks, wildcard hotfix routes, associated-but-different merge
+commits, or weakened unique-PR assertions cannot satisfy the gate.
 The pack topology verifier checks the package tarball surface, the published docs allowlist, and the leak guard for guarded terms in package paths and contents. The tracked-sensitivity verifier separately scans the complete Git-tracked tree, including historical planning documents and fixtures. It uses exact negative probes so weakening or bypassing the detector fails the gate. Current tracked content is neutralized, but older Git objects can retain prior pilot names and local paths; history cleanup may therefore still be required before wider archival or publication.
 The documentation-reference verifier resolves active local Markdown links and
 literal `npm run` references against the tracked tree and `package.json`; its
@@ -183,6 +209,12 @@ deterministic diagnostic gate forces one named assertion false and proves that
 the same evidence survives direct execution and the family runner:
 
 - `npm run perf:verify-codex-context-diagnostics`
+
+The coordinator next-action fixture likewise preserves bounded, redacted child
+status, signal, error code, stdout tail, and stderr tail on failure. Its
+deterministic probes cover a nonzero child with stdout-only evidence, a timeout,
+secret redaction, and cleanup after an injected failure immediately after
+creating the owned temporary root.
 
 The start-session and installed-Codex-client verifiers execute child commands
 with `spawnSync`. Their process evidence records synchronous call returns and

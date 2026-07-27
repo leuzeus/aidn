@@ -2,8 +2,18 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { redactDiagnostic } from "../verify/git-worktree-state-lib.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+
+const FAILURE_INJECTION_ENV = "AIDN_COORDINATOR_NEXT_FIXTURE_INJECT_FAILURE";
+const FAILURE_PROBE_TOKEN_ENV = "AIDN_COORDINATOR_NEXT_FIXTURE_PROBE_TOKEN";
+const MAX_CHILD_DIAGNOSTIC_CHARACTERS = 2000;
+const SELF_FILE = path.resolve(
+  import.meta.dirname,
+  "verify-coordinator-next-action-fixtures.mjs",
+);
 
 function parseArgs(argv) {
   const args = {
@@ -43,18 +53,197 @@ function assert(condition, message) {
   }
 }
 
-function runJson(script, args, repoRoot, expectStatus = 0, env = {}) {
-  const result = spawnSync(process.execPath, [script, ...args], {
-    cwd: repoRoot,
-    env: { ...process.env, ...env },
-    encoding: "utf8",
-    timeout: 180000,
-    maxBuffer: 10 * 1024 * 1024,
-  });
-  if ((result.status ?? 1) !== expectStatus) {
-    throw new Error(`Command failed (${path.basename(script)}): ${String(result.stderr ?? result.stdout ?? "").trim()}`);
+function diagnosticTail(value, env) {
+  const redacted = redactDiagnostic(value, env).trim();
+  if (redacted.length <= MAX_CHILD_DIAGNOSTIC_CHARACTERS) {
+    return redacted;
   }
-  return JSON.parse(String(result.stdout ?? "{}"));
+  const suffixLength = MAX_CHILD_DIAGNOSTIC_CHARACTERS - 30;
+  return `...[diagnostic tail truncated]${redacted.slice(-suffixLength)}`;
+}
+
+function childFailureMessage(script, args, expectStatus, result, env) {
+  return [
+    `Command failed (${path.basename(script)})`,
+    `args=${JSON.stringify(diagnosticTail(JSON.stringify(args), env))}`,
+    `expected_status=${expectStatus}`,
+    `actual_status=${Number.isInteger(result?.status) ? result.status : "null"}`,
+    `signal=${result?.signal ?? "null"}`,
+    `error_code=${result?.error?.code ?? "null"}`,
+    `error=${JSON.stringify(diagnosticTail(result?.error?.message, env))}`,
+    `stdout_tail=${JSON.stringify(diagnosticTail(result?.stdout, env))}`,
+    `stderr_tail=${JSON.stringify(diagnosticTail(result?.stderr, env))}`,
+  ].join(" | ");
+}
+
+function runJson(
+  script,
+  args,
+  repoRoot,
+  expectStatus = 0,
+  env = {},
+  {
+    timeoutMs = 180000,
+    maxBuffer = 10 * 1024 * 1024,
+  } = {},
+) {
+  const childEnv = { ...process.env, ...env };
+  let result;
+  try {
+    result = spawnSync(process.execPath, [script, ...args], {
+      cwd: repoRoot,
+      env: childEnv,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: false,
+      timeout: timeoutMs,
+      maxBuffer,
+      windowsHide: true,
+    });
+  } catch (error) {
+    result = {
+      status: null,
+      signal: null,
+      error,
+      stdout: "",
+      stderr: "",
+    };
+  }
+  const processContractSatisfied = result?.status === expectStatus
+    && result?.signal == null
+    && result?.error == null;
+  if (!processContractSatisfied) {
+    throw new Error(childFailureMessage(script, args, expectStatus, result, childEnv));
+  }
+  try {
+    return JSON.parse(String(result.stdout ?? "{}"));
+  } catch (error) {
+    throw new Error([
+      `Invalid JSON (${path.basename(script)})`,
+      `actual_status=${result.status}`,
+      `signal=${result.signal ?? "null"}`,
+      `error_code=${result.error?.code ?? "null"}`,
+      `parse_error=${JSON.stringify(diagnosticTail(error.message, childEnv))}`,
+      `stdout_tail=${JSON.stringify(diagnosticTail(result.stdout, childEnv))}`,
+      `stderr_tail=${JSON.stringify(diagnosticTail(result.stderr, childEnv))}`,
+    ].join(" | "));
+  }
+}
+
+function captureExpectedFailure(callback, label) {
+  try {
+    callback();
+  } catch (error) {
+    return String(error?.message ?? error);
+  }
+  throw new Error(`${label} unexpectedly passed`);
+}
+
+function verifyChildFailureDiagnostics(repoRoot) {
+  const diagnosticRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), "aidn-coordinator-next-diagnostics-"),
+  );
+  try {
+    const configuredSecret = "postgresql://fixture:secret@localhost:5432/aidn";
+    const exitScript = path.join(diagnosticRoot, "exit-with-stdout.mjs");
+    fs.writeFileSync(exitScript, [
+      `process.stdout.write(${JSON.stringify(`${configuredSecret}\nstdout-before-exit\n`)});`,
+      "process.exitCode = 9;",
+      "",
+    ].join("\n"), "utf8");
+    const exitMessage = captureExpectedFailure(
+      () => runJson(exitScript, [], repoRoot, 0, {
+        AIDN_PG_SMOKE_URL: configuredSecret,
+      }),
+      "nonzero child diagnostic probe",
+    );
+    assert(exitMessage.includes("actual_status=9"), "child failure must preserve exit status");
+    assert(exitMessage.includes("signal=null"), "child failure must preserve the signal field");
+    assert(exitMessage.includes("error_code=null"), "child failure must preserve error code");
+    assert(
+      exitMessage.includes("stdout-before-exit"),
+      "child failure must preserve stdout when stderr is empty",
+    );
+    assert(!exitMessage.includes("fixture:secret"), "child failure diagnostics must redact secrets");
+
+    const timeoutScript = path.join(diagnosticRoot, "timeout-with-stdout.mjs");
+    fs.writeFileSync(timeoutScript, [
+      "process.stdout.write('stdout-before-timeout\\n');",
+      "setInterval(() => {}, 1000);",
+      "",
+    ].join("\n"), "utf8");
+    const timeoutMessage = captureExpectedFailure(
+      () => runJson(timeoutScript, [], repoRoot, 0, {}, { timeoutMs: 200 }),
+      "timeout child diagnostic probe",
+    );
+    assert(timeoutMessage.includes("actual_status=null"), "timeout must preserve null exit status");
+    assert(timeoutMessage.includes("signal="), "timeout must preserve the signal field");
+    assert(
+      timeoutMessage.includes("error_code=ETIMEDOUT"),
+      "timeout must preserve ETIMEDOUT",
+    );
+
+    return {
+      nonzero_exit_status: 9,
+      null_signal_preserved: true,
+      null_error_code_preserved: true,
+      stdout_tail_preserved_with_empty_stderr: true,
+      configured_secret_redacted: true,
+      timeout_error_code: "ETIMEDOUT",
+    };
+  } finally {
+    removePathWithRetry(diagnosticRoot);
+  }
+}
+
+function verifyInjectedFailureCleanup(repoRoot) {
+  const token = randomUUID();
+  const ownedPrefix = `aidn-coordinator-next-probe-${token}-`;
+  const result = spawnSync(process.execPath, [SELF_FILE, "--json"], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      [FAILURE_INJECTION_ENV]: "after-temp-root",
+      [FAILURE_PROBE_TOKEN_ENV]: token,
+    },
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    shell: false,
+    timeout: 30000,
+    maxBuffer: 1024 * 1024,
+    windowsHide: true,
+  });
+  const stderr = String(result.stderr ?? "");
+  const observedRemaining = fs.readdirSync(os.tmpdir(), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith(ownedPrefix))
+    .map((entry) => path.join(os.tmpdir(), entry.name));
+  const recoveryFailures = [];
+  for (const ownedPath of observedRemaining) {
+    try {
+      removePathWithRetry(ownedPath);
+    } catch (error) {
+      recoveryFailures.push(`${ownedPath}: ${error.message}`);
+    }
+  }
+  assert(result.status === 1, "injected coordinator-next failure must exit 1");
+  assert(
+    stderr.includes("injected failure after temp root"),
+    "injected coordinator-next failure must preserve the primary error",
+  );
+  assert(
+    observedRemaining.length === 0,
+    "injected coordinator-next failure leaked owned temp roots before recovery: "
+      + `${observedRemaining.join(", ")}`
+      + (recoveryFailures.length > 0
+        ? `; recovery failures: ${recoveryFailures.join(", ")}`
+        : ""),
+  );
+  return {
+    injected_failure_exit_code: result.status,
+    primary_error_preserved: true,
+    owned_test_directories_remaining: observedRemaining.length,
+    recovery_failures: recoveryFailures.length,
+  };
 }
 
 function installSharedPlanningFixture(targetRoot) {
@@ -94,15 +283,33 @@ function installSharedPlanningFixture(targetRoot) {
 
 function main() {
   let tempRoot = "";
+  let args = null;
+  let output = null;
+  let primaryError = null;
+  let cleanupError = null;
   try {
-    const args = parseArgs(process.argv.slice(2));
+    args = parseArgs(process.argv.slice(2));
     const repoRoot = process.cwd();
+    const failureInjection = String(process.env[FAILURE_INJECTION_ENV] ?? "").trim();
+    const failureProbeToken = String(process.env[FAILURE_PROBE_TOKEN_ENV] ?? "").trim();
+    const childFailureDiagnostics = failureInjection
+      ? null
+      : verifyChildFailureDiagnostics(repoRoot);
+    const injectedFailureCleanup = failureInjection
+      ? null
+      : verifyInjectedFailureCleanup(repoRoot);
     const handoffFixturesRoot = path.resolve(repoRoot, args.handoffFixturesRoot);
     const currentStateFixturesRoot = path.resolve(repoRoot, args.currentStateFixturesRoot);
     const coordinatorScript = path.resolve(repoRoot, "tools", "runtime", "coordinator-next-action.mjs");
     const handoffProjectScript = path.resolve(repoRoot, "tools", "runtime", "project-handoff-packet.mjs");
 
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-coordinator-next-"));
+    const tempPrefix = failureProbeToken
+      ? `aidn-coordinator-next-probe-${failureProbeToken}-`
+      : "aidn-coordinator-next-";
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), tempPrefix));
+    if (failureInjection === "after-temp-root") {
+      throw new Error("injected failure after temp root");
+    }
     const readyTarget = path.join(tempRoot, "ready");
     const warnTarget = path.join(tempRoot, "warn");
     const blockedTarget = path.join(tempRoot, "blocked");
@@ -245,7 +452,7 @@ function main() {
     assert(dbOnlyFileless.context.runtime_state_source === "sqlite", "db-only fileless should load runtime state from SQLite");
     assert(dbOnlyFileless.context.packet_source === "sqlite", "db-only fileless should load packet from SQLite");
 
-    const output = {
+    output = {
       ts: new Date().toISOString(),
       ready,
       warn,
@@ -254,22 +461,39 @@ function main() {
       transition_rejected: transitionRejected,
       fallback,
       db_only_fileless: dbOnlyFileless,
+      child_failure_diagnostics: childFailureDiagnostics,
+      injected_failure_cleanup: injectedFailureCleanup,
       pass: true,
     };
-
-    if (args.json) {
-      console.log(JSON.stringify(output, null, 2));
-    } else {
-      console.log("PASS");
-    }
   } catch (error) {
-    console.error(`ERROR: ${error.message}`);
-    printUsage();
-    process.exit(1);
+    primaryError = error;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
-      removePathWithRetry(tempRoot);
+      try {
+        removePathWithRetry(tempRoot);
+      } catch (error) {
+        cleanupError = error;
+      }
     }
+  }
+  if (primaryError) {
+    console.error(`ERROR: ${primaryError.message}`);
+  }
+  if (cleanupError) {
+    console.error(`ERROR: cleanup failed: ${cleanupError.message}`);
+  }
+  if (primaryError || cleanupError) {
+    printUsage();
+    process.exitCode = 1;
+    return;
+  }
+  output.cleanup = {
+    temporary_root_removed: true,
+  };
+  if (args.json) {
+    console.log(JSON.stringify(output, null, 2));
+  } else {
+    console.log("PASS");
   }
 }
 
