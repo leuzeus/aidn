@@ -17,6 +17,10 @@ A task is done only when:
 - policies are aligned
 - contracts and fixtures are updated if needed
 - relevant gates pass
+- public JSON output is one complete parseable document on `stdout`, with
+  diagnostics kept on `stderr`
+- dependency-bearing workflows install from a tracked lockfile and prove
+  required optional drivers resolve before executing their consumers
 - every executed gate leaves the tracked and untracked, non-ignored checkout state unchanged
 - required gate preconditions fail diagnostically when unavailable; they are not reported as `SKIP`
 - any architectural decision change is reflected in the ADR

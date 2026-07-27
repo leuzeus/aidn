@@ -111,6 +111,12 @@ Optional live PostgreSQL smoke is kept out of the required CI path. When you hav
 - `npm run perf:verify-postgres-shared-coordination-live-smoke`
 
 Those commands skip cleanly when the live smoke URL is not configured.
+The manual workflow still performs a locked
+`npm ci --include=optional --ignore-scripts --no-audit --no-fund` installation
+and proves that `import('pg')` resolves before either smoke command. The
+workflow-policy gate validates the semantic step order, so removing the install,
+omitting optional dependencies, skipping the driver preflight, or moving a
+smoke ahead of those prerequisites is a failure even when live URLs are absent.
 The shared-coordination smoke uses only run-unique synthetic identifiers,
 removes those exact rows in foreign-key order from a `finally` block, and
 verifies zero remaining rows after both success and injected failure. It never

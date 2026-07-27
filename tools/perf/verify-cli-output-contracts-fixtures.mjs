@@ -514,14 +514,41 @@ function extractJson(stdout) {
   }
   try {
     return JSON.parse(text);
-  } catch {
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      return JSON.parse(text.slice(start, end + 1));
-    }
-    throw new Error("stdout does not contain a JSON object");
+  } catch (error) {
+    throw new Error(
+      `stdout must contain exactly one complete JSON document after trimming whitespace: ${error.message}`,
+    );
   }
+}
+
+function runStrictStdoutDocumentFixtures() {
+  let surroundingWhitespaceAccepted = false;
+  try {
+    surroundingWhitespaceAccepted = extractJson(
+      "\r\n\t {\"contract_version\":\"strict-probe.v1\",\"ok\":true} \n",
+    ).ok === true;
+  } catch {
+    surroundingWhitespaceAccepted = false;
+  }
+  const mutantKillers = [
+    ["text-before-and-after", "diagnostic-before\n{\"ok\":true}\ndiagnostic-after"],
+    ["text-before", "diagnostic-before\n{\"ok\":true}"],
+    ["text-after", "{\"ok\":true}\ndiagnostic-after"],
+  ].map(([name, stdout]) => {
+    let rejected = false;
+    try {
+      extractJson(stdout);
+    } catch {
+      rejected = true;
+    }
+    return { name, rejected };
+  });
+  return {
+    ok: surroundingWhitespaceAccepted && mutantKillers.every((item) => item.rejected),
+    surrounding_whitespace_accepted: surroundingWhitespaceAccepted,
+    diagnostics_channel: "stderr-separated-from-machine-readable-stdout",
+    mutant_killers: mutantKillers,
+  };
 }
 
 function runCase(tmpRoot, testCase) {
@@ -797,6 +824,7 @@ function main() {
   const closure = verifyContractClosure();
   const validatorNegativeFixtures = runValidatorNegativeFixtures();
   const metaSchemaMutationFixtures = runMetaSchemaMutationFixtures();
+  const strictStdoutDocumentFixtures = runStrictStdoutDocumentFixtures();
   try {
     baseRoot = prepareBaseFixture(sourceRoot, tempRoot);
     for (const [index, testCase] of CONTRACT_CASES.entries()) {
@@ -815,7 +843,8 @@ function main() {
     ok: results.every((item) => item.ok)
       && closure.issues.length === 0
       && validatorNegativeFixtures.ok
-      && metaSchemaMutationFixtures.ok,
+      && metaSchemaMutationFixtures.ok
+      && strictStdoutDocumentFixtures.ok,
     target_root: sourceRoot,
     fixture_setup: "isolated Git repository with a derived dual-sqlite projection per contract case; bootstrap uses only a local prerequisite command stub and is not installed-client proof",
     tmp_root: args.keepTmp ? tempRoot : "removed",
@@ -825,6 +854,7 @@ function main() {
       supported_keywords: listSupportedSchemaKeywords(),
       negative_fixtures: validatorNegativeFixtures,
       meta_schema_mutations: metaSchemaMutationFixtures,
+      strict_stdout_document: strictStdoutDocumentFixtures,
     },
     results,
   };

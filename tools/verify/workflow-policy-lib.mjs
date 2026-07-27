@@ -85,6 +85,31 @@ const REQUIRED_WORKFLOW_POLICY = Object.freeze({
       ],
     },
   },
+  ".github/workflows/runtime-ops-live-smoke.yml": {
+    triggers: {
+      workflow_dispatch: [],
+    },
+    jobs: {
+      "live-smoke": {
+        commands: [
+          "perf:verify-postgres-runtime-persistence-live-smoke",
+          "perf:verify-postgres-shared-coordination-live-smoke",
+        ],
+        steps: [
+          { uses: "actions/checkout@v4" },
+          { uses: "actions/setup-node@v4" },
+          {
+            run: "npm ci --include=optional --ignore-scripts --no-audit --no-fund",
+          },
+          {
+            run: "node --input-type=module --eval \"await import('pg'); console.log('PostgreSQL driver preflight: PASS')\"",
+          },
+          { command: "perf:verify-postgres-runtime-persistence-live-smoke" },
+          { command: "perf:verify-postgres-shared-coordination-live-smoke" },
+        ],
+      },
+    },
+  },
 });
 
 function stripComment(line) {
@@ -123,6 +148,15 @@ function npmCommands(text) {
     .map((match) => match[1]);
 }
 
+function scalarValue(value) {
+  const normalized = String(value ?? "").trim();
+  const quote = normalized[0];
+  if ((quote === "\"" || quote === "'") && normalized.endsWith(quote)) {
+    return normalized.slice(1, -1);
+  }
+  return normalized;
+}
+
 export function parseWorkflowYaml(text, relativePath = "workflow.yml") {
   const rawLines = String(text ?? "").split(/\r?\n/);
   const lines = rawLines.map(stripComment);
@@ -132,6 +166,8 @@ export function parseWorkflowYaml(text, relativePath = "workflow.yml") {
   let section = "";
   let currentTrigger = "";
   let currentJob = "";
+  let inSteps = false;
+  let currentStep = null;
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
@@ -144,6 +180,8 @@ export function parseWorkflowYaml(text, relativePath = "workflow.yml") {
       section = trimmed === "on:" ? "on" : trimmed === "jobs:" ? "jobs" : "";
       currentTrigger = "";
       currentJob = "";
+      inSteps = false;
+      currentStep = null;
       continue;
     }
     if (section === "on") {
@@ -174,18 +212,63 @@ export function parseWorkflowYaml(text, relativePath = "workflow.yml") {
       }
       jobs[currentJob] = {
         commands: [],
+        steps: [],
       };
+      inSteps = false;
+      currentStep = null;
       continue;
     }
     if (!currentJob) {
       continue;
     }
-    const runMatch = trimmed.match(/^(?:-\s*)?run:\s*(.*)$/);
-    if (!runMatch) {
+    if (indent === 4 && trimmed === "steps:") {
+      inSteps = true;
+      currentStep = null;
       continue;
     }
-    const scalar = runMatch[1].trim();
-    let commandText = scalar;
+    if (inSteps && indent <= 4) {
+      inSteps = false;
+      currentStep = null;
+    }
+    if (!inSteps) {
+      continue;
+    }
+
+    let fieldMatch = null;
+    const stepMatch = indent === 6
+      ? trimmed.match(/^-\s+([a-zA-Z][a-zA-Z0-9_-]*):(?:\s*(.*))?$/)
+      : null;
+    if (stepMatch) {
+      currentStep = {
+        name: "",
+        uses: "",
+        run: "",
+        commands: [],
+      };
+      jobs[currentJob].steps.push(currentStep);
+      fieldMatch = stepMatch;
+    } else if (currentStep && indent >= 8) {
+      fieldMatch = trimmed.match(/^([a-zA-Z][a-zA-Z0-9_-]*):(?:\s*(.*))?$/);
+    }
+    if (!fieldMatch || !currentStep) {
+      continue;
+    }
+
+    const field = fieldMatch[1];
+    const scalar = String(fieldMatch[2] ?? "").trim();
+    if (field === "name") {
+      currentStep.name = scalarValue(scalar);
+      continue;
+    }
+    if (field === "uses") {
+      currentStep.uses = scalarValue(scalar);
+      continue;
+    }
+    if (field !== "run") {
+      continue;
+    }
+
+    let commandText = scalarValue(scalar);
     if (scalar === "|" || scalar === ">") {
       const block = [];
       for (let blockIndex = index + 1; blockIndex < lines.length; blockIndex += 1) {
@@ -197,7 +280,9 @@ export function parseWorkflowYaml(text, relativePath = "workflow.yml") {
       }
       commandText = block.join("\n");
     }
-    jobs[currentJob].commands.push(...npmCommands(commandText));
+    currentStep.run = commandText;
+    currentStep.commands = npmCommands(commandText);
+    jobs[currentJob].commands.push(...currentStep.commands);
   }
   return {
     path: relativePath.replaceAll("\\", "/"),
@@ -305,14 +390,41 @@ export function validateGateAndWorkflowPolicy({
         );
       }
     }
-    for (const [job, commands] of Object.entries(policy.jobs)) {
+    for (const [job, jobPolicy] of Object.entries(policy.jobs)) {
       if (!model.jobs[job]) {
         issues.push(`${workflowPath}: missing job ${job}`);
         continue;
       }
+      const commands = Array.isArray(jobPolicy) ? jobPolicy : (jobPolicy.commands ?? []);
       for (const command of commands) {
         if (!model.jobs[job].commands.includes(command)) {
           issues.push(`${workflowPath}/${job}: missing semantic npm command ${command}`);
+        }
+      }
+      const expectedSteps = Array.isArray(jobPolicy) ? null : jobPolicy.steps;
+      if (!expectedSteps) {
+        continue;
+      }
+      const actualSteps = model.jobs[job].steps ?? [];
+      if (actualSteps.length !== expectedSteps.length) {
+        issues.push(
+          `${workflowPath}/${job}: semantic step count mismatch `
+          + `(${actualSteps.length} != ${expectedSteps.length})`,
+        );
+        continue;
+      }
+      for (const [stepIndex, expectedStep] of expectedSteps.entries()) {
+        const actualStep = actualSteps[stepIndex];
+        const matches = (expectedStep.uses == null || actualStep.uses === expectedStep.uses)
+          && (expectedStep.run == null || actualStep.run === expectedStep.run)
+          && (expectedStep.command == null
+            || actualStep.commands.includes(expectedStep.command));
+        if (!matches) {
+          const expected = expectedStep.uses ?? expectedStep.run ?? expectedStep.command;
+          issues.push(
+            `${workflowPath}/${job}: semantic step ${stepIndex + 1} mismatch `
+            + `(expected ${expected})`,
+          );
         }
       }
     }

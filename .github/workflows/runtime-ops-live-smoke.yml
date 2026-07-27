@@ -19,6 +19,12 @@ jobs:
         with:
           node-version: "22.13"
 
+      - name: Install Locked Dependencies
+        run: npm ci --include=optional --ignore-scripts --no-audit --no-fund
+
+      - name: Verify PostgreSQL Driver Resolution
+        run: node --input-type=module --eval "await import('pg'); console.log('PostgreSQL driver preflight: PASS')"
+
       - name: Verify Runtime Persistence Live Smoke
         env:
           AIDN_RUNTIME_PG_SMOKE_URL: ${{ secrets.AIDN_RUNTIME_PG_SMOKE_URL }}

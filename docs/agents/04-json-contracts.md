@@ -42,6 +42,11 @@ Do not rename those fields in place without a version bump and fixture update.
 - when preview and explicit-write variants share one additive payload, keep the preview in `x-aidn-command` and enumerate both exact forms in `x-aidn-commands`
 - do not encode local paths or secrets as schema constants
 - keep nested objects extensible until the fixtures and gates are ready to tighten them
+- machine-readable commands must emit exactly one complete JSON document on
+  `stdout`; surrounding whitespace is allowed, but prefixes, suffixes, logs,
+  and substring extraction are forbidden
+- diagnostics belong on `stderr` and are validated separately from the JSON
+  document
 
 The executable contract verifier validates every schema keyword used by this
 registry, recursively. The supported validation vocabulary is `type`,
@@ -55,6 +60,8 @@ Contract coverage is closed in both directions:
 - every active public contract has exactly one isolated executable case
 - every executable case resolves to exactly one active schema
 - each case validates an output produced by the real command
+- each case parses the complete trimmed `stdout` with `JSON.parse`, without a
+  recovery fallback
 - negative fixtures prove that each supported validation keyword rejects an
   invalid payload
 - redaction checks remain separate from structural schema validation

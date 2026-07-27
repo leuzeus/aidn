@@ -10,11 +10,34 @@ import {
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const catalogPath = path.join(repoRoot, "package", "catalogs", "gates.v1.json");
 const packagePath = path.join(repoRoot, "package.json");
+const packageLockPath = path.join(repoRoot, "package-lock.json");
 const catalog = JSON.parse(fs.readFileSync(catalogPath, "utf8"));
 const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
 const workflowModels = loadWorkflowModels(repoRoot);
 const issues = [];
 const families = new Set();
+let packageLock = null;
+
+try {
+  packageLock = JSON.parse(fs.readFileSync(packageLockPath, "utf8"));
+} catch (error) {
+  issues.push(`package-lock.json: locked dependency graph is missing or invalid (${error.message})`);
+}
+
+if (packageLock) {
+  if (!Number.isInteger(packageLock.lockfileVersion) || packageLock.lockfileVersion < 3) {
+    issues.push("package-lock.json: lockfileVersion must be at least 3");
+  }
+  const declaredPg = packageJson.optionalDependencies?.pg;
+  const lockedDeclaration = packageLock.packages?.[""]?.optionalDependencies?.pg;
+  if (!declaredPg || lockedDeclaration !== declaredPg) {
+    issues.push("package-lock.json: root pg optional dependency must match package.json");
+  }
+  const lockedPg = packageLock.packages?.["node_modules/pg"];
+  if (!lockedPg?.version || !lockedPg?.integrity || lockedPg.optional !== true) {
+    issues.push("package-lock.json: pg must be integrity-locked as an optional dependency");
+  }
+}
 
 function clone(value) {
   return structuredClone(value);
@@ -137,6 +160,34 @@ const commandCommentMutation = releaseText.replaceAll(
 const missingJobMutation = releaseText.replace("  verify:\n", "  verify_removed:\n");
 const duplicateJobMutation = `${releaseText}\n  verify:\n    runs-on: ubuntu-latest\n    steps: []\n`;
 
+const liveSmokePath = ".github/workflows/runtime-ops-live-smoke.yml";
+const liveSmokeText = fs.readFileSync(path.join(repoRoot, liveSmokePath), "utf8");
+const missingLiveInstallMutation = liveSmokeText.replace(
+  /      - name: Install Locked Dependencies\r?\n        run: npm ci --include=optional --ignore-scripts --no-audit --no-fund\r?\n\r?\n/,
+  "",
+);
+const omittedOptionalDependenciesMutation = liveSmokeText.replace(
+  "npm ci --include=optional --ignore-scripts --no-audit --no-fund",
+  "npm ci --ignore-scripts --no-audit --no-fund",
+);
+const missingPgPreflightMutation = liveSmokeText.replace(
+  /      - name: Verify PostgreSQL Driver Resolution\r?\n        run: node --input-type=module --eval "await import\('pg'\); console\.log\('PostgreSQL driver preflight: PASS'\)"\r?\n\r?\n/,
+  "",
+);
+const liveSmokeOrderMutation = liveSmokeText
+  .replace(
+    "npm run perf:verify-postgres-runtime-persistence-live-smoke",
+    "npm run __aidn_runtime_smoke_order_sentinel",
+  )
+  .replace(
+    "npm run perf:verify-postgres-shared-coordination-live-smoke",
+    "npm run perf:verify-postgres-runtime-persistence-live-smoke",
+  )
+  .replace(
+    "npm run __aidn_runtime_smoke_order_sentinel",
+    "npm run perf:verify-postgres-shared-coordination-live-smoke",
+  );
+
 const negativeProbes = {
   required_to_skip_rejected: candidateRejected({ candidateCatalog: weakenedCatalog }),
   self_cancelling_cleanliness_condition_rejected: candidateRejected({
@@ -155,6 +206,26 @@ const negativeProbes = {
   duplicate_job_rejected: candidateRejected({
     candidateWorkflows: replaceWorkflow(workflowModels, releasePath, duplicateJobMutation),
   }),
+  live_smoke_install_required: candidateRejected({
+    candidateWorkflows: replaceWorkflow(workflowModels, liveSmokePath, missingLiveInstallMutation),
+  }),
+  live_smoke_optional_dependencies_required: candidateRejected({
+    candidateWorkflows: replaceWorkflow(
+      workflowModels,
+      liveSmokePath,
+      omittedOptionalDependenciesMutation,
+    ),
+  }),
+  live_smoke_pg_preflight_required: candidateRejected({
+    candidateWorkflows: replaceWorkflow(
+      workflowModels,
+      liveSmokePath,
+      missingPgPreflightMutation,
+    ),
+  }),
+  live_smoke_step_order_required: candidateRejected({
+    candidateWorkflows: replaceWorkflow(workflowModels, liveSmokePath, liveSmokeOrderMutation),
+  }),
 };
 for (const [probe, rejected] of Object.entries(negativeProbes)) {
   if (!rejected) {
@@ -167,11 +238,17 @@ const output = {
   status: issues.length === 0 ? "PASS" : "FAIL",
   gates: catalog.gates?.length ?? 0,
   families: [...families].sort(),
+  dependency_lock: {
+    path: "package-lock.json",
+    lockfile_version: packageLock?.lockfileVersion ?? null,
+    pg_version: packageLock?.packages?.["node_modules/pg"]?.version ?? null,
+  },
   workflows: workflowModels.map((workflow) => ({
     path: workflow.path,
     triggers: Object.keys(workflow.triggers).sort(),
     jobs: Object.keys(workflow.jobs).sort(),
     npm_commands: Object.values(workflow.jobs).flatMap((job) => job.commands).length,
+    steps: Object.values(workflow.jobs).flatMap((job) => job.steps ?? []).length,
   })),
   publication_obligations: {
     selector: "obligations",
