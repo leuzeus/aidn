@@ -51,4 +51,3 @@ These documents remain useful as history, but they are superseded for the curren
 - [Architecture remediation plan](./PLAN_ARCHITECTURE_REMEDIATION_2026-03-07.md)
 - [Enterprise information architecture plan](./PLAN_AIDN_ENTERPRISE_INFORMATION_ARCHITECTURE_2026-05-18.md)
 - [Correction architecture backlog](./PLAN_AIDN_CORRECTION_ARCHITECTURE_BACKLOG_2026-05-23.md)
-- [Correction architecture backlog 2026-05-23](./BACKLOG_AIDN_CORRECTION_ARCHITECTURE_BACKLOG_2026-05-23.md)

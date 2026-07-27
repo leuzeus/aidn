@@ -256,7 +256,7 @@ Done when:
   - reinstall without DB loss
   - reinit without DB loss
   - `dual` and `db-only`
-  - `gowire`-like upgrade paths
+  - `external-pilot`-like upgrade paths
 
 Progress note:
 
@@ -264,7 +264,7 @@ Progress note:
 - `mode-migrate` transition to `db-only` is covered with explicit schema migration and repair-layer verification in `verify-mode-migrate-repair-layer-fixtures.mjs`
 - reinstall no-loss for a DB-first artifact in `db-only` is now covered by `verify-install-db-only-preserves-db-first-artifacts-fixtures.mjs`
 - reinitialization no-loss in `db-only` is now covered by `verify-reinit-db-only-preserves-db-first-artifacts-fixtures.mjs`
-- a `gowire`-like client upgrade path is now covered by `verify-gowire-like-db-only-upgrade-preserves-db-first-artifacts-fixtures.mjs`
+- a `external-pilot`-like client upgrade path is now covered by `verify-external-pilot-like-db-only-upgrade-preserves-db-first-artifacts-fixtures.mjs`
 - `dual` / `db-only` install baselines remain covered by `verify-selfhost-workspace-fixtures.mjs`
 
 ### DSM-12 - Add No-Loss Verification Gates
@@ -293,7 +293,7 @@ Progress note:
   - repair decision preservation without physical row replacement (`verify-sync-db-first-preserves-repair-decisions-fixtures.mjs`)
   - reinstall preservation in `db-only` (`verify-install-db-only-preserves-db-first-artifacts-fixtures.mjs`)
   - reinitialization preservation in `db-only` (`verify-reinit-db-only-preserves-db-first-artifacts-fixtures.mjs`)
-  - `gowire`-like client upgrade preservation in `db-only` (`verify-gowire-like-db-only-upgrade-preserves-db-first-artifacts-fixtures.mjs`)
+  - `external-pilot`-like client upgrade preservation in `db-only` (`verify-external-pilot-like-db-only-upgrade-preserves-db-first-artifacts-fixtures.mjs`)
 - together with `verify-selfhost-workspace-fixtures.mjs`, this closes the current no-loss gate set for the existing single-DB design
 
 ## Recommended Execution Order

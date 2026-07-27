@@ -9,6 +9,9 @@ const SEED_ONCE_PATHS = new Set([
 ]);
 
 const RUNTIME_STATE_PATHS = new Set([
+  "docs/audit/current-state.md",
+  "docs/audit/runtime-state.md",
+  "docs/audit/handoff-packet.md",
   "docs/audit/snapshots/context-snapshot.md",
 ]);
 

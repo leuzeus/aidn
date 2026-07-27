@@ -198,7 +198,15 @@
         "snapshot": { "type": "object", "additionalProperties": true },
         "checks": {
           "type": "object",
-          "additionalProperties": { "type": "boolean" }
+          "additionalProperties": {
+            "type": "object",
+            "required": ["pass", "details"],
+            "properties": {
+              "pass": { "type": "boolean" },
+              "details": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
         },
         "pass": { "type": "boolean" }
       },

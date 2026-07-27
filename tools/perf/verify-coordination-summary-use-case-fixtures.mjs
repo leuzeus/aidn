@@ -82,9 +82,9 @@ async function main() {
     initGitRepo(blockedTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(dbOnlyTarget, { workingBranch: "feature/C101-alpha" });
 
-    runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", dbOnlyTarget, "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", readyTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", blockedTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", dbOnlyTarget, "--write", "--json"], repoRoot, 0);
     appendEscalationSeedHistory(readyTarget);
 
     const readyExecute = runJson(dispatchExecuteScript, ["--target", readyTarget, "--execute", "--json"], repoRoot, 1);

@@ -231,7 +231,7 @@ Done when:
 - tests prove deleting projected files and rematerializing from SQLite succeeds
 - tests prove `db-only -> dual` transition remains functional
 
-### DBS-16 - Validate On `gowire`
+### DBS-16 - Validate On `external-pilot`
 
 Status: proposed
 Priority: medium
@@ -242,7 +242,7 @@ Why:
 
 Done when:
 
-- migration runs cleanly on `gowire`
+- migration runs cleanly on `external-pilot`
 - readiness remains green
 - selected workflow artifacts can be rematerialized from SQLite
 

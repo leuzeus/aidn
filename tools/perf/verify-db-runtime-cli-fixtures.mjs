@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   ensureMetaTable,
   getDatabaseSync,
@@ -19,6 +19,13 @@ function runJson(script, scriptArgs) {
     stdio: ["ignore", "pipe", "pipe"],
   });
   return JSON.parse(stdout);
+}
+
+function tempFixtureRoots() {
+  return fs.readdirSync(os.tmpdir(), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith("aidn-db-runtime-cli-"))
+    .map((entry) => entry.name)
+    .sort();
 }
 
 function seedLegacyDb(sqliteFile) {
@@ -81,6 +88,19 @@ function main() {
       "--json",
     ]);
 
+    const treeBeforePreview = fs.existsSync(targetRoot)
+      ? JSON.stringify(fs.readdirSync(targetRoot, { recursive: true }).sort())
+      : "[]";
+    const migrateFreshPreview = runJson("bin/aidn.mjs", [
+      "runtime",
+      "db-migrate",
+      "--target",
+      targetRoot,
+      "--sqlite-file",
+      sqliteRelative,
+      "--json",
+    ]);
+    const treeAfterPreview = JSON.stringify(fs.readdirSync(targetRoot, { recursive: true }).sort());
     const migrateFresh = runJson("bin/aidn.mjs", [
       "runtime",
       "db-migrate",
@@ -88,6 +108,7 @@ function main() {
       targetRoot,
       "--sqlite-file",
       sqliteRelative,
+      "--write",
       "--json",
     ]);
 
@@ -111,13 +132,25 @@ function main() {
       "sqlite",
       "--json",
     ]);
-    const persistenceAliasMigrate = runJson("bin/aidn.mjs", [
+    const persistenceAliasMigratePreview = runJson("bin/aidn.mjs", [
       "runtime",
       "persistence-migrate",
       "--target",
       targetRoot,
       "--sqlite-file",
       sqliteRelative,
+      "--json",
+    ]);
+    const aliasTarget = path.join(tempRoot, "alias-write");
+    fs.mkdirSync(aliasTarget, { recursive: true });
+    const persistenceAliasMigrate = runJson("bin/aidn.mjs", [
+      "runtime",
+      "persistence-migrate",
+      "--target",
+      aliasTarget,
+      "--sqlite-file",
+      sqliteRelative,
+      "--write",
       "--json",
     ]);
 
@@ -132,6 +165,7 @@ function main() {
       legacyTarget,
       "--sqlite-file",
       sqliteRelative,
+      "--write",
       "--json",
     ]);
     const backupFresh = runJson("bin/aidn.mjs", [
@@ -163,6 +197,23 @@ function main() {
       "--json",
     ]);
 
+    if (process.argv.includes("--inject-failure-after-writes")) {
+      throw new Error("injected db-runtime-cli failure after writes");
+    }
+    const fixtureRootsBeforeProbe = tempFixtureRoots();
+    const failureProbe = spawnSync(process.execPath, [
+      path.resolve(process.argv[1]),
+      "--inject-failure-after-writes",
+    ], {
+      cwd: process.cwd(),
+      env: process.env,
+      encoding: "utf8",
+      timeout: 120000,
+      maxBuffer: 20 * 1024 * 1024,
+      windowsHide: true,
+    });
+    const fixtureRootsAfterProbe = tempFixtureRoots();
+
     const checks = {
       status_before_reports_missing_db: statusBefore.exists === false,
       status_before_reports_runtime_backend_resolution: statusBefore.runtime_persistence?.backend === "sqlite",
@@ -182,6 +233,10 @@ function main() {
         && statusBefore.source_of_truth?.source_of_truth_status === "covered"
         && statusBefore.metadata?.concept === "workspace",
       status_before_reports_pending_baseline: Array.isArray(statusBefore.pending_ids) && statusBefore.pending_ids.includes("0001_workflow_index_baseline_v2"),
+      migrate_fresh_preview_only: migrateFreshPreview?.effect_class === "preview"
+        && migrateFreshPreview?.write_requested === false
+        && migrateFreshPreview?.migration?.applied_ids?.length === 0,
+      migrate_fresh_preview_tree_unchanged: treeBeforePreview === treeAfterPreview,
       migrate_fresh_applies_baseline: Array.isArray(migrateFresh?.migration?.applied_ids) && migrateFresh.migration.applied_ids.includes("0001_workflow_index_baseline_v2"),
       migrate_fresh_exposes_backend_diagnostic: migrateFresh?.runtime_backend_diagnostic?.scope === "runtime-persistence-migration"
         && migrateFresh?.runtime_backend_diagnostic?.schema_status === "ready",
@@ -197,6 +252,8 @@ function main() {
       persistence_alias_reports_sqlite_backend: persistenceAliasStatus.runtime_persistence?.backend === "sqlite" && persistenceAliasStatus.runtime_persistence?.source === "cli",
       persistence_alias_exposes_runtime_structures: persistenceAliasStatus.runtime_structures?.selected_backend === "sqlite"
         && persistenceAliasStatus.runtime_structures?.sqlite?.backend === "sqlite",
+      persistence_migrate_alias_preview_only: persistenceAliasMigratePreview?.effect_class === "preview"
+        && persistenceAliasMigratePreview?.write_requested === false,
       persistence_migrate_alias_exposes_backend_diagnostic: persistenceAliasMigrate?.runtime_backend_diagnostic?.scope === "runtime-persistence-migration"
         && persistenceAliasMigrate?.runtime_backend_diagnostic?.schema_status === "ready",
       persistence_adopt_alias_exposes_blocked_plan: adoptDryRunBlocked?.runtime_backend_adoption_plan?.action === "blocked-conflict"
@@ -214,6 +271,8 @@ function main() {
       legacy_migrate_creates_backup: typeof migrateLegacy?.migration?.backup_file === "string" && fs.existsSync(migrateLegacy.migration.backup_file),
       legacy_migrate_applies_baseline: Array.isArray(migrateLegacy?.migration?.applied_ids) && migrateLegacy.migration.applied_ids.includes("0001_workflow_index_baseline_v2"),
       legacy_migrate_exposes_backup_diagnostic: migrateLegacy?.runtime_backend_diagnostic?.backup_created === true,
+      injected_failure_exits_nonzero: failureProbe.status !== 0,
+      injected_failure_cleanup: JSON.stringify(fixtureRootsAfterProbe) === JSON.stringify(fixtureRootsBeforeProbe),
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {
@@ -229,6 +288,7 @@ function main() {
           pending_ids: statusBefore.pending_ids,
         },
         migrate_fresh: migrateFresh,
+        migrate_fresh_preview: migrateFreshPreview,
         status_after: {
           exists: statusAfter.exists,
           runtime_persistence: statusAfter.runtime_persistence,
@@ -242,6 +302,7 @@ function main() {
           runtime_structures: persistenceAliasStatus.runtime_structures,
         },
         persistence_alias_migrate: {
+          preview_effect_class: persistenceAliasMigratePreview?.effect_class ?? null,
           diagnostic: persistenceAliasMigrate?.runtime_backend_diagnostic ?? null,
         },
         adopt_dry_run_blocked: {
@@ -264,11 +325,11 @@ function main() {
 
     console.log(JSON.stringify(output, null, 2));
     if (!pass) {
-      process.exit(1);
+      process.exitCode = 1;
     }
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       const cleanup = removePathWithRetry(tempRoot);

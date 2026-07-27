@@ -25,7 +25,8 @@ Rules:
 - runtime PostgreSQL and shared coordination must resolve project context through the same workspace identity model
 - locator validation is mandatory before any shared backend access
 - shared coordination is limited to registry, planning, handoff and coordination records
-- checkout-bound artifacts such as `docs/audit/*`, `AGENTS.md`, `.codex/*` and `.aidn/config.json` remain outside shared coordination
+- checkout-bound and local runtime surfaces `docs/audit/*`, `AGENTS.md`, `.agents/*`, `.codex/*`, `.aidn/config.json`, `.aidn/runtime/index/workflow-index.sqlite`, `.aidn/runtime/context/*`, `repair_findings` and `incident` remain outside shared coordination
+- `repair_findings` and `incident` are explicitly not shared because this ADR defines no port or table for them
 
 The first port slice should support:
 

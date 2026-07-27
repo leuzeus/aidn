@@ -1,8 +1,8 @@
-# Plan - Gowire Pilot Validation For Worktree And PostgreSQL Support
+# Plan - External Pilot Validation For Worktree And PostgreSQL Support
 
 Date: 2026-04-01
 Status: proposed
-Scope: validate the current `worktree/postgresql` implementation against a real installed client repository (`G:/projets/gowire`), then replan the remaining backlog in `docs/BACKLOG_WORKTREE_POSTGRESQL_2026-03-27.md`.
+Scope: validate the current `worktree/postgresql` implementation against a real installed client repository (`<external-pilot-root>`), then replan the remaining backlog in `docs/BACKLOG_WORKTREE_POSTGRESQL_2026-03-27.md`.
 
 Reference backlog:
 
@@ -25,7 +25,7 @@ Fixture coverage is already strong, but the remaining open backlog items are mos
 - admin lifecycle maturity
 - evidence needed to either close or split the remaining backlog items
 
-`G:/projets/gowire` is a good pilot because:
+`<external-pilot-root>` is a good pilot because:
 
 - `aidn` is already installed there
 - the repo already carries `AGENTS.md`, `docs/audit/*`, `.aidn/*`, and `.codex/*`
@@ -60,33 +60,33 @@ It must show:
 
 ## Safety Model
 
-Do not run this validation in the current `G:/projets/gowire` working tree.
+Do not run this validation in the current `<external-pilot-root>` working tree.
 
 Use dedicated pilot worktrees and keep all changes isolated to pilot branches.
 
 Recommended directories:
 
-- source repo: `G:/projets/gowire`
-- pilot main worktree: `G:/projets/gowire-pilot-main`
-- pilot linked worktree: `G:/projets/gowire-pilot-linked`
-- shared sqlite root: `G:/projets/gowire-shared-runtime`
-- evidence root: `G:/projets/gowire-validation/2026-04-01-worktree-postgresql`
+- source repo: `<external-pilot-root>`
+- pilot main worktree: `<pilot-worktree-a>`
+- pilot linked worktree: `<pilot-worktree-b>`
+- shared sqlite root: `<local-shared-runtime-root>`
+- evidence root: `<local-evidence-root>/worktree-postgresql`
 
 ## Phase 0 - Prepare The Pilot
 
 ### Goal
 
-Create an isolated two-worktree topology for `gowire` and a place to collect evidence.
+Create an isolated two-worktree topology for `external-pilot` and a place to collect evidence.
 
 ### Commands
 
 From any shell:
 
 ```powershell
-New-Item -ItemType Directory -Force G:\projets\gowire-validation\2026-04-01-worktree-postgresql | Out-Null
-New-Item -ItemType Directory -Force G:\projets\gowire-shared-runtime | Out-Null
-git -C G:\projets\gowire worktree add G:\projets\gowire-pilot-main -b pilot/aidn-worktree-postgresql-validation
-git -C G:\projets\gowire-pilot-main worktree add G:\projets\gowire-pilot-linked -b pilot/aidn-worktree-postgresql-linked
+New-Item -ItemType Directory -Force <local-evidence-root> | Out-Null
+New-Item -ItemType Directory -Force <local-shared-runtime-root> | Out-Null
+git -C <external-pilot-root> worktree add <pilot-worktree-a> -b <pilot-branch-a>
+git -C <pilot-worktree-a> worktree add <pilot-worktree-b> -b <pilot-branch-b>
 ```
 
 ### Evidence To Capture
@@ -98,29 +98,29 @@ git -C G:\projets\gowire-pilot-main worktree add G:\projets\gowire-pilot-linked 
 
 Stop if:
 
-- `gowire` already has conflicting linked worktrees that make cleanup risky
+- `external-pilot` already has conflicting linked worktrees that make cleanup risky
 - the pilot branches already exist with unrelated work
 
 ## Phase 1 - Upgrade `aidn` In The Pilot Repo
 
 ### Goal
 
-Bring the installed `aidn` version in the pilot worktrees in line with `G:/projets/aidn` on branch `wip/worktree-postgresql-followup`.
+Bring the installed `aidn` version in the pilot worktrees in line with `<local-source-root>` on the candidate source branch.
 
 ### Commands
 
-Run in `G:/projets/gowire-pilot-main`:
+Run in `<pilot-worktree-a>`:
 
 ```powershell
-npm install --save-dev G:\projets\aidn
+npm install --save-dev <local-source-root>
 npx aidn install --target . --pack extended --force-agents-merge
 npx aidn install --target . --pack extended --verify
 ```
 
-Run in `G:/projets/gowire-pilot-linked`:
+Run in `<pilot-worktree-b>`:
 
 ```powershell
-npm install --save-dev G:\projets\aidn
+npm install --save-dev <local-source-root>
 npx aidn install --target . --pack extended --force-agents-merge
 npx aidn install --target . --pack extended --verify
 ```
@@ -195,7 +195,7 @@ Confirm that a shared runtime root can be enabled across real linked worktrees w
 Run in both pilot worktrees with the same workspace id:
 
 ```powershell
-npx aidn runtime shared-runtime-reanchor --target . --backend sqlite-file --shared-root G:\projets\gowire-shared-runtime --workspace-id gowire-pilot --write --json
+npx aidn runtime shared-runtime-reanchor --target . --backend sqlite-file --shared-root <local-shared-runtime-root> --workspace-id external-pilot-workspace --write --json
 npx aidn runtime project-runtime-state --target . --json
 npx aidn runtime project-handoff-packet --target . --json
 npx aidn runtime shared-coordination-status --target . --json
@@ -237,7 +237,7 @@ $env:AIDN_PG_URL = "postgres://user:pass@host:5432/db"
 Run in both pilot worktrees:
 
 ```powershell
-npx aidn runtime shared-runtime-reanchor --target . --backend postgres --connection-ref env:AIDN_PG_URL --workspace-id gowire-pilot --write --json
+npx aidn runtime shared-runtime-reanchor --target . --backend postgres --connection-ref env:AIDN_PG_URL --workspace-id external-pilot-workspace --write --json
 npx aidn runtime shared-coordination-doctor --target . --json
 npx aidn runtime shared-coordination-migrate --target . --json
 npx aidn runtime shared-coordination-bootstrap --target . --json
@@ -305,7 +305,7 @@ in each worktree and compare:
 
 ### Optional Stronger Exercise
 
-If a safe manual scenario exists in `gowire`, execute a real planning or handoff flow from both worktrees and inspect the shared records afterward.
+If a safe manual scenario exists in `external-pilot`, execute a real planning or handoff flow from both worktrees and inspect the shared records afterward.
 
 ### Backlog Mapping
 
@@ -369,7 +369,7 @@ At the end of the pilot, produce:
 
 Use these rules:
 
-- close `BK-2` only if worktree identity is stable and unsurprising on real `gowire` worktrees
+- close `BK-2` only if worktree identity is stable and unsurprising on real `external-pilot` worktrees
 - close `BK-3` only if the workspace resolver is sufficient for normal runtime commands without ad hoc fixes
 - close `BK-10` only if PostgreSQL shared coordination works end to end on the pilot repo, not only in fixtures
 - close `BK-11` only if the shared-vs-local boundary is correct under real installed-repo conditions
@@ -389,7 +389,7 @@ If a backlog item remains open, prefer narrow follow-ups such as:
 
 The pilot should leave behind a small, explicit evidence set under:
 
-- `G:/projets/gowire-validation/2026-04-01-worktree-postgresql`
+- `<local-evidence-root>/worktree-postgresql`
 
 Recommended files:
 
@@ -414,7 +414,7 @@ At the end of execution, summarize each remaining backlog item in this format:
 ```text
 BK-11
 - status proposal: partial
-- evidence: shared planning and handoff routing work on gowire; checkout-bound docs remain local
+- evidence: shared planning and handoff routing work on external-pilot; checkout-bound docs remain local
 - remaining gap: some runtime readers still use local fallback more directly than the shared route
 - next action: list the remaining readers and convert them into one narrow follow-up ticket
 ```
@@ -424,10 +424,10 @@ BK-11
 If the pilot must be discarded after analysis:
 
 ```powershell
-git -C G:\projets\gowire worktree remove G:\projets\gowire-pilot-linked --force
-git -C G:\projets\gowire worktree remove G:\projets\gowire-pilot-main --force
-git -C G:\projets\gowire branch -D pilot/aidn-worktree-postgresql-linked
-git -C G:\projets\gowire branch -D pilot/aidn-worktree-postgresql-validation
+git -C <external-pilot-root> worktree remove <pilot-worktree-b> --force
+git -C <external-pilot-root> worktree remove <pilot-worktree-a> --force
+git -C <external-pilot-root> branch -D <pilot-branch-b>
+git -C <external-pilot-root> branch -D <pilot-branch-a>
 ```
 
 Do not clean up before the evidence and backlog replan outputs are saved.

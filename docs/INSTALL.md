@@ -4,7 +4,7 @@
 
 This workflow is installed by copying and merging scaffold files into a client repository.
 No compiled binaries are required.
-The installer is a Node.js script and supports Node 18+ on Windows, Linux, and macOS.
+The installer is a Node.js script and supports Node.js 22.13+ on Windows, Linux, and macOS.
 
 ## Spec vs Project Stub (Why both exist)
 
@@ -27,7 +27,7 @@ Installed workflow support files now also include:
 
 ## Step 1 - Prerequisites
 
-- Node.js 18 or newer
+- Node.js 22.13 or newer
 - npm 9+ recommended
 
 ## Step 2 - Install aidn as npm package (recommended)
@@ -46,7 +46,58 @@ npm install --save-dev ../aidn
 
 After install, use the package CLI via `npx aidn ...`.
 
-## Step 3 - Install core or composite pack
+## Step 3 - Bootstrap AIDN into the project
+
+From your client repository root, use the user-facing bootstrap orchestrator:
+
+```bash
+npx aidn bootstrap --target . --profile default
+```
+
+Bootstrap auto-detects whether the target is a fresh install or an upgrade from existing AIDN markers (`.aidn/config.json`, `AGENTS.md`, or `docs/audit/SPEC.md`). You can force the mode:
+
+```bash
+npx aidn bootstrap --target . --mode install --profile default
+npx aidn bootstrap --target . --mode upgrade --profile default
+```
+
+In upgrade mode, bootstrap preserves existing source branch metadata when it can read it from `.aidn/config.json` or the already-rendered workflow docs. Existing state anchors such as `CURRENT-STATE.md`, `RUNTIME-STATE.md`, and `HANDOFF-PACKET.md` are preserved; use explicit runtime repair commands when those anchors must be refreshed from backend evidence.
+
+Available bootstrap profiles:
+
+- `minimal`: install `core` with the smallest generated adapter defaults
+- `default`: install `core`, initialize adapter defaults when needed, and verify
+- `full`: install `extended` and verify
+- `postgres`: install `core`, configure PostgreSQL runtime persistence, and verify
+- `db-only`: install `core` in strict `db-only` mode and verify protected hidden/re-anchor state
+
+Examples:
+
+```bash
+npx aidn bootstrap --target . --profile full
+npx aidn bootstrap --target . --profile postgres --runtime-persistence-connection-ref env:AIDN_PG_URL
+npx aidn bootstrap --target . --profile db-only
+npx aidn bootstrap --target . --profile default --dry-run --json
+npx aidn bootstrap --target . --wizard
+```
+
+URL bootstrap wrappers are intentionally thin and delegate to `aidn bootstrap`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/leuzeus/aidn/dev/scripts/install.sh | sh -s -- --target . --profile default
+```
+
+Set `AIDN_REF=v<VERSION>` to pin the package ref used by the wrapper.
+
+Windows PowerShell:
+
+```powershell
+$script = Join-Path $env:TEMP "aidn-install.ps1"
+iwr https://raw.githubusercontent.com/leuzeus/aidn/dev/scripts/install.ps1 -OutFile $script
+& $script --target . --profile default
+```
+
+## Step 4 - Advanced: install core or composite pack directly
 
 From your client repository root:
 
@@ -116,6 +167,7 @@ npx aidn install --target . --pack core --materialize-visible-artifacts
 
 Notes:
 - The installer resolves `depends_on` recursively (for example `extended` installs `core` first).
+- `aidn bootstrap` is the recommended entry point for normal install/upgrade flows; `aidn install` remains the lower-level pack engine for advanced and CI use.
 - Pack intent is:
   - `core`: compatibility/default install profile
   - `runtime-local`: targeted refresh of local runtime adapter examples
@@ -125,15 +177,17 @@ Notes:
 - Operational boundary:
   - use `core` for the compatibility/default project install path
   - use `runtime-local` when you want to refresh `.aidn/runtime/agents/*` explicitly
-  - use `codex-integration` when you want to refresh `.codex/*` explicitly
+  - use `codex-integration` when you want to refresh `.agents/skills/*`, `.codex/agents/*`, and the supported project hook explicitly
   - use `github-integration` when you want to refresh `.github/*` automation explicitly
   - use `extended` when all optional integration layers must be refreshed together
 - Compatibility is validated from product manifests (`node_min`, `os`) before file operations.
 - If `codex_online: true`, installer requires the `codex` command to be installed and available in `PATH`.
 - If `codex_online: true`, installer also requires Codex authentication (`codex login`).
 - Compatibility policy and machine prereq result are printed in installer output (`Compatibility policy`, `Prereq check`).
-- `.codex/skills.yaml` is rendered with the current workflow version tag (scaffold value `v{{VERSION}}`, rendered at install time using the `VERSION` file) and points to `https://github.com/leuzeus/aidn`.
-- The installer also copies local skill sources under `.codex/skills/*` (one folder per skill) for local/offline availability.
+- `.aidn/codex/skills.yaml` is AIDN inventory metadata rendered with the current workflow version tag; Codex does not use it for skill discovery.
+- The installer copies native project skill sources under `.agents/skills/*`.
+- The installer copies bounded custom agents under `.codex/agents/*` and the supported `SessionStart` hook under `.codex/hooks.json` plus `.codex/hooks/*`.
+- Codex must trust the client project before project hooks can run. The installed hook performs discovery only; workflow effect enforcement remains in explicit `aidn codex` and `aidn runtime` commands.
 - Codex instruction layering after install is:
   - optional global layer: `~/.codex/AGENTS.md` or `~/.codex/AGENTS.override.md`
   - installed project layer: root `AGENTS.md`
@@ -274,7 +328,7 @@ Expected strict `db-only` config marker:
   - `aidn` does not install `.codex/config.toml` by default,
   - use a project Codex config only when you need non-default `project_doc_fallback_filenames` or `project_doc_max_bytes`.
 
-## Step 4 - Configure The Project Adapter
+## Step 5 - Configure The Project Adapter
 
 The project adapter is no longer a hand-maintained `WORKFLOW.md` file.
 
@@ -294,15 +348,16 @@ In strict `db-only`, these workflow bootstrap outputs are protected visible anch
 Use one of these entry points to manage the adapter config:
 
 ```bash
-npx aidn project config --target . --wizard
+npx aidn project config --target . --wizard --write
 npx aidn project config --target . --init-defaults --project-name my-project --json
+npx aidn project config --target . --init-defaults --project-name my-project --write --json
 npx aidn project config --target . --list --json
 ```
 
 For already-installed repositories that still carry local workflow policy in `docs/audit/WORKFLOW.md`, migrate once with:
 
 ```bash
-npx aidn project config --target . --migrate-adapter --version "$(cat node_modules/aidn-workflow/VERSION)" --json
+npx aidn project config --target . --migrate-adapter --version "$(cat node_modules/aidn-workflow/VERSION)" --write --json
 ```
 
 If your shell does not support that inline version command, pass the installed package version explicitly.
@@ -340,7 +395,7 @@ Legacy note:
 
 Persistence rules:
 
-- install creates `.aidn/project/workflow.adapter.json` if missing
+- install creates `.aidn/project/workflow.adapter.json` if missing only when its explicit install inputs include an adapter source, defaults, or an interactive wizard
 - install can create a minimal default adapter non-interactively with `--init-defaults --project-name <name>`
 - reinstall and reinitialization never overwrite that file automatically
 - generated files may be rewritten deterministically
@@ -351,7 +406,7 @@ If your repository ignores `.aidn/`, carve out an exception for `.aidn/project/w
 
 ### What to edit directly
 
-- edit `.aidn/project/workflow.adapter.json` via `aidn project config`
+- edit `.aidn/project/workflow.adapter.json` via `aidn project config ... --write`; omit `--write` to preview
 - do not rely on direct edits to generated sections of `docs/audit/WORKFLOW.md`, `WORKFLOW_SUMMARY.md`, `CODEX_ONLINE.md`, or `index.md`
 - keep project memory in `baseline/*`, `parking-lot.md`, and runtime state in `snapshots/context-snapshot.md`
 - when changing generated workflow wording, edit the readable fragment templates under `scaffold/fragments/workflow/` and keep the JS layer focused on data preparation
@@ -415,7 +470,7 @@ Typical structured fields:
 Recommended practice:
 - Treat adapter config setup as part of baseline setup and commit or persist it with the repository.
 
-## Step 5 - Verify installation
+## Step 6 - Verify installation
 
 ```bash
 npx aidn install --target . --pack core --verify
@@ -460,11 +515,14 @@ Default runtime config file generated by install (`.aidn/config.json`) example:
 }
 ```
 
-## Step 6 - Commit client repo files
+## Step 7 - Commit client repo files
 
 - `AGENTS.md`
 - `docs/audit/`
-- `.codex/skills.yaml`
+- `.agents/skills/`
+- `.codex/agents/`
+- `.codex/hooks.json`
+- `.aidn/codex/skills.yaml`
 - `.github/` when you install `github-integration` or `extended`
 - `.aidn/project/workflow.adapter.json` when you want shared, versioned project adapter settings
 

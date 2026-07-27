@@ -9,6 +9,17 @@ The contracts are intentionally shallow in v1:
 - payloads do not yet need to embed `schema_version`; the schema file is the versioned contract
 - future versions may tighten nested structures after golden fixtures are in place
 
+`src/core/contracts/json-schema-validator.mjs` is the deterministic executable
+validator for this registry. It recursively implements every validation keyword
+currently present in these schemas: `type`, `required`, `properties`, `const`,
+`enum`, `items`, and `additionalProperties`. Unsupported validation keywords
+are rejected instead of being silently ignored.
+
+The fixture gate enforces exact schema-to-case closure. Every active schema has
+one isolated real-command case, every case has one schema, and negative fixtures
+exercise every supported keyword plus redaction. A fixture never inherits a
+checkout or database mutation from another contract case.
+
 Command effect classes are governed separately in `src/core/cli/effect-policy.mjs`.
 That policy records whether a public command is `read-only`, `preview`, `projector`, `mutating`, or `executor`, and provides the safe arguments used by the no-implicit-write fixture gate.
 
@@ -31,6 +42,8 @@ Compatibility policy:
 
 Initial v1 commands:
 
+- `aidn bootstrap --json`
+- `aidn bootstrap --dry-run --json`
 - `aidn runtime project-runtime-state --json`
 - `aidn runtime project-handoff-packet --json`
 - `aidn runtime pre-write-admit --json`
@@ -62,7 +75,7 @@ Initial v1 commands:
 - `aidn runtime project-coordination-summary --json`
 - `aidn runtime sync-db-first --json`
 - `aidn runtime sync-db-first-selective --json`
-- `aidn runtime mode-migrate --json`
+- `aidn runtime mode-migrate --json` (read-only preview) and `aidn runtime mode-migrate --write --json` (explicit apply)
 - `aidn runtime session-plan --json`
 - `aidn runtime db-first-artifact --json`
 - `aidn runtime artifact-store list --json`
@@ -80,5 +93,7 @@ Initial v1 commands:
 - `aidn runtime coordinator-record-arbitration --json`
 - `aidn runtime handoff-admit --json`
 - `aidn project config --list --json`
+- `aidn project config --init-defaults --json` (preview only)
+- `aidn project config --init-defaults --write --json`
 - `aidn codex hydrate-context --json`
 - `aidn codex workflow-step --json`

@@ -17,7 +17,14 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22.13"
+
+      - name: Install Locked Dependencies
+        run: npm ci --include=optional --ignore-scripts --no-audit --no-fund
+
+      - name: Verify PostgreSQL Driver Resolution
+        run: |
+          node --input-type=module --eval "await import('pg'); console.log('PostgreSQL driver preflight: PASS')"
 
       - name: Verify Runtime Persistence Live Smoke
         env:

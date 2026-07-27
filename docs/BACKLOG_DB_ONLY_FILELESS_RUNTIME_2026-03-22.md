@@ -191,7 +191,7 @@ Done when:
   - auto-projection gaps
   - unresolved `db-only` contract violations
 
-### DFR-12 - Validate The Real Client Path On `gowire`
+### DFR-12 - Validate The Real Client Path On `external-pilot`
 
 Status: proposed
 Priority: medium
@@ -202,7 +202,7 @@ Why:
 
 Done when:
 
-- a `gowire`-like validation proves:
+- a `external-pilot`-like validation proves:
   - `db-only` reinstall/reinit still preserves DB-backed state
   - projected operational files can be absent
   - AI runtime consultation still works from SQLite

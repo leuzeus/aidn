@@ -1,6 +1,6 @@
 # Plan d’exécution post-analyse EA/IA AIDN
 
-Backlog exécutable associé: [docs/BACKLOG_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md](/g:/projets/aidn/docs/BACKLOG_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md)
+Backlog exécutable associé: [docs/BACKLOG_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md](./BACKLOG_AIDN_EXECUTION_POST_EA_IA_REVIEW_2026-05-24.md)
 
 ## 1. Résumé de la situation actuelle
 

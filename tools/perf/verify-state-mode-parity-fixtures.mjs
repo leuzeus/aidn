@@ -46,19 +46,41 @@ function printUsage() {
 
 function runJson(script, scriptArgs) {
   const file = path.resolve(process.cwd(), script);
-  const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  return JSON.parse(stdout);
+  try {
+    const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    return JSON.parse(stdout);
+  } catch (error) {
+    const stdout = String(error?.stdout ?? "").trim();
+    const stderr = String(error?.stderr ?? "").trim();
+    throw new Error(
+      `${path.basename(file)} failed`
+      + `${stderr ? `; stderr=${stderr}` : ""}`
+      + `${stdout ? `; stdout=${stdout}` : ""}`,
+      { cause: error },
+    );
+  }
 }
 
 function runNoJson(script, scriptArgs) {
   const file = path.resolve(process.cwd(), script);
-  execFileSync(process.execPath, [file, ...scriptArgs], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  try {
+    execFileSync(process.execPath, [file, ...scriptArgs], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (error) {
+    const stdout = String(error?.stdout ?? "").trim();
+    const stderr = String(error?.stderr ?? "").trim();
+    throw new Error(
+      `${path.basename(file)} failed`
+      + `${stderr ? `; stderr=${stderr}` : ""}`
+      + `${stdout ? `; stdout=${stdout}` : ""}`,
+      { cause: error },
+    );
+  }
 }
 
 function stableArray(values) {
@@ -82,9 +104,9 @@ function resolveTargetPath(targetRoot, candidatePath) {
 }
 
 function copyFixtureToTmp(source, tmpRoot) {
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
-  const destination = path.resolve(tmpRoot, `tmp-state-mode-parity-${stamp}`);
-  fs.mkdirSync(path.dirname(destination), { recursive: true });
+  const absoluteTmpRoot = path.resolve(tmpRoot);
+  fs.mkdirSync(absoluteTmpRoot, { recursive: true });
+  const destination = fs.mkdtempSync(path.join(absoluteTmpRoot, "tmp-state-mode-parity-"));
   fs.cpSync(source, destination, { recursive: true });
   return destination;
 }

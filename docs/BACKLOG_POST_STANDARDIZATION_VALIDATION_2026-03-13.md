@@ -5,7 +5,7 @@
 Track the executable closure work after product self-host standardization:
 
 - restore `perf:verify-context-resilience`
-- reinstall and revalidate the current package branch in `gowire`
+- reinstall and revalidate the current package branch in `external-pilot`
 - record whether the remaining failing test was a regression or a pre-existing defect
 
 Reference plan:
@@ -57,29 +57,29 @@ Done when:
 
 - `npm run perf:verify-context-resilience` passes end-to-end
 
-### PSV-04 - Reinstall Current Branch In `gowire`
+### PSV-04 - Reinstall Current Branch In `external-pilot`
 
 Status: completed
 Priority: high
 
 Files:
 
-- `gowire/package.json`
-- `gowire/package-lock.json`
+- `external-pilot/package.json`
+- `external-pilot/package-lock.json`
 
 Done when:
 
-- `gowire` resolves the current branch head
+- `external-pilot` resolves the current branch head
 
-### PSV-05 - Re-run Install And Verify In `gowire`
+### PSV-05 - Re-run Install And Verify In `external-pilot`
 
 Status: completed
 Priority: high
 
 Files:
 
-- `gowire/.aidn/*`
-- `gowire/docs/audit/*`
+- `external-pilot/.aidn/*`
+- `external-pilot/docs/audit/*`
 
 Done when:
 
@@ -114,6 +114,6 @@ Done when:
 ## Closure Note
 
 - `perf:verify-context-resilience`: PASS
-- `gowire` install: PASS
-- `gowire` verify: PASS
-- preserved project-owned files in `gowire`: unchanged
+- `external-pilot` install: PASS
+- `external-pilot` verify: PASS
+- preserved project-owned files in `external-pilot`: unchanged

@@ -1,16 +1,28 @@
 name: codex-integration
-version: 0.6.0
+version: 0.7.0
 depends_on: [core]
 
 install:
   copy:
     - from: scaffold/codex/skills.yaml
-      to: .codex/skills.yaml
+      to: .aidn/codex/skills.yaml
     - from: scaffold/codex/
-      to: .codex/skills/
+      to: .agents/skills/
+    - from: scaffold/codex_agents/
+      to: .codex/agents/
+    - from: scaffold/codex_hooks/hooks.json
+      to: .codex/hooks.json
+    - from: scaffold/codex_hooks/scripts/
+      to: .codex/hooks/
   merge: []
 
 verify:
   must_exist:
-    - .codex/skills.yaml
-    - .codex/skills/start-session/SKILL.md
+    - .aidn/codex/skills.yaml
+    - .agents/skills/start-session/SKILL.md
+    - .codex/agents/aidn-explorer.toml
+    - .codex/agents/aidn-executor.toml
+    - .codex/agents/aidn-validator.toml
+    - .codex/agents/aidn-reviewer.toml
+    - .codex/hooks.json
+    - .codex/hooks/aidn-session-start.mjs

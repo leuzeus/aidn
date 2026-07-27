@@ -230,8 +230,8 @@ Il ne peut pas exprimer proprement:
 {
   "version": 2,
   "enabled": true,
-  "projectId": "project-gowire-auth",
-  "workspaceId": "workspace-gowire-auth-main",
+  "projectId": "project-sample-auth",
+  "workspaceId": "workspace-sample-auth-main",
   "project": {
     "root": ".",
     "rootRef": "target-root"
@@ -245,7 +245,7 @@ Il ne peut pas exprimer proprement:
     "localIndexMode": "preserve-current"
   },
   "compat": {
-    "legacyWorkspaceIdentity": "workspace-gowire-auth-main"
+    "legacyWorkspaceIdentity": "workspace-sample-auth-main"
   }
 }
 ```

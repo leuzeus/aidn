@@ -190,10 +190,14 @@ async function main() {
 
     const checks = {
       start_reports_daemon_contract: started.contract_version === "runtime-local-daemon.v1",
+      start_reports_executor_effect: started.effect_class === "executor"
+        && started.command === "aidn runtime local-daemon --start --json",
       start_writes_endpoint: endpointExistsBeforeStop
         && endpointPortBeforeStop === Number(started.daemon?.port ?? -1),
       status_uses_endpoint: status.ok === true
         && Number(status.daemon?.port ?? 0) === Number(started.daemon?.port ?? -1),
+      status_available_stays_read_only: status.effect_class === "read-only"
+        && status.command === "aidn runtime local-daemon --status --json",
       status_reports_capability: Array.isArray(status.daemon?.capabilities)
         && status.daemon.capabilities.includes("codex.workflow-step"),
       status_reports_run_json_hook_capability: Array.isArray(status.daemon?.capabilities)
@@ -227,10 +231,15 @@ async function main() {
       runtime_snapshot_cache_refreshes_after_delegation: Number(statusAfterDelegation.caches?.runtime_snapshot?.entries ?? 0) >= 1
         && Number(statusAfterDelegation.caches?.runtime_snapshot?.refreshes ?? 0) >= 1,
       stop_reports_stopped: stopped.ok === true && stopped.stopped === true,
+      stop_reports_executor_effect: stopped.effect_class === "executor"
+        && stopped.command === "aidn runtime local-daemon --stop --json",
       stop_removes_endpoint: !fs.existsSync(endpointFile),
       status_after_stop_unavailable: statusAfterStop.status === 1
         && statusAfterStop.json?.ok === false
         && statusAfterStop.json?.daemon?.status === "unavailable",
+      status_unavailable_stays_read_only:
+        statusAfterStop.json?.effect_class === "read-only"
+        && statusAfterStop.json?.command === "aidn runtime local-daemon --status --json",
     };
     for (const [name, passed] of Object.entries(checks)) {
       assert(passed, `failed check: ${name}; sample=${JSON.stringify({

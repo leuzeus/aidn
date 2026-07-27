@@ -4,7 +4,20 @@
 
 No unreleased changes.
 
+## 0.7.0
+
+- Add machine-readable, executable governance for CLI surfaces and effects, public JSON contracts, governed information concepts, gate obligations, workflow inventory, source-of-truth ownership, and metadata coverage.
+- Remove the public `aidn codex context-store` command; use `aidn codex hydrate-context` for context bundles or `aidn codex workflow-step` for batched pre-write admission, hydration, and next-action computation.
+- Require Node.js 22.13 or newer across package metadata, installer compatibility, locked CI, and release verification.
+- Enforce explicit and atomic mutation boundaries: `--json` is format-only, previews remain non-mutating, writes require `--write`, `--apply`, `--execute`, or the documented equivalent, and failed replacements preserve prior state and cleanup evidence.
+- Require each public machine-readable invocation to emit one complete schema-validated JSON document on `stdout`, with bounded diagnostics on `stderr` and deferred nonzero exits where buffered output or cleanup must finish.
+- Ship and verify installed Codex project skills, bounded custom agents, and the trusted-project session hook, including isolated client discovery, nested-hook execution, deterministic failure diagnostics, and owned-resource cleanup.
+- Govern the distinct `files`, `dual`, and `db-only` modes, optional PostgreSQL persistence, SQLite compatibility and migration paths, project-scoped runtime identity, explicit shared coordination, and recovery/projection boundaries.
+- Align locked GitHub Actions with the 11 required checks on protected `main` and `dev`, and automate post-merge publication only from exact `main` `GITHUB_SHA` after one merged `release/*` PR, with reproducible ZIP, checksums, provenance manifest, annotated tag, and existing tag/release refusal; the workflow never runs `npm publish`.
+
 ## 0.6.0
+
+Support status: historical and unsupported. Superseded by 0.7.0; the `v0.6.0` tag is retained for source provenance.
 
 - Add PostgreSQL-backed runtime persistence as the canonical backend path when explicitly configured, while keeping SQLite for legacy, compatibility, and migration paths.
 - Add project-scoped runtime identity with `project_id`, `workspace_id`, `worktree_id`, and `runtime_scope_id` so PostgreSQL rows cannot be confused across projects or worktrees.

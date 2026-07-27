@@ -102,15 +102,15 @@ function main() {
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlyFilelessTarget, { recursive: true });
     fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlySummaryFilelessTarget, { recursive: true });
 
-    runJson(handoffProjectScript, ["--target", readyTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", failedTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", repeatedTarget, "--json"], repoRoot, 0);
-    runJson(handoffProjectScript, ["--target", dbOnlyFilelessTarget, "--json"], repoRoot, 0, {
+    runJson(handoffProjectScript, ["--target", readyTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", blockedTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", failedTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", repeatedTarget, "--write", "--json"], repoRoot, 0);
+    runJson(handoffProjectScript, ["--target", dbOnlyFilelessTarget, "--write", "--json"], repoRoot, 0, {
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",
     });
-    runJson(handoffProjectScript, ["--target", dbOnlySummaryFilelessTarget, "--json"], repoRoot, 0, {
+    runJson(handoffProjectScript, ["--target", dbOnlySummaryFilelessTarget, "--write", "--json"], repoRoot, 0, {
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",
     });

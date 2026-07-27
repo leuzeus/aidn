@@ -1,6 +1,6 @@
 ---
 name: pr-orchestrate
-description: Orchestrate the session PR lifecycle after close-session: push, open PR, track review, and enforce post-merge sync.
+description: "Orchestrate the session PR lifecycle after close-session: push, open PR, track review, and enforce post-merge sync."
 ---
 
 # PR Orchestrate Skill

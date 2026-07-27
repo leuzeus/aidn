@@ -574,7 +574,7 @@ Critères d'acceptation:
 
 Avancement:
 
-- un corpus réel existe déjà de fait via `repo-installed-core`, `selfhost-product` et les fixtures `gowire`-like
+- un corpus réel existe déjà de fait via `repo-installed-core`, `selfhost-product` et les fixtures `external-pilot`-like
 - le cadrage explicite "3 à 5 types de repos cibles" n'est pas encore synthétisé dans ce backlog
 
 Critères d'acceptation:
@@ -624,7 +624,7 @@ Critères d'acceptation:
 
 Avancement:
 
-- des vérifications réelles existent pour la parité runtime, y compris sur les fixtures `gowire`-like et self-host
+- des vérifications réelles existent pour la parité runtime, y compris sur les fixtures `external-pilot`-like et self-host
 - la clôture formelle de ce ticket demande encore un alignement doc explicite entre corpus, commandes et critères
 
 Critères d'acceptation:

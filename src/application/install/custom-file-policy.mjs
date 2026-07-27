@@ -159,7 +159,7 @@ export function normalizePreservedMetadata(targetRelative, text, templateVars) {
     next = next.replace(/^(\s*-\s*source_branch:\s*).+$/gim, `$1${sourceBranch}`);
   }
 
-  if (normalizedTarget === ".codex/skills.yaml") {
+  if (normalizedTarget === ".aidn/codex/skills.yaml") {
     if (version) {
       next = next.replace(/^(\s*ref:\s*["']?)v[^"'\s]+(["']?\s*)$/im, `$1v${version}$2`);
       next = next.replace(/(https:\/\/github\.com\/leuzeus\/aidn\/tree\/)v[^/]+(\/scaffold\/codex\/)/gi, `$1v${version}$2`);
@@ -174,7 +174,7 @@ export function collectExistingPlaceholderValues(targetRoot) {
   const candidates = [
     path.join(targetRoot, "docs", "audit", "WORKFLOW.md"),
     path.join(targetRoot, "docs", "audit", "baseline", "current.md"),
-    path.join(targetRoot, ".codex", "skills.yaml"),
+    path.join(targetRoot, ".aidn", "codex", "skills.yaml"),
   ];
 
   for (const filePath of candidates) {
@@ -186,7 +186,7 @@ export function collectExistingPlaceholderValues(targetRoot) {
     if (filePath.toLowerCase().endsWith(path.join("docs", "audit", "workflow.md").toLowerCase())) {
       Object.assign(out, readWorkflowSpecificPlaceholders(text));
     }
-    if (filePath.toLowerCase().endsWith(path.join(".codex", "skills.yaml").toLowerCase())) {
+    if (filePath.toLowerCase().endsWith(path.join(".aidn", "codex", "skills.yaml").toLowerCase())) {
       const versionMatch = text.match(/ref:\s*"v([^"]+)"/i);
       if (versionMatch && sanitizeExtractedValue(versionMatch[1])) {
         out.VERSION = sanitizeExtractedValue(versionMatch[1]);

@@ -1,15 +1,17 @@
 # Upgrade Guide
 
-## Upgrade to 0.6.0
+## Upgrade to 0.7.0
 
-This baseline extends the product/runtime surface with project-scoped PostgreSQL runtime behavior and stricter release provenance:
+This baseline makes AIDN's governed architecture and release path executable end to end:
 
-- PostgreSQL-backed runtime persistence is the canonical backend path when explicitly configured.
-- SQLite remains supported for legacy, compatibility, and explicit migration paths.
-- runtime and shared coordination rows are contextualized by stable project/workspace/worktree identity.
-- shared coordination status, doctor, and re-anchor surfaces diagnose PostgreSQL locator/backend mismatches.
-- deterministic repair-layer normalization supports duplicate and partial runtime artifact imports.
-- release provenance validates aligned `VERSION`, package metadata, release artifacts, checksums, and package topology.
+- machine-readable catalogs cover CLI surfaces, effects, public JSON contracts, governed concepts, gate obligations, and workflows.
+- the public Codex `context-store` subcommand is removed; use `aidn codex hydrate-context` for context bundles or `aidn codex workflow-step` for the batched admission/hydration path.
+- Node.js 22.13 or newer is required by the package and installer compatibility policy.
+- `--json` is format-only; writes require explicit `--write`, `--apply`, `--execute`, or the documented equivalent, and atomic replacements preserve the previous state on failure.
+- public machine-readable commands emit one complete JSON document on `stdout`, while bounded diagnostics remain on `stderr`.
+- installed Codex integration includes project skills, bounded custom agents, a trusted-project session hook, real installed-client discovery, and preserved failure/cleanup diagnostics.
+- `files`, `dual`, and `db-only` remain distinct modes; PostgreSQL persistence is optional, SQLite remains available for local compatibility and migration, and shared coordination is explicit opt-in.
+- protected-branch CI and the release workflow verify from locked dependencies; a merged `release/*` PR is published from exact `main` `GITHUB_SHA` with an annotated tag, checksums, and provenance assets, never with `npm publish`.
 - generated workflow adapter outputs driven by `.aidn/project/workflow.adapter.json`
 - `aidn project config` as the durable adapter management entrypoint
 - bounded coordinator/orchestration runtime commands
@@ -30,6 +32,9 @@ Recent workflow resilience updates also add:
 
 1. Update workflow sources in this repository (`docs/SPEC.md`, `scaffold/`, manifests).
 2. Align product version signals so live docs and manifests match `VERSION`:
+   - `package.json`
+   - `package-lock.json`
+   - `README.md`
    - `package/manifests/workflow.manifest.yaml`
    - `packs/core/manifest.yaml`
    - `packs/runtime-local/manifest.yaml`
@@ -41,7 +46,7 @@ Recent workflow resilience updates also add:
    - `node tools/install.mjs --target tests/fixtures/repo-installed-core --pack core --verify`
 4. Re-run current verification coverage:
    - `npm run perf:verify-context-resilience`
-   - `npm run perf:verify-project-config-fixtures`
+   - `npm run perf:verify-project-config`
    - `npm run perf:verify-shared-coordination-runtime-cli`
    - `npm run perf:verify-runtime-backend-adoption`
 
@@ -50,18 +55,31 @@ Recent workflow resilience updates also add:
 1. Install or upgrade the package to the matching product tag:
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#v0.6.0
+npm install --save-dev github:leuzeus/aidn#v0.7.0
 ```
 
-2. Reinstall the desired pack from the workflow product repo:
+2. Run the recommended upgrade orchestrator:
+
+```bash
+npx aidn bootstrap --target <client-repo> --mode upgrade --profile default
+```
+
+Use profile `full` when the client repo intentionally carries all optional integration layers:
+
+```bash
+npx aidn bootstrap --target <client-repo> --mode upgrade --profile full
+```
+
+Use profile `postgres` only when PostgreSQL runtime persistence is explicitly configured:
+
+```bash
+npx aidn bootstrap --target <client-repo> --mode upgrade --profile postgres --runtime-persistence-connection-ref env:AIDN_PG_URL
+```
+
+Advanced lower-level pack reinstall remains available:
 
 ```bash
 npx aidn install --target <client-repo> --pack core
-```
-
-If the client repo uses the optional GitHub automation layer:
-
-```bash
 npx aidn install --target <client-repo> --pack github-integration
 npx aidn install --target <client-repo> --pack github-integration --verify
 ```
@@ -69,8 +87,8 @@ npx aidn install --target <client-repo> --pack github-integration --verify
 3. Refresh or migrate the durable project adapter when needed:
 
 ```bash
-npx aidn project config --target <client-repo> --wizard
-npx aidn project config --target <client-repo> --migrate-adapter --version 0.6.0 --json
+npx aidn project config --target <client-repo> --wizard --write
+npx aidn project config --target <client-repo> --migrate-adapter --version 0.7.0 --write --json
 ```
 
 4. Verify installation and current runtime/admin surfaces:

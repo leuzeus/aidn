@@ -27,6 +27,28 @@ function writeRawConfig(targetRoot, data) {
   return filePath;
 }
 
+function expectWriteFailure(targetRoot, data, label, options = {}) {
+  const filePath = path.join(targetRoot, ".aidn", "config.json");
+  const before = fs.existsSync(filePath) ? fs.readFileSync(filePath) : null;
+  let error = null;
+  try {
+    writeAidnProjectConfig(targetRoot, data, options);
+  } catch (caught) {
+    error = caught;
+  }
+  assert(error, `${label} should fail validation or atomic replacement`);
+  const after = fs.existsSync(filePath) ? fs.readFileSync(filePath) : null;
+  assert(
+    before?.equals(after) ?? after == null,
+    `${label} changed the previous config bytes`,
+  );
+  const directory = path.dirname(filePath);
+  const temps = fs.existsSync(directory)
+    ? fs.readdirSync(directory).filter((name) => name.endsWith(".tmp"))
+    : [];
+  assert(temps.length === 0, `${label} left an atomic temp file`);
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -89,7 +111,63 @@ function main() {
     assert(afterWrittenRead.misses >= afterWrite.misses + 1, "first read after write helper should miss");
     assert(readStats().entries === 1, "cache should contain one target config entry");
 
-    console.log("PASS aidn config cache fixture checks");
+    const invalidCases = [
+      ["undefined", undefined],
+      ["null", null],
+      ["array", []],
+      ["invalid-version", { version: 0 }],
+      ["invalid-profile", { profile: "shared" }],
+      ["invalid-section", { runtime: [] }],
+      ["invalid-state-mode", { runtime: { stateMode: "shared" } }],
+      ["invalid-index-store", { runtime: { indexStoreMode: "memory" } }],
+      ["invalid-backend", { runtime: { persistence: { backend: "mysql" } } }],
+      ["invalid-projection", { runtime: { persistence: { localProjectionPolicy: "implicit" } } }],
+      ["invalid-connection-ref", { runtime: { persistence: { connectionRef: 42 } } }],
+      ["invalid-db-only-strict", { runtime: { dbOnly: { strict: "true" } } }],
+      ["invalid-visible-paths", {
+        runtime: { dbOnly: { visibleArtifacts: { managedRuntimePaths: ["ok", 42] } } },
+      }],
+      ["invalid-cleanup-policy", {
+        runtime: { dbOnly: { cleanup: { quarantine: "local" } } },
+      }],
+      ["invalid-bundle-limit", {
+        runtime: { dbOnly: { codexBundle: { targetBytes: 2, hardLimitBytes: 1 } } },
+      }],
+      ["invalid-canonical-backend", {
+        runtime: { dbOnly: { artifactImport: { canonicalBackend: "mysql" } } },
+      }],
+      ["nested-undefined", { runtime: { extension: undefined } }],
+    ];
+    for (const [label, value] of invalidCases) {
+      expectWriteFailure(targetRoot, value, label);
+    }
+    expectWriteFailure(
+      targetRoot,
+      { version: 1, profile: "files", runtime: { stateMode: "files" } },
+      "late-rename-failure",
+      {
+        fsImpl: {
+          ...fs,
+          renameSync() {
+            throw new Error("injected rename failure");
+          },
+        },
+      },
+    );
+
+    const freshInvalid = path.join(tempRoot, "fresh-invalid");
+    expectWriteFailure(freshInvalid, undefined, "fresh-undefined");
+    assert(!fs.existsSync(freshInvalid), "fresh invalid write created target directories");
+
+    console.log(JSON.stringify({
+      ok: true,
+      status: "PASS",
+      cache_checks: true,
+      config_validation_cases: invalidCases.length + 1,
+      undefined_preserved: true,
+      late_failure_preserved: true,
+      temp_files: 0,
+    }, null, 2));
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     process.exit(1);

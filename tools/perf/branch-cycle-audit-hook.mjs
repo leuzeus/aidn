@@ -180,7 +180,7 @@ async function main() {
 
     if (args.json) {
       console.log(JSON.stringify(result, null, 2));
-      process.exit(0);
+      return;
     }
 
     console.log(`Result: ${result.result}`);
@@ -202,11 +202,11 @@ async function main() {
     if (gating?.event_file) {
       console.log(`Event file: ${gating.event_file}`);
     }
-    process.exit(0);
+    return;
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 

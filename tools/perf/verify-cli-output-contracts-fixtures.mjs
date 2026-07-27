@@ -1,9 +1,17 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import {
+  listSupportedSchemaKeywords,
+  validateJsonSchema,
+  validateJsonSchemaDefinition,
+} from "../../src/core/contracts/json-schema-validator.mjs";
+import { listDispatchableCommandDescriptors } from "../../src/core/cli/command-registry.mjs";
+import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -41,6 +49,35 @@ const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-outpu
 const AIDN_BIN = path.join(REPO_ROOT, "bin", "aidn.mjs");
 
 const CONTRACT_CASES = [
+  {
+    name: "bootstrap",
+    schema: "bootstrap.v1.schema.json",
+    args: ["bootstrap", "--profile", "minimal", "--json"],
+    env(tmpRoot) {
+      const binDir = path.join(tmpRoot, ".contract-prerequisite-bin");
+      fs.mkdirSync(binDir, { recursive: true });
+      if (process.platform === "win32") {
+        fs.writeFileSync(path.join(binDir, "codex.cmd"), [
+          "@echo off",
+          "if \"%1\"==\"login\" if \"%2\"==\"status\" echo Logged in",
+          "exit /b 0",
+          "",
+        ].join("\r\n"), "utf8");
+      } else {
+        const commandPath = path.join(binDir, "codex");
+        fs.writeFileSync(commandPath, "#!/usr/bin/env sh\necho \"Logged in\"\n", "utf8");
+        fs.chmodSync(commandPath, 0o755);
+      }
+      return {
+        PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+      };
+    },
+  },
+  {
+    name: "bootstrap-preview",
+    schema: "bootstrap-preview.v1.schema.json",
+    args: ["bootstrap", "--profile", "minimal", "--dry-run", "--json"],
+  },
   {
     name: "runtime-project-runtime-state",
     schema: "runtime-project-runtime-state.v1.schema.json",
@@ -227,6 +264,14 @@ const CONTRACT_CASES = [
     name: "runtime-mode-migrate",
     schema: "runtime-mode-migrate.v1.schema.json",
     args: ["runtime", "mode-migrate", "--to", "dual", "--json"],
+    noMutationPaths: [
+      ".aidn/config.json",
+      ".aidn/runtime/index/workflow-index.json",
+      ".aidn/runtime/index/workflow-index.sqlite",
+      ".aidn/runtime/index/repair-layer-report.json",
+      ".aidn/runtime/index/repair-layer-triage.json",
+      ".aidn/runtime/index/repair-layer-triage-summary.md",
+    ],
   },
   {
     name: "runtime-session-plan",
@@ -366,6 +411,17 @@ const CONTRACT_CASES = [
     args: ["project", "config", "--list", "--json"],
   },
   {
+    name: "project-config-preview",
+    schema: "project-config-preview.v1.schema.json",
+    args: ["project", "config", "--init-defaults", "--project-name", "preview-project", "--json"],
+    noMutationPaths: [".aidn/project/workflow.adapter.json"],
+  },
+  {
+    name: "project-config-write",
+    schema: "project-config-write.v1.schema.json",
+    args: ["project", "config", "--init-defaults", "--project-name", "write-project", "--write", "--json"],
+  },
+  {
     name: "codex-hydrate-context",
     schema: "codex-hydrate-context.v1.schema.json",
     args: ["codex", "hydrate-context", "--skill", "context-reload", "--json"],
@@ -377,18 +433,49 @@ const CONTRACT_CASES = [
   },
 ];
 
-function copyFixture(sourceRoot) {
-  const stamp = new Date().toISOString().replace(/[-:.]/g, "").replace("T", "T").replace("Z", "Z");
-  const tmpRoot = path.join(REPO_ROOT, "tests", "fixtures", `tmp-cli-output-contracts-${stamp}`);
-  fs.rmSync(tmpRoot, { recursive: true, force: true });
-  fs.cpSync(sourceRoot, tmpRoot, {
+function prepareBaseFixture(sourceRoot, tempRoot) {
+  const baseRoot = path.join(tempRoot, "base");
+  fs.cpSync(sourceRoot, baseRoot, {
     recursive: true,
     filter(source) {
       const normalized = source.replace(/\\/g, "/");
       return !normalized.includes("/.git/");
     },
   });
-  return tmpRoot;
+  initGitRepo(baseRoot, {
+    sourceBranch: "dev",
+    workingBranch: "feature/C101-contracts",
+  });
+  const seed = spawnSync(process.execPath, [
+    path.join(REPO_ROOT, "tools", "perf", "index-sync.mjs"),
+    "--target",
+    baseRoot,
+    "--store",
+    "dual-sqlite",
+    "--with-content",
+    "--json",
+  ], {
+    cwd: REPO_ROOT,
+    env: process.env,
+    encoding: "utf8",
+    timeout: 120000,
+    maxBuffer: 20 * 1024 * 1024,
+    windowsHide: true,
+  });
+  if (seed.status !== 0) {
+    throw new Error(`Unable to seed isolated contract fixture: ${String(seed.stderr || seed.stdout).trim()}`);
+  }
+  return baseRoot;
+}
+
+function copyCaseFixture(baseRoot, tempRoot, testCase, index) {
+  const safeName = String(testCase.name ?? `case-${index}`)
+    .replace(/[^a-z0-9-]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+  const caseRoot = path.join(tempRoot, `${String(index).padStart(2, "0")}-${safeName}`);
+  fs.cpSync(baseRoot, caseRoot, { recursive: true });
+  return caseRoot;
 }
 
 function readJson(filePath) {
@@ -420,61 +507,6 @@ function comparePathSnapshot(root, beforeSnapshot = {}) {
   return issues;
 }
 
-function normalizeTypes(typeSpec) {
-  if (Array.isArray(typeSpec)) {
-    return typeSpec;
-  }
-  if (typeof typeSpec === "string" && typeSpec.trim()) {
-    return [typeSpec.trim()];
-  }
-  return [];
-}
-
-function valueType(value) {
-  if (value === null) return "null";
-  if (Array.isArray(value)) return "array";
-  return typeof value;
-}
-
-function typeMatches(value, allowedTypes) {
-  if (allowedTypes.length === 0) {
-    return true;
-  }
-  const actual = valueType(value);
-  if (actual === "number" && allowedTypes.includes("integer") && Number.isInteger(value)) {
-    return true;
-  }
-  return allowedTypes.includes(actual);
-}
-
-function validateAgainstSchema(payload, schema, location = "$") {
-  const issues = [];
-  const allowedTypes = normalizeTypes(schema.type);
-  if (!typeMatches(payload, allowedTypes)) {
-    issues.push(`${location}: expected ${allowedTypes.join("|")}, got ${valueType(payload)}`);
-    return issues;
-  }
-  const isObjectLike = payload !== null && typeof payload === "object" && !Array.isArray(payload);
-  if ((schema.type === "object" || allowedTypes.includes("object")) && isObjectLike) {
-    const required = Array.isArray(schema.required) ? schema.required : [];
-    for (const fieldName of required) {
-      if (!Object.prototype.hasOwnProperty.call(payload, fieldName)) {
-        issues.push(`${location}.${fieldName}: missing required field`);
-      }
-    }
-    const properties = schema.properties && typeof schema.properties === "object"
-      ? schema.properties
-      : {};
-    for (const [fieldName, fieldSchema] of Object.entries(properties)) {
-      if (!Object.prototype.hasOwnProperty.call(payload, fieldName)) {
-        continue;
-      }
-      issues.push(...validateAgainstSchema(payload[fieldName], fieldSchema, `${location}.${fieldName}`));
-    }
-  }
-  return issues;
-}
-
 function extractJson(stdout) {
   const text = String(stdout ?? "").trim();
   if (!text) {
@@ -482,20 +514,48 @@ function extractJson(stdout) {
   }
   try {
     return JSON.parse(text);
-  } catch {
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      return JSON.parse(text.slice(start, end + 1));
-    }
-    throw new Error("stdout does not contain a JSON object");
+  } catch (error) {
+    throw new Error(
+      `stdout must contain exactly one complete JSON document after trimming whitespace: ${error.message}`,
+    );
   }
+}
+
+function runStrictStdoutDocumentFixtures() {
+  let surroundingWhitespaceAccepted = false;
+  try {
+    surroundingWhitespaceAccepted = extractJson(
+      "\r\n\t {\"contract_version\":\"strict-probe.v1\",\"ok\":true} \n",
+    ).ok === true;
+  } catch {
+    surroundingWhitespaceAccepted = false;
+  }
+  const mutantKillers = [
+    ["text-before-and-after", "diagnostic-before\n{\"ok\":true}\ndiagnostic-after"],
+    ["text-before", "diagnostic-before\n{\"ok\":true}"],
+    ["text-after", "{\"ok\":true}\ndiagnostic-after"],
+  ].map(([name, stdout]) => {
+    let rejected = false;
+    try {
+      extractJson(stdout);
+    } catch {
+      rejected = true;
+    }
+    return { name, rejected };
+  });
+  return {
+    ok: surroundingWhitespaceAccepted && mutantKillers.every((item) => item.rejected),
+    surrounding_whitespace_accepted: surroundingWhitespaceAccepted,
+    diagnostics_channel: "stderr-separated-from-machine-readable-stdout",
+    mutant_killers: mutantKillers,
+  };
 }
 
 function runCase(tmpRoot, testCase) {
   const schemaPath = path.join(CONTRACT_DIR, testCase.schema);
   const schema = readJson(schemaPath);
   const caseArgs = typeof testCase.args === "function" ? testCase.args(tmpRoot) : testCase.args;
+  const caseEnv = typeof testCase.env === "function" ? testCase.env(tmpRoot) : (testCase.env ?? {});
   const beforeSnapshot = snapshotPaths(tmpRoot, testCase.noMutationPaths ?? []);
   const result = spawnSync(process.execPath, [
     AIDN_BIN,
@@ -504,18 +564,32 @@ function runCase(tmpRoot, testCase) {
     tmpRoot,
   ], {
     cwd: REPO_ROOT,
-    env: process.env,
+    env: {
+      ...process.env,
+      ...caseEnv,
+    },
     encoding: "utf8",
+    timeout: 120000,
+    maxBuffer: 20 * 1024 * 1024,
+    windowsHide: true,
   });
-  const exitOk = result.status === 0 || testCase.allowNonZero === true;
+  const processCompleted = Number.isInteger(result.status);
+  const exitOk = processCompleted && (result.status === 0 || testCase.allowNonZero === true);
   if (!exitOk) {
+    const processError = result.error instanceof Error ? result.error.message : "";
+    const signal = String(result.signal ?? "").trim();
     return {
       name: testCase.name,
       ok: false,
       status: "command-failed",
       exit_code: result.status,
+      signal: signal || null,
+      stdout: String(result.stdout ?? "").trim(),
       stderr: String(result.stderr ?? "").trim(),
-      issues: [`command exited with ${result.status}`],
+      issues: [
+        processError || `command did not complete with an integer exit code (status=${String(result.status)})`,
+        ...(signal ? [`command terminated by signal ${signal}`] : []),
+      ],
     };
   }
   let payload = null;
@@ -532,7 +606,7 @@ function runCase(tmpRoot, testCase) {
     };
   }
   const issues = [
-    ...validateAgainstSchema(payload, schema),
+    ...validateJsonSchema(payload, schema),
     ...comparePathSnapshot(tmpRoot, beforeSnapshot),
   ];
   return {
@@ -546,28 +620,242 @@ function runCase(tmpRoot, testCase) {
   };
 }
 
+function schemaFiles() {
+  return fs.readdirSync(CONTRACT_DIR)
+    .filter((name) => name.endsWith(".schema.json"))
+    .sort();
+}
+
+function verifyContractClosure() {
+  const schemas = schemaFiles();
+  const cases = CONTRACT_CASES.map((item) => item.schema).sort();
+  const registryContracts = [...new Set(
+    listDispatchableCommandDescriptors()
+      .filter((item) => item.visibility === "public")
+      .flatMap((item) => item.json_contracts),
+  )].sort();
+  const issues = [];
+  const duplicateCases = cases.filter((name, index) => cases.indexOf(name) !== index);
+  for (const name of [...new Set(duplicateCases)]) {
+    issues.push(`${name}: schema has more than one executable contract case`);
+  }
+  for (const schema of schemas) {
+    if (!cases.includes(schema)) {
+      issues.push(`${schema}: active public contract has no executable case`);
+    }
+    const definition = readJson(path.join(CONTRACT_DIR, schema));
+    issues.push(...validateJsonSchemaDefinition(definition)
+      .map((issue) => `${schema}: ${issue}`));
+    const expectedId = `aidn://contracts/cli-output/${schema.replace(/\.schema\.json$/, "")}`;
+    if (definition.$id !== expectedId) {
+      issues.push(`${schema}: $id mismatch (${String(definition.$id)} != ${expectedId})`);
+    }
+  }
+  for (const schema of cases) {
+    if (!schemas.includes(schema)) {
+      issues.push(`${schema}: executable case is orphaned from the contract directory`);
+    }
+  }
+  for (const schema of schemas) {
+    if (!registryContracts.includes(schema)) {
+      issues.push(`${schema}: active schema is absent from the dispatch registry`);
+    }
+  }
+  for (const schema of registryContracts) {
+    if (!schemas.includes(schema)) {
+      issues.push(`${schema}: registry contract is absent from the contract directory`);
+    }
+  }
+  return {
+    schemas: schemas.length,
+    cases: cases.length,
+    registry_contracts: registryContracts.length,
+    executable_outputs: cases.length,
+    issues,
+  };
+}
+
+function runMetaSchemaMutationFixtures() {
+  const valid = {
+    $schema: "http://json-schema.org/draft-07/schema#",
+    $id: "aidn://contracts/cli-output/meta-probe.v1",
+    title: "meta probe",
+    type: "object",
+    required: ["value"],
+    properties: {
+      value: { type: "string", enum: ["safe"] },
+      records: { type: "array", items: { type: "integer" } },
+    },
+    additionalProperties: false,
+    "x-aidn-command": "aidn meta-probe --json",
+    "x-aidn-contract-version": "cli-output-v1",
+  };
+  const mutations = [
+    ["type-number", { ...valid, type: 42 }],
+    ["type-invalid-array", { ...valid, type: ["object", "object"] }],
+    ["required-string", { ...valid, required: "value" }],
+    ["required-duplicate", { ...valid, required: ["value", "value"] }],
+    ["properties-array", { ...valid, properties: [] }],
+    ["enum-string", { ...valid, properties: { value: { enum: "safe" } } }],
+    ["enum-empty", { ...valid, properties: { value: { enum: [] } } }],
+    ["items-array", { ...valid, properties: { records: { type: "array", items: [] } } }],
+    ["additional-properties-string", { ...valid, additionalProperties: "false" }],
+    ["minimum-string", { ...valid, minimum: "0" }],
+    ["min-length-negative", { ...valid, minLength: -1 }],
+    ["pattern-invalid", { ...valid, pattern: "[" }],
+    ["format-unsupported", { ...valid, format: "secret" }],
+    ["one-of-object", { ...valid, oneOf: {} }],
+    ["unknown-keyword", { ...valid, ignoredKeyword: true }],
+    ["nested-invalid", {
+      ...valid,
+      properties: { value: { type: 42 } },
+    }],
+    ["schema-missing", { ...valid, $schema: undefined }],
+    ["schema-draft", { ...valid, $schema: "https://json-schema.org/draft/2020-12/schema" }],
+    ["id-missing", { ...valid, $id: undefined }],
+    ["id-shape", { ...valid, $id: "https://example.invalid/schema" }],
+    ["commands-shape", {
+      ...valid,
+      "x-aidn-command": undefined,
+      "x-aidn-commands": "aidn meta-probe --json",
+    }],
+  ];
+  const results = mutations.map(([name, schema]) => {
+    const cleaned = Object.fromEntries(
+      Object.entries(schema).filter(([, value]) => value !== undefined),
+    );
+    const issues = validateJsonSchemaDefinition(cleaned);
+    return { name, rejected: issues.length > 0, issue_count: issues.length };
+  });
+  const schemas = schemaFiles();
+  const forward = schemas.map((name) => validateJsonSchemaDefinition(
+    readJson(path.join(CONTRACT_DIR, name)),
+  ).length);
+  const reverse = [...schemas].reverse().map((name) => validateJsonSchemaDefinition(
+    readJson(path.join(CONTRACT_DIR, name)),
+  ).length).reverse();
+  return {
+    ok: validateJsonSchemaDefinition(valid).length === 0
+      && results.every((item) => item.rejected)
+      && JSON.stringify(forward) === JSON.stringify(reverse),
+    results,
+    reverse_order_deterministic: JSON.stringify(forward) === JSON.stringify(reverse),
+  };
+}
+
+function runValidatorNegativeFixtures() {
+  const combinedSchema = {
+    $schema: "http://json-schema.org/draft-07/schema#",
+    $id: "aidn://contracts/cli-output/combined-negative-probe.v1",
+    type: "object",
+    required: ["contract_version", "records", "redaction"],
+    properties: {
+      contract_version: { const: "v1" },
+      records: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["kind"],
+          properties: {
+            kind: { type: "string", enum: ["safe"] },
+          },
+          additionalProperties: false,
+        },
+      },
+      redaction: {
+        type: "object",
+        required: ["connection_string"],
+        properties: {
+          connection_string: { type: "string", enum: ["", "[redacted]"] },
+        },
+        additionalProperties: false,
+      },
+    },
+    additionalProperties: false,
+  };
+  const validPayload = {
+    contract_version: "v1",
+    records: [{ kind: "safe" }],
+    redaction: { connection_string: "[redacted]" },
+  };
+  const fixtures = [
+    ["type", { ...validPayload, records: "not-an-array" }],
+    ["required", { records: [], redaction: validPayload.redaction }],
+    ["properties", { ...validPayload, records: [{ kind: 17 }] }],
+    ["const", { ...validPayload, contract_version: "v2" }],
+    ["enum", { ...validPayload, records: [{ kind: "unsafe" }] }],
+    ["items", { ...validPayload, records: [17] }],
+    ["additionalProperties", { ...validPayload, unexpected: true }],
+    ["redaction", {
+      ...validPayload,
+      redaction: { connection_string: "postgres://secret@example.invalid/db" },
+    }],
+    ["combined", {
+      contract_version: "v2",
+      records: [{ kind: "unsafe", leaked: true }],
+      redaction: { connection_string: "postgres://secret@example.invalid/db" },
+      unexpected: true,
+    }],
+  ];
+  const results = fixtures.map(([name, payload]) => {
+    const issues = validateJsonSchema(payload, combinedSchema);
+    return {
+      name,
+      rejected: issues.length > 0,
+      issue_count: issues.length,
+    };
+  });
+  return {
+    ok: validateJsonSchema(validPayload, combinedSchema).length === 0
+      && results.every((item) => item.rejected),
+    results,
+  };
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const sourceRoot = path.resolve(REPO_ROOT, args.target);
   if (!fs.existsSync(sourceRoot)) {
     throw new Error(`Target fixture not found: ${sourceRoot}`);
   }
-  const tmpRoot = copyFixture(sourceRoot);
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-cli-output-contracts-"));
+  let baseRoot = "";
   const results = [];
+  const closure = verifyContractClosure();
+  const validatorNegativeFixtures = runValidatorNegativeFixtures();
+  const metaSchemaMutationFixtures = runMetaSchemaMutationFixtures();
+  const strictStdoutDocumentFixtures = runStrictStdoutDocumentFixtures();
   try {
-    for (const testCase of CONTRACT_CASES) {
-      results.push(runCase(tmpRoot, testCase));
+    baseRoot = prepareBaseFixture(sourceRoot, tempRoot);
+    for (const [index, testCase] of CONTRACT_CASES.entries()) {
+      const caseRoot = copyCaseFixture(baseRoot, tempRoot, testCase, index);
+      results.push(runCase(caseRoot, testCase));
     }
   } finally {
     if (!args.keepTmp) {
-      fs.rmSync(tmpRoot, { recursive: true, force: true });
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok) {
+        throw cleanup.error;
+      }
     }
   }
   const output = {
-    ok: results.every((item) => item.ok),
+    ok: results.every((item) => item.ok)
+      && closure.issues.length === 0
+      && validatorNegativeFixtures.ok
+      && metaSchemaMutationFixtures.ok
+      && strictStdoutDocumentFixtures.ok,
     target_root: sourceRoot,
-    tmp_root: args.keepTmp ? tmpRoot : "removed",
+    fixture_setup: "isolated Git repository with a derived dual-sqlite projection per contract case; bootstrap uses only a local prerequisite command stub and is not installed-client proof",
+    tmp_root: args.keepTmp ? tempRoot : "removed",
     checked_contracts: results.length,
+    contract_closure: closure,
+    validator: {
+      supported_keywords: listSupportedSchemaKeywords(),
+      negative_fixtures: validatorNegativeFixtures,
+      meta_schema_mutations: metaSchemaMutationFixtures,
+      strict_stdout_document: strictStdoutDocumentFixtures,
+    },
     results,
   };
   if (args.json) {

@@ -63,12 +63,23 @@ function main() {
     fs.cpSync(sourceTarget, workingCopy, { recursive: true });
     fs.rmSync(path.join(workingCopy, ".aidn"), { recursive: true, force: true });
 
+    const preview = runJson(process.execPath, [
+      normalizePathForNode(MODE_MIGRATE),
+      "--target",
+      workingCopy,
+      "--to",
+      "db-only",
+      "--json",
+    ], REPO_ROOT);
+    const previewLeftTargetUnchanged = !fs.existsSync(path.join(workingCopy, ".aidn"));
+
     const migrated = runJson(process.execPath, [
       normalizePathForNode(MODE_MIGRATE),
       "--target",
       workingCopy,
       "--to",
       "db-only",
+      "--write",
       "--json",
     ], REPO_ROOT);
 
@@ -81,7 +92,17 @@ function main() {
     const runtime = config.runtime && typeof config.runtime === "object" ? config.runtime : {};
 
     const checks = {
+      preview_ok: preview.ok === true,
+      preview_reports_no_write: preview.preview === true
+        && preview.write_requested === false
+        && preview?.config_update?.applied === false
+        && preview?.config_update?.write_required === true,
+      preview_requires_explicit_write: preview?.mode_migrate_diagnostic?.recommended_action?.includes("--write") === true,
+      preview_left_target_unchanged: previewLeftTargetUnchanged,
       migrate_ok: migrated.ok === true,
+      write_reports_applied: migrated.preview === false
+        && migrated.write_requested === true
+        && migrated?.config_update?.applied === true,
       moved_to_db_only: String(migrated?.to_mode ?? "") === "db-only",
       schema_status_before_present: migrated?.schema_status_before?.ok === true,
       schema_migration_result_present: migrated?.schema_migration_result?.ok === true,
@@ -109,6 +130,7 @@ function main() {
       source_target: sourceTarget,
       working_copy: workingCopy,
       checks,
+      preview,
       migrated,
       pass,
     };

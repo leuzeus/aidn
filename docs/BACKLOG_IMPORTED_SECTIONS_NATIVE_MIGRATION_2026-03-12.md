@@ -2,7 +2,7 @@
 
 ## Goal
 
-Track concrete follow-up work to eliminate `legacyPreserved.importedSections` by promoting retained project policy into native `aidn` canon or first-class adapter fields, while preserving `gowire` behavior and staying aligned with existing multi-agent runtime philosophy.
+Track concrete follow-up work to eliminate `legacyPreserved.importedSections` by promoting retained project policy into native `aidn` canon or first-class adapter fields, while preserving `external-pilot` behavior and staying aligned with existing multi-agent runtime philosophy.
 
 Reference plan:
 
@@ -27,7 +27,7 @@ Why:
 
 Done when:
 
-- each current `gowire` imported block is tagged as:
+- each current `external-pilot` imported block is tagged as:
   - `native-core`
   - `adapter-structured`
   - `keep-temporary`
@@ -55,7 +55,7 @@ Why:
 
 Done when:
 
-- imported incident sections from `gowire` are compared to current canonical docs
+- imported incident sections from `external-pilot` are compared to current canonical docs
 - any generic missing nuance is patched in canonical docs/templates
 - no remaining incident block requires legacy rendering for semantic completeness
 
@@ -93,7 +93,7 @@ Files:
 
 Why:
 
-- this gate is still useful for `gowire`, but should not remain opaque prose
+- this gate is still useful for `external-pilot`, but should not remain opaque prose
 
 Done when:
 
@@ -217,7 +217,7 @@ Why:
 Done when:
 
 - generated `WORKFLOW.md` renders a native shared codegen boundary section
-- wording preserves the current `gowire` rule intent
+- wording preserves the current `external-pilot` rule intent
 - the rendered section identifies shared codegen as a shared integration surface
 - rendered policy remains visible through the normal workflow artifact import/index path used in `dual` / `db-only`
 
@@ -262,14 +262,14 @@ Done when:
 - migration no longer preserves imported continuity blocks for new conversions
 - generated docs remain semantically complete without these legacy fragments
 
-### ISNM-12 - Migrate `gowire` Imported Policy Into Structured Adapter Fields
+### ISNM-12 - Migrate `external-pilot` Imported Policy Into Structured Adapter Fields
 
 Status: completed
 Priority: high
 
 Files:
 
-- `G:/projets/gowire/.aidn/project/workflow.adapter.json`
+- `<external-pilot-root>/.aidn/project/workflow.adapter.json`
 - migration helper/service
 - real-repo validation steps
 
@@ -279,14 +279,14 @@ Why:
 
 Done when:
 
-- `gowire` adapter config contains native fields for:
+- `external-pilot` adapter config contains native fields for:
   - session transition cleanliness
   - execution policy
   - shared codegen boundary gate
 - duplicate incident and continuity blocks are no longer required in legacy storage
 - migration produces no meaningful workflow rule loss
 
-### ISNM-13 - Add Golden Diff Tests For `gowire` Workflow Parity
+### ISNM-13 - Add Golden Diff Tests For `external-pilot` Workflow Parity
 
 Status: completed
 Priority: high
@@ -427,7 +427,7 @@ Recommended third lot:
 Execution status:
 
 - `ISNM-12` to `ISNM-16`: completed
-- `gowire` migrated with `legacyPreserved.importedSections = []`
+- `external-pilot` migrated with `legacyPreserved.importedSections = []`
 - reader compatibility retained for older repositories until later removal notice
 
 ## Open Questions

@@ -295,8 +295,8 @@ Avancement:
 
 Avancement:
 
-- un seed d'issues daté existe dans [docs/BACKLOG_AIDN_CORRECTION_ARCHITECTURE_GITHUB_ISSUES_2026-05-24.md](/g:/projets/aidn/docs/BACKLOG_AIDN_CORRECTION_ARCHITECTURE_GITHUB_ISSUES_2026-05-24.md) avec les 10 premières issues prêtes
-- `ARCH-P3-02` est désormais matérialisé par un workflow manuel optionnel [`.github/workflows/runtime-ops-live-smoke.yml`](/g:/projets/aidn/.github/workflows/runtime-ops-live-smoke.yml), et les docs de test l’annoncent comme `SKIP` quand aucune URL live n’est fournie
+- un seed d'issues daté existe dans [docs/BACKLOG_AIDN_CORRECTION_ARCHITECTURE_GITHUB_ISSUES_2026-05-24.md](./BACKLOG_AIDN_CORRECTION_ARCHITECTURE_GITHUB_ISSUES_2026-05-24.md) avec les 10 premières issues prêtes
+- `ARCH-P3-02` est désormais matérialisé par un workflow manuel optionnel [`.github/workflows/runtime-ops-live-smoke.yml`](../.github/workflows/runtime-ops-live-smoke.yml), et les docs de test l’annoncent comme `SKIP` quand aucune URL live n’est fournie
 - `ARCH-P3-03` est matérialisé par l’observability additive sur `project-multi-agent-status`, avec métriques agent/routing exposées dans le JSON, le digest markdown et le verifier dédié
 
 ## Premières issues GitHub prêtes à créer
@@ -327,7 +327,7 @@ Avancement:
 - Priorité: P0.
 - Labels suggérés: `runtime`, `repair-layer`, `cli`, `P0`.
 - Fichiers probables: `tools/runtime/repair-layer*.mjs`, `package.json`, `src/core/cli/effect-policy.mjs`.
-- Avancement: classées comme surfaces internes dans [docs/CLI_SURFACE_INVENTORY.md](/g:/projets/aidn/docs/CLI_SURFACE_INVENTORY.md); un vérificateur dédié garde cette classification hors des alias publics et de la policy d'effet.
+- Avancement: classées comme surfaces internes dans [docs/CLI_SURFACE_INVENTORY.md](./CLI_SURFACE_INVENTORY.md); un vérificateur dédié garde cette classification hors des alias publics et de la policy d'effet.
 
 ### 4. Étendre le gate no implicit write aux surfaces promues
 

@@ -2,23 +2,121 @@ name: Release
 
 on:
   pull_request:
-  workflow_dispatch:
+    branches: [dev, main]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
-  release:
-    name: Verify Release Surface
+  verify:
+    name: Verify Release Without Publishing
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
         with:
-          node-version: "22"
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Fetch Announced Remote Head
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            "+refs/heads/${GITHUB_HEAD_REF}:refs/remotes/origin/${GITHUB_HEAD_REF}"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.13"
+      - name: Install Locked Gate Dependencies
+        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund
+      - name: Verify All Context Obligations Without Publishing
+        env:
+          AIDN_BRANCH_POLICY_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/${{ github.head_ref }}
+        run: npm run verify:release
 
-      - name: Verify Release Provenance
-        run: npm run perf:verify-release-provenance
+  publish:
+    name: Publish Merged Release
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.13"
+      - name: Install Locked Gate Dependencies
+        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund
+
+      - name: Prove Main And Merged Release PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          test "${GITHUB_REF}" = "refs/heads/main"
+          git fetch --no-tags origin main
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          test "$(git rev-parse origin/main)" = "${GITHUB_SHA}"
+          RELEASE_PR_COUNT="$(
+            gh api \
+              -H "Accept: application/vnd.github+json" \
+              "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+              --jq '[.[] | select(.base.ref == "main" and (.head.ref | startswith("release/")) and .merged_at != null)] | length'
+          )"
+          test "${RELEASE_PR_COUNT}" = "1"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: Verify Version, Provenance, Topology, And Sensitivity
+        env:
+          AIDN_BRANCH_POLICY_EXPECTED_SHA: ${{ github.sha }}
+          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/main
+        run: npm run verify:release
+
+      - name: Refuse Existing Tag Or Release
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          VERSION="$(cat VERSION)"
+          TAG="v${VERSION}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists" >&2
+            exit 1
+          fi
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "GitHub Release ${TAG} already exists" >&2
+            exit 1
+          fi
+          echo "value=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build Exact Main Commit
+        run: node tools/build-release.mjs --source-ref "${GITHUB_SHA}" --require-clean
+
+      - name: Verify Built Checksums And Provenance
+        run: npm run perf:verify-release-artifacts
+
+      - name: Create Annotated Tag And GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.value }}
+          TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${TAG}" "${GITHUB_SHA}" -m "AIDN ${TAG}"
+          git push origin "refs/tags/${TAG}"
+          gh release create "${TAG}" \
+            "release/dist/aidn-workflow-${VERSION}.zip" \
+            "release/checksums.txt" \
+            "release/manifest.json" \
+            --title "AIDN ${TAG}" \
+            --generate-notes \
+            --verify-tag

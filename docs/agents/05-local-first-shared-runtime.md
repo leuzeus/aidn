@@ -21,9 +21,17 @@ These surfaces must not be relocated by shared runtime behavior:
 
 - `docs/audit/*`
 - `AGENTS.md`
+- `.agents/*`
 - `.codex/*`
 - `.aidn/config.json`
 - `.aidn/runtime/index/workflow-index.sqlite`
+- `.aidn/runtime/context/*`
+- `repair_findings`
+- `incident`
+
+`repair_findings` and `incident` are explicitly not shared. A future change may
+cross that boundary only after an ADR adds the surface and the shared
+coordination port exposes it.
 
 ## Shared Runtime Boundary
 

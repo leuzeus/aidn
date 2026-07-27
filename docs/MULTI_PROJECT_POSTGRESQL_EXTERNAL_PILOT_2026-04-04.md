@@ -1,4 +1,4 @@
-# Gowire Pilot - Multi-Project PostgreSQL
+# External Pilot - Multi-Project PostgreSQL
 
 Date: 2026-04-04
 Status: completed
@@ -8,8 +8,8 @@ Scope: record the real pilot evidence used to close `MPG-22`.
 
 ### Shape 1. Dedicated pilot worktrees
 
-- `G:\projets\gowire-pilot-main`
-- `G:\projets\gowire-pilot-linked`
+- `<pilot-worktree-a>`
+- `<pilot-worktree-b>`
 - backend: `postgres://root@192.168.1.173:5433/aidn`
 - identities: `project-alpha` / `workspace-alpha`
 - identities: `project-beta` / `workspace-beta`
@@ -23,13 +23,13 @@ Observed outcome:
 
 Evidence root:
 
-- `G:\projets\gowire-validation\2026-04-04-multi-project-postgresql\pilot-evidence.md`
+- `<local-evidence-root>/multi-project-postgresql/pilot-evidence.md`
 
 ### Shape 2. Nested monorepo project roots in one dedicated worktree
 
-- monorepo worktree: `G:\projets\gowire-pilot-main`
-- project root A: `G:\projets\gowire-pilot-main\apps\web`
-- project root B: `G:\projets\gowire-pilot-main\packages\ui-kit`
+- monorepo worktree: `<pilot-worktree-a>`
+- project root A: `<pilot-project-root-a>`
+- project root B: `<pilot-project-root-b>`
 - backend: `postgres://root@192.168.1.173:5433/aidn`
 - identities: `monorepo-web` / `monorepo-web`
 - identities: `monorepo-ui-kit` / `monorepo-ui-kit`
@@ -46,7 +46,7 @@ Observed outcome:
 
 Evidence root:
 
-- `G:\projets\gowire-validation\2026-04-04-multi-project-postgresql-monorepo\pilot-evidence.md`
+- `<local-evidence-root>/multi-project-postgresql-monorepo/pilot-evidence.md`
 
 Key command outputs:
 
@@ -68,7 +68,7 @@ Reason:
 
 - it validates the original high-risk case directly: more than one logical AIDN project in the same monorepo, under one shared PostgreSQL backend, without falling back to Git-root identity
 - it proves project scoping even when `git_common_dir` and `worktree_id` are shared
-- it keeps the pilot on dedicated worktrees and does not mutate `G:\projets\gowire`
+- it keeps the pilot on dedicated worktrees and does not mutate `<external-pilot-root>`
 
 ## Remaining Risk
 

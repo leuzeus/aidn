@@ -133,8 +133,10 @@ function guardedPathsForPolicy(policy) {
     "AGENTS.md",
     "docs/audit",
     ".codex",
+    ".agents",
     ".aidn/config.json",
     ".aidn/project",
+    ".aidn/runtime",
     ...policy.no_mutation_paths,
   ];
 }

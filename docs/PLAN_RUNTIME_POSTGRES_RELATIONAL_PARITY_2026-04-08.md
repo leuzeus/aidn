@@ -16,7 +16,7 @@ Reference migration guide:
 
 Validation context:
 
-- product repository inspection in `G:\projets\aidn`
+- product repository inspection in `<local-source-root>`
 - real recovery/rebuild validation on one local-only external pilot repository
 - recovered artifact corpus from one local-only external pilot export
 

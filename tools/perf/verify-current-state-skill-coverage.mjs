@@ -134,7 +134,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-current-state-skill-coverage.mjs");
   console.log("  node tools/perf/verify-current-state-skill-coverage.mjs --root scaffold/codex --json");
-  console.log("  node tools/perf/verify-current-state-skill-coverage.mjs --root tests/fixtures/repo-installed-core/.codex/skills --json");
+  console.log("  node tools/perf/verify-current-state-skill-coverage.mjs --root tests/fixtures/repo-installed-core/.agents/skills --json");
 }
 
 function readText(filePath) {

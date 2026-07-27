@@ -22,6 +22,7 @@ const PERF_REPAIR_LAYER_TRIAGE_SUMMARY = path.resolve(RUNTIME_DIR, "..", "perf",
 
 function buildModeMigrateDiagnostic(out) {
   const steps = Array.isArray(out?.steps) ? out.steps : [];
+  const preview = out?.preview === true;
   const pendingAfter = Array.isArray(out?.schema_status_after?.pending_ids)
     ? out.schema_status_after.pending_ids.length
     : 0;
@@ -31,10 +32,18 @@ function buildModeMigrateDiagnostic(out) {
     to_mode: String(out?.to_mode ?? "").trim() || "unknown",
     step_count: steps.length,
     schema_pending_after_count: pendingAfter,
-    repair_layer_status: String(out?.repair_layer_result?.action ?? "").trim() || "not-run",
-    export_status: out?.export_result ? "applied" : "not-run",
-    summary: `runtime mode migration prepared ${String(out?.to_mode ?? "unknown")} with ${steps.length} tracked step(s)`,
-    recommended_action: "review config, schema, and repair-layer outputs before relying on the migrated runtime mode",
+    repair_layer_status: preview && steps.some((step) => step.step === "repair_layer")
+      ? "planned"
+      : (String(out?.repair_layer_result?.action ?? "").trim() || "not-run"),
+    export_status: preview && steps.some((step) => step.step === "materialize_files_from_db")
+      ? "planned"
+      : (out?.export_result ? "applied" : "not-run"),
+    summary: preview
+      ? `runtime mode migration previewed ${String(out?.to_mode ?? "unknown")} with ${steps.length} planned step(s)`
+      : `runtime mode migration prepared ${String(out?.to_mode ?? "unknown")} with ${steps.length} tracked step(s)`,
+    recommended_action: preview
+      ? "rerun with --write to apply the reviewed runtime mode migration"
+      : "review config, schema, and repair-layer outputs before relying on the migrated runtime mode",
   };
 }
 
@@ -52,6 +61,7 @@ function parseArgs(argv) {
     repairLayerTriageFile: ".aidn/runtime/index/repair-layer-triage.json",
     repairLayerTriageSummaryFile: ".aidn/runtime/index/repair-layer-triage-summary.md",
     strict: false,
+    write: false,
     json: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -88,6 +98,8 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--strict") {
       args.strict = true;
+    } else if (token === "--write") {
+      args.write = true;
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -114,11 +126,12 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
-  console.log("  npx aidn runtime mode-migrate --target . --to dual --json");
-  console.log("  npx aidn runtime mode-migrate --target . --from db-only --to files --strict --json");
-  console.log("  npx aidn runtime mode-migrate --target . --to db-only --no-repair-layer --json");
-  console.log("  npx aidn runtime mode-migrate --target . --to db-only --no-repair-layer-triage --json");
-  console.log("  npx aidn runtime mode-migrate --target . --to db-only --repair-layer-autofix-safe-only --json");
+  console.log("  npx aidn runtime mode-migrate --target . --to dual --json                         # preview");
+  console.log("  npx aidn runtime mode-migrate --target . --to dual --write --json                 # apply");
+  console.log("  npx aidn runtime mode-migrate --target . --from db-only --to files --strict --write --json");
+  console.log("  npx aidn runtime mode-migrate --target . --to db-only --no-repair-layer --write --json");
+  console.log("  npx aidn runtime mode-migrate --target . --to db-only --no-repair-layer-triage --write --json");
+  console.log("  npx aidn runtime mode-migrate --target . --to db-only --repair-layer-autofix-safe-only --write --json");
 }
 
 function resolveTargetPath(targetRoot, candidate) {
@@ -173,7 +186,7 @@ function parseJsonOutput(text) {
   }
 }
 
-function updateConfigStateMode(targetRoot, toMode) {
+function planConfigStateMode(targetRoot, toMode) {
   const cfg = readAidnProjectConfig(targetRoot);
   const data = cfg.data && typeof cfg.data === "object" ? cfg.data : {};
   const runtime = data.runtime && typeof data.runtime === "object" ? data.runtime : {};
@@ -184,15 +197,57 @@ function updateConfigStateMode(targetRoot, toMode) {
   runtimePersistence.localProjectionPolicy = String(runtimePersistence.localProjectionPolicy ?? "").trim() || "keep-local-sqlite";
   runtime.persistence = runtimePersistence;
   data.runtime = runtime;
-  const saved = writeAidnProjectConfig(targetRoot, data);
+  return {
+    config_file: cfg.path,
+    runtime,
+    data,
+  };
+}
+
+function updateConfigStateMode(targetRoot, toMode) {
+  const planned = planConfigStateMode(targetRoot, toMode);
+  const saved = writeAidnProjectConfig(targetRoot, planned.data);
   return {
     config_file: saved,
-    runtime,
+    runtime: planned.runtime,
+    applied: true,
+    write_required: false,
   };
 }
 
 function shouldRunSchemaMigration(fromMode, toMode) {
   return [fromMode, toMode].some((mode) => mode === "dual" || mode === "db-only");
+}
+
+function buildPreviewSteps(fromMode, toMode, args) {
+  const steps = [];
+  if (shouldRunSchemaMigration(fromMode, toMode)) {
+    steps.push(
+      { step: "schema_status_before", ok: true, preview: true },
+      { step: "schema_migrate", ok: true, preview: true },
+      { step: "schema_status_after", ok: true, preview: true },
+    );
+  }
+  if (toMode === "dual" || toMode === "db-only") {
+    steps.push({ step: "sync_to_db", ok: true, preview: true, store: defaultIndexStoreFromStateMode(toMode) });
+    if (args.repairLayer) {
+      steps.push({ step: "repair_layer", ok: true, preview: true });
+      if (args.repairLayerAutofixSafeOnly) {
+        steps.push({ step: "repair_layer_autofix", ok: true, preview: true });
+      }
+      if (args.repairLayerTriage) {
+        steps.push({ step: "repair_layer_triage", ok: true, preview: true });
+      }
+    }
+  }
+  if (
+    (toMode === "files" && (fromMode === "dual" || fromMode === "db-only"))
+    || (toMode === "dual" && fromMode === "db-only")
+  ) {
+    steps.push({ step: "materialize_files_from_db", ok: true, preview: true });
+  }
+  steps.push({ step: "update_project_config", ok: true, preview: true });
+  return steps;
 }
 
 async function main() {
@@ -205,6 +260,43 @@ async function main() {
     const toMode = normalizeStateMode(args.to);
     const indexFile = resolveTargetPath(targetRoot, args.indexFile);
     const auditRoot = args.auditRoot;
+
+    if (!args.write) {
+      const configPlan = planConfigStateMode(targetRoot, toMode);
+      const out = {
+        ts: new Date().toISOString(),
+        ok: true,
+        target_root: targetRoot,
+        from_mode: fromMode,
+        to_mode: toMode,
+        strict: args.strict,
+        preview: true,
+        write_requested: false,
+        schema_status_before: null,
+        schema_migration_result: null,
+        schema_status_after: null,
+        steps: buildPreviewSteps(fromMode, toMode, args),
+        sync_result: null,
+        repair_layer_result: null,
+        repair_layer_autofix_result: null,
+        repair_layer_triage_result: null,
+        export_result: null,
+        config_update: {
+          config_file: configPlan.config_file,
+          runtime: configPlan.runtime,
+          applied: false,
+          write_required: true,
+        },
+      };
+      out.mode_migrate_diagnostic = buildModeMigrateDiagnostic(out);
+      if (args.json) {
+        console.log(JSON.stringify(out, null, 2));
+      } else {
+        console.log(`Mode migrate preview: ${fromMode} -> ${toMode}`);
+        console.log("No files were written. Rerun with --write to apply.");
+      }
+      return;
+    }
 
     const steps = [];
     let syncResult = null;
@@ -354,6 +446,8 @@ async function main() {
       from_mode: fromMode,
       to_mode: toMode,
       strict: args.strict,
+      preview: false,
+      write_requested: true,
       schema_status_before: schemaStatusBefore,
       schema_migration_result: schemaMigrationResult,
       schema_status_after: schemaStatusAfter,

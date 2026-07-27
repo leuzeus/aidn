@@ -155,6 +155,7 @@ npx aidn runtime repair-layer-triage --target . --index-file .aidn/runtime/index
 npx aidn runtime repair-layer-query --target . --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --query session-continuity --session-id S102 --json
 npx aidn runtime db-first-artifact --target . --path snapshots/context-snapshot.md --source-file docs/audit/snapshots/context-snapshot.md --json
 npx aidn runtime mode-migrate --target . --to dual --json
+npx aidn runtime mode-migrate --target . --to dual --write --json
 npx aidn perf session-start --target . --mode COMMITTING --json
 npx aidn perf session-close --target . --mode COMMITTING --json
 npx aidn perf index --target . --store all --json
@@ -292,7 +293,7 @@ npm run perf:render-summary -- --kpi-file .aidn/runtime/perf/kpi-report.json --h
 npm run perf:audit-review -- --target ../client-repo --json
 npm run runtime:sync-db-first -- --target ../client-repo --json
 npm run runtime:db-first-artifact -- --target ../client-repo --path snapshots/context-snapshot.md --source-file docs/audit/snapshots/context-snapshot.md --json
-npm run runtime:mode-migrate -- --target ../client-repo --to db-only --json
+npm run runtime:mode-migrate -- --target ../client-repo --to db-only --write --json
 npm run perf:reset
 npm run perf:reset -- --keep-history
 ```

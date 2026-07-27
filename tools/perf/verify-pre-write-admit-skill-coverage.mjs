@@ -50,7 +50,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-pre-write-admit-skill-coverage.mjs");
   console.log("  node tools/perf/verify-pre-write-admit-skill-coverage.mjs --root scaffold/codex --json");
-  console.log("  node tools/perf/verify-pre-write-admit-skill-coverage.mjs --root tests/fixtures/repo-installed-core/.codex/skills --json");
+  console.log("  node tools/perf/verify-pre-write-admit-skill-coverage.mjs --root tests/fixtures/repo-installed-core/.agents/skills --json");
 }
 
 function readText(filePath) {

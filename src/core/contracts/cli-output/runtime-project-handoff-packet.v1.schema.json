@@ -292,7 +292,18 @@
         },
         "current_state": { "type": "object", "additionalProperties": true },
         "snapshot": { "type": "object", "additionalProperties": true },
-        "checks": { "type": "object", "additionalProperties": { "type": "boolean" } },
+        "checks": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["pass", "details"],
+            "properties": {
+              "pass": { "type": "boolean" },
+              "details": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
+        },
         "pass": { "type": "boolean" }
       },
       "additionalProperties": true

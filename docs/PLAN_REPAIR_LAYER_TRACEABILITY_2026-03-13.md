@@ -5,7 +5,7 @@ Status: completed
 
 ## 1. Goal
 
-Correct a repair-layer diagnostic defect observed in a client project (`gowire`) when the snapshot references a cycle that exists locally in `docs/audit/cycles/`, but is not yet tracked or indexed by the DB-backed runtime.
+Correct a repair-layer diagnostic defect observed in a client project (`external-pilot`) when the snapshot references a cycle that exists locally in `docs/audit/cycles/`, but is not yet tracked or indexed by the DB-backed runtime.
 
 The goal is not to relax workflow gates. The goal is to make the diagnosis exact, consistent across runtime outputs, and traceable enough to distinguish:
 
@@ -187,7 +187,7 @@ Tests must cover at least:
 5. handoff / pre-write with non-blocking "local but not indexed" warning
    - expected: explicit and non-misleading message
 
-Fixtures must reproduce a `gowire`-like case:
+Fixtures must reproduce a `external-pilot`-like case:
 
 - snapshot updated;
 - new cycles/sessions present on disk;

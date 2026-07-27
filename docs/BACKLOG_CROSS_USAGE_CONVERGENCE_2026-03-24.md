@@ -135,7 +135,7 @@ Progress note:
 - shared/high-risk scope is explicit in `docs/SPEC.md` and the plan
 - native adapter config can now render explicit shared-surface kinds
 
-### CUC-07 - Add Gowire-Oriented Matrix Examples
+### CUC-07 - Add External Pilot-Oriented Matrix Examples
 
 Status: completed
 Priority: medium
@@ -153,7 +153,7 @@ Done when:
 
 Progress note:
 
-- the plan now contains Gowire-oriented examples for dispatch ordering, hydration preservation, and codegen changes
+- the plan now contains External Pilot-oriented examples for dispatch ordering, hydration preservation, and codegen changes
 
 ### CUC-08 - Define AI Correction Guidance
 

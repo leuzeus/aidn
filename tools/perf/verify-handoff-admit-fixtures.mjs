@@ -48,7 +48,8 @@ function runNode(script, args, repoRoot, expectStatus = 0) {
     maxBuffer: 10 * 1024 * 1024,
   });
   if ((result.status ?? 1) !== expectStatus) {
-    throw new Error(`Command failed (${path.basename(script)}): ${String(result.stderr ?? result.stdout ?? "").trim()}`);
+    const detail = String(result.stderr ?? "").trim() || String(result.stdout ?? "").trim();
+    throw new Error(`Command failed (${path.basename(script)}): ${detail}`);
   }
   return JSON.parse(String(result.stdout ?? "{}"));
 }
