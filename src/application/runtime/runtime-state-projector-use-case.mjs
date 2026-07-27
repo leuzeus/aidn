@@ -123,6 +123,21 @@ function collectDecisionEntries(payload) {
     .map(([skill, entry]) => ({ skill, ...entry }));
 }
 
+function normalizeScope(value) {
+  const normalized = normalizeScalar(value).replace(/\\/g, "/").replace(/\/+$/g, "");
+  return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+}
+
+function repairCandidateMatchesRequest(entry, requestedSkill, targetRoot) {
+  const entrySkill = normalizeScalar(entry?.skill);
+  if (requestedSkill && entrySkill !== requestedSkill) {
+    return false;
+  }
+  const entryTarget = normalizeScope(entry?.target);
+  const expectedTarget = normalizeScope(targetRoot);
+  return !entryTarget || !expectedTarget || entryTarget === expectedTarget;
+}
+
 function repairCandidateRank(entry) {
   if (!entry || typeof entry !== "object") {
     return 0;
@@ -145,6 +160,17 @@ function repairCandidateRank(entry) {
 
 function repairCandidateHasKnownStatus(entry) {
   return !canonicalUnknown(entry?.repair_layer_status) && normalizeScalar(entry?.repair_layer_status).length > 0;
+}
+
+function repairCandidateHasMeaningfulSignal(entry) {
+  return repairCandidateHasKnownStatus(entry)
+    || (!canonicalUnknown(entry?.repair_layer_advice)
+      && normalizeScalar(entry?.repair_layer_advice).length > 0)
+    || (!canonicalUnknown(entry?.repair_primary_reason)
+      && normalizeScalar(entry?.repair_primary_reason).length > 0)
+    || (Array.isArray(entry?.repair_layer_top_findings)
+      && entry.repair_layer_top_findings.length > 0)
+    || entry?.repair_layer_blocking === true;
 }
 
 function latestRepairCandidate(entries) {
@@ -227,13 +253,18 @@ function normalizeRepairCandidate(entry, defaults = {}) {
     || defaults.blocking === true;
   const status = inferRepairStatus(rawStatus, findings, blocking);
   const advice = inferRepairAdvice(rawAdvice, status);
+  const primaryReason = String(
+    entry.repair_primary_reason
+      ?? defaults.primaryReason
+      ?? "",
+  ).trim();
   const ts = String(
     entry.ts
       ?? entry.updated_at
       ?? defaults.ts
       ?? "",
   ).trim();
-  if (!status && !advice && findings.length === 0 && !blocking) {
+  if (!status && !advice && !primaryReason && findings.length === 0 && !blocking) {
     return null;
   }
   return {
@@ -242,9 +273,53 @@ function normalizeRepairCandidate(entry, defaults = {}) {
     repair_layer_status_inferred: !rawStatus,
     repair_layer_advice: advice || "unknown",
     repair_layer_advice_inferred: !rawAdvice,
+    repair_primary_reason: primaryReason || null,
     repair_layer_top_findings: findings,
     repair_layer_blocking: blocking,
   };
+}
+
+function selectCanonicalRepairCandidate({
+  hydrated,
+  repairLayer,
+  history,
+  decisions,
+  fallbackContext,
+  fallbackEntries,
+}) {
+  const requestedSkill = normalizeScalar(hydrated?.requested_skill);
+  const targetRoot = normalizeScalar(hydrated?.target_root);
+  const requestedDecision = requestedSkill
+    ? normalizeRepairCandidate(hydrated?.decisions?.[requestedSkill])
+    : null;
+  if (requestedDecision && repairCandidateHasMeaningfulSignal(requestedDecision)) {
+    return requestedDecision;
+  }
+
+  const contextScopeMatches = !normalizeScope(fallbackContext?.target_root)
+    || !normalizeScope(targetRoot)
+    || normalizeScope(fallbackContext.target_root) === normalizeScope(targetRoot);
+  const requestScopedHistory = history.filter(
+    (entry) => repairCandidateMatchesRequest(entry, requestedSkill, targetRoot),
+  );
+  const requestScopedDecisions = decisions.filter(
+    (entry) => repairCandidateMatchesRequest(entry, requestedSkill, targetRoot),
+  );
+  const requestScopedFallbackEntries = contextScopeMatches
+    ? fallbackEntries.filter(
+      (entry) => repairCandidateMatchesRequest(entry, requestedSkill, targetRoot),
+    )
+    : [];
+
+  return latestRepairCandidate([
+    normalizeRepairCandidate(repairLayer, {
+      ts: hydrated?.ts,
+      blocking: repairLayer?.blocking === true,
+    }),
+    ...requestScopedHistory.map((entry) => normalizeRepairCandidate(entry)),
+    ...requestScopedDecisions.map((entry) => normalizeRepairCandidate(entry)),
+    ...requestScopedFallbackEntries.map((entry) => normalizeRepairCandidate(entry)),
+  ].filter(Boolean));
 }
 
 export function deriveRuntimeStateRepairSummary(hydrated, fallbackContext) {
@@ -253,21 +328,23 @@ export function deriveRuntimeStateRepairSummary(hydrated, fallbackContext) {
     : null;
   const history = Array.isArray(hydrated?.recent_history) ? hydrated.recent_history : [];
   const decisions = collectDecisionEntries(hydrated);
-  const fallbackEntries = fallbackContext?.latest && typeof fallbackContext.latest === "object"
-    ? Object.values(fallbackContext.latest).filter((entry) => entry && typeof entry === "object")
-    : [];
-  const source = latestRepairCandidate([
-    normalizeRepairCandidate(repairLayer, {
-      ts: hydrated?.ts,
-      blocking: repairLayer?.blocking === true,
-    }),
-    ...history.map((entry) => normalizeRepairCandidate(entry)),
-    ...decisions.map((entry) => normalizeRepairCandidate(entry)),
-    ...fallbackEntries.map((entry) => normalizeRepairCandidate(entry)),
-  ].filter(Boolean));
+  const fallbackEntries = collectDecisionEntries({
+    decisions: fallbackContext?.latest,
+  });
+  const source = selectCanonicalRepairCandidate({
+    hydrated,
+    repairLayer,
+    history,
+    decisions,
+    fallbackContext,
+    fallbackEntries,
+  });
   return {
     status: String(source?.repair_layer_status ?? "unknown").trim() || "unknown",
     advice: String(source?.repair_layer_advice ?? "unknown").trim() || "unknown",
+    primaryReason: canonicalUnknown(source?.repair_primary_reason)
+      ? null
+      : (String(source?.repair_primary_reason ?? "").trim() || null),
     findings: Array.isArray(source?.repair_layer_top_findings) ? source.repair_layer_top_findings : [],
     blocking: source?.repair_layer_blocking === true,
   };
@@ -425,7 +502,7 @@ export function prepareRuntimeStateProjection({
     effectiveStateMode,
     hydrated,
     repairSummary,
-    repairPrimaryReason: deriveRepairPrimaryReason(repairSummary),
+    repairPrimaryReason: repairSummary.primaryReason ?? deriveRepairPrimaryReason(repairSummary),
     repairRouting,
     sharedRuntimeValidation,
     sharedPlanning,

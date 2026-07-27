@@ -111,6 +111,21 @@ function sanitizeFinding(finding, env, redactedPaths) {
   };
 }
 
+function formatRepairFinding(finding) {
+  if (!finding || typeof finding !== "object") {
+    return "";
+  }
+  return [
+    finding.severity,
+    finding.finding_type,
+    finding.entity_id,
+    finding.message,
+  ]
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean)
+    .join(": ");
+}
+
 function sanitizeProcessError(error, env, redactedPaths) {
   if (!error || typeof error !== "object") {
     return null;
@@ -525,6 +540,8 @@ export function main(argv = process.argv.slice(2)) {
       (entry) => String(entry?.skill ?? "") === "close-session",
     );
     const latestHistory = closeHistory[closeHistory.length - 1] ?? {};
+    const decisionTopFinding = decision?.repair_layer_top_findings?.[0] ?? null;
+    const decisionTopFindingText = formatRepairFinding(decisionTopFinding);
 
     const checks = {
       hook_process_contract_status_one: hookRun.process.status === 1,
@@ -565,6 +582,7 @@ export function main(argv = process.argv.slice(2)) {
       hydrate_history_open_count_present: Number(
         latestHistory?.repair_layer_open_count ?? 0,
       ) >= 1,
+      hydrate_requested_skill_matches_decision: hydrated?.requested_skill === "close-session",
       parity_context_hydrate_count: Number(latestEntry?.repair_layer_open_count ?? -1)
         === Number(decision?.repair_layer_open_count ?? -2),
       hydrate_runtime_state_present: hydrated?.runtime_state
@@ -575,6 +593,15 @@ export function main(argv = process.argv.slice(2)) {
       hydrate_runtime_state_matches_decision: String(
         hydrated?.runtime_state?.digest?.repair_layer_status ?? "",
       ) === String(decision?.repair_layer_status ?? ""),
+      hydrate_runtime_state_advice_matches_decision: String(
+        hydrated?.runtime_state?.digest?.repair_layer_advice ?? "",
+      ) === String(decision?.repair_layer_advice ?? ""),
+      hydrate_runtime_state_primary_reason_matches_decision: String(
+        hydrated?.runtime_state?.digest?.repair_primary_reason ?? "",
+      ) === String(decision?.repair_primary_reason ?? ""),
+      hydrate_runtime_state_top_finding_matches_decision: decisionTopFindingText.length > 0
+        && String(hydrated?.runtime_state?.digest?.blocking_findings?.[0] ?? "")
+          === decisionTopFindingText,
       hydrate_runtime_state_file_written: fs.existsSync(runtimeStateFile),
       hydrate_runtime_state_markdown_mentions_status: runtimeStateText.includes(
         `repair_layer_status: ${String(decision?.repair_layer_status ?? "")}`,
@@ -590,6 +617,8 @@ export function main(argv = process.argv.slice(2)) {
       hydrate_runtime_state_markdown_mentions_primary_reason: runtimeStateText.includes(
         `repair_primary_reason: ${String(decision?.repair_primary_reason ?? "")}`,
       ),
+      hydrate_runtime_state_markdown_mentions_top_finding: decisionTopFindingText.length > 0
+        && runtimeStateText.includes(`- ${decisionTopFindingText}`),
     };
 
     if (args.testFailCheck) {
@@ -665,6 +694,11 @@ export function main(argv = process.argv.slice(2)) {
         ),
       },
       hydrated_decision: {
+        requested_skill: boundedSample(
+          hydrated?.requested_skill ?? "",
+          env,
+          redactedPaths,
+        ),
         repair_layer_open_count: decision?.repair_layer_open_count ?? null,
         repair_layer_status: boundedSample(
           decision?.repair_layer_status ?? "",
