@@ -2,9 +2,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
-  loadWorkflowModels,
-  parseWorkflowYaml,
+  loadWorkflowSources,
+  parseWorkflowStructure,
   validateGateAndWorkflowPolicy,
+  validateWorkflowYamlSyntax,
 } from "./workflow-policy-lib.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
@@ -13,10 +14,21 @@ const packagePath = path.join(repoRoot, "package.json");
 const packageLockPath = path.join(repoRoot, "package-lock.json");
 const catalog = JSON.parse(fs.readFileSync(catalogPath, "utf8"));
 const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
-const workflowModels = loadWorkflowModels(repoRoot);
+const workflowSources = loadWorkflowSources(repoRoot);
+const workflowModels = workflowSources.map(({ path: relativePath, text }) => (
+  parseWorkflowStructure(text, relativePath)
+));
 const issues = [];
 const families = new Set();
 let packageLock = null;
+
+const workflowSyntaxResults = workflowSources.map(({ path: relativePath, text }) => ({
+  path: relativePath,
+  issues: validateWorkflowYamlSyntax(text, relativePath),
+}));
+for (const result of workflowSyntaxResults) {
+  issues.push(...result.issues);
+}
 
 try {
   packageLock = JSON.parse(fs.readFileSync(packageLockPath, "utf8"));
@@ -37,28 +49,46 @@ if (packageLock) {
   if (!lockedPg?.version || !lockedPg?.integrity || lockedPg.optional !== true) {
     issues.push("package-lock.json: pg must be integrity-locked as an optional dependency");
   }
+  const declaredYaml = packageJson.devDependencies?.yaml;
+  const lockedYamlDeclaration = packageLock.packages?.[""]?.devDependencies?.yaml;
+  if (!/^\d+\.\d+\.\d+$/u.test(String(declaredYaml ?? ""))
+    || lockedYamlDeclaration !== declaredYaml) {
+    issues.push("package-lock.json: root yaml dev dependency must be an exact matching version");
+  }
+  const lockedYaml = packageLock.packages?.["node_modules/yaml"];
+  if (lockedYaml?.version !== declaredYaml
+    || !lockedYaml?.integrity
+    || lockedYaml.dev !== true) {
+    issues.push("package-lock.json: yaml must be integrity-locked as an exact dev dependency");
+  }
 }
 
 function clone(value) {
   return structuredClone(value);
 }
 
-function replaceWorkflow(models, relativePath, text) {
-  return models.map((model) => model.path === relativePath
-    ? parseWorkflowYaml(text, relativePath)
-    : model);
+function replaceWorkflowSource(sources, relativePath, text) {
+  return sources.map((source) => source.path === relativePath
+    ? { path: relativePath, text }
+    : source);
 }
 
 function candidateRejected({
   candidateCatalog = catalog,
   candidatePackageJson = packageJson,
-  candidateWorkflows = workflowModels,
+  candidateWorkflowSources = workflowSources,
 }) {
+  const syntaxIssues = candidateWorkflowSources.flatMap((source) => (
+    validateWorkflowYamlSyntax(source.text, source.path)
+  ));
+  const candidateWorkflowModels = candidateWorkflowSources.map((source) => (
+    parseWorkflowStructure(source.text, source.path)
+  ));
   return validateGateAndWorkflowPolicy({
     catalog: candidateCatalog,
     packageJson: candidatePackageJson,
-    workflowModels: candidateWorkflows,
-  }).length > 0;
+    workflowModels: candidateWorkflowModels,
+  }).length > 0 || syntaxIssues.length > 0;
 }
 
 if (catalog.schema_version !== 2) {
@@ -160,6 +190,13 @@ const commandCommentMutation = releaseText.replaceAll(
 const missingJobMutation = releaseText.replace("  verify:\n", "  verify_removed:\n");
 const duplicateJobMutation = `${releaseText}\n  verify:\n    runs-on: ubuntu-latest\n    steps: []\n`;
 
+const architecturePath = ".github/workflows/architecture-gates.yml";
+const architectureText = fs.readFileSync(path.join(repoRoot, architecturePath), "utf8");
+const missingGateDependencyInstallMutation = architectureText.replace(
+  /      - name: Install Locked Gate Dependencies\r?\n        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund\r?\n/,
+  "",
+);
+
 const liveSmokePath = ".github/workflows/runtime-ops-live-smoke.yml";
 const liveSmokeText = fs.readFileSync(path.join(repoRoot, liveSmokePath), "utf8");
 const missingLiveInstallMutation = liveSmokeText.replace(
@@ -171,8 +208,12 @@ const omittedOptionalDependenciesMutation = liveSmokeText.replace(
   "npm ci --ignore-scripts --no-audit --no-fund",
 );
 const missingPgPreflightMutation = liveSmokeText.replace(
-  /      - name: Verify PostgreSQL Driver Resolution\r?\n        run: node --input-type=module --eval "await import\('pg'\); console\.log\('PostgreSQL driver preflight: PASS'\)"\r?\n\r?\n/,
+  /      - name: Verify PostgreSQL Driver Resolution\r?\n        run: \|\r?\n          node --input-type=module --eval "await import\('pg'\); console\.log\('PostgreSQL driver preflight: PASS'\)"\r?\n\r?\n/,
   "",
+);
+const invalidLiveSmokeYamlScalarMutation = liveSmokeText.replace(
+  /        run: \|\r?\n          node --input-type=module --eval "await import\('pg'\); console\.log\('PostgreSQL driver preflight: PASS'\)"/,
+  "        run: node --input-type=module --eval \"await import('pg'); console.log('PostgreSQL driver preflight: PASS')\"",
 );
 const liveSmokeOrderMutation = liveSmokeText
   .replace(
@@ -195,36 +236,74 @@ const negativeProbes = {
   }),
   substituted_script_rejected: candidateRejected({ candidateCatalog: substitutedScriptCatalog }),
   comment_only_dev_trigger_rejected: candidateRejected({
-    candidateWorkflows: replaceWorkflow(workflowModels, releasePath, devTriggerCommentMutation),
+    candidateWorkflowSources: replaceWorkflowSource(
+      workflowSources,
+      releasePath,
+      devTriggerCommentMutation,
+    ),
   }),
   comment_only_release_command_rejected: candidateRejected({
-    candidateWorkflows: replaceWorkflow(workflowModels, releasePath, commandCommentMutation),
+    candidateWorkflowSources: replaceWorkflowSource(
+      workflowSources,
+      releasePath,
+      commandCommentMutation,
+    ),
   }),
   missing_job_rejected: candidateRejected({
-    candidateWorkflows: replaceWorkflow(workflowModels, releasePath, missingJobMutation),
+    candidateWorkflowSources: replaceWorkflowSource(
+      workflowSources,
+      releasePath,
+      missingJobMutation,
+    ),
   }),
   duplicate_job_rejected: candidateRejected({
-    candidateWorkflows: replaceWorkflow(workflowModels, releasePath, duplicateJobMutation),
+    candidateWorkflowSources: replaceWorkflowSource(
+      workflowSources,
+      releasePath,
+      duplicateJobMutation,
+    ),
+  }),
+  gate_dependency_install_required: candidateRejected({
+    candidateWorkflowSources: replaceWorkflowSource(
+      workflowSources,
+      architecturePath,
+      missingGateDependencyInstallMutation,
+    ),
   }),
   live_smoke_install_required: candidateRejected({
-    candidateWorkflows: replaceWorkflow(workflowModels, liveSmokePath, missingLiveInstallMutation),
+    candidateWorkflowSources: replaceWorkflowSource(
+      workflowSources,
+      liveSmokePath,
+      missingLiveInstallMutation,
+    ),
   }),
   live_smoke_optional_dependencies_required: candidateRejected({
-    candidateWorkflows: replaceWorkflow(
-      workflowModels,
+    candidateWorkflowSources: replaceWorkflowSource(
+      workflowSources,
       liveSmokePath,
       omittedOptionalDependenciesMutation,
     ),
   }),
   live_smoke_pg_preflight_required: candidateRejected({
-    candidateWorkflows: replaceWorkflow(
-      workflowModels,
+    candidateWorkflowSources: replaceWorkflowSource(
+      workflowSources,
       liveSmokePath,
       missingPgPreflightMutation,
     ),
   }),
   live_smoke_step_order_required: candidateRejected({
-    candidateWorkflows: replaceWorkflow(workflowModels, liveSmokePath, liveSmokeOrderMutation),
+    candidateWorkflowSources: replaceWorkflowSource(
+      workflowSources,
+      liveSmokePath,
+      liveSmokeOrderMutation,
+    ),
+  }),
+  invalid_live_smoke_yaml_scalar_rejected: candidateRejected({
+    candidateWorkflowSources: replaceWorkflowSource(
+      workflowSources,
+      liveSmokePath,
+      invalidLiveSmokeYamlScalarMutation,
+    ),
   }),
 };
 for (const [probe, rejected] of Object.entries(negativeProbes)) {
@@ -242,6 +321,13 @@ const output = {
     path: "package-lock.json",
     lockfile_version: packageLock?.lockfileVersion ?? null,
     pg_version: packageLock?.packages?.["node_modules/pg"]?.version ?? null,
+    yaml_version: packageLock?.packages?.["node_modules/yaml"]?.version ?? null,
+  },
+  workflow_syntax: {
+    parser: `yaml@${packageJson.devDependencies?.yaml ?? "missing"}`,
+    files: workflowSyntaxResults.length,
+    valid: workflowSyntaxResults.filter((result) => result.issues.length === 0).length,
+    invalid: workflowSyntaxResults.filter((result) => result.issues.length > 0).length,
   },
   workflows: workflowModels.map((workflow) => ({
     path: workflow.path,

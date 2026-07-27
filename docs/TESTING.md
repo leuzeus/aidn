@@ -117,6 +117,11 @@ and proves that `import('pg')` resolves before either smoke command. The
 workflow-policy gate validates the semantic step order, so removing the install,
 omitting optional dependencies, skipping the driver preflight, or moving a
 smoke ahead of those prerequisites is a failure even when live URLs are absent.
+The gate first parses every tracked `.github/workflows/*.{yml,yaml}` file with
+the exact locked `yaml` dev dependency. Its separate structural model then
+checks triggers, jobs, commands, and step ordering. A malformed plain scalar
+containing `: ` fails the syntax phase even if the structural model can still
+recognize nearby fields.
 The shared-coordination smoke uses only run-unique synthetic identifiers,
 removes those exact rows in foreign-key order from a `finally` block, and
 verifies zero remaining rows after both success and injected failure. It never

@@ -21,6 +21,8 @@ A task is done only when:
   diagnostics kept on `stderr`
 - dependency-bearing workflows install from a tracked lockfile and prove
   required optional drivers resolve before executing their consumers
+- every tracked GitHub Actions workflow parses with the locked YAML dependency
+  before structural trigger, job, command, and ordering policies are evaluated
 - every executed gate leaves the tracked and untracked, non-ignored checkout state unchanged
 - required gate preconditions fail diagnostically when unavailable; they are not reported as `SKIP`
 - any architectural decision change is reflected in the ADR

@@ -397,7 +397,7 @@
       "family": "cleanliness",
       "script": "perf:verify-gate-catalog",
       "job": "architecture-gates/cleanliness",
-      "surfaces": ["package/catalogs/gates.v1.json", "package.json", ".github/workflows"],
+      "surfaces": ["package/catalogs/gates.v1.json", "package.json", "package-lock.json", ".github/workflows"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },

@@ -50,6 +50,9 @@
   "engines": {
     "node": ">=22.13.0"
   },
+  "devDependencies": {
+    "yaml": "2.9.0"
+  },
   "optionalDependencies": {
     "pg": ">=8 <9"
   },

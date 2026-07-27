@@ -1,5 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
+import { parseDocument } from "yaml";
+
+const LOCKED_GATE_INSTALL_COMMAND = "npm ci --include=dev --ignore-scripts --no-audit --no-fund";
+const DEPENDENCY_BEARING_GATE_COMMANDS = new Set([
+  "verify:cleanliness",
+  "verify:release",
+]);
 
 const REQUIRED_OBLIGATIONS = Object.freeze({
   "contracts-json": ["dev", "main", "release"],
@@ -157,7 +164,25 @@ function scalarValue(value) {
   return normalized;
 }
 
-export function parseWorkflowYaml(text, relativePath = "workflow.yml") {
+export function validateWorkflowYamlSyntax(text, relativePath = "workflow.yml") {
+  const normalizedPath = relativePath.replaceAll("\\", "/");
+  try {
+    const document = parseDocument(String(text ?? ""), {
+      prettyErrors: true,
+      strict: true,
+      uniqueKeys: true,
+    });
+    return document.errors.map((error) => (
+      `${normalizedPath}: invalid YAML (${String(error.message).replace(/\s+/gu, " ").trim()})`
+    ));
+  } catch (error) {
+    return [
+      `${normalizedPath}: YAML parser failure (${String(error?.message ?? error).replace(/\s+/gu, " ").trim()})`,
+    ];
+  }
+}
+
+export function parseWorkflowStructure(text, relativePath = "workflow.yml") {
   const rawLines = String(text ?? "").split(/\r?\n/);
   const lines = rawLines.map(stripComment);
   const triggers = {};
@@ -278,7 +303,7 @@ export function parseWorkflowYaml(text, relativePath = "workflow.yml") {
         block.push(lines[blockIndex].trim());
         index = blockIndex;
       }
-      commandText = block.join("\n");
+      commandText = block.join("\n").trimEnd();
     }
     currentStep.run = commandText;
     currentStep.commands = npmCommands(commandText);
@@ -293,16 +318,21 @@ export function parseWorkflowYaml(text, relativePath = "workflow.yml") {
 }
 
 export function loadWorkflowModels(repoRoot) {
+  return loadWorkflowSources(repoRoot)
+    .map(({ path: relativePath, text }) => parseWorkflowStructure(text, relativePath));
+}
+
+export function loadWorkflowSources(repoRoot) {
   const workflowRoot = path.join(repoRoot, ".github", "workflows");
   return fs.readdirSync(workflowRoot)
     .filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"))
     .sort()
     .map((name) => {
       const relativePath = `.github/workflows/${name}`;
-      return parseWorkflowYaml(
-        fs.readFileSync(path.join(repoRoot, relativePath), "utf8"),
-        relativePath,
-      );
+      return {
+        path: relativePath,
+        text: fs.readFileSync(path.join(repoRoot, relativePath), "utf8"),
+      };
     });
 }
 
@@ -424,6 +454,29 @@ export function validateGateAndWorkflowPolicy({
           issues.push(
             `${workflowPath}/${job}: semantic step ${stepIndex + 1} mismatch `
             + `(expected ${expected})`,
+          );
+        }
+      }
+    }
+  }
+
+  for (const model of workflowModels) {
+    for (const [jobName, job] of Object.entries(model.jobs)) {
+      const steps = job.steps ?? [];
+      for (const [stepIndex, step] of steps.entries()) {
+        const dependencyBearingCommand = step.commands.find((command) => (
+          DEPENDENCY_BEARING_GATE_COMMANDS.has(command)
+        ));
+        if (!dependencyBearingCommand) {
+          continue;
+        }
+        const installIndex = steps.findIndex((candidate, candidateIndex) => (
+          candidateIndex < stepIndex && candidate.run === LOCKED_GATE_INSTALL_COMMAND
+        ));
+        if (installIndex < 0) {
+          issues.push(
+            `${model.path}/${jobName}: ${dependencyBearingCommand} must follow `
+            + `locked dev dependency installation`,
           );
         }
       }

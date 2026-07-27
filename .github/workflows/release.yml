@@ -27,6 +27,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22.13"
+      - name: Install Locked Gate Dependencies
+        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund
       - name: Verify All Context Obligations Without Publishing
         env:
           AIDN_BRANCH_POLICY_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
@@ -48,6 +50,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22.13"
+      - name: Install Locked Gate Dependencies
+        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund
 
       - name: Prove Main And Merged Release PR
         env:

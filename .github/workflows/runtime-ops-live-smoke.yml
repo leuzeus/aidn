@@ -23,7 +23,8 @@ jobs:
         run: npm ci --include=optional --ignore-scripts --no-audit --no-fund
 
       - name: Verify PostgreSQL Driver Resolution
-        run: node --input-type=module --eval "await import('pg'); console.log('PostgreSQL driver preflight: PASS')"
+        run: |
+          node --input-type=module --eval "await import('pg'); console.log('PostgreSQL driver preflight: PASS')"
 
       - name: Verify Runtime Persistence Live Smoke
         env:
