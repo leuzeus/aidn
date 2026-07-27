@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+No unreleased changes.
+
+## 0.7.1
+
 - Govern version-matched `hotfix/vX.Y.Z` patch publication and exact
   `sync/main-to-dev-vX.Y.Z` resynchronization, including remote ancestry,
   canonical and behavior-tested CI provenance helpers, blocking workflow-step
