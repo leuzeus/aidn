@@ -12,6 +12,56 @@ import {
 } from "../../src/core/contracts/json-schema-validator.mjs";
 import { listDispatchableCommandDescriptors } from "../../src/core/cli/command-registry.mjs";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { redactDiagnostic } from "../verify/git-worktree-state-lib.mjs";
+
+const MAX_CHILD_DIAGNOSTIC_CHARACTERS = 2000;
+
+function diagnosticTail(value, env = process.env) {
+  const redacted = redactDiagnostic(value, env).trim();
+  if (redacted.length <= MAX_CHILD_DIAGNOSTIC_CHARACTERS) {
+    return redacted;
+  }
+  const suffixLength = MAX_CHILD_DIAGNOSTIC_CHARACTERS - 30;
+  return `...[diagnostic tail truncated]${redacted.slice(-suffixLength)}`;
+}
+
+function childProcessEvidence(result, env = process.env) {
+  return {
+    exit_code: Number.isInteger(result?.status) ? result.status : null,
+    signal: result?.signal ?? null,
+    error_code: result?.error?.code ?? null,
+    error: result?.error?.message
+      ? diagnosticTail(result.error.message, env)
+      : null,
+    stdout_tail: diagnosticTail(result?.stdout, env),
+    stderr_tail: diagnosticTail(result?.stderr, env),
+  };
+}
+
+function childFailureIssues(evidence) {
+  const issues = [];
+  if (evidence.exit_code == null) {
+    issues.push("command did not complete with an integer exit code");
+  } else if (evidence.exit_code !== 0) {
+    issues.push(`command exited with status ${evidence.exit_code}`);
+  }
+  if (evidence.signal) {
+    issues.push(`command terminated by signal ${evidence.signal}`);
+  }
+  if (evidence.error_code) {
+    issues.push(`command error code ${evidence.error_code}`);
+  }
+  if (evidence.error) {
+    issues.push(`command error=${JSON.stringify(evidence.error)}`);
+  }
+  if (evidence.stdout_tail) {
+    issues.push(`stdout_tail=${JSON.stringify(evidence.stdout_tail)}`);
+  }
+  if (evidence.stderr_tail) {
+    issues.push(`stderr_tail=${JSON.stringify(evidence.stderr_tail)}`);
+  }
+  return issues;
+}
 
 function parseArgs(argv) {
   const args = {
@@ -458,12 +508,20 @@ function prepareBaseFixture(sourceRoot, tempRoot) {
     cwd: REPO_ROOT,
     env: process.env,
     encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    shell: false,
     timeout: 120000,
     maxBuffer: 20 * 1024 * 1024,
     windowsHide: true,
   });
-  if (seed.status !== 0) {
-    throw new Error(`Unable to seed isolated contract fixture: ${String(seed.stderr || seed.stdout).trim()}`);
+  const seedEvidence = childProcessEvidence(seed, process.env);
+  if (seedEvidence.exit_code !== 0
+    || seedEvidence.signal != null
+    || seedEvidence.error_code != null
+    || seedEvidence.error != null) {
+    throw new Error(
+      `Unable to seed isolated contract fixture: ${childFailureIssues(seedEvidence).join(" | ")}`,
+    );
   }
   return baseRoot;
 }
@@ -551,12 +609,98 @@ function runStrictStdoutDocumentFixtures() {
   };
 }
 
+function runProcessFailureDiagnosticFixtures() {
+  const diagnosticRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), "aidn-cli-contract-diagnostics-"),
+  );
+  try {
+    const configuredSecret = "postgresql://fixture:secret@localhost:5432/aidn";
+    const nonzeroScript = path.join(diagnosticRoot, "nonzero-stdout-only.mjs");
+    fs.writeFileSync(nonzeroScript, [
+      `process.stdout.write(${JSON.stringify(`${"x".repeat(2500)}${configuredSecret}\nstdout-before-exit\n`)});`,
+      "process.exitCode = 9;",
+      "",
+    ].join("\n"), "utf8");
+    const nonzeroEnv = {
+      ...process.env,
+      AIDN_PG_SMOKE_URL: configuredSecret,
+    };
+    const nonzeroResult = spawnSync(process.execPath, [nonzeroScript], {
+      cwd: REPO_ROOT,
+      env: nonzeroEnv,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: false,
+      timeout: 30000,
+      maxBuffer: 1024 * 1024,
+      windowsHide: true,
+    });
+    const nonzero = childProcessEvidence(nonzeroResult, nonzeroEnv);
+    const nonzeroIssues = childFailureIssues(nonzero);
+
+    const timeoutScript = path.join(diagnosticRoot, "timeout-stdout-only.mjs");
+    fs.writeFileSync(timeoutScript, [
+      "process.stdout.write('stdout-before-timeout\\n');",
+      "setInterval(() => {}, 1000);",
+      "",
+    ].join("\n"), "utf8");
+    const timeoutResult = spawnSync(process.execPath, [timeoutScript], {
+      cwd: REPO_ROOT,
+      env: process.env,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: false,
+      timeout: 200,
+      maxBuffer: 1024 * 1024,
+      windowsHide: true,
+    });
+    const timeout = childProcessEvidence(timeoutResult, process.env);
+
+    const checks = {
+      nonzero_exit_status_preserved: nonzero.exit_code === 9,
+      null_signal_preserved: Object.hasOwn(nonzero, "signal") && nonzero.signal == null,
+      null_error_code_preserved:
+        Object.hasOwn(nonzero, "error_code") && nonzero.error_code == null,
+      stdout_preserved_with_empty_stderr:
+        nonzero.stdout_tail.includes("stdout-before-exit") && nonzero.stderr_tail === "",
+      stdout_tail_bounded:
+        nonzero.stdout_tail.length <= MAX_CHILD_DIAGNOSTIC_CHARACTERS
+        && nonzero.stdout_tail.startsWith("...[diagnostic tail truncated]"),
+      configured_secret_redacted:
+        !JSON.stringify(nonzero).includes("fixture:secret")
+        && nonzero.stdout_tail.includes("[redacted]"),
+      text_issue_preserves_exit_status:
+        nonzeroIssues.includes("command exited with status 9"),
+      text_issue_preserves_stdout_tail:
+        nonzeroIssues.some((issue) => issue.includes("stdout-before-exit")),
+      timeout_exit_status_preserved: timeout.exit_code == null,
+      timeout_signal_field_preserved: Object.hasOwn(timeout, "signal"),
+      timeout_error_code_preserved: timeout.error_code === "ETIMEDOUT",
+    };
+    return {
+      ok: Object.values(checks).every(Boolean),
+      checks,
+      nonzero_exit_status: nonzero.exit_code,
+      timeout_error_code: timeout.error_code,
+    };
+  } finally {
+    const cleanup = removePathWithRetry(diagnosticRoot);
+    if (!cleanup.ok) {
+      throw cleanup.error;
+    }
+  }
+}
+
 function runCase(tmpRoot, testCase) {
   const schemaPath = path.join(CONTRACT_DIR, testCase.schema);
   const schema = readJson(schemaPath);
   const caseArgs = typeof testCase.args === "function" ? testCase.args(tmpRoot) : testCase.args;
   const caseEnv = typeof testCase.env === "function" ? testCase.env(tmpRoot) : (testCase.env ?? {});
   const beforeSnapshot = snapshotPaths(tmpRoot, testCase.noMutationPaths ?? []);
+  const childEnv = {
+    ...process.env,
+    ...caseEnv,
+  };
   const result = spawnSync(process.execPath, [
     AIDN_BIN,
     ...caseArgs,
@@ -564,32 +708,28 @@ function runCase(tmpRoot, testCase) {
     tmpRoot,
   ], {
     cwd: REPO_ROOT,
-    env: {
-      ...process.env,
-      ...caseEnv,
-    },
+    env: childEnv,
     encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    shell: false,
     timeout: 120000,
     maxBuffer: 20 * 1024 * 1024,
     windowsHide: true,
   });
-  const processCompleted = Number.isInteger(result.status);
-  const exitOk = processCompleted && (result.status === 0 || testCase.allowNonZero === true);
+  const processEvidence = childProcessEvidence(result, childEnv);
+  const processCompleted = processEvidence.exit_code != null
+    && processEvidence.signal == null
+    && processEvidence.error_code == null
+    && processEvidence.error == null;
+  const exitOk = processCompleted
+    && (processEvidence.exit_code === 0 || testCase.allowNonZero === true);
   if (!exitOk) {
-    const processError = result.error instanceof Error ? result.error.message : "";
-    const signal = String(result.signal ?? "").trim();
     return {
       name: testCase.name,
       ok: false,
       status: "command-failed",
-      exit_code: result.status,
-      signal: signal || null,
-      stdout: String(result.stdout ?? "").trim(),
-      stderr: String(result.stderr ?? "").trim(),
-      issues: [
-        processError || `command did not complete with an integer exit code (status=${String(result.status)})`,
-        ...(signal ? [`command terminated by signal ${signal}`] : []),
-      ],
+      ...processEvidence,
+      issues: childFailureIssues(processEvidence),
     };
   }
   let payload = null;
@@ -600,9 +740,16 @@ function runCase(tmpRoot, testCase) {
       name: testCase.name,
       ok: false,
       status: "json-parse-failed",
-      exit_code: result.status,
-      stderr: String(result.stderr ?? "").trim(),
-      issues: [error.message],
+      ...processEvidence,
+      issues: [
+        error.message,
+        ...(processEvidence.stdout_tail
+          ? [`stdout_tail=${JSON.stringify(processEvidence.stdout_tail)}`]
+          : []),
+        ...(processEvidence.stderr_tail
+          ? [`stderr_tail=${JSON.stringify(processEvidence.stderr_tail)}`]
+          : []),
+      ],
     };
   }
   const issues = [
@@ -615,7 +762,7 @@ function runCase(tmpRoot, testCase) {
     status: issues.length === 0 ? "pass" : "schema-failed",
     schema: testCase.schema,
     command: schema["x-aidn-command"],
-    exit_code: result.status,
+    exit_code: processEvidence.exit_code,
     issues,
   };
 }
@@ -818,13 +965,14 @@ function main() {
   if (!fs.existsSync(sourceRoot)) {
     throw new Error(`Target fixture not found: ${sourceRoot}`);
   }
-  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-cli-output-contracts-"));
-  let baseRoot = "";
   const results = [];
   const closure = verifyContractClosure();
   const validatorNegativeFixtures = runValidatorNegativeFixtures();
   const metaSchemaMutationFixtures = runMetaSchemaMutationFixtures();
   const strictStdoutDocumentFixtures = runStrictStdoutDocumentFixtures();
+  const processFailureDiagnosticFixtures = runProcessFailureDiagnosticFixtures();
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-cli-output-contracts-"));
+  let baseRoot = "";
   try {
     baseRoot = prepareBaseFixture(sourceRoot, tempRoot);
     for (const [index, testCase] of CONTRACT_CASES.entries()) {
@@ -844,7 +992,8 @@ function main() {
       && closure.issues.length === 0
       && validatorNegativeFixtures.ok
       && metaSchemaMutationFixtures.ok
-      && strictStdoutDocumentFixtures.ok,
+      && strictStdoutDocumentFixtures.ok
+      && processFailureDiagnosticFixtures.ok,
     target_root: sourceRoot,
     fixture_setup: "isolated Git repository with a derived dual-sqlite projection per contract case; bootstrap uses only a local prerequisite command stub and is not installed-client proof",
     tmp_root: args.keepTmp ? tempRoot : "removed",
@@ -855,6 +1004,7 @@ function main() {
       negative_fixtures: validatorNegativeFixtures,
       meta_schema_mutations: metaSchemaMutationFixtures,
       strict_stdout_document: strictStdoutDocumentFixtures,
+      process_failure_diagnostics: processFailureDiagnosticFixtures,
     },
     results,
   };
@@ -868,9 +1018,12 @@ function main() {
         console.log(`  - ${issue}`);
       }
     }
+    console.log(
+      `Process failure diagnostics: ${processFailureDiagnosticFixtures.ok ? "PASS" : "FAIL"}`,
+    );
   }
   if (!output.ok) {
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 
@@ -882,5 +1035,5 @@ try {
     console.error(error.stack);
   }
   printUsage();
-  process.exit(1);
+  process.exitCode = 1;
 }
