@@ -108,8 +108,9 @@ The release workflow has two mutually exclusive paths:
    `hotfix/v${VERSION}` to `main` runs `npm run verify:release` and does not
    publish.
 2. A push to `main` publishes only when GitHub associates `GITHUB_SHA` with
-   exactly one merged PR targeting `main`, and its source is exactly
-   `release/v${VERSION}` or `hotfix/v${VERSION}`.
+   exactly one merged PR targeting `main`, that PR's `merge_commit_sha` equals
+   `GITHUB_SHA`, and its source is exactly `release/v${VERSION}` or
+   `hotfix/v${VERSION}`.
 
 `verify:release` executes the complete obligation set for the announced release
 or main context. This includes the release family plus required contract,
@@ -123,6 +124,7 @@ The publish job refuses:
 - a checkout or `origin/main` that differs from `GITHUB_SHA`;
 - a dirty checkout;
 - a missing or ambiguous merged publication PR;
+- a publication PR whose `merge_commit_sha` differs from `GITHUB_SHA`;
 - a source branch that is not the exact version-matched release or hotfix branch;
 - version drift or non-reproducible output;
 - package topology or sensitivity drift;

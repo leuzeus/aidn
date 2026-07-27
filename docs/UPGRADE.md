@@ -10,8 +10,9 @@ executable and fail-closed:
   release;
 - a `sync/main-to-dev-vX.Y.Z` PR must use the source commit's exact `VERSION`,
   equal current `main` byte-for-byte, and target only `dev`;
-- publication proves one active, version-matched release or hotfix PR associated
-  with the exact `main` SHA and never invokes `npm publish`.
+- publication proves one merged, version-matched release or hotfix PR whose
+  `merge_commit_sha` equals the exact `main` `GITHUB_SHA`, and never invokes
+  `npm publish`.
 
 ## Upgrade to 0.7.0
 

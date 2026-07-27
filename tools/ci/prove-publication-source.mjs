@@ -10,13 +10,20 @@ function defaultGit(args) {
   }).trim();
 }
 
-export function classifyPublicationSource({ pullRequests, version }) {
+export function classifyPublicationSource({ pullRequests, version, githubSha }) {
   if (!Array.isArray(pullRequests)) {
     throw new Error("associated pull-request response must be an array");
   }
   const normalizedVersion = String(version ?? "").trim();
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(normalizedVersion)) {
     throw new Error(`repository VERSION is invalid: ${normalizedVersion || "missing"}`);
+  }
+  const normalizedGithubSha = String(githubSha ?? "");
+  if (!/^[0-9a-f]{40}$/u.test(normalizedGithubSha)) {
+    throw new Error(
+      `publication classification requires an exact 40-character GITHUB_SHA; `
+      + `got ${normalizedGithubSha || "missing"}`,
+    );
   }
   const mergedMainPullRequests = pullRequests.filter(
     (pullRequest) => pullRequest?.base?.ref === "main" && pullRequest?.merged_at != null,
@@ -26,7 +33,15 @@ export function classifyPublicationSource({ pullRequests, version }) {
       `expected exactly one merged pull request targeting main; got ${mergedMainPullRequests.length}`,
     );
   }
-  const branch = String(mergedMainPullRequests[0]?.head?.ref ?? "");
+  const publicationPullRequest = mergedMainPullRequests[0];
+  const mergeCommitSha = String(publicationPullRequest?.merge_commit_sha ?? "");
+  if (mergeCommitSha !== normalizedGithubSha) {
+    throw new Error(
+      `merged publication pull request SHA mismatch: `
+      + `merge_commit_sha=${mergeCommitSha || "missing"}, GITHUB_SHA=${normalizedGithubSha}`,
+    );
+  }
+  const branch = String(publicationPullRequest?.head?.ref ?? "");
   const expected = {
     release: `release/v${normalizedVersion}`,
     hotfix: `hotfix/v${normalizedVersion}`,
@@ -37,7 +52,12 @@ export function classifyPublicationSource({ pullRequests, version }) {
       `expected ${expected.release} or ${expected.hotfix}; got ${branch || "missing"}`,
     );
   }
-  return { kind, branch, version: normalizedVersion };
+  return {
+    kind,
+    branch,
+    version: normalizedVersion,
+    merge_commit_sha: mergeCommitSha,
+  };
 }
 
 export async function provePublicationSource({
@@ -89,6 +109,7 @@ export async function provePublicationSource({
   const classified = classifyPublicationSource({
     pullRequests: await response.json(),
     version,
+    githubSha: sha,
   });
   const dirty = runGit(["status", "--porcelain=v1", "--untracked-files=all"]);
   if (dirty) {

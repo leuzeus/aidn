@@ -163,8 +163,13 @@ workflow-policy gate parses the workflow structure and requires exact
 single-command calls to
 `tools/ci/fetch-branch-policy-sources.mjs` and
 `tools/ci/prove-publication-source.mjs`. The helpers are tested through injected
-Git and GitHub responses, so comments, dormant shell blocks, wildcard hotfix
-routes, or weakened unique-PR assertions cannot satisfy the gate.
+Git and GitHub responses. The three workflow call sites also enforce their
+exact blocking step metadata: the architecture fetch keeps only its required PR
+condition, while the release fetch and publication proof have no step condition,
+and none may declare `continue-on-error`. Publication classification requires
+the unique merged PR's `merge_commit_sha` to equal `GITHUB_SHA`. Comments,
+dormant shell blocks, wildcard hotfix routes, associated-but-different merge
+commits, or weakened unique-PR assertions cannot satisfy the gate.
 The pack topology verifier checks the package tarball surface, the published docs allowlist, and the leak guard for guarded terms in package paths and contents. The tracked-sensitivity verifier separately scans the complete Git-tracked tree, including historical planning documents and fixtures. It uses exact negative probes so weakening or bypassing the detector fails the gate. Current tracked content is neutralized, but older Git objects can retain prior pilot names and local paths; history cleanup may therefore still be required before wider archival or publication.
 The documentation-reference verifier resolves active local Markdown links and
 literal `npm run` references against the tracked tree and `package.json`; its

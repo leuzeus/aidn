@@ -69,6 +69,40 @@ function exactRun(step, command) {
   return String(step?.run ?? "").trim() === command.trim();
 }
 
+function hasOwn(value, key) {
+  return value != null && Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function requireBlockingStep(step, label, issues, { expectedIf } = {}) {
+  if (!step) return;
+  if (expectedIf == null) {
+    if (hasOwn(step, "if")) {
+      issues.push(`${label} must not declare step.if`);
+    }
+  } else if (step.if !== expectedIf) {
+    issues.push(`${label} must use exactly if: ${expectedIf}`);
+  }
+  if (hasOwn(step, "continue-on-error")) {
+    issues.push(`${label} must not declare continue-on-error`);
+  }
+}
+
+function mutateNamedStepProperty(candidate, name, property, value) {
+  const marker = `      - name: ${name}\n`;
+  if (!candidate.includes(marker)) {
+    throw new Error(`unable to find workflow step for mutation: ${name}`);
+  }
+  return candidate.replace(marker, `${marker}        ${property}: ${value}\n`);
+}
+
+function mutateNamedJobProperty(candidate, name, property, value) {
+  const marker = `  ${name}:\n`;
+  if (!candidate.includes(marker)) {
+    throw new Error(`unable to find workflow job for mutation: ${name}`);
+  }
+  return candidate.replace(marker, `${marker}    ${property}: ${value}\n`);
+}
+
 function evaluateWorkflow(candidate) {
   const parsed = parseWorkflow(candidate);
   if (!parsed.model) {
@@ -91,22 +125,44 @@ function evaluateWorkflow(candidate) {
     !== "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}") {
     issues.push("release publish job must be restricted to pushes on refs/heads/main");
   }
+  if (hasOwn(verifyJob, "continue-on-error")) {
+    issues.push("release verify job must not declare continue-on-error");
+  }
+  if (hasOwn(publishJob, "continue-on-error")) {
+    issues.push("release publish job must not declare continue-on-error");
+  }
 
   const fetchStep = namedStep(verifyJob, "Fetch Announced Remote Head");
   if (!fetchStep || !exactRun(fetchStep, fetchCommand)) {
     issues.push(`release verification must call only the canonical fetch helper: ${fetchCommand}`);
   }
+  requireBlockingStep(fetchStep, "release verification fetch", issues);
   const verifyStep = namedStep(verifyJob, "Verify All Context Obligations Without Publishing");
   if (!verifyStep || !exactRun(verifyStep, "npm run verify:release")) {
     issues.push("release PR verify job must run only the complete verify:release aggregate");
   }
+  requireBlockingStep(verifyStep, "release PR verify:release step", issues);
   const proofStep = namedStep(publishJob, "Prove Main And Merged Publication PR");
   if (!proofStep || !exactRun(proofStep, publicationProofCommand)) {
     issues.push(`release publication must call only the canonical proof helper: ${publicationProofCommand}`);
   }
+  requireBlockingStep(proofStep, "release publication proof", issues);
   if (proofStep?.env?.GH_TOKEN !== "${{ github.token }}") {
     issues.push("publication-source proof must receive the scoped github.token");
   }
+  const publicationVerificationStep = namedStep(
+    publishJob,
+    "Verify Version, Provenance, Topology, And Sensitivity",
+  );
+  if (!publicationVerificationStep
+    || !exactRun(publicationVerificationStep, "npm run verify:release")) {
+    issues.push("release publication must run only the complete verify:release aggregate");
+  }
+  requireBlockingStep(
+    publicationVerificationStep,
+    "release publication verify:release step",
+    issues,
+  );
   const buildStep = namedStep(publishJob, "Build Exact Main Commit");
   if (!buildStep
     || !exactRun(
@@ -115,18 +171,22 @@ function evaluateWorkflow(candidate) {
     )) {
     issues.push("release build must use the exact clean GITHUB_SHA");
   }
+  requireBlockingStep(buildStep, "release build step", issues);
   const artifactStep = namedStep(publishJob, "Verify Built Checksums And Provenance");
   if (!artifactStep || !exactRun(artifactStep, "npm run perf:verify-release-artifacts")) {
     issues.push("release publication must verify built checksums and provenance");
   }
+  requireBlockingStep(artifactStep, "release artifact verification step", issues);
   const refusalStep = namedStep(publishJob, "Refuse Existing Tag Or Release");
   if (!refusalStep || !exactRun(refusalStep, refusalScript)) {
     issues.push("tag/release refusal must match the canonical fail-closed script");
   }
+  requireBlockingStep(refusalStep, "tag/release refusal step", issues);
   const createStep = namedStep(publishJob, "Create Annotated Tag And GitHub Release");
   if (!createStep || !exactRun(createStep, publicationScript)) {
     issues.push("annotated-tag and GitHub Release creation must match the canonical script");
   }
+  requireBlockingStep(createStep, "tag and GitHub Release creation step", issues);
   const activeRuns = [
     ...(Array.isArray(verifyJob?.steps) ? verifyJob.steps : []),
     ...(Array.isArray(publishJob?.steps) ? publishJob.steps : []),
@@ -140,11 +200,13 @@ function evaluateWorkflow(candidate) {
 function pullRequest(branch, {
   base = "main",
   mergedAt = "2026-07-27T00:00:00Z",
+  mergeCommitSha = "a".repeat(40),
 } = {}) {
   return {
     base: { ref: base },
     head: { ref: branch },
     merged_at: mergedAt,
+    merge_commit_sha: mergeCommitSha,
   };
 }
 
@@ -152,6 +214,7 @@ async function evaluateHelperBehavior() {
   const issues = [];
   const cases = [];
   const version = "0.7.0";
+  const sha = "a".repeat(40);
   const scenarios = [
     {
       name: "exact_release_pass",
@@ -197,6 +260,13 @@ async function evaluateHelperBehavior() {
       pullRequests: [pullRequest("release/v0.7.1")],
       expectedError: true,
     },
+    {
+      name: "associated_pr_merge_sha_mismatch_fail",
+      pullRequests: [
+        pullRequest("release/v0.7.0", { mergeCommitSha: "b".repeat(40) }),
+      ],
+      expectedError: true,
+    },
   ];
   for (const scenario of scenarios) {
     let result = null;
@@ -205,6 +275,7 @@ async function evaluateHelperBehavior() {
       result = classifyPublicationSource({
         pullRequests: scenario.pullRequests,
         version,
+        githubSha: sha,
       });
     } catch (caught) {
       error = caught;
@@ -221,7 +292,6 @@ async function evaluateHelperBehavior() {
     });
   }
 
-  const sha = "a".repeat(40);
   const gitCalls = [];
   let requestedUrl = "";
   let output = "";
@@ -369,11 +439,130 @@ const negativeProbes = {
       + `            ${fetchCommand}\n`
       + "          fi",
   )),
+  release_fetch_if_false_rejected: candidateRejected(mutateNamedStepProperty(
+    workflow,
+    "Fetch Announced Remote Head",
+    "if",
+    "${{ false }}",
+  )),
+  release_fetch_continue_on_error_rejected: candidateRejected(mutateNamedStepProperty(
+    workflow,
+    "Fetch Announced Remote Head",
+    "continue-on-error",
+    "true",
+  )),
+  publication_proof_if_false_rejected: candidateRejected(mutateNamedStepProperty(
+    workflow,
+    "Prove Main And Merged Publication PR",
+    "if",
+    "${{ false }}",
+  )),
+  publication_proof_continue_on_error_rejected: candidateRejected(mutateNamedStepProperty(
+    workflow,
+    "Prove Main And Merged Publication PR",
+    "continue-on-error",
+    "true",
+  )),
+  release_verify_job_continue_on_error_rejected: candidateRejected(mutateNamedJobProperty(
+    workflow,
+    "verify",
+    "continue-on-error",
+    "true",
+  )),
+  release_publish_job_continue_on_error_rejected: candidateRejected(mutateNamedJobProperty(
+    workflow,
+    "publish",
+    "continue-on-error",
+    "true",
+  )),
+  release_pr_aggregate_if_false_rejected: candidateRejected(mutateNamedStepProperty(
+    workflow,
+    "Verify All Context Obligations Without Publishing",
+    "if",
+    "${{ false }}",
+  )),
+  release_pr_aggregate_continue_on_error_rejected: candidateRejected(mutateNamedStepProperty(
+    workflow,
+    "Verify All Context Obligations Without Publishing",
+    "continue-on-error",
+    "true",
+  )),
+  publication_aggregate_if_false_rejected: candidateRejected(mutateNamedStepProperty(
+    workflow,
+    "Verify Version, Provenance, Topology, And Sensitivity",
+    "if",
+    "${{ false }}",
+  )),
+  publication_aggregate_continue_on_error_rejected: candidateRejected(
+    mutateNamedStepProperty(
+      workflow,
+      "Verify Version, Provenance, Topology, And Sensitivity",
+      "continue-on-error",
+      "true",
+    ),
+  ),
+  tag_release_refusal_if_false_rejected: candidateRejected(mutateNamedStepProperty(
+    workflow,
+    "Refuse Existing Tag Or Release",
+    "if",
+    "${{ false }}",
+  )),
+  tag_release_refusal_continue_on_error_rejected: candidateRejected(
+    mutateNamedStepProperty(
+      workflow,
+      "Refuse Existing Tag Or Release",
+      "continue-on-error",
+      "true",
+    ),
+  ),
+  release_build_if_false_rejected: candidateRejected(mutateNamedStepProperty(
+    workflow,
+    "Build Exact Main Commit",
+    "if",
+    "${{ false }}",
+  )),
+  release_build_continue_on_error_rejected: candidateRejected(mutateNamedStepProperty(
+    workflow,
+    "Build Exact Main Commit",
+    "continue-on-error",
+    "true",
+  )),
+  artifact_verification_if_false_rejected: candidateRejected(mutateNamedStepProperty(
+    workflow,
+    "Verify Built Checksums And Provenance",
+    "if",
+    "${{ false }}",
+  )),
+  artifact_verification_continue_on_error_rejected: candidateRejected(
+    mutateNamedStepProperty(
+      workflow,
+      "Verify Built Checksums And Provenance",
+      "continue-on-error",
+      "true",
+    ),
+  ),
+  tag_release_creation_if_false_rejected: candidateRejected(mutateNamedStepProperty(
+    workflow,
+    "Create Annotated Tag And GitHub Release",
+    "if",
+    "${{ false }}",
+  )),
+  tag_release_creation_continue_on_error_rejected: candidateRejected(
+    mutateNamedStepProperty(
+      workflow,
+      "Create Annotated Tag And GitHub Release",
+      "continue-on-error",
+      "true",
+    ),
+  ),
   ambiguous_main_pr_logic_rejected: helperBehavior.cases
     .some((item) => item.name === "ambiguous_merged_main_pr_fail"
       && item.status === "EXPECTED_FAIL"),
   hotfix_lookalike_rejected: helperBehavior.cases
     .some((item) => item.name === "hotfix_lookalike_fail"
+      && item.status === "EXPECTED_FAIL"),
+  associated_pr_merge_sha_mismatch_rejected: helperBehavior.cases
+    .some((item) => item.name === "associated_pr_merge_sha_mismatch_fail"
       && item.status === "EXPECTED_FAIL"),
   npm_publish_rejected: candidateRejected(workflow.replace(
     "        run: npm run perf:verify-release-artifacts",
@@ -392,7 +581,9 @@ const output = {
   ok: issues.length === 0,
   status: issues.length === 0 ? "PASS" : "FAIL",
   workflow: workflowPath,
-  publish_trigger: "push main after one exact version-matched release/* or hotfix/* PR",
+  publish_trigger:
+    "push main after one exact version-matched release/* or hotfix/* PR "
+    + "whose merge_commit_sha equals GITHUB_SHA",
   npm_publish: false,
   verification_selector: "catalog obligations",
   publication_sources: ["release/vX.Y.Z", "hotfix/vX.Y.Z"],

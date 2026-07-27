@@ -44,11 +44,13 @@ Rules:
   `dev`; its version suffix must equal `VERSION` at that exact source commit and
   it never publishes
 - publication occurs only on a push to `main` associated with exactly one
-  merged PR whose source is exactly `release/v${VERSION}` or
-  `hotfix/v${VERSION}`
+  merged PR whose `merge_commit_sha` equals `GITHUB_SHA` and whose source is
+  exactly `release/v${VERSION}` or `hotfix/v${VERSION}`
 - workflow-critical remote fetch and publication-source proof run through
-  canonical one-command Node helpers whose behavior is tested with injected Git
-  and GitHub responses; retained text or dormant shell blocks are not evidence
+  canonical one-command Node helpers in blocking steps whose exact `if` and
+  `continue-on-error` metadata is governed; their behavior is tested with
+  injected Git and GitHub responses, and retained text or dormant shell blocks
+  are not evidence
 - the publish job creates an annotated tag and GitHub Release only after clean-commit, reproducibility, topology, sensitivity, checksum, and provenance checks
 - an existing tag or release is a hard failure
 - the release workflow never runs `npm publish`
