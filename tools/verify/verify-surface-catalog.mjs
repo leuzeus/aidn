@@ -36,6 +36,20 @@ function exists(relativePath) {
   return Boolean(relativePath) && fs.existsSync(path.resolve(repoRoot, relativePath));
 }
 
+function trackedFileMode(relativePath) {
+  const result = spawnSync("git", ["ls-files", "--stage", "--", relativePath], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    shell: false,
+  });
+  const match = String(result.stdout ?? "").trim().match(/^([0-9]{6})\s/);
+  return {
+    ok: result.status === 0 && Boolean(match),
+    exit_code: result.status,
+    mode: match?.[1] ?? null,
+  };
+}
+
 function commandReferenceIssues(catalog) {
   const issues = [];
   const commands = new Set(
@@ -260,6 +274,15 @@ function runBootstrapEffectProbes(catalog) {
 function main() {
   const catalogPath = path.join(repoRoot, SURFACE_CATALOG_PATH);
   const issues = [];
+  const cliEntrypointMode = trackedFileMode("bin/aidn.mjs");
+  if (!cliEntrypointMode.ok) {
+    issues.push("bin/aidn.mjs: unable to resolve tracked Git mode");
+  } else if (cliEntrypointMode.mode !== "100755") {
+    issues.push(
+      `bin/aidn.mjs: package bin entrypoint must be tracked executable `
+      + `(100755, got ${cliEntrypointMode.mode})`,
+    );
+  }
   if (!fs.existsSync(catalogPath)) {
     issues.push(`missing catalog: ${SURFACE_CATALOG_PATH}`);
   }
@@ -343,6 +366,11 @@ function main() {
       ).length ?? 0,
       forbidden_sentinel: "unclassified-internal",
       bootstrap_probes: bootstrapEffectProbes,
+    },
+    cli_entrypoint_mode: {
+      path: "bin/aidn.mjs",
+      expected: "100755",
+      ...cliEntrypointMode,
     },
     issues,
   };
