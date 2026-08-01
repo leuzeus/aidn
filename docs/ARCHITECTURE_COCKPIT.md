@@ -32,12 +32,14 @@ Purpose:
 - [ADR-0004 public CLI JSON contracts](./ADR/ADR-0004-public-cli-json-contracts.md)
 - [ADR-0005 read/write CLI semantics](./ADR/ADR-0005-read-write-cli-semantics.md)
 - [ADR-0006 information model](./ADR/ADR-0006-information-model.md)
+- [ADR-0007 local-first federation boundary](./ADR/ADR-0007-local-first-federation-boundary.md)
 - [ADR-0008 shared coordination ports](./ADR/ADR-0008-shared-coordination-ports.md)
 - [ADR-0009 release versioning provenance](./ADR/ADR-0009-release-versioning-provenance.md)
+- [ADR-0010 adaptive repository governance](./ADR/ADR-0010-adaptive-repository-governance.md)
 
 ## Runtime Verification
 
-- `architecture-gates.yml`
+- `governance-admission.yml`
 - `npm run perf:verify-cli-effect-policy`
 - `npm run perf:verify-cli-no-implicit-write`
 - `npm run perf:verify-cli-output-contracts`

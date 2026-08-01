@@ -24,10 +24,15 @@ A task is done only when:
 - every tracked GitHub Actions workflow parses with the locked YAML dependency
   before structural trigger, job, command, and ordering policies are evaluated
 - every executed gate leaves the tracked and untracked, non-ignored checkout state unchanged
+- pull-request governance emits one `governance-route.v1` artifact, executes
+  each selected family at most once, and exposes the exact `Governance Admission`
+  rollup required by branch protection
 - every failed gate retains a bounded, redacted exit code, signal, and
   stdout/stderr tail; named fixture assertions and cleanup results must survive
   through both direct output and the family summary
 - required gate preconditions fail diagnostically when unavailable; they are not reported as `SKIP`
+- manual-only PostgreSQL smoke evidence remains outside pull-request admission
+  and is reported separately as `PASS`, `SKIP`, or `UNAVAILABLE`
 - any architectural decision change is reflected in the ADR
 
 ## Validation Commands

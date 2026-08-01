@@ -12,6 +12,7 @@ import {
   branchSourceRefspecs,
   fetchBranchPolicySources,
 } from "../ci/fetch-branch-policy-sources.mjs";
+import { runGovernanceRouteFixtureSuite } from "./verify-governance-route-fixtures.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const catalogPath = path.join(repoRoot, "package", "catalogs", "gates.v1.json");
@@ -26,6 +27,7 @@ const workflowModels = workflowSources.map(({ path: relativePath, text }) => (
 const issues = [];
 const families = new Set();
 let packageLock = null;
+let governanceRouteFixtures = null;
 
 const workflowSyntaxResults = workflowSources.map(({ path: relativePath, text }) => ({
   path: relativePath,
@@ -99,6 +101,11 @@ function candidateRejected({
 if (catalog.schema_version !== 2) {
   issues.push("gate catalog schema_version must be 2");
 }
+try {
+  governanceRouteFixtures = runGovernanceRouteFixtureSuite(catalog);
+} catch (error) {
+  issues.push(`governance route fixtures failed: ${error.message}`);
+}
 if (JSON.stringify(catalog.outcomes) !== JSON.stringify(["PASS", "FAIL", "SKIP"])) {
   issues.push("outcomes must be exactly PASS, FAIL, SKIP");
 }
@@ -115,10 +122,34 @@ for (const gate of catalog.gates ?? []) {
   if (!catalog.condition_values?.includes(gate.condition)) {
     issues.push(`${gate.id}: invalid condition ${gate.condition}`);
   }
+  if (gate.execution_scope != null
+    && !["admission", "manual-only"].includes(gate.execution_scope)) {
+    issues.push(`${gate.id}: invalid execution_scope ${gate.execution_scope}`);
+  }
   for (const context of ["dev", "main", "release"]) {
     if (!catalog.obligation_values?.includes(gate.obligation?.[context])) {
       issues.push(`${gate.id}: invalid ${context} obligation`);
     }
+  }
+}
+const manualOnlyGateIds = (catalog.gates ?? [])
+  .filter((gate) => gate.execution_scope === "manual-only")
+  .map((gate) => gate.id)
+  .sort();
+if (JSON.stringify(manualOnlyGateIds) !== JSON.stringify([
+  "runtime-postgres-persistence-live-cleanup",
+  "runtime-postgres-shared-live-cleanup",
+])) {
+  issues.push("manual-only gates must be exactly the two optional live PostgreSQL smokes");
+}
+for (const gate of (catalog.gates ?? []).filter(
+  (item) => item.execution_scope === "manual-only",
+)) {
+  if (Object.values(gate.obligation ?? {}).some((value) => value === "required")) {
+    issues.push(`${gate.id}: manual-only gate cannot be a required obligation`);
+  }
+  if (gate.job !== "runtime-ops-live-smoke/live-smoke") {
+    issues.push(`${gate.id}: manual-only gate must remain in the live-smoke workflow`);
   }
 }
 for (const family of catalog.required_families ?? []) {
@@ -184,19 +215,13 @@ const substitutedScriptCatalog = clone(catalog);
 substitutedScriptCatalog.gates.find((gate) => gate.id === "runtime-db-runtime-cli").script
   = "perf:verify-db-schema-migrations";
 
-const devTriggerCommentMutation = releaseText.replace(
-  "branches: [dev, main]",
-  "branches: [main]\n    # branches: [dev, main]",
-);
 const commandCommentMutation = releaseText.replaceAll(
   "run: npm run verify:release",
   "run: npm run perf:verify-release-version\n        # run: npm run verify:release",
 );
-const missingJobMutation = releaseText.replace("  verify:\n", "  verify_removed:\n");
-const duplicateJobMutation = `${releaseText}\n  verify:\n    runs-on: ubuntu-latest\n    steps: []\n`;
+const missingJobMutation = releaseText.replace("  publish:\n", "  publish_removed:\n");
+const duplicateJobMutation = `${releaseText}\n  publish:\n    runs-on: ubuntu-latest\n    steps: []\n`;
 
-const architecturePath = ".github/workflows/architecture-gates.yml";
-const architectureText = fs.readFileSync(path.join(repoRoot, architecturePath), "utf8");
 const canonicalBranchFetchCommand = "node tools/ci/fetch-branch-policy-sources.mjs";
 function hasOwn(value, key) {
   return value != null && Object.prototype.hasOwnProperty.call(value, key);
@@ -218,7 +243,19 @@ function mutateNamedJobProperty(source, name, property, value) {
   return source.replace(marker, `${marker}    ${property}: ${value}\n`);
 }
 
-function evaluateArchitectureBranchSourceFetch(source) {
+const admissionPath = ".github/workflows/governance-admission.yml";
+const admissionText = fs.readFileSync(path.join(repoRoot, admissionPath), "utf8");
+const admissionRunnerCommand = "node tools/verify/run-gate-family.mjs "
+  + "\"${{ matrix.family }}\" --context "
+  + "\"${{ needs.classify.outputs.context }}\" --admission";
+const admissionJobIds = Object.freeze(["classify", "gates", "admission"]);
+
+function namedStep(job, name) {
+  const matches = (job?.steps ?? []).filter((step) => step.name === name);
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function evaluateGovernanceAdmissionExecutable(source) {
   const sourceIssues = [];
   const document = parseDocument(source, {
     prettyErrors: true,
@@ -227,57 +264,102 @@ function evaluateArchitectureBranchSourceFetch(source) {
   });
   if (document.errors.length > 0) {
     return document.errors.map((error) => (
-      `${architecturePath}: invalid YAML while evaluating branch-source fetch `
+      `${admissionPath}: invalid YAML while evaluating executable admission `
       + `(${String(error.message).replace(/\s+/gu, " ").trim()})`
     ));
   }
   const model = document.toJS();
-  const cleanlinessJob = model.jobs?.cleanliness;
-  if (hasOwn(cleanlinessJob, "if")) {
-    sourceIssues.push("architecture cleanliness job must not declare job.if");
-  }
-  if (hasOwn(cleanlinessJob, "continue-on-error")) {
-    sourceIssues.push("architecture cleanliness job must not declare continue-on-error");
-  }
-  const fetchSteps = cleanlinessJob?.steps?.filter(
-    (step) => step.name === "Fetch Announced Remote Head",
-  ) ?? [];
-  if (fetchSteps.length !== 1
-    || String(fetchSteps[0].run ?? "").trim() !== canonicalBranchFetchCommand) {
+  const unexpectedJobIds = Object.keys(model.jobs ?? {})
+    .filter((jobId) => !admissionJobIds.includes(jobId));
+  if (unexpectedJobIds.length > 0
+    || admissionJobIds.some((jobId) => !hasOwn(model.jobs ?? {}, jobId))) {
     sourceIssues.push(
-      `architecture branch gate must call only the canonical provenance helper: `
-      + canonicalBranchFetchCommand,
+      `admission workflow jobs must be exactly: ${admissionJobIds.join(", ")}`,
     );
   }
-  const fetchStep = fetchSteps.length === 1 ? fetchSteps[0] : null;
-  if (fetchStep?.if !== "${{ github.event_name == 'pull_request' }}") {
-    sourceIssues.push(
-      "architecture branch-source fetch must use exactly "
-      + "if: ${{ github.event_name == 'pull_request' }}",
-    );
+  const classify = model.jobs?.classify;
+  const gates = model.jobs?.gates;
+  const admission = model.jobs?.admission;
+  if (hasOwn(classify, "if") || hasOwn(classify, "continue-on-error")) {
+    sourceIssues.push("admission classification job must be unconditional and blocking");
+  }
+  const routeStep = namedStep(classify, "Resolve Governance Route");
+  if (!routeStep
+    || String(routeStep.run ?? "").split("node tools/verify/resolve-governance-route.mjs").length - 1
+      !== 1) {
+    sourceIssues.push("admission must execute the canonical governance route resolver once");
+  }
+  const upload = namedStep(classify, "Upload Governance Route");
+  if (!upload || upload.uses !== "actions/upload-artifact@v4" || upload.if !== "always()") {
+    sourceIssues.push("admission must always upload the governance route artifact");
+  }
+  const classificationIntegrity = namedStep(classify, "Enforce Classification Integrity");
+  if (!classificationIntegrity
+    || classificationIntegrity.if !== "always()"
+    || !String(classificationIntegrity.run ?? "").includes("!route.ok")) {
+    sourceIssues.push("admission must fail on classification integrity errors");
+  }
+  if (gates?.if
+    !== "${{ needs.classify.result == 'success' && needs.classify.outputs.family_count != '0' }}"
+    || gates?.strategy?.["fail-fast"] !== false
+    || gates?.strategy?.matrix?.family
+      !== "${{ fromJSON(needs.classify.outputs.families) }}") {
+    sourceIssues.push("admission gate matrix must use the classified unique family list");
+  }
+  if (hasOwn(gates, "continue-on-error")) {
+    sourceIssues.push("admission gate matrix must not declare continue-on-error");
+  }
+  const gateSteps = gates?.steps ?? [];
+  const fetchStep = namedStep(gates, "Fetch Announced Remote Head");
+  if (!fetchStep
+    || String(fetchStep.run ?? "").trim() !== canonicalBranchFetchCommand
+    || fetchStep.if
+      !== "${{ matrix.family == 'cleanliness' && github.event_name == 'pull_request' }}") {
+    sourceIssues.push(`admission cleanliness must call the canonical fetch helper: ${canonicalBranchFetchCommand}`);
   }
   if (hasOwn(fetchStep, "continue-on-error")) {
-    sourceIssues.push("architecture branch-source fetch must not declare continue-on-error");
+    sourceIssues.push("admission branch-source fetch must not declare continue-on-error");
   }
-  const cleanlinessSteps = cleanlinessJob?.steps?.filter(
-    (step) => step.name === "Verify Cleanliness With Remote Provenance",
-  ) ?? [];
-  const cleanlinessStep = cleanlinessSteps.length === 1 ? cleanlinessSteps[0] : null;
-  if (cleanlinessSteps.length !== 1
-    || String(cleanlinessStep?.run ?? "").trim() !== "npm run verify:cleanliness") {
-    sourceIssues.push(
-      "architecture branch gate must run exactly one blocking verify:cleanliness step",
-    );
+  const installStep = namedStep(gates, "Install Locked Gate Dependencies");
+  const installIndex = gateSteps.indexOf(installStep);
+  const runnerStep = namedStep(gates, "Run Selected Family Once");
+  const runnerIndex = gateSteps.indexOf(runnerStep);
+  if (!installStep
+    || String(installStep.run ?? "").trim()
+      !== "npm ci --include=dev --ignore-scripts --no-audit --no-fund"
+    || installStep.if
+      !== "${{ matrix.family == 'cleanliness' || matrix.family == 'release' }}"
+    || installIndex < 0
+    || runnerIndex < 0
+    || installIndex >= runnerIndex) {
+    sourceIssues.push("dependency-bearing admission families must install locked dev dependencies first");
   }
-  if (hasOwn(cleanlinessStep, "if")) {
-    sourceIssues.push("architecture verify:cleanliness step must not declare step.if");
+  if (!runnerStep
+    || String(runnerStep.run ?? "").trim() !== admissionRunnerCommand
+    || String(source).split(admissionRunnerCommand).length - 1 !== 1) {
+    sourceIssues.push("admission must execute each selected family through one canonical runner call");
   }
-  if (hasOwn(cleanlinessStep, "continue-on-error")) {
-    sourceIssues.push("architecture verify:cleanliness step must not declare continue-on-error");
+  if (hasOwn(runnerStep, "if") || hasOwn(runnerStep, "continue-on-error")) {
+    sourceIssues.push("admission family execution must be unconditional and blocking inside its matrix cell");
+  }
+  const rollupStep = namedStep(admission, "Enforce Required Child Results");
+  if (admission?.name !== "Governance Admission"
+    || admission?.if !== "always()"
+    || JSON.stringify(admission?.needs) !== JSON.stringify(["classify", "gates"])
+    || !rollupStep
+    || String(rollupStep.run ?? "").trim()
+      !== "node tools/verify/enforce-governance-admission.mjs"
+    || rollupStep.env?.AIDN_CLASSIFICATION_RESULT !== "${{ needs.classify.result }}"
+    || rollupStep.env?.AIDN_GATES_RESULT !== "${{ needs.gates.result }}"
+    || rollupStep.env?.AIDN_FAMILY_COUNT !== "${{ needs.classify.outputs.family_count }}"
+    || rollupStep.env?.AIDN_GOVERNANCE_LANE !== "${{ needs.classify.outputs.lane }}"
+    || hasOwn(rollupStep, "continue-on-error")
+    || hasOwn(admission, "continue-on-error")) {
+    sourceIssues.push("Governance Admission rollup must always fail on classification or required child failure");
   }
   return sourceIssues;
 }
-issues.push(...evaluateArchitectureBranchSourceFetch(architectureText));
+issues.push(...evaluateGovernanceAdmissionExecutable(admissionText));
 const capturedFetchCalls = [];
 const fetchHelperResult = fetchBranchPolicySources({
   headRef: "codex/governance-probe",
@@ -312,50 +394,128 @@ for (const [proof, passed] of Object.entries(fetchHelperBehavior)) {
     issues.push(`canonical branch-source fetch helper proof failed: ${proof}`);
   }
 }
-const missingGateDependencyInstallMutation = architectureText.replace(
-  /      - name: Install Locked Gate Dependencies\r?\n        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund\r?\n/,
+const missingGateDependencyInstallMutation = admissionText.replace(
+  /      - name: Install Locked Gate Dependencies[\s\S]*?        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund\r?\n/,
   "",
 );
-const missingBranchSourceFetchMutation = architectureText.replace(
+const missingBranchSourceFetchMutation = admissionText.replace(
   `        run: ${canonicalBranchFetchCommand}`,
   "        run: |\n"
     + "          if false; then\n"
     + `            ${canonicalBranchFetchCommand}\n`
     + "          fi",
 );
-const architectureFetchIfFalseMutation = architectureText.replace(
-  "        if: ${{ github.event_name == 'pull_request' }}",
+const admissionFetchIfFalseMutation = admissionText.replace(
+  "        if: ${{ matrix.family == 'cleanliness' && github.event_name == 'pull_request' }}",
   "        if: ${{ false }}",
 );
-const architectureFetchContinueOnErrorMutation = mutateNamedStepProperty(
-  architectureText,
+const admissionFetchContinueOnErrorMutation = mutateNamedStepProperty(
+  admissionText,
   "Fetch Announced Remote Head",
   "continue-on-error",
   "true",
 );
-const architectureJobIfFalseMutation = mutateNamedJobProperty(
-  architectureText,
-  "cleanliness",
-  "if",
-  "${{ false }}",
+const admissionGatesIfFalseMutation = admissionText.replace(
+  "    if: ${{ needs.classify.result == 'success' && needs.classify.outputs.family_count != '0' }}",
+  "    if: ${{ false }}",
 );
-const architectureJobContinueOnErrorMutation = mutateNamedJobProperty(
-  architectureText,
-  "cleanliness",
+const admissionGatesContinueOnErrorMutation = mutateNamedJobProperty(
+  admissionText,
+  "gates",
   "continue-on-error",
   "true",
 );
-const architectureCleanlinessIfFalseMutation = mutateNamedStepProperty(
-  architectureText,
-  "Verify Cleanliness With Remote Provenance",
+const admissionRollupIfFalseMutation = admissionText.replace(
+  "  admission:\n    name: Governance Admission\n    needs: [classify, gates]\n    if: always()",
+  "  admission:\n    name: Governance Admission\n    needs: [classify, gates]\n    if: ${{ false }}",
+);
+const admissionRollupContinueOnErrorMutation = mutateNamedJobProperty(
+  admissionText,
+  "admission",
+  "continue-on-error",
+  "true",
+);
+const admissionRollupBypassMutation = admissionText.replace(
+  "        run: node tools/verify/enforce-governance-admission.mjs",
+  "        run: echo bypassed",
+);
+const admissionRunnerDuplicateMutation = admissionText.replace(
+  `        run: ${admissionRunnerCommand}`,
+  `        run: |\n          ${admissionRunnerCommand}\n          ${admissionRunnerCommand}`,
+);
+const admissionRunnerContinueOnErrorMutation = mutateNamedStepProperty(
+  admissionText,
+  "Run Selected Family Once",
+  "continue-on-error",
+  "true",
+);
+const admissionUnexpectedJobMutation = `${admissionText.trimEnd()}
+
+  compatibility-probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo bypassed
+`;
+const admissionClassificationIfFalseMutation = mutateNamedJobProperty(
+  admissionText,
+  "classify",
   "if",
   "${{ false }}",
 );
-const architectureCleanlinessContinueOnErrorMutation = mutateNamedStepProperty(
-  architectureText,
-  "Verify Cleanliness With Remote Provenance",
-  "continue-on-error",
-  "true",
+const missingAdmissionResolverMutation = admissionText.replace(
+  "node tools/verify/resolve-governance-route.mjs",
+  "echo governance-route-bypassed",
+);
+const missingAdmissionIntegrityMutation = admissionText.replace(
+  /      - name: Enforce Classification Integrity[\s\S]*?\n\n  gates:/u,
+  "\n  gates:",
+);
+
+const performanceWorkflowPath = ".github/workflows/perf-kpi.yml";
+const performanceWorkflowText = fs.readFileSync(
+  path.join(repoRoot, performanceWorkflowPath),
+  "utf8",
+);
+function sameSet(actual, expected) {
+  return JSON.stringify([...new Set(actual ?? [])].sort())
+    === JSON.stringify([...new Set(expected ?? [])].sort());
+}
+function evaluatePerformanceWorkflowRouting(source) {
+  const sourceIssues = [];
+  const document = parseDocument(source, {
+    prettyErrors: true,
+    strict: true,
+    uniqueKeys: true,
+  });
+  if (document.errors.length > 0) {
+    return document.errors.map((error) => (
+      `${performanceWorkflowPath}: invalid YAML while evaluating performance routing `
+      + `(${String(error.message).replace(/\s+/gu, " ").trim()})`
+    ));
+  }
+  const model = document.toJS();
+  if (!sameSet(model.on?.pull_request?.branches, ["dev", "main"])) {
+    sourceIssues.push("Perf KPI pull requests must target exactly dev and main");
+  }
+  if (!sameSet(
+    model.on?.pull_request?.paths,
+    catalog.governance_route_policy.performance_patterns,
+  )) {
+    sourceIssues.push("Perf KPI pull-request paths must match governance performance policy");
+  }
+  if (model.on?.workflow_dispatch == null || !model.jobs?.["perf-kpi"]) {
+    sourceIssues.push("Perf KPI must remain manually dispatchable");
+  }
+  return sourceIssues;
+}
+issues.push(...evaluatePerformanceWorkflowRouting(performanceWorkflowText));
+const overbroadPerformanceMutation = performanceWorkflowText.replace(
+  /    paths:[\s\S]*?  workflow_dispatch:/u,
+  "  workflow_dispatch:",
+);
+const missingPerformanceDispatchMutation = performanceWorkflowText.replace(
+  /  workflow_dispatch:[\s\S]*?\n\npermissions:/u,
+  "\npermissions:",
 );
 
 const liveSmokePath = ".github/workflows/runtime-ops-live-smoke.yml";
@@ -391,18 +551,37 @@ const liveSmokeOrderMutation = liveSmokeText
   );
 
 const negativeProbes = {
+  governance_route_resolver_required:
+    evaluateGovernanceAdmissionExecutable(missingAdmissionResolverMutation).length > 0,
+  governance_route_integrity_required:
+    evaluateGovernanceAdmissionExecutable(missingAdmissionIntegrityMutation).length > 0,
+  admission_family_runner_single_execution_required:
+    evaluateGovernanceAdmissionExecutable(admissionRunnerDuplicateMutation).length > 0,
+  admission_family_runner_blocking:
+    evaluateGovernanceAdmissionExecutable(admissionRunnerContinueOnErrorMutation).length > 0,
+  admission_gate_matrix_condition_required:
+    evaluateGovernanceAdmissionExecutable(admissionGatesIfFalseMutation).length > 0,
+  admission_gate_matrix_blocking:
+    evaluateGovernanceAdmissionExecutable(admissionGatesContinueOnErrorMutation).length > 0,
+  admission_rollup_always_required:
+    evaluateGovernanceAdmissionExecutable(admissionRollupIfFalseMutation).length > 0,
+  admission_rollup_blocking:
+    evaluateGovernanceAdmissionExecutable(admissionRollupContinueOnErrorMutation).length > 0,
+  admission_rollup_child_failure_required:
+    evaluateGovernanceAdmissionExecutable(admissionRollupBypassMutation).length > 0,
+  admission_extra_job_rejected:
+    evaluateGovernanceAdmissionExecutable(admissionUnexpectedJobMutation).length > 0,
+  admission_classification_cannot_be_disabled:
+    evaluateGovernanceAdmissionExecutable(admissionClassificationIfFalseMutation).length > 0,
+  overbroad_performance_pr_routing_rejected:
+    evaluatePerformanceWorkflowRouting(overbroadPerformanceMutation).length > 0,
+  performance_manual_dispatch_required:
+    evaluatePerformanceWorkflowRouting(missingPerformanceDispatchMutation).length > 0,
   required_to_skip_rejected: candidateRejected({ candidateCatalog: weakenedCatalog }),
   self_cancelling_cleanliness_condition_rejected: candidateRejected({
     candidateCatalog: selfCancellingCleanlinessCatalog,
   }),
   substituted_script_rejected: candidateRejected({ candidateCatalog: substitutedScriptCatalog }),
-  comment_only_dev_trigger_rejected: candidateRejected({
-    candidateWorkflowSources: replaceWorkflowSource(
-      workflowSources,
-      releasePath,
-      devTriggerCommentMutation,
-    ),
-  }),
   comment_only_release_command_rejected: candidateRejected({
     candidateWorkflowSources: replaceWorkflowSource(
       workflowSources,
@@ -424,30 +603,15 @@ const negativeProbes = {
       duplicateJobMutation,
     ),
   }),
-  gate_dependency_install_required: candidateRejected({
-    candidateWorkflowSources: replaceWorkflowSource(
-      workflowSources,
-      architecturePath,
-      missingGateDependencyInstallMutation,
-    ),
-  }),
+  gate_dependency_install_required:
+    evaluateGovernanceAdmissionExecutable(missingGateDependencyInstallMutation).length > 0,
   branch_source_fetch_required:
-    evaluateArchitectureBranchSourceFetch(missingBranchSourceFetchMutation).length > 0,
-  architecture_fetch_if_false_rejected:
-    evaluateArchitectureBranchSourceFetch(architectureFetchIfFalseMutation).length > 0,
-  architecture_fetch_continue_on_error_rejected:
-    evaluateArchitectureBranchSourceFetch(
-      architectureFetchContinueOnErrorMutation,
-    ).length > 0,
-  architecture_job_if_false_rejected:
-    evaluateArchitectureBranchSourceFetch(architectureJobIfFalseMutation).length > 0,
-  architecture_job_continue_on_error_rejected:
-    evaluateArchitectureBranchSourceFetch(architectureJobContinueOnErrorMutation).length > 0,
-  architecture_cleanliness_if_false_rejected:
-    evaluateArchitectureBranchSourceFetch(architectureCleanlinessIfFalseMutation).length > 0,
-  architecture_cleanliness_continue_on_error_rejected:
-    evaluateArchitectureBranchSourceFetch(
-      architectureCleanlinessContinueOnErrorMutation,
+    evaluateGovernanceAdmissionExecutable(missingBranchSourceFetchMutation).length > 0,
+  admission_fetch_if_false_rejected:
+    evaluateGovernanceAdmissionExecutable(admissionFetchIfFalseMutation).length > 0,
+  admission_fetch_continue_on_error_rejected:
+    evaluateGovernanceAdmissionExecutable(
+      admissionFetchContinueOnErrorMutation,
     ).length > 0,
   live_smoke_install_required: candidateRejected({
     candidateWorkflowSources: replaceWorkflowSource(
@@ -520,6 +684,11 @@ const output = {
     selector: "obligations",
     contexts: ["main", "release"],
     critical_gates: ["codex-pack-topology", "security-tracked-sensitivity"],
+  },
+  governance_route: governanceRouteFixtures,
+  performance_routing: {
+    pull_request_paths: catalog.governance_route_policy.performance_patterns,
+    manual_dispatch: true,
   },
   negative_probes: negativeProbes,
   issues,

@@ -1,8 +1,6 @@
 name: Release
 
 on:
-  pull_request:
-    branches: [dev, main]
   push:
     branches: [main]
 
@@ -10,28 +8,6 @@ permissions:
   contents: read
 
 jobs:
-  verify:
-    name: Verify Release Without Publishing
-    if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22.13"
-      - name: Fetch Announced Remote Head
-        run: node tools/ci/fetch-branch-policy-sources.mjs
-      - name: Install Locked Gate Dependencies
-        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund
-      - name: Verify All Context Obligations Without Publishing
-        env:
-          AIDN_BRANCH_POLICY_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
-          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/${{ github.head_ref }}
-        run: npm run verify:release
-
   publish:
     name: Publish Merged Release
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}

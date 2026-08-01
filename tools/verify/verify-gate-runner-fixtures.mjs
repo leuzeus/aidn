@@ -69,6 +69,7 @@ function makeCatalog(gate) {
         main: "required",
         release: "required",
       },
+      ...(gate.execution_scope ? { execution_scope: gate.execution_scope } : {}),
     }],
   };
 }
@@ -99,6 +100,7 @@ function runFixtureGate(repoRoot, gate, options = {}) {
     json: true,
     gitSpawnSync: options.gitSpawnSync,
     commandRunner: options.commandRunner ?? successfulCommand,
+    admission: options.admission ?? false,
   });
 }
 
@@ -354,6 +356,16 @@ function main() {
       "unmet optional condition should remain an honest SKIP",
     );
 
+    const manualOnlyAdmission = runFixtureGate(
+      tempRoot,
+      { id: "manual-only-live-smoke", execution_scope: "manual-only" },
+      { admission: true },
+    );
+    assert(
+      manualOnlyAdmission.ok && manualOnlyAdmission.results.length === 0,
+      "pull-request admission must defer manual-only live smoke gates",
+    );
+
     const cleanCleanliness = runCleanlinessScript(cleanlinessScript, tempRoot);
     assert(
       cleanCleanliness.status === 0
@@ -371,6 +383,7 @@ function main() {
         git_status_error_distinct_from_dirty_checkout: true,
         required_condition_not_met_failed: true,
         optional_condition_not_met_skipped: true,
+        manual_only_live_smoke_deferred_from_admission: true,
         cleanliness_script_executed_clean_and_dirty: true,
         failed_command_exit_signal_tails_preserved: true,
         signalled_command_error_code_preserved: true,

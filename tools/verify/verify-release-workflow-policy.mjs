@@ -11,7 +11,6 @@ const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const workflowPath = ".github/workflows/release.yml";
 const workflow = fs.readFileSync(path.join(repoRoot, workflowPath), "utf8");
 const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
-const fetchCommand = "node tools/ci/fetch-branch-policy-sources.mjs";
 const publicationProofCommand = "node tools/ci/prove-publication-source.mjs";
 const refusalScript = `VERSION="$(cat VERSION)"
 TAG="v\${VERSION}"
@@ -110,38 +109,25 @@ function evaluateWorkflow(candidate) {
   }
   const issues = [];
   const { model } = parsed;
-  if (!sameSet(model?.on?.pull_request?.branches, ["dev", "main"])) {
-    issues.push("release verification must trigger on PRs to dev and main");
+  if (model?.on?.pull_request != null) {
+    issues.push("release workflow must not duplicate pull-request admission");
   }
   if (!sameSet(model?.on?.push?.branches, ["main"]) || model?.on?.push?.tags != null) {
     issues.push("release publication must trigger only on pushes to main");
   }
   const verifyJob = model?.jobs?.verify;
   const publishJob = model?.jobs?.publish;
-  if (verifyJob?.if !== "${{ github.event_name == 'pull_request' }}") {
-    issues.push("release verify job must be restricted to pull_request");
+  if (verifyJob != null) {
+    issues.push("release pull-request verification must be owned by Governance Admission");
   }
   if (publishJob?.if
     !== "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}") {
     issues.push("release publish job must be restricted to pushes on refs/heads/main");
   }
-  if (hasOwn(verifyJob, "continue-on-error")) {
-    issues.push("release verify job must not declare continue-on-error");
-  }
   if (hasOwn(publishJob, "continue-on-error")) {
     issues.push("release publish job must not declare continue-on-error");
   }
 
-  const fetchStep = namedStep(verifyJob, "Fetch Announced Remote Head");
-  if (!fetchStep || !exactRun(fetchStep, fetchCommand)) {
-    issues.push(`release verification must call only the canonical fetch helper: ${fetchCommand}`);
-  }
-  requireBlockingStep(fetchStep, "release verification fetch", issues);
-  const verifyStep = namedStep(verifyJob, "Verify All Context Obligations Without Publishing");
-  if (!verifyStep || !exactRun(verifyStep, "npm run verify:release")) {
-    issues.push("release PR verify job must run only the complete verify:release aggregate");
-  }
-  requireBlockingStep(verifyStep, "release PR verify:release step", issues);
   const proofStep = namedStep(publishJob, "Prove Main And Merged Publication PR");
   if (!proofStep || !exactRun(proofStep, publicationProofCommand)) {
     issues.push(`release publication must call only the canonical proof helper: ${publicationProofCommand}`);
@@ -188,7 +174,6 @@ function evaluateWorkflow(candidate) {
   }
   requireBlockingStep(createStep, "tag and GitHub Release creation step", issues);
   const activeRuns = [
-    ...(Array.isArray(verifyJob?.steps) ? verifyJob.steps : []),
     ...(Array.isArray(publishJob?.steps) ? publishJob.steps : []),
   ].map((step) => String(step?.run ?? "")).join("\n");
   if (/\bnpm\s+publish\b/u.test(activeRuns)) {
@@ -432,25 +417,6 @@ const negativeProbes = {
       + "          fi\n"
       + "          echo bypassed",
   )),
-  dormant_fetch_helper_rejected: candidateRejected(workflow.replace(
-    `        run: ${fetchCommand}`,
-    "        run: |\n"
-      + "          if false; then\n"
-      + `            ${fetchCommand}\n`
-      + "          fi",
-  )),
-  release_fetch_if_false_rejected: candidateRejected(mutateNamedStepProperty(
-    workflow,
-    "Fetch Announced Remote Head",
-    "if",
-    "${{ false }}",
-  )),
-  release_fetch_continue_on_error_rejected: candidateRejected(mutateNamedStepProperty(
-    workflow,
-    "Fetch Announced Remote Head",
-    "continue-on-error",
-    "true",
-  )),
   publication_proof_if_false_rejected: candidateRejected(mutateNamedStepProperty(
     workflow,
     "Prove Main And Merged Publication PR",
@@ -463,27 +429,9 @@ const negativeProbes = {
     "continue-on-error",
     "true",
   )),
-  release_verify_job_continue_on_error_rejected: candidateRejected(mutateNamedJobProperty(
-    workflow,
-    "verify",
-    "continue-on-error",
-    "true",
-  )),
   release_publish_job_continue_on_error_rejected: candidateRejected(mutateNamedJobProperty(
     workflow,
     "publish",
-    "continue-on-error",
-    "true",
-  )),
-  release_pr_aggregate_if_false_rejected: candidateRejected(mutateNamedStepProperty(
-    workflow,
-    "Verify All Context Obligations Without Publishing",
-    "if",
-    "${{ false }}",
-  )),
-  release_pr_aggregate_continue_on_error_rejected: candidateRejected(mutateNamedStepProperty(
-    workflow,
-    "Verify All Context Obligations Without Publishing",
     "continue-on-error",
     "true",
   )),

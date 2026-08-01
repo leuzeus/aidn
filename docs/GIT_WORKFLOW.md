@@ -105,8 +105,8 @@ Release provenance is built from the exact clean commit:
 The release workflow has two mutually exclusive paths:
 
 1. A pull request from exact `release/v${VERSION}` or
-   `hotfix/v${VERSION}` to `main` runs `npm run verify:release` and does not
-   publish.
+   `hotfix/v${VERSION}` to `main` receives an `ASSURED` Governance Admission,
+   which executes every required obligation once and does not publish.
 2. A push to `main` publishes only when GitHub associates `GITHUB_SHA` with
    exactly one merged PR targeting `main`, that PR's `merge_commit_sha` equals
    `GITHUB_SHA`, and its source is exactly `release/v${VERSION}` or

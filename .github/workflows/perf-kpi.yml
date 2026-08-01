@@ -2,6 +2,14 @@ name: Perf KPI
 
 on:
   pull_request:
+    branches: [dev, main]
+    paths:
+      - "src/**"
+      - "tools/perf/**"
+      - "tools/runtime/**"
+      - "docs/performance/**"
+      - "tests/fixtures/**/index/**"
+      - "tests/fixtures/**/*selfhost*"
   workflow_dispatch:
     inputs:
       strict_thresholds:

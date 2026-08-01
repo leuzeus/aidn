@@ -22,12 +22,140 @@
     "release",
     "cleanliness"
   ],
+  "governance_route_policy": {
+    "schema_version": 1,
+    "contract": "governance-route.v1",
+    "lane_order": ["EXPLORE", "FAST", "STANDARD", "ASSURED"],
+    "protected_branches": ["dev", "main"],
+    "fast_families": ["cleanliness", "docs", "security"],
+    "standard_invariant_families": ["cleanliness", "security"],
+    "standard_fallback_families": [
+      "contracts",
+      "effects",
+      "governance",
+      "docs",
+      "codex",
+      "runtime",
+      "security",
+      "cleanliness"
+    ],
+    "family_patterns": {
+      "contracts": [
+        "src/core/contracts/**",
+        "tests/fixtures/**/contracts/**",
+        "tests/fixtures/**/*contract*"
+      ],
+      "effects": [
+        "src/core/cli/**",
+        "bin/**",
+        "tools/perf/verify-cli-*"
+      ],
+      "governance": [
+        "src/core/source-of-truth/**",
+        "src/core/metadata/**",
+        "src/core/governance/**",
+        "tools/governance/**"
+      ],
+      "docs": [
+        "README.md",
+        "AGENTS.md",
+        "docs/**"
+      ],
+      "codex": [
+        "packs/**",
+        "scaffold/**",
+        "src/**/codex/**",
+        "tools/**/*codex*",
+        "tests/fixtures/**/.agents/**",
+        "tests/fixtures/**/.codex/**"
+      ],
+      "runtime": [
+        "src/**",
+        "tools/runtime/**",
+        "tools/perf/**",
+        "tests/fixtures/**"
+      ],
+      "security": [
+        "src/**/security/**",
+        "src/**/permission/**",
+        "tools/**/*security*",
+        "tools/**/*sensitivity*"
+      ],
+      "release": [
+        "VERSION",
+        "release/**",
+        "tools/build-release.mjs",
+        "tools/**/*release*"
+      ],
+      "cleanliness": [
+        ".gitignore",
+        ".gitattributes",
+        "package/catalogs/gates.v1.json",
+        "tools/verify/**"
+      ]
+    },
+    "assured_patterns": [
+      ".github/**",
+      "AGENTS.md",
+      "VERSION",
+      "package.json",
+      "package-lock.json",
+      "package/catalogs/**",
+      "package/manifests/**",
+      "release/**",
+      "docs/ADR/**",
+      "docs/agents/**",
+      "docs/CLI_SURFACE_INVENTORY.md",
+      "docs/CI_GATE_FAMILIES.md",
+      "docs/GIT_WORKFLOW.md",
+      "docs/RUNTIME_SURFACE_SCOPE_MATRIX.md",
+      "docs/SPEC.md",
+      "docs/TESTING.md",
+      "src/core/cli/**",
+      "src/core/contracts/**",
+      "src/core/source-of-truth/**",
+      "src/core/metadata/**",
+      "src/core/governance/**",
+      "src/**/migration/**",
+      "src/**/migrations/**",
+      "src/**/*migration*",
+      "src/**/persistence/**",
+      "src/**/security/**",
+      "src/**/permission/**",
+      "src/**/*shared*",
+      "tools/ci/**",
+      "tools/governance/**",
+      "tools/verify/**",
+      "tools/perf/verify-*",
+      "tools/**/*migration*",
+      "tools/**/*security*",
+      "tools/**/*permission*",
+      "tools/**/*release*"
+    ],
+    "performance_patterns": [
+      "docs/performance/**",
+      "src/**",
+      "tools/perf/**",
+      "tools/runtime/**",
+      "tests/fixtures/**/index/**",
+      "tests/fixtures/**/*selfhost*"
+    ],
+    "emergency": {
+      "head_pattern": "^hotfix/v\\d+\\.\\d+\\.\\d+$",
+      "base_branch": "main",
+      "gate_lane": "ASSURED",
+      "deferred_evidence": ["observability:perf-kpi"],
+      "expires": "pull-request-closed",
+      "rollback": "revert-or-patch",
+      "regularization": "sync-main-to-dev"
+    }
+  },
   "gates": [
     {
       "id": "contracts-json",
       "family": "contracts",
       "script": "perf:verify-cli-output-contracts",
-      "job": "architecture-gates/contracts",
+      "job": "governance-admission/gates",
       "surfaces": ["src/core/contracts/cli-output", "public JSON output"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -36,7 +164,7 @@
       "id": "contracts-surface-catalog",
       "family": "contracts",
       "script": "perf:verify-surface-catalog",
-      "job": "architecture-gates/contracts",
+      "job": "governance-admission/gates",
       "surfaces": ["package/catalogs/surfaces.v1.json", "public references"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -45,7 +173,7 @@
       "id": "effects-policy",
       "family": "effects",
       "script": "perf:verify-cli-effect-policy",
-      "job": "architecture-gates/contracts",
+      "job": "governance-admission/gates",
       "surfaces": ["CLI effects", "--json", "--write"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -54,7 +182,7 @@
       "id": "effects-no-implicit-write",
       "family": "effects",
       "script": "perf:verify-cli-no-implicit-write",
-      "job": "architecture-gates/contracts",
+      "job": "governance-admission/gates",
       "surfaces": ["read-only CLI", "preview CLI"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -63,7 +191,7 @@
       "id": "effects-db-migrate-write-boundary",
       "family": "effects",
       "script": "perf:verify-db-migrate-write-boundary",
-      "job": "architecture-gates/contracts",
+      "job": "governance-admission/gates",
       "surfaces": ["runtime db-migrate", "runtime persistence-migrate", "--write"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -72,7 +200,7 @@
       "id": "governance-source",
       "family": "governance",
       "script": "perf:verify-source-of-truth-policy",
-      "job": "architecture-gates/governance",
+      "job": "governance-admission/gates",
       "surfaces": ["information concepts", "state modes"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -81,7 +209,7 @@
       "id": "governance-metadata",
       "family": "governance",
       "script": "perf:verify-metadata-policy",
-      "job": "architecture-gates/governance",
+      "job": "governance-admission/gates",
       "surfaces": ["metadata", "lifecycle", "retention"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -90,7 +218,7 @@
       "id": "governance-completeness",
       "family": "governance",
       "script": "perf:verify-governance-completeness",
-      "job": "architecture-gates/governance",
+      "job": "governance-admission/gates",
       "surfaces": ["governed concepts", "coverage exceptions"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -99,7 +227,7 @@
       "id": "docs-contract",
       "family": "docs",
       "script": "perf:verify-markdown-contract",
-      "job": "architecture-gates/docs",
+      "job": "governance-admission/gates",
       "surfaces": ["managed Markdown", "documentation contracts"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -108,7 +236,7 @@
       "id": "docs-cli-inventory",
       "family": "docs",
       "script": "perf:verify-cli-surface-inventory",
-      "job": "architecture-gates/docs",
+      "job": "governance-admission/gates",
       "surfaces": ["docs/CLI_SURFACE_INVENTORY.md", "bin/aidn.mjs"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -117,7 +245,7 @@
       "id": "docs-references",
       "family": "docs",
       "script": "perf:verify-doc-references",
-      "job": "architecture-gates/docs",
+      "job": "governance-admission/gates",
       "surfaces": ["active Markdown local links", "documented npm scripts"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -126,7 +254,7 @@
       "id": "codex-pack-topology",
       "family": "codex",
       "script": "perf:verify-pack-topology",
-      "job": "architecture-gates/codex",
+      "job": "governance-admission/gates",
       "surfaces": ["packs", "scaffold", "package allowlist"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -135,7 +263,7 @@
       "id": "codex-installed-client",
       "family": "codex",
       "script": "perf:verify-codex-client-install",
-      "job": "architecture-gates/codex",
+      "job": "governance-admission/gates",
       "surfaces": [".agents/skills", ".codex/agents", ".codex/hooks.json"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -144,7 +272,7 @@
       "id": "codex-context-diagnostics",
       "family": "codex",
       "script": "perf:verify-codex-context-diagnostics",
-      "job": "architecture-gates/codex",
+      "job": "governance-admission/gates",
       "surfaces": ["Codex context failure output", "child stage diagnostics", "gate family failure summary"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -153,7 +281,7 @@
       "id": "codex-context-resilience",
       "family": "codex",
       "script": "perf:verify-context-resilience",
-      "job": "architecture-gates/codex",
+      "job": "governance-admission/gates",
       "surfaces": [".agents/skills", "runtime re-anchor", "handoff and coordination fixtures"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -162,7 +290,7 @@
       "id": "codex-real-discovery",
       "family": "codex",
       "script": "perf:verify-codex-client-discovery",
-      "job": "architecture-gates/codex",
+      "job": "governance-admission/gates",
       "surfaces": ["Codex app-server skills/list", "isolated CODEX_HOME", ".agents/skills"],
       "condition": "codex-cli-available",
       "obligation": { "dev": "optional", "main": "optional", "release": "skip" }
@@ -171,7 +299,7 @@
       "id": "runtime-state-modes",
       "family": "runtime",
       "script": "perf:verify-state-mode-parity",
-      "job": "architecture-gates/runtime",
+      "job": "governance-admission/gates",
       "surfaces": ["files", "dual", "db-only"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -180,7 +308,7 @@
       "id": "runtime-governance-cli",
       "family": "runtime",
       "script": "perf:verify-governance-runtime-cli",
-      "job": "architecture-gates/runtime",
+      "job": "governance-admission/gates",
       "surfaces": ["runtime governance JSON", "shared sync opt-in"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -189,7 +317,7 @@
       "id": "runtime-shared-locator-atomicity",
       "family": "runtime",
       "script": "perf:verify-shared-runtime-locator",
-      "job": "architecture-gates/runtime",
+      "job": "governance-admission/gates",
       "surfaces": ["shared runtime locator", "atomic replacement", "failure preservation"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -198,7 +326,7 @@
       "id": "runtime-state-projector-cleanup",
       "family": "runtime",
       "script": "perf:verify-runtime-state-projector",
-      "job": "architecture-gates/runtime",
+      "job": "governance-admission/gates",
       "surfaces": ["runtime state projector fixture", "temporary directory cleanup"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -207,7 +335,7 @@
       "id": "runtime-db-schema-migrations",
       "family": "runtime",
       "script": "perf:verify-db-schema-migrations",
-      "job": "runtime-ops/runtime-ops",
+      "job": "governance-admission/gates",
       "surfaces": ["SQLite schema migrations", "migration registry"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -216,7 +344,7 @@
       "id": "runtime-db-runtime-cli",
       "family": "runtime",
       "script": "perf:verify-db-runtime-cli",
-      "job": "runtime-ops/runtime-ops",
+      "job": "governance-admission/gates",
       "surfaces": ["db-status", "db-migrate preview and write", "persistence aliases"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -225,7 +353,7 @@
       "id": "runtime-persistence-parity",
       "family": "runtime",
       "script": "perf:verify-runtime-persistence-parity",
-      "job": "runtime-ops/runtime-ops",
+      "job": "governance-admission/gates",
       "surfaces": ["SQLite and PostgreSQL persistence parity"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -234,7 +362,7 @@
       "id": "runtime-shared-coordination-backup",
       "family": "runtime",
       "script": "perf:verify-shared-coordination-backup",
-      "job": "runtime-ops/runtime-ops",
+      "job": "governance-admission/gates",
       "surfaces": ["shared coordination backup fixture"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -243,7 +371,7 @@
       "id": "runtime-shared-coordination-restore",
       "family": "runtime",
       "script": "perf:verify-shared-coordination-restore",
-      "job": "runtime-ops/runtime-ops",
+      "job": "governance-admission/gates",
       "surfaces": ["shared coordination restore preview and write"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -252,7 +380,7 @@
       "id": "runtime-shared-coordination-doctor",
       "family": "runtime",
       "script": "perf:verify-shared-coordination-doctor",
-      "job": "runtime-ops/runtime-ops",
+      "job": "governance-admission/gates",
       "surfaces": ["shared coordination diagnostics"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -261,7 +389,7 @@
       "id": "runtime-shared-coordination-store-port",
       "family": "runtime",
       "script": "perf:verify-shared-coordination-store-port",
-      "job": "runtime-ops/runtime-ops",
+      "job": "governance-admission/gates",
       "surfaces": ["shared coordination port contract"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -270,7 +398,7 @@
       "id": "runtime-workspace-resolution",
       "family": "runtime",
       "script": "perf:verify-workspace-resolution",
-      "job": "runtime-mode/runtime-mode",
+      "job": "governance-admission/gates",
       "surfaces": ["project workspace and worktree identity"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -279,7 +407,7 @@
       "id": "runtime-shared-db-first-regression",
       "family": "runtime",
       "script": "perf:verify-shared-runtime-db-first-regression",
-      "job": "runtime-mode/runtime-mode",
+      "job": "governance-admission/gates",
       "surfaces": ["db-first shared runtime regression"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -288,7 +416,7 @@
       "id": "runtime-shared-sqlite-boundary",
       "family": "runtime",
       "script": "perf:verify-shared-sqlite-boundary",
-      "job": "runtime-mode/runtime-mode",
+      "job": "governance-admission/gates",
       "surfaces": ["SQLite local boundary", "shared opt-in"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -297,7 +425,7 @@
       "id": "runtime-db-only-hooks",
       "family": "runtime",
       "script": "perf:verify-db-only-hooks",
-      "job": "runtime-mode/runtime-mode",
+      "job": "governance-admission/gates",
       "surfaces": ["db-only hook behavior"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -306,7 +434,7 @@
       "id": "runtime-shared-runtime-path",
       "family": "runtime",
       "script": "perf:verify-shared-runtime-path",
-      "job": "shared-boundary/shared-boundary",
+      "job": "governance-admission/gates",
       "surfaces": ["shared runtime path resolution"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -315,7 +443,7 @@
       "id": "runtime-shared-runtime-reanchor",
       "family": "runtime",
       "script": "perf:verify-shared-runtime-reanchor",
-      "job": "shared-boundary/shared-boundary",
+      "job": "governance-admission/gates",
       "surfaces": ["shared runtime reanchor preview and write"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -327,22 +455,24 @@
       "job": "runtime-ops-live-smoke/live-smoke",
       "surfaces": ["optional PostgreSQL runtime persistence", "synthetic row cleanup"],
       "condition": "postgres-runtime-smoke-url-available",
+      "execution_scope": "manual-only",
       "obligation": { "dev": "optional", "main": "optional", "release": "optional" }
     },
     {
       "id": "runtime-postgres-shared-live-cleanup",
       "family": "runtime",
       "script": "perf:verify-postgres-shared-coordination-live-smoke",
-      "job": "architecture-gates/runtime",
+      "job": "runtime-ops-live-smoke/live-smoke",
       "surfaces": ["optional PostgreSQL shared coordination", "synthetic row cleanup"],
       "condition": "postgres-smoke-url-available",
+      "execution_scope": "manual-only",
       "obligation": { "dev": "optional", "main": "optional", "release": "optional" }
     },
     {
       "id": "security-shared-boundary",
       "family": "security",
       "script": "perf:verify-shared-surface-boundary",
-      "job": "architecture-gates/security",
+      "job": "governance-admission/gates",
       "surfaces": ["checkout-bound state", "shared runtime"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -351,7 +481,7 @@
       "id": "security-tracked-sensitivity",
       "family": "security",
       "script": "perf:verify-tracked-sensitivity",
-      "job": "architecture-gates/security",
+      "job": "governance-admission/gates",
       "surfaces": ["all Git-tracked paths and text", "synthetic migration fixture", "pilot sensitivity"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -360,7 +490,7 @@
       "id": "release-version",
       "family": "release",
       "script": "perf:verify-release-version",
-      "job": "release/verify",
+      "job": "governance-admission/gates",
       "surfaces": ["VERSION", "package.json", "stable install refs"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -369,7 +499,7 @@
       "id": "release-reproducibility",
       "family": "release",
       "script": "perf:verify-release-reproducibility",
-      "job": "release/verify",
+      "job": "governance-admission/gates",
       "surfaces": ["GITHUB_SHA", "release zip", "checksums", "provenance"],
       "condition": "git-clean-commit",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -378,7 +508,7 @@
       "id": "release-workflow-policy",
       "family": "release",
       "script": "perf:verify-release-workflow-policy",
-      "job": "release/verify",
+      "job": "governance-admission/gates",
       "surfaces": [".github/workflows/release.yml", "tools/ci/prove-publication-source.mjs", "main", "release/vX.Y.Z", "exact patch hotfix/vX.Y.Z", "unique merged publication PR", "GitHub Release"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -387,7 +517,7 @@
       "id": "cleanliness-branch-policy",
       "family": "cleanliness",
       "script": "perf:verify-branch-policy",
-      "job": "architecture-gates/cleanliness",
+      "job": "governance-admission/gates",
       "surfaces": ["main", "dev", "tools/ci/fetch-branch-policy-sources.mjs", "feature branches", "release branches", "exact patch hotfix branches", "version-matched main-to-dev sync branches"],
       "condition": "git-repository",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -396,7 +526,7 @@
       "id": "cleanliness-branch-policy-fixtures",
       "family": "cleanliness",
       "script": "perf:verify-branch-policy-fixtures",
-      "job": "architecture-gates/cleanliness",
+      "job": "governance-admission/gates",
       "surfaces": ["feature -> dev", "release/vX.Y.Z -> main", "one-patch hotfix/vX.Y.Z -> main", "exact version-matched main -> sync/main-to-dev-vX.Y.Z -> dev", "detached provenance"],
       "condition": "git-repository",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -405,7 +535,7 @@
       "id": "cleanliness-gate-catalog",
       "family": "cleanliness",
       "script": "perf:verify-gate-catalog",
-      "job": "architecture-gates/cleanliness",
+      "job": "governance-admission/gates",
       "surfaces": ["package/catalogs/gates.v1.json", "package.json", "package-lock.json", ".github/workflows"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -414,7 +544,7 @@
       "id": "cleanliness-gate-runner-fixtures",
       "family": "cleanliness",
       "script": "perf:verify-gate-runner-fixtures",
-      "job": "architecture-gates/cleanliness",
+      "job": "governance-admission/gates",
       "surfaces": ["gate runner", "Git worktree state"],
       "condition": "git-repository",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -423,7 +553,7 @@
       "id": "cleanliness-worktree",
       "family": "cleanliness",
       "script": "perf:verify-repository-cleanliness",
-      "job": "architecture-gates/cleanliness",
+      "job": "governance-admission/gates",
       "surfaces": ["tracked worktree"],
       "condition": "git-repository",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
@@ -431,15 +561,7 @@
   ],
   "workflow_inventory": [
     {
-      "path": ".github/workflows/architecture-gates.yml",
-      "classification": "gate"
-    },
-    {
-      "path": ".github/workflows/cli-contracts.yml",
-      "classification": "gate"
-    },
-    {
-      "path": ".github/workflows/governance.yml",
+      "path": ".github/workflows/governance-admission.yml",
       "classification": "gate"
     },
     {
@@ -451,24 +573,8 @@
       "classification": "release"
     },
     {
-      "path": ".github/workflows/runtime-mode.yml",
-      "classification": "gate"
-    },
-    {
       "path": ".github/workflows/runtime-ops-live-smoke.yml",
       "classification": "optional-live"
-    },
-    {
-      "path": ".github/workflows/runtime-ops.yml",
-      "classification": "gate"
-    },
-    {
-      "path": ".github/workflows/security-baseline.yml",
-      "classification": "gate"
-    },
-    {
-      "path": ".github/workflows/shared-boundary.yml",
-      "classification": "gate"
     }
   ],
   "documentation_policy": {
