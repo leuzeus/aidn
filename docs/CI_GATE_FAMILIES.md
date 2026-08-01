@@ -36,8 +36,9 @@ The tracked-tree sensitivity gate inspects every Git-tracked path and every trac
 
 ## Relationship To Existing Workflows
 
-- `governance-admission.yml` is the only pull-request gate workflow. Temporary
-  legacy context jobs mirror its rollup and never execute verification scripts.
+- `governance-admission.yml` is the only pull-request gate workflow. Branch
+  protection on `dev` and `main` requires its exact `Governance Admission`
+  rollup; no compatibility check jobs remain.
 - `perf-kpi.yml` remains non-blocking observability and runs on pull requests
   only for runtime, performance, index, or self-host changes; manual dispatch
   remains available.

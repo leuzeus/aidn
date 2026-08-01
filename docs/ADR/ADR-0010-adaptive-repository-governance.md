@@ -11,9 +11,9 @@ Accepted
 ## Amendment
 
 2026-08-01: executable admission now owns pull-request gate selection and the
-final rollup. Legacy required-check names are temporary shims that mirror the
-rollup without re-executing gates and are removed after branch protection moves
-to `Governance Admission`.
+final rollup. Branch protection on `dev` and `main` requires exactly
+`Governance Admission`; the temporary compatibility check names used during the
+live migration have been removed.
 
 ## Context
 
@@ -95,7 +95,8 @@ Negative:
 - path policy and workflow policy must evolve together;
 - conservative fallback can make an unclassified path nearly as expensive as
   `ASSURED` until it is deliberately classified;
-- protection migration requires temporary compatibility check names.
+- live protection migration requires staged coordination so the old and new
+  checks overlap before the old contexts are removed.
 
 ## Rejected Alternatives
 

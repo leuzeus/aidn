@@ -248,19 +248,7 @@ const admissionText = fs.readFileSync(path.join(repoRoot, admissionPath), "utf8"
 const admissionRunnerCommand = "node tools/verify/run-gate-family.mjs "
   + "\"${{ matrix.family }}\" --context "
   + "\"${{ needs.classify.outputs.context }}\" --admission";
-const legacyContexts = Object.freeze({
-  "legacy-contracts": "Verify Contracts And Effects",
-  "legacy-governance": "Verify Information Governance",
-  "legacy-docs": "Verify Documentation",
-  "legacy-codex": "Verify Codex Installed Client",
-  "legacy-runtime": "Verify Runtime Boundaries",
-  "legacy-runtime-ops": "Verify Runtime Ops Smoke",
-  "legacy-runtime-mode": "Verify Runtime Mode Fixtures",
-  "legacy-shared-boundary": "Verify Shared Runtime Boundary",
-  "legacy-security": "Verify Security Boundaries",
-  "legacy-release": "Verify Release Without Publishing",
-  "legacy-cleanliness": "Verify Branch And Gate Policy",
-});
+const admissionJobIds = Object.freeze(["classify", "gates", "admission"]);
 
 function namedStep(job, name) {
   const matches = (job?.steps ?? []).filter((step) => step.name === name);
@@ -281,6 +269,14 @@ function evaluateGovernanceAdmissionExecutable(source) {
     ));
   }
   const model = document.toJS();
+  const unexpectedJobIds = Object.keys(model.jobs ?? {})
+    .filter((jobId) => !admissionJobIds.includes(jobId));
+  if (unexpectedJobIds.length > 0
+    || admissionJobIds.some((jobId) => !hasOwn(model.jobs ?? {}, jobId))) {
+    sourceIssues.push(
+      `admission workflow jobs must be exactly: ${admissionJobIds.join(", ")}`,
+    );
+  }
   const classify = model.jobs?.classify;
   const gates = model.jobs?.gates;
   const admission = model.jobs?.admission;
@@ -360,18 +356,6 @@ function evaluateGovernanceAdmissionExecutable(source) {
     || hasOwn(rollupStep, "continue-on-error")
     || hasOwn(admission, "continue-on-error")) {
     sourceIssues.push("Governance Admission rollup must always fail on classification or required child failure");
-  }
-  for (const [jobId, expectedName] of Object.entries(legacyContexts)) {
-    const job = model.jobs?.[jobId];
-    const steps = job?.steps ?? [];
-    if (job?.name !== expectedName
-      || job?.needs !== "admission"
-      || job?.if !== "always()"
-      || steps.length !== 1
-      || String(steps[0].run ?? "").trim()
-        !== "test \"${{ needs.admission.result }}\" = \"success\"") {
-      sourceIssues.push(`${jobId}: legacy context shim must mirror the rollup without gates`);
-    }
   }
   return sourceIssues;
 }
@@ -465,10 +449,13 @@ const admissionRunnerContinueOnErrorMutation = mutateNamedStepProperty(
   "continue-on-error",
   "true",
 );
-const admissionLegacyBypassMutation = admissionText.replace(
-  "      - run: test \"${{ needs.admission.result }}\" = \"success\"",
-  "      - run: echo bypassed",
-);
+const admissionUnexpectedJobMutation = `${admissionText.trimEnd()}
+
+  compatibility-probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo bypassed
+`;
 const admissionClassificationIfFalseMutation = mutateNamedJobProperty(
   admissionText,
   "classify",
@@ -582,8 +569,8 @@ const negativeProbes = {
     evaluateGovernanceAdmissionExecutable(admissionRollupContinueOnErrorMutation).length > 0,
   admission_rollup_child_failure_required:
     evaluateGovernanceAdmissionExecutable(admissionRollupBypassMutation).length > 0,
-  admission_legacy_shim_mirrors_rollup:
-    evaluateGovernanceAdmissionExecutable(admissionLegacyBypassMutation).length > 0,
+  admission_extra_job_rejected:
+    evaluateGovernanceAdmissionExecutable(admissionUnexpectedJobMutation).length > 0,
   admission_classification_cannot_be_disabled:
     evaluateGovernanceAdmissionExecutable(admissionClassificationIfFalseMutation).length > 0,
   overbroad_performance_pr_routing_rejected:
