@@ -59,46 +59,27 @@ const REQUIRED_WORKFLOW_POLICY = Object.freeze({
     },
     jobs: {
       classify: [],
-    },
-  },
-  ".github/workflows/architecture-gates.yml": {
-    triggers: {
-      pull_request: ["dev", "main"],
-    },
-    jobs: {
-      cleanliness: ["verify:cleanliness"],
-      contracts: ["verify:contracts", "verify:effects"],
-      governance: ["verify:governance"],
-      runtime: ["verify:runtime"],
-      codex: ["verify:codex"],
-      security: ["verify:security"],
-      docs: ["verify:docs"],
+      gates: [],
+      admission: [],
+      "legacy-contracts": [],
+      "legacy-governance": [],
+      "legacy-docs": [],
+      "legacy-codex": [],
+      "legacy-runtime": [],
+      "legacy-runtime-ops": [],
+      "legacy-runtime-mode": [],
+      "legacy-shared-boundary": [],
+      "legacy-security": [],
+      "legacy-release": [],
+      "legacy-cleanliness": [],
     },
   },
   ".github/workflows/release.yml": {
     triggers: {
-      pull_request: ["dev", "main"],
       push: ["main"],
     },
     jobs: {
-      verify: ["verify:release"],
       publish: ["verify:release", "perf:verify-release-artifacts"],
-    },
-  },
-  ".github/workflows/runtime-ops.yml": {
-    triggers: {
-      pull_request: ["dev", "main"],
-    },
-    jobs: {
-      "runtime-ops": [
-        "perf:verify-db-schema-migrations",
-        "perf:verify-db-runtime-cli",
-        "perf:verify-runtime-persistence-parity",
-        "perf:verify-shared-coordination-backup",
-        "perf:verify-shared-coordination-restore",
-        "perf:verify-shared-coordination-doctor",
-        "perf:verify-shared-coordination-store-port",
-      ],
     },
   },
   ".github/workflows/runtime-ops-live-smoke.yml": {
@@ -507,7 +488,15 @@ export function validateGateAndWorkflowPolicy({
       continue;
     }
     const commands = model.jobs[jobName].commands;
-    if (!commands.includes(gate.script) && !commands.includes(`verify:${gate.family}`)) {
+    const dynamicAdmission = gate.job === "governance-admission/gates"
+      && (model.jobs[jobName].steps ?? []).some((step) => (
+        String(step.run ?? "").trim()
+          === "node tools/verify/run-gate-family.mjs \"${{ matrix.family }}\" "
+            + "--context \"${{ needs.classify.outputs.context }}\" --admission"
+      ));
+    if (!commands.includes(gate.script)
+      && !commands.includes(`verify:${gate.family}`)
+      && !dynamicAdmission) {
       issues.push(`${gate.id}: ${gate.job} does not execute ${gate.script} or verify:${gate.family}`);
     }
     if ((gate.obligation?.dev === "required" || gate.obligation?.release === "required")

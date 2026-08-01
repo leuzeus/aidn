@@ -8,6 +8,13 @@ Accepted
 
 2026-08-01
 
+## Amendment
+
+2026-08-01: executable admission now owns pull-request gate selection and the
+final rollup. Legacy required-check names are temporary shims that mirror the
+rollup without re-executing gates and are removed after branch protection moves
+to `Governance Admission`.
+
 ## Context
 
 AIDN already governs 45 verification gates through

@@ -111,8 +111,13 @@ function laneRank(policy, lane) {
 
 function routeGateSelection(catalog, families, context) {
   const selectedFamilySet = new Set(families);
-  const gates = (catalog.gates ?? [])
-    .filter((gate) => selectedFamilySet.has(gate.family))
+  const familyGates = (catalog.gates ?? [])
+    .filter((gate) => selectedFamilySet.has(gate.family));
+  const manual = familyGates
+    .filter((gate) => gate.execution_scope === "manual-only")
+    .map((gate) => gate.id);
+  const gates = familyGates
+    .filter((gate) => gate.execution_scope !== "manual-only")
     .map((gate) => ({
       id: gate.id,
       family: gate.family,
@@ -126,6 +131,7 @@ function routeGateSelection(catalog, families, context) {
     required: gates.filter((gate) => gate.obligation === "required").map((gate) => gate.id),
     optional: gates.filter((gate) => gate.obligation === "optional").map((gate) => gate.id),
     skipped: gates.filter((gate) => gate.obligation === "skip").map((gate) => gate.id),
+    manual_deferred: manual,
   };
 }
 
@@ -310,7 +316,22 @@ export function resolveGovernanceRoute({
       : !diffResolved
         ? "DEGRADED_ASSURED"
         : "ADMITTED";
-  const deferredEvidence = emergency ? policy.emergency.deferred_evidence : [];
+  const deferredEvidence = [
+    ...(emergency ? policy.emergency.deferred_evidence : []),
+    ...gateSelection.manual_deferred.map((gateId) => `manual-live-smoke:${gateId}`),
+  ];
+  const evidenceStatus = [
+    ...(emergency ? policy.emergency.deferred_evidence.map((id) => ({
+      id,
+      status: "SKIP",
+      reason: "non-blocking emergency observability evidence is deferred",
+    })) : []),
+    ...gateSelection.manual_deferred.map((gateId) => ({
+      id: gateId,
+      status: "UNAVAILABLE",
+      reason: "manual PostgreSQL smoke is outside pull-request admission",
+    })),
+  ];
   const performanceRelevant = pathClassifications.some((item) => item.performance_relevant);
 
   return {
@@ -344,6 +365,7 @@ export function resolveGovernanceRoute({
     escalations: unique(escalations),
     issues: unique(issues),
     deferred_evidence: deferredEvidence,
+    evidence_status: evidenceStatus,
     performance_relevant: performanceRelevant,
     gate_selection: gateSelection,
   };

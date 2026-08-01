@@ -85,7 +85,9 @@ When a change affects governed metadata, critical Markdown contracts, or lifecyc
 - `npm run perf:verify-metadata-policy`
 - `npm run perf:verify-markdown-contract`
 
-When a change affects architecture gate routing, family separation, or the visible CI surface for the active EA/IA backlog, run the dedicated `.github/workflows/architecture-gates.yml` checks instead of relying on `perf-kpi`.
+When a change affects architecture gate routing, family separation, or the
+visible CI surface, use `.github/workflows/governance-admission.yml` and the
+gate-catalog fixtures instead of relying on `perf-kpi`.
 
 Adaptive-route changes are covered inside `perf:verify-gate-catalog`. For a
 focused local diagnosis, the same tracked fixture suite can be run directly:
@@ -108,7 +110,9 @@ When a change affects local operations, backup/restore, doctor output, or migrat
 - `npm run perf:verify-shared-coordination-restore`
 - `npm run perf:verify-shared-coordination-doctor`
 
-These checks are also split into `.github/workflows/runtime-ops.yml` so runtime-persistence and shared-coordination regressions are visible independently from broader KPI/perf coverage.
+These checks run once through the selected runtime family in Governance
+Admission, so runtime-persistence and shared-coordination regressions remain
+visible without a duplicate pull-request workflow.
 
 For shared coordination restore work specifically, validate the preview and the write path together:
 
@@ -120,7 +124,10 @@ The restore fixture checks both the dry-run preview and the `--write` replay pat
 
 The restore JSON output now also carries a `post_restore_validation` block so the restore result can surface the follow-up status and doctor checks without requiring a separate manual command in the same validation flow.
 
-When a change affects workspace resolution, state-mode parity, db-only hooks, or shared runtime boundary checks, run the dedicated `.github/workflows/runtime-mode.yml` checks instead of relying on `perf-kpi`.
+When a change affects workspace resolution, state-mode parity, db-only hooks,
+or shared runtime boundaries, Governance Admission selects the runtime family.
+Use the focused commands below for local diagnosis instead of relying on
+`perf-kpi`.
 
 Optional live PostgreSQL smoke is kept out of the required CI path. When you have a live PostgreSQL target and want a manual smoke run, use `.github/workflows/runtime-ops-live-smoke.yml` or run:
 
@@ -144,7 +151,9 @@ removes those exact rows in foreign-key order from a `finally` block, and
 verifies zero remaining rows after both success and injected failure. It never
 prints the configured connection URL.
 
-When a change affects shared-boundary locator/path/reanchor behavior, run the dedicated `.github/workflows/shared-boundary.yml` checks instead of relying on `perf-kpi`.
+When a change affects shared-boundary locator/path/reanchor behavior,
+Governance Admission selects the runtime and security evidence required by the
+route. Use the focused shared-runtime commands below for local diagnosis.
 
 When a change affects shared-runtime locator, re-anchor, or local-first boundary behavior, run:
 
@@ -196,6 +205,15 @@ literal `npm run` references against the tracked tree and `package.json`; its
 negative probes prove that a missing link and a missing script are rejected.
 
 Stable family wrappers are cataloged in `package/catalogs/gates.v1.json`: `verify:contracts`, `verify:governance`, `verify:runtime`, `verify:codex`, `verify:release`, and `verify:all`. The first four select their named family. `verify:release` executes every gate whose obligation is required or optional in the announced `main` or `release` context, including topology and tracked-tree sensitivity; it is not a release-family-only shortcut. Run `verify:all` only at a clean commit boundary so the cleanliness family is meaningful. Report `SKIP` separately from `PASS`.
+
+Pull-request matrix jobs add `--admission` to the internal family runner. That
+flag excludes the two `manual-only` PostgreSQL live smokes; the route records
+them as `UNAVAILABLE` deferred evidence. The manual live-smoke workflow retains
+its own honest `PASS`, `SKIP`, or `UNAVAILABLE` reporting.
+
+`perf-kpi.yml` is observability, not an admission substitute. Its pull-request
+trigger is limited to runtime, performance, index, and self-host paths, while
+`workflow_dispatch` remains available for an explicit measurement campaign.
 
 Every cataloged verification gate is non-mutating with respect to the checkout.
 The family runner snapshots `git status --porcelain=v2 --untracked-files=all`

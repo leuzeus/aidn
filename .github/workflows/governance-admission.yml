@@ -17,8 +17,14 @@ permissions:
 
 jobs:
   classify:
-    name: Governance Admission
+    name: Classify Governance Route
     runs-on: ubuntu-latest
+    outputs:
+      families: ${{ steps.metadata.outputs.families }}
+      family_count: ${{ steps.metadata.outputs.family_count }}
+      context: ${{ steps.metadata.outputs.context }}
+      lane: ${{ steps.metadata.outputs.lane }}
+      performance_relevant: ${{ steps.metadata.outputs.performance_relevant }}
     steps:
       - name: Checkout Exact Candidate
         uses: actions/checkout@v4
@@ -47,6 +53,24 @@ jobs:
             --head-branch "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}" \
             > "${route_file}"
 
+      - name: Export Route Metadata
+        id: metadata
+        if: always()
+        shell: bash
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const route = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            const outputs = [
+              `families=${JSON.stringify(route.gate_selection.families)}`,
+              `family_count=${route.gate_selection.families.length}`,
+              `context=${route.gate_selection.context}`,
+              `lane=${route.lane}`,
+              `performance_relevant=${route.performance_relevant}`,
+            ];
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `${outputs.join("\n")}\n`);
+          ' "${RUNNER_TEMP}/governance-route.json"
+
       - name: Publish Route Summary
         if: always()
         shell: bash
@@ -54,14 +78,18 @@ jobs:
           node --input-type=module -e '
             import fs from "node:fs";
             const route = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            const evidence = route.evidence_status
+              .map((item) => `${item.id}=${item.status}`)
+              .join(", ") || "none";
             const lines = [
-              "## Governance Admission (advisory)",
+              "## Governance Admission",
               `- route: ${route.lane}${route.emergency_overlay.active ? " + EMERGENCY" : ""}`,
               `- delivery lane: ${route.delivery_lane}`,
               `- final state: ${route.final_state}`,
               `- reasons: ${route.reasons.join(", ") || "none"}`,
               `- families: ${route.gate_selection.families.join(", ") || "none"}`,
               `- required gates selected: ${route.gate_selection.required.length}`,
+              `- deferred evidence: ${evidence}`,
               `- performance relevant: ${route.performance_relevant}`,
             ];
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join("\n")}\n`);
@@ -75,7 +103,7 @@ jobs:
           path: ${{ runner.temp }}/governance-route.json
           if-no-files-found: error
 
-      - name: Enforce Classification Integrity Only
+      - name: Enforce Classification Integrity
         if: always()
         shell: bash
         env:
@@ -90,3 +118,150 @@ jobs:
             }
             console.log(`Governance classification: PASS (${route.lane})`);
           ' "${RUNNER_TEMP}/governance-route.json"
+
+  gates:
+    name: Run Gate Family (${{ matrix.family }})
+    needs: classify
+    if: ${{ needs.classify.result == 'success' && needs.classify.outputs.family_count != '0' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        family: ${{ fromJSON(needs.classify.outputs.families) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Exact Candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.13"
+
+      - name: Fetch Announced Remote Head
+        if: ${{ matrix.family == 'cleanliness' && github.event_name == 'pull_request' }}
+        run: node tools/ci/fetch-branch-policy-sources.mjs
+
+      - name: Install Locked Gate Dependencies
+        if: ${{ matrix.family == 'cleanliness' || matrix.family == 'release' }}
+        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund
+
+      - name: Run Selected Family Once
+        env:
+          AIDN_BRANCH_POLICY_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/${{ github.head_ref }}
+        run: node tools/verify/run-gate-family.mjs "${{ matrix.family }}" --context "${{ needs.classify.outputs.context }}" --admission
+
+  admission:
+    name: Governance Admission
+    needs: [classify, gates]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Exact Candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.13"
+
+      - name: Enforce Required Child Results
+        env:
+          AIDN_CLASSIFICATION_RESULT: ${{ needs.classify.result }}
+          AIDN_GATES_RESULT: ${{ needs.gates.result }}
+          AIDN_FAMILY_COUNT: ${{ needs.classify.outputs.family_count }}
+          AIDN_GOVERNANCE_LANE: ${{ needs.classify.outputs.lane }}
+        run: node tools/verify/enforce-governance-admission.mjs
+
+  legacy-contracts:
+    name: Verify Contracts And Effects
+    needs: admission
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.admission.result }}" = "success"
+
+  legacy-governance:
+    name: Verify Information Governance
+    needs: admission
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.admission.result }}" = "success"
+
+  legacy-docs:
+    name: Verify Documentation
+    needs: admission
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.admission.result }}" = "success"
+
+  legacy-codex:
+    name: Verify Codex Installed Client
+    needs: admission
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.admission.result }}" = "success"
+
+  legacy-runtime:
+    name: Verify Runtime Boundaries
+    needs: admission
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.admission.result }}" = "success"
+
+  legacy-runtime-ops:
+    name: Verify Runtime Ops Smoke
+    needs: admission
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.admission.result }}" = "success"
+
+  legacy-runtime-mode:
+    name: Verify Runtime Mode Fixtures
+    needs: admission
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.admission.result }}" = "success"
+
+  legacy-shared-boundary:
+    name: Verify Shared Runtime Boundary
+    needs: admission
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.admission.result }}" = "success"
+
+  legacy-security:
+    name: Verify Security Boundaries
+    needs: admission
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.admission.result }}" = "success"
+
+  legacy-release:
+    name: Verify Release Without Publishing
+    needs: admission
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.admission.result }}" = "success"
+
+  legacy-cleanliness:
+    name: Verify Branch And Gate Policy
+    needs: admission
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.admission.result }}" = "success"

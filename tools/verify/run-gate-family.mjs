@@ -20,12 +20,13 @@ const contextIndex = process.argv.indexOf("--context");
 const explicitContext = contextIndex >= 0 ? String(process.argv[contextIndex + 1] ?? "") : "";
 const gateIndex = process.argv.indexOf("--gate");
 const explicitGate = gateIndex >= 0 ? String(process.argv[gateIndex + 1] ?? "") : "";
+const admission = process.argv.includes("--admission");
 const supportedSelectors = [...catalog.required_families, "all", "obligations"];
 
 if (!requested || !supportedSelectors.includes(requested)) {
   console.error(
     `Usage: node tools/verify/run-gate-family.mjs <${supportedSelectors.join("|")}> `
-    + "[--gate <id>] [--json] [--context dev|main|release]",
+    + "[--gate <id>] [--json] [--admission] [--context dev|main|release]",
   );
   process.exit(1);
 }
@@ -52,6 +53,7 @@ try {
     packageJson,
     requested,
     explicitGate,
+    admission,
     context,
     env: process.env,
     json,
