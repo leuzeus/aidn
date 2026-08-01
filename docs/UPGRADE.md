@@ -1,5 +1,24 @@
 # Upgrade Guide
 
+## Upgrade to 0.7.2
+
+This governance-only release replaces duplicated pull-request verification
+with one risk-adaptive admission path:
+
+- `governance-route.v1` records exact diff provenance, lane, reasons, selected
+  families, gates, deferred evidence, escalations, and final state;
+- `FAST`, `STANDARD`, and `ASSURED` select the required evidence without
+  weakening cross-cutting invariants, while exact production hotfixes receive
+  the `EMERGENCY` overlay on top of `ASSURED`;
+- each selected gate family executes once and the protected
+  `Governance Admission` rollup fails closed on classification or required-gate
+  failure;
+- PostgreSQL live smokes remain optional and manual, and publication still
+  repeats the complete release verification before creating a tag or GitHub
+  Release;
+- no public CLI command, public JSON contract, runtime persistence boundary, or
+  npm publication behavior changes in this release.
+
 ## Upgrade to 0.7.1
 
 This governance correction makes the future production maintenance paths
@@ -72,7 +91,7 @@ Recent workflow resilience updates also add:
 1. Install or upgrade the package to the matching product tag:
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#v0.7.1
+npm install --save-dev github:leuzeus/aidn#v0.7.2
 ```
 
 2. Run the recommended upgrade orchestrator:
@@ -105,7 +124,7 @@ npx aidn install --target <client-repo> --pack github-integration --verify
 
 ```bash
 npx aidn project config --target <client-repo> --wizard --write
-npx aidn project config --target <client-repo> --migrate-adapter --version 0.7.1 --write --json
+npx aidn project config --target <client-repo> --migrate-adapter --version 0.7.2 --write --json
 ```
 
 4. Verify installation and current runtime/admin surfaces:
