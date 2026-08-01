@@ -52,6 +52,15 @@ const REQUIRED_GATE_CONDITIONS = Object.freeze({
 });
 
 const REQUIRED_WORKFLOW_POLICY = Object.freeze({
+  ".github/workflows/governance-admission.yml": {
+    triggers: {
+      pull_request: ["dev", "main"],
+      workflow_dispatch: [],
+    },
+    jobs: {
+      classify: [],
+    },
+  },
   ".github/workflows/architecture-gates.yml": {
     triggers: {
       pull_request: ["dev", "main"],

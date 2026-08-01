@@ -22,6 +22,134 @@
     "release",
     "cleanliness"
   ],
+  "governance_route_policy": {
+    "schema_version": 1,
+    "contract": "governance-route.v1",
+    "lane_order": ["EXPLORE", "FAST", "STANDARD", "ASSURED"],
+    "protected_branches": ["dev", "main"],
+    "fast_families": ["cleanliness", "docs", "security"],
+    "standard_invariant_families": ["cleanliness", "security"],
+    "standard_fallback_families": [
+      "contracts",
+      "effects",
+      "governance",
+      "docs",
+      "codex",
+      "runtime",
+      "security",
+      "cleanliness"
+    ],
+    "family_patterns": {
+      "contracts": [
+        "src/core/contracts/**",
+        "tests/fixtures/**/contracts/**",
+        "tests/fixtures/**/*contract*"
+      ],
+      "effects": [
+        "src/core/cli/**",
+        "bin/**",
+        "tools/perf/verify-cli-*"
+      ],
+      "governance": [
+        "src/core/source-of-truth/**",
+        "src/core/metadata/**",
+        "src/core/governance/**",
+        "tools/governance/**"
+      ],
+      "docs": [
+        "README.md",
+        "AGENTS.md",
+        "docs/**"
+      ],
+      "codex": [
+        "packs/**",
+        "scaffold/**",
+        "src/**/codex/**",
+        "tools/**/*codex*",
+        "tests/fixtures/**/.agents/**",
+        "tests/fixtures/**/.codex/**"
+      ],
+      "runtime": [
+        "src/**",
+        "tools/runtime/**",
+        "tools/perf/**",
+        "tests/fixtures/**"
+      ],
+      "security": [
+        "src/**/security/**",
+        "src/**/permission/**",
+        "tools/**/*security*",
+        "tools/**/*sensitivity*"
+      ],
+      "release": [
+        "VERSION",
+        "release/**",
+        "tools/build-release.mjs",
+        "tools/**/*release*"
+      ],
+      "cleanliness": [
+        ".gitignore",
+        ".gitattributes",
+        "package/catalogs/gates.v1.json",
+        "tools/verify/**"
+      ]
+    },
+    "assured_patterns": [
+      ".github/**",
+      "AGENTS.md",
+      "VERSION",
+      "package.json",
+      "package-lock.json",
+      "package/catalogs/**",
+      "package/manifests/**",
+      "release/**",
+      "docs/ADR/**",
+      "docs/agents/**",
+      "docs/CLI_SURFACE_INVENTORY.md",
+      "docs/CI_GATE_FAMILIES.md",
+      "docs/GIT_WORKFLOW.md",
+      "docs/RUNTIME_SURFACE_SCOPE_MATRIX.md",
+      "docs/SPEC.md",
+      "docs/TESTING.md",
+      "src/core/cli/**",
+      "src/core/contracts/**",
+      "src/core/source-of-truth/**",
+      "src/core/metadata/**",
+      "src/core/governance/**",
+      "src/**/migration/**",
+      "src/**/migrations/**",
+      "src/**/*migration*",
+      "src/**/persistence/**",
+      "src/**/security/**",
+      "src/**/permission/**",
+      "src/**/*shared*",
+      "tools/ci/**",
+      "tools/governance/**",
+      "tools/verify/**",
+      "tools/perf/verify-*",
+      "tools/**/*migration*",
+      "tools/**/*security*",
+      "tools/**/*permission*",
+      "tools/**/*release*"
+    ],
+    "performance_patterns": [
+      "docs/performance/**",
+      "src/**",
+      "tools/perf/**",
+      "tools/runtime/**",
+      "tests/fixtures/**/index/**",
+      "tests/fixtures/**/*selfhost*"
+    ],
+    "emergency": {
+      "head_pattern": "^hotfix/v\\d+\\.\\d+\\.\\d+$",
+      "base_branch": "main",
+      "gate_lane": "ASSURED",
+      "deferred_evidence": ["observability:perf-kpi"],
+      "expires": "pull-request-closed",
+      "rollback": "revert-or-patch",
+      "regularization": "sync-main-to-dev"
+    }
+  },
   "gates": [
     {
       "id": "contracts-json",
@@ -440,6 +568,10 @@
     },
     {
       "path": ".github/workflows/governance.yml",
+      "classification": "gate"
+    },
+    {
+      "path": ".github/workflows/governance-admission.yml",
       "classification": "gate"
     },
     {

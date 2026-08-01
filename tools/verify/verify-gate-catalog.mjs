@@ -12,6 +12,7 @@ import {
   branchSourceRefspecs,
   fetchBranchPolicySources,
 } from "../ci/fetch-branch-policy-sources.mjs";
+import { runGovernanceRouteFixtureSuite } from "./verify-governance-route-fixtures.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const catalogPath = path.join(repoRoot, "package", "catalogs", "gates.v1.json");
@@ -26,6 +27,7 @@ const workflowModels = workflowSources.map(({ path: relativePath, text }) => (
 const issues = [];
 const families = new Set();
 let packageLock = null;
+let governanceRouteFixtures = null;
 
 const workflowSyntaxResults = workflowSources.map(({ path: relativePath, text }) => ({
   path: relativePath,
@@ -98,6 +100,11 @@ function candidateRejected({
 
 if (catalog.schema_version !== 2) {
   issues.push("gate catalog schema_version must be 2");
+}
+try {
+  governanceRouteFixtures = runGovernanceRouteFixtureSuite(catalog);
+} catch (error) {
+  issues.push(`governance route fixtures failed: ${error.message}`);
 }
 if (JSON.stringify(catalog.outcomes) !== JSON.stringify(["PASS", "FAIL", "SKIP"])) {
   issues.push("outcomes must be exactly PASS, FAIL, SKIP");
@@ -358,6 +365,56 @@ const architectureCleanlinessContinueOnErrorMutation = mutateNamedStepProperty(
   "true",
 );
 
+const admissionPath = ".github/workflows/governance-admission.yml";
+const admissionText = fs.readFileSync(path.join(repoRoot, admissionPath), "utf8");
+function evaluateGovernanceAdmissionAdvisory(source) {
+  const sourceIssues = [];
+  const document = parseDocument(source, {
+    prettyErrors: true,
+    strict: true,
+    uniqueKeys: true,
+  });
+  if (document.errors.length > 0) {
+    return document.errors.map((error) => (
+      `${admissionPath}: invalid YAML while evaluating advisory admission `
+      + `(${String(error.message).replace(/\s+/gu, " ").trim()})`
+    ));
+  }
+  const model = document.toJS();
+  const classify = model.jobs?.classify;
+  const steps = classify?.steps ?? [];
+  const routeSteps = steps.filter((step) => step.name === "Resolve Governance Route");
+  const routeStep = routeSteps.length === 1 ? routeSteps[0] : null;
+  if (routeSteps.length !== 1
+    || !String(routeStep?.run ?? "").includes("node tools/verify/resolve-governance-route.mjs")) {
+    sourceIssues.push("advisory admission must execute the canonical governance route resolver once");
+  }
+  const uploads = steps.filter((step) => step.name === "Upload Governance Route");
+  if (uploads.length !== 1
+    || uploads[0].uses !== "actions/upload-artifact@v4"
+    || uploads[0].if !== "always()") {
+    sourceIssues.push("advisory admission must always upload the governance route artifact");
+  }
+  const integritySteps = steps.filter(
+    (step) => step.name === "Enforce Classification Integrity Only",
+  );
+  if (integritySteps.length !== 1
+    || integritySteps[0].if !== "always()"
+    || !String(integritySteps[0].run ?? "").includes("!route.ok")) {
+    sourceIssues.push("advisory admission must fail on classification integrity errors");
+  }
+  return sourceIssues;
+}
+issues.push(...evaluateGovernanceAdmissionAdvisory(admissionText));
+const missingAdmissionResolverMutation = admissionText.replace(
+  "node tools/verify/resolve-governance-route.mjs",
+  "echo governance-route-bypassed",
+);
+const missingAdmissionIntegrityMutation = admissionText.replace(
+  /      - name: Enforce Classification Integrity Only[\s\S]*$/u,
+  "",
+);
+
 const liveSmokePath = ".github/workflows/runtime-ops-live-smoke.yml";
 const liveSmokeText = fs.readFileSync(path.join(repoRoot, liveSmokePath), "utf8");
 const missingLiveInstallMutation = liveSmokeText.replace(
@@ -391,6 +448,10 @@ const liveSmokeOrderMutation = liveSmokeText
   );
 
 const negativeProbes = {
+  governance_route_resolver_required:
+    evaluateGovernanceAdmissionAdvisory(missingAdmissionResolverMutation).length > 0,
+  governance_route_integrity_required:
+    evaluateGovernanceAdmissionAdvisory(missingAdmissionIntegrityMutation).length > 0,
   required_to_skip_rejected: candidateRejected({ candidateCatalog: weakenedCatalog }),
   self_cancelling_cleanliness_condition_rejected: candidateRejected({
     candidateCatalog: selfCancellingCleanlinessCatalog,
@@ -521,6 +582,7 @@ const output = {
     contexts: ["main", "release"],
     critical_gates: ["codex-pack-topology", "security-tracked-sensitivity"],
   },
+  governance_route: governanceRouteFixtures,
   negative_probes: negativeProbes,
   issues,
 };
