@@ -16,7 +16,7 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 1) Global System Architecture (v0.7.1 runtime baseline)
+%% 1) Global System Architecture (v0.7.2 runtime baseline)
 flowchart LR
   subgraph RULE["Rule Layer (Normative)"]
     SPEC["SPEC.md (SPEC-R01..SPEC-R11)"]
