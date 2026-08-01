@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -144,16 +145,44 @@ function guardedPathsForPolicy(policy) {
 function runPolicy(tmpRoot, policy) {
   const guardedPaths = guardedPathsForPolicy(policy);
   const before = snapshotSelectedPaths(tmpRoot, guardedPaths);
-  const result = spawnSync(process.execPath, [
-    AIDN_BIN,
-    ...policy.safe_args,
-    "--target",
-    tmpRoot,
-  ], {
-    cwd: REPO_ROOT,
-    env: process.env,
-    encoding: "utf8",
-  });
+  let prerequisiteRoot = "";
+  let childEnv = process.env;
+  if (policy.id === "bootstrap-preview") {
+    prerequisiteRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-no-write-prerequisite-"));
+    if (process.platform === "win32") {
+      fs.writeFileSync(path.join(prerequisiteRoot, "codex.cmd"), [
+        "@echo off",
+        "if \"%1\"==\"login\" if \"%2\"==\"status\" echo Logged in",
+        "exit /b 0",
+        "",
+      ].join("\r\n"), "utf8");
+    } else {
+      const commandPath = path.join(prerequisiteRoot, "codex");
+      fs.writeFileSync(commandPath, "#!/usr/bin/env sh\necho \"Logged in\"\n", "utf8");
+      fs.chmodSync(commandPath, 0o755);
+    }
+    childEnv = {
+      ...process.env,
+      PATH: `${prerequisiteRoot}${path.delimiter}${process.env.PATH ?? ""}`,
+    };
+  }
+  let result;
+  try {
+    result = spawnSync(process.execPath, [
+      AIDN_BIN,
+      ...policy.safe_args,
+      "--target",
+      tmpRoot,
+    ], {
+      cwd: REPO_ROOT,
+      env: childEnv,
+      encoding: "utf8",
+    });
+  } finally {
+    if (prerequisiteRoot) {
+      fs.rmSync(prerequisiteRoot, { recursive: true, force: true });
+    }
+  }
   const after = snapshotSelectedPaths(tmpRoot, guardedPaths);
   const mutationIssues = diffSnapshots(before, after);
   const exitOk = result.status === 0 || policy.allow_non_zero === true;

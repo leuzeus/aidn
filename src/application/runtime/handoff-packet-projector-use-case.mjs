@@ -20,6 +20,11 @@ export function buildHandoffPacketMarkdown(packet) {
   lines.push("");
   lines.push(`contract_version: ${packet.contract_version}`);
   lines.push(`updated_at: ${packet.updated_at}`);
+  lines.push(`projection_source: ${packet.source_of_truth}`);
+  lines.push(`projection_version: ${packet.contract_version}`);
+  lines.push(`projection_generated_at: ${packet.updated_at}`);
+  lines.push(`projection_source_revision: ${packet.source_revision ?? "unknown"}`);
+  lines.push(`projection_freshness: ${packet.current_state_freshness}`);
   lines.push(`project_id: ${packet.project_id}`);
   lines.push(`project_id_source: ${packet.project_id_source}`);
   lines.push(`project_root: ${packet.project_root}`);

@@ -63,6 +63,7 @@ export function normalizeHookPayload(rawInput, options = {}) {
     ? payloadCheckpoint.summary
     : {};
   const gate = input.gate && typeof input.gate === "object" ? input.gate : {};
+  const admission = input.admission && typeof input.admission === "object" ? input.admission : {};
   const reload = input.reload && typeof input.reload === "object" ? input.reload : {};
   const levels = input.levels && typeof input.levels === "object" ? input.levels : {};
   const level1 = levels.level1 && typeof levels.level1 === "object" ? levels.level1 : {};
@@ -144,12 +145,14 @@ export function normalizeHookPayload(rawInput, options = {}) {
     blocking_reasons: toArray(firstDefined(
       payload.blocking_reasons,
       payload.admission?.blocking_reasons,
+      admission.blocking_reasons,
       input.blocking_reasons,
       [],
     )),
     recommended_next_action: firstDefined(
       payload.recommended_next_action,
       payload.admission?.recommended_next_action,
+      admission.recommended_next_action,
       input.recommended_next_action,
       null,
     ),
@@ -160,6 +163,29 @@ export function normalizeHookPayload(rawInput, options = {}) {
       null,
     )),
     mapping: firstDefined(payload.mapping, input.mapping, null),
+    lane: String(firstDefined(input.lane, payload.lane, admission.lane, "STANDARD")),
+    required_gates: toArray(firstDefined(input.required_gates, payload.required_gates, admission.required_gates, [])),
+    deferred_gates: toArray(firstDefined(input.deferred_gates, payload.deferred_gates, admission.deferred_gates, [])),
+    state_source: String(firstDefined(input.state_source, payload.state_source, admission.state_source, "unknown")),
+    projection_freshness: firstDefined(
+      input.projection_freshness,
+      payload.projection_freshness,
+      admission.projection_freshness,
+      "unknown",
+    ),
+    branch_role: String(firstDefined(input.branch_role, payload.branch_role, admission.branch_role, "unknown")),
+    source_direct_writes: toBooleanOrNull(firstDefined(
+      input.source_direct_writes,
+      payload.source_direct_writes,
+      admission.source_direct_writes,
+      false,
+    )) === true,
+    work_branch_required: toBooleanOrNull(firstDefined(
+      input.work_branch_required,
+      payload.work_branch_required,
+      admission.work_branch_required,
+      false,
+    )) === true,
     target: firstDefined(input.target, input.target_root, payload.target_root, options.targetRoot, null),
     repair_layer_open_count: Number(firstDefined(
       payloadSummary.repair_layer_open_count,

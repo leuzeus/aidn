@@ -64,10 +64,16 @@ These command families are intended for users and are covered by public effect p
 - `aidn runtime verify-agent-roster --json`
 - `aidn runtime handoff-admit --json`
 - `aidn runtime pre-write-admit --json`
+  - additively exposes `lane`, `required_gates`, `deferred_gates`,
+    `state_source`, `projection_freshness`, and `branch_role`
+  - accepts repeatable `--planned-path <relative-path>` so the pre-write gate can
+    prove the two-file `FAST` boundary before the files exist
 - `aidn codex hydrate-context --json`
   - hidden bundle output defaults to `.aidn/runtime/context/hydrated-context.json`
   - strict `db-only` does not auto-project visible files
   - use `--materialize-visible-artifacts` to intentionally write managed visible exports
+  - reports canonical `state_source` and structured visible-projection freshness;
+    a stale projection is informative unless the requested write depends on it
 - `aidn codex workflow-step --json`
   - batches pre-write admission, hidden context hydration, and coordinator next-action computation in one process
   - does not execute skill hooks or materialize visible artifacts

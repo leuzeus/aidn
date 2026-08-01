@@ -7,5 +7,7 @@ export function renderWorkflowVersion(source, version) {
   if (!pattern.test(String(source ?? ""))) {
     throw new Error("workflow_version field not found");
   }
-  return String(source).replace(pattern, `$1${normalizedVersion}`);
+  return String(source)
+    .replace(/^(\s*product_version:\s*).+$/im, `$1${normalizedVersion}`)
+    .replace(pattern, `$1${normalizedVersion}`);
 }

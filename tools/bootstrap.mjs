@@ -262,21 +262,20 @@ async function main() {
 
   for (const operation of plan.operations) {
     if (args.dryRun) {
-      const planned = {
-        id: operation.id,
-        command: ["aidn", ...operation.command].join(" "),
-        status: 0,
-        ok: true,
-        optional: operation.optional === true,
-        mutates: false,
-        stdout: "",
-        stderr: "",
-        error: "",
-      };
-      operationResults.push(planned);
+      const result = runAidn(repoRoot, operation, true);
+      operationResults.push(result);
       if (!args.json) {
         console.log("");
-        console.log(`[dry-run] ${operation.id}: ${planned.command}`);
+        console.log(`[dry-run] ${operation.id}: ${result.command}`);
+        if (result.stdout) {
+          console.log(result.stdout.trim());
+        }
+        if (result.stderr) {
+          console.error(result.stderr.trim());
+        }
+      }
+      if (!result.ok && !operation.optional) {
+        break;
       }
       continue;
     }

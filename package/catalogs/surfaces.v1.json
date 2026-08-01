@@ -31472,6 +31472,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn runtime pre-write-admit:--planned-path",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/runtime/pre-write-admit.mjs",
+      "entrypoint": "aidn runtime pre-write-admit --planned-path",
+      "implementation": "tools/runtime/pre-write-admit.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/pre-write-admit.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn runtime pre-write-admit:--runtime-state-file",
       "kind": "option",
       "status": "active",

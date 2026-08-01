@@ -10,15 +10,15 @@ function sha256(filePath) {
   return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
 }
 
-function makeCodexStub(tmpRoot) {
-  const binDir = path.join(tmpRoot, ".tmp-codex-bin");
+function makeCodexStub(tmpRoot, { authenticated = true, suffix = "" } = {}) {
+  const binDir = path.join(tmpRoot, `.tmp-codex-bin${suffix}`);
   fs.mkdirSync(binDir, { recursive: true });
   if (process.platform === "win32") {
     fs.writeFileSync(path.join(binDir, "codex.cmd"), [
       "@echo off",
       "if \"%1\"==\"login\" if \"%2\"==\"status\" (",
-      "  echo Logged in",
-      "  exit /b 0",
+      authenticated ? "  echo Logged in" : "  echo Not logged in 1>&2",
+      authenticated ? "  exit /b 0" : "  exit /b 1",
       ")",
       "exit /b 0",
       "",
@@ -28,8 +28,8 @@ function makeCodexStub(tmpRoot) {
     fs.writeFileSync(cmdPath, [
       "#!/usr/bin/env sh",
       "if [ \"$1\" = \"login\" ] && [ \"$2\" = \"status\" ]; then",
-      "  echo \"Logged in\"",
-      "  exit 0",
+      authenticated ? "  echo \"Logged in\"" : "  echo \"Not logged in\" >&2",
+      authenticated ? "  exit 0" : "  exit 1",
       "fi",
       "exit 0",
       "",
@@ -107,6 +107,22 @@ function main() {
     const dryRunPayload = parseJson(dryRun);
     const dryRunAfter = listRelativeFiles(dryRunTarget);
 
+    const unauthenticatedStubBin = makeCodexStub(tmpRoot, { authenticated: false, suffix: "-unauthenticated" });
+    const rejectedDryRunTarget = path.join(tmpRoot, "fresh-dry-run-unauthenticated");
+    fs.mkdirSync(rejectedDryRunTarget, { recursive: true });
+    const rejectedDryRunBefore = listRelativeFiles(rejectedDryRunTarget);
+    const rejectedDryRun = runCli(repoRoot, unauthenticatedStubBin, [
+      "bootstrap",
+      "--target",
+      rejectedDryRunTarget,
+      "--profile",
+      "minimal",
+      "--dry-run",
+      "--json",
+    ]);
+    const rejectedDryRunPayload = parseJson(rejectedDryRun);
+    const rejectedDryRunAfter = listRelativeFiles(rejectedDryRunTarget);
+
     const defaultTarget = path.join(tmpRoot, "fresh-default");
     fs.mkdirSync(defaultTarget, { recursive: true });
     const defaultInstall = runCli(repoRoot, codexStubBin, [
@@ -169,6 +185,10 @@ function main() {
       dry_run_contract_preview: dryRunPayload.command === "aidn bootstrap --dry-run --json"
         && dryRunPayload.effect_class === "preview",
       dry_run_no_target_files: dryRunBefore.join("|") === dryRunAfter.join("|"),
+      dry_run_checks_prerequisites: rejectedDryRun.status !== 0
+        && rejectedDryRunPayload.ok === false
+        && rejectedDryRunPayload.operations?.some((item) => item.id === "install" && item.ok === false),
+      rejected_dry_run_no_target_files: rejectedDryRunBefore.join("|") === rejectedDryRunAfter.join("|"),
       default_install_ok: defaultInstall.status === 0 && defaultPayload.ok === true,
       default_install_verified: defaultPayload.operations.some((item) => item.id === "verify" && item.ok === true),
       default_install_core_files: fs.existsSync(path.join(defaultTarget, "AGENTS.md"))

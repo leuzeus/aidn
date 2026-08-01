@@ -58,14 +58,24 @@ function buildAdditionalConstraintBlock(values) {
   return normalized.map((item) => `- ${item}`).join("\n");
 }
 
-function buildCiCapacityBlock(values) {
+function buildCiCapacityBlock(values, enforcement = "informative", ruleIds = []) {
   const normalized = Array.isArray(values)
     ? values.map((item) => clean(item)).filter((item) => item.length > 0)
     : [];
+  const ids = Array.isArray(ruleIds) ? ruleIds.map((item) => clean(item)).filter(Boolean) : [];
+  const effectiveEnforcement = clean(enforcement) === "hard" && ids.length > 0 ? "hard" : "informative";
+  const lines = [
+    `- CI/review policy enforcement: \`${effectiveEnforcement}\`.`,
+    ids.length > 0
+      ? `- Executable rule IDs: ${ids.map((item) => `\`${item}\``).join(", ")}.`
+      : "- No executable rule ID is configured; the following capacity statements are guidance, not hard gates.",
+  ];
   if (normalized.length === 0) {
-    return "- Project-specific CI/review capacity policy: `none`";
+    lines.push("- Project-specific CI/review capacity policy: `none`");
+  } else {
+    lines.push(...normalized.map((item) => `- ${item}`));
   }
-  return normalized.map((item) => `- ${item}`).join("\n");
+  return lines.join("\n");
 }
 
 function buildNestedBulletBlock(values, fallback = "") {
@@ -401,7 +411,15 @@ export function buildGeneratedDocTemplateVars({
     PARKING_LOT_RULE: toPolicyValue(
       pick(adapterSnapshotPolicy.parkingLotRule, templateVars.PARKING_LOT_RULE),
     ),
-    CI_CAPACITY_BLOCK: buildCiCapacityBlock(adapterData.ciPolicy?.capacity),
+    CI_CAPACITY_BLOCK: buildCiCapacityBlock(
+      adapterData.ciPolicy?.capacity,
+      adapterData.ciPolicy?.enforcement,
+      adapterData.ciPolicy?.ruleIds,
+    ),
+    WORKFLOW_CONTRACT_VERSION: "aidn-workflow-contract.v1",
+    BRANCH_PRUNE_BASE_BRANCH: pick(templateVars.SOURCE_BRANCH, "main") === "main"
+      ? "__configure_distinct_base__"
+      : "main",
     SESSION_TRANSITION_CLEANLINESS_BLOCK: buildSessionTransitionCleanlinessBlock(
       repoRoot,
       adapterSessionPolicy.transitionCleanliness,

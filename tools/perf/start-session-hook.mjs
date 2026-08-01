@@ -142,7 +142,8 @@ function printUsage() {
 }
 
 function shouldRunWorkflowHook(admission) {
-  return ["resume_current_session", "resume_current_cycle", "create_session_allowed", "create_cycle_allowed"].includes(String(admission?.action ?? ""));
+  return String(admission?.lane ?? "STANDARD").toUpperCase() !== "EXPLORE"
+    && ["resume_current_session", "resume_current_cycle", "create_session_allowed", "create_cycle_allowed"].includes(String(admission?.action ?? ""));
 }
 
 function buildSummary(result) {
@@ -270,6 +271,14 @@ function main() {
       reason_code: admission.reason_code,
       branch: admission.branch,
       branch_kind: admission.branch_kind,
+      lane: admission.lane,
+      required_gates: admission.required_gates,
+      deferred_gates: admission.deferred_gates,
+      state_source: admission.state_source,
+      projection_freshness: admission.projection_freshness,
+      branch_role: admission.branch_role,
+      source_direct_writes: admission.source_direct_writes,
+      work_branch_required: admission.work_branch_required,
       workspace: admission.workspace ?? null,
       admission,
       checkpoint: workflowHook?.checkpoint ?? null,

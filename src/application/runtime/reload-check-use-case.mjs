@@ -8,6 +8,9 @@ import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.
 import { decideReloadOutcome } from "../../core/workflow/reload-policy.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch, extractCycleIdFromBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
+import { readSourceBranch } from "../../lib/workflow/session-context-lib.mjs";
+import { evaluateAdaptiveAdmission } from "../../core/governance/adaptive-admission-policy.mjs";
+import { readWorkflowAdapterConfig } from "../../lib/config/workflow-adapter-config-lib.mjs";
 
 const ACTIVE_STATES = new Set(["OPEN", "IMPLEMENTING", "VERIFYING"]);
 
@@ -175,13 +178,24 @@ function detectLatestSessionArtifact(auditRoot) {
   };
 }
 
-function evaluateMapping(branch, activeCycles, latestSessionArtifact, auditRoot, sessionBranchHint = null) {
-  const kind = classifyAidnBranch(branch);
+function evaluateMapping(branch, activeCycles, latestSessionArtifact, auditRoot, sessionBranchHint = null, sourceBranch = "") {
+  const kind = classifyAidnBranch(branch, {
+    sourceBranch,
+    includeSource: true,
+  });
   if (kind === AIDN_BRANCH_KIND.UNKNOWN || kind === AIDN_BRANCH_KIND.OTHER) {
     return {
       kind,
       status: "unknown",
       reason_code: "MAPPING_SKIPPED_BRANCH_KIND",
+    };
+  }
+
+  if (kind === AIDN_BRANCH_KIND.SOURCE) {
+    return {
+      kind,
+      status: "ok",
+      reason_code: "SOURCE_REFERENCE_BRANCH",
     };
   }
 
@@ -251,6 +265,7 @@ function collectCurrentStateFromFiles(targetRoot, gitAdapter) {
     : [];
 
   const branch = gitAdapter.getCurrentBranch(targetRoot);
+  const sourceBranch = readSourceBranch(targetRoot);
   const headCommit = gitAdapter.getHeadCommit(targetRoot);
   const cycleStatuses = walkCycleStatusFiles(auditRoot);
   const activeCycles = cycleStatuses.filter((cycle) => ACTIVE_STATES.has(cycle.state));
@@ -348,6 +363,7 @@ function collectCurrentStateFromFiles(targetRoot, gitAdapter) {
     latestSession,
     auditRoot,
     latestSession?.session_branch ?? null,
+    sourceBranch,
   );
 
   return {
@@ -355,6 +371,7 @@ function collectCurrentStateFromFiles(targetRoot, gitAdapter) {
     target_root: targetRoot,
     audit_root: auditRoot,
     branch,
+    source_branch: sourceBranch,
     head_commit: headCommit,
     mapping,
     required_artifacts: requiredArtifacts.map((item) => ({
@@ -426,6 +443,7 @@ async function collectCurrentStateFromIndex(targetRoot, args, gitAdapter) {
     : [];
 
   const branch = gitAdapter.getCurrentBranch(targetRoot);
+  const sourceBranch = readSourceBranch(targetRoot);
   const headCommit = gitAdapter.getHeadCommit(targetRoot);
   const artifacts = Array.isArray(payload.artifacts) ? payload.artifacts : [];
   const cycles = Array.isArray(payload.cycles) ? payload.cycles : [];
@@ -535,6 +553,7 @@ async function collectCurrentStateFromIndex(targetRoot, args, gitAdapter) {
     latestSession,
     auditRoot,
     sessionBranch,
+    sourceBranch,
   );
 
   return {
@@ -542,6 +561,7 @@ async function collectCurrentStateFromIndex(targetRoot, args, gitAdapter) {
     target_root: targetRoot,
     audit_root: auditRoot,
     branch,
+    source_branch: sourceBranch,
     head_commit: headCommit,
     mapping,
     required_artifacts: requiredArtifacts.map((item) => ({
@@ -736,6 +756,7 @@ export async function runReloadCheckUseCase({ args, targetRoot }) {
     args.indexFile = resolveRuntimeTargetPath(targetRoot, args.indexFile);
   }
   const currentState = await collectCurrentState(targetRoot, args, gitAdapter);
+  const workflowAdapter = readWorkflowAdapterConfig(targetRoot).data;
   const cacheStatus = readCache(args.cache);
   const diff = diffState(currentState, cacheStatus.data, cacheStatus);
   const outcome = decideReloadOutcome(diff.reasonCodes);
@@ -751,6 +772,7 @@ export async function runReloadCheckUseCase({ args, targetRoot }) {
     index_backend: currentState.index_backend ?? null,
     index_file: currentState.index_file ?? null,
     branch: currentState.branch,
+    source_branch: currentState.source_branch,
     head_commit: currentState.head_commit,
     mapping: currentState.mapping,
     decision: outcome.decision,
@@ -762,6 +784,14 @@ export async function runReloadCheckUseCase({ args, targetRoot }) {
     required_artifacts_policy: currentState.required_artifacts_policy,
     structure_profile: currentState.structure_profile,
     reload_digest: currentState.reload_digest,
+    ...evaluateAdaptiveAdmission({
+      mode: "THINKING",
+      branchKind: currentState.mapping?.kind,
+      stateSource: currentState.state_source ?? "unknown",
+      projectionFreshness: currentState.state_source === "index" ? "current" : "unknown",
+      defaultLane: workflowAdapter.governancePolicy?.defaultLane,
+      lanePolicy: workflowAdapter.governancePolicy?.lanes,
+    }),
   };
 
   if (args.writeCache && outcome.decision !== "stop") {
