@@ -5,6 +5,12 @@ Status: active navigation entry
 
 This page maps the architectural verification surface to the workflows that now own each family.
 
+`Governance Admission` first classifies every pull request with the internal
+`governance-route.v1` contract. During the advisory migration step it publishes
+the route artifact while the workflows below remain authoritative. After
+activation, that workflow owns the selected family matrix and final rollup;
+each gate is selected at most once.
+
 ## Families
 
 | Family | Workflow | Primary checks |
@@ -21,10 +27,17 @@ This page maps the architectural verification surface to the workflows that now 
 
 The executable catalog is `package/catalogs/gates.v1.json`. Every entry declares family, script, job, surfaces, condition, obligations for `dev`, `main`, and release, and reports one of `PASS`, `FAIL`, or `SKIP`.
 
+The same catalog contains the adaptive lane and path policy. `FAST` is limited
+to recognized historical documentation. `STANDARD` selects the implicated
+families and falls back conservatively for unknown paths. `ASSURED` selects all
+42 required obligations. The surface catalog can elevate a route but cannot
+grant a lower lane.
+
 The tracked-tree sensitivity gate inspects every Git-tracked path and every tracked text file. Package topology independently applies the same policy to the npm tarball. Tracked documentation now uses neutral external-pilot labels and placeholder roots; because earlier commits contained pilot-specific names and local paths, a separate Git history cleanup may still be required before broader archival or publication.
 
 ## Relationship To Existing Workflows
 
+- `governance-admission.yml` is the versioned classification and admission surface.
 - `runtime-ops.yml` remains the focused runtime operations smoke path.
 - `runtime-mode.yml` remains the focused mode parity path.
 - `shared-boundary.yml` remains the focused shared-boundary path.

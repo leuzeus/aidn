@@ -29,6 +29,7 @@ Use this page as the first stop when you need to navigate the repository docs.
 - [ADR-0007 local-first federation boundary](./ADR/ADR-0007-local-first-federation-boundary.md)
 - [ADR-0008 shared coordination ports](./ADR/ADR-0008-shared-coordination-ports.md)
 - [ADR-0009 release versioning provenance](./ADR/ADR-0009-release-versioning-provenance.md)
+- [ADR-0010 adaptive repository governance](./ADR/ADR-0010-adaptive-repository-governance.md)
 
 ## Runtime And Operations
 

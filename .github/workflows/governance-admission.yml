@@ -1,0 +1,92 @@
+name: Governance Admission
+
+on:
+  pull_request:
+    branches: [dev, main]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+  workflow_dispatch:
+    inputs:
+      requested_lane:
+        description: "Optional upward-only delivery lane request"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  classify:
+    name: Governance Admission
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Exact Candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.13"
+
+      - name: Resolve Governance Route
+        id: route
+        continue-on-error: true
+        shell: bash
+        env:
+          AIDN_GOVERNANCE_BASE_REF: ${{ github.event.pull_request.base.sha || 'origin/dev' }}
+          AIDN_GOVERNANCE_HEAD_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+          AIDN_GOVERNANCE_REQUESTED_LANE: ${{ inputs.requested_lane || '' }}
+          AIDN_GOVERNANCE_DRAFT: ${{ github.event.pull_request.draft || false }}
+        run: |
+          route_file="${RUNNER_TEMP}/governance-route.json"
+          node tools/verify/resolve-governance-route.mjs \
+            --base-branch "${GITHUB_BASE_REF:-dev}" \
+            --head-branch "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}" \
+            > "${route_file}"
+
+      - name: Publish Route Summary
+        if: always()
+        shell: bash
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const route = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            const lines = [
+              "## Governance Admission (advisory)",
+              `- route: ${route.lane}${route.emergency_overlay.active ? " + EMERGENCY" : ""}`,
+              `- delivery lane: ${route.delivery_lane}`,
+              `- final state: ${route.final_state}`,
+              `- reasons: ${route.reasons.join(", ") || "none"}`,
+              `- families: ${route.gate_selection.families.join(", ") || "none"}`,
+              `- required gates selected: ${route.gate_selection.required.length}`,
+              `- performance relevant: ${route.performance_relevant}`,
+            ];
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join("\n")}\n`);
+          ' "${RUNNER_TEMP}/governance-route.json"
+
+      - name: Upload Governance Route
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: governance-route-${{ github.run_id }}
+          path: ${{ runner.temp }}/governance-route.json
+          if-no-files-found: error
+
+      - name: Enforce Classification Integrity Only
+        if: always()
+        shell: bash
+        env:
+          ROUTE_STEP_OUTCOME: ${{ steps.route.outcome }}
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const route = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            if (process.env.ROUTE_STEP_OUTCOME !== "success" || !route.ok) {
+              console.error(`Governance classification failed: ${route.issues.join(", ") || process.env.ROUTE_STEP_OUTCOME}`);
+              process.exit(1);
+            }
+            console.log(`Governance classification: PASS (${route.lane})`);
+          ' "${RUNNER_TEMP}/governance-route.json"

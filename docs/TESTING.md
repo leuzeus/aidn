@@ -87,6 +87,18 @@ When a change affects governed metadata, critical Markdown contracts, or lifecyc
 
 When a change affects architecture gate routing, family separation, or the visible CI surface for the active EA/IA backlog, run the dedicated `.github/workflows/architecture-gates.yml` checks instead of relying on `perf-kpi`.
 
+Adaptive-route changes are covered inside `perf:verify-gate-catalog`. For a
+focused local diagnosis, the same tracked fixture suite can be run directly:
+
+- `node tools/verify/verify-governance-route-fixtures.mjs`
+
+The A-F cases cover historical documentation, internal runtime and Codex work,
+public CLI/contracts, persistence or authority, and release/security/hotfix
+routes. Adversarial cases cover unknown paths, rename/delete, unresolved
+provenance, mixed changes, requested lane downgrade, direct protected-branch
+work, duplicate selection, and emergency invariants. The resolver itself is
+read-only and emits `governance-route.v1` as one JSON document on stdout.
+
 When a change affects local operations, backup/restore, doctor output, or migration safety, run:
 
 - `npm run perf:verify-db-schema-migrations`

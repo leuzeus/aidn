@@ -15,14 +15,29 @@ A change is complete only when code, CLI behavior, policies, contracts, tests or
 Before editing anything:
 
 - identify the task category
-- read the always-required docs:
-  - `docs/agents/00-agent-operating-model.md`
+- classify the intended delivery lane before loading broad context; when a Git
+  diff is available, use the internal `governance-route.v1` resolver
+- always read `docs/agents/00-agent-operating-model.md`
+- for `FAST`, read only the operating model and the task-specific authority
+- for `STANDARD` and `ASSURED`, also read:
   - `docs/agents/01-architecture-executable.md`
   - `docs/agents/06-validation-and-dod.md`
-- read the task-specific docs from the routing matrix
+- read the task-specific docs from the routing matrix for the selected families
 - verify the current executable behavior before changing code or docs
 - load only the files that are relevant to the task; do not open the whole repo blindly
-- use `docs/TESTING.md` to choose and interpret the smallest relevant verification set
+- use the relevant intent section of `docs/TESTING.md` to choose and interpret
+  the smallest verification set; a trivial `FAST` documentation correction
+  does not require reading that guide in full
+
+Lane constraints:
+
+- `EXPLORE` is local or draft-only and never claims merge or delivery readiness
+- `FAST` is restricted to recognized historical or non-normative documentation
+- `STANDARD` is the default for a pull request to `dev`
+- `ASSURED` covers `main`, public surfaces, authorities, contracts, effects,
+  persistence, migrations, shared coordination, security, CI and release
+- an explicit request may raise a lane but may never lower it
+- `dev` and `main` are integration surfaces, never direct implementation branches
 
 Repository boundary:
 
