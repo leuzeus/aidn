@@ -39,6 +39,9 @@ Adapter rules in this file extend (but do not redefine) canonical mechanics from
 
 ```yaml
 workflow_product: aidn-workflow
+product_version: {{VERSION}}
+workflow_contract_version: {{WORKFLOW_CONTRACT_VERSION}}
+# Compatibility alias retained for existing consumers.
 workflow_version: {{VERSION}}
 installed_pack: core
 project_name: {{PROJECT_NAME}}
@@ -113,12 +116,13 @@ source_branch: {{SOURCE_BRANCH}}
 
 ### Optional Branch Pruning Policy (Project Policy)
 
-- If this repository uses a durable integration branch such as `dev`, branch cleanup SHOULD run only after `dev` is merged into `{{SOURCE_BRANCH}}`.
+- Branch cleanup is disabled unless its base branch is distinct from the source branch.
+- For this installation, the configured pruning relation is `{{SOURCE_BRANCH}} -> {{BRANCH_PRUNE_BASE_BRANCH}}`; the base must never equal the source.
 - Do not prune branches on baseline proposal alone.
 - Baseline promotion may mark exploration or spike branches as review candidates, but deletion requires Git-level confirmation.
 - CI pruning, when enabled, SHOULD be conservative:
   - only short-lived branches
-  - already fully absorbed by `{{SOURCE_BRANCH}}`
+  - already fully absorbed by `{{BRANCH_PRUNE_BASE_BRANCH}}`
   - no open pull request
   - minimum age window
   - protected/kept branch patterns excluded

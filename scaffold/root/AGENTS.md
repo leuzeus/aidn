@@ -122,6 +122,23 @@ Before any durable write, the agent MUST also:
 - use workflow skills as the normal state-changing mechanism
 - prefer the runtime hook path before mutating workflow work
 - stop when required context is missing, ambiguous, stale, or contradictory
+- read the admission fields `lane`, `required_gates`, `deferred_gates`,
+  `state_source`, `projection_freshness`, and `branch_role`
+- never write directly when `branch_role=source` and
+  `source_direct_writes=false`; create or switch to an admitted short-lived work
+  branch first
+- for an explicitly bounded Fast Path, pass one
+  `--planned-path <relative-path>` per intended file to
+  `aidn runtime pre-write-admit`; an undeclared or uncertain scope remains
+  `STANDARD`
+
+Adaptive lanes do not weaken invariants:
+
+- `EXPLORE` is read-only and defers session/checkpoint creation and automatic DB synchronization
+- `FAST` is limited to at most two reversible files and targeted validation
+- `STANDARD` is the conservative default
+- `ASSURED` is mandatory for persistence, authority, schema, contract, security, or structural impact
+- `EMERGENCY` is an overlay; secret safety, provenance, evidence integrity, no implicit write, and rollback remain non-bypassable
 
 If runtime state mode is `dual` or `db-only`, the agent MUST:
 

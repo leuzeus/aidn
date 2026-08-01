@@ -8,6 +8,8 @@ import {
 import { writeFileAtomicSync } from "../fs/atomic-write-lib.mjs";
 
 const WORKFLOW_ADAPTER_CONFIG_VERSION = 1;
+const GOVERNANCE_LANES = Object.freeze(["EXPLORE", "FAST", "STANDARD", "ASSURED"]);
+const RULE_ENFORCEMENT = new Set(["hard", "warning", "informative"]);
 
 function isPlainObject(value) {
   return value != null && typeof value === "object" && !Array.isArray(value);
@@ -61,6 +63,47 @@ function normalizePositiveInteger(value, fallback) {
   return Number.isInteger(numeric) && numeric > 0 ? numeric : fallback;
 }
 
+function normalizeRuleRegistry(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const byId = new Map();
+  for (const item of value) {
+    if (!isPlainObject(item)) {
+      continue;
+    }
+    const id = normalizeString(item.id).toUpperCase();
+    if (!id) {
+      continue;
+    }
+    byId.set(id, {
+      id,
+      enforcement: normalizeChoice(item.enforcement, RULE_ENFORCEMENT, "informative"),
+      control: normalizeString(item.control, "none"),
+    });
+  }
+  return Array.from(byId.values());
+}
+
+function normalizeLanePolicy(value, defaults) {
+  const input = isPlainObject(value) ? value : {};
+  const out = {};
+  for (const lane of GOVERNANCE_LANES) {
+    const laneInput = isPlainObject(input[lane]) ? input[lane] : {};
+    out[lane] = {
+      requiredGates: normalizeStringArray(laneInput.requiredGates).map((item) => item.toUpperCase()),
+      deferredGates: normalizeStringArray(laneInput.deferredGates).map((item) => item.toUpperCase()),
+    };
+    if (out[lane].requiredGates.length === 0) {
+      out[lane].requiredGates = [...defaults[lane].requiredGates];
+    }
+    if (out[lane].deferredGates.length === 0) {
+      out[lane].deferredGates = [...defaults[lane].deferredGates];
+    }
+  }
+  return out;
+}
+
 export function resolveWorkflowAdapterConfigPath(targetRoot) {
   return path.resolve(targetRoot, ".aidn", "project", "workflow.adapter.json");
 }
@@ -71,6 +114,12 @@ export function createDefaultWorkflowAdapterConfig(options = {}) {
     ?? defaultIndexStoreFromStateMode(preferredStateMode);
   const transitionCleanlinessScopes = new Set(["session-topology"]);
   const executionEvaluationScopes = new Set(["dispatch-or-local-scope"]);
+  const defaultLaneGates = {
+    EXPLORE: { requiredGates: ["AIDN-GOV-READ-ONLY-BOUNDARY"], deferredGates: ["AIDN-GOV-WORKFLOW-CONTINUITY", "AIDN-GOV-REVIEW-DELIVERY"] },
+    FAST: { requiredGates: ["AIDN-GOV-BRANCH-OWNERSHIP", "AIDN-GOV-TARGETED-VALIDATION"], deferredGates: ["AIDN-GOV-FULL-VALIDATION"] },
+    STANDARD: { requiredGates: ["AIDN-GOV-BRANCH-OWNERSHIP", "AIDN-GOV-WORKFLOW-CONTINUITY", "AIDN-GOV-REVIEW-DELIVERY"], deferredGates: [] },
+    ASSURED: { requiredGates: ["AIDN-GOV-STATE-AUTHORITY", "AIDN-GOV-BACKUP", "AIDN-GOV-COMPATIBILITY", "AIDN-GOV-ROLLBACK", "AIDN-GOV-FULL-VALIDATION"], deferredGates: [] },
+  };
 
   return {
     version: WORKFLOW_ADAPTER_CONFIG_VERSION,
@@ -94,7 +143,24 @@ export function createDefaultWorkflowAdapterConfig(options = {}) {
     },
     ciPolicy: {
       capacity: normalizeStringArray(options.ciPolicy?.capacity),
+      enforcement: normalizeStringArray(options.ciPolicy?.ruleIds).length > 0
+        ? normalizeChoice(options.ciPolicy?.enforcement, RULE_ENFORCEMENT, "informative")
+        : "informative",
+      ruleIds: normalizeStringArray(options.ciPolicy?.ruleIds).map((item) => item.toUpperCase()),
     },
+    branchPolicy: {
+      sourceDirectWrites: false,
+      workBranchRequired: normalizeBoolean(options.branchPolicy?.workBranchRequired, true),
+      allowedWorkBranchKinds: normalizeStringArray(options.branchPolicy?.allowedWorkBranchKinds).length > 0
+        ? normalizeStringArray(options.branchPolicy?.allowedWorkBranchKinds)
+        : ["session", "cycle", "intermediate"],
+    },
+    governancePolicy: {
+      defaultLane: normalizeChoice(options.governancePolicy?.defaultLane, new Set(GOVERNANCE_LANES), "STANDARD"),
+      emergencyOverlayEnabled: normalizeBoolean(options.governancePolicy?.emergencyOverlayEnabled, true),
+      lanes: normalizeLanePolicy(options.governancePolicy?.lanes, defaultLaneGates),
+    },
+    ruleRegistry: normalizeRuleRegistry(options.ruleRegistry),
     sessionPolicy: {
       transitionCleanliness: {
         enabled: normalizeBoolean(options.sessionPolicy?.transitionCleanliness?.enabled, false),
@@ -215,6 +281,8 @@ export function normalizeWorkflowAdapterConfig(data, options = {}) {
   const runtimePolicy = isPlainObject(base.runtimePolicy) ? base.runtimePolicy : {};
   const snapshotPolicy = isPlainObject(base.snapshotPolicy) ? base.snapshotPolicy : {};
   const ciPolicy = isPlainObject(base.ciPolicy) ? base.ciPolicy : {};
+  const branchPolicy = isPlainObject(base.branchPolicy) ? base.branchPolicy : {};
+  const governancePolicy = isPlainObject(base.governancePolicy) ? base.governancePolicy : {};
   const sessionPolicy = isPlainObject(base.sessionPolicy) ? base.sessionPolicy : {};
   const transitionCleanliness = isPlainObject(sessionPolicy.transitionCleanliness)
     ? sessionPolicy.transitionCleanliness
@@ -259,7 +327,24 @@ export function normalizeWorkflowAdapterConfig(data, options = {}) {
     },
     ciPolicy: {
       capacity: normalizeStringArray(ciPolicy.capacity),
+      enforcement: normalizeStringArray(ciPolicy.ruleIds).length > 0
+        ? normalizeChoice(ciPolicy.enforcement, RULE_ENFORCEMENT, defaults.ciPolicy.enforcement)
+        : "informative",
+      ruleIds: normalizeStringArray(ciPolicy.ruleIds).map((item) => item.toUpperCase()),
     },
+    branchPolicy: {
+      sourceDirectWrites: false,
+      workBranchRequired: normalizeBoolean(branchPolicy.workBranchRequired, defaults.branchPolicy.workBranchRequired),
+      allowedWorkBranchKinds: normalizeStringArray(branchPolicy.allowedWorkBranchKinds).length > 0
+        ? normalizeStringArray(branchPolicy.allowedWorkBranchKinds)
+        : defaults.branchPolicy.allowedWorkBranchKinds,
+    },
+    governancePolicy: {
+      defaultLane: normalizeChoice(governancePolicy.defaultLane, new Set(GOVERNANCE_LANES), defaults.governancePolicy.defaultLane),
+      emergencyOverlayEnabled: normalizeBoolean(governancePolicy.emergencyOverlayEnabled, defaults.governancePolicy.emergencyOverlayEnabled),
+      lanes: normalizeLanePolicy(governancePolicy.lanes, defaults.governancePolicy.lanes),
+    },
+    ruleRegistry: normalizeRuleRegistry(base.ruleRegistry),
     sessionPolicy: {
       transitionCleanliness: {
         enabled: normalizeBoolean(

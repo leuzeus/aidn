@@ -260,6 +260,10 @@ function compactDbSync(dbSync) {
   };
 }
 
+function effectiveLaneIsReadOnly(normalized) {
+  return String(normalized?.lane ?? "").trim().toUpperCase() === "EXPLORE";
+}
+
 export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContextStore }) {
   const stateMode = resolveEffectiveStateMode({
     targetRoot,
@@ -313,6 +317,7 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
   const autoDbSync = args.dbSyncExplicit
     ? Boolean(args.dbSync)
     : shouldAutoDbSyncForSkill(args.skill);
+  const deferredByLane = !args.dbSyncExplicit && effectiveLaneIsReadOnly(normalized);
   let dbSync = {
     enabled: false,
     skipped: true,
@@ -320,7 +325,11 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
     payload: null,
     error: null,
   };
-  if (autoDbSync && isDbBackedStateMode(stateMode)) {
+  if (autoDbSync && deferredByLane) {
+    dbSync.enabled = true;
+    dbSync.skipped = true;
+    dbSync.reason = "deferred_by_explore_lane";
+  } else if (autoDbSync && isDbBackedStateMode(stateMode)) {
     dbSync.enabled = true;
     dbSync.skipped = false;
     dbSync.reason = null;
@@ -381,6 +390,14 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
     reason_code: effectiveNormalized.reason_code,
     blocking_reasons: effectiveNormalized.blocking_reasons,
     recommended_next_action: effectiveNormalized.recommended_next_action,
+    lane: effectiveNormalized.lane,
+    required_gates: effectiveNormalized.required_gates,
+    deferred_gates: effectiveNormalized.deferred_gates,
+    state_source: effectiveNormalized.state_source,
+    projection_freshness: effectiveNormalized.projection_freshness,
+    branch_role: effectiveNormalized.branch_role,
+    source_direct_writes: effectiveNormalized.source_direct_writes,
+    work_branch_required: effectiveNormalized.work_branch_required,
     repair_layer_open_count: effectiveNormalized.repair_layer_open_count,
     repair_layer_blocking: effectiveNormalized.repair_layer_blocking,
     repair_layer_status: effectiveNormalized.repair_layer_status,
