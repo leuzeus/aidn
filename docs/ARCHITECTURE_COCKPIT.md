@@ -39,7 +39,6 @@ Purpose:
 
 ## Runtime Verification
 
-- `architecture-gates.yml`
 - `governance-admission.yml`
 - `npm run perf:verify-cli-effect-policy`
 - `npm run perf:verify-cli-no-implicit-write`

@@ -208,6 +208,7 @@ export function runGateFamily({
   packageJson,
   requested,
   explicitGate = "",
+  admission = false,
   context,
   env = process.env,
   json = false,
@@ -222,6 +223,7 @@ export function runGateFamily({
     (gate) => (requested === "all"
         || requested === "obligations"
         || gate.family === requested)
+      && (!admission || gate.execution_scope !== "manual-only")
       && (!explicitGate || gate.id === explicitGate),
   );
   if (explicitGate && selected.length !== 1) {
@@ -399,6 +401,7 @@ export function runGateFamily({
     ok: counts.FAIL === 0
       && results.every((item) => item.status !== "SKIP" || item.obligation !== "required"),
     requested,
+    admission,
     context,
     outcomes: catalog.outcomes,
     counts,
