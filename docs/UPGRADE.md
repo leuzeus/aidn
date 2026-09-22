@@ -1,5 +1,27 @@
 # Upgrade Guide
 
+## Unreleased governance pilot corrections
+
+These changes are intentionally unreleased while the external client pilot is reviewed:
+
+- installed admissions expose adaptive lane, gate, state-source, projection
+  freshness, and branch-role fields additively;
+- `THINKING`/`EXPLORING` start admission stays read-only and defers automatic DB
+  synchronization;
+- source branches are classified consistently and require a short-lived work
+  branch before durable writes;
+- `bootstrap --dry-run` executes the real install preview, including
+  compatibility prerequisites, while preserving a non-mutating effect;
+- visible projection metadata identifies source, contract version, generation
+  time, source revision, and freshness;
+- generated branch pruning refuses an equal or unconfigured base/source pair;
+- `product_version` and `workflow_contract_version` are distinct, while the
+  legacy `workflow_version` alias remains available for older consumers.
+
+Do not upgrade a client from this branch through a mutable local dependency.
+Wait for an immutable release tag, then perform the client upgrade on a
+dedicated compatibility branch.
+
 ## Upgrade to 0.7.2
 
 This governance-only release replaces duplicated pull-request verification

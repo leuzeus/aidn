@@ -46,6 +46,51 @@ function sha256Text(value) {
   return crypto.createHash("sha256").update(String(value ?? ""), "utf8").digest("hex");
 }
 
+function readProjectionMetadata(targetRoot, effectiveStateMode, artifactSource) {
+  const currentStatePath = path.join(targetRoot, "docs", "audit", "CURRENT-STATE.md");
+  const runtimeStatePath = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
+  const readMap = (filePath) => {
+    if (!fs.existsSync(filePath)) {
+      return new Map();
+    }
+    const entries = [];
+    for (const line of fs.readFileSync(filePath, "utf8").split(/\r?\n/)) {
+      const match = line.match(/^([A-Za-z_][A-Za-z0-9_ -]*):\s*(.*?)\s*$/);
+      if (match) {
+        entries.push([match[1].trim().toLowerCase().replace(/[ -]+/g, "_"), match[2].trim()]);
+      }
+    }
+    return new Map(entries);
+  };
+  const current = readMap(currentStatePath);
+  const runtime = readMap(runtimeStatePath);
+  const projectedMode = current.get("runtime_state_mode") ?? runtime.get("runtime_state_mode") ?? "unknown";
+  const runtimeFreshness = runtime.get("current_state_freshness") ?? current.get("projection_freshness") ?? "unknown";
+  let status = runtimeFreshness;
+  let reason = runtime.get("current_state_freshness_basis") ?? "projection freshness was not evaluated";
+  if (!fs.existsSync(currentStatePath)) {
+    status = "missing";
+    reason = "CURRENT-STATE.md projection is missing";
+  } else if (["dual", "db-only"].includes(effectiveStateMode) && projectedMode !== effectiveStateMode) {
+    status = "stale";
+    reason = `visible projection mode ${projectedMode} differs from canonical mode ${effectiveStateMode}`;
+  } else if (effectiveStateMode === "files" && status === "unknown") {
+    status = "current";
+    reason = "files mode uses the visible state artifact as the selected source";
+  }
+  return {
+    status,
+    source: path.relative(targetRoot, currentStatePath).replace(/\\/g, "/"),
+    source_role: effectiveStateMode === "files" ? "canonical" : "projection",
+    canonical_source: artifactSource?.canonical_ref ?? artifactSource?.source_role ?? (effectiveStateMode === "files" ? "files" : "runtime-index"),
+    projection_version: current.get("projection_version") ?? current.get("contract_version") ?? null,
+    generated_at: current.get("projection_generated_at") ?? current.get("updated_at") ?? null,
+    source_revision: current.get("projection_source_revision") ?? artifactSource?.source_revision ?? null,
+    reason,
+    blocking_scope: "writes-that-depend-on-this-projection-only",
+  };
+}
+
 function classifySelectionTier(reasons = []) {
   const set = new Set(Array.isArray(reasons) ? reasons : []);
   if (
@@ -752,6 +797,12 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
       decision: entry?.decision ?? null,
       action: entry?.action ?? null,
       result: entry?.result ?? null,
+      lane: entry?.lane ?? "STANDARD",
+      required_gates: Array.isArray(entry?.required_gates) ? entry.required_gates : [],
+      deferred_gates: Array.isArray(entry?.deferred_gates) ? entry.deferred_gates : [],
+      state_source: entry?.state_source ?? "unknown",
+      projection_freshness: entry?.projection_freshness ?? "unknown",
+      branch_role: entry?.branch_role ?? "unknown",
       reason_codes: Array.isArray(entry?.reason_codes) ? entry.reason_codes : [],
       repair_layer_open_count: Number(entry?.repair_layer_open_count ?? 0),
       repair_layer_blocking: entry?.repair_layer_blocking === true,
@@ -824,6 +875,10 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
     project_id: artifactSource?.project_id ?? null,
     workspace_id: artifactSource?.workspace_id ?? null,
     source_revision: artifactSource?.source_revision ?? null,
+    state_source: effectiveStateMode === "files"
+      ? "docs/audit/CURRENT-STATE.md"
+      : (artifactSource?.canonical_ref ?? artifactSource?.source_role ?? "runtime-index"),
+    projection_freshness: readProjectionMetadata(targetRoot, effectiveStateMode, artifactSource),
     artifacts: selectedArtifacts,
   };
 

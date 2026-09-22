@@ -267,6 +267,7 @@ function buildReanchoredCurrentStateText({
   sessionEvidence,
   now,
   reason,
+  sourceRevision = "unknown",
 } = {}) {
   const cycle = cycleEvidence?.cycle ?? null;
   const session = sessionEvidence?.session ?? null;
@@ -290,6 +291,11 @@ function buildReanchoredCurrentStateText({
     "",
     "contract_version: critical-markdown-v1",
     `updated_at: ${now}`,
+    "projection_source: runtime-backend",
+    "projection_version: critical-markdown-v1",
+    `projection_generated_at: ${now}`,
+    `projection_source_revision: ${normalizeScalar(sourceRevision) || "unknown"}`,
+    "projection_freshness: ok",
     "source_of_truth: runtime-backend",
     "source_mode: reanchored",
     "lifecycle_status: refreshed",
@@ -386,6 +392,7 @@ export function buildRuntimeStateReanchorPlan({
     sessionEvidence,
     now,
     reason,
+    sourceRevision: snapshot?.source_revision ?? payload?.generated_at ?? "unknown",
   });
   const anchors = [
     {

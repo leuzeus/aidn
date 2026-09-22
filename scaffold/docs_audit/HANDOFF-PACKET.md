@@ -16,6 +16,11 @@ Rule/State boundary:
 
 contract_version: critical-markdown-v1
 updated_at: 2026-03-09T00:00:00Z
+projection_source: runtime store
+projection_version: critical-markdown-v1
+projection_generated_at: 2026-03-09T00:00:00Z
+projection_source_revision: unknown
+projection_freshness: unknown
 handoff_status: refresh_required
 handoff_from_agent_role: coordinator
 handoff_from_agent_action: relay

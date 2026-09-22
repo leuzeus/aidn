@@ -57,6 +57,17 @@ const CASES = [
     expectsWorkflowHook: true,
   },
   {
+    id: "source_branch_read_only_explore",
+    fixture: "tests/fixtures/repo-installed-core",
+    workingBranch: "dev",
+    mode: "THINKING",
+    expectedAction: "create_session_allowed",
+    expectedResult: "ok",
+    expectedLane: "EXPLORE",
+    expectsWorkflowHook: false,
+    expectedDbSyncReason: "deferred_by_explore_lane",
+  },
+  {
     id: "cycle_branch_resumes",
     fixture: "tests/fixtures/perf-current-state/active",
     workingBranch: "feature/C101-alpha",
@@ -392,11 +403,12 @@ function runCase(tmpRoot, testCase, onTargetCreated) {
     testCase.configureGit(targetRoot);
   }
 
+  const mode = testCase.mode ?? "COMMITTING";
   const hook = runJson("tools/perf/start-session-hook.mjs", [
     "--target",
     targetRoot,
     "--mode",
-    "COMMITTING",
+    mode,
     "--json",
   ], testCase.env);
   const cliHook = runJson("bin/aidn.mjs", [
@@ -405,7 +417,7 @@ function runCase(tmpRoot, testCase, onTargetCreated) {
     "--target",
     targetRoot,
     "--mode",
-    "COMMITTING",
+    mode,
     "--json",
   ], testCase.env);
   const codex = runJson("tools/codex/run-json-hook.mjs", [
@@ -414,7 +426,7 @@ function runCase(tmpRoot, testCase, onTargetCreated) {
     "--target",
     targetRoot,
     "--mode",
-    "COMMITTING",
+    mode,
     "--json",
   ], testCase.env);
 
@@ -431,6 +443,18 @@ function runCase(tmpRoot, testCase, onTargetCreated) {
     codex_result_expected: String(codex?.result ?? "") === testCase.expectedResult,
     codex_ok_matches_result: Boolean(codex?.ok) === (testCase.expectedResult === "ok"),
     codex_reason_code_present: String(codex?.normalized?.reason_code ?? hook?.reason_code ?? "").length > 0 || testCase.expectedResult === "ok",
+    hook_lane_expected: String(hook?.lane ?? "") === String(testCase.expectedLane ?? "STANDARD"),
+    codex_lane_expected: String(codex?.lane ?? "") === String(testCase.expectedLane ?? "STANDARD"),
+    branch_role_explicit: ["source", "work", "unmanaged", "unknown"].includes(String(hook?.branch_role ?? "")),
+    source_direct_writes_false: hook?.source_direct_writes === false,
+    required_gates_present: Array.isArray(hook?.required_gates) && hook.required_gates.length > 0,
+    source_next_action_present: String(hook?.branch_role ?? "") !== "source"
+      || String(hook?.admission?.recommended_next_action ?? "").length > 0,
+    codex_source_next_action_present: String(codex?.branch_role ?? "") !== "source"
+      || String(codex?.recommended_next_action ?? "").length > 0,
+    db_sync_lane_policy_expected: testCase.expectedDbSyncReason
+      ? String(codex?.db_sync?.reason ?? "") === testCase.expectedDbSyncReason
+      : true,
   };
   return {
     id: testCase.id,
@@ -455,6 +479,10 @@ function runCase(tmpRoot, testCase, onTargetCreated) {
       codex_reason_code: codex?.normalized?.reason_code ?? null,
       codex_command_status: codex?.command_status ?? null,
       codex_error: codex?.error ?? codex?.normalized?.error ?? null,
+      lane: hook?.lane ?? null,
+      branch_role: hook?.branch_role ?? null,
+      work_branch_required: hook?.work_branch_required ?? null,
+      codex_db_sync_reason: codex?.db_sync?.reason ?? null,
     },
     pass: Object.values(checks).every((value) => value === true),
   };

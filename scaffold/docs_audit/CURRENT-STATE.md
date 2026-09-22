@@ -11,6 +11,11 @@ Rule/State boundary:
 
 contract_version: critical-markdown-v1
 updated_at: 2026-03-09T00:00:00Z
+projection_source: runtime store
+projection_version: critical-markdown-v1
+projection_generated_at: 2026-03-09T00:00:00Z
+projection_source_revision: unknown
+projection_freshness: unknown
 structure_profile: modern
 runtime_state_mode: {{PREFERRED_STATE_MODE}}
 repair_layer_status: unknown

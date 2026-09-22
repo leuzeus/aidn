@@ -33,6 +33,23 @@
     },
     "source_backend": { "type": ["string", "null"] },
     "source_revision": { "type": ["string", "null"] },
+    "state_source": { "type": "string" },
+    "projection_freshness": {
+      "type": "object",
+      "required": ["status", "source", "source_role", "blocking_scope"],
+      "properties": {
+        "status": { "type": "string" },
+        "source": { "type": "string" },
+        "source_role": { "type": "string" },
+        "canonical_source": { "type": ["string", "null"] },
+        "projection_version": { "type": ["string", "null"] },
+        "generated_at": { "type": ["string", "null"] },
+        "source_revision": { "type": ["string", "null"] },
+        "reason": { "type": "string" },
+        "blocking_scope": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
     "artifact_source": {
       "type": ["object", "null"],
       "properties": {

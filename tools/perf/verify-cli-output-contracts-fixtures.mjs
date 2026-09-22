@@ -98,35 +98,38 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-output");
 const AIDN_BIN = path.join(REPO_ROOT, "bin", "aidn.mjs");
 
+function codexPrerequisiteEnv(tmpRoot) {
+  const binDir = path.join(tmpRoot, ".contract-prerequisite-bin");
+  fs.mkdirSync(binDir, { recursive: true });
+  if (process.platform === "win32") {
+    fs.writeFileSync(path.join(binDir, "codex.cmd"), [
+      "@echo off",
+      "if \"%1\"==\"login\" if \"%2\"==\"status\" echo Logged in",
+      "exit /b 0",
+      "",
+    ].join("\r\n"), "utf8");
+  } else {
+    const commandPath = path.join(binDir, "codex");
+    fs.writeFileSync(commandPath, "#!/usr/bin/env sh\necho \"Logged in\"\n", "utf8");
+    fs.chmodSync(commandPath, 0o755);
+  }
+  return {
+    PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+  };
+}
+
 const CONTRACT_CASES = [
   {
     name: "bootstrap",
     schema: "bootstrap.v1.schema.json",
     args: ["bootstrap", "--profile", "minimal", "--json"],
-    env(tmpRoot) {
-      const binDir = path.join(tmpRoot, ".contract-prerequisite-bin");
-      fs.mkdirSync(binDir, { recursive: true });
-      if (process.platform === "win32") {
-        fs.writeFileSync(path.join(binDir, "codex.cmd"), [
-          "@echo off",
-          "if \"%1\"==\"login\" if \"%2\"==\"status\" echo Logged in",
-          "exit /b 0",
-          "",
-        ].join("\r\n"), "utf8");
-      } else {
-        const commandPath = path.join(binDir, "codex");
-        fs.writeFileSync(commandPath, "#!/usr/bin/env sh\necho \"Logged in\"\n", "utf8");
-        fs.chmodSync(commandPath, 0o755);
-      }
-      return {
-        PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
-      };
-    },
+    env: codexPrerequisiteEnv,
   },
   {
     name: "bootstrap-preview",
     schema: "bootstrap-preview.v1.schema.json",
     args: ["bootstrap", "--profile", "minimal", "--dry-run", "--json"],
+    env: codexPrerequisiteEnv,
   },
   {
     name: "runtime-project-runtime-state",

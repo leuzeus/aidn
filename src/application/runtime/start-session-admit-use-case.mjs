@@ -27,11 +27,21 @@ import {
   evaluateMappedBranchTransition,
   evaluateSourceBranchTransition,
 } from "./workflow-transition-lib.mjs";
+import { evaluateAdaptiveAdmission } from "../../core/governance/adaptive-admission-policy.mjs";
+import { readWorkflowAdapterConfig } from "../../lib/config/workflow-adapter-config-lib.mjs";
 
 function makeResult(base, overrides = {}) {
   const action = overrides.action ?? base.action ?? WORKFLOW_ACTION.BLOCKED_NON_COMPLIANT_BRANCH;
   const result = overrides.result ?? (action.startsWith("create_") || action.startsWith("resume_") ? WORKFLOW_RESULT.OK : WORKFLOW_RESULT.STOP);
   const ok = overrides.ok ?? (result === WORKFLOW_RESULT.OK);
+  const adaptive = evaluateAdaptiveAdmission({
+    mode: base.mode,
+    branchKind: base.branch_kind,
+    stateSource: base.db_backed_mode ? "runtime-index" : "files",
+    projectionFreshness: base.db_backed_mode ? "unknown" : "current",
+    defaultLane: base.governance_policy?.defaultLane,
+    lanePolicy: base.governance_policy?.lanes,
+  });
   return {
     ts: new Date().toISOString(),
     ok,
@@ -42,6 +52,7 @@ function makeResult(base, overrides = {}) {
     db_backed_mode: base.db_backed_mode,
     branch: base.branch,
     branch_kind: base.branch_kind,
+    ...adaptive,
     source_branch: base.source_branch,
     mode: base.mode,
     active_session: base.active_session,
@@ -54,7 +65,10 @@ function makeResult(base, overrides = {}) {
     required_user_choice: overrides.required_user_choice ?? [],
     blocking_reasons: overrides.blocking_reasons ?? [],
     warnings: overrides.warnings ?? [],
-    recommended_next_action: overrides.recommended_next_action ?? null,
+    recommended_next_action: overrides.recommended_next_action
+      ?? (adaptive.work_branch_required
+        ? `Create or switch to a short-lived work branch from ${base.source_branch} before durable writes.`
+        : null),
     workspace: overrides.workspace ?? base.workspace ?? null,
     workflow_state: {
       active_session: base.active_session,
@@ -78,6 +92,7 @@ export function runStartSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
   const currentState = readCurrentState(absoluteTargetRoot);
   const auditRoot = currentState.audit_root;
   const sourceBranch = readSourceBranch(absoluteTargetRoot);
+  const workflowAdapter = readWorkflowAdapterConfig(absoluteTargetRoot).data;
   const branch = gitAdapter.getCurrentBranch(absoluteTargetRoot);
   const branchKind = classifyAidnBranch(branch, {
     sourceBranch,
@@ -120,6 +135,7 @@ export function runStartSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
     db_backed_mode: dbBackedMode,
     branch_kind: branchKind,
     source_branch: sourceBranch,
+    governance_policy: workflowAdapter.governancePolicy,
     mode,
     active_session: activeSession,
     active_cycle: activeCycle,

@@ -229,6 +229,7 @@
     "perf:verify-agent-hook-repair-block": "node tools/perf/verify-agent-hook-repair-block-fixtures.mjs",
     "perf:verify-skill-hook-state-mode": "node tools/perf/verify-skill-hook-state-mode-fixtures.mjs",
     "perf:verify-start-session-admission": "node tools/perf/verify-start-session-admission-fixtures.mjs",
+    "perf:verify-adaptive-admission": "node tools/perf/verify-adaptive-admission-policy-fixtures.mjs",
     "perf:verify-branch-cycle-audit-admission": "node tools/perf/verify-branch-cycle-audit-admission-fixtures.mjs",
     "perf:verify-constraint-report": "node tools/perf/verify-constraint-report-fixtures.mjs",
     "perf:verify-constraint-actions": "node tools/perf/verify-constraint-actions-fixtures.mjs",

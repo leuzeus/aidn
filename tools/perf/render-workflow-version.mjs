@@ -60,7 +60,7 @@ function main() {
     const next = renderWorkflowVersion(source, version);
 
     fs.writeFileSync(filePath, next, "utf8");
-    console.log(`Rendered workflow_version=${version} in ${filePath}`);
+    console.log(`Rendered product_version=${version} and workflow_version compatibility alias in ${filePath}`);
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();

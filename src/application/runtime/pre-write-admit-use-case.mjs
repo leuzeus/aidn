@@ -792,6 +792,7 @@ export function buildPreWriteAdmissionResult({
   prioritizedArtifacts = [],
   sourceOfTruthIssues = [],
   sourceOfTruthRepairActions = [],
+  adaptiveAdmission = null,
 } = {}) {
   const ok = blockingReasons.length === 0;
   const admissionStatus = ok
@@ -812,6 +813,7 @@ export function buildPreWriteAdmissionResult({
     shared_state_backend: sharedStateBackend,
     shared_runtime_validation: sharedRuntimeValidation,
     skill: skill || "generic",
+    ...(adaptiveAdmission ?? {}),
     policy,
     source_of_truth: sourceOfTruth,
     current_state_file: currentStateExists ? currentStateResolution.logicalPath : "none",
@@ -821,6 +823,7 @@ export function buildPreWriteAdmissionResult({
     plan_file: planResolution.exists ? planResolution.logicalPath : "none",
     context: {
       ...context,
+      ...(adaptiveAdmission ?? {}),
       source_of_truth_status: sourceOfTruthStatus,
       source_of_truth_reason_codes: uniqueItems(sourceOfTruthIssues.map((item) => item.reason_code)).join(", ") || "none",
     },

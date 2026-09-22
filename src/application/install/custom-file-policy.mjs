@@ -143,6 +143,7 @@ export function normalizePreservedMetadata(targetRelative, text, templateVars) {
   const normalizedTarget = normalizeRelativePath(targetRelative).toLowerCase();
   if (normalizedTarget === "docs/audit/workflow.md") {
     if (version) {
+      next = next.replace(/^(\s*product_version:\s*).+$/im, `$1${version}`);
       next = next.replace(/^(\s*workflow_version:\s*).+$/im, `$1${version}`);
     }
     if (sourceBranch) {

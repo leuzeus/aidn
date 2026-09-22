@@ -23,6 +23,10 @@ import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-tra
 import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { resolveEffectiveStateMode } from "../../src/core/state-mode/state-mode-policy.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
+import { readWorkflowAdapterConfig } from "../../src/lib/config/workflow-adapter-config-lib.mjs";
+import { evaluateAdaptiveAdmission } from "../../src/core/governance/adaptive-admission-policy.mjs";
+import { readAidnProjectConfig, resolveConfigSourceBranch } from "../../src/lib/config/aidn-config-lib.mjs";
+import { classifyAidnBranch } from "../../src/lib/workflow/branch-kind-lib.mjs";
 import {
   loadDbIndexPayloadSafe,
   resolveDbArtifactSourceName,
@@ -36,6 +40,7 @@ function parseArgs(argv) {
     runtimeStateFile: "docs/audit/RUNTIME-STATE.md",
     strict: false,
     json: false,
+    plannedPaths: [],
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
@@ -53,6 +58,13 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--strict") {
       args.strict = true;
+    } else if (token === "--planned-path") {
+      const plannedPath = String(argv[i + 1] ?? "").trim();
+      if (!plannedPath) {
+        throw new Error("Missing value for --planned-path");
+      }
+      args.plannedPaths.push(plannedPath.replace(/\\/g, "/"));
+      i += 1;
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -72,6 +84,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  npx aidn runtime pre-write-admit --target . --json");
   console.log("  npx aidn runtime pre-write-admit --target . --skill cycle-create --strict --json");
+  console.log("  npx aidn runtime pre-write-admit --target . --skill implementation --planned-path docs/README.md --json");
   console.log("  npx aidn runtime pre-write-admit --target tests/fixtures/perf-handoff/ready --skill requirements-delta --json");
 }
 
@@ -83,6 +96,19 @@ function resolveTargetPath(targetRoot, candidate) {
     return path.resolve(candidate);
   }
   return path.resolve(targetRoot, candidate);
+}
+
+function changedPathsFromPorcelain(git, targetRoot) {
+  try {
+    return String(git.execStatusPorcelain(targetRoot, "", true) ?? "")
+      .split(/\r?\n/)
+      .map((line) => line.slice(3).trim())
+      .filter(Boolean)
+      .flatMap((value) => value.includes(" -> ") ? value.split(" -> ").slice(-1) : [value])
+      .map((value) => value.replace(/^"|"$/g, "").replace(/\\/g, "/"));
+  } catch {
+    return [];
+  }
 }
 
 function exists(filePath) {
@@ -631,6 +657,7 @@ export async function preWriteAdmit({
   workspace: providedWorkspace = null,
   sharedCoordination = null,
   sharedCoordinationOptions = {},
+  plannedPaths = [],
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const git = createLocalGitAdapter();
@@ -928,6 +955,39 @@ export async function preWriteAdmit({
     planFile && exists(planFile) ? relativePath(absoluteTargetRoot, planFile) : "",
   ]);
 
+  const adapterConfig = readWorkflowAdapterConfig(absoluteTargetRoot).data;
+  const aidnConfig = readAidnProjectConfig(absoluteTargetRoot);
+  const configuredSourceBranch = resolveConfigSourceBranch(aidnConfig.data) || "main";
+  const gitBranch = git.getCurrentBranch(absoluteTargetRoot);
+  const adaptiveBranchKind = classifyAidnBranch(gitBranch, {
+    sourceBranch: configuredSourceBranch,
+    includeSource: true,
+  });
+  const observedChangedPaths = changedPathsFromPorcelain(git, absoluteTargetRoot);
+  const normalizedPlannedPaths = uniqueItems(plannedPaths ?? []);
+  const fastPathPolicy = adapterConfig.executionPolicy?.fastPath ?? {};
+  const assessedPaths = uniqueItems([...observedChangedPaths, ...normalizedPlannedPaths]);
+  const laneChangedPaths = fastPathPolicy.enabled === true ? assessedPaths : [];
+  const authorityImpact = assessedPaths.some((item) => /(^|\/)(AGENTS\.md|docs\/audit\/(SPEC|WORKFLOW)(-[^/]*)?\.md|\.aidn\/project\/workflow\.adapter\.json)$/i.test(item));
+  const persistenceImpact = assessedPaths.some((item) => /(^|\/)(migrations?|schema|postgres|persistence)(\/|$)/i.test(item));
+  const structuralImpact = assessedPaths.some((item) => /(^|\/)(architecture|scaffold|codegen)(\/|$)/i.test(item));
+  const securityImpact = assessedPaths.some((item) => /(^|\/)(security|auth|secrets?)(\/|$)/i.test(item));
+  const adaptiveAdmission = evaluateAdaptiveAdmission({
+    mode,
+    branchKind: adaptiveBranchKind,
+    defaultLane: adapterConfig.governancePolicy?.defaultLane,
+    lanePolicy: adapterConfig.governancePolicy?.lanes,
+    changedPaths: laneChangedPaths,
+    maxTouchedFiles: fastPathPolicy.maxTouchedFiles,
+    authorityImpact,
+    persistenceImpact,
+    structuralImpact,
+    securityImpact,
+    continuityAmbiguous: blockingReasons.some((item) => /continuity|ambiguous|mismatch/i.test(item)),
+    stateSource: currentStateResolution.source,
+    projectionFreshness: currentStateFreshness,
+  });
+
   return buildPreWriteAdmissionResult({
     targetRoot: absoluteTargetRoot,
     workspace,
@@ -981,6 +1041,10 @@ export async function preWriteAdmit({
       session_artifact_source: sessionResolution.source,
       cycle_status_source: cycleStatusResolution.source,
       plan_artifact_source: planResolution.source,
+      planned_paths: normalizedPlannedPaths,
+      observed_changed_paths: observedChangedPaths,
+      admission_branch: gitBranch,
+      configured_source_branch: configuredSourceBranch,
       git_branch: cycleCreateGitGate?.branch ?? "unknown",
       git_repo_root: cycleCreateGitGate?.repo_root ?? "none",
       git_repo_scoped: cycleCreateGitGate?.repo_scoped === true ? "yes" : "no",
@@ -1004,6 +1068,7 @@ export async function preWriteAdmit({
     prioritizedArtifacts,
     sourceOfTruthIssues,
     sourceOfTruthRepairActions,
+    adaptiveAdmission,
   });
 }
 
@@ -1047,6 +1112,7 @@ function main() {
       skill: args.skill,
       currentStateFile: args.currentStateFile,
       runtimeStateFile: args.runtimeStateFile,
+      plannedPaths: args.plannedPaths,
     });
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));

@@ -15,6 +15,10 @@ final rollup. Branch protection on `dev` and `main` requires exactly
 `Governance Admission`; the temporary compatibility check names used during the
 live migration have been removed.
 
+2026-08-01: installed-client admission reuses the same lane vocabulary without
+creating a second delivery authority. The project adapter owns local branch and
+lane defaults; the gate catalog remains the sole CI/release authority.
+
 ## Context
 
 AIDN already governs 45 verification gates through
@@ -79,6 +83,23 @@ The package-source repository does not adopt complete installed-client
 dogfooding in its root. `scaffold/*` remains source, `tests/fixtures/*` remains
 test corpus, and any ignored root `.aidn/` state remains non-canonical local
 debt outside this reform.
+
+Installed clients expose `EXPLORE`, `FAST`, `STANDARD`, and `ASSURED` in
+admission JSON, with `EMERGENCY` as an overlay. This local routing is narrower
+than delivery routing: it decides which workflow checks are immediately needed,
+not whether a change is mergeable. `STANDARD` is the conservative default for
+existing adapters. `EXPLORE` does not create session/checkpoint state or run an
+automatic DB synchronization. `FAST` is limited to at most two bounded,
+reversible files and escalates on contracts, schema, security, persistence,
+authority, shared surfaces, or continuity ambiguity. `ASSURED` requires explicit
+authority, backup, compatibility, rollback, and full-validation evidence.
+
+The source branch remains a reference/integration role. Local admissions expose
+`branch_role=source`, `source_direct_writes=false`, and
+`work_branch_required=true`; `context-reload` and `start-session` share the same
+configured-source classifier. Secret safety, provenance, evidence integrity,
+rollback, and the absence of implicit writes are non-bypassable in every lane
+and under `EMERGENCY`.
 
 ## Consequences
 

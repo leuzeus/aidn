@@ -14,12 +14,12 @@ on:
       base_branch:
         description: "Base branch used to decide whether a branch is already absorbed"
         required: false
-        default: "main"
+        default: "{{BRANCH_PRUNE_BASE_BRANCH}}"
         type: string
       source_branch:
         description: "Integration branch that triggered the cleanup policy"
         required: false
-        default: "dev"
+        default: "{{SOURCE_BRANCH}}"
         type: string
       min_age_days:
         description: "Minimum branch age before it can be pruned"
@@ -40,14 +40,14 @@ jobs:
         github.event_name == 'pull_request' &&
         github.event.pull_request.merged == true &&
         github.event.pull_request.head.repo.full_name == github.repository &&
-        github.event.pull_request.base.ref == (vars.AIDN_BRANCH_PRUNE_BASE_BRANCH || 'main') &&
-        github.event.pull_request.head.ref == (vars.AIDN_BRANCH_PRUNE_SOURCE_BRANCH || 'dev')
+        github.event.pull_request.base.ref == (vars.AIDN_BRANCH_PRUNE_BASE_BRANCH || '{{BRANCH_PRUNE_BASE_BRANCH}}') &&
+        github.event.pull_request.head.ref == (vars.AIDN_BRANCH_PRUNE_SOURCE_BRANCH || '{{SOURCE_BRANCH}}')
       )
     runs-on: ubuntu-latest
     env:
       DEFAULT_EXECUTE: ${{ vars.AIDN_BRANCH_PRUNE_EXECUTE || 'false' }}
-      DEFAULT_BASE_BRANCH: ${{ vars.AIDN_BRANCH_PRUNE_BASE_BRANCH || 'main' }}
-      DEFAULT_SOURCE_BRANCH: ${{ vars.AIDN_BRANCH_PRUNE_SOURCE_BRANCH || 'dev' }}
+      DEFAULT_BASE_BRANCH: ${{ vars.AIDN_BRANCH_PRUNE_BASE_BRANCH || '{{BRANCH_PRUNE_BASE_BRANCH}}' }}
+      DEFAULT_SOURCE_BRANCH: ${{ vars.AIDN_BRANCH_PRUNE_SOURCE_BRANCH || '{{SOURCE_BRANCH}}' }}
       DEFAULT_MIN_AGE_DAYS: ${{ vars.AIDN_BRANCH_PRUNE_MIN_AGE_DAYS || '14' }}
       CANDIDATE_REGEX: ${{ vars.AIDN_BRANCH_PRUNE_CANDIDATE_REGEX || '^(feature|feat|fix|chore|docs|refactor|spike)/' }}
       KEEP_REGEX: ${{ vars.AIDN_BRANCH_PRUNE_KEEP_REGEX || '^(main|dev)$|^(release|backup)/' }}
@@ -59,6 +59,10 @@ jobs:
             const executeInput = context.payload.inputs?.execute;
             const baseBranch = context.payload.inputs?.base_branch || process.env.DEFAULT_BASE_BRANCH;
             const sourceBranch = context.payload.inputs?.source_branch || process.env.DEFAULT_SOURCE_BRANCH;
+            if (!baseBranch || !sourceBranch || baseBranch === sourceBranch || baseBranch.startsWith("__configure_")) {
+              core.setFailed(`Invalid pruning relation: base_branch (${baseBranch}) must be configured and distinct from source_branch (${sourceBranch}).`);
+              return;
+            }
             const rawMinAgeDays = context.payload.inputs?.min_age_days || process.env.DEFAULT_MIN_AGE_DAYS || "14";
             const minAgeDays = Number(rawMinAgeDays);
             const execute = String(executeInput ?? process.env.DEFAULT_EXECUTE).toLowerCase() === "true";

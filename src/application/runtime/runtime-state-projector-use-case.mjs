@@ -20,6 +20,11 @@ export function buildRuntimeStateMarkdown(digest) {
   lines.push("");
   lines.push(`contract_version: ${digest.contract_version}`);
   lines.push(`updated_at: ${digest.updated_at}`);
+  lines.push(`projection_source: ${digest.source_of_truth}`);
+  lines.push(`projection_version: ${digest.contract_version}`);
+  lines.push(`projection_generated_at: ${digest.updated_at}`);
+  lines.push(`projection_source_revision: ${digest.source_revision ?? "unknown"}`);
+  lines.push(`projection_freshness: ${digest.current_state_freshness}`);
   lines.push(`project_id: ${digest.project_id}`);
   lines.push(`project_id_source: ${digest.project_id_source}`);
   lines.push(`project_root: ${digest.project_root}`);
