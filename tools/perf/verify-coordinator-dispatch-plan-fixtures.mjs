@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -83,15 +84,16 @@ function main() {
     const integrationCycleTarget = path.join(tempRoot, "integration-cycle-strategy");
     const dbOnlyFilelessTarget = path.join(tempRoot, "db-only-fileless");
 
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), readyTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "warn"), warnTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "blocked"), blockedTarget, { recursive: true });
-    fs.cpSync(path.join(currentStateFixturesRoot, "active"), fallbackTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), escalatedTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "warn"), roleBlockedTarget, { recursive: true });
-    fs.cpSync(path.join(integrationFixturesRoot, "direct-merge"), directMergeIntegrationTarget, { recursive: true });
-    fs.cpSync(path.join(integrationFixturesRoot, "integration-cycle"), integrationCycleTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlyFilelessTarget, { recursive: true });
+    for (const [sourceRoot, target] of [
+      [path.join(handoffFixturesRoot, "ready"), readyTarget], [path.join(handoffFixturesRoot, "warn"), warnTarget],
+      [path.join(handoffFixturesRoot, "blocked"), blockedTarget], [path.join(currentStateFixturesRoot, "active"), fallbackTarget],
+      [path.join(handoffFixturesRoot, "ready"), escalatedTarget], [path.join(handoffFixturesRoot, "warn"), roleBlockedTarget],
+      [path.join(integrationFixturesRoot, "direct-merge"), directMergeIntegrationTarget], [path.join(integrationFixturesRoot, "integration-cycle"), integrationCycleTarget],
+      [path.join(handoffFixturesRoot, "ready"), dbOnlyFilelessTarget],
+    ]) {
+      fs.cpSync(sourceRoot, target, { recursive: true, filter: (source) => isActivationFixtureSource(sourceRoot, source, { freshCoordination: true }) });
+      prepareActivationFixture(target, repoRoot);
+    }
 
     runJson(handoffProjectScript, ["--target", readyTarget, "--write", "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", warnTarget, "--write", "--json"], repoRoot, 0);
@@ -488,7 +490,7 @@ function main() {
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       const cleanup = removePathWithRetry(tempRoot);

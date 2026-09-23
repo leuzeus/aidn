@@ -11,7 +11,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const asset = ".agents/skills/pr-orchestrate/SKILL.md";
 const fixture = path.join(root, "tests/fixtures/codex-legacy/v0.5.0-rc.1/pr-orchestrate/SKILL.md");
 const historical = fs.readFileSync(fixture, "utf8").replace(/\r\n/g, "\n");
-const current = fs.readFileSync(path.join(root, "scaffold/codex/pr-orchestrate/SKILL.md"), "utf8").replace(/\r\n/g, "\n");
+const current = classifyHistoricalCodexSkill({ relativePath: asset, text: historical }).replacementText;
 const ledger = JSON.parse(fs.readFileSync(path.join(root, "src/application/install/codex-legacy-fingerprints.v1.json"), "utf8"));
 const entry = ledger.repairs.find((item) => item.asset === asset);
 const hash = (text) => createHash("sha256").update(text.replace(/\r\n/g, "\n")).digest("hex");

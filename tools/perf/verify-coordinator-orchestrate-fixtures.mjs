@@ -2,9 +2,10 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture, prepareNpmActivationFixture, fixtureNpmEnvironment } from "./test-activation-fixture-lib.mjs";
 
 const CI_TRUNCATION_CHARACTER_COUNT = 219264;
 
@@ -214,9 +215,10 @@ function verifyDeferredExitPolicy(repoRoot, tempRoot) {
 }
 
 function runJsonWithEvidence(script, args, repoRoot, expectStatus = 0) {
+  const targetIndex = args.indexOf("--target"), target = targetIndex < 0 ? repoRoot : args[targetIndex + 1];
   const result = spawnSync(process.execPath, [script, ...args], {
-    cwd: repoRoot,
-    env: { ...process.env },
+    cwd: target,
+    env: { ...process.env, ...fixtureNpmEnvironment(target) },
     encoding: "utf8",
     timeout: 240000,
     maxBuffer: 20 * 1024 * 1024,
@@ -394,14 +396,21 @@ function main() {
     const escalatedTarget = path.join(tempRoot, "escalated");
     const resumedTarget = path.join(tempRoot, "resumed");
     const roleBlockedTarget = path.join(tempRoot, "role-blocked");
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), readyTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), escalatedTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), resumedTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "warn"), roleBlockedTarget, { recursive: true });
+    for (const [name, target] of [["ready", readyTarget], ["ready", escalatedTarget], ["ready", resumedTarget], ["warn", roleBlockedTarget]]) {
+      const sourceRoot = path.join(handoffFixturesRoot, name);
+      fs.cpSync(sourceRoot, target, { recursive: true, filter: (source) => isActivationFixtureSource(sourceRoot, source, { freshCoordination: true }) });
+    }
     initGitRepo(readyTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(escalatedTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(resumedTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(roleBlockedTarget, { workingBranch: "feature/C101-alpha" });
+    for (const target of [readyTarget, escalatedTarget, resumedTarget, roleBlockedTarget]) {
+      prepareActivationFixture(target, repoRoot);
+      prepareNpmActivationFixture(target, repoRoot);
+      execFileSync("git", ["-C", target, "add", "."], { stdio: "pipe" });
+      execFileSync("git", ["-C", target, "commit", "--amend", "--no-edit"], { stdio: "pipe" });
+      assert(execFileSync("git", ["-C", target, "status", "--porcelain"], { encoding: "utf8" }).trim() === "", "fixture setup must leave a clean Git worktree");
+    }
 
     installSharedPlanningFixture(readyTarget);
     installSharedPlanningFixture(resumedTarget);

@@ -135,7 +135,7 @@ try {
     run(["--repair","--scope","installation","--write","--expect-plan","stale"],{success:false});
     assert.equal(digestTree(target),beforeDiagnostic);
   });
-  const skill=path.join(target,".agents/skills/context-reload/SKILL.md");
+  const skill=path.join(target,".agents/skills/aidn-context-reload/SKILL.md");
   const expected=fs.readFileSync(skill,"utf8");
   fs.unlinkSync(skill);
   apply("repair");

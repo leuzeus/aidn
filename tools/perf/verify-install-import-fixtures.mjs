@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { resolveInstallOwnership } from "../../src/application/install/install-ownership-policy.mjs";
 import { isLocalInstallationTarget } from "../../src/application/install/installation-ownership-service.mjs";
+import { getPublicSkillName } from "../../src/core/skills/skill-policy.mjs";
 
 function parseArgs(argv) {
   const args = {
     target: "tests/fixtures/repo-installed-core",
-    tmpRoot: "tests/fixtures",
+    tmpRoot: os.tmpdir(),
     keepTmp: false,
     json: false,
   };
@@ -42,7 +44,7 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-install-import-fixtures.mjs");
   console.log("  node tools/perf/verify-install-import-fixtures.mjs --target tests/fixtures/repo-installed-core");
-  console.log("  node tools/perf/verify-install-import-fixtures.mjs --tmp-root tests/fixtures");
+  console.log("  node tools/perf/verify-install-import-fixtures.mjs --tmp-root <temporary-directory-outside-source-repo>");
   console.log("  node tools/perf/verify-install-import-fixtures.mjs --keep-tmp");
 }
 
@@ -413,8 +415,8 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
-  const skillPath = path.join(target, ".agents", "skills", "context-reload", "SKILL.md");
-  const crashRecoverySkillPath = path.join(target, ".agents", "skills", "crash-recovery", "SKILL.md");
+  const skillPath = path.join(target, ".agents", "skills", getPublicSkillName("context-reload"), "SKILL.md");
+  const crashRecoverySkillPath = path.join(target, ".agents", "skills", getPublicSkillName("crash-recovery"), "SKILL.md");
   const installedSkillsRoot = path.join(target, ".agents", "skills");
   const config = readConfigSafe(configPath);
   const reanchor = collectReanchorArtifactDetails(target);
@@ -718,14 +720,17 @@ function checkCaseInstructionOverrideWarnings(repoRoot, sourceTarget, tmpRoot, c
 function main() {
   let exitCode = 0;
   let keepTmp = false;
-  const tmpTargets = [];
+  let ownedTmpRoot = "", tmpParentRoot = "";
   let codexStubBin = null;
   try {
     const args = parseArgs(process.argv.slice(2));
     keepTmp = args.keepTmp === true;
     const repoRoot = process.cwd();
     const sourceTarget = path.resolve(repoRoot, args.target);
-    const tmpRoot = path.resolve(repoRoot, args.tmpRoot);
+    tmpParentRoot = path.resolve(repoRoot, args.tmpRoot);
+    fs.mkdirSync(tmpParentRoot, { recursive: true });
+    const tmpRoot = fs.mkdtempSync(path.join(tmpParentRoot, "aidn-install-import-"));
+    ownedTmpRoot = tmpRoot;
     codexStubBin = makeCodexStub(tmpRoot);
 
     const cases = [
@@ -736,10 +741,6 @@ function main() {
       checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin),
       checkCaseInstructionOverrideWarnings(repoRoot, sourceTarget, tmpRoot, codexStubBin),
     ];
-    for (const item of cases) {
-      tmpTargets.push(item.target_root);
-    }
-
     const pass = cases.every((item) => item.ok === true);
     const output = {
       ts: new Date().toISOString(),
@@ -768,19 +769,10 @@ function main() {
     printUsage();
     exitCode = 1;
   } finally {
-    if (!keepTmp) {
-      for (const target of tmpTargets) {
-        const cleanup = removePathWithRetry(target);
-        if (!cleanup.ok) {
-          throw cleanup.error;
-        }
-      }
-      if (codexStubBin) {
-        const cleanup = removePathWithRetry(codexStubBin);
-        if (!cleanup.ok) {
-          throw cleanup.error;
-        }
-      }
+    if (!keepTmp && ownedTmpRoot) {
+      if (path.dirname(path.resolve(ownedTmpRoot)) !== tmpParentRoot || !path.basename(ownedTmpRoot).startsWith("aidn-install-import-")) throw new Error("Unsafe temporary cleanup path");
+      const cleanup = removePathWithRetry(ownedTmpRoot);
+      if (!cleanup.ok) throw cleanup.error;
     }
   }
   if (exitCode !== 0) {

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { findSensitivityMatches } from "../verify/sensitivity-policy.mjs";
@@ -103,16 +104,20 @@ function runInstall(repoRoot, targetRoot, codexStubBin, pack, extraArgs = []) {
 }
 
 function runNpmPackDryRun(repoRoot) {
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const commandArgs = process.platform === "win32"
+  const cache = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-topology-npm-cache-"));
+  const npmCli = path.join(path.dirname(process.execPath), "node_modules/npm/bin/npm-cli.js");
+  const command = fs.existsSync(npmCli) ? process.execPath : process.platform === "win32" ? "cmd.exe" : "npm";
+  const commandArgs = fs.existsSync(npmCli) ? [npmCli, "pack", "--dry-run", "--json"] : process.platform === "win32"
     ? ["/d", "/s", "/c", "npm pack --dry-run --json"]
     : ["pack", "--dry-run", "--json"];
-  const result = spawnSync(command, commandArgs, {
+  let result;
+  try { result = spawnSync(command, commandArgs, {
     cwd: repoRoot,
+    env: { ...process.env, npm_config_cache: cache },
     encoding: "utf8",
     timeout: 180000,
     maxBuffer: 20 * 1024 * 1024,
-  });
+  }); } finally { const cleanup = removePathWithRetry(cache); if (!cleanup.ok) throw cleanup.error; }
   if ((result.status ?? 1) !== 0) {
     throw new Error(`npm pack --dry-run failed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
   }
@@ -206,7 +211,7 @@ function inspectPackageDocsAllowlist(files) {
 }
 
 function listFixtureDirectories(repoRoot, prefix) {
-  const fixturesRoot = path.resolve(repoRoot, "tests", "fixtures");
+  const fixturesRoot = os.tmpdir();
   return fs.readdirSync(fixturesRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name.startsWith(prefix))
     .map((entry) => path.resolve(fixturesRoot, entry.name))
@@ -276,7 +281,7 @@ function main() {
   const exitPolicy = cleanupProbe ? null : verifyExitPolicy();
   const injectedFailureCleanup = cleanupProbe ? null : verifyInjectedFailureCleanup(repoRoot);
   const tempPrefix = cleanupProbe ? CLEANUP_PROBE_PREFIX : "tmp-pack-topology-";
-  const tempRoot = fs.mkdtempSync(path.join(path.resolve(repoRoot, "tests", "fixtures"), tempPrefix));
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), tempPrefix));
   let primaryError = null;
   let cleanupResult = null;
   try {
@@ -362,7 +367,7 @@ function main() {
     assert(fs.existsSync(path.join(runtimeLocalTarget, ".aidn", "runtime", "agents", "example-external-auditor.mjs")), "runtime-local should restore runtime agent examples");
     assert(codexInstall.status === 0, `codex-integration refresh failed\nstdout:\n${codexInstall.stdout}\nstderr:\n${codexInstall.stderr}`);
     assert(codexVerify.status === 0, `codex-integration verify failed\nstdout:\n${codexVerify.stdout}\nstderr:\n${codexVerify.stderr}`);
-    assert(fs.existsSync(path.join(codexTarget, ".agents", "skills", "start-session", "SKILL.md")), "codex-integration should restore native project skills");
+    assert(fs.existsSync(path.join(codexTarget, ".agents", "skills", "aidn-start-session", "SKILL.md")), "codex-integration should restore native project skills");
     assert(fs.existsSync(path.join(codexTarget, ".aidn", "codex", "skills.yaml")), "codex-integration should restore AIDN skill inventory");
     assert(fs.existsSync(path.join(codexTarget, ".codex", "agents", "aidn-reviewer.toml")), "codex-integration should restore bounded agents");
     assert(fs.existsSync(path.join(codexTarget, ".codex", "hooks.json")), "codex-integration should restore the supported hook contract");
@@ -372,7 +377,7 @@ function main() {
     assert(extendedInstall.status === 0, `extended refresh failed\nstdout:\n${extendedInstall.stdout}\nstderr:\n${extendedInstall.stderr}`);
     assert(extendedVerify.status === 0, `extended verify failed\nstdout:\n${extendedVerify.stdout}\nstderr:\n${extendedVerify.stderr}`);
     assert(fs.existsSync(path.join(extendedTarget, ".aidn", "runtime", "agents", "example-external-auditor.mjs")), "extended should restore runtime agent examples");
-    assert(fs.existsSync(path.join(extendedTarget, ".agents", "skills", "start-session", "SKILL.md")), "extended should restore native project skills");
+    assert(fs.existsSync(path.join(extendedTarget, ".agents", "skills", "aidn-start-session", "SKILL.md")), "extended should restore native project skills");
     assert(fs.existsSync(path.join(extendedTarget, ".aidn", "codex", "skills.yaml")), "extended should restore AIDN skill inventory");
     assert(fs.existsSync(path.join(extendedTarget, ".codex", "agents", "aidn-reviewer.toml")), "extended should restore bounded agents");
     assert(fs.existsSync(path.join(extendedTarget, ".codex", "hooks.json")), "extended should restore the supported hook contract");

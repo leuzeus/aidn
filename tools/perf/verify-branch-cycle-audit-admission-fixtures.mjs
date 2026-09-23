@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 import { inspectImmediateProcessExitArguments } from "../verify/spawn-sync-evidence-lib.mjs";
 
 const CASES = [
@@ -42,7 +44,7 @@ const CASES = [
 
 function parseArgs(argv) {
   const args = {
-    tmpRoot: "tests/fixtures",
+    tmpRoot: os.tmpdir(),
     keepTmp: false,
     json: false,
   };
@@ -108,12 +110,18 @@ function runJson(script, scriptArgs, env = {}) {
   return JSON.parse(stdout);
 }
 
-function runCase(tmpRoot, testCase) {
+function runCase(tmpRoot, testCase, onTargetCreated) {
   const sourceTarget = path.resolve(process.cwd(), testCase.fixture);
-  const targetRoot = copyFixtureToTmp(sourceTarget, tmpRoot, `tmp-branch-cycle-audit-${testCase.id}`);
+  const targetRoot = copyFixtureToTmp(sourceTarget, tmpRoot, `tmp-branch-cycle-audit-${testCase.id}`, {
+    onDestinationCreated: onTargetCreated,
+    filter: (source) => isActivationFixtureSource(sourceTarget, source, { freshContext: true }),
+  });
   initGitRepo(targetRoot, {
     workingBranch: testCase.workingBranch,
   });
+  prepareActivationFixture(targetRoot);
+  execFileSync("git", ["-C", targetRoot, "add", "."], { stdio: "pipe" });
+  execFileSync("git", ["-C", targetRoot, "commit", "--amend", "--no-edit"], { stdio: "pipe" });
 
   const hook = runJson("tools/perf/branch-cycle-audit-hook.mjs", [
     "--target",
@@ -166,14 +174,13 @@ function runCase(tmpRoot, testCase) {
 
 function main() {
   const createdTargets = [];
+  let args;
   try {
-    const args = parseArgs(process.argv.slice(2));
+    args = parseArgs(process.argv.slice(2));
     const hookExitPolicy = verifyHookExitPolicy();
     const tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
     const runs = CASES.map((testCase) => {
-      const run = runCase(tmpRoot, testCase);
-      createdTargets.push(run.target_root);
-      return run;
+      return runCase(tmpRoot, testCase, (target) => createdTargets.push(target));
     });
     const pass = runs.every((run) => run.pass === true);
     const output = {
@@ -192,15 +199,6 @@ function main() {
       console.log(`Result: ${pass ? "PASS" : "FAIL"}`);
     }
 
-    if (!args.keepTmp) {
-      for (const target of createdTargets) {
-        const cleanup = removePathWithRetry(target);
-        if (!cleanup.ok) {
-          throw cleanup.error;
-        }
-      }
-    }
-
     if (!pass) {
       process.exitCode = 1;
     }
@@ -208,6 +206,11 @@ function main() {
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exitCode = 1;
+  } finally {
+    if (!args?.keepTmp) for (const target of createdTargets.reverse()) {
+      const cleanup = removePathWithRetry(target);
+      if (!cleanup.ok) { console.error(`Cleanup failed: ${cleanup.error?.message}`); process.exitCode = 1; }
+    }
   }
 }
 

@@ -118,7 +118,7 @@ try {
   assert(staleApply.errors.includes("STALE_INSTALL_PLAN"));
   assert.deepEqual(snapshot(isolated), staleBefore);
   checks.stale_plan_refused_without_write = true;
-  const ownedPath = ".agents/skills/context-reload/SKILL.md";
+  const ownedPath = ".agents/skills/aidn-context-reload/SKILL.md";
   const ownedText = fs.readFileSync(path.join(isolated, ownedPath), "utf8");
   fs.appendFileSync(path.join(isolated, ownedPath), "\nuser change\n");
   const modifiedBefore = snapshot(isolated);

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { resolveSkillId } from "../../src/core/skills/skill-policy.mjs";
 
 const MUTATING_SKILLS = new Set([
   "start-session",
@@ -167,10 +168,11 @@ function main() {
       }
       const text = readRequired(file);
       const patterns = [...commonPatterns];
-      if (MUTATING_SKILLS.has(skill)) {
+      const internalSkill = resolveSkillId(skill) ?? skill;
+      if (MUTATING_SKILLS.has(internalSkill)) {
         patterns.push(...mutatingPatterns);
       }
-      if (skill === "start-session") {
+      if (internalSkill === "start-session") {
         patterns.push("do not skip this skill for that reason alone: run the admission phase");
       }
       const result = checkPatterns(file, text, patterns);

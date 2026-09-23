@@ -99,7 +99,9 @@ try {
     put(legacy, ".codex/skills/client-skill/SKILL.md", "# Client skill retained\n");
     const beforeLegacy = snapshot(legacy); const legacyPlan = await plan(legacy); assert(legacyPlan.ok, legacyPlan.errors.join(";")); assert.deepEqual(snapshot(legacy), beforeLegacy);
     assert(legacyPlan.historical_repairs.some((item) => item.path === relative && item.action === "repair")); assert(!JSON.stringify(legacyPlan).includes("replacementText"));
-    assert((await apply(legacy)).ok); const repaired = fs.readFileSync(path.join(legacy, relative), "utf8"); assert.equal(repaired.length, historical.length + 2); assert.equal(repaired.replace(/description: "([^\r\n]*)"/, "description: $1"), historical);
+    assert((await apply(legacy)).ok);
+    assert(!fs.existsSync(path.join(legacy, relative)), "old discoverable name must be retired after migration");
+    assert(fs.existsSync(path.join(legacy, ".agents/skills/aidn-pr-orchestrate/SKILL.md")));
     assert.equal(fs.readFileSync(path.join(legacy, ".codex/skills/client-skill/SKILL.md"), "utf8"), "# Client skill retained\n");
     const repairedSnapshot = snapshot(legacy); assert((await apply(legacy)).ok); assert.deepEqual(snapshot(legacy), repairedSnapshot);
     assert((await apply(legacy, "rollback")).ok); assert.equal(fs.readFileSync(path.join(legacy, relative), "utf8"), historical);
