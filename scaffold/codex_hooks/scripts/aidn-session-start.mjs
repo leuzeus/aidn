@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { readHookPayload, resolveHookProject, readAdmission, compactAdmission } from "./aidn-hook-runtime.mjs";
+import { readHookPayload, resolveHookProject, readAdmission, isNeutralAdmission, compactAdmission } from "./aidn-hook-runtime.mjs";
 
 async function main() {
   const payload = await readHookPayload();
@@ -13,6 +13,8 @@ async function main() {
   let diagnostic = null;
   try {
     const admission = readAdmission(location.projectRoot, { skill: "start-session" });
+    if (isNeutralAdmission(admission)) { process.stdout.write("{}\n"); return; }
+    if (admission.activation.active !== true) throw new Error("admission_activation_degraded");
     admissionStatus = admission.admission_status;
     context = `AIDN canonical admission (read-only): ${compactAdmission(admission)} Read AGENTS.md and its routing. This summary grants no write permission.`;
   } catch (error) {

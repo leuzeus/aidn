@@ -14,3 +14,4 @@ Architectural decisions for the workflow product.
 - `ADR-0009-release-versioning-provenance.md`
 - `ADR-0010-adaptive-repository-governance.md`
 - `ADR-0011-codex-installation-ownership-and-native-boundary.md`
+- `ADR-0012-project-activation-and-namespaced-skills.md`

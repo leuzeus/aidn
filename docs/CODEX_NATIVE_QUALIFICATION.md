@@ -7,6 +7,11 @@ successful repository gate does not fill these fields automatically.
 
 ## Current evidence boundary
 
+The activation and namespaced-skills candidate is qualified Windows-first.
+Unix fixture/native execution is UNAVAILABLE for this change and does not block
+Windows fixture qualification. A future Unix claim requires its own candidate
+run. Earlier Ubuntu results for the base commit do not qualify this delta.
+
 The available machine is a Windows VM. WSL is not available for this work, and
 no host configuration change is part of this protocol. Windows fixture wrappers,
 package installation and bounded app-server discovery have been exercised in the
@@ -26,7 +31,7 @@ are distinct from a native app or IDE session with human-approved project hooks.
 A successful generated schema, `skills/list` or `hooks/list` response is discovery
 or parsing evidence. It is not a native hook execution, human approval, effective
 prevention or live-project result. Keep every unexecuted check below as SKIP;
-when a required platform is absent, record UNAVAILABLE. Do not mark it PASS based
+when a platform is absent, record UNAVAILABLE without converting it into a Windows failure. Do not mark it PASS based
 on equivalent-looking fixture behavior.
 
 ## Candidate and environment record
@@ -85,7 +90,7 @@ installed binary was built byte-for-byte from that tag.
 ### Bounded Windows preparation commands
 
 These commands prepare a disposable local client and a local-only review sheet;
-**they do not execute N01-N12 or approve a native project**. Run them from the
+**they do not execute N01-N14 or approve a native project**. Run them from the
 candidate package-source checkout in PowerShell. They reuse the same local
 `npm pack`/tarball installation path as
 `tools/verify/verify-codex-client-install.mjs`, without its fixture prerequisite
@@ -106,7 +111,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Cannot capture candidate status' }
 if ($sourceDirty.Count -ne 0) { throw 'Commit the candidate before native qualification preparation' }
 $candidateVersion = (Get-Content -LiteralPath (Join-Path $sourceRoot 'VERSION') -Raw).Trim()
 $proofRoot = Join-Path ([IO.Path]::GetTempPath()) ('aidn-native-review-' + [guid]::NewGuid().ToString('N'))
-$clientRoot = Join-Path $proofRoot 'client espace accent-é'
+$clientRoot = Join-Path $proofRoot 'client espace accent-Ã©'
 $null = New-Item -ItemType Directory -Path $clientRoot
 $packedText = & $nodePath $npmCliPath pack --json --pack-destination $proofRoot
 if ($LASTEXITCODE -ne 0) { throw 'npm pack failed' }
@@ -122,10 +127,12 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Candidate tarball installation failed' }
   $installedRoot = Join-Path $clientRoot 'node_modules/aidn-workflow'
   $installedBin = Join-Path $installedRoot 'bin/aidn.mjs'
-  & $nodePath $installedBin bootstrap --target $clientRoot --profile default --dry-run --json
+  $previewText = & $nodePath $installedBin bootstrap --target $clientRoot --profile default --dry-run --json
   if ($LASTEXITCODE -ne 0) { throw 'Bootstrap preview failed' }
+  $preview = ($previewText -join "`n") | ConvertFrom-Json
+  if (-not $preview.plan_id) { throw 'Bootstrap preview did not identify its plan' }
   # Explicitly install only into this newly created disposable fixture.
-  & $nodePath $installedBin bootstrap --target $clientRoot --profile default --no-codex-migrate-custom
+  & $nodePath $installedBin bootstrap --target $clientRoot --profile default --expect-plan $preview.plan_id --no-codex-migrate-custom
   if ($LASTEXITCODE -ne 0) { throw 'Bootstrap installation failed' }
   $diagnostic = & $nodePath $installedBin bootstrap --target $clientRoot --diagnose --json
   if ($LASTEXITCODE -ne 0) { throw 'Bootstrap diagnostic failed' }
@@ -143,7 +150,7 @@ $review = [ordered]@{
   entry_sha256 = (Get-FileHash -LiteralPath $installedBin -Algorithm SHA256).Hash
   version_sha256 = (Get-FileHash -LiteralPath (Join-Path $installedRoot 'VERSION') -Algorithm SHA256).Hash
   hooks = $hookHashes; native_surface = 'OPEN'; native_backend = 'OPEN'
-  human_trust = 'NOT_RECORDED'; native_cases = 'N01-N12 NOT_EXECUTED'; llm_calls = 0
+  human_trust = 'NOT_RECORDED'; native_cases = 'N01-N14 NOT_EXECUTED'; llm_calls = 0
 }
 $null = [IO.File]::WriteAllText((Join-Path $proofRoot 'review.local.json'), ($review | ConvertTo-Json -Depth 8), $utf8)
 Write-Output $proofRoot
@@ -169,7 +176,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Backend version query failed' }
 ```
 
 Copy that version/hash and the observed app or active extension version into the
-record. Native approval and N01-N12 remain open. After human qualification and
+record. Native approval and N01-N14 remain open. After human qualification and
 preserving the required redacted evidence, remove only this exclusively created
 `aidn-native-review-<id>` directory, checking its resolved absolute path is a
 child of the system temporary directory before any recursive removal. Never
@@ -191,6 +198,8 @@ use a derived project path or generic temporary-directory wildcard for cleanup.
 | N10 | Two matching native hooks and repeated delivery | Observe concurrency/deny behavior; do not depend on handler ordering or duplicate an effect |
 | N11 | Same candidate from directories with spaces/accents and a subdirectory, including linked worktree | Native event resolves the correct project; no cross-worktree admission or path corruption |
 | N12 | App present with CLI absent from PATH; IDE with a different backend version | Inventory remains per surface; file/schema availability is distinct from native success |
+| N13 | Discover the thirteen namespaced skills beside a neutral unprefixed homonym | Public `aidn-*` identities remain distinct; each starts with activation/admission and inactive targets load no AIDN workflow context |
+| N14 | Revoke the disposable Git authority while a linked worktree session exists | Next AIDN admission is inactive in both worktrees; stale context or repair does not reauthorize; unrelated native tools are not claimed to be universally blocked |
 
 Use the AIDN core's documented workflow transitions to prepare canonical state.
 Do not make a model's declaration of PASS the acceptance oracle. For N06-N08,
@@ -207,9 +216,21 @@ The source-level failure matrix and its version anchors remain in the
 An MCP adapter or plugin is outside this candidate's required local command-hook
 path; test it separately if it becomes part of the delivered implementation.
 
+## Host migration and pilot boundary
+
+Global skill migration is separately qualified with a temporary Codex home using
+`bootstrap --migrate-global-skills --codex-home <absolute-path>` and its reviewed
+`--write --expect-plan` application. Preserve third-party TOML and skill bytes,
+record exact before/after hashes, then exercise explicit restore and stale-config
+refusal. A restart and actual native discovery are required to qualify Codex's
+interpretation of the disable entries. Deterministic transaction fixtures alone
+do not prove that native behavior. No real user Codex home or external pilot has
+been modified during the implementation qualification. A live pilot and any host
+change require their explicit selected target and reviewed plan.
+
 ## Qualification record and decision
 
-For each N01-N12 case, record:
+For each N01-N14 case, record:
 
 - status: PASS, FAIL, SKIP, UNAVAILABLE or OUTSIDE_COVERAGE;
 - exact native surface, candidate identity and fixture/context identity;

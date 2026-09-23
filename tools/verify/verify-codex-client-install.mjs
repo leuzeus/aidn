@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { discoverRepoSkills } from "./codex-discovery-lib.mjs";
+import { SKILL_IDENTITIES } from "../../src/core/skills/skill-policy.mjs";
 import { removePathWithRetry } from "../perf/test-git-fixture-lib.mjs";
 import {
   createSpawnSyncEvidenceTracker,
@@ -11,21 +12,7 @@ import {
 } from "./spawn-sync-evidence-lib.mjs";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
-const REQUIRED_SKILLS = [
-  "branch-cycle-audit",
-  "close-session",
-  "context-reload",
-  "convert-to-spike",
-  "crash-recovery",
-  "cycle-close",
-  "cycle-create",
-  "drift-check",
-  "handoff-close",
-  "pr-orchestrate",
-  "promote-baseline",
-  "requirements-delta",
-  "start-session",
-];
+const REQUIRED_SKILLS = SKILL_IDENTITIES.map((skill) => skill.publicName);
 const REQUIRED_AGENTS = [
   "aidn-explorer",
   "aidn-executor",

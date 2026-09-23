@@ -5,12 +5,40 @@ installer. The integration calls the same AIDN CLI and core admission use case a
 other adapters. It adds no second workflow engine, persistent server, mandatory
 API key or model call to the nominal installation and admission paths.
 
-This page describes unreleased integration changes based on package version
-0.7.2; it does not claim those changes have been published. Scaffold assets and
+This page describes unreleased activation changes based on package version
+0.8.0; it does not claim those changes have been published. Scaffold assets and
 test corpora are not an installed client project. Installation,
 discovery, native approval and operational qualification are separate claims.
 See [ADR-0011](ADR/ADR-0011-codex-installation-ownership-and-native-boundary.md)
 and the dated [capability evidence](rfc/codex-integration-2026-09-23/CAPABILITIES.md).
+
+## Project activation and skill names
+
+Before loading workflow context, run `aidn runtime pre-write-admit --target . --skill context-reload --json`. Continue only when `activation.active` is true and admission is admissible. The thirteen public skills now use `aidn-*` names, such as `aidn-context-reload` and `aidn-start-session`; their internal CLI `--skill context-reload` and `--skill start-session` identifiers stay compatible.
+
+Git repositories keep their canonical authorization in `<git-common-dir>/aidn/authorization.json`. Linked worktrees share its revision and revocation, while their receipts and owned assets remain local to each worktree. Non-Git targets use a local authorization under `.aidn/install/`. A configured database, discovered skill, copied config or cached context does not prove activation. Validated legacy receipts are reported separately as `legacy-active`.
+
+`bootstrap --diagnose --json` exposes compact activation fields: `state`, `active`, `scope`, `authority_id`, `revision` and `errors`. It remains read-only and does not contact a workflow backend to establish authorization. An inactive project stops AIDN workflow execution before loading that context.
+
+```sh
+aidn bootstrap --target . --authorize --json
+aidn bootstrap --target . --authorize --write --expect-plan PLAN_ID --json
+aidn bootstrap --target . --revoke --json
+aidn bootstrap --target . --revoke --write --expect-plan PLAN_ID --json
+```
+
+These actions use `codex-integration` scope; combining them with `--scope installation` is rejected. Repair, resume and rollback cannot implicitly restore authorization after revocation. Project authorization is independent of native Codex project/hook approval. See [ADR-0012](ADR/ADR-0012-project-activation-and-namespaced-skills.md).
+
+Global skill migration requires an explicit host target. The public action inventories only known AIDN directory names under `<codex-home>/skills`; it does not scan every possible native skill root. It identifies exact known global AIDN skills and prepares path-specific `[[skills.config]]` entries with `enabled = false`, preserving skill files and unrelated TOML. An unknown or customized homonym is not automatically adopted. These actions use the existing project installation journal, a host configuration lock, and checks of both the reviewed configuration and selected skill content. Restore requires the recorded configuration post-image to remain unchanged. Pre-images stay in private local recovery data and are omitted from public diagnostics.
+
+```sh
+aidn bootstrap --target . --migrate-global-skills --codex-home /absolute/codex-home --json
+aidn bootstrap --target . --migrate-global-skills --codex-home /absolute/codex-home --write --expect-plan PLAN_ID --json
+aidn bootstrap --target . --restore-global-skills --codex-home /absolute/codex-home --json
+aidn bootstrap --target . --restore-global-skills --codex-home /absolute/codex-home --write --expect-plan PLAN_ID --json
+```
+
+On Windows, use an absolute Windows path for `--codex-home`. These two actions accept only `codex-integration` scope and are never part of nominal install, repair or authorization. Only temporary host fixtures have been used for their qualification; no live Codex home was changed. The [official Codex instructions](https://learn.chatgpt.com/docs/build-skills#enable-or-disable-local-codex-skills) describe these disable entries and require restarting Codex after a configuration change.
 
 ## Install and inspect
 
@@ -24,7 +52,7 @@ aidn bootstrap --target . --diagnose --json
 ```
 
 The ordinary bootstrap retains its explicit install/upgrade behavior; use
-`--dry-run` to preview it. The lifecycle actions below are preview-only by
+`--dry-run` to preview it and `--expect-plan PLAN_ID` to bind application to that reviewed plan. The lifecycle actions below are preview-only by
 default. `--json` selects output format and grants no additional write intent.
 
 Nominal installation does not require a Codex CLI on PATH or a Codex login. The
@@ -33,8 +61,8 @@ customization migration and may require Codex authentication and model use. It i
 disabled by default. Conflicting managed content is surfaced for resolution.
 
 Open the installed project in the intended native client and review its project
-trust and the exact installed hook definitions. AIDN does not modify global Codex
-configuration, approve a project, record approved hook hashes or complete that
+trust and the exact installed hook definitions. Nominal project installation does not modify global Codex
+configuration. Explicit global skill migration changes only reviewed disable entries; it does not approve a project, record approved hook hashes or complete that
 native review on the user's behalf. Changed definitions can need renewed native
 approval. Local installation alone cannot establish that a hook will run.
 
@@ -167,6 +195,8 @@ not replayed by resume. An uncertain PostgreSQL import returns
 `ARTIFACT_IMPORT_REQUIRES_INSPECTION` before further writes; inspect the external
 effect before choosing recovery. Asset rollback does not undo database changes.
 
+Persistence policy `--persistence-policy verify-only` verifies an existing backend without requesting migration, adoption or artifact import. An incompatible or missing backend fails before installation writes. The `adopt` policy allows the planned installation effects; preview still does not contact the backend.
+
 ## Native hooks and core authority
 
 The distributed hook file uses only command handlers for `SessionStart` and
@@ -233,6 +263,8 @@ The candidate record and native acceptance cases for release line 0.8.0 are in
 [Codex native qualification](CODEX_NATIVE_QUALIFICATION.md). That record remains
 OPEN; it is a protocol with unfilled evidence fields, not an execution result.
 
+For the current activation changes, qualification is limited to disposable Windows VM fixtures. Unix execution is UNAVAILABLE and is recorded separately rather than blocking those local fixtures. Native app/IDE qualification remains open. The following inventory and probes are retained from the 0.8.0 base; they do not qualify the new activation behavior:
+
 Observed as of 2026-09-23 on the Windows VM:
 
 | Surface | Available evidence | Native AIDN session qualification |
@@ -270,3 +302,12 @@ Native acceptance remains the human-reviewed disposable protocol in the
 In particular, disabled hooks and native runtime failure must remain visible as
 SKIP until exercised. The nominal diagnostic cannot observe a UI disable or
 approval change; it keeps approval unknown and operational status unverified.
+
+Rollback cannot restore a nonempty legacy installation whose old hooks lack the
+activation boundary. It refuses with
+`ROLLBACK_TO_LEGACY_ACTIVATION_REQUIRES_UNINSTALL`; use an explicitly reviewed
+uninstall and a compatible installation instead. Rolling back an initial install
+to the absence of a prior receipt remains supported. The host migration recovery
+binding survives project rollback, including older installation history; only
+explicit `--restore-global-skills` releases that binding after restoring the
+unchanged host configuration post-image.

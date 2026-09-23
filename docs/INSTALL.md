@@ -582,3 +582,9 @@ Recommended first reload path in client repos:
   - default fresh install uses `dual` (DB-backed) when no override is provided
   - explicit CLI `--index-store` still has priority.
   - in `dual`/`db-only`, index payload content embedding is enabled by default so files can be reconstructed from DB.
+
+## Activation and reviewed application
+
+Use `aidn bootstrap --target <client-repo> --dry-run --json` to obtain the installation plan; `--expect-plan PLAN_ID` binds nominal bootstrap to that preview. Use `--persistence-policy verify-only` when existing persistence must be verified without migration, adoption or import.
+
+Project authorization is inspected with `aidn bootstrap --target <client-repo> --diagnose --json`. Explicit `--authorize` and `--revoke` actions preview by default and require `--write --expect-plan PLAN_ID` to apply. They share repository authorization across Git worktrees while preserving per-worktree installation receipts. See [project activation](CODEX_INTEGRATION.md#project-activation-and-skill-names).

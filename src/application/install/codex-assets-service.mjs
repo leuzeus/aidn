@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 import { writeFileAtomicSync } from "../../lib/fs/atomic-write-lib.mjs";
 import { renderTemplateVariables } from "./template-io.mjs";
 import { inspectInstalledAidnVersion } from "../../lib/config/aidn-config-lib.mjs";
+import { planAuthorization, applyAuthorization, acquireAuthorizationLock, readActivation } from "./project-activation-service.mjs";
+import { planGlobalSkillsMigration, planRestoreGlobalSkillsMigration } from "./global-skills-migration-service.mjs";
 
 const STORE = ".aidn/install";
 const RECEIPT = `${STORE}/receipt.json`;
@@ -22,7 +24,7 @@ const LEGACY_HOOK = {
   commandWindows: 'powershell.exe -NoProfile -NonInteractive -Command "$root = git rev-parse --show-toplevel; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; node (Join-Path $root \'.codex/hooks/aidn-session-start.mjs\')"',
   timeout: 10,
 };
-const ACTIONS = new Set(["install", "repair", "resume", "rollback", "uninstall"]);
+const ACTIONS = new Set(["install", "repair", "resume", "rollback", "uninstall", "authorize", "revoke", "migrate-global-skills", "restore-global-skills"]);
 const hash = (value) => crypto.createHash("sha256").update(value).digest("hex");
 const encode = (text) => Buffer.from(text).toString("base64");
 const decode = (data) => data === null ? null : Buffer.from(data, "base64").toString("utf8");
@@ -252,6 +254,13 @@ function publicPlan(plan) {
     conflicts: plan.conflicts, errors: plan.conflicts.map((item) => `${item.code}${item.path ? `: ${item.path}` : ""}`),
     warnings: plan.warnings,
     historical_repairs: plan.historicalRepairs ?? [],
+    authorization: plan.authorization ? { action: plan.authorization.action, scope: plan.authorization.identity.scope,
+      authority_id: plan.authorization.identity.authority_id, expected_revision: plan.authorization.authorization.expected_revision,
+      next_revision: plan.authorization.authorization.next_revision,
+      effect: plan.authorization.authorization.before === plan.authorization.authorization.after ? "unchanged" : "update" } : null,
+    ...(plan.hostMigration ? { global_skills: { codex_home: plan.hostMigration.codex_home,
+      candidates: plan.hostMigration.candidates, requires_restart: plan.hostMigration.requires_restart,
+      operations: plan.hostMigration.operations.map(({ path: relative, before_hash, after_hash }) => ({ path: path.join(plan.hostMigration.codex_home, relative), before_hash, after_hash })) } } : {}),
     ...(plan.scope === "installation" ? { external_effects: plan.installationContext?.external_effects ?? [], version_before: plan.installationContext?.version_before ?? null, version_after: plan.installationContext?.version_after ?? null } : {}),
   };
 }
@@ -296,6 +305,11 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
   try {
     if (!ACTIONS.has(action)) problem("INVALID_INSTALL_ACTION");
     if (!["codex-integration", "installation"].includes(scope)) problem("INVALID_INSTALL_SCOPE");
+    if (["authorize", "revoke", "migrate-global-skills", "restore-global-skills"].includes(action) && scope !== "codex-integration") problem("INVALID_AUTHORIZATION_SCOPE");
+    const authority = planAuthorization({ targetRoot, action: "authorize" });
+    if (scopeId(authority.identity.target_root) !== scopeId(targetRoot)) problem("INSTALL_REQUIRES_PROJECT_ROOT");
+    plan.authorityIdentity = authority.identity;
+    plan.authorizationBefore = authority.authorization.before;
     // Store safety is validated even when none of the selected assets is present.
     safePath(targetRoot, STORE, { directory: true });
     const privateIgnore = read(targetRoot, PRIVATE_IGNORE);
@@ -307,15 +321,40 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
     if (!ignoreLock && plan.recoveryLock) problem("INTERRUPTED_LOCK_RECOVERY_REQUIRES_INSPECTION", STORE + "/recovery-lock.json");
     if (!ignoreLock && plan.lock) {
       if (processExists(plan.lock.pid)) problem("INSTALL_LOCKED", LOCK);
-      if (!["resume", "rollback"].includes(action)) problem("STALE_INSTALL_LOCK_REQUIRES_RESUME", LOCK);
+      if (!["resume", "rollback", "revoke"].includes(action)) problem("STALE_INSTALL_LOCK_REQUIRES_RESUME", LOCK);
     }
     if (plan.pending && (plan.pending.schema_version !== 1 || plan.pending.root_id !== scopeId(targetRoot))) problem("INVALID_PENDING_TRANSACTION", PENDING);
-    if (plan.pending && (plan.pending.scope ?? "codex-integration") !== scope) problem("INSTALLATION_SCOPE_REQUIRED");
+    if (plan.pending && action !== "revoke" && (plan.pending.scope ?? "codex-integration") !== scope) problem("INSTALLATION_SCOPE_REQUIRED");
     const emptyReceipt = { schema_version: 1, scope: "codex-integration", root_id: scopeId(targetRoot), package: null, assets: {}, last_transaction: null, last_action: null };
     plan.nextReceipt = structuredClone(plan.receipt ?? emptyReceipt);
 
-    if (plan.pending && !["resume", "rollback"].includes(action)) problem("INTERRUPTED_INSTALL_REQUIRES_RESUME_OR_ROLLBACK", PENDING);
-    if (action === "resume") {
+    if (plan.pending && !["resume", "rollback", "revoke"].includes(action)) problem("INTERRUPTED_INSTALL_REQUIRES_RESUME_OR_ROLLBACK", PENDING);
+    if (["migrate-global-skills", "restore-global-skills"].includes(action)) {
+      if (!path.isAbsolute(options.codexHome ?? "")) problem("EXPLICIT_ABSOLUTE_HOST_PATH_REQUIRED");
+      const home = safeRoot(options.codexHome);
+      if (action === "migrate-global-skills") {
+        if (!readActivation({ targetRoot }).active) problem("GLOBAL_MIGRATION_REQUIRES_ACTIVE_LOCAL_INSTALLATION");
+        for (const name of ["aidn-context-reload", "aidn-start-session"]) if (!plan.receipt.assets[`.agents/skills/${name}/SKILL.md`]) problem("GLOBAL_MIGRATION_REQUIRES_NAMESPACED_SKILLS");
+        plan.hostMigration = planGlobalSkillsMigration({ codexHome: home });
+      } else {
+        const saved = plan.receipt?.global_skills_migration;
+        if (!saved || scopeId(saved.codex_home) !== scopeId(home)) problem("NO_OWNED_GLOBAL_SKILLS_MIGRATION");
+        plan.hostMigration = planRestoreGlobalSkillsMigration({ codexHome: home, operation: saved.operation });
+      }
+      if (!plan.hostMigration.ok) { plan.conflicts.push(...plan.hostMigration.conflicts); }
+      else if (action === "migrate-global-skills") {
+        const saved = plan.receipt?.global_skills_migration;
+        const operation = plan.hostMigration.operations[0];
+        if (saved && (scopeId(saved.codex_home) !== scopeId(home) || saved.operation.after !== operation.before)) problem("GLOBAL_SKILLS_POSTIMAGE_CHANGED");
+        plan.nextReceipt.global_skills_migration = { codex_home: home, operation: saved
+          ? { ...operation, before: saved.operation.before, before_hash: saved.operation.before_hash } : operation };
+      } else delete plan.nextReceipt.global_skills_migration;
+      if (plan.hostMigration.ok) validateHostMigration(plan.hostMigration);
+    } else if (["authorize", "revoke"].includes(action)) {
+      if (action === "authorize" && !Object.keys(plan.receipt?.assets ?? {}).length) problem("AUTHORIZE_REQUIRES_INSTALLED_WORKTREE");
+      plan.authorization = action === "authorize" ? authority : planAuthorization({ targetRoot, action });
+      if (action === "authorize") plan.nextReceipt.activation = { mode: authority.identity.scope, authority_id: authority.identity.authority_id };
+    } else if (action === "resume") {
       if (!plan.pending) { plan.warnings.push(plan.lock ? "No asset journal; resume will recover the abandoned installation lock." : "No interrupted Codex asset transaction."); }
       else {
         const tx = loadTransaction(targetRoot, plan.pending.id);
@@ -323,6 +362,10 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
         const interruptedImport = tx.external_effect_results?.["artifact-import"];
         if (interruptedImport?.source_kind === "postgres" && !["completed", "skipped"].includes(interruptedImport.status)) problem("ARTIFACT_IMPORT_REQUIRES_INSPECTION");
         plan.resume = tx;
+        plan.hostMigration = tx.host_migration ?? null;
+        if (plan.hostMigration) validateHostMigration(plan.hostMigration);
+        plan.authorization = tx.authorization ?? null;
+        if (plan.authorization && ![plan.authorization.authorization.before, plan.authorization.authorization.after].includes(plan.authorizationBefore)) problem("ACTIVATION_AUTHORIZATION_CAS_CONFLICT");
         plan.installationContext = tx.installation_context ?? null;
         plan.binding = tx.execution_package ?? tx.receipt_after.package ?? tx.receipt_before?.package;
         if (!plan.binding) problem("MISSING_TRANSACTION_PACKAGE_BINDING");
@@ -344,6 +387,9 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
       if (!id || (!plan.pending && alreadyRolledBack)) plan.warnings.push("No Codex asset transaction to roll back.");
       else {
         const tx = loadTransaction(targetRoot, id);
+        if (tx.host_migration) problem("HOST_MIGRATION_REQUIRES_EXPLICIT_RESTORE");
+        if (tx.receipt_after?.activation && tx.receipt_before && !tx.receipt_before.activation
+          && Object.keys(tx.receipt_before.assets ?? {}).length) problem("ROLLBACK_TO_LEGACY_ACTIVATION_REQUIRES_UNINSTALL");
         const codexOnlyRollback = scope === "codex-integration" && tx.scope === "installation" && !plan.pending;
         if (tx.scope !== scope && !codexOnlyRollback) problem("INSTALLATION_SCOPE_REQUIRED");
         plan.installationContext = tx.installation_context ?? null;
@@ -356,6 +402,7 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
         plan.nextReceipt = codexOnlyRollback
           ? { ...structuredClone(plan.receipt), assets: structuredClone(tx.receipt_before?.assets ?? {}), package: tx.receipt_before?.package ?? plan.receipt.package }
           : structuredClone(tx.receipt_before ?? emptyReceipt);
+        if (tx.receipt_after?.activation) plan.nextReceipt.activation = structuredClone(tx.receipt_after.activation);
       }
     } else if (action === "uninstall") {
       for (const [relative, asset] of Object.entries(plan.receipt?.assets ?? {})) {
@@ -388,6 +435,13 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
       }
     } else {
       plan.binding = packageBinding(repoRoot);
+      if (action === "install") {
+        if (authority.authorization.before === null) {
+          if (plan.receipt?.activation) problem("ACTIVATION_AUTHORITY_MISSING");
+          plan.authorization = authority;
+        }
+        plan.nextReceipt.activation = { mode: authority.identity.scope, authority_id: authority.identity.authority_id };
+      }
       const desired = desiredAssets(repoRoot, { VERSION: plan.binding.version, ...options.templateVars });
       const historical = new Map();
       for (const relative of [".agents/skills/pr-orchestrate/SKILL.md", ".codex/skills/pr-orchestrate/SKILL.md"]) {
@@ -395,12 +449,21 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
         if (current === null) continue;
         const classification = classifyHistoricalCodexSkill({ relativePath: relative, text: decode(current) });
         const { replacementText, ...publicClassification } = classification;
-        if (classification.action === "conflict") problem(classification.code, relative);
+        if (classification.action === "conflict" && plan.receipt?.assets?.[relative]?.current !== current
+          && !knownLegacy(relative, decode(current))) problem(classification.code, relative);
         if (classification.action === "repair") {
           historical.set(relative, classification);
           (plan.historicalRepairs ??= []).push({ path: relative, ...publicClassification });
         }
-        if (["none", "repair"].includes(classification.action)) desired.set(relative, { kind: "file", data: classification.action === "repair" ? encode(replacementText) : current });
+        if (classification.action === "none") historical.set(relative, classification);
+        // Keep the exact old bytes in the transaction, not a duplicate discoverable skill.
+      }
+      for (const relative of new Set([...Object.keys(legacy.assets), ...historical.keys()].filter((name) => name.startsWith(".agents/skills/") || name.startsWith(".codex/skills/")))) {
+        if (desired.has(relative) || plan.receipt?.assets?.[relative]) continue;
+        const current = read(targetRoot, relative);
+        if (current === null) continue;
+        if (!knownLegacy(relative, decode(current)) && !historical.has(relative)) problem("UNOWNED_LEGACY_SKILL_CONFLICT", relative);
+        plan.operations.push(makeOperation(relative, "file", current, null, current, null));
       }
       if (action === "repair" && !plan.receipt && !historical.size) problem("NO_MANAGED_CODEX_INSTALLATION");
       plan.nextReceipt.package = plan.binding;
@@ -493,10 +556,16 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
         delete plan.nextReceipt.assets[relative];
       }
     }
+    // Rollback restores assets, never an old authorization model or a grant.
+    if (plan.receipt?.activation && plan.nextReceipt) plan.nextReceipt.activation = structuredClone(plan.receipt.activation);
+    if (action === "rollback" && plan.nextReceipt) {
+      if (plan.receipt?.global_skills_migration) plan.nextReceipt.global_skills_migration = structuredClone(plan.receipt.global_skills_migration);
+      else delete plan.nextReceipt.global_skills_migration;
+    }
   } catch (error) {
     plan.conflicts.push({ code: error.code ?? "CODEX_ASSET_PLAN_FAILED", path: error.relativePath ?? "" });
   }
-  plan.id = hash(stable({ action, root: scopeId(targetRoot), binding: plan.binding, receipt: plan.receipt, pending: plan.pending, operations: plan.operations, conflicts: plan.conflicts, nextReceipt: plan.nextReceipt, scope, installationContext: plan.installationContext }));
+  plan.id = hash(stable({ action, root: scopeId(targetRoot), binding: plan.binding, receipt: plan.receipt, pending: plan.pending, operations: plan.operations, conflicts: plan.conflicts, nextReceipt: plan.nextReceipt, scope, installationContext: plan.installationContext, authorityIdentity: plan.authorityIdentity, authorizationBefore: plan.authorizationBefore, authorization: plan.authorization ?? null, hostMigration: plan.hostMigration ?? null }));
   return plan;
 }
 export function planCodexAssets(options = {}) { return publicPlan(buildPlan(options)); }
@@ -511,18 +580,18 @@ function processExists(pid) {
   if (!Number.isSafeInteger(pid) || pid <= 0) return true;
   try { process.kill(pid, 0); return true; } catch (error) { return error.code !== "ESRCH"; }
 }
-function acquireLock(root, action) {
-  const absolute = safePath(root, LOCK);
-  const recoveryRelative = `${STORE}/recovery-lock.json`;
+function acquireLock(root, action, lockRelative = LOCK) {
+  const absolute = safePath(root, lockRelative);
+  const recoveryRelative = lockRelative === LOCK ? `${STORE}/recovery-lock.json` : `${lockRelative}.recovery`;
   const recoveryPath = safePath(root, recoveryRelative);
   if (fs.existsSync(recoveryPath)) problem("INSTALL_RECOVERY_LOCKED", recoveryRelative);
-  const existing = jsonAt(root, LOCK);
+  const existing = jsonAt(root, lockRelative);
   let recoveryDescriptor;
   let recoveryToken;
   try {
     if (existing) {
-      if (!["resume", "rollback"].includes(action) || processExists(existing.pid)
-        || typeof existing.token !== "string" || existing.root_id !== scopeId(root)) problem("INSTALL_LOCKED", LOCK);
+      if ((lockRelative === LOCK && !["resume", "rollback", "revoke"].includes(action)) || processExists(existing.pid)
+        || existing.schema_version !== 1 || typeof existing.token !== "string" || !existing.token || existing.root_id !== scopeId(root)) problem("INSTALL_LOCKED", lockRelative);
       // Serialize stale-lock reclamation independently of the primary lock. Never
       // unlink a live replacement created by another concurrent resume process.
       recoveryToken = crypto.randomBytes(16).toString("hex");
@@ -530,12 +599,11 @@ function acquireLock(root, action) {
       catch (error) { if (error.code === "EEXIST") problem("INSTALL_RECOVERY_LOCKED", recoveryRelative); throw error; }
       fs.writeFileSync(recoveryDescriptor, JSON.stringify({ pid: process.pid, token: recoveryToken }));
       fs.fsyncSync(recoveryDescriptor);
-      const current = jsonAt(root, LOCK);
+      const current = jsonAt(root, lockRelative);
       if (!same(existing, current) || processExists(current.pid)) problem("INSTALL_LOCKED", LOCK);
       fs.unlinkSync(absolute);
     }
-    safePath(root, STORE, { directory: true });
-    fs.mkdirSync(path.join(root, STORE), { recursive: true });
+    fs.mkdirSync(path.dirname(absolute), { recursive: true });
     const token = crypto.randomBytes(16).toString("hex");
     let descriptor;
     try {
@@ -546,12 +614,23 @@ function acquireLock(root, action) {
       if (error.code === "EEXIST") problem("INSTALL_LOCKED", LOCK);
       throw error;
     } finally { if (descriptor !== undefined) fs.closeSync(descriptor); }
-    return () => { if (jsonAt(root, LOCK)?.token === token) fs.unlinkSync(safePath(root, LOCK)); };
+    return () => { if (jsonAt(root, lockRelative)?.token === token) fs.unlinkSync(safePath(root, lockRelative)); };
   } finally {
     if (recoveryDescriptor !== undefined) {
       fs.closeSync(recoveryDescriptor);
       if (jsonAt(root, recoveryRelative)?.token === recoveryToken) fs.unlinkSync(safePath(root, recoveryRelative));
     }
+  }
+}
+function validateHostMigration(migration) {
+  if (!migration || !path.isAbsolute(migration.codex_home ?? "") || !Array.isArray(migration.operations)
+    || migration.operations.length !== 1) problem("INVALID_HOST_MIGRATION");
+  const home = safeRoot(migration.codex_home), op = migration.operations[0];
+  if (op.path !== "config.toml" || op.kind !== "global-skills-config" || bytesHash(op.before) !== op.before_hash || bytesHash(op.after) !== op.after_hash) problem("INVALID_HOST_MIGRATION");
+  if (![op.before, op.after].includes(read(home, "config.toml"))) problem("GLOBAL_SKILLS_POSTIMAGE_CHANGED");
+  for (const candidate of migration.candidates ?? []) {
+    if (!path.isAbsolute(candidate.path) || !candidate.path.startsWith(`${home}${path.sep}`)) problem("INVALID_HOST_SKILL_PATH");
+    if (bytesHash(read(home, path.relative(home, candidate.path).replaceAll("\\", "/"))) !== candidate.sha256) problem("GLOBAL_SKILL_CHANGED_SINCE_PREVIEW");
   }
 }
 function* executeTransaction(options = {}) {
@@ -562,15 +641,21 @@ function* executeTransaction(options = {}) {
   if (expected && expected !== before.id) return { ...output, ok: false, conflicts: [{ code: "STALE_INSTALL_PLAN", path: "" }], errors: ["STALE_INSTALL_PLAN"] };
   const changes = before.operations.filter((op) => op.before !== op.after);
   const receiptChanged = !same(before.nextReceipt, before.receipt) && before.nextReceipt !== null;
-  if (!changes.length && !receiptChanged && !before.pending && !before.lock) return { ...output, dry_run: false };
+  const authorizationChanged = before.authorization && before.authorization.authorization.before !== before.authorization.authorization.after;
+  const hostChanged = before.hostMigration?.operations.some((op) => op.before !== op.after);
+  if (!changes.length && !receiptChanged && !authorizationChanged && !hostChanged && !before.pending && !before.lock) return { ...output, dry_run: false };
   // A lifecycle call is intentionally a no-op when no integration was ever installed.
   if (!changes.length && !before.receipt && !before.pending && !before.lock && ["resume", "rollback", "uninstall"].includes(before.action)) return { ...output, dry_run: false };
   let release;
+  let releaseAuthorization;
+  let releaseHost;
   let transaction;
   const written = [];
   const metadataWritten = [];
   let finalCommitDurable = false;
   try {
+    releaseAuthorization = acquireAuthorizationLock({ targetRoot: before.targetRoot });
+    if (before.hostMigration) releaseHost = acquireLock(safeRoot(before.hostMigration.codex_home), before.action, ".aidn-skills-migration.lock.json");
     release = acquireLock(before.targetRoot, before.action);
     const fresh = buildPlan(options, { ignoreLock: true });
     if (fresh.id !== before.id || fresh.conflicts.length) problem("STALE_INSTALL_PLAN");
@@ -590,10 +675,25 @@ function* executeTransaction(options = {}) {
       receipt_before: before.receipt, receipt_after: before.nextReceipt,
       execution_package: before.binding ?? packageBinding(before.repoRoot),
       rollback_of: before.rollbackOf ?? null,
+      authorization: before.authorization ?? null,
+      host_migration: before.hostMigration ?? null,
       ...(before.scope === "installation" ? { installation_context: before.installationContext, external_status: "pending" } : {}),
     };
     writeJson(before.targetRoot, `${STORE}/transactions/${transactionId}.json`, sealed(transaction));
     metadataWritten.push(`${STORE}/transactions/${transactionId}.json`);
+    if (["authorize", "revoke"].includes(before.action)) {
+      applyAuthorization(transaction.authorization, { alreadyLocked: true });
+      metadataWritten.push(transaction.authorization.authorization.path);
+      transaction.status = "complete";
+      if (before.action === "authorize") {
+        const receipt = { ...before.nextReceipt, last_transaction: transactionId, last_action: before.action, last_scope: before.scope };
+        transaction.receipt_after = receipt;
+        writeJson(before.targetRoot, RECEIPT, sealed(receipt));
+        metadataWritten.push(RECEIPT);
+      }
+      writeJson(before.targetRoot, `${STORE}/transactions/${transactionId}.json`, sealed(transaction));
+      return { ...output, dry_run: false, written: true, write_targets: metadataWritten, transaction_id: transactionId };
+    }
     writeJson(before.targetRoot, PENDING, { schema_version: 1, scope: before.scope, root_id: scopeId(before.targetRoot), id: transactionId });
     metadataWritten.push(PENDING);
     let applied = 0;
@@ -613,6 +713,10 @@ function* executeTransaction(options = {}) {
         writeJson(before.targetRoot, `${STORE}/transactions/${transactionId}.json`, sealed(transaction));
       }
       if (operation.finalize && transaction.scope === "installation" && !["rollback", "uninstall"].includes(transaction.action)) {
+        if (transaction.authorization) {
+          applyAuthorization(transaction.authorization, { alreadyLocked: true });
+          metadataWritten.push(transaction.authorization.authorization.path);
+        }
         committedReceipt = { ...transaction.receipt_after, last_transaction: transactionId, last_action: transaction.action, last_scope: transaction.scope };
         committedReceipt.installation_last_transaction = transactionId;
         committedReceipt.installation_last_action = transaction.action;
@@ -635,6 +739,19 @@ function* executeTransaction(options = {}) {
     const receipt = committedReceipt ?? { ...transaction.receipt_after, last_transaction: transactionId, last_action: transaction.action, last_scope: transaction.scope };
     if (transaction.scope === "installation") { receipt.installation_last_transaction = transactionId; receipt.installation_last_action = transaction.action; }
     if (!committedReceipt) {
+      if (transaction.host_migration) {
+        validateHostMigration(transaction.host_migration);
+        const op = transaction.host_migration.operations[0];
+        if (read(transaction.host_migration.codex_home, op.path) !== op.after) {
+          write(transaction.host_migration.codex_home, op.path, op.after);
+          written.push(path.join(transaction.host_migration.codex_home, op.path));
+        }
+        if (options.failAfterHostWrite) problem("INJECTED_HOST_MIGRATION_INTERRUPTION");
+      }
+      if (transaction.authorization) {
+        applyAuthorization(transaction.authorization, { alreadyLocked: true });
+        metadataWritten.push(transaction.authorization.authorization.path);
+      }
       writeJson(before.targetRoot, RECEIPT, sealed(receipt));
       transaction.status = "complete";
       transaction.receipt_after = receipt;
@@ -650,7 +767,7 @@ function* executeTransaction(options = {}) {
       pending: transaction?.id ?? before.pending?.id ?? null,
       conflicts: [{ code: error.code ?? "CODEX_ASSET_APPLY_FAILED", path: error.relativePath ?? "" }],
       errors: [`${error.code ?? "CODEX_ASSET_APPLY_FAILED"}${error.relativePath ? `: ${error.relativePath}` : ""}`] };
-  } finally { if (release) release(); }
+  } finally { if (release) release(); if (releaseHost) releaseHost(); if (releaseAuthorization) releaseAuthorization(); }
 }
 
 export function executeCodexAssets(options = {}) {

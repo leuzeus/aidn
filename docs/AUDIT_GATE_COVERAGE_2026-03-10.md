@@ -75,7 +75,7 @@ Classification: `confirmed-runtime-gap`
 
 Contract requires a mandatory gate before close:
 
-- `scaffold/codex/close-session/SKILL.md` says open cycles must be resolved before session close.
+- [scaffold/codex/close-session/SKILL.md](https://github.com/leuzeus/aidn/blob/70173d0cab9c991dc83d6f4a6774ffeed978a67f/scaffold/codex/close-session/SKILL.md) says open cycles must be resolved before session close.
 - It also says each open cycle needs an explicit decision.
 - It explicitly says: if one open cycle has no explicit decision, stop session close.
 
@@ -115,7 +115,7 @@ Classification: `confirmed-runtime-gap`
 
 Contract requires a continuity decision before creation:
 
-- `scaffold/codex/cycle-create/SKILL.md` says to run a continuity gate before creating files/branch
+- [scaffold/codex/cycle-create/SKILL.md](https://github.com/leuzeus/aidn/blob/70173d0cab9c991dc83d6f4a6774ffeed978a67f/scaffold/codex/cycle-create/SKILL.md) says to run a continuity gate before creating files/branch
 - if requested source branch is neither latest active cycle branch nor current session tip, it must stop
 - the user must select exactly one continuity rule `R1 | R2 | R3`
 - no cycle artifacts should be created until that selection is made
@@ -152,7 +152,7 @@ Classification: `watchlist`
 
 Contract requires a business stop:
 
-- `scaffold/codex/requirements-delta/SKILL.md` says medium/high impact with unclear branch ownership must stop and request a cycle/branch decision
+- [scaffold/codex/requirements-delta/SKILL.md](https://github.com/leuzeus/aidn/blob/70173d0cab9c991dc83d6f4a6774ffeed978a67f/scaffold/codex/requirements-delta/SKILL.md) says medium/high impact with unclear branch ownership must stop and request a cycle/branch decision
 
 Runtime route does not show any specialized enforcement:
 
@@ -174,7 +174,7 @@ Classification: `watchlist`
 
 Contract requires validation-driven stop:
 
-- `scaffold/codex/promote-baseline/SKILL.md` says if validation fails, produce missing checklist and do not promote
+- [scaffold/codex/promote-baseline/SKILL.md](https://github.com/leuzeus/aidn/blob/70173d0cab9c991dc83d6f4a6774ffeed978a67f/scaffold/codex/promote-baseline/SKILL.md) says if validation fails, produce missing checklist and do not promote
 
 Runtime route remains generic:
 
@@ -229,7 +229,7 @@ Classification: `confirmed-structural-gap`
 
 scaffold/contract exists:
 
-- `scaffold/codex/handoff-close/SKILL.md`
+- [scaffold/codex/handoff-close/SKILL.md](https://github.com/leuzeus/aidn/blob/70173d0cab9c991dc83d6f4a6774ffeed978a67f/scaffold/codex/handoff-close/SKILL.md)
 - `scaffold/codex/skills.yaml` lists `handoff-close`
 
 Runtime exposure is missing from the supported skill map:

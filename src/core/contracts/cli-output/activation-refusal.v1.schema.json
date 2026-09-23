@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/activation-refusal.v1",
+  "title": "AIDN inactive project refusal before workflow loading",
+  "x-aidn-command": "aidn codex hydrate-context --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "type": "object",
+  "required": ["schema_version", "command", "effect_class", "ok", "status", "code", "target_root", "activation", "errors", "written", "refused"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "command": { "type": "string" },
+    "effect_class": { "type": "string", "enum": ["read-only", "preview", "projector", "mutating", "executor"] },
+    "ok": { "type": "boolean", "const": false },
+    "status": { "type": "string", "const": "blocked" },
+    "code": { "type": "string", "const": "AIDN_ACTIVATION_REQUIRED" },
+    "target_root": { "type": "string" },
+    "activation": {
+      "type": "object",
+      "required": ["state", "active"],
+      "properties": {
+        "state": { "type": "string", "enum": ["absent", "unprepared", "revoked", "degraded"] },
+        "active": { "type": "boolean", "const": false }
+      },
+      "additionalProperties": false
+    },
+    "errors": { "type": "array", "items": { "type": "string" } },
+    "written": { "type": "boolean", "const": false },
+    "refused": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}

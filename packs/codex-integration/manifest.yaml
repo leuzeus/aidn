@@ -19,7 +19,7 @@ install:
 verify:
   must_exist:
     - .aidn/codex/skills.yaml
-    - .agents/skills/start-session/SKILL.md
+    - .agents/skills/aidn-start-session/SKILL.md
     - .codex/agents/aidn-explorer.toml
     - .codex/agents/aidn-executor.toml
     - .codex/agents/aidn-validator.toml

@@ -69,3 +69,9 @@ Contract coverage is closed in both directions:
 ## Change Rule
 
 If the payload shape changes, update the schema, the fixture coverage, and the relevant gate in the same change set.
+
+Activation refusals use `activation-refusal.v1`, registered as an alternative for
+the same command rather than changing its logical effect class. Required
+`written: false` and `refused: true` report the observed refusal. Diagnostic and
+pre-write admission contracts include compact activation, while native trust,
+secret recovery pre-images and backend credentials are never part of that shape.

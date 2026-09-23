@@ -25,13 +25,22 @@ function normalizeStateMode(value) {
 }
 
 const CONCEPT_GOVERNANCE = freezeDeep({
+  project_activation: {
+    owner: "project maintainer",
+    lifecycle: "absent -> authorized -> revoked; local preparation determines active or degraded status",
+    scope: "one physical Git repository common directory, with validated per-worktree assets; local physical directory when Git is absent",
+    retention: "retain authorization revision and revocation locally; never project into shared workflow state",
+    migration: "validated legacy receipts remain distinguishable as legacy-active; explicit authorization binds them to repository scope",
+    replacement: "explicit authorize or revoke after preview; authority revision and byte preconditions are compared under a common lock",
+    evidence_targets: ["src/application/install/project-activation-service.mjs"],
+  },
   install_assets: {
     owner: "local installation maintainer",
     lifecycle: "planned -> applying -> installed|interrupted -> repaired|rolled_back|uninstalled",
-    scope: "AIDN-owned installation assets and completion evidence in one physical target worktree",
+    scope: "AIDN-owned installation assets and completion evidence in one physical target worktree, plus explicitly bound host skill disable entries",
     retention: "retain transaction pre-images and receipts locally after rollback or uninstall; never include in shared runtime",
     migration: "adopt only exact known legacy fingerprints or identical package assets; divergent assets require resolution",
-    replacement: "compare recorded post-images before changing owned files, blocks or hook entries",
+    replacement: "compare recorded post-images before changing owned files, blocks, hook entries or an explicitly bound host skills configuration",
     evidence_targets: ["src/application/install/codex-assets-service.mjs", "src/application/install/installation-ownership-service.mjs"],
   },
   workflow_rules: {
@@ -263,6 +272,15 @@ function policy({
 }
 
 const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
+  policy({
+    concept: "project_activation",
+    label: "Project workflow activation",
+    files: "Git common directory aidn/authorization.json; non-Git fallback .aidn/install/authorization.json",
+    dual: "Git common directory aidn/authorization.json; non-Git fallback .aidn/install/authorization.json",
+    dbOnly: "Git common directory aidn/authorization.json; non-Git fallback .aidn/install/authorization.json",
+    projection: "compact activation in bootstrap diagnostics and runtime admission",
+    notes: "Authorization and per-worktree preparation are both required; copied configuration, stale cache and native trust are not activation authority. Revocation dominates local receipts and cannot be undone implicitly by asset recovery.",
+  }),
   policy({
     concept: "install_assets",
     label: "Local installation ownership",

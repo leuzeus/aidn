@@ -2,6 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { readActivation } from "../../src/application/install/project-activation-service.mjs";
+import { resolveSkillId } from "../../src/core/skills/skill-policy.mjs";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 import {
   buildPreWriteAdmissionResult,
@@ -632,7 +634,26 @@ export async function preWriteAdmit({
   sharedCoordination = null,
   sharedCoordinationOptions = {},
 } = {}) {
-  const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
+  const activationState = readActivation({ targetRoot: path.resolve(process.cwd(), targetRoot ?? ".") });
+  const activation = {
+    state: activationState.state, active: activationState.active,
+    scope: activationState.identity?.scope ?? null, authority_id: activationState.identity?.authority_id ?? null,
+    revision: activationState.authorization?.revision ?? null, errors: activationState.errors,
+  };
+  const absoluteTargetRoot = activationState.identity?.target_root ?? path.resolve(process.cwd(), targetRoot ?? ".");
+  skill = resolveSkillId(skill) ?? skill;
+  if (!activation.active) {
+    return {
+      ok: false, admission_status: "blocked", target_root: absoluteTargetRoot, skill, activation,
+      policy: mergePreWritePolicy(skill),
+      source_of_truth: { state_mode: "unknown", runtime_state_mode: "unknown", concepts: {},
+        observed_sources: Object.fromEntries(["current_state", "runtime_state", "session_artifact", "cycle_status", "plan_artifact"].map((key) => [key, "not-read"])),
+        issues: [], repair_actions: [] },
+      context: {}, checks: { project_activation: { ok: false, status: activation.state } },
+      blocking_reasons: [`AIDN_PROJECT_${activation.state.toUpperCase().replaceAll("-", "_")}`],
+      warnings: activation.errors, prioritized_artifacts: [],
+    };
+  }
   const git = createLocalGitAdapter();
   const workspace = providedWorkspace ?? resolveWorkspaceContext({
     targetRoot: absoluteTargetRoot,
@@ -928,7 +949,7 @@ export async function preWriteAdmit({
     planFile && exists(planFile) ? relativePath(absoluteTargetRoot, planFile) : "",
   ]);
 
-  return buildPreWriteAdmissionResult({
+  return { activation, ...buildPreWriteAdmissionResult({
     targetRoot: absoluteTargetRoot,
     workspace,
     sharedStateBackend: sqliteFallback.backend ?? null,
@@ -1004,7 +1025,7 @@ export async function preWriteAdmit({
     prioritizedArtifacts,
     sourceOfTruthIssues,
     sourceOfTruthRepairActions,
-  });
+  }) };
 }
 
 function printText(output) {

@@ -2,6 +2,16 @@
 
 ## 0.8.0
 
+- Require project activation before workflow admission or execution. Keep a
+  repository authorization shared by linked worktrees, with explicit local
+  preparation, revocation, and separately validated installation receipts.
+- Namespace distributed skills as `aidn-*`, retain logical skill IDs, and retire
+  only owned or exactly recognized historical assets. Explicit global skill
+  migration disables known paths without deleting skill files and supports
+  guarded restoration through the existing installation journal.
+- Accept a frozen installation plan for upgrades and add `--persistence-policy
+  verify-only` to verify a ready PostgreSQL installation without migration,
+  artifact import, or implicit model calls.
 - Preserve third-party Codex hooks and client instructions with owned asset plans,
   local recovery receipts, conflict detection, resumable application, repair,
   rollback and Codex-only uninstall through bootstrap.

@@ -17,7 +17,8 @@
     "assets",
     "capabilities",
     "trust_instructions",
-    "scope"
+    "scope",
+    "activation"
   ],
   "properties": {
     "contract_version": {
@@ -189,6 +190,58 @@
         "codex-integration",
         "installation"
       ]
+    },
+    "activation": {
+      "type": "object",
+      "required": [
+        "state",
+        "active",
+        "scope",
+        "authority_id",
+        "revision",
+        "errors"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "absent",
+            "unprepared",
+            "legacy-active",
+            "active",
+            "revoked",
+            "degraded"
+          ]
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "scope": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "authority_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "revision": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": true,

@@ -128,7 +128,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
   commandPolicy({
     id: "bootstrap-preview",
     allowNonZero: true,
-    unlessArgs: ["--diagnose", "--repair", "--resume", "--rollback", "--uninstall"],
+    unlessArgs: ["--diagnose", "--repair", "--resume", "--rollback", "--uninstall", "--authorize", "--revoke", "--migrate-global-skills", "--restore-global-skills"],
     command: "aidn bootstrap --dry-run --json",
     effectClass: "preview",
     jsonContract: "bootstrap-preview.v1.schema.json",
@@ -139,7 +139,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "bootstrap",
     command: "aidn bootstrap --json",
     effectClass: "mutating",
-    unlessArgs: ["--dry-run", "--diagnose", "--repair", "--resume", "--rollback", "--uninstall"],
+    unlessArgs: ["--dry-run", "--diagnose", "--repair", "--resume", "--rollback", "--uninstall", "--authorize", "--revoke", "--migrate-global-skills", "--restore-global-skills"],
     jsonContract: "bootstrap.v1.schema.json",
     safeArgs: ["bootstrap", "--target", ".", "--profile", "minimal", "--json"],
     notes: "Orchestrates install or upgrade by composing aidn install, project config, migration, and verification steps.",
@@ -279,6 +279,138 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     ],
     "allowNonZero": true,
     "notes": "Applies a matching preview with ownership and content checks."
+}),
+  commandPolicy({
+  "id": "bootstrap-authorize",
+  "command": "aidn bootstrap --authorize --json",
+  "effectClass": "preview",
+  "unlessArgs": [
+    "--write"
+  ],
+  "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+  "safeArgs": [
+    "bootstrap",
+    "--authorize",
+    "--json"
+  ],
+  "allowNonZero": true,
+  "notes": "Previews project authorization without reading workflow backends or changing trust."
+}),
+  commandPolicy({
+  "id": "bootstrap-authorize-write",
+  "command": "aidn bootstrap --authorize --write --json",
+  "effectClass": "mutating",
+  "unlessArgs": [],
+  "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+  "safeArgs": [
+    "bootstrap",
+    "--authorize",
+    "--write",
+    "--expect-plan",
+    "unreviewed",
+    "--json"
+  ],
+  "allowNonZero": true,
+  "notes": "Applies the reviewed project authorization transition with shared authority CAS; never approves native Codex trust."
+}),
+  commandPolicy({
+  "id": "bootstrap-revoke",
+  "command": "aidn bootstrap --revoke --json",
+  "effectClass": "preview",
+  "unlessArgs": [
+    "--write"
+  ],
+  "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+  "safeArgs": [
+    "bootstrap",
+    "--revoke",
+    "--json"
+  ],
+  "allowNonZero": true,
+  "notes": "Previews project authorization without reading workflow backends or changing trust."
+}),
+  commandPolicy({
+  "id": "bootstrap-revoke-write",
+  "command": "aidn bootstrap --revoke --write --json",
+  "effectClass": "mutating",
+  "unlessArgs": [],
+  "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+  "safeArgs": [
+    "bootstrap",
+    "--revoke",
+    "--write",
+    "--expect-plan",
+    "unreviewed",
+    "--json"
+  ],
+  "allowNonZero": true,
+  "notes": "Applies the reviewed project authorization transition with shared authority CAS; never approves native Codex trust."
+}),
+  commandPolicy({
+    "id": "bootstrap-migrate-global-skills",
+    "command": "aidn bootstrap --migrate-global-skills --json",
+    "effectClass": "preview",
+    "unlessArgs": [
+        "--write"
+    ],
+    "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+    "safeArgs": [
+        "bootstrap",
+        "--migrate-global-skills",
+        "--json"
+    ],
+    "allowNonZero": true,
+    "notes": "Requires explicit absolute --codex-home. Plans or applies only exact known skill disable entries through the existing ownership journal, host lock and content CAS; no native trust approval."
+}),
+  commandPolicy({
+    "id": "bootstrap-migrate-global-skills-write",
+    "command": "aidn bootstrap --migrate-global-skills --write --json",
+    "effectClass": "mutating",
+    "unlessArgs": [],
+    "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+    "safeArgs": [
+        "bootstrap",
+        "--migrate-global-skills",
+        "--write",
+        "--expect-plan",
+        "unreviewed",
+        "--json"
+    ],
+    "allowNonZero": true,
+    "notes": "Requires explicit absolute --codex-home. Plans or applies only exact known skill disable entries through the existing ownership journal, host lock and content CAS; no native trust approval."
+}),
+  commandPolicy({
+    "id": "bootstrap-restore-global-skills",
+    "command": "aidn bootstrap --restore-global-skills --json",
+    "effectClass": "preview",
+    "unlessArgs": [
+        "--write"
+    ],
+    "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+    "safeArgs": [
+        "bootstrap",
+        "--restore-global-skills",
+        "--json"
+    ],
+    "allowNonZero": true,
+    "notes": "Requires explicit absolute --codex-home. Plans or applies only exact known skill disable entries through the existing ownership journal, host lock and content CAS; no native trust approval."
+}),
+  commandPolicy({
+    "id": "bootstrap-restore-global-skills-write",
+    "command": "aidn bootstrap --restore-global-skills --write --json",
+    "effectClass": "mutating",
+    "unlessArgs": [],
+    "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+    "safeArgs": [
+        "bootstrap",
+        "--restore-global-skills",
+        "--write",
+        "--expect-plan",
+        "unreviewed",
+        "--json"
+    ],
+    "allowNonZero": true,
+    "notes": "Requires explicit absolute --codex-home. Plans or applies only exact known skill disable entries through the existing ownership journal, host lock and content CAS; no native trust approval."
 }),
   commandPolicy({
     id: "install",

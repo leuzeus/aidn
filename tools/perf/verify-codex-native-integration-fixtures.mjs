@@ -9,15 +9,21 @@ import {fileURLToPath, pathToFileURL} from "node:url";
 import {discoverRepoSkills} from "../verify/codex-discovery-lib.mjs";
 import {inspectCodexCapabilities, codexVersionCapabilities} from "../../src/application/codex/codex-capabilities-service.mjs";
 import {validateRuntimeCompatibility} from "../../src/application/install/compatibility-policy.mjs";
-import {removePathWithRetry} from "./test-git-fixture-lib.mjs";
+import {initGitRepo, removePathWithRetry} from "./test-git-fixture-lib.mjs";
+import {prepareActivationFixture} from "./test-activation-fixture-lib.mjs";
+import {planAuthorization, applyAuthorization, readActivation} from "../../src/application/install/project-activation-service.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)),"../..");
+const started = performance.now();
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(),"aidn-native-integration-"));
 const assertions = [];
 const timings = [];
 let failure = null;
 let cleanup;
 const hash = (file)=>createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+const stable = (value) => Array.isArray(value) ? `[${value.map(stable).join(",")}]`
+  : value !== null && typeof value === "object" ? `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stable(value[key])}`).join(",")}}` : JSON.stringify(value);
+function seal(value) { const {integrity_sha256,...content}=value;return {...content,integrity_sha256:createHash("sha256").update(stable(content)).digest("hex")}; }
 const record = (name)=>assertions.push({name,status:"PASS"});
 function snapshot(root) {
   const entries=[];
@@ -38,11 +44,11 @@ function copyFixture(source, destination) {
   }
 }
 function receipt(client,packageRoot=repoRoot){
-  fs.mkdirSync(path.join(client,".aidn/install"),{recursive:true});
-  fs.writeFileSync(path.join(client,".aidn/install/receipt.json"),JSON.stringify({schema_version:1,package:{
+  const file=path.join(client,".aidn/install/receipt.json"), installed=JSON.parse(fs.readFileSync(file,"utf8"));
+  fs.writeFileSync(file,JSON.stringify(seal({...installed,package:{
     root:packageRoot,version:fs.readFileSync(path.join(packageRoot,"VERSION"),"utf8").trim(),entry:"bin/aidn.mjs",
     entry_sha256:hash(path.join(packageRoot,"bin/aidn.mjs")),version_sha256:hash(path.join(packageRoot,"VERSION")),
-  }}));
+  }})));
 }
 function runHook(client,event,payload={},cwd=client){
   const started = performance.now();
@@ -59,14 +65,10 @@ const patch={tool_name:"apply_patch",tool_input:{command:"*** Begin Patch\n*** A
 try {
   const client=path.join(tempRoot,"client espace \u00e9");
   copyFixture(path.join(repoRoot,"tests/fixtures/perf-handoff/ready"),client);
-  fs.mkdirSync(path.join(client,".git"));
-  fs.mkdirSync(path.join(client,".agents/skills"),{recursive:true});
-  fs.mkdirSync(path.join(client,".codex/agents"),{recursive:true});
-  fs.writeFileSync(path.join(client,"AGENTS.md"),"# Fixture workflow\n");
-  copyFixture(path.join(repoRoot,"scaffold/codex_hooks/scripts"),path.join(client,".codex/hooks"));
-  fs.copyFileSync(path.join(repoRoot,"scaffold/codex_hooks/hooks.json"),path.join(client,".codex/hooks.json"));
+  initGitRepo(client,{sourceBranch:"main",workingBranch:"feature/C101-alpha"});
+  prepareActivationFixture(client,repoRoot);
+  assert.equal(readActivation({targetRoot:client}).state,"active","real installation prepares and authorizes this client");
   const subfolder=path.join(client,"src/sous dossier");fs.mkdirSync(subfolder,{recursive:true});
-  receipt(client);
   const runtime = await import(pathToFileURL(path.join(client,".codex/hooks/aidn-hook-runtime.mjs")));
   const admission=runtime.readAdmission(client);
   assert.equal(admission.ok,true,"ready canonical fixture must admit generic write");
@@ -110,19 +112,35 @@ try {
   fs.rmdirSync(path.join(subfolder,".git"));
   record("project-and-nested-worktree-isolation");
   for(const result of [{status:1},{status:null,error:new Error("timeout")},{status:null,signal:"SIGTERM"},{status:0,stdout:"not json"},
-    {status:0,stdout:JSON.stringify({ok:true,admission_status:"admitted",target_root:tempRoot})}]){
+    ...[
+      {ok:true,admission_status:"admitted",target_root:tempRoot},
+      {ok:true,admission_status:"admitted",target_root:client},
+      {ok:true,admission_status:"admitted",target_root:client,activation:{state:"degraded",active:false}},
+      {ok:true,admission_status:"admitted",target_root:client,activation:{state:"unprepared",active:true}},
+    ].map(value=>({status:0,stdout:JSON.stringify(value)}))]){
     assert.throws(()=>runtime.readAdmission(client,{commandRunner:()=>result}),/admission_/);
   }
   record("adapter-runtime-error-timeout-signal-invalid-output-rejected");
   const receiptFile=path.join(client,".aidn/install/receipt.json");
   const bound=fs.readFileSync(receiptFile,"utf8");
-  const changed=JSON.parse(bound);changed.package.entry_sha256="0".repeat(64);fs.writeFileSync(receiptFile,JSON.stringify(changed));
+  const changed=JSON.parse(bound);changed.package.entry_sha256="0".repeat(64);fs.writeFileSync(receiptFile,JSON.stringify(seal(changed)));
   assert.match(runHook(client,"PreToolUse",patch).hookSpecificOutput.permissionDecisionReason,/runtime_binding_changed/);
+  fs.writeFileSync(receiptFile,JSON.stringify({schema_version:1,package:JSON.parse(bound).package}));
+  assert.throws(()=>runtime.resolveBoundRuntime(client),/runtime_record_integrity_invalid/);
+  assert.match(runHook(client,"PreToolUse",patch).hookSpecificOutput.permissionDecisionReason,/runtime_record_integrity_invalid/);
   fs.rmSync(receiptFile);
-  assert.match(runHook(client,"PreToolUse",patch).hookSpecificOutput.permissionDecisionReason,/runtime_receipt_missing/);
-  assert.equal(runHook(client,"SessionStart").aidnDiagnostics.admissionStatus,"unavailable");
+  assert.deepEqual(runHook(client,"PreToolUse",patch),{});
+  assert.deepEqual(runHook(client,"SessionStart"),{});
+  assert.equal(runtime.readAdmission(client).activation.state,"unprepared");
   fs.writeFileSync(receiptFile,bound);
-  record("missing-or-stale-runtime-binding-denies-covered-edit-and-degrades-resume");
+  record("invalid-receipt-or-stale-binding-denies-covered-edit-unprepared-stays-neutral");
+  const authorityFile=readActivation({targetRoot:client}).identity.authority_path;
+  const authorityBytes=fs.readFileSync(authorityFile);
+  fs.unlinkSync(authorityFile);
+  assert.equal(readActivation({targetRoot:client}).state,"degraded");
+  assert.equal(runHook(client,"PreToolUse",patch).hookSpecificOutput.permissionDecision,"deny");
+  fs.writeFileSync(authorityFile,authorityBytes);
+  record("migrated-receipt-without-authority-never-reactivates-as-legacy");
   const failingPackage=path.join(tempRoot,"runtime-fixture");
   fs.mkdirSync(path.join(failingPackage,"bin"),{recursive:true});
   fs.writeFileSync(path.join(failingPackage,"VERSION"),"0.0.0-fixture");
@@ -136,6 +154,40 @@ try {
   }
   fs.writeFileSync(receiptFile,bound);
   record("running-wrapper-translates-child-exception-and-timeout-to-explicit-deny");
+  const linked=path.join(tempRoot,"linked worktree");
+  const linkedResult=spawnSync("git",["-C",client,"worktree","add","--detach",linked,"HEAD"],{encoding:"utf8",windowsHide:true,timeout:10000});
+  assert.equal(linkedResult.status,0,linkedResult.stderr);
+  copyFixture(path.join(repoRoot,"scaffold/codex_hooks/scripts"),path.join(linked,".codex/hooks"));
+  assert.equal(runtime.readAdmission(linked).activation.state,"unprepared");
+  assert.deepEqual(runHook(linked,"PreToolUse",patch),{});
+  fs.mkdirSync(path.join(linked,".aidn/install"),{recursive:true});
+  fs.writeFileSync(path.join(linked,".aidn/install/receipt.json"),bound);
+  assert.throws(()=>runtime.resolveBoundRuntime(linked),/runtime_receipt_invalid/);
+  record("linked-worktree-needs-local-preparation-and-rejects-copied-receipt");
+  applyAuthorization(planAuthorization({targetRoot:client,action:"revoke"}));
+  fs.writeFileSync(receiptFile,"{invalid receipt and inaccessible runtime");
+  assert.deepEqual(runHook(client,"PreToolUse",patch),{});
+  assert.deepEqual(runHook(client,"PreToolUse",{tool_name:"Edit",tool_input:{}}),{});
+  assert.deepEqual(runHook(client,"SessionStart"),{});
+  assert.equal(runtime.readAdmission(client,{commandRunner:()=>{throw new Error("revoked project must not launch runtime");}}).activation.state,"revoked");
+  const beforeRevoked=snapshot(linked), previousGit=Object.fromEntries(Object.entries(process.env).filter(([key])=>/^GIT_/i.test(key)));
+  try {
+    process.env.GIT_DIR=path.join(tempRoot,"invalid-git-dir"); process.env.GIT_WORK_TREE=tempRoot;
+    process.env.GIT_COMMON_DIR=path.join(tempRoot,"invalid-common-dir");process.env.GIT_CONFIG_COUNT="1";
+    process.env.GIT_CONFIG_KEY_0="core.worktree";process.env.GIT_CONFIG_VALUE_0=tempRoot;
+    assert.equal(runtime.readAdmission(linked,{commandRunner:()=>{throw new Error("revoked linked worktree must not launch runtime");}}).activation.state,"revoked");
+    assert.deepEqual(runHook(linked,"SessionStart"),{}); assert.deepEqual(runHook(linked,"PreToolUse",patch),{});
+  } finally { for(const key of Object.keys(process.env).filter(key=>/^GIT_/i.test(key)))delete process.env[key];Object.assign(process.env,previousGit); }
+  assert.equal(snapshot(linked),beforeRevoked);
+  fs.writeFileSync(receiptFile,bound);
+  record("canonical-revocation-is-neutral-before-invalid-receipt-or-runtime-access");
+  const absent=path.join(tempRoot,"absent");
+  copyFixture(path.join(repoRoot,"scaffold/codex_hooks/scripts"),path.join(absent,".codex/hooks"));
+  const absentBefore=snapshot(absent);
+  assert.deepEqual(runHook(absent,"SessionStart"),{});
+  assert.deepEqual(runHook(absent,"PreToolUse",patch),{});
+  assert.equal(snapshot(absent),absentBefore);
+  record("orphan-hooks-without-activation-or-receipt-are-neutral-and-read-only");
   const host=path.join(tempRoot,"host");
   const bin=path.join(host,"local/OpenAI/Codex/bin/fixture/codex.exe");fs.mkdirSync(path.dirname(bin),{recursive:true});fs.writeFileSync(bin,"fixture executable");
   const desktop=path.join(host,"programs/WindowsApps/OpenAI.Codex_fixture/app/ChatGPT.exe");fs.mkdirSync(path.dirname(desktop),{recursive:true});fs.writeFileSync(desktop,"fixture app");
@@ -176,7 +228,7 @@ finally {
   if(!resolved.startsWith(path.resolve(os.tmpdir())+path.sep))throw new Error("cleanup outside temporary root");
   cleanup=removePathWithRetry(resolved);
 }
-const output={status:!failure&&cleanup.ok?"PASS":"FAIL",proof_class:"fixture",assertions,failure,
+const output={status:!failure&&cleanup.ok?"PASS":"FAIL",proof_class:"fixture",duration_ms:Math.round(performance.now()-started),assertions,failure,
   cleanup:{ok:cleanup.ok,attempts:cleanup.attempts},native_client_qualification:"SKIP: no trust approval or Codex tool execution",
   native_failure_modes:"SKIP: disabled hook, native timeout/error continuation require client qualification; adapter deny is fixture-proven",
   other_platform:"SKIP: only the current host launcher was executed",llm_calls:0,timings,

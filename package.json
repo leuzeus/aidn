@@ -1,7 +1,7 @@
 {
   "name": "aidn-workflow",
   "version": "0.8.0",
-  "description": "aid’n — Audit-driven, session-based workflow packaging system for structured AI-assisted development",
+  "description": "aid\u00e2\u20ac\u2122n \u00e2\u20ac\u201d Audit-driven, session-based workflow packaging system for structured AI-assisted development",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -367,6 +367,12 @@
     "perf:verify-codex-client-discovery": "node tools/verify/verify-codex-client-install.mjs --require-codex-discovery",
     "perf:verify-branch-policy-fixtures": "node tools/verify/verify-branch-policy-fixtures.mjs",
     "perf:verify-tracked-sensitivity": "node tools/verify/verify-tracked-sensitivity.mjs",
-    "perf:verify-codex-integration": "node tools/perf/verify-codex-assets-fixtures.mjs && node tools/perf/verify-codex-native-integration-fixtures.mjs && node tools/perf/verify-codex-context-store-fixtures.mjs && node tools/perf/verify-bootstrap-lifecycle-fixtures.mjs && node tools/perf/verify-codex-legacy-skill-repair-fixtures.mjs && node tools/perf/verify-installation-recovery-fixtures.mjs && node tools/perf/verify-installation-fault-boundaries-fixtures.mjs"
+    "perf:verify-codex-integration": "node tools/perf/verify-codex-assets-fixtures.mjs && node tools/perf/verify-codex-native-integration-fixtures.mjs && node tools/perf/verify-codex-context-store-fixtures.mjs && node tools/perf/verify-bootstrap-lifecycle-fixtures.mjs && node tools/perf/verify-codex-legacy-skill-repair-fixtures.mjs && node tools/perf/verify-installation-recovery-fixtures.mjs && node tools/perf/verify-installation-fault-boundaries-fixtures.mjs && node tools/perf/verify-codex-skill-namespace-fixtures.mjs && node tools/perf/verify-global-skills-migration-fixtures.mjs && node tools/perf/verify-cli-activation-fixtures.mjs && node tools/perf/verify-installation-persistence-policy-fixtures.mjs && node tools/perf/verify-global-skills-transaction-fixtures.mjs && node tools/perf/verify-activation-lifecycle-fixtures.mjs",
+    "perf:verify-codex-skill-namespace": "node tools/perf/verify-codex-skill-namespace-fixtures.mjs",
+    "perf:verify-global-skills-migration": "node tools/perf/verify-global-skills-migration-fixtures.mjs",
+    "perf:verify-cli-activation": "node tools/perf/verify-cli-activation-fixtures.mjs",
+    "perf:verify-installation-persistence-policy": "node tools/perf/verify-installation-persistence-policy-fixtures.mjs",
+    "perf:verify-global-skills-transaction": "node tools/perf/verify-global-skills-transaction-fixtures.mjs",
+    "perf:verify-activation-lifecycle": "node tools/perf/verify-activation-lifecycle-fixtures.mjs"
   }
 }
