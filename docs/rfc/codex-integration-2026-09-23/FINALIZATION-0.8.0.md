@@ -1,66 +1,99 @@
 # Finalisation AIDN × Codex — 0.8.0
 
-Plan accepté le 2026-09-23. Ce document suit le chantier produit et ses preuves ;
-il ne remplace ni les autorités exécutables ni les obligations du resolver.
+Plan accepté et actualisé le 2026-09-23. Il suit le chantier et ses preuves sans
+remplacer les autorités exécutables ou les obligations du resolver.
 Le [plan initial](PLAN.md) conserve son état historique d'audit.
 
-## Portée
+## Portée et décisions acceptées
 
-Le dépôt reste une source de package. Les installations, interruptions et refus
-sont testés dans des clients temporaires. Le client pilote existant conserve sa
-distribution de test jusqu'à la livraison. Aucun changement de confiance globale,
-appel LLM implicite, serveur MCP, plugin, runner ou installation WSL n'est prévu.
+Le dépôt reste une source de package. Les installations et refus sont éprouvés
+dans des clients temporaires. Une migration pilote est une opération distincte
+sur une cible explicitement choisie, selon la
+[procédure Windows](../../CODEX_CLIENT_MIGRATION.md), avec un candidat immuable
+et des sauvegardes privées. Ce plan ne déclare aucun pilote migré.
+
+L'activation combine une autorisation au Git common-dir avec un reçu complet
+et les assets locaux de chaque worktree. Les worktrees partagent la révocation ;
+un clone indépendant n'hérite pas du grant. Le mode non-Git conserve une autorité
+locale. Configuration, base de données, découverte ou cache ne prouvent pas
+l'activation. Les reçus legacy valides ont un état distinct.
+
+Les treize skills publics portent le préfixe aidn- ; les identifiants CLI
+internes restent compatibles. La migration des skills globaux est une action
+séparée et explicite, sur un Codex home choisi. Seuls les contenus historiques
+exacts sont désactivés par des entrées TOML ; fichiers et homonymes personnalisés
+restent préservés. Aucune approbation native n'est créée.
 
 ## Lots et acceptation
 
 | Lot | Résultat attendu | Preuve d'acceptation |
 | --- | --- | --- |
-| Version | `VERSION` = 0.8.0 ; package, lock et manifests alignés ; config schéma 1 conservé | Gate version et fixtures de validation |
-| Version cliente | `install.aidnVersion` finalisé seulement après installation complète ; absence legacy = inconnue | Échec, interruption, reprise et rollback avec empreintes avant/après |
-| Migration | Ancien bloc AGENTS reconnu ; ancien YAML exact réparé sans changer les instructions | Fixture issue du Git historique ; variante personnalisée en conflit sans écriture |
-| Preview | Un plan commun inclut Codex, documents, configuration et effets de persistance distincts | Arbre inchangé ; pas d'accès DB ni LLM pendant le preview |
-| Récupération | Même journal/reçu ; `--scope installation` explicite ; portée Codex par défaut | Réinstallation, concurrence, CAS, reprise, rollback et désinstallation |
-| Conservation | Instructions/configurations tierces, sessions, cycles, historiques, données et bases préservés | Oracles ciblés sur fichiers, blocs, champs et historique |
-| Qualification native | Démarrage, nouvelle conversation, reprise, compaction, refus couvert puis admission fraîche | Vraies sessions Windows CLI/application/IDE approuvées par un humain |
-| Qualification Unix | Même protocole sur un hôte Unix distinct | Version, binaire, commit, conditions et traces enregistrés |
-| Livraison | Obligations ASSURED du diff, paquet reproductible, manifest et checksums | Candidat immuable propre ; revue puis intégration sur dev avant branche release |
+| Version | VERSION = 0.8.0 ; signaux alignés ; config schéma 1 | Gate version et fixtures de validation |
+| Version cliente | install.aidnVersion finalisé après succès complet ; absence legacy = inconnue | Échec, interruption, reprise et empreintes avant/après |
+| Activation | Git commun, préparation locale, révocation prioritaire, état legacy distinct | Git/worktrees réels, clone, refus avant contexte/backend, verrou et CAS |
+| Skills | Noms aidn-*, migration globale séparée, propriété exacte | Pas de doublons gérés, homonymes conservés, TOML preview/reprise/restauration |
+| Migration | Ancien AGENTS et ancien YAML exact reconnus | Corpus historique ; variantes personnalisées en conflit sans écriture |
+| Preview | Plan commun assets/configuration et effets déclarés | Arbre inchangé ; pas de DB ni LLM pendant le preview |
+| Persistance | verify-only : PostgreSQL doit déjà être compatible ; SQLite sans import/migration ni ouverture de base | PostgreSQL refusé avant écritures si incompatible ; aucune preuve implicite de disponibilité/intégrité SQLite ; intention au journal |
+| Récupération | Même journal/reçu, scope installation explicite | Interruption, CAS, reprise, rollback et désinstallation |
+| Conservation | Instructions/configurations tierces, sessions, cycles, données préservées | Oracles ciblés sur fichiers, blocs, champs et état persistant |
+| Qualification Windows | Gates, paquet installé, wrappers, activation et récupération du candidat | Commit et SHA256 exacts ; portée fixture séparée du natif |
+| Qualification native | Démarrage, reprise, compaction et refus couvert | Sessions CLI/app/IDE approuvées par un humain ; OPEN tant que non exécutées |
+| Unix/WSL | Hors environnement disponible de ce lot Windows | UNAVAILABLE, non bloquant ; aucune extrapolation des anciennes preuves |
+| Livraison | Obligations ASSURED, artefacts et checksums | Candidat propre, revue, intégration dev puis procédure release |
 
-La version installée provient du package exécuté. Les diagnostics distinguent
-cette version du CLI, celle enregistrée dans la configuration et la cohérence
-avec le reçu et les assets. Un rollback d'assets ne prétend jamais annuler une
-migration de données. Un ancien reçu ne prouve la propriété que de ses objets
-explicitement enregistrés.
+Révocation et récupération ne sont pas interchangeables. Repair, resume et
+rollback ne réautorisent jamais implicitement un dépôt révoqué. Le retour vers
+des hooks legacy incapables d'appliquer cette frontière est refusé. Le rollback
+initial sans reçu antérieur reste possible. Le binding de récupération des
+skills globaux survit au rollback projet jusqu'à leur restauration explicite.
+
+La version installée provient du paquet exécuté. Diagnostic, version
+enregistrée, reçu et assets sont distingués. Npm et bootstrap sont deux
+transactions : un rollback d'assets ne restaure ni le paquet npm ni une base.
+Un ancien reçu ne prouve la propriété que des objets qu'il a enregistrés.
 
 ## Ordre de réalisation
 
-1. Implémenter version/configuration et récupération dans des commits distincts
-   sur une branche de travail issue de dev.
-2. Exécuter les scénarios déterministes sans LLM puis construire les artefacts
-   depuis le commit candidat ; conserver SHA et résultats.
-3. Préparer un client temporaire reviewable pour la qualification native, avec
-   empreintes des hooks et du binaire, puis obtenir les validations humaines.
-4. Exécuter le [protocole natif](../../CODEX_NATIVE_QUALIFICATION.md) Windows et
-   Unix, en poursuivant les tâches indépendantes lorsque l'environnement manque.
-5. Aligner guides, contrats, politiques, ADR et matrice de support sur les seules
-   preuves obtenues ; appliquer les obligations ASSURED du candidat final.
-6. Après revue et intégration sur dev, préparer `release/v0.8.0` conformément à
-   [la politique de publication](../../GIT_WORKFLOW.md). Les artefacts locaux
-   préparatoires ne valent ni publication ni feu vert de livraison.
-7. Après livraison, remplacer le lien de test du pilote par la distribution
-   retenue, puis vérifier version enregistrée et conservation des configurations.
+1. Implémenter sur une branche de travail issue de dev, avec commits atomiques.
+2. Exécuter les scénarios déterministes sans LLM, construire les artefacts depuis
+   le commit candidat et conserver SHA256, résultats et limites.
+3. Qualifier le candidat Windows sur clients temporaires, en distinguant source,
+   scaffold, paquet installé et exécution native.
+4. Pour toute revendication native, suivre le
+   [protocole dédié](../../CODEX_NATIVE_QUALIFICATION.md) avec validation humaine.
+   Conserver OPEN/SKIP si non exécuté ; Unix et WSL restent UNAVAILABLE,
+   non bloquants pour les preuves Windows de ce lot.
+5. Aligner guides, contrats, politiques, ADR et support sur les seules preuves
+   obtenues ; satisfaire les obligations ASSURED du candidat final.
+6. Après revue et intégration dev, préparer release/v0.8.0 selon la
+   [politique de publication](../../GIT_WORKFLOW.md). Un artefact local ne vaut
+   ni publication ni autorisation générale de déploiement.
+7. Après la qualification Windows requise et la livraison, lorsqu'une migration
+   pilote est explicitement retenue, conserver l'ancien runtime, sauvegarder les
+   configurations et l'état persistant, examiner les deux transactions de la
+   procédure Windows puis vérifier leurs postconditions.
 
-## Qualifications qui ne peuvent pas être déduites des fixtures
+## Limites et phases ultérieures
 
-Cette machine est une VM Windows. Aucun hôte Unix distinct n'est fourni dans le
-contexte d'exécution ; sa qualification reste UNAVAILABLE jusqu'à disponibilité.
-WSL est hors périmètre sur ce poste. La confiance et les permissions natives
-exigent une action humaine dans chaque client temporaire. Un test d'adaptateur,
-un `skills/list` ou un exit code ne remplace pas une trace de refus natif.
+Cette machine est une VM Windows. Aucun hôte Unix distinct n'est fourni et WSL
+n'est pas disponible pour ce chantier. Cela ne bloque pas la qualification
+Windows ; toute future revendication Unix exige une preuve du candidat concerné.
+Les anciens résultats Ubuntu de la base 0.8.0 ne qualifient pas ce delta.
 
-PASS, FAIL, SKIP et UNAVAILABLE sont enregistrés séparément. Chaque preuve nomme
-son commit, sa version cliente et sa portée : source, scaffold, fixture, paquet
-installé ou client natif. Les mesures distinguent millisecondes, octets et appels.
-Une livraison n'est pas prête tant qu'un critère requis reste ouvert.
+PASS, FAIL, SKIP et UNAVAILABLE restent distincts. Chaque preuve nomme son
+commit et sa portée ; les mesures distinguent millisecondes, octets et appels.
+Découverte et succès d'un wrapper ne remplacent pas l'approbation humaine ou
+une trace de refus natif. Les limites natives restent explicites dans la
+décision de livraison, sans prétendre qu'un test non exécuté aurait passé.
 
-L2 MCP demeure reporté : une ouverture nécessiterait une comparaison CLI/MCP
-sur les mêmes scénarios et un bénéfice démontré.
+Une distribution globale facultative avec versions immuables par projet est
+une phase ultérieure. Elle réutilisera les artefacts de package existants, sans
+résolution latest à l'exécution ni registre parallèle. Elle ne remplacera pas
+l'autorisation du dépôt et les reçus locaux.
+
+L2 MCP demeure conditionnel : comparer sur les mêmes scénarios déterministes
+CLI JSON, CLI agrégée workflow-step, daemon optionnel et transport proposé.
+Mesurer temps, octets, appels, effets et refus sans attribuer à MCP un gain déjà
+obtenu par agrégation ou cache. Aucun moteur ou autorité de transition ne
+découle du transport ; le spike doit montrer un bénéfice avant son adoption.

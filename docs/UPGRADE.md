@@ -201,6 +201,9 @@ managed elsewhere.
 
 ## Preserve authorization and persistence intent
 
+For an existing Windows client, follow the [controlled client migration](CODEX_CLIENT_MIGRATION.md)
+to preserve its runtime binding, local edits and canonical persistence before switching packages.
+
 Preview an upgrade with `aidn bootstrap --target <client-repo> --mode upgrade --dry-run --json`, then bind application with the same inputs plus `--expect-plan PLAN_ID` and without `--dry-run`. `--persistence-policy verify-only` checks an existing backend without requesting schema migration, persistence adoption or import. A mismatch fails before installation writes.
 
 Repair, resume and rollback preserve revocation. Reauthorization requires the explicit `bootstrap --authorize` preview and matching `--write --expect-plan PLAN_ID`; native client trust is still a separate human action. Public skills now use the `aidn-` prefix, while internal CLI identifiers remain compatible. See [project activation](CODEX_INTEGRATION.md#project-activation-and-skill-names).

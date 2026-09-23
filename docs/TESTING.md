@@ -447,8 +447,9 @@ When closing a lot, report:
 owned-asset conflict/rollback/interruption cases, real child-process cache
 concurrency, hook adapter protocol fixtures and bootstrap lifecycle contracts.
 It never installs the package into this source checkout and does not call an LLM.
-The composite also executes historical skill repair, complete installation
-recovery and fault-boundary fixtures. They exercise the real transaction service
+The composite also executes project and worktree authorization, stale bootstrap
+plans, historical skill repair, complete installation recovery and fault-boundary
+fixtures. They exercise the real transaction service
 with temporary clients: a matching historical asset, configuration staging,
 version finalization, receipt-write failure, package-bound resume, scoped rollback
 and later third-party edits. Filesystem fault injection is labeled as injected

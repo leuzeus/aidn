@@ -259,6 +259,9 @@ cannot be promoted to proof of current state. See the
 
 ## Qualification and evidence scope
 
+The [Windows client migration guide](CODEX_CLIENT_MIGRATION.md) separates the
+package switch, managed-asset transaction and optional legacy global-skill migration.
+
 The candidate record and native acceptance cases for release line 0.8.0 are in
 [Codex native qualification](CODEX_NATIVE_QUALIFICATION.md). That record remains
 OPEN; it is a protocol with unfilled evidence fields, not an execution result.
