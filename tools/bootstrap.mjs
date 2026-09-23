@@ -10,6 +10,12 @@ import { inspectCodexCapabilities } from "../src/application/codex/codex-capabil
 const PROFILES = new Set(["minimal", "default", "full", "postgres", "db-only"]);
 const MODES = new Set(["install", "upgrade"]);
 
+function scalarValue(argv, index, flag) {
+  const value = String(argv[index + 1] ?? "").trim();
+  if (!value || value.startsWith("-")) throw new Error(`Missing value for ${flag}`);
+  return value;
+}
+
 function parseArgs(argv) {
   const args = {
     target: ".",
@@ -32,7 +38,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === "--target") {
-      args.target = String(argv[i + 1] ?? "").trim();
+      args.target = scalarValue(argv, i, token);
       i += 1;
     } else if (token === "--diagnose") {
       selectAction(args, "diagnose");
@@ -47,27 +53,26 @@ function parseArgs(argv) {
     } else if (token === "--write") {
       args.write = true;
     } else if (token === "--expect-plan") {
-      args.expectedPlanId = String(argv[i + 1] ?? "").trim();
+      args.expectedPlanId = scalarValue(argv, i, token);
       i += 1;
-      if (!args.expectedPlanId || args.expectedPlanId.startsWith("--")) throw new Error("Missing --expect-plan value");
     } else if (token === "--codex-migrate-custom") {
       args.codexMigrateCustom = true;
     } else if (token === "--no-codex-migrate-custom") {
       args.codexMigrateCustom = false;
     } else if (token === "--mode") {
-      args.mode = String(argv[i + 1] ?? "").trim().toLowerCase();
+      args.mode = scalarValue(argv, i, token).toLowerCase();
       i += 1;
     } else if (token === "--profile") {
-      args.profile = String(argv[i + 1] ?? "").trim().toLowerCase();
+      args.profile = scalarValue(argv, i, token).toLowerCase();
       i += 1;
     } else if (token === "--project-name") {
-      args.projectName = String(argv[i + 1] ?? "").trim();
+      args.projectName = scalarValue(argv, i, token);
       i += 1;
     } else if (token === "--source-branch") {
-      args.sourceBranch = String(argv[i + 1] ?? "").trim();
+      args.sourceBranch = scalarValue(argv, i, token);
       i += 1;
     } else if (token === "--runtime-persistence-connection-ref") {
-      args.runtimePersistenceConnectionRef = String(argv[i + 1] ?? "").trim();
+      args.runtimePersistenceConnectionRef = scalarValue(argv, i, token);
       i += 1;
     } else if (token === "--materialize-visible-artifacts") {
       args.materializeVisibleArtifacts = true;
@@ -444,9 +449,11 @@ try {
   const action = ["diagnose", "repair", "resume", "rollback", "uninstall"].find((name) => process.argv.includes("--" + name));
   if (action && process.argv.includes("--json")) {
     const targetIndex = process.argv.indexOf("--target");
+    const rawTarget = targetIndex >= 0 ? String(process.argv[targetIndex + 1] ?? "").trim() : "";
+    const errorTarget = rawTarget && !rawTarget.startsWith("-") ? rawTarget : ".";
     console.log(JSON.stringify(integrationOutput({
       action, write: process.argv.includes("--write") && !process.argv.includes("--dry-run"),
-    }, path.resolve(process.cwd(), targetIndex >= 0 ? (process.argv[targetIndex + 1] || ".") : "."), {
+    }, path.resolve(process.cwd(), errorTarget), {
       errors: [error.message],
     }), null, 2));
   } else if (process.argv.includes("--json")) {

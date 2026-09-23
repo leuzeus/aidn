@@ -20,7 +20,7 @@ function digestTree(dir) {
   function visit(current) {
     for (const entry of fs.readdirSync(current, { withFileTypes: true }).sort((a,b)=>a.name.localeCompare(b.name))) {
       const absolute = path.join(current,entry.name);
-      if(entry.isDirectory()) visit(absolute);
+      if(entry.isDirectory()) { entries.push([path.relative(dir,absolute)+"/","directory"]); visit(absolute); }
       else entries.push([path.relative(dir,absolute),crypto.createHash("sha256").update(fs.readFileSync(absolute)).digest("hex")]);
     }
   }
@@ -28,10 +28,10 @@ function digestTree(dir) {
   return JSON.stringify(entries);
 }
 function managedDigest() { return JSON.stringify([".agents", ".codex", ".aidn/install"].map(relative => digestTree(path.join(target,relative))).concat(fs.readFileSync(path.join(target,"AGENTS.md"),"utf8"))); }
-function run(args, { success = true } = {}) {
+function run(args, { success = true, cwd = root, defaultTarget = true, appendJson = true } = {}) {
   const start=performance.now();
-  const child=spawnSync(process.execPath,[path.join(root,"bin/aidn.mjs"),"bootstrap","--target",target,...args,"--json"],{
-    cwd:root,encoding:"utf8",timeout:60000,maxBuffer:10*1024*1024,windowsHide:true,
+  const child=spawnSync(process.execPath,[path.join(root,"bin/aidn.mjs"),"bootstrap",...(defaultTarget ? ["--target",target] : []),...args,...(appendJson ? ["--json"] : [])],{
+    cwd,encoding:"utf8",timeout:60000,maxBuffer:10*1024*1024,windowsHide:true,
     env:{...process.env,PATH:path.dirname(process.execPath),USERPROFILE:temp,HOME:temp,LOCALAPPDATA:path.join(temp,"local")},
   });
   assert.equal(child.error,undefined);
@@ -46,6 +46,37 @@ function run(args, { success = true } = {}) {
   timings.push({operation:args.join(" "),duration_ms:Math.round(performance.now()-start),stdout_bytes:Buffer.byteLength(child.stdout)});
   return data;
 }
+function verifyScalarParsing() {
+  const before = digestTree(temp);
+  const scalars = ["--target", "--expect-plan", "--mode", "--profile", "--project-name", "--source-branch", "--runtime-persistence-connection-ref"];
+  for (const flag of scalars) {
+    for (const tail of [[], ["--dry-run"], ["-h"]]) {
+      const result = run(["--json", flag, ...tail], { success: false, cwd: temp, defaultTarget: false, appendJson: false });
+      assert.equal(result.ok, false);
+      assert.ok(result.errors.includes("Missing value for " + flag));
+      assert.deepEqual(result.operations, []);
+      assert.equal(digestTree(temp), before, flag + " must not consume a following option or create directories");
+    }
+  }
+  for (const { args, contract, effect } of [
+    { args: ["--target", "--repair"], contract: "bootstrap-lifecycle.v1", effect: "preview" },
+    { args: ["--source-branch", "--dry-run", "--profile", "minimal"], contract: "bootstrap.v1", effect: "preview" },
+    { args: ["--project-name", "--diagnose"], contract: "bootstrap-diagnostics.v1", effect: "read-only" },
+  ]) {
+    const result = run(args, { success: false, cwd: temp, defaultTarget: false });
+    assert.equal(result.contract_version, contract);
+    assert.equal(result.effect_class, effect);
+    assert.equal(result.ok, false);
+    assert.ok(result.errors.includes("Missing value for " + args[0]));
+    assert.deepEqual(result.operations, []);
+    if (result.contract_version !== "bootstrap.v1") {
+      assert.equal(result.written, false);
+      assert.deepEqual(result.write_targets, []);
+    }
+    assert.equal(digestTree(temp), before, "malformed preview must not turn into installation");
+  }
+  checks.push({ name: "all scalar flags reject missing values and following options with JSON errors and zero writes", status: "PASS" });
+}
 function apply(action) {
   const before=digestTree(target);
   const preview=run(["--"+action]);
@@ -54,6 +85,7 @@ function apply(action) {
   return run(["--"+action,"--write","--expect-plan",preview.plan_id]);
 }
 try {
+  verifyScalarParsing();
   fs.mkdirSync(path.join(target,".codex"),{recursive:true});
   const instructions="# Client instructions\nPreserve this exact text.\n";
   const hooks={hooks:{Stop:[{matcher:"",custom_field:42,hooks:[{type:"command",command:"echo third-party"}]}]},extension:{keep:true}};
