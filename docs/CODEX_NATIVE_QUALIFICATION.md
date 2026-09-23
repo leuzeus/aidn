@@ -130,9 +130,9 @@ try {
   $previewText = & $nodePath $installedBin bootstrap --target $clientRoot --profile default --dry-run --json
   if ($LASTEXITCODE -ne 0) { throw 'Bootstrap preview failed' }
   $preview = ($previewText -join "`n") | ConvertFrom-Json
-  if (-not $preview.plan_id) { throw 'Bootstrap preview did not identify its plan' }
+  if (-not $preview.installation_plan.plan_id) { throw 'Bootstrap preview did not identify its plan' }
   # Explicitly install only into this newly created disposable fixture.
-  & $nodePath $installedBin bootstrap --target $clientRoot --profile default --expect-plan $preview.plan_id --no-codex-migrate-custom
+  & $nodePath $installedBin bootstrap --target $clientRoot --profile default --expect-plan $preview.installation_plan.plan_id --no-codex-migrate-custom
   if ($LASTEXITCODE -ne 0) { throw 'Bootstrap installation failed' }
   $diagnostic = & $nodePath $installedBin bootstrap --target $clientRoot --diagnose --json
   if ($LASTEXITCODE -ne 0) { throw 'Bootstrap diagnostic failed' }

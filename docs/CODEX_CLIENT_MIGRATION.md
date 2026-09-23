@@ -62,8 +62,18 @@ if (-not (Test-Path -LiteralPath $npmCliPath)) { throw 'Résoudre le npm CLI ré
 if ((Get-FileHash -LiteralPath $candidateTarball -Algorithm SHA256).Hash -ine $expectedSha256) {
   throw 'Le tarball ne correspond pas au candidat revu'
 }
-& git -C $clientRoot rev-parse --show-toplevel --absolute-git-dir --git-common-dir
+$gitRootText = & git -C $clientRoot rev-parse --show-toplevel
 if ($LASTEXITCODE -ne 0) { throw 'Résolution Git du client impossible' }
+$gitRoot = [IO.Path]::GetFullPath(($gitRootText -join [Environment]::NewLine).Trim())
+$physicalClientText = & $nodePath --input-type=module -e 'import fs from "node:fs"; console.log(fs.realpathSync.native(process.argv[1]));' $clientRoot
+if ($LASTEXITCODE -ne 0) { throw 'Résolution physique du client impossible' }
+$physicalClient = [IO.Path]::GetFullPath(($physicalClientText -join [Environment]::NewLine).Trim())
+if (-not [string]::Equals([IO.Path]::GetFullPath($clientRoot), $physicalClient, [StringComparison]::OrdinalIgnoreCase) -or
+    -not [string]::Equals($gitRoot, $physicalClient, [StringComparison]::OrdinalIgnoreCase)) {
+  throw 'Choisir la racine Git physique du worktree, sans sous-dossier ni redirection'
+}
+& git -C $clientRoot rev-parse --absolute-git-dir --git-common-dir
+if ($LASTEXITCODE -ne 0) { throw 'Résolution Git commune impossible' }
 & git -C $clientRoot worktree list --porcelain
 if ($LASTEXITCODE -ne 0) { throw 'Inventaire des worktrees impossible' }
 Push-Location $clientRoot
@@ -98,14 +108,14 @@ migration. Si une option supplémentaire est nécessaire, l'ajouter au tableau
 commun utilisé pour le preview et l'application.
 
 ~~~powershell
-$profile = 'default'
+$aidnProfile = 'default'
 $commonArgs = @('bootstrap', '--target', $clientRoot, '--mode', 'upgrade',
-  '--profile', $profile, '--persistence-policy', 'verify-only',
+  '--profile', $aidnProfile, '--persistence-policy', 'verify-only',
   '--no-codex-migrate-custom', '--json')
 $previewText = & $nodePath $installedBin @commonArgs --dry-run
 if ($LASTEXITCODE -ne 0) { throw 'Preview refusé : aucun bootstrap à appliquer' }
 $preview = ($previewText -join [Environment]::NewLine) | ConvertFrom-Json
-if (-not $preview.ok -or -not $preview.plan_id) { throw 'Plan absent ou en conflit' }
+if (-not $preview.ok -or -not $preview.installation_plan.plan_id) { throw 'Plan absent ou en conflit' }
 $preview | ConvertTo-Json -Depth 20
 ~~~
 
@@ -117,7 +127,7 @@ PostgreSQL ; il ne prouve donc pas la disponibilité du backend.
 Après examen, appliquer avec les mêmes arguments :
 
 ~~~powershell
-& $nodePath $installedBin @commonArgs --expect-plan $preview.plan_id
+& $nodePath $installedBin @commonArgs --expect-plan $preview.installation_plan.plan_id
 if ($LASTEXITCODE -ne 0) { throw 'Bootstrap non terminé : conserver ses preuves de récupération' }
 & $nodePath $installedBin bootstrap --target $clientRoot --diagnose --scope installation --json
 if ($LASTEXITCODE -ne 0) { throw 'Diagnostic à examiner avant reprise du workflow' }
