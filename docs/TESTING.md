@@ -207,6 +207,14 @@ negative probes prove that a missing link and a missing script are rejected.
 
 Stable family wrappers are cataloged in `package/catalogs/gates.v1.json`: `verify:contracts`, `verify:governance`, `verify:runtime`, `verify:codex`, `verify:release`, and `verify:all`. The first four select their named family. `verify:release` executes every gate whose obligation is required or optional in the announced `main` or `release` context, including topology and tracked-tree sensitivity; it is not a release-family-only shortcut. Run `verify:all` only at a clean commit boundary so the cleanliness family is meaningful. Report `SKIP` separately from `PASS`.
 
+Manual governance admission uses the selected branch name when pull-request
+head metadata is absent, with `dev` as its default target. The cleanliness
+family fetches that announced branch plus `dev` and `main`, then requires the
+remote branch to equal the exact checked-out candidate SHA. An absent target,
+inconsistent branch identity or mismatched SHA still fails the provenance
+check. The `cleanliness`, `release` and `codex` families install locked development
+dependencies before running their consumers.
+
 Pull-request matrix jobs add `--admission` to the internal family runner. That
 flag excludes the two `manual-only` PostgreSQL live smokes; the route records
 them as `UNAVAILABLE` deferred evidence. The manual live-smoke workflow retains

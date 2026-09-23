@@ -314,7 +314,8 @@ function evaluateGovernanceAdmissionExecutable(source) {
   if (!fetchStep
     || String(fetchStep.run ?? "").trim() !== canonicalBranchFetchCommand
     || fetchStep.if
-      !== "${{ matrix.family == 'cleanliness' && github.event_name == 'pull_request' }}") {
+      !== "${{ matrix.family == 'cleanliness' }}"
+    || fetchStep.env?.AIDN_BRANCH_POLICY_HEAD_REF !== "${{ github.head_ref || github.ref_name }}") {
     sourceIssues.push(`admission cleanliness must call the canonical fetch helper: ${canonicalBranchFetchCommand}`);
   }
   if (hasOwn(fetchStep, "continue-on-error")) {
@@ -328,7 +329,7 @@ function evaluateGovernanceAdmissionExecutable(source) {
     || String(installStep.run ?? "").trim()
       !== "npm ci --include=dev --ignore-scripts --no-audit --no-fund"
     || installStep.if
-      !== "${{ matrix.family == 'cleanliness' || matrix.family == 'release' }}"
+      !== "${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' }}"
     || installIndex < 0
     || runnerIndex < 0
     || installIndex >= runnerIndex) {
@@ -341,6 +342,13 @@ function evaluateGovernanceAdmissionExecutable(source) {
   }
   if (hasOwn(runnerStep, "if") || hasOwn(runnerStep, "continue-on-error")) {
     sourceIssues.push("admission family execution must be unconditional and blocking inside its matrix cell");
+  }
+  if (runnerStep?.env?.AIDN_BRANCH_POLICY_HEAD_REF !== "${{ github.head_ref || github.ref_name }}"
+    || runnerStep?.env?.AIDN_BRANCH_POLICY_BASE_REF !== "${{ github.base_ref || 'dev' }}"
+    || runnerStep?.env?.AIDN_BRANCH_POLICY_CONTAINS_REF !== "origin/${{ github.head_ref || github.ref_name }}"
+    || runnerStep?.env?.AIDN_BRANCH_POLICY_EXPECTED_SHA
+      !== "${{ github.event.pull_request.head.sha || github.sha }}") {
+    sourceIssues.push("admission must preserve exact candidate provenance for PR and branch dispatch");
   }
   const rollupStep = namedStep(admission, "Enforce Required Child Results");
   if (admission?.name !== "Governance Admission"
@@ -382,6 +390,17 @@ const fetchHelperBehavior = {
     "origin",
     ...expectedFetchRefspecs,
   ]]),
+  explicit_dispatch_head_supported: fetchBranchPolicySources({
+    env: {
+      AIDN_BRANCH_POLICY_HEAD_REF: "codex/governance-probe",
+      GITHUB_HEAD_REF: "",
+    },
+    runGit() { return ""; },
+  }).head_ref === "codex/governance-probe",
+  pull_request_head_fallback_preserved: fetchBranchPolicySources({
+    env: { GITHUB_HEAD_REF: "codex/governance-probe" },
+    runGit() { return ""; },
+  }).head_ref === "codex/governance-probe",
   unsafe_head_rejected: false,
 };
 try {
@@ -406,8 +425,28 @@ const missingBranchSourceFetchMutation = admissionText.replace(
     + "          fi",
 );
 const admissionFetchIfFalseMutation = admissionText.replace(
-  "        if: ${{ matrix.family == 'cleanliness' && github.event_name == 'pull_request' }}",
+  "        if: ${{ matrix.family == 'cleanliness' }}",
   "        if: ${{ false }}",
+);
+const dispatchFetchHeadMissingMutation = admissionText.replace(
+  "          AIDN_BRANCH_POLICY_HEAD_REF: ${{ github.head_ref || github.ref_name }}",
+  "          AIDN_BRANCH_POLICY_HEAD_REF: ${{ github.head_ref }}",
+);
+const dispatchRunnerHeadMissingMutation = admissionText.replace(
+  "          AIDN_BRANCH_POLICY_HEAD_REF: ${{ github.head_ref || github.ref_name }}\n          AIDN_BRANCH_POLICY_BASE_REF:",
+  "          AIDN_BRANCH_POLICY_HEAD_REF: ${{ github.head_ref }}\n          AIDN_BRANCH_POLICY_BASE_REF:",
+);
+const dispatchRunnerBaseMissingMutation = admissionText.replace(
+  "          AIDN_BRANCH_POLICY_BASE_REF: ${{ github.base_ref || 'dev' }}",
+  "          AIDN_BRANCH_POLICY_BASE_REF: ${{ github.base_ref }}",
+);
+const dispatchContainmentMissingMutation = admissionText.replace(
+  "          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/${{ github.head_ref || github.ref_name }}",
+  "          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/${{ github.head_ref }}",
+);
+const codexDependenciesMissingMutation = admissionText.replace(
+  "${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' }}",
+  "${{ matrix.family == 'cleanliness' || matrix.family == 'release' }}",
 );
 const admissionFetchContinueOnErrorMutation = mutateNamedStepProperty(
   admissionText,
@@ -609,6 +648,16 @@ const negativeProbes = {
     evaluateGovernanceAdmissionExecutable(missingBranchSourceFetchMutation).length > 0,
   admission_fetch_if_false_rejected:
     evaluateGovernanceAdmissionExecutable(admissionFetchIfFalseMutation).length > 0,
+  dispatch_fetch_head_fallback_required:
+    evaluateGovernanceAdmissionExecutable(dispatchFetchHeadMissingMutation).length > 0,
+  dispatch_runner_head_fallback_required:
+    evaluateGovernanceAdmissionExecutable(dispatchRunnerHeadMissingMutation).length > 0,
+  dispatch_runner_base_fallback_required:
+    evaluateGovernanceAdmissionExecutable(dispatchRunnerBaseMissingMutation).length > 0,
+  dispatch_remote_containment_fallback_required:
+    evaluateGovernanceAdmissionExecutable(dispatchContainmentMissingMutation).length > 0,
+  codex_locked_dependencies_required:
+    evaluateGovernanceAdmissionExecutable(codexDependenciesMissingMutation).length > 0,
   admission_fetch_continue_on_error_rejected:
     evaluateGovernanceAdmissionExecutable(
       admissionFetchContinueOnErrorMutation,

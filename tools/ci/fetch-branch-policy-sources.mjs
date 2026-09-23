@@ -12,7 +12,7 @@ function defaultGit(args) {
 export function branchSourceRefspecs(headRef) {
   const head = String(headRef ?? "").trim();
   if (!head || head.startsWith("-") || head.includes("..") || /[\s~^:?*[\\]/u.test(head)) {
-    throw new Error(`GITHUB_HEAD_REF is not a safe branch name: ${head || "missing"}`);
+    throw new Error(`announced head ref is not a safe branch name: ${head || "missing"}`);
   }
   return [...new Set([head, "dev", "main"])].map(
     (branch) => `+refs/heads/${branch}:refs/remotes/origin/${branch}`,
@@ -20,7 +20,8 @@ export function branchSourceRefspecs(headRef) {
 }
 
 export function fetchBranchPolicySources({
-  headRef = process.env.GITHUB_HEAD_REF,
+  env = process.env,
+  headRef = env.AIDN_BRANCH_POLICY_HEAD_REF || env.GITHUB_HEAD_REF,
   runGit = defaultGit,
 } = {}) {
   const refspecs = branchSourceRefspecs(headRef);

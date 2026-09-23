@@ -141,17 +141,21 @@ jobs:
           node-version: "22.13"
 
       - name: Fetch Announced Remote Head
-        if: ${{ matrix.family == 'cleanliness' && github.event_name == 'pull_request' }}
+        if: ${{ matrix.family == 'cleanliness' }}
+        env:
+          AIDN_BRANCH_POLICY_HEAD_REF: ${{ github.head_ref || github.ref_name }}
         run: node tools/ci/fetch-branch-policy-sources.mjs
 
       - name: Install Locked Gate Dependencies
-        if: ${{ matrix.family == 'cleanliness' || matrix.family == 'release' }}
+        if: ${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' }}
         run: npm ci --include=dev --ignore-scripts --no-audit --no-fund
 
       - name: Run Selected Family Once
         env:
           AIDN_BRANCH_POLICY_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/${{ github.head_ref }}
+          AIDN_BRANCH_POLICY_HEAD_REF: ${{ github.head_ref || github.ref_name }}
+          AIDN_BRANCH_POLICY_BASE_REF: ${{ github.base_ref || 'dev' }}
+          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/${{ github.head_ref || github.ref_name }}
         run: node tools/verify/run-gate-family.mjs "${{ matrix.family }}" --context "${{ needs.classify.outputs.context }}" --admission
 
   admission:
