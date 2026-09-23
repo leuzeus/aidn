@@ -60,6 +60,7 @@ function main() {
     const secondManifest = JSON.parse(fs.readFileSync(second.manifest, "utf8"));
     const issues = [];
     if (sha256(first.zip) !== sha256(second.zip)) issues.push("release zip is not reproducible");
+    if (sha256(first.tarball) !== sha256(second.tarball)) issues.push("release npm tarball is not reproducible");
     if (fs.readFileSync(first.checksums, "utf8") !== fs.readFileSync(second.checksums, "utf8")) {
       issues.push("release checksums are not reproducible");
     }
@@ -102,6 +103,7 @@ function main() {
       source_commit: head,
       input_files: inputs.length,
       zip_sha256: sha256(first.zip),
+      tarball_sha256: sha256(first.tarball),
       duration_ms: Date.now() - started,
       issues,
     };
