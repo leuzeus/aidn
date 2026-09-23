@@ -48,7 +48,7 @@ function run(args, { success = true, cwd = root, defaultTarget = true, appendJso
 }
 function verifyScalarParsing() {
   const before = digestTree(temp);
-  const scalars = ["--target", "--expect-plan", "--mode", "--profile", "--project-name", "--source-branch", "--runtime-persistence-connection-ref"];
+  const scalars = ["--scope", "--target", "--expect-plan", "--mode", "--profile", "--project-name", "--source-branch", "--runtime-persistence-connection-ref"];
   for (const flag of scalars) {
     for (const tail of [[], ["--dry-run"], ["-h"]]) {
       const result = run(["--json", flag, ...tail], { success: false, cwd: temp, defaultTarget: false, appendJson: false });
@@ -96,6 +96,10 @@ try {
   const installPreview=run(["--profile","minimal","--source-branch","main","--dry-run"]);
   check("install preview lists owned objects without writing",()=>{
     assert.equal(digestTree(target),before); assert.ok(installPreview.asset_plan.operations.length>0);
+    assert.equal(installPreview.installation_plan.scope,"installation");
+    assert.ok(installPreview.installation_plan.operations.some(item=>item.path===".aidn/config.json"));
+    assert.ok(installPreview.installation_plan.operations.some(item=>item.path==="docs/audit/WORKFLOW.md"));
+    assert.ok(Array.isArray(installPreview.installation_plan.external_effects));
   });
   run(["--profile","minimal","--source-branch","main"]);
   check("nominal install requires neither Codex CLI nor LLM",()=>{
@@ -111,6 +115,25 @@ try {
   check("diagnostic is read-only and does not invent approval",()=>{
     assert.equal(digestTree(target),beforeDiagnostic); assert.equal(diagnostic.capabilities.states.approved,"unknown");
     assert.equal(diagnostic.capabilities.states.operational,"unverified");
+    assert.equal(diagnostic.assets.version_info.recorded_version,fs.readFileSync(path.join(root,"VERSION"),"utf8").trim());
+    assert.equal(diagnostic.assets.version_info.status,"current");
+    assert.equal(diagnostic.assets.version_info.receipt_drift,false);
+  });
+  const completeDiagnostic=run(["--diagnose","--scope","installation"]);
+  check("installation diagnostic selects the complete scope without granting trust or writing",()=>{
+    assert.equal(completeDiagnostic.scope,"installation");
+    assert.equal(completeDiagnostic.written,false);
+    assert.equal(digestTree(target),beforeDiagnostic);
+    assert.equal(completeDiagnostic.capabilities.states.approved,"unknown");
+  });
+  const completePreview=run(["--repair","--scope","installation"]);
+  check("installation lifecycle preview is nonmutating and enforces explicit intent",()=>{
+    assert.equal(completePreview.scope,"installation");
+    assert.equal(completePreview.written,false);
+    assert.equal(digestTree(target),beforeDiagnostic);
+    run(["--repair","--scope","installation","--write"],{success:false});
+    run(["--repair","--scope","installation","--write","--expect-plan","stale"],{success:false});
+    assert.equal(digestTree(target),beforeDiagnostic);
   });
   const skill=path.join(target,".agents/skills/context-reload/SKILL.md");
   const expected=fs.readFileSync(skill,"utf8");
@@ -126,7 +149,7 @@ try {
   run(["--uninstall","--write","--expect-plan",reviewed.plan_id],{success:false});
   run(["--profile","minimal","--source-branch","main"],{success:false});
   check("stale plan and customized owned asset refuse before writes",()=>assert.equal(digestTree(target),diverged));
-  for(const args of [["--repair","--write"],["--repair","--write","--dry-run"],["--diagnose","--write"],["--repair","--uninstall"]]) {
+  for(const args of [["--repair","--write"],["--repair","--write","--dry-run"],["--diagnose","--write"],["--repair","--uninstall"],["--repair","--scope","unknown"],["--scope","installation"]]) {
     run(args,{success:false});
     assert.equal(digestTree(target),diverged);
   }

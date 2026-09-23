@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { resolveInstallOwnership } from "../../src/application/install/install-ownership-policy.mjs";
+import { isLocalInstallationTarget } from "../../src/application/install/installation-ownership-service.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -44,16 +46,63 @@ function printUsage() {
   console.log("  node tools/perf/verify-install-import-fixtures.mjs --keep-tmp");
 }
 
-function prepareTmp(sourceTarget, tmpRoot, suffix) {
+function prepareTmp(repoRoot, sourceTarget, tmpRoot, suffix) {
   fs.mkdirSync(tmpRoot, { recursive: true });
   const target = fs.mkdtempSync(path.join(tmpRoot, `tmp-install-import-${suffix}-`));
   try {
-    // Keep the artifact corpus and its adapter as input to import. Package assets,
-    // runtime stores and root-bound ownership receipts must start fresh per client.
-    for (const relativePath of ["docs/audit", ".aidn/project/workflow.adapter.json"]) {
-      const destination = path.join(target, relativePath);
-      fs.mkdirSync(path.dirname(destination), { recursive: true });
-      fs.cpSync(path.join(sourceTarget, relativePath), destination, { recursive: true });
+    const adapter = ".aidn/project/workflow.adapter.json";
+    fs.mkdirSync(path.dirname(path.join(target, adapter)), { recursive: true });
+    fs.copyFileSync(path.join(sourceTarget, adapter), path.join(target, adapter));
+
+    // The corpus contains historical templates. Seed current package assets
+    // first so this suite measures import, not adoption of unknown old assets.
+    const seeded = runInstall(repoRoot, target, null, ["--init-defaults", "--skip-artifact-import"], {
+      AIDN_STATE_MODE: "",
+      AIDN_INDEX_STORE_MODE: "",
+    });
+    if (seeded.status !== 0) {
+      throw new Error(`Current-package fixture setup failed: ${JSON.stringify(installDiagnostics(seeded))}`);
+    }
+
+    function overlayCorpus(directory) {
+      for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        const sourcePath = path.join(directory, entry.name);
+        if (entry.isDirectory()) {
+          overlayCorpus(sourcePath);
+          continue;
+        }
+        const relative = path.relative(sourceTarget, sourcePath).replace(/\\/g, "/");
+        const ownership = resolveInstallOwnership(relative);
+        const historicalArtifact = /^docs\/audit\/(?:sessions|cycles|baseline)\//.test(relative)
+          && !isLocalInstallationTarget(relative);
+        if (!["runtime-state", "seed-once"].includes(ownership) && !historicalArtifact) continue;
+        const destination = path.join(target, relative);
+        fs.mkdirSync(path.dirname(destination), { recursive: true });
+        fs.copyFileSync(sourcePath, destination);
+      }
+    }
+    overlayCorpus(path.join(sourceTarget, "docs/audit"));
+
+    // Preserve the original default/precedence precondition: no project config,
+    // import store or prior ownership receipt may decide the command under test.
+    // Only remove metadata created by the preparatory install in this temp client.
+    const resolvedTarget = path.resolve(target);
+    const resolvedTmpRoot = path.resolve(tmpRoot);
+    if (!resolvedTarget.startsWith(resolvedTmpRoot + path.sep)
+      || !path.basename(resolvedTarget).startsWith("tmp-install-import-")) {
+      throw new Error("Unsafe import fixture setup cleanup target");
+    }
+    const receiptRoot = path.resolve(resolvedTarget, ".aidn/install");
+    if (!receiptRoot.startsWith(resolvedTarget + path.sep)) {
+      throw new Error("Unsafe import fixture receipt cleanup target");
+    }
+    const cleanup = removePathWithRetry(receiptRoot);
+    if (!cleanup.ok) throw cleanup.error;
+    fs.unlinkSync(path.join(resolvedTarget, ".aidn/config.json"));
+    for (const relative of [".aidn/config.json", ".aidn/install", ".aidn/runtime/index/workflow-index.json", ".aidn/runtime/index/workflow-index.sqlite"]) {
+      if (fs.existsSync(path.join(resolvedTarget, relative))) {
+        throw new Error(`Import fixture setup left pre-existing state: ${relative}`);
+      }
     }
     return target;
   } catch (error) {
@@ -359,7 +408,7 @@ function collectReanchorArtifactDetails(target) {
 }
 
 function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
-  const target = prepareTmp(sourceTarget, tmpRoot, "default");
+  const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "default");
   const out = runInstall(repoRoot, target, codexStubBin);
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
@@ -416,7 +465,7 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
 }
 
 function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
-  const target = prepareTmp(sourceTarget, tmpRoot, "db-only");
+  const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "db-only");
   const out = runInstall(repoRoot, target, codexStubBin, [], { AIDN_STATE_MODE: "db-only" });
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
@@ -466,7 +515,7 @@ function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
 }
 
 function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
-  const target = prepareTmp(sourceTarget, tmpRoot, "env-precedence");
+  const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "env-precedence");
   const out = runInstall(repoRoot, target, codexStubBin, [], {
     AIDN_STATE_MODE: "db-only",
     AIDN_INDEX_STORE_MODE: "file",
@@ -520,7 +569,7 @@ function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
 }
 
 function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
-  const target = prepareTmp(sourceTarget, tmpRoot, "cli-override");
+  const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "cli-override");
   const out = runInstall(repoRoot, target, codexStubBin, ["--artifact-import-store", "dual-sqlite"], {
     AIDN_STATE_MODE: "files",
     AIDN_INDEX_STORE_MODE: "file",
@@ -584,7 +633,7 @@ function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
 }
 
 function checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
-  const target = prepareTmp(sourceTarget, tmpRoot, "skip");
+  const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "skip");
   const out = runInstall(repoRoot, target, codexStubBin, ["--skip-artifact-import"]);
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
@@ -633,7 +682,7 @@ function checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
 }
 
 function checkCaseInstructionOverrideWarnings(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
-  const target = prepareTmp(sourceTarget, tmpRoot, "instruction-overrides");
+  const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "instruction-overrides");
   fs.writeFileSync(path.join(target, "AGENTS.override.md"), "# local override\n", "utf8");
   const nestedDir = path.join(target, "docs", "audit", "nested");
   fs.mkdirSync(nestedDir, { recursive: true });
@@ -695,7 +744,7 @@ function main() {
     const output = {
       ts: new Date().toISOString(),
       source_target: sourceTarget,
-      fixture_basis: "fresh-package-assets-with-artifact-corpus-and-adapter",
+      fixture_basis: "current-package-assets-with-runtime-corpus-and-no-config-or-receipt",
       tmp_root: tmpRoot,
       checks: cases,
       pass,

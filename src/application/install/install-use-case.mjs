@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { planInstallation, executeInstallation } from "./installation-service.mjs";
 import { executeCodexAssets, planCodexAssets, isCodexManagedTarget } from "./codex-assets-service.mjs";
 import path from "node:path";
 import {
@@ -162,6 +163,30 @@ export async function runInstallUseCase({
   targetRoot,
   runtimeBackendAdoptionOptions = null,
 }) {
+  if (!args.verifyOnly) {
+    if (!args.dryRun && !args.initDefaults && !args.adapterFile && !args.adapterData && process.stdin.isTTY && process.stdout.isTTY
+      && !fs.existsSync(path.join(targetRoot, ".aidn/project/workflow.adapter.json"))) {
+      const defaults = resolveArtifactImportDefaults(args, readAidnProjectConfig(targetRoot).data ?? {});
+      const wizard = await runWorkflowAdapterConfigWizard({ initialConfig: loadWorkflowAdapterConfigState({ targetRoot }).data, defaults: { projectName: args.projectName || path.basename(targetRoot), preferredStateMode: defaults.stateMode, defaultIndexStore: defaults.store } });
+      if (!wizard.saved) throw new Error("Workflow adapter config creation cancelled.");
+      args = { ...args, adapterData: wizard.data };
+    }
+    const result = args.dryRun
+      ? await planInstallation({ args, repoRoot, targetRoot })
+      : await executeInstallation({ args, repoRoot, targetRoot, dryRun: false, runtimeBackendAdoptionOptions });
+    console.log(`Product version: ${readUtf8(path.join(repoRoot, "VERSION")).trim()}`);
+    const { workflowManifest: manifest } = loadWorkflowManifests(repoRoot);
+    const packs = resolvePackOrder(repoRoot, args.pack ? [args.pack] : manifest.packs).ordered;
+    console.log(`Packs: ${packs.join(", ")}`);
+    if (args.dryRun) for (const operation of result.operations ?? []) console.log(`[dry-run] ${operation.effect} ${operation.path} (${operation.owner})`);
+    for (const message of result.messages ?? []) console.log(message);
+    for (const warning of result.warnings ?? []) console.warn(warning);
+    const precedence = collectInstructionPrecedenceWarnings(targetRoot);
+    for (const warning of precedence) console.warn(warning);
+    if (precedence.length) console.warn("Review Codex instruction precedence before relying on the installed project contract.");
+    if (!result.ok) throw new Error(result.errors.join("; "));
+    return result;
+  }
   const configRead = readAidnProjectConfig(targetRoot);
   let currentAidnConfigData = configRead.data ?? {};
   let aidnConfigExists = configRead.exists === true;

@@ -78,5 +78,25 @@
       "source_tag": "v0.5.0-rc.1",
       "sha256": "cfa85b27a5373a965478a0611910f84bd49a591e364bef5c9d42fac91543c332"
     }
+  ],
+  "repairs": [
+    {
+      "id": "pr-orchestrate-description-yaml-v1",
+      "asset": ".agents/skills/pr-orchestrate/SKILL.md",
+      "kind": "quote-yaml-description",
+      "hash_policy": "sha256-utf8-lf",
+      "historical_hash": "b8ba7f40a0e5e1524a277652aef0fa940a19ca292c4ee2cb70633851fb501bfa",
+      "repaired_hash": "200a43bfc42d8843a3b3197f5c1f8e518b6aac6e234db100d67d86831cdbc790",
+      "source_tag": "v0.5.0-rc.1",
+      "source_commit": "6882bfd1b7ce35e4e1d1bf1ba9d44348341f0032",
+      "source_path": "scaffold/codex/pr-orchestrate/SKILL.md",
+      "source_blob": "7dfef7e2febadd50c8685208d1b785cccd81049c",
+      "fix_commit": "ad598b4a7896b9ea26dd057b5295d9a170e8782c",
+      "fix_blob": "8bc6d6c3991b25813280c4549fb0f9c282ace0be",
+      "description": "Orchestrate the session PR lifecycle after close-session: push, open PR, track review, and enforce post-merge sync.",
+      "legacy_assets": [
+        ".codex/skills/pr-orchestrate/SKILL.md"
+      ]
+    }
   ]
 }

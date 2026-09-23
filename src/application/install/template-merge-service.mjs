@@ -183,7 +183,7 @@ export async function mergeBlock(templatePath, targetPath, dryRun, options) {
   return { changed: true, skippedByAssist: false };
 }
 
-export function mergeAppendUnique(templatePath, targetPath, dryRun, templateVars = null) {
+export function mergeAppendUnique(templatePath, targetPath, dryRun, templateVars = null, onPlannedFile = null) {
   const rawTemplateText = readUtf8(templatePath);
   const templateText = renderTemplateVariables(rawTemplateText, templateVars);
   if (rawTemplateText.includes("{{VERSION}}") && templateText.includes("{{VERSION}}")) {
@@ -195,6 +195,7 @@ export function mergeAppendUnique(templatePath, targetPath, dryRun, templateVars
   if (!targetExists) {
     const eol = detectEol(templateText);
     const content = templateLines.length ? `${templateLines.join(eol)}${eol}` : "";
+    onPlannedFile?.({ targetPath, content });
     writeUtf8(targetPath, content, dryRun);
     return { changed: templateLines.length > 0 };
   }
@@ -220,6 +221,7 @@ export function mergeAppendUnique(templatePath, targetPath, dryRun, templateVars
     output += eol;
   }
 
+  onPlannedFile?.({ targetPath, content: output });
   writeUtf8(targetPath, output, dryRun);
   return { changed: true };
 }

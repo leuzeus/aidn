@@ -1,9 +1,12 @@
 import crypto from "node:crypto";
+import { classifyHistoricalCodexSkill } from "./codex-legacy-repairs.mjs";
+import { isLocalInstallationTarget, configFieldPatch, configFieldStates, restoreConfigFields, restoreAppendLines } from "./installation-ownership-service.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeFileAtomicSync } from "../../lib/fs/atomic-write-lib.mjs";
 import { renderTemplateVariables } from "./template-io.mjs";
+import { inspectInstalledAidnVersion } from "../../lib/config/aidn-config-lib.mjs";
 
 const STORE = ".aidn/install";
 const RECEIPT = `${STORE}/receipt.json`;
@@ -100,11 +103,11 @@ function writeJson(root, relative, value) { write(root, relative, encode(`${JSON
 function scopeId(root) { return hash(process.platform === "win32" ? root.toLowerCase() : root); }
 export function isCodexManagedTarget(relative) {
   const value = String(relative).replace(/\\/g, "/").replace(/\/$/, "");
-  return value === "AGENTS.md" || value === ".codex/hooks.json" || value === ".aidn/codex/skills.yaml"
+  return value === ".codex/skills/pr-orchestrate/SKILL.md" || value === "AGENTS.md" || value === ".codex/hooks.json" || value === ".aidn/codex/skills.yaml"
     || [".agents/skills", ".codex/agents", ".codex/hooks"].some((prefix) => value === prefix || value.startsWith(`${prefix}/`));
 }
-function validateAssetPath(relative) {
-  if (!isCodexManagedTarget(relative)) problem("UNOWNED_RECEIPT_PATH", relative);
+function validateAssetPath(relative, scope = "codex-integration") {
+  if (!isCodexManagedTarget(relative) && !(scope === "installation" && isLocalInstallationTarget(relative))) problem("UNOWNED_RECEIPT_PATH", relative);
 }
 function loadReceipt(root) {
   const stored = jsonAt(root, RECEIPT);
@@ -118,6 +121,10 @@ function loadReceipt(root) {
     if (asset.kind === "file" && typeof asset.current !== "string") problem("INVALID_RECEIPT_ASSET", relative);
     if (asset.kind === "hooks" && !Array.isArray(asset.current)) problem("INVALID_RECEIPT_ASSET", relative);
     if (asset.kind === "agents-block" && typeof asset.current !== "string") problem("INVALID_RECEIPT_ASSET", relative);
+  }
+  if (receipt.installation?.assets) for (const [relative, asset] of Object.entries(receipt.installation.assets)) {
+    validateAssetPath(relative, "installation");
+    if (!["local-file", "config-fields", "append-lines", "seed-file"].includes(asset.kind)) problem("INVALID_RECEIPT_ASSET", relative);
   }
   return receipt;
 }
@@ -234,16 +241,18 @@ function packageBinding(repoRoot) {
 }
 function publicPlan(plan) {
   return {
-    ok: plan.conflicts.length === 0, scope: "codex-integration", action: plan.action,
+    ok: plan.conflicts.length === 0, scope: plan.scope, action: plan.action,
     plan_id: plan.id, dry_run: true, written: false, write_targets: [],
     installed: Object.keys(plan.receipt?.assets ?? {}).length > 0,
     pending: plan.pending?.id ?? null,
     lock_recovery: plan.lock && ["resume", "rollback"].includes(plan.action) && !processExists(plan.lock.pid)
       ? { required: true, path: LOCK, owner: "not-running" } : { required: false },
     package_version: plan.binding?.version ?? plan.receipt?.package?.version ?? null,
-    operations: plan.operations.map((op) => ({ path: op.path, kind: op.kind, effect: op.before === op.after ? "unchanged" : op.after === null ? "remove" : op.before === null ? "create" : "update", before_hash: bytesHash(op.before), after_hash: bytesHash(op.after) })),
+    operations: plan.operations.map((op) => ({ path: op.path, kind: op.kind, owner: op.kind === "seed-file" ? "retained-project-state" : "aidn-installer", effect: op.before === op.after ? "unchanged" : op.after === null ? "remove" : op.before === null ? "create" : "update", before_hash: bytesHash(op.before), after_hash: bytesHash(op.after) })),
     conflicts: plan.conflicts, errors: plan.conflicts.map((item) => `${item.code}${item.path ? `: ${item.path}` : ""}`),
     warnings: plan.warnings,
+    historical_repairs: plan.historicalRepairs ?? [],
+    ...(plan.scope === "installation" ? { external_effects: plan.installationContext?.external_effects ?? [], version_before: plan.installationContext?.version_before ?? null, version_after: plan.installationContext?.version_after ?? null } : {}),
   };
 }
 function makeOperation(relative, kind, before, after, beforeOwned, afterOwned) {
@@ -251,8 +260,19 @@ function makeOperation(relative, kind, before, after, beforeOwned, afterOwned) {
 }
 function restoredContent(op, current) {
   if (current === op.before) return current;
-  if (current === op.after) return op.before;
-  if (op.kind === "file") problem("POSTIMAGE_CHANGED", op.path);
+  if (current === op.after || (op.staged !== undefined && current === op.staged)) return op.before;
+  if (op.kind === "seed-file") return current;
+  if (op.kind === "config-fields") {
+    try { return encode(restoreConfigFields(decode(current), op.after_owned, op.before_owned)); }
+    catch {
+      if (op.staged_owned) {
+        try { return encode(restoreConfigFields(decode(current), op.staged_owned, op.before_owned)); } catch { /* conflict below */ }
+      }
+      problem("CONFIG_FIELD_POSTIMAGE_CHANGED", op.path);
+    }
+  }
+  if (op.kind === "append-lines") { try { return encode(restoreAppendLines(decode(current), op.after_owned, op.before_owned)); } catch { problem("APPEND_LINE_POSTIMAGE_CHANGED", op.path); } }
+  if (op.kind === "file" || op.kind === "local-file") problem("POSTIMAGE_CHANGED", op.path);
   if (op.kind === "agents-block") return replaceBlock(current, op.after_owned, op.before_owned);
   return replaceHooks(current, op.after_owned, op.before_owned);
 }
@@ -262,8 +282,8 @@ function loadTransaction(root, id) {
   const tx = stored ? unseal(stored, `${STORE}/transactions/${id}.json`) : null;
   if (!tx || tx.schema_version !== 1 || tx.root_id !== scopeId(root) || !Array.isArray(tx.operations)) problem("INVALID_TRANSACTION");
   for (const op of tx.operations) {
-    validateAssetPath(op.path);
-    if (!["file", "hooks", "agents-block"].includes(op.kind)) problem("INVALID_TRANSACTION");
+    validateAssetPath(op.path, tx.scope);
+    if (!["file", "hooks", "agents-block", ...(tx.scope === "installation" ? ["local-file", "config-fields", "append-lines", "seed-file"] : [])].includes(op.kind)) problem("INVALID_TRANSACTION");
   }
   return tx;
 }
@@ -271,9 +291,11 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
   const action = options.action ?? "install";
   const targetRoot = safeRoot(options.targetRoot ?? process.cwd());
   const repoRoot = safeRoot(options.repoRoot ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../.."));
-  const plan = { action, targetRoot, repoRoot, operations: [], conflicts: [], warnings: [], receipt: null, pending: null, nextReceipt: null, binding: null, id: "" };
+  const scope = options.scope ?? "codex-integration";
+  const plan = { action, scope, targetRoot, repoRoot, installationContext: options.installation?.context ?? null, operations: [], conflicts: [], warnings: [], receipt: null, pending: null, nextReceipt: null, binding: null, id: "" };
   try {
     if (!ACTIONS.has(action)) problem("INVALID_INSTALL_ACTION");
+    if (!["codex-integration", "installation"].includes(scope)) problem("INVALID_INSTALL_SCOPE");
     // Store safety is validated even when none of the selected assets is present.
     safePath(targetRoot, STORE, { directory: true });
     const privateIgnore = read(targetRoot, PRIVATE_IGNORE);
@@ -288,37 +310,52 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
       if (!["resume", "rollback"].includes(action)) problem("STALE_INSTALL_LOCK_REQUIRES_RESUME", LOCK);
     }
     if (plan.pending && (plan.pending.schema_version !== 1 || plan.pending.root_id !== scopeId(targetRoot))) problem("INVALID_PENDING_TRANSACTION", PENDING);
+    if (plan.pending && (plan.pending.scope ?? "codex-integration") !== scope) problem("INSTALLATION_SCOPE_REQUIRED");
     const emptyReceipt = { schema_version: 1, scope: "codex-integration", root_id: scopeId(targetRoot), package: null, assets: {}, last_transaction: null, last_action: null };
     plan.nextReceipt = structuredClone(plan.receipt ?? emptyReceipt);
-    if (action === "repair" && !plan.receipt) problem("NO_MANAGED_CODEX_INSTALLATION");
+
     if (plan.pending && !["resume", "rollback"].includes(action)) problem("INTERRUPTED_INSTALL_REQUIRES_RESUME_OR_ROLLBACK", PENDING);
     if (action === "resume") {
       if (!plan.pending) { plan.warnings.push(plan.lock ? "No asset journal; resume will recover the abandoned installation lock." : "No interrupted Codex asset transaction."); }
       else {
         const tx = loadTransaction(targetRoot, plan.pending.id);
+        if (tx.scope !== scope) problem("INSTALLATION_SCOPE_REQUIRED");
+        const interruptedImport = tx.external_effect_results?.["artifact-import"];
+        if (interruptedImport?.source_kind === "postgres" && !["completed", "skipped"].includes(interruptedImport.status)) problem("ARTIFACT_IMPORT_REQUIRES_INSPECTION");
         plan.resume = tx;
-        plan.binding = tx.receipt_after.package;
+        plan.installationContext = tx.installation_context ?? null;
+        plan.binding = tx.execution_package ?? tx.receipt_after.package ?? tx.receipt_before?.package;
+        if (!plan.binding) problem("MISSING_TRANSACTION_PACKAGE_BINDING");
         const actualBinding = packageBinding(plan.binding.root);
-        if (!same(actualBinding, plan.binding)) problem("PACKAGE_CHANGED_SINCE_TRANSACTION");
+        if (!same(actualBinding, plan.binding) || !same(packageBinding(repoRoot), plan.binding)) problem("PACKAGE_CHANGED_SINCE_TRANSACTION");
         for (const operation of tx.operations) {
           const current = read(targetRoot, operation.path);
-          if (current !== operation.before && current !== operation.after) problem("TRANSACTION_POSTIMAGE_CHANGED", operation.path);
+          if (current !== operation.before && current !== operation.after && current !== operation.staged) problem("TRANSACTION_POSTIMAGE_CHANGED", operation.path);
           plan.operations.push({ ...operation, before: current });
         }
         plan.nextReceipt = tx.receipt_after;
       }
     } else if (action === "rollback") {
-      const id = plan.pending?.id ?? plan.receipt?.last_transaction;
-      if (!id || (!plan.pending && plan.receipt?.last_action === "rollback")) plan.warnings.push("No Codex asset transaction to roll back.");
+      plan.binding = packageBinding(repoRoot);
+      const id = plan.pending?.id ?? (scope === "installation" ? plan.receipt?.installation_last_transaction ?? plan.receipt?.installation?.last_transaction : null) ?? plan.receipt?.last_transaction;
+      const alreadyRolledBack = scope === "installation"
+        ? (plan.receipt?.installation_last_action ?? (plan.receipt?.last_scope === "installation" ? plan.receipt?.last_action : null)) === "rollback"
+        : plan.receipt?.last_action === "rollback" && (plan.receipt?.last_scope ?? "codex-integration") === scope;
+      if (!id || (!plan.pending && alreadyRolledBack)) plan.warnings.push("No Codex asset transaction to roll back.");
       else {
         const tx = loadTransaction(targetRoot, id);
+        const codexOnlyRollback = scope === "codex-integration" && tx.scope === "installation" && !plan.pending;
+        if (tx.scope !== scope && !codexOnlyRollback) problem("INSTALLATION_SCOPE_REQUIRED");
+        plan.installationContext = tx.installation_context ?? null;
         plan.rollbackOf = tx.id;
-        for (const operation of [...tx.operations].reverse()) {
+        for (const operation of [...tx.operations].reverse().filter((op) => !codexOnlyRollback || isCodexManagedTarget(op.path))) {
           const current = read(targetRoot, operation.path);
-          const after = restoredContent(operation, current);
+          const after = operation.kind === "seed-file" ? current : restoredContent(operation, current);
           plan.operations.push(makeOperation(operation.path, operation.kind, current, after, operation.after_owned, operation.before_owned));
         }
-        plan.nextReceipt = structuredClone(tx.receipt_before ?? emptyReceipt);
+        plan.nextReceipt = codexOnlyRollback
+          ? { ...structuredClone(plan.receipt), assets: structuredClone(tx.receipt_before?.assets ?? {}), package: tx.receipt_before?.package ?? plan.receipt.package }
+          : structuredClone(tx.receipt_before ?? emptyReceipt);
       }
     } else if (action === "uninstall") {
       for (const [relative, asset] of Object.entries(plan.receipt?.assets ?? {})) {
@@ -326,7 +363,7 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
         let after;
         if (asset.kind === "file") {
           if (current !== null && current !== asset.current) problem("MODIFIED_MANAGED_ASSET", relative);
-          after = null;
+          after = asset.legacy_preimage ?? null;
         } else if (asset.kind === "hooks") {
           after = current === null ? null : replaceHooks(current, asset.current, []);
           // Receipt refresh must never adopt later third-party fields as deletable.
@@ -339,9 +376,33 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
         plan.operations.push(makeOperation(relative, asset.kind, current, after, asset.current, asset.kind === "hooks" ? [] : null));
       }
       plan.nextReceipt.assets = {};
+      if (scope === "installation" && plan.receipt?.installation) {
+        for (const [relative, asset] of Object.entries(plan.receipt.installation.assets ?? {})) {
+          const current = read(targetRoot, relative);
+          if (asset.kind === "seed-file") continue;
+          const op = makeOperation(relative, asset.kind, asset.baseline, asset.current, asset.baseline_owned, asset.current_owned);
+          const after = restoredContent(op, current);
+          plan.operations.push(makeOperation(relative, asset.kind, current, after, asset.current_owned, asset.baseline_owned));
+        }
+        delete plan.nextReceipt.installation;
+      }
     } else {
       plan.binding = packageBinding(repoRoot);
       const desired = desiredAssets(repoRoot, { VERSION: plan.binding.version, ...options.templateVars });
+      const historical = new Map();
+      for (const relative of [".agents/skills/pr-orchestrate/SKILL.md", ".codex/skills/pr-orchestrate/SKILL.md"]) {
+        const current = read(targetRoot, relative);
+        if (current === null) continue;
+        const classification = classifyHistoricalCodexSkill({ relativePath: relative, text: decode(current) });
+        const { replacementText, ...publicClassification } = classification;
+        if (classification.action === "conflict") problem(classification.code, relative);
+        if (classification.action === "repair") {
+          historical.set(relative, classification);
+          (plan.historicalRepairs ??= []).push({ path: relative, ...publicClassification });
+        }
+        if (["none", "repair"].includes(classification.action)) desired.set(relative, { kind: "file", data: classification.action === "repair" ? encode(replacementText) : current });
+      }
+      if (action === "repair" && !plan.receipt && !historical.size) problem("NO_MANAGED_CODEX_INSTALLATION");
       plan.nextReceipt.package = plan.binding;
       for (const [relative, item] of desired) {
         const current = read(targetRoot, relative);
@@ -351,7 +412,7 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
         let after = item.data;
         if (item.kind === "file") {
           if (owned && current !== owned.current && current !== null) problem("MODIFIED_MANAGED_ASSET", relative);
-          if (!owned && current !== null && current !== item.data && !knownLegacy(relative, decode(current))) problem("UNOWNED_ASSET_CONFLICT", relative);
+          if (!owned && current !== null && current !== item.data && !knownLegacy(relative, decode(current)) && !historical.has(relative)) problem("UNOWNED_ASSET_CONFLICT", relative);
           beforeOwned = current;
         } else if (item.kind === "agents-block") {
           if (options.skipAgents) { plan.warnings.push("AGENTS.md was explicitly excluded."); continue; }
@@ -382,11 +443,47 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
         }
         plan.operations.push(makeOperation(relative, item.kind, current, after, beforeOwned, afterOwned));
         plan.nextReceipt.assets[relative] = { kind: item.kind, current: afterOwned, full_postimage: after, created: owned?.created ?? current === null, source_hash: bytesHash(item.data) };
+        if (owned?.legacy_preimage !== undefined || relative.startsWith(".codex/skills/")) plan.nextReceipt.assets[relative].legacy_preimage = owned?.legacy_preimage ?? current;
         if (item.kind === "agents-block") {
           plan.nextReceipt.assets[relative].unmanaged_baseline = owned?.unmanaged_baseline ?? replaceBlock(after, afterOwned, null);
           plan.nextReceipt.assets[relative].uninstall_preimage = owned && Object.hasOwn(owned, "uninstall_preimage")
             ? owned.uninstall_preimage : beforeOwned === null ? current : replaceBlock(current, beforeOwned, null);
         }
+      }
+      if (scope === "installation") {
+        if (!options.installation) problem("INSTALLATION_PLAN_REQUIRED");
+        const previousAssets = plan.receipt?.installation?.assets ?? {};
+        const localAssets = { ...previousAssets };
+        for (const item of options.installation.operations) {
+          const relative = item.path; validateAssetPath(relative, scope);
+          if (isCodexManagedTarget(relative)) problem("DUPLICATE_MANAGED_PATH", relative);
+          const current = read(targetRoot, relative), owned = previousAssets[relative];
+          if (owned && item.kind === "local-file" && current !== owned.current && current !== null) problem("MODIFIED_INSTALLATION_ASSET", relative);
+          if (!owned && item.kind === "local-file" && current !== null && current !== item.data && !(item.legacy_data ?? []).some((data) => normalizedHash(decode(data)) === normalizedHash(decode(current)))) problem("UNOWNED_INSTALLATION_ASSET", relative);
+          let beforeOwned = current, afterOwned = item.data;
+          if (item.kind === "config-fields") {
+            const patch = configFieldPatch(current === null ? {} : JSON.parse(decode(current)), JSON.parse(decode(item.data)));
+            beforeOwned = patch.before; afterOwned = patch.after;
+          } else if (item.kind === "append-lines") {
+            beforeOwned = [];
+            const beforeLines = (decode(current) ?? "").replace(/\r\n/g, "\n").split("\n");
+            afterOwned = (decode(item.data) ?? "").replace(/\r\n/g, "\n").split("\n").filter((line) => line && !beforeLines.includes(line));
+          }
+          if (owned && item.kind === "config-fields" && !(action === "repair" && current === null)) {
+            try { restoreConfigFields(decode(current), owned.current_owned, owned.current_owned); } catch { problem("CONFIG_FIELD_POSTIMAGE_CHANGED", relative); }
+          }
+          if (owned && item.kind === "append-lines") {
+            try { restoreAppendLines(decode(current), owned.current_owned, owned.current_owned); } catch { problem("APPEND_LINE_POSTIMAGE_CHANGED", relative); }
+          }
+          const operation = makeOperation(relative, item.kind, current, item.data, beforeOwned, afterOwned);
+          operation.finalize = item.finalize === true;
+          if (item.staged !== undefined) { operation.staged = item.staged; operation.staged_owned = configFieldStates(JSON.parse(decode(item.staged)), afterOwned); }
+          plan.operations.push(operation);
+          localAssets[relative] = { kind: item.kind, current: item.data, baseline: owned ? owned.baseline : current,
+            baseline_owned: item.kind === "config-fields" ? { ...beforeOwned, ...(owned?.baseline_owned ?? {}) } : owned ? owned.baseline_owned : beforeOwned,
+            current_owned: item.kind === "config-fields" ? { ...(owned?.current_owned ?? {}), ...afterOwned } : item.kind === "append-lines" ? [...new Set([...(owned?.current_owned ?? []), ...afterOwned])] : afterOwned };
+        }
+        plan.nextReceipt.installation = { ...(plan.receipt?.installation ?? {}), assets: localAssets, version: options.installation.context.version_after, args: options.installation.context.args };
       }
       for (const [relative, owned] of Object.entries(plan.receipt?.assets ?? {})) {
         if (desired.has(relative)) continue;
@@ -399,14 +496,16 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
   } catch (error) {
     plan.conflicts.push({ code: error.code ?? "CODEX_ASSET_PLAN_FAILED", path: error.relativePath ?? "" });
   }
-  plan.id = hash(stable({ action, root: scopeId(targetRoot), binding: plan.binding, receipt: plan.receipt, pending: plan.pending, operations: plan.operations, conflicts: plan.conflicts, nextReceipt: plan.nextReceipt }));
+  plan.id = hash(stable({ action, root: scopeId(targetRoot), binding: plan.binding, receipt: plan.receipt, pending: plan.pending, operations: plan.operations, conflicts: plan.conflicts, nextReceipt: plan.nextReceipt, scope, installationContext: plan.installationContext }));
   return plan;
 }
 export function planCodexAssets(options = {}) { return publicPlan(buildPlan(options)); }
 export function diagnoseCodexAssets(options = {}) {
   const plan = buildPlan({ ...options, action: "install" });
   const output = publicPlan(plan);
-  return { ...output, action: "diagnose", state: plan.pending ? "interrupted" : !output.ok ? "conflict" : !output.installed ? "not-installed" : output.operations.some((op) => op.effect !== "unchanged") ? "update-or-repair-available" : "installed", capabilities: { approved: "unknown", connected: "not-applicable", operational: "not-verified" } };
+  let versionInfo = null;
+  try { const config = jsonAt(plan.targetRoot, ".aidn/config.json") ?? {}; const version = packageBinding(plan.repoRoot).version; const base = inspectInstalledAidnVersion(config, version); const receiptVersion = plan.receipt?.installation?.version ?? null; versionInfo = { ...base, receipt_version: receiptVersion, receipt_drift: receiptVersion !== null && receiptVersion !== base.recorded_version }; } catch { /* plan error remains authoritative */ }
+  return { ...output, ...(versionInfo ? { version_info: versionInfo } : {}), action: "diagnose", state: plan.pending ? "interrupted" : !output.ok ? "conflict" : !output.installed ? "not-installed" : output.operations.some((op) => op.effect !== "unchanged") ? "update-or-repair-available" : "installed", capabilities: { approved: "unknown", connected: "not-applicable", operational: "not-verified" } };
 }
 function processExists(pid) {
   if (!Number.isSafeInteger(pid) || pid <= 0) return true;
@@ -455,7 +554,7 @@ function acquireLock(root, action) {
     }
   }
 }
-export function executeCodexAssets(options = {}) {
+function* executeTransaction(options = {}) {
   const before = buildPlan(options);
   const output = publicPlan(before);
   if (options.dryRun !== false || !output.ok) return output;
@@ -470,6 +569,7 @@ export function executeCodexAssets(options = {}) {
   let transaction;
   const written = [];
   const metadataWritten = [];
+  let finalCommitDurable = false;
   try {
     release = acquireLock(before.targetRoot, before.action);
     const fresh = buildPlan(options, { ignoreLock: true });
@@ -484,38 +584,97 @@ export function executeCodexAssets(options = {}) {
       metadataWritten.push(PRIVATE_IGNORE);
     }
     transaction = before.resume ?? {
-      schema_version: 1, scope: "codex-integration", id: transactionId,
+      schema_version: 1, scope: before.scope, id: transactionId,
       root_id: scopeId(before.targetRoot), action: before.action, plan_id: before.id,
       status: "pending", operations: before.operations,
       receipt_before: before.receipt, receipt_after: before.nextReceipt,
+      execution_package: before.binding ?? packageBinding(before.repoRoot),
       rollback_of: before.rollbackOf ?? null,
+      ...(before.scope === "installation" ? { installation_context: before.installationContext, external_status: "pending" } : {}),
     };
     writeJson(before.targetRoot, `${STORE}/transactions/${transactionId}.json`, sealed(transaction));
     metadataWritten.push(`${STORE}/transactions/${transactionId}.json`);
-    writeJson(before.targetRoot, PENDING, { schema_version: 1, root_id: scopeId(before.targetRoot), id: transactionId });
+    writeJson(before.targetRoot, PENDING, { schema_version: 1, scope: before.scope, root_id: scopeId(before.targetRoot), id: transactionId });
     metadataWritten.push(PENDING);
     let applied = 0;
+    let committedReceipt = null;
     if (options.failAfter === 0) problem("INJECTED_INSTALL_INTERRUPTION");
     for (const operation of transaction.operations) {
+      if (operation.staged !== undefined && !["rollback", "uninstall"].includes(transaction.action)) {
+        const current = read(before.targetRoot, operation.path);
+        if (current === operation.before && current !== operation.staged) {
+          write(before.targetRoot, operation.path, operation.staged); written.push(operation.path); applied += 1;
+          if (options.failAfterStaging) problem("INJECTED_INSTALLATION_AFTER_STAGING");
+        } else if (![operation.before, operation.staged, operation.after].includes(current)) problem("TRANSACTION_POSTIMAGE_CHANGED", operation.path);
+      }
+      if (operation.finalize && transaction.scope === "installation" && !["rollback", "uninstall"].includes(transaction.action) && transaction.external_status !== "complete") {
+        yield { transaction, targetRoot: before.targetRoot, checkpoint: () => writeJson(before.targetRoot, `${STORE}/transactions/${transactionId}.json`, sealed(transaction)) };
+        transaction.external_status = "complete";
+        writeJson(before.targetRoot, `${STORE}/transactions/${transactionId}.json`, sealed(transaction));
+      }
+      if (operation.finalize && transaction.scope === "installation" && !["rollback", "uninstall"].includes(transaction.action)) {
+        committedReceipt = { ...transaction.receipt_after, last_transaction: transactionId, last_action: transaction.action, last_scope: transaction.scope };
+        committedReceipt.installation_last_transaction = transactionId;
+        committedReceipt.installation_last_action = transaction.action;
+        if (committedReceipt.installation) committedReceipt.installation = { ...committedReceipt.installation, last_transaction: transactionId };
+        transaction.status = "complete"; transaction.receipt_after = committedReceipt;
+        writeJson(before.targetRoot, RECEIPT, sealed(committedReceipt));
+        writeJson(before.targetRoot, `${STORE}/transactions/${transactionId}.json`, sealed(transaction));
+        finalCommitDurable = true;
+        if (options.failBeforeVersion) problem("INJECTED_INSTALLATION_BEFORE_VERSION");
+      }
       const current = read(before.targetRoot, operation.path);
       if (current === operation.after) continue;
-      if (current !== operation.before) problem("TRANSACTION_POSTIMAGE_CHANGED", operation.path);
+      if (current !== operation.before && current !== operation.staged) problem("TRANSACTION_POSTIMAGE_CHANGED", operation.path);
       write(before.targetRoot, operation.path, operation.after);
       written.push(operation.path);
       applied += 1;
-      if (Number.isInteger(options.failAfter) && applied >= options.failAfter) problem("INJECTED_INSTALL_INTERRUPTION");
+      if (operation.finalize && options.failAfterVersion) problem("INJECTED_INSTALLATION_AFTER_VERSION");
+      if (!operation.finalize && Number.isInteger(options.failAfter) && applied >= options.failAfter) problem("INJECTED_INSTALL_INTERRUPTION");
     }
-    const receipt = { ...transaction.receipt_after, last_transaction: transactionId, last_action: transaction.action };
-    writeJson(before.targetRoot, RECEIPT, sealed(receipt));
-    transaction.status = "complete";
-    transaction.receipt_after = receipt;
-    writeJson(before.targetRoot, `${STORE}/transactions/${transactionId}.json`, sealed(transaction));
+    const receipt = committedReceipt ?? { ...transaction.receipt_after, last_transaction: transactionId, last_action: transaction.action, last_scope: transaction.scope };
+    if (transaction.scope === "installation") { receipt.installation_last_transaction = transactionId; receipt.installation_last_action = transaction.action; }
+    if (!committedReceipt) {
+      writeJson(before.targetRoot, RECEIPT, sealed(receipt));
+      transaction.status = "complete";
+      transaction.receipt_after = receipt;
+      writeJson(before.targetRoot, `${STORE}/transactions/${transactionId}.json`, sealed(transaction));
+    }
     write(before.targetRoot, PENDING, null);
     return { ...output, dry_run: false, installed: Object.keys(receipt.assets).length > 0, package_version: receipt.package?.version ?? null, written: written.length > 0 || receiptChanged, write_targets: [...written, ...metadataWritten, RECEIPT], transaction_id: transactionId, pending: null };
   } catch (error) {
+    if (finalCommitDurable && transaction?.scope === "installation" && transaction.status === "complete" && transaction.operations.filter((op) => op.finalize).every((op) => read(before.targetRoot, op.path) === op.after)) {
+      return { ...output, ok: true, dry_run: false, written: true, write_targets: [...written, ...metadataWritten, RECEIPT], pending: transaction.id, transaction_id: transaction.id, warnings: [...output.warnings, "Installation completed; resume is required to finish journal cleanup."], completion_status: "complete-cleanup-pending" };
+    }
     return { ...output, ok: false, dry_run: false, written: written.length > 0 || metadataWritten.length > 0, write_targets: [...written, ...metadataWritten],
       pending: transaction?.id ?? before.pending?.id ?? null,
       conflicts: [{ code: error.code ?? "CODEX_ASSET_APPLY_FAILED", path: error.relativePath ?? "" }],
       errors: [`${error.code ?? "CODEX_ASSET_APPLY_FAILED"}${error.relativePath ? `: ${error.relativePath}` : ""}`] };
   } finally { if (release) release(); }
+}
+
+export function executeCodexAssets(options = {}) {
+  if (options.scope === "installation") problem("ASYNC_INSTALLATION_EXECUTOR_REQUIRED");
+  const iterator = executeTransaction(options);
+  const step = iterator.next();
+  if (!step.done) throw new Error("UNEXPECTED_ASYNC_INSTALLATION_STEP");
+  return step.value;
+}
+export function planInstallationAssets(options) { return publicPlan(buildPlan({ ...options, scope: "installation" })); }
+export async function executeInstallationAssets(options, beforeFinalize) {
+  const iterator = executeTransaction({ ...options, scope: "installation" });
+  let step = iterator.next();
+  while (!step.done) {
+    try { await beforeFinalize(step.value); step = iterator.next(); }
+    catch (error) { step = iterator.throw(error); }
+  }
+  return step.value;
+}
+export function readInstallationContext({ targetRoot }) {
+  const root = safeRoot(targetRoot), receipt = loadReceipt(root), pending = jsonAt(root, PENDING);
+  if (pending) {
+    const tx = loadTransaction(root, pending.id);
+    return { receipt, context: tx.installation_context ?? null, scope: tx.scope };
+  }
+  return { receipt, context: null, scope: null };
 }

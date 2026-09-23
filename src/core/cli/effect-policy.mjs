@@ -147,7 +147,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
   commandPolicy({ id: "bootstrap-diagnose", command: "aidn bootstrap --diagnose --json",
     effectClass: "read-only", jsonContract: "bootstrap-diagnostics.v1.schema.json",
     safeArgs: ["bootstrap", "--diagnose", "--json"], allowNonZero: true,
-    notes: "Observes local assets and capabilities without approving trust." }),
+    notes: "Observes local assets and capabilities without approving trust; --scope installation includes all recorded local install assets." }),
   commandPolicy({
     "id": "bootstrap-repair",
     "command": "aidn bootstrap --repair --json",
@@ -162,7 +162,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
         "--json"
     ],
     "allowNonZero": true,
-    "notes": "Previews owned Codex assets without writing."
+    "notes": "Previews owned Codex assets, or recorded local installation assets with --scope installation, without writing."
 }),
   commandPolicy({
     "id": "bootstrap-repair-write",
@@ -195,7 +195,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
         "--json"
     ],
     "allowNonZero": true,
-    "notes": "Previews owned Codex assets without writing."
+    "notes": "Previews owned Codex assets, or recorded local installation assets with --scope installation, without writing."
 }),
   commandPolicy({
     "id": "bootstrap-resume-write",
@@ -228,7 +228,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
         "--json"
     ],
     "allowNonZero": true,
-    "notes": "Previews owned Codex assets without writing."
+    "notes": "Previews owned Codex assets, or recorded local installation assets with --scope installation, without writing."
 }),
   commandPolicy({
     "id": "bootstrap-rollback-write",
@@ -261,7 +261,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
         "--json"
     ],
     "allowNonZero": true,
-    "notes": "Previews owned Codex assets without writing."
+    "notes": "Previews owned Codex assets, or recorded local installation assets with --scope installation, without writing."
 }),
   commandPolicy({
     "id": "bootstrap-uninstall-write",

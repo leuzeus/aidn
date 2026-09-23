@@ -4,7 +4,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
-import { planCodexAssets, executeCodexAssets, diagnoseCodexAssets } from "../src/application/install/codex-assets-service.mjs";
+import { executeCodexAssets, diagnoseCodexAssets } from "../src/application/install/codex-assets-service.mjs";
+import { planInstallation, executeInstallation, diagnoseInstallation } from "../src/application/install/installation-service.mjs";
+import { loadWorkflowAdapterConfigState } from "../src/application/project/project-config-use-case.mjs";
+import { runWorkflowAdapterConfigWizard } from "../src/application/project/workflow-adapter-config-wizard.mjs";
 import { inspectCodexCapabilities } from "../src/application/codex/codex-capabilities-service.mjs";
 
 const PROFILES = new Set(["minimal", "default", "full", "postgres", "db-only"]);
@@ -20,6 +23,7 @@ function parseArgs(argv) {
   const args = {
     target: ".",
     action: "",
+    scope: "codex-integration",
     write: false,
     expectedPlanId: "",
     codexMigrateCustom: false,
@@ -50,6 +54,9 @@ function parseArgs(argv) {
       selectAction(args, "rollback");
     } else if (token === "--uninstall") {
       selectAction(args, "uninstall");
+    } else if (token === "--scope") {
+      args.scope = scalarValue(argv, i, token);
+      i += 1;
     } else if (token === "--write") {
       args.write = true;
     } else if (token === "--expect-plan") {
@@ -95,6 +102,8 @@ function parseArgs(argv) {
   if (argv.includes("--codex-migrate-custom") && argv.includes("--no-codex-migrate-custom")) {
     throw new Error("--codex-migrate-custom conflicts with --no-codex-migrate-custom");
   }
+  if (!["codex-integration", "installation"].includes(args.scope)) throw new Error("Invalid --scope. Expected codex-integration|installation");
+  if (argv.includes("--scope") && !args.action) throw new Error("--scope requires a diagnostic/lifecycle action");
   if (args.write && (args.dryRun || !args.action || args.action === "diagnose")) {
     throw new Error("--write requires a lifecycle action and cannot be combined with --dry-run or --diagnose");
   }
@@ -138,7 +147,8 @@ function printUsage() {
   console.log("  aidn bootstrap --target . --diagnose --json");
   console.log("  aidn bootstrap --target . --repair|--resume|--rollback|--uninstall --json");
   console.log("  aidn bootstrap --target . --repair --write --expect-plan <plan_id> --json");
-  console.log("  Lifecycle actions affect AIDN Codex assets only; runtime and audit history remain.");
+  console.log("  Default lifecycle scope: codex-integration. Add --scope installation for all recorded local installation assets.");
+  console.log("  Sessions, cycles, history, business data and databases are retained in both scopes.");
   console.log("  Optional LLM customization migration: --codex-migrate-custom (disabled by default).");
 }
 
@@ -196,15 +206,15 @@ function profilePlan(args, targetRoot) {
   const sourceBranch = args.sourceBranch || (mode === "upgrade" ? readExistingSourceBranch(targetRoot) : "");
   const installArgs = ["--target", targetRoot, "--pack", args.profile === "full" ? "extended" : "core"];
   const configArgs = ["project", "config", "--target", targetRoot];
-  const verifyArgs = ["--target", targetRoot, "--pack", args.profile === "full" ? "extended" : "core", "--verify"];
+  if (args.verify || ["default", "full", "postgres", "db-only"].includes(args.profile)) installArgs.push("--verify-after-install");
   const operations = [];
 
   if (args.wizard) {
     operations.push({
       id: "project-config-wizard",
-      command: [...configArgs, "--wizard", ...(args.dryRun ? [] : ["--write"])],
+      command: [...configArgs, "--wizard"],
       env: {},
-      mutates: !args.dryRun,
+      mutates: false,
       optional: false,
     });
   }
@@ -241,20 +251,27 @@ function profilePlan(args, targetRoot) {
     mutates: !args.dryRun,
   });
 
-  if (!args.dryRun && (args.verify || ["default", "full", "postgres", "db-only"].includes(args.profile))) {
-    operations.push({
-      id: "verify",
-      command: ["install", ...verifyArgs],
-      env: args.profile === "db-only" ? { AIDN_STATE_MODE: "db-only" } : {},
-      mutates: false,
-    });
-  }
 
   return {
     mode,
     projectName,
     pack: args.profile === "full" ? "extended" : "core",
     operations,
+  };
+}
+
+function installationArgs(args, plan) {
+  return {
+    pack: plan.pack, sourceBranch: args.sourceBranch || (plan.mode === "upgrade" ? readExistingSourceBranch(path.resolve(args.target)) : ""),
+    initDefaults: true, projectName: plan.projectName,
+    ...(args.adapterData ? { adapterData: args.adapterData } : {}),
+    codexMigrateCustom: args.codexMigrateCustom,
+    materializeVisibleArtifacts: args.materializeVisibleArtifacts,
+    skipArtifactImport: args.profile === "db-only",
+    ...(args.profile === "db-only" ? { runtimeStateMode: "db-only" } : {}),
+    runtimePersistenceBackend: args.profile === "postgres" ? "postgres" : "",
+    runtimePersistenceConnectionRef: args.runtimePersistenceConnectionRef,
+    verifyAfterInstall: args.verify || ["default", "full", "postgres", "db-only"].includes(args.profile),
   };
 }
 
@@ -306,6 +323,7 @@ function integrationOutput(args, targetRoot, fields = {}) {
     ts: new Date().toISOString(),
     target_root: targetRoot,
     action: args.action,
+    scope: args.scope ?? "codex-integration",
     dry_run: diagnostic || !args.write,
     written: false,
     plan_id: "",
@@ -323,7 +341,7 @@ async function runIntegrationAction(args, repoRoot, targetRoot) {
   const options = assetOptions(args, repoRoot, targetRoot);
   let output;
   if (args.action === "diagnose") {
-    const assets = await diagnoseCodexAssets(options);
+    const assets = await (args.scope === "installation" ? diagnoseInstallation(options) : diagnoseCodexAssets(options));
     const capabilities = await inspectCodexCapabilities({ targetRoot });
     output = integrationOutput(args, targetRoot, { ok: assets.ok !== false, assets, capabilities,
       errors: assets.errors ?? [],
@@ -334,7 +352,8 @@ async function runIntegrationAction(args, repoRoot, targetRoot) {
         "Use a real session to verify startup and refusal on the tools listed as covered.",
       ] });
   } else {
-    const result = await executeCodexAssets({ ...options, dryRun: !args.write, expectedPlanId: args.expectedPlanId || undefined });
+    const execute = args.scope === "installation" ? executeInstallation : executeCodexAssets;
+    const result = await execute({ ...options, dryRun: !args.write, expectedPlanId: args.expectedPlanId || undefined });
     output = integrationOutput(args, targetRoot, { ...result, action: args.action,
       written: args.write && result.written === true });
   }
@@ -352,9 +371,10 @@ async function main() {
   const targetRoot = path.resolve(process.cwd(), args.target);
   if (args.action) return runIntegrationAction(args, repoRoot, targetRoot);
   // Read-only preflight precedes wizard/configuration writes as well as installation.
-  const assets = await planCodexAssets(assetOptions(args, repoRoot, targetRoot));
-  const assetBlocked = assets.ok === false || assets.conflicts?.length > 0;
   const plan = profilePlan(args, targetRoot);
+  let installation = await planInstallation({ repoRoot, targetRoot, args: installationArgs(args, plan) });
+  let assets = installation.asset_plan ?? { ok: false, operations: [], conflicts: [], errors: installation.errors ?? [] };
+  let assetBlocked = assets.ok === false || assets.conflicts?.length > 0 || installation.ok === false || installation.conflicts?.length > 0;
   const operationResults = [];
 
   if (!args.json) {
@@ -378,7 +398,29 @@ async function main() {
       if (!args.json) {
         console.log("");
         console.log(`[dry-run] ${operation.id}: ${planned.command}`);
+        if (operation.id === "install") console.log(JSON.stringify(installation, null, 2));
       }
+      continue;
+    }
+    if (operation.id === "project-config-wizard") {
+      const defaults = { projectName: plan.projectName, ...(args.profile === "db-only" ? { preferredStateMode: "db-only", defaultIndexStore: "sqlite" } : {}) };
+      const state = loadWorkflowAdapterConfigState({ targetRoot, defaults });
+      const wizard = await runWorkflowAdapterConfigWizard({ initialConfig: state.data, defaults });
+      operationResults.push({ id: operation.id, command: ["aidn", ...operation.command].join(" "), status: wizard.saved ? 0 : 1, ok: wizard.saved, optional: false, mutates: false, stdout: "", stderr: "", error: wizard.saved ? "" : "Workflow adapter configuration cancelled" });
+      if (!wizard.saved) break;
+      args.adapterData = wizard.data;
+      installation = await planInstallation({ repoRoot, targetRoot, args: installationArgs(args, plan) });
+      assets = installation.asset_plan ?? assets;
+      assetBlocked = installation.ok === false || installation.conflicts?.length > 0;
+      if (assetBlocked) break;
+      continue;
+    }
+    if (args.wizard && operation.id === "install") {
+      const result = await executeInstallation({ repoRoot, targetRoot, args: installationArgs(args, plan), dryRun: false, expectedPlanId: installation.plan_id });
+      const stdout = (result.messages ?? []).join("\n");
+      if (stdout) console.log(stdout);
+      operationResults.push({ id: operation.id, command: ["aidn", ...operation.command].join(" "), status: result.ok ? 0 : 1, ok: result.ok, optional: false, mutates: result.written === true, stdout, stderr: "", error: (result.errors ?? []).join("; ") });
+      if (!result.ok) break;
       continue;
     }
     if (args.json) {
@@ -401,6 +443,7 @@ async function main() {
   const blockingFailures = operationResults.filter((item) => !item.ok && !item.optional);
   const output = {
     asset_plan: assets,
+    installation_plan: installation,
     contract_version: "bootstrap.v1",
     command: args.dryRun ? "aidn bootstrap --dry-run --json" : "aidn bootstrap --json",
     effect_class: args.dryRun ? "preview" : "mutating",
@@ -425,10 +468,10 @@ async function main() {
       stderr: item.stderr,
       error: item.error,
     })),
-    errors: [...(assets.errors ?? []), ...blockingFailures.map((item) => `${item.id} failed with status ${item.status}`)],
-    warnings: operationResults
+    errors: [...new Set([...(assets.errors ?? []), ...(installation.errors ?? [])]), ...blockingFailures.map((item) => `${item.id} failed with status ${item.status}`)],
+    warnings: [...(installation.warnings ?? []), ...operationResults
       .filter((item) => !item.ok && item.optional)
-      .map((item) => `${item.id} skipped or failed with status ${item.status}`),
+      .map((item) => `${item.id} skipped or failed with status ${item.status}`)],
   };
 
   if (args.json) {
@@ -436,6 +479,10 @@ async function main() {
   } else if (output.ok) {
     console.log("");
     console.log("AIDN bootstrap: OK");
+  } else {
+    console.error("AIDN bootstrap: blocked");
+    for (const error of output.errors) console.error(error);
+    for (const operation of operationResults) if (operation.error) console.error(operation.error);
   }
 
   if (!output.ok) {
@@ -452,7 +499,7 @@ try {
     const rawTarget = targetIndex >= 0 ? String(process.argv[targetIndex + 1] ?? "").trim() : "";
     const errorTarget = rawTarget && !rawTarget.startsWith("-") ? rawTarget : ".";
     console.log(JSON.stringify(integrationOutput({
-      action, write: process.argv.includes("--write") && !process.argv.includes("--dry-run"),
+      action, scope: process.argv[process.argv.indexOf("--scope") + 1] === "installation" ? "installation" : "codex-integration", write: process.argv.includes("--write") && !process.argv.includes("--dry-run"),
     }, path.resolve(process.cwd(), errorTarget), {
       errors: [error.message],
     }), null, 2));

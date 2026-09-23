@@ -101,6 +101,7 @@ export function copyFile(sourcePath, targetPath, dryRun, templateVars = null, op
       targetRendered = normalizedMeta.text;
       const targetRenderChanged = targetRendered !== targetText;
       if (targetRenderChanged) {
+        options?.onPlannedFile?.({ targetRelative, targetPath, content: targetRendered });
         if (!dryRun) {
           writeUtf8(targetPath, targetRendered, dryRun);
         }
@@ -138,12 +139,14 @@ export function copyFile(sourcePath, targetPath, dryRun, templateVars = null, op
         `Unresolved placeholders in copied file (${sourcePath} -> ${targetPath}): ${unresolved.join(", ")}`,
       );
     }
+    options?.onPlannedFile?.({ targetRelative, targetPath, content: rendered });
     if (dryRun) {
       return;
     }
     writeUtf8(targetPath, rendered, dryRun);
     return;
   }
+  options?.onPlannedFile?.({ targetRelative, targetPath, content: fs.readFileSync(sourcePath) });
   if (dryRun) {
     return;
   }

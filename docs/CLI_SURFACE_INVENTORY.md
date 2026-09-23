@@ -45,6 +45,17 @@ These command families are intended for users and are covered by public effect p
 - `aidn bootstrap --rollback --write --json`
 - `aidn bootstrap --uninstall --json`
 - `aidn bootstrap --uninstall --write --json`
+
+Bootstrap diagnostic and lifecycle commands accept `--scope installation` to
+select all recorded local installer assets. The default `codex-integration`
+scope remains limited to Codex assets. The scope changes the selected ownership
+set, never write intent: lifecycle applies still require both `--write` and
+`--expect-plan PLAN_ID`. Diagnostic stays read-only in either scope. The common
+`installation_plan` in ordinary bootstrap previews covers local assets,
+generated documents, configuration and separately declared persistence effects.
+`aidn install --verify-after-install` includes verification in successful-install
+finalization; `--verify` retains its read-only verification behavior.
+
 - `aidn project config --wizard --write`
 - `aidn project config --adapter-file <file> --json` (preview)
 - `aidn project config --adapter-file <file> --write --json` (apply)

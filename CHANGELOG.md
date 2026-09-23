@@ -1,10 +1,19 @@
 # Changelog
 
-## Unreleased
+## 0.8.0
 
 - Preserve third-party Codex hooks and client instructions with owned asset plans,
   local recovery receipts, conflict detection, resumable application, repair,
   rollback and Codex-only uninstall through bootstrap.
+- Extend the same local ownership store to complete installation planning and
+  recovery with explicit `--scope installation`, preserving client runtime and
+  seed state during rollback and uninstall.
+- Keep `VERSION` as the sole product version authority and root config `version`
+  at schema 1. Record optional `install.aidnVersion` only after a complete
+  successful installation, bound to its receipt; legacy missing markers remain
+  unknown and diagnostics distinguish package version, recorded version and drift.
+- Recognize a bounded known legacy skill fingerprint for deterministic repair,
+  preserving divergent custom skills as conflicts.
 - Make optional model-assisted customization migration explicit; nominal
   installation works without a Codex CLI or login.
 - Add Unicode-safe native command-hook adapters, conservative client diagnostics,

@@ -61,7 +61,7 @@ inaccessible or unsupported inventory remains unknown.
 
 ## Ownership and recovery
 
-The managed Codex scope is:
+The default managed scope is `codex-integration`:
 
 - `.agents/skills/` entries shipped by AIDN;
 - AIDN role files in `.codex/agents/`;
@@ -114,13 +114,58 @@ before journal creation can be recovered explicitly through resume/rollback. An
 interrupted recovery lock returns `INTERRUPTED_LOCK_RECOVERY_REQUIRES_INSPECTION`
 and keeps the store intact; inspect ownership and recovery evidence before any
 manual repair. No pending transaction or
-nothing to uninstall is reported explicitly. Uninstall is not removal of the
+nothing to uninstall is reported explicitly. In the default scope, uninstall is not removal of the
 whole AIDN workflow, database, project configuration, `.aidn/` directory or Git
 checkout. It also retains recovery records and can leave empty directories.
 
 The public JSON surfaces are `bootstrap-diagnostics.v1` and
 `bootstrap-lifecycle.v1`; see [CLI inventory](CLI_SURFACE_INVENTORY.md) and the
 [effect policy](agents/02-cli-effect-policy.md).
+
+### Complete local installation scope
+
+Use `--scope installation` on diagnostic, repair, resume, rollback or uninstall
+to include the other locally owned installer assets in the same receipt and
+transaction journal. Preview reports creation, change, preservation, no-op and
+conflict decisions; it also declares import and persistence operations separately
+without opening a database. A preview is not proof that a later database operation
+will succeed.
+
+```sh
+aidn bootstrap --target . --profile default --dry-run --json
+aidn bootstrap --target . --diagnose --scope installation --json
+aidn bootstrap --target . --repair --scope installation --json
+aidn bootstrap --target . --repair --scope installation --write --expect-plan PLAN_ID --json
+```
+
+Files, managed blocks and configuration fields can be restored only while their
+recorded post-images still match. Changes to unrelated configuration fields are
+preserved. Older receipts prove ownership only for the objects they actually
+recorded; reading a receipt does not adopt neighboring files. Sessions, cycles,
+project history, business data and databases remain outside asset removal and
+rollback. Persistence migrations are separate effects and are never undone by
+an asset rollback.
+
+`VERSION` is the product version authority. Client configuration keeps its
+schema `version: 1`; `install.aidnVersion` records the last complete successful
+installation and is tied to the installation receipt. Preview, diagnostic,
+failure and interruption leave that value unchanged. Successful resume finalizes
+it; complete installation rollback restores its previous value. A legacy client
+without the field has an unknown installed version until a successful install.
+
+Finalization has an explicit commit point: required effects and verification
+finish, the receipt and transaction are durably recorded, then the version marker
+is written last. Failure before that marker leaves its previous value. If only
+journal cleanup is interrupted after this commit point, the result reports
+`complete-cleanup-pending`; resume finishes cleanup without repeating successful
+effects. This is a completed installation with pending cleanup, not a claim that
+an unfinished installation succeeded.
+
+External import, SQLite schema and persistence-adoption effects keep individual
+checkpoints in the same local installation transaction. Completed effects are
+not replayed by resume. An uncertain PostgreSQL import returns
+`ARTIFACT_IMPORT_REQUIRES_INSPECTION` before further writes; inspect the external
+effect before choosing recovery. Asset rollback does not undo database changes.
 
 ## Native hooks and core authority
 
@@ -183,6 +228,10 @@ cannot be promoted to proof of current state. See the
 [context-store fixtures](../tools/perf/verify-codex-context-store-fixtures.mjs).
 
 ## Qualification and evidence scope
+
+The candidate record and native acceptance cases for release line 0.8.0 are in
+[Codex native qualification](CODEX_NATIVE_QUALIFICATION.md). That record remains
+OPEN; it is a protocol with unfilled evidence fields, not an execution result.
 
 Observed as of 2026-09-23 on the Windows VM:
 

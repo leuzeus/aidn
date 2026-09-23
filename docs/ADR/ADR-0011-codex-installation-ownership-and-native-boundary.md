@@ -32,7 +32,10 @@ introduced on the nominal install/admission path. Assisted customization migrati
 remains an explicit optional action.
 
 The installer owns individual Codex files, the AIDN AGENTS block and exact hook
-entries. The `install_assets` concept records receipt, package binding and
+entries. Complete local installation ownership extends the same receipt and
+transaction store with an optional installation section; it does not introduce
+a second journal or workflow authority. Legacy Codex-only receipts remain
+compatible. The `install_assets` concept records receipt, package binding and
 recoverable transaction pre-images under `.aidn/install/` in one physical target
 worktree. This store is local-only, ignored by installed Git rules and excluded
 from shared runtime. It may contain private pre-images and local paths. It is
@@ -47,7 +50,25 @@ interruption. Individual atomic file writes do not make the multi-file operation
 filesystem-wide atomic. Divergent user content is a conflict, not implicit
 permission to overwrite. Rollback/uninstall preserve content outside recorded
 ownership and retain local recovery history. Uninstall removes the Codex
-integration, not the whole AIDN runtime or audit history.
+integration, not the whole AIDN runtime or audit history. An explicit
+`--scope installation` selects complete recorded installation assets for
+lifecycle actions using the same lock and recoverable transaction history.
+Runtime and seed artifacts remain preserved by that broader rollback/uninstall
+scope.
+
+Root config `version` remains schema 1. The optional `install.aidnVersion`
+projects the last complete successful requested installation from the executing
+package's `VERSION`, bound to the receipt. Finalization or successful resume
+records it only after required installation work and verification complete.
+The receipt and completed transaction become durable before this final marker
+write. A later recovery-metadata cleanup failure is reported as
+`complete-cleanup-pending`; resume completes that cleanup. Before the marker
+commit, failures retain the previous recorded version.
+Preview, diagnostics and incomplete attempts do not establish success. Full
+installation rollback restores the previous marker. Missing legacy markers stay
+unknown; diagnostics distinguish this recorded fact from the executing version,
+receipt binding and current asset drift. [ADR-0009](ADR-0009-release-versioning-provenance.md)
+defines product version authority.
 
 A native hook resolves its installed project from local paths and uses the
 receipt-bound AIDN entrypoint with an explicit target. It never downloads a

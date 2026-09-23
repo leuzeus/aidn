@@ -53,6 +53,8 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--dry-run") {
       args.dryRun = true;
+    } else if (token === "--verify-after-install") {
+      args.verifyAfterInstall = true;
     } else if (token === "--verify") {
       args.verifyOnly = true;
     } else if (token === "--skip-artifact-import") {
@@ -124,6 +126,7 @@ function printUsage() {
   console.log("  node tools/install.mjs --target ../repo --pack core --init-defaults --project-name my-project --verify");
   console.log("  node tools/install.mjs --target . --pack core --dry-run");
   console.log("  node tools/install.mjs --target . --pack core --verify");
+  console.log("  node tools/install.mjs --target . --pack core --verify-after-install");
   console.log("  node tools/install.mjs --target . --pack core --skip-artifact-import");
   console.log("  node tools/install.mjs --target . --pack core --artifact-import-store dual-sqlite");
   console.log("  node tools/install.mjs --target . --pack core --materialize-visible-artifacts");

@@ -170,7 +170,7 @@ function main() {
         && dryRunPayload.effect_class === "preview",
       dry_run_no_target_files: dryRunBefore.join("|") === dryRunAfter.join("|"),
       default_install_ok: defaultInstall.status === 0 && defaultPayload.ok === true,
-      default_install_verified: defaultPayload.operations.some((item) => item.id === "verify" && item.ok === true),
+      default_install_verified: defaultPayload.operations.some((item) => item.id === "install" && item.ok === true && item.command.includes("--verify-after-install")),
       default_install_core_files: fs.existsSync(path.join(defaultTarget, "AGENTS.md"))
         && fs.existsSync(path.join(defaultTarget, ".aidn", "project", "workflow.adapter.json")),
       upgrade_ok: upgrade.status === 0 && upgradePayload.ok === true,

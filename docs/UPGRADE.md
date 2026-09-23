@@ -1,6 +1,6 @@
 # Upgrade Guide
 
-## Unreleased Codex integration changes
+## Upgrade to 0.8.0
 
 Bootstrap preserves client instructions and third-party hooks and manages AIDN
 assets with local ownership receipts. Preview before an upgrade and resolve
@@ -8,6 +8,34 @@ reported conflicts. Recovery actions default to preview and require `--write
 --expect-plan <plan_id>` to apply. `--uninstall` removes only the managed Codex
 integration, retaining runtime and project history. Model-assisted customization
 migration now requires `--codex-migrate-custom`.
+
+The default lifecycle scope remains `codex-integration`. Add
+`--scope installation` to diagnose or recover the complete recorded local
+installation using the same receipt, lock and transaction history. Runtime and
+seed state stay preserved. Use the exact current preview plan ID for writes;
+changes to inputs or owned files require a fresh preview.
+
+`VERSION` in the executing AIDN package is the sole product version authority.
+In a client, `.aidn/config.json` keeps root `version: 1` as its configuration
+schema. The optional `install.aidnVersion` records the last complete successful
+requested installation from that package, tied to the local installation
+receipt. A legacy config without `version`, `install` or `install.aidnVersion`
+remains readable; a missing product marker means unknown. Do not infer it from
+root schema version, generated docs or an available CLI. Preview and diagnostic
+runs do not stamp it, and failed or interrupted runs do not count as successful
+installation. Complete installation rollback restores the previous marker.
+
+A matching recorded version does not prove that files remain intact or that
+native Codex trust has been granted. Read `--diagnose --scope installation --json`
+to distinguish executing package version, last successful installation, receipt
+binding and managed asset drift.
+
+Legacy adoption is bounded to recorded ownership and recognized historical
+content. The known `pr-orchestrate` YAML defect is repaired only for an exact
+historical asset, at either supported skills path; customized variants conflict
+before writes. Generated WORKFLOW adoption from 0.7.2 requires its prior version
+record and a complete matching historical rendering with an approved template
+fingerprint. Unrecognized documents are not adopted by their filename alone.
 
 See [Codex integration](CODEX_INTEGRATION.md) for trust, support limits and recovery.
 
@@ -102,7 +130,7 @@ Recent workflow resilience updates also add:
 1. Install or upgrade the package to the matching product tag:
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#v0.7.2
+npm install --save-dev github:leuzeus/aidn#v0.8.0
 ```
 
 2. Run the recommended upgrade orchestrator:
@@ -135,7 +163,7 @@ npx aidn install --target <client-repo> --pack github-integration --verify
 
 ```bash
 npx aidn project config --target <client-repo> --wizard --write
-npx aidn project config --target <client-repo> --migrate-adapter --version 0.7.2 --write --json
+npx aidn project config --target <client-repo> --migrate-adapter --version 0.8.0 --write --json
 ```
 
 4. Verify installation and current runtime/admin surfaces:

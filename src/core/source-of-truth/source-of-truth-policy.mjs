@@ -26,13 +26,13 @@ function normalizeStateMode(value) {
 
 const CONCEPT_GOVERNANCE = freezeDeep({
   install_assets: {
-    owner: "Codex integration installer maintainer",
+    owner: "local installation maintainer",
     lifecycle: "planned -> applying -> installed|interrupted -> repaired|rolled_back|uninstalled",
-    scope: "Codex assets owned by AIDN in one physical target worktree",
+    scope: "AIDN-owned installation assets and completion evidence in one physical target worktree",
     retention: "retain transaction pre-images and receipts locally after rollback or uninstall; never include in shared runtime",
     migration: "adopt only exact known legacy fingerprints or identical package assets; divergent assets require resolution",
     replacement: "compare recorded post-images before changing owned files, blocks or hook entries",
-    evidence_targets: ["src/application/install/codex-assets-service.mjs"],
+    evidence_targets: ["src/application/install/codex-assets-service.mjs", "src/application/install/installation-ownership-service.mjs"],
   },
   workflow_rules: {
     owner: "workflow policy maintainer",
@@ -265,12 +265,12 @@ function policy({
 const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "install_assets",
-    label: "Codex installation ownership",
+    label: "Local installation ownership",
     files: ".aidn/install/receipt.json and referenced local transactions",
     dual: ".aidn/install/receipt.json and referenced local transactions",
     dbOnly: ".aidn/install/receipt.json and referenced local transactions",
-    projection: "bootstrap asset plans and installation diagnostics",
-    notes: "Local installation recovery authority only; never workflow admission or runtime state.",
+    projection: "bootstrap asset plans, installation diagnostics and config install.aidnVersion",
+    notes: "Local installation recovery and completion authority only; never workflow admission or runtime state. VERSION in the executing package is the sole product version authority; the receipt binds the last complete successful installation and config install.aidnVersion projects that fact.",
   }),
   policy({
     concept: "workflow_rules",
@@ -297,7 +297,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dual: ".aidn/config.json",
     dbOnly: ".aidn/config.json",
     projection: "runtime status outputs",
-    notes: "Host-local defaults are not the shared runtime contract.",
+    notes: "Host-local defaults are not the shared runtime contract. Root config version is schema 1. Optional install.aidnVersion is derived from complete successful installation evidence under install_assets; absent legacy markers mean unknown, not an inferred installed product version.",
   }),
   policy({
     concept: "workspace_identity",

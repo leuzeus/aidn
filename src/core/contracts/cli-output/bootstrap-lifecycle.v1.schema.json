@@ -17,7 +17,8 @@
     "plan_id",
     "operations",
     "conflicts",
-    "write_targets"
+    "write_targets",
+    "scope"
   ],
   "properties": {
     "contract_version": {
@@ -90,6 +91,13 @@
       "items": {
         "type": "string"
       }
+    },
+    "scope": {
+      "type": "string",
+      "enum": [
+        "codex-integration",
+        "installation"
+      ]
     }
   },
   "additionalProperties": true,

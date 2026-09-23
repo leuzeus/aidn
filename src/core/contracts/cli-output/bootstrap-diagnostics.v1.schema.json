@@ -16,7 +16,8 @@
     "warnings",
     "assets",
     "capabilities",
-    "trust_instructions"
+    "trust_instructions",
+    "scope"
   ],
   "properties": {
     "contract_version": {
@@ -89,7 +90,48 @@
       }
     },
     "assets": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "version_info": {
+          "type": "object",
+          "required": [
+            "cli_version",
+            "recorded_version",
+            "status",
+            "receipt_version",
+            "receipt_drift"
+          ],
+          "properties": {
+            "cli_version": {
+              "type": "string"
+            },
+            "recorded_version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "unknown",
+                "current",
+                "mismatch"
+              ]
+            },
+            "receipt_version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "receipt_drift": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        }
+      }
     },
     "capabilities": {
       "type": "object",
@@ -140,6 +182,13 @@
       "items": {
         "type": "string"
       }
+    },
+    "scope": {
+      "type": "string",
+      "enum": [
+        "codex-integration",
+        "installation"
+      ]
     }
   },
   "additionalProperties": true,

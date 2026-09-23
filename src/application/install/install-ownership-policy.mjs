@@ -1,3 +1,4 @@
+import { shouldPreserveDbFirstArtifactPath } from "../../lib/workflow/db-first-artifact-path-policy.mjs";
 function normalizeRelativePath(value) {
   return String(value ?? "").replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/^\/+/, "").trim();
 }
@@ -30,7 +31,7 @@ export function resolveInstallOwnership(relativeTargetPath) {
   if (SEED_ONCE_PATHS.has(normalized)) {
     return "seed-once";
   }
-  if (RUNTIME_STATE_PATHS.has(normalized)) {
+  if (RUNTIME_STATE_PATHS.has(normalized) || shouldPreserveDbFirstArtifactPath(relativeTargetPath)) {
     return "runtime-state";
   }
   return "managed-copy";

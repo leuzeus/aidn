@@ -74,12 +74,13 @@ const GOVERNED_CONTENT_FIELDS = Object.freeze([
 const METADATA_POLICIES = freezeDeep([
   policy({
     concept: "install_assets",
-    label: "Codex installation ownership",
+    label: "Local installation ownership",
     required: ["schema_version", "scope", "root_id", "package", "assets", "last_transaction", "last_action"],
     sourceOfTruthConcept: "install_assets",
-    evidenceTargets: ["src/application/install/codex-assets-service.mjs"],
+    evidenceTargets: ["src/application/install/codex-assets-service.mjs", "src/application/install/installation-ownership-service.mjs"],
+    recommended: ["installation", "installation_last_transaction", "installation_last_action"],
     lifecycle: "planned -> applying -> installed|interrupted -> repaired|rolled_back|uninstalled",
-    notes: "Receipt carries package binding and owned object hashes; transaction pre-images stay local and are omitted from public plans.",
+    notes: "Receipt carries package binding, owned object hashes and optional installation completion metadata; legacy Codex-only receipts remain valid. install.aidnVersion in config is a projection of the last complete successful installation, never native trust or current asset integrity. Transaction pre-images stay local and are omitted from public plans.",
   }),
   policy({
     concept: "workflow_rules",
@@ -262,6 +263,7 @@ const METADATA_POLICIES = freezeDeep([
     evidenceTargets: ["src/lib/config/aidn-config-lib.mjs"],
     recommended: ["steward", "retention_policy"],
     lifecycle: "initialized -> active -> revised -> retired",
+    notes: "Root version is config schema 1, not product SemVer; absent version or install sections remain legacy-compatible. Optional install.aidnVersion is a semantic product version supplied from the executing package VERSION only after complete successful installation and bound to the local receipt.",
   }),
   policy({
     concept: "baseline",

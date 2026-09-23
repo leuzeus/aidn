@@ -2,7 +2,9 @@
 
 ## Scaffold-based model
 
-This workflow is installed by copying and merging scaffold files into a client repository.
+This repository is AIDN package source. Installation copies and merges its scaffold
+assets into a separate client repository; source assets and test fixtures are not
+a live client installation.
 No compiled binaries are required.
 The installer is a Node.js script and supports Node.js 22.13+ on Windows, Linux, and macOS.
 
@@ -35,7 +37,7 @@ Installed workflow support files now also include:
 Install from GitHub:
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#dev
+npm install --save-dev github:leuzeus/aidn#v0.8.0
 ```
 
 Install from local path (offline/local dev):
@@ -96,6 +98,33 @@ $script = Join-Path $env:TEMP "aidn-install.ps1"
 iwr https://raw.githubusercontent.com/leuzeus/aidn/dev/scripts/install.ps1 -OutFile $script
 & $script --target . --profile default
 ```
+
+### Version and completion diagnostics
+
+The executing package reads its product version from `VERSION`. Package metadata
+and workflow/pack manifests are aligned copies. In the client,
+`.aidn/config.json` uses root `version: 1` for its configuration schema; this
+number is not the AIDN release version.
+
+A complete successful requested installation records `install.aidnVersion` from
+the executing package and binds it to the local installation receipt. The marker
+is optional for legacy clients. Missing schema/version sections stay compatible,
+and a missing product marker is reported as unknown. Preview and diagnosis never
+add it; failures and interruptions do not establish a successful installation.
+A matching version alone is neither a current asset integrity check nor native
+Codex trust evidence.
+
+```bash
+npx aidn bootstrap --target . --diagnose --scope installation --json
+npx aidn bootstrap --target . --repair --scope installation --json
+npx aidn bootstrap --target . --repair --scope installation --write --expect-plan PLAN_ID --json
+```
+
+Use the exact plan ID returned by the current preview. The default lifecycle
+scope remains `codex-integration`; explicit `--scope installation` covers the
+complete recorded local installation using the same store and recovery journal.
+See [Codex integration](CODEX_INTEGRATION.md) for the scope of resume, rollback and
+uninstall and the separate native trust boundary.
 
 ## Step 4 - Advanced: install core or composite pack directly
 

@@ -19,6 +19,7 @@
     "bin/",
     "docs/INSTALL.md",
     "docs/CODEX_INTEGRATION.md",
+    "docs/CODEX_NATIVE_QUALIFICATION.md",
     "docs/README.md",
     "docs/MIGRATION_SHARED_RUNTIME_POSTGRESQL.md",
     "docs/MULTI_PROJECT_POSTGRESQL_MIGRATION_GUIDE.md",
@@ -366,6 +367,6 @@
     "perf:verify-codex-client-discovery": "node tools/verify/verify-codex-client-install.mjs --require-codex-discovery",
     "perf:verify-branch-policy-fixtures": "node tools/verify/verify-branch-policy-fixtures.mjs",
     "perf:verify-tracked-sensitivity": "node tools/verify/verify-tracked-sensitivity.mjs",
-    "perf:verify-codex-integration": "node tools/perf/verify-codex-assets-fixtures.mjs && node tools/perf/verify-codex-native-integration-fixtures.mjs && node tools/perf/verify-codex-context-store-fixtures.mjs && node tools/perf/verify-bootstrap-lifecycle-fixtures.mjs"
+    "perf:verify-codex-integration": "node tools/perf/verify-codex-assets-fixtures.mjs && node tools/perf/verify-codex-native-integration-fixtures.mjs && node tools/perf/verify-codex-context-store-fixtures.mjs && node tools/perf/verify-bootstrap-lifecycle-fixtures.mjs && node tools/perf/verify-codex-legacy-skill-repair-fixtures.mjs && node tools/perf/verify-installation-recovery-fixtures.mjs && node tools/perf/verify-installation-fault-boundaries-fixtures.mjs"
   }
 }

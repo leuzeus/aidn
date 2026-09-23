@@ -7798,6 +7798,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn bootstrap:--scope",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --scope",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn bootstrap:--source-branch",
       "kind": "option",
       "status": "active",
@@ -11008,6 +11032,30 @@
       "owner": "CLI maintainer",
       "source": "tools/install.mjs",
       "entrypoint": "aidn install --verify",
+      "implementation": "tools/install.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/install.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn install:--verify-after-install",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/install.mjs",
+      "entrypoint": "aidn install --verify-after-install",
       "implementation": "tools/install.mjs",
       "effects": {
         "role": "effect-neutral",
