@@ -238,8 +238,10 @@ Observed as of 2026-09-23 on the Windows VM:
 | Surface | Available evidence | Native AIDN session qualification |
 | --- | --- | --- |
 | Windows local wrappers and distributed `commandWindows` | PASS on disposable fixtures, including spaces, accents, subdirectory launch, isolation, core refusal, read-only resume and adapter error/timeout deny | Does not exercise native Codex hook dispatch |
+| Windows CLI on PATH `0.125.0` | Local launcher/version inventory | SKIP: hook capabilities and native execution unverified for this version |
 | Windows CLI/backend `0.155.0-alpha.9.2` | Binary/version inventory, generated schema, real app-server `skills/list` and unapproved `hooks/list` probes; tarball fixture discovery of 13 skills | SKIP: no human project/hook approval or native tool/session exercise |
 | Windows desktop app | App and candidate backend inventory; backend schema/probes above | SKIP: GUI startup/resume/compaction/tool refusal not exercised |
+| Other installed Windows IDE backend `0.146.0-alpha.3.1` | Local extension/backend inventory; active extension unknown | SKIP: hook capabilities and native execution unverified for this version |
 | Windows IDE backend `0.146.0-alpha.9.2` | Bundled version inventory, generated schema and real discovery probes; MCP handler unsupported | SKIP: IDE session not exercised |
 | Unix native clients | UNAVAILABLE in this Windows-host qualification run | No Unix support claim from Windows fixtures; launcher path remains to be exercised |
 | WSL | Not available as an execution environment on this Windows VM | UNAVAILABLE / not tested; no WSL-native hooks/session trace |

@@ -96,7 +96,7 @@ dependencies; no Codex model invocation is part of this preparation.
 ```powershell
 $ErrorActionPreference = 'Stop'
 $sourceRoot = (Get-Location).Path
-$nodePath = (Get-Command node -CommandType Application).Source
+$nodePath = (Get-Command node -CommandType Application | Select-Object -First 1).Source
 $npmCliPath = Join-Path (Split-Path $nodePath) 'node_modules/npm/bin/npm-cli.js'
 if (-not (Test-Path -LiteralPath $npmCliPath)) { throw 'Resolve the real npm CLI before continuing' }
 $sourceCommit = (& git rev-parse HEAD).Trim()
@@ -113,7 +113,7 @@ if ($LASTEXITCODE -ne 0) { throw 'npm pack failed' }
 $packed = ($packedText -join "`n") | ConvertFrom-Json
 $tarball = Join-Path $proofRoot $packed[0].filename
 $utf8 = [Text.UTF8Encoding]::new($false)
-[IO.File]::WriteAllText((Join-Path $clientRoot 'package.json'), '{"name":"aidn-native-review","private":true}', $utf8)
+$null = [IO.File]::WriteAllText((Join-Path $clientRoot 'package.json'), '{"name":"aidn-native-review","private":true}', $utf8)
 & git -C $clientRoot init --quiet
 if ($LASTEXITCODE -ne 0) { throw 'Fixture Git initialization failed' }
 Push-Location $clientRoot
@@ -129,7 +129,7 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Bootstrap installation failed' }
   $diagnostic = & $nodePath $installedBin bootstrap --target $clientRoot --diagnose --json
   if ($LASTEXITCODE -ne 0) { throw 'Bootstrap diagnostic failed' }
-  [IO.File]::WriteAllText((Join-Path $proofRoot 'diagnostic.local.json'), ($diagnostic -join "`n"), $utf8)
+  $null = [IO.File]::WriteAllText((Join-Path $proofRoot 'diagnostic.local.json'), ($diagnostic -join "`n"), $utf8)
 } finally { Pop-Location }
 $hookHashes = @('.codex/hooks.json', '.codex/hooks/aidn-hook-runtime.mjs',
   '.codex/hooks/aidn-session-start.mjs', '.codex/hooks/aidn-pre-tool-use.mjs') | ForEach-Object {
@@ -145,7 +145,7 @@ $review = [ordered]@{
   hooks = $hookHashes; native_surface = 'OPEN'; native_backend = 'OPEN'
   human_trust = 'NOT_RECORDED'; native_cases = 'N01-N12 NOT_EXECUTED'; llm_calls = 0
 }
-[IO.File]::WriteAllText((Join-Path $proofRoot 'review.local.json'), ($review | ConvertTo-Json -Depth 8), $utf8)
+$null = [IO.File]::WriteAllText((Join-Path $proofRoot 'review.local.json'), ($review | ConvertTo-Json -Depth 8), $utf8)
 Write-Output $proofRoot
 ```
 

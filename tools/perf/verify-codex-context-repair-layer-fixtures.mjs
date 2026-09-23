@@ -6,6 +6,8 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { redactDiagnostic } from "../verify/git-worktree-state-lib.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { resolveInstallOwnership } from "../../src/application/install/install-ownership-policy.mjs";
+import { isLocalInstallationTarget } from "../../src/application/install/installation-ownership-service.mjs";
 
 const CURRENT_FILE = fileURLToPath(import.meta.url);
 const REPO_ROOT = path.resolve(path.dirname(CURRENT_FILE), "..", "..");
@@ -331,6 +333,30 @@ function writeAdapterFile(tempRoot) {
   return filePath;
 }
 
+function copyRepairRuntimeCorpus(sourceTarget, target) {
+  fs.mkdirSync(target, { recursive: true });
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const sourcePath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        visit(sourcePath);
+        continue;
+      }
+      const relative = path.relative(sourceTarget, sourcePath).replace(/\\/g, "/");
+      const ownership = resolveInstallOwnership(relative);
+      const historicalArtifact = /^docs\/audit\/(?:sessions|cycles|baseline)\//.test(relative)
+        && !isLocalInstallationTarget(relative);
+      if (!["runtime-state", "seed-once"].includes(ownership) && !historicalArtifact) continue;
+      const destination = path.join(target, relative);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.copyFileSync(sourcePath, destination);
+    }
+  }
+  // Keep the session/cycle ambiguities that drive repair assertions. Product
+  // rules, generated docs, templates and ownership metadata come from install-core.
+  visit(path.join(sourceTarget, "docs/audit"));
+}
+
 function resolveDbSyncOpenCount(hookOutput) {
   const triageCount = hookOutput?.db_sync?.payload?.repair_layer_triage_result?.triage?.summary?.open_findings_count;
   if (triageCount !== undefined && triageCount !== null) {
@@ -434,8 +460,7 @@ export function main(argv = process.argv.slice(2)) {
     redactedPaths = [tempRoot, target];
     const installerPrerequisiteStub = makeInstallerPrerequisiteStub(tempRoot);
     const pathSeparator = process.platform === "win32" ? ";" : ":";
-    fs.cpSync(sourceTarget, target, { recursive: true });
-    fs.rmSync(path.join(target, ".aidn"), { recursive: true, force: true });
+    copyRepairRuntimeCorpus(sourceTarget, target);
     adapterFile = writeAdapterFile(tempRoot);
 
     const installRun = runNoJsonStage(
