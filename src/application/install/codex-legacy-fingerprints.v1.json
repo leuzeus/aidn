@@ -66,7 +66,17 @@
       "0b9cacae4c6de0b3474a63c4107bae9529d4d99b99a444df689411e3dcd04d91"
     ],
     "AGENTS.md": [
-      "c921b347e6f282b2f30818aa2f51f5a9fa5941c08cc5822a7e865f69dedde980"
+      "c921b347e6f282b2f30818aa2f51f5a9fa5941c08cc5822a7e865f69dedde980",
+      "cfa85b27a5373a965478a0611910f84bd49a591e364bef5c9d42fac91543c332"
     ]
-  }
+  },
+  "additional_sources": [
+    {
+      "asset": "AGENTS.md",
+      "source_path": "scaffold/root/AGENTS.md",
+      "source_commit": "6882bfd1b7ce35e4e1d1bf1ba9d44348341f0032",
+      "source_tag": "v0.5.0-rc.1",
+      "sha256": "cfa85b27a5373a965478a0611910f84bd49a591e364bef5c9d42fac91543c332"
+    }
+  ]
 }

@@ -260,6 +260,52 @@ try {
   assert.equal(preview(ambiguousLegacy).ok, false);
   checks.modified_legacy_fingerprint_not_adopted = true;
 
+  // Product-only fixture captured from v0.5.0-rc.1, commit
+  // 6882bfd1b7ce35e4e1d1bf1ba9d44348341f0032:scaffold/root/AGENTS.md.
+  const agentsStart = "<!-- CODEX-AUDIT-WORKFLOW START -->";
+  const agentsEnd = "<!-- CODEX-AUDIT-WORKFLOW END -->";
+  const extractAgentsBlock = (text) => text.slice(text.indexOf(agentsStart), text.indexOf(agentsEnd) + agentsEnd.length);
+  const historicalAgents = extractAgentsBlock(fs.readFileSync(path.join(repoRoot, "tests/fixtures/codex-legacy/v0.5.0-rc.1/AGENTS.block.md"), "utf8")).replace(/\r\n/g, "\n");
+  assert.equal(crypto.createHash("sha256").update(historicalAgents).digest("hex"), "cfa85b27a5373a965478a0611910f84bd49a591e364bef5c9d42fac91543c332");
+  const currentAgents = extractAgentsBlock(fs.readFileSync(path.join(repoRoot, "scaffold/root/AGENTS.md"), "utf8")).replace(/\r\n/g, "\n");
+  for (const [name, eol] of [["lf", "\n"], ["crlf", "\r\n"]]) {
+    const legacyAgentsRoot = target(`legacy-agents-${name}`);
+    const prefix = `# Client policy${eol}Keep this instruction.  ${eol}${eol}`;
+    const suffix = `${eol}${eol}# Additional client policy${eol}Keep this suffix.  ${eol}`;
+    const legacyBlock = historicalAgents.replace(/\n/g, eol);
+    const originalAgents = prefix + legacyBlock + suffix;
+    put(legacyAgentsRoot, "AGENTS.md", originalAgents);
+    const beforeLegacyAgents = snapshot(legacyAgentsRoot);
+    ok(preview(legacyAgentsRoot));
+    assert.deepEqual(snapshot(legacyAgentsRoot), beforeLegacyAgents);
+    ok(apply(legacyAgentsRoot));
+    const updatedAgents = fs.readFileSync(path.join(legacyAgentsRoot, "AGENTS.md"), "utf8");
+    assert(updatedAgents.startsWith(prefix));
+    assert(updatedAgents.endsWith(suffix));
+    assert.equal(updatedAgents.split(agentsStart).length, 2);
+    assert.equal(updatedAgents.split(agentsEnd).length, 2);
+    assert.equal(extractAgentsBlock(updatedAgents).replace(/\r\n/g, "\n"), currentAgents);
+    ok(apply(legacyAgentsRoot, "rollback"));
+    assert.equal(fs.readFileSync(path.join(legacyAgentsRoot, "AGENTS.md"), "utf8"), originalAgents);
+    checks[`exact_legacy_agents_migration_and_restore_${name}`] = true;
+    ok(apply(legacyAgentsRoot));
+    ok(apply(legacyAgentsRoot, "uninstall"));
+    assert.equal(fs.readFileSync(path.join(legacyAgentsRoot, "AGENTS.md"), "utf8"), prefix + suffix);
+    checks[`legacy_agents_uninstall_preserves_external_${name}`] = true;
+
+    const changedLegacyRoot = target(`modified-legacy-agents-${name}`);
+    put(changedLegacyRoot, "AGENTS.md", originalAgents.replace(agentsStart, `${agentsStart}${eol}A customized managed rule.`));
+    const beforeChangedLegacy = snapshot(changedLegacyRoot);
+    const changedLegacyPlan = preview(changedLegacyRoot);
+    assert.equal(changedLegacyPlan.ok, false);
+    assert(changedLegacyPlan.errors.some((error) => error.includes("UNOWNED_AGENTS_BLOCK")));
+    const changedLegacyApply = executeCodexAssets({ repoRoot, targetRoot: changedLegacyRoot, dryRun: false });
+    assert.equal(changedLegacyApply.ok, false);
+    assert(changedLegacyApply.errors.some((error) => error.includes("UNOWNED_AGENTS_BLOCK")));
+    assert.deepEqual(snapshot(changedLegacyRoot), beforeChangedLegacy);
+    checks[`modified_legacy_agents_refused_without_writes_${name}`] = true;
+  }
+
   const blockRoot = target("explicit-block");
   const clientAgents = "# Client instructions\nA private client rule.\n";
   put(blockRoot, "AGENTS.md", clientAgents);
