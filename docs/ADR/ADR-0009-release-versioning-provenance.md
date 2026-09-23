@@ -15,6 +15,9 @@ production hotfixes as explicit, version-matched publication classes.
 Main-to-dev synchronization is a distinct non-publication class and may never
 target `main`.
 
+2026-09-23: product version authority and installed configuration schema are
+separate; successful installation records a receipt-bound product version.
+
 ## Context
 
 AIDN ships as a package source repository with local release artifacts, manifests and checksums. The release surface is already validated by `build-release`, `npm pack --dry-run` and topology checks, but the source of version truth and the provenance of published artifacts still need an explicit architectural home.
@@ -27,8 +30,9 @@ AIDN will treat release versioning and provenance as a governed contract.
 
 Rules:
 
-- `VERSION` is the primary version source for the repository release line
-- `package.json` must stay aligned with `VERSION`
+- `VERSION` in the source or executing package is the sole product version authority
+- `package.json`, both package-lock root versions, and workflow/pack manifest
+  versions are derived copies and must stay aligned with `VERSION`
 - `tools/build-release.mjs` produces release artifacts only from the exact tracked Git tree at the selected commit
 - `release/manifest.json` and `release/checksums.txt` are the release provenance outputs
 - the manifest records source fingerprints for `VERSION` and `package.json` so the source of truth can be verified from the build output itself
@@ -54,6 +58,21 @@ Rules:
 - the publish job creates an annotated tag and GitHub Release only after clean-commit, reproducibility, topology, sensitivity, checksum, and provenance checks
 - an existing tag or release is a hard failure
 - the release workflow never runs `npm publish`
+
+Installed configuration versioning follows the same authority boundary:
+
+- root `.aidn/config.json.version` remains configuration schema `1`, independent
+  of product SemVer; legacy configurations without it remain valid;
+- optional `install.aidnVersion` denotes the last complete successful requested
+  installation from the executing package's `VERSION`, bound to the existing
+  local installation receipt; config generation alone must not stamp it;
+- preview, diagnosis, failure and interruption do not establish successful
+  installation; successful completion or resume finalizes the marker, and full
+  installation rollback restores its prior value;
+- absent legacy markers mean unknown, never an inferred product version;
+- package version, last recorded installation and current asset drift are
+  separate diagnostic observations; neither the marker nor a matching receipt
+  proves native trust, workflow readiness or transitive package integrity.
 
 Release provenance should answer:
 

@@ -180,7 +180,7 @@ When a change affects release/versioning, install examples, or build-release pro
 - `npm run perf:verify-tracked-sensitivity`
 - `npm run perf:verify-doc-references`
 
-The release version verifier checks that `VERSION`, `package.json`, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The reproducibility verifier builds the exact clean tracked commit twice in isolated output roots, compares bytes, checks the npm package topology, and rejects sensitive inputs. `perf:verify-release-artifacts` remains the post-build check used by the main publication job.
+The release version verifier checks that the sole product version authority `VERSION`, its derived `package.json` and package-lock root versions, the workflow and pack manifests, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The reproducibility verifier builds the exact clean tracked commit twice in isolated output roots, compares bytes, checks the npm package topology, and rejects sensitive inputs. `perf:verify-release-artifacts` remains the post-build check used by the main publication job.
 The branch-policy fixtures distinguish feature ancestry from `dev`, release
 ancestry from `dev`, hotfix ancestry from `main`, and exact main-to-dev
 synchronization. They also reject non-patch hotfix versions, mismatched
