@@ -130,7 +130,7 @@ The publish job refuses:
 - package topology or sensitivity drift;
 - an existing tag or GitHub Release.
 
-After the checks pass, automation builds from `GITHUB_SHA`, creates an annotated `v<VERSION>` tag, pushes it, and creates the GitHub Release with the zip, checksums, and manifest. It never runs `npm publish`.
+After the checks pass, automation builds from `GITHUB_SHA`, creates an annotated `v<VERSION>` tag, pushes it, and creates the GitHub Release with the zip, installable npm `.tgz`, checksums, and manifest. Both package artifacts use the same tracked allowlist; the `.tgz` is independently content-checked and reproducible. It never runs `npm publish`.
 
 ## Local Verification
 

@@ -18,6 +18,10 @@ target `main`.
 2026-09-23: product version authority and installed configuration schema are
 separate; successful installation records a receipt-bound product version.
 
+2026-09-23: a deterministic npm tarball joins the ZIP in the release manifest
+and checksums so installed clients can pin a published package rather than a
+source worktree.
+
 ## Context
 
 AIDN ships as a package source repository with local release artifacts, manifests and checksums. The release surface is already validated by `build-release`, `npm pack --dry-run` and topology checks, but the source of version truth and the provenance of published artifacts still need an explicit architectural home.
@@ -33,7 +37,7 @@ Rules:
 - `VERSION` in the source or executing package is the sole product version authority
 - `package.json`, both package-lock root versions, and workflow/pack manifest
   versions are derived copies and must stay aligned with `VERSION`
-- `tools/build-release.mjs` produces release artifacts only from the exact tracked Git tree at the selected commit
+- `tools/build-release.mjs` produces the ZIP and installable npm `.tgz` only from the same exact tracked Git tree and package allowlist at the selected commit
 - `release/manifest.json` and `release/checksums.txt` are the release provenance outputs
 - the manifest records source fingerprints for `VERSION` and `package.json` so the source of truth can be verified from the build output itself
 - the manifest records the git commit used for the build so provenance can be verified against the current source tree

@@ -6,9 +6,12 @@ exécuter sur une cible explicitement choisie ; elles ne constituent ni une
 migration réalisée ni une preuve PASS. Tant que le candidat n'est pas publié,
 utiliser son tarball exact, son commit et son SHA256, pas un tag supposé
 disponible ni une résolution implicite de la dernière version.
-Pour un pilote existant, le remplacement du runtime attend la qualification
-Windows requise et la livraison. Un candidat non publié sert à préparer et
-qualifier la procédure dans un client temporaire.
+Pour un pilote existant, le remplacement du runtime attend un contrôle natif
+court sur client temporaire (démarrage, édition admise, refus couvert et
+inactivité hors projet autorisé), puis la livraison. La qualification native
+N01-N14 complète reste ouverte jusqu'à son exécution ultérieure sur un autre
+client temporaire. Le candidat non publié sert à préparer la procédure et ce
+contrôle ; ses essais ne qualifient pas un paquet publié dont le contenu diffère.
 
 ## Préparer la cible et les sauvegardes
 
@@ -54,14 +57,17 @@ Node ; l'appel direct évite un lanceur npm.cmd éventuellement défectueux.
 ~~~powershell
 $ErrorActionPreference = 'Stop'
 $clientRoot = (Resolve-Path -LiteralPath 'C:\chemin\client').Path
-$candidateTarball = (Resolve-Path -LiteralPath 'C:\artefacts\aidn-workflow-0.8.0.tgz').Path
-$expectedSha256 = 'REMPLACER_PAR_LE_SHA256_DU_CANDIDAT_REVU'
+$releaseAssetUrl = 'https://github.com/leuzeus/aidn/releases/download/v0.8.0/aidn-workflow-0.8.0.tgz'
+$expectedSha256 = 'REMPLACER_PAR_LE_SHA256_DU_MANIFEST_PUBLIE'
+$downloadedTarball = Join-Path ([IO.Path]::GetTempPath()) ('aidn-workflow-0.8.0-' + [guid]::NewGuid().ToString('N') + '.tgz')
 $nodePath = (Get-Command node -CommandType Application | Select-Object -First 1).Source
 $npmCliPath = Join-Path (Split-Path $nodePath) 'node_modules/npm/bin/npm-cli.js'
 if (-not (Test-Path -LiteralPath $npmCliPath)) { throw 'Résoudre le npm CLI réel avant de poursuivre' }
-if ((Get-FileHash -LiteralPath $candidateTarball -Algorithm SHA256).Hash -ine $expectedSha256) {
-  throw 'Le tarball ne correspond pas au candidat revu'
+Invoke-WebRequest -Uri $releaseAssetUrl -OutFile $downloadedTarball
+if ((Get-FileHash -LiteralPath $downloadedTarball -Algorithm SHA256).Hash -ine $expectedSha256) {
+  throw 'Le tarball ne correspond pas au manifest publié'
 }
+$expectedIntegrity = 'sha512-' + [Convert]::ToBase64String([Security.Cryptography.SHA512]::HashData([IO.File]::ReadAllBytes($downloadedTarball)))
 $gitRootText = & git -C $clientRoot rev-parse --show-toplevel
 if ($LASTEXITCODE -ne 0) { throw 'Résolution Git du client impossible' }
 $gitRoot = [IO.Path]::GetFullPath(($gitRootText -join [Environment]::NewLine).Trim())
@@ -78,11 +84,16 @@ if ($LASTEXITCODE -ne 0) { throw 'Résolution Git commune impossible' }
 if ($LASTEXITCODE -ne 0) { throw 'Inventaire des worktrees impossible' }
 Push-Location $clientRoot
 try {
-  & $nodePath $npmCliPath install --save-dev --save-exact --ignore-scripts --no-audit --no-fund $candidateTarball
+  & $nodePath $npmCliPath install --save-dev --save-exact --ignore-scripts --no-audit --no-fund $releaseAssetUrl
   if ($LASTEXITCODE -ne 0) { throw 'Installation npm échouée : inspecter avant bootstrap' }
 } finally { Pop-Location }
 $installedRoot = Join-Path $clientRoot 'node_modules/aidn-workflow'
 $installedBin = Join-Path $installedRoot 'bin/aidn.mjs'
+$clientLock = Get-Content -LiteralPath (Join-Path $clientRoot 'package-lock.json') -Raw | ConvertFrom-Json
+$lockedPackage = $clientLock.packages.'node_modules/aidn-workflow'
+if ($lockedPackage.resolved -ne $releaseAssetUrl -or $lockedPackage.integrity -ne $expectedIntegrity) {
+  throw 'Le lockfile ne pointe pas vers le tarball publié et vérifié'
+}
 if ((Get-Content -LiteralPath (Join-Path $installedRoot 'VERSION') -Raw).Trim() -ne '0.8.0') {
   throw 'Version du paquet installé inattendue'
 }
@@ -91,8 +102,9 @@ if ((Get-Content -LiteralPath (Join-Path $installedRoot 'VERSION') -Raw).Trim() 
 Cette première transaction peut modifier manifeste, lockfile, node_modules et
 cache npm, et télécharger des dépendances. Elle n'exécute pas le bootstrap
 d'assets AIDN. Examiner son diff et conserver l'artefact référencé par le
-lockfile. Un tarball local est une provenance de qualification ; sa distribution
-durable sera choisie explicitement lors de la livraison.
+lockfile. La dépendance et le lockfile doivent rester épinglés à l'URL et à
+l'intégrité du tarball publié. Si npm ne peut pas y accéder durablement,
+arrêter la migration ; ne pas rétablir un lien vers le worktree source.
 
 Les hooks existants peuvent alors constater un ancien binding invalide.
 Ne pas reprendre le workflow avant la seconde transaction. Le bootstrap du

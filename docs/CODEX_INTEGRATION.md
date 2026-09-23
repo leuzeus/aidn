@@ -265,6 +265,10 @@ package switch, managed-asset transaction and optional legacy global-skill migra
 The candidate record and native acceptance cases for release line 0.8.0 are in
 [Codex native qualification](CODEX_NATIVE_QUALIFICATION.md). That record remains
 OPEN; it is a protocol with unfilled evidence fields, not an execution result.
+Publication requires a bounded human-approved temporary-client smoke showing
+startup, an admitted edit, a covered denial and inactivity outside authorized
+projects. N01-N14 remain separate cases and are scheduled on a fresh temporary
+client after the pilot migration; the smoke does not close unexecuted cases.
 
 For the current activation changes, qualification is limited to disposable Windows VM fixtures. Unix execution is UNAVAILABLE and is recorded separately rather than blocking those local fixtures. Native app/IDE qualification remains open. The following inventory and probes are retained from the 0.8.0 base; they do not qualify the new activation behavior:
 
@@ -273,6 +277,7 @@ Observed as of 2026-09-23 on the Windows VM:
 | Surface | Available evidence | Native AIDN session qualification |
 | --- | --- | --- |
 | Windows local wrappers and distributed `commandWindows` | PASS on disposable fixtures, including spaces, accents, subdirectory launch, isolation, core refusal, read-only resume and adapter error/timeout deny | Does not exercise native Codex hook dispatch |
+| Windows temporary-client pre-release smoke | OPEN / SKIP until human-approved native trace exists | Startup, admitted edit, covered denial, unauthorized-project inactivity; not full N01-N14 qualification |
 | Windows CLI on PATH `0.125.0` | Local launcher/version inventory | SKIP: hook capabilities and native execution unverified for this version |
 | Windows CLI/backend `0.155.0-alpha.9.2` | Binary/version inventory, generated schema, real app-server `skills/list` and unapproved `hooks/list` probes; tarball fixture discovery of 13 skills | SKIP: no human project/hook approval or native tool/session exercise |
 | Windows desktop app | App and candidate backend inventory; backend schema/probes above | SKIP: GUI startup/resume/compaction/tool refusal not exercised |

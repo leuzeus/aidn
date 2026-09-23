@@ -85,7 +85,7 @@ This baseline makes AIDN's governed architecture and release path executable end
 - `files`, `dual`, and `db-only` remain distinct modes; PostgreSQL persistence is optional, SQLite remains available for local compatibility and migration, and shared coordination is explicit opt-in.
 - protected-branch CI and the release workflow verify from locked dependencies;
   a merged, version-matched `release/vX.Y.Z` PR is published from exact `main`
-  `GITHUB_SHA` with an annotated tag, checksums, and provenance assets, never
+  `GITHUB_SHA` with an annotated tag, ZIP and npm `.tgz`, checksums, and provenance assets, never
   with `npm publish`.
 - generated workflow adapter outputs driven by `.aidn/project/workflow.adapter.json`
 - `aidn project config` as the durable adapter management entrypoint

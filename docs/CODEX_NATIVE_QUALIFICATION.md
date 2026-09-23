@@ -5,6 +5,16 @@ not a native acceptance report. The package version, commit and final artifact
 hashes must be recorded from the candidate actually tested; a version label or
 successful repository gate does not fill these fields automatically.
 
+The 0.8.0 publication gate uses a shorter, human-approved temporary-client
+smoke: startup, admitted edit, covered refusal and inactivity in a separate
+unauthorized project. Record its result independently with commit, package and
+backend hashes. It does not turn unexecuted N01-N14 cases into PASS. After the
+published package is used for a controlled pilot migration, run N01-N14 on a
+new temporary client, using Windows app UI control where available. If the
+published package content differs from the smoked candidate, repeat the smoke
+before migrating the pilot. Neither the pilot nor the source checkout is a
+fault-injection fixture.
+
 ## Current evidence boundary
 
 The activation and namespaced-skills candidate is qualified Windows-first.

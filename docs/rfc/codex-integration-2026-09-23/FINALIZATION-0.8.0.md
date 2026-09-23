@@ -38,7 +38,7 @@ restent préservés. Aucune approbation native n'est créée.
 | Récupération | Même journal/reçu, scope installation explicite | Interruption, CAS, reprise, rollback et désinstallation |
 | Conservation | Instructions/configurations tierces, sessions, cycles, données préservées | Oracles ciblés sur fichiers, blocs, champs et état persistant |
 | Qualification Windows | Gates, paquet installé, wrappers, activation et récupération du candidat | Commit et SHA256 exacts ; portée fixture séparée du natif |
-| Qualification native | Démarrage, reprise, compaction et refus couvert | Sessions CLI/app/IDE approuvées par un humain ; OPEN tant que non exécutées |
+| Qualification native | Contrôle court avant livraison, recette N01-N14 après migration pilote | Sessions CLI/app/IDE approuvées par un humain ; chaque cas non exécuté reste SKIP |
 | Unix/WSL | Hors environnement disponible de ce lot Windows | UNAVAILABLE, non bloquant ; aucune extrapolation des anciennes preuves |
 | Livraison | Obligations ASSURED, artefacts et checksums | Candidat propre, revue, intégration dev puis procédure release |
 
@@ -59,7 +59,9 @@ Un ancien reçu ne prouve la propriété que des objets qu'il a enregistrés.
 2. Exécuter les scénarios déterministes sans LLM, construire les artefacts depuis
    le commit candidat et conserver SHA256, résultats et limites.
 3. Qualifier le candidat Windows sur clients temporaires, en distinguant source,
-   scaffold, paquet installé et exécution native.
+   scaffold, paquet installé et exécution native. Avant publication, observer
+   démarrage, édition admise, refus couvert et inactivité hors projet autorisé
+   après approbation humaine. Une absence de cette preuve bloque la livraison.
 4. Pour toute revendication native, suivre le
    [protocole dédié](../../CODEX_NATIVE_QUALIFICATION.md) avec validation humaine.
    Conserver OPEN/SKIP si non exécuté ; Unix et WSL restent UNAVAILABLE,
@@ -69,10 +71,12 @@ Un ancien reçu ne prouve la propriété que des objets qu'il a enregistrés.
 6. Après revue et intégration dev, préparer release/v0.8.0 selon la
    [politique de publication](../../GIT_WORKFLOW.md). Un artefact local ne vaut
    ni publication ni autorisation générale de déploiement.
-7. Après la qualification Windows requise et la livraison, lorsqu'une migration
+7. Après le contrôle natif court et la livraison, lorsqu'une migration
    pilote est explicitement retenue, conserver l'ancien runtime, sauvegarder les
    configurations et l'état persistant, examiner les deux transactions de la
-   procédure Windows puis vérifier leurs postconditions.
+   procédure Windows puis vérifier leurs postconditions. Exécuter ensuite N01-N14
+   sur un nouveau client temporaire dans l'application ; la migration pilote
+   ne sert pas de fixture de refus ou de panne.
 
 ## Limites et phases ultérieures
 

@@ -2,6 +2,8 @@
 
 ## 0.8.0
 
+- Publish a reproducible, installable npm tarball alongside the release ZIP, with manifest, checksum and package-content verification for pinned client migrations.
+
 - Require project activation before workflow admission or execution. Keep a
   repository authorization shared by linked worktrees, with explicit local
   preparation, revocation, and separately validated installation receipts.
