@@ -3,6 +3,9 @@
 ## 0.8.0
 
 - Publish a reproducible, installable npm tarball alongside the release ZIP, with manifest, checksum and package-content verification for pinned client migrations.
+- Emit the Codex-supported hooks root schema and migrate the exact AIDN-owned
+  historical `version: 1` field. Unknown root fields now conflict in preview
+  instead of silently delivering a hooks file rejected by the native client.
 
 - Require project activation before workflow admission or execution. Keep a
   repository authorization shared by linked worktrees, with explicit local

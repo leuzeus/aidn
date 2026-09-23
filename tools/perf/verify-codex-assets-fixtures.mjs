@@ -22,7 +22,7 @@ try {
     ? '@echo off\r\necho Logged in\r\nexit /b 0\r\n'
     : '#!/bin/sh\necho "Logged in"\n');
   if (process.platform !== "win32") fs.chmodSync(stub, 0o755);
-  const thirdParty = { version: 1, note: "retained", hooks: {
+  const thirdParty = { description: "retained", hooks: {
     SessionStart: [{ matcher: "startup", hooks: [{ type: "command", command: "echo third-party-start", timeout: 3 }] }],
     Stop: [{ hooks: [{ type: "command", command: "echo third-party-stop" }] }],
   } };
@@ -38,7 +38,7 @@ try {
   const installed = JSON.parse(fs.readFileSync(path.join(targetRoot, ".codex/hooks.json"), "utf8"));
   assert.deepEqual(installed.hooks.Stop, thirdParty.hooks.Stop, "installation must preserve third-party Stop hooks");
   assert.deepEqual(installed.hooks.SessionStart[0], thirdParty.hooks.SessionStart[0], "installation must preserve third-party hook order and matcher");
-  assert.equal(installed.note, thirdParty.note, "installation must preserve third-party top-level fields");
+  assert.equal(installed.description, thirdParty.description, "installation must preserve supported third-party top-level fields");
   checks.installer_preserves_third_party_hooks = true;
   assert(fs.readFileSync(path.join(targetRoot, "AGENTS.md"), "utf8").startsWith("# Client policy\nKeep this instruction.\n"));
   assert.equal(fs.readFileSync(path.join(targetRoot, "AGENTS.md"), "utf8").split("<!-- CODEX-AUDIT-WORKFLOW START -->").length, 2);
@@ -110,7 +110,7 @@ try {
   const stale = preview(isolated, "uninstall");
   const hooksFile = path.join(isolated, ".codex/hooks.json");
   const hooksWithNeighbor = JSON.parse(fs.readFileSync(hooksFile, "utf8"));
-  hooksWithNeighbor.third_party_added_after_preview = true;
+  hooksWithNeighbor.description = "added after preview";
   fs.writeFileSync(hooksFile, JSON.stringify(hooksWithNeighbor));
   const staleBefore = snapshot(isolated);
   const staleApply = executeCodexAssets({ repoRoot, targetRoot: isolated, action: "uninstall", dryRun: false, expectedPlanId: stale.plan_id });
@@ -139,7 +139,7 @@ try {
   assert(!fs.existsSync(path.join(isolated, ownedPath)));
   assert(fs.readFileSync(path.join(isolated, "AGENTS.md"), "utf8").includes("client policy added later"));
   assert(!fs.readFileSync(path.join(isolated, "AGENTS.md"), "utf8").includes("CODEX-AUDIT-WORKFLOW START"));
-  assert.equal(JSON.parse(fs.readFileSync(hooksFile, "utf8")).third_party_added_after_preview, true);
+  assert.equal(JSON.parse(fs.readFileSync(hooksFile, "utf8")).description, "added after preview");
   assert.equal(fs.readFileSync(path.join(isolated, "docs/audit/sessions/S001.md"), "utf8"), "retain workflow history\n");
   assert.equal(fs.readFileSync(path.join(isolated, ".codex/config.toml"), "utf8"), "# unrelated configuration\n");
   const uninstalled = snapshot(isolated);
@@ -171,11 +171,11 @@ try {
   const rollback = target("rollback"); ok(apply(rollback));
   fs.appendFileSync(path.join(rollback, "AGENTS.md"), "\nsubsequent client policy\n");
   const rollbackHooks = JSON.parse(fs.readFileSync(path.join(rollback, ".codex/hooks.json"), "utf8"));
-  rollbackHooks.third_party_after_install = "kept";
+  rollbackHooks.description = "kept";
   fs.writeFileSync(path.join(rollback, ".codex/hooks.json"), JSON.stringify(rollbackHooks));
   ok(apply(rollback, "rollback"));
   assert(fs.readFileSync(path.join(rollback, "AGENTS.md"), "utf8").includes("subsequent client policy"));
-  assert.equal(JSON.parse(fs.readFileSync(path.join(rollback, ".codex/hooks.json"), "utf8")).third_party_after_install, "kept");
+  assert.equal(JSON.parse(fs.readFileSync(path.join(rollback, ".codex/hooks.json"), "utf8")).description, "kept");
   checks.rollback_preserves_later_unmanaged_edits = true;
   const rollbackConflict = target("rollback-conflict"); ok(apply(rollbackConflict));
   fs.appendFileSync(path.join(rollbackConflict, ownedPath), "\nnew user edit\n");
@@ -236,6 +236,20 @@ try {
   assert.deepEqual(snapshot(badHookJson), badHookBefore);
   checks.invalid_hook_json_refused_without_writes = true;
 
+  const unsupportedRoot = target("unsupported-hooks-root-field");
+  put(unsupportedRoot, ".codex/hooks.json", JSON.stringify({ hooks: {}, custom: "unrecognized" }));
+  const unsupportedBefore = snapshot(unsupportedRoot);
+  assert(preview(unsupportedRoot).errors.some((error) => error.includes("UNSUPPORTED_HOOKS_ROOT_FIELD")));
+  assert.deepEqual(snapshot(unsupportedRoot), unsupportedBefore);
+  checks.unsupported_native_hook_root_field_conflicts_without_write = true;
+
+  const unownedVersion = target("unowned-hooks-version");
+  put(unownedVersion, ".codex/hooks.json", JSON.stringify({ version: 1, hooks: { Stop: thirdParty.hooks.Stop } }));
+  const unownedBefore = snapshot(unownedVersion);
+  assert(preview(unownedVersion).errors.some((error) => error.includes("UNOWNED_HOOKS_ROOT_VERSION")));
+  assert.deepEqual(snapshot(unownedVersion), unownedBefore);
+  checks.unowned_legacy_version_conflicts_without_write = true;
+
   const legacyRoot = target("legacy");
   const historical = spawnSync("git", ["show", "4e551db243d9e38908986f7fd56f283144ed1124:scaffold/codex_hooks/hooks.json"], { cwd: repoRoot, encoding: "utf8" });
   // The captured release fingerprints are packaged data; the test's baseline
@@ -250,10 +264,27 @@ try {
   put(legacyRoot, ".codex/hooks.json", JSON.stringify({ ...historicalHook, hooks: { ...historicalHook.hooks, Stop: thirdParty.hooks.Stop } }));
   ok(apply(legacyRoot));
   const migratedHooks = JSON.parse(fs.readFileSync(path.join(legacyRoot, ".codex/hooks.json"), "utf8"));
+  assert.equal(Object.hasOwn(migratedHooks, "version"), false, "unsupported historical root version must be removed");
   assert.deepEqual(migratedHooks.hooks.Stop, thirdParty.hooks.Stop);
   assert.equal(migratedHooks.hooks.SessionStart.flatMap((group) => group.hooks).length, 1);
   assert.notEqual(migratedHooks.hooks.SessionStart[0].hooks[0].command, historicalHook.hooks.SessionStart[0].hooks[0].command);
   checks.exact_legacy_hook_migration_without_duplicate = true;
+  const oldCurrentRoot = target("old-current-hooks-version");
+  const oldCurrentHooks = JSON.parse(fs.readFileSync(path.join(repoRoot, "scaffold/codex_hooks/hooks.json"), "utf8"));
+  put(oldCurrentRoot, ".codex/hooks.json", JSON.stringify({ version: 1, ...oldCurrentHooks, description: "client hooks" }));
+  const oldCurrentPreview = preview(oldCurrentRoot);
+  ok(oldCurrentPreview);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(oldCurrentRoot, ".codex/hooks.json"), "utf8")).version, 1);
+  ok(apply(oldCurrentRoot));
+  assert.equal(Object.hasOwn(JSON.parse(fs.readFileSync(path.join(oldCurrentRoot, ".codex/hooks.json"), "utf8")), "version"), false);
+  const upgradedWithClientNote = JSON.parse(fs.readFileSync(path.join(oldCurrentRoot, ".codex/hooks.json"), "utf8"));
+  upgradedWithClientNote.description = "later client note";
+  put(oldCurrentRoot, ".codex/hooks.json", JSON.stringify(upgradedWithClientNote));
+  ok(apply(oldCurrentRoot, "rollback"));
+  const restoredOldHooks = JSON.parse(fs.readFileSync(path.join(oldCurrentRoot, ".codex/hooks.json"), "utf8"));
+  assert.equal(restoredOldHooks.version, 1);
+  assert.equal(restoredOldHooks.description, "later client note");
+  checks.exact_current_hook_version_migrates_and_rolls_back = true;
   const ambiguousLegacy = target("ambiguous-legacy");
   historicalHook.hooks.SessionStart[0].hooks[0].timeout = 999;
   put(ambiguousLegacy, ".codex/hooks.json", JSON.stringify(historicalHook));

@@ -37,6 +37,12 @@ before writes. Generated WORKFLOW adoption from 0.7.2 requires its prior version
 record and a complete matching historical rendering with an approved template
 fingerprint. Unrecognized documents are not adopted by their filename alone.
 
+Codex 0.155 rejects a root `version` property in `.codex/hooks.json`. The 0.8.0
+installer removes the old `version: 1` property only when it recognizes an
+AIDN-owned hook. A standalone or ambiguous version property, or another
+unsupported root field, is a preview conflict. Review the conflict before
+editing client hooks; the installer does not discard unrelated commands.
+
 See [Codex integration](CODEX_INTEGRATION.md) for trust, support limits and recovery.
 
 ## Upgrade to 0.7.2

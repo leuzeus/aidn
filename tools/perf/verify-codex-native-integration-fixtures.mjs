@@ -87,6 +87,7 @@ try {
   assert.equal(snapshot(client),before,"native wrappers must not write project state or hydrate caches");
   record("canonical-resume-and-admission-read-only-unicode-subfolder");
   const config=JSON.parse(fs.readFileSync(path.join(client,".codex/hooks.json"),"utf8"));
+  assert.deepEqual(Object.keys(config), ["hooks"], "distributed native hooks root must use only supported fields");
   const matcher=new RegExp(config.hooks.PreToolUse[0].matcher);
   for(const name of ["apply_patch","Edit","Write"])assert(matcher.test(name));
   for(const name of ["Bash","exec_command","write_stdin","mcp__aidn__admit"])assert.equal(matcher.test(name),false);

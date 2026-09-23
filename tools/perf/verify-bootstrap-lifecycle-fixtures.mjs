@@ -88,7 +88,7 @@ try {
   verifyScalarParsing();
   fs.mkdirSync(path.join(target,".codex"),{recursive:true});
   const instructions="# Client instructions\nPreserve this exact text.\n";
-  const hooks={hooks:{Stop:[{matcher:"",custom_field:42,hooks:[{type:"command",command:"echo third-party"}]}]},extension:{keep:true}};
+  const hooks={hooks:{Stop:[{matcher:"",custom_field:42,hooks:[{type:"command",command:"echo third-party"}]}]},description:"third-party hooks"};
   fs.writeFileSync(path.join(target,"AGENTS.md"),instructions);
   fs.writeFileSync(path.join(target,".codex/hooks.json"),JSON.stringify(hooks));
   fs.writeFileSync(path.join(target,".codex/config.toml"),'[mcp_servers.example]\ncommand = "third-party"\n');

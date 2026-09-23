@@ -12,6 +12,10 @@ The Codex proof reports these levels separately:
 
 - `*_present` means a tarball-installed client contains the expected files.
 - the exact command from `.codex/hooks.json` must run from the project root and nested directories.
+- the native hooks parser must accept the complete file before hook presence can
+  count as discovery. Codex CLI 0.155 rejects a root `version` property; the
+  AIDN scaffold uses `hooks` without that property, and upgrades remove it only
+  from recognized AIDN-owned configurations.
 - `codex_discovery.status=PASS` means a real Codex app-server answered `skills/list`
   from an isolated `CODEX_HOME` and discovered the installed `.agents/skills/*`
   as repo-scoped skills.

@@ -44,6 +44,13 @@ prevention or live-project result. Keep every unexecuted check below as SKIP;
 when a platform is absent, record UNAVAILABLE without converting it into a Windows failure. Do not mark it PASS based
 on equivalent-looking fixture behavior.
 
+A pre-release Windows CLI probe against the earlier `b9be1fa` candidate found
+that backend 0.155 rejected the complete project hooks file: its root
+`version: 1` was unknown. The installer now emits the accepted root shape and
+migrates recognized old files. This source correction requires a rebuilt package,
+renewed human review of the changed hook definition, and a fresh native trace;
+the earlier probe is FAIL for that candidate, not proof of the correction.
+
 ## Candidate and environment record
 
 Create one record per native surface, with no private project paths, credentials,

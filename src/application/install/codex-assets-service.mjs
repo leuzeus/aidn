@@ -149,9 +149,11 @@ function replaceBlock(data, from, to) {
 }
 function hooksConfig(data) {
   let config;
-  try { config = data === null ? { version: 1, hooks: {} } : JSON.parse(decode(data)); }
+  try { config = data === null ? { hooks: {} } : JSON.parse(decode(data)); }
   catch { problem("INVALID_HOOKS_JSON", ".codex/hooks.json"); }
   if (!isObject(config) || !isObject(config.hooks) || (config.version !== undefined && config.version !== 1)) problem("INVALID_HOOKS_STRUCTURE", ".codex/hooks.json");
+  for (const key of Object.keys(config)) if (!["hooks", "description", "version"].includes(key)) problem("UNSUPPORTED_HOOKS_ROOT_FIELD", ".codex/hooks.json");
+  if (config.description !== undefined && typeof config.description !== "string") problem("INVALID_HOOKS_STRUCTURE", ".codex/hooks.json");
   for (const groups of Object.values(config.hooks)) {
     if (!Array.isArray(groups)) problem("INVALID_HOOKS_STRUCTURE", ".codex/hooks.json");
     for (const group of groups) if (!isObject(group) || !Array.isArray(group.hooks) || group.hooks.some((hook) => !isObject(hook))) problem("INVALID_HOOKS_STRUCTURE", ".codex/hooks.json");
@@ -181,6 +183,7 @@ function validateOwnedHooks(data, owned, { allowMissing = false } = {}) {
 function replaceHooks(data, from, to, allowMissing = false) {
   const config = hooksConfig(data);
   validateOwnedHooks(data, from, { allowMissing });
+  if (config.version === 1 && from.length) delete config.version;
   const remaining = [...to];
   for (const [event, groups] of Object.entries(config.hooks)) {
     const nextGroups = [];
@@ -283,7 +286,14 @@ function restoredContent(op, current) {
   if (op.kind === "append-lines") { try { return encode(restoreAppendLines(decode(current), op.after_owned, op.before_owned)); } catch { problem("APPEND_LINE_POSTIMAGE_CHANGED", op.path); } }
   if (op.kind === "file" || op.kind === "local-file") problem("POSTIMAGE_CHANGED", op.path);
   if (op.kind === "agents-block") return replaceBlock(current, op.after_owned, op.before_owned);
-  return replaceHooks(current, op.after_owned, op.before_owned);
+  const restored = replaceHooks(current, op.after_owned, op.before_owned);
+  if (hooksConfig(op.before).version === 1 && hooksConfig(op.after).version === undefined) {
+    if (hooksConfig(current).version !== undefined) problem("HOOKS_ROOT_VERSION_POSTIMAGE_CHANGED", op.path);
+    const config = hooksConfig(restored);
+    config.version = 1;
+    return encode(`${JSON.stringify(config, null, 2)}\n`);
+  }
+  return restored;
 }
 function loadTransaction(root, id) {
   if (typeof id !== "string" || !/^[a-f0-9]{32}$/.test(id)) problem("INVALID_TRANSACTION_ID");
@@ -414,7 +424,7 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
         } else if (asset.kind === "hooks") {
           after = current === null ? null : replaceHooks(current, asset.current, []);
           // Receipt refresh must never adopt later third-party fields as deletable.
-          if (asset.created && after !== null && same(hooksConfig(after), { version: 1, hooks: {} })) after = null;
+          if (asset.created && after !== null && same(hooksConfig(after), { hooks: {} })) after = null;
         } else {
           after = current === null ? null : replaceBlock(current, asset.current, null);
           if (after === asset.unmanaged_baseline) after = asset.uninstall_preimage;
@@ -501,6 +511,7 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
               if (claimsLegacy && !beforeOwned.some((known) => sameToken(known, token))) problem("AMBIGUOUS_LEGACY_HOOK", relative);
             }
           }
+          if (hooksConfig(current).version === 1 && beforeOwned.length === 0) problem("UNOWNED_HOOKS_ROOT_VERSION", relative);
           afterOwned = desiredTokens;
           after = replaceHooks(current, beforeOwned, afterOwned, current === null);
         }
