@@ -4,7 +4,9 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { captureContextIdentity } from "../../src/adapters/codex/context-provenance.mjs";
+import { deriveRuntimeStateRepairSummary } from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
 
 const DECISION_FINDING = Object.freeze({
   severity: "warning",
@@ -64,9 +66,38 @@ function seedCodexContext(targetRoot, payload) {
   return contextFile;
 }
 
+function withObservation(entry, identity) {
+  return {
+    ...entry, ok: true, command_status: 0, reusable: true,
+    provenance: {
+      kind: "hook-command-observation.v1", command_status: 0, command_signal: null,
+      before: identity, after: identity,
+    },
+  };
+}
+
+function observePayload(payload, identity) {
+  return {
+    ...payload,
+    decisions: Object.fromEntries(Object.entries(payload.decisions ?? {}).map(([key, entry]) => [key, withObservation(entry, identity)])),
+    recent_history: (payload.recent_history ?? []).map((entry) => withObservation(entry, identity)),
+  };
+}
+
 function verifyScenario(tempRoot, name, payload, expectations, options = {}) {
   const repo = path.join(tempRoot, name);
   fs.cpSync(path.resolve(process.cwd(), "tests/fixtures/repo-installed-core"), repo, { recursive: true });
+  if (options.observe) {
+    const configPath = path.join(repo, ".aidn", "config.json");
+    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    config.runtime = { stateMode: options.stateMode ?? "files", indexStoreMode: "file" };
+    writeJson(configPath, config);
+    initGitRepo(repo, { sourceBranch: "dev" });
+    const identity = captureContextIdentity({ targetRoot: repo });
+    assert(identity.status === "captured", name + ": live context unavailable");
+    payload = observePayload(payload, identity);
+    if (options.changeAfterCapture) fs.writeFileSync(path.join(repo, "freshness-input.txt"), "changed after observation");
+  }
   seedHydratedContext(repo, payload);
   seedCodexContext(repo, options.contextPayload ?? {
     schema_version: 1,
@@ -205,6 +236,7 @@ function verifyCanonicalDecisionSelection(tempRoot) {
       testCase.name,
       canonicalDecisionPayload(testCase),
       canonicalExpectations(),
+      { observe: true },
     );
   }
 }
@@ -254,6 +286,7 @@ function verifyFallbackWithoutCanonicalDecision(tempRoot) {
     repair_layer: null,
     artifacts: [],
   }, canonicalExpectations(), {
+    observe: true,
     contextPayload: {
       schema_version: 1,
       target_root: "foreign-repo",
@@ -312,6 +345,10 @@ function verifyLatestTimestampMutant(tempRoot) {
       ].join("\n"),
     )
     .replace(
+      'from "../codex/context-observation.mjs";',
+      `from "${pathToFileURL(path.resolve("src/application/codex/context-observation.mjs")).href}";`,
+    )
+    .replace(
       'from "./governed-runtime-artifact-metadata-lib.mjs";',
       `from "${pathToFileURL(metadataPath).href}";`,
     );
@@ -319,14 +356,20 @@ function verifyLatestTimestampMutant(tempRoot) {
 
   const mutantPath = path.join(tempRoot, "runtime-state-projector-latest-mutant.mjs");
   fs.writeFileSync(mutantPath, mutatedSource, "utf8");
-  const probePayload = canonicalDecisionPayload({
+  const liveContext = { status: "captured", state_mode: "files", fingerprint: "a".repeat(64) };
+  const probePayload = observePayload(canonicalDecisionPayload({
     decisionTs: "2026-03-09T02:00:00Z",
     repairPayloadTs: "2026-03-09T02:10:00Z",
-  });
+  }), liveContext);
+  assert(deriveRuntimeStateRepairSummary(probePayload, null, liveContext).primaryReason === DECISION_PRIMARY_REASON,
+    "baseline fresh observation must satisfy the canonical selection contract");
+  assert(deriveRuntimeStateRepairSummary(probePayload, null).status === "block",
+    "a direct caller without live context must not trust a stored reusable flag");
   const probe = [
     `import { deriveRuntimeStateRepairSummary } from ${JSON.stringify(pathToFileURL(mutantPath).href)};`,
     `const payload = ${JSON.stringify(probePayload)};`,
-    "process.stdout.write(JSON.stringify(deriveRuntimeStateRepairSummary(payload, null)));",
+    `const liveContext = ${JSON.stringify(liveContext)};`,
+    "process.stdout.write(JSON.stringify(deriveRuntimeStateRepairSummary(payload, null, liveContext)));",
   ].join("\n");
   const mutantSummary = JSON.parse(execFileSync(
     process.execPath,
@@ -445,7 +488,7 @@ function main() {
       blockingFindingsLength: 0,
     });
 
-    verifyScenario(tempRoot, "prefer-fresher-codex-context", {
+    verifyScenario(tempRoot, "legacy-clean-cache-cannot-relax-repair-warning", {
       ts: "2026-03-09T02:00:00Z",
       target_root: "repo",
       state_mode: "db-only",
@@ -481,13 +524,13 @@ function main() {
       },
       artifacts: [],
     }, {
-      status: "clean",
-      advice: "Repair layer is clean.",
-      primaryReason: "repair layer reports no blocking findings for the current relay",
-      routingHint: "execution-or-audit",
-      routingReason: "repair layer reports no blocking findings for the current relay",
-      noFindingLine: "- warning: UNTRACKED_CYCLE_STATUS_REFERENCE: snapshots/context-snapshot.md: Artifact references cycle C089 but the index is stale.",
-      blockingFindingsLength: 0,
+      status: "warn",
+      advice: "Review open repair findings, starting with UNTRACKED_CYCLE_STATUS_REFERENCE.",
+      primaryReason: "warning: UNTRACKED_CYCLE_STATUS_REFERENCE: snapshots/context-snapshot.md: Artifact references cycle C089 but the index is stale.",
+      routingHint: "audit-first",
+      routingReason: "Review open repair findings, starting with UNTRACKED_CYCLE_STATUS_REFERENCE.",
+      findingLine: "- warning: UNTRACKED_CYCLE_STATUS_REFERENCE: snapshots/context-snapshot.md: Artifact references cycle C089 but the index is stale.",
+      blockingFindingsLength: 1,
     }, {
       contextPayload: {
         schema_version: 1,
@@ -504,6 +547,24 @@ function main() {
       },
     });
 
+    const rejectedCacheExpectations = {
+      status: "block",
+      advice: "Resolve the newer repair-layer payload.",
+      primaryReason: REPAIR_PAYLOAD_PRIMARY_REASON,
+      routingHint: "repair",
+      routingReason: "blocking repair findings require repair-first routing before any implementation handoff",
+      absentText: [DECISION_PRIMARY_REASON, "FOREIGN_SCOPE_SESSION"],
+    };
+    for (const [name, options] of [
+      ["missing-provenance", {}],
+      ["changed-since-observation", { observe: true, changeAfterCapture: true }],
+      ["dual-without-canonical-revision", { observe: true, stateMode: "dual" }],
+      ["db-only-without-canonical-revision", { observe: true, stateMode: "db-only" }],
+    ]) {
+      verifyScenario(tempRoot, name, canonicalDecisionPayload({
+        decisionTs: "2099-01-01T00:00:00Z", repairPayloadTs: "2026-03-09T02:00:00Z",
+      }), rejectedCacheExpectations, options);
+    }
     verifyCanonicalDecisionSelection(tempRoot);
     verifyFallbackWithoutCanonicalDecision(tempRoot);
     verifyLatestTimestampMutant(tempRoot);

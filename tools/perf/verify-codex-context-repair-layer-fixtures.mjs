@@ -593,9 +593,14 @@ export function main(argv = process.argv.slice(2)) {
       hydrate_runtime_state_matches_decision: String(
         hydrated?.runtime_state?.digest?.repair_layer_status ?? "",
       ) === String(decision?.repair_layer_status ?? ""),
-      hydrate_runtime_state_advice_matches_decision: String(
-        hydrated?.runtime_state?.digest?.repair_layer_advice ?? "",
-      ) === String(decision?.repair_layer_advice ?? ""),
+      hydrate_runtime_state_advice_matches_reconstructed_repair_layer: Number(
+        hydrated?.repair_layer?.severity_counts?.warning ?? 0,
+      ) >= 1 && hydrated?.runtime_state?.digest?.repair_layer_advice === "Review open repair findings.",
+      hydrate_decision_keeps_historical_ok: decision?.ok === hookOutput?.ok,
+      hydrate_decision_is_not_reusable: decision?.reusable === false
+        && ["unknown", "stale", "failed"].includes(decision?.reuse_status)
+        && Array.isArray(decision?.reuse_reasons) && decision.reuse_reasons.length > 0,
+      hydrate_history_is_not_reusable: latestHistory?.reusable === false,
       hydrate_runtime_state_primary_reason_matches_decision: String(
         hydrated?.runtime_state?.digest?.repair_primary_reason ?? "",
       ) === String(decision?.repair_primary_reason ?? ""),
