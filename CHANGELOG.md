@@ -4,6 +4,16 @@
 
 No unreleased changes.
 
+## 0.7.2
+
+- Replace duplicated pull-request workflows with the versioned
+  `governance-route.v1` classifier, adaptive `FAST`, `STANDARD`, `ASSURED`, and
+  `EMERGENCY` routing, one execution per selected gate family, and the single
+  protected `Governance Admission` rollup. Preserve complete release
+  verification, optional manual PostgreSQL smoke evidence, explicit effect and
+  mutation boundaries, route provenance, rollback evidence, and public CLI and
+  JSON compatibility.
+
 ## 0.7.1
 
 - Govern version-matched `hotfix/vX.Y.Z` patch publication and exact
