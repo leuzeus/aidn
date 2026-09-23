@@ -50,12 +50,6 @@ function makeCodexStub(tmpRoot) {
   return binDir;
 }
 
-function normalizeCleanFixtureCopy(targetRoot) {
-  fs.rmSync(path.join(targetRoot, ".aidn", "runtime"), { recursive: true, force: true });
-  fs.rmSync(path.join(targetRoot, ".aidn", "project", "workflow.adapter.legacy-source.md"), { force: true });
-  fs.rmSync(path.join(targetRoot, ".aidn", "project", "workflow.adapter.migration-report.json"), { force: true });
-}
-
 function runInstallDry(repoRoot, targetRoot, codexStubBin, pack) {
   const separator = process.platform === "win32" ? ";" : ":";
   const result = spawnSync(process.execPath, [
@@ -171,6 +165,7 @@ function inspectPackageDocsAllowlist(files) {
     .filter(Boolean);
   const expectedDocs = new Set([
     "docs/INSTALL.md",
+    "docs/CODEX_INTEGRATION.md",
     "docs/README.md",
     "docs/MIGRATION_SHARED_RUNTIME_POSTGRESQL.md",
     "docs/MULTI_PROJECT_POSTGRESQL_MIGRATION_GUIDE.md",
@@ -260,7 +255,7 @@ function verifyInjectedFailureCleanup(repoRoot) {
     `pack topology cleanup probe should exit 1; status=${result.status} signal=${result.signal ?? "none"} error=${result.error?.message ?? "none"}`,
   );
   assert(
-    stderr.includes("injected pack topology failure after source copy"),
+    stderr.includes("injected pack topology failure after fresh fixture setup"),
     `pack topology cleanup probe should preserve the primary error; stderr=${stderr.slice(-2000)}`,
   );
   assert(
@@ -289,24 +284,26 @@ function main() {
     const codexIntegrationManifest = readYamlText(repoRoot, "packs/codex-integration/manifest.yaml");
     const githubIntegrationManifest = readYamlText(repoRoot, "packs/github-integration/manifest.yaml");
     const extendedManifest = readYamlText(repoRoot, "packs/extended/manifest.yaml");
-    const sourceTarget = path.resolve(repoRoot, "tests/fixtures/repo-installed-core");
+    // Topology uses current-package clients. Historical installation fixtures have
+    // independent ownership conflicts, and receipts cannot be copied across roots.
     const targetRoot = path.join(tempRoot, "repo");
-    fs.cpSync(sourceTarget, targetRoot, { recursive: true });
+    fs.mkdirSync(targetRoot, { recursive: true });
     if (cleanupProbe) {
-      throw new Error("injected pack topology failure after source copy");
+      throw new Error("injected pack topology failure after fresh fixture setup");
     }
     const runtimeLocalTarget = path.join(tempRoot, "runtime-local-refresh");
     const codexTarget = path.join(tempRoot, "codex-refresh");
     const githubTarget = path.join(tempRoot, "github-refresh");
     const extendedTarget = path.join(tempRoot, "extended-refresh");
-    fs.cpSync(sourceTarget, runtimeLocalTarget, { recursive: true });
-    fs.cpSync(sourceTarget, codexTarget, { recursive: true });
-    fs.cpSync(sourceTarget, githubTarget, { recursive: true });
-    fs.cpSync(sourceTarget, extendedTarget, { recursive: true });
-    for (const copiedTarget of [targetRoot, runtimeLocalTarget, codexTarget, githubTarget, extendedTarget]) {
-      normalizeCleanFixtureCopy(copiedTarget);
-    }
     const codexStubBin = makeCodexStub(tempRoot);
+    for (const freshTarget of [targetRoot, runtimeLocalTarget, codexTarget, githubTarget, extendedTarget]) {
+      fs.mkdirSync(freshTarget, { recursive: true });
+      const seed = runInstall(repoRoot, freshTarget, codexStubBin, "core", [
+        "--init-defaults", "--project-name", "topology-fixture", "--source-branch", "dev",
+        "--skip-artifact-import", "--no-codex-migrate-custom",
+      ]);
+      assert(seed.status === 0, `fresh core seed failed for ${path.basename(freshTarget)}\nstdout:\n${seed.stdout}\nstderr:\n${seed.stderr}`);
+    }
 
     const runtimeLocalDry = runInstallDry(repoRoot, targetRoot, codexStubBin, "runtime-local");
     const codexIntegrationDry = runInstallDry(repoRoot, targetRoot, codexStubBin, "codex-integration");
@@ -405,6 +402,8 @@ function main() {
   if (!cleanupProbe) {
     console.log("PASS");
     console.log(JSON.stringify({
+      fixture_basis: "fresh-current-package-clients",
+      seeded_client_roots: 5,
       exit_policy: exitPolicy,
       injected_failure_cleanup: injectedFailureCleanup,
       cleanup: {

@@ -126,7 +126,7 @@ Before any durable write, the agent MUST also:
 If runtime state mode is `dual` or `db-only`, the agent MUST:
 
 - run workflow hooks in strict JSON mode (`npx aidn codex run-json-hook ... --strict --fail-on-repair-block --json`)
-- refresh derived db-backed context only through an explicitly authorized projector; `hydrate-context` writes a cache and is not a read-only startup step
+- refresh derived db-backed context only when its cache write is explicitly authorized, using `npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json`; this command writes a derived cache and computes the runtime projection, even with `--json`, and is not a read-only startup step; visible projection files require separate explicit materialization intent
 - revalidate the configured canonical runtime context before each durable write; a cached admission is not reusable authority
 - check `repair_layer_status`
 - check `repair_layer_advice`
@@ -180,7 +180,7 @@ For shared or high-risk implementation surfaces, the agent MUST:
 For `dual` / `db-only` projects, the runtime chain is authoritative for mutating enforcement:
 
 - `npx aidn codex run-json-hook ... --strict --json`
-- `npx aidn codex hydrate-context --target . --skill <skill> --json`
+- `npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json` for explicitly authorized derived-cache refresh and runtime-projection calculation; native SessionStart hooks must use read-only canonical admission instead
 - `npx aidn runtime sync-db-first-selective --target . --json` for mutating skills
 - `npx aidn runtime repair-layer-triage --target . --json` when `repair_layer_status` is `warn` or `block`
 - `npx aidn runtime repair-layer-autofix --target . --apply --json` only for safe-only autofix cases

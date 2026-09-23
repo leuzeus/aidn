@@ -45,15 +45,24 @@ function printUsage() {
 }
 
 function prepareTmp(sourceTarget, tmpRoot, suffix) {
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
-  const target = path.resolve(tmpRoot, `tmp-install-import-${suffix}-${stamp}`);
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.cpSync(sourceTarget, target, { recursive: true });
-  fs.rmSync(path.join(target, ".aidn", "config.json"), { force: true });
-  fs.rmSync(path.join(target, ".aidn", "runtime", "index"), { recursive: true, force: true });
-  fs.rmSync(path.join(target, ".aidn", "runtime", "cache"), { recursive: true, force: true });
-  fs.rmSync(path.join(target, ".aidn", "runtime", "perf"), { recursive: true, force: true });
-  return target;
+  fs.mkdirSync(tmpRoot, { recursive: true });
+  const target = fs.mkdtempSync(path.join(tmpRoot, `tmp-install-import-${suffix}-`));
+  try {
+    // Keep the artifact corpus and its adapter as input to import. Package assets,
+    // runtime stores and root-bound ownership receipts must start fresh per client.
+    for (const relativePath of ["docs/audit", ".aidn/project/workflow.adapter.json"]) {
+      const destination = path.join(target, relativePath);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.cpSync(path.join(sourceTarget, relativePath), destination, { recursive: true });
+    }
+    return target;
+  } catch (error) {
+    const cleanup = removePathWithRetry(target);
+    if (!cleanup.ok) {
+      error.message += `; fixture setup cleanup failed: ${cleanup.error?.message ?? "unknown error"}`;
+    }
+    throw error;
+  }
 }
 
 function makeCodexStub(tmpRoot) {
@@ -686,6 +695,7 @@ function main() {
     const output = {
       ts: new Date().toISOString(),
       source_target: sourceTarget,
+      fixture_basis: "fresh-package-assets-with-artifact-corpus-and-adapter",
       tmp_root: tmpRoot,
       checks: cases,
       pass,

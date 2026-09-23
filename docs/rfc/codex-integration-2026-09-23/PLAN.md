@@ -1,6 +1,10 @@
 # Plan et backlog — installation fiable AIDN × Codex
 
-Statut : proposé, prêt pour décision de lancement ; **lots produit non commencés**.
+État de référence : plan proposé à la fin de l’audit, avant les lots produit.
+Les résultats ci-dessous conservent les constats de cet audit ; ils ne décrivent
+pas le résultat après correction. L’implémentation et ses limites de qualification
+sont décrites dans le [guide produit](../../CODEX_INTEGRATION.md) et
+[l’ADR-0011 acceptée](../../ADR/ADR-0011-codex-installation-ownership-and-native-boundary.md).
 Date : 2026-09-23. [Audit](AUDIT.md) · [Capacités](CAPABILITIES.md) ·
 [ADR proposée](ADR-PROPOSED.md).
 
