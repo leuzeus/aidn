@@ -19,13 +19,31 @@ import { isRetainedInstallSeed } from "./installation-ownership-service.mjs";
 import { isDbOnlyStrictVisibleInstallAllowed } from "../runtime/db-only-visible-surface-policy.mjs";
 import { migrateWorkflowDbFile } from "../../lib/sqlite/workflow-db-schema-lib.mjs";
 import { resolveEffectiveRuntimePersistence } from "../runtime/runtime-persistence-service.mjs";
-import { executeRuntimeBackendAdoption } from "../runtime/runtime-backend-adoption-service.mjs";
+import { executeRuntimeBackendAdoption, planRuntimeBackendAdoption } from "../runtime/runtime-backend-adoption-service.mjs";
 
 const encoded = (text) => Buffer.from(text).toString("base64");
 const json = (value) => `${JSON.stringify(value, null, 2)}\n`;
-const ARGUMENTS = ["pack", "initDefaults", "projectName", "sourceBranch", "adapterFile", "adapterData", "skipAgents", "forceAgentsMerge", "skipArtifactImport", "artifactImportStore", "runtimeStateMode", "runtimePersistenceBackend", "runtimePersistenceConnectionRef", "runtimePersistenceLocalProjectionPolicy", "materializeVisibleArtifacts", "verifyAfterInstall", "codexMigrateCustom"];
+const ARGUMENTS = ["pack", "initDefaults", "projectName", "sourceBranch", "adapterFile", "adapterData", "skipAgents", "forceAgentsMerge", "skipArtifactImport", "artifactImportStore", "runtimeStateMode", "runtimePersistenceBackend", "runtimePersistenceConnectionRef", "runtimePersistenceLocalProjectionPolicy", "materializeVisibleArtifacts", "verifyAfterInstall", "codexMigrateCustom", "persistencePolicy"];
 function safeArgs(args = {}) { return Object.fromEntries(ARGUMENTS.filter((key) => args[key] !== undefined).map((key) => [key, args[key]])); }
 function fail(code, target = "") { const error = new Error(code); error.code = code; error.relativePath = target; throw error; }
+function persistencePolicy(args = {}) {
+  const policy = args.persistencePolicy ?? "adopt";
+  if (!["adopt", "verify-only"].includes(policy)) fail("INVALID_INSTALLATION_PERSISTENCE_POLICY");
+  return policy;
+}
+function adoptionOptions(context, targetRoot, options) {
+  const persistence = context.next_config.runtime.persistence;
+  return { targetRoot, backend: persistence.backend, connectionRef: persistence.connectionRef ?? "", configData: context.next_config,
+    ignoreSourceDriftWhenTargetReady: true, ...(options.runtimeBackendAdoptionOptions ?? {}) };
+}
+async function verifyPersistenceReady(context, targetRoot, options) {
+  if (persistencePolicy(context.args) !== "verify-only" || context.next_config.runtime.persistence.backend !== "postgres") return null;
+  // Planning reads the configured database but never migrates, transfers or
+  // registers anything. A non-noop plan is not successful verification.
+  const plan = await planRuntimeBackendAdoption(adoptionOptions(context, targetRoot, options));
+  if (plan.blocked !== false || plan.action !== "noop") fail("PERSISTENCE_VERIFY_ONLY_REQUIRES_NOOP");
+  return plan;
+}
 function checkTree(root) {
   if (!fs.existsSync(root)) return;
   const stat = fs.lstatSync(root);
@@ -45,6 +63,7 @@ async function prepare(options) {
   const recordedReceipt = readInstallationContext({ targetRoot }).receipt;
   const saved = recordedReceipt?.installation?.args ?? {};
   const args = safeArgs({ ...saved, ...options.args });
+  args.persistencePolicy = persistencePolicy({ persistencePolicy: options.args?.persistencePolicy ?? saved.persistencePolicy });
   // Consent applies to this new operation; only a pending journal may retain it for resume.
   args.codexMigrateCustom = options.args?.codexMigrateCustom === true;
   // Import inputs initialize or explicitly update the adapter; its current file is canonical thereafter.
@@ -119,9 +138,11 @@ async function prepare(options) {
   const importPersistence = resolveEffectiveRuntimePersistence({ targetRoot, backend: args.runtimePersistenceBackend, connectionRef: args.runtimePersistenceConnectionRef, configData: nextConfig });
   operations.set(".aidn/config.json", { path: ".aidn/config.json", kind: "config-fields", data: encoded(json(finalConfig)), staged: encoded(json(nextConfig)), finalize: true });
   const required = [...new Set(packs.flatMap((pack) => packCache.get(pack).manifest.verify?.must_exist ?? []))].filter((relative) => !strict || relative.startsWith(".aidn/") || isDbOnlyStrictVisibleInstallAllowed(relative));
-  const effects = [{ id: "artifact-import", state: args.skipArtifactImport ? "skipped" : "deferred", reversible: false, store: defaults.store, state_mode: defaults.stateMode, destination_backend: importPersistence.backend }];
-  if (strict && defaults.store === "sqlite" && nextConfig.runtime.persistence.backend !== "postgres") effects.push({ id: "sqlite-schema", state: "deferred", reversible: false });
-  if (nextConfig.runtime.persistence.backend === "postgres") effects.push({ id: "persistence-adoption", state: "deferred", reversible: false, readiness: "unknown" });
+  const verifyOnlyPersistence = args.persistencePolicy === "verify-only";
+  const effects = [{ id: "artifact-import", state: args.skipArtifactImport || verifyOnlyPersistence ? "skipped" : "deferred", reversible: false, store: defaults.store, state_mode: defaults.stateMode, destination_backend: importPersistence.backend,
+    ...(verifyOnlyPersistence ? { reason: "persistence-policy-verify-only" } : {}) }];
+  if (strict && defaults.store === "sqlite" && nextConfig.runtime.persistence.backend !== "postgres") effects.push({ id: "sqlite-schema", state: verifyOnlyPersistence ? "skipped" : "deferred", reversible: false });
+  if (nextConfig.runtime.persistence.backend === "postgres") effects.push({ id: "persistence-adoption", state: "deferred", reversible: false, readiness: "unknown", policy: args.persistencePolicy });
   if (args.codexMigrateCustom) effects.push({ id: "custom-file-llm-migration", state: "deferred", optional: true, reversible: false, paths: customCandidates.map((candidate) => candidate.targetRelative) });
   const context = { args, version_before: currentConfig.install?.aidnVersion ?? null, version_after: version, current_config: currentConfig, next_config: nextConfig, verify_entries: required, external_effects: effects, compatibility, packs, strict, defaults, import_persistence: importPersistence, custom_candidates: customCandidates };
   const installation = { operations: [...operations.values()], context };
@@ -133,6 +154,10 @@ async function prepare(options) {
 
 export async function planInstallation(options) {
   try {
+    if (options.action === "resume" && options.args?.persistencePolicy !== undefined) {
+      const pending = readInstallationContext(options);
+      if (pending.context && persistencePolicy(options.args) !== persistencePolicy(pending.context.args)) fail("PERSISTENCE_POLICY_FROZEN_BY_TRANSACTION");
+    }
     if (["resume", "rollback", "uninstall"].includes(options.action)) return planInstallationAssets(options);
     return (await prepare(options)).public;
   } catch (error) { return failure(error, options.action); }
@@ -149,6 +174,10 @@ export async function diagnoseInstallation(options) {
 async function finishExternal({ transaction, targetRoot, checkpoint }, repoRoot, options, messages) {
   const context = transaction.installation_context;
   const { args, current_config: currentConfig, next_config: nextConfig, defaults, strict } = context;
+  const verifyOnlyPersistence = persistencePolicy(args) === "verify-only";
+  // Recheck even after an earlier completed verification checkpoint. The
+  // database may have changed since preflight or an interrupted installation.
+  await verifyPersistenceReady(context, targetRoot, options);
   validateRuntimeCompatibility(context.compatibility, { requireCodex: args.codexMigrateCustom === true });
   if (options.failExternal) fail("INJECTED_INSTALLATION_EXTERNAL_FAILURE");
   if (args.codexMigrateCustom) for (const candidate of context.custom_candidates ?? []) {
@@ -179,7 +208,8 @@ async function finishExternal({ transaction, targetRoot, checkpoint }, repoRoot,
     return result ?? { ok: true };
   }
   const importPersistence = context.import_persistence ?? { backend: nextConfig.runtime.persistence.backend, connectionRef: nextConfig.runtime.persistence.connectionRef ?? null };
-  if (args.skipArtifactImport) messages.push("artifact import skipped: explicit --skip-artifact-import");
+  if (verifyOnlyPersistence) messages.push("artifact import skipped: persistence policy verify-only");
+  else if (args.skipArtifactImport) messages.push("artifact import skipped: explicit --skip-artifact-import");
   else {
     const imported = await effect("artifact-import", importPersistence.backend === "postgres" ? "postgres" : "local", () => runArtifactImport(repoRoot, targetRoot, false, args, nextConfig, defaults, importPersistence), { repeatUncertain: importPersistence.backend !== "postgres" });
     if (imported.checkpointed) messages.push("artifact import: retained completed checkpoint");
@@ -189,18 +219,24 @@ async function finishExternal({ transaction, targetRoot, checkpoint }, repoRoot,
   }
   if (options.failAfterArtifactImport) fail("INJECTED_INSTALLATION_AFTER_ARTIFACT_IMPORT");
   const persistence = nextConfig.runtime.persistence;
-  if (strict && defaults.store === "sqlite" && persistence.backend !== "postgres") {
+  if (!verifyOnlyPersistence && strict && defaults.store === "sqlite" && persistence.backend !== "postgres") {
     const sqliteFile = path.join(targetRoot, ".aidn/runtime/index/workflow-index.sqlite");
     await effect("sqlite-schema", "local", () => { fs.mkdirSync(path.dirname(sqliteFile), { recursive: true }); migrateWorkflowDbFile({ sqliteFile }); });
   }
   if (persistence.backend === "postgres") {
-    const result = await effect("persistence-adoption", "postgres", () => executeRuntimeBackendAdoption({ targetRoot, backend: persistence.backend, connectionRef: persistence.connectionRef ?? "", write: true, ignoreSourceDriftWhenTargetReady: true, ...(options.runtimeBackendAdoptionOptions ?? {}) }));
-    if (!result.ok && !result.checkpointed) fail("RUNTIME_PERSISTENCE_ADOPTION_BLOCKED");
+    if (verifyOnlyPersistence) {
+      effectResults["persistence-adoption"] = { id: "persistence-adoption", source_kind: "postgres", status: "completed", policy: "verify-only", action: "noop", read_only: true, reversible: false };
+      checkpoint();
+      messages.push("persistence verified: no adoption required; database writes disabled");
+    } else {
+      const result = await effect("persistence-adoption", "postgres", () => executeRuntimeBackendAdoption({ write: true, ...adoptionOptions(context, targetRoot, options) }));
+      if (!result.ok && !result.checkpointed) fail("RUNTIME_PERSISTENCE_ADOPTION_BLOCKED");
+    }
   }
   // Local manifest verification and import verification are part of completion,
   // before installation metadata claims the package version.
   for (const relative of context.verify_entries) if (!fs.existsSync(path.join(targetRoot, relative))) fail("INSTALLATION_VERIFY_MISSING", relative);
-  const verified = verifyArtifactImportOutputs(targetRoot, args, nextConfig, defaults);
+  const verified = verifyArtifactImportOutputs(targetRoot, verifyOnlyPersistence ? { ...args, skipArtifactImport: true } : args, nextConfig, defaults);
   if (verified.checked && !verified.ok) fail("INSTALLATION_IMPORT_VERIFY_FAILED");
   messages.push("verified: OK");
 }
@@ -214,8 +250,17 @@ export async function executeInstallation(options) {
       prepared = await prepare(options);
       if (!prepared.public.ok) return prepared.public;
     }
+    const initialPlan = prepared.public ?? await planInstallation(options);
+    if (!initialPlan.ok) return { ...initialPlan, dry_run: false };
+    if (options.expectedPlanId && options.expectedPlanId !== initialPlan.plan_id) fail("STALE_INSTALL_PLAN");
+    if (action === "resume") {
+      const pending = readInstallationContext({ targetRoot: prepared.targetRoot });
+      if (pending.context && !["rollback", "uninstall"].includes(pending.action)) await verifyPersistenceReady(pending.context, prepared.targetRoot, options);
+    } else if (!["rollback", "uninstall"].includes(action)) {
+      await verifyPersistenceReady(prepared.installation.context, prepared.targetRoot, options);
+    }
     const messages = [];
-    const result = await executeInstallationAssets({ ...options, ...prepared, scope: "installation", templateVars: prepared.vars }, (event) => finishExternal(event, prepared.repoRoot, options, messages));
+    const result = await executeInstallationAssets({ ...options, ...prepared, scope: "installation", templateVars: prepared.vars, expectedPlanId: options.expectedPlanId || initialPlan.plan_id }, (event) => finishExternal(event, prepared.repoRoot, options, messages));
     return { ...result, messages, ...(prepared.public?.asset_plan ? { asset_plan: prepared.public.asset_plan } : {}) };
   } catch (error) { return { ...failure(error, action), dry_run: false }; }
 }

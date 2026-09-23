@@ -23,6 +23,7 @@ function parseArgs(argv) {
     runtimePersistenceBackend: "",
     runtimePersistenceConnectionRef: "",
     runtimePersistenceLocalProjectionPolicy: "",
+    persistencePolicy: undefined,
     assist: false,
     strict: false,
     skipAgents: false,
@@ -71,6 +72,9 @@ function parseArgs(argv) {
     } else if (token === "--runtime-persistence-local-projection-policy") {
       args.runtimePersistenceLocalProjectionPolicy = String(argv[i + 1] ?? "").trim().toLowerCase();
       i += 1;
+    } else if (token === "--persistence-policy") {
+      args.persistencePolicy = String(argv[i + 1] ?? "").trim().toLowerCase();
+      i += 1;
     } else if (token === "--assist") {
       args.assist = true;
     } else if (token === "--strict") {
@@ -109,6 +113,9 @@ function parseArgs(argv) {
     && !normalizeRuntimeLocalProjectionPolicy(args.runtimePersistenceLocalProjectionPolicy)) {
     throw new Error("Invalid --runtime-persistence-local-projection-policy. Expected keep-local-sqlite|keep-json|keep-sql|none");
   }
+  if (args.persistencePolicy !== undefined && !["adopt", "verify-only"].includes(args.persistencePolicy)) {
+    throw new Error("Invalid --persistence-policy. Expected adopt|verify-only");
+  }
   if (args.verifyOnly && args.initDefaults) {
     args.verifyOnly = false;
     args.verifyAfterInstall = true;
@@ -128,6 +135,8 @@ function printUsage() {
   console.log("  node tools/install.mjs --target . --pack core --verify");
   console.log("  node tools/install.mjs --target . --pack core --verify-after-install");
   console.log("  node tools/install.mjs --target . --pack core --skip-artifact-import");
+  console.log("  node tools/install.mjs --target . --pack core --persistence-policy verify-only  # no import or database writes; PostgreSQL must already be ready");
+  console.log("  Persistence policy: adopt (default) or verify-only. Dry-run never connects to a database.");
   console.log("  node tools/install.mjs --target . --pack core --artifact-import-store dual-sqlite");
   console.log("  node tools/install.mjs --target . --pack core --materialize-visible-artifacts");
   console.log("  node tools/install.mjs --target . --pack core --runtime-persistence-backend postgres --runtime-persistence-connection-ref env:AIDN_PG_URL");

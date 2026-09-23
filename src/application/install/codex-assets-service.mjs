@@ -674,7 +674,7 @@ export function readInstallationContext({ targetRoot }) {
   const root = safeRoot(targetRoot), receipt = loadReceipt(root), pending = jsonAt(root, PENDING);
   if (pending) {
     const tx = loadTransaction(root, pending.id);
-    return { receipt, context: tx.installation_context ?? null, scope: tx.scope };
+    return { receipt, context: tx.installation_context ?? null, scope: tx.scope, action: tx.action };
   }
   return { receipt, context: null, scope: null };
 }
