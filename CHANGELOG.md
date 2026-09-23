@@ -2,7 +2,17 @@
 
 ## Unreleased
 
-No unreleased changes.
+- Preserve third-party Codex hooks and client instructions with owned asset plans,
+  local recovery receipts, conflict detection, resumable application, repair,
+  rollback and Codex-only uninstall through bootstrap.
+- Make optional model-assisted customization migration explicit; nominal
+  installation works without a Codex CLI or login.
+- Add Unicode-safe native command-hook adapters, conservative client diagnostics,
+  fresh core admission checks for covered patches, and explicit native support limits.
+- Serialize Codex cache writes and mark stale, failed or unverifiable historical
+  observations as non-reusable without treating them as product validation.
+- Govern new public JSON/effect surfaces, local installation ownership and the
+  deterministic integration gate; native trust and platform evidence remain separate.
 
 ## 0.7.2
 

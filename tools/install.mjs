@@ -27,7 +27,7 @@ function parseArgs(argv) {
     strict: false,
     skipAgents: false,
     forceAgentsMerge: false,
-    codexMigrateCustom: true,
+    codexMigrateCustom: false,
     verifyAfterInstall: false,
     materializeVisibleArtifacts: false,
   };
@@ -77,6 +77,8 @@ function parseArgs(argv) {
       args.skipAgents = true;
     } else if (token === "--force-agents-merge") {
       args.forceAgentsMerge = true;
+    } else if (token === "--codex-migrate-custom") {
+      args.codexMigrateCustom = true;
     } else if (token === "--no-codex-migrate-custom") {
       args.codexMigrateCustom = false;
     } else if (token === "--materialize-visible-artifacts") {
@@ -89,6 +91,9 @@ function parseArgs(argv) {
     }
   }
 
+  if (argv.includes("--codex-migrate-custom") && argv.includes("--no-codex-migrate-custom")) {
+    throw new Error("--codex-migrate-custom conflicts with --no-codex-migrate-custom");
+  }
   if (!args.target) {
     throw new Error("Missing required argument value: --target");
   }
@@ -127,7 +132,8 @@ function printUsage() {
   console.log("  node tools/install.mjs --target ../repo --pack core --strict");
   console.log("  node tools/install.mjs --target ../repo --pack core --skip-agents");
   console.log("  node tools/install.mjs --target ../repo --pack core --force-agents-merge");
-  console.log("  node tools/install.mjs --target ../repo --pack core --no-codex-migrate-custom");
+  console.log("  node tools/install.mjs --target ../repo --pack core --codex-migrate-custom  # explicit optional LLM migration");
+  console.log("  node tools/install.mjs --target ../repo --pack core --no-codex-migrate-custom  # default");
 }
 
 async function main() {

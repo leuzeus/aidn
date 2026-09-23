@@ -1,2 +1,5 @@
 # Additional ignores
 .codex/cache/
+
+# Local Codex ownership receipts and recovery pre-images
+.aidn/install/

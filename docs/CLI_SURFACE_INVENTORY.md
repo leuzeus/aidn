@@ -36,6 +36,15 @@ These command families are intended for users and are covered by public effect p
 - `aidn project config --list --json`
 - `aidn bootstrap --json`
 - `aidn bootstrap --dry-run --json`
+- `aidn bootstrap --diagnose --json`
+- `aidn bootstrap --repair --json`
+- `aidn bootstrap --repair --write --json`
+- `aidn bootstrap --resume --json`
+- `aidn bootstrap --resume --write --json`
+- `aidn bootstrap --rollback --json`
+- `aidn bootstrap --rollback --write --json`
+- `aidn bootstrap --uninstall --json`
+- `aidn bootstrap --uninstall --write --json`
 - `aidn project config --wizard --write`
 - `aidn project config --adapter-file <file> --json` (preview)
 - `aidn project config --adapter-file <file> --write --json` (apply)

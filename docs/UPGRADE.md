@@ -1,5 +1,16 @@
 # Upgrade Guide
 
+## Unreleased Codex integration changes
+
+Bootstrap preserves client instructions and third-party hooks and manages AIDN
+assets with local ownership receipts. Preview before an upgrade and resolve
+reported conflicts. Recovery actions default to preview and require `--write
+--expect-plan <plan_id>` to apply. `--uninstall` removes only the managed Codex
+integration, retaining runtime and project history. Model-assisted customization
+migration now requires `--codex-migrate-custom`.
+
+See [Codex integration](CODEX_INTEGRATION.md) for trust, support limits and recovery.
+
 ## Upgrade to 0.7.2
 
 This governance-only release replaces duplicated pull-request verification
@@ -154,8 +165,8 @@ Recommended post-upgrade reload path:
 5. `docs/audit/WORKFLOW.md`
 6. `docs/audit/SPEC.md` if canonical rule details are needed
 
-6. If an existing `AGENTS.md` must be updated, run with explicit merge:
-
-```bash
-npx aidn install --target <client-repo> --pack core --force-agents-merge
-```
+The installer now manages only the AIDN block in `AGENTS.md` and preserves client
+instructions around it. Preview reports conflicts for edited managed blocks;
+`--force-agents-merge` does not bypass those conflicts. Use `--skip-agents` with
+the low-level installer only when project instruction integration is deliberately
+managed elsewhere.

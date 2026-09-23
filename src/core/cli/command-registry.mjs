@@ -114,6 +114,8 @@ const DIRECT_COMMANDS = freezeDeep([
   publicCommand("root", "bootstrap", "tools/bootstrap.mjs", [
     "bootstrap-preview.v1.schema.json",
     "bootstrap.v1.schema.json",
+    "bootstrap-diagnostics.v1.schema.json",
+    "bootstrap-lifecycle.v1.schema.json",
   ]),
   publicCommand("root", "build-release", "tools/build-release.mjs"),
   publicCommand("root", "install", "tools/install.mjs"),

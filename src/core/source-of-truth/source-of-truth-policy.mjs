@@ -25,6 +25,15 @@ function normalizeStateMode(value) {
 }
 
 const CONCEPT_GOVERNANCE = freezeDeep({
+  install_assets: {
+    owner: "Codex integration installer maintainer",
+    lifecycle: "planned -> applying -> installed|interrupted -> repaired|rolled_back|uninstalled",
+    scope: "Codex assets owned by AIDN in one physical target worktree",
+    retention: "retain transaction pre-images and receipts locally after rollback or uninstall; never include in shared runtime",
+    migration: "adopt only exact known legacy fingerprints or identical package assets; divergent assets require resolution",
+    replacement: "compare recorded post-images before changing owned files, blocks or hook entries",
+    evidence_targets: ["src/application/install/codex-assets-service.mjs"],
+  },
   workflow_rules: {
     owner: "workflow policy maintainer",
     lifecycle: "authored -> active -> superseded -> archived",
@@ -254,6 +263,15 @@ function policy({
 }
 
 const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
+  policy({
+    concept: "install_assets",
+    label: "Codex installation ownership",
+    files: ".aidn/install/receipt.json and referenced local transactions",
+    dual: ".aidn/install/receipt.json and referenced local transactions",
+    dbOnly: ".aidn/install/receipt.json and referenced local transactions",
+    projection: "bootstrap asset plans and installation diagnostics",
+    notes: "Local installation recovery authority only; never workflow admission or runtime state.",
+  }),
   policy({
     concept: "workflow_rules",
     label: "Workflow rules",

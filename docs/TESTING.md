@@ -61,6 +61,7 @@ applies migrations.
 When a change affects the simplified install/upgrade orchestrator, run:
 
 - `npm run perf:verify-bootstrap`
+- `npm run perf:verify-codex-integration`
 - `npm run perf:verify-install-import`
 - `npm run perf:verify-project-config`
 - `npm run perf:verify-install-idempotence`
@@ -431,3 +432,22 @@ When closing a lot, report:
 - which commands passed
 - which commands were skipped and why
 - whether the evidence came from tracked fixtures, parity checks, or a local-only reference corpus
+
+## Codex integration qualification
+
+`perf:verify-codex-integration` runs isolated temporary product installations,
+owned-asset conflict/rollback/interruption cases, real child-process cache
+concurrency, hook adapter protocol fixtures and bootstrap lifecycle contracts.
+It never installs the package into this source checkout and does not call an LLM.
+A new ownership regression must first fail on the previous installer.
+
+Record PASS, FAIL, SKIP and UNAVAILABLE separately. Identify source, scaffold,
+fixture, installed package and real client evidence. Adapter fixtures cannot
+prove native hook execution, human trust, disabled-hook behavior or whole-tool
+coverage. Windows, Unix, WSL, cloud, CLI, application and IDE qualifications are
+separate. See [the support boundary](CODEX_INTEGRATION.md).
+
+Measurements report wall-clock milliseconds and output bytes on the same fixture;
+bytes are not tokens. Native qualification uses a reviewed temporary client with
+human trust and verifies both a denied covered edit and an admitted edit after
+fresh core prerequisites. Error, timeout and out-of-coverage tests remain necessary.

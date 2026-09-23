@@ -1,0 +1,521 @@
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { writeFileAtomicSync } from "../../lib/fs/atomic-write-lib.mjs";
+import { renderTemplateVariables } from "./template-io.mjs";
+
+const STORE = ".aidn/install";
+const RECEIPT = `${STORE}/receipt.json`;
+const PENDING = `${STORE}/pending.json`;
+const LOCK = `${STORE}/lock.json`;
+const PRIVATE_IGNORE = `${STORE}/.gitignore`;
+const START = "<!-- CODEX-AUDIT-WORKFLOW START -->";
+const END = "<!-- CODEX-AUDIT-WORKFLOW END -->";
+const legacy = JSON.parse(fs.readFileSync(new URL("./codex-legacy-fingerprints.v1.json", import.meta.url), "utf8"));
+const LEGACY_HOOK = {
+  type: "command",
+  command: 'node "$(git rev-parse --show-toplevel)/.codex/hooks/aidn-session-start.mjs"',
+  commandWindows: 'powershell.exe -NoProfile -NonInteractive -Command "$root = git rev-parse --show-toplevel; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; node (Join-Path $root \'.codex/hooks/aidn-session-start.mjs\')"',
+  timeout: 10,
+};
+const ACTIONS = new Set(["install", "repair", "resume", "rollback", "uninstall"]);
+const hash = (value) => crypto.createHash("sha256").update(value).digest("hex");
+const encode = (text) => Buffer.from(text).toString("base64");
+const decode = (data) => data === null ? null : Buffer.from(data, "base64").toString("utf8");
+const bytesHash = (data) => data === null ? null : hash(Buffer.from(data, "base64"));
+const normalizedHash = (text) => hash(String(text).replace(/\r\n/g, "\n"));
+function stable(value) {
+  if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
+  if (value && typeof value === "object") return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stable(value[key])}`).join(",")}}`;
+  return JSON.stringify(value);
+}
+const same = (left, right) => stable(left) === stable(right);
+function sealed(value) { return { ...value, integrity_sha256: hash(stable(value)) }; }
+function unseal(value, relative) {
+  const { integrity_sha256: integrity, ...content } = value;
+  if (typeof integrity !== "string" || integrity !== hash(stable(content))) problem("INVALID_INSTALL_RECORD_INTEGRITY", relative);
+  return content;
+}
+function problem(code, relativePath = "") {
+  const error = new Error(`${code}${relativePath ? `: ${relativePath}` : ""}`);
+  error.code = code;
+  error.relativePath = relativePath;
+  throw error;
+}
+function isObject(value) { return value !== null && typeof value === "object" && !Array.isArray(value); }
+
+// Check every existing path component, including the root's ancestors. Never follow
+// a symlink/junction into another checkout or an external install store.
+function safeRoot(root) {
+  const absolute = path.resolve(root);
+  const parsed = path.parse(absolute);
+  let cursor = parsed.root;
+  for (const component of absolute.slice(parsed.root.length).split(path.sep).filter(Boolean)) {
+    cursor = path.join(cursor, component);
+    try {
+      const stat = fs.lstatSync(cursor);
+      if (stat.isSymbolicLink() || !stat.isDirectory()) problem("UNSAFE_ROOT");
+    } catch (error) { if (error.code !== "ENOENT") throw error; }
+  }
+  return absolute;
+}
+function safePath(root, relative, { directory = false } = {}) {
+  if (typeof relative !== "string" || relative.includes("\\") || relative.startsWith("/")
+    || relative.split("/").some((part) => !part || part === "." || part === ".." || part.includes(":"))) problem("INVALID_ASSET_PATH", relative);
+  const absolute = path.resolve(root, ...relative.split("/"));
+  if (!absolute.startsWith(`${root}${path.sep}`)) problem("PATH_ESCAPE", relative);
+  let cursor = root;
+  const parts = relative.split("/");
+  for (let index = 0; index < parts.length; index += 1) {
+    cursor = path.join(cursor, parts[index]);
+    try {
+      const stat = fs.lstatSync(cursor);
+      if (stat.isSymbolicLink()) problem("SYMLINK_ASSET", relative);
+      if (index < parts.length - 1 || directory) {
+        if (!stat.isDirectory()) problem("NOT_A_DIRECTORY", relative);
+      } else if (!stat.isFile() || stat.nlink > 1) problem("UNSAFE_ASSET_FILE", relative);
+    } catch (error) { if (error.code !== "ENOENT") throw error; }
+  }
+  return absolute;
+}
+function read(root, relative) {
+  const absolute = safePath(root, relative);
+  if (!fs.existsSync(absolute)) return null;
+  if (fs.statSync(absolute).size > 8 * 1024 * 1024) problem("ASSET_TOO_LARGE", relative);
+  return fs.readFileSync(absolute).toString("base64");
+}
+function jsonAt(root, relative) {
+  const value = read(root, relative);
+  if (value === null) return null;
+  try { return JSON.parse(decode(value)); } catch { problem("INVALID_JSON", relative); }
+}
+function write(root, relative, data) {
+  const absolute = safePath(root, relative);
+  if (data === null) {
+    if (fs.existsSync(absolute)) fs.unlinkSync(absolute);
+  } else writeFileAtomicSync(absolute, Buffer.from(data, "base64"), { mode: 0o600 });
+}
+function writeJson(root, relative, value) { write(root, relative, encode(`${JSON.stringify(value, null, 2)}\n`)); }
+function scopeId(root) { return hash(process.platform === "win32" ? root.toLowerCase() : root); }
+export function isCodexManagedTarget(relative) {
+  const value = String(relative).replace(/\\/g, "/").replace(/\/$/, "");
+  return value === "AGENTS.md" || value === ".codex/hooks.json" || value === ".aidn/codex/skills.yaml"
+    || [".agents/skills", ".codex/agents", ".codex/hooks"].some((prefix) => value === prefix || value.startsWith(`${prefix}/`));
+}
+function validateAssetPath(relative) {
+  if (!isCodexManagedTarget(relative)) problem("UNOWNED_RECEIPT_PATH", relative);
+}
+function loadReceipt(root) {
+  const stored = jsonAt(root, RECEIPT);
+  if (!stored) return null;
+  const receipt = unseal(stored, RECEIPT);
+  if (receipt.schema_version !== 1 || receipt.scope !== "codex-integration" || receipt.root_id !== scopeId(root)
+    || !isObject(receipt.assets)) problem("INVALID_RECEIPT", RECEIPT);
+  for (const [relative, asset] of Object.entries(receipt.assets)) {
+    validateAssetPath(relative);
+    if (!isObject(asset) || !["file", "hooks", "agents-block"].includes(asset.kind)) problem("INVALID_RECEIPT_ASSET", relative);
+    if (asset.kind === "file" && typeof asset.current !== "string") problem("INVALID_RECEIPT_ASSET", relative);
+    if (asset.kind === "hooks" && !Array.isArray(asset.current)) problem("INVALID_RECEIPT_ASSET", relative);
+    if (asset.kind === "agents-block" && typeof asset.current !== "string") problem("INVALID_RECEIPT_ASSET", relative);
+  }
+  return receipt;
+}
+function blockOf(text, relative = "AGENTS.md") {
+  if (text === null) return null;
+  const starts = text.split(START).length - 1;
+  const ends = text.split(END).length - 1;
+  if (!starts && !ends) return null;
+  if (starts !== 1 || ends !== 1 || text.indexOf(END) < text.indexOf(START)) problem("AMBIGUOUS_AGENTS_BLOCK", relative);
+  return text.slice(text.indexOf(START), text.indexOf(END) + END.length);
+}
+function replaceBlock(data, from, to) {
+  const text = decode(data) ?? "";
+  const actual = blockOf(text);
+  if (actual !== from) problem("MODIFIED_MANAGED_BLOCK", "AGENTS.md");
+  if (from !== null) return encode(text.replace(from, to ?? ""));
+  if (to === null) return data;
+  if (!text) return encode(`${to}\n`);
+  return encode(`${text}${text.endsWith("\n") ? "" : "\n"}\n${to}\n`);
+}
+function hooksConfig(data) {
+  let config;
+  try { config = data === null ? { version: 1, hooks: {} } : JSON.parse(decode(data)); }
+  catch { problem("INVALID_HOOKS_JSON", ".codex/hooks.json"); }
+  if (!isObject(config) || !isObject(config.hooks) || (config.version !== undefined && config.version !== 1)) problem("INVALID_HOOKS_STRUCTURE", ".codex/hooks.json");
+  for (const groups of Object.values(config.hooks)) {
+    if (!Array.isArray(groups)) problem("INVALID_HOOKS_STRUCTURE", ".codex/hooks.json");
+    for (const group of groups) if (!isObject(group) || !Array.isArray(group.hooks) || group.hooks.some((hook) => !isObject(hook))) problem("INVALID_HOOKS_STRUCTURE", ".codex/hooks.json");
+  }
+  return config;
+}
+function hookTokens(config) {
+  return Object.entries(config.hooks).flatMap(([event, groups]) => groups.flatMap((group) => {
+    const { hooks, ...attributes } = group;
+    return hooks.map((hook) => ({ event, group: attributes, hook }));
+  }));
+}
+function sameToken(left, right) { return same(left, right); }
+function matchesToken(actual, owned) {
+  return actual.event === owned.event && same(actual.hook, owned.hook)
+    && same(actual.group.matcher ?? null, owned.group.matcher ?? null)
+    && Object.entries(owned.group).every(([key, value]) => same(actual.group[key], value));
+}
+function validateOwnedHooks(data, owned, { allowMissing = false } = {}) {
+  const actual = hookTokens(hooksConfig(data));
+  for (const token of owned) {
+    const count = actual.filter((candidate) => matchesToken(candidate, token)).length;
+    if (count !== 1 && !(allowMissing && count === 0)) problem("MODIFIED_OR_DUPLICATE_MANAGED_HOOK", ".codex/hooks.json");
+  }
+  return actual;
+}
+function replaceHooks(data, from, to, allowMissing = false) {
+  const config = hooksConfig(data);
+  validateOwnedHooks(data, from, { allowMissing });
+  const remaining = [...to];
+  for (const [event, groups] of Object.entries(config.hooks)) {
+    const nextGroups = [];
+    for (const group of groups) {
+      const { hooks, ...attributes } = group;
+      const nextHooks = [];
+      let removed = false;
+      for (const hook of hooks) {
+        const token = { event, group: attributes, hook };
+        if (!from.some((item) => matchesToken(token, item))) { nextHooks.push(hook); continue; }
+        removed = true;
+        const replacement = remaining.findIndex((item) => item.event === event && same(item.group, attributes));
+        if (replacement >= 0) nextHooks.push(remaining.splice(replacement, 1)[0].hook);
+      }
+      const ownedWrapper = from.some((token) => token.event === event && same(token.group, attributes));
+      if (nextHooks.length || !removed || !ownedWrapper) nextGroups.push({ ...group, hooks: nextHooks });
+    }
+    if (nextGroups.length || groups.length === 0) config.hooks[event] = nextGroups;
+    else delete config.hooks[event];
+  }
+  for (const token of remaining) {
+    if (!Object.hasOwn(config.hooks, token.event)) config.hooks[token.event] = [];
+    config.hooks[token.event].push({ ...token.group, hooks: [token.hook] });
+  }
+  if (data !== null && same(config, hooksConfig(data))) return data;
+  return encode(`${JSON.stringify(config, null, 2)}\n`);
+}
+function knownLegacy(relative, text) { return legacy.assets[relative]?.includes(normalizedHash(text)) === true; }
+function desiredAssets(repoRoot, templateVars) {
+  const result = new Map();
+  function add(source, relative, kind = "file") {
+    const sourcePath = safePath(repoRoot, source);
+    const raw = fs.readFileSync(sourcePath, "utf8");
+    const rendered = renderTemplateVariables(raw, templateVars);
+    if (/\{\{[A-Z0-9_]+\}\}/.test(rendered)) problem("UNRESOLVED_CODEX_TEMPLATE", relative);
+    result.set(relative, { kind, data: encode(rendered) });
+  }
+  function walk(source, target) {
+    safePath(repoRoot, source, { directory: true });
+    for (const entry of fs.readdirSync(path.join(repoRoot, source), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      if (entry.isSymbolicLink()) problem("SYMLINK_PACKAGE_ASSET", source);
+      if (entry.isDirectory()) walk(`${source}/${entry.name}`, `${target}/${entry.name}`);
+      else add(`${source}/${entry.name}`, `${target}/${entry.name}`);
+    }
+  }
+  for (const entry of fs.readdirSync(path.join(repoRoot, "scaffold/codex"), { withFileTypes: true })) {
+    if (entry.isDirectory()) walk(`scaffold/codex/${entry.name}`, `.agents/skills/${entry.name}`);
+  }
+  walk("scaffold/codex_agents", ".codex/agents");
+  walk("scaffold/codex_hooks/scripts", ".codex/hooks");
+  add("scaffold/codex/skills.yaml", ".aidn/codex/skills.yaml");
+  add("scaffold/codex_hooks/hooks.json", ".codex/hooks.json", "hooks");
+  add("scaffold/root/AGENTS.md", "AGENTS.md", "agents-block");
+  return result;
+}
+function packageBinding(repoRoot) {
+  repoRoot = safeRoot(repoRoot);
+  const version = fs.readFileSync(safePath(repoRoot, "VERSION"), "utf8").trim();
+  return { root: repoRoot, version, entry: "bin/aidn.mjs", entry_sha256: bytesHash(read(repoRoot, "bin/aidn.mjs")), version_sha256: bytesHash(read(repoRoot, "VERSION")) };
+}
+function publicPlan(plan) {
+  return {
+    ok: plan.conflicts.length === 0, scope: "codex-integration", action: plan.action,
+    plan_id: plan.id, dry_run: true, written: false, write_targets: [],
+    installed: Object.keys(plan.receipt?.assets ?? {}).length > 0,
+    pending: plan.pending?.id ?? null,
+    lock_recovery: plan.lock && ["resume", "rollback"].includes(plan.action) && !processExists(plan.lock.pid)
+      ? { required: true, path: LOCK, owner: "not-running" } : { required: false },
+    package_version: plan.binding?.version ?? plan.receipt?.package?.version ?? null,
+    operations: plan.operations.map((op) => ({ path: op.path, kind: op.kind, effect: op.before === op.after ? "unchanged" : op.after === null ? "remove" : op.before === null ? "create" : "update", before_hash: bytesHash(op.before), after_hash: bytesHash(op.after) })),
+    conflicts: plan.conflicts, errors: plan.conflicts.map((item) => `${item.code}${item.path ? `: ${item.path}` : ""}`),
+    warnings: plan.warnings,
+  };
+}
+function makeOperation(relative, kind, before, after, beforeOwned, afterOwned) {
+  return { path: relative, kind, before, after, before_owned: beforeOwned, after_owned: afterOwned };
+}
+function restoredContent(op, current) {
+  if (current === op.before) return current;
+  if (current === op.after) return op.before;
+  if (op.kind === "file") problem("POSTIMAGE_CHANGED", op.path);
+  if (op.kind === "agents-block") return replaceBlock(current, op.after_owned, op.before_owned);
+  return replaceHooks(current, op.after_owned, op.before_owned);
+}
+function loadTransaction(root, id) {
+  if (typeof id !== "string" || !/^[a-f0-9]{32}$/.test(id)) problem("INVALID_TRANSACTION_ID");
+  const stored = jsonAt(root, `${STORE}/transactions/${id}.json`);
+  const tx = stored ? unseal(stored, `${STORE}/transactions/${id}.json`) : null;
+  if (!tx || tx.schema_version !== 1 || tx.root_id !== scopeId(root) || !Array.isArray(tx.operations)) problem("INVALID_TRANSACTION");
+  for (const op of tx.operations) {
+    validateAssetPath(op.path);
+    if (!["file", "hooks", "agents-block"].includes(op.kind)) problem("INVALID_TRANSACTION");
+  }
+  return tx;
+}
+function buildPlan(options = {}, { ignoreLock = false } = {}) {
+  const action = options.action ?? "install";
+  const targetRoot = safeRoot(options.targetRoot ?? process.cwd());
+  const repoRoot = safeRoot(options.repoRoot ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../.."));
+  const plan = { action, targetRoot, repoRoot, operations: [], conflicts: [], warnings: [], receipt: null, pending: null, nextReceipt: null, binding: null, id: "" };
+  try {
+    if (!ACTIONS.has(action)) problem("INVALID_INSTALL_ACTION");
+    // Store safety is validated even when none of the selected assets is present.
+    safePath(targetRoot, STORE, { directory: true });
+    const privateIgnore = read(targetRoot, PRIVATE_IGNORE);
+    if (privateIgnore !== null && decode(privateIgnore).trim() !== "*") problem("INSTALL_STORE_IGNORE_CONFLICT", PRIVATE_IGNORE);
+    plan.receipt = loadReceipt(targetRoot);
+    plan.pending = jsonAt(targetRoot, PENDING);
+    plan.lock = jsonAt(targetRoot, LOCK);
+    plan.recoveryLock = jsonAt(targetRoot, STORE + "/recovery-lock.json");
+    if (!ignoreLock && plan.recoveryLock) problem("INTERRUPTED_LOCK_RECOVERY_REQUIRES_INSPECTION", STORE + "/recovery-lock.json");
+    if (!ignoreLock && plan.lock) {
+      if (processExists(plan.lock.pid)) problem("INSTALL_LOCKED", LOCK);
+      if (!["resume", "rollback"].includes(action)) problem("STALE_INSTALL_LOCK_REQUIRES_RESUME", LOCK);
+    }
+    if (plan.pending && (plan.pending.schema_version !== 1 || plan.pending.root_id !== scopeId(targetRoot))) problem("INVALID_PENDING_TRANSACTION", PENDING);
+    const emptyReceipt = { schema_version: 1, scope: "codex-integration", root_id: scopeId(targetRoot), package: null, assets: {}, last_transaction: null, last_action: null };
+    plan.nextReceipt = structuredClone(plan.receipt ?? emptyReceipt);
+    if (action === "repair" && !plan.receipt) problem("NO_MANAGED_CODEX_INSTALLATION");
+    if (plan.pending && !["resume", "rollback"].includes(action)) problem("INTERRUPTED_INSTALL_REQUIRES_RESUME_OR_ROLLBACK", PENDING);
+    if (action === "resume") {
+      if (!plan.pending) { plan.warnings.push(plan.lock ? "No asset journal; resume will recover the abandoned installation lock." : "No interrupted Codex asset transaction."); }
+      else {
+        const tx = loadTransaction(targetRoot, plan.pending.id);
+        plan.resume = tx;
+        plan.binding = tx.receipt_after.package;
+        const actualBinding = packageBinding(plan.binding.root);
+        if (!same(actualBinding, plan.binding)) problem("PACKAGE_CHANGED_SINCE_TRANSACTION");
+        for (const operation of tx.operations) {
+          const current = read(targetRoot, operation.path);
+          if (current !== operation.before && current !== operation.after) problem("TRANSACTION_POSTIMAGE_CHANGED", operation.path);
+          plan.operations.push({ ...operation, before: current });
+        }
+        plan.nextReceipt = tx.receipt_after;
+      }
+    } else if (action === "rollback") {
+      const id = plan.pending?.id ?? plan.receipt?.last_transaction;
+      if (!id || (!plan.pending && plan.receipt?.last_action === "rollback")) plan.warnings.push("No Codex asset transaction to roll back.");
+      else {
+        const tx = loadTransaction(targetRoot, id);
+        plan.rollbackOf = tx.id;
+        for (const operation of [...tx.operations].reverse()) {
+          const current = read(targetRoot, operation.path);
+          const after = restoredContent(operation, current);
+          plan.operations.push(makeOperation(operation.path, operation.kind, current, after, operation.after_owned, operation.before_owned));
+        }
+        plan.nextReceipt = structuredClone(tx.receipt_before ?? emptyReceipt);
+      }
+    } else if (action === "uninstall") {
+      for (const [relative, asset] of Object.entries(plan.receipt?.assets ?? {})) {
+        const current = read(targetRoot, relative);
+        let after;
+        if (asset.kind === "file") {
+          if (current !== null && current !== asset.current) problem("MODIFIED_MANAGED_ASSET", relative);
+          after = null;
+        } else if (asset.kind === "hooks") {
+          after = current === null ? null : replaceHooks(current, asset.current, []);
+          // Receipt refresh must never adopt later third-party fields as deletable.
+          if (asset.created && after !== null && same(hooksConfig(after), { version: 1, hooks: {} })) after = null;
+        } else {
+          after = current === null ? null : replaceBlock(current, asset.current, null);
+          if (after === asset.unmanaged_baseline) after = asset.uninstall_preimage;
+          else if (asset.created && after !== null && decode(after).trim() === "") after = null;
+        }
+        plan.operations.push(makeOperation(relative, asset.kind, current, after, asset.current, asset.kind === "hooks" ? [] : null));
+      }
+      plan.nextReceipt.assets = {};
+    } else {
+      plan.binding = packageBinding(repoRoot);
+      const desired = desiredAssets(repoRoot, { VERSION: plan.binding.version, ...options.templateVars });
+      plan.nextReceipt.package = plan.binding;
+      for (const [relative, item] of desired) {
+        const current = read(targetRoot, relative);
+        const owned = plan.receipt?.assets?.[relative];
+        let beforeOwned = null;
+        let afterOwned = item.data;
+        let after = item.data;
+        if (item.kind === "file") {
+          if (owned && current !== owned.current && current !== null) problem("MODIFIED_MANAGED_ASSET", relative);
+          if (!owned && current !== null && current !== item.data && !knownLegacy(relative, decode(current))) problem("UNOWNED_ASSET_CONFLICT", relative);
+          beforeOwned = current;
+        } else if (item.kind === "agents-block") {
+          if (options.skipAgents) { plan.warnings.push("AGENTS.md was explicitly excluded."); continue; }
+          const desiredText = decode(item.data);
+          afterOwned = blockOf(desiredText) ?? `${START}\n${desiredText.trimEnd()}\n${END}`;
+          beforeOwned = blockOf(decode(current));
+          if (owned && beforeOwned !== owned.current && !(action === "repair" && beforeOwned === null)) problem("MODIFIED_MANAGED_BLOCK", relative);
+          if (!owned && beforeOwned !== null && beforeOwned !== afterOwned && !knownLegacy(relative, beforeOwned)) problem("UNOWNED_AGENTS_BLOCK", relative);
+          after = replaceBlock(current, beforeOwned, afterOwned);
+        } else {
+          const desiredTokens = hookTokens(hooksConfig(item.data));
+          const actual = hookTokens(hooksConfig(current));
+          if (owned) {
+            beforeOwned = owned.current;
+            validateOwnedHooks(current, beforeOwned, { allowMissing: current === null });
+          } else {
+            beforeOwned = actual.filter((token) => desiredTokens.some((wanted) => sameToken(token, wanted))
+              || (token.event === "SessionStart" && Object.keys(token.group).length === 0 && same(token.hook, LEGACY_HOOK)));
+            const fingerprints = beforeOwned.map(stable);
+            if (new Set(fingerprints).size !== fingerprints.length) problem("DUPLICATE_LEGACY_HOOK", relative);
+            for (const token of actual) {
+              const claimsLegacy = token.hook.command === LEGACY_HOOK.command || token.hook.commandWindows === LEGACY_HOOK.commandWindows;
+              if (claimsLegacy && !beforeOwned.some((known) => sameToken(known, token))) problem("AMBIGUOUS_LEGACY_HOOK", relative);
+            }
+          }
+          afterOwned = desiredTokens;
+          after = replaceHooks(current, beforeOwned, afterOwned, current === null);
+        }
+        plan.operations.push(makeOperation(relative, item.kind, current, after, beforeOwned, afterOwned));
+        plan.nextReceipt.assets[relative] = { kind: item.kind, current: afterOwned, full_postimage: after, created: owned?.created ?? current === null, source_hash: bytesHash(item.data) };
+        if (item.kind === "agents-block") {
+          plan.nextReceipt.assets[relative].unmanaged_baseline = owned?.unmanaged_baseline ?? replaceBlock(after, afterOwned, null);
+          plan.nextReceipt.assets[relative].uninstall_preimage = owned && Object.hasOwn(owned, "uninstall_preimage")
+            ? owned.uninstall_preimage : beforeOwned === null ? current : replaceBlock(current, beforeOwned, null);
+        }
+      }
+      for (const [relative, owned] of Object.entries(plan.receipt?.assets ?? {})) {
+        if (desired.has(relative)) continue;
+        const current = read(targetRoot, relative);
+        if (owned.kind !== "file" || (current !== null && current !== owned.current)) problem("MODIFIED_OBSOLETE_ASSET", relative);
+        plan.operations.push(makeOperation(relative, owned.kind, current, null, owned.current, null));
+        delete plan.nextReceipt.assets[relative];
+      }
+    }
+  } catch (error) {
+    plan.conflicts.push({ code: error.code ?? "CODEX_ASSET_PLAN_FAILED", path: error.relativePath ?? "" });
+  }
+  plan.id = hash(stable({ action, root: scopeId(targetRoot), binding: plan.binding, receipt: plan.receipt, pending: plan.pending, operations: plan.operations, conflicts: plan.conflicts, nextReceipt: plan.nextReceipt }));
+  return plan;
+}
+export function planCodexAssets(options = {}) { return publicPlan(buildPlan(options)); }
+export function diagnoseCodexAssets(options = {}) {
+  const plan = buildPlan({ ...options, action: "install" });
+  const output = publicPlan(plan);
+  return { ...output, action: "diagnose", state: plan.pending ? "interrupted" : !output.ok ? "conflict" : !output.installed ? "not-installed" : output.operations.some((op) => op.effect !== "unchanged") ? "update-or-repair-available" : "installed", capabilities: { approved: "unknown", connected: "not-applicable", operational: "not-verified" } };
+}
+function processExists(pid) {
+  if (!Number.isSafeInteger(pid) || pid <= 0) return true;
+  try { process.kill(pid, 0); return true; } catch (error) { return error.code !== "ESRCH"; }
+}
+function acquireLock(root, action) {
+  const absolute = safePath(root, LOCK);
+  const recoveryRelative = `${STORE}/recovery-lock.json`;
+  const recoveryPath = safePath(root, recoveryRelative);
+  if (fs.existsSync(recoveryPath)) problem("INSTALL_RECOVERY_LOCKED", recoveryRelative);
+  const existing = jsonAt(root, LOCK);
+  let recoveryDescriptor;
+  let recoveryToken;
+  try {
+    if (existing) {
+      if (!["resume", "rollback"].includes(action) || processExists(existing.pid)
+        || typeof existing.token !== "string" || existing.root_id !== scopeId(root)) problem("INSTALL_LOCKED", LOCK);
+      // Serialize stale-lock reclamation independently of the primary lock. Never
+      // unlink a live replacement created by another concurrent resume process.
+      recoveryToken = crypto.randomBytes(16).toString("hex");
+      try { recoveryDescriptor = fs.openSync(recoveryPath, "wx", 0o600); }
+      catch (error) { if (error.code === "EEXIST") problem("INSTALL_RECOVERY_LOCKED", recoveryRelative); throw error; }
+      fs.writeFileSync(recoveryDescriptor, JSON.stringify({ pid: process.pid, token: recoveryToken }));
+      fs.fsyncSync(recoveryDescriptor);
+      const current = jsonAt(root, LOCK);
+      if (!same(existing, current) || processExists(current.pid)) problem("INSTALL_LOCKED", LOCK);
+      fs.unlinkSync(absolute);
+    }
+    safePath(root, STORE, { directory: true });
+    fs.mkdirSync(path.join(root, STORE), { recursive: true });
+    const token = crypto.randomBytes(16).toString("hex");
+    let descriptor;
+    try {
+      descriptor = fs.openSync(absolute, "wx", 0o600);
+      fs.writeFileSync(descriptor, JSON.stringify({ schema_version: 1, pid: process.pid, token, root_id: scopeId(root) }));
+      fs.fsyncSync(descriptor);
+    } catch (error) {
+      if (error.code === "EEXIST") problem("INSTALL_LOCKED", LOCK);
+      throw error;
+    } finally { if (descriptor !== undefined) fs.closeSync(descriptor); }
+    return () => { if (jsonAt(root, LOCK)?.token === token) fs.unlinkSync(safePath(root, LOCK)); };
+  } finally {
+    if (recoveryDescriptor !== undefined) {
+      fs.closeSync(recoveryDescriptor);
+      if (jsonAt(root, recoveryRelative)?.token === recoveryToken) fs.unlinkSync(safePath(root, recoveryRelative));
+    }
+  }
+}
+export function executeCodexAssets(options = {}) {
+  const before = buildPlan(options);
+  const output = publicPlan(before);
+  if (options.dryRun !== false || !output.ok) return output;
+  const expected = options.expectedPlanId ?? options.expectPlan;
+  if (expected && expected !== before.id) return { ...output, ok: false, conflicts: [{ code: "STALE_INSTALL_PLAN", path: "" }], errors: ["STALE_INSTALL_PLAN"] };
+  const changes = before.operations.filter((op) => op.before !== op.after);
+  const receiptChanged = !same(before.nextReceipt, before.receipt) && before.nextReceipt !== null;
+  if (!changes.length && !receiptChanged && !before.pending && !before.lock) return { ...output, dry_run: false };
+  // A lifecycle call is intentionally a no-op when no integration was ever installed.
+  if (!changes.length && !before.receipt && !before.pending && !before.lock && ["resume", "rollback", "uninstall"].includes(before.action)) return { ...output, dry_run: false };
+  let release;
+  let transaction;
+  const written = [];
+  const metadataWritten = [];
+  try {
+    release = acquireLock(before.targetRoot, before.action);
+    const fresh = buildPlan(options, { ignoreLock: true });
+    if (fresh.id !== before.id || fresh.conflicts.length) problem("STALE_INSTALL_PLAN");
+    if (before.lock && !changes.length && !before.pending && ["resume", "rollback"].includes(before.action)) {
+      return { ...output, dry_run: false, written: true, write_targets: [LOCK], recovered_lock: true };
+    }
+    const transactionId = before.resume?.id ?? crypto.randomBytes(16).toString("hex");
+    // Keep pre-images private even if the process stops before root .gitignore is installed.
+    if (read(before.targetRoot, PRIVATE_IGNORE) === null) {
+      write(before.targetRoot, PRIVATE_IGNORE, encode("*\n"));
+      metadataWritten.push(PRIVATE_IGNORE);
+    }
+    transaction = before.resume ?? {
+      schema_version: 1, scope: "codex-integration", id: transactionId,
+      root_id: scopeId(before.targetRoot), action: before.action, plan_id: before.id,
+      status: "pending", operations: before.operations,
+      receipt_before: before.receipt, receipt_after: before.nextReceipt,
+      rollback_of: before.rollbackOf ?? null,
+    };
+    writeJson(before.targetRoot, `${STORE}/transactions/${transactionId}.json`, sealed(transaction));
+    metadataWritten.push(`${STORE}/transactions/${transactionId}.json`);
+    writeJson(before.targetRoot, PENDING, { schema_version: 1, root_id: scopeId(before.targetRoot), id: transactionId });
+    metadataWritten.push(PENDING);
+    let applied = 0;
+    if (options.failAfter === 0) problem("INJECTED_INSTALL_INTERRUPTION");
+    for (const operation of transaction.operations) {
+      const current = read(before.targetRoot, operation.path);
+      if (current === operation.after) continue;
+      if (current !== operation.before) problem("TRANSACTION_POSTIMAGE_CHANGED", operation.path);
+      write(before.targetRoot, operation.path, operation.after);
+      written.push(operation.path);
+      applied += 1;
+      if (Number.isInteger(options.failAfter) && applied >= options.failAfter) problem("INJECTED_INSTALL_INTERRUPTION");
+    }
+    const receipt = { ...transaction.receipt_after, last_transaction: transactionId, last_action: transaction.action };
+    writeJson(before.targetRoot, RECEIPT, sealed(receipt));
+    transaction.status = "complete";
+    transaction.receipt_after = receipt;
+    writeJson(before.targetRoot, `${STORE}/transactions/${transactionId}.json`, sealed(transaction));
+    write(before.targetRoot, PENDING, null);
+    return { ...output, dry_run: false, installed: Object.keys(receipt.assets).length > 0, package_version: receipt.package?.version ?? null, written: written.length > 0 || receiptChanged, write_targets: [...written, ...metadataWritten, RECEIPT], transaction_id: transactionId, pending: null };
+  } catch (error) {
+    return { ...output, ok: false, dry_run: false, written: written.length > 0 || metadataWritten.length > 0, write_targets: [...written, ...metadataWritten],
+      pending: transaction?.id ?? before.pending?.id ?? null,
+      conflicts: [{ code: error.code ?? "CODEX_ASSET_APPLY_FAILED", path: error.relativePath ?? "" }],
+      errors: [`${error.code ?? "CODEX_ASSET_APPLY_FAILED"}${error.relativePath ? `: ${error.relativePath}` : ""}`] };
+  } finally { if (release) release(); }
+}

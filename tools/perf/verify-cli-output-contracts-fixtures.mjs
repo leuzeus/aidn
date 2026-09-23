@@ -99,8 +99,13 @@ const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-outpu
 const AIDN_BIN = path.join(REPO_ROOT, "bin", "aidn.mjs");
 
 const CONTRACT_CASES = [
+  { name: "bootstrap-diagnostics", schema: "bootstrap-diagnostics.v1.schema.json",
+    args: ["bootstrap", "--diagnose", "--json"], allowNonZero: true, noMutationPaths: ["AGENTS.md", ".codex/hooks.json", ".aidn/install/receipt.json"] },
+  { name: "bootstrap-lifecycle", schema: "bootstrap-lifecycle.v1.schema.json",
+    args: ["bootstrap", "--repair", "--json"], allowNonZero: true, noMutationPaths: ["AGENTS.md", ".codex/hooks.json", ".aidn/install/receipt.json"] },
   {
     name: "bootstrap",
+    freshTarget: true,
     schema: "bootstrap.v1.schema.json",
     args: ["bootstrap", "--profile", "minimal", "--json"],
     env(tmpRoot) {
@@ -125,6 +130,7 @@ const CONTRACT_CASES = [
   },
   {
     name: "bootstrap-preview",
+    freshTarget: true,
     schema: "bootstrap-preview.v1.schema.json",
     args: ["bootstrap", "--profile", "minimal", "--dry-run", "--json"],
   },
@@ -532,7 +538,8 @@ function copyCaseFixture(baseRoot, tempRoot, testCase, index) {
     .replace(/^-+|-+$/g, "")
     .toLowerCase();
   const caseRoot = path.join(tempRoot, `${String(index).padStart(2, "0")}-${safeName}`);
-  fs.cpSync(baseRoot, caseRoot, { recursive: true });
+  if (testCase.freshTarget) fs.mkdirSync(caseRoot, { recursive: true });
+  else fs.cpSync(baseRoot, caseRoot, { recursive: true });
   return caseRoot;
 }
 

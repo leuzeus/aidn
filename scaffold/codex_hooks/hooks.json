@@ -3,11 +3,25 @@
   "hooks": {
     "SessionStart": [
       {
+        "matcher": "startup|resume|clear|compact",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/aidn-session-start.mjs\"",
-            "commandWindows": "powershell.exe -NoProfile -NonInteractive -Command \"$root = git rev-parse --show-toplevel; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; node (Join-Path $root '.codex/hooks/aidn-session-start.mjs')\"",
+            "command": "node -e \"const fs=require('node:fs'),p=require('node:path');let d=process.cwd();for(;;){if(fs.existsSync(p.join(d,'.git'))){import(require('node:url').pathToFileURL(p.join(d,'.codex/hooks/aidn-session-start.mjs')).href);break;}const up=p.dirname(d);if(up===d)throw Error('AIDN Git root not found');d=up;}\"",
+            "commandWindows": "node -e \"const fs=require('node:fs'),p=require('node:path');let d=process.cwd();for(;;){if(fs.existsSync(p.join(d,'.git'))){import(require('node:url').pathToFileURL(p.join(d,'.codex/hooks/aidn-session-start.mjs')).href);break;}const up=p.dirname(d);if(up===d)throw Error('AIDN Git root not found');d=up;}\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "^(apply_patch|Edit|Write)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const fs=require('node:fs'),p=require('node:path');let d=process.cwd();for(;;){if(fs.existsSync(p.join(d,'.git'))){import(require('node:url').pathToFileURL(p.join(d,'.codex/hooks/aidn-pre-tool-use.mjs')).href);break;}const up=p.dirname(d);if(up===d)throw Error('AIDN Git root not found');d=up;}\"",
+            "commandWindows": "node -e \"const fs=require('node:fs'),p=require('node:path');let d=process.cwd();for(;;){if(fs.existsSync(p.join(d,'.git'))){import(require('node:url').pathToFileURL(p.join(d,'.codex/hooks/aidn-pre-tool-use.mjs')).href);break;}const up=p.dirname(d);if(up===d)throw Error('AIDN Git root not found');d=up;}\"",
             "timeout": 10
           }
         ]

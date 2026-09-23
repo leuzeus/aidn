@@ -8,7 +8,7 @@ This installed repository uses a **Session-Based, Skill-Driven, Audit-Driven wor
 This file is a **startup contract**, not the full live workflow engine.
 
 Agents MUST:
-- treat workflow bootstrap docs, hydrated runtime context, and the active backend as the live workflow state
+- read workflow bootstrap rules and the configured canonical backend; treat hydrated context as a derived cache
 - treat workflow skills and runtime hooks as the mutating enforcement path
 - use this file for stable startup rules, precedence, and write-stop conditions
 
@@ -43,7 +43,7 @@ Optional recovery skill:
 - Workflow kernel (minimal re-anchor): `docs/audit/WORKFLOW-KERNEL.md`
 - Current state summary:
   - `docs/audit/CURRENT-STATE.md` as a protected minimal re-anchor anchor
-  - runtime backend plus `.aidn/runtime/context/hydrated-context.json` as canonical state in strict `db-only`
+  - the configured runtime backend as canonical state in strict `db-only`; `.aidn/runtime/context/hydrated-context.json` is a regenerable cache
 - Runtime digest:
   - `docs/audit/RUNTIME-STATE.md` as a protected minimal re-anchor anchor
   - `.aidn/runtime/context/hydrated-context.json` as the regenerable runtime cache in strict `db-only`
@@ -64,7 +64,7 @@ At the beginning of a session, the agent MUST:
 
 1. Run skill: `context-reload`
 2. Re-anchor in this order:
-   - `.aidn/runtime/context/hydrated-context.json` when strict `db-only` is configured
+   - the configured canonical runtime backend via read-only admission when strict `db-only` is configured; a hydrated cache alone does not prove freshness
    - `docs/audit/CURRENT-STATE.md` when present or visibly materialized
    - `docs/audit/WORKFLOW-KERNEL.md`
    - `docs/audit/WORKFLOW_SUMMARY.md`
@@ -126,8 +126,8 @@ Before any durable write, the agent MUST also:
 If runtime state mode is `dual` or `db-only`, the agent MUST:
 
 - run workflow hooks in strict JSON mode (`npx aidn codex run-json-hook ... --strict --fail-on-repair-block --json`)
-- hydrate db-backed context after each workflow skill (`npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json`)
-- read hydrated runtime context before durable write
+- refresh derived db-backed context only through an explicitly authorized projector; `hydrate-context` writes a cache and is not a read-only startup step
+- revalidate the configured canonical runtime context before each durable write; a cached admission is not reusable authority
 - check `repair_layer_status`
 - check `repair_layer_advice`
 - stop on blocking repair findings

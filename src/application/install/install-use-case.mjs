@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { executeCodexAssets, planCodexAssets, isCodexManagedTarget } from "./codex-assets-service.mjs";
 import path from "node:path";
 import {
   readAidnProjectConfig,
@@ -32,7 +33,9 @@ import {
   copyRecursive,
   shouldRenderTemplate,
 } from "./template-copy-service.mjs";
-import { ensureWorkflowAdapterConfig } from "../project/project-config-use-case.mjs";
+import { ensureWorkflowAdapterConfig, loadWorkflowAdapterConfigState } from "../project/project-config-use-case.mjs";
+import { runWorkflowAdapterConfigWizard } from "../project/workflow-adapter-config-wizard.mjs";
+import { writeWorkflowAdapterConfig } from "../../lib/config/workflow-adapter-config-lib.mjs";
 import { buildGeneratedDocTemplateVars } from "./generated-doc-template-vars.mjs";
 import { renderManagedInstallDocs } from "./generated-doc-render-service.mjs";
 import {
@@ -171,7 +174,7 @@ export async function runInstallUseCase({
   };
   const { workflowManifest, compatMatrix } = loadWorkflowManifests(repoRoot);
   const compatibility = resolveCompatibility(workflowManifest, compatMatrix);
-  const runtime = validateRuntimeCompatibility(compatibility);
+  const runtime = validateRuntimeCompatibility(compatibility, { requireCodex: args.codexMigrateCustom === true });
 
   const workflowPacks = workflowManifest?.packs ?? [];
   if (workflowManifest && !Array.isArray(workflowPacks)) {
@@ -186,6 +189,23 @@ export async function runInstallUseCase({
     repoRoot,
     requestedPacks,
   );
+  // Validate every governed Codex asset before project config, docs, or runtime
+  // writes. The asset transaction owns these targets; legacy copy loops skip them.
+  const managesCodexAssets = selectedPacks.includes("core") || selectedPacks.includes("codex-integration");
+  let codexAssetPlan = null;
+  if (managesCodexAssets) {
+    const codexAssets = planCodexAssets({
+      repoRoot, targetRoot, templateVars,
+      skipAgents: args.skipAgents === true,
+      forceAgentsMerge: args.forceAgentsMerge === true,
+      dryRun: args.dryRun === true || args.verifyOnly === true,
+    });
+    codexAssetPlan = codexAssets;
+    for (const warning of codexAssets.warnings) console.warn(`Codex assets: ${warning}`);
+    if (!codexAssets.ok) {
+      throw new Error(`Codex asset preflight failed: ${codexAssets.errors.join("; ")}`);
+    }
+  }
   const summary = {
     copied: 0,
     merged: 0,
@@ -227,7 +247,7 @@ export async function runInstallUseCase({
   if (resolvedSourceBranch.value) {
     templateVars.SOURCE_BRANCH = resolvedSourceBranch.value;
   }
-  const workflowAdapterConfig = await ensureWorkflowAdapterConfig({
+  const workflowAdapterOptions = {
     targetRoot,
     dryRun: args.dryRun,
     verifyOnly: args.verifyOnly,
@@ -238,7 +258,36 @@ export async function runInstallUseCase({
       preferredStateMode: initialImportDefaults.stateMode,
       defaultIndexStore: initialImportDefaults.store,
     },
-  });
+  };
+  // Validate headless prerequisites before any asset receipt is written. The
+  // existing interactive wizard also prepares its result in memory first.
+  const adapterState = loadWorkflowAdapterConfigState(workflowAdapterOptions);
+  let preparedWizard = null;
+  if (!adapterState.exists && !args.adapterFile && !args.initDefaults
+    && !args.dryRun && !args.verifyOnly && process.stdin.isTTY && process.stdout.isTTY) {
+    const wizard = await runWorkflowAdapterConfigWizard({ initialConfig: adapterState.data, defaults: workflowAdapterOptions.defaults });
+    if (!wizard.saved) throw new Error("Workflow adapter config creation cancelled.");
+    preparedWizard = wizard.data;
+  } else {
+    await ensureWorkflowAdapterConfig({ ...workflowAdapterOptions, dryRun: true });
+  }
+  if (managesCodexAssets && !args.dryRun && !args.verifyOnly) {
+    const appliedAssets = executeCodexAssets({
+      repoRoot, targetRoot, templateVars,
+      skipAgents: args.skipAgents === true,
+      forceAgentsMerge: args.forceAgentsMerge === true,
+      dryRun: false,
+      expectedPlanId: codexAssetPlan.plan_id,
+    });
+    if (!appliedAssets.ok) throw new Error(`Codex asset apply failed: ${appliedAssets.errors.join("; ")}`);
+  }
+  let workflowAdapterConfig;
+  if (preparedWizard) {
+    writeWorkflowAdapterConfig(targetRoot, preparedWizard, workflowAdapterOptions.defaults);
+    workflowAdapterConfig = { exists: true, created: true, path: adapterState.path, data: preparedWizard, source: "wizard" };
+  } else {
+    workflowAdapterConfig = await ensureWorkflowAdapterConfig(workflowAdapterOptions);
+  }
   if (workflowAdapterConfig?.data?.projectName) {
     templateVars.PROJECT_NAME = workflowAdapterConfig.data.projectName;
   }
@@ -320,6 +369,7 @@ export async function runInstallUseCase({
       }
 
       for (const op of copyOps) {
+        if (managesCodexAssets && isCodexManagedTarget(op.to)) continue;
         const sourcePath = path.resolve(repoRoot, op.from);
         const targetPath = path.resolve(targetRoot, op.to);
         if (!fs.existsSync(sourcePath)) {
@@ -389,6 +439,7 @@ export async function runInstallUseCase({
       }
 
       for (const op of mergeOps) {
+        if (managesCodexAssets && isCodexManagedTarget(op.to)) continue;
         const sourcePath = path.resolve(repoRoot, op.from);
         const targetPath = path.resolve(targetRoot, op.to);
         if (!fs.existsSync(sourcePath)) {

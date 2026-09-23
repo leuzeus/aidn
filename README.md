@@ -250,6 +250,14 @@ curl -fsSL https://raw.githubusercontent.com/leuzeus/aidn/dev/scripts/install.sh
 
 Set `AIDN_REF=v<VERSION>` when the wrapper should install a tagged release instead of `dev`.
 
+Codex integration preserves third-party hooks, instructions and settings. Review changes
+with `aidn bootstrap --target ../client --dry-run --json`, then use
+`aidn bootstrap --target ../client --diagnose --json` to inspect installation and
+client capabilities. Native trust is reviewed in Codex. Repair, recovery and
+Codex-only uninstall are documented in [Codex integration](docs/CODEX_INTEGRATION.md).
+Customization migration through an LLM is disabled by default; opt in with
+`--codex-migrate-custom` only when needed.
+
 Advanced install engine examples:
 
 ```bash

@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "source_commit": "4e551db243d9e38908986f7fd56f283144ed1124",
+  "versions": [
+    "0.7.1",
+    "0.7.2"
+  ],
+  "hash_policy": "sha256-utf8-lf",
+  "assets": {
+    ".agents/skills/branch-cycle-audit/SKILL.md": [
+      "b0f53de995dfb4d4d10d2da5d6aeb2b8bb920cbc9134aad09d53b21f61f13e9b"
+    ],
+    ".agents/skills/close-session/SKILL.md": [
+      "fddf782613fc44e8650e0d7cde08440c98f71c76663612e44cbb0869607aa84b"
+    ],
+    ".agents/skills/context-reload/SKILL.md": [
+      "aec3c5d0615a3d1ac377ab2ff21cd3e62ca0e634ba936395701e5ed0866d4434"
+    ],
+    ".agents/skills/convert-to-spike/SKILL.md": [
+      "d87cb1aecff07bb1f4d6c47b7261a4422d69d1f6a35dd2c5b4262043fd4d1a61"
+    ],
+    ".agents/skills/crash-recovery/SKILL.md": [
+      "cb5b45bd8ccdf2125dc1cc47b37e6384378c440adf98a3988e997d7030d580b7"
+    ],
+    ".agents/skills/cycle-close/SKILL.md": [
+      "d292611270dba74dc31ac9d4d2bdb2af8d43c5829ce557c722ca979b3839dce8"
+    ],
+    ".agents/skills/cycle-create/SKILL.md": [
+      "82b7751ac0e1f01bbb2a0699b7341de38c2439c2e1cbbee7774a7824bb964208"
+    ],
+    ".agents/skills/drift-check/SKILL.md": [
+      "42ecd5ead4c81f0bfa8683f303488c5dda0f6391af61a5dd4061169eb402fba1"
+    ],
+    ".agents/skills/handoff-close/SKILL.md": [
+      "b1dcc670afb7f344809e4cd008000f196469c5474a0817712b169ed8571cc3d0"
+    ],
+    ".agents/skills/pr-orchestrate/SKILL.md": [
+      "200a43bfc42d8843a3b3197f5c1f8e518b6aac6e234db100d67d86831cdbc790"
+    ],
+    ".agents/skills/promote-baseline/SKILL.md": [
+      "dd8a90b37dd13a727a15e7c9b53ddeebce791eaf85430ffea5db78d65f8b351b"
+    ],
+    ".agents/skills/requirements-delta/SKILL.md": [
+      "cc99c754a4544462030ff624a6b86f696c0cce00657cbf129b586939ca90bdd9"
+    ],
+    ".agents/skills/start-session/SKILL.md": [
+      "b945601762b9f2babec9b4108f963a302c8ef55c3cac9a556e300cb3867406d0"
+    ],
+    ".codex/agents/aidn-executor.toml": [
+      "30e112ae895ac276c08a65e9ab0278dc76be32efd978cb94de155cd86de57641"
+    ],
+    ".codex/agents/aidn-explorer.toml": [
+      "6e6376d7465b827802ad55380a2e5ad5fa63691b4cf18e00af60735ec285192b"
+    ],
+    ".codex/agents/aidn-reviewer.toml": [
+      "95e8466a87e59794d879018373998d9333ddd70f37529735e4faef04f0791b79"
+    ],
+    ".codex/agents/aidn-validator.toml": [
+      "5b70fb8f23a84a36cf594e431503f166b8fb479423c16b8fc95aa7a9a194fdf8"
+    ],
+    ".codex/hooks/aidn-session-start.mjs": [
+      "c474634ac001a4992d2d4b63f999cc5fd5a216e4cb2c0e7cb2903385c9be1a01"
+    ],
+    ".aidn/codex/skills.yaml": [
+      "c9cf47cc6e7dff0bd208dc287c2e6bc5f698a32ee4d2fe91d43fd22021d238fe",
+      "0b9cacae4c6de0b3474a63c4107bae9529d4d99b99a444df689411e3dcd04d91"
+    ],
+    "AGENTS.md": [
+      "c921b347e6f282b2f30818aa2f51f5a9fa5941c08cc5822a7e865f69dedde980"
+    ]
+  }
+}

@@ -127,6 +127,8 @@ const CLI_EFFECT_POLICIES = freezeDeep([
   }),
   commandPolicy({
     id: "bootstrap-preview",
+    allowNonZero: true,
+    unlessArgs: ["--diagnose", "--repair", "--resume", "--rollback", "--uninstall"],
     command: "aidn bootstrap --dry-run --json",
     effectClass: "preview",
     jsonContract: "bootstrap-preview.v1.schema.json",
@@ -137,11 +139,147 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "bootstrap",
     command: "aidn bootstrap --json",
     effectClass: "mutating",
-    unlessArgs: ["--dry-run"],
+    unlessArgs: ["--dry-run", "--diagnose", "--repair", "--resume", "--rollback", "--uninstall"],
     jsonContract: "bootstrap.v1.schema.json",
     safeArgs: ["bootstrap", "--target", ".", "--profile", "minimal", "--json"],
     notes: "Orchestrates install or upgrade by composing aidn install, project config, migration, and verification steps.",
   }),
+  commandPolicy({ id: "bootstrap-diagnose", command: "aidn bootstrap --diagnose --json",
+    effectClass: "read-only", jsonContract: "bootstrap-diagnostics.v1.schema.json",
+    safeArgs: ["bootstrap", "--diagnose", "--json"], allowNonZero: true,
+    notes: "Observes local assets and capabilities without approving trust." }),
+  commandPolicy({
+    "id": "bootstrap-repair",
+    "command": "aidn bootstrap --repair --json",
+    "effectClass": "preview",
+    "unlessArgs": [
+        "--write"
+    ],
+    "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+    "safeArgs": [
+        "bootstrap",
+        "--repair",
+        "--json"
+    ],
+    "allowNonZero": true,
+    "notes": "Previews owned Codex assets without writing."
+}),
+  commandPolicy({
+    "id": "bootstrap-repair-write",
+    "command": "aidn bootstrap --repair --write --json",
+    "effectClass": "mutating",
+    "unlessArgs": [],
+    "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+    "safeArgs": [
+        "bootstrap",
+        "--repair",
+        "--write",
+        "--expect-plan",
+        "unreviewed",
+        "--json"
+    ],
+    "allowNonZero": true,
+    "notes": "Applies a matching preview with ownership and content checks."
+}),
+  commandPolicy({
+    "id": "bootstrap-resume",
+    "command": "aidn bootstrap --resume --json",
+    "effectClass": "preview",
+    "unlessArgs": [
+        "--write"
+    ],
+    "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+    "safeArgs": [
+        "bootstrap",
+        "--resume",
+        "--json"
+    ],
+    "allowNonZero": true,
+    "notes": "Previews owned Codex assets without writing."
+}),
+  commandPolicy({
+    "id": "bootstrap-resume-write",
+    "command": "aidn bootstrap --resume --write --json",
+    "effectClass": "mutating",
+    "unlessArgs": [],
+    "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+    "safeArgs": [
+        "bootstrap",
+        "--resume",
+        "--write",
+        "--expect-plan",
+        "unreviewed",
+        "--json"
+    ],
+    "allowNonZero": true,
+    "notes": "Applies a matching preview with ownership and content checks."
+}),
+  commandPolicy({
+    "id": "bootstrap-rollback",
+    "command": "aidn bootstrap --rollback --json",
+    "effectClass": "preview",
+    "unlessArgs": [
+        "--write"
+    ],
+    "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+    "safeArgs": [
+        "bootstrap",
+        "--rollback",
+        "--json"
+    ],
+    "allowNonZero": true,
+    "notes": "Previews owned Codex assets without writing."
+}),
+  commandPolicy({
+    "id": "bootstrap-rollback-write",
+    "command": "aidn bootstrap --rollback --write --json",
+    "effectClass": "mutating",
+    "unlessArgs": [],
+    "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+    "safeArgs": [
+        "bootstrap",
+        "--rollback",
+        "--write",
+        "--expect-plan",
+        "unreviewed",
+        "--json"
+    ],
+    "allowNonZero": true,
+    "notes": "Applies a matching preview with ownership and content checks."
+}),
+  commandPolicy({
+    "id": "bootstrap-uninstall",
+    "command": "aidn bootstrap --uninstall --json",
+    "effectClass": "preview",
+    "unlessArgs": [
+        "--write"
+    ],
+    "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+    "safeArgs": [
+        "bootstrap",
+        "--uninstall",
+        "--json"
+    ],
+    "allowNonZero": true,
+    "notes": "Previews owned Codex assets without writing."
+}),
+  commandPolicy({
+    "id": "bootstrap-uninstall-write",
+    "command": "aidn bootstrap --uninstall --write --json",
+    "effectClass": "mutating",
+    "unlessArgs": [],
+    "jsonContract": "bootstrap-lifecycle.v1.schema.json",
+    "safeArgs": [
+        "bootstrap",
+        "--uninstall",
+        "--write",
+        "--expect-plan",
+        "unreviewed",
+        "--json"
+    ],
+    "allowNonZero": true,
+    "notes": "Applies a matching preview with ownership and content checks."
+}),
   commandPolicy({
     id: "install",
     command: "aidn install",

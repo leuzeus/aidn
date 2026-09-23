@@ -73,6 +73,15 @@ const GOVERNED_CONTENT_FIELDS = Object.freeze([
 
 const METADATA_POLICIES = freezeDeep([
   policy({
+    concept: "install_assets",
+    label: "Codex installation ownership",
+    required: ["schema_version", "scope", "root_id", "package", "assets", "last_transaction", "last_action"],
+    sourceOfTruthConcept: "install_assets",
+    evidenceTargets: ["src/application/install/codex-assets-service.mjs"],
+    lifecycle: "planned -> applying -> installed|interrupted -> repaired|rolled_back|uninstalled",
+    notes: "Receipt carries package binding and owned object hashes; transaction pre-images stay local and are omitted from public plans.",
+  }),
+  policy({
     concept: "workflow_rules",
     label: "Workflow rules",
     required: ["contract_version", "owner", "source_of_truth", "updated_at", "lifecycle_status"],

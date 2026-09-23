@@ -17,6 +17,13 @@ const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-outpu
 
 export const GOVERNED_CONCEPTS = Object.freeze([
   {
+    concept: "install_assets",
+    source_of_truth_concept: "install_assets",
+    metadata_concept: "install_assets",
+    cli_contract: "bootstrap-lifecycle.v1.schema.json",
+    required: ["source_of_truth", "metadata", "cli_contract"],
+  },
+  {
     concept: "workflow_rules",
     source_of_truth_concept: "workflow_rules",
     metadata_concept: "workflow_rules",
@@ -174,7 +181,16 @@ export const GOVERNED_CONCEPTS = Object.freeze([
 ]);
 
 export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
-  { id: "bootstrap-preview", linked_concepts: ["workflow_rules", "project", "runtime_defaults"] },
+  { id: "bootstrap-preview", linked_concepts: ["workflow_rules", "project", "runtime_defaults", "install_assets"] },
+  { id: "bootstrap-diagnose", linked_concepts: ["install_assets", "workspace"] },
+  { id: "bootstrap-repair", linked_concepts: ["install_assets"] },
+  { id: "bootstrap-repair-write", linked_concepts: ["install_assets"] },
+  { id: "bootstrap-resume", linked_concepts: ["install_assets"] },
+  { id: "bootstrap-resume-write", linked_concepts: ["install_assets"] },
+  { id: "bootstrap-rollback", linked_concepts: ["install_assets"] },
+  { id: "bootstrap-rollback-write", linked_concepts: ["install_assets"] },
+  { id: "bootstrap-uninstall", linked_concepts: ["install_assets"] },
+  { id: "bootstrap-uninstall-write", linked_concepts: ["install_assets"] },
   { id: "bootstrap", linked_concepts: ["workflow_rules", "project", "runtime_defaults"] },
   { id: "project-config-list", linked_concepts: ["project", "runtime_defaults"] },
   { id: "project-config-preview", linked_concepts: ["project", "runtime_defaults"] },

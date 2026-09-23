@@ -50,6 +50,7 @@ export async function discoverRepoSkills({
   codexHome,
   env = process.env,
   timeoutMs = 30000,
+  expectedSkillNames,
 }) {
   const launcher = findCodexLauncher(env);
   if (!launcher) {
@@ -69,6 +70,16 @@ export async function discoverRepoSkills({
   );
 
   const normalizedCwd = path.resolve(cwd);
+  const skillsRoot = path.join(normalizedCwd, ".agents", "skills");
+  const expectedNames = expectedSkillNames ?? (fs.existsSync(skillsRoot)
+    ? fs.readdirSync(skillsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory())
+      .flatMap((entry) => {
+        const file = path.join(skillsRoot, entry.name, "SKILL.md");
+        if (!fs.existsSync(file)) return [];
+        const name = fs.readFileSync(file, "utf8").match(/^name:\s*(.+)\s*$/m)?.[1]?.trim();
+        return name ? [name] : [];
+      })
+    : []);
   const child = spawn(launcher.command, [...launcher.args, "app-server"], {
     cwd: normalizedCwd,
     env: {
@@ -147,6 +158,10 @@ export async function discoverRepoSkills({
         return;
       }
       if (message.id === 1) {
+        if (message.error) {
+          finish(() => reject(new Error("Codex initialize failed: " + JSON.stringify(message.error))));
+          return;
+        }
         child.stdin.write(`${JSON.stringify({ method: "initialized", params: {} })}\n`);
         child.stdin.write(`${JSON.stringify({
           method: "skills/list",
@@ -168,11 +183,18 @@ export async function discoverRepoSkills({
       const entry = message.result?.data?.find(
         (item) => path.resolve(item.cwd) === normalizedCwd,
       );
-      const skills = (entry?.skills ?? []).filter(
-        (skill) => skill.scope === "repo"
-          && path.resolve(skill.path).startsWith(path.join(normalizedCwd, ".agents", "skills")),
-      );
-      const errors = entry?.errors ?? [];
+      const skills = (entry?.skills ?? []).filter((skill) => {
+        if (skill.scope !== "repo" || typeof skill.path !== "string") return false;
+        const relative = path.relative(skillsRoot, path.resolve(skill.path));
+        return relative !== ".." && !relative.startsWith(".." + path.sep) && !path.isAbsolute(relative);
+      });
+      const errors = [...(entry?.errors ?? [])];
+      if (!entry) errors.push({ message: "Codex did not return the requested working directory" });
+      if (skills.length === 0) errors.push({ message: "Codex did not discover any installed repository skills" });
+      const discoveredNames = new Set(skills.filter((skill) => skill.enabled !== false).map((skill) => skill.name));
+      for (const name of expectedNames) {
+        if (!discoveredNames.has(name)) errors.push({ message: "Codex did not discover enabled repository skill: " + name });
+      }
       finish(() => resolve({
         status: errors.length === 0 ? "PASS" : "FAIL",
         launcher: launcher.source,

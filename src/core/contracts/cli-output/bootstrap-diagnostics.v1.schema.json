@@ -1,0 +1,152 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "x-aidn-contract-version": "cli-output-v1",
+  "required": [
+    "contract_version",
+    "command",
+    "effect_class",
+    "ok",
+    "ts",
+    "target_root",
+    "action",
+    "dry_run",
+    "written",
+    "errors",
+    "warnings",
+    "assets",
+    "capabilities",
+    "trust_instructions"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "const": "bootstrap-diagnostics.v1"
+    },
+    "command": {
+      "type": "string"
+    },
+    "effect_class": {
+      "type": "string",
+      "enum": [
+        "read-only"
+      ]
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "ts": {
+      "type": "string"
+    },
+    "target_root": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "diagnose"
+      ]
+    },
+    "dry_run": {
+      "type": "boolean",
+      "const": true
+    },
+    "written": {
+      "type": "boolean",
+      "const": false
+    },
+    "plan_id": {
+      "type": "string"
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "write_targets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "assets": {
+      "type": "object"
+    },
+    "capabilities": {
+      "type": "object",
+      "required": [
+        "states"
+      ],
+      "properties": {
+        "states": {
+          "type": "object",
+          "required": [
+            "installed",
+            "detected",
+            "approved",
+            "connected",
+            "operational",
+            "degraded"
+          ],
+          "properties": {
+            "installed": {
+              "type": "string"
+            },
+            "detected": {
+              "type": "string"
+            },
+            "approved": {
+              "type": "string",
+              "const": "unknown"
+            },
+            "connected": {
+              "type": "string",
+              "const": "not_applicable"
+            },
+            "operational": {
+              "type": "string",
+              "const": "unverified"
+            },
+            "degraded": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "trust_instructions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$id": "aidn://contracts/cli-output/bootstrap-diagnostics.v1",
+  "title": "AIDN Codex bootstrap-diagnostics",
+  "x-aidn-command": "aidn bootstrap --diagnose --json",
+  "x-aidn-commands": [
+    "aidn bootstrap --diagnose --json"
+  ]
+}
