@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 const TOOL_FILE = fileURLToPath(import.meta.url);
 const REPO_ROOT = path.resolve(path.dirname(TOOL_FILE), "..", "..");
@@ -43,7 +44,7 @@ function copyFixture(sourceRoot, tempRoot) {
   fs.cpSync(sourceRoot, targetRoot, {
     recursive: true,
     filter(source) {
-      return !source.replace(/\\/g, "/").includes("/.git/");
+      return isActivationFixtureSource(sourceRoot, source, { freshContext: true });
     },
   });
   return targetRoot;
@@ -86,6 +87,7 @@ function main() {
     }
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-workflow-step-"));
     const targetRoot = copyFixture(sourceRoot, tempRoot);
+    prepareActivationFixture(targetRoot, REPO_ROOT);
     const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
     const handoffPacketFile = path.join(targetRoot, "docs", "audit", "HANDOFF-PACKET.md");
     const runtimeBefore = digestFile(runtimeStateFile);
@@ -130,12 +132,14 @@ function main() {
       console.log(`verify-codex-workflow-step: ${pass ? "PASS" : "FAIL"}`);
     }
     if (!pass) {
-      process.exit(1);
+      process.exitCode = 1;
     }
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
+    if (error.stdout) console.error(String(error.stdout).slice(0, 6000));
+    if (error.stderr) console.error(String(error.stderr).slice(0, 3000));
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       removePathWithRetry(tempRoot);

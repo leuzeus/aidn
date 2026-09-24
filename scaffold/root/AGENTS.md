@@ -8,33 +8,39 @@ This installed repository uses a **Session-Based, Skill-Driven, Audit-Driven wor
 This file is a **startup contract**, not the full live workflow engine.
 
 Agents MUST:
-- treat workflow bootstrap docs, hydrated runtime context, and the active backend as the live workflow state
+- read workflow bootstrap rules and the configured canonical backend; treat hydrated context as a derived cache
 - treat workflow skills and runtime hooks as the mutating enforcement path
 - use this file for stable startup rules, precedence, and write-stop conditions
+
+## Project Activation Comes First
+
+Before loading workflow context or invoking any AIDN skill, run `aidn runtime pre-write-admit --target . --skill context-reload --json`. Require `activation.active` to be `true` and `admission_status` to be `admitted` or `admitted_with_warnings`. An installed skill, this file, or a cache does not activate a project.
+
+If inactive or unknown, stop the AIDN workflow and report the activation reason. `aidn bootstrap --diagnose --json` is the explicit read-only diagnostic; installation or activation requires separate user intent. Do not load workflow state or create workflow artifacts to infer activation.
 
 ## Required Skills (Contract)
 
 This workflow assumes the following skills are available:
 
-- context-reload
-- start-session
-- close-session
-- pr-orchestrate
-- branch-cycle-audit
-- drift-check
-- handoff-close
-- cycle-create
-- cycle-close
-- promote-baseline
-- convert-to-spike
-- requirements-delta
+- aidn-context-reload
+- aidn-start-session
+- aidn-close-session
+- aidn-pr-orchestrate
+- aidn-branch-cycle-audit
+- aidn-drift-check
+- aidn-handoff-close
+- aidn-cycle-create
+- aidn-cycle-close
+- aidn-promote-baseline
+- aidn-convert-to-spike
+- aidn-requirements-delta
 
 If a required skill is unavailable, the agent MUST:
 - report the missing skill
 - STOP the session
 
 Optional recovery skill:
-- `crash-recovery` for abrupt-stop, partial-write, and shared-runtime recovery situations
+- `aidn-crash-recovery` for abrupt-stop, partial-write, and shared-runtime recovery situations
 
 ## Source Of Truth
 
@@ -43,7 +49,7 @@ Optional recovery skill:
 - Workflow kernel (minimal re-anchor): `docs/audit/WORKFLOW-KERNEL.md`
 - Current state summary:
   - `docs/audit/CURRENT-STATE.md` as a protected minimal re-anchor anchor
-  - runtime backend plus `.aidn/runtime/context/hydrated-context.json` as canonical state in strict `db-only`
+  - the configured runtime backend as canonical state in strict `db-only`; `.aidn/runtime/context/hydrated-context.json` is a regenerable cache
 - Runtime digest:
   - `docs/audit/RUNTIME-STATE.md` as a protected minimal re-anchor anchor
   - `.aidn/runtime/context/hydrated-context.json` as the regenerable runtime cache in strict `db-only`
@@ -62,26 +68,26 @@ Optional recovery skill:
 
 At the beginning of a session, the agent MUST:
 
-1. Run skill: `context-reload`
+1. Run skill: `aidn-context-reload`
 2. Re-anchor in this order:
-   - `.aidn/runtime/context/hydrated-context.json` when strict `db-only` is configured
+   - the configured canonical runtime backend via read-only admission when strict `db-only` is configured; a hydrated cache alone does not prove freshness
    - `docs/audit/CURRENT-STATE.md` when present or visibly materialized
    - `docs/audit/WORKFLOW-KERNEL.md`
    - `docs/audit/WORKFLOW_SUMMARY.md`
    - `docs/audit/RUNTIME-STATE.md` when runtime freshness or repair signals matter
    - active cycle `status.md` and active session file when relevant
 3. Confirm `docs/audit/SPEC.md` and `docs/audit/WORKFLOW.md` are loaded when canonical rule precision is needed
-4. Run skill: `start-session`
+4. Run skill: `aidn-start-session`
 5. Explicitly acknowledge the session mode: `THINKING | EXPLORING | COMMITTING`
 
 Important compatibility rule for conservative Codex app / online flows:
-- do not skip `start-session` only because the overall skill may later mutate workflow artifacts
-- `start-session` is admission-first: its runtime admission step is the required way to decide `resume | choose | create | stop`
+- do not skip `aidn-start-session` only because the overall skill may later mutate workflow artifacts
+- `aidn-start-session` is admission-first: its runtime admission step is the required way to decide `resume | choose | create | stop`
 - this admission step must still run for analysis-only or read-only requests
 - read-only intent prevents durable writes; it does not exempt the agent from session admission
 - if admission returns `stop`, surface the blocking reason and required user choice instead of silently replacing the skill with an informal re-anchor
 
-`start-session` begins with blocking admission:
+`aidn-start-session` begins with blocking admission:
 - resume the current session/cycle when continuity already exists
 - stop on non-compliant branches or unresolved session-base continuity
 - stop and request user choice when several open cycles compete
@@ -92,9 +98,9 @@ If `docs/audit/SPEC.md` is missing, the agent MUST:
 - request workflow reinstall or repair before continuing
 
 If mode is `COMMITTING`, the agent MUST:
-- run skill: `branch-cycle-audit`
+- run skill: `aidn-branch-cycle-audit`
 - stop if branch ownership is ambiguous or unmapped
-- rely on the same branch/session/cycle mapping layer as `start-session`, not on generic gating alone
+- rely on the same branch/session/cycle mapping layer as `aidn-start-session`, not on generic gating alone
 
 ## Pre-Write Gate (MANDATORY)
 
@@ -126,8 +132,8 @@ Before any durable write, the agent MUST also:
 If runtime state mode is `dual` or `db-only`, the agent MUST:
 
 - run workflow hooks in strict JSON mode (`npx aidn codex run-json-hook ... --strict --fail-on-repair-block --json`)
-- hydrate db-backed context after each workflow skill (`npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json`)
-- read hydrated runtime context before durable write
+- refresh derived db-backed context only when its cache write is explicitly authorized, using `npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json`; this command writes a derived cache and computes the runtime projection, even with `--json`, and is not a read-only startup step; visible projection files require separate explicit materialization intent
+- revalidate the configured canonical runtime context before each durable write; a cached admission is not reusable authority
 - check `repair_layer_status`
 - check `repair_layer_advice`
 - stop on blocking repair findings
@@ -144,7 +150,7 @@ Special note for recent Codex Windows app flows:
 
 - treat `apply_patch` as a durable write operation, not as a shortcut around workflow checks
 - do not use `apply_patch` before the pre-write restatement is complete
-- treat "this skill is mutative" as a write-scope warning, not as a reason to skip admission-first skills such as `start-session`
+- treat "this skill is mutative" as a write-scope warning, not as a reason to skip admission-first skills such as `aidn-start-session`
 - if the user request is analysis-only, run admission, stay read-only on `stop|resume`, and only avoid the later durable-write steps
 
 ## COMMITTING Hard Stops
@@ -180,26 +186,26 @@ For shared or high-risk implementation surfaces, the agent MUST:
 For `dual` / `db-only` projects, the runtime chain is authoritative for mutating enforcement:
 
 - `npx aidn codex run-json-hook ... --strict --json`
-- `npx aidn codex hydrate-context --target . --skill <skill> --json`
+- `npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json` for explicitly authorized derived-cache refresh and runtime-projection calculation; native SessionStart hooks must use read-only canonical admission instead
 - `npx aidn runtime sync-db-first-selective --target . --json` for mutating skills
 - `npx aidn runtime repair-layer-triage --target . --json` when `repair_layer_status` is `warn` or `block`
 - `npx aidn runtime repair-layer-autofix --target . --apply --json` only for safe-only autofix cases
 
 Runtime hooks are infrastructure:
-- `start-session` admission decides `resume | choose | create | stop`, then delegates to generic `session-start` runtime work only when admitted
-- `branch-cycle-audit` admission validates owned branch mapping, then delegates to generic gating/perf evaluation only when mapping is valid
-- `close-session` admission resolves open-cycle close decisions before generic `session-close` runtime work
-- `pr-orchestrate` is the PR lifecycle bridge after `close-session`: push session branch, open/recover PR, track review, then enforce post-merge sync before any new session/cycle branch
-- `cycle-create` admission resolves continuity plus mode-gate compatibility before generic checkpoint work
-- `requirements-delta` admission stops medium/high-impact ownership ambiguity before artifact mutation
-- `promote-baseline` admission blocks promotion when target cycle selection, traceability, or open-gap validation is incomplete
-- `convert-to-spike` admission reuses cycle continuity logic in `EXPLORING` mode before spike creation work
-- `handoff-close` uses generic checkpoint evaluation, but the runtime hook now exposes the actual blocking result instead of a masked success wrapper
-- `drift-check` continues to use generic gating as the drift source of truth; treat hook `stop|warn|ok` as authoritative
+- `aidn-start-session` admission decides `resume | choose | create | stop`, then delegates to generic `session-start` runtime work only when admitted
+- `aidn-branch-cycle-audit` admission validates owned branch mapping, then delegates to generic gating/perf evaluation only when mapping is valid
+- `aidn-close-session` admission resolves open-cycle close decisions before generic `session-close` runtime work
+- `aidn-pr-orchestrate` is the PR lifecycle bridge after `aidn-close-session`: push session branch, open/recover PR, track review, then enforce post-merge sync before any new session/cycle branch
+- `aidn-cycle-create` admission resolves continuity plus mode-gate compatibility before generic checkpoint work
+- `aidn-requirements-delta` admission stops medium/high-impact ownership ambiguity before artifact mutation
+- `aidn-promote-baseline` admission blocks promotion when target cycle selection, traceability, or open-gap validation is incomplete
+- `aidn-convert-to-spike` admission reuses cycle continuity logic in `EXPLORING` mode before spike creation work
+- `aidn-handoff-close` uses generic checkpoint evaluation, but the runtime hook now exposes the actual blocking result instead of a masked success wrapper
+- `aidn-drift-check` continues to use generic gating as the drift source of truth; treat hook `stop|warn|ok` as authoritative
 
 When work is likely to continue in another agent, the agent SHOULD:
 
-- run skill: `handoff-close`
+- run skill: `aidn-handoff-close`
 - refresh `docs/audit/CURRENT-STATE.md`
 - refresh `docs/audit/RUNTIME-STATE.md` as a minimal runtime-backed anchor
 - project `docs/audit/HANDOFF-PACKET.md` as a minimal runtime-backed handoff anchor when a relay matters

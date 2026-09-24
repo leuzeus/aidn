@@ -5,6 +5,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 const FAILURE_INJECTION_ENV = "AIDN_COORDINATOR_ARBITRATION_FIXTURE_INJECT_FAILURE";
 const FAILURE_PROBE_TOKEN_ENV = "AIDN_COORDINATOR_ARBITRATION_FIXTURE_PROBE_TOKEN";
@@ -167,9 +168,10 @@ function main() {
     const escalatedTarget = path.join(tempRoot, "escalated");
     const integrationTarget = path.join(tempRoot, "integration-cycle");
     const dbOnlyTarget = path.join(tempRoot, "db-only-escalated");
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), escalatedTarget, { recursive: true });
-    fs.cpSync(path.join(integrationFixturesRoot, "integration-cycle"), integrationTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlyTarget, { recursive: true });
+    for (const [sourceRoot, target] of [[path.join(handoffFixturesRoot, "ready"), escalatedTarget], [path.join(integrationFixturesRoot, "integration-cycle"), integrationTarget], [path.join(handoffFixturesRoot, "ready"), dbOnlyTarget]]) {
+      fs.cpSync(sourceRoot, target, { recursive: true, filter: (source) => isActivationFixtureSource(sourceRoot, source, { freshCoordination: true }) });
+      prepareActivationFixture(target, repoRoot);
+    }
     runJson(handoffProjectScript, ["--target", escalatedTarget, "--write", "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", dbOnlyTarget, "--write", "--json"], repoRoot, 0, {
       AIDN_STATE_MODE: "db-only",

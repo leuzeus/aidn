@@ -22,6 +22,8 @@ The classification keeps automation from confusing output format with write perm
   combinations instead of silently choosing an effect.
 - Read-only and preview commands must not modify the checkout.
 - Local writes require explicit intent such as `--write`.
+- `bootstrap --authorize` and `bootstrap --revoke` are preview-only until `--write --expect-plan PLAN_ID`; they never grant native Codex trust.
+- Activation refusal preserves the invocation's declared effect class and reports `written: false`; unavailable activation does not reclassify a mutating command as read-only.
 - `runtime db-migrate` and `runtime persistence-migrate` are preview-only by
   default; schema application requires `--write`, while `--json` remains
   formatting-only.
@@ -57,3 +59,8 @@ The classification keeps automation from confusing output format with write perm
 If you are changing a command flag, read the effect policy, the CLI surface inventory, and the command implementation together.
 
 If those three disagree, treat the mismatch as a bug, not as a documentation style choice.
+
+Host skill migration and restoration are separate preview/mutating variants of
+bootstrap. Both require an explicit absolute `--codex-home`; applying requires
+`--write --expect-plan`. Neither native trust nor workflow authorization is an
+implicit effect of disabling global skills.

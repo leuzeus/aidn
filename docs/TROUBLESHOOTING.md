@@ -208,7 +208,7 @@ Typical root cause:
 - That heuristic is too coarse for aid'n because some workflow skills have mandatory non-mutating admission phases.
 
 Reference:
-- `scaffold/codex/start-session/SKILL.md`
+- `scaffold/codex/aidn-start-session/SKILL.md`
 - `scaffold/root/AGENTS.md`
 - `scaffold/codex/README_CodexOnline.md`
 

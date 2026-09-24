@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 function assert(condition, message) {
   if (!condition) {
@@ -197,10 +198,10 @@ function main() {
     const appAlphaRoot = path.join(monorepoRoot, "apps", "alpha");
     const appBetaRoot = path.join(monorepoRoot, "apps", "beta");
 
-    fs.cpSync(readyTarget, malformedTarget, { recursive: true });
-    fs.cpSync(readyTarget, invalidPathTarget, { recursive: true });
-    fs.cpSync(readyTarget, mismatchTarget, { recursive: true });
-    fs.cpSync(readyTarget, disabledPostgresTarget, { recursive: true });
+    for (const targetRoot of [malformedTarget, invalidPathTarget, mismatchTarget, disabledPostgresTarget]) {
+      fs.cpSync(readyTarget, targetRoot, { recursive: true, filter: (source) => isActivationFixtureSource(readyTarget, source) });
+      prepareActivationFixture(targetRoot, repoRoot);
+    }
     fs.mkdirSync(appAlphaRoot, { recursive: true });
     fs.mkdirSync(appBetaRoot, { recursive: true });
     for (const targetRoot of [malformedTarget, invalidPathTarget, mismatchTarget, disabledPostgresTarget]) {
@@ -432,7 +433,7 @@ function main() {
     console.log("PASS");
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       const cleanup = removePathWithRetry(tempRoot);

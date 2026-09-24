@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 function printUsage() {
   console.log("Usage:");
@@ -35,7 +36,8 @@ function main() {
     const sourceTarget = path.resolve(process.cwd(), "tests/fixtures/repo-installed-core");
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-hydrate-runtime-state-"));
     const target = path.join(tempRoot, "repo");
-    fs.cpSync(sourceTarget, target, { recursive: true });
+    fs.cpSync(sourceTarget, target, { recursive: true, filter: (source) => isActivationFixtureSource(sourceTarget, source, { freshContext: true }) });
+    prepareActivationFixture(target);
 
     const hydrated = runJson("tools/codex/hydrate-context.mjs", [
       "--target",
@@ -170,7 +172,7 @@ function main() {
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       removePathWithRetry(tempRoot);

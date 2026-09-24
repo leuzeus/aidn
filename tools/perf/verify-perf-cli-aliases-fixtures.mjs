@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
+import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -154,11 +157,20 @@ function runCli(scriptPath, args, cwd = process.cwd()) {
 }
 
 function main() {
+  let tempRoot = null;
   try {
     const args = parseArgs(process.argv.slice(2));
     const root = process.cwd();
     const aidnCli = path.resolve(root, "bin", "aidn.mjs");
-    const targetRoot = path.resolve(root, args.target);
+    const sourceRoot = path.resolve(root, args.target);
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-cli-aliases-"));
+    const targetRoot = path.join(tempRoot, "client");
+    fs.cpSync(sourceRoot, targetRoot, {
+      recursive: true,
+      filter: (source) => isActivationFixtureSource(sourceRoot, source),
+    });
+    initGitRepo(targetRoot, { sourceBranch: "dev" });
+    prepareActivationFixture(targetRoot, root);
     const sqliteFile = path.resolve(targetRoot, args.sqliteFile);
     const canonicalCheckFile = path.resolve(targetRoot, args.canonicalCheckFile);
     const canonicalSummaryFile = path.resolve(targetRoot, args.canonicalSummaryFile);
@@ -673,12 +685,20 @@ function main() {
     }
 
     if (!pass) {
-      process.exit(1);
+      process.exitCode = 1;
     }
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
+  } finally {
+    if (tempRoot) {
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok) {
+        console.error(`ERROR: temporary CLI alias fixture cleanup failed: ${cleanup.error?.message}`);
+        process.exitCode = 1;
+      }
+    }
   }
 }
 

@@ -145,7 +145,8 @@ function main() {
       throw new Error(String(result.stderr ?? result.stdout ?? "").trim() || "install failed");
     }
 
-    fs.writeFileSync(path.join(tempRoot, "docs", "audit", "WORKFLOW.md"), [
+    const workflowPath = path.join(tempRoot, "docs", "audit", "WORKFLOW.md");
+    fs.writeFileSync(workflowPath, [
       "# Project Workflow Adapter (Stub)",
       "",
       "workflow_version: 0.0.0",
@@ -156,6 +157,34 @@ function main() {
       "- Source branch: `wrong-branch`)",
       "",
     ].join("\n"), "utf8");
+
+    const customizedWorkflow = fs.readFileSync(workflowPath, "utf8");
+    const conflictResult = spawnSync(process.execPath, [
+      path.resolve(repoRoot, "tools", "install.mjs"),
+      "--target",
+      tempRoot,
+      "--pack",
+      "core",
+      "--adapter-file",
+      adapterFile,
+      "--skip-artifact-import",
+      "--no-codex-migrate-custom",
+    ], {
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        PATH: `${codexStubBin}${separator}${process.env.PATH ?? ""}`,
+      },
+      encoding: "utf8",
+      timeout: 180000,
+      maxBuffer: 20 * 1024 * 1024,
+    });
+    assert((conflictResult.status ?? 1) !== 0, "Modified owned WORKFLOW.md must refuse installation");
+    assert(String(conflictResult.stderr ?? "").includes("MODIFIED_INSTALLATION_ASSET"), "Modified owned workflow must report its ownership conflict");
+    assert(fs.readFileSync(workflowPath, "utf8") === customizedWorkflow, "Refused installation must preserve modified WORKFLOW.md");
+    // Recover a missing generated document from canonical sourceBranch config;
+    // a customized owned document must never be silently overwritten.
+    fs.unlinkSync(workflowPath);
 
     const preserveResult = spawnSync(process.execPath, [
       path.resolve(repoRoot, "tools", "install.mjs"),
@@ -208,7 +237,7 @@ function main() {
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (codexStubBin && fs.existsSync(codexStubBin)) {
       const cleanup = removePathWithRetry(codexStubBin);

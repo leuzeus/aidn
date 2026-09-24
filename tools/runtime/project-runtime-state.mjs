@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { captureContextIdentity } from "../../src/adapters/codex/context-provenance.mjs";
 import {
   buildRuntimeStateMarkdown,
   deriveRuntimeStateRepairSummary,
@@ -177,13 +178,15 @@ export async function projectRuntimeState({
       activeSession,
       cycleStatusResolution,
     });
-  const repairSummary = deriveRuntimeStateRepairSummary(hydrated, fallbackContext);
+  const liveContext = captureContextIdentity({ targetRoot: absoluteTargetRoot, stateMode: effectiveStateMode });
+  const repairSummary = deriveRuntimeStateRepairSummary(hydrated, fallbackContext, liveContext);
   const digest = prepareRuntimeStateProjection({
     workspace,
     dbBackedMode,
     effectiveStateMode,
     hydrated,
     fallbackContext,
+    liveContext,
     repairRouting: evaluateRepairRouting(repairSummary),
     sharedRuntimeValidation,
     sharedPlanning,

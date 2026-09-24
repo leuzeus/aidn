@@ -75,7 +75,7 @@ Codex instruction layering after install:
 
 ## Workflow Diagrams
 
-- Mermaid diagrams in `docs/diagrams/` are aligned with the current `0.7.2` runtime baseline.
+- Mermaid diagrams in `docs/diagrams/` are aligned with the current `0.8.0` runtime baseline.
 - Global system architecture: `docs/diagrams/01-global-system-architecture.md`
 - Cycle state machine: `docs/diagrams/02-cycle-state-machine.md`
 - Runtime session flow: `docs/diagrams/03-runtime-session-flow.md`
@@ -234,7 +234,7 @@ Migration and repair:
 ## Installation
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#v0.7.2
+npm install --save-dev github:leuzeus/aidn#v0.8.0
 npx aidn bootstrap --target ../client --profile default
 npx aidn bootstrap --target ../client --mode upgrade --profile default
 npx aidn bootstrap --target ../client --profile full
@@ -249,6 +249,14 @@ curl -fsSL https://raw.githubusercontent.com/leuzeus/aidn/dev/scripts/install.sh
 ```
 
 Set `AIDN_REF=v<VERSION>` when the wrapper should install a tagged release instead of `dev`.
+
+Codex integration preserves third-party hooks, instructions and settings. Review changes
+with `aidn bootstrap --target ../client --dry-run --json`, then use
+`aidn bootstrap --target ../client --diagnose --json` to inspect installation and
+client capabilities. Native trust is reviewed in Codex. Repair, recovery and
+Codex-only uninstall are documented in [Codex integration](docs/CODEX_INTEGRATION.md).
+Customization migration through an LLM is disabled by default; opt in with
+`--codex-migrate-custom` only when needed.
 
 Advanced install engine examples:
 
@@ -286,7 +294,7 @@ Notes:
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a tagged install (`#v0.7.2`) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a tagged install (`#v0.8.0`) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 

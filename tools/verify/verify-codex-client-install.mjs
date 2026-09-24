@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { discoverRepoSkills } from "./codex-discovery-lib.mjs";
+import { SKILL_IDENTITIES } from "../../src/core/skills/skill-policy.mjs";
 import { removePathWithRetry } from "../perf/test-git-fixture-lib.mjs";
 import {
   createSpawnSyncEvidenceTracker,
@@ -11,21 +12,7 @@ import {
 } from "./spawn-sync-evidence-lib.mjs";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
-const REQUIRED_SKILLS = [
-  "branch-cycle-audit",
-  "close-session",
-  "context-reload",
-  "convert-to-spike",
-  "crash-recovery",
-  "cycle-close",
-  "cycle-create",
-  "drift-check",
-  "handoff-close",
-  "pr-orchestrate",
-  "promote-baseline",
-  "requirements-delta",
-  "start-session",
-];
+const REQUIRED_SKILLS = SKILL_IDENTITIES.map((skill) => skill.publicName);
 const REQUIRED_AGENTS = [
   "aidn-explorer",
   "aidn-executor",
@@ -181,7 +168,8 @@ async function main() {
       const agentPath = path.join(clientRoot, ".codex", "agents", `${agent}.toml`);
       assert(fs.existsSync(agentPath), `client agent missing: ${agent}`);
       const text = fs.readFileSync(agentPath, "utf8");
-      for (const field of ["name", "description", "model", "model_reasoning_effort", "sandbox_mode", "developer_instructions"]) {
+      assert(!/^model\s*=/m.test(text), `${agent}: distributed roles must inherit the client model default`);
+      for (const field of ["name", "description", "model_reasoning_effort", "sandbox_mode", "developer_instructions"]) {
         assert(new RegExp(`^${field}\\s*=`, "m").test(text), `${agent}: missing ${field}`);
       }
     }
@@ -191,6 +179,7 @@ async function main() {
     assert(fs.existsSync(hookScript), "client hook implementation missing");
     const hookContract = JSON.parse(fs.readFileSync(hooksPath, "utf8"));
     assert(Array.isArray(hookContract?.hooks?.SessionStart), "SessionStart hook is not declared");
+    assert(Array.isArray(hookContract?.hooks?.PreToolUse), "PreToolUse hook is not declared");
     const hookDescriptor = hookContract.hooks.SessionStart[0]?.hooks?.[0];
     const exactHookCommand = process.platform === "win32"
       ? hookDescriptor?.commandWindows
@@ -209,20 +198,22 @@ async function main() {
         input: `${JSON.stringify({ hook_event_name: "SessionStart", cwd: invocationRoot })}\n`,
       });
       const hookPayload = JSON.parse(hookResult.stdout);
+      assert(Object.keys(hookPayload).length === 1 && Object.hasOwn(hookPayload, "hookSpecificOutput"),
+        "packed SessionStart must emit only native-supported root fields");
       assert(
         hookPayload?.hookSpecificOutput?.hookEventName === "SessionStart",
         `SessionStart hook output contract mismatch from ${invocationRoot}`,
       );
       assert(
-        hookPayload?.aidnDiagnostics?.projectRoot === path.resolve(clientRoot),
-        `SessionStart hook resolved the wrong project root from ${invocationRoot}`,
+        /AIDN canonical admission \(read-only\):/.test(hookPayload.hookSpecificOutput.additionalContext),
+        `SessionStart hook did not reach canonical admission from ${invocationRoot}`,
       );
       assert(
-        hookPayload?.aidnDiagnostics?.invocationCwd === path.resolve(invocationRoot),
-        `SessionStart hook reported the wrong invocation cwd from ${invocationRoot}`,
+        /"admission":"(?:admitted|admitted_with_warnings|blocked)"/.test(hookPayload.hookSpecificOutput.additionalContext),
+        `SessionStart hook admission status missing from ${invocationRoot}`,
       );
       assert(
-        hookPayload?.aidnDiagnostics?.missing?.length === 0,
+        !hookPayload.hookSpecificOutput.additionalContext.includes("Missing installed assets:"),
         `SessionStart hook reported missing installed assets from ${invocationRoot}`,
       );
     }
@@ -230,6 +221,7 @@ async function main() {
     const codexDiscovery = await discoverRepoSkills({
       cwd: clientRoot,
       codexHome: path.join(tempRoot, "isolated-codex-home"),
+      expectedSkillNames: REQUIRED_SKILLS,
     });
     if (args.requireCodexDiscovery && codexDiscovery.status === "SKIP") {
       throw new Error(`real Codex discovery is required: ${codexDiscovery.reason}`);
@@ -252,7 +244,8 @@ async function main() {
       installer_prerequisite: "isolated-stub-only",
       skills_present: REQUIRED_SKILLS.length,
       agents_present: REQUIRED_AGENTS.length,
-      hooks_present: 1,
+      hooks_present: Object.values(hookContract.hooks).flatMap((groups) => groups.flatMap((group) => group.hooks)).length,
+      native_tool_qualification: "SKIP: no native hook trust or Codex tool execution",
       exact_hook_command: exactHookCommand,
       hook_invocation_roots: invocationRoots.length,
       codex_discovery: codexDiscovery.status === "PASS"
@@ -268,7 +261,10 @@ async function main() {
   } catch (error) {
     primaryError = error;
   } finally {
-    const cleanup = removePathWithRetry(tempRoot);
+    const resolved = path.resolve(tempRoot);
+    assert(resolved.startsWith(path.resolve(os.tmpdir()) + path.sep) && path.basename(resolved).startsWith("aidn-installed-client-"),
+      "installed-client cleanup must stay in its exclusive temporary directory");
+    const cleanup = removePathWithRetry(resolved);
     if (!cleanup.ok || fs.existsSync(tempRoot)) {
       cleanupError = cleanup.error ?? new Error("installed-client temp root remains");
     }

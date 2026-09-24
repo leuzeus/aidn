@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -116,9 +117,10 @@ function main() {
     const roleBlockedTarget = path.join(tempRoot, "role-blocked");
     const integrationCycleTarget = path.join(tempRoot, "integration-cycle");
 
-    fs.cpSync(path.join(fixturesRoot, "ready"), readyTarget, { recursive: true });
-    fs.cpSync(path.join(fixturesRoot, "warn"), roleBlockedTarget, { recursive: true });
-    fs.cpSync(path.join(integrationFixturesRoot, "integration-cycle"), integrationCycleTarget, { recursive: true });
+    for (const [sourceRoot, target] of [[path.join(fixturesRoot, "ready"), readyTarget], [path.join(fixturesRoot, "warn"), roleBlockedTarget], [path.join(integrationFixturesRoot, "integration-cycle"), integrationCycleTarget]]) {
+      fs.cpSync(sourceRoot, target, { recursive: true, filter: (source) => isActivationFixtureSource(sourceRoot, source, { freshCoordination: true }) });
+      prepareActivationFixture(target, repoRoot);
+    }
     if (process.env.AIDN_TEST_SUGGEST_ARBITRATION_FAIL_AFTER_SETUP === "1") {
       throw new Error("injected failure after arbitration fixture setup");
     }
@@ -172,7 +174,7 @@ function main() {
     const roleBlocked = runJson(suggestScript, ["--target", roleBlockedTarget, "--json"], repoRoot, 0);
     const integrationCycle = runJson(suggestScript, ["--target", integrationCycleTarget, "--json"], repoRoot, 0);
 
-    assert(ready.arbitration_required === false, "ready dispatch should not require arbitration");
+    assert(ready.arbitration_required === false, `ready dispatch should not require arbitration: ${JSON.stringify({ dispatch_status: ready.dispatch_status, preferred_decision: ready.preferred_decision, recommended_role_coverage: ready.recommended_role_coverage, coordinator_recommendation: ready.coordinator_recommendation })}`);
     assert(ready.preferred_decision === "continue", "ready dispatch should prefer continue");
     assert(Array.isArray(ready.suggestions) && ready.suggestions.length === 1, "ready dispatch should emit a single continue suggestion");
     assert(ready.suggestions[0].decision === "continue", "ready suggestion should be continue");

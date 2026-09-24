@@ -24,19 +24,46 @@
     "warnings"
   ],
   "properties": {
-    "contract_version": { "type": "string" },
-    "command": { "type": "string" },
-    "effect_class": { "type": "string", "const": "mutating" },
-    "ok": { "type": "boolean" },
-    "ts": { "type": "string" },
-    "target_root": { "type": "string" },
-    "mode": { "type": "string" },
-    "mode_source": { "type": "string" },
-    "profile": { "type": "string" },
-    "pack": { "type": "string" },
-    "dry_run": { "type": "boolean" },
-    "wizard": { "type": "boolean" },
-    "verify_requested": { "type": "boolean" },
+    "contract_version": {
+      "type": "string"
+    },
+    "command": {
+      "type": "string"
+    },
+    "effect_class": {
+      "type": "string",
+      "const": "mutating"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "ts": {
+      "type": "string"
+    },
+    "target_root": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string"
+    },
+    "mode_source": {
+      "type": "string"
+    },
+    "profile": {
+      "type": "string"
+    },
+    "pack": {
+      "type": "string"
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "wizard": {
+      "type": "boolean"
+    },
+    "verify_requested": {
+      "type": "boolean"
+    },
     "operations": {
       "type": "array",
       "items": {
@@ -50,21 +77,74 @@
           "mutates"
         ],
         "properties": {
-          "id": { "type": "string" },
-          "command": { "type": "string" },
-          "ok": { "type": "boolean" },
-          "status": { "type": "number" },
-          "optional": { "type": "boolean" },
-          "mutates": { "type": "boolean" },
-          "stdout": { "type": "string" },
-          "stderr": { "type": "string" },
-          "error": { "type": "string" }
+          "id": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "number"
+          },
+          "optional": {
+            "type": "boolean"
+          },
+          "mutates": {
+            "type": "boolean"
+          },
+          "stdout": {
+            "type": "string"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          }
         },
         "additionalProperties": true
       }
     },
-    "errors": { "type": "array", "items": { "type": "string" } },
-    "warnings": { "type": "array", "items": { "type": "string" } }
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "installation_plan": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "const": "installation"
+        },
+        "plan_id": {
+          "type": "string"
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "external_effects": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
   },
   "additionalProperties": true
 }

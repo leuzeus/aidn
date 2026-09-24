@@ -61,6 +61,7 @@ applies migrations.
 When a change affects the simplified install/upgrade orchestrator, run:
 
 - `npm run perf:verify-bootstrap`
+- `npm run perf:verify-codex-integration`
 - `npm run perf:verify-install-import`
 - `npm run perf:verify-project-config`
 - `npm run perf:verify-install-idempotence`
@@ -179,7 +180,7 @@ When a change affects release/versioning, install examples, or build-release pro
 - `npm run perf:verify-tracked-sensitivity`
 - `npm run perf:verify-doc-references`
 
-The release version verifier checks that `VERSION`, `package.json`, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The reproducibility verifier builds the exact clean tracked commit twice in isolated output roots, compares bytes, checks the npm package topology, and rejects sensitive inputs. `perf:verify-release-artifacts` remains the post-build check used by the main publication job.
+The release version verifier checks that the sole product version authority `VERSION`, its derived `package.json` and package-lock root versions, the workflow and pack manifests, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The reproducibility verifier builds the exact clean tracked commit twice in isolated output roots, compares bytes, checks the npm package topology, and rejects sensitive inputs. `perf:verify-release-artifacts` remains the post-build check used by the main publication job.
 The branch-policy fixtures distinguish feature ancestry from `dev`, release
 ancestry from `dev`, hotfix ancestry from `main`, and exact main-to-dev
 synchronization. They also reject non-patch hotfix versions, mismatched
@@ -205,6 +206,14 @@ literal `npm run` references against the tracked tree and `package.json`; its
 negative probes prove that a missing link and a missing script are rejected.
 
 Stable family wrappers are cataloged in `package/catalogs/gates.v1.json`: `verify:contracts`, `verify:governance`, `verify:runtime`, `verify:codex`, `verify:release`, and `verify:all`. The first four select their named family. `verify:release` executes every gate whose obligation is required or optional in the announced `main` or `release` context, including topology and tracked-tree sensitivity; it is not a release-family-only shortcut. Run `verify:all` only at a clean commit boundary so the cleanliness family is meaningful. Report `SKIP` separately from `PASS`.
+
+Manual governance admission uses the selected branch name when pull-request
+head metadata is absent, with `dev` as its default target. The cleanliness
+family fetches that announced branch plus `dev` and `main`, then requires the
+remote branch to equal the exact checked-out candidate SHA. An absent target,
+inconsistent branch identity or mismatched SHA still fails the provenance
+check. The `cleanliness`, `release` and `codex` families install locked development
+dependencies before running their consumers.
 
 Pull-request matrix jobs add `--admission` to the internal family runner. That
 flag excludes the two `manual-only` PostgreSQL live smokes; the route records
@@ -431,3 +440,31 @@ When closing a lot, report:
 - which commands passed
 - which commands were skipped and why
 - whether the evidence came from tracked fixtures, parity checks, or a local-only reference corpus
+
+## Codex integration qualification
+
+`perf:verify-codex-integration` runs isolated temporary product installations,
+owned-asset conflict/rollback/interruption cases, real child-process cache
+concurrency, hook adapter protocol fixtures and bootstrap lifecycle contracts.
+It never installs the package into this source checkout and does not call an LLM.
+The composite also executes project and worktree authorization, stale bootstrap
+plans, historical skill repair, complete installation recovery and fault-boundary
+fixtures. They exercise the real transaction service
+with temporary clients: a matching historical asset, configuration staging,
+version finalization, receipt-write failure, package-bound resume, scoped rollback
+and later third-party edits. Filesystem fault injection is labeled as injected
+evidence; it does not claim a physical disk failure. The import suite prepares
+current installer assets and overlays only the runtime corpus, keeping the
+absence of project configuration as a tested precondition.
+A new ownership regression must first fail on the previous installer.
+
+Record PASS, FAIL, SKIP and UNAVAILABLE separately. Identify source, scaffold,
+fixture, installed package and real client evidence. Adapter fixtures cannot
+prove native hook execution, human trust, disabled-hook behavior or whole-tool
+coverage. Windows, Unix, WSL, cloud, CLI, application and IDE qualifications are
+separate. See [the support boundary](CODEX_INTEGRATION.md).
+
+Measurements report wall-clock milliseconds and output bytes on the same fixture;
+bytes are not tokens. Native qualification uses a reviewed temporary client with
+human trust and verifies both a denied covered edit and an admitted edit after
+fresh core prerequisites. Error, timeout and out-of-coverage tests remain necessary.

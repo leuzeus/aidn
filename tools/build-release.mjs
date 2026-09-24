@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { writeFileAtomicSync } from "../src/lib/fs/atomic-write-lib.mjs";
+import { buildPackageTarball } from "./lib/release-package-tar.mjs";
 
 const ZIP_STORE = 0;
 const DOS_DATE = ((2020 - 1980) << 9) | (1 << 5) | 1;
@@ -208,13 +209,18 @@ function main() {
   }
   const outputRoot = path.resolve(repoRoot, args.outputRoot || "release");
   const zipName = `aidn-workflow-${versionText}.zip`;
+  const tarballName = `aidn-workflow-${versionText}.tgz`;
   const zipRelativePath = `release/dist/${zipName}`;
+  const tarballRelativePath = `release/dist/${tarballName}`;
   const zipPath = path.join(outputRoot, "dist", zipName);
+  const tarballPath = path.join(outputRoot, "dist", tarballName);
   const checksumsPath = path.join(outputRoot, "checksums.txt");
   const manifestPath = path.join(outputRoot, "manifest.json");
   const files = listPackageFiles(repoRoot, commit, packageJson);
   const zip = buildZip(files);
+  const tarball = buildPackageTarball(files);
   const zipHash = sha256(zip);
+  const tarballHash = sha256(tarball);
   const tree = String(git(repoRoot, ["rev-parse", `${commit}^{tree}`], { encoding: "utf8" })).trim();
   const generatedAt = String(git(repoRoot, ["show", "-s", "--format=%cI", commit], { encoding: "utf8" })).trim();
   const versionBuffer = git(repoRoot, ["show", `${commit}:VERSION`]);
@@ -244,15 +250,16 @@ function main() {
       input_bytes: files.reduce((total, file) => total + file.content.length, 0),
       inputs: files.map((file) => file.relativePath),
     },
-    artifacts: [{
-      name: zipName,
-      path: zipRelativePath,
-      sha256: zipHash,
-      bytes: zip.length,
-    }],
+    artifacts: [
+      { name: zipName, path: zipRelativePath, sha256: zipHash, bytes: zip.length },
+      { name: tarballName, path: tarballRelativePath, sha256: tarballHash, bytes: tarball.length },
+    ],
   };
   writeFileAtomicSync(zipPath, zip);
-  writeFileAtomicSync(checksumsPath, `${zipHash}  ${zipRelativePath}\n`, { encoding: "utf8" });
+  writeFileAtomicSync(tarballPath, tarball);
+  writeFileAtomicSync(checksumsPath,
+    `${zipHash}  ${zipRelativePath}\n${tarballHash}  ${tarballRelativePath}\n`,
+    { encoding: "utf8" });
   writeFileAtomicSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { encoding: "utf8" });
   const output = {
     ok: true,
@@ -262,14 +269,17 @@ function main() {
     git_tree: tree,
     input_files: files.length,
     zip: zipPath,
+    tarball: tarballPath,
     checksums: checksumsPath,
     manifest: manifestPath,
     sha256: zipHash,
+    tarball_sha256: tarballHash,
   };
   if (args.json) {
     console.log(JSON.stringify(output, null, 2));
   } else {
     console.log(`zip: ${path.relative(repoRoot, zipPath)}`);
+    console.log(`tarball: ${path.relative(repoRoot, tarballPath)}`);
     console.log(`checksums: ${path.relative(repoRoot, checksumsPath)}`);
     console.log(`manifest: ${path.relative(repoRoot, manifestPath)}`);
     console.log(`source: ${commit} (${files.length} tracked package files)`);

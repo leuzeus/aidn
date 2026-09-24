@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isAidnProductVersion } from "../../src/lib/config/aidn-config-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -28,7 +29,12 @@ function printUsage() {
 }
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SEMVER_RE = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
+const PRODUCT_MANIFESTS = [
+  "package/manifests/workflow.manifest.yaml",
+  ...["core", "runtime-local", "codex-integration", "github-integration", "extended"].map(
+    (pack) => `packs/${pack}/manifest.yaml`,
+  ),
+];
 
 function readText(relativePath) {
   return fs.readFileSync(path.join(REPO_ROOT, relativePath), "utf8");
@@ -69,17 +75,31 @@ function findReadmeVersionRefs(readme) {
 function verify() {
   const version = readText("VERSION").trim();
   const packageJson = readJson("package.json");
+  const packageLock = readJson("package-lock.json");
+  const manifestVersions = PRODUCT_MANIFESTS.map((file) => ({
+    file,
+    version: /^version:[ \t]*([^\r\n]+)[ \t]*$/m.exec(readText(file))?.[1]?.trim() ?? null,
+  }));
   const readme = readText("README.md");
   const gitWorkflow = readText(path.join("docs", "GIT_WORKFLOW.md"));
   const readmeRefs = findReadmeVersionRefs(readme);
   const expectedZipName = `aidn-workflow-${version}.zip`;
   const issues = [];
 
-  if (!SEMVER_RE.test(version)) {
-    issues.push(`VERSION is not semver-like: ${version}`);
+  if (!isAidnProductVersion(version)) {
+    issues.push(`VERSION is not a semantic product version: ${version}`);
   }
   if (packageJson.version !== version) {
     issues.push(`package.json version ${packageJson.version} does not match VERSION ${version}`);
+  }
+  for (const [field, recordedVersion] of [
+    ["package-lock.json version", packageLock.version],
+    ["package-lock.json packages[root].version", packageLock.packages?.[""]?.version],
+    ...manifestVersions.map((manifest) => [manifest.file + " version", manifest.version]),
+  ]) {
+    if (recordedVersion !== version) {
+      issues.push(`${field} ${recordedVersion} does not match VERSION ${version}`);
+    }
   }
   if (!readmeRefs.some((ref) => ref.value === version)) {
     issues.push(`README.md does not mention the current stable tag v${version}`);
@@ -98,6 +118,9 @@ function verify() {
     version,
     package_name: packageJson.name,
     package_version: packageJson.version,
+    package_lock_version: packageLock.version,
+    package_lock_root_version: packageLock.packages?.[""]?.version ?? null,
+    manifest_versions: manifestVersions,
     expected_tag: `v${version}`,
     expected_zip: path.join("release", "dist", expectedZipName).split(path.sep).join("/"),
     readme_refs: readmeRefs,

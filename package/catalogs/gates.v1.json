@@ -269,6 +269,15 @@
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
     {
+      "id": "codex-integration-lifecycle",
+      "family": "codex",
+      "script": "perf:verify-codex-integration",
+      "job": "governance-admission/gates",
+      "surfaces": ["Codex owned assets and recovery", "bootstrap lifecycle contracts", "native hook adapters and limits", "context observation concurrency and freshness", "project activation and CLI refusal", "namespaced skill identities", "global skills migration and restore", "installation persistence policy"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
       "id": "codex-context-diagnostics",
       "family": "codex",
       "script": "perf:verify-codex-context-diagnostics",

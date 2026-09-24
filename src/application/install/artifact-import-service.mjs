@@ -32,7 +32,7 @@ export function resolveArtifactImportDefaults(args, configData = {}) {
     };
   }
 
-  const envStateMode = normalizeStateMode(process.env.AIDN_STATE_MODE);
+  const envStateMode = normalizeStateMode(args?.runtimeStateMode ?? process.env.AIDN_STATE_MODE);
   if (envStateMode) {
     const store = defaultIndexStoreFromStateMode(envStateMode);
     return {
@@ -82,8 +82,8 @@ function isExplicitArtifactImport(defaults) {
   return defaults?.source === "cli" || defaults?.source === "env-index-store";
 }
 
-export function runArtifactImport(repoRoot, targetRoot, dryRun, args, configData = {}) {
-  const defaults = resolveArtifactImportDefaults(args, configData);
+export function runArtifactImport(repoRoot, targetRoot, dryRun, args, configData = {}, frozenDefaults = null, frozenPersistence = null) {
+  const defaults = frozenDefaults ?? resolveArtifactImportDefaults(args, configData);
   if (isStrictCanonicalPostgres(configData) && !isExplicitArtifactImport(defaults)) {
     return {
       attempted: false,
@@ -132,6 +132,7 @@ export function runArtifactImport(repoRoot, targetRoot, dryRun, args, configData
   }
 
   const result = spawnSync(process.execPath, cmd, {
+    ...(frozenDefaults ? { env: { ...process.env, AIDN_STATE_MODE: defaults.stateMode, AIDN_INDEX_STORE_MODE: defaults.store, ...(frozenPersistence ? { AIDN_RUNTIME_PERSISTENCE_BACKEND: frozenPersistence.backend, AIDN_RUNTIME_PERSISTENCE_CONNECTION_REF: frozenPersistence.connectionRef ?? "" } : {}) } } : {}),
     encoding: "utf8",
     timeout: 120000,
     maxBuffer: 10 * 1024 * 1024,
@@ -208,8 +209,8 @@ function expectedArtifactImportFilesForStore(store) {
   return [];
 }
 
-export function verifyArtifactImportOutputs(targetRoot, args, configData = {}) {
-  const defaults = resolveArtifactImportDefaults(args, configData);
+export function verifyArtifactImportOutputs(targetRoot, args, configData = {}, frozenDefaults = null) {
+  const defaults = frozenDefaults ?? resolveArtifactImportDefaults(args, configData);
   if (args.dryRun) {
     return {
       checked: false,

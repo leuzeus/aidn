@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { writeFileAtomicSync } from "../fs/atomic-write-lib.mjs";
 
+export const AIDN_CONFIG_SCHEMA_VERSION = 1;
+
 export const VALID_STATE_MODES = new Set(["files", "dual", "db-only"]);
 export const VALID_INDEX_STORE_MODES = new Set(["file", "sql", "dual", "sqlite", "dual-sqlite", "all"]);
 export const VALID_RUNTIME_PERSISTENCE_BACKENDS = new Set(["sqlite", "postgres"]);
@@ -25,6 +27,44 @@ function isPlainObject(value) {
 
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value ?? {}));
+}
+
+export function isAidnProductVersion(value) {
+  if (typeof value !== "string" || value !== value.trim()) return false;
+  const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.exec(value);
+  return Boolean(match) && (!match[4] || match[4].split(".").every(
+    (identifier) => !/^\d+$/.test(identifier) || identifier === "0" || !identifier.startsWith("0"),
+  ));
+}
+
+function assertAidnProductVersion(version, field) {
+  if (!isAidnProductVersion(version)) {
+    throw new Error(`Invalid AIDN config ${field}: expected a semantic product version`);
+  }
+}
+
+// This pure transformation records a caller-verified complete installation;
+// constructing a config alone neither writes it nor proves installation success.
+export function withInstalledAidnVersion(configData, version) {
+  validateAidnProjectConfig(configData);
+  assertAidnProductVersion(version, "install.aidnVersion");
+  const next = cloneJson(configData);
+  next.version = AIDN_CONFIG_SCHEMA_VERSION;
+  next.install = { ...(next.install ?? {}), aidnVersion: version };
+  return validateAidnProjectConfig(next);
+}
+
+// The recorded version describes the last successful installation. Asset drift
+// and receipt binding require separate installation diagnostics.
+export function inspectInstalledAidnVersion(configData, executingVersion) {
+  validateAidnProjectConfig(configData);
+  assertAidnProductVersion(executingVersion, "executing package VERSION");
+  const recorded = configData.install?.aidnVersion ?? null;
+  return {
+    cli_version: executingVersion,
+    recorded_version: recorded,
+    status: recorded == null ? "unknown" : recorded === executingVersion ? "current" : "mismatch",
+  };
 }
 
 function getConfigFileSignature(filePath) {
@@ -234,8 +274,8 @@ export function validateAidnProjectConfig(data) {
     throw new Error("Invalid AIDN config root: expected plain object");
   }
   assertJsonConfigValue(data, "$", new Set());
-  if (data.version != null && (!Number.isInteger(data.version) || data.version < 1)) {
-    throw new Error("Invalid AIDN config version: expected a positive integer");
+  if (data.version != null && data.version !== AIDN_CONFIG_SCHEMA_VERSION) {
+    throw new Error("Invalid AIDN config version: expected supported schema version 1");
   }
   if (data.profile != null && !normalizeStateMode(data.profile)) {
     throw new Error("Invalid AIDN config profile: expected files|dual|db-only");
@@ -244,6 +284,9 @@ export function validateAidnProjectConfig(data) {
     assertOptionalObject(data, section);
   }
   const install = data.install ?? {};
+  if (Object.hasOwn(install, "aidnVersion")) {
+    assertAidnProductVersion(install.aidnVersion, "install.aidnVersion");
+  }
   if (install.artifactImportStore != null
     && !normalizeIndexStoreMode(install.artifactImportStore)) {
     throw new Error("Invalid AIDN config install.artifactImportStore");

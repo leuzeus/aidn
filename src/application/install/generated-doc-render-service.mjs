@@ -218,6 +218,7 @@ export function renderManagedInstallDocs({
   templateVars = {},
   existingContentByTarget = {},
   workflowAdapterConfig = null,
+  onPlannedFile = null,
 }) {
   const results = [];
   for (const item of GENERATED_DOCS) {
@@ -235,6 +236,7 @@ export function renderManagedInstallDocs({
     });
     const previous = fs.existsSync(targetPath) ? readUtf8(targetPath) : null;
     const changed = previous !== content;
+    onPlannedFile?.({ targetRelative: item.targetRelative, targetPath, content });
     if (!dryRun) {
       ensureDir(path.dirname(targetPath), dryRun);
       writeUtf8(targetPath, content, dryRun);

@@ -2,7 +2,9 @@
 
 ## Scaffold-based model
 
-This workflow is installed by copying and merging scaffold files into a client repository.
+This repository is AIDN package source. Installation copies and merges its scaffold
+assets into a separate client repository; source assets and test fixtures are not
+a live client installation.
 No compiled binaries are required.
 The installer is a Node.js script and supports Node.js 22.13+ on Windows, Linux, and macOS.
 
@@ -35,7 +37,7 @@ Installed workflow support files now also include:
 Install from GitHub:
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#dev
+npm install --save-dev github:leuzeus/aidn#v0.8.0
 ```
 
 Install from local path (offline/local dev):
@@ -96,6 +98,33 @@ $script = Join-Path $env:TEMP "aidn-install.ps1"
 iwr https://raw.githubusercontent.com/leuzeus/aidn/dev/scripts/install.ps1 -OutFile $script
 & $script --target . --profile default
 ```
+
+### Version and completion diagnostics
+
+The executing package reads its product version from `VERSION`. Package metadata
+and workflow/pack manifests are aligned copies. In the client,
+`.aidn/config.json` uses root `version: 1` for its configuration schema; this
+number is not the AIDN release version.
+
+A complete successful requested installation records `install.aidnVersion` from
+the executing package and binds it to the local installation receipt. The marker
+is optional for legacy clients. Missing schema/version sections stay compatible,
+and a missing product marker is reported as unknown. Preview and diagnosis never
+add it; failures and interruptions do not establish a successful installation.
+A matching version alone is neither a current asset integrity check nor native
+Codex trust evidence.
+
+```bash
+npx aidn bootstrap --target . --diagnose --scope installation --json
+npx aidn bootstrap --target . --repair --scope installation --json
+npx aidn bootstrap --target . --repair --scope installation --write --expect-plan PLAN_ID --json
+```
+
+Use the exact plan ID returned by the current preview. The default lifecycle
+scope remains `codex-integration`; explicit `--scope installation` covers the
+complete recorded local installation using the same store and recovery journal.
+See [Codex integration](CODEX_INTEGRATION.md) for the scope of resume, rollback and
+uninstall and the separate native trust boundary.
 
 ## Step 4 - Advanced: install core or composite pack directly
 
@@ -181,13 +210,13 @@ Notes:
   - use `github-integration` when you want to refresh `.github/*` automation explicitly
   - use `extended` when all optional integration layers must be refreshed together
 - Compatibility is validated from product manifests (`node_min`, `os`) before file operations.
-- If `codex_online: true`, installer requires the `codex` command to be installed and available in `PATH`.
-- If `codex_online: true`, installer also requires Codex authentication (`codex login`).
+- Nominal installation requires neither a Codex CLI on `PATH` nor Codex authentication.
+- Explicit `--codex-migrate-custom` checks the existing `codex_online` compatibility requirements before optional model-assisted migration.
 - Compatibility policy and machine prereq result are printed in installer output (`Compatibility policy`, `Prereq check`).
 - `.aidn/codex/skills.yaml` is AIDN inventory metadata rendered with the current workflow version tag; Codex does not use it for skill discovery.
 - The installer copies native project skill sources under `.agents/skills/*`.
-- The installer copies bounded custom agents under `.codex/agents/*` and the supported `SessionStart` hook under `.codex/hooks.json` plus `.codex/hooks/*`.
-- Codex must trust the client project before project hooks can run. The installed hook performs discovery only; workflow effect enforcement remains in explicit `aidn codex` and `aidn runtime` commands.
+- The installer distributes bounded custom roles and merges owned `SessionStart` and `PreToolUse` command hooks while preserving third-party configuration.
+- Project and hook trust require native Codex review. Startup reads current core admission; the covered patch hook maps a blocked business result to native `deny`. Disabled hooks, native errors/timeouts and tools outside coverage cannot be claimed as blocked. See [Codex integration](CODEX_INTEGRATION.md).
 - Codex instruction layering after install is:
   - optional global layer: `~/.codex/AGENTS.md` or `~/.codex/AGENTS.override.md`
   - installed project layer: root `AGENTS.md`
@@ -202,9 +231,9 @@ Notes:
   - placeholders already present in project files are inferred and reused during updates/migrations, except `SOURCE_BRANCH` which is not inferred from existing workflow/session/cycle documents.
   - non-interactive `SOURCE_BRANCH` fallback order is: Git remote default branch > current branch > `main`.
 - `AGENTS.md` non-interference policy:
-  - if target `AGENTS.md` already exists, installer preserves it by default (no merge),
-  - in `--assist`, preserving existing `AGENTS.md` is enforced by default,
-  - use `--force-agents-merge` to explicitly update/insert the managed block,
+  - client text outside the managed AIDN block is preserved; installation appends or updates only that block,
+  - changed managed content produces a conflict before installation writes,
+  - `--force-agents-merge` remains compatible but never overrides ownership conflicts,
   - use `--skip-agents` to always skip AGENTS merge.
 - `AGENTS.override.md` precedence note:
   - if target root `AGENTS.override.md` already exists, Codex will prefer it over the installed root `AGENTS.md`,
@@ -213,10 +242,10 @@ Notes:
 - Customized project files policy:
   - the installer does not overwrite existing files that are expected to be customized in the client repo,
   - known placeholders (for example `{{VERSION}}`) are still replaced in preserved files when values are available,
-  - when `codex` is available, installer attempts an AI-assisted migration for those files,
+  - AI-assisted migration is disabled by default; use `--codex-migrate-custom` explicitly through install or bootstrap,
   - AI migration requires a logged-in Codex session (`codex login status` must be authenticated),
   - if migration is unavailable/fails, files remain unchanged,
-  - disable AI migration with `--no-codex-migrate-custom`.
+  - `--no-codex-migrate-custom` remains an explicit spelling of the default; preview never launches migration.
 - Artifact import policy:
   - after install (non-verify mode), installer automatically imports `docs/audit/*` artifacts into `.aidn/runtime/index/*`,
   - import store precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE` mapping,
@@ -553,3 +582,9 @@ Recommended first reload path in client repos:
   - default fresh install uses `dual` (DB-backed) when no override is provided
   - explicit CLI `--index-store` still has priority.
   - in `dual`/`db-only`, index payload content embedding is enabled by default so files can be reconstructed from DB.
+
+## Activation and reviewed application
+
+Use `aidn bootstrap --target <client-repo> --dry-run --json` to obtain the installation plan; `--expect-plan PLAN_ID` binds nominal bootstrap to that preview. Use `--persistence-policy verify-only` when existing persistence must be verified without migration, adoption or import.
+
+Project authorization is inspected with `aidn bootstrap --target <client-repo> --diagnose --json`. Explicit `--authorize` and `--revoke` actions preview by default and require `--write --expect-plan PLAN_ID` to apply. They share repository authorization across Git worktrees while preserving per-worktree installation receipts. See [project activation](CODEX_INTEGRATION.md#project-activation-and-skill-names).

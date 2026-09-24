@@ -1,5 +1,5 @@
 name: extended
-version: 0.7.2
+version: 0.8.0
 depends_on:
   - runtime-local
   - codex-integration
@@ -13,7 +13,7 @@ verify:
   must_exist:
     - .aidn/runtime/agents/example-external-auditor.mjs
     - .aidn/codex/skills.yaml
-    - .agents/skills/start-session/SKILL.md
+    - .agents/skills/aidn-start-session/SKILL.md
     - .codex/agents/aidn-explorer.toml
     - .codex/hooks.json
     - .github/workflows/branch-prune.yml

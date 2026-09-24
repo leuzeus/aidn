@@ -97,3 +97,11 @@ Initial v1 commands:
 - `aidn project config --init-defaults --write --json`
 - `aidn codex hydrate-context --json`
 - `aidn codex workflow-step --json`
+
+`activation-refusal.v1` is the alternative shape for public workflow commands
+covered by the pure CLI activation policy. It preserves the invocation's logical
+effect class, reports `written: false` and `refused: true`, and exits with status 2
+before loading a workflow backend. The dispatch registry derives this alternative
+from `commandMayRefuseActivation`; `runtime pre-write-admit` keeps its own admission
+contract and includes compact activation state. Refusal and nominal payloads have
+separate real-command contract cases.

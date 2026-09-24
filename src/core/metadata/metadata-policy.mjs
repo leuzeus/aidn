@@ -73,6 +73,25 @@ const GOVERNED_CONTENT_FIELDS = Object.freeze([
 
 const METADATA_POLICIES = freezeDeep([
   policy({
+    concept: "project_activation",
+    label: "Project workflow activation",
+    required: ["schema_version", "scope", "authority_id", "revision", "status", "integrity_sha256"],
+    sourceOfTruthConcept: "project_activation",
+    evidenceTargets: ["src/application/install/project-activation-service.mjs"],
+    lifecycle: "absent -> authorized -> revoked",
+    notes: "Repository-local authorization revision is distinct from each worktree installation receipt and native client trust. Integrity checks detect corruption, not an adversarial local editor. Public diagnostics expose only state, active, scope, authority_id, revision and errors.",
+  }),
+  policy({
+    concept: "install_assets",
+    label: "Local installation ownership",
+    required: ["schema_version", "scope", "root_id", "package", "assets", "last_transaction", "last_action"],
+    sourceOfTruthConcept: "install_assets",
+    evidenceTargets: ["src/application/install/codex-assets-service.mjs", "src/application/install/installation-ownership-service.mjs"],
+    recommended: ["installation", "installation_last_transaction", "installation_last_action", "global_skills_migration"],
+    lifecycle: "planned -> applying -> installed|interrupted -> repaired|rolled_back|uninstalled",
+    notes: "Receipt carries package binding, owned object hashes and optional installation completion metadata; legacy Codex-only receipts remain valid. install.aidnVersion in config is a projection of the last complete successful installation, never native trust or current asset integrity. Transaction pre-images stay local and are omitted from public plans. Explicit global_skills_migration binds an absolute host and config pre/post-images in the same receipt; restoration requires unchanged post-image.",
+  }),
+  policy({
     concept: "workflow_rules",
     label: "Workflow rules",
     required: ["contract_version", "owner", "source_of_truth", "updated_at", "lifecycle_status"],
@@ -253,6 +272,7 @@ const METADATA_POLICIES = freezeDeep([
     evidenceTargets: ["src/lib/config/aidn-config-lib.mjs"],
     recommended: ["steward", "retention_policy"],
     lifecycle: "initialized -> active -> revised -> retired",
+    notes: "Root version is config schema 1, not product SemVer; absent version or install sections remain legacy-compatible. Optional install.aidnVersion is a semantic product version supplied from the executing package VERSION only after complete successful installation and bound to the local receipt.",
   }),
   policy({
     concept: "baseline",

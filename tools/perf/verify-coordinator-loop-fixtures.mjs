@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -95,12 +96,11 @@ function main() {
     const dbOnlyFilelessTarget = path.join(tempRoot, "db-only-fileless");
     const dbOnlySummaryFilelessTarget = path.join(tempRoot, "db-only-summary-fileless");
 
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), readyTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "blocked"), blockedTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), failedTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), repeatedTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlyFilelessTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlySummaryFilelessTarget, { recursive: true });
+    for (const [name, target] of [["ready", readyTarget], ["blocked", blockedTarget], ["ready", failedTarget], ["ready", repeatedTarget], ["ready", dbOnlyFilelessTarget], ["ready", dbOnlySummaryFilelessTarget]]) {
+      const sourceRoot = path.join(handoffFixturesRoot, name);
+      fs.cpSync(sourceRoot, target, { recursive: true, filter: (source) => isActivationFixtureSource(sourceRoot, source, { freshCoordination: true }) });
+      prepareActivationFixture(target, repoRoot);
+    }
 
     runJson(handoffProjectScript, ["--target", readyTarget, "--write", "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", blockedTarget, "--write", "--json"], repoRoot, 0);
@@ -260,7 +260,7 @@ function main() {
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       const cleanup = removePathWithRetry(tempRoot);

@@ -36,6 +36,30 @@ These command families are intended for users and are covered by public effect p
 - `aidn project config --list --json`
 - `aidn bootstrap --json`
 - `aidn bootstrap --dry-run --json`
+- `aidn bootstrap --diagnose --json`
+- `aidn bootstrap --authorize --json`
+- `aidn bootstrap --authorize --write --json`
+- `aidn bootstrap --revoke --json`
+- `aidn bootstrap --revoke --write --json`
+- `aidn bootstrap --repair --json`
+- `aidn bootstrap --repair --write --json`
+- `aidn bootstrap --resume --json`
+- `aidn bootstrap --resume --write --json`
+- `aidn bootstrap --rollback --json`
+- `aidn bootstrap --rollback --write --json`
+- `aidn bootstrap --uninstall --json`
+- `aidn bootstrap --uninstall --write --json`
+
+Bootstrap diagnostic and lifecycle commands accept `--scope installation` to
+select all recorded local installer assets. The default `codex-integration`
+scope remains limited to Codex assets. The scope changes the selected ownership
+set, never write intent: lifecycle applies still require both `--write` and
+`--expect-plan PLAN_ID`. Diagnostic stays read-only in either scope. The common
+`installation_plan` in ordinary bootstrap previews covers local assets,
+generated documents, configuration and separately declared persistence effects.
+`aidn install --verify-after-install` includes verification in successful-install
+finalization; `--verify` retains its read-only verification behavior.
+
 - `aidn project config --wizard --write`
 - `aidn project config --adapter-file <file> --json` (preview)
 - `aidn project config --adapter-file <file> --write --json` (apply)
@@ -164,3 +188,11 @@ This inventory is derived from:
 - `src/core/contracts/cli-output/README.md`
 
 When these disagree, the code and policy files take precedence over this inventory.
+
+## Project activation boundary
+
+`bootstrap --authorize|--revoke` uses `codex-integration` scope and previews by default; application requires `--write --expect-plan PLAN_ID`. A revoked project stays revoked through repair, resume and rollback. Diagnostic and pre-write admission outputs include compact activation state before backend access. Native Codex trust is separate.
+
+Nominal bootstrap or upgrade accepts `--expect-plan PLAN_ID` from its matching preview. `--persistence-policy verify-only` checks existing backend compatibility without requesting migration, adoption or import; `adopt` retains declared installation effects. `--verify` remains the read-only verification option.
+
+Host skill maintenance is explicit: `aidn bootstrap --migrate-global-skills --codex-home <absolute-path> --json` and `aidn bootstrap --restore-global-skills --codex-home <absolute-path> --json` preview only. Applying either requires `--write --expect-plan PLAN_ID`, uses `codex-integration` scope, and preserves the skill files. The host path is required only for these two actions; nominal project installation never migrates global skills.

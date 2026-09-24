@@ -196,8 +196,10 @@ export function resolveCompatibility(workflowManifest, compatMatrix) {
   };
 }
 
-export function validateRuntimeCompatibility(compatibility) {
-  const codexAuth = checkCodexAuthentication();
+export function validateRuntimeCompatibility(compatibility, { requireCodex = true } = {}) {
+  const codexAuth = requireCodex ? checkCodexAuthentication() : {
+    checked: false, authenticated: false, reason: "not_required_for_local_installation",
+  };
   const runtime = {
     node: process.versions.node,
     os: normalizeOsLabel(process.platform),
@@ -227,12 +229,12 @@ export function validateRuntimeCompatibility(compatibility) {
     }
   }
 
-  if (compatibility.codexOnline === true && !runtime.codexInstalled) {
+  if (requireCodex && compatibility.codexOnline === true && !runtime.codexInstalled) {
     throw new Error(
       "codex_online=true requires Codex CLI to be installed and available in PATH (command: codex)",
     );
   }
-  if (compatibility.codexOnline === true && !runtime.codexAuthenticated) {
+  if (requireCodex && compatibility.codexOnline === true && !runtime.codexAuthenticated) {
     throw new Error(
       "codex_online=true requires an authenticated Codex session. Run: codex login",
     );

@@ -23,11 +23,12 @@ function parseArgs(argv) {
     runtimePersistenceBackend: "",
     runtimePersistenceConnectionRef: "",
     runtimePersistenceLocalProjectionPolicy: "",
+    persistencePolicy: undefined,
     assist: false,
     strict: false,
     skipAgents: false,
     forceAgentsMerge: false,
-    codexMigrateCustom: true,
+    codexMigrateCustom: false,
     verifyAfterInstall: false,
     materializeVisibleArtifacts: false,
   };
@@ -53,6 +54,8 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--dry-run") {
       args.dryRun = true;
+    } else if (token === "--verify-after-install") {
+      args.verifyAfterInstall = true;
     } else if (token === "--verify") {
       args.verifyOnly = true;
     } else if (token === "--skip-artifact-import") {
@@ -69,6 +72,9 @@ function parseArgs(argv) {
     } else if (token === "--runtime-persistence-local-projection-policy") {
       args.runtimePersistenceLocalProjectionPolicy = String(argv[i + 1] ?? "").trim().toLowerCase();
       i += 1;
+    } else if (token === "--persistence-policy") {
+      args.persistencePolicy = String(argv[i + 1] ?? "").trim().toLowerCase();
+      i += 1;
     } else if (token === "--assist") {
       args.assist = true;
     } else if (token === "--strict") {
@@ -77,6 +83,8 @@ function parseArgs(argv) {
       args.skipAgents = true;
     } else if (token === "--force-agents-merge") {
       args.forceAgentsMerge = true;
+    } else if (token === "--codex-migrate-custom") {
+      args.codexMigrateCustom = true;
     } else if (token === "--no-codex-migrate-custom") {
       args.codexMigrateCustom = false;
     } else if (token === "--materialize-visible-artifacts") {
@@ -89,6 +97,9 @@ function parseArgs(argv) {
     }
   }
 
+  if (argv.includes("--codex-migrate-custom") && argv.includes("--no-codex-migrate-custom")) {
+    throw new Error("--codex-migrate-custom conflicts with --no-codex-migrate-custom");
+  }
   if (!args.target) {
     throw new Error("Missing required argument value: --target");
   }
@@ -101,6 +112,9 @@ function parseArgs(argv) {
   if (args.runtimePersistenceLocalProjectionPolicy
     && !normalizeRuntimeLocalProjectionPolicy(args.runtimePersistenceLocalProjectionPolicy)) {
     throw new Error("Invalid --runtime-persistence-local-projection-policy. Expected keep-local-sqlite|keep-json|keep-sql|none");
+  }
+  if (args.persistencePolicy !== undefined && !["adopt", "verify-only"].includes(args.persistencePolicy)) {
+    throw new Error("Invalid --persistence-policy. Expected adopt|verify-only");
   }
   if (args.verifyOnly && args.initDefaults) {
     args.verifyOnly = false;
@@ -119,7 +133,10 @@ function printUsage() {
   console.log("  node tools/install.mjs --target ../repo --pack core --init-defaults --project-name my-project --verify");
   console.log("  node tools/install.mjs --target . --pack core --dry-run");
   console.log("  node tools/install.mjs --target . --pack core --verify");
+  console.log("  node tools/install.mjs --target . --pack core --verify-after-install");
   console.log("  node tools/install.mjs --target . --pack core --skip-artifact-import");
+  console.log("  node tools/install.mjs --target . --pack core --persistence-policy verify-only  # no import or database writes; PostgreSQL must already be ready");
+  console.log("  Persistence policy: adopt (default) or verify-only. Dry-run never connects to a database.");
   console.log("  node tools/install.mjs --target . --pack core --artifact-import-store dual-sqlite");
   console.log("  node tools/install.mjs --target . --pack core --materialize-visible-artifacts");
   console.log("  node tools/install.mjs --target . --pack core --runtime-persistence-backend postgres --runtime-persistence-connection-ref env:AIDN_PG_URL");
@@ -127,7 +144,8 @@ function printUsage() {
   console.log("  node tools/install.mjs --target ../repo --pack core --strict");
   console.log("  node tools/install.mjs --target ../repo --pack core --skip-agents");
   console.log("  node tools/install.mjs --target ../repo --pack core --force-agents-merge");
-  console.log("  node tools/install.mjs --target ../repo --pack core --no-codex-migrate-custom");
+  console.log("  node tools/install.mjs --target ../repo --pack core --codex-migrate-custom  # explicit optional LLM migration");
+  console.log("  node tools/install.mjs --target ../repo --pack core --no-codex-migrate-custom  # default");
 }
 
 async function main() {

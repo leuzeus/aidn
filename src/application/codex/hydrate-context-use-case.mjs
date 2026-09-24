@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { writeFileAtomicSync } from "../../lib/fs/atomic-write-lib.mjs";
 import {
   normalizeIndexStoreMode,
   normalizeStateMode,
@@ -587,8 +588,7 @@ function selectArtifacts(payload, maxArtifactBytes, options = {}) {
 }
 
 function writeJson(filePath, payload) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  writeFileAtomicSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, { encoding: "utf8" });
 }
 
 export function buildArtifactSourceDescriptor({
@@ -747,6 +747,13 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
     const entry = latest[skill];
     decisionBySkill[skill] = {
       ok: Boolean(entry?.ok),
+      command_status: entry?.command_status ?? null,
+      ts: entry?.ts ?? null,
+      target: entry?.target ?? null,
+      reusable: entry?.reusable === true,
+      reuse_status: entry?.reuse_status ?? "unknown",
+      reuse_reasons: entry?.reuse_reasons ?? ["missing_command_provenance"],
+      provenance: entry?.provenance ?? null,
       mode: entry?.mode ?? "UNKNOWN",
       state_mode: entry?.state_mode ?? "files",
       decision: entry?.decision ?? null,
