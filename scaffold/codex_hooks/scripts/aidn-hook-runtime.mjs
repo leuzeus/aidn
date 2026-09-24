@@ -162,7 +162,7 @@ export function resolveBoundRuntime(projectRoot) {
   return { entry, version: binding.version };
 }
 
-export function readAdmission(projectRoot, { skill = "", commandRunner = spawnSync } = {}) {
+export function readAdmission(projectRoot, { skill = "", nativeRequest, commandRunner = spawnSync } = {}) {
   const deadline = Date.now() + 7000;
   const { authority, scope, authorityId } = readLocalAuthority(projectRoot);
   const inactive = (state) => ({ ok: false, admission_status: "blocked", target_root: projectRoot,
@@ -175,13 +175,17 @@ export function readAdmission(projectRoot, { skill = "", commandRunner = spawnSy
   const binding = resolveBoundRuntime(projectRoot);
   const args = [binding.entry, "runtime", "pre-write-admit", "--target", projectRoot, "--json"];
   if (skill) args.push("--skill", skill);
+  if (nativeRequest !== undefined) args.push("--native-request-stdin");
   const remainingMs = deadline - Date.now();
   if (remainingMs <= 0) throw new Error("admission_runtime_unavailable");
   const result = commandRunner(process.execPath, args, {
     cwd: projectRoot, encoding: "utf8", shell: false, timeout: remainingMs, maxBuffer: 1024 * 1024,
     windowsHide: true,
+    input: nativeRequest === undefined ? undefined : JSON.stringify(nativeRequest),
   });
-  if (result.error || result.signal || result.status !== 0) throw new Error("admission_runtime_unavailable");
+  if (result.error || result.signal || result.status !== 0) throw Object.assign(new Error("admission_runtime_unavailable"), {
+    diagnostic: { exit_code: result.status ?? null, signal: result.signal ?? null, error_code: result.error?.code ?? null },
+  });
   let admission;
   try { admission = JSON.parse(String(result.stdout).trim()); }
   catch { throw new Error("admission_invalid_output"); }
@@ -196,6 +200,13 @@ export function readAdmission(projectRoot, { skill = "", commandRunner = spawnSy
       || (!admission.activation.active && admission.ok)) {
     throw new Error("admission_invalid_output");
   }
+  if (nativeRequest !== undefined && admission.activation.active && (
+    admission.admission_kind !== "specific" || !object(admission.write_decision)
+    || admission.write_decision.contract_version !== "native-write-admission.v1"
+    || admission.write_decision.outcome !== (admission.ok ? "allow" : "deny")
+    || admission.write_decision.observation?.payload_sha256 !== hash(JSON.stringify(nativeRequest))
+    || admission.write_decision.observation?.project_root !== fs.realpathSync.native(projectRoot)
+  )) throw new Error("admission_specific_output_invalid");
   return admission;
 }
 
