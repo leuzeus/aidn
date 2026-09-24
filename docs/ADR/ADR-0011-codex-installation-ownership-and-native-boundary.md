@@ -142,8 +142,11 @@ prepare PostgreSQL. Release downloads must agree with the published manifest and
 checksums; npm records the versioned HTTPS URL and matching integrity before
 bootstrap. Preview does not download or create a cache. It delegates all project assets,
 activation, schema adoption and installation recovery to the existing bootstrap.
-It previews without network or writes; application requires `-Write`. Optional
-local PostgreSQL installation invokes a pinned official WinGet package with
+It previews without network or writes; application requires `-Write`. The
+interactive setup collects the same inputs and displays the validated plan;
+only the literal confirmation `INSTALLER` delegates to the `-Write` path.
+Secrets are requested after confirmation, never while collecting preview inputs.
+Optional local PostgreSQL installation invokes a pinned official WinGet package with
 interactive Windows approval, then creates only a dedicated role/database.
 Existing databases must prove compatible ownership and credentials; no implicit
 password rotation, privilege takeover, server upgrade or database deletion.

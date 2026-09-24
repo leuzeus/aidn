@@ -29,6 +29,9 @@ Installed workflow support files now also include:
 
 ## Complete Windows setup
 
+Run `powershell -File .\scripts\setup-project.ps1 -Wizard` from the updated source
+checkout for guided setup, or use explicit parameters for automation.
+
 For an exact published GitHub release or a reviewed local AIDN package,
 `scripts/setup-project.ps1` can orchestrate
 the package, Codex assets and either an existing PostgreSQL database or an

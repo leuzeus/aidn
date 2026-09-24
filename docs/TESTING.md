@@ -78,6 +78,8 @@ When a change affects the simplified install/upgrade orchestrator, run:
 The bootstrap and Codex integration composites also run
 `tools/perf/verify-windows-project-setup-fixtures.mjs`. This verifies the real
 Windows PowerShell preview, release download integrity and bounded HTTPS handling,
+wizard cancellation, invalid-input retry, explicit confirmation for all three
+database modes, and refusal to continue after a failed preflight,
 and injected npm/WinGet/PostgreSQL orchestration,
 including credential separation and failure stops. Real server installation,
 live PostgreSQL and native hook approval remain separate, unexecuted evidence.

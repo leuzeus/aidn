@@ -234,6 +234,7 @@ Migration and repair:
 ## Installation
 
 For Windows setup including optional PostgreSQL preparation, see
+the interactive wizard (`.\scripts\setup-project.ps1 -Wizard`) in
 [the complete project installer](docs/WINDOWS_PROJECT_SETUP.md).
 
 Version 0.9.0 is an unpublished local candidate. Until its release exists, install

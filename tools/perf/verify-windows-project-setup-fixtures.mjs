@@ -63,6 +63,58 @@ try {
     assert(releasePreview.stdout.includes('PREVIEW:') && releasePreview.stdout.includes('/v0.8.0/'));
     assert.deepEqual(treeDigest(target), before);
     checks.push('actual-windows-powershell-5-preview-unicode-path-no-prompt-no-write');
+    const harness = path.join(root, 'wizard-test.ps1');
+    fs.writeFileSync(harness, `param($Source, $Answers, $Mode)
+$ErrorActionPreference = 'Stop'
+$global:wizardTestMode = $Mode
+$global:wizardAnswers = New-Object 'System.Collections.Generic.Queue[string]'
+foreach ($item in (Get-Content -LiteralPath $Answers -Raw -Encoding UTF8 | ConvertFrom-Json)) { $global:wizardAnswers.Enqueue([string]$item) }
+function Read-Host { param($Prompt, [switch]$AsSecureString)
+  if ($AsSecureString) { throw 'Unexpected secret prompt' }
+  if ($global:wizardAnswers.Count -eq 0) { throw 'Unexpected prompt' }
+  return $global:wizardAnswers.Dequeue()
+}
+if ($Mode -eq 'entry') { & (Join-Path $Source 'scripts/setup-project.ps1'); return }
+. (Join-Path $Source 'scripts/setup-wizard.ps1')
+$script:calls = New-Object 'System.Collections.Generic.List[object]'
+Invoke-AidnSetupWizard -RunSetup { param($Options)
+  if ($global:wizardTestMode -eq 'failure') { throw 'Preflight refused' }
+  $script:calls.Add($Options.Clone())
+}
+Write-Output ('RESULT:' + (ConvertTo-Json -InputObject @($script:calls.ToArray()) -Compress))
+`, 'utf8');
+    function wizard(answers, mode = 'injected') {
+      const answerFile = path.join(root, 'answers.json'); fs.writeFileSync(answerFile, JSON.stringify(answers));
+      return spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'RemoteSigned', '-File', harness,
+        '-Source', source, '-Answers', answerFile, '-Mode', mode], { encoding: 'utf8', timeout: 30000 });
+    }
+    const releaseAnswers = [target, '', 'latest', '0.8.0', '3'];
+    let guided = wizard([...releaseAnswers, ''], 'entry');
+    assert.equal(guided.status, 0, guided.stdout + guided.stderr);
+    assert(guided.stdout.includes('PREVIEW:') && guided.stdout.includes('Termine sans installation'));
+    assert.deepEqual(treeDigest(target), before);
+    guided = wizard(['q'], 'entry');
+    assert.equal(guided.status, 0); assert(guided.stdout.includes('annulee'));
+    const conflicting = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'RemoteSigned', '-File',
+      path.join(source, 'scripts/setup-project.ps1'), '-Wizard', '-Write'], { encoding: 'utf8', timeout: 30000 });
+    assert.notEqual(conflicting.status, 0); assert(conflicting.stderr.includes('Use -Wizard alone'));
+    for (const [answers, expected] of [
+      [[...releaseAnswers, 'INSTALLER'], { ReleaseVersion: '0.8.0', PostgresMode: 'none' }],
+      [[target, '2', tarball, sha, '1', '', 'o', 'INSTALLER'], { PackagePath: tarball, PostgresMode: 'existing', PersistUserConnection: true }],
+      [[target, '1', '0.8.0', '2', '17.11-3', 'AIDN_TEST_PG', 'n', 'INSTALLER'], { PostgresMode: 'install', PostgresVersion: '17.11-3', ConnectionEnv: 'AIDN_TEST_PG' }],
+    ]) {
+      guided = wizard(answers);
+      assert.equal(guided.status, 0, guided.stdout + guided.stderr);
+      const recorded = JSON.parse(guided.stdout.split(/\r?\n/).find((line) => line.startsWith('RESULT:')).slice(7));
+      assert.equal(recorded.length, 2);
+      assert.equal(recorded[0].Write, undefined); assert.equal(recorded[0].PersistUserConnection, undefined);
+      assert.equal(recorded[1].Write, true);
+      for (const [key, value] of Object.entries(expected)) assert.equal(recorded[1][key], value);
+    }
+    guided = wizard(releaseAnswers, 'failure');
+    assert.notEqual(guided.status, 0); assert(guided.stderr.includes('Preflight refused'));
+    assert(!guided.stderr.includes('Unexpected prompt'), 'no confirmation after failed preflight');
+    checks.push('wizard-real-entry-preview-cancel-reprompt; injected-three-mode-confirmation-and-persistence; failed-preflight-stops');
   } else checks.push('SKIP: Windows PowerShell entry point (non-Windows host)');
 
   const installed = path.join(target, 'node_modules/aidn-workflow');

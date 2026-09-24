@@ -2,6 +2,8 @@
 
 ## 0.9.0 (unreleased)
 
+- Add a guided Windows setup wizard with project/package/database choices, a read-only summary and explicit installation confirmation.
+
 - Add a Windows PowerShell setup wrapper for an exact GitHub release download or pinned local AIDN tarball, project hooks and optional PostgreSQL connection or local installation, with explicit apply and separate native approval.
 
 - Admit covered native patches against the canonical task, exact paths and operations, independently of generic workflow admission. Preserve planning notes while requiring implementation prerequisites for product changes.

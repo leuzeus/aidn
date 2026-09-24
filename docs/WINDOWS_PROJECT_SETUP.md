@@ -31,6 +31,29 @@ le bootstrap existant. Sur un projet déjà installé, examiner et sauvegarder s
 
 ## Prévisualisation et application
 
+### Assistant interactif
+
+Lancer le script sans arguments, ou avec `-Wizard` :
+
+```powershell
+.\scripts\setup-project.ps1 -Wizard
+```
+
+L'assistant demande le dépôt Git du projet, la source du paquet (release GitHub
+avec version exacte ou tarball local avec SHA-256), puis le mode PostgreSQL.
+Pour un serveur local, il demande aussi la version WinGet ; pour PostgreSQL,
+il propose le nom de variable de connexion et sa persistance utilisateur.
+Le nom de variable peut rester vide pour être dérivé du chemin du projet.
+
+Il affiche et vérifie ensuite le plan sans téléchargement ni modification.
+Taper exactement `INSTALLER` pour appliquer ce plan. Entrée au récapitulatif
+quitte sans installer ; `q` annule pendant la sélection. Les URL secrètes sont
+demandées en saisie masquée seulement après confirmation. Un prérequis invalide
+arrête le parcours avant application. L'approbation des hooks dans Codex reste
+séparée. Ne pas combiner `-Wizard` avec les paramètres du mode scripté.
+
+### Paramètres pour une exécution scriptée
+
 Depuis le dépôt contenant le script mis à jour, sélectionner une release publiée.
 Le script et ses modules ne sont pas présents dans les anciennes releases.
 

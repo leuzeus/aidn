@@ -9,10 +9,13 @@ PostgresMode existing uses ConnectionEnv; install opens the official PostgreSQL
 17 installer through WinGet, then creates a dedicated database and login.
 Secrets are prompted only with -Write and never passed as command arguments.
 Native Codex approval remains a human step. See docs/WINDOWS_PROJECT_SETUP.md.
+Run without arguments or with -Wizard for guided setup and explicit confirmation.
 #>
-[CmdletBinding(DefaultParameterSetName = 'Release')]
+[CmdletBinding(DefaultParameterSetName = 'Wizard')]
 param(
-    [Parameter(Mandatory = $true)][string]$Target,
+    [Parameter(ParameterSetName = 'Wizard')][switch]$Wizard,
+    [Parameter(Mandatory = $true, ParameterSetName = 'Release')]
+    [Parameter(Mandatory = $true, ParameterSetName = 'Local')][string]$Target,
     [Parameter(Mandatory = $true, ParameterSetName = 'Release')][ValidatePattern('^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$')][string]$ReleaseVersion,
     [Parameter(Mandatory = $true, ParameterSetName = 'Local')][string]$PackagePath,
     [Parameter(Mandatory = $true, ParameterSetName = 'Local')][ValidatePattern('^[a-fA-F0-9]{64}$')][string]$PackageSha256,
@@ -27,6 +30,15 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'This installer requires Windows.' }
+if ($PSCmdlet.ParameterSetName -eq 'Wizard') {
+    if (@($PSBoundParameters.Keys | Where-Object { $_ -ne 'Wizard' }).Count -gt 0) {
+        throw 'Use -Wizard alone, or supply Target and a package source for scripted setup.'
+    }
+    . (Join-Path $PSScriptRoot 'setup-wizard.ps1')
+    $setupScript = $PSCommandPath
+    Invoke-AidnSetupWizard -RunSetup { param($Options) & $setupScript @Options }
+    return
+}
 $nodeCommand = Get-Command node -CommandType Application -ErrorAction Stop | Select-Object -First 1
 $helper = Join-Path $PSScriptRoot '../tools/setup/windows-project-setup.mjs'
 if ([string]::IsNullOrWhiteSpace($ConnectionEnv)) {
