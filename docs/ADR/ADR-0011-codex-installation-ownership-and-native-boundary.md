@@ -137,7 +137,10 @@ optional designs requiring a measured benefit and their own qualification.
 ## Windows host setup amendment — 2026-09-24
 
 A separate PowerShell host wrapper may install a reviewed, SHA-256-pinned local
-AIDN tarball and optionally prepare PostgreSQL. It delegates all project assets,
+AIDN tarball or download an exact published stable GitHub release and optionally
+prepare PostgreSQL. Release downloads must agree with the published manifest and
+checksums; npm records the versioned HTTPS URL and matching integrity before
+bootstrap. Preview does not download or create a cache. It delegates all project assets,
 activation, schema adoption and installation recovery to the existing bootstrap.
 It previews without network or writes; application requires `-Write`. Optional
 local PostgreSQL installation invokes a pinned official WinGet package with

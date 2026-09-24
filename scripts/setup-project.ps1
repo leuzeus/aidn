@@ -3,17 +3,19 @@
 .SYNOPSIS
 Preview or apply a complete, project-local AIDN setup on Windows.
 .DESCRIPTION
-Requires Node.js 22.13+ and npm. PackagePath is a reviewed local tarball.
+Requires Node.js 22.13+ and npm. Select ReleaseVersion to download a published
+GitHub release, or PackagePath and PackageSha256 for a reviewed local tarball.
 PostgresMode existing uses ConnectionEnv; install opens the official PostgreSQL
 17 installer through WinGet, then creates a dedicated database and login.
 Secrets are prompted only with -Write and never passed as command arguments.
 Native Codex approval remains a human step. See docs/WINDOWS_PROJECT_SETUP.md.
 #>
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = 'Release')]
 param(
     [Parameter(Mandatory = $true)][string]$Target,
-    [Parameter(Mandatory = $true)][string]$PackagePath,
-    [Parameter(Mandatory = $true)][ValidatePattern('^[a-fA-F0-9]{64}$')][string]$PackageSha256,
+    [Parameter(Mandatory = $true, ParameterSetName = 'Release')][ValidatePattern('^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$')][string]$ReleaseVersion,
+    [Parameter(Mandatory = $true, ParameterSetName = 'Local')][string]$PackagePath,
+    [Parameter(Mandatory = $true, ParameterSetName = 'Local')][ValidatePattern('^[a-fA-F0-9]{64}$')][string]$PackageSha256,
     [ValidateSet('none', 'existing', 'install')][string]$PostgresMode = 'existing',
     [string]$ConnectionEnv,
     [string]$AdminConnectionEnv = 'AIDN_SETUP_PG_ADMIN',
@@ -41,9 +43,10 @@ if ($ConnectionEnv -eq $AdminConnectionEnv) { throw 'Runtime and administrator c
 if ($PersistUserConnection -and (-not $Write -or $PostgresMode -eq 'none')) {
     throw '-PersistUserConnection requires -Write and PostgreSQL.'
 }
-$arguments = @($helper, '--target', $Target, '--package-path', $PackagePath,
-    '--package-sha256', $PackageSha256, '--postgres-mode', $PostgresMode,
+$arguments = @($helper, '--target', $Target, '--postgres-mode', $PostgresMode,
     '--connection-env', $ConnectionEnv, '--admin-connection-env', $AdminConnectionEnv)
+if ($PSCmdlet.ParameterSetName -eq 'Release') { $arguments += @('--release-version', $ReleaseVersion) }
+else { $arguments += @('--package-path', $PackagePath, '--package-sha256', $PackageSha256) }
 if ($PostgresVersion) { $arguments += @('--postgres-version', $PostgresVersion) }
 if ($ProjectName) { $arguments += @('--project-name', $ProjectName) }
 if ($SourceBranch) { $arguments += @('--source-branch', $SourceBranch) }

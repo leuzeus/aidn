@@ -57,6 +57,11 @@ try {
     assert.equal(ps.status, 0, ps.stdout + ps.stderr);
     assert(ps.stdout.includes('PREVIEW:'));
     assert.deepEqual(treeDigest(target), before);
+    const releasePreview = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'RemoteSigned', '-File', path.join(source, 'scripts/setup-project.ps1'),
+      '-Target', target, '-ReleaseVersion', '0.8.0', '-PostgresMode', 'none'], { encoding: 'utf8', timeout: 30000 });
+    assert.equal(releasePreview.status, 0, releasePreview.stdout + releasePreview.stderr);
+    assert(releasePreview.stdout.includes('PREVIEW:') && releasePreview.stdout.includes('/v0.8.0/'));
+    assert.deepEqual(treeDigest(target), before);
     checks.push('actual-windows-powershell-5-preview-unicode-path-no-prompt-no-write');
   } else checks.push('SKIP: Windows PowerShell entry point (non-Windows host)');
 
@@ -105,6 +110,30 @@ try {
   await applySetup(none, deps);
   assert.equal(databaseCalls.length, 0); assert(!calls.some((c) => c.command === 'winget.exe'));
   checks.push('injected-apply-existing-local-none; exact-bootstrap-plan; no-admin-in-children; failure-stops-and-redacts; native-remains-unverified');
+
+  const releasePlan = createSetupPlan({ target, releaseVersion: '0.8.0', postgresMode: 'none', write: true,
+    connectionEnv: options.connectionEnv, adminConnectionEnv: options.adminConnectionEnv });
+  assert.throws(() => createSetupPlan({ ...options, releaseVersion: '0.8.0' }), /OPTIONS_CONFLICT/);
+  calls = [];
+  await assert.rejects(applySetup(releasePlan, { ...deps, releaseDownloader: async () => { throw new Error('DOWNLOAD_FAILED'); } }), /DOWNLOAD_FAILED/);
+  assert.equal(calls.length, 0);
+  const packageUrl = 'https://github.com/leuzeus/aidn/releases/download/v0.8.0/aidn-workflow-0.8.0.tgz';
+  const packageIntegrity = 'sha512-fixture';
+  const releaseDownloader = async () => ({ packagePath: tarball, packageSha256: sha, packageUrl, packageIntegrity });
+  const releaseRunner = (command, args, context) => {
+    if (context.stage === 'package-install') {
+      assert(args.includes(packageUrl));
+      fs.writeFileSync(path.join(installed, 'VERSION'), '0.8.0');
+      fs.writeFileSync(path.join(target, 'package-lock.json'), JSON.stringify({ packages: { 'node_modules/aidn-workflow':
+        { version: '0.8.0', resolved: packageUrl, integrity: packageIntegrity } } }));
+    }
+    return runner(command, args, context);
+  };
+  assert.equal((await applySetup(releasePlan, { ...deps, releaseDownloader, run: releaseRunner })).version, '0.8.0');
+  calls = [];
+  await assert.rejects(applySetup(releasePlan, { ...deps, releaseDownloader: async () => ({ ...await releaseDownloader(), packageIntegrity: 'wrong' }), run: releaseRunner }), /NPM_INTEGRITY_MISMATCH/);
+  assert(!calls.some((call) => call.stage === 'bootstrap-preview'));
+  checks.push('release-download-failure-before-npm; selected-version; portable-url; integrity-before-bootstrap');
 
   let roleExists = false, dbExists = false, owner = 'aidn_demo', badRole = false, queries = [];
   const factory = () => ({ connect: async () => {}, end: async () => {}, query: async (sql, params) => {

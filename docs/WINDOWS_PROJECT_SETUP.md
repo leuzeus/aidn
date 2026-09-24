@@ -9,9 +9,9 @@ Le candidat 0.9.0 est local et non publié.
 
 - Windows, PowerShell 5.1 ou supérieur, Node.js 22.13+ avec son npm, et Git.
 - Un dépôt Git client existant, distinct du dépôt source AIDN.
-- Le tarball AIDN de la même version que le script, avec son SHA-256 vérifié
-  dans le manifeste. Conserver le tarball dans un emplacement durable : npm
-  enregistre une dépendance locale vers ce fichier.
+- Une release GitHub publiée avec tarball, manifeste et checksums, sélectionnée
+  par version exacte, ou un tarball local de la même version que le script avec
+  son SHA-256 vérifié. La release 0.8.0 est publiée ; 0.9.0 reste locale.
 - Pour installer le serveur : WinGet et une version précise de PostgreSQL 17.
   L'installation officielle reste interactive pour les options du serveur,
   les accords et l'élévation Windows. Node.js et WinGet ne sont pas installés
@@ -31,20 +31,41 @@ le bootstrap existant. Sur un projet déjà installé, examiner et sauvegarder s
 
 ## Prévisualisation et application
 
-Depuis le dossier contenant le script, adapter les trois valeurs suivantes.
-L'empreinte doit venir du manifeste de confiance, pas d'un téléchargement inconnu.
+Depuis le dépôt contenant le script mis à jour, sélectionner une release publiée.
+Le script et ses modules ne sont pas présents dans les anciennes releases.
 
 ```powershell
 $setup = @{
     Target = 'C:\work\client'
-    PackagePath = 'C:\paquets\aidn-workflow-0.9.0.tgz'
-    PackageSha256 = 'REMPLACER_PAR_64_CARACTERES_HEXA_DU_MANIFESTE'
+    ReleaseVersion = '0.8.0'
     PostgresMode = 'existing'
     ConnectionEnv = 'AIDN_MON_PROJET_PG_URL'
 }
 & .\scripts\setup-project.ps1 @setup
 & .\scripts\setup-project.ps1 @setup -Write
 ```
+
+Avec `-ReleaseVersion`, le script télécharge les assets depuis `leuzeus/aidn`,
+refuse les drafts, préversions et assets manquants, puis compare la taille et le
+SHA-256 du tarball au manifeste et aux checksums. Les téléchargements sont bornés
+et limités aux origines HTTPS GitHub admises. Ces contrôles prouvent la cohérence
+des assets du même éditeur ; ce ne sont pas une signature indépendante.
+Les octets vérifiés sont conservés sous `%LOCALAPPDATA%\AIDN\packages`.
+npm enregistre l'URL HTTPS versionnée et son intégrité SHA-512 dans le lockfile,
+qui est contrôlé avant le bootstrap. Une version exacte est obligatoire : aucun
+repli sur latest ni sur une autre release. La disponibilité est vérifiée à l'application.
+Les fonctionnalités installées sont celles de la version sélectionnée.
+
+Pour le candidat local 0.9.0, remplacer `ReleaseVersion` par les deux paramètres :
+
+```powershell
+$setup.Remove('ReleaseVersion')
+$setup.PackagePath = 'C:\paquets\aidn-workflow-0.9.0.tgz'
+$setup.PackageSha256 = 'REMPLACER_PAR_64_CARACTERES_HEXA_DU_MANIFESTE'
+```
+
+Conserver ce tarball local dans un emplacement durable : npm enregistre son chemin.
+Les deux sources de paquet sont mutuellement exclusives.
 
 Sans `-Write`, le script lit uniquement les entrées locales et affiche les étapes.
 Il ne télécharge rien, ne demande aucun secret et ne contacte aucune base.

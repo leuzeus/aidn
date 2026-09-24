@@ -29,7 +29,8 @@ Installed workflow support files now also include:
 
 ## Complete Windows setup
 
-For a reviewed local AIDN package, `scripts/setup-project.ps1` can orchestrate
+For an exact published GitHub release or a reviewed local AIDN package,
+`scripts/setup-project.ps1` can orchestrate
 the package, Codex assets and either an existing PostgreSQL database or an
 interactive local server installation. It previews by default and applies only
 with `-Write`. See [Windows project setup](WINDOWS_PROJECT_SETUP.md).

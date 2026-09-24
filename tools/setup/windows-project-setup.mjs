@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import { preparePostgres, validateConnections } from './windows-postgres.mjs';
 import { createActivationGitEnvironment } from '../../src/application/install/project-activation-service.mjs';
+import { downloadReleasePackage, releasePackagePlan } from './github-release-package.mjs';
 
 const sourceRoot = path.resolve(import.meta.dirname, '../..');
 const hashFile = (file) => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -15,6 +16,7 @@ const scalarFlags = new Map([
   ['--postgres-mode', 'postgresMode'], ['--connection-env', 'connectionEnv'],
   ['--admin-connection-env', 'adminConnectionEnv'], ['--postgres-version', 'postgresVersion'],
   ['--project-name', 'projectName'], ['--source-branch', 'sourceBranch'],
+  ['--release-version', 'releaseVersion'],
 ]);
 export function parseArguments(argv) {
   const options = { write: false, postgresMode: 'existing', adminConnectionEnv: 'AIDN_SETUP_PG_ADMIN' };
@@ -31,12 +33,15 @@ export function parseArguments(argv) {
 }
 
 export function createSetupPlan(options) {
-  if (!options.target || !options.packagePath || !/^[a-f0-9]{64}$/i.test(options.packageSha256 || '')) fail('TARGET_AND_PINNED_TARBALL_REQUIRED');
+  if (!options.target) fail('TARGET_REQUIRED');
+  const release = options.releaseVersion ? releasePackagePlan(options.releaseVersion) : null;
+  if (release && (options.packagePath || options.packageSha256)) fail('PACKAGE_SOURCE_OPTIONS_CONFLICT');
+  if (!release && (!options.packagePath || !/^[a-f0-9]{64}$/i.test(options.packageSha256 || ''))) fail('TARGET_AND_PINNED_TARBALL_REQUIRED');
   const target = fs.realpathSync(path.resolve(options.target));
-  const packagePath = fs.realpathSync(path.resolve(options.packagePath));
-  if (!fs.statSync(target).isDirectory() || !fs.statSync(packagePath).isFile() || !packagePath.endsWith('.tgz')) fail('INVALID_TARGET_OR_TARBALL');
+  const packagePath = release ? null : fs.realpathSync(path.resolve(options.packagePath));
+  if (!fs.statSync(target).isDirectory() || !release && (!fs.statSync(packagePath).isFile() || !packagePath.endsWith('.tgz'))) fail('INVALID_TARGET_OR_TARBALL');
   if (target.toLowerCase() === sourceRoot.toLowerCase()) fail('PACKAGE_SOURCE_IS_NOT_A_CLIENT');
-  if (hashFile(packagePath) !== options.packageSha256.toLowerCase()) fail('TARBALL_HASH_MISMATCH');
+  if (!release && hashFile(packagePath) !== options.packageSha256.toLowerCase()) fail('TARBALL_HASH_MISMATCH');
   if (!['none', 'existing', 'install'].includes(options.postgresMode)) fail('INVALID_POSTGRES_MODE');
   if (options.postgresMode !== 'none' && (!/^AIDN_[A-Z0-9_]+$/.test(options.connectionEnv || '')
       || !/^AIDN_[A-Z0-9_]+$/.test(options.adminConnectionEnv || '') || options.connectionEnv === options.adminConnectionEnv)) fail('INVALID_CONNECTION_VARIABLES');
@@ -52,9 +57,9 @@ export function createSetupPlan(options) {
     const metadata = JSON.parse(fs.readFileSync(packageFile, 'utf8'));
     if (metadata.name === 'aidn-workflow') fail('PACKAGE_SOURCE_IS_NOT_A_CLIENT');
   }
-  const version = fs.readFileSync(path.join(sourceRoot, 'VERSION'), 'utf8').trim();
+  const version = release?.version || fs.readFileSync(path.join(sourceRoot, 'VERSION'), 'utf8').trim();
   return { ...options, target, packagePath, version,
-    stages: ['package-install', ...(options.postgresMode === 'install' ? ['postgres-install-interactive', 'database-prepare'] : []),
+    stages: [...(release ? ['release-download-and-verify'] : []), 'package-install', ...(options.postgresMode === 'install' ? ['postgres-install-interactive', 'database-prepare'] : []),
       ...(options.postgresMode !== 'none' ? ['database-verify'] : []), 'bootstrap-preview', 'bootstrap-apply', 'diagnose',
       ...(options.postgresMode !== 'none' ? ['persistence-status'] : []), 'native-approval-pending'] };
 }
@@ -73,12 +78,11 @@ function runProcess(command, args, { cwd, env, interactive = false, stage }) {
 }
 
 export async function applySetup(plan, { env = process.env, run = runProcess, database = preparePostgres,
-  log = console.log, platform = process.platform, pgFactory } = {}) {
+  log = console.log, platform = process.platform, pgFactory, releaseDownloader = downloadReleasePackage } = {}) {
   if (!plan.write) fail('WRITE_REQUIRED');
   if (platform !== 'win32') fail('WINDOWS_REQUIRED');
   const major = Number(process.versions.node.split('.')[0]), minor = Number(process.versions.node.split('.')[1]);
   if (major < 22 || major === 22 && minor < 13) fail('NODE_22_13_REQUIRED');
-  if (hashFile(plan.packagePath) !== plan.packageSha256.toLowerCase()) fail('TARBALL_CHANGED');
   const postgres = plan.postgresMode !== 'none';
   const dbOptions = postgres ? { connectionString: env[plan.connectionEnv],
     adminConnectionString: env[plan.adminConnectionEnv], create: plan.postgresMode === 'install',
@@ -86,6 +90,12 @@ export async function applySetup(plan, { env = process.env, run = runProcess, da
   if (dbOptions) validateConnections(dbOptions);
   const npmCli = path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
   if (!fs.existsSync(npmCli)) fail('NODE_BUNDLED_NPM_REQUIRED');
+  if (plan.releaseVersion) {
+    log('Stage: release-download-and-verify');
+    plan = { ...plan, ...await releaseDownloader(plan.releaseVersion) };
+    log(`Release: v${plan.version}; commit: ${plan.releaseCommit}; SHA256: ${plan.packageSha256}`);
+  }
+  if (hashFile(plan.packagePath) !== plan.packageSha256.toLowerCase()) fail('TARBALL_CHANGED');
   // Only database preparation needs admin credentials. Never pass them to npm,
   // WinGet, bootstrap, hooks or other children.
   const childEnv = { ...env };
@@ -93,11 +103,16 @@ export async function applySetup(plan, { env = process.env, run = runProcess, da
   delete childEnv[plan.connectionEnv];
   log('Stage: package-install');
   run(process.execPath, [npmCli, 'install', '--save-dev', '--save-exact', '--include=optional', '--ignore-scripts',
-    '--no-audit', '--no-fund', plan.packagePath], { cwd: plan.target, env: childEnv, stage: 'package-install' });
+    '--no-audit', '--no-fund', plan.packageUrl || plan.packagePath], { cwd: plan.target, env: childEnv, stage: 'package-install' });
   if (hashFile(plan.packagePath) !== plan.packageSha256.toLowerCase()) fail('TARBALL_CHANGED');
   const installed = path.join(plan.target, 'node_modules/aidn-workflow');
   if (fs.readFileSync(path.join(installed, 'VERSION'), 'utf8').trim() !== plan.version
       || JSON.parse(fs.readFileSync(path.join(installed, 'package.json'), 'utf8')).name !== 'aidn-workflow') fail('INSTALLED_PACKAGE_IDENTITY_MISMATCH');
+  if (plan.packageUrl) {
+    const lock = JSON.parse(fs.readFileSync(path.join(plan.target, 'package-lock.json'), 'utf8'));
+    const entry = lock.packages?.['node_modules/aidn-workflow'];
+    if (entry?.resolved !== plan.packageUrl || entry?.integrity !== plan.packageIntegrity || entry?.version !== plan.version) fail('RELEASE_NPM_INTEGRITY_MISMATCH');
+  }
   let clientFactory;
   if (postgres) {
     if (pgFactory) clientFactory = pgFactory;
@@ -151,7 +166,7 @@ export async function applySetup(plan, { env = process.env, run = runProcess, da
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const plan = createSetupPlan(parseArguments(process.argv.slice(2)));
-    console.log(`Target: ${plan.target}\nPackage version: ${plan.version}\nPackage SHA256: ${plan.packageSha256}\nPostgreSQL mode: ${plan.postgresMode}`);
+    console.log(`Target: ${plan.target}\nPackage version: ${plan.version}\nPackage source: ${plan.releaseVersion ? releasePackagePlan(plan.releaseVersion).packageUrl : plan.packagePath}\nPackage SHA256: ${plan.packageSha256 || 'verified from published manifest during apply'}\nPostgreSQL mode: ${plan.postgresMode}`);
     console.log(`Stages: ${plan.stages.join(' -> ')}`);
     if (plan.postgresMode !== 'none') console.log(`Runtime reference: env:${plan.connectionEnv}`);
     if (plan.postgresMode === 'install') console.log(`Host package: PostgreSQL.PostgreSQL.17 ${plan.postgresVersion}; interactive installation requires Windows approval.`);

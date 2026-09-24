@@ -204,7 +204,8 @@ Host skill maintenance is explicit: `aidn bootstrap --migrate-global-skills --co
 
 `scripts/setup-project.ps1` is a Windows host wrapper, not a new aidn CLI command.
 It previews local inputs by default and applies only with `-Write`. It orchestrates
-a pinned local npm tarball, optional WinGet PostgreSQL installation and database
+an exact published GitHub release (verified manifest/checksums and npm integrity)
+or a pinned local npm tarball, optional WinGet PostgreSQL installation and database
 preparation, then the existing bootstrap preview/apply/diagnose and persistence
 status commands. It has human-readable output, no public JSON contract.
 `-PersistUserConnection` is an explicit optional Windows user-environment write;
