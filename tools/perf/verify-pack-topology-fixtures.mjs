@@ -173,6 +173,7 @@ function inspectPackageDocsAllowlist(files) {
     "docs/CODEX_INTEGRATION.md",
     "docs/CODEX_NATIVE_QUALIFICATION.md",
     "docs/CODEX_CLIENT_MIGRATION.md",
+    "docs/WINDOWS_PROJECT_SETUP.md",
     "docs/README.md",
     "docs/MIGRATION_SHARED_RUNTIME_POSTGRESQL.md",
     "docs/MULTI_PROJECT_POSTGRESQL_MIGRATION_GUIDE.md",
