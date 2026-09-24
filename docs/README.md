@@ -7,6 +7,8 @@ Use this page as the first stop when you need to navigate the repository docs.
 
 ## Start Here
 
+- [Windows project setup](./WINDOWS_PROJECT_SETUP.md)
+
 - [Architecture cockpit](./ARCHITECTURE_COCKPIT.md)
 - [CI gate families](./CI_GATE_FAMILIES.md)
 - [Testing guide](./TESTING.md)

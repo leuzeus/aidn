@@ -2,6 +2,8 @@
 
 ## 0.9.0 (unreleased)
 
+- Add a Windows PowerShell setup wrapper for a pinned AIDN tarball, project hooks and optional PostgreSQL connection or local installation, with explicit apply and separate native approval.
+
 - Admit covered native patches against the canonical task, exact paths and operations, independently of generic workflow admission. Preserve planning notes while requiring implementation prerequisites for product changes.
 - Pass native patch payloads through the thin Codex hook and return explicit refusals for invalid or out-of-scope requests.
 - Distinguish installed hook configuration from native approval and execution. Native qualification remains open; shell and MCP writes remain outside coverage.

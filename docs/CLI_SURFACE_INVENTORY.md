@@ -199,3 +199,13 @@ When these disagree, the code and policy files take precedence over this invento
 Nominal bootstrap or upgrade accepts `--expect-plan PLAN_ID` from its matching preview. `--persistence-policy verify-only` checks existing backend compatibility without requesting migration, adoption or import; `adopt` retains declared installation effects. `--verify` remains the read-only verification option.
 
 Host skill maintenance is explicit: `aidn bootstrap --migrate-global-skills --codex-home <absolute-path> --json` and `aidn bootstrap --restore-global-skills --codex-home <absolute-path> --json` preview only. Applying either requires `--write --expect-plan PLAN_ID`, uses `codex-integration` scope, and preserves the skill files. The host path is required only for these two actions; nominal project installation never migrates global skills.
+
+## Windows host setup wrapper
+
+`scripts/setup-project.ps1` is a Windows host wrapper, not a new aidn CLI command.
+It previews local inputs by default and applies only with `-Write`. It orchestrates
+a pinned local npm tarball, optional WinGet PostgreSQL installation and database
+preparation, then the existing bootstrap preview/apply/diagnose and persistence
+status commands. It has human-readable output, no public JSON contract.
+`-PersistUserConnection` is an explicit optional Windows user-environment write;
+native Codex trust is never changed. See [the setup guide](WINDOWS_PROJECT_SETUP.md).

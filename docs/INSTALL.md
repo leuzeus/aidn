@@ -27,6 +27,13 @@ Installed workflow support files now also include:
 - `docs/audit/REANCHOR_PROMPT.md` for assistant restart / partial-memory recovery
 - `docs/audit/ARTIFACT_MANIFEST.md` for "where to read what"
 
+## Complete Windows setup
+
+For a reviewed local AIDN package, `scripts/setup-project.ps1` can orchestrate
+the package, Codex assets and either an existing PostgreSQL database or an
+interactive local server installation. It previews by default and applies only
+with `-Write`. See [Windows project setup](WINDOWS_PROJECT_SETUP.md).
+
 ## Step 1 - Prerequisites
 
 - Node.js 22.13 or newer

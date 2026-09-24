@@ -75,6 +75,12 @@ When a change affects the simplified install/upgrade orchestrator, run:
 - `npm run perf:verify-project-config`
 - `npm run perf:verify-install-idempotence`
 
+The bootstrap and Codex integration composites also run
+`tools/perf/verify-windows-project-setup-fixtures.mjs`. This verifies the real
+Windows PowerShell preview and injected npm/WinGet/PostgreSQL orchestration,
+including credential separation and failure stops. Real server installation,
+live PostgreSQL and native hook approval remain separate, unexecuted evidence.
+
 The CLI effect policy verifier checks the public command effect inventory in `src/core/cli/effect-policy.mjs`. The no-implicit-write verifier runs stable read-only, preview, and projector dry-run commands against a temporary fixture copy and fails if checkout-bound paths, including `.agents/*` and `.aidn/runtime/*`, change. The CLI output contract verifier gives every public JSON command its own isolated Git fixture with an explicitly derived dual-SQLite projection, then validates the result against `src/core/contracts/cli-output/*.schema.json`; commands never inherit mutations from a previously checked contract. For projector commands, it also verifies that `--dry-run --json` does not mutate the projected Markdown artifact.
 When a contract command child fails, the verifier reports its exit status,
 signal, timeout/error code, and independently bounded, redacted stdout and

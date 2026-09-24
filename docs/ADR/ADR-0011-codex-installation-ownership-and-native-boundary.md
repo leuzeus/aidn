@@ -134,6 +134,25 @@ native trust. A separate app-server runner can own explicitly delegated sessions
 it does not take over arbitrary existing desktop sessions. All three remain
 optional designs requiring a measured benefit and their own qualification.
 
+## Windows host setup amendment — 2026-09-24
+
+A separate PowerShell host wrapper may install a reviewed, SHA-256-pinned local
+AIDN tarball and optionally prepare PostgreSQL. It delegates all project assets,
+activation, schema adoption and installation recovery to the existing bootstrap.
+It previews without network or writes; application requires `-Write`. Optional
+local PostgreSQL installation invokes a pinned official WinGet package with
+interactive Windows approval, then creates only a dedicated role/database.
+Existing databases must prove compatible ownership and credentials; no implicit
+password rotation, privilege takeover, server upgrade or database deletion.
+
+Credentials use existing environment references, with no new runtime resolver.
+Optional persistence into the Windows user environment is an explicit wrapper
+flag and is not a secret vault. Admin credentials are not passed to child tools.
+OS/npm/database stages are not covered by the bootstrap rollback journal and
+remain in place after failure. No global Codex configuration, native approval,
+shared synchronization or model invocation is added. This extends host setup,
+not workflow authority or the shared coordination boundary.
+
 ## Verification
 
 The focused fixture set checks ownership, merge preservation, repeated install,
