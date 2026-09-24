@@ -34,7 +34,7 @@
       "additionalProperties": true
     },
     "shared_state_backend": {
-      "type": "object",
+      "type": ["object", "null"],
       "properties": {
         "runtime_backend": {
           "type": [
@@ -238,6 +238,201 @@
           "items": {
             "type": "string"
           }
+        }
+      },
+      "additionalProperties": false
+    },
+    "admission_kind": {
+      "type": "string",
+      "enum": [
+        "generic",
+        "specific"
+      ]
+    },
+    "generic_admission_status": {
+      "type": "string",
+      "enum": [
+        "admitted",
+        "admitted_with_warnings",
+        "blocked"
+      ]
+    },
+    "write_decision": {
+      "type": "object",
+      "required": [
+        "contract_version",
+        "outcome",
+        "reasons",
+        "missing_requirements",
+        "operations",
+        "coverage",
+        "observation",
+        "next_action"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "native-write-admission.v1"
+        },
+        "outcome": {
+          "enum": [
+            "allow",
+            "deny"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "code",
+              "requirement"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "requirement": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "missing_requirements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "operation",
+              "path",
+              "classification"
+            ],
+            "properties": {
+              "operation": {
+                "enum": [
+                  "add",
+                  "update",
+                  "delete",
+                  "move",
+                  "move-destination"
+                ]
+              },
+              "path": {
+                "type": "string"
+              },
+              "classification": {
+                "enum": [
+                  "note",
+                  "planning",
+                  "product",
+                  "normative-documentation",
+                  "installed-authority",
+                  "workflow-state"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "coverage": {
+          "type": "object",
+          "required": [
+            "tools",
+            "format",
+            "excluded",
+            "semantic_validation",
+            "atomic"
+          ],
+          "properties": {
+            "tools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "format": {
+              "type": "string"
+            },
+            "excluded": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "semantic_validation": {
+              "const": false
+            },
+            "atomic": {
+              "const": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "observation": {
+          "type": "object",
+          "required": [
+            "project_root",
+            "worktree_id",
+            "branch",
+            "head",
+            "authority_id",
+            "activation_revision",
+            "canonical_sha256",
+            "payload_sha256",
+            "paths_sha256",
+            "policy_version"
+          ],
+          "properties": {
+            "project_root": {
+              "type": "string"
+            },
+            "branch": {
+              "type": "string"
+            },
+            "head": {
+              "type": "string"
+            },
+            "canonical_sha256": {
+              "type": "string"
+            },
+            "payload_sha256": {
+              "type": "string"
+            },
+            "paths_sha256": {
+              "type": "string"
+            },
+            "policy_version": {
+              "type": "string"
+            },
+            "worktree_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "authority_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "activation_revision": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "next_action": {
+          "type": "string"
         }
       },
       "additionalProperties": false

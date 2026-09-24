@@ -154,6 +154,7 @@ const METADATA_POLICIES = freezeDeep([
     sourceOfTruthConcept: "artifact_inventory",
     evidenceTargets: ["src/adapters/runtime/artifact-store.mjs"],
     recommended: [...GOVERNED_CONTENT_FIELDS, "confidence"],
+    notes: "A canonical cycle plan may contain Native write scope version 1: tasks bind exact task text, implementation/exploration intent and explicit paths/operations. It is plan content in the existing artifact store, not a second authority or authorization cache.",
     legacyTolerated: ["owner", "steward", "privacy_classification", "retention_policy"],
     lifecycle: "draft -> active -> verified -> promoted|archived -> superseded",
   }),

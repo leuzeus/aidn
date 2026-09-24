@@ -88,6 +88,9 @@ finalization; `--verify` retains its read-only verification behavior.
 - `aidn runtime verify-agent-roster --json`
 - `aidn runtime handoff-admit --json`
 - `aidn runtime pre-write-admit --json`
+  - Optional `--native-request-stdin` reads native V4A request JSON and returns
+    specific scope admission. It remains read-only; generic admission is not
+    universal write permission. See [specific admission](CODEX_INTEGRATION.md#specific-native-write-admission).
 - `aidn codex hydrate-context --json`
   - hidden bundle output defaults to `.aidn/runtime/context/hydrated-context.json`
   - strict `db-only` does not auto-project visible files

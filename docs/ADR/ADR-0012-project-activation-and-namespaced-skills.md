@@ -66,6 +66,12 @@ reading configuration.
 
 ## Consequences and validation
 
+2026-09-24: activation remains a prerequisite, not patch authorization. Each
+covered native edit delegates operation/path admission to the existing runtime
+use case. Revocation remains neutral natively and refuses AIDN workflow work;
+degraded active installation remains distinguishable. This amendment neither
+changes the authority record nor grants native client trust.
+
 Project activation is a governed concept distinct from installation ownership,
 workflow state and native client trust. Diagnostic output is limited to state,
 active, scope, authority identity, revision and errors. A refused command keeps

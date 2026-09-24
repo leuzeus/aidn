@@ -7,6 +7,7 @@ import { resolveSkillId } from "../../src/core/skills/skill-policy.mjs";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 import {
   buildPreWriteAdmissionResult,
+  admitSpecificNativeWrite,
   deriveFirstPlanStep,
   derivePreWriteObservedContext,
   findCycleStatus,
@@ -55,6 +56,8 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--strict") {
       args.strict = true;
+    } else if (token === "--native-request-stdin") {
+      args.nativeRequestStdin = true;
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -73,6 +76,7 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  npx aidn runtime pre-write-admit --target . --json");
+  console.log("  npx aidn runtime pre-write-admit --target . --native-request-stdin --json < native-request.json");
   console.log("  npx aidn runtime pre-write-admit --target . --skill cycle-create --strict --json");
   console.log("  npx aidn runtime pre-write-admit --target tests/fixtures/perf-handoff/ready --skill requirements-delta --json");
 }
@@ -633,6 +637,7 @@ export async function preWriteAdmit({
   workspace: providedWorkspace = null,
   sharedCoordination = null,
   sharedCoordinationOptions = {},
+  nativeRequest = undefined,
 } = {}) {
   const activationState = readActivation({ targetRoot: path.resolve(process.cwd(), targetRoot ?? ".") });
   const activation = {
@@ -642,9 +647,12 @@ export async function preWriteAdmit({
   };
   const absoluteTargetRoot = activationState.identity?.target_root ?? path.resolve(process.cwd(), targetRoot ?? ".");
   skill = resolveSkillId(skill) ?? skill;
+  if (nativeRequest !== undefined && (currentStateFile !== "docs/audit/CURRENT-STATE.md" || runtimeStateFile !== "docs/audit/RUNTIME-STATE.md")) {
+    throw new Error("Specific admission requires canonical state paths");
+  }
   if (!activation.active) {
     return {
-      ok: false, admission_status: "blocked", target_root: absoluteTargetRoot, skill, activation,
+      ok: false, admission_status: "blocked", admission_kind: nativeRequest === undefined ? "generic" : "specific", target_root: absoluteTargetRoot, skill, activation,
       policy: mergePreWritePolicy(skill),
       source_of_truth: { state_mode: "unknown", runtime_state_mode: "unknown", concepts: {},
         observed_sources: Object.fromEntries(["current_state", "runtime_state", "session_artifact", "cycle_status", "plan_artifact"].map((key) => [key, "not-read"])),
@@ -676,7 +684,7 @@ export async function preWriteAdmit({
     warning: "",
   };
   const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
-  const preferDb = effectiveStateMode === "db-only";
+  const preferDb = effectiveStateMode === "db-only" || nativeRequest !== undefined && dbBackedMode;
   const currentStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: currentStateFile,
@@ -949,7 +957,7 @@ export async function preWriteAdmit({
     planFile && exists(planFile) ? relativePath(absoluteTargetRoot, planFile) : "",
   ]);
 
-  return { activation, ...buildPreWriteAdmissionResult({
+  const result = { activation, ...buildPreWriteAdmissionResult({
     targetRoot: absoluteTargetRoot,
     workspace,
     sharedStateBackend: sqliteFallback.backend ?? null,
@@ -1026,6 +1034,10 @@ export async function preWriteAdmit({
     sourceOfTruthIssues,
     sourceOfTruthRepairActions,
   }) };
+  return admitSpecificNativeWrite({ request: nativeRequest, result, observed,
+    resolutions: [currentStateResolution, runtimeStateResolution, sessionResolution, cycleStatusResolution, planResolution],
+    cycleStatusMap, derivedFirstPlanStep, consistency, backendWarning: sqliteFallback.warning,
+  });
 }
 
 function printText(output) {
@@ -1063,11 +1075,21 @@ function printText(output) {
 function main() {
   Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
+    let nativeRequest;
+    if (args.nativeRequestStdin) {
+      let input = "";
+      for await (const chunk of process.stdin) {
+        input += chunk.toString("utf8");
+        if (Buffer.byteLength(input) > 1024 * 1024) throw new Error("Native request exceeds input limit");
+      }
+      try { nativeRequest = JSON.parse(input); } catch { nativeRequest = null; }
+    }
     const output = await preWriteAdmit({
       targetRoot: args.target,
       skill: args.skill,
       currentStateFile: args.currentStateFile,
       runtimeStateFile: args.runtimeStateFile,
+      nativeRequest,
     });
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));

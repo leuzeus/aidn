@@ -79,10 +79,23 @@ location and source availability are required.
 `SessionStart` obtains a bounded read-only canonical admission summary, including
 resume/compaction entry paths. It never implicitly hydrates or creates workflow
 artifacts. `PreToolUse` covers the audited `apply_patch` path and its matcher
-aliases `Edit` and `Write`, rechecking generic core admission. It translates a
+aliases `Edit` and `Write`, passing the request to specific core scope admission. It translates a
 blocked admission or recoverable child failure into supported explicit-deny JSON.
 It does not classify arbitrary shells or MCP tools, replace transition-specific
 core prerequisites, rewrite tool input or grant reusable write authority.
+
+2026-09-24 amendment: generic admission stays an orientation API. The additive
+`--native-request-stdin` form evaluates all native operations against canonical
+phase, session/cycle, DoR, task and exact file/operation scope. Scope metadata
+belongs to the existing plan artifact. Notes and unfrozen planning have bounded
+exemptions; normative docs require implementation prerequisites. Exploration
+needs canonical task evidence. Repair is never a free-form native exemption:
+installation controls and workflow state retain maintenance/transition owners.
+DB projections, model declarations and earlier PASS cannot authorize a patch.
+Decisions record observed identity/content hashes without a second store,
+semantic-validation claim or hook/application atomicity. The
+[integration matrix](../CODEX_INTEGRATION.md#specific-native-write-admission)
+defines scope and conservative path/parser limitations.
 
 The native client remains responsible for project/hook trust and execution.
 Upstream command-hook errors, timeouts, disabled hooks and unavailable handlers
