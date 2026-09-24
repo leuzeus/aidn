@@ -184,6 +184,8 @@ function main() {
       "--force-agents-merge",
     ], codexStubBin);
 
+    const installedAdapter = JSON.parse(fs.readFileSync(path.join(target, ".aidn", "project", "workflow.adapter.json"), "utf8"));
+    const installedWorkflow = fs.readFileSync(path.join(target, "docs", "audit", "WORKFLOW.md"), "utf8");
     const checks = {
       preview_ok: preview.status === 0,
       preview_effect: String(previewPayload?.effect_class ?? "") === "preview",
@@ -211,7 +213,13 @@ function main() {
       list_created_exists: listCreatedPayload?.exists === true,
       list_created_project_name: String(listCreatedPayload?.config?.projectName ?? "") === "fixture-project",
       install_with_adapter_ok: installWithAdapter.status === 0,
-      install_with_adapter_mentions_adapter: installWithAdapter.stdout.includes("Workflow adapter config:"),
+      install_with_adapter_preserves_policy: installedAdapter.projectName === "fixture-project"
+        && installedAdapter.constraints.runtime === "runtime constraint"
+        && installedAdapter.constraints.architecture === "architecture constraint"
+        && installedAdapter.constraints.delivery === "delivery constraint"
+        && installedAdapter.constraints.additional.includes("extra constraint"),
+      install_with_adapter_renders_policy: ["fixture-project", "runtime constraint", "architecture constraint", "delivery constraint", "extra constraint"]
+        .every((value) => installedWorkflow.includes(value)),
       install_with_adapter_created_target_config: fs.existsSync(path.join(target, ".aidn", "project", "workflow.adapter.json")),
     };
 

@@ -15,6 +15,18 @@ const checks = [];
 const secret = 'fixture-only-password';
 const runtimeUrl = `postgresql://aidn_demo:${secret}@127.0.0.1:5432/aidn_demo`;
 const adminUrl = 'postgresql://postgres:fixture-admin@127.0.0.1:5432/postgres';
+function treeDigest(dir) {
+  const entries = [];
+  function visit(current) {
+    for (const item of fs.readdirSync(current, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const file = path.join(current, item.name);
+      if (item.isDirectory()) visit(file);
+      else entries.push([path.relative(dir, file), createHash('sha256').update(fs.readFileSync(file)).digest('hex')]);
+    }
+  }
+  visit(dir);
+  return entries;
+}
 try {
   const target = path.join(root, 'client espace é'); fs.mkdirSync(target);
   assert.equal(spawnSync('git', ['init', '--quiet', target], { encoding: 'utf8' }).status, 0);
@@ -22,9 +34,9 @@ try {
   const sha = createHash('sha256').update(fs.readFileSync(tarball)).digest('hex');
   const options = { target, packagePath: tarball, packageSha256: sha, postgresMode: 'existing',
     connectionEnv: 'AIDN_DEMO_PG', adminConnectionEnv: 'AIDN_SETUP_PG_ADMIN' };
-  const before = fs.readdirSync(target);
+  const before = treeDigest(target);
   const plan = createSetupPlan(options);
-  assert.deepEqual(fs.readdirSync(target), before);
+  assert.deepEqual(treeDigest(target), before);
   assert.throws(() => createSetupPlan({ ...options, packageSha256: '0'.repeat(64) }), /HASH_MISMATCH/);
   assert.throws(() => createSetupPlan({ ...options, postgresMode: 'install' }), /EXPLICIT_POSTGRES/);
   assert.throws(() => createSetupPlan({ ...options, connectionEnv: 'PATH' }), /CONNECTION_VARIABLES/);
@@ -44,7 +56,7 @@ try {
       '-Target', target, '-PackagePath', tarball, '-PackageSha256', sha, '-PostgresMode', 'existing'], { encoding: 'utf8', timeout: 30000 });
     assert.equal(ps.status, 0, ps.stdout + ps.stderr);
     assert(ps.stdout.includes('PREVIEW:'));
-    assert.deepEqual(fs.readdirSync(target), before);
+    assert.deepEqual(treeDigest(target), before);
     checks.push('actual-windows-powershell-5-preview-unicode-path-no-prompt-no-write');
   } else checks.push('SKIP: Windows PowerShell entry point (non-Windows host)');
 

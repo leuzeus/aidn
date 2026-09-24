@@ -36,7 +36,7 @@ L'empreinte doit venir du manifeste de confiance, pas d'un téléchargement inco
 
 ```powershell
 $setup = @{
-    Target = 'C:\projets\mon-projet'
+    Target = 'C:\work\client'
     PackagePath = 'C:\paquets\aidn-workflow-0.9.0.tgz'
     PackageSha256 = 'REMPLACER_PAR_64_CARACTERES_HEXA_DU_MANIFESTE'
     PostgresMode = 'existing'
