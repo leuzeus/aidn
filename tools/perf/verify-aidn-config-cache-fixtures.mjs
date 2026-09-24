@@ -4,8 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import {
   getAidnProjectConfigCacheStats,
+  inspectInstalledAidnVersion,
+  isAidnProductVersion,
   readAidnProjectConfig,
   resetAidnProjectConfigCache,
+  validateAidnProjectConfig,
+  withInstalledAidnVersion,
   writeAidnProjectConfig,
 } from "../../src/lib/config/aidn-config-lib.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
@@ -111,11 +115,49 @@ function main() {
     assert(afterWrittenRead.misses >= afterWrite.misses + 1, "first read after write helper should miss");
     assert(readStats().entries === 1, "cache should contain one target config entry");
 
+    const bytesBeforeVersionHelpers = fs.readFileSync(written.path);
+    const statsBeforeVersionHelpers = JSON.stringify(readStats());
+    const legacyConfig = { runtime: { stateMode: "files" }, install: { artifactImportStore: "file", custom: { keep: true } } };
+    const legacyBefore = JSON.stringify(legacyConfig);
+    validateAidnProjectConfig({});
+    validateAidnProjectConfig(legacyConfig);
+    assert(inspectInstalledAidnVersion({}, "0.8.0").status === "unknown", "empty legacy config must not invent an installed version");
+    assert(inspectInstalledAidnVersion(legacyConfig, "0.8.0").recorded_version === null, "legacy config without marker must remain unknown");
+    const finalized = withInstalledAidnVersion(legacyConfig, "0.8.0");
+    assert(finalized.version === 1, "product version must not replace root schema version");
+    assert(finalized.install.aidnVersion === "0.8.0", "explicit finalization must set the supplied product version");
+    assert(finalized.runtime.stateMode === "files" && finalized.install.artifactImportStore === "file", "finalization lost configured defaults");
+    assert(JSON.stringify(legacyConfig) === legacyBefore, "pure finalization mutated its input");
+    finalized.install.custom.keep = false;
+    assert(legacyConfig.install.custom.keep === true, "pure finalization must clone nested extensions");
+    assert(JSON.stringify(withInstalledAidnVersion(finalized, "0.8.0")) === JSON.stringify(finalized), "same-version finalization must be idempotent");
+    assert(inspectInstalledAidnVersion(finalized, "0.8.0").status === "current", "matching recorded version should be current");
+    const mismatch = inspectInstalledAidnVersion(finalized, "0.9.0");
+    assert(mismatch.status === "mismatch" && mismatch.recorded_version === "0.8.0" && mismatch.cli_version === "0.9.0", "diagnostics must distinguish executing package from last successful install");
+    const validVersions = ["0.0.0", "0.8.0", "1.2.3-rc.1", "1.2.3+build.001", "1.2.3-rc.1+build.001"];
+    for (const version of validVersions) {
+      assert(isAidnProductVersion(version), "valid semantic version rejected: " + version);
+      validateAidnProjectConfig({ version: 1, install: { aidnVersion: version } });
+    }
+    const invalidVersions = [null, 8, "", "v0.8.0", " 0.8.0", "0.8.0 ", "0.8.0\n", "0.8.0\r\n", "0.8", "00.8.0", "0.08.0", "0.8.00", "0.8.0-01", "0.8.0-a..b", "0.8.0+", "0.8.0-rc_1"];
+    for (const version of invalidVersions) {
+      assert(!isAidnProductVersion(version), "invalid semantic version accepted: " + version);
+      let threw = false;
+      try { withInstalledAidnVersion(legacyConfig, version); } catch { threw = true; }
+      assert(threw, "factory must refuse malformed installed version: " + version);
+      assert(JSON.stringify(legacyConfig) === legacyBefore, "failed finalization changed config input");
+    }
+    assert(bytesBeforeVersionHelpers.equals(fs.readFileSync(written.path)), "pure helpers wrote the project config");
+    assert(JSON.stringify(readStats()) === statsBeforeVersionHelpers, "pure helpers performed cache or write operations");
+
     const invalidCases = [
       ["undefined", undefined],
       ["null", null],
       ["array", []],
       ["invalid-version", { version: 0 }],
+      ["unsupported-schema", { version: 2 }],
+      ["product-version-as-schema", { version: "0.8.0" }],
+      ...invalidVersions.map((version, index) => ["invalid-installed-version-" + index, { version: 1, install: { aidnVersion: version } }]),
       ["invalid-profile", { profile: "shared" }],
       ["invalid-section", { runtime: [] }],
       ["invalid-state-mode", { runtime: { stateMode: "shared" } }],
@@ -163,6 +205,7 @@ function main() {
       ok: true,
       status: "PASS",
       cache_checks: true,
+      version_identity_checks: { legacy_compatible: true, pure_factory: true, schema_version: 1, valid_semver_cases: validVersions.length, invalid_semver_cases: invalidVersions.length, diagnostic_states: ["unknown", "current", "mismatch"] },
       config_validation_cases: invalidCases.length + 1,
       undefined_preserved: true,
       late_failure_preserved: true,

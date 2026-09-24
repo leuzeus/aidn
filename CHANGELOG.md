@@ -1,8 +1,42 @@
 # Changelog
 
-## Unreleased
+## 0.8.0
 
-No unreleased changes.
+- Publish a reproducible, installable npm tarball alongside the release ZIP, with manifest, checksum and package-content verification for pinned client migrations.
+- Emit the Codex-supported hooks root schema and migrate the exact AIDN-owned
+  historical `version: 1` field. Unknown root fields now conflict in preview
+  instead of silently delivering a hooks file rejected by the native client.
+
+- Require project activation before workflow admission or execution. Keep a
+  repository authorization shared by linked worktrees, with explicit local
+  preparation, revocation, and separately validated installation receipts.
+- Namespace distributed skills as `aidn-*`, retain logical skill IDs, and retire
+  only owned or exactly recognized historical assets. Explicit global skill
+  migration disables known paths without deleting skill files and supports
+  guarded restoration through the existing installation journal.
+- Accept a frozen installation plan for upgrades and add `--persistence-policy
+  verify-only` to verify a ready PostgreSQL installation without migration,
+  artifact import, or implicit model calls.
+- Preserve third-party Codex hooks and client instructions with owned asset plans,
+  local recovery receipts, conflict detection, resumable application, repair,
+  rollback and Codex-only uninstall through bootstrap.
+- Extend the same local ownership store to complete installation planning and
+  recovery with explicit `--scope installation`, preserving client runtime and
+  seed state during rollback and uninstall.
+- Keep `VERSION` as the sole product version authority and root config `version`
+  at schema 1. Record optional `install.aidnVersion` only after a complete
+  successful installation, bound to its receipt; legacy missing markers remain
+  unknown and diagnostics distinguish package version, recorded version and drift.
+- Recognize a bounded known legacy skill fingerprint for deterministic repair,
+  preserving divergent custom skills as conflicts.
+- Make optional model-assisted customization migration explicit; nominal
+  installation works without a Codex CLI or login.
+- Add Unicode-safe native command-hook adapters, conservative client diagnostics,
+  fresh core admission checks for covered patches, and explicit native support limits.
+- Serialize Codex cache writes and mark stale, failed or unverifiable historical
+  observations as non-reusable without treating them as product validation.
+- Govern new public JSON/effect surfaces, local installation ownership and the
+  deterministic integration gate; native trust and platform evidence remain separate.
 
 ## 0.7.2
 

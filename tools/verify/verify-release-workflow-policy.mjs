@@ -30,6 +30,7 @@ git tag -a "\${TAG}" "\${GITHUB_SHA}" -m "AIDN \${TAG}"
 git push origin "refs/tags/\${TAG}"
 gh release create "\${TAG}" \\
   "release/dist/aidn-workflow-\${VERSION}.zip" \\
+  "release/dist/aidn-workflow-\${VERSION}.tgz" \\
   "release/checksums.txt" \\
   "release/manifest.json" \\
   --title "AIDN \${TAG}" \\

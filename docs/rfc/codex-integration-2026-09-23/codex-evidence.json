@@ -1,0 +1,658 @@
+{
+  "kind": "installed-binary-fixture-discovery",
+  "scope": "temporary CODEX_HOME; no trust or global config change; no LLM",
+  "source_sha": "cb18abbd01691fb632cc5889882aa01f6efd8d93",
+  "skills": [
+    {
+      "name": "desktop-cli",
+      "ms": 362,
+      "status": "PASS",
+      "launcher": "<USER>\\AppData\\Local\\OpenAI\\Codex\\bin\\247581e40ee272fb\\codex.exe",
+      "codex_home": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\desktop-cli-home",
+      "cwd": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces",
+      "skills": [
+        {
+          "name": "branch-cycle-audit",
+          "description": "Verify branch ownership for session/cycle/intermediate branches and enforce cycle mapping invariants.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\branch-cycle-audit\\SKILL.md",
+          "scope": "repo",
+          "enabled": true,
+          "pluginId": null
+        },
+        {
+          "name": "close-session",
+          "description": "Finalize session, enforce drift check, update snapshot, validate branch context consistency.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\close-session\\SKILL.md",
+          "scope": "repo",
+          "enabled": true,
+          "pluginId": null
+        },
+        {
+          "name": "context-reload",
+          "description": "Reload project context, detect active branch/cycle alignment, propose work mode (THINKING/EXPLORING/COMMITTING), and generate a concise Context Reload Report.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\context-reload\\SKILL.md",
+          "scope": "repo",
+          "enabled": true,
+          "pluginId": null
+        },
+        {
+          "name": "convert-to-spike",
+          "description": "Convert an ongoing EXPLORING effort into an official SPIKE cycle + dedicated branch recommendation.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\convert-to-spike\\SKILL.md",
+          "scope": "repo",
+          "enabled": true,
+          "pluginId": null
+        },
+        {
+          "name": "crash-recovery",
+          "description": "Recover safely after an abrupt stop, restart, or suspected partial runtime write in an aidn repository using shared coordination. Use when local backlog or handoff artifacts may be missing or stale, when PostgreSQL shared state may be ahead of local files, or when the next safe action is to reanchor, rematerialize planning, regenerate a handoff packet, or restore shared coordination.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\crash-recovery\\SKILL.md",
+          "scope": "repo",
+          "enabled": true,
+          "pluginId": null
+        },
+        {
+          "name": "cycle-close",
+          "description": "Close a cycle safely (VERIFYING → DONE or non-retained outcome), run exit checklist (REQ/TEST/GAP/CR), update status.md, snapshot, and next entry point.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\cycle-close\\SKILL.md",
+          "scope": "repo",
+          "enabled": true,
+          "pluginId": null
+        },
+        {
+          "name": "cycle-create",
+          "description": "Create a new cycle folder (CXXX-[type]) with required artifacts, initialize status.md with branch_name and guardrails fields.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\cycle-create\\SKILL.md",
+          "scope": "repo",
+          "enabled": true,
+          "pluginId": null
+        },
+        {
+          "name": "drift-check",
+          "description": "Detect scope drift (A/B/D), generate a Recovery plan, and optionally create a CR + parking-lot entries.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\drift-check\\SKILL.md",
+          "scope": "repo",
+          "enabled": true,
+          "pluginId": null
+        },
+        {
+          "name": "handoff-close",
+          "description": "Prepare an explicit relay for another agent by refreshing current state, runtime digest, and handoff packet with a concrete next-agent goal.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\handoff-close\\SKILL.md",
+          "scope": "repo",
+          "enabled": true,
+          "pluginId": null
+        },
+        {
+          "name": "pr-orchestrate",
+          "description": "Orchestrate the session PR lifecycle after close-session: push, open PR, track review, and enforce post-merge sync.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\pr-orchestrate\\SKILL.md",
+          "scope": "repo",
+          "enabled": true,
+          "pluginId": null
+        },
+        {
+          "name": "promote-baseline",
+          "description": "Promote a DONE cycle to baseline if conditions are met, update baseline current/history + snapshot + index.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\promote-baseline\\SKILL.md",
+          "scope": "repo",
+          "enabled": true,
+          "pluginId": null
+        },
+        {
+          "name": "requirements-delta",
+          "description": "Revise an old plan/spec safely by generating an addendum (delta), mapping old→new REQs, and opening CR or new cycle if structural changes are detected.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\requirements-delta\\SKILL.md",
+          "scope": "repo",
+          "enabled": true,
+          "pluginId": null
+        },
+        {
+          "name": "start-session",
+          "description": "Create or resume a session file from template, detect branch context, and prepare cycle-aware working context.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\start-session\\SKILL.md",
+          "scope": "repo",
+          "enabled": true,
+          "pluginId": null
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "ide-bundle",
+      "ms": 274,
+      "status": "PASS",
+      "launcher": "<USER>\\.vscode\\extensions\\openai.chatgpt-26.727.40816-win32-x64\\bin\\windows-x86_64\\codex.exe",
+      "codex_home": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\ide-bundle-home",
+      "cwd": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces",
+      "skills": [
+        {
+          "name": "branch-cycle-audit",
+          "description": "Verify branch ownership for session/cycle/intermediate branches and enforce cycle mapping invariants.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\branch-cycle-audit\\SKILL.md",
+          "scope": "repo",
+          "enabled": true
+        },
+        {
+          "name": "close-session",
+          "description": "Finalize session, enforce drift check, update snapshot, validate branch context consistency.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\close-session\\SKILL.md",
+          "scope": "repo",
+          "enabled": true
+        },
+        {
+          "name": "context-reload",
+          "description": "Reload project context, detect active branch/cycle alignment, propose work mode (THINKING/EXPLORING/COMMITTING), and generate a concise Context Reload Report.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\context-reload\\SKILL.md",
+          "scope": "repo",
+          "enabled": true
+        },
+        {
+          "name": "convert-to-spike",
+          "description": "Convert an ongoing EXPLORING effort into an official SPIKE cycle + dedicated branch recommendation.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\convert-to-spike\\SKILL.md",
+          "scope": "repo",
+          "enabled": true
+        },
+        {
+          "name": "crash-recovery",
+          "description": "Recover safely after an abrupt stop, restart, or suspected partial runtime write in an aidn repository using shared coordination. Use when local backlog or handoff artifacts may be missing or stale, when PostgreSQL shared state may be ahead of local files, or when the next safe action is to reanchor, rematerialize planning, regenerate a handoff packet, or restore shared coordination.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\crash-recovery\\SKILL.md",
+          "scope": "repo",
+          "enabled": true
+        },
+        {
+          "name": "cycle-close",
+          "description": "Close a cycle safely (VERIFYING → DONE or non-retained outcome), run exit checklist (REQ/TEST/GAP/CR), update status.md, snapshot, and next entry point.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\cycle-close\\SKILL.md",
+          "scope": "repo",
+          "enabled": true
+        },
+        {
+          "name": "cycle-create",
+          "description": "Create a new cycle folder (CXXX-[type]) with required artifacts, initialize status.md with branch_name and guardrails fields.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\cycle-create\\SKILL.md",
+          "scope": "repo",
+          "enabled": true
+        },
+        {
+          "name": "drift-check",
+          "description": "Detect scope drift (A/B/D), generate a Recovery plan, and optionally create a CR + parking-lot entries.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\drift-check\\SKILL.md",
+          "scope": "repo",
+          "enabled": true
+        },
+        {
+          "name": "handoff-close",
+          "description": "Prepare an explicit relay for another agent by refreshing current state, runtime digest, and handoff packet with a concrete next-agent goal.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\handoff-close\\SKILL.md",
+          "scope": "repo",
+          "enabled": true
+        },
+        {
+          "name": "pr-orchestrate",
+          "description": "Orchestrate the session PR lifecycle after close-session: push, open PR, track review, and enforce post-merge sync.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\pr-orchestrate\\SKILL.md",
+          "scope": "repo",
+          "enabled": true
+        },
+        {
+          "name": "promote-baseline",
+          "description": "Promote a DONE cycle to baseline if conditions are met, update baseline current/history + snapshot + index.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\promote-baseline\\SKILL.md",
+          "scope": "repo",
+          "enabled": true
+        },
+        {
+          "name": "requirements-delta",
+          "description": "Revise an old plan/spec safely by generating an addendum (delta), mapping old→new REQs, and opening CR or new cycle if structural changes are detected.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\requirements-delta\\SKILL.md",
+          "scope": "repo",
+          "enabled": true
+        },
+        {
+          "name": "start-session",
+          "description": "Create or resume a session file from template, detect branch context, and prepare cycle-aware working context.",
+          "path": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces\\.agents\\skills\\start-session\\SKILL.md",
+          "scope": "repo",
+          "enabled": true
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "hooks": [
+    {
+      "name": "desktop-cli",
+      "includeUser": false,
+      "ms": 217,
+      "initialize": {
+        "id": 1,
+        "result": {
+          "userAgent": "Codex Desktop/0.155.0-alpha.9.2 (Windows 10.0.26200; x86_64) dumb (aidn-capability-probe; 0.1.0)",
+          "codexHome": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\desktop-cli-project-hooks-home",
+          "platformFamily": "windows",
+          "platformOs": "windows"
+        }
+      },
+      "status": "PASS",
+      "response": {
+        "id": 2,
+        "result": {
+          "data": [
+            {
+              "cwd": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces",
+              "hooks": [],
+              "warnings": [],
+              "errors": []
+            }
+          ]
+        }
+      },
+      "stderr": "WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir \"<USER>\\\\AppData\\\\Local\\\\Temp\\\\\" (codex_home: AbsolutePathBuf(\"<USER>\\\\AppData\\\\Local\\\\Temp\\\\aidn-codex-capabilities-20260923\\\\desktop-cli-project-hooks-home\"))\n{\"timestamp\":\"2026-09-23T01:14:20.109970Z\",\"level\":\"ERROR\",\"fields\":{\"message\":\"Project-local config, hooks, and exec policies are disabled in the following folders until the project is trusted, but skills still load.\\n    1. <USER>\\\\AppData\\\\Local\\\\Temp\\\\aidn-codex-capabilities-20260923\\\\corpus with spaces\\\\.codex\\n       To load project-local config, hooks, and exec policies, add <USER>\\\\appdata\\\\local\\\\temp\\\\aidn-codex-capabilities-20260923\\\\corpus with spaces as a trusted project in <USER>\\\\AppData\\\\Local\\\\Temp\\\\aidn-codex-capabilities-20260923\\\\desktop-cli-project-hooks-home\\\\config.toml.\\n\"},\"target\":\"codex_app_server\"}\n"
+    },
+    {
+      "name": "desktop-cli",
+      "includeUser": true,
+      "ms": 238,
+      "initialize": {
+        "id": 1,
+        "result": {
+          "userAgent": "Codex Desktop/0.155.0-alpha.9.2 (Windows 10.0.26200; x86_64) dumb (aidn-capability-probe; 0.1.0)",
+          "codexHome": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\desktop-cli-user-hooks-home",
+          "platformFamily": "windows",
+          "platformOs": "windows"
+        }
+      },
+      "status": "PASS",
+      "response": {
+        "id": 2,
+        "result": {
+          "data": [
+            {
+              "cwd": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces",
+              "hooks": [
+                {
+                  "key": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\desktop-cli-user-hooks-home\\hooks.json:pre_tool_use:0:0",
+                  "eventName": "preToolUse",
+                  "handlerType": "mcpTool",
+                  "server": "aidn_probe_absent",
+                  "tool": "admit",
+                  "matcher": "Bash|apply_patch|mcp__aidn__.*",
+                  "timeoutSec": 2,
+                  "statusMessage": null,
+                  "additionalContextLimit": null,
+                  "sourcePath": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\desktop-cli-user-hooks-home\\hooks.json",
+                  "source": "user",
+                  "pluginId": null,
+                  "displayOrder": 0,
+                  "enabled": true,
+                  "isManaged": false,
+                  "currentHash": "sha256:ed1514490a19c8434bf979a0726b6c8b73de55f286c91a635e9a3a51baaf0011",
+                  "trustStatus": "untrusted"
+                },
+                {
+                  "key": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\desktop-cli-user-hooks-home\\hooks.json:session_start:0:0",
+                  "eventName": "sessionStart",
+                  "handlerType": "command",
+                  "command": "node --version",
+                  "async": false,
+                  "matcher": "startup|resume|compact",
+                  "timeoutSec": 2,
+                  "statusMessage": null,
+                  "additionalContextLimit": null,
+                  "sourcePath": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\desktop-cli-user-hooks-home\\hooks.json",
+                  "source": "user",
+                  "pluginId": null,
+                  "displayOrder": 1,
+                  "enabled": true,
+                  "isManaged": false,
+                  "currentHash": "sha256:30ceb88509dcb6504cd46b0290b9a74bce2821b5c388a232c1e7383f7809b4f3",
+                  "trustStatus": "untrusted"
+                }
+              ],
+              "warnings": [],
+              "errors": []
+            }
+          ]
+        }
+      },
+      "stderr": "WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir \"<USER>\\\\AppData\\\\Local\\\\Temp\\\\\" (codex_home: AbsolutePathBuf(\"<USER>\\\\AppData\\\\Local\\\\Temp\\\\aidn-codex-capabilities-20260923\\\\desktop-cli-user-hooks-home\"))\n{\"timestamp\":\"2026-09-23T01:14:20.354766Z\",\"level\":\"ERROR\",\"fields\":{\"message\":\"Project-local config, hooks, and exec policies are disabled in the following folders until the project is trusted, but skills still load.\\n    1. <USER>\\\\AppData\\\\Local\\\\Temp\\\\aidn-codex-capabilities-20260923\\\\corpus with spaces\\\\.codex\\n       To load project-local config, hooks, and exec policies, add <USER>\\\\appdata\\\\local\\\\temp\\\\aidn-codex-capabilities-20260923\\\\corpus with spaces as a trusted project in <USER>\\\\AppData\\\\Local\\\\Temp\\\\aidn-codex-capabilities-20260923\\\\desktop-cli-user-hooks-home\\\\config.toml.\\n\"},\"target\":\"codex_app_server\"}\n"
+    },
+    {
+      "name": "ide-bundle",
+      "includeUser": false,
+      "ms": 178,
+      "initialize": {
+        "id": 1,
+        "result": {
+          "userAgent": "Codex Desktop/0.146.0-alpha.9.2 (Windows 10.0.26200; x86_64) dumb (aidn-capability-probe; 0.1.0)",
+          "codexHome": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\ide-bundle-project-hooks-home",
+          "platformFamily": "windows",
+          "platformOs": "windows"
+        }
+      },
+      "status": "PASS",
+      "response": {
+        "id": 2,
+        "result": {
+          "data": [
+            {
+              "cwd": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces",
+              "hooks": [],
+              "warnings": [],
+              "errors": []
+            }
+          ]
+        }
+      },
+      "stderr": "WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir \"<USER>\\\\AppData\\\\Local\\\\Temp\\\\\" (codex_home: AbsolutePathBuf(\"<USER>\\\\AppData\\\\Local\\\\Temp\\\\aidn-codex-capabilities-20260923\\\\ide-bundle-project-hooks-home\"))\n{\"timestamp\":\"2026-09-23T01:14:20.553454Z\",\"level\":\"ERROR\",\"fields\":{\"message\":\"Project-local config, hooks, and exec policies are disabled in the following folders until the project is trusted, but skills still load.\\n    1. <USER>\\\\AppData\\\\Local\\\\Temp\\\\aidn-codex-capabilities-20260923\\\\corpus with spaces\\\\.codex\\n       To load project-local config, hooks, and exec policies, add <USER>\\\\appdata\\\\local\\\\temp\\\\aidn-codex-capabilities-20260923\\\\corpus with spaces as a trusted project in <USER>\\\\AppData\\\\Local\\\\Temp\\\\aidn-codex-capabilities-20260923\\\\ide-bundle-project-hooks-home\\\\config.toml.\\n\"},\"target\":\"codex_app_server\"}\n"
+    },
+    {
+      "name": "ide-bundle",
+      "includeUser": true,
+      "ms": 174,
+      "initialize": {
+        "id": 1,
+        "result": {
+          "userAgent": "Codex Desktop/0.146.0-alpha.9.2 (Windows 10.0.26200; x86_64) dumb (aidn-capability-probe; 0.1.0)",
+          "codexHome": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\ide-bundle-user-hooks-home",
+          "platformFamily": "windows",
+          "platformOs": "windows"
+        }
+      },
+      "status": "PASS",
+      "response": {
+        "id": 2,
+        "result": {
+          "data": [
+            {
+              "cwd": "<USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\corpus with spaces",
+              "hooks": [],
+              "warnings": [
+                "failed to parse hooks config <USER>\\AppData\\Local\\Temp\\aidn-codex-capabilities-20260923\\ide-bundle-user-hooks-home\\hooks.json: unknown variant `mcp_tool`, expected one of `command`, `prompt`, `agent` at line 1 column 217"
+              ],
+              "errors": []
+            }
+          ]
+        }
+      },
+      "stderr": "WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir \"<USER>\\\\AppData\\\\Local\\\\Temp\\\\\" (codex_home: AbsolutePathBuf(\"<USER>\\\\AppData\\\\Local\\\\Temp\\\\aidn-codex-capabilities-20260923\\\\ide-bundle-user-hooks-home\"))\n{\"timestamp\":\"2026-09-23T01:14:20.736404Z\",\"level\":\"ERROR\",\"fields\":{\"message\":\"Project-local config, hooks, and exec policies are disabled in the following folders until the project is trusted, but skills still load.\\n    1. <USER>\\\\AppData\\\\Local\\\\Temp\\\\aidn-codex-capabilities-20260923\\\\corpus with spaces\\\\.codex\\n       To load project-local config, hooks, and exec policies, add <USER>\\\\appdata\\\\local\\\\temp\\\\aidn-codex-capabilities-20260923\\\\corpus with spaces as a trusted project in <USER>\\\\AppData\\\\Local\\\\Temp\\\\aidn-codex-capabilities-20260923\\\\ide-bundle-user-hooks-home\\\\config.toml.\\n\"},\"target\":\"codex_app_server\"}\n"
+    }
+  ],
+  "schemas": [
+    {
+      "version": "0155",
+      "events": [
+        "preToolUse",
+        "permissionRequest",
+        "postToolUse",
+        "preCompact",
+        "postCompact",
+        "sessionStart",
+        "sessionEnd",
+        "userPromptSubmit",
+        "subagentStart",
+        "subagentStop",
+        "stop",
+        "interrupt"
+      ],
+      "metadata": {
+        "oneOf": [
+          {
+            "properties": {
+              "async": {
+                "default": false,
+                "type": "boolean"
+              },
+              "command": {
+                "type": "string"
+              },
+              "handlerType": {
+                "enum": [
+                  "command"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "command",
+              "handlerType"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "handlerType": {
+                "enum": [
+                  "mcpTool"
+                ],
+                "type": "string"
+              },
+              "server": {
+                "type": "string"
+              },
+              "tool": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "handlerType",
+              "server",
+              "tool"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "handlerType": {
+                "enum": [
+                  "prompt"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "handlerType"
+            ],
+            "title": "PromptHookMetadata",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "handlerType": {
+                "enum": [
+                  "agent"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "handlerType"
+            ],
+            "title": "AgentHookMetadata",
+            "type": "object"
+          }
+        ],
+        "properties": {
+          "additionalContextLimit": {
+            "description": "Configured `additionalContext` spill threshold. `null` uses 2,500 tokens; `0` disables spilling.",
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "currentHash": {
+            "type": "string"
+          },
+          "displayOrder": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "eventName": {
+            "$ref": "#/definitions/HookEventName"
+          },
+          "isManaged": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "matcher": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pluginId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "$ref": "#/definitions/HookSource"
+          },
+          "sourcePath": {
+            "$ref": "#/definitions/AbsolutePathBuf"
+          },
+          "statusMessage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timeoutSec": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "trustStatus": {
+            "$ref": "#/definitions/HookTrustStatus"
+          }
+        },
+        "required": [
+          "currentHash",
+          "displayOrder",
+          "enabled",
+          "eventName",
+          "isManaged",
+          "key",
+          "source",
+          "sourcePath",
+          "timeoutSec",
+          "trustStatus"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "version": "0146",
+      "events": [
+        "preToolUse",
+        "permissionRequest",
+        "postToolUse",
+        "preCompact",
+        "postCompact",
+        "sessionStart",
+        "sessionEnd",
+        "userPromptSubmit",
+        "subagentStart",
+        "subagentStop",
+        "stop"
+      ],
+      "metadata": {
+        "type": "object",
+        "required": [
+          "currentHash",
+          "displayOrder",
+          "enabled",
+          "eventName",
+          "handlerType",
+          "isManaged",
+          "key",
+          "source",
+          "sourcePath",
+          "timeoutSec",
+          "trustStatus"
+        ],
+        "properties": {
+          "additionalContextLimit": {
+            "description": "Configured `additionalContext` spill threshold. `null` uses 2,500 tokens; `0` disables spilling.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "command": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "currentHash": {
+            "type": "string"
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "eventName": {
+            "$ref": "#/definitions/HookEventName"
+          },
+          "handlerType": {
+            "$ref": "#/definitions/HookHandlerType"
+          },
+          "isManaged": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "matcher": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pluginId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "$ref": "#/definitions/HookSource"
+          },
+          "sourcePath": {
+            "$ref": "#/definitions/AbsolutePathBuf"
+          },
+          "statusMessage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timeoutSec": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "trustStatus": {
+            "$ref": "#/definitions/HookTrustStatus"
+          }
+        }
+      }
+    }
+  ]
+}

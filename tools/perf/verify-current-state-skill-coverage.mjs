@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { getPublicSkillName } from "../../src/core/skills/skill-policy.mjs";
 
 const SKILL_SPECS = [
   {
@@ -142,7 +143,8 @@ function readText(filePath) {
 }
 
 function checkSkill(root, spec) {
-  const file = path.resolve(process.cwd(), root, spec.name, "SKILL.md");
+  const publicFile = path.resolve(process.cwd(), root, getPublicSkillName(spec.name), "SKILL.md");
+  const file = fs.existsSync(publicFile) ? publicFile : path.resolve(process.cwd(), root, spec.name, "SKILL.md");
   if (!fs.existsSync(file)) {
     return {
       skill: spec.name,

@@ -16,23 +16,45 @@
     "checks",
     "blocking_reasons",
     "warnings",
-    "prioritized_artifacts"
+    "prioritized_artifacts",
+    "activation"
   ],
   "properties": {
-    "ok": { "type": "boolean" },
-    "admission_status": { "type": "string" },
-    "target_root": { "type": "string" },
-    "workspace": { "type": "object", "additionalProperties": true },
+    "ok": {
+      "type": "boolean"
+    },
+    "admission_status": {
+      "type": "string"
+    },
+    "target_root": {
+      "type": "string"
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": true
+    },
     "shared_state_backend": {
       "type": "object",
       "properties": {
         "runtime_backend": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "properties": {
             "connection": {
-              "type": ["object", "null"],
+              "type": [
+                "object",
+                "null"
+              ],
               "properties": {
-                "connection_string": { "type": "string", "enum": ["", "[redacted]"] }
+                "connection_string": {
+                  "type": "string",
+                  "enum": [
+                    "",
+                    "[redacted]"
+                  ]
+                }
               },
               "additionalProperties": true
             }
@@ -42,9 +64,17 @@
       },
       "additionalProperties": true
     },
-    "shared_runtime_validation": { "type": "object", "additionalProperties": true },
-    "skill": { "type": "string" },
-    "policy": { "type": "object", "additionalProperties": true },
+    "shared_runtime_validation": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "skill": {
+      "type": "string"
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": true
+    },
     "source_of_truth": {
       "type": "object",
       "required": [
@@ -56,8 +86,12 @@
         "repair_actions"
       ],
       "properties": {
-        "state_mode": { "type": "string" },
-        "runtime_state_mode": { "type": "string" },
+        "state_mode": {
+          "type": "string"
+        },
+        "runtime_state_mode": {
+          "type": "string"
+        },
         "concepts": {
           "type": "object",
           "additionalProperties": {
@@ -71,13 +105,30 @@
               "shared_runtime"
             ],
             "properties": {
-              "concept": { "type": "string" },
-              "label": { "type": "string" },
-              "state_mode": { "type": "string" },
-              "source_of_truth": { "type": ["string", "null"] },
-              "projection": { "type": "string" },
-              "shared_runtime": { "type": "string" },
-              "notes": { "type": "string" }
+              "concept": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "state_mode": {
+                "type": "string"
+              },
+              "source_of_truth": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "projection": {
+                "type": "string"
+              },
+              "shared_runtime": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "string"
+              }
             },
             "additionalProperties": true
           }
@@ -92,25 +143,105 @@
             "plan_artifact"
           ],
           "properties": {
-            "current_state": { "type": "string" },
-            "runtime_state": { "type": "string" },
-            "session_artifact": { "type": "string" },
-            "cycle_status": { "type": "string" },
-            "plan_artifact": { "type": "string" }
+            "current_state": {
+              "type": "string"
+            },
+            "runtime_state": {
+              "type": "string"
+            },
+            "session_artifact": {
+              "type": "string"
+            },
+            "cycle_status": {
+              "type": "string"
+            },
+            "plan_artifact": {
+              "type": "string"
+            }
           },
           "additionalProperties": true
         },
-        "issues": { "type": "array" },
-        "repair_actions": { "type": "array" }
+        "issues": {
+          "type": "array"
+        },
+        "repair_actions": {
+          "type": "array"
+        }
       },
       "additionalProperties": true
     },
-    "context": { "type": "object", "additionalProperties": true },
-    "checks": { "type": "object", "additionalProperties": true },
-    "blocking_reasons": { "type": "array" },
-    "warnings": { "type": "array" },
-    "blocking_findings": { "type": "array" },
-    "prioritized_artifacts": { "type": "array" }
+    "context": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "blocking_reasons": {
+      "type": "array"
+    },
+    "warnings": {
+      "type": "array"
+    },
+    "blocking_findings": {
+      "type": "array"
+    },
+    "prioritized_artifacts": {
+      "type": "array"
+    },
+    "activation": {
+      "type": "object",
+      "required": [
+        "state",
+        "active",
+        "scope",
+        "authority_id",
+        "revision",
+        "errors"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "absent",
+            "unprepared",
+            "legacy-active",
+            "active",
+            "revoked",
+            "degraded"
+          ]
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "scope": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "authority_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "revision": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
   },
   "additionalProperties": true
 }

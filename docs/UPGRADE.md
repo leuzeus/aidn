@@ -1,5 +1,50 @@
 # Upgrade Guide
 
+## Upgrade to 0.8.0
+
+Bootstrap preserves client instructions and third-party hooks and manages AIDN
+assets with local ownership receipts. Preview before an upgrade and resolve
+reported conflicts. Recovery actions default to preview and require `--write
+--expect-plan <plan_id>` to apply. `--uninstall` removes only the managed Codex
+integration, retaining runtime and project history. Model-assisted customization
+migration now requires `--codex-migrate-custom`.
+
+The default lifecycle scope remains `codex-integration`. Add
+`--scope installation` to diagnose or recover the complete recorded local
+installation using the same receipt, lock and transaction history. Runtime and
+seed state stay preserved. Use the exact current preview plan ID for writes;
+changes to inputs or owned files require a fresh preview.
+
+`VERSION` in the executing AIDN package is the sole product version authority.
+In a client, `.aidn/config.json` keeps root `version: 1` as its configuration
+schema. The optional `install.aidnVersion` records the last complete successful
+requested installation from that package, tied to the local installation
+receipt. A legacy config without `version`, `install` or `install.aidnVersion`
+remains readable; a missing product marker means unknown. Do not infer it from
+root schema version, generated docs or an available CLI. Preview and diagnostic
+runs do not stamp it, and failed or interrupted runs do not count as successful
+installation. Complete installation rollback restores the previous marker.
+
+A matching recorded version does not prove that files remain intact or that
+native Codex trust has been granted. Read `--diagnose --scope installation --json`
+to distinguish executing package version, last successful installation, receipt
+binding and managed asset drift.
+
+Legacy adoption is bounded to recorded ownership and recognized historical
+content. The known `pr-orchestrate` YAML defect is repaired only for an exact
+historical asset, at either supported skills path; customized variants conflict
+before writes. Generated WORKFLOW adoption from 0.7.2 requires its prior version
+record and a complete matching historical rendering with an approved template
+fingerprint. Unrecognized documents are not adopted by their filename alone.
+
+Codex 0.155 rejects a root `version` property in `.codex/hooks.json`. The 0.8.0
+installer removes the old `version: 1` property only when it recognizes an
+AIDN-owned hook. A standalone or ambiguous version property, or another
+unsupported root field, is a preview conflict. Review the conflict before
+editing client hooks; the installer does not discard unrelated commands.
+
+See [Codex integration](CODEX_INTEGRATION.md) for trust, support limits and recovery.
+
 ## Upgrade to 0.7.2
 
 This governance-only release replaces duplicated pull-request verification
@@ -46,7 +91,7 @@ This baseline makes AIDN's governed architecture and release path executable end
 - `files`, `dual`, and `db-only` remain distinct modes; PostgreSQL persistence is optional, SQLite remains available for local compatibility and migration, and shared coordination is explicit opt-in.
 - protected-branch CI and the release workflow verify from locked dependencies;
   a merged, version-matched `release/vX.Y.Z` PR is published from exact `main`
-  `GITHUB_SHA` with an annotated tag, checksums, and provenance assets, never
+  `GITHUB_SHA` with an annotated tag, ZIP and npm `.tgz`, checksums, and provenance assets, never
   with `npm publish`.
 - generated workflow adapter outputs driven by `.aidn/project/workflow.adapter.json`
 - `aidn project config` as the durable adapter management entrypoint
@@ -91,7 +136,7 @@ Recent workflow resilience updates also add:
 1. Install or upgrade the package to the matching product tag:
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#v0.7.2
+npm install --save-dev github:leuzeus/aidn#v0.8.0
 ```
 
 2. Run the recommended upgrade orchestrator:
@@ -124,7 +169,7 @@ npx aidn install --target <client-repo> --pack github-integration --verify
 
 ```bash
 npx aidn project config --target <client-repo> --wizard --write
-npx aidn project config --target <client-repo> --migrate-adapter --version 0.7.2 --write --json
+npx aidn project config --target <client-repo> --migrate-adapter --version 0.8.0 --write --json
 ```
 
 4. Verify installation and current runtime/admin surfaces:
@@ -154,8 +199,17 @@ Recommended post-upgrade reload path:
 5. `docs/audit/WORKFLOW.md`
 6. `docs/audit/SPEC.md` if canonical rule details are needed
 
-6. If an existing `AGENTS.md` must be updated, run with explicit merge:
+The installer now manages only the AIDN block in `AGENTS.md` and preserves client
+instructions around it. Preview reports conflicts for edited managed blocks;
+`--force-agents-merge` does not bypass those conflicts. Use `--skip-agents` with
+the low-level installer only when project instruction integration is deliberately
+managed elsewhere.
 
-```bash
-npx aidn install --target <client-repo> --pack core --force-agents-merge
-```
+## Preserve authorization and persistence intent
+
+For an existing Windows client, follow the [controlled client migration](CODEX_CLIENT_MIGRATION.md)
+to preserve its runtime binding, local edits and canonical persistence before switching packages.
+
+Preview an upgrade with `aidn bootstrap --target <client-repo> --mode upgrade --dry-run --json`, then bind application with the same inputs plus `--expect-plan PLAN_ID` and without `--dry-run`. `--persistence-policy verify-only` checks an existing backend without requesting schema migration, persistence adoption or import. A mismatch fails before installation writes.
+
+Repair, resume and rollback preserve revocation. Reauthorization requires the explicit `bootstrap --authorize` preview and matching `--write --expect-plan PLAN_ID`; native client trust is still a separate human action. Public skills now use the `aidn-` prefix, while internal CLI identifiers remain compatible. See [project activation](CODEX_INTEGRATION.md#project-activation-and-skill-names).

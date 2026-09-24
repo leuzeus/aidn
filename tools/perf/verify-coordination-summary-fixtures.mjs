@@ -2,8 +2,9 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture, prepareNpmActivationFixture, fixtureNpmEnvironment } from "./test-activation-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -40,9 +41,10 @@ function assert(condition, message) {
 }
 
 function runJson(script, args, repoRoot, expectStatus = 0, env = {}) {
+  const targetIndex = args.indexOf("--target"), target = targetIndex < 0 ? repoRoot : args[targetIndex + 1];
   const result = spawnSync(process.execPath, [script, ...args], {
-    cwd: repoRoot,
-    env: { ...process.env, ...env },
+    cwd: target,
+    env: { ...process.env, ...env, ...fixtureNpmEnvironment(target) },
     encoding: "utf8",
     timeout: 180000,
     maxBuffer: 20 * 1024 * 1024,
@@ -98,12 +100,20 @@ function main() {
     const blockedTarget = path.join(tempRoot, "blocked");
     const dbOnlyTarget = path.join(tempRoot, "db-only");
 
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), readyTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "blocked"), blockedTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlyTarget, { recursive: true });
+    for (const [name, target] of [["ready", readyTarget], ["blocked", blockedTarget], ["ready", dbOnlyTarget]]) {
+      const sourceRoot = path.join(handoffFixturesRoot, name);
+      fs.cpSync(sourceRoot, target, { recursive: true, filter: (source) => isActivationFixtureSource(sourceRoot, source, { freshCoordination: true }) });
+    }
     initGitRepo(readyTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(blockedTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(dbOnlyTarget, { workingBranch: "feature/C101-alpha" });
+    for (const target of [readyTarget, blockedTarget, dbOnlyTarget]) {
+      prepareActivationFixture(target, repoRoot);
+      prepareNpmActivationFixture(target, repoRoot);
+      execFileSync("git", ["-C", target, "add", "."], { stdio: "pipe" });
+      execFileSync("git", ["-C", target, "commit", "--amend", "--no-edit"], { stdio: "pipe" });
+      assert(execFileSync("git", ["-C", target, "status", "--porcelain"], { encoding: "utf8" }).trim() === "", "fixture setup must leave a clean Git worktree");
+    }
 
     runJson(handoffProjectScript, ["--target", readyTarget, "--write", "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", blockedTarget, "--write", "--json"], repoRoot, 0);
@@ -209,7 +219,7 @@ function main() {
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       removePathWithRetry(tempRoot);

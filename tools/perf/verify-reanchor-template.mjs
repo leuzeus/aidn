@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { getPublicSkillName } from "../../src/core/skills/skill-policy.mjs";
 import path from "node:path";
 
 function parseArgs(argv) {
@@ -158,7 +159,7 @@ function main() {
       codex_online_mentions_shared_planning_handoff: codexOnlineText.includes("preferred_dispatch_source=shared_planning"),
       codex_online_mentions_apply_patch: codexOnlineText.includes("`apply_patch`"),
       codex_online_mentions_durable_write: codexOnlineText.includes("durable write"),
-      codex_online_mentions_start_session_read_only_admission: codexOnlineText.includes("still run `start-session` even when the immediate user request is analysis-only"),
+      codex_online_mentions_start_session_read_only_admission: codexOnlineText.includes(`still run \`${getPublicSkillName("start-session")}\` even when the immediate user request is analysis-only`),
     };
 
     const pass = missingFiles.length === 0

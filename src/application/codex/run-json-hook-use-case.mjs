@@ -1,4 +1,5 @@
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import {
   isDbBackedStateMode,
@@ -282,6 +283,11 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
     ? ensureJsonArg(commandSpec.commandArgs)
     : commandSpec.commandArgs;
   const commandLine = toCommandLine(commandSpec.command, commandArgs);
+  const capture = () => hookContextStore.captureContextIdentity?.({ targetRoot, stateMode })
+    ?? { status: "unavailable", reason: "context_capture_unsupported" };
+  const observationBefore = capture();
+  const executionId = randomUUID();
+  const commandStartedAt = new Date().toISOString();
   const result = await runAgentCommand(agentAdapter, {
     command: commandSpec.command,
     commandArgs,
@@ -291,6 +297,23 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
     },
   });
 
+  const commandCompletedAt = new Date().toISOString();
+  const observationAfter = capture();
+  const provenance = {
+    kind: "hook-command-observation.v1",
+    authority: "diagnostic-only-not-validation-or-admission",
+    execution_id: executionId,
+    command: commandSpec.command,
+    argv: commandArgs,
+    cwd: process.cwd(),
+    command_status: result.status ?? null,
+    command_signal: result.signal ?? null,
+    command_error: Boolean(result.error),
+    started_at: commandStartedAt,
+    completed_at: commandCompletedAt,
+    before: observationBefore,
+    after: observationAfter,
+  };
   let rawPayload = null;
   let parseError = null;
   try {
@@ -362,6 +385,8 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
     sourceMeta: {
       command: commandLine,
       command_status: result.status ?? 1,
+      execution_id: executionId,
+      provenance,
     },
   });
 
@@ -393,6 +418,7 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
     context_file: contextWrite.context_file,
     raw_file: contextWrite.raw_file,
     history_count: contextWrite.history_count,
+    provenance,
     db_sync: dbSync,
     normalized: effectiveNormalized,
   };

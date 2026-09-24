@@ -474,13 +474,200 @@
         ],
         "variants": [
           {
+            "id": "bootstrap-authorize",
+            "when_args": [
+              "--authorize"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-authorize"
+          },
+          {
+            "id": "bootstrap-authorize-write",
+            "when_args": [
+              "--authorize",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-authorize-write"
+          },
+          {
+            "id": "bootstrap-diagnose",
+            "when_args": [
+              "--diagnose"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "bootstrap-diagnose"
+          },
+          {
+            "id": "bootstrap-migrate-global-skills",
+            "when_args": [
+              "--migrate-global-skills"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-migrate-global-skills"
+          },
+          {
+            "id": "bootstrap-migrate-global-skills-write",
+            "when_args": [
+              "--migrate-global-skills",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-migrate-global-skills-write"
+          },
+          {
             "id": "bootstrap-preview",
             "when_args": [
               "--dry-run"
             ],
-            "unless_args": [],
+            "unless_args": [
+              "--diagnose",
+              "--repair",
+              "--resume",
+              "--rollback",
+              "--uninstall",
+              "--authorize",
+              "--revoke",
+              "--migrate-global-skills",
+              "--restore-global-skills"
+            ],
             "effect_class": "preview",
             "policy": "bootstrap-preview"
+          },
+          {
+            "id": "bootstrap-repair",
+            "when_args": [
+              "--repair"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-repair"
+          },
+          {
+            "id": "bootstrap-repair-write",
+            "when_args": [
+              "--repair",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-repair-write"
+          },
+          {
+            "id": "bootstrap-restore-global-skills",
+            "when_args": [
+              "--restore-global-skills"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-restore-global-skills"
+          },
+          {
+            "id": "bootstrap-restore-global-skills-write",
+            "when_args": [
+              "--restore-global-skills",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-restore-global-skills-write"
+          },
+          {
+            "id": "bootstrap-resume",
+            "when_args": [
+              "--resume"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-resume"
+          },
+          {
+            "id": "bootstrap-resume-write",
+            "when_args": [
+              "--resume",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-resume-write"
+          },
+          {
+            "id": "bootstrap-revoke",
+            "when_args": [
+              "--revoke"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-revoke"
+          },
+          {
+            "id": "bootstrap-revoke-write",
+            "when_args": [
+              "--revoke",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-revoke-write"
+          },
+          {
+            "id": "bootstrap-rollback",
+            "when_args": [
+              "--rollback"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-rollback"
+          },
+          {
+            "id": "bootstrap-rollback-write",
+            "when_args": [
+              "--rollback",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-rollback-write"
+          },
+          {
+            "id": "bootstrap-uninstall",
+            "when_args": [
+              "--uninstall"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-uninstall"
+          },
+          {
+            "id": "bootstrap-uninstall-write",
+            "when_args": [
+              "--uninstall",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-uninstall-write"
           }
         ]
       },
@@ -5839,6 +6026,69 @@
       "migration": ""
     },
     {
+      "id": "contract:activation-refusal.v1.schema.json",
+      "kind": "contract",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI contract maintainer",
+      "source": "src/core/contracts/cli-output/activation-refusal.v1.schema.json",
+      "entrypoint": "aidn codex hydrate-context --json",
+      "implementation": "src/core/contracts/cli-output/activation-refusal.v1.schema.json",
+      "effects": "machine-readable public output",
+      "consumer": "automation and contract fixtures",
+      "docs": "docs/agents/04-json-contracts.md",
+      "proof": {
+        "class": "fixture",
+        "target": "tools/perf/verify-cli-output-contracts-fixtures.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "contract:bootstrap-diagnostics.v1.schema.json",
+      "kind": "contract",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI contract maintainer",
+      "source": "src/core/contracts/cli-output/bootstrap-diagnostics.v1.schema.json",
+      "entrypoint": "aidn bootstrap --diagnose --json",
+      "implementation": "src/core/contracts/cli-output/bootstrap-diagnostics.v1.schema.json",
+      "effects": "machine-readable public output",
+      "consumer": "automation and contract fixtures",
+      "docs": "docs/agents/04-json-contracts.md",
+      "proof": {
+        "class": "fixture",
+        "target": "tools/perf/verify-cli-output-contracts-fixtures.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "contract:bootstrap-lifecycle.v1.schema.json",
+      "kind": "contract",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI contract maintainer",
+      "source": "src/core/contracts/cli-output/bootstrap-lifecycle.v1.schema.json",
+      "entrypoint": "aidn bootstrap --repair --json",
+      "implementation": "src/core/contracts/cli-output/bootstrap-lifecycle.v1.schema.json",
+      "effects": "machine-readable public output",
+      "consumer": "automation and contract fixtures",
+      "docs": "docs/agents/04-json-contracts.md",
+      "proof": {
+        "class": "fixture",
+        "target": "tools/perf/verify-cli-output-contracts-fixtures.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "contract:bootstrap-preview.v1.schema.json",
       "kind": "contract",
       "status": "active",
@@ -7120,6 +7370,27 @@
       "migration": ""
     },
     {
+      "id": "hook:PreToolUse",
+      "kind": "hook",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Codex integration maintainer",
+      "source": "scaffold/codex_hooks/hooks.json",
+      "entrypoint": "PreToolUse",
+      "implementation": "scaffold/codex_hooks/scripts/aidn-session-start.mjs",
+      "effects": "read-only discovery context",
+      "consumer": "trusted Codex installed client",
+      "docs": "docs/CODEX_APP_COMPATIBILITY.md",
+      "proof": {
+        "class": "installed-client",
+        "target": "tools/verify/verify-codex-client-install.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "hook:SessionStart",
       "kind": "hook",
       "status": "active",
@@ -7204,6 +7475,133 @@
       "migration": ""
     },
     {
+      "id": "option:aidn bootstrap:--authorize",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --authorize",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "mutating",
+        "variants": [
+          {
+            "when_args": [
+              "--authorize"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-authorize"
+          },
+          {
+            "when_args": [
+              "--authorize",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-authorize-write"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn bootstrap:--codex-home",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --codex-home",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn bootstrap:--codex-migrate-custom",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --codex-migrate-custom",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn bootstrap:--diagnose",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --diagnose",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "mutating",
+        "variants": [
+          {
+            "when_args": [
+              "--diagnose"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "bootstrap-diagnose"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn bootstrap:--dry-run",
       "kind": "option",
       "status": "active",
@@ -7217,6 +7615,30 @@
         "role": "effect-override",
         "rule": "dry-run-is-preview",
         "effect_class": "preview"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn bootstrap:--expect-plan",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --expect-plan",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
       },
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
@@ -7299,6 +7721,51 @@
       "migration": ""
     },
     {
+      "id": "option:aidn bootstrap:--migrate-global-skills",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --migrate-global-skills",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "mutating",
+        "variants": [
+          {
+            "when_args": [
+              "--migrate-global-skills"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-migrate-global-skills"
+          },
+          {
+            "when_args": [
+              "--migrate-global-skills",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-migrate-global-skills-write"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn bootstrap:--mode",
       "kind": "option",
       "status": "active",
@@ -7307,6 +7774,54 @@
       "owner": "CLI maintainer",
       "source": "tools/bootstrap.mjs",
       "entrypoint": "aidn bootstrap --mode",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn bootstrap:--no-codex-migrate-custom",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --no-codex-migrate-custom",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn bootstrap:--persistence-policy",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --persistence-policy",
       "implementation": "tools/bootstrap.mjs",
       "effects": {
         "role": "effect-neutral",
@@ -7371,6 +7886,231 @@
       "migration": ""
     },
     {
+      "id": "option:aidn bootstrap:--repair",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --repair",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "mutating",
+        "variants": [
+          {
+            "when_args": [
+              "--repair"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-repair"
+          },
+          {
+            "when_args": [
+              "--repair",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-repair-write"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn bootstrap:--restore-global-skills",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --restore-global-skills",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "mutating",
+        "variants": [
+          {
+            "when_args": [
+              "--restore-global-skills"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-restore-global-skills"
+          },
+          {
+            "when_args": [
+              "--restore-global-skills",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-restore-global-skills-write"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn bootstrap:--resume",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --resume",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "mutating",
+        "variants": [
+          {
+            "when_args": [
+              "--resume"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-resume"
+          },
+          {
+            "when_args": [
+              "--resume",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-resume-write"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn bootstrap:--revoke",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --revoke",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "mutating",
+        "variants": [
+          {
+            "when_args": [
+              "--revoke"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-revoke"
+          },
+          {
+            "when_args": [
+              "--revoke",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-revoke-write"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn bootstrap:--rollback",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --rollback",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "mutating",
+        "variants": [
+          {
+            "when_args": [
+              "--rollback"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-rollback"
+          },
+          {
+            "when_args": [
+              "--rollback",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-rollback-write"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn bootstrap:--runtime-persistence-connection-ref",
       "kind": "option",
       "status": "active",
@@ -7379,6 +8119,30 @@
       "owner": "CLI maintainer",
       "source": "tools/bootstrap.mjs",
       "entrypoint": "aidn bootstrap --runtime-persistence-connection-ref",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn bootstrap:--scope",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --scope",
       "implementation": "tools/bootstrap.mjs",
       "effects": {
         "role": "effect-neutral",
@@ -7443,6 +8207,51 @@
       "migration": ""
     },
     {
+      "id": "option:aidn bootstrap:--uninstall",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --uninstall",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "mutating",
+        "variants": [
+          {
+            "when_args": [
+              "--uninstall"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "preview",
+            "policy": "bootstrap-uninstall"
+          },
+          {
+            "when_args": [
+              "--uninstall",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-uninstall-write"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn bootstrap:--verify",
       "kind": "option",
       "status": "active",
@@ -7479,6 +8288,104 @@
       "effects": {
         "role": "effect-neutral",
         "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/bootstrap.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn bootstrap:--write",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/bootstrap.mjs",
+      "entrypoint": "aidn bootstrap --write",
+      "implementation": "tools/bootstrap.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "mutating",
+        "variants": [
+          {
+            "when_args": [
+              "--authorize",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-authorize-write"
+          },
+          {
+            "when_args": [
+              "--migrate-global-skills",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-migrate-global-skills-write"
+          },
+          {
+            "when_args": [
+              "--repair",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-repair-write"
+          },
+          {
+            "when_args": [
+              "--restore-global-skills",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-restore-global-skills-write"
+          },
+          {
+            "when_args": [
+              "--resume",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-resume-write"
+          },
+          {
+            "when_args": [
+              "--revoke",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-revoke-write"
+          },
+          {
+            "when_args": [
+              "--rollback",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-rollback-write"
+          },
+          {
+            "when_args": [
+              "--uninstall",
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "bootstrap-uninstall-write"
+          }
+        ]
       },
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
@@ -10080,6 +10987,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn install:--codex-migrate-custom",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/install.mjs",
+      "entrypoint": "aidn install --codex-migrate-custom",
+      "implementation": "tools/install.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/install.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn install:--dry-run",
       "kind": "option",
       "status": "active",
@@ -10234,6 +11165,30 @@
       "owner": "CLI maintainer",
       "source": "tools/install.mjs",
       "entrypoint": "aidn install --pack",
+      "implementation": "tools/install.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/install.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn install:--persistence-policy",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/install.mjs",
+      "entrypoint": "aidn install --persistence-policy",
       "implementation": "tools/install.mjs",
       "effects": {
         "role": "effect-neutral",
@@ -10474,6 +11429,30 @@
       "owner": "CLI maintainer",
       "source": "tools/install.mjs",
       "entrypoint": "aidn install --verify",
+      "implementation": "tools/install.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/install.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn install:--verify-after-install",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/install.mjs",
+      "entrypoint": "aidn install --verify-after-install",
       "implementation": "tools/install.mjs",
       "effects": {
         "role": "effect-neutral",
@@ -36453,15 +37432,15 @@
       "migration": ""
     },
     {
-      "id": "skill:branch-cycle-audit",
+      "id": "skill:aidn-branch-cycle-audit",
       "kind": "skill",
       "status": "active",
       "visibility": "public",
       "information_class": "canonical",
       "owner": "Workflow skill maintainer",
-      "source": "scaffold/codex/branch-cycle-audit/SKILL.md",
-      "entrypoint": ".agents/skills/branch-cycle-audit/SKILL.md",
-      "implementation": "scaffold/codex/branch-cycle-audit/SKILL.md",
+      "source": "scaffold/codex/aidn-branch-cycle-audit/SKILL.md",
+      "entrypoint": ".agents/skills/aidn-branch-cycle-audit/SKILL.md",
+      "implementation": "scaffold/codex/aidn-branch-cycle-audit/SKILL.md",
       "effects": "declared by skill and routed runtime hook",
       "consumer": "Codex installed client",
       "docs": "scaffold/root/AGENTS.md",
@@ -36474,15 +37453,15 @@
       "migration": ""
     },
     {
-      "id": "skill:close-session",
+      "id": "skill:aidn-close-session",
       "kind": "skill",
       "status": "active",
       "visibility": "public",
       "information_class": "canonical",
       "owner": "Workflow skill maintainer",
-      "source": "scaffold/codex/close-session/SKILL.md",
-      "entrypoint": ".agents/skills/close-session/SKILL.md",
-      "implementation": "scaffold/codex/close-session/SKILL.md",
+      "source": "scaffold/codex/aidn-close-session/SKILL.md",
+      "entrypoint": ".agents/skills/aidn-close-session/SKILL.md",
+      "implementation": "scaffold/codex/aidn-close-session/SKILL.md",
       "effects": "declared by skill and routed runtime hook",
       "consumer": "Codex installed client",
       "docs": "scaffold/root/AGENTS.md",
@@ -36495,15 +37474,15 @@
       "migration": ""
     },
     {
-      "id": "skill:context-reload",
+      "id": "skill:aidn-context-reload",
       "kind": "skill",
       "status": "active",
       "visibility": "public",
       "information_class": "canonical",
       "owner": "Workflow skill maintainer",
-      "source": "scaffold/codex/context-reload/SKILL.md",
-      "entrypoint": ".agents/skills/context-reload/SKILL.md",
-      "implementation": "scaffold/codex/context-reload/SKILL.md",
+      "source": "scaffold/codex/aidn-context-reload/SKILL.md",
+      "entrypoint": ".agents/skills/aidn-context-reload/SKILL.md",
+      "implementation": "scaffold/codex/aidn-context-reload/SKILL.md",
       "effects": "declared by skill and routed runtime hook",
       "consumer": "Codex installed client",
       "docs": "scaffold/root/AGENTS.md",
@@ -36516,15 +37495,15 @@
       "migration": ""
     },
     {
-      "id": "skill:convert-to-spike",
+      "id": "skill:aidn-convert-to-spike",
       "kind": "skill",
       "status": "active",
       "visibility": "public",
       "information_class": "canonical",
       "owner": "Workflow skill maintainer",
-      "source": "scaffold/codex/convert-to-spike/SKILL.md",
-      "entrypoint": ".agents/skills/convert-to-spike/SKILL.md",
-      "implementation": "scaffold/codex/convert-to-spike/SKILL.md",
+      "source": "scaffold/codex/aidn-convert-to-spike/SKILL.md",
+      "entrypoint": ".agents/skills/aidn-convert-to-spike/SKILL.md",
+      "implementation": "scaffold/codex/aidn-convert-to-spike/SKILL.md",
       "effects": "declared by skill and routed runtime hook",
       "consumer": "Codex installed client",
       "docs": "scaffold/root/AGENTS.md",
@@ -36537,15 +37516,15 @@
       "migration": ""
     },
     {
-      "id": "skill:crash-recovery",
+      "id": "skill:aidn-crash-recovery",
       "kind": "skill",
       "status": "active",
       "visibility": "public",
       "information_class": "canonical",
       "owner": "Workflow skill maintainer",
-      "source": "scaffold/codex/crash-recovery/SKILL.md",
-      "entrypoint": ".agents/skills/crash-recovery/SKILL.md",
-      "implementation": "scaffold/codex/crash-recovery/SKILL.md",
+      "source": "scaffold/codex/aidn-crash-recovery/SKILL.md",
+      "entrypoint": ".agents/skills/aidn-crash-recovery/SKILL.md",
+      "implementation": "scaffold/codex/aidn-crash-recovery/SKILL.md",
       "effects": "declared by skill and routed runtime hook",
       "consumer": "Codex installed client",
       "docs": "scaffold/root/AGENTS.md",
@@ -36558,15 +37537,15 @@
       "migration": ""
     },
     {
-      "id": "skill:cycle-close",
+      "id": "skill:aidn-cycle-close",
       "kind": "skill",
       "status": "active",
       "visibility": "public",
       "information_class": "canonical",
       "owner": "Workflow skill maintainer",
-      "source": "scaffold/codex/cycle-close/SKILL.md",
-      "entrypoint": ".agents/skills/cycle-close/SKILL.md",
-      "implementation": "scaffold/codex/cycle-close/SKILL.md",
+      "source": "scaffold/codex/aidn-cycle-close/SKILL.md",
+      "entrypoint": ".agents/skills/aidn-cycle-close/SKILL.md",
+      "implementation": "scaffold/codex/aidn-cycle-close/SKILL.md",
       "effects": "declared by skill and routed runtime hook",
       "consumer": "Codex installed client",
       "docs": "scaffold/root/AGENTS.md",
@@ -36579,15 +37558,15 @@
       "migration": ""
     },
     {
-      "id": "skill:cycle-create",
+      "id": "skill:aidn-cycle-create",
       "kind": "skill",
       "status": "active",
       "visibility": "public",
       "information_class": "canonical",
       "owner": "Workflow skill maintainer",
-      "source": "scaffold/codex/cycle-create/SKILL.md",
-      "entrypoint": ".agents/skills/cycle-create/SKILL.md",
-      "implementation": "scaffold/codex/cycle-create/SKILL.md",
+      "source": "scaffold/codex/aidn-cycle-create/SKILL.md",
+      "entrypoint": ".agents/skills/aidn-cycle-create/SKILL.md",
+      "implementation": "scaffold/codex/aidn-cycle-create/SKILL.md",
       "effects": "declared by skill and routed runtime hook",
       "consumer": "Codex installed client",
       "docs": "scaffold/root/AGENTS.md",
@@ -36600,15 +37579,15 @@
       "migration": ""
     },
     {
-      "id": "skill:drift-check",
+      "id": "skill:aidn-drift-check",
       "kind": "skill",
       "status": "active",
       "visibility": "public",
       "information_class": "canonical",
       "owner": "Workflow skill maintainer",
-      "source": "scaffold/codex/drift-check/SKILL.md",
-      "entrypoint": ".agents/skills/drift-check/SKILL.md",
-      "implementation": "scaffold/codex/drift-check/SKILL.md",
+      "source": "scaffold/codex/aidn-drift-check/SKILL.md",
+      "entrypoint": ".agents/skills/aidn-drift-check/SKILL.md",
+      "implementation": "scaffold/codex/aidn-drift-check/SKILL.md",
       "effects": "declared by skill and routed runtime hook",
       "consumer": "Codex installed client",
       "docs": "scaffold/root/AGENTS.md",
@@ -36621,15 +37600,15 @@
       "migration": ""
     },
     {
-      "id": "skill:handoff-close",
+      "id": "skill:aidn-handoff-close",
       "kind": "skill",
       "status": "active",
       "visibility": "public",
       "information_class": "canonical",
       "owner": "Workflow skill maintainer",
-      "source": "scaffold/codex/handoff-close/SKILL.md",
-      "entrypoint": ".agents/skills/handoff-close/SKILL.md",
-      "implementation": "scaffold/codex/handoff-close/SKILL.md",
+      "source": "scaffold/codex/aidn-handoff-close/SKILL.md",
+      "entrypoint": ".agents/skills/aidn-handoff-close/SKILL.md",
+      "implementation": "scaffold/codex/aidn-handoff-close/SKILL.md",
       "effects": "declared by skill and routed runtime hook",
       "consumer": "Codex installed client",
       "docs": "scaffold/root/AGENTS.md",
@@ -36642,15 +37621,15 @@
       "migration": ""
     },
     {
-      "id": "skill:pr-orchestrate",
+      "id": "skill:aidn-pr-orchestrate",
       "kind": "skill",
       "status": "active",
       "visibility": "public",
       "information_class": "canonical",
       "owner": "Workflow skill maintainer",
-      "source": "scaffold/codex/pr-orchestrate/SKILL.md",
-      "entrypoint": ".agents/skills/pr-orchestrate/SKILL.md",
-      "implementation": "scaffold/codex/pr-orchestrate/SKILL.md",
+      "source": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+      "entrypoint": ".agents/skills/aidn-pr-orchestrate/SKILL.md",
+      "implementation": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
       "effects": "declared by skill and routed runtime hook",
       "consumer": "Codex installed client",
       "docs": "scaffold/root/AGENTS.md",
@@ -36663,15 +37642,15 @@
       "migration": ""
     },
     {
-      "id": "skill:promote-baseline",
+      "id": "skill:aidn-promote-baseline",
       "kind": "skill",
       "status": "active",
       "visibility": "public",
       "information_class": "canonical",
       "owner": "Workflow skill maintainer",
-      "source": "scaffold/codex/promote-baseline/SKILL.md",
-      "entrypoint": ".agents/skills/promote-baseline/SKILL.md",
-      "implementation": "scaffold/codex/promote-baseline/SKILL.md",
+      "source": "scaffold/codex/aidn-promote-baseline/SKILL.md",
+      "entrypoint": ".agents/skills/aidn-promote-baseline/SKILL.md",
+      "implementation": "scaffold/codex/aidn-promote-baseline/SKILL.md",
       "effects": "declared by skill and routed runtime hook",
       "consumer": "Codex installed client",
       "docs": "scaffold/root/AGENTS.md",
@@ -36684,15 +37663,15 @@
       "migration": ""
     },
     {
-      "id": "skill:requirements-delta",
+      "id": "skill:aidn-requirements-delta",
       "kind": "skill",
       "status": "active",
       "visibility": "public",
       "information_class": "canonical",
       "owner": "Workflow skill maintainer",
-      "source": "scaffold/codex/requirements-delta/SKILL.md",
-      "entrypoint": ".agents/skills/requirements-delta/SKILL.md",
-      "implementation": "scaffold/codex/requirements-delta/SKILL.md",
+      "source": "scaffold/codex/aidn-requirements-delta/SKILL.md",
+      "entrypoint": ".agents/skills/aidn-requirements-delta/SKILL.md",
+      "implementation": "scaffold/codex/aidn-requirements-delta/SKILL.md",
       "effects": "declared by skill and routed runtime hook",
       "consumer": "Codex installed client",
       "docs": "scaffold/root/AGENTS.md",
@@ -36705,15 +37684,15 @@
       "migration": ""
     },
     {
-      "id": "skill:start-session",
+      "id": "skill:aidn-start-session",
       "kind": "skill",
       "status": "active",
       "visibility": "public",
       "information_class": "canonical",
       "owner": "Workflow skill maintainer",
-      "source": "scaffold/codex/start-session/SKILL.md",
-      "entrypoint": ".agents/skills/start-session/SKILL.md",
-      "implementation": "scaffold/codex/start-session/SKILL.md",
+      "source": "scaffold/codex/aidn-start-session/SKILL.md",
+      "entrypoint": ".agents/skills/aidn-start-session/SKILL.md",
+      "implementation": "scaffold/codex/aidn-start-session/SKILL.md",
       "effects": "declared by skill and routed runtime hook",
       "consumer": "Codex installed client",
       "docs": "scaffold/root/AGENTS.md",

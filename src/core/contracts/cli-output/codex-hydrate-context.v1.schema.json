@@ -17,7 +17,8 @@
     "target_root": { "type": "string" },
     "state_mode": { "type": "string" },
     "output_file": { "type": "string" },
-    "recent_history": { "type": "array" },
+    "recent_history": {"type":"array","items":{"type":"object","properties":{"reusable":{"type":"boolean"},"reuse_status":{"type":"string","enum":["current","unknown","stale","failed"]},"reuse_reasons":{"type":"array","items":{"type":"string"}},"provenance":{"type":["object","null"],"properties":{"kind":{"type":"string","const":"hook-command-observation.v1"},"authority":{"type":"string"},"execution_id":{"type":"string"},"command_status":{"type":["integer","null"]},"before":{"type":"object"},"after":{"type":"object"}},"additionalProperties":true}},"additionalProperties":true}},
+    "decisions": { "type": "object", "additionalProperties": true },
     "bundle_budget": {
       "type": ["object", "null"],
       "properties": {

@@ -1,3 +1,5 @@
+import { commandMayRefuseActivation } from "./activation-policy.mjs";
+
 const REGISTRY_SOURCE = "src/core/cli/command-registry.mjs";
 const EFFECT_POLICY_SOURCE = "src/core/cli/effect-policy.mjs";
 const VISIBILITY_VALUES = Object.freeze(["public", "internal"]);
@@ -70,7 +72,9 @@ function publicCommand(group, name, implementation, jsonContracts = [], fixedArg
               ? "Release maintainer"
               : "Runtime CLI maintainer",
     effectAuthority: `${EFFECT_POLICY_SOURCE}#${command}`,
-    jsonContracts,
+    jsonContracts: commandMayRefuseActivation({ group, name, visibility: "public", dispatch_kind: "script" })
+      ? [...jsonContracts, "activation-refusal.v1.schema.json"]
+      : jsonContracts,
   });
 }
 
@@ -85,7 +89,9 @@ function internalCommand(group, name, implementation, fixedArgs = []) {
       ? "Repository verification maintainer"
       : "Codex integration maintainer",
     effectAuthority: "internal/non-public",
-    jsonContracts: [],
+    jsonContracts: commandMayRefuseActivation({ group, name, visibility: "internal", dispatch_kind: "script" })
+      ? ["activation-refusal.v1.schema.json"]
+      : [],
   });
 }
 
@@ -114,6 +120,8 @@ const DIRECT_COMMANDS = freezeDeep([
   publicCommand("root", "bootstrap", "tools/bootstrap.mjs", [
     "bootstrap-preview.v1.schema.json",
     "bootstrap.v1.schema.json",
+    "bootstrap-diagnostics.v1.schema.json",
+    "bootstrap-lifecycle.v1.schema.json",
   ]),
   publicCommand("root", "build-release", "tools/build-release.mjs"),
   publicCommand("root", "install", "tools/install.mjs"),

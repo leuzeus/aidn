@@ -18,7 +18,7 @@ export function copyFixtureToTmp(source, tmpRoot, prefix, options = {}) {
   if (typeof options.onDestinationCreated === "function") {
     options.onDestinationCreated(destination);
   }
-  fs.cpSync(source, destination, { recursive: true });
+  fs.cpSync(source, destination, { recursive: true, ...(options.filter ? { filter: options.filter } : {}) });
   return destination;
 }
 

@@ -50,6 +50,16 @@ Residual coverage classification:
 | `gate_result` | excluded | CI workflow telemetry, not part of the runtime information model. |
 | `reference_data` | excluded | Fixture and test-corpus material, not live workflow state. |
 
+## Installation ownership extension (2026-09-23)
+
+Codex installation ownership is governed as `install_assets`. Its local receipt
+and transaction pre-images authorize recovery of owned files, AGENTS blocks and
+hook entries in one physical worktree. The same local authority applies in
+files, dual and db-only modes. It never authorizes workflow admission or replaces
+runtime state. Public diagnostics expose hashes and conflicts, not pre-image
+contents. Recovery compares current content before writing and preserves
+transaction history after uninstall. See ADR-0011 for the integration boundary.
+
 ## Options Compared
 
 | Option | Result |

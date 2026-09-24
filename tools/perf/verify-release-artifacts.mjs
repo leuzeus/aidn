@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
+import { readPackageTarball } from "../lib/release-package-tar.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -62,14 +63,20 @@ function verify() {
   const version = readText("VERSION").trim();
   const packageJson = readJson("package.json");
   const zipName = `aidn-workflow-${version}.zip`;
+  const tarballName = `aidn-workflow-${version}.tgz`;
   const zipRelativePath = `release/dist/${zipName}`;
+  const tarballRelativePath = `release/dist/${tarballName}`;
   const zipPath = path.join(REPO_ROOT, zipRelativePath);
+  const tarballPath = path.join(REPO_ROOT, tarballRelativePath);
   const checksumsPath = path.join(REPO_ROOT, "release", "checksums.txt");
   const manifestPath = path.join(REPO_ROOT, "release", "manifest.json");
   const issues = [];
 
   if (!fs.existsSync(zipPath)) {
     issues.push(`missing release artifact: ${zipRelativePath}`);
+  }
+  if (!fs.existsSync(tarballPath)) {
+    issues.push(`missing release artifact: ${tarballRelativePath}`);
   }
   if (!fs.existsSync(checksumsPath)) {
     issues.push("missing release/checksums.txt");
@@ -80,12 +87,15 @@ function verify() {
 
   const zipHash = fs.existsSync(zipPath) ? sha256File(zipPath) : "";
   const zipBytes = fs.existsSync(zipPath) ? fs.statSync(zipPath).size : 0;
+  const tarballHash = fs.existsSync(tarballPath) ? sha256File(tarballPath) : "";
+  const tarballBytes = fs.existsSync(tarballPath) ? fs.statSync(tarballPath).size : 0;
   const checksumText = fs.existsSync(checksumsPath) ? fs.readFileSync(checksumsPath, "utf8").trim() : "";
-  const expectedChecksumLine = zipHash ? `${zipHash}  ${zipRelativePath}` : "";
+  const expectedChecksumLines = zipHash && tarballHash
+    ? `${zipHash}  ${zipRelativePath}\n${tarballHash}  ${tarballRelativePath}` : "";
   if (!checksumText && fs.existsSync(checksumsPath)) {
     issues.push("release/checksums.txt is empty");
-  } else if (checksumText && checksumText !== expectedChecksumLine) {
-    issues.push("release/checksums.txt does not match the current release zip");
+  } else if (checksumText && checksumText !== expectedChecksumLines) {
+    issues.push("release/checksums.txt does not match the current release artifacts");
   }
 
   let manifest = null;
@@ -145,21 +155,36 @@ function verify() {
     const artifacts = Array.isArray(manifest.artifacts) ? manifest.artifacts : null;
     if (!artifacts) {
       issues.push("manifest artifacts must be an array");
-    } else if (artifacts.length !== 1) {
-      issues.push(`manifest artifacts must contain exactly one entry, got ${artifacts.length}`);
+    } else if (artifacts.length !== 2) {
+      issues.push(`manifest artifacts must contain exactly two entries, got ${artifacts.length}`);
     }
-    const artifact = artifacts ? artifacts.find((item) => item.path === zipRelativePath) : null;
-    if (!artifact) {
-      issues.push(`manifest is missing artifact ${zipRelativePath}`);
-    } else {
-      if (artifact.name !== zipName) {
-        issues.push(`manifest artifact name ${artifact.name} does not match ${zipName}`);
+    for (const expected of [
+      { name: zipName, path: zipRelativePath, sha256: zipHash, bytes: zipBytes },
+      { name: tarballName, path: tarballRelativePath, sha256: tarballHash, bytes: tarballBytes },
+    ]) {
+      const artifact = artifacts?.find((item) => item.path === expected.path);
+      if (!artifact) {
+        issues.push(`manifest is missing artifact ${expected.path}`);
+      } else if (artifact.name !== expected.name || artifact.sha256 !== expected.sha256
+        || artifact.bytes !== expected.bytes) {
+        issues.push(`manifest artifact does not match ${expected.path}`);
       }
-      if (artifact.sha256 !== zipHash) {
-        issues.push("manifest artifact sha256 does not match release zip");
-      }
-      if (artifact.bytes !== zipBytes) {
-        issues.push("manifest artifact bytes does not match release zip");
+    }
+    if (fs.existsSync(tarballPath) && Array.isArray(manifest.build?.inputs)) {
+      try {
+        const entries = readPackageTarball(fs.readFileSync(tarballPath));
+        const expectedPaths = manifest.build.inputs;
+        if (JSON.stringify([...entries.keys()].sort()) !== JSON.stringify([...expectedPaths].sort())) {
+          issues.push("npm tarball paths differ from the package allowlist");
+        }
+        for (const [entryPath, content] of entries) {
+          const sourcePath = path.join(REPO_ROOT, entryPath);
+          if (!fs.existsSync(sourcePath) || !content.equals(fs.readFileSync(sourcePath))) {
+            issues.push(`npm tarball content differs from source: ${entryPath}`);
+          }
+        }
+      } catch (error) {
+        issues.push(`invalid npm tarball: ${error.message}`);
       }
     }
   }
@@ -173,6 +198,12 @@ function verify() {
       exists: fs.existsSync(zipPath),
       sha256: zipHash,
       bytes: zipBytes,
+    },
+    tarball: {
+      path: tarballRelativePath,
+      exists: fs.existsSync(tarballPath),
+      sha256: tarballHash,
+      bytes: tarballBytes,
     },
     checksums_line: checksumText,
     manifest,
@@ -191,6 +222,8 @@ function main() {
     console.log(`- artifact=${output.artifact.path}`);
     console.log(`- artifact_exists=${output.artifact.exists}`);
     console.log(`- bytes=${output.artifact.bytes}`);
+    console.log(`- tarball=${output.tarball.path}`);
+    console.log(`- tarball_exists=${output.tarball.exists}`);
     for (const issue of output.issues) {
       console.log(`  - ${issue}`);
     }

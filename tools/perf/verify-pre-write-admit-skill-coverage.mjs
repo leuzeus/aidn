@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { getPublicSkillName } from "../../src/core/skills/skill-policy.mjs";
 
 const SKILL_SPECS = [
   "start-session",
@@ -58,7 +59,8 @@ function readText(filePath) {
 }
 
 function checkSkill(root, skill) {
-  const file = path.resolve(process.cwd(), root, skill, "SKILL.md");
+  const publicFile = path.resolve(process.cwd(), root, getPublicSkillName(skill), "SKILL.md");
+  const file = fs.existsSync(publicFile) ? publicFile : path.resolve(process.cwd(), root, skill, "SKILL.md");
   const requiredPatterns = [
     ...SHARED_PATTERNS,
     `npx aidn runtime pre-write-admit --target . --skill ${skill} --json`,

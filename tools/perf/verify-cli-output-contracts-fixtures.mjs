@@ -12,6 +12,7 @@ import {
 } from "../../src/core/contracts/json-schema-validator.mjs";
 import { listDispatchableCommandDescriptors } from "../../src/core/cli/command-registry.mjs";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 import { redactDiagnostic } from "../verify/git-worktree-state-lib.mjs";
 
 const MAX_CHILD_DIAGNOSTIC_CHARACTERS = 2000;
@@ -99,8 +100,16 @@ const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-outpu
 const AIDN_BIN = path.join(REPO_ROOT, "bin", "aidn.mjs");
 
 const CONTRACT_CASES = [
+  { name: "activation-refusal", schema: "activation-refusal.v1.schema.json",
+    freshTarget: true, args: ["codex", "hydrate-context", "--json"], expectedExit: 2,
+    noMutationPaths: ["AGENTS.md", ".codex/hooks.json", ".aidn/install/receipt.json", ".aidn/install/authorization.json"] },
+  { name: "bootstrap-diagnostics", schema: "bootstrap-diagnostics.v1.schema.json",
+    args: ["bootstrap", "--diagnose", "--json"], allowNonZero: true, noMutationPaths: ["AGENTS.md", ".codex/hooks.json", ".aidn/install/receipt.json"] },
+  { name: "bootstrap-lifecycle", schema: "bootstrap-lifecycle.v1.schema.json",
+    args: ["bootstrap", "--repair", "--json"], allowNonZero: true, noMutationPaths: ["AGENTS.md", ".codex/hooks.json", ".aidn/install/receipt.json"] },
   {
     name: "bootstrap",
+    freshTarget: true,
     schema: "bootstrap.v1.schema.json",
     args: ["bootstrap", "--profile", "minimal", "--json"],
     env(tmpRoot) {
@@ -125,6 +134,7 @@ const CONTRACT_CASES = [
   },
   {
     name: "bootstrap-preview",
+    freshTarget: true,
     schema: "bootstrap-preview.v1.schema.json",
     args: ["bootstrap", "--profile", "minimal", "--dry-run", "--json"],
   },
@@ -488,8 +498,10 @@ function prepareBaseFixture(sourceRoot, tempRoot) {
   fs.cpSync(sourceRoot, baseRoot, {
     recursive: true,
     filter(source) {
-      const normalized = source.replace(/\\/g, "/");
-      return !normalized.includes("/.git/");
+      // Preserve the workflow corpus; provision the current integration in
+      // each isolated client instead of migrating customized historical skills.
+      const relative = path.relative(sourceRoot, source).replaceAll("\\", "/");
+      return !["AGENTS.md", ".git", ".agents", ".codex", ".aidn/codex", ".aidn/install", ".aidn/runtime/context"].some((name) => relative === name || relative.startsWith(`${name}/`));
     },
   });
   initGitRepo(baseRoot, {
@@ -532,7 +544,11 @@ function copyCaseFixture(baseRoot, tempRoot, testCase, index) {
     .replace(/^-+|-+$/g, "")
     .toLowerCase();
   const caseRoot = path.join(tempRoot, `${String(index).padStart(2, "0")}-${safeName}`);
-  fs.cpSync(baseRoot, caseRoot, { recursive: true });
+  if (testCase.freshTarget) fs.mkdirSync(caseRoot, { recursive: true });
+  else {
+    fs.cpSync(baseRoot, caseRoot, { recursive: true });
+    prepareActivationFixture(caseRoot, REPO_ROOT);
+  }
   return caseRoot;
 }
 
@@ -722,7 +738,9 @@ function runCase(tmpRoot, testCase) {
     && processEvidence.error_code == null
     && processEvidence.error == null;
   const exitOk = processCompleted
-    && (processEvidence.exit_code === 0 || testCase.allowNonZero === true);
+    && (testCase.expectedExit != null
+      ? processEvidence.exit_code === testCase.expectedExit
+      : processEvidence.exit_code === 0 || testCase.allowNonZero === true);
   if (!exitOk) {
     return {
       name: testCase.name,
@@ -995,7 +1013,7 @@ function main() {
       && strictStdoutDocumentFixtures.ok
       && processFailureDiagnosticFixtures.ok,
     target_root: sourceRoot,
-    fixture_setup: "isolated Git repository with a derived dual-sqlite projection per contract case; bootstrap uses only a local prerequisite command stub and is not installed-client proof",
+    fixture_setup: "isolated Git repository with a derived dual-sqlite projection and real local activation per nominal contract case; refusal uses a fresh inactive target; bootstrap prerequisite stub is not native installed-client proof",
     tmp_root: args.keepTmp ? tempRoot : "removed",
     checked_contracts: results.length,
     contract_closure: closure,

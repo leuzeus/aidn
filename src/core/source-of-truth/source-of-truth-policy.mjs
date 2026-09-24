@@ -25,6 +25,24 @@ function normalizeStateMode(value) {
 }
 
 const CONCEPT_GOVERNANCE = freezeDeep({
+  project_activation: {
+    owner: "project maintainer",
+    lifecycle: "absent -> authorized -> revoked; local preparation determines active or degraded status",
+    scope: "one physical Git repository common directory, with validated per-worktree assets; local physical directory when Git is absent",
+    retention: "retain authorization revision and revocation locally; never project into shared workflow state",
+    migration: "validated legacy receipts remain distinguishable as legacy-active; explicit authorization binds them to repository scope",
+    replacement: "explicit authorize or revoke after preview; authority revision and byte preconditions are compared under a common lock",
+    evidence_targets: ["src/application/install/project-activation-service.mjs"],
+  },
+  install_assets: {
+    owner: "local installation maintainer",
+    lifecycle: "planned -> applying -> installed|interrupted -> repaired|rolled_back|uninstalled",
+    scope: "AIDN-owned installation assets and completion evidence in one physical target worktree, plus explicitly bound host skill disable entries",
+    retention: "retain transaction pre-images and receipts locally after rollback or uninstall; never include in shared runtime",
+    migration: "adopt only exact known legacy fingerprints or identical package assets; divergent assets require resolution",
+    replacement: "compare recorded post-images before changing owned files, blocks, hook entries or an explicitly bound host skills configuration",
+    evidence_targets: ["src/application/install/codex-assets-service.mjs", "src/application/install/installation-ownership-service.mjs"],
+  },
   workflow_rules: {
     owner: "workflow policy maintainer",
     lifecycle: "authored -> active -> superseded -> archived",
@@ -255,6 +273,24 @@ function policy({
 
 const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
+    concept: "project_activation",
+    label: "Project workflow activation",
+    files: "Git common directory aidn/authorization.json; non-Git fallback .aidn/install/authorization.json",
+    dual: "Git common directory aidn/authorization.json; non-Git fallback .aidn/install/authorization.json",
+    dbOnly: "Git common directory aidn/authorization.json; non-Git fallback .aidn/install/authorization.json",
+    projection: "compact activation in bootstrap diagnostics and runtime admission",
+    notes: "Authorization and per-worktree preparation are both required; copied configuration, stale cache and native trust are not activation authority. Revocation dominates local receipts and cannot be undone implicitly by asset recovery.",
+  }),
+  policy({
+    concept: "install_assets",
+    label: "Local installation ownership",
+    files: ".aidn/install/receipt.json and referenced local transactions",
+    dual: ".aidn/install/receipt.json and referenced local transactions",
+    dbOnly: ".aidn/install/receipt.json and referenced local transactions",
+    projection: "bootstrap asset plans, installation diagnostics and config install.aidnVersion",
+    notes: "Local installation recovery and completion authority only; never workflow admission or runtime state. VERSION in the executing package is the sole product version authority; the receipt binds the last complete successful installation and config install.aidnVersion projects that fact.",
+  }),
+  policy({
     concept: "workflow_rules",
     label: "Workflow rules",
     files: "docs/audit/SPEC.md projected from package docs/SPEC.md",
@@ -279,7 +315,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dual: ".aidn/config.json",
     dbOnly: ".aidn/config.json",
     projection: "runtime status outputs",
-    notes: "Host-local defaults are not the shared runtime contract.",
+    notes: "Host-local defaults are not the shared runtime contract. Root config version is schema 1. Optional install.aidnVersion is derived from complete successful installation evidence under install_assets; absent legacy markers mean unknown, not an inferred installed product version.",
   }),
   policy({
     concept: "workspace_identity",

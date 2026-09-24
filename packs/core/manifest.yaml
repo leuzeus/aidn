@@ -1,5 +1,5 @@
 name: core
-version: 0.7.2
+version: 0.8.0
 
 install:
   copy:
@@ -62,16 +62,16 @@ verify:
     - docs/audit/snapshots/context-snapshot.md
     - docs/audit/parking-lot.md
     - .aidn/codex/skills.yaml
-    - .agents/skills/branch-cycle-audit/SKILL.md
-    - .agents/skills/close-session/SKILL.md
-    - .agents/skills/context-reload/SKILL.md
-    - .agents/skills/convert-to-spike/SKILL.md
-    - .agents/skills/cycle-close/SKILL.md
-    - .agents/skills/cycle-create/SKILL.md
-    - .agents/skills/drift-check/SKILL.md
-    - .agents/skills/promote-baseline/SKILL.md
-    - .agents/skills/requirements-delta/SKILL.md
-    - .agents/skills/start-session/SKILL.md
+    - .agents/skills/aidn-branch-cycle-audit/SKILL.md
+    - .agents/skills/aidn-close-session/SKILL.md
+    - .agents/skills/aidn-context-reload/SKILL.md
+    - .agents/skills/aidn-convert-to-spike/SKILL.md
+    - .agents/skills/aidn-cycle-close/SKILL.md
+    - .agents/skills/aidn-cycle-create/SKILL.md
+    - .agents/skills/aidn-drift-check/SKILL.md
+    - .agents/skills/aidn-promote-baseline/SKILL.md
+    - .agents/skills/aidn-requirements-delta/SKILL.md
+    - .agents/skills/aidn-start-session/SKILL.md
     - .codex/agents/aidn-explorer.toml
     - .codex/agents/aidn-executor.toml
     - .codex/agents/aidn-validator.toml

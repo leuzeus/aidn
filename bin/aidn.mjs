@@ -3,6 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { activationOptionArgs, classifyCliActivation, resolveInternalCliEffectClass } from "../src/core/cli/activation-policy.mjs";
+import { resolveCliEffectClass } from "../src/core/cli/effect-policy.mjs";
+import { readActivation } from "../src/application/install/project-activation-service.mjs";
 import {
   getDirectCommandDescriptor,
   getGroupCommandDescriptor,
@@ -36,6 +39,8 @@ function printUsage() {
   console.log("  aidn runtime db-migrate --target . --json");
   console.log("  aidn runtime db-migrate --target . --write --json");
   console.log("  aidn runtime local-daemon --status --json");
+  console.log("  aidn runtime project-runtime-state --target . --write --json");
+  console.log("  aidn runtime project-handoff-packet --target . --write --sync-relay --json");
   console.log("  aidn project config --target . --list --json");
   console.log("  aidn project config --target . --init-defaults --write --json");
   for (const group of [...GROUPS].sort()) {
@@ -61,6 +66,42 @@ function printVersion() {
   }
 }
 
+function checkActivation(descriptor, args) {
+  const options = activationOptionArgs(args);
+  let target = process.cwd(), invalidTarget = false;
+  for (let index = 0; index < options.length; index += 1) {
+    if (options[index] !== "--target") continue;
+    const value = String(options[index + 1] ?? "").trim();
+    if (!value || value.startsWith("-")) invalidTarget = true;
+    else target = path.resolve(process.cwd(), value);
+    index += 1;
+  }
+  const activation = invalidTarget
+    ? { active: false, state: "degraded", errors: ["ACTIVATION_INVALID_TARGET_ARGUMENT"] }
+    : readActivation({ targetRoot: target });
+  if (activation.active) return true;
+  const payload = {
+    schema_version: 1,
+    command: descriptor.command,
+    effect_class: descriptor.visibility === "internal"
+      ? resolveInternalCliEffectClass(descriptor, options)
+      : resolveCliEffectClass(descriptor.command, args),
+    ok: false,
+    status: "blocked",
+    code: "AIDN_ACTIVATION_REQUIRED",
+    target_root: activation.identity?.target_root ?? target,
+    activation: { state: activation.state, active: false },
+    errors: activation.errors.length ? activation.errors : ["AIDN_ACTIVATION_REQUIRED"],
+    written: false,
+    refused: true,
+  };
+  // A refusal is machine-readable even without --json; no implementation module
+  // has been loaded and no persistence adapter has been constructed at this point.
+  console.log(JSON.stringify(payload, null, 2));
+  process.exitCode = 2;
+  return false;
+}
+
 function runDescriptor(descriptor, args) {
   if (descriptor.dispatch_kind === "builtin") {
     if (descriptor.group === "root" && descriptor.name === "help") {
@@ -78,6 +119,11 @@ function runDescriptor(descriptor, args) {
     console.error(`ERROR: unsupported builtin descriptor: ${descriptor.id}`);
     process.exit(1);
   }
+  const activationPolicy = classifyCliActivation(descriptor, args);
+  if (activationPolicy.requires_activation && !checkActivation(descriptor, args)) return;
+  // Help has precedence over every effect selector. Do not forward other tokens
+  // that a child parser could treat as values and thereby swallow --help.
+  const forwardedArgs = activationPolicy.category === "help" ? ["--help"] : args;
   const absolutePath = path.join(REPO_ROOT, descriptor.implementation);
   if (!fs.existsSync(absolutePath)) {
     console.error(`ERROR: script not found: ${absolutePath}`);
@@ -85,7 +131,7 @@ function runDescriptor(descriptor, args) {
   }
   const result = spawnSync(
     process.execPath,
-    [absolutePath, ...descriptor.fixed_args, ...args],
+    [absolutePath, ...descriptor.fixed_args, ...forwardedArgs],
     {
       cwd: process.cwd(),
       env: process.env,

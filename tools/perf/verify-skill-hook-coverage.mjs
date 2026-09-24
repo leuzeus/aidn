@@ -71,20 +71,29 @@ function main() {
     const mandatoryDbLine = "in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).";
     const contextInjectionLine = "read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.";
     const wrap = (skill, mode) => `npx aidn codex run-json-hook --skill ${skill} --mode ${mode} --target . --json`;
-    const checks = [
-      checkOne(args.root, "context-reload/SKILL.md", [wrap("context-reload", "<THINKING|EXPLORING|COMMITTING>"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
-      checkOne(args.root, "branch-cycle-audit/SKILL.md", [wrap("branch-cycle-audit", "COMMITTING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
-      checkOne(args.root, "drift-check/SKILL.md", [wrap("drift-check", "COMMITTING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
-      checkOne(args.root, "start-session/SKILL.md", [wrap("start-session", "<THINKING|EXPLORING|COMMITTING>"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
-      checkOne(args.root, "close-session/SKILL.md", [wrap("close-session", "<THINKING|EXPLORING|COMMITTING>"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
-      checkOne(args.root, "pr-orchestrate/SKILL.md", [wrap("pr-orchestrate", "<THINKING|EXPLORING|COMMITTING>"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
-      checkOne(args.root, "cycle-create/SKILL.md", [wrap("cycle-create", "COMMITTING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
-      checkOne(args.root, "cycle-close/SKILL.md", [wrap("cycle-close", "COMMITTING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
-      checkOne(args.root, "handoff-close/SKILL.md", [wrap("handoff-close", "<THINKING|EXPLORING|COMMITTING>"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
-      checkOne(args.root, "promote-baseline/SKILL.md", [wrap("promote-baseline", "COMMITTING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
-      checkOne(args.root, "requirements-delta/SKILL.md", [wrap("requirements-delta", "COMMITTING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
-      checkOne(args.root, "convert-to-spike/SKILL.md", [wrap("convert-to-spike", "EXPLORING"), contextInjectionLine, stateModeLine, mandatoryDbLine]),
+    const modes = [
+      ["context-reload", "<THINKING|EXPLORING|COMMITTING>"],
+      ["branch-cycle-audit", "COMMITTING"],
+      ["drift-check", "COMMITTING"],
+      ["start-session", "<THINKING|EXPLORING|COMMITTING>"],
+      ["close-session", "<THINKING|EXPLORING|COMMITTING>"],
+      ["pr-orchestrate", "<THINKING|EXPLORING|COMMITTING>"],
+      ["cycle-create", "COMMITTING"],
+      ["cycle-close", "COMMITTING"],
+      ["handoff-close", "<THINKING|EXPLORING|COMMITTING>"],
+      ["promote-baseline", "COMMITTING"],
+      ["requirements-delta", "COMMITTING"],
+      ["convert-to-spike", "EXPLORING"],
     ];
+    const activationPatterns = (skill) => [
+      `name: aidn-${skill}`,
+      `aidn runtime pre-write-admit --target . --skill ${skill} --json`,
+      "If activation is absent, false or unknown, stop this skill",
+    ];
+    const checks = modes.map(([skill, mode]) => checkOne(args.root,
+      `aidn-${skill}/SKILL.md`,
+      [...activationPatterns(skill), wrap(skill, mode), contextInjectionLine, stateModeLine, mandatoryDbLine]));
+    checks.push(checkOne(args.root, "aidn-crash-recovery/SKILL.md", activationPatterns("crash-recovery")));
 
     const pass = checks.every((item) => item.ok === true);
     const output = {

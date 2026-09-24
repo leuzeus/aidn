@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { listCliEffectPolicies } from "../../src/core/cli/effect-policy.mjs";
+import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -42,15 +44,16 @@ const AIDN_BIN = path.join(REPO_ROOT, "bin", "aidn.mjs");
 
 function copyFixture(sourceRoot) {
   const stamp = new Date().toISOString().replace(/[-:.]/g, "").replace("T", "T").replace("Z", "Z");
-  const tmpRoot = path.join(REPO_ROOT, "tests", "fixtures", `tmp-cli-no-implicit-write-${stamp}`);
-  fs.rmSync(tmpRoot, { recursive: true, force: true });
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), `aidn-no-implicit-write-${stamp}-`));
   fs.cpSync(sourceRoot, tmpRoot, {
     recursive: true,
     filter(source) {
-      const normalized = source.replace(/\\/g, "/");
-      return !normalized.includes("/.git/");
+      const relative = path.relative(sourceRoot, source).replace(/\\/g, "/");
+      return ![".git", ".agents", ".codex", ".aidn/install", ".aidn/codex"].some((prefix) => relative === prefix || relative.startsWith(prefix + "/")) && relative !== "AGENTS.md";
     },
   });
+  try { prepareActivationFixture(tmpRoot, REPO_ROOT); }
+  catch (error) { fs.rmSync(tmpRoot, { recursive: true, force: true }); throw error; }
   return tmpRoot;
 }
 

@@ -417,6 +417,52 @@ function main() {
       { containmentProved: true, remoteRefExact: true },
     );
 
+    const dispatchEnv = {
+      GITHUB_EVENT_NAME: "workflow_dispatch",
+      GITHUB_REF: "refs/heads/codex/fixture",
+      AIDN_BRANCH_POLICY_HEAD_REF: "codex/fixture",
+      AIDN_BRANCH_POLICY_BASE_REF: "dev",
+      AIDN_BRANCH_POLICY_EXPECTED_SHA: candidateSha,
+      AIDN_BRANCH_POLICY_CONTAINS_REF: "origin/codex/fixture",
+    };
+    recordCase(
+      results,
+      "dispatch_exact_remote_candidate_pass",
+      run(process.execPath, [policyScript], clientRoot, policyEnv(dispatchEnv)),
+      0,
+      { containmentProved: true, remoteRefExact: true, branchSourceAncestor: true },
+    );
+    recordCase(
+      results,
+      "dispatch_missing_base_still_refused",
+      run(process.execPath, [policyScript], clientRoot, policyEnv({
+        ...dispatchEnv,
+        AIDN_BRANCH_POLICY_BASE_REF: "",
+      })),
+      1,
+      { expectedIssueIncludes: "requires an explicit base ref" },
+    );
+    recordCase(
+      results,
+      "dispatch_inconsistent_announced_head_refused",
+      run(process.execPath, [policyScript], clientRoot, policyEnv({
+        ...dispatchEnv,
+        AIDN_BRANCH_POLICY_HEAD_REF: "codex/other",
+      })),
+      1,
+      { expectedIssueIncludes: "does not match remote containment branch" },
+    );
+    recordCase(
+      results,
+      "dispatch_mismatched_expected_sha_refused",
+      run(process.execPath, [policyScript], clientRoot, policyEnv({
+        ...dispatchEnv,
+        AIDN_BRANCH_POLICY_EXPECTED_SHA: devSha,
+      })),
+      1,
+      { expectedIssueIncludes: "does not match HEAD" },
+    );
+
     git(["checkout", "--quiet", "--detach", devSha], clientRoot);
     const ancestorOnlyResult = run(process.execPath, [policyScript], clientRoot, policyEnv({
       AIDN_BRANCH_POLICY_BASE_REF: "dev",

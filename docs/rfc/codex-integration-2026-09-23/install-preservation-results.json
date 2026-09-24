@@ -1,0 +1,26 @@
+{
+  "evidence_source": "executed installer audit probe; neutral report transcribed without rerun",
+  "source_sha": "cb18abbd01691fb632cc5889882aa01f6efd8d93",
+  "proof_class": "temporary-client-fixture",
+  "platform": "win32",
+  "node": "v24.13.1",
+  "install_exit": 0,
+  "reinstall_exit": 0,
+  "checks": {
+    "custom_agents_preserved": true,
+    "third_party_hooks_preserved": false,
+    "config_toml_preserved": true,
+    "third_party_skill_preserved": true,
+    "third_party_role_preserved": true,
+    "modified_aidn_skill_preserved": false,
+    "reinstall_files_identical": true,
+    "spaces_accents_install": true
+  },
+  "hook_events": ["SessionStart"],
+  "session_start_count": 1,
+  "temp_removed": true,
+  "duration_ms": 1118,
+  "llm_calls": 0,
+  "prerequisite_codex": "temporary stub; not native Codex proof",
+  "config_sentinel": "file bytes only; no connected MCP server"
+}

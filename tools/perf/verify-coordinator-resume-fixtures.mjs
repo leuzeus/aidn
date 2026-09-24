@@ -2,8 +2,9 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture, prepareNpmActivationFixture, fixtureNpmEnvironment } from "./test-activation-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -40,15 +41,16 @@ function assert(condition, message) {
 }
 
 function runJson(script, args, repoRoot, expectStatus = 0) {
+  const targetIndex = args.indexOf("--target"), target = targetIndex < 0 ? repoRoot : args[targetIndex + 1];
   const result = spawnSync(process.execPath, [script, ...args], {
-    cwd: repoRoot,
-    env: { ...process.env },
+    cwd: target,
+    env: { ...process.env, ...fixtureNpmEnvironment(target) },
     encoding: "utf8",
     timeout: 180000,
     maxBuffer: 20 * 1024 * 1024,
   });
   if ((result.status ?? 1) !== expectStatus) {
-    throw new Error(`Command failed (${path.basename(script)}): ${String(result.stderr ?? result.stdout ?? "").trim()}`);
+    throw new Error(`Command failed (${path.basename(script)}; expected=${expectStatus}; status=${result.status}): ${[result.stderr, result.stdout].filter(Boolean).join("\n").trim().slice(-8000)}`);
   }
   return JSON.parse(String(result.stdout ?? "{}"));
 }
@@ -192,12 +194,20 @@ function main() {
     const escalatedTarget = path.join(tempRoot, "escalated");
     const reanchorTarget = path.join(tempRoot, "reanchor");
     const roleBlockedTarget = path.join(tempRoot, "role-blocked");
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), escalatedTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), reanchorTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "warn"), roleBlockedTarget, { recursive: true });
+    for (const [name, target] of [["ready", escalatedTarget], ["ready", reanchorTarget], ["warn", roleBlockedTarget]]) {
+      const sourceRoot = path.join(handoffFixturesRoot, name);
+      fs.cpSync(sourceRoot, target, { recursive: true, filter: (source) => isActivationFixtureSource(sourceRoot, source, { freshCoordination: true }) });
+    }
     initGitRepo(escalatedTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(reanchorTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(roleBlockedTarget, { workingBranch: "feature/C101-alpha" });
+    for (const target of [escalatedTarget, reanchorTarget, roleBlockedTarget]) {
+      prepareActivationFixture(target, repoRoot);
+      prepareNpmActivationFixture(target, repoRoot);
+      execFileSync("git", ["-C", target, "add", "."], { stdio: "pipe" });
+      execFileSync("git", ["-C", target, "commit", "--amend", "--no-edit"], { stdio: "pipe" });
+      assert(execFileSync("git", ["-C", target, "status", "--porcelain"], { encoding: "utf8" }).trim() === "", "fixture setup must leave a clean Git worktree");
+    }
 
     installSharedPlanningFixture(escalatedTarget);
     buildEscalatedFixture(escalatedTarget, repoRoot, handoffProjectScript, summaryScript);
@@ -299,7 +309,7 @@ function main() {
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       const cleanup = removePathWithRetry(tempRoot);

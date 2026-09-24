@@ -3,6 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
+import { resolveInstallOwnership } from "../../src/application/install/install-ownership-policy.mjs";
+import { isLocalInstallationTarget } from "../../src/application/install/installation-ownership-service.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { inspectImmediateProcessExitArguments } from "../verify/spawn-sync-evidence-lib.mjs";
 
@@ -129,6 +131,24 @@ function writeAdapterFile(tempRoot) {
   return filePath;
 }
 
+function overlayRuntimeCorpus(sourceRoot, targetRoot) {
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const source = path.join(directory, entry.name);
+      if (entry.isDirectory()) { visit(source); continue; }
+      const relative = path.relative(sourceRoot, source).replace(/\\/g, "/");
+      const ownership = resolveInstallOwnership(relative);
+      const historicalArtifact = /^docs\/audit\/(?:sessions|cycles|baseline)\//.test(relative)
+        && !isLocalInstallationTarget(relative);
+      if (!["runtime-state", "seed-once"].includes(ownership) && !historicalArtifact) continue;
+      const target = path.join(targetRoot, relative);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(source, target);
+    }
+  }
+  visit(path.join(sourceRoot, "docs/audit"));
+}
+
 function setStaleCurrentState(target) {
   const file = path.join(target, "docs", "audit", "CURRENT-STATE.md");
   let text = fs.readFileSync(file, "utf8");
@@ -156,8 +176,8 @@ function main() {
     const target = path.join(tempRoot, "repo");
     const installerPrerequisiteStub = makeInstallerPrerequisiteStub(tempRoot);
     const pathSeparator = process.platform === "win32" ? ";" : ":";
-    fs.cpSync(sourceTarget, target, { recursive: true });
-    fs.rmSync(path.join(target, ".aidn"), { recursive: true, force: true });
+    // Current package assets and ownership are separate from the historical runtime corpus.
+    fs.mkdirSync(target, { recursive: true });
     adapterFile = writeAdapterFile(tempRoot);
 
     runNoJson("tools/install.mjs", [
@@ -168,9 +188,15 @@ function main() {
       "--adapter-file",
       adapterFile,
       "--force-agents-merge",
+      "--skip-artifact-import",
     ], {
       PATH: `${installerPrerequisiteStub}${pathSeparator}${String(process.env.PATH ?? "")}`,
     });
+
+    overlayRuntimeCorpus(sourceTarget, target);
+    runText("tools/perf/index-sync.mjs", [
+      "--target", target, "--store", "dual-sqlite", "--with-content", "--json",
+    ]);
 
     const env = {
       AIDN_STATE_MODE: "db-only",

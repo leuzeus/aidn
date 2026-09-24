@@ -4,12 +4,30 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
+import { executeCodexAssets, diagnoseCodexAssets } from "../src/application/install/codex-assets-service.mjs";
+import { planInstallation, executeInstallation, diagnoseInstallation } from "../src/application/install/installation-service.mjs";
+import { loadWorkflowAdapterConfigState } from "../src/application/project/project-config-use-case.mjs";
+import { runWorkflowAdapterConfigWizard } from "../src/application/project/workflow-adapter-config-wizard.mjs";
+import { inspectCodexCapabilities } from "../src/application/codex/codex-capabilities-service.mjs";
+import { readActivation } from "../src/application/install/project-activation-service.mjs";
+
 const PROFILES = new Set(["minimal", "default", "full", "postgres", "db-only"]);
 const MODES = new Set(["install", "upgrade"]);
+
+function scalarValue(argv, index, flag) {
+  const value = String(argv[index + 1] ?? "").trim();
+  if (!value || value.startsWith("-")) throw new Error(`Missing value for ${flag}`);
+  return value;
+}
 
 function parseArgs(argv) {
   const args = {
     target: ".",
+    action: "",
+    scope: "codex-integration",
+    write: false,
+    expectedPlanId: "",
+    codexMigrateCustom: false,
     mode: "",
     profile: "default",
     dryRun: false,
@@ -19,28 +37,62 @@ function parseArgs(argv) {
     projectName: "",
     sourceBranch: "",
     runtimePersistenceConnectionRef: "",
+    persistencePolicy: "",
+    codexHome: "",
     materializeVisibleArtifacts: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === "--target") {
-      args.target = String(argv[i + 1] ?? "").trim();
+      args.target = scalarValue(argv, i, token);
       i += 1;
+    } else if (token === "--diagnose") {
+      selectAction(args, "diagnose");
+    } else if (token === "--repair") {
+      selectAction(args, "repair");
+    } else if (token === "--resume") {
+      selectAction(args, "resume");
+    } else if (token === "--rollback") {
+      selectAction(args, "rollback");
+    } else if (token === "--uninstall") {
+      selectAction(args, "uninstall");
+    } else if (token === "--authorize" || token === "--revoke") {
+      selectAction(args, token.slice(2));
+    } else if (token === "--migrate-global-skills" || token === "--restore-global-skills") {
+      selectAction(args, token.slice(2));
+    } else if (token === "--codex-home") {
+      args.codexHome = scalarValue(argv, i, token);
+      i += 1;
+    } else if (token === "--scope") {
+      args.scope = scalarValue(argv, i, token);
+      i += 1;
+    } else if (token === "--write") {
+      args.write = true;
+    } else if (token === "--expect-plan") {
+      args.expectedPlanId = scalarValue(argv, i, token);
+      i += 1;
+    } else if (token === "--codex-migrate-custom") {
+      args.codexMigrateCustom = true;
+    } else if (token === "--no-codex-migrate-custom") {
+      args.codexMigrateCustom = false;
     } else if (token === "--mode") {
-      args.mode = String(argv[i + 1] ?? "").trim().toLowerCase();
+      args.mode = scalarValue(argv, i, token).toLowerCase();
       i += 1;
     } else if (token === "--profile") {
-      args.profile = String(argv[i + 1] ?? "").trim().toLowerCase();
+      args.profile = scalarValue(argv, i, token).toLowerCase();
       i += 1;
     } else if (token === "--project-name") {
-      args.projectName = String(argv[i + 1] ?? "").trim();
+      args.projectName = scalarValue(argv, i, token);
       i += 1;
     } else if (token === "--source-branch") {
-      args.sourceBranch = String(argv[i + 1] ?? "").trim();
+      args.sourceBranch = scalarValue(argv, i, token);
       i += 1;
     } else if (token === "--runtime-persistence-connection-ref") {
-      args.runtimePersistenceConnectionRef = String(argv[i + 1] ?? "").trim();
+      args.runtimePersistenceConnectionRef = scalarValue(argv, i, token);
+      i += 1;
+    } else if (token === "--persistence-policy") {
+      args.persistencePolicy = scalarValue(argv, i, token);
       i += 1;
     } else if (token === "--materialize-visible-artifacts") {
       args.materializeVisibleArtifacts = true;
@@ -60,6 +112,25 @@ function parseArgs(argv) {
     }
   }
 
+  if (argv.includes("--codex-migrate-custom") && argv.includes("--no-codex-migrate-custom")) {
+    throw new Error("--codex-migrate-custom conflicts with --no-codex-migrate-custom");
+  }
+  if (!["codex-integration", "installation"].includes(args.scope)) throw new Error("Invalid --scope. Expected codex-integration|installation");
+  if (argv.includes("--scope") && !args.action) throw new Error("--scope requires a diagnostic/lifecycle action");
+  if (["authorize", "revoke"].includes(args.action) && args.scope !== "codex-integration") throw new Error("Authorization actions require the default lifecycle scope");
+  const globalSkillsAction = ["migrate-global-skills", "restore-global-skills"].includes(args.action);
+  if (globalSkillsAction && (!path.isAbsolute(args.codexHome) || args.scope !== "codex-integration")) throw new Error("Global skill migration requires --codex-home <absolute-path> and the default scope");
+  if (args.codexHome && !globalSkillsAction) throw new Error("--codex-home requires an explicit global skill lifecycle action");
+  if (args.write && (args.dryRun || !args.action || args.action === "diagnose")) {
+    throw new Error("--write requires a lifecycle action and cannot be combined with --dry-run or --diagnose");
+  }
+  if (args.action && (args.wizard || args.mode || args.codexMigrateCustom || args.materializeVisibleArtifacts || args.verify)) {
+    throw new Error("Diagnostic/lifecycle actions cannot be combined with install, wizard, migration, materialization or verification options");
+  }
+  if (args.write && !args.expectedPlanId) throw new Error("Preview first and apply with --write --expect-plan <plan_id>");
+  if (args.expectedPlanId && (args.action === "diagnose" || args.dryRun || args.wizard)) throw new Error("--expect-plan requires an apply operation without wizard or dry-run");
+  if (args.persistencePolicy && !["adopt", "verify-only"].includes(args.persistencePolicy)) throw new Error("Invalid --persistence-policy. Expected adopt|verify-only");
+  if (args.persistencePolicy && args.action && !(args.scope === "installation" && ["repair", "resume"].includes(args.action))) throw new Error("--persistence-policy requires installation, upgrade, or installation-scoped repair/resume");
   if (!args.target) {
     throw new Error("Missing required argument value: --target");
   }
@@ -79,14 +150,30 @@ function parseArgs(argv) {
   return args;
 }
 
+function selectAction(args, action) {
+  if (args.action) throw new Error("Choose exactly one diagnostic/lifecycle action");
+  args.action = action;
+}
+
 function printUsage() {
   console.log("Usage:");
   console.log("  aidn bootstrap --target . --profile default");
   console.log("  aidn bootstrap --target . --mode upgrade --profile default");
+  console.log("  aidn bootstrap --target . --mode upgrade --profile db-only --persistence-policy verify-only --expect-plan <plan_id> --json");
   console.log("  aidn bootstrap --target . --profile postgres --runtime-persistence-connection-ref env:AIDN_PG_URL");
   console.log("  aidn bootstrap --target . --profile db-only");
   console.log("  aidn bootstrap --target . --profile default --dry-run --json");
   console.log("  aidn bootstrap --target . --wizard");
+  console.log("  aidn bootstrap --target . --diagnose --json");
+  console.log("  aidn bootstrap --target . --authorize --json");
+  console.log("  aidn bootstrap --target . --revoke --write --expect-plan PLAN_ID --json");
+  console.log("  aidn bootstrap --target . --migrate-global-skills --codex-home <absolute-path> --json");
+  console.log("  aidn bootstrap --target . --restore-global-skills --codex-home <absolute-path> --write --expect-plan PLAN_ID --json");
+  console.log("  aidn bootstrap --target . --repair|--resume|--rollback|--uninstall --json");
+  console.log("  aidn bootstrap --target . --repair --write --expect-plan <plan_id> --json");
+  console.log("  Default lifecycle scope: codex-integration. Add --scope installation for all recorded local installation assets.");
+  console.log("  Sessions, cycles, history, business data and databases are retained in both scopes.");
+  console.log("  Optional LLM customization migration: --codex-migrate-custom (disabled by default).");
 }
 
 function detectMode(targetRoot) {
@@ -143,15 +230,15 @@ function profilePlan(args, targetRoot) {
   const sourceBranch = args.sourceBranch || (mode === "upgrade" ? readExistingSourceBranch(targetRoot) : "");
   const installArgs = ["--target", targetRoot, "--pack", args.profile === "full" ? "extended" : "core"];
   const configArgs = ["project", "config", "--target", targetRoot];
-  const verifyArgs = ["--target", targetRoot, "--pack", args.profile === "full" ? "extended" : "core", "--verify"];
+  if (args.verify || ["default", "full", "postgres", "db-only"].includes(args.profile)) installArgs.push("--verify-after-install");
   const operations = [];
 
   if (args.wizard) {
     operations.push({
       id: "project-config-wizard",
-      command: [...configArgs, "--wizard", ...(args.dryRun ? [] : ["--write"])],
+      command: [...configArgs, "--wizard"],
       env: {},
-      mutates: !args.dryRun,
+      mutates: false,
       optional: false,
     });
   }
@@ -162,6 +249,8 @@ function profilePlan(args, targetRoot) {
   if (args.dryRun) {
     installArgs.push("--dry-run");
   }
+  if (args.codexMigrateCustom) installArgs.push("--codex-migrate-custom");
+  if (args.persistencePolicy) installArgs.push("--persistence-policy", args.persistencePolicy);
   if (args.materializeVisibleArtifacts) {
     installArgs.push("--materialize-visible-artifacts");
   }
@@ -187,39 +276,28 @@ function profilePlan(args, targetRoot) {
     mutates: !args.dryRun,
   });
 
-  const adapterConfigPath = path.join(targetRoot, ".aidn", "project", "workflow.adapter.json");
-  if (mode === "upgrade" && !fs.existsSync(adapterConfigPath)) {
-    operations.push({
-      id: "migrate-adapter",
-      command: [
-        "project",
-        "config",
-        "--target",
-        targetRoot,
-        "--migrate-adapter",
-        "--json",
-        ...(args.dryRun ? ["--dry-run"] : ["--write"]),
-      ],
-      env: {},
-      mutates: !args.dryRun,
-      optional: true,
-    });
-  }
-
-  if (!args.dryRun && (args.verify || ["default", "full", "postgres", "db-only"].includes(args.profile))) {
-    operations.push({
-      id: "verify",
-      command: ["install", ...verifyArgs],
-      env: args.profile === "db-only" ? { AIDN_STATE_MODE: "db-only" } : {},
-      mutates: false,
-    });
-  }
 
   return {
     mode,
     projectName,
     pack: args.profile === "full" ? "extended" : "core",
     operations,
+  };
+}
+
+function installationArgs(args, plan) {
+  return {
+    pack: plan.pack, sourceBranch: args.sourceBranch || (plan.mode === "upgrade" ? readExistingSourceBranch(path.resolve(args.target)) : ""),
+    initDefaults: true, projectName: plan.projectName,
+    ...(args.adapterData ? { adapterData: args.adapterData } : {}),
+    codexMigrateCustom: args.codexMigrateCustom,
+    materializeVisibleArtifacts: args.materializeVisibleArtifacts,
+    skipArtifactImport: args.profile === "db-only",
+    ...(args.profile === "db-only" ? { runtimeStateMode: "db-only" } : {}),
+    runtimePersistenceBackend: args.profile === "postgres" ? "postgres" : "",
+    runtimePersistenceConnectionRef: args.runtimePersistenceConnectionRef,
+    ...(args.persistencePolicy ? { persistencePolicy: args.persistencePolicy } : {}),
+    verifyAfterInstall: args.verify || ["default", "full", "postgres", "db-only"].includes(args.profile),
   };
 }
 
@@ -249,18 +327,96 @@ function runAidn(repoRoot, operation, capture) {
   };
 }
 
+function assetOptions(args, repoRoot, targetRoot) {
+  return {
+    repoRoot, targetRoot,
+    ...(args.codexHome ? { codexHome: args.codexHome } : {}),
+    ...(args.persistencePolicy ? { args: { persistencePolicy: args.persistencePolicy } } : {}),
+    templateVars: {
+      VERSION: fs.readFileSync(path.join(repoRoot, "VERSION"), "utf8").trim(),
+      ...(args.sourceBranch ? { SOURCE_BRANCH: args.sourceBranch } : {}),
+      ...(args.projectName ? { PROJECT_NAME: args.projectName } : {}),
+    },
+    ...(args.action ? { action: args.action } : {}),
+  };
+}
+
+function integrationOutput(args, targetRoot, fields = {}) {
+  const diagnostic = args.action === "diagnose";
+  return {
+    contract_version: diagnostic ? "bootstrap-diagnostics.v1" : "bootstrap-lifecycle.v1",
+    command: "aidn bootstrap --" + args.action + (args.write ? " --write" : "") + " --json",
+    effect_class: diagnostic ? "read-only" : args.write ? "mutating" : "preview",
+    ok: false,
+    ts: new Date().toISOString(),
+    target_root: targetRoot,
+    action: args.action,
+    scope: args.scope ?? "codex-integration",
+    dry_run: diagnostic || !args.write,
+    written: false,
+    plan_id: "",
+    operations: [],
+    conflicts: [],
+    write_targets: [],
+    ...(diagnostic ? { assets: {}, activation: { state: "degraded", active: false, scope: null, authority_id: null, revision: null, errors: [] }, capabilities: { states: { installed: "unknown", detected: "unknown", approved: "unknown", connected: "not_applicable", operational: "unverified", degraded: true } }, trust_instructions: [] } : {}),
+    errors: [],
+    warnings: [],
+    ...fields,
+  };
+}
+
+async function runIntegrationAction(args, repoRoot, targetRoot) {
+  const options = assetOptions(args, repoRoot, targetRoot);
+  let output;
+  if (args.action === "diagnose") {
+    const assets = await (args.scope === "installation" ? diagnoseInstallation(options) : diagnoseCodexAssets(options));
+    const capabilities = await inspectCodexCapabilities({ targetRoot });
+    const state = readActivation({ targetRoot });
+    output = integrationOutput(args, targetRoot, { ok: assets.ok !== false, assets, capabilities,
+      activation: { state: state.state, active: state.active, scope: state.identity?.scope ?? null,
+        authority_id: state.identity?.authority_id ?? null, revision: state.authorization?.revision ?? null, errors: state.errors },
+      errors: assets.errors ?? [],
+      warnings: [...(assets.warnings ?? []), ...(capabilities.warnings ?? [])],
+      trust_instructions: [
+        "Open this project in Codex and review the project trust and hook permissions.",
+        "Approve only after reviewing the installed AIDN hooks; this command does not grant trust.",
+        "Use a real session to verify startup and refusal on the tools listed as covered.",
+      ] });
+  } else {
+    const execute = args.scope === "installation" ? executeInstallation : executeCodexAssets;
+    const result = await execute({ ...options, dryRun: !args.write, expectedPlanId: args.expectedPlanId || undefined });
+    output = integrationOutput(args, targetRoot, { ...result, action: args.action,
+      written: args.write && result.written === true });
+  }
+  if (args.json) console.log(JSON.stringify(output, null, 2));
+  else {
+    console.log("AIDN Codex " + args.action + ": " + (output.ok ? "OK" : "CONFLICT") + " (" + output.effect_class + ")");
+    console.log(JSON.stringify(output, null, 2));
+  }
+  if (!output.ok) process.exitCode = 1;
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const targetRoot = path.resolve(process.cwd(), args.target);
+  if (args.action) return runIntegrationAction(args, repoRoot, targetRoot);
+  // Read-only preflight precedes wizard/configuration writes as well as installation.
   const plan = profilePlan(args, targetRoot);
+  let installation = await planInstallation({ repoRoot, targetRoot, args: installationArgs(args, plan) });
+  let assets = installation.asset_plan ?? { ok: false, operations: [], conflicts: [], errors: installation.errors ?? [] };
+  let assetBlocked = assets.ok === false || assets.conflicts?.length > 0 || installation.ok === false || installation.conflicts?.length > 0;
+  if (args.expectedPlanId && args.expectedPlanId !== installation.plan_id) {
+    installation = { ...installation, ok: false, conflicts: [...(installation.conflicts ?? []), { code: "STALE_INSTALL_PLAN", path: "" }], errors: [...(installation.errors ?? []), "STALE_INSTALL_PLAN"] };
+    assetBlocked = true;
+  }
   const operationResults = [];
 
   if (!args.json) {
     console.log(`AIDN bootstrap: mode=${plan.mode}, profile=${args.profile}, target=${targetRoot}`);
   }
 
-  for (const operation of plan.operations) {
+  for (const operation of (assetBlocked ? [] : plan.operations)) {
     if (args.dryRun) {
       const planned = {
         id: operation.id,
@@ -277,7 +433,29 @@ async function main() {
       if (!args.json) {
         console.log("");
         console.log(`[dry-run] ${operation.id}: ${planned.command}`);
+        if (operation.id === "install") console.log(JSON.stringify(installation, null, 2));
       }
+      continue;
+    }
+    if (operation.id === "project-config-wizard") {
+      const defaults = { projectName: plan.projectName, ...(args.profile === "db-only" ? { preferredStateMode: "db-only", defaultIndexStore: "sqlite" } : {}) };
+      const state = loadWorkflowAdapterConfigState({ targetRoot, defaults });
+      const wizard = await runWorkflowAdapterConfigWizard({ initialConfig: state.data, defaults });
+      operationResults.push({ id: operation.id, command: ["aidn", ...operation.command].join(" "), status: wizard.saved ? 0 : 1, ok: wizard.saved, optional: false, mutates: false, stdout: "", stderr: "", error: wizard.saved ? "" : "Workflow adapter configuration cancelled" });
+      if (!wizard.saved) break;
+      args.adapterData = wizard.data;
+      installation = await planInstallation({ repoRoot, targetRoot, args: installationArgs(args, plan) });
+      assets = installation.asset_plan ?? assets;
+      assetBlocked = installation.ok === false || installation.conflicts?.length > 0;
+      if (assetBlocked) break;
+      continue;
+    }
+    if (operation.id === "install") {
+      const result = await executeInstallation({ repoRoot, targetRoot, args: installationArgs(args, plan), dryRun: false, expectedPlanId: args.expectedPlanId || installation.plan_id });
+      const stdout = (result.messages ?? []).join("\n");
+      if (stdout && !args.json) console.log(stdout);
+      operationResults.push({ id: operation.id, command: ["aidn", ...operation.command].join(" "), status: result.ok ? 0 : 1, ok: result.ok, optional: false, mutates: result.written === true, stdout, stderr: "", error: (result.errors ?? []).join("; ") });
+      if (!result.ok) break;
       continue;
     }
     if (args.json) {
@@ -299,10 +477,12 @@ async function main() {
 
   const blockingFailures = operationResults.filter((item) => !item.ok && !item.optional);
   const output = {
+    asset_plan: assets,
+    installation_plan: installation,
     contract_version: "bootstrap.v1",
     command: args.dryRun ? "aidn bootstrap --dry-run --json" : "aidn bootstrap --json",
     effect_class: args.dryRun ? "preview" : "mutating",
-    ok: blockingFailures.length === 0,
+    ok: !assetBlocked && blockingFailures.length === 0,
     ts: new Date().toISOString(),
     target_root: targetRoot,
     mode: plan.mode,
@@ -323,10 +503,10 @@ async function main() {
       stderr: item.stderr,
       error: item.error,
     })),
-    errors: blockingFailures.map((item) => `${item.id} failed with status ${item.status}`),
-    warnings: operationResults
+    errors: [...new Set([...(assets.errors ?? []), ...(installation.errors ?? [])]), ...blockingFailures.map((item) => `${item.id} failed with status ${item.status}`)],
+    warnings: [...(installation.warnings ?? []), ...operationResults
       .filter((item) => !item.ok && item.optional)
-      .map((item) => `${item.id} skipped or failed with status ${item.status}`),
+      .map((item) => `${item.id} skipped or failed with status ${item.status}`)],
   };
 
   if (args.json) {
@@ -334,6 +514,10 @@ async function main() {
   } else if (output.ok) {
     console.log("");
     console.log("AIDN bootstrap: OK");
+  } else {
+    console.error("AIDN bootstrap: blocked");
+    for (const error of output.errors) console.error(error);
+    for (const operation of operationResults) if (operation.error) console.error(operation.error);
   }
 
   if (!output.ok) {
@@ -344,7 +528,17 @@ async function main() {
 try {
   await main();
 } catch (error) {
-  if (process.argv.includes("--json")) {
+  const action = ["diagnose", "repair", "resume", "rollback", "uninstall", "authorize", "revoke", "migrate-global-skills", "restore-global-skills"].find((name) => process.argv.includes("--" + name));
+  if (action && process.argv.includes("--json")) {
+    const targetIndex = process.argv.indexOf("--target");
+    const rawTarget = targetIndex >= 0 ? String(process.argv[targetIndex + 1] ?? "").trim() : "";
+    const errorTarget = rawTarget && !rawTarget.startsWith("-") ? rawTarget : ".";
+    console.log(JSON.stringify(integrationOutput({
+      action, scope: process.argv[process.argv.indexOf("--scope") + 1] === "installation" ? "installation" : "codex-integration", write: process.argv.includes("--write") && !process.argv.includes("--dry-run"),
+    }, path.resolve(process.cwd(), errorTarget), {
+      errors: [error.message],
+    }), null, 2));
+  } else if (process.argv.includes("--json")) {
     console.log(JSON.stringify({
       contract_version: "bootstrap.v1",
       command: process.argv.includes("--dry-run") ? "aidn bootstrap --dry-run --json" : "aidn bootstrap --json",

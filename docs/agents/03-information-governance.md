@@ -44,6 +44,7 @@ Do not introduce a new information concept until you have checked:
 | Concept | Status | Notes |
 |---|---|---|
 | project | governed | Project identity and policy surface. |
+| project_activation | governed | Repository authorization revision plus validated worktree preparation; separate from workflow state and native client trust. |
 | workspace | governed | Workspace identity and worktree identity are explicit. |
 | runtime_project_context | governed | Durable runtime scope identity is distinct from legacy absolute-path evidence. |
 | session | governed | Session state has a lifecycle and source of truth. |

@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { inspectImmediateProcessExitArguments } from "../verify/spawn-sync-evidence-lib.mjs";
+import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 const SELF_FILE = fileURLToPath(import.meta.url);
 const CLEANUP_PROBE_ENV = "AIDN_PRE_WRITE_ADMIT_CLEANUP_PROBE";
@@ -413,9 +414,11 @@ function main() {
     const args = parseArgs(process.argv.slice(2));
     const repoRoot = process.cwd();
     const fixturesRoot = path.resolve(repoRoot, args.fixturesRoot);
-    const readyTarget = path.join(fixturesRoot, "ready");
-    const blockedTarget = path.join(fixturesRoot, "blocked");
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), TEMP_PREFIX));
+    const readyTarget = path.join(tempRoot, "ready");
+    const blockedTarget = path.join(tempRoot, "blocked");
+    fs.cpSync(path.join(fixturesRoot, "ready"), readyTarget, { recursive: true });
+    fs.cpSync(path.join(fixturesRoot, "blocked"), blockedTarget, { recursive: true });
     if (process.env[CLEANUP_PROBE_ENV] === "1") {
       throw new Error("injected pre-write-admit fixture failure");
     }
@@ -502,6 +505,12 @@ function main() {
       "utf8",
     );
 
+    for (const target of [readyTarget, blockedTarget, cycleCreateTarget, warningTarget, dirtyCycleCreateTarget,
+      aheadCycleCreateTarget, unmergedSessionCycleCreateTarget, cycleCloseBlockedTarget, cycleCloseWaivedTarget,
+      promoteBaselineBlockedTarget, promoteBaselineWaivedTarget, dbOnlyDbFirstTarget, dbOnlyRequirementsTarget,
+      dbOnlyCloseSessionTarget, invalidSharedRuntimeTarget, locatorWorkspaceMismatchTarget, stateModeMismatchTarget]) {
+      prepareActivationFixture(target, repoRoot);
+    }
     const ready = runAidn(repoRoot, [
       "runtime",
       "pre-write-admit",

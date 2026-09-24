@@ -148,12 +148,13 @@ export function runGovernanceRouteFixtureSuite(catalog = loadCatalog()) {
     rename_delete_parser: parsedChanges.length === 2
       && parsedChanges[0].previous_path === "docs/PLAN_OLD.md"
       && parsedChanges[1].status === "D",
-    assured_has_exact_required_obligations: assuredRequired.length === 42,
+    assured_has_exact_required_obligations: assuredRequired.length === 43,
+    codex_integration_lifecycle_is_required: assuredRequired.some((gate) => (typeof gate === 'string' ? gate : gate.id) === 'codex-integration-lifecycle'),
     no_gate_selected_twice: new Set(fixtureRoutes.D.gate_selection.all.map((gate) => gate.id)).size
       === fixtureRoutes.D.gate_selection.all.length,
     manual_postgres_smoke_deferred: fixtureRoutes.D.gate_selection.manual_deferred.length === 2
       && fixtureRoutes.D.evidence_status.filter((item) => item.status === "UNAVAILABLE").length === 2,
-    emergency_never_reduces_assurance: fixtureRoutes.F.gate_selection.required.length === 42
+    emergency_never_reduces_assurance: fixtureRoutes.F.gate_selection.required.length === 43
       && fixtureRoutes.F.deferred_evidence.includes("observability:perf-kpi"),
     rollup_rejects_failed_child: evaluateGovernanceAdmission({
       classificationResult: "success",

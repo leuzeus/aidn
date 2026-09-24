@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { resolveInstallOwnership } from "../../src/application/install/install-ownership-policy.mjs";
+import { isLocalInstallationTarget } from "../../src/application/install/installation-ownership-service.mjs";
+import { getPublicSkillName } from "../../src/core/skills/skill-policy.mjs";
 
 function parseArgs(argv) {
   const args = {
     target: "tests/fixtures/repo-installed-core",
-    tmpRoot: "tests/fixtures",
+    tmpRoot: os.tmpdir(),
     keepTmp: false,
     json: false,
   };
@@ -40,20 +44,76 @@ function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-install-import-fixtures.mjs");
   console.log("  node tools/perf/verify-install-import-fixtures.mjs --target tests/fixtures/repo-installed-core");
-  console.log("  node tools/perf/verify-install-import-fixtures.mjs --tmp-root tests/fixtures");
+  console.log("  node tools/perf/verify-install-import-fixtures.mjs --tmp-root <temporary-directory-outside-source-repo>");
   console.log("  node tools/perf/verify-install-import-fixtures.mjs --keep-tmp");
 }
 
-function prepareTmp(sourceTarget, tmpRoot, suffix) {
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
-  const target = path.resolve(tmpRoot, `tmp-install-import-${suffix}-${stamp}`);
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.cpSync(sourceTarget, target, { recursive: true });
-  fs.rmSync(path.join(target, ".aidn", "config.json"), { force: true });
-  fs.rmSync(path.join(target, ".aidn", "runtime", "index"), { recursive: true, force: true });
-  fs.rmSync(path.join(target, ".aidn", "runtime", "cache"), { recursive: true, force: true });
-  fs.rmSync(path.join(target, ".aidn", "runtime", "perf"), { recursive: true, force: true });
-  return target;
+function prepareTmp(repoRoot, sourceTarget, tmpRoot, suffix) {
+  fs.mkdirSync(tmpRoot, { recursive: true });
+  const target = fs.mkdtempSync(path.join(tmpRoot, `tmp-install-import-${suffix}-`));
+  try {
+    const adapter = ".aidn/project/workflow.adapter.json";
+    fs.mkdirSync(path.dirname(path.join(target, adapter)), { recursive: true });
+    fs.copyFileSync(path.join(sourceTarget, adapter), path.join(target, adapter));
+
+    // The corpus contains historical templates. Seed current package assets
+    // first so this suite measures import, not adoption of unknown old assets.
+    const seeded = runInstall(repoRoot, target, null, ["--init-defaults", "--skip-artifact-import"], {
+      AIDN_STATE_MODE: "",
+      AIDN_INDEX_STORE_MODE: "",
+    });
+    if (seeded.status !== 0) {
+      throw new Error(`Current-package fixture setup failed: ${JSON.stringify(installDiagnostics(seeded))}`);
+    }
+
+    function overlayCorpus(directory) {
+      for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        const sourcePath = path.join(directory, entry.name);
+        if (entry.isDirectory()) {
+          overlayCorpus(sourcePath);
+          continue;
+        }
+        const relative = path.relative(sourceTarget, sourcePath).replace(/\\/g, "/");
+        const ownership = resolveInstallOwnership(relative);
+        const historicalArtifact = /^docs\/audit\/(?:sessions|cycles|baseline)\//.test(relative)
+          && !isLocalInstallationTarget(relative);
+        if (!["runtime-state", "seed-once"].includes(ownership) && !historicalArtifact) continue;
+        const destination = path.join(target, relative);
+        fs.mkdirSync(path.dirname(destination), { recursive: true });
+        fs.copyFileSync(sourcePath, destination);
+      }
+    }
+    overlayCorpus(path.join(sourceTarget, "docs/audit"));
+
+    // Preserve the original default/precedence precondition: no project config,
+    // import store or prior ownership receipt may decide the command under test.
+    // Only remove metadata created by the preparatory install in this temp client.
+    const resolvedTarget = path.resolve(target);
+    const resolvedTmpRoot = path.resolve(tmpRoot);
+    if (!resolvedTarget.startsWith(resolvedTmpRoot + path.sep)
+      || !path.basename(resolvedTarget).startsWith("tmp-install-import-")) {
+      throw new Error("Unsafe import fixture setup cleanup target");
+    }
+    const receiptRoot = path.resolve(resolvedTarget, ".aidn/install");
+    if (!receiptRoot.startsWith(resolvedTarget + path.sep)) {
+      throw new Error("Unsafe import fixture receipt cleanup target");
+    }
+    const cleanup = removePathWithRetry(receiptRoot);
+    if (!cleanup.ok) throw cleanup.error;
+    fs.unlinkSync(path.join(resolvedTarget, ".aidn/config.json"));
+    for (const relative of [".aidn/config.json", ".aidn/install", ".aidn/runtime/index/workflow-index.json", ".aidn/runtime/index/workflow-index.sqlite"]) {
+      if (fs.existsSync(path.join(resolvedTarget, relative))) {
+        throw new Error(`Import fixture setup left pre-existing state: ${relative}`);
+      }
+    }
+    return target;
+  } catch (error) {
+    const cleanup = removePathWithRetry(target);
+    if (!cleanup.ok) {
+      error.message += `; fixture setup cleanup failed: ${cleanup.error?.message ?? "unknown error"}`;
+    }
+    throw error;
+  }
 }
 
 function makeCodexStub(tmpRoot) {
@@ -350,13 +410,13 @@ function collectReanchorArtifactDetails(target) {
 }
 
 function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
-  const target = prepareTmp(sourceTarget, tmpRoot, "default");
+  const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "default");
   const out = runInstall(repoRoot, target, codexStubBin);
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
-  const skillPath = path.join(target, ".agents", "skills", "context-reload", "SKILL.md");
-  const crashRecoverySkillPath = path.join(target, ".agents", "skills", "crash-recovery", "SKILL.md");
+  const skillPath = path.join(target, ".agents", "skills", getPublicSkillName("context-reload"), "SKILL.md");
+  const crashRecoverySkillPath = path.join(target, ".agents", "skills", getPublicSkillName("crash-recovery"), "SKILL.md");
   const installedSkillsRoot = path.join(target, ".agents", "skills");
   const config = readConfigSafe(configPath);
   const reanchor = collectReanchorArtifactDetails(target);
@@ -407,7 +467,7 @@ function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
 }
 
 function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
-  const target = prepareTmp(sourceTarget, tmpRoot, "db-only");
+  const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "db-only");
   const out = runInstall(repoRoot, target, codexStubBin, [], { AIDN_STATE_MODE: "db-only" });
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
   const configPath = path.join(target, ".aidn", "config.json");
@@ -457,7 +517,7 @@ function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
 }
 
 function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
-  const target = prepareTmp(sourceTarget, tmpRoot, "env-precedence");
+  const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "env-precedence");
   const out = runInstall(repoRoot, target, codexStubBin, [], {
     AIDN_STATE_MODE: "db-only",
     AIDN_INDEX_STORE_MODE: "file",
@@ -511,7 +571,7 @@ function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
 }
 
 function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
-  const target = prepareTmp(sourceTarget, tmpRoot, "cli-override");
+  const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "cli-override");
   const out = runInstall(repoRoot, target, codexStubBin, ["--artifact-import-store", "dual-sqlite"], {
     AIDN_STATE_MODE: "files",
     AIDN_INDEX_STORE_MODE: "file",
@@ -575,7 +635,7 @@ function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
 }
 
 function checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
-  const target = prepareTmp(sourceTarget, tmpRoot, "skip");
+  const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "skip");
   const out = runInstall(repoRoot, target, codexStubBin, ["--skip-artifact-import"]);
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
   const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
@@ -624,7 +684,7 @@ function checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
 }
 
 function checkCaseInstructionOverrideWarnings(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
-  const target = prepareTmp(sourceTarget, tmpRoot, "instruction-overrides");
+  const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "instruction-overrides");
   fs.writeFileSync(path.join(target, "AGENTS.override.md"), "# local override\n", "utf8");
   const nestedDir = path.join(target, "docs", "audit", "nested");
   fs.mkdirSync(nestedDir, { recursive: true });
@@ -660,14 +720,17 @@ function checkCaseInstructionOverrideWarnings(repoRoot, sourceTarget, tmpRoot, c
 function main() {
   let exitCode = 0;
   let keepTmp = false;
-  const tmpTargets = [];
+  let ownedTmpRoot = "", tmpParentRoot = "";
   let codexStubBin = null;
   try {
     const args = parseArgs(process.argv.slice(2));
     keepTmp = args.keepTmp === true;
     const repoRoot = process.cwd();
     const sourceTarget = path.resolve(repoRoot, args.target);
-    const tmpRoot = path.resolve(repoRoot, args.tmpRoot);
+    tmpParentRoot = path.resolve(repoRoot, args.tmpRoot);
+    fs.mkdirSync(tmpParentRoot, { recursive: true });
+    const tmpRoot = fs.mkdtempSync(path.join(tmpParentRoot, "aidn-install-import-"));
+    ownedTmpRoot = tmpRoot;
     codexStubBin = makeCodexStub(tmpRoot);
 
     const cases = [
@@ -678,14 +741,11 @@ function main() {
       checkCaseSkip(repoRoot, sourceTarget, tmpRoot, codexStubBin),
       checkCaseInstructionOverrideWarnings(repoRoot, sourceTarget, tmpRoot, codexStubBin),
     ];
-    for (const item of cases) {
-      tmpTargets.push(item.target_root);
-    }
-
     const pass = cases.every((item) => item.ok === true);
     const output = {
       ts: new Date().toISOString(),
       source_target: sourceTarget,
+      fixture_basis: "current-package-assets-with-runtime-corpus-and-no-config-or-receipt",
       tmp_root: tmpRoot,
       checks: cases,
       pass,
@@ -709,19 +769,10 @@ function main() {
     printUsage();
     exitCode = 1;
   } finally {
-    if (!keepTmp) {
-      for (const target of tmpTargets) {
-        const cleanup = removePathWithRetry(target);
-        if (!cleanup.ok) {
-          throw cleanup.error;
-        }
-      }
-      if (codexStubBin) {
-        const cleanup = removePathWithRetry(codexStubBin);
-        if (!cleanup.ok) {
-          throw cleanup.error;
-        }
-      }
+    if (!keepTmp && ownedTmpRoot) {
+      if (path.dirname(path.resolve(ownedTmpRoot)) !== tmpParentRoot || !path.basename(ownedTmpRoot).startsWith("aidn-install-import-")) throw new Error("Unsafe temporary cleanup path");
+      const cleanup = removePathWithRetry(ownedTmpRoot);
+      if (!cleanup.ok) throw cleanup.error;
     }
   }
   if (exitCode !== 0) {

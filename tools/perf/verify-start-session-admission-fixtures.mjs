@@ -5,6 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 import {
   createSpawnSyncEvidenceTracker,
   isSpawnSyncEvidence,
@@ -380,7 +381,7 @@ function runCase(tmpRoot, testCase, onTargetCreated) {
     sourceTarget,
     tmpRoot,
     `tmp-start-session-${testCase.id}`,
-    { onDestinationCreated: onTargetCreated },
+    { onDestinationCreated: onTargetCreated, filter: (source) => isActivationFixtureSource(sourceTarget, source, { freshContext: true }) },
   );
   if (typeof testCase.mutate === "function") {
     testCase.mutate(targetRoot);
@@ -388,6 +389,9 @@ function runCase(tmpRoot, testCase, onTargetCreated) {
   initGitRepo(targetRoot, {
     workingBranch: testCase.workingBranch,
   });
+  prepareActivationFixture(targetRoot, REPO_ROOT);
+  runGit(targetRoot, ["add", "."]);
+  runGit(targetRoot, ["commit", "--amend", "--no-edit"]);
   if (typeof testCase.configureGit === "function") {
     testCase.configureGit(targetRoot);
   }

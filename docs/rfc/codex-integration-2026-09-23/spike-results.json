@@ -1,0 +1,381 @@
+{
+  "schema": "audit-spike.v1",
+  "timestamp": "2026-09-23T01:13:33.525Z",
+  "source_sha": "cb18abbd01691fb632cc5889882aa01f6efd8d93",
+  "platform": "win32",
+  "node": "v24.13.1",
+  "evidence_kind": "source-and-temporary-fixture",
+  "llm_calls": 0,
+  "native_codex_hook_runtime_tested": false,
+  "trust_modified": false,
+  "questions": [
+    "Does the distributed hook launch from a nested Windows path with spaces and accents without writing?",
+    "Do missing assets and malformed input have distinct hook results?",
+    "Does admission denial imply nonzero exit without --strict?",
+    "Does workflow-step write a hidden bundle even when admission is denied?",
+    "What local baseline latency and output byte counts are observable without an LLM?"
+  ],
+  "cases": [
+    {
+      "id": "distributed-hook-ascii-control",
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 832.97,
+      "stdout_bytes": 512,
+      "stderr_bytes": 0,
+      "stderr_tail": "",
+      "valid_json": true,
+      "changed_paths": [],
+      "ok": null,
+      "admission_status": null,
+      "blocked_skill_count": null,
+      "missing": [
+        "AGENTS.md",
+        ".agents\\skills",
+        ".codex\\agents"
+      ],
+      "blocking_reasons": null,
+      "summary": null,
+      "expectation": "control: launcher should work without accented path; assets intentionally incomplete"
+    },
+    {
+      "id": "distributed-hook-command-nested-path",
+      "exit": 1,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 796.83,
+      "stdout_bytes": 0,
+      "stderr_bytes": 830,
+      "stderr_tail": "node:internal/modules/cjs/loader:1451\r\n  throw err;\r\n  ^\r\n\r\nError: Cannot find module '<TEMP>\\projet espace ├®\\.codex\\hooks\\aidn-session-start.mjs'\r\n    at Module._resolveFilename (node:internal/modules/cjs/loader:1448:15)\r\n    at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)\r\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)\r\n    at Module._load (node:internal/modules/cjs/loader:1234:25)\r\n    at TracingChannel.traceSync (node:diagnostics_channel:328:14)\r\n    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)\r\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\r\n    at node:internal/main/run_main_module:33:47 {\r\n  code: 'MODULE_NOT_FOUND',\r\n  requireStack: []\r\n}\r\n\r\nNode.js v24.13.1\r\n",
+      "valid_json": false,
+      "changed_paths": [],
+      "ok": null,
+      "admission_status": null,
+      "blocked_skill_count": null,
+      "missing": null,
+      "blocking_reasons": null,
+      "summary": null,
+      "expectation": "exit 0, JSON, no writes"
+    },
+    {
+      "id": "direct-hook-1",
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 173.09,
+      "stdout_bytes": 478,
+      "stderr_bytes": 0,
+      "stderr_tail": "",
+      "valid_json": true,
+      "changed_paths": [],
+      "ok": null,
+      "admission_status": null,
+      "blocked_skill_count": null,
+      "missing": [
+        ".codex\\agents"
+      ],
+      "blocking_reasons": null,
+      "summary": null
+    },
+    {
+      "id": "direct-hook-2",
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 165.49,
+      "stdout_bytes": 478,
+      "stderr_bytes": 0,
+      "stderr_tail": "",
+      "valid_json": true,
+      "changed_paths": [],
+      "ok": null,
+      "admission_status": null,
+      "blocked_skill_count": null,
+      "missing": [
+        ".codex\\agents"
+      ],
+      "blocking_reasons": null,
+      "summary": null
+    },
+    {
+      "id": "direct-hook-3",
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 162.2,
+      "stdout_bytes": 478,
+      "stderr_bytes": 0,
+      "stderr_tail": "",
+      "valid_json": true,
+      "changed_paths": [],
+      "ok": null,
+      "admission_status": null,
+      "blocked_skill_count": null,
+      "missing": [
+        ".codex\\agents"
+      ],
+      "blocking_reasons": null,
+      "summary": null
+    },
+    {
+      "id": "hook-missing-AGENTS",
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 172.37,
+      "stdout_bytes": 501,
+      "stderr_bytes": 0,
+      "stderr_tail": "",
+      "valid_json": true,
+      "changed_paths": [],
+      "ok": null,
+      "admission_status": null,
+      "blocked_skill_count": null,
+      "missing": [
+        "AGENTS.md",
+        ".codex\\agents"
+      ],
+      "blocking_reasons": null,
+      "summary": null,
+      "expectation": "diagnostic only; exit remains zero"
+    },
+    {
+      "id": "hook-malformed-json",
+      "exit": 1,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 98.61,
+      "stdout_bytes": 0,
+      "stderr_bytes": 101,
+      "stderr_tail": "AIDN SessionStart hook failed: Expected property name or '}' in JSON at position 1 (line 1 column 2)\n",
+      "valid_json": false,
+      "changed_paths": [],
+      "ok": null,
+      "admission_status": null,
+      "blocked_skill_count": null,
+      "missing": null,
+      "blocking_reasons": null,
+      "summary": null,
+      "expectation": "exit 1; not a native Codex failure-mode test"
+    },
+    {
+      "id": "admission-1",
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 827.27,
+      "stdout_bytes": 17305,
+      "stderr_bytes": 0,
+      "stderr_tail": "",
+      "valid_json": true,
+      "changed_paths": [],
+      "ok": false,
+      "admission_status": "blocked",
+      "blocked_skill_count": null,
+      "missing": null,
+      "blocking_reasons": [
+        "mode is unknown",
+        "active cycle is missing",
+        "active cycle status file is missing",
+        "current state freshness is unknown in DB-backed mode",
+        "repair layer status is unknown in DB-backed mode"
+      ],
+      "summary": null
+    },
+    {
+      "id": "admission-2",
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 827.53,
+      "stdout_bytes": 17305,
+      "stderr_bytes": 0,
+      "stderr_tail": "",
+      "valid_json": true,
+      "changed_paths": [],
+      "ok": false,
+      "admission_status": "blocked",
+      "blocked_skill_count": null,
+      "missing": null,
+      "blocking_reasons": [
+        "mode is unknown",
+        "active cycle is missing",
+        "active cycle status file is missing",
+        "current state freshness is unknown in DB-backed mode",
+        "repair layer status is unknown in DB-backed mode"
+      ],
+      "summary": null
+    },
+    {
+      "id": "admission-3",
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 818.17,
+      "stdout_bytes": 17305,
+      "stderr_bytes": 0,
+      "stderr_tail": "",
+      "valid_json": true,
+      "changed_paths": [],
+      "ok": false,
+      "admission_status": "blocked",
+      "blocked_skill_count": null,
+      "missing": null,
+      "blocking_reasons": [
+        "mode is unknown",
+        "active cycle is missing",
+        "active cycle status file is missing",
+        "current state freshness is unknown in DB-backed mode",
+        "repair layer status is unknown in DB-backed mode"
+      ],
+      "summary": null
+    },
+    {
+      "id": "admission-strict",
+      "exit": 1,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 815.56,
+      "stdout_bytes": 17305,
+      "stderr_bytes": 0,
+      "stderr_tail": "",
+      "valid_json": true,
+      "changed_paths": [],
+      "ok": false,
+      "admission_status": "blocked",
+      "blocked_skill_count": null,
+      "missing": null,
+      "blocking_reasons": [
+        "mode is unknown",
+        "active cycle is missing",
+        "active cycle status file is missing",
+        "current state freshness is unknown in DB-backed mode",
+        "repair layer status is unknown in DB-backed mode"
+      ],
+      "summary": null
+    },
+    {
+      "id": "workflow-step-1",
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 877.83,
+      "stdout_bytes": 58831,
+      "stderr_bytes": 0,
+      "stderr_tail": "",
+      "valid_json": true,
+      "changed_paths": [
+        ".aidn/runtime/context/hydrated-context.json"
+      ],
+      "ok": false,
+      "admission_status": null,
+      "blocked_skill_count": 2,
+      "missing": null,
+      "blocking_reasons": null,
+      "summary": {
+        "skill_count": 2,
+        "step_count": 5,
+        "admission_count": 2,
+        "blocked_skill_count": 2,
+        "hydrate_count": 2,
+        "next_action_status": "recommended"
+      }
+    },
+    {
+      "id": "workflow-step-2",
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 884.05,
+      "stdout_bytes": 58831,
+      "stderr_bytes": 0,
+      "stderr_tail": "",
+      "valid_json": true,
+      "changed_paths": [
+        ".aidn/runtime/context/hydrated-context.json"
+      ],
+      "ok": false,
+      "admission_status": null,
+      "blocked_skill_count": 2,
+      "missing": null,
+      "blocking_reasons": null,
+      "summary": {
+        "skill_count": 2,
+        "step_count": 5,
+        "admission_count": 2,
+        "blocked_skill_count": 2,
+        "hydrate_count": 2,
+        "next_action_status": "recommended"
+      }
+    },
+    {
+      "id": "workflow-step-3",
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 885.81,
+      "stdout_bytes": 58831,
+      "stderr_bytes": 0,
+      "stderr_tail": "",
+      "valid_json": true,
+      "changed_paths": [
+        ".aidn/runtime/context/hydrated-context.json"
+      ],
+      "ok": false,
+      "admission_status": null,
+      "blocked_skill_count": 2,
+      "missing": null,
+      "blocking_reasons": null,
+      "summary": {
+        "skill_count": 2,
+        "step_count": 5,
+        "admission_count": 2,
+        "blocked_skill_count": 2,
+        "hydrate_count": 2,
+        "next_action_status": "recommended"
+      }
+    },
+    {
+      "id": "workflow-step-strict",
+      "exit": 1,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 895.41,
+      "stdout_bytes": 58831,
+      "stderr_bytes": 0,
+      "stderr_tail": "",
+      "valid_json": true,
+      "changed_paths": [
+        ".aidn/runtime/context/hydrated-context.json"
+      ],
+      "ok": false,
+      "admission_status": null,
+      "blocked_skill_count": 2,
+      "missing": null,
+      "blocking_reasons": null,
+      "summary": {
+        "skill_count": 2,
+        "step_count": 5,
+        "admission_count": 2,
+        "blocked_skill_count": 2,
+        "hydrate_count": 2,
+        "next_action_status": "recommended"
+      }
+    }
+  ],
+  "source_files": {
+    "scaffold/codex_hooks/hooks.json": "c845c3d2275286c1c539e085cf2a1e9bcaa174f868235826d180a5e634a94082",
+    "scaffold/codex_hooks/scripts/aidn-session-start.mjs": "c474634ac001a4992d2d4b63f999cc5fd5a216e4cb2c0e7cb2903385c9be1a01",
+    "tools/runtime/pre-write-admit.mjs": "fea9c5bfb4654043cbb9f466277a736f4b56e1bb8d6be547637cb7913f42b81b",
+    "tools/codex/workflow-step.mjs": "bc7bd1c9fae2e29fa07ec0285574364a90c215b13b1bbd33b9b12cb3c7dc7eed",
+    "src/application/codex/hydrate-context-use-case.mjs": "160c90c393ef74b20ad79458069dde0ce43ca96e5eb7931345a41c42fc4b0029"
+  },
+  "cleanup": true,
+  "context_bytes": {
+    "AGENTS": 9820,
+    "skill_context_reload": 3781,
+    "hidden_bundle": 665
+  },
+  "measurement_limits": "Three sequential samples, no percentile estimate; bytes are not tokens. Each recorded run launches one top-level process; internal Git/Node descendants not instrumented. LLM tool-call counts and actual Codex startup/resume latency unmeasured."
+}

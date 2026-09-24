@@ -1,3 +1,4 @@
+import { evaluateContextObservation } from "../codex/context-observation.mjs";
 import { deriveGovernedRuntimeArtifactMetadata } from "./governed-runtime-artifact-metadata-lib.mjs";
 
 export function buildRuntimeStateMarkdown(digest) {
@@ -286,11 +287,16 @@ function selectCanonicalRepairCandidate({
   decisions,
   fallbackContext,
   fallbackEntries,
+  liveContext,
 }) {
   const requestedSkill = normalizeScalar(hydrated?.requested_skill);
   const targetRoot = normalizeScalar(hydrated?.target_root);
-  const requestedDecision = requestedSkill
-    ? normalizeRepairCandidate(hydrated?.decisions?.[requestedSkill])
+  // Re-evaluate against an observation supplied by the IO boundary. A cached
+  // reusable flag or historical ok value alone cannot select current repair advice.
+  const canReuse = (entry) => evaluateContextObservation(entry, liveContext).reusable;
+  const requestedEntry = hydrated?.decisions?.[requestedSkill];
+  const requestedDecision = requestedSkill && canReuse(requestedEntry)
+    ? normalizeRepairCandidate(requestedEntry)
     : null;
   if (requestedDecision && repairCandidateHasMeaningfulSignal(requestedDecision)) {
     return requestedDecision;
@@ -300,14 +306,14 @@ function selectCanonicalRepairCandidate({
     || !normalizeScope(targetRoot)
     || normalizeScope(fallbackContext.target_root) === normalizeScope(targetRoot);
   const requestScopedHistory = history.filter(
-    (entry) => repairCandidateMatchesRequest(entry, requestedSkill, targetRoot),
+    (entry) => canReuse(entry) && repairCandidateMatchesRequest(entry, requestedSkill, targetRoot),
   );
   const requestScopedDecisions = decisions.filter(
-    (entry) => repairCandidateMatchesRequest(entry, requestedSkill, targetRoot),
+    (entry) => canReuse(entry) && repairCandidateMatchesRequest(entry, requestedSkill, targetRoot),
   );
   const requestScopedFallbackEntries = contextScopeMatches
     ? fallbackEntries.filter(
-      (entry) => repairCandidateMatchesRequest(entry, requestedSkill, targetRoot),
+      (entry) => canReuse(entry) && repairCandidateMatchesRequest(entry, requestedSkill, targetRoot),
     )
     : [];
 
@@ -322,7 +328,7 @@ function selectCanonicalRepairCandidate({
   ].filter(Boolean));
 }
 
-export function deriveRuntimeStateRepairSummary(hydrated, fallbackContext) {
+export function deriveRuntimeStateRepairSummary(hydrated, fallbackContext, liveContext = null) {
   const repairLayer = hydrated?.repair_layer && typeof hydrated.repair_layer === "object"
     ? hydrated.repair_layer
     : null;
@@ -338,6 +344,7 @@ export function deriveRuntimeStateRepairSummary(hydrated, fallbackContext) {
     decisions,
     fallbackContext,
     fallbackEntries,
+    liveContext,
   });
   return {
     status: String(source?.repair_layer_status ?? "unknown").trim() || "unknown",
@@ -468,6 +475,7 @@ export function prepareRuntimeStateProjection({
   effectiveStateMode = "",
   hydrated = null,
   fallbackContext = null,
+  liveContext = null,
   repairRouting,
   sharedRuntimeValidation,
   sharedPlanning,
@@ -479,7 +487,7 @@ export function prepareRuntimeStateProjection({
   hydratedFile = "",
   contextFile = "",
 } = {}) {
-  const repairSummary = deriveRuntimeStateRepairSummary(hydrated, fallbackContext);
+  const repairSummary = deriveRuntimeStateRepairSummary(hydrated, fallbackContext, liveContext);
   const freshness = deriveRuntimeStateFreshness(consistency);
   const prioritizedFindings = Array.isArray(repairSummary.findings)
     ? repairSummary.findings.filter((item) => {
