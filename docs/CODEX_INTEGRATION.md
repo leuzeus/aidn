@@ -227,6 +227,11 @@ hook downloads or resolves `npx ...@latest` at execution time.
 | AIDN transition invoked through its CLI | Existing core prerequisites remain authoritative | Model text, cached PASS claims and hook presence cannot authorize a transition |
 | Shell, `write_stdin`, MCP and other tools | No classification or interception by the shipped matcher | Arbitrary shell writes and alternate adapters are outside this native prevention coverage |
 
+`SessionStart` emits only the native `hookSpecificOutput` envelope. Its compact
+admission and degraded-state details live in `additionalContext`; a separate
+top-level diagnostics object would invalidate the Codex command-hook output
+and prevent that context from being delivered.
+
 When the running wrapper encounters an AIDN child-process exception, timeout,
 missing runtime binding or invalid admission output, it translates that condition
 into valid explicit-deny JSON for the covered edit. This is adapter behavior.

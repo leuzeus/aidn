@@ -75,10 +75,11 @@ try {
   const before=snapshot(client);
   for(const source of ["startup","resume","compact"]){
     const result=runHook(client,"SessionStart",{source},subfolder);
+    assert.deepEqual(Object.keys(result),["hookSpecificOutput"],"SessionStart output must contain only native-supported root fields");
     assert.equal(result.hookSpecificOutput.hookEventName,"SessionStart");
-    assert.equal(result.aidnDiagnostics.projectRoot,fs.realpathSync(client));
-    assert.equal(result.aidnDiagnostics.invocationCwd,fs.realpathSync(subfolder));
-    assert.equal(result.aidnDiagnostics.effect,"read-only");
+    assert.match(result.hookSpecificOutput.additionalContext,/AIDN canonical admission \(read-only\):/);
+    assert.match(result.hookSpecificOutput.additionalContext,/"admission":"admitted"/);
+    assert(!result.hookSpecificOutput.additionalContext.includes("Missing installed assets:"));
     assert(result.hookSpecificOutput.additionalContext.length<3200);
   }
   const allowed=runHook(client,"PreToolUse",patch,subfolder);
@@ -98,7 +99,9 @@ try {
   const shellArgs = process.platform === "win32" ? ["-NoProfile","-NonInteractive","-Command",command] : ["-c",command];
   const launched=spawnSync(shell,shellArgs,{cwd:subfolder,encoding:"utf8",input:JSON.stringify({cwd:subfolder,source:"resume"}),timeout:15000,windowsHide:true});
   assert.equal(launched.status,0,"distributed shell command must launch from Unicode subfolder");
-  assert.equal(JSON.parse(launched.stdout.trim()).aidnDiagnostics.projectRoot,fs.realpathSync(client));
+  const launchedOutput=JSON.parse(launched.stdout.trim());
+  assert.deepEqual(Object.keys(launchedOutput),["hookSpecificOutput"]);
+  assert.match(launchedOutput.hookSpecificOutput.additionalContext,/AIDN canonical admission \(read-only\):/);
   record("distributed-command-launch-current-platform");
   const current=path.join(client,"docs/audit/CURRENT-STATE.md");
   fs.writeFileSync(current,fs.readFileSync(current,"utf8").replace(/^mode:.*$/m,"mode: unknown"));

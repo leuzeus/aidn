@@ -198,22 +198,22 @@ async function main() {
         input: `${JSON.stringify({ hook_event_name: "SessionStart", cwd: invocationRoot })}\n`,
       });
       const hookPayload = JSON.parse(hookResult.stdout);
-      assert(["admitted", "admitted_with_warnings", "blocked"].includes(hookPayload.aidnDiagnostics?.admissionStatus),
-        "packed SessionStart must reach the bound canonical runtime");
+      assert(Object.keys(hookPayload).length === 1 && Object.hasOwn(hookPayload, "hookSpecificOutput"),
+        "packed SessionStart must emit only native-supported root fields");
       assert(
         hookPayload?.hookSpecificOutput?.hookEventName === "SessionStart",
         `SessionStart hook output contract mismatch from ${invocationRoot}`,
       );
       assert(
-        hookPayload?.aidnDiagnostics?.projectRoot === path.resolve(clientRoot),
-        `SessionStart hook resolved the wrong project root from ${invocationRoot}`,
+        /AIDN canonical admission \(read-only\):/.test(hookPayload.hookSpecificOutput.additionalContext),
+        `SessionStart hook did not reach canonical admission from ${invocationRoot}`,
       );
       assert(
-        hookPayload?.aidnDiagnostics?.invocationCwd === path.resolve(invocationRoot),
-        `SessionStart hook reported the wrong invocation cwd from ${invocationRoot}`,
+        /"admission":"(?:admitted|admitted_with_warnings|blocked)"/.test(hookPayload.hookSpecificOutput.additionalContext),
+        `SessionStart hook admission status missing from ${invocationRoot}`,
       );
       assert(
-        hookPayload?.aidnDiagnostics?.missing?.length === 0,
+        !hookPayload.hookSpecificOutput.additionalContext.includes("Missing installed assets:"),
         `SessionStart hook reported missing installed assets from ${invocationRoot}`,
       );
     }
