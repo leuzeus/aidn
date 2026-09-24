@@ -140,6 +140,22 @@
         "states"
       ],
       "properties": {
+        "native_write_coverage": {
+          "type": "object",
+          "required": ["configured", "tools", "payload_format", "expected_policy", "installed_policy", "excluded", "native_approval", "execution", "limitation"],
+          "properties": {
+            "configured": {"enum": ["edit-matcher-present", "not-detected"]},
+            "tools": {"type": "array", "items": {"type": "string"}},
+            "payload_format": {"type": "string"},
+            "expected_policy": {"type": "string"},
+            "installed_policy": {"const": "not-verified-by-inventory"},
+            "excluded": {"type": "array", "items": {"type": "string"}},
+            "native_approval": {"const": "unknown"},
+            "execution": {"const": "unverified"},
+            "limitation": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
         "states": {
           "type": "object",
           "required": [

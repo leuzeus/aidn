@@ -1,5 +1,15 @@
 # Migration d'un client Windows vers le candidat AIDN 0.8.0
 
+Mise à jour du 2026-09-24 : la base v0.8.0 est publiée (PR #63, commit
+`7030f05`). Le renforcement d'admission spécifique est un candidat local distinct.
+Les mentions de candidat non publié ci-dessous concernent ce nouveau delta,
+pas la base historique. Une migration doit conserver son tarball et ses
+empreintes exacts. Les anciens plans sans périmètre de tâche continuent à servir
+l'admission générique ; les patches produit couverts seront refusés jusqu'à
+définition du périmètre canonique avant gel. Réinstaller les scripts par le
+parcours de propriété existant, puis faire revoir leur contenu dans Codex.
+Aucune nouvelle configuration globale ou approbation automatique n'est requise.
+
 Cette procédure concerne un projet client installé, notamment depuis 0.7.2.
 Le dépôt source AIDN n'est pas ce client. Les commandes sont à examiner puis
 exécuter sur une cible explicitement choisie ; elles ne constituent ni une

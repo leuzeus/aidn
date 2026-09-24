@@ -30,6 +30,15 @@ Do not assume a fixture run means the current repo root is an installed target.
 
 ### 1. Focused Fixture Verifications
 
+For native write scope, first run
+`node tools/perf/verify-native-write-admission-fixtures.mjs`, then the existing
+Codex integration, admission and public contract/effect fixtures. The new cases
+also run inside `perf:verify-codex-integration`: generic-vs-specific refusal,
+planning, task scope, DoR/exploration evidence, mixed patches, move/delete,
+path boundaries and fresh observations. These are fixture proofs, never native
+hook execution. Use N01-N17 in [native qualification](CODEX_NATIVE_QUALIFICATION.md)
+for a human-approved, candidate-bound native run.
+
 Most `npm run perf:verify-*` commands run one focused behavior check against tracked fixtures.
 
 Use these when you need targeted confidence on one subsystem:

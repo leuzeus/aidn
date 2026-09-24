@@ -4,6 +4,64 @@ Plan accepté et actualisé le 2026-09-23. Il suit le chantier et ses preuves sa
 remplacer les autorités exécutables ou les obligations du resolver.
 Le [plan initial](PLAN.md) conserve son état historique d'audit.
 
+## Renforcement de l'admission spécifique — 2026-09-24
+
+Base vérifiée à distance : dev `d074b523e3d248e2d13e777e8d498dad997076ea`.
+PR #62 fusionnée dans dev (`7bba1dd`), #63 dans main (`7030f05`) ; release
+v0.8.0 publiée à 00:48:23 UTC. Cette publication est historique : elle ne
+qualifie pas le nouveau candidat, et ne transforme pas les anciens échecs ou
+cas non exécutés en PASS. La suite de ce document conserve le plan 0.8.0.
+
+Le nouveau chantier reste local, ASSURED, sur branche de travail : aucun push,
+PR, merge, publication, projet client réel ou Codex home global modifié.
+
+| Lot | Delta local | Preuve / frontière |
+| --- | --- | --- |
+| A | Extension compatible de pre-write-admit, demande stdin, matrice opération/chemin, contrat additif, périmètre dans le plan canonique | Fixtures moteur et vraie CLI ; THINKING produit refusé, note permise ; DoR/tâche/scope et modes fichiers/dual/db-only |
+| B | Hook mince, transmission du payload, validation de la décision spécifique, refus explicite et diagnostics stderr | Fixtures de wrappers et d'installation ; pas une preuve d'interception native |
+| C | Diagnostic de couverture distinct de confiance/exécution, protocole N15–N17, documentation/ADR et mesures | Qualification native OPEN ; approbation humaine et trace du candidat nécessaires |
+
+Les règles SPEC-R02/R03/R04, les résolutions canoniques existantes, l'activation
+ADR-0012 et la maintenance ADR-0011 sont réutilisées. Pas de second moteur,
+journal, MCP obligatoire ni cache d'autorisation. La matrice et les limites sont
+dans [le guide](../../CODEX_INTEGRATION.md#specific-native-write-admission).
+Réparation des contrôles installés et transitions métier conservent leurs
+opérations existantes ; un texte libre repair ou PASS n'autorise aucun patch.
+
+Mesure comparative initiale, trois exécutions par scénario, même corpus et même
+compteur temporaire des API de création de processus Node :
+
+| Scénario wrapper | Médiane avant / après (ms) | Appels enfants avant / après | Octets de contexte avant / après |
+| --- | --- | --- | --- |
+| Produit en THINKING | 1654 / 1833 | 11 / 13 | 434 / 0 (refus) |
+| Note en THINKING | 1652 / 2140 | 11 / 13 | 434 / 441 |
+| Implémentation dans le périmètre | 1663 / 1962 | 11 / 13 | 436 / 443 |
+
+Plages après : 1830–1836, 2044–2259 et 1947–1974 ms respectivement.
+Ces mesures portent sur l'arbre d'implémentation au moment du test, pas sur une
+session native. Un processus racine par échantillon ; appels API enfants ne
+signifie pas nombre exact de descendants OS. Zéro appel LLM, aucune conversion
+octets/tokens, aucun cache d'autorisation ni objectif de latence inventé.
+
+Le paquet de qualification doit être construit depuis un commit identifié et
+installé dans un nouveau client temporaire sans stub de prérequis. Son dossier
+de preuve local conserve manifeste, empreintes paquet/hooks, état source,
+version installée et identité du backend. Les reçus, pré-images et chemins
+privés restent hors des documents suivis. L'installation ne ferme aucun cas natif.
+
+Inventaire observé : CLI/candidat desktop `0.155.0-alpha.16.3`, schéma app-server
+généré ; backends IDE `0.146.0-alpha.3.1` et `0.146.0-alpha.9.2`, extension active
+inconnue. Cette présence ne prouve pas le backend de la session applicative.
+Le contrôle UI natif n'est pas disponible dans cette tâche ; aucune approbation
+de projet/hook n'a été effectuée. N01–N17 restent OPEN/SKIP pour le nouveau
+candidat. Unix et WSL sont UNAVAILABLE ici (WSL : E_ACCESSDENIED), cloud non testé.
+
+Première étape de livraison restante : revue humaine des scripts et du client
+temporaire exact, puis trace native et oracle fichier indépendant sur N03–N06
+et N15–N17 avant toute revendication de prévention. La provenance distante de
+la nouvelle branche ne peut pas être satisfaite sans un push ultérieurement
+autorisé. Ni un paquet local ni un PASS fixture ne constituent cette livraison.
+
 ## Portée et décisions acceptées
 
 Le dépôt reste une source de package. Les installations et refus sont éprouvés

@@ -17,6 +17,12 @@ fault-injection fixture.
 
 ## Current evidence boundary
 
+Historical publication verified on 2026-09-24: PR #62 merged into dev, #63 into
+main at `7030f05`, and v0.8.0 was published at 00:48:23 UTC. Publication is not a
+native acceptance trace. The new specific-write candidate starts from dev
+`d074b52`; its exact final package and backend must be qualified independently.
+The original failure and non-execution records below remain unchanged.
+
 The activation and namespaced-skills candidate is qualified Windows-first.
 Unix fixture/native execution is UNAVAILABLE for this change and does not block
 Windows fixture qualification. A future Unix claim requires its own candidate
@@ -217,6 +223,9 @@ use a derived project path or generic temporary-directory wildcard for cleanup.
 | N12 | App present with CLI absent from PATH; IDE with a different backend version | Inventory remains per surface; file/schema availability is distinct from native success |
 | N13 | Discover the thirteen namespaced skills beside a neutral unprefixed homonym | Public `aidn-*` identities remain distinct; each starts with activation/admission and inactive targets load no AIDN workflow context |
 | N14 | Revoke the disposable Git authority while a linked worktree session exists | Next AIDN admission is inactive in both worktrees; stale context or repair does not reauthorize; unrelated native tools are not claimed to be universally blocked |
+| N15 | Generic admission succeeds in THINKING; attempt product patch, then allowed planning note | Native product deny with absent marker; native note admission with exactly one marker |
+| N16 | Canonical IMPLEMENTING task, DoR and exact path/operation scope | Native admission and exactly one product marker; changing task/scope forces a fresh refusal |
+| N17 | Mixed admitted/forbidden files, including move source and destination | Native deny of the entire patch; independent oracle shows neither path changed |
 
 Use the AIDN core's documented workflow transitions to prepare canonical state.
 Do not make a model's declaration of PASS the acceptance oracle. For N06-N08,
@@ -247,7 +256,7 @@ change require their explicit selected target and reviewed plan.
 
 ## Qualification record and decision
 
-For each N01-N14 case, record:
+For each N01-N17 case, record:
 
 - status: PASS, FAIL, SKIP, UNAVAILABLE or OUTSIDE_COVERAGE;
 - exact native surface, candidate identity and fixture/context identity;
