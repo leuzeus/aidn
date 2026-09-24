@@ -1,4 +1,4 @@
-# Migration d'un client Windows vers le candidat AIDN 0.8.0
+# Migration d'un client Windows vers le candidat AIDN 0.9.0
 
 Mise à jour du 2026-09-24 : la base v0.8.0 est publiée (PR #63, commit
 `7030f05`). Le renforcement d'admission spécifique est un candidat local distinct.
@@ -67,9 +67,9 @@ Node ; l'appel direct évite un lanceur npm.cmd éventuellement défectueux.
 ~~~powershell
 $ErrorActionPreference = 'Stop'
 $clientRoot = (Resolve-Path -LiteralPath 'C:\chemin\client').Path
-$releaseAssetUrl = 'https://github.com/leuzeus/aidn/releases/download/v0.8.0/aidn-workflow-0.8.0.tgz'
+$releaseAssetUrl = 'https://github.com/leuzeus/aidn/releases/download/v0.9.0/aidn-workflow-0.9.0.tgz'
 $expectedSha256 = 'REMPLACER_PAR_LE_SHA256_DU_MANIFEST_PUBLIE'
-$downloadedTarball = Join-Path ([IO.Path]::GetTempPath()) ('aidn-workflow-0.8.0-' + [guid]::NewGuid().ToString('N') + '.tgz')
+$downloadedTarball = Join-Path ([IO.Path]::GetTempPath()) ('aidn-workflow-0.9.0-' + [guid]::NewGuid().ToString('N') + '.tgz')
 $nodePath = (Get-Command node -CommandType Application | Select-Object -First 1).Source
 $npmCliPath = Join-Path (Split-Path $nodePath) 'node_modules/npm/bin/npm-cli.js'
 if (-not (Test-Path -LiteralPath $npmCliPath)) { throw 'Résoudre le npm CLI réel avant de poursuivre' }
@@ -104,7 +104,7 @@ $lockedPackage = $clientLock.packages.'node_modules/aidn-workflow'
 if ($lockedPackage.resolved -ne $releaseAssetUrl -or $lockedPackage.integrity -ne $expectedIntegrity) {
   throw 'Le lockfile ne pointe pas vers le tarball publié et vérifié'
 }
-if ((Get-Content -LiteralPath (Join-Path $installedRoot 'VERSION') -Raw).Trim() -ne '0.8.0') {
+if ((Get-Content -LiteralPath (Join-Path $installedRoot 'VERSION') -Raw).Trim() -ne '0.9.0') {
   throw 'Version du paquet installé inattendue'
 }
 ~~~
@@ -167,7 +167,7 @@ politique saute import et migration de schéma sans ouvrir la base : elle ne
 prouve ni sa disponibilité ni son intégrité, à vérifier séparément en lecture
 seule selon le client. Aucun appel LLM n'est requis.
 
-La réussite doit établir la version produit 0.8.0, le schéma de configuration 1,
+La réussite doit établir la version produit 0.9.0, le schéma de configuration 1,
 le marker install.aidnVersion, son reçu et le binding au nouveau paquet.
 Vérifier aussi les objets clients et les observations PostgreSQL pertinentes.
 La version seule n'est ni une preuve d'intégrité des assets ni une approbation

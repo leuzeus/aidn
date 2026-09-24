@@ -12,6 +12,10 @@ v0.8.0 publiée à 00:48:23 UTC. Cette publication est historique : elle ne
 qualifie pas le nouveau candidat, et ne transforme pas les anciens échecs ou
 cas non exécutés en PASS. La suite de ce document conserve le plan 0.8.0.
 
+Le nouveau candidat porte la version produit 0.9.0, distincte de la base publiée
+0.8.0. Les paquets et reçus locaux antérieurs restent des preuves de leur propre
+commit ; ils ne sont pas renommés ni réattribués à 0.9.0.
+
 Le nouveau chantier reste local, ASSURED, sur branche de travail : aucun push,
 PR, merge, publication, projet client réel ou Codex home global modifié.
 

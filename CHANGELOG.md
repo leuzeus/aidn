@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0 (unreleased)
+
+- Admit covered native patches against the canonical task, exact paths and operations, independently of generic workflow admission. Preserve planning notes while requiring implementation prerequisites for product changes.
+- Pass native patch payloads through the thin Codex hook and return explicit refusals for invalid or out-of-scope requests.
+- Distinguish installed hook configuration from native approval and execution. Native qualification remains open; shell and MCP writes remain outside coverage.
+
 ## 0.8.0
 
 - Publish a reproducible, installable npm tarball alongside the release ZIP, with manifest, checksum and package-content verification for pinned client migrations.

@@ -328,7 +328,7 @@ cannot be promoted to proof of current state. See the
 The [Windows client migration guide](CODEX_CLIENT_MIGRATION.md) separates the
 package switch, managed-asset transaction and optional legacy global-skill migration.
 
-The candidate record and native acceptance cases for release line 0.8.0 are in
+The candidate record and native acceptance cases for release line 0.9.0 are in
 [Codex native qualification](CODEX_NATIVE_QUALIFICATION.md). That record remains
 OPEN; it is a protocol with unfilled evidence fields, not an execution result.
 Publication requires a bounded human-approved temporary-client smoke showing

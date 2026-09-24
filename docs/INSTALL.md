@@ -36,8 +36,11 @@ Installed workflow support files now also include:
 
 Install from GitHub:
 
+The 0.9.0 tag example applies after publication. Until then, use the reviewed
+local candidate tarball and verify its manifest and checksum.
+
 ```bash
-npm install --save-dev github:leuzeus/aidn#v0.8.0
+npm install --save-dev github:leuzeus/aidn#v0.9.0
 ```
 
 Install from local path (offline/local dev):

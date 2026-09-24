@@ -1,4 +1,4 @@
-# Codex native qualification for AIDN 0.8.0
+# Codex native qualification for AIDN 0.9.0
 
 This is an executable-test protocol and an unfilled qualification record. It is
 not a native acceptance report. The package version, commit and final artifact
@@ -66,7 +66,7 @@ only the bounded, redacted record.
 | Field | Value to record |
 | --- | --- |
 | Record ID / UTC start and end | OPEN |
-| AIDN package version | OPEN; expected release line 0.8.0 |
+| AIDN package version | OPEN; expected release line 0.9.0 |
 | Package-source Git commit and dirty state | OPEN; record actual commit and any uncommitted candidate delta |
 | Tested npm tarball filename and SHA256 | OPEN; hash the exact tarball installed |
 | Installed runtime binding | OPEN; package version, entrypoint/VERSION hashes and stable local-path availability |
