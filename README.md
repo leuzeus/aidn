@@ -249,8 +249,8 @@ the user environment. Then open a new terminal:
 
 ```powershell
 aidn setup
-aidn project add --target C:\projects\client --json
-aidn project migrate --target C:\projects\existing-client --json
+aidn project add --target ..\client --json
+aidn project migrate --target ..\existing-client --json
 aidn update --check --json
 aidn update --release latest --json
 ```

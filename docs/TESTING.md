@@ -40,6 +40,19 @@ discovery, actual PostgreSQL, native secret entry and OS reboot recovery are not
 qualified by these fixtures.
 See ADR-0013 for the remaining release boundary.
 
+Run `node tools/verify/verify-global-client-install.mjs
+--require-codex-discovery --require-update-rollback` for actual npm installation,
+local package removal, a two-project global switch and rollback, and native
+user-skill discovery without duplicate enabled definitions. Its next-version
+tarball is synthetic; this proves switching behavior, not a future release's
+schema compatibility. Add `--legacy-release 0.9.1 --require-postgres` to download
+and verify that published migration input and exercise the dedicated
+`AIDN_RUNTIME_PG_SMOKE_URL` database. The PostgreSQL probe requires an existing
+test schema, verifies unused synthetic scopes before preparation, compares all
+canonical rows after each global operation, and cleans only those scopes.
+Neither command qualifies server installation, native agents or trusted hook
+execution. These remain separate qualifications.
+
 For native write scope, first run
 `node tools/perf/verify-native-write-admission-fixtures.mjs`, then the existing
 Codex integration, admission and public contract/effect fixtures. The new cases

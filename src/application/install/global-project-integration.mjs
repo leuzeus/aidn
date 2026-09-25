@@ -1,5 +1,16 @@
 import path from 'node:path';
 import { resolveGlobalRuntime, resolveGlobalRecoveryRuntime, GLOBAL_INTEGRATION_REVISION } from './global-runtime-store.mjs';
+import { assertGlobalSkillsEnabled } from './global-skills-migration-service.mjs';
+
+function verifySkills(runtime) {
+  const groups = new Map();
+  for (const asset of runtime.state.assets ?? []) if (asset.path.endsWith(`${path.sep}SKILL.md`)) {
+    const home = path.dirname(path.dirname(path.dirname(asset.path)));
+    if (!groups.has(home)) groups.set(home, []);
+    groups.get(home).push(asset.path);
+  }
+  for (const [home, files] of groups) assertGlobalSkillsEnabled(home, files);
+}
 
 export function resolveGlobalProjectBinding(binding, { recoveryPlanId } = {}) {
   if (!binding || binding.schema_version !== 1 || !path.isAbsolute(binding.home ?? '')
@@ -8,11 +19,13 @@ export function resolveGlobalProjectBinding(binding, { recoveryPlanId } = {}) {
     ? resolveGlobalRecoveryRuntime({ home: binding.home, expectedPlanId: recoveryPlanId })
     : resolveGlobalRuntime({ home: binding.home, installationId: binding.installation_id, integrationRevision: binding.integration_revision });
   if (runtime.state.installation_id !== binding.installation_id) throw new Error('GLOBAL_INSTALLATION_MISMATCH');
+  verifySkills(runtime);
   return runtime;
 }
 
 export function globalProjectBinding(home, packageRoot) {
   const runtime = resolveGlobalRuntime({ home });
+  verifySkills(runtime);
   if (path.resolve(packageRoot) !== path.resolve(runtime.packageRoot)) throw new Error('GLOBAL_PROJECT_EXECUTOR_MISMATCH');
   return { schema_version: 1, home: runtime.home, installation_id: runtime.state.installation_id, integration_revision: GLOBAL_INTEGRATION_REVISION };
 }

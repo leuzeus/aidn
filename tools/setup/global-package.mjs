@@ -4,6 +4,7 @@ import path from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import { setupProcess, cleanSetupEnvironment } from './update-project.mjs';
 import { checkedHostPath, sealRuntimeGeneration, GLOBAL_INTEGRATION_REVISION } from '../../src/application/install/global-runtime-store.mjs';
+import { assertGlobalSkillsEnabled } from '../../src/application/install/global-skills-migration-service.mjs';
 
 const hash = file => createHash('sha256').update(fs.readFileSync(checkedHostPath(file))).digest('hex');
 const fail = code => { throw new Error(code); };
@@ -55,8 +56,9 @@ export function globalCodexAssets({ home, packageRoot, userHome = os.homedir(), 
   }
   const skillRoot = path.join(packageRoot, 'scaffold', 'codex');
   for (const entry of fs.readdirSync(checkedHostPath(skillRoot), { withFileTypes: true })) {
-    if (entry.isDirectory()) tree(path.join(skillRoot, entry.name), path.join(userHome, '.agents', 'skills', entry.name), command);
+    if (entry.isDirectory()) tree(path.join(skillRoot, entry.name), path.join(codexHome, 'skills', entry.name), command);
   }
+  assertGlobalSkillsEnabled(codexHome, assets.filter(item => item.path.endsWith('SKILL.md')).map(item => item.path));
   tree(path.join(packageRoot, 'scaffold', 'codex_agents'), path.join(codexHome, 'agents'), text => command(text)
     .replace('developer_instructions = """', `developer_instructions = """\nBefore AIDN workflow execution, run aidn --integration-revision ${GLOBAL_INTEGRATION_REVISION} runtime pre-write-admit --target . --skill context-reload --json. Require active project admission.`));
   add(path.join(home, 'bin', 'global-runtime-store.mjs'), read('src/application/install/global-runtime-store.mjs')

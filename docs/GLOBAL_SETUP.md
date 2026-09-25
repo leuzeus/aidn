@@ -27,9 +27,9 @@ qualification and local server provisioning are still release blockers. The
 is retained for legacy operation and is not a global migration path.
 
 ```powershell
-aidn project add --target C:\projects\example --json
-aidn project migrate --target C:\projects\example --json
-aidn doctor --target C:\projects\example --json
+aidn project add --target ..\example --json
+aidn project migrate --target ..\example --json
+aidn doctor --target ..\example --json
 aidn project list --json
 aidn project remove --id PROJECT_ID --json
 aidn update --check --json
@@ -87,10 +87,14 @@ a global update.
 
 ## Evidence boundary
 
-The selected user locations follow the official documentation:
-[local skills](https://learn.chatgpt.com/docs/build-skills) under
-`$HOME/.agents/skills`, and [custom agents](https://learn.chatgpt.com/docs/agent-configuration/subagents)
-under `~/.codex/agents`. Documentation support alone is not native qualification.
+The installer exposes skills under `CODEX_HOME/skills` (default
+`~/.codex/skills`), the user location observed by the Windows app-server probe.
+The [skills documentation](https://learn.chatgpt.com/docs/build-skills) also
+describes `$HOME/.agents/skills`; the installer does not duplicate definitions
+there. [Custom agents](https://learn.chatgpt.com/docs/agent-configuration/subagents)
+use `CODEX_HOME/agents`. Documentation support alone is not native qualification.
+Explicitly disabled managed skills block migration; setup never silently
+re-enables them or overwrites the user's Codex configuration.
 
 The global management fixtures exercise initial installation, two clients,
 immutable previews, wizard cancellation, exact-plan application, npm failure and

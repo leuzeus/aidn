@@ -15,6 +15,9 @@
 - Add wizard confirmation, local tarball selection, masked existing PostgreSQL
   connection entry and optional explicitly disclosed plaintext user persistence.
 - Add source PowerShell user installation and conservative orphan-lock recovery.
+  Serialize recovery itself and refuse removing local skills when their global
+  definitions are explicitly disabled in Codex. Qualify user-skill discovery in
+  `CODEX_HOME/skills` and actual npm update/rollback on two temporary clients.
   Local server provisioning in the new wizard, native qualification and release
   remain incomplete; legacy setup commands retain their per-project behavior.
 

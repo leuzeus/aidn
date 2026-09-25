@@ -17,6 +17,11 @@ try {
   assert.deepEqual(fs.readFileSync(lock), before);
   assert.throws(() => recoverGlobalLocks({ home, write: true, expectedPlanId: 'wrong' }, deps), /GLOBAL_PLAN_MISMATCH/);
   assert(fs.existsSync(lock));
+  const barrier = path.join(home, `.recovery-${boot.replace(':', '-')}.lock`);
+  fs.writeFileSync(barrier, '{}');
+  assert.throws(() => recoverGlobalLocks({ home, write: true, expectedPlanId: plan.plan_id }, deps), /GLOBAL_RECOVERY_BUSY/);
+  assert.deepEqual(fs.readFileSync(lock), before);
+  fs.unlinkSync(barrier);
   recoverGlobalLocks({ home, write: true, expectedPlanId: plan.plan_id }, deps);
   assert(!fs.existsSync(lock));
   console.log('PASS global recovery fixtures: same-boot and unknown-boot refusal, preview immutability and exact-plan recovery after simulated reboot (OS identity injected)');

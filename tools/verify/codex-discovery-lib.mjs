@@ -192,10 +192,13 @@ export async function discoverRepoSkills({
       });
       const errors = [...(entry?.errors ?? [])];
       if (!entry) errors.push({ message: "Codex did not return the requested working directory" });
-      if (skills.length === 0) errors.push({ message: "Codex did not discover any installed repository skills" });
+      if (skills.length === 0) errors.push({ message: `Codex did not discover any installed ${scope} skills` });
       const discoveredNames = new Set(skills.filter((skill) => skill.enabled !== false).map((skill) => skill.name));
       for (const name of expectedNames) {
-        if (!discoveredNames.has(name)) errors.push({ message: "Codex did not discover enabled repository skill: " + name });
+        if (!discoveredNames.has(name)) errors.push({ message: `Codex did not discover enabled ${scope} skill: ${name}` });
+        if (scope === 'user' && (entry?.skills ?? []).filter(skill => skill.name === name && skill.enabled !== false).length !== 1) {
+          errors.push({ message: `Codex global skill must have exactly one enabled definition: ${name}` });
+        }
       }
       finish(() => resolve({
         status: errors.length === 0 ? "PASS" : "FAIL",

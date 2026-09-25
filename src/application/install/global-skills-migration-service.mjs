@@ -84,9 +84,7 @@ function keys(value) {
   }
   return parts;
 }
-function disabledConfig(before, selectedPaths) {
-  if (!selectedPaths.length) return before;
-  const text = before ?? "", eol = text.includes("\r\n") ? "\r\n" : "\n";
+function skillConfigEntries(text) {
   const entries = []; let section = [], entry = null;
   for (const line of tomlLines(text)) {
     if (!line.code) continue;
@@ -119,6 +117,19 @@ function disabledConfig(before, selectedPaths) {
     seen.set(key, item);
     if (item.fields.enabled && !/^(true|false)$/u.test(item.fields.enabled.value)) fail("INVALID_SKILLS_CONFIG_ENABLED");
   }
+  return seen;
+}
+export function assertGlobalSkillsEnabled(codexHome, skillPaths) {
+  const home = absolute(codexHome);
+  const entries = skillConfigEntries(safeRead(home, path.join(home, "config.toml")) ?? "");
+  for (const file of skillPaths) {
+    if (entries.get(pathKey(file))?.fields.enabled?.value === "false") fail("GLOBAL_SKILL_DISABLED");
+  }
+}
+function disabledConfig(before, selectedPaths) {
+  if (!selectedPaths.length) return before;
+  const text = before ?? "", eol = text.includes("\r\n") ? "\r\n" : "\n";
+  const seen = skillConfigEntries(text);
   const edits = [], missing = [];
   for (const selected of selectedPaths) {
     const item = seen.get(pathKey(selected));
