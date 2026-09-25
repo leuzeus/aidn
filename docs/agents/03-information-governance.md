@@ -61,6 +61,7 @@ Do not introduce a new information concept until you have checked:
 | gate_result | excluded | CI telemetry, not governed product state. |
 | migration_run | excluded | Operational telemetry, not a governed product concept. |
 | reference_data | excluded | Test corpus and fixture material, not live workflow state. |
+| setup_project_registry | excluded | Host-local project address book; installation receipts, config and packages remain authoritative. |
 
 ## Practical Guidance
 

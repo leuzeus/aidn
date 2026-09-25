@@ -13,7 +13,7 @@ function Read-AidnSetupValue {
 }
 
 function Invoke-AidnSetupWizard {
-    param([Parameter(Mandatory = $true)][scriptblock]$RunSetup)
+    param([Parameter(Mandatory = $true)][scriptblock]$RunSetup, [scriptblock]$Control)
     try {
         Write-Host 'AIDN - Installation guidee Windows (q pour annuler)'
         Write-Host 'Prerequis : Git, Node.js 22.13+ avec npm ; WinGet pour installer PostgreSQL.'
@@ -24,9 +24,17 @@ function Invoke-AidnSetupWizard {
             Write-Host 'Choisir un depot Git existant, a sa racine.'
         }
         $options.Target = (Resolve-Path -LiteralPath $target).ProviderPath
+        if ($Control) {
+            $existing = & $Control -ControlArguments @('inspect', $options.Target)
+            if ($existing.state -ne 'absent') { throw "Installation existante ($($existing.state)) : utiliser le menu de mise a jour ou le diagnostic." }
+        }
         $source = Read-AidnSetupValue 'Paquet : 1 = release GitHub, 2 = tarball local [1]' '^[12]$' '1'
         if ($source -eq '1') {
-            $options.ReleaseVersion = Read-AidnSetupValue 'Version publiee exacte (sans v, pas latest)' '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+            $pattern = '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+            if ($Control) {
+                $selected = Read-AidnSetupValue 'Version publiee exacte, ou latest pour consulter GitHub [latest]' ('^(latest|' + $pattern.TrimStart('^').TrimEnd('$') + ')$') 'latest'
+                $options.ReleaseVersion = (& $Control -ControlArguments @('resolve', $selected)).version
+            } else { $options.ReleaseVersion = Read-AidnSetupValue 'Version publiee exacte (sans v)' $pattern }
         } else {
             while ($true) {
                 $tarball = Read-AidnSetupValue 'Chemin du paquet .tgz'

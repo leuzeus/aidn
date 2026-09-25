@@ -89,12 +89,12 @@ Write-Output ('RESULT:' + (ConvertTo-Json -InputObject @($script:calls.ToArray()
         '-Source', source, '-Answers', answerFile, '-Mode', mode], { encoding: 'utf8', timeout: 30000 });
     }
     const releaseAnswers = [target, '', 'latest', '0.8.0', '3'];
-    let guided = wizard([...releaseAnswers, ''], 'entry');
+    let guided = wizard(['1', target, '2', tarball, sha, '3', '', 'q'], 'entry');
     assert.equal(guided.status, 0, guided.stdout + guided.stderr);
     assert(guided.stdout.includes('PREVIEW:') && guided.stdout.includes('Termine sans installation'));
     assert.deepEqual(treeDigest(target), before);
     guided = wizard(['q'], 'entry');
-    assert.equal(guided.status, 0); assert(guided.stdout.includes('annulee'));
+    assert.equal(guided.status, 0); assert(guided.stdout.includes('Setup termine'));
     const conflicting = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'RemoteSigned', '-File',
       path.join(source, 'scripts/setup-project.ps1'), '-Wizard', '-Write'], { encoding: 'utf8', timeout: 30000 });
     assert.notEqual(conflicting.status, 0); assert(conflicting.stderr.includes('Use -Wizard alone'));

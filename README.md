@@ -237,6 +237,12 @@ For Windows setup including optional PostgreSQL preparation, see
 the interactive wizard (`.\scripts\setup-project.ps1 -Wizard`) in
 [the complete project installer](docs/WINDOWS_PROJECT_SETUP.md).
 
+The optional user launcher is installed explicitly with
+`.\scripts\setup-project.ps1 -InstallSetup -Write`. Run `aidn-setup` to remember
+and manage independent projects; use `-CheckUpdate` to consult releases and
+`-Update -ReleaseVersion latest -Write` to update one project while preserving
+its configuration. Database migrations remain a separate step.
+
 Version 0.9.0 is an unpublished local candidate. Until its release exists, install
 its reviewed local tarball; the tagged examples below apply after publication.
 

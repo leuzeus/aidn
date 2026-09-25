@@ -76,6 +76,11 @@ When a change affects the simplified install/upgrade orchestrator, run:
 - `npm run perf:verify-install-idempotence`
 
 The bootstrap and Codex integration composites also run
+`tools/perf/verify-multi-project-setup-fixtures.mjs` for registry isolation,
+version detection, no-op/downgrade behavior, candidate-before-package ordering
+and read-only SQLite admission. The installation persistence-policy fixtures
+also cover candidate PostgreSQL verification with a fake driver (not live proof).
+They additionally run
 `tools/perf/verify-windows-project-setup-fixtures.mjs`. This verifies the real
 Windows PowerShell preview, release download integrity and bounded HTTPS handling,
 wizard cancellation, invalid-input retry, explicit confirmation for all three

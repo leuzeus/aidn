@@ -10,6 +10,16 @@ function freezeDeep(value) {
 
 const GOVERNANCE_COVERAGE_EXCEPTIONS = freezeDeep([
   {
+    concept: "setup_project_registry",
+    coverage_kind: "excluded",
+    governed_by: "host user preferences",
+    source_of_truth_relation: "AIDN_HOME/projects.json is a local address book; installation receipts remain authoritative",
+    metadata_relation: "schema_version and project id, name, path, last_used; no versions or credentials",
+    lifecycle_status: "remembered -> selected -> forgotten; absent paths require explicit replacement",
+    scope: "host-local-preferences",
+    rationale: "The setup registry locates independent projects and never owns workflow state, installation versions or shared coordination.",
+  },
+  {
     concept: "worktree",
     coverage_kind: "subsumed",
     governed_by: "workspace_identity",
@@ -76,4 +86,3 @@ export function listGovernanceCoverageExceptions() {
     ...item,
   }));
 }
-

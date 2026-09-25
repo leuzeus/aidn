@@ -14,6 +14,20 @@ export function releasePackagePlan(version) {
     packageUrl: `${base}/${name}`, manifestUrl: `${base}/manifest.json`, checksumsUrl: `${base}/checksums.txt` };
 }
 
+export async function resolveReleaseVersion(version, { read = downloadBytes } = {}) {
+  if (/^latest$/i.test(version)) version = 'latest';
+  const url = version === 'latest' ? 'https://api.github.com/repos/leuzeus/aidn/releases/latest' : releasePackagePlan(version).apiUrl;
+  const release = JSON.parse((await read(url, 2 * 1024 * 1024)).toString('utf8'));
+  const selected = version === 'latest' ? String(release.tag_name || '').replace(/^v/, '') : version;
+  const plan = releasePackagePlan(selected);
+  if (release.tag_name !== plan.tag || release.draft !== false || release.prerelease !== false) fail('RELEASE_NOT_PUBLISHED_STABLE');
+  for (const [name, target] of [[plan.name, plan.packageUrl], ['manifest.json', plan.manifestUrl], ['checksums.txt', plan.checksumsUrl]]) {
+    const assets = release.assets?.filter(asset => asset.name === name) ?? [];
+    if (assets.length !== 1 || assets[0].browser_download_url !== target) fail('RELEASE_ASSET_MISSING_OR_AMBIGUOUS');
+  }
+  return selected;
+}
+
 export async function downloadBytes(url, limit, { fetchImpl = fetch } = {}) {
   for (let redirect = 0; redirect <= 5; redirect++) {
     const target = new URL(url);

@@ -29,6 +29,12 @@ Installed workflow support files now also include:
 
 ## Complete Windows setup
 
+Install the optional user launcher with
+`powershell -File .\scripts\setup-project.ps1 -InstallSetup -Write`, then use
+`aidn-setup` to manage independent projects. `-CheckUpdate` reads release metadata;
+`-Update -ReleaseVersion latest -Write` updates one installed project while
+preserving its configuration and requiring database migrations separately.
+
 Run `powershell -File .\scripts\setup-project.ps1 -Wizard` from the updated source
 checkout for guided setup, or use explicit parameters for automation.
 

@@ -203,10 +203,17 @@ Host skill maintenance is explicit: `aidn bootstrap --migrate-global-skills --co
 ## Windows host setup wrapper
 
 `scripts/setup-project.ps1` is a Windows host wrapper, not a new aidn CLI command.
-Without arguments or with `-Wizard`, it collects inputs interactively, runs the
+Without arguments or with `-Wizard`, it opens the multi-project menu, collects inputs, runs the
 same read-only preflight, and requires the literal `INSTALLER` before invoking
 the explicit `-Write` path. Cancellation and declining confirmation do not apply.
-It previews local inputs by default and applies only with `-Write`. It orchestrates
+It previews local inputs by default and applies only with `-Write`. Explicit
+`latest` selection and `-CheckUpdate` read GitHub metadata without writing.
+`-Update` preserves existing project settings and stages the candidate before
+project npm replacement; application requires `-Write`. `-InstallSetup` previews
+the user launcher installation; `-Write` also sets AIDN_HOME and the user PATH.
+Registry remembering/removal are explicit menu writes, separate from consultation.
+The Node bridges in tools/setup are internal subprocess protocols, not public
+JSON interfaces. It orchestrates
 an exact published GitHub release (verified manifest/checksums and npm integrity)
 or a pinned local npm tarball, optional WinGet PostgreSQL installation and database
 preparation, then the existing bootstrap preview/apply/diagnose and persistence

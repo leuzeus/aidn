@@ -142,7 +142,8 @@ prepare PostgreSQL. Release downloads must agree with the published manifest and
 checksums; npm records the versioned HTTPS URL and matching integrity before
 bootstrap. Preview does not download or create a cache. It delegates all project assets,
 activation, schema adoption and installation recovery to the existing bootstrap.
-It previews without network or writes; application requires `-Write`. The
+Local previews do not write or contact databases; explicit latest/release discovery
+and update checks may read GitHub metadata. Application requires `-Write`. The
 interactive setup collects the same inputs and displays the validated plan;
 only the literal confirmation `INSTALLER` delegates to the `-Write` path.
 Secrets are requested after confirmation, never while collecting preview inputs.
@@ -158,6 +159,23 @@ OS/npm/database stages are not covered by the bootstrap rollback journal and
 remain in place after failure. No global Codex configuration, native approval,
 shared synchronization or model invocation is added. This extends host setup,
 not workflow authority or the shared coordination boundary.
+
+The optional user setup lives under AIDN_HOME (default LOCALAPPDATA/AIDN), with
+an explicitly installed PATH launcher and independently versioned package copies.
+Replacing its active pointer does not update project engines. projects.json is
+a schema-versioned, locked/atomically replaced host address book, excluded from
+the workflow information model. It contains only id, name, absolute path and
+last_used; installation versions remain receipt/config/package observations.
+Selection never trusts a cached version or silently redirects a missing path.
+
+Updates preserve the recorded pack and current project configuration, prepare
+the verified package outside the project, and use the bootstrap installation
+services with verify-only persistence. Candidate admission reads PostgreSQL or
+SQLite without migrations and blocks before project npm replacement when schema
+work is needed. No-op/downgrade, consultation and cancellation do not write.
+Package replacement and asset transactions are distinct stages: failures may
+leave a newer package with an older completion receipt, requiring diagnosis and
+existing installation recovery. Native approval is never inherited from setup.
 
 ## Verification
 

@@ -5,6 +5,90 @@ et une persistance PostgreSQL facultative. Il réutilise le bootstrap et son pla
 d'installation ; les règles du workflow et les migrations restent dans AIDN.
 Le candidat 0.9.0 est local et non publié.
 
+## Setup utilisateur et plusieurs projets
+
+Depuis le dépôt source ou le paquet extrait, préparer puis installer le setup commun :
+
+```powershell
+.\scripts\setup-project.ps1 -InstallSetup
+.\scripts\setup-project.ps1 -InstallSetup -Write
+```
+
+L'application installe une copie autonome du paquet et de ses dépendances dans
+`%LOCALAPPDATA%\AIDN\setup`, définit `AIDN_HOME` et ajoute son sous-dossier `bin`
+au PATH utilisateur. Un `AIDN_HOME` absolu déjà défini est conservé. Node.js/npm
+restent des prérequis. Relancer le terminal pour hériter des variables, puis :
+
+```powershell
+aidn-setup
+```
+
+Le menu permet d'ajouter un projet, sélectionner ou mémoriser une installation,
+consulter ses versions, la mettre à jour ou retirer une entrée de la liste.
+Le script source sans arguments ou avec `-Wizard` ouvre le même menu.
+La version du setup est indépendante des versions de chaque projet. Réinstaller
+le setup depuis un paquet plus récent ne met aucun projet à jour. Le pointeur
+vers le setup actif n'est remplacé qu'après préparation de sa nouvelle copie.
+Les anciennes copies sont conservées ; aucun nettoyage automatique n'est effectué.
+
+`%AIDN_HOME%\projects.json` contient uniquement le schéma, l'identifiant, le nom,
+le chemin absolu et la dernière utilisation réussie de chaque entrée. Il ne
+contient ni version ni secret. Une installation/mise à jour réussie mémorise le
+projet ; mémoriser une installation existante et retirer une entrée exigent un
+choix explicite. Consultation et annulation ne changent pas le registre.
+Les écritures utilisent un verrou exclusif et un remplacement atomique.
+Un registre invalide est refusé sans écrasement. Un verrou occupé impose de
+réessayer ; après interruption, vérifier l'absence d'autre setup actif avant
+de retirer manuellement le seul verrou concerné. Un chemin déplacé se remplace
+explicitement en retirant l'ancienne entrée puis en mémorisant le nouveau chemin.
+Retirer une entrée ne supprime jamais le projet ou sa base.
+
+Chaque projet conserve son paquet npm verrouillé, sa configuration `.aidn`,
+ses skills/hooks et ses reçus locaux. Le registre n'est pas une autorité sur
+leur état. PostgreSQL peut être un serveur commun, avec base et rôle dédiés
+par projet. Le mode serveur existant attend ces ressources déjà provisionnées.
+
+## Consultation et mise à jour
+
+```powershell
+aidn-setup -Target 'C:\work\client' -CheckUpdate
+aidn-setup -Target 'C:\work\client' -Update -ReleaseVersion latest
+aidn-setup -Target 'C:\work\client' -Update -ReleaseVersion latest -Write
+```
+
+`-CheckUpdate` consulte la dernière release stable GitHub par défaut. Le setup
+croise le paquet local, le marqueur de réussite et le reçu. Un simple AGENTS.md
+ne constitue pas une installation. Versions inconnues, désaccords et transactions
+interrompues demandent un diagnostic/reprise avant mise à jour.
+La consultation ne télécharge pas le paquet et ne modifie ni projet ni registre.
+Une erreur réseau ou une release incomplète n'est jamais présentée comme « à jour ».
+
+`latest` désigne la dernière release stable choisie par GitHub. Le wizard fige
+sa version exacte avant confirmation. Les commandes scriptées séparées résolvent
+chacune latest : utiliser une version exacte pour conserver le choix entre deux
+invocations. Les versions identiques ou plus anciennes n'entraînent aucune écriture.
+Le candidat local s'utilise avec `-Update -PackagePath ... -PackageSha256 ...` ;
+comme pour l'installation locale, il doit avoir la même version que le setup.
+
+La mise à jour prépare le candidat hors du projet, vérifie son intégrité et
+utilise les services d'installation du bootstrap avec les paramètres enregistrés,
+la configuration actuelle et `verify-only`. Pack, règles, métadonnées, mode et
+référence de connexion sont conservés. Les paramètres d'installation ne peuvent
+pas servir de changement de configuration pendant update.
+Le serveur PostgreSQL n'est pas réinstallé et aucun import de données n'est demandé.
+Les migrations SQLite/PostgreSQL nécessaires bloquent avant remplacement du paquet
+du projet : traiter la migration séparément puis relancer. Un backend indisponible
+est également bloquant. Seule la variable de connexion du projet sélectionné est
+transmise au processus de vérification ; les autres variables AIDN_* sont retirées
+de son environnement. Les paramètres de connexion des autres projets ne sont pas consultés.
+
+Le candidat doit supporter le protocole interne de vérification du setup ; les
+anciens paquets qui n'en disposent pas sont refusés pour update. La version de
+réussite n'est enregistrée qu'à la fin. Si npm a déjà remplacé le paquet avant
+un échec ultérieur, le diagnostic expose ce désaccord ; suivre la reprise de
+l'installation plutôt que forcer une nouvelle mise à jour. Si seule l'écriture
+du registre échoue après réussite, mémoriser ensuite le projet depuis le menu.
+
 ## Prérequis et choix
 
 - Windows, PowerShell 5.1 ou supérieur, Node.js 22.13+ avec son npm, et Git.
@@ -39,7 +123,7 @@ Lancer le script sans arguments, ou avec `-Wizard` :
 .\scripts\setup-project.ps1 -Wizard
 ```
 
-L'assistant demande le dépôt Git du projet, la source du paquet (release GitHub
+Choisir « Ajouter » dans le menu. L'assistant demande le dépôt Git du projet, la source du paquet (release GitHub
 avec version exacte ou tarball local avec SHA-256), puis le mode PostgreSQL.
 Pour un serveur local, il demande aussi la version WinGet ; pour PostgreSQL,
 il propose le nom de variable de connexion et sa persistance utilisateur.
@@ -75,8 +159,9 @@ et limités aux origines HTTPS GitHub admises. Ces contrôles prouvent la cohér
 des assets du même éditeur ; ce ne sont pas une signature indépendante.
 Les octets vérifiés sont conservés sous `%LOCALAPPDATA%\AIDN\packages`.
 npm enregistre l'URL HTTPS versionnée et son intégrité SHA-512 dans le lockfile,
-qui est contrôlé avant le bootstrap. Une version exacte est obligatoire : aucun
-repli sur latest ni sur une autre release. La disponibilité est vérifiée à l'application.
+qui est contrôlé avant le bootstrap. Une version exacte est figée après une
+sélection explicite de latest ; aucun repli sur une autre release. La disponibilité
+d'une version exacte en mode scripté est vérifiée à l'application.
 Les fonctionnalités installées sont celles de la version sélectionnée.
 
 Pour le candidat local 0.9.0, remplacer `ReleaseVersion` par les deux paramètres :
@@ -90,8 +175,9 @@ $setup.PackageSha256 = 'REMPLACER_PAR_64_CARACTERES_HEXA_DU_MANIFESTE'
 Conserver ce tarball local dans un emplacement durable : npm enregistre son chemin.
 Les deux sources de paquet sont mutuellement exclusives.
 
-Sans `-Write`, le script lit uniquement les entrées locales et affiche les étapes.
-Il ne télécharge rien, ne demande aucun secret et ne contacte aucune base.
+Sans `-Write`, le script affiche les étapes sans télécharger de paquet, demander
+de secret ou contacter une base. La sélection latest, la consultation des mises
+à jour et le choix de release dans le wizard consultent les métadonnées GitHub.
 Avec `-Write`, il demande l'URL de connexion masquée si la variable du processus
 n'est pas déjà renseignée. Ne pas saisir les secrets dans les arguments ou dans
 un fichier suivi. Encoder les caractères réservés du mot de passe dans l'URL.
@@ -150,6 +236,8 @@ après réussite. **Une variable utilisateur n'est pas un coffre de secrets** :
 elle contient l'URL en clair. Cette option refuse de remplacer une valeur
 différente et ne persiste jamais l'URL administrateur. Redémarrer le client pour
 hériter de la variable ; aucune configuration globale Codex n'est modifiée.
+Avec le lanceur `aidn-setup`, le processus de l'assistant se termine à sa sortie :
+sans persistance, fournir la variable au client séparément.
 
 Les étapes AIDN sont : paquet npm avec scripts désactivés, vérification du driver
 pg, préparation/vérification de la base, preview bootstrap, application avec son

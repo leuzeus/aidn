@@ -162,6 +162,21 @@ export async function planInstallation(options) {
     return (await prepare(options)).public;
   } catch (error) { return failure(error, options.action); }
 }
+
+// Setup candidate qualification: same planner and persistence admission as
+// bootstrap, but no package, receipt, asset or database writes.
+export async function verifyInstallationCandidate(options) {
+  const prepared = await prepare({ ...options, args: { ...options.args, persistencePolicy: 'verify-only' } });
+  if (!prepared.public.ok) return prepared.public;
+  await verifyPersistenceReady(prepared.installation.context, prepared.targetRoot, options);
+  if (prepared.installation.context.next_config.runtime.persistence.backend !== 'postgres'
+      && ['sqlite', 'dual-sqlite', 'all'].includes(prepared.installation.context.defaults.store)) {
+    const { inspectWorkflowDbSchema, getLatestWorkflowSchemaVersion } = await import('../../lib/sqlite/workflow-db-schema-lib.mjs');
+    const status = inspectWorkflowDbSchema({ sqliteFile: path.join(prepared.targetRoot, '.aidn/runtime/index/workflow-index.sqlite'), readOnly: true });
+    if (!status.exists || status.pending_ids.length || Number(status.schema_version) !== getLatestWorkflowSchemaVersion()) fail('PERSISTENCE_MIGRATION_REQUIRED');
+  }
+  return prepared.public;
+}
 export async function diagnoseInstallation(options) {
   const interrupted = readInstallationContext(options).scope === "installation";
   const plan = await planInstallation({ ...options, action: interrupted ? "resume" : "install" });
