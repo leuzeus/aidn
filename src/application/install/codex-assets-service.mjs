@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { classifyHistoricalCodexSkill } from "./codex-legacy-repairs.mjs";
+import { globalProjectBinding, adaptGlobalProjectAssets } from "./global-project-integration.mjs";
 import { isLocalInstallationTarget, configFieldPatch, configFieldStates, restoreConfigFields, restoreAppendLines } from "./installation-ownership-service.mjs";
 import fs from "node:fs";
 import path from "node:path";
@@ -453,6 +454,11 @@ function buildPlan(options = {}, { ignoreLock = false } = {}) {
         plan.nextReceipt.activation = { mode: authority.identity.scope, authority_id: authority.identity.authority_id };
       }
       const desired = desiredAssets(repoRoot, { VERSION: plan.binding.version, ...options.templateVars });
+      const globalHome = options.globalHome ?? plan.receipt?.global_runtime?.home;
+      if (globalHome) {
+        plan.nextReceipt.global_runtime = globalProjectBinding(globalHome, repoRoot);
+        adaptGlobalProjectAssets(desired);
+      }
       const historical = new Map();
       for (const relative of [".agents/skills/pr-orchestrate/SKILL.md", ".codex/skills/pr-orchestrate/SKILL.md"]) {
         const current = read(targetRoot, relative);

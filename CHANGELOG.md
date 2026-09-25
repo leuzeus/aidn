@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — 0.10.0 global runtime foundation (in progress)
+
+- Add internal verified runtime generations, operation leases, exact switch plans,
+  conflict-aware journal recovery and rollback to the previous global generation.
+- Add staged package preparation, user-level Codex asset rendering, a stable
+  launcher with integration revision checks, and receipt-bound project connectors.
+- Add candidate project compatibility checks and a read-only cleanup inventory
+  that preserves customized and unmanaged files.
+- The public CLI, wizard, full client migration, native qualification and release
+  remain incomplete; existing installation commands retain their 0.9.1 behavior.
+
 ## 0.9.1
 
 - Allow read-only context reload before a work mode or session exists, while retaining activation, canonical backend and write-admission gates.

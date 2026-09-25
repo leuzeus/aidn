@@ -1,5 +1,11 @@
 # Installation complète d'un projet sous Windows
 
+> Le modèle global unique prévu pour 0.10.0 est en cours d'implémentation
+> ([ADR-0013](ADR/ADR-0013-global-user-runtime.md)). Les commandes documentées
+> ci-dessous décrivent encore le setup 0.9.1 et ses installations par projet.
+> Les nouveaux composants internes ne constituent pas un installateur 0.10.0
+> utilisable ou une migration automatique des projets existants.
+
 `scripts/setup-project.ps1` orchestre le paquet AIDN, les skills et hooks Codex,
 et une persistance PostgreSQL facultative. Il réutilise le bootstrap et son plan
 d'installation ; les règles du workflow et les migrations restent dans AIDN.

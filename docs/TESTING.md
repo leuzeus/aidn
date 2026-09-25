@@ -30,6 +30,14 @@ Do not assume a fixture run means the current repo root is an installed target.
 
 ### 1. Focused Fixture Verifications
 
+The in-progress global runtime foundation has a focused suite:
+`npm run perf:verify-global-runtime`. It covers package/asset integrity, operation
+leases, switch and recovery preconditions, compatibility checks, receipt-bound
+global project connectors and read-only cleanup inventories. Package installation
+is injected in its launcher fixture; native Codex discovery, actual PostgreSQL,
+the public update wizard and complete npm migration are not qualified by it.
+See ADR-0013 for the remaining release boundary.
+
 For native write scope, first run
 `node tools/perf/verify-native-write-admission-fixtures.mjs`, then the existing
 Codex integration, admission and public contract/effect fixtures. The new cases

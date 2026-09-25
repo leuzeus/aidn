@@ -87,9 +87,9 @@ const METADATA_POLICIES = freezeDeep([
     required: ["schema_version", "scope", "root_id", "package", "assets", "last_transaction", "last_action"],
     sourceOfTruthConcept: "install_assets",
     evidenceTargets: ["src/application/install/codex-assets-service.mjs", "src/application/install/installation-ownership-service.mjs"],
-    recommended: ["installation", "installation_last_transaction", "installation_last_action", "global_skills_migration"],
+    recommended: ["installation", "installation_last_transaction", "installation_last_action", "global_skills_migration", "global_runtime"],
     lifecycle: "planned -> applying -> installed|interrupted -> repaired|rolled_back|uninstalled",
-    notes: "Receipt carries package binding, owned object hashes and optional installation completion metadata; legacy Codex-only receipts remain valid. install.aidnVersion in config is a projection of the last complete successful installation, never native trust or current asset integrity. Transaction pre-images stay local and are omitted from public plans. Explicit global_skills_migration binds an absolute host and config pre/post-images in the same receipt; restoration requires unchanged post-image.",
+    notes: "Receipt carries package binding, owned object hashes and optional installation completion metadata; legacy Codex-only receipts remain valid. install.aidnVersion in config is a projection of the last complete successful installation, never native trust or current asset integrity. Transaction pre-images stay local and are omitted from public plans. Explicit global_skills_migration binds an absolute host and config pre/post-images in the same receipt; restoration requires unchanged post-image. Optional global_runtime records schema_version, home, installation_id and integration_revision; host state owns active/previous generation pointers, verified file manifests and Codex asset hashes, separately from the project's historical installation version.",
   }),
   policy({
     concept: "workflow_rules",

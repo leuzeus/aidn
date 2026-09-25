@@ -6,6 +6,7 @@ import { writeFileAtomicSync } from "../../lib/fs/atomic-write-lib.mjs";
 import { isAidnProductVersion } from "../../lib/config/aidn-config-lib.mjs";
 import { isLocalInstallationTarget } from "./installation-ownership-service.mjs";
 import { SKILL_IDENTITIES } from "../../core/skills/skill-policy.mjs";
+import { resolveGlobalProjectBinding } from "./global-project-integration.mjs";
 
 const RECEIPT = ".aidn/install/receipt.json";
 const HASH = /^[a-f0-9]{64}$/;
@@ -148,12 +149,13 @@ function matchesOwnedHook(actual, owned) {
   return actual.event === owned.event && equal(actual.hook, owned.hook)
     && Object.entries(owned.group).every(([key, value]) => equal(actual.group[key], value));
 }
-function validateNativeAssets(root, assets) {
+function validateNativeAssets(root, assets, globalRuntime = null) {
   const required = {
     "AGENTS.md": "agents-block", ".codex/hooks.json": "hooks",
     ".codex/hooks/aidn-hook-runtime.mjs": "file", ".codex/hooks/aidn-session-start.mjs": "file", ".codex/hooks/aidn-pre-tool-use.mjs": "file",
   };
-  for (const skill of SKILL_IDENTITIES.filter((entry) => ["context-reload", "start-session"].includes(entry.id))) {
+  if (globalRuntime) delete required[".codex/hooks/aidn-hook-runtime.mjs"];
+  for (const skill of SKILL_IDENTITIES.filter((entry) => !globalRuntime && ["context-reload", "start-session"].includes(entry.id))) {
     const candidates = [skill.id, skill.publicName].map((name) => `.agents/skills/${name}/SKILL.md`);
     if (!candidates.some((relative) => assets[relative]?.kind === "file")) fail("ACTIVATION_REQUIRED_SKILL_MISSING", skill.id);
   }
@@ -179,7 +181,7 @@ function validateNativeAssets(root, assets) {
   }
 }
 
-function validateReceipt(identity) {
+function validateReceipt(identity, { globalRecoveryPlanId } = {}) {
   const bytes = readBytes(localPath(identity.target_root, RECEIPT));
   if (bytes === null) return null;
   const receipt = unseal(parse(bytes)), root = identity.target_root;
@@ -201,9 +203,13 @@ function validateReceipt(identity) {
   const binding = receipt.package;
   if (!object(binding) || !path.isAbsolute(binding.root ?? "") || !isAidnProductVersion(binding.version) || binding.entry !== "bin/aidn.mjs"
       || !HASH.test(String(binding.entry_sha256)) || !HASH.test(String(binding.version_sha256))) fail("ACTIVATION_INVALID_PACKAGE_BINDING");
-  const packageRoot = physicalDirectory(binding.root);
-  const version = readBytes(localPath(packageRoot, "VERSION")), entry = readBytes(localPath(packageRoot, binding.entry));
-  if (!version || !entry || version.toString("utf8").trim() !== binding.version || hash(version) !== binding.version_sha256 || hash(entry) !== binding.entry_sha256) fail("ACTIVATION_PACKAGE_CHANGED");
+  if (receipt.global_runtime) {
+    resolveGlobalProjectBinding(receipt.global_runtime, { recoveryPlanId: globalRecoveryPlanId });
+  } else {
+    const packageRoot = physicalDirectory(binding.root);
+    const version = readBytes(localPath(packageRoot, "VERSION")), entry = readBytes(localPath(packageRoot, binding.entry));
+    if (!version || !entry || version.toString("utf8").trim() !== binding.version || hash(version) !== binding.version_sha256 || hash(entry) !== binding.entry_sha256) fail("ACTIVATION_PACKAGE_CHANGED");
+  }
   const id = receipt.last_transaction;
   if (typeof id !== "string" || !/^[a-f0-9]{32}$/.test(id)) fail("ACTIVATION_COMPLETION_MISSING");
   const tx = unseal(parse(readBytes(localPath(root, `.aidn/install/transactions/${id}.json`))));
@@ -216,7 +222,7 @@ function validateReceipt(identity) {
     localPath(root, operation.path);
     if (!codexPath(operation.path) && !(tx.scope === "installation" && isLocalInstallationTarget(operation.path))) fail("ACTIVATION_INVALID_TRANSACTION_OPERATION");
   }
-  if (Object.keys(receipt.assets).length) validateNativeAssets(root, receipt.assets);
+  if (Object.keys(receipt.assets).length) validateNativeAssets(root, receipt.assets, receipt.global_runtime);
   return receipt;
 }
 
@@ -238,6 +244,19 @@ export function readActivation({ targetRoot = process.cwd() } = {}) {
     } else state = authorization ? "unprepared" : "legacy-active";
   } catch (error) { errors.push(error.code?.startsWith("ACTIVATION_") ? error.message : "ACTIVATION_READ_FAILED"); }
   return { state, active: ["active", "legacy-active"].includes(state), identity, authorization, receipt, errors };
+}
+
+// Compatibility checking must verify a deliberately revoked project's assets
+// without changing its authority or turning that check into activation.
+export function inspectPreparedProject({ targetRoot = process.cwd(), globalRecoveryPlanId } = {}) {
+  const identity = resolveActivationTarget({ targetRoot });
+  if (readBytes(localPath(identity.target_root, ".aidn/install/pending.json")) !== null) fail("ACTIVATION_INSTALLATION_PENDING");
+  const receipt = validateReceipt(identity, { globalRecoveryPlanId });
+  if (!receipt || !Object.keys(receipt.assets).length) fail("ACTIVATION_PREPARATION_MISSING");
+  const authorization = readAuthority(identity).document;
+  if (receipt.activation && !authorization) fail("ACTIVATION_AUTHORITY_MISSING");
+  if (authorization && !receipt.activation) fail("ACTIVATION_PREPARATION_MISSING");
+  return { identity, receipt, authorization };
 }
 
 function planContent(plan) { const { plan_id, ...content } = plan; return content; }
