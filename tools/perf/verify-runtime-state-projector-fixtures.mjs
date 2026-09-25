@@ -172,6 +172,11 @@ function main() {
     assert(filelessMarkdown.includes("project_id:"), "db-only fileless markdown should record project identity");
     assert(filelessMarkdown.includes("contract_version: critical-markdown-v1"), "db-only fileless markdown should record explicit contract version");
     assert(filelessMarkdown.includes("current_state_freshness: ok"), "db-only fileless markdown should record recovered freshness");
+    fs.writeFileSync(path.join(filelessRepo, "docs/audit/CURRENT-STATE.md"), "mode: unknown\nactive_cycle: C999\nupdated_at: invalid\n");
+    fs.writeFileSync(path.join(filelessRepo, "docs/audit/cycles/C101-feature-alpha/status.md"), "state: UNKNOWN\nlast_updated: 2099-01-01\n");
+    const canonical = runJson("tools/runtime/project-runtime-state.mjs", ["--target", filelessRepo, "--out", filelessOut, "--json"], { AIDN_STATE_MODE: "db-only", AIDN_INDEX_STORE_MODE: "sqlite" });
+    assert(canonical.digest.current_state_source === "sqlite" && canonical.digest.cycle_status_source === "sqlite", "misleading files must not override canonical db-only rows");
+    assert(canonical.digest.current_state_freshness === "ok" && canonical.written === false, "read-only canonical projection must preserve freshness and not write");
 
     const textOut = execFileSync(process.execPath, [
       "tools/runtime/project-runtime-state.mjs",

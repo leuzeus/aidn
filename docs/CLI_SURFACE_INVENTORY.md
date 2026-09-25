@@ -111,6 +111,12 @@ finalization; `--verify` retains its read-only verification behavior.
 - `aidn runtime verify-agent-roster --json`
 - `aidn runtime handoff-admit --json`
 - `aidn runtime pre-write-admit --json`
+
+  `cycle-create` resolves canonical DB-backed context. A verified session with an
+  explicit `active_cycle: none` can report `cycle_create_initial_state_verified`
+  when cycle timestamp comparison is not applicable. Freshness remains `unknown`;
+  stale state, missing canonical facts, repair and Git gates still block. This
+  generic admission never authorizes an arbitrary native write.
   - Optional `--native-request-stdin` reads native V4A request JSON and returns
     specific scope admission. It remains read-only; generic admission is not
     universal write permission. See [specific admission](CODEX_INTEGRATION.md#specific-native-write-admission).

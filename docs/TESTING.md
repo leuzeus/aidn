@@ -15,6 +15,13 @@ It removes only its own scopes and verifies cleanup. Missing credentials are
 `UNAVAILABLE`, not `PASS`. This is source/CLI integration proof, not native Codex
 hook execution or qualification of a PostgreSQL server installer.
 
+Initial-cycle admission is covered by the pre-write use-case and CLI fixtures:
+canonical initial session, missing/unknown/stale cycle, mismatched session and
+branch, session identifier boundary, and misleading local projections. The
+admitted initial case must keep freshness `unknown` and leave every file and DB
+row unchanged. The dedicated PostgreSQL smoke also checks this actual CLI path
+and canonical runtime projection; fixtures alone are not PostgreSQL proof.
+
 ## Purpose
 
 This repository is the package source repository.

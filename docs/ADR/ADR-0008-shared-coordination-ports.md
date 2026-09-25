@@ -87,6 +87,14 @@ reimport checkout documents. Bulk import/adoption remains a separate explicit
 operation. This extends runtime persistence commands, not the shared coordination
 data boundary. Existing local-first and native admission rules still apply.
 
+The 0.10.2 initial-cycle admission reads canonical session/current/runtime
+artifacts and verifies their physical branch. An explicit absence of a cycle
+has no cycle timestamp comparison to perform; this does not make an unknown
+freshness value `ok`. The bounded `cycle-create` check retains all other gates,
+requires a clear repair state and does not apply to native patch authorization.
+Runtime projection in db-only/PostgreSQL mode also resolves canonical artifacts
+and refuses backend unavailability instead of substituting Markdown projections.
+
 - align `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md` with the new ports
 - map the port methods to adapter implementations and runtime use cases
 - keep `ADR-0007` and the shared-surface gate synchronized with any port change

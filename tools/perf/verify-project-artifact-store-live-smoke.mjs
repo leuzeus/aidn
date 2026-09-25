@@ -9,6 +9,7 @@ import { createPostgresRuntimeArtifactStore } from '../../src/adapters/runtime/p
 import { resolveRuntimeProjectContext } from '../../src/application/runtime/runtime-project-context-service.mjs';
 import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
 import { runDbFirstArtifactUseCase } from '../../src/application/runtime/db-first-artifact-use-case.mjs';
+import { prepareActivationFixture } from './test-activation-fixture-lib.mjs';
 
 const connectionString = process.env.AIDN_RUNTIME_PG_SMOKE_URL;
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -101,6 +102,31 @@ else {
     assert.equal(checkpointResult.index.skip_reason, 'postgres_canonical_backend');
     assert.deepEqual(await snapshot(scopes[0]), beforeCheckpoint, 'checkpoint changed canonical data');
     console.log('PASS live PostgreSQL: actual checkpoint skips canonical reimport and preserves all rows');
+    execFileSync('git', ['-C', targetRoot, 'checkout', '-b', 'S001-initial'], { stdio: 'pipe', windowsHide: true });
+    prepareActivationFixture(targetRoot, repoRoot);
+    const initialCurrent = 'mode: THINKING\nactive_session: S001\nactive_cycle: none\ncycle_branch: none\nbranch_kind: session\nsession_branch: S001-initial\nupdated_at: 2026-09-25\n';
+    await upsert({ path: 'CURRENT-STATE.md', content: initialCurrent });
+    await upsert({ path: 'sessions/S001-test.md', content: '## WORK MODE - THINKING\nsession_branch: S001-initial\ncycle_branch: none\nprimary_focus_cycle: none\n' });
+    await upsert({ path: 'RUNTIME-STATE.md', content: 'runtime_state_mode: db-only\nrepair_layer_status: ok\nrepair_routing_hint: continue\ncurrent_state_freshness: unknown\n' });
+    fs.mkdirSync(path.join(targetRoot, 'docs/audit/sessions'), { recursive: true });
+    fs.writeFileSync(path.join(targetRoot, 'docs/audit/CURRENT-STATE.md'), 'mode: unknown\nactive_cycle: C999\nupdated_at: invalid\n');
+    fs.writeFileSync(path.join(targetRoot, 'docs/audit/sessions/S001-test.md'), 'session_branch: wrong\n');
+    execFileSync('git', ['-C', targetRoot, 'add', '.'], { stdio: 'pipe', windowsHide: true });
+    execFileSync('git', ['-C', targetRoot, '-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-m', 'initial session'], { stdio: 'pipe', windowsHide: true });
+    const initialSnapshot = await snapshot(scopes[0]);
+    const admitted = cli('pre-write-admit', '--skill', 'cycle-create', '--strict');
+    assert.equal(admitted.ok, true); assert.equal(admitted.context.current_state_source, 'postgres');
+    assert.equal(admitted.context.current_state_freshness, 'unknown');
+    assert.equal(admitted.checks.cycle_create_initial_state_verified.pass, true);
+    const projected = cli('project-runtime-state');
+    assert.equal(projected.digest.current_state_source, 'postgres');
+    assert.equal(projected.digest.session_artifact_source, 'postgres');
+    assert.equal(projected.consistency.source, 'postgres');
+    assert.equal(projected.written, false);
+    assert.deepEqual(await snapshot(scopes[0]), initialSnapshot, 'initial admission/projection changed canonical data');
+    assert.deepEqual(await snapshot(scopes[1]), other, 'initial admission affected another scope');
+    assert.equal(fs.existsSync(path.join(targetRoot, '.aidn/runtime/index/workflow-index.sqlite')), false);
+    console.log('PASS live PostgreSQL: first-cycle admission and runtime projector read canonical rows despite misleading files; freshness remains unknown; no data mutation');
     console.log('PASS live PostgreSQL: selective writes, parallel IDs, session visibility, read-only facade, rollback, path aliases, unrelated rows and second scope preserved, no SQLite');
   } catch (error) {
     console.error('FAIL live PostgreSQL artifact commands:', String(error.message).replaceAll(connectionString, '[redacted]')); process.exitCode = 1;

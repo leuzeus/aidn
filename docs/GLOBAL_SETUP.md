@@ -1,9 +1,20 @@
 # Global AIDN setup
 
 The global installation shipped in 0.10.0. Version 0.10.1 corrects PostgreSQL
-artifact writes and checkpoint preservation; use its validated published release
+artifact writes and checkpoint preservation; 0.10.2 adds canonical first-cycle
+admission and runtime projection. Use a validated published release
 for PostgreSQL client migration. ADR-0013 supersedes independent project engine
 versions; existing 0.9.x receipts remain migration inputs.
+
+An established session may explicitly have no active cycle. For `cycle-create`,
+the read-only admission verifies that initial state in the canonical database,
+including session, physical branch and parseable state timestamp. It reports
+`cycle_create_initial_state_verified` without changing `current_state_freshness`
+from `unknown` to `ok`. It does not bypass stale state, repair findings, Git
+hygiene, continuity, activation or native write authorization. Once a cycle is
+declared, its ordinary freshness requirements apply. Runtime projection reads
+canonical db-only/PostgreSQL artifacts rather than local Markdown copies; writing
+a projection still requires explicit intent and does not import it into the DB.
 
 ## Entry points
 
