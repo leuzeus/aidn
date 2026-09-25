@@ -3,7 +3,7 @@
 `scripts/setup-project.ps1` orchestre le paquet AIDN, les skills et hooks Codex,
 et une persistance PostgreSQL facultative. Il réutilise le bootstrap et son plan
 d'installation ; les règles du workflow et les migrations restent dans AIDN.
-La version 0.9.0 fournit le setup commun et les mises à jour par projet.
+La version 0.9.1 fournit le setup commun et les mises à jour par projet.
 
 ## Setup utilisateur et plusieurs projets
 
@@ -95,7 +95,7 @@ du registre échoue après réussite, mémoriser ensuite le projet depuis le men
 - Un dépôt Git client existant, distinct du dépôt source AIDN.
 - Une release GitHub publiée avec tarball, manifeste et checksums, sélectionnée
   par version exacte, ou un tarball local de la même version que le script avec
-  son SHA-256 vérifié. Le setup commun est disponible à partir de la release 0.9.0.
+  son SHA-256 vérifié. Le setup commun est disponible à partir de la release 0.9.1.
 - Pour installer le serveur : WinGet et une version précise de PostgreSQL 17.
   L'installation officielle reste interactive pour les options du serveur,
   les accords et l'élévation Windows. Node.js et WinGet ne sont pas installés
@@ -164,11 +164,11 @@ sélection explicite de latest ; aucun repli sur une autre release. La disponibi
 d'une version exacte en mode scripté est vérifiée à l'application.
 Les fonctionnalités installées sont celles de la version sélectionnée.
 
-Pour le candidat local 0.9.0, remplacer `ReleaseVersion` par les deux paramètres :
+Pour le candidat local 0.9.1, remplacer `ReleaseVersion` par les deux paramètres :
 
 ```powershell
 $setup.Remove('ReleaseVersion')
-$setup.PackagePath = 'C:\paquets\aidn-workflow-0.9.0.tgz'
+$setup.PackagePath = 'C:\paquets\aidn-workflow-0.9.1.tgz'
 $setup.PackageSha256 = 'REMPLACER_PAR_64_CARACTERES_HEXA_DU_MANIFESTE'
 ```
 
