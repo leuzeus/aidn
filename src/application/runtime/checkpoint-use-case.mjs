@@ -27,6 +27,7 @@ import {
   resolveReloadEventResult,
 } from "../../core/workflow/workflow-result-policy.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
+import { resolveEffectiveRuntimePersistence } from './runtime-persistence-service.mjs';
 import { runGatingEvaluateUseCase } from "./gating-evaluate-use-case.mjs";
 import {
   appendRuntimeNdjsonEvent,
@@ -60,6 +61,7 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
   });
   args.stateMode = runtimeMode.stateMode;
   args.indexStore = runtimeMode.indexStore;
+  const canonicalPostgres = resolveEffectiveRuntimePersistence({ targetRoot }).backend === 'postgres';
   const cachePath = resolveRuntimeTargetPath(targetRoot, args.cache);
   const eventFilePath = resolveRuntimeTargetPath(targetRoot, args.eventFile);
   const indexOutputPath = resolveRuntimeTargetPath(targetRoot, args.indexOutput);
@@ -76,6 +78,10 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
     indexOutputPath,
     indexSqliteOutputPath,
   });
+  if (canonicalPostgres) {
+    reloadIndex.indexBackend = 'postgres';
+    syncCheckIndex.indexBackend = 'postgres';
+  }
 
   const reloadStarted = Date.now();
   const reload = runWorkflowReloadCheck({
@@ -140,7 +146,9 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
     indexSqliteOutputPath,
   });
   const hasIndexFileForSyncCheck = !args.indexSyncCheck || fs.existsSync(syncCheckIndex.indexFile);
-  const shouldSkipIndex = shouldSkipCheckpointIndex({
+  // A checkpoint may refresh local caches, but it is not an authorization to
+  // import checkout documents into the canonical PostgreSQL scope.
+  const shouldSkipIndex = canonicalPostgres || shouldSkipCheckpointIndex({
     skipIndexOnIncremental: args.skipIndexOnIncremental,
     reload,
     indexKpiFile: args.indexKpiFile,
@@ -153,6 +161,10 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
     stateMode: args.stateMode,
     store: args.indexStore,
   });
+  if (canonicalPostgres) {
+    index.skipped = true;
+    index.skip_reason = 'postgres_canonical_backend';
+  }
   if (!shouldSkipIndex) {
     const indexStarted = Date.now();
     index = runWorkflowIndexSync({
@@ -192,7 +204,7 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
         indexFile: syncCheckIndex.indexFile,
         indexBackend: syncCheckIndex.indexBackend,
         skipped: true,
-        skipReason: "SKIPPED_NO_RELOAD_SIGNAL",
+        skipReason: canonicalPostgres ? 'postgres_canonical_backend' : 'SKIPPED_NO_RELOAD_SIGNAL',
       });
     } else {
       const syncCheckStarted = Date.now();
@@ -250,7 +262,7 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
       state_mode: args.stateMode,
       store: args.indexStore,
       skipped: shouldSkipIndex,
-      skip_reason: shouldSkipIndex ? "SKIPPED_NO_RELOAD_SIGNAL" : null,
+      skip_reason: canonicalPostgres ? 'postgres_canonical_backend' : shouldSkipIndex ? "SKIPPED_NO_RELOAD_SIGNAL" : null,
       output: indexOutputPath,
       sql_output: args.indexStore === "sql" || args.indexStore === "dual" || args.indexStore === "all"
         ? indexSqlOutputPath

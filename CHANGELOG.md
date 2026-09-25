@@ -1,6 +1,16 @@
 # Changelog
 
-## Unreleased — 0.10.0 global runtime foundation (in progress)
+## 0.10.1
+
+- Route explicit artifact commands to the configured canonical backend. PostgreSQL
+  writes use a targeted transaction and preserve other artifacts and project scopes.
+  Reject missing/ambiguous scopes, incompatible schemas and duplicate audit prefixes.
+- Read PostgreSQL at workflow checkpoints and skip implicit checkout-to-database
+  index imports. Preserve configured connection references when selecting that backend.
+- Add deterministic command fixtures and a separate live PostgreSQL smoke covering
+  sessions, concurrent writes, rollback, bootstrap verify-only and checkpoint preservation.
+
+## 0.10.0
 
 - Add internal verified runtime generations, operation leases, exact switch plans,
   conflict-aware journal recovery and rollback to the previous global generation.
@@ -21,8 +31,8 @@
 - Add explicit local PostgreSQL provisioning to the common project wizard,
   with a pinned server version, secret-free recovery journal, empty-database
   initialization and update blocking while preparation is interrupted.
-  Native qualification and release remain incomplete; legacy setup commands
-  retain their per-project behavior. Fixtures do not qualify server installation.
+  Legacy setup commands retain their per-project behavior. Fixtures do not qualify
+  server installation. Native client approval remains separate from installation.
 
 ## 0.9.1
 

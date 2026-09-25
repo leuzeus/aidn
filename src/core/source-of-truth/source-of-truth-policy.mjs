@@ -113,7 +113,7 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     retention: "retain active artifact heads and immutable versions according to artifact policy",
     migration: "use explicit artifact import, materialization or state-mode migration",
     replacement: "new artifact versions replace heads without rewriting immutable provenance",
-    evidence_targets: ["src/adapters/runtime/artifact-store.mjs"],
+    evidence_targets: ["src/adapters/runtime/artifact-store.mjs", "src/application/runtime/project-artifact-store-service.mjs"],
   },
   decision: {
     owner: "decision governance maintainer",

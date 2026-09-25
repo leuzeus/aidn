@@ -1,7 +1,7 @@
 {
   "name": "aidn-workflow",
-  "version": "0.10.0",
-  "description": "aid\u00e2\u20ac\u2122n \u00e2\u20ac\u201d Audit-driven, session-based workflow packaging system for structured AI-assisted development",
+  "version": "0.10.1",
+  "description": "aidâ€™n â€” Audit-driven, session-based workflow packaging system for structured AI-assisted development",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -304,7 +304,7 @@
     "perf:verify-runtime-source-diagnostics": "node tools/perf/verify-runtime-source-diagnostics-fixtures.mjs",
     "perf:verify-runtime-source-normalization": "node tools/perf/verify-runtime-source-normalization-fixtures.mjs",
     "perf:verify-db-runtime-cli": "node tools/perf/verify-db-runtime-cli-fixtures.mjs",
-    "perf:verify-runtime-persistence-parity": "node tools/perf/verify-runtime-persistence-parity-fixtures.mjs",
+    "perf:verify-runtime-persistence-parity": "node tools/perf/verify-runtime-persistence-parity-fixtures.mjs && node tools/perf/verify-project-artifact-store-fixtures.mjs",
     "perf:verify-runtime-relational-projection": "node tools/perf/verify-runtime-relational-projection-fixtures.mjs",
     "perf:verify-postgres-shared-coordination-live-smoke": "node tools/perf/verify-postgres-shared-coordination-live-smoke.mjs",
     "perf:verify-aidn-config-cache": "node tools/perf/verify-aidn-config-cache-fixtures.mjs",

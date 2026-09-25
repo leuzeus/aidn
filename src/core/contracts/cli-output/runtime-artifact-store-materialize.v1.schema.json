@@ -12,6 +12,7 @@
     "artifact_store_diagnostic"
   ],
   "properties": {
+    "backend": { "type": "string", "enum": ["sqlite", "postgres"] },
     "action": { "type": "string" },
     "sqlite_file": { "type": "string" },
     "result": { "type": "object", "additionalProperties": true },

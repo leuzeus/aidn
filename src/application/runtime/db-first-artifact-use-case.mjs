@@ -1,6 +1,6 @@
 import path from "node:path";
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
-import { createArtifactStore } from "../../adapters/runtime/artifact-store.mjs";
+import { createProjectArtifactStore } from './project-artifact-store-service.mjs';
 import {
   inferFamily,
   inferKind,
@@ -26,7 +26,9 @@ export function runDbFirstArtifactUseCase(options = {}) {
     })
     : null;
 
-  const store = createArtifactStore({
+  const store = createProjectArtifactStore({
+    targetRoot,
+    auditRoot: options.auditRoot,
     sqliteFile: path.isAbsolute(options.sqliteFile ?? "")
       ? options.sqliteFile
       : path.resolve(targetRoot, options.sqliteFile ?? ".aidn/runtime/index/workflow-index.sqlite"),
@@ -60,6 +62,7 @@ export function runDbFirstArtifactUseCase(options = {}) {
       ok: true,
       target_root: targetRoot,
       state_mode: stateMode,
+      backend: store.backend,
       materialized: materialize,
       artifact,
       materialize_result: materializeResult,

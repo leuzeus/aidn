@@ -79,7 +79,7 @@ function resolveContent(input) {
   };
 }
 
-function normalizeArtifact(input) {
+export function normalizeArtifact(input) {
   const now = new Date();
   const content = resolveContent(input);
   const mtimeNsRaw = input.mtime_ns ?? `${Math.round(now.getTime() * 1_000_000)}`;
@@ -155,7 +155,7 @@ function decodeContentToBuffer(artifact) {
   return null;
 }
 
-function mapArtifactRow(row) {
+export function mapArtifactRow(row) {
   if (!row) {
     return null;
   }

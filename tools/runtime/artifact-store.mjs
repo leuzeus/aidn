@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
+import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
 
 function normalizeScalar(value) {
   return String(value ?? "").trim();
@@ -132,6 +132,7 @@ function parseArgs(argv) {
   if (!args.action) {
     throw new Error("Missing action. Expected upsert|get|list|materialize");
   }
+  if (args.action === 'upsert' && args.dryRun) throw new Error('Artifact upsert does not support --dry-run; use get/list to inspect existing state');
   return args;
 }
 
@@ -147,7 +148,9 @@ function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target || ".");
-    const store = createArtifactStore({
+    const store = createProjectArtifactStore({
+      targetRoot,
+      auditRoot: args.auditRoot,
       sqliteFile: path.isAbsolute(args.sqliteFile)
         ? args.sqliteFile
         : path.resolve(targetRoot, args.sqliteFile),
@@ -211,6 +214,7 @@ function main() {
           }),
         };
       }
+      payload.backend = store.backend;
       payload.artifact_store_diagnostic = buildArtifactStoreDiagnostic(args.action, payload, args);
       if (args.json) {
         console.log(JSON.stringify(payload, null, 2));
@@ -222,7 +226,6 @@ function main() {
     }
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
-    printUsage();
     process.exit(1);
   }
 }
