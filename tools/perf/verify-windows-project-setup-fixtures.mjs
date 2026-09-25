@@ -137,8 +137,14 @@ Write-Output ('RESULT:' + (ConvertTo-Json -InputObject @($script:calls.ToArray()
   calls = [];
   let databaseCalls = [];
   const database = async (options) => { databaseCalls.push(options); };
-  const deps = { platform: 'win32', env, run: runner, database, pgFactory: () => {}, log: () => {} };
+  // The injected runner must not depend on the CI host's Node/npm layout.
+  const npmCli = path.join(root, 'fixture-npm-cli.js');
+  fs.writeFileSync(npmCli, 'throw new Error("Fixture npm must never execute");');
+  const deps = { platform: 'win32', npmCli, env, run: runner, database, pgFactory: () => {}, log: () => {} };
+  await assert.rejects(applySetup({ ...plan, write: true }, { ...deps, npmCli: path.join(root, 'missing-npm.js') }), /NODE_BUNDLED_NPM_REQUIRED/);
+  assert.equal(calls.length, 0); assert.equal(databaseCalls.length, 0);
   const result = await applySetup({ ...plan, write: true }, deps);
+  assert.equal(calls.find((call) => call.stage === 'package-install').args[0], npmCli);
   assert.equal(result.native, 'unverified');
   assert(!calls.some((call) => call.command === 'winget.exe'));
   assert.equal(databaseCalls[0].create, false);

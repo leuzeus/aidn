@@ -78,7 +78,8 @@ function runProcess(command, args, { cwd, env, interactive = false, stage }) {
 }
 
 export async function applySetup(plan, { env = process.env, run = runProcess, database = preparePostgres,
-  log = console.log, platform = process.platform, pgFactory, releaseDownloader = downloadReleasePackage } = {}) {
+  log = console.log, platform = process.platform, pgFactory, releaseDownloader = downloadReleasePackage,
+  npmCli = path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js') } = {}) {
   if (!plan.write) fail('WRITE_REQUIRED');
   if (platform !== 'win32') fail('WINDOWS_REQUIRED');
   const major = Number(process.versions.node.split('.')[0]), minor = Number(process.versions.node.split('.')[1]);
@@ -88,7 +89,6 @@ export async function applySetup(plan, { env = process.env, run = runProcess, da
     adminConnectionString: env[plan.adminConnectionEnv], create: plan.postgresMode === 'install',
     expectedServerVersion: plan.postgresMode === 'install' ? 170000 + Number(plan.postgresVersion.split('.')[1].split('-')[0]) : null } : null;
   if (dbOptions) validateConnections(dbOptions);
-  const npmCli = path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
   if (!fs.existsSync(npmCli)) fail('NODE_BUNDLED_NPM_REQUIRED');
   if (plan.releaseVersion) {
     log('Stage: release-download-and-verify');

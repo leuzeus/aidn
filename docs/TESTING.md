@@ -85,7 +85,9 @@ They additionally run
 Windows PowerShell preview, release download integrity and bounded HTTPS handling,
 wizard cancellation, invalid-input retry, explicit confirmation for all three
 database modes, and refusal to continue after a failed preflight,
-and injected npm/WinGet/PostgreSQL orchestration,
+and injected npm/WinGet/PostgreSQL orchestration. The injected runner uses a
+fixture npm entry point on every host, while a missing entry point must still
+fail before any subprocess or database operation. This covers
 including credential separation and failure stops. Real server installation,
 live PostgreSQL and native hook approval remain separate, unexecuted evidence.
 
