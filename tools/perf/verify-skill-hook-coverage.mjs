@@ -72,7 +72,6 @@ function main() {
     const contextInjectionLine = "read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.";
     const wrap = (skill, mode) => `npx aidn codex run-json-hook --skill ${skill} --mode ${mode} --target . --json`;
     const modes = [
-      ["context-reload", "<THINKING|EXPLORING|COMMITTING>"],
       ["branch-cycle-audit", "COMMITTING"],
       ["drift-check", "COMMITTING"],
       ["start-session", "<THINKING|EXPLORING|COMMITTING>"],
@@ -94,6 +93,13 @@ function main() {
       `aidn-${skill}/SKILL.md`,
       [...activationPatterns(skill), wrap(skill, mode), contextInjectionLine, stateModeLine, mandatoryDbLine]));
     checks.push(checkOne(args.root, "aidn-crash-recovery/SKILL.md", activationPatterns("crash-recovery")));
+    checks.push(checkOne(args.root, "aidn-context-reload/SKILL.md", [
+      ...activationPatterns("context-reload"),
+      "Read-only skill: do not modify files in this skill.",
+      "Do not run run-json-hook or hydrate-context as part of this read-only skill",
+      "Only outside this read-only skill, after explicit cache-write authorization",
+      "This admission is not write authorization",
+    ]));
 
     const pass = checks.every((item) => item.ok === true);
     const output = {

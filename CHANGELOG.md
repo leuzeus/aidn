@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1
+
+- Allow read-only context reload before a work mode or session exists, while retaining activation, canonical backend and write-admission gates.
+- Separate authorized cache refresh from the read-only context-reload skill.
+- Align migration documentation with the published 0.9.0 release; native hook approval and execution remain separately unqualified.
+
 ## 0.9.0
 
 - Add an optional user-level setup launcher, a locked multi-project address book, release discovery and staged project updates that preserve configuration and refuse required database migrations.

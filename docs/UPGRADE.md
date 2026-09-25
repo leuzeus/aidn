@@ -1,9 +1,17 @@
 # Upgrade Guide
 
-## Upgrade to 0.9.0 (unreleased candidate)
+## Upgrade to 0.9.1
 
-Use the reviewed local tarball until publication; tagged examples below apply
-only after the release exists. Covered native product patches now require an
+Read-only `context-reload` can reconstruct an active project's context before
+a mode or session exists. Activation and canonical backend availability remain
+required; this does not grant write admission or create workflow state.
+Reinstall the owned skill to remove automatic hook/cache writes from its
+read-only path. Cache hydration requires separate explicit authorization.
+
+## Upgrade to 0.9.0
+
+Use the published [v0.9.0 release](https://github.com/leuzeus/aidn/releases/tag/v0.9.0)
+and verify the tarball against its manifest. Covered native product patches require an
 explicit task scope in the canonical plan. Follow
 [the client migration guide](CODEX_CLIENT_MIGRATION.md), reinstall owned hooks,
 and review them in Codex. Installation does not establish native approval.

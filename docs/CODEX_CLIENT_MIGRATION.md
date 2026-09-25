@@ -1,27 +1,22 @@
-# Migration d'un client Windows vers le candidat AIDN 0.9.0
+# Migration d'un client Windows vers AIDN 0.9.0
 
-Mise à jour du 2026-09-24 : la base v0.8.0 est publiée (PR #63, commit
-`7030f05`). Le renforcement d'admission spécifique est un candidat local distinct.
-Les mentions de candidat non publié ci-dessous concernent ce nouveau delta,
-pas la base historique. Une migration doit conserver son tarball et ses
-empreintes exacts. Les anciens plans sans périmètre de tâche continuent à servir
-l'admission générique ; les patches produit couverts seront refusés jusqu'à
-définition du périmètre canonique avant gel. Réinstaller les scripts par le
-parcours de propriété existant, puis faire revoir leur contenu dans Codex.
-Aucune nouvelle configuration globale ou approbation automatique n'est requise.
+La [release v0.9.0](https://github.com/leuzeus/aidn/releases/tag/v0.9.0) est publiée.
+Utiliser son tarball et ses empreintes publiées. Les anciens plans sans périmètre
+de tâche continuent à servir l'admission générique ; les patches produit couverts
+sont refusés jusqu'à définition du périmètre canonique avant gel. Réinstaller les
+scripts par le parcours de propriété existant, puis faire revoir leur contenu dans Codex.
+La publication ne prouve ni l'approbation ni l'exécution native des hooks.
 
 Cette procédure concerne un projet client installé, notamment depuis 0.7.2.
 Le dépôt source AIDN n'est pas ce client. Les commandes sont à examiner puis
 exécuter sur une cible explicitement choisie ; elles ne constituent ni une
-migration réalisée ni une preuve PASS. Tant que le candidat n'est pas publié,
-utiliser son tarball exact, son commit et son SHA256, pas un tag supposé
-disponible ni une résolution implicite de la dernière version.
+migration réalisée ni une preuve PASS. Conserver le tarball exact, son commit
+et son SHA256 ; éviter toute résolution implicite de la dernière version.
 Pour un pilote existant, le remplacement du runtime attend un contrôle natif
 court sur client temporaire (démarrage, édition admise, refus couvert et
 inactivité hors projet autorisé), puis la livraison. La qualification native
-N01-N14 complète reste ouverte jusqu'à son exécution ultérieure sur un autre
-client temporaire. Le candidat non publié sert à préparer la procédure et ce
-contrôle ; ses essais ne qualifient pas un paquet publié dont le contenu diffère.
+N01-N14 complète reste ouverte jusqu'à son exécution sur un client temporaire.
+Les essais d'un candidat antérieur ne qualifient pas un paquet publié dont le contenu diffère.
 
 ## Préparer la cible et les sauvegardes
 

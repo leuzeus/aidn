@@ -243,11 +243,11 @@ and manage independent projects; use `-CheckUpdate` to consult releases and
 `-Update -ReleaseVersion latest -Write` to update one project while preserving
 its configuration. Database migrations remain a separate step.
 
-Version 0.9.0 provides the Windows setup and independent project updates.
+Version 0.9.1 provides the Windows setup and independent project updates.
 Use the verified release tarball or the pinned tag shown below.
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#v0.9.0
+npm install --save-dev github:leuzeus/aidn#v0.9.1
 npx aidn bootstrap --target ../client --profile default
 npx aidn bootstrap --target ../client --mode upgrade --profile default
 npx aidn bootstrap --target ../client --profile full
@@ -307,7 +307,7 @@ Notes:
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a tagged install (`#v0.9.0`) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a tagged install (`#v0.9.1`) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 

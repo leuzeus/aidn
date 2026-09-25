@@ -731,6 +731,9 @@ export async function preWriteAdmit({
   if (sqliteFallback.warning) {
     warnings.push(sqliteFallback.warning);
   }
+  if (skill === "context-reload" && dbBackedMode && (!sqliteFallback.exists || sqliteFallback.warning)) {
+    blockingReasons.push("canonical runtime backend is unavailable for context reload");
+  }
 
   const currentStateExists = currentStateResolution.exists;
   addCheck(checks, "current_state_exists", currentStateExists, currentStateExists
