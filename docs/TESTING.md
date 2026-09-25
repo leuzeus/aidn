@@ -38,6 +38,9 @@ registry removal, read-only cleanup inventories, wizard cancellation and npm
 interruption/resume. Package installation and removal are injected; native Codex
 discovery, actual PostgreSQL, native secret entry and OS reboot recovery are not
 qualified by these fixtures.
+The global management suite also injects WinGet, PostgreSQL and bootstrap to
+exercise local provisioning, interrupted preparation, secret separation and
+nonempty-database refusal. This is not actual server installation evidence.
 See ADR-0013 for the remaining release boundary.
 
 Run `node tools/verify/verify-global-client-install.mjs
@@ -47,11 +50,15 @@ user-skill discovery without duplicate enabled definitions. Its next-version
 tarball is synthetic; this proves switching behavior, not a future release's
 schema compatibility. Add `--legacy-release 0.9.1 --require-postgres` to download
 and verify that published migration input and exercise the dedicated
-`AIDN_RUNTIME_PG_SMOKE_URL` database. The PostgreSQL probe requires an existing
+`AIDN_RUNTIME_PG_SMOKE_URL` database. Add `--require-worktree` for a real additional
+Git worktree that remains inactive until explicitly prepared. The PostgreSQL probe requires an existing
 test schema, verifies unused synthetic scopes before preparation, compares all
 canonical rows after each global operation, and cleans only those scopes.
-Neither command qualifies server installation, native agents or trusted hook
-execution. These remain separate qualifications.
+Native agent discovery inspects the request built by Codex against a loopback
+provider returning no tool calls. A negative control removes one temporary
+definition and requires that it disappear from the advertised agents. This
+proves discovery, not agent execution. Neither command qualifies server
+installation or trusted native hook execution. Those remain separate checks.
 
 For native write scope, first run
 `node tools/perf/verify-native-write-admission-fixtures.mjs`, then the existing

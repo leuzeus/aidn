@@ -18,8 +18,11 @@
   Serialize recovery itself and refuse removing local skills when their global
   definitions are explicitly disabled in Codex. Qualify user-skill discovery in
   `CODEX_HOME/skills` and actual npm update/rollback on two temporary clients.
-  Local server provisioning in the new wizard, native qualification and release
-  remain incomplete; legacy setup commands retain their per-project behavior.
+- Add explicit local PostgreSQL provisioning to the common project wizard,
+  with a pinned server version, secret-free recovery journal, empty-database
+  initialization and update blocking while preparation is interrupted.
+  Native qualification and release remain incomplete; legacy setup commands
+  retain their per-project behavior. Fixtures do not qualify server installation.
 
 ## 0.9.1
 

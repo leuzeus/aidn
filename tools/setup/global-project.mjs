@@ -9,6 +9,7 @@ import { acquireGlobalRuntime, resolveGlobalRuntime, checkedHostPath } from '../
 import { planInstallation, executeInstallation } from '../../src/application/install/installation-service.mjs';
 import { inspectGlobalProjectCompatibility } from '../../src/application/install/global-project-compatibility.mjs';
 import { resolveActivationTarget } from '../../src/application/install/project-activation-service.mjs';
+import { provisionGlobalProject, provisioningFile } from './global-project-provision.mjs';
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 export function resolveProjectTarget(target) {
@@ -20,6 +21,9 @@ export async function addGlobalProject(options) {
   try {
     const runtime = lease ?? resolveGlobalRuntime({ home: options.home });
     readProjects(options.home);
+    if (options.postgresMode === 'install' || fs.existsSync(provisioningFile(options.home, targetRoot))) {
+      return await provisionGlobalProject({ ...options, target: targetRoot }, runtime);
+    }
     if (fs.existsSync(checkedHostPath(path.join(targetRoot, '.aidn/install/receipt.json'))) && !options.resume) throw new Error('GLOBAL_EXISTING_PROJECT_USE_MIGRATE');
     const args = { pack: options.pack ?? 'core', initDefaults: true, projectName: path.basename(targetRoot),
       runtimeStateMode: options.connectionRef ? 'db-only' : 'files', artifactImportStore: 'file',

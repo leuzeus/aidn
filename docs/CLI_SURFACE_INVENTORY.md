@@ -51,6 +51,12 @@ Global management applies only with `--write --expect-plan ID`; a wizard
 confirmation invokes that same exact plan. `--json` is formatting only and never
 authorizes writes. Global commands use `global-management.v1`. See
 [the global setup candidate](GLOBAL_SETUP.md) for qualification boundaries.
+`project add --postgres-mode install --postgres-version VERSION --connection-ref
+env:NAME --admin-connection-ref env:ADMIN` additionally plans local PostgreSQL
+provisioning and explicit empty-database initialization. Existing PostgreSQL
+resources use `--connection-ref` alone with `verify-only`; global updates always
+retain that policy. `--resume` resumes the frozen provisioning transaction.
+
 - `aidn bootstrap --json`
 - `aidn bootstrap --dry-run --json`
 - `aidn bootstrap --diagnose --json`

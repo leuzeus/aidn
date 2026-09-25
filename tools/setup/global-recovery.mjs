@@ -31,6 +31,11 @@ export function recoverGlobalLocks(options, { identity = hostExecutionIdentity }
 function recoverUnderBarrier(options, current) {
   const files = ['update.lock', 'admission.lock', 'projects.lock'].map(name => path.join(options.home, name));
   const leases = checkedHostPath(path.join(options.home, 'leases'));
+  const preparations = checkedHostPath(path.join(options.home, 'preparations'));
+  if (fs.existsSync(preparations)) for (const name of fs.readdirSync(preparations).filter(name => name.endsWith('.lock'))) {
+    if (!/^[a-f0-9]{64}\.json\.lock$/.test(name)) throw new Error('GLOBAL_RECOVERY_UNKNOWN_PROVISION_LOCK');
+    files.push(path.join(preparations, name));
+  }
   if (fs.existsSync(leases)) {
     for (const name of fs.readdirSync(leases)) {
       if (!/^[a-f0-9-]{36}\.json$/.test(name)) throw new Error('GLOBAL_RECOVERY_UNKNOWN_LEASE');

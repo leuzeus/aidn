@@ -19,11 +19,16 @@ Node.js and bundled npm are required. `-ReleaseVersion latest` resolves GitHub's
 stable release and validates its assets; it does not guess a release on failure.
 
 `aidn setup` and `aidn-setup` open the common wizard. Source launch remains
-`node tools/setup/global-cli.mjs setup`. The wizard's PostgreSQL option uses an
-existing environment reference, requests a missing secret after confirmation and
-offers explicitly disclosed plaintext user-environment persistence. Native input
-qualification and local server provisioning are still release blockers. The
-0.9.x per-project PowerShell setup
+`node tools/setup/global-cli.mjs setup`. After a confirmed first common
+installation, the wizard also registers the user environment. Its project menu
+offers files, provisioned PostgreSQL resources, or an explicitly pinned local
+PostgreSQL 17 installer. Missing secrets are requested after confirmation;
+plaintext user-environment persistence is optional and disclosed. The
+administrator connection is never persisted or passed to WinGet or bootstrap.
+Masked input has a Windows terminal probe with a synthetic value and an injected
+installer; the value was received without terminal echo. This does not qualify
+actual server installation or credential persistence.
+The 0.9.x per-project PowerShell setup
 is retained for legacy operation and is not a global migration path.
 
 ```powershell
@@ -36,6 +41,23 @@ aidn update --check --json
 aidn update --release latest --json
 aidn rollback --json
 ```
+
+For a new project and local server, add `--postgres-mode install
+--postgres-version 17.MINOR-REVISION --connection-ref env:AIDN_PG_PROJECT
+--admin-connection-ref env:AIDN_PG_ADMIN` to `project add`. Replace the version
+placeholder with an exact published WinGet version. The plan explicitly includes
+the official interactive server installer, dedicated role/database preparation,
+and initialization of an empty database. Windows may request elevation for the
+server. This mode refuses an existing `.aidn` installation and a nonempty
+database; it never upgrades or resets someone else's data. Existing-server mode
+uses `--connection-ref` alone and only verifies already provisioned resources.
+
+Interrupted local provisioning is journaled without passwords under
+`AIDN_HOME/preparations`; it blocks global updates until resumed. Use `project add
+--target PATH --resume --json`, then `--write --expect-plan ID`. The original
+version and connection references remain frozen. A crash never implies server
+or database rollback. The common engine executes bootstrap directly; no npm AIDN
+dependency is installed in the new project.
 
 Repeat a planned operation with `--write --expect-plan PLAN_ID` to apply it.
 Omitting `--target` resolves the current Git repository, never a remembered

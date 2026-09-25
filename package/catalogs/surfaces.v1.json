@@ -11600,6 +11600,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn doctor:--admin-connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --admin-connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn doctor:--check",
       "kind": "option",
       "status": "active",
@@ -11784,6 +11808,54 @@
       "owner": "CLI maintainer",
       "source": "tools/setup/global-cli.mjs",
       "entrypoint": "aidn doctor --package",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--postgres-mode",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --postgres-mode",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--postgres-version",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --postgres-version",
       "implementation": "tools/setup/global-cli.mjs",
       "effects": {
         "role": "effect-neutral",
@@ -26828,6 +26900,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn project add:--admin-connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --admin-connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn project add:--check",
       "kind": "option",
       "status": "active",
@@ -27012,6 +27108,54 @@
       "owner": "CLI maintainer",
       "source": "tools/setup/global-cli.mjs",
       "entrypoint": "aidn project add --package",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--postgres-mode",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --postgres-mode",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--postgres-version",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --postgres-version",
       "implementation": "tools/setup/global-cli.mjs",
       "effects": {
         "role": "effect-neutral",
@@ -27629,6 +27773,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn project list:--admin-connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --admin-connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn project list:--check",
       "kind": "option",
       "status": "active",
@@ -27829,6 +27997,54 @@
       "migration": ""
     },
     {
+      "id": "option:aidn project list:--postgres-mode",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --postgres-mode",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:--postgres-version",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --postgres-version",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn project list:--recover-locks",
       "kind": "option",
       "status": "active",
@@ -27986,6 +28202,30 @@
         "role": "effect-override",
         "rule": "help-is-read-only",
         "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--admin-connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --admin-connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
       },
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
@@ -28198,6 +28438,54 @@
       "migration": ""
     },
     {
+      "id": "option:aidn project migrate:--postgres-mode",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --postgres-mode",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--postgres-version",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --postgres-version",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn project migrate:--recover-locks",
       "kind": "option",
       "status": "active",
@@ -28368,6 +28656,30 @@
         "role": "effect-override",
         "rule": "help-is-read-only",
         "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--admin-connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --admin-connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
       },
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
@@ -28564,6 +28876,54 @@
       "owner": "CLI maintainer",
       "source": "tools/setup/global-cli.mjs",
       "entrypoint": "aidn project remove --package",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--postgres-mode",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --postgres-mode",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--postgres-version",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --postgres-version",
       "implementation": "tools/setup/global-cli.mjs",
       "effects": {
         "role": "effect-neutral",
@@ -28812,6 +29172,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn rollback:--admin-connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --admin-connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn rollback:--check",
       "kind": "option",
       "status": "active",
@@ -28996,6 +29380,54 @@
       "owner": "CLI maintainer",
       "source": "tools/setup/global-cli.mjs",
       "entrypoint": "aidn rollback --package",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--postgres-mode",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --postgres-mode",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--postgres-version",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --postgres-version",
       "implementation": "tools/setup/global-cli.mjs",
       "effects": {
         "role": "effect-neutral",
@@ -40309,6 +40741,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn setup:--admin-connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --admin-connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn setup:--check",
       "kind": "option",
       "status": "active",
@@ -40509,6 +40965,54 @@
       "migration": ""
     },
     {
+      "id": "option:aidn setup:--postgres-mode",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --postgres-mode",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--postgres-version",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --postgres-version",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn setup:--recover-locks",
       "kind": "option",
       "status": "active",
@@ -40679,6 +41183,30 @@
         "role": "effect-override",
         "rule": "help-is-read-only",
         "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--admin-connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --admin-connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
       },
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
@@ -40875,6 +41403,54 @@
       "owner": "CLI maintainer",
       "source": "tools/setup/global-cli.mjs",
       "entrypoint": "aidn update --package",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--postgres-mode",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --postgres-mode",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--postgres-version",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --postgres-version",
       "implementation": "tools/setup/global-cli.mjs",
       "effects": {
         "role": "effect-neutral",

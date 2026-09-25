@@ -13,7 +13,33 @@
     "ok": {"type": "boolean"},
     "written": {"type": "boolean"},
     "errors": {"type": "array", "items": {"type": "string"}},
-    "result": {"type": "object"}
+    "result": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "string"},
+        "phase": {"type": "string"},
+        "version": {"type": "string"},
+        "installed_version": {"type": ["string", "null"]},
+        "installation_id": {"type": "string"},
+        "plan_id": {"type": "string"},
+        "written": {"type": "boolean"},
+        "target": {"type": "string"},
+        "integration": {"type": "string"},
+        "help": {"type": "string"},
+        "removed": {"type": "array", "items": {"type": "string"}},
+        "projects": {"type": "array", "items": {"type": "object"}},
+        "project": {"type": "object"},
+        "external_effects": {"type": "array", "items": {"type": "object", "required": ["id"], "properties": {
+          "id": {"type": "string"}, "state": {"type": "string"}, "policy": {"type": "string"},
+          "package": {"type": "string"}, "version": {"type": "string"}, "interactive": {"type": "boolean"},
+          "connection_ref": {"type": "string"}, "admin_connection_ref": {"type": "string"}
+        }, "additionalProperties": false}},
+        "inventory": {"type": "array", "items": {"type": "object", "required": ["path", "action"], "properties": {"path": {"type": "string"}, "action": {"type": "string"}}, "additionalProperties": false}},
+        "operations": {"type": "array", "items": {"type": "object", "required": ["path"], "properties": {"path": {"type": "string"}, "action": {"type": "string"}, "kind": {"type": "string"}}, "additionalProperties": false}},
+        "conflicts": {"type": "array", "items": {"type": "object", "required": ["code"], "properties": {"code": {"type": "string"}, "path": {"type": "string"}}, "additionalProperties": false}}
+      },
+      "additionalProperties": false
+    }
   },
   "additionalProperties": false
 }

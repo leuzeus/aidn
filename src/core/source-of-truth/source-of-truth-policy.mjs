@@ -41,7 +41,7 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     retention: "retain transaction pre-images and receipts locally after rollback or uninstall; never include in shared runtime",
     migration: "adopt only exact known legacy fingerprints or identical package assets; divergent assets require resolution",
     replacement: "compare recorded post-images before changing owned files, blocks, hook entries or an explicitly bound host skills configuration",
-    evidence_targets: ["src/application/install/codex-assets-service.mjs", "src/application/install/installation-ownership-service.mjs", "src/application/install/global-runtime-store.mjs"],
+    evidence_targets: ["src/application/install/codex-assets-service.mjs", "src/application/install/installation-ownership-service.mjs", "src/application/install/global-runtime-store.mjs", "tools/setup/global-project-provision.mjs"],
   },
   workflow_rules: {
     owner: "workflow policy maintainer",

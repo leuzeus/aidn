@@ -12,12 +12,13 @@ import { resolveCliEffectClass } from '../../src/core/cli/effect-policy.mjs';
 const actions = ['setup', 'update', 'rollback', 'doctor', 'project-add', 'project-migrate', 'project-list', 'project-remove'];
 const allowed = {
   setup: ['release', 'packagePath', 'packageSha256'], update: ['release', 'packagePath', 'packageSha256', 'check', 'resume', 'recoverLocks'],
-  rollback: ['resume'], doctor: [], 'project-add': ['pack', 'connectionRef', 'resume'], 'project-migrate': ['resume'],
+  rollback: ['resume'], doctor: [], 'project-add': ['pack', 'connectionRef', 'resume', 'postgresMode', 'postgresVersion', 'adminConnectionRef'], 'project-migrate': ['resume'],
   'project-list': [], 'project-remove': ['id'],
 };
 export function parseArgs(argv) {
   const values = { '--target': 'target', '--release': 'release', '--package': 'packagePath', '--sha256': 'packageSha256',
-    '--expect-plan': 'expectedPlanId', '--id': 'id', '--pack': 'pack', '--connection-ref': 'connectionRef' };
+    '--expect-plan': 'expectedPlanId', '--id': 'id', '--pack': 'pack', '--connection-ref': 'connectionRef',
+    '--postgres-mode': 'postgresMode', '--postgres-version': 'postgresVersion', '--admin-connection-ref': 'adminConnectionRef' };
   const flags = { '--write': 'write', '--check': 'check', '--resume': 'resume', '--recover-locks': 'recoverLocks', '--json': 'json', '--help': 'help', '-h': 'help' };
   const [action, ...args] = argv;
   if (!actions.includes(action)) throw new Error('GLOBAL_COMMAND_INVALID');
@@ -34,10 +35,12 @@ export function parseArgs(argv) {
   if (options.write && (options.check || ['doctor', 'project-list'].includes(action))) throw new Error('GLOBAL_READ_ONLY_COMMAND');
   if (options.write && !options.expectedPlanId && !options.help) throw new Error('GLOBAL_EXPECT_PLAN_REQUIRED');
   if (options.connectionRef && !/^env:[A-Za-z_][A-Za-z0-9_]*$/.test(options.connectionRef)) throw new Error('GLOBAL_CONNECTION_REFERENCE_REQUIRED');
+  if (options.postgresMode && options.postgresMode !== 'install') throw new Error('GLOBAL_POSTGRES_MODE_INVALID');
+  if ((options.postgresVersion || options.adminConnectionRef) && options.postgresMode !== 'install' && !options.resume) throw new Error('GLOBAL_POSTGRES_INSTALL_OPTIONS_REQUIRED');
   return options;
 }
 const command = action => `aidn ${action.startsWith('project-') ? action.replace('project-', 'project ') : action}`;
-const help = action => `${command(action)} [--target PATH] [--json]\nMutations: --write --expect-plan PLAN_ID\nupdate: --check | --release latest|VERSION | --package FILE --sha256 HASH --release VERSION\nproject add: --pack PROFILE [--connection-ref env:NAME]\nproject remove: --id ID; project migrate/update/rollback: --resume\nsetup: interactive wizard; --json prints a non-interactive preview.\n`;
+const help = action => `${command(action)} [--target PATH] [--json]\nMutations: --write --expect-plan PLAN_ID\nupdate: --check | --release latest|VERSION | --package FILE --sha256 HASH --release VERSION\nproject add: --pack PROFILE [--connection-ref env:NAME]\nLocal PostgreSQL: --postgres-mode install --postgres-version VERSION --connection-ref env:AIDN_PG_PROJECT --admin-connection-ref env:AIDN_PG_ADMIN\nproject remove: --id ID; project add/migrate/update/rollback: --resume\nsetup: interactive wizard; --json prints a non-interactive preview.\n`;
 export async function runGlobalCommand(options) {
   if (options.help) return { written: false, help: help(options.action) };
   const input = { ...options, home: options.home ?? globalHome() };
@@ -68,6 +71,8 @@ export function publicGlobalResult(result) {
   if (result.project) output.project = result.project;
   if (result.inventory) output.inventory = result.inventory.entries.map(({ path, action }) => ({ path, action }));
   if (result.operations) output.operations = result.operations.map(({ path, action, kind }) => ({ path, action, kind }));
+  if (result.external_effects) output.external_effects = result.external_effects.map(({ id, state, policy, package: name, version, interactive, connection_ref, admin_connection_ref }) =>
+    ({ id, state, policy, package: name, version, interactive, connection_ref, admin_connection_ref }));
   if (result.conflicts) output.conflicts = result.conflicts.map(item => typeof item === 'string' ? { code: item } : { code: item.code, path: item.path });
   return output;
 }

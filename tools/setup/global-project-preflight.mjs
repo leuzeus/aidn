@@ -6,6 +6,8 @@ import { readProjects } from './project-registry.mjs';
 import { checkedHostPath } from '../../src/application/install/global-runtime-store.mjs';
 
 export function preflightGlobalProjects({ home, candidateRoot, globalRecoveryPlanId }, { env = process.env, run = spawnSync } = {}) {
+  const preparations = checkedHostPath(path.join(home, 'preparations'));
+  if (fs.existsSync(preparations) && fs.readdirSync(preparations).some(name => name.endsWith('.json'))) throw new Error('GLOBAL_PROJECT_PROVISIONING_PENDING');
   const registry = readProjects(home);
   const worker = checkedHostPath(path.join(candidateRoot, 'tools/setup/global-compatibility-worker.mjs'));
   if (!fs.existsSync(worker)) throw new Error('GLOBAL_CANDIDATE_PROTOCOL_UNSUPPORTED');

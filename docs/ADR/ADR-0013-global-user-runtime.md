@@ -46,6 +46,13 @@ PostgreSQL connections and canonical project identities stay unchanged. Candidat
 verification uses the existing read-only persistence checks; migrations remain a
 separate explicitly authorized operation.
 
+Creating a new local PostgreSQL project is a separate explicit installer effect:
+pin the official server version, provision dedicated resources, and initialize
+only an empty database. Existing resources remain verify-only. Host preparation
+journals retain references and phases without passwords, freeze the initial plan,
+and block global switching until the interrupted bootstrap is resumed. They do
+not authorize database rollback or installing a project-local engine.
+
 ## Migration ownership
 
 An exact cleanup inventory classifies managed, modified, missing and unmanaged

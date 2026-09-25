@@ -6,12 +6,15 @@ import { createHash, randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { executeInstallation } from '../../src/application/install/installation-service.mjs';
 import { readActivation } from '../../src/application/install/project-activation-service.mjs';
-import { sealRuntimeGeneration } from '../../src/application/install/global-runtime-store.mjs';
+import { sealRuntimeGeneration, resolveGlobalRuntime } from '../../src/application/install/global-runtime-store.mjs';
 import { executeGlobalUpdate, planGlobalUpdate } from '../setup/global-update.mjs';
 import { executeGlobalMigration, planGlobalMigration, resumeGlobalMigration } from '../setup/global-migrate.mjs';
 import { addGlobalProject, removeGlobalProject } from '../setup/global-project.mjs';
-import { parseArgs } from '../setup/global-cli.mjs';
+import { parseArgs, publicGlobalResult } from '../setup/global-cli.mjs';
+import { validateJsonSchema } from '../../src/core/contracts/json-schema-validator.mjs';
 import { globalWizard } from '../setup/global-wizard.mjs';
+import { provisionGlobalProject, provisioningFile } from '../setup/global-project-provision.mjs';
+import { preflightGlobalProjects } from '../setup/global-project-preflight.mjs';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'aidn-global-management-'));
 const source = path.resolve(import.meta.dirname, '../..');
@@ -106,6 +109,79 @@ try {
     return { plan_id: 'f'.repeat(64), written: false };
   } });
   assert.equal(writes, 0); assert.deepEqual(snapshot(root), beforeCancel);
+  const installAnswers = ['5', 'latest', 'OUI', '0'];
+  const calls = [];
+  const wizard = await globalWizard({ home }, { ask: async () => installAnswers.shift(), show: () => {},
+    run: async input => { calls.push(input); return { status: input.write ? 'complete' : 'installation-proposed', version: '0.10.0', plan_id: 'confirmed', written: !!input.write }; },
+    registerEnvironment: selected => { assert.equal(selected, home); calls.push('registered'); } });
+  assert.equal(wizard.written, true);
+  assert.equal(calls[1].expectedPlanId, 'confirmed');
+  assert.equal(calls[1].release, '0.10.0', 'wizard pins the confirmed latest version');
+  assert.equal(calls[2], 'registered', 'user environment is registered only after successful initial apply');
+  const invalidAnswers = ['1', second, '2', 'env:PATH', '0'];
+  let invalidCalls = 0;
+  await globalWizard({ home }, { ask: async () => invalidAnswers.shift(), show: () => {},
+    run: () => { invalidCalls++; throw new Error('invalid secret reference must not reach the planner'); } });
+  assert.equal(invalidCalls, 0);
+  for (const persistence of ['1', '2', '3']) {
+    const wizardAnswers = ['1', second, persistence,
+      ...(persistence === '1' ? [] : ['env:AIDN_PG_WIZARD_FIXTURE']),
+      ...(persistence === '3' ? ['17.5-3', 'env:AIDN_PG_WIZARD_ADMIN_FIXTURE'] : []), 'NON', '0'];
+    let planned = 0, secretCalls = 0;
+    await globalWizard({ home }, { ask: async () => wizardAnswers.shift(), show: () => {},
+      secret: async () => { secretCalls++; return 'must-not-be-requested'; },
+      run: async input => { assert.equal(input.write, undefined); planned++; return { plan_id: 'cancelled' }; } });
+    assert.equal(planned, 1); assert.equal(secretCalls, 0, 'every persistence choice confirms before requesting secrets');
+  }
+  const pgRoot = path.join(root, 'new local postgres'); fs.mkdirSync(pgRoot);
+  assert.equal(spawnSync('git', ['init', pgRoot], { windowsHide: true }).status, 0);
+  const pgOptions = { home, target: pgRoot, postgresMode: 'install', postgresVersion: '17.5-3',
+    connectionRef: 'env:AIDN_PG_FIXTURE_PROJECT', adminConnectionRef: 'env:AIDN_PG_FIXTURE_ADMIN' };
+  const pgRuntime = resolveGlobalRuntime({ home });
+  let serverFails = true, nonempty = false, installFails = false;
+  const events = [];
+  const pgDependencies = { platform: 'win32', run: (_command, _args, opts) => {
+    events.push('winget'); assert.equal(opts.env.AIDN_PG_FIXTURE_PROJECT, undefined); assert.equal(opts.env.AIDN_PG_FIXTURE_ADMIN, undefined);
+    return { status: serverFails ? 1 : 0 };
+  }, database: async () => events.push('database'), clientFactory: () => ({ connect: async () => {}, end: async () => {},
+    query: async () => ({ rows: nonempty ? [{ object: 'unowned-data' }] : [] }) }),
+  install: async input => { events.push('bootstrap'); assert.equal(process.env.AIDN_PG_FIXTURE_ADMIN, undefined);
+    assert.equal(input.args.persistencePolicy, 'adopt'); return { ok: !installFails }; },
+  verify: async () => events.push('verify'), remember: () => events.push('remember') };
+  const pgBefore = snapshot(root), pgPlan = await provisionGlobalProject(pgOptions, pgRuntime, pgDependencies);
+  const publicPlan = JSON.parse(JSON.stringify(publicGlobalResult(pgPlan)));
+  const resultSchema = JSON.parse(fs.readFileSync(path.join(source, 'src/core/contracts/cli-output/global-management.v1.schema.json')));
+  const payload = { contract_version: 'global-management.v1', command: 'aidn project add', effect_class: 'preview', ok: true, written: false, errors: [], result: publicPlan };
+  assert.deepEqual(validateJsonSchema(payload, resultSchema), []);
+  assert(validateJsonSchema({ ...payload, result: { ...publicPlan, secret: 'must-not-be-public' } }, resultSchema).length > 0);
+  assert.equal(pgPlan.status, 'provisioning-proposed'); assert.deepEqual(snapshot(root), pgBefore); assert.deepEqual(events, []);
+  await assert.rejects(provisionGlobalProject({ ...pgOptions, write: true, expectedPlanId: 'wrong' }, pgRuntime, pgDependencies), /GLOBAL_PLAN_MISMATCH/);
+  const previousSecrets = [process.env.AIDN_PG_FIXTURE_PROJECT, process.env.AIDN_PG_FIXTURE_ADMIN];
+  process.env.AIDN_PG_FIXTURE_PROJECT = 'postgres://fixture:fixture_password_long@127.0.0.1/fixture';
+  process.env.AIDN_PG_FIXTURE_ADMIN = 'postgres://postgres:fixture_admin_password@127.0.0.1/postgres';
+  try {
+    const apply = { ...pgOptions, write: true, expectedPlanId: pgPlan.plan_id };
+    await assert.rejects(provisionGlobalProject(apply, pgRuntime, pgDependencies), /GLOBAL_POSTGRES_INSTALL_FAILED/);
+    assert.equal(fs.existsSync(path.join(pgRoot, '.aidn')), false);
+    assert.throws(() => preflightGlobalProjects({ home, candidateRoot: pgRuntime.packageRoot }), /GLOBAL_PROJECT_PROVISIONING_PENDING/);
+    assert(!fs.readFileSync(provisioningFile(home, pgRoot), 'utf8').includes('password'));
+    const resume = { ...apply, resume: true }; serverFails = false; nonempty = true;
+    await assert.rejects(provisionGlobalProject(resume, pgRuntime, pgDependencies), /GLOBAL_POSTGRES_DATABASE_NOT_EMPTY/);
+    assert(!events.includes('bootstrap'));
+    nonempty = false; installFails = true;
+    await assert.rejects(provisionGlobalProject(resume, pgRuntime, pgDependencies), /GLOBAL_PROVISION_BOOTSTRAP_INTERRUPTED/);
+    nonempty = true;
+    await assert.rejects(provisionGlobalProject(resume, pgRuntime, pgDependencies), /GLOBAL_POSTGRES_DATABASE_NOT_EMPTY/);
+    nonempty = false; installFails = false;
+    assert.equal((await provisionGlobalProject(resume, pgRuntime, pgDependencies)).status, 'complete');
+    assert.deepEqual(events.slice(-3), ['bootstrap', 'verify', 'remember']);
+    assert(!fs.existsSync(provisioningFile(home, pgRoot)));
+    assert.equal(fs.existsSync(path.join(pgRoot, 'node_modules')), false);
+  } finally {
+    for (const [index, key] of ['AIDN_PG_FIXTURE_PROJECT', 'AIDN_PG_FIXTURE_ADMIN'].entries()) {
+      if (previousSecrets[index] === undefined) delete process.env[key]; else process.env[key] = previousSecrets[index];
+    }
+  }
   console.log('PASS global management fixtures: immutable preview, exact plan, version detection, interrupted npm removal and explicit migration resume; npm injected, no native or PostgreSQL qualification');
 } finally {
   const resolved = fs.realpathSync(root);
