@@ -175,6 +175,11 @@ function main() {
       if (internalSkill === "start-session") {
         patterns.push("do not skip this skill for that reason alone: run the admission phase");
       }
+      if (internalSkill === "context-reload") {
+        patterns.push("Do not run run-json-hook or hydrate-context as part of this read-only skill",
+          "Only outside this read-only skill, after explicit cache-write authorization",
+          "This admission is not write authorization");
+      }
       const result = checkPatterns(file, text, patterns);
       return {
         skill,

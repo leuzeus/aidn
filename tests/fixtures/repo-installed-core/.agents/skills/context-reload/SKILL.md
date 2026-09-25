@@ -81,20 +81,15 @@ If `CURRENT-STATE.md` is missing, stale, or contradictory with snapshot/session/
 - do not rewrite the file in this read-only skill
 
 Keep report concise.
-4) Performance hook (mandatory in dual/db-only; optional in files):
-- run `npx aidn codex run-json-hook --skill context-reload --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
-- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
-- read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
-- hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill context-reload --project-runtime-state --json`.
-- in dual/db-only, use the hydrated payload to read `repair_layer_status`, `repair_layer_advice`, prioritized artifacts, and continuity hints before acting.
-- prefer `docs/audit/RUNTIME-STATE.md` as the short runtime digest when it has just been refreshed by hydration.
-- use this output to cross-check:
-  - branch/cycle mapping
-  - structure profile (`legacy|modern|mixed|unknown`)
-  - reload decision/reason codes
-- in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
-- in files, this hook remains non-blocking by default.
-- if `repair_layer_status` is `warn` or `block`, run `npx aidn runtime repair-layer-triage --target . --json` before relying on db-backed continuity or artifact links.
+4) Canonical read-only admission:
+- Use the live admission from Project Activation to read mode, session/cycle, source-of-truth and repair signals; unknown mode is allowed only for this context reconstruction.
+- In dual/db-only, the configured canonical backend must be available. A cached bundle or visible projection does not prove freshness.
+- Read `repair_layer_status` and `repair_layer_advice` from admission. Treat `docs/audit/RUNTIME-STATE.md` as a derived anchor.
+- If repair signals require diagnosis, use `npx aidn runtime repair-layer-triage --target . --json`; blocking findings stop further workflow actions.
+- Do not run run-json-hook or hydrate-context as part of this read-only skill: those paths can write hook history or derived caches.
+- This admission is not write authorization. Run start-session admission next; each durable write requires its own current admission.
 
-Do not modify project workflow files in this skill.
+## Separate authorized cache refresh
 
+Only outside this read-only skill, after explicit cache-write authorization and fresh workflow admission, hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill context-reload --project-runtime-state --json`.
+This writes a derived cache and computes a runtime projection even with `--json`; visible materialization requires separate explicit intent. Cache refresh is never a prerequisite for the read-only report.
