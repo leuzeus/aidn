@@ -22,6 +22,9 @@ The classification keeps automation from confusing output format with write perm
   combinations instead of silently choosing an effect.
 - Read-only and preview commands must not modify the checkout.
 - Local writes require explicit intent such as `--write`.
+- Global management previews require `--write --expect-plan` for application.
+  `setup` is an interactive executor whose confirmation dispatches the same
+  exact-plan write operation; JSON output alone never authorizes it.
 - `bootstrap --authorize` and `bootstrap --revoke` are preview-only until `--write --expect-plan PLAN_ID`; they never grant native Codex trust.
 - Activation refusal preserves the invocation's declared effect class and reports `written: false`; unavailable activation does not reclassify a mutating command as read-only.
 - `runtime db-migrate` and `runtime persistence-migrate` are preview-only by

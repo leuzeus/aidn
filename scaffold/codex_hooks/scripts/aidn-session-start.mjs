@@ -6,7 +6,8 @@ import { readHookPayload, resolveHookProject, readAdmission, isNeutralAdmission,
 async function main() {
   const payload = await readHookPayload();
   const location = resolveHookProject(import.meta.url, payload.cwd);
-  const required = ["AGENTS.md", path.join(".agents", "skills"), path.join(".codex", "agents")];
+  const required = process.env.AIDN_HOOK_PROJECT_ROOT ? ["AGENTS.md"]
+    : ["AGENTS.md", path.join(".agents", "skills"), path.join(".codex", "agents")];
   const missing = required.filter((entry) => !fs.existsSync(path.join(location.projectRoot, entry)));
   let context;
   try {

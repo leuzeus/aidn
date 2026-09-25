@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/global-management.v1",
+  "x-aidn-contract-version": "cli-output-v1",
+  "x-aidn-command": "aidn project list",
+  "x-aidn-commands": ["aidn setup", "aidn update", "aidn rollback", "aidn doctor", "aidn project add", "aidn project migrate", "aidn project list", "aidn project remove"],
+  "type": "object",
+  "required": ["contract_version", "command", "effect_class", "ok", "written", "errors", "result"],
+  "properties": {
+    "contract_version": {"type": "string", "const": "global-management.v1"},
+    "command": {"type": "string"},
+    "effect_class": {"type": "string", "enum": ["read-only", "preview", "mutating", "executor"]},
+    "ok": {"type": "boolean"},
+    "written": {"type": "boolean"},
+    "errors": {"type": "array", "items": {"type": "string"}},
+    "result": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "string"},
+        "phase": {"type": "string"},
+        "version": {"type": "string"},
+        "installed_version": {"type": ["string", "null"]},
+        "installation_id": {"type": "string"},
+        "plan_id": {"type": "string"},
+        "written": {"type": "boolean"},
+        "target": {"type": "string"},
+        "integration": {"type": "string"},
+        "help": {"type": "string"},
+        "removed": {"type": "array", "items": {"type": "string"}},
+        "projects": {"type": "array", "items": {"type": "object"}},
+        "project": {"type": "object"},
+        "external_effects": {"type": "array", "items": {"type": "object", "required": ["id"], "properties": {
+          "id": {"type": "string"}, "state": {"type": "string"}, "policy": {"type": "string"},
+          "package": {"type": "string"}, "version": {"type": "string"}, "interactive": {"type": "boolean"},
+          "connection_ref": {"type": "string"}, "admin_connection_ref": {"type": "string"}
+        }, "additionalProperties": false}},
+        "inventory": {"type": "array", "items": {"type": "object", "required": ["path", "action"], "properties": {"path": {"type": "string"}, "action": {"type": "string"}}, "additionalProperties": false}},
+        "operations": {"type": "array", "items": {"type": "object", "required": ["path"], "properties": {"path": {"type": "string"}, "action": {"type": "string"}, "kind": {"type": "string"}}, "additionalProperties": false}},
+        "conflicts": {"type": "array", "items": {"type": "object", "required": ["code"], "properties": {"code": {"type": "string"}, "path": {"type": "string"}}, "additionalProperties": false}}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

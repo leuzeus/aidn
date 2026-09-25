@@ -4,6 +4,10 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+const ownPackageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const globalBindingResolver = process.env.AIDN_GLOBAL_PACKAGE_ROOT === ownPackageRoot
+  ? (await import("../../../src/application/install/global-project-integration.mjs")).resolveGlobalProjectBinding : null;
+
 const MAX_INPUT_BYTES = 1024 * 1024;
 export async function readHookPayload(stream = process.stdin) {
   stream.setEncoding?.("utf8");
@@ -18,7 +22,9 @@ export async function readHookPayload(stream = process.stdin) {
 }
 
 export function resolveHookProject(scriptUrl, invocationCwd) {
-  const projectRoot = fs.realpathSync(path.resolve(path.dirname(fileURLToPath(scriptUrl)), "../.."));
+  const projectRoot = fs.realpathSync(globalBindingResolver && process.env.AIDN_HOOK_PROJECT_ROOT
+    ? safePath(process.env.AIDN_HOOK_PROJECT_ROOT, true)
+    : path.resolve(path.dirname(fileURLToPath(scriptUrl)), "../.."));
   const cwd = fs.realpathSync(path.resolve(invocationCwd || process.cwd()));
   const relative = path.relative(projectRoot, cwd);
   if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
@@ -151,6 +157,12 @@ export function resolveBoundRuntime(projectRoot) {
       || !["codex-integration", "installation"].includes(tx.scope) || tx.status !== "complete"
       || (tx.scope === "installation" && tx.external_status !== "complete"
         && !(tx.external_status === "skipped" && ["rollback", "uninstall"].includes(tx.action)))) throw new Error("runtime_installation_incomplete");
+  if (receipt.global_runtime) {
+    if (!globalBindingResolver) throw new Error("runtime_global_launcher_required");
+    const globalRuntime = globalBindingResolver(receipt.global_runtime);
+    if (globalRuntime.packageRoot !== ownPackageRoot) throw new Error("runtime_global_generation_changed");
+    return { entry: globalRuntime.entry, version: globalRuntime.version };
+  }
   const packageRoot = fs.realpathSync.native(safePath(binding.root, true));
   const entry = safePath(path.join(packageRoot, "bin", "aidn.mjs"));
   const versionFile = safePath(path.join(packageRoot, "VERSION"));

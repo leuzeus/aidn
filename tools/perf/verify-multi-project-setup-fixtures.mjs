@@ -16,6 +16,8 @@ import { removePathWithRetry } from './test-git-fixture-lib.mjs';
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'aidn-multi-setup-'));
 const repoRoot = path.resolve(import.meta.dirname, '../..');
 const version = fs.readFileSync(path.join(repoRoot, 'VERSION'), 'utf8').trim();
+const [major, minor] = version.split('.').map(Number);
+const nextVersion = `${major}.${minor + 1}.0`;
 const home = path.join(root, 'home');
 const checks = [];
 const put = (dir, name, data) => { const file = path.join(dir, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, typeof data === 'string' ? data : JSON.stringify(data)); };
@@ -78,19 +80,19 @@ try {
   const sha = createHash('sha256').update('candidate').digest('hex');
   const integrity = 'sha512-' + createHash('sha512').update('candidate').digest('base64');
   const stages = [];
-  await assert.rejects(updateProject({ target, version: '0.10.0', write: true, localPackage: { packagePath: tarball, packageSha256: sha } }, {
+  await assert.rejects(updateProject({ target, version: nextVersion, write: true, localPackage: { packagePath: tarball, packageSha256: sha } }, {
     home, log: () => {}, run: (command, args, options) => {
       stages.push(options.stage);
       if (options.stage === 'candidate-install') {
-        put(options.cwd, 'node_modules/aidn-workflow/package.json', { name: 'aidn-workflow', version: '0.10.0' });
-        put(options.cwd, 'node_modules/aidn-workflow/VERSION', '0.10.0');
+        put(options.cwd, 'node_modules/aidn-workflow/package.json', { name: 'aidn-workflow', version: nextVersion });
+        put(options.cwd, 'node_modules/aidn-workflow/VERSION', nextVersion);
         put(options.cwd, 'package-lock.json', { packages: { 'node_modules/aidn-workflow': { integrity } } });
       } else if (options.stage === 'candidate-preflight') throw new Error('PERSISTENCE_MIGRATION_REQUIRED');
     },
   }), /PERSISTENCE_MIGRATION_REQUIRED/);
   assert.deepEqual(stages, ['candidate-install', 'candidate-preflight']);
   assert.deepEqual(snapshot(target), targetBefore); assert.deepEqual(snapshot(second), secondBefore);
-  await assert.rejects(updateProject({ target, version: '0.10.0', write: true, fingerprint: 'changed' }, { home }), /INSTALLED_PROJECT_CHANGED/);
+  await assert.rejects(updateProject({ target, version: nextVersion, write: true, fingerprint: 'changed' }, { home }), /INSTALLED_PROJECT_CHANGED/);
   put(target, 'node_modules/aidn-workflow/VERSION', '0.8.0'); assert.equal(inspectProject(target).state, 'inconsistent');
   put(target, 'node_modules/aidn-workflow/VERSION', version);
   const configFile = path.join(target, '.aidn/config.json'), configText = fs.readFileSync(configFile, 'utf8');

@@ -20,6 +20,7 @@ import { isDbOnlyStrictVisibleInstallAllowed } from "../runtime/db-only-visible-
 import { migrateWorkflowDbFile } from "../../lib/sqlite/workflow-db-schema-lib.mjs";
 import { resolveEffectiveRuntimePersistence } from "../runtime/runtime-persistence-service.mjs";
 import { executeRuntimeBackendAdoption, planRuntimeBackendAdoption } from "../runtime/runtime-backend-adoption-service.mjs";
+import { globalProjectBinding, renderGlobalCommands } from "./global-project-integration.mjs";
 
 const encoded = (text) => Buffer.from(text).toString("base64");
 const json = (value) => `${JSON.stringify(value, null, 2)}\n`;
@@ -71,7 +72,7 @@ async function prepare(options) {
   if (options.args?.adapterFile === undefined) delete args.adapterFile;
   const version = fs.readFileSync(path.join(repoRoot, "VERSION"), "utf8").trim();
   // The existing asset planner validates root ancestry before any project reads.
-  const rootCheck = planCodexAssets({ repoRoot, targetRoot, action: options.action ?? "install", skipAgents: args.skipAgents });
+  const rootCheck = planCodexAssets({ repoRoot, targetRoot, globalHome: options.globalHome, action: options.action ?? "install", skipAgents: args.skipAgents });
   if (!rootCheck.ok) return { public: { ...rootCheck, scope: "installation", asset_plan: rootCheck, external_effects: [] } };
   for (const relative of ["docs/audit", ".aidn/project", ".aidn/config.json", ".gitignore", ".github"]) checkTree(path.join(targetRoot, relative));
   const configRead = readAidnProjectConfig(targetRoot);
@@ -97,6 +98,7 @@ async function prepare(options) {
   const customCandidates = [];
   const collect = ({ targetRelative, targetPath, content }, kind = null) => {
     const relative = targetRelative ?? path.relative(targetRoot, targetPath).replace(/\\/g, "/");
+    if (options.globalHome && /\.md$/i.test(relative)) content = renderGlobalCommands(String(content));
     operations.set(relative, { path: relative, kind: kind ?? (isRetainedInstallSeed(relative) ? "seed-file" : "local-file"), data: encoded(content) });
   };
   if (args.adapterData || !fs.existsSync(path.join(targetRoot, ".aidn/project/workflow.adapter.json"))) collect({ targetRelative: ".aidn/project/workflow.adapter.json", content: json(adapter.data) }, "config-fields");
@@ -146,7 +148,7 @@ async function prepare(options) {
   if (args.codexMigrateCustom) effects.push({ id: "custom-file-llm-migration", state: "deferred", optional: true, reversible: false, paths: customCandidates.map((candidate) => candidate.targetRelative) });
   const context = { args, version_before: currentConfig.install?.aidnVersion ?? null, version_after: version, current_config: currentConfig, next_config: nextConfig, verify_entries: required, external_effects: effects, compatibility, packs, strict, defaults, import_persistence: importPersistence, custom_candidates: customCandidates };
   const installation = { operations: [...operations.values()], context };
-  const assetPlan = planCodexAssets({ repoRoot, targetRoot, action: options.action ?? "install", templateVars: vars, skipAgents: args.skipAgents, forceAgentsMerge: args.forceAgentsMerge });
+  const assetPlan = planCodexAssets({ repoRoot, targetRoot, globalHome: options.globalHome, action: options.action ?? "install", templateVars: vars, skipAgents: args.skipAgents, forceAgentsMerge: args.forceAgentsMerge });
   const journal = planInstallationAssets({ ...options, repoRoot, targetRoot, templateVars: vars, installation });
   const receipt = readInstallationContext({ targetRoot }).receipt;
   return { repoRoot, targetRoot, args, vars, installation, public: { ...journal, asset_plan: assetPlan, version_info: versionInfo(currentConfig, version, receipt) } };
@@ -250,7 +252,12 @@ async function finishExternal({ transaction, targetRoot, checkpoint }, repoRoot,
   }
   // Local manifest verification and import verification are part of completion,
   // before installation metadata claims the package version.
-  for (const relative of context.verify_entries) if (!fs.existsSync(path.join(targetRoot, relative))) fail("INSTALLATION_VERIFY_MISSING", relative);
+  const globalHome = options.globalHome ?? transaction.receipt_after?.global_runtime?.home;
+  if (globalHome) globalProjectBinding(globalHome, repoRoot);
+  for (const relative of context.verify_entries) {
+    if (globalHome && (relative.startsWith(".agents/skills/") || relative.startsWith(".codex/agents/") || relative === ".codex/hooks/aidn-hook-runtime.mjs")) continue;
+    if (!fs.existsSync(path.join(targetRoot, relative))) fail("INSTALLATION_VERIFY_MISSING", relative);
+  }
   const verified = verifyArtifactImportOutputs(targetRoot, verifyOnlyPersistence ? { ...args, skipArtifactImport: true } : args, nextConfig, defaults);
   if (verified.checked && !verified.ok) fail("INSTALLATION_IMPORT_VERIFY_FAILED");
   messages.push("verified: OK");

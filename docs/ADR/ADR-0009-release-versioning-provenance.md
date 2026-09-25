@@ -65,6 +65,11 @@ Rules:
 
 Installed configuration versioning follows the same authority boundary:
 
+ADR-0013 adds an explicit global installation binding for migrated clients.
+Their historical installation marker remains distinct from the active host
+generation; ordinary global updates must not rewrite project version markers.
+The global public rollout is still in progress and is not release-qualified.
+
 - root `.aidn/config.json.version` remains configuration schema `1`, independent
   of product SemVer; legacy configurations without it remain valid;
 - optional `install.aidnVersion` denotes the last complete successful requested

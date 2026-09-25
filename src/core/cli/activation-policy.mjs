@@ -26,9 +26,9 @@ export function classifyCliActivation(descriptor, args = []) {
   if (descriptor?.dispatch_kind === "builtin") return decision("information");
   if (descriptor?.visibility === "internal" && descriptor.group === "perf" && descriptor.name.startsWith("verify-")) return decision("source-verification");
   if (descriptor?.visibility === "internal" && descriptor.group === "codex" && descriptor.name === "normalize-hook-payload") return decision("normalization");
-  if (descriptor?.group === "root" && ["bootstrap", "install"].includes(descriptor.name)) return decision("installation");
+  if (descriptor?.group === "root" && ["bootstrap", "install", "setup", "update", "rollback", "doctor"].includes(descriptor.name)) return decision("installation");
   if (descriptor?.group === "root" && descriptor.name === "build-release") return decision("source-release");
-  if (descriptor?.group === "project" && descriptor.name === "config") return decision("maintenance");
+  if (descriptor?.group === "project" && ["config", "add", "migrate", "list", "remove"].includes(descriptor.name)) return decision("maintenance");
   if (descriptor?.group === "runtime") {
     // This command keeps its admission contract and guards itself before its
     // backend loads; it must not acquire the generic refusal shape.

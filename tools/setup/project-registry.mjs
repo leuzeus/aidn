@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { writeFileAtomicSync } from '../../src/lib/fs/atomic-write-lib.mjs';
+import { hostExecutionIdentity } from '../../src/application/install/global-runtime-store.mjs';
 
 const fail = code => { throw new Error(code); };
 export function setupHome(env = process.env) {
@@ -29,14 +30,15 @@ export function readProjects(home = setupHome()) {
     return registry;
   } catch { fail('INVALID_PROJECT_REGISTRY'); }
 }
-export function editProjects(home, edit) {
+export function editProjects(home, edit, expectedFingerprint) {
   fs.mkdirSync(home, { recursive: true });
   const lock = path.join(home, 'projects.lock');
   let fd;
   try { fd = fs.openSync(lock, 'wx'); } catch (error) { if (error.code === 'EEXIST') fail('PROJECT_REGISTRY_BUSY'); throw error; }
   try {
-    fs.writeFileSync(fd, JSON.stringify({ pid: process.pid, created: new Date().toISOString() }));
+    fs.writeFileSync(fd, JSON.stringify({ ...hostExecutionIdentity(), created: new Date().toISOString() }));
     const registry = readProjects(home);
+    if (expectedFingerprint && createHash('sha256').update(JSON.stringify(registry)).digest('hex') !== expectedFingerprint) fail('PROJECT_REGISTRY_CHANGED');
     edit(registry.projects);
     writeFileAtomicSync(path.join(home, 'projects.json'), JSON.stringify(registry, null, 2) + '\n');
     return registry;
@@ -51,10 +53,10 @@ export function rememberProject(target, home = setupHome()) {
     entry.last_used = new Date().toISOString();
   });
 }
-export function forgetProject(id, home = setupHome()) {
+export function forgetProject(id, home = setupHome(), expectedFingerprint) {
   return editProjects(home, entries => {
     const index = entries.findIndex(entry => entry.id === id);
     if (index === -1) fail('PROJECT_NOT_REGISTERED');
     entries.splice(index, 1);
-  });
+  }, expectedFingerprint);
 }

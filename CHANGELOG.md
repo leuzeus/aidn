@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased — 0.10.0 global runtime foundation (in progress)
+
+- Add internal verified runtime generations, operation leases, exact switch plans,
+  conflict-aware journal recovery and rollback to the previous global generation.
+- Add staged package preparation, user-level Codex asset rendering, a stable
+  launcher with integration revision checks, and receipt-bound project connectors.
+- Add candidate project compatibility checks and a read-only cleanup inventory
+  that preserves customized and unmanaged files.
+- Add public global setup/update/rollback/doctor and project add/migrate/list/remove
+  commands, effect policies and JSON contract; mutation requires an exact plan.
+- Journal client migration backups and npm cleanup, refuse workflow activation
+  during interruption and support explicit resume without touching other projects.
+- Add wizard confirmation, local tarball selection, masked existing PostgreSQL
+  connection entry and optional explicitly disclosed plaintext user persistence.
+- Add source PowerShell user installation and conservative orphan-lock recovery.
+  Serialize recovery itself and refuse removing local skills when their global
+  definitions are explicitly disabled in Codex. Qualify user-skill discovery in
+  `CODEX_HOME/skills` and actual npm update/rollback on two temporary clients.
+- Add explicit local PostgreSQL provisioning to the common project wizard,
+  with a pinned server version, secret-free recovery journal, empty-database
+  initialization and update blocking while preparation is interrupted.
+  Native qualification and release remain incomplete; legacy setup commands
+  retain their per-project behavior. Fixtures do not qualify server installation.
+
 ## 0.9.1
 
 - Allow read-only context reload before a work mode or session exists, while retaining activation, canonical backend and write-admission gates.
