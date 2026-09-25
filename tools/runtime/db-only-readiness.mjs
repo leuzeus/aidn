@@ -27,6 +27,9 @@ const DB_FIRST_MARKERS = [
   "readIndexFromSqlite",
   "decodeEmbeddedArtifactContent(",
   "preWriteAdmit(",
+  // Specific admission receives backend-resolved canonical artifacts and rejects
+  // projection fallback; its filesystem reads observe pending patch paths only.
+  "evaluateNativeWriteAdmission(",
   "runHydrateContextUseCase(",
 ];
 

@@ -79,10 +79,23 @@ location and source availability are required.
 `SessionStart` obtains a bounded read-only canonical admission summary, including
 resume/compaction entry paths. It never implicitly hydrates or creates workflow
 artifacts. `PreToolUse` covers the audited `apply_patch` path and its matcher
-aliases `Edit` and `Write`, rechecking generic core admission. It translates a
+aliases `Edit` and `Write`, passing the request to specific core scope admission. It translates a
 blocked admission or recoverable child failure into supported explicit-deny JSON.
 It does not classify arbitrary shells or MCP tools, replace transition-specific
 core prerequisites, rewrite tool input or grant reusable write authority.
+
+2026-09-24 amendment: generic admission stays an orientation API. The additive
+`--native-request-stdin` form evaluates all native operations against canonical
+phase, session/cycle, DoR, task and exact file/operation scope. Scope metadata
+belongs to the existing plan artifact. Notes and unfrozen planning have bounded
+exemptions; normative docs require implementation prerequisites. Exploration
+needs canonical task evidence. Repair is never a free-form native exemption:
+installation controls and workflow state retain maintenance/transition owners.
+DB projections, model declarations and earlier PASS cannot authorize a patch.
+Decisions record observed identity/content hashes without a second store,
+semantic-validation claim or hook/application atomicity. The
+[integration matrix](../CODEX_INTEGRATION.md#specific-native-write-admission)
+defines scope and conservative path/parser limitations.
 
 The native client remains responsible for project/hook trust and execution.
 Upstream command-hook errors, timeouts, disabled hooks and unavailable handlers
@@ -120,6 +133,49 @@ hook schema. Plugin packaging can group integration assets but does not grant
 native trust. A separate app-server runner can own explicitly delegated sessions;
 it does not take over arbitrary existing desktop sessions. All three remain
 optional designs requiring a measured benefit and their own qualification.
+
+## Windows host setup amendment — 2026-09-24
+
+A separate PowerShell host wrapper may install a reviewed, SHA-256-pinned local
+AIDN tarball or download an exact published stable GitHub release and optionally
+prepare PostgreSQL. Release downloads must agree with the published manifest and
+checksums; npm records the versioned HTTPS URL and matching integrity before
+bootstrap. Preview does not download or create a cache. It delegates all project assets,
+activation, schema adoption and installation recovery to the existing bootstrap.
+Local previews do not write or contact databases; explicit latest/release discovery
+and update checks may read GitHub metadata. Application requires `-Write`. The
+interactive setup collects the same inputs and displays the validated plan;
+only the literal confirmation `INSTALLER` delegates to the `-Write` path.
+Secrets are requested after confirmation, never while collecting preview inputs.
+Optional local PostgreSQL installation invokes a pinned official WinGet package with
+interactive Windows approval, then creates only a dedicated role/database.
+Existing databases must prove compatible ownership and credentials; no implicit
+password rotation, privilege takeover, server upgrade or database deletion.
+
+Credentials use existing environment references, with no new runtime resolver.
+Optional persistence into the Windows user environment is an explicit wrapper
+flag and is not a secret vault. Admin credentials are not passed to child tools.
+OS/npm/database stages are not covered by the bootstrap rollback journal and
+remain in place after failure. No global Codex configuration, native approval,
+shared synchronization or model invocation is added. This extends host setup,
+not workflow authority or the shared coordination boundary.
+
+The optional user setup lives under AIDN_HOME (default LOCALAPPDATA/AIDN), with
+an explicitly installed PATH launcher and independently versioned package copies.
+Replacing its active pointer does not update project engines. projects.json is
+a schema-versioned, locked/atomically replaced host address book, excluded from
+the workflow information model. It contains only id, name, absolute path and
+last_used; installation versions remain receipt/config/package observations.
+Selection never trusts a cached version or silently redirects a missing path.
+
+Updates preserve the recorded pack and current project configuration, prepare
+the verified package outside the project, and use the bootstrap installation
+services with verify-only persistence. Candidate admission reads PostgreSQL or
+SQLite without migrations and blocks before project npm replacement when schema
+work is needed. No-op/downgrade, consultation and cancellation do not write.
+Package replacement and asset transactions are distinct stages: failures may
+leave a newer package with an older completion receipt, requiring diagnosis and
+existing installation recovery. Native approval is never inherited from setup.
 
 ## Verification
 

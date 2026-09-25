@@ -17,6 +17,19 @@ Scope: `local | shared | high-risk`
 ## Dependencies
 - 
 
+## Native write scope
+```json
+{"version":1,"tasks":[]}
+```
+
+Before entering implementation, bind each applicable task's exact text to its
+`intent` (`implementation` or `exploration`) and explicit project-relative
+`paths`: each entry has `path` and `operations` (`add`, `update`, `delete`,
+`move`, `move-destination`). No glob or directory grants. Both move paths need
+permission. A native edit cannot alter a frozen plan to expand its own scope;
+use the governed scope-change/transition process. This is scope admission,
+not semantic review or an alternative to DoR.
+
 ## Done criteria (per task)
 - Task 1:
 - Task 2:

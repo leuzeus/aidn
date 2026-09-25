@@ -6,7 +6,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { planInstallation, executeInstallation } from "../../src/application/install/installation-service.mjs";
+import { planInstallation, executeInstallation, verifyInstallationCandidate } from "../../src/application/install/installation-service.mjs";
 import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persistence-fake-pg-lib.mjs";
 import { listPostgresRuntimeRelationalTargetStructures, POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION } from "../../src/application/runtime/postgres-runtime-persistence-contract-service.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
@@ -69,6 +69,15 @@ async function check(name, run) {
 }
 let cleanup = { ok: false };
 try {
+  await check("setup_candidate_preflight_reads_postgres_without_local_or_database_writes", async () => {
+    for (const ready of [true, false]) {
+      const root = target(`candidate-${ready}`), pg = fakePg({ ready }), before = snapshot(root);
+      const options = { repoRoot, targetRoot: root, args, runtimeBackendAdoptionOptions: pg.options };
+      if (ready) assert.equal((await verifyInstallationCandidate(options)).ok, true);
+      else await assert.rejects(verifyInstallationCandidate(options), /PERSISTENCE_VERIFY_ONLY_REQUIRES_NOOP/);
+      assert(pg.calls.reads > 0); assert.deepEqual(pg.calls.writes, []); assert.deepEqual(snapshot(root), before);
+    }
+  });
   await check("preview_never_reads_database_and_declares_import_skipped", async () => {
     const root = target("preview"), pg = fakePg(); const before = snapshot(root);
     const result = await planInstallation({ repoRoot, targetRoot: root, args, runtimeBackendAdoptionOptions: pg.options });

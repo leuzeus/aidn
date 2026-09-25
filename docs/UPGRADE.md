@@ -1,5 +1,13 @@
 # Upgrade Guide
 
+## Upgrade to 0.9.0 (unreleased candidate)
+
+Use the reviewed local tarball until publication; tagged examples below apply
+only after the release exists. Covered native product patches now require an
+explicit task scope in the canonical plan. Follow
+[the client migration guide](CODEX_CLIENT_MIGRATION.md), reinstall owned hooks,
+and review them in Codex. Installation does not establish native approval.
+
 ## Upgrade to 0.8.0
 
 Bootstrap preserves client instructions and third-party hooks and manages AIDN
@@ -136,7 +144,7 @@ Recent workflow resilience updates also add:
 1. Install or upgrade the package to the matching product tag:
 
 ```bash
-npm install --save-dev github:leuzeus/aidn#v0.8.0
+npm install --save-dev github:leuzeus/aidn#v0.9.0
 ```
 
 2. Run the recommended upgrade orchestrator:

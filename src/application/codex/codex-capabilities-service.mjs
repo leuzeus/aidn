@@ -106,7 +106,15 @@ export function inspectCodexCapabilities({ targetRoot = process.cwd(), env = pro
     warnings.push("client_version_unqualified; installed templates do not prove native execution");
   }
   warnings.push("project_and_hook_trust_not_inspected; approval requires the native client");
-  return {schema_version:1,clients,installation:{expected,missing},states:{
+  const hooks = readJson(path.join(root,".codex/hooks.json"));
+  const configured = (hooks?.hooks?.PreToolUse ?? []).some((group) => group.matcher === "^(apply_patch|Edit|Write)$"
+    && group.hooks?.some((hook) => String(hook.command ?? "").includes("aidn-pre-tool-use.mjs")));
+  return {schema_version:1,clients,installation:{expected,missing},native_write_coverage:{
+    configured:configured ? "edit-matcher-present" : "not-detected", tools:["apply_patch","Edit","Write"],
+    payload_format:"codex-tool_input.command-v4a", expected_policy:"specific-canonical-task-scope", installed_policy:"not-verified-by-inventory",
+    excluded:["shell","write_stdin","MCP","other-tools"], native_approval:"unknown", execution:"unverified",
+    limitation:"Metadata describes configuration only; disabled, unapproved or unexecuted hooks provide no native refusal guarantee.",
+  },states:{
     installed:missing.length === 0 ? "present" : missing.length === expected.length ? "absent" : "incomplete",
     detected:detected ? "present" : "unknown",approved:"unknown",connected:"not_applicable",
     operational:"unverified",degraded:missing.length > 0 || !detected,

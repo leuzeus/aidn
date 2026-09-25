@@ -2,6 +2,19 @@ import { getSourceOfTruthPolicy } from "../../core/source-of-truth/source-of-tru
 import fs from "node:fs";
 import path from "node:path";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
+import { evaluateNativeWriteAdmission } from "./native-write-admission-service.mjs";
+
+export function admitSpecificNativeWrite({ request, result, ...canonical }) {
+  if (request === undefined) return { ...result, admission_kind: "generic" };
+  const decision = evaluateNativeWriteAdmission({ request, result, ...canonical });
+  const ok = decision.outcome === "allow";
+  return { ...result, admission_kind: "specific", write_decision: decision, ok,
+    admission_status: ok ? (result.warnings.length ? "admitted_with_warnings" : "admitted") : "blocked",
+    // Generic workflow blockers remain diagnostic; a note is not a workflow transition.
+    generic_admission_status: result.admission_status,
+    blocking_reasons: decision.reasons.map((reason) => `${reason.code}: ${reason.requirement}`),
+  };
+}
 
 const DEFAULT_POLICY = Object.freeze({
   requireMode: true,

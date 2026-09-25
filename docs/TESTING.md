@@ -30,6 +30,15 @@ Do not assume a fixture run means the current repo root is an installed target.
 
 ### 1. Focused Fixture Verifications
 
+For native write scope, first run
+`node tools/perf/verify-native-write-admission-fixtures.mjs`, then the existing
+Codex integration, admission and public contract/effect fixtures. The new cases
+also run inside `perf:verify-codex-integration`: generic-vs-specific refusal,
+planning, task scope, DoR/exploration evidence, mixed patches, move/delete,
+path boundaries and fresh observations. These are fixture proofs, never native
+hook execution. Use N01-N17 in [native qualification](CODEX_NATIVE_QUALIFICATION.md)
+for a human-approved, candidate-bound native run.
+
 Most `npm run perf:verify-*` commands run one focused behavior check against tracked fixtures.
 
 Use these when you need targeted confidence on one subsystem:
@@ -65,6 +74,22 @@ When a change affects the simplified install/upgrade orchestrator, run:
 - `npm run perf:verify-install-import`
 - `npm run perf:verify-project-config`
 - `npm run perf:verify-install-idempotence`
+
+The bootstrap and Codex integration composites also run
+`tools/perf/verify-multi-project-setup-fixtures.mjs` for registry isolation,
+version detection, no-op/downgrade behavior, candidate-before-package ordering
+and read-only SQLite admission. The installation persistence-policy fixtures
+also cover candidate PostgreSQL verification with a fake driver (not live proof).
+They additionally run
+`tools/perf/verify-windows-project-setup-fixtures.mjs`. This verifies the real
+Windows PowerShell preview, release download integrity and bounded HTTPS handling,
+wizard cancellation, invalid-input retry, explicit confirmation for all three
+database modes, and refusal to continue after a failed preflight,
+and injected npm/WinGet/PostgreSQL orchestration. The injected runner uses a
+fixture npm entry point on every host, while a missing entry point must still
+fail before any subprocess or database operation. This covers
+including credential separation and failure stops. Real server installation,
+live PostgreSQL and native hook approval remain separate, unexecuted evidence.
 
 The CLI effect policy verifier checks the public command effect inventory in `src/core/cli/effect-policy.mjs`. The no-implicit-write verifier runs stable read-only, preview, and projector dry-run commands against a temporary fixture copy and fails if checkout-bound paths, including `.agents/*` and `.aidn/runtime/*`, change. The CLI output contract verifier gives every public JSON command its own isolated Git fixture with an explicitly derived dual-SQLite projection, then validates the result against `src/core/contracts/cli-output/*.schema.json`; commands never inherit mutations from a previously checked contract. For projector commands, it also verifies that `--dry-run --json` does not mutate the projected Markdown artifact.
 When a contract command child fails, the verifier reports its exit status,

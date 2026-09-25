@@ -27,6 +27,23 @@ Installed workflow support files now also include:
 - `docs/audit/REANCHOR_PROMPT.md` for assistant restart / partial-memory recovery
 - `docs/audit/ARTIFACT_MANIFEST.md` for "where to read what"
 
+## Complete Windows setup
+
+Install the optional user launcher with
+`powershell -File .\scripts\setup-project.ps1 -InstallSetup -Write`, then use
+`aidn-setup` to manage independent projects. `-CheckUpdate` reads release metadata;
+`-Update -ReleaseVersion latest -Write` updates one installed project while
+preserving its configuration and requiring database migrations separately.
+
+Run `powershell -File .\scripts\setup-project.ps1 -Wizard` from the updated source
+checkout for guided setup, or use explicit parameters for automation.
+
+For an exact published GitHub release or a reviewed local AIDN package,
+`scripts/setup-project.ps1` can orchestrate
+the package, Codex assets and either an existing PostgreSQL database or an
+interactive local server installation. It previews by default and applies only
+with `-Write`. See [Windows project setup](WINDOWS_PROJECT_SETUP.md).
+
 ## Step 1 - Prerequisites
 
 - Node.js 22.13 or newer
@@ -36,8 +53,11 @@ Installed workflow support files now also include:
 
 Install from GitHub:
 
+The 0.9.0 tag example applies after publication. Until then, use the reviewed
+local candidate tarball and verify its manifest and checksum.
+
 ```bash
-npm install --save-dev github:leuzeus/aidn#v0.8.0
+npm install --save-dev github:leuzeus/aidn#v0.9.0
 ```
 
 Install from local path (offline/local dev):
