@@ -153,8 +153,8 @@ Artifact commands select the configured runtime backend. PostgreSQL upserts
 write only the named artifact, its blob/head and associated session/cycle row
 inside one transaction, using an existing compatible schema and unambiguous
 scope. They do not adopt a store or rebuild its index. `--path` is relative to
-the audit root (for example `sessions/S001-example.md`, never
-`docs/audit/sessions/S001-example.md`). The additive `backend` field identifies
+the audit root (for example `sessions/S001-example.md`); do not prefix it
+with the audit root. The additive `backend` field identifies
 the store; the legacy v1 `sqlite_file` field is empty for PostgreSQL.
 `list`, `get` and materialization previews remain read-only. JSON formatting
 does not authorize an upsert or materialization; their existing effect rules
