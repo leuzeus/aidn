@@ -62,12 +62,14 @@ native discovery or DB qualification completed.
 
 ## Implementation boundary
 
-The current change supplies internal store, package staging, global assets,
-launcher, project binding, candidate compatibility and cleanup inventory services.
-It does **not** yet expose the proposed public setup/update/project/doctor CLI,
-complete the wizard, set user environment variables, implement orphan recovery,
-or execute the client npm cleanup transaction. The version authority remains
-0.9.1 until those release-blocking interfaces and their contracts are implemented.
+The implementation supplies the store, package staging, global assets, launcher,
+project binding, candidate compatibility, public management CLI and cleanup
+transaction. Migration journals private backups and resumes interrupted npm work.
+The common wizard applies the same exact plans; the source PowerShell entry point
+registers user environment variables. Orphan recovery requires a previous OS boot
+witness, otherwise it refuses. See `docs/GLOBAL_SETUP.md` for the remaining wizard,
+native integration and release qualification boundaries. The version authority
+is 0.10.0 as an unpublished candidate while those release blockers remain open.
 
 Before 0.10.0 publication, require public effect/JSON coverage, update and rollback
 preflights against migrated projects, interrupted external-operation recovery,

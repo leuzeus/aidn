@@ -13,7 +13,7 @@ const fail = code => { throw new Error(code); };
 
 // Runs from the candidate package before activation. No installation planner is
 // involved: a normal global update must not propose rewriting client assets.
-export async function inspectGlobalProjectCompatibility({ targetRoot, candidateIntegrationRevision = GLOBAL_INTEGRATION_REVISION, globalRecoveryPlanId }, {
+export async function inspectGlobalProjectCompatibility({ targetRoot, candidateIntegrationRevision = GLOBAL_INTEGRATION_REVISION, globalRecoveryPlanId, globalMigrationPlanId }, {
   postgresPlan = planRuntimeBackendAdoption,
 } = {}) {
   const root = fs.realpathSync(checkedHostPath(path.resolve(targetRoot)));
@@ -28,7 +28,7 @@ export async function inspectGlobalProjectCompatibility({ targetRoot, candidateI
   if (!adapter || typeof adapter !== 'object' || Array.isArray(adapter)) fail('GLOBAL_PROJECT_ADAPTER_INVALID');
   const { receipt } = readInstallationContext({ targetRoot: root });
   if (!receipt?.installation) fail('GLOBAL_PROJECT_RECEIPT_REQUIRED');
-  const preparation = inspectPreparedProject({ targetRoot: root, globalRecoveryPlanId });
+  const preparation = inspectPreparedProject({ targetRoot: root, globalRecoveryPlanId, globalMigrationPlanId });
   const activation = { authorization: preparation.authorization,
     state: preparation.authorization?.status === 'revoked' ? 'revoked' : receipt.activation ? 'active' : 'legacy-active' };
   // Revocation is intentional. Still validate preparation by reading assets and

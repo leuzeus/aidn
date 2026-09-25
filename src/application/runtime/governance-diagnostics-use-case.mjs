@@ -197,6 +197,9 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "bootstrap-restore-global-skills", linked_concepts: ["install_assets"] },
   { id: "bootstrap-restore-global-skills-write", linked_concepts: ["install_assets"] },
   { id: "bootstrap-preview", linked_concepts: ["workflow_rules", "project", "runtime_defaults", "install_assets"] },
+  ...["setup", "update", "rollback", "doctor", "project-add", "project-migrate", "project-list", "project-remove"].map(name => ({
+    id: `global-${name}`, linked_concepts: ["install_assets", "project_activation", "project", "cli_output_contract"],
+  })),
   { id: "bootstrap-diagnose", linked_concepts: ["install_assets", "workspace", "project_activation"] },
   { id: "bootstrap-repair", linked_concepts: ["install_assets"] },
   { id: "bootstrap-repair-write", linked_concepts: ["install_assets"] },

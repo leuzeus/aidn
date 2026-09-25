@@ -33,9 +33,11 @@ Do not assume a fixture run means the current repo root is an installed target.
 The in-progress global runtime foundation has a focused suite:
 `npm run perf:verify-global-runtime`. It covers package/asset integrity, operation
 leases, switch and recovery preconditions, compatibility checks, receipt-bound
-global project connectors and read-only cleanup inventories. Package installation
-is injected in its launcher fixture; native Codex discovery, actual PostgreSQL,
-the public update wizard and complete npm migration are not qualified by it.
+global project connectors, public management plans, new project attachment,
+registry removal, read-only cleanup inventories, wizard cancellation and npm
+interruption/resume. Package installation and removal are injected; native Codex
+discovery, actual PostgreSQL, native secret entry and OS reboot recovery are not
+qualified by these fixtures.
 See ADR-0013 for the remaining release boundary.
 
 For native write scope, first run

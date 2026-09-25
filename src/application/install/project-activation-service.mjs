@@ -234,6 +234,7 @@ export function readActivation({ targetRoot = process.cwd() } = {}) {
     identity = resolveActivationTarget({ targetRoot });
     authorization = readAuthority(identity).document;
     if (authorization?.status === "revoked") return { state: "revoked", active: false, identity, authorization, receipt, errors };
+    if (readBytes(localPath(identity.target_root, ".aidn/install/global-migration.json")) !== null) fail("ACTIVATION_GLOBAL_MIGRATION_PENDING");
     if (readBytes(localPath(identity.target_root, ".aidn/install/pending.json")) !== null) fail("ACTIVATION_INSTALLATION_PENDING");
     receipt = validateReceipt(identity);
     if (receipt?.activation && !authorization) fail("ACTIVATION_AUTHORITY_MISSING");
@@ -248,8 +249,14 @@ export function readActivation({ targetRoot = process.cwd() } = {}) {
 
 // Compatibility checking must verify a deliberately revoked project's assets
 // without changing its authority or turning that check into activation.
-export function inspectPreparedProject({ targetRoot = process.cwd(), globalRecoveryPlanId } = {}) {
+export function inspectPreparedProject({ targetRoot = process.cwd(), globalRecoveryPlanId, globalMigrationPlanId } = {}) {
   const identity = resolveActivationTarget({ targetRoot });
+  const migrationBytes = readBytes(localPath(identity.target_root, ".aidn/install/global-migration.json"));
+  if (migrationBytes) {
+    const { journal_sha256, ...migration } = parse(migrationBytes);
+    if (!globalMigrationPlanId || migration.plan?.plan_id !== globalMigrationPlanId
+        || journal_sha256 !== hash(JSON.stringify(migration))) fail("ACTIVATION_GLOBAL_MIGRATION_PENDING");
+  }
   if (readBytes(localPath(identity.target_root, ".aidn/install/pending.json")) !== null) fail("ACTIVATION_INSTALLATION_PENDING");
   const receipt = validateReceipt(identity, { globalRecoveryPlanId });
   if (!receipt || !Object.keys(receipt.assets).length) fail("ACTIVATION_PREPARATION_MISSING");

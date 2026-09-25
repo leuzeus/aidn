@@ -115,6 +115,7 @@ function builtinCommand(group, name, {
 }
 
 const DIRECT_COMMANDS = freezeDeep([
+  ...["setup", "update", "rollback", "doctor"].map(name => publicCommand("root", name, "tools/setup/global-cli.mjs", ["global-management.v1.schema.json"], [name])),
   builtinCommand("root", "help", { aliases: ["--help", "-h"] }),
   builtinCommand("root", "version", { aliases: ["--version", "-v"] }),
   publicCommand("root", "bootstrap", "tools/bootstrap.mjs", [
@@ -273,6 +274,7 @@ const RUNTIME_COMMANDS = freezeDeep([
 ]);
 
 const PROJECT_COMMANDS = freezeDeep([
+  ...["add", "migrate", "list", "remove"].map(name => publicCommand("project", name, "tools/setup/global-cli.mjs", ["global-management.v1.schema.json"], [`project-${name}`])),
   publicCommand("project", "config", "tools/project/config.mjs", [
     "project-config-list.v1.schema.json",
     "project-config-preview.v1.schema.json",

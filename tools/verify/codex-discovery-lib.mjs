@@ -4,7 +4,7 @@ import readline from "node:readline";
 import { spawn } from "node:child_process";
 
 function executableCandidates(env) {
-  const pathEntries = String(env.PATH ?? "").split(path.delimiter).filter(Boolean);
+  const pathEntries = String(env.PATH ?? env.Path ?? env.path ?? "").split(path.delimiter).filter(Boolean);
   if (process.platform === "win32") {
     return pathEntries.flatMap((entry) => [
       path.join(entry, "codex.cmd"),
@@ -51,6 +51,8 @@ export async function discoverRepoSkills({
   env = process.env,
   timeoutMs = 30000,
   expectedSkillNames,
+  scope = "repo",
+  skillsRoot: requestedSkillsRoot,
 }) {
   const launcher = findCodexLauncher(env);
   if (!launcher) {
@@ -70,7 +72,7 @@ export async function discoverRepoSkills({
   );
 
   const normalizedCwd = path.resolve(cwd);
-  const skillsRoot = path.join(normalizedCwd, ".agents", "skills");
+  const skillsRoot = requestedSkillsRoot ?? path.join(normalizedCwd, ".agents", "skills");
   const expectedNames = expectedSkillNames ?? (fs.existsSync(skillsRoot)
     ? fs.readdirSync(skillsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory())
       .flatMap((entry) => {
@@ -184,7 +186,7 @@ export async function discoverRepoSkills({
         (item) => path.resolve(item.cwd) === normalizedCwd,
       );
       const skills = (entry?.skills ?? []).filter((skill) => {
-        if (skill.scope !== "repo" || typeof skill.path !== "string") return false;
+        if (skill.scope !== scope || typeof skill.path !== "string") return false;
         const relative = path.relative(skillsRoot, path.resolve(skill.path));
         return relative !== ".." && !relative.startsWith(".." + path.sep) && !path.isAbsolute(relative);
       });

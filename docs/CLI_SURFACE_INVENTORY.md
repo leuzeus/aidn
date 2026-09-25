@@ -16,6 +16,10 @@ These are the durable surfaces exposed through `aidn` today:
 - `aidn install`
 - `aidn bootstrap`
 - `aidn build-release`
+- `aidn setup`
+- `aidn update`
+- `aidn rollback`
+- `aidn doctor`
 - `aidn help` / `aidn --help` / `aidn -h`
 - `aidn version` / `aidn --version` / `aidn -v`
 - `aidn codex`
@@ -34,6 +38,19 @@ through the real entrypoints, and excludes arguments passed to child processes.
 These command families are intended for users and are covered by public effect policies and/or JSON contracts:
 
 - `aidn project config --list --json`
+- `aidn project add --target PATH --json`
+- `aidn project migrate --target PATH --json`
+- `aidn project list --json`
+- `aidn project remove --id ID --json`
+- `aidn update --check --json`
+- `aidn update --release latest --json`
+- `aidn rollback --json`
+- `aidn doctor --target PATH --json`
+
+Global management applies only with `--write --expect-plan ID`; a wizard
+confirmation invokes that same exact plan. `--json` is formatting only and never
+authorizes writes. Global commands use `global-management.v1`. See
+[the global setup candidate](GLOBAL_SETUP.md) for qualification boundaries.
 - `aidn bootstrap --json`
 - `aidn bootstrap --dry-run --json`
 - `aidn bootstrap --diagnose --json`

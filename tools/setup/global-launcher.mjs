@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Copied beside the stable launcher support files by the global installer.
 import path from 'node:path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { acquireGlobalRuntime, resolveGlobalRuntime, resolveGlobalRecoveryRuntime } from './global-runtime-store.mjs';
@@ -21,7 +22,9 @@ try {
   // own lease would prevent the switch they are meant to perform.
   const management = ['setup', 'update', 'rollback'].includes(args[0]);
   const resume = ['update', 'rollback'].includes(args[0]) && args.includes('--resume');
-  const resolved = resume ? resolveGlobalRecoveryRuntime({ home, expectedPlanId: args[args.indexOf('--expect-plan') + 1] })
+  const recover = args[0] === 'update' && args.includes('--recover-locks') && fs.existsSync(path.join(home, 'pending.json'));
+  const resolved = recover ? resolveGlobalRecoveryRuntime({ home })
+    : resume ? resolveGlobalRecoveryRuntime({ home, expectedPlanId: args.includes('--expect-plan') ? args[args.indexOf('--expect-plan') + 1] : undefined })
     : management ? resolveGlobalRuntime({ home, integrationRevision: revision })
       : (lease = acquireGlobalRuntime({ home, integrationRevision: revision }));
   let entry = resolved.entry, childArgs = args, hookRoot;

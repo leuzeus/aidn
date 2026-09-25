@@ -237,23 +237,28 @@ For Windows setup including optional PostgreSQL preparation, see
 the interactive wizard (`.\scripts\setup-project.ps1 -Wizard`) in
 [the complete project installer](docs/WINDOWS_PROJECT_SETUP.md).
 
-The optional user launcher is installed explicitly with
-`.\scripts\setup-project.ps1 -InstallSetup -Write`. Run `aidn-setup` to remember
-and manage independent projects; use `-CheckUpdate` to consult releases and
-`-Update -ReleaseVersion latest -Write` to update one project while preserving
-its configuration. Database migrations remain a separate step.
+Version 0.10.0 is an unpublished candidate for one user-level engine shared by
+registered projects. Its planned release tag is `v0.10.0`; this documentation
+does not claim that tag or release is already available. Follow
+[the global setup candidate](docs/GLOBAL_SETUP.md) for its current qualification
+boundaries. The previous per-project installer is retained for legacy use.
 
-Version 0.9.1 provides the Windows setup and independent project updates.
-Use the verified release tarball or the pinned tag shown below.
+The source installer `scripts/setup-global.ps1` prepares a verified package plan.
+Apply with `-Write -ExpectPlan PLAN_ID` to install the common launcher and register
+the user environment. Then open a new terminal:
 
-```bash
-npm install --save-dev github:leuzeus/aidn#v0.9.1
-npx aidn bootstrap --target ../client --profile default
-npx aidn bootstrap --target ../client --mode upgrade --profile default
-npx aidn bootstrap --target ../client --profile full
-npx aidn bootstrap --target ../client --profile postgres --runtime-persistence-connection-ref env:AIDN_PG_URL
-npx aidn bootstrap --target ../client --profile db-only
+```powershell
+aidn setup
+aidn project add --target C:\projects\client --json
+aidn project migrate --target C:\projects\existing-client --json
+aidn update --check --json
+aidn update --release latest --json
 ```
+
+These CLI examples are consultations or previews. Apply a displayed plan with
+`--write --expect-plan PLAN_ID`. A global update checks every registered project;
+database migrations remain a separate operation. Source bootstrap and the URL
+wrappers below remain explicit legacy/development entry points.
 
 URL wrapper example:
 
@@ -307,7 +312,7 @@ Notes:
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a tagged install (`#v0.9.1`) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a tagged install (`#v0.10.0`) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 

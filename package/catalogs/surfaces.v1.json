@@ -989,6 +989,80 @@
       "migration": ""
     },
     {
+      "id": "command:aidn doctor",
+      "kind": "command",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Runtime CLI maintainer",
+      "source": "src/core/cli/command-registry.mjs",
+      "entrypoint": "aidn doctor",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "surface": "aidn doctor",
+        "default": "read-only",
+        "global_rules": [
+          {
+            "id": "help",
+            "when_args": [
+              "--help"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "short-help",
+            "when_args": [
+              "-h"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "dry-run",
+            "when_args": [
+              "--dry-run"
+            ],
+            "effect_class": "preview"
+          },
+          {
+            "id": "json",
+            "when_args": [
+              "--json"
+            ],
+            "role": "format-only"
+          }
+        ],
+        "variants": [
+          {
+            "id": "global-doctor/variant-1",
+            "when_args": [
+              "--help"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-doctor/variant-1"
+          },
+          {
+            "id": "global-doctor/variant-2",
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-doctor/variant-2"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "command:aidn help",
       "kind": "command",
       "status": "active",
@@ -2708,6 +2782,92 @@
       "migration": ""
     },
     {
+      "id": "command:aidn project add",
+      "kind": "command",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Project configuration maintainer",
+      "source": "src/core/cli/command-registry.mjs",
+      "entrypoint": "aidn project add",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "surface": "aidn project add",
+        "default": "preview",
+        "global_rules": [
+          {
+            "id": "help",
+            "when_args": [
+              "--help"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "short-help",
+            "when_args": [
+              "-h"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "dry-run",
+            "when_args": [
+              "--dry-run"
+            ],
+            "effect_class": "preview"
+          },
+          {
+            "id": "json",
+            "when_args": [
+              "--json"
+            ],
+            "role": "format-only"
+          }
+        ],
+        "variants": [
+          {
+            "id": "global-project-add/variant-1",
+            "when_args": [
+              "--help"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-project-add/variant-1"
+          },
+          {
+            "id": "global-project-add/variant-2",
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-project-add/variant-2"
+          },
+          {
+            "id": "global-project-add/variant-3",
+            "when_args": [
+              "--write"
+            ],
+            "unless_args": [
+              "--help",
+              "--check"
+            ],
+            "effect_class": "mutating",
+            "policy": "global-project-add/variant-3"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "command:aidn project config",
       "kind": "command",
       "status": "active",
@@ -2871,6 +3031,338 @@
       "proof": {
         "class": "source",
         "target": "bin/aidn.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "command:aidn project list",
+      "kind": "command",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Project configuration maintainer",
+      "source": "src/core/cli/command-registry.mjs",
+      "entrypoint": "aidn project list",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "surface": "aidn project list",
+        "default": "read-only",
+        "global_rules": [
+          {
+            "id": "help",
+            "when_args": [
+              "--help"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "short-help",
+            "when_args": [
+              "-h"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "dry-run",
+            "when_args": [
+              "--dry-run"
+            ],
+            "effect_class": "preview"
+          },
+          {
+            "id": "json",
+            "when_args": [
+              "--json"
+            ],
+            "role": "format-only"
+          }
+        ],
+        "variants": [
+          {
+            "id": "global-project-list/variant-1",
+            "when_args": [
+              "--help"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-project-list/variant-1"
+          },
+          {
+            "id": "global-project-list/variant-2",
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-project-list/variant-2"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "command:aidn project migrate",
+      "kind": "command",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Project configuration maintainer",
+      "source": "src/core/cli/command-registry.mjs",
+      "entrypoint": "aidn project migrate",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "surface": "aidn project migrate",
+        "default": "preview",
+        "global_rules": [
+          {
+            "id": "help",
+            "when_args": [
+              "--help"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "short-help",
+            "when_args": [
+              "-h"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "dry-run",
+            "when_args": [
+              "--dry-run"
+            ],
+            "effect_class": "preview"
+          },
+          {
+            "id": "json",
+            "when_args": [
+              "--json"
+            ],
+            "role": "format-only"
+          }
+        ],
+        "variants": [
+          {
+            "id": "global-project-migrate/variant-1",
+            "when_args": [
+              "--help"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-project-migrate/variant-1"
+          },
+          {
+            "id": "global-project-migrate/variant-2",
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-project-migrate/variant-2"
+          },
+          {
+            "id": "global-project-migrate/variant-3",
+            "when_args": [
+              "--write"
+            ],
+            "unless_args": [
+              "--help",
+              "--check"
+            ],
+            "effect_class": "mutating",
+            "policy": "global-project-migrate/variant-3"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "command:aidn project remove",
+      "kind": "command",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Project configuration maintainer",
+      "source": "src/core/cli/command-registry.mjs",
+      "entrypoint": "aidn project remove",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "surface": "aidn project remove",
+        "default": "preview",
+        "global_rules": [
+          {
+            "id": "help",
+            "when_args": [
+              "--help"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "short-help",
+            "when_args": [
+              "-h"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "dry-run",
+            "when_args": [
+              "--dry-run"
+            ],
+            "effect_class": "preview"
+          },
+          {
+            "id": "json",
+            "when_args": [
+              "--json"
+            ],
+            "role": "format-only"
+          }
+        ],
+        "variants": [
+          {
+            "id": "global-project-remove/variant-1",
+            "when_args": [
+              "--help"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-project-remove/variant-1"
+          },
+          {
+            "id": "global-project-remove/variant-2",
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-project-remove/variant-2"
+          },
+          {
+            "id": "global-project-remove/variant-3",
+            "when_args": [
+              "--write"
+            ],
+            "unless_args": [
+              "--help",
+              "--check"
+            ],
+            "effect_class": "mutating",
+            "policy": "global-project-remove/variant-3"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "command:aidn rollback",
+      "kind": "command",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Runtime CLI maintainer",
+      "source": "src/core/cli/command-registry.mjs",
+      "entrypoint": "aidn rollback",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "surface": "aidn rollback",
+        "default": "preview",
+        "global_rules": [
+          {
+            "id": "help",
+            "when_args": [
+              "--help"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "short-help",
+            "when_args": [
+              "-h"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "dry-run",
+            "when_args": [
+              "--dry-run"
+            ],
+            "effect_class": "preview"
+          },
+          {
+            "id": "json",
+            "when_args": [
+              "--json"
+            ],
+            "role": "format-only"
+          }
+        ],
+        "variants": [
+          {
+            "id": "global-rollback/variant-1",
+            "when_args": [
+              "--help"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-rollback/variant-1"
+          },
+          {
+            "id": "global-rollback/variant-2",
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-rollback/variant-2"
+          },
+          {
+            "id": "global-rollback/variant-3",
+            "when_args": [
+              "--write"
+            ],
+            "unless_args": [
+              "--help",
+              "--check"
+            ],
+            "effect_class": "mutating",
+            "policy": "global-rollback/variant-3"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
         "gate": "tools/verify/verify-surface-catalog.mjs"
       },
       "replacement": "",
@@ -5971,6 +6463,178 @@
       "migration": ""
     },
     {
+      "id": "command:aidn setup",
+      "kind": "command",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Runtime CLI maintainer",
+      "source": "src/core/cli/command-registry.mjs",
+      "entrypoint": "aidn setup",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "surface": "aidn setup",
+        "default": "executor",
+        "global_rules": [
+          {
+            "id": "help",
+            "when_args": [
+              "--help"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "short-help",
+            "when_args": [
+              "-h"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "dry-run",
+            "when_args": [
+              "--dry-run"
+            ],
+            "effect_class": "preview"
+          },
+          {
+            "id": "json",
+            "when_args": [
+              "--json"
+            ],
+            "role": "format-only"
+          }
+        ],
+        "variants": [
+          {
+            "id": "global-setup/variant-1",
+            "when_args": [
+              "--help"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-setup/variant-1"
+          },
+          {
+            "id": "global-setup/variant-2",
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-setup/variant-2"
+          },
+          {
+            "id": "global-setup/variant-3",
+            "when_args": [
+              "--write"
+            ],
+            "unless_args": [
+              "--help",
+              "--check"
+            ],
+            "effect_class": "mutating",
+            "policy": "global-setup/variant-3"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "command:aidn update",
+      "kind": "command",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Runtime CLI maintainer",
+      "source": "src/core/cli/command-registry.mjs",
+      "entrypoint": "aidn update",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "surface": "aidn update",
+        "default": "preview",
+        "global_rules": [
+          {
+            "id": "help",
+            "when_args": [
+              "--help"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "short-help",
+            "when_args": [
+              "-h"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "dry-run",
+            "when_args": [
+              "--dry-run"
+            ],
+            "effect_class": "preview"
+          },
+          {
+            "id": "json",
+            "when_args": [
+              "--json"
+            ],
+            "role": "format-only"
+          }
+        ],
+        "variants": [
+          {
+            "id": "global-update/variant-1",
+            "when_args": [
+              "--help"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-update/variant-1"
+          },
+          {
+            "id": "global-update/variant-2",
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-update/variant-2"
+          },
+          {
+            "id": "global-update/variant-3",
+            "when_args": [
+              "--write"
+            ],
+            "unless_args": [
+              "--help",
+              "--check"
+            ],
+            "effect_class": "mutating",
+            "policy": "global-update/variant-3"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "command:aidn version",
       "kind": "command",
       "status": "active",
@@ -6161,6 +6825,27 @@
       "source": "src/core/contracts/cli-output/codex-workflow-step.v1.schema.json",
       "entrypoint": "aidn codex workflow-step --json",
       "implementation": "src/core/contracts/cli-output/codex-workflow-step.v1.schema.json",
+      "effects": "machine-readable public output",
+      "consumer": "automation and contract fixtures",
+      "docs": "docs/agents/04-json-contracts.md",
+      "proof": {
+        "class": "fixture",
+        "target": "tools/perf/verify-cli-output-contracts-fixtures.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "contract:global-management.v1.schema.json",
+      "kind": "contract",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI contract maintainer",
+      "source": "src/core/contracts/cli-output/global-management.v1.schema.json",
+      "entrypoint": "aidn project list",
+      "implementation": "src/core/contracts/cli-output/global-management.v1.schema.json",
       "effects": "machine-readable public output",
       "consumer": "automation and contract fixtures",
       "docs": "docs/agents/04-json-contracts.md",
@@ -10909,6 +11594,375 @@
       "proof": {
         "class": "source",
         "target": "bin/aidn.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--check",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --check",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "read-only",
+        "variants": [
+          {
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-doctor/variant-2"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--expect-plan",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --expect-plan",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--help",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --help",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--id",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --id",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--json",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --json",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": "format-only",
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--pack",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --pack",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--package",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --package",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--recover-locks",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --recover-locks",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--release",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --release",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--resume",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --resume",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--sha256",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --sha256",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--target",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --target",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--write",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --write",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:-h",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor -h",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
         "gate": "tools/verify/verify-surface-catalog.mjs"
       },
       "replacement": "",
@@ -25774,6 +26828,388 @@
       "migration": ""
     },
     {
+      "id": "option:aidn project add:--check",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --check",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "preview",
+        "variants": [
+          {
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-project-add/variant-2"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--expect-plan",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --expect-plan",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--help",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --help",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--id",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --id",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--json",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --json",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": "format-only",
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--pack",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --pack",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--package",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --package",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--recover-locks",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --recover-locks",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--release",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --release",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--resume",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --resume",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--sha256",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --sha256",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--target",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --target",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--write",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --write",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "preview",
+        "variants": [
+          {
+            "when_args": [
+              "--write"
+            ],
+            "unless_args": [
+              "--help",
+              "--check"
+            ],
+            "effect_class": "mutating",
+            "policy": "global-project-add/variant-3"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:-h",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add -h",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn project config:--adapter-file",
       "kind": "option",
       "status": "active",
@@ -26193,6 +27629,1139 @@
       "migration": ""
     },
     {
+      "id": "option:aidn project list:--check",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --check",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "read-only",
+        "variants": [
+          {
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-project-list/variant-2"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:--connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:--expect-plan",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --expect-plan",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:--help",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --help",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:--id",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --id",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:--json",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --json",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": "format-only",
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:--pack",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --pack",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:--package",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --package",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:--recover-locks",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --recover-locks",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:--release",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --release",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:--resume",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --resume",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:--sha256",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --sha256",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:--target",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --target",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:--write",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --write",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:-h",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list -h",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--check",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --check",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "preview",
+        "variants": [
+          {
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-project-migrate/variant-2"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--expect-plan",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --expect-plan",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--help",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --help",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--id",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --id",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--json",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --json",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": "format-only",
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--pack",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --pack",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--package",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --package",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--recover-locks",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --recover-locks",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--release",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --release",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--resume",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --resume",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--sha256",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --sha256",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--target",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --target",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--write",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --write",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "preview",
+        "variants": [
+          {
+            "when_args": [
+              "--write"
+            ],
+            "unless_args": [
+              "--help",
+              "--check"
+            ],
+            "effect_class": "mutating",
+            "policy": "global-project-migrate/variant-3"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:-h",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate -h",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--check",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --check",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "preview",
+        "variants": [
+          {
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-project-remove/variant-2"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--expect-plan",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --expect-plan",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--help",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --help",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--id",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --id",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--json",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --json",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": "format-only",
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--pack",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --pack",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--package",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --package",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--recover-locks",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --recover-locks",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--release",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --release",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--resume",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --resume",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--sha256",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --sha256",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--target",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --target",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--write",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --write",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "preview",
+        "variants": [
+          {
+            "when_args": [
+              "--write"
+            ],
+            "unless_args": [
+              "--help",
+              "--check"
+            ],
+            "effect_class": "mutating",
+            "policy": "global-project-remove/variant-3"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:-h",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove -h",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn project:--help",
       "kind": "option",
       "status": "active",
@@ -26237,6 +28806,388 @@
       "proof": {
         "class": "source",
         "target": "bin/aidn.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--check",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --check",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "preview",
+        "variants": [
+          {
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-rollback/variant-2"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--expect-plan",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --expect-plan",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--help",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --help",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--id",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --id",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--json",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --json",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": "format-only",
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--pack",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --pack",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--package",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --package",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--recover-locks",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --recover-locks",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--release",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --release",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--resume",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --resume",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--sha256",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --sha256",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--target",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --target",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--write",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --write",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "preview",
+        "variants": [
+          {
+            "when_args": [
+              "--write"
+            ],
+            "unless_args": [
+              "--help",
+              "--check"
+            ],
+            "effect_class": "mutating",
+            "policy": "global-rollback/variant-3"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:-h",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback -h",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
         "gate": "tools/verify/verify-surface-catalog.mjs"
       },
       "replacement": "",
@@ -37352,6 +40303,770 @@
       "proof": {
         "class": "source",
         "target": "bin/aidn.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--check",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --check",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "executor",
+        "variants": [
+          {
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-setup/variant-2"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--expect-plan",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --expect-plan",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--help",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --help",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--id",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --id",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--json",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --json",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": "format-only",
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--pack",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --pack",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--package",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --package",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--recover-locks",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --recover-locks",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--release",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --release",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--resume",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --resume",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--sha256",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --sha256",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--target",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --target",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--write",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --write",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "executor",
+        "variants": [
+          {
+            "when_args": [
+              "--write"
+            ],
+            "unless_args": [
+              "--help",
+              "--check"
+            ],
+            "effect_class": "mutating",
+            "policy": "global-setup/variant-3"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:-h",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup -h",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--check",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --check",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "preview",
+        "variants": [
+          {
+            "when_args": [
+              "--check"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "global-update/variant-2"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--connection-ref",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --connection-ref",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--expect-plan",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --expect-plan",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--help",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --help",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--id",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --id",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--json",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --json",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": "format-only",
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--pack",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --pack",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--package",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --package",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--recover-locks",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --recover-locks",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--release",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --release",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--resume",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --resume",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--sha256",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --sha256",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--target",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --target",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--write",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --write",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "preview",
+        "variants": [
+          {
+            "when_args": [
+              "--write"
+            ],
+            "unless_args": [
+              "--help",
+              "--check"
+            ],
+            "effect_class": "mutating",
+            "policy": "global-update/variant-3"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:-h",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update -h",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-override",
+        "rule": "help-is-read-only",
+        "effect_class": "read-only"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
         "gate": "tools/verify/verify-surface-catalog.mjs"
       },
       "replacement": "",

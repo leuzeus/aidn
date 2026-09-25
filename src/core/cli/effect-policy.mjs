@@ -90,6 +90,15 @@ function commandPolicy({
 }
 
 const CLI_EFFECT_POLICIES = freezeDeep([
+  ...["setup", "update", "rollback", "doctor", "project add", "project migrate", "project list", "project remove"].map(name => commandPolicy({
+    id: `global-${name.replaceAll(" ", "-")}`, command: `aidn ${name}`, surfaceDefault: true,
+    effectClass: name === "setup" ? "executor" : ["doctor", "project list"].includes(name) ? "read-only" : "preview",
+    surfaceDefaultEffect: name === "setup" ? "executor" : ["doctor", "project list"].includes(name) ? "read-only" : "preview",
+    effectVariants: [{ whenArgs: ["--help"], effectClass: "read-only" }, { whenArgs: ["--check"], effectClass: "read-only" },
+      ...(["doctor", "project list"].includes(name) ? [] : [{ whenArgs: ["--write"], unlessArgs: ["--help", "--check"], effectClass: "mutating" }])],
+    jsonContract: "global-management.v1.schema.json", safeArgs: [...name.split(" "), "--target", ".", "--json", ...(["setup", "update"].includes(name) ? ["--release", "invalid"] : [])], allowNonZero: true,
+    notes: "Global runtime management. Preview and JSON alone do not write; application requires --write and an exact --expect-plan. Wizard obtains explicit confirmation for the same plan.",
+  })),
   commandPolicy({
     id: "help",
     command: "aidn help",

@@ -1,6 +1,6 @@
 {
   "name": "aidn-workflow",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "aid\u00e2\u20ac\u2122n \u00e2\u20ac\u201d Audit-driven, session-based workflow packaging system for structured AI-assisted development",
   "license": "MIT",
   "repository": {
@@ -22,6 +22,7 @@
     "docs/CODEX_NATIVE_QUALIFICATION.md",
     "docs/CODEX_CLIENT_MIGRATION.md",
     "docs/WINDOWS_PROJECT_SETUP.md",
+    "docs/GLOBAL_SETUP.md",
     "docs/README.md",
     "docs/MIGRATION_SHARED_RUNTIME_POSTGRESQL.md",
     "docs/MULTI_PROJECT_POSTGRESQL_MIGRATION_GUIDE.md",
@@ -256,7 +257,7 @@
     "perf:verify-release-provenance": "npm run perf:verify-release-version && npm run perf:verify-release-reproducibility && npm run perf:verify-pack-topology",
     "perf:verify-release-flow": "npm run perf:verify-release-provenance",
     "perf:verify-install-import": "node tools/perf/verify-install-import-fixtures.mjs",
-    "perf:verify-bootstrap": "node tools/perf/verify-global-runtime-store-fixtures.mjs && node tools/perf/verify-global-package-fixtures.mjs && node tools/perf/verify-global-migration-inventory-fixtures.mjs && node tools/perf/verify-global-project-compatibility-fixtures.mjs && node tools/perf/verify-multi-project-setup-fixtures.mjs && node tools/perf/verify-release-package-download-fixtures.mjs && node tools/perf/verify-windows-project-setup-fixtures.mjs && node tools/perf/verify-bootstrap-fixtures.mjs",
+    "perf:verify-bootstrap": "node tools/perf/verify-global-management-fixtures.mjs && node tools/perf/verify-global-recovery-fixtures.mjs && node tools/perf/verify-global-runtime-store-fixtures.mjs && node tools/perf/verify-global-package-fixtures.mjs && node tools/perf/verify-global-migration-inventory-fixtures.mjs && node tools/perf/verify-global-project-compatibility-fixtures.mjs && node tools/perf/verify-multi-project-setup-fixtures.mjs && node tools/perf/verify-release-package-download-fixtures.mjs && node tools/perf/verify-windows-project-setup-fixtures.mjs && node tools/perf/verify-bootstrap-fixtures.mjs",
     "perf:verify-project-config": "node tools/perf/verify-project-config-fixtures.mjs",
     "perf:verify-install-runtime-persistence-adoption": "node tools/perf/verify-install-runtime-persistence-adoption-fixtures.mjs",
     "perf:verify-pack-topology": "node tools/perf/verify-pack-topology-fixtures.mjs",
@@ -369,13 +370,13 @@
     "perf:verify-codex-client-discovery": "node tools/verify/verify-codex-client-install.mjs --require-codex-discovery",
     "perf:verify-branch-policy-fixtures": "node tools/verify/verify-branch-policy-fixtures.mjs",
     "perf:verify-tracked-sensitivity": "node tools/verify/verify-tracked-sensitivity.mjs",
-    "perf:verify-codex-integration": "node tools/perf/verify-global-runtime-store-fixtures.mjs && node tools/perf/verify-global-package-fixtures.mjs && node tools/perf/verify-global-migration-inventory-fixtures.mjs && node tools/perf/verify-global-project-compatibility-fixtures.mjs && node tools/perf/verify-multi-project-setup-fixtures.mjs && node tools/perf/verify-release-package-download-fixtures.mjs && node tools/perf/verify-windows-project-setup-fixtures.mjs && node tools/perf/verify-native-write-admission-fixtures.mjs && node tools/perf/verify-codex-assets-fixtures.mjs && node tools/perf/verify-project-activation-fixtures.mjs && node tools/perf/verify-codex-native-integration-fixtures.mjs && node tools/perf/verify-codex-context-store-fixtures.mjs && node tools/perf/verify-bootstrap-lifecycle-fixtures.mjs && node tools/perf/verify-bootstrap-plan-fixtures.mjs && node tools/perf/verify-codex-legacy-skill-repair-fixtures.mjs && node tools/perf/verify-installation-recovery-fixtures.mjs && node tools/perf/verify-installation-fault-boundaries-fixtures.mjs && node tools/perf/verify-codex-skill-namespace-fixtures.mjs && node tools/perf/verify-global-skills-migration-fixtures.mjs && node tools/perf/verify-cli-activation-fixtures.mjs && node tools/perf/verify-installation-persistence-policy-fixtures.mjs && node tools/perf/verify-global-skills-transaction-fixtures.mjs && node tools/perf/verify-activation-lifecycle-fixtures.mjs",
+    "perf:verify-codex-integration": "node tools/perf/verify-global-management-fixtures.mjs && node tools/perf/verify-global-recovery-fixtures.mjs && node tools/perf/verify-global-runtime-store-fixtures.mjs && node tools/perf/verify-global-package-fixtures.mjs && node tools/perf/verify-global-migration-inventory-fixtures.mjs && node tools/perf/verify-global-project-compatibility-fixtures.mjs && node tools/perf/verify-multi-project-setup-fixtures.mjs && node tools/perf/verify-release-package-download-fixtures.mjs && node tools/perf/verify-windows-project-setup-fixtures.mjs && node tools/perf/verify-native-write-admission-fixtures.mjs && node tools/perf/verify-codex-assets-fixtures.mjs && node tools/perf/verify-project-activation-fixtures.mjs && node tools/perf/verify-codex-native-integration-fixtures.mjs && node tools/perf/verify-codex-context-store-fixtures.mjs && node tools/perf/verify-bootstrap-lifecycle-fixtures.mjs && node tools/perf/verify-bootstrap-plan-fixtures.mjs && node tools/perf/verify-codex-legacy-skill-repair-fixtures.mjs && node tools/perf/verify-installation-recovery-fixtures.mjs && node tools/perf/verify-installation-fault-boundaries-fixtures.mjs && node tools/perf/verify-codex-skill-namespace-fixtures.mjs && node tools/perf/verify-global-skills-migration-fixtures.mjs && node tools/perf/verify-cli-activation-fixtures.mjs && node tools/perf/verify-installation-persistence-policy-fixtures.mjs && node tools/perf/verify-global-skills-transaction-fixtures.mjs && node tools/perf/verify-activation-lifecycle-fixtures.mjs",
     "perf:verify-codex-skill-namespace": "node tools/perf/verify-codex-skill-namespace-fixtures.mjs",
     "perf:verify-global-skills-migration": "node tools/perf/verify-global-skills-migration-fixtures.mjs",
     "perf:verify-cli-activation": "node tools/perf/verify-cli-activation-fixtures.mjs",
     "perf:verify-installation-persistence-policy": "node tools/perf/verify-installation-persistence-policy-fixtures.mjs",
     "perf:verify-global-skills-transaction": "node tools/perf/verify-global-skills-transaction-fixtures.mjs",
     "perf:verify-activation-lifecycle": "node tools/perf/verify-activation-lifecycle-fixtures.mjs",
-    "perf:verify-global-runtime": "node tools/perf/verify-global-runtime-store-fixtures.mjs && node tools/perf/verify-global-package-fixtures.mjs && node tools/perf/verify-global-migration-inventory-fixtures.mjs && node tools/perf/verify-global-project-compatibility-fixtures.mjs"
+    "perf:verify-global-runtime": "node tools/perf/verify-global-management-fixtures.mjs && node tools/perf/verify-global-recovery-fixtures.mjs && node tools/perf/verify-global-runtime-store-fixtures.mjs && node tools/perf/verify-global-package-fixtures.mjs && node tools/perf/verify-global-migration-inventory-fixtures.mjs && node tools/perf/verify-global-project-compatibility-fixtures.mjs"
   }
 }

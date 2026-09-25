@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/global-management.v1",
+  "x-aidn-contract-version": "cli-output-v1",
+  "x-aidn-command": "aidn project list",
+  "x-aidn-commands": ["aidn setup", "aidn update", "aidn rollback", "aidn doctor", "aidn project add", "aidn project migrate", "aidn project list", "aidn project remove"],
+  "type": "object",
+  "required": ["contract_version", "command", "effect_class", "ok", "written", "errors", "result"],
+  "properties": {
+    "contract_version": {"type": "string", "const": "global-management.v1"},
+    "command": {"type": "string"},
+    "effect_class": {"type": "string", "enum": ["read-only", "preview", "mutating", "executor"]},
+    "ok": {"type": "boolean"},
+    "written": {"type": "boolean"},
+    "errors": {"type": "array", "items": {"type": "string"}},
+    "result": {"type": "object"}
+  },
+  "additionalProperties": false
+}

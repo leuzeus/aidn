@@ -36,6 +36,11 @@ try {
 `;
 }
 
+export function renderGlobalCommands(text) {
+  return text.replace(/\bnpx aidn\b/g, 'aidn')
+    .replace(/\baidn (?=(?:runtime|bootstrap|codex|project|perf|install)\b)/g, `aidn --integration-revision ${GLOBAL_INTEGRATION_REVISION} `);
+}
+
 export function adaptGlobalProjectAssets(desired) {
   for (const name of desired.keys()) if (name.startsWith('.agents/skills/') || name.startsWith('.codex/agents/')
       || name === '.codex/hooks/aidn-hook-runtime.mjs') desired.delete(name);
@@ -43,8 +48,6 @@ export function adaptGlobalProjectAssets(desired) {
     kind: 'file', data: Buffer.from(globalHookConnector(event)).toString('base64'),
   });
   const agents = desired.get('AGENTS.md');
-  if (agents) agents.data = Buffer.from(Buffer.from(agents.data, 'base64').toString('utf8')
-    .replace(/\bnpx aidn\b/g, 'aidn')
-    .replace(/\baidn (?=(?:runtime|bootstrap|codex|project|perf|install)\b)/g, `aidn --integration-revision ${GLOBAL_INTEGRATION_REVISION} `)).toString('base64');
+  if (agents) agents.data = Buffer.from(renderGlobalCommands(Buffer.from(agents.data, 'base64').toString('utf8'))).toString('base64');
   return desired;
 }

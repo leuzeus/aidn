@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { writeFileAtomicSync } from '../../lib/fs/atomic-write-lib.mjs';
 
 export const GLOBAL_INTEGRATION_REVISION = 1;
@@ -11,6 +12,22 @@ const fail = code => { const error = new Error(code); error.code = code; throw e
 const idPattern = /^[a-f0-9-]{36}$/;
 const hashPattern = /^[a-f0-9]{64}$/;
 const stableVersion = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+let bootId, bootChecked = false;
+export function hostExecutionIdentity() {
+  if (!bootChecked) {
+    bootChecked = true;
+    if (process.platform === 'win32') {
+      const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+        '(Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToUniversalTime().Ticks'],
+      { encoding: 'utf8', windowsHide: true, timeout: 15000 });
+      const value = result.stdout?.trim();
+      if (result.status === 0 && /^\d{15,20}$/.test(value ?? '')) bootId = `windows:${value}`;
+    } else if (process.platform === 'linux') bootId = `linux:${fs.readFileSync('/proc/sys/kernel/random/boot_id', 'utf8').trim()}`;
+  }
+  // Restricted hosts may deny the read-only OS query. Normal locked operations
+  // remain usable, but their orphan recovery cannot assert a reboot witness.
+  return { pid: process.pid, boot_id: bootId ?? null };
+}
 
 export function globalHome(env = process.env) {
   const home = env.AIDN_HOME || (env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, 'AIDN'));
@@ -135,7 +152,7 @@ function locked(home, name, callback) {
   let fd;
   try { fd = fs.openSync(file, 'wx'); } catch (error) { if (error.code === 'EEXIST') fail('GLOBAL_BUSY'); throw error; }
   try {
-    fs.writeFileSync(fd, json({ pid: process.pid }));
+    fs.writeFileSync(fd, json(hostExecutionIdentity()));
     return callback();
   } finally { fs.closeSync(fd); fs.unlinkSync(file); }
 }
@@ -160,7 +177,7 @@ function pendingTransaction(home, expectedPlanId) {
 }
 
 export function resolveGlobalRecoveryRuntime({ home = globalHome(), expectedPlanId } = {}) {
-  const transaction = pendingTransaction(home, expectedPlanId);
+  const transaction = pendingTransaction(home, expectedPlanId ?? read(at(home, 'pending.json'))?.plan_id);
   const generation = verifyRuntimeGeneration(home, transaction.candidate);
   return { ...generation, home, version: transaction.candidate.version,
     state: { active: transaction.candidate, installation_id: transaction.installation_id },
@@ -175,15 +192,20 @@ export function acquireGlobalRuntime(options = {}) {
     const resolved = resolveGlobalRuntime({ ...options, home });
     const token = randomUUID();
     const file = at(home, `leases/${token}.json`);
-    put(file, { schema_version: 1, token, pid: process.pid, generation: resolved.state.active.id });
+    put(file, { schema_version: 1, token, ...hostExecutionIdentity(), generation: resolved.state.active.id });
     let released = false;
     return { ...resolved, release() { if (!released) { checkedHostPath(file); fs.unlinkSync(file); released = true; } } };
   });
 }
 
-function assertNoLeases(home) {
+function assertNoLeases(home, waitMs = 0) {
   const directory = at(home, 'leases');
   if (!fs.existsSync(directory)) return;
+  // The caller holds the admission barrier. Existing invocations may finish;
+  // new invocations cannot acquire a lease while the updater drains this set.
+  const deadline = Date.now() + Math.min(Math.max(waitMs, 0), 30000);
+  const sleeper = new Int32Array(new SharedArrayBuffer(4));
+  while (fs.readdirSync(directory).length && Date.now() < deadline) Atomics.wait(sleeper, 0, 0, 100);
   // No PID-based deletion: an interrupted lease requires explicit diagnosis.
   if (fs.readdirSync(directory).length) fail('GLOBAL_OPERATIONS_ACTIVE');
 }
@@ -210,7 +232,10 @@ export function planGlobalSwitch({ home, candidate, assets = [], projects = [], 
     paths.add(key);
     const before = bytes(target);
     const previous = state?.assets.find(asset => asset.path === target);
-    if (before && !previous && !before.equals(Buffer.from(item.content))) fail('GLOBAL_UNOWNED_ASSET');
+    // Exact historical 0.9.x setup template, not ownership inferred by basename.
+    const legacySetup = !state && target === path.join(home, 'bin', 'aidn-setup.cmd')
+      && before?.equals(Buffer.from('@echo off\r\npowershell.exe -NoProfile -File "%~dp0aidn-setup.ps1" %*\r\nexit /b %errorlevel%\r\n'));
+    if (before && !previous && !legacySetup && !before.equals(Buffer.from(item.content))) fail('GLOBAL_UNOWNED_ASSET');
     if (previous && (!before || digest(before) !== previous.sha256)) fail('GLOBAL_ASSET_CHANGED');
     operations.push({ path: target, before: before?.toString('base64') ?? null, after: Buffer.from(item.content).toString('base64') });
   }
@@ -228,7 +253,7 @@ function writeAsset(operation, side) {
   else { fs.mkdirSync(path.dirname(file), { recursive: true }); checkedHostPath(file); writeFileAtomicSync(file, Buffer.from(image, 'base64')); }
 }
 
-export function applyGlobalSwitch({ home, plan, expectedPlanId, recheckProjects }) {
+export function applyGlobalSwitch({ home, plan, expectedPlanId, recheckProjects, waitForOperationsMs = 0 }) {
   if (typeof recheckProjects !== 'function') fail('GLOBAL_PROJECT_RECHECK_REQUIRED');
   return locked(home, 'update.lock', () => locked(home, 'admission.lock', () => {
     if (bytes(at(home, 'pending.json'))) fail('GLOBAL_TRANSACTION_PENDING');
@@ -241,7 +266,8 @@ export function applyGlobalSwitch({ home, plan, expectedPlanId, recheckProjects 
     verifyRuntimeGeneration(home, plan.candidate);
     if (plan.before) verifyGlobalAssets(plan.before);
     for (const operation of plan.operations) if ((bytes(operation.path)?.toString('base64') ?? null) !== operation.before) fail('GLOBAL_ASSET_CHANGED');
-    assertNoLeases(home);
+    assertNoLeases(home, waitForOperationsMs);
+    if (JSON.stringify(recheckProjects()) !== JSON.stringify(plan.projects)) fail('GLOBAL_PROJECTS_CHANGED');
     const transaction = { ...plan, id: randomUUID(), status: 'pending', installation_id: plan.before?.installation_id ?? randomUUID() };
     put(at(home, 'pending.json'), transaction);
     return finishGlobalSwitch(home, transaction);

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { checkedHostPath } from './global-runtime-store.mjs';
+import { renderGlobalCommands } from './global-project-integration.mjs';
 
 const hash = value => createHash('sha256').update(value).digest('hex');
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -92,12 +93,21 @@ export function inventoryGlobalMigration({ targetRoot, globalSkillsVerified = fa
   // Empty legacy directories have no content to lose. Never remove their parents
   // recursively: a subsequent writer may have added an unrelated file.
   for (const directory of directories.sort()) entries.push({ path: directory, action: 'remove-empty-directory', reason: 'empty', sha256: null });
+  for (const relative of ['docs/audit/WORKFLOW.md', 'docs/audit/WORKFLOW_SUMMARY.md', 'docs/audit/CODEX_ONLINE.md', 'docs/audit/index.md']) {
+    const raw = content(root, relative);
+    if (!raw || renderGlobalCommands(raw.toString('utf8')) === raw.toString('utf8')) continue;
+    const owned = receipt.installation?.assets?.[relative];
+    const recognized = ['local-file', 'seed-file'].includes(owned?.kind);
+    const exact = recognized && raw.toString('base64') === owned.current;
+    entries.push({ path: relative, action: exact ? 'replace' : recognized ? 'conflict' : 'keep',
+      reason: exact ? 'managed-operational-commands' : recognized ? 'managed-operational-document-modified' : 'unmanaged-operational-reference', sha256: hash(raw) });
+  }
   for (const name of ['package.json', 'package-lock.json']) {
     const raw = content(root, name);
     if (!raw) continue;
     const data = JSON.parse(raw);
     const hasAidn = name === 'package.json'
-      ? ['dependencies', 'devDependencies', 'optionalDependencies'].some(key => Object.hasOwn(data[key] ?? {}, 'aidn-workflow'))
+      ? ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'].some(key => Object.hasOwn(data[key] ?? {}, 'aidn-workflow'))
       : Object.hasOwn(data.packages ?? {}, 'node_modules/aidn-workflow');
     entries.push({ path: name, action: hasAidn ? 'replace' : 'keep', reason: hasAidn ? 'npm-remove-aidn-only' : 'no-local-aidn-dependency', sha256: hash(raw) });
   }

@@ -8,8 +8,15 @@
   launcher with integration revision checks, and receipt-bound project connectors.
 - Add candidate project compatibility checks and a read-only cleanup inventory
   that preserves customized and unmanaged files.
-- The public CLI, wizard, full client migration, native qualification and release
-  remain incomplete; existing installation commands retain their 0.9.1 behavior.
+- Add public global setup/update/rollback/doctor and project add/migrate/list/remove
+  commands, effect policies and JSON contract; mutation requires an exact plan.
+- Journal client migration backups and npm cleanup, refuse workflow activation
+  during interruption and support explicit resume without touching other projects.
+- Add wizard confirmation, local tarball selection, masked existing PostgreSQL
+  connection entry and optional explicitly disclosed plaintext user persistence.
+- Add source PowerShell user installation and conservative orphan-lock recovery.
+  Local server provisioning in the new wizard, native qualification and release
+  remain incomplete; legacy setup commands retain their per-project behavior.
 
 ## 0.9.1
 

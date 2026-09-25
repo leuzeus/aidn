@@ -12,6 +12,8 @@ export function prepareGlobalPackage({ home, artifact, version }, {
   env = process.env, run = setupProcess,
   npmCli = path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js'),
 } = {}) {
+  const [major, minor] = process.versions.node.split('.').map(Number);
+  if (major < 22 || major === 22 && minor < 13) fail('NODE_22_13_REQUIRED');
   checkedHostPath(home);
   if (!fs.existsSync(npmCli)) fail('NODE_BUNDLED_NPM_REQUIRED');
   if (!artifact || !/^[a-f0-9]{64}$/.test(artifact.packageSha256 ?? '')

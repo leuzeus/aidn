@@ -100,6 +100,9 @@ const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-outpu
 const AIDN_BIN = path.join(REPO_ROOT, "bin", "aidn.mjs");
 
 const CONTRACT_CASES = [
+  { name: "global-management", schema: "global-management.v1.schema.json", freshTarget: true,
+    args: ["project", "list", "--json"], env: root => ({ AIDN_HOME: path.join(root, "absent-global-home") }),
+    noMutationPaths: ["absent-global-home", ".aidn", "AGENTS.md", ".codex"] },
   { name: "activation-refusal", schema: "activation-refusal.v1.schema.json",
     freshTarget: true, args: ["codex", "hydrate-context", "--json"], expectedExit: 2,
     noMutationPaths: ["AGENTS.md", ".codex/hooks.json", ".aidn/install/receipt.json", ".aidn/install/authorization.json"] },
