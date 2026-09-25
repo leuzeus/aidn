@@ -37,11 +37,11 @@ const CONCEPT_GOVERNANCE = freezeDeep({
   install_assets: {
     owner: "local installation maintainer",
     lifecycle: "planned -> applying -> installed|interrupted -> repaired|rolled_back|uninstalled",
-    scope: "AIDN-owned installation assets and completion evidence in one physical target worktree, plus explicitly bound host skill disable entries",
+    scope: "AIDN-owned project assets, explicitly bound host Codex assets and host runtime generations; project activation and workflow data remain local",
     retention: "retain transaction pre-images and receipts locally after rollback or uninstall; never include in shared runtime",
     migration: "adopt only exact known legacy fingerprints or identical package assets; divergent assets require resolution",
     replacement: "compare recorded post-images before changing owned files, blocks, hook entries or an explicitly bound host skills configuration",
-    evidence_targets: ["src/application/install/codex-assets-service.mjs", "src/application/install/installation-ownership-service.mjs"],
+    evidence_targets: ["src/application/install/codex-assets-service.mjs", "src/application/install/installation-ownership-service.mjs", "src/application/install/global-runtime-store.mjs", "tools/setup/global-project-provision.mjs"],
   },
   workflow_rules: {
     owner: "workflow policy maintainer",
@@ -288,7 +288,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dual: ".aidn/install/receipt.json and referenced local transactions",
     dbOnly: ".aidn/install/receipt.json and referenced local transactions",
     projection: "bootstrap asset plans, installation diagnostics and config install.aidnVersion",
-    notes: "Local installation recovery and completion authority only; never workflow admission or runtime state. VERSION in the executing package is the sole product version authority; the receipt binds the last complete successful installation and config install.aidnVersion projects that fact.",
+    notes: "Local installation recovery and completion authority only; never workflow admission or runtime state. VERSION in the executing package is the sole product version authority; the receipt binds the last complete successful installation and config install.aidnVersion projects that fact. For explicitly migrated projects, receipt.global_runtime binds the host installation identity and integration revision; AIDN_HOME/runtime.json, the verified generation manifest and transaction journal determine the active engine, not the historical project package marker. See ADR-0013 for the incomplete public rollout boundary.",
   }),
   policy({
     concept: "workflow_rules",
