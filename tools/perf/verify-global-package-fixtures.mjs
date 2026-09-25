@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { prepareGlobalPackage, globalCodexAssets } from '../setup/global-package.mjs';
 import { planGlobalSwitch, applyGlobalSwitch } from '../../src/application/install/global-runtime-store.mjs';
 import { planCodexAssets, executeCodexAssets } from '../../src/application/install/codex-assets-service.mjs';
-import { readActivation } from '../../src/application/install/project-activation-service.mjs';
+import { readActivation, planAuthorization, applyAuthorization } from '../../src/application/install/project-activation-service.mjs';
 import { resolveGlobalProjectBinding } from '../../src/application/install/global-project-integration.mjs';
 
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'aidn-global-package-'));
@@ -116,6 +116,29 @@ try {
   }
   assert.deepEqual(snapshot(client), firstBefore, 'global update leaves first project byte-identical');
   assert.deepEqual(snapshot(other), secondBefore, 'global update leaves second project byte-identical');
+  applyAuthorization(planAuthorization({ targetRoot: other, action: 'revoke' }));
+  const revoked = readActivation({ targetRoot: other });
+  const repairOptions = { repoRoot: next.packageRoot, targetRoot: other, action: 'repair' };
+  const connector = path.join(other, '.codex/hooks/aidn-pre-tool-use.mjs');
+  const expectedConnector = fs.readFileSync(connector, 'utf8');
+  fs.unlinkSync(connector);
+  fs.writeFileSync(path.join(other, 'personal.txt'), 'preserve customization');
+  const beforeRepair = snapshot(other);
+  const repair = planCodexAssets(repairOptions);
+  assert.equal(repair.ok, true, JSON.stringify(repair.errors));
+  assert.deepEqual(snapshot(other), beforeRepair, 'repair preview is read-only');
+  assert.equal(executeCodexAssets({ ...repairOptions, dryRun: false, expectedPlanId: repair.plan_id }).ok, true);
+  assert.equal(fs.readFileSync(connector, 'utf8'), expectedConnector, 'explicit repair restores the managed connector');
+  assert.equal(readActivation({ targetRoot: other }).state, 'revoked', 'repair cannot reactivate a revoked project');
+  assert.deepEqual(readActivation({ targetRoot: other }).authorization, revoked.authorization);
+  assert.equal(fs.readFileSync(path.join(other, 'personal.txt'), 'utf8'), 'preserve customization');
+  assert.deepEqual(snapshot(client), firstBefore, 'repair leaves the other project unchanged');
+  fs.appendFileSync(connector, '\n// user customization\n');
+  const customized = snapshot(other);
+  const conflict = planCodexAssets(repairOptions);
+  assert.equal(conflict.ok, false, 'repair refuses customized managed connectors');
+  assert.match(JSON.stringify(conflict.errors), /MODIFIED_MANAGED_ASSET/);
+  assert.deepEqual(snapshot(other), customized);
   fs.appendFileSync(path.join(client, '.codex/hooks/aidn-session-start.mjs'), '\nchanged');
   assert.equal(readActivation({ targetRoot: client }).active, false, 'global binding does not bypass local connector integrity');
   fs.writeFileSync(skill.path, 'customized');

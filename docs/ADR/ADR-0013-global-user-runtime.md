@@ -42,6 +42,14 @@ the last completed installation as history and bind execution separately to the
 global installation identity. Merely finding global skills does not activate a
 project. Standard assets edited by the user cause an explicit conflict.
 
+Local connectors own bounded transport failure handling, not admission policy.
+While still running, they emit a structured native denial for a failed or invalid
+PreToolUse response and degraded read-only context for SessionStart. Native
+non-execution or termination cannot be made safe by a connector that cannot reply.
+Correcting an existing connector requires explicit project repair and renewed
+human review; global updates never silently replace those project files. This
+transport correction retains the existing integration revision and JSON protocol.
+
 Global code sharing does not move workflow data into shared infrastructure.
 PostgreSQL connections and canonical project identities stay unchanged. Candidate
 verification uses the existing read-only persistence checks; migrations remain a

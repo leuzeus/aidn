@@ -80,6 +80,30 @@ blocks the switch. Update and rollback do not rewrite project data or files.
 
 ## Migration and interrupted operations
 
+### Repairing project hook connectors
+
+The 0.10.2 connector validates the global hook response and emits a native JSON
+denial when its child fails, returns invalid or oversized output, or exceeds the
+8-second transport deadline. Session startup instead reports degraded read-only
+context. Successful admission, canonical refusals and neutral inactive replies
+remain unchanged. This does not protect an invocation that Codex never starts,
+disables or terminates before the connector can reply; shell and MCP writes
+remain outside the covered edit hooks.
+
+A global update does not replace existing project connectors. After switching
+to a validated release containing this correction, prepare their explicit repair:
+
+```powershell
+aidn bootstrap --target C:\projects\example --repair --json
+aidn bootstrap --target C:\projects\example --repair --write --expect-plan PLAN_ID --json
+```
+
+Inspect the exact returned plan before applying it. Repair preserves revoked
+activation and rejects modified managed files; resolve such conflicts explicitly.
+Review the changed executable hooks again in Codex before native execution.
+The wire contract remains integration revision 1. An interrupted child may leave
+an operation lease: the connector never deletes it or assumes descendants ended.
+
 Migration preserves the project configuration and adapter byte for byte. Receipt
 ownership and hashes determine removal of standard skills and agents. Modified
 standard assets conflict; unknown extensions stay. Hooks become small connectors

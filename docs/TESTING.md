@@ -91,6 +91,16 @@ path boundaries and fresh observations. These are fixture proofs, never native
 hook execution. Use N01-N17 in [native qualification](CODEX_NATIVE_QUALIFICATION.md)
 for a human-approved, candidate-bound native run.
 
+For global hook transport, run
+`node tools/perf/verify-global-hook-connector-fixtures.mjs` and
+`node tools/perf/verify-global-package-fixtures.mjs`. These checks cover real
+subprocess failures, invalid/bounded output, deadline handling, successful and
+inactive replies, and explicit repair without reactivation or customization
+loss. They are included in the bootstrap, Codex integration and global runtime
+gates. A native unavailable-engine probe must separately prove that the corrected
+candidate prevents the marker write after human review; subprocess PASS does not
+replace that proof or qualify a disabled or externally terminated hook.
+
 Most `npm run perf:verify-*` commands run one focused behavior check against tracked fixtures.
 
 Use these when you need targeted confidence on one subsystem:

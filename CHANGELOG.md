@@ -2,6 +2,13 @@
 
 ## 0.10.2
 
+- Return an explicit native JSON denial from global project hook connectors when
+  the launcher fails, emits invalid or oversized output, or exceeds its deadline.
+  Preserve successful and inactive replies, with degraded startup context on
+  failure. Existing connectors require explicit project repair and renewed native
+  review; a global update alone does not rewrite them. Subprocess fixtures do not
+  qualify disabled hooks or hooks terminated by the native client.
+
 - Admit the first cycle of a verified canonical session without requiring
   timestamps from a cycle that does not exist. Keep freshness `unknown` and
   report the explicit initial-state check; stale, missing, ambiguous or
