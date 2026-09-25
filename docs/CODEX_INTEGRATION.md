@@ -17,6 +17,14 @@ and the dated [capability evidence](rfc/codex-integration-2026-09-23/CAPABILITIE
 
 Before loading workflow context, run `aidn runtime pre-write-admit --target . --skill context-reload --json`. Continue only when `activation.active` is true and admission is admissible. The thirteen public skills now use `aidn-*` names, such as `aidn-context-reload` and `aidn-start-session`; their internal CLI `--skill context-reload` and `--skill start-session` identifiers stay compatible.
 
+Context reload reconstructs a mode rather than requiring one to exist already.
+An unknown mode remains unknown in the read-only admission output. Activation,
+canonical backend availability and source-of-truth checks still apply; this
+result grants no write permission. Run start-session admission before workflow
+work. Do not run hook history or cache hydration as part of the read-only skill.
+An explicitly authorized cache refresh is a separate operation, and never proof
+of fresh canonical admission.
+
 Git repositories keep their canonical authorization in `<git-common-dir>/aidn/authorization.json`. Linked worktrees share its revision and revocation, while their receipts and owned assets remain local to each worktree. Non-Git targets use a local authorization under `.aidn/install/`. A configured database, discovered skill, copied config or cached context does not prove activation. Validated legacy receipts are reported separately as `legacy-active`.
 
 `bootstrap --diagnose --json` exposes compact activation fields: `state`, `active`, `scope`, `authority_id`, `revision` and `errors`. It remains read-only and does not contact a workflow backend to establish authorization. An inactive project stops AIDN workflow execution before loading that context.
