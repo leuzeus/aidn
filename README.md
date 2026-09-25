@@ -243,8 +243,8 @@ and manage independent projects; use `-CheckUpdate` to consult releases and
 `-Update -ReleaseVersion latest -Write` to update one project while preserving
 its configuration. Database migrations remain a separate step.
 
-Version 0.9.0 is an unpublished local candidate. Until its release exists, install
-its reviewed local tarball; the tagged examples below apply after publication.
+Version 0.9.0 provides the Windows setup and independent project updates.
+Use the verified release tarball or the pinned tag shown below.
 
 ```bash
 npm install --save-dev github:leuzeus/aidn#v0.9.0

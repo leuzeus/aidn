@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.0 (unreleased)
+## 0.9.0
 
 - Add an optional user-level setup launcher, a locked multi-project address book, release discovery and staged project updates that preserve configuration and refuse required database migrations.
 - Add a guided Windows setup wizard with project/package/database choices, a read-only summary and explicit installation confirmation.
