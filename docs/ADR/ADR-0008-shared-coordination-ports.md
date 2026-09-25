@@ -71,6 +71,22 @@ Negative:
 
 ## Follow-Up
 
+### Canonical artifact commands (0.10.1)
+
+`ProjectArtifactStore` separates explicit artifact commands from bulk index
+projection and adoption. It resolves the configured runtime persistence backend;
+PostgreSQL never falls back to a local SQLite store. A targeted transaction uses
+an existing schema and unique scope, keeps stable artifact identifiers, updates
+only the named artifact and its directly derived rows, and rolls back on conflict.
+Session/cycle metadata stays in the same canonical scope. No schema migration or
+cross-scope repair is implicit. A short artifact-table lock also serializes these
+writes against older bulk writers; it modifies no other scope's rows.
+
+Workflow checkpoints consume the canonical PostgreSQL snapshot and do not
+reimport checkout documents. Bulk import/adoption remains a separate explicit
+operation. This extends runtime persistence commands, not the shared coordination
+data boundary. Existing local-first and native admission rules still apply.
+
 - align `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md` with the new ports
 - map the port methods to adapter implementations and runtime use cases
 - keep `ADR-0007` and the shared-surface gate synchronized with any port change

@@ -36,11 +36,13 @@ export function resolveEffectiveRuntimePersistence({
 } = {}) {
   const explicitBackend = normalizeRuntimePersistenceBackend(backend);
   if (explicitBackend) {
+    const configured = resolveConfigRuntimePersistence(configData ?? readAidnProjectConfig(targetRoot).data);
+    const configuredRef = configured?.backend === explicitBackend ? configured.connectionRef : null;
     return {
       backend: explicitBackend,
       source: "cli",
       explicit: true,
-      connectionRef: String(connectionRef ?? "").trim() || null,
+      connectionRef: String(connectionRef ?? "").trim() || configuredRef || null,
       config: null,
     };
   }
