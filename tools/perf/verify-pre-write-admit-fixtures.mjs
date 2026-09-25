@@ -151,7 +151,7 @@ function installRepairWarningFixture(targetRoot) {
   ].join("\n"), "utf8");
 }
 
-function installDbOnlyReadyRuntimeFixture(targetRoot) {
+function installDbOnlyReadyRuntimeFixture(targetRoot, stateMode = "db-only") {
   const runtimeStateFile = path.join(targetRoot, "docs", "audit", "RUNTIME-STATE.md");
   fs.writeFileSync(runtimeStateFile, [
     "# Runtime State Digest",
@@ -159,7 +159,7 @@ function installDbOnlyReadyRuntimeFixture(targetRoot) {
     "## Summary",
     "",
     "updated_at: 2026-03-22T12:05:00Z",
-    "runtime_state_mode: db-only",
+    `runtime_state_mode: ${stateMode}`,
     "repair_layer_status: ok",
     "repair_layer_advice: none",
     "repair_routing_hint: continue",
@@ -246,12 +246,12 @@ function installSessionMergeFixture(targetRoot) {
   runGit(targetRoot, ["checkout", "S101-alpha"]);
 }
 
-function installDbOnlyIndexFixture(repoRoot, targetRoot) {
+function installDbOnlyIndexFixture(repoRoot, targetRoot, stateMode = "db-only") {
   const env = {
     AIDN_STATE_MODE: "db-only",
     AIDN_INDEX_STORE_MODE: "sqlite",
   };
-  installDbOnlyReadyRuntimeFixture(targetRoot);
+  installDbOnlyReadyRuntimeFixture(targetRoot, stateMode);
   runNodeJson(repoRoot, "tools/perf/index-sync.mjs", [
     "--target",
     targetRoot,
@@ -407,6 +407,57 @@ function verifyInjectedFailureCleanup(repoRoot) {
   };
 }
 
+function verifyInitialContextReload(repoRoot, tempRoot, source) {
+  const snapshot = (root) => {
+    const entries = fs.readdirSync(root, { recursive: true, withFileTypes: true });
+    return JSON.stringify(entries.filter((entry) => entry.isFile()).map((entry) => {
+      const file = path.join(entry.parentPath, entry.name);
+      return [path.relative(root, file), fs.readFileSync(file).toString("base64")];
+    }).sort(([a], [b]) => a.localeCompare(b)));
+  };
+  const results = [];
+  for (const stateMode of ["files", "dual", "db-only"]) {
+    const target = path.join(tempRoot, `initial-context-${stateMode}`);
+    fs.cpSync(source, target, { recursive: true });
+    const current = path.join(target, "docs/audit/CURRENT-STATE.md");
+    let text = fs.readFileSync(current, "utf8");
+    for (const [key, value] of Object.entries({ mode: "unknown", active_session: "none", active_cycle: "none", branch_kind: "unknown" })) {
+      text = upsertScalarLine(text, key, value);
+    }
+    fs.writeFileSync(current, text);
+    if (stateMode !== "files") installDbOnlyIndexFixture(repoRoot, target, stateMode);
+    prepareActivationFixture(target, repoRoot);
+    const env = { AIDN_STATE_MODE: stateMode };
+    const before = snapshot(target);
+    for (const skill of ["context-reload", "aidn-context-reload"]) {
+      const result = runAidnWithEnv(repoRoot, ["runtime", "pre-write-admit", "--target", target, "--skill", skill, "--strict", "--json"], env);
+      assert(result.ok && result.activation.active, `${stateMode}: initial context reload must be admitted`);
+      assert(result.context.mode === "unknown", `${stateMode}: context reload must not invent a mode`);
+      assert(result.context.active_session === "none", `${stateMode}: context reload must not invent a session`);
+    }
+    const write = runAidnWithEnv(repoRoot, ["runtime", "pre-write-admit", "--target", target, "--skill", "requirements-delta", "--strict", "--json"], env, 1);
+    assert(!write.ok && write.blocking_reasons.includes("mode is unknown"), `${stateMode}: write admission must retain the mode gate`);
+    assert(snapshot(target) === before, `${stateMode}: admission must leave every file unchanged`);
+    results.push({ state_mode: stateMode, initial_read: "PASS", write_refusal: "PASS", unchanged: true });
+  }
+  const unavailable = path.join(tempRoot, "initial-context-unavailable");
+  fs.cpSync(source, unavailable, { recursive: true });
+  fs.mkdirSync(path.join(unavailable, ".aidn"), { recursive: true });
+  fs.writeFileSync(path.join(unavailable, ".aidn/config.json"), JSON.stringify({
+    runtime: { stateMode: "db-only", persistence: { backend: "postgres", localProjectionPolicy: "none", connectionRef: "env:AIDN_CONTEXT_RELOAD_UNAVAILABLE" } },
+  }));
+  prepareActivationFixture(unavailable, repoRoot);
+  const before = snapshot(unavailable);
+  const result = runAidnWithEnv(repoRoot, ["runtime", "pre-write-admit", "--target", unavailable, "--skill", "context-reload", "--strict", "--json"], { AIDN_STATE_MODE: "db-only", AIDN_CONTEXT_RELOAD_UNAVAILABLE: "" }, 1);
+  assert(!result.ok && result.blocking_reasons.includes("canonical runtime backend is unavailable for context reload"), `context reload must reject an unavailable canonical backend despite visible anchors: ${JSON.stringify({ reasons: result.blocking_reasons, warnings: result.warnings, backend: result.context.shared_state_backend, skill: result.skill })}`);
+  assert(snapshot(unavailable) === before, "unavailable backend diagnosis must not write");
+  const inactive = path.join(tempRoot, "initial-context-inactive");
+  fs.mkdirSync(inactive);
+  const denied = runAidn(repoRoot, ["runtime", "pre-write-admit", "--target", inactive, "--skill", "context-reload", "--strict", "--json"], 1);
+  assert(!denied.ok && !denied.activation.active && Object.values(denied.source_of_truth.observed_sources).every((s) => s === "not-read"), "inactive context reload must refuse before reading workflow context");
+  return results;
+}
+
 function main() {
   let tempRoot = "";
   let primaryError = null;
@@ -423,6 +474,7 @@ function main() {
       throw new Error("injected pre-write-admit fixture failure");
     }
     const exitPolicyEvidence = verifyExitPolicy(repoRoot);
+    const contextReloadEvidence = verifyInitialContextReload(repoRoot, tempRoot, readyTarget);
     const injectedFailureCleanup = verifyInjectedFailureCleanup(repoRoot);
     const cycleCreateTarget = path.join(tempRoot, "cycle-create");
     const warningTarget = path.join(tempRoot, "repair-warning");
@@ -788,6 +840,7 @@ function main() {
       cycle_create_ahead_blocked: aheadCycleCreateBlocked,
       cycle_create_session_unmerged_blocked: unmergedSessionCycleCreateBlocked,
       exit_policy: exitPolicyEvidence,
+      initial_context_reload: contextReloadEvidence,
       injected_failure_cleanup: injectedFailureCleanup,
       pass: true,
     };

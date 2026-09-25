@@ -29,6 +29,10 @@ const DEFAULT_POLICY = Object.freeze({
 });
 
 const SKILL_POLICIES = Object.freeze({
+  "context-reload": {
+    // This read reconstructs the mode; it does not authorize a workflow write.
+    requireMode: false,
+  },
   "start-session": {
     requireMode: false,
   },
