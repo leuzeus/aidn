@@ -94,8 +94,8 @@ A global update does not replace existing project connectors. After switching
 to a validated release containing this correction, prepare their explicit repair:
 
 ```powershell
-aidn bootstrap --target C:\projects\example --repair --json
-aidn bootstrap --target C:\projects\example --repair --write --expect-plan PLAN_ID --json
+aidn bootstrap --target ..\example --repair --json
+aidn bootstrap --target ..\example --repair --write --expect-plan PLAN_ID --json
 ```
 
 Inspect the exact returned plan before applying it. Repair preserves revoked
