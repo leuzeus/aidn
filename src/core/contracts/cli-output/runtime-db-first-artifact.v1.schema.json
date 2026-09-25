@@ -16,6 +16,7 @@
     "db_first_artifact_diagnostic"
   ],
   "properties": {
+    "backend": { "type": "string", "enum": ["sqlite", "postgres"] },
     "ts": { "type": "string" },
     "ok": { "type": "boolean" },
     "target_root": { "type": "string" },

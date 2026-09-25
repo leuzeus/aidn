@@ -1,8 +1,9 @@
-# Global AIDN setup candidate
+# Global AIDN setup
 
-The 0.10.0 implementation is being qualified. Do not use it to migrate a real
-client until release validation is complete. ADR-0013 supersedes independent
-project engine versions; existing 0.9.x receipts remain migration inputs.
+The global installation shipped in 0.10.0. Version 0.10.1 corrects PostgreSQL
+artifact writes and checkpoint preservation; use its validated published release
+for PostgreSQL client migration. ADR-0013 supersedes independent project engine
+versions; existing 0.9.x receipts remain migration inputs.
 
 ## Entry points
 

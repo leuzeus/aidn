@@ -148,6 +148,18 @@ These surfaces are public and contract-backed, but they are more operational or 
 - `aidn runtime artifact-store get --json`
 - `aidn runtime artifact-store upsert --json`
 - `aidn runtime artifact-store materialize --json`
+
+Artifact commands select the configured runtime backend. PostgreSQL upserts
+write only the named artifact, its blob/head and associated session/cycle row
+inside one transaction, using an existing compatible schema and unambiguous
+scope. They do not adopt a store or rebuild its index. `--path` is relative to
+the audit root (for example `sessions/S001-example.md`, never
+`docs/audit/sessions/S001-example.md`). The additive `backend` field identifies
+the store; the legacy v1 `sqlite_file` field is empty for PostgreSQL.
+`list`, `get` and materialization previews remain read-only. JSON formatting
+does not authorize an upsert or materialization; their existing effect rules
+remain unchanged. PostgreSQL checkpoints read the canonical backend and skip
+implicit index imports with reason `postgres_canonical_backend`.
 - `aidn runtime coordinator-select-agent --json`
 - `aidn runtime coordinator-next-action --json`
 - `aidn runtime coordinator-loop --json`

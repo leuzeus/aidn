@@ -583,7 +583,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     effectClass: "read-only",
     jsonContract: "runtime-artifact-store-get.v1.schema.json",
     safeArgs: ["runtime", "artifact-store", "get", "--path", "snapshots/context-snapshot.md", "--json"],
-    notes: "Reads one stored runtime artifact by path without mutating sqlite or filesystem projections.",
+    notes: "Reads one artifact from the configured canonical backend without mutating PostgreSQL, SQLite or filesystem projections.",
   }),
   commandPolicy({
     id: "runtime-artifact-store-upsert",
@@ -591,7 +591,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     effectClass: "mutating",
     jsonContract: "runtime-artifact-store-upsert.v1.schema.json",
     safeArgs: ["runtime", "artifact-store", "upsert", "--path", "snapshots/context-snapshot.md", "--kind", "snapshot", "--family", "normative", "--content-file", "docs/audit/snapshots/context-snapshot.md", "--json"],
-    notes: "Upserts one runtime artifact into sqlite storage.",
+    notes: "Upserts one artifact into the configured canonical backend; PostgreSQL uses a targeted transaction without schema migration or scope replacement.",
   }),
   commandPolicy({
     id: "runtime-artifact-store-materialize",
@@ -1022,7 +1022,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
       "normative",
       "--json",
     ],
-    notes: "Upserts a single db-first artifact into sqlite and can materialize the corresponding audit projection.",
+    notes: "Upserts one artifact into the configured canonical backend and can explicitly materialize its audit projection. PostgreSQL never falls back to SQLite.",
   }),
   commandPolicy({
     id: "runtime-coordinator-loop",

@@ -71,7 +71,8 @@ Codex instruction layering after install:
 - global user or org guidance may still come from `~/.codex/AGENTS.md` or `~/.codex/AGENTS.override.md`
 - the installed root `AGENTS.md` is only the project layer
 - nested `AGENTS.md` or `AGENTS.override.md` can override root rules in specialized subtrees
-- `aidn` does not install or manage the global `~/.codex` layer
+- global AIDN installs its managed skills and agents in the user Codex layer;
+  user/org `AGENTS.md` instructions and third-party assets remain independent
 
 ## Workflow Diagrams
 
@@ -237,11 +238,12 @@ For Windows setup including optional PostgreSQL preparation, see
 the interactive wizard (`.\scripts\setup-project.ps1 -Wizard`) in
 [the complete project installer](docs/WINDOWS_PROJECT_SETUP.md).
 
-Version 0.10.0 is an unpublished candidate for one user-level engine shared by
-registered projects. Its planned release tag is `v0.10.0`; this documentation
-does not claim that tag or release is already available. Follow
-[the global setup candidate](docs/GLOBAL_SETUP.md) for its current qualification
-boundaries. The previous per-project installer is retained for legacy use.
+Version 0.10.0 introduced one user-level engine shared by registered projects.
+The `v0.10.1` source includes canonical PostgreSQL artifact writes and checkpoint
+preservation. Install from a published release with verified checksums; a source
+version or branch name alone is not proof of publication.
+Follow [the global setup guide](docs/GLOBAL_SETUP.md) for installation and
+qualification boundaries. The per-project installer is retained for legacy use.
 
 The source installer `scripts/setup-global.ps1` prepares a verified package plan.
 Apply with `-Write -ExpectPlan PLAN_ID` to install the common launcher and register
@@ -312,7 +314,7 @@ Notes:
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a tagged install (`#v0.10.0`) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a published tagged install (`#v0.10.1` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 

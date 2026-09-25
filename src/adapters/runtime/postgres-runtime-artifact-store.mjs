@@ -3,6 +3,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { createRequire } from "node:module";
 import { assertRuntimeArtifactStore } from "../../core/ports/runtime-artifact-store-port.mjs";
+import { executePostgresArtifactCommand } from './postgres-artifact-command-lib.mjs';
 import {
   payloadDigest,
   stablePayloadProjection,
@@ -636,6 +637,10 @@ export function createPostgresRuntimeArtifactStore({
     },
     loadSnapshot,
     loadRuntimeHeads,
+    async executeArtifactCommand(action, options = {}) {
+      if (!connection.ok) throw new Error('ARTIFACT_POSTGRES_CONNECTION_UNAVAILABLE');
+      return withClient(runtime, client => executePostgresArtifactCommand(client, scopeCandidates, action, options));
+    },
     writeIndexProjection,
     recordAdoptionEvent,
   }, "PostgresRuntimeArtifactStore");

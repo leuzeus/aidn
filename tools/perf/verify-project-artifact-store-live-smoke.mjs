@@ -1,0 +1,116 @@
+#!/usr/bin/env node
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { createPostgresRuntimeArtifactStore } from '../../src/adapters/runtime/postgres-runtime-artifact-store.mjs';
+import { resolveRuntimeProjectContext } from '../../src/application/runtime/runtime-project-context-service.mjs';
+import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
+import { runDbFirstArtifactUseCase } from '../../src/application/runtime/db-first-artifact-use-case.mjs';
+
+const connectionString = process.env.AIDN_RUNTIME_PG_SMOKE_URL;
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+if (!connectionString) { console.log('UNAVAILABLE: AIDN_RUNTIME_PG_SMOKE_URL is required'); process.exitCode = 1; }
+else {
+  const { Client } = await import('pg');
+  const client = new Client({ connectionString });
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'aidn-artifact-command-'));
+  const scopes = [];
+  const tables = ['runtime_heads', 'artifact_blobs', 'migration_findings', 'migration_runs', 'repair_decisions',
+    'session_links', 'session_cycle_links', 'cycle_links', 'artifact_links', 'run_metrics', 'artifact_tags',
+    'tags', 'file_map', 'artifacts', 'sessions', 'cycles', 'index_meta', 'runtime_scope_registry'];
+  const snapshot = async scope => {
+    const result = {};
+    for (const table of tables) result[table] = (await client.query(`SELECT to_jsonb(t) AS row FROM aidn_runtime.${table} t WHERE scope_key=$1 ORDER BY to_jsonb(t)::text`, [scope])).rows;
+    return result;
+  };
+  try {
+    await client.connect();
+    const projects = [];
+    for (const name of ['projet été', 'other']) {
+      const targetRoot = path.join(root, name); fs.mkdirSync(path.join(targetRoot, '.aidn'), { recursive: true });
+      execFileSync('git', ['init', '--initial-branch=dev', targetRoot], { stdio: 'pipe', windowsHide: true });
+      execFileSync('git', ['-C', targetRoot, '-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '--allow-empty', '-m', 'fixture'], { stdio: 'pipe', windowsHide: true });
+      fs.writeFileSync(path.join(targetRoot, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'db-only',
+        persistence: { backend: 'postgres', connectionRef: 'env:AIDN_RUNTIME_PG_SMOKE_URL', localProjectionPolicy: 'none' } } }));
+      const context = resolveRuntimeProjectContext({ targetRoot }); scopes.push(context.runtime_scope_id);
+      const store = createPostgresRuntimeArtifactStore({ targetRoot, connectionString });
+      await store.writeIndexProjection({ payload: { schema_version: 1, target_root: targetRoot, audit_root: 'docs/audit',
+        artifacts: [{ path: 'notes/preserved.md', kind: 'note', content_format: 'utf8', content: 'preserve me', sha256: 'baseline', mtime_ns: '1', updated_at: '2026-01-01T00:00:00Z' }], cycles: [], sessions: [] } });
+      projects.push({ targetRoot, store });
+    }
+    const before = await snapshot(scopes[0]); const other = await snapshot(scopes[1]);
+    const { targetRoot, store } = projects[0];
+    const upsert = (artifact) => store.executeArtifactCommand('upsert', { artifact });
+    await Promise.all([upsert({ path: 'notes/one.md', content: 'one' }), upsert({ path: 'notes/two.md', content: 'two' })]);
+    const result = runDbFirstArtifactUseCase({ target: targetRoot, path: 'sessions/S001-test.md', kind: 'session',
+      content: '## WORK MODE - THINKING\nsession_branch: codex/test\n', materialize: 'false' });
+    assert.equal(result.ok, true); assert.equal(result.materialized, false);
+    const facade = createProjectArtifactStore({ targetRoot, readOnly: true });
+    assert.match(facade.getArtifact('sessions/S001-test.md').content, /THINKING/);
+    assert.throws(() => facade.upsertArtifact({ path: 'notes/refused.md' }), /read-only/);
+    const ids = (await client.query('SELECT artifact_id FROM aidn_runtime.artifacts WHERE scope_key=$1', [scopes[0]])).rows.map(r => r.artifact_id);
+    assert.equal(new Set(ids).size, ids.length);
+    const canonical = await store.loadSnapshot();
+    assert.equal(canonical.payload.sessions.find(r => r.session_id === 'S001').state, 'THINKING');
+    const beforeFailure = await snapshot(scopes[0]);
+    await assert.rejects(upsert({ path: 'cycles/C001-test/status.md', content: 'state: OPEN', mtime_ns: 'not-an-integer' }));
+    assert.deepEqual(await snapshot(scopes[0]), beforeFailure);
+    await assert.rejects(upsert({ path: 'docs/audit/RUNTIME-STATE.md', content: 'duplicate' }), /ARTIFACT_PATH/);
+    const after = await snapshot(scopes[0]);
+    assert.deepEqual(after.artifacts.filter(r => r.row.path === 'notes/preserved.md'), before.artifacts);
+    for (const table of tables.filter(t => !['artifacts', 'artifact_blobs', 'sessions'].includes(t))) assert.deepEqual(after[table], before[table], table);
+    assert.deepEqual(await snapshot(scopes[1]), other);
+    assert.equal(fs.existsSync(path.join(targetRoot, '.aidn/runtime/index/workflow-index.sqlite')), false);
+    await upsert({ path: 'CURRENT-STATE.md', content: 'mode: THINKING' });
+    const beforeLateFailure = await snapshot(scopes[0]);
+    await assert.rejects(upsert({ path: 'notes/CURRENT-STATE.md', content: 'must roll back artifact and blob' }), /ARTIFACT_HEAD_PATH_CONFLICT/);
+    assert.deepEqual(await snapshot(scopes[0]), beforeLateFailure);
+    const beforeRead = await snapshot(scopes[0]);
+    const projection = facade.materializeArtifacts({ onlyPaths: ['sessions/S001-test.md'], dryRun: true });
+    assert.equal(projection.exported, 1); assert(!fs.existsSync(path.join(targetRoot, 'docs/audit')));
+    assert.deepEqual(await snapshot(scopes[0]), beforeRead);
+    const bootstrap = spawnSync(process.execPath, [path.join(repoRoot, 'bin/aidn.mjs'), 'bootstrap', '--target', targetRoot,
+      '--profile', 'db-only', '--persistence-policy', 'verify-only', '--no-codex-migrate-custom', '--source-branch', 'dev', '--json'],
+    { encoding: 'utf8', timeout: 60000, windowsHide: true });
+    const bootstrapResult = JSON.parse(bootstrap.stdout);
+    assert.equal(bootstrapResult.ok, true, JSON.stringify(bootstrapResult.errors));
+    assert.deepEqual(await snapshot(scopes[0]), beforeRead, 'verify-only bootstrap changed canonical data');
+    console.log('PASS live PostgreSQL: actual source bootstrap verify-only preserves all rows');
+    const cli = (...args) => {
+      const child = spawnSync(process.execPath, [path.join(repoRoot, 'bin/aidn.mjs'), 'runtime', ...args, '--target', targetRoot, '--json'],
+        { encoding: 'utf8', timeout: 60000, windowsHide: true });
+      assert.equal(child.status, 0, child.stderr.slice(-800));
+      return JSON.parse(child.stdout);
+    };
+    const written = cli('db-first-artifact', '--path', 'cycles/C001-test/status.md', '--kind', 'cycle',
+      '--content', 'state: OPEN\nsession_owner: S001\nbranch_name: cycle/C001-test\ndor_state: READY\n', '--no-materialize');
+    assert.equal(written.backend, 'postgres'); assert.equal(written.materialized, false);
+    const read = cli('artifact-store', 'get', '--path', 'cycles/C001-test/status.md');
+    assert.equal(read.backend, 'postgres'); assert.equal(read.sqlite_file, '');
+    assert.equal(read.artifact.cycle_id, 'C001');
+    const beforeCheckpoint = await snapshot(scopes[0]);
+    const listed = cli('artifact-store', 'list', '--limit', '20');
+    assert(listed.artifacts.some(row => row.path === 'cycles/C001-test/status.md'));
+    const checkpoint = spawnSync(process.execPath, [path.join(repoRoot, 'tools/perf/checkpoint.mjs'), '--target', targetRoot,
+      '--mode', 'THINKING', '--skip-gate-evaluate', '--json'], { encoding: 'utf8', timeout: 60000, windowsHide: true });
+    assert.equal(checkpoint.status, 0, 'checkpoint failed: ' + checkpoint.stderr.slice(-800));
+    const checkpointResult = JSON.parse(checkpoint.stdout);
+    assert.equal(checkpointResult.index.skip_reason, 'postgres_canonical_backend');
+    assert.deepEqual(await snapshot(scopes[0]), beforeCheckpoint, 'checkpoint changed canonical data');
+    console.log('PASS live PostgreSQL: actual checkpoint skips canonical reimport and preserves all rows');
+    console.log('PASS live PostgreSQL: selective writes, parallel IDs, session visibility, read-only facade, rollback, path aliases, unrelated rows and second scope preserved, no SQLite');
+  } catch (error) {
+    console.error('FAIL live PostgreSQL artifact commands:', String(error.message).replaceAll(connectionString, '[redacted]')); process.exitCode = 1;
+  } finally {
+    try {
+      for (const table of tables) await client.query(`DELETE FROM aidn_runtime.${table} WHERE scope_key=ANY($1::text[])`, [scopes]);
+      for (const scope of scopes) for (const rows of Object.values(await snapshot(scope))) assert.equal(rows.length, 0);
+      console.log('PASS live PostgreSQL: owned test scopes cleaned');
+    } catch { console.error('FAIL: test scope cleanup'); process.exitCode = 1; }
+    await client.end();
+    assert.equal(path.dirname(path.resolve(root)), path.resolve(os.tmpdir())); fs.rmSync(root, { recursive: true, force: true });
+  }
+}

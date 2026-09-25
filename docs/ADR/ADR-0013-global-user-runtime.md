@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted intent; implementation in progress for 0.10.0. Not release-ready.
+Accepted; global installation shipped in 0.10.0. The 0.10.1 implementation
+corrects canonical PostgreSQL artifact writes and checkpoint preservation.
 
 This decision supersedes independent per-project engine versions for projects
 explicitly migrated to the global installation. Existing local installations
@@ -76,7 +77,8 @@ The common wizard applies the same exact plans; the source PowerShell entry poin
 registers user environment variables. Orphan recovery requires a previous OS boot
 witness, otherwise it refuses. See `docs/GLOBAL_SETUP.md` for the remaining wizard,
 native integration and release qualification boundaries. The version authority
-is 0.10.0 as an unpublished candidate while those release blockers remain open.
+is recorded in `VERSION`; every subsequent release retains those qualification
+obligations. Release availability does not complete any individual client migration.
 
 Before 0.10.0 publication, require public effect/JSON coverage, update and rollback
 preflights against migrated projects, interrupted external-operation recovery,
