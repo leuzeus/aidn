@@ -5,8 +5,9 @@ installer. The integration calls the same AIDN CLI and core admission use case a
 other adapters. It adds no second workflow engine, persistent server, mandatory
 API key or model call to the nominal installation and admission paths.
 
-This page describes unreleased activation changes based on package version
-0.8.0; it does not claim those changes have been published. Scaffold assets and
+The activation base shipped in [v0.8.0](https://github.com/leuzeus/aidn/releases/tag/v0.8.0)
+on 2026-09-24 after PRs #62/#63. Specific native-write admission below is a new
+local candidate, not qualification of that release. Scaffold assets and
 test corpora are not an installed client project. Installation,
 discovery, native approval and operational qualification are separate claims.
 See [ADR-0011](ADR/ADR-0011-codex-installation-ownership-and-native-boundary.md)
@@ -222,8 +223,8 @@ hook downloads or resolves `npx ...@latest` at execution time.
 | Event / path | Implemented behavior | Boundary |
 | --- | --- | --- |
 | `SessionStart`, sources startup/resume/clear/compact | Calls `runtime pre-write-admit --skill start-session --json` and adds a compact canonical summary | Read-only orientation, not session creation or a write authorization; runtime failure becomes degraded context |
-| `PreToolUse` matcher `^(apply_patch|Edit|Write)$` | Uses the canonical `apply_patch` payload's `tool_input.command`, rechecks generic core admission, emits supported explicit deny JSON when blocked | `Edit` and `Write` are native matcher aliases; canonical stdin uses `apply_patch` on the audited client |
-| Admitted patch | Adds compact context for this invocation without rewriting the patch or emitting an unconditional allow | A generic admission is not a validated close-cycle, publication or other governed transition |
+| `PreToolUse` matcher `^(apply_patch|Edit|Write)$` | Passes `tool_input.command` and invocation cwd to `pre-write-admit --native-request-stdin`; the core evaluates every affected path | `Edit` and `Write` are matcher aliases; supported input remains native V4A, not arbitrary editor schemas |
+| Admitted patch | Adds bounded context without rewriting input or emitting unconditional native allow | Scope permission does not validate patch semantics or a governed transition |
 | AIDN transition invoked through its CLI | Existing core prerequisites remain authoritative | Model text, cached PASS claims and hook presence cannot authorize a transition |
 | Shell, `write_stdin`, MCP and other tools | No classification or interception by the shipped matcher | Arbitrary shell writes and alternate adapters are outside this native prevention coverage |
 
@@ -249,6 +250,66 @@ remain optional future integration choices; none is needed by this implementatio
 
 ## Context after resume and compaction
 
+### Specific native write admission
+
+Generic calls stay compatible and report `admission_kind: generic`: orientation
+does not authorize arbitrary writes. `--native-request-stdin` reads one JSON
+request containing absolute `cwd`, `tool_name` and `tool_input.command`. For an
+active project it adds `admission_kind: specific` and `write_decision` with
+contract `native-write-admission.v1`, outcome, structured reasons, missing
+requirements, normalized operations, coverage, observation hashes and next action.
+Inactive projects retain activation refusal without reading workflow state;
+the native hook is neutral for absent, unprepared or revoked projects. Degraded
+activation denies a covered edit.
+
+| Action | Canonical prerequisites | Decision and coverage |
+| --- | --- | --- |
+| `docs/audit/notes/<name>.md`, `docs/audit/parking-lot.md` | Known THINKING/EXPLORING/COMMITTING mode and available non-stale context | Non-normative notes allowed without implementation prerequisites; semantic review remains required |
+| Active cycle `plan.md` | Same context; scope unfrozen and phase not IMPLEMENTING | Planning allowed; a patch cannot expand its own frozen scope |
+| Product and normative docs | Session/cycle, current branch mapping, IMPLEMENTING phase, canonical first task, exact file/operation scope | COMMITTING plus DoR READY or meaningful cycle override; declared shared/high-risk usage matrix |
+| Temporary exploration | Same session/cycle/branch/task/path evidence; EXPLORING and canonical per-task exploration intent | Bounded DoR exemption for experiment, never normative docs or a delivery claim |
+| Installed controls, AGENTS, receipts, authorizations and workflow state | Existing ownership/maintenance or transition policy | Native patch refused; use reviewed bootstrap repair/resume/rollback or applicable workflow transition; a request saying repair grants nothing |
+| Shell, write_stdin, MCP and other tools | Their own controls | Outside native matcher coverage |
+
+The canonical plan carries scope in its existing artifact, without a second
+configuration or journal. The task text must match `## Tasks` and the current
+canonical first step:
+
+````markdown
+## Tasks
+1. implement parser validation
+
+## Native write scope
+```json
+{"version":1,"tasks":[{"task":"implement parser validation","intent":"implementation","paths":[{"path":"src/parser.mjs","operations":["update"]},{"path":"tests/parser.test.mjs","operations":["add","update"]}]}]}
+```
+````
+
+Paths are exact project-relative files, without globs or directory grants.
+Deletion needs `delete`; a move needs source `move` and destination
+`move-destination`. One refusal blocks the whole patch. Invalid, oversized or
+unclassified covered inputs deny. The strict V4A parser rejects shell/heredoc
+wrappers. Paths resolve against native cwd; containment, nested repositories,
+links/hardlinks, Windows device/ADS/short-name aliases and ambiguous names are
+checked before execution. Conservative parser/path limits can refuse otherwise
+executable patches. Classification uses protected locations and canonical
+artifact identity, not extension alone or model intent. General docs are treated
+as normative. Semantic correctness and any improper authority claimed by note
+content still require review.
+
+Each decision re-reads state and binds project/worktree, branch/HEAD, activation
+revision, canonical content, payload and observed file hashes. It is ephemeral
+evidence, never a reusable token or lock; hook/application races remain possible.
+Specific DB-backed admission reads backend artifacts and rejects unavailable
+state or projection fallback. Generic callers remain compatible. PostgreSQL
+remains optional; neither invocation imports, repairs or applies a patch.
+
+The adapter follows the [official native hook protocol](https://learn.chatgpt.com/docs/hooks):
+supported explicit-deny JSON, diagnostics on stderr and one JSON stdout document.
+This is distinct from actual native execution proof. Script updates require
+ownership-aware installation and human review of changed executable content;
+the installer never supplies native trust.
+
 Canonical workflow state stays in its configured files/database backend. A
 hydrated context is a derived, regenerable cache. SessionStart reads canonical
 admission and does not run hydrate, project state, create a session or update a
@@ -267,7 +328,7 @@ cannot be promoted to proof of current state. See the
 The [Windows client migration guide](CODEX_CLIENT_MIGRATION.md) separates the
 package switch, managed-asset transaction and optional legacy global-skill migration.
 
-The candidate record and native acceptance cases for release line 0.8.0 are in
+The candidate record and native acceptance cases for release line 0.9.0 are in
 [Codex native qualification](CODEX_NATIVE_QUALIFICATION.md). That record remains
 OPEN; it is a protocol with unfilled evidence fields, not an execution result.
 Publication requires a bounded human-approved temporary-client smoke showing

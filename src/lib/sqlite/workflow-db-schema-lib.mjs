@@ -998,7 +998,7 @@ export function inspectWorkflowDbSchema(options = {}) {
   }
 
   const DatabaseSync = getDatabaseSync();
-  const db = new DatabaseSync(resolved.sqliteFile);
+  const db = new DatabaseSync(resolved.sqliteFile, { readOnly: options.readOnly === true });
   try {
     const appliedRows = listAppliedMigrationRows(db);
     const appliedIds = new Set(appliedRows.map((row) => row.migration_id));

@@ -64,6 +64,7 @@ function runHook(client,event,payload={},cwd=client){
 const patch={tool_name:"apply_patch",tool_input:{command:"*** Begin Patch\n*** Add File: example.txt\n+fixture\n*** End Patch"}};
 try {
   const client=path.join(tempRoot,"client espace \u00e9");
+  patch.tool_input.command = `*** Begin Patch\n*** Add File: ${path.join(client,"docs/audit/notes/native-marker.md").replaceAll("\\", "/")}\n+fixture\n*** End Patch`;
   copyFixture(path.join(repoRoot,"tests/fixtures/perf-handoff/ready"),client);
   initGitRepo(client,{sourceBranch:"main",workingBranch:"feature/C101-alpha"});
   prepareActivationFixture(client,repoRoot);
@@ -84,9 +85,12 @@ try {
   }
   const allowed=runHook(client,"PreToolUse",patch,subfolder);
   assert.equal(allowed.hookSpecificOutput.permissionDecision,undefined);
-  assert.match(allowed.hookSpecificOutput.additionalContext,/generic admission rechecked/);
+  assert.match(allowed.hookSpecificOutput.additionalContext,/specific scope admission rechecked/);
   assert.equal(snapshot(client),before,"native wrappers must not write project state or hydrate caches");
   record("canonical-resume-and-admission-read-only-unicode-subfolder");
+  assert.equal(runHook(client,"PreToolUse",{}).hookSpecificOutput.permissionDecision,"deny");
+  assert.equal(runHook(client,"PreToolUse",{tool_name:"apply_patch",tool_input:{}}).hookSpecificOutput.permissionDecision,"deny");
+  record("active-covered-payload-missing-tool-or-command-denies");
   const config=JSON.parse(fs.readFileSync(path.join(client,".codex/hooks.json"),"utf8"));
   assert.deepEqual(Object.keys(config), ["hooks"], "distributed native hooks root must use only supported fields");
   const matcher=new RegExp(config.hooks.PreToolUse[0].matcher);
@@ -107,7 +111,7 @@ try {
   fs.writeFileSync(current,fs.readFileSync(current,"utf8").replace(/^mode:.*$/m,"mode: unknown"));
   const blocked=runHook(client,"PreToolUse",patch);
   assert.equal(blocked.hookSpecificOutput.permissionDecision,"deny");
-  assert.match(blocked.hookSpecificOutput.permissionDecisionReason,/mode is unknown/);
+  assert.match(blocked.hookSpecificOutput.permissionDecisionReason,/MODE_NOT_ADMITTED/);
   assert.equal(runtime.readAdmission(client).ok,false);
   record("fresh-core-denial-after-context-change-no-cached-admission");
   assert.equal(runHook(client,"PreToolUse",{...patch,cwd:tempRoot}).hookSpecificOutput.permissionDecision,"deny");
@@ -190,6 +194,7 @@ try {
   const absentBefore=snapshot(absent);
   assert.deepEqual(runHook(absent,"SessionStart"),{});
   assert.deepEqual(runHook(absent,"PreToolUse",patch),{});
+  assert.deepEqual(runHook(absent,"PreToolUse",{}),{});
   assert.equal(snapshot(absent),absentBefore);
   record("orphan-hooks-without-activation-or-receipt-are-neutral-and-read-only");
   const host=path.join(tempRoot,"host");
@@ -201,6 +206,9 @@ try {
   assert.equal(capabilities.clients[0].detected,false);
   assert.equal(capabilities.clients.find((item)=>item.kind==="desktop").app_detected,true);
   assert.equal(capabilities.states.approved,"unknown");assert.equal(capabilities.states.operational,"unverified");
+  assert.equal(capabilities.native_write_coverage.execution,"unverified");
+  assert.equal(capabilities.native_write_coverage.native_approval,"unknown");
+  assert.equal(capabilities.native_write_coverage.installed_policy,"not-verified-by-inventory");
   assert(versionCalls.every((call)=>JSON.stringify(call.args)==='["--version"]'));
   assert.equal(codexVersionCapabilities("0.146.0-alpha.9.2").mcp_hooks,"unsupported");
   assert.equal(codexVersionCapabilities("99.0.0").command_hooks,"unknown");

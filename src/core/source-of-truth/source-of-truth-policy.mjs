@@ -359,7 +359,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dual: "runtime artifact store",
     dbOnly: "runtime artifact store",
     projection: "SQLite/local exports and materialized docs",
-    notes: "Local SQLite remains target-root anchored unless an explicit shared locator is configured.",
+    notes: "Local SQLite remains target-root anchored unless an explicit shared locator is configured. Native write scope is canonical plan artifact content; DB-backed admission must not authorize from a stale visible plan projection.",
   }),
   policy({
     concept: "decision",

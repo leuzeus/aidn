@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.0
+
+- Add an optional user-level setup launcher, a locked multi-project address book, release discovery and staged project updates that preserve configuration and refuse required database migrations.
+- Add a guided Windows setup wizard with project/package/database choices, a read-only summary and explicit installation confirmation.
+
+- Add a Windows PowerShell setup wrapper for an exact GitHub release download or pinned local AIDN tarball, project hooks and optional PostgreSQL connection or local installation, with explicit apply and separate native approval.
+
+- Admit covered native patches against the canonical task, exact paths and operations, independently of generic workflow admission. Preserve planning notes while requiring implementation prerequisites for product changes.
+- Pass native patch payloads through the thin Codex hook and return explicit refusals for invalid or out-of-scope requests.
+- Distinguish installed hook configuration from native approval and execution. Native qualification remains open; shell and MCP writes remain outside coverage.
+
 ## 0.8.0
 
 - Publish a reproducible, installable npm tarball alongside the release ZIP, with manifest, checksum and package-content verification for pinned client migrations.
