@@ -26,6 +26,14 @@ and canonical runtime projection; fixtures alone are not PostgreSQL proof.
 
 ## Purpose
 
+Branch-audit regressions use `perf:verify-branch-cycle-audit-admission`: complete
+cycle success, propagated warning/refusal, ownership failures, whitespace-valid
+event JSON, old and other-branch events, mixed anomaly reasons, and unchanged
+journal bytes. The live artifact-store smoke additionally exercises automatic
+PostgreSQL selection, misleading local projections, normal reload history and a
+real repeated-anomaly stop through the standard hook and Codex JSON wrapper.
+These subprocess tests do not qualify native hook approval or client execution.
+
 This repository is the package source repository.
 
 Testing here is used for several different intents:

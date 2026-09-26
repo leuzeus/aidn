@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.10.4
+
+- Resolve automatic reload and branch-audit gating against configured PostgreSQL,
+  with canonical session/cycle ownership and no silent local-store fallback.
+- Count anomalous reload fallbacks within a 45-minute branch window. Ordinary
+  cache initialization and workflow changes no longer accumulate into an incident;
+  corruption, unexplained fallback and mixed anomaly reasons remain actionable.
+  Preserve the event journal and record all reload reasons.
+- Propagate branch-audit warnings and stops through the skill and Codex wrappers,
+  including nonzero exit status for refusal and actual repair-layer diagnostics.
+- Cover normal, warning and refusal paths with fixtures and a dedicated real
+  PostgreSQL smoke that verifies canonical precedence and unchanged database rows.
+
 ## 0.10.3
 
 - Recognize the canonical `clean` repair status emitted by workflow hooks when

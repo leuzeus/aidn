@@ -41,3 +41,20 @@ export function prepareNpmActivationFixture(targetRoot, repoRoot = path.resolve(
 export function fixtureNpmEnvironment(targetRoot) {
   return { npm_config_cache: path.join(targetRoot, "node_modules", ".cache", "npm"), npm_config_offline: "true", npm_config_audit: "false", npm_config_fund: "false", npm_config_update_notifier: "false" };
 }
+
+// Handoff corpora model routing state, not a complete installed workflow. Tests
+// that execute branch gating supply documents, aligned intent and drift evidence.
+export function prepareWorkflowDocumentsFixture(targetRoot) {
+  for (const relative of ["docs/audit/baseline/current.md", "docs/audit/WORKFLOW.md", "docs/audit/SPEC.md"]) {
+    const file = path.join(targetRoot, relative);
+    if (fs.existsSync(file)) continue;
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, "# Temporary workflow artifact\n");
+  }
+  const session = path.join(targetRoot, "docs/audit/sessions/S101-alpha.md");
+  if (fs.existsSync(session)) fs.appendFileSync(session, "\nsession_objective: finalize alpha feature\n");
+  const events = path.join(targetRoot, ".aidn/runtime/perf/workflow-events.ndjson");
+  fs.mkdirSync(path.dirname(events), { recursive: true });
+  // Explicit synthetic drift evidence belongs only to these temporary fixtures.
+  fs.appendFileSync(events, JSON.stringify({ ts: new Date().toISOString(), skill: "drift-check", result: "ok" }) + "\n");
+}

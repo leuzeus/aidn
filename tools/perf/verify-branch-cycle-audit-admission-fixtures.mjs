@@ -2,12 +2,25 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
+import assert from "node:assert/strict";
+import { readEventSignalStats } from "../../src/application/runtime/gating-observation-service.mjs";
+import { resolveWorkflowSnapshotBackend } from "../../src/application/runtime/runtime-snapshot-service.mjs";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 import { inspectImmediateProcessExitArguments } from "../verify/spawn-sync-evidence-lib.mjs";
 
 const CASES = [
+  {
+    id: "complete_cycle_passes", fixture: "tests/fixtures/perf-current-state/active",
+    workingBranch: "feature/C101-alpha", expectedAction: "audit_cycle_branch",
+    expectedResult: "ok", expectsGating: true, complete: true, warm: true,
+  },
+  {
+    id: "complete_cycle_warning_propagates", fixture: "tests/fixtures/perf-current-state/active",
+    workingBranch: "feature/C101-alpha", expectedAction: "run_conditional_drift_check",
+    expectedResult: "warn", expectsGating: true, complete: true,
+  },
   {
     id: "non_compliant_branch",
     fixture: "tests/fixtures/perf-current-state/active",
@@ -20,16 +33,16 @@ const CASES = [
     id: "cycle_branch_maps",
     fixture: "tests/fixtures/perf-current-state/active",
     workingBranch: "feature/C101-alpha",
-    expectedAction: "audit_cycle_branch",
-    expectedResult: "ok",
+    expectedAction: "stop_and_triage_incident",
+    expectedResult: "stop",
     expectsGating: true,
   },
   {
     id: "session_branch_maps",
     fixture: "tests/fixtures/perf-current-state/active",
     workingBranch: "S101-alpha",
-    expectedAction: "audit_session_branch",
-    expectedResult: "ok",
+    expectedAction: "stop_and_triage_incident",
+    expectedResult: "stop",
     expectsGating: true,
   },
   {
@@ -99,7 +112,7 @@ function verifyHookExitPolicy() {
 
 function runJson(script, scriptArgs, env = {}) {
   const file = path.resolve(process.cwd(), script);
-  const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
+  const run = spawnSync(process.execPath, [file, ...scriptArgs], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
     env: {
@@ -107,7 +120,36 @@ function runJson(script, scriptArgs, env = {}) {
       ...env,
     },
   });
-  return JSON.parse(stdout);
+  assert.notEqual(run.status, null, 'hook must complete');
+  const result = JSON.parse(run.stdout);
+  if (script.includes('branch-cycle-audit-hook')) {
+    assert.equal(run.status, result.result === 'stop' || result.result === 'error' ? 1 : 0);
+  }
+  return result;
+}
+
+function verifyObservationBoundaries(root) {
+  const file = path.join(root, 'events.ndjson');
+  const nowMs = Date.now();
+  const event = (reason, extra = {}) => ({ skill: 'reload-check', result: 'fallback',
+    ts: new Date(nowMs).toISOString(), branch: 'S101-alpha', reason_code: reason, ...extra });
+  const events = [event('MISSING_CACHE'), event('HEAD_CHANGED'), event('BRANCH_CHANGED'), event('HEAD_CHANGED|DIGEST_MISS'),
+    event('CORRUPT_CACHE', { ts: new Date(nowMs - 46 * 60000).toISOString() }),
+    event('CORRUPT_CACHE', { branch: 'S102-other' }),
+    event('CORRUPT_CACHE'), event('HEAD_CHANGED|CORRUPT_CACHE'),
+    event('', { reason_codes: ['STATE_MODE_FALLBACK'] })];
+  fs.writeFileSync(file, events.map(row => JSON.stringify(row).replaceAll('\":', '\": ')).join('\n'));
+  const before = fs.readFileSync(file);
+  assert.equal(readEventSignalStats(file, { nowMs, branch: 'S101-alpha' }).fallbackRecentCount, 3);
+  assert.deepEqual(fs.readFileSync(file), before, 'observation must not erase history');
+  for (const ts of ['invalid', new Date(nowMs + 60000).toISOString()]) {
+    fs.writeFileSync(file, JSON.stringify(event('CORRUPT_CACHE', { ts })));
+    assert.equal(readEventSignalStats(file, { nowMs, branch: 'S101-alpha' }).fallbackRecentCount, 1);
+  }
+  fs.mkdirSync(path.join(root, '.aidn'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.aidn/config.json'), JSON.stringify({ runtime: { persistence: { backend: 'postgres', connectionRef: 'env:UNUSED_TEST_DB' } } }));
+  assert.equal(resolveWorkflowSnapshotBackend(root, 'legacy.sqlite', 'auto'), 'postgres');
+  assert.throws(() => resolveWorkflowSnapshotBackend(root, 'legacy.sqlite', 'sqlite'), /conflicts/);
 }
 
 function runCase(tmpRoot, testCase, onTargetCreated) {
@@ -120,8 +162,15 @@ function runCase(tmpRoot, testCase, onTargetCreated) {
     workingBranch: testCase.workingBranch,
   });
   prepareActivationFixture(targetRoot);
+  if (testCase.complete) for (const relative of ['baseline/current.md', 'WORKFLOW.md', 'SPEC.md']) {
+    const file = path.join(targetRoot, 'docs/audit', relative);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, '# Temporary workflow artifact\n');
+  }
+  fs.appendFileSync(path.join(targetRoot, '.git/info/exclude'), '\n/.aidn/runtime/\n');
   execFileSync("git", ["-C", targetRoot, "add", "."], { stdio: "pipe" });
   execFileSync("git", ["-C", targetRoot, "commit", "--amend", "--no-edit"], { stdio: "pipe" });
+  if (testCase.warm) runJson('tools/perf/reload-check.mjs', ['--target', targetRoot, '--write-cache', '--json']);
 
   const hook = runJson("tools/perf/branch-cycle-audit-hook.mjs", [
     "--target",
@@ -144,6 +193,8 @@ function runCase(tmpRoot, testCase, onTargetCreated) {
     hook_action_expected: String(hook?.action ?? "") === testCase.expectedAction,
     hook_result_expected: String(hook?.result ?? "") === testCase.expectedResult,
     hook_gating_expected: Boolean(hook?.gating) === testCase.expectsGating,
+    admission_preserved: !testCase.expectsGating || hook.admission.ok === true,
+    nested_gate_propagated: !hook.gating || hook.result === hook.gating.result,
     codex_action_expected: String(codex?.action ?? "") === testCase.expectedAction,
     codex_result_expected: String(codex?.result ?? "") === testCase.expectedResult,
     codex_ok_matches_result: Boolean(codex?.ok) === (testCase.expectedResult === "ok"),
@@ -177,6 +228,9 @@ function main() {
   let args;
   try {
     args = parseArgs(process.argv.slice(2));
+    const observationsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'aidn-gating-observations-'));
+    createdTargets.push(observationsRoot);
+    verifyObservationBoundaries(observationsRoot);
     const hookExitPolicy = verifyHookExitPolicy();
     const tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
     const runs = CASES.map((testCase) => {
