@@ -16,6 +16,14 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-output");
 
 export const GOVERNED_CONCEPTS = Object.freeze([
+  ...["execution_run", "delegated_task", "execution_attempt"].map((concept) => ({
+    concept,
+    source_of_truth_concept: concept,
+    metadata_concept: concept,
+    required: ["source_of_truth", "metadata"],
+    coverage_kind: "model_only",
+    coverage_note: "Versioned internal contracts and governance only; supervised execution is unavailable. Future authority is PostgreSQL exclusively; no runtime instances or local fallback are implemented.",
+  })),
   {
     concept: "project_activation",
     source_of_truth_concept: "project_activation",

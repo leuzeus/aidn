@@ -52,6 +52,9 @@ function main() {
     "coordination_records",
     "agent_roster",
     "cli_output_contracts",
+    "execution_run",
+    "delegated_task",
+    "execution_attempt",
   ];
   const matrixIssues = [];
   for (const policy of policies) {
@@ -65,6 +68,23 @@ function main() {
   for (const concept of expectedConcepts) {
     if (!getSourceOfTruthPolicy(concept)) {
       matrixIssues.push(`missing expected concept: ${concept}`);
+    }
+  }
+  for (const concept of ["execution_run", "delegated_task", "execution_attempt"]) {
+    for (const mode of modes) {
+      const policy = getSourceOfTruthPolicy(concept, mode);
+      if (policy?.coverage_kind !== "model_only" || policy?.authority_backend !== "postgres") {
+        matrixIssues.push(`${concept}: ${mode} must expose model-only PostgreSQL authority`);
+      }
+      if (policy?.postgresql !== "optional" || policy?.shared_sync !== "opt-in") {
+        matrixIssues.push(`${concept}: existing optional PostgreSQL and explicit synchronization must remain intact`);
+      }
+      if (!policy?.source_of_truth.includes("no operational store available") || policy?.projection !== "none") {
+        matrixIssues.push(`${concept}: ${mode} must not advertise an operational store or projection`);
+      }
+      if (!policy?.retention.includes("no automatic purge") || !policy?.notes.includes("no observed instances")) {
+        matrixIssues.push(`${concept}: model-only retention and instance boundary must be explicit`);
+      }
     }
   }
   const output = {

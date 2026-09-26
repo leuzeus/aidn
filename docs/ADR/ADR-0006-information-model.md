@@ -60,6 +60,18 @@ runtime state. Public diagnostics expose hashes and conflicts, not pre-image
 contents. Recovery compares current content before writing and preserves
 transaction history after uninstall. See ADR-0011 for the integration boundary.
 
+## Bounded supervision extension (2026-09-26)
+
+ADR-0014 adds `execution_run`, `delegated_task` and `execution_attempt` with
+`model_only` coverage. Source-of-truth and metadata policies are complete while
+supervised execution remains unavailable. Delegation and result belong to the
+attempt; the run preserves canonical session/cycle/task context without creating
+synthetic sessions. Future PostgreSQL authority is explicit and has no local
+fallback. Local bulky evidence is retained by reference, size and hash; no V1
+automatic purge is permitted. These concepts are not observed runtime artifacts
+and their schemas belong to the internal `agent-execution` namespace, not the
+public CLI output registry.
+
 ## Options Compared
 
 | Option | Result |

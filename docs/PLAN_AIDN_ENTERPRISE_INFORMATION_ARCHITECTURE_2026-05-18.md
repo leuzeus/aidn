@@ -84,6 +84,26 @@ Maturité: `1` initial, `2` répétable, `3` défini, `4` géré, `5` optimisé.
 | CoordinationRecord | Historique de coordination agent/runtime. | `.aidn/runtime/context/*` ou shared coordination opt-in. | `record_id`, `actor`, `action`, `scope`, `status` | appended -> summarized -> archived |
 | ReferenceData | Vocabulaires stables: states, roles, modes, severities. | `src/core/*` et docs de contrats. | `code`, `label`, `version`, `status` | active -> deprecated |
 
+### Extension de supervision bornée (2026-09-26)
+
+ADR-0014 ajoute trois concepts gouvernés avec une couverture `model_only`.
+Les contrats existent; l'exécution supervisée reste indisponible. Les policies
+exécutables de source de vérité et de métadonnées complètent la table historique
+ci-dessus sans inventer d'instances runtime.
+
+| Concept | Portée et relation | Autorité et rétention |
+|---|---|---|
+| `execution_run` | Une tâche canonique admissible, son contexte coordinateur et un plan figé. | Futur PostgreSQL exclusif; conserver plan et preuves sans purge automatique. |
+| `delegated_task` | Identité locale au run, fichiers exacts/opérations, dépendances et critères d'acceptation. | Plan parent figé; aucune session artificielle ni substitution de l'identité canonique. |
+| `execution_attempt` | Une tentative ordonnée; délégation, ownership et résultat liés au même run/task/attempt. | Futur PostgreSQL; sorties volumineuses locales, références/taille/empreinte dans les résultats partagés. |
+
+La tâche canonique est référencée par projet, workspace, scope runtime, session,
+cycle, plan logique, sélecteur exact, empreinte du contenu, révision du planning
+et activation. Les états d'exécution, validation, intégration et nettoyage sont
+distincts. PostgreSQL reste optionnel pour les parcours historiques; le futur
+parcours supervisé n'aura aucun repli SQLite, fichiers ou mémoire. Les contrats
+internes `agent-execution` ne deviennent pas des sorties CLI publiques.
+
 ### Policy Metadata Canonique
 
 Les métadonnées obligatoires sont maintenant matérialisées dans `src/core/metadata/metadata-policy.mjs`.

@@ -60,3 +60,17 @@ The current boundary is described in:
 If a change would make a checkout-bound artifact disappear into shared infrastructure, stop and re-check the boundary before proceeding.
 
 The default expectation is local recovery first, explicit shared coordination second.
+
+## Bounded Supervision Model
+
+ADR-0014 reserves PostgreSQL authority for the future opt-in supervised execution
+path (`execution_run`, `delegated_task`, `execution_attempt`). Existing sequential
+workflows continue to support operation without PostgreSQL. Lot 2 ships pure
+contracts with `model_only` coverage: no shared store, schema migration, worker
+or scheduler is available, and the current shared coordination port is unchanged.
+
+Transcripts and bulky outputs remain local; shared metadata will contain only
+bounded references, byte counts and hashes. Task ownership leases are distinct
+from worktree heartbeats and global engine-generation leases. No claim, heartbeat
+or read-only readiness check may implicitly bootstrap DDL. Delegation and results
+belong to attempts; expiration requires reconciliation before another launch.

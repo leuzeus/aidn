@@ -249,7 +249,17 @@ current head, then proves a corrupted pointer refuses without database writes.
 
 The CLI surface inventory verifier checks that `repair-layer` commands remain classified as internal and are not exposed as public runtime aliases or effect-policy entries.
 
-When a change affects source-of-truth semantics or concept ownership, run:
+For bounded agent execution contracts, run `npm run perf:verify-agent-execution-contracts`.
+The required `runtime-agent-execution-contracts` gate checks versioned internal
+schemas, exact-file scopes, DAG and canonical fingerprints, attempt/delegation
+binding, and the injected task-executor port with in-memory doubles. Its purity
+probe traps writes, subprocess launches and network access during import,
+discovery and model validation. This is model evidence only: PostgreSQL ownership,
+native Codex, OS confinement and concurrent workers remain unqualified here.
+The gate belongs only to the runtime family; the four context-resilience groups
+and their 43 historical invocations are unchanged.
+
+For source-of-truth policy and concept ownership, run:
 
 - `npm run perf:verify-source-of-truth-policy`
 - `npm run perf:verify-governance-completeness`

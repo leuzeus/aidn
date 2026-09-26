@@ -70,6 +70,16 @@ journals retain references and phases without passwords, freeze the initial plan
 and block global switching until the interrupted bootstrap is resumed. They do
 not authorize database rollback or installing a project-local engine.
 
+## Future supervised execution (2026-09-26)
+
+ADR-0014 requires the frozen execution configuration to identify the exact
+candidate engine, model and effort, without silent substitution. Future worker
+worktrees must be prepared against that candidate with their own activation and
+installation evidence. A task ownership lease is not a generation lease: it
+cannot authorize a global switch or replace this ADR's operation/update mutex.
+Lot 2 supplies `model_only` contracts and does not install engines, issue leases,
+change project bindings or qualify native execution.
+
 ## Migration ownership
 
 An exact cleanup inventory classifies managed, modified, missing and unmanaged

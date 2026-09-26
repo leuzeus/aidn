@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/agent-execution/descriptor.v1.schema.json",
+  "x-aidn-contract-version": "agent-task-executor.v1",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "executor_id",
+    "executor_version",
+    "capabilities"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "agent-task-executor.v1"
+    },
+    "executor_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "executor_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "\\S"
+    },
+    "capabilities": {
+      "type": "object",
+      "required": [
+        "events",
+        "cancellation",
+        "explicit_cwd"
+      ],
+      "properties": {
+        "events": {
+          "type": "boolean"
+        },
+        "cancellation": {
+          "type": "boolean"
+        },
+        "explicit_cwd": {
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
