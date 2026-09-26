@@ -3,8 +3,9 @@ import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.
 import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
+import { resolveWorkflowContinuityContext } from "./workflow-continuity-context-service.mjs";
+import { resolveEffectiveRuntimePersistence } from "./runtime-persistence-service.mjs";
 import {
-  parseLatestSessionArtifact,
   resolveBranchMapping,
   toCycleSummary,
   toSessionSummary,
@@ -13,13 +14,10 @@ import {
   canonicalNone,
   canonicalUnknown,
   collectOpenCycles,
-  findLatestSessionFile,
   listCycleStatuses,
   listSessionArtifacts,
-  parseSessionMetadata,
   readCurrentState,
   readSourceBranch,
-  readTextIfExists,
 } from "../../lib/workflow/session-context-lib.mjs";
 import { classifyOpenCycleTopology, isStaleMergedOpenCycle } from "./stale-open-cycle-guard-lib.mjs";
 import { WORKFLOW_ACTION, WORKFLOW_REASON, WORKFLOW_RESULT } from "./workflow-transition-constants.mjs";
@@ -67,7 +65,7 @@ function makeResult(base, overrides = {}) {
   };
 }
 
-export function runStartSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
+export async function runStartSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN", runtimeSnapshotReaderFactory }) {
   const gitAdapter = createLocalGitAdapter();
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
@@ -75,16 +73,26 @@ export function runStartSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
     targetRoot: absoluteTargetRoot,
     gitAdapter,
   });
-  const currentState = readCurrentState(absoluteTargetRoot);
-  const auditRoot = currentState.audit_root;
+  const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
+  const canonicalRequired = effectiveStateMode === "db-only"
+    || resolveEffectiveRuntimePersistence({ targetRoot: absoluteTargetRoot }).backend === "postgres";
+  const visibleCurrentState = canonicalRequired ? {
+    audit_root: auditRoot, file_path: path.join(auditRoot, "CURRENT-STATE.md"),
+    active_session: "none", active_cycle: "none", branch_kind: "unknown",
+  } : readCurrentState(absoluteTargetRoot);
+  const continuity = await resolveWorkflowContinuityContext({ targetRoot: absoluteTargetRoot,
+    effectiveStateMode, visibleCurrentState,
+    visibleSessions: canonicalRequired ? [] : listSessionArtifacts(auditRoot),
+    visibleCycles: canonicalRequired ? [] : listCycleStatuses(auditRoot), runtimeSnapshotReaderFactory });
+  const currentState = continuity.current_state;
   const sourceBranch = readSourceBranch(absoluteTargetRoot);
   const branch = gitAdapter.getCurrentBranch(absoluteTargetRoot);
   const branchKind = classifyAidnBranch(branch, {
     sourceBranch,
     includeSource: true,
   });
-  const sessions = listSessionArtifacts(auditRoot);
-  const cycles = listCycleStatuses(auditRoot);
+  const sessions = continuity.sessions;
+  const cycles = continuity.cycles;
   const openCycles = collectOpenCycles(cycles);
   const mapping = resolveBranchMapping({
     branch,
@@ -95,12 +103,7 @@ export function runStartSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
   const activeSession = String(currentState.active_session ?? "none");
   const activeCycle = String(currentState.active_cycle ?? "none");
   const activeSessionArtifact = sessions.find((session) => session.session_id === activeSession) ?? null;
-  const latestSession = parseLatestSessionArtifact({
-    findLatestSessionFile,
-    parseSessionMetadata,
-    readTextIfExists,
-    auditRoot,
-  });
+  const latestSession = sessions.at(-1) ?? null;
   const sessionsById = new Map(sessions.map((session) => [session.session_id, session]));
   const openCycleTopology = new Map(openCycles.map((cycle) => [
     cycle.cycle_id,
@@ -134,6 +137,16 @@ export function runStartSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
     candidate_cycles: mapping.candidate_cycles,
   };
 
+  if ((continuity.canonical_required && !continuity.canonical_available)
+      || continuity.canonical_continuity_status === "ambiguous") {
+    return makeResult(base, {
+      action: WORKFLOW_ACTION.BLOCKED_AMBIGUOUS_TOPOLOGY,
+      reason_code: WORKFLOW_REASON.START_SESSION_CANONICAL_RUNTIME_INVALID,
+      blocking_reasons: [continuity.warning || "Canonical workflow continuity is unavailable or ambiguous.",
+        ...continuity.canonical_continuity_ambiguities],
+      recommended_next_action: "Diagnose the canonical backend before session admission; do not reimport stale projections.",
+    });
+  }
   if (branchKind === AIDN_BRANCH_KIND.UNKNOWN || branchKind === AIDN_BRANCH_KIND.OTHER) {
     return makeResult(base, {
       action: WORKFLOW_ACTION.BLOCKED_NON_COMPLIANT_BRANCH,

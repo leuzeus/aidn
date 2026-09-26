@@ -168,6 +168,20 @@ longer imports projections automatically afterward; explicit DB synchronization
 remains a separate requested effect. No provider operation or data migration is
 performed by this admission.
 
+Session-start admission shares the canonical continuity reader with cycle
+admissions. Its 0.10.13 correction resolves lifecycle, delivery metadata and
+multi-cycle lists from artifacts within the same snapshot as relational rows.
+The historical relational session `state` can encode a work mode and must not
+override a CLOSED artifact or the explicit checked close gate in a legacy
+session template without a lifecycle field. Head, path and identity conflicts
+refuse; an unavailable canonical backend never authorizes a stale-file fallback. This is
+read resolution, not a schema migration or repair of historical rows.
+
+Session-start diagnostics no longer trigger default post-hook DB import.
+Checkpoint preservation also covers an existing SQLite canonical store in
+dual/db-only. Explicit synchronization and DB-first artifact writes remain
+separate effects; telemetry is not authority to import old projections.
+
 - align `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md` with the new ports
 - map the port methods to adapter implementations and runtime use cases
 - keep `ADR-0007` and the shared-surface gate synchronized with any port change

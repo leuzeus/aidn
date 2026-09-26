@@ -209,7 +209,7 @@ function buildErrorResult(args, targetRoot, error) {
   };
 }
 
-function main() {
+async function main() {
   const wantsJson = process.argv.includes("--json");
   let parsedArgs = null;
   let parsedTargetRoot = path.resolve(process.cwd(), ".");
@@ -218,7 +218,7 @@ function main() {
     parsedArgs = args;
     const targetRoot = path.resolve(process.cwd(), args.target);
     parsedTargetRoot = targetRoot;
-    const admission = runStartSessionAdmitUseCase({
+    const admission = await runStartSessionAdmitUseCase({
       targetRoot,
       mode: args.mode,
     });

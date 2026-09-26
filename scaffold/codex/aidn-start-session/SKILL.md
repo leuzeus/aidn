@@ -152,6 +152,8 @@ Do not duplicate full session or cycle content.
 9) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill start-session --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
 - the runtime `aidn-start-session` hook applies workflow admission before delegating to generic session-start checkpoint/index/repair behavior
+- Admission reads the canonical snapshot in db-only or with configured PostgreSQL. It preserves session closure, PR status and post-merge synchronization; stale Markdown is not a fallback when that authority is unavailable.
+- The hook does not automatically import Markdown into the canonical database. Its diagnostic and context telemetry do not create or reopen a session.
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill start-session --project-runtime-state --json`.
@@ -160,8 +162,7 @@ Do not duplicate full session or cycle content.
 - in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
 - in files, this hook remains non-blocking by default.
 - in dual/db-only, prefer `--fail-on-repair-block` on the JSON hook invocation and STOP on `repair_layer_status=block`.
-- DB runtime sync (mandatory in dual/db-only; optional in files):
-- run `npx aidn runtime sync-db-first-selective --target . --json` (falls back to full sync when needed).
+- Persist explicitly authorized session changes through DB-first write-through in dual/db-only. Do not import old projections merely to make admission pass.
 - for DB-first write-through on a specific artifact, run `npx aidn runtime db-first-artifact --target . --path <relative-audit-path> --source-file <file> --json`.
 - for promoted session planning, run `npx aidn runtime session-plan --target . --promote --state-mode <files|dual|db-only> --json` so the shared backlog and `CURRENT-STATE.md` stay aligned.
 - in dual/db-only, this step is mandatory and blocking on failure.
@@ -173,4 +174,3 @@ Do not duplicate full session or cycle content.
 
 Do not modify baseline.
 Only create/update session file, `docs/audit/CURRENT-STATE.md`, and the session planning artifacts created through `aidn runtime session-plan`.
-

@@ -67,3 +67,10 @@ Host skill migration and restoration are separate preview/mutating variants of
 bootstrap. Both require an explicit absolute `--codex-home`; applying requires
 `--write --expect-plan`. Neither native trust nor workflow authorization is an
 implicit effect of disabling global skills.
+
+Start-session and PR diagnostic hooks do not automatically import projections
+after admission. Their wrappers still write diagnostic context and therefore
+remain mutating. Explicit `--db-sync` is a separate requested effect. A checkpoint
+must preserve an existing canonical SQLite database in dual/db-only and the
+configured PostgreSQL scope; writing new session artifacts is a separate
+DB-first operation, not a side effect of admitting the next action.

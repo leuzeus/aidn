@@ -152,8 +152,12 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
   });
   const hasIndexFileForSyncCheck = !args.indexSyncCheck || fs.existsSync(syncCheckIndex.indexFile);
   // A checkpoint may refresh local caches, but it is not an authorization to
-  // import checkout documents into the canonical PostgreSQL scope.
-  const shouldSkipIndex = canonicalPostgres || shouldSkipCheckpointIndex({
+  // import checkout documents into a canonical backend. Existing SQLite in
+  // dual/db-only has the same authority as PostgreSQL; explicit synchronization
+  // remains a separate operation, including for newly authored artifacts.
+  const canonicalSqlite = ["dual", "db-only"].includes(args.stateMode)
+    && fs.existsSync(indexSqliteOutputPath);
+  const shouldSkipIndex = canonicalPostgres || canonicalSqlite || shouldSkipCheckpointIndex({
     skipIndexOnIncremental: args.skipIndexOnIncremental,
     reload,
     indexKpiFile: args.indexKpiFile,
@@ -166,9 +170,9 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
     stateMode: args.stateMode,
     store: args.indexStore,
   });
-  if (canonicalPostgres) {
+  if (canonicalPostgres || canonicalSqlite) {
     index.skipped = true;
-    index.skip_reason = 'postgres_canonical_backend';
+    index.skip_reason = canonicalPostgres ? 'postgres_canonical_backend' : 'sqlite_canonical_backend';
   }
   if (!shouldSkipIndex) {
     const indexStarted = Date.now();
