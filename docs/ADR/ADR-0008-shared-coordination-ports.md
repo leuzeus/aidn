@@ -120,6 +120,14 @@ Projection is read-only unless explicitly written to a file; persisting that
 reviewed digest uses a separate selective artifact write. This introduces no
 new shared coordination surface or implicit database mutation.
 
+The 0.10.7 reader resolves PostgreSQL head metadata against the same scoped
+snapshot using exact artifact path, identity and fingerprint. It shares this
+resolution between admission and runtime projections. Historical normalized path
+aliases are not removed or chosen by order/date; without a head, only a unique
+matching artifact can be used. An invalid head refuses instead of falling back.
+SQLite's already materialized artifact heads remain supported. This is read
+resolution only, not a database migration or authority to rewrite old artifacts.
+
 - align `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md` with the new ports
 - map the port methods to adapter implementations and runtime use cases
 - keep `ADR-0007` and the shared-surface gate synchronized with any port change

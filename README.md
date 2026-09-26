@@ -5,6 +5,13 @@ It combines a continuous audit philosophy with an audit-driven control layer, de
 The model structures work through bounded cycles, session discipline, baseline anchoring, snapshot reload, canonical state handling, and clear separation between product specification and project adapter.
 The current runtime baseline also includes admission-first workflow hooks for session start/close, cycle continuity, requirements delta, baseline promotion, spike conversion, explicit multi-agent handoff relays, bounded coordinator/orchestration commands, deterministic project adapter generation, and runtime persistence/shared-coordination operations for SQLite and PostgreSQL-backed deployments.
 
+Start with [installation](docs/INSTALL.md) and [global setup](docs/GLOBAL_SETUP.md):
+install one verified engine for the user, then attach each project explicitly.
+Existing local clients use [the migration guide](docs/UPGRADE.md#move-a-09x-project-to-the-global-engine).
+Use [doctor and recovery](docs/GLOBAL_SETUP.md) to diagnose an installation and
+[the qualification record](docs/qualification/GLOBAL_WINDOWS.md) to distinguish
+published capabilities from demonstrated native behavior and remaining cases.
+
 ## Philosophy
 
 - Scaffold distribution with runtime enforcement
@@ -39,7 +46,15 @@ Product repository:
   - `src/adapters`: runtime, Codex, manifest, and local adapter implementations
   - `src/lib`: config, workflow rendering, index, SQLite, and FS helpers
 
-Client repository after install:
+Global installation since 0.10.0:
+- `AIDN_HOME`: verified package generations, one active pointer, stable launchers,
+  transaction journal and secret-free project address book
+- user Codex home: managed `aidn-*` skills and standard agents from the same
+  common package as the engine and hook implementation
+- project visibility does not imply activation; registered projects are checked
+  before a global switch, and inaccessible or incompatible projects block it
+
+Client repository after global attachment:
 - `AGENTS.md`
   - root project startup contract for Codex in the installed repo
   - keeps stable write-stop rules and points toward workflow state and runtime checks
@@ -54,12 +69,12 @@ Client repository after install:
 - `docs/audit/incidents/`
 - `.aidn/project/workflow.adapter.json`
   - durable project adapter input used by `aidn project config`
-- `.agents/skills/*`
-  - project-native Codex skill folders copied from product scaffold source
-- `.codex/agents/*`
-  - bounded explorer, executor, validator, and reviewer roles with explicit model, effort, and sandbox policy
+- project-owned skills and agents under their own names
+  - standard AIDN copies are removed during ownership-checked migration;
+    third-party definitions and local extensions remain
 - `.codex/hooks.json` and `.codex/hooks/*`
-  - trusted-project `SessionStart` discovery hook and its local command implementation
+  - minimal `SessionStart` and `PreToolUse` connectors to the verified global
+    engine; native hook review remains separate from installation
 - `.aidn/codex/skills.yaml`
   - AIDN-owned skill inventory metadata; it is not a Codex discovery surface
 - `.aidn/config.json`
@@ -76,7 +91,8 @@ Codex instruction layering after install:
 
 ## Workflow Diagrams
 
-- Mermaid diagrams in `docs/diagrams/` are aligned with the `0.8.0` runtime baseline.
+- Mermaid diagrams in `docs/diagrams/` describe the global engine boundary and
+  explicit drift-check completion; they are architecture views, not qualification evidence.
 - Global system architecture: `docs/diagrams/01-global-system-architecture.md`
 - Cycle state machine: `docs/diagrams/02-cycle-state-machine.md`
 - Runtime session flow: `docs/diagrams/03-runtime-session-flow.md`
@@ -88,14 +104,20 @@ Codex instruction layering after install:
 
 ## CLI Surface
 
+- `aidn setup`, `aidn project add`, `aidn project migrate`, `aidn doctor`
+  - common installation, explicit project attachment/migration and diagnosis
+- `aidn update`, `aidn rollback`
+  - preview a global switch after checking all registered projects
 - `aidn bootstrap`
-  - recommended install/upgrade orchestrator with user-facing profiles
+  - lower-level install/upgrade and integration recovery engine; retained for
+    explicit legacy/source use and invoked internally by global management
 - `aidn install`
   - lower-level scaffold/pack install, verify, and runtime bootstrap engine
 - `aidn project config`
   - previews or explicitly writes `.aidn/project/workflow.adapter.json`; install and adapter migration regenerate workflow outputs
 - `aidn runtime`
-  - runtime state, repair-layer, handoff, shared coordination, persistence, and coordinator commands
+  - runtime state, handoff, shared coordination, persistence and coordinator commands;
+    repair-layer scripts remain internal and have no public runtime alias
 - `aidn perf`
   - verification fixtures, gating, checkpoint, and KPI/report tooling
 - `aidn codex`
@@ -106,11 +128,11 @@ The current stable/advanced/internal classification lives in [docs/CLI_SURFACE_I
 Representative commands:
 
 ```bash
-npx aidn bootstrap --target ../client --profile default
-npx aidn project config --target ../client --wizard --write
-npx aidn runtime shared-coordination-projects --target ../client --json
-npx aidn runtime persistence-adopt --target ../client --backend postgres --dry-run --json
-npx aidn runtime coordinator-orchestrate --target ../client --json
+aidn project add --target ../client --json
+aidn project migrate --target ../client --json
+aidn doctor --target ../client --json
+aidn project config --target ../client --list --json
+aidn runtime project-runtime-state --target ../client --json
 ```
 
 CLI effect semantics:
@@ -234,12 +256,12 @@ Migration and repair:
 
 ## Installation
 
-For Windows setup including optional PostgreSQL preparation, see
-the interactive wizard (`.\scripts\setup-project.ps1 -Wizard`) in
-[the complete project installer](docs/WINDOWS_PROJECT_SETUP.md).
+For Windows setup including optional PostgreSQL preparation, follow
+[the global setup guide](docs/GLOBAL_SETUP.md). The
+[per-project Windows setup](docs/WINDOWS_PROJECT_SETUP.md) is historical 0.9.x guidance.
 
 Version 0.10.0 introduced one user-level engine shared by registered projects.
-The `v0.10.6` source includes canonical PostgreSQL artifact writes, checkpoint
+The `v0.10.7` source includes canonical PostgreSQL artifact writes, checkpoint
 preservation and initial-cycle admission. Install from a published release with verified checksums; a source
 version or branch name alone is not proof of publication.
 Follow [the global setup guide](docs/GLOBAL_SETUP.md) for installation and
@@ -250,19 +272,26 @@ Apply with `-Write -ExpectPlan PLAN_ID` to install the common launcher and regis
 the user environment. Then open a new terminal:
 
 ```powershell
-aidn setup
 aidn project add --target ..\client --json
 aidn project migrate --target ..\existing-client --json
 aidn update --check --json
 aidn update --release latest --json
 ```
 
-These CLI examples are consultations or previews. Apply a displayed plan with
+These CLI examples are consultations or previews. `aidn setup` and `aidn-setup`
+instead open an interactive wizard whose confirmation can apply changes; they
+are not read-only consultations. Apply a displayed scripted plan with
 `--write --expect-plan PLAN_ID`. A global update checks every registered project;
 database migrations remain a separate operation. Source bootstrap and the URL
 wrappers below remain explicit legacy/development entry points.
 
-URL wrapper example:
+### Historical and source-development entry points
+
+The following wrappers and local installer examples preserve the earlier
+per-project workflow. They are not the global installation or migration path.
+Nominal bootstrap/install can write; use their documented `--dry-run` previews.
+
+URL wrapper example for explicit source development:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/leuzeus/aidn/dev/scripts/install.sh | sh -s -- --target ../client --profile default
@@ -314,7 +343,7 @@ Notes:
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a published tagged install (`#v0.10.6` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a published tagged install (`#v0.10.7` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 
@@ -334,10 +363,15 @@ Detailed boundary note:
 
 - `docs/PRODUCT_SELFHOST_BOUNDARIES.md`
 
-## Project Stub Customization
+## Project Customization
 
-After install, review `docs/audit/SPEC.md` then `docs/audit/WORKFLOW_SUMMARY.md`, then customize `docs/audit/WORKFLOW.md` in the client repository.
-Replace placeholders (for example `{{PROJECT_NAME}}` and `{{SOURCE_BRANCH}}`) and complete project constraints/policies before starting production work.
+Use `.aidn/project/workflow.adapter.json` for durable project policy.
+`docs/audit/WORKFLOW.md`, `WORKFLOW_SUMMARY.md`, `CODEX_ONLINE.md` and `index.md`
+are generated views, not customization sources. Use `aidn project config` to
+inspect or deliberately edit supported fields, and preview adapter migration
+before regeneration. Project-owned instructions outside the managed `AGENTS.md`
+block and distinctly named skills/agents/hooks remain local extensions.
+See [durable inputs and extensions](docs/INSTALL.md#durable-inputs-and-extensions).
 
 ## Codex Verification
 

@@ -1,5 +1,114 @@
 # Installation Guide
 
+## Current installation: one engine per user
+
+The global model shipped in 0.10.0. Install one verified package under
+`AIDN_HOME`, then attach each project. Node.js 22.13+ and npm are prerequisites;
+AIDN itself needs no administrator rights. The common package owns the CLI,
+engine, standard skills, agents and hook implementation. Projects retain their
+configuration, extensions, activation, data and minimal hook connectors.
+
+Obtain a [published release](https://github.com/leuzeus/aidn/releases), verify its
+ZIP/tarball against the manifest and checksums, and run the installer from the
+verified extracted package. Do not fetch an unpinned script from a moving branch.
+
+```powershell
+.\scripts\setup-global.ps1 -ReleaseVersion latest
+```
+
+Inspect the resolved version and plan, then repeat the same arguments with
+`-Write -ExpectPlan PLAN_ID`. If `latest` or another observed input changes, the
+plan is rejected; preview again. Offline input uses `-PackagePath FILE
+-PackageSha256 HASH -ReleaseVersion VERSION`. Application sets user `AIDN_HOME`
+and adds its `bin` to the user PATH. Open a new terminal.
+
+`aidn setup` and `aidn-setup` open the interactive wizard. Its confirmation can
+apply changes; it is not read-only. `aidn setup --json` is a noninteractive
+setup preview. Full options and recovery: [global setup](GLOBAL_SETUP.md).
+
+## Attach and inspect a project
+
+Choose an existing Git root. Preview and application are separate:
+
+```powershell
+aidn project add --target ..\client --json
+aidn project add --target ..\client --write --expect-plan PLAN_ID --json
+aidn doctor --target ..\client --json
+```
+
+Replace `PLAN_ID` only after reviewing the first result, and keep the same
+options. `--pack` selects an installation pack; default is `core`.
+No project-local AIDN npm dependency is installed. Existing local installations
+use [project migration](UPGRADE.md#move-a-09x-project-to-the-global-engine).
+
+PostgreSQL is optional. The wizard offers files without PostgreSQL, already
+provisioned dedicated resources, or explicitly pinned local server installation.
+For an existing server, scripted attachment uses `--connection-ref
+env:AIDN_PG_PROJECT`. Keep the value out of commands, registry and Git. This path
+verifies the existing database/role; it does not provision or implicitly migrate
+them. Local server installation has separate elevation, explicit provisioning
+and empty-database checks. See [the exact options](GLOBAL_SETUP.md#entry-points).
+Injected installer fixtures are not proof of real PostgreSQL server installation.
+
+The registry is an address book, not a version or activation authority.
+`aidn project list --json` reads it; `aidn project remove --id ID --json` previews
+unregistering a root without uninstalling it. An inaccessible registered root
+blocks global updates. Targets come from `--target` or the current Git root,
+never the last selected project. Prepare every linked worktree explicitly and
+never copy another root's receipt. Repository authorization/revocation is shared
+across linked worktrees; each physical root needs its own preparation.
+
+For CI use a verified pinned release and isolated job-local `AIDN_HOME`, recording
+version and checksum. See [worktrees and CI](GLOBAL_SETUP.md#ci-and-additional-worktrees).
+
+## Durable inputs and extensions
+
+- `.aidn/config.json` stores runtime mode and persistence references. Preserve
+  private configuration and never commit resolved connection values.
+- `.aidn/project/workflow.adapter.json` stores durable project policy. Inspect it
+  with `aidn project config --target ..\client --list --json`.
+- `aidn project config --target ..\client --wizard --write` deliberately edits
+  supported fields: project name, constraints, DoR, runtime/snapshot policy, CI
+  capacity, session/execution policies and specialized gates. The normalized
+  field definitions live in `src/lib/config/workflow-adapter-config-lib.mjs`.
+- `--adapter-file FILE` initializes an absent adapter and refuses to overwrite
+  an existing one. It previews by default and needs `--write` to persist.
+  Project config does not accept `--expect-plan`; that flag is not universal.
+
+`docs/audit/WORKFLOW.md`, `WORKFLOW_SUMMARY.md`, `CODEX_ONLINE.md` and `index.md`
+are generated views. Do not edit their generated text as durable policy.
+Adapter migration preserves recognized imported sections in
+`legacyPreserved.importedSections`, promotes supported policies, reports
+remaining legacy material and regenerates the views:
+
+```powershell
+aidn project config --target ..\client --migrate-adapter --json
+aidn project config --target ..\client --migrate-adapter --write --json
+```
+
+Review the preview and recovery preimages first. This is document/adapter
+migration, not database migration or a global engine update. Changing the adapter
+alone does not implicitly regenerate all outputs. Local instructions outside the
+managed `AGENTS.md` block and distinctly named project skills, agents and hooks
+remain extensions. Editing a standard managed file causes a conflict; preservation
+does not imply a generic `extensions` config key or plugin loader.
+
+## Native review and private state
+
+Review the exact project hook definitions in Codex after attachment or changes.
+Installation, global skill discovery and project activation do not grant native
+trust or prove execution. See [Codex integration](CODEX_INTEGRATION.md) and
+[qualification evidence](qualification/GLOBAL_WINDOWS.md).
+Keep machine-bound receipts, recovery preimages and secrets out of commits.
+Workflow history remains governed project data, not disposable installer output.
+
+## Historical 0.9.x and explicit source-development procedures
+
+The sections below retain the earlier per-project engine/npm model for legacy
+clients and source development. Their version examples, local asset copies and
+per-project updates are historical, not the current recommendation. For global
+attachment/migration use the procedures above and [UPGRADE](UPGRADE.md).
+
 ## Scaffold-based model
 
 This repository is AIDN package source. Installation copies and merges its scaffold
@@ -49,12 +158,11 @@ with `-Write`. See [Windows project setup](WINDOWS_PROJECT_SETUP.md).
 - Node.js 22.13 or newer
 - npm 9+ recommended
 
-## Step 2 - Install aidn as npm package (recommended)
+## Historical step 2 - Install aidn as a project-local npm package
 
 Install from GitHub:
 
-The 0.9.0 tag example applies after publication. Until then, use the reviewed
-local candidate tarball and verify its manifest and checksum.
+The 0.9.0 tag below is retained as a historical example, not the latest release.
 
 ```bash
 npm install --save-dev github:leuzeus/aidn#v0.9.0

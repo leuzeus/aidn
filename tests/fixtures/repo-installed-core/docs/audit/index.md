@@ -9,6 +9,7 @@
 
 ## Fast reload
 - Handoff packet: `HANDOFF-PACKET.md`
+- Crash recovery runbook: `CRASH-RECOVERY-RUNBOOK.md`
 - Agent roster: `AGENT-ROSTER.md`
 - Agent adapter contract: `AGENT-ADAPTERS.md`
 - Agent health summary: `AGENT-HEALTH-SUMMARY.md`
@@ -28,6 +29,7 @@
 ## Guardrails
 - Parking lot: `parking-lot.md`
 - Artifact manifest: `ARTIFACT_MANIFEST.md`
+- Re-anchor and crash recovery: `REANCHOR_PROMPT.md`, `CRASH-RECOVERY-RUNBOOK.md`
 - Change Requests: `cycles/TEMPLATE_change-requests.md`
 - Status template: `cycles/TEMPLATE_STATUS.md`
 - Continuity gate: `CONTINUITY_GATE.md`

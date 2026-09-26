@@ -3,7 +3,9 @@
 This folder tracks workflow performance rollout artifacts.
 
 Execution model:
-- Perf scripts live in the aidn package (`tools/perf/*`) and are executed via the npm CLI entrypoint `aidn`.
+- Perf scripts live in the common aidn package (`tools/perf/*`) and are executed
+  through the global `aidn` launcher in migrated clients. Legacy `npx` examples
+  below require an intentionally retained local installation; they are not a fallback.
 - They target client repositories via `--target <client-repo>`.
 - They do not copy `tools/perf/*` into client repositories.
 - Runtime outputs are written under `<target>/.aidn/runtime/*`.
@@ -172,6 +174,13 @@ Repair-layer traceability note:
 
 ## Commands
 
+Current client diagnosis is `aidn runtime project-runtime-state --target PATH
+--json`. It measures canonical repair status without writing. Explicit `--write`
+projects the digest; it does not implicitly persist that projection into the DB.
+The source-only maintenance commands below are not public aliases. In particular,
+`aidn runtime repair-layer-triage` and `aidn runtime repair-layer-autofix` do not
+exist. Do not create aliases or infer repair success from a stale local cache.
+
 Internal repair maintenance, run explicitly from the AIDN source checkout with a reviewed target and plan (these tools have no public runtime alias):
 
 ```bash
@@ -181,7 +190,7 @@ node tools/runtime/repair-layer-triage.mjs --target . --index-file .aidn/runtime
 node tools/runtime/repair-layer-query.mjs --target . --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --query session-continuity --session-id S102 --json
 ```
 
-Package CLI (recommended in client repos):
+Legacy project-local CLI examples (use the common `aidn` launcher in migrated clients):
 
 ```bash
 npx aidn perf checkpoint --target . --mode COMMITTING --index-store all --index-sync-check --json

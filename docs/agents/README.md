@@ -4,7 +4,9 @@
 
 ## How To Use This Index
 
-- Start with `00-agent-operating-model.md`, `01-architecture-executable.md`, and `06-validation-and-dod.md` for every task.
+- Classify the delivery lane first. Always read `00-agent-operating-model.md`;
+  STANDARD/ASSURED also read `01-architecture-executable.md` and
+  `06-validation-and-dod.md`, as required by the root router.
 - Add the task-specific doc from the routing matrix before editing anything.
 - Read the smallest relevant set, not everything blindly.
 - Prefer code, policies, schemas, fixtures, and gates when they disagree with narrative docs.
@@ -40,5 +42,13 @@
 - `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md`
 
 ## Principle
+
+For installed clients, use the common launcher and [global setup](../GLOBAL_SETUP.md).
+The global engine and standard assets are shared; project activation, data and
+extensions retain their scope. Do not repair a global binding with `npx` or a
+local dependency fallback. Generated workflow documents derive from the durable
+adapter; follow [installation inputs](../INSTALL.md#durable-inputs-and-extensions).
+Native review and execution claims require the exact
+[qualification evidence](../qualification/GLOBAL_WINDOWS.md), not a source version.
 
 Read the smallest relevant set. Do not load everything blindly.

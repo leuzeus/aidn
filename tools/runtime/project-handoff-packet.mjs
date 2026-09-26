@@ -420,9 +420,14 @@ export async function projectHandoffPacket({
     warning: "",
   };
   const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
+  const preferDb = dbBackedMode && (effectiveStateMode === "db-only" || dbSource === "postgres");
+  if (preferDb && (!sqliteFallback.exists || sqliteFallback.warning)) {
+    throw new Error("canonical runtime backend is unavailable for handoff projection");
+  }
   const currentStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: currentStateFile,
+    preferDb,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
@@ -431,6 +436,7 @@ export async function projectHandoffPacket({
   const runtimeStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: runtimeStateFile,
+    preferDb,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
@@ -447,6 +453,7 @@ export async function projectHandoffPacket({
     targetRoot: absoluteTargetRoot,
     auditRoot,
     sessionId: activeSession,
+    preferDb,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     dbSource,
@@ -455,6 +462,7 @@ export async function projectHandoffPacket({
     targetRoot: absoluteTargetRoot,
     auditRoot,
     cycleId: activeCycle,
+    preferDb,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     dbSource,
@@ -463,6 +471,7 @@ export async function projectHandoffPacket({
     targetRoot: absoluteTargetRoot,
     cycleStatusResolution,
     cycleId: activeCycle,
+    preferDb,
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     dbSource,

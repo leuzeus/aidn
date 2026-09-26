@@ -1,5 +1,11 @@
 # Codex native qualification for AIDN 0.9.0
 
+This versioned protocol and its original open fields are retained as history.
+For the global model and subsequent targeted native results, read
+[the bounded Windows evidence](qualification/GLOBAL_WINDOWS.md). Do not treat
+the dated inventory below as current publication status or fill historical
+OPEN/SKIP fields using another candidate's results.
+
 This is an executable-test protocol and an unfilled qualification record. It is
 not a native acceptance report. The package version, commit and final artifact
 hashes must be recorded from the candidate actually tested; a version label or
