@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { inspectImmediateProcessExitArguments } from "../verify/spawn-sync-evidence-lib.mjs";
 import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
+import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 
 const SELF_FILE = fileURLToPath(import.meta.url);
 const CLEANUP_PROBE_ENV = "AIDN_PRE_WRITE_ADMIT_CLEANUP_PROBE";
@@ -482,9 +483,14 @@ function verifyInitialCycleAdmission(repoRoot, tempRoot, source) {
       // Misleading projection must not replace the canonical DB observation.
       fs.writeFileSync(currentFile, upsertScalarLine(current, "mode", "unknown"));
       runGit(target, ["add", "."]); runGit(target, ["commit", "-m", "prepared initial session"]);
+      // Same bytes with stale stat metadata would make ordinary git status
+      // refresh .git/index. Admission must preserve even this optional cache.
+      fs.utimesSync(currentFile, new Date("2020-01-01"), new Date("2020-01-01"));
       const snapshot = () => JSON.stringify(fs.readdirSync(target, { recursive: true, withFileTypes: true })
         .filter(entry => entry.isFile()).map(entry => { const file = path.join(entry.parentPath, entry.name); return [path.relative(target, file), fs.readFileSync(file).toString("base64")]; }).sort(([a], [b]) => a.localeCompare(b)));
       const before = snapshot();
+      assert(!createLocalGitAdapter().hasWorkingTreeChanges(target), "stat-only changes must not count as dirty content");
+      assert(snapshot() === before, "working tree inspection must not refresh the Git index");
       const result = runAidnWithEnv(repoRoot, ["runtime", "pre-write-admit", "--target", target, "--skill", "cycle-create", "--strict", "--json"], { AIDN_STATE_MODE: stateMode }, admitted ? 0 : 1);
       assert(result.ok === admitted, `${stateMode}/${scenario}: ${JSON.stringify(result.blocking_reasons)}`);
       assert(result.context.repair_layer_status === repairStatus, `${stateMode}/${scenario}: canonical repair status expected ${repairStatus}, got ${result.context.repair_layer_status}`);

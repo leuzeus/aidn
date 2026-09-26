@@ -5,7 +5,7 @@ export const VALID_SKILL_HOOK_MODES = new Set(["THINKING", "EXPLORING", "COMMITT
 export const SKILL_IDENTITIES = Object.freeze([
   Object.freeze({"id":"context-reload","publicName":"aidn-context-reload","route":{"tool":"reload-check.mjs","defaultMode":"THINKING"}}),
   Object.freeze({"id":"branch-cycle-audit","publicName":"aidn-branch-cycle-audit","route":{"tool":"branch-cycle-audit-hook.mjs","defaultMode":"COMMITTING"}}),
-  Object.freeze({"id":"drift-check","publicName":"aidn-drift-check","route":{"tool":"gating-evaluate.mjs","defaultMode":"COMMITTING"}}),
+  Object.freeze({"id":"drift-check","publicName":"aidn-drift-check","route":{"tool":"gating-evaluate.mjs","defaultMode":"COMMITTING","fixedArgs":["--complete-drift-check"]}}),
   Object.freeze({"id":"start-session","publicName":"aidn-start-session","route":{"tool":"start-session-hook.mjs","defaultMode":"UNKNOWN"}}),
   Object.freeze({"id":"close-session","publicName":"aidn-close-session","route":{"tool":"close-session-hook.mjs","defaultMode":"UNKNOWN"}}),
   Object.freeze({"id":"pr-orchestrate","publicName":"aidn-pr-orchestrate","route":{"tool":"pr-orchestrate-hook.mjs","defaultMode":"UNKNOWN"}}),

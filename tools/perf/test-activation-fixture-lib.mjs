@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { executeCodexAssets } from "../../src/application/install/codex-assets-service.mjs";
 
 // Keep historical corpora untouched. Only the temporary client's runtime data
@@ -43,7 +44,7 @@ export function fixtureNpmEnvironment(targetRoot) {
 }
 
 // Handoff corpora model routing state, not a complete installed workflow. Tests
-// that execute branch gating supply documents, aligned intent and drift evidence.
+// that execute branch gating supply documents and aligned intent.
 export function prepareWorkflowDocumentsFixture(targetRoot) {
   for (const relative of ["docs/audit/baseline/current.md", "docs/audit/WORKFLOW.md", "docs/audit/SPEC.md"]) {
     const file = path.join(targetRoot, relative);
@@ -53,8 +54,13 @@ export function prepareWorkflowDocumentsFixture(targetRoot) {
   }
   const session = path.join(targetRoot, "docs/audit/sessions/S101-alpha.md");
   if (fs.existsSync(session)) fs.appendFileSync(session, "\nsession_objective: finalize alpha feature\n");
-  const events = path.join(targetRoot, ".aidn/runtime/perf/workflow-events.ndjson");
-  fs.mkdirSync(path.dirname(events), { recursive: true });
-  // Explicit synthetic drift evidence belongs only to these temporary fixtures.
-  fs.appendFileSync(events, JSON.stringify({ ts: new Date().toISOString(), skill: "drift-check", result: "ok" }) + "\n");
+}
+
+export function completeDriftCheckFixture(targetRoot, repoRoot = path.resolve(import.meta.dirname, "../..")) {
+  fs.appendFileSync(path.join(targetRoot, ".git/info/exclude"), "\n/.aidn/runtime/\n");
+  const result = JSON.parse(execFileSync(process.execPath,
+    [path.join(repoRoot, "tools/codex/run-json-hook.mjs"), "--target", targetRoot,
+      "--skill", "drift-check", "--mode", "COMMITTING", "--strict", "--json"],
+    { encoding: "utf8", stdio: "pipe", windowsHide: true }));
+  if (result.ok !== true) throw new Error(`Fixture drift check refused: ${result.reason_code}`);
 }

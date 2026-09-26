@@ -1,5 +1,5 @@
 name: extended
-version: 0.10.4
+version: 0.10.5
 depends_on:
   - runtime-local
   - codex-integration

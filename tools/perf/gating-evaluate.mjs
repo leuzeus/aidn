@@ -27,6 +27,7 @@ function parseArgs(argv) {
     reloadFallback: "",
     reloadReasonCodes: "",
     emitEvent: true,
+    completeDriftCheck: false,
     json: false,
   };
 
@@ -85,6 +86,8 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--no-emit-event") {
       args.emitEvent = false;
+    } else if (token === "--complete-drift-check") {
+      args.completeDriftCheck = true;
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -119,6 +122,9 @@ function parseArgs(argv) {
   if (args.reloadFallback && !["true", "false"].includes(args.reloadFallback)) {
     throw new Error("Invalid --reload-fallback. Expected true|false");
   }
+  if (args.completeDriftCheck && (args.reloadDecision || args.reloadFallback || args.reloadReasonCodes)) {
+    throw new Error("Drift completion requires observed reload evidence, not reload overrides");
+  }
   return args;
 }
 
@@ -132,6 +138,7 @@ function printUsage() {
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client --run-id S072-20260301T1012Z");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client --reload-decision incremental --reload-fallback false --reload-reason-codes \"\"");
   console.log("  node tools/perf/gating-evaluate.mjs --json");
+  console.log("  node tools/perf/gating-evaluate.mjs --complete-drift-check --target ../client --mode COMMITTING --json");
 }
 
 async function main() {

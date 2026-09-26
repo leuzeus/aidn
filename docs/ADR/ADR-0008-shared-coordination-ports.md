@@ -105,6 +105,13 @@ propagates gating refusal through its wrappers. Its repeated-fallback policy use
 a recent branch window and excludes explained normal reloads, without changing
 canonical data, clearing event history or weakening anomaly refusal.
 
+The 0.10.5 correction makes drift completion a specific local workflow event,
+produced by the explicit drift skill after its current checks pass. Evaluation
+does not require a prior occurrence of itself. Other admission conditions remain
+independent; a generic evaluation, a warning, a stop or an event from another
+branch cannot refresh the current branch's drift age. No canonical database
+write or shared synchronization is introduced.
+
 - align `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md` with the new ports
 - map the port methods to adapter implementations and runtime use cases
 - keep `ADR-0007` and the shared-surface gate synchronized with any port change

@@ -17135,6 +17135,27 @@
       "migration": ""
     },
     {
+      "id": "option:aidn perf gate:--complete-drift-check",
+      "kind": "option",
+      "status": "active",
+      "visibility": "internal",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/perf/gating-evaluate.mjs",
+      "entrypoint": "aidn perf gate --complete-drift-check",
+      "implementation": "tools/perf/gating-evaluate.mjs",
+      "effects": "internal/non-public",
+      "consumer": "repository maintainers",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/perf/gating-evaluate.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn perf gate:--event-file",
       "kind": "option",
       "status": "active",

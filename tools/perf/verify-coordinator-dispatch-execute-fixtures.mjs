@@ -5,7 +5,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
-import { isActivationFixtureSource, prepareActivationFixture, prepareNpmActivationFixture, fixtureNpmEnvironment, prepareWorkflowDocumentsFixture } from "./test-activation-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture, prepareNpmActivationFixture, fixtureNpmEnvironment, prepareWorkflowDocumentsFixture, completeDriftCheckFixture } from "./test-activation-fixture-lib.mjs";
 
 const FAILURE_INJECTION_ENV = "AIDN_COORDINATOR_EXECUTE_FIXTURE_INJECT_FAILURE";
 const FAILURE_PROBE_TOKEN_ENV = "AIDN_COORDINATOR_EXECUTE_FIXTURE_PROBE_TOKEN";
@@ -211,6 +211,7 @@ function main() {
       execFileSync("git", ["-C", target, "add", "."], { stdio: "pipe" });
       execFileSync("git", ["-C", target, "commit", "--amend", "--no-edit"], { stdio: "pipe" });
       assert(execFileSync("git", ["-C", target, "status", "--porcelain"], { encoding: "utf8" }).trim() === "", "fixture setup must leave a clean Git worktree");
+      if (target === readyTarget) completeDriftCheckFixture(target, repoRoot);
     }
 
     runJson(handoffProjectScript, ["--target", readyTarget, "--write", "--json"], repoRoot, 0);
