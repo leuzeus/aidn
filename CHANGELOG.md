@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.3
+
+- Recognize the canonical `clean` repair status emitted by workflow hooks when
+  admitting a verified session's first cycle. Retain legacy `ok` compatibility;
+  warning, blocking and unknown repair states still refuse. Preserve canonical
+  status and unknown freshness without mutating project data.
+- Exercise the hook-produced status in CLI fixtures and the dedicated live
+  PostgreSQL smoke, correcting the prior test's synthetic `ok` assumption.
+
 ## 0.10.2
 
 - Return an explicit native JSON denial from global project hook connectors when

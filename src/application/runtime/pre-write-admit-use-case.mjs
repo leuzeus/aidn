@@ -609,7 +609,8 @@ export function evaluatePreWriteSourceOfTruthAndRuntimeGates({
     if (normalizeScalarLocal(currentStateFreshness).toLowerCase() === "stale") {
       blockingReasons.push("CURRENT-STATE.md is stale according to RUNTIME-STATE.md");
     } else if (canonicalUnknownLocal(currentStateFreshness)) {
-      if (policy.allowInitialCycleFreshness && initialCycleContext && repairLayerStatus === "ok" && blockingFindings.length === 0) {
+      // Hooks emit "clean"; retain "ok" for existing canonical runtime records.
+      if (policy.allowInitialCycleFreshness && initialCycleContext && ["clean", "ok"].includes(repairLayerStatus) && blockingFindings.length === 0) {
         addCheck(checks, "cycle_create_initial_state_verified", true,
           "canonical session explicitly has no active cycle; cycle timestamp comparison is not applicable");
         warnings.push("initial cycle creation: cycle freshness comparison is not applicable; canonical session and branch verified");
