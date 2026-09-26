@@ -10,6 +10,7 @@ import { resolveRuntimeProjectContext } from '../../src/application/runtime/runt
 import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
 import { runDbFirstArtifactUseCase } from '../../src/application/runtime/db-first-artifact-use-case.mjs';
 import { prepareActivationFixture } from './test-activation-fixture-lib.mjs';
+import { createDaemonRunJsonHookAgentAdapter } from '../../src/application/codex/daemon-run-json-hook-agent-adapter.mjs';
 
 const connectionString = process.env.AIDN_RUNTIME_PG_SMOKE_URL;
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -337,6 +338,60 @@ else {
     assert.deepEqual(await snapshot(scopes[1]), other);
     assert(fs.readFileSync(eventsPath, 'utf8').startsWith(reviewedEvents + anomalies), 'closure must preserve historical journal');
     console.log('PASS live PostgreSQL: closure warning -> drift completion -> closure, canonical intent despite misleading files, preview without writes, canonical usage-matrix and duplicate-status refusals, ordinary mapping gate, rows and second scope preserved');
+    // Delivery must follow canonical session/PR metadata through merge and sync,
+    // even when every visible lifecycle projection is stale.
+    const git = (...args) => execFileSync('git', ['-C', targetRoot, ...args], { stdio: 'pipe', windowsHide: true });
+    git('add', '.'); git('-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-m', 'closure evidence');
+    git('checkout', '-b', 'S001-delivery');
+    await upsert({ path: 'CURRENT-STATE.md', content: initialCurrent.replaceAll('S001-initial', 'S001-delivery') });
+    const deliverySession = (pr, review, sync = 'not_needed', closed = true) =>
+      `## WORK MODE - COMMITTING\nsession_branch: S001-delivery\nbranch_kind: session\npr_status: ${pr}\npr_review_status: ${review}\npost_merge_sync_status: ${sync}\n### Session close gate satisfied?\n- [${closed ? 'x' : ' '}] Yes\n`;
+    const visibleSessionBefore = fs.readFileSync(path.join(targetRoot, 'docs/audit/sessions/S001-test.md'));
+    const visibleCurrentBefore = fs.readFileSync(path.join(targetRoot, 'docs/audit/CURRENT-STATE.md'));
+    const assertPrAction = async expected => {
+      const prior = await snapshot(scopes[0]);
+      const direct = JSON.parse(runScript('tools/perf/pr-orchestrate-hook.mjs', ['--strict']).stdout);
+      assert.equal(direct.action, expected, 'PostgreSQL direct PR action');
+      const daemon = await createDaemonRunJsonHookAgentAdapter().runCommandAsync({ command: process.execPath,
+        commandArgs: [path.join(repoRoot, 'bin/aidn.mjs'), 'perf', 'skill-hook', '--skill', 'pr-orchestrate',
+          '--target', targetRoot, '--strict', '--json'], envOverrides: { AIDN_STATE_MODE: 'db-only' } });
+      assert.equal(daemon.status, 0, daemon.stderr);
+      assert.equal(JSON.parse(daemon.stdout).action, expected, 'PostgreSQL daemon PR action');
+      const wrapped = JSON.parse(runScript('tools/codex/run-json-hook.mjs', ['--skill', 'pr-orchestrate', '--strict']).stdout);
+      assert.equal(wrapped.action, expected, 'PostgreSQL wrapper PR action');
+      assert.equal(wrapped.db_sync.enabled, false);
+      assert.deepEqual(await snapshot(scopes[0]), prior, 'PR diagnosis changed canonical rows');
+      assert.deepEqual(await snapshot(scopes[1]), other, 'PR diagnosis changed another scope');
+      assert.deepEqual(fs.readFileSync(path.join(targetRoot, 'docs/audit/sessions/S001-test.md')), visibleSessionBefore);
+      assert.deepEqual(fs.readFileSync(path.join(targetRoot, 'docs/audit/CURRENT-STATE.md')), visibleCurrentBefore);
+      return direct;
+    };
+    for (const [pr, review, sync, closed, action] of [
+      ['none', 'unknown', 'not_needed', false, 'blocked_session_not_closed'],
+      ['none', 'unknown', 'not_needed', true, 'push_session_branch'],
+      ['open', 'pending', 'not_needed', true, 'await_review'],
+      ['open', 'resolved', 'not_needed', true, 'merge_pull_request'],
+      ['closed_not_merged', 'resolved', 'not_needed', true, 'blocked_pr_closed_not_merged'],
+      ['merged', 'approved', 'required', true, 'switch_to_source_for_post_merge_sync'],
+    ]) {
+      await upsert({ path: 'sessions/S001-test.md', content: deliverySession(pr, review, sync, closed) });
+      await assertPrAction(action);
+    }
+    git('checkout', 'dev'); git('merge', '--ff-only', 'S001-delivery');
+    await assertPrAction('post_merge_sync_required');
+    await upsert({ path: 'sessions/S001-test.md', content: deliverySession('merged', 'approved', 'done') });
+    await upsert({ path: 'CURRENT-STATE.md', content: initialCurrent.replace('active_session: S001', 'active_session: none') });
+    await assertPrAction('post_merge_sync_complete');
+    await upsert({ path: 'sessions/S001-duplicate.md', content: deliverySession('open', 'resolved') });
+    assert.equal((await assertPrAction('blocked_pr_context_missing')).reason_code, 'PR_ORCHESTRATE_CANONICAL_RUNTIME_INVALID');
+    const savedPrConfig = fs.readFileSync(configPath);
+    try {
+      const unavailable = JSON.parse(savedPrConfig);
+      unavailable.runtime.persistence.connectionRef = 'env:AIDN_TEST_ABSENT_PR_CONNECTION';
+      fs.writeFileSync(configPath, JSON.stringify(unavailable));
+      assert.equal((await assertPrAction('blocked_pr_context_missing')).reason_code, 'PR_ORCHESTRATE_CANONICAL_RUNTIME_INVALID');
+    } finally { fs.writeFileSync(configPath, savedPrConfig); }
+    console.log('PASS live PostgreSQL: canonical PR lifecycle through review, merge and post-merge sync across CLI/daemon/wrapper; missing backend and ambiguous session refuse; stale files, all rows and other scope preserved');
     console.log('PASS live PostgreSQL: auto reload and standard branch hook; normal reloads do not stop; genuine fallback stop survives hook and Codex wrapper; canonical data unchanged');
     assert.equal(fs.existsSync(path.join(targetRoot, '.aidn/runtime/index/workflow-index.sqlite')), false);
     console.log('PASS live PostgreSQL: first-cycle admission and runtime projector read canonical rows despite misleading files; freshness remains unknown; no data mutation');
