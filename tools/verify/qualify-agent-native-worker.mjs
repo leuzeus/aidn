@@ -2,10 +2,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { isDeepStrictEqual } from "node:util";
 import pg from "pg";
 import { withEphemeralPostgres } from "../perf/agent-execution-postgres-test-lib.mjs";
-import { assertAgentNativeRefreshReview } from "./refresh-agent-native-candidate.mjs";
+import { assertAgentNativeRefreshReview, assertAgentNativeQualificationRefreshContinuity, readAgentNativeRefreshLineage } from "./refresh-agent-native-candidate.mjs";
 import { hash, json, fail, requireProof, physical, inventory, compareInventory, writeEvidence, loadCandidate, runNativeQualificationCase } from "./agent-native-qualification-driver.mjs";
 
 const SOURCE=path.resolve(import.meta.dirname,"../..");
@@ -13,37 +12,7 @@ const read=file=>JSON.parse(fs.readFileSync(physical(file,"file"),"utf8"));
 const identity=value=>process.platform==="win32"?path.resolve(value).toLowerCase():path.resolve(value);
 function outside(parent,child) {const rel=path.relative(parent,child);return rel===".." || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel);}
 
-// Pure continuity validation shared with fixtures. Receipt hashes and their
-// installation plan IDs may change; native identities and reviewed hooks may not.
-export function assertAgentNativeQualificationRefreshContinuity({manifest,trust,previousManifest,previousTrust}) {
-  assertAgentNativeRefreshReview(manifest,trust);
-  assertAgentNativeRefreshReview(previousManifest,previousTrust);
-  requireProof(identity(manifest.codex_home)===identity(previousManifest.codex_home)
-    && isDeepStrictEqual(manifest.codex,previousManifest.codex)
-    && manifest.host.platform===previousManifest.host.platform && manifest.host.architecture===previousManifest.host.architecture,
-  "QUALIFICATION_REFRESH_NATIVE_RUNTIME_CHANGED");
-  for(const root of manifest.roots) {
-    const before=previousManifest.roots.find(row=>row.role===root.role);
-    requireProof(before && identity(root.root)===identity(before.root)
-      && ["worktree_id","branch","head"].every(key=>root[key]===before[key])
-      && isDeepStrictEqual(root.identity,before.identity) && isDeepStrictEqual(root.activation,before.activation)
-      && isDeepStrictEqual(root.hooks,before.hooks)
-      && isDeepStrictEqual({...root.installation,plan_id:null},{...before.installation,plan_id:null})
-      && root.receipt.root_id===before.receipt.root_id && identity(root.receipt.path)===identity(before.receipt.path)
-      && root.attempt_marker_present===false && before.attempt_marker_present===false,
-    "QUALIFICATION_REFRESH_ROOT_IDENTITY_CHANGED");
-  }
-  for(const surface of trust.hooks.data) {
-    const previous=previousTrust.hooks.data.find(row=>identity(row.cwd)===identity(surface.cwd));
-    requireProof(previous,"QUALIFICATION_REFRESH_NATIVE_ROOT_CHANGED");
-    for(const hook of surface.hooks) {
-      const before=previous.hooks.find(row=>row.eventName===hook.eventName);
-      requireProof(before && identity(before.sourcePath)===identity(hook.sourcePath) && before.currentHash===hook.currentHash,
-        "QUALIFICATION_REFRESH_NATIVE_DEFINITION_CHANGED");
-    }
-  }
-  return true;
-}
+export { assertAgentNativeQualificationRefreshContinuity };
 
 // This internal, local qualification is never an automatic gate or a public
 // agent-run command. Preview performs filesystem reads only. --write explicitly
@@ -63,13 +32,7 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
   const trust=read(review.native_trust.path);
   assertAgentNativeRefreshReview(manifest,trust);
   requireProof(trust.candidate_sha256===manifest.candidate.sha256 && trust.codex_sha256===manifest.codex.sha256 && identity(trust.codex_home)===identity(manifest.codex_home) && trust.process_closed===true,"QUALIFICATION_TRUST_BINDING_INVALID");
-  if(manifest.refresh) {
-    const previousManifestPath=physical(manifest.refresh.prior_manifest,"file");
-    const previousTrustPath=physical(manifest.refresh.trust_evidence?.path,"file");
-    requireProof(hash(fs.readFileSync(previousManifestPath))===manifest.refresh.prior_manifest_sha256 && hash(fs.readFileSync(previousTrustPath))===manifest.refresh.trust_evidence.sha256,"QUALIFICATION_PRIOR_TRUST_EVIDENCE_CHANGED");
-    const previousManifest=read(previousManifestPath),previousTrust=read(previousTrustPath);
-    assertAgentNativeQualificationRefreshContinuity({manifest,trust,previousManifest,previousTrust});
-  }
+  if(manifest.refresh) readAgentNativeRefreshLineage(manifestFile,review.native_trust.path,outputRoot);
   const selectedModel=trust.models?.data?.find(row=>row.id===model || row.model===model);
   requireProof(selectedModel && selectedModel.supportedReasoningEfforts?.some(row=>row.reasoningEffort===effort),"QUALIFICATION_MODEL_UNAVAILABLE");
   requireProof(manifest.roots.length===3 && ["coordinator","worker-a","worker-b"].every(role=>manifest.roots.filter(r=>r.role===role).length===1),"QUALIFICATION_ROOTS_INVALID");

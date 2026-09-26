@@ -171,6 +171,12 @@ original baseline without silently rewriting it.
 
 The resulting manifest and baseline retain the preparation format and point to
 the new exact candidate. Native execution remains NOT_RUN. The status
+of each later refresh is bound to its complete prior chain, limited to 32
+manifests. Every prior manifest and trust observation is checked by hash, with
+unchanged root, activation and hook identities. Roots and the native home stay
+in the original preparation; each package belongs to its own output directory.
+New output cannot be inside any previous output, and the preview fingerprint
+includes the chain. A missing, changed or cyclic chain is refused. The status
 PRESERVED_DEFINITION_RECHECK_REQUIRED means the supported native API must be read
 again in the same home for both worker roots; source paths, native hashes, enabled
 and trusted state must match the earlier observation. Only unchanged roots and

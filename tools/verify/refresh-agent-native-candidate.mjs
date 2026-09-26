@@ -5,6 +5,7 @@ import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 
 const SOURCE = path.resolve(import.meta.dirname, "../..");
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -145,6 +146,40 @@ export function assertAgentNativeRefreshReview(manifest, evidence) {
   return true;
 }
 
+const identityContinuity = value => identityPath(path.resolve(value));
+const requireContinuity = (condition, code) => { if (!condition) fail(code); };
+// Pure continuity validation shared with fixtures. Receipt hashes and their
+// installation plan IDs may change; native identities and reviewed hooks may not.
+export function assertAgentNativeQualificationRefreshContinuity({manifest,trust,previousManifest,previousTrust}) {
+  assertAgentNativeRefreshReview(manifest,trust);
+  assertAgentNativeRefreshReview(previousManifest,previousTrust);
+  requireContinuity(identityContinuity(manifest.codex_home)===identityContinuity(previousManifest.codex_home)
+    && isDeepStrictEqual(manifest.codex,previousManifest.codex)
+    && manifest.host.platform===previousManifest.host.platform && manifest.host.architecture===previousManifest.host.architecture,
+  "QUALIFICATION_REFRESH_NATIVE_RUNTIME_CHANGED");
+  for(const root of manifest.roots) {
+    const before=previousManifest.roots.find(row=>row.role===root.role);
+    requireContinuity(before && identityContinuity(root.root)===identityContinuity(before.root)
+      && ["worktree_id","branch","head"].every(key=>root[key]===before[key])
+      && isDeepStrictEqual(root.identity,before.identity) && isDeepStrictEqual(root.activation,before.activation)
+      && isDeepStrictEqual(root.hooks,before.hooks)
+      && isDeepStrictEqual({...root.installation,plan_id:null},{...before.installation,plan_id:null})
+      && root.receipt.root_id===before.receipt.root_id && identityContinuity(root.receipt.path)===identityContinuity(before.receipt.path)
+      && root.attempt_marker_present===false && before.attempt_marker_present===false,
+    "QUALIFICATION_REFRESH_ROOT_IDENTITY_CHANGED");
+  }
+  for(const surface of trust.hooks.data) {
+    const previous=previousTrust.hooks.data.find(row=>identityContinuity(row.cwd)===identityContinuity(surface.cwd));
+    requireContinuity(previous,"QUALIFICATION_REFRESH_NATIVE_ROOT_CHANGED");
+    for(const hook of surface.hooks) {
+      const before=previous.hooks.find(row=>row.eventName===hook.eventName);
+      requireContinuity(before && identityContinuity(before.sourcePath)===identityContinuity(hook.sourcePath) && before.currentHash===hook.currentHash,
+        "QUALIFICATION_REFRESH_NATIVE_DEFINITION_CHANGED");
+    }
+  }
+  return true;
+}
+
 // Refresh is intentionally receipt-only. Any asset change requires fresh preparation.
 export function assertAgentNativeRefreshPlan(plan) {
   if (!plan?.ok || plan.pending || !Array.isArray(plan.operations) || !plan.operations.length) fail("REFRESH_INSTALL_PLAN_UNREADY");
@@ -210,6 +245,61 @@ export function assertAgentNativeRefreshPreservation(before, after, completedRol
   return true;
 }
 
+// Pure layout/provenance checks; the caller supplies hashes from observed bytes.
+export function assertAgentNativeRefreshLineage(lineage, outputRoot) {
+  if (!Array.isArray(lineage) || !lineage.length || lineage.length > 32) fail("REFRESH_LINEAGE_LIMIT");
+  if (typeof outputRoot !== "string" || !path.isAbsolute(outputRoot)) fail("REFRESH_ABSOLUTE_PATH_REQUIRED");
+  const seen = new Set();
+  for (const [index, entry] of lineage.entries()) {
+    const { manifest, evidence, manifestPath, manifestSha256, trustEvidencePath, trustSha256 } = entry;
+    if (![manifestPath, trustEvidencePath, manifest.output_root, manifest.codex_home,
+      manifest.candidate.packageRoot, manifest.candidate.archivePath, ...manifest.roots.map(root => root.root)]
+      .every(value => typeof value === "string" && path.isAbsolute(value))) fail("REFRESH_ABSOLUTE_PATH_REQUIRED");
+    if (![manifestSha256, trustSha256].every(value => /^[a-f0-9]{64}$/.test(value ?? ""))) fail("REFRESH_LINEAGE_HASH_INVALID");
+    assertAgentNativeRefreshReview(manifest, evidence);
+    const key = identityContinuity(manifestPath);
+    if (seen.has(key)) fail("REFRESH_LINEAGE_CYCLE");
+    seen.add(key);
+    if (!equalPath(path.dirname(manifestPath), manifest.output_root)
+        || inside(manifest.output_root, outputRoot)) fail("REFRESH_OUTPUT_OVERLAP");
+    if (!inside(manifest.output_root, manifest.candidate.packageRoot)
+        || !inside(manifest.output_root, manifest.candidate.archivePath)) fail("REFRESH_PREPARATION_PATH_MISMATCH");
+    const previous = lineage[index + 1];
+    if (previous) {
+      if (!manifest.refresh || !equalPath(manifest.refresh.prior_manifest, previous.manifestPath)
+          || manifest.refresh.prior_manifest_sha256 !== previous.manifestSha256
+          || !equalPath(manifest.refresh.trust_evidence?.path, previous.trustEvidencePath)
+          || manifest.refresh.trust_evidence?.sha256 !== previous.trustSha256) fail("REFRESH_LINEAGE_BINDING_MISMATCH");
+      assertAgentNativeQualificationRefreshContinuity({ manifest, trust: evidence,
+        previousManifest: previous.manifest, previousTrust: previous.evidence });
+    } else if (manifest.refresh) fail("REFRESH_LINEAGE_INCOMPLETE");
+  }
+  const origin = lineage.at(-1).manifest.output_root;
+  for (const { manifest } of lineage) {
+    if (!inside(origin, manifest.codex_home) || manifest.roots.some(entry => !inside(origin, entry.root))) fail("REFRESH_PREPARATION_PATH_MISMATCH");
+  }
+  return origin;
+}
+
+export function readAgentNativeRefreshLineage(manifestPath, trustEvidencePath, outputRoot) {
+  const lineage = [], seen = new Set();
+  for (;;) {
+    if (lineage.length >= 32) fail("REFRESH_LINEAGE_LIMIT");
+    manifestPath = checkedPath(manifestPath, "file");
+    trustEvidencePath = checkedPath(trustEvidencePath, "file");
+    if (seen.has(identityContinuity(manifestPath))) fail("REFRESH_LINEAGE_CYCLE");
+    seen.add(identityContinuity(manifestPath));
+    const manifestBytes = fs.readFileSync(manifestPath), trustBytes = fs.readFileSync(trustEvidencePath);
+    const manifest = JSON.parse(manifestBytes), evidence = JSON.parse(trustBytes);
+    lineage.push({ manifest, evidence, manifestPath, trustEvidencePath,
+      manifestSha256: hash(manifestBytes), trustSha256: hash(trustBytes) });
+    if (!manifest.refresh) break;
+    manifestPath = manifest.refresh.prior_manifest;
+    trustEvidencePath = manifest.refresh.trust_evidence?.path;
+  }
+  return { lineage, originOutput: assertAgentNativeRefreshLineage(lineage, outputRoot) };
+}
+
 async function inspect({ manifestPath, trustEvidencePath, outputRoot, npmCli }) {
   manifestPath = checkedPath(manifestPath, "file");
   trustEvidencePath = checkedPath(trustEvidencePath, "file");
@@ -217,21 +307,20 @@ async function inspect({ manifestPath, trustEvidencePath, outputRoot, npmCli }) 
   if (fs.existsSync(outputRoot)) fail("REFRESH_OUTPUT_ALREADY_EXISTS");
   checkedPath(path.dirname(outputRoot), "directory");
   if (inside(SOURCE, outputRoot)) fail("REFRESH_OUTPUT_INSIDE_SOURCE");
-  const manifest = JSON.parse(fs.readFileSync(manifestPath));
-  const evidence = JSON.parse(fs.readFileSync(trustEvidencePath));
-  assertAgentNativeRefreshReview(manifest, evidence);
+  const { lineage, originOutput } = readAgentNativeRefreshLineage(manifestPath, trustEvidencePath, outputRoot);
+  const { manifest, evidence } = lineage[0];
   const oldOutput = checkedPath(manifest.output_root, "directory");
   if (!equalPath(path.dirname(manifestPath), oldOutput) || inside(oldOutput, outputRoot)) fail("REFRESH_OUTPUT_OVERLAP");
   checkedPath(manifest.codex_home, "directory");
   checkedPath(manifest.codex.binary_path, "file");
   checkedPath(manifest.candidate.packageRoot, "directory");
   checkedPath(manifest.candidate.archivePath, "file");
-  if (!inside(oldOutput, manifest.codex_home) || !inside(oldOutput, manifest.candidate.packageRoot)
+  if (!inside(originOutput, manifest.codex_home) || !inside(oldOutput, manifest.candidate.packageRoot)
       || !inside(oldOutput, manifest.candidate.archivePath)) fail("REFRESH_PREPARATION_PATH_MISMATCH");
   if (new Set(manifest.roots.map((entry) => identityPath(checkedPath(entry.root, "directory")))).size !== 3
       || new Set(manifest.roots.map((entry) => entry.worktree_id)).size !== 3) fail("REFRESH_ROOT_IDENTITY_INVALID");
   for (const entry of manifest.roots) {
-    if (!inside(oldOutput, entry.root) || inside(entry.root, outputRoot) || !equalPath(entry.receipt.path, path.join(entry.root, ".aidn/install/receipt.json"))) fail("REFRESH_PREPARATION_PATH_MISMATCH");
+    if (!inside(originOutput, entry.root) || inside(entry.root, outputRoot) || !equalPath(entry.receipt.path, path.join(entry.root, ".aidn/install/receipt.json"))) fail("REFRESH_PREPARATION_PATH_MISMATCH");
     if (entry.attempt_marker_present || fs.existsSync(path.join(entry.root, ".codex/aidn-agent-attempt.json"))) fail("REFRESH_ATTEMPT_ALREADY_STARTED");
     if (git(entry.root, ["branch", "--show-current"]).trim() !== entry.branch || git(entry.root, ["rev-parse", "HEAD"]).trim() !== entry.head) fail("REFRESH_GIT_IDENTITY_DRIFT");
     if (hash(fs.readFileSync(checkedPath(entry.receipt.path, "file"))) !== entry.receipt.sha256 || !same(hooksRecord(entry.root), entry.hooks)) fail("REFRESH_REVIEWED_BYTES_CHANGED");
@@ -261,6 +350,7 @@ async function inspect({ manifestPath, trustEvidencePath, outputRoot, npmCli }) 
   if (!same(homeBefore, nativeHomeIdentity(manifest.codex_home))) fail("REFRESH_NATIVE_HOME_CHANGED");
   npmCli = findNpm(npmCli);
   const preimages = { manifest_sha256: hash(fs.readFileSync(manifestPath)), trust_evidence_sha256: hash(fs.readFileSync(trustEvidencePath)),
+    lineage: lineage.map(({ manifestPath, manifestSha256, trustEvidencePath, trustSha256 }) => ({ manifestPath, manifestSha256, trustEvidencePath, trustSha256 })),
     baseline_sha256: fingerprint(before), git_markers: markersBefore, codex_home_identity_sha256: fingerprint(homeBefore), source: sourceIdentity,
     npm_cli: npmCli, npm_cli_sha256: hash(fs.readFileSync(npmCli)), source_plans: sourcePlans, output_root: outputRoot };
   return { manifestPath, trustEvidencePath, outputRoot, manifest, evidence, before, markersBefore, homeBefore, source, npmCli, preimages,

@@ -274,6 +274,58 @@ try {
   await check("qualification rejects nonboolean write before any effect", async () => {
     await assert.rejects(qualification.qualifyAgentNativeWorker({ write: "true" }), { code: "QUALIFICATION_EXPLICIT_WRITE_BOOLEAN_REQUIRED" });
   });
+  const makeLineage = () => {
+    const previousManifest = structuredClone(manifest), previousTrust = structuredClone(trust);
+    previousManifest.output_root = root;
+    previousManifest.candidate.packageRoot = path.join(root, "engine");
+    previousManifest.candidate.archivePath = path.join(root, "artifacts/package.tgz");
+    const previous = { manifest: previousManifest, evidence: previousTrust, manifestPath: path.join(root, "manifest.json"),
+      manifestSha256: sha("1"), trustEvidencePath: path.join(root, "trust.json"), trustSha256: sha("2") };
+    const current = structuredClone(previous);
+    current.manifest.output_root = root + "-refresh";
+    current.manifestPath = path.join(current.manifest.output_root, "manifest.json");
+    current.trustEvidencePath = path.join(current.manifest.output_root, "trust.json");
+    current.manifestSha256 = sha("3"); current.trustSha256 = sha("4");
+    current.manifest.candidate.packageRoot = path.join(current.manifest.output_root, "engine");
+    current.manifest.candidate.archivePath = path.join(current.manifest.output_root, "artifacts/package.tgz");
+    current.manifest.refresh = { prior_manifest: previous.manifestPath, prior_manifest_sha256: previous.manifestSha256,
+      trust_evidence: { path: previous.trustEvidencePath, sha256: previous.trustSha256 } };
+    return [current, previous];
+  };
+  const lineageOutput = root + "-next";
+  await check("initial refresh layout uses the original preparation roots", () => {
+    assert.equal(refresh.assertAgentNativeRefreshLineage(makeLineage().slice(1), lineageOutput), root);
+  });
+  await check("repeated refresh retains reviewed roots in the original output", () => {
+    const lineage = makeLineage(), before = JSON.stringify(lineage);
+    assert.equal(refresh.assertAgentNativeRefreshLineage(lineage, lineageOutput), root);
+    assert.equal(JSON.stringify(lineage), before);
+  });
+  for (const [name, mutate, code] of [
+    ["changed ancestor manifest hash", v => { v[1].manifestSha256 = sha("0"); }, "REFRESH_LINEAGE_BINDING_MISMATCH"],
+    ["changed ancestor trust hash", v => { v[1].trustSha256 = sha("0"); }, "REFRESH_LINEAGE_BINDING_MISMATCH"],
+    ["foreign ancestor path", v => { v[0].manifest.refresh.prior_manifest += "-other"; }, "REFRESH_LINEAGE_BINDING_MISMATCH"],
+    ["changed approved definition", v => { v[0].evidence.hooks.data[0].hooks[0].currentHash = "sha256:" + sha("0"); }, "QUALIFICATION_REFRESH_NATIVE_DEFINITION_CHANGED"],
+    ["foreign package output", v => { v[0].manifest.candidate.packageRoot = lineageOutput; }, "REFRESH_PREPARATION_PATH_MISMATCH"],
+    ["relative ancestor output", v => { v[1].manifest.output_root = "relative"; }, "REFRESH_ABSOLUTE_PATH_REQUIRED"],
+    ["truncated origin", v => { v.pop(); }, "REFRESH_LINEAGE_INCOMPLETE"],
+  ]) await check("refresh lineage rejects " + name, () => {
+    const lineage = makeLineage(); mutate(lineage);
+    rejects(() => refresh.assertAgentNativeRefreshLineage(lineage, lineageOutput), code);
+  });
+  await check("refresh output cannot be inside an older preparation", () => {
+    rejects(() => refresh.assertAgentNativeRefreshLineage(makeLineage(), path.join(root, "nested")), "REFRESH_OUTPUT_OVERLAP");
+  });
+  await check("refresh lineage has a finite depth", () => {
+    rejects(() => refresh.assertAgentNativeRefreshLineage(Array(33).fill(makeLineage()[0]), lineageOutput), "REFRESH_LINEAGE_LIMIT");
+  });
+  await check("refresh lineage rejects a cycle", () => {
+    const lineage = makeLineage(), first = lineage[0], second = lineage[1];
+    second.manifest.refresh = { prior_manifest: first.manifestPath, prior_manifest_sha256: first.manifestSha256,
+      trust_evidence: { path: first.trustEvidencePath, sha256: first.trustSha256 } };
+    lineage.push(first);
+    rejects(() => refresh.assertAgentNativeRefreshLineage(lineage, lineageOutput), "REFRESH_LINEAGE_CYCLE");
+  });
   // Async in-memory publication double, explicitly not a PostgreSQL proof.
   // The shared adapter inserts revision 0; execution contracts require >= 1.
   const planningCanonical={project_id:"native.project",workspace_id:"native.workspace",session_id:"S001",plan_ref:"docs/audit/BACKLOG.md",plan_sha256:sha("a"),planning_revision:1};
