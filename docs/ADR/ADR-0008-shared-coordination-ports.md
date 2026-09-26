@@ -92,6 +92,9 @@ artifacts and verifies their physical branch. An explicit absence of a cycle
 has no cycle timestamp comparison to perform; this does not make an unknown
 freshness value `ok`. The bounded `cycle-create` check retains all other gates,
 requires a clear repair state and does not apply to native patch authorization.
+The 0.10.3 correction recognizes the hook-produced `clean` repair state as well
+as legacy `ok`, without rewriting canonical values or admitting warning,
+blocking, or unknown repair states.
 Runtime projection in db-only/PostgreSQL mode also resolves canonical artifacts
 and refuses backend unavailability instead of substituting Markdown projections.
 

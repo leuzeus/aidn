@@ -461,7 +461,9 @@ function verifyInitialContextReload(repoRoot, tempRoot, source) {
 function verifyInitialCycleAdmission(repoRoot, tempRoot, source) {
   const evidence = [];
   for (const stateMode of ["dual", "db-only"]) {
-    for (const scenario of ["initial", "unknown-cycle", "missing-cycle", "stale"]) {
+    for (const scenario of ["initial", "legacy-ok", "repair-warn", "repair-block", "repair-unknown", "unknown-cycle", "missing-cycle", "stale"]) {
+      const admitted = ["initial", "legacy-ok"].includes(scenario);
+      const repairStatus = scenario === "legacy-ok" ? "ok" : scenario.startsWith("repair-") ? scenario.slice(7) : "clean";
       const target = path.join(tempRoot, `initial-cycle-${stateMode}-${scenario}`);
       fs.cpSync(source, target, { recursive: true });
       const currentFile = path.join(target, "docs/audit/CURRENT-STATE.md");
@@ -472,7 +474,7 @@ function verifyInitialCycleAdmission(repoRoot, tempRoot, source) {
       fs.writeFileSync(path.join(target, "docs/audit/sessions/S101-alpha.md"), "## WORK MODE - THINKING\nsession_branch: S101-initial\ncycle_branch: none\nprimary_focus_cycle: none\n");
       installDbOnlyReadyRuntimeFixture(target, stateMode);
       const runtimeFile = path.join(target, "docs/audit/RUNTIME-STATE.md");
-      fs.writeFileSync(runtimeFile, upsertScalarLine(fs.readFileSync(runtimeFile, "utf8"), "current_state_freshness", scenario === "stale" ? "stale" : "unknown"));
+      fs.writeFileSync(runtimeFile, upsertScalarLine(upsertScalarLine(fs.readFileSync(runtimeFile, "utf8"), "repair_layer_status", repairStatus), "current_state_freshness", scenario === "stale" ? "stale" : "unknown"));
       initGitRepo(target, { workingBranch: "S101-initial" });
       fs.appendFileSync(path.join(target, ".git/info/exclude"), "\n/.aidn/runtime/\n");
       prepareActivationFixture(target, repoRoot);
@@ -483,11 +485,12 @@ function verifyInitialCycleAdmission(repoRoot, tempRoot, source) {
       const snapshot = () => JSON.stringify(fs.readdirSync(target, { recursive: true, withFileTypes: true })
         .filter(entry => entry.isFile()).map(entry => { const file = path.join(entry.parentPath, entry.name); return [path.relative(target, file), fs.readFileSync(file).toString("base64")]; }).sort(([a], [b]) => a.localeCompare(b)));
       const before = snapshot();
-      const result = runAidnWithEnv(repoRoot, ["runtime", "pre-write-admit", "--target", target, "--skill", "cycle-create", "--strict", "--json"], { AIDN_STATE_MODE: stateMode }, scenario === "initial" ? 0 : 1);
-      assert(result.ok === (scenario === "initial"), `${stateMode}/${scenario}: ${JSON.stringify(result.blocking_reasons)}`);
+      const result = runAidnWithEnv(repoRoot, ["runtime", "pre-write-admit", "--target", target, "--skill", "cycle-create", "--strict", "--json"], { AIDN_STATE_MODE: stateMode }, admitted ? 0 : 1);
+      assert(result.ok === admitted, `${stateMode}/${scenario}: ${JSON.stringify(result.blocking_reasons)}`);
+      assert(result.context.repair_layer_status === repairStatus, `${stateMode}/${scenario}: canonical repair status expected ${repairStatus}, got ${result.context.repair_layer_status}`);
       assert(result.context.current_state_source === "sqlite" && result.context.mode === "THINKING", "cycle-create must use canonical context despite misleading projection");
       assert(result.context.current_state_freshness === (scenario === "stale" ? "stale" : "unknown"), "admission must not invent freshness=ok");
-      assert(Boolean(result.checks.cycle_create_initial_state_verified?.pass) === (scenario === "initial"), "initial-cycle evidence must be explicit and narrow");
+      assert(Boolean(result.checks.cycle_create_initial_state_verified?.pass) === admitted, "initial-cycle evidence must be explicit and narrow");
       assert(snapshot() === before, "cycle admission must not change the project or its database");
       evidence.push({ state_mode: stateMode, scenario, pass: true, unchanged: true });
     }

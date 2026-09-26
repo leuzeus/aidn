@@ -17,7 +17,9 @@ hook execution or qualification of a PostgreSQL server installer.
 
 Initial-cycle admission is covered by the pre-write use-case and CLI fixtures:
 canonical initial session, missing/unknown/stale cycle, mismatched session and
-branch, session identifier boundary, and misleading local projections. The
+branch, session identifier boundary, and misleading local projections. Runtime
+repair status `clean` (emitted by hooks) and legacy `ok` are admitted; `warn`,
+`block`, and `unknown` must still refuse the initial-state exception. The
 admitted initial case must keep freshness `unknown` and leave every file and DB
 row unchanged. The dedicated PostgreSQL smoke also checks this actual CLI path
 and canonical runtime projection; fixtures alone are not PostgreSQL proof.
