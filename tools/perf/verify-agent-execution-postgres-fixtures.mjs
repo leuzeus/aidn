@@ -380,7 +380,9 @@ try {
   // are intentionally excluded from this required gate's public diagnostics.
   const code = /^[A-Z_]+$/.test(error.code ?? "") ? error.code : /^[A-Z_]+$/.test(error.message ?? "") ? error.message : "ASSERTION_OR_FIXTURE_FAILURE";
   const assertion = error instanceof assert.AssertionError ? String(error.message).replace(/postgres(?:ql)?:\/\/\S+/gi,"[redacted]").slice(-1500) : undefined;
-  process.stderr.write(JSON.stringify({ ok:false, check:currentCheck, code, assertion, passed:checks.length,
+  const detail = code.startsWith("EPHEMERAL_POSTGRES_") && typeof error.detail === "string"
+    ? error.detail.replace(/postgres(?:ql)?:\/\/\S+/gi,"[redacted]").slice(-4096) : undefined;
+  process.stderr.write(JSON.stringify({ ok:false, check:currentCheck, code, assertion, detail, passed:checks.length,
     cleanup:clusterRoots.size>0 && [...clusterRoots].every(root=>!fs.existsSync(root)) && children.size===0
       && !String(error.message).startsWith("EPHEMERAL_POSTGRES_") ? "PASS" : "UNCONFIRMED", live_children:children.size })+"\n");
   process.exitCode=1;

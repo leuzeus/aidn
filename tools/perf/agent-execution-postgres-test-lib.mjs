@@ -20,13 +20,33 @@ export async function withEphemeralPostgres(fn, { binDir = process.env.PG_BIN_DI
   const data = path.join(root, "data"), passwordFile = path.join(root, "password");
   const password = randomBytes(32).toString("hex");
   fs.writeFileSync(passwordFile, password + "\n", { flag: "wx", mode: 0o600 });
+  const serverLogTail = () => {
+    let descriptor;
+    try {
+      descriptor = fs.openSync(path.join(root, "server.log"), "r");
+      const size = fs.fstatSync(descriptor).size;
+      const tail = Buffer.alloc(Math.min(size, 2048));
+      fs.readSync(descriptor, tail, 0, tail.length, Math.max(0, size - tail.length));
+      const text = tail.toString("utf8");
+      // Omit a truncated first line, including any partial credential that
+      // could otherwise escape whole-value redaction at the read boundary.
+      if (size > tail.length) return text.includes("\n") ? text.slice(text.indexOf("\n") + 1) : "[long log line omitted]";
+      return text;
+    } catch { return ""; }
+    finally { if (descriptor !== undefined) fs.closeSync(descriptor); }
+  };
+  const redact = value => String(value).replaceAll(password, "[redacted]")
+    .replace(/postgres(?:ql)?:\/\/\S+/gi, "[redacted]");
   const run = (name, args) => {
     const result = spawnSync(binary(name), args, { cwd: root, encoding: "utf8", windowsHide: true, timeout: 60000, maxBuffer: 1024 * 1024 });
     if (result.status !== 0) {
-      // initdb/pg_ctl diagnostics contain no supplied connection string; retain
-      // a bounded tail with the generated credential redacted defensively.
+      // pg_ctl often puts the startup reason only in server.log. Capture a
+      // bounded tail before cleanup, and redact the private credential first.
       const error = new Error(`EPHEMERAL_POSTGRES_${name.toUpperCase()}_FAILED`);
-      error.detail = String(result.stderr || result.stdout || result.error?.code || "").replaceAll(password, "[redacted]").slice(-2048);
+      error.detail = [
+        redact(result.stderr || "").slice(-768), redact(result.stdout || "").slice(-768),
+        redact(result.error?.code || ""), redact(serverLogTail()),
+      ].filter(Boolean).join("\n").slice(-4096);
       throw error;
     }
     return result.stdout.trim();
@@ -35,6 +55,9 @@ export async function withEphemeralPostgres(fn, { binDir = process.env.PG_BIN_DI
   try {
     const version = run("postgres", ["--version"]);
     run("initdb", ["-D", data, "-U", "aidn_test", "--pwfile", passwordFile, "--auth=scram-sha-256", "--encoding=UTF8", "--no-locale"]);
+    // Use only the allocated loopback TCP endpoint. Linux distributions may
+    // compile a socket directory outside this private cluster's ownership.
+    fs.appendFileSync(path.join(data, "postgresql.conf"), "\n# AIDN private test cluster: TCP only.\nunix_socket_directories = ''\n");
     const port = await new Promise((resolve, reject) => {
       const server = net.createServer(); server.once("error", reject);
       server.listen(0, "127.0.0.1", () => { const assigned = server.address().port; server.close(error => error ? reject(error) : resolve(assigned)); });
