@@ -5,6 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 const TOOL_FILE = fileURLToPath(import.meta.url);
 const REPO_ROOT = path.resolve(path.dirname(TOOL_FILE), "..", "..");
@@ -21,7 +22,7 @@ function copyFixture(sourceRoot, tempRoot) {
   fs.cpSync(sourceRoot, targetRoot, {
     recursive: true,
     filter(source) {
-      return !source.replace(/\\/g, "/").includes("/.git/");
+      return isActivationFixtureSource(sourceRoot, source);
     },
   });
   return targetRoot;
@@ -65,6 +66,7 @@ async function main() {
   try {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-local-daemon-"));
     targetRoot = copyFixture(path.join(REPO_ROOT, "tests", "fixtures", "repo-installed-core"), tempRoot);
+    prepareActivationFixture(targetRoot, REPO_ROOT);
     const endpointFile = path.join(targetRoot, ".aidn", "runtime", "daemon", "endpoint.json");
     const started = runAidnJson([
       "runtime",
