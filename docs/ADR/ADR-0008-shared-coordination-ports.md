@@ -98,6 +98,13 @@ blocking, or unknown repair states.
 Runtime projection in db-only/PostgreSQL mode also resolves canonical artifacts
 and refuses backend unavailability instead of substituting Markdown projections.
 
+The 0.10.4 correction applies the same canonical reader to branch-audit ownership
+and automatic reload/gating snapshots. Configured PostgreSQL cannot be displaced
+by the default SQLite index path or a conflicting explicit backend. Branch audit
+propagates gating refusal through its wrappers. Its repeated-fallback policy uses
+a recent branch window and excludes explained normal reloads, without changing
+canonical data, clearing event history or weakening anomaly refusal.
+
 - align `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md` with the new ports
 - map the port methods to adapter implementations and runtime use cases
 - keep `ADR-0007` and the shared-surface gate synchronized with any port change

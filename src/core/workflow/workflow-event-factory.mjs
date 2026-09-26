@@ -25,6 +25,7 @@ export function buildReloadSummaryEvent({
     gates_triggered: [],
     result: reload.result,
     reason_code: (reload.reason_codes ?? [])[0] ?? null,
+    reason_codes: reload.reason_codes ?? [],
     trace_id: traceId,
   };
 }

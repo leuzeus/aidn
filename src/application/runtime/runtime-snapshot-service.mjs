@@ -2,6 +2,20 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRuntimeArtifactStore, createRuntimeCanonicalSnapshotReader } from "./runtime-persistence-service.mjs";
 import { openSqliteRuntimeQueryContext } from "../../adapters/runtime/sqlite-runtime-query-context.mjs";
+import { readAidnProjectConfig, resolveConfigRuntimePersistence } from "../../lib/config/aidn-config-lib.mjs";
+
+// Workflow reads must not infer SQLite from a legacy default filename when
+// the project has explicitly selected a canonical PostgreSQL backend.
+export function resolveWorkflowSnapshotBackend(targetRoot, indexFile, backend = "auto") {
+  const configured = resolveConfigRuntimePersistence(readAidnProjectConfig(targetRoot).data);
+  if (configured?.backend === "postgres") {
+    if (backend && !["auto", "postgres"].includes(backend)) {
+      throw new Error("Workflow snapshot backend conflicts with canonical PostgreSQL configuration");
+    }
+    return "postgres";
+  }
+  return detectRuntimeSnapshotBackend(indexFile, backend);
+}
 
 export function detectRuntimeSnapshotBackend(indexFile, backend = "") {
   if (backend === "json" || backend === "sqlite" || backend === "postgres") {

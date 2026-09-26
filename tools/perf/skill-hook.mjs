@@ -158,6 +158,7 @@ function main() {
     if (args.failOnRepairBlock && String(out.repair_layer_status ?? "") === "block") {
       process.exit(1);
     }
+    if (args.skill === "branch-cycle-audit" && out.result === "stop") process.exitCode = 1;
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     printUsage();

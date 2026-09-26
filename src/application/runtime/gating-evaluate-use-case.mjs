@@ -17,6 +17,7 @@ import {
 } from "./runtime-path-service.mjs";
 import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-adapter.mjs";
 import { runWorkflowRuntimeJsonScript } from "./workflow-runtime-service.mjs";
+import { resolveWorkflowSnapshotBackend } from "./runtime-snapshot-service.mjs";
 
 function parseReloadReasonCodes(value) {
   if (!value) {
@@ -132,6 +133,7 @@ export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir })
   args.cache = resolveRuntimeTargetPath(targetRoot, args.cache);
   args.eventFile = resolveRuntimeTargetPath(targetRoot, args.eventFile);
   args.indexSyncCheckFile = resolveRuntimeTargetPath(targetRoot, args.indexSyncCheckFile);
+  args.indexBackend = resolveWorkflowSnapshotBackend(targetRoot, args.indexFile, args.indexBackend);
   if (!args.stateModeExplicit && !String(process.env.AIDN_STATE_MODE ?? "").trim()) {
     const config = readAidnProjectConfig(targetRoot);
     const configStateMode = resolveConfigStateMode(config.data);
