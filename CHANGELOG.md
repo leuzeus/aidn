@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.10.10
+
+- Finish the terminal-cycle closure path: a requested explicit COMMITTING drift
+  check validates terminal ownership, canonical intent and usage evidence before
+  recording completion. Ordinary mapping remains active-only; no new bypass.
+- Avoid treating a human cycle directory label as a sensitive product change in
+  its standard status document. Code and other artifacts retain drift signals.
+- Retain path-defined cycle/session ownership and status classification during
+  selective DB-first synchronization, so SQLite closure evidence remains valid.
+  Contradictory explicit identity is refused before writing.
+- Skip post-hook DB synchronization when cycle closure warns or refuses, so
+  misleading local projections cannot replace the evidence of refusal.
+- Cover the complete closure warning -> drift completion -> closure sequence in
+  files, SQLite and dedicated PostgreSQL tests, with unchanged previews, retained
+  history, canonical objective checks and negative admission cases.
+- Align closure instructions, SPEC, ADR, diagrams and BPMN with that sequence.
+
 ## 0.10.9
 
 - Allow the cycle-close completion checkpoint to resolve a uniquely owned

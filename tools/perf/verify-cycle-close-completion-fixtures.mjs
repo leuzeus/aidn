@@ -3,9 +3,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from './test-git-fixture-lib.mjs';
 import { prepareActivationFixture, prepareWorkflowDocumentsFixture, completeDriftCheckFixture } from './test-activation-fixture-lib.mjs';
+import { detectGatingSignals } from '../../src/core/gating/gating-signal-policy.mjs';
+import { readRuntimeSnapshotSync } from '../../src/application/runtime/runtime-snapshot-service.mjs';
+import { runDbFirstArtifactUseCase } from '../../src/application/runtime/db-first-artifact-use-case.mjs';
 
 const repo = path.resolve(import.meta.dirname, '../..');
 const roots = [];
@@ -22,7 +26,7 @@ const put = (root, relative, text) => {
   const file = path.join(root, relative); fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, text);
 };
-const statusPath = 'docs/audit/cycles/C101-feature-alpha/status.md';
+const statusPath = 'docs/audit/cycles/C101-migration-alpha/status.md';
 function status(state, usage = 'VERIFIED', branch = 'feature/C101-alpha') {
   return `state: ${state}\nbranch_name: ${branch}\nsession_owner: S101\ncurrent goal: finalize alpha feature\ndor_state: READY\nusage_matrix_scope: shared\nusage_matrix_state: ${usage}\nusage_matrix_rationale: none\n`;
 }
@@ -34,6 +38,7 @@ function fixture(mode = 'files') {
   const root = copyFixtureToTmp(path.join(repo, 'tests/fixtures/perf-current-state/active'), os.tmpdir(), 'aidn-close-completion');
   roots.push(root);
   prepareWorkflowDocumentsFixture(root);
+  fs.renameSync(path.join(root, 'docs/audit/cycles/C101-feature-alpha'), path.join(root, 'docs/audit/cycles/C101-migration-alpha'));
   put(root, statusPath, status('VERIFYING'));
   put(root, '.aidn/config.json', JSON.stringify({ runtime: { stateMode: mode } }));
   initGitRepo(root, { sourceBranch: 'dev', workingBranch: 'feature/C101-alpha' });
@@ -46,7 +51,26 @@ function fixture(mode = 'files') {
   return root;
 }
 const close = root => run(root, 'tools/codex/run-json-hook.mjs', ['--skill', 'cycle-close', '--mode', 'COMMITTING', '--strict', '--fail-on-repair-block']);
+const drift = (root, mode = 'COMMITTING') => run(root, 'tools/codex/run-json-hook.mjs', ['--skill', 'drift-check', '--mode', mode, '--strict']);
+const eventPath = root => path.join(root, '.aidn/runtime/perf/workflow-events.ndjson');
+const events = root => fs.readFileSync(eventPath(root), 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
+const completed = root => events(root).filter(event => event.event === 'drift_check_completed').length;
+function hashes(root) {
+  const result = {};
+  const visit = dir => { for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (item.name === '.git') continue;
+    const file = path.join(dir, item.name);
+    if (item.isDirectory()) visit(file);
+    else result[path.relative(root, file)] = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  } };
+  visit(root); return result;
+}
 try {
+  for (const file of ['src/database/client.mjs', 'src/auth/login.ts', 'migrations/001.sql',
+    'docs/audit/cycles/C101-migration-alpha/schema.sql', 'docs/audit/cycles/C101-migration-alpha/other.md']) {
+    assert.equal(detectGatingSignals({ changedFiles: [file], reloadReasonCodes: [] }).cross_domain_touch, true, file);
+  }
+  assert.equal(detectGatingSignals({ changedFiles: [statusPath], reloadReasonCodes: [] }).cross_domain_touch, false);
   for (const mode of ['files', 'dual', 'db-only']) for (const finalState of ['DONE', 'NO_GO', 'DROPPED']) {
     const root = fixture(mode);
     put(root, statusPath, status(finalState));
@@ -73,10 +97,16 @@ try {
       sync(root);
       put(root, statusPath, status('DONE', 'VERIFIED')); // misleading projection
     }
+    const indexPath = path.join(root, '.aidn/runtime/index/workflow-index.sqlite');
+    const beforeRefusal = mode === 'files' ? null : fs.readFileSync(indexPath);
     const incomplete = close(root).result;
     assert.equal(incomplete.ok, false);
     assert.equal(incomplete.result, 'stop');
     assert.equal(incomplete.reason_code ?? incomplete.normalized?.reason_code, 'CYCLE_CLOSE_USAGE_MATRIX_INCOMPLETE');
+    if (beforeRefusal) assert.deepEqual(fs.readFileSync(indexPath), beforeRefusal, 'refusal must not synchronize misleading local evidence');
+    const proofCount = completed(root);
+    assert.equal(drift(root).result.ok, false);
+    assert.equal(completed(root), proofCount, 'refused closure must not complete drift');
     console.log(`PASS ${mode}: incomplete canonical usage matrix refuses`);
   }
   for (const kind of ['missing', 'ambiguous', 'checkpoint']) {
@@ -100,17 +130,61 @@ try {
     assert.equal(wrapped.result, 'stop');
     assert.equal(wrapped.action, hook.result.action);
     assert.equal(wrapped.reason_code ?? wrapped.normalized?.reason_code, hook.result.reason_code);
+    const proofCount = completed(root);
+    assert.equal(drift(root).result.ok, false);
+    assert.equal(completed(root), proofCount);
     console.log(`PASS ${kind}: refusal propagated through hook and Codex wrapper`);
   }
-  {
-    const root = fixture();
+  for (const mode of ['files', 'dual', 'db-only']) {
+    const root = fixture(mode);
     put(root, statusPath, status('DONE'));
-    fs.unlinkSync(path.join(root, '.aidn/runtime/perf/workflow-events.ndjson'));
+    fs.appendFileSync(path.join(root, 'docs/audit/sessions/S101-alpha.md'), '\nClosure reviewed.\n');
+    fs.appendFileSync(path.join(root, 'docs/audit/snapshots/context-snapshot.md'), '\nCycle C101 closed.\n');
+    if (mode !== 'files') sync(root);
+    const history = events(root).map(event => JSON.stringify({ ...event, ts: new Date(Date.now() - 46 * 60000).toISOString() })).join('\n') + '\n';
+    fs.writeFileSync(eventPath(root), history); // age only this owned fixture's proof
+    const proofCount = completed(root);
     const warning = close(root).result;
     assert.equal(warning.ok, false);
     assert.equal(warning.result, 'warn');
     assert.equal(warning.action, 'run_conditional_drift_check');
-    console.log('PASS checkpoint warning remains visible and is not closure success');
+    if (mode !== 'files') {
+      const payload = readRuntimeSnapshotSync({ indexFile: path.join(root, '.aidn/runtime/index/workflow-index.sqlite'), backend: 'sqlite' }).payload;
+      const indexed = payload.artifacts.find(artifact => artifact.path === statusPath.replace('docs/audit/', ''));
+      assert.equal(indexed.cycle_id, 'C101', 'selective sync must retain path-defined ownership');
+      assert.equal(indexed.subtype, 'status');
+      assert.equal(payload.artifacts.find(artifact => artifact.path === 'sessions/S101-alpha.md').session_id, 'S101');
+      const beforeConflict = hashes(root);
+      assert.throws(() => runDbFirstArtifactUseCase({ target: root, path: statusPath.replace('docs/audit/', ''),
+        cycleId: 'C999', content: status('DONE'), materialize: 'false' }), /ARTIFACT_IDENTITY_CONFLICT/);
+      assert.deepEqual(hashes(root), beforeConflict);
+    }
+    const beforePreview = hashes(root);
+    const preview = run(root, 'tools/perf/gating-evaluate.mjs', ['--mode', 'COMMITTING', '--complete-drift-check', '--no-emit-event']).result;
+    assert.equal(preview.result, 'warn');
+    assert.equal(preview.levels.level2.changed_files_count, 3);
+    assert(!preview.levels.level1.reason_codes.includes('MAPPING_MISSING'));
+    assert.deepEqual(hashes(root), beforePreview, 'preview must not write a cache, event or project file');
+    assert.equal(drift(root, 'THINKING').result.ok, false);
+    assert.equal(completed(root), proofCount);
+    assert.equal(drift(root).result.ok, true);
+    assert.equal(completed(root), proofCount + 1);
+    assert.equal(close(root).result.ok, true);
+    if (mode !== 'files') {
+      const indexed = readRuntimeSnapshotSync({ indexFile: path.join(root, '.aidn/runtime/index/workflow-index.sqlite'), backend: 'sqlite' })
+        .payload.artifacts.find(artifact => artifact.path === statusPath.replace('docs/audit/', ''));
+      assert.equal(indexed.cycle_id, 'C101');
+      assert.equal(indexed.subtype, 'status', 'successful post-hook selective sync must preserve classification');
+    }
+    assert.equal(run(root, 'tools/perf/reload-check.mjs').result.decision, 'stop');
+    assert.equal(run(root, 'tools/perf/gating-evaluate.mjs', ['--mode', 'COMMITTING', '--no-emit-event']).result.result, 'stop');
+    assert(fs.readFileSync(eventPath(root), 'utf8').startsWith(history));
+    // Terminal ownership must not discard objective drift or sensitive changes.
+    fs.appendFileSync(path.join(root, 'docs/audit/sessions/S101-alpha.md'), '\nsession_objective: replace the unrelated payment system\n');
+    if (mode !== 'files') sync(root);
+    assert.equal(drift(root).result.result, 'warn');
+    assert.equal(completed(root), proofCount + 1);
+    console.log(`PASS ${mode}: closure warning -> read-only preview -> explicit drift proof -> closure; ordinary work and unresolved objective still refused`);
   }
 } finally {
   for (const root of roots) {

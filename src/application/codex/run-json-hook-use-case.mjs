@@ -343,7 +343,12 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
     payload: null,
     error: null,
   };
-  if (autoDbSync && isDbBackedStateMode(stateMode)) {
+  if (autoDbSync && args.skill === "cycle-close" && normalized.result !== "ok") {
+    // A refused or unfinished closure must not import local projections over
+    // the canonical evidence that caused its refusal.
+    dbSync.enabled = true;
+    dbSync.reason = "cycle_close_not_completed";
+  } else if (autoDbSync && isDbBackedStateMode(stateMode)) {
     dbSync.enabled = true;
     dbSync.skipped = false;
     dbSync.reason = null;

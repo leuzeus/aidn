@@ -31,7 +31,7 @@
     <bpmn:task id="Task_HandoffPublishPacket" name="Prepare handoff packet" />
     <bpmn:exclusiveGateway id="Gateway_HandoffCloseSession" name="Close session now?" default="Flow_HandoffContinue" />
     <bpmn:exclusiveGateway id="Gateway_HandoffCloseBlocks" name="Closure checks resolved?" default="Flow_HandoffCloseBlockedNo">
-      <bpmn:documentation>Explicit resolution of open cycles includes successful cycle-close checkpoints for terminal outcomes. That checkpoint validates unique terminal branch ownership and canonical exit evidence without reactivating the cycle. Specific admission alone is insufficient: checkpoint warning or refusal defers integration and session close. Reported cycles remain under their explicit carry-over decision.</bpmn:documentation>
+      <bpmn:documentation>Explicit resolution of open cycles includes successful cycle-close checkpoints for terminal outcomes. That checkpoint validates unique terminal branch ownership and canonical exit evidence without reactivating the cycle. Specific admission alone is insufficient: checkpoint warning or refusal defers integration and session close. A requested post-transition drift-check verifies the same terminal ownership and canonical intent without reactivation; only explicit successful completion supplies its proof before retrying closure. Reported cycles remain under their explicit carry-over decision.</bpmn:documentation>
     </bpmn:exclusiveGateway>
     <bpmn:task id="Task_HandoffCloseArtifacts" name="Close session and orchestrate PR" />
     <bpmn:task id="Task_HandoffPublishSessionState" name="Publish session state" />
