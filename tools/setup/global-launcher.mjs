@@ -54,6 +54,8 @@ try {
   process.off('SIGINT', stop);
   process.off('SIGTERM', stop);
 } catch (error) {
-  process.stderr.write(`${/^[A-Z][A-Z0-9_]+$/.test(error.message) ? error.message : 'GLOBAL_LAUNCH_FAILED'}\n`);
+  const code = ['EACCES', 'EPERM'].includes(error.code) ? 'GLOBAL_RUNTIME_ACCESS_DENIED'
+    : /^[A-Z][A-Z0-9_]+$/.test(error.message) ? error.message : 'GLOBAL_LAUNCH_FAILED';
+  process.stderr.write(`${code}\n`);
   process.exitCode = 2;
 } finally { if (!interrupted) lease?.release(); }

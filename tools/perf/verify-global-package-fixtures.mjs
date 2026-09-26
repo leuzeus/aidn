@@ -76,6 +76,20 @@ try {
   const stale = launch(['--integration-revision', '2', 'version']);
   assert.equal(stale.status, 2);
   assert.match(stale.stderr, /GLOBAL_INSTRUCTIONS_STALE/);
+  const deniedBin = path.join(temporary, 'denied-launcher');
+  fs.mkdirSync(deniedBin);
+  fs.copyFileSync(path.join(source, 'tools/setup/global-launcher.mjs'), path.join(deniedBin, 'global-launcher.mjs'));
+  for (const code of ['EPERM', 'EACCES', 'EIO']) {
+    fs.writeFileSync(path.join(deniedBin, 'global-runtime-store.mjs'),
+      `function denied(){throw Object.assign(new Error('private path or value'),{code:${JSON.stringify(code)}})}\n`
+      + 'export {denied as acquireGlobalRuntime,denied as resolveGlobalRuntime,denied as resolveGlobalRecoveryRuntime};\n');
+    const refusal = spawnSync(process.execPath, [path.join(deniedBin, 'global-launcher.mjs'), 'version'],
+      { encoding: 'utf8', timeout: 15000, windowsHide: true });
+    assert.equal(refusal.status, 2);
+    assert.equal(refusal.stdout, '');
+    assert.equal(refusal.stderr.trim(), code === 'EIO' ? 'GLOBAL_LAUNCH_FAILED' : 'GLOBAL_RUNTIME_ACCESS_DENIED');
+    assert.doesNotMatch(refusal.stderr, /private path or value/);
+  }
   const client = path.join(temporary, 'client');
   fs.mkdirSync(client);
   const localPlan = planCodexAssets({ repoRoot: source, targetRoot: client });

@@ -30,7 +30,8 @@ export async function verifyProjectArtifactCommands() {
   for (const name of ['../bad', 'docs/audit/CURRENT-STATE.md', 'C:\\bad', '/bad', 'a//b', 'a/./b']) {
     assert.throws(() => validateArtifactPath(name), /ARTIFACT_PATH/); count++;
   }
-  for (const options of [{ version: 2 }, { scopes: [] }, { scopes: ['one', 'two'] }]) {
+  for (const options of [{ version: 2 }, { scopes: [] }, { scopes: ['one', 'two'] },
+    { scopes: ['scope', 'foreign'] }, { scopes: ['scope', 'scope'] }]) {
     const client = fake(options);
     await assert.rejects(executePostgresArtifactCommand(client, ['scope'], 'upsert', { artifact: { path: 'notes/test.md', content: 'private' } }), /ARTIFACT_/);
     assert.equal(client.queries.at(-1).sql, 'ROLLBACK');
@@ -55,6 +56,26 @@ export async function verifyProjectArtifactCommands() {
   await executePostgresArtifactCommand(reader, ['scope'], 'list', { limit: 3 });
   assert.equal(reader.queries[0].sql, 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   assert(!reader.queries.some(q => /INSERT|UPDATE|LOCK TABLE/.test(q.sql))); count++;
+  // Candidate order is resolved identity first, legacy path second. Database
+  // result order cannot change the selected authority when both coexist.
+  for (const present of [['legacy', 'scope'], ['scope', 'legacy'], ['legacy']]) {
+    const expected = present.includes('scope') ? 'scope' : 'legacy';
+    for (const action of ['get', 'list', 'upsert']) {
+      const scoped = fake({ scopes: present });
+      await executePostgresArtifactCommand(scoped, ['scope', 'legacy'], action, {
+        path: 'notes/test.md', artifact: { path: 'notes/test.md', content: 'scoped' },
+      });
+      const dataQueries = scoped.queries.filter(q => /v_materializable_artifacts|INSERT INTO|SELECT artifact_id|COALESCE\(MAX/.test(q.sql));
+      assert(dataQueries.length > 0);
+      assert(dataQueries.every(q => q.values[0] === expected), `${action} crossed its selected scope`);
+      if (action !== 'upsert') assert(!scoped.queries.some(q => /INSERT|UPDATE|LOCK TABLE/.test(q.sql)));
+      assert.equal(scoped.queries.at(-1).sql, 'COMMIT'); count++;
+    }
+  }
+  const absent = fake({ scopes: ['scope', 'legacy'] });
+  assert.equal(await executePostgresArtifactCommand(absent, ['scope', 'legacy'], 'get', { path: 'notes/legacy-only.md' }), null);
+  assert.equal(absent.queries.filter(q => q.sql.includes('v_materializable_artifacts')).length, 1,
+    'missing canonical artifact must not fall back to a legacy artifact'); count++;
   const target = fs.mkdtempSync(path.join(os.tmpdir(), 'aidn-artifact-preview-'));
   try {
     const child = spawnSync(process.execPath, [fileURLToPath(new URL('../runtime/artifact-store.mjs', import.meta.url)),
