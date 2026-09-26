@@ -112,6 +112,14 @@ independent; a generic evaluation, a warning, a stop or an event from another
 branch cannot refresh the current branch's drift age. No canonical database
 write or shared synchronization is introduced.
 
+The 0.10.6 runtime projector derives repair status from the same freshly read
+canonical snapshot used for its DB-backed context. An observed empty collection
+is distinct from absent or malformed findings. Cached hook observations remain
+ineligible as DB revision evidence and cannot replace the live repair summary.
+Projection is read-only unless explicitly written to a file; persisting that
+reviewed digest uses a separate selective artifact write. This introduces no
+new shared coordination surface or implicit database mutation.
+
 - align `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md` with the new ports
 - map the port methods to adapter implementations and runtime use cases
 - keep `ADR-0007` and the shared-surface gate synchronized with any port change

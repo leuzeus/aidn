@@ -188,8 +188,8 @@ For `dual` / `db-only` projects, the runtime chain is authoritative for mutating
 - `npx aidn codex run-json-hook ... --strict --json`
 - `npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json` for explicitly authorized derived-cache refresh and runtime-projection calculation; native SessionStart hooks must use read-only canonical admission instead
 - `npx aidn runtime sync-db-first-selective --target . --json` for mutating skills
-- `npx aidn runtime repair-layer-triage --target . --json` when `repair_layer_status` is `warn` or `block`
-- `npx aidn runtime repair-layer-autofix --target . --apply --json` only for safe-only autofix cases
+- `npx aidn runtime project-runtime-state --target . --json` when `repair_layer_status` is `warn` or `block`
+- Repair mutations require a reviewed source-maintenance procedure; repair-layer tools are internal and have no public runtime alias.
 
 Runtime hooks are infrastructure:
 - `aidn-start-session` admission decides `resume | choose | create | stop`, then delegates to generic `session-start` runtime work only when admitted

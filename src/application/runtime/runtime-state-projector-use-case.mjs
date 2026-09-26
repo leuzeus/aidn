@@ -1,4 +1,5 @@
 import { evaluateContextObservation } from "../codex/context-observation.mjs";
+import { deriveRepairLayerStatus, deriveRepairLayerAdvice } from "../../core/workflow/workflow-output-factory.mjs";
 import { deriveGovernedRuntimeArtifactMetadata } from "./governed-runtime-artifact-metadata-lib.mjs";
 
 export function buildRuntimeStateMarkdown(digest) {
@@ -328,7 +329,23 @@ function selectCanonicalRepairCandidate({
   ].filter(Boolean));
 }
 
-export function deriveRuntimeStateRepairSummary(hydrated, fallbackContext, liveContext = null) {
+export function deriveCanonicalRepairSummary(payload) {
+  const unknown = { status: "unknown", advice: "Canonical repair findings are unavailable or invalid.", primaryReason: null, findings: [], blocking: false };
+  // An observed empty collection is evidence; an absent collection is not.
+  if (!Array.isArray(payload?.migration_findings)) return unknown;
+  const rows = payload.migration_findings;
+  if (rows.some(row => !row || !["info", "warning", "error"].includes(normalizeScalar(row.severity).toLowerCase()))) return unknown;
+  const findings = rows.filter(row => ["warning", "error"].includes(normalizeScalar(row.severity).toLowerCase()))
+    .slice().sort((a, b) => Number(normalizeScalar(b.severity).toLowerCase() === "error") - Number(normalizeScalar(a.severity).toLowerCase() === "error"));
+  const blocking = findings.some(row => normalizeScalar(row.severity).toLowerCase() === "error");
+  const input = { openCount: findings.length, blocking, topFindings: findings.slice(0, 5) };
+  return { status: deriveRepairLayerStatus(input), advice: deriveRepairLayerAdvice(input), primaryReason: null, findings: input.topFindings, blocking };
+}
+
+export function deriveRuntimeStateRepairSummary(hydrated, fallbackContext, liveContext = null, canonicalRepairPayload = undefined) {
+  // Only the IO boundary supplies this fresh snapshot. Cached hook observations
+  // cannot replace it, even if their timestamps or reusable flags claim freshness.
+  if (canonicalRepairPayload !== undefined) return deriveCanonicalRepairSummary(canonicalRepairPayload);
   const repairLayer = hydrated?.repair_layer && typeof hydrated.repair_layer === "object"
     ? hydrated.repair_layer
     : null;
@@ -476,6 +493,7 @@ export function prepareRuntimeStateProjection({
   hydrated = null,
   fallbackContext = null,
   liveContext = null,
+  canonicalRepairPayload = undefined,
   repairRouting,
   sharedRuntimeValidation,
   sharedPlanning,
@@ -487,7 +505,7 @@ export function prepareRuntimeStateProjection({
   hydratedFile = "",
   contextFile = "",
 } = {}) {
-  const repairSummary = deriveRuntimeStateRepairSummary(hydrated, fallbackContext, liveContext);
+  const repairSummary = deriveRuntimeStateRepairSummary(hydrated, fallbackContext, liveContext, canonicalRepairPayload);
   const freshness = deriveRuntimeStateFreshness(consistency);
   const prioritizedFindings = Array.isArray(repairSummary.findings)
     ? repairSummary.findings.filter((item) => {
