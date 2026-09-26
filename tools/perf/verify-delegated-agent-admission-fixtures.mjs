@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import http from "node:http";
+import net from "node:net";
 import { createHmac, randomBytes } from "node:crypto";
 import { createDelegatedAgentAdmissionService } from "../../src/application/runtime/delegated-agent-admission-service.mjs";
 import { startAgentAdmissionTransport, requestAgentAdmission } from "../../src/adapters/runtime/agent-admission-transport.mjs";
@@ -49,6 +50,28 @@ function rawCall(endpoint,token,body,{nonce=randomBytes(16).toString("hex"),meth
     const req=http.request({hostname:"127.0.0.1",port,path:url,method,agent:false,headers:{"content-type":"application/json","content-length":Buffer.byteLength(text),"x-aidn-nonce":nonce,"x-aidn-auth":auth,...headers}},res=>{
       let out="";res.on("data",data=>{out+=data;});res.on("end",()=>resolve({status:res.statusCode,body:JSON.parse(out)}));
     });req.on("error",reject);req.end(text);
+  });
+}
+function incompleteRequest(endpoint,phase) {
+  return new Promise((resolve,reject)=>{
+    const address=new URL(endpoint),began=performance.now();
+    const socket=net.createConnection({host:"127.0.0.1",port:Number(address.port)});
+    let drip,forced=false;
+    const limit=setTimeout(()=>{forced=true;socket.destroy();},13000);
+    socket.on("connect",()=>{
+      const headers=`POST /v1/admit HTTP/1.1\r\nHost: ${address.host}\r\n`;
+      if(phase==="headers")socket.write(headers+"X-Incomplete: ");
+      else socket.write(headers+`Content-Type: application/json\r\nContent-Length: 2048\r\nX-Aidn-Nonce: ${"b".repeat(32)}\r\nX-Aidn-Auth: ${"c".repeat(64)}\r\n\r\n{`);
+      // Active drips prevent an idle timeout; the absolute header/body bounds
+      // must still reject this incomplete request without invoking admission.
+      drip=setInterval(()=>socket.write(" "),100);
+    });
+    socket.on("data",()=>{});socket.on("error",()=>{});
+    socket.on("close",()=>{
+      clearTimeout(limit);clearInterval(drip);
+      if(forced)reject(new Error(`incomplete ${phase} exceeded the transport deadline`));
+      else resolve(performance.now()-began);
+    });
   });
 }
 try {
@@ -129,6 +152,25 @@ try {
   await check("authenticated loopback requests are serialized and return bound decisions",async()=>{
     const results=await Promise.all([1,2,3].map(()=>requestAgentAdmission({...transport,request:packet(base.binding)})));
     assert.ok(results.every(value=>value.outcome==="allow"));assert.equal(maximum,1);
+  });
+  await check("completed request bodies retain valid admission responses beyond the ingestion idle limit",async()=>{
+    let completed=0;
+    const delayed=await startAgentAdmissionTransport({attemptId:base.binding.attemptId,requestSha256:base.binding.requestSha256,admit:async(...args)=>{
+      await wait(5400);const decision=await base.service.admit(...args);completed++;return decision;
+    }});
+    const began=performance.now();
+    try {
+      const decision=await requestAgentAdmission({...delayed,request:packet(base.binding),timeoutMs:6500});
+      assert.equal(decision.outcome,"allow");assert.equal(completed,1);
+      assert.ok(performance.now()-began>=5000);
+    } finally {await delayed.close();await delayed.close();}
+  });
+  await check("incomplete headers and dripping bodies expire without invoking admission",async()=>{
+    const before=calls;
+    const [headers,body]=await Promise.all([incompleteRequest(transport.endpoint,"headers"),incompleteRequest(transport.endpoint,"body")]);
+    assert.ok(headers>=4500 && headers<12000,`header deadline: ${headers}`);
+    assert.ok(body>=9500 && body<12000,`body deadline: ${body}`);
+    assert.equal(calls,before);
   });
   await check("transport rejects foreign binding, replay, origin, wrong host, routes and methods",async()=>{
     const before=calls;

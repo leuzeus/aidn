@@ -31,7 +31,7 @@ export async function startAgentAdmissionTransport({admit,attemptId,requestSha25
       ...(NONCE.test(nonce ?? "")?{"x-aidn-auth":mac(token,"response",nonce,body)}:{})});
     response.end(body);
   }
-  const server=http.createServer((request,response)=>{
+  const server=http.createServer({connectionsCheckingInterval:250},(request,response)=>{
     const nonce=request.headers["x-aidn-nonce"];
     if(closed || request.method!=="POST" || request.url!=="/v1/admit" || request.headers.host!==host
       || request.headers.origin!==undefined || request.headers.cookie!==undefined || request.headers.expect!==undefined
@@ -57,6 +57,14 @@ export async function startAgentAdmissionTransport({admit,attemptId,requestSha25
     request.on("end",()=>{
       if(released)return;
       bodyComplete=true;
+      // The socket's 5s idle limit protects request ingestion only. Keeping it
+      // here would discard a valid admission while the supervisor is working.
+      // Bound the complete response phase (including serialized queue time)
+      // separately; the hook still has its stricter 6.5s client deadline and
+      // the store bounds its evaluator to 4.5s without relaxing live checks.
+      request.setTimeout(0);
+      const responseDeadline=setTimeout(()=>response.destroy(),10000);
+      response.once("close",()=>clearTimeout(responseDeadline));
       const body=Buffer.concat(parts).toString("utf8"); parts=[];
       if(bytes!==length || !equalMac(request.headers["x-aidn-auth"],mac(token,"request",nonce,body))) {
         release(); respond(response,401,deny("ADMISSION_AUTHENTICATION_REFUSED"),nonce); return;
