@@ -111,3 +111,35 @@ This attestation does not close the earlier full matrix, prove native write
 admission, or transfer native qualification to 0.10.9/0.10.10. Their terminal
 closure and drift-check regressions have separate source/CLI, SQLite and real
 PostgreSQL evidence, described in [the testing guide](../TESTING.md).
+
+## Later real-client note admission on 0.10.10
+
+A separate bounded probe used the published 0.10.10 engine and the same Windows
+Codex CLI `0.158.0-alpha.2` executable identified above, in standalone mode.
+The previously human-reviewed hook definitions remained unchanged. A read-only
+specific admission check preceded the native attempt; that preflight is not
+the native execution evidence.
+
+The real client then emitted `hook/started` and `hook/completed` for both
+`sessionStart` (5,653 ms) and `preToolUse` (5,750 ms). PreToolUse rechecked scope
+for the exact patch and returned `admitted_with_warnings`: a session branch
+with no active cycle allowed this diagnostic note. One native `apply_patch`
+created the expected marker, with one completed `fileChange` and no other tool
+operation, retry or fallback. The result is **PASS for this note admission and
+the observed startup event**, not a blanket native write qualification.
+
+The private report contains notifications captured directly from this client's
+stdout, the matching file-change result and the exact marker comparison. Its
+SHA-256 is
+`13b7757d29c0795b141812ff2fdf388e80a911b39a505276fb8feb7e86ab8a07`.
+After verifying the marker's path and content, cleanup removed that file only;
+the retained cleanup record has SHA-256
+`8a24381e860832e3735e8bfa07d1e08d38e8a8f9a896eacba92c51f51ed11d8c`.
+Saved before/after snapshots compare equal for 1,647 project file entries,
+normalized rows from 21 PostgreSQL tables, global assets and the project
+registry. The marker is absent after cleanup. These private records contain
+project and connection context and are not published with the documentation.
+
+No product edit, negative admission case, other tool, client or platform was
+tested by this probe. It does not close the remaining full-matrix cases or
+substitute for a principal checkout's own migration and final diagnosis.
