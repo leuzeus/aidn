@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runBranchCycleAuditAdmitUseCase } from "../../src/application/runtime/branch-cycle-audit-admit-use-case.mjs";
 import { runGatingEvaluateUseCase } from "../../src/application/runtime/gating-evaluate-use-case.mjs";
+import { deriveRepairLayerStatus, deriveRepairLayerAdvice } from "../../src/core/workflow/workflow-output-factory.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
@@ -126,6 +127,9 @@ function shouldRunGating(admission) {
 
 function buildSummary(result) {
   const gatingSummary = result.gating?.summary ?? {};
+  const repair = { openCount: result.levels?.level2?.repair_layer_open_count ?? 0,
+    blocking: result.levels?.level3?.repair_layer_blocking === true,
+    topFindings: result.levels?.level2?.repair_layer_top_findings ?? [] };
   return {
     result: result.result,
     reason_code: result.reason_code ?? null,
@@ -133,12 +137,12 @@ function buildSummary(result) {
     admitted: result.admission?.ok === true,
     gating_ran: result.gating != null,
     gating_result: gatingSummary.result ?? null,
-    repair_layer_open_count: 0,
-    repair_layer_blocking: false,
-    repair_layer_status: "clean",
-    repair_layer_advice: "Repair layer is clean.",
-    repair_primary_reason: "Repair layer is clean.",
-    repair_layer_top_findings: [],
+    repair_layer_open_count: repair.openCount,
+    repair_layer_blocking: repair.blocking,
+    repair_layer_status: deriveRepairLayerStatus(repair),
+    repair_layer_advice: deriveRepairLayerAdvice(repair),
+    repair_primary_reason: deriveRepairLayerAdvice(repair),
+    repair_layer_top_findings: repair.topFindings,
   };
 }
 
@@ -146,7 +150,7 @@ async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const admission = runBranchCycleAuditAdmitUseCase({
+    const admission = await runBranchCycleAuditAdmitUseCase({
       targetRoot,
       mode: args.mode,
     });
@@ -159,16 +163,17 @@ async function main() {
       })
       : null;
 
+    const effective = admission.ok === true && gating ? gating : admission;
     const result = {
       ts: new Date().toISOString(),
-      ok: admission.ok === true,
+      ok: admission.ok === true && (!gating || gating.ok === true),
       skill: "branch-cycle-audit",
       target_root: targetRoot,
       mode: args.mode,
       state_mode: gating?.state_mode ?? args.stateMode,
-      action: admission.action,
-      result: admission.result,
-      reason_code: admission.reason_code,
+      action: effective.result === "ok" ? admission.action : effective.action,
+      result: effective.result,
+      reason_code: effective.reason_code,
       branch: admission.branch,
       branch_kind: admission.branch_kind,
       admission,
@@ -177,6 +182,7 @@ async function main() {
       summary: null,
     };
     result.summary = buildSummary(result);
+    if (result.result === "stop" || result.result === "error") process.exitCode = 1;
 
     if (args.json) {
       console.log(JSON.stringify(result, null, 2));

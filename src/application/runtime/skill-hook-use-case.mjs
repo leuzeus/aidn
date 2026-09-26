@@ -96,7 +96,20 @@ export function runSkillHookUseCase({ args, perfDir, targetRoot, processAdapter 
   const startedAt = new Date().toISOString();
 
   try {
-    const payload = processAdapter.runJsonNodeScript(path.join(perfDir, route.tool), toolArgs);
+    let payload;
+    try {
+      payload = processAdapter.runJsonNodeScript(path.join(perfDir, route.tool), toolArgs);
+    } catch (error) {
+      // Preserve a structured domain refusal from this owned hook. Transport
+      // failures and malformed output must continue through the error path.
+      if (route.tool !== "branch-cycle-audit-hook.mjs" || error.status !== 1) throw error;
+      let refusal;
+      try { refusal = JSON.parse(String(error.stdout ?? "")); } catch { throw error; }
+      if (refusal?.skill !== "branch-cycle-audit" || refusal.target_root !== targetRoot
+          || refusal.ok !== false || refusal.result !== "stop"
+          || refusal.summary?.result !== "stop" || !refusal.reason_code) throw error;
+      payload = refusal;
+    }
     const repairLayer = extractRepairLayerSummary(payload);
     const payloadOk = (
       route.tool === "gating-evaluate.mjs"

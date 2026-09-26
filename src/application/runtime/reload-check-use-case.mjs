@@ -7,7 +7,7 @@ import { resolveRuntimeTargetPath, writeRuntimeJsonFile } from "./runtime-path-s
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { decideReloadOutcome } from "../../core/workflow/reload-policy.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch, extractCycleIdFromBranch } from "../../lib/workflow/branch-kind-lib.mjs";
-import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
+import { detectRuntimeSnapshotBackend, readRuntimeSnapshot, resolveWorkflowSnapshotBackend } from "./runtime-snapshot-service.mjs";
 
 const ACTIVE_STATES = new Set(["OPEN", "IMPLEMENTING", "VERIFYING"]);
 
@@ -571,13 +571,13 @@ async function collectCurrentStateFromIndex(targetRoot, args, gitAdapter) {
 }
 
 async function collectCurrentState(targetRoot, args, gitAdapter) {
-  if (args.stateMode === "files") {
+  if (args.stateMode === "files" && args.indexBackend !== "postgres") {
     return collectCurrentStateFromFiles(targetRoot, gitAdapter);
   }
   try {
     return await collectCurrentStateFromIndex(targetRoot, args, gitAdapter);
   } catch (error) {
-    if (args.stateMode === "dual") {
+    if (args.stateMode === "dual" && args.indexBackend !== "postgres") {
       const fallback = collectCurrentStateFromFiles(targetRoot, gitAdapter);
       fallback.state_source = "files";
       fallback.state_mode_fallback = "index_unavailable";
@@ -732,6 +732,7 @@ export async function runReloadCheckUseCase({ args, targetRoot }) {
     throw new Error("Invalid effective state mode. Expected files|dual|db-only");
   }
   args.cache = resolveRuntimeTargetPath(targetRoot, args.cache);
+  args.indexBackend = resolveWorkflowSnapshotBackend(targetRoot, args.indexFile, args.indexBackend);
   if (args.stateMode !== "files") {
     args.indexFile = resolveRuntimeTargetPath(targetRoot, args.indexFile);
   }

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
+import assert from "node:assert/strict";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { readSourceBranch } from "../../src/lib/workflow/session-context-lib.mjs";
 
@@ -59,9 +60,9 @@ function printUsage() {
   console.log("  node tools/perf/verify-skill-hook-state-mode-fixtures.mjs --tmp-root tests/fixtures --keep-tmp");
 }
 
-function runJson(script, scriptArgs, env = {}) {
+function runJson(script, scriptArgs, env = {}, expectedStatus = 0) {
   const file = path.resolve(process.cwd(), script);
-  const stdout = execFileSync(process.execPath, [file, ...scriptArgs], {
+  const child = spawnSync(process.execPath, [file, ...scriptArgs], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
     env: {
@@ -69,7 +70,8 @@ function runJson(script, scriptArgs, env = {}) {
       ...env,
     },
   });
-  return JSON.parse(stdout);
+  assert.equal(child.status, expectedStatus, child.stderr || child.error?.message);
+  return JSON.parse(child.stdout);
 }
 
 function runGit(target, args) {
@@ -127,7 +129,7 @@ function runSkillCase(targetRoot, stateMode, skillCase) {
   ], {
     AIDN_STATE_MODE: stateMode,
     AIDN_INDEX_STORE_MODE: "",
-  });
+  }, skillCase.skill === "branch-cycle-audit" ? 1 : 0);
   const effectiveStateMode = readStateMode(out?.payload);
   const effectiveStore = readIndexStore(out?.payload);
   const expectedStore = expectedStoreForStateMode(stateMode);
@@ -135,6 +137,9 @@ function runSkillCase(targetRoot, stateMode, skillCase) {
   const expectsWorkflowHookPayload = skillCase.skill === "start-session" || skillCase.skill === "close-session";
   const delegatedRuntime = out?.payload?.workflow_hook != null || out?.payload?.checkpoint != null || out?.payload?.index != null;
   const checks = {
+    source_branch_refused: skillCase.skill !== "branch-cycle-audit"
+      || (out?.ok === false && out?.result === "stop" && out?.payload?.summary?.result === "stop"
+        && Boolean(out?.reason_code)),
     hook_ok: typeof out?.ok === "boolean",
     state_mode_exposed: out?.state_mode === stateMode,
     strict_required_by_state: out?.strict_required_by_state === true,

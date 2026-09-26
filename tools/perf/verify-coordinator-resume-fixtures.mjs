@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
-import { isActivationFixtureSource, prepareActivationFixture, prepareNpmActivationFixture, fixtureNpmEnvironment } from "./test-activation-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture, prepareNpmActivationFixture, fixtureNpmEnvironment, prepareWorkflowDocumentsFixture } from "./test-activation-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -202,6 +202,7 @@ function main() {
     initGitRepo(reanchorTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(roleBlockedTarget, { workingBranch: "feature/C101-alpha" });
     for (const target of [escalatedTarget, reanchorTarget, roleBlockedTarget]) {
+      if (target === escalatedTarget) prepareWorkflowDocumentsFixture(target);
       prepareActivationFixture(target, repoRoot);
       prepareNpmActivationFixture(target, repoRoot);
       execFileSync("git", ["-C", target, "add", "."], { stdio: "pipe" });

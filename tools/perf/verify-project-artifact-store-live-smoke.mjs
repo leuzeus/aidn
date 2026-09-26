@@ -126,6 +126,58 @@ else {
     assert.equal(projected.written, false);
     assert.deepEqual(await snapshot(scopes[0]), initialSnapshot, 'initial admission/projection changed canonical data');
     assert.deepEqual(await snapshot(scopes[1]), other, 'initial admission affected another scope');
+    const runScript = (script, args = []) => spawnSync(process.execPath,
+      [path.join(repoRoot, script), '--target', targetRoot, ...args, '--json'],
+      { encoding: 'utf8', timeout: 60000, windowsHide: true });
+    const reload = runScript('tools/perf/reload-check.mjs');
+    assert.equal(reload.status, 0, 'reload: ' + reload.stderr.slice(-800));
+    assert.equal(JSON.parse(reload.stdout).index_backend, 'postgres');
+    const eventsPath = path.join(targetRoot, '.aidn/runtime/perf/workflow-events.ndjson');
+    fs.mkdirSync(path.dirname(eventsPath), { recursive: true });
+    const normalEvents = ['MISSING_CACHE', 'HEAD_CHANGED', 'BRANCH_CHANGED', 'HEAD_CHANGED'].map(reason =>
+      JSON.stringify({ ts: new Date().toISOString(), branch: 'S001-initial', skill: 'reload-check', result: 'fallback', reason_code: reason })).join('\n') + '\n';
+    fs.writeFileSync(eventsPath, normalEvents);
+    const normalHook = runScript('tools/perf/branch-cycle-audit-hook.mjs', ['--mode', 'THINKING', '--no-emit-event']);
+    const normal = JSON.parse(normalHook.stdout);
+    assert.equal(normalHook.status, 0, 'normal branch hook: ' + JSON.stringify({ admission: normal.admission?.reason_code, gating: normal.gating?.levels }));
+    assert.equal(normal.admission.ok, true);
+    assert.notEqual(normal.result, 'stop', JSON.stringify(normal.gating));
+    assert.equal(normal.gating.levels.level3.fallback_recent_count, 0);
+    assert.equal(normal.result, normal.gating.result);
+    assert.equal(fs.readFileSync(eventsPath, 'utf8'), normalEvents);
+    const anomalies = Array.from({ length: 3 }, () => JSON.stringify({ ts: new Date().toISOString(),
+      branch: 'S001-initial', skill: 'reload-check', result: 'fallback', reason_codes: ['HEAD_CHANGED', 'CORRUPT_CACHE'] })).join('\n') + '\n';
+    fs.appendFileSync(eventsPath, anomalies);
+    const stoppedHook = runScript('tools/perf/branch-cycle-audit-hook.mjs', ['--mode', 'THINKING', '--no-emit-event']);
+    const stopped = JSON.parse(stoppedHook.stdout);
+    assert.equal(stoppedHook.status, 1);
+    assert.equal(stopped.ok, false);
+    assert.equal(stopped.result, 'stop');
+    assert.equal(stopped.reason_code, 'L3_REPEATED_FALLBACK');
+    assert.equal(stopped.summary.result, 'stop');
+    assert.equal(stopped.gating.result, 'stop');
+    assert.equal(fs.readFileSync(eventsPath, 'utf8'), normalEvents + anomalies);
+    const wrappedHook = runScript('tools/codex/run-json-hook.mjs', ['--skill', 'branch-cycle-audit', '--mode', 'THINKING', '--strict']);
+    const wrapped = JSON.parse(wrappedHook.stdout);
+    assert.equal(wrapped.ok, false);
+    assert.equal(wrapped.result, 'stop');
+    assert.equal(wrapped.reason_code, 'L3_REPEATED_FALLBACK');
+    assert.equal(wrapped.command_status, 1);
+    const configPath = path.join(targetRoot, '.aidn/config.json');
+    const originalConfig = fs.readFileSync(configPath);
+    try {
+      const unavailableConfig = JSON.parse(originalConfig);
+      unavailableConfig.runtime.persistence.connectionRef = 'env:AIDN_TEST_ABSENT_CONNECTION_0104';
+      fs.writeFileSync(configPath, JSON.stringify(unavailableConfig));
+      const unavailable = runScript('tools/perf/branch-cycle-audit-hook.mjs', ['--mode', 'THINKING', '--no-emit-event']);
+      assert.equal(unavailable.status, 1);
+      assert.equal(JSON.parse(unavailable.stdout).reason_code, 'BRANCH_AUDIT_CANONICAL_RUNTIME_INVALID');
+      const unavailableReload = runScript('tools/perf/reload-check.mjs');
+      assert.notEqual(unavailableReload.status, 0, 'unavailable PostgreSQL must not use local projections');
+    } finally { fs.writeFileSync(configPath, originalConfig); }
+    assert.deepEqual(await snapshot(scopes[0]), initialSnapshot, 'standard branch audit changed canonical data');
+    assert.deepEqual(await snapshot(scopes[1]), other, 'standard branch audit changed another scope');
+    console.log('PASS live PostgreSQL: auto reload and standard branch hook; normal reloads do not stop; genuine fallback stop survives hook and Codex wrapper; canonical data unchanged');
     assert.equal(fs.existsSync(path.join(targetRoot, '.aidn/runtime/index/workflow-index.sqlite')), false);
     console.log('PASS live PostgreSQL: first-cycle admission and runtime projector read canonical rows despite misleading files; freshness remains unknown; no data mutation');
     console.log('PASS live PostgreSQL: selective writes, parallel IDs, session visibility, read-only facade, rollback, path aliases, unrelated rows and second scope preserved, no SQLite');

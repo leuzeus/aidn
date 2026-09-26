@@ -2,6 +2,7 @@ import path from "node:path";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
+import { resolveWorkflowContinuityContext } from "./workflow-continuity-context-service.mjs";
 import {
   resolveBranchMapping,
   toCycleSummary,
@@ -50,20 +51,24 @@ function makeResult(base, overrides = {}) {
   };
 }
 
-export function runBranchCycleAuditAdmitUseCase({ targetRoot, mode = "COMMITTING" }) {
+export async function runBranchCycleAuditAdmitUseCase({ targetRoot, mode = "COMMITTING" }) {
   const gitAdapter = createLocalGitAdapter();
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const currentState = readCurrentState(absoluteTargetRoot);
-  const auditRoot = currentState.audit_root;
+  const visibleCurrentState = readCurrentState(absoluteTargetRoot);
+  const auditRoot = visibleCurrentState.audit_root;
+  const continuity = await resolveWorkflowContinuityContext({ targetRoot: absoluteTargetRoot,
+    effectiveStateMode, visibleCurrentState, visibleSessions: listSessionArtifacts(auditRoot),
+    visibleCycles: listCycleStatuses(auditRoot) });
+  const currentState = continuity.current_state;
   const sourceBranch = readSourceBranch(absoluteTargetRoot);
   const branch = gitAdapter.getCurrentBranch(absoluteTargetRoot);
   const branchKind = classifyAidnBranch(branch, {
     sourceBranch,
     includeSource: true,
   });
-  const sessions = listSessionArtifacts(auditRoot);
-  const cycles = listCycleStatuses(auditRoot);
+  const sessions = continuity.sessions;
+  const cycles = continuity.cycles;
   const openCycles = collectOpenCycles(cycles);
   const mapping = resolveBranchMapping({
     branch,
@@ -89,6 +94,12 @@ export function runBranchCycleAuditAdmitUseCase({ targetRoot, mode = "COMMITTING
     candidate_cycles: mapping.candidate_cycles,
   };
 
+  if ((continuity.canonical_required && !continuity.canonical_available)
+      || continuity.canonical_continuity_status === "ambiguous") {
+    return makeResult(base, { action: "blocked_canonical_runtime", reason_code: "BRANCH_AUDIT_CANONICAL_RUNTIME_INVALID",
+      blocking_reasons: [continuity.warning || "Canonical workflow continuity is unavailable or ambiguous.",
+        ...continuity.canonical_continuity_ambiguities], recommended_next_action: "Diagnose the canonical backend before branch audit." });
+  }
   if ([AIDN_BRANCH_KIND.UNKNOWN, AIDN_BRANCH_KIND.OTHER, AIDN_BRANCH_KIND.SOURCE].includes(branchKind)) {
     return makeResult(base, {
       action: "blocked_non_compliant_branch",

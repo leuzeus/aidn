@@ -23,6 +23,26 @@ Core planning docs:
 
 ## CLI Tools
 
+### Branch-audit gating semantics
+
+Configured PostgreSQL is authoritative for automatic reload/gating snapshots and
+branch/session/cycle ownership. An explicit conflicting local backend is refused;
+an unavailable canonical backend cannot fall back to Markdown or SQLite.
+
+Repeated-fallback gating counts anomalous `reload-check` events in the last
+45 minutes for the current branch. A missing branch remains conservatively
+eligible. Missing, invalid or future timestamps do not prove an anomaly old.
+`MISSING_CACHE`, `HEAD_CHANGED`, `BRANCH_CHANGED`, `ARTIFACTS_CHANGED`,
+`ACTIVE_CYCLES_CHANGED` and `STRUCTURE_PROFILE_CHANGED` are expected reloads.
+`DIGEST_MISS` is expected only alongside one of those explanations. Unknown,
+empty, corrupt-cache or mixed anomalous reasons still count. New events preserve
+the full `reason_codes` array; legacy `reason_code` remains readable. Evaluation
+never clears the journal. This incident policy is separate from KPI reports.
+
+Branch audit propagates its effective gating result and repair diagnostics.
+Warnings remain warnings; stops return nonzero status through the skill and
+Codex JSON wrappers, preserving the structured reason and nested evidence.
+
 The following scripts were added under `tools/perf/`:
 
 - `collect-event.mjs` - append workflow events to NDJSON

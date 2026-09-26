@@ -5,7 +5,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
-import { isActivationFixtureSource, prepareActivationFixture, prepareNpmActivationFixture, fixtureNpmEnvironment } from "./test-activation-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture, prepareNpmActivationFixture, fixtureNpmEnvironment, prepareWorkflowDocumentsFixture } from "./test-activation-fixture-lib.mjs";
 
 const CI_TRUNCATION_CHARACTER_COUNT = 219264;
 
@@ -405,6 +405,7 @@ function main() {
     initGitRepo(resumedTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(roleBlockedTarget, { workingBranch: "feature/C101-alpha" });
     for (const target of [readyTarget, escalatedTarget, resumedTarget, roleBlockedTarget]) {
+      if (target === resumedTarget) prepareWorkflowDocumentsFixture(target);
       prepareActivationFixture(target, repoRoot);
       prepareNpmActivationFixture(target, repoRoot);
       execFileSync("git", ["-C", target, "add", "."], { stdio: "pipe" });

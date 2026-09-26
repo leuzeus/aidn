@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { buildNoChangeFastPath } from "../../core/gating/gating-signal-policy.mjs";
 import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
+import { countsAsRecentAnomalousFallback } from "../../core/gating/fallback-history-policy.mjs";
 
 function readTextSafe(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -134,7 +135,7 @@ function toTimestampMs(iso) {
   return Number.isNaN(ms) ? null : ms;
 }
 
-function readEventSignalStats(filePath, options = {}) {
+export function readEventSignalStats(filePath, options = {}) {
   const {
     includeDrift = true,
     includeFallback = true,
@@ -153,13 +154,6 @@ function readEventSignalStats(filePath, options = {}) {
     if (line.trim().length === 0) {
       continue;
     }
-    const mightBeDrift = includeDrift && line.includes("\"skill\":\"drift-check\"");
-    const mightBeFallback = includeFallback
-      && line.includes("\"skill\":\"reload-check\"")
-      && line.includes("\"result\":\"fallback\"");
-    if (!mightBeDrift && !mightBeFallback) {
-      continue;
-    }
     try {
       const event = JSON.parse(line);
       const skill = String(event.skill ?? "");
@@ -169,7 +163,7 @@ function readEventSignalStats(filePath, options = {}) {
           latestDriftMs = eventMs;
         }
       }
-      if (includeFallback && skill === "reload-check" && String(event.result ?? "") === "fallback") {
+      if (includeFallback && countsAsRecentAnomalousFallback(event, options)) {
         fallbackRecentCount += 1;
       }
     } catch {
@@ -256,6 +250,7 @@ export async function collectGatingObservations({ targetRoot, eventFile, indexSy
   const changedFiles = getChangedFiles(targetRoot, gitAdapter);
   const noChangeFastPath = buildNoChangeFastPath(reloadResult, changedFiles);
   const eventStats = readEventSignalStats(eventFile, {
+    branch: gitAdapter.getCurrentBranch(targetRoot),
     includeDrift: !noChangeFastPath && mode === "COMMITTING",
     includeFallback: true,
   });
@@ -266,7 +261,7 @@ export async function collectGatingObservations({ targetRoot, eventFile, indexSy
     ? path.resolve(indexSyncPayload.target_root)
     : null;
   const indexSyncTargetMatch = indexSyncTargetRoot === targetRoot;
-  const repairLayer = stateMode === "files"
+  const repairLayer = stateMode === "files" && indexBackend !== "postgres"
     ? {
       exists: false,
       blocking: false,
