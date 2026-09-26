@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.10.6
+
+- Project runtime repair status from the current canonical database snapshot.
+  An observed empty findings collection establishes `clean`; warnings, blocking
+  errors and unknown evidence remain distinct. Cached hook outcomes cannot
+  override live PostgreSQL or SQLite findings.
+- Cover read-only projection, unavailable backends and the explicit digest
+  projection/persistence/admission path on a dedicated PostgreSQL test scope.
+- Replace nonexistent repair-layer CLI aliases in skills with the public runtime
+  diagnostic. Keep repair mutations internal and verify documented runtime
+  commands against the executable registry.
+
 ## 0.10.5
 
 - Disable optional Git index refreshes during read-only status inspection.
