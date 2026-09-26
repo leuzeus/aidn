@@ -1,6 +1,6 @@
 {
   "name": "aidn-workflow",
-  "version": "0.10.9",
+  "version": "0.10.10",
   "description": "aidâ€™n â€” Audit-driven, session-based workflow packaging system for structured AI-assisted development",
   "license": "MIT",
   "repository": {

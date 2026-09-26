@@ -3,7 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { removePathWithRetry, initGitRepo } from "./test-git-fixture-lib.mjs";
+import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -75,6 +76,8 @@ function main() {
     const target = path.join(tempRoot, "repo");
     fs.cpSync(sourceTarget, target, { recursive: true });
     fs.rmSync(path.join(target, ".aidn"), { recursive: true, force: true });
+    initGitRepo(target, { workingBranch: "fixture" });
+    prepareActivationFixture(target);
 
     const baseArgs = [
       "--skill",

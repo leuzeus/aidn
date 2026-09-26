@@ -57,6 +57,12 @@ not qualify. `--no-emit-event` does not complete the check and leaves the journa
 unchanged; completion rejects injected reload overrides. This bookkeeping does
 not replace the skill's semantic scope review or authorize project changes.
 
+If cycle closure requests this check after `DONE`, `NO_GO` or `DROPPED`, explicit
+COMMITTING completion validates the unique terminal branch owner and canonical
+usage/intent evidence, then closure can be retried. It never reactivates a cycle.
+The label of a standard cycle `status.md` is not itself a cross-domain signal;
+sensitive product files and other cycle artifacts still trigger review.
+
 The following scripts were added under `tools/perf/`:
 
 - `collect-event.mjs` - append workflow events to NDJSON

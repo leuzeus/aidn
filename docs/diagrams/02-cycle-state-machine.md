@@ -51,7 +51,8 @@ stateDiagram-v2
 
   note right of CLOSE_CHECK
     Unique terminal ownership is accepted
-    only for cycle-close completion.
+    for closure and explicit drift completion.
+    CLOSE_CHECK is a check, not a cycle state.
     Closed cycles remain inactive;
     ordinary implementation is not admitted.
     Canonical usage evidence still gates DONE.

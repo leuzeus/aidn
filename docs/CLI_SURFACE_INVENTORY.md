@@ -169,12 +169,20 @@ the store; the legacy v1 `sqlite_file` field is empty for PostgreSQL.
 does not authorize an upsert or materialization; their existing effect rules
 remain unchanged. PostgreSQL checkpoints read the canonical backend and skip
 implicit index imports with reason `postgres_canonical_backend`.
+Selective DB-first writes preserve cycle/session identity derived from standard
+artifact paths and the cycle status subtype; contradictory explicit identity
+is rejected before mutation on either backend.
 
 The `cycle-close` skill checkpoint accepts terminal ownership only for its
-post-transition check. It does not relax the ordinary reload mapping or mark a
+post-transition check and the explicit COMMITTING drift-check needed to finish
+it. Both verify canonical exit evidence and intent. Generic gating, reload and
+THINKING drift checks retain ordinary mapping. This does not relax reload or mark a
 closed cycle active. Its specific admission, nested checkpoint and overall
 result remain distinct; warnings and refusals propagate through the Codex JSON
 wrapper. No public skip flag or alias is added for this closure context.
+The wrapper skips post-hook DB synchronization on closure warning/refusal with
+reason `cycle_close_not_completed`; it must not replace the canonical evidence
+that prevented completion with local projections.
 
 - `aidn runtime coordinator-select-agent --json`
 - `aidn runtime coordinator-next-action --json`

@@ -131,9 +131,22 @@ resolution only, not a database migration or authority to rewrite old artifacts.
 Cycle closure reads canonical cycle status and usage evidence. Its final
 checkpoint can validate unique terminal ownership after the explicit close
 transition, without making that cycle active or weakening generic branch
-mapping. This context is internal to the closure path, not a public bypass.
+mapping. Explicit COMMITTING drift completion can use the same verified terminal
+context when closure requires it. It reads the terminal goal and session objective
+from the canonical snapshot in DB-backed modes, not misleading local projections.
+Generic gating retains active-only mapping. This context is internal to closure
+and its explicit drift check, not a public bypass.
 Checkpoint warnings/refusals propagate through the wrappers. No canonical
 write, historical rewrite or new shared surface is introduced by this check.
+
+Selective DB-first writes retain ownership derived from standard cycle-status
+and session paths on both backends. A cycle status keeps its `status` subtype;
+an explicit identity contradicting the path is rejected before writing. This
+prevents the post-hook SQLite sync from invalidating the next canonical check.
+It does not migrate existing rows or relax canonical status validation.
+The Codex wrapper skips post-hook DB synchronization when cycle closure warns
+or refuses (`cycle_close_not_completed`), preserving the evidence of refusal
+instead of importing a misleading local projection over it.
 
 - align `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md` with the new ports
 - map the port methods to adapter implementations and runtime use cases

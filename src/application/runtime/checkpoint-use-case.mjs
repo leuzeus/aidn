@@ -111,6 +111,7 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
   if (!args.skipGateEvaluate && !noSignalGateSkip) {
     const gateStarted = Date.now();
     gate = await runGatingEvaluateUseCase({
+      completionCycleId,
       args: {
         target: targetRoot,
         cache: cachePath,

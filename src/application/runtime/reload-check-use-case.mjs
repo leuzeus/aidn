@@ -177,7 +177,7 @@ function detectLatestSessionArtifact(auditRoot) {
 
 function evaluateMapping(branch, activeCycles, latestSessionArtifact, auditRoot, sessionBranchHint = null, completion = null) {
   const kind = classifyAidnBranch(branch);
-  // Only the cycle-close checkpoint supplies this internal context. A terminal
+  // Only closure checkpoints and admitted drift completion supply this context. A terminal
   // cycle still owns its branch during closure, but is never counted as active
   // or admitted for ordinary implementation by this observation.
   if (completion && [AIDN_BRANCH_KIND.CYCLE, AIDN_BRANCH_KIND.INTERMEDIATE].includes(kind)) {
