@@ -121,6 +121,7 @@ async function probeAdapterEnvironment({ adapter, targetRoot }) {
   }
   try {
     const result = adapter.runCommand({
+      cwd: path.resolve(targetRoot),
       command: process.execPath,
       commandArgs: ["--version"],
       commandLine: `"${process.execPath}" --version`,

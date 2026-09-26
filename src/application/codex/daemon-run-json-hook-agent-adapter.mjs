@@ -125,7 +125,7 @@ async function runPrOrchestrateHook(args, targetRoot, stateMode) {
   return result;
 }
 
-async function runSkillHookInProcess(commandArgs, envOverrides = {}) {
+async function runSkillHookInProcess(commandArgs, envOverrides = {}, cwd = process.cwd()) {
   const args = parseSkillHookArgs(commandArgs);
   if (!args || args.skill !== "pr-orchestrate") {
     return null;
@@ -133,7 +133,7 @@ async function runSkillHookInProcess(commandArgs, envOverrides = {}) {
   if (args.noAutoSkipGate === true) {
     return null;
   }
-  const targetRoot = path.resolve(process.cwd(), args.target);
+  const targetRoot = path.resolve(cwd, args.target);
   const stateMode = normalizeStateMode(envOverrides.AIDN_STATE_MODE);
   return resultFromPayload(await runPrOrchestrateHook(args, targetRoot, stateMode), 0);
 }
@@ -147,19 +147,20 @@ export function createDaemonRunJsonHookAgentAdapter() {
     canHandleRole(input) {
       return fallback.canHandleRole(input);
     },
-    runCommand({ command, commandArgs = [], commandLine = "", envOverrides = {} }) {
+    runCommand({ command, commandArgs = [], commandLine = "", envOverrides = {}, cwd }) {
       return fallback.runCommand({
         command,
         commandArgs,
         commandLine,
         envOverrides,
+        cwd,
       });
     },
-    async runCommandAsync({ command, commandArgs = [], commandLine = "", envOverrides = {} }) {
+    async runCommandAsync({ command, commandArgs = [], commandLine = "", envOverrides = {}, cwd }) {
       try {
         const normalizedCommandArgs = normalizeAidnSkillHookCommandArgs(command, commandArgs);
         if (normalizedCommandArgs) {
-          const result = await runSkillHookInProcess(normalizedCommandArgs, envOverrides);
+          const result = await runSkillHookInProcess(normalizedCommandArgs, envOverrides, cwd);
           if (result) {
             return result;
           }
@@ -172,6 +173,7 @@ export function createDaemonRunJsonHookAgentAdapter() {
         commandArgs,
         commandLine,
         envOverrides,
+        cwd,
       });
     },
   }, "DaemonRunJsonHookAgentAdapter");

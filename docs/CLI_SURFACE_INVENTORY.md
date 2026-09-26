@@ -213,6 +213,9 @@ separate DB-first write operation; a successful admission does not create them.
 - `aidn runtime coordinator-loop --json`
 - `aidn runtime coordinator-dispatch-plan --json`
 - `aidn runtime coordinator-dispatch-execute --json`
+  - with explicit execution, built-in adapters run each child in the resolved
+    target worktree; the caller's current directory does not select the child's
+    working directory. This is execution context, not a filesystem sandbox.
 - `aidn runtime coordinator-orchestrate --json`
 - `aidn runtime coordinator-resume --json`
 - `aidn runtime coordinator-suggest-arbitration --json`
@@ -254,6 +257,10 @@ These are currently implemented as package scripts, tools, or internal wrappers,
 - direct `tools/perf/*.mjs` entrypoints
 - `aidn perf` and its explicitly catalogued internal aliases
 - `aidn codex run-json-hook` and `aidn codex normalize-hook-payload`
+  - `run-json-hook` executes commands, including an explicit command after `--`,
+    in the resolved target directory and records that directory in its command
+    provenance. Relative child paths are resolved there, including through the
+    daemon adapter. Existing effect and explicit-execution requirements remain.
 - `aidn runtime local-daemon` (public, experimental)
   - experimental opt-in local daemon prototype
   - `--start`, `--status`, and `--stop` use a worktree-local endpoint file under `.aidn/runtime/daemon/`

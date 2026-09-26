@@ -13,6 +13,7 @@ import {
   fetchBranchPolicySources,
 } from "../ci/fetch-branch-policy-sources.mjs";
 import { runGovernanceRouteFixtureSuite } from "./verify-governance-route-fixtures.mjs";
+import { validateContextResiliencePolicy } from "./context-resilience-policy.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const catalogPath = path.join(repoRoot, "package", "catalogs", "gates.v1.json");
@@ -214,6 +215,96 @@ selfCancellingCleanlinessCatalog.gates.find((gate) => gate.id === "cleanliness-w
 const substitutedScriptCatalog = clone(catalog);
 substitutedScriptCatalog.gates.find((gate) => gate.id === "runtime-db-runtime-cli").script
   = "perf:verify-db-schema-migrations";
+
+// Mutate the actual package/catalog independently from the coverage authority.
+// Positive nested npm coverage must pass, while omissions and duplicates must
+// fail on their own policy reason rather than on an unrelated workflow error.
+function contextPolicyProbe(mutate) {
+  const candidate = { catalog: clone(catalog), packageJson: clone(packageJson) };
+  mutate(candidate);
+  return validateContextResiliencePolicy(candidate);
+}
+const admissionGroup = "perf:verify-context-admission";
+function nestFirstContextInvocation(candidate, duplicate = false) {
+  const commands = candidate.packageJson.scripts[admissionGroup].split(" && ");
+  const first = commands.shift();
+  candidate.packageJson.scripts["fixture:context-leaf"] = duplicate ? `${first} && ${first}` : first;
+  candidate.packageJson.scripts[admissionGroup] = ["npm run fixture:context-leaf", ...commands].join(" && ");
+}
+const contextPositiveProbes = {
+  current_43_invocations_preserved: contextPolicyProbe(() => {}).length === 0,
+  equivalent_transitive_invocation_accepted: contextPolicyProbe((candidate) => {
+    nestFirstContextInvocation(candidate);
+  }).length === 0,
+};
+for (const [probe, passed] of Object.entries(contextPositiveProbes)) {
+  if (!passed) issues.push(`context resilience positive probe failed: ${probe}`);
+}
+const contextNegativeProbes = {
+  context_invocation_omission_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
+    candidate.scripts[admissionGroup] = candidate.scripts[admissionGroup].split(" && ").slice(1).join(" && ");
+  }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
+  context_transitive_invocation_duplicate_rejected: contextPolicyProbe((candidate) => {
+    nestFirstContextInvocation(candidate, true);
+  }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
+  context_argument_change_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
+    candidate.scripts[admissionGroup] = candidate.scripts[admissionGroup].replace(
+      "--root scaffold/codex", "--root tests/fixtures/repo-installed-core/.agents/skills",
+    );
+  }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
+  context_wrapper_order_change_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
+    candidate.scripts["perf:verify-context-resilience"] = candidate.scripts["perf:verify-context-resilience"].split(" && ").reverse().join(" && ");
+  }).some((issue) => issue.includes("manual wrapper must invoke")),
+  context_wrapper_plus_children_rejected: contextPolicyProbe(({ catalog: candidate }) => {
+    const group = candidate.gates.find((gate) => gate.id === "codex-context-admission");
+    candidate.gates.push({ ...group, id: "codex-context-resilience", script: "perf:verify-context-resilience" });
+  }).some((issue) => issue.includes("must not be repeated")),
+  context_transitive_catalog_wrapper_rejected: contextPolicyProbe(({ catalog: candidate, packageJson: pkg }) => {
+    pkg.scripts["fixture:context-wrapper"] = "npm run perf:verify-context-resilience";
+    pkg.scripts["fixture:context-alias"] = "npm run fixture:context-wrapper";
+    const group = candidate.gates.find((gate) => gate.id === "codex-context-admission");
+    candidate.gates.push({ ...group, id: "fixture-context-alias", script: "fixture:context-alias" });
+  }).some((issue) => issue.includes("must not be repeated")),
+  context_npm_flag_before_run_rejected: contextPolicyProbe(({ catalog: candidate, packageJson: pkg }) => {
+    pkg.scripts["fixture:context-wrapper"] = "npm run perf:verify-context-resilience";
+    pkg.scripts["fixture:context-alias"] = "npm --silent run fixture:context-wrapper";
+    const group = candidate.gates.find((gate) => gate.id === "codex-context-admission");
+    candidate.gates.push({ ...group, id: "fixture-context-alias", script: "fixture:context-alias" });
+  }).some((issue) => issue.includes("must not be repeated")),
+  context_npm_flag_after_run_rejected: contextPolicyProbe(({ catalog: candidate, packageJson: pkg }) => {
+    pkg.scripts["fixture:context-wrapper"] = "npm run perf:verify-context-resilience";
+    pkg.scripts["fixture:context-alias"] = "npm run --silent fixture:context-wrapper";
+    const group = candidate.gates.find((gate) => gate.id === "codex-context-admission");
+    candidate.gates.push({ ...group, id: "fixture-context-alias", script: "fixture:context-alias" });
+  }).some((issue) => issue.includes("must not be repeated")),
+  context_other_gate_lifecycle_rejected: ["pre", "post"].every((prefix) => contextPolicyProbe(({ packageJson: pkg }) => {
+    pkg.scripts[`${prefix}perf:verify-cli-output-contracts`] = "npm run perf:verify-context-resilience";
+  }).some((issue) => issue.startsWith("contracts-json: context groups must not be repeated"))),
+  context_catalog_gate_duplicate_rejected: contextPolicyProbe(({ catalog: candidate }) => {
+    const group = candidate.gates.find((gate) => gate.id === "codex-context-admission");
+    candidate.gates.push({ ...group, id: "fixture-context-copy", allow_script_reuse: true });
+  }).some((issue) => issue.includes("must not be repeated")),
+  context_missing_gate_rejected: contextPolicyProbe(({ catalog: candidate }) => {
+    candidate.gates = candidate.gates.filter((gate) => gate.id !== "codex-context-projection");
+  }).some((issue) => issue.includes("exactly one context group gate is required")),
+  context_group_obligations_preserved: ["admission", "completion", "coordination", "projection"].every((name) => (
+    ["dev", "main", "release"].every((context) => contextPolicyProbe(({ catalog: candidate }) => {
+      candidate.gates.find((gate) => gate.id === `codex-context-${name}`).obligation[context] = "optional";
+    }).some((issue) => issue.includes(`immutable ${context} obligation must be required`)))
+  )),
+  context_group_routing_preserved: ["admission", "completion", "coordination", "projection"].every((name) => (
+    Object.entries({ condition: "git-clean-worktree", family: "runtime", job: "local/fixture", execution_scope: "manual-only" })
+      .every(([key, value]) => contextPolicyProbe(({ catalog: candidate }) => {
+        candidate.gates.find((gate) => gate.id === `codex-context-${name}`)[key] = value;
+      }).some((issue) => issue.includes("immutable context group routing changed")))
+  )),
+  context_npm_lifecycle_side_effect_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
+    candidate.scripts[`pre${admissionGroup}`] = "node tools/perf/verify-reanchor-template.mjs";
+  }).some((issue) => issue.includes("implicit npm lifecycle hooks")),
+  context_recursive_npm_reference_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
+    candidate.scripts[admissionGroup] = `npm run ${admissionGroup}`;
+  }).some((issue) => issue.includes("recursive npm script")),
+};
 
 const commandCommentMutation = releaseText.replaceAll(
   "run: npm run verify:release",
@@ -590,6 +681,7 @@ const liveSmokeOrderMutation = liveSmokeText
   );
 
 const negativeProbes = {
+  ...contextNegativeProbes,
   governance_route_resolver_required:
     evaluateGovernanceAdmissionExecutable(missingAdmissionResolverMutation).length > 0,
   governance_route_integrity_required:
@@ -740,6 +832,7 @@ const output = {
     manual_dispatch: true,
   },
   negative_probes: negativeProbes,
+  context_resilience_positive_probes: contextPositiveProbes,
   issues,
 };
 console.log(JSON.stringify(output, null, 2));

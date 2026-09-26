@@ -4,13 +4,37 @@ Use these checks when changing workflow re-anchor docs, `AGENTS.md`, Codex skill
 
 ## Primary Command
 
-Run the full regression pack:
+Run the full regression pack locally:
 
 ```bash
 npm run perf:verify-context-resilience
 ```
 
-This command verifies:
+This compatibility command runs four groups in their original order. Admission
+selects the four groups separately in the `codex` family; it does not also
+select the aggregate command. Each group keeps the runner's 900000 ms
+(15 minute) limit, its own diagnostics, and its checkout cleanliness check.
+The full set is no longer subject to one shared 15 minute deadline.
+
+| Admission gate | npm script | Existing invocations |
+| --- | --- | --- |
+| `codex-context-admission` | `perf:verify-context-admission` | 1–7: template readiness and session, branch, cycle admission |
+| `codex-context-completion` | `perf:verify-context-completion` | 8–9: cycle completion and PR lifecycle |
+| `codex-context-coordination` | `perf:verify-context-coordination` | 10–29: installed re-anchor, agent policies, handoff and coordinator dispatch |
+| `codex-context-projection` | `perf:verify-context-projection` | 30–43: summaries, projections, hydration, repair and installation/import |
+
+All four gates remain required for `dev`, `main`, and release. Their 43
+invocations retain their arguments and order. Gate-catalog checks reject
+omissions, altered arguments, duplicate execution, and weakened obligations.
+A failing group still fails its family and the `Governance Admission` rollup.
+
+To diagnose one group with the canonical runner:
+
+```bash
+node tools/verify/run-gate-family.mjs codex --gate codex-context-completion --context dev --admission --json
+```
+
+The complete regression pack verifies:
 
 1. template re-anchor artifacts and references
 2. `CURRENT-STATE.md` coverage in mutating template skills

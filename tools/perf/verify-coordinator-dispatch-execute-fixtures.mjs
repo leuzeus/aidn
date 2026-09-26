@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
@@ -44,11 +45,11 @@ function assert(condition, message) {
   }
 }
 
-function runJson(script, args, repoRoot, expectStatus = 0) {
+function runJson(script, args, repoRoot, expectStatus = 0, options = {}) {
   const targetIndex = args.indexOf("--target"), target = targetIndex < 0 ? repoRoot : args[targetIndex + 1];
   const result = spawnSync(process.execPath, [script, ...args], {
-    cwd: target,
-    env: { ...process.env, ...fixtureNpmEnvironment(target) },
+    cwd: options.cwd ?? target,
+    env: { ...process.env, ...fixtureNpmEnvironment(target), ...options.env },
     encoding: "utf8",
     timeout: 180000,
     maxBuffer: 20 * 1024 * 1024,
@@ -165,6 +166,59 @@ function verifyInjectedFailureCleanup(repoRoot) {
   };
 }
 
+function verifyAdapterWorkingDirectories(tempRoot, repoRoot) {
+  const parent = path.join(tempRoot, "parent espace été");
+  const target = path.join(tempRoot, "cible espace été");
+  fs.mkdirSync(parent);
+  fs.writeFileSync(path.join(parent, "fixture.txt"), "worktree cwd fixture\n");
+  initGitRepo(parent);
+  execFileSync("git", ["-C", parent, "worktree", "add", "--detach", target, "HEAD"], { stdio: "pipe" });
+  const driver = path.join(tempRoot, "adapter-cwd.mjs");
+  const registryUrl = pathToFileURL(path.join(repoRoot, "src/application/runtime/agent-adapter-registry-service.mjs")).href;
+  const daemonUrl = pathToFileURL(path.join(repoRoot, "src/application/codex/daemon-run-json-hook-agent-adapter.mjs")).href;
+  fs.writeFileSync(driver, [
+    `import { listBuiltInAgentAdapters } from ${JSON.stringify(registryUrl)};`,
+    `import { createDaemonRunJsonHookAgentAdapter } from ${JSON.stringify(daemonUrl)};`,
+    'import fs from "node:fs";',
+    'import path from "node:path";',
+    `const target = ${JSON.stringify(target)};`,
+    'const adapters = [...listBuiltInAgentAdapters(), createDaemonRunJsonHookAgentAdapter()];',
+    'const evidence = [];',
+    'for (const [index, adapter] of adapters.entries()) {',
+    '  for (const method of ["runCommand", ...(adapter.runCommandAsync ? ["runCommandAsync"] : [])]) {',
+    '    const marker = `sentinel-${index}-${method}.json`;',
+    '    const source = `require("node:fs").writeFileSync(${JSON.stringify(marker)}, JSON.stringify(process.cwd())); console.log(JSON.stringify(process.cwd()));`;',
+    '    const result = await adapter[method]({ command: process.execPath, commandArgs: ["-e", source], cwd: target });',
+    '    if (result.status !== 0) throw new Error(`adapter child failed: ${result.stderr}`);',
+    '    if (JSON.parse(result.stdout) !== target) throw new Error(`adapter ${adapter.getProfile().id}/${method} must use target cwd, not parent cwd`);',
+    '    if (!fs.existsSync(path.join(target, marker)) || fs.existsSync(path.join(process.cwd(), marker))) throw new Error("sentinel must exist only in target worktree");',
+    '    const legacy = await adapter[method]({ command: process.execPath, commandArgs: ["-e", "console.log(JSON.stringify(process.cwd()))"] });',
+    '    if (legacy.status !== 0 || JSON.parse(legacy.stdout) !== process.cwd()) throw new Error("omitted cwd must retain legacy parent behavior");',
+    '    const missing = await adapter[method]({ command: process.execPath, commandArgs: ["-e", source], cwd: path.join(target, "missing") });',
+    '    if (missing.status === 0 || !missing.error) throw new Error("missing explicit cwd must fail without parent fallback");',
+    '    if (process.platform === "win32") {',
+    '      const cmdMarker = `cmd-${marker}`;',
+    '      const probe = path.join(target, "cwd probe.cjs");',
+    '      const launcher = path.join(target, "cwd probe.cmd");',
+    '      fs.writeFileSync(probe, `if (process.argv[2] !== "argument espace été") throw new Error("batch argument quoting failed"); require("node:fs").writeFileSync(${JSON.stringify(cmdMarker)}, JSON.stringify(process.cwd())); console.log(JSON.stringify(process.cwd()));`);',
+    '      fs.writeFileSync(launcher, `@echo off\\r\\n"${process.execPath}" "${probe}" "%~1"\\r\\n`);',
+    '      const cmd = await adapter[method]({ command: launcher, commandArgs: ["argument espace été"], commandLine: `"${launcher}" "argument espace été"`, cwd: target });',
+    '      if (cmd.status !== 0 || JSON.parse(cmd.stdout) !== target) throw new Error(`Windows cmd cwd/quoting failed: ${cmd.stderr}`);',
+    '      if (!fs.existsSync(path.join(target, cmdMarker)) || fs.existsSync(path.join(process.cwd(), cmdMarker))) throw new Error("cmd sentinel must exist only in target worktree");',
+    '    }',
+    '    evidence.push({ adapter: adapter.getProfile().id, method, target_cwd: true, legacy_cwd: true, missing_cwd_refused: true });',
+    '  }',
+    '}',
+    `const aidnBin = ${JSON.stringify(path.join(repoRoot, "bin", "aidn.mjs"))};`,
+    'const inProcess = await createDaemonRunJsonHookAgentAdapter().runCommandAsync({ command: process.execPath, commandArgs: [aidnBin, "perf", "skill-hook", "--skill", "pr-orchestrate", "--target", ".", "--json"], cwd: target });',
+    'if (inProcess.status !== 0 || JSON.parse(inProcess.stdout).target_root !== target) throw new Error("daemon in-process hook must resolve relative target against explicit cwd");',
+    'console.log(JSON.stringify(evidence));',
+  ].join("\n"));
+  const result = spawnSync(process.execPath, [driver], { cwd: parent, encoding: "utf8", timeout: 30000 });
+  assert(result.status === 0, `adapter cwd regression: ${String(result.stderr).trim()}`);
+  return JSON.parse(result.stdout);
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -186,7 +240,8 @@ function main() {
     if (failureInjection === "after-temp-root") {
       throw new Error("injected failure after temp root");
     }
-    const readyTarget = path.join(tempRoot, "ready");
+    const adapterCwd = verifyAdapterWorkingDirectories(tempRoot, repoRoot);
+    const readyTarget = path.join(tempRoot, "ready espace été");
     const warnTarget = path.join(tempRoot, "warn");
     const blockedTarget = path.join(tempRoot, "blocked");
     const escalatedTarget = path.join(tempRoot, "escalated");
@@ -213,6 +268,22 @@ function main() {
       assert(execFileSync("git", ["-C", target, "status", "--porcelain"], { encoding: "utf8" }).trim() === "", "fixture setup must leave a clean Git worktree");
       if (target === readyTarget) completeDriftCheckFixture(target, repoRoot);
     }
+
+    const dispatchParent = path.join(tempRoot, "dispatch parent été");
+    execFileSync("git", ["-C", readyTarget, "worktree", "add", "--detach", dispatchParent, "HEAD"], { stdio: "pipe" });
+    const cwdObservations = path.join(tempRoot, "dispatch-cwd.ndjson");
+    const cwdPreload = path.join(tempRoot, "observe-dispatch-cwd.mjs");
+    const sentinelPath = path.join(".aidn", "runtime", "context", "dispatch-cwd-sentinel.json");
+    fs.writeFileSync(cwdPreload, [
+      'import fs from "node:fs";',
+      'import path from "node:path";',
+      'if (process.argv.includes("run-json-hook") || process.argv.includes("skill-hook")) {',
+      `  const sentinel = ${JSON.stringify(sentinelPath)};`,
+      '  fs.mkdirSync(path.dirname(sentinel), { recursive: true });',
+      '  fs.writeFileSync(sentinel, JSON.stringify(process.cwd()));',
+      `  fs.appendFileSync(${JSON.stringify(cwdObservations)}, JSON.stringify(process.cwd()) + "\\n");`,
+      '}',
+    ].join("\n"));
 
     runJson(handoffProjectScript, ["--target", readyTarget, "--write", "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", warnTarget, "--write", "--json"], repoRoot, 0);
@@ -367,7 +438,20 @@ function main() {
     ].join("\n"), "utf8");
 
     const dryRun = runJson(dispatchExecuteScript, ["--target", readyTarget, "--json"], repoRoot, 0);
-    const executed = runJson(dispatchExecuteScript, ["--target", readyTarget, "--execute", "--json"], repoRoot, 0);
+    const executed = runJson(dispatchExecuteScript, ["--target", readyTarget, "--execute", "--json"], repoRoot, 0, {
+      cwd: dispatchParent,
+      env: { NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --import=${pathToFileURL(cwdPreload).href}`.trim() },
+    });
+    assert(fs.existsSync(cwdObservations), "cross-worktree dispatch must observe actual workflow children");
+    const dispatchChildCwds = fs.readFileSync(cwdObservations, "utf8").trim().split("\n").map(JSON.parse);
+    assert(dispatchChildCwds.length >= 2, "cross-worktree dispatch must execute both workflow steps");
+    assert(dispatchChildCwds.every((cwd) => cwd === readyTarget), "every dispatched child must run in the absolute target worktree");
+    assert(fs.existsSync(path.join(readyTarget, sentinelPath)), "dispatch sentinel must be written in the target worktree");
+    assert(!fs.existsSync(path.join(dispatchParent, sentinelPath)), "dispatch must not write its sentinel in the parent worktree");
+    const hookOutput = runJson(path.join(repoRoot, "tools", "codex", "run-json-hook.mjs"), [
+      "--target", readyTarget, "--skill", "context-reload", "--mode", "THINKING", "--json",
+    ], repoRoot, 0, { cwd: dispatchParent });
+    assert(hookOutput.provenance.cwd === readyTarget, "hook provenance must report the actual target cwd");
     const warnLocalShellExecuted = runJson(dispatchExecuteScript, ["--target", warnTarget, "--execute", "--json"], repoRoot, 1);
     const blockedExecuted = runJson(dispatchExecuteScript, ["--target", blockedTarget, "--execute", "--json"], repoRoot, 0);
     const escalatedDryRun = runJson(dispatchExecuteScript, ["--target", escalatedTarget, "--json"], repoRoot, 0);
@@ -496,6 +580,8 @@ function main() {
       role_blocked_dry_run: roleBlockedDryRun,
       role_blocked_execute: roleBlockedExecute,
       failure_cleanup_probe: failureCleanupProbe,
+      adapter_cwd: adapterCwd,
+      dispatch_cwd: { observed_children: dispatchChildCwds.length, target_only: true },
       pass: true,
     };
 
