@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.8
+
+- Preserve the receipt's global runtime binding during installation-scoped
+  repair. Regenerated guides use the common CLI and integration revision instead
+  of restoring local `npx aidn` commands after a global migration.
+- Cover immutable repair preview, regenerated commands, preserved adapter and
+  runtime policy, absent local standard skills, and conflicts on modified views.
+- Document explicit guide regeneration through the existing full repair with
+  `verify-only` persistence, separately from legacy adapter migration.
+
 ## 0.10.7
 
 - Resolve PostgreSQL runtime head metadata to its exact artifact within the

@@ -95,3 +95,9 @@ actual Windows native discovery and hook execution, and a two-project end-to-end
 trial. These remain regression obligations, not evidence inferred from a tag.
 Live PostgreSQL proof is separate from fake-driver tests. A real pilot migration
 follows publication in a separate client task and needs its own final diagnosis.
+
+Installation-scoped repair inherits the global binding from the project receipt
+when no explicit home is supplied. Generated operational commands and Codex assets
+must use the same verified package and integration revision. Repair remains an
+explicit project operation with ownership checks and an exact plan; global update
+does not regenerate project views or silently migrate their durable adapter.

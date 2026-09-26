@@ -83,6 +83,41 @@ try {
   assert.equal(fs.existsSync(path.join(target, '.agents/skills/aidn-context-reload/SKILL.md')), false);
   assert.equal(JSON.parse(fs.readFileSync(path.join(target, 'package.json'))).dependencies.other, '1.2.3');
   assert.equal(JSON.parse(fs.readFileSync(path.join(home, 'projects.json'))).projects.length, 1);
+  // Public installation-scoped repair supplies no home option. The receipt must
+  // retain global rendering as well as global Codex assets, without changing the
+  // durable adapter or silently restoring project-local engine commands.
+  const repairRuntime = resolveGlobalRuntime({ home });
+  const repairOptions = { repoRoot: repairRuntime.packageRoot, targetRoot: target,
+    action: 'repair', args: { persistencePolicy: 'verify-only' } };
+  const beforeRepair = snapshot(root);
+  const adapterBeforeRepair = fs.readFileSync(path.join(target, '.aidn/project/workflow.adapter.json'));
+  const configBeforeRepair = JSON.parse(fs.readFileSync(path.join(target, '.aidn/config.json')));
+  const repairPlan = await executeInstallation({ ...repairOptions, dryRun: true });
+  assert.equal(repairPlan.ok, true, JSON.stringify(repairPlan.conflicts));
+  assert.deepEqual(snapshot(root), beforeRepair, 'repair preview is immutable');
+  const repaired = await executeInstallation({ ...repairOptions, dryRun: false, expectedPlanId: repairPlan.plan_id });
+  assert.equal(repaired.ok, true, JSON.stringify(repaired.errors));
+  assert.deepEqual(fs.readFileSync(path.join(target, '.aidn/project/workflow.adapter.json')), adapterBeforeRepair);
+  const configAfterRepair = JSON.parse(fs.readFileSync(path.join(target, '.aidn/config.json')));
+  assert.deepEqual(configAfterRepair.runtime, configBeforeRepair.runtime);
+  assert.deepEqual(configAfterRepair.workflow, configBeforeRepair.workflow);
+  for (const name of ['WORKFLOW.md', 'WORKFLOW_SUMMARY.md', 'CODEX_ONLINE.md', 'index.md']) {
+    const content = fs.readFileSync(path.join(target, 'docs/audit', name), 'utf8');
+    assert.doesNotMatch(content, /\bnpx aidn\b/, name);
+    assert.doesNotMatch(content, /\baidn (?:runtime|bootstrap|codex|project|perf|install)\b/, name);
+  }
+  const onlinePath = path.join(target, 'docs/audit/CODEX_ONLINE.md');
+  const onlineContent = fs.readFileSync(onlinePath, 'utf8');
+  assert.match(onlineContent, /aidn --integration-revision 1 runtime project-runtime-state/);
+  assert.doesNotMatch(onlineContent, /runtime repair-layer-(?:triage|autofix)/);
+  assert.equal(fs.existsSync(path.join(target, '.agents/skills/aidn-context-reload/SKILL.md')), false);
+  fs.appendFileSync(onlinePath, '\nUser-owned modification.\n');
+  const modifiedBeforeRepair = snapshot(root);
+  const conflictRepair = await executeInstallation({ ...repairOptions, dryRun: true });
+  assert.equal(conflictRepair.ok, false, 'modified generated files still require explicit reconciliation');
+  assert(conflictRepair.conflicts.some(item => item.code === 'MODIFIED_INSTALLATION_ASSET' && item.path === 'docs/audit/CODEX_ONLINE.md'));
+  assert.deepEqual(snapshot(root), modifiedBeforeRepair);
+  fs.writeFileSync(onlinePath, onlineContent);
   const second = path.join(root, 'second'); fs.mkdirSync(second);
   assert.equal(spawnSync('git', ['init', second], { windowsHide: true }).status, 0);
   const addPlan = await addGlobalProject({ home, target: second });

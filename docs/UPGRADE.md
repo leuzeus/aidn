@@ -58,6 +58,11 @@ see [connector repair and recovery](GLOBAL_SETUP.md#migration-and-interrupted-op
 `aidn setup` is an interactive executor whose confirmation applies the same plan,
 not a read-only check. `--json` is formatting and never write authorization.
 
+If generated guides retain old commands after migration, use the separate
+[installation-scoped repair](GLOBAL_SETUP.md#refreshing-generated-project-guides)
+with 0.10.8 or later. A normal global update intentionally leaves project files
+alone; adapter migration is not a substitute for regenerating existing views.
+
 ## Historical release and local-client procedures
 
 The versioned notes and local npm/bootstrap examples below document earlier

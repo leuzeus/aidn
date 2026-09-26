@@ -93,6 +93,11 @@ managed `AGENTS.md` block and distinctly named project skills, agents and hooks
 remain extensions. Editing a standard managed file causes a conflict; preservation
 does not imply a generic `extensions` config key or plugin loader.
 
+For an existing durable adapter, refresh old generated views through the
+[explicit installation repair](GLOBAL_SETUP.md#refreshing-generated-project-guides)
+instead of re-extracting policy from historical Markdown. Inspect the complete
+repair plan and retain `verify-only` persistence protection.
+
 ## Native review and private state
 
 Review the exact project hook definitions in Codex after attachment or changes.
