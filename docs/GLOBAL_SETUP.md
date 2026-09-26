@@ -24,8 +24,8 @@ does not become active again because an old local session file remains. The
 canonical session artifact preserves the lifecycle and delivery metadata; the
 historical relational `state` field can contain a work mode instead.
 Legacy session templates can establish closure with the checked close gate even
-without a lifecycle `state` field. Missing,
-ambiguous or inconsistent canonical evidence requires diagnosis, not reimport
+without a lifecycle `state` field. Missing, ambiguous or inconsistent canonical
+evidence requires diagnosis, not reimport
 of local projections. The start-session hook writes diagnostic context and
 checkpoint telemetry but performs no automatic DB import. Persist an explicitly
 authorized new session through the DB-first artifact operation.
