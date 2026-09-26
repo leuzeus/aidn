@@ -64,6 +64,9 @@ They should be preserved when updating an existing diagram or adding a new focus
 1. Change the smallest focused BPMN first.
 2. Preserve the structural rules above before adjusting aesthetics.
 3. Re-space lanes and nodes after any structural change.
-4. Re-import the changed file into `https://demo.bpmn.io/`.
+4. Re-import the changed file in a local `bpmn-js` renderer and inspect the
+   rendered labels/flows. `https://demo.bpmn.io/` is an alternative only when
+   transmitting that diagram to the public service is authorized. Record the
+   renderer/version and keep structural XML checks distinct from visual import.
 5. If a focused BPMN changes meaningfully, reflect the same intent in `aidn-multi-agent-ideal.bpmn`.
 6. Update this file if a new modeling convention is introduced.

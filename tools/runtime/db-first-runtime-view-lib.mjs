@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { resolveEffectiveStateMode } from "../../src/core/state-mode/state-mode-policy.mjs";
+import { resolveRuntimeHeadArtifact, findUniqueAuditArtifact } from "../../src/application/runtime/runtime-head-resolution-service.mjs";
 import {
   loadSharedStateSnapshot,
   loadSharedStateSnapshotAsync,
@@ -148,16 +149,8 @@ function resolveRuntimeHeadKeyForArtifactPath(artifactPath) {
   return RUNTIME_HEAD_KEYS_BY_PATH.get(fileName) ?? "";
 }
 
-function findRuntimeHeadArtifact(runtimeHeads, artifactPath) {
-  if (!runtimeHeads || typeof runtimeHeads !== "object") {
-    return null;
-  }
-  const headKey = resolveRuntimeHeadKeyForArtifactPath(artifactPath);
-  if (!headKey) {
-    return null;
-  }
-  const artifact = runtimeHeads[headKey];
-  return artifact && normalizeRelativeArtifactPath(artifact.path) ? artifact : null;
+function findRuntimeHeadArtifact(runtimeHeads, artifactPath, payload) {
+  return resolveRuntimeHeadArtifact(runtimeHeads, resolveRuntimeHeadKeyForArtifactPath(artifactPath), payload);
 }
 
 export function loadSqliteIndexPayloadSafe(targetRoot, options = {}) {
@@ -224,14 +217,7 @@ export function resolveDbArtifactSourceName(snapshotBackend) {
 }
 
 function findArtifactByPath(sqlitePayload, artifactPath) {
-  if (!sqlitePayload || !Array.isArray(sqlitePayload.artifacts)) {
-    return null;
-  }
-  const normalized = normalizeRelativeArtifactPath(artifactPath);
-  if (!normalized) {
-    return null;
-  }
-  return sqlitePayload.artifacts.find((artifact) => normalizeRelativeArtifactPath(artifact?.path) === normalized) ?? null;
+  return findUniqueAuditArtifact(sqlitePayload, artifactPath);
 }
 
 export function resolveDbBackedMode(targetRoot, requestedStateMode = "files") {
@@ -275,7 +261,7 @@ export function resolveAuditArtifactText({
       text: "",
     };
   }
-  const runtimeHeadArtifact = findRuntimeHeadArtifact(sqliteRuntimeHeads, candidatePath);
+  const runtimeHeadArtifact = findRuntimeHeadArtifact(sqliteRuntimeHeads, candidatePath, sqlitePayload);
   const runtimeHeadText = decodeArtifactContent(runtimeHeadArtifact);
   if (runtimeHeadArtifact && runtimeHeadText) {
     return {

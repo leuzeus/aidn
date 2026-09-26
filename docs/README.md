@@ -1,13 +1,16 @@
 # Documentation Index
 
-Date: 2026-05-24
+Date: 2026-09-25
 Status: active navigation entry
 
 Use this page as the first stop when you need to navigate the repository docs.
 
 ## Start Here
 
-- [Windows project setup](./WINDOWS_PROJECT_SETUP.md)
+- [Installation](./INSTALL.md)
+- [Global setup and management](./GLOBAL_SETUP.md)
+- [Migration and upgrade](./UPGRADE.md)
+- [Bounded Windows qualification](./qualification/GLOBAL_WINDOWS.md)
 
 - [Architecture cockpit](./ARCHITECTURE_COCKPIT.md)
 - [CI gate families](./CI_GATE_FAMILIES.md)
@@ -32,6 +35,9 @@ Use this page as the first stop when you need to navigate the repository docs.
 - [ADR-0008 shared coordination ports](./ADR/ADR-0008-shared-coordination-ports.md)
 - [ADR-0009 release versioning provenance](./ADR/ADR-0009-release-versioning-provenance.md)
 - [ADR-0010 adaptive repository governance](./ADR/ADR-0010-adaptive-repository-governance.md)
+- [ADR-0013 global user runtime](./ADR/ADR-0013-global-user-runtime.md)
+- [Global architecture diagram](./diagrams/01-global-system-architecture.md)
+- [BPMN views](./bpmn/README.md)
 
 ## Runtime And Operations
 
@@ -48,6 +54,9 @@ Use this page as the first stop when you need to navigate the repository docs.
 - [Prioritization matrix](./performance/PRIORITIZATION_MATRIX.md)
 
 ## Archive
+
+- [Historical Windows per-project setup](./WINDOWS_PROJECT_SETUP.md)
+- [Historical local installation](./INSTALL.md#historical-09x-and-explicit-source-development-procedures)
 
 These documents remain useful as history, but they are superseded for the current EA/IA execution stream and should not be used as the primary entry point for the active backlog:
 

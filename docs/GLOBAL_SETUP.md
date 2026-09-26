@@ -1,10 +1,12 @@
 # Global AIDN setup
 
-The global installation shipped in 0.10.0. Version 0.10.1 corrects PostgreSQL
-artifact writes and checkpoint preservation; 0.10.2 adds canonical first-cycle
-admission and runtime projection. Use a validated published release
-for PostgreSQL client migration. ADR-0013 supersedes independent project engine
-versions; existing 0.9.x receipts remain migration inputs.
+The global installation shipped in 0.10.0. Subsequent patches correct PostgreSQL
+artifact writes, admission, drift completion and canonical projections. Consult
+the [changelog](../CHANGELOG.md) and [published releases](https://github.com/leuzeus/aidn/releases)
+for a verified package; the source `VERSION` alone does not establish publication.
+ADR-0013 supersedes independent project engine versions; existing 0.9.x receipts
+remain migration inputs. [Installation](INSTALL.md) is the practical entry point;
+[upgrade](UPGRADE.md) covers migration ownership and delivery order.
 
 An established session may explicitly have no active cycle. For `cycle-create`,
 the read-only admission verifies that initial state in the canonical database,
@@ -21,7 +23,7 @@ a projection still requires explicit intent and does not import it into the DB.
 From the source checkout or extracted package on Windows, preview installation:
 
 ```powershell
-.\scripts\setup-global.ps1 -ReleaseVersion 0.10.0 -PackagePath C:\packages\aidn-workflow-0.10.0.tgz -PackageSha256 SHA256
+.\scripts\setup-global.ps1 -ReleaseVersion latest
 ```
 
 Apply the displayed plan by repeating those arguments with `-Write -ExpectPlan
@@ -29,9 +31,14 @@ PLAN_ID`. Only that explicit installation registers `AIDN_HOME` and `bin` in the
 user PATH. Open a new terminal. No administrator rights are used for AIDN.
 Node.js and bundled npm are required. `-ReleaseVersion latest` resolves GitHub's
 stable release and validates its assets; it does not guess a release on failure.
+For offline input, add `-PackagePath FILE -PackageSha256 HASH` and use its exact
+`-ReleaseVersion VERSION`. Apply identical arguments with the displayed plan ID;
+a changed latest target invalidates the plan instead of silently selecting it.
 
 `aidn setup` and `aidn-setup` open the common wizard. Source launch remains
-`node tools/setup/global-cli.mjs setup`. After a confirmed first common
+`node tools/setup/global-cli.mjs setup`. The wizard is an interactive executor:
+confirmation may apply changes. It is not a read-only consultation;
+`aidn setup --json` instead produces a noninteractive setup preview. After a confirmed first common
 installation, the wizard also registers the user environment. Its project menu
 offers files, provisioned PostgreSQL resources, or an explicitly pinned local
 PostgreSQL 17 installer. Missing secrets are requested after confirmation;
@@ -138,8 +145,9 @@ same verified release; do not fetch an unpinned bootstrap script.
 
 A new worktree is a separate physical root. Run `aidn project add --target PATH`
 and explicitly select its profile and persistence reference. Do not copy another
-root's private receipt or authorization. Its configuration and activation are
-independent; its engine is the same global engine. Register it only when prepared
+root's private receipt or authorization. Its preparation is bound to its own
+physical root; linked worktrees share repository authorization and revocation.
+Its engine is the same global engine. Register it only when prepared
 successfully and explicitly remove abandoned worktrees from the registry before
 a global update.
 
@@ -158,5 +166,7 @@ The global management fixtures exercise initial installation, two clients,
 immutable previews, wizard cancellation, exact-plan application, npm failure and
 resume. npm and reboot identities in those fixtures are injected. These checks
 do not prove native Codex discovery, native hook trust, real server provisioning
-or PostgreSQL data conservation. Those release checks and the separate real
-client migration remain required.
+or PostgreSQL data conservation. The [bounded Windows evidence](qualification/GLOBAL_WINDOWS.md)
+records actual native results separately. Real PostgreSQL source tests and each
+client migration still need their own evidence; release availability does not
+complete a migration or native review on another root.

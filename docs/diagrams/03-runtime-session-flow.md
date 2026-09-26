@@ -16,7 +16,7 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 3) Runtime Session Flow (v0.7.2 runtime baseline)
+%% 3) Runtime session flow with explicit drift completion
 flowchart TD
   ST["Session start"] --> CR["context-reload"]
   CR --> RA["Read CURRENT-STATE + WORKFLOW-KERNEL"]
@@ -44,12 +44,13 @@ flowchart TD
   RT -->|No| IMPL["Implementation on cycle/intermediate"]
   DIG --> IMPL
 
-  THINK --> DRIFT["drift-check when needed (R05)"]
+  THINK --> DRIFT["Explicit drift-check + semantic review (R05)"]
   EXP --> SPIKE["convert-to-spike admission when exploration becomes non-trivial"]
   SPIKE --> CONT
   EXP --> DRIFT
   IMPL --> DELTA["requirements-delta admission when scope changes"]
   DELTA --> DRIFT
+  DRIFT -. success only .-> PROOF["drift_check_completed: ok; current branch + COMMITTING + valid timestamp"]
   DRIFT --> CLOSE{"Close, relay, or continue?"}
 
   CLOSE -->|No| LOOP["Continue active work"]
@@ -94,3 +95,8 @@ flowchart TD
 
   linkStyle default stroke:#1E1F5C,stroke-width:2px;
 ```
+
+The common engine evaluates each explicitly prepared project. Global visibility
+does not grant activation or native trust. Preview/generic gating and warning/stop
+results never refresh drift age. Hydration/projection writes above require their
+own explicit intent; read-only context reload does not perform them automatically.

@@ -39,7 +39,7 @@ Adapter rules in this file extend (but do not redefine) canonical mechanics from
 
 ```yaml
 workflow_product: aidn-workflow
-workflow_version: 0.5.1
+workflow_version: 0.10.7
 installed_pack: core
 project_name: repo-installed-core
 source_branch: dev
@@ -167,7 +167,7 @@ source_branch: dev
 - `promote-baseline` MUST stop before promotion when target cycle selection, gap closure, or traceability readiness is incomplete.
 - `convert-to-spike` MUST reuse cycle continuity admission in `EXPLORING` mode before creating spike artifacts.
 - `handoff-close` may keep generic checkpoint semantics, but the runtime skill result MUST expose the real blocking checkpoint outcome.
-- `drift-check` continues to use generic gating as the drift source of truth; blocked gating outcomes are authoritative runtime stops.
+- `drift-check` evaluates the canonical gate and completes only with an explicit `drift_check_completed` event (`skill: drift-check`, `result: ok`). Generic evaluation, preview, warning or stop does not refresh drift age. Freshness requires COMMITTING mode, the current branch and a valid nonfuture timestamp; semantic scope review remains required.
 
 ## Session Close & PR Review
 
@@ -189,6 +189,7 @@ source_branch: dev
 - Freshness rule before commit/review: `TO_DEFINE`
 - Parking lot rule for non-essential ideas (entropy isolation): `TO_DEFINE`
 - If context is partial or stale after restart/window switch, run `docs/audit/REANCHOR_PROMPT.md` before any durable write.
+- If the stop was abrupt and local artifacts may be behind shared coordination, follow `docs/audit/CRASH-RECOVERY-RUNBOOK.md` before resuming durable work.
 
 ## Local Paths
 
@@ -204,6 +205,7 @@ source_branch: dev
 - Rule/state guide: `docs/audit/RULE_STATE_BOUNDARY.md`
 - Workflow summary: `docs/audit/WORKFLOW_SUMMARY.md`
 - Re-anchor prompt: `docs/audit/REANCHOR_PROMPT.md`
+- Crash recovery runbook: `docs/audit/CRASH-RECOVERY-RUNBOOK.md`
 - Artifact manifest: `docs/audit/ARTIFACT_MANIFEST.md`
 - Incidents: `docs/audit/incidents/`
 

@@ -1,13 +1,15 @@
 # Codex integration
 
-AIDN distributes local skills, agent roles and command hooks through its existing
-installer. The integration calls the same AIDN CLI and core admission use case as
+AIDN's global installation, shipped in 0.10.0, exposes standard skills and agent
+roles in the user Codex home. Projects retain minimal hook connectors, local
+extensions and activation. The integration calls the same AIDN CLI and core admission use case as
 other adapters. It adds no second workflow engine, persistent server, mandatory
 API key or model call to the nominal installation and admission paths.
 
 The activation base shipped in [v0.8.0](https://github.com/leuzeus/aidn/releases/tag/v0.8.0)
-on 2026-09-24 after PRs #62/#63. Specific native-write admission below is a new
-local candidate, not qualification of that release. Scaffold assets and
+on 2026-09-24 after PRs #62/#63. Subsequent global releases retain specific
+native-write admission. The [bounded qualification record](qualification/GLOBAL_WINDOWS.md)
+separates actual native traces from open cases and publication. Scaffold assets and
 test corpora are not an installed client project. Installation,
 discovery, native approval and operational qualification are separate claims.
 See [ADR-0011](ADR/ADR-0011-codex-installation-ownership-and-native-boundary.md)
@@ -38,6 +40,12 @@ aidn bootstrap --target . --revoke --write --expect-plan PLAN_ID --json
 
 These actions use `codex-integration` scope; combining them with `--scope installation` is rejected. Repair, resume and rollback cannot implicitly restore authorization after revocation. Project authorization is independent of native Codex project/hook approval. See [ADR-0012](ADR/ADR-0012-project-activation-and-namespaced-skills.md).
 
+### Historical global-skill disabling for local clients
+
+The following legacy action is not `aidn project migrate` and must not be used
+to disable the current global engine's standard skills. It was designed for
+local installations with conflicting old user skills.
+
 Global skill migration requires an explicit host target. The public action inventories only known AIDN directory names under `<codex-home>/skills`; it does not scan every possible native skill root. It identifies exact known global AIDN skills and prepares path-specific `[[skills.config]]` entries with `enabled = false`, preserving skill files and unrelated TOML. An unknown or customized homonym is not automatically adopted. These actions use the existing project installation journal, a host configuration lock, and checks of both the reviewed configuration and selected skill content. Restore requires the recorded configuration post-image to remain unchanged. Pre-images stay in private local recovery data and are omitted from public diagnostics.
 
 ```sh
@@ -51,8 +59,12 @@ On Windows, use an absolute Windows path for `--codex-home`. These two actions a
 
 ## Install and inspect
 
-Use the AIDN package version selected for the project. From its package source,
-`node bin/aidn.mjs` is equivalent to the installed `aidn` command below.
+Use [global setup](GLOBAL_SETUP.md) for installation and explicit project
+attachment/migration; `aidn doctor --target PATH --json` diagnoses that binding.
+The global launcher never falls back to a project's old engine. From explicitly
+selected package source, `node bin/aidn.mjs` remains a development entry point.
+The following bootstrap examples are lower-level legacy/recovery operations,
+not the principal global installation path.
 
 ```sh
 aidn bootstrap --target . --profile default --dry-run --json
@@ -336,7 +348,7 @@ cannot be promoted to proof of current state. See the
 The [Windows client migration guide](CODEX_CLIENT_MIGRATION.md) separates the
 package switch, managed-asset transaction and optional legacy global-skill migration.
 
-The candidate record and native acceptance cases for release line 0.9.0 are in
+The historical candidate record and native acceptance cases for release line 0.9.0 are in
 [Codex native qualification](CODEX_NATIVE_QUALIFICATION.md). That record remains
 OPEN; it is a protocol with unfilled evidence fields, not an execution result.
 Publication requires a bounded human-approved temporary-client smoke showing
@@ -344,7 +356,9 @@ startup, an admitted edit, a covered denial and inactivity outside authorized
 projects. N01-N14 remain separate cases and are scheduled on a fresh temporary
 client after the pilot migration; the smoke does not close unexecuted cases.
 
-For the current activation changes, qualification is limited to disposable Windows VM fixtures. Unix execution is UNAVAILABLE and is recorded separately rather than blocking those local fixtures. Native app/IDE qualification remains open. The following inventory and probes are retained from the 0.8.0 base; they do not qualify the new activation behavior:
+For subsequent global/connector results, use [the bounded Windows record](qualification/GLOBAL_WINDOWS.md).
+Native app/IDE qualification remains open. The following inventory and probes
+are retained from the 0.8.0 base; they do not qualify later activation behavior:
 
 Observed as of 2026-09-23 on the Windows VM:
 

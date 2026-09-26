@@ -50,7 +50,10 @@ These command families are intended for users and are covered by public effect p
 Global management applies only with `--write --expect-plan ID`; a wizard
 confirmation invokes that same exact plan. `--json` is formatting only and never
 authorizes writes. Global commands use `global-management.v1`. See
-[the global setup candidate](GLOBAL_SETUP.md) for qualification boundaries.
+[global setup](GLOBAL_SETUP.md) for installation and qualification boundaries.
+`aidn setup` is an interactive executor; its confirmation can apply changes.
+`aidn setup --json` instead previews noninteractively. Source development and
+legacy bootstrap remain explicit entry points, never launcher fallbacks.
 `project add --postgres-mode install --postgres-version VERSION --connection-ref
 env:NAME --admin-connection-ref env:ADMIN` additionally plans local PostgreSQL
 provisioning and explicit empty-database initialization. Existing PostgreSQL
@@ -182,6 +185,9 @@ implicit index imports with reason `postgres_canonical_backend`.
     `db-only`, persist a reviewed digest separately with
     `aidn runtime db-first-artifact --path RUNTIME-STATE.md --content-file <reviewed-digest> --no-materialize --json`.
     Consultation never persists the digest or updates canonical findings.
+  - Canonical head pointers select exact artifacts even when historical path
+    aliases coexist. An inconsistent pointer or ambiguous unheaded alias is a
+    diagnostic requiring repair; consultation never deletes or merges the history.
 - `aidn runtime project-handoff-packet --json`, `--write` for projection writes, and `--sync-relay` for shared relay sync writes
 - `aidn runtime state-reanchor --json` and `--write` for explicit repair of `CURRENT-STATE.md`, `RUNTIME-STATE.md`, and `HANDOFF-PACKET.md` from the active runtime backend
 

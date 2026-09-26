@@ -106,6 +106,12 @@ function main() {
     runJson(handoffProjectScript, ["--target", blockedTarget, "--write", "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", failedTarget, "--write", "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", repeatedTarget, "--write", "--json"], repoRoot, 0);
+    // Import canonical inputs before projecting packets bound to db-only mode.
+    for (const target of [dbOnlyFilelessTarget, dbOnlySummaryFilelessTarget]) {
+      runJson(path.resolve(repoRoot, "tools", "perf", "index-sync.mjs"), [
+        "--target", target, "--store", "sqlite", "--with-content", "--json",
+      ], repoRoot, 0, { AIDN_STATE_MODE: "db-only", AIDN_INDEX_STORE_MODE: "sqlite" });
+    }
     runJson(handoffProjectScript, ["--target", dbOnlyFilelessTarget, "--write", "--json"], repoRoot, 0, {
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",

@@ -31,7 +31,8 @@ flowchart TD
     PWRITE{"Pre-write gate satisfied?"}
     IMP["Implement / explore / reason"]
     RT["Refresh runtime digest when needed"]
-    DRIFT["Drift control via generic gating (R05)"]
+    DRIFT["Explicit drift-check + scope review (R05)"]
+    PROOF["Successful drift_check_completed evidence"]
     MUT["requirements-delta / promote-baseline / handoff-close decisions"]
   end
 
@@ -65,6 +66,7 @@ flowchart TD
   G2 -->|Yes| SNAP --> BASE
 
   DRIFT --> PARK
+  DRIFT -. success only: current branch / COMMITTING / valid timestamp .-> PROOF
   FIX --> PARK
   RULES --> TRIAGE
   DRIFT --> TRIAGE
@@ -91,3 +93,7 @@ flowchart TD
 
   linkStyle default stroke:#1E1F5C,stroke-width:2px;
 ```
+
+Generic evaluation, preview, warning and stop do not complete drift-check or
+refresh its age. The event is evidence of the completed check, not permission
+for an unrelated write or a substitute for semantic review.

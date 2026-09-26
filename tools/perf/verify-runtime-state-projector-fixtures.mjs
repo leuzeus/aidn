@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { DatabaseSync } from "node:sqlite";
 import { deriveCanonicalRepairSummary } from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
+import { resolveRuntimeHeadArtifact, findUniqueAuditArtifact } from "../../src/application/runtime/runtime-head-resolution-service.mjs";
+import { throws as assertThrows } from "node:assert/strict";
 
 function printUsage() {
   console.log("Usage:");
@@ -94,6 +96,21 @@ function main() {
   let primaryError = null;
   let cleanupError = null;
   try {
+    const historical = { artifact_id: 1, path: "docs/audit/RUNTIME-STATE.md", sha256: "historical", content: "current_state_freshness: unknown" };
+    const current = { artifact_id: 2, path: "RUNTIME-STATE.md", sha256: "current", content: "current_state_freshness: ok" };
+    const pointer = { head_key: "runtime_state", artifact_id: 2, artifact_path: "RUNTIME-STATE.md", artifact_sha256: "current" };
+    for (const artifacts of [[historical, current], [current, historical]]) {
+      const payload = { artifacts };
+      assert(resolveRuntimeHeadArtifact({ runtime_state: pointer }, "runtime_state", payload) === current, "explicit head must win over normalized historical aliases regardless of order");
+      assertThrows(() => findUniqueAuditArtifact(payload, "docs/audit/RUNTIME-STATE.md"), /RUNTIME_ARTIFACT_PATH_AMBIGUOUS/);
+      for (const changed of [{ artifact_sha256: "wrong" }, { artifact_id: 1 }]) {
+        assertThrows(() => resolveRuntimeHeadArtifact({ runtime_state: { ...pointer, ...changed } }, "runtime_state", payload), /RUNTIME_HEAD_ARTIFACT_IDENTITY_MISMATCH/);
+      }
+      assertThrows(() => resolveRuntimeHeadArtifact({ runtime_state: { ...pointer, artifact_path: "missing.md" } }, "runtime_state", payload), /RUNTIME_HEAD_ARTIFACT_MISSING_OR_AMBIGUOUS/);
+      assertThrows(() => resolveRuntimeHeadArtifact({ runtime_state: {} }, "runtime_state", payload), /RUNTIME_HEAD_INVALID/);
+    }
+    assert(resolveRuntimeHeadArtifact({ runtime_state: current }, "runtime_state", null) === current, "materialized SQLite head must retain compatibility");
+    assert(findUniqueAuditArtifact({ artifacts: [historical] }, "RUNTIME-STATE.md") === historical, "unique legacy aliases remain readable when no head exists");
     const fixture = "tests/fixtures/repo-installed-core";
     tempRoot = createOwnedTempRoot();
     if (process.env.AIDN_TEST_RUNTIME_STATE_PROJECTOR_INJECT_FAILURE === "after-temp-create") {

@@ -83,13 +83,15 @@ project binding, candidate compatibility, public management CLI and cleanup
 transaction. Migration journals private backups and resumes interrupted npm work.
 The common wizard applies the same exact plans; the source PowerShell entry point
 registers user environment variables. Orphan recovery requires a previous OS boot
-witness, otherwise it refuses. See `docs/GLOBAL_SETUP.md` for the remaining wizard,
-native integration and release qualification boundaries. The version authority
+witness, otherwise it refuses. See `docs/GLOBAL_SETUP.md` for operation and
+recovery boundaries, and [the bounded Windows record](../qualification/GLOBAL_WINDOWS.md)
+for actual native results and cases still open. The version authority
 is recorded in `VERSION`; every subsequent release retains those qualification
 obligations. Release availability does not complete any individual client migration.
 
-Before 0.10.0 publication, require public effect/JSON coverage, update and rollback
+The 0.10.0 publication criteria required public effect/JSON coverage, update and rollback
 preflights against migrated projects, interrupted external-operation recovery,
 actual Windows native discovery and hook execution, and a two-project end-to-end
-trial. Live PostgreSQL proof is separate from fake-driver tests. A real pilot
-migration follows publication in a separate client task.
+trial. These remain regression obligations, not evidence inferred from a tag.
+Live PostgreSQL proof is separate from fake-driver tests. A real pilot migration
+follows publication in a separate client task and needs its own final diagnosis.

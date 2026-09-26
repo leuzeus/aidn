@@ -163,7 +163,7 @@ source_branch: {{SOURCE_BRANCH}}
 - `promote-baseline` MUST stop before promotion when target cycle selection, gap closure, or traceability readiness is incomplete.
 - `convert-to-spike` MUST reuse cycle continuity admission in `EXPLORING` mode before creating spike artifacts.
 - `handoff-close` may keep generic checkpoint semantics, but the runtime skill result MUST expose the real blocking checkpoint outcome.
-- `drift-check` continues to use generic gating as the drift source of truth; blocked gating outcomes are authoritative runtime stops.
+- `drift-check` evaluates the canonical gate and completes only with an explicit `drift_check_completed` event (`skill: drift-check`, `result: ok`). Generic evaluation, preview, warning or stop does not refresh drift age. Freshness requires COMMITTING mode, the current branch and a valid nonfuture timestamp; semantic scope review remains required.
 
 {{EXECUTION_POLICY_BLOCK}}
 

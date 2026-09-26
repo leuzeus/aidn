@@ -3,6 +3,14 @@
 This directory contains BPMN 2.0 XML files intended for import into `bpmn.io`.
 They are aligned with the current runtime baseline, not just the original target vision.
 
+Execution uses the user-level engine; each project retains its activation,
+configuration, extensions and canonical data. Native hook review is separate.
+Installation, explicit project migration, global update/rollback and CI/worktree
+preparation are operator flows in [global setup](../GLOBAL_SETUP.md), not implicit
+side effects of these workflow tasks. PostgreSQL is optional; data migrations
+are always separate. A BPMN task is a conceptual responsibility, not necessarily
+a public command (`repair-layer-*` scripts remain internal).
+
 ## Files
 
 - `aidn-multi-agent-ideal.bpmn`
@@ -95,4 +103,9 @@ They are aligned with the current runtime baseline, not just the original target
 - use `coordinator-orchestrate` only as a bounded opt-in runner; it should stop on unresolved escalation or immediate repeat, not behave like an open-ended scheduler
 - use `agent-selection-policy` with `--agent auto` to prefer specialized adapters for audit and repair relays while preserving explicit adapter override when needed
 - read session topology as plural (`attached_cycles`, `integration_target_cycles`) and dispatch focus as singular (`scope_type`, `scope_id`, `target_branch`); they intentionally solve different problems
-- remember that `drift-check` remains generic by design, but its hook output now exposes the real gate result instead of a masked success wrapper
+- explicit drift-check completion requires `drift_check_completed`, `skill:
+  drift-check`, `result: ok`, COMMITTING mode, the current branch and a valid
+  nonfuture timestamp. Generic evaluations, previews, warnings and stops do not
+  refresh drift age. Semantic scope review remains required. The focused review
+  task and its successful exit condition carry this invariant; macro and relay
+  views summarize it without treating failed review as completed work.
