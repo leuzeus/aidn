@@ -1,9 +1,20 @@
 # Global AIDN setup
 
 The global installation shipped in 0.10.0. Version 0.10.1 corrects PostgreSQL
-artifact writes and checkpoint preservation; use its validated published release
+artifact writes and checkpoint preservation; 0.10.2 adds canonical first-cycle
+admission and runtime projection. Use a validated published release
 for PostgreSQL client migration. ADR-0013 supersedes independent project engine
 versions; existing 0.9.x receipts remain migration inputs.
+
+An established session may explicitly have no active cycle. For `cycle-create`,
+the read-only admission verifies that initial state in the canonical database,
+including session, physical branch and parseable state timestamp. It reports
+`cycle_create_initial_state_verified` without changing `current_state_freshness`
+from `unknown` to `ok`. It does not bypass stale state, repair findings, Git
+hygiene, continuity, activation or native write authorization. Once a cycle is
+declared, its ordinary freshness requirements apply. Runtime projection reads
+canonical db-only/PostgreSQL artifacts rather than local Markdown copies; writing
+a projection still requires explicit intent and does not import it into the DB.
 
 ## Entry points
 
@@ -68,6 +79,30 @@ candidate. An unavailable project, changed observation or required data migratio
 blocks the switch. Update and rollback do not rewrite project data or files.
 
 ## Migration and interrupted operations
+
+### Repairing project hook connectors
+
+The 0.10.2 connector validates the global hook response and emits a native JSON
+denial when its child fails, returns invalid or oversized output, or exceeds the
+8-second transport deadline. Session startup instead reports degraded read-only
+context. Successful admission, canonical refusals and neutral inactive replies
+remain unchanged. This does not protect an invocation that Codex never starts,
+disables or terminates before the connector can reply; shell and MCP writes
+remain outside the covered edit hooks.
+
+A global update does not replace existing project connectors. After switching
+to a validated release containing this correction, prepare their explicit repair:
+
+```powershell
+aidn bootstrap --target ..\example --repair --json
+aidn bootstrap --target ..\example --repair --write --expect-plan PLAN_ID --json
+```
+
+Inspect the exact returned plan before applying it. Repair preserves revoked
+activation and rejects modified managed files; resolve such conflicts explicitly.
+Review the changed executable hooks again in Codex before native execution.
+The wire contract remains integration revision 1. An interrupted child may leave
+an operation lease: the connector never deletes it or assumes descendants ended.
 
 Migration preserves the project configuration and adapter byte for byte. Receipt
 ownership and hashes determine removal of standard skills and agents. Modified

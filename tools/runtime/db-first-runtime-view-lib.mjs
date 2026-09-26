@@ -252,9 +252,10 @@ export function resolveAuditArtifactText({
   sqlitePayload = null,
   sqliteRuntimeHeads = null,
   dbSource = "sqlite",
+  preferDb = false,
 } = {}) {
   const absolutePath = resolveTargetPath(targetRoot, candidatePath);
-  if (exists(absolutePath)) {
+  if (!preferDb && exists(absolutePath)) {
     return {
       exists: true,
       source: "file",
@@ -342,8 +343,8 @@ function findSessionArtifact(sqlitePayload, sessionId) {
   }) ?? null;
 }
 
-export function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = false, sqlitePayload = null, dbSource = "sqlite" } = {}) {
-  const filePath = findSessionFile(auditRoot, sessionId);
+export function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = false, sqlitePayload = null, dbSource = "sqlite", preferDb = false } = {}) {
+  const filePath = preferDb ? null : findSessionFile(auditRoot, sessionId);
   if (filePath) {
     return {
       exists: true,
@@ -413,8 +414,8 @@ function findCycleStatusArtifact(sqlitePayload, cycleId) {
   }) ?? null;
 }
 
-export function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbBacked = false, sqlitePayload = null, dbSource = "sqlite" } = {}) {
-  const filePath = findCycleStatusFile(auditRoot, cycleId);
+export function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbBacked = false, sqlitePayload = null, dbSource = "sqlite", preferDb = false } = {}) {
+  const filePath = preferDb ? null : findCycleStatusFile(auditRoot, cycleId);
   if (filePath) {
     return {
       exists: true,
@@ -532,8 +533,8 @@ export function buildVirtualCurrentStateConsistency({
   checks.updated_at_parseable = {
     pass: currentUpdatedAt !== null,
     details: currentUpdatedAt !== null
-      ? "CURRENT-STATE updated_at parsed from SQLite artifact"
-      : "CURRENT-STATE updated_at is missing or unparseable in SQLite artifact",
+      ? "CURRENT-STATE updated_at parsed from canonical artifact"
+      : "CURRENT-STATE updated_at is missing or unparseable in canonical artifact",
   };
   checks.active_cycle_status_exists = {
     pass: !normalizedActiveCycle || canonicalNone(normalizedActiveCycle) || canonicalUnknown(normalizedActiveCycle)
@@ -582,7 +583,7 @@ export function buildVirtualCurrentStateConsistency({
   const pass = Object.values(checks).every((check) => check?.pass === true);
   return {
     pass,
-    source: currentStateResolution?.source === "sqlite" ? "sqlite" : "file",
+    source: currentStateResolution?.source ?? "missing",
     current_state: {
       active_cycle: normalizedActiveCycle,
       active_session: normalizedActiveSession,

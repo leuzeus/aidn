@@ -458,6 +458,43 @@ function verifyInitialContextReload(repoRoot, tempRoot, source) {
   return results;
 }
 
+function verifyInitialCycleAdmission(repoRoot, tempRoot, source) {
+  const evidence = [];
+  for (const stateMode of ["dual", "db-only"]) {
+    for (const scenario of ["initial", "unknown-cycle", "missing-cycle", "stale"]) {
+      const target = path.join(tempRoot, `initial-cycle-${stateMode}-${scenario}`);
+      fs.cpSync(source, target, { recursive: true });
+      const currentFile = path.join(target, "docs/audit/CURRENT-STATE.md");
+      let current = fs.readFileSync(currentFile, "utf8");
+      for (const [key, value] of Object.entries({ mode: "THINKING", active_session: "S101", active_cycle: scenario === "unknown-cycle" ? "unknown" : scenario === "missing-cycle" ? "C999" : "none",
+        cycle_branch: "none", branch_kind: "session", session_branch: "S101-initial", updated_at: "2026-09-25" })) current = upsertScalarLine(current, key, value);
+      fs.writeFileSync(currentFile, current);
+      fs.writeFileSync(path.join(target, "docs/audit/sessions/S101-alpha.md"), "## WORK MODE - THINKING\nsession_branch: S101-initial\ncycle_branch: none\nprimary_focus_cycle: none\n");
+      installDbOnlyReadyRuntimeFixture(target, stateMode);
+      const runtimeFile = path.join(target, "docs/audit/RUNTIME-STATE.md");
+      fs.writeFileSync(runtimeFile, upsertScalarLine(fs.readFileSync(runtimeFile, "utf8"), "current_state_freshness", scenario === "stale" ? "stale" : "unknown"));
+      initGitRepo(target, { workingBranch: "S101-initial" });
+      fs.appendFileSync(path.join(target, ".git/info/exclude"), "\n/.aidn/runtime/\n");
+      prepareActivationFixture(target, repoRoot);
+      runNodeJson(repoRoot, "tools/perf/index-sync.mjs", ["--target", target, "--store", "sqlite", "--with-content", "--json"], { AIDN_STATE_MODE: stateMode });
+      // Misleading projection must not replace the canonical DB observation.
+      fs.writeFileSync(currentFile, upsertScalarLine(current, "mode", "unknown"));
+      runGit(target, ["add", "."]); runGit(target, ["commit", "-m", "prepared initial session"]);
+      const snapshot = () => JSON.stringify(fs.readdirSync(target, { recursive: true, withFileTypes: true })
+        .filter(entry => entry.isFile()).map(entry => { const file = path.join(entry.parentPath, entry.name); return [path.relative(target, file), fs.readFileSync(file).toString("base64")]; }).sort(([a], [b]) => a.localeCompare(b)));
+      const before = snapshot();
+      const result = runAidnWithEnv(repoRoot, ["runtime", "pre-write-admit", "--target", target, "--skill", "cycle-create", "--strict", "--json"], { AIDN_STATE_MODE: stateMode }, scenario === "initial" ? 0 : 1);
+      assert(result.ok === (scenario === "initial"), `${stateMode}/${scenario}: ${JSON.stringify(result.blocking_reasons)}`);
+      assert(result.context.current_state_source === "sqlite" && result.context.mode === "THINKING", "cycle-create must use canonical context despite misleading projection");
+      assert(result.context.current_state_freshness === (scenario === "stale" ? "stale" : "unknown"), "admission must not invent freshness=ok");
+      assert(Boolean(result.checks.cycle_create_initial_state_verified?.pass) === (scenario === "initial"), "initial-cycle evidence must be explicit and narrow");
+      assert(snapshot() === before, "cycle admission must not change the project or its database");
+      evidence.push({ state_mode: stateMode, scenario, pass: true, unchanged: true });
+    }
+  }
+  return evidence;
+}
+
 function main() {
   let tempRoot = "";
   let primaryError = null;
@@ -475,6 +512,7 @@ function main() {
     }
     const exitPolicyEvidence = verifyExitPolicy(repoRoot);
     const contextReloadEvidence = verifyInitialContextReload(repoRoot, tempRoot, readyTarget);
+    const initialCycleEvidence = verifyInitialCycleAdmission(repoRoot, tempRoot, readyTarget);
     const injectedFailureCleanup = verifyInjectedFailureCleanup(repoRoot);
     const cycleCreateTarget = path.join(tempRoot, "cycle-create");
     const warningTarget = path.join(tempRoot, "repair-warning");
@@ -841,6 +879,7 @@ function main() {
       cycle_create_session_unmerged_blocked: unmergedSessionCycleCreateBlocked,
       exit_policy: exitPolicyEvidence,
       initial_context_reload: contextReloadEvidence,
+      initial_cycle_admission: initialCycleEvidence,
       injected_failure_cleanup: injectedFailureCleanup,
       pass: true,
     };

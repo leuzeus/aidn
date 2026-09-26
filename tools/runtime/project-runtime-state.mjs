@@ -129,6 +129,10 @@ export async function projectRuntimeState({
     warning: "",
   };
   const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
+  const preferDb = dbBackedMode && (effectiveStateMode === "db-only" || dbSource === "postgres");
+  if (preferDb && (!sqliteFallback.exists || sqliteFallback.warning)) {
+    throw new Error("canonical runtime backend is unavailable for runtime projection");
+  }
   const currentStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: "docs/audit/CURRENT-STATE.md",
@@ -136,6 +140,7 @@ export async function projectRuntimeState({
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
     dbSource,
+    preferDb,
   });
   const currentStateMap = parseSimpleMap(currentStateResolution.text);
   const activeSession = normalizeScalar(currentStateMap.get("active_session") ?? "none") || "none";
@@ -161,6 +166,7 @@ export async function projectRuntimeState({
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     dbSource,
+    preferDb,
   });
   const cycleStatusResolution = resolveCycleStatusArtifact({
     targetRoot: absoluteTargetRoot,
@@ -169,6 +175,7 @@ export async function projectRuntimeState({
     dbBacked: dbBackedMode,
     sqlitePayload: sqliteFallback.payload,
     dbSource,
+    preferDb,
   });
   const consistency = currentStateResolution.source === "file"
     ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })

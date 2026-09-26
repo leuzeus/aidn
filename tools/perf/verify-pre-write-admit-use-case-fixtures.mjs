@@ -8,6 +8,7 @@ import {
   knownPreWriteStateMode,
   mergePreWritePolicy,
   sourceOfTruthPoliciesForPreWriteAdmission,
+  verifyInitialCycleContext,
 } from "../../src/application/runtime/pre-write-admit-use-case.mjs";
 
 function assert(condition, message) {
@@ -22,6 +23,34 @@ function verifyPolicyMerge() {
   assert(generic.requireMode === true, "generic policy should keep default mode gate");
   assert(cycleCreate.requireFreshCurrentState === true, "cycle-create should require fresh current state");
   assert(cycleCreate.requireRuntimeClearInDbModes === true, "cycle-create should require runtime clear in DB modes");
+  assert(cycleCreate.allowInitialCycleFreshness && !generic.allowInitialCycleFreshness, "initial cycle handling belongs only to cycle-create");
+}
+
+function verifyInitialCycleContextBoundary() {
+  const current = { active_cycle: "none", cycle_branch: "none", active_session: "S101",
+    branch_kind: "session", session_branch: "S101-initial", mode: "THINKING", updated_at: "2026-09-25" };
+  const sessionText = "## WORK MODE - THINKING\nsession_branch: S101-initial\ncycle_branch: none\nprimary_focus_cycle: none\n";
+  const base = { skill: "cycle-create", effectiveStateMode: "db-only", currentMap: new Map(Object.entries(current)),
+    currentStateResolution: { exists: true, source: "postgres" }, runtimeStateResolution: { exists: true, source: "postgres" },
+    sessionResolution: { exists: true, source: "postgres", logicalPath: "docs/audit/sessions/S101-initial.md", text: sessionText }, currentBranch: "S101-initial" };
+  assert(verifyInitialCycleContext(base), "canonical PostgreSQL initial session must be recognized");
+  for (const [key, value] of [["active_cycle", "unknown"], ["active_cycle", ""], ["active_cycle", "C101"],
+    ["cycle_branch", "feature/C101"], ["active_session", "none"], ["updated_at", "invalid"], ["branch_kind", "cycle"], ["session_branch", "other"]]) {
+    assert(!verifyInitialCycleContext({ ...base, currentMap: new Map(Object.entries({ ...current, [key]: value })) }), `initial cycle must reject ${key}=${value}`);
+  }
+  for (const key of ["currentStateResolution", "runtimeStateResolution", "sessionResolution"]) {
+    assert(!verifyInitialCycleContext({ ...base, [key]: { ...base[key], exists: false } }), `initial cycle must reject missing ${key}`);
+    assert(!verifyInitialCycleContext({ ...base, [key]: { ...base[key], source: "file" } }), `initial cycle must reject file fallback for ${key}`);
+  }
+  for (const skill of ["cycle-close", "requirements-delta", "promote-baseline", "context-reload"]) {
+    assert(!verifyInitialCycleContext({ ...base, skill }), `initial handling must not admit ${skill}`);
+  }
+  for (const text of [sessionText.replace("THINKING", "COMMITTING"), sessionText.replace("primary_focus_cycle: none", "primary_focus_cycle: C101"),
+    sessionText.replace("primary_focus_cycle: none", ""), sessionText + "integration_target_cycle: C101\n"]) {
+    assert(!verifyInitialCycleContext({ ...base, sessionResolution: { ...base.sessionResolution, text } }), "session inconsistency must not qualify as initial");
+  }
+  assert(!verifyInitialCycleContext({ ...base, currentBranch: "other" }), "physical branch must agree");
+  assert(!verifyInitialCycleContext({ ...base, sessionResolution: { ...base.sessionResolution, logicalPath: "docs/audit/sessions/S1010-other.md" } }), "a session ID prefix collision is not the same session");
 }
 
 function verifyResultAssembly() {
@@ -236,6 +265,7 @@ function verifyGenericWorkflowGates() {
 function main() {
   try {
     verifyPolicyMerge();
+    verifyInitialCycleContextBoundary();
     verifyResultAssembly();
     verifySourceOfTruthHelpers();
     verifySourceOfTruthRuntimeGates();

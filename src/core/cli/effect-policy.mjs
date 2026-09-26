@@ -833,7 +833,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     effectClass: "read-only",
     jsonContract: "runtime-pre-write-admit.v1.schema.json",
     safeArgs: ["runtime", "pre-write-admit", "--skill", "cycle-create", "--json"],
-    notes: "Read-only admission; optional --native-request-stdin evaluates one native patch scope. Generic admission is orientation, never universal write authorization. Neither form repairs or applies the patch.",
+    notes: "Read-only admission; cycle-create can verify an explicit canonical initial session without inventing cycle freshness. Optional --native-request-stdin evaluates one native patch scope. Generic admission is orientation, never universal write authorization. Neither form repairs or applies the patch.",
   }),
   commandPolicy({
     id: "runtime-handoff-admit",
