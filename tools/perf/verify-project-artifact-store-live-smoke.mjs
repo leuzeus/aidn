@@ -107,7 +107,7 @@ else {
     const initialCurrent = 'mode: THINKING\nactive_session: S001\nactive_cycle: none\ncycle_branch: none\nbranch_kind: session\nsession_branch: S001-initial\nupdated_at: 2026-09-25\n';
     await upsert({ path: 'CURRENT-STATE.md', content: initialCurrent });
     await upsert({ path: 'sessions/S001-test.md', content: '## WORK MODE - THINKING\nsession_branch: S001-initial\ncycle_branch: none\nprimary_focus_cycle: none\n' });
-    await upsert({ path: 'RUNTIME-STATE.md', content: 'runtime_state_mode: db-only\nrepair_layer_status: ok\nrepair_routing_hint: continue\ncurrent_state_freshness: unknown\n' });
+    await upsert({ path: 'RUNTIME-STATE.md', content: 'runtime_state_mode: db-only\nrepair_layer_status: clean\nrepair_routing_hint: continue\ncurrent_state_freshness: unknown\n' });
     fs.mkdirSync(path.join(targetRoot, 'docs/audit/sessions'), { recursive: true });
     fs.writeFileSync(path.join(targetRoot, 'docs/audit/CURRENT-STATE.md'), 'mode: unknown\nactive_cycle: C999\nupdated_at: invalid\n');
     fs.writeFileSync(path.join(targetRoot, 'docs/audit/sessions/S001-test.md'), 'session_branch: wrong\n');
@@ -118,6 +118,7 @@ else {
     assert.equal(admitted.ok, true); assert.equal(admitted.context.current_state_source, 'postgres');
     assert.equal(admitted.context.current_state_freshness, 'unknown');
     assert.equal(admitted.checks.cycle_create_initial_state_verified.pass, true);
+    assert.equal(admitted.context.repair_layer_status, 'clean');
     const projected = cli('project-runtime-state');
     assert.equal(projected.digest.current_state_source, 'postgres');
     assert.equal(projected.digest.session_artifact_source, 'postgres');
