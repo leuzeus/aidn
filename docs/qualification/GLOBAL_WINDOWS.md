@@ -63,3 +63,22 @@ For any new release, retain its exact manifest/commit/checksums and relevant gat
 outputs. For a real project, separately verify connection identity, unchanged
 data, root-specific receipts, integration and native review. No source version,
 installation success or documentation edit turns SKIP into PASS.
+
+A later real-project review attempt identified an additional host boundary:
+the app's AppData view contained the global installation while an ordinary
+Windows PowerShell console could not resolve its launcher support module.
+The review preflight stopped before the native client opened. This is a failed
+visibility prerequisite, not native execution evidence, and does not invalidate
+the four earlier disposable-client observations. A non-redirected home and a
+fresh cross-context diagnosis are required before resuming that qualification.
+After explicit consolidation, the ordinary console verified the same 0.10.8
+package and exposed assets. The subsequent native client startup refused because
+its background server lacked a complete local package. Its documented standalone
+mode was selected for the next attempt. Cross-context visibility is established;
+this startup failure still provides no native hook execution or trust evidence.
+Standalone configuration inspection then found the project layer disabled by
+an extended-path versus canonical-path trust-key mismatch. After explicit user
+authorization of the canonical key for the same physical repository, the native
+`hooks/list` API discovered both definitions as untrusted. Discovery and project
+trust are therefore established for that client; human hook review and native
+execution remain separate steps.

@@ -35,6 +35,30 @@ For offline input, add `-PackagePath FILE -PackageSha256 HASH` and use its exact
 `-ReleaseVersion VERSION`. Apply identical arguments with the displayed plan ID;
 a changed latest target invalidates the plan instead of silently selecting it.
 
+### Windows path visibility
+
+The default home is `%LOCALAPPDATA%\AIDN`. Some packaged Windows applications
+redirect that logical path into an application-private location: a successful
+installation inside the app can then be absent in an ordinary PowerShell console.
+`GLOBAL_HOME_REDIRECTED` refuses such a home before creating a runtime or lock;
+registration also refuses it. No automatic move, alternate engine or receipt
+rewrite is performed.
+
+Choose an absolute, non-redirected `AIDN_HOME` before the first preview, for
+example `$env:AIDN_HOME = Join-Path $env:USERPROFILE 'AIDN'`, then use the normal
+exact-plan installation. Verify from both the app and an ordinary console that
+the launcher resolves the same installation ID, generation and managed assets.
+Merely finding `aidn` on both PATHs is insufficient.
+
+An existing redirected installation needs a reviewed transfer with a private
+backup, a same-version verified package, preserved project registry and explicit
+project rebinding. Do not copy or edit machine receipts by hand. There is no
+public registry-import or home-relocation command; a registry transfer remains
+an explicit maintenance operation with validation and atomic replacement. Keep
+the old home resolvable until all dependent bindings have migrated, then retain
+its restorable archive and remove its obsolete PATH entry. Neither this transfer
+nor a native hook review migrates a PostgreSQL database.
+
 `aidn setup` and `aidn-setup` open the common wizard. Source launch remains
 `node tools/setup/global-cli.mjs setup`. The wizard is an interactive executor:
 confirmation may apply changes. It is not a read-only consultation;
