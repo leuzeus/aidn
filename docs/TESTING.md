@@ -259,6 +259,32 @@ native Codex, OS confinement and concurrent workers remain unqualified here.
 The gate belongs only to the runtime family; the four context-resilience groups
 and their 43 historical invocations are unchanged.
 
+For durable agent ownership, run `npm run perf:verify-agent-execution-postgres`
+with `PG_BIN_DIR` pointing to the absolute directory containing `initdb`,
+`pg_ctl` and `postgres`. The required `runtime-agent-execution-postgres` gate
+creates its own temporary cluster, database credentials and loopback listener;
+it never consumes an installed project's PostgreSQL URL. Missing binaries or
+the optional `pg` driver fail this required gate, rather than producing a skip.
+CI resolves and verifies the PostgreSQL binaries before running the runtime
+family once. `verify:release` selects this gate too and requires the same
+binaries and locked optional driver; the publication workflow performs that
+preflight explicitly. Other families and historical CLI operations do not
+acquire a PostgreSQL prerequisite. No system service or existing database is modified.
+
+The suite uses separate Node processes and an IPC start barrier for concurrent
+migration, reservations and claims. It checks stale ownership, lease expiry,
+durable launch intent, immutable event replay, canonical planning/artifact
+consistency, reservation-aware writers and explicit reconciliation. Activation
+and termination verifiers are test doubles: this proves database transitions,
+not native admission, revocation or termination of a Codex process tree.
+Cluster shutdown and removal are checked on success and injected failure.
+This required disposable-database gate is distinct from both optional external
+PostgreSQL smokes. The required `runtime-shared-coordination-concurrency` gate
+also selects the historical simulated concurrency fixtures exactly once.
+Existing shared-coordination backup/restore fixtures cover the historical
+planning, handoff and coordination snapshot. They do not establish backup or
+restore coverage for the new execution tables.
+
 For source-of-truth policy and concept ownership, run:
 
 - `npm run perf:verify-source-of-truth-policy`

@@ -77,8 +77,13 @@ candidate engine, model and effort, without silent substitution. Future worker
 worktrees must be prepared against that candidate with their own activation and
 installation evidence. A task ownership lease is not a generation lease: it
 cannot authorize a global switch or replace this ADR's operation/update mutex.
-Lot 2 supplies `model_only` contracts and does not install engines, issue leases,
-change project bindings or qualify native execution.
+Lot 2 supplied `model_only` contracts. Lot 3 adds `persistence_only` PostgreSQL
+task ownership leases and durable attempt metadata; it does not install engines,
+change project bindings or qualify native execution. These 60-second task leases
+and their future 10-second heartbeats are distinct from the global generation
+lease. Injected activation/termination fixture verifiers cannot establish engine
+preparation, native authorization or OS process confinement. No executor or
+scheduler is available in this increment.
 
 ## Migration ownership
 

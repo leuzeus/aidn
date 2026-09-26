@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 export const POSTGRES_SHARED_COORDINATION_SCHEMA_NAME = "aidn_shared";
-export const POSTGRES_SHARED_COORDINATION_SCHEMA_VERSION = 2;
+export const POSTGRES_SHARED_COORDINATION_SCHEMA_VERSION = 3;
 export const POSTGRES_SHARED_COORDINATION_DRIVER = Object.freeze({
   backend_kind: "postgres",
   package_name: "pg",
@@ -70,6 +70,10 @@ export const POSTGRES_SHARED_COORDINATION_TABLES = Object.freeze([
     lifecycle: "append-only",
     primary_key: ["project_id", "workspace_id", "record_id"],
   }),
+  Object.freeze({ table: "execution_runs", purpose: "reserve a canonical scope for one bounded execution run", lifecycle: "transactional-with-revision", primary_key: ["run_id"] }),
+  Object.freeze({ table: "execution_tasks", purpose: "retain the frozen delegated tasks of a run", lifecycle: "transactional-with-revision", primary_key: ["run_id", "task_id"] }),
+  Object.freeze({ table: "execution_attempts", purpose: "retain attempt ownership, launch intent, delegation and terminal evidence", lifecycle: "transactional-with-generation", primary_key: ["attempt_id"] }),
+  Object.freeze({ table: "execution_events", purpose: "retain immutable idempotent execution events", lifecycle: "append-only", primary_key: ["attempt_id", "event_id"] }),
 ]);
 
 export const POSTGRES_SHARED_COORDINATION_NON_GOALS = Object.freeze([
@@ -93,6 +97,13 @@ function normalizeEnvKey(value) {
 
 export function getPostgresSharedCoordinationSchemaFile() {
   return path.resolve(THIS_DIR, "..", "..", "..", "tools", "perf", "sql", "shared-coordination-postgres.sql");
+}
+
+export function getPostgresSharedCoordinationMigrationFiles() {
+  return [
+    { version: 2, file: getPostgresSharedCoordinationSchemaFile() },
+    { version: 3, file: path.resolve(THIS_DIR, "..", "..", "..", "tools", "perf", "sql", "shared-coordination-postgres-v3.sql") },
+  ];
 }
 
 export function listPostgresSharedCoordinationTables() {
@@ -203,8 +214,8 @@ export function describePostgresSharedCoordinationBootstrap(options = {}) {
     connection,
     bootstrap_steps: [
       "Resolve the connection string from an explicit option or an env-backed locator reference.",
-      `Create schema ${POSTGRES_SHARED_COORDINATION_SCHEMA_NAME} if it does not exist.`,
-      "Apply shared-coordination-postgres.sql inside a transaction.",
+      "Acquire the stable migration advisory lock and reread the applied version inside a transaction.",
+      "Reject newer schemas and apply only missing versioned migrations, including shared-coordination-postgres-v3.sql.",
       "Record the applied schema version in aidn_shared.schema_migrations.",
       "Run a lightweight healthcheck before enabling shared coordination writes.",
     ],

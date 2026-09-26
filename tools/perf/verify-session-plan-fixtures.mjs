@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { runSessionPlan } from '../runtime/session-plan.mjs';
 
 function parseArgs(argv) {
   const args = {
@@ -66,7 +68,7 @@ function readText(filePath) {
   return fs.readFileSync(filePath, "utf8");
 }
 
-function main() {
+async function main() {
   let tempTarget = null;
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -211,6 +213,63 @@ function main() {
     assert(backlogArtifact && backlogArtifact.path === "backlog/BL-S401-session-planning.md", "missing backlog artifact in sqlite store");
     assert(currentStateArtifact && currentStateArtifact.path === "CURRENT-STATE.md", "missing CURRENT-STATE artifact in sqlite store");
 
+    const beforeRefusal = [backlogPath, draftPath, currentStatePath].map(file => readText(file));
+    let planningWrites = 0;
+    const reservedCoordination = {
+      enabled: true, configured: true, backend_kind: 'postgres', status: 'ready',
+      store: {
+        async healthcheck() { return { ok: true, schema_status: 'ready', compatibility_status: 'project-scoped' }; },
+        async getPlanningState() { return { ok: true, planning_state: null }; },
+        async registerWorkspace() { return { ok: true }; },
+        async registerWorktreeHeartbeat() { return { ok: true }; },
+        async upsertPlanningState() {
+          planningWrites++;
+          return { ok: false, error: { code: 'SHARED_EXECUTION_SCOPE_RESERVED', message: 'SHARED_EXECUTION_SCOPE_RESERVED' } };
+        },
+      },
+    };
+    let reservationRefused = false;
+    try {
+      await runSessionPlan({ targetRoot: tempTarget, sessionId: 'S401', promote: true, dbFirst: 'false', stateMode: 'files',
+        nextStep: 'must not replace the accepted projection', sharedCoordination: reservedCoordination });
+    } catch (error) {
+      reservationRefused = error.code === 'ARTIFACT_EXECUTION_SCOPE_RESERVED';
+    }
+    assert(reservationRefused && planningWrites === 1, 'reserved shared planning must refuse before visible projection');
+    assert(JSON.stringify([backlogPath, draftPath, currentStatePath].map(file => readText(file))) === JSON.stringify(beforeRefusal),
+      'reserved planning must preserve backlog, draft and current-state bytes');
+
+    let publishedPlanning = null;
+    let previousBacklogAtSync = "";
+    const acceptingCoordination = {
+      ...reservedCoordination,
+      store: {
+        ...reservedCoordination.store,
+        async upsertPlanningState(input) {
+          publishedPlanning = input;
+          previousBacklogAtSync = readText(backlogPath);
+          return { ok: true, planning_state: { ...input, revision: 1 } };
+        },
+      },
+    };
+    const hashedPromotion = await runSessionPlan({
+      targetRoot: tempTarget, sessionId: "S401", promote: true, stateMode: "dual", sqliteFile,
+      items: ["préparer la délégation et vérifier les références"],
+      nextStep: "qualifier le contenu canonique exact", sharedCoordination: acceptingCoordination,
+    });
+    const canonicalStore = createArtifactStore({ sqliteFile });
+    let publishedArtifact;
+    try { publishedArtifact = canonicalStore.getArtifact("backlog/BL-S401-session-planning.md"); }
+    finally { canonicalStore.close(); }
+    const publishedContent = Buffer.from(publishedArtifact.content, publishedArtifact.content_format === "base64" ? "base64" : "utf8");
+    const expectedHash = createHash("sha256").update(publishedContent).digest("hex");
+    assert(hashedPromotion.shared_coordination_sync.ok === true, "shared planning promotion should succeed");
+    assert(publishedPlanning.backlogArtifactSha256 === expectedHash && publishedArtifact.sha256 === expectedHash,
+      "shared planning hash must identify the exact canonical backlog bytes");
+    assert(fs.readFileSync(backlogPath).equals(publishedContent), "materialized backlog must equal the hashed canonical artifact");
+    assert(publishedPlanning.backlogArtifactSha256 !== createHash("sha256").update(previousBacklogAtSync, "utf8").digest("hex"),
+      "shared planning must hash the prepared candidate before writing, not the old projection");
+
     const output = {
       ts: new Date().toISOString(),
       source_target: sourceTarget,
@@ -227,6 +286,8 @@ function main() {
         backlog_merged_update: backlogText.includes("- record coordinator addendum"),
         sqlite_backlog_present: Boolean(backlogArtifact),
         sqlite_current_state_present: Boolean(currentStateArtifact),
+        reserved_planning_preserves_local_files: reservationRefused,
+        shared_planning_hash_matches_canonical_content: publishedPlanning.backlogArtifactSha256 === expectedHash,
       },
       pass: true,
     };

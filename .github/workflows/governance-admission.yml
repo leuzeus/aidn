@@ -147,8 +147,12 @@ jobs:
         run: node tools/ci/fetch-branch-policy-sources.mjs
 
       - name: Install Locked Gate Dependencies
-        if: ${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' }}
-        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund
+        if: ${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' || matrix.family == 'runtime' }}
+        run: npm ci --include=dev --include=optional --ignore-scripts --no-audit --no-fund
+
+      - name: Resolve Ephemeral PostgreSQL Runtime
+        if: ${{ matrix.family == 'runtime' }}
+        run: node tools/ci/resolve-postgres-test-runtime.mjs
 
       - name: Run Selected Family Once
         env:

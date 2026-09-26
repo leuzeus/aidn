@@ -16,6 +16,9 @@ function createFakePgClientFactory() {
     workspaceRegistry: new Map(),
     worktreeRegistry: new Map(),
     schemaMigrations: [2],
+    queryLog: [],
+    onMigrationLock: null,
+    reserved: false,
   };
 
   function buildProjectSummaryRows(projectId = "") {
@@ -40,6 +43,14 @@ function createFakePgClientFactory() {
         async end() {},
         async query(text, values = []) {
           const sql = String(text).trim();
+          state.queryLog.push({ sql, values });
+          if (sql.includes("pg_advisory_xact_lock")) {
+            if (sql.includes("1095320654")) state.onMigrationLock?.();
+            return { rows: [] };
+          }
+          if (sql.includes("to_regclass('aidn_shared.execution_runs')")) return { rows: [{ execution_runs: "aidn_shared.execution_runs" }] };
+          if (sql.includes("FROM aidn_shared.execution_runs")) return { rows: state.reserved ? [{ run_id: "reserved-run" }] : [] };
+          if (sql.includes("CREATE TABLE aidn_shared.execution_runs")) return { rows: [] };
           if (!sql || sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK" || sql.startsWith("CREATE SCHEMA") || sql.startsWith("CREATE TABLE") || sql.startsWith("CREATE INDEX")) {
             return { rows: [] };
           }
@@ -93,6 +104,7 @@ function createFakePgClientFactory() {
           if (sql.includes("INSERT INTO aidn_shared.planning_states")) {
             const key = `${values[0]}:${values[1]}:${values[2]}`;
             const previous = state.planningStates.get(key);
+            if (previous && values[15] !== null && values[15] !== undefined && previous.revision !== values[15]) return { rows: [] };
             const row = {
               project_id: values[0],
               workspace_id: values[1],
@@ -209,7 +221,7 @@ function createFakePgClientFactory() {
           }
           if (sql.includes("FROM information_schema.tables")) {
             return {
-              rows: [
+              rows: state.schemaMigrations.length === 0 ? [] : [
                 { table_name: "coordination_records" },
                 { table_name: "handoff_relays" },
                 { table_name: "planning_states" },
@@ -217,6 +229,7 @@ function createFakePgClientFactory() {
                 { table_name: "schema_migrations" },
                 { table_name: "workspace_registry" },
                 { table_name: "worktree_registry" },
+                ...(Math.max(...state.schemaMigrations) >= 3 ? ["execution_runs", "execution_tasks", "execution_attempts", "execution_events"].map(table_name => ({ table_name })) : []),
               ],
             };
           }
@@ -266,6 +279,31 @@ async function main() {
 
     const bootstrap = await store.bootstrap();
     assert(bootstrap.ok === true, "bootstrap should succeed");
+    assert(fake.state.queryLog.filter(row => row.sql.includes("CREATE TABLE aidn_shared.execution_runs")).length === 1, "v2 upgrade should apply v3 exactly once");
+    assert(!fake.state.queryLog.some(row => row.sql.startsWith("CREATE SCHEMA")), "v2 upgrade must not replay the v2 bootstrap DDL");
+    const lockIndex = fake.state.queryLog.findIndex(row => row.sql.includes("1095320654"));
+    const versionIndex = fake.state.queryLog.findIndex(row => row.sql.includes("SELECT schema_version"));
+    assert(lockIndex >= 0 && lockIndex < versionIndex, "bootstrap must read the version under the stable lock");
+    fake.state.queryLog.length = 0;
+    assert((await store.bootstrap()).ok, "repeated bootstrap should succeed");
+    assert(!fake.state.queryLog.some(row => /CREATE|ALTER|UPDATE|INSERT/.test(row.sql)), "current schema bootstrap must execute no DDL or metadata mutation");
+
+    const stalePreview = createFakePgClientFactory();
+    stalePreview.state.onMigrationLock = () => { stalePreview.state.schemaMigrations = [2, 3]; };
+    assert((await createPostgresSharedCoordinationStore({ clientFactory: stalePreview.factory }).bootstrap()).ok, "version reread must accept migration completed by another caller");
+    assert(!stalePreview.state.queryLog.some(row => /CREATE TABLE/.test(row.sql)), "migration completed before lock acquisition must not be replayed");
+
+    const future = createFakePgClientFactory();
+    future.state.schemaMigrations = [2, 3, 4];
+    const futureBootstrap = await createPostgresSharedCoordinationStore({ clientFactory: future.factory }).bootstrap();
+    assert(!futureBootstrap.ok && futureBootstrap.error.code === "AIDN_SCHEMA_VERSION_AHEAD", "future schema must refuse bootstrap");
+    assert(!future.state.queryLog.some(row => /CREATE|INSERT/.test(row.sql)), "future schema refusal must not mutate schema");
+    assert(future.state.queryLog.at(-1)?.sql === "ROLLBACK", "future schema refusal rolls back transaction");
+
+    const empty = createFakePgClientFactory();
+    empty.state.schemaMigrations = [];
+    assert((await createPostgresSharedCoordinationStore({ clientFactory: empty.factory }).bootstrap()).ok, "empty backend should apply the explicit bootstrap");
+    assert(JSON.stringify(empty.state.schemaMigrations) === "[2,3]", "empty bootstrap must record both versions");
 
     const workspaceRegistration = await store.registerWorkspace({
       projectId: "project-1",
@@ -319,6 +357,24 @@ async function main() {
     });
     assert(planningRead.ok === true, "planning read should succeed");
     assert(planningRead.planning_state.planning_status === "promoted", "planning read should expose planning status");
+
+    const planningIdentity = { projectId: "project-1", workspaceId: "workspace-1", planningKey: "session:S101" };
+    fake.state.queryLog.length = 0;
+    const cas = await store.upsertPlanningState({ ...planningIdentity, expectedRevision: 0, payload: { accepted: true } });
+    assert(cas.ok && cas.planning_state.revision === 1, "matching planning CAS should increment revision exactly once");
+    assert(fake.state.queryLog[0]?.sql === "BEGIN" && fake.state.queryLog.at(-1)?.sql === "COMMIT", "planning guard and mutation belong to one transaction");
+    const reservationRead = fake.state.queryLog.findIndex(row => row.sql.includes("FROM aidn_shared.execution_runs"));
+    const planningMutation = fake.state.queryLog.findIndex(row => row.sql.includes("INSERT INTO aidn_shared.planning_states"));
+    assert(reservationRead >= 0 && reservationRead < planningMutation, "reservation guard must precede the planning mutation");
+    const stale = await store.upsertPlanningState({ ...planningIdentity, expectedRevision: 0, payload: { stale: true } });
+    assert(!stale.ok && stale.error.message.includes("SHARED_PLANNING_REVISION_CONFLICT"), "stale planning CAS must fail");
+    assert(fake.state.queryLog.at(-1)?.sql === "ROLLBACK", "stale CAS must roll back");
+    assert((await store.getPlanningState(planningIdentity)).planning_state.payload.accepted === true, "stale CAS must preserve the accepted payload");
+    fake.state.reserved = true;
+    const reserved = await store.upsertPlanningState({ ...planningIdentity, payload: { forbidden: true } });
+    assert(!reserved.ok && reserved.error.message.includes("SHARED_EXECUTION_SCOPE_RESERVED"), "legacy planning writes must respect run reservation even without CAS");
+    fake.state.reserved = false;
+    assert((await store.getPlanningState(planningIdentity)).planning_state.revision === 1, "reserved write must preserve revision");
 
     const handoffWrite = await store.appendHandoffRelay({
       projectId: "project-1",
@@ -400,7 +456,7 @@ async function main() {
     const health = await store.healthcheck();
     assert(health.ok === true, "healthcheck should succeed");
     assert(health.schema_status === "ready", "healthcheck should expose ready schema status");
-    assert(health.latest_applied_schema_version === 2, "healthcheck should expose latest schema version");
+    assert(health.latest_applied_schema_version === 3, "healthcheck should expose latest schema version");
     assert(health.registered_project_count === 1, "healthcheck should expose registered project count");
     assert(health.compatibility_status === "project-scoped", "healthcheck should expose project-scoped compatibility when no legacy rows remain");
 

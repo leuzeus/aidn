@@ -21,8 +21,8 @@ export const GOVERNED_CONCEPTS = Object.freeze([
     source_of_truth_concept: concept,
     metadata_concept: concept,
     required: ["source_of_truth", "metadata"],
-    coverage_kind: "model_only",
-    coverage_note: "Versioned internal contracts and governance only; supervised execution is unavailable. Future authority is PostgreSQL exclusively; no runtime instances or local fallback are implemented.",
+    coverage_kind: "persistence_only",
+    coverage_note: "Versioned contracts and PostgreSQL transactional persistence; supervised execution is unavailable. No executor, native delegation or scheduler is implemented, and no runtime instances are inferred from policy coverage.",
   })),
   {
     concept: "project_activation",

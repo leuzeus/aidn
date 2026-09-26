@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { buildSessionPlanDiagnostic } from "../../src/application/runtime/session-plan-use-case.mjs";
@@ -770,21 +771,6 @@ export async function runSessionPlan({
     promoted: promote,
   };
 
-  const draftWrite = writeJsonIfChanged(resolveTargetPath(absoluteTargetRoot, draftFile), draftPayload, {
-    isEquivalent(previousContent) {
-      try {
-        const previous = JSON.parse(previousContent);
-        const left = { ...previous };
-        const right = { ...draftPayload };
-        delete left.updated_at;
-        delete right.updated_at;
-        return JSON.stringify(left) === JSON.stringify(right);
-      } catch {
-        return false;
-      }
-    },
-  });
-
   let backlogWrite = null;
   let backlogRelative = "none";
   let backlogOperation = "none";
@@ -830,10 +816,10 @@ export async function runSessionPlan({
         })],
       };
     backlogOperation = existingBacklog ? "updated" : "created";
-    backlogWrite = writeUtf8IfChanged(backlogAbsolute, buildBacklogMarkdown(backlogPayload));
+    const backlogText = buildBacklogMarkdown(backlogPayload);
+    let nextCurrentState = currentStateText;
 
     if (currentStateText) {
-      let nextCurrentState = currentStateText;
       nextCurrentState = alignCurrentStateGovernance({
         text: nextCurrentState,
         updatedAt: draftPayload.updated_at,
@@ -856,7 +842,21 @@ export async function runSessionPlan({
         backlogPayload.planning_arbitration_status,
         "backlog_selected_execution_scope",
       );
-      currentStateWrite = writeUtf8IfChanged(currentStatePath, nextCurrentState);
+    }
+
+    // Resolve shared refusal before writing any local projection or draft.
+    // Each canonical writer also fences its own transaction; this sequence
+    // does not claim atomicity across the shared and artifact stores.
+    sharedCoordinationSync = await syncSharedPlanningState(sharedCoordinationResolution, {
+      workspace,
+      payload: backlogPayload,
+      backlogFile: backlogRelative,
+      backlogSha256: createHash("sha256").update(backlogText, "utf8").digest("hex"),
+      planningKey: `session:${resolvedSessionId}`,
+    });
+    if (['ARTIFACT_EXECUTION_SCOPE_RESERVED', 'SHARED_EXECUTION_SCOPE_RESERVED'].includes(sharedCoordinationSync?.result?.error?.code)
+        || ['ARTIFACT_EXECUTION_SCOPE_RESERVED', 'SHARED_EXECUTION_SCOPE_RESERVED'].includes(sharedCoordinationSync?.reason)) {
+      throw Object.assign(new Error('ARTIFACT_EXECUTION_SCOPE_RESERVED'), { code: 'ARTIFACT_EXECUTION_SCOPE_RESERVED' });
     }
 
     if (shouldPersistDbFirst(effectiveStateMode, dbFirst)) {
@@ -864,7 +864,8 @@ export async function runSessionPlan({
         target: absoluteTargetRoot,
         auditRoot: "docs/audit",
         path: backlogRelative.replace(/^docs\/audit\//, ""),
-        sourceFile: resolveTargetPath(absoluteTargetRoot, backlogRelative),
+        content: backlogText,
+        materialize: "false",
         kind: "other",
         family: "support",
         subtype: "session_backlog",
@@ -877,7 +878,8 @@ export async function runSessionPlan({
           target: absoluteTargetRoot,
           auditRoot: "docs/audit",
           path: "CURRENT-STATE.md",
-          sourceFile: currentStatePath,
+          content: nextCurrentState,
+          materialize: "false",
           kind: "other",
           family: "normative",
           subtype: "current_state",
@@ -888,13 +890,27 @@ export async function runSessionPlan({
       }
     }
 
-    sharedCoordinationSync = await syncSharedPlanningState(sharedCoordinationResolution, {
-      workspace,
-      payload: backlogPayload,
-      backlogFile: backlogRelative,
-      planningKey: `session:${resolvedSessionId}`,
-    });
+    backlogWrite = writeUtf8IfChanged(backlogAbsolute, backlogText);
+    if (currentStateText) currentStateWrite = writeUtf8IfChanged(currentStatePath, nextCurrentState);
+    // Visible outputs still follow the historical session-plan contract.
+    // Materialization is delayed until every canonical write above succeeded.
+    for (const item of dbFirstWrites) item.materialized = effectiveStateMode === 'dual' || effectiveStateMode === 'files';
   }
+
+  const draftWrite = writeJsonIfChanged(resolveTargetPath(absoluteTargetRoot, draftFile), draftPayload, {
+    isEquivalent(previousContent) {
+      try {
+        const previous = JSON.parse(previousContent);
+        const left = { ...previous };
+        const right = { ...draftPayload };
+        delete left.updated_at;
+        delete right.updated_at;
+        return JSON.stringify(left) === JSON.stringify(right);
+      } catch {
+        return false;
+      }
+    },
+  });
 
   const output = {
     target_root: absoluteTargetRoot,

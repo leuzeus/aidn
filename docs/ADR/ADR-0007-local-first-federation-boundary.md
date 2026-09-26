@@ -61,11 +61,17 @@ Stable federation contract:
 
 ADR-0014 defines a future single-host supervised path whose run, delegated-task
 and attempt metadata require PostgreSQL. This conditional requirement does not
-change optional PostgreSQL for existing workflows. Lot 2 provides `model_only`
-contracts and does not extend the stable shared surface or create any backend
-instances. Transcripts and worktrees stay local, with only bounded references,
-sizes and hashes in future shared results. No existing checkout-bound artifact
-is relocated by this extension.
+change optional PostgreSQL for existing workflows. After Lot 2's `model_only`
+contracts, Lot 3 adds `persistence_only` authority through the separate
+`AgentExecutionStore` port and shared schema 3 tables `execution_runs`,
+`execution_tasks`, `execution_attempts` and `execution_events`. Reservation
+requires canonical runtime and supervision to share one PostgreSQL database
+transaction; file-authoritative state and separate databases are refused.
+No alternate supervision store is provided. Transcripts and worktrees stay
+local, with only bounded references, sizes and hashes in shared results and no
+automatic purge. No existing checkout-bound artifact is relocated by this
+extension. An executor, native delegated admission and public supervisor remain
+unavailable.
 
 ## Options Compared
 

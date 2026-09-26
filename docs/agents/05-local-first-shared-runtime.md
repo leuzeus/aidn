@@ -65,12 +65,26 @@ The default expectation is local recovery first, explicit shared coordination se
 
 ADR-0014 reserves PostgreSQL authority for the future opt-in supervised execution
 path (`execution_run`, `delegated_task`, `execution_attempt`). Existing sequential
-workflows continue to support operation without PostgreSQL. Lot 2 ships pure
-contracts with `model_only` coverage: no shared store, schema migration, worker
-or scheduler is available, and the current shared coordination port is unchanged.
+workflows continue to support operation without PostgreSQL. Lot 3 adds a separate
+AgentExecutionStore and explicit shared schema 2 to 3 migration, with
+`persistence_only` coverage. Canonical runtime and supervision must share one
+PostgreSQL transaction. Writers check reservations atomically. No executor or
+scheduler is available. Readiness and reads do not register, heartbeat or migrate;
+intact v2 remains readable for backup while writes require explicit migration.
+
+The migration creates `execution_runs`, `execution_tasks`, `execution_attempts`
+and `execution_events` under a stable advisory lock, rereads the schema version
+there, and never replays already-applied DDL. A future schema version is refused.
+The `agent-execution-store-port.mjs` contract and PostgreSQL adapter define this
+separate persistence surface. A positive shared planning revision is required
+for reservation; the initial historical revision stays zero without a hidden
+update. No SQLite, file or in-memory supervision authority is available.
 
 Transcripts and bulky outputs remain local; shared metadata will contain only
 bounded references, byte counts and hashes. Task ownership leases are distinct
 from worktree heartbeats and global engine-generation leases. No claim, heartbeat
 or read-only readiness check may implicitly bootstrap DDL. Delegation and results
 belong to attempts; expiration requires reconciliation before another launch.
+Fixture-injected `verifyActivation` and `verifyTermination` are not native
+qualification. This increment supplies no native delegated admission, process
+executor or automatic purge.

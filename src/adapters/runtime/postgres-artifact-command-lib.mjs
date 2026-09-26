@@ -2,6 +2,7 @@ import { normalizeArtifact, mapArtifactRow } from './artifact-store.mjs';
 import { buildRuntimeHeadRows } from '../../application/runtime/runtime-relational-projection-service.mjs';
 import { analyzeStructuredArtifact, extractStructuredField } from '../../lib/workflow/structured-artifact-parser-lib.mjs';
 import { POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION } from '../../application/runtime/postgres-runtime-persistence-contract-service.mjs';
+import { guardCanonicalMutation } from './agent-execution-fence.mjs';
 
 // All identifiers below are internal constants; values always use parameters.
 async function upsert(client, table, row, keys) {
@@ -42,8 +43,8 @@ export async function executePostgresArtifactCommand(client, scopes, action, opt
     if (Number(schema.rows[0]?.version) !== POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION) {
       throw new Error('ARTIFACT_SCHEMA_MIGRATION_REQUIRED');
     }
-    // Also serializes against the older bulk writer, which does not take an
-    // advisory lock. This bounded transaction never modifies another scope.
+    // Serialize artifact updates with bulk replacement and supervised claims,
+    // using the common table-before-scope lock order.
     if (writing) await client.query('LOCK TABLE aidn_runtime.artifacts IN SHARE ROW EXCLUSIVE MODE');
     const found = await client.query('SELECT DISTINCT scope_key FROM aidn_runtime.index_meta WHERE scope_key = ANY($1::text[])', [scopes]);
     const present = new Set(found.rows.map(row => row.scope_key));
@@ -54,6 +55,9 @@ export async function executePostgresArtifactCommand(client, scopes, action, opt
     // just as loadSnapshot does. Coexistence is not competing authority: once
     // canonical metadata exists, no artifact-level fallback or legacy write.
     const scope = scopes.find(key => present.has(key));
+    // The reservation and the artifact write share this transaction and scope.
+    // Keep the table -> scope lock order used by supervised run reservation.
+    if (writing) await guardCanonicalMutation(client, scope);
     let result;
     if (action === 'list') {
       const limit = Math.max(1, Math.min(10000, Math.floor(Number(options.limit) || 50)));

@@ -26,7 +26,7 @@ export function createConcurrentFakePgClientFactory({
     projectRegistry: new Map(),
     workspaceRegistry: new Map(),
     worktreeRegistry: new Map(),
-    schemaMigrations: [2],
+    schemaMigrations: [2, 3],
     queryLog: [],
     sequence: 0,
   };
@@ -78,6 +78,10 @@ export function createConcurrentFakePgClientFactory({
             sql,
             values,
           });
+          if (sql.includes("pg_advisory_xact_lock")) return { rows: [] };
+          if (sql.includes("to_regclass('aidn_shared.execution_runs')")) return { rows: [{ execution_runs: "aidn_shared.execution_runs" }] };
+          if (sql.includes("FROM aidn_shared.execution_runs")) return { rows: [] };
+          if (sql.includes("CREATE TABLE aidn_shared.execution_runs")) return { rows: [] };
           if (!sql || sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK" || sql.startsWith("CREATE SCHEMA") || sql.startsWith("CREATE TABLE") || sql.startsWith("CREATE INDEX")) {
             return { rows: [] };
           }
@@ -257,6 +261,7 @@ export function createConcurrentFakePgClientFactory({
                 { table_name: "schema_migrations" },
                 { table_name: "workspace_registry" },
                 { table_name: "worktree_registry" },
+                ...["execution_runs", "execution_tasks", "execution_attempts", "execution_events"].map(table_name => ({ table_name })),
               ],
             };
           }

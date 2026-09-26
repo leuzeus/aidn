@@ -185,6 +185,22 @@ export async function backupSharedCoordination({
     limit: Math.max(1, Number(limit || 50)),
   });
 
+  const refusedRead = [planning, handoff, coordination].find(read => read && read.ok !== true);
+  if (refusedRead) {
+    return {
+      target_root: absoluteTargetRoot,
+      output_file: "", written: false, ok: false, status: "read-failed",
+      reason: `shared coordination backup refused: ${refusedRead.status || "read failed"}`,
+      workspace,
+      source_of_truth: disabledGovernance.source_of_truth,
+      metadata: disabledGovernance.metadata,
+      shared_coordination_backend: backend,
+      health,
+      backup: null,
+      operations: deriveSharedCoordinationBackupOperations({ backend, health, sourceOfTruth: disabledGovernance.source_of_truth, metadata: disabledGovernance.metadata, backup: null, outputFile: "", writeApplied: false }),
+    };
+  }
+
   const backup = {
     ts: new Date().toISOString(),
     workspace,
