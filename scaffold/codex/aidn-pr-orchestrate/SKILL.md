@@ -19,6 +19,8 @@ Drive the session branch through the explicit PR lifecycle without skipping push
 ## Hygiene Guardrails
 - Use this skill after `aidn-close-session` when the session is review-ready.
 - Treat session PR state as durable workflow state and keep it recorded in the session artifact.
+- In dual/db-only or configured PostgreSQL mode, read and update that artifact through the canonical backend; a local Markdown projection may be stale.
+- The PR hook diagnoses the next action without automatically importing projections. Record lifecycle changes explicitly; do not materialize stale files to influence admission.
 - Do not auto-merge or auto-close a PR in phase 1 unless the user explicitly asks for it and provider support exists.
 - Keep `docs/audit/CURRENT-STATE.md` summary-only if updated.
 

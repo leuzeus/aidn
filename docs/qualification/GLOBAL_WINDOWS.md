@@ -1,6 +1,6 @@
 # Global Windows evidence boundaries
 
-Record reviewed on 2026-09-25. Global installation was published in 0.10.0;
+Record reviewed on 2026-09-26. Global installation was published in 0.10.0;
 publication does not complete an individual project's migration. The source
 `VERSION`, a published release manifest, repository fixtures, live PostgreSQL
 tests and native client traces answer different questions.
@@ -82,3 +82,64 @@ authorization of the canonical key for the same physical repository, the native
 `hooks/list` API discovered both definitions as untrusted. Discovery and project
 trust are therefore established for that client; human hook review and native
 execution remain separate steps.
+
+## Later real-client startup observation
+
+After the human reviewed both unchanged definitions, the native API reported
+`SessionStart` and `PreToolUse` as enabled and trusted. A subsequent bounded
+diagnostic turn exercised `SessionStart` with package 0.10.8 on Windows Codex CLI
+`0.158.0-alpha.2` in documented standalone mode. Client executable SHA-256:
+`0122378c15dc0c3c0af0d6addf2dd278125c19676b41fadaa520f89d2c9e0079`.
+
+The real client emitted `hook/started` and `hook/completed` for `sessionStart`;
+the command completed in 5,856 ms and supplied an admitted read-only context.
+The diagnostic turn completed without a tool call. This is a **PASS for that
+SessionStart event only**. `PreToolUse` was **NOT_EXERCISED** by this turn; it
+must not be inferred from the trust entry or startup success.
+
+The retained private report has SHA-256
+`7040bb900ff2352545aba6d4597ee7dc96553dcf28e3b1ef2923ea9149a89038`;
+its retained notification record has SHA-256
+`32286c3359be07ce90d7e916a512be2dee2dbcf860674c1b6a1d136b215cd4ba`.
+Notifications were transcribed from the captured client stdout, not collected
+in a later rerun. The probe compared three workflow files and normalized rows
+from 21 PostgreSQL tables before and after, reporting no changes. Individual
+before/after fingerprints were not retained; later current-state fingerprints
+in the report are separate observations and are not substituted for preimages.
+
+This attestation does not close the earlier full matrix, prove native write
+admission, or transfer native qualification to 0.10.9/0.10.10. Their terminal
+closure and drift-check regressions have separate source/CLI, SQLite and real
+PostgreSQL evidence, described in [the testing guide](../TESTING.md).
+
+## Later real-client note admission on 0.10.10
+
+A separate bounded probe used the published 0.10.10 engine and the same Windows
+Codex CLI `0.158.0-alpha.2` executable identified above, in standalone mode.
+The previously human-reviewed hook definitions remained unchanged. A read-only
+specific admission check preceded the native attempt; that preflight is not
+the native execution evidence.
+
+The real client then emitted `hook/started` and `hook/completed` for both
+`sessionStart` (5,653 ms) and `preToolUse` (5,750 ms). PreToolUse rechecked scope
+for the exact patch and returned `admitted_with_warnings`: a session branch
+with no active cycle allowed this diagnostic note. One native `apply_patch`
+created the expected marker, with one completed `fileChange` and no other tool
+operation, retry or fallback. The result is **PASS for this note admission and
+the observed startup event**, not a blanket native write qualification.
+
+The private report contains notifications captured directly from this client's
+stdout, the matching file-change result and the exact marker comparison. Its
+SHA-256 is
+`13b7757d29c0795b141812ff2fdf388e80a911b39a505276fb8feb7e86ab8a07`.
+After verifying the marker's path and content, cleanup removed that file only;
+the retained cleanup record has SHA-256
+`8a24381e860832e3735e8bfa07d1e08d38e8a8f9a896eacba92c51f51ed11d8c`.
+Saved before/after snapshots compare equal for 1,647 project file entries,
+normalized rows from 21 PostgreSQL tables, global assets and the project
+registry. The marker is absent after cleanup. These private records contain
+project and connection context and are not published with the documentation.
+
+No product edit, negative admission case, other tool, client or platform was
+tested by this probe. It does not close the remaining full-matrix cases or
+substitute for a principal checkout's own migration and final diagnosis.

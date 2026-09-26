@@ -2,6 +2,8 @@ import path from "node:path";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
+import { createRuntimeCanonicalSnapshotReader, resolveEffectiveRuntimePersistence } from "./runtime-persistence-service.mjs";
+import { findUniqueAuditArtifact, resolveRuntimeHeadArtifact } from "./runtime-head-resolution-service.mjs";
 import {
   parseLatestSessionArtifact,
   resolveBranchMapping,
@@ -17,12 +19,13 @@ import {
   normalizeSessionPrReviewStatus,
   normalizeSessionPrStatus,
   parseSessionMetadata,
+  parseSimpleMap,
   readCurrentState,
   readSourceBranch,
   readTextIfExists,
 } from "../../lib/workflow/session-context-lib.mjs";
 
-function resolveTargetSession({ currentState, mapping, branchKind, sessions, auditRoot }) {
+function resolveTargetSession({ currentState, mapping, branchKind, sessions, auditRoot, canonical }) {
   const activeSessionId = String(currentState.active_session ?? "none").toUpperCase();
   if (!canonicalNone(activeSessionId)) {
     const active = sessions.find((session) => session.session_id === activeSessionId) ?? null;
@@ -33,12 +36,32 @@ function resolveTargetSession({ currentState, mapping, branchKind, sessions, aud
   if (branchKind === AIDN_BRANCH_KIND.SESSION && mapping.mapped_session) {
     return mapping.mapped_session;
   }
+  if (canonical) return sessions.at(-1) ?? null;
   return parseLatestSessionArtifact({
     findLatestSessionFile,
     parseSessionMetadata,
     readTextIfExists,
     auditRoot,
   });
+}
+
+function canonicalSessionArtifacts(payload, auditRoot) {
+  const relative = value => String(value ?? "").replace(/\\/g, "/").replace(/^docs\/audit\//i, "");
+  const decode = artifact => artifact?.content_format === "base64"
+    ? Buffer.from(artifact.content, "base64").toString("utf8") : artifact?.content ?? "";
+  return (payload.sessions ?? []).map(row => {
+    const sessionId = String(row.session_id).toUpperCase();
+    const candidates = (payload.artifacts ?? []).filter(artifact =>
+      relative(artifact.path).match(/^sessions\/(S\d+)[^/]*\.md$/i)?.[1]?.toUpperCase() === sessionId);
+    const artifact = candidates.length === 1 ? candidates[0] : null;
+    const text = decode(artifact);
+    const metadata = parseSessionMetadata(text);
+    const invalid = !text || (artifact.session_id && String(artifact.session_id).toUpperCase() !== sessionId)
+      || (row.source_artifact_path && relative(row.source_artifact_path) !== relative(artifact?.path))
+      || !row.branch_name || metadata.session_branch !== row.branch_name;
+    return { session_id: sessionId, file_path: artifact ? path.join(auditRoot, relative(artifact.path)) : null,
+      metadata, canonical_invalid: Boolean(invalid) };
+  }).sort((a, b) => a.session_id.localeCompare(b.session_id, undefined, { numeric: true, sensitivity: "base" }));
 }
 
 function resolveResult(action) {
@@ -107,11 +130,11 @@ function makeResult(base, overrides = {}) {
   };
 }
 
-export function runPrOrchestrateAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
+export async function runPrOrchestrateAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
   const gitAdapter = createLocalGitAdapter();
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const currentState = readCurrentState(absoluteTargetRoot);
+  let currentState = readCurrentState(absoluteTargetRoot);
   const auditRoot = currentState.audit_root;
   const sourceBranch = readSourceBranch(absoluteTargetRoot);
   const branch = gitAdapter.getCurrentBranch(absoluteTargetRoot);
@@ -119,8 +142,35 @@ export function runPrOrchestrateAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
     sourceBranch,
     includeSource: true,
   });
-  const sessions = listSessionArtifacts(auditRoot);
-  const cycles = listCycleStatuses(auditRoot);
+  const canonical = dbBackedMode || resolveEffectiveRuntimePersistence({ targetRoot: absoluteTargetRoot }).backend === "postgres";
+  let sessions = canonical ? [] : listSessionArtifacts(auditRoot);
+  let cycles = canonical ? [] : listCycleStatuses(auditRoot);
+  let canonicalError = null;
+  if (canonical) {
+    try {
+      const snapshot = await createRuntimeCanonicalSnapshotReader({ targetRoot: absoluteTargetRoot })
+        .readCanonicalSnapshot({ includePayload: true, includeRuntimeHeads: true });
+      if (!snapshot?.exists || !snapshot.payload || snapshot.warning) throw new Error("Canonical snapshot unavailable");
+      const current = resolveRuntimeHeadArtifact(snapshot.runtimeHeads, "current_state", snapshot.payload)
+        ?? findUniqueAuditArtifact(snapshot.payload, "CURRENT-STATE.md");
+      const text = current?.content_format === "base64"
+        ? Buffer.from(current.content, "base64").toString("utf8") : current?.content ?? "";
+      if (!text) throw new Error("Canonical current state missing");
+      const metadata = parseSimpleMap(text);
+      currentState = { ...currentState, active_session: metadata.get("active_session") ?? "none",
+        active_cycle: metadata.get("active_cycle") ?? "none" };
+      sessions = canonicalSessionArtifacts(snapshot.payload, auditRoot);
+      const declared = String(currentState.active_session).toUpperCase();
+      if (!canonicalNone(declared) && sessions.filter(row => row.session_id === declared).length !== 1) {
+        throw new Error("Canonical session identity missing or ambiguous");
+      }
+      cycles = (snapshot.payload.cycles ?? []).map(row => ({ ...row, session_owner: row.session_id }));
+    } catch {
+      canonicalError = "Canonical PR lifecycle context is unavailable, ambiguous or inconsistent; diagnose the backend without falling back to Markdown.";
+      sessions = [];
+      cycles = [];
+    }
+  }
   const mapping = resolveBranchMapping({
     branch,
     branchKind,
@@ -133,7 +183,11 @@ export function runPrOrchestrateAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
     branchKind,
     sessions,
     auditRoot,
+    canonical,
   });
+  if (canonical && (targetSession?.canonical_invalid || mapping.ambiguous)) {
+    canonicalError = "The selected canonical session artifact is missing, ambiguous or inconsistent with its session row.";
+  }
   const hasWorkingTreeChanges = gitAdapter.hasWorkingTreeChanges(absoluteTargetRoot);
   const upstreamBranch = gitAdapter.getUpstreamBranch(absoluteTargetRoot);
   const upstreamDivergence = upstreamBranch
@@ -165,6 +219,10 @@ export function runPrOrchestrateAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
     session_branch_ahead: upstreamDivergence.ahead,
     session_branch_behind: upstreamDivergence.behind,
   };
+
+  if (canonicalError) return makeResult(base, { action: "blocked_pr_context_missing",
+    reason_code: "PR_ORCHESTRATE_CANONICAL_RUNTIME_INVALID", blocking_reasons: [canonicalError],
+    recommended_next_action: "Diagnose the canonical backend and session artifact before PR orchestration." });
 
   if (!targetSession) {
     return makeResult(base, {
