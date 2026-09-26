@@ -1,0 +1,411 @@
+{
+  "descriptor": {
+    "contract_version": "agent-task-executor.v1",
+    "executor_id": "codex-cli-task",
+    "executor_version": "fixture-v1",
+    "capabilities": {
+      "events": true,
+      "cancellation": true,
+      "explicit_cwd": true
+    }
+  },
+  "availability": {
+    "contract_version": "agent-task-availability.v1",
+    "executor_id": "codex-cli-task",
+    "status": "unavailable",
+    "reason_code": "model_only"
+  },
+  "plan": {
+    "contract_version": "agent-execution-plan.v1",
+    "plan_id": "plan.fixture",
+    "authority_backend": "postgres",
+    "canonical": {
+      "project_id": "project.fixture",
+      "workspace_id": "workspace.fixture",
+      "runtime_scope_id": "scope.fixture",
+      "session_id": "S001",
+      "cycle_id": "C001",
+      "plan_ref": ".aidn/planning/session-plan.md",
+      "task_selector": "Implement both modules and their integration test",
+      "plan_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "planning_revision": 7,
+      "activation": {
+        "authority_id": "authority.fixture",
+        "revision": 2
+      },
+      "scope": [
+        {
+          "path": "src/alpha.mjs",
+          "operations": [
+            "update"
+          ]
+        },
+        {
+          "path": "src/dossier été/bêta.mjs",
+          "operations": [
+            "add"
+          ]
+        },
+        {
+          "path": "tests/join.test.mjs",
+          "operations": [
+            "add"
+          ]
+        }
+      ]
+    },
+    "base": {
+      "branch": "dev",
+      "sha": "1111111111111111111111111111111111111111"
+    },
+    "execution": {
+      "executor_id": "codex-cli-task",
+      "model": "fixture-explicit-model",
+      "effort": "ultra",
+      "sandbox": "workspace-write",
+      "engine": {
+        "version": "0.10.14",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "limits": {
+      "concurrency": 1,
+      "max_duration_ms": 240000
+    },
+    "tasks": [
+      {
+        "task_id": "alpha",
+        "objective": "Update the first independent module.",
+        "scope": [
+          {
+            "path": "src/alpha.mjs",
+            "operations": [
+              "update"
+            ]
+          }
+        ],
+        "depends_on": [],
+        "acceptance_criteria": [
+          "The module returns the specified value."
+        ],
+        "max_duration_ms": 60000
+      },
+      {
+        "task_id": "beta",
+        "objective": "Add the second independent module.",
+        "scope": [
+          {
+            "path": "src/dossier été/bêta.mjs",
+            "operations": [
+              "add"
+            ]
+          }
+        ],
+        "depends_on": [],
+        "acceptance_criteria": [
+          "The module can be imported using its accented path."
+        ],
+        "max_duration_ms": 60000
+      },
+      {
+        "task_id": "join",
+        "objective": "Verify both accepted modules together.",
+        "scope": [
+          {
+            "path": "tests/join.test.mjs",
+            "operations": [
+              "add"
+            ]
+          }
+        ],
+        "depends_on": [
+          "alpha",
+          "beta"
+        ],
+        "acceptance_criteria": [
+          "The test consumes both predecessors."
+        ],
+        "max_duration_ms": 90000
+      }
+    ],
+    "validations": [
+      {
+        "validation_id": "unit",
+        "argv": [
+          "node",
+          "--test",
+          "tests/join.test.mjs"
+        ]
+      }
+    ],
+    "audit": {
+      "read_only": true,
+      "criteria": [
+        "Only delegated files changed."
+      ]
+    },
+    "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf"
+  },
+  "run": {
+    "contract_version": "agent-execution-run.v1",
+    "run_id": "run.fixture",
+    "plan_id": "plan.fixture",
+    "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
+    "authority_backend": "postgres",
+    "canonical": {
+      "project_id": "project.fixture",
+      "workspace_id": "workspace.fixture",
+      "runtime_scope_id": "scope.fixture",
+      "session_id": "S001",
+      "cycle_id": "C001",
+      "plan_ref": ".aidn/planning/session-plan.md",
+      "task_selector": "Implement both modules and their integration test",
+      "plan_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "planning_revision": 7,
+      "activation": {
+        "authority_id": "authority.fixture",
+        "revision": 2
+      },
+      "scope": [
+        {
+          "path": "src/alpha.mjs",
+          "operations": [
+            "update"
+          ]
+        },
+        {
+          "path": "src/dossier été/bêta.mjs",
+          "operations": [
+            "add"
+          ]
+        },
+        {
+          "path": "tests/join.test.mjs",
+          "operations": [
+            "add"
+          ]
+        }
+      ]
+    },
+    "task_ids": [
+      "alpha",
+      "beta",
+      "join"
+    ],
+    "lifecycle_status": "running"
+  },
+  "task": {
+    "contract_version": "agent-delegated-task.v1",
+    "run_id": "run.fixture",
+    "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
+    "task_contract_sha256": "cc87a1c578c294b47462b88990038784665b2fb637e012af9ca674f81be493f6",
+    "task_id": "alpha",
+    "objective": "Update the first independent module.",
+    "scope": [
+      {
+        "path": "src/alpha.mjs",
+        "operations": [
+          "update"
+        ]
+      }
+    ],
+    "depends_on": [],
+    "acceptance_criteria": [
+      "The module returns the specified value."
+    ],
+    "max_duration_ms": 60000
+  },
+  "attempt": {
+    "contract_version": "agent-execution-attempt.v1",
+    "run_id": "run.fixture",
+    "task_id": "alpha",
+    "attempt_id": "attempt.alpha.1",
+    "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
+    "task_contract_sha256": "cc87a1c578c294b47462b88990038784665b2fb637e012af9ca674f81be493f6",
+    "input_sha": "1111111111111111111111111111111111111111",
+    "ordinal": 1,
+    "worktree": {
+      "worktree_id": "worktree.alpha",
+      "cwd": "C:\\fixture espace été\\alpha",
+      "branch": "codex/run.fixture-alpha-1"
+    },
+    "activation": {
+      "authority_id": "authority.fixture",
+      "revision": 2
+    },
+    "ownership": {
+      "owner_id": "supervisor.fixture",
+      "generation": 3,
+      "planning_revision": 7,
+      "lease_id": "lease.alpha.1"
+    },
+    "lifecycle_status": "completed"
+  },
+  "delegation": {
+    "contract_version": "agent-task-delegation.v1",
+    "delegation_id": "delegation.alpha.1",
+    "run_id": "run.fixture",
+    "task_id": "alpha",
+    "attempt_id": "attempt.alpha.1",
+    "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
+    "task_contract_sha256": "cc87a1c578c294b47462b88990038784665b2fb637e012af9ca674f81be493f6",
+    "input_sha": "1111111111111111111111111111111111111111",
+    "worktree": {
+      "worktree_id": "worktree.alpha",
+      "cwd": "C:\\fixture espace été\\alpha",
+      "branch": "codex/run.fixture-alpha-1"
+    },
+    "activation": {
+      "authority_id": "authority.fixture",
+      "revision": 2
+    },
+    "ownership": {
+      "owner_id": "supervisor.fixture",
+      "generation": 3,
+      "planning_revision": 7,
+      "lease_id": "lease.alpha.1"
+    },
+    "scope": [
+      {
+        "path": "src/alpha.mjs",
+        "operations": [
+          "update"
+        ]
+      }
+    ]
+  },
+  "request": {
+    "contract_version": "agent-task-request.v1",
+    "run_id": "run.fixture",
+    "task_id": "alpha",
+    "attempt_id": "attempt.alpha.1",
+    "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
+    "task_contract_sha256": "cc87a1c578c294b47462b88990038784665b2fb637e012af9ca674f81be493f6",
+    "input_sha": "1111111111111111111111111111111111111111",
+    "delegation_id": "delegation.alpha.1",
+    "instruction": "Update the first independent module.",
+    "cwd": "C:\\fixture espace été\\alpha",
+    "execution": {
+      "executor_id": "codex-cli-task",
+      "model": "fixture-explicit-model",
+      "effort": "ultra",
+      "sandbox": "workspace-write",
+      "engine": {
+        "version": "0.10.14",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "limits": {
+      "max_duration_ms": 60000
+    },
+    "ownership": {
+      "owner_id": "supervisor.fixture",
+      "generation": 3,
+      "planning_revision": 7,
+      "lease_id": "lease.alpha.1"
+    },
+    "delegation_sha256": "d4d7de835d4653f614415c9098d2e79ae8b7292b46a8ea520e247165c0e26471"
+  },
+  "event": {
+    "contract_version": "agent-task-event.v1",
+    "event_id": "event.alpha.1",
+    "run_id": "run.fixture",
+    "task_id": "alpha",
+    "attempt_id": "attempt.alpha.1",
+    "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
+    "sequence": 1,
+    "type": "started",
+    "message": "Fixture executor started.",
+    "evidence": []
+  },
+  "events": [
+    {
+      "contract_version": "agent-task-event.v1",
+      "event_id": "event.alpha.1",
+      "run_id": "run.fixture",
+      "task_id": "alpha",
+      "attempt_id": "attempt.alpha.1",
+      "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
+      "sequence": 1,
+      "type": "started",
+      "message": "Fixture executor started.",
+      "evidence": []
+    }
+  ],
+  "result": {
+    "contract_version": "agent-task-result.v1",
+    "run_id": "run.fixture",
+    "task_id": "alpha",
+    "attempt_id": "attempt.alpha.1",
+    "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
+    "task_contract_sha256": "cc87a1c578c294b47462b88990038784665b2fb637e012af9ca674f81be493f6",
+    "input_sha": "1111111111111111111111111111111111111111",
+    "outcome": "completed",
+    "reason_code": "finished",
+    "termination_state": "confirmed",
+    "process": {
+      "exit_code": 0,
+      "signal": null
+    },
+    "evidence": [
+      {
+        "ref": "transcripts/attempt.alpha.1.jsonl",
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "bytes": 128
+      }
+    ],
+    "ownership": {
+      "owner_id": "supervisor.fixture",
+      "generation": 3,
+      "planning_revision": 7,
+      "lease_id": "lease.alpha.1"
+    },
+    "delegation_id": "delegation.alpha.1",
+    "request_sha256": "5e4594363a49d9ecc230c0e2af714067ad835b0371de91a2498767610a576e4d"
+  },
+  "acceptance": {
+    "contract_version": "agent-task-acceptance.v1",
+    "run_id": "run.fixture",
+    "task_id": "alpha",
+    "attempt_id": "attempt.alpha.1",
+    "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
+    "task_contract_sha256": "cc87a1c578c294b47462b88990038784665b2fb637e012af9ca674f81be493f6",
+    "input_sha": "1111111111111111111111111111111111111111",
+    "result_sha256": "13a6fc1fe46b02c71f4946fe74972939fe885eb60d3e7012397bcb9b97bbba5e",
+    "candidate_sha": "2222222222222222222222222222222222222222",
+    "decision": "accepted",
+    "validation": {
+      "status": "passed",
+      "tested_sha": "2222222222222222222222222222222222222222",
+      "checks": [
+        {
+          "validation_id": "unit",
+          "status": "passed",
+          "tested_sha": "2222222222222222222222222222222222222222",
+          "evidence": {
+            "ref": "validation/unit.json",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 64
+          }
+        }
+      ]
+    },
+    "integration": {
+      "status": "pending",
+      "source_sha": "2222222222222222222222222222222222222222",
+      "integrated_sha": null
+    },
+    "cleanup": {
+      "status": "pending",
+      "evidence": []
+    }
+  },
+  "expected": {
+    "canonical_plan_json": "{\"audit\":{\"criteria\":[\"Only delegated files changed.\"],\"read_only\":true},\"authority_backend\":\"postgres\",\"base\":{\"branch\":\"dev\",\"sha\":\"1111111111111111111111111111111111111111\"},\"canonical\":{\"activation\":{\"authority_id\":\"authority.fixture\",\"revision\":2},\"cycle_id\":\"C001\",\"plan_ref\":\".aidn/planning/session-plan.md\",\"plan_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"planning_revision\":7,\"project_id\":\"project.fixture\",\"runtime_scope_id\":\"scope.fixture\",\"scope\":[{\"operations\":[\"update\"],\"path\":\"src/alpha.mjs\"},{\"operations\":[\"add\"],\"path\":\"src/dossier été/bêta.mjs\"},{\"operations\":[\"add\"],\"path\":\"tests/join.test.mjs\"}],\"session_id\":\"S001\",\"task_selector\":\"Implement both modules and their integration test\",\"workspace_id\":\"workspace.fixture\"},\"contract_version\":\"agent-execution-plan.v1\",\"execution\":{\"effort\":\"ultra\",\"engine\":{\"sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"version\":\"0.10.14\"},\"executor_id\":\"codex-cli-task\",\"model\":\"fixture-explicit-model\",\"sandbox\":\"workspace-write\"},\"limits\":{\"concurrency\":1,\"max_duration_ms\":240000},\"plan_id\":\"plan.fixture\",\"tasks\":[{\"acceptance_criteria\":[\"The module returns the specified value.\"],\"depends_on\":[],\"max_duration_ms\":60000,\"objective\":\"Update the first independent module.\",\"scope\":[{\"operations\":[\"update\"],\"path\":\"src/alpha.mjs\"}],\"task_id\":\"alpha\"},{\"acceptance_criteria\":[\"The module can be imported using its accented path.\"],\"depends_on\":[],\"max_duration_ms\":60000,\"objective\":\"Add the second independent module.\",\"scope\":[{\"operations\":[\"add\"],\"path\":\"src/dossier été/bêta.mjs\"}],\"task_id\":\"beta\"},{\"acceptance_criteria\":[\"The test consumes both predecessors.\"],\"depends_on\":[\"alpha\",\"beta\"],\"max_duration_ms\":90000,\"objective\":\"Verify both accepted modules together.\",\"scope\":[{\"operations\":[\"add\"],\"path\":\"tests/join.test.mjs\"}],\"task_id\":\"join\"}],\"validations\":[{\"argv\":[\"node\",\"--test\",\"tests/join.test.mjs\"],\"validation_id\":\"unit\"}]}",
+    "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
+    "task_contract_sha256": "cc87a1c578c294b47462b88990038784665b2fb637e012af9ca674f81be493f6",
+    "result_sha256": "13a6fc1fe46b02c71f4946fe74972939fe885eb60d3e7012397bcb9b97bbba5e",
+    "request_sha256": "5e4594363a49d9ecc230c0e2af714067ad835b0371de91a2498767610a576e4d",
+    "delegation_sha256": "d4d7de835d4653f614415c9098d2e79ae8b7292b46a8ea520e247165c0e26471"
+  }
+}

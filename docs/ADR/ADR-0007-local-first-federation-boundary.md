@@ -57,6 +57,16 @@ Stable federation contract:
 - PostgreSQL connection material must be referenced through `env:*` or equivalent indirection, never embedded in tracked files
 - public JSON status and diagnostic outputs must recursively redact resolved PostgreSQL connection strings
 
+## Bounded supervision extension (2026-09-26)
+
+ADR-0014 defines a future single-host supervised path whose run, delegated-task
+and attempt metadata require PostgreSQL. This conditional requirement does not
+change optional PostgreSQL for existing workflows. Lot 2 provides `model_only`
+contracts and does not extend the stable shared surface or create any backend
+instances. Transcripts and worktrees stay local, with only bounded references,
+sizes and hashes in future shared results. No existing checkout-bound artifact
+is relocated by this extension.
+
 ## Options Compared
 
 | Option | Result |

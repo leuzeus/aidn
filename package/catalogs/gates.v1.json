@@ -377,6 +377,15 @@
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
     {
+      "id": "runtime-agent-execution-contracts",
+      "family": "runtime",
+      "script": "perf:verify-agent-execution-contracts",
+      "job": "governance-admission/gates",
+      "surfaces": ["model-only agent execution contracts", "pure plan and attempt binding", "executor port conformance"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
       "id": "runtime-db-runtime-cli",
       "family": "runtime",
       "script": "perf:verify-db-runtime-cli",

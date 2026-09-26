@@ -50,9 +50,12 @@ Do not rename those fields in place without a version bump and fixture update.
 
 The executable contract verifier validates every schema keyword used by this
 registry, recursively. The supported validation vocabulary is `type`,
-`required`, `properties`, `const`, `enum`, `items`, and
-`additionalProperties`; schema annotations remain descriptive. Adding another
-validation keyword requires implementing it in the deterministic validator and
+`required`, `properties`, `const`, `enum`, `items`, `additionalProperties`,
+`minimum`, `maximum`, `minLength`, `maxLength`, `pattern`, `format`, `minItems`,
+`maxItems`, `minProperties`, `maxProperties`, `oneOf`, `anyOf`, and `allOf`;
+the supported formats are `date-time`, `uri`, and `email`. Schema annotations
+remain descriptive. Adding another validation keyword requires implementing it
+in the deterministic validator and
 adding a rejecting fixture before that keyword can appear in a public schema.
 
 Contract coverage is closed in both directions:
@@ -69,6 +72,25 @@ Contract coverage is closed in both directions:
 ## Change Rule
 
 If the payload shape changes, update the schema, the fixture coverage, and the relevant gate in the same change set.
+
+## Internal Agent Execution Contracts
+
+ADR-0014 defines internal schemas under `src/core/contracts/agent-execution/`.
+They use the explicit `agent-execution` validator profile and
+`aidn://contracts/agent-execution/` identifiers. The default `cli-output` profile
+and public command registry remain unchanged. Internal schemas are not CLI
+commands and must not acquire fake `x-aidn-command` entries or public output cases.
+Both profiles reject unsupported validation keywords. Positive and adversarial
+payloads, semantic checks and executor doubles are covered by the dedicated
+`runtime-agent-execution-contracts` gate.
+
+These eleven schemas are `model_only`: descriptor, availability, plan, run,
+delegated task, attempt, delegation, request, event, result and acceptance
+contracts do not imply a working executor, live lease,
+native admission or PostgreSQL persistence. Contract validity and runtime
+availability are separate evidence.
+
+## Activation Refusals
 
 Activation refusals use `activation-refusal.v1`, registered as an alternative for
 the same command rather than changing its logical effect class. Required

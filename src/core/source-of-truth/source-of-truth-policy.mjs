@@ -205,6 +205,33 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     replacement: "immutable records are superseded by later records, never overwritten implicitly",
     evidence_targets: ["src/core/ports/shared-coordination-store-port.mjs"],
   },
+  execution_run: {
+    owner: "supervising coordinator",
+    lifecycle: "planned -> running -> completed|failed|cancelled|recovery_required",
+    scope: "one admitted canonical task and frozen plan on one supervisor host; at most one mutating run per canonical scope",
+    retention: "retain run identity, frozen plan and acceptance evidence; no automatic purge in V1",
+    migration: "future explicit additive PostgreSQL migration; model-only contracts create no store or rows",
+    replacement: "a changed plan requires a new run identity and fingerprint; never overwrite prior run evidence",
+    evidence_targets: ["src/core/agents/agent-execution-contracts.mjs", "src/core/contracts/agent-execution", "docs/ADR/ADR-0014-bounded-agent-orchestration.md"],
+  },
+  delegated_task: {
+    owner: "supervising coordinator",
+    lifecycle: "pending -> ready -> running -> accepted|failed|blocked|cancelled",
+    scope: "one task identity within a run, bounded by exact file operations and the existing canonical session, cycle and task",
+    retention: "retain dependencies, scope and acceptance contract with the parent run; no automatic purge in V1",
+    migration: "future explicit additive PostgreSQL migration; no synthetic sessions or local fallback task store",
+    replacement: "scope or objective changes require a new frozen plan; delegated identifiers never replace canonical task identity",
+    evidence_targets: ["src/core/agents/agent-execution-contracts.mjs", "src/core/contracts/agent-execution", "docs/ADR/ADR-0014-bounded-agent-orchestration.md"],
+  },
+  execution_attempt: {
+    owner: "supervising coordinator; executor owns process observations only",
+    lifecycle: "launch_intended -> running -> completed|failed|cancelled|timed_out|recovery_required",
+    scope: "one ordinal attempt for one delegated task; delegation, ownership and terminal result bind to that attempt",
+    retention: "retain attempt evidence and local transcripts; no automatic purge in V1; shared results contain references, byte counts and hashes only",
+    migration: "future explicit additive PostgreSQL migration; local evidence files are never ownership authority",
+    replacement: "new attempt identity after explicit reconciliation; late or ownership-stale results cannot replace accepted evidence",
+    evidence_targets: ["src/core/agents/agent-execution-contracts.mjs", "src/core/ports/agent-task-executor-port.mjs", "src/core/contracts/agent-execution"],
+  },
   agent_roster: {
     owner: "agent roster maintainer",
     lifecycle: "declared -> verified -> unavailable|retired",
@@ -233,6 +260,8 @@ function policy({
   dbOnly,
   projection = "none",
   sharedRuntime = "not_shared",
+  coverageKind = null,
+  authorityBackend = null,
   notes = "",
 }) {
   const normalizedConcept = normalizeKey(concept);
@@ -267,11 +296,24 @@ function policy({
     postgresql: "optional",
     shared_sync: "opt-in",
     shared_runtime: sharedRuntime,
+    ...(coverageKind ? { coverage_kind: coverageKind } : {}),
+    ...(authorityBackend ? { authority_backend: authorityBackend } : {}),
     notes,
   });
 }
 
 const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
+  ...["execution_run", "delegated_task", "execution_attempt"].map((concept) => policy({
+    concept,
+    label: { execution_run: "Bounded execution run", delegated_task: "Delegated task", execution_attempt: "Execution attempt" }[concept],
+    files: "model only; future PostgreSQL supervision authority; no operational store available",
+    dual: "model only; future PostgreSQL supervision authority; no operational store available",
+    dbOnly: "model only; future PostgreSQL supervision authority; no operational store available",
+    sharedRuntime: "not_shared",
+    coverageKind: "model_only",
+    authorityBackend: "postgres",
+    notes: "Internal contracts only: supervised execution is unavailable. PostgreSQL remains optional for existing workflows and is required exclusively by the future supervised path. No files, SQLite or in-memory authority fallback; no observed instances, implicit writes or automatic purge.",
+  })),
   policy({
     concept: "project_activation",
     label: "Project workflow activation",
@@ -525,6 +567,8 @@ export function getSourceOfTruthPolicy(concept, stateMode = null) {
     postgresql: item.postgresql,
     shared_sync: item.shared_sync,
     shared_runtime: item.shared_runtime,
+    ...(item.coverage_kind ? { coverage_kind: item.coverage_kind } : {}),
+    ...(item.authority_backend ? { authority_backend: item.authority_backend } : {}),
     notes: item.notes,
   };
 }

@@ -56,6 +56,15 @@ function main() {
     assert(runtimeDiagnostics.registry?.observed_artifacts_included === true, "runtime governance diagnostics should include observed artifact inspection");
     assert(perfDiagnostics.registry?.observed_artifacts_included === false, "perf completeness should stay registry-only");
     assert(Array.isArray(runtimeDiagnostics.issues), "runtime governance diagnostics should expose issues");
+    for (const conceptId of ["execution_run", "delegated_task", "execution_attempt"]) {
+      const concept = runtimeDiagnostics.concepts.find((item) => item.concept === conceptId);
+      assert(concept?.status === "complete", `${conceptId} must have complete policy coverage`);
+      assert(concept?.coverage_kind === "model_only", `${conceptId} must remain model-only`);
+      assert(concept?.coverage_note.includes("supervised execution is unavailable"), `${conceptId} must state runtime unavailability`);
+      assert(concept?.cli_contract_status === "not_applicable", `${conceptId} must not invent a public CLI contract`);
+      assert(!runtimeDiagnostics.observed_artifacts.some((item) => item.concept === conceptId), `${conceptId} must not fabricate observed instances`);
+    }
+    assert(!runtimeDiagnostics.runtime_surfaces.some((item) => item.id.startsWith("runtime-agent-run")), "model-only contracts must not expose agent-run commands");
 
     console.log("PASS");
   } catch (error) {

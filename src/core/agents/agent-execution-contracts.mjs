@@ -1,0 +1,338 @@
+import { createHash } from "node:crypto";
+import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
+import descriptor from "../contracts/agent-execution/descriptor.v1.schema.json" with { type: "json" };
+import availability from "../contracts/agent-execution/availability.v1.schema.json" with { type: "json" };
+import plan from "../contracts/agent-execution/plan.v1.schema.json" with { type: "json" };
+import run from "../contracts/agent-execution/run.v1.schema.json" with { type: "json" };
+import task from "../contracts/agent-execution/task.v1.schema.json" with { type: "json" };
+import attempt from "../contracts/agent-execution/attempt.v1.schema.json" with { type: "json" };
+import delegation from "../contracts/agent-execution/delegation.v1.schema.json" with { type: "json" };
+import request from "../contracts/agent-execution/request.v1.schema.json" with { type: "json" };
+import event from "../contracts/agent-execution/event.v1.schema.json" with { type: "json" };
+import result from "../contracts/agent-execution/result.v1.schema.json" with { type: "json" };
+import acceptance from "../contracts/agent-execution/acceptance.v1.schema.json" with { type: "json" };
+
+// Model only. These functions observe neither Git, configuration, leases nor files.
+// Validating an ownership reference never proves that its lease exists or is live.
+const SCHEMAS = freeze({ descriptor, availability, plan, run, task, attempt, delegation, request, event, result, acceptance });
+const TASK_FIELDS = ["task_id", "objective", "scope", "depends_on", "acceptance_criteria", "max_duration_ms"];
+const DEVICE = /^(?:con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/i;
+const issue = (code, path = "$", detail) => ({ code, path, ...(detail ? { detail } : {}) });
+const report = (issues) => ({ ok: issues.length === 0, issues });
+const equal = (left, right) => canonicalJson(left) === canonicalJson(right);
+const key = (value) => value.toLowerCase();
+
+function freeze(value) {
+  if (value && typeof value === "object") {
+    Object.values(value).forEach(freeze);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+// Restrict to bounded JSON data, including rejecting getters and non-finite values.
+function jsonIssues(value) {
+  const issues = [], seen = new Set();
+  let count = 0;
+  function visit(item, location, depth) {
+    if (++count > 100000 || depth > 32) { issues.push(issue("JSON_LIMIT", location)); return; }
+    if (item === null || typeof item === "boolean" || typeof item === "string") return;
+    if (typeof item === "number" && Number.isFinite(item)) return;
+    if (!item || typeof item !== "object" || (!Array.isArray(item)
+      && ![Object.prototype, null].includes(Object.getPrototypeOf(item)))) {
+      issues.push(issue("INVALID_JSON", location)); return;
+    }
+    if (seen.has(item)) { issues.push(issue("INVALID_JSON", location)); return; }
+    if (Object.getOwnPropertySymbols(item).length) { issues.push(issue("INVALID_JSON", location)); return; }
+    seen.add(item);
+    const descriptors = Object.getOwnPropertyDescriptors(item);
+    for (const [name, property] of Object.entries(descriptors)) {
+      if (Array.isArray(item) && name === "length") continue;
+      if (!("value" in property) || !property.enumerable
+        || (Array.isArray(item) && !/^(0|[1-9][0-9]*)$/.test(name))) {
+        issues.push(issue("INVALID_JSON", `${location}.${name}`)); continue;
+      }
+      visit(property.value, `${location}.${name}`, depth + 1);
+    }
+    if (Array.isArray(item) && Object.keys(item).length !== item.length) issues.push(issue("INVALID_JSON", location));
+    seen.delete(item);
+  }
+  visit(value, "$", 0);
+  return issues;
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") return `{${Object.keys(value).sort().map((k) => `${JSON.stringify(k)}:${canonicalJson(value[k])}`).join(",")}}`;
+  return JSON.stringify(value);
+}
+
+export function fingerprintAgentExecutionValue(value) {
+  const issues = jsonIssues(value);
+  if (issues.length) throw contractError(issues[0]);
+  return createHash("sha256").update(canonicalJson(value), "utf8").digest("hex");
+}
+
+function planContent(value) {
+  const { plan_sha256: ignored, ...content } = value;
+  return { ...content, limits: { ...value.limits, concurrency: value.limits.concurrency ?? 1 } };
+}
+
+export function fingerprintAgentExecutionPlan(value) {
+  const checked = validateContract("plan", value, false);
+  if (!checked.ok) throw contractError(checked.issues[0]);
+  return fingerprintAgentExecutionValue(planContent(value));
+}
+
+export function fingerprintTaskContract(value) {
+  const problems = jsonIssues(value);
+  if (problems.length) throw contractError(problems[0]);
+  return fingerprintAgentExecutionValue(Object.fromEntries(TASK_FIELDS.map((field) => [field, value[field]])));
+}
+
+export function normalizeAgentExecutionPlan(value) {
+  assertAgentExecutionContract("plan", value);
+  const normalized = structuredClone(planContent(value));
+  normalized.plan_sha256 = fingerprintAgentExecutionValue(normalized);
+  return freeze(normalized);
+}
+
+function contractError(problem) {
+  const error = new TypeError(`${problem.code}: ${problem.path}${problem.detail ? `: ${problem.detail}` : ""}`);
+  error.code = problem.code;
+  return error;
+}
+
+export function assertAgentExecutionContract(kind, value) {
+  const checked = validateAgentExecutionContract(kind, value);
+  if (!checked.ok) throw contractError(checked.issues[0]);
+  return value;
+}
+
+export function listAgentExecutionContractKinds() { return Object.keys(SCHEMAS); }
+
+export function isExactExecutionPath(value) {
+  if (typeof value !== "string" || !value || value !== value.normalize("NFC")
+    || /[\\\x00-\x1f\x7f:<>"|?*~]/.test(value)) return false;
+  return value.split("/").every((part) => part && part !== "." && part !== ".."
+    && !/[. ]$/.test(part) && !DEVICE.test(part));
+}
+
+export function isAbsoluteExecutionCwd(value) {
+  if (typeof value !== "string" || /[\x00-\x1f\x7f]/.test(value)) return false;
+  if (/^[A-Za-z]:[\\/]/.test(value)) {
+    const relative = value.slice(3).replaceAll("\\", "/");
+    return isExactExecutionPath(relative);
+  }
+  return value.startsWith("/") && !value.startsWith("//") && isExactExecutionPath(value.slice(1));
+}
+
+function validBranch(value) {
+  return typeof value === "string" && !/[\x00-\x20\x7f~^:?*\[\\]/.test(value)
+    && !value.includes("..") && !value.includes("@{") && value !== "@"
+    && !value.endsWith(".") && value.split("/").every((part) => part && !part.startsWith(".") && !part.endsWith(".lock"));
+}
+
+function protectedPath(value, planRef) {
+  const lower = key(value);
+  if (planRef && lower === key(planRef)) return true;
+  if (/(^|\/)agents(?:\.override)?\.md$/.test(lower)
+    || /(^|\/)(?:\.git|\.aidn|\.codex|\.agents)(?:\/|$)/.test(lower)) return true;
+  return lower.startsWith("docs/audit/")
+    && !/^docs\/audit\/notes\/[^/]+\.md$/.test(lower)
+    && lower !== "docs/audit/parking-lot.md";
+}
+
+function scopeIssues(scope, location, canonicalScope, planRef) {
+  const issues = [], paths = new Set(), ops = new Set();
+  for (const [index, entry] of scope.entries()) {
+    const current = `${location}[${index}]`;
+    if (!isExactExecutionPath(entry.path)) issues.push(issue("INVALID_SCOPE_PATH", current));
+    if (protectedPath(entry.path, planRef)) issues.push(issue("PROTECTED_SCOPE_PATH", current));
+    if (paths.has(key(entry.path))) issues.push(issue("DUPLICATE_SCOPE_PATH", current));
+    paths.add(key(entry.path));
+    if (new Set(entry.operations).size !== entry.operations.length) issues.push(issue("DUPLICATE_OPERATION", current));
+    entry.operations.forEach((op) => ops.add(op));
+    if (canonicalScope && !canonicalScope.some((allowed) => allowed.path === entry.path
+      && entry.operations.every((op) => allowed.operations.includes(op)))) issues.push(issue("SCOPE_NOT_SUBSET", current));
+  }
+  if (ops.has("move") !== ops.has("move-destination") || scope.some((entry) =>
+    (entry.operations.includes("move") && !scope.some((other) =>
+      other.operations.includes("move-destination") && key(entry.path) !== key(other.path)))
+    || (entry.operations.includes("move-destination") && !scope.some((other) =>
+      other.operations.includes("move") && key(entry.path) !== key(other.path))))) {
+    issues.push(issue("MOVE_REQUIRES_BOTH_PATHS", location));
+  }
+  return issues;
+}
+
+function planIssues(value, checkFingerprint) {
+  const issues = scopeIssues(value.canonical.scope, "$.canonical.scope", null, value.canonical.plan_ref);
+  if (!isExactExecutionPath(value.canonical.plan_ref)) issues.push(issue("INVALID_PLAN_REF", "$.canonical.plan_ref"));
+  if (!validBranch(value.base.branch)) issues.push(issue("INVALID_BRANCH", "$.base.branch"));
+  const tasks = new Map(value.tasks.map((item) => [item.task_id, item]));
+  if (tasks.size !== value.tasks.length) issues.push(issue("DUPLICATE_TASK", "$.tasks"));
+  const validations = value.validations.map((item) => item.validation_id);
+  if (new Set(validations).size !== validations.length) issues.push(issue("DUPLICATE_VALIDATION", "$.validations"));
+  for (const item of value.tasks) {
+    const location = `$.tasks.${item.task_id}`;
+    issues.push(...scopeIssues(item.scope, `${location}.scope`, value.canonical.scope, value.canonical.plan_ref));
+    if (item.max_duration_ms > value.limits.max_duration_ms) issues.push(issue("TASK_DURATION_EXCEEDS_RUN", location));
+    if (new Set(item.depends_on).size !== item.depends_on.length) issues.push(issue("DUPLICATE_DEPENDENCY", location));
+    if (item.depends_on.some((dep) => !tasks.has(dep))) issues.push(issue("UNKNOWN_DEPENDENCY", location));
+  }
+  const visiting = new Set(), visited = new Set(), ancestors = new Map();
+  function walk(id) {
+    if (visiting.has(id)) { issues.push(issue("DEPENDENCY_CYCLE", `$.tasks.${id}`)); return new Set(); }
+    if (visited.has(id)) return ancestors.get(id);
+    visiting.add(id);
+    const parents = new Set();
+    for (const dep of tasks.get(id).depends_on) {
+      if (!tasks.has(dep)) continue;
+      parents.add(dep);
+      for (const ancestor of walk(dep)) parents.add(ancestor);
+    }
+    visiting.delete(id); visited.add(id); ancestors.set(id, parents);
+    return parents;
+  }
+  for (const id of tasks.keys()) walk(id);
+  const entries = [...tasks.values()];
+  for (let i = 0; i < entries.length; i += 1) {
+    for (let j = i + 1; j < entries.length; j += 1) {
+      const left = entries[i], right = entries[j];
+      if (ancestors.get(left.task_id).has(right.task_id) || ancestors.get(right.task_id).has(left.task_id)) continue;
+      if (left.scope.some((a) => right.scope.some((b) => key(a.path) === key(b.path)
+        || key(a.path).startsWith(`${key(b.path)}/`) || key(b.path).startsWith(`${key(a.path)}/`)))) {
+        issues.push(issue("UNORDERED_SCOPE_OVERLAP", `$.tasks.${right.task_id}`));
+      }
+    }
+  }
+  if (checkFingerprint && value.plan_sha256 && fingerprintAgentExecutionValue(planContent(value)) !== value.plan_sha256) {
+    issues.push(issue("PLAN_FINGERPRINT_MISMATCH", "$.plan_sha256"));
+  }
+  return issues;
+}
+
+export function validateAgentExecutionContract(kind, value) {
+  return validateContract(kind, value, true);
+}
+
+function validateContract(kind, value, checkFingerprint) {
+  if (!Object.hasOwn(SCHEMAS, kind)) return report([issue("UNKNOWN_CONTRACT", "$", String(kind))]);
+  const inputIssues = jsonIssues(value);
+  if (inputIssues.length) return report(inputIssues);
+  const structural = validateJsonSchema(value, SCHEMAS[kind], "$", { contractKind: "agent-execution" });
+  if (structural.length) return report(structural.map((detail) => issue("SCHEMA_INVALID", "$", detail)));
+  const issues = [];
+  if (["descriptor", "availability"].includes(kind) && value.executor_id === "codex") issues.push(issue("LEGACY_EXECUTOR_ID", "$.executor_id"));
+  if (value.execution?.executor_id === "codex") issues.push(issue("LEGACY_EXECUTOR_ID", "$.execution.executor_id"));
+  if (kind === "plan") issues.push(...planIssues(value, checkFingerprint));
+  if (kind === "run") {
+    if (new Set(value.task_ids).size !== value.task_ids.length) issues.push(issue("DUPLICATE_TASK", "$.task_ids"));
+    issues.push(...scopeIssues(value.canonical.scope, "$.canonical.scope", null, value.canonical.plan_ref));
+    if (!isExactExecutionPath(value.canonical.plan_ref)) issues.push(issue("INVALID_PLAN_REF", "$.canonical.plan_ref"));
+  }
+  if (["task", "delegation"].includes(kind)) issues.push(...scopeIssues(value.scope, "$.scope"));
+  if (kind === "task") {
+    if (fingerprintTaskContract(value) !== value.task_contract_sha256) issues.push(issue("TASK_FINGERPRINT_MISMATCH", "$.task_contract_sha256"));
+    if (new Set(value.depends_on).size !== value.depends_on.length || value.depends_on.includes(value.task_id)) issues.push(issue("INVALID_TASK_DEPENDENCY", "$.depends_on"));
+  }
+  if (["attempt", "delegation"].includes(kind)) {
+    if (!isAbsoluteExecutionCwd(value.worktree.cwd)) issues.push(issue("ABSOLUTE_CWD_REQUIRED", "$.worktree.cwd"));
+    if (!validBranch(value.worktree.branch) || !value.worktree.branch.startsWith("codex/")) issues.push(issue("INVALID_WORKER_BRANCH", "$.worktree.branch"));
+  }
+  if (kind === "request" && !isAbsoluteExecutionCwd(value.cwd)) issues.push(issue("ABSOLUTE_CWD_REQUIRED", "$.cwd"));
+  for (const [i, proof] of (value.evidence ?? []).entries()) {
+    if (!isExactExecutionPath(proof.ref)) issues.push(issue("INVALID_EVIDENCE_REF", `$.evidence[${i}].ref`));
+  }
+  if (kind === "result") {
+    if ((value.termination_state === "unknown") !== (value.outcome === "indeterminate")) issues.push(issue("INDETERMINATE_TERMINATION_REQUIRED", "$.termination_state"));
+    if (value.outcome === "completed" && (value.termination_state !== "confirmed" || value.process.exit_code !== 0 || value.process.signal !== null)) issues.push(issue("INVALID_COMPLETED_RESULT", "$.process"));
+    if (value.termination_state === "not_started" && (value.process.exit_code !== null || value.process.signal !== null)) issues.push(issue("PROCESS_NOT_STARTED", "$.process"));
+  }
+  if (kind === "acceptance") {
+    const { validation, integration, cleanup } = value;
+    const ids = validation.checks.map((check) => check.validation_id);
+    if (new Set(ids).size !== ids.length) issues.push(issue("DUPLICATE_VALIDATION", "$.validation.checks"));
+    if (validation.tested_sha !== null && validation.tested_sha !== value.candidate_sha) issues.push(issue("VALIDATION_SHA_MISMATCH", "$.validation.tested_sha"));
+    if (validation.checks.some((check) => check.tested_sha !== value.candidate_sha)) issues.push(issue("VALIDATION_SHA_MISMATCH", "$.validation.checks"));
+    if (validation.status === "passed" && (!validation.checks.length || validation.tested_sha !== value.candidate_sha || validation.checks.some((check) => check.status !== "passed"))) issues.push(issue("INVALID_PASSED_VALIDATION", "$.validation"));
+    if (value.decision === "accepted" && validation.status !== "passed") issues.push(issue("ACCEPTANCE_REQUIRES_VALIDATION", "$.decision"));
+    if (integration.status === "integrated" && (value.decision !== "accepted" || integration.source_sha !== value.candidate_sha || integration.integrated_sha === null)) issues.push(issue("INVALID_INTEGRATION_PROOF", "$.integration"));
+    if (integration.status !== "integrated" && integration.integrated_sha !== null) issues.push(issue("INVALID_INTEGRATION_PROOF", "$.integration"));
+    if (cleanup.status === "verified" && !cleanup.evidence.length) issues.push(issue("CLEANUP_EVIDENCE_REQUIRED", "$.cleanup"));
+    for (const proof of [...validation.checks.map((check) => check.evidence), ...cleanup.evidence]) {
+      if (!isExactExecutionPath(proof.ref)) issues.push(issue("INVALID_EVIDENCE_REF", "$.validation"));
+    }
+  }
+  return report(issues);
+}
+
+// A complete model bundle is required: isolated shape checks do not prove binding.
+export function validateAgentExecutionBindings(bundle) {
+  const inputIssues = jsonIssues(bundle);
+  if (inputIssues.length) return report(inputIssues);
+  const required = ["plan", "run", "task", "attempt", "delegation", "request"];
+  if (!bundle || required.some((kind) => !Object.hasOwn(bundle, kind))) return report([issue("BINDING_CONTEXT_REQUIRED")]);
+  const issues = [];
+  for (const kind of [...required, "result", "acceptance"]) {
+    if (!Object.hasOwn(bundle, kind)) continue;
+    issues.push(...validateAgentExecutionContract(kind, bundle[kind]).issues.map((item) => ({ ...item, path: `$.${kind}${item.path.slice(1)}` })));
+  }
+  if (issues.length) return report(issues);
+  const { plan, run, task, attempt, delegation, request, result, acceptance } = bundle;
+  const planHash = fingerprintAgentExecutionPlan(plan);
+  const plannedTask = plan.tasks.find((entry) => entry.task_id === task.task_id);
+  const mismatch = (ok, code, path) => { if (!ok) issues.push(issue(code, path)); };
+  mismatch(run.plan_id === plan.plan_id && equal(run.canonical, plan.canonical), "RUN_CONTEXT_MISMATCH", "$.run");
+  mismatch(equal(run.task_ids, plan.tasks.map((item) => item.task_id)), "RUN_TASKS_MISMATCH", "$.run.task_ids");
+  if (!plannedTask) return report([...issues, issue("TASK_NOT_IN_PLAN", "$.task.task_id")]);
+  mismatch(TASK_FIELDS.every((field) => equal(task[field], plannedTask[field])), "TASK_CONTRACT_MISMATCH", "$.task");
+  for (const [kind, value] of Object.entries({ run, task, attempt, delegation, request, ...(result ? { result } : {}), ...(acceptance ? { acceptance } : {}) })) {
+    mismatch(value.plan_sha256 === planHash, "PLAN_BINDING_MISMATCH", `$.${kind}.plan_sha256`);
+    mismatch(value.run_id === run.run_id, "RUN_BINDING_MISMATCH", `$.${kind}.run_id`);
+    if (kind === "run") continue;
+    mismatch(value.task_id === task.task_id, "TASK_BINDING_MISMATCH", `$.${kind}.task_id`);
+    mismatch(value.task_contract_sha256 === task.task_contract_sha256, "TASK_BINDING_MISMATCH", `$.${kind}.task_contract_sha256`);
+    if (kind === "task") continue;
+    mismatch(value.attempt_id === attempt.attempt_id, "ATTEMPT_BINDING_MISMATCH", `$.${kind}.attempt_id`);
+    mismatch(value.input_sha === attempt.input_sha, "INPUT_SHA_MISMATCH", `$.${kind}.input_sha`);
+  }
+  mismatch(equal(delegation.worktree, attempt.worktree) && request.cwd === attempt.worktree.cwd, "WORKTREE_BINDING_MISMATCH", "$.delegation.worktree");
+  mismatch(equal(delegation.activation, attempt.activation) && equal(attempt.activation, plan.canonical.activation), "ACTIVATION_BINDING_MISMATCH", "$.attempt.activation");
+  mismatch(equal(delegation.ownership, attempt.ownership) && equal(request.ownership, attempt.ownership)
+    && (!result || equal(result.ownership, attempt.ownership))
+    && attempt.ownership.planning_revision === plan.canonical.planning_revision, "OWNERSHIP_BINDING_MISMATCH", "$.delegation.ownership");
+  mismatch(equal(delegation.scope, task.scope), "DELEGATION_SCOPE_MISMATCH", "$.delegation.scope");
+  mismatch(request.delegation_id === delegation.delegation_id, "DELEGATION_BINDING_MISMATCH", "$.request.delegation_id");
+  mismatch(request.delegation_sha256 === fingerprintAgentExecutionValue(delegation), "DELEGATION_BINDING_MISMATCH", "$.request.delegation_sha256");
+  mismatch(equal(request.execution, plan.execution) && request.limits.max_duration_ms === task.max_duration_ms, "EXECUTION_CONFIG_MISMATCH", "$.request.execution");
+  if (!plannedTask.depends_on.length) mismatch(attempt.input_sha === plan.base.sha, "INPUT_SHA_MISMATCH", "$.attempt.input_sha");
+  if (result) {
+    mismatch(result.request_sha256 === fingerprintAgentExecutionValue(request), "REQUEST_BINDING_MISMATCH", "$.result.request_sha256");
+    mismatch(result.delegation_id === delegation.delegation_id, "DELEGATION_BINDING_MISMATCH", "$.result.delegation_id");
+    const expected = result.outcome === "indeterminate" ? "recovery_required" : result.outcome;
+    mismatch(attempt.lifecycle_status === expected, "ATTEMPT_RESULT_STATUS_MISMATCH", "$.attempt.lifecycle_status");
+  }
+  if (acceptance) {
+    mismatch(Boolean(result) && fingerprintAgentExecutionValue(result) === acceptance.result_sha256, "RESULT_BINDING_MISMATCH", "$.acceptance.result_sha256");
+    if (acceptance.decision === "accepted") {
+      mismatch(result?.outcome === "completed" && result?.termination_state === "confirmed", "ACCEPTANCE_REQUIRES_COMPLETION", "$.acceptance.decision");
+      const checks = acceptance.validation.checks.map((check) => check.validation_id).sort();
+      mismatch(equal(checks, plan.validations.map((item) => item.validation_id).sort()), "VALIDATION_SET_MISMATCH", "$.acceptance.validation.checks");
+    }
+  }
+  if (bundle.events !== undefined) {
+    if (!Array.isArray(bundle.events) || bundle.events.length > 10000) return report([...issues, issue("INVALID_EVENT_STREAM", "$.events")]);
+    const ids = new Set();
+    bundle.events.forEach((entry, index) => {
+      const checked = validateAgentExecutionContract("event", entry);
+      issues.push(...checked.issues);
+      if (!checked.ok) return;
+      mismatch(["run_id", "task_id", "attempt_id", "plan_sha256"].every((field) => entry[field] === attempt[field]), "EVENT_BINDING_MISMATCH", `$.events[${index}]`);
+      mismatch(entry.sequence === index + 1 && !ids.has(entry.event_id), "EVENT_SEQUENCE_MISMATCH", `$.events[${index}]`);
+      ids.add(entry.event_id);
+    });
+  }
+  return report(issues);
+}

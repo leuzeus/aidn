@@ -21,6 +21,7 @@ const REQUIRED_OBLIGATIONS = Object.freeze({
   "docs-references": ["dev", "main", "release"],
   "codex-pack-topology": ["dev", "main", "release"],
   "runtime-db-runtime-cli": ["dev", "main", "release"],
+  "runtime-agent-execution-contracts": ["dev", "main", "release"],
   "security-tracked-sensitivity": ["dev", "main", "release"],
   "release-version": ["dev", "main", "release"],
   "release-reproducibility": ["dev", "main", "release"],
@@ -35,6 +36,7 @@ const REQUIRED_GATE_SCRIPTS = Object.freeze({
   "contracts-json": "perf:verify-cli-output-contracts",
   "effects-policy": "perf:verify-cli-effect-policy",
   "runtime-db-runtime-cli": "perf:verify-db-runtime-cli",
+  "runtime-agent-execution-contracts": "perf:verify-agent-execution-contracts",
   "codex-pack-topology": "perf:verify-pack-topology",
   "security-tracked-sensitivity": "perf:verify-tracked-sensitivity",
   "release-version": "perf:verify-release-version",
@@ -47,6 +49,7 @@ const REQUIRED_GATE_SCRIPTS = Object.freeze({
 });
 
 const REQUIRED_GATE_CONDITIONS = Object.freeze({
+  "runtime-agent-execution-contracts": "always",
   "release-reproducibility": "git-clean-commit",
   "cleanliness-gate-runner-fixtures": "git-repository",
   "cleanliness-worktree": "git-repository",
@@ -363,6 +366,20 @@ export function validateGateAndWorkflowPolicy({
     if (gateById.get(gateId)?.condition !== condition) {
       issues.push(`${gateId}: immutable condition must be ${condition}`);
     }
+  }
+
+  const executionGate = gateById.get("runtime-agent-execution-contracts");
+  if (executionGate && (executionGate.family !== "runtime"
+    || executionGate.job !== "governance-admission/gates"
+    || executionGate.execution_scope === "manual-only")) {
+    issues.push("runtime-agent-execution-contracts: immutable runtime admission placement");
+  }
+  if (gates.filter((gate) => gate.script === "perf:verify-agent-execution-contracts").length !== 1) {
+    issues.push("runtime-agent-execution-contracts: script must be selected exactly once");
+  }
+  if (packageJson?.scripts?.["perf:verify-agent-execution-contracts"]
+    !== "node tools/perf/verify-agent-execution-contracts-fixtures.mjs") {
+    issues.push("runtime-agent-execution-contracts: immutable fixture command");
   }
 
   const inventory = Array.isArray(catalog?.workflow_inventory)

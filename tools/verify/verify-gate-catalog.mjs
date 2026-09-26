@@ -680,7 +680,31 @@ const liveSmokeOrderMutation = liveSmokeText
     "npm run perf:verify-postgres-shared-coordination-live-smoke",
   );
 
+function agentExecutionPolicyProbe(mutate) {
+  const candidate = { catalog: clone(catalog), packageJson: clone(packageJson), workflowModels };
+  mutate(candidate);
+  return validateGateAndWorkflowPolicy(candidate);
+}
+
 const negativeProbes = {
+  agent_execution_gate_removal_rejected: agentExecutionPolicyProbe(({ catalog: candidate }) => {
+    candidate.gates = candidate.gates.filter((gate) => gate.id !== "runtime-agent-execution-contracts");
+  }).some((issue) => issue.includes("runtime-agent-execution-contracts: required invariant gate missing")),
+  agent_execution_gate_weakening_rejected: agentExecutionPolicyProbe(({ catalog: candidate }) => {
+    candidate.gates.find((gate) => gate.id === "runtime-agent-execution-contracts").obligation.dev = "optional";
+  }).some((issue) => issue.includes("runtime-agent-execution-contracts: immutable dev obligation")),
+  agent_execution_gate_duplicate_rejected: agentExecutionPolicyProbe(({ catalog: candidate }) => {
+    candidate.gates.push({ ...candidate.gates.find((gate) => gate.id === "runtime-agent-execution-contracts"), id: "duplicate-task-contracts", allow_script_reuse: true });
+  }).some((issue) => issue.includes("runtime-agent-execution-contracts: script must be selected exactly once")),
+  agent_execution_gate_condition_rejected: agentExecutionPolicyProbe(({ catalog: candidate }) => {
+    candidate.gates.find((gate) => gate.id === "runtime-agent-execution-contracts").condition = "codex-cli-available";
+  }).some((issue) => issue.includes("runtime-agent-execution-contracts: immutable condition")),
+  agent_execution_gate_manual_only_rejected: agentExecutionPolicyProbe(({ catalog: candidate }) => {
+    candidate.gates.find((gate) => gate.id === "runtime-agent-execution-contracts").execution_scope = "manual-only";
+  }).some((issue) => issue.includes("runtime-agent-execution-contracts: immutable runtime admission placement")),
+  agent_execution_gate_command_substitution_rejected: agentExecutionPolicyProbe(({ packageJson: candidate }) => {
+    candidate.scripts["perf:verify-agent-execution-contracts"] = "node --version";
+  }).some((issue) => issue.includes("runtime-agent-execution-contracts: immutable fixture command")),
   ...contextNegativeProbes,
   governance_route_resolver_required:
     evaluateGovernanceAdmissionExecutable(missingAdmissionResolverMutation).length > 0,

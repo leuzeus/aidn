@@ -36,6 +36,17 @@ The first port slice should support:
 - handoff relay records
 - coordination history records
 
+## Bounded supervision contract (2026-09-26)
+
+ADR-0014 introduces a distinct `AgentTaskExecutor` port and versioned internal
+run/task/attempt contracts. Lot 2 changes no `SharedCoordinationStore` method or
+schema. Future ownership and immutable events require explicit transactional
+ports and an additive PostgreSQL migration: planning revisions, worktree
+heartbeats and upserted coordination records are not equivalent authority.
+Readiness must remain read-only and normal claims/heartbeats must not bootstrap
+DDL. Existing transitions that modify run context must respect a future
+reservation or invalidate its revision atomically before supervision is enabled.
+
 ## Options Compared
 
 | Option | Result |

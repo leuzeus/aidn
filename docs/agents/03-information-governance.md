@@ -56,6 +56,9 @@ Do not introduce a new information concept until you have checked:
 | incident | governed | Incidents carry lifecycle and ownership rules. |
 | coordination_record | governed | Coordination records are a first-class governed family. |
 | coordination_summary | governed | Coordination summary is a governed projection. |
+| execution_run | governed, `model_only` | Frozen bounded plan and coordinator context; future PostgreSQL authority, no runtime instances. |
+| delegated_task | governed, `model_only` | Run-local task identity, exact file operations and acceptance contract; no synthetic session. |
+| execution_attempt | governed, `model_only` | One attempt owns its delegation and result references; execution, acceptance, integration and cleanup remain distinct. |
 | baseline | local-first artifact family | Governed as local-first and checkout-bound unless explicitly projected. |
 | snapshot | local-first artifact family | Governed as local-first and checkout-bound unless explicitly projected. |
 | gate_result | excluded | CI telemetry, not governed product state. |
@@ -68,3 +71,11 @@ Do not introduce a new information concept until you have checked:
 If a concept already has a parent surface or an orthogonal telemetry layer, do not promote it without an explicit policy update and an ADR check.
 
 Keep the source-of-truth policy, metadata policy, and governance diagnostics in sync with the information model.
+
+ADR-0014 introduces internal supervision contracts only. `model_only` marks
+complete policy coverage without advertising operational availability. Do not
+invent observed artifacts or store instances for these concepts. PostgreSQL is
+optional globally, but exclusive for the future supervised execution path;
+there is no SQLite, file or in-memory authority fallback. Local transcripts
+remain local with bounded hash/size references in shared results and no automatic
+purge in V1.

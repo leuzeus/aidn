@@ -72,6 +72,23 @@ This overlay names the logical owner of key information concepts. It complements
 | Agent roster | `docs/audit/AGENT-ROSTER.md` | same checkout-bound file | runtime/configured agent registry, materialized on demand | health and selection summaries |
 | CLI output contracts | package `src/core/contracts/cli-output/*.schema.json` | same package contract | same package contract | generated docs future |
 
+## Modeled Supervision Boundary
+
+ADR-0014 adds internal `execution_run`, `delegated_task` and `execution_attempt`
+contracts with `model_only` governance coverage. Their future canonical backend
+is exclusively PostgreSQL, independent of the project's `files`, `dual` or
+`db-only` projection mode. Existing sequential paths retain optional PostgreSQL.
+There is no operational supervision store, table, migration or fallback in lot 2;
+these concepts therefore add no entries to the currently implemented shared-table
+inventory above.
+
+The future run lifecycle owns local worker worktrees and bulky output files.
+Shared attempt results contain bounded local references, byte counts and hashes,
+never transcripts or credentials. No automatic purge applies. Task leases,
+worktree heartbeats and global generation leases have separate authority.
+Policy completeness must not be interpreted as a running capability or an
+observed instance of these concepts.
+
 ## Mode Contract Summary
 
 The overlay above describes where each concept lives. These are the operational guarantees the modes must preserve:

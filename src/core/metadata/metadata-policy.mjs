@@ -49,6 +49,8 @@ function policy({
     retention: sourcePolicy.retention,
     migration: sourcePolicy.migration,
     replacement: sourcePolicy.replacement,
+    ...(sourcePolicy.coverage_kind ? { coverage_kind: sourcePolicy.coverage_kind } : {}),
+    ...(sourcePolicy.authority_backend ? { authority_backend: sourcePolicy.authority_backend } : {}),
     evidence_targets: [...evidenceTargets],
     notes,
   });
@@ -72,6 +74,33 @@ const GOVERNED_CONTENT_FIELDS = Object.freeze([
 ]);
 
 const METADATA_POLICIES = freezeDeep([
+  policy({
+    concept: "execution_run",
+    label: "Bounded execution run",
+    required: ["contract_version", "run_id", "plan_id", "plan_sha256", "authority_backend", "canonical", "task_ids", "lifecycle_status"],
+    sourceOfTruthConcept: "execution_run",
+    evidenceTargets: ["src/core/agents/agent-execution-contracts.mjs", "src/core/contracts/agent-execution"],
+    lifecycle: "planned -> running -> completed|failed|cancelled|recovery_required",
+    notes: "Model-only PostgreSQL supervision contract; no runtime instances. Canonical references retain project, workspace, runtime scope, session, cycle, exact task selector, plan hash, planning revision and activation. Validation, integration and cleanup are separate from execution status.",
+  }),
+  policy({
+    concept: "delegated_task",
+    label: "Delegated task",
+    required: ["contract_version", "run_id", "task_id", "plan_sha256", "task_contract_sha256", "objective", "scope", "acceptance_criteria", "max_duration_ms"],
+    sourceOfTruthConcept: "delegated_task",
+    evidenceTargets: ["src/core/agents/agent-execution-contracts.mjs", "src/core/contracts/agent-execution"],
+    lifecycle: "pending -> ready -> running -> accepted|failed|blocked|cancelled",
+    notes: "Model-only task descriptor, not an independent session. The task schema requires depends_on and permits an empty list; metadata completeness does not treat that list as a nonempty identity field. Exact files and operations must stay within the canonical scope. The supervisor owns acceptance against the frozen task contract.",
+  }),
+  policy({
+    concept: "execution_attempt",
+    label: "Execution attempt",
+    required: ["contract_version", "run_id", "task_id", "attempt_id", "ordinal", "plan_sha256", "task_contract_sha256", "input_sha", "worktree", "activation", "ownership", "lifecycle_status"],
+    sourceOfTruthConcept: "execution_attempt",
+    evidenceTargets: ["src/core/agents/agent-execution-contracts.mjs", "src/core/contracts/agent-execution", "src/core/ports/agent-task-executor-port.mjs"],
+    lifecycle: "launch_intended -> running -> completed|failed|cancelled|timed_out|recovery_required",
+    notes: "Model-only attempt; delegation and result carry this same run/task/attempt identity and ownership generation. Exit zero is not acceptance; unconfirmed descendant termination requires reconciliation. Bulk output stays local, referenced by hash and byte count without credentials.",
+  }),
   policy({
     concept: "project_activation",
     label: "Project workflow activation",

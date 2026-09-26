@@ -245,6 +245,7 @@
     "perf:verify-cli-effect-policy": "node tools/perf/verify-cli-effect-policy.mjs",
     "perf:verify-cli-no-implicit-write": "node tools/perf/verify-cli-no-implicit-write-fixtures.mjs",
     "perf:verify-cli-output-contracts": "node tools/perf/verify-cli-output-contracts-fixtures.mjs",
+    "perf:verify-agent-execution-contracts": "node tools/perf/verify-agent-execution-contracts-fixtures.mjs",
     "perf:verify-source-of-truth-policy": "node tools/perf/verify-source-of-truth-policy.mjs",
     "perf:verify-governance-completeness": "node tools/perf/verify-governance-completeness.mjs",
     "perf:verify-governance-diagnostics-use-case": "node tools/perf/verify-governance-diagnostics-use-case-fixtures.mjs",

@@ -64,6 +64,19 @@ never requests schema migration, adoption or import. The `adopt` policy retains
 explicit installation effects; neither policy grants workflow activation by
 reading configuration.
 
+## Future delegated admission (2026-09-26)
+
+ADR-0014 models bounded worker delegation without implementing an admission
+exception. A future delegation must bind run, task, attempt, exact physical root,
+branch, Git input, activation revision, frozen plan and live lease. Each worktree
+requires independent verified preparation with the candidate engine and
+`verify-only` persistence. A copied receipt cannot qualify and revocation cannot
+be undone by delegation. Session, cycle, planning, installation and authorization
+mutations remain outside worker authority, including through notes or parking-lot
+paths. A future authenticated local admission transport must expose bounded
+admission requests only, with no writer credentials delivered to workers.
+Activation, native trust and observed hook enforcement remain separate evidence.
+
 ## Consequences and validation
 
 2026-09-24: activation remains a prerequisite, not patch authorization. Each

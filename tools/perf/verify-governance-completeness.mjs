@@ -34,6 +34,15 @@ function main() {
     workspace: null,
     includeObservedArtifacts: false,
   });
+  for (const conceptId of ["execution_run", "delegated_task", "execution_attempt"]) {
+    const concept = output.concepts.find((item) => item.concept === conceptId);
+    if (concept?.status !== "complete" || concept?.coverage_kind !== "model_only"
+      || !concept?.coverage_note.includes("supervised execution is unavailable")
+      || concept?.cli_contract_status !== "not_applicable") {
+      output.issues.push(`${conceptId}: model-only coverage must not advertise an executable CLI capability`);
+      output.ok = false;
+    }
+  }
   if (args.json) {
     console.log(JSON.stringify(output, null, 2));
   } else {
