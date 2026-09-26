@@ -165,6 +165,11 @@ scope. They do not adopt a store or rebuild its index. `--path` is relative to
 the audit root (for example `sessions/S001-example.md`); do not prefix it
 with the audit root. The additive `backend` field identifies
 the store; the legacy v1 `sqlite_file` field is empty for PostgreSQL.
+When the resolved durable runtime scope and its legacy path scope coexist,
+artifact commands select the durable scope, like canonical snapshot reads.
+The legacy scope is eligible only when durable-scope metadata is absent. A
+missing artifact within the selected scope never falls back to legacy content;
+no implicit merge, deletion or migration of either scope occurs.
 `list`, `get` and materialization previews remain read-only. JSON formatting
 does not authorize an upsert or materialization; their existing effect rules
 remain unchanged. PostgreSQL checkpoints read the canonical backend and skip

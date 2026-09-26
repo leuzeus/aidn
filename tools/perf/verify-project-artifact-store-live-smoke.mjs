@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { createPostgresRuntimeArtifactStore } from '../../src/adapters/runtime/postgres-runtime-artifact-store.mjs';
 import { resolveRuntimeProjectContext } from '../../src/application/runtime/runtime-project-context-service.mjs';
 import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
@@ -392,6 +393,47 @@ else {
       assert.equal((await assertPrAction('blocked_pr_context_missing')).reason_code, 'PR_ORCHESTRATE_CANONICAL_RUNTIME_INVALID');
     } finally { fs.writeFileSync(configPath, savedPrConfig); }
     console.log('PASS live PostgreSQL: canonical PR lifecycle through review, merge and post-merge sync across CLI/daemon/wrapper; missing backend and ambiguous session refuse; stale files, all rows and other scope preserved');
+    // A principal checkout can retain its old path scope after adoption while
+    // its linked worktree sees only the durable identity. Never mix their rows.
+    const identity = resolveRuntimeProjectContext({ targetRoot });
+    const legacyScope = identity.legacy_scope_key;
+    assert.notEqual(legacyScope, scopes[0]);
+    for (const rows of Object.values(await snapshot(legacyScope))) assert.equal(rows.length, 0);
+    scopes.push(legacyScope);
+    const legacyStore = createPostgresRuntimeArtifactStore({ targetRoot, connectionString,
+      runtimeProjectContext: { ...identity, runtime_scope_id: legacyScope, scope_key: legacyScope, is_legacy_scope: true } });
+    await legacyStore.writeIndexProjection({ payload: { schema_version: 1, target_root: targetRoot, audit_root: 'docs/audit',
+      structure_profile: { kind: 'modern', recommended_required_artifacts: [], notes: [] },
+      artifacts: ['notes/preserved.md', 'notes/legacy-only.md'].map(name => ({ path: name, kind: 'note',
+        content_format: 'utf8', content: 'stale legacy value', sha256: 'legacy', mtime_ns: '1', updated_at: '2026-01-01T00:00:00Z' })),
+      cycles: [], sessions: [] } });
+    const legacyBefore = await snapshot(legacyScope), canonicalBefore = await snapshot(scopes[0]);
+    const files = () => fs.readdirSync(targetRoot, { recursive: true }).sort()
+      .filter(name => fs.statSync(path.join(targetRoot, name)).isFile())
+      .map(name => [name, createHash('sha256').update(fs.readFileSync(path.join(targetRoot, name))).digest('hex')]);
+    const filesBefore = files();
+    assert.equal((await store.loadSnapshot()).scope_key, scopes[0]);
+    assert.equal(facade.getArtifact('notes/preserved.md').content, 'preserve me');
+    assert.equal(cli('artifact-store', 'get', '--path', 'notes/preserved.md').artifact.content, 'preserve me');
+    assert.equal(cli('artifact-store', 'get', '--path', 'notes/legacy-only.md').artifact, null);
+    assert(!cli('artifact-store', 'list', '--limit', '10000').artifacts.some(row => row.path === 'notes/legacy-only.md'));
+    const legacyOnly = createPostgresRuntimeArtifactStore({ targetRoot, connectionString,
+      runtimeProjectContext: { ...identity, runtime_scope_id: scopes[0] + '-absent' } });
+    assert.equal((await legacyOnly.executeArtifactCommand('get', { path: 'notes/legacy-only.md' })).content, 'stale legacy value');
+    assert.deepEqual(await snapshot(scopes[0]), canonicalBefore, 'coexisting-scope reads changed canonical rows');
+    assert.deepEqual(await snapshot(legacyScope), legacyBefore, 'coexisting-scope reads changed legacy rows');
+    assert.deepEqual(files(), filesBefore, 'artifact reads changed checkout files');
+    const selectedWrite = cli('db-first-artifact', '--path', 'notes/selected-scope.md', '--content', 'canonical only', '--no-materialize');
+    assert.equal(selectedWrite.ok, true); assert.equal(selectedWrite.materialized, false);
+    assert.equal(facade.getArtifact('notes/selected-scope.md').content, 'canonical only');
+    const selectedAfter = await snapshot(scopes[0]);
+    for (const table of tables) assert.deepEqual(selectedAfter[table].filter(row => row.row.path !== 'notes/selected-scope.md'
+      && !(table === 'artifact_blobs' && row.row.artifact_id === selectedAfter.artifacts.find(item => item.row.path === 'notes/selected-scope.md').row.artifact_id)),
+    canonicalBefore[table], `selective write changed unrelated ${table}`);
+    assert.deepEqual(await snapshot(legacyScope), legacyBefore, 'canonical write changed legacy history');
+    assert.deepEqual(await snapshot(scopes[1]), other, 'scope selection affected another project');
+    assert.deepEqual(files(), filesBefore, 'non-materialized write changed checkout files');
+    console.log('PASS live PostgreSQL: coexisting canonical/legacy scopes select durable identity in CLI/facade reads and selective writes; no per-artifact fallback, legacy-only read supported, legacy/other-project rows and checkout preserved');
     console.log('PASS live PostgreSQL: auto reload and standard branch hook; normal reloads do not stop; genuine fallback stop survives hook and Codex wrapper; canonical data unchanged');
     assert.equal(fs.existsSync(path.join(targetRoot, '.aidn/runtime/index/workflow-index.sqlite')), false);
     console.log('PASS live PostgreSQL: first-cycle admission and runtime projector read canonical rows despite misleading files; freshness remains unknown; no data mutation');
