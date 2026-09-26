@@ -2,6 +2,8 @@
 
 ## 0.10.5
 
+- Disable optional Git index refreshes during read-only status inspection.
+  Admission preserves repository metadata even when tracked file timestamps change.
 - Record explicit drift-check completion through the real skill route. The check
   evaluates current evidence without requiring an earlier completion of itself;
   other scope, objective, integrity and repair signals remain enforced.

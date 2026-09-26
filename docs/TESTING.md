@@ -178,6 +178,11 @@ stderr tails. Deterministic probes cover a nonzero stdout-only child, configured
 secret redaction, and an `ETIMEDOUT` timeout so an intermittent command failure
 cannot collapse into an ambiguous contract result.
 
+The pre-write admission fixtures also invalidate tracked file stat metadata
+without changing content. Both status inspection and cycle admission must leave
+every file byte unchanged, including `.git/index` and the canonical local store;
+read-only Git calls disable optional index refreshes.
+
 The CLI surface inventory verifier checks that `repair-layer` commands remain classified as internal and are not exposed as public runtime aliases or effect-policy entries.
 
 When a change affects source-of-truth semantics or concept ownership, run:
