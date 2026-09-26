@@ -81,6 +81,10 @@ After those prerequisites and a real PostgreSQL claim, obtain separate evidence:
 | Stale authority | Revoked activation or lost ownership refuses a subsequent covered edit |
 
 Use the native tool trace and independent before/after hashes as the oracle.
+The worker reads its explicitly isolated CODEX_HOME configuration, because
+ignoring that file would also omit project trust. It never falls back to the
+operator's default profile. Model, effort and sandbox remain explicit command
+arguments, and native subagent delegation is disabled for a bounded worker.
 Raw Codex JSONL, an exit code of zero, a model's statement, a simulated hook
 payload or a passing fixture is insufficient. Record PASS, FAIL, SKIP and
 UNAVAILABLE separately. Results bind to the exact candidate, executable,

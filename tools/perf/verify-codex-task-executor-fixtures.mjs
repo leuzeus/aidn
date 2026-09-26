@@ -60,6 +60,8 @@ try {
     const { request } = setup(); const args = buildCodexTaskArguments(request);
     assert.equal(args[args.indexOf("--cd") + 1], cwd); assert.equal(args[args.indexOf("--model") + 1], request.execution.model);
     assert(args.includes("workspace-write")); assert(!args.some(value => value.includes("dangerously")));
+    assert(!args.includes("--ignore-user-config"), "the isolated profile's native trust must be loaded");
+    assert(args.includes("agents.enabled=false"), "workers cannot create a second delegation authority");
   });
   await check("qualification unavailable launches nothing", async () => {
     const { executor, request, calls } = setup({ qualify: false });

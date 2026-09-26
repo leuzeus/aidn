@@ -30,9 +30,11 @@ function boundedCallback(operation, { signal, timeoutMs }) {
 export function buildCodexTaskArguments(request) {
   assertAgentExecutionContract("request", request);
   if (request.execution.executor_id !== EXECUTOR) fail("CODEX_EXECUTOR_MISMATCH");
-  return ["exec", "--json", "--ephemeral", "--ignore-user-config", "--strict-config",
+  // Read only the explicitly isolated profile: its native project/hook trust
+  // must remain visible. --ignore-user-config would also hide project trust.
+  return ["exec", "--json", "--ephemeral", "--strict-config",
     "--cd", request.cwd, "--sandbox", request.execution.sandbox, "--model", request.execution.model,
-    "-c", `model_reasoning_effort=${JSON.stringify(request.execution.effort)}`, "-"];
+    "-c", `model_reasoning_effort=${JSON.stringify(request.execution.effort)}`, "-c", "agents.enabled=false", "-"];
 }
 
 // Explicit allowlist: do not copy process.env, PG credentials, API keys, Git
