@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.10.2
+
+- Return an explicit native JSON denial from global project hook connectors when
+  the launcher fails, emits invalid or oversized output, or exceeds its deadline.
+  Preserve successful and inactive replies, with degraded startup context on
+  failure. Existing connectors require explicit project repair and renewed native
+  review; a global update alone does not rewrite them. Subprocess fixtures do not
+  qualify disabled hooks or hooks terminated by the native client.
+
+- Admit the first cycle of a verified canonical session without requiring
+  timestamps from a cycle that does not exist. Keep freshness `unknown` and
+  report the explicit initial-state check; stale, missing, ambiguous or
+  inconsistent state still blocks. Other skills and native write scopes retain
+  their controls.
+- Resolve cycle-create from the canonical database in DB-backed modes. Runtime
+  projection also uses canonical rows in db-only/PostgreSQL mode, even when
+  misleading Markdown projections exist, and refuses an unavailable backend.
+- Cover initial-cycle boundaries, read-only behavior and projection precedence
+  with fixtures and a dedicated live PostgreSQL smoke.
+
 ## 0.10.1
 
 - Route explicit artifact commands to the configured canonical backend. PostgreSQL

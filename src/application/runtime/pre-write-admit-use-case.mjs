@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
 import { evaluateNativeWriteAdmission } from "./native-write-admission-service.mjs";
+import { analyzeStructuredArtifact, extractStructuredField } from "../../lib/workflow/structured-artifact-parser-lib.mjs";
 
 export function admitSpecificNativeWrite({ request, result, ...canonical }) {
   if (request === undefined) return { ...result, admission_kind: "generic" };
@@ -25,6 +26,7 @@ const DEFAULT_POLICY = Object.freeze({
   requireDorReady: false,
   requireFirstPlanStep: false,
   requireFreshCurrentState: false,
+  allowInitialCycleFreshness: false,
   requireRuntimeClearInDbModes: false,
 });
 
@@ -50,6 +52,7 @@ const SKILL_POLICIES = Object.freeze({
   },
   "cycle-create": {
     requireFreshCurrentState: true,
+    allowInitialCycleFreshness: true,
     requireRuntimeClearInDbModes: true,
   },
   "cycle-close": {
@@ -471,6 +474,33 @@ export function derivePreWriteObservedContext({
   };
 }
 
+// Only the first cycle in a canonically established session has no cycle
+// timestamps to compare. Missing/unknown state is not evidence of this case.
+export function verifyInitialCycleContext({
+  skill, effectiveStateMode, currentMap, currentStateResolution,
+  runtimeStateResolution, sessionResolution, currentBranch,
+} = {}) {
+  if (skill !== "cycle-create" || !["dual", "db-only"].includes(effectiveStateMode)) return false;
+  const source = currentStateResolution?.source;
+  if (!["sqlite", "postgres"].includes(source)
+      || ![currentStateResolution, runtimeStateResolution, sessionResolution]
+        .every(item => item?.exists === true && item.source === source)) return false;
+  const value = key => normalizeScalar(currentMap?.get(key));
+  if (!canonicalNone(value("active_cycle")) || !canonicalNone(value("cycle_branch"))
+      || value("branch_kind") !== "session" || !/^S\d+$/.test(value("active_session"))
+      || !Number.isFinite(Date.parse(value("updated_at")))
+      || !currentBranch || value("session_branch") !== currentBranch) return false;
+  const sessionPath = String(sessionResolution.logicalPath ?? "").replaceAll("\\", "/");
+  if (!new RegExp(`^docs/audit/sessions/${value("active_session")}(?:[-_.][^/]*)?\\.md$`).test(sessionPath)) return false;
+  const text = sessionResolution.text ?? "";
+  const session = analyzeStructuredArtifact(text, { classification: { kind: "session" } }).derived_session_context;
+  return session?.session_branch === currentBranch
+    && session.mode === value("mode") && ["THINKING", "EXPLORING", "COMMITTING"].includes(session.mode)
+    && canonicalNone(extractStructuredField(text, "primary_focus_cycle"))
+    && canonicalNone(session.cycle_branch)
+    && session.integration_target_cycles.length === 0;
+}
+
 export function evaluatePreWriteSourceOfTruthAndRuntimeGates({
   checks,
   addCheck,
@@ -485,6 +515,7 @@ export function evaluatePreWriteSourceOfTruthAndRuntimeGates({
   effectiveStateMode,
   repairLayerStatus,
   currentStateFreshness,
+  initialCycleContext = false,
   blockingFindings = [],
   policy,
   runtimeRepairRouting,
@@ -578,7 +609,11 @@ export function evaluatePreWriteSourceOfTruthAndRuntimeGates({
     if (normalizeScalarLocal(currentStateFreshness).toLowerCase() === "stale") {
       blockingReasons.push("CURRENT-STATE.md is stale according to RUNTIME-STATE.md");
     } else if (canonicalUnknownLocal(currentStateFreshness)) {
-      if (["dual", "db-only"].includes(normalizedRuntimeStateMode)) {
+      if (policy.allowInitialCycleFreshness && initialCycleContext && repairLayerStatus === "ok" && blockingFindings.length === 0) {
+        addCheck(checks, "cycle_create_initial_state_verified", true,
+          "canonical session explicitly has no active cycle; cycle timestamp comparison is not applicable");
+        warnings.push("initial cycle creation: cycle freshness comparison is not applicable; canonical session and branch verified");
+      } else if (["dual", "db-only"].includes(normalizedRuntimeStateMode)) {
         blockingReasons.push("current state freshness is unknown in DB-backed mode");
       } else {
         warnings.push("current state freshness is unknown; confirm live session/cycle facts before writing");

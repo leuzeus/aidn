@@ -18,6 +18,7 @@ import {
   evaluatePreWriteSourceOfTruthAndRuntimeGates,
   evaluateSessionIntegrationGate,
   mergePreWritePolicy,
+  verifyInitialCycleContext,
 } from "../../src/application/runtime/pre-write-admit-use-case.mjs";
 import { resolvePromotedSharedPlanningContext } from "../../src/application/runtime/shared-planning-resolution-service.mjs";
 import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
@@ -684,7 +685,7 @@ export async function preWriteAdmit({
     warning: "",
   };
   const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
-  const preferDb = effectiveStateMode === "db-only" || nativeRequest !== undefined && dbBackedMode;
+  const preferDb = effectiveStateMode === "db-only" || (nativeRequest !== undefined || skill === "cycle-create") && dbBackedMode;
   const currentStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: currentStateFile,
@@ -916,6 +917,9 @@ export async function preWriteAdmit({
     effectiveStateMode,
     repairLayerStatus,
     currentStateFreshness,
+    initialCycleContext: verifyInitialCycleContext({ skill, effectiveStateMode, currentMap,
+      currentStateResolution, runtimeStateResolution, sessionResolution,
+      currentBranch: cycleCreateGitGate?.repo_scoped ? cycleCreateGitGate.branch : "" }),
     blockingFindings,
     policy,
     runtimeRepairRouting: repairRouting,

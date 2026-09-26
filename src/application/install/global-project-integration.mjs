@@ -30,22 +30,75 @@ export function globalProjectBinding(home, packageRoot) {
   return { schema_version: 1, home: runtime.home, installation_id: runtime.state.installation_id, integration_revision: GLOBAL_INTEGRATION_REVISION };
 }
 
-// Only the project root and hook event are local. All hook behavior lives in the
-// verified global package and still checks local activation and request scope.
+// The local connector only transports bounded native replies. Admission policy
+// lives in the verified global package and checks activation and request scope.
 export function globalHookConnector(event) {
   if (!['session-start', 'pre-tool-use'].includes(event)) throw new Error('GLOBAL_HOOK_EVENT_INVALID');
   return `#!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
-const root = fs.realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..'));
+import { spawn } from 'node:child_process';
+const event = '${event === 'pre-tool-use' ? 'PreToolUse' : 'SessionStart'}';
+const reason = 'AIDN global hook unavailable; diagnose the global installation before editing.';
+const unavailable = () => ({ hookSpecificOutput: event === 'PreToolUse'
+  ? { hookEventName: event, permissionDecision: 'deny', permissionDecisionReason: reason }
+  : { hookEventName: event, additionalContext: 'AIDN resume is degraded; remain read-only. ' + reason } });
+function decode(text) {
+  const reply = JSON.parse(text);
+  if (!reply || typeof reply !== 'object' || Array.isArray(reply)) throw new Error('INVALID_REPLY');
+  if (Object.keys(reply).length === 0) return reply;
+  const value = reply.hookSpecificOutput;
+  if (Object.keys(reply).length !== 1 || !value || typeof value !== 'object' || Array.isArray(value)
+      || value.hookEventName !== event) throw new Error('INVALID_REPLY');
+  const keys = event === 'PreToolUse'
+    ? ['hookEventName', 'additionalContext', 'permissionDecision', 'permissionDecisionReason']
+    : ['hookEventName', 'additionalContext'];
+  if (Object.keys(value).some(key => !keys.includes(key))) throw new Error('INVALID_REPLY');
+  if (value.permissionDecision !== undefined) {
+    if (value.permissionDecision !== 'deny' || typeof value.permissionDecisionReason !== 'string'
+        || !value.permissionDecisionReason.trim()) throw new Error('INVALID_REPLY');
+  } else if (typeof value.additionalContext !== 'string' || !value.additionalContext.trim()
+      || value.permissionDecisionReason !== undefined) throw new Error('INVALID_REPLY');
+  if (value.additionalContext !== undefined && typeof value.additionalContext !== 'string') throw new Error('INVALID_REPLY');
+  return reply;
+}
+let reply;
 try {
+  const root = fs.realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..'));
   const home = process.env.AIDN_HOME;
   if (!home || !path.isAbsolute(home)) throw new Error('GLOBAL_HOME_REQUIRED');
-  const child = spawnSync(process.execPath, [path.join(home, 'bin/global-launcher.mjs'), '--integration-revision', '${GLOBAL_INTEGRATION_REVISION}', '__aidn-hook', '${event}', '--target', root], { stdio: 'inherit', shell: false, windowsHide: true });
-  process.exitCode = child.status ?? 2;
-} catch { process.stderr.write('AIDN global hook unavailable; diagnose the global installation.\\n'); process.exitCode = 2; }
+  reply = await new Promise(resolve => {
+    const child = spawn(process.execPath, [path.join(home, 'bin/global-launcher.mjs'), '--integration-revision', '${GLOBAL_INTEGRATION_REVISION}', '__aidn-hook', '${event}', '--target', root], { stdio: ['inherit', 'pipe', 'ignore'], shell: false, windowsHide: true });
+    const chunks = []; let size = 0, settled = false;
+    const finish = (result, stop = false) => {
+      if (settled) return;
+      settled = true; clearTimeout(timer);
+      child.stdout.destroy();
+      if (stop) { try { child.kill(); } catch {} }
+      child.unref(); resolve(result);
+    };
+    // Complete before the shipped 10-second native hook timeout. A terminated
+    // launcher can retain a lease; never remove it or infer descendant death.
+    const timer = setTimeout(() => finish(unavailable(), true), 8000);
+    child.stdout.on('data', bytes => {
+      size += bytes.length;
+      if (size > 65536) finish(unavailable(), true);
+      else chunks.push(bytes);
+    });
+    child.once('error', () => finish(unavailable(), true));
+    child.stdout.once('error', () => finish(unavailable(), true));
+    child.once('close', (code, signal) => {
+      if (settled) return;
+      if (code !== 0 || signal) { finish(unavailable()); return; }
+      try { finish(decode(Buffer.concat(chunks).toString('utf8'))); }
+      catch { finish(unavailable()); }
+    });
+  });
+} catch { reply = unavailable(); }
+// Native clients may continue after an ordinary process error. Emit exactly one
+// protocol reply with exit 0, and never expose raw child output on failure.
+process.stdout.write(JSON.stringify(reply) + '\\n');
 `;
 }
 

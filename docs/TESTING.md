@@ -15,6 +15,13 @@ It removes only its own scopes and verifies cleanup. Missing credentials are
 `UNAVAILABLE`, not `PASS`. This is source/CLI integration proof, not native Codex
 hook execution or qualification of a PostgreSQL server installer.
 
+Initial-cycle admission is covered by the pre-write use-case and CLI fixtures:
+canonical initial session, missing/unknown/stale cycle, mismatched session and
+branch, session identifier boundary, and misleading local projections. The
+admitted initial case must keep freshness `unknown` and leave every file and DB
+row unchanged. The dedicated PostgreSQL smoke also checks this actual CLI path
+and canonical runtime projection; fixtures alone are not PostgreSQL proof.
+
 ## Purpose
 
 This repository is the package source repository.
@@ -83,6 +90,16 @@ planning, task scope, DoR/exploration evidence, mixed patches, move/delete,
 path boundaries and fresh observations. These are fixture proofs, never native
 hook execution. Use N01-N17 in [native qualification](CODEX_NATIVE_QUALIFICATION.md)
 for a human-approved, candidate-bound native run.
+
+For global hook transport, run
+`node tools/perf/verify-global-hook-connector-fixtures.mjs` and
+`node tools/perf/verify-global-package-fixtures.mjs`. These checks cover real
+subprocess failures, invalid/bounded output, deadline handling, successful and
+inactive replies, and explicit repair without reactivation or customization
+loss. They are included in the bootstrap, Codex integration and global runtime
+gates. A native unavailable-engine probe must separately prove that the corrected
+candidate prevents the marker write after human review; subprocess PASS does not
+replace that proof or qualify a disabled or externally terminated hook.
 
 Most `npm run perf:verify-*` commands run one focused behavior check against tracked fixtures.
 

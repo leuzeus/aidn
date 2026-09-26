@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { captureContextIdentity } from "../../src/adapters/codex/context-provenance.mjs";
@@ -106,6 +106,17 @@ function verifyScenario(tempRoot, name, payload, expectations, options = {}) {
     latest: {},
   });
   const outFile = path.join(repo, "docs", "audit", "RUNTIME-STATE.md");
+  if (options.expectBackendUnavailable) {
+    assert(deriveRuntimeStateRepairSummary(payload, null, captureContextIdentity({ targetRoot: repo })).status === "block",
+      `${name}: missing canonical revision must still reject cached repair authority`);
+    const before = fs.readFileSync(outFile);
+    const refused = spawnSync(process.execPath, [path.resolve("tools/runtime/project-runtime-state.mjs"), "--target", repo, "--json", "--write"],
+      { encoding: "utf8", timeout: 30000, windowsHide: true });
+    assert(refused.status === 1 && refused.stderr.includes("canonical runtime backend is unavailable for runtime projection"),
+      `${name}: unavailable canonical DB must block projection instead of reading files`);
+    assert(fs.readFileSync(outFile).equals(before), `${name}: refused projection changed the existing digest`);
+    return;
+  }
   const result = runJson("tools/runtime/project-runtime-state.mjs", [
     "--target",
     repo,
@@ -559,7 +570,7 @@ function main() {
       ["missing-provenance", {}],
       ["changed-since-observation", { observe: true, changeAfterCapture: true }],
       ["dual-without-canonical-revision", { observe: true, stateMode: "dual" }],
-      ["db-only-without-canonical-revision", { observe: true, stateMode: "db-only" }],
+      ["db-only-without-canonical-revision", { observe: true, stateMode: "db-only", expectBackendUnavailable: true }],
     ]) {
       verifyScenario(tempRoot, name, canonicalDecisionPayload({
         decisionTs: "2099-01-01T00:00:00Z", repairPayloadTs: "2026-03-09T02:00:00Z",
