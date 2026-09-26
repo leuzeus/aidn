@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.10.7
+
+- Resolve PostgreSQL runtime head metadata to its exact artifact within the
+  current snapshot, checking path, identifier and fingerprint. Admission and
+  runtime projections now share this resolution instead of ignoring the head
+  and selecting an old normalized path alias.
+- Preserve historical aliases. Missing, inconsistent or ambiguous heads refuse
+  execution; fallback without a head requires a unique matching artifact.
+- Cover historical/current digest coexistence and corrupted-head refusal with
+  fixtures and real PostgreSQL admission/handoff reads, without rewriting history.
+- Handoff projection respects configured canonical storage instead of stale local
+  Markdown in db-only/PostgreSQL mode and refuses an unavailable canonical source.
+- Align installation, migration, customization, agent and evidence guides with
+  the shipped global model; retain explicitly historical local procedures.
+  Align Mermaid, BPMN and generated workflow assets with explicit drift completion.
+
 ## 0.10.6
 
 - Project runtime repair status from the current canonical database snapshot.
