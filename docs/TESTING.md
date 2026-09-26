@@ -32,8 +32,14 @@ They distinguish specific admission from final checkpoint success, exercise
 `DONE`, `NO_GO` and `DROPPED` after clearing active focus in files/dual/db-only,
 and retain ordinary mapping refusal. Missing/ambiguous ownership, incomplete
 canonical usage evidence, nested refusal and warning have negative cases.
+The same fixture suite exercises closure warning -> explicit drift completion ->
+closure, including three changed closure documents, a cycle label containing
+`migration`, unchanged preview hashes, preserved journal, THINKING/ordinary
+mapping refusals and unresolved objective drift. Sensitive code and other
+artifacts retain cross-domain signals.
 The dedicated PostgreSQL smoke separately checks closure against canonical
-rows, unchanged data and unrelated scope preservation. None of these is native
+rows, the full closure/drift sequence, canonical intent despite misleading local
+files, unchanged data and unrelated scope preservation. None of these is native
 client trust or execution evidence.
 
 Global-store fixtures simulate Windows path redirection for both absent and

@@ -18,6 +18,8 @@ import {
 import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-adapter.mjs";
 import { runWorkflowRuntimeJsonScript } from "./workflow-runtime-service.mjs";
 import { resolveWorkflowSnapshotBackend } from "./runtime-snapshot-service.mjs";
+import { runCycleCloseAdmitUseCase } from "./cycle-close-admit-use-case.mjs";
+import { runReloadCheckUseCase } from "./reload-check-use-case.mjs";
 
 function parseReloadReasonCodes(value) {
   if (!value) {
@@ -61,7 +63,7 @@ function runReloadCheck(runtimeDir, targetRoot, cachePath, stateMode, indexFile,
   });
 }
 
-async function detectSignals(targetRoot, args, reloadResult, gitAdapter) {
+async function detectSignals(targetRoot, args, reloadResult, gitAdapter, completionContext = null) {
   const observations = await collectGatingObservations({
     targetRoot,
     eventFile: args.eventFile,
@@ -72,6 +74,7 @@ async function detectSignals(targetRoot, args, reloadResult, gitAdapter) {
     mode: args.mode,
     reloadResult,
     gitAdapter,
+    completionContext,
   });
   const signal = detectGatingSignals({
     sessionObjective: observations.sessionObjective,
@@ -85,9 +88,12 @@ async function detectSignals(targetRoot, args, reloadResult, gitAdapter) {
     indexSyncCheckExists: observations.indexSyncCheckExists,
     indexSyncTargetMatch: observations.indexSyncTargetMatch,
     indexSyncInSync: observations.indexSyncInSync,
-    noChangeFastPath: observations.noChangeFastPath,
+    // Closure intent must be checked even if a preceding checkpoint refreshed
+    // the cache and the working tree is clean.
+    noChangeFastPath: completionContext ? false : observations.noChangeFastPath,
     repairLayerOpenCount: observations.repairLayerOpenCount,
   });
+  if (completionContext && !observations.cycleGoal) signal.uncertain_intent = true;
   // The explicit drift skill is performing this check now. Only its own age
   // prerequisite is discharged; objective, scope, integrity and repair remain.
   // A no-event preview cannot complete or refresh the check.
@@ -133,7 +139,7 @@ export function printHumanGatingResult(result) {
   }
 }
 
-export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir }) {
+export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir, completionCycleId = null }) {
   const started = Date.now();
   const gitAdapter = createLocalGitAdapter();
   args.cache = resolveRuntimeTargetPath(targetRoot, args.cache);
@@ -154,12 +160,29 @@ export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir })
     args.indexFile = resolveRuntimeTargetPath(targetRoot, args.indexFile);
   }
   let reload = null;
+  let completionContext = null;
+  let completionRefusal = null;
+  // Explicit drift completion can finish the closure checks of a terminal
+  // cycle. Ordinary gating and non-COMMITTING calls retain active-only mapping.
+  // Admission verifies ownership, canonical status and the usage matrix first.
+  if ((args.completeDriftCheck === true && args.mode === "COMMITTING" && !args.reloadDecision) || completionCycleId) {
+    const admission = await runCycleCloseAdmitUseCase({ targetRoot, mode: args.mode });
+    if (!admission.ok) completionRefusal = admission.reason_code;
+    if (admission.ok && ["DONE", "NO_GO", "DROPPED"].includes(admission.target_cycle?.state)
+        && (!completionCycleId || admission.target_cycle.cycle_id === completionCycleId)) {
+      completionContext = { ...admission.target_cycle, session_id: admission.active_session };
+    }
+  }
   if (args.reloadDecision) {
     reload = {
       decision: args.reloadDecision,
       fallback: args.reloadFallback === "true",
       reason_codes: parseReloadReasonCodes(args.reloadReasonCodes),
     };
+  } else if (completionContext) {
+    reload = await runReloadCheckUseCase({ targetRoot, completionCycleId: completionContext.cycle_id,
+      args: { cache: args.cache, stateMode: args.stateMode, stateModeExplicit: true,
+        indexFile: args.indexFile, indexBackend: args.indexBackend, writeCache: false } });
   } else {
     reload = runReloadCheck(
       runtimeDir,
@@ -170,7 +193,13 @@ export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir })
       args.indexBackend,
     );
   }
-  const levels = await detectSignals(targetRoot, args, reload, gitAdapter);
+  const levels = await detectSignals(targetRoot, args, reload, gitAdapter, completionContext);
+  if (completionRefusal) {
+    levels.level1.decision = "stop";
+    levels.level1.reason_codes = [...new Set([...levels.level1.reason_codes, completionRefusal])];
+    levels.level3.required = true;
+    levels.level3.reason = "blocking_l1_reason";
+  }
   const decision = deriveGatingAction(levels);
 
   const result = {

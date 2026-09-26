@@ -235,6 +235,13 @@ Consequences:
 - Closure uses canonical status and usage-matrix evidence in DB-backed modes.
   A warning or refusal from the nested checkpoint must remain visible in the
   overall hook result; admission alone is not successful completion.
+- If closure requests a drift-check after the terminal transition, run the explicit
+  drift-check in COMMITTING mode, then retry closure. That check verifies the same
+  unique ownership, canonical intent and exit evidence without reactivating the
+  cycle. Only a successful check appends `drift_check_completed`; preview, generic
+  evaluation and unresolved warning/refusal cannot supply that proof.
+- A cycle directory label is not a product-domain signal for its standard
+  `status.md`. Sensitive code or other artifacts remain subject to drift checks.
 
 ### Cycle Outcomes
 - `DONE`: retained and eligible for normal downstream promotion.

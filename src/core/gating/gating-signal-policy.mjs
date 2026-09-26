@@ -40,9 +40,14 @@ export function detectGatingSignals({
 
   if (!noChangeFastPath) {
     signal.scope_growth = changedFiles.length > thresholdFiles;
-    signal.cross_domain_touch = changedFiles.some((file) =>
-      /(db|database|schema|migration|auth|security|api)/i.test(file),
-    );
+    signal.cross_domain_touch = changedFiles.some((file) => {
+      // A cycle's human label (for example C123-migration) is not a product
+      // domain. Only its standard status document receives this treatment;
+      // SQL, code and other artifacts under the same directory remain signals.
+      const domainPath = String(file).replace(/\\/g, "/")
+        .replace(/^docs\/audit\/cycles\/C\d+[^/]*\/status\.md$/i, "docs/audit/cycles/status.md");
+      return /(db|database|schema|migration|auth|security|api)/i.test(domainPath);
+    });
   }
 
   if (!noChangeFastPath && mode === "COMMITTING") {

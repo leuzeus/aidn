@@ -171,7 +171,9 @@ remain unchanged. PostgreSQL checkpoints read the canonical backend and skip
 implicit index imports with reason `postgres_canonical_backend`.
 
 The `cycle-close` skill checkpoint accepts terminal ownership only for its
-post-transition check. It does not relax the ordinary reload mapping or mark a
+post-transition check and the explicit COMMITTING drift-check needed to finish
+it. Both verify canonical exit evidence and intent. Generic gating, reload and
+THINKING drift checks retain ordinary mapping. This does not relax reload or mark a
 closed cycle active. Its specific admission, nested checkpoint and overall
 result remain distinct; warnings and refusals propagate through the Codex JSON
 wrapper. No public skip flag or alias is added for this closure context.

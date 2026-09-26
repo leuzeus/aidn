@@ -131,7 +131,11 @@ resolution only, not a database migration or authority to rewrite old artifacts.
 Cycle closure reads canonical cycle status and usage evidence. Its final
 checkpoint can validate unique terminal ownership after the explicit close
 transition, without making that cycle active or weakening generic branch
-mapping. This context is internal to the closure path, not a public bypass.
+mapping. Explicit COMMITTING drift completion can use the same verified terminal
+context when closure requires it. It reads the terminal goal and session objective
+from the canonical snapshot in DB-backed modes, not misleading local projections.
+Generic gating retains active-only mapping. This context is internal to closure
+and its explicit drift check, not a public bypass.
 Checkpoint warnings/refusals propagate through the wrappers. No canonical
 write, historical rewrite or new shared surface is introduced by this check.
 

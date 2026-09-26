@@ -3,6 +3,7 @@ import path from "node:path";
 import { buildNoChangeFastPath } from "../../core/gating/gating-signal-policy.mjs";
 import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
 import { countsAsRecentAnomalousFallback } from "../../core/gating/fallback-history-policy.mjs";
+import { findUniqueAuditArtifact } from "./runtime-head-resolution-service.mjs";
 
 function readTextSafe(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -43,7 +44,10 @@ function extractSessionObjective(sessionPath) {
   if (!sessionPath || !fs.existsSync(sessionPath)) {
     return null;
   }
-  const text = readTextSafe(sessionPath);
+  return extractObjective(readTextSafe(sessionPath));
+}
+
+function extractObjective(text) {
   const kv = parseKeyValues(text);
   if (kv.session_objective) {
     return kv.session_objective;
@@ -245,11 +249,34 @@ async function readRepairLayerSummary(targetRoot, indexFile, backend) {
   };
 }
 
-export async function collectGatingObservations({ targetRoot, eventFile, indexSyncCheckFile, indexFile, indexBackend, stateMode, mode, reloadResult, gitAdapter }) {
+export async function collectGatingObservations({ targetRoot, eventFile, indexSyncCheckFile, indexFile, indexBackend, stateMode, mode, reloadResult, gitAdapter, completionContext = null }) {
   const sessionsRoot = path.join(targetRoot, "docs", "audit", "sessions");
   const latestSession = getLatestFileByPattern(sessionsRoot, /^S\d+.*\.md$/i);
-  const sessionObjective = extractSessionObjective(latestSession);
-  const cycleGoal = getActiveCycleGoal(targetRoot);
+  let sessionObjective = extractSessionObjective(latestSession);
+  let cycleGoal = getActiveCycleGoal(targetRoot);
+  if (completionContext) {
+    const cyclePath = `cycles/${completionContext.cycle_dir}/status.md`;
+    let statusText;
+    let sessionText;
+    if (stateMode !== "files" || indexBackend === "postgres") {
+      const snapshot = await readRuntimeSnapshot({ targetRoot, indexFile, backend: indexBackend });
+      if (!snapshot.payload) throw new Error("Canonical closure intent unavailable");
+      const decode = artifact => artifact?.content_format === "base64"
+        ? Buffer.from(artifact.content, "base64").toString("utf8") : artifact?.content ?? "";
+      statusText = decode(findUniqueAuditArtifact(snapshot.payload, cyclePath));
+      const sessions = (snapshot.payload.artifacts ?? []).filter(artifact =>
+        String(artifact.path).replace(/\\/g, "/").replace(/^docs\/audit\//i, "")
+          .match(/^sessions\/(S\d+)(?:[^\d/][^/]*)?\.md$/i)?.[1] === completionContext.session_id);
+      sessionText = sessions.length === 1 ? decode(sessions[0]) : "";
+    } else {
+      statusText = readTextSafe(path.join(targetRoot, "docs/audit", cyclePath));
+      const files = fs.existsSync(sessionsRoot) ? fs.readdirSync(sessionsRoot).filter(file =>
+        file.match(/^(S\d+)(?:[^\d/][^/]*)?\.md$/i)?.[1] === completionContext.session_id) : [];
+      sessionText = files.length === 1 ? readTextSafe(path.join(sessionsRoot, files[0])) : "";
+    }
+    cycleGoal = parseKeyValues(statusText).current_goal ?? null;
+    sessionObjective = extractObjective(sessionText);
+  }
   const changedFiles = getChangedFiles(targetRoot, gitAdapter);
   const noChangeFastPath = buildNoChangeFastPath(reloadResult, changedFiles);
   const eventStats = readEventSignalStats(eventFile, {

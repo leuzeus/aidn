@@ -76,7 +76,7 @@
     <bpmn:task id="Task_ProjectHandoffPacket" name="Prepare handoff packet" />
     <bpmn:exclusiveGateway id="Gateway_CloseSession" name="Close session now?" default="Flow_CloseNo" />
     <bpmn:exclusiveGateway id="Gateway_CloseSessionBlocks" name="Closure checks resolved?" default="Flow_CloseBlocksNo">
-      <bpmn:documentation>Apply the focused handoff/close view: explicit cycle resolution and successful post-transition cycle-close checkpoints precede session close. Terminal ownership is checked without reactivation; warnings and refusals defer integration. Admission alone is not completion.</bpmn:documentation>
+      <bpmn:documentation>Apply the focused handoff/close view: explicit cycle resolution and successful post-transition cycle-close checkpoints precede session close. Terminal ownership is checked without reactivation; warnings and refusals defer integration. A requested post-transition drift-check verifies the same terminal ownership and canonical intent without reactivation; only explicit successful completion supplies its proof before retrying closure. Admission alone is not completion.</bpmn:documentation>
     </bpmn:exclusiveGateway>
     <bpmn:task id="Task_CloseArtifacts" name="Close session and orchestrate PR" />
     <bpmn:task id="Task_PublishSessionState" name="Publish session state" />
