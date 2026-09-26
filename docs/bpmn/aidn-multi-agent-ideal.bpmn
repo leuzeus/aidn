@@ -75,7 +75,9 @@
     <bpmn:exclusiveGateway id="Gateway_HandoffNeeded" name="Need another agent?" default="Flow_HandoffNo" />
     <bpmn:task id="Task_ProjectHandoffPacket" name="Prepare handoff packet" />
     <bpmn:exclusiveGateway id="Gateway_CloseSession" name="Close session now?" default="Flow_CloseNo" />
-    <bpmn:exclusiveGateway id="Gateway_CloseSessionBlocks" name="Close decisions resolved?" default="Flow_CloseBlocksNo" />
+    <bpmn:exclusiveGateway id="Gateway_CloseSessionBlocks" name="Closure checks resolved?" default="Flow_CloseBlocksNo">
+      <bpmn:documentation>Apply the focused handoff/close view: explicit cycle resolution and successful post-transition cycle-close checkpoints precede session close. Terminal ownership is checked without reactivation; warnings and refusals defer integration. Admission alone is not completion.</bpmn:documentation>
+    </bpmn:exclusiveGateway>
     <bpmn:task id="Task_CloseArtifacts" name="Close session and orchestrate PR" />
     <bpmn:task id="Task_PublishSessionState" name="Publish session state" />
     <bpmn:endEvent id="EndEvent_HandoffComplete" name="Handoff prepared" />

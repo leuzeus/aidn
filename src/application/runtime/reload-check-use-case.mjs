@@ -175,8 +175,21 @@ function detectLatestSessionArtifact(auditRoot) {
   };
 }
 
-function evaluateMapping(branch, activeCycles, latestSessionArtifact, auditRoot, sessionBranchHint = null) {
+function evaluateMapping(branch, activeCycles, latestSessionArtifact, auditRoot, sessionBranchHint = null, completion = null) {
   const kind = classifyAidnBranch(branch);
+  // Only the cycle-close checkpoint supplies this internal context. A terminal
+  // cycle still owns its branch during closure, but is never counted as active
+  // or admitted for ordinary implementation by this observation.
+  if (completion && [AIDN_BRANCH_KIND.CYCLE, AIDN_BRANCH_KIND.INTERMEDIATE].includes(kind)) {
+    const matches = completion.cycles.filter(cycle => kind === AIDN_BRANCH_KIND.CYCLE
+      ? cycle.branch_name === branch : cycle.cycle_id === extractCycleIdFromBranch(branch));
+    if (matches.length > 1) return { kind, status: "ambiguous", reason_code: "MAPPING_AMBIGUOUS" };
+    if (matches.length === 1 && matches[0].cycle_id === completion.cycleId
+        && ["DONE", "NO_GO", "DROPPED"].includes(String(matches[0].state).toUpperCase())) {
+      return { kind, status: "ok", reason_code: null };
+    }
+    return { kind, status: "missing", reason_code: "MAPPING_MISSING" };
+  }
   if (kind === AIDN_BRANCH_KIND.UNKNOWN || kind === AIDN_BRANCH_KIND.OTHER) {
     return {
       kind,
@@ -237,7 +250,7 @@ function canonicalStateForDigest(state) {
   return JSON.stringify(state);
 }
 
-function collectCurrentStateFromFiles(targetRoot, gitAdapter) {
+function collectCurrentStateFromFiles(targetRoot, gitAdapter, completionCycleId = null) {
   const auditRoot = path.join(targetRoot, "docs", "audit");
   if (!fs.existsSync(auditRoot)) {
     throw new Error(`Missing audit root: ${auditRoot}`);
@@ -348,6 +361,7 @@ function collectCurrentStateFromFiles(targetRoot, gitAdapter) {
     latestSession,
     auditRoot,
     latestSession?.session_branch ?? null,
+    completionCycleId ? { cycleId: completionCycleId, cycles: cycleStatuses } : null,
   );
 
   return {
@@ -406,7 +420,7 @@ function readSessionBranchFromArtifact(artifact) {
   return meta.session_branch ?? null;
 }
 
-async function collectCurrentStateFromIndex(targetRoot, args, gitAdapter) {
+async function collectCurrentStateFromIndex(targetRoot, args, gitAdapter, completionCycleId = null) {
   const indexFilePath = resolveRuntimeTargetPath(targetRoot, args.indexFile);
   const index = await readIndexPayload(targetRoot, indexFilePath, args.indexBackend);
   const payload = index.payload ?? {};
@@ -535,6 +549,7 @@ async function collectCurrentStateFromIndex(targetRoot, args, gitAdapter) {
     latestSession,
     auditRoot,
     sessionBranch,
+    completionCycleId ? { cycleId: completionCycleId, cycles } : null,
   );
 
   return {
@@ -570,15 +585,15 @@ async function collectCurrentStateFromIndex(targetRoot, args, gitAdapter) {
   };
 }
 
-async function collectCurrentState(targetRoot, args, gitAdapter) {
+async function collectCurrentState(targetRoot, args, gitAdapter, completionCycleId = null) {
   if (args.stateMode === "files" && args.indexBackend !== "postgres") {
-    return collectCurrentStateFromFiles(targetRoot, gitAdapter);
+    return collectCurrentStateFromFiles(targetRoot, gitAdapter, completionCycleId);
   }
   try {
-    return await collectCurrentStateFromIndex(targetRoot, args, gitAdapter);
+    return await collectCurrentStateFromIndex(targetRoot, args, gitAdapter, completionCycleId);
   } catch (error) {
     if (args.stateMode === "dual" && args.indexBackend !== "postgres") {
-      const fallback = collectCurrentStateFromFiles(targetRoot, gitAdapter);
+      const fallback = collectCurrentStateFromFiles(targetRoot, gitAdapter, completionCycleId);
       fallback.state_source = "files";
       fallback.state_mode_fallback = "index_unavailable";
       fallback.state_mode_fallback_reason = String(error.message ?? error);
@@ -719,7 +734,7 @@ export function printHumanReloadResult(result, cacheFile) {
   console.log(`Cache file: ${cacheFile}`);
 }
 
-export async function runReloadCheckUseCase({ args, targetRoot }) {
+export async function runReloadCheckUseCase({ args, targetRoot, completionCycleId = null }) {
   const gitAdapter = createLocalGitAdapter();
   if (!args.stateModeExplicit && !String(process.env.AIDN_STATE_MODE ?? "").trim()) {
     const config = readAidnProjectConfig(targetRoot);
@@ -736,7 +751,7 @@ export async function runReloadCheckUseCase({ args, targetRoot }) {
   if (args.stateMode !== "files") {
     args.indexFile = resolveRuntimeTargetPath(targetRoot, args.indexFile);
   }
-  const currentState = await collectCurrentState(targetRoot, args, gitAdapter);
+  const currentState = await collectCurrentState(targetRoot, args, gitAdapter, completionCycleId);
   const cacheStatus = readCache(args.cache);
   const diff = diffState(currentState, cacheStatus.data, cacheStatus);
   const outcome = decideReloadOutcome(diff.reasonCodes);

@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import {
   sealRuntimeGeneration, planGlobalSwitch, applyGlobalSwitch, resolveGlobalRuntime,
   acquireGlobalRuntime, readGlobalState, resumeGlobalSwitch, resolveGlobalRecoveryRuntime,
+  assertGlobalHomeVisibility,
 } from '../../src/application/install/global-runtime-store.mjs';
 
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'aidn-global-store-'));
@@ -36,7 +37,16 @@ function snapshot(root) {
     .sort().map(name => [name, digest(fs.readFileSync(path.join(root, name)))]);
 }
 try {
+  const empty = snapshot(temporary);
+  assert.throws(() => assertGlobalHomeVisibility(home, { platform: 'win32',
+    realpath: ancestor => path.join(ancestor, 'redirected-container') }), /GLOBAL_HOME_REDIRECTED/);
+  assert.deepEqual(snapshot(temporary), empty, 'redirected future home must refuse without creating directories');
+  assert.equal(assertGlobalHomeVisibility(home, { platform: 'win32', realpath: ancestor => ancestor }), home);
   const first = generation('0.10.0');
+  const populated = snapshot(temporary);
+  assert.throws(() => assertGlobalHomeVisibility(home, { platform: 'win32',
+    realpath: ancestor => path.join(ancestor, 'redirected-container') }), /GLOBAL_HOME_REDIRECTED/);
+  assert.deepEqual(snapshot(temporary), populated, 'redirected existing home must remain unchanged');
   const beforePreview = snapshot(temporary);
   const initial = plan(first, 'skill revision 1');
   assert.deepEqual(snapshot(temporary), beforePreview, 'preview has no writes');

@@ -1,6 +1,8 @@
 import path from "node:path";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
-import { classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
+import { AIDN_BRANCH_KIND, classifyAidnBranch, extractCycleIdFromBranch } from "../../lib/workflow/branch-kind-lib.mjs";
+import { createRuntimeCanonicalSnapshotReader, resolveEffectiveRuntimePersistence } from "./runtime-persistence-service.mjs";
+import { findUniqueAuditArtifact, resolveRuntimeHeadArtifact } from "./runtime-head-resolution-service.mjs";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
 import {
   findCycleDirectory,
@@ -58,7 +60,7 @@ function readCycleStatusPayload(auditRoot, cycle) {
     return null;
   }
   const statusPath = findCycleStatus(auditRoot, cycle.cycle_id);
-  const text = readTextIfExists(statusPath);
+  const text = cycle.canonical_text ?? readTextIfExists(statusPath);
   if (!text) {
     return null;
   }
@@ -100,11 +102,11 @@ function makeResult(base, overrides = {}) {
   };
 }
 
-export function runCycleCloseAdmitUseCase({ targetRoot, mode = "COMMITTING" }) {
+export async function runCycleCloseAdmitUseCase({ targetRoot, mode = "COMMITTING" }) {
   const gitAdapter = createLocalGitAdapter();
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const currentState = readCurrentState(absoluteTargetRoot);
+  let currentState = readCurrentState(absoluteTargetRoot);
   const auditRoot = currentState.audit_root;
   const sourceBranch = readSourceBranch(absoluteTargetRoot);
   const branch = gitAdapter.getCurrentBranch(absoluteTargetRoot);
@@ -112,8 +114,45 @@ export function runCycleCloseAdmitUseCase({ targetRoot, mode = "COMMITTING" }) {
     sourceBranch,
     includeSource: true,
   });
-  const cycles = listCycleStatuses(auditRoot);
-  const targetCycle = resolveTargetCycle(currentState, cycles);
+  let cycles = listCycleStatuses(auditRoot);
+  let canonicalError = null;
+  if (dbBackedMode || resolveEffectiveRuntimePersistence({ targetRoot: absoluteTargetRoot }).backend === "postgres") {
+    try {
+      const snapshot = await createRuntimeCanonicalSnapshotReader({ targetRoot: absoluteTargetRoot })
+        .readCanonicalSnapshot({ includePayload: true, includeRuntimeHeads: true });
+      if (!snapshot?.exists || !snapshot.payload || snapshot.warning) throw new Error("Canonical snapshot unavailable");
+      const decode = artifact => artifact?.content_format === "base64"
+        ? Buffer.from(artifact.content, "base64").toString("utf8") : artifact?.content ?? "";
+      const current = resolveRuntimeHeadArtifact(snapshot.runtimeHeads, "current_state", snapshot.payload)
+        ?? findUniqueAuditArtifact(snapshot.payload, "CURRENT-STATE.md");
+      const metadata = parseSimpleMap(decode(current));
+      currentState = { ...currentState, active_session: metadata.get("active_session") ?? "none",
+        active_cycle: metadata.get("active_cycle") ?? "none" };
+      cycles = (snapshot.payload.cycles ?? []).map(cycle => {
+        // Imports classify this as subtype=status; selective artifact writes can
+        // leave subtype unset. Identity comes from the canonical path and cycle
+        // row, never from a classification label or a local Markdown fallback.
+        const statuses = (snapshot.payload.artifacts ?? []).filter(artifact => artifact.cycle_id === cycle.cycle_id
+          && String(artifact.path).replace(/\\/g, "/").replace(/^docs\/audit\//i, "")
+            .match(/^cycles\/(C\d+)[^/]*\/status\.md$/i)?.[1]?.toUpperCase() === cycle.cycle_id);
+        if (statuses.length !== 1) return { ...cycle, canonical_text: "", canonical_invalid: true };
+        const text = decode(statuses[0]);
+        const status = parseSimpleMap(text);
+        const invalid = String(status.get("state") ?? "").toUpperCase() !== String(cycle.state).toUpperCase()
+          || status.get("branch_name") !== cycle.branch_name;
+        return { ...cycle, cycle_dir: cycle.cycle_dir ?? path.posix.basename(path.posix.dirname(statuses[0].path)),
+          canonical_text: text, canonical_invalid: invalid };
+      });
+    } catch {
+      canonicalError = "Canonical cycle closure context is unavailable, ambiguous or inconsistent; diagnose the backend without falling back to Markdown.";
+      cycles = [];
+    }
+  }
+  const onCycleBranch = [AIDN_BRANCH_KIND.CYCLE, AIDN_BRANCH_KIND.INTERMEDIATE].includes(branchKind);
+  const matches = onCycleBranch ? cycles.filter(cycle => branchKind === AIDN_BRANCH_KIND.CYCLE
+    ? cycle.branch_name === branch : cycle.cycle_id === extractCycleIdFromBranch(branch)) : [];
+  const targetCycle = onCycleBranch ? (matches.length === 1 ? matches[0] : null) : resolveTargetCycle(currentState, cycles);
+  if (targetCycle?.canonical_invalid) canonicalError = "The selected canonical cycle status is unavailable, ambiguous or inconsistent.";
   const resolvedCycle = readCycleStatusPayload(auditRoot, targetCycle);
 
   const base = {
@@ -127,6 +166,14 @@ export function runCycleCloseAdmitUseCase({ targetRoot, mode = "COMMITTING" }) {
     active_cycle: String(currentState.active_cycle ?? "none"),
     target_cycle: resolvedCycle ?? null,
   };
+
+  if (canonicalError) return makeResult(base, { action: "blocked_canonical_runtime",
+    reason_code: "CYCLE_CLOSE_CANONICAL_RUNTIME_INVALID", blocking_reasons: [canonicalError],
+    recommended_next_action: "Diagnose the canonical backend before closing the cycle." });
+  if (onCycleBranch && matches.length !== 1) return makeResult(base, { action: "blocked_cycle_mapping",
+    reason_code: matches.length > 1 ? "CYCLE_CLOSE_MAPPING_AMBIGUOUS" : "CYCLE_CLOSE_MAPPING_MISSING",
+    blocking_reasons: ["Cycle closure requires exactly one cycle owning the current branch."],
+    recommended_next_action: "Diagnose branch ownership before closing the cycle." });
 
   if (!resolvedCycle) {
     return makeResult(base, {

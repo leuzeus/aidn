@@ -102,10 +102,10 @@ export function runSkillHookUseCase({ args, perfDir, targetRoot, processAdapter 
     } catch (error) {
       // Preserve a structured domain refusal from this owned hook. Transport
       // failures and malformed output must continue through the error path.
-      if (route.tool !== "branch-cycle-audit-hook.mjs" || error.status !== 1) throw error;
+      if (!["branch-cycle-audit-hook.mjs", "cycle-close-hook.mjs"].includes(route.tool) || error.status !== 1) throw error;
       let refusal;
       try { refusal = JSON.parse(String(error.stdout ?? "")); } catch { throw error; }
-      if (refusal?.skill !== "branch-cycle-audit" || refusal.target_root !== targetRoot
+      if (refusal?.skill !== args.skill || refusal.target_root !== targetRoot
           || refusal.ok !== false || refusal.result !== "stop"
           || refusal.summary?.result !== "stop" || !refusal.reason_code) throw error;
       payload = refusal;

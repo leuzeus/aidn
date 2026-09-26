@@ -32,7 +32,24 @@ export function hostExecutionIdentity() {
 export function globalHome(env = process.env) {
   const home = env.AIDN_HOME || (env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, 'AIDN'));
   if (!home || !path.isAbsolute(home)) fail('GLOBAL_HOME_REQUIRED');
-  return path.resolve(home);
+  return assertGlobalHomeVisibility(home);
+}
+
+// Packaged Windows applications can redirect AppData without a junction. A
+// logical path then addresses different runtimes/locks in ordinary terminals.
+// Refuse that split before writing; never silently relocate an installation.
+export function assertGlobalHomeVisibility(home, { platform = process.platform, realpath = fs.realpathSync.native } = {}) {
+  const absolute = checkedHostPath(home);
+  if (platform !== 'win32') return absolute;
+  let ancestor = absolute;
+  while (!fs.existsSync(ancestor)) {
+    const parent = path.dirname(ancestor);
+    if (parent === ancestor) fail('GLOBAL_HOME_UNRESOLVED');
+    ancestor = parent;
+  }
+  const normalize = value => path.resolve(value).toLowerCase();
+  if (normalize(realpath(ancestor)) !== normalize(ancestor)) fail('GLOBAL_HOME_REDIRECTED');
+  return absolute;
 }
 
 // Reject junctions, symlinks, devices and hard-linked files, including ancestors.
@@ -73,7 +90,7 @@ function put(file, value) {
   checkedHostPath(file);
   writeFileAtomicSync(file, json(value));
 }
-const at = (home, name) => inside(checkedHostPath(home), name);
+const at = (home, name) => inside(assertGlobalHomeVisibility(home), name);
 
 export function inventoryRuntime(root) {
   checkedHostPath(root);
