@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.10.12
+
+- Select the durable PostgreSQL runtime scope for targeted artifact commands
+  when its legacy path scope still exists, matching canonical admission reads.
+  Preserve legacy history and other projects; never fall back per artifact.
+- Report `GLOBAL_RUNTIME_ACCESS_DENIED` for global launcher permission failures
+  instead of hiding them behind a generic launch error. Keep coordination and
+  integrity checks intact and redact OS paths and values.
+- Document stale inherited host environments and explicit sandbox permissions.
+  Cover scope coexistence, legacy-only compatibility, selective writes and
+  preservation with fixtures and a dedicated PostgreSQL smoke.
+
 ## 0.10.11
 
 - Resolve PR orchestration from the canonical current-state head and session

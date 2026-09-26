@@ -4,13 +4,20 @@
 
 `perf:verify-runtime-persistence-parity` includes deterministic artifact command
 fixtures: invalid paths, schema/scope refusals, parameterized writes, late
-rollback and read-only transactions. They do not prove a running PostgreSQL server.
+rollback and read-only transactions. Scope selection covers canonical/legacy
+coexistence in either database result order, legacy-only compatibility and
+missing canonical artifacts without per-artifact fallback. They do not prove a
+running PostgreSQL server.
 
 Run `node tools/perf/verify-project-artifact-store-live-smoke.mjs` separately with
 `AIDN_RUNTIME_PG_SMOKE_URL` pointing to a dedicated test database. It creates two
 temporary project scopes, checks concurrent targeted writes and stable identifiers,
 canonical session visibility, late transaction rollback, materialization preview,
 unrelated row preservation, bootstrap `verify-only`, and checkpoint preservation.
+It also creates an owned legacy alias for one project and proves that CLI/facade
+reads and selective writes keep the durable scope authoritative while preserving
+legacy rows, the other project and checkout files. No real project's scope is
+used or removed by this smoke.
 It removes only its own scopes and verifies cleanup. Missing credentials are
 `UNAVAILABLE`, not `PASS`. This is source/CLI integration proof, not native Codex
 hook execution or qualification of a PostgreSQL server installer.

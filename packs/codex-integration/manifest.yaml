@@ -1,5 +1,5 @@
 name: codex-integration
-version: 0.10.11
+version: 0.10.12
 depends_on: [core]
 
 install:

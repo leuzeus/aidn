@@ -59,6 +59,26 @@ the old home resolvable until all dependent bindings have migrated, then retain
 its restorable archive and remove its obsolete PATH entry. Neither this transfer
 nor a native hook review migrates a PostgreSQL database.
 
+### Stale host environment and sandbox access
+
+An already running terminal, IDE or agent host keeps its inherited environment
+after user PATH and `AIDN_HOME` change. A new terminal inside that same host can
+still resolve the old launcher. Compare `Get-Command aidn -All`, the process
+environment and the actual Windows user's registered environment. Restart the
+host to inherit the new values. Until then, explicitly invoke the verified
+installation's `bin/global-launcher.mjs` with the known Node executable; do not
+select another engine or infer its home from an old projection.
+
+Even a read-only command acquires and releases a short operation lease under
+the common home so an update cannot replace its engine while it runs. A sandbox
+limited to the project directory can deny that coordination access. Starting
+with 0.10.12 the launcher reports `GLOBAL_RUNTIME_ACCESS_DENIED` for OS `EACCES`
+or `EPERM`, without exposing paths or credentials; older launchers can report
+`GLOBAL_LAUNCH_FAILED`. Request the host permission needed for the verified
+launcher and configured backend, then repeat the same read-only command.
+This is not Windows administrator elevation or permission to mutate project
+data. Do not remove locks, weaken integrity checks or reinstall a local engine.
+
 `aidn setup` and `aidn-setup` open the common wizard. Source launch remains
 `node tools/setup/global-cli.mjs setup`. The wizard is an interactive executor:
 confirmation may apply changes. It is not a read-only consultation;

@@ -46,8 +46,14 @@ export async function executePostgresArtifactCommand(client, scopes, action, opt
     // advisory lock. This bounded transaction never modifies another scope.
     if (writing) await client.query('LOCK TABLE aidn_runtime.artifacts IN SHARE ROW EXCLUSIVE MODE');
     const found = await client.query('SELECT DISTINCT scope_key FROM aidn_runtime.index_meta WHERE scope_key = ANY($1::text[])', [scopes]);
-    if (found.rows.length !== 1) throw new Error('ARTIFACT_CANONICAL_SCOPE_MISSING_OR_AMBIGUOUS');
-    const scope = found.rows[0].scope_key;
+    const present = new Set(found.rows.map(row => row.scope_key));
+    if (!present.size || present.size !== found.rows.length || [...present].some(key => !scopes.includes(key))) {
+      throw new Error('ARTIFACT_CANONICAL_SCOPE_MISSING_OR_AMBIGUOUS');
+    }
+    // The adapter supplies resolved runtime identity before its legacy path,
+    // just as loadSnapshot does. Coexistence is not competing authority: once
+    // canonical metadata exists, no artifact-level fallback or legacy write.
+    const scope = scopes.find(key => present.has(key));
     let result;
     if (action === 'list') {
       const limit = Math.max(1, Math.min(10000, Math.floor(Number(options.limit) || 50)));

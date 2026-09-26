@@ -87,6 +87,16 @@ reimport checkout documents. Bulk import/adoption remains a separate explicit
 operation. This extends runtime persistence commands, not the shared coordination
 data boundary. Existing local-first and native admission rules still apply.
 
+In 0.10.12, targeted commands use the same ordered identity resolution as
+canonical snapshot reads: existing `runtime_scope_id` metadata takes precedence
+over the legacy absolute-path alias. Their coexistence after adoption is not
+ambiguous authority. Only an absent durable scope permits the known legacy
+scope; a missing artifact in the selected scope does not trigger fallback.
+Read-only queries and explicit targeted writes stay in that one resolved scope.
+No other scope is merged, deleted, adopted or repaired, and missing/invalid scope
+evidence still refuses the operation. The public output shapes and effects stay
+unchanged.
+
 The 0.10.2 initial-cycle admission reads canonical session/current/runtime
 artifacts and verifies their physical branch. An explicit absence of a cycle
 has no cycle timestamp comparison to perform; this does not make an unknown
