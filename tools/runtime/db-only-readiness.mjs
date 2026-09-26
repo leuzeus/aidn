@@ -33,6 +33,9 @@ const DB_FIRST_MARKERS = [
   // Specific admission receives backend-resolved canonical artifacts and rejects
   // projection fallback; its filesystem reads observe pending patch paths only.
   "evaluateNativeWriteAdmission(",
+  // Delegated admission obtains its canonical bundle inside the PostgreSQL
+  // reservation/lease transaction; filesystem reads observe patch targets.
+  "admitDelegatedRequest(",
   "runHydrateContextUseCase(",
 ];
 
