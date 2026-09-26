@@ -90,7 +90,8 @@ function withCanonicalArtifactMetadata(payload) {
           || (row.branch_name && branch && row.branch_name !== branch)) {
         throw new Error("RUNTIME_CONTINUITY_ARTIFACT_IDENTITY_MISMATCH");
       }
-      rows.set(id, { ...row, state: map.get("state") || row.state,
+      const lifecycle = map.get("state") || (metadata?.close_gate_satisfied === true ? "CLOSED" : row.state);
+      rows.set(id, { ...row, state: lifecycle,
         branch_name: branch || row.branch_name,
         ...(table === "cycles" ? { session_id: map.get("session_owner") || row.session_id } : {}),
         source_artifact_path: artifact.path, artifact_text: text, artifact_map: map,

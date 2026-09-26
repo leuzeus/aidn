@@ -176,7 +176,8 @@ Session-start admission shares the canonical continuity reader with cycle
 admissions. Its 0.10.13 correction resolves lifecycle, delivery metadata and
 multi-cycle lists from artifacts within the same snapshot as relational rows.
 The historical relational session `state` can encode a work mode and must not
-override a CLOSED artifact. Head, path and identity conflicts refuse; an
+override a CLOSED artifact or the explicit checked close gate in a legacy
+session template without a lifecycle field. Head, path and identity conflicts refuse; an
 unavailable canonical backend never authorizes a stale-file fallback. This is
 read resolution, not a schema migration or repair of historical rows.
 

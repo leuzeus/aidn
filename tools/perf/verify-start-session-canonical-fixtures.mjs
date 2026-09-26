@@ -68,6 +68,18 @@ export async function verifyCanonicalStartSession() {
       assert.equal(result.result, 'stop'); assert.equal(result.reason_code, 'START_SESSION_CANONICAL_RUNTIME_INVALID');
       assert.deepEqual(inventory(root), before);
     });
+    for (const [pr, expected] of [['merged', 'create_session_allowed'], ['open', 'resume_current_session']]) {
+      await run(`canonical_legacy_close_gate_${pr}`, async () => {
+        config('db-only', 'postgres'); const data = snapshot(pr, 'done');
+        data.payload.artifacts[1] = artifact('sessions/S101.md', session(pr, 'done').replace('state: CLOSED\n', ''), 2);
+        const before = inventory(root);
+        const result = await runStartSessionAdmitUseCase({ targetRoot: root, runtimeSnapshotReaderFactory: () => ({
+          describeBackend: () => ({ backend_kind: 'postgres' }), readCanonicalSnapshot: async () => data,
+        }) });
+        assert.equal(result.action, expected); assert.equal(result.active_session, 'none');
+        assert.deepEqual(inventory(root), before);
+      });
+    }
     for (const [name, alter, code] of [
       ['invalid_head', data => { data.runtimeHeads.current_state.artifact_sha256 = 'invalid'; }, /RUNTIME_HEAD_ARTIFACT_IDENTITY_MISMATCH/],
       ['duplicate_session', data => { data.payload.artifacts.push(artifact('sessions/S101-duplicate.md', session(), 4)); }, /RUNTIME_CONTINUITY_ARTIFACT_AMBIGUOUS/],
