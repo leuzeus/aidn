@@ -158,9 +158,9 @@ Do not duplicate full session or cycle content.
 - for promoted session planning, run `npx aidn runtime session-plan --target . --promote --state-mode <files|dual|db-only> --json` so the shared backlog and `CURRENT-STATE.md` stay aligned.
 - in dual/db-only, this step is mandatory and blocking on failure.
 - in files, this step is optional unless repository policy requires DB parity.
-- if `repair_layer_status` is `warn` or `block`, run `npx aidn runtime project-runtime-state --target . --json` before continuing.
-- Repair mutations require a reviewed source-maintenance procedure; repair-layer tools are internal and have no public runtime alias.
-- if blocking findings remain after diagnosis, STOP the skill and request user arbitration.
+- if `repair_layer_status` is `warn` or `block`, run `npx aidn runtime repair-layer-triage --target . --json` before continuing.
+- if triage exposes a safe-only autofix candidate, you MAY run `npx aidn runtime repair-layer-autofix --target . --apply --json`.
+- if blocking findings remain after triage/autofix, STOP the skill and request user arbitration.
 - in `files`, strict mode remains optional by repository policy.
 
 Do not modify baseline.

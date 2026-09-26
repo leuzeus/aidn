@@ -176,6 +176,12 @@ implicit index imports with reason `postgres_canonical_backend`.
 - `aidn runtime coordinator-suggest-arbitration --json`
 - `aidn runtime coordinator-record-arbitration --json`
 - `aidn runtime project-runtime-state --json` and `--write` for projection writes
+  - DB-backed repair status is read from the current canonical snapshot, never
+    inferred from an old successful hook or a missing findings collection.
+  - `--write --out <reviewed-digest>` writes only that projection file. In
+    `db-only`, persist a reviewed digest separately with
+    `aidn runtime db-first-artifact --path RUNTIME-STATE.md --content-file <reviewed-digest> --no-materialize --json`.
+    Consultation never persists the digest or updates canonical findings.
 - `aidn runtime project-handoff-packet --json`, `--write` for projection writes, and `--sync-relay` for shared relay sync writes
 - `aidn runtime state-reanchor --json` and `--write` for explicit repair of `CURRENT-STATE.md`, `RUNTIME-STATE.md`, and `HANDOFF-PACKET.md` from the active runtime backend
 

@@ -186,7 +186,9 @@ export async function projectRuntimeState({
       cycleStatusResolution,
     });
   const liveContext = captureContextIdentity({ targetRoot: absoluteTargetRoot, stateMode: effectiveStateMode });
-  const repairSummary = deriveRuntimeStateRepairSummary(hydrated, fallbackContext, liveContext);
+  const canonicalRepairPayload = dbBackedMode && sqliteFallback.exists && !sqliteFallback.warning
+    ? sqliteFallback.payload : undefined;
+  const repairSummary = deriveRuntimeStateRepairSummary(hydrated, fallbackContext, liveContext, canonicalRepairPayload);
   const digest = prepareRuntimeStateProjection({
     workspace,
     dbBackedMode,
@@ -194,6 +196,7 @@ export async function projectRuntimeState({
     hydrated,
     fallbackContext,
     liveContext,
+    canonicalRepairPayload,
     repairRouting: evaluateRepairRouting(repairSummary),
     sharedRuntimeValidation,
     sharedPlanning,

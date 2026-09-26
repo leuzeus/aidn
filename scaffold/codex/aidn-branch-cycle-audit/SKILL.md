@@ -120,7 +120,7 @@ Continuity validation by rule:
   - L3 escalation reason if any
 - in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
 - in files, this hook remains non-blocking by default.
-- if `repair_layer_status` is `warn` or `block`, run `npx aidn runtime repair-layer-triage --target . --json` before relying on db-backed continuity or artifact links.
+- if `repair_layer_status` is `warn` or `block`, run `npx aidn runtime project-runtime-state --target . --json` before relying on db-backed continuity or artifact links.
 
 Output:
 - Mapping result

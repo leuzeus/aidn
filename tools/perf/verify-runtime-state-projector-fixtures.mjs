@@ -6,6 +6,8 @@ import { randomUUID } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { DatabaseSync } from "node:sqlite";
+import { deriveCanonicalRepairSummary } from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
 
 function printUsage() {
   console.log("Usage:");
@@ -177,6 +179,31 @@ function main() {
     const canonical = runJson("tools/runtime/project-runtime-state.mjs", ["--target", filelessRepo, "--out", filelessOut, "--json"], { AIDN_STATE_MODE: "db-only", AIDN_INDEX_STORE_MODE: "sqlite" });
     assert(canonical.digest.current_state_source === "sqlite" && canonical.digest.cycle_status_source === "sqlite", "misleading files must not override canonical db-only rows");
     assert(canonical.digest.current_state_freshness === "ok" && canonical.written === false, "read-only canonical projection must preserve freshness and not write");
+    const sqliteFile = path.join(filelessRepo, ".aidn/runtime/index/workflow-index.sqlite");
+    const db = new DatabaseSync(sqliteFile);
+    try {
+      db.exec("DELETE FROM migration_findings");
+      db.prepare("INSERT INTO migration_runs (migration_run_id,engine_version,started_at,status) VALUES (?,?,?,?)")
+        .run("projection-probe", "test", "2026-01-01", "done");
+      for (const [severity, expected] of [[null, "clean"], ["warning", "warn"], ["error", "block"]]) {
+        db.exec("DELETE FROM migration_findings");
+        if (severity) db.prepare("INSERT INTO migration_findings (migration_run_id,severity,finding_type,message,created_at) VALUES (?,?,?,?,?)")
+          .run("projection-probe", severity, "PROJECTION_PROBE", "canonical finding", "2026-01-01");
+        const contextFile = path.join(filelessRepo, ".aidn/runtime/context/hydrated-context.json");
+        fs.mkdirSync(path.dirname(contextFile), { recursive: true });
+        fs.writeFileSync(contextFile, JSON.stringify({ ts: "2099-01-01", repair_layer: { status: severity ? "clean" : "block", blocking: !severity } }));
+        const beforeDb = fs.readFileSync(sqliteFile);
+        const beforeCache = fs.readFileSync(contextFile);
+        const beforeOutput = fs.readFileSync(filelessOut);
+        const observed = runJson("tools/runtime/project-runtime-state.mjs", ["--target", filelessRepo, "--out", filelessOut, "--json"], { AIDN_STATE_MODE: "db-only", AIDN_INDEX_STORE_MODE: "sqlite" });
+        assert(observed.digest.repair_layer_status === expected, `canonical ${expected} must override cached repair status`);
+        assert(fs.readFileSync(sqliteFile).equals(beforeDb) && fs.readFileSync(contextFile).equals(beforeCache) && fs.readFileSync(filelessOut).equals(beforeOutput), "repair preview must preserve DB, cache and output");
+      }
+    } finally { db.close(); }
+    for (const payload of [null, {}, { migration_findings: null }, { migration_findings: [{}] }]) {
+      assert(deriveCanonicalRepairSummary(payload).status === "unknown", "missing or malformed findings must not establish clean");
+    }
+    assert(deriveCanonicalRepairSummary({ migration_findings: [...Array.from({ length: 6 }, () => ({ severity: "info" })), { severity: "error" }] }).status === "block", "blocking findings beyond display limit must remain blocking");
 
     const textOut = execFileSync(process.execPath, [
       "tools/runtime/project-runtime-state.mjs",
