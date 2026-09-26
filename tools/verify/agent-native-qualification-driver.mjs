@@ -96,6 +96,23 @@ async function assertAbsent(observations) {
 }
 const patch = (file,before,after) => `*** Begin Patch\n*** Update File: ${file}\n@@\n-${before.trimEnd()}\n+${after.trimEnd()}\n*** End Patch`;
 const canonicalPatch = value => String(value ?? "").replace(/\r\n/g,"\n").trim();
+export async function seedNativeQualificationPlanning({shared,canonical,planningKey}) {
+  requireProof(canonical.planning_revision===1,"QUALIFICATION_PLANNING_SEED_REVISION_INVALID");
+  const publication={projectId:canonical.project_id,workspaceId:canonical.workspace_id,planningKey,sessionId:canonical.session_id,
+    backlogArtifactRef:canonical.plan_ref,backlogArtifactSha256:canonical.plan_sha256};
+  const expected={project_id:canonical.project_id,workspace_id:canonical.workspace_id,planning_key:planningKey,
+    session_id:canonical.session_id,backlog_artifact_ref:canonical.plan_ref,backlog_artifact_sha256:canonical.plan_sha256};
+  function checked(result,revision) {
+    requireProof(result?.ok===true && result.planning_state,"QUALIFICATION_PLANNING_FAILED");
+    requireProof(result.planning_state.revision===revision,"QUALIFICATION_PLANNING_REVISION_MISMATCH");
+    requireProof(Object.entries(expected).every(([key,value])=>result.planning_state[key]===value),"QUALIFICATION_PLANNING_BINDING_MISMATCH");
+    return result.planning_state;
+  }
+  // The shared writer inserts revision 0. Publish its first positive revision
+  // with the canonical CAS operation before reserving the immutable plan at 1.
+  checked(await shared.upsertPlanningState({...publication,expectedRevision:null}),0);
+  return checked(await shared.upsertPlanningState({...publication,expectedRevision:0}),canonical.planning_revision);
+}
 function promptFor(patches) {
   return "This is an explicitly authorized native admission qualification on a disposable project. Use only the native apply_patch tool. Do not run shell, read files, install, use other tools, delegate, commit, or modify metadata. The exact preimages and patches are supplied below. Call each numbered patch exactly once in order as a distinct apply_patch invocation, preserving each entire patch. The expected refusals are intentional qualification tests. After a refusal continue to the next numbered test, but never retry, split, repair or bypass a refused patch. After the final call stop and report the tool outcomes briefly.\n\n" + patches.map((p,i)=>`${i+1}. Exact patch:\n${p}`).join("\n\n");
 }
@@ -144,7 +161,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
     const shared=m.createPostgresSharedCoordinationStore({connectionString}); requireProof((await shared.bootstrap()).ok,"QUALIFICATION_POSTGRES_BOOTSTRAP_FAILED");
     const c=plan.canonical;
     requireProof((await shared.registerWorkspace({projectId:c.project_id,workspaceId:c.workspace_id})).ok,"QUALIFICATION_WORKSPACE_FAILED");
-    requireProof((await shared.upsertPlanningState({projectId:c.project_id,workspaceId:c.workspace_id,planningKey,sessionId:c.session_id,backlogArtifactRef:c.plan_ref,backlogArtifactSha256:c.plan_sha256})).ok,"QUALIFICATION_PLANNING_FAILED");
+    await seedNativeQualificationPlanning({shared,canonical:c,planningKey});
     await client.query("INSERT INTO aidn_runtime.index_meta(scope_key,key,value) VALUES($1,'qualification','owned')",[c.runtime_scope_id]);
     await client.query("INSERT INTO aidn_runtime.artifacts(scope_key,artifact_id,path,kind,content_format,content,sha256,size_bytes,mtime_ns,updated_at) VALUES($1,1,'BACKLOG.md','backlog','utf8',$2,$3,$4,0,clock_timestamp())",[c.runtime_scope_id,planText,c.plan_sha256,Buffer.byteLength(planText)]);
     const digest=await store.readCanonicalDigest({scopeKey:c.runtime_scope_id});

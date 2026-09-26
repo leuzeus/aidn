@@ -274,6 +274,52 @@ try {
   await check("qualification rejects nonboolean write before any effect", async () => {
     await assert.rejects(qualification.qualifyAgentNativeWorker({ write: "true" }), { code: "QUALIFICATION_EXPLICIT_WRITE_BOOLEAN_REQUIRED" });
   });
+  // Async in-memory publication double, explicitly not a PostgreSQL proof.
+  // The shared adapter inserts revision 0; execution contracts require >= 1.
+  const planningCanonical={project_id:"native.project",workspace_id:"native.workspace",session_id:"S001",plan_ref:"docs/audit/BACKLOG.md",plan_sha256:sha("a"),planning_revision:1};
+  const planningKey="native-qualification";
+  const planningRow=revision=>({project_id:planningCanonical.project_id,workspace_id:planningCanonical.workspace_id,planning_key:planningKey,
+    session_id:planningCanonical.session_id,backlog_artifact_ref:planningCanonical.plan_ref,backlog_artifact_sha256:planningCanonical.plan_sha256,revision});
+  function planningDouble(responses) {
+    const calls=[];let active=false;
+    return {calls,shared:{async upsertPlanningState(input) {
+      assert.equal(active,false,"planning publications must be awaited serially");active=true;calls.push(structuredClone(input));
+      await Promise.resolve();active=false;return structuredClone(responses[calls.length-1]);
+    }}};
+  }
+  await check("qualification seed publishes revision zero then CAS revision one before reservation",async()=>{
+    const double=planningDouble([{ok:true,planning_state:planningRow(0)},{ok:true,planning_state:planningRow(1)}]);
+    const before=JSON.stringify(planningCanonical);
+    const row=await driver.seedNativeQualificationPlanning({shared:double.shared,canonical:planningCanonical,planningKey});
+    assert.equal(row.revision,1);
+    const publication={projectId:planningCanonical.project_id,workspaceId:planningCanonical.workspace_id,planningKey,sessionId:planningCanonical.session_id,
+      backlogArtifactRef:planningCanonical.plan_ref,backlogArtifactSha256:planningCanonical.plan_sha256};
+    assert.deepEqual(double.calls,[{...publication,expectedRevision:null},{...publication,expectedRevision:0}]);
+    assert.equal(JSON.stringify(planningCanonical),before);
+  });
+  for(const [name,initial,published,code,count] of [
+    ["failed initial publication",{ok:false},null,"QUALIFICATION_PLANNING_FAILED",1],
+    ["unexpected initial revision",{ok:true,planning_state:planningRow(1)},null,"QUALIFICATION_PLANNING_REVISION_MISMATCH",1],
+    ["foreign initial planning",{ok:true,planning_state:{...planningRow(0),planning_key:"other"}},null,"QUALIFICATION_PLANNING_BINDING_MISMATCH",1],
+    ["failed CAS publication",{ok:true,planning_state:planningRow(0)},{ok:false,reason_code:"SHARED_PLANNING_REVISION_CONFLICT"},"QUALIFICATION_PLANNING_FAILED",2],
+    ["unpublished revision zero",{ok:true,planning_state:planningRow(0)},{ok:true,planning_state:planningRow(0)},"QUALIFICATION_PLANNING_REVISION_MISMATCH",2],
+    ["unexpected newer revision",{ok:true,planning_state:planningRow(0)},{ok:true,planning_state:planningRow(2)},"QUALIFICATION_PLANNING_REVISION_MISMATCH",2],
+  ]) await check("qualification seed rejects "+name,async()=>{
+    const double=planningDouble([initial,published]);
+    await assert.rejects(driver.seedNativeQualificationPlanning({shared:double.shared,canonical:planningCanonical,planningKey}),{code});
+    assert.equal(double.calls.length,count);
+  });
+  for(const key of ["project_id","workspace_id","planning_key","session_id","backlog_artifact_ref","backlog_artifact_sha256"])
+    await check("qualification seed rejects foreign published "+key,async()=>{
+      const double=planningDouble([{ok:true,planning_state:planningRow(0)},{ok:true,planning_state:{...planningRow(1),[key]:"foreign"}}]);
+      await assert.rejects(driver.seedNativeQualificationPlanning({shared:double.shared,canonical:planningCanonical,planningKey}),{code:"QUALIFICATION_PLANNING_BINDING_MISMATCH"});
+      assert.equal(double.calls.length,2);
+    });
+  await check("qualification seed rejects a nonpositive plan revision before publication",async()=>{
+    const double=planningDouble([]);
+    await assert.rejects(driver.seedNativeQualificationPlanning({shared:double.shared,canonical:{...planningCanonical,planning_revision:0},planningKey}),{code:"QUALIFICATION_PLANNING_SEED_REVISION_INVALID"});
+    assert.deepEqual(double.calls,[]);
+  });
   await check("all pure fixture inputs are unchanged", () => assert.equal(JSON.stringify({ manifest, trust, installation, baseline, markers }), unchangedInputs));
   await check("imports and rejected requests leave no observed effect", () => assert.deepEqual(effects, []));
   process.stdout.write(JSON.stringify({ status: "PASS", checks, effects, native_codex: "NOT_RUN", postgres: "NOT_RUN", cleanup: "NO_RESOURCES_CREATED" }) + "\n");
