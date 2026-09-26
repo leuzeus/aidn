@@ -4,8 +4,9 @@
 
 Accepted. Lot 2 provided internal contracts and pure validation (`model_only`).
 Lot 3 adds PostgreSQL persistence (`persistence_only`). Supervised execution is
-still unavailable: no executor process, native admission delegation, scheduler
-or `agent-run*` command is implemented yet.
+still unavailable. Lot 4 introduces the candidate Codex executor, delegated
+admission and native process controller; availability remains gated on separate
+native qualification. No scheduler or `agent-run*` command is implemented yet.
 
 ## Date
 
@@ -82,9 +83,9 @@ The separate `AgentTaskExecutor` port exposes synchronous, probe-free
 `getDescriptor()`, asynchronous `checkAvailability({ cwd, signal })`, and
 `runTask(request, { signal, onEvent })`. An injected registry declares candidates;
 discovery and port assertions do not probe availability or launch processes.
-`codex-cli-task` is reserved for the future Codex executor and is distinct from
-the historical `codex` workflow adapter. No real executor is registered in this
-increment. Availability describes checked prerequisites, never admission or
+`codex-cli-task` identifies the candidate Codex executor and is distinct from
+the historical `codex` workflow adapter. No executor is implicitly registered.
+Availability describes checked prerequisites, never admission or
 native trust. Execution requires explicit absolute cwd and resolved configuration,
 without parent-cwd or model fallback.
 
@@ -167,9 +168,25 @@ branch, input SHA, activation, frozen plan and live lease. It must refuse sessio
 cycle, planning, installation and authorization mutations. Each worktree needs
 its own verified preparation and exact candidate engine. Copying a receipt or
 holding a delegation cannot undo revocation. An authenticated local admission
-transport will expose only bounded admission requests; workers receive no writer
-credentials or generic database/command access. This is a required future
-capability, not an implemented bypass of ADR-0012.
+transport exposes only bounded admission requests; workers receive no writer
+credentials or generic database/command access. The lot 4 transport authenticates
+both directions with attempt-scoped HMACs and nonces on a loopback listener. The
+PostgreSQL store rechecks ownership, canonical state and lease after evaluation.
+The worktree inspector verifies its own receipt, verify-only preparation, exact
+candidate archive and inventory, physical root, branch, input SHA and activation.
+The marker under `.codex` makes missing delegated environment fail closed.
+Delegated hooks reject every unsupported tool; historical hooks retain their
+existing patch-only semantics. Native hook coverage and OS confinement still
+require the human-reviewed qualification in CODEX_NATIVE_QUALIFICATION.md.
+
+The candidate process controller uses a Windows Job Object assigned atomically
+at process creation, with a suspended child and kill-on-close. The supervisor
+records the observed runner before resuming it. Confirmation requires an observed
+zero active-process count; loss of observation produces `indeterminate`. Linux
+does not silently substitute PID or process-group termination for this proof.
+The Codex executor uses resolved executable bytes, structured arguments, explicit
+sandbox/configuration and stdin prompt. It stores bounded transcripts locally,
+awaits serialized callbacks, and never forwards raw Codex JSONL to AIDN stdout.
 
 The supervisor owns retention for runs, tasks, attempts and acceptance evidence.
 Transcripts and bulky outputs remain local. Shared results carry only bounded
@@ -192,7 +209,10 @@ in-memory executor doubles, governance closure and the required
 `runtime-agent-execution-postgres` gate with a disposable PostgreSQL cluster,
 separate Node processes and a launch barrier. Historical simulated concurrency
 checks have their own required gate. Native process trees, hooks, OS confinement
-and real Codex workers still require separate evidence in later increments.
+and real Codex workers require separate evidence. Lot 4 adds the required
+`runtime-agent-worker-fixtures` gate; executor doubles and authenticated transport
+fixtures do not establish that native hooks ran or that the sandbox confined a
+worker. Native qualification is separate from these CI checks.
 An unqualified OS cannot advertise the future capability.
 
 ## Consequences

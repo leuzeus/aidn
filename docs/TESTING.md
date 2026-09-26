@@ -259,6 +259,16 @@ native Codex, OS confinement and concurrent workers remain unqualified here.
 The gate belongs only to the runtime family; the four context-resilience groups
 and their 43 historical invocations are unchanged.
 
+For the candidate Codex task executor and delegated admission, run
+`npm run perf:verify-agent-worker-fixtures`. The required runtime gate tests
+bounded JSONL, explicit configuration, serialized callbacks, termination outcomes,
+exact delegated scopes and authenticated local transport with supervisor doubles.
+It does not execute Codex or qualify the OS sandbox. The explicit Windows helper
+build and `tools/perf/verify-agent-process-tree-fixtures.mjs` separately test native
+process trees. An unavailable native prerequisite is not a fixture PASS.
+Preparation and human review precede real Codex probes as specified in
+[native qualification](CODEX_NATIVE_QUALIFICATION.md).
+
 For durable agent ownership, run `npm run perf:verify-agent-execution-postgres`
 with `PG_BIN_DIR` pointing to the absolute directory containing `initdb`,
 `pg_ctl` and `postgres`. The required `runtime-agent-execution-postgres` gate

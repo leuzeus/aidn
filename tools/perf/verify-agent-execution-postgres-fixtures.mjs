@@ -143,6 +143,10 @@ async function runSuite({ connectionString, version, root }) {
   }
   const runner = () => ({ runner_id: id("runner"), pid: process.pid, host_id: "host.fixture", started_at: new Date().toISOString() });
   const owned = claimed => ({ attemptId: claimed.attempt.attempt_id, ownership: claimed.attempt.ownership });
+  const admissionArgs = (claimed,request,evaluate) => ({...owned(claimed),
+    requestSha256:fingerprintAgentExecutionValue(request),delegationSha256:fingerprintAgentExecutionValue(claimed.delegation),evaluate});
+  const admitDecision = context => ({protocol_version:1,ok:true,outcome:"allow",reason_code:"FIXTURE_ADMISSION",
+    attempt_id:context.attempt.attempt_id,request_sha256:fingerprintAgentExecutionValue(context.request)});
   async function launch(context, claimed) {
     const request = requestFor(context, claimed);
     await context.store.recordLaunchIntent({ ...owned(claimed), request });
@@ -214,6 +218,83 @@ async function runSuite({ connectionString, version, root }) {
       for (const field of ["generation", "planning_revision"]) {
         await reject(store.renewAttempt({ ...args, ownership: { ...args.ownership, [field]: args.ownership[field]+1 } }), "AGENT_EXECUTION_OWNERSHIP_LOST");
       }
+    });
+    await check("delegated preflight requires durable launch intent and a live exact binding",async()=>{
+      const context=await seed(),claimed=await claim(context),request=requestFor(context,claimed);
+      let evaluations=0;
+      const args=admissionArgs(claimed,request,bundle=>{evaluations++;return admitDecision(bundle);});
+      await reject(store.admitDelegatedRequest(args),"AGENT_EXECUTION_LAUNCH_INTENT_REQUIRED");
+      assert.equal(evaluations,0);
+      await store.recordLaunchIntent({...owned(claimed),request});
+      const before=await dataSnapshot(),ddl=await ddlCount();
+      assert.equal((await store.admitDelegatedRequest(args)).outcome,"allow");
+      assert.equal(await dataSnapshot(),before);assert.equal(await ddlCount(),ddl);
+      for(const field of ["requestSha256","delegationSha256"]){
+        await reject(store.admitDelegatedRequest({...args,[field]:"f".repeat(64)}),"AGENT_EXECUTION_ADMISSION_BINDING_INVALID");
+      }
+      await reject(store.admitDelegatedRequest({...args,ownership:{...args.ownership,generation:args.ownership.generation+1}}),"AGENT_EXECUTION_OWNERSHIP_LOST");
+      await reject(store.admitDelegatedRequest({...args,evaluate:()=>{throw new Error("sensitive driver detail");}}),"AGENT_EXECUTION_ADMISSION_EVALUATION_FAILED");
+      assert.equal(evaluations,1);
+      await store.observeRunner({...owned(claimed),runner:runner()});
+      assert.equal((await store.admitDelegatedRequest(args)).outcome,"allow");
+      await store.recordResult({...owned(claimed),result:resultFor(claimed,request),terminationProof:{fixtureConfirmed:true}});
+      await reject(store.admitDelegatedRequest(args),"AGENT_EXECUTION_ATTEMPT_NOT_ACTIVE");
+      assert.equal(evaluations,2);
+    });
+    await check("delegated admission fences an expired lease before calling its evaluator",async()=>{
+      const context=await seed(),claimed=await claim(context),request=await launch(context,claimed);
+      let evaluated=false;await expire(claimed);
+      await reject(store.admitDelegatedRequest(admissionArgs(claimed,request,()=>{evaluated=true;return {outcome:"allow"};})),"AGENT_EXECUTION_LEASE_EXPIRED");
+      assert.equal(evaluated,false);assert.equal((await store.getRun({runId:context.runId})).run.lifecycle_status,"recovery_required");
+    });
+    await check("delegated admission rechecks PostgreSQL time after a slow evaluator",async()=>{
+      const context=await seed(),claimed=await claim(context),request=await launch(context,claimed);
+      let evaluated=false;
+      await client.query("UPDATE aidn_shared.execution_attempts SET lease_until=clock_timestamp()+interval '500 milliseconds' WHERE attempt_id=$1",[claimed.attempt.attempt_id]);
+      await reject(store.admitDelegatedRequest(admissionArgs(claimed,request,async bundle=>{evaluated=true;await delay(700);return admitDecision(bundle);})),"AGENT_EXECUTION_LEASE_EXPIRED");
+      assert.equal(evaluated,true);assert.equal((await store.getRun({runId:context.runId})).run.lifecycle_status,"recovery_required");
+    });
+    await check("delegated admission rechecks revocation after evaluating the patch",async()=>{
+      let active=true;
+      const context=await seed({options:{verifyActivation:()=>active}}),claimed=await claim(context),request=await launch(context,claimed);
+      const args=admissionArgs(claimed,request,bundle=>{active=false;return admitDecision(bundle);});
+      await reject(context.store.admitDelegatedRequest(args),"AGENT_EXECUTION_ACTIVATION_INVALID");
+      const snapshot=await store.getRun({runId:context.runId});
+      assert.equal(snapshot.run.lifecycle_status,"recovery_required");assert.equal(snapshot.reservation_active,true);
+    });
+    await check("never-settling delegated evaluation releases PostgreSQL locks at its deadline",async()=>{
+      const context=await seed(),claimed=await claim(context),request=await launch(context,claimed);
+      let evaluationSignal;
+      const before=await dataSnapshot();
+      const started=performance.now();
+      await reject(store.admitDelegatedRequest(admissionArgs(claimed,request,(_bundle,{signal})=>{
+        evaluationSignal=signal;return new Promise(()=>{});
+      })),"AGENT_EXECUTION_ADMISSION_EVALUATION_TIMED_OUT");
+      assert.equal(evaluationSignal.aborted,true);assert.ok(performance.now()-started<6500);
+      assert.equal(await dataSnapshot(),before);
+      const secondConnection=createPostgresAgentExecutionStore(storeOptions);
+      await bounded(secondConnection.renewAttempt(owned(claimed)),2000);
+      await bounded(secondConnection.invalidateRun({runId:context.runId,reason:"FIXTURE_RECONCILIATION"}),2000);
+      assert.equal((await store.getRun({runId:context.runId})).run.lifecycle_status,"recovery_required");
+    });
+    await check("late delegated allow after timeout cannot revive an invalidated run",async()=>{
+      const context=await seed(),claimed=await claim(context),request=await launch(context,claimed);
+      let settle,lateDecision;
+      await reject(store.admitDelegatedRequest(admissionArgs(claimed,request,bundle=>{
+        lateDecision=admitDecision(bundle);return new Promise(resolve=>{settle=resolve;});
+      })),"AGENT_EXECUTION_ADMISSION_EVALUATION_TIMED_OUT");
+      const secondConnection=createPostgresAgentExecutionStore(storeOptions);
+      await bounded(secondConnection.invalidateRun({runId:context.runId,reason:"FIXTURE_AFTER_TIMEOUT"}),2000);
+      const before=await dataSnapshot();settle(lateDecision);await delay(20);
+      assert.equal(await dataSnapshot(),before);
+      assert.equal((await store.getRun({runId:context.runId})).run.lifecycle_status,"recovery_required");
+    });
+    await check("synchronous delegated evaluation cannot outrun the delayed timer",async()=>{
+      const context=await seed(),claimed=await claim(context),request=await launch(context,claimed);
+      await reject(store.admitDelegatedRequest(admissionArgs(claimed,request,bundle=>{
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,4600);return admitDecision(bundle);
+      })),"AGENT_EXECUTION_ADMISSION_EVALUATION_TIMED_OUT");
+      await bounded(createPostgresAgentExecutionStore(storeOptions).renewAttempt(owned(claimed)),2000);
     });
     await check("event and result bindings are immutable and replay after closure is read only", async () => {
       const context = await seed(), claimed = await claim(context), request = await launch(context, claimed), args = owned(claimed);

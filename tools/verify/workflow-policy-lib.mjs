@@ -23,6 +23,7 @@ const REQUIRED_OBLIGATIONS = Object.freeze({
   "runtime-db-runtime-cli": ["dev", "main", "release"],
   "runtime-agent-execution-contracts": ["dev", "main", "release"],
   "runtime-agent-execution-postgres": ["dev", "main", "release"],
+  "runtime-agent-worker-fixtures": ["dev", "main", "release"],
   "runtime-shared-coordination-concurrency": ["dev", "main", "release"],
   "security-tracked-sensitivity": ["dev", "main", "release"],
   "release-version": ["dev", "main", "release"],
@@ -40,6 +41,7 @@ const REQUIRED_GATE_SCRIPTS = Object.freeze({
   "runtime-db-runtime-cli": "perf:verify-db-runtime-cli",
   "runtime-agent-execution-contracts": "perf:verify-agent-execution-contracts",
   "runtime-agent-execution-postgres": "perf:verify-agent-execution-postgres",
+  "runtime-agent-worker-fixtures": "perf:verify-agent-worker-fixtures",
   "runtime-shared-coordination-concurrency": "perf:verify-shared-coordination-concurrency-gate",
   "codex-pack-topology": "perf:verify-pack-topology",
   "security-tracked-sensitivity": "perf:verify-tracked-sensitivity",
@@ -55,6 +57,7 @@ const REQUIRED_GATE_SCRIPTS = Object.freeze({
 const REQUIRED_GATE_CONDITIONS = Object.freeze({
   "runtime-agent-execution-contracts": "always",
   "runtime-agent-execution-postgres": "always",
+  "runtime-agent-worker-fixtures": "always",
   "runtime-shared-coordination-concurrency": "always",
   "release-reproducibility": "git-clean-commit",
   "cleanliness-gate-runner-fixtures": "git-repository",
@@ -64,6 +67,7 @@ const REQUIRED_GATE_CONDITIONS = Object.freeze({
 const GOVERNED_RUNTIME_COMMANDS = Object.freeze({
   "runtime-agent-execution-contracts": "node tools/perf/verify-agent-execution-contracts-fixtures.mjs",
   "runtime-agent-execution-postgres": "node tools/perf/verify-agent-execution-postgres-fixtures.mjs",
+  "runtime-agent-worker-fixtures": "node tools/perf/verify-codex-task-executor-fixtures.mjs && node tools/perf/verify-delegated-agent-admission-fixtures.mjs",
   "runtime-shared-coordination-concurrency": [
     "node tools/perf/verify-shared-coordination-concurrency-fixtures.mjs",
     "node tools/perf/verify-shared-coordination-worktree-concurrency-fixtures.mjs",

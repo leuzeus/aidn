@@ -761,6 +761,7 @@ for (const [probe, passed] of Object.entries(postgresRuntimeProbes)) {
 const persistenceNegativeProbes = {};
 for (const [id, script] of [
   ["runtime-agent-execution-postgres", "perf:verify-agent-execution-postgres"],
+  ["runtime-agent-worker-fixtures", "perf:verify-agent-worker-fixtures"],
   ["runtime-shared-coordination-concurrency", "perf:verify-shared-coordination-concurrency-gate"],
 ]) {
   const mutations = {
