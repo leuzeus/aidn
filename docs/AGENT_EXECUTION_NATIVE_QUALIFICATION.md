@@ -85,6 +85,13 @@ The worker reads its explicitly isolated CODEX_HOME configuration, because
 ignoring that file would also omit project trust. It never falls back to the
 operator's default profile. Model, effort and sandbox remain explicit command
 arguments, and native subagent delegation is disabled for a bounded worker.
+The CLI also fixes approval_policy to never, additional writable_roots to an
+empty list and network_access to false, and excludes both the environment's
+temporary directory and /tmp from workspace write permission. A narrow OS
+sandbox probe is separate evidence. Windows executions explicitly select the
+elevated sandbox backend and require its supported setup to succeed; profile
+defaults cannot choose another backend. An unavailable native client helper still
+leaves the complete native milestone unavailable.
 Raw Codex JSONL, an exit code of zero, a model's statement, a simulated hook
 payload or a passing fixture is insufficient. Record PASS, FAIL, SKIP and
 UNAVAILABLE separately. Results bind to the exact candidate, executable,
@@ -94,6 +101,15 @@ The preparation helper never runs a model, opens a native session, approves
 trust, starts PostgreSQL or executes these cases. Its successful status means
 only that the concrete review materials and isolated clients are ready.
 
+The internal qualify-agent-native-worker driver previews by default. Its
+explicit write mode permits four bounded calls: acquisition of edit/refusal
+evidence, cancellation, timeout and the executor port check. It requires an
+explicit model and effort preset, the exact package/helper manifests and a
+review proof bound to those choices. Missing prerequisites or incomplete cases
+remain NOT_RUN, UNAVAILABLE or FAIL as applicable; a partial run never grants
+qualification. Its evidence and failed-attempt markers remain available for
+reconciliation. This driver adds no public agent-run command or output contract.
+
 ## Preservation and reruns
 
 Output contains local paths and receipts with possible recovery pre-images.
@@ -101,7 +117,64 @@ Keep it local; publish only the bounded redacted result. Preparation failures
 retain the owned output and failure.local.json for diagnosis. Existing output
 is never reused or deleted. No automatic cleanup or repair is performed.
 
-After source or hook changes, prepare a new output directory from the final
-candidate and repeat human review. An earlier package's result cannot qualify
-new bytes. Later cleanup must first establish process termination and preserve
-the required evidence; it must target only the explicitly owned fixture.
+After hook or installed-asset changes, prepare a new output directory from the
+final candidate and repeat human review. An earlier package's result cannot
+qualify new bytes. Later cleanup must first establish process termination and
+preserve the required evidence; it must target only the explicitly owned fixture.
+
+## Refresh a candidate without changing the reviewed definitions
+
+Before the first delegated attempt, a package-only correction can retain the
+three disposable roots and their isolated native home. This bounded operation
+uses a new output directory for the new archive, installed engine and evidence.
+It never rewrites authentication or trust, copies a profile, authorizes a revoked
+root, or treats a previous package's native result as evidence for the new package.
+Any existing .codex/aidn-agent-attempt.json marker blocks refresh, including a
+failed or indeterminate attempt. Reconcile that attempt before considering any
+later reuse; this tool neither removes its marker nor replaces its baseline to
+hide a failed native run.
+
+~~~text
+node tools/verify/refresh-agent-native-candidate.mjs --manifest <reviewed-manifest.local.json> --trust-evidence <native-trust-observed.local.json> --output-root <new-absolute-directory>
+node tools/verify/refresh-agent-native-candidate.mjs --manifest <reviewed-manifest.local.json> --trust-evidence <native-trust-observed.local.json> --output-root <new-absolute-directory> --write --expect-plan <preview-plan-id>
+~~~
+
+The native evidence records a human confirmation and the supported hooks/list
+API response for both worker roots, with enabled, trusted project hooks and their
+native hashes. Its candidate, source, executable and isolated home must match the
+reviewed preparation, and its discovery process must be closed. With linked Git
+worktrees the client may resolve the hook source in the coordinator root; the
+refresh verifies that exact source as well as each worker's handlers. A listed
+trusted hook still does not establish an executed hook.
+
+Preview creates no files, invokes no package manager or Codex client, and grants
+no native trust. Its fingerprint binds the source snapshot, observed review,
+root/receipt/Git/runtime preimages, native home directory identity and output
+path. Changed preimages invalidate the explicit write request. Apply requires a
+clean source checkout. The tool never reads or copies profile contents: native
+databases, locks, authentication and logs are outside its inventory. Its writes
+are bounded to the new output and the three canonical installation receipts.
+Native trust is verified through the separate API observations.
+
+Before any write, the source installation plans must preserve every installed
+asset, including the exact hook definition and handler bytes. The same condition
+is checked again using the packaged candidate before touching an existing root.
+Only root-specific receipts and new canonical installation transactions may
+change, via planInstallation and executeInstallation with verify-only. Each root
+must remain active under its existing authorization revision; activation drift,
+revocation, an attempt marker, changed Git state or an asset update stops the
+refresh. Failure preserves the new output and any partial installation state;
+it never silently rolls back, repairs or deletes earlier evidence.
+The worktrees' .git pointer files have a separate type, size and content-hash
+preimage, checked before and after installation. This evidence supplements the
+original baseline without silently rewriting it.
+
+The resulting manifest and baseline retain the preparation format and point to
+the new exact candidate. Native execution remains NOT_RUN. The status
+PRESERVED_DEFINITION_RECHECK_REQUIRED means the supported native API must be read
+again in the same home for both worker roots; source paths, native hashes, enabled
+and trusted state must match the earlier observation. Only unchanged roots and
+definitions can retain their existing approval. A difference requires renewed
+human review through native controls. Then repeat all native qualification cases
+against the new package hash, including allowed and refused edits, descendant
+termination and preservation; the old package's results are not transferred.

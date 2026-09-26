@@ -34,7 +34,14 @@ export function buildCodexTaskArguments(request) {
   // must remain visible. --ignore-user-config would also hide project trust.
   return ["exec", "--json", "--ephemeral", "--strict-config",
     "--cd", request.cwd, "--sandbox", request.execution.sandbox, "--model", request.execution.model,
-    "-c", `model_reasoning_effort=${JSON.stringify(request.execution.effort)}`, "-c", "agents.enabled=false", "-"];
+    "-c", `model_reasoning_effort=${JSON.stringify(request.execution.effort)}`, "-c", "agents.enabled=false",
+    // Loading the isolated profile preserves native trust, not permission to
+    // widen this worker's filesystem, temporary-directory or network boundary.
+    "-c", 'approval_policy="never"', "-c", "sandbox_workspace_write.writable_roots=[]",
+    "-c", "sandbox_workspace_write.network_access=false",
+    "-c", "sandbox_workspace_write.exclude_tmpdir_env_var=true",
+    "-c", "sandbox_workspace_write.exclude_slash_tmp=true",
+    ...(process.platform === "win32" ? ["-c", 'windows.sandbox="elevated"'] : []), "-"];
 }
 
 // Explicit allowlist: do not copy process.env, PG credentials, API keys, Git

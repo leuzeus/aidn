@@ -62,6 +62,13 @@ try {
     assert(args.includes("workspace-write")); assert(!args.some(value => value.includes("dangerously")));
     assert(!args.includes("--ignore-user-config"), "the isolated profile's native trust must be loaded");
     assert(args.includes("agents.enabled=false"), "workers cannot create a second delegation authority");
+    for (const policy of ['approval_policy="never"', "sandbox_workspace_write.writable_roots=[]",
+      "sandbox_workspace_write.network_access=false", "sandbox_workspace_write.exclude_tmpdir_env_var=true",
+      "sandbox_workspace_write.exclude_slash_tmp=true"]) {
+      assert(args.includes(policy), "native trust profile cannot widen the delegated worker boundary");
+    }
+    assert.equal(args.includes('windows.sandbox="elevated"'), process.platform === "win32",
+      "Windows workers require the explicitly qualified elevated sandbox backend");
   });
   await check("qualification unavailable launches nothing", async () => {
     const { executor, request, calls } = setup({ qualify: false });

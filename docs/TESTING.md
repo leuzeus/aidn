@@ -263,6 +263,8 @@ For the candidate Codex task executor and delegated admission, run
 `npm run perf:verify-agent-worker-fixtures`. The required runtime gate tests
 bounded JSONL, explicit configuration, serialized callbacks, termination outcomes,
 exact delegated scopes and authenticated local transport with supervisor doubles.
+It also checks the native qualification tools' review bindings, receipt-only
+refresh and preservation guards without launching a model or PostgreSQL.
 It does not execute Codex or qualify the OS sandbox. The explicit Windows helper
 build and `tools/perf/verify-agent-process-tree-fixtures.mjs` separately test native
 process trees. An unavailable native prerequisite is not a fixture PASS.

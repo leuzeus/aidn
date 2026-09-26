@@ -67,7 +67,7 @@ const REQUIRED_GATE_CONDITIONS = Object.freeze({
 const GOVERNED_RUNTIME_COMMANDS = Object.freeze({
   "runtime-agent-execution-contracts": "node tools/perf/verify-agent-execution-contracts-fixtures.mjs",
   "runtime-agent-execution-postgres": "node tools/perf/verify-agent-execution-postgres-fixtures.mjs",
-  "runtime-agent-worker-fixtures": "node tools/perf/verify-codex-task-executor-fixtures.mjs && node tools/perf/verify-delegated-agent-admission-fixtures.mjs",
+  "runtime-agent-worker-fixtures": "node tools/perf/verify-codex-task-executor-fixtures.mjs && node tools/perf/verify-delegated-agent-admission-fixtures.mjs && node tools/perf/verify-agent-native-qualification-fixtures.mjs",
   "runtime-shared-coordination-concurrency": [
     "node tools/perf/verify-shared-coordination-concurrency-fixtures.mjs",
     "node tools/perf/verify-shared-coordination-worktree-concurrency-fixtures.mjs",
