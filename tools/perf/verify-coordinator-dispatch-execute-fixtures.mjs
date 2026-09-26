@@ -5,7 +5,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
-import { isActivationFixtureSource, prepareActivationFixture, prepareNpmActivationFixture, fixtureNpmEnvironment } from "./test-activation-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture, prepareNpmActivationFixture, fixtureNpmEnvironment, prepareWorkflowDocumentsFixture } from "./test-activation-fixture-lib.mjs";
 
 const FAILURE_INJECTION_ENV = "AIDN_COORDINATOR_EXECUTE_FIXTURE_INJECT_FAILURE";
 const FAILURE_PROBE_TOKEN_ENV = "AIDN_COORDINATOR_EXECUTE_FIXTURE_PROBE_TOKEN";
@@ -205,6 +205,7 @@ function main() {
     initGitRepo(escalatedTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(roleBlockedTarget, { workingBranch: "feature/C101-alpha" });
     for (const target of [readyTarget, warnTarget, blockedTarget, escalatedTarget, roleBlockedTarget]) {
+      if (target === readyTarget) prepareWorkflowDocumentsFixture(target);
       prepareActivationFixture(target, repoRoot);
       prepareNpmActivationFixture(target, repoRoot);
       execFileSync("git", ["-C", target, "add", "."], { stdio: "pipe" });
