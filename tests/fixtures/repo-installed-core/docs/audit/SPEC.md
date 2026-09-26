@@ -228,6 +228,13 @@ Consequences:
 - **Run skill: `cycle-close`**
 - All exit criteria MUST be satisfied
 - Status transitions must be explicit
+- The post-transition `cycle-close` checkpoint may resolve its unique owning
+  cycle in `DONE`, `NO_GO` or `DROPPED` while still on that cycle/intermediate
+  branch. This bounded closure check does not count the cycle as active or
+  authorize further implementation. Ordinary mapping and DoR rules remain active.
+- Closure uses canonical status and usage-matrix evidence in DB-backed modes.
+  A warning or refusal from the nested checkpoint must remain visible in the
+  overall hook result; admission alone is not successful completion.
 
 ### Cycle Outcomes
 - `DONE`: retained and eligible for normal downstream promotion.

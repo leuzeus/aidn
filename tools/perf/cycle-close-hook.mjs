@@ -156,7 +156,7 @@ async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const admission = runCycleCloseAdmitUseCase({
+    const admission = await runCycleCloseAdmitUseCase({
       targetRoot,
       mode: args.mode,
     });
@@ -165,18 +165,25 @@ async function main() {
         args,
         runtimeDir: PERF_DIR,
         targetRoot,
+        completionCycleId: ["DONE", "NO_GO", "DROPPED"].includes(admission.target_cycle?.state)
+          ? admission.target_cycle.cycle_id : null,
       })
       : null;
+    const effective = admission.ok === true && checkpoint ? checkpoint.gate : admission;
     const result = {
       ts: new Date().toISOString(),
-      ok: admission.ok === true && (checkpoint ? checkpoint.ok === true : true),
+      ok: admission.ok === true && effective.result === "ok" && (checkpoint ? checkpoint.ok === true : true),
       skill: "cycle-close",
       target_root: targetRoot,
       mode: args.mode,
       state_mode: checkpoint?.state_mode ?? args.stateMode,
-      action: admission.action,
-      result: admission.result,
-      reason_code: admission.reason_code,
+      action: effective.result === "ok" ? admission.action : effective.action,
+      result: effective.result,
+      reason_code: effective.reason_code,
+      blocking_reasons: admission.ok !== true ? admission.blocking_reasons
+        : effective.result === "ok" ? [] : checkpoint.reload.reason_codes,
+      recommended_next_action: effective.result === "ok" ? admission.recommended_next_action
+        : admission.ok !== true ? admission.recommended_next_action : "Resolve the checkpoint refusal before continuing closure or integrating the branch.",
       branch: admission.branch,
       branch_kind: admission.branch_kind,
       admission,
@@ -186,18 +193,18 @@ async function main() {
     result.summary = buildSummary(result);
     if (args.json) {
       console.log(JSON.stringify(result, null, 2));
-      process.exit(0);
+      process.exitCode = result.result === "stop" || result.result === "error" ? 1 : 0;
+      return;
     }
     console.log(`Result: ${result.result}`);
     console.log(`Action: ${result.action}`);
-    if (admission.recommended_next_action) {
-      console.log(`Next action: ${admission.recommended_next_action}`);
+    if (result.recommended_next_action) {
+      console.log(`Next action: ${result.recommended_next_action}`);
     }
-    process.exit(0);
+    process.exitCode = result.result === "stop" || result.result === "error" ? 1 : 0;
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
-    printUsage();
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 

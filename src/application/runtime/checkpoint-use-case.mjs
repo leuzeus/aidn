@@ -27,6 +27,7 @@ import {
   resolveReloadEventResult,
 } from "../../core/workflow/workflow-result-policy.mjs";
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
+import { runReloadCheckUseCase } from "./reload-check-use-case.mjs";
 import { resolveEffectiveRuntimePersistence } from './runtime-persistence-service.mjs';
 import { runGatingEvaluateUseCase } from "./gating-evaluate-use-case.mjs";
 import {
@@ -49,7 +50,7 @@ function toIsoNowCompact() {
   return new Date().toISOString().replace(/[-:.TZ]/g, "");
 }
 
-export async function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
+export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, completionCycleId = null }) {
   const processAdapter = createLocalProcessAdapter();
   const gitAdapter = createLocalGitAdapter();
   const started = Date.now();
@@ -84,7 +85,10 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot }) {
   }
 
   const reloadStarted = Date.now();
-  const reload = runWorkflowReloadCheck({
+  const reload = completionCycleId ? await runReloadCheckUseCase({ targetRoot, completionCycleId,
+    args: { cache: cachePath, stateMode: args.stateMode, stateModeExplicit: true,
+      indexFile: reloadIndex.indexFile, indexBackend: reloadIndex.indexBackend, writeCache: true },
+  }) : runWorkflowReloadCheck({
     processAdapter,
     runtimeDir,
     targetRoot,

@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { execFileSync } from "node:child_process";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 function upsertScalarLine(text, key, value) {
   const pattern = new RegExp(`^${key}:\\s*.*$`, "im");
@@ -69,7 +71,7 @@ const CASES = [
 
 function parseArgs(argv) {
   const args = {
-    tmpRoot: "tests/fixtures",
+    tmpRoot: os.tmpdir(),
     keepTmp: false,
     json: false,
   };
@@ -128,6 +130,7 @@ function runCase(tmpRoot, testCase) {
     sourceBranch: "dev",
     workingBranch: testCase.workingBranch,
   });
+  prepareActivationFixture(targetRoot);
 
   const hook = runJson("tools/perf/cycle-close-hook.mjs", [
     "--target",
@@ -153,15 +156,21 @@ function runCase(tmpRoot, testCase) {
     ?? codex?.raw?.reason_code
     ?? "";
   const hookCheckpointRan = Boolean(hook?.summary?.checkpoint_ran ?? hook?.checkpoint);
+  const expectedResult = testCase.expectsCheckpoint ? hook.checkpoint?.gate?.result : testCase.expectedResult;
+  const expectedAction = testCase.expectsCheckpoint && expectedResult !== "ok"
+    ? hook.checkpoint?.gate?.action : testCase.expectedAction;
+  const expectedReasonCode = testCase.expectsCheckpoint ? hook.checkpoint?.gate?.reason_code : testCase.expectedReasonCode;
 
   const checks = {
-    hook_action_expected: String(hook?.action ?? "") === testCase.expectedAction,
-    hook_result_expected: String(hook?.result ?? "") === testCase.expectedResult,
-    hook_reason_code_expected: String(hookReasonCode) === String(testCase.expectedReasonCode ?? ""),
+    admission_action_expected: hook?.admission?.action === testCase.expectedAction,
+    admission_result_expected: hook?.admission?.result === testCase.expectedResult,
+    hook_action_expected: hook?.action === expectedAction,
+    hook_result_expected: hook?.result === expectedResult,
+    hook_reason_code_expected: String(hookReasonCode) === String(expectedReasonCode ?? ""),
     hook_checkpoint_expected: testCase.expectsCheckpoint === true ? hookCheckpointRan : !hookCheckpointRan,
-    codex_action_expected: String(codex?.action ?? "") === testCase.expectedAction,
-    codex_result_expected: String(codex?.result ?? "") === testCase.expectedResult,
-    codex_reason_code_expected: String(codexReasonCode) === String(testCase.expectedReasonCode ?? ""),
+    codex_action_expected: codex?.action === expectedAction,
+    codex_result_expected: codex?.result === expectedResult,
+    codex_reason_code_expected: String(codexReasonCode) === String(expectedReasonCode ?? ""),
     codex_blocking_reasons_expected: testCase.expectedReasonCode === "CYCLE_CLOSE_USAGE_MATRIX_INCOMPLETE"
       ? Array.isArray(codex?.blocking_reasons) && codex.blocking_reasons.some((item) => {
         const normalized = String(item).toLowerCase();

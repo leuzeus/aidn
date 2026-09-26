@@ -102,6 +102,8 @@ Before the first durable write in this skill, run:
 - use this output to capture:
   - gate/reload outcome after close-state update
   - index sync summary for changed cycle artifacts
+- The post-close checkpoint resolves the unique terminal cycle owning this branch even after `active_cycle` is cleared; it does not reactivate the cycle. Ordinary implementation still requires an active cycle.
+- Require the overall hook result to succeed. An admitted closure with a nested checkpoint warning or refusal is not complete; follow its diagnostic before integration.
 - if the hook returns `reason_code=CYCLE_CLOSE_USAGE_MATRIX_INCOMPLETE`, STOP and apply the JSON `recommended_next_action` before any further write.
 - in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
 - in files, this hook remains non-blocking by default.
@@ -119,4 +121,3 @@ Output:
 - Exit checklist report
 - Files updated list
 - Next entry point
-
