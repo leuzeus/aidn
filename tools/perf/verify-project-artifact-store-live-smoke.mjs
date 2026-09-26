@@ -39,6 +39,7 @@ else {
       const context = resolveRuntimeProjectContext({ targetRoot }); scopes.push(context.runtime_scope_id);
       const store = createPostgresRuntimeArtifactStore({ targetRoot, connectionString });
       await store.writeIndexProjection({ payload: { schema_version: 1, target_root: targetRoot, audit_root: 'docs/audit',
+        structure_profile: { kind: 'modern', recommended_required_artifacts: ['notes/preserved.md'], notes: [] },
         artifacts: [{ path: 'notes/preserved.md', kind: 'note', content_format: 'utf8', content: 'preserve me', sha256: 'baseline', mtime_ns: '1', updated_at: '2026-01-01T00:00:00Z' }], cycles: [], sessions: [] } });
       projects.push({ targetRoot, store });
     }
@@ -110,7 +111,8 @@ else {
     await upsert({ path: 'RUNTIME-STATE.md', content: 'runtime_state_mode: db-only\nrepair_layer_status: clean\nrepair_routing_hint: continue\ncurrent_state_freshness: unknown\n' });
     fs.mkdirSync(path.join(targetRoot, 'docs/audit/sessions'), { recursive: true });
     fs.writeFileSync(path.join(targetRoot, 'docs/audit/CURRENT-STATE.md'), 'mode: unknown\nactive_cycle: C999\nupdated_at: invalid\n');
-    fs.writeFileSync(path.join(targetRoot, 'docs/audit/sessions/S001-test.md'), 'session_branch: wrong\n');
+    fs.writeFileSync(path.join(targetRoot, 'docs/audit/sessions/S001-test.md'), 'session_branch: wrong\nsession_objective: verify canonical workflow preservation\n');
+    fs.appendFileSync(path.join(targetRoot, '.git/info/exclude'), '\n/.aidn/runtime/\n');
     execFileSync('git', ['-C', targetRoot, 'add', '.'], { stdio: 'pipe', windowsHide: true });
     execFileSync('git', ['-C', targetRoot, '-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-m', 'initial session'], { stdio: 'pipe', windowsHide: true });
     const initialSnapshot = await snapshot(scopes[0]);
@@ -145,6 +147,18 @@ else {
     assert.equal(normal.gating.levels.level3.fallback_recent_count, 0);
     assert.equal(normal.result, normal.gating.result);
     assert.equal(fs.readFileSync(eventsPath, 'utf8'), normalEvents);
+    const beforeDrift = JSON.parse(runScript('tools/perf/branch-cycle-audit-hook.mjs', ['--mode', 'COMMITTING', '--no-emit-event']).stdout);
+    assert.deepEqual(beforeDrift.levels.level2.active_signals, ['time_since_last_drift_check']);
+    const driftRun = runScript('tools/codex/run-json-hook.mjs', ['--skill', 'drift-check', '--mode', 'COMMITTING', '--strict']);
+    assert.equal(driftRun.status, 0, 'real drift skill must complete: ' + driftRun.stderr.slice(-500));
+    assert.equal(JSON.parse(driftRun.stdout).ok, true);
+    const afterDrift = JSON.parse(runScript('tools/perf/branch-cycle-audit-hook.mjs', ['--mode', 'COMMITTING', '--no-emit-event']).stdout);
+    assert.equal(afterDrift.result, 'ok');
+    const reviewedEvents = fs.readFileSync(eventsPath, 'utf8');
+    assert(reviewedEvents.startsWith(normalEvents), 'drift check must preserve existing history');
+    assert.equal(reviewedEvents.trim().split('\n').map(JSON.parse).filter(row => row.event === 'drift_check_completed').length, 1);
+    assert.deepEqual(await snapshot(scopes[0]), initialSnapshot, 'drift completion changed canonical data');
+    console.log('PASS live PostgreSQL: required drift -> real skill completion -> branch admission; existing journal and canonical rows preserved');
     const anomalies = Array.from({ length: 3 }, () => JSON.stringify({ ts: new Date().toISOString(),
       branch: 'S001-initial', skill: 'reload-check', result: 'fallback', reason_codes: ['HEAD_CHANGED', 'CORRUPT_CACHE'] })).join('\n') + '\n';
     fs.appendFileSync(eventsPath, anomalies);
@@ -156,7 +170,7 @@ else {
     assert.equal(stopped.reason_code, 'L3_REPEATED_FALLBACK');
     assert.equal(stopped.summary.result, 'stop');
     assert.equal(stopped.gating.result, 'stop');
-    assert.equal(fs.readFileSync(eventsPath, 'utf8'), normalEvents + anomalies);
+    assert.equal(fs.readFileSync(eventsPath, 'utf8'), reviewedEvents + anomalies);
     const wrappedHook = runScript('tools/codex/run-json-hook.mjs', ['--skill', 'branch-cycle-audit', '--mode', 'THINKING', '--strict']);
     const wrapped = JSON.parse(wrappedHook.stdout);
     assert.equal(wrapped.ok, false);

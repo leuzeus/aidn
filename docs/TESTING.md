@@ -34,6 +34,14 @@ PostgreSQL selection, misleading local projections, normal reload history and a
 real repeated-anomaly stop through the standard hook and Codex JSON wrapper.
 These subprocess tests do not qualify native hook approval or client execution.
 
+The branch-admission verifier also executes the actual `drift-check` skill via
+the Codex JSON wrapper and proves that its event clears only the age signal on
+the next audit. It covers preview, generic evaluations, wrong branch/mode,
+invalid/future/expired timestamps and persistent warning/stop. Coordinator
+success fixtures use this real producer instead of seeding successful events.
+The dedicated PostgreSQL smoke repeats the required-check-to-admission path and
+checks unchanged canonical rows and preservation of the existing journal.
+
 This repository is the package source repository.
 
 Testing here is used for several different intents:
@@ -169,6 +177,11 @@ signal, timeout/error code, and independently bounded, redacted stdout and
 stderr tails. Deterministic probes cover a nonzero stdout-only child, configured
 secret redaction, and an `ETIMEDOUT` timeout so an intermittent command failure
 cannot collapse into an ambiguous contract result.
+
+The pre-write admission fixtures also invalidate tracked file stat metadata
+without changing content. Both status inspection and cycle admission must leave
+every file byte unchanged, including `.git/index` and the canonical local store;
+read-only Git calls disable optional index refreshes.
 
 The CLI surface inventory verifier checks that `repair-layer` commands remain classified as internal and are not exposed as public runtime aliases or effect-policy entries.
 

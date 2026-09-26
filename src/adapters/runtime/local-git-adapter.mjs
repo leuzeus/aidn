@@ -41,6 +41,7 @@ export function createLocalGitAdapter() {
         const out = execFileSync("git", ["-C", targetRoot, "status", "--porcelain", "--untracked-files=no"], {
           encoding: "utf8",
           stdio: ["ignore", "pipe", "ignore"],
+          env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
         }).trim();
         return out.length > 0;
       } catch {
@@ -61,6 +62,7 @@ export function createLocalGitAdapter() {
       return execFileSync("git", args, {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
+        env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
       });
     },
     getRepoRoot(targetRoot) {

@@ -5,7 +5,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
-import { isActivationFixtureSource, prepareActivationFixture, prepareNpmActivationFixture, fixtureNpmEnvironment, prepareWorkflowDocumentsFixture } from "./test-activation-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture, prepareNpmActivationFixture, fixtureNpmEnvironment, prepareWorkflowDocumentsFixture, completeDriftCheckFixture } from "./test-activation-fixture-lib.mjs";
 
 const CI_TRUNCATION_CHARACTER_COUNT = 219264;
 
@@ -411,6 +411,7 @@ function main() {
       execFileSync("git", ["-C", target, "add", "."], { stdio: "pipe" });
       execFileSync("git", ["-C", target, "commit", "--amend", "--no-edit"], { stdio: "pipe" });
       assert(execFileSync("git", ["-C", target, "status", "--porcelain"], { encoding: "utf8" }).trim() === "", "fixture setup must leave a clean Git worktree");
+      if (target === resumedTarget) completeDriftCheckFixture(target, repoRoot);
     }
 
     installSharedPlanningFixture(readyTarget);

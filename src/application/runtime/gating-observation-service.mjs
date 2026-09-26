@@ -157,9 +157,12 @@ export function readEventSignalStats(filePath, options = {}) {
     try {
       const event = JSON.parse(line);
       const skill = String(event.skill ?? "");
-      if (includeDrift && skill === "drift-check") {
+      if (includeDrift && skill === "drift-check" && event.event === "drift_check_completed"
+          && event.result === "ok" && event.mode === "COMMITTING"
+          && Boolean(options.branch) && event.branch === options.branch) {
         const eventMs = toTimestampMs(event.ts);
-        if (eventMs != null && (latestDriftMs == null || eventMs > latestDriftMs)) {
+        if (eventMs != null && eventMs <= (options.nowMs ?? Date.now())
+            && (latestDriftMs == null || eventMs > latestDriftMs)) {
           latestDriftMs = eventMs;
         }
       }
