@@ -2,7 +2,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
-  ensureSharedCoordinationReady,
+  bootstrapSharedCoordinationSchema,
   resolveSharedCoordinationStore,
   summarizeSharedCoordinationResolution,
 } from "../../src/application/runtime/shared-coordination-store-service.mjs";
@@ -112,6 +112,7 @@ export async function migrateSharedCoordination({
   const shouldPlanRollbackSnapshot = Boolean(rollbackSnapshot)
     && Boolean(resolution.store)
     && migrationPlan.mutating
+    && migrationPlan.rollback_recommended
     && !migrationPlan.blocked;
   const shouldCreateRollbackSnapshot = shouldPlanRollbackSnapshot && Boolean(write);
   const rollbackOutputFile = shouldPlanRollbackSnapshot
@@ -209,7 +210,9 @@ export async function migrateSharedCoordination({
       sharedCoordination: resolution,
     })
     : null;
-  const migration = await ensureSharedCoordinationReady(resolution);
+  const migration = rollbackSnapshotResult && rollbackSnapshotResult.ok !== true
+    ? { attempted: false, ok: false, status: "rollback-snapshot-failed", reason: "required pre-migration backup could not read the existing shared coordination records", bootstrap: null, health: healthBefore }
+    : await bootstrapSharedCoordinationSchema(resolution);
   const result = {
     target_root: absoluteTargetRoot,
     ok: migration.ok === true,

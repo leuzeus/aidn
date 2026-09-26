@@ -56,9 +56,9 @@ Do not introduce a new information concept until you have checked:
 | incident | governed | Incidents carry lifecycle and ownership rules. |
 | coordination_record | governed | Coordination records are a first-class governed family. |
 | coordination_summary | governed | Coordination summary is a governed projection. |
-| execution_run | governed, `model_only` | Frozen bounded plan and coordinator context; future PostgreSQL authority, no runtime instances. |
-| delegated_task | governed, `model_only` | Run-local task identity, exact file operations and acceptance contract; no synthetic session. |
-| execution_attempt | governed, `model_only` | One attempt owns its delegation and result references; execution, acceptance, integration and cleanup remain distinct. |
+| execution_run | governed, `persistence_only` | Frozen plan, canonical reservation and coordinator context; PostgreSQL authority, no public supervisor. |
+| delegated_task | governed, `persistence_only` | Run-local task identity, exact file operations and acceptance contract; no synthetic session. |
+| execution_attempt | governed, `persistence_only` | One attempt owns its delegation, lease and result references; execution, acceptance, integration and cleanup remain distinct. |
 | baseline | local-first artifact family | Governed as local-first and checkout-bound unless explicitly projected. |
 | snapshot | local-first artifact family | Governed as local-first and checkout-bound unless explicitly projected. |
 | gate_result | excluded | CI telemetry, not governed product state. |
@@ -72,10 +72,19 @@ If a concept already has a parent surface or an orthogonal telemetry layer, do n
 
 Keep the source-of-truth policy, metadata policy, and governance diagnostics in sync with the information model.
 
-ADR-0014 introduces internal supervision contracts only. `model_only` marks
-complete policy coverage without advertising operational availability. Do not
-invent observed artifacts or store instances for these concepts. PostgreSQL is
+ADR-0014 introduces internal contracts and transactional persistence.
+`persistence_only` marks complete policy coverage without advertising supervised
+execution availability. Policy completeness does not establish observed run,
+task or attempt instances. Evidence targets include the internal contracts,
+`agent-execution-store-port.mjs`, the PostgreSQL adapter and the v3 SQL migration.
+PostgreSQL is
 optional globally, but exclusive for the future supervised execution path;
 there is no SQLite, file or in-memory authority fallback. Local transcripts
 remain local with bounded hash/size references in shared results and no automatic
 purge in V1.
+
+Reservation requires canonical runtime and shared planning in the same
+PostgreSQL database transaction, with a positive planning revision; the first
+historical planning write remains revision zero. Activation and termination
+fixture doubles validate persistence decisions only. They do not qualify a
+native executor, delegated admission or process-tree confinement.

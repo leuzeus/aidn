@@ -12,6 +12,8 @@ import {
 } from "../../src/application/runtime/runtime-state-reanchor-service.mjs";
 import { projectRuntimeState } from "./project-runtime-state.mjs";
 import { projectHandoffPacket } from "./project-handoff-packet.mjs";
+import { buildRuntimeStateMarkdown } from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
+import { buildHandoffPacketMarkdown } from "../../src/application/runtime/handoff-packet-projector-use-case.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -182,10 +184,15 @@ export async function stateReanchor(options = {}) {
   }
 
   if (canWrite) {
-    visibleWrite.current_state = writeUtf8IfChanged(
-      visibleWrite.current_state.path,
-      plan.current_state_text,
-    );
+    // PostgreSQL projectors already consume canonical DB artifacts. Prepare
+    // their text without local effects so a reserved scope refuses first.
+    const deferVisibleWrites = backend.backend_kind === 'postgres';
+    if (!deferVisibleWrites) {
+      visibleWrite.current_state = writeUtf8IfChanged(
+        visibleWrite.current_state.path,
+        plan.current_state_text,
+      );
+    }
     const runtimeState = await projectRuntimeState({
       targetRoot: absoluteTargetRoot,
       out: options.runtimeStateOut ?? "docs/audit/RUNTIME-STATE.md",
@@ -197,7 +204,7 @@ export async function stateReanchor(options = {}) {
         clientFactory: options.clientFactory ?? null,
         moduleLoader: options.moduleLoader ?? null,
       },
-      write: true,
+      write: !deferVisibleWrites,
       dryRun: false,
     });
     visibleWrite.runtime_state = {
@@ -221,7 +228,7 @@ export async function stateReanchor(options = {}) {
         clientFactory: options.clientFactory ?? null,
         moduleLoader: options.moduleLoader ?? null,
       },
-      write: true,
+      write: !deferVisibleWrites,
       dryRun: false,
       syncRelay: false,
     });
@@ -241,17 +248,17 @@ export async function stateReanchor(options = {}) {
       anchors: [
         {
           artifact_path: "CURRENT-STATE.md",
-          content: readText(currentStatePath),
+          content: deferVisibleWrites ? plan.current_state_text : readText(currentStatePath),
           source_mode: "reconstructed",
         },
         {
           artifact_path: "RUNTIME-STATE.md",
-          content: readText(runtimeStatePath),
+          content: deferVisibleWrites ? buildRuntimeStateMarkdown(runtimeState.digest) : readText(runtimeStatePath),
           source_mode: "reconstructed",
         },
         {
           artifact_path: "HANDOFF-PACKET.md",
-          content: readText(handoffPath),
+          content: deferVisibleWrites ? buildHandoffPacketMarkdown(handoff.packet) : readText(handoffPath),
           source_mode: "reconstructed",
         },
       ],
@@ -271,6 +278,11 @@ export async function stateReanchor(options = {}) {
     canonicalWrite.written = canonicalWrite.outputs.some((item) => item?.written === true);
     canonicalWrite.anchors = applied.anchors;
     canonicalWrite.reason = "canonical runtime projection refreshed from reanchored anchors";
+    if (deferVisibleWrites) {
+      visibleWrite.current_state = writeUtf8IfChanged(currentStatePath, plan.current_state_text);
+      visibleWrite.runtime_state.written = writeUtf8IfChanged(runtimeStatePath, buildRuntimeStateMarkdown(runtimeState.digest)).written;
+      visibleWrite.handoff_packet.written = writeUtf8IfChanged(handoffPath, buildHandoffPacketMarkdown(handoff.packet)).written;
+    }
   }
 
   return {

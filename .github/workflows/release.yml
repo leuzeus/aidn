@@ -24,7 +24,10 @@ jobs:
         with:
           node-version: "22.13"
       - name: Install Locked Gate Dependencies
-        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund
+        run: npm ci --include=dev --include=optional --ignore-scripts --no-audit --no-fund
+
+      - name: Resolve Ephemeral PostgreSQL Runtime
+        run: node tools/ci/resolve-postgres-test-runtime.mjs
 
       - name: Prove Main And Merged Publication PR
         id: publication_source

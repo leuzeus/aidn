@@ -5,6 +5,8 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { createRuntimeArtifactStore } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { stateReanchor } from "../runtime/state-reanchor.mjs";
+import { createRuntimePersistenceFakePgClientFactory } from './runtime-persistence-fake-pg-lib.mjs';
+import { loadDbIndexPayloadSafe } from '../runtime/db-first-runtime-view-lib.mjs';
 
 function assert(condition, message) {
   if (!condition) {
@@ -39,7 +41,7 @@ function staleCurrentStateText() {
   ].join("\n");
 }
 
-async function seedRuntimePayload(targetRoot) {
+async function seedRuntimePayload(targetRoot, storeOptions = {}) {
   const current = staleCurrentStateText();
   const payload = {
     schema_version: 2,
@@ -137,10 +139,12 @@ async function seedRuntimePayload(targetRoot) {
   const store = createRuntimeArtifactStore({
     targetRoot,
     backend: "sqlite",
+    ...storeOptions,
   });
   await store.writeIndexProjection({
     payload,
   });
+  return store;
 }
 
 async function main() {
@@ -202,7 +206,40 @@ async function main() {
     const dbCurrent = snapshot.payload.artifacts.find((artifact) => artifact.path === "CURRENT-STATE.md");
     assert(dbCurrent?.content?.includes("active_cycle: C101"), "canonical payload should store corrected CURRENT-STATE content");
 
-    console.log("PASS");
+    const postgresRoot = path.join(targetRoot, 'postgres-reservation');
+    writeJson(path.join(postgresRoot, '.aidn', 'config.json'), {
+      version: 1, profile: 'db-only', runtime: { stateMode: 'db-only', persistence: { backend: 'postgres', localProjectionPolicy: 'none' } },
+    });
+    const fake = createRuntimePersistenceFakePgClientFactory({ executionSchema: true });
+    const connectionString = 'postgres://fixture:fixture@localhost/fixture';
+    const postgresStore = await seedRuntimePayload(postgresRoot, { backend: 'postgres', connectionString, clientFactory: fake.factory });
+    const scope = postgresStore.describeBackend().scope_key;
+    const postgresRead = await loadDbIndexPayloadSafe(postgresRoot, { connectionString, clientFactory: fake.factory });
+    assert(postgresRead.exists && !postgresRead.warning, `fake PostgreSQL seed should be readable: ${postgresRead.warning}`);
+    fake.state.executionReservations = [{ run_id: 'run-reanchor', runtime_scope_id: scope, reservation_active: true }];
+    fake.state.queryLog.length = 0;
+    const beforeRows = JSON.stringify(fake.state.relationalRows);
+    let reservationRefused = false;
+    try {
+      await stateReanchor({ target: postgresRoot, connectionString, clientFactory: fake.factory, write: true });
+    } catch (error) {
+      reservationRefused = error.message === 'ARTIFACT_EXECUTION_SCOPE_RESERVED';
+      if (!reservationRefused) throw error;
+    }
+    assert(reservationRefused, 'PostgreSQL reanchor must reject an active reservation');
+    assert(!fs.existsSync(path.join(postgresRoot, 'docs')), 'reserved reanchor must not create any local recovery anchor');
+    assert(JSON.stringify(fake.state.relationalRows) === beforeRows, 'reserved reanchor must preserve canonical data');
+    assert(!fake.state.queryLog.some(query => query.sql.startsWith('DELETE')), 'reserved reanchor must fence before canonical deletes');
+    fake.state.executionReservations[0].reservation_active = false;
+    const released = await stateReanchor({ target: postgresRoot, connectionString, clientFactory: fake.factory, write: true });
+    assert(released.canonical_write.written && released.visible_write.current_state.written, 'released scope must allow canonical and visible reanchor');
+    for (const name of ['CURRENT-STATE.md', 'RUNTIME-STATE.md', 'HANDOFF-PACKET.md']) {
+      const visible = fs.readFileSync(path.join(postgresRoot, 'docs', 'audit', name), 'utf8');
+      const canonical = fake.state.relationalRows.artifacts.find(row => row.path === name && row.scope_key === scope);
+      assert(canonical?.content === visible, `${name} visible bytes must equal accepted canonical projection`);
+    }
+
+    console.log("PASS runtime state reanchor fixtures: SQLite compatibility and PostgreSQL reservation refusal; no live PostgreSQL claim");
   } finally {
     fs.rmSync(targetRoot, { recursive: true, force: true });
   }

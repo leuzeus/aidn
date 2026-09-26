@@ -7,12 +7,14 @@ import {
   SHARED_COORDINATION_TABLES,
 } from "../../src/core/ports/shared-coordination-store-port.mjs";
 import { listSourceOfTruthPolicies } from "../../src/core/source-of-truth/source-of-truth-policy.mjs";
+import { AGENT_EXECUTION_TABLES } from "../../src/core/ports/agent-execution-store-port.mjs";
 
 const EXPECTED_SHARED_CANDIDATES = [
   ".aidn/project/shared-runtime.locator.json as an opt-in locator only",
   "explicit `sqlite-file` shared projection root",
   "PostgreSQL shared coordination tables:",
   ...SHARED_COORDINATION_TABLES,
+  ...AGENT_EXECUTION_TABLES,
 ];
 
 function normalizeSurfaceLine(value) {
@@ -129,7 +131,7 @@ function main() {
         sourcePolicyIssues.push(`${policy.concept}: must remain not_shared`);
       }
       if (sharedRuntime !== "not_shared"
-        && !SHARED_COORDINATION_TABLES.some((table) => sharedRuntime.includes(table))) {
+        && ![...SHARED_COORDINATION_TABLES, ...AGENT_EXECUTION_TABLES].some((table) => sharedRuntime.includes(table))) {
         sourcePolicyIssues.push(
           `${policy.concept}: shared_runtime does not map to a port table: ${sharedRuntime}`,
         );

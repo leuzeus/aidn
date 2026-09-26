@@ -4,6 +4,7 @@ import {
   POSTGRES_SHARED_COORDINATION_DRIVER,
   getPostgresSharedCoordinationContract,
   getPostgresSharedCoordinationSchemaFile,
+  getPostgresSharedCoordinationMigrationFiles,
   resolvePostgresSharedCoordinationConnection,
 } from "../../src/application/runtime/postgres-shared-coordination-contract-service.mjs";
 
@@ -39,7 +40,14 @@ function main() {
       assert(schemaSql.includes(`aidn_shared.${tableName}`), `expected schema to declare ${tableName}`);
     }
 
-    assert(contract.schema_version === 2, "expected shared coordination schema version 2");
+    assert(contract.schema_version === 3, "expected shared coordination schema version 3");
+    const migrations = getPostgresSharedCoordinationMigrationFiles();
+    assert(JSON.stringify(migrations.map(item => item.version)) === "[2,3]", "expected ordered explicit additive migrations");
+    const supervisionSql = fs.readFileSync(migrations[1].file, "utf8");
+    for (const tableName of ["execution_runs", "execution_tasks", "execution_attempts", "execution_events"]) {
+      assert(tableNames.has(tableName), `expected supervision contract table ${tableName}`);
+      assert(supervisionSql.includes(`aidn_shared.${tableName}`), `expected v3 to declare ${tableName}`);
+    }
 
     for (const operation of ["registerWorkspace", "registerWorktreeHeartbeat", "upsertPlanningState", "appendHandoffRelay", "appendCoordinationRecord", "healthcheck"]) {
       assert(contract.operations.includes(operation), `expected operation ${operation}`);

@@ -77,6 +77,15 @@ paths. A future authenticated local admission transport must expose bounded
 admission requests only, with no writer credentials delivered to workers.
 Activation, native trust and observed hook enforcement remain separate evidence.
 
+Lot 3 persists delegation and activation references under `persistence_only`
+coverage; it introduces no native admission exception. The PostgreSQL store
+requires supervisor-owned `verifyActivation` and `verifyTermination` dependencies
+for the operations that consume those proofs. This lot exercises them with
+fixture doubles and supplies no qualified native implementation. A successful
+persistence test is neither activation, native trust, hook enforcement nor proof
+that a process tree stopped. Those proofs remain prerequisites of the future
+worker capability.
+
 ## Consequences and validation
 
 2026-09-24: activation remains a prerequisite, not patch authorization. Each

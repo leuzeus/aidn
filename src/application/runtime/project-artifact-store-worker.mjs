@@ -9,7 +9,8 @@ try {
   process.stdout.write(JSON.stringify({ ok: true, result }));
 } catch (error) {
   // PG messages can contain credentials, SQL values, or private document text.
-  const code = /^ARTIFACT_[A-Z_]+$/.test(error.message) ? error.message : 'ARTIFACT_POSTGRES_COMMAND_FAILED';
+  const candidate = error?.code === 'ARTIFACT_EXECUTION_SCOPE_RESERVED' ? error.code : error?.message;
+  const code = /^ARTIFACT_[A-Z_]+$/.test(candidate) ? candidate : 'ARTIFACT_POSTGRES_COMMAND_FAILED';
   process.stdout.write(JSON.stringify({ ok: false, code }));
   process.exitCode = 1;
 }

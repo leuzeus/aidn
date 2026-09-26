@@ -24,7 +24,7 @@ Rules:
 - the port surface must require explicit workspace, worktree and project identity
 - runtime PostgreSQL and shared coordination must resolve project context through the same workspace identity model
 - locator validation is mandatory before any shared backend access
-- shared coordination is limited to registry, planning, handoff and coordination records
+- the historical shared coordination port is limited to registry, planning, handoff and coordination records; ADR-0014 adds a separate bounded supervision persistence port
 - checkout-bound and local runtime surfaces `docs/audit/*`, `AGENTS.md`, `.agents/*`, `.codex/*`, `.aidn/config.json`, `.aidn/runtime/index/workflow-index.sqlite`, `.aidn/runtime/context/*`, `repair_findings` and `incident` remain outside shared coordination
 - `repair_findings` and `incident` are explicitly not shared because this ADR defines no port or table for them
 
@@ -39,13 +39,33 @@ The first port slice should support:
 ## Bounded supervision contract (2026-09-26)
 
 ADR-0014 introduces a distinct `AgentTaskExecutor` port and versioned internal
-run/task/attempt contracts. Lot 2 changes no `SharedCoordinationStore` method or
-schema. Future ownership and immutable events require explicit transactional
-ports and an additive PostgreSQL migration: planning revisions, worktree
-heartbeats and upserted coordination records are not equivalent authority.
-Readiness must remain read-only and normal claims/heartbeats must not bootstrap
-DDL. Existing transitions that modify run context must respect a future
-reservation or invalidate its revision atomically before supervision is enabled.
+run/task/attempt contracts. Lot 2 changed no `SharedCoordinationStore` method or
+schema. Lot 3 adds the separate `AgentExecutionStore` port and PostgreSQL adapter,
+with `persistence_only` coverage and additive tables `execution_runs`,
+`execution_tasks`, `execution_attempts` and `execution_events` in shared schema 3.
+The store persists reservations, generation-bound claims, 60-second leases using
+PostgreSQL time, launch intent and immutable idempotent events. The future runner
+must renew every 10 seconds. Expiration requires reconciliation, not automatic
+reassignment. Worktree heartbeats and upserted coordination records remain
+different authorities. Existing coordination upserts are not immutable attempt
+evidence; the new event store rejects an existing event identity with divergent
+content.
+
+Migration is an explicit administration operation under a stable advisory lock;
+the applied version is reread under that lock, current DDL is not replayed and
+future schema versions are refused. Readiness and historical shared reads do not
+bootstrap, register a workspace or heartbeat. Intact v2 remains readable for
+pre-migration backup; normal shared writes require v3. A failed backup read
+cannot produce a success snapshot or authorize a migration requiring that backup.
+
+Canonical runtime and supervision must share one PostgreSQL database transaction.
+Canonical writers check the reservation in their mutation transaction; planning
+writes use the same reservation lock and support an expected-revision comparison.
+The first historical planning write still has revision zero. Supervision
+requires a positive revision and does not perform a hidden planning update.
+Persistence has no executor, scheduler or native delegated admission. Its
+injected activation and termination verifiers are exercised with fixture doubles;
+they do not qualify native authorization or descendant termination.
 
 ## Options Compared
 

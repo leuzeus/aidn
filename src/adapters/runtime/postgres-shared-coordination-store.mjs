@@ -1,10 +1,11 @@
 import fs from "node:fs";
+import { guardPlanningMutation } from "./agent-execution-fence.mjs";
 import { assertSharedCoordinationStore } from "../../core/ports/shared-coordination-store-port.mjs";
 import {
   POSTGRES_SHARED_COORDINATION_SCHEMA_NAME,
   POSTGRES_SHARED_COORDINATION_SCHEMA_VERSION,
   getPostgresSharedCoordinationContract,
-  getPostgresSharedCoordinationSchemaFile,
+  getPostgresSharedCoordinationMigrationFiles,
   listPostgresSharedCoordinationTableNames,
 } from "../../application/runtime/postgres-shared-coordination-contract-service.mjs";
 
@@ -84,7 +85,7 @@ export function classifyPostgresSharedCoordinationError(error) {
       message,
     };
   }
-  if (code === "23505") {
+  if (["23505", "SHARED_EXECUTION_SCOPE_RESERVED", "SHARED_PLANNING_REVISION_CONFLICT"].includes(code)) {
     return {
       category: "conflict",
       code,
@@ -98,7 +99,7 @@ export function classifyPostgresSharedCoordinationError(error) {
       message,
     };
   }
-  if (code.startsWith("42")) {
+  if (code.startsWith("42") || code === "AIDN_SCHEMA_VERSION_AHEAD") {
     return {
       category: "schema",
       code,
@@ -372,7 +373,6 @@ export function createPostgresSharedCoordinationStore({
     clientFactory,
     moduleLoader,
   };
-  const schemaSql = fs.readFileSync(getPostgresSharedCoordinationSchemaFile(), "utf8");
 
   const store = {
     describeContract() {
@@ -389,24 +389,38 @@ export function createPostgresSharedCoordinationStore({
         const result = await withClient(runtime, async (client) => {
           await client.query("BEGIN");
           try {
-            await client.query(schemaSql);
-            await client.query(
-              `
-              INSERT INTO aidn_shared.schema_migrations (
-                schema_name,
-                schema_version,
-                applied_by,
-                notes
-              ) VALUES ($1, $2, $3, $4)
-              ON CONFLICT (schema_name, schema_version) DO NOTHING
-              `,
-              [
-                POSTGRES_SHARED_COORDINATION_SCHEMA_NAME,
-                POSTGRES_SHARED_COORDINATION_SCHEMA_VERSION,
-                "aidn",
-                "shared coordination bootstrap",
-              ],
-            );
+            // A stable version-independent lock precedes the version read.
+            await client.query("SELECT pg_advisory_xact_lock(1095320654, 1)");
+            const tables = await client.query("SELECT table_name FROM information_schema.tables WHERE table_schema = $1", [POSTGRES_SHARED_COORDINATION_SCHEMA_NAME]);
+            const hasMigrationTable = tables.rows.some((row) => row.table_name === "schema_migrations");
+            const versions = hasMigrationTable
+              ? await client.query("SELECT schema_version FROM aidn_shared.schema_migrations WHERE schema_name = $1 ORDER BY schema_version ASC", [POSTGRES_SHARED_COORDINATION_SCHEMA_NAME])
+              : { rows: [] };
+            const currentVersion = Math.max(0, ...versions.rows.map((row) => Number(row.schema_version)));
+            if (!Number.isSafeInteger(currentVersion) || currentVersion > POSTGRES_SHARED_COORDINATION_SCHEMA_VERSION) {
+              throw Object.assign(new Error("Shared coordination schema is newer than this package; migration refused"), { code: "AIDN_SCHEMA_VERSION_AHEAD" });
+            }
+            for (const migration of getPostgresSharedCoordinationMigrationFiles()) {
+              if (migration.version <= currentVersion) continue;
+              await client.query(fs.readFileSync(migration.file, "utf8"));
+              await client.query(
+                `
+                INSERT INTO aidn_shared.schema_migrations (
+                  schema_name,
+                  schema_version,
+                  applied_by,
+                  notes
+                ) VALUES ($1, $2, $3, $4)
+                ON CONFLICT (schema_name, schema_version) DO NOTHING
+                `,
+                [
+                  POSTGRES_SHARED_COORDINATION_SCHEMA_NAME,
+                  migration.version,
+                  "aidn",
+                  `shared coordination migration ${migration.version}`,
+                ],
+              );
+            }
             await client.query("COMMIT");
           } catch (error) {
             await client.query("ROLLBACK");
@@ -588,70 +602,87 @@ export function createPostgresSharedCoordinationStore({
       dispatchReady = false,
       sourceWorktreeId = "",
       payload = {},
+      expectedRevision = null,
     } = {}) {
       try {
         const result = await withClient(runtime, async (client) => {
           const resolvedProjectId = resolveProjectId(projectId, workspaceId, runtime.workspace);
-          const queryResult = await client.query(
-            `
-            INSERT INTO aidn_shared.planning_states (
-              project_id,
-              workspace_id,
-              planning_key,
-              session_id,
-              backlog_artifact_ref,
-              backlog_artifact_sha256,
-              planning_status,
-              planning_arbitration_status,
-              next_dispatch_scope,
-              next_dispatch_action,
-              backlog_next_step,
-              selected_execution_scope,
-              dispatch_ready,
-              source_worktree_id,
-              payload_json,
-              revision,
-              updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, 0, NOW())
-            ON CONFLICT (project_id, workspace_id, planning_key) DO UPDATE SET
-              session_id = EXCLUDED.session_id,
-              backlog_artifact_ref = EXCLUDED.backlog_artifact_ref,
-              backlog_artifact_sha256 = EXCLUDED.backlog_artifact_sha256,
-              planning_status = EXCLUDED.planning_status,
-              planning_arbitration_status = EXCLUDED.planning_arbitration_status,
-              next_dispatch_scope = EXCLUDED.next_dispatch_scope,
-              next_dispatch_action = EXCLUDED.next_dispatch_action,
-              backlog_next_step = EXCLUDED.backlog_next_step,
-              selected_execution_scope = EXCLUDED.selected_execution_scope,
-              dispatch_ready = EXCLUDED.dispatch_ready,
-              source_worktree_id = EXCLUDED.source_worktree_id,
-              payload_json = EXCLUDED.payload_json,
-              revision = aidn_shared.planning_states.revision + 1,
-              updated_at = NOW()
-            RETURNING *
-            `,
-            [
-              resolvedProjectId,
-              normalizeScalar(workspaceId),
-              normalizeScalar(planningKey),
-              normalizeScalar(sessionId) || null,
-              normalizeScalar(backlogArtifactRef) || null,
-              normalizeScalar(backlogArtifactSha256) || null,
-              normalizeScalar(planningStatus) || "unknown",
-              normalizeScalar(planningArbitrationStatus) || "none",
-              normalizeScalar(nextDispatchScope) || "none",
-              normalizeScalar(nextDispatchAction) || "none",
-              normalizeScalar(backlogNextStep) || "unknown",
-              normalizeScalar(selectedExecutionScope) || "none",
-              Boolean(dispatchReady),
-              normalizeScalar(sourceWorktreeId) || null,
-              toJsonValue(payload, {}),
-            ],
-          );
-          return {
-            ok: true,
-            planning_state: mapPlanningRow(queryResult.rows[0]),
-          };
+          if (expectedRevision !== null && (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0)) {
+            throw Object.assign(new Error("Expected planning revision must be a nonnegative safe integer or null"), { code: "SHARED_PLANNING_REVISION_INVALID" });
+          }
+          await client.query("BEGIN");
+          try {
+            await guardPlanningMutation(client, { projectId: resolvedProjectId, workspaceId: normalizeScalar(workspaceId), planningKey: normalizeScalar(planningKey), expectedRevision });
+            const queryResult = await client.query(
+              `
+              INSERT INTO aidn_shared.planning_states (
+                project_id,
+                workspace_id,
+                planning_key,
+                session_id,
+                backlog_artifact_ref,
+                backlog_artifact_sha256,
+                planning_status,
+                planning_arbitration_status,
+                next_dispatch_scope,
+                next_dispatch_action,
+                backlog_next_step,
+                selected_execution_scope,
+                dispatch_ready,
+                source_worktree_id,
+                payload_json,
+                revision,
+                updated_at
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, 0, NOW())
+              ON CONFLICT (project_id, workspace_id, planning_key) DO UPDATE SET
+                session_id = EXCLUDED.session_id,
+                backlog_artifact_ref = EXCLUDED.backlog_artifact_ref,
+                backlog_artifact_sha256 = EXCLUDED.backlog_artifact_sha256,
+                planning_status = EXCLUDED.planning_status,
+                planning_arbitration_status = EXCLUDED.planning_arbitration_status,
+                next_dispatch_scope = EXCLUDED.next_dispatch_scope,
+                next_dispatch_action = EXCLUDED.next_dispatch_action,
+                backlog_next_step = EXCLUDED.backlog_next_step,
+                selected_execution_scope = EXCLUDED.selected_execution_scope,
+                dispatch_ready = EXCLUDED.dispatch_ready,
+                source_worktree_id = EXCLUDED.source_worktree_id,
+                payload_json = EXCLUDED.payload_json,
+                revision = aidn_shared.planning_states.revision + 1,
+                updated_at = NOW()
+              WHERE ($16::bigint IS NULL OR aidn_shared.planning_states.revision = $16)
+              RETURNING *
+              `,
+              [
+                resolvedProjectId,
+                normalizeScalar(workspaceId),
+                normalizeScalar(planningKey),
+                normalizeScalar(sessionId) || null,
+                normalizeScalar(backlogArtifactRef) || null,
+                normalizeScalar(backlogArtifactSha256) || null,
+                normalizeScalar(planningStatus) || "unknown",
+                normalizeScalar(planningArbitrationStatus) || "none",
+                normalizeScalar(nextDispatchScope) || "none",
+                normalizeScalar(nextDispatchAction) || "none",
+                normalizeScalar(backlogNextStep) || "unknown",
+                normalizeScalar(selectedExecutionScope) || "none",
+                Boolean(dispatchReady),
+                normalizeScalar(sourceWorktreeId) || null,
+                toJsonValue(payload, {}),
+                expectedRevision,
+              ],
+            );
+            if (queryResult.rows.length !== 1) {
+              throw Object.assign(new Error("Shared planning revision changed before mutation"), { code: "SHARED_PLANNING_REVISION_CONFLICT" });
+            }
+            await client.query("COMMIT");
+            return {
+              ok: true,
+              planning_state: mapPlanningRow(queryResult.rows[0]),
+            };
+          } catch (error) {
+            await client.query("ROLLBACK");
+            throw error;
+          }
         });
         return {
           operation: "upsertPlanningState",
@@ -1215,14 +1246,17 @@ export function createPostgresSharedCoordinationStore({
             }
           }
           let schemaStatus = "ready";
-          if (tablesMissing.length > 0 && appliedSchemaVersions.length === 0) {
+          const missingLegacyTables = tablesMissing.filter((table) => !table.startsWith("execution_"));
+          if (latestAppliedSchemaVersion > POSTGRES_SHARED_COORDINATION_SCHEMA_VERSION) {
+            schemaStatus = "version-ahead";
+          } else if (tablesMissing.length > 0 && appliedSchemaVersions.length === 0) {
             schemaStatus = "needs-bootstrap";
-          } else if (tablesMissing.length > 0) {
+          } else if (missingLegacyTables.length > 0) {
             schemaStatus = "schema-drift";
           } else if (latestAppliedSchemaVersion < POSTGRES_SHARED_COORDINATION_SCHEMA_VERSION) {
             schemaStatus = "version-behind";
-          } else if (latestAppliedSchemaVersion > POSTGRES_SHARED_COORDINATION_SCHEMA_VERSION) {
-            schemaStatus = "version-ahead";
+          } else if (tablesMissing.length > 0) {
+            schemaStatus = "schema-drift";
           } else if (appliedSchemaVersions.length === 0) {
             schemaStatus = "no-migrations";
           }

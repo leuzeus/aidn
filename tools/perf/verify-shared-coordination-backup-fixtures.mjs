@@ -188,6 +188,14 @@ async function main() {
     assert(writtenPayload.contract?.source_schema_version === 2, "written backup should expose the source schema version");
     assert(writtenPayload.snapshot?.handoff_read?.handoff_relay?.relay_id === "handoff:backup:1", "written backup should contain latest handoff relay");
 
+    const refused = createFakeResolution();
+    refused.store.getLatestHandoffRelay = async () => ({ ok: false, error: { message: "injected read failure" } });
+    const preserved = fs.readFileSync(outFile, "utf8");
+    const failedBackup = await backupSharedCoordination({ targetRoot, out: outFile, sharedCoordination: refused });
+    assert(!failedBackup.ok && failedBackup.status === "read-failed", "a refused read must fail backup");
+    assert(!failedBackup.written && failedBackup.backup === null, "refused backup must not claim a snapshot");
+    assert(fs.readFileSync(outFile, "utf8") === preserved, "refused backup must preserve the prior snapshot bytes");
+
     console.log("PASS");
   } catch (error) {
     console.error(`ERROR: ${error.message}`);

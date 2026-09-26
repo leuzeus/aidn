@@ -148,8 +148,10 @@ export function runGovernanceRouteFixtureSuite(catalog = loadCatalog()) {
     rename_delete_parser: parsedChanges.length === 2
       && parsedChanges[0].previous_path === "docs/PLAN_OLD.md"
       && parsedChanges[1].status === "D",
-    assured_has_exact_required_obligations: assuredRequired.length === 47,
+    assured_has_exact_required_obligations: assuredRequired.length === 49,
     agent_execution_contracts_required_once: assuredRequired.filter((id) => id === "runtime-agent-execution-contracts").length === 1,
+    agent_execution_postgres_required_once: assuredRequired.filter((id) => id === "runtime-agent-execution-postgres").length === 1,
+    shared_coordination_concurrency_required_once: assuredRequired.filter((id) => id === "runtime-shared-coordination-concurrency").length === 1,
     context_groups_required_once_without_manual_wrapper: ["admission", "completion", "coordination", "projection"]
       .every((name) => assuredRequired.filter((gateId) => gateId === `codex-context-${name}`).length === 1)
       && !assuredRequired.includes("codex-context-resilience"),
@@ -158,7 +160,7 @@ export function runGovernanceRouteFixtureSuite(catalog = loadCatalog()) {
       === fixtureRoutes.D.gate_selection.all.length,
     manual_postgres_smoke_deferred: fixtureRoutes.D.gate_selection.manual_deferred.length === 2
       && fixtureRoutes.D.evidence_status.filter((item) => item.status === "UNAVAILABLE").length === 2,
-    emergency_never_reduces_assurance: fixtureRoutes.F.gate_selection.required.length === 47
+    emergency_never_reduces_assurance: fixtureRoutes.F.gate_selection.required.length === 49
       && fixtureRoutes.F.deferred_evidence.includes("observability:perf-kpi"),
     rollup_rejects_failed_child: evaluateGovernanceAdmission({
       classificationResult: "success",

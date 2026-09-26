@@ -73,20 +73,20 @@ function main() {
   for (const concept of ["execution_run", "delegated_task", "execution_attempt"]) {
     for (const mode of modes) {
       const policy = getSourceOfTruthPolicy(concept, mode);
-      if (policy?.coverage_kind !== "model_only" || policy?.authority_backend !== "postgres") {
-        matrixIssues.push(`${concept}: ${mode} must expose model-only PostgreSQL authority`);
+      if (policy?.coverage_kind !== "persistence_only" || policy?.authority_backend !== "postgres") {
+        matrixIssues.push(`${concept}: ${mode} must expose persistence-only PostgreSQL authority`);
       }
-      if (policy?.shared_runtime !== "not_shared") {
-        matrixIssues.push(`${concept}: ${mode} model-only contract must not expose an implemented shared surface`);
+      if (!policy?.shared_runtime.includes({ execution_run: "execution_runs", delegated_task: "execution_tasks", execution_attempt: "execution_attempts" }[concept])) {
+        matrixIssues.push(`${concept}: ${mode} persistence contract must map to its port table`);
       }
       if (policy?.postgresql !== "optional" || policy?.shared_sync !== "opt-in") {
         matrixIssues.push(`${concept}: existing optional PostgreSQL and explicit synchronization must remain intact`);
       }
-      if (!policy?.source_of_truth.includes("no operational store available") || policy?.projection !== "none") {
-        matrixIssues.push(`${concept}: ${mode} must not advertise an operational store or projection`);
+      if (!policy?.source_of_truth.includes("no supervised executor available") || policy?.projection !== "none") {
+        matrixIssues.push(`${concept}: ${mode} must not advertise a supervised executor or projection`);
       }
       if (!policy?.retention.includes("no automatic purge") || !policy?.notes.includes("no observed instances")) {
-        matrixIssues.push(`${concept}: model-only retention and instance boundary must be explicit`);
+        matrixIssues.push(`${concept}: persistence-only retention and instance boundary must be explicit`);
       }
     }
   }

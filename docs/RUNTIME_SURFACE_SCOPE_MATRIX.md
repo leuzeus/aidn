@@ -72,15 +72,24 @@ This overlay names the logical owner of key information concepts. It complements
 | Agent roster | `docs/audit/AGENT-ROSTER.md` | same checkout-bound file | runtime/configured agent registry, materialized on demand | health and selection summaries |
 | CLI output contracts | package `src/core/contracts/cli-output/*.schema.json` | same package contract | same package contract | generated docs future |
 
-## Modeled Supervision Boundary
+## Supervision Persistence Boundary
 
 ADR-0014 adds internal `execution_run`, `delegated_task` and `execution_attempt`
-contracts with `model_only` governance coverage. Their future canonical backend
-is exclusively PostgreSQL, independent of the project's `files`, `dual` or
-`db-only` projection mode. Existing sequential paths retain optional PostgreSQL.
-There is no operational supervision store, table, migration or fallback in lot 2;
-these concepts therefore add no entries to the currently implemented shared-table
-inventory above.
+contracts. Lot 3 adds `persistence_only` coverage through AgentExecutionStore and
+shared schema 3. Their authority is exclusively PostgreSQL. Reservation requires
+canonical runtime and supervision in one transaction; separate databases or
+file-authoritative canonical state are not admitted. Sequential paths retain
+optional PostgreSQL. Persistence does not advertise an executor or supervisor.
+
+The port is `src/core/ports/agent-execution-store-port.mjs`; its PostgreSQL
+adapter and `tools/perf/sql/shared-coordination-postgres-v3.sql` are the
+implementation evidence. Shared schema 2 to 3 migration is explicit and locked.
+Readiness, registry-independent reads and normal claims never apply DDL. Intact
+v2 historical coordination data remains readable for pre-migration backup;
+normal shared writes require v3. A reservation requires a positive planning
+revision; it does not change the initial historical revision zero implicitly.
+Injected activation and termination fixture verifiers establish no native
+admission or descendant-termination proof.
 
 The future run lifecycle owns local worker worktrees and bulky output files.
 Shared attempt results contain bounded local references, byte counts and hashes,
@@ -148,6 +157,10 @@ ADR-0008 or in the shared coordination port.
   - `planning_states`
   - `handoff_relays`
   - `coordination_records`
+  - `execution_runs`
+  - `execution_tasks`
+  - `execution_attempts`
+  - `execution_events`
 
 ## Regression Rules
 

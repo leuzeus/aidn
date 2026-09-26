@@ -2,10 +2,10 @@
 
 ## Status
 
-Accepted. Lot 2 provides internal contracts and pure validation only
-(`model_only`). Supervised execution is unavailable: no executor process,
-admission delegation, store, migration, scheduler or `agent-run*` command is
-implemented by this decision's first increment.
+Accepted. Lot 2 provided internal contracts and pure validation (`model_only`).
+Lot 3 adds PostgreSQL persistence (`persistence_only`). Supervised execution is
+still unavailable: no executor process, native admission delegation, scheduler
+or `agent-run*` command is implemented yet.
 
 ## Date
 
@@ -37,9 +37,9 @@ Three concepts are governed separately:
 
 | Concept | Identity and ownership | Authority |
 | --- | --- | --- |
-| `execution_run` | Run ID, frozen plan fingerprint and coordinator context | Future PostgreSQL supervision store |
+| `execution_run` | Run ID, frozen plan fingerprint and coordinator context | PostgreSQL supervision store |
 | `delegated_task` | Task ID local to the run, exact scope, dependencies and acceptance contract | Parent run's frozen plan |
-| `execution_attempt` | Attempt ID and ordinal for one run/task; delegation, ownership and result bind to this attempt | Future PostgreSQL supervision store |
+| `execution_attempt` | Attempt ID and ordinal for one run/task; delegation, ownership and result bind to this attempt | PostgreSQL supervision store |
 
 The canonical task reference contains project, workspace, runtime scope,
 session, cycle, logical plan reference, exact task selector, canonical plan
@@ -48,11 +48,11 @@ canonical task has no invented UUID; delegated IDs do not replace its identity.
 
 PostgreSQL remains optional for existing workflows. The future supervised path
 requires PostgreSQL exclusively and fails closed if it is unavailable. It has
-no file, SQLite or in-memory authority fallback. Lot 2 only models this
-requirement; it changes neither shared schema version 2 nor the existing
-`SharedCoordinationStore` port.
-The policy's `shared_runtime: not_shared` describes this implementation;
-`authority_backend: postgres` declares the future supervision authority.
+no file, SQLite or in-memory authority fallback. Lot 2 modeled this requirement;
+lot 3 implements the separate `AgentExecutionStore` port and shared schema 3.
+The historical `SharedCoordinationStore` remains a separate coordination port.
+`authority_backend: postgres` and the shared table mappings declare the
+supervision authority without claiming that workers are available.
 
 ### Frozen execution contract
 
@@ -112,9 +112,51 @@ prove that a dependent task's recorded input SHA contains its integrated
 predecessors. A final run audit is frozen in the plan but is not represented as
 successful merely because an individual task acceptance passes.
 
-### Future authority and retention
+### Durable ownership (lot 3)
 
-Future transactional claims will bind owner, attempt, revision and generation;
+Shared schema 3 adds execution_runs, execution_tasks, execution_attempts and
+execution_events through an explicit locked additive migration from schema 2.
+An aligned migration does not replay DDL. Readiness and ordinary coordination
+reads do not bootstrap, register a workspace or renew a worktree heartbeat.
+Intact schema 2 remains readable for backup before migration; writes require
+schema 3. Backup refuses failed reads instead of emitting an empty success.
+The historical shared-coordination backup/restore covers planning, handoff and
+coordination records only. It is not a backup of execution runs or attempts;
+those rows remain in PostgreSQL and are never removed by migration or rollback.
+
+AgentExecutionStore reserves one canonical runtime scope and planning identity.
+Claims, renewals and results fence owner, attempt, generation, lease ID and
+planning revision in one transaction. PostgreSQL supplies lease time: 60 seconds,
+with a 10-second renewal cadence. Expiration retains the reservation and requires
+recovery; it never authorizes another process. Launch intent precedes runner
+observation. Event ID plus identical content is idempotent; divergence is refused.
+Mutable historical coordination upserts are not this evidence log.
+
+Canonical runtime and supervision must share a PostgreSQL transaction. Reservation
+checks the existing runtime scope, expected canonical artifact digest, exact
+planning reference, matching artifact SHA and a positive planning revision.
+Publishing a new planning hash before its canonical artifact is persisted
+cannot reserve a run against the old content. Legacy planning creation still uses revision
+zero; supervision refuses it without a hidden synchronization. Separate databases
+and file-authoritative canonical state cannot claim this guarantee.
+
+Targeted and bulk canonical writers lock artifacts before taking the same scope
+advisory lock as reservation. Planning writers use the matching planning lock
+and optional expected-revision comparison. A reservation refuses ordinary writes
+even after lease expiry. Session planning and reanchoring defer local projections
+until canonical writes succeed. This avoids local effects on an existing
+reservation refusal; it does not make historical multi-step workflows atomic.
+
+Activation and process-termination verifiers are required injected dependencies.
+Their absence refuses operations. Lot 3's doubles do not qualify native revocation,
+process death or OS confinement; a live authority fence and native admission must
+be connected and qualified in lot 4 before any public supervisor. Reconciliation
+records confirmed termination but never spawns a replacement. Dependent claims
+await integration proof, and a run cannot complete from exit status alone.
+
+### Authority and retention
+
+Transactional claims bind owner, attempt, revision and generation;
 launch intent precedes process creation. Lease expiry or ownership loss invalidates
 late results and requires reconciliation, never blind reassignment. Task leases
 are distinct from worktree heartbeats and global engine-generation leases.
@@ -141,14 +183,17 @@ The synchronous adapter and all historical commands retain their behavior.
 The JSON validator's CLI profile remains the default; internal schemas require
 the explicit `agent-execution` profile and are not advertised as CLI outputs.
 Governance diagnostics may report complete policy coverage with
-`coverage_kind: model_only`; this does not report runtime availability, native
+`coverage_kind: persistence_only`; this does not report runtime availability, native
 qualification or observed run instances.
 
 Lot 2 is verified through positive and adversarial contracts, pure validation,
 in-memory executor doubles, governance closure and the required
-`runtime-agent-execution-contracts` gate. PostgreSQL concurrency, process trees,
-native hooks, OS confinement and real Codex workers require separate evidence in
-later increments. An unqualified OS cannot advertise the future capability.
+`runtime-agent-execution-contracts` gate. Lot 3 adds the required
+`runtime-agent-execution-postgres` gate with a disposable PostgreSQL cluster,
+separate Node processes and a launch barrier. Historical simulated concurrency
+checks have their own required gate. Native process trees, hooks, OS confinement
+and real Codex workers still require separate evidence in later increments.
+An unqualified OS cannot advertise the future capability.
 
 ## Consequences
 
