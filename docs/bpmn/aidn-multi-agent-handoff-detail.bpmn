@@ -52,7 +52,9 @@
     <bpmn:exclusiveGateway id="Gateway_RepairWarn" name="Repair warning?" default="Flow_RepairWarn_Detail" />
     <bpmn:task id="Task_RunRepairTriage" name="Run repair triage" />
     <bpmn:exclusiveGateway id="Gateway_CheckTraceabilityMerge" name="Review ready?" />
-    <bpmn:task id="Task_CheckTraceability" name="Review drift and evidence" />
+    <bpmn:task id="Task_CheckTraceability" name="Review scope and complete drift-check">
+      <bpmn:documentation>Successful review requires explicit drift_check_completed evidence: skill drift-check, result ok, COMMITTING, current branch and valid nonfuture timestamp. Generic evaluation, preview, warning and stop do not refresh drift age. Preserve unresolved findings in a blocked relay instead of claiming completed review.</bpmn:documentation>
+    </bpmn:task>
     <bpmn:exclusiveGateway id="Gateway_ContinueOrRelay" name="Continue same agent?" default="Flow_Relay" />
     <bpmn:exclusiveGateway id="Gateway_PublishBlockedMerge" name="Publish relay path" />
     <bpmn:exclusiveGateway id="Gateway_PublishRelayMerge" name="Relay work?" />

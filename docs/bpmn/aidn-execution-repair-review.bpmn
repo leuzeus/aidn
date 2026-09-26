@@ -43,7 +43,9 @@
     <bpmn:exclusiveGateway id="Gateway_ExecutionRepairWarn" name="Repair warning?" default="Flow_ExecutionWarn" />
     <bpmn:task id="Task_ExecutionRepairTriage" name="Run repair triage" />
     <bpmn:exclusiveGateway id="Gateway_ExecutionReviewMerge" name="Review ready?" />
-    <bpmn:task id="Task_ExecutionReview" name="Review drift and traceability" />
+    <bpmn:task id="Task_ExecutionReview" name="Review scope and complete drift-check">
+      <bpmn:documentation>Review semantic scope and traceability, then run the explicit drift-check. Only drift_check_completed with skill drift-check, result ok, COMMITTING, current branch and a valid nonfuture timestamp refreshes drift age. Generic evaluation, preview, warning and stop do not complete the check. A blocking result stops execution pending resolution.</bpmn:documentation>
+    </bpmn:task>
     <bpmn:exclusiveGateway id="Gateway_ExecutionAnotherPass" name="Need another pass?" default="Flow_ExecutionDone" />
     <bpmn:task id="Task_ExecutionArbitrateBlock" name="Arbitrate blocking issue" />
     <bpmn:task id="Task_ExecutionResumeAfterBlock" name="Reload context after arbitration" />
@@ -71,10 +73,10 @@
     <bpmn:sequenceFlow id="Flow_ExecutionReviewGo" sourceRef="Gateway_ExecutionReviewMerge" targetRef="Task_ExecutionReview" />
     <bpmn:sequenceFlow id="Flow_ExecutionReviewDone" sourceRef="Task_ExecutionReview" targetRef="Gateway_ExecutionAnotherPass" />
     <bpmn:sequenceFlow id="Flow_ExecutionAnotherPass" sourceRef="Gateway_ExecutionAnotherPass" targetRef="Gateway_ExecutionLoopMerge">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[continue_working]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[continue_working or not drift_check_completed]]></bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_ExecutionDone" sourceRef="Gateway_ExecutionAnotherPass" targetRef="EndEvent_ExecutionStepDone">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[review_complete]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[review_complete and drift_check_completed]]></bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_ExecutionArbitrated" sourceRef="Task_ExecutionArbitrateBlock" targetRef="Task_ExecutionResumeAfterBlock" />
     <bpmn:sequenceFlow id="Flow_ExecutionResumeEnd" sourceRef="Task_ExecutionResumeAfterBlock" targetRef="EndEvent_ExecutionResume" />

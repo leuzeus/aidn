@@ -1,5 +1,69 @@
 # Upgrade Guide
 
+## Move a 0.9.x project to the global engine
+
+Install a verified [global release](GLOBAL_SETUP.md) first. This replaces
+per-project engine versions only for projects explicitly migrated; it does not
+silently change existing local installations. See [qualification evidence](qualification/GLOBAL_WINDOWS.md)
+for the distinction between publication, native tests and a completed client migration.
+
+1. Inspect the real branch, worktrees, local modifications, config and receipts.
+   Reconcile delivered commits without a blanket reset. Back up affected tracked
+   and untracked files, private configuration, receipts and recovery state.
+2. Record the canonical database identity and data baseline without exposing
+   secrets. PostgreSQL remains optional; preserve mode, connection reference,
+   profile, adapter and metadata. Database migration is a separate operation.
+3. Preview `aidn project migrate --target PATH --json`. Review its exact
+   keep/replace/remove/conflict inventory. Ownership comes from receipts and
+   recognized hashes, not filenames. Unknown or customized files remain.
+4. Apply the same plan with `--write --expect-plan PLAN_ID`. The transaction
+   verifies global assets before removing local standard skills/agents, replaces
+   managed hooks with connectors and removes `aidn-workflow` through npm while
+   preserving unrelated dependencies. History is retained; private backups and
+   machine receipts are not committed.
+5. Run `aidn doctor --target PATH --json`, inspect canonical workflow admission,
+   review the changed hooks in the native client and validate data preservation.
+   Installation alone does not complete native review or qualify every client.
+
+For interruption, preview `aidn project migrate --target PATH --resume --json`,
+then apply its current exact plan. Do not copy another root's receipt or remove
+locks by age. A linked worktree needs explicit preparation and shares repository
+revocation while retaining its physical-root binding.
+
+When delivering a migration through a worktree, account for the principal
+checkout's own old preimages and receipt before synchronizing migrated tracked
+assets. A Git merge does not apply that checkout's local migration transaction.
+Retain the backup until both delivery and local diagnosis succeed.
+
+## Global update and rollback
+
+```powershell
+aidn update --check --json
+aidn update --release latest --json
+aidn update --release latest --write --expect-plan PLAN_ID --json
+aidn rollback --json
+```
+
+The first command consults release/compatibility. The second prepares a frozen
+target; the third is an application example requiring that reviewed plan.
+Rollback also needs `--write --expect-plan` after its own preview. All registered
+projects must be accessible and compatible. Data migration needs, inconsistent
+state or interrupted operations block switching. Ordinary update/rollback
+changes the common engine/assets, not project files, last-use registry state or
+databases. Rollback never implicitly restores data. Network failure means
+unavailable, not up to date; a verified local tarball remains usable.
+
+Changed project connectors require explicit repair and renewed native review;
+see [connector repair and recovery](GLOBAL_SETUP.md#migration-and-interrupted-operations).
+`aidn setup` is an interactive executor whose confirmation applies the same plan,
+not a read-only check. `--json` is formatting and never write authorization.
+
+## Historical release and local-client procedures
+
+The versioned notes and local npm/bootstrap examples below document earlier
+deliveries. They remain useful for legacy/source maintenance; they are not the
+global migration/update path above. Old version numbers are intentional history.
+
 ## Upgrade to 0.9.1
 
 Read-only `context-reload` can reconstruct an active project's context before
@@ -147,7 +211,7 @@ Recent workflow resilience updates also add:
    - `npm run perf:verify-shared-coordination-runtime-cli`
    - `npm run perf:verify-runtime-backend-adoption`
 
-## Client repository steps
+## Historical local-client repository steps
 
 1. Install or upgrade the package to the matching product tag:
 

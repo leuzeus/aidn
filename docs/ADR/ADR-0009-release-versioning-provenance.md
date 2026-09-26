@@ -68,7 +68,9 @@ Installed configuration versioning follows the same authority boundary:
 ADR-0013 adds an explicit global installation binding for migrated clients.
 Their historical installation marker remains distinct from the active host
 generation; ordinary global updates must not rewrite project version markers.
-The global public rollout is still in progress and is not release-qualified.
+The global installation shipped in 0.10.0. Publication, candidate qualification
+and completion of an individual client migration remain distinct evidence; see
+[the bounded Windows record](../qualification/GLOBAL_WINDOWS.md).
 
 - root `.aidn/config.json.version` remains configuration schema `1`, independent
   of product SemVer; legacy configurations without it remain valid;

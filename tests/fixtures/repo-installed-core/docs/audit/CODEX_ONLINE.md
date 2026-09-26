@@ -1,6 +1,8 @@
 # Codex Online Notes
 
-Ensure skills are available before execution.
+Check project activation before loading workflow context: run `aidn runtime pre-write-admit --target . --skill context-reload --json` and require `activation.active=true` plus admitted status. Missing or inactive activation stops the AIDN workflow; use `aidn bootstrap --diagnose --json` only as an explicit read-only diagnostic. Do not activate or install automatically.
+
+Ensure the namespaced `aidn-*` skills are available before execution. Internal CLI `--skill` identifiers remain compatible.
 
 Project defaults:
 - source branch: `dev`
@@ -18,13 +20,14 @@ Before any durable write, reload the minimal workflow context in this order:
 - active cycle `status.md` and active session file when relevant
 
 For session startup in conservative app/online flows:
-- still run `start-session` even when the immediate user request is analysis-only
-- `start-session` is admission-first, so the initial runtime decision is part of read discipline, not a workflow bypass
+- still run `aidn-start-session` even when the immediate user request is analysis-only
+- `aidn-start-session` is admission-first, so the initial runtime decision is part of read discipline, not a workflow bypass
 - "this skill may mutate later" is not sufficient reason to skip admission
 - if admission returns `stop`, surface the branch/continuity issue and remain read-only
 - only skip the later durable-write part when no workflow artifact creation/update is justified
 
 If context is partial, stale, or contradictory, run `docs/audit/REANCHOR_PROMPT.md` and stop before writing.
+If the stop was abrupt and shared coordination may be ahead of local files, use the `aidn-crash-recovery` skill and `docs/audit/CRASH-RECOVERY-RUNBOOK.md`.
 
 When several cycles attached to the same session may converge, also read:
 - `docs/audit/INTEGRATION-RISK.md`
@@ -48,8 +51,8 @@ For `dual` / `db-only` projects, use the Node runtime chain end-to-end:
 - `npx aidn codex run-json-hook ... --strict --json`
 - `npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json`
 - `npx aidn runtime sync-db-first-selective --target . --json` for mutating skills
-- `npx aidn runtime repair-layer-triage --target . --json` when `repair_layer_status` is `warn|block`
-- `npx aidn runtime repair-layer-autofix --target . --apply --json` only for safe-only autofix cases
+- `npx aidn runtime project-runtime-state --target . --json` when `repair_layer_status` is `warn|block`
+- Repair mutations require a reviewed source-maintenance procedure; repair-layer tools are internal and have no public runtime alias.
 
 When `docs/audit/AGENT-SELECTION-SUMMARY.md` exists, `hydrate-context` also refreshes it automatically unless `--no-project-agent-selection-summary` is set.
 Use that summary for the short human view, then fall back to:
@@ -81,7 +84,7 @@ For recent Codex Windows application flows, treat `apply_patch` as a durable wri
 
 For recent Codex Windows application flows, also treat "mutating skill" labels carefully:
 - a skill that may eventually write can still have a mandatory read-only admission phase
-- `start-session` must not be replaced by an informal re-anchor when the workflow contract requires its admission result first
+- `aidn-start-session` must not be replaced by an informal re-anchor when the workflow contract requires its admission result first
 
 If a long session starts drifting from the workflow:
 - do not assume `AGENTS.md` was never loaded

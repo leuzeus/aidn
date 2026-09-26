@@ -16,11 +16,20 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 1) Global System Architecture (v0.7.2 runtime baseline)
+%% 1) Global engine and project governance boundary
 flowchart LR
+  subgraph HOST["User installation"]
+    POINTER["One active verified package generation"]
+    ENGINE["CLI + engine + standard skills/agents + hook logic"]
+    REGISTRY["Project registry: address book and update preflight scope"]
+    POINTER --> ENGINE
+    REGISTRY -. all roots compatible before switch .-> POINTER
+  end
+  CONNECT["Project hook connectors + physical-root activation"]
+  ENGINE --> CONNECT
   subgraph RULE["Rule Layer (Normative)"]
     SPEC["SPEC.md (SPEC-R01..SPEC-R11)"]
-    WF["WORKFLOW.md (local adapter extensions)"]
+    WF["WORKFLOW.md (generated adapter view)"]
     AG["AGENTS.md (execution contract)"]
     SPEC --> WF --> AG
   end
@@ -35,7 +44,8 @@ flowchart LR
     PWRITE{"Pre-write gate"}
     EXEC["Cycle implementation"]
     HYDRATE["hydrate-context + runtime digest refresh"]
-    DRIFT["drift-check via generic gating (R05)"]
+    DRIFT["Explicit drift-check + semantic scope review (R05)"]
+    PROOF["drift_check_completed: ok; current branch, COMMITTING, valid timestamp"]
     MUTATE["requirements-delta / promote-baseline admissions"]
     HAND["handoff-close + handoff-admit"]
     COORD["coordinator next-action + dispatch/orchestrate"]
@@ -62,6 +72,7 @@ flowchart LR
     INCF["incidents/INC-TMP-*.md"]
   end
 
+  CONNECT --> START
   START --> REANCHOR --> MODE
   MODE -->|COMMITTING| BCA --> CONT --> DOR --> PWRITE --> EXEC --> HYDRATE --> DRIFT --> MUTATE --> HAND --> COORD --> SCLOSE
   MODE -->|THINKING / EXPLORING| DRIFT
@@ -76,6 +87,7 @@ flowchart LR
   DRIFT --> PARK
   DRIFT --> CURR
   DRIFT --> SNAP
+  DRIFT -. successful completion only .-> PROOF
   HAND <--> HANDOFF
   COORD <--> COORDS
   GEN <--> ADAPT
@@ -117,3 +129,12 @@ flowchart LR
 
   linkStyle default stroke:#1E1F5C,stroke-width:2px;
 ```
+
+Global updates change the common generation and user assets, not project data or
+connectors. Worktrees require explicit root-bound preparation; linked roots share
+repository revocation. Configuration, adapter inputs, extensions and canonical
+workflow data remain project-owned. PostgreSQL is optional. See [global setup](../GLOBAL_SETUP.md).
+
+Generic gate evaluation, preview, warning and stop do not produce successful
+completion evidence or refresh drift age. This diagram is an operating model;
+native hook execution and human review require separate evidence.

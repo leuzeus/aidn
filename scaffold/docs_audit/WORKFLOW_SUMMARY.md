@@ -52,7 +52,7 @@ Committing execution:
 - DoR core/adaptive checks must be satisfied before implementation (`SPEC-R04`)
 - Shared or high-risk changes require a declared `usage_matrix` before implementation and must not close on single-usage evidence only
 - Drift suspicion requires `drift-check` (`SPEC-R05`)
-- `drift-check` uses generic gating as the canonical drift gate; its top-level hook result is authoritative when it returns `stop`
+- Only explicit successful `drift_check_completed` evidence refreshes drift age for the current branch in COMMITTING mode; generic evaluation, preview, warning and stop do not complete `drift-check`.
 - Cycle continuity rule must be explicit (`R1`/`R2`/`R3`, `SPEC-R06`)
 - `cycle-create` enforces continuity admission before scaffold creation
 - `requirements-delta` stops on medium/high-impact ownership ambiguity before addendum mutation

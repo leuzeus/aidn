@@ -33,6 +33,7 @@
         <bpmn:flowNodeRef>Gateway_ContextComplete</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_AssignWork</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_PreparePlanOnly</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_PlanOnlyMerge</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_ProjectHandoffPacket</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>EndEvent_HandoffComplete</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_PublishSessionState</bpmn:flowNodeRef>
@@ -59,6 +60,7 @@
     <bpmn:task id="Task_CheckPreWriteGate" name="Validate write prerequisites" />
     <bpmn:exclusiveGateway id="Gateway_DorReady" name="Ready to write?" default="Flow_DorNo" />
     <bpmn:task id="Task_PreparePlanOnly" name="Update plan in read-only mode" />
+    <bpmn:exclusiveGateway id="Gateway_PlanOnlyMerge" name="Plan-only path" />
     <bpmn:exclusiveGateway id="Gateway_ImplementMerge" name="Writing path" />
     <bpmn:task id="Task_ImplementChange" name="Implement planned change" />
     <bpmn:task id="Task_HydrateRuntime" name="Refresh runtime state" />
@@ -67,7 +69,9 @@
     <bpmn:task id="Task_TriageRepair" name="Run repair triage" />
     <bpmn:task id="Task_ArbitrateBlock" name="Arbitrate blocking issue" />
     <bpmn:exclusiveGateway id="Gateway_DriftReviewMerge" name="Review path" />
-    <bpmn:task id="Task_DriftAndTraceabilityReview" name="Review drift and traceability" />
+    <bpmn:task id="Task_DriftAndTraceabilityReview" name="Review scope and complete drift-check">
+      <bpmn:documentation>Semantic review and explicit drift-check precede successful handoff or close. Only drift_check_completed with skill drift-check, result ok, COMMITTING, current branch and a valid nonfuture timestamp refreshes drift age. Generic evaluation, preview, warning or stop is not completion; resolve the result before proceeding. This macro task summarizes the focused execution/review loop.</bpmn:documentation>
+    </bpmn:task>
     <bpmn:exclusiveGateway id="Gateway_HandoffNeeded" name="Need another agent?" default="Flow_HandoffNo" />
     <bpmn:task id="Task_ProjectHandoffPacket" name="Prepare handoff packet" />
     <bpmn:exclusiveGateway id="Gateway_CloseSession" name="Close session now?" default="Flow_CloseNo" />
@@ -106,15 +110,16 @@
     <bpmn:sequenceFlow id="Flow_TopologyClear" sourceRef="Gateway_TopologyClear" targetRef="Task_CheckPreWriteGate">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">topology_clear</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_TopologyDeferred" sourceRef="Gateway_TopologyClear" targetRef="Task_PreparePlanOnly" />
+    <bpmn:sequenceFlow id="Flow_TopologyDeferred" sourceRef="Gateway_TopologyClear" targetRef="Gateway_PlanOnlyMerge" />
     <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_CheckPreWriteGate" targetRef="Gateway_DorReady" />
-    <bpmn:sequenceFlow id="Flow_DorNo" sourceRef="Gateway_DorReady" targetRef="Task_PreparePlanOnly">
+    <bpmn:sequenceFlow id="Flow_DorNo" sourceRef="Gateway_DorReady" targetRef="Gateway_PlanOnlyMerge">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">dor_not_ready</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_DorYes" sourceRef="Gateway_DorReady" targetRef="Gateway_ImplementMerge">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">dor_ready</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_PlanLoop" sourceRef="Task_PreparePlanOnly" targetRef="Gateway_ReanchorLoopMerge" />
+    <bpmn:sequenceFlow id="Flow_PlanOnlyMerged" sourceRef="Gateway_PlanOnlyMerge" targetRef="Task_PreparePlanOnly" />
     <bpmn:sequenceFlow id="Flow_ImplementGo" sourceRef="Gateway_ImplementMerge" targetRef="Task_ImplementChange" />
     <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_ImplementChange" targetRef="Task_HydrateRuntime" />
     <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_HydrateRuntime" targetRef="Gateway_RepairBlocked" />
@@ -243,6 +248,7 @@
       <bpmndi:BPMNShape id="Task_PreparePlanOnly_di" bpmnElement="Task_PreparePlanOnly">
         <dc:Bounds x="1460" y="345" width="170" height="80" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_PlanOnlyMerge_di" bpmnElement="Gateway_PlanOnlyMerge" isMarkerVisible="true"><dc:Bounds x="1360" y="360" width="50" height="50" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Gateway_ImplementMerge_di" bpmnElement="Gateway_ImplementMerge" isMarkerVisible="true">
         <dc:Bounds x="1450" y="515" width="50" height="50" />
         <bpmndi:BPMNLabel>
@@ -423,7 +429,7 @@
       <bpmndi:BPMNEdge id="Flow_TopologyDeferred_di" bpmnElement="Flow_TopologyDeferred">
         <di:waypoint x="1135" y="635" />
         <di:waypoint x="1135" y="385" />
-        <di:waypoint x="1460" y="385" />
+        <di:waypoint x="1360" y="385" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
         <di:waypoint x="1310" y="660" />
@@ -431,9 +437,9 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_DorNo_di" bpmnElement="Flow_DorNo">
         <di:waypoint x="1385" y="635" />
-        <di:waypoint x="1385" y="385" />
-        <di:waypoint x="1460" y="385" />
+        <di:waypoint x="1385" y="410" />
       </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_PlanOnlyMerged_di" bpmnElement="Flow_PlanOnlyMerged"><di:waypoint x="1410" y="385" /><di:waypoint x="1460" y="385" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_DorYes_di" bpmnElement="Flow_DorYes">
         <di:waypoint x="1410" y="660" />
         <di:waypoint x="1475" y="660" />

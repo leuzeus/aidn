@@ -70,7 +70,7 @@ Do not assume a fixture run means the current repo root is an installed target.
 
 ### 1. Focused Fixture Verifications
 
-The in-progress global runtime foundation has a focused suite:
+The global runtime shipped in 0.10.0 and has a focused regression suite:
 `npm run perf:verify-global-runtime`. It covers package/asset integrity, operation
 leases, switch and recovery preconditions, compatibility checks, receipt-bound
 global project connectors, public management plans, new project attachment,
@@ -192,6 +192,13 @@ path, preserving unrelated rows and another test scope. Fixture success does not
 substitute for this live database evidence or for native hook execution.
 The Codex DB-only skill readiness gate also rejects documented runtime commands
 that have no executable registry entry.
+
+Runtime head fixtures cover both artifact orders, exact PostgreSQL pointer
+resolution, checksum/identity mismatch, missing targets, ambiguous fallback and
+materialized SQLite heads. The dedicated PostgreSQL smoke keeps both historical
+and current digest paths, verifies admission and handoff follow the explicit
+current head, then proves a corrupted pointer refuses without database writes.
+
 
 The CLI surface inventory verifier checks that `repair-layer` commands remain classified as internal and are not exposed as public runtime aliases or effect-policy entries.
 

@@ -20,8 +20,9 @@ Shared runtime is opt-in and must not weaken checkout-bound auditability or loca
 ADR-0013 defines an explicit migration of standard AIDN executable assets to a
 user-level installation. This is code distribution, not shared workflow storage:
 project configuration, activation, extensions, historical records and runtime
-data retain their existing scope. Its internal foundation is not a completed
-public migration or permission to relocate a client's files implicitly.
+data retain their existing scope. Global installation shipped in 0.10.0;
+each client still needs explicit ownership-checked migration. A published
+engine is not permission to relocate project files or data implicitly.
 
 These surfaces must not be relocated by shared runtime behavior:
 
