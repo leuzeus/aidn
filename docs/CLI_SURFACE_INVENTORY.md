@@ -197,6 +197,17 @@ It performs no provider action or default post-hook DB import. The Codex wrapper
 still persists its diagnostic context; an explicit `--db-sync` remains a separate
 requested effect and must not be confused with read-only admission.
 
+The `start-session` hook uses the shared canonical continuity reader. In db-only
+or with configured PostgreSQL, unavailable authority stops with
+`START_SESSION_CANONICAL_RUNTIME_INVALID`; malformed artifact/head identity is
+a hook error, never a fallback to Markdown. Canonical session artifacts retain
+closure, PR/post-merge metadata and full cycle lists. The hook and wrapper retain
+their mutating classification for telemetry, but do not import projections by
+default. As for PR orchestration, explicit `--db-sync` is a separate effect.
+Checkpoints preserve an existing canonical SQLite store in dual/db-only as well
+as configured PostgreSQL. Creating or editing session artifacts requires the
+separate DB-first write operation; a successful admission does not create them.
+
 - `aidn runtime coordinator-select-agent --json`
 - `aidn runtime coordinator-next-action --json`
 - `aidn runtime coordinator-loop --json`

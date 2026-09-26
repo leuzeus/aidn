@@ -72,7 +72,7 @@ export function shouldForceStrictForSkillState(stateMode) {
 
 export function shouldAutoDbSyncForSkill(skill) {
   const id = resolveSkillId(skill);
-  // The PR hook only diagnoses the next delivery action. Importing Markdown
-  // afterward would overwrite the canonical lifecycle it just consulted.
-  return id !== "pr-orchestrate" && MUTATING_SKILLS.has(id);
+  // These hooks diagnose admission/delivery; neither creates session artifacts.
+  // Importing Markdown afterward would overwrite the canonical lifecycle read.
+  return !["start-session", "pr-orchestrate"].includes(id) && MUTATING_SKILLS.has(id);
 }

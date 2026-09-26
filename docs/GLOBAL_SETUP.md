@@ -18,6 +18,16 @@ declared, its ordinary freshness requirements apply. Runtime projection reads
 canonical db-only/PostgreSQL artifacts rather than local Markdown copies; writing
 a projection still requires explicit intent and does not import it into the DB.
 
+Starting with 0.10.13, `start-session` uses that canonical continuity reader too.
+A closed session whose PR is merged and whose post-merge synchronization is done
+does not become active again because an old local session file remains. The
+canonical session artifact preserves the lifecycle and delivery metadata; the
+historical relational `state` field can contain a work mode instead. Missing,
+ambiguous or inconsistent canonical evidence requires diagnosis, not reimport
+of local projections. The start-session hook writes diagnostic context and
+checkpoint telemetry but performs no automatic DB import. Persist an explicitly
+authorized new session through the DB-first artifact operation.
+
 ## Entry points
 
 From the source checkout or extracted package on Windows, preview installation:

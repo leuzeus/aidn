@@ -172,4 +172,17 @@ performed by this admission.
 - map the port methods to adapter implementations and runtime use cases
 - keep `ADR-0007` and the shared-surface gate synchronized with any port change
 - the minimal shared coordination store port is implemented in `src/core/ports/shared-coordination-store-port.mjs` and asserted by the PostgreSQL shared coordination adapter
+Session-start admission shares the canonical continuity reader with cycle
+admissions. Its 0.10.13 correction resolves lifecycle, delivery metadata and
+multi-cycle lists from artifacts within the same snapshot as relational rows.
+The historical relational session `state` can encode a work mode and must not
+override a CLOSED artifact. Head, path and identity conflicts refuse; an
+unavailable canonical backend never authorizes a stale-file fallback. This is
+read resolution, not a schema migration or repair of historical rows.
+
+Session-start diagnostics no longer trigger default post-hook DB import.
+Checkpoint preservation also covers an existing SQLite canonical store in
+dual/db-only. Explicit synchronization and DB-first artifact writes remain
+separate effects; telemetry is not authority to import old projections.
+
 - runtime PostgreSQL now records `runtime_scope_id` and `project_context` separately from shared coordination rows so future platform dashboards can join by `project_id` without confusing projects
