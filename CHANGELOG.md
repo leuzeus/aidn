@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.10.14
+
+- Execute Codex and shell agent commands in the explicit target worktree through
+  dispatch, hooks, daemon and roster checks. Preserve the synchronous adapter
+  contract and quoted Windows command paths and arguments.
+- Cover target-only sentinel writes in real Git worktrees with spaces and
+  accents, and activate the temporary daemon client with the canonical helper.
+- Split context resilience into four required gates while preserving all
+  43 invocations, arguments and ordering, the manual aggregate and the existing
+  per-gate timeout. Verify coverage and reject duplicate npm execution paths.
+- Align runtime and validation documentation. No database migration or project
+  reinstallation is required for an ordinary global engine update.
+
 ## 0.10.13
 
 - Resolve start-session admission through the shared canonical continuity reader
