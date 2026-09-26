@@ -76,7 +76,7 @@ Before the first durable write in this skill, run:
   - `uncertain_intent`
 - in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
 - in files, this hook remains non-blocking by default.
-- if `repair_layer_status` is `warn` or `block`, run `npx aidn runtime repair-layer-triage --target . --json` before relying on db-backed continuity or artifact links.
+- if `repair_layer_status` is `warn` or `block`, run `npx aidn runtime project-runtime-state --target . --json` before relying on db-backed continuity or artifact links.
 
 Output:
 - Recovery actions (2–5 steps)

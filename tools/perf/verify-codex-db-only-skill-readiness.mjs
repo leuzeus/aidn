@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { resolveSkillId } from "../../src/core/skills/skill-policy.mjs";
+import { getGroupCommandDescriptor } from "../../src/core/cli/command-registry.mjs";
 
 const MUTATING_SKILLS = new Set([
   "start-session",
@@ -124,6 +125,9 @@ function resolveSkillsLayout(root, explicitManifest = "") {
 
 function checkPatterns(file, text, patterns) {
   const missingPatterns = patterns.filter((pattern) => !text.includes(pattern));
+  for (const match of text.matchAll(/\bnpx aidn runtime ([a-z-]+)/g)) {
+    if (!getGroupCommandDescriptor("runtime", match[1])) missingPatterns.push(`unsupported runtime command: ${match[1]}`);
+  }
   return {
     file,
     ok: missingPatterns.length === 0,
@@ -147,12 +151,12 @@ function main() {
       "`repair_layer_status`",
       "`repair_layer_advice`",
       "`docs/audit/RUNTIME-STATE.md`",
-      "npx aidn runtime repair-layer-triage --target . --json",
+      "npx aidn runtime project-runtime-state --target . --json",
     ];
     const mutatingPatterns = [
       "--fail-on-repair-block",
-      "npx aidn runtime repair-layer-autofix --target . --apply --json",
-      "if blocking findings remain after triage/autofix, STOP the skill and request user arbitration.",
+      "repair-layer tools are internal and have no public runtime alias.",
+      "if blocking findings remain after diagnosis, STOP the skill and request user arbitration.",
     ];
 
     const skillChecks = skills.map((skill) => {
@@ -196,8 +200,8 @@ function main() {
       "`repair_layer_status`",
       "`repair_layer_advice`",
       "`docs/audit/RUNTIME-STATE.md`",
-      "npx aidn runtime repair-layer-triage --target . --json",
-      "npx aidn runtime repair-layer-autofix --target . --apply --json",
+      "npx aidn runtime project-runtime-state --target . --json",
+      "repair-layer tools are internal and have no public runtime alias.",
       "--fail-on-repair-block",
       "read-only intent prevents durable writes; it does not exempt the agent from session admission",
     ]);

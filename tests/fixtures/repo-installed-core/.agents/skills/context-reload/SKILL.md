@@ -85,7 +85,7 @@ Keep report concise.
 - Use the live admission from Project Activation to read mode, session/cycle, source-of-truth and repair signals; unknown mode is allowed only for this context reconstruction.
 - In dual/db-only, the configured canonical backend must be available. A cached bundle or visible projection does not prove freshness.
 - Read `repair_layer_status` and `repair_layer_advice` from admission. Treat `docs/audit/RUNTIME-STATE.md` as a derived anchor.
-- If repair signals require diagnosis, use `npx aidn runtime repair-layer-triage --target . --json`; blocking findings stop further workflow actions.
+- If repair signals require diagnosis, use `npx aidn runtime project-runtime-state --target . --json`; blocking findings stop further workflow actions.
 - Do not run run-json-hook or hydrate-context as part of this read-only skill: those paths can write hook history or derived caches.
 - This admission is not write authorization. Run start-session admission next; each durable write requires its own current admission.
 

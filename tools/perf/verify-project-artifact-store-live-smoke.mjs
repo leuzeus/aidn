@@ -122,10 +122,34 @@ else {
     assert.equal(admitted.checks.cycle_create_initial_state_verified.pass, true);
     assert.equal(admitted.context.repair_layer_status, 'clean');
     const projected = cli('project-runtime-state');
+    assert.equal(projected.digest.repair_layer_status, 'clean', 'fresh canonical empty findings must establish clean without cached hooks');
     assert.equal(projected.digest.current_state_source, 'postgres');
     assert.equal(projected.digest.session_artifact_source, 'postgres');
     assert.equal(projected.consistency.source, 'postgres');
     assert.equal(projected.written, false);
+    const cacheFile = path.join(targetRoot, '.aidn/runtime/context/hydrated-context.json');
+    const savedCache = fs.existsSync(cacheFile) ? fs.readFileSync(cacheFile) : null;
+    fs.mkdirSync(path.dirname(cacheFile), { recursive: true });
+    try {
+      fs.writeFileSync(cacheFile, JSON.stringify({ ts: '2099-01-01', repair_layer: { status: 'block', blocking: true } }));
+      assert.equal(cli('project-runtime-state').digest.repair_layer_status, 'clean', 'stale cache must not override live empty findings');
+      fs.writeFileSync(cacheFile, JSON.stringify({ ts: '2099-01-01', repair_layer: { status: 'clean', top_findings: [] } }));
+      for (const [severity, expected] of [['warning', 'warn'], ['error', 'block']]) {
+        await client.query(`INSERT INTO aidn_runtime.migration_findings
+          (scope_key,finding_id,migration_run_id,severity,finding_type,message,created_at)
+          VALUES ($1,-9001,'projection-probe',$2,'PROJECTION_PROBE','Canonical finding must win',now())`, [scopes[0], severity]);
+        const withFinding = await snapshot(scopes[0]);
+        const observed = cli('project-runtime-state');
+        assert.equal(observed.digest.repair_layer_status, expected, 'cached success must not hide canonical findings');
+        assert(observed.digest.blocking_findings.some(item => item.includes('PROJECTION_PROBE')));
+        assert.deepEqual(await snapshot(scopes[0]), withFinding, 'projection modified canonical findings');
+        await client.query('DELETE FROM aidn_runtime.migration_findings WHERE scope_key=$1 AND finding_id=-9001', [scopes[0]]);
+      }
+    } finally {
+      await client.query('DELETE FROM aidn_runtime.migration_findings WHERE scope_key=$1 AND finding_id=-9001', [scopes[0]]);
+      if (savedCache) fs.writeFileSync(cacheFile, savedCache); else fs.rmSync(cacheFile);
+    }
+    console.log('PASS live PostgreSQL: runtime repair projection reads current clean/warn/block findings, ignores misleading caches, preserves all rows');
     assert.deepEqual(await snapshot(scopes[0]), initialSnapshot, 'initial admission/projection changed canonical data');
     assert.deepEqual(await snapshot(scopes[1]), other, 'initial admission affected another scope');
     const runScript = (script, args = []) => spawnSync(process.execPath,
@@ -188,9 +212,34 @@ else {
       assert.equal(JSON.parse(unavailable.stdout).reason_code, 'BRANCH_AUDIT_CANONICAL_RUNTIME_INVALID');
       const unavailableReload = runScript('tools/perf/reload-check.mjs');
       assert.notEqual(unavailableReload.status, 0, 'unavailable PostgreSQL must not use local projections');
+      const unavailableProjection = runScript('tools/runtime/project-runtime-state.mjs');
+      assert.equal(unavailableProjection.status, 1, 'unavailable canonical repair source must refuse');
+      assert.match(unavailableProjection.stderr, /canonical runtime backend is unavailable/);
     } finally { fs.writeFileSync(configPath, originalConfig); }
     assert.deepEqual(await snapshot(scopes[0]), initialSnapshot, 'standard branch audit changed canonical data');
     assert.deepEqual(await snapshot(scopes[1]), other, 'standard branch audit changed another scope');
+    // Exercise the supported preview -> explicit projection -> selective canonical
+    // write path, including subsequent admission, without direct status invention.
+    const digestFile = path.join(root, 'reviewed-runtime-digest.md');
+    const beforeDigest = await snapshot(scopes[0]);
+    const digestWrite = cli('project-runtime-state', '--out', digestFile, '--write');
+    assert.equal(digestWrite.digest.repair_layer_status, 'clean');
+    assert.equal(digestWrite.written, true);
+    assert.deepEqual(await snapshot(scopes[0]), beforeDigest, 'projection write changed canonical rows implicitly');
+    cli('db-first-artifact', '--path', 'RUNTIME-STATE.md', '--content-file', digestFile, '--no-materialize');
+    const persistedDigest = cli('artifact-store', 'get', '--path', 'RUNTIME-STATE.md');
+    assert.match(persistedDigest.artifact.content, /repair_layer_status: clean/);
+    assert.equal(cli('pre-write-admit', '--skill', 'cycle-create', '--strict').ok, true);
+    const afterDigest = await snapshot(scopes[0]);
+    const runtimeIds = beforeDigest.artifacts.filter(item => item.row.path === 'RUNTIME-STATE.md').map(item => item.row.artifact_id);
+    for (const table of tables) {
+      const unrelated = rows => rows.filter(item => table === 'artifacts' || table === 'artifact_blobs'
+        ? !runtimeIds.includes(item.row.artifact_id)
+        : table === 'runtime_heads' ? !runtimeIds.includes(item.row.artifact_id) : true);
+      assert.deepEqual(unrelated(afterDigest[table]), unrelated(beforeDigest[table]), `digest write changed unrelated ${table}`);
+    }
+    assert.deepEqual(await snapshot(scopes[1]), other, 'digest write changed another scope');
+    console.log('PASS live PostgreSQL: explicit projection and db-first-artifact persist measured digest; subsequent admission succeeds; unrelated rows and other scope unchanged');
     console.log('PASS live PostgreSQL: auto reload and standard branch hook; normal reloads do not stop; genuine fallback stop survives hook and Codex wrapper; canonical data unchanged');
     assert.equal(fs.existsSync(path.join(targetRoot, '.aidn/runtime/index/workflow-index.sqlite')), false);
     console.log('PASS live PostgreSQL: first-cycle admission and runtime projector read canonical rows despite misleading files; freshness remains unknown; no data mutation');

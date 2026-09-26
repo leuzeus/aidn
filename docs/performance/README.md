@@ -172,6 +172,15 @@ Repair-layer traceability note:
 
 ## Commands
 
+Internal repair maintenance, run explicitly from the AIDN source checkout with a reviewed target and plan (these tools have no public runtime alias):
+
+```bash
+node tools/runtime/repair-layer.mjs --target . --index-file .aidn/runtime/index/workflow-index.sqlite --index-backend sqlite --apply --json
+node tools/runtime/repair-layer-autofix.mjs --target . --index-file .aidn/runtime/index/workflow-index.sqlite --index-backend sqlite --apply --json
+node tools/runtime/repair-layer-triage.mjs --target . --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --json
+node tools/runtime/repair-layer-query.mjs --target . --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --query session-continuity --session-id S102 --json
+```
+
 Package CLI (recommended in client repos):
 
 ```bash
@@ -181,10 +190,6 @@ npx aidn codex run-json-hook --skill context-reload --mode THINKING --target . -
 npx aidn codex hydrate-context --target . --json
 npx aidn runtime sync-db-first-selective --target . --json
 npx aidn runtime sync-db-first --target . --json
-npx aidn runtime repair-layer --target . --index-file .aidn/runtime/index/workflow-index.sqlite --index-backend sqlite --apply --json
-npx aidn runtime repair-layer-autofix --target . --index-file .aidn/runtime/index/workflow-index.sqlite --index-backend sqlite --apply --json
-npx aidn runtime repair-layer-triage --target . --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --json
-npx aidn runtime repair-layer-query --target . --index-file .aidn/runtime/index/workflow-index.sqlite --backend sqlite --query session-continuity --session-id S102 --json
 npx aidn runtime db-first-artifact --target . --path snapshots/context-snapshot.md --source-file docs/audit/snapshots/context-snapshot.md --json
 npx aidn runtime mode-migrate --target . --to dual --json
 npx aidn runtime mode-migrate --target . --to dual --write --json

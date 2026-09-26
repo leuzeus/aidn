@@ -39,9 +39,9 @@ Drive the session branch through the explicit PR lifecycle without skipping push
 - prefer `docs/audit/RUNTIME-STATE.md` as the short runtime digest when it has just been refreshed by hydration.
 - in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
 - in files, this hook remains non-blocking by default.
-- if `repair_layer_status` is `warn` or `block`, run `npx aidn runtime repair-layer-triage --target . --json` before continuing.
-- if triage exposes a safe-only autofix candidate, you MAY run `npx aidn runtime repair-layer-autofix --target . --apply --json`.
-- if blocking findings remain after triage/autofix, STOP the skill and request user arbitration.
+- if `repair_layer_status` is `warn` or `block`, run `npx aidn runtime project-runtime-state --target . --json` before continuing.
+- Repair mutations require a reviewed source-maintenance procedure; repair-layer tools are internal and have no public runtime alias.
+- if blocking findings remain after diagnosis, STOP the skill and request user arbitration.
 
 4) Follow the returned next action:
 - `push_session_branch`: push the session branch first.

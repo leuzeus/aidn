@@ -183,6 +183,16 @@ without changing content. Both status inspection and cycle admission must leave
 every file byte unchanged, including `.git/index` and the canonical local store;
 read-only Git calls disable optional index refreshes.
 
+Runtime projector fixtures cover live SQLite repair findings overriding misleading
+hook caches, absent/malformed evidence, errors beyond the display limit and
+byte-for-byte read-only output. The dedicated project-artifact-store PostgreSQL
+smoke covers clean/warn/block projection, unavailable canonical storage, and the
+public projection -> explicit `db-first-artifact` write -> subsequent admission
+path, preserving unrelated rows and another test scope. Fixture success does not
+substitute for this live database evidence or for native hook execution.
+The Codex DB-only skill readiness gate also rejects documented runtime commands
+that have no executable registry entry.
+
 The CLI surface inventory verifier checks that `repair-layer` commands remain classified as internal and are not exposed as public runtime aliases or effect-policy entries.
 
 When a change affects source-of-truth semantics or concept ownership, run:

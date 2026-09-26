@@ -51,8 +51,8 @@ For `dual` / `db-only` projects, use the Node runtime chain end-to-end:
 - `npx aidn codex run-json-hook ... --strict --json`
 - `npx aidn codex hydrate-context --target . --skill <skill> --project-runtime-state --json`
 - `npx aidn runtime sync-db-first-selective --target . --json` for mutating skills
-- `npx aidn runtime repair-layer-triage --target . --json` when `repair_layer_status` is `warn|block`
-- `npx aidn runtime repair-layer-autofix --target . --apply --json` only for safe-only autofix cases
+- `npx aidn runtime project-runtime-state --target . --json` when `repair_layer_status` is `warn|block`
+- Repair mutations require a reviewed source-maintenance procedure; repair-layer tools are internal and have no public runtime alias.
 
 When `docs/audit/AGENT-SELECTION-SUMMARY.md` exists, `hydrate-context` also refreshes it automatically unless `--no-project-agent-selection-summary` is set.
 Use that summary for the short human view, then fall back to:

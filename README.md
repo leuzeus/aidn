@@ -239,7 +239,7 @@ the interactive wizard (`.\scripts\setup-project.ps1 -Wizard`) in
 [the complete project installer](docs/WINDOWS_PROJECT_SETUP.md).
 
 Version 0.10.0 introduced one user-level engine shared by registered projects.
-The `v0.10.5` source includes canonical PostgreSQL artifact writes, checkpoint
+The `v0.10.6` source includes canonical PostgreSQL artifact writes, checkpoint
 preservation and initial-cycle admission. Install from a published release with verified checksums; a source
 version or branch name alone is not proof of publication.
 Follow [the global setup guide](docs/GLOBAL_SETUP.md) for installation and
@@ -314,7 +314,7 @@ Notes:
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a published tagged install (`#v0.10.5` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a published tagged install (`#v0.10.6` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 

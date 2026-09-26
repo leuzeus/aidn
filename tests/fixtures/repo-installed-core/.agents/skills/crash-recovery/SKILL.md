@@ -28,7 +28,7 @@ Recover the repository to the smallest safe resumable state after an abrupt stop
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill crash-recovery --project-runtime-state --json`.
 - in dual/db-only, use the hydrated payload to read `repair_layer_status`, `repair_layer_advice`, prioritized artifacts, and continuity hints before acting.
 - prefer `docs/audit/RUNTIME-STATE.md` as the short runtime digest when it has just been refreshed by hydration.
-- if repair context is unclear, run `npx aidn runtime repair-layer-triage --target . --json`.
+- if repair context is unclear, run `npx aidn runtime project-runtime-state --target . --json`.
 
 3) Diagnose shared state:
 - `npx aidn runtime shared-coordination-doctor --target . --json`

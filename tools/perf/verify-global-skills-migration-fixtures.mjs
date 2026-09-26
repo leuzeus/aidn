@@ -11,7 +11,12 @@ const checks = [], failures = [];
 const text = (op, key) => op[key] === null ? null : Buffer.from(op[key], "base64").toString("utf8");
 function put(root, relative, value) { const file = path.join(root, relative); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, value); return file; }
 function snapshot(root) { const entries = []; function visit(at) { for (const item of fs.readdirSync(at, { withFileTypes: true })) { const file = path.join(at, item.name); if (item.isDirectory()) visit(file); else entries.push([path.relative(root, file), fs.readFileSync(file).toString("base64")]); } } visit(root); return entries.sort((a,b) => a[0].localeCompare(b[0])); }
-function legacy(id) { return fs.readFileSync(path.join(repoRoot, "tests/fixtures/repo-installed-core/.agents/skills", id, "SKILL.md"), "utf8"); }
+function legacy(id) {
+  const root = id === "start-session"
+    ? "tests/fixtures/codex-legacy/installed-core-0.10.5"
+    : "tests/fixtures/repo-installed-core/.agents/skills";
+  return fs.readFileSync(path.join(repoRoot, root, id, "SKILL.md"), "utf8");
+}
 function check(name, fn) { try { fn(); checks.push({ name, status: "PASS" }); } catch (error) { failures.push({ name, message: error.message }); } }
 try {
   const home = path.join(tempRoot, "codéx home"), skills = path.join(home, "skills");

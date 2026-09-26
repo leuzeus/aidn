@@ -360,6 +360,10 @@ function verifyLatestTimestampMutant(tempRoot) {
       `from "${pathToFileURL(path.resolve("src/application/codex/context-observation.mjs")).href}";`,
     )
     .replace(
+      'from "../../core/workflow/workflow-output-factory.mjs";',
+      `from "${pathToFileURL(path.resolve("src/core/workflow/workflow-output-factory.mjs")).href}";`,
+    )
+    .replace(
       'from "./governed-runtime-artifact-metadata-lib.mjs";',
       `from "${pathToFileURL(metadataPath).href}";`,
     );
