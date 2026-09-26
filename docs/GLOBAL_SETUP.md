@@ -132,6 +132,33 @@ recovery refuses and requires diagnosis; it does not silently discard the lock.
 Add `--target PATH` to include a project's migration lock. This path has injected
 fixture coverage; actual interrupted Windows process qualification is pending.
 
+### Refreshing generated project guides
+
+A global update does not regenerate project documents. After migration, an older
+generated view can therefore still describe the local engine. Starting with
+0.10.8, installation-scoped repair recovers the global binding from the receipt
+for both Codex assets and generated commands:
+
+```powershell
+aidn bootstrap --target ..\example --repair --scope installation --persistence-policy verify-only --json
+aidn bootstrap --target ..\example --repair --scope installation --persistence-policy verify-only --write --expect-plan PLAN_ID --json
+```
+
+Review the entire inventory, not only the document that prompted the repair.
+This is an explicit repair of recorded installation assets, not a document-only
+command. It uses the current durable adapter, refreshes managed views and records
+the successful installation version. It may update installation metadata in
+the private config and receipts; persistence references and adapter policy remain
+preserved. `verify-only` prevents database adoption/import and refuses a required
+data migration. Modified managed files conflict and need explicit reconciliation
+with their saved preimages; never discard them as a group.
+
+The default repair scope covers Codex integration only. Do not use
+`project config --migrate-adapter` merely to refresh views: that operation extracts
+policy from a legacy workflow and writes the adapter. Ordinary config edits do
+not implicitly regenerate the views. Versions before 0.10.8 can render local
+commands during installation-scoped repair of a global project; update first.
+
 ## CI and additional worktrees
 
 In CI, use an explicitly verified release package in the job's temporary
