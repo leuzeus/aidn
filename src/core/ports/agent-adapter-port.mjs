@@ -6,6 +6,8 @@ import {
   normalizeAgentRole,
 } from "../agents/agent-role-model.mjs";
 
+// runCommand remains synchronous. Target-aware callers supply an absolute cwd;
+// built-in adapters preserve the process cwd when legacy callers omit it.
 const REQUIRED_METHODS = [
   "runCommand",
   "getProfile",

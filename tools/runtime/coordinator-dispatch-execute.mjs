@@ -432,6 +432,7 @@ async function runCoordinatorDispatch({
   let overallStatus = "executed";
   for (const step of dispatch.steps) {
     const result = agentAdapter.runCommand({
+      cwd: absoluteTargetRoot,
       command: step.command,
       commandArgs: step.args,
       commandLine: step.command_line,

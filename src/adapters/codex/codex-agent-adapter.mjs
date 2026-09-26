@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import path from "node:path";
 import { assertAgentAdapter } from "../../core/ports/agent-adapter-port.mjs";
 import {
   buildAgentProfile,
@@ -32,24 +33,27 @@ function buildCodexAgentAdapter({
       }
       return canAgentRolePerform(normalizedRole, action);
     },
-    runCommand({ command, commandArgs = [], commandLine = "", envOverrides = {} }) {
+    runCommand({ command, commandArgs = [], commandLine = "", envOverrides = {}, cwd = process.cwd() }) {
+      const workingDirectory = path.resolve(cwd);
       const env = {
         ...process.env,
         ...envOverrides,
       };
       if (process.platform === "win32" && /\.(cmd|bat)$/i.test(command)) {
-        return spawnSync("cmd.exe", ["/d", "/s", "/c", commandLine], {
+        // /s strips the outer pair; preserve quoted executable and argument tokens.
+        return spawnSync("cmd.exe", ["/d", "/s", "/c", `"${commandLine}"`], {
           encoding: "utf8",
           stdio: ["ignore", "pipe", "pipe"],
-          cwd: process.cwd(),
+          cwd: workingDirectory,
           env,
           shell: false,
+          windowsVerbatimArguments: true,
         });
       }
       return spawnSync(command, commandArgs, {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
-        cwd: process.cwd(),
+        cwd: workingDirectory,
         env,
         shell: false,
       });

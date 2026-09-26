@@ -428,6 +428,15 @@ deterministic probes cover a nonzero child with stdout-only evidence, a timeout,
 secret redaction, and cleanup after an injected failure immediately after
 creating the owned temporary root.
 
+The coordinator dispatch-execute fixture also creates two real Git worktrees
+with spaces and accents in their paths. It verifies that synchronous Codex and
+local-shell adapters (including daemon fallback calls) run in the explicit target
+directory, leave their sentinel only there, retain the parent directory for legacy
+calls without `cwd`, and refuse an unavailable explicit directory. It exercises
+Windows batch paths with spaces, an actual dispatch from the other worktree,
+relative targets in daemon hooks, and the target directory in hook provenance.
+These are local process fixtures, not native Codex task or PostgreSQL qualification.
+
 The start-session and installed-Codex-client verifiers execute child commands
 with `spawnSync`. Their process evidence records synchronous call returns and
 never re-probes a numeric PID after the call, because an operating system may

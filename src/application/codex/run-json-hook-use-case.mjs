@@ -105,6 +105,7 @@ async function runAgentCommand(agentAdapter, commandSpec) {
 
 async function runDbSync(agentAdapter, targetRoot, stateMode) {
   const result = await runAgentCommand(agentAdapter, {
+    cwd: path.resolve(targetRoot),
     command: process.execPath,
     commandArgs: [
       RUNTIME_SYNC_SCRIPT,
@@ -262,6 +263,7 @@ function compactDbSync(dbSync) {
 }
 
 export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContextStore }) {
+  const absoluteTargetRoot = path.resolve(targetRoot);
   const stateMode = resolveEffectiveStateMode({
     targetRoot,
     stateMode: args.stateMode || "files",
@@ -273,7 +275,7 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
       commandArgs: args.command.slice(1),
       source: "explicit",
     }
-    : buildDefaultCommand(args);
+    : buildDefaultCommand({ ...args, target: absoluteTargetRoot });
 
   if (!commandSpec.command) {
     throw new Error("Missing command after --");
@@ -289,6 +291,7 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
   const executionId = randomUUID();
   const commandStartedAt = new Date().toISOString();
   const result = await runAgentCommand(agentAdapter, {
+    cwd: absoluteTargetRoot,
     command: commandSpec.command,
     commandArgs,
     commandLine,
@@ -305,7 +308,7 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
     execution_id: executionId,
     command: commandSpec.command,
     argv: commandArgs,
-    cwd: process.cwd(),
+    cwd: absoluteTargetRoot,
     command_status: result.status ?? null,
     command_signal: result.signal ?? null,
     command_error: Boolean(result.error),
@@ -353,7 +356,7 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
     dbSync.skipped = false;
     dbSync.reason = null;
     try {
-      const sync = await runDbSync(agentAdapter, targetRoot, stateMode);
+      const sync = await runDbSync(agentAdapter, absoluteTargetRoot, stateMode);
       dbSync.payload = sync.payload;
       if (sync.status !== 0 || dbSync.payload?.ok === false) {
         dbSync.error = {
