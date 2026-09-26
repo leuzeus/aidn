@@ -139,6 +139,12 @@ and its explicit drift check, not a public bypass.
 Checkpoint warnings/refusals propagate through the wrappers. No canonical
 write, historical rewrite or new shared surface is introduced by this check.
 
+Selective DB-first writes retain ownership derived from standard cycle-status
+and session paths on both backends. A cycle status keeps its `status` subtype;
+an explicit identity contradicting the path is rejected before writing. This
+prevents the post-hook SQLite sync from invalidating the next canonical check.
+It does not migrate existing rows or relax canonical status validation.
+
 - align `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md` with the new ports
 - map the port methods to adapter implementations and runtime use cases
 - keep `ADR-0007` and the shared-surface gate synchronized with any port change

@@ -25,6 +25,9 @@ const DB_FIRST_MARKERS = [
   "resolveCycleStatusArtifact",
   "loadSqliteIndexPayloadSafe",
   "readIndexFromSqlite",
+  // Backend-resolved snapshot reader used by canonical closure observations.
+  // This is a DB-aware source marker, not proof that every path is fileless.
+  "readRuntimeSnapshot(",
   "decodeEmbeddedArtifactContent(",
   "preWriteAdmit(",
   // Specific admission receives backend-resolved canonical artifacts and rejects

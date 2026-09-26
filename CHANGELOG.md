@@ -7,6 +7,9 @@
   recording completion. Ordinary mapping remains active-only; no new bypass.
 - Avoid treating a human cycle directory label as a sensitive product change in
   its standard status document. Code and other artifacts retain drift signals.
+- Retain path-defined cycle/session ownership and status classification during
+  selective DB-first synchronization, so SQLite closure evidence remains valid.
+  Contradictory explicit identity is refused before writing.
 - Cover the complete closure warning -> drift completion -> closure sequence in
   files, SQLite and dedicated PostgreSQL tests, with unchanged previews, retained
   history, canonical objective checks and negative admission cases.

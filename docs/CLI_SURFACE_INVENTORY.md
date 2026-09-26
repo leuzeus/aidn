@@ -169,6 +169,9 @@ the store; the legacy v1 `sqlite_file` field is empty for PostgreSQL.
 does not authorize an upsert or materialization; their existing effect rules
 remain unchanged. PostgreSQL checkpoints read the canonical backend and skip
 implicit index imports with reason `postgres_canonical_backend`.
+Selective DB-first writes preserve cycle/session identity derived from standard
+artifact paths and the cycle status subtype; contradictory explicit identity
+is rejected before mutation on either backend.
 
 The `cycle-close` skill checkpoint accepts terminal ownership only for its
 post-transition check and the explicit COMMITTING drift-check needed to finish

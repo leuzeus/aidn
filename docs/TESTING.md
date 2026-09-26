@@ -37,6 +37,11 @@ closure, including three changed closure documents, a cycle label containing
 `migration`, unchanged preview hashes, preserved journal, THINKING/ordinary
 mapping refusals and unresolved objective drift. Sensitive code and other
 artifacts retain cross-domain signals.
+The sequence also checks that automatic selective SQLite sync retains cycle and
+session identities and the status subtype; contradictory explicit ownership is
+refused with unchanged file hashes before a write can occur.
+Static readiness recognizes the backend-resolved snapshot reader as DB-aware;
+that source classification alone does not qualify fileless runtime behavior.
 The dedicated PostgreSQL smoke separately checks closure against canonical
 rows, the full closure/drift sequence, canonical intent despite misleading local
 files, unchanged data and unrelated scope preservation. None of these is native

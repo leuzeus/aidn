@@ -8,6 +8,8 @@ import { spawnSync, execFileSync } from 'node:child_process';
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from './test-git-fixture-lib.mjs';
 import { prepareActivationFixture, prepareWorkflowDocumentsFixture, completeDriftCheckFixture } from './test-activation-fixture-lib.mjs';
 import { detectGatingSignals } from '../../src/core/gating/gating-signal-policy.mjs';
+import { readRuntimeSnapshotSync } from '../../src/application/runtime/runtime-snapshot-service.mjs';
+import { runDbFirstArtifactUseCase } from '../../src/application/runtime/db-first-artifact-use-case.mjs';
 
 const repo = path.resolve(import.meta.dirname, '../..');
 const roots = [];
@@ -143,6 +145,17 @@ try {
     assert.equal(warning.ok, false);
     assert.equal(warning.result, 'warn');
     assert.equal(warning.action, 'run_conditional_drift_check');
+    if (mode !== 'files') {
+      const payload = readRuntimeSnapshotSync({ indexFile: path.join(root, '.aidn/runtime/index/workflow-index.sqlite'), backend: 'sqlite' }).payload;
+      const indexed = payload.artifacts.find(artifact => artifact.path === statusPath.replace('docs/audit/', ''));
+      assert.equal(indexed.cycle_id, 'C101', 'selective sync must retain path-defined ownership');
+      assert.equal(indexed.subtype, 'status');
+      assert.equal(payload.artifacts.find(artifact => artifact.path === 'sessions/S101-alpha.md').session_id, 'S101');
+      const beforeConflict = hashes(root);
+      assert.throws(() => runDbFirstArtifactUseCase({ target: root, path: statusPath.replace('docs/audit/', ''),
+        cycleId: 'C999', content: status('DONE'), materialize: 'false' }), /ARTIFACT_IDENTITY_CONFLICT/);
+      assert.deepEqual(hashes(root), beforeConflict);
+    }
     const beforePreview = hashes(root);
     const preview = run(root, 'tools/perf/gating-evaluate.mjs', ['--mode', 'COMMITTING', '--complete-drift-check', '--no-emit-event']).result;
     assert.equal(preview.result, 'warn');
