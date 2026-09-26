@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { readActivation } from "../../src/application/install/project-activation-service.mjs";
 import { resolveSkillId } from "../../src/core/skills/skill-policy.mjs";
+import { resolveRuntimeHeadArtifact, findUniqueAuditArtifact } from "../../src/application/runtime/runtime-head-resolution-service.mjs";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 import {
   buildPreWriteAdmissionResult,
@@ -144,16 +145,8 @@ function resolveRuntimeHeadKeyForArtifactPath(artifactPath) {
   return RUNTIME_HEAD_KEYS_BY_PATH.get(fileName) ?? "";
 }
 
-function findRuntimeHeadArtifact(runtimeHeads, artifactPath) {
-  if (!runtimeHeads || typeof runtimeHeads !== "object") {
-    return null;
-  }
-  const headKey = resolveRuntimeHeadKeyForArtifactPath(artifactPath);
-  if (!headKey) {
-    return null;
-  }
-  const artifact = runtimeHeads[headKey];
-  return artifact && normalizeRelativeArtifactPath(artifact.path) ? artifact : null;
+function findRuntimeHeadArtifact(runtimeHeads, artifactPath, payload) {
+  return resolveRuntimeHeadArtifact(runtimeHeads, resolveRuntimeHeadKeyForArtifactPath(artifactPath), payload);
 }
 
 function normalizeScalar(value) {
@@ -295,14 +288,7 @@ async function loadRuntimeIndexPayloadSafe(targetRoot) {
 }
 
 function findArtifactByPath(sqlitePayload, artifactPath) {
-  if (!sqlitePayload || !Array.isArray(sqlitePayload.artifacts)) {
-    return null;
-  }
-  const normalized = normalizeRelativeArtifactPath(artifactPath);
-  if (!normalized) {
-    return null;
-  }
-  return sqlitePayload.artifacts.find((artifact) => normalizeRelativeArtifactPath(artifact?.path) === normalized) ?? null;
+  return findUniqueAuditArtifact(sqlitePayload, artifactPath);
 }
 
 function resolveAuditArtifactText({
@@ -316,7 +302,7 @@ function resolveAuditArtifactText({
 } = {}) {
   const absolutePath = resolveTargetPath(targetRoot, candidatePath);
   if (dbBacked && preferDb) {
-    const runtimeHeadArtifact = findRuntimeHeadArtifact(sqliteRuntimeHeads, candidatePath);
+    const runtimeHeadArtifact = findRuntimeHeadArtifact(sqliteRuntimeHeads, candidatePath, sqlitePayload);
     const runtimeHeadText = decodeArtifactContent(runtimeHeadArtifact);
     if (runtimeHeadArtifact && runtimeHeadText) {
       return {
@@ -361,7 +347,7 @@ function resolveAuditArtifactText({
       text: "",
     };
   }
-  const runtimeHeadArtifact = findRuntimeHeadArtifact(sqliteRuntimeHeads, candidatePath);
+  const runtimeHeadArtifact = findRuntimeHeadArtifact(sqliteRuntimeHeads, candidatePath, sqlitePayload);
   const runtimeHeadText = decodeArtifactContent(runtimeHeadArtifact);
   if (runtimeHeadArtifact && runtimeHeadText) {
     return {

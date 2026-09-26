@@ -240,6 +240,33 @@ else {
     }
     assert.deepEqual(await snapshot(scopes[1]), other, 'digest write changed another scope');
     console.log('PASS live PostgreSQL: explicit projection and db-first-artifact persist measured digest; subsequent admission succeeds; unrelated rows and other scope unchanged');
+    // Historical import aliases may coexist. Keep their bytes; the explicit
+    // canonical head must select the current artifact rather than array order.
+    await client.query(`INSERT INTO aidn_runtime.artifacts
+      (scope_key,artifact_id,path,kind,content_format,content,sha256,size_bytes,mtime_ns,updated_at)
+      VALUES ($1,-9002,'docs/audit/RUNTIME-STATE.md','other','utf8',
+        'runtime_state_mode: db-only\nrepair_layer_status: block\ncurrent_state_freshness: stale\n','historical-digest',83,1,'2020-01-01')`, [scopes[0]]);
+    const aliasesSnapshot = await snapshot(scopes[0]);
+    const withHistory = cli('pre-write-admit', '--skill', 'cycle-create', '--strict');
+    assert.equal(withHistory.ok, true);
+    assert.equal(withHistory.context.repair_layer_status, 'clean');
+    assert.equal(withHistory.context.current_state_freshness, 'unknown');
+    assert.equal(cli('project-handoff-packet').packet.repair_layer_status, 'clean', 'shared runtime reader must also follow the explicit head');
+    assert.deepEqual(await snapshot(scopes[0]), aliasesSnapshot, 'reading current head rewrote historical data');
+    const head = (await client.query("SELECT payload_json FROM aidn_runtime.runtime_heads WHERE scope_key=$1 AND head_key='runtime_state'", [scopes[0]])).rows[0].payload_json;
+    try {
+      await client.query("UPDATE aidn_runtime.runtime_heads SET payload_json=$2::jsonb WHERE scope_key=$1 AND head_key='runtime_state'", [scopes[0], JSON.stringify({ ...head, artifact_sha256: 'wrong' })]);
+      const corruptSnapshot = await snapshot(scopes[0]);
+      const refused = runScript('tools/runtime/pre-write-admit.mjs', ['--skill', 'cycle-create', '--strict']);
+      assert.equal(refused.status, 1);
+      assert.match(refused.stderr, /RUNTIME_HEAD_ARTIFACT_IDENTITY_MISMATCH/);
+      assert.deepEqual(await snapshot(scopes[0]), corruptSnapshot, 'head refusal mutated database');
+    } finally {
+      await client.query("UPDATE aidn_runtime.runtime_heads SET payload_json=$2::jsonb WHERE scope_key=$1 AND head_key='runtime_state'", [scopes[0], JSON.stringify(head)]);
+    }
+    assert.deepEqual(await snapshot(scopes[0]), aliasesSnapshot, 'head restoration must preserve all preimages');
+    assert.deepEqual(await snapshot(scopes[1]), other, 'head resolution affected another scope');
+    console.log('PASS live PostgreSQL: admission and handoff follow the verified current head while historical aliases remain unchanged; corrupted head refuses without fallback');
     console.log('PASS live PostgreSQL: auto reload and standard branch hook; normal reloads do not stop; genuine fallback stop survives hook and Codex wrapper; canonical data unchanged');
     assert.equal(fs.existsSync(path.join(targetRoot, '.aidn/runtime/index/workflow-index.sqlite')), false);
     console.log('PASS live PostgreSQL: first-cycle admission and runtime projector read canonical rows despite misleading files; freshness remains unknown; no data mutation');
