@@ -22,6 +22,14 @@ inventory (including installed dependencies), provenance, a stable installation
 identity and a single active pointer. Stable launcher files and user-level Codex
 definitions are owned assets with explicit preimages and postimages.
 
+One installation also requires one physical host store. Windows application
+redirection can make the same logical AppData path identify different files in
+the app and an external console. Global operations and environment registration
+refuse a redirected home rather than publishing a launcher backed by split
+runtime pointers, leases or locks. An explicit non-redirected `AIDN_HOME` is
+supported. Recovery of an existing redirected installation is a reviewed
+same-version transfer and project rebinding, separate from ordinary update.
+
 Preview is read-only. Application requires an exact confirmed plan, an unchanged
 registry and fresh compatibility checks for every remembered project. Unavailable,
 inconsistent or incompatible projects block the switch. No project is silently

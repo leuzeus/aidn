@@ -169,6 +169,13 @@ the store; the legacy v1 `sqlite_file` field is empty for PostgreSQL.
 does not authorize an upsert or materialization; their existing effect rules
 remain unchanged. PostgreSQL checkpoints read the canonical backend and skip
 implicit index imports with reason `postgres_canonical_backend`.
+
+The `cycle-close` skill checkpoint accepts terminal ownership only for its
+post-transition check. It does not relax the ordinary reload mapping or mark a
+closed cycle active. Its specific admission, nested checkpoint and overall
+result remain distinct; warnings and refusals propagate through the Codex JSON
+wrapper. No public skip flag or alias is added for this closure context.
+
 - `aidn runtime coordinator-select-agent --json`
 - `aidn runtime coordinator-next-action --json`
 - `aidn runtime coordinator-loop --json`

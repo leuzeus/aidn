@@ -4,9 +4,11 @@ import { spawnSync } from 'node:child_process';
 import { readProjects } from './project-registry.mjs';
 import { runGlobalCommand, publicGlobalResult } from './global-cli.mjs';
 import path from 'node:path';
+import { assertGlobalHomeVisibility } from '../../src/application/install/global-runtime-store.mjs';
 
 export function registerGlobalUserEnvironment(home, { run = spawnSync } = {}) {
   if (process.platform !== 'win32') throw new Error('WINDOWS_REQUIRED');
+  assertGlobalHomeVisibility(home);
   const registered = run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
     '$ErrorActionPreference = "Stop"; $setupRoot = [IO.Path]::GetFullPath($env:AIDN_SETUP_HOME); ' +
     '$setupBin = Join-Path $setupRoot "bin"; ' +

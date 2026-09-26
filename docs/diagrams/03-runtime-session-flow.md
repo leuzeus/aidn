@@ -59,7 +59,8 @@ flowchart TD
   RELAY --> END_RELAY["Session paused, relayed, or ready for coordinator resume"]
 
   CLOSE -->|Yes| RESOLVE["Resolve open cycles R07: integrate report close-non-retained or cancel-close"]
-  RESOLVE --> OK{"All open cycles resolved?"}
+  RESOLVE --> CC["For closed cycles: canonical exit evidence + terminal ownership checkpoint"]
+  CC --> OK{"All open cycles resolved and closure checks successful?"}
   OK -->|No - cancel close| LOOP
   OK -->|Yes| CS["close-session admission + stale merged-cycle guard + snapshot update"]
   CS --> PB{"Cycle DONE and ready for baseline?"}
@@ -89,7 +90,7 @@ flowchart TD
   classDef incident fill:#FFF4F4,stroke:#B42318,color:#7A271A,stroke-width:2px;
 
   class MODE,MAP,NEED,CONT,PW,RT,CLOSE,OK,PRQ,SYNC,STALE gate;
-  class ST,CR,RA,SS,THINK,EXP,BCA,FIX,CNEW,DIG,IMPL,DRIFT,SPIKE,DELTA,LOOP,RELAY,RESOLVE,CS,PROMO,PRO,PRG,MRG,REC,REG action;
+  class ST,CR,RA,SS,THINK,EXP,BCA,FIX,CNEW,DIG,IMPL,DRIFT,SPIKE,DELTA,LOOP,RELAY,RESOLVE,CC,CS,PROMO,PRO,PRG,MRG,REC,REG action;
   class END_RELAY,END_DONE endnode;
   class INC incident;
 

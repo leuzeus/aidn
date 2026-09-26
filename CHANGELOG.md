@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.10.9
+
+- Allow the cycle-close completion checkpoint to resolve a uniquely owned
+  terminal cycle after active focus is cleared. Ordinary implementation still
+  requires active-cycle mapping; no cycle is reopened or reactivated.
+- Read closure evidence from the canonical backend in database modes, match
+  status paths and cycle identity independently of classification labels, and
+  refuse ambiguous or inconsistent evidence without a Markdown fallback.
+- Propagate checkpoint warnings and refusals through the hook and Codex JSON
+  wrapper instead of reporting successful specific admission as final success.
+- Refuse redirected Windows global homes before installation or environment
+  registration. Document explicit consolidation and cross-console verification
+  without moving installations or approving native hooks implicitly.
+- Cover terminal outcomes, negative closure cases and Windows home visibility
+  with fixtures; qualify canonical closure, refusal and data preservation on
+  dedicated PostgreSQL scopes. Align cycle skills, Mermaid, BPMN and ADRs.
+
 ## 0.10.8
 
 - Preserve the receipt's global runtime binding during installation-scoped

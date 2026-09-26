@@ -16,7 +16,7 @@
     "tertiaryBorderColor": "#2C2E83"
   }
 }}%%
-%% 2) Cycle State Machine (v0.7.2 runtime baseline)
+%% 2) Cycle State Machine
 stateDiagram-v2
   [*] --> CONTINUITY_GATE: cycle-create requested
   CONTINUITY_GATE --> OPEN: select R1/R2/R3 + record metadata (R06)
@@ -35,7 +35,7 @@ stateDiagram-v2
   IMPLEMENTING --> DROPPED: close-non-retained decision
 
   VERIFYING --> IMPLEMENTING: failed validation -> fix required
-  VERIFYING --> DONE: retained close/integration complete
+  VERIFYING --> DONE: retained outcome recorded
   VERIFYING --> NO_GO: non-retained outcome
   VERIFYING --> DROPPED: non-retained outcome
 
@@ -43,9 +43,20 @@ stateDiagram-v2
   IMPLEMENTING --> IMPLEMENTING: session-close decision = report and cycle branch not yet merged (R07)
   VERIFYING --> VERIFYING: session-close decision = report and cycle branch not yet merged (R07)
 
-  DONE --> [*]
-  NO_GO --> [*]
-  DROPPED --> [*]
+  DONE --> CLOSE_CHECK: validate post-transition checkpoint
+  NO_GO --> CLOSE_CHECK: validate post-transition checkpoint
+  DROPPED --> CLOSE_CHECK: validate post-transition checkpoint
+  CLOSE_CHECK --> [*]: success permits the next declared step
+  CLOSE_CHECK --> CLOSE_CHECK: warning or refusal requires diagnosis
+
+  note right of CLOSE_CHECK
+    Unique terminal ownership is accepted
+    only for cycle-close completion.
+    Closed cycles remain inactive;
+    ordinary implementation is not admitted.
+    Canonical usage evidence still gates DONE.
+    No automatic merge or promotion.
+  end note
 
   note right of CONTINUITY_GATE
     SPEC-R06:

@@ -128,6 +128,13 @@ matching artifact can be used. An invalid head refuses instead of falling back.
 SQLite's already materialized artifact heads remain supported. This is read
 resolution only, not a database migration or authority to rewrite old artifacts.
 
+Cycle closure reads canonical cycle status and usage evidence. Its final
+checkpoint can validate unique terminal ownership after the explicit close
+transition, without making that cycle active or weakening generic branch
+mapping. This context is internal to the closure path, not a public bypass.
+Checkpoint warnings/refusals propagate through the wrappers. No canonical
+write, historical rewrite or new shared surface is introduced by this check.
+
 - align `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md` with the new ports
 - map the port methods to adapter implementations and runtime use cases
 - keep `ADR-0007` and the shared-surface gate synchronized with any port change

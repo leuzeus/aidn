@@ -26,6 +26,21 @@ and canonical runtime projection; fixtures alone are not PostgreSQL proof.
 
 ## Purpose
 
+Cycle closure runs `verify-cycle-close-admission-fixtures.mjs` and
+`verify-cycle-close-completion-fixtures.mjs` in the context-resilience gate.
+They distinguish specific admission from final checkpoint success, exercise
+`DONE`, `NO_GO` and `DROPPED` after clearing active focus in files/dual/db-only,
+and retain ordinary mapping refusal. Missing/ambiguous ownership, incomplete
+canonical usage evidence, nested refusal and warning have negative cases.
+The dedicated PostgreSQL smoke separately checks closure against canonical
+rows, unchanged data and unrelated scope preservation. None of these is native
+client trust or execution evidence.
+
+Global-store fixtures simulate Windows path redirection for both absent and
+existing homes and assert zero writes. A real Windows console must additionally
+resolve the same installation, generation and managed assets as the app before
+native qualification; fixtures do not establish that host visibility.
+
 Branch-audit regressions use `perf:verify-branch-cycle-audit-admission`: complete
 cycle success, propagated warning/refusal, ownership failures, whitespace-valid
 event JSON, old and other-branch events, mixed anomaly reasons, and unchanged
