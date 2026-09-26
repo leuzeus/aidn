@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readEventSignalStats } from "../../src/application/runtime/gating-observation-service.mjs";
 import { resolveWorkflowSnapshotBackend } from "../../src/application/runtime/runtime-snapshot-service.mjs";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
-import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture, prepareWorkflowDocumentsFixture } from "./test-activation-fixture-lib.mjs";
 import { inspectImmediateProcessExitArguments } from "../verify/spawn-sync-evidence-lib.mjs";
 
 const CASES = [
@@ -223,6 +223,71 @@ function runCase(tmpRoot, testCase, onTargetCreated) {
   };
 }
 
+function verifyDriftCompletion(tmpRoot, onCreated) {
+  const source = path.resolve('tests/fixtures/perf-current-state/active');
+  const root = copyFixtureToTmp(source, tmpRoot, 'tmp-drift-completion', {
+    onDestinationCreated: onCreated,
+    filter: file => isActivationFixtureSource(source, file, { freshContext: true }),
+  });
+  initGitRepo(root, { workingBranch: 'feature/C101-alpha' });
+  prepareActivationFixture(root);
+  prepareWorkflowDocumentsFixture(root);
+  fs.appendFileSync(path.join(root, '.git/info/exclude'), '\n/.aidn/runtime/\n');
+  execFileSync('git', ['-C', root, 'add', '.'], { stdio: 'pipe' });
+  execFileSync('git', ['-C', root, 'commit', '--amend', '--no-edit'], { stdio: 'pipe' });
+  const run = (script, args = []) => runJson(script, ['--target', root, '--mode', 'COMMITTING', ...args, '--json']);
+  const audit = () => run('tools/perf/branch-cycle-audit-hook.mjs', ['--no-emit-event']);
+  const file = path.join(root, '.aidn/runtime/perf/workflow-events.ndjson');
+  const events = () => fs.readFileSync(file, 'utf8').trim().split('\n').map(JSON.parse);
+  assert.deepEqual(audit().levels.level2.active_signals, ['time_since_last_drift_check']);
+  run('tools/perf/gating-evaluate.mjs');
+  assert.equal(readEventSignalStats(file, { branch: 'feature/C101-alpha' }).latestDriftMs, null);
+  const beforePreview = fs.readFileSync(file);
+  assert.equal(run('tools/perf/gating-evaluate.mjs', ['--complete-drift-check', '--no-emit-event']).result, 'warn');
+  assert.deepEqual(fs.readFileSync(file), beforePreview);
+  const overridden = spawnSync(process.execPath, [path.resolve('tools/perf/gating-evaluate.mjs'),
+    '--target', root, '--complete-drift-check', '--reload-decision', 'incremental', '--json'], { encoding: 'utf8', windowsHide: true });
+  assert.equal(overridden.status, 1);
+  assert.match(overridden.stderr, /observed reload evidence/);
+  assert.deepEqual(fs.readFileSync(file), beforePreview);
+  const checked = run('tools/codex/run-json-hook.mjs', ['--skill', 'drift-check', '--strict']);
+  assert.equal(checked.ok, true, JSON.stringify(checked));
+  assert.equal(checked.command_status, 0);
+  const completed = events().filter(event => event.event === 'drift_check_completed');
+  assert.equal(completed.length, 1);
+  assert.equal(completed[0].skill, 'drift-check');
+  assert.equal(audit().result, 'ok');
+  run('tools/perf/gating-evaluate.mjs');
+  assert.equal(events().filter(event => event.event === 'drift_check_completed').length, 1);
+  const nowMs = Date.now();
+  const recordedMs = Date.parse(completed[0].ts);
+  for (const extra of [{ branch: 'S999-other' }, { result: 'warn' }, { event: 'gating_summary' },
+    { ts: 'invalid' }, { ts: new Date(nowMs + 60000).toISOString() }, { mode: 'THINKING' }]) {
+    fs.appendFileSync(file, JSON.stringify({ ...completed[0], ts: new Date(nowMs).toISOString(), ...extra }) + '\n');
+  }
+  assert.equal(readEventSignalStats(file, { branch: 'feature/C101-alpha', nowMs }).latestDriftMs, recordedMs);
+  // Age the observed completion in this owned fixture, then exercise a real
+  // unresolved objective change. Neither failed check may refresh the proof.
+  fs.writeFileSync(file, JSON.stringify({ ...completed[0], ts: new Date(nowMs - 46 * 60000).toISOString() }) + '\n');
+  assert.equal(audit().result, 'warn');
+  const session = path.join(root, 'docs/audit/sessions/S101-alpha.md');
+  fs.appendFileSync(session, '\nsession_objective: replace the unrelated payment system\n');
+  const failed = run('tools/codex/run-json-hook.mjs', ['--skill', 'drift-check', '--strict']);
+  assert.equal(failed.ok, false);
+  assert.equal(failed.result, 'warn');
+  assert.equal(events().filter(event => event.event === 'drift_check_completed').length, 1);
+  assert.equal(events().at(-1).event, 'drift_check_evaluated');
+  const reloadCache = path.join(root, '.aidn/runtime/cache/reload-state.json');
+  fs.mkdirSync(path.dirname(reloadCache), { recursive: true });
+  fs.writeFileSync(reloadCache, '{broken');
+  fs.appendFileSync(file, Array.from({ length: 3 }, () => JSON.stringify({ ts: new Date().toISOString(),
+    skill: 'reload-check', result: 'fallback', branch: 'feature/C101-alpha', reason_code: 'CORRUPT_CACHE' })).join('\n') + '\n');
+  const stopped = run('tools/codex/run-json-hook.mjs', ['--skill', 'drift-check', '--strict']);
+  assert.equal(stopped.ok, false);
+  assert.equal(stopped.result, 'stop');
+  assert.equal(events().filter(event => event.event === 'drift_check_completed').length, 1);
+}
+
 function main() {
   const createdTargets = [];
   let args;
@@ -233,6 +298,7 @@ function main() {
     verifyObservationBoundaries(observationsRoot);
     const hookExitPolicy = verifyHookExitPolicy();
     const tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
+    verifyDriftCompletion(tmpRoot, target => createdTargets.push(target));
     const runs = CASES.map((testCase) => {
       return runCase(tmpRoot, testCase, (target) => createdTargets.push(target));
     });
@@ -247,6 +313,7 @@ function main() {
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));
     } else {
+      console.log('PASS drift completion: real skill event, subsequent admission, preview, age/branch boundaries and unresolved warning/stop');
       for (const run of runs) {
         console.log(`${run.pass ? "PASS" : "FAIL"} ${run.id}`);
       }

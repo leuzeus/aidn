@@ -43,6 +43,18 @@ Branch audit propagates its effective gating result and repair diagnostics.
 Warnings remain warnings; stops return nonzero status through the skill and
 Codex JSON wrappers, preserving the structured reason and nested evidence.
 
+The explicit `drift-check` skill routes to gating with the internal
+`--complete-drift-check` selector. While evaluating this check, only its own age
+prerequisite is discharged; all other signals remain active. Success appends
+`skill: drift-check`, `event: drift_check_completed`, `result: ok`. An unresolved
+warning or stop appends `drift_check_evaluated` and does not refresh drift age.
+The freshness reader requires COMMITTING mode, the current branch and a valid
+nonfuture timestamp. It retains the existing configured age threshold.
+Generic gate evaluations and legacy events without this completion identity do
+not qualify. `--no-emit-event` does not complete the check and leaves the journal
+unchanged; completion rejects injected reload overrides. This bookkeeping does
+not replace the skill's semantic scope review or authorize project changes.
+
 The following scripts were added under `tools/perf/`:
 
 - `collect-event.mjs` - append workflow events to NDJSON

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.10.5
+
+- Record explicit drift-check completion through the real skill route. The check
+  evaluates current evidence without requiring an earlier completion of itself;
+  other scope, objective, integrity and repair signals remain enforced.
+- Refresh drift age only from a successful completion on the current branch in
+  COMMITTING mode with a valid nonfuture timestamp. Generic evaluations, failed
+  checks, previews and old unqualified events never count as completion.
+- Replace synthetic successful drift events in coordinator fixtures with the
+  actual Codex skill path. Cover request, completion and subsequent admission,
+  preview preservation and persistent warning/refusal, including real PostgreSQL.
+
 ## 0.10.4
 
 - Resolve automatic reload and branch-audit gating against configured PostgreSQL,

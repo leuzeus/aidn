@@ -88,6 +88,12 @@ async function detectSignals(targetRoot, args, reloadResult, gitAdapter) {
     noChangeFastPath: observations.noChangeFastPath,
     repairLayerOpenCount: observations.repairLayerOpenCount,
   });
+  // The explicit drift skill is performing this check now. Only its own age
+  // prerequisite is discharged; objective, scope, integrity and repair remain.
+  // A no-event preview cannot complete or refresh the check.
+  if (args.completeDriftCheck === true && args.emitEvent === true) {
+    signal.time_since_last_drift_check = false;
+  }
 
   return deriveGatingLevels({
     reloadResult,
@@ -192,9 +198,11 @@ export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir })
       cycle_id: null,
       branch: result.branch,
       mode: result.mode,
-      skill: "gating-evaluate",
+      skill: args.completeDriftCheck === true ? "drift-check" : "gating-evaluate",
       phase: "end",
-      event: "gating_summary",
+      event: args.completeDriftCheck === true
+        ? (decision.result === "ok" ? "drift_check_completed" : "drift_check_evaluated")
+        : "gating_summary",
       duration_ms: result.duration_ms,
       files_read_count: 0,
       bytes_read: 0,

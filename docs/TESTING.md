@@ -34,6 +34,14 @@ PostgreSQL selection, misleading local projections, normal reload history and a
 real repeated-anomaly stop through the standard hook and Codex JSON wrapper.
 These subprocess tests do not qualify native hook approval or client execution.
 
+The branch-admission verifier also executes the actual `drift-check` skill via
+the Codex JSON wrapper and proves that its event clears only the age signal on
+the next audit. It covers preview, generic evaluations, wrong branch/mode,
+invalid/future/expired timestamps and persistent warning/stop. Coordinator
+success fixtures use this real producer instead of seeding successful events.
+The dedicated PostgreSQL smoke repeats the required-check-to-admission path and
+checks unchanged canonical rows and preservation of the existing journal.
+
 This repository is the package source repository.
 
 Testing here is used for several different intents:
