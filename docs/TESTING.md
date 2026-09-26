@@ -40,6 +40,8 @@ artifacts retain cross-domain signals.
 The sequence also checks that automatic selective SQLite sync retains cycle and
 session identities and the status subtype; contradictory explicit ownership is
 refused with unchanged file hashes before a write can occur.
+An incomplete canonical usage matrix with a misleading local VERIFIED copy must
+remain unchanged after wrapper refusal, and a subsequent drift check must refuse.
 Static readiness recognizes the backend-resolved snapshot reader as DB-aware;
 that source classification alone does not qualify fileless runtime behavior.
 The dedicated PostgreSQL smoke separately checks closure against canonical

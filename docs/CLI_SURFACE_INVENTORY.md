@@ -180,6 +180,9 @@ THINKING drift checks retain ordinary mapping. This does not relax reload or mar
 closed cycle active. Its specific admission, nested checkpoint and overall
 result remain distinct; warnings and refusals propagate through the Codex JSON
 wrapper. No public skip flag or alias is added for this closure context.
+The wrapper skips post-hook DB synchronization on closure warning/refusal with
+reason `cycle_close_not_completed`; it must not replace the canonical evidence
+that prevented completion with local projections.
 
 - `aidn runtime coordinator-select-agent --json`
 - `aidn runtime coordinator-next-action --json`

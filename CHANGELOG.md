@@ -10,6 +10,8 @@
 - Retain path-defined cycle/session ownership and status classification during
   selective DB-first synchronization, so SQLite closure evidence remains valid.
   Contradictory explicit identity is refused before writing.
+- Skip post-hook DB synchronization when cycle closure warns or refuses, so
+  misleading local projections cannot replace the evidence of refusal.
 - Cover the complete closure warning -> drift completion -> closure sequence in
   files, SQLite and dedicated PostgreSQL tests, with unchanged previews, retained
   history, canonical objective checks and negative admission cases.

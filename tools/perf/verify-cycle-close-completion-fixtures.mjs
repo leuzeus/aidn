@@ -97,10 +97,13 @@ try {
       sync(root);
       put(root, statusPath, status('DONE', 'VERIFIED')); // misleading projection
     }
+    const indexPath = path.join(root, '.aidn/runtime/index/workflow-index.sqlite');
+    const beforeRefusal = mode === 'files' ? null : fs.readFileSync(indexPath);
     const incomplete = close(root).result;
     assert.equal(incomplete.ok, false);
     assert.equal(incomplete.result, 'stop');
     assert.equal(incomplete.reason_code ?? incomplete.normalized?.reason_code, 'CYCLE_CLOSE_USAGE_MATRIX_INCOMPLETE');
+    if (beforeRefusal) assert.deepEqual(fs.readFileSync(indexPath), beforeRefusal, 'refusal must not synchronize misleading local evidence');
     const proofCount = completed(root);
     assert.equal(drift(root).result.ok, false);
     assert.equal(completed(root), proofCount, 'refused closure must not complete drift');
@@ -167,6 +170,12 @@ try {
     assert.equal(drift(root).result.ok, true);
     assert.equal(completed(root), proofCount + 1);
     assert.equal(close(root).result.ok, true);
+    if (mode !== 'files') {
+      const indexed = readRuntimeSnapshotSync({ indexFile: path.join(root, '.aidn/runtime/index/workflow-index.sqlite'), backend: 'sqlite' })
+        .payload.artifacts.find(artifact => artifact.path === statusPath.replace('docs/audit/', ''));
+      assert.equal(indexed.cycle_id, 'C101');
+      assert.equal(indexed.subtype, 'status', 'successful post-hook selective sync must preserve classification');
+    }
     assert.equal(run(root, 'tools/perf/reload-check.mjs').result.decision, 'stop');
     assert.equal(run(root, 'tools/perf/gating-evaluate.mjs', ['--mode', 'COMMITTING', '--no-emit-event']).result.result, 'stop');
     assert(fs.readFileSync(eventPath(root), 'utf8').startsWith(history));

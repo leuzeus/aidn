@@ -144,6 +144,9 @@ and session paths on both backends. A cycle status keeps its `status` subtype;
 an explicit identity contradicting the path is rejected before writing. This
 prevents the post-hook SQLite sync from invalidating the next canonical check.
 It does not migrate existing rows or relax canonical status validation.
+The Codex wrapper skips post-hook DB synchronization when cycle closure warns
+or refuses (`cycle_close_not_completed`), preserving the evidence of refusal
+instead of importing a misleading local projection over it.
 
 - align `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md` with the new ports
 - map the port methods to adapter implementations and runtime use cases
