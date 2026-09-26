@@ -51,6 +51,8 @@ requires PostgreSQL exclusively and fails closed if it is unavailable. It has
 no file, SQLite or in-memory authority fallback. Lot 2 only models this
 requirement; it changes neither shared schema version 2 nor the existing
 `SharedCoordinationStore` port.
+The policy's `shared_runtime: not_shared` describes this implementation;
+`authority_backend: postgres` declares the future supervision authority.
 
 ### Frozen execution contract
 
@@ -90,9 +92,11 @@ Events bind to the request's run/task/attempt and ordered sequence. Callbacks ar
 serialized and awaited; no event follows settlement of `runTask`. A callback
 failure stops further emissions and requires an executor stop request. Terminal
 outcomes are `completed`, `failed`, `cancelled`, `timed_out` or `indeterminate`.
-The request and result carry the attempt's ownership snapshot; the result also
-binds the delegation ID and the exact request SHA-256. Changing a generation,
-instruction or execution configuration cannot reuse an earlier result.
+The request and result carry the attempt's ownership snapshot. The request binds
+the complete delegation SHA-256, including its branch, worktree and scope; the
+result binds the delegation ID and the exact request SHA-256. Changing a
+generation, delegation, instruction or execution configuration cannot reuse an
+earlier result.
 Process termination is a separate observation; unconfirmed descendant termination
 requires an indeterminate outcome and reconciliation before a new attempt.
 

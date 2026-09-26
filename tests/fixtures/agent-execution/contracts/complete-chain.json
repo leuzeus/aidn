@@ -303,7 +303,8 @@
       "generation": 3,
       "planning_revision": 7,
       "lease_id": "lease.alpha.1"
-    }
+    },
+    "delegation_sha256": "d4d7de835d4653f614415c9098d2e79ae8b7292b46a8ea520e247165c0e26471"
   },
   "event": {
     "contract_version": "agent-task-event.v1",
@@ -360,7 +361,7 @@
       "lease_id": "lease.alpha.1"
     },
     "delegation_id": "delegation.alpha.1",
-    "request_sha256": "96263ae95f8b4fab0f02d917465842a8bc0e8689d2a1d8e0c2ce908dda1d768e"
+    "request_sha256": "5e4594363a49d9ecc230c0e2af714067ad835b0371de91a2498767610a576e4d"
   },
   "acceptance": {
     "contract_version": "agent-task-acceptance.v1",
@@ -370,7 +371,7 @@
     "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
     "task_contract_sha256": "cc87a1c578c294b47462b88990038784665b2fb637e012af9ca674f81be493f6",
     "input_sha": "1111111111111111111111111111111111111111",
-    "result_sha256": "d9a492aefe095916974ae9e1a42d95130d3dc50d8e21a2cf98ad5297f1bdcada",
+    "result_sha256": "13a6fc1fe46b02c71f4946fe74972939fe885eb60d3e7012397bcb9b97bbba5e",
     "candidate_sha": "2222222222222222222222222222222222222222",
     "decision": "accepted",
     "validation": {
@@ -403,7 +404,8 @@
     "canonical_plan_json": "{\"audit\":{\"criteria\":[\"Only delegated files changed.\"],\"read_only\":true},\"authority_backend\":\"postgres\",\"base\":{\"branch\":\"dev\",\"sha\":\"1111111111111111111111111111111111111111\"},\"canonical\":{\"activation\":{\"authority_id\":\"authority.fixture\",\"revision\":2},\"cycle_id\":\"C001\",\"plan_ref\":\".aidn/planning/session-plan.md\",\"plan_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"planning_revision\":7,\"project_id\":\"project.fixture\",\"runtime_scope_id\":\"scope.fixture\",\"scope\":[{\"operations\":[\"update\"],\"path\":\"src/alpha.mjs\"},{\"operations\":[\"add\"],\"path\":\"src/dossier été/bêta.mjs\"},{\"operations\":[\"add\"],\"path\":\"tests/join.test.mjs\"}],\"session_id\":\"S001\",\"task_selector\":\"Implement both modules and their integration test\",\"workspace_id\":\"workspace.fixture\"},\"contract_version\":\"agent-execution-plan.v1\",\"execution\":{\"effort\":\"ultra\",\"engine\":{\"sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"version\":\"0.10.14\"},\"executor_id\":\"codex-cli-task\",\"model\":\"fixture-explicit-model\",\"sandbox\":\"workspace-write\"},\"limits\":{\"concurrency\":1,\"max_duration_ms\":240000},\"plan_id\":\"plan.fixture\",\"tasks\":[{\"acceptance_criteria\":[\"The module returns the specified value.\"],\"depends_on\":[],\"max_duration_ms\":60000,\"objective\":\"Update the first independent module.\",\"scope\":[{\"operations\":[\"update\"],\"path\":\"src/alpha.mjs\"}],\"task_id\":\"alpha\"},{\"acceptance_criteria\":[\"The module can be imported using its accented path.\"],\"depends_on\":[],\"max_duration_ms\":60000,\"objective\":\"Add the second independent module.\",\"scope\":[{\"operations\":[\"add\"],\"path\":\"src/dossier été/bêta.mjs\"}],\"task_id\":\"beta\"},{\"acceptance_criteria\":[\"The test consumes both predecessors.\"],\"depends_on\":[\"alpha\",\"beta\"],\"max_duration_ms\":90000,\"objective\":\"Verify both accepted modules together.\",\"scope\":[{\"operations\":[\"add\"],\"path\":\"tests/join.test.mjs\"}],\"task_id\":\"join\"}],\"validations\":[{\"argv\":[\"node\",\"--test\",\"tests/join.test.mjs\"],\"validation_id\":\"unit\"}]}",
     "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
     "task_contract_sha256": "cc87a1c578c294b47462b88990038784665b2fb637e012af9ca674f81be493f6",
-    "result_sha256": "d9a492aefe095916974ae9e1a42d95130d3dc50d8e21a2cf98ad5297f1bdcada",
-    "request_sha256": "96263ae95f8b4fab0f02d917465842a8bc0e8689d2a1d8e0c2ce908dda1d768e"
+    "result_sha256": "13a6fc1fe46b02c71f4946fe74972939fe885eb60d3e7012397bcb9b97bbba5e",
+    "request_sha256": "5e4594363a49d9ecc230c0e2af714067ad835b0371de91a2498767610a576e4d",
+    "delegation_sha256": "d4d7de835d4653f614415c9098d2e79ae8b7292b46a8ea520e247165c0e26471"
   }
 }

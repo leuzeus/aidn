@@ -76,6 +76,9 @@ function main() {
       if (policy?.coverage_kind !== "model_only" || policy?.authority_backend !== "postgres") {
         matrixIssues.push(`${concept}: ${mode} must expose model-only PostgreSQL authority`);
       }
+      if (policy?.shared_runtime !== "not_shared") {
+        matrixIssues.push(`${concept}: ${mode} model-only contract must not expose an implemented shared surface`);
+      }
       if (policy?.postgresql !== "optional" || policy?.shared_sync !== "opt-in") {
         matrixIssues.push(`${concept}: existing optional PostgreSQL and explicit synchronization must remain intact`);
       }

@@ -309,7 +309,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     files: "model only; future PostgreSQL supervision authority; no operational store available",
     dual: "model only; future PostgreSQL supervision authority; no operational store available",
     dbOnly: "model only; future PostgreSQL supervision authority; no operational store available",
-    sharedRuntime: "future opt-in PostgreSQL supervision metadata under ADR-0014; not exposed by current shared coordination ports",
+    sharedRuntime: "not_shared",
     coverageKind: "model_only",
     authorityBackend: "postgres",
     notes: "Internal contracts only: supervised execution is unavailable. PostgreSQL remains optional for existing workflows and is required exclusively by the future supervised path. No files, SQLite or in-memory authority fallback; no observed instances, implicit writes or automatic purge.",

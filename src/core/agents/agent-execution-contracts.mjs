@@ -305,6 +305,7 @@ export function validateAgentExecutionBindings(bundle) {
     && attempt.ownership.planning_revision === plan.canonical.planning_revision, "OWNERSHIP_BINDING_MISMATCH", "$.delegation.ownership");
   mismatch(equal(delegation.scope, task.scope), "DELEGATION_SCOPE_MISMATCH", "$.delegation.scope");
   mismatch(request.delegation_id === delegation.delegation_id, "DELEGATION_BINDING_MISMATCH", "$.request.delegation_id");
+  mismatch(request.delegation_sha256 === fingerprintAgentExecutionValue(delegation), "DELEGATION_BINDING_MISMATCH", "$.request.delegation_sha256");
   mismatch(equal(request.execution, plan.execution) && request.limits.max_duration_ms === task.max_duration_ms, "EXECUTION_CONFIG_MISMATCH", "$.request.execution");
   if (!plannedTask.depends_on.length) mismatch(attempt.input_sha === plan.base.sha, "INPUT_SHA_MISMATCH", "$.attempt.input_sha");
   if (result) {

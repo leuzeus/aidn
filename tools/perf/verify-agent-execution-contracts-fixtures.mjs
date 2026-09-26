@@ -88,6 +88,7 @@ await check("fixed canonical JSON and SHA-256 vectors", () => {
   assert.equal(createHash("sha256").update(fixture.expected.canonical_plan_json, "utf8").digest("hex"), fixture.expected.plan_sha256);
   assert.equal(fingerprintAgentExecutionPlan(fixture.plan), fixture.expected.plan_sha256);
   assert.equal(fingerprintTaskContract(fixture.plan.tasks[0]), fixture.expected.task_contract_sha256);
+  assert.equal(fingerprintAgentExecutionValue(fixture.delegation), fixture.expected.delegation_sha256);
   assert.equal(fingerprintAgentExecutionValue(fixture.request), fixture.expected.request_sha256);
   assert.equal(fingerprintAgentExecutionValue(fixture.result), fixture.expected.result_sha256);
 });
@@ -242,6 +243,8 @@ for (const [name, mutate, code] of [
   ["canonical context changed", (v) => { v.run.canonical.planning_revision += 1; }, "RUN_CONTEXT_MISMATCH"],
   ["run task set changed", (v) => { v.run.task_ids.pop(); }, "RUN_TASKS_MISMATCH"],
   ["wrong worktree", (v) => { v.request.cwd = "C:\\fixture espace été\\other"; }, "WORKTREE_BINDING_MISMATCH"],
+  ["joint worker branch change invalidates the issued delegation", (v) => { v.attempt.worktree.branch = "codex/other-worker"; v.delegation.worktree.branch = "codex/other-worker"; }, "DELEGATION_BINDING_MISMATCH"],
+  ["joint worktree identity change invalidates the issued delegation", (v) => { v.attempt.worktree.worktree_id = "worktree.other"; v.delegation.worktree.worktree_id = "worktree.other"; }, "DELEGATION_BINDING_MISMATCH"],
   ["copied activation", (v) => { v.delegation.activation.authority_id = "authority.other"; }, "ACTIVATION_BINDING_MISMATCH"],
   ["old generation", (v) => { v.delegation.ownership.generation -= 1; }, "OWNERSHIP_BINDING_MISMATCH"],
   ["new ownership cannot admit an earlier result", (v) => { v.attempt.ownership.generation += 1; v.delegation.ownership.generation += 1; }, "OWNERSHIP_BINDING_MISMATCH"],
