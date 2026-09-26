@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.13
+
+- Resolve start-session admission through the shared canonical continuity reader
+  instead of stale Markdown in db-only or configured PostgreSQL projects.
+  Preserve lifecycle closure, PR/post-merge metadata and multi-cycle lists from
+  canonical artifacts, alongside relational rows. Validate runtime-head and
+  artifact identity; unavailable or ambiguous authority refuses without import.
+- Prevent automatic DB import after the start-session diagnostic. Checkpoints
+  also preserve an existing canonical SQLite store in dual/db-only, matching
+  the PostgreSQL boundary. Explicit synchronization remains a separate action.
+- Cover misleading projections, closure and delivery states, identity refusals,
+  CLI/wrapper behavior and SQLite preservation. Align skill instructions and
+  operational guidance; no database migration or historical rewrite is required.
+
 ## 0.10.12
 
 - Select the durable PostgreSQL runtime scope for targeted artifact commands
