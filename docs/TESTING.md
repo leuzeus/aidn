@@ -26,6 +26,17 @@ and canonical runtime projection; fixtures alone are not PostgreSQL proof.
 
 ## Purpose
 
+PR orchestration runs `verify-pr-orchestrate-admission-fixtures.mjs` in the
+context-resilience gate: files-mode cases and
+SQLite dual/db-only lifecycle transitions through close gate, push, review,
+merge, and post-merge sync. CLI, in-process daemon and Codex wrapper must agree
+despite misleading local projections. Canonical identity conflicts, duplicate
+session artifacts and unavailable storage refuse. Default wrapper diagnosis
+must not synchronize projections or mutate the database. The dedicated
+PostgreSQL artifact-store smoke exercises the same paths, checks both owned
+scopes and retained local files, and proves cleanup separately from fixtures.
+Neither suite represents native provider/client execution.
+
 Cycle closure runs `verify-cycle-close-admission-fixtures.mjs` and
 `verify-cycle-close-completion-fixtures.mjs` in the context-resilience gate.
 They distinguish specific admission from final checkpoint success, exercise

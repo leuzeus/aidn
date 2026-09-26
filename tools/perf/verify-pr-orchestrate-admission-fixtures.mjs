@@ -2,8 +2,13 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
+import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
+import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
+import { createDaemonRunJsonHookAgentAdapter } from "../../src/application/codex/daemon-run-json-hook-agent-adapter.mjs";
 
 const CASES = [
   {
@@ -240,6 +245,7 @@ function runCase(tmpRoot, testCase) {
   initGitRepo(targetRoot, {
     workingBranch: testCase.workingBranch,
   });
+  prepareActivationFixture(targetRoot);
   if (typeof testCase.mutate === "function") {
     testCase.mutate(targetRoot);
     commitFixtureMutation(targetRoot);
@@ -292,7 +298,98 @@ function runCase(tmpRoot, testCase) {
   };
 }
 
-function main() {
+async function runCanonicalCases(tmpRoot, createdTargets) {
+  const results = [];
+  for (const mode of ["dual", "db-only"]) {
+    const targetRoot = copyFixtureToTmp(path.resolve("tests/fixtures/perf-start-session/session-multi-choice"),
+      tmpRoot, `tmp-pr-canonical-${mode}`);
+    createdTargets.push(targetRoot);
+    initGitRepo(targetRoot, { workingBranch: "S201-multi" });
+    prepareClosedSessionForPr(targetRoot);
+    prepareActivationFixture(targetRoot);
+    fs.writeFileSync(path.join(targetRoot, ".aidn/config.json"), JSON.stringify({ runtime: { stateMode: mode } }));
+    fs.appendFileSync(path.join(targetRoot, ".git/info/exclude"), "\n/.aidn/runtime/\n");
+    commitFixtureMutation(targetRoot);
+    const env = { AIDN_STATE_MODE: mode, AIDN_INDEX_STORE_MODE: "" };
+    runJson("tools/perf/index-sync.mjs", ["--target", targetRoot, "--store", "sqlite", "--json"], env);
+    const sessionPath = path.join(targetRoot, "docs/audit/sessions/S201-multi.md");
+    const visibleSession = fs.readFileSync(sessionPath, "utf8");
+    const currentPath = path.join(targetRoot, "docs/audit/CURRENT-STATE.md");
+    const visibleCurrent = fs.readFileSync(currentPath, "utf8");
+    const indexPath = path.join(targetRoot, ".aidn/runtime/index/workflow-index.sqlite");
+    const writeSession = (pr, review, sync = "not_needed", closed = true) => {
+      const content = visibleSession.replace("- pr_status: `none`", `- pr_status: \`${pr}\``)
+        .replace("- pr_review_status: `unknown`", `- pr_review_status: \`${review}\``)
+        .replace("- post_merge_sync_status: `not_needed`", `- post_merge_sync_status: \`${sync}\``)
+        .replace("- [x] Yes", closed ? "- [x] Yes" : "- [ ] Yes");
+      assert.equal(runDbFirstArtifactUseCase({ target: targetRoot, path: "sessions/S201-multi.md",
+        kind: "session", content, materialize: "false" }).materialized, false);
+    };
+    const assertAction = async expected => {
+      const before = fs.readFileSync(indexPath);
+      const direct = runJson("tools/perf/pr-orchestrate-hook.mjs",
+        ["--target", targetRoot, "--strict", "--json"], env);
+      assert.equal(direct.action, expected, `${mode}: direct action`);
+      assert.deepEqual(fs.readFileSync(indexPath), before, "direct admission mutated canonical DB");
+      const daemon = await createDaemonRunJsonHookAgentAdapter().runCommandAsync({ command: process.execPath,
+        commandArgs: [path.resolve("bin/aidn.mjs"), "perf", "skill-hook", "--skill", "pr-orchestrate",
+          "--target", targetRoot, "--strict", "--json"], envOverrides: env });
+      assert.equal(daemon.status, 0, daemon.stderr);
+      assert.equal(JSON.parse(daemon.stdout).action, expected, `${mode}: daemon action`);
+      const execution = spawnSync(process.execPath, [path.resolve("tools/codex/run-json-hook.mjs"),
+        "--skill", "pr-orchestrate", "--target", targetRoot, "--strict", "--json"],
+      { encoding: "utf8", windowsHide: true, env: { ...process.env, ...env }, timeout: 60000 });
+      assert.equal(execution.error, undefined, execution.error?.message);
+      assert(execution.stdout.trim().startsWith("{"), execution.stderr.slice(-1000));
+      const wrapped = JSON.parse(execution.stdout);
+      assert.equal(execution.status, wrapped.ok ? 0 : 1);
+      assert.equal(wrapped.action, expected, `${mode}: wrapper action`);
+      assert.equal(wrapped.db_sync.enabled, false, "diagnostic must not import projections");
+      assert.deepEqual(fs.readFileSync(indexPath), before, "wrapper changed canonical DB");
+      assert.equal(fs.readFileSync(sessionPath, "utf8"), visibleSession);
+      assert.equal(fs.readFileSync(currentPath, "utf8"), visibleCurrent);
+      return direct;
+    };
+    writeSession("none", "unknown", "not_needed", false);
+    await assertAction("blocked_session_not_closed");
+    writeSession("none", "unknown");
+    await assertAction("push_session_branch");
+    writeSession("open", "pending");
+    await assertAction("await_review");
+    writeSession("open", "resolved");
+    const reviewed = await assertAction("merge_pull_request");
+    assert.equal(reviewed.admission.mapped_session.pr_status, "open");
+    assert.equal(reviewed.admission.pr_review_status, "resolved");
+    writeSession("closed_not_merged", "resolved");
+    await assertAction("blocked_pr_closed_not_merged");
+    writeSession("merged", "approved", "required");
+    await assertAction("switch_to_source_for_post_merge_sync");
+    runGit(targetRoot, ["checkout", "dev"]);
+    // Keep the already committed misleading files on the source branch too.
+    runGit(targetRoot, ["merge", "--ff-only", "S201-multi"]);
+    await assertAction("post_merge_sync_required");
+    writeSession("merged", "approved", "done");
+    await assertAction("post_merge_sync_complete");
+    const db = new DatabaseSync(indexPath);
+    try { db.prepare("UPDATE sessions SET branch_name=? WHERE session_id=?").run("S201-wrong", "S201"); }
+    finally { db.close(); }
+    assert.equal((await assertAction("blocked_pr_context_missing")).reason_code, "PR_ORCHESTRATE_CANONICAL_RUNTIME_INVALID");
+    writeSession("open", "resolved");
+    runDbFirstArtifactUseCase({ target: targetRoot, path: "sessions/S201-duplicate.md", kind: "session",
+      content: visibleSession, materialize: "false" });
+    assert.equal((await assertAction("blocked_pr_context_missing")).reason_code, "PR_ORCHESTRATE_CANONICAL_RUNTIME_INVALID");
+    fs.renameSync(indexPath, `${indexPath}.offline`);
+    const unavailable = runJson("tools/perf/pr-orchestrate-hook.mjs", ["--target", targetRoot, "--json"], env);
+    assert.equal(unavailable.reason_code, "PR_ORCHESTRATE_CANONICAL_RUNTIME_INVALID");
+    assert.equal(unavailable.result, "stop");
+    assert.equal(fs.existsSync(indexPath), false, "unavailable read must not initialize SQLite");
+    assert.equal(execFileSync("git", ["-C", targetRoot, "status", "--porcelain"], { encoding: "utf8" }).trim(), "");
+    results.push({ id: `${mode}_canonical_lifecycle_cli_daemon_wrapper_preservation_and_refusals`, pass: true });
+  }
+  return results;
+}
+
+async function main() {
   const createdTargets = [];
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -302,6 +399,7 @@ function main() {
       createdTargets.push(run.target_root);
       return run;
     });
+    runs.push(...await runCanonicalCases(tmpRoot, createdTargets));
     const pass = runs.every((run) => run.pass === true);
     const output = {
       ts: new Date().toISOString(),
@@ -314,6 +412,7 @@ function main() {
     } else {
       for (const run of runs) {
         console.log(`${run.pass ? "PASS" : "FAIL"} ${run.id}`);
+        if (!run.pass) console.log(JSON.stringify({ checks: run.checks, sample: run.sample }));
       }
       console.log(`Result: ${pass ? "PASS" : "FAIL"}`);
     }
@@ -331,6 +430,7 @@ function main() {
       process.exit(1);
     }
   } catch (error) {
+    for (const target of createdTargets) removePathWithRetry(target);
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);

@@ -98,9 +98,9 @@ function buildPrOrchestrateSummary(result) {
   };
 }
 
-function runPrOrchestrateHook(args, targetRoot, stateMode) {
+async function runPrOrchestrateHook(args, targetRoot, stateMode) {
   const strict = args.strict === true || stateMode === "dual" || stateMode === "db-only";
-  const admission = runPrOrchestrateAdmitUseCase({
+  const admission = await runPrOrchestrateAdmitUseCase({
     targetRoot,
     mode: args.mode || "UNKNOWN",
   });
@@ -135,7 +135,7 @@ async function runSkillHookInProcess(commandArgs, envOverrides = {}) {
   }
   const targetRoot = path.resolve(process.cwd(), args.target);
   const stateMode = normalizeStateMode(envOverrides.AIDN_STATE_MODE);
-  return resultFromPayload(runPrOrchestrateHook(args, targetRoot, stateMode), 0);
+  return resultFromPayload(await runPrOrchestrateHook(args, targetRoot, stateMode), 0);
 }
 
 export function createDaemonRunJsonHookAgentAdapter() {

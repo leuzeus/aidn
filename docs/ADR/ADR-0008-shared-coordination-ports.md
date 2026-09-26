@@ -148,6 +148,16 @@ The Codex wrapper skips post-hook DB synchronization when cycle closure warns
 or refuses (`cycle_close_not_completed`), preserving the evidence of refusal
 instead of importing a misleading local projection over it.
 
+PR orchestration resolves the current-state head, session identity and session
+lifecycle artifact from one canonical snapshot in dual/db-only or configured
+PostgreSQL mode. PR/review/sync metadata and the close gate come from that stored
+artifact, not stale Markdown or synthetic defaults on a session row. Missing,
+ambiguous or contradictory canonical identity stops orchestration without a local
+fallback. Batch and daemon paths await the same reader. The diagnostic hook no
+longer imports projections automatically afterward; explicit DB synchronization
+remains a separate requested effect. No provider operation or data migration is
+performed by this admission.
+
 - align `docs/RUNTIME_SURFACE_SCOPE_MATRIX.md` with the new ports
 - map the port methods to adapter implementations and runtime use cases
 - keep `ADR-0007` and the shared-surface gate synchronized with any port change

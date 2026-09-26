@@ -184,6 +184,14 @@ The wrapper skips post-hook DB synchronization on closure warning/refusal with
 reason `cycle_close_not_completed`; it must not replace the canonical evidence
 that prevented completion with local projections.
 
+The `pr-orchestrate` hook diagnoses delivery from canonical session artifacts in
+dual/db-only and configured PostgreSQL modes, including review and post-merge
+sync. An unavailable, ambiguous or inconsistent canonical session produces
+`PR_ORCHESTRATE_CANONICAL_RUNTIME_INVALID` instead of reading a stale local copy.
+It performs no provider action or default post-hook DB import. The Codex wrapper
+still persists its diagnostic context; an explicit `--db-sync` remains a separate
+requested effect and must not be confused with read-only admission.
+
 - `aidn runtime coordinator-select-agent --json`
 - `aidn runtime coordinator-next-action --json`
 - `aidn runtime coordinator-loop --json`

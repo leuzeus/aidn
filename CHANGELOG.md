@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.10.11
+
+- Resolve PR orchestration from the canonical current-state head and session
+  lifecycle artifact, including review and post-merge synchronization. Stale
+  projections no longer recommend opening a PR that is already recorded open.
+- Await the same canonical reader in batch and daemon execution. Missing,
+  ambiguous or inconsistent canonical session evidence stops without fallback.
+- Avoid automatic DB import after the PR diagnostic; preserve explicitly stored
+  lifecycle changes while the wrapper records its diagnostic context.
+- Cover the complete delivery sequence, negative canonical cases and data
+  preservation on SQLite fixtures and dedicated PostgreSQL scopes. Align skill
+  instructions, effect documentation and architecture intent.
+
 ## 0.10.10
 
 - Finish the terminal-cycle closure path: a requested explicit COMMITTING drift
