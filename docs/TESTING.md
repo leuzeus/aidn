@@ -470,6 +470,18 @@ Use them when a change affects:
 - handoff digests
 - repair triage or repair-layer context reconstruction
 
+The start-session admission suite includes
+`tools/perf/verify-start-session-canonical-fixtures.mjs`: injected PostgreSQL
+snapshots and real temporary SQLite stores are challenged with misleading local
+sessions/cycles. It covers closed, PR-open and pending post-merge states,
+multi-cycle lists, missing authority, invalid heads and conflicting identities.
+Strict wrapper checks verify that both the database and visible projections
+remain unchanged while diagnostic telemetry is allowed. The existing db-only
+stale-cycle case explicitly seeds its canonical database before admission.
+These are fixture results, not real PostgreSQL or native Codex qualification.
+Changes to the shared reader also require cycle-create and branch-cycle-audit
+admission checks; checkpoint changes require the checkpoint backend checks.
+
 ### 4. Documentation / Generated Output Verifications
 
 Examples:

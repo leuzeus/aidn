@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { runCycleCreateAdmitUseCase } from "../../src/application/runtime/cycle-create-admit-use-case.mjs";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
@@ -274,6 +275,7 @@ function createCanonicalRuntimePayload({ ambiguous = false } = {}) {
       },
     ],
   };
+  payload.artifacts[0].sha256 = createHash("sha256").update(payload.artifacts[0].content).digest("hex");
   if (ambiguous) {
     payload.cycles[1].state = "DONE";
     payload.cycles[1].outcome = "DONE";
@@ -299,15 +301,12 @@ function createCanonicalRuntimeReaderFactory({ available, ambiguous = false }) {
       };
     },
     async readCanonicalSnapshot() {
+      const payload = createCanonicalRuntimePayload({ ambiguous });
       return available
         ? {
             exists: true,
-            payload: createCanonicalRuntimePayload({ ambiguous }),
-            runtimeHeads: {
-              current_state: {
-                artifact_path: "CURRENT-STATE.md",
-              },
-            },
+            payload,
+            runtimeHeads: { current_state: { artifact_path: "CURRENT-STATE.md", artifact_sha256: payload.artifacts[0].sha256 } },
             warning: "",
           }
         : {

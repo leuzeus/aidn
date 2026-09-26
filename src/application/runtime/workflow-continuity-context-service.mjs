@@ -8,7 +8,9 @@ import {
   canonicalUnknown,
   normalizeScalar,
   parseSimpleMap,
+  parseSessionMetadata,
 } from "../../lib/workflow/session-context-lib.mjs";
+import { findUniqueAuditArtifact, resolveRuntimeHeadArtifact } from "./runtime-head-resolution-service.mjs";
 
 const CLOSED_CYCLE_STATES = new Set(["DONE", "CLOSED", "CANCELLED", "CANCELED", "ABANDONED", "ARCHIVED"]);
 const CLOSED_SESSION_STATES = new Set(["DONE", "CLOSED", "ENDED", "ABANDONED", "ARCHIVED"]);
@@ -47,12 +49,58 @@ function normalizeArtifactPath(value) {
 }
 
 function findCurrentStateArtifact(payload, runtimeHeads) {
-  const headPath = normalizeArtifactPath(runtimeHeads?.current_state?.artifact_path);
-  const artifacts = Array.isArray(payload?.artifacts) ? payload.artifacts : [];
-  return artifacts.find((artifact) => normalizeArtifactPath(artifact?.path) === headPath)
-    ?? artifacts.find((artifact) => normalizeArtifactPath(artifact?.path) === "CURRENT-STATE.md")
-    ?? artifacts.find((artifact) => normalizeScalar(artifact?.subtype).toLowerCase() === "current_state")
-    ?? null;
+  return resolveRuntimeHeadArtifact(runtimeHeads, "current_state", payload)
+    ?? findUniqueAuditArtifact(payload, "CURRENT-STATE.md");
+}
+
+// Relational session.state historically stores the work mode. Lifecycle, PR
+// closure and multi-cycle ownership must come from the canonical artifact when
+// it exists, never from an old visible projection or invented row defaults.
+function withCanonicalArtifactMetadata(payload) {
+  const result = { ...payload };
+  for (const [table, idField, pattern] of [
+    ["sessions", "session_id", /^sessions\/(S\d+)(?:[-_.][^/]*)?\.md$/i],
+    ["cycles", "cycle_id", /^cycles\/(C\d+)[^/]*\/status\.md$/i],
+  ]) {
+    const artifacts = new Map();
+    for (const artifact of payload.artifacts ?? []) {
+      const match = normalizeArtifactPath(artifact.path).match(pattern);
+      if (!match) continue;
+      const id = match[1].toUpperCase();
+      if (artifacts.has(id)) throw new Error("RUNTIME_CONTINUITY_ARTIFACT_AMBIGUOUS");
+      artifacts.set(id, artifact);
+    }
+    const rows = new Map();
+    for (const row of payload[table] ?? []) {
+      const id = normalizeScalar(row[idField]).toUpperCase();
+      if (rows.has(id)) throw new Error("RUNTIME_CONTINUITY_ENTITY_AMBIGUOUS");
+      rows.set(id, row);
+    }
+    for (const [id, artifact] of artifacts) {
+      const text = decodeArtifactContent(artifact);
+      if (!text.trim()) throw new Error("RUNTIME_CONTINUITY_ARTIFACT_EMPTY");
+      const map = parseSimpleMap(text);
+      const row = rows.get(id) ?? { [idField]: id };
+      const declaredId = normalizeScalar(map.get(idField)).toUpperCase();
+      const artifactId = normalizeScalar(artifact[idField]).toUpperCase();
+      const metadata = table === "sessions" ? parseSessionMetadata(text) : null;
+      const branch = metadata?.session_branch ?? map.get("branch_name");
+      if ((declaredId && declaredId !== id) || (artifactId && artifactId !== id)
+          || (row.source_artifact_path && normalizeArtifactPath(row.source_artifact_path) !== normalizeArtifactPath(artifact.path))
+          || (row.branch_name && branch && row.branch_name !== branch)) {
+        throw new Error("RUNTIME_CONTINUITY_ARTIFACT_IDENTITY_MISMATCH");
+      }
+      const lifecycle = map.get("state") || (metadata?.close_gate_satisfied === true ? "CLOSED" : row.state);
+      rows.set(id, { ...row, state: lifecycle,
+        branch_name: branch || row.branch_name,
+        ...(table === "cycles" ? { session_id: map.get("session_owner") || row.session_id } : {}),
+        source_artifact_path: artifact.path, artifact_text: text, artifact_map: map,
+        ...(metadata ? { artifact_metadata: metadata } : {}),
+      });
+    }
+    result[table] = [...rows.values()];
+  }
+  return result;
 }
 
 function findById(items, idField, value) {
@@ -160,7 +208,7 @@ function resolveMode(currentMap, activeCycle, activeSession) {
   if (WORK_MODES.has(declared)) {
     return declared;
   }
-  const sessionState = normalizeScalar(activeSession?.state).toUpperCase();
+  const sessionState = normalizeScalar(activeSession?.artifact_metadata?.mode || activeSession?.state).toUpperCase();
   if (WORK_MODES.has(sessionState)) {
     return sessionState;
   }
@@ -241,6 +289,7 @@ function buildCanonicalSessions(payload, auditRoot) {
         pr_status: "none",
         pr_review_status: "unknown",
         post_merge_sync_status: "not_needed",
+        ...session.artifact_metadata,
       },
     };
   }).sort((left, right) => left.session_id.localeCompare(right.session_id, undefined, {
@@ -253,11 +302,13 @@ function buildCanonicalCycles(payload, auditRoot) {
   const cycles = Array.isArray(payload?.cycles) ? payload.cycles : [];
   return cycles.map((cycle) => {
     const cycleId = normalizeScalar(cycle?.cycle_id).toUpperCase();
+    const artifactPath = normalizeArtifactPath(cycle.source_artifact_path || `cycles/${cycleId}-runtime/status.md`);
+    const map = cycle.artifact_map ?? new Map();
     return {
       cycle_id: cycleId,
-      cycle_dir: `${cycleId}-runtime`,
-      file_path: path.resolve(auditRoot, "cycles", `${cycleId}-runtime`, "status.md"),
-      text: "",
+      cycle_dir: artifactPath.split("/")[1],
+      file_path: path.resolve(auditRoot, artifactPath),
+      text: cycle.artifact_text ?? "",
       state: normalizeScalar(cycle?.state).toUpperCase() || "UNKNOWN",
       branch_name: normalizeScalar(cycle?.branch_name) || "none",
       session_owner: normalizeScalar(cycle?.session_id).toUpperCase() || "none",
@@ -270,6 +321,9 @@ function buildCanonicalCycles(payload, auditRoot) {
       continuity_rule: normalizeScalar(cycle?.continuity_rule) || "none",
       continuity_base_branch: normalizeScalar(cycle?.continuity_base_branch) || "none",
       continuity_latest_cycle_branch: normalizeScalar(cycle?.continuity_latest_cycle_branch) || "none",
+      ...Object.fromEntries(["branch_name", "outcome", "dor_state", "usage_matrix_scope", "usage_matrix_state",
+        "usage_matrix_summary", "usage_matrix_rationale", "continuity_rule", "continuity_base_branch",
+        "continuity_latest_cycle_branch", "session_owner"].filter(key => map.has(key)).map(key => [key, map.get(key)])),
     };
   }).sort((left, right) => left.cycle_id.localeCompare(right.cycle_id, undefined, {
     numeric: true,
@@ -327,17 +381,18 @@ export async function resolveWorkflowContinuityContext({
     };
   }
 
+  const payload = withCanonicalArtifactMetadata(snapshot.payload);
   const canonicalState = buildCanonicalCurrentState({
     visibleCurrentState,
-    payload: snapshot.payload,
+    payload,
     runtimeHeads: snapshot.runtimeHeads,
   });
   const hasActiveContext = isUsableRef(canonicalState.current_state.active_session)
     || isUsableRef(canonicalState.current_state.active_cycle);
   return {
     current_state: canonicalState.current_state,
-    sessions: buildCanonicalSessions(snapshot.payload, visibleCurrentState.audit_root),
-    cycles: buildCanonicalCycles(snapshot.payload, visibleCurrentState.audit_root),
+    sessions: buildCanonicalSessions(payload, visibleCurrentState.audit_root),
+    cycles: buildCanonicalCycles(payload, visibleCurrentState.audit_root),
     source: `runtime-canonical-${backendKind}`,
     backend_kind: backendKind,
     canonical_available: true,

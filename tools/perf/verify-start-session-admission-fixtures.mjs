@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
+import { verifyCanonicalStartSession } from "./verify-start-session-canonical-fixtures.mjs";
 import {
   createSpawnSyncEvidenceTracker,
   isSpawnSyncEvidence,
@@ -395,6 +396,10 @@ function runCase(tmpRoot, testCase, onTargetCreated) {
   if (typeof testCase.configureGit === "function") {
     testCase.configureGit(targetRoot);
   }
+  if (testCase.env?.AIDN_STATE_MODE === "db-only") {
+    // Seed the canonical store explicitly; db-only must not pass via local files.
+    runJson("tools/perf/index-sync.mjs", ["--target", targetRoot, "--store", "sqlite", "--json"], testCase.env);
+  }
 
   const hook = runJson("tools/perf/start-session-hook.mjs", [
     "--target",
@@ -559,7 +564,7 @@ function runFailureCleanupProbe(args) {
   }
 }
 
-function main() {
+async function main() {
   const oracleRegression = verifySpawnSyncOraclePolicy({
     source: fs.readFileSync(fileURLToPath(import.meta.url), "utf8"),
     label: "verify-start-session-admission-fixtures",
@@ -578,6 +583,7 @@ function main() {
       return;
     }
     args.tmpRoot = path.resolve(REPO_ROOT, args.tmpRoot);
+    if (!args.caseId && !args.injectFailureCall) runs.push(...await verifyCanonicalStartSession());
     injectedFailureCall = Number.isInteger(args.injectFailureCall) && args.injectFailureCall > 0
       ? args.injectFailureCall
       : 0;
