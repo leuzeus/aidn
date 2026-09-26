@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parseDocument } from "yaml";
+import { validateContextResiliencePolicy } from "./context-resilience-policy.mjs";
 
 const LOCKED_GATE_INSTALL_COMMAND = "npm ci --include=dev --ignore-scripts --no-audit --no-fund";
 const DEPENDENCY_BEARING_GATE_COMMANDS = new Set([
@@ -324,7 +325,7 @@ export function validateGateAndWorkflowPolicy({
   packageJson,
   workflowModels,
 }) {
-  const issues = [];
+  const issues = validateContextResiliencePolicy({ catalog, packageJson });
   const gates = Array.isArray(catalog?.gates) ? catalog.gates : [];
   const gateById = new Map();
   const gateByScript = new Map();

@@ -34,7 +34,7 @@ and canonical runtime projection; fixtures alone are not PostgreSQL proof.
 ## Purpose
 
 PR orchestration runs `verify-pr-orchestrate-admission-fixtures.mjs` in the
-context-resilience gate: files-mode cases and
+`codex-context-completion` gate: files-mode cases and
 SQLite dual/db-only lifecycle transitions through close gate, push, review,
 merge, and post-merge sync. CLI, in-process daemon and Codex wrapper must agree
 despite misleading local projections. Canonical identity conflicts, duplicate
@@ -44,8 +44,9 @@ PostgreSQL artifact-store smoke exercises the same paths, checks both owned
 scopes and retained local files, and proves cleanup separately from fixtures.
 Neither suite represents native provider/client execution.
 
-Cycle closure runs `verify-cycle-close-admission-fixtures.mjs` and
-`verify-cycle-close-completion-fixtures.mjs` in the context-resilience gate.
+Cycle closure runs `verify-cycle-close-admission-fixtures.mjs` in
+`codex-context-admission` and `verify-cycle-close-completion-fixtures.mjs` in
+`codex-context-completion`.
 They distinguish specific admission from final checkpoint success, exercise
 `DONE`, `NO_GO` and `DROPPED` after clearing active focus in files/dual/db-only,
 and retain ordinary mapping refusal. Missing/ambiguous ownership, incomplete
@@ -379,6 +380,21 @@ literal `npm run` references against the tracked tree and `package.json`; its
 negative probes prove that a missing link and a missing script are rejected.
 
 Stable family wrappers are cataloged in `package/catalogs/gates.v1.json`: `verify:contracts`, `verify:governance`, `verify:runtime`, `verify:codex`, `verify:release`, and `verify:all`. The first four select their named family. `verify:release` executes every gate whose obligation is required or optional in the announced `main` or `release` context, including topology and tracked-tree sensitivity; it is not a release-family-only shortcut. Run `verify:all` only at a clean commit boundary so the cleanliness family is meaningful. Report `SKIP` separately from `PASS`.
+
+The context-resilience checks use four required gates in the `codex` family:
+`codex-context-admission`, `codex-context-completion`,
+`codex-context-coordination`, and `codex-context-projection`. Each retains
+the runner's 15 minute timeout. The local
+`npm run perf:verify-context-resilience` command still runs the same 43
+invocations in order, but its aggregate is not selected by admission.
+The gate-catalog verifier proves exact coverage and rejects missing commands,
+changed arguments, duplicates, or weakened obligations. See
+[the context verification guide](./VERIFY_CONTEXT_RESILIENCE.md) for each group.
+
+The local-daemon fixture prepares its temporary client with the canonical
+activation helper before starting the daemon. It filters copied installation
+assets and receipts rather than reusing another client's activation. Its
+existing lifecycle assertions and cleanup still apply.
 
 Manual governance admission uses the selected branch name when pull-request
 head metadata is absent, with `dev` as its default target. The cleanliness

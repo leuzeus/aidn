@@ -287,11 +287,38 @@
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
     {
-      "id": "codex-context-resilience",
+      "id": "codex-context-admission",
       "family": "codex",
-      "script": "perf:verify-context-resilience",
+      "script": "perf:verify-context-admission",
       "job": "governance-admission/gates",
-      "surfaces": [".agents/skills", "runtime re-anchor", "handoff and coordination fixtures"],
+      "surfaces": [".agents/skills readiness", "session and cycle admission", "runtime re-anchor template"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "codex-context-completion",
+      "family": "codex",
+      "script": "perf:verify-context-completion",
+      "job": "governance-admission/gates",
+      "surfaces": ["cycle completion", "PR lifecycle admission"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "codex-context-coordination",
+      "family": "codex",
+      "script": "perf:verify-context-coordination",
+      "job": "governance-admission/gates",
+      "surfaces": ["runtime re-anchor artifacts", "agent policies", "handoff and coordination", "coordinator dispatch"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "codex-context-projection",
+      "family": "codex",
+      "script": "perf:verify-context-projection",
+      "job": "governance-admission/gates",
+      "surfaces": ["runtime projections", "agent and coordination reporting", "installed skill coverage", "installation import"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
