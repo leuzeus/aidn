@@ -372,6 +372,25 @@ try {
     await assert.rejects(driver.seedNativeQualificationPlanning({shared:double.shared,canonical:{...planningCanonical,planning_revision:0},planningKey}),{code:"QUALIFICATION_PLANNING_SEED_REVISION_INVALID"});
     assert.deepEqual(double.calls,[]);
   });
+  const intentRequest = { run_id: "run.fixture", attempt_id: "attempt.fixture",
+    ownership: { owner_id: "fixture", generation: 1 }, paths: ["first", "second"] };
+  const reorderedIntent = () => ({ attempt: { lifecycle_status: "launch_intended" }, runner: null,
+    request: { paths: ["first", "second"], ownership: { generation: 1, owner_id: "fixture" },
+      attempt_id: "attempt.fixture", run_id: "run.fixture" } });
+  await check("durable intent accepts JSONB object key reordering without changing either input", () => {
+    const durable = reorderedIntent(), before = JSON.stringify([durable, intentRequest]);
+    assert.equal(driver.assertNativeQualificationLaunchIntent(durable, intentRequest), true);
+    assert.equal(JSON.stringify([durable, intentRequest]), before);
+  });
+  for (const [name, mutate] of [
+    ["request value", v => { v.request.ownership.generation += 1; }],
+    ["array order", v => { v.request.paths.reverse(); }],
+    ["lifecycle", v => { v.attempt.lifecycle_status = "claimed"; }],
+    ["unexpected runner", v => { v.runner = { pid: 123 }; }],
+  ]) await check("durable intent rejects changed " + name, () => {
+    const durable = reorderedIntent(); mutate(durable);
+    rejects(() => driver.assertNativeQualificationLaunchIntent(durable, intentRequest), "QUALIFICATION_INTENT_NOT_DURABLE");
+  });
   await check("all pure fixture inputs are unchanged", () => assert.equal(JSON.stringify({ manifest, trust, installation, baseline, markers }), unchangedInputs));
   await check("imports and rejected requests leave no observed effect", () => assert.deepEqual(effects, []));
   process.stdout.write(JSON.stringify({ status: "PASS", checks, effects, native_codex: "NOT_RUN", postgres: "NOT_RUN", cleanup: "NO_RESOURCES_CREATED" }) + "\n");
