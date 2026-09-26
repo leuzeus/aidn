@@ -333,6 +333,14 @@ function main() {
     runJson(handoffProjectScript, ["--target", blockedTarget, "--write", "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", tamperedTarget, "--write", "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", transitionRejectedTarget, "--write", "--json"], repoRoot, 0);
+    const missingBackend = captureExpectedFailure(() => runJson(handoffProjectScript,
+      ["--target", dbOnlyFilelessTarget, "--json"], repoRoot, 0,
+      { AIDN_STATE_MODE: "db-only", AIDN_INDEX_STORE_MODE: "sqlite" }), "missing canonical handoff backend");
+    assert(missingBackend.includes("canonical runtime backend is unavailable"), "db-only handoff must refuse before canonical fixture initialization");
+    // Import canonical inputs before projecting a packet bound to db-only mode.
+    runJson(path.resolve(repoRoot, "tools", "perf", "index-sync.mjs"), [
+      "--target", dbOnlyFilelessTarget, "--store", "sqlite", "--with-content", "--json",
+    ], repoRoot, 0, { AIDN_STATE_MODE: "db-only", AIDN_INDEX_STORE_MODE: "sqlite" });
     runJson(handoffProjectScript, ["--target", dbOnlyFilelessTarget, "--write", "--json"], repoRoot, 0, {
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",
@@ -444,7 +452,7 @@ function main() {
     assert(fallback.recommendation.source === "current-state", "fallback should come from current-state");
     assert(fallback.next_action_diagnostic?.source === "current-state", "fallback should expose its source in the stable diagnostic");
     assert(fallback.scope.scope_type === "cycle", "fallback should derive cycle scope from current state");
-    assert(dbOnlyFileless.recommendation.role === "executor", "db-only fileless should still route to executor");
+    assert(dbOnlyFileless.recommendation.role === "executor", `db-only fileless should still route to executor: ${JSON.stringify(dbOnlyFileless.handoff?.issues)}`);
     assert(dbOnlyFileless.recommendation.action === "implement", "db-only fileless should still route to implement");
     assert(dbOnlyFileless.recommendation.source === "handoff-shared-planning", "db-only fileless should keep shared-planning relay");
     assert(dbOnlyFileless.scope.scope_type === "cycle", "db-only fileless should preserve cycle scope");
