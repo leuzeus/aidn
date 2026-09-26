@@ -4,6 +4,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { runCycleCreateAdmitUseCase } from "../../src/application/runtime/cycle-create-admit-use-case.mjs";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 const CASES = [
   {
@@ -449,6 +450,7 @@ function runCase(tmpRoot, testCase) {
   initGitRepo(targetRoot, {
     workingBranch: testCase.workingBranch,
   });
+  prepareActivationFixture(targetRoot);
 
   const hook = runJson("tools/perf/cycle-create-hook.mjs", [
     "--target",
