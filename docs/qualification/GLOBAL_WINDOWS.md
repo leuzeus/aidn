@@ -143,3 +143,29 @@ project and connection context and are not published with the documentation.
 No product edit, negative admission case, other tool, client or platform was
 tested by this probe. It does not close the remaining full-matrix cases or
 substitute for a principal checkout's own migration and final diagnosis.
+
+## Principal checkout startup on 0.10.11
+
+After explicit migration and installation-scoped repair, a principal checkout
+ran one bounded diagnostic turn with the published 0.10.11 engine and the same
+Windows Codex CLI `0.158.0-alpha.2` executable identified above, in standalone
+mode. The native API discovered both unchanged, human-reviewed definitions as
+enabled and trusted; discovery alone is not execution evidence.
+
+The real client emitted `hook/started` and `hook/completed` for `sessionStart`.
+It completed in 5,952 ms with canonical read-only `admitted_with_warnings`, no
+blocking reason and a clean repair layer. The turn completed without a tool
+call. This is **PASS for that startup event only**; `PreToolUse` was
+**NOT_EXERCISED** by this 0.10.11 turn.
+
+Notifications were captured directly from the client's stdout in the retained
+private report, whose SHA-256 is
+`a90ab46c26d2c1ddf85841916afc2a7c32af5b32f01c5936eeb0315d6dadb1a1`.
+The saved before/after snapshots are byte-identical, both with SHA-256
+`49c3e7aa35ec99c10c6f714bb026a87904c3db33853416f1e6b8dbbf282d4669`.
+They cover 1,639 inventoried file entries across the principal and its linked
+worktree, normalized rows from 21 PostgreSQL tables, global assets and the
+project registry. Private paths, connection context and raw data remain local.
+
+This observation does not transfer the earlier 0.10.10 note-admission result to
+0.10.11, qualify other native tools or platforms, or close the full matrix.
