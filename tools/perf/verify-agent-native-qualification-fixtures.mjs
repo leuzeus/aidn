@@ -99,6 +99,7 @@ const importPaths = new Set([
   "src/core/agents/agent-execution-contracts.mjs",
   "src/core/contracts/json-schema-validator.mjs",
   "tools/perf/agent-execution-postgres-test-lib.mjs",
+  "src/lib/fs/remove-path-with-retry.mjs",
 ].map((relative) => key(path.join(packageRoot, relative))));
 const dependencies = key(path.join(packageRoot, "node_modules")) + path.sep;
 const executionSchemas = key(path.join(packageRoot, "src/core/contracts/agent-execution")) + path.sep;

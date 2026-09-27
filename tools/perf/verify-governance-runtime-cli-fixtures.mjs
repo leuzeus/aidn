@@ -60,11 +60,17 @@ function main() {
       const concept = runtimeDiagnostics.concepts.find((item) => item.concept === conceptId);
       assert(concept?.status === "complete", `${conceptId} must have complete policy coverage`);
       assert(concept?.coverage_kind === "supervision_candidate", `${conceptId} must retain conditional supervision coverage`);
-      assert(concept?.coverage_note.includes("public supervised commands remain unavailable"), `${conceptId} must state public command unavailability`);
-      assert(concept?.cli_contract_status === "not_applicable", `${conceptId} must not invent a public CLI contract`);
+      assert(/conditional native prototype/i.test(concept?.coverage_note ?? "")
+        && /matching native qualification are required/i.test(concept.coverage_note)
+        && /No runtime instances or operational availability are inferred/i.test(concept.coverage_note), `${conceptId} must distinguish public command coverage from native qualification`);
+      assert(concept?.cli_contract === "runtime-agent-run.v1.schema.json" && concept.cli_contract_status === "covered"
+        && concept.required.includes("cli_contract"), `${conceptId} must retain its required public CLI contract`);
       assert(!runtimeDiagnostics.observed_artifacts.some((item) => item.concept === conceptId), `${conceptId} must not fabricate observed instances`);
     }
-    assert(!runtimeDiagnostics.runtime_surfaces.some((item) => item.id.startsWith("runtime-agent-run")), "persistence-only contracts must not expose agent-run commands");
+    const supervisionSurfaces = runtimeDiagnostics.runtime_surfaces.filter((item) => item.id.startsWith("runtime-agent-run"));
+    const expectedSurfaces = ["runtime-agent-run", "runtime-agent-run-status", "runtime-agent-run-resume", "runtime-agent-run-cancel", "runtime-agent-run-cleanup"];
+    assert(supervisionSurfaces.length === expectedSurfaces.length
+      && expectedSurfaces.every(id => supervisionSurfaces.filter(item => item.id === id).length === 1), "supervision candidate coverage must expose the five public lifecycle surfaces exactly once");
 
     console.log("PASS");
   } catch (error) {
