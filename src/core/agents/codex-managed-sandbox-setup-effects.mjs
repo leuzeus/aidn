@@ -152,12 +152,15 @@ export function buildManagedSandboxSetupEffectsPlan(input) {
     "same_exact_path_present_after_success", { condition: "initial_provisioning_only_not_refresh_or_read_acls_only", expected_marker: { version: 5, offline_username: "CodexSandboxOffline", online_username: "CodexSandboxOnline", proxy_ports: copy(input.operation.configuration.network.proxy_ports), allow_local_binding: input.operation.configuration.network.allow_local_binding, read_roots: [], write_roots: [] }, required_observed_fields: ["created_at"], limitations: ["PROVISIONING_BRANCH_AND_MARKER_CONTENT_NOT_OBSERVED", "REPLACEMENT_ORDER_NOT_PROVED"] });
   const wfp = report.information.requirements.find(row => row.profile_id === "wfp-filter.v1").scope.selectors;
   add("codex-wfp-filter-transaction", wfp.map(id => preimage(input, report, "wfp-filter.v1", id)),
-    "same_twelve_guids_present_after_success", { provider_key: report.information.requirements.find(row => row.profile_id === "wfp-provider.v1").scope.selectors[0],
+    "unchanged_or_same_twelve_guids_present_after_provisioning", { condition: "initial_provisioning_only_not_full_refresh",
+      provider_key: report.information.requirements.find(row => row.profile_id === "wfp-provider.v1").scope.selectors[0],
       sublayer_key: report.information.requirements.find(row => row.profile_id === "wfp-sublayer.v1").scope.selectors[0],
       limitations: ["TRANSACTION_ATOMICITY_NOT_PROVED", "FILTER_SEMANTICS_NOT_VERIFIED"] });
   const config = details.get("setup-config.v1");
   if (completeDetail(config)) add("setup-config-edit", [config.original], "windows.sandbox=elevated_and_legacy_keys_absent",
-    { condition: "only_when_semantic_edit_changes_config", atomic_temporary_identity: "NOT_REPRESENTED", detail_sha256: config.receipt.evidence_sha256, keys: CONFIG_KEYS, unrelated_sha256: config.document.dimensions.unrelated_sha256 });
+    // Pinned core/config/edit.rs insert() reports mutation even for an equal
+    // windows.sandbox value; apply() then uses NamedTempFile in the same parent.
+    { condition: "after_successful_setup_even_if_semantic_values_equal", atomic_temporary_identity: "NOT_REPRESENTED", detail_sha256: config.receipt.evidence_sha256, keys: CONFIG_KEYS, unrelated_sha256: config.document.dimensions.unrelated_sha256 });
   else gaps.push("CONFIG_PROJECTION_REQUIRED");
   const logs = details.get("sandbox-logs.v1");
   if (completeDetail(logs)) {
@@ -181,11 +184,16 @@ export function buildManagedSandboxSetupEffectsPlan(input) {
     ["firewall-user-rules.v1", LEGACY_PROXY],
     ...(input.operation.configuration.network.allow_local_binding ? LOOPBACK.map(id => ["firewall-user-rules.v1", id]) : []),
   ];
-  for (const [profile, id] of cleanup) add("exact-legacy-cleanup", [preimage(input, report, profile, id)], "exact_target_absent_after_success");
+  for (const [profile, id] of cleanup) add("exact-legacy-cleanup", [preimage(input, report, profile, id)], "exact_target_absent_or_unchanged_when_branch_not_taken",
+    { condition: id.endsWith("\\setup_error.json") ? "successful_setup" : "initial_provisioning_only" });
   const plan = { contract_version: "codex-managed-sandbox-setup-effects-plan.v1", policy_sha256: hash(POLICY),
     operation_sha256: hash(input.operation), manifest_sha256: hash(input.manifest), inventory_sha256: hash(input.inventory),
     observation_sha256: input.observation ? hash(input.observation) : null, details_sha256: input.details ? hash(input.details) : null,
     assessed_at: input.at, status: "REVIEWABLE_WITH_GAPS", ...FLAGS, base_assessment: report,
+    // Metadata existence cannot establish sandbox_setup_is_complete(), which
+    // parses both marker and credentials. Cover the union, without reading secrets.
+    branch_model: { initial_provisioning: "conditional_not_established_by_metadata", full_refresh: "required_after_initial_check",
+      config_edit: "after_successful_setup", credentials_content_observed: false },
     recipes, residual_gaps: [...new Set(gaps)].sort(), complete_effect_coverage: false };
   return frozen({ ...plan, plan_sha256: hash(plan) });
 }
@@ -223,9 +231,15 @@ export function compareManagedSandboxSetupEffects({ before, after }) {
   for (const recipe of first.recipes) {
     const targets = recipe.preimages.map(p => preimage(after, next.base_assessment, p.profile_id, p.id));
     if (targets.some(value => value === null)) { checks.push({ recipe_id: recipe.recipe_id, status: "UNKNOWN" }); continue; }
-    if (recipe.recipe_id === "exact-legacy-cleanup" && targets[0].dimensions.exists !== false) issue("CLEANUP_TARGET_PRESENT", targets[0].id);
+    if (recipe.recipe_id === "exact-legacy-cleanup" && targets[0].dimensions.exists !== false
+      && !(recipe.condition === "initial_provisioning_only" && same(targets[0].dimensions, recipe.preimages[0].dimensions)
+        && targets[0].resource_sha256 === recipe.preimages[0].resource_sha256)) issue("CLEANUP_TARGET_PRESENT", targets[0].id);
     if (recipe.recipe_id === "setup-marker-replace" && targets[0].dimensions.exists !== true) issue("MARKER_ABSENT", targets[0].id);
-    if (recipe.recipe_id === "codex-wfp-filter-transaction") for (const target of targets) {
+    // Full refresh never runs provision_sandbox/network installation. An entirely
+    // unchanged WFP set is a valid branch outcome, not proof of correct filtering.
+    const unchangedWfp = recipe.recipe_id === "codex-wfp-filter-transaction" && targets.every((target, index) =>
+      target.resource_sha256 === recipe.preimages[index].resource_sha256 && same(target.dimensions, recipe.preimages[index].dimensions));
+    if (recipe.recipe_id === "codex-wfp-filter-transaction" && !unchangedWfp) for (const target of targets) {
       if (target.dimensions.exists !== true || target.dimensions.provider_key !== recipe.provider_key
         || target.dimensions.sublayer_key !== recipe.sublayer_key || target.dimensions.persistent !== true) issue("WFP_BINDING_MISMATCH", target.id);
     }

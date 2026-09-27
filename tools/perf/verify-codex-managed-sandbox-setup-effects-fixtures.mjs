@@ -321,6 +321,25 @@ await check("marker replacement is conditional and includes only fixed v5 identi
   assert.deepEqual(recipe.expected_marker.write_roots, []); assert.equal(recipe.expected_marker.offline_username, "CodexSandboxOffline");
   assert(recipe.limitations.includes("PROVISIONING_BRANCH_AND_MARKER_CONTENT_NOT_OBSERVED"));
 });
+await check("an already equal sandbox mode still models the official atomic config write", () => {
+  const input = fullFixture(); editDetail(input, "setup-config.v1", doc => { doc.dimensions.keys[0] = { key: "windows.sandbox", present: true, value: "elevated" }; });
+  const plan = buildEffects(input), recipe = plan.recipes.find(row => row.recipe_id === "setup-config-edit");
+  assert.equal(recipe.condition, "after_successful_setup_even_if_semantic_values_equal");
+  assert.equal(recipe.atomic_temporary_identity, "NOT_REPRESENTED");
+  assert.equal(plan.branch_model.initial_provisioning, "conditional_not_established_by_metadata");
+  assert.equal(plan.branch_model.credentials_content_observed, false);
+});
+await check("a full refresh may preserve the complete WFP preimage without proving network correctness", () => {
+  const pair = successfulPair();
+  const original = pair.before.observation.evidence.find(row => row.document.profile_id === "wfp-filter.v1");
+  for (const row of original.document.rows) changeResource(pair.after, "wfp-filter.v1", row.id, clone(row.dimensions));
+  bindDetails(pair.after);
+  const result = compareEffects(pair);
+  assert.deepEqual(result.violations, []); assert.equal(result.status, "INCOMPLETE");
+  assert(result.residual_gaps.includes("WFP_FILTER_SEMANTICS_NOT_VERIFIED"));
+  assert.equal(buildEffects(pair.before).recipes.find(row => row.recipe_id === "codex-wfp-filter-transaction").condition,
+    "initial_provisioning_only_not_full_refresh");
+});
 await check("ninety matching logs prune one oldest preimage before opening, including non-daily filenames", () => {
   const input = fullFixture(), rows = Array.from({ length: 90 }, (_, i) => logEntry(input, `sandbox-${i.toString(16).padStart(16, "0")}.log`, i + 1));
   editDetail(input, "sandbox-logs.v1", doc => { doc.dimensions.entries = [...rows].reverse(); });

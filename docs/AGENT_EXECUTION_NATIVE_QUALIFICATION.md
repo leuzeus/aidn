@@ -697,6 +697,14 @@ not prove the termination of that helper or the stabilization of its effects.
 Legacy cleanup and WFP replacement also require phase-specific treatment; the
 preparatory create/update manifest grants no general deletion authority.
 
+The pinned Full refresh skips initial provisioning, so unchanged account or WFP
+state cannot demonstrate that networking was repaired. The structural effect
+model represents both possible provisioning branches until execution evidence
+resolves them. It also represents an atomic `config.toml` replacement when the
+sandbox mode is already `elevated`: the official setter can still report a
+mutation for an equal value. These recipes remain incomplete and non-authorizing;
+unchanged WFP state is not a proof of correct filter semantics.
+
 A future managed operation must observe the effects of every launch, including
 setup refresh, and accept only the declared resource changes. Unexpected,
 unobserved or indeterminate effects stop subsequent launches and preserve the
