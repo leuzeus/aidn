@@ -252,6 +252,10 @@ The Codex executor uses resolved executable bytes, structured arguments, explici
 sandbox/configuration and stdin prompt. It stores bounded transcripts locally,
 awaits serialized callbacks, and never forwards raw Codex JSONL to AIDN stdout.
 
+Bounded nonterminal startup diagnostics do not count as a started turn, task
+completion or acceptance. Malformed sequencing still stops execution, retaining
+the first protocol failure for diagnosis.
+
 The supervisor owns retention for runs, tasks, attempts and acceptance evidence.
 Transcripts and bulky outputs remain local. Shared results carry only bounded
 references, byte counts and content hashes; credentials are never contract data.

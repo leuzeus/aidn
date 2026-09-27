@@ -158,6 +158,13 @@ condition is still checked. Configuration warnings are not successful validation
 Isolated profiles retain strict parsing. This choice follows the explicit bound
 mode; a failed launch never retries with relaxed arguments.
 
+Codex may emit a nonterminal `item.completed` error diagnostic after
+`thread.started` but before `turn.started`, including for ignored historical
+settings. The bounded JSONL reader accepts only the well-formed diagnostic in
+that position. It neither starts a turn nor completes the task. Other work
+items before a turn remain invalid, and the first protocol or callback failure
+is retained instead of being replaced by a later incomplete-stream error.
+
 The preexisting mode requires separately recorded consent for native profile
 effects and new human review of the disposable roots through /hooks. Native log,
 cache and authentication-refresh activity is distinct from project mutation;

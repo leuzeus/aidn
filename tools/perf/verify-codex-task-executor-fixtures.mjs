@@ -214,6 +214,82 @@ try {
   ]) await check(name, async () => {
     const parser = createCodexJsonlProtocol(); await assert.rejects(async () => { await parser.push(content); parser.finish(); });
   });
+  const encode = events => Buffer.from(events.map(event => JSON.stringify(event)).join("\n") + "\n");
+  const startupDiagnostic = { type: "item.completed", item: { id: "item_0", type: "error",
+    message: "Codex is ignoring 3 unrecognized configuration settings. Synthetic diagnostic été." } };
+  const startupEvents = [lines[0], startupDiagnostic, ...lines.slice(1)];
+  await check("completed startup diagnostic after thread can precede a successful turn", async () => {
+    const parser = createCodexJsonlProtocol(), observed = [], stream = encode(startupEvents);
+    // Splitting every UTF-8 byte also proves the diagnostic uses normal bounded
+    // JSONL framing and awaits its callback before the following turn event.
+    for (const byte of stream) await parser.push(Buffer.from([byte]), async type => {
+      await Promise.resolve(); observed.push(type);
+    });
+    assert.deepEqual(observed, startupEvents.map(event => event.type));
+    assert.deepEqual(parser.finish(), { terminal: "completed", records: startupEvents.length });
+  });
+  await check("executor retains admission and completes after the nonterminal startup diagnostic", async () => {
+    const { executor, request, calls } = setup({ output: encode(startupEvents) });
+    const result = await executor.runTask(request);
+    assert.equal(result.outcome, "completed");
+    assert(calls.includes("admission:before_create") && calls.includes("admission:before_resume"));
+  });
+  for (const [name, change, prefix = [lines[0]]] of [
+    ["before thread", value => value, []],
+    ["started diagnostic", value => { value.type = "item.started"; }],
+    ["updated diagnostic", value => { value.type = "item.updated"; }],
+    ["work item before turn", value => { value.item = { id: "item_0", type: "command_execution", command: "synthetic", status: "completed" }; }],
+    ["missing item ID", value => { delete value.item.id; }],
+    ["empty item ID", value => { value.item.id = ""; }],
+    ["unbounded item ID", value => { value.item.id = "x".repeat(129); }],
+    ["control character in ID", value => { value.item.id = "item\n0"; }],
+    ["missing message", value => { delete value.item.message; }],
+    ["non-string message", value => { value.item.message = {}; }],
+    ["blank message", value => { value.item.message = "  "; }],
+    ["extra operation", value => { value.item.command = "synthetic"; }],
+    ["extra envelope", value => { value.error = { message: "synthetic fatal" }; }],
+  ]) await check("startup diagnostic rejects " + name, async () => {
+    const parser = createCodexJsonlProtocol(), value = structuredClone(startupDiagnostic), observed = [];
+    change(value);
+    await assert.rejects(parser.push(encode([...prefix, value, ...lines.slice(1)]), type => observed.push(type)), /CODEX_ITEM_INVALID/);
+    assert.deepEqual(observed, prefix.map(event => event.type));
+    assert.throws(() => parser.finish(), /CODEX_ITEM_INVALID/);
+  });
+  await check("startup diagnostic alone neither starts a turn nor proves completion", async () => {
+    const parser = createCodexJsonlProtocol(); await parser.push(encode([lines[0], startupDiagnostic]));
+    assert.throws(() => parser.finish(), /CODEX_PROTOCOL_INCOMPLETE/);
+    const malformed = createCodexJsonlProtocol();
+    await assert.rejects(malformed.push(encode([lines[0], startupDiagnostic, lines.at(-1)])), /CODEX_TURN_INVALID/);
+  });
+  for (const fatal of [{ type: "error", message: "Synthetic authentication failure" },
+    { type: "turn.failed", error: { message: "Synthetic failure" } }])
+    await check("startup diagnostic does not suppress fatal " + fatal.type, async () => {
+      const parser = createCodexJsonlProtocol(); await parser.push(encode([lines[0], startupDiagnostic, fatal]));
+      assert.equal(parser.finish().terminal, "failed");
+      const { executor, request } = setup({ output: encode([lines[0], startupDiagnostic, fatal]) });
+      const result = await executor.runTask(request); assert.equal(result.outcome, "failed"); assert.equal(result.reason_code, "CODEX_REPORTED_FAILURE");
+    });
+  await check("first parse error survives finish and stops later emissions", async () => {
+    const parser = createCodexJsonlProtocol(), observed = [];
+    const error = await parser.push(Buffer.concat([encode([lines[0]]), Buffer.from("invalid\n"), bytes]), type => observed.push(type)).catch(error => error);
+    assert.equal(error.message, "CODEX_JSONL_INVALID"); assert.deepEqual(observed, ["thread.started"]);
+    assert.throws(() => parser.finish(), caught => caught === error);
+    await assert.rejects(parser.push(bytes, type => observed.push(type)), caught => caught === error);
+    assert.deepEqual(observed, ["thread.started"]);
+  });
+  await check("first callback error survives finish and prevents same-chunk and later emissions", async () => {
+    const parser = createCodexJsonlProtocol(), observed = [], failure = new Error("synthetic callback failure");
+    await assert.rejects(parser.push(encode(startupEvents), async type => {
+      observed.push(type); if (type === "item.completed") throw failure;
+    }), error => error === failure);
+    assert.throws(() => parser.finish(), error => error === failure);
+    await assert.rejects(parser.push(bytes, type => observed.push(type)), error => error === failure);
+    assert.deepEqual(observed, ["thread.started", "item.completed"]);
+  });
+  await check("executor reports the initial parser error instead of a misleading truncated line", async () => {
+    const { executor, request } = setup({ output: Buffer.concat([encode([lines[0]]), Buffer.from("invalid\n")]) });
+    const result = await executor.runTask(request); assert.equal(result.outcome, "failed"); assert.equal(result.reason_code, "CODEX_JSONL_INVALID");
+  });
   await check("line memory is bounded", async () => {
     const parser = createCodexJsonlProtocol({ maxLineBytes: 32 }); await parser.push(Buffer.alloc(20, 32));
     await assert.rejects(parser.push(Buffer.alloc(20, 32)), /LINE_LIMIT/);

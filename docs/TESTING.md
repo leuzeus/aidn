@@ -263,6 +263,9 @@ For the candidate Codex task executor and delegated admission, run
 `npm run perf:verify-agent-worker-fixtures`. The required runtime gate tests
 bounded JSONL, explicit configuration, serialized callbacks, termination outcomes,
 exact delegated scopes and authenticated local transport with supervisor doubles.
+Protocol fixtures also replay a nonterminal startup error item before a turn,
+reject malformed or premature work items, and preserve the first stream or
+callback error without emitting further records.
 It also checks explicit preexisting-profile policy bindings, configuration
 neutralization and fresh verification challenges using synthetic inputs. Native
 metadata observations, human trust and actual worker execution remain separate
