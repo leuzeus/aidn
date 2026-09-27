@@ -634,6 +634,10 @@ The parent must pin and contain this producer and bind its request, PID, creatio
 time, output digest and stopped Job. A syntactically valid observation or supplied
 context hash alone supplies no authenticated authority. This producer does not
 collect ACL/network effects and does not launch setup or qualify a native executor.
+Reparse refusals can include a closed diagnostic: observation pass, path role,
+native observation phase, SHA-256 of the exact rejected path and refusal variant.
+No raw path or native exception text is emitted; the diagnostic does not change
+which paths are admitted.
 
 The portable transport/bridge and parent fixtures use doubles and perform no
 setup. The separate Windows preflight campaign has 89 checks with mocked token,

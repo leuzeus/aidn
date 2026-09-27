@@ -426,7 +426,9 @@ either precondition is missing. It is separate from the fourteen-script portable
 lifecycle gate, just like the Windows inventory and preflight campaigns; Linux
 admission does not execute or qualify its native calls. An actual principal-profile
 observation remains separate from fixtures and requires a pinned controlled
-process and retained termination proof. Neither suite runs Codex setup.
+process and retained termination proof. Reparse diagnostics have separate fixture
+coverage for unchanged refusal codes, closed fields and exact path hashing without
+raw paths or exception messages. Neither suite runs Codex setup.
 
 For the injected supervisor candidate, run
 `npm run perf:verify-agent-execution-scheduler-fixtures` and

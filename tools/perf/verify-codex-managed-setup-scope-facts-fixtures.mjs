@@ -47,6 +47,7 @@ $assignment=$ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automat
 $nativeSource=$assignment.Right.Find({param($node) $node -is [Management.Automation.Language.StringConstantExpressionAst]},$true).Value
 $script:Utf8=[Text.UTF8Encoding]::new($false,$true)
 $script:BudgetMs=60000; $script:Clock=[Diagnostics.Stopwatch]::StartNew(); $script:ScopeRequestParameterSetName='Base64'
+$script:ScopePass=0; $script:ScopeRole=$null
 $script:checks=[Collections.Generic.List[object]]::new(); $script:measurements=@{}
 function Check([string]$Name,[scriptblock]$Body) {
     try { & $Body; $script:checks.Add(@{name=$Name;status='PASS'}) }
@@ -105,7 +106,41 @@ Check 'native junction identity is distinct from its target' {
     Equal $link.Reparse $true; Equal $link.ReparseTag ([uint32]2684354563); Equal $link.Target ($scratch+'\target')
     if($link.FileId -ceq $target.FileId) { throw 'JUNCTION_ID_IS_TARGET_ID' }; Equal $link.LinkCount $null
 }
-Check 'native junction ancestor is never followed' { [AidnScopeNative]::BeginPass(); Reject { [AidnScopeNative]::Read(($scratch+'\junction\missing'),$false,$false) } 'SCOPE_REPARSE_UNSUPPORTED' }
+Check 'native forbidden junction target keeps its refusal and emits only exact diagnostic fields' {
+    [AidnScopeNative]::BeginPass(); $script:ScopePass=1; $script:ScopeRole='required_root'
+    $cause=$null
+    try { $null=[AidnScopeNative]::Read(($scratch+'\junction'),$false,$false) } catch { $cause=$_.Exception.GetBaseException() }
+    if($null -eq $cause) { throw 'EXPECTED_REFUSAL' }; Equal $cause.Message 'SCOPE_REPARSE_UNSUPPORTED'
+    $d=Convert-ScopeReparseDiagnostic $cause
+    Equal $d.pass 1; Equal $d.role 'required_root'; Equal $d.native_phase 'target'; Equal $d.reparse_variant 'reparse_not_allowed'
+    $expected=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($script:Utf8.GetBytes($scratch+'\junction'))).ToLowerInvariant()
+    Equal $d.path_sha256 $expected; Equal $d.Count 5
+    if((ConvertTo-Json -InputObject $d -Compress).Contains($scratch)) { throw 'DIAGNOSTIC_PATH_EXPOSED' }
+}
+Check 'native junction ancestor is never followed and reports the ancestor hash' {
+    [AidnScopeNative]::BeginPass(); $script:ScopePass=2; $script:ScopeRole='runtime_entry'
+    $cause=$null
+    try { $null=[AidnScopeNative]::Read(($scratch+'\junction\missing'),$false,$false) } catch { $cause=$_.Exception.GetBaseException() }
+    if($null -eq $cause) { throw 'EXPECTED_REFUSAL' }; Equal $cause.Message 'SCOPE_REPARSE_UNSUPPORTED'
+    $d=Convert-ScopeReparseDiagnostic $cause
+    Equal $d.pass 2; Equal $d.role 'runtime_entry'; Equal $d.native_phase 'ancestor_before'; Equal $d.reparse_variant 'reparse_not_allowed'
+    Equal $d.path_sha256 ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($script:Utf8.GetBytes($scratch+'\junction'))).ToLowerInvariant())
+}
+Check 'diagnostic projection rejects unknown metadata and omits unrelated native data' {
+    $script:ScopePass=1; $script:ScopeRole='profile_child'
+    $cause=[InvalidOperationException]::new('SCOPE_REPARSE_UNSUPPORTED')
+    $cause.Data['native_phase']='target'; $cause.Data['reparse_variant']='tag_not_mount_point'; $cause.Data['path_sha256']='a'*64
+    $cause.Data['private_path']='C:\private'; $cause.Data['private_content']='must-not-escape'
+    $d=Convert-ScopeReparseDiagnostic $cause; Equal $d.Count 5
+    $json=ConvertTo-Json -InputObject $d -Compress
+    if($json.Contains('private') -or $json.Contains('must-not-escape')) { throw 'DIAGNOSTIC_PRIVATE_DATA_EXPOSED' }
+    foreach($field in @('native_phase','reparse_variant','path_sha256')) {
+        $previous=$cause.Data[$field]; $cause.Data[$field]='unrecognized'; Equal (Convert-ScopeReparseDiagnostic $cause) $null; $cause.Data[$field]=$previous
+    }
+    $script:ScopePass=0; Equal (Convert-ScopeReparseDiagnostic $cause) $null
+    $script:ScopePass=1; $script:ScopeRole='unrecognized'; Equal (Convert-ScopeReparseDiagnostic $cause) $null
+    $script:ScopeRole='profile_child'; Equal (Convert-ScopeReparseDiagnostic ([InvalidOperationException]::new('C:\private'))) $null
+}
 Check 'native two-pass witness is deterministic' {
     [AidnScopeNative]::BeginPass(); $null=[AidnScopeNative]::Read(($scratch+'\one.txt'),$false,$false); $a=[AidnScopeNative]::WitnessHash()
     [AidnScopeNative]::BeginPass(); $null=[AidnScopeNative]::Read(($scratch+'\one.txt'),$false,$false); Equal ([AidnScopeNative]::WitnessHash()) $a
@@ -115,21 +150,52 @@ function NativeRow([string]$p,[string]$type='directory') {
         LinkCount=$(if($type -ceq 'file'){1}else{$null});Reparse=$false;ContentHash=$null;Content=$null;Target=$null;ReparseTag=$null}
 }
 function ResetGraph {
-    $script:graph=@{}; $script:listing=@{}
+    $script:graph=@{}; $script:listing=@{}; $script:failure=$null
     foreach($p in @('C:\work','C:\profile','C:\candidate','C:\user','C:\state','C:\profile\.sandbox-bin','C:\Windows','C:\Program Files','C:\Program Files (x86)','C:\ProgramData',
         'C:\user\AppData','C:\user\AppData\Local\OpenAI\Codex','C:\user\AppData\Local\OpenAI\Codex\runtimes','C:\user\.cache\codex-runtimes','C:\user\.ssh')) { $script:graph[$p]=NativeRow $p }
     $script:graph['C:\user\note.txt']=NativeRow 'C:\user\note.txt' 'file'
     $script:listing['C:\user']=@('C:\user\AppData','C:\user\note.txt','C:\user\.ssh')
     $script:listing['C:\user\AppData\Local\OpenAI\Codex\runtimes']=@()
 }
+function Throw-MockReparse([string]$p) {
+    if($null -ne $script:failure -and $script:failure.path -ceq $p -and $script:failure.role -ceq $script:ScopeRole) {
+        $e=[InvalidOperationException]::new('SCOPE_REPARSE_UNSUPPORTED')
+        $e.Data['native_phase']='target'; $e.Data['reparse_variant']='reparse_not_allowed'
+        $e.Data['path_sha256']=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($script:Utf8.GetBytes($p))).ToLowerInvariant()
+        throw $e
+    }
+}
 function Read-PhysicalScopeFact([string]$p,[bool]$allow=$false,[bool]$prior=$false) {
+    Throw-MockReparse $p
     if($script:graph.ContainsKey($p)) { return $script:graph[$p] }
     return @{Path=$p;State='absent';ObjectType=$null;PhysicalPath=$null;VolumeId=$null;FileId=$null;LinkCount=$null;Reparse=$false;ContentHash=$null;Content=$null;Target=$null;ReparseTag=$null}
 }
 function Read-PhysicalScopeListing([string]$p,[int]$maximum) {
+    Throw-MockReparse $p
     if(!$script:listing.ContainsKey($p)) { throw 'MOCK_LISTING_MISSING' }
     if($script:listing[$p].Count -gt $maximum) { Stop-Scope 'SCOPE_LISTING_LIMIT' }
     return ,$script:listing[$p]
+}
+Check 'scope diagnostic role follows the exact failing operation in both passes' {
+    $cases=@(
+        @{role='required_root';path='C:\work'},@{role='cwd_metadata';path='C:\work\.git'},
+        @{role='ssh_config';path='C:\user\.ssh\config'},@{role='prior_deny_read';path='C:\profile\.sandbox\deny_read_acl_state.json'},
+        @{role='sandbox_bin';path='C:\profile\.sandbox-bin'},@{role='platform_root';path='C:\Windows'},
+        @{role='profile_listing';path='C:\user'},@{role='profile_child';path='C:\user\note.txt'},
+        @{role='profile_junction_target';path='C:\user\AppData'},@{role='runtime_root';path='C:\user\.cache\codex-runtimes'},
+        @{role='runtime_entry';path='C:\user\AppData\Local\OpenAI\Codex\runtimes'},
+        @{role='runtime_listing';path='C:\user\AppData\Local\OpenAI\Codex\runtimes'})
+    foreach($pass in @(1,2)) { foreach($case in $cases) {
+        ResetGraph; $script:ScopePass=$pass; $script:failure=$case
+        $p='C:\user\Compatibility'; $r=NativeRow $p; $r.Reparse=$true; $r.Target='C:\user\AppData'; $r.ReparseTag=[uint32]2684354563
+        $script:graph[$p]=$r; $script:listing['C:\user']+=,$p
+        $cause=$null
+        try { $null=Observe-PhysicalScope (Roots) } catch { $cause=$_.Exception.GetBaseException() }
+        if($null -eq $cause) { throw 'EXPECTED_REFUSAL' }; Equal $cause.Message 'SCOPE_REPARSE_UNSUPPORTED'
+        $d=Convert-ScopeReparseDiagnostic $cause; Equal $d.pass $pass; Equal $d.role $case.role
+        Equal $d.path_sha256 ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($script:Utf8.GetBytes($case.path))).ToLowerInvariant())
+    } }
+    ResetGraph
 }
 Check 'scope closure omits excluded ordinary entries and retains exact absence' {
     ResetGraph; $r=Observe-PhysicalScope (Roots)
