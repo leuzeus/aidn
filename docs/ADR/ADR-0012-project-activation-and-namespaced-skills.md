@@ -86,6 +86,13 @@ persistence test is neither activation, native trust, hook enforcement nor proof
 that a process tree stopped. Those proofs remain prerequisites of the future
 worker capability.
 
+Lot 5's injected scheduler does not replace those native prerequisites. Its
+preparation callback must return evidence for the exact attempt before a worker
+can launch; durable preparation references cannot substitute for current native
+admission. On resume the scheduler verifies the recorded preparation instead of
+silently installing or reauthorizing a worktree. A supervisor generation grants
+no additional file, control-plane or native trust permission.
+
 ## Consequences and validation
 
 2026-09-24: activation remains a prerequisite, not patch authorization. Each

@@ -63,13 +63,15 @@ The default expectation is local recovery first, explicit shared coordination se
 
 ## Bounded Supervision Model
 
-ADR-0014 reserves PostgreSQL authority for the future opt-in supervised execution
+ADR-0014 reserves PostgreSQL authority for the opt-in supervised execution
 path (`execution_run`, `delegated_task`, `execution_attempt`). Existing sequential
 workflows continue to support operation without PostgreSQL. Lot 3 adds a separate
-AgentExecutionStore and explicit shared schema 2 to 3 migration, with
-`persistence_only` coverage. Canonical runtime and supervision must share one
-PostgreSQL transaction. Writers check reservations atomically. The candidate lot 4
-executor requires separate native qualification; no scheduler is available.
+AgentExecutionStore and explicit shared schema 2 to 3 migration. Lot 5 adds
+schema 4 supervisor generations, acceptances, integration and final validation,
+with `supervision_candidate` coverage. Canonical runtime and supervision must
+share one PostgreSQL transaction. Writers check reservations atomically. The
+internal scheduler requires explicit preparation, Git and validation dependencies
+and a separately qualified native executor; public commands remain unavailable.
 Readiness and reads do not register, heartbeat or migrate;
 intact v2 remains readable for backup while writes require explicit migration.
 
@@ -78,7 +80,14 @@ and `execution_events` under a stable advisory lock, rereads the schema version
 there, and never replays already-applied DDL. A future schema version is refused.
 The `agent-execution-store-port.mjs` contract and PostgreSQL adapter define this
 separate persistence surface. A positive shared planning revision is required
-for reservation; the initial historical revision stays zero without a hidden
+for every supervised generation. Schema 4 also retains `execution_supervisors`,
+`execution_acceptances`, `execution_integrations` and
+`execution_run_validations`; their records belong to the existing run, task and
+attempt concepts. Supervisor expiration requires proof that its descendants and
+Git operations stopped before a new generation. The original database-timed run
+deadline survives resume. Acceptance uses the terminal result and supervisor
+authority, rather than a completed worker's lease. The initial historical
+planning revision stays zero without a hidden
 update. No SQLite, file or in-memory supervision authority is available.
 
 Transcripts and bulky outputs remain local; shared metadata will contain only

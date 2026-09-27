@@ -3,10 +3,12 @@
 ## Status
 
 Accepted. Lot 2 provided internal contracts and pure validation (`model_only`).
-Lot 3 adds PostgreSQL persistence (`persistence_only`). Supervised execution is
-still unavailable. Lot 4 introduces the candidate Codex executor, delegated
-admission and native process controller; availability remains gated on separate
-native qualification. No scheduler or `agent-run*` command is implemented yet.
+Lot 3 added PostgreSQL persistence (`persistence_only`). Lot 4 introduced the
+candidate Codex executor, delegated admission and native process controller.
+Lot 5 adds an internal bounded scheduler and the durable consolidation needed
+by dependent tasks (`supervision_candidate`). Native availability still requires
+separate qualification of the exact composition. Public `agent-run*` commands
+remain unavailable.
 
 ## Date
 
@@ -58,8 +60,9 @@ supervision authority without claiming that workers are available.
 ### Frozen execution contract
 
 Internal versioned schemas live under `src/core/contracts/agent-execution/`.
-The eleven kinds are descriptor, availability, plan, run, task, attempt,
-delegation, request, event, result and supervisor acceptance.
+The fifteen kinds are descriptor, availability, plan, run, task, attempt,
+delegation, request, event, result, acceptance, supervisor, integration-prepared,
+integration-applied and run-validation.
 `src/core/agents/agent-execution-contracts.mjs` owns pure semantic checks and
 canonical fingerprints. Keys are sorted recursively, arrays retain their order,
 and the plan fingerprint itself is excluded from its hash input. Omitted
@@ -180,8 +183,9 @@ Shared schema 3 adds execution_runs, execution_tasks, execution_attempts and
 execution_events through an explicit locked additive migration from schema 2.
 An aligned migration does not replay DDL. Readiness and ordinary coordination
 reads do not bootstrap, register a workspace or renew a worktree heartbeat.
-Intact schema 2 remains readable for backup before migration; writes require
-schema 3. Backup refuses failed reads instead of emitting an empty success.
+Intact schema 2 remains readable for backup before migration. Lot 3 required
+schema 3 for writes; lot 5 raises that explicit prerequisite to schema 4.
+Backup refuses failed reads instead of emitting an empty success.
 The historical shared-coordination backup/restore covers planning, handoff and
 coordination records only. It is not a backup of execution runs or attempts;
 those rows remain in PostgreSQL and are never removed by migration or rollback.
@@ -262,13 +266,103 @@ references, byte counts and content hashes; credentials are never contract data.
 There is no automatic purge in V1. A successor run or attempt preserves the
 earlier evidence; mutable coordination upserts cannot establish immutability.
 
+### Durable supervisor and dependent execution (lot 5)
+
+Shared schema 4 adds `execution_supervisors`, `execution_acceptances`,
+`execution_integrations` and `execution_run_validations`. These records belong to
+the existing run, task and attempt concepts; no independent information concept
+or local ownership authority is introduced. The migration is explicit, additive
+and locked. Runtime artifact schema 3 remains separate.
+
+Historical independent execution stays in legacy mode. The first supervisor
+claim can convert only a reserved run with no attempts; that transition is
+irreversible. Once supervised, omitting the supervisor generation never selects
+a historical fallback. The supervisor has its own PostgreSQL lease, runner
+identity and control revision. Its lease lasts 60 seconds and is renewed every
+10 seconds. Heartbeats do not increment the control revision. The run deadline
+is fixed using database time at the first claim and never reset by resume;
+it also bounds consolidation, validation and audit.
+
+Expiration retains the canonical reservation and requires recovery. Transferring
+authority requires independent proof that the previous supervisor, descendants
+and Git operations have stopped. An absent PID or an expired lease is not that
+proof. Injected verifiers have no permissive default. Necessary stop and
+reconciliation operations remain possible after revocation or deadline expiry,
+but execution cannot resume against an invalid canonical context.
+
+Task `validation_ids` is optional and binds both fingerprints. An omitted value
+keeps the original v1 rule: all plan validations apply to the task. A provided
+selection is nonempty, unique and references the frozen plan. This permits a
+task to validate before a dependent creates later integration tests. The final
+run always executes every plan validation and every read-only audit criterion
+on the exact integrated SHA.
+
+The scheduler launches only ready tasks within the frozen concurrency ceiling.
+Independent tasks start at the plan base; dependent tasks start at a Git head
+whose durable chain contains the accepted and applied predecessors. Source
+worker commits need not be Git ancestors after cherry-pick: the journal binds
+each source to its resulting integrated commit. Integration uses deterministic
+topological order, then task ID, rather than completion timing. A failed task
+blocks descendants; independent work may continue while run preconditions hold.
+Loss of coordination stops new launches and requests worker termination.
+
+Each attempt starts its heartbeat immediately after claim, including during
+native preparation. Preparation evidence is immutable, attached to the exact
+request and stored separately from worker event sequences. Resume reloads its
+verified local baseline and evidence; it never silently reboots a prior attempt
+or relaunches an indeterminate worker. Each attempt has its own executor instance.
+
+After confirmed termination, capture examines tracked, untracked and ignored
+changes, deletions, modes and links against the prepared baseline and exact
+scope. Commit creation uses captured bytes and a private index without moving
+the worker branch. Ambiguous moves require verified admission evidence;
+unproven changes are refused. Git hooks and filters are not implicit execution
+authorities for this operation.
+
+Git mutations retain a local operation journal with intent, invocation digest,
+observed PID and parent termination. This is recovery evidence, not ownership
+authority. A timeout, missing terminal observation or uncertain stop blocks
+further Git operations until an injected verifier reconciles the operation;
+closing the parent alone does not prove descendant termination. Read-only
+inspection does not create a journal. Automatic maintenance and parallel
+checkout are disabled, and every subprocess has a bounded command and stop
+budget. Native process confinement remains a separate qualification.
+
+Integration prepares a commit in a separate worktree, records immutable
+`prepared` evidence with source, parent and result, advances only the run's
+dedicated reference using compare-and-swap, then records `applied`. At most one
+prepared integration is pending. The integration ID derives from the frozen
+run, plan, task, attempt, source, parent and sequence. If interruption occurs
+before the PostgreSQL journal, resume finds the same local resource and refuses
+until it is explicitly reconciled; it cannot silently allocate a new result.
+An already journaled result cannot be recalculated or replaced
+on takeover. A reference already at that result is recognized; an unexpected
+reference blocks recovery. Conflicts are preserved without reset or resolution.
+PostgreSQL and Git are not a single transaction: revocation in between can leave
+an application to reconcile, never an accepted dependent launch.
+
+After the run deadline or canonical revocation, explicit recovery may record
+`applied` only when Git already points at the immutable prepared result. It
+requires the retained reservation, a live supervisor generation and fresh Git
+observation, and leaves the run in recovery. It authorizes no CAS, preparation,
+validation, resumed work or successful completion. A pending integration blocks
+all terminal outcomes, including failure and cancellation, until reconciled.
+
+Acceptance uses the immutable terminal result and supervisor authority; it does
+not require the completed worker's lease to remain live. Acceptance, prepared
+and applied integration, and final validation remain separate records. Final
+completion requires every task accepted and integrated, no uncertain processes
+or journal, a current matching Git head, and complete validation and audit
+evidence. Repair requires a new explicit task. Public commands and general
+cleanup are subsequent increments.
+
 ## Compatibility and qualification
 
 The synchronous adapter and all historical commands retain their behavior.
 The JSON validator's CLI profile remains the default; internal schemas require
 the explicit `agent-execution` profile and are not advertised as CLI outputs.
 Governance diagnostics may report complete policy coverage with
-`coverage_kind: persistence_only`; this does not report runtime availability, native
+`coverage_kind: supervision_candidate`; this does not report runtime availability, native
 qualification or observed run instances.
 
 Lot 2 is verified through positive and adversarial contracts, pure validation,
@@ -283,12 +377,17 @@ fixtures do not establish that native hooks ran or that the sandbox confined a
 worker. Native qualification is separate from these CI checks.
 An unqualified OS cannot advertise the future capability.
 
+The scheduler and Git integration gates use bounded subprocesses and disposable
+repositories. They qualify ordering, recovery and effects independently of real
+Codex parallelism, host confinement and the final native end-to-end scenario.
+
 ## Consequences
 
 - Persistence and runner implementations can evolve against explicit contracts.
 - Three information concepts add governance without fabricating runtime state.
 - Pure checks cannot prove physical path safety, live ownership or process death;
   later adapters must enforce and qualify those boundaries.
-- Scheduler, durable consolidation, cleanup and public command delivery remain
-  separately implemented increments. No swarm, mailbox, quorum, automatic
+- The internal scheduler depends on durable integration for dependent tasks;
+  public command delivery and general cleanup remain subsequent increments.
+  No swarm, mailbox, quorum, automatic
   reassignment, unbounded repair or general worktree administration is introduced.
