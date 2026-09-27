@@ -14,6 +14,19 @@ function outside(parent,child) {const rel=path.relative(parent,child);return rel
 
 export { assertAgentNativeQualificationRefreshContinuity };
 
+// A later non-started scenario cannot erase the death proofs of earlier
+// workers. Missing or contradictory observations remain unconfirmed.
+export function summarizeNativeProcessCleanup({launchRequests,processesStarted,checks,failedCase}={}) {
+  if(!Number.isSafeInteger(launchRequests) || !Number.isSafeInteger(processesStarted)
+    || launchRequests<0 || processesStarted<0 || processesStarted>launchRequests || !Array.isArray(checks)) return "UNCONFIRMED";
+  const states=[...checks.map(check=>check?.native_process_cleanup),...(failedCase?[failedCase.native_process_cleanup]:[])];
+  if(states.some(state=>!["CONFIRMED","NOT_STARTED"].includes(state))) return "UNCONFIRMED";
+  const confirmed=states.filter(state=>state==="CONFIRMED").length;
+  if(!launchRequests) return confirmed?"UNCONFIRMED":"NOT_STARTED";
+  if(states.length<launchRequests || confirmed<processesStarted) return "UNCONFIRMED";
+  return confirmed?"CONFIRMED":"NOT_STARTED";
+}
+
 // This internal, local qualification is never an automatic gate or a public
 // agent-run command. Preview performs filesystem reads only. --write explicitly
 // permits four bounded native model calls and a disposable PostgreSQL cluster.
@@ -131,7 +144,7 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
   } catch(error) {
     primaryError=error;result.ok=false;result.status="failed";result.qualification=error.code==="QUALIFICATION_CLIENT_REFUSAL_UNAVAILABLE"?"UNAVAILABLE":"FAIL";result.reason=error.code ?? error.message;result.details=error.details;
     result.failed_case=error.nativeQualification ?? null;
-    result.native_process_cleanup=error.nativeQualification?.native_process_cleanup ?? (!result.native_launch_requests?"NOT_STARTED":result.checks.length===result.native_launch_requests && result.checks.every(c=>c.native_process_cleanup==="CONFIRMED")?"CONFIRMED":"UNCONFIRMED");
+    result.native_process_cleanup=summarizeNativeProcessCleanup({launchRequests:result.native_launch_requests,processesStarted:result.native_processes_started,checks:result.checks,failedCase:error.nativeQualification});
     result.cleanup=clusterRoot && !fs.existsSync(clusterRoot)?"POSTGRES_REMOVED_EVIDENCE_PRESERVED":"POSTGRES_UNCONFIRMED_EVIDENCE_PRESERVED";
     writeEvidence(outputRoot,"qualification-failure.json",result);
   }

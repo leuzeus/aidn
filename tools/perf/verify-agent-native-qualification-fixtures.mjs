@@ -455,6 +455,19 @@ try {
     ["record byte overflow",nativeLine,{maxRecordBytes:64},"NATIVE_REFUSAL_RECORD_LIMIT"],
     ["record count overflow",nativeLine+nativeLine,{maxRecords:1},"NATIVE_REFUSAL_COUNT_LIMIT"],
   ]) await check("native stderr bounds "+name,()=>rejects(()=>collectRefusal(text,4096,options),code));
+  for(const [name,input,expected] of [
+    ["nothing launched",{launchRequests:0,processesStarted:0,checks:[],failedCase:{native_process_cleanup:"NOT_STARTED"}},"NOT_STARTED"],
+    ["three stopped workers before a non-started port",{launchRequests:3,processesStarted:3,checks:Array.from({length:3},()=>({native_process_cleanup:"CONFIRMED"})),failedCase:{native_process_cleanup:"NOT_STARTED"}},"CONFIRMED"],
+    ["failure after every worker stopped",{launchRequests:1,processesStarted:1,checks:[{native_process_cleanup:"CONFIRMED"}]},"CONFIRMED"],
+    ["attempted creation without a process",{launchRequests:1,processesStarted:0,checks:[],failedCase:{native_process_cleanup:"NOT_STARTED"}},"NOT_STARTED"],
+    ["suspended process stopped before resume",{launchRequests:1,processesStarted:0,checks:[],failedCase:{native_process_cleanup:"CONFIRMED"}},"CONFIRMED"],
+    ["unknown tree after confirmed worker",{launchRequests:2,processesStarted:2,checks:[{native_process_cleanup:"CONFIRMED"}],failedCase:{native_process_cleanup:"UNCONFIRMED"}},"UNCONFIRMED"],
+    ["missing worker observation",{launchRequests:2,processesStarted:2,checks:[{native_process_cleanup:"CONFIRMED"}]},"UNCONFIRMED"],
+    ["started process called non-started",{launchRequests:1,processesStarted:1,checks:[],failedCase:{native_process_cleanup:"NOT_STARTED"}},"UNCONFIRMED"],
+    ["contradictory counters",{launchRequests:0,processesStarted:1,checks:[]},"UNCONFIRMED"],
+  ]) await check("native cleanup aggregate preserves "+name,()=>{
+    const before=JSON.stringify(input);assert.equal(qualification.summarizeNativeProcessCleanup(input),expected);assert.equal(JSON.stringify(input),before);
+  });
   await check("all pure fixture inputs are unchanged", () => assert.equal(JSON.stringify({ manifest, trust, installation, baseline, markers }), unchangedInputs));
   await check("imports and rejected requests leave no observed effect", () => assert.deepEqual(effects, []));
   process.stdout.write(JSON.stringify({ status: "PASS", checks, effects, native_codex: "NOT_RUN", postgres: "NOT_RUN", cleanup: "NO_RESOURCES_CREATED" }) + "\n");
