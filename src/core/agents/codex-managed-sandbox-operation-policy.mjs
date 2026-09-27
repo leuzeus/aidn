@@ -12,6 +12,8 @@ const COMMIT = "0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807";
 const HASH = /^[a-f0-9]{64}$/u;
 const TOKEN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const AGE = 300000;
+const MAX_RUNTIME_PATHS = 4099;
+const MAX_ACL_ROWS = 4355;
 const FIREWALL = ["codex_sandbox_offline_block_outbound", "codex_sandbox_offline_block_inbound", "codex_sandbox_offline_block_loopback_tcp", "codex_sandbox_offline_block_loopback_udp", "codex_sandbox_offline_allow_loopback_proxy"];
 const WFP = ["2e31d31c-3948-4753-9117-e5d1a6496f41", "e65054fd-4d32-4c7c-95ef-621f0cf6431a", "9f5f3812-79f0-4fe9-9615-4c2c92d2f0ff", "87498484-45ab-4510-845e-ece8b791b3bc", "af4751de-f874-4a7b-a34d-f0d0f22d1d9b", "ea10db66-a928-4b2e-a82e-a376a54f93ba", "83172805-f6be-4ae1-9dc6-6847aef04e7f", "d23b2efb-1efb-46b2-96f3-b0ccda5690c8", "420b026f-9dc9-4aea-88f4-0f2b9feab39a", "8d917c81-99cc-45e7-84d6-824df860cfb8", "e1d6e0af-ce5f-471b-b2d3-15ca00e966f3", "c2bceca4-66ef-4a0f-ba80-f4f761b8c6f0", "ba10c618-84e7-4b83-8f74-36e22b2fa1ff", "fe7f22b8-5cf5-4adb-b2aa-71fc0a8f5d44"];
 const ACCOUNTS = ["CodexSandboxOffline", "CodexSandboxOnline"];
@@ -43,7 +45,7 @@ const key = value => value.toLowerCase();
 const unique = rows => new Set(rows.map(key)).size === rows.length;
 const array = (value, maximum = 512) => Array.isArray(value) && value.length <= maximum;
 const same = (left, right) => hash(left) === hash(right);
-function json(value) { try { hash(value); ensure(JSON.stringify(value).length <= 2 * 1024 * 1024, "DOCUMENT_LIMIT"); } catch (error) { if (error.code === "MANAGED_OPERATION_DOCUMENT_LIMIT") throw error; fail("JSON_INVALID"); } }
+function json(value) { try { hash(value); ensure(Buffer.byteLength(JSON.stringify(value), "utf8") <= 2 * 1024 * 1024, "DOCUMENT_LIMIT"); } catch (error) { if (error.code === "MANAGED_OPERATION_DOCUMENT_LIMIT") throw error; fail("JSON_INVALID"); } }
 function absolute(value) { return string(value) && value.normalize("NFC") === value && /^[A-Za-z]:\\/u.test(value) && windows.normalize(value) === value && !value.endsWith("\\")
   && value.slice(3).split("\\").every(part => part.length > 0 && part.length <= 255 && !/[<>:"/|?*]|[. ]$/u.test(part) && !/^(?:con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/iu.test(part)); }
 function time(value) { if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value)) return false;
@@ -60,7 +62,8 @@ function validateOperation(operation, manifest) {
   ensure(exact(config, ["configuration_sha256", "permission_profile_sha256", "environment_sha256", "registered_core_requested", "service_enabled", "network", ...paths])
     && [config.configuration_sha256, config.permission_profile_sha256, config.environment_sha256].every(digest)
     && [config.registered_core_requested, config.service_enabled].every(value => value === null || typeof value === "boolean")
-    && paths.every(field => array(config[field]) && config[field].every(absolute) && unique(config[field])), "CONFIGURATION_INVALID");
+    && paths.every(field => array(config[field], field === "runtime_paths" ? MAX_RUNTIME_PATHS : 512)
+      && config[field].every(absolute) && unique(config[field])), "CONFIGURATION_INVALID");
   ensure(exact(config.network, ["allow_local_binding", "proxy_ports"]) && typeof config.network.allow_local_binding === "boolean"
     && array(config.network.proxy_ports, 64) && config.network.proxy_ports.every(port => Number.isSafeInteger(port) && port > 0 && port <= 65535)
     && new Set(config.network.proxy_ports).size === config.network.proxy_ports.length, "NETWORK_INVALID");
@@ -78,7 +81,12 @@ function requirementsFor(operation, manifest) {
     "firewall-user-rules.v1": FIREWALL, "wfp-provider.v1": WFP.slice(0, 1), "wfp-sublayer.v1": WFP.slice(1, 2), "wfp-filter.v1": WFP.slice(2),
     "registry-userlist.v1": ACCOUNTS.map(account => `${REGISTRY}#value=${account}`), "setup-control.v1": ["setupStart"],
   };
-  return PROFILES.map(profile => ({ ...profile, scope: { scope_id: `${ID}:${profile.profile_id}`, kind: profile.kind, selectors: sorted(selectors[profile.profile_id]) } }));
+  return PROFILES.map(profile => {
+    const selected = sorted(selectors[profile.profile_id]);
+    // The full union must fit: independent input bounds never permit truncation.
+    ensure(array(selected, profile.profile_id === "filesystem-dacl.v1" ? MAX_ACL_ROWS : 512), "PROJECTION_SCOPE_LIMIT");
+    return { ...profile, scope: { scope_id: `${ID}:${profile.profile_id}`, kind: profile.kind, selectors: selected } };
+  });
 }
 export function getManagedSandboxOperationPolicy(policyId = ID) { ensure(policyId === ID, "POLICY_UNSUPPORTED"); return POLICY; }
 
@@ -138,7 +146,8 @@ function inspectObservation(observation, operation, inventory, requirements) {
       && document.scope_sha256 === receipt.scope_sha256 && document.scope_sha256 === hash(document.scope) && same(document.scope, requirement.scope), "PROJECTION_SCOPE_INVALID");
     const coverage = inventory.coverage.find(row => row.kind === requirement.kind);
     ensure(document.inventory_scope_sha256 === (coverage?.scope_sha256 ?? null), "INVENTORY_SCOPE_MISMATCH");
-    ensure(array(document.rows) && document.rows.every(row => object(row) && typeof row.id === "string")
+    ensure(array(document.rows, requirement.profile_id === "filesystem-dacl.v1" ? MAX_ACL_ROWS : 512)
+      && document.rows.every(row => object(row) && typeof row.id === "string")
       && new Set(document.rows.map(row => key(row.id))).size === document.rows.length
       && typeof document.truncated === "boolean" && array(document.errors, 32) && document.errors.every(token)
       && (document.outside_sha256 === null || digest(document.outside_sha256)), "PROJECTION_INVALID");

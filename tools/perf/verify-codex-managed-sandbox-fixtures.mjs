@@ -37,6 +37,16 @@ function fixture() {
     protected_resources: manifest.protected_resources.map(row => ({ ...row, sha256: H })) };
   return { manifest, inventory };
 }
+function largeManifest(field, runtimeCount = 4099, ordinaryCount = 256) {
+  const { manifest } = fixture(), runtime = "C:\\r";
+  manifest.roots.push({ role: "runtime", path: runtime });
+  const ordinary = field === "protected_resources" ? [...manifest[field]] : [];
+  while (ordinary.length < ordinaryCount) ordinary.push({ kind: "filesystem_acl", id: `${manifest.profile_root}\\p${ordinary.length}`,
+    ...(field === "resources" ? { operations: ["update"] } : {}) });
+  manifest[field] = [...ordinary, ...Array.from({ length: runtimeCount }, (_, i) => ({ kind: "filesystem_acl", id: `${runtime}\\f${i}`,
+    ...(field === "resources" ? { operations: ["update"] } : {}) }))];
+  return manifest;
+}
 function partial(inventory, kind = "wfp_rule") { return mutate(inventory, value => Object.assign(value.coverage.find(row => row.kind === kind),
   { complete: false, outside_authority_sha256: null, reason_code: "COLLECTOR_NOT_IMPLEMENTED" })); }
 function approvalFor(plan) { return { contract_version: "codex-managed-sandbox-preparation-approval.v1", approval_id: "fixture-consent",
@@ -68,6 +78,39 @@ await check("material client, effects, roots and observation changes invalidate 
     assert.notEqual(build(next).plan_sha256, baseline);
   }
   assert.notEqual(build(mutate(input, value => { value.inventory.observed_at = NOW; })).plan_sha256, baseline);
+});
+for (const field of ["resources", "protected_resources"]) {
+  await check(`${field} accepts 4099 runtime ACLs plus 256 ordinary resources without authorizing execution`, () => {
+    const manifest = largeManifest(field), original = structuredClone(manifest), input = fixture();
+    assert.equal(manifest[field].length, 4355); assert.equal(validate(manifest), true);
+    input.manifest = manifest; input.inventory.manifest_sha256 = manifestHash(manifest);
+    for (const name of ["resources", "protected_resources"]) input.inventory[name] = manifest[name].map(({ kind, id }) => ({ kind, id, sha256: H }));
+    const plan = build(input); assert.equal(plan.execution_available, false); assert.equal(plan.qualification, "NOT_RUN");
+    assert.equal(plan.manifest_sha256, manifestHash(manifest)); assert.deepEqual(manifest, original);
+    assert.notEqual(manifestHash(mutate(manifest, value => { value[field].at(-1).id += "x"; })), plan.manifest_sha256);
+  });
+  for (const [label, runtimeCount, ordinaryCount] of [["4356 total resources", 4099, 257], ["4100 runtime ACLs", 4100, 1], ["257 ordinary resources", 0, 257]]) {
+    await check(`${field} rejects ${label}`, () => assert.throws(() => validate(largeManifest(field, runtimeCount, ordinaryCount)), code("RESOURCE_LIMIT")));
+  }
+  await check(`${field} does not grant the runtime allowance to file content`, () => {
+    const manifest = largeManifest(field); manifest[field].at(-1).kind = "filesystem";
+    assert.throws(() => validate(manifest), code("RESOURCE_LIMIT"));
+  });
+  await check(`${field} rejects a runtime ACL case alias`, () => {
+    const manifest = largeManifest(field); manifest[field].at(-1).id = manifest[field].at(-2).id.toUpperCase();
+    assert.throws(() => validate(manifest), code("RESOURCE_AMBIGUOUS"));
+  });
+}
+await check("overlapping runtime roots do not multiply resource capacity or duplicate identities", () => {
+  const manifest = largeManifest("resources"); manifest.roots.push({ role: "runtime", path: "C:\\r\\nested" });
+  manifest.resources.at(-1).id = "C:\\r\\nested\\one"; assert.equal(validate(manifest), true);
+  manifest.resources.push({ kind: "filesystem_acl", id: "C:\\r\\nested\\two", operations: ["update"] });
+  assert.throws(() => validate(manifest), code("RESOURCE_LIMIT"));
+});
+await check("expanded mutable and protected resources remain disjoint", () => {
+  const manifest = largeManifest("resources"), row = manifest.resources.at(-1);
+  manifest.protected_resources.push({ kind: row.kind, id: row.id.toUpperCase() });
+  assert.throws(() => validate(manifest), code("RESOURCE_AMBIGUOUS"));
 });
 for (const [name, edit, expected] of [
   ["unknown field", m => { m.implicit_setup = true; }, "MANIFEST_INVALID"],

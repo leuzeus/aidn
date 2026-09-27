@@ -600,6 +600,28 @@ retains `PERMISSION_SCOPE_UNRESOLVED`: Windows path expansion, previous deny-rea
 state, runtime ACL effects and physical preservation require separate observation.
 It supplies no setup prerequisite receipt, authorization or native availability.
 
+The separate pure Legacy scope projector recomputes that assessment and derives
+the setup path lists from the closed environment and explicit physical facts.
+Its supported subset requires a new cwd without `.git`, `.agents` or `.codex`,
+absent SSH configuration, an absent or empty prior deny-read state, and complete
+runtime enumeration without aliases or reparse points. Up to 4,096 descendants
+and three runtime roots are represented individually; a limit hit is a refusal,
+never partial authority.
+Present path facts use canonical hexadecimal volume and 128-bit file identities
+with unique identity pairs; files require an observed link count of exactly one.
+These remain caller-supplied facts, not a substitute for a physical observer.
+The derived preimage binds configuration, environment and observations to the
+six lists. A caller-supplied digest alone cannot substitute for that derivation.
+These facts remain structural inputs until an actual bounded observer supplies
+and authenticates them. The projector neither grants setup permission nor closes
+ACL, network, failure-path or process-provenance gaps. The historical Windows
+inventory request remains capped at 512 paths; the larger pure projection is not
+a qualification of that collector or a complete setup composition. Standard
+USERPROFILE junctions also cause this initial subset to refuse: the pinned
+client canonicalizes their targets instead of skipping them. A future physical
+observer and scope variant must bind those exact targets; omitting junctions
+from the captured directory listing cannot establish complete coverage.
+
 The portable transport/bridge and parent fixtures use doubles and perform no
 setup. The separate Windows preflight campaign has 89 checks with mocked token,
 process, Job and helper observations; native declarations are compiled but never

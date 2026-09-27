@@ -629,7 +629,7 @@ worker. Native qualification is separate from these CI checks.
 An unqualified OS cannot advertise the future capability.
 
 Lot 7 adds `runtime-agent-run-lifecycle`, required once for dev, main and release,
-covering twelve portable lifecycle, workspace, composition, validation-boundary
+covering fourteen portable lifecycle, workspace, composition, validation-boundary
 and managed-preparation/controlled-setup fixture scripts. Omission or duplicate
 invocation of any script is rejected. The Windows inventory and 89-check
 preflight fixtures are separate, use mocked providers and do not qualify a
@@ -672,3 +672,21 @@ effect coverage. It cannot issue a prerequisite, approval or native qualificatio
 Raw configuration values remain transient; retained evidence uses projections
 and fingerprints. Real observation and its declared startup side effects require
 their own bounded composition and operation authorization.
+
+### Fixed Legacy setup scope derivation
+
+A separate pure projection binds the source-configuration assessment and closed
+environment to explicitly observed physical paths. It computes a canonical
+preimage and the six operation path lists instead of accepting an arbitrary
+permission-profile digest. Its first subset is deliberately narrow: a new cwd
+without Git or agent metadata, absent SSH configuration, no prior deny-read
+entries and no aliases or reparse points. It represents the complete runtime
+expansion as at most 4,096 descendants plus three roots; exceeding this bound or
+an incomplete
+enumeration refuses the projection rather than omitting effects.
+
+This derived scope is review material, not an authenticated native observation,
+compiled Codex profile, setup prerequisite or authorization. The containing
+operation still has to verify current physical observations and exact path-list
+bindings. Complete effect comparison, production authority composition and the
+durable setup journal remain required before setup can be qualified.

@@ -13,6 +13,8 @@ export const MANAGED_SANDBOX_ROOT_ROLES = Object.freeze([
 const HASH = /^[a-f0-9]{64}$/u;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const APPROVAL_MAX_AGE_MS = 300000;
+const MAX_ORDINARY_RESOURCES = 256;
+const MAX_RUNTIME_ACL_RESOURCES = 4099;
 const REASON = /^[A-Z][A-Z0-9_]{0,95}$/u;
 const DEVICE = /^(?:con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/iu;
 const VERSIONS = Object.freeze({
@@ -57,6 +59,17 @@ function resourceIdentity(row) {
     && row.id.split(/[\\/]/u).every(part => part && part !== "." && part !== ".." && part.trim() === part && !part.endsWith("."));
 }
 function pin(value) { return exact(value, ["executable", "sha256"]) && absolute(value.executable) && HASH.test(value.sha256); }
+function assertResourceList(rows, code) {
+  ensure(Array.isArray(rows) && rows.length >= 1, code);
+  ensure(rows.length <= MAX_ORDINARY_RESOURCES + MAX_RUNTIME_ACL_RESOURCES, "RESOURCE_LIMIT");
+}
+function assertResourceBudget(rows, roots) {
+  // Only ACL identities inside declared runtime roots receive the extra budget.
+  // Overlapping roots count a resource once; no recursive or compact scope is implied.
+  const runtimeCount = rows.filter(row => row.kind === "filesystem_acl"
+    && roots.some(root => root.role === "runtime" && inside(root.path, row.id))).length;
+  ensure(runtimeCount <= MAX_RUNTIME_ACL_RESOURCES && rows.length - runtimeCount <= MAX_ORDINARY_RESOURCES, "RESOURCE_LIMIT");
+}
 
 export function assertManagedSandboxEffectsManifest(manifest) {
   json(manifest);
@@ -81,10 +94,13 @@ export function assertManagedSandboxEffectsManifest(manifest) {
   for (const [role, directory] of [["sandbox_state", ".sandbox"], ["sandbox_secrets", ".sandbox-secrets"], ["sandbox_bin", ".sandbox-bin"]]) {
     if (root(role)) ensure(key(root(role)) === key(windows.join(manifest.profile_root, directory)), "SANDBOX_ROOT_MISMATCH");
   }
-  ensure(list(manifest.resources, 1, 256) && manifest.resources.every(row => exact(row, ["kind", "id", "operations"])
+  assertResourceList(manifest.resources, "RESOURCE_INVALID");
+  ensure(manifest.resources.every(row => exact(row, ["kind", "id", "operations"])
     && resourceIdentity(row) && list(row.operations, 1, 2) && new Set(row.operations).size === row.operations.length
     && row.operations.every(operation => ["create", "update"].includes(operation))), "RESOURCE_INVALID");
-  ensure(list(manifest.protected_resources, 1, 256) && manifest.protected_resources.every(row => exact(row, ["kind", "id"]) && resourceIdentity(row)), "PROTECTED_RESOURCE_INVALID");
+  assertResourceList(manifest.protected_resources, "PROTECTED_RESOURCE_INVALID");
+  ensure(manifest.protected_resources.every(row => exact(row, ["kind", "id"]) && resourceIdentity(row)), "PROTECTED_RESOURCE_INVALID");
+  assertResourceBudget(manifest.resources, manifest.roots); assertResourceBudget(manifest.protected_resources, manifest.roots);
   const all = [...manifest.resources, ...manifest.protected_resources];
   ensure(new Set(all.map(resourceKey)).size === all.length, "RESOURCE_AMBIGUOUS");
   for (const row of manifest.resources.filter(row => ["filesystem", "filesystem_acl"].includes(row.kind))) {

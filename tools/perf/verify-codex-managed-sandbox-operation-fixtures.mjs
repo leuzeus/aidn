@@ -15,7 +15,7 @@ const lower = value => value.toLowerCase();
 
 // These deliberately synthetic receipts describe data sufficient for a review.
 // They are not signatures, a Windows observer, permission or native evidence.
-function fixture() {
+function fixture(configure = () => {}) {
   const spec = policy(), home = "C:\\Codex Équipe", runtime = "C:\\Program Files\\Codex", owner = "G:\\Fixture Supervisor";
   const manifest = { contract_version: "codex-managed-sandbox-effects.v1", mode: "managed-elevated", platform: "win32", host_id: "fixture-host",
     client: { executable: `${runtime}\\codex.exe`, sha256: spec.client_sha256 }, setup: { executable: `${runtime}\\setup.exe`, sha256: spec.setup_sha256 },
@@ -35,9 +35,11 @@ function fixture() {
       deny_read_paths: [owner], prior_deny_read_paths: [], deny_write_paths: [], runtime_paths: [runtime] },
     control: { method: "pre-elevated-job", launcher_sha256: H, controller_sha256: H } };
   const input = { manifest, inventory, operation, observation: null, at: NOW };
+  configure(input);
   function initialRows() {
     inventory.resources = manifest.resources.map(row => ({ kind: row.kind, id: row.id, sha256: H }));
-    inventory.protected_resources = [manifest.client, manifest.setup, manifest.command_runner].map(pin => ({ kind: "filesystem", id: pin.executable, sha256: pin.sha256 }));
+    inventory.protected_resources = manifest.protected_resources.map(row => ({ ...row,
+      sha256: [manifest.client, manifest.setup, manifest.command_runner].find(pin => pin.executable === row.id)?.sha256 ?? H }));
   }
   initialRows();
   const requirements = assess(input).information.requirements;
@@ -107,6 +109,72 @@ function rebind(input) {
 }
 const gap = (report, expected) => report.information.missing_requirements.some(row => row.code === expected);
 function frozen(value) { if (value && typeof value === "object") { Object.values(value).forEach(frozen); Object.freeze(value); } return value; }
+function configureLargeAcl(input, historicalCount = 253, runtimeCount = 4099) {
+  const { manifest, operation } = input, config = operation.configuration;
+  manifest.roots.push({ role: "runtime", path: "C:\\r" });
+  config.runtime_paths = Array.from({ length: runtimeCount }, (_, i) => `C:\\r\\f${i}`);
+  config.read_roots = Array.from({ length: historicalCount }, (_, i) => `${manifest.profile_root}\\p${i}`);
+  config.write_roots = []; config.deny_read_paths = [];
+  manifest.protected_resources.push(...config.read_roots.map(id => ({ kind: "filesystem_acl", id })));
+  input.inventory.manifest_sha256 = operation.manifest_sha256 = hash(manifest);
+}
+
+await check("4099 runtime paths and 4355 ACL projection rows remain complete, bounded and non-authorizing", () => {
+  const input = fixture(configureLargeAcl), original = clone(input), report = assess(frozen(input));
+  const acl = input.observation.evidence.find(row => row.document.profile_id === "filesystem-dacl.v1").document;
+  assert.equal(input.operation.configuration.runtime_paths.length, 4099); assert.equal(acl.rows.length, 4355);
+  assert.equal(acl.scope.selectors.length, 4355); assert.equal(acl.truncated, false);
+  assert(Buffer.byteLength(JSON.stringify(input.observation), "utf8") < 2 * 1024 * 1024);
+  assert.equal(report.status, "REVIEWABLE"); assert.equal(report.execution_available, false); assert.equal(report.qualification, "NOT_RUN");
+  assert.equal(report.approval.status, "NOT_AUTHORIZED"); assert.deepEqual(input, original);
+  assert.equal(report.report_sha256, assess(input).report_sha256);
+});
+await check("runtime path 4100 is refused independently of historical path bounds", () => {
+  assert.throws(() => fixture(input => configureLargeAcl(input, 0, 4100)), code("CONFIGURATION_INVALID"));
+});
+for (const field of ["read_roots", "write_roots", "deny_read_paths", "prior_deny_read_paths", "deny_write_paths"]) {
+  await check(`${field} retains its 512 path ceiling`, () => {
+    const input = fixture(); input.observation = null;
+    input.operation.configuration[field] = Array.from({ length: 512 }, (_, i) => `C:\\p\\f${i}`);
+    assert.doesNotThrow(() => assess(input));
+    input.operation.configuration[field].push("C:\\p\\extra");
+    assert.throws(() => assess(input), code("CONFIGURATION_INVALID"));
+  });
+}
+await check("4356 distinct required ACL selectors are refused before observation without truncation", () => {
+  const input = fixture(); input.observation = null;
+  input.operation.configuration.runtime_paths = Array.from({ length: 4099 }, (_, i) => `C:\\r\\f${i}`);
+  input.operation.configuration.read_roots = Array.from({ length: 254 }, (_, i) => `C:\\p\\f${i}`);
+  input.operation.configuration.write_roots = []; input.operation.configuration.deny_read_paths = [];
+  assert.throws(() => assess(input), code("PROJECTION_SCOPE_LIMIT"));
+});
+await check("4356 observed ACL rows are refused even if evidence hashes match", () => {
+  const input = fixture(configureLargeAcl);
+  editDocument(input, "filesystem-dacl.v1", doc => { doc.rows.push({ ...clone(doc.rows[0]), id: "C:\\extra" }); });
+  assert.throws(() => assess(input), code("PROJECTION_INVALID"));
+});
+await check("non-ACL projection rows retain the 512 ceiling", () => {
+  const input = fixture(); editDocument(input, "accounts-public.v1", doc => {
+    doc.rows = Array.from({ length: 513 }, (_, i) => ({ ...clone(doc.rows[0]), id: `account-${i}` }));
+  });
+  assert.throws(() => assess(input), code("PROJECTION_INVALID"));
+});
+await check("expanded ACL rows still reject case aliases and stale row hashes", () => {
+  const alias = fixture(configureLargeAcl);
+  editDocument(alias, "filesystem-dacl.v1", doc => { doc.rows.at(-1).id = doc.rows[0].id.toUpperCase(); });
+  assert.throws(() => assess(alias), code("PROJECTION_INVALID"));
+  const stale = fixture(configureLargeAcl);
+  editDocument(stale, "filesystem-dacl.v1", doc => { doc.rows.at(-1).sha256 = H2; });
+  assert.throws(() => assess(stale), code("PROJECTION_ROW_BINDING_INVALID"));
+});
+await check("document size is limited to 2 MiB in UTF-8 rather than UTF-16 code units", () => {
+  const input = fixture(); input.observation = null;
+  const segment = "é".repeat(250), prefix = `C:\\${segment}\\${segment}\\${segment}\\${segment}`;
+  input.operation.configuration.runtime_paths = Array.from({ length: 1200 }, (_, i) => `${prefix}\\f${i}`);
+  const encoded = JSON.stringify(input.operation);
+  assert(encoded.length < 2 * 1024 * 1024); assert(Buffer.byteLength(encoded, "utf8") > 2 * 1024 * 1024);
+  assert.throws(() => assess(input), code("DOCUMENT_LIMIT"));
+});
 
 await check("fixed complete receipts describe a review without granting execution or changing v1", () => {
   const input = fixture(), before = clone(input), report = assess(frozen(input));

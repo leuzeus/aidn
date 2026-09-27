@@ -398,6 +398,23 @@ only an empty layer. Fixture success establishes neither physical observations
 nor compiled permissions: the assessment retains `PERMISSION_SCOPE_UNRESOLVED`
 and does not create a setup prerequisite, approval or available executor.
 
+The fourteenth lifecycle script,
+`node tools/perf/verify-codex-managed-setup-legacy-scope-fixtures.mjs`, checks the
+pure derivation of the fixed Legacy setup scope from the source assessment,
+closed environment and explicit physical observations. It computes the six path
+lists and binds their canonical preimage; it does not accept caller-provided
+permission roots. Missing, stale, aliased or truncated observations are refused.
+The initial subset requires a new cwd without Git or agent metadata, no SSH
+configuration and no existing deny-read entries. The runtime expansion is finite
+and explicit: at most 4,096 descendants plus the runtime root and two RX roots,
+with no truncation or digest-only substitute. The preparation models retain 256
+ordinary resources per manifest list and permit only runtime ACL rows to extend
+that list to 4,355. Other path lists and observation profiles retain their prior
+bounds; the 2 MiB operation and observation limit is measured in UTF-8 bytes.
+These fixtures qualify the derivation only. Observation authenticity, ACL and
+network effects, native setup authorization and confinement remain separate
+requirements; no available executor or setup approval is produced.
+
 For the injected supervisor candidate, run
 `npm run perf:verify-agent-execution-scheduler-fixtures` and
 `npm run perf:verify-agent-git-integration-fixtures`. Their required runtime gates
