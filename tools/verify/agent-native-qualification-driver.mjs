@@ -283,7 +283,8 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
         requireProof(qualification?.passed===true,"QUALIFICATION_PRIOR_NATIVE_PROOF_REQUIRED");
         const executor=m.createCodexCliTaskExecutor({runtime,controller:{...controller,run:async(input,options)=>{launchRequested=true;onLaunch();processResult=await controller.run(input,{...options,onEvent:async event=>{if(event.type==="resumed")onStarted();await options.onEvent(event);}});return processResult;}},
           qualify:async({runtime:asked,cwd})=>({qualified:qualification.passed===true && equal(asked,runtime) && cwd===root.root && qualification.candidate_sha256===manifest.candidate.sha256 && qualification.codex_sha256===manifest.codex.sha256 && qualification.helper_sha256===helper.helper_sha256 && qualification.platform===process.platform && qualification.architecture===process.arch}),
-          prepare:async()=>({request_sha256:requestHash,env}),recordLaunchIntent:async()=>{await store.recordLaunchIntent({...owned(),request});const p=await service.preflight();requireProof(p.ok,"QUALIFICATION_PORT_PREFLIGHT_REFUSED");},observeRunner,
+          prepare:async()=>({request_sha256:requestHash,env}),recordLaunchIntent:async()=>store.recordLaunchIntent({...owned(),request}),observeRunner,
+          admissionTimeoutMs:10000,admitLaunch:async(_request,{signal})=>service.preflight({signal}),
           openEvidence:async()=>{const evidence=await evidenceStore.open(request);return {append:async(stream,bytes)=>{await evidence.append(stream,bytes);if(stream==="stdout")observeOutput(bytes);else if(stream==="stderr")observeStderr(bytes);},finish:async(value)=>{protocol=value.protocol;refs=await evidence.finish(value);return refs;}};}});
         nativeResult=await executor.runTask(request,{signal:stop.signal,onEvent:async event=>{await store.appendEvent({...owned(),event});}});
       } else {

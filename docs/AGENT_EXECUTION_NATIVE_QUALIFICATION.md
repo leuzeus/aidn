@@ -92,6 +92,13 @@ sandbox probe is separate evidence. Windows executions explicitly select the
 elevated sandbox backend and require its supported setup to succeed; profile
 defaults cannot choose another backend. An unavailable native client helper still
 leaves the complete native milestone unavailable.
+An isolated CODEX_HOME does not isolate the Windows sandbox's OS accounts,
+firewall rules or filtering state. Qualify their coexistence with existing
+profiles on the selected host, or use a dedicated disposable test host. Scoped
+worktree preservation does not establish host preservation. Reprovisioning that
+invalidates another profile blocks host qualification even when the native
+edit, refusal and termination scenarios pass. Do not repeatedly reprovision
+competing profiles or relax the sandbox to turn that condition into a PASS.
 Raw Codex JSONL, an exit code of zero, a model's statement, a simulated hook
 payload or a passing fixture is insufficient. Record PASS, FAIL, SKIP and
 UNAVAILABLE separately. Results bind to the exact candidate, executable,
@@ -115,6 +122,9 @@ attempt. Planning is published at revision zero, then advanced to revision one
 by the canonical compare-and-swap writer before reservation. A JSONB reread must
 match every request value; object key order is immaterial, while array order is
 preserved. PostgreSQL cleanup and native process cleanup are reported separately.
+The overall process-cleanup status includes every attempted launch, even if a
+later scenario fails before creating its worker. Each scenario keeps its own
+termination status; a non-started port cannot hide earlier launched processes.
 
 An admission record proves the supervisor's decision. A refusal also requires
 a correlated native client trace and unchanged file hashes. The client may expose
@@ -128,6 +138,15 @@ HTTP request-ingestion deadlines and bounded admission evaluation are distinct.
 A fully received authenticated request must not be disconnected merely because
 its body-ingestion timer remains active during evaluation. Client, canonical
 evaluation and transport shutdown limits still bound failure handling.
+
+The executor's mandatory admitLaunch dependency is separate from durable intent
+and runner observation. It rechecks canonical admission before process creation
+and again while the observed runner remains suspended, before resume. Each
+decision binds the attempt and request. Its dedicated maximum ten-second budget
+is also bounded by the task's remaining duration; ordinary event, evidence and
+supervisor callbacks retain their five-second maximum. Refusal, cancellation or
+late completion cannot authorize resume. The native qualification driver wires
+both phases to the canonical preflight with the supplied abort signal.
 
 ## Preservation and reruns
 

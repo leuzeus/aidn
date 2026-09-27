@@ -68,15 +68,18 @@ function verifyExecutable(runtime) {
 // Dependencies are supplied by the supervisor. No default executor is registered.
 // qualify is an explicit read-only check of native evidence bound to this exact
 // runtime/candidate/OS/hooks. Preparation, durable launch intent and observed PID
-// recording remain required canonical supervisor operations, never worker calls.
+// recording and launch admission remain required canonical supervisor operations,
+// never worker calls. Admission has a separate bounded budget because it includes
+// canonical reads and physical candidate inspection, not an event notification.
 export function createCodexCliTaskExecutor({ runtime, controller, qualify, prepare, recordLaunchIntent,
-  observeRunner, openEvidence, callbackTimeoutMs = 5000 } = {}) {
-  for (const callback of [qualify, prepare, recordLaunchIntent, observeRunner, openEvidence]) {
+  observeRunner, admitLaunch, openEvidence, callbackTimeoutMs = 5000, admissionTimeoutMs = 10000 } = {}) {
+  for (const callback of [qualify, prepare, recordLaunchIntent, observeRunner, admitLaunch, openEvidence]) {
     if (typeof callback !== "function") throw new TypeError("CODEX_SUPERVISOR_DEPENDENCY_REQUIRED");
   }
   if (!runtime || !controller || typeof controller.run !== "function" || typeof controller.checkAvailability !== "function") throw new TypeError("CODEX_PROCESS_CONTROLLER_REQUIRED");
   if (!path.isAbsolute(runtime.codexHome ?? "")) throw new TypeError("CODEX_PROFILE_REQUIRED");
   if (!Number.isSafeInteger(callbackTimeoutMs) || callbackTimeoutMs < 1 || callbackTimeoutMs > 5000) throw new TypeError("CODEX_CALLBACK_LIMIT_INVALID");
+  if (!Number.isSafeInteger(admissionTimeoutMs) || admissionTimeoutMs < 1 || admissionTimeoutMs > 10000) throw new TypeError("CODEX_ADMISSION_LIMIT_INVALID");
   const frozenRuntime = structuredClone(runtime);
   let active = false;
   async function availability({ cwd, signal } = {}) {
@@ -113,6 +116,7 @@ export function createCodexCliTaskExecutor({ runtime, controller, qualify, prepa
       const channel = createAgentTaskEventChannel({ onEvent: event => bounded(() => onEvent?.(event, { signal: stop.signal })), requestStop: () => stop.abort() });
       active = true;
       let deadlineReached = false;
+      const taskDeadline = performance.now() + Math.min(request.limits.max_duration_ms, 86400000);
       const deadlineTimer = setTimeout(() => { deadlineReached = true; stop.abort(); }, Math.min(request.limits.max_duration_ms, 86400000));
       const abort = () => stop.abort();
       if (signal?.aborted) abort(); else signal?.addEventListener("abort", abort, { once: true });
@@ -121,6 +125,28 @@ export function createCodexCliTaskExecutor({ runtime, controller, qualify, prepa
       const emit = async (type, message) => channel.emit({ contract_version: "agent-task-event.v1",
         event_id: randomUUID(), run_id: request.run_id, task_id: request.task_id, attempt_id: request.attempt_id,
         plan_sha256: request.plan_sha256, sequence: ++sequence, type, message, evidence: [] });
+      const recheckAdmission = async phase => {
+        let taskBudgetLimited = false;
+        try {
+          const remaining = Math.floor(taskDeadline - performance.now());
+          if (remaining <= 0) { deadlineReached = true; stop.abort(); fail("CODEX_ADMISSION_TIMEOUT"); }
+          const budget = Math.min(admissionTimeoutMs, remaining), deadline = performance.now() + budget;
+          taskBudgetLimited = remaining <= admissionTimeoutMs;
+          const decision = await boundedCallback(() => admitLaunch(structuredClone(request), { signal: stop.signal, phase }),
+            { signal: stop.signal, timeoutMs: budget });
+          // Synchronous filesystem checks can defer timer delivery. A late
+          // admission must not win just because its promise resolves first.
+          if (performance.now() >= deadline) fail("CODEX_ADMISSION_TIMEOUT");
+          if (stop.signal.aborted) fail("CODEX_CALLBACK_CANCELLED");
+          if (decision?.protocol_version !== 1 || decision.ok !== true || decision.outcome !== "allow"
+              || decision.attempt_id !== request.attempt_id || decision.request_sha256 !== fingerprintAgentExecutionValue(request)) fail("CODEX_LAUNCH_ADMISSION_REFUSED");
+        } catch (error) {
+          failure = error.message === "CODEX_CALLBACK_TIMEOUT" ? "CODEX_ADMISSION_TIMEOUT"
+            : /^CODEX_[A-Z_]+$/.test(error.code ?? error.message) ? (error.code ?? error.message) : "CODEX_LAUNCH_ADMISSION_FAILED";
+          if (failure === "CODEX_ADMISSION_TIMEOUT" && taskBudgetLimited) deadlineReached = true;
+          stop.abort(); throw Object.assign(new Error(failure), { code: failure });
+        }
+      };
       try {
         const available = await bounded(() => availability({ cwd: request.cwd, signal: stop.signal }));
         if (available.status !== "available") fail(available.reason_code);
@@ -150,6 +176,7 @@ export function createCodexCliTaskExecutor({ runtime, controller, qualify, prepa
         if (typeof evidence?.append !== "function" || typeof evidence?.finish !== "function") fail("CODEX_EVIDENCE_INVALID");
         if (stop.signal.aborted) fail("CODEX_CANCELLED_BEFORE_LAUNCH");
         await bounded(() => recordLaunchIntent(structuredClone(request), { signal: stop.signal }));
+        await recheckAdmission("before_create");
         verifyExecutable(frozenRuntime);
         called = true;
         processResult = await controller.run({ runnerId: randomUUID(), executable: frozenRuntime.executable,
@@ -161,6 +188,9 @@ export function createCodexCliTaskExecutor({ runtime, controller, qualify, prepa
             if (event.type === "prepared") {
               await bounded(() => observeRunner(structuredClone(request), event, { signal: stop.signal }));
               await recheckQualification();
+              // The controller keeps this process suspended until prepared
+              // settles successfully. Late admission after abort cannot resume.
+              await recheckAdmission("before_resume");
             }
             else if (event.type === "resumed") await emit("started", "Codex task process started");
             else if (["stdout", "stderr"].includes(event.type)) {
@@ -169,7 +199,7 @@ export function createCodexCliTaskExecutor({ runtime, controller, qualify, prepa
             } else fail("CODEX_PROCESS_EVENT_INVALID");
           },
         });
-        try { protocol = parser.finish(); } catch (error) { failure = error.message; }
+        try { protocol = parser.finish(); } catch (error) { failure ??= error.message; }
       } catch (error) {
         failure = /^CODEX_[A-Z_]+$/.test(error.code ?? error.message) ? (error.code ?? error.message) : "CODEX_EXECUTION_FAILED";
         stop.abort();

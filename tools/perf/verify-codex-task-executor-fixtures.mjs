@@ -19,7 +19,7 @@ const lines = [{ type: "thread.started", thread_id: "thread.fixture" }, { type: 
   { type: "item.completed", item: { type: "agent_message", text: "été" } }, { type: "turn.completed", usage: {} }];
 const bytes = Buffer.from(lines.map(item => JSON.stringify(item)).join("\n") + "\n");
 let ordinal = 0;
-function setup({ output = bytes, termination = "confirmed", exit = 0, outcome = "completed", qualify = true, throwController = false, failPrepared = false, callbackTimeoutMs = 5000, invalidatePreparation = false, minimalEnvironment = false } = {}) {
+function setup({ output = bytes, termination = "confirmed", exit = 0, outcome = "completed", qualify = true, throwController = false, failPrepared = false, callbackTimeoutMs = 5000, admissionTimeoutMs = 10000, admission, omitAdmission = false, invalidatePreparation = false, minimalEnvironment = false } = {}) {
   const request = structuredClone(fixture.request);
   request.cwd = cwd; request.attempt_id = `fixture.${++ordinal}`;
   const calls = [], events = [];
@@ -40,7 +40,7 @@ function setup({ output = bytes, termination = "confirmed", exit = 0, outcome = 
       }
     },
   };
-  const executor = createCodexCliTaskExecutor({ runtime, controller, callbackTimeoutMs,
+  const executor = createCodexCliTaskExecutor({ runtime, controller, callbackTimeoutMs, admissionTimeoutMs,
     qualify: async () => ({ qualified: qualify }),
     prepare: async req => { if (invalidatePreparation) qualify = false; return { request_sha256: fingerprintAgentExecutionValue(req),
       env: minimalEnvironment ? { AIDN_AGENT_ATTEMPT_ID: req.attempt_id, AIDN_AGENT_REQUEST_SHA256: fingerprintAgentExecutionValue(req) } : createCodexWorkerEnvironment({ host: { PATH: process.env.PATH ?? "", AIDN_PG_URL: "never-forward", OPENAI_API_KEY: "never-forward" },
@@ -48,6 +48,12 @@ function setup({ output = bytes, termination = "confirmed", exit = 0, outcome = 
         admission: { endpoint: "http://127.0.0.1:12345/v1/admit", token: "a".repeat(64), attemptId: req.attempt_id, requestSha256: fingerprintAgentExecutionValue(req) } }) }; },
     recordLaunchIntent: async () => calls.push("intent"),
     observeRunner: async () => { calls.push("observed"); if (failPrepared) throw new Error("observation failed"); },
+    admitLaunch: omitAdmission ? undefined : async (req, options) => {
+      calls.push(`admission:${options.phase}`);
+      const decision = { protocol_version: 1, ok: true, outcome: "allow", attempt_id: req.attempt_id,
+        request_sha256: fingerprintAgentExecutionValue(req) };
+      return admission ? admission(req, options, decision) : decision;
+    },
     openEvidence: createAgentTaskEvidenceStore({ root: evidenceRoot }).open,
   });
   return { request, executor, calls, events };
@@ -55,6 +61,11 @@ function setup({ output = bytes, termination = "confirmed", exit = 0, outcome = 
 try {
   await check("construction and descriptor do not probe", () => {
     const { executor, calls } = setup(); assert.equal(executor.getDescriptor().executor_id, "codex-cli-task"); assert.deepEqual(calls, []);
+  });
+  await check("launch admission is required and has its own finite budget", () => {
+    assert.throws(() => setup({ omitAdmission: true }), /SUPERVISOR_DEPENDENCY_REQUIRED/);
+    assert.throws(() => setup({ callbackTimeoutMs: 5001 }), /CALLBACK_LIMIT_INVALID/);
+    for (const value of [0, 10001, Infinity, 1.5]) assert.throws(() => setup({ admissionTimeoutMs: value }), /ADMISSION_LIMIT_INVALID/);
   });
   await check("arguments freeze model effort cwd sandbox and stdin", () => {
     const { request } = setup(); const args = buildCodexTaskArguments(request);
@@ -91,7 +102,8 @@ try {
     const { executor, request, calls, events } = setup(); let busy = false;
     const result = await executor.runTask(request, { onEvent: async event => { assert(!busy); busy = true; await Promise.resolve(); events.push(event); busy = false; } });
     assert.equal(result.outcome, "completed"); assert(!("acceptance" in result));
-    assert(calls.indexOf("intent") < calls.indexOf("run")); assert(calls.indexOf("observed") < calls.indexOf("resumed"));
+    assert.deepEqual(calls.filter(value => ["intent", "admission:before_create", "run", "observed", "admission:before_resume", "resumed"].includes(value)),
+      ["intent", "admission:before_create", "run", "observed", "admission:before_resume", "resumed"]);
     assert.deepEqual(events.map(event => event.sequence), [1, 2, 3, 4, 5]);
     const proof = result.evidence[0], content = fs.readFileSync(path.join(evidenceRoot, proof.ref));
     assert.equal(content.length, proof.bytes); assert.equal(createHash("sha256").update(content).digest("hex"), proof.sha256);
@@ -115,6 +127,60 @@ try {
   await check("observation failure never resumes", async () => {
     const { executor, request, calls } = setup({ failPrepared: true });
     const result = await executor.runTask(request); assert.equal(result.outcome, "failed"); assert(!calls.includes("resumed"));
+  });
+  await check("launch admission cannot be confused with a foreign or denied decision", async () => {
+    for (const changed of [{ ok: false, outcome: "deny" }, { attempt_id: "foreign" }, { request_sha256: "0".repeat(64) }, { protocol_version: 2 }]) {
+      const { executor, request, calls } = setup({ admission: async (_req, _options, decision) => ({ ...decision, ...changed }) });
+      const result = await executor.runTask(request);
+      assert.equal(result.reason_code, "CODEX_LAUNCH_ADMISSION_REFUSED"); assert.equal(result.termination_state, "not_started"); assert(!calls.includes("run"));
+    }
+  });
+  await check("fresh suspended admission refusal stops before resume", async () => {
+    const { executor, request, calls } = setup({ admission: async (_req, { phase }, decision) =>
+      phase === "before_resume" ? { ...decision, ok: false, outcome: "deny" } : decision });
+    const result = await executor.runTask(request);
+    assert.equal(result.reason_code, "CODEX_LAUNCH_ADMISSION_REFUSED"); assert(calls.includes("observed")); assert(calls.includes("stop")); assert(!calls.includes("resumed"));
+  });
+  await check("admission work may exceed the notification budget without extending event callbacks", async () => {
+    const { executor, request } = setup({ callbackTimeoutMs: 500, admissionTimeoutMs: 1000,
+      admission: async (_req, _options, decision) => { await new Promise(resolve => setTimeout(resolve, 600)); return decision; } });
+    assert.equal((await executor.runTask(request)).outcome, "completed");
+  });
+  await check("synchronous admission overruns cannot beat the deadline timer", async () => {
+    const { executor, request, calls } = setup({ admissionTimeoutMs: 40, admission: async (_req, _options, decision) => {
+      const until = performance.now() + 60; while (performance.now() < until) { /* fixture blocks timer delivery */ }
+      return decision;
+    } });
+    const result = await executor.runTask(request);
+    assert.equal(result.reason_code, "CODEX_ADMISSION_TIMEOUT"); assert(!calls.includes("run"));
+  });
+  await check("admission deadline aborts and ignores a later allow before resume", async () => {
+    let finish, signal;
+    const { executor, request, calls } = setup({ admissionTimeoutMs: 40, admission: async (_req, options, decision) => {
+      if (options.phase === "before_create") return decision;
+      signal = options.signal; return new Promise(resolve => { finish = () => resolve(decision); });
+    } });
+    const result = await executor.runTask(request);
+    assert.equal(result.reason_code, "CODEX_ADMISSION_TIMEOUT"); assert(signal.aborted); assert(!calls.includes("resumed"));
+    finish(); await new Promise(resolve => setImmediate(resolve)); assert(!calls.includes("resumed"));
+  });
+  await check("cancellation during suspended admission cannot resume after a late allow", async () => {
+    let finish, signal; const abort = new AbortController();
+    const { executor, request, calls } = setup({ admission: async (_req, options, decision) => {
+      if (options.phase === "before_create") return decision;
+      signal = options.signal; queueMicrotask(() => abort.abort());
+      return new Promise(resolve => { finish = () => resolve(decision); });
+    } });
+    const result = await executor.runTask(request, { signal: abort.signal });
+    assert.equal(result.outcome, "cancelled"); assert(signal.aborted); assert(!calls.includes("resumed"));
+    finish(); await new Promise(resolve => setImmediate(resolve)); assert(!calls.includes("resumed"));
+  });
+  await check("task deadline bounds a longer launch admission budget", async () => {
+    let signal;
+    const { executor, request, calls } = setup({ admissionTimeoutMs: 1000, admission: async (_req, options) => { signal = options.signal; return new Promise(() => {}); } });
+    request.limits.max_duration_ms = 500;
+    const result = await executor.runTask(request);
+    assert.equal(result.outcome, "timed_out"); assert(signal.aborted); assert(!calls.includes("run"));
   });
   await check("lost process controller never implies stopped", async () => {
     const { executor, request } = setup({ throwController: true });

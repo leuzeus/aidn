@@ -181,7 +181,10 @@ require the human-reviewed qualification in CODEX_NATIVE_QUALIFICATION.md.
 
 The candidate process controller uses a Windows Job Object assigned atomically
 at process creation, with a suspended child and kill-on-close. The supervisor
-records the observed runner before resuming it. Confirmation requires an observed
+records the observed runner and rechecks canonical admission while it remains
+suspended before resuming it. Admission is a separate bounded dependency from
+intent publication, runner observation and event callbacks; a late decision
+cannot authorize a cancelled launch. Confirmation requires an observed
 zero active-process count; loss of observation produces `indeterminate`. Linux
 does not silently substitute PID or process-group termination for this proof.
 The Codex executor uses resolved executable bytes, structured arguments, explicit
