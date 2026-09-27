@@ -395,6 +395,15 @@
       "obligation": {"dev": "required", "main": "required", "release": "required"}
     },
     {
+      "id": "runtime-agent-worker-fixtures",
+      "family": "runtime",
+      "script": "perf:verify-agent-worker-fixtures",
+      "job": "governance-admission/gates",
+      "surfaces": ["bounded Codex protocol and executor doubles", "authenticated delegated admission", "worker credential separation"],
+      "condition": "always",
+      "obligation": {"dev": "required", "main": "required", "release": "required"}
+    },
+    {
       "id": "runtime-shared-coordination-concurrency",
       "family": "runtime",
       "script": "perf:verify-shared-coordination-concurrency-gate",

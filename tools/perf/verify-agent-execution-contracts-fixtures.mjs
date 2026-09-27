@@ -57,6 +57,21 @@ async function rejectBindings(name, mutate, code) {
   });
 }
 
+function withPreexistingNativeProfile() {
+  const bundle = copy(fixture);
+  bundle.plan.execution.native_profile = { mode: "preexisting", policy_sha256: "a".repeat(64) };
+  bundle.plan.plan_sha256 = fingerprintAgentExecutionPlan(bundle.plan);
+  for (const kind of ["run", "task", "attempt", "delegation", "request", "event", "result", "acceptance"]) {
+    bundle[kind].plan_sha256 = bundle.plan.plan_sha256;
+  }
+  for (const event of bundle.events) event.plan_sha256 = bundle.plan.plan_sha256;
+  bundle.request.execution = copy(bundle.plan.execution);
+  bundle.request.delegation_sha256 = fingerprintAgentExecutionValue(bundle.delegation);
+  bundle.result.request_sha256 = fingerprintAgentExecutionValue(bundle.request);
+  bundle.acceptance.result_sha256 = fingerprintAgentExecutionValue(bundle.result);
+  return bundle;
+}
+
 await check("registry has exactly one positive case per internal schema", () => {
   assert.deepEqual(listAgentExecutionContractKinds().sort(), kinds);
   assert.deepEqual(readdirSync(schemaRoot).filter((name) => name.endsWith(".schema.json")).sort(), kinds.map((kind) => `${kind}.v1.schema.json`));
@@ -84,6 +99,64 @@ await check("complete independently authored model chain binds without mutation"
   assert.equal(JSON.stringify(fixture), before);
   assert.notEqual(fixture.plan.canonical.plan_sha256, fixture.plan.plan_sha256);
 });
+await check("legacy execution configuration remains valid without a native profile", () => {
+  assert.equal(Object.hasOwn(fixture.plan.execution, "native_profile"), false);
+  assert.equal(Object.hasOwn(fixture.request.execution, "native_profile"), false);
+  const normalized = normalizeAgentExecutionPlan(fixture.plan);
+  assert.equal(Object.hasOwn(normalized.execution, "native_profile"), false);
+  assert.equal(normalized.plan_sha256, fixture.expected.plan_sha256);
+  assert.equal(validateAgentExecutionBindings(fixture).ok, true);
+});
+await check("explicit preexisting native profile binds a complete plan and request", () => {
+  const bundle = withPreexistingNativeProfile();
+  const before = JSON.stringify(bundle);
+  assert.deepEqual(validateAgentExecutionBindings(bundle), { ok: true, issues: [] });
+  assert.equal(JSON.stringify(bundle), before);
+  assert.notEqual(bundle.plan.plan_sha256, fixture.expected.plan_sha256);
+  assert.notEqual(fingerprintAgentExecutionValue(bundle.request), fixture.expected.request_sha256);
+  const normalized = normalizeAgentExecutionPlan(bundle.plan);
+  assert.deepEqual(normalized.execution.native_profile, bundle.request.execution.native_profile);
+  assert.equal(Object.isFrozen(normalized.execution.native_profile), true);
+});
+await check("native profile policy digest changes invalidate the frozen plan", () => {
+  const bundle = withPreexistingNativeProfile();
+  const originalHash = bundle.plan.plan_sha256;
+  bundle.plan.execution.native_profile.policy_sha256 = "b".repeat(64);
+  expectIssue(validateAgentExecutionContract("plan", bundle.plan), "PLAN_FINGERPRINT_MISMATCH");
+  assert.notEqual(fingerprintAgentExecutionPlan(bundle.plan), originalHash);
+});
+await check("a foreign native profile policy cannot replace the request configuration", () => {
+  const bundle = withPreexistingNativeProfile();
+  bundle.request.execution.native_profile.policy_sha256 = "b".repeat(64);
+  bundle.result.request_sha256 = fingerprintAgentExecutionValue(bundle.request);
+  bundle.acceptance.result_sha256 = fingerprintAgentExecutionValue(bundle.result);
+  expectIssue(validateAgentExecutionBindings(bundle), "EXECUTION_CONFIG_MISMATCH");
+});
+await check("a native profile cannot be silently removed from the request", () => {
+  const bundle = withPreexistingNativeProfile();
+  delete bundle.request.execution.native_profile;
+  bundle.result.request_sha256 = fingerprintAgentExecutionValue(bundle.request);
+  bundle.acceptance.result_sha256 = fingerprintAgentExecutionValue(bundle.result);
+  expectIssue(validateAgentExecutionBindings(bundle), "EXECUTION_CONFIG_MISMATCH");
+});
+await rejectBindings("a native profile cannot be silently added to a legacy request", (bundle) => {
+  bundle.request.execution.native_profile = { mode: "preexisting", policy_sha256: "a".repeat(64) };
+}, "EXECUTION_CONFIG_MISMATCH");
+for (const [name, nativeProfile] of [
+  ["missing mode", { policy_sha256: "a".repeat(64) }],
+  ["missing policy digest", { mode: "preexisting" }],
+  ["unrecognized mode", { mode: "automatic", policy_sha256: "a".repeat(64) }],
+  ["short policy digest", { mode: "preexisting", policy_sha256: "a".repeat(63) }],
+  ["non-hex policy digest", { mode: "preexisting", policy_sha256: "g".repeat(64) }],
+  ["profile path", { mode: "preexisting", policy_sha256: "a".repeat(64), path: "/private/profile" }],
+  ["authentication data", { mode: "preexisting", policy_sha256: "a".repeat(64), token: "fixture-not-a-secret" }],
+  ["null", null],
+  ["array", []],
+]) {
+  for (const kind of ["plan", "request"]) {
+    await rejectContract(`${kind} refuses native profile ${name}`, kind, (value) => { value.execution.native_profile = copy(nativeProfile); }, "SCHEMA_INVALID");
+  }
+}
 await check("fixed canonical JSON and SHA-256 vectors", () => {
   assert.equal(createHash("sha256").update(fixture.expected.canonical_plan_json, "utf8").digest("hex"), fixture.expected.plan_sha256);
   assert.equal(fingerprintAgentExecutionPlan(fixture.plan), fixture.expected.plan_sha256);

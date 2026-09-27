@@ -4,7 +4,7 @@
 // PostgreSQL transaction; no transient or local authority implements this port.
 export const AGENT_EXECUTION_STORE_METHODS = Object.freeze([
   "checkReadiness", "readCanonicalDigest", "getRun", "reserveRun", "claimAttempt",
-  "recordLaunchIntent", "observeRunner", "renewAttempt", "appendEvent", "recordResult",
+  "recordLaunchIntent", "observeRunner", "renewAttempt", "appendEvent", "recordResult", "admitDelegatedRequest",
   "expireAttempts", "invalidateRun", "reconcileAttempt", "finishRun",
 ]);
 export const AGENT_EXECUTION_TABLES = Object.freeze([

@@ -259,6 +259,45 @@ native Codex, OS confinement and concurrent workers remain unqualified here.
 The gate belongs only to the runtime family; the four context-resilience groups
 and their 43 historical invocations are unchanged.
 
+For the candidate Codex task executor and delegated admission, run
+`npm run perf:verify-agent-worker-fixtures`. The required runtime gate tests
+bounded JSONL, explicit configuration, serialized callbacks, termination outcomes,
+exact delegated scopes and authenticated local transport with supervisor doubles.
+Protocol fixtures also replay a nonterminal startup error item before a turn,
+reject malformed or premature work items, and preserve the first stream or
+callback error without emitting further records.
+It also checks explicit preexisting-profile policy bindings, configuration
+neutralization and fresh verification challenges using synthetic inputs. Native
+metadata observations, human trust and actual worker execution remain separate
+evidence; an existing Windows backend is never provisioned by those fixtures.
+Environment fixtures cover inherited table merging, discovered names without
+values, explicit empty overrides plus a final exact include filter, unexpected
+names or values, Windows case aliases and collisions with runtime variables.
+These fixtures do not prove the native command environment on an operating system.
+It also checks the native qualification tools' review bindings, receipt-only
+refresh and preservation guards without launching a model or PostgreSQL.
+Refresh fixtures include an external preexisting home whose directory identity
+matches preparation, immutable mode and lineage, overlap and alias refusals, and
+guards against reading profile contents. A managed source checkout below the
+home is accepted; a home inside the source is refused. Reviewed hook bytes and
+absence of old
+attempt markers remain mandatory; no previous native execution proof transfers.
+The targeted `node tools/perf/verify-agent-native-qualification-fixtures.mjs`
+check also covers consented metadata preparation, request/policy/attempt and
+termination bindings, no-launch failures, cancellation and late decisions.
+An observer that ignores cancellation leaves metadata cleanup unconfirmed and
+cannot trigger a final observation of a previously successful attempt.
+Synthetic callbacks verify that bootstrap and fresh canonical preflight share
+one 60-second maximum budget, counted separately in the run, before the unchanged
+worker deadline begins. The metadata collector and its warm verification remain
+separate bounded observations. These checks neither copy a real profile's
+historical metadata nor establish native startup performance.
+It does not execute Codex or qualify the OS sandbox. The explicit Windows helper
+build and `tools/perf/verify-agent-process-tree-fixtures.mjs` separately test native
+process trees. An unavailable native prerequisite is not a fixture PASS.
+Preparation and human review precede real Codex probes as specified in
+[bounded agent native qualification](AGENT_EXECUTION_NATIVE_QUALIFICATION.md).
+
 For durable agent ownership, run `npm run perf:verify-agent-execution-postgres`
 with `PG_BIN_DIR` pointing to the absolute directory containing `initdb`,
 `pg_ctl` and `postgres`. The required `runtime-agent-execution-postgres` gate

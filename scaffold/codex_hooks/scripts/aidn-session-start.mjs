@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { readHookPayload, resolveHookProject, readAdmission, isNeutralAdmission, compactAdmission } from "./aidn-hook-runtime.mjs";
+import { readHookPayload, resolveHookProject, readAdmission, isNeutralAdmission, compactAdmission, isDelegatedHookContext } from "./aidn-hook-runtime.mjs";
 
 async function main() {
   const payload = await readHookPayload();
   const location = resolveHookProject(import.meta.url, payload.cwd);
+  if (isDelegatedHookContext(location.projectRoot)) {
+    process.stdout.write(`${JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart",
+      additionalContext: "AIDN delegated task: only the exact authorized patch operations are available. Session, cycle, planning, installation, Git references and authorization are controlled by the supervisor. Each operation requires live delegated admission. Startup is not admission." } })}\n`);
+    return;
+  }
   const required = process.env.AIDN_HOOK_PROJECT_ROOT ? ["AGENTS.md"]
     : ["AGENTS.md", path.join(".agents", "skills"), path.join(".codex", "agents")];
   const missing = required.filter((entry) => !fs.existsSync(path.join(location.projectRoot, entry)));

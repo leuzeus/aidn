@@ -213,6 +213,23 @@
             "workspace-write"
           ]
         },
+        "native_profile": {
+          "type": "object",
+          "required": [
+            "mode",
+            "policy_sha256"
+          ],
+          "properties": {
+            "mode": {
+              "const": "preexisting"
+            },
+            "policy_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "additionalProperties": false
+        },
         "engine": {
           "type": "object",
           "required": [

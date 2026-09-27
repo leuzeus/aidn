@@ -4,8 +4,9 @@
 
 Accepted. Lot 2 provided internal contracts and pure validation (`model_only`).
 Lot 3 adds PostgreSQL persistence (`persistence_only`). Supervised execution is
-still unavailable: no executor process, native admission delegation, scheduler
-or `agent-run*` command is implemented yet.
+still unavailable. Lot 4 introduces the candidate Codex executor, delegated
+admission and native process controller; availability remains gated on separate
+native qualification. No scheduler or `agent-run*` command is implemented yet.
 
 ## Date
 
@@ -82,9 +83,9 @@ The separate `AgentTaskExecutor` port exposes synchronous, probe-free
 `getDescriptor()`, asynchronous `checkAvailability({ cwd, signal })`, and
 `runTask(request, { signal, onEvent })`. An injected registry declares candidates;
 discovery and port assertions do not probe availability or launch processes.
-`codex-cli-task` is reserved for the future Codex executor and is distinct from
-the historical `codex` workflow adapter. No real executor is registered in this
-increment. Availability describes checked prerequisites, never admission or
+`codex-cli-task` identifies the candidate Codex executor and is distinct from
+the historical `codex` workflow adapter. No executor is implicitly registered.
+Availability describes checked prerequisites, never admission or
 native trust. Execution requires explicit absolute cwd and resolved configuration,
 without parent-cwd or model fallback.
 
@@ -111,6 +112,67 @@ not a binding check. Root tasks use the plan's base SHA. The scheduler must late
 prove that a dependent task's recorded input SHA contains its integrated
 predecessors. A final run audit is frozen in the plan but is not represented as
 successful merely because an individual task acceptance passes.
+
+### Explicit preexisting native profile (lot 4 amendment)
+
+The optional additive `execution.native_profile` contract selects
+`{ mode: "preexisting", policy_sha256: "<64 lowercase hex characters>" }`.
+Its presence binds the plan and request to one explicitly selected, verified and
+frozen local policy. It carries no profile path, authentication material or trust
+configuration. Changing its policy digest changes the plan and request hashes;
+adding, removing or replacing it in a request conflicts with the frozen plan.
+Historical contracts without this field remain valid and imply no selection or
+fallback to a preexisting profile.
+
+The explicit preexisting mode uses the ordinary native configuration loader in
+both its metadata observer and executor. It tolerates inert historical fields
+while freezing complete source bytes and verifying every required effective
+control. Isolated homes retain strict parsing. This is a fixed mode invariant,
+not an automatic retry after configuration failure; no user configuration is
+deleted and no sandbox, hook, provider or integration requirement is relaxed.
+
+The local policy freezes inherited shell-environment override names, not their
+values. Process arguments empty each declared override and enforce an exact
+final include filter for the required runtime variables. Empty values alone do
+not prove removal. Reserved-name collisions, Windows case aliases, additional
+names, nonempty values and wider filters fail validation. Native observations
+must establish these effective controls without changing the user's profile.
+
+A correction limited to package bytes may retain reviewed disposable roots and
+their selected native home before any delegated attempt. Refresh preserves the
+home's mode and physical identity, exact hook assets, activation, Git and runtime
+preimages; only root-specific receipts and completed installation transactions
+may change. A preexisting
+home stays outside the owned outputs and is never inventoried or copied. Native
+hook trust must be observed again and the profile policy frozen for the new
+candidate. Earlier native execution results do not qualify the refreshed package.
+
+AIDN does not provision this profile, copy authentication, grant native trust,
+run native setup or silently substitute another profile. Config, trust,
+authorization, AIDN runtime state and Git metadata remain protected. The local
+policy must explicitly bound any ordinary native cache, session or authentication
+effects and record consent for those effects; this permission does not authorize
+changes to the protected authorities. Preparation, fixtures, independent review
+and explicit native approval precede any worker execution against the selected
+profile. This mode remains unavailable until its full native qualification proves
+the frozen policy, hooks, confinement and preservation boundaries. Contract or
+fixture success does not establish native PASS.
+
+Native initialization can backfill historical titles, first messages and
+previews into the exact attempt's local SQLite directory. This effect requires
+explicit consent under the current policy digest; the copied metadata remains
+outside Git and PR evidence. The qualification driver allocates a distinct
+60-second preparation budget, including fresh canonical preflight, while
+renewing ownership. A preparation result binds request, policy, attempt and
+confirmed process termination, but grants no admission or native qualification.
+The run budget includes this preparation and the unchanged worker duration;
+worker timing begins only after preparation succeeds. Independent ten-second
+checks still precede creation and resume. A failed preparation prevents launch,
+preserves its state and cannot trigger a retry, SQLite disabling or backfill
+metadata changes. No native setup or trust operation is added.
+This native SQLite index never carries AIDN claims or replaces PostgreSQL
+authority. Unconfirmed metadata-process termination prevents further native
+observation and is reported independently of a worker that never started.
 
 ### Durable ownership (lot 3)
 
@@ -167,9 +229,32 @@ branch, input SHA, activation, frozen plan and live lease. It must refuse sessio
 cycle, planning, installation and authorization mutations. Each worktree needs
 its own verified preparation and exact candidate engine. Copying a receipt or
 holding a delegation cannot undo revocation. An authenticated local admission
-transport will expose only bounded admission requests; workers receive no writer
-credentials or generic database/command access. This is a required future
-capability, not an implemented bypass of ADR-0012.
+transport exposes only bounded admission requests; workers receive no writer
+credentials or generic database/command access. The lot 4 transport authenticates
+both directions with attempt-scoped HMACs and nonces on a loopback listener. The
+PostgreSQL store rechecks ownership, canonical state and lease after evaluation.
+The worktree inspector verifies its own receipt, verify-only preparation, exact
+candidate archive and inventory, physical root, branch, input SHA and activation.
+The marker under `.codex` makes missing delegated environment fail closed.
+Delegated hooks reject every unsupported tool; historical hooks retain their
+existing patch-only semantics. Native hook coverage and OS confinement still
+require the human-reviewed qualification in CODEX_NATIVE_QUALIFICATION.md.
+
+The candidate process controller uses a Windows Job Object assigned atomically
+at process creation, with a suspended child and kill-on-close. The supervisor
+records the observed runner and rechecks canonical admission while it remains
+suspended before resuming it. Admission is a separate bounded dependency from
+intent publication, runner observation and event callbacks; a late decision
+cannot authorize a cancelled launch. Confirmation requires an observed
+zero active-process count; loss of observation produces `indeterminate`. Linux
+does not silently substitute PID or process-group termination for this proof.
+The Codex executor uses resolved executable bytes, structured arguments, explicit
+sandbox/configuration and stdin prompt. It stores bounded transcripts locally,
+awaits serialized callbacks, and never forwards raw Codex JSONL to AIDN stdout.
+
+Bounded nonterminal startup diagnostics do not count as a started turn, task
+completion or acceptance. Malformed sequencing still stops execution, retaining
+the first protocol failure for diagnosis.
 
 The supervisor owns retention for runs, tasks, attempts and acceptance evidence.
 Transcripts and bulky outputs remain local. Shared results carry only bounded
@@ -192,7 +277,10 @@ in-memory executor doubles, governance closure and the required
 `runtime-agent-execution-postgres` gate with a disposable PostgreSQL cluster,
 separate Node processes and a launch barrier. Historical simulated concurrency
 checks have their own required gate. Native process trees, hooks, OS confinement
-and real Codex workers still require separate evidence in later increments.
+and real Codex workers require separate evidence. Lot 4 adds the required
+`runtime-agent-worker-fixtures` gate; executor doubles and authenticated transport
+fixtures do not establish that native hooks ran or that the sandbox confined a
+worker. Native qualification is separate from these CI checks.
 An unqualified OS cannot advertise the future capability.
 
 ## Consequences

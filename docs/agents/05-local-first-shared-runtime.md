@@ -68,8 +68,9 @@ path (`execution_run`, `delegated_task`, `execution_attempt`). Existing sequenti
 workflows continue to support operation without PostgreSQL. Lot 3 adds a separate
 AgentExecutionStore and explicit shared schema 2 to 3 migration, with
 `persistence_only` coverage. Canonical runtime and supervision must share one
-PostgreSQL transaction. Writers check reservations atomically. No executor or
-scheduler is available. Readiness and reads do not register, heartbeat or migrate;
+PostgreSQL transaction. Writers check reservations atomically. The candidate lot 4
+executor requires separate native qualification; no scheduler is available.
+Readiness and reads do not register, heartbeat or migrate;
 intact v2 remains readable for backup while writes require explicit migration.
 
 The migration creates `execution_runs`, `execution_tasks`, `execution_attempts`
@@ -86,5 +87,8 @@ from worktree heartbeats and global engine-generation leases. No claim, heartbea
 or read-only readiness check may implicitly bootstrap DDL. Delegation and results
 belong to attempts; expiration requires reconciliation before another launch.
 Fixture-injected `verifyActivation` and `verifyTermination` are not native
-qualification. This increment supplies no native delegated admission, process
-executor or automatic purge.
+qualification. Lot 4 adds a bounded admission transport and candidate process
+executor without advertising native availability. Admission rechecks the live
+attempt in PostgreSQL; hooks carry no writer secret and reject unsupported tools
+for delegated worktrees. Native trust, actual hooks and OS confinement remain
+separate required proofs. There is no automatic purge.

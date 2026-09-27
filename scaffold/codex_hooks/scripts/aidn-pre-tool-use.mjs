@@ -1,13 +1,21 @@
 #!/usr/bin/env node
-import { readHookPayload, resolveHookProject, readAdmission, isNeutralAdmission, compactAdmission, deny } from "./aidn-hook-runtime.mjs";
+import { readHookPayload, resolveHookProject, readAdmission, isNeutralAdmission, compactAdmission, deny,
+  isDelegatedHookContext, readDelegatedAdmission } from "./aidn-hook-runtime.mjs";
 
 async function main() {
   let payload;
   try { payload = await readHookPayload(); }
   catch { payload = {tool_name:"apply_patch", tool_input:null}; }
-  // Only the verified native patch path is covered. Shells and MCP calls are not classified here.
-  if (typeof payload.tool_name === "string" && !["apply_patch", "Edit", "Write"].includes(payload.tool_name)) return {};
   const { projectRoot, invocationCwd } = resolveHookProject(import.meta.url, payload.cwd);
+  if (isDelegatedHookContext(projectRoot)) {
+    const decision = await readDelegatedAdmission(projectRoot, {
+      cwd: invocationCwd, tool_name: payload.tool_name, tool_input: payload.tool_input,
+    });
+    if (!decision.ok) return deny("delegated operation refused; only the exact active attempt scope is permitted.");
+    return { hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: "AIDN delegated admission verified for this operation only." } };
+  }
+  // Historical admission continues to cover only the verified patch path.
+  if (typeof payload.tool_name === "string" && !["apply_patch", "Edit", "Write"].includes(payload.tool_name)) return {};
   const admission = readAdmission(projectRoot, { nativeRequest: {
     cwd: invocationCwd, tool_name: payload.tool_name, tool_input: payload.tool_input,
   } });

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ownPackageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const globalBindingResolver = process.env.AIDN_GLOBAL_PACKAGE_ROOT === ownPackageRoot
@@ -224,6 +224,30 @@ export function readAdmission(projectRoot, { skill = "", nativeRequest, commandR
 
 export function isNeutralAdmission(admission) {
   return admission.activation?.active === false && ["absent", "unprepared", "revoked"].includes(admission.activation.state);
+}
+
+export function isDelegatedHookContext(projectRoot, env = process.env) {
+  return Object.keys(env).some(key => key.startsWith("AIDN_AGENT_"))
+    || fs.existsSync(path.join(projectRoot, ".codex/aidn-agent-attempt.json"));
+}
+
+// The worker contacts a bounded local admission endpoint. It never loads project
+// persistence configuration or receives a PostgreSQL writer connection.
+export async function readDelegatedAdmission(projectRoot, nativeRequest, env = process.env) {
+  const markerPath = safePath(path.join(projectRoot, ".codex/aidn-agent-attempt.json"));
+  if (!fs.existsSync(markerPath) || fs.statSync(markerPath).size > 4096) throw new Error("admission_delegation_missing");
+  const marker = JSON.parse(fs.readFileSync(markerPath, "utf8"));
+  if (!object(marker) || marker.protocol_version !== 1 || typeof marker.attempt_id !== "string"
+      || !/^[a-f0-9]{64}$/.test(marker.request_sha256 ?? "")
+      || marker.attempt_id !== env.AIDN_AGENT_ATTEMPT_ID || marker.request_sha256 !== env.AIDN_AGENT_REQUEST_SHA256) throw new Error("admission_delegation_mismatch");
+  const binding = resolveBoundRuntime(projectRoot);
+  const modulePath = safePath(path.join(path.dirname(path.dirname(binding.entry)), "src/adapters/runtime/agent-admission-transport.mjs"));
+  const { requestAgentAdmission } = await import(pathToFileURL(modulePath).href);
+  const response = await requestAgentAdmission({ endpoint: env.AIDN_AGENT_ADMISSION_ENDPOINT,
+    token: env.AIDN_AGENT_ADMISSION_TOKEN, timeoutMs: 6500,
+    request: { protocol_version: 1, attempt_id: marker.attempt_id, request_sha256: marker.request_sha256, native_request: nativeRequest } });
+  if (!object(response) || typeof response.ok !== "boolean") throw new Error("admission_delegated_response_invalid");
+  return response;
 }
 
 export function compactAdmission(admission) {

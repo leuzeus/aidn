@@ -10,6 +10,7 @@ import { lockExecutionPlanning, lockExecutionScope } from "./agent-execution-fen
 
 const ACTIVE = new Set(["launch_intended", "running"]);
 const RUN_ACTIVE = new Set(["planned", "running"]);
+const ADMISSION_EVALUATION_MS = 4500;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const HASH = /^[a-f0-9]{64}$/;
 const knownFailures = new WeakSet();
@@ -387,6 +388,41 @@ export function createPostgresAgentExecutionStore({
         const renewed = await client.query("UPDATE aidn_shared.execution_attempts SET lease_until=clock_timestamp()+($2::bigint*interval '1 millisecond'), updated_at=clock_timestamp() WHERE attempt_id=$1 AND lease_until>clock_timestamp() RETURNING *", [attemptId,AGENT_EXECUTION_LEASE_MS]);
         if (!renewed.rows.length) return recovery(client,run,"LEASE_EXPIRED");
         return attemptView(renewed.rows[0]);
+      });
+    },
+    async admitDelegatedRequest({ attemptId, ownership, requestSha256, delegationSha256, evaluate }) {
+      requireHash(requestSha256); requireHash(delegationSha256);
+      if (typeof evaluate !== "function") throw failure("ADMISSION_EVALUATOR_REQUIRED");
+      return transaction(async client => {
+        await client.query("SET LOCAL lock_timeout = '2000ms'");
+        await client.query("SET LOCAL statement_timeout = '3000ms'");
+        const { run, row } = await lockedAttempt(client, attemptId);
+        await live(client, run, row, ownership);
+        if (!row.request_json) throw failure("LAUNCH_INTENT_REQUIRED");
+        if (fingerprintAgentExecutionValue(json(row,"request_json")) !== requestSha256
+          || fingerprintAgentExecutionValue(json(row,"delegation_json")) !== delegationSha256) throw failure("ADMISSION_BINDING_INVALID");
+        const context = await bundle(client, run, row);
+        const abort = new AbortController(), deadline = performance.now() + ADMISSION_EVALUATION_MS;
+        const expired = failure("ADMISSION_EVALUATION_TIMED_OUT");
+        let decision, timer;
+        try {
+          const evaluation = Promise.resolve().then(() => evaluate(copy(context), { signal: abort.signal }));
+          const timeout = new Promise((_,reject) => {
+            timer = setTimeout(() => { abort.abort(); reject(expired); }, ADMISSION_EVALUATION_MS);
+          });
+          const evaluated = await Promise.race([evaluation,timeout]);
+          // A synchronous callback can delay timer delivery. It must not win
+          // with an already-expired result when control reaches us again.
+          if (performance.now() >= deadline) throw expired;
+          decision = boundedJson(evaluated);
+        } catch (error) { throw error === expired ? error : failure("ADMISSION_EVALUATION_FAILED"); }
+        finally { clearTimeout(timer); abort.abort(); }
+        if (!decision || !["allow","deny"].includes(decision.outcome)) throw failure("ADMISSION_DECISION_INVALID");
+        // Filesystem, activation and preparation observations can take time.
+        // The result is authoritative only while ownership is still live using
+        // PostgreSQL time, with the canonical reservation locked throughout.
+        await live(client, run, row, ownership);
+        return decision;
       });
     },
     async appendEvent({ attemptId, ownership, event }) {

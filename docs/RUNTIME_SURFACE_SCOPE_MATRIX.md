@@ -89,7 +89,12 @@ v2 historical coordination data remains readable for pre-migration backup;
 normal shared writes require v3. A reservation requires a positive planning
 revision; it does not change the initial historical revision zero implicitly.
 Injected activation and termination fixture verifiers establish no native
-admission or descendant-termination proof.
+admission or descendant-termination proof. Lot 4 adds a candidate executor and
+authenticated local admission transport. Its worker environment contains no
+PostgreSQL writer credentials; the supervisor evaluates exact scopes under the
+live attempt reservation. Native trust, hook execution and confinement must be
+qualified before this candidate can advertise availability. `persistence_only`
+remains the governed coverage while that qualification is pending.
 
 The future run lifecycle owns local worker worktrees and bulky output files.
 Shared attempt results contain bounded local references, byte counts and hashes,
