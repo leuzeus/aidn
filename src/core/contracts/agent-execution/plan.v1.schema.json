@@ -432,6 +432,104 @@
         }
       },
       "additionalProperties": false
+    },
+    "verification": {
+      "type": "object",
+      "required": [
+        "runner",
+        "environment_sha256",
+        "control_files",
+        "audit_policy_sha256",
+        "proof_authority_sha256",
+        "limits"
+      ],
+      "properties": {
+        "runner": {
+          "type": "object",
+          "required": [
+            "id",
+            "executable_sha256"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "executable_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "environment_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "control_files": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1024,
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "sha256",
+              "git_mode"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024,
+                "pattern": "\\S"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "git_mode": {
+                "enum": [
+                  "100644",
+                  "100755"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "audit_policy_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "proof_authority_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "limits": {
+          "type": "object",
+          "required": [
+            "max_duration_ms",
+            "max_output_bytes"
+          ],
+          "properties": {
+            "max_duration_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            },
+            "max_output_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 16777216
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

@@ -14,6 +14,7 @@ import {
   validateAgentExecutionBindings,
   validateAgentExecutionContract,
   validateAgentRunValidationBindings,
+  validateAgentIntegrationIntentBindings,
 } from "../../src/core/agents/agent-execution-contracts.mjs";
 import { validateJsonSchema, validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import { assertAgentAdapter } from "../../src/core/ports/agent-adapter-port.mjs";
@@ -22,7 +23,7 @@ import { runAgentTaskExecutorConformanceChecks } from "./agent-task-executor-con
 
 const fixture = JSON.parse(readFileSync(new URL("../../tests/fixtures/agent-execution/contracts/complete-chain.json", import.meta.url), "utf8"));
 const schemaRoot = new URL("../../src/core/contracts/agent-execution/", import.meta.url);
-const kinds = ["acceptance", "attempt", "availability", "delegation", "descriptor", "event", "integration-applied", "integration-prepared", "plan", "request", "result", "run", "run-validation", "supervisor", "task"];
+const kinds = ["acceptance", "attempt", "availability", "delegation", "descriptor", "event", "integration-applied", "integration-intent", "integration-prepared", "plan", "request", "result", "run", "run-validation", "supervisor", "task"];
 const checks = [];
 const copy = (value) => structuredClone(value);
 const profile = { contractKind: "agent-execution" };
@@ -483,6 +484,75 @@ await check("final binding rejects non-JSON inputs without invoking accessors", 
   expectIssue(validateAgentRunValidationBindings({get plan(){reads++;return fixture.plan;}}),"INVALID_JSON");
   expectIssue(validateAgentRunValidationBindings(null),"BINDING_CONTEXT_REQUIRED");
   assert.equal(reads,0);
+});
+
+
+function verificationPlan() {
+  const value=copy(fixture.plan);delete value.plan_sha256;
+  value.verification={runner:{id:"node",executable_sha256:"a".repeat(64)},environment_sha256:"b".repeat(64),
+    control_files:[{path:"checks/verify.mjs",sha256:"c".repeat(64),git_mode:"100644"}],
+    audit_policy_sha256:"d".repeat(64),proof_authority_sha256:"e".repeat(64),limits:{max_duration_ms:1,max_output_bytes:1024}};
+  return value;
+}
+await check("verification config is optional for historical v1 fingerprints",()=>{
+  const value=verificationPlan(),before=JSON.stringify(value);
+  assert.equal(validateAgentExecutionContract("plan",value).ok,true);
+  assert.equal(JSON.stringify(value),before);
+  const legacy=copy(value);delete legacy.verification;
+  assert.equal(fingerprintAgentExecutionPlan(legacy),fixture.plan.plan_sha256);
+  assert.notEqual(fingerprintAgentExecutionPlan(value),fixture.plan.plan_sha256);
+});
+for(const [field,mutation] of [
+  ["runner identity",v=>v.runner.id="other"],["runner binary",v=>v.runner.executable_sha256="1".repeat(64)],
+  ["environment",v=>v.environment_sha256="2".repeat(64)],["controls",v=>v.control_files[0].sha256="3".repeat(64)],
+  ["mode",v=>v.control_files[0].git_mode="100755"],["audit policy",v=>v.audit_policy_sha256="4".repeat(64)],
+  ["proof authority",v=>v.proof_authority_sha256="5".repeat(64)],["budget",v=>v.limits.max_output_bytes++],
+]) await check("verification fingerprint binds "+field,()=>{
+  const plan=verificationPlan(),before=fingerprintAgentExecutionPlan(plan);mutation(plan.verification);
+  assert.notEqual(fingerprintAgentExecutionPlan(plan),before);
+});
+for(const [name,mutation,code] of [
+  ["control traversal",v=>v.verification.control_files[0].path="../secret","INVALID_VERIFICATION_PATH"],
+  ["control Windows alias",v=>v.verification.control_files[0].path="checks/CON.txt","INVALID_VERIFICATION_PATH"],
+  ["duplicate control alias",v=>v.verification.control_files.push({...v.verification.control_files[0],path:"CHECKS/verify.mjs"}),"DUPLICATE_VERIFICATION_PATH"],
+  ["delegated control",v=>v.verification.control_files[0].path=v.tasks[0].scope[0].path,"VERIFICATION_CONTROL_DELEGATED"],
+  ["delegated control parent",v=>v.verification.control_files[0].path=v.tasks[0].scope[0].path+"/child","VERIFICATION_CONTROL_DELEGATED"],
+  ["excessive verification duration",v=>v.verification.limits.max_duration_ms=v.limits.max_duration_ms+1,"VERIFICATION_DURATION_EXCEEDS_RUN"],
+  ["missing proof authority",v=>delete v.verification.proof_authority_sha256,"SCHEMA_INVALID"],
+  ["unbounded output",v=>v.verification.limits.max_output_bytes=16777217,"SCHEMA_INVALID"],
+  ["unbounded duration",v=>v.verification.limits.max_duration_ms=0,"SCHEMA_INVALID"],
+  ["linked control",v=>v.verification.control_files[0].git_mode="120000","SCHEMA_INVALID"],
+]) await check(name+" is refused without mutation",()=>{
+  const plan=verificationPlan();mutation(plan);const before=JSON.stringify(plan);
+  expectIssue(validateAgentExecutionContract("plan",plan),code);assert.equal(JSON.stringify(plan),before);
+});
+await rejectContract("intent needs an absolute workspace", "integration-intent",v=>v.workspace.cwd="relative/worktree","ABSOLUTE_CWD_REQUIRED");
+await rejectContract("intent cannot use an integration authority ref", "integration-intent",v=>v.ref="refs/heads/dev","INVALID_INTEGRATION_REF");
+await rejectContract("intent cannot mix object formats", "integration-intent",v=>v.source_sha="1".repeat(64),"GIT_OBJECT_FORMAT_MISMATCH");
+await rejectContract("intent rejects invalid commit date", "integration-intent",v=>v.commit_identity.timestamp="2026-99-01T00:00:00Z","INVALID_COMMIT_TIMESTAMP");
+function intentBundle() {
+  const intent=copy(fixture["integration-intent"]),acceptance=copy(fixture.acceptance);
+  Object.assign(intent,{run_id:acceptance.run_id,plan_sha256:acceptance.plan_sha256,task_id:acceptance.task_id,
+    attempt_id:acceptance.attempt_id,source_sha:acceptance.candidate_sha,acceptance_sha256:fingerprintAgentExecutionValue(acceptance)});
+  return {plan:fixture.plan,run:fixture.run,intent,acceptance,integrationHead:{repository_identity_sha256:intent.repository_identity_sha256,
+    ref:intent.ref,sha:intent.parent_sha,sequence:intent.sequence-1}};
+}
+await check("intent binds accepted source and expected parent without mutation",()=>{
+  const bundle=intentBundle(),before=JSON.stringify(bundle);assert.deepEqual(validateAgentIntegrationIntentBindings(bundle),{ok:true,issues:[]});
+  assert.equal(JSON.stringify(bundle),before);
+});
+for(const [name,mutation,code] of [
+  ["foreign run",v=>v.intent.run_id="foreign","RUN_BINDING_MISMATCH"],
+  ["foreign attempt",v=>v.intent.attempt_id="foreign","ATTEMPT_BINDING_MISMATCH"],
+  ["foreign task contract",v=>{v.acceptance.task_contract_sha256="f".repeat(64);v.intent.acceptance_sha256=fingerprintAgentExecutionValue(v.acceptance);},"TASK_BINDING_MISMATCH"],
+  ["foreign validation set",v=>{v.acceptance.validation.checks[0].validation_id="foreign";v.intent.acceptance_sha256=fingerprintAgentExecutionValue(v.acceptance);},"VALIDATION_SET_MISMATCH"],
+  ["altered acceptance",v=>v.intent.acceptance_sha256="1".repeat(64),"ACCEPTANCE_BINDING_MISMATCH"],
+  ["other source",v=>v.intent.source_sha="9".repeat(40),"ACCEPTANCE_BINDING_MISMATCH"],
+  ["moved integration",v=>v.integrationHead.sha="9".repeat(40),"INTEGRATION_BINDING_MISMATCH"],
+  ["wrong sequence",v=>v.integrationHead.sequence++,"INTEGRATION_BINDING_MISMATCH"],
+]) await check("intent rejects "+name,()=>{const bundle=intentBundle();mutation(bundle);expectIssue(validateAgentIntegrationIntentBindings(bundle),code);});
+await check("intent binding does not evaluate accessors",()=>{
+  let reads=0;expectIssue(validateAgentIntegrationIntentBindings({get plan(){reads++;return fixture.plan;}}),"INVALID_JSON");assert.equal(reads,0);
 });
 
 const failed = checks.filter((entry) => entry.status === "FAIL");

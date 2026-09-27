@@ -508,5 +508,33 @@
       ]
     },
     "outcome": "passed"
+  },
+  "integration-intent": {
+    "contract_version": "agent-integration-intent.v1",
+    "integration_id": "integration.fixture",
+    "run_id": "run.fixture",
+    "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
+    "task_id": "alpha",
+    "attempt_id": "attempt.alpha.1",
+    "acceptance_sha256": "c170a5e0efc4465bd61bcc66446e45d8364d94d1ea70d4d6280f9deb7d114448",
+    "sequence": 1,
+    "repository_identity_sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+    "ref": "refs/heads/codex/integration-fixture",
+    "source_sha": "2222222222222222222222222222222222222222",
+    "parent_sha": "1111111111111111111111111111111111111111",
+    "created_by": {
+      "owner_id": "supervisor.fixture",
+      "generation": 1,
+      "lease_id": "supervisor-lease.fixture"
+    },
+    "workspace": {
+      "cwd": "/fixture/integration",
+      "detached": true
+    },
+    "commit_identity": {
+      "name": "AIDN Fixture",
+      "email": "fixture@example.invalid",
+      "timestamp": "2026-01-01T00:00:00Z"
+    }
   }
 }

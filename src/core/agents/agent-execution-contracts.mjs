@@ -12,6 +12,7 @@ import event from "../contracts/agent-execution/event.v1.schema.json" with { typ
 import result from "../contracts/agent-execution/result.v1.schema.json" with { type: "json" };
 import acceptance from "../contracts/agent-execution/acceptance.v1.schema.json" with { type: "json" };
 import supervisor from "../contracts/agent-execution/supervisor.v1.schema.json" with { type: "json" };
+import integrationIntent from "../contracts/agent-execution/integration-intent.v1.schema.json" with { type: "json" };
 import integrationPrepared from "../contracts/agent-execution/integration-prepared.v1.schema.json" with { type: "json" };
 import integrationApplied from "../contracts/agent-execution/integration-applied.v1.schema.json" with { type: "json" };
 import runValidation from "../contracts/agent-execution/run-validation.v1.schema.json" with { type: "json" };
@@ -19,7 +20,7 @@ import runValidation from "../contracts/agent-execution/run-validation.v1.schema
 // Model only. These functions observe neither Git, configuration, leases nor files.
 // Validating an ownership reference never proves that its lease exists or is live.
 const SCHEMAS = freeze({ descriptor, availability, plan, run, task, attempt, delegation, request, event, result, acceptance,
-  supervisor, "integration-prepared": integrationPrepared, "integration-applied": integrationApplied, "run-validation": runValidation });
+  supervisor, "integration-intent": integrationIntent, "integration-prepared": integrationPrepared, "integration-applied": integrationApplied, "run-validation": runValidation });
 const TASK_FIELDS = ["task_id", "objective", "scope", "depends_on", "acceptance_criteria", "max_duration_ms"];
 const DEVICE = /^(?:con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/i;
 const issue = (code, path = "$", detail) => ({ code, path, ...(detail ? { detail } : {}) });
@@ -224,6 +225,19 @@ function planIssues(value, checkFingerprint) {
       }
     }
   }
+  if (value.verification) {
+    const controls = new Set();
+    for (const file of value.verification.control_files) {
+      if (!isExactExecutionPath(file.path)) issues.push(issue("INVALID_VERIFICATION_PATH", "$.verification.control_files"));
+      if (controls.has(key(file.path))) issues.push(issue("DUPLICATE_VERIFICATION_PATH", "$.verification.control_files"));
+      controls.add(key(file.path));
+      if (value.tasks.some(task => task.scope.some(entry => key(entry.path) === key(file.path)
+          || key(entry.path).startsWith(key(file.path) + "/") || key(file.path).startsWith(key(entry.path) + "/")))) {
+        issues.push(issue("VERIFICATION_CONTROL_DELEGATED", "$.verification.control_files"));
+      }
+    }
+    if (value.verification.limits.max_duration_ms > value.limits.max_duration_ms) issues.push(issue("VERIFICATION_DURATION_EXCEEDS_RUN", "$.verification.limits"));
+  }
   if (checkFingerprint && value.plan_sha256 && fingerprintAgentExecutionValue(planContent(value)) !== value.plan_sha256) {
     issues.push(issue("PLAN_FINGERPRINT_MISMATCH", "$.plan_sha256"));
   }
@@ -283,10 +297,14 @@ function validateContract(kind, value, checkFingerprint) {
       if (!isExactExecutionPath(proof.ref)) issues.push(issue("INVALID_EVIDENCE_REF", "$.validation"));
     }
   }
-  if (kind === "integration-prepared") {
+  if (["integration-intent", "integration-prepared"].includes(kind)) {
+    if (kind === "integration-intent") {
+      if (!isAbsoluteExecutionCwd(value.workspace.cwd)) issues.push(issue("ABSOLUTE_CWD_REQUIRED", "$.workspace.cwd"));
+      if (!Number.isFinite(Date.parse(value.commit_identity.timestamp))) issues.push(issue("INVALID_COMMIT_TIMESTAMP", "$.commit_identity.timestamp"));
+    }
     if (!value.ref.startsWith("refs/heads/codex/") || !validBranch(value.ref.slice("refs/heads/".length))) issues.push(issue("INVALID_INTEGRATION_REF", "$.ref"));
-    if (new Set([value.source_sha.length, value.parent_sha.length, value.result_sha.length]).size !== 1) issues.push(issue("GIT_OBJECT_FORMAT_MISMATCH", "$"));
-    if (value.result_sha === value.parent_sha) issues.push(issue("INTEGRATION_RESULT_REQUIRES_COMMIT", "$.result_sha"));
+    if (new Set([value.source_sha.length, value.parent_sha.length, ...(value.result_sha ? [value.result_sha.length] : [])]).size !== 1) issues.push(issue("GIT_OBJECT_FORMAT_MISMATCH", "$"));
+    if (kind === "integration-prepared" && value.result_sha === value.parent_sha) issues.push(issue("INTEGRATION_RESULT_REQUIRES_COMMIT", "$.result_sha"));
   }
   if (kind === "run-validation") {
     const ids = value.checks.map(check => check.validation_id);
@@ -391,5 +409,33 @@ export function validateAgentExecutionBindings(bundle) {
       ids.add(entry.event_id);
     });
   }
+  return report(issues);
+}
+
+// This binds intent to immutable model data; the store separately fences live authority.
+export function validateAgentIntegrationIntentBindings(value) {
+  const invalid = jsonIssues(value);
+  if (invalid.length) return report(invalid);
+  if (!value || typeof value !== "object" || Array.isArray(value)) return report([issue("BINDING_CONTEXT_REQUIRED")]);
+  const { plan, run, intent, acceptance, integrationHead } = value;
+  const issues = [];
+  for (const [kind, data] of [["plan", plan], ["run", run], ["integration-intent", intent], ["acceptance", acceptance]]) {
+    issues.push(...validateAgentExecutionContract(kind, data).issues);
+  }
+  if (issues.length) return report(issues);
+  if (run.plan_id !== plan.plan_id || run.plan_sha256 !== fingerprintAgentExecutionPlan(plan)
+      || !equal(run.canonical, plan.canonical) || !equal(run.task_ids, plan.tasks.map(task => task.task_id))) issues.push(issue("RUN_CONTEXT_MISMATCH", "$.run"));
+  if (intent.run_id !== run.run_id || intent.plan_sha256 !== run.plan_sha256
+      || acceptance.run_id !== run.run_id || acceptance.plan_sha256 !== run.plan_sha256) issues.push(issue("RUN_BINDING_MISMATCH", "$.intent"));
+  const plannedTask = plan.tasks.find(task => task.task_id === intent.task_id);
+  if (plannedTask && acceptance.task_contract_sha256 !== fingerprintTaskContract(plannedTask)) issues.push(issue("TASK_BINDING_MISMATCH", "$.acceptance.task_contract_sha256"));
+  if (plannedTask && !equal(acceptance.validation.checks.map(check => check.validation_id).sort(), taskValidationIds(plan, plannedTask).sort())) issues.push(issue("VALIDATION_SET_MISMATCH", "$.acceptance.validation.checks"));
+  if (!plannedTask || intent.task_id !== acceptance.task_id
+      || intent.attempt_id !== acceptance.attempt_id) issues.push(issue("ATTEMPT_BINDING_MISMATCH", "$.intent"));
+  if (acceptance.decision !== "accepted" || intent.acceptance_sha256 !== fingerprintAgentExecutionValue(acceptance)
+      || intent.source_sha !== acceptance.candidate_sha) issues.push(issue("ACCEPTANCE_BINDING_MISMATCH", "$.intent"));
+  if (!integrationHead || intent.repository_identity_sha256 !== integrationHead.repository_identity_sha256
+      || intent.ref !== integrationHead.ref || intent.parent_sha !== integrationHead.sha
+      || intent.sequence !== integrationHead.sequence + 1) issues.push(issue("INTEGRATION_BINDING_MISMATCH", "$.intent"));
   return report(issues);
 }
