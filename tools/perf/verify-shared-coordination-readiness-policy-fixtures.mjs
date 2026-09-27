@@ -137,9 +137,9 @@ async function main() {
     assert(reads.state.planningWrites === 0 && reads.state.handoffWrites === 0, "reads must never mutate shared records");
 
     const v2Health = {
-      latest_applied_schema_version: 2, expected_schema_version: 4, legacy_workspace_rows: 0,
+      latest_applied_schema_version: 2, expected_schema_version: 5, legacy_workspace_rows: 0,
       tables_present: ["schema_migrations", "project_registry", "workspace_registry", "worktree_registry", "planning_states", "handoff_relays", "coordination_records"],
-      tables_missing: ["execution_runs", "execution_tasks", "execution_attempts", "execution_events", "execution_supervisors", "execution_acceptances", "execution_integrations", "execution_run_validations"],
+      tables_missing: ["execution_runs", "execution_tasks", "execution_attempts", "execution_events", "execution_supervisors", "execution_acceptances", "execution_integrations", "execution_run_validations", "execution_integration_intents"],
     };
     const v2 = createFakeResolution({ schemaStatus: "version-behind", schemaOk: false, compatibilityStatus: "schema-not-ready", healthDetails: v2Health });
     const v2Read = await readSharedPlanningState(v2.resolution, { planningKey: "session:S900" });
@@ -149,13 +149,18 @@ async function main() {
     const v3 = createFakeResolution({ schemaStatus: "version-behind", schemaOk: false, compatibilityStatus: "schema-not-ready", healthDetails: {
       ...v2Health, latest_applied_schema_version: 3,
       tables_present: [...v2Health.tables_present,"execution_runs","execution_tasks","execution_attempts","execution_events"],
-      tables_missing: ["execution_supervisors","execution_acceptances","execution_integrations","execution_run_validations"],
+      tables_missing: ["execution_supervisors","execution_acceptances","execution_integrations","execution_run_validations","execution_integration_intents"],
     } });
-    assert((await readSharedPlanningState(v3.resolution, { planningKey: "session:S900" })).ok, "intact v3 remains readable before explicit v4 migration");
+    assert((await readSharedPlanningState(v3.resolution, { planningKey: "session:S900" })).ok, "intact v3 remains readable before explicit v5 migration");
     assert(!(await syncSharedPlanningState(v3.resolution, { planningKey: "session:S900" })).ok, "v3 compatibility must not permit implicit migration or writes");
     assert(v3.state.bootstraps === 0 && v3.state.workspaceRegistrations === 0, "v3 historical read remains effect free");
+    const v4=createFakeResolution({schemaStatus:"version-behind",schemaOk:false,compatibilityStatus:"schema-not-ready",healthDetails:{
+      ...v2Health,latest_applied_schema_version:4,tables_present:[...v2Health.tables_present,...v2Health.tables_missing.filter(table=>table!=="execution_integration_intents")],tables_missing:["execution_integration_intents"],
+    }});
+    assert((await readSharedPlanningState(v4.resolution)).ok,"intact v4 remains readable before explicit v5 migration");
+    assert(!(await syncSharedPlanningState(v4.resolution)).ok && v4.state.bootstraps===0,"v4 reads never authorize implicit migration or writes");
     for (const healthDetails of [
-      { ...v2Health, latest_applied_schema_version: 4 },
+      { ...v2Health, latest_applied_schema_version: 5 },
       { ...v2Health, legacy_workspace_rows: 1 },
       { ...v2Health, tables_present: v2Health.tables_present.filter(table => table !== "planning_states") },
       { ...v2Health, tables_missing: ["planning_states"] },

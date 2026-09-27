@@ -88,6 +88,7 @@ export function createAgentExecutionScheduler({
         compareAndSwapIntegration: args => withinRun(() => git.compareAndSwapIntegration(args), "INTEGRATION_APPLY_INTERRUPTED"),
       },
       store: {
+        recordIntegrationIntent: args => coordinate("recordIntegrationIntent", args),
         prepareIntegration: args => coordinate("prepareIntegration", args),
         recordIntegrationApplied: args => coordinate("recordIntegrationApplied", args),
       },
@@ -171,7 +172,7 @@ export function createAgentExecutionScheduler({
       const capture = await git.captureTaskChanges({ binding: prepared.binding, termination: view.termination, baseline: prepared.baseline, scope: task.scope });
       alive();
       const committed = await git.createTaskCommit({ capture, expectedCaptureSha256: capture.capture_sha256, commitIdentity });
-      const validation = await withinRun(() => validateTask({ plan: copy(plan), task: copy(task), validationIds: taskValidationIds(plan, task), candidateSha: committed.source_sha, binding: copy(prepared.binding), signal: stop.signal }), "TASK_VALIDATION_INTERRUPTED");
+      const validation = await withinRun(() => validateTask({ runId, resultSha256: fingerprintAgentExecutionValue(view.result), plan: copy(plan), task: copy(task), validationIds: taskValidationIds(plan, task), candidateSha: committed.source_sha, binding: copy(prepared.binding), signal: stop.signal }), "TASK_VALIDATION_INTERRUPTED");
       alive();
       const acceptance = {
         contract_version: "agent-task-acceptance.v1", run_id: runId, task_id: task.task_id,
@@ -275,13 +276,48 @@ export function createAgentExecutionScheduler({
     async function applyPrepared(row) {
       alive();
       const prepared = row.prepared;
-      const observed = await withinRun(() => git.inspectIntegration(prepared, { phase: "prepared" }), "INTEGRATION_INSPECTION_INTERRUPTED");
+      const intent = (snapshot.integration_intents ?? []).find(item => item.intent.integration_id === prepared.integration_id)?.intent;
+      const observed = await withinRun(() => git.inspectIntegration({ ...prepared, ...(intent ? { intent } : {}) }, { phase: "prepared" }), "INTEGRATION_INSPECTION_INTERRUPTED");
       requireThat(observed.head_sha === prepared.parent_sha || observed.head_sha === prepared.result_sha, "INTEGRATION_RECONCILIATION_REQUIRED");
       const preparedSha256 = fingerprintAgentExecutionValue(prepared);
       // The canonical service replays the durable preparation with current
       // authority immediately before CAS, then records the exact observed SHA.
-      await integrationService.applyPrepared({ prepared, preparedSha256, supervisor,
+      await integrationService.applyPrepared({ prepared, preparedSha256, supervisor, intent,
         expectedControlRevision: snapshot.supervision.control_revision });
+    }
+    async function reconcilePendingIntegrations() {
+      const pendingIntents = (snapshot.integration_intents ?? []).filter(row => row.status !== "applied");
+      requireThat(pendingIntents.length <= 1, "MULTIPLE_PREPARED_INTEGRATIONS");
+      for (const row of pendingIntents) {
+        if (snapshot.integrations.some(item => item.prepared.integration_id === row.intent.integration_id)) continue;
+        let restored = await bounded(() => integrationService.resumePreparation({ intent: row.intent,
+          intentSha256: row.intent_sha256, supervisor, expectedControlRevision: snapshot.supervision.control_revision,
+          reconciliation: true }), coordinationTimeoutMs, "INTEGRATION_INSPECTION_TIMEOUT");
+        if (restored.status === "absent") {
+          alive(); // Absence is not permission to work after the frozen deadline.
+          restored = await integrationService.resumePreparation({ intent: row.intent, intentSha256: row.intent_sha256,
+            supervisor, expectedControlRevision: snapshot.supervision.control_revision, reconciliation: false });
+        }
+        requireThat(restored.status === "prepared", "INTEGRATION_RECONCILIATION_REQUIRED");
+        await fresh();
+      }
+      const pending = snapshot.integrations.filter(row => !row.applied);
+      requireThat(pending.length <= 1, "MULTIPLE_PREPARED_INTEGRATIONS");
+      for (const row of pending) {
+        const prepared = row.prepared;
+        const intent = (snapshot.integration_intents ?? []).find(item => item.intent.integration_id === prepared.integration_id)?.intent;
+        const observed = await bounded(() => git.inspectIntegration({ ...prepared, ...(intent ? { intent } : {}) }, { phase: "prepared" }),
+          coordinationTimeoutMs, "INTEGRATION_INSPECTION_TIMEOUT");
+        requireThat(observed.head_sha === prepared.parent_sha || observed.head_sha === prepared.result_sha, "INTEGRATION_RECONCILIATION_REQUIRED");
+        if (observed.head_sha === prepared.result_sha) {
+          // Factual reconciliation never launches a second CAS, even after the
+          // run deadline. PostgreSQL reobserves Git and retains recovery status.
+          await coordinate("recordIntegrationApplied", { runId, supervisor,
+            expectedControlRevision: snapshot.supervision.control_revision, integrationId: prepared.integration_id,
+            preparedSha256: fingerprintAgentExecutionValue(prepared), proof: { evidence: prepared.evidence }, reconciliation: true });
+        } else await applyPrepared(row);
+        await fresh();
+      }
     }
     async function integrateNext() {
       const pending = snapshot.integrations.filter(row => !row.applied);
@@ -303,7 +339,7 @@ export function createAgentExecutionScheduler({
       const result = await integrationService.prepare({ runId, planSha256: plan.plan_sha256,
         taskId: id, attemptId: acceptance.attempt_id, acceptanceSha256: fingerprintAgentExecutionValue(acceptance),
         sequence, integrationId, sourceSha: acceptance.candidate_sha,
-        parentSha, supervisor, expectedControlRevision: snapshot.supervision.control_revision, commitIdentity });
+        parentSha, supervisor, expectedControlRevision: snapshot.supervision.control_revision, commitIdentity, verification: plan.verification ?? null });
       requireThat(result.status === "prepared", "INTEGRATION_CONFLICT"); alive();
       await fresh();
       await applyPrepared({ prepared: result.prepared }); await fresh(); return true;
@@ -313,7 +349,9 @@ export function createAgentExecutionScheduler({
       plan = normalizeAgentExecutionPlan(snapshot.plan); graph = buildAgentExecutionSchedule(plan.tasks);
       requireThat(plan.limits.concurrency >= 1 && plan.limits.concurrency <= 4, "CONCURRENCY_LIMIT");
       if (["completed", "failed", "cancelled"].includes(snapshot.run.lifecycle_status)) return { status: snapshot.run.lifecycle_status, snapshot };
-      alive();
+      // Explicit resume may reconcile facts after the deadline, but cannot
+      // restart work. Caller cancellation still stops before any takeover.
+      if (!resuming || cancelled) alive();
       if (resuming) {
         requireThat(reconciliation?.supervisorProof, "SUPERVISOR_RECONCILIATION_REQUIRED");
         const previous = copy(snapshot.supervision.current.ownership);
@@ -339,9 +377,8 @@ export function createAgentExecutionScheduler({
         await fresh();
         requireThat(snapshot.attempts.every(view => terminal.has(view.attempt.lifecycle_status)
           && (view.termination || view.reconciliation)), "ATTEMPT_RECONCILIATION_REQUIRED");
-        const pending = snapshot.integrations.filter(row => !row.applied);
-        requireThat(pending.length <= 1, "MULTIPLE_PREPARED_INTEGRATIONS");
-        if (pending.length) { await applyPrepared(pending[0]); await fresh(); }
+        await reconcilePendingIntegrations();
+        alive();
         adopt(await coordinate("resumeRun", { runId, supervisor, expectedControlRevision: snapshot.supervision.control_revision }));
         // Existing completed workers are never executed again. Only immutable
         // preparation evidence can supply a baseline for unfinished acceptance.
@@ -385,8 +422,8 @@ export function createAgentExecutionScheduler({
       const integratedSha = snapshot.integration_head.sha;
       let validation = snapshot.final_validation?.validation;
       if (!validation) {
-        const checks = await withinRun(() => validateRun({ plan: copy(plan), integratedSha, signal: stop.signal }), "RUN_VALIDATION_INTERRUPTED"); alive();
-        const audit = await withinRun(() => auditRun({ plan: copy(plan), integratedSha, signal: stop.signal }), "RUN_AUDIT_INTERRUPTED"); alive();
+        const checks = await withinRun(() => validateRun({ runId, integrationSequence: snapshot.integration_head.sequence, plan: copy(plan), integratedSha, signal: stop.signal }), "RUN_VALIDATION_INTERRUPTED"); alive();
+        const audit = await withinRun(() => auditRun({ runId, integrationSequence: snapshot.integration_head.sequence, plan: copy(plan), integratedSha, signal: stop.signal }), "RUN_AUDIT_INTERRUPTED"); alive();
         await checkHead();
         const all = [...checks, ...audit.checks];
         validation = { contract_version: "agent-run-validation.v1", validation_id: makeId(), run_id: runId,

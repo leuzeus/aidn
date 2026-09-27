@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   assertAgentExecutionContract, fingerprintAgentExecutionValue, fingerprintTaskContract,
   normalizeAgentExecutionPlan, validateAgentExecutionBindings, isExactExecutionPath, validateAgentRunValidationBindings,
+  validateAgentIntegrationIntentBindings,
 } from "../../core/agents/agent-execution-contracts.mjs";
 import {
   AGENT_EXECUTION_LEASE_MS, AGENT_EXECUTION_TABLES, assertAgentSupervisedExecutionStore,
@@ -72,6 +73,7 @@ function attemptView(row) {
 export function createPostgresAgentExecutionStore({
   connectionString, clientFactory = null, moduleLoader = null,
   verifyActivation = null, verifyTermination = null, verifySupervisorTermination = null, inspectIntegration = null,
+  validationEvidenceVerifier = null,
 } = {}) {
   async function withClient(operation) {
     let client;
@@ -104,7 +106,7 @@ export function createPostgresAgentExecutionStore({
       const rows = await client.query("SELECT MAX(schema_version) AS version FROM aidn_runtime.schema_migrations WHERE schema_name=$1", ["aidn_runtime"]);
       runtime = rows.rows[0]?.version == null ? null : Number(rows.rows[0].version);
     }
-    const ready = missing.length === 0 && shared === 4 && runtime === 3;
+    const ready = missing.length === 0 && shared === 5 && runtime === 3;
     return { ok: ready, ready, shared_schema_version: shared, runtime_schema_version: runtime, missing_tables: missing };
   }
 
@@ -318,6 +320,49 @@ export function createPostgresAgentExecutionStore({
       return value;
     } finally { clearTimeout(timer); controller.abort(); }
   }
+  async function verifyValidationEvidence(run, document, phase, attemptRow=null) {
+    const plan=json(run,"plan_json");
+    if (!plan.verification) return null;
+    if (!validationEvidenceVerifier || typeof validationEvidenceVerifier.getDescriptor!=="function"
+      || typeof validationEvidenceVerifier.verify!=="function") throw failure("VALIDATION_EVIDENCE_VERIFIER_REQUIRED");
+    const subject=fingerprintAgentExecutionValue(document), testedSha=phase==="task" ? document.candidate_sha : document.integrated_sha;
+    const task=phase==="task" ? plan.tasks.find(item=>item.task_id===document.task_id) : null;
+    const checks=phase==="task" ? document.validation.checks : [...document.checks,...document.audit.checks];
+    const refs=[...new Map(checks.map(check=>[check.evidence.ref,check.evidence])).values()].sort((a,b)=>a.ref.localeCompare(b.ref,"en"));
+    if (checks.some(check=>!same(check.evidence,refs.find(ref=>ref.ref===check.evidence.ref)))) throw failure("VALIDATION_EVIDENCE_INVALID");
+    let observed;
+    try {
+      observed=boundedJson(await boundedVerification(signal=>{
+        const descriptor=validationEvidenceVerifier.getDescriptor();
+        if (!same(descriptor,{verifier_id:"local-agent-verification",contract_version:"agent-evidence-verification.v1",algorithm:"Ed25519"})) throw failure("VALIDATION_EVIDENCE_VERIFIER_INVALID");
+        return validationEvidenceVerifier.verify(copy({
+          phase,plan,run:json(run,"run_json"),document,subject_sha256:subject,
+          ...(task ? {task,attempt:json(attemptRow,"attempt_json"),result:json(attemptRow,"result_json")} : {}),
+          expected:{tested_sha:testedSha,validation_ids:task?.validation_ids ?? plan.validations.map(item=>item.validation_id),
+            ...(phase==="run" ? {audit_criteria:plan.audit.criteria} : {})},
+        }),{signal});
+      },"VALIDATION_EVIDENCE_TIMED_OUT"));
+    } catch (error) {
+      if (knownFailures.has(error)) throw error;
+      throw failure("VALIDATION_EVIDENCE_INVALID");
+    }
+    const keys="contract_version,phase,plan_sha256,policy_sha256,proof_authority_sha256,run_id,snapshots,subject_sha256,tested_sha,verified_refs,verifier_id";
+    if (!observed || Object.keys(observed).sort().join(",")!==keys
+      || observed.contract_version!=="agent-evidence-verification.v1" || observed.verifier_id!=="local-agent-verification"
+      || observed.phase!==phase || observed.run_id!==run.run_id || observed.plan_sha256!==run.plan_sha256
+      || observed.policy_sha256!==fingerprintAgentExecutionValue(plan.verification) || observed.subject_sha256!==subject
+      || observed.tested_sha!==testedSha || observed.proof_authority_sha256!==plan.verification.proof_authority_sha256
+      || !same(observed.verified_refs,refs) || !Array.isArray(observed.snapshots)) throw failure("VALIDATION_EVIDENCE_BINDING_INVALID");
+    const phases=phase==="task" ? ["task"] : ["audit","run"], snapshots=observed.snapshots;
+    if (!same(snapshots.map(item=>item?.phase ?? null),phases) || snapshots.some(item=>
+      Object.keys(item).sort().join(",")!=="after_sha256,before_sha256,candidate_sha,phase,repository_identity_sha256,snapshot_sha256,tree_sha"
+      || item.candidate_sha!==testedSha || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(item.tree_sha ?? "")
+      || ["after_sha256","before_sha256","repository_identity_sha256","snapshot_sha256"].some(key=>!HASH.test(item[key] ?? "")))
+      || snapshots.some(item=>["snapshot_sha256","tree_sha","repository_identity_sha256"].some(key=>item[key]!==snapshots[0][key]))) throw failure("VALIDATION_EVIDENCE_BINDING_INVALID");
+    const head=json(run,"integration_head_json");
+    if (head && snapshots.some(item=>item.repository_identity_sha256!==head.repository_identity_sha256)) throw failure("VALIDATION_EVIDENCE_BINDING_INVALID");
+    return observed;
+  }
   async function inspectGit(run, supervisor, entry, phase, acceptedHeads, inputSha = null) {
     if (typeof inspectIntegration !== "function") throw failure("INTEGRATION_INSPECTOR_REQUIRED");
     let observed;
@@ -341,6 +386,41 @@ export function createPostgresAgentExecutionStore({
   }
   async function integrationRows(client, runId) {
     return (await client.query("SELECT * FROM aidn_shared.execution_integrations WHERE run_id=$1 ORDER BY sequence",[runId])).rows;
+  }
+  async function intentRows(client, runId) {
+    return (await client.query("SELECT * FROM aidn_shared.execution_integration_intents WHERE run_id=$1 ORDER BY sequence",[runId])).rows;
+  }
+  function intentView(row, integrations = []) {
+    const prepared=integrations.find(item=>item.integration_id===row.integration_id);
+    return {intent:json(row,"intent_json"),intent_sha256:row.intent_sha256,
+      status:row.applied_at ? "applied" : prepared ? "prepared" : "reserved",
+      prepared_sha256:prepared?.prepared_sha256 ?? null,applied_sha256:prepared?.applied_sha256 ?? null};
+  }
+  async function pendingIntegrations(client, runId) {
+    const integrations=await integrationRows(client,runId), intents=await intentRows(client,runId);
+    return [...intents.filter(row=>!row.applied_at).map(row=>intentView(row,integrations)),
+      ...integrations.filter(row=>!row.applied_json && !row.intent_sha256).map(integrationView)];
+  }
+  async function requireStoppedProducer(client, run, producer, current, {mustBePrevious=false}={}) {
+    if (same(producer,current)) {
+      if (mustBePrevious) throw failure("SUPERVISOR_RECONCILIATION_REQUIRED");
+      return;
+    }
+    const row=(await client.query("SELECT supervisor_json,termination_json FROM aidn_shared.execution_supervisors WHERE run_id=$1 AND generation=$2",[run.run_id,producer.generation])).rows[0];
+    if (!row?.termination_json || !same(json(row,"supervisor_json").ownership,producer)
+      || producer.generation>=current.generation) throw failure("SUPERVISOR_RECONCILIATION_REQUIRED");
+  }
+  async function requireIntegrationOrder(client, run, taskId, rows) {
+    const plan=json(run,"plan_json"), order=taskOrder(plan), earlier=order.slice(0,order.indexOf(taskId));
+    const attempts=(await client.query("SELECT * FROM aidn_shared.execution_attempts WHERE run_id=$1 ORDER BY ordinal",[run.run_id])).rows;
+    const acceptances=(await client.query("SELECT * FROM aidn_shared.execution_acceptances WHERE run_id=$1",[run.run_id])).rows;
+    const failed = id => {
+      const last=attempts.filter(row=>row.task_id===id).at(-1), accepted=acceptances.find(row=>row.task_id===id);
+      if (accepted && json(accepted,"acceptance_json").decision==="rejected") return true;
+      if (last && ["failed","cancelled","timed_out"].includes(json(last,"attempt_json").lifecycle_status)) return true;
+      return plan.tasks.find(task=>task.task_id===id).depends_on.some(failed);
+    };
+    if (earlier.some(id=>!rows.some(row=>row.applied_json && json(row,"prepared_json").task_id===id) && !failed(id))) throw failure("INTEGRATION_ORDER_INVALID");
   }
   function integrationView(row) {
     return { prepared:json(row,"prepared_json"),prepared_sha256:row.prepared_sha256,
@@ -371,7 +451,7 @@ export function createPostgresAgentExecutionStore({
   }
   async function requireAllIntegrated(client, run) {
     const {rows,head} = await integrationChain(client,run), plan = json(run,"plan_json");
-    if (rows.length !== plan.tasks.length || rows.some(row => !row.applied_json)) throw failure("REQUIRED_TASKS_NOT_INTEGRATED");
+    if (rows.length !== plan.tasks.length || rows.some(row => !row.applied_json) || (await pendingIntegrations(client,run.run_id)).length) throw failure("REQUIRED_TASKS_NOT_INTEGRATED");
     if (new Set(rows.map(row => json(row,"prepared_json").task_id)).size !== plan.tasks.length) throw failure("REQUIRED_TASKS_NOT_INTEGRATED");
     return head;
   }
@@ -380,7 +460,7 @@ export function createPostgresAgentExecutionStore({
     run=(await client.query("SELECT *,clock_timestamp() AS server_now FROM aidn_shared.execution_runs WHERE run_id=$1",[run.run_id])).rows[0];
     const supervisors=(await client.query("SELECT *,lease_until>clock_timestamp() AS lease_live FROM aidn_shared.execution_supervisors WHERE run_id=$1 ORDER BY generation",[run.run_id])).rows;
     const acceptances=(await client.query("SELECT * FROM aidn_shared.execution_acceptances WHERE run_id=$1 ORDER BY task_id,attempt_id",[run.run_id])).rows;
-    const integrations=await integrationRows(client,run.run_id);
+    const integrations=await integrationRows(client,run.run_id), intents=await intentRows(client,run.run_id);
     const final=(await client.query("SELECT * FROM aidn_shared.execution_run_validations WHERE run_id=$1",[run.run_id])).rows[0];
 
     const tasks = await client.query("SELECT task_json FROM aidn_shared.execution_tasks WHERE run_id=$1 ORDER BY task_id", [run.run_id]);
@@ -392,9 +472,12 @@ export function createPostgresAgentExecutionStore({
       recovery_reason: run.recovery_reason ?? null,
       server_now:run.server_now,run_started_at:run.run_started_at,run_deadline_at:run.run_deadline_at,
       supervision:{mode:run.supervision_mode,control_revision:Number(run.control_revision),current:supervisorView(supervisors.at(-1)),history:supervisors.slice(0,-1).map(supervisorView)},
-      acceptances:acceptances.map(row=>({acceptance:json(row,"acceptance_json"),acceptance_sha256:row.acceptance_sha256})),
+      acceptances:acceptances.map(row=>({acceptance:json(row,"acceptance_json"),acceptance_sha256:row.acceptance_sha256,
+        evidence_verification:json(row,"evidence_verification_json"),evidence_verification_sha256:row.evidence_verification_sha256 ?? null})),
+      integration_intents:intents.map(row=>intentView(row,integrations)),
       integrations:integrations.map(integrationView),integration_head:json(run,"integration_head_json"),
-      final_validation:final ? {validation:json(final,"validation_json"),validation_sha256:final.validation_sha256} : null };
+      final_validation:final ? {validation:json(final,"validation_json"),validation_sha256:final.validation_sha256,
+        evidence_verification:json(final,"evidence_verification_json"),evidence_verification_sha256:final.evidence_verification_sha256 ?? null} : null };
   }
 
   const store = {
@@ -473,7 +556,7 @@ export function createPostgresAgentExecutionStore({
         if (row.lease_live && value.status === "active" && json(run,"run_json").lifecycle_status !== "recovery_required") throw failure("SUPERVISOR_STILL_ACTIVE");
         let observed;
         try { observed=await boundedVerification(async signal => verifySupervisorTermination(copy(value),copy(bounded),{
-          run:json(run,"run_json"),pendingIntegrations:(await integrationRows(client,runId)).filter(entry=>!entry.applied_json).map(integrationView),signal,
+          run:json(run,"run_json"),pendingIntegrations:await pendingIntegrations(client,runId),signal,
         }),"SUPERVISOR_TERMINATION_TIMED_OUT"); } catch { throw failure("SUPERVISOR_TERMINATION_UNCONFIRMED"); }
         if (!observed || ["ok","supervisor_stopped","descendants_stopped","git_operations_stopped"].some(field=>observed[field]!==true)) throw failure("SUPERVISOR_TERMINATION_UNCONFIRMED");
         await client.query("UPDATE aidn_shared.execution_supervisors SET supervisor_json=jsonb_set(supervisor_json,'{status}','\"stopped\"'::jsonb),termination_json=$3::jsonb,lease_until=clock_timestamp(),updated_at=clock_timestamp() WHERE run_id=$1 AND generation=$2",[runId,row.generation,JSON.stringify(bounded)]);
@@ -487,7 +570,7 @@ export function createPostgresAgentExecutionStore({
         await supervisorGuard(client,run,supervisor,{required:true}); await canonical(client,run);
         if (!run.reservation_active) throw failure("RUN_NOT_ACTIVE");
         const unresolved=await client.query("SELECT 1 FROM aidn_shared.execution_attempts WHERE run_id=$1 AND (attempt_json->>'lifecycle_status' IN ('launch_intended','running','recovery_required') OR (termination_json IS NULL AND reconciliation_json IS NULL)) LIMIT 1",[runId]);
-        if (unresolved.rows.length || (await integrationRows(client,runId)).some(row=>!row.applied_json)) throw failure("RECOVERY_REQUIRED");
+        if (unresolved.rows.length || (await pendingIntegrations(client,runId)).length) throw failure("RECOVERY_REQUIRED");
         const {head}=await integrationChain(client,run);
         await inspectGit(run,supervisor,headInspection(head),"head",[head.sha]);
         await updateRunStatus(client,run,"running");
@@ -526,20 +609,65 @@ export function createPostgresAgentExecutionStore({
         const hash=fingerprintAgentExecutionValue(acceptance);
         const existing=(await client.query("SELECT * FROM aidn_shared.execution_acceptances WHERE attempt_id=$1",[acceptance.attempt_id])).rows[0];
         if (existing && (existing.acceptance_sha256!==hash || !same(json(existing,"acceptance_json"),acceptance))) throw failure("ACCEPTANCE_CONFLICT");
-        if (!existing) await client.query("INSERT INTO aidn_shared.execution_acceptances(attempt_id,run_id,task_id,acceptance_sha256,acceptance_json,supervisor_generation) VALUES($1,$2,$3,$4,$5::jsonb,$6)",
-          [acceptance.attempt_id,runId,acceptance.task_id,hash,JSON.stringify(acceptance),supervisor.generation]);
-        return {acceptance:copy(acceptance),acceptance_sha256:hash,idempotent:Boolean(existing)};
+        const verified=await verifyValidationEvidence(run,acceptance,"task",row), verifiedHash=verified ? fingerprintAgentExecutionValue(verified) : null;
+        // Activation may be external to the locked PostgreSQL canonical rows.
+        await canonical(client,run);
+        if (existing && (existing.evidence_verification_sha256 ?? null)!==verifiedHash) throw failure("VALIDATION_EVIDENCE_CONFLICT");
+        if (!existing) await client.query("INSERT INTO aidn_shared.execution_acceptances(attempt_id,run_id,task_id,acceptance_sha256,acceptance_json,supervisor_generation,evidence_verification_json,evidence_verification_sha256) VALUES($1,$2,$3,$4,$5::jsonb,$6,$7::jsonb,$8)",
+          [acceptance.attempt_id,runId,acceptance.task_id,hash,JSON.stringify(acceptance),supervisor.generation,verified ? JSON.stringify(verified) : null,verifiedHash]);
+        return {acceptance:copy(acceptance),acceptance_sha256:hash,evidence_verification:verified,evidence_verification_sha256:verifiedHash,idempotent:Boolean(existing)};
       });
     },
-    async prepareIntegration({runId,supervisor,expectedControlRevision,integration}) {
+    async recordIntegrationIntent({runId,supervisor,expectedControlRevision,intent}) {
+      intent=copy(contract("integration-intent",intent)); supervisor=copy(supervisor);
+      return transaction(async client=>{
+        const run=await lockedRun(client,runId); revision(run,expectedControlRevision);
+        await supervisorGuard(client,run,supervisor,{required:true}); await canonical(client,run);
+        if (!run.reservation_active) throw failure("RUN_NOT_ACTIVE");
+        const {rows,head}=await integrationChain(client,run), hash=fingerprintAgentExecutionValue(intent);
+        const intents=await intentRows(client,runId), existing=intents.find(row=>row.integration_id===intent.integration_id);
+        if (existing && (existing.intent_sha256!==hash || !same(json(existing,"intent_json"),intent))) throw failure("INTEGRATION_INTENT_CONFLICT");
+        if (existing) {
+          await requireStoppedProducer(client,run,intent.created_by,supervisor);
+          await inspectGit(run,supervisor,headInspection(head),"head",[head.sha]);
+          return {intent:copy(intent),intent_sha256:hash,control_revision:Number(run.control_revision),idempotent:true};
+        }
+        if (!RUN_ACTIVE.has(json(run,"run_json").lifecycle_status)) throw failure("RUN_NOT_ACTIVE");
+        if (!same(intent.created_by,supervisor)) throw failure("SUPERVISOR_OWNERSHIP_LOST");
+        if ((await pendingIntegrations(client,runId)).length) throw failure("INTEGRATION_PENDING");
+        const acceptance=(await client.query("SELECT * FROM aidn_shared.execution_acceptances WHERE attempt_id=$1 AND run_id=$2",[intent.attempt_id,runId])).rows[0];
+        if (!acceptance || acceptance.acceptance_sha256!==intent.acceptance_sha256
+          || !validateAgentIntegrationIntentBindings({plan:json(run,"plan_json"),run:json(run,"run_json"),intent,
+            acceptance:json(acceptance,"acceptance_json"),integrationHead:head}).ok) throw failure("INTEGRATION_INTENT_BINDING_INVALID");
+        if (rows.some(row=>row.integration_id===intent.integration_id)) throw failure("INTEGRATION_INTENT_CONFLICT");
+        await requireIntegrationOrder(client,run,intent.task_id,rows);
+        await inspectGit(run,supervisor,headInspection(head),"head",[head.sha]);
+        await client.query("INSERT INTO aidn_shared.execution_integration_intents(run_id,integration_id,sequence,attempt_id,intent_sha256,intent_json,creator_generation) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7)",
+          [runId,intent.integration_id,intent.sequence,intent.attempt_id,hash,JSON.stringify(intent),supervisor.generation]);
+        await bump(client,run);
+        return {intent:copy(intent),intent_sha256:hash,control_revision:Number(run.control_revision),idempotent:false};
+      });
+    },
+    async prepareIntegration({runId,supervisor,expectedControlRevision,integration,intentSha256=null,reconciliation=false}) {
+      if (typeof reconciliation!=="boolean") throw failure("RECONCILIATION_INVALID");
       integration=copy(contract("integration-prepared",integration));
       supervisor=copy(supervisor);
       return transaction(async client => {
         const run=await lockedRun(client,runId); revision(run,expectedControlRevision);
-        await supervisorGuard(client,run,supervisor,{required:true}); await canonical(client,run);
+        await supervisorGuard(client,run,supervisor,{required:true,deadline:!reconciliation});
+        if (!reconciliation) await canonical(client,run);
         if (!run.reservation_active) throw failure("RUN_NOT_ACTIVE");
+        if (reconciliation && json(run,"run_json").lifecycle_status!=="recovery_required") throw failure("RECONCILIATION_NOT_REQUIRED");
         const {rows,head}=await integrationChain(client,run), hash=fingerprintAgentExecutionValue(integration);
         const existing=rows.find(row=>row.integration_id===integration.integration_id);
+        const intents=await intentRows(client,runId), intentRow=intents.find(row=>row.integration_id===integration.integration_id), intent=json(intentRow,"intent_json");
+        if (json(run,"plan_json").verification && (!intent || !intentSha256)) throw failure("INTEGRATION_INTENT_REQUIRED");
+        if (reconciliation && !intent) throw failure("INTEGRATION_INTENT_REQUIRED");
+        if (intent || intentSha256 || integration.intent_sha256) {
+          if (!intent || intentRow.intent_sha256!==intentSha256 || integration.intent_sha256!==intentSha256
+            || ["integration_id","run_id","plan_sha256","task_id","attempt_id","acceptance_sha256","sequence","repository_identity_sha256","ref","source_sha","parent_sha"].some(key=>integration[key]!==intent[key])) throw failure("INTEGRATION_INTENT_BINDING_INVALID");
+          await requireStoppedProducer(client,run,intent.created_by,supervisor,{mustBePrevious:reconciliation});
+        }
         if (integration.run_id!==runId || integration.plan_sha256!==run.plan_sha256
           || integration.ref!==head.ref || integration.repository_identity_sha256!==head.repository_identity_sha256) throw failure("INTEGRATION_BINDING_INVALID");
         if (existing && (existing.prepared_sha256!==hash || !same(json(existing,"prepared_json"),integration))) throw failure("INTEGRATION_CONFLICT");
@@ -549,28 +677,18 @@ export function createPostgresAgentExecutionStore({
           || acceptance.task_id!==integration.task_id || json(acceptance,"acceptance_json").decision!=="accepted"
           || json(acceptance,"acceptance_json").candidate_sha!==integration.source_sha) throw failure("INTEGRATION_ACCEPTANCE_REQUIRED");
         if (!existing) {
-          if (!same(integration.prepared_by,supervisor)) throw failure("SUPERVISOR_OWNERSHIP_LOST");
-          if (!RUN_ACTIVE.has(json(run,"run_json").lifecycle_status)) throw failure("RUN_NOT_ACTIVE");
-          if (rows.some(row=>!row.applied_json)) throw failure("INTEGRATION_PENDING");
+          if (!intent && !same(integration.prepared_by,supervisor)) throw failure("SUPERVISOR_OWNERSHIP_LOST");
+          if (!RUN_ACTIVE.has(json(run,"run_json").lifecycle_status) && !(intent && json(run,"run_json").lifecycle_status==="recovery_required")) throw failure("RUN_NOT_ACTIVE");
+          if (rows.some(row=>!row.applied_json) || intents.some(row=>!row.applied_at && row.integration_id!==integration.integration_id)) throw failure("INTEGRATION_PENDING");
           if (integration.parent_sha!==head.sha || integration.sequence!==head.sequence+1) throw failure("INTEGRATION_PARENT_MISMATCH");
-          const plan=json(run,"plan_json"), earlier=taskOrder(plan).slice(0,taskOrder(plan).indexOf(integration.task_id));
-          const attempts=(await client.query("SELECT * FROM aidn_shared.execution_attempts WHERE run_id=$1 ORDER BY ordinal",[runId])).rows;
-          const acceptances=(await client.query("SELECT * FROM aidn_shared.execution_acceptances WHERE run_id=$1",[runId])).rows;
-          const failed = taskId => {
-            const last=attempts.filter(row=>row.task_id===taskId).at(-1), accepted=acceptances.find(row=>row.task_id===taskId);
-            if (accepted && json(accepted,"acceptance_json").decision==="rejected") return true;
-            if (last && ["failed","cancelled","timed_out"].includes(json(last,"attempt_json").lifecycle_status)) return true;
-            return plan.tasks.find(task=>task.task_id===taskId).depends_on.some(failed);
-          };
-          if (earlier.some(taskId=>!rows.some(row=>row.applied_json && json(row,"prepared_json").task_id===taskId) && !failed(taskId))) throw failure("INTEGRATION_ORDER_INVALID");
-        } else if (!same(integration.prepared_by,supervisor)) {
-          const previous=(await client.query("SELECT termination_json FROM aidn_shared.execution_supervisors WHERE run_id=$1 AND generation=$2",[runId,integration.prepared_by.generation])).rows[0];
-          if (!previous?.termination_json) throw failure("SUPERVISOR_RECONCILIATION_REQUIRED");
+          await requireIntegrationOrder(client,run,integration.task_id,rows);
         }
-        await inspectGit(run,supervisor,integration,"prepared",existing ? [integration.parent_sha,integration.result_sha] : [integration.parent_sha],json(attempt,"attempt_json").input_sha);
+        await requireStoppedProducer(client,run,integration.prepared_by,supervisor,{mustBePrevious:reconciliation});
+        await inspectGit(run,supervisor,{...integration,...(intent ? {intent} : {})},"prepared",
+          existing || intent ? [integration.parent_sha,integration.result_sha] : [integration.parent_sha],json(attempt,"attempt_json").input_sha);
         if (!existing) {
-          await client.query("INSERT INTO aidn_shared.execution_integrations(run_id,integration_id,sequence,attempt_id,prepared_sha256,prepared_json) VALUES($1,$2,$3,$4,$5,$6::jsonb)",
-            [runId,integration.integration_id,integration.sequence,integration.attempt_id,hash,JSON.stringify(integration)]);
+          await client.query("INSERT INTO aidn_shared.execution_integrations(run_id,integration_id,sequence,attempt_id,prepared_sha256,prepared_json,intent_sha256) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7)",
+            [runId,integration.integration_id,integration.sequence,integration.attempt_id,hash,JSON.stringify(integration),intentSha256]);
           await bump(client,run);
         }
         return {integration:copy(integration),prepared_sha256:hash,integration_head:head,control_revision:Number(run.control_revision),idempotent:Boolean(existing)};
@@ -599,10 +717,13 @@ export function createPostgresAgentExecutionStore({
         if (row.applied_json && (row.applied_sha256!==hash || !same(json(row,"applied_json"),applied))) throw failure("INTEGRATION_APPLIED_CONFLICT");
         if (!row.applied_json && !same(applied.applied_by,supervisor)) throw failure("SUPERVISOR_OWNERSHIP_LOST");
         const attempt=(await client.query("SELECT attempt_json FROM aidn_shared.execution_attempts WHERE attempt_id=$1",[row.attempt_id])).rows[0];
-        await inspectGit(run,supervisor,prepared,"applied",[prepared.result_sha],json(attempt,"attempt_json").input_sha);
+        const intentRow=(await intentRows(client,runId)).find(item=>item.integration_id===integrationId), intent=json(intentRow,"intent_json");
+        if (row.intent_sha256 && (!intent || intentRow.intent_sha256!==row.intent_sha256)) throw failure("INTEGRATION_INTENT_BINDING_INVALID");
+        await inspectGit(run,supervisor,{...prepared,...(intent ? {intent} : {})},"applied",[prepared.result_sha],json(attempt,"attempt_json").input_sha);
         if (!row.applied_json) {
           if (head.sha!==prepared.parent_sha || head.sequence+1!==prepared.sequence) throw failure("INTEGRATION_PARENT_MISMATCH");
           await client.query("UPDATE aidn_shared.execution_integrations SET applied_json=$3::jsonb,applied_sha256=$4,applied_at=clock_timestamp() WHERE run_id=$1 AND integration_id=$2 AND applied_json IS NULL",[runId,integrationId,JSON.stringify(applied),hash]);
+          if (intent) await client.query("UPDATE aidn_shared.execution_integration_intents SET applied_at=clock_timestamp() WHERE run_id=$1 AND integration_id=$2 AND applied_at IS NULL",[runId,integrationId]);
           head.sha=prepared.result_sha; head.sequence=prepared.sequence;
           await client.query("UPDATE aidn_shared.execution_runs SET integration_head_json=$2::jsonb WHERE run_id=$1",[runId,JSON.stringify(head)]);
           await bump(client,run);
@@ -623,11 +744,15 @@ export function createPostgresAgentExecutionStore({
         const hash=fingerprintAgentExecutionValue(validation);
         const old=(await client.query("SELECT * FROM aidn_shared.execution_run_validations WHERE run_id=$1",[runId])).rows[0];
         if (old && (old.validation_sha256!==hash || !same(json(old,"validation_json"),validation))) throw failure("FINAL_VALIDATION_CONFLICT");
+        const verified=await verifyValidationEvidence(run,validation,"run"), verifiedHash=verified ? fingerprintAgentExecutionValue(verified) : null;
+        // Activation may be external to the locked PostgreSQL canonical rows.
+        await canonical(client,run);
+        if (old && (old.evidence_verification_sha256 ?? null)!==verifiedHash) throw failure("VALIDATION_EVIDENCE_CONFLICT");
         if (!old) {
-          await client.query("INSERT INTO aidn_shared.execution_run_validations(run_id,validation_sha256,validation_json,supervisor_generation) VALUES($1,$2,$3::jsonb,$4)",[runId,hash,JSON.stringify(validation),supervisor.generation]);
+          await client.query("INSERT INTO aidn_shared.execution_run_validations(run_id,validation_sha256,validation_json,supervisor_generation,evidence_verification_json,evidence_verification_sha256) VALUES($1,$2,$3::jsonb,$4,$5::jsonb,$6)",[runId,hash,JSON.stringify(validation),supervisor.generation,verified ? JSON.stringify(verified) : null,verifiedHash]);
           await bump(client,run);
         }
-        return {validation:copy(validation),validation_sha256:hash,control_revision:Number(run.control_revision),idempotent:Boolean(old)};
+        return {validation:copy(validation),validation_sha256:hash,evidence_verification:verified,evidence_verification_sha256:verifiedHash,control_revision:Number(run.control_revision),idempotent:Boolean(old)};
       });
     },
 
@@ -938,7 +1063,11 @@ export function createPostgresAgentExecutionStore({
           const final=(await client.query("SELECT * FROM aidn_shared.execution_run_validations WHERE run_id=$1",[runId])).rows[0];
           if (!final || final.validation_sha256!==finalValidationSha256 || json(final,"validation_json").outcome!=="passed"
             || !validateAgentRunValidationBindings({plan:json(run,"plan_json"),run:json(run,"run_json"),validation:json(final,"validation_json"),integratedSha:head.sha,integrationSequence:head.sequence}).ok) throw failure("FINAL_VALIDATION_REQUIRED");
+          const verified=await verifyValidationEvidence(run,json(final,"validation_json"),"run");
+          if (verified && (final.evidence_verification_sha256!==fingerprintAgentExecutionValue(verified)
+            || !same(json(final,"evidence_verification_json"),verified))) throw failure("VALIDATION_EVIDENCE_CONFLICT");
           await inspectGit(run,supervisor,headInspection(head),"head",[head.sha]);
+          await canonical(client,run);
         }
         if (!run.reservation_active) {
           if (json(run,"run_json").lifecycle_status !== outcome) throw failure("RUN_TERMINAL_CONFLICT");
@@ -946,7 +1075,7 @@ export function createPostgresAgentExecutionStore({
           return { run: json(run,"run_json"), reservation_active: false };
         }
         const attempts = await client.query("SELECT * FROM aidn_shared.execution_attempts WHERE run_id=$1 FOR UPDATE", [runId]);
-        if (run.supervision_mode === "supervised" && (await integrationRows(client,runId)).some(row=>!row.applied_json)) throw failure("RECOVERY_REQUIRED");
+        if (run.supervision_mode === "supervised" && (await pendingIntegrations(client,runId)).length) throw failure("RECOVERY_REQUIRED");
         if (attempts.rows.some(row => ACTIVE.has(json(row,"attempt_json").lifecycle_status)
           || json(row,"attempt_json").lifecycle_status === "recovery_required"
           || (!row.termination_json && !row.reconciliation_json))) throw failure("RECOVERY_REQUIRED");

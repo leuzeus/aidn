@@ -278,6 +278,72 @@ if (!process.argv.includes("--synthetic-only")) await check("real Git preserves 
   assert.equal(f.gitCommand(["rev-parse", ref]), f.plan.base.sha);
 }));
 
+
+const strictVerification={runner:{id:"fixture",executable_sha256:"a".repeat(64)},environment_sha256:"b".repeat(64),
+  control_files:[{path:"seed.txt",sha256:"c".repeat(64),git_mode:"100644"}],audit_policy_sha256:"d".repeat(64),
+  proof_authority_sha256:"e".repeat(64),limits:{max_duration_ms:30000,max_output_bytes:4096}};
+if (!process.argv.includes("--synthetic-only")) await check("real Git adopts exact prejournal preparation under its durable intention", async()=>fixture({realGit:true,tasks:[task("a")],barrier:false,verification:strictVerification},async f=>{
+  let prepares=0;
+  const observe=git=>({...git,prepareIntegration:async args=>{prepares++;return git.prepareIntegration(args);}});
+  const first=await f.create({git:observe(f.git),store:{...f.store,prepareIntegration:async()=>{throw Object.assign(new Error("CRASH_BEFORE_JOURNAL"),{code:"CRASH_BEFORE_JOURNAL"});}}}).run(f.options);
+  assert.equal(first.reason_code,"CRASH_BEFORE_JOURNAL");assert.equal(f.state.integration_intents.length,1);assert.equal(f.state.integrations.length,0);
+  const row=f.state.integration_intents[0],resourcesRoot=path.join(f.root,"resources");
+  assert.equal(row.status,"reserved");assert.equal(prepares,1);
+  const names=fs.readdirSync(resourcesRoot).filter(name=>name.startsWith("prepared-"));assert.equal(names.length,1);
+  const bytes=fs.readFileSync(path.join(resourcesRoot,names[0]));
+  f.state.supervision.current.lease_live=false;
+  const git=createLocalAgentGitIntegration({repositoryRoot:path.join(f.root,"repository"),resourcesRoot,
+    integrationRef:f.state.integration_head.ref,verifyTermination:async()=>({confirmed:false})});
+  const resumed=await f.create({git:observe(git)}).resume({...f.options,reconciliation:proof});
+  assert.equal(resumed.status,"completed",resumed.reason_code);assert.equal(prepares,1);assert.equal(f.children.length,1);
+  assert.equal(f.state.integration_intents[0].status,"applied");assert.equal(f.state.integrations.length,1);
+  assert.equal(f.state.integrations[0].prepared.prepared_by.generation,1);
+  assert.equal(f.state.supervision.current.ownership.generation,2);
+  assert.deepEqual(fs.readFileSync(path.join(resourcesRoot,names[0])),bytes);
+}));
+if (!process.argv.includes("--synthetic-only")) await check("real Git resumes an intention whose preparation never started",async()=>fixture({realGit:true,tasks:[task("a")],barrier:false,verification:strictVerification},async f=>{
+  const first=await f.create({git:{...f.git,prepareIntegration:async()=>{throw Object.assign(new Error("CRASH_BEFORE_GIT"),{code:"CRASH_BEFORE_GIT"});}}}).run(f.options);
+  assert.equal(first.reason_code,"CRASH_BEFORE_GIT");assert.equal(f.state.integration_intents.length,1);assert.equal(f.state.integrations.length,0);
+  const expected=structuredClone(f.state.integration_intents[0].intent);
+  const resumed=await f.create().resume({...f.options,reconciliation:proof});
+  assert.equal(resumed.status,"completed",resumed.reason_code);assert.equal(f.children.length,1);
+  assert.deepEqual(f.state.integration_intents[0].intent,expected);
+  assert.equal(f.state.integrations[0].prepared.prepared_by.generation,2);
+}));
+await check("validation callbacks receive immutable run and result identities",async()=>fixture({tasks:[task("a")]},async f=>{
+  const seen=[];
+  const options=Object.fromEntries(["validateTask","validateRun","auditRun"].map(name=>[name,async args=>{seen.push({name,args:structuredClone({...args,signal:undefined})});return f.callbacks[name](args);} ]));
+  const result=await f.create(options).run(f.options);assert.equal(result.status,"completed",result.reason_code);
+  assert.deepEqual(seen.map(item=>item.args.runId),[f.options.runId,f.options.runId,f.options.runId]);
+  assert.match(seen[0].args.resultSha256,/^[a-f0-9]{64}$/);
+  assert.equal(seen[1].args.integrationSequence,1);assert.equal(seen[2].args.integrationSequence,1);
+}));
+await check("already applied recovery records fact without another Git CAS",async()=>fixture({tasks:[task("a")],failure:{afterCas:true}},async f=>{
+  let cas=0;const original=f.git.compareAndSwapIntegration;
+  f.git.compareAndSwapIntegration=async(...args)=>{cas++;return original(...args);};
+  await f.create().run(f.options);assert.equal(cas,1);f.state.supervision.current.lease_live=false;
+  const resumed=await f.create().resume({...f.options,reconciliation:proof});
+  assert.equal(resumed.status,"completed",resumed.reason_code);assert.equal(cas,1);
+}));
+
+
+await check("expired run can reconcile an applied SHA but cannot resume or complete",async()=>fixture({tasks:[task("a")],failure:{afterCas:true}},async f=>{
+  let cas=0;const original=f.git.compareAndSwapIntegration;
+  f.git.compareAndSwapIntegration=async(...args)=>{cas++;return original(...args);};
+  await f.create().run(f.options);assert.equal(cas,1);
+  f.state.supervision.current.lease_live=false;f.state.run_deadline_at=new Date(Date.now()-1000).toISOString();
+  const resumed=await f.create().resume({...f.options,reconciliation:proof});
+  assert.equal(resumed.status,"recovery_required");assert.equal(resumed.reason_code,"RUN_DEADLINE_EXCEEDED");
+  assert.ok(f.state.integrations[0].applied);assert.equal(cas,1);
+  assert.ok(!f.operations.includes("resumeRun"));assert.ok(!f.operations.includes("finish:completed"));
+}));
+await check("cancelled resume does not acquire a new generation",async()=>fixture({tasks:[task("a")],failure:{afterCas:true}},async f=>{
+  await f.create().run(f.options);const generation=f.state.supervision.current.ownership.generation;
+  const controller=new AbortController();controller.abort();
+  const resumed=await f.create().resume({...f.options,reconciliation:proof,signal:controller.signal});
+  assert.equal(resumed.status,"recovery_required");assert.equal(f.state.supervision.current.ownership.generation,generation);
+}));
+
 const failed = checks.filter(check => check.status === "FAIL");
 console.log(JSON.stringify({ ok: !failed.length, checks, evidence: {
   scheduler_doubles: checks.some(check => !check.name.startsWith("real Git") && !check.name.startsWith("two real") && check.status === "FAIL") ? "FAIL" : "PASS",

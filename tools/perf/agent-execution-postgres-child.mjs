@@ -16,7 +16,7 @@ process.once("message", async ({ mode, connectionString, args }) => {
       verifyActivation: () => true, verifyTermination: (_attempt, proof) => proof?.fixtureConfirmed === true,
       verifySupervisorTermination: (_supervisor,proof) => ({ok:proof?.fixtureConfirmed===true,supervisor_stopped:true,descendants_stopped:true,git_operations_stopped:true}),
       inspectIntegration: input => ({ok:true,repository_identity_sha256:input.repository_identity_sha256,ref:input.ref,
-        head_sha:input.parent_sha,source_parent_sha:null,result_parent_sha:input.parent_sha}) });
+        head_sha:input.parent_sha ?? args?.intent?.parent_sha,source_parent_sha:null,result_parent_sha:input.parent_sha}) });
     const value = mode === "migrate"
       ? await createPostgresSharedCoordinationStore({ connectionString }).bootstrap()
       : await store[mode](args);

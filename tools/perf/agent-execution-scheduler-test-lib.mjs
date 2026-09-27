@@ -15,7 +15,7 @@ export const fixtureEvidence = { ref: "evidence/supervision.json", sha256: sha("
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 export const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-export function createSchedulerFixture({ realGit = false, concurrency = 2, tasks = null, failure = {}, clock, barrier = realGit, runId = "run.fixture" } = {}) {
+export function createSchedulerFixture({ realGit = false, concurrency = 2, tasks = null, verification = null, failure = {}, clock, barrier = realGit, runId = "run.fixture" } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-scheduler-")), token = randomUUID();
   fs.writeFileSync(path.join(root, "owner"), token, { flag: "wx" });
   const repositoryRoot = path.join(root, "repository"), resourcesRoot = path.join(root, "resources");
@@ -46,13 +46,14 @@ export function createSchedulerFixture({ realGit = false, concurrency = 2, tasks
   rawPlan.canonical.scope = rawPlan.tasks.flatMap(task => task.scope);
   rawPlan.validations = [{ validation_id: "contents", argv: ["fixture", "contents"] }];
   rawPlan.audit = { read_only: true, criteria: ["Changes remain in delegated scope"] };
+  if (verification) rawPlan.verification = clone(verification);
   const plan = normalizeAgentExecutionPlan(rawPlan);
   const state = {
     plan, run: { ...clone(chain.run), run_id: runId, canonical: clone(plan.canonical), plan_id: plan.plan_id, plan_sha256: plan.plan_sha256,
       task_ids: plan.tasks.map(task => task.task_id), lifecycle_status: "planned" },
     tasks: plan.tasks.map(task => ({ contract_version: "agent-delegated-task.v1", run_id: runId,
       plan_sha256: plan.plan_sha256, task_contract_sha256: fingerprintTaskContract(task), ...clone(task) })),
-    attempts: [], events: [], acceptances: [], integrations: [], final_validation: null,
+    attempts: [], events: [], acceptances: [], integration_intents: [], integrations: [], final_validation: null,
     supervision: { mode: "legacy", control_revision: 0, current: null, history: [] },
     integration_head: null, run_started_at: null, run_deadline_at: null,
   };
@@ -120,7 +121,21 @@ export function createSchedulerFixture({ realGit = false, concurrency = 2, tasks
     },
     async reconcileAttempt({ attemptId, proof }) { const view = attempt(attemptId); view.reconciliation = proof; view.attempt.lifecycle_status = "cancelled"; },
     async recordAcceptance({ acceptance }) { operations.push(`accepted:${acceptance.task_id}`); state.acceptances.push({ acceptance: clone(acceptance), acceptance_sha256: fingerprint(acceptance) }); },
-    async prepareIntegration({ integration }) {
+    async recordIntegrationIntent({ intent }) {
+      const existing = state.integration_intents.find(row => row.intent.integration_id === intent.integration_id);
+      if (existing) {
+        if (existing.intent_sha256 !== fingerprint(intent)) fail("INTENT_CHANGED");
+        return { ...clone(existing), control_revision: state.supervision.control_revision, idempotent: true };
+      }
+      if (state.integration_intents.some(row => row.status !== "applied")) fail("PENDING_INTENT");
+      const row = { intent: clone(intent), intent_sha256: fingerprint(intent), status: "reserved", prepared_sha256: null, applied_sha256: null };
+      state.integration_intents.push(row); operations.push("integration-intent:" + intent.task_id);state.supervision.control_revision++;
+      return { ...clone(row), control_revision: state.supervision.control_revision, idempotent: false };
+    },
+    async prepareIntegration({ integration, intentSha256 }) {
+      const intent = state.integration_intents.find(row => row.intent.integration_id === integration.integration_id);
+      if (plan.verification && (!intent || intent.intent_sha256 !== intentSha256 || integration.intent_sha256 !== intentSha256)) fail("INTENT_REQUIRED");
+      if (intent) { intent.status = "prepared"; intent.prepared_sha256 = fingerprint(integration); }
       if (!state.integrations.some(row => row.prepared.integration_id === integration.integration_id)) {
         operations.push(`integration-prepared:${integration.task_id}`); state.integrations.push({ prepared: clone(integration), applied: null }); state.supervision.control_revision++;
       }
@@ -130,6 +145,8 @@ export function createSchedulerFixture({ realGit = false, concurrency = 2, tasks
       const row = state.integrations.find(item => item.prepared.integration_id === integrationId);
       operations.push(`integration-applied:${row.prepared.task_id}`);
       if (failure.afterCas) { failure.afterCas = false; fail("BACKEND_UNAVAILABLE"); }
+      const intent = state.integration_intents.find(item => item.intent.integration_id === integrationId);
+      if (intent) { intent.status = "applied"; intent.applied_sha256 = fingerprint(proof); }
       row.applied = clone(proof); state.integration_head.sha = row.prepared.result_sha; state.integration_head.sequence = row.prepared.sequence; state.supervision.control_revision++;
     },
     async recordRunValidation({ validation }) { operations.push("finalValidation"); state.final_validation = { validation: clone(validation), validation_sha256: fingerprint(validation) }; state.supervision.control_revision++; },
