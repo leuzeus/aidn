@@ -319,16 +319,25 @@ export function createCodexSandboxValidationJournal({ evidenceRoot, configuratio
   return Object.freeze({ prepare, record, inspect });
 }
 
+// File-pin inspection is read-only and platform-independent. It neither probes
+// the client nor grants launch availability, including for a matching hash.
+export async function inspectCodexSandboxValidationBinaryPins(config, { signal } = {}) {
+  assertCodexSandboxValidationConfiguration(config);
+  // Match the worker client bound without widening runner/helper/source limits.
+  requireThat((await readFile(config.client.executable, 512 * 1024 * 1024, signal)).sha256 === config.client.sha256, "SANDBOX_BINARY_CHANGED");
+  for (const row of [config.runner, config.trampoline, { executable: SOURCE, sha256: config.trampoline.source_sha256 },
+    { executable: CONTROLLER, sha256: config.controller.candidateSha256 }, { executable: HELPER_SOURCE, sha256: config.controller.helperSourceSha256 },
+    { executable: config.controller.helperPath, sha256: config.controller.helperSha256 }]) {
+    requireThat((await readFile(row.executable, 256 * 1024 * 1024, signal)).sha256 === row.sha256, "SANDBOX_BINARY_CHANGED");
+  }
+}
+
 // Read-only preflight shared by runtime and the explicit qualification tool.
 // It establishes pinned material, never native availability on its own.
 export async function inspectCodexSandboxValidationConfiguration(config, { cwd, signal } = {}) {
   assertCodexSandboxValidationConfiguration(config);
   requireThat(process.platform === config.platform && process.arch === config.architecture, "SANDBOX_PLATFORM_UNQUALIFIED");
-  for (const row of [config.client, config.runner, config.trampoline, { executable: SOURCE, sha256: config.trampoline.source_sha256 },
-    { executable: CONTROLLER, sha256: config.controller.candidateSha256 }, { executable: HELPER_SOURCE, sha256: config.controller.helperSourceSha256 },
-    { executable: config.controller.helperPath, sha256: config.controller.helperSha256 }]) {
-    requireThat((await readFile(row.executable, 256 * 1024 * 1024, signal)).sha256 === row.sha256, "SANDBOX_BINARY_CHANGED");
-  }
+  await inspectCodexSandboxValidationBinaryPins(config, { signal });
   for (const root of Object.values(config.roots)) await physical(root, true);
   const home = await physical(config.profile.home, true);
   requireThat(fingerprint({ physical_path: await fs.realpath(config.profile.home), device: home.dev, inode: home.ino, birthtime_ms: home.birthtimeMs }) === config.profile.home_identity_sha256, "SANDBOX_HOME_CHANGED");

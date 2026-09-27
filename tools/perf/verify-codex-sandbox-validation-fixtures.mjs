@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { generateKeyPairSync, sign } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { createHash, generateKeyPairSync, sign } from "node:crypto";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../src/core/agents/agent-execution-contracts.mjs";
 import { assertCodexSandboxValidationConfiguration as validate, fingerprintCodexSandboxValidationConfiguration,
   buildCodexSandboxValidationInvocation as build, createCodexValidationStreamParser as parser, getCodexSandboxValidationLaunchSupport,
-  createCodexSandboxValidationBoundary, createCodexSandboxValidationJournal } from "../../src/adapters/runtime/codex-sandbox-validation-boundary.mjs";
+  createCodexSandboxValidationBoundary, createCodexSandboxValidationJournal, inspectCodexSandboxValidationBinaryPins } from "../../src/adapters/runtime/codex-sandbox-validation-boundary.mjs";
 import { buildCodexValidationQualificationPlan, executeCodexValidationQualificationCase } from "../verify/qualify-codex-validation-boundary.mjs";
 
 const checks = [], H = "a".repeat(64);
@@ -117,6 +119,60 @@ await check("pre-cancelled invocation never requires executable or config files"
   const boundary = createCodexSandboxValidationBoundary({ configuration: config, publicKey, evidenceRoot: root });
   const result = await boundary.run(request, { signal: stop.signal }); assert.equal(result.termination_state, "not_started"); assert.equal(result.reason_code, "SANDBOX_CANCELLED");
 });
+// Sparse fixture bytes are never retained in memory. NTFS needs its explicit
+// per-file sparse flag; this does not configure any host or sandbox resource.
+const binaryRoot = path.join(root, "binary-pins");
+const smallBinary = path.join(binaryRoot, "small.exe"), largeBinary = path.join(binaryRoot, "sparse.exe");
+await check("owned sparse binary fixture preparation", () => {
+  fs.mkdirSync(binaryRoot); fs.writeFileSync(smallBinary, "pinned fixture"); fs.writeFileSync(largeBinary, "", { flag: "wx" });
+  if (process.platform === "win32") {
+    const systemRoot = process.env.SystemRoot;
+    assert(path.isAbsolute(systemRoot));
+    const sparse = spawnSync(path.join(systemRoot, "System32", "fsutil.exe"), ["sparse", "setflag", largeBinary],
+      { encoding: "utf8", windowsHide: true, timeout: 5000, maxBuffer: 4096, env: { SystemRoot: systemRoot } });
+    assert.equal(sparse.error, undefined); assert.equal(sparse.status, 0, "owned sparse fixture setup failed");
+  }
+});
+const zeroBlock = Buffer.alloc(65536), binaryBytes = 256 * 1024 * 1024 + 1;
+const zeroHash = createHash("sha256");
+for (let remaining = binaryBytes; remaining > 0; remaining -= zeroBlock.length) zeroHash.update(zeroBlock.subarray(0, Math.min(remaining, zeroBlock.length)));
+const largeDigest = zeroHash.digest("hex"), smallDigest = createHash("sha256").update("pinned fixture").digest("hex");
+function pinnedConfig() {
+  const { config } = fixture();
+  for (const entry of [config.client, config.runner, config.trampoline]) { entry.executable = smallBinary; entry.sha256 = smallDigest; }
+  config.controller.helperPath = smallBinary; config.controller.helperSha256 = smallDigest;
+  const sourcePin = relative => createHash("sha256").update(fs.readFileSync(fileURLToPath(new URL(relative, import.meta.url)))).digest("hex");
+  config.trampoline.source_sha256 = sourcePin("../../src/adapters/runtime/codex-validation-trampoline.cs");
+  config.controller.candidateSha256 = sourcePin("../../src/adapters/agents/process-tree/windows-process-tree-controller.mjs");
+  config.controller.helperSourceSha256 = sourcePin("../../src/adapters/agents/process-tree/windows-job-helper.cs");
+  return config;
+}
+await check("read-only client pin accepts a streamed binary larger than 256 MiB without native qualification", async () => {
+  fs.truncateSync(largeBinary, binaryBytes);
+  const config = pinnedConfig(); config.client = { executable: largeBinary, sha256: largeDigest };
+  const before = fs.statSync(largeBinary); await inspectCodexSandboxValidationBinaryPins(config);
+  const after = fs.statSync(largeBinary); assert.equal(after.size, before.size); assert.equal(after.mtimeMs, before.mtimeMs);
+  assert.equal(getCodexSandboxValidationLaunchSupport(config).available, false);
+});
+await check("streamed oversized client still rejects a mismatching pin", async () => {
+  const config = pinnedConfig(); config.client = { executable: largeBinary, sha256: H };
+  await assert.rejects(inspectCodexSandboxValidationBinaryPins(config), code("SANDBOX_BINARY_CHANGED"));
+});
+await check("runner and trampoline retain their 256 MiB binary limit", async () => {
+  for (const role of ["runner", "trampoline"]) {
+    const config = pinnedConfig(); config[role].executable = largeBinary; config[role].sha256 = largeDigest;
+    await assert.rejects(inspectCodexSandboxValidationBinaryPins(config), code("SANDBOX_FILE_LIMIT"));
+  }
+});
+await check("aliased client and runner pin objects cannot widen the runner limit", async () => {
+  const config = pinnedConfig(); config.client = { executable: largeBinary, sha256: largeDigest }; config.runner = config.client;
+  await assert.rejects(inspectCodexSandboxValidationBinaryPins(config), code("SANDBOX_FILE_LIMIT"));
+});
+await check("client inspection refuses bytes beyond 512 MiB before reading them", async () => {
+  fs.truncateSync(largeBinary, 512 * 1024 * 1024 + 1);
+  const config = pinnedConfig(); config.client = { executable: largeBinary, sha256: H };
+  await assert.rejects(inspectCodexSandboxValidationBinaryPins(config), code("SANDBOX_FILE_LIMIT"));
+});
 await check("stream parser isolates candidate bytes and handles split multibyte frames", () => {
   const { request } = fixture(), stream = parser(request), expected = Buffer.from('é{"status":"passed"}');
   const content = Buffer.concat([frame(request, 1, "prepared", prepared(request)), frame(request, 2, "stdout", { data: expected.toString("base64") }), frame(request, 3, "terminal", terminal(request))]);
@@ -199,5 +255,5 @@ await check("closed CLI without exact child membership remains indeterminate in 
   });
 }
 console.log(JSON.stringify({ status: checks.every(row => row.status === "PASS") ? "PASS" : "FAIL", checks,
-  native_qualification: "NOT_EXECUTED", evidence: "pure contracts and framed protocol fixtures; no Codex or process controller launched" }, null, 2));
+  native_qualification: "NOT_EXECUTED", evidence: "contracts, bounded file pins and framed protocol fixtures; no Codex or process controller launched" }, null, 2));
 if (checks.some(row => row.status === "FAIL")) process.exitCode = 1;

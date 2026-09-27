@@ -434,6 +434,12 @@ compositions report UNAVAILABLE and cannot fall back to ordinary subprocesses,
 copied trust or a different sandbox. Existing profile setup is a precondition,
 never an implicit lifecycle effect.
 
+Validation-boundary file inspection streams the selected Codex client up to
+512 MiB, matching the worker client bound. Runner, trampoline, controller source
+and helper pins retain their 256 MiB limit. Reads use at most 64 KiB chunks and
+verify the complete SHA-256 plus unchanged file identity and size; increasing the
+client bound does not authorize a client or establish native availability.
+
 The validation backend currently fails that prerequisite. The inspected official
 source for Codex `0.158.0-alpha.2.1` invokes an elevated setup refresh on the
 `codex sandbox` path even when sandbox state exists. Its current implementation
