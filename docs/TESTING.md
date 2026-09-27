@@ -262,9 +262,10 @@ and their 43 historical invocations are unchanged.
 For the public run lifecycle, run
 `npm run perf:verify-agent-run-lifecycle-fixtures`. The required runtime gate
 `runtime-agent-run-lifecycle` executes the lifecycle, workspace, native-attempt
-composition, sandbox-validation, controlled-metadata, managed-sandbox preparation
-operation-adequacy, setup-protocol and setup-effect contract fixtures exactly once on dev, main
-and release. It checks preview purity, explicit action fingerprints, stale state,
+composition, sandbox-validation, controlled-metadata, managed-sandbox preparation,
+operation-adequacy, setup-protocol, setup-effect, setup bridge and controlled
+parent fixtures exactly once on dev, main and release. It checks preview purity,
+explicit action fingerprints, stale state,
 cancellation, read-only status, prepared-root adoption and completed-run cleanup.
 Disposable Git tests retain source commits and all local bytes before removal,
 reject relocation as evidence of deletion, recover an already removed owned
@@ -276,7 +277,7 @@ termination receipts, unavailable prerequisites and absence of constructor
 effects. Sandbox-validation fixtures verify closed configuration, framed
 protocol and boundary contracts without invoking Codex. Controlled-metadata
 fixtures check explicit candidate/Node pins, bounded protocol and unknown-tree
-recovery using injected controllers. These nine scripts run
+recovery using injected controllers. These eleven scripts run
 on Linux and Windows; they do not provision a sandbox, use a real user profile,
 launch a model or qualify Windows process confinement. The separate native
 Windows process fixtures (`node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs --native`
@@ -295,7 +296,20 @@ The separate Windows-only check
 actual collector and exercises its protocol with mocked host providers. It
 requires an installed PowerShell 7 executable; a missing platform/runtime is
 UNAVAILABLE with a failing exit code. This check is not part of the portable
-lifecycle gate and does not collect real host state or qualify confinement.
+lifecycle gate and does not collect real host state or qualify confinement. It
+also checks the additive `dimension_candidates` output: typed projections of
+already observed accounts, groups, explicit files, DACLs and registry values,
+bound to inventory and final observer-context hashes. Missing dimensions and
+unknown observations remain explicit; these partial candidates are not complete
+operation receipts or authenticated host evidence.
+
+The separate Windows-only
+`node tools/perf/verify-codex-managed-setup-preflight-fixtures.mjs` campaign has
+89 checks covering the actual preflight script with mocked token, process, Job
+and helper observations. It compiles native declarations without invoking them.
+It requires PowerShell 7, reports unavailable prerequisites as a failing
+UNAVAILABLE result, and stays outside the portable gate. A fixture PASS proves
+neither actual elevation or Job membership nor absence of an external helper.
 
 For managed Windows sandbox preparation, run
 `node tools/perf/verify-codex-managed-sandbox-fixtures.mjs`. This sixth script in
@@ -332,6 +346,20 @@ closed setup-effect recipes and their observation bindings. Unrepresented
 temporary effects and unverified postconditions remain explicit gaps. These
 models neither extend the historical create/update manifest nor authorize setup.
 Both suites use neutral fixture data and perform no Windows provider operation.
+
+The tenth and eleventh scripts,
+`node tools/perf/verify-controlled-codex-managed-setup-fixtures.mjs` and
+`node tools/perf/verify-controlled-codex-managed-setup-parent-fixtures.mjs`,
+exercise the candidate transport, bridge and controlling parent using injected
+inspection, spawn and process doubles. They check fixed arguments and closed
+environment, pinned material and prerequisites, bounded protocol and callbacks,
+live-token bindings, separate channel and Job termination, and refusal of
+unconfirmed effects. The parent requires authorization, preflight and effect
+comparison ports; a stopped Job cannot turn a failed channel into success.
+These candidates are not registered executors. Production implementations of
+`authorizeOperation`, `preflight` and `compareEffects` remain absent; startup and
+effective-configuration evidence and complete effects coverage also remain
+outstanding. No fixture launches native setup or qualifies a managed backend.
 
 For the injected supervisor candidate, run
 `npm run perf:verify-agent-execution-scheduler-fixtures` and

@@ -487,8 +487,15 @@ The separate PowerShell collector
 `tools/verify/codex-managed-sandbox-inventory.ps1 -RequestPath <request.json>`
 performs explicitly selected read-only observations. Incomplete WFP or policy
 visibility remains partial coverage; the collector never repairs privileges or
-changes those resources to make inventory succeed. Keep the actual inventory
-local and use neutral fixture data in tracked examples.
+changes those resources to make inventory succeed. Its additive
+`dimension_candidates` field retains typed projections already observed for the
+two selected accounts and groups, explicit files, DACLs and UserList values.
+Candidates bind the unchanged v1 inventory and final observer context, including
+selected modules. They stay partial: missing flags, physical file identity or
+descendant expansion are not invented, and only proven not-found observations
+represent absence. Credential contents are never exposed. These candidates do
+not become exhaustive operation receipts. Keep the actual inventory local and
+use neutral fixture data in tracked examples.
 
 A complete preparation preview has status `PREPARED_NOT_AUTHORIZED` and a canonical
 fingerprint; it reports no available execution capability. A separate explicit
@@ -537,6 +544,26 @@ Streaming input, callbacks and stop requests are bounded. Setup completion is
 recorded separately from transport termination; a transport receipt is still an
 injected assertion until an actual controller proves the stopped Job. These
 modules contain no process launcher and are not a managed native backend.
+
+A separate candidate transport and bridge now describe the concrete app-server
+launch, with pinned executables and source inventory, closed arguments and
+environment, prerequisite bindings and a fresh read-only containing-Job
+preflight. The controlling parent creates the bridge suspended through the
+process-controller port and requires authorization and preflight again before
+resume. It keeps channel completion, natural app-server closure, actual empty-Job
+proof and observed effects distinct. An uncertain operation blocks further
+operations in that parent instance. Neither the bridge nor the parent is
+registered as a native executor.
+
+The portable transport/bridge and parent fixtures use doubles and perform no
+setup. The separate Windows preflight campaign has 89 checks with mocked token,
+process, Job and helper observations; native declarations are compiled but never
+called. Those results do not establish actual token privileges, containment or
+helper absence. The production authority ports `authorizeOperation`, `preflight`
+and `compareEffects` still need their approved composition. Startup and effective
+configuration, complete observed effects and exact-operation authorization remain
+required before any first native setup operation. No candidate or fixture result
+satisfies those prerequisites implicitly.
 
 Collector diagnostics identify the observer's token context and projection
 digest, provider duration, exit code and privilege-related failures without

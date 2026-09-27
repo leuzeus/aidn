@@ -51,7 +51,7 @@ function Digest-Bytes([byte[]]$Bytes) {
     $h = [Security.Cryptography.SHA256]::Create()
     try { return ([BitConverter]::ToString($h.ComputeHash($Bytes))).Replace('-','').ToLowerInvariant() } finally { $h.Dispose() }
 }
-# Only hashes are exposed. Canonical JSON uses ordinal object keys and retained
+# Canonical JSON uses ordinal object keys and retained
 # array order. It avoids locale-dependent ConvertTo-Json property ordering.
 function Canonical($Value) {
     if ($null -eq $Value) { return 'null' }
@@ -302,8 +302,9 @@ function Registry-UserList {
         try {
             $value=Registry-Value $name; $detail.status='succeeded'; $detail.access='observed'
             $record=@{view='Registry64';state=$value.state;value_kind=$value.value_kind;value=$value.value}
+            $script:DimensionCapture.registry[$id]=@{state=$value.state;sha256=$(if ($value.state -ceq 'observed') { Digest $record } else { $null });record=$record;reason=$null}
             $rows+=,@{id=$id;state=$value.state;sha256=$(if ($value.state -ceq 'observed') { Digest $record } else { $null });failure=$null}
-        } catch { Provider-Failure $detail $_; $rows+=,@{id=$id;state='unobserved';sha256=$null;failure=$detail.failure} }
+        } catch { Provider-Failure $detail $_; $script:DimensionCapture.registry[$id]=@{state='unobserved';sha256=$null;record=$null;reason=$detail.failure.code}; $rows+=,@{id=$id;state='unobserved';sha256=$null;failure=$detail.failure} }
         finally { Save-ProviderDetail $detail $watch }
     }
     return ,$rows
@@ -456,16 +457,201 @@ function Parse-Wfp([string]$Xml) {
     if ($rows.Count -eq 0) { Stop-Code 'INVENTORY_WFP_SCHEMA_UNSUPPORTED' }
     return ,$rows
 }
+
+# These transformations retain only fixed public fields already read above.
+# They call no provider, use no clock and never turn candidates into complete receipts.
+function Candidate-Field($Object,[string]$Name) {
+    if ($Object -is [Collections.IDictionary]) { if ($Object.Contains($Name)) { return ,($Object[$Name]) }; return $null }
+    if ($Object -is [pscustomobject]) {
+        $property=$Object.PSObject.Properties[$Name]
+        if ($null -ne $property -and $property.MemberType -eq [Management.Automation.PSMemberTypes]::NoteProperty) { return ,($property.Value) }
+    }
+    return $null
+}
+function Candidate-HasField($Object,[string]$Name) {
+    if ($Object -is [Collections.IDictionary]) { return $Object.Contains($Name) }
+    if ($Object -is [pscustomobject]) { $p=$Object.PSObject.Properties[$Name]; return $null -ne $p -and $p.MemberType -eq [Management.Automation.PSMemberTypes]::NoteProperty }
+    return $false
+}
+function Candidate-Sid($Value) {
+    return $Value -is [string] -and $Value.Length -le 184 -and $Value -cmatch '^S-1-[0-9]+(?:-[0-9]+){1,15}$'
+}
+function Candidate-Digest($Value) { return $Value -is [string] -and $Value -cmatch '^[a-f0-9]{64}$' }
+function Candidate-SecretPath([string]$Path) {
+    return $Path -match '(?i)(?:^|[\\/])(?:\.sandbox-secrets|auth\.json|credentials(?:\.json)?|sandbox_users\.json)(?:[\\/]|$)'
+}
+function Candidate-Date($Value) {
+    if ($Value -isnot [string] -or $Value.Length -gt 40 -or $Value -cnotmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?(?:Z|[+-]\d{2}:\d{2})$') { return $null }
+    $parsed=[DateTimeOffset]::MinValue
+    if (![DateTimeOffset]::TryParse($Value,[Globalization.CultureInfo]::InvariantCulture,[Globalization.DateTimeStyles]::None,[ref]$parsed)) { return $null }
+    return $parsed.UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
+}
+function New-DimensionCapture {
+    return @{accounts=@{};groups=@{};files=@{};acls=@{};registry=@{};accounts_complete=$false;groups_complete=$false}
+}
+function Assert-CandidateJson($Value,[int]$Depth,$Budget) {
+    $Budget.nodes++
+    if ($Depth -gt 24 -or $Budget.nodes -gt 100000) { Stop-Code 'INVENTORY_CANDIDATE_JSON_LIMIT' }
+    if ($null -eq $Value -or $Value -is [bool]) { return }
+    if ($Value -is [string]) {
+        $Budget.bytes+=$script:Utf8.GetByteCount($Value)
+        if ($Budget.bytes -gt 16777216) { Stop-Code 'INVENTORY_CANDIDATE_JSON_LIMIT' }
+        return
+    }
+    if ($Value -is [int] -or $Value -is [long] -or $Value -is [uint32]) { return }
+    if ($Value -is [Array]) { foreach ($item in $Value) { Assert-CandidateJson $item ($Depth+1) $Budget }; return }
+    if ($Value -is [hashtable] -or $Value -is [Collections.Specialized.OrderedDictionary]) {
+        foreach ($name in $Value.Keys) { if ($name -isnot [string]) { Stop-Code 'INVENTORY_CANDIDATE_JSON_INVALID' }; Assert-CandidateJson $Value[$name] ($Depth+1) $Budget }
+        return
+    }
+    if ($Value -is [pscustomobject]) {
+        foreach ($property in $Value.PSObject.Properties) {
+            if ($property.MemberType -ne [Management.Automation.PSMemberTypes]::NoteProperty) { Stop-Code 'INVENTORY_CANDIDATE_JSON_INVALID' }
+            Assert-CandidateJson $property.Value ($Depth+1) $Budget
+        }
+        return
+    }
+    Stop-Code 'INVENTORY_CANDIDATE_JSON_INVALID'
+}
+function Build-DimensionCandidates($Captured,$Inventory,$ObserverContext) {
+    $budget=@{nodes=0;bytes=0}; foreach ($value in @($Captured,$Inventory,$ObserverContext)) { Assert-CandidateJson $value 0 $budget }
+    $profiles=@()
+    $definitions=@(
+        @{id='accounts-public.v1';kind='local_account';source='accounts';required=@('sid','flags','password_last_set')},
+        @{id='groups-membership.v1';kind='local_group';source='groups';required=@('sid','members')},
+        @{id='filesystem-state.v1';kind='filesystem';source='files';required=@('physical_path','file_id','object_type','attributes','content_sha256')},
+        @{id='filesystem-dacl.v1';kind='filesystem_acl';source='acls';required=@('owner_sid','group_sid','dacl_sha256','control_flags','inheritance','descendant_paths')},
+        @{id='registry-userlist.v1';kind='registry';source='registry';required=@('registry_view','value_type','value_data')}
+    )
+    $inventoryRows=@($Inventory.resources)+@($Inventory.protected_resources)
+    if ($inventoryRows.Count -gt 1024) { Stop-Code 'INVENTORY_CANDIDATE_LIMIT' }
+    foreach ($definition in $definitions) {
+        $rows=@(); $selected=@{}
+        foreach ($observed in $inventoryRows) {
+            if ($observed.kind -cne $definition.kind) { continue }
+            if ($observed.id -isnot [string] -or ($null -ne $observed.sha256 -and !(Candidate-Digest $observed.sha256))) { Stop-Code 'INVENTORY_CANDIDATE_BINDING_INVALID' }
+            $id=[string]$observed.id; $inventoryId=$id
+            $captureMap=Candidate-Field $Captured $definition.source
+            $entry=Candidate-Field $captureMap $id
+            if ($definition.kind -ceq 'local_account' -and $id -cnotin @('CodexSandboxOffline','CodexSandboxOnline')) { continue }
+            if ($definition.kind -ceq 'local_group') {
+                $record=Candidate-Field $entry 'record'; $group=Candidate-Field $record 'group'
+                $name=Candidate-Field $group 'Name'; $sid=Candidate-Field $group 'SID'
+                if ($id -ceq 'CodexSandboxUsers' -or $name -ceq 'CodexSandboxUsers') { $id='CodexSandboxUsers' }
+                elseif ($id -ceq 'S-1-5-32-545' -or $sid -ceq 'S-1-5-32-545') { $id='S-1-5-32-545' }
+                else { continue }
+            }
+            if ($definition.kind -ceq 'registry') {
+                $registry='HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList'
+                $name=$null
+                foreach ($allowed in @('CodexSandboxOffline','CodexSandboxOnline')) {
+                    if ($id -ceq ($registry+'\'+$allowed) -or $id -ceq ($registry+'#value='+$allowed)) { $name=$allowed }
+                }
+                if ($null -eq $name) { continue }
+                $id=$registry+'#value='+$name
+                if ($null -eq $entry) { $entry=Candidate-Field $captureMap ($registry+'\'+$name) }
+            }
+            if ($definition.kind -in @('filesystem','filesystem_acl')) {
+                # Paths must have been selected and checked by the historical main.
+                # A synthetic entry cannot introduce an undeclared path.
+                if ($null -eq $entry) {
+                    $entry=@{state='unobserved';sha256=$null;record=$null;reason='INVENTORY_PATH_NOT_OBSERVED'}
+                }
+            }
+            if ($selected.ContainsKey($id)) { Stop-Code 'INVENTORY_CANDIDATE_ID_AMBIGUOUS' }
+            $selected[$id]=$true
+            $dimensions=[ordered]@{}; $state='unobserved'; $reason='INVENTORY_CANDIDATE_NOT_OBSERVED'
+            if ($null -eq $entry -and (($definition.kind -ceq 'local_account' -and $Captured.accounts_complete -eq $true) -or ($definition.kind -ceq 'local_group' -and $Captured.groups_complete -eq $true))) {
+                $entry=@{state='absent_at_observation';sha256=$null;record=$null;reason='INVENTORY_PATH_ABSENT'}
+            }
+            $entryState=Candidate-Field $entry 'state'; $entryHash=Candidate-Field $entry 'sha256'
+            $record=Candidate-Field $entry 'record'
+            if ($entryState -ceq 'absent_at_observation' -and $null -eq $observed.sha256 -and $null -eq $entryHash) {
+                $state='absent_at_observation'; $reason=$null
+                $dimensions.exists=$false; $dimensions.absence_reason='not_found'
+            } elseif ($entryState -ceq 'observed' -and (Candidate-Digest $entryHash) -and $entryHash -ceq $observed.sha256) {
+                $state='observed'; $reason=$null; $dimensions.exists=$true
+                switch ($definition.kind) {
+                    'local_account' {
+                        $sid=Candidate-Field $record 'SID'; if (Candidate-Sid $sid) { $dimensions.sid=$sid }
+                        if (Candidate-HasField $record 'PasswordLastSet') {
+                            $date=Candidate-Field $record 'PasswordLastSet'
+                            if ($null -eq $date) { $dimensions.password_last_set=$null }
+                            else { $normal=Candidate-Date $date; if ($null -ne $normal) { $dimensions.password_last_set=$normal } }
+                        }
+                    }
+                    'local_group' {
+                        $group=Candidate-Field $record 'group'; $sid=Candidate-Field $group 'SID'
+                        if (Candidate-Sid $sid) { $dimensions.sid=$sid }
+                        $members=Candidate-Field $record 'members'
+                        if ($members -is [Array] -and $members.Count -le 20000) {
+                            $memberSids=@(); $valid=$true
+                            foreach ($member in $members) { $memberSid=Candidate-Field $member 'SID'; if (!(Candidate-Sid $memberSid)) { $valid=$false; break }; $memberSids+=,$memberSid }
+                            if ($valid) { $dimensions.members=@($memberSids | Sort-Object -Unique) }
+                        }
+                    }
+                    'filesystem' {
+                        $directory=Candidate-Field $record 'directory'; $attributes=Candidate-Field $record 'attributes'
+                        if ($directory -is [bool]) { $dimensions.object_type=$(if($directory){'directory'}else{'file'}) }
+                        if (($attributes -is [int] -or $attributes -is [long]) -and $attributes -ge 0 -and $attributes -le [int]::MaxValue) { $dimensions.attributes=[int]$attributes }
+                        if (Candidate-SecretPath $id) {
+                            # Policy null means deliberately forbidden content, not missing evidence.
+                            $dimensions.content_sha256=$null
+                        } else {
+                            $contentHash=Candidate-Field $record 'content_sha256'
+                            if ((Candidate-Digest $contentHash) -and $directory -eq $false) { $dimensions.content_sha256=$contentHash }
+                        }
+                    }
+                    'filesystem_acl' {
+                        $sddl=Candidate-Field $record 'Sddl'
+                        if ($sddl -is [string] -and $sddl.Length -le 65536) {
+                            try {
+                                $descriptor=[Security.AccessControl.RawSecurityDescriptor]::new($sddl)
+                                if ($null -ne $descriptor.Owner) { $dimensions.owner_sid=$descriptor.Owner.Value }
+                                if ($null -ne $descriptor.Group) { $dimensions.group_sid=$descriptor.Group.Value }
+                                $dimensions.control_flags=[int]$descriptor.ControlFlags
+                                $dimensions.inheritance=$(if (($descriptor.ControlFlags -band [Security.AccessControl.ControlFlags]::DiscretionaryAclProtected) -ne 0) {'protected'} else {'not_protected'})
+                                if ($null -ne $descriptor.DiscretionaryAcl) {
+                                    $bytes=[byte[]]::new($descriptor.DiscretionaryAcl.BinaryLength)
+                                    $descriptor.DiscretionaryAcl.GetBinaryForm($bytes,0)
+                                    $dimensions.dacl_sha256=Digest-Bytes $bytes
+                                }
+                            } catch { $reason='INVENTORY_CANDIDATE_SDDL_INVALID'; $dimensions=[ordered]@{exists=$true} }
+                        }
+                    }
+                    'registry' {
+                        $view=Candidate-Field $record 'view'; $kind=Candidate-Field $record 'value_kind'; $data=Candidate-Field $record 'value'
+                        if ($view -ceq 'Registry64' -and $kind -ceq 'DWord' -and ($data -is [int] -or $data -is [long] -or $data -is [uint32]) -and $data -ge 0 -and $data -le [uint32]::MaxValue) {
+                            $dimensions.registry_view='Registry64'; $dimensions.value_type='DWord'; $dimensions.value_data=[long]$data
+                        }
+                    }
+                }
+            } elseif ($null -ne $entry -and (Candidate-Field $entry 'reason') -ceq 'INVENTORY_PATH_ACCESS_DENIED') { $reason='INVENTORY_PATH_ACCESS_DENIED' }
+            elseif ($null -ne $entry -and (Candidate-Field $entry 'reason') -ceq 'INVENTORY_CREDENTIAL_CONTENT_FORBIDDEN') { $reason='INVENTORY_CREDENTIAL_CONTENT_FORBIDDEN' }
+            elseif ($entryState -ceq 'observed') { $reason='INVENTORY_CANDIDATE_HASH_MISMATCH' }
+            $missing=@()
+            if ($state -cne 'absent_at_observation') { foreach ($dimension in $definition.required) { if (!$dimensions.Contains($dimension)) { $missing+=,$dimension } } }
+            if ($state -ceq 'unobserved') { $missing=@('exists')+$missing }
+            $rows+=,[ordered]@{id=$id;inventory_id=$inventoryId;resource_sha256=$observed.sha256;state=$state;dimensions=$dimensions;missing_dimensions=$missing;reason_code=$reason}
+        }
+        $profiles+=,[ordered]@{profile_id=$definition.id;status='partial';rows=@($rows | Sort-Object id)}
+    }
+    return [ordered]@{contract_version='codex-managed-sandbox-dimension-candidates.v1';status='partial'
+        inventory_sha256=(Digest $Inventory);observer_context_sha256=(Digest $ObserverContext);profiles=$profiles}
+}
+
+
 function Report-Json($Value, [long]$Limit) {
     $json=ConvertTo-Json -InputObject $Value -Depth 20 -Compress
     if ($script:Utf8.GetByteCount($json) + 2 -gt $Limit) {
-        return '{"contract_version":"codex-managed-sandbox-observation.v1","status":"PREPARATION_BLOCKED","effect_class":"read-only","written":false,"native_execution":"NOT_EXECUTED","inventory":null,"diagnostics":[],"errors":[{"code":"INVENTORY_FINAL_OUTPUT_LIMIT","phase":"report.serialize","exception_type":null,"script_line":null}]}'
+        return '{"contract_version":"codex-managed-sandbox-observation.v1","status":"PREPARATION_BLOCKED","effect_class":"read-only","written":false,"native_execution":"NOT_EXECUTED","inventory":null,"dimension_candidates":null,"diagnostics":[],"errors":[{"code":"INVENTORY_FINAL_OUTPUT_LIMIT","phase":"report.serialize","exception_type":null,"script_line":null}]}'
     }
     return $json
 }
 
-$report=[ordered]@{contract_version='codex-managed-sandbox-observation.v1';status='PREPARATION_BLOCKED';effect_class='read-only';written=$false;native_execution='NOT_EXECUTED';observer_context=$null;inventory=$null;diagnostics=@();errors=@()}
+$report=[ordered]@{contract_version='codex-managed-sandbox-observation.v1';status='PREPARATION_BLOCKED';effect_class='read-only';written=$false;native_execution='NOT_EXECUTED';observer_context=$null;inventory=$null;dimension_candidates=$null;diagnostics=@();errors=@()}
 try {
+    $report.dimension_candidates=$null; $script:DimensionCapture=New-DimensionCapture
     if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { Stop-Code 'INVENTORY_WINDOWS_REQUIRED' }
     $script:Phase='request.read'
     $requestBytes=Read-File $RequestPath 262144 $true
@@ -532,12 +718,19 @@ try {
             switch ($kind) {
                 'local_account' {
                     $scope.projection='Get-LocalUser selected public account fields'; $scope.selectors=@('*')
-                    $rows=Query 'accounts'; foreach ($r in $rows) { $hash=Digest $r; $observed['local_account:'+$r.Name]=$hash; $observed['local_account:'+$r.SID]=$hash; $projection+=,@{id=$r.Name;sha256=$hash} }
+                    $rows=Query 'accounts'; foreach ($r in $rows) { $hash=Digest $r; $observed['local_account:'+$r.Name]=$hash; $observed['local_account:'+$r.SID]=$hash; $projection+=,@{id=$r.Name;sha256=$hash}
+                        if ($r.Name -cin @('CodexSandboxOffline','CodexSandboxOnline')) { $script:DimensionCapture.accounts[$r.Name]=@{state='observed';sha256=$hash;record=$r;reason=$null} }
+                    }; $script:DimensionCapture.accounts_complete=$true
                     $reason='INVENTORY_ACCOUNT_PASSWORD_AND_POLICY_NOT_OBSERVED'
                 }
                 'local_group' {
                     $scope.projection='Get-LocalGroup and member SID projections'; $scope.selectors=@('*')
-                    $rows=Query 'groups'; foreach ($r in $rows) { $members=Query 'members' $r.Name; $memberRows=@($members | Sort-Object SID,Name); $hash=Digest @{group=$r;members=$memberRows}; $observed['local_group:'+$r.Name]=$hash; $observed['local_group:'+$r.SID]=$hash; $projection+=,@{id=$r.Name;sha256=$hash} }
+                    $rows=Query 'groups'; foreach ($r in $rows) { $members=Query 'members' $r.Name; $memberRows=@($members | Sort-Object SID,Name); $hash=Digest @{group=$r;members=$memberRows}; $observed['local_group:'+$r.Name]=$hash; $observed['local_group:'+$r.SID]=$hash; $projection+=,@{id=$r.Name;sha256=$hash}
+                        if ($r.Name -ceq 'CodexSandboxUsers' -or $r.SID -ceq 'S-1-5-32-545') {
+                            $entry=@{state='observed';sha256=$hash;record=@{group=$r;members=$memberRows};reason=$null}
+                            $script:DimensionCapture.groups[$r.Name]=$entry; $script:DimensionCapture.groups[$r.SID]=$entry
+                        }
+                    }; $script:DimensionCapture.groups_complete=$true
                     $reason='INVENTORY_GROUP_SECURITY_DESCRIPTOR_NOT_OBSERVED'
                 }
                 'filesystem' {
@@ -547,16 +740,18 @@ try {
                         try { $metadata=Path-Metadata $p.path } catch { $pathDiagnostics+=,@{id=$p.id;state='unobserved';failure=(Failure-Detail $_)}; continue }
                         if ($null -eq $metadata) { $pathDiagnostics+=,@{id=$p.id;state='absent_at_observation';failure=$null}; continue }
                         $record=@{directory=$metadata.directory;attributes=$metadata.attributes;bytes=$metadata.bytes}
+                        $contentHash=$null
                         $hash=Digest $record
                         if (!$metadata.directory -and $p.hash_content) {
                             $limit=$script:FileLimit
                             $clientFile=[string]::Equals($p.path,$request.client.path,[StringComparison]::OrdinalIgnoreCase)
                             if ($clientFile) { $limit=536870912 }
-                            try { $hash=(Read-File $p.path $limit).sha256 }
+                            try { $hash=(Read-File $p.path $limit).sha256; $contentHash=$hash }
                             catch { $pathDiagnostics+=,@{id=$p.id;state='unobserved';failure=(Failure-Detail $_)}; continue }
                             if ($clientFile -and $hash -cne $request.client.sha256) { Stop-Code 'INVENTORY_CLIENT_PIN_CHANGED' }
                         }
                         $observed['filesystem:'+$p.id]=$hash; $projection+=,@{id=$p.id;sha256=$hash}
+                        $script:DimensionCapture.files[$p.id]=@{state='observed';sha256=$hash;record=@{directory=$metadata.directory;attributes=$metadata.attributes;content_sha256=$contentHash};reason=$null}
                     }; $reason='INVENTORY_FILESYSTEM_DESCENDANTS_STREAMS_AND_LINKS_NOT_OBSERVED'
                 }
                 'filesystem_acl' {
@@ -568,6 +763,7 @@ try {
                             $rows=Query 'acl' $p.path; if ($rows.Count -ne 1 -or !$rows[0].Sddl) { Stop-Code 'INVENTORY_ACL_NOT_OBSERVED' }
                         } catch { $pathDiagnostics+=,@{id=$p.id;state='unobserved';failure=(Failure-Detail $_)}; continue }
                         $hash=Digest $rows[0]; $observed['filesystem_acl:'+$p.id]=$hash; $projection+=,@{id=$p.id;sha256=$hash}
+                        $script:DimensionCapture.acls[$p.id]=@{state='observed';sha256=$hash;record=$rows[0];reason=$null}
                     }; $reason='INVENTORY_ACL_SACL_INHERITANCE_AND_DESCENDANTS_NOT_OBSERVED'
                 }
                 'firewall_rule' {
@@ -595,6 +791,12 @@ try {
                 }
             }
         } catch { $reason=Reason $_; $failure=Failure-Detail $_ }
+        if ($kind -cin @('filesystem','filesystem_acl')) {
+            $captureMap=$(if($kind -ceq 'filesystem'){$script:DimensionCapture.files}else{$script:DimensionCapture.acls})
+            foreach ($diagnostic in $pathDiagnostics) {
+                $captureMap[$diagnostic.id]=@{state=$diagnostic.state;sha256=$null;record=$null;reason=$(if($null -ne $diagnostic.failure){$diagnostic.failure.code}else{$null})}
+            }
+        }
         $scope['provider_modules']=@($script:ProviderDetails | Where-Object { $null -ne $_.module } | ForEach-Object { $_.module } | Sort-Object name,manifest_sha256 -Unique)
         $stable=@($projection | Sort-Object id,sha256)
         # Outside is diagnostic only. The exact allowed row set, not protected
@@ -611,6 +813,7 @@ try {
     $report.inventory=[ordered]@{contract_version='codex-managed-sandbox-inventory.v1';host_id=$request.host_id;client_sha256=$request.client.sha256;manifest_sha256=$request.manifest_sha256;observed_at=[DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ');coverage=$coverage;resources=$resultRows.resources;protected_resources=$resultRows.protected_resources}
     $report.diagnostics=$diag
     $report.observer_context.selected_modules=@($script:SelectedModules.Values | Sort-Object name)
+    $report.dimension_candidates=Build-DimensionCandidates $script:DimensionCapture $report.inventory $report.observer_context
     if ($script:UnstoppedProvider) { $report.errors+=,@{code='INVENTORY_PROVIDER_STOP_UNCONFIRMED'} }
 } catch { $report.errors+=,(Failure-Detail $_) }
 # Partial null rows never establish absence. The caller must preserve this

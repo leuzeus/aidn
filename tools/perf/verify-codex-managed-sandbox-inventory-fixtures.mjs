@@ -43,7 +43,8 @@ function Read-File([string]$Path,[long]$Limit,[bool]$KeepBytes=$false) {
   return @{sha256=('a'*64);bytes=321953584}
 }
 function Local-Path([string]$Path) { if ($Path -eq $script:DeniedPath) { throw [UnauthorizedAccessException]::new('fixture-secret-never-export') }; return $Path }
-function Path-Metadata([string]$Path) { return @{directory=$false;attributes=32;bytes=1} }
+function Path-Metadata([string]$Path) { if ($Path.EndsWith('missing.fixture')) { return $null }; return @{directory=$false;attributes=32;bytes=1} }
+$script:QueryCalls=@()
 $script:FirewallDenied=$false
 $script:NetshExitCode=0
 $script:RegistryDenied=$false
@@ -60,13 +61,14 @@ function Registry-Value([string]$Name) {
   return @{state='absent_at_observation';value_kind=$null;value=$null}
 }
 function Query-Raw([string]$Kind,[string]$Argument='') {
+  $script:QueryCalls+=,$Kind
   $module=@{accounts='Microsoft.PowerShell.LocalAccounts';groups='Microsoft.PowerShell.LocalAccounts';members='Microsoft.PowerShell.LocalAccounts';firewall='NetSecurity';acl='Microsoft.PowerShell.Security'}[$Kind]
   $script:CurrentProviderDetail.module=Select-ProviderModule $module ('C:\fixture\'+$module+'.psd1')
   if ($Kind -ceq 'firewall' -and $script:FirewallDenied) { throw [ComponentModel.Win32Exception]::new(5,'fixture-secret-never-export') }
   switch ($Kind) {
-    'accounts' { return ,@(@{Name='CodexSandboxOffline';SID='S-1-5-21-1-2-3-1001';Enabled='True'}) }
-    'groups' { return ,@(@{Name='CodexSandboxUsers';SID='S-1-5-21-1-2-3-1002'}) }
-    'members' { return ,@(@{Name='CodexSandboxOffline';SID='S-1-5-21-1-2-3-1001'}) }
+    'accounts' { return ,@(@{Name='CodexSandboxOffline';SID='S-1-5-21-1-2-3-1001';Enabled='True';PasswordLastSet='2026-09-27T10:00:00.1234567Z';Password='fixture-secret-never-export'},@{Name='PrivateOtherUser';SID='S-1-5-21-1-2-3-1009';PasswordLastSet='2026-09-27T10:00:00Z'}) }
+    'groups' { return ,@(@{Name='CodexSandboxUsers';SID='S-1-5-21-1-2-3-1002'},@{Name='LocalizedBuiltinUsers';SID='S-1-5-32-545'},@{Name='PrivateOtherGroup';SID='S-1-5-21-1-2-3-1008'}) }
+    'members' { return ,@(@{Name='private-member-name';SID='S-1-5-21-1-2-3-1001'}) }
     'firewall' { return ,@(@{Name='codex_sandbox_offline_block_outbound';Action='Block'}) }
     'acl' { return ,@(@{Sddl='O:SYG:SYD:(A;;FA;;;SY)'}) }
   }; throw 'MOCK_QUERY_UNEXPECTED'
@@ -193,6 +195,15 @@ $script:FixtureRequest=[ordered]@{
  netsh=@{path='C:\Windows\System32\netsh.exe';sha256=$hash}
  limits=@{max_duration_ms=60000;query_timeout_ms=8000;max_rows=1000;max_file_bytes=1048576;max_output_bytes=1048576}
 }
+$secretPath='C:\fixture\profile\.sandbox-secrets\sandbox_users.json'
+$absentPath='C:\fixture\missing.fixture'
+$script:FixtureRequest.resources+=,@{kind='local_account';id='CodexSandboxOnline'}
+$script:FixtureRequest.resources+=,@{kind='local_account';id='PrivateOtherUser'}
+$script:FixtureRequest.resources+=,@{kind='local_group';id='CodexSandboxUsers'}
+$script:FixtureRequest.resources+=,@{kind='local_group';id='S-1-5-32-545'}
+$script:FixtureRequest.resources+=,@{kind='local_group';id='PrivateOtherGroup'}
+$script:FixtureRequest.resources+=,@{kind='filesystem_acl';id=$pins[0]}
+foreach($path in @($secretPath,$absentPath)){$script:FixtureRequest.resources+=,@{kind='filesystem';id=$path};$script:FixtureRequest.paths+=,@{id=$path;path=$path;hash_content=$false}}
 $main=@($ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.TryStatementAst] })
 if ($main.Count -ne 1) { throw 'MAIN_SHAPE_CHANGED' }
 $mainBlock=[ScriptBlock]::Create($main[0].Extent.Text)
@@ -210,6 +221,89 @@ Assert (@($report.inventory.protected_resources | Where-Object { $_.sha256 -cne 
 Assert (@($script:ReadCalls | Where-Object { $_.path -ne $pins[0] -and $_.limit -gt 1048576 }).Count -eq 0) 'OTHER_FILES_KEEP_NORMAL_LIMIT'
 $bounded=Report-Json $report 1024
 Assert ($script:Utf8.GetByteCount($bounded) -lt 1024 -and ($bounded | ConvertFrom-Json).errors[0].code -ceq 'INVENTORY_FINAL_OUTPUT_LIMIT') 'FINAL_JSON_BOUNDED'
+
+$candidates=$report.dimension_candidates
+Assert ($candidates.contract_version -ceq 'codex-managed-sandbox-dimension-candidates.v1' -and $candidates.status -ceq 'partial') 'CANDIDATE_VERSION_ALWAYS_PARTIAL'
+Assert ($candidates.inventory_sha256 -ceq (Digest $report.inventory) -and $candidates.observer_context_sha256 -ceq (Digest $report.observer_context)) 'CANDIDATES_BOUND_TO_FINAL_CONTEXT_AND_INVENTORY'
+Assert ($candidates.observer_context_sha256 -cne (Digest $beforeContext)) 'CANDIDATE_CONTEXT_INCLUDES_FINAL_MODULES'
+Assert ($candidates.profiles.Count -eq 5 -and @($candidates.profiles | Where-Object { $_.status -cne 'partial' }).Count -eq 0) 'FIVE_CANDIDATE_PROFILES_NOT_RECEIPTS'
+$accounts=@($candidates.profiles | Where-Object {$_.profile_id -ceq 'accounts-public.v1'})[0].rows
+Assert ($accounts.Count -eq 2 -and ($accounts.id -join ',') -ceq 'CodexSandboxOffline,CodexSandboxOnline') 'ONLY_TWO_FIXED_ACCOUNT_CANDIDATES'
+Assert ($accounts[0].state -ceq 'observed' -and $accounts[0].dimensions.sid -ceq 'S-1-5-21-1-2-3-1001' -and $accounts[0].dimensions.password_last_set -ceq '2026-09-27T10:00:00.123Z') 'PUBLIC_ACCOUNT_DIMENSIONS_TYPED'
+Assert ($accounts[0].missing_dimensions.Count -eq 1 -and $accounts[0].missing_dimensions[0] -ceq 'flags' -and !$accounts[0].dimensions.Contains('flags')) 'ACCOUNT_FLAGS_NEVER_SYNTHESIZED'
+Assert ($accounts[1].state -ceq 'absent_at_observation' -and !$accounts[1].dimensions.exists -and $accounts[1].dimensions.absence_reason -ceq 'not_found') 'ACCOUNT_ABSENCE_REQUIRES_SUCCESSFUL_ENUMERATION'
+$groups=@($candidates.profiles | Where-Object {$_.profile_id -ceq 'groups-membership.v1'})[0].rows
+Assert ($groups.Count -eq 2 -and $groups[1].id -ceq 'S-1-5-32-545' -and $groups[0].dimensions.members[0] -ceq 'S-1-5-21-1-2-3-1001') 'GROUP_MEMBERS_SIDS_ONLY_FIXED_GROUPS'
+$files=@($candidates.profiles | Where-Object {$_.profile_id -ceq 'filesystem-state.v1'})[0].rows
+$clientCandidate=@($files | Where-Object {$_.id -ceq $pins[0]})[0]
+Assert ($clientCandidate.dimensions.object_type -ceq 'file' -and $clientCandidate.dimensions.attributes -is [int] -and $clientCandidate.dimensions.content_sha256 -ceq $hash) 'FILE_OBSERVED_DIMENSIONS_RETAINED'
+Assert ($clientCandidate.missing_dimensions -contains 'file_id' -and $clientCandidate.missing_dimensions -contains 'physical_path' -and !$clientCandidate.dimensions.Contains('file_id')) 'FILE_ID_AND_PHYSICAL_HANDLE_PATH_NOT_INVENTED'
+$secretCandidate=@($files | Where-Object {$_.id -ceq $secretPath})[0]
+Assert ($secretCandidate.dimensions.Contains('content_sha256') -and $null -eq $secretCandidate.dimensions.content_sha256 -and $secretCandidate.missing_dimensions -notcontains 'content_sha256') 'SECRET_CONTENT_POLICY_NULL_NOT_A_REQUEST_TO_READ'
+$absentCandidate=@($files | Where-Object {$_.id -ceq $absentPath})[0]
+Assert ($absentCandidate.state -ceq 'absent_at_observation' -and !$absentCandidate.dimensions.exists -and $absentCandidate.resource_sha256 -eq $null) 'FILE_PROVEN_NOT_FOUND'
+$acls=@($candidates.profiles | Where-Object {$_.profile_id -ceq 'filesystem-dacl.v1'})[0].rows
+Assert ($acls.Count -eq 1 -and $acls[0].dimensions.owner_sid -ceq 'S-1-5-18' -and $acls[0].dimensions.group_sid -ceq 'S-1-5-18') 'ACL_OWNER_AND_GROUP_DERIVED_FROM_EXISTING_SDDL'
+Assert ($acls[0].dimensions.dacl_sha256 -cmatch '^[a-f0-9]{64}$' -and $acls[0].dimensions.control_flags -is [int] -and $acls[0].dimensions.inheritance -ceq 'not_protected' -and $acls[0].missing_dimensions -contains 'descendant_paths') 'ACL_DACL_AND_CONTROL_WITHOUT_DESCENDANT_INVENTION'
+$registryCandidates=@($candidates.profiles | Where-Object {$_.profile_id -ceq 'registry-userlist.v1'})[0].rows
+Assert ($registryCandidates[0].id.EndsWith('#value=CodexSandboxOffline') -and $registryCandidates[0].inventory_id.EndsWith('\CodexSandboxOffline')) 'REGISTRY_CANONICAL_ID_SEPARATE_FROM_LEGACY_ID'
+Assert ($registryCandidates[0].dimensions.registry_view -ceq 'Registry64' -and $registryCandidates[0].dimensions.value_type -ceq 'DWord' -and $registryCandidates[0].dimensions.value_data -is [long] -and $registryCandidates[0].dimensions.value_data -eq 0) 'REGISTRY_TYPED_DWORD_RETAINED'
+Assert ($registryCandidates[1].state -ceq 'absent_at_observation' -and !$registryCandidates[1].dimensions.exists) 'REGISTRY_ABSENCE_RETAINED'
+$candidateJson=ConvertTo-Json $candidates -Depth 20 -Compress
+Assert ($candidateJson -notmatch 'fixture-secret-never-export|PrivateOtherUser|PrivateOtherGroup|private-member-name|O:SYG:SY|PasswordExpires|UserMayChangePassword|Sddl') 'CANDIDATE_REDACTION_EXCLUDES_UNREQUESTED_PII_AND_RAW_CONTENT'
+$readCount=$script:ReadCalls.Count; $registryCount=$script:RegistryCalls.Count; $queryCount=$script:QueryCalls.Count
+$capturedBefore=Digest $script:DimensionCapture; $inventoryBefore=Digest $report.inventory; $contextBefore=Digest $report.observer_context
+$again=Build-DimensionCandidates $script:DimensionCapture $report.inventory $report.observer_context
+Assert ((Digest $again) -ceq (Digest $candidates) -and $readCount -eq $script:ReadCalls.Count -and $registryCount -eq $script:RegistryCalls.Count -and $queryCount -eq $script:QueryCalls.Count) 'PURE_BUILDER_NO_PROVIDERS_AND_DETERMINISTIC'
+Assert ($capturedBefore -ceq (Digest $script:DimensionCapture) -and $inventoryBefore -ceq (Digest $report.inventory) -and $contextBefore -ceq (Digest $report.observer_context)) 'PURE_BUILDER_NO_INPUT_MUTATION'
+function Copy-FixtureJson($Value) {
+  if ($Value -is [Collections.IDictionary]) {
+    $copy=@{}; foreach($key in $Value.Keys){$copy[$key]=Copy-FixtureJson $Value[$key]}; return ,$copy
+  }
+  if ($Value -is [Array]) {
+    $copy=@(); foreach($item in $Value){$copy+=,(Copy-FixtureJson $item)}; return ,$copy
+  }
+  return ,$Value
+}
+
+$malicious=Copy-FixtureJson $script:DimensionCapture
+$malicious.files[$secretPath].record.content_sha256='b'*64
+$redacted=Build-DimensionCandidates $malicious $report.inventory $report.observer_context
+$redactedSecret=@(@($redacted.profiles | Where-Object {$_.profile_id -ceq 'filesystem-state.v1'})[0].rows | Where-Object {$_.id -ceq $secretPath})[0]
+Assert ($null -eq $redactedSecret.dimensions.content_sha256) 'FORGED_SECRET_CONTENT_HASH_NEVER_EXPOSED'
+$malicious.accounts.CodexSandboxOffline.record.SID='fixture-secret-never-export'
+$malicious.accounts.CodexSandboxOffline.record.PasswordLastSet='fixture-secret-never-export'
+$redacted=Build-DimensionCandidates $malicious $report.inventory $report.observer_context
+$invalidAccount=@(@($redacted.profiles | Where-Object {$_.profile_id -ceq 'accounts-public.v1'})[0].rows | Where-Object {$_.id -ceq 'CodexSandboxOffline'})[0]
+Assert ($invalidAccount.missing_dimensions -contains 'sid' -and $invalidAccount.missing_dimensions -contains 'password_last_set' -and (ConvertTo-Json $redacted -Depth 20 -Compress) -notmatch 'fixture-secret-never-export') 'MALFORMED_PUBLIC_VALUES_ARE_MISSING_NOT_EXPORTED'
+$malicious.registry[$registryCandidates[0].inventory_id].record.value='fixture-secret-never-export'
+$redacted=Build-DimensionCandidates $malicious $report.inventory $report.observer_context
+Assert ((ConvertTo-Json $redacted -Depth 20 -Compress) -notmatch 'fixture-secret-never-export') 'REGISTRY_UNEXPECTED_TYPE_NEVER_EXPORTED'
+$malicious.acls[$pins[0]].record.Sddl='fixture-secret-never-export'
+$redacted=Build-DimensionCandidates $malicious $report.inventory $report.observer_context
+$invalidAcl=@($redacted.profiles | Where-Object {$_.profile_id -ceq 'filesystem-dacl.v1'})[0].rows[0]
+Assert ($invalidAcl.reason_code -ceq 'INVENTORY_CANDIDATE_SDDL_INVALID' -and (ConvertTo-Json $redacted -Depth 20 -Compress) -notmatch 'fixture-secret-never-export') 'MALFORMED_SDDL_FIXED_ERROR_WITHOUT_CONTENT'
+$malicious.accounts_complete=$false
+$redacted=Build-DimensionCandidates $malicious $report.inventory $report.observer_context
+$unknownAccount=@(@($redacted.profiles | Where-Object {$_.profile_id -ceq 'accounts-public.v1'})[0].rows | Where-Object {$_.id -ceq 'CodexSandboxOnline'})[0]
+Assert ($unknownAccount.state -ceq 'unobserved' -and !$unknownAccount.dimensions.Contains('exists')) 'INCOMPLETE_ENUMERATION_NEVER_ABSENCE'
+$malicious.accounts.CodexSandboxOffline.sha256='b'*64
+$redacted=Build-DimensionCandidates $malicious $report.inventory $report.observer_context
+Assert (@($redacted.profiles | Where-Object {$_.profile_id -ceq 'accounts-public.v1'})[0].rows[0].reason_code -ceq 'INVENTORY_CANDIDATE_HASH_MISMATCH') 'CANDIDATE_RECORD_HASH_BINDING'
+$badContext=[pscustomobject]@{host_id='fixture-host'}
+$script:GetterCalled=$false
+Add-Member -InputObject $badContext -MemberType ScriptProperty -Name secret -Value {$script:GetterCalled=$true;return 'fixture-secret-never-export'}
+$getterError=$null; try { Build-DimensionCandidates $script:DimensionCapture $report.inventory $badContext | Out-Null } catch { $getterError=Reason $_ }
+Assert ($getterError -ceq 'INVENTORY_CANDIDATE_JSON_INVALID' -and !$script:GetterCalled) 'CLOSED_JSON_REJECTS_ACCESSOR_WITHOUT_CALLING_IT'
+$bindingOk=$true
+foreach($profile in $candidates.profiles){foreach($row in $profile.rows){
+  $kind=@{'accounts-public.v1'='local_account';'groups-membership.v1'='local_group';'filesystem-state.v1'='filesystem';'filesystem-dacl.v1'='filesystem_acl';'registry-userlist.v1'='registry'}[$profile.profile_id]
+  $binding=@((@($report.inventory.resources)+@($report.inventory.protected_resources)) | Where-Object {$_.kind -ceq $kind -and $_.id -ceq $row.inventory_id})
+  if($binding.Count -ne 1 -or $binding[0].sha256 -cne $row.resource_sha256){$bindingOk=$false}
+}}
+Assert $bindingOk 'EVERY_CANDIDATE_LINKS_EXACT_INVENTORY_RECORD_HASH'
+$goodCandidates=$candidates
+
 $good=$report.inventory
 $goodObserver=$report.observer_context
 Assert ($goodObserver.host_id -ceq [Environment]::MachineName -and $goodObserver.elevation_type -ceq 'limited' -and !$goodObserver.elevated -and $goodObserver.process_bitness -in @(32,64) -and $goodObserver.os_bitness -in @(32,64)) 'OBSERVER_HOST_ELEVATION_BITNESS'
@@ -231,15 +325,25 @@ $registryDenied=@($report.diagnostics | Where-Object { $_.kind -ceq 'registry' }
 Assert ($fwDenied.access -ceq 'denied' -and $fwDenied.status -ceq 'failed' -and $null -eq $fwDenied.exit_code -and $fwDenied.duration_ms -ge 0) 'FIREWALL_ACCESS_DENIED_WITHOUT_PROCESS_EXIT_INVENTION'
 Assert ($wfpDenied.access -ceq 'denied' -and $wfpDenied.exit_code -eq 5 -and $wfpDenied.status -ceq 'failed') 'WFP_EXIT_CODE_ACCESS_DIAGNOSTIC'
 Assert ($registryDenied[0].state -ceq 'unobserved' -and $registryDenied[1].state -ceq 'absent_at_observation' -and $null -eq $report.inventory.resources[1].sha256) 'REGISTRY_DENIED_NOT_ABSENCE'
+$deniedRegistryCandidate=@($report.dimension_candidates.profiles | Where-Object {$_.profile_id -ceq 'registry-userlist.v1'})[0].rows[0]
+Assert ($deniedRegistryCandidate.state -ceq 'unobserved' -and !$deniedRegistryCandidate.dimensions.Contains('exists')) 'CANDIDATE_REGISTRY_DENIAL_NOT_ABSENCE'
 Assert ((ConvertTo-Json $report.diagnostics -Depth 15 -Compress) -notmatch 'fixture-secret-never-export|<wfpstate>|message|stack') 'PROVIDER_FAILURE_NO_RAW_MESSAGE_XML'
 Assert (@($report.inventory.coverage | Where-Object { $_.complete }).Count -eq 0) 'PROVIDER_SUCCESS_OR_DENIAL_NEVER_COMPLETE'
+$script:QueryCalls=@()
 $script:FirewallDenied=$false; $script:NetshExitCode=0; $script:RegistryDenied=$false
 $report.errors=@(); $script:DeniedPath=$pins[1]
 . $mainBlock
 Assert ($report.errors.Count -eq 0 -and $null -eq $report.inventory.protected_resources[1].sha256 -and $report.inventory.protected_resources[0].sha256 -ceq $hash -and $report.inventory.protected_resources[2].sha256 -ceq $hash) 'INACCESSIBLE_PATH_PRESERVES_OTHER_OBSERVATIONS'
 $deniedDiagnostics=@($report.diagnostics | Where-Object { $_.kind -ceq 'filesystem' })[0].paths
 Assert ($deniedDiagnostics[0].state -ceq 'unobserved' -and $deniedDiagnostics[0].failure.code -ceq 'INVENTORY_PATH_ACCESS_DENIED') 'INACCESSIBLE_PATH_DIAGNOSTIC'
+$deniedFileCandidate=@(@($report.dimension_candidates.profiles | Where-Object {$_.profile_id -ceq 'filesystem-state.v1'})[0].rows | Where-Object {$_.id -ceq $pins[1]})[0]
+Assert ($deniedFileCandidate.state -ceq 'unobserved' -and !$deniedFileCandidate.dimensions.Contains('exists') -and $deniedFileCandidate.reason_code -ceq 'INVENTORY_PATH_ACCESS_DENIED') 'CANDIDATE_FILE_DENIAL_NOT_ABSENCE'
 $script:DeniedPath=$null
+$credentialRequest=@($script:FixtureRequest.paths | Where-Object {$_.path -ceq $secretPath})[0]
+$credentialRequest.hash_content=$true; $providerCount=$script:QueryCalls.Count; $report.errors=@(); $script:DeniedPath=$null
+. $mainBlock
+Assert ($report.errors.Count -eq 1 -and $report.errors[0].code -ceq 'INVENTORY_CREDENTIAL_CONTENT_FORBIDDEN' -and $script:QueryCalls.Count -eq $providerCount -and $null -eq $report.dimension_candidates) 'CREDENTIAL_CONTENT_REQUEST_REFUSED_BEFORE_PROVIDERS'
+$credentialRequest.hash_content=$false
 $report.errors=@(); $report.inventory=$null; $script:FixtureRequest.host_id='mismatched-host'
 . $mainBlock
 Assert ($report.errors[0].code -ceq 'INVENTORY_HOST_ID_MISMATCH') 'HOST_BINDING'
@@ -251,7 +355,7 @@ $report.errors=@(); $script:ReadFailure=$true
 Assert ($report.errors[0].phase -ceq 'request.read' -and $report.errors[0].exception_type -match '^[A-Za-z][A-Za-z0-9._+]{0,159}$' -and $report.errors[0].script_line -gt 0) 'FAILURE_STRUCTURED_PHASE_TYPE_LINE'
 Assert (($report.errors | ConvertTo-Json -Compress) -notmatch 'fixture-secret-never-export|message|stack') 'FAILURE_NO_RAW_CONTENT'
 Assert (((Report-Json @{text='été 😀'} 1024) | ConvertFrom-Json).text -ceq 'été 😀') 'REPORT_UNICODE_PRESERVED'
-[IO.File]::WriteAllText($Output,(@{checks=$script:Pass;inventory=$good;host_queries='MOCKED';native_execution='NOT_EXECUTED'} | ConvertTo-Json -Depth 20 -Compress),(New-Object Text.UTF8Encoding($false)))
+[IO.File]::WriteAllText($Output,(@{checks=$script:Pass;inventory=$good;dimension_candidates=$goodCandidates;host_queries='MOCKED';native_execution='NOT_EXECUTED'} | ConvertTo-Json -Depth 20 -Compress),(New-Object Text.UTF8Encoding($false)))
 [Console]::Out.WriteLine((@{checks=$script:Pass;status='PASS';host_queries='MOCKED';native_execution='NOT_EXECUTED';utf8_probe='été 😀'} | ConvertTo-Json -Compress))
 `;
 let root, owner, fixtureResult;
@@ -272,7 +376,7 @@ try {
   record("actual-powershell-parser-and-mocked-inventory-assertions", () => {
     assert.ifError(result.error); assert.equal(result.status, 0, result.stderr);
     const summary = JSON.parse(result.stdout.trim()); assert.equal(summary.status, "PASS");
-    assert.equal(summary.utf8_probe, "été 😀"); assert.equal(summary.checks, 53); assert.equal(summary.host_queries, "MOCKED");
+    assert.equal(summary.utf8_probe, "été 😀"); assert.equal(summary.checks, 85); assert.equal(summary.host_queries, "MOCKED");
     fixtureResult = JSON.parse(fs.readFileSync(output, "utf8"));
     assert.equal(fixtureResult.native_execution, "NOT_EXECUTED");
   });
@@ -281,7 +385,7 @@ try {
     const manifest = { contract_version: "codex-managed-sandbox-effects.v1", mode: "managed-elevated", platform: "win32", host_id: inventory.host_id,
       client: { executable: "C:\\fixture\\codex.exe", sha256 }, setup: { executable: "C:\\fixture\\setup.exe", sha256 }, command_runner: { executable: "C:\\fixture\\runner.exe", sha256 },
       profile_root: "C:\\fixture\\profile", roots: [{ role: "profile", path: "C:\\fixture\\profile" }, { role: "snapshots", path: "C:\\fixture\\snapshots" },
-        { role: "scratch", path: "C:\\fixture\\scratch" }, { role: "supervisor", path: "C:\\fixture\\supervisor" }],
+        { role: "scratch", path: "C:\\fixture\\scratch" }, { role: "supervisor", path: "C:\\fixture\\supervisor" }, { role: "runtime", path: "C:\\fixture" }],
       resources: inventory.resources.map(({ kind, id }) => ({ kind, id, operations: ["update"] })),
       protected_resources: inventory.protected_resources.map(({ kind, id }) => ({ kind, id })) };
     record("real-core-refuses-foreign-manifest-binding", () => {

@@ -558,7 +558,24 @@ read-only projections, access refusals and provider timeouts remain distinct.
 UAC activation from a non-elevated app-server is outside the current Job proof;
 a managed launcher must establish elevation before creating its controlled tree
 and separately exclude external service/helper work. Setup completion alone
-does not establish descendant termination.
+does not establish descendant termination. The collector can retain already
+observed public account/group, explicit-file, DACL and registry projections in
+`dimension_candidates`, bound to the v1 inventory and final observer context.
+These candidates remain partial; missing dimensions and unproven absence cannot
+be promoted to complete receipts. This retention adds no provider query or
+credential-content collection.
+
+The concrete transport, bridge and controlling parent are separate candidates,
+not registered native executors. The bridge pins material, arguments, environment
+and prerequisites before opening one app-server connection. The parent uses the
+process-controller port to create the bridge suspended, repeats authorization
+and live preflight before resume, and separately checks protocol completion,
+natural transport closure, empty-Job proof and observed effects. Unknown
+termination or effects require reconciliation; an inner channel cannot prove
+that its containing bridge has stopped. Production authorization, preflight and
+effect-comparison ports, startup/effective configuration and complete effect
+evidence remain required. An inspection test seam and portable fixture doubles
+do not authenticate native evidence or authorize first setup.
 
 The operator owns these local preparation and approval records. They may later
 be referenced by the frozen configuration of an `execution_run`; they are not
@@ -596,9 +613,12 @@ worker. Native qualification is separate from these CI checks.
 An unqualified OS cannot advertise the future capability.
 
 Lot 7 adds `runtime-agent-run-lifecycle`, required once for dev, main and release,
-covering portable lifecycle, workspaces, composition and validation-boundary
-fixtures. The four context-resilience gates and their 43 historical invocations
-remain unchanged. PostgreSQL, Windows process trees, actual native hooks,
+covering eleven portable lifecycle, workspace, composition, validation-boundary
+and managed-preparation/controlled-setup fixture scripts. Omission or duplicate
+invocation of any script is rejected. The Windows inventory and 89-check
+preflight fixtures are separate, use mocked providers and do not qualify a
+native setup operation. The four context-resilience gates and their 43 historical
+invocations remain unchanged. PostgreSQL, Windows process trees, actual native hooks,
 validation confinement and parallel Codex execution are reported independently.
 
 The scheduler and Git integration gates use bounded subprocesses and disposable
