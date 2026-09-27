@@ -269,7 +269,7 @@ It does not execute Codex or qualify the OS sandbox. The explicit Windows helper
 build and `tools/perf/verify-agent-process-tree-fixtures.mjs` separately test native
 process trees. An unavailable native prerequisite is not a fixture PASS.
 Preparation and human review precede real Codex probes as specified in
-[native qualification](CODEX_NATIVE_QUALIFICATION.md).
+[bounded agent native qualification](AGENT_EXECUTION_NATIVE_QUALIFICATION.md).
 
 For durable agent ownership, run `npm run perf:verify-agent-execution-postgres`
 with `PG_BIN_DIR` pointing to the absolute directory containing `initdb`,

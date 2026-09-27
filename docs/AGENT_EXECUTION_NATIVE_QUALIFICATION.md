@@ -110,6 +110,25 @@ remain NOT_RUN, UNAVAILABLE or FAIL as applicable; a partial run never grants
 qualification. Its evidence and failed-attempt markers remain available for
 reconciliation. This driver adds no public agent-run command or output contract.
 
+Each scenario uses a distinct ephemeral database, durable launch intent and
+attempt. Planning is published at revision zero, then advanced to revision one
+by the canonical compare-and-swap writer before reservation. A JSONB reread must
+match every request value; object key order is immaterial, while array order is
+preserved. PostgreSQL cleanup and native process cleanup are reported separately.
+
+An admission record proves the supervisor's decision. A refusal also requires
+a correlated native client trace and unchanged file hashes. The client may expose
+a failed file_change event or a native router rejection on stderr. The latter
+must identify the exact patch, hook refusal reason and admission interval without
+ambiguity. Model prose is never a refusal oracle. Retain the native stream with
+its byte count and hash. An allowed server decision without the intended file
+effect fails qualification.
+
+HTTP request-ingestion deadlines and bounded admission evaluation are distinct.
+A fully received authenticated request must not be disconnected merely because
+its body-ingestion timer remains active during evaluation. Client, canonical
+evaluation and transport shutdown limits still bound failure handling.
+
 ## Preservation and reruns
 
 Output contains local paths and receipts with possible recovery pre-images.
@@ -121,6 +140,16 @@ After hook or installed-asset changes, prepare a new output directory from the
 final candidate and repeat human review. An earlier package's result cannot
 qualify new bytes. Later cleanup must first establish process termination and
 preserve the required evidence; it must target only the explicitly owned fixture.
+
+The qualifier preserves a bounded diagnostic snapshot before removing its owned
+ephemeral PostgreSQL cluster. This snapshot is not operational authority and
+cannot restore or resume an attempt. A failed run's marker and evidence remain
+intact. Any subsequent qualification uses fresh database and attempt identities.
+Removing an owned marker requires preserving its exact bytes and a reviewed
+reconciliation record: confirmed process termination, independent absence of
+the observed runner and descendants, and unchanged roots and Git metadata apart
+from explicitly accounted effects. Unknown processes or unexplained changes
+block removal. No failed evidence is converted to PASS after a source fix.
 
 ## Refresh a candidate without changing the reviewed definitions
 

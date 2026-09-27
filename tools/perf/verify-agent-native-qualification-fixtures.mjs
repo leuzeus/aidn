@@ -91,6 +91,7 @@ const key = (value) => {
 const importPaths = new Set([
   "tools/verify/prepare-agent-native-qualification.mjs", "tools/verify/refresh-agent-native-candidate.mjs",
   "tools/verify/qualify-agent-native-worker.mjs", "tools/verify/agent-native-qualification-driver.mjs",
+  "tools/verify/agent-native-refusal-evidence.mjs",
   "tools/perf/agent-execution-postgres-test-lib.mjs",
 ].map((relative) => key(path.join(packageRoot, relative))));
 const dependencies = key(path.join(packageRoot, "node_modules")) + path.sep;
@@ -163,6 +164,7 @@ try {
   const preparation = await import("../verify/prepare-agent-native-qualification.mjs");
   const qualification = await import("../verify/qualify-agent-native-worker.mjs");
   const driver = await import("../verify/agent-native-qualification-driver.mjs");
+  const refusal = await import("../verify/agent-native-refusal-evidence.mjs");
   phase = "validation";
   await check("native tool imports perform no writes, process launch or connection", () => {
     assert.deepEqual(effects, []);
@@ -391,6 +393,68 @@ try {
     const durable = reorderedIntent(); mutate(durable);
     rejects(() => driver.assertNativeQualificationLaunchIntent(durable, intentRequest), "QUALIFICATION_INTENT_NOT_DURABLE");
   });
+  const deniedPatch="*** Begin Patch\n*** Update File: protected/sentinel.txt\n@@\n-old été\n+new رفض\n*** End Patch";
+  const nativePrefix="2026-01-01T00:00:01.123456Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: ";
+  const nativeLine=nativePrefix+refusal.DELEGATED_NATIVE_REFUSAL_REASON+". Command: "+deniedPatch+"\n";
+  const collectRefusal=(text=nativeLine,chunkSize=4096,options={})=>{
+    const bytes=Buffer.isBuffer(text)?text:Buffer.from(text), collector=refusal.createAgentNativeRefusalEvidence({codexSha256:sha("b"),...options});
+    for(let offset=0;offset<bytes.length;offset+=chunkSize) collector.push(bytes.subarray(offset,offset+chunkSize));
+    const capture=collector.finish();
+    return {capture,capturedStderr:{sha256:driver.hash(bytes),bytes:bytes.length},codexSha256:sha("b"),expectedPatch:deniedPatch,
+      decision:{ok:false,outcome:"deny",reason_code:"DELEGATED_SCOPE_REFUSED"},
+      interval:{start_offset:0,end_offset:bytes.length,start_at:"2026-01-01T00:00:00.000Z",end_at:"2026-01-01T00:00:02.000Z"}};
+  };
+  await check("native stderr refusal binds exact retained bytes, client and complete patch",()=>{
+    const input=collectRefusal(),before=JSON.stringify(input),proof=refusal.assertAgentNativeRefusalEvidence(input);
+    assert.equal(proof.source,"codex-native-stderr-router");assert.equal(proof.record_sha256,driver.hash(Buffer.from(nativeLine)));
+    assert.equal(proof.patch_sha256,driver.hash(deniedPatch));assert.equal(proof.stderr_sha256,input.capturedStderr.sha256);
+    assert.equal(JSON.stringify(input),before);assert(Object.isFrozen(input.capture));
+  });
+  await check("native stderr handles every UTF8 byte boundary",()=>{
+    const proof=refusal.assertAgentNativeRefusalEvidence(collectRefusal(nativeLine,1));
+    assert.equal(proof.patch_sha256,driver.hash(deniedPatch));
+  });
+  await check("native stderr supports CRLF without changing raw evidence hashes",()=>{
+    const bytes=nativeLine.replaceAll("\n","\r\n"),proof=refusal.assertAgentNativeRefusalEvidence(collectRefusal(bytes,3));
+    assert.equal(proof.record_sha256,driver.hash(bytes));assert.equal(proof.patch_sha256,driver.hash(deniedPatch));
+  });
+  await check("native stderr supports a complete final record without newline",()=>{
+    assert.equal(refusal.assertAgentNativeRefusalEvidence(collectRefusal(nativeLine.slice(0,-1))).source,"codex-native-stderr-router");
+  });
+  await check("native stderr offsets isolate one admission despite unrelated log lines",()=>{
+    const prefix="unrelated native diagnostic\n",input=collectRefusal(prefix+nativeLine);
+    input.interval.start_offset=Buffer.byteLength(prefix);
+    assert.equal(refusal.assertAgentNativeRefusalEvidence(input).start_offset,Buffer.byteLength(prefix));
+  });
+  for(const [name,mutate,code] of [
+    ["client hash",v=>{v.codexSha256=sha("0");},"NATIVE_REFUSAL_CAPTURE_BINDING_MISMATCH"],
+    ["retained stderr hash",v=>{v.capturedStderr.sha256=sha("0");},"NATIVE_REFUSAL_CAPTURE_BINDING_MISMATCH"],
+    ["retained stderr size",v=>{v.capturedStderr.bytes++;},"NATIVE_REFUSAL_CAPTURE_BINDING_MISMATCH"],
+    ["fabricated JSON capture",v=>{v.capture=structuredClone(v.capture);},"NATIVE_REFUSAL_CAPTURE_BINDING_MISMATCH"],
+    ["server allow",v=>{v.decision={ok:true,outcome:"allow",reason_code:"DELEGATED_PATCH_ADMITTED"};},"NATIVE_REFUSAL_SERVER_DENY_REQUIRED"],
+    ["unrelated server failure",v=>{v.decision.reason_code="ADMISSION_RUNTIME_UNAVAILABLE";},"NATIVE_REFUSAL_SERVER_DENY_REQUIRED"],
+    ["wrong complete patch",v=>{v.expectedPatch=deniedPatch.replace("protected/sentinel.txt","other.txt");},"NATIVE_REFUSAL_PATCH_MISMATCH"],
+    ["patch split across admission interval",v=>{v.interval.start_offset=1;},"NATIVE_REFUSAL_AMBIGUOUS"],
+    ["record before admission",v=>{v.interval.start_at="2026-01-01T00:00:01.500Z";},"NATIVE_REFUSAL_TIMESTAMP_OUTSIDE_INTERVAL"],
+    ["record after next admission",v=>{v.interval.end_at="2026-01-01T00:00:01.000Z";},"NATIVE_REFUSAL_TIMESTAMP_OUTSIDE_INTERVAL"],
+    ["invalid interval",v=>{v.interval.end_at=v.interval.start_at;},"NATIVE_REFUSAL_INTERVAL_INVALID"],
+  ]) await check("native stderr refuses "+name,()=>{const input=collectRefusal();mutate(input);rejects(()=>refusal.assertAgentNativeRefusalEvidence(input),code);});
+  for(const [name,text,code] of [
+    ["agent-message prose",JSON.stringify({type:"item.completed",item:{type:"agent_message",text:nativeLine}})+"\n","NATIVE_REFUSAL_MISSING"],
+    ["quoted router spoof","> "+nativeLine,"NATIVE_REFUSAL_MISSING"],
+    ["other logger",nativeLine.replace("codex_core::tools::router","codex_core::tools::other"),"NATIVE_REFUSAL_MISSING"],
+    ["empty stderr","","NATIVE_REFUSAL_MISSING"],
+    ["duplicate native record",nativeLine+nativeLine,"NATIVE_REFUSAL_AMBIGUOUS"],
+    ["runtime error instead of delegated deny",nativeLine.replace(refusal.DELEGATED_NATIVE_REFUSAL_REASON,"AIDN: admission_runtime_unavailable; diagnose the installation or canonical state before editing."),"NATIVE_REFUSAL_HOOK_REASON_MISMATCH"],
+  ]) await check("native stderr rejects "+name,()=>rejects(()=>refusal.assertAgentNativeRefusalEvidence(collectRefusal(text)),code));
+  for(const [name,text,options,code] of [
+    ["truncated patch",nativeLine.replace("*** End Patch\n",""),{},"NATIVE_REFUSAL_RECORD_INCOMPLETE"],
+    ["impossible timestamp",nativeLine.replace("2026-01-01","2026-02-30"),{},"NATIVE_REFUSAL_TIMESTAMP_INVALID"],
+    ["incomplete UTF8",Buffer.from([0xc3]),{},"NATIVE_REFUSAL_UTF8_INVALID"],
+    ["total byte overflow",nativeLine,{maxBytes:64,maxRecordBytes:64},"NATIVE_REFUSAL_BUFFER_LIMIT"],
+    ["record byte overflow",nativeLine,{maxRecordBytes:64},"NATIVE_REFUSAL_RECORD_LIMIT"],
+    ["record count overflow",nativeLine+nativeLine,{maxRecords:1},"NATIVE_REFUSAL_COUNT_LIMIT"],
+  ]) await check("native stderr bounds "+name,()=>rejects(()=>collectRefusal(text,4096,options),code));
   await check("all pure fixture inputs are unchanged", () => assert.equal(JSON.stringify({ manifest, trust, installation, baseline, markers }), unchangedInputs));
   await check("imports and rejected requests leave no observed effect", () => assert.deepEqual(effects, []));
   process.stdout.write(JSON.stringify({ status: "PASS", checks, effects, native_codex: "NOT_RUN", postgres: "NOT_RUN", cleanup: "NO_RESOURCES_CREATED" }) + "\n");
