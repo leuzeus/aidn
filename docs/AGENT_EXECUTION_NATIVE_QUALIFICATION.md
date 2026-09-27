@@ -46,8 +46,10 @@ The write path:
 - Records candidate package inventory, source HEAD and dirty diff, Codex binary
   identity, activation root IDs, receipt and hook hashes, worktree contents,
   runtime sentinels and Git metadata baselines.
-- Creates an empty isolated CODEX_HOME and a local REVIEW.md containing the
-  exact installed hook definitions and /hooks review instructions.
+- By default, creates an empty isolated CODEX_HOME and a local REVIEW.md
+  containing the exact installed hook definitions and /hooks review instructions.
+  Explicit preexisting-profile selection records an existing home identity
+  instead; preparation neither reads its contents nor launches that profile.
 
 The fresh files installation prepares local assets only. It is not a substitute
 for the supervised path's authoritative PostgreSQL state. The later supervisor
@@ -64,7 +66,7 @@ contains packageRoot, archivePath, sha256, version and inventory;
 worktree IDs are the physical root_id reported by activation.
 
 Review the exact binary, disposable target and installed hooks through the
-native client's supported controls. Use the recorded isolated home. If native
+native client's supported controls. Use the recorded explicit home. If native
 authentication is needed, handle it explicitly through supported human login;
 do not copy a user's existing authentication or trust store. Record native
 surface, OS/build, binary version/hash, package hash, definition hashes, reviewer
@@ -81,7 +83,7 @@ After those prerequisites and a real PostgreSQL claim, obtain separate evidence:
 | Stale authority | Revoked activation or lost ownership refuses a subsequent covered edit |
 
 Use the native tool trace and independent before/after hashes as the oracle.
-The worker reads its explicitly isolated CODEX_HOME configuration, because
+The worker reads its explicitly selected CODEX_HOME configuration, because
 ignoring that file would also omit project trust. It never falls back to the
 operator's default profile. Model, effort and sandbox remain explicit command
 arguments, and native subagent delegation is disabled for a bounded worker.
@@ -106,7 +108,66 @@ native surface and OS tested; another OS remains unavailable until qualified.
 
 The preparation helper never runs a model, opens a native session, approves
 trust, starts PostgreSQL or executes these cases. Its successful status means
-only that the concrete review materials and isolated clients are ready.
+only that the concrete review materials and disposable worktrees are ready.
+
+## Explicit preexisting native profile
+
+An isolated configuration home is not an OS sandbox boundary on Windows. When
+another home would contend with an existing provisioned backend, preparation can
+select that existing home explicitly:
+
+~~~text
+node tools/verify/prepare-agent-native-qualification.mjs --output-root <new-absolute-directory> --codex-binary <absolute-native-executable> --native-profile-mode preexisting --codex-home <existing-absolute-home>
+~~~
+
+Add --write only to prepare the candidate and disposable worktrees. Preparation
+never creates, copies or provisions the selected home. It records its physical
+directory identity and refuses output overlapping the home or source checkout.
+Selecting a home does not authorize metadata probes or model calls in it.
+
+After that consent, the internal discoverCodexNativeProfileMetadata step can
+return sanitized integration identifiers and observed readiness/trust statuses
+without requiring trusted project hooks yet. It returns discovery_only and
+NOT_GRANTED, never a runnable policy. Use those identifiers to disable each
+integration in the interactive review session. After human /hooks review and
+closure of that session, inspectCodexNativeProfileProposal performs the strict
+observation and freezes the resulting configuration and hook fingerprints.
+This ordering keeps fresh untrusted roots from requiring an unrestricted native
+session merely to discover the inherited integrations.
+
+Before execution, a local codex-native-profile-policy.v1 document binds the home
+identity, client hash, elevated backend, configuration-source and effective-setting
+hashes, integration identifiers, reviewed hooks, separate attempt-state directory
+and allowed shared native effects. Only its fingerprint enters the versioned
+plan and request as execution.native_profile. Missing or changed policy refuses
+the request; there is no profile or model fallback. The existing contract without
+this field remains valid.
+
+The preexisting mode requires separately recorded consent for native profile
+effects and new human review of the disposable roots through /hooks. Native log,
+cache and authentication-refresh activity is distinct from project mutation;
+the effect document must name the permitted activity. Configuration, trust,
+reviewed executable hooks, provisioning preimages and AIDN/Git state remain
+protected after review. No setup, repair, credential copy or automatic trust
+approval belongs to this path. Existing-only is the supervisor's rule, not a
+guarantee that the native client cannot attempt repair; failed preservation or
+backend health checks invalidate qualification.
+
+The supervisor checks the effective configuration and hooks before creation and
+again before resuming a suspended worker. Responses bind a fresh challenge,
+phase, request and policy; an earlier probe cannot authorize a later launch.
+Each check has at most ten seconds within the task deadline, then canonical
+admission rechecks ownership before launch. MCP, plugins, apps, notifications
+and memory use are explicitly disabled for the attempt. Empty configuration
+tables are not evidence of neutralization: native configuration merging can
+retain entries, and hooks/list can expose hooks absent from config/read.
+Unexpected hooks, integrations or configuration drift refuse execution.
+
+Fixtures prove these bindings and refusals with synthetic inputs. They do not
+qualify an actual profile, backend or OS. The four native cases and preservation
+checks must pass on the exact candidate before this capability is available.
+The refresh helper below supports its original isolated-home layout only;
+preexisting mode requires a fresh preparation and policy review.
 
 The internal qualify-agent-native-worker driver previews by default. Its
 explicit write mode permits four bounded calls: acquisition of edit/refusal
@@ -116,6 +177,19 @@ review proof bound to those choices. Missing prerequisites or incomplete cases
 remain NOT_RUN, UNAVAILABLE or FAIL as applicable; a partial run never grants
 qualification. Its evidence and failed-attempt markers remain available for
 reconciliation. This driver adds no public agent-run command or output contract.
+
+After all four cases and final file observations pass, the driver records
+native_cases_status=PASS but leaves qualification=UNAVAILABLE with
+HOST_CONFIRMATION_REQUIRED. The immutable qualification.json is followed by a
+host-confirmation-request.json binding its hash, candidate, client and a fresh
+challenge. Through the existing principal native Codex client, run a strictly
+read-only command in its ordinary sandbox that emits the challenge. Preserve the
+real tool event reference, hash, time, client/surface/build and sandbox mode for
+independent review. No escalation, setup or bypass qualifies this check. A
+self-declared record or an arbitrary child process's exit zero is insufficient.
+Retain this confirmation separately; never rewrite the terminal case result.
+This proves continued principal sandbox operation and the observed preservation
+scope, not that every Windows account, ACL or firewall entry is globally identical.
 
 Each scenario uses a distinct ephemeral database, durable launch intent and
 attempt. Planning is published at revision zero, then advanced to revision one

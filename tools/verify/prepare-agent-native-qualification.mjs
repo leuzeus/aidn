@@ -5,6 +5,7 @@ import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { fingerprintAgentExecutionValue } from "../../src/core/agents/agent-execution-contracts.mjs";
 
 const SOURCE = path.resolve(import.meta.dirname, "../..");
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -12,6 +13,13 @@ const json = (value) => JSON.stringify(value, null, 2) + "\n";
 const fail = (code) => { const error = new Error(code); error.code = code; throw error; };
 const identityPath = (value) => process.platform === "win32" ? value.toLowerCase() : value;
 const childEnvironment = () => Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^(?:GIT_|AIDN_|CODEX_|OPENAI_|PG|POSTGRES|NPM_CONFIG_)/i.test(key)));
+
+export function nativeQualificationHomeIdentity(home) {
+  const absolute = checkedPath(home), stat = fs.statSync(absolute);
+  if (!stat.isDirectory()) fail("PREPARATION_NATIVE_HOME_REQUIRED");
+  return { physical_path: fs.realpathSync.native(absolute), device: stat.dev,
+    inode: stat.ino, birthtime_ms: stat.birthtimeMs };
+}
 
 function checkedPath(value, kind) {
   if (typeof value !== "string" || !path.isAbsolute(value)) fail("PREPARATION_ABSOLUTE_PATH_REQUIRED");
@@ -102,12 +110,17 @@ function reviewSheet(record) {
     "- Candidate archive: " + record.candidate.archivePath, "- SHA-256: " + record.candidate.sha256,
     "- Installed package: " + record.candidate.packageRoot, "- Version: " + record.candidate.version,
     "- Codex binary: " + record.codex.binary_path, "- Codex SHA-256: " + record.codex.sha256,
-    "- Codex version: " + record.codex.version, "- Isolated CODEX_HOME: " + record.codex_home,
-    "- Isolated home empty: " + record.codex_home_empty, "",
+    "- Codex version: " + record.codex.version, "- Explicit CODEX_HOME: " + record.codex_home,
+    "- Native profile mode: " + (record.native_profile?.mode ?? "isolated"),
+    "- Home empty: " + record.codex_home_empty, "",
     "## Human review through native controls", "",
-    "Use the recorded binary and isolated CODEX_HOME. Review the intended disposable worktree and exact executable hook definition through the native client's /hooks controls. Record the person, time, client surface, definition hashes and observed approval.",
+    "Use the recorded binary and explicitly selected CODEX_HOME. Review the intended disposable worktree and exact executable hook definition through the native client's /hooks controls. Record the person, time, client surface, definition hashes and observed approval.",
     "Do not seed trust entries, copy authentication/trust, inject approved hashes or bypass a sandbox. If the client cannot expose this review, dependent native execution remains unavailable. Changed definitions require renewed review.", "",
     "The attempt marker .codex/aidn-agent-attempt.json is absent. Only the later supervisor may create it after a PostgreSQL claim, with protocol_version, attempt_id and request_sha256. Preparation grants neither a live lease nor a delegation.", ""];
+  if (record.native_profile?.mode === "preexisting") lines.push(
+    "## Preexisting profile: additional consent and evidence required", "",
+    "Preparation did not launch this profile or change its configuration, authentication, trust or Windows sandbox. Its selection is not consent to execute a worker.",
+    "Execution requires a separately reviewed frozen profile policy, native configuration and hook observations, existing sandbox readiness, and explicit consent for the bounded native profile effects. Extra hooks or uncontrolled integrations refuse execution. No setup, repair, profile fallback or copied credentials are part of this preparation.", "");
   for (const entry of record.roots) {
     lines.push("## " + entry.role, "", "Root: " + entry.root, "", "Branch: " + entry.branch, "",
       "Physical worktree ID: " + entry.worktree_id, "", "Receipt SHA-256: " + entry.receipt.sha256, "",
@@ -126,7 +139,12 @@ function reviewSheet(record) {
 }
 
 // Internal preparation tooling: no new public aidn command and no model runner.
-export async function prepareAgentNativeQualification({ outputRoot, codexBinary, npmCli, write = false } = {}) {
+export async function prepareAgentNativeQualification({ outputRoot, codexBinary, npmCli, nativeProfileMode = "isolated", codexHome, write = false } = {}) {
+  if (typeof write !== "boolean") fail("PREPARATION_EXPLICIT_WRITE_BOOLEAN_REQUIRED");
+  if (!["isolated", "preexisting"].includes(nativeProfileMode)) fail("PREPARATION_NATIVE_PROFILE_MODE_INVALID");
+  if ((nativeProfileMode === "preexisting") !== (codexHome !== undefined)) fail("PREPARATION_NATIVE_PROFILE_SELECTION_REQUIRED");
+  const profileIdentity = nativeProfileMode === "preexisting" ? nativeQualificationHomeIdentity(codexHome) : null;
+  if (profileIdentity) codexHome = profileIdentity.physical_path;
   outputRoot = checkedPath(outputRoot);
   codexBinary = checkedPath(codexBinary, "file");
   if (process.platform === "win32" && !/\.exe$/i.test(codexBinary)) fail("PREPARATION_NATIVE_EXECUTABLE_REQUIRED");
@@ -135,14 +153,22 @@ export async function prepareAgentNativeQualification({ outputRoot, codexBinary,
   if (!fs.statSync(parent).isDirectory() || identityPath(fs.realpathSync.native(parent)) !== identityPath(parent)) fail("PREPARATION_OUTPUT_PARENT_UNSAFE");
   const sourceRelative = path.relative(SOURCE, outputRoot);
   if (sourceRelative === "" || (!sourceRelative.startsWith(".." + path.sep) && sourceRelative !== ".." && !path.isAbsolute(sourceRelative))) fail("PREPARATION_OUTPUT_INSIDE_SOURCE");
+  if (profileIdentity) {
+    for (const [outer, inner] of [[codexHome, outputRoot], [outputRoot, codexHome], [SOURCE, codexHome]]) {
+      const relative = path.relative(outer, inner);
+      if (!relative || (!relative.startsWith(".." + path.sep) && relative !== ".." && !path.isAbsolute(relative))) fail("PREPARATION_NATIVE_PROFILE_OVERLAP");
+    }
+  }
   npmCli = findNpm(npmCli);
   const source = sourceRecord(), { diff, ...sourceIdentity } = source;
   const paths = { artifacts: path.join(outputRoot, "artifacts"), engine: path.join(outputRoot, "engine"),
     primary: path.join(outputRoot, "neutral project été"), workerA: path.join(outputRoot, "worker A été"), workerB: path.join(outputRoot, "worker B été"),
-    codexHome: path.join(outputRoot, "codex-home"), versionHome: path.join(outputRoot, "version-home"), hooks: path.join(outputRoot, "no-git-hooks") };
+    codexHome: codexHome ?? path.join(outputRoot, "codex-home"), versionHome: path.join(outputRoot, "version-home"), hooks: path.join(outputRoot, "no-git-hooks") };
+  const nativeProfile = { mode: nativeProfileMode,
+    ...(profileIdentity ? { home_identity_sha256: fingerprintAgentExecutionValue(profileIdentity) } : {}) };
   const preview = { ok: true, status: "preview", written: false, output_root: outputRoot, source: sourceIdentity,
     codex: { binary_path: codexBinary, sha256: hash(fs.readFileSync(codexBinary)), version: "NOT_QUERIED_IN_PREVIEW" },
-    planned_paths: paths, effects: ["pack candidate", "install isolated engine", "create neutral repository and two worktrees", "prepare each root with verify-only", "query Codex version in isolated metadata home", "write local review and baseline"],
+    planned_paths: paths, native_profile: nativeProfile, effects: ["pack candidate", "install isolated engine", "create neutral repository and two worktrees", "prepare each root with verify-only", "query Codex version in isolated metadata home", "write local review and baseline"],
     native_execution: "NOT_RUN", human_trust: "NOT_RECORDED", llm_calls: 0 };
   if (!write) return preview;
 
@@ -150,7 +176,7 @@ export async function prepareAgentNativeQualification({ outputRoot, codexBinary,
   const preparationId = randomUUID();
   try {
     put(outputRoot, "owner.local.json", json({ preparation_id: preparationId, created_at: new Date().toISOString(), pid: process.pid }));
-    for (const directory of Object.values(paths).filter((value) => ![paths.workerA, paths.workerB].includes(value))) fs.mkdirSync(directory);
+    for (const directory of Object.values(paths).filter((value) => ![paths.workerA, paths.workerB, ...(profileIdentity ? [paths.codexHome] : [])].includes(value))) fs.mkdirSync(directory);
     put(outputRoot, "source.diff", diff);
     put(outputRoot, "npmrc", "");
     put(outputRoot, "global-npmrc", "");
@@ -210,10 +236,12 @@ export async function prepareAgentNativeQualification({ outputRoot, codexBinary,
       common_git_dir: roots[0].identity.common_dir, common_git_files: inventory(roots[0].identity.common_dir) };
     const record = { ok: true, status: "prepared", written: true, preparation_id: preparationId, output_root: outputRoot,
       source: sourceIdentity, candidate, host: { platform: process.platform, architecture: process.arch, release: os.release(), node: process.version },
-      codex: { ...preview.codex, version }, codex_home: paths.codexHome, codex_home_empty: fs.readdirSync(paths.codexHome).length === 0,
+      codex: { ...preview.codex, version }, codex_home: paths.codexHome, native_profile: nativeProfile,
+      codex_home_empty: profileIdentity ? false : fs.readdirSync(paths.codexHome).length === 0,
       roots, engine_lock_sha256: hash(fs.readFileSync(path.join(paths.engine, "package-lock.json"))), baseline_sha256: hash(json(baseline)),
       native_execution: "NOT_RUN", human_trust: "NOT_RECORDED", llm_calls: 0, cleanup: "PRESERVED_FOR_REVIEW" };
-    if (!record.codex_home_empty) fail("PREPARATION_NATIVE_HOME_NOT_EMPTY");
+    if (!profileIdentity && !record.codex_home_empty) fail("PREPARATION_NATIVE_HOME_NOT_EMPTY");
+    if (profileIdentity && fingerprintAgentExecutionValue(nativeQualificationHomeIdentity(paths.codexHome)) !== nativeProfile.home_identity_sha256) fail("PREPARATION_NATIVE_HOME_CHANGED");
     put(outputRoot, "baseline.local.json", json(baseline));
     put(outputRoot, "manifest.local.json", json(record));
     put(outputRoot, "REVIEW.md", reviewSheet(record));
@@ -236,8 +264,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
       const key = input[index];
       if (key === "--write") { if (options.write) fail("PREPARATION_DUPLICATE_OPTION"); options.write = true; continue; }
       if (key === "--json") continue;
-      const field = { "--output-root": "outputRoot", "--codex-binary": "codexBinary", "--npm-cli": "npmCli" }[key];
-      if (!field || options[field] || !input[index + 1] || input[index + 1].startsWith("--")) fail("usage: prepare-agent-native-qualification.mjs --output-root <new absolute directory> --codex-binary <absolute executable> [--npm-cli <absolute npm-cli.js>] [--write] [--json]");
+      const field = { "--output-root": "outputRoot", "--codex-binary": "codexBinary", "--npm-cli": "npmCli", "--native-profile-mode": "nativeProfileMode", "--codex-home": "codexHome" }[key];
+      if (!field || options[field] || !input[index + 1] || input[index + 1].startsWith("--")) fail("usage: prepare-agent-native-qualification.mjs --output-root <new absolute directory> --codex-binary <absolute executable> [--npm-cli <absolute npm-cli.js>] [--native-profile-mode preexisting --codex-home <existing absolute home>] [--write] [--json]");
       options[field] = input[++index];
     }
     console.log(json(await prepareAgentNativeQualification(options)).trimEnd());

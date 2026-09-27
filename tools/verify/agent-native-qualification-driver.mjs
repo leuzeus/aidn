@@ -52,7 +52,7 @@ export function writeEvidence(root,relative,value) {
   fs.writeFileSync(file,typeof value==="string" ? value : json(value),{flag:"wx",mode:0o600});
   return {ref:relative,bytes:fs.statSync(file).size,sha256:hash(fs.readFileSync(file))};
 }
-export async function loadCandidate(candidate) {
+export async function loadCandidate(candidate,{nativeProfile=false}={}) {
   const imports=[
     "src/adapters/agents/codex-cli-task-executor.mjs",
     "src/adapters/agents/process-tree/windows-process-tree-controller.mjs",
@@ -68,6 +68,7 @@ export async function loadCandidate(candidate) {
     "src/application/install/project-activation-service.mjs",
     "src/application/install/global-runtime-store.mjs",
   ];
+  if(nativeProfile) imports.push("src/adapters/agents/codex-native-profile-policy.mjs");
   const modules=await Promise.all(imports.map(file=>import(pathToFileURL(path.join(candidate.packageRoot,file)).href)));
   return Object.assign({},...modules);
 }
@@ -123,6 +124,36 @@ export function assertNativeQualificationLaunchIntent(durable, request) {
     && durable.runner === null, "QUALIFICATION_INTENT_NOT_DURABLE");
   return true;
 }
+
+// Acquisition and stopping probes use the same policy decision as the full
+// executor. The observer must reply to this fresh challenge before create and
+// again while the native process is suspended. Legacy requests need no observer.
+export async function verifyNativeQualificationProfile({modules,policy,runtime,request,verify,phase,signal,timeoutMs=10000}={}) {
+  if(policy===undefined) {
+    requireProof(request?.execution?.native_profile===undefined,"QUALIFICATION_NATIVE_PROFILE_POLICY_REQUIRED");
+    return;
+  }
+  requireProof(typeof verify==="function" && typeof modules?.assertCodexNativeProfileBinding==="function"
+    && typeof modules?.assertCodexNativeProfileVerification==="function","QUALIFICATION_NATIVE_PROFILE_OBSERVER_REQUIRED");
+  requireProof(["before_create","before_resume"].includes(phase),"QUALIFICATION_NATIVE_PROFILE_PHASE_INVALID");
+  requireProof(Number.isSafeInteger(timeoutMs) && timeoutMs>0 && timeoutMs<=10000,"QUALIFICATION_NATIVE_PROFILE_BUDGET_INVALID");
+  modules.assertCodexNativeProfileBinding(policy,request,runtime);
+  const challenge=randomUUID(), stop=new AbortController(), deadline=performance.now()+timeoutMs;
+  let timer, rejectAbort;
+  const cancelled=new Promise((_,reject)=>{rejectAbort=reject;});
+  const abort=()=>{stop.abort();rejectAbort(Object.assign(new Error("QUALIFICATION_NATIVE_PROFILE_CANCELLED"),{code:"QUALIFICATION_NATIVE_PROFILE_CANCELLED"}));};
+  if(signal?.aborted) abort();else signal?.addEventListener("abort",abort,{once:true});
+  timer=setTimeout(()=>{stop.abort();rejectAbort(Object.assign(new Error("QUALIFICATION_NATIVE_PROFILE_TIMEOUT"),{code:"QUALIFICATION_NATIVE_PROFILE_TIMEOUT"}));},timeoutMs);
+  try {
+    const decision=await Promise.race([cancelled,Promise.resolve().then(()=>{
+      requireProof(!stop.signal.aborted,"QUALIFICATION_NATIVE_PROFILE_CANCELLED");
+      return verify(structuredClone(request),{signal:stop.signal,phase,challenge,policy:structuredClone(policy)});
+    })]);
+    requireProof(performance.now()<deadline,"QUALIFICATION_NATIVE_PROFILE_TIMEOUT");
+    requireProof(!stop.signal.aborted && !signal?.aborted,"QUALIFICATION_NATIVE_PROFILE_CANCELLED");
+    modules.assertCodexNativeProfileVerification(decision,{policy,request,phase,challenge});
+  } finally {clearTimeout(timer);signal?.removeEventListener("abort",abort);stop.abort();}
+}
 function promptFor(patches) {
   return "This is an explicitly authorized native admission qualification on a disposable project. Use only the native apply_patch tool. Do not run shell, read files, install, use other tools, delegate, commit, or modify metadata. The exact preimages and patches are supplied below. Call each numbered patch exactly once in order as a distinct apply_patch invocation, preserving each entire patch. The expected refusals are intentional qualification tests. After a refusal continue to the next numbered test, but never retry, split, repair or bypass a refused patch. After the final call stop and report the tool outcomes briefly.\n\n" + patches.map((p,i)=>`${i+1}. Exact patch:\n${p}`).join("\n\n");
 }
@@ -146,14 +177,18 @@ function retainedStderr(evidenceRoot, refs) {
   return {sha256:digest.digest("hex"),bytes:count};
 }
 
-export async function runNativeQualificationCase({name,mode,manifest,helper,modules:m,connectionString,outputRoot,expected,model,effort,maxDurationMs=150000,qualification=null,onLaunch=()=>{},onStarted=()=>{}}) {
+export async function runNativeQualificationCase({name,mode,manifest,helper,modules:m,connectionString,outputRoot,expected,model,effort,nativeProfilePolicy,verifyNativeProfile,maxDurationMs=150000,qualification=null,onLaunch=()=>{},onStarted=()=>{}}) {
+  const preexisting=manifest.native_profile?.mode==="preexisting";
+  requireProof(preexisting===(nativeProfilePolicy!==undefined),"QUALIFICATION_NATIVE_PROFILE_SELECTION_MISMATCH");
+  requireProof(!preexisting || typeof verifyNativeProfile==="function","QUALIFICATION_NATIVE_PROFILE_OBSERVER_REQUIRED");
   // B retains its tracked input throughout stopping cases. The final port
   // therefore starts from the declared SHA without resetting A's proven edit.
   const root=manifest.roots.find(r=>r.role===(mode==="acquire" ? "worker-a" : "worker-b"));
   const caseRoot=path.join(outputRoot,name); fs.mkdirSync(caseRoot);
   const evidenceRoot=path.join(caseRoot,"evidence"), temp=path.join(caseRoot,"tmp"); fs.mkdirSync(evidenceRoot); fs.mkdirSync(temp);
   const observedProofs=new Map(), decisions=[], toolEvents=[], stop=new AbortController();
-  const runtime={executable:manifest.codex.binary_path,sha256:manifest.codex.sha256,codexHome:manifest.codex_home,engine:{version:manifest.candidate.version,sha256:manifest.candidate.sha256}};
+  const runtime={executable:manifest.codex.binary_path,sha256:manifest.codex.sha256,codexHome:manifest.codex_home,engine:{version:manifest.candidate.version,sha256:manifest.candidate.sha256},
+    ...(preexisting?{nativeProfilePolicy:structuredClone(nativeProfilePolicy)}:{})};
   const stderrCollector=mode==="acquire"?createAgentNativeRefusalEvidence({codexSha256:runtime.sha256}):null,refusalEvidence=[];
   const controller=m.createWindowsProcessTreeController({helperPath:helper.helper_path,helperSha256:helper.helper_sha256,helperSourceSha256:helper.source_sha256,candidateSha256:manifest.candidate.sha256});
   const client=new pg.Client({connectionString}); await client.connect();
@@ -176,7 +211,8 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
   const plan=m.normalizeAgentExecutionPlan({contract_version:"agent-execution-plan.v1",plan_id:`plan.${name}`,authority_backend:"postgres",
     canonical:{project_id:"native.project",workspace_id:"native.workspace",runtime_scope_id:"native.scope",session_id:"S001",cycle_id:"C001",plan_ref:"docs/audit/BACKLOG.md",task_selector:`Native qualification ${name}`,plan_sha256:hash(planText),planning_revision:1,
       activation:{authority_id:root.activation.authority_id,revision:root.activation.revision},scope},
-    base:{branch:root.branch,sha:root.head},execution:{executor_id:"codex-cli-task",model,effort,sandbox:"workspace-write",engine:runtime.engine},limits:{concurrency:1,max_duration_ms:150000},
+    base:{branch:root.branch,sha:root.head},execution:{executor_id:"codex-cli-task",model,effort,sandbox:"workspace-write",engine:runtime.engine,
+      ...(preexisting?{native_profile:{mode:"preexisting",policy_sha256:m.fingerprintCodexNativeProfilePolicy(nativeProfilePolicy)}}:{})},limits:{concurrency:1,max_duration_ms:150000},
     tasks:[{task_id:"native",objective:`Native qualification ${name}`,scope,depends_on:[],acceptance_criteria:["Only the exact admitted edit occurs; process death and preservation are observed."],max_duration_ms:maxDurationMs}],
     validations:[{validation_id:"native-evidence",argv:["node","qualify-agent-native-worker.mjs"]}],audit:{read_only:true,criteria:["Preserve every undelegated file and every Git metadata byte."]}});
   const store=m.createPostgresAgentExecutionStore({connectionString,
@@ -202,6 +238,13 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
     await store.reserveRun({plan,runId,planningKey,canonicalSnapshotSha256:digest.canonical_snapshot_sha256});
     claimed=await store.claimAttempt({runId,taskId:"native",ownerId:"native.supervisor",attemptId,inputSha:root.head,worktree:{worktree_id:root.worktree_id,cwd:root.root,branch:root.branch}});
     request={contract_version:"agent-task-request.v1",...Object.fromEntries(["run_id","task_id","attempt_id","plan_sha256","task_contract_sha256","input_sha","ownership"].map(k=>[k,claimed.attempt[k]])),delegation_id:claimed.delegation.delegation_id,delegation_sha256:m.fingerprintAgentExecutionValue(claimed.delegation),instruction:promptFor(patches),cwd:root.root,execution:plan.execution,limits:{max_duration_ms:maxDurationMs}};
+    if(preexisting) {
+      const state=m.resolveCodexNativeProfileStatePaths(nativeProfilePolicy,request);
+      physical(state.root);
+      requireProof(!fs.existsSync(state.root),"QUALIFICATION_NATIVE_PROFILE_ATTEMPT_STATE_EXISTS");
+      fs.mkdirSync(physical(nativeProfilePolicy.effects.state_root),{recursive:true});
+      fs.mkdirSync(state.root);fs.mkdirSync(state.logs);fs.mkdirSync(state.sqlite);
+    }
     const requestHash=m.fingerprintAgentExecutionValue(request);
     const marker=json({protocol_version:1,attempt_id:attemptId,request_sha256:requestHash});
     const markerPath=physical(path.join(root.root,MARKER));
@@ -278,20 +321,31 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
     const observeRunner=async(_request,event)=>{runner=event;await store.observeRunner({...owned(),runner:{runner_id:event.runner_id,pid:event.pid,host_id:os.hostname(),started_at:new Date(event.started_at).toISOString()}});};
     heartbeat=setInterval(()=>{heartbeatWork=heartbeatWork.then(async()=>{if(invalidated)return;try{await store.renewAttempt(owned());}catch(error){if(invalidated)return;heartbeatFailure=error.code ?? "QUALIFICATION_HEARTBEAT_FAILED";stop.abort();}});},10000);
     began=Date.now();
+    const launchDeadline=performance.now()+maxDurationMs;
+    const recheckDirectProfile=async phase=>{
+      const remaining=Math.floor(launchDeadline-performance.now());
+      requireProof(remaining>0,"QUALIFICATION_NATIVE_PROFILE_TASK_DEADLINE");
+      await verifyNativeQualificationProfile({modules:m,policy:nativeProfilePolicy,runtime,request,verify:verifyNativeProfile,phase,signal:stop.signal,timeoutMs:Math.min(10000,remaining)});
+    };
     try {
       if(mode==="port") {
         requireProof(qualification?.passed===true,"QUALIFICATION_PRIOR_NATIVE_PROOF_REQUIRED");
         const executor=m.createCodexCliTaskExecutor({runtime,controller:{...controller,run:async(input,options)=>{launchRequested=true;onLaunch();processResult=await controller.run(input,{...options,onEvent:async event=>{if(event.type==="resumed")onStarted();await options.onEvent(event);}});return processResult;}},
           qualify:async({runtime:asked,cwd})=>({qualified:qualification.passed===true && equal(asked,runtime) && cwd===root.root && qualification.candidate_sha256===manifest.candidate.sha256 && qualification.codex_sha256===manifest.codex.sha256 && qualification.helper_sha256===helper.helper_sha256 && qualification.platform===process.platform && qualification.architecture===process.arch}),
           prepare:async()=>({request_sha256:requestHash,env}),recordLaunchIntent:async()=>store.recordLaunchIntent({...owned(),request}),observeRunner,
-          admissionTimeoutMs:10000,admitLaunch:async(_request,{signal})=>service.preflight({signal}),
+          admissionTimeoutMs:10000,verifyNativeProfile,admitLaunch:async(_request,{signal})=>service.preflight({signal}),
           openEvidence:async()=>{const evidence=await evidenceStore.open(request);return {append:async(stream,bytes)=>{await evidence.append(stream,bytes);if(stream==="stdout")observeOutput(bytes);else if(stream==="stderr")observeStderr(bytes);},finish:async(value)=>{protocol=value.protocol;refs=await evidence.finish(value);return refs;}};}});
         nativeResult=await executor.runTask(request,{signal:stop.signal,onEvent:async event=>{await store.appendEvent({...owned(),event});}});
       } else {
         const evidence=await evidenceStore.open(request), parser=m.createCodexJsonlProtocol();
+        await recheckDirectProfile("before_create");
+        const remainingMs=Math.floor(launchDeadline-performance.now());
+        requireProof(remainingMs>0,"QUALIFICATION_NATIVE_PROFILE_TASK_DEADLINE");
         launchRequested=true;onLaunch();
-        processResult=await controller.run({runnerId:randomUUID(),executable:runtime.executable,executableSha256:runtime.sha256,args:m.buildCodexTaskArguments(request),cwd:request.cwd,env,stdin:request.instruction,maxDurationMs,maxOutputBytes:16*1024*1024,maxPendingBytes:1024*1024,stopTimeoutMs:5000},{signal:stop.signal,onEvent:async event=>{
-          if(event.type==="prepared") {await observeRunner(request,event);const p=await service.preflight();requireProof(p.ok,"QUALIFICATION_SUSPENDED_PREFLIGHT_REFUSED");}
+        processResult=await controller.run({runnerId:randomUUID(),executable:runtime.executable,executableSha256:runtime.sha256,args:m.buildCodexTaskArguments(request,{nativeProfilePolicy}),cwd:request.cwd,env,stdin:request.instruction,maxDurationMs:remainingMs,maxOutputBytes:16*1024*1024,maxPendingBytes:1024*1024,stopTimeoutMs:5000},{signal:stop.signal,onEvent:async event=>{
+          if(event.type==="prepared") {await observeRunner(request,event);
+            await recheckDirectProfile("before_resume");
+            const p=await service.preflight();requireProof(p.ok,"QUALIFICATION_SUSPENDED_PREFLIGHT_REFUSED");}
           if(event.type==="resumed") onStarted();
           if(["stdout","stderr"].includes(event.type)) {await evidence.append(event.type,event.bytes);if(event.type==="stdout"){observeOutput(event.bytes);await parser.push(event.bytes);}else observeStderr(event.bytes);}
         }});

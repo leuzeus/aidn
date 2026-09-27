@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import pg from "pg";
 import { withEphemeralPostgres } from "../perf/agent-execution-postgres-test-lib.mjs";
 import { assertAgentNativeRefreshReview, assertAgentNativeQualificationRefreshContinuity, readAgentNativeRefreshLineage } from "./refresh-agent-native-candidate.mjs";
+import { nativeQualificationHomeIdentity } from "./prepare-agent-native-qualification.mjs";
+import { fingerprintAgentExecutionValue } from "../../src/core/agents/agent-execution-contracts.mjs";
+import { fingerprintCodexNativeProfilePolicy } from "../../src/adapters/agents/codex-native-profile-policy.mjs";
 import { hash, json, fail, requireProof, physical, inventory, compareInventory, writeEvidence, loadCandidate, runNativeQualificationCase } from "./agent-native-qualification-driver.mjs";
 
 const SOURCE=path.resolve(import.meta.dirname,"../..");
@@ -13,6 +17,45 @@ const identity=value=>process.platform==="win32"?path.resolve(value).toLowerCase
 function outside(parent,child) {const rel=path.relative(parent,child);return rel===".." || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel);}
 
 export { assertAgentNativeQualificationRefreshContinuity };
+
+// Case execution and profile-file observations do not prove that the host's
+// existing native client still works. Confirmation must come from that client
+// after this immutable terminal result, not from a local exit-code substitute.
+export function nativeQualificationHostConfirmationState(checks) {
+  const expected = ["acquire", "cancel", "timeout", "port"];
+  requireProof(Array.isArray(checks) && checks.length === expected.length
+    && checks.every((check,index) => check.mode === expected[index] && check.status === "PASS"
+      && check.native_process_cleanup === "CONFIRMED"), "QUALIFICATION_NATIVE_CASES_INCOMPLETE");
+  return { ok:false, status:"awaiting_host_confirmation", native_cases_status:"PASS",
+    qualification:"UNAVAILABLE", host_confirmation:"REQUIRED", reason:"HOST_CONFIRMATION_REQUIRED" };
+}
+
+const exactKeys=(value,keys)=>value && typeof value==="object" && !Array.isArray(value)
+  && Object.keys(value).length===keys.length && keys.every(key=>Object.hasOwn(value,key));
+
+// Pure review check, shared by preview and write. The consent binds the local
+// effect policy; it never establishes native readiness or observation by itself.
+export function assertNativeQualificationProfileReview({manifest,review,policy}={}) {
+  const selected=manifest?.native_profile;
+  const mode=selected?.mode ?? "isolated";
+  requireProof(["isolated","preexisting"].includes(mode),"QUALIFICATION_NATIVE_PROFILE_MODE_INVALID");
+  if(mode==="isolated") {
+    requireProof((selected===undefined || exactKeys(selected,["mode"])) && policy===undefined && review?.native_profile===undefined,"QUALIFICATION_NATIVE_PROFILE_SELECTION_MISMATCH");
+    return null;
+  }
+  requireProof(exactKeys(selected,["mode","home_identity_sha256"]) && policy!==undefined,"QUALIFICATION_NATIVE_PROFILE_POLICY_REQUIRED");
+  const policySha256=fingerprintCodexNativeProfilePolicy(policy);
+  requireProof(policy.home.physical_path===manifest.codex_home && policy.home.identity_sha256===selected.home_identity_sha256
+    && policy.client_sha256===manifest.codex?.sha256,"QUALIFICATION_NATIVE_PROFILE_BINDING_INVALID");
+  const approved=review?.native_profile;
+  requireProof(exactKeys(approved,["mode","policy_sha256","consent"]) && approved.mode==="preexisting"
+    && approved.policy_sha256===policySha256,"QUALIFICATION_NATIVE_PROFILE_REVIEW_REQUIRED");
+  const consent=approved.consent;
+  requireProof(exactKeys(consent,["approved","shared_effects_sha256","state_root"]) && consent.approved===true
+    && consent.shared_effects_sha256===policy.effects.shared_effects_sha256
+    && consent.state_root===policy.effects.state_root,"QUALIFICATION_NATIVE_PROFILE_EFFECT_CONSENT_REQUIRED");
+  return {policy_sha256:policySha256,consent:structuredClone(consent)};
+}
 
 // A later non-started scenario cannot erase the death proofs of earlier
 // workers. Missing or contradictory observations remain unconfirmed.
@@ -31,10 +74,20 @@ export function summarizeNativeProcessCleanup({launchRequests,processesStarted,c
 // agent-run command. Preview performs filesystem reads only. --write explicitly
 // permits four bounded native model calls and a disposable PostgreSQL cluster.
 // Existing native project/hook trust and authentication must already exist.
-export async function qualifyAgentNativeWorker({manifest:manifestFile,helperManifest,pgBin,model,effort,reviewProof,outputRoot,write=false}={}) {
+export async function qualifyAgentNativeWorker({manifest:manifestFile,helperManifest,pgBin,model,effort,reviewProof,nativeProfilePolicy:policyFile,outputRoot,write=false}={}) {
   requireProof(typeof write==="boolean","QUALIFICATION_EXPLICIT_WRITE_BOOLEAN_REQUIRED");
   manifestFile=physical(manifestFile,"file"); helperManifest=physical(helperManifest,"file"); reviewProof=physical(reviewProof,"file"); pgBin=physical(pgBin,"directory"); outputRoot=physical(outputRoot);
   const manifest=read(manifestFile), helper=read(helperManifest), review=read(reviewProof);
+  const nativeProfilePolicy=policyFile===undefined?undefined:read(policyFile);
+  const profileReview=assertNativeQualificationProfileReview({manifest,review,policy:nativeProfilePolicy});
+  if(profileReview) {
+    requireProof(fingerprintAgentExecutionValue(nativeQualificationHomeIdentity(manifest.codex_home))===manifest.native_profile.home_identity_sha256,"QUALIFICATION_NATIVE_PROFILE_HOME_CHANGED");
+    physical(nativeProfilePolicy.effects.state_root);
+    for(const protectedRoot of [SOURCE,manifest.codex_home,manifest.candidate.packageRoot,...manifest.roots.map(root=>root.root)]) {
+      requireProof(outside(protectedRoot,nativeProfilePolicy.effects.state_root) && outside(nativeProfilePolicy.effects.state_root,protectedRoot),"QUALIFICATION_NATIVE_PROFILE_EFFECT_ROOT_OVERLAP");
+    }
+    requireProof(outside(nativeProfilePolicy.effects.state_root,outputRoot) && outside(outputRoot,nativeProfilePolicy.effects.state_root),"QUALIFICATION_NATIVE_PROFILE_EVIDENCE_ROOT_OVERLAP");
+  }
   requireProof(manifest.ok===true && manifest.status==="prepared" && manifest.written===true && manifest.native_execution==="NOT_RUN","QUALIFICATION_PREPARATION_REQUIRED");
   requireProof(process.platform==="win32" && process.arch==="x64" && manifest.host?.platform===process.platform && manifest.host?.architecture===process.arch,"QUALIFICATION_OS_UNAVAILABLE");
   requireProof(typeof model==="string" && model.length>0 && typeof effort==="string" && effort.length>0,"QUALIFICATION_EXPLICIT_MODEL_REQUIRED");
@@ -98,9 +151,12 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
     } else requireProof(identity(marker)===identity(entry.git_dir),"QUALIFICATION_GIT_DIRECTORY_BINDING_INVALID");
   }
   compareInventory(inventory(baseline.common_git_dir),baseline.common_git_files,"common-git");
-  const identityRecord={preparation_id:manifest.preparation_id,manifest_sha256:hash(fs.readFileSync(manifestFile)),candidate_sha256:manifest.candidate.sha256,codex_sha256:manifest.codex.sha256,helper_sha256:helper.helper_sha256,review_sha256:hash(fs.readFileSync(reviewProof)),native_trust_sha256:review.native_trust.sha256,model,effort,platform:process.platform,architecture:process.arch};
+  const identityRecord={preparation_id:manifest.preparation_id,manifest_sha256:hash(fs.readFileSync(manifestFile)),candidate_sha256:manifest.candidate.sha256,codex_sha256:manifest.codex.sha256,helper_sha256:helper.helper_sha256,review_sha256:hash(fs.readFileSync(reviewProof)),native_trust_sha256:review.native_trust.sha256,model,effort,platform:process.platform,architecture:process.arch,
+    ...(profileReview?{native_profile:{mode:"preexisting",policy_sha256:profileReview.policy_sha256,home_identity_sha256:manifest.native_profile.home_identity_sha256,consent_sha256:fingerprintAgentExecutionValue(profileReview.consent)}}:{})};
   const result={ok:true,status:write?"running":"preview",written:write,...identityRecord,output_root:outputRoot,native_launch_requests:0,native_processes_started:0,checks:[],qualification:"NOT_RUN",native_process_cleanup:"NOT_STARTED",integration:"NOT_RUN",cleanup:"NOT_STARTED",
-    effects:["Create one ephemeral PostgreSQL cluster with four distinct scenario databases","Acquire native proof using reviewed candidate controller and arguments","Verify allowed, forbidden, mixed and stale native apply_patch requests","Observe a native hook descendant before cancellation and timeout","Use the full AgentTaskExecutor port only after initial native proofs pass","Preserve logs, per-attempt markers and authorized file changes; remove only owned PostgreSQL cluster"]};
+    ...(profileReview?{native_profile_observation:{status:"NOT_RUN"}}:{}),
+    effects:["Create one ephemeral PostgreSQL cluster with four distinct scenario databases","Acquire native proof using reviewed candidate controller and arguments","Verify allowed, forbidden, mixed and stale native apply_patch requests","Observe a native hook descendant before cancellation and timeout","Use the full AgentTaskExecutor port only after initial native proofs pass","Preserve logs, per-attempt markers and authorized file changes; remove only owned PostgreSQL cluster",
+      ...(profileReview?["Observe the explicitly selected existing native profile before create, before resume and after workers; no setup, trust change or credential copy","Allow only the native profile effects bound by the reviewed shared-effects digest and state root"]:[])]};
   if(!write) return result;
   fs.mkdirSync(outputRoot);
   writeEvidence(outputRoot,"owner.json",{qualification_id:manifest.preparation_id,created_at:new Date().toISOString(),pid:process.pid});
@@ -109,10 +165,30 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
   // against its original manifest identity, then preserve these observed bytes.
   // This additional observation never replaces the original file baseline.
   writeEvidence(outputRoot,"git-pointers-before.json",gitPointers);
-  let clusterRoot=null, primaryError=null;
+  let clusterRoot=null, primaryError=null, verifyNativeProfile=null, profileFinalized=false;
+  async function finalizeProfile() {
+    if(!verifyNativeProfile || profileFinalized) return;
+    profileFinalized=true;
+    try {
+      const observation=await verifyNativeProfile.finalize({signal:AbortSignal.timeout(15000)});
+      requireProof(observation?.ok===true && observation.preservation==="PASS" && observation.provisioning_performed===false,"QUALIFICATION_NATIVE_PROFILE_FINAL_OBSERVATION_REQUIRED");
+      result.native_profile_observation=observation;
+      writeEvidence(outputRoot,"native-profile-final.json",observation);
+    } catch(error) {
+      result.native_profile_observation={ok:false,status:"UNCONFIRMED",reason:error.code ?? "QUALIFICATION_NATIVE_PROFILE_FINAL_OBSERVATION_FAILED"};
+      writeEvidence(outputRoot,"native-profile-final-failure.json",result.native_profile_observation);
+      throw error;
+    }
+  }
   try {
-    const modules=await loadCandidate(manifest.candidate);
+    const modules=await loadCandidate(manifest.candidate,{nativeProfile:Boolean(profileReview)});
     requireProof(modules.fingerprintAgentExecutionValue(modules.inventoryRuntime(manifest.candidate.packageRoot))===modules.fingerprintAgentExecutionValue(manifest.candidate.inventory),"QUALIFICATION_INSTALLED_CANDIDATE_CHANGED");
+    if(profileReview) {
+      requireProof(modules.fingerprintCodexNativeProfilePolicy(nativeProfilePolicy)===profileReview.policy_sha256,"QUALIFICATION_CANDIDATE_PROFILE_POLICY_MISMATCH");
+      const {createCodexNativeProfileVerifier}=await import("./agent-native-profile-observation.mjs");
+      verifyNativeProfile=createCodexNativeProfileVerifier({manifest,policy:nativeProfilePolicy,outputRoot,consent:profileReview.consent});
+      requireProof(typeof verifyNativeProfile==="function" && typeof verifyNativeProfile.finalize==="function","QUALIFICATION_NATIVE_PROFILE_OBSERVER_REQUIRED");
+    }
     const expected=structuredClone(baseline);
     for(const pointer of gitPointers) expected.roots.find(r=>r.role===pointer.role).git_pointer_sha256=pointer.sha256;
     await withEphemeralPostgres(async({connectionString,root,version})=>{
@@ -130,7 +206,7 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
           let duration=150000;
           if(mode==="timeout") duration=Math.min(150000,Math.max(5000,Math.round(result.checks.find(c=>c.mode==="cancel").hook_latency_ms+3000)));
           const prior=mode==="port" ? {...identityRecord,passed:result.checks.length===3 && result.checks.every(c=>c.status==="PASS")} : null;
-          const check=await runNativeQualificationCase({name:mode,mode,manifest,helper,modules,connectionString:url.toString(),outputRoot,expected,model,effort,maxDurationMs:duration,qualification:prior,onLaunch:()=>result.native_launch_requests++,onStarted:()=>result.native_processes_started++});
+          const check=await runNativeQualificationCase({name:mode,mode,manifest,helper,modules,connectionString:url.toString(),outputRoot,expected,model,effort,nativeProfilePolicy,verifyNativeProfile,maxDurationMs:duration,qualification:prior,onLaunch:()=>result.native_launch_requests++,onStarted:()=>result.native_processes_started++});
           result.checks.push(check);writeEvidence(outputRoot,`case-${mode}.json`,check);
           process.stderr.write(JSON.stringify({qualification_case:mode,state:"passed",native_process_cleanup:check.native_process_cleanup,at:new Date().toISOString()})+"\n");
         }
@@ -139,9 +215,20 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
       } finally {await admin.end();}
     },{binDir:pgBin});
     requireProof(clusterRoot && !fs.existsSync(clusterRoot),"QUALIFICATION_POSTGRES_CLEANUP_UNCONFIRMED");
-    result.cleanup="POSTGRES_REMOVED_EVIDENCE_PRESERVED";result.native_process_cleanup="CONFIRMED";result.status="passed";result.qualification="PASS";
+    await finalizeProfile();
+    result.cleanup="POSTGRES_REMOVED_EVIDENCE_PRESERVED";result.native_process_cleanup="CONFIRMED";
+    Object.assign(result,nativeQualificationHostConfirmationState(result.checks));
     writeEvidence(outputRoot,"qualification.json",result);
+    writeEvidence(outputRoot,"host-confirmation-request.json",{
+      contract_version:"agent-native-host-confirmation-request.v1",qualification_id:manifest.preparation_id,
+      result:{path:path.join(outputRoot,"qualification.json"),sha256:hash(fs.readFileSync(path.join(outputRoot,"qualification.json")))},
+      candidate_sha256:manifest.candidate.sha256,client_sha256:manifest.codex.sha256,
+      host:manifest.host,issued_at:new Date().toISOString(),challenge:randomUUID(),
+      required_evidence:"A read-only command through the existing principal native Codex client, with its ordinary sandbox and no escalation, setup or bypass, must emit this exact challenge and exit zero. Preserve the actual native tool event reference and hash, client/surface/build, sandbox mode and observation time. Independent review must bind it to this terminal result. A self-declared JSON or local child exit code is insufficient.",
+      evidence_limit:"Confirm observed file preservation and continued principal sandbox operation; do not claim unchanged global Windows accounts, ACLs or firewall state.",
+    });
   } catch(error) {
+    try {await finalizeProfile();} catch(profileError) {error.profileObservationError=profileError.code ?? "QUALIFICATION_NATIVE_PROFILE_FINAL_OBSERVATION_FAILED";}
     primaryError=error;result.ok=false;result.status="failed";result.qualification=error.code==="QUALIFICATION_CLIENT_REFUSAL_UNAVAILABLE"?"UNAVAILABLE":"FAIL";result.reason=error.code ?? error.message;result.details=error.details;
     result.failed_case=error.nativeQualification ?? null;
     result.native_process_cleanup=summarizeNativeProcessCleanup({launchRequests:result.native_launch_requests,processesStarted:result.native_processes_started,checks:result.checks,failedCase:error.nativeQualification});
@@ -158,9 +245,11 @@ if(process.argv[1] && import.meta.url===pathToFileURL(path.resolve(process.argv[
     for(let i=0;i<input.length;i++) {
       if(input[i]==="--write") {requireProof(!options.write,"QUALIFICATION_DUPLICATE_OPTION");options.write=true;continue;}
       if(input[i]==="--json") continue;
-      const key={"--manifest":"manifest","--helper-manifest":"helperManifest","--pg-bin":"pgBin","--model":"model","--effort":"effort","--review-proof":"reviewProof","--output-root":"outputRoot"}[input[i]];
+      const key={"--manifest":"manifest","--helper-manifest":"helperManifest","--pg-bin":"pgBin","--model":"model","--effort":"effort","--review-proof":"reviewProof","--native-profile-policy":"nativeProfilePolicy","--output-root":"outputRoot"}[input[i]];
       requireProof(key && !options[key] && input[i+1] && !input[i+1].startsWith("--"),"QUALIFICATION_ARGUMENTS_INVALID");options[key]=input[++i];
     }
-    console.log(json(await qualifyAgentNativeWorker(options)).trimEnd());
+    const result=await qualifyAgentNativeWorker(options);
+    console.log(json(result).trimEnd());
+    if(!result.ok) process.exitCode=1;
   } catch(error) {console.log(json(error.qualification ?? {ok:false,status:"failed",written:false,reason:error.code ?? error.message,details:error.details}).trimEnd());process.exitCode=1;}
 }

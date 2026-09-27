@@ -92,12 +92,18 @@ const importPaths = new Set([
   "tools/verify/prepare-agent-native-qualification.mjs", "tools/verify/refresh-agent-native-candidate.mjs",
   "tools/verify/qualify-agent-native-worker.mjs", "tools/verify/agent-native-qualification-driver.mjs",
   "tools/verify/agent-native-refusal-evidence.mjs",
+  "tools/verify/agent-native-profile-observation.mjs",
+  "src/adapters/agents/codex-native-profile-policy.mjs",
+  "src/core/agents/agent-execution-contracts.mjs",
+  "src/core/contracts/json-schema-validator.mjs",
   "tools/perf/agent-execution-postgres-test-lib.mjs",
 ].map((relative) => key(path.join(packageRoot, relative))));
 const dependencies = key(path.join(packageRoot, "node_modules")) + path.sep;
+const executionSchemas = key(path.join(packageRoot, "src/core/contracts/agent-execution")) + path.sep;
 function allowRead(name, value) {
   const file = Number.isInteger(value) ? readDescriptors.get(value) : key(value);
   if (phase !== "import" || !file || (!importPaths.has(file)
+      && !(file.startsWith(executionSchemas) && file.endsWith(".schema.json"))
       && !(file.startsWith(dependencies) && /\.(?:mjs|cjs|js|json)$/.test(file)))) deny(name + ":read")();
 }
 const reads = ["access", "accessSync", "exists", "existsSync", "readFile", "readFileSync", "read", "readSync",
@@ -165,16 +171,22 @@ try {
   const qualification = await import("../verify/qualify-agent-native-worker.mjs");
   const driver = await import("../verify/agent-native-qualification-driver.mjs");
   const refusal = await import("../verify/agent-native-refusal-evidence.mjs");
+  const profileObservation = await import("../verify/agent-native-profile-observation.mjs");
   phase = "validation";
   await check("native tool imports perform no writes, process launch or connection", () => {
     assert.deepEqual(effects, []);
     for (const fn of [refresh.refreshAgentNativeCandidate, preparation.prepareAgentNativeQualification,
-      qualification.qualifyAgentNativeWorker, driver.runNativeQualificationCase]) assert.equal(typeof fn, "function");
+      qualification.qualifyAgentNativeWorker, driver.runNativeQualificationCase,
+      profileObservation.observerMetadata, profileObservation.discoverCodexNativeProfileMetadata]) assert.equal(typeof fn, "function");
   });
   const review = refresh.assertAgentNativeRefreshReview, plan = refresh.assertAgentNativeRefreshPlan;
   const preserve = refresh.assertAgentNativeRefreshPreservation, gitMarkers = refresh.assertAgentNativeRefreshGitMarkers;
   const rejects = (fn, code) => assert.throws(fn, { code });
   await check("native review accepts both worktrees with the shared coordinator source", () => assert.equal(review(manifest, trust), true));
+  await check("refresh refuses preexisting profiles without touching their contents", () => {
+    const value = structuredClone(manifest); value.native_profile = { mode: "preexisting" };
+    rejects(() => refresh.assertAgentNativeRefreshLineage([{ manifest: value }], root + "-next"), "REFRESH_PREEXISTING_PROFILE_UNSUPPORTED");
+  });
   for (const [name, mutate, code] of [
     ["foreign candidate", (v) => { v.candidate_sha256 = sha("0"); }, "REFRESH_NATIVE_REVIEW_BINDING_MISMATCH"],
     ["foreign source commit", (v) => { v.source_head = "0".repeat(40); }, "REFRESH_NATIVE_REVIEW_BINDING_MISMATCH"],
@@ -469,9 +481,28 @@ try {
     const before=JSON.stringify(input);assert.equal(qualification.summarizeNativeProcessCleanup(input),expected);assert.equal(JSON.stringify(input),before);
   });
   await check("all pure fixture inputs are unchanged", () => assert.equal(JSON.stringify({ manifest, trust, installation, baseline, markers }), unchangedInputs));
+  const nativeCases = ["acquire", "cancel", "timeout", "port"].map(mode => ({ mode, status: "PASS", native_process_cleanup: "CONFIRMED" }));
+  await check("four native cases still require independent principal sandbox confirmation", () => {
+    assert.deepEqual(qualification.nativeQualificationHostConfirmationState(nativeCases), {
+      ok: false, status: "awaiting_host_confirmation", native_cases_status: "PASS", qualification: "UNAVAILABLE",
+      host_confirmation: "REQUIRED", reason: "HOST_CONFIRMATION_REQUIRED",
+    });
+  });
+  for (const [name, mutate] of [
+    ["missing case", cases => cases.pop()], ["duplicate case", cases => { cases[3].mode = "acquire"; }],
+    ["failed case", cases => { cases[0].status = "FAIL"; }], ["unknown descendants", cases => { cases[1].native_process_cleanup = "UNCONFIRMED"; }],
+  ]) await check("host confirmation cannot hide " + name, () => {
+    const cases = structuredClone(nativeCases); mutate(cases);
+    rejects(() => qualification.nativeQualificationHostConfirmationState(cases), "QUALIFICATION_NATIVE_CASES_INCOMPLETE");
+  });
   await check("imports and rejected requests leave no observed effect", () => assert.deepEqual(effects, []));
-  process.stdout.write(JSON.stringify({ status: "PASS", checks, effects, native_codex: "NOT_RUN", postgres: "NOT_RUN", cleanup: "NO_RESOURCES_CREATED" }) + "\n");
 } finally {
   for (const undo of restore.reverse()) undo();
   syncBuiltinESMExports();
 }
+checks += await (await import("./agent-native-profile-preparation-fixtures.mjs")).runAgentNativeProfilePreparationFixtures();
+const profileChecks = await (await import("./agent-native-profile-observation-fixtures.mjs")).runAgentNativeProfileObservationFixtures();
+assert.ok(Array.isArray(profileChecks) && profileChecks.length > 0 && profileChecks.every(check => check.status === "PASS"));
+for (const check of profileChecks) process.stdout.write("PASS " + check.name + "\n");
+checks += profileChecks.length;
+process.stdout.write(JSON.stringify({ status: "PASS", checks, effects, native_codex: "NOT_RUN", postgres: "NOT_RUN", cleanup: "FIXTURE_RESOURCES_REMOVED" }) + "\n");

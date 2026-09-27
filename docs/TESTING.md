@@ -263,6 +263,10 @@ For the candidate Codex task executor and delegated admission, run
 `npm run perf:verify-agent-worker-fixtures`. The required runtime gate tests
 bounded JSONL, explicit configuration, serialized callbacks, termination outcomes,
 exact delegated scopes and authenticated local transport with supervisor doubles.
+It also checks explicit preexisting-profile policy bindings, configuration
+neutralization and fresh verification challenges using synthetic inputs. Native
+metadata observations, human trust and actual worker execution remain separate
+evidence; an existing Windows backend is never provisioned by those fixtures.
 It also checks the native qualification tools' review bindings, receipt-only
 refresh and preservation guards without launching a model or PostgreSQL.
 It does not execute Codex or qualify the OS sandbox. The explicit Windows helper

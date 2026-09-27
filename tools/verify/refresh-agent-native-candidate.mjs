@@ -252,6 +252,9 @@ export function assertAgentNativeRefreshLineage(lineage, outputRoot) {
   const seen = new Set();
   for (const [index, entry] of lineage.entries()) {
     const { manifest, evidence, manifestPath, manifestSha256, trustEvidencePath, trustSha256 } = entry;
+    // This helper's continuity contract owns the original isolated home only.
+    // A preexisting profile requires a new preparation and frozen policy review.
+    if (manifest.native_profile && manifest.native_profile.mode !== "isolated") fail("REFRESH_PREEXISTING_PROFILE_UNSUPPORTED");
     if (![manifestPath, trustEvidencePath, manifest.output_root, manifest.codex_home,
       manifest.candidate.packageRoot, manifest.candidate.archivePath, ...manifest.roots.map(root => root.root)]
       .every(value => typeof value === "string" && path.isAbsolute(value))) fail("REFRESH_ABSOLUTE_PATH_REQUIRED");
