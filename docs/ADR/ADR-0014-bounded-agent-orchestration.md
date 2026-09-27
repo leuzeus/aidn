@@ -629,7 +629,7 @@ worker. Native qualification is separate from these CI checks.
 An unqualified OS cannot advertise the future capability.
 
 Lot 7 adds `runtime-agent-run-lifecycle`, required once for dev, main and release,
-covering fourteen portable lifecycle, workspace, composition, validation-boundary
+covering nineteen portable lifecycle, workspace, composition, validation-boundary
 and managed-preparation/controlled-setup fixture scripts. Omission or duplicate
 invocation of any script is rejected. The Windows inventory and 89-check
 preflight fixtures are separate, use mocked providers and do not qualify a
@@ -709,3 +709,33 @@ compiled Codex profile, setup prerequisite or authorization. The containing
 operation still has to verify current physical observations and exact path-list
 bindings. Complete effect comparison, production authority composition and the
 durable setup journal remain required before setup can be qualified.
+
+## Application exclusion of cloud workspaces
+
+AIDN agent execution refuses OneDrive paths in workspaces, delegated file scopes,
+requests, configuration and evidence. The check is lexical and precedes target
+observation; bounded local Git/installation pointer checks prevent known indirect
+redirection before delegated activation. Explicit exclusions support renamed
+roots without automatic cloud discovery. This policy changes no cloud ACL and
+claims no operating-system read prohibition or universal shell interception.
+
+Managed Windows preparation selects a closed named permission profile with
+explicit literal roots. The pinned official client requires read access to the
+separate project volume root; the effective profile and that scope are reviewable
+inputs. No symbolic root or USERPROFILE enumeration is used by the new path.
+Legacy scope/cloud facts remain compatibility models, not authorization for
+further cloud inspection. Native qualification is still required independently.
+
+## Managed setup recovery boundary
+
+A host-scoped operator journal is separate from PostgreSQL run authority. A
+verified fixed host anchor and append-only exclusive publications prevent two
+parents from treating the same setup as independently launchable. Unknown
+publication or termination preserves unresolved state; neither elapsed time nor
+a process exit code is reconciliation.
+
+Auxiliary preflight Jobs belong to this recovery boundary. An uncertain auxiliary
+Job keeps the operation open even if the principal setup was not started. A
+reconciliation verifier must cover their durable identities and effects as well
+as the principal Job. The journal and parent adapter are structural components;
+fixtures using trusted-port doubles do not establish native availability.

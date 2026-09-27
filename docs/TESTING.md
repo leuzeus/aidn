@@ -363,7 +363,7 @@ live-token bindings, separate channel and Job termination, and refusal of
 unconfirmed effects. The parent requires authorization, preflight and effect
 comparison ports; a stopped Job cannot turn a failed channel into success.
 These candidates are not registered executors. Production implementations of
-`authorizeOperation`, `preflight` and `compareEffects` remain absent; startup and
+`authorizeOperation` and `compareEffects` remain absent; startup and
 effective-configuration evidence and complete effects coverage also remain
 outstanding. No fixture launches native setup or qualifies a managed backend.
 
@@ -393,7 +393,9 @@ The thirteenth lifecycle script,
 source-configuration assessment. It requires the exact reviewed client, one
 session override layer, represented source files and origins, all fixed startup
 settings, and an exact `{requirements: null}` response. Any requirements object
-or selected permission profile is refused. A source recorded absent can represent
+or an unrepresented selected permission profile is refused. The explicit named
+setup profile is assessed separately as v2 and binds its declared permission
+scope, without granting native availability. A source recorded absent can represent
 only an empty layer. Fixture success establishes neither physical observations
 nor compiled permissions: the assessment retains `PERMISSION_SCOPE_UNRESOLVED`
 and does not create a setup prerequisite, approval or available executor.
@@ -429,7 +431,7 @@ checks complete listings and same-handle identities without reading a user
 profile. Cloud tag decoding uses in-memory buffers and cloud traversal uses
 simulated graphs; running on Windows does not make those cases native Cloud Files
 qualification. It requires Windows and PowerShell 7 and fails with `UNAVAILABLE` when
-either precondition is missing. It is separate from the fourteen-script portable
+either precondition is missing. It is separate from the nineteen-script portable
 lifecycle gate, just like the Windows inventory and preflight campaigns; Linux
 admission does not execute or qualify its native calls. An actual principal-profile
 observation remains separate from fixtures and requires a pinned controlled
@@ -976,3 +978,54 @@ Measurements report wall-clock milliseconds and output bytes on the same fixture
 bytes are not tokens. Native qualification uses a reviewed temporary client with
 human trust and verifies both a denied covered edit and an admitted edit after
 fresh core prerequisites. Error, timeout and out-of-coverage tests remain necessary.
+
+### Cloud path policy and managed-operation recovery fixtures
+
+`node tools/perf/verify-agent-local-path-policy-fixtures.mjs` checks the application
+exclusion of standard OneDrive paths, aliases and explicitly excluded roots.
+Filesystem sentinels prove that rejected targets are not observed. Disposable
+Git and installation-pointer fixtures test refusal before activation follows an
+excluded destination. These checks change no user permissions and do not prove
+a Windows read denial, a native hook execution or universal shell interception.
+
+`node tools/perf/verify-codex-managed-setup-parent-preflight-fixtures.mjs` checks
+the bounded parent adapter around the pinned native preflight script. The process
+controller is a double. Required evidence writes are awaited before creation,
+before resume and before interpreting the terminal result. Unknown auxiliary
+Jobs, a failed evidence write or late callbacks retain recovery state; a stopped
+principal setup Job cannot erase auxiliary uncertainty. This portable suite
+performs no token inventory or native setup.
+
+`node tools/perf/verify-codex-managed-setup-operation-journal-fixtures.mjs` uses
+real disposable files and separate Node processes to check exclusive intents,
+revision/ownership comparison, idempotence, corrupted or partial publication and
+recreation after interruption. The host-anchor and reconciliation verifiers are
+doubles; actual protected-anchor installation is not qualified. The host journal
+is not a run store and cannot replace PostgreSQL. File fsync proves the exercised
+process-crash behavior, not a host power-loss guarantee. No automatic expiry,
+purge or retry releases an unresolved operation.
+
+`node tools/perf/verify-journaled-codex-managed-setup-fixtures.mjs` composes the
+real journal with the parent and preflight adapters. Tests retain real temporary
+bytes, inject authority/process boundaries and translate synthetic Windows
+paths inside the fixture only. Crashes after intent, prepared and terminal,
+concurrent parents, failed evidence publication and auxiliary uncertainty must
+not cause replay. Constructor/preview are pure. The evidence sink and anchor
+verifier are trusted ports with no process creation; no production material
+inspection override is exposed. Native setup remains unqualified.
+
+`node tools/perf/verify-codex-managed-setup-named-scope-fixtures.mjs` checks the
+separate named-profile projection. Its facts bind explicit selected roots and
+refuse profile/cloud listings, aliases, unrepresented facts and incomplete
+runtime expansion. The physical producer's request v2 retains the two-pass,
+size and duration bounds but does not enumerate USERPROFILE. Legacy request v1 is refused by the physical CLI before any scope observation;
+its pure models remain fixture-compatible. Historical SSH
+absence and empty prior deny-read prerequisites remain; no credential or SSH
+content is read. Pure projection is not setup approval. The old operation policy
+and manifest cannot represent a volume-root permission and are not silently
+extended by this projector.
+
+These five additional portable scripts join the fourteen historical scripts
+in `runtime-agent-run-lifecycle`, each once per admission. The four resilience
+gates and their 43 historical invocations are unchanged. Native Windows physical
+observation fixtures remain a separate platform-specific check.

@@ -148,6 +148,24 @@ for (const phase of ["before_create", "before_resume"]) await check("startup mat
   assert.equal(result.outcome, phase === "before_create" ? "refused" : "indeterminate");
   assert(!f.events.includes(phase === "before_create" ? "create" : "resumed"));
 });
+for (const phase of ["before_create", "before_resume"]) await check("unknown preflight Job blocks later setup attempts: " + phase, async () => {
+  const f = fixture(), prior = f.ports.preflight;
+  f.ports.preflight = async input => {
+    if (input.phase !== phase) return prior(input);
+    throw Object.assign(new Error("MANAGED_PREFLIGHT_TERMINATION_UNCONFIRMED"), { preflight: {
+      contract_version: "aidn-managed-setup-parent-preflight-state.v1", request_sha256: input.request.request_sha256,
+      phase, requested: true, prepared: null, process: null, runner_id: "auxiliary", job_name: "Local\\aidn-execution-" + "b".repeat(32),
+      termination_state: "unknown", journal_complete: true, recovery_required: true,
+    } });
+  };
+  const run = createControlledCodexManagedSetup(f.ports), result = await run(f.request, f.options);
+  assert.equal(result.outcome, "indeterminate"); assert.equal(result.recovery_required, true);
+  assert.equal(result.preflight_recovery.termination_state, "unknown");
+  assert.equal(result.tree_termination.state, phase === "before_create" ? "not_started" : "confirmed");
+  if (phase === "before_create") assert(!f.events.includes("create"));
+  assert(!f.events.includes("resumed"));
+  await assert.rejects(run(f.request, f.options), /RECOVERY_REQUIRED/u);
+});
 await check("v1 startup cannot enter the parent authority ports", async () => {
   const f = fixture(); f.request.protocol = "aidn-controlled-managed-setup.v1";
   const { request_sha256, ...body } = f.request; f.request.request_sha256 = hash(body); f.options.expectRequestSha256 = f.request.request_sha256;

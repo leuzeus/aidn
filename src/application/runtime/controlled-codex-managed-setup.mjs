@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { assertAgentLocalPath } from "../../core/agents/agent-local-path-policy.mjs";
 import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { buildManagedSetupStartupPaths } from "../../core/agents/codex-managed-startup.mjs";
@@ -21,6 +22,7 @@ const date = value => typeof value === "string" && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\
   && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
 
 async function physical(file, directory) {
+  assertAgentLocalPath(file);
   ensure(absolute(file), "MANAGED_TREE_PATH_INVALID");
   for (let cursor = file;;) {
     ensure(!(await fs.lstat(cursor)).isSymbolicLink(), "MANAGED_TREE_PATH_ALIAS");
@@ -87,7 +89,7 @@ export function createControlledCodexManagedSetup({ controller, authorizeOperati
     const began = performance.now(), stop = new AbortController();
     const abort = () => stop.abort(); signal?.addEventListener("abort", abort, { once: true }); if (signal?.aborted) abort();
     let live = true, launched = false, prepared = null, availability = null, processResult = null, bridgeResult = null;
-    let effectResult = null, errorCode = null, bytes = 0, finalTimer = null;
+    let effectResult = null, errorCode = null, bytes = 0, finalTimer = null, auxiliaryRecovery = null;
     const chunks = [];
     const checkpoint = () => {
       ensure(live && !stop.signal.aborted, "MANAGED_TREE_CANCELLED");
@@ -148,7 +150,18 @@ export function createControlledCodexManagedSetup({ controller, authorizeOperati
       return Date.parse(result.expires_at);
     }
     async function inspect(phase, runner = null) {
-      const result = snapshot(await bounded(() => preflight(Object.freeze({ phase, request, runner, signal: stop.signal }))));
+      let result;
+      try { result = snapshot(await bounded(() => preflight(Object.freeze({ phase, request, runner, signal: stop.signal })))); }
+      catch (error) {
+        // A separate preflight Job may already exist even though the setup Job
+        // has not been created. Preserve that uncertainty across retries.
+        const auxiliary = error?.preflight;
+        if (auxiliary?.contract_version === "aidn-managed-setup-parent-preflight-state.v1"
+          && auxiliary.request_sha256 === requestHash && auxiliary.phase === phase && auxiliary.recovery_required === true) {
+          auxiliaryRecovery = snapshot(auxiliary);
+        }
+        throw error;
+      }
       checkpoint();
       ensure(result?.contract_version === "aidn-managed-setup-preflight.v1" && result.request_sha256 === requestHash
         && result.phase === phase && result.status === "OBSERVED" && date(result.observed_at)
@@ -232,10 +245,10 @@ export function createControlledCodexManagedSetup({ controller, authorizeOperati
     } finally { live = false; clearTimeout(finalTimer); stop.abort(); signal?.removeEventListener("abort", abort); active = false; }
     const termination = tree();
     if (!errorCode && termination.state !== "confirmed") errorCode = "MANAGED_TREE_TERMINATION_UNCONFIRMED";
-    recoveryRequired ||= launched && (Boolean(errorCode) || termination.state !== "confirmed");
+    recoveryRequired ||= auxiliaryRecovery?.recovery_required === true || launched && (Boolean(errorCode) || termination.state !== "confirmed");
     return freeze({ contract_version: "aidn-controlled-managed-setup-result.v1", request_sha256: requestHash,
-      operation_sha256: body.operation_sha256, outcome: errorCode ? launched ? "indeterminate" : "refused" : "completed",
+      operation_sha256: body.operation_sha256, outcome: errorCode ? launched || recoveryRequired ? "indeterminate" : "refused" : "completed",
       reason_code: errorCode, bridge: bridgeResult, process: processResult, tree_termination: termination, effects: effectResult,
-      recovery_required: recoveryRequired, authorization_evidence: "EXTERNAL_AUTHORITY_PORT", native_qualified: false, execution_registered: false });
+      recovery_required: recoveryRequired, ...(auxiliaryRecovery ? { preflight_recovery: auxiliaryRecovery } : {}), authorization_evidence: "EXTERNAL_AUTHORITY_PORT", native_qualified: false, execution_registered: false });
   };
 }

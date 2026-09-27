@@ -560,7 +560,7 @@ preserves the historical worker settings and order. It disables each explicitly
 listed MCP/plugin/app integration, notifications and memory features without
 erasing hook configuration. Empty tables do not neutralize inherited entries;
 the complete observed identifier lists must be fixed before startup. The
-managed startup record contains exactly `state_root`, `mcp_server_ids`,
+managed startup record contains `state_root`, `mcp_server_ids`,
 `plugin_ids`, `app_ids` and `environment_override_names`. It selects the closed
 12-name environment profile, places logs in `state_root/logs` and SQLite in
 `state_root/sqlite`, and binds `TEMP` and `TMP` to `state_root`. This root must be
@@ -600,7 +600,7 @@ retains `PERMISSION_SCOPE_UNRESOLVED`: Windows path expansion, previous deny-rea
 state, runtime ACL effects and physical preservation require separate observation.
 It supplies no setup prerequisite receipt, authorization or native availability.
 
-The separate pure Legacy scope projector recomputes that assessment and derives
+The historical pure Legacy scope projector recomputes that assessment and derives
 the setup path lists from the closed environment and explicit physical facts.
 Its supported subset requires a new cwd without `.git`, `.agents` or `.codex`,
 absent SSH configuration, an absent or empty prior deny-read state, and complete
@@ -641,9 +641,10 @@ context and duration; FileIdInfo and link counts use the same handle. Two bounde
 passes compare identities, complete listings and junction targets. Only Win32
 NotFound establishes absence. The only file content accepted is the small empty
 prior deny-read state; no SSH configuration or credential content is read.
-Its v3 cloud branch retains only the exact directory tag and identity from the
-same handle. The cloud payload is opaque and supplies no path to follow; no cloud
-child enumeration is performed.
+The historical v3 cloud helper retains only the exact directory tag and identity
+from the same handle in compatibility fixtures. The physical CLI now refuses
+Legacy request v1 before observation; it requires the named request v2 and does
+not invoke that helper. Cloud payloads never supply a path to follow.
 The parent must pin and contain this producer and bind its request, PID, creation
 time, output digest and stopped Job. A syntactically valid observation or supplied
 context hash alone supplies no authenticated authority. This producer does not
@@ -717,3 +718,72 @@ callback-failure behavior. Then qualify the worker and run the two-worker plus
 dependent-task campaign on the exact candidate. Neither a project pilot nor an
 older worker result replaces these requirements. Current preparation artifacts
 perform none of these native operations.
+
+### OneDrive exclusion in AIDN
+
+The agent execution boundary rejects OneDrive workspaces, task scopes, request
+paths and evidence/configuration paths before observing the excluded target.
+It covers standard personal and business directory names, case variants, Win32
+trailing-dot/space aliases and short-name spellings. Other short-name paths are
+refused without resolving them. An ordinary filename such as `OneDriveConnector.mjs`
+is not a OneDrive directory. Explicit excluded roots can also describe a renamed
+cloud location; no provider scan discovers those roots implicitly.
+
+Before delegated worktree activation, a bounded local precheck inspects Git and
+installation pointers and refuses excluded destinations before following them.
+It rereads pointer fingerprints after activation and grants no activation trust.
+This remains an application policy with an external concurrent-change limitation.
+It neither edits OneDrive ACLs nor proves that Windows, a shell or another client
+denies reads. Native write admission retains its existing supported tool scope.
+
+New managed setup preparation uses the explicit `permission_scope` startup member
+and the `aidn-managed-setup` named permission profile. Its filesystem entries are
+reviewed literal roots: the separate project volume root has read access, the
+selected cwd has write access, and additional read roots are explicit. The pinned
+client requires that project-volume read root; it is not a recursive inventory.
+A symbolic root, broad user-profile root, cloud path or inherited extra permission
+is refused. The profile sets network access to false and requests no deny ACE on
+OneDrive. Existing Windows grants are not revoked by this profile. Configuration
+v2 binds the permission scope and remains non-authorizing until physical scope
+and native evidence are established. The Legacy projector rejects named input.
+
+Historical Legacy facts, including the cloud metadata extension, remain fixture
+compatibility models. They do not authorize a new profile traversal or a new
+setup operation. The current qualification must not enumerate USERPROFILE or
+inspect OneDrive metadata; neither startup argument tests nor lexical exclusions
+qualify the resulting Windows sandbox.
+
+### Durable boundary around managed setup
+
+The parent preflight adapter records an intent, prepared process and terminal
+observation through an awaited evidence sink. It uses a separate bounded Job and
+retains that Job's identity, output digest and termination state on error.
+`preflight_recovery` is distinct from termination of the principal setup Job. An
+unconfirmed auxiliary process or uncertain evidence publication requires
+reconciliation even when setup itself was never started.
+
+The host operation journal uses one explicitly verified anchor and an append-only
+sequence with exclusive creation and file fsync. An operation intent precedes
+process creation; a matching existing intent never authorizes another launch.
+Prepared and terminal records are bound to the instance owning that intent.
+Corruption, an interrupted publication or loss of ownership blocks subsequent
+operations. Only explicit reconciliation with independent process/effect evidence
+can release unresolved state. Reconciliation must cover every auxiliary Job in
+the operation's durable evidence, not just the principal setup Job.
+
+This journal governs local operator setup only; PostgreSQL remains the exclusive
+authority for supervised runs. It has no expiry-based retry or automatic purge.
+The anchor verifier, immutable evidence sink, operator authorization and complete
+effect observation remain explicit production responsibilities. Portable journal
+and preflight fixtures do not qualify Windows setup, a protected host anchor or
+a native worker.
+
+The distinct named-scope facts/projector bind `permission_scope_sha256` and
+explicit roots. Request v2 of the physical producer is supplied through `-RequestBase64` only;
+`-RequestPath` is refused before opening a file. It does not enumerate
+USERPROFILE, inspect cloud metadata or accept reparse points. The only recursive
+expansion is the fixed runtime subtree, bounded to 4,096 descendants. Existing
+SSH-configuration absence and empty prior deny-read prerequisites remain.
+The projector returns `NOT_AUTHORIZED`: the historical operation policy and
+manifest reject volume-root entries and are not widened implicitly. A native
+operation needs a compatible reviewed effects model before it can proceed.
