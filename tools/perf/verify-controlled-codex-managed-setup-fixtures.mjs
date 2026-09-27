@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
-import { assertManagedSetupStartup, buildManagedSetupStartupPaths } from "../../src/core/agents/codex-managed-startup.mjs";
+import { assertManagedSetupStartup, buildManagedSetupStartupPaths, buildManagedSetupPermissionSettings } from "../../src/core/agents/codex-managed-startup.mjs";
 import { buildCodexStartupArguments, CODEX_STARTUP_ENVIRONMENT_PROFILES } from "../../src/core/agents/codex-startup-arguments.mjs";
 import { createManagedSetupTransport, buildManagedSetupArguments } from "../../src/adapters/agents/codex-managed-setup-transport.mjs";
 import { assertManagedSetupBridgeRequest, runManagedSetupBridge, verifyManagedSetupContainingJob,
@@ -520,6 +520,71 @@ await check("module import and injected execution do not write spawn real childr
     const input = fixture(), p = ports(input);
     assert.equal((await finish(bridge.runManagedSetupBridge(input.request, p.options))).ok, true);
   } finally { for (const [object, name, original] of saved) object[name] = original; syncBuiltinESMExports(); }
+});
+
+function namedStartup() {
+  return { ...fixture().request.startup, state_root: "G:\\fixture\\state", permission_scope: {
+    contract_version: "codex-managed-setup-permission-scope.v1", profile_id: "aidn-managed-setup", cwd: "G:\\fixture\\workspace",
+    project_volume_root: "G:\\", user_profile: "C:\\Users\\Fixture", read_roots: ["C:\\Windows", "C:\\Tools\\Codex"],
+    write_roots: ["G:\\fixture\\workspace"], excluded_paths: ["C:\\Users\\Fixture\\OneDrive"],
+  } };
+}
+await check("named setup uses a literal project volume and one writable cwd without symbolic roots or deny ACL requests", () => {
+  const startup = namedStartup(), before = structuredClone(startup), settings = buildManagedSetupPermissionSettings(startup), args = buildManagedSetupArguments(startup);
+  assert.deepEqual(settings, { default_permissions: "aidn-managed-setup", permissions: { "aidn-managed-setup": {
+    workspace_roots: { "G:\\fixture\\workspace": true }, filesystem: { "G:\\": "read", "C:\\Windows": "read", "C:\\Tools\\Codex": "read", "G:\\fixture\\workspace": "write" }, network: { enabled: false },
+  } } });
+  assert(args.includes('default_permissions="aidn-managed-setup"'));
+  assert(args.includes('permissions={"aidn-managed-setup"={"workspace_roots"={"G:\\\\fixture\\\\workspace"=true},"filesystem"={"G:\\\\"="read","C:\\\\Windows"="read","C:\\\\Tools\\\\Codex"="read","G:\\\\fixture\\\\workspace"="write"},"network"={"enabled"=false}}}'));
+  assert(!args.some(arg => /^(sandbox_mode|sandbox_workspace_write)(?:\.|=)/u.test(arg)));
+  assert(!args.some(arg => /OneDrive|:root|:minimal|extends|"deny"/u.test(arg)));
+  assert.deepEqual(startup, before); assert.deepEqual(args.slice(-3), ["app-server", "--listen", "stdio://"]);
+  assert.equal(buildManagedSetupPermissionSettings(fixture().request.startup), null);
+});
+for (const [name, edit] of [
+  ["C volume", scope => { scope.project_volume_root = "C:\\"; scope.cwd = "C:\\work"; scope.write_roots = [scope.cwd]; }],
+  ["foreign volume", scope => { scope.project_volume_root = "D:\\"; }],
+  ["profile volume", scope => { scope.user_profile = "G:\\Users\\Fixture"; scope.excluded_paths = [scope.user_profile + "\\OneDrive"]; }],
+  ["symbolic root", scope => { scope.read_roots.push(":root"); }],
+  ["literal C read root", scope => { scope.read_roots.push("C:\\"); }],
+  ["profile umbrella", scope => { scope.read_roots.push(scope.user_profile); }],
+  ["profile ancestor", scope => { scope.read_roots.push("C:\\Users"); }],
+  ["OneDrive directory", scope => { scope.read_roots.push(scope.user_profile + "\\OneDrive"); }],
+  ["OneDrive descendant", scope => { scope.read_roots.push(scope.user_profile + "\\OneDrive\\child"); }],
+  ["Cloud alternate spelling", scope => { scope.read_roots.push("C:\\Other\\onedrive - Organisation\\child"); }],
+  ["scope glob", scope => { scope.read_roots.push("C:\\Tools\\*"); }],
+  ["extra write", scope => { scope.write_roots.push("G:\\other"); }],
+  ["wrong write", scope => { scope.write_roots[0] = "G:\\other"; }],
+  ["inheritance", scope => { scope.extends = ":workspace"; }],
+  ["unknown contract", scope => { scope.contract_version += "x"; }],
+  ["arbitrary profile", scope => { scope.profile_id = "other"; }],
+  ["missing exclusion", scope => { scope.excluded_paths = []; }],
+  ["unprotected Cloud", scope => { scope.excluded_paths = ["C:\\other"]; }],
+  ["excluded project volume child", scope => { scope.excluded_paths.push("G:\\private"); }],
+  ["read alias duplicate", scope => { scope.read_roots.push("c:\\WINDOWS"); }],
+  ["read/write duplicate", scope => { scope.read_roots.push(scope.cwd); }],
+  ["read limit", scope => { scope.read_roots = Array.from({ length: 65 }, (_, n) => "C:\\Tools\\r" + n); }],
+  ["exclusion limit", scope => { scope.excluded_paths.push(...Array.from({ length: 32 }, (_, n) => "C:\\private\\r" + n)); }],
+]) await check("named startup rejects " + name + " before effects", () => {
+  const startup = namedStartup(); edit(startup.permission_scope); assert.throws(() => buildManagedSetupArguments(startup));
+});
+await check("named startup binds its cwd and excludes forbidden context and state roots", () => {
+  const startup = namedStartup(), context = { cwd: startup.permission_scope.cwd, profile_root: "C:\\Users\\Fixture\\.codex", candidate_root: "C:\\Tools\\Codex" };
+  assert.equal(assertManagedSetupStartup(startup, context), true);
+  assert.throws(() => assertManagedSetupStartup(startup, { ...context, cwd: "G:\\different" }), /MANAGED_STARTUP_PERMISSION_CWD_MISMATCH/u);
+  for (const key of ["profile_root", "candidate_root"]) assert.throws(() => assertManagedSetupStartup(startup,
+    { ...context, [key]: "C:\\Users\\Fixture\\OneDrive\\child" }), /MANAGED_STARTUP_PERMISSION_EXCLUDED_PATH/u);
+  assert.throws(() => buildManagedSetupArguments({ ...startup, state_root: "C:\\Users\\Fixture\\OneDrive\\state" }), /MANAGED_STARTUP_PERMISSION_EXCLUDED_PATH/u);
+});
+await check("named transport validates source environment and exact argument sequence without a process", () => {
+  const input = fixture(), fake = fakeProcess(), options = transportOptions(input, fake), startup = namedStartup();
+  options.cwd = startup.permission_scope.cwd; options.startup = startup;
+  options.env = { ...options.env, TEMP: startup.state_root, TMP: startup.state_root, USERPROFILE: startup.permission_scope.user_profile };
+  options.client = { ...options.client, args: buildManagedSetupArguments(startup) };
+  createManagedSetupTransport(options); assert.equal(fake.launches.length, 0);
+  assert.throws(() => createManagedSetupTransport({ ...options, env: { ...options.env, USERPROFILE: "C:\\Users\\other" } }), /SETUP_TRANSPORT_USER_PROFILE_MISMATCH/u);
+  assert.throws(() => createManagedSetupTransport({ ...options, client: { ...options.client, args: ["-c", 'sandbox_mode="workspace-write"', ...options.client.args] } }), /SETUP_TRANSPORT_CLIENT_INVALID/u);
+  assert.equal(fake.launches.length, 0);
 });
 
 const failed = checks.filter(row => row.status === "FAIL");

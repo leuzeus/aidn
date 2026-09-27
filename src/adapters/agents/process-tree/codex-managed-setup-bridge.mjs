@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { assertAgentLocalPath } from "../../../core/agents/agent-local-path-policy.mjs";
 import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { spawn } from "node:child_process";
@@ -17,6 +18,7 @@ export const MANAGED_SETUP_BRIDGE_SOURCE_FILES = Object.freeze([
   "src/core/agents/codex-managed-setup-protocol.mjs",
   "src/core/agents/codex-startup-arguments.mjs",
   "src/core/agents/codex-managed-startup.mjs",
+  "src/core/agents/agent-local-path-policy.mjs",
 ]);
 const PROTOCOL = "aidn-controlled-managed-setup.v2", HASH = /^[a-f0-9]{64}$/u;
 const INPUT_LIMIT = 262144, OUTPUT_LIMIT = 131072;
@@ -96,6 +98,7 @@ export function assertManagedSetupBridgeRequest(envelope) {
 }
 
 async function physical(file, directory = false) {
+  assertAgentLocalPath(file);
   ensure(absolute(file), "SETUP_BRIDGE_PATH_INVALID");
   let cursor = file;
   for (;;) {

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { fingerprintAgentExecutionValue as hash } from "./agent-execution-contracts.mjs";
-import { assertManagedSetupStartup, buildManagedSetupStartupPaths } from "./codex-managed-startup.mjs";
+import { assertManagedSetupStartup, buildManagedSetupStartupPaths, buildManagedSetupPermissionSettings } from "./codex-managed-startup.mjs";
 import { CODEX_STARTUP_ENVIRONMENT_PROFILES } from "./codex-startup-arguments.mjs";
 import { getManagedSandboxOperationPolicy } from "./codex-managed-sandbox-operation-policy.mjs";
 
@@ -78,7 +78,7 @@ function noPermissionSelection(config) {
 function settings(startup) {
   const paths = buildManagedSetupStartupPaths(startup);
   const disabled = ids => Object.fromEntries([...new Set(ids)].sort().map(id => [id, { enabled: false }]));
-  return {
+  const result = {
     sandbox_mode: "workspace-write", windows: { sandbox: "elevated" }, approval_policy: "never",
     features: { windows_sandbox_service: false, plugins: false, apps: false, memories: false },
     sandbox_workspace_write: { writable_roots: [], network_access: false, exclude_tmpdir_env_var: true, exclude_slash_tmp: true },
@@ -89,22 +89,47 @@ function settings(startup) {
       ignore_default_excludes: true, filters: Object.fromEntries(CODEX_STARTUP_ENVIRONMENT_PROFILES.managed.map(name => [name, "include"])) },
     log_dir: paths.log_dir, sqlite_home: paths.sqlite_home,
   };
+  const permissions = buildManagedSetupPermissionSettings(startup);
+  if (permissions) { delete result.sandbox_mode; delete result.sandbox_workspace_write; Object.assign(result, permissions); }
+  return result;
+}
+function checkNamedPermissions(config, expected) {
+  ensure(config.default_permissions === expected.default_permissions && exact(config.permissions, [expected.default_permissions]), "NAMED_PERMISSIONS_MISMATCH");
+  const profile = config.permissions[expected.default_permissions], wanted = expected.permissions[expected.default_permissions];
+  // These optional nulls are serialized by pinned PermissionsToml; raw session
+  // settings remain exact. No inherited profile, glob, proxy or extra access.
+  ensure(object(profile) && Object.keys(profile).every(key => ["description", "extends", "workspace_roots", "filesystem", "network"].includes(key))
+    && profile.description == null && profile.extends == null && object(profile.workspace_roots) && same(profile.workspace_roots, wanted.workspace_roots), "NAMED_PERMISSIONS_MISMATCH");
+  ensure(object(profile.filesystem) && Object.keys(profile.filesystem).every(key => Object.hasOwn(wanted.filesystem, key) || key === "glob_scan_max_depth")
+    && profile.filesystem.glob_scan_max_depth == null && Object.entries(wanted.filesystem).every(([key, value]) => profile.filesystem[key] === value), "NAMED_PERMISSIONS_MISMATCH");
+  const optionalNetwork = ["proxy_url", "enable_socks5", "socks_url", "enable_socks5_udp", "allow_upstream_proxy", "dangerously_allow_non_loopback_proxy",
+    "dangerously_allow_all_unix_sockets", "mode", "domains", "unix_sockets", "allow_local_binding", "mitm"];
+  ensure(object(profile.network) && profile.network.enabled === false && Object.keys(profile.network).every(key => key === "enabled"
+    || optionalNetwork.includes(key) && profile.network[key] === null), "NAMED_PERMISSIONS_MISMATCH");
+  // Session default_permissions wins over inherited legacy syntax at the pinned
+  // config/mod.rs:2564-2576 boundary. Unknown legacy combinations stay refused.
+  ensure(config.sandbox_mode == null || config.sandbox_mode === "workspace-write", "LEGACY_SETTINGS_CONFLICT");
+  if (config.sandbox_workspace_write != null) ensure(same(config.sandbox_workspace_write,
+    { writable_roots: [], network_access: false, exclude_tmpdir_env_var: true, exclude_slash_tmp: true }), "LEGACY_SETTINGS_CONFLICT");
 }
 function checkSettings(config, expected, session) {
-  noPermissionSelection(config);
+  const named = Object.hasOwn(expected, "default_permissions");
+  if (!named) noPermissionSelection(config);
+  else ensure(object(config) && config.profile == null && config.default_profile == null, "PROFILE_SELECTION_UNSUPPORTED");
   if (session) { ensure(same(config, expected), "SESSION_SETTINGS_MISMATCH"); return; }
+  if (named) checkNamedPermissions(config, expected);
   for (const name of ["mcp_servers", "plugins", "apps"]) {
     const rows = config[name];
     ensure(object(rows) && same(Object.keys(rows).sort(), Object.keys(expected[name]).sort())
       && Object.values(rows).every(row => object(row) && row.enabled === false), "INTEGRATION_MISMATCH");
   }
-  for (const name of ["sandbox_mode", "approval_policy", "model_provider", "developer_instructions", "instructions", "log_dir", "sqlite_home", "notify"])
+  for (const name of [...(named ? [] : ["sandbox_mode"]), "approval_policy", "model_provider", "developer_instructions", "instructions", "log_dir", "sqlite_home", "notify"])
     ensure(Object.hasOwn(config, name) && same(config[name], expected[name]), "SETTINGS_MISMATCH");
   ensure(config.windows?.sandbox === "elevated" && config.agents?.enabled === false
     && object(config.features) && Object.entries(expected.features).every(([key, value]) => config.features[key] === value)
     && config.history?.persistence === "none" && config.memories?.generate_memories === false && config.memories?.use_memories === false,
   "SETTINGS_MISMATCH");
-  ensure(exact(config.sandbox_workspace_write, Object.keys(expected.sandbox_workspace_write))
+  if (!named) ensure(exact(config.sandbox_workspace_write, Object.keys(expected.sandbox_workspace_write))
     && same(config.sandbox_workspace_write, expected.sandbox_workspace_write), "SANDBOX_SETTINGS_MISMATCH");
   ensure(config.model_providers == null || object(config.model_providers), "PROVIDER_OVERRIDE_UNSUPPORTED");
   ensure(config.model_providers?.openai == null && config.openai_base_url == null && config.auth_command == null, "PROVIDER_OVERRIDE_UNSUPPORTED");
@@ -147,8 +172,8 @@ export function assessManagedSetupConfiguration(input) {
     ensure((exact(layer, ["name", "version", "config"]) || exact(layer, ["name", "version", "config", "disabledReason"]))
       && text(layer.version), "LAYER_INVALID");
     ensure(!Object.hasOwn(layer, "disabledReason") || layer.disabledReason === null, "LAYER_DISABLED");
-    noPermissionSelection(layer.config);
     const file = sourcePath(layer.name), identity = file === null ? "sessionFlags" : pathKey(file);
+    if (file !== null || !startup.permission_scope) noPermissionSelection(layer.config);
     ensure(!identities.has(identity), "LAYER_DUPLICATE"); identities.add(identity);
     if (file === null) { session = layer; checkSettings(layer.config, expected, true); }
     else { ensure(sources.has(identity), "SOURCE_UNOBSERVED");
@@ -172,8 +197,10 @@ export function assessManagedSetupConfiguration(input) {
       ensure(same(origin.name, session.name) && origin.version === session.version, "CONTROL_ORIGIN_MISMATCH");
   }
   checkSettings(response.config, expected, false);
-  return Object.freeze({ contract_version: "codex-managed-configuration-assessment.v1", status: "SOURCE_CONFIGURATION_VERIFIED",
-    permission_scope: "PERMISSION_SCOPE_UNRESOLVED", authority: "STRUCTURAL_NOT_AUTHENTICATED", native: false, execution_available: false,
+  return Object.freeze({ contract_version: startup.permission_scope ? "codex-managed-configuration-assessment.v2" : "codex-managed-configuration-assessment.v1", status: "SOURCE_CONFIGURATION_VERIFIED",
+    permission_scope: startup.permission_scope ? "NAMED_PERMISSION_SCOPE_UNRESOLVED" : "PERMISSION_SCOPE_UNRESOLVED",
+    ...(startup.permission_scope ? { permission_scope_sha256: hash(startup.permission_scope), read_exclusion_authority: "AIDN_POLICY_NOT_OS_READ_DENIAL" } : {}),
+    authority: "STRUCTURAL_NOT_AUTHENTICATED", native: false, execution_available: false,
     authorization: "NOT_AUTHORIZED", qualification: "NOT_RUN", client_sha256,
     context_sha256: hash({ cwd, profile_root, candidate_root }), startup_sha256: hash(startup),
     metadata_sha256: hash(metadata), configuration_sha256: hash(response.config), session_flags_sha256: hash(session.config),

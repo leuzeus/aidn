@@ -81,8 +81,11 @@ function Read-ScopeRequest {
     if ($bytes.Length -gt 65536) { Stop-Scope 'SCOPE_REQUEST_LIMIT' }
     try { $request=ConvertFrom-Json -InputObject ($script:Utf8.GetString($bytes)) -AsHashtable -Depth 16 }
     catch { Stop-Scope 'SCOPE_REQUEST_INVALID' }
-    Exact-ScopeKeys $request @('contract_version','observer_context_sha256','roots','max_duration_ms','request_sha256')
-    if ($request.contract_version -cne 'aidn-managed-setup-scope-facts-request.v1' -or
+    $named=$request.contract_version -ceq 'aidn-managed-setup-scope-facts-request.v2'
+    $fields=@('contract_version','observer_context_sha256','roots','max_duration_ms','request_sha256')
+    if($named) { $fields+=@('permission_scope','permission_scope_sha256') }
+    Exact-ScopeKeys $request $fields
+    if ((!$named -and $request.contract_version -cne 'aidn-managed-setup-scope-facts-request.v1') -or
         $request.observer_context_sha256 -isnot [string] -or $request.observer_context_sha256 -cnotmatch '^[a-f0-9]{64}$' -or
         $request.request_sha256 -isnot [string] -or $request.request_sha256 -cnotmatch '^[a-f0-9]{64}$') { Stop-Scope 'SCOPE_REQUEST_INVALID' }
     if (($request.max_duration_ms -isnot [long] -and $request.max_duration_ms -isnot [int]) -or
@@ -100,7 +103,58 @@ function Read-ScopeRequest {
     $unsigned=[ordered]@{}
     foreach($name in $request.Keys) { if($name -cne 'request_sha256') { $unsigned[$name]=$request[$name] } }
     if ((Scope-Hash $unsigned) -cne $request.request_sha256) { Stop-Scope 'SCOPE_REQUEST_HASH_MISMATCH' }
+    if($named) { Assert-NamedScopeRequest $request }
     return $request
+}
+
+# v2 narrows the existing observation: no USERPROFILE or Cloud listing. The
+# SSH absence, empty prior state and three runtime paths are historical inputs.
+function Named-ScopeInside([string]$Root,[string]$Child) {
+    return $Child.Equals($Root,[StringComparison]::OrdinalIgnoreCase) -or $Child.StartsWith($Root.TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase)
+}
+function Test-NamedScopePath([string]$Path,$Request) {
+    $scope=$Request.permission_scope
+    if($Path -cne $scope.project_volume_root) { $null=Scope-Path $Path }
+    foreach($part in $Path.Split('\')) {
+        if($part.Contains('~') -or $part -match '^(?i:onedrive(?: - .+)?)$') { Stop-Scope 'SCOPE_EXCLUDED_PATH' }
+    }
+    foreach($excluded in $scope.excluded_paths) {
+        if((Named-ScopeInside $excluded $Path) -or (Named-ScopeInside $Path $excluded)) { Stop-Scope 'SCOPE_EXCLUDED_PATH' }
+    }
+}
+function Assert-NamedScopeRequest($Request) {
+    $scope=$Request.permission_scope; $roots=$Request.roots
+    Exact-ScopeKeys $scope @('contract_version','profile_id','cwd','project_volume_root','user_profile','read_roots','write_roots','excluded_paths')
+    if($scope.contract_version -cne 'codex-managed-setup-permission-scope.v1' -or $scope.profile_id -cne 'aidn-managed-setup' -or
+        $scope.cwd -cne $roots.cwd -or $scope.user_profile -cne $roots.user_profile -or
+        $Request.permission_scope_sha256 -isnot [string] -or $Request.permission_scope_sha256 -cnotmatch '^[a-f0-9]{64}$' -or
+        (Scope-Hash $scope) -cne $Request.permission_scope_sha256) { Stop-Scope 'SCOPE_PERMISSION_INVALID' }
+    if($scope.project_volume_root -isnot [string] -or $scope.project_volume_root -cnotmatch '^[A-Z]:\\$' -or
+        $scope.project_volume_root -cne [IO.Path]::GetPathRoot($roots.cwd).ToUpperInvariant() -or
+        $scope.project_volume_root -ceq 'C:\' -or $scope.project_volume_root -ceq [IO.Path]::GetPathRoot($roots.user_profile).ToUpperInvariant()) { Stop-Scope 'SCOPE_PERMISSION_VOLUME_INVALID' }
+    if($scope.read_roots -isnot [Array] -or $scope.read_roots.Count -gt 64 -or $scope.write_roots -isnot [Array] -or
+        $scope.write_roots.Count -ne 1 -or $scope.write_roots[0] -cne $roots.cwd -or $scope.excluded_paths -isnot [Array] -or
+        $scope.excluded_paths.Count -lt 1 -or $scope.excluded_paths.Count -gt 32) { Stop-Scope 'SCOPE_PERMISSION_INVALID' }
+    foreach($values in @($scope.read_roots,$scope.write_roots,$scope.excluded_paths)) {
+        $unique=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach($value in $values) {
+            if($value -isnot [string]) { Stop-Scope 'SCOPE_PATH_INVALID' }
+            $null=Scope-Path $value
+            if(!$unique.Add($value)) { Stop-Scope 'SCOPE_PERMISSION_INVALID' }
+        }
+    }
+    if($scope.excluded_paths -inotcontains [IO.Path]::Combine($roots.user_profile,'OneDrive') -or $scope.read_roots -icontains $roots.cwd) { Stop-Scope 'SCOPE_PERMISSION_INVALID' }
+    foreach($excluded in $scope.excluded_paths) { if(Named-ScopeInside $scope.project_volume_root $excluded) { Stop-Scope 'SCOPE_EXCLUDED_PATH' } }
+    $selected=@($roots.cwd,$roots.profile_root,$roots.candidate_root)+@($roots.startup_directories)+@($scope.read_roots)
+    foreach($value in $selected) {
+        Test-NamedScopePath $value $Request
+        if(Named-ScopeInside $value $roots.user_profile) { Stop-Scope 'SCOPE_EXCLUDED_PATH' }
+    }
+    # Validate every derived fixed path before the first physical read.
+    foreach($value in @([IO.Path]::Combine($roots.user_profile,'.ssh','config'),
+        [IO.Path]::Combine($roots.profile_root,'.sandbox','deny_read_acl_state.json'),[IO.Path]::Combine($roots.profile_root,'.sandbox-bin'),
+        [IO.Path]::Combine($roots.local_app_data,'OpenAI','Codex'),[IO.Path]::Combine($roots.user_profile,'.cache','codex-runtimes'),
+        [IO.Path]::Combine($roots.local_app_data,'OpenAI','Codex','runtimes'))) { Test-NamedScopePath $value $Request }
 }
 
 # Primary APIs: FILE_ID_INFO (64-bit volume + original 16 ID bytes),
@@ -323,6 +377,11 @@ function Read-PhysicalScopeFact([string]$Path,[bool]$AllowProfileReparse=$false,
 function Read-PhysicalScopeListing([string]$Path,[int]$Maximum) {
     Check-ScopeTime; return ,([AidnScopeNative]::List($Path,$Maximum))
 }
+function Read-NamedPhysicalScopeFact([string]$Path,$Request,[bool]$ReadPrior=$false) {
+    Check-ScopeTime; Test-NamedScopePath $Path $Request
+    if($ReadPrior -and $Path -cne [IO.Path]::Combine($Request.roots.profile_root,'.sandbox','deny_read_acl_state.json')) { Stop-Scope 'SCOPE_PRIOR_PATH_INVALID' }
+    return [AidnScopeNative]::Read($Path,$false,$ReadPrior)
+}
 function Convert-PhysicalScopeFact($Native) {
     $present=$Native.State -ceq 'present'
     return [ordered]@{path=$Native.Path;state=$Native.State;object_type=$Native.ObjectType;physical_path=$Native.PhysicalPath;
@@ -453,6 +512,95 @@ function Observe-PhysicalScope($Roots) {
     $cloudRows=@($cloudDirectories | Sort-Object -Property path -CaseSensitive)
     return [ordered]@{paths=$pathRows;listings=$listingRows;prior_deny_read_content=$priorContent;profile_junctions=$junctionRows;profile_cloud_directories=$cloudRows}
 }
+function Observe-NamedPhysicalScope($Request) {
+    Assert-NamedScopeRequest $Request
+    $roots=$Request.roots; $scope=$Request.permission_scope
+    $paths=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
+    $listings=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
+    function Get-Fact([string]$Path,[bool]$Prior=$false) {
+        $row=Read-NamedPhysicalScopeFact $Path $Request $Prior
+        $fact=Convert-PhysicalScopeFact $row
+        if($paths.ContainsKey($fact.path)) {
+            if((Scope-Hash $paths[$fact.path]) -cne (Scope-Hash $fact)) { Stop-Scope 'SCOPE_PATH_CHANGED' }
+        } else {
+            if($paths.Count -ge 4609) { Stop-Scope 'SCOPE_FACT_LIMIT' }
+            $paths.Add($fact.path,$fact)
+        }
+        return $row
+    }
+    function Need-Directory([string]$Path) {
+        $row=Get-Fact $Path
+        if($row.State -cne 'present' -or $row.ObjectType -cne 'directory') { Stop-Scope 'SCOPE_DIRECTORY_REQUIRED' }
+    }
+    $script:ScopeRole='required_root'
+    foreach($path in @($roots.cwd,$roots.profile_root,$roots.candidate_root,$scope.project_volume_root)+@($roots.startup_directories)) { Need-Directory $path }
+    foreach($path in $scope.read_roots) { if((Get-Fact $path).State -cne 'present') { Stop-Scope 'SCOPE_READ_ROOT_ABSENT' } }
+    $script:ScopeRole='cwd_metadata'
+    foreach($name in @('.git','.agents','.codex')) {
+        if((Get-Fact ([IO.Path]::Combine($roots.cwd,$name))).State -cne 'absent') { Stop-Scope 'SCOPE_CWD_METADATA_PRESENT' }
+    }
+    $script:ScopeRole='ssh_config'
+    if((Get-Fact ([IO.Path]::Combine($roots.user_profile,'.ssh','config'))).State -cne 'absent') { Stop-Scope 'SCOPE_SSH_CONFIG_PRESENT' }
+    $script:ScopeRole='prior_deny_read'
+    $prior=Get-Fact ([IO.Path]::Combine($roots.profile_root,'.sandbox','deny_read_acl_state.json')) $true
+    $priorContent=$null
+    if($prior.State -ceq 'present') {
+        if($prior.Content -isnot [string] -or $prior.Content -cnotmatch '^\s*\{\s*"principals"\s*:\s*\{\s*\}\s*\}\s*$') { Stop-Scope 'SCOPE_PRIOR_STATE_UNSUPPORTED' }
+        $priorContent=$prior.Content
+    }
+    $script:ScopeRole='sandbox_bin'; Need-Directory ([IO.Path]::Combine($roots.profile_root,'.sandbox-bin'))
+    $script:ScopeRole='runtime_root'
+    foreach($path in @([IO.Path]::Combine($roots.local_app_data,'OpenAI','Codex'),[IO.Path]::Combine($roots.user_profile,'.cache','codex-runtimes'))) {
+        $row=Get-Fact $path
+        if($row.State -ceq 'present' -and $row.ObjectType -cne 'directory') { Stop-Scope 'SCOPE_RUNTIME_ROOT_INVALID' }
+    }
+    $runtime=[IO.Path]::Combine($roots.local_app_data,'OpenAI','Codex','runtimes'); $root=Get-Fact $runtime
+    $visited=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    if($root.State -ceq 'present') {
+        if($root.ObjectType -cne 'directory') { Stop-Scope 'SCOPE_RUNTIME_ROOT_INVALID' }
+        $pending=[Collections.Generic.Stack[object]]::new(); $pending.Push(@{path=$runtime;depth=0})
+        $discovered=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase); $null=$discovered.Add($runtime)
+        while($pending.Count) {
+            Check-ScopeTime; $item=$pending.Pop()
+            if($item.depth -gt 32 -or !$visited.Add($item.path) -or $visited.Count -gt 4097) { Stop-Scope 'SCOPE_RUNTIME_LIMIT' }
+            $script:ScopeRole='runtime_entry'; $row=Get-Fact $item.path
+            if($row.State -cne 'present') { Stop-Scope 'SCOPE_LISTING_CHANGED' }
+            if($row.ObjectType -ceq 'directory') {
+                $script:ScopeRole='runtime_listing'; Test-NamedScopePath $item.path $Request
+                $entries=Read-PhysicalScopeListing $item.path 4096
+                if($listings.Count -ge 4097 -or $listings.ContainsKey($item.path)) { Stop-Scope 'SCOPE_LISTING_LIMIT' }
+                $listings.Add($item.path,[ordered]@{path=$item.path;complete=$true;entries=@($entries)})
+                foreach($child in $entries) {
+                    Test-NamedScopePath $child $Request
+                    if(![IO.Path]::GetDirectoryName($child).Equals($item.path,[StringComparison]::OrdinalIgnoreCase)) { Stop-Scope 'SCOPE_LISTING_INVALID' }
+                    if(!$discovered.Add($child) -or $discovered.Count -gt 4097) { Stop-Scope 'SCOPE_RUNTIME_LIMIT' }
+                    $pending.Push(@{path=$child;depth=$item.depth+1})
+                }
+            }
+        }
+    }
+    if($paths.Count-$visited.Count -gt 512) { Stop-Scope 'SCOPE_NONRUNTIME_LIMIT' }
+    return [ordered]@{paths=@($paths.Values | Sort-Object -Property path -CaseSensitive);
+        listings=@($listings.Values | Sort-Object -Property path -CaseSensitive);prior_deny_read_content=$priorContent}
+}
+# Historical functions remain testable, but the executable observer accepts
+# only the named profile. A v1 request can never trigger profile enumeration.
+function Assert-ScopeObservationRequest($Request) {
+    if($Request.contract_version -cne 'aidn-managed-setup-scope-facts-request.v2') { Stop-Scope 'SCOPE_NAMED_PERMISSION_REQUIRED' }
+    Assert-NamedScopeRequest $Request
+}
+function Observe-ScopeRequest($Request) {
+    Assert-ScopeObservationRequest $Request
+    return Observe-NamedPhysicalScope $Request
+}
+function Read-ExecutableScopeRequest {
+    # File input is historical parser coverage only. Requiring inline bytes
+    # avoids observing a caller-selected request file or one of its aliases.
+    if($script:ScopeRequestParameterSetName -cne 'Base64') { Stop-Scope 'SCOPE_REQUEST_BASE64_REQUIRED' }
+    $request=Read-ScopeRequest
+    Assert-ScopeObservationRequest $request
+    return $request
+}
 function Convert-ScopeReport($Report) {
     $Report.duration_ms=$script:Clock.ElapsedMilliseconds
     $json=ConvertTo-Json -InputObject $Report -Depth 20 -Compress
@@ -474,16 +622,18 @@ $report=[ordered]@{contract_version='aidn-managed-setup-scope-facts-observation.
 try {
     if([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT -or $PSVersionTable.PSEdition -cne 'Core' -or $PSVersionTable.PSVersion.Major -lt 7) { Stop-Scope 'SCOPE_WINDOWS_POWERSHELL_7_REQUIRED' }
     Add-Type -TypeDefinition $script:ScopeNativeSource -ErrorAction Stop
-    Check-ScopeTime; $request=Read-ScopeRequest; $report.request_sha256=$request.request_sha256
+    Check-ScopeTime; $request=Read-ExecutableScopeRequest; $report.request_sha256=$request.request_sha256
     $script:BudgetMs=$request.max_duration_ms; Check-ScopeTime
     Check-ScopeTime; [AidnScopeNative]::Start($script:BudgetMs-$script:Clock.ElapsedMilliseconds)
-    $script:ScopePass=1; [AidnScopeNative]::BeginPass(); $first=Observe-PhysicalScope $request.roots; $firstWitness=[AidnScopeNative]::WitnessHash()
-    $script:ScopePass=2; [AidnScopeNative]::BeginPass(); $second=Observe-PhysicalScope $request.roots; $secondWitness=[AidnScopeNative]::WitnessHash()
+    $script:ScopePass=1; [AidnScopeNative]::BeginPass()
+    $first=Observe-ScopeRequest $request; $firstWitness=[AidnScopeNative]::WitnessHash()
+    $script:ScopePass=2; [AidnScopeNative]::BeginPass()
+    $second=Observe-ScopeRequest $request; $secondWitness=[AidnScopeNative]::WitnessHash()
     Check-ScopeTime
     if($firstWitness -cne $secondWitness -or (Scope-Hash $first) -cne (Scope-Hash $second)) { Stop-Scope 'SCOPE_TWO_PASS_MISMATCH' }
-    $facts=[ordered]@{contract_version='aidn-managed-setup-legacy-facts.v3';observed_at=[DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ',[Globalization.CultureInfo]::InvariantCulture);
+    $facts=[ordered]@{contract_version='aidn-managed-setup-named-facts.v1';observed_at=[DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ',[Globalization.CultureInfo]::InvariantCulture);
         observer_context_sha256=$request.observer_context_sha256;paths=$second.paths;listings=$second.listings;
-        prior_deny_read_content=$second.prior_deny_read_content;profile_junctions=$second.profile_junctions;profile_cloud_directories=$second.profile_cloud_directories}
+        prior_deny_read_content=$second.prior_deny_read_content;permission_scope_sha256=$request.permission_scope_sha256}
     $report.facts=$facts; $report.facts_sha256=Scope-Hash $facts; Check-ScopeTime; $report.status='OBSERVED'
 } catch {
     $cause=$_.Exception.GetBaseException(); $code='SCOPE_OBSERVATION_FAILED'; $native=$null

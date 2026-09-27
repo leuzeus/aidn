@@ -33,8 +33,17 @@ check("Cloud metadata adds no read API or permissive reparse call site", () => {
   assert.equal([...source.matchAll(/Read-PhysicalScopeFact \$path \$true/gu)].length, 1);
   assert.match(source, /if\(reparse && !allowProfileReparse\) ReparseFail/u);
   assert.match(source, /Remember\(path,before\+\(fact\.ContentHash\?\?""\)\+\(fact\.Target\?\?""\)\+":"\+fact\.ReparseTag\)/u);
-  assert(source.includes("contract_version='aidn-managed-setup-legacy-facts.v3'"));
+  assert(source.includes("function Observe-PhysicalScope($Roots)"));
   assert(source.includes("$cloudDirectories.Count -ge 32"));
+});
+check("named branch contains no profile enumeration or reparse admission", () => {
+  const body = source.slice(source.indexOf("function Observe-NamedPhysicalScope"), source.indexOf("function Convert-ScopeReport"));
+  assert(!body.includes("Keep-Listing $roots.user_profile")); assert(!body.includes("profile_junctions")); assert(!body.includes("profile_cloud_directories"));
+  assert.match(source, /return \[AidnScopeNative\]::Read\(\$Path,\$false,\$ReadPrior\)/u);
+  assert.match(source, /aidn-managed-setup-named-facts\.v1/u);
+  const entry = source.slice(source.indexOf("$processInfo="));
+  assert(!entry.includes("Observe-PhysicalScope"));
+  assert(entry.indexOf("Read-ExecutableScopeRequest") < entry.indexOf("[AidnScopeNative]::Start("));
 });
 const pwsh = process.env.ProgramFiles && path.join(process.env.ProgramFiles, "PowerShell/7/pwsh.exe");
 if (process.platform !== "win32" || !pwsh || !fs.existsSync(pwsh)) {
@@ -396,6 +405,140 @@ Check 'output byte ceiling refuses large Unicode facts and discards the content'
     $json=Convert-ScopeReport $r
     Equal $r.status 'REFUSED'; Equal $r.facts $null; Equal $r.errors[0].code 'SCOPE_OUTPUT_LIMIT'
     if($script:Utf8.GetByteCount($json) -gt 4096) { throw 'REFUSAL_RETAINED_OVERSIZE_CONTENT' }
+}
+function NamedRequest {
+    $roots=Roots; $roots.cwd='G:\work'; $roots.startup_directories=@('G:\state')
+    $scope=[ordered]@{contract_version='codex-managed-setup-permission-scope.v1';profile_id='aidn-managed-setup';cwd=$roots.cwd;
+        project_volume_root='G:\';user_profile=$roots.user_profile;read_roots=@('C:\Windows');write_roots=@($roots.cwd);excluded_paths=@('C:\user\OneDrive')}
+    $r=[ordered]@{contract_version='aidn-managed-setup-scope-facts-request.v2';observer_context_sha256=('a'*64);roots=$roots;
+        max_duration_ms=45000;permission_scope=$scope;permission_scope_sha256=(Scope-Hash $scope)}
+    $r.request_sha256=Scope-Hash $r; return $r
+}
+function ResetNamedGraph {
+    ResetGraph
+    foreach($p in @('G:\','G:\work','G:\state')) { $script:graph[$p]=NativeRow $p }
+    $script:namedListings=[Collections.Generic.List[string]]::new(); $script:priorReads=[Collections.Generic.List[string]]::new()
+}
+function Read-NamedPhysicalScopeFact([string]$p,$request,[bool]$prior=$false) {
+    Test-NamedScopePath $p $request
+    if($prior) { $script:priorReads.Add($p) }
+    return Read-PhysicalScopeFact $p $false $prior
+}
+function Read-PhysicalScopeListing([string]$p,[int]$maximum) {
+    Throw-MockReparse $p; $script:namedListings.Add($p)
+    if(!$script:listing.ContainsKey($p)) { throw 'MOCK_LISTING_MISSING' }
+    if($script:listing[$p].Count -gt $maximum) { Stop-Scope 'SCOPE_LISTING_LIMIT' }
+    return ,$script:listing[$p]
+}
+function RehashNamed($r) {
+    $r.permission_scope_sha256=Scope-Hash $r.permission_scope
+    $unsigned=[ordered]@{}; foreach($key in $r.Keys) { if($key -cne 'request_sha256') { $unsigned[$key]=$r[$key] } }
+    $r.request_sha256=Scope-Hash $unsigned; return $r
+}
+Check 'named request v2 hash and closed permission selection are valid' {
+    $r=NamedRequest; Equal (Read-RequestFixture $r).permission_scope_sha256 (Scope-Hash $r.permission_scope)
+    $r.permission_scope_sha256='b'*64
+    $unsigned=[ordered]@{}; foreach($key in $r.Keys) { if($key -cne 'request_sha256') { $unsigned[$key]=$r[$key] } }; $r.request_sha256=Scope-Hash $unsigned
+    Reject { Read-RequestFixture $r } 'SCOPE_PERMISSION_INVALID'
+}
+Check 'executable observation refuses historical request before any provider' {
+    ResetNamedGraph; $r=Read-RequestFixture (Request)
+    Reject { Observe-ScopeRequest $r } 'SCOPE_NAMED_PERMISSION_REQUIRED'
+    Equal $script:reads.Count 0; Equal $script:namedListings.Count 0; Equal $script:priorReads.Count 0
+}
+Check 'executable file-input refusal occurs before the request reader' {
+    $saved=(Get-Item -LiteralPath Function:Read-ScopeRequest).ScriptBlock
+    try {
+        function Read-ScopeRequest { throw 'UNEXPECTED_REQUEST_READER_CALL' }
+        $script:ScopeRequestParameterSetName='Path'; $script:RequestPath='C:\user\OneDrive\request.json'
+        Reject { Read-ExecutableScopeRequest } 'SCOPE_REQUEST_BASE64_REQUIRED'
+    } finally {
+        Set-Item -LiteralPath Function:Read-ScopeRequest -Value $saved
+        $script:ScopeRequestParameterSetName='Base64'
+    }
+}
+Check 'executable inline v1 refusal occurs before any observation' {
+    ResetNamedGraph; $r=Request
+    $script:RequestBase64=[Convert]::ToBase64String($script:Utf8.GetBytes((ConvertTo-Json -InputObject $r -Depth 10 -Compress)))
+    Reject { Read-ExecutableScopeRequest } 'SCOPE_NAMED_PERMISSION_REQUIRED'
+    Equal $script:reads.Count 0; Equal $script:namedListings.Count 0
+    $r=NamedRequest; $script:RequestBase64=[Convert]::ToBase64String($script:Utf8.GetBytes((ConvertTo-Json -InputObject $r -Depth 10 -Compress)))
+    Equal (Read-ExecutableScopeRequest).request_sha256 $r.request_sha256
+}
+Check 'named observation lists only runtime and does not stat profile or Cloud' {
+    ResetNamedGraph; $request=NamedRequest; $r=Observe-NamedPhysicalScope $request
+    Equal $r.Count 3; Equal $r.listings.Count 1; Equal $script:namedListings.Count 1
+    Equal $script:namedListings[0] 'C:\user\AppData\Local\OpenAI\Codex\runtimes'
+    foreach($p in @('C:\user','C:\user\OneDrive','C:\Program Files','C:\ProgramData')) {
+        if($script:reads.Contains($p)) { throw 'NAMED_UNSELECTED_PATH_OBSERVED' }
+    }
+    Equal $script:priorReads.Count 1; Equal $script:priorReads[0] 'C:\profile\.sandbox\deny_read_acl_state.json'
+    Equal @($r.paths | Where-Object path -CEQ 'C:\user\.ssh\config').Count 1
+    Equal @($r.paths | Where-Object path -CEQ 'G:\').Count 1
+}
+Check 'named selection refuses Cloud and alias before first provider call' {
+    foreach($p in @('C:\user\OneDrive','C:\user\OneDrive - Org\x','C:\user\ONEDRI~1','C:\TOOLS~1')) {
+        ResetNamedGraph; $r=NamedRequest; $r.permission_scope.read_roots=@($p); $null=RehashNamed $r
+        Reject { Observe-NamedPhysicalScope $r } 'SCOPE_EXCLUDED_PATH'; Equal $script:reads.Count 0
+    }
+}
+Check 'named volume and profile umbrella cannot silently select Legacy full scope' {
+    foreach($p in @('C:\user','c:\USER')) {
+        ResetNamedGraph; $r=NamedRequest; $r.permission_scope.read_roots=@($p); $null=RehashNamed $r
+        Reject { Observe-NamedPhysicalScope $r } 'SCOPE_EXCLUDED_PATH'; Equal $script:reads.Count 0
+    }
+    $r=NamedRequest; $r.permission_scope.project_volume_root='C:\'; $null=RehashNamed $r
+    Reject { Read-RequestFixture $r } 'SCOPE_PERMISSION_VOLUME_INVALID'
+}
+Check 'named selected read root must exist' {
+    ResetNamedGraph; $r=NamedRequest; $r.permission_scope.read_roots=@('C:\missing'); $null=RehashNamed $r
+    Reject { Observe-NamedPhysicalScope $r } 'SCOPE_READ_ROOT_ABSENT'
+}
+Check 'named selection preserves closed cardinality and duplicates' {
+    foreach($mode in @('too_many','duplicate','wrong_write','no_exclusion','extra_field')) {
+        ResetNamedGraph; $r=NamedRequest
+        switch($mode) {
+            'too_many' { $r.permission_scope.read_roots=@(0..64 | ForEach-Object { 'C:\selected'+$_ }) }
+            'duplicate' { $r.permission_scope.read_roots=@('C:\Windows','c:\windows') }
+            'wrong_write' { $r.permission_scope.write_roots=@('G:\other') }
+            'no_exclusion' { $r.permission_scope.excluded_paths=@('C:\other') }
+            'extra_field' { $r.permission_scope.allow_profile=$true }
+        }
+        $null=RehashNamed $r
+        $expected=if($mode -ceq 'extra_field') { 'SCOPE_REQUEST_INVALID' } else { 'SCOPE_PERMISSION_INVALID' }
+        Reject { Observe-NamedPhysicalScope $r } $expected; Equal $script:reads.Count 0
+    }
+}
+Check 'named derived runtime exclusion is checked before any provider' {
+    ResetNamedGraph; $r=NamedRequest; $r.roots.local_app_data='C:\user\OneDrive\Local'; $null=RehashNamed $r
+    Reject { Observe-NamedPhysicalScope $r } 'SCOPE_EXCLUDED_PATH'; Equal $script:reads.Count 0
+}
+Check 'named SSH observation remains absence only and rejects presence' {
+    ResetNamedGraph; $script:graph['C:\user\.ssh\config']=NativeRow 'C:\user\.ssh\config' 'file'
+    Reject { Observe-NamedPhysicalScope (NamedRequest) } 'SCOPE_SSH_CONFIG_PRESENT'; Equal $script:priorReads.Count 0
+}
+Check 'named prior state remains empty only' {
+    ResetNamedGraph; $p='C:\profile\.sandbox\deny_read_acl_state.json'; $script:graph[$p]=NativeRow $p 'file'; $script:graph[$p].Content='{"principals":{"private":[]}}'
+    Reject { Observe-NamedPhysicalScope (NamedRequest) } 'SCOPE_PRIOR_STATE_UNSUPPORTED'
+}
+Check 'named runtime child Cloud is refused before its metadata read' {
+    ResetNamedGraph; $parent='C:\user\AppData\Local\OpenAI\Codex\runtimes'; $p=$parent+'\OneDrive'
+    $script:listing[$parent]=@($p); $script:graph[$p]=NativeRow $p
+    Reject { Observe-NamedPhysicalScope (NamedRequest) } 'SCOPE_EXCLUDED_PATH'
+    if($script:reads.Contains($p)) { throw 'EXCLUDED_CHILD_OBSERVED' }
+}
+Check 'named runtime still refuses every reparse' {
+    ResetNamedGraph; $p='C:\user\AppData\Local\OpenAI\Codex\runtimes'; $script:graph[$p].Reparse=$true
+    Reject { Observe-NamedPhysicalScope (NamedRequest) } 'SCOPE_REPARSE_UNSUPPORTED'
+}
+Check 'named 4096 descendants remain bounded with two equivalent passes' {
+    ResetNamedGraph; $parent='C:\user\AppData\Local\OpenAI\Codex\runtimes'; $children=[Collections.Generic.List[string]]::new()
+    for($n=0;$n -lt 4096;$n++) { $p=$parent+'\f'+$n; $children.Add($p); $script:graph[$p]=NativeRow $p 'file' }
+    $script:listing[$parent]=$children.ToArray(); $clock=[Diagnostics.Stopwatch]::StartNew()
+    $a=Observe-NamedPhysicalScope (NamedRequest); $b=Observe-NamedPhysicalScope (NamedRequest)
+    Equal (Scope-Hash $a) (Scope-Hash $b); Equal @($a.paths | Where-Object path -Like ($parent+'\*')).Count 4096
+    $script:measurements.named_4096_two_pass_ms=$clock.ElapsedMilliseconds
+    if($clock.ElapsedMilliseconds -ge 40000) { throw 'NAMED_TWO_PASS_COST_LIMIT' }
 }
 [Console]::Out.WriteLine((ConvertTo-Json -InputObject @{checks=@($script:checks);measurements=$script:measurements} -Depth 8 -Compress))
 `;

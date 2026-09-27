@@ -1,6 +1,6 @@
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { assertManagedSetupStartup, buildManagedSetupStartupPaths } from "../../core/agents/codex-managed-startup.mjs";
+import { assertManagedSetupStartup, buildManagedSetupStartupPaths, buildManagedSetupPermissionSettings } from "../../core/agents/codex-managed-startup.mjs";
 import { buildCodexStartupArguments, CODEX_STARTUP_ENVIRONMENT_PROFILES } from "../../core/agents/codex-startup-arguments.mjs";
 
 const ENV = new Set(CODEX_STARTUP_ENVIRONMENT_PROFILES.managed);
@@ -16,7 +16,14 @@ export function buildManagedSetupArguments(startup) {
   const common = buildCodexStartupArguments({ mcp_server_ids: startup.mcp_server_ids, plugin_ids: startup.plugin_ids, app_ids: startup.app_ids,
     environment_override_names: startup.environment_override_names, environment_names: CODEX_STARTUP_ENVIRONMENT_PROFILES.managed,
     log_dir: paths.log_dir, sqlite_home: paths.sqlite_home });
-  return [...ARGUMENTS.slice(0, -3), "-c", "agents.enabled=false", ...common, ...ARGUMENTS.slice(-3)];
+  const permissions = buildManagedSetupPermissionSettings(startup);
+  // Quoted inline-table keys preserve literal Windows paths, including dots.
+  // No legacy sandbox flags compete with the named session profile.
+  const toml = value => value && typeof value === "object" ? `{${Object.entries(value).map(([key, row]) => `${JSON.stringify(key)}=${toml(row)}`).join(",")}}` : JSON.stringify(value);
+  const controls = permissions ? ["-c", `default_permissions=${JSON.stringify(permissions.default_permissions)}`,
+    "-c", `permissions=${toml(permissions.permissions)}`, "-c", 'windows.sandbox="elevated"',
+    "-c", "features.windows_sandbox_service=false", "-c", 'approval_policy="never"'] : ARGUMENTS.slice(0, -3);
+  return [...controls, "-c", "agents.enabled=false", ...common, ...ARGUMENTS.slice(-3)];
 }
 const HASH = /^[a-f0-9]{64}$/u;
 const fail = code => { throw Object.assign(new Error(code), { code }); };
@@ -71,6 +78,7 @@ export function createManagedSetupTransport({ client, cwd, env, limits, startup,
     && positive(limits.max_pending_bytes, limits.max_stdout_bytes), "SETUP_TRANSPORT_LIMIT_INVALID");
   const environmentValue = name => Object.entries(env).find(([key]) => key.toUpperCase() === name)?.[1];
   assertManagedSetupStartup(startup, { cwd, profile_root: environmentValue("CODEX_HOME"), candidate_root: cwd });
+  if (startup.permission_scope) ensure(environmentValue("USERPROFILE") === startup.permission_scope.user_profile, "SETUP_TRANSPORT_USER_PROFILE_MISMATCH");
   ensure(environmentValue("TEMP") === startup.state_root && environmentValue("TMP") === startup.state_root, "SETUP_TRANSPORT_STARTUP_ENVIRONMENT_MISMATCH");
   const selected = structuredClone({ client, cwd, env, limits, startup });
   const frames = [

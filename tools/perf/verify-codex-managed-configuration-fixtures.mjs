@@ -36,6 +36,22 @@ function fixture() {
     client_sha256: getManagedSandboxOperationPolicy().client_sha256, source_files: [{ path: user.name.file, sha256: H }] };
 }
 const response = f => f.metadata.configs[0], session = f => response(f).layers.find(row => row.name.type === "sessionFlags");
+function namedFixture() {
+  const f = fixture(); f.cwd = "G:\\fixture\\workspace"; f.profile_root = "C:\\Users\\Fixture\\.codex"; f.candidate_root = "C:\\Tools\\Codex";
+  f.startup.state_root = "G:\\fixture\\state";
+  f.startup.permission_scope = { contract_version: "codex-managed-setup-permission-scope.v1", profile_id: "aidn-managed-setup", cwd: f.cwd,
+    project_volume_root: "G:\\", user_profile: "C:\\Users\\Fixture", read_roots: ["C:\\Windows", f.candidate_root], write_roots: [f.cwd],
+    excluded_paths: ["C:\\Users\\Fixture\\OneDrive"] };
+  const config = settings(f.startup); delete config.sandbox_mode; delete config.sandbox_workspace_write;
+  Object.assign(config, { default_permissions: "aidn-managed-setup", permissions: { "aidn-managed-setup": {
+    workspace_roots: { [f.cwd]: true }, filesystem: { "G:\\": "read", "C:\\Windows": "read", [f.candidate_root]: "read", [f.cwd]: "write" }, network: { enabled: false },
+  } }, log_dir: f.startup.state_root + "\\logs", sqlite_home: f.startup.state_root + "\\sqlite" });
+  response(f).config = config; session(f).config = copy(config);
+  response(f).layers[0].name.file = f.profile_root + "\\config.toml"; f.source_files[0].path = response(f).layers[0].name.file;
+  response(f).origins = { default_permissions: { name: copy(session(f).name), version: session(f).version },
+    permissions: { name: copy(session(f).name), version: session(f).version } };
+  return f;
+}
 const reject = (mutate, code) => { const f = fixture(); mutate(f); assert.throws(() => assess(f), error => error.code === "MANAGED_CONFIGURATION_" + code); };
 await check("valid pinned source projection remains permission-unresolved and non-executing", () => {
   const f = fixture(), result = assess(f);
@@ -44,6 +60,72 @@ await check("valid pinned source projection remains permission-unresolved and no
   assert.equal(result.authorization, "NOT_AUTHORIZED"); assert.equal(result.qualification, "NOT_RUN");
   assert.equal(result.configuration_sha256, hash(response(f).config)); assert.equal(result.session_flags_sha256, hash(session(f).config));
   assert(Object.isFrozen(result));
+});
+await check("named source scope is versioned, source-bound and explicitly not an OS read-denial proof", () => {
+  const f = namedFixture(), before = copy(f), result = assess(f);
+  assert.equal(result.contract_version, "codex-managed-configuration-assessment.v2");
+  assert.equal(result.permission_scope, "NAMED_PERMISSION_SCOPE_UNRESOLVED");
+  assert.equal(result.permission_scope_sha256, hash(f.startup.permission_scope));
+  assert.equal(result.read_exclusion_authority, "AIDN_POLICY_NOT_OS_READ_DENIAL");
+  assert.equal(result.execution_available, false); assert.equal(result.qualification, "NOT_RUN"); assert.equal(result.authorization, "NOT_AUTHORIZED");
+  assert.deepEqual(f, before);
+});
+await check("named merged profile accepts only the pinned typed optional nulls", () => {
+  const f = namedFixture(), profile = response(f).config.permissions["aidn-managed-setup"];
+  profile.description = null; profile.extends = null; profile.filesystem.glob_scan_max_depth = null;
+  for (const name of ["proxy_url", "enable_socks5", "socks_url", "enable_socks5_udp", "allow_upstream_proxy", "dangerously_allow_non_loopback_proxy",
+    "dangerously_allow_all_unix_sockets", "mode", "domains", "unix_sockets", "allow_local_binding", "mitm"]) profile.network[name] = null;
+  response(f).config.sandbox_mode = null; response(f).config.sandbox_workspace_write = null;
+  assess(f); assert.deepEqual(Object.keys(session(f).config.permissions["aidn-managed-setup"]).sort(), ["filesystem", "network", "workspace_roots"]);
+});
+await check("named session selection dominates only the explicitly accepted inert legacy settings", () => {
+  const f = namedFixture(); response(f).layers[0].config.sandbox_mode = "workspace-write";
+  response(f).config.sandbox_mode = "workspace-write";
+  response(f).config.sandbox_workspace_write = { writable_roots: [], network_access: false, exclude_tmpdir_env_var: true, exclude_slash_tmp: true };
+  assess(f);
+  assert(!buildManagedSetupArguments(f.startup).some(value => /^(sandbox_mode|sandbox_workspace_write)(?:\.|=)/u.test(value)));
+});
+for (const [name, edit] of [
+  ["wrong selection", c => { c.default_permissions = ":workspace"; }],
+  ["extra profile", c => { c.permissions.other = {}; }],
+  ["inherited profile", c => { c.permissions["aidn-managed-setup"].extends = ":workspace"; }],
+  ["description text", c => { c.permissions["aidn-managed-setup"].description = "not pinned"; }],
+  ["missing workspace roots", c => { delete c.permissions["aidn-managed-setup"].workspace_roots; }],
+  ["extra workspace", c => { c.permissions["aidn-managed-setup"].workspace_roots["C:\\other"] = true; }],
+  ["writable volume", c => { c.permissions["aidn-managed-setup"].filesystem["G:\\"] = "write"; }],
+  ["symbolic root", c => { c.permissions["aidn-managed-setup"].filesystem[":root"] = "read"; }],
+  ["Cloud read", c => { c.permissions["aidn-managed-setup"].filesystem["C:\\Users\\Fixture\\OneDrive"] = "read"; }],
+  ["Cloud deny ACL", c => { c.permissions["aidn-managed-setup"].filesystem["C:\\Users\\Fixture\\OneDrive"] = "deny"; }],
+  ["extra filesystem key", c => { c.permissions["aidn-managed-setup"].filesystem.unknown = null; }],
+  ["glob depth", c => { c.permissions["aidn-managed-setup"].filesystem.glob_scan_max_depth = 1; }],
+  ["network access", c => { c.permissions["aidn-managed-setup"].network.enabled = true; }],
+  ["proxy URL", c => { c.permissions["aidn-managed-setup"].network.proxy_url = "http://localhost"; }],
+  ["local binding", c => { c.permissions["aidn-managed-setup"].network.allow_local_binding = false; }],
+  ["unknown null network", c => { c.permissions["aidn-managed-setup"].network.unknown = null; }],
+  ["unknown profile field", c => { c.permissions["aidn-managed-setup"].unknown = null; }],
+]) await check("named merged config refuses " + name, () => {
+  const f = namedFixture(); edit(response(f).config); assert.throws(() => assess(f), { code: "MANAGED_CONFIGURATION_NAMED_PERMISSIONS_MISMATCH" });
+});
+for (const [name, edit] of [["mode", c => { c.sandbox_mode = "danger-full-access"; }],
+  ["write roots", c => { c.sandbox_workspace_write = { writable_roots: ["C:\\extra"] }; }]]) await check("named config rejects unknown legacy conflict " + name, () => {
+  const f = namedFixture(); edit(response(f).config); assert.throws(() => assess(f), { code: "MANAGED_CONFIGURATION_LEGACY_SETTINGS_CONFLICT" });
+});
+await check("named scope permits neither ambient profile definitions nor a foreign control origin", () => {
+  for (const change of ["definition", "selection", "origin"]) {
+    const f = namedFixture(), user = response(f).layers[0];
+    if (change === "definition") user.config.permissions = { other: {} };
+    if (change === "selection") user.config.default_permissions = "other";
+    if (change === "origin") response(f).origins.permissions = { name: copy(user.name), version: user.version };
+    assert.throws(() => assess(f), { code: "MANAGED_CONFIGURATION_" + (change === "origin" ? "CONTROL_ORIGIN_MISMATCH" : "NAMED_PERMISSIONS_UNSUPPORTED") });
+  }
+});
+await check("named raw session cannot include typed nulls or legacy flags", () => {
+  for (const change of ["typed", "legacy"]) {
+    const f = namedFixture();
+    if (change === "typed") session(f).config.permissions["aidn-managed-setup"].extends = null;
+    else session(f).config.sandbox_mode = "workspace-write";
+    assert.throws(() => assess(f), { code: "MANAGED_CONFIGURATION_SESSION_SETTINGS_MISMATCH" });
+  }
 });
 await check("merged model/effort may be absent or independently selected without adding setup flags", () => {
   const f = fixture(); assess(f); response(f).config.model = "arbitrary-fixture-model"; response(f).config.model_reasoning_effort = "ultra"; assess(f);

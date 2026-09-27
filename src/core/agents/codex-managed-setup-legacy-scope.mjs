@@ -72,6 +72,7 @@ const inside = (root, child) => key(child) === key(root) || key(child).startsWit
 export function projectManagedSetupLegacyScope(input) {
   json(input); ensure(exact(input, ["configuration", "environment", "facts", "at"]), "INPUT_INVALID");
   const { configuration, environment, facts, at } = input;
+  ensure(configuration.startup?.permission_scope === undefined, "NAMED_SCOPE_REQUIRES_SEPARATE_PROJECTOR");
   const assessment = assessManagedSetupConfiguration(configuration);
   // Common Full uses only its closed process env (setup.rs255,780-805).
   // The service branch consumes NetworkProxySpec and is excluded. Opaque
