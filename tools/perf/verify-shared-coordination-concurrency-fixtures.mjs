@@ -10,7 +10,7 @@ function assert(condition, message) {
 
 async function main() {
   try {
-    const fake = createConcurrentFakePgClientFactory();
+    const fake = createConcurrentFakePgClientFactory({ initialSchemaVersion: 3 });
     const storeA = createPostgresSharedCoordinationStore({
       connectionString: "postgres://aidn:test@localhost:5432/aidn",
       clientFactory: fake.factory,
@@ -20,8 +20,16 @@ async function main() {
       clientFactory: fake.factory,
     });
 
+    const supervisionTables = ["execution_supervisors", "execution_acceptances", "execution_integrations", "execution_run_validations"];
+    const supervisionMigrationCount = () => fake.state.queryLog.filter(({ sql }) => sql.includes("CREATE TABLE aidn_shared.execution_supervisors")).length;
+    const beforeMigration = await storeA.healthcheck();
+    assert(beforeMigration.latest_applied_schema_version === 3 && beforeMigration.schema_ok === false, "the v3 fake should require explicit v4 migration");
+    assert(supervisionTables.every(table => beforeMigration.tables_missing.includes(table)), "v4 tables should be absent before migration");
+    assert(supervisionMigrationCount() === 0, "readiness should not apply a migration");
     assert((await storeA.bootstrap()).ok === true, "bootstrap A should succeed");
     assert((await storeB.bootstrap()).ok === true, "bootstrap B should succeed");
+    assert(fake.state.schemaMigrations.join(",") === "2,3,4", "explicit bootstrap should preserve v2/v3 and record v4 once");
+    assert(supervisionMigrationCount() === 1, "the second bootstrap should not replay v4 DDL");
     assert((await storeA.registerWorkspace({
       workspaceId: "workspace-concurrent",
       workspaceIdSource: "git-common-dir",
@@ -187,6 +195,9 @@ async function main() {
 
     const health = await storeA.healthcheck();
     assert(health.ok === true, "healthcheck should still succeed after concurrent writes");
+    assert(health.schema_ok === true && health.latest_applied_schema_version === 4, "the shared fake should expose ready schema v4");
+    assert(supervisionTables.every(table => health.tables_present.includes(table)), "all supervision tables should be visible after migration");
+    assert(supervisionMigrationCount() === 1, "coordination writes and healthchecks should not replay migration DDL");
 
     console.log("PASS");
   } catch (error) {
