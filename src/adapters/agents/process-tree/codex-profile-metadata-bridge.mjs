@@ -1,11 +1,11 @@
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { collectCodexNativeProfileMetadata, resolveCodexNativeProfileMetadataProfile } from "../../../application/runtime/codex-native-profile-observation-service.mjs";
+import { collectCodexNativeProfileMetadata } from "../../../application/runtime/codex-native-profile-observation-service.mjs";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../../core/agents/agent-execution-contracts.mjs";
 
 // Executed only as a pinned Node child already assigned to the supervisor Job.
 // Import and validation have no effects. Raw metadata remains bounded pipe data;
-// requirements and readiness never authorize setup, threads or workers.
+// readiness never authorizes provisioning, threads or workers.
 export async function runCodexProfileMetadataBridge(document, { collect = collectCodexNativeProfileMetadata } = {}) {
   let identity = { protocol: "aidn-controlled-profile-metadata.v1", invocation_id: null, request_sha256: null };
   try {
@@ -15,11 +15,11 @@ export async function runCodexProfileMetadataBridge(document, { collect = collec
       || !Number.isSafeInteger(body.timeout_ms) || body.timeout_ms < 1 || body.timeout_ms > 60000 || typeof collect !== "function") {
       throw Object.assign(new Error(), { code: "PROFILE_TREE_INPUT_INVALID" });
     }
-    const selected = resolveCodexNativeProfileMetadataProfile(body.input?.metadataProfile, body.input?.roots);
-    if (body.protocol !== selected || Object.hasOwn(body.input ?? {}, "metadataProfile") && body.input.metadataProfile !== "managed-setup.v1") {
-      throw Object.assign(new Error(), { code: "PROFILE_TREE_INPUT_INVALID" });
+    if (Object.hasOwn(body.input ?? {}, "metadataProfile")) {
+      throw Object.assign(new Error(), { code: "PROFILE_METADATA_PROFILE_INVALID" });
     }
-    identity = { protocol: selected, invocation_id: body.invocation_id, request_sha256 };
+    if (body.protocol !== identity.protocol) throw Object.assign(new Error(), { code: "PROFILE_TREE_INPUT_INVALID" });
+    identity = { protocol: identity.protocol, invocation_id: body.invocation_id, request_sha256 };
     const result = await collect(body.input, { timeoutMs: body.timeout_ms });
     const output = { ...identity, ok: true, result };
     if (Buffer.byteLength(JSON.stringify(output)) > 2 * 1024 * 1024 + 32768) throw Object.assign(new Error(), { code: "PROFILE_TREE_OUTPUT_LIMIT", process: result.process });

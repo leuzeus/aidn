@@ -497,115 +497,50 @@ physical root and its worktree metadata absent; relocation or unexplained state
 is refused. Failed runs, conflicts and unknown processes are preserved. No
 automatic purge or general worktree-management API is introduced.
 
-### Managed elevated preparation (separate candidate)
+### Codex execution and AIDN governance boundary
 
-The existing-only contract remains unchanged. A separate `managed-elevated`
-preparation model describes the official Windows elevated backend's possible
-shared effects, including a setup refresh at every launch. This is an explicit
-policy choice, never a fallback after an existing-only refusal. No managed
-executor or setup operation is enabled by this amendment.
+Codex owns the native execution environment. Its official tools configure the
+Windows sandbox, authenticate the user and record native project/hook trust.
+AIDN consumes that environment through `codex-cli-task`; it does not administer
+Windows accounts, ACLs, firewall/WFP state or sandbox provisioning.
 
-A versioned manifest pins the client, setup executable, command runner, host,
-profile and physical roots. It names exact resource identities and permitted
-create/update operations; deletion, wildcard authority and changes outside the
-manifest are refused. Protected resources remain unchanged. The read-only host
-inventory covers local accounts, local groups, filesystems, filesystem ACLs,
-WFP rules, firewall rules, desktops, device ACLs, local policies, services and
-registry state. Its completeness and preservation observations must be established
-before proposing any effect. Each category binds an explicit observation scope
-and digest; complete coverage refers only to that scope, never the entire OS.
-An incomplete inventory cannot become permission to ignore an unobserved
-resource category.
+| Responsibility | Owner and boundary |
+| --- | --- |
+| Native sandbox installation, repair and configuration | Codex official tools, used explicitly outside the AIDN run lifecycle |
+| Authentication and project/hook trust | Native Codex controls and human review; AIDN cannot grant or copy them |
+| Task execution and structured events | Codex `exec`; AIDN supplies explicit cwd, model, effort, sandbox and bounded input/output |
+| Canonical admission, claims and leases | AIDN, with PostgreSQL authority for supervised runs |
+| Dependencies, concurrency and delegated files/operations | AIDN frozen plan, scheduler and admission checks |
+| Timeout, cancellation and descendant termination | AIDN requests the stop and retains independent process-tree evidence; a Codex interruption request is not termination proof |
+| Acceptance, integration and audit | AIDN, bound to the attempt and exact validated Git SHA |
 
-Pure contracts produce a `PREPARED_NOT_AUTHORIZED` preview with a canonical
-fingerprint, or `PREPARATION_BLOCKED` when inventory coverage is incomplete.
-Explicit user approval must bind that exact preview, manifest, inventory, host
-and client, together with a bounded validity interval and the user's approval
-reference. Re-observation must reject changed prerequisites. The preparation
-model performs no OS operation and cannot create approval, change Codex
-configuration, grant native trust or make the runtime available. A future managed
-launcher must journal each operation, observe its permitted changes, and stop on
-unexpected or unconfirmed effects. Refreshing a backend is not exempt from that
-scope merely because it already exists.
+The [official sandbox documentation](https://learn.chatgpt.com/docs/windows/windows-sandbox)
+and [App Server setup API](https://learn.chatgpt.com/docs/app-server#windows-sandbox-setup-windowssandboxsetupstart)
+define the native setup path. `windowsSandbox/setupCompleted` reports the result
+of that operation, not AIDN admission, hook execution or worker qualification.
+The selected task backend remains
+[`codex exec`](https://learn.chatgpt.com/docs/non-interactive-mode); this decision
+adds no App Server task backend or automatic setup/repair fallback.
 
-A separate fixed operation-adequacy policy binds the exact client and legacy
-setup phase to required observation dimensions. It retains explicit gaps for
-unsupported cleanup/replacement mechanisms and unknown configuration or external
-process ownership. It does not change the create/update-only manifest or make
-structurally valid observations into authenticated evidence or user permission.
-Optional operation assessment has a separate preview envelope; the original
-preparation preview remains compatible.
+Preparation is bounded to the plan: configure the sandbox with Codex outside the
+run, prepare the exact AIDN candidate and dedicated worktrees with `verify-only`,
+review native trust, then check availability and run the native probes. An
+incompatible sandbox is refused before launch. The current
+`SANDBOX_EXISTING_ONLY_UNSUPPORTED` refusal remains effective: a completed
+official setup does not change the inspected client's refresh behavior or make
+it compatible with the existing-only validation contract.
 
-Two additional preparation components remain unavailable for native execution.
-A pure protocol state machine describes one fresh app-server connection with
-initialize, initialized and one elevated setupStart request. An injected duplex
-channel bounds framing, bytes and time, serializes awaited event callbacks, and
-requests controlled termination on failure or completion. A setup notification,
-transport stop receipt and actual controller termination proof are distinct;
-the channel cannot authenticate its injected transport's claim. No process,
-approval RPC, worker or setup is started by discovery or model validation.
+The experimental AIDN managed-setup models, host observers, setup protocol,
+preflight and operator journal are withdrawn from the active implementation.
+Their history remains in Git. The V1 does not reproduce Windows provisioning,
+enumerate the user profile, inspect OneDrive or copy profile history as a repair
+procedure. Existing worker metadata checks and process-tree supervision remain;
+standard process recovery and PostgreSQL run journals are not removed.
 
-A separate setup-effect model describes closed recipes for the selected client's
-marker replacement, WFP filter transaction, configuration edit, log retention and
-identified legacy cleanup. It binds exact targets and observed preimages, while
-retaining missing semantics as gaps. It does not introduce general deletion
-authority, reinterpret v1 create/update permissions or claim complete OS coverage.
-These contracts prepare a later reviewed implementation; they do not bypass
-operation adequacy, native admission or first-operation approval.
-
-The observer's security context forms part of each observation scope. Partial
-read-only projections, access refusals and provider timeouts remain distinct.
-UAC activation from a non-elevated app-server is outside the current Job proof;
-a managed launcher must establish elevation before creating its controlled tree
-and separately exclude external service/helper work. Setup completion alone
-does not establish descendant termination. The collector can retain already
-observed public account/group, explicit-file, DACL and registry projections in
-`dimension_candidates`, bound to the v1 inventory and final observer context.
-These candidates remain partial; missing dimensions and unproven absence cannot
-be promoted to complete receipts. This retention adds no provider query or
-credential-content collection.
-
-The concrete transport, bridge and controlling parent are separate candidates,
-not registered native executors. The bridge pins material, arguments, environment
-and prerequisites before opening one app-server connection. The parent uses the
-process-controller port to create the bridge suspended, repeats authorization
-and live preflight before resume, and separately checks protocol completion,
-natural transport closure, empty-Job proof and observed effects. Unknown
-termination or effects require reconciliation; an inner channel cannot prove
-that its containing bridge has stopped. Production authorization, preflight and
-effect-comparison ports, startup/effective configuration and complete effect
-evidence remain required. An inspection test seam and portable fixture doubles
-do not authenticate native evidence or authorize first setup.
-
-Startup settings share a pure constructor with byte-for-byte historical worker
-compatibility. Managed startup fixes explicit integration identifiers, a closed
-12-name environment and a physically separate state root for logs, SQLite and
-temporary files. Existing directories are verified, never implicitly created.
-Observation and setup must use identical complete arguments, profile, cwd and
-environment. Managed metadata collection is available through the explicit
-profile described below; its native composition remains unqualified. Internal
-bridge protocol v2 and prerequisites v2 bind the startup hash and reject v1
-without conversion; the historical profile contract retains its behavior.
-
-Configuration values and layers returned by `config/read` are not a compiled
-`PermissionProfile`. Named permission profiles require their effective semantics
-to be established; legacy sandbox flags alone cannot supply that evidence.
-Matching startup parameters, preflight success and readiness do not establish
-filesystem denial, network confinement or complete setup effects.
-
-The operator owns these local preparation and approval records. They may later
-be referenced by the frozen configuration of an `execution_run`; they are not
-an alternative PostgreSQL authority or a new autonomous information concept.
-Retain earlier revisions. A material change requires a new fingerprint and a
-new record, without overwriting previous evidence or applying automatic purge.
-
-Native availability remains unavailable until a managed implementation and its
-independent evidence exist. The five confinement cases (filesystem, network,
-timeout, cancellation and callback failure), worker admission and preservation,
-and the final parallel campaign remain separate requirements on the exact
-candidate. A manifest, consent record, matching inventory or pure fixture PASS
-is not confinement evidence. The current existing-only launch guard remains
-in force.
+Native availability still requires the allowed/forbidden edit, actual hooks,
+descendant stop and preservation proofs, followed by two concurrent Codex workers,
+a dependent task, integration, validation and audit on the exact candidate.
+Neither setup completion nor portable fixture success closes that requirement.
 
 ## Compatibility and qualification
 
@@ -628,18 +563,14 @@ fixtures do not establish that native hooks ran or that the sandbox confined a
 worker. Native qualification is separate from these CI checks.
 An unqualified OS cannot advertise the future capability.
 
-Lot 7 adds `runtime-agent-run-lifecycle`, required once for dev, main and release,
-covering nineteen portable lifecycle, workspace, composition, validation-boundary
-and managed-preparation/controlled-setup fixture scripts. Omission or duplicate
-invocation of any script is rejected. The Windows inventory and 89-check
-preflight fixtures are separate, use mocked providers and do not qualify a
-native setup operation. A separate private campaign observed the three native
-preflight phases with inert Node processes, two identity/Job refusals and six
-empty Jobs, with 124 audit checks; it ran no Codex or setup. That evidence does
-not qualify the new composition or managed backend. The four context-resilience
-gates and their 43 historical invocations remain unchanged. PostgreSQL, Windows
-process trees, actual native hooks, validation confinement and parallel Codex
-execution are reported independently.
+Lot 7 adds `runtime-agent-run-lifecycle`, required once for dev, main and release.
+It covers seven portable suites: lifecycle, workspace, native-attempt composition,
+sandbox validation, controlled profile metadata, shared startup arguments and
+local path policy. Omission or duplicate invocation of any suite is rejected.
+The four context-resilience gates and their 43 historical invocations remain
+unchanged. PostgreSQL, Windows process trees, actual native hooks, validation
+confinement and parallel Codex execution are reported independently. These
+fixtures do not run official setup or qualify a native worker.
 
 The scheduler and Git integration gates use bounded subprocesses and disposable
 repositories. They qualify ordering, recovery and effects independently of real
@@ -657,59 +588,6 @@ Codex parallelism, host confinement and the final native end-to-end scenario.
   No swarm, mailbox, quorum, automatic
   reassignment, unbounded repair or general worktree administration is introduced.
 
-### Managed setup source-configuration boundary
-
-The opt-in managed metadata profile adds only `configRequirements/read` to the
-existing controlled collector. Its internal protocol is v2; the historical
-profile remains unchanged. A pure source-configuration assessment accepts only
-the reviewed client and the fixed Legacy subset with an exact null requirements
-response, represented sources/origins and the same startup settings. A null
-source hash means explicitly observed absence and can cover only an empty layer.
-Any requirements object or active named permission profile is refused.
-This assessment deliberately leaves `PERMISSION_SCOPE_UNRESOLVED`; merged TOML
-does not establish the compiled profile, Windows filesystem expansion or setup
-effect coverage. It cannot issue a prerequisite, approval or native qualification.
-Raw configuration values remain transient; retained evidence uses projections
-and fingerprints. Real observation and its declared startup side effects require
-their own bounded composition and operation authorization.
-
-### Fixed Legacy setup scope derivation
-
-A separate pure projection binds the source-configuration assessment and closed
-environment to explicitly observed physical paths. It computes a canonical
-preimage and the six operation path lists instead of accepting an arbitrary
-permission-profile digest. Its first subset is deliberately narrow: a new cwd
-without Git or agent metadata, absent SSH configuration, no prior deny-read
-entries and no aliases or reparse points. A versioned facts/scope v2 adds only
-explicit immediate USERPROFILE directory junctions with observed link identities
-and canonical non-reparse targets strictly inside that profile. Original listings
-remain complete; name and canonical-target exclusions precede target deduplication.
-Chains, cycles and other aliases remain refused. V1 fingerprints are unchanged.
-It represents the complete runtime
-expansion as at most 4,096 descendants plus three roots; exceeding this bound or
-an incomplete
-enumeration refuses the projection rather than omitting effects.
-
-The pure facts/scope v3 additionally represents at most 32 immediate profile
-cloud directories with exact tag CLOUD_7 (`0x9000701a`), no target, stable directory
-identity and non-reparse ancestors. It rejects cloud descendants, internal
-listings and content; historical versions keep their refusal. This representation
-is review material only. It does not establish provider side effects or coverage
-of inheritable ACL changes made later by the official setup.
-
-A separate read-only Windows producer observes this closed physical subset with
-FileIdInfo and link counts on the same handle, bounded complete listings and a
-second observation pass. It returns facts through one bounded JSON document.
-Its request hash and caller context do not authenticate its process: the parent
-must bind the pinned producer, request, PID, creation time, output hash and stopped
-Job. It reads no general profile content and neither provisions nor changes ACLs.
-
-This derived scope is review material, not an authenticated native observation,
-compiled Codex profile, setup prerequisite or authorization. The containing
-operation still has to verify current physical observations and exact path-list
-bindings. Complete effect comparison, production authority composition and the
-durable setup journal remain required before setup can be qualified.
-
 ## Application exclusion of cloud workspaces
 
 AIDN agent execution refuses OneDrive paths in workspaces, delegated file scopes,
@@ -718,24 +596,3 @@ observation; bounded local Git/installation pointer checks prevent known indirec
 redirection before delegated activation. Explicit exclusions support renamed
 roots without automatic cloud discovery. This policy changes no cloud ACL and
 claims no operating-system read prohibition or universal shell interception.
-
-Managed Windows preparation selects a closed named permission profile with
-explicit literal roots. The pinned official client requires read access to the
-separate project volume root; the effective profile and that scope are reviewable
-inputs. No symbolic root or USERPROFILE enumeration is used by the new path.
-Legacy scope/cloud facts remain compatibility models, not authorization for
-further cloud inspection. Native qualification is still required independently.
-
-## Managed setup recovery boundary
-
-A host-scoped operator journal is separate from PostgreSQL run authority. A
-verified fixed host anchor and append-only exclusive publications prevent two
-parents from treating the same setup as independently launchable. Unknown
-publication or termination preserves unresolved state; neither elapsed time nor
-a process exit code is reconciliation.
-
-Auxiliary preflight Jobs belong to this recovery boundary. An uncertain auxiliary
-Job keeps the operation open even if the principal setup was not started. A
-reconciliation verifier must cover their durable identities and effects as well
-as the principal Job. The journal and parent adapter are structural components;
-fixtures using trusted-port doubles do not establish native availability.

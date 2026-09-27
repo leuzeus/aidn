@@ -445,281 +445,61 @@ source for Codex `0.158.0-alpha.2.1` invokes an elevated setup refresh on the
 `codex sandbox` path even when sandbox state exists. Its current implementation
 therefore returns `SANDBOX_EXISTING_ONLY_UNSUPPORTED` before any native process,
 including qualification probes. A positive local attestation cannot override
-that refusal. The final lot 7 native campaign is UNAVAILABLE until an explicitly
-authorized compatible backend is implemented and independently qualified.
+that refusal. The final lot 7 native campaign is UNAVAILABLE until the selected
+official client/backend satisfies the existing-only contract and the exact
+composition is independently qualified. An external setup completion does not
+remove that incompatibility.
 Portable checks and Job/trampoline fixtures may still pass; they do not close
 that confinement requirement or establish merge/release readiness.
 
-## Managed elevated preparation: review before effects
+## Use Codex setup; qualify AIDN separately
 
-The `managed-elevated` preparation model is distinct from the historical
-existing-only path above. It declares that the official Windows backend may
-refresh setup on every launch, including when provisioned state already exists.
-It does not weaken `SANDBOX_EXISTING_ONLY_UNSUPPORTED` or enable a managed
-executor. Preparing a reviewable plan is the present scope; the native campaign
-remains UNAVAILABLE.
+Codex provides the sandbox and its setup/repair flow. Use the
+[official Windows sandbox controls](https://learn.chatgpt.com/docs/windows/windows-sandbox)
+or the documented
+[`windowsSandbox/setupStart` API](https://learn.chatgpt.com/docs/app-server#windows-sandbox-setup-windowssandboxsetupstart)
+as an explicit operator action outside `agent-run*`. AIDN does not implement a
+second setup path, administer Windows security state or attempt repairs after a
+failed availability check. The former managed-setup experiment is withdrawn;
+its source history remains in Git.
 
-Before the first proposed native operation, obtain a read-only inventory for the
-exact host, client and profile, then review a versioned effects manifest. The
-manifest names pinned executables, physical roots, exact resource identities and
-permitted create/update operations. Inventory all eleven categories: local
-accounts, local groups, filesystems, filesystem ACLs, WFP rules, firewall rules,
-desktops, device ACLs, local policies, services and registry state. Each category
-binds its observation scope and digest; a complete category describes that
-bounded scope, never the whole OS. Missing coverage produces
-`PREPARATION_BLOCKED`; it cannot be silently treated as complete. Protected
-resources and everything outside the allowed effects within the declared
-observation scope must retain their observed state. Host inventory and project
-preservation are distinct from native hooks or confinement evidence.
+| Codex responsibility | AIDN responsibility |
+| --- | --- |
+| Sandbox installation, configuration and native execution | Check the selected backend's availability and refuse incompatibility |
+| Native authentication and project/hook trust | Bind the reviewed configuration and verify real hooks and delegated admission |
+| `codex exec` and its JSONL task events | Bound inputs/output, explicit cwd/configuration, timeout and independent descendant-stop proof |
+| Native process behavior | PostgreSQL claims/leases, dependency order, file scopes, Git integration and audit of the exact SHA |
 
-The pure contracts in `src/core/agents/codex-managed-sandbox-contracts.mjs`
-validate the effects manifest, inventory, preparation plan and scoped approval.
-They use distinct versioned `codex-managed-sandbox-*` records and perform no
-filesystem, process or clock reads. The read-only preview consumes explicit local
-documents:
+Follow these steps without introducing a new preparation subsystem:
 
-~~~text
-node tools/verify/prepare-codex-managed-sandbox.mjs --manifest <effects.json> --inventory <inventory.json> --json
-~~~
+1. Establish an operational sandbox through Codex's supported controls. Record
+   the selected client/profile; do not copy history, credentials or trust as a
+   workaround. No additional profile bootstrap is required by this correction.
+2. Prepare the exact candidate package and dedicated worktrees outside OneDrive
+   using the procedure above. Each worktree retains its own `verify-only`
+   installation and native review.
+3. Check availability and native prerequisites. Stop on
+   `SANDBOX_EXISTING_ONLY_UNSUPPORTED`; do not call setup, switch sandbox or
+   retry with weaker arguments. Official setup success cannot override this
+   client's known incompatibility with the current validation contract.
+4. Run the distinct native confinement and worker probes: authorized edit,
+   forbidden edit, observed hooks, timeout/cancellation, descendant termination
+   and preservation of unrelated worktrees, Git and runtime state.
+5. Only after those proofs, run the lot 7 campaign: two simultaneous workers,
+   their dependent task, integration, validation and read-only audit on the exact
+   integrated SHA. Record PostgreSQL, process and native Codex results separately.
 
-It does not collect host information, invoke Codex or accept an execution flag.
-The separate PowerShell collector
-`tools/verify/codex-managed-sandbox-inventory.ps1 -RequestPath <request.json>`
-performs explicitly selected read-only observations. Incomplete WFP or policy
-visibility remains partial coverage; the collector never repairs privileges or
-changes those resources to make inventory succeed. Its additive
-`dimension_candidates` field retains typed projections already observed for the
-two selected accounts and groups, explicit files, DACLs and UserList values.
-Candidates bind the unchanged v1 inventory and final observer context, including
-selected modules. They stay partial: missing flags, physical file identity or
-descendant expansion are not invented, and only proven not-found observations
-represent absence. Credential contents are never exposed. These candidates do
-not become exhaustive operation receipts. Keep the actual inventory local and
-use neutral fixture data in tracked examples.
+`setupCompleted`, a successful `/hooks` review, a zero exit code and fixture PASS
+are different evidence. None proves the next step automatically. Codex's
+`turn/interrupt` requests an interruption; AIDN must still confirm that the
+worker's descendants stopped before accepting cleanup or relaunch. The actual
+supervised worker continues to use `codex-cli-task`, not a new App Server backend.
 
-A complete preparation preview has status `PREPARED_NOT_AUTHORIZED` and a canonical
-fingerprint; it reports no available execution capability. A separate explicit
-user approval must reference that exact plan and its manifest/inventory/host/client
-bindings, with a bounded validity interval. A changed inventory, executable,
-root or manifest invalidates that approval. The pure approval validator uses an
-explicit observation time; inventory freshness and the approval interval are
-bounded to five minutes. A preparation tool never manufactures approval or
-writes native trust or configuration.
+The current native validation path remains blocked as described above. The
+final lot 7 campaign is **UNAVAILABLE / not executed** for this candidate; this
+boundary correction is not a native qualification or merge-readiness claim.
 
-The initial collector intentionally reports partial coverage. A projected
-account or DACL inventory does not need credential contents or an inventory of
-the whole OS. Before operational use, a reviewed policy must map the exact
-client and phase (setup, refresh or command launch) to the observed dimensions
-it requires, including justified non-applicable categories. Structural
-completeness alone does not establish that those observations cover the effects.
-The separate pure policy in
-`src/core/agents/codex-managed-sandbox-operation-policy.mjs` now defines those
-requirements for the pinned client's legacy `windowsSandbox/setupStart` phase.
-It distinguishes reviewability from authorization and operational availability.
-The initial collector does not yet emit exhaustive dimension receipts. A caller
-cannot supply a replacement requirements list or turn partial coverage into
-complete evidence. Even structurally valid receipts do not prove authenticated
-collection or establish that an operation is authorized.
-
-An optional read-only assessment uses explicit operation and observation documents:
-
-~~~text
-node tools/verify/prepare-codex-managed-sandbox.mjs --manifest <effects.json> --inventory <inventory.json> --operation <operation.json> --at <ISO-time> --coverage <coverage.json> --json
-~~~
-
-Omitting `--coverage` reports the missing evidence. This mode returns the
-separate `codex-managed-sandbox-operation-preview.v1` envelope. The historical
-preview shape is unchanged when `--operation` is absent. Neither mode has an
-execute switch. Legacy cleanup, transactional replacement and log retention have
-explicitly unsupported mechanisms under the create/update-only manifest.
-
-Separate internal setup-effect recipes now represent the closed mechanisms
-needed for review without changing that manifest. Their model checks bind the
-operation, observations and preimages and retain missing postconditions as gaps.
-They cannot turn model inputs into authenticated host evidence or approval.
-
-The internal setup protocol and injected duplex channel describe one fresh
-connection, initialize it and request only the fixed elevated setup operation.
-Streaming input, callbacks and stop requests are bounded. Setup completion is
-recorded separately from transport termination; a transport receipt is still an
-injected assertion until an actual controller proves the stopped Job. These
-modules contain no process launcher and are not a managed native backend.
-
-A separate candidate transport and bridge now describe the concrete app-server
-launch, with pinned executables and source inventory, closed arguments and
-environment, prerequisite bindings and a fresh read-only containing-Job
-preflight. The controlling parent creates the bridge suspended through the
-process-controller port and requires authorization and preflight again before
-resume. It keeps channel completion, natural app-server closure, actual empty-Job
-proof and observed effects distinct. An uncertain operation blocks further
-operations in that parent instance. Neither the bridge nor the parent is
-registered as a native executor.
-
-The pure shared constructor in `src/core/agents/codex-startup-arguments.mjs`
-preserves the historical worker settings and order. It disables each explicitly
-listed MCP/plugin/app integration, notifications and memory features without
-erasing hook configuration. Empty tables do not neutralize inherited entries;
-the complete observed identifier lists must be fixed before startup. The
-managed startup record contains `state_root`, `mcp_server_ids`,
-`plugin_ids`, `app_ids` and `environment_override_names`. It selects the closed
-12-name environment profile, places logs in `state_root/logs` and SQLite in
-`state_root/sqlite`, and binds `TEMP` and `TMP` to `state_root`. This root must be
-physically distinct from the profile, operation cwd and candidate; the parent
-and bridge require the directories to exist and do not create them implicitly.
-Authentication refresh, profile caches and native historical metadata backfill
-remain explicitly reviewed startup effects; redirecting SQLite is not a promise
-of no profile effects or a bound on native disk consumption.
-
-Internal protocol `aidn-controlled-managed-setup.v2` requires that startup record.
-`aidn-managed-setup-prerequisites.v2` includes its `startup_sha256` alongside the
-argument, environment and configuration hashes. Version 1 inputs are refused
-without migration or inferred defaults. A managed metadata observation must use
-the same full startup arguments, profile, cwd and environment as the setup it
-describes. A hash from differently overridden metadata cannot authorize setup.
-The controlled metadata collector now accepts the explicit
-`metadataProfile: "managed-setup.v1"` option for one root. It adds only the
-`configRequirements/read` RPC and returns that response separately. Its bridge
-uses internal protocol v2 for this option; the absent-profile historical path
-retains v1, its output shape and response count. It does not start a thread,
-worker or setup. Natural app-server closure and an observed empty Job are still
-required. Raw configurations and layers remain transient, not retained evidence.
-
-`config/read` exposes merged TOML values and their layers, not the compiled
-`PermissionProfile`. If a named permission profile applies, the legacy
-`sandbox_mode` and `sandbox_workspace_write` values alone do not establish its
-effective filesystem or network permissions. Resolving and checking that exact
-permission configuration remains separate from argument construction.
-The pure `assessManagedSetupConfiguration` checks only a restricted Legacy
-source configuration. The reviewed client's `configRequirements/read` must return
-exactly `{requirements: null}`; every object is refused, including an object of
-null visible fields, because the RPC does not expose all managed filesystem and
-profile constraints. Non-null permission profiles are refused. Source files,
-the unique session override layer, origins and each startup setting must agree.
-An explicitly absent source can cover only an empty layer. A successful assessment
-retains `PERMISSION_SCOPE_UNRESOLVED`: Windows path expansion, previous deny-read
-state, runtime ACL effects and physical preservation require separate observation.
-It supplies no setup prerequisite receipt, authorization or native availability.
-
-The historical pure Legacy scope projector recomputes that assessment and derives
-the setup path lists from the closed environment and explicit physical facts.
-Its supported subset requires a new cwd without `.git`, `.agents` or `.codex`,
-absent SSH configuration, an absent or empty prior deny-read state, and complete
-runtime enumeration without aliases or reparse points. Up to 4,096 descendants
-and three runtime roots are represented individually; a limit hit is a refusal,
-never partial authority.
-Present path facts use canonical hexadecimal volume and 128-bit file identities
-with unique identity pairs; files require an observed link count of exactly one.
-These remain caller-supplied facts, not a substitute for a physical observer.
-The derived preimage binds configuration, environment and observations to the
-six lists. A caller-supplied digest alone cannot substitute for that derivation.
-These facts remain structural inputs until an actual bounded observer supplies
-and authenticates them. The projector neither grants setup permission nor closes
-ACL, network, failure-path or process-provenance gaps. The historical Windows
-inventory request remains capped at 512 paths; the larger pure projection is not
-a qualification of that collector or a complete setup composition. Facts/scope
-v2 supports up to 32 immediate USERPROFILE directory junctions: the original
-listing remains complete, link identities are obtained without following the
-reparse point, and targets are canonical observed directories strictly inside
-that profile with no reparse ancestors. The pinned client canonicalizes these
-targets; the projector applies its exclusions and deduplication. Chains, cycles,
-outside targets and aliases elsewhere remain refused. V1 retains its refusal.
-
-The pure v3 facts/scope extension adds `profile_cloud_directories`, limited to 32
-immediate profile directories with the exact `IO_REPARSE_TAG_CLOUD_7` value
-`0x9000701a`. These directories have no declared target. Their path and identity
-must describe the directory itself through an `OPEN_REPARSE_POINT` handle, with
-non-reparse ancestors. Descendant facts, internal listings and content hashes are
-refused; v1/v2 continue to refuse this extension. Other cloud tags remain refused.
-The Windows [tag definition](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-fscc/c8e77b37-3909-4fe6-a4ea-2b9d423b1ee4)
-does not make it a name surrogate. This metadata model is not qualification of
-provider behavior or subsequent setup: inheritable ACL changes can affect
-children, which require separate effect coverage.
-
-The separate `tools/verify/codex-managed-setup-scope-facts.ps1` producer observes
-only this closed physical subset. Its versioned request binds roots, observer
-context and duration; FileIdInfo and link counts use the same handle. Two bounded
-passes compare identities, complete listings and junction targets. Only Win32
-NotFound establishes absence. The only file content accepted is the small empty
-prior deny-read state; no SSH configuration or credential content is read.
-The historical v3 cloud helper retains only the exact directory tag and identity
-from the same handle in compatibility fixtures. The physical CLI now refuses
-Legacy request v1 before observation; it requires the named request v2 and does
-not invoke that helper. Cloud payloads never supply a path to follow.
-The parent must pin and contain this producer and bind its request, PID, creation
-time, output digest and stopped Job. A syntactically valid observation or supplied
-context hash alone supplies no authenticated authority. This producer does not
-collect ACL/network effects and does not launch setup or qualify a native executor.
-Reparse refusals can include a closed diagnostic: observation pass, path role,
-native observation phase, SHA-256 of the exact rejected path and refusal variant.
-No raw path or native exception text is emitted; the diagnostic does not change
-which paths are admitted.
-
-The portable transport/bridge and parent fixtures use doubles and perform no
-setup. The separate Windows preflight campaign has 89 checks with mocked token,
-process, Job and helper observations; native declarations are compiled but never
-called. Those results do not establish actual token privileges, containment or
-helper absence. The production authority ports `authorizeOperation`, `preflight`
-and `compareEffects` still need their approved composition. Startup and effective
-configuration, complete observed effects and exact-operation authorization remain
-required before any first native setup operation. No candidate or fixture result
-satisfies those prerequisites implicitly.
-
-A separate locally retained native preflight campaign exercised `before_create`,
-`before_resume` and `inside_bridge` with inert Node processes. It also rejected
-a 100 ns process-creation mismatch and a wrong Job. Six Jobs were observed empty
-in 12.057 seconds, and 124 audit checks passed. The exact PowerShell preflight
-producer SHA-256 was
-`3a6070533c4ae6eb2cd88f79d1cc709c2da5d7339e215cf5419236a5dd44052f`.
-The private plan, process identities and host paths remain outside the repository.
-This evidence covers the observed preflight script and process/token checks; it
-ran no Codex, setup or worker and does not qualify the startup/bridge changes,
-complete setup effects or the managed backend. The 89 mocked PowerShell checks
-above remain a distinct evidence set.
-
-Collector diagnostics identify the observer's token context and projection
-digest, provider duration, exit code and privilege-related failures without
-returning raw WFP XML, credentials or provider error messages. Scope digests
-include the observer context: observations under different tokens cannot be
-silently compared as equivalent. Registry reads target only the two documented
-UserList values; this projection is not registry completeness.
-
-For controlled setup, an app-server started without elevation is insufficient:
-the official provisioning path may use UAC, whose helper is not proven to belong
-to the AIDN Job. A future broker must already be elevated before creating the Job,
-exclude service and Registered Core routes, and reconcile external ACL helpers.
-The Job's empty-process proof covers only its members. It cannot prove that a
-pre-existing helper or service stopped. First collect privileged diagnostics in
-a separately reviewed read-only operation; no setup or worker belongs in that
-collection.
-
-For the pinned client above, setup also refreshes ACLs, persists configuration
-and can start an asynchronous read-ACL helper. Its completion notification does
-not prove the termination of that helper or the stabilization of its effects.
-Legacy cleanup and WFP replacement also require phase-specific treatment; the
-preparatory create/update manifest grants no general deletion authority.
-
-The pinned Full refresh skips initial provisioning, so unchanged account or WFP
-state cannot demonstrate that networking was repaired. The structural effect
-model represents both possible provisioning branches until execution evidence
-resolves them. It also represents an atomic `config.toml` replacement when the
-sandbox mode is already `elevated`: the official setter can still report a
-mutation for an equal value. These recipes remain incomplete and non-authorizing;
-unchanged WFP state is not a proof of correct filter semantics.
-
-A future managed operation must observe the effects of every launch, including
-setup refresh, and accept only the declared resource changes. Unexpected,
-unobserved or indeterminate effects stop subsequent launches and preserve the
-evidence for reconciliation. The same profile's continued operation must also
-be observed; successful setup alone is insufficient.
-
-After the managed backend is implemented and an exact operation is approved,
-qualify its filesystem denial, disabled network, timeout, cancellation and
-callback-failure behavior. Then qualify the worker and run the two-worker plus
-dependent-task campaign on the exact candidate. Neither a project pilot nor an
-older worker result replaces these requirements. Current preparation artifacts
-perform none of these native operations.
-
-### OneDrive exclusion in AIDN
+## OneDrive exclusion in AIDN
 
 The agent execution boundary rejects OneDrive workspaces, task scopes, request
 paths and evidence/configuration paths before observing the excluded target.
@@ -735,55 +515,3 @@ It rereads pointer fingerprints after activation and grants no activation trust.
 This remains an application policy with an external concurrent-change limitation.
 It neither edits OneDrive ACLs nor proves that Windows, a shell or another client
 denies reads. Native write admission retains its existing supported tool scope.
-
-New managed setup preparation uses the explicit `permission_scope` startup member
-and the `aidn-managed-setup` named permission profile. Its filesystem entries are
-reviewed literal roots: the separate project volume root has read access, the
-selected cwd has write access, and additional read roots are explicit. The pinned
-client requires that project-volume read root; it is not a recursive inventory.
-A symbolic root, broad user-profile root, cloud path or inherited extra permission
-is refused. The profile sets network access to false and requests no deny ACE on
-OneDrive. Existing Windows grants are not revoked by this profile. Configuration
-v2 binds the permission scope and remains non-authorizing until physical scope
-and native evidence are established. The Legacy projector rejects named input.
-
-Historical Legacy facts, including the cloud metadata extension, remain fixture
-compatibility models. They do not authorize a new profile traversal or a new
-setup operation. The current qualification must not enumerate USERPROFILE or
-inspect OneDrive metadata; neither startup argument tests nor lexical exclusions
-qualify the resulting Windows sandbox.
-
-### Durable boundary around managed setup
-
-The parent preflight adapter records an intent, prepared process and terminal
-observation through an awaited evidence sink. It uses a separate bounded Job and
-retains that Job's identity, output digest and termination state on error.
-`preflight_recovery` is distinct from termination of the principal setup Job. An
-unconfirmed auxiliary process or uncertain evidence publication requires
-reconciliation even when setup itself was never started.
-
-The host operation journal uses one explicitly verified anchor and an append-only
-sequence with exclusive creation and file fsync. An operation intent precedes
-process creation; a matching existing intent never authorizes another launch.
-Prepared and terminal records are bound to the instance owning that intent.
-Corruption, an interrupted publication or loss of ownership blocks subsequent
-operations. Only explicit reconciliation with independent process/effect evidence
-can release unresolved state. Reconciliation must cover every auxiliary Job in
-the operation's durable evidence, not just the principal setup Job.
-
-This journal governs local operator setup only; PostgreSQL remains the exclusive
-authority for supervised runs. It has no expiry-based retry or automatic purge.
-The anchor verifier, immutable evidence sink, operator authorization and complete
-effect observation remain explicit production responsibilities. Portable journal
-and preflight fixtures do not qualify Windows setup, a protected host anchor or
-a native worker.
-
-The distinct named-scope facts/projector bind `permission_scope_sha256` and
-explicit roots. Request v2 of the physical producer is supplied through `-RequestBase64` only;
-`-RequestPath` is refused before opening a file. It does not enumerate
-USERPROFILE, inspect cloud metadata or accept reparse points. The only recursive
-expansion is the fixed runtime subtree, bounded to 4,096 descendants. Existing
-SSH-configuration absence and empty prior deny-read prerequisites remain.
-The projector returns `NOT_AUTHORIZED`: the historical operation policy and
-manifest reject volume-root entries and are not widened implicitly. A native
-operation needs a compatible reviewed effects model before it can proceed.

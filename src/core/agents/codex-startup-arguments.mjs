@@ -5,7 +5,6 @@ const HOST_NAMES = Object.freeze([
   "CODEX_HOME", "TEMP", "TMP",
 ]);
 export const CODEX_STARTUP_ENVIRONMENT_PROFILES = Object.freeze({
-  managed: HOST_NAMES,
   worker: Object.freeze([...HOST_NAMES, "AIDN_AGENT_ADMISSION_ENDPOINT", "AIDN_AGENT_ADMISSION_TOKEN", "AIDN_AGENT_ATTEMPT_ID", "AIDN_AGENT_REQUEST_SHA256"]),
 });
 const FIELDS = ["mcp_server_ids", "plugin_ids", "app_ids", "environment_override_names", "environment_names", "log_dir", "sqlite_home"];

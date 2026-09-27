@@ -99,50 +99,49 @@ lines.on('close',()=>process.exit(0));`);
     assert.equal(request_sha256, fingerprint(body));
     return { protocol: body.protocol, invocation_id: body.invocation_id, request_sha256, ok: true, result };
   }
-  function metadataResult(extended) { return { configs: [{}], hooks: { data: [] }, readiness: { status: "updateRequired" },
-    ...(extended ? { requirements: { requirements: null } } : {}),
-    process: { closed: true, pid_absent: true, exit_code: 0, signal: null, response_count: extended ? 5 : 4, budget_ms: 10000 } }; }
-  for (const extended of [false, true]) await check("metadata parent retains explicit protocol and count " + extended, async () => {
+  function metadataResult() { return { configs: [{}], hooks: { data: [] }, readiness: { status: "updateRequired" },
+    process: { closed: true, pid_absent: true, exit_code: 0, signal: null, response_count: 4, budget_ms: 10000 } }; }
+  await check("metadata parent retains the worker protocol and response count", async () => {
     let calls = 0; const collect = createControlledCodexProfileMetadata({ ...base, controller: { checkAvailability: controller.checkAvailability,
       async run(request, options) { calls++; const document = JSON.parse(request.stdin);
-        assert.equal(document.protocol, "aidn-controlled-profile-metadata.v" + (extended ? "2" : "1"));
-        assert.equal(Object.hasOwn(document.input, "metadataProfile"), extended);
-        await options.onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify(metadataEnvelope(request, metadataResult(extended)))) }); return completed(request); } } });
-    const result = await collect({ ...input(), ...(extended ? { metadataProfile: "managed-setup.v1" } : {}) });
-    assert.equal(result.process.response_count, extended ? 5 : 4); assert.equal(Object.hasOwn(result, "requirements"), extended);
+        assert.equal(document.protocol, "aidn-controlled-profile-metadata.v1");
+        assert.equal(Object.hasOwn(document.input, "metadataProfile"), false);
+        await options.onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify(metadataEnvelope(request, metadataResult()))) }); return completed(request); } } });
+    const result = await collect(input());
+    assert.equal(result.process.response_count, 4); assert.equal(Object.hasOwn(result, "requirements"), false);
     assert.equal(result.process.tree_termination.termination_state, "confirmed"); assert.equal(calls, 1);
   });
-  for (const variant of ["count", "missing", "malformed", "version"]) await check("managed parent refuses " + variant + " despite Job0", async () => {
+  for (const variant of ["count", "requirements", "version"]) await check("worker parent refuses obsolete metadata response " + variant + " despite Job0", async () => {
     const collect = createControlledCodexProfileMetadata({ ...base, controller: { checkAvailability: controller.checkAvailability,
-      async run(request, options) { const result = metadataResult(true); if (variant === "count") result.process.response_count = 4;
-        if (variant === "missing") delete result.requirements; if (variant === "malformed") result.requirements = null;
-        const envelope = metadataEnvelope(request, result); if (variant === "version") envelope.protocol = "aidn-controlled-profile-metadata.v1";
+      async run(request, options) { const result = metadataResult(); if (variant === "count") result.process.response_count = 5;
+        if (variant === "requirements") result.requirements = { requirements: null };
+        const envelope = metadataEnvelope(request, result); if (variant === "version") envelope.protocol = "aidn-controlled-profile-metadata.v2";
         await options.onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify(envelope)) }); return completed(request); } } });
-    await assert.rejects(collect({ ...input(), metadataProfile: "managed-setup.v1" }), error => error.process.tree_termination.termination_state === "confirmed");
+    await assert.rejects(collect(input()), error => error.process.tree_termination.termination_state === "confirmed");
   });
-  for (const invalid of [null, "unknown", undefined]) await check("parent refuses unknown explicit metadata profile " + String(invalid), async () => {
+  for (const invalid of [null, "unknown", undefined, "managed-setup.v1", "managed-setup.v2"]) await check("parent refuses explicit metadata profile before controller " + String(invalid), async () => {
     let calls = 0; const collect = createControlledCodexProfileMetadata({ ...base, controller: { checkAvailability() { calls++; }, run() { calls++; } } });
     await assert.rejects(collect({ ...input(), metadataProfile: invalid }), { code: "PROFILE_METADATA_PROFILE_INVALID" }); assert.equal(calls, 0);
   });
-  await check("managed parent rejects a second root before material or process", async () => {
-    let calls = 0; const collect = createControlledCodexProfileMetadata({ ...base, controller: { checkAvailability() { calls++; }, run() { calls++; } } });
-    await assert.rejects(collect({ ...input(), metadataProfile: "managed-setup.v1", roots: [{ root: cwd }, { root: root }] }), { code: "PROFILE_METADATA_SINGLE_ROOT_REQUIRED" }); assert.equal(calls, 0);
-  });
-  for (const extended of [false, true]) await check("bridge import is inert and injected collection preserves profile " + extended, async () => {
-    const { signal, ...plain } = input(); if (extended) plain.metadataProfile = "managed-setup.v1";
-    const body = { protocol: "aidn-controlled-profile-metadata.v" + (extended ? "2" : "1"), invocation_id: "fixture", input: plain, timeout_ms: 10000 }; let calls = 0;
+  await check("bridge import is inert and injected collection preserves worker metadata", async () => {
+    const { signal, ...plain } = input();
+    const body = { protocol: "aidn-controlled-profile-metadata.v1", invocation_id: "fixture", input: plain, timeout_ms: 10000 }; let calls = 0;
     const result = await runCodexProfileMetadataBridge({ ...body, request_sha256: fingerprint(body) }, { collect: async (request, options) => {
-      calls++; assert.equal(request.metadataProfile, extended ? "managed-setup.v1" : undefined); assert.equal(options.timeoutMs, 10000); return metadataResult(extended); } });
+      calls++; assert.equal(Object.hasOwn(request, "metadataProfile"), false); assert.equal(options.timeoutMs, 10000); return metadataResult(); } });
     assert.equal(result.ok, true); assert.equal(calls, 1); assert.equal(result.protocol, body.protocol);
   });
-  for (const variant of ["v1-opt-in", "v2-absent", "unknown", "multi-root", "hash"]) await check("bridge rejects profile/protocol mismatch " + variant, async () => {
-    const { signal, ...plain } = input(); plain.metadataProfile = "managed-setup.v1";
-    const body = { protocol: "aidn-controlled-profile-metadata.v2", invocation_id: "fixture", input: plain, timeout_ms: 10000 }; let calls = 0;
-    if (variant === "v1-opt-in") body.protocol = "aidn-controlled-profile-metadata.v1";
-    if (variant === "v2-absent") delete plain.metadataProfile; if (variant === "unknown") plain.metadataProfile = "unknown";
-    if (variant === "multi-root") plain.roots.push({ root: root });
+  for (const invalid of [null, "unknown", "managed-setup.v1", "managed-setup.v2"]) await check("bridge refuses explicit metadata profile before collection " + String(invalid), async () => {
+    const { signal, ...plain } = input(); plain.metadataProfile = invalid;
+    const body = { protocol: "aidn-controlled-profile-metadata.v1", invocation_id: "fixture", input: plain, timeout_ms: 10000 }; let calls = 0;
+    const result = await runCodexProfileMetadataBridge({ ...body, request_sha256: fingerprint(body) }, { collect: async () => { calls++; } });
+    assert.equal(result.ok, false); assert.equal(result.error.code, "PROFILE_METADATA_PROFILE_INVALID"); assert.equal(calls, 0);
+  });
+  for (const variant of ["v2", "hash"]) await check("bridge rejects protocol or fingerprint mismatch before collection " + variant, async () => {
+    const { signal, ...plain } = input();
+    const body = { protocol: variant === "v2" ? "aidn-controlled-profile-metadata.v2" : "aidn-controlled-profile-metadata.v1",
+      invocation_id: "fixture", input: plain, timeout_ms: 10000 }; let calls = 0;
     const result = await runCodexProfileMetadataBridge({ ...body, request_sha256: variant === "hash" ? "0".repeat(64) : fingerprint(body) }, { collect: async () => { calls++; } });
-    assert.equal(result.ok, false); assert.equal(calls, 0);
+    assert.equal(result.ok, false); assert.equal(result.error.code, "PROFILE_TREE_INPUT_INVALID"); assert.equal(calls, 0);
   });
   await check("malformed bridge JSON cannot become metadata success despite a completed process", async () => {
     const collect = createControlledCodexProfileMetadata({ ...base, controller: { checkAvailability: controller.checkAvailability,

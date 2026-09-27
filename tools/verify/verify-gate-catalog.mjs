@@ -818,21 +818,11 @@ const negativeProbes = {
   }),
   agent_run_lifecycle_invocation_omission: (() => {
     const commands = packageJson.scripts["perf:verify-agent-run-lifecycle-fixtures"].split(" && ");
-    const managedPreparation = "node tools/perf/verify-codex-managed-sandbox-fixtures.mjs";
-    return commands.length === 19 && commands.includes(managedPreparation)
-      && commands.includes("node tools/perf/verify-codex-managed-sandbox-operation-fixtures.mjs")
-      && commands.includes("node tools/perf/verify-codex-managed-setup-protocol-fixtures.mjs")
-      && commands.includes("node tools/perf/verify-codex-managed-sandbox-setup-effects-fixtures.mjs")
-      && commands.includes("node tools/perf/verify-controlled-codex-managed-setup-fixtures.mjs")
-      && commands.includes("node tools/perf/verify-controlled-codex-managed-setup-parent-fixtures.mjs")
+    return commands.length === 7
+      && commands.includes("node tools/perf/verify-codex-sandbox-validation-fixtures.mjs")
+      && commands.includes("node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs")
       && commands.includes("node tools/perf/verify-codex-startup-arguments-fixtures.mjs")
-      && commands.includes("node tools/perf/verify-codex-managed-configuration-fixtures.mjs")
-      && commands.includes("node tools/perf/verify-codex-managed-setup-legacy-scope-fixtures.mjs")
       && commands.includes("node tools/perf/verify-agent-local-path-policy-fixtures.mjs")
-      && commands.includes("node tools/perf/verify-codex-managed-setup-parent-preflight-fixtures.mjs")
-      && commands.includes("node tools/perf/verify-codex-managed-setup-operation-journal-fixtures.mjs")
-      && commands.includes("node tools/perf/verify-journaled-codex-managed-setup-fixtures.mjs")
-      && commands.includes("node tools/perf/verify-codex-managed-setup-named-scope-fixtures.mjs")
       && new Set(commands).size === commands.length
       && commands.every((_, index) => {
         const candidate = clone(packageJson);

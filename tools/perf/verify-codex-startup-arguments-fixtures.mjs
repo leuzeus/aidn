@@ -14,7 +14,7 @@ const checks = [], copy = value => structuredClone(value), H = "a".repeat(64);
 async function check(name, action) { try { await action(); checks.push({ name, status: "PASS" }); }
   catch (error) { checks.push({ name, status: "FAIL", detail: String(error.stack ?? error).slice(0, 1800) }); } }
 function configuration() { return { mcp_server_ids: [], plugin_ids: [], app_ids: [], environment_override_names: [],
-  environment_names: [...profiles.managed], log_dir: "/fixture/state/logs", sqlite_home: "/fixture/state/sqlite" }; }
+  environment_names: [...profiles.worker], log_dir: "/fixture/state/logs", sqlite_home: "/fixture/state/sqlite" }; }
 function worker(configurationOverrides = {}, stateRoot) {
   const base = process.platform === "win32" ? "C:\\Fixture" : "/fixture";
   const policy = { contract_version: "codex-native-profile-policy.v1", mode: "preexisting",
@@ -43,20 +43,20 @@ function historical(policy, request) {
     `log_dir=${JSON.stringify(state.logs)}`, `sqlite_home=${JSON.stringify(state.sqlite)}`,
   ].flatMap(setting => ["-c", setting]);
 }
-await check("managed empty configuration has the exact historical setting order", () => {
+await check("worker empty configuration has the exact historical setting order", () => {
   const args = build(configuration());
   assert.deepEqual(args.filter((_, index) => index % 2 === 1), [
     "mcp_servers={}", "plugins={}", 'apps={"_default"={enabled=false}}', "features.plugins=false", "features.apps=false", "notify=[]",
     'model_provider="openai"', 'history.persistence="none"', "memories.generate_memories=false", "memories.use_memories=false", "features.memories=false",
     'developer_instructions=""', 'instructions=""', "shell_environment_policy.set={}", 'shell_environment_policy.inherit="all"',
     "shell_environment_policy.ignore_default_excludes=true",
-    'shell_environment_policy.filters={"SYSTEMROOT"="include","WINDIR"="include","COMSPEC"="include","PATH"="include","PATHEXT"="include","USERPROFILE"="include","LOCALAPPDATA"="include","APPDATA"="include","PROGRAMDATA"="include","CODEX_HOME"="include","TEMP"="include","TMP"="include"}',
+    'shell_environment_policy.filters={"SYSTEMROOT"="include","WINDIR"="include","COMSPEC"="include","PATH"="include","PATHEXT"="include","USERPROFILE"="include","LOCALAPPDATA"="include","APPDATA"="include","PROGRAMDATA"="include","CODEX_HOME"="include","TEMP"="include","TMP"="include","AIDN_AGENT_ADMISSION_ENDPOINT"="include","AIDN_AGENT_ADMISSION_TOKEN"="include","AIDN_AGENT_ATTEMPT_ID"="include","AIDN_AGENT_REQUEST_SHA256"="include"}',
     'log_dir="/fixture/state/logs"', 'sqlite_home="/fixture/state/sqlite"',
   ]);
   assert.equal(args.length, 38); assert(args.filter((_, index) => index % 2 === 0).every(arg => arg === "-c"));
 });
-await check("only the two canonical environment profiles are exposed immutable", () => {
-  assert.equal(profiles.managed.length, 12); assert.equal(profiles.worker.length, 16);
+await check("only the worker environment profile is exposed immutable", () => {
+  assert.deepEqual(Object.keys(profiles), ["worker"]); assert.equal(profiles.worker.length, 16);
   assert.deepEqual(profiles.worker, CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES);
   assert(Object.isFrozen(profiles) && Object.values(profiles).every(Object.isFrozen));
 });
@@ -104,6 +104,7 @@ for (const [name, mutate] of [
   ["ID newline injection", value => { value.plugin_ids = ['x\nfeatures.apps=true']; }], ["ID null injection", value => { value.app_ids = ["x\0y"]; }],
   ["ID 257 characters", value => { value.app_ids = ["x".repeat(257)]; }], ["129 IDs", value => { value.plugin_ids = Array.from({ length: 129 }, (_, i) => String(i)); }],
   ["array extra field", value => { value.app_ids.extra = true; }], ["sparse array", value => { value.app_ids = Array(1); }],
+  ["removed setup environment profile", value => { value.environment_names = profiles.worker.slice(0, 12); }],
   ["unknown environment profile", value => { value.environment_names = ["PATH"]; }], ["environment profile reordered", value => { value.environment_names.reverse(); }],
   ["environment name lowercase", value => { value.environment_names[0] = "systemroot"; }], ["17 environment names", value => { value.environment_names = [...profiles.worker, "EXTRA"]; }],
   ["override injection", value => { value.environment_override_names = ['EXTRA"="include']; }], ["override reserved case insensitive", value => { value.environment_override_names = ["Path"]; }],

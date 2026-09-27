@@ -167,6 +167,13 @@ requires PostgreSQL, while existing sequential commands retain optional
 PostgreSQL. See [command details](docs/CLI_SURFACE_INVENTORY.md) and
 [native preparation and qualification](docs/AGENT_EXECUTION_NATIVE_QUALIFICATION.md).
 
+Codex supplies task execution, authentication, native trust and the Windows
+sandbox. Configure or repair that sandbox through Codex's official tools before
+using AIDN. AIDN owns delegated admission, PostgreSQL claims/leases, scheduling,
+process termination evidence, Git integration and validation of the exact SHA.
+It does not configure Windows security resources or run automatic sandbox repair.
+See the [responsibility boundary](docs/ADR/ADR-0014-bounded-agent-orchestration.md#codex-execution-and-aidn-governance-boundary).
+
 The current Windows validation backend reports
 `SANDBOX_EXISTING_ONLY_UNSUPPORTED`: the inspected Codex sandbox path refreshes
 native provisioning even with existing state. That conflicts with this

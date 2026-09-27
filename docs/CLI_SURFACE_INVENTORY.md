@@ -182,6 +182,13 @@ intention and removes only that intention's resources. It preserves source
 commits and evidence; failed runs, conflicts and indeterminate processes remain
 available for diagnosis. No general worktree administration command is added.
 
+Sandbox installation and repair, native authentication and hook trust use Codex's
+official controls outside `agent-run*`. No lifecycle command invokes Windows
+setup, modifies sandbox accounts/ACLs/network policy or copies profile history
+as a repair. AIDN retains admission, PostgreSQL ownership, task dependencies,
+bounded execution, observed descendant termination, integration and exact-SHA
+audit. An availability failure is a refusal, never an implicit setup request.
+
 The native initial capacity is four prepared worker roots on Windows with an
 explicit preexisting profile. Every root requires actual native trust observation,
 and the exact candidate still needs separate execution and confinement evidence.

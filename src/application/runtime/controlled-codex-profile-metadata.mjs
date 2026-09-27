@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
-import { resolveCodexNativeProfileMetadataProfile, assertCodexNativeProfileRequirementsResponse } from "./codex-native-profile-observation-service.mjs";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../core/agents/agent-execution-contracts.mjs";
 
 const BRIDGE = "src/adapters/agents/process-tree/codex-profile-metadata-bridge.mjs";
@@ -61,10 +60,10 @@ export function createControlledCodexProfileMetadata({ controller, nodeRuntime, 
   return async function collect(input, { timeoutMs = 10000 } = {}) {
     const began = performance.now();
     ensure(Number.isSafeInteger(timeoutMs) && timeoutMs > 0 && timeoutMs <= 60000, "PROFILE_TREE_BUDGET_INVALID");
-    const inputFields = ["executable", "args", "cwd", "env", "roots", ...(Object.hasOwn(input ?? {}, "metadataProfile") ? ["metadataProfile"] : [])];
+    ensure(!Object.hasOwn(input ?? {}, "metadataProfile"), "PROFILE_METADATA_PROFILE_INVALID");
+    const inputFields = ["executable", "args", "cwd", "env", "roots"];
     ensure(exact(input, [...inputFields, "signal"]) || exact(input, inputFields), "PROFILE_TREE_INPUT_INVALID");
-    if (Object.hasOwn(input, "metadataProfile")) ensure(input.metadataProfile === "managed-setup.v1", "PROFILE_METADATA_PROFILE_INVALID");
-    const protocol = resolveCodexNativeProfileMetadataProfile(input.metadataProfile, input.roots), managed = input.metadataProfile === "managed-setup.v1";
+    const protocol = "aidn-controlled-profile-metadata.v1";
     ensure(input.signal === undefined || input.signal instanceof AbortSignal, "PROFILE_TREE_SIGNAL_INVALID");
     ensure(!active, "PROFILE_TREE_ALREADY_RUNNING");
     ensure(!recoveryRequired, "PROFILE_TREE_RECOVERY_REQUIRED");
@@ -158,12 +157,11 @@ export function createControlledCodexProfileMetadata({ controller, nodeRuntime, 
       const process = { ...parent, tree_termination: termination };
       if (!envelope.ok) fail(/^[A-Z][A-Z0-9_]{0,100}$/u.test(envelope.error?.code ?? "") ? envelope.error.code : "PROFILE_TREE_BRIDGE_FAILED", process);
       ensure(observed.outcome === "completed" && observed.exit_code === 0 && parent.closed && parent.pid_absent
-        && parent.exit_code === 0 && parent.signal === null && parent.response_count === frozen.roots.length + 3 + (managed ? 1 : 0),
+        && parent.exit_code === 0 && parent.signal === null && parent.response_count === frozen.roots.length + 3,
       "PROFILE_TREE_EXECUTION_FAILED");
       checkpoint();
       ensure(Array.isArray(envelope.result.configs) && envelope.result.configs.length === frozen.roots.length, "PROFILE_TREE_PROTOCOL_INVALID");
-      if (managed) assertCodexNativeProfileRequirementsResponse(envelope.result.requirements);
-      else ensure(!Object.hasOwn(envelope.result, "requirements"), "PROFILE_TREE_PROTOCOL_INVALID");
+      ensure(!Object.hasOwn(envelope.result, "requirements"), "PROFILE_TREE_PROTOCOL_INVALID");
       return { ...envelope.result, process };
     } catch (cause) {
       stop.abort();

@@ -261,189 +261,49 @@ and their 43 historical invocations are unchanged.
 
 For the public run lifecycle, run
 `npm run perf:verify-agent-run-lifecycle-fixtures`. The required runtime gate
-`runtime-agent-run-lifecycle` executes the lifecycle, workspace, native-attempt
-composition, sandbox-validation, controlled-metadata, managed-sandbox preparation,
-operation-adequacy, setup-protocol, setup-effect, setup bridge, controlled parent
-and shared startup-argument fixtures exactly once on dev, main and release. It
-checks preview purity, explicit action fingerprints, stale state,
+`runtime-agent-run-lifecycle` executes these seven portable suites exactly once
+on dev, main and release:
+
+- `verify-agent-run-lifecycle-fixtures.mjs`
+- `verify-agent-run-workspace-fixtures.mjs`
+- `verify-codex-agent-attempt-fixtures.mjs`
+- `verify-codex-sandbox-validation-fixtures.mjs`
+- `verify-controlled-codex-profile-metadata-fixtures.mjs`
+- `verify-codex-startup-arguments-fixtures.mjs`
+- `verify-agent-local-path-policy-fixtures.mjs`
+
+They check preview purity, explicit action fingerprints, stale state,
 cancellation, read-only status, prepared-root adoption and completed-run cleanup.
 Disposable Git tests retain source commits and all local bytes before removal,
 reject relocation as evidence of deletion, recover an already removed owned
 worktree, and preserve unknown controlled-process termination. The injected
-process controller in these tests is a double, even when its child is real Git.
+process controller is a double, even when its child is real Git.
 
-The native composition fixtures check pinned files, immutable preparation and
-termination receipts, unavailable prerequisites and absence of constructor
-effects. Sandbox-validation fixtures verify closed configuration, framed
-protocol and boundary contracts without invoking Codex. Controlled-metadata
-fixtures check explicit candidate/Node pins, bounded protocol and unknown-tree
-recovery using injected controllers. These twelve scripts run
-on Linux and Windows; they do not provision a sandbox, use a real user profile,
-launch a model or qualify Windows process confinement. The separate native
-Windows process fixtures (`node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs --native`
-for the metadata bridge) and exact-package end-to-end campaign remain outside
-this required portable gate. Report their missing prerequisites as UNAVAILABLE,
-never as a fixture PASS. Initial native capacity is four prepared worker roots;
-the final three-task/two-simultaneous-Codex qualification remains outstanding
-until its exact candidate evidence is recorded.
-The current Windows validation backend returns
-`SANDBOX_EXISTING_ONLY_UNSUPPORTED` before any native process because its
-existing-state path refreshes provisioning. Its native campaign is UNAVAILABLE,
-including when fixture or local attestation inputs are otherwise positive.
+Native-attempt fixtures check pinned files, immutable preparation/termination
+receipts, unavailable prerequisites and constructor purity. Sandbox-validation
+fixtures check closed configuration, framed protocol and boundary contracts.
+Controlled-metadata fixtures check explicit candidate/Node pins, bounded
+protocol and unknown-tree recovery. Shared startup fixtures preserve explicit
+worker arguments, integration restrictions and the closed worker environment.
+Local path fixtures reject OneDrive before target observation, including known
+Git and installation pointers, without changing user permissions.
 
-The separate Windows-only check
-`node tools/perf/verify-codex-managed-sandbox-inventory-fixtures.mjs` parses the
-actual collector and exercises its protocol with mocked host providers. It
-requires an installed PowerShell 7 executable; a missing platform/runtime is
-UNAVAILABLE with a failing exit code. This check is not part of the portable
-lifecycle gate and does not collect real host state or qualify confinement. It
-also checks the additive `dimension_candidates` output: typed projections of
-already observed accounts, groups, explicit files, DACLs and registry values,
-bound to inventory and final observer-context hashes. Missing dimensions and
-unknown observations remain explicit; these partial candidates are not complete
-operation receipts or authenticated host evidence.
+These suites run on Linux and Windows. They neither provision a sandbox nor
+qualify native Codex, real hooks or Windows process confinement. The four
+context-resilience gates and their 43 historical invocations are unchanged.
+AIDN managed-setup, inventory and host-journal experiments are removed from the
+active suite: official sandbox setup belongs to Codex, outside the run lifecycle.
+See the [responsibility boundary and native procedure](AGENT_EXECUTION_NATIVE_QUALIFICATION.md#use-codex-setup-qualify-aidn-separately).
 
-The separate Windows-only
-`node tools/perf/verify-codex-managed-setup-preflight-fixtures.mjs` campaign has
-89 checks covering the actual preflight script with mocked token, process, Job
-and helper observations. It compiles native declarations without invoking them.
-It requires PowerShell 7, reports unavailable prerequisites as a failing
-UNAVAILABLE result, and stays outside the portable gate. A fixture PASS proves
-neither actual elevation or Job membership nor absence of an external helper.
-A separate private native preflight campaign with inert Node processes exercised
-all three phases and two refusals (100 ns creation-time mismatch and wrong Job).
-Six Jobs were observed empty in 12.057 seconds; 124 audit checks passed for the
-exact preflight script identified in the native qualification guide. This is
-process/token observation evidence, with no Codex or setup execution. It does
-not qualify the new startup/bridge composition or the managed backend.
-
-For managed Windows sandbox preparation, run
-`node tools/perf/verify-codex-managed-sandbox-fixtures.mjs`. This sixth script in
-`runtime-agent-run-lifecycle` checks the versioned effects manifest, complete or
-partial inventory, deterministic preview, exact scoped approval and rejection
-of changed or out-of-scope effects. It does not inventory the operating system,
-approve an operation, launch Codex, change a profile or provision any Windows
-resource. Complete fixture inventory produces `PREPARED_NOT_AUTHORIZED`;
-incomplete coverage produces `PREPARATION_BLOCKED`. Both report unavailable
-execution. The existing-only refusal remains covered by the sandbox validation
-fixtures. Actual inventory, first-operation approval, five native confinement
-cases and the final worker campaign require separate evidence.
-
-The seventh lifecycle script,
-`node tools/perf/verify-codex-managed-sandbox-operation-fixtures.mjs`, exercises
-the fixed client/phase policy, explicit observer and evidence bindings, missing
-coverage, unsupported effect mechanisms and route exclusions. Receipts are
-structurally validated model inputs, not authenticated host observations. A
-reviewable model cannot authorize setup or qualify execution. The Windows
-collector fixtures separately check observer-context binding, registry selectors
-and redacted provider diagnostics. No fixture requires administrative elevation.
-
-The eighth lifecycle script,
-`node tools/perf/verify-codex-managed-setup-protocol-fixtures.mjs`, checks the
-pure setup state machine and its injected duplex channel. It covers strict UTF-8
-streaming, bounded JSONL frames, request ordering, callback backpressure and
-failure, cancellation, deadlines and separate process-termination evidence.
-The channel never creates a process. Its transport doubles cannot establish
-real Job membership, elevation, authorization or native confinement.
-
-The ninth script,
-`node tools/perf/verify-codex-managed-sandbox-setup-effects-fixtures.mjs`, checks
-closed setup-effect recipes and their observation bindings. Unrepresented
-temporary effects and unverified postconditions remain explicit gaps. These
-models neither extend the historical create/update manifest nor authorize setup.
-Both suites use neutral fixture data and perform no Windows provider operation.
-
-The tenth and eleventh scripts,
-`node tools/perf/verify-controlled-codex-managed-setup-fixtures.mjs` and
-`node tools/perf/verify-controlled-codex-managed-setup-parent-fixtures.mjs`,
-exercise the candidate transport, bridge and controlling parent using injected
-inspection, spawn and process doubles. They check fixed arguments and closed
-environment, pinned material and prerequisites, bounded protocol and callbacks,
-live-token bindings, separate channel and Job termination, and refusal of
-unconfirmed effects. The parent requires authorization, preflight and effect
-comparison ports; a stopped Job cannot turn a failed channel into success.
-These candidates are not registered executors. Production implementations of
-`authorizeOperation` and `compareEffects` remain absent; startup and
-effective-configuration evidence and complete effects coverage also remain
-outstanding. No fixture launches native setup or qualifies a managed backend.
-
-The twelfth script,
-`node tools/perf/verify-codex-startup-arguments-fixtures.mjs`, checks the pure
-shared constructor, exact historical worker argument content and order, the
-closed 16-name worker and 12-name managed environment profiles, quoted integration
-IDs, bounded inputs, and absence of import or construction effects. The managed
-transport uses these common settings with explicit state/log/SQLite paths;
-metadata observation must use the same complete startup arguments as setup.
-The existing metadata collector has an explicit `metadataProfile: "managed-setup.v1"`
-option. It accepts one root and adds only `configRequirements/read` to its read
-RPCs, returning the response separately. Its internal bridge uses v2 for this
-option; absent profile retains historical v1 and its response count. Unknown
-profiles, incomplete responses and unconfirmed process trees are refused.
-Internal setup bridge v2 and prerequisites v2 bind `startup_sha256` and reject v1
-input without conversion; missing or physically aliased state directories are
-refused, not created. Native observer composition is still a separate proof.
-
-`config/read` returns merged TOML configuration and layers, not the compiled
-`PermissionProfile`. Legacy sandbox flags alone cannot qualify effective
-permissions when a named permission profile is selected. Such unresolved
-permission semantics remain a prerequisite, even when startup arguments match.
-
-The thirteenth lifecycle script,
-`node tools/perf/verify-codex-managed-configuration-fixtures.mjs`, checks the pure
-source-configuration assessment. It requires the exact reviewed client, one
-session override layer, represented source files and origins, all fixed startup
-settings, and an exact `{requirements: null}` response. Any requirements object
-or an unrepresented selected permission profile is refused. The explicit named
-setup profile is assessed separately as v2 and binds its declared permission
-scope, without granting native availability. A source recorded absent can represent
-only an empty layer. Fixture success establishes neither physical observations
-nor compiled permissions: the assessment retains `PERMISSION_SCOPE_UNRESOLVED`
-and does not create a setup prerequisite, approval or available executor.
-
-The fourteenth lifecycle script,
-`node tools/perf/verify-codex-managed-setup-legacy-scope-fixtures.mjs`, checks the
-pure derivation of the fixed Legacy setup scope from the source assessment,
-closed environment and explicit physical observations. It computes the six path
-lists and binds their canonical preimage; it does not accept caller-provided
-permission roots. Missing, stale, aliased or truncated observations are refused.
-The initial subset requires a new cwd without Git or agent metadata, no SSH
-configuration and no existing deny-read entries. The runtime expansion is finite
-and explicit: at most 4,096 descendants plus the runtime root and two RX roots,
-with no truncation or digest-only substitute. The preparation models retain 256
-ordinary resources per manifest list and permit only runtime ACL rows to extend
-that list to 4,355. Other path lists and observation profiles retain their prior
-bounds; the 2 MiB operation and observation limit is measured in UTF-8 bytes.
-These fixtures qualify the derivation only. Observation authenticity, ACL and
-network effects, native setup authorization and confinement remain separate
-requirements; no available executor or setup approval is produced. V2 fixtures
-also cover immediate profile junctions, canonical-target exclusions and
-deduplication, refusal of chains/cycles/outside targets, and unchanged V1 hashes.
-
-The portable scope suite also covers the pure v3 cloud-directory extension:
-exact CLOUD_7 tags, immediate directory metadata, the 32-entry limit, refusal of
-content/descendants/listings, historical-version compatibility and unchanged
-non-authorization flags. These simulated facts do not qualify native cloud access.
-
-The separate native command
-`node tools/perf/verify-codex-managed-setup-scope-facts-fixtures.mjs` verifies the
-closed read-only Windows physical-fact producer. Its bounded temporary corpus
-checks complete listings and same-handle identities without reading a user
-profile. Cloud tag decoding uses in-memory buffers and cloud traversal uses
-simulated graphs; running on Windows does not make those cases native Cloud Files
-qualification. It requires Windows and PowerShell 7 and fails with `UNAVAILABLE` when
-either precondition is missing. It is separate from the nineteen-script portable
-lifecycle gate, just like the Windows inventory and preflight campaigns; Linux
-admission does not execute or qualify its native calls. An actual principal-profile
-observation remains separate from fixtures and requires a pinned controlled
-process and retained termination proof. Reparse diagnostics have separate fixture
-coverage for unchanged refusal codes, closed fields and exact path hashing without
-raw paths or exception messages. Neither suite runs Codex setup.
-The final-path query uses a 512-character buffer with one retry bounded at
-32,768 characters. The fixture covers the native API's required-size boundary,
-errors and a second insufficient buffer, while retaining before/after identity
-observations. A separate paired benchmark on disposable files may compare facts,
-witnesses, duration and allocated bytes against a pinned previous producer.
-Such a benchmark does not establish the duration or safety of a profile scan.
+The separate Windows metadata process check
+`node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs --native`
+and exact-package end-to-end campaign remain outside this portable gate. Missing
+native prerequisites are UNAVAILABLE, never a fixture PASS. The current Windows
+validation backend returns `SANDBOX_EXISTING_ONLY_UNSUPPORTED` before any native
+process because its existing-state path refreshes provisioning. A successful
+official setup or native trust review cannot override that incompatibility.
+The final three-task/two-simultaneous-Codex campaign remains unexecuted until the
+exact compatible composition has its own evidence.
 
 For the injected supervisor candidate, run
 `npm run perf:verify-agent-execution-scheduler-fixtures` and
@@ -979,53 +839,13 @@ bytes are not tokens. Native qualification uses a reviewed temporary client with
 human trust and verifies both a denied covered edit and an admitted edit after
 fresh core prerequisites. Error, timeout and out-of-coverage tests remain necessary.
 
-### Cloud path policy and managed-operation recovery fixtures
+### Cloud path policy fixtures
 
 `node tools/perf/verify-agent-local-path-policy-fixtures.mjs` checks the application
 exclusion of standard OneDrive paths, aliases and explicitly excluded roots.
 Filesystem sentinels prove that rejected targets are not observed. Disposable
 Git and installation-pointer fixtures test refusal before activation follows an
 excluded destination. These checks change no user permissions and do not prove
-a Windows read denial, a native hook execution or universal shell interception.
-
-`node tools/perf/verify-codex-managed-setup-parent-preflight-fixtures.mjs` checks
-the bounded parent adapter around the pinned native preflight script. The process
-controller is a double. Required evidence writes are awaited before creation,
-before resume and before interpreting the terminal result. Unknown auxiliary
-Jobs, a failed evidence write or late callbacks retain recovery state; a stopped
-principal setup Job cannot erase auxiliary uncertainty. This portable suite
-performs no token inventory or native setup.
-
-`node tools/perf/verify-codex-managed-setup-operation-journal-fixtures.mjs` uses
-real disposable files and separate Node processes to check exclusive intents,
-revision/ownership comparison, idempotence, corrupted or partial publication and
-recreation after interruption. The host-anchor and reconciliation verifiers are
-doubles; actual protected-anchor installation is not qualified. The host journal
-is not a run store and cannot replace PostgreSQL. File fsync proves the exercised
-process-crash behavior, not a host power-loss guarantee. No automatic expiry,
-purge or retry releases an unresolved operation.
-
-`node tools/perf/verify-journaled-codex-managed-setup-fixtures.mjs` composes the
-real journal with the parent and preflight adapters. Tests retain real temporary
-bytes, inject authority/process boundaries and translate synthetic Windows
-paths inside the fixture only. Crashes after intent, prepared and terminal,
-concurrent parents, failed evidence publication and auxiliary uncertainty must
-not cause replay. Constructor/preview are pure. The evidence sink and anchor
-verifier are trusted ports with no process creation; no production material
-inspection override is exposed. Native setup remains unqualified.
-
-`node tools/perf/verify-codex-managed-setup-named-scope-fixtures.mjs` checks the
-separate named-profile projection. Its facts bind explicit selected roots and
-refuse profile/cloud listings, aliases, unrepresented facts and incomplete
-runtime expansion. The physical producer's request v2 retains the two-pass,
-size and duration bounds but does not enumerate USERPROFILE. Legacy request v1 is refused by the physical CLI before any scope observation;
-its pure models remain fixture-compatible. Historical SSH
-absence and empty prior deny-read prerequisites remain; no credential or SSH
-content is read. Pure projection is not setup approval. The old operation policy
-and manifest cannot represent a volume-root permission and are not silently
-extended by this projector.
-
-These five additional portable scripts join the fourteen historical scripts
-in `runtime-agent-run-lifecycle`, each once per admission. The four resilience
-gates and their 43 historical invocations are unchanged. Native Windows physical
-observation fixtures remain a separate platform-specific check.
+a Windows read denial, native hook execution or universal shell interception.
+This suite is already part of `runtime-agent-run-lifecycle`; do not rerun it as a
+second admission invocation.
