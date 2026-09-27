@@ -40,14 +40,21 @@ function main() {
       assert(schemaSql.includes(`aidn_shared.${tableName}`), `expected schema to declare ${tableName}`);
     }
 
-    assert(contract.schema_version === 3, "expected shared coordination schema version 3");
+    assert(contract.schema_version === 4, "expected shared coordination schema version 4");
     const migrations = getPostgresSharedCoordinationMigrationFiles();
-    assert(JSON.stringify(migrations.map(item => item.version)) === "[2,3]", "expected ordered explicit additive migrations");
+    assert(JSON.stringify(migrations.map(item => item.version)) === "[2,3,4]", "expected ordered explicit additive migrations");
     const supervisionSql = fs.readFileSync(migrations[1].file, "utf8");
     for (const tableName of ["execution_runs", "execution_tasks", "execution_attempts", "execution_events"]) {
       assert(tableNames.has(tableName), `expected supervision contract table ${tableName}`);
       assert(supervisionSql.includes(`aidn_shared.${tableName}`), `expected v3 to declare ${tableName}`);
     }
+    const schedulerSql = fs.readFileSync(migrations[2].file, "utf8");
+    for (const tableName of ["execution_supervisors", "execution_acceptances", "execution_integrations", "execution_run_validations"]) {
+      assert(tableNames.has(tableName), `expected supervised contract table ${tableName}`);
+      assert(schedulerSql.includes(`CREATE TABLE aidn_shared.${tableName}`), `expected v4 to declare ${tableName}`);
+    }
+    assert(schedulerSql.includes("DEFAULT 'legacy'"), "expected existing runs to remain historical");
+    assert(schedulerSql.includes("run_deadline_at TIMESTAMPTZ"), "expected durable database deadline");
 
     for (const operation of ["registerWorkspace", "registerWorktreeHeartbeat", "upsertPlanningState", "appendHandoffRelay", "appendCoordinationRecord", "healthcheck"]) {
       assert(contract.operations.includes(operation), `expected operation ${operation}`);

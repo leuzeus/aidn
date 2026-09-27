@@ -85,6 +85,14 @@ lease. Injected activation/termination fixture verifiers cannot establish engine
 preparation, native authorization or OS process confinement. No executor or
 scheduler is available in this increment.
 
+Lot 5 adds an internal scheduler candidate and a separate PostgreSQL supervisor
+generation lease. Both task and supervisor leases retain the 60-second lifetime
+and 10-second renewal cadence; neither replaces a global engine-generation
+lease. Preparation, native bootstrap, worker execution and validation consume
+the original database-timed run budget. Resume cannot reset that budget, switch
+the frozen engine or replace model and effort. Installation and native admission
+remain explicitly injected prerequisites; no global update is implied by a run.
+
 ## Migration ownership
 
 An exact cleanup inventory classifies managed, modified, missing and unmanaged

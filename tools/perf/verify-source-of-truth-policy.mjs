@@ -73,8 +73,8 @@ function main() {
   for (const concept of ["execution_run", "delegated_task", "execution_attempt"]) {
     for (const mode of modes) {
       const policy = getSourceOfTruthPolicy(concept, mode);
-      if (policy?.coverage_kind !== "persistence_only" || policy?.authority_backend !== "postgres") {
-        matrixIssues.push(`${concept}: ${mode} must expose persistence-only PostgreSQL authority`);
+      if (policy?.coverage_kind !== "supervision_candidate" || policy?.authority_backend !== "postgres") {
+        matrixIssues.push(`${concept}: ${mode} must expose candidate supervision with PostgreSQL authority`);
       }
       if (!policy?.shared_runtime.includes({ execution_run: "execution_runs", delegated_task: "execution_tasks", execution_attempt: "execution_attempts" }[concept])) {
         matrixIssues.push(`${concept}: ${mode} persistence contract must map to its port table`);
@@ -82,11 +82,12 @@ function main() {
       if (policy?.postgresql !== "optional" || policy?.shared_sync !== "opt-in") {
         matrixIssues.push(`${concept}: existing optional PostgreSQL and explicit synchronization must remain intact`);
       }
-      if (!policy?.source_of_truth.includes("no supervised executor available") || policy?.projection !== "none") {
-        matrixIssues.push(`${concept}: ${mode} must not advertise a supervised executor or projection`);
+      if (!policy?.source_of_truth.includes("explicit qualified composition required")
+        || !policy?.notes.includes("public supervised commands remain unavailable") || policy?.projection !== "none") {
+        matrixIssues.push(`${concept}: ${mode} must require explicit qualification and keep public commands unavailable`);
       }
-      if (!policy?.retention.includes("no automatic purge") || !policy?.notes.includes("no observed instances")) {
-        matrixIssues.push(`${concept}: persistence-only retention and instance boundary must be explicit`);
+      if (!policy?.retention.includes("no automatic purge") || !policy?.notes.includes("No files, SQLite or in-memory authority fallback, inferred runtime instances")) {
+        matrixIssues.push(`${concept}: candidate retention and instance boundary must be explicit`);
       }
     }
   }

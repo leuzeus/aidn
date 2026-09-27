@@ -285,18 +285,18 @@ async function readSharedCoordinationReadiness(resolution) {
   let readiness = await ensureSharedCoordinationReady(resolution);
   const health = readiness.health;
   const legacyTables = ["schema_migrations", "project_registry", "workspace_registry", "worktree_registry", "planning_states", "handoff_relays", "coordination_records"];
-  // The additive v3 tables are unnecessary for existing coordination reads,
+  // Additive supervision tables are unnecessary for existing coordination reads,
   // including the rollback snapshot taken before an explicit upgrade.
   const compatibleV2 = health?.ok === true
     && health.schema_status === "version-behind"
-    && health.latest_applied_schema_version === 2
-    && health.expected_schema_version === 3
+    && [2,3].includes(health.latest_applied_schema_version)
+    && health.expected_schema_version === 4
     && health.legacy_workspace_rows === 0
     && legacyTables.every(table => health.tables_present?.includes(table))
     && Array.isArray(health.tables_missing)
-    && health.tables_missing.every(table => ["execution_runs", "execution_tasks", "execution_attempts", "execution_events"].includes(table));
+    && health.tables_missing.every(table => ["execution_runs", "execution_tasks", "execution_attempts", "execution_events", "execution_supervisors", "execution_acceptances", "execution_integrations", "execution_run_validations"].includes(table));
   if (compatibleV2) {
-    readiness = { ...readiness, ok: true, status: "ready-read-only", reason: "intact shared coordination v2 supports historical reads; writes require explicit migration" };
+    readiness = { ...readiness, ok: true, status: "ready-read-only", reason: "intact historical shared coordination supports historical reads; writes require explicit migration" };
   }
   return {
     attempted: readiness.attempted,

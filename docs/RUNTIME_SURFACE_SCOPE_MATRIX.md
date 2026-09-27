@@ -75,18 +75,19 @@ This overlay names the logical owner of key information concepts. It complements
 ## Supervision Persistence Boundary
 
 ADR-0014 adds internal `execution_run`, `delegated_task` and `execution_attempt`
-contracts. Lot 3 adds `persistence_only` coverage through AgentExecutionStore and
-shared schema 3. Their authority is exclusively PostgreSQL. Reservation requires
+contracts. Lot 5 extends AgentExecutionStore to shared schema 4 and
+`supervision_candidate` coverage. Their authority is exclusively PostgreSQL. Reservation requires
 canonical runtime and supervision in one transaction; separate databases or
 file-authoritative canonical state are not admitted. Sequential paths retain
-optional PostgreSQL. Persistence does not advertise an executor or supervisor.
+optional PostgreSQL. Internal supervision requires explicit runtime composition
+and native qualification; no public `agent-run*` command is available.
 
 The port is `src/core/ports/agent-execution-store-port.mjs`; its PostgreSQL
-adapter and `tools/perf/sql/shared-coordination-postgres-v3.sql` are the
-implementation evidence. Shared schema 2 to 3 migration is explicit and locked.
+adapter and the shared PostgreSQL v3/v4 migrations are implementation evidence.
+Shared schema 2 to 3 to 4 migrations are explicit and locked.
 Readiness, registry-independent reads and normal claims never apply DDL. Intact
 v2 historical coordination data remains readable for pre-migration backup;
-normal shared writes require v3. A reservation requires a positive planning
+normal shared writes require v4. A reservation requires a positive planning
 revision; it does not change the initial historical revision zero implicitly.
 Injected activation and termination fixture verifiers establish no native
 admission or descendant-termination proof. Lot 4 adds a candidate executor and
@@ -166,6 +167,10 @@ ADR-0008 or in the shared coordination port.
   - `execution_tasks`
   - `execution_attempts`
   - `execution_events`
+  - `execution_supervisors`
+  - `execution_acceptances`
+  - `execution_integrations`
+  - `execution_run_validations`
 
 ## Regression Rules
 

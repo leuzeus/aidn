@@ -34,7 +34,8 @@ const importReads = new Set([
   "src/core/contracts/json-schema-validator.mjs",
   "src/core/ports/agent-task-executor-port.mjs",
   "src/application/runtime/agent-task-executor-registry-service.mjs",
-  ...["descriptor", "availability", "plan", "run", "task", "attempt", "delegation", "request", "event", "result", "acceptance"].map((kind) => `src/core/contracts/agent-execution/${kind}.v1.schema.json`),
+  ...["descriptor", "availability", "plan", "run", "task", "attempt", "delegation", "request", "event", "result", "acceptance",
+    "supervisor", "integration-prepared", "integration-applied", "run-validation"].map((kind) => `src/core/contracts/agent-execution/${kind}.v1.schema.json`),
 ].map((path) => fileKey(new URL(`../../${path}`, import.meta.url))));
 function deny(name) {
   return () => {

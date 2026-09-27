@@ -70,8 +70,10 @@ transaction; file-authoritative state and separate databases are refused.
 No alternate supervision store is provided. Transcripts and worktrees stay
 local, with only bounded references, sizes and hashes in shared results and no
 automatic purge. No existing checkout-bound artifact is relocated by this
-extension. An executor, native delegated admission and public supervisor remain
-unavailable.
+extension. Lot 4 adds candidate native execution and delegated admission with
+separate qualification. Lot 5 adds an internal scheduler, supervisor generation,
+acceptance and integration records in shared schema 4; the public supervisor
+remains unavailable. These records stay attached to the same three concepts.
 
 ## Options Compared
 

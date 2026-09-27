@@ -248,6 +248,8 @@
     "perf:verify-agent-execution-contracts": "node tools/perf/verify-agent-execution-contracts-fixtures.mjs",
     "perf:verify-agent-execution-postgres": "node tools/perf/verify-agent-execution-postgres-fixtures.mjs",
     "perf:verify-agent-worker-fixtures": "node tools/perf/verify-codex-task-executor-fixtures.mjs && node tools/perf/verify-delegated-agent-admission-fixtures.mjs && node tools/perf/verify-agent-native-qualification-fixtures.mjs",
+    "perf:verify-agent-execution-scheduler-fixtures": "node tools/perf/verify-agent-execution-scheduler-fixtures.mjs",
+    "perf:verify-agent-git-integration-fixtures": "node tools/perf/verify-agent-git-integration-fixtures.mjs",
     "perf:verify-source-of-truth-policy": "node tools/perf/verify-source-of-truth-policy.mjs",
     "perf:verify-governance-completeness": "node tools/perf/verify-governance-completeness.mjs",
     "perf:verify-governance-diagnostics-use-case": "node tools/perf/verify-governance-diagnostics-use-case-fixtures.mjs",

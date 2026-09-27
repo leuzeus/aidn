@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 export const POSTGRES_SHARED_COORDINATION_SCHEMA_NAME = "aidn_shared";
-export const POSTGRES_SHARED_COORDINATION_SCHEMA_VERSION = 3;
+export const POSTGRES_SHARED_COORDINATION_SCHEMA_VERSION = 4;
 export const POSTGRES_SHARED_COORDINATION_DRIVER = Object.freeze({
   backend_kind: "postgres",
   package_name: "pg",
@@ -74,6 +74,10 @@ export const POSTGRES_SHARED_COORDINATION_TABLES = Object.freeze([
   Object.freeze({ table: "execution_tasks", purpose: "retain the frozen delegated tasks of a run", lifecycle: "transactional-with-revision", primary_key: ["run_id", "task_id"] }),
   Object.freeze({ table: "execution_attempts", purpose: "retain attempt ownership, launch intent, delegation and terminal evidence", lifecycle: "transactional-with-generation", primary_key: ["attempt_id"] }),
   Object.freeze({ table: "execution_events", purpose: "retain immutable idempotent execution events", lifecycle: "append-only", primary_key: ["attempt_id", "event_id"] }),
+  Object.freeze({ table: "execution_supervisors", purpose: "fence supervisor generations and retain termination proofs", lifecycle: "transactional-with-generation", primary_key: ["run_id", "generation"] }),
+  Object.freeze({ table: "execution_acceptances", purpose: "retain immutable supervisor task acceptance", lifecycle: "append-only", primary_key: ["attempt_id"] }),
+  Object.freeze({ table: "execution_integrations", purpose: "retain prepared and applied Git integration evidence", lifecycle: "append-only", primary_key: ["run_id", "integration_id"] }),
+  Object.freeze({ table: "execution_run_validations", purpose: "retain final validation and audit on the integrated SHA", lifecycle: "append-only", primary_key: ["run_id"] }),
 ]);
 
 export const POSTGRES_SHARED_COORDINATION_NON_GOALS = Object.freeze([
@@ -103,6 +107,7 @@ export function getPostgresSharedCoordinationMigrationFiles() {
   return [
     { version: 2, file: getPostgresSharedCoordinationSchemaFile() },
     { version: 3, file: path.resolve(THIS_DIR, "..", "..", "..", "tools", "perf", "sql", "shared-coordination-postgres-v3.sql") },
+    { version: 4, file: path.resolve(THIS_DIR, "..", "..", "..", "tools", "perf", "sql", "shared-coordination-postgres-v4.sql") },
   ];
 }
 
@@ -215,7 +220,7 @@ export function describePostgresSharedCoordinationBootstrap(options = {}) {
     bootstrap_steps: [
       "Resolve the connection string from an explicit option or an env-backed locator reference.",
       "Acquire the stable migration advisory lock and reread the applied version inside a transaction.",
-      "Reject newer schemas and apply only missing versioned migrations, including shared-coordination-postgres-v3.sql.",
+      "Reject newer schemas and apply only missing versioned migrations, including shared-coordination-postgres-v3.sql and shared-coordination-postgres-v4.sql.",
       "Record the applied schema version in aidn_shared.schema_migrations.",
       "Run a lightweight healthcheck before enabling shared coordination writes.",
     ],

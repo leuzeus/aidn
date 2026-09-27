@@ -51,6 +51,7 @@ function createFakePgClientFactory() {
           if (sql.includes("to_regclass('aidn_shared.execution_runs')")) return { rows: [{ execution_runs: "aidn_shared.execution_runs" }] };
           if (sql.includes("FROM aidn_shared.execution_runs")) return { rows: state.reserved ? [{ run_id: "reserved-run" }] : [] };
           if (sql.includes("CREATE TABLE aidn_shared.execution_runs")) return { rows: [] };
+          if (sql.includes("ALTER TABLE aidn_shared.execution_runs")) return { rows: [] };
           if (!sql || sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK" || sql.startsWith("CREATE SCHEMA") || sql.startsWith("CREATE TABLE") || sql.startsWith("CREATE INDEX")) {
             return { rows: [] };
           }
@@ -230,6 +231,7 @@ function createFakePgClientFactory() {
                 { table_name: "workspace_registry" },
                 { table_name: "worktree_registry" },
                 ...(Math.max(...state.schemaMigrations) >= 3 ? ["execution_runs", "execution_tasks", "execution_attempts", "execution_events"].map(table_name => ({ table_name })) : []),
+                ...(Math.max(...state.schemaMigrations) >= 4 ? ["execution_supervisors", "execution_acceptances", "execution_integrations", "execution_run_validations"].map(table_name => ({ table_name })) : []),
               ],
             };
           }
@@ -289,12 +291,12 @@ async function main() {
     assert(!fake.state.queryLog.some(row => /CREATE|ALTER|UPDATE|INSERT/.test(row.sql)), "current schema bootstrap must execute no DDL or metadata mutation");
 
     const stalePreview = createFakePgClientFactory();
-    stalePreview.state.onMigrationLock = () => { stalePreview.state.schemaMigrations = [2, 3]; };
+    stalePreview.state.onMigrationLock = () => { stalePreview.state.schemaMigrations = [2, 3, 4]; };
     assert((await createPostgresSharedCoordinationStore({ clientFactory: stalePreview.factory }).bootstrap()).ok, "version reread must accept migration completed by another caller");
     assert(!stalePreview.state.queryLog.some(row => /CREATE TABLE/.test(row.sql)), "migration completed before lock acquisition must not be replayed");
 
     const future = createFakePgClientFactory();
-    future.state.schemaMigrations = [2, 3, 4];
+    future.state.schemaMigrations = [2, 3, 4, 5];
     const futureBootstrap = await createPostgresSharedCoordinationStore({ clientFactory: future.factory }).bootstrap();
     assert(!futureBootstrap.ok && futureBootstrap.error.code === "AIDN_SCHEMA_VERSION_AHEAD", "future schema must refuse bootstrap");
     assert(!future.state.queryLog.some(row => /CREATE|INSERT/.test(row.sql)), "future schema refusal must not mutate schema");
@@ -303,7 +305,7 @@ async function main() {
     const empty = createFakePgClientFactory();
     empty.state.schemaMigrations = [];
     assert((await createPostgresSharedCoordinationStore({ clientFactory: empty.factory }).bootstrap()).ok, "empty backend should apply the explicit bootstrap");
-    assert(JSON.stringify(empty.state.schemaMigrations) === "[2,3]", "empty bootstrap must record both versions");
+    assert(JSON.stringify(empty.state.schemaMigrations) === "[2,3,4]", "empty bootstrap must record all ordered versions");
 
     const workspaceRegistration = await store.registerWorkspace({
       projectId: "project-1",
@@ -456,7 +458,7 @@ async function main() {
     const health = await store.healthcheck();
     assert(health.ok === true, "healthcheck should succeed");
     assert(health.schema_status === "ready", "healthcheck should expose ready schema status");
-    assert(health.latest_applied_schema_version === 3, "healthcheck should expose latest schema version");
+    assert(health.latest_applied_schema_version === 4, "healthcheck should expose latest schema version");
     assert(health.registered_project_count === 1, "healthcheck should expose registered project count");
     assert(health.compatibility_status === "project-scoped", "healthcheck should expose project-scoped compatibility when no legacy rows remain");
 

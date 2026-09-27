@@ -74,7 +74,7 @@ function main() {
 
   for (const concept of ["execution_run", "delegated_task", "execution_attempt"]) {
     const policy = getMetadataPolicy(concept);
-    if (policy?.coverage_kind !== "persistence_only" || policy?.authority_backend !== "postgres"
+    if (policy?.coverage_kind !== "supervision_candidate" || policy?.authority_backend !== "postgres"
       || policy?.source_of_truth_concept !== concept) {
       issues.push(`${concept}: persistence-only metadata must close over its PostgreSQL authority policy`);
       continue;

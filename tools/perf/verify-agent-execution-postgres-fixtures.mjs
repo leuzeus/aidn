@@ -6,12 +6,13 @@ import { createHash } from "node:crypto";
 import { fork } from "node:child_process";
 import pg from "pg";
 import { withEphemeralPostgres } from "./agent-execution-postgres-test-lib.mjs";
+import { createSchedulerFixture } from "./agent-execution-scheduler-test-lib.mjs";
 import { createPostgresAgentExecutionStore } from "../../src/adapters/runtime/postgres-agent-execution-store.mjs";
 import { createPostgresSharedCoordinationStore } from "../../src/adapters/runtime/postgres-shared-coordination-store.mjs";
 import { executePostgresArtifactCommand } from "../../src/adapters/runtime/postgres-artifact-command-lib.mjs";
 import { createPostgresRuntimeArtifactStore } from "../../src/adapters/runtime/postgres-runtime-artifact-store.mjs";
 import { getPostgresRuntimeRelationalSchemaFile } from "../../src/application/runtime/postgres-runtime-persistence-contract-service.mjs";
-import { getPostgresSharedCoordinationSchemaFile } from "../../src/application/runtime/postgres-shared-coordination-contract-service.mjs";
+import { getPostgresSharedCoordinationSchemaFile, getPostgresSharedCoordinationMigrationFiles } from "../../src/application/runtime/postgres-shared-coordination-contract-service.mjs";
 import { fingerprintAgentExecutionValue, normalizeAgentExecutionPlan } from "../../src/core/agents/agent-execution-contracts.mjs";
 
 const fixture = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agent-execution/contracts/complete-chain.json", import.meta.url), "utf8"));
@@ -85,7 +86,16 @@ async function race(connectionString, mode, argumentsList) {
 async function runSuite({ connectionString, version, root }) {
   const client = new pg.Client({ connectionString });
   await client.connect();
-  const storeOptions = { connectionString, verifyActivation: () => true, verifyTermination: (_attempt, proof) => proof?.fixtureConfirmed === true };
+  // Process/Git authorities are explicit injected doubles. Only coordination
+  // and transactions in this suite are qualified against real PostgreSQL.
+  const gitStates = new Map();
+  const storeOptions = { connectionString, verifyActivation: () => true, verifyTermination: (_attempt, proof) => proof?.fixtureConfirmed === true,
+    verifySupervisorTermination: (_supervisor,proof) => ({ok:proof?.fixtureConfirmed===true,supervisor_stopped:true,descendants_stopped:true,git_operations_stopped:true}),
+    inspectIntegration: (input,{run}) => {
+      const state=gitStates.get(run.run_id);
+      return {ok:true,repository_identity_sha256:state?.identity,ref:state?.ref,head_sha:state?.head,
+        source_parent_sha:state?.parents.get(input.source_sha) ?? null,result_parent_sha:state?.parents.get(input.result_sha) ?? null};
+    } };
   const store = createPostgresAgentExecutionStore(storeOptions);
   const shared = createPostgresSharedCoordinationStore({ connectionString });
   const ddlCount = async () => Number((await client.query("SELECT count(*) AS count FROM public.ddl_observations")).rows[0].count);
@@ -97,15 +107,20 @@ async function runSuite({ connectionString, version, root }) {
     (SELECT jsonb_agg(t ORDER BY run_id) FROM aidn_shared.execution_runs t) AS runs,
     (SELECT jsonb_agg(t ORDER BY attempt_id) FROM aidn_shared.execution_attempts t) AS attempts,
     (SELECT jsonb_agg(t ORDER BY run_id,task_id) FROM aidn_shared.execution_tasks t) AS tasks,
-    (SELECT jsonb_agg(t ORDER BY attempt_id,event_id) FROM aidn_shared.execution_events t) AS events`)).rows[0]);
-  async function seed({ concurrency = 2, reserve = true, options = {} } = {}) {
+    (SELECT jsonb_agg(t ORDER BY attempt_id,event_id) FROM aidn_shared.execution_events t) AS events,
+    (SELECT jsonb_agg(t ORDER BY run_id,generation) FROM aidn_shared.execution_supervisors t) AS supervisors,
+    (SELECT jsonb_agg(t ORDER BY attempt_id) FROM aidn_shared.execution_acceptances t) AS acceptances,
+    (SELECT jsonb_agg(t ORDER BY run_id,sequence) FROM aidn_shared.execution_integrations t) AS integrations,
+    (SELECT jsonb_agg(t ORDER BY run_id) FROM aidn_shared.execution_run_validations t) AS validations`)).rows[0]);
+  async function seed({ concurrency = 2, reserve = true, options = {}, transform = null, planInput = null, runIdOverride = null } = {}) {
     const key = id("scenario"), text = `# Fixture backlog ${key}\n`;
-    const raw = structuredClone(fixture.plan);
+    const raw = structuredClone(planInput ?? fixture.plan);
     delete raw.plan_sha256;
     raw.plan_id = `plan.${key}`;
     Object.assign(raw.canonical, { project_id: `project.${key}`, workspace_id: `workspace.${key}`, runtime_scope_id: `scope.${key}`, plan_ref: "docs/audit/BACKLOG.md", plan_sha256: sha(text) });
     raw.limits.concurrency = concurrency;
-    const plan = normalizeAgentExecutionPlan(raw), runId = `run.${key}`, planningKey = `planning.${key}`;
+    transform?.(raw);
+    const plan = normalizeAgentExecutionPlan(raw), runId = runIdOverride ?? `run.${key}`, planningKey = `planning.${key}`;
     const c = plan.canonical;
     assert.equal((await shared.registerWorkspace({ projectId: c.project_id, workspaceId: c.workspace_id })).ok, true);
     assert.equal((await shared.upsertPlanningState({ projectId: c.project_id, workspaceId: c.workspace_id, planningKey, sessionId: c.session_id,
@@ -154,6 +169,58 @@ async function runSuite({ connectionString, version, root }) {
     return request;
   }
   const expire = claimed => client.query("UPDATE aidn_shared.execution_attempts SET lease_until=clock_timestamp()-interval '1 second' WHERE attempt_id=$1", [claimed.attempt.attempt_id]);
+  const evidence = () => ({ref:`proofs/${id("proof")}.json`,sha256:sha("bounded fixture evidence"),bytes:24});
+  function supervisorArgs(context,expectedControlRevision=0) {
+    const integration={repository_identity_sha256:sha(context.runId),ref:`refs/heads/codex/${context.runId}`,base_sha:context.plan.base.sha};
+    gitStates.set(context.runId,{identity:integration.repository_identity_sha256,ref:integration.ref,head:integration.base_sha,parents:new Map()});
+    return {runId:context.runId,ownerId:id("supervisor"),runner:runner(),integration,expectedControlRevision};
+  }
+  async function supervise(context) {
+    const snapshot=await context.store.claimSupervisor(supervisorArgs(context));
+    context.supervisor=snapshot.supervision.current.ownership;
+    return snapshot;
+  }
+  async function completedTask(context,taskId="alpha",extra={}) {
+    const claimed=await context.store.claimAttempt({...claimArgs(context,taskId),supervisor:context.supervisor,...extra});
+    const request=requestFor(context,claimed), args={...owned(claimed),supervisor:context.supervisor};
+    await context.store.recordLaunchIntent({...args,request});
+    const preparation={request_sha256:fingerprintAgentExecutionValue(request),evidence:evidence()};
+    await context.store.recordPreparation({...args,preparation});
+    await context.store.observeRunner({...args,runner:runner()});
+    const result=resultFor(claimed,request);
+    const ended=await context.store.recordResult({...args,result,terminationProof:{fixtureConfirmed:true}});
+    return {claimed,request,result,ended,args,preparation};
+  }
+  function acceptanceFor(context,task,candidateSha=sha(id("candidate")).slice(0,context.plan.base.sha.length)) {
+    const acceptance=structuredClone(fixture.acceptance);
+    for (const key of ["run_id","task_id","attempt_id","plan_sha256","task_contract_sha256","input_sha"]) acceptance[key]=task.claimed.attempt[key];
+    const spec=context.plan.tasks.find(entry=>entry.task_id===acceptance.task_id);
+    Object.assign(acceptance,{result_sha256:fingerprintAgentExecutionValue(task.result),candidate_sha:candidateSha,decision:"accepted",
+      validation:{status:"passed",tested_sha:candidateSha,checks:(spec.validation_ids ?? context.plan.validations.map(item=>item.validation_id)).map(validation_id=>({validation_id,status:"passed",tested_sha:candidateSha,evidence:evidence()}))},
+      integration:{status:"pending",source_sha:candidateSha,integrated_sha:null},cleanup:{status:"pending",evidence:[]}});
+    gitStates.get(context.runId).parents.set(candidateSha,task.claimed.attempt.input_sha);
+    return acceptance;
+  }
+  async function acceptedTask(context,taskId="alpha",extra={}) {
+    const task=await completedTask(context,taskId,extra), acceptance=acceptanceFor(context,task);
+    const accepted=await context.store.recordAcceptance({runId:context.runId,supervisor:context.supervisor,acceptance});
+    return {...task,...accepted};
+  }
+  async function prepareTask(context,accepted) {
+    const snapshot=await context.store.getRun({runId:context.runId}), head=snapshot.integration_head;
+    const integration={contract_version:"agent-integration-prepared.v1",integration_id:id("integration"),run_id:context.runId,plan_sha256:context.plan.plan_sha256,
+      task_id:accepted.acceptance.task_id,attempt_id:accepted.acceptance.attempt_id,acceptance_sha256:accepted.acceptance_sha256,sequence:head.sequence+1,
+      repository_identity_sha256:head.repository_identity_sha256,ref:head.ref,source_sha:accepted.acceptance.candidate_sha,parent_sha:head.sha,result_sha:sha(id("integrated")).slice(0,head.sha.length),
+      prepared_by:context.supervisor,evidence:[evidence()]};
+    gitStates.get(context.runId).parents.set(integration.result_sha,integration.parent_sha);
+    return context.store.prepareIntegration({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:snapshot.supervision.control_revision,integration});
+  }
+  async function applyTask(context,prepared) {
+    const snapshot=await context.store.getRun({runId:context.runId});
+    gitStates.get(context.runId).head=prepared.integration.result_sha;
+    return context.store.recordIntegrationApplied({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:snapshot.supervision.control_revision,
+      integrationId:prepared.integration.integration_id,preparedSha256:prepared.prepared_sha256,proof:{evidence:prepared.integration.evidence}});
+  }
   try {
     await check("missing schema is unavailable without implicit DDL", async () => {
       assert.equal((await store.checkReadiness()).ready, false);
@@ -168,17 +235,45 @@ async function runSuite({ connectionString, version, root }) {
     await client.query(`CREATE TABLE public.ddl_observations(tag text NOT NULL);
       CREATE FUNCTION public.record_fixture_ddl() RETURNS event_trigger LANGUAGE plpgsql AS $$ BEGIN INSERT INTO public.ddl_observations(tag) VALUES(TG_TAG); END $$;
       CREATE EVENT TRIGGER fixture_ddl ON ddl_command_end EXECUTE FUNCTION public.record_fixture_ddl();`);
-    await check("two-process migration applies v3 once and preserves v2 data", async () => {
+    await check("two-process migration applies v3 and v4 once and preserves v2 data", async () => {
       const sentinel = (await client.query("SELECT * FROM aidn_shared.workspace_registry WHERE workspace_id='sentinel.workspace'")).rows;
       const results = await race(connectionString, "migrate", [{},{}]);
       assert.deepEqual(results.map(value => value.ok), [true,true]);
-      assert.deepEqual((await client.query("SELECT schema_version FROM aidn_shared.schema_migrations ORDER BY schema_version")).rows.map(row => row.schema_version), [2,3]);
+      assert.deepEqual((await client.query("SELECT schema_version FROM aidn_shared.schema_migrations ORDER BY schema_version")).rows.map(row => row.schema_version), [2,3,4]);
       assert.deepEqual((await client.query("SELECT * FROM aidn_shared.workspace_registry WHERE workspace_id='sentinel.workspace'")).rows, sentinel);
-      assert.equal(Number((await client.query("SELECT count(*) AS count FROM public.ddl_observations WHERE tag='CREATE TABLE'")).rows[0].count), 4);
+      assert.equal(Number((await client.query("SELECT count(*) AS count FROM public.ddl_observations WHERE tag='CREATE TABLE'")).rows[0].count), 8);
       const before = await ddlCount();
       assert.equal((await shared.bootstrap()).ok, true);
       assert.equal(await ddlCount(), before);
       assert.equal((await store.checkReadiness()).ready, true);
+    });
+    await check("v3 upgrade preserves existing run task result and immutable event evidence", async () => {
+      // This additional database belongs to this same private disposable cluster.
+      await client.query("CREATE DATABASE aidn_v3_upgrade_fixture");
+      const uri=new URL(connectionString); uri.pathname="/aidn_v3_upgrade_fixture";
+      const legacy=new pg.Client({connectionString:uri.href}); await legacy.connect();
+      try {
+        for (const migration of getPostgresSharedCoordinationMigrationFiles().filter(item=>item.version<=3)) {
+          await legacy.query(fs.readFileSync(migration.file,"utf8"));
+          await legacy.query("INSERT INTO aidn_shared.schema_migrations(schema_name,schema_version) VALUES('aidn_shared',$1)",[migration.version]);
+        }
+        const historical=createPostgresSharedCoordinationStore({connectionString:uri.href}), c=fixture.plan.canonical;
+        assert.equal((await historical.registerWorkspace({projectId:c.project_id,workspaceId:c.workspace_id})).ok,true);
+        assert.equal((await historical.upsertPlanningState({projectId:c.project_id,workspaceId:c.workspace_id,planningKey:"fixture",sessionId:c.session_id,backlogArtifactRef:c.plan_ref,backlogArtifactSha256:c.plan_sha256})).ok,true);
+        await legacy.query("INSERT INTO aidn_shared.execution_runs(run_id,project_id,workspace_id,runtime_scope_id,planning_key,planning_revision,plan_sha256,canonical_snapshot_sha256,plan_json,run_json) VALUES($1,$2,$3,$4,'fixture',$5,$6,$7,$8::jsonb,$9::jsonb)",
+          [fixture.run.run_id,c.project_id,c.workspace_id,c.runtime_scope_id,c.planning_revision,fixture.plan.plan_sha256,sha("historical snapshot"),JSON.stringify(fixture.plan),JSON.stringify(fixture.run)]);
+        await legacy.query("INSERT INTO aidn_shared.execution_tasks(run_id,task_id,task_json,next_ordinal) VALUES($1,$2,$3::jsonb,1)",[fixture.task.run_id,fixture.task.task_id,JSON.stringify(fixture.task)]);
+        const a=fixture.attempt;
+        await legacy.query("INSERT INTO aidn_shared.execution_attempts(attempt_id,run_id,task_id,ordinal,owner_id,generation,lease_id,lease_until,attempt_json,delegation_json,request_json,result_json,termination_json) VALUES($1,$2,$3,1,$4,$5,$6,clock_timestamp(),$7::jsonb,$8::jsonb,$9::jsonb,$10::jsonb,$11::jsonb)",
+          [a.attempt_id,a.run_id,a.task_id,a.ownership.owner_id,a.ownership.generation,a.ownership.lease_id,JSON.stringify(a),JSON.stringify(fixture.delegation),JSON.stringify(fixture.request),JSON.stringify(fixture.result),JSON.stringify({fixtureConfirmed:true})]);
+        await legacy.query("INSERT INTO aidn_shared.execution_events(attempt_id,event_id,sequence,payload_sha256,event_json) VALUES($1,$2,1,$3,$4::jsonb)",[a.attempt_id,fixture.event.event_id,fingerprintAgentExecutionValue(fixture.event),JSON.stringify(fixture.event)]);
+        const evidenceSql="SELECT (SELECT jsonb_agg(jsonb_build_object('plan',plan_json,'run',run_json,'created',created_at)) FROM aidn_shared.execution_runs) AS runs,(SELECT jsonb_agg(task_json) FROM aidn_shared.execution_tasks) AS tasks,(SELECT jsonb_agg(jsonb_build_object('attempt',attempt_json,'result',result_json,'termination',termination_json)) FROM aidn_shared.execution_attempts) AS attempts,(SELECT jsonb_agg(event_json) FROM aidn_shared.execution_events) AS events";
+        const before=(await legacy.query(evidenceSql)).rows;
+        const migrated=await race(uri.href,"migrate",[{},{}]); assert.deepEqual(migrated.map(row=>row.ok),[true,true]);
+        assert.deepEqual((await legacy.query(evidenceSql)).rows,before);
+        const preserved=(await legacy.query("SELECT supervision_mode,supervisor_generation,run_started_at,run_deadline_at FROM aidn_shared.execution_runs")).rows[0];
+        assert.equal(preserved.supervision_mode,"legacy"); assert.equal(Number(preserved.supervisor_generation),0); assert.equal(preserved.run_started_at,null); assert.equal(preserved.run_deadline_at,null);
+      } finally { await legacy.end(); }
     });
     await check("readiness and read operations leave all existing state unchanged", async () => {
       const context = await seed();
@@ -425,6 +520,252 @@ async function runSuite({ connectionString, version, root }) {
       assert.deepEqual(expired.expired_attempt_ids,[claimed.attempt.attempt_id]);
       assert.deepEqual((await store.expireAttempts({runId:context.runId})).expired_attempt_ids,[]);
       assert.equal((await store.getRun({runId:context.runId})).attempts.length,1);
+    });
+    await check("two-process supervisor claim has exactly one generation owner", async () => {
+      const context=await seed(), args=supervisorArgs(context);
+      const results=await race(connectionString,"claimSupervisor",[args,{...args,ownerId:id("competitor"),runner:runner()}]);
+      assert.equal(results.filter(result=>result.ok).length,1);
+      assert.equal(results.find(result=>!result.ok).code,"AGENT_EXECUTION_CONTROL_REVISION_MISMATCH");
+      const snapshot=await store.getRun({runId:context.runId});
+      assert.equal(snapshot.supervision.mode,"supervised"); assert.equal(snapshot.supervision.current.ownership.generation,1);
+      assert.equal(new Date(snapshot.run_deadline_at)-new Date(snapshot.run_started_at),context.plan.limits.max_duration_ms);
+      assert.ok(snapshot.server_now); assert.equal(snapshot.attempts.length,0);
+      await reject(claim(context),"AGENT_EXECUTION_SUPERVISOR_OWNERSHIP_LOST");
+      const before=snapshot.supervision.control_revision;
+      const renewed=await store.renewSupervisor({runId:context.runId,supervisor:snapshot.supervision.current.ownership});
+      assert.equal(renewed.supervision.control_revision,before);
+      assert.deepEqual(renewed.run_started_at,snapshot.run_started_at); assert.deepEqual(renewed.run_deadline_at,snapshot.run_deadline_at);
+    });
+    await check("historical trials cannot be adopted and verifier absence has no fallback", async () => {
+      const context=await seed(); await claim(context);
+      await reject(store.claimSupervisor(supervisorArgs(context)),"AGENT_EXECUTION_LEGACY_RUN_ADOPTION_REFUSED");
+      assert.equal((await store.getRun({runId:context.runId})).supervision.mode,"legacy");
+      for (const [field,code] of [["verifySupervisorTermination","SUPERVISOR_TERMINATION_VERIFIER_REQUIRED"],["inspectIntegration","INTEGRATION_INSPECTOR_REQUIRED"]]) {
+        const isolated=await seed({options:{[field]:null}});
+        await reject(isolated.store.claimSupervisor(supervisorArgs(isolated)),`AGENT_EXECUTION_${code}`);
+        assert.equal((await store.getRun({runId:isolated.runId})).supervision.current,null);
+      }
+    });
+    await check("supervised attempt mutations require current supervisor as well as worker ownership", async () => {
+      const context=await seed(); await supervise(context);
+      const claimed=await store.claimAttempt({...claimArgs(context),supervisor:context.supervisor}), request=requestFor(context,claimed), args=owned(claimed);
+      await reject(store.recordLaunchIntent({...args,request}),"AGENT_EXECUTION_SUPERVISOR_OWNERSHIP_LOST");
+      await reject(store.recordLaunchIntent({...args,request,supervisor:{...context.supervisor,generation:2}}),"AGENT_EXECUTION_SUPERVISOR_OWNERSHIP_LOST");
+      await store.recordLaunchIntent({...args,request,supervisor:context.supervisor});
+      await reject(store.observeRunner({...args,runner:runner(),supervisor:context.supervisor}),"AGENT_EXECUTION_PREPARATION_REQUIRED");
+      const preparation={request_sha256:fingerprintAgentExecutionValue(request),evidence:evidence()};
+      await reject(store.recordPreparation({...args,supervisor:context.supervisor,preparation:{...preparation,request_sha256:sha("foreign")}}),"AGENT_EXECUTION_PREPARATION_REQUEST_MISMATCH");
+      await reject(store.recordPreparation({...args,supervisor:context.supervisor,preparation:{...preparation,evidence:{...preparation.evidence,ref:"../foreign"}}}),"AGENT_EXECUTION_PREPARATION_INVALID");
+      await store.recordPreparation({...args,supervisor:context.supervisor,preparation});
+      assert.equal((await store.recordPreparation({...args,supervisor:context.supervisor,preparation})).idempotent,true);
+      await reject(store.recordPreparation({...args,supervisor:context.supervisor,preparation:{...preparation,evidence:evidence()}}),"AGENT_EXECUTION_PREPARATION_CONFLICT");
+      for (const operation of [()=>store.renewAttempt(args),()=>store.expireAttempts({runId:context.runId}),()=>store.invalidateRun({runId:context.runId,reason:"fixture"}),()=>store.finishRun({runId:context.runId,outcome:"failed"})]) {
+        await reject(operation(),"AGENT_EXECUTION_SUPERVISOR_OWNERSHIP_LOST");
+      }
+      const before=await dataSnapshot(); await store.getRun({runId:context.runId}); await store.checkReadiness(); assert.equal(await dataSnapshot(),before);
+    });
+    await check("terminal result acceptance is immutable and independent of expired worker lease", async () => {
+      const context=await seed(); await supervise(context); const task=await completedTask(context);
+      await expire(task.claimed);
+      const acceptance=acceptanceFor(context,task);
+      await reject(store.recordAcceptance({runId:context.runId,supervisor:context.supervisor,acceptance:{...acceptance,result_sha256:sha("foreign")}}),"AGENT_EXECUTION_BINDING_INVALID");
+      const accepted=await store.recordAcceptance({runId:context.runId,supervisor:context.supervisor,acceptance});
+      assert.equal(accepted.idempotent,false);
+      assert.equal((await store.recordAcceptance({runId:context.runId,supervisor:context.supervisor,acceptance})).idempotent,true);
+      const divergent=structuredClone(acceptance); divergent.validation.checks[0].evidence=evidence();
+      await reject(store.recordAcceptance({runId:context.runId,supervisor:context.supervisor,acceptance:divergent}),"AGENT_EXECUTION_ACCEPTANCE_CONFLICT");
+      await reject(store.recordAcceptance({runId:context.runId,acceptance}),"AGENT_EXECUTION_SUPERVISOR_OWNERSHIP_LOST");
+    });
+    await check("accepted predecessors remain blocked until durable applied chain matches input SHA", async () => {
+      const context=await seed(); await supervise(context);
+      const alpha=await acceptedTask(context,"alpha"), beta=await acceptedTask(context,"beta");
+      await reject(store.claimAttempt({...claimArgs(context,"join"),supervisor:context.supervisor,expectedIntegrationSequence:0}),"AGENT_EXECUTION_DEPENDENCY_PROOF_REQUIRED");
+      await reject(prepareTask(context,beta),"AGENT_EXECUTION_INTEGRATION_ORDER_INVALID");
+      const prepared=await prepareTask(context,alpha);
+      const snapshot=await store.getRun({runId:context.runId});
+      assert.equal((await store.prepareIntegration({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:snapshot.supervision.control_revision,integration:prepared.integration})).idempotent,true);
+      await reject(store.prepareIntegration({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:snapshot.supervision.control_revision,integration:{...prepared.integration,result_sha:sha("substitution").slice(0,prepared.integration.result_sha.length)}}),"AGENT_EXECUTION_INTEGRATION_CONFLICT");
+      await applyTask(context,prepared); await applyTask(context,await prepareTask(context,beta));
+      const before=await store.getRun({runId:context.runId});
+      await reject(store.claimAttempt({...claimArgs(context,"join"),supervisor:context.supervisor,expectedIntegrationSequence:before.integration_head.sequence}),"AGENT_EXECUTION_INPUT_SHA_MISMATCH");
+      gitStates.get(context.runId).head=sha("unexpected ref");
+      await reject(store.claimAttempt({...claimArgs(context,"join"),supervisor:context.supervisor,inputSha:before.integration_head.sha,expectedIntegrationSequence:before.integration_head.sequence}),"AGENT_EXECUTION_INTEGRATION_GIT_MISMATCH");
+      gitStates.get(context.runId).head=before.integration_head.sha;
+      const join=await acceptedTask(context,"join",{inputSha:before.integration_head.sha,expectedIntegrationSequence:before.integration_head.sequence});
+      assert.equal(join.claimed.dependency_binding.input_sha,before.integration_head.sha);
+      assert.equal(join.claimed.dependency_binding.predecessors.length,2);
+      await applyTask(context,await prepareTask(context,join));
+      const complete=await store.getRun({runId:context.runId}), head=complete.integration_head;
+      await reject(store.finishRun({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:complete.supervision.control_revision,outcome:"completed"}),"AGENT_EXECUTION_FINAL_VALIDATION_REQUIRED");
+      const validation={contract_version:"agent-run-validation.v1",validation_id:id("final"),run_id:context.runId,plan_sha256:context.plan.plan_sha256,
+        integration_sequence:head.sequence,integrated_sha:head.sha,outcome:"passed",
+        checks:context.plan.validations.map(item=>({validation_id:item.validation_id,status:"passed",tested_sha:head.sha,evidence:evidence()})),
+        audit:{read_only:true,tested_sha:head.sha,checks:context.plan.audit.criteria.map((_,criterion_index)=>({criterion_index,status:"passed",evidence:evidence()}))}};
+      const foreign=structuredClone(validation); foreign.plan_sha256=sha("foreign plan");
+      await reject(store.recordRunValidation({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:complete.supervision.control_revision,validation:foreign}),"AGENT_EXECUTION_FINAL_VALIDATION_BINDING_INVALID");
+      const final=await store.recordRunValidation({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:complete.supervision.control_revision,validation});
+      await store.invalidateRun({runId:context.runId,supervisor:context.supervisor,reason:"FIXTURE_INVALIDATED_AFTER_VALIDATION"});
+      const invalidated=await store.getRun({runId:context.runId});
+      assert.equal(invalidated.run.lifecycle_status,"recovery_required"); assert.ok(invalidated.supervision.control_revision>final.control_revision);
+      const finish={runId:context.runId,supervisor:context.supervisor,finalValidationSha256:final.validation_sha256,outcome:"completed"};
+      await reject(store.finishRun({...finish,expectedControlRevision:final.control_revision}),"AGENT_EXECUTION_CONTROL_REVISION_MISMATCH");
+      await reject(store.finishRun({...finish,expectedControlRevision:invalidated.supervision.control_revision}),"AGENT_EXECUTION_RECOVERY_REQUIRED");
+      const resumed=await store.resumeRun({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:invalidated.supervision.control_revision});
+      assert.ok(resumed.supervision.control_revision>invalidated.supervision.control_revision);
+      assert.equal(resumed.final_validation.validation_sha256,final.validation_sha256);
+      const ended=await store.finishRun({...finish,expectedControlRevision:resumed.supervision.control_revision});
+      assert.equal(ended.run.lifecycle_status,"completed"); assert.equal(ended.reservation_active,false);
+    });
+    await check("supervisor recovery requires process and Git death and preserves prepared result and deadline", async () => {
+      const context=await seed(); const initial=await supervise(context), accepted=await acceptedTask(context), prepared=await prepareTask(context,accepted);
+      const stale=structuredClone(context.supervisor);
+      await client.query("UPDATE aidn_shared.execution_supervisors SET lease_until=clock_timestamp()-interval '1 second' WHERE run_id=$1",[context.runId]);
+      const expired=await store.expireSupervisor({runId:context.runId,expectedSupervisor:stale});
+      assert.equal(expired.run.lifecycle_status,"recovery_required"); assert.equal(expired.reservation_active,true);
+      await reject(store.claimSupervisor({...supervisorArgs(context,expired.supervision.control_revision),expectedPreviousGeneration:stale.generation}),"AGENT_EXECUTION_SUPERVISOR_RECONCILIATION_REQUIRED");
+      const badStore=createPostgresAgentExecutionStore({...storeOptions,verifySupervisorTermination:()=>({ok:true,supervisor_stopped:true,descendants_stopped:true,git_operations_stopped:false})});
+      await reject(badStore.reconcileSupervisor({runId:context.runId,expectedSupervisor:stale,expectedControlRevision:expired.supervision.control_revision,proof:{fixtureConfirmed:true}}),"AGENT_EXECUTION_SUPERVISOR_TERMINATION_UNCONFIRMED");
+      const reconciled=await store.reconcileSupervisor({runId:context.runId,expectedSupervisor:stale,expectedControlRevision:expired.supervision.control_revision,proof:{fixtureConfirmed:true}});
+      const renewed=await store.claimSupervisor({...supervisorArgs(context,reconciled.supervision.control_revision),expectedPreviousGeneration:stale.generation});
+      context.supervisor=renewed.supervision.current.ownership;
+      assert.equal(context.supervisor.generation,stale.generation+1); assert.notEqual(context.supervisor.lease_id,stale.lease_id);
+      assert.deepEqual(renewed.run_started_at,initial.run_started_at); assert.deepEqual(renewed.run_deadline_at,initial.run_deadline_at);
+      assert.equal(renewed.run.lifecycle_status,"recovery_required");
+      await reject(store.renewSupervisor({runId:context.runId,supervisor:stale}),"AGENT_EXECUTION_SUPERVISOR_OWNERSHIP_LOST");
+      await reject(store.resumeRun({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:renewed.supervision.control_revision}),"AGENT_EXECUTION_RECOVERY_REQUIRED");
+      const state=gitStates.get(context.runId); state.parents.set(prepared.integration.source_sha,accepted.claimed.attempt.input_sha); state.parents.set(prepared.integration.result_sha,prepared.integration.parent_sha);
+      state.head=prepared.integration.result_sha; // crash happened after Git CAS, before applied
+      const replay=await store.prepareIntegration({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:renewed.supervision.control_revision,integration:prepared.integration});
+      assert.equal(replay.prepared_sha256,prepared.prepared_sha256); assert.equal(replay.idempotent,true);
+      const applied=await applyTask(context,replay);
+      assert.equal(applied.integration.applied.applied_by.generation,context.supervisor.generation);
+      const resumed=await store.resumeRun({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:applied.control_revision});
+      assert.equal(resumed.run.lifecycle_status,"running"); assert.equal(resumed.integrations.length,1);
+      const repeated=await applyTask(context,replay); assert.equal(repeated.idempotent,true);
+      assert.equal((await store.getRun({runId:context.runId})).integration_head.sequence,1);
+    });
+    await check("database deadline fences execution and acceptance but still permits controlled failure", async () => {
+      const context=await seed(); await supervise(context); const task=await completedTask(context);
+      await client.query("UPDATE aidn_shared.execution_runs SET run_deadline_at=clock_timestamp()-interval '1 second' WHERE run_id=$1",[context.runId]);
+      await reject(store.recordAcceptance({runId:context.runId,supervisor:context.supervisor,acceptance:acceptanceFor(context,task)}),"AGENT_EXECUTION_RUN_DEADLINE_EXPIRED");
+      const state=await store.getRun({runId:context.runId}); assert.equal(state.run.lifecycle_status,"recovery_required"); assert.equal(state.acceptances.length,0);
+      await store.renewSupervisor({runId:context.runId,supervisor:context.supervisor});
+      assert.equal((await store.finishRun({runId:context.runId,supervisor:context.supervisor,outcome:"failed"})).reservation_active,false);
+    });
+    await check("a slow Git observation cannot commit acceptance integration after supervisor expiry", async () => {
+      const context=await seed(); await supervise(context); const accepted=await acceptedTask(context);
+      const baseline=await store.getRun({runId:context.runId});
+      // Expire by database time while the bounded verifier holds the row lock.
+      context.store=createPostgresAgentExecutionStore({...storeOptions,inspectIntegration:async (...args)=>{await delay(2000); return storeOptions.inspectIntegration(...args);}});
+      await client.query("UPDATE aidn_shared.execution_supervisors SET lease_until=clock_timestamp()+interval '1500 milliseconds' WHERE run_id=$1",[context.runId]);
+      await reject(prepareTask(context,accepted),"AGENT_EXECUTION_SUPERVISOR_LEASE_EXPIRED");
+      const after=await store.getRun({runId:context.runId}); assert.equal(after.integrations.length,0);
+      assert.equal(after.supervision.control_revision,baseline.supervision.control_revision);
+    });
+    await check("caller mutation during Git inspection cannot change the durable prepared payload", async () => {
+      const context=await seed(); await supervise(context); const accepted=await acceptedTask(context);
+      let callerDocument, initialSha;
+      const actual=createPostgresAgentExecutionStore({...storeOptions,inspectIntegration:async (...args)=>{
+        initialSha=callerDocument.result_sha; callerDocument.result_sha=sha("mutated caller").slice(0,initialSha.length);
+        return storeOptions.inspectIntegration(...args);
+      }});
+      context.store={...actual,prepareIntegration:args=>{callerDocument=args.integration;return actual.prepareIntegration(args);}};
+      const prepared=await prepareTask(context,accepted);
+      assert.notEqual(callerDocument.result_sha,initialSha); assert.equal(prepared.integration.result_sha,initialSha);
+      const saved=(await store.getRun({runId:context.runId})).integrations[0];
+      assert.equal(saved.prepared.result_sha,initialSha); assert.equal(saved.prepared_sha256,fingerprintAgentExecutionValue(saved.prepared));
+      const originalOwner=structuredClone(context.supervisor), callerOwner=structuredClone(context.supervisor);
+      context.store=createPostgresAgentExecutionStore({...storeOptions,inspectIntegration:async (...args)=>{
+        callerOwner.owner_id="mutated.caller"; return storeOptions.inspectIntegration(...args);
+      }});
+      context.supervisor=callerOwner;
+      const applied=await applyTask(context,prepared);
+      assert.equal(callerOwner.owner_id,"mutated.caller"); assert.deepEqual(applied.integration.applied.applied_by,originalOwner);
+      const savedApplied=(await store.getRun({runId:context.runId})).integrations[0];
+      assert.deepEqual(savedApplied.applied.applied_by,originalOwner); assert.equal(savedApplied.applied_sha256,fingerprintAgentExecutionValue(savedApplied.applied));
+    });
+    await check("pending integration prevents failure closure and expired recovery only records observed applied SHA", async () => {
+      const context=await seed(); await supervise(context);
+      const prepared=await prepareTask(context,await acceptedTask(context));
+      for (const outcome of ["failed","cancelled"]) await reject(store.finishRun({runId:context.runId,supervisor:context.supervisor,outcome}),"AGENT_EXECUTION_RECOVERY_REQUIRED");
+      await client.query("UPDATE aidn_shared.execution_runs SET run_deadline_at=clock_timestamp()-interval '1 second' WHERE run_id=$1",[context.runId]);
+      await reject(store.claimAttempt({...claimArgs(context,"beta"),supervisor:context.supervisor}),"AGENT_EXECUTION_RUN_DEADLINE_EXPIRED");
+      const snapshot=await store.getRun({runId:context.runId});
+      const args={runId:context.runId,supervisor:context.supervisor,expectedControlRevision:snapshot.supervision.control_revision,
+        integrationId:prepared.integration.integration_id,preparedSha256:prepared.prepared_sha256,proof:{evidence:prepared.integration.evidence},reconciliation:true};
+      await reject(store.recordIntegrationApplied(args),"AGENT_EXECUTION_INTEGRATION_GIT_MISMATCH");
+      gitStates.get(context.runId).head=sha("foreign head"); await reject(store.recordIntegrationApplied(args),"AGENT_EXECUTION_INTEGRATION_GIT_MISMATCH");
+      gitStates.get(context.runId).head=prepared.integration.result_sha;
+      const applied=await store.recordIntegrationApplied(args); assert.equal(applied.integration_head.sha,prepared.integration.result_sha);
+      await reject(store.finishRun({runId:context.runId,supervisor:context.supervisor,outcome:"completed",expectedControlRevision:applied.control_revision}),"AGENT_EXECUTION_RUN_DEADLINE_EXPIRED");
+      assert.equal((await store.finishRun({runId:context.runId,supervisor:context.supervisor,outcome:"failed"})).reservation_active,false);
+    });
+    await check("revocation permits only factual applied reconciliation and controlled cancellation", async () => {
+      let authorized=true, activationChecks=0;
+      const context=await seed({options:{verifyActivation:()=>{activationChecks++;return authorized;}}});
+      await supervise(context); const prepared=await prepareTask(context,await acceptedTask(context));
+      authorized=false;
+      let snapshot=await context.store.getRun({runId:context.runId});
+      const args={runId:context.runId,supervisor:context.supervisor,expectedControlRevision:snapshot.supervision.control_revision,
+        integrationId:prepared.integration.integration_id,preparedSha256:prepared.prepared_sha256,proof:{evidence:prepared.integration.evidence}};
+      await reject(context.store.recordIntegrationApplied(args),"AGENT_EXECUTION_ACTIVATION_INVALID");
+      snapshot=await context.store.getRun({runId:context.runId}); assert.equal(snapshot.run.lifecycle_status,"recovery_required");
+      assert.equal(snapshot.reservation_active,true); gitStates.get(context.runId).head=prepared.integration.result_sha;
+      const before=activationChecks;
+      const applied=await context.store.recordIntegrationApplied({...args,expectedControlRevision:snapshot.supervision.control_revision,reconciliation:true});
+      assert.equal(activationChecks,before); assert.equal(applied.integration_head.sha,prepared.integration.result_sha);
+      const state=await context.store.getRun({runId:context.runId}); assert.equal(state.run.lifecycle_status,"recovery_required");
+      const guarded={runId:context.runId,supervisor:context.supervisor,expectedControlRevision:state.supervision.control_revision};
+      await reject(context.store.resumeRun(guarded),"AGENT_EXECUTION_ACTIVATION_INVALID");
+      const validation={contract_version:"agent-run-validation.v1",validation_id:id("revoked"),run_id:context.runId,plan_sha256:context.plan.plan_sha256,
+        integration_sequence:state.integration_head.sequence,integrated_sha:state.integration_head.sha,outcome:"passed",
+        checks:context.plan.validations.map(item=>({validation_id:item.validation_id,status:"passed",tested_sha:state.integration_head.sha,evidence:evidence()})),
+        audit:{read_only:true,tested_sha:state.integration_head.sha,checks:context.plan.audit.criteria.map((_,criterion_index)=>({criterion_index,status:"passed",evidence:evidence()}))}};
+      await reject(context.store.recordRunValidation({...guarded,validation}),"AGENT_EXECUTION_ACTIVATION_INVALID");
+      await reject(context.store.finishRun({...guarded,outcome:"completed"}),"AGENT_EXECUTION_ACTIVATION_INVALID");
+      const cancelled=await context.store.finishRun({...guarded,outcome:"cancelled"});
+      assert.equal(cancelled.reservation_active,false); assert.equal(cancelled.run.lifecycle_status,"cancelled");
+    });
+    await check("real PostgreSQL and Git scheduler overlap two children and integrate dependent output", async () => {
+      const fixtureRun=createSchedulerFixture({realGit:true});
+      try {
+        const context=await seed({planInput:fixtureRun.plan,runIdOverride:fixtureRun.options.runId,options:{
+          inspectIntegration:fixtureRun.git.inspectIntegration,
+          verifyTermination:(attempt,proof)=>proof?.confirmed===true && proof.attempt_id===attempt.attempt_id,
+        }});
+        const result=await fixtureRun.create({store:context.store}).run(fixtureRun.options);
+        assert.equal(result.status,"completed",result.reason_code);
+        const snapshot=await context.store.getRun({runId:context.runId});
+        assert.equal(snapshot.run.lifecycle_status,"completed"); assert.equal(snapshot.integrations.length,3); assert.equal(snapshot.acceptances.length,3);
+        assert.equal(snapshot.reservation_active,false); assert.equal(snapshot.final_validation.validation.integrated_sha,snapshot.integration_head.sha);
+        const [a,b,c]=fixtureRun.children; assert.notEqual(a.pid,b.pid); assert.ok(a.ended>b.started && b.ended>a.started); assert.ok(c.started>=a.ended && c.started>=b.ended);
+        assert.equal(fixtureRun.maxLive,2); assert.equal(fixtureRun.gitCommand(["show",`${snapshot.integration_head.sha}:c.txt`]),"ab");
+        assert.equal(fixtureRun.gitCommand(["status","--porcelain"]),"");
+      } finally { fixtureRun.cleanup(); }
+    });
+    await check("real PostgreSQL scheduler resumes a local validation failure without worker relaunch", async () => {
+      const fixtureRun=createSchedulerFixture({realGit:true,runId:"run.fixture.recovery",tasks:[{task_id:"a",depends_on:[]}],barrier:false});
+      let serial=0;
+      const makeId=()=>`recovery.${++serial}`;
+      try {
+        const context=await seed({planInput:fixtureRun.plan,runIdOverride:fixtureRun.options.runId,options:{
+          inspectIntegration:fixtureRun.git.inspectIntegration,
+          verifyTermination:(attempt,proof)=>proof?.confirmed===true && proof.attempt_id===attempt.attempt_id,
+        }});
+        const first=await fixtureRun.create({store:context.store,makeId,validateTask:async()=>{throw new Error("fixture validation failure");}}).run(fixtureRun.options);
+        const failed=await context.store.getRun({runId:context.runId});
+        assert.equal(first.status,"recovery_required",first.reason_code);
+        assert.equal(first.durable_state_known,true,JSON.stringify({reason:first.reason_code,known:first.durable_state_known,run:failed.run.lifecycle_status,owner:failed.supervision.current?.status,lease:failed.supervision.current?.lease_live,attempts:failed.attempts.length}));
+        assert.equal(failed.run.lifecycle_status,"recovery_required"); assert.equal(failed.supervision.current.lease_live,true,"Immediate recovery must not wait for supervisor expiry");
+        assert.equal(failed.attempts[0].result.outcome,"completed"); assert.equal(fixtureRun.children.length,1);
+        const resumed=await fixtureRun.create({store:context.store,makeId}).resume({...fixtureRun.options,reconciliation:{supervisorProof:{fixtureConfirmed:true},attempts:[]}});
+        assert.equal(resumed.status,"completed",resumed.reason_code); assert.equal(fixtureRun.children.length,1);
+        assert.equal(fixtureRun.operations.filter(item=>item==="bootstrap:a").length,1);
+        const final=await context.store.getRun({runId:context.runId});
+        assert.deepEqual(final.run_deadline_at,failed.run_deadline_at); assert.equal(final.supervision.current.ownership.generation,2);
+        assert.equal(final.integrations.length,1); assert.equal(final.reservation_active,false);
+        assert.equal(fixtureRun.gitCommand(["show",`${final.integration_head.sha}:a.txt`]),"a");
+      } finally { fixtureRun.cleanup(); }
     });
     return { version, root };
   } finally {

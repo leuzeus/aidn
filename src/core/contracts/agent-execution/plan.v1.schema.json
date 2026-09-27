@@ -359,6 +359,17 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 9007199254740991
+          },
+          "validation_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "minItems": 1,
+            "maxItems": 256
           }
         },
         "additionalProperties": false
