@@ -263,9 +263,9 @@ For the public run lifecycle, run
 `npm run perf:verify-agent-run-lifecycle-fixtures`. The required runtime gate
 `runtime-agent-run-lifecycle` executes the lifecycle, workspace, native-attempt
 composition, sandbox-validation, controlled-metadata, managed-sandbox preparation,
-operation-adequacy, setup-protocol, setup-effect, setup bridge and controlled
-parent fixtures exactly once on dev, main and release. It checks preview purity,
-explicit action fingerprints, stale state,
+operation-adequacy, setup-protocol, setup-effect, setup bridge, controlled parent
+and shared startup-argument fixtures exactly once on dev, main and release. It
+checks preview purity, explicit action fingerprints, stale state,
 cancellation, read-only status, prepared-root adoption and completed-run cleanup.
 Disposable Git tests retain source commits and all local bytes before removal,
 reject relocation as evidence of deletion, recover an already removed owned
@@ -277,7 +277,7 @@ termination receipts, unavailable prerequisites and absence of constructor
 effects. Sandbox-validation fixtures verify closed configuration, framed
 protocol and boundary contracts without invoking Codex. Controlled-metadata
 fixtures check explicit candidate/Node pins, bounded protocol and unknown-tree
-recovery using injected controllers. These eleven scripts run
+recovery using injected controllers. These twelve scripts run
 on Linux and Windows; they do not provision a sandbox, use a real user profile,
 launch a model or qualify Windows process confinement. The separate native
 Windows process fixtures (`node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs --native`
@@ -310,6 +310,12 @@ and helper observations. It compiles native declarations without invoking them.
 It requires PowerShell 7, reports unavailable prerequisites as a failing
 UNAVAILABLE result, and stays outside the portable gate. A fixture PASS proves
 neither actual elevation or Job membership nor absence of an external helper.
+A separate private native preflight campaign with inert Node processes exercised
+all three phases and two refusals (100 ns creation-time mismatch and wrong Job).
+Six Jobs were observed empty in 12.057 seconds; 124 audit checks passed for the
+exact preflight script identified in the native qualification guide. This is
+process/token observation evidence, with no Codex or setup execution. It does
+not qualify the new startup/bridge composition or the managed backend.
 
 For managed Windows sandbox preparation, run
 `node tools/perf/verify-codex-managed-sandbox-fixtures.mjs`. This sixth script in
@@ -360,6 +366,22 @@ These candidates are not registered executors. Production implementations of
 `authorizeOperation`, `preflight` and `compareEffects` remain absent; startup and
 effective-configuration evidence and complete effects coverage also remain
 outstanding. No fixture launches native setup or qualifies a managed backend.
+
+The twelfth script,
+`node tools/perf/verify-codex-startup-arguments-fixtures.mjs`, checks the pure
+shared constructor, exact historical worker argument content and order, the
+closed 16-name worker and 12-name managed environment profiles, quoted integration
+IDs, bounded inputs, and absence of import or construction effects. The managed
+transport uses these common settings with explicit state/log/SQLite paths;
+metadata observation must use the same complete startup arguments as setup.
+The managed metadata observer is not yet implemented. Internal setup bridge v2
+and prerequisites v2 bind `startup_sha256` and reject v1 input without conversion;
+missing or physically aliased state directories are refused, not created.
+
+`config/read` returns merged TOML configuration and layers, not the compiled
+`PermissionProfile`. Legacy sandbox flags alone cannot qualify effective
+permissions when a named permission profile is selected. Such unresolved
+permission semantics remain a prerequisite, even when startup arguments match.
 
 For the injected supervisor candidate, run
 `npm run perf:verify-agent-execution-scheduler-fixtures` and

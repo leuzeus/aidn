@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
+import { assertManagedSetupStartup, buildManagedSetupStartupPaths } from "../../src/core/agents/codex-managed-startup.mjs";
+import { buildCodexStartupArguments, CODEX_STARTUP_ENVIRONMENT_PROFILES } from "../../src/core/agents/codex-startup-arguments.mjs";
 import { createManagedSetupTransport, buildManagedSetupArguments } from "../../src/adapters/agents/codex-managed-setup-transport.mjs";
 import { assertManagedSetupBridgeRequest, runManagedSetupBridge, verifyManagedSetupContainingJob,
   MANAGED_SETUP_BRIDGE_SOURCE_FILES } from "../../src/adapters/agents/process-tree/codex-managed-setup-bridge.mjs";
@@ -45,24 +47,25 @@ function clockFixture() {
 }
 function fixture() {
   const cwd = "C:\\fixture\\travail été", home = "C:\\fixture\\profil";
+  const startup = { state_root: "C:\\fixture\\state", mcp_server_ids: ["fixture.mcp"], plugin_ids: ["fixture.plugin"], app_ids: ["fixture.app"], environment_override_names: ["FIXTURE_ENV"] };
   const body = {
-    protocol: "aidn-controlled-managed-setup.v1", intent: "execute-managed-setup", invocation_id: "fixture-invocation",
+    protocol: "aidn-controlled-managed-setup.v2", intent: "execute-managed-setup", invocation_id: "fixture-invocation",
     operation_sha256: A, configuration_sha256: C, approval_sha256: C,
     protocol_config: { operation_sha256: A, client_sha256: B, cwd, expected_codex_home: home,
       limits: { initialize_timeout_ms: 1000, setup_timeout_ms: 8000, max_duration_ms: 10000, max_frame_bytes: 4096, max_total_bytes: 16384, max_frames: 8 } },
     node: { executable: process.execPath, sha256: A },
     powershell: { executable: "C:\\fixture\\pwsh.exe", sha256: A }, job_name: "Local\\aidn-execution-" + "a".repeat(32),
     candidate_root: root, source_inventory: Object.fromEntries(MANAGED_SETUP_BRIDGE_SOURCE_FILES.map(name => [name, C])),
-    client: { executable: "C:\\fixture\\codex.exe", sha256: B, args: buildManagedSetupArguments() },
+    client: { executable: "C:\\fixture\\codex.exe", sha256: B, args: buildManagedSetupArguments(startup) },
     sidecars: { setup: { executable: "C:\\fixture\\setup.exe", sha256: A }, command_runner: { executable: "C:\\fixture\\runner.exe", sha256: A } },
-    cwd, env: { CODEX_HOME: home, TEMP: "C:\\fixture\\temp", TMP: "C:\\fixture\\temp", SystemRoot: "C:\\Windows" },
+    cwd, startup, env: { CODEX_HOME: home, TEMP: startup.state_root, TMP: startup.state_root, SystemRoot: "C:\\Windows" },
     limits: { max_stdout_bytes: 16384, max_stderr_bytes: 1024, max_pending_bytes: 4096, stop_timeout_ms: 50 },
     prerequisites: { reference: "C:\\fixture\\prerequisites.json", sha256: A },
   };
   const record = {
-    contract_version: "aidn-managed-setup-prerequisites.v1", operation_sha256: A, client_sha256: B, configuration_sha256: C,
+    contract_version: "aidn-managed-setup-prerequisites.v2", operation_sha256: A, client_sha256: B, configuration_sha256: C,
     cwd, profile_root: home, node_sha256: A, candidate_inventory_sha256: fingerprint(body.source_inventory),
-    environment_sha256: fingerprint(body.env), client_arguments_sha256: fingerprint(body.client.args), approval_sha256: C,
+    environment_sha256: fingerprint(body.env), client_arguments_sha256: fingerprint(body.client.args), startup_sha256: fingerprint(startup), approval_sha256: C,
     observed_at: AT, expires_at: "2026-09-27T12:05:00.000Z", route: { service_enabled: false, registered_core_requested: false },
   };
   const content = Buffer.from(JSON.stringify(record)); body.prerequisites.sha256 = hash(content);
@@ -127,7 +130,7 @@ function ports(input, fake = fakeProcess()) {
   };
 }
 function transportOptions(input, fake) {
-  return { client: input.request.client, cwd: input.request.cwd, env: input.request.env, spawnProcess: fake.spawnProcess,
+  return { client: input.request.client, cwd: input.request.cwd, env: input.request.env, startup: input.request.startup, spawnProcess: fake.spawnProcess,
     limits: { max_stdout_bytes: input.request.limits.max_stdout_bytes, max_stderr_bytes: input.request.limits.max_stderr_bytes, max_pending_bytes: input.request.limits.max_pending_bytes } };
 }
 const initial = () => wire({ id: "aidn.managed-setup.initialize.1", method: "initialize", params: { clientInfo: { name: "aidn_managed_setup_protocol", version: "0.1.0-preparation" } } });
@@ -145,7 +148,7 @@ await check("bridge success retains inner unconfirmed tree and separate actual o
   assert.equal(result.qualified, false); assert.equal(result.execution_available, false); assert.equal(result.admission_available, false);
   assert.equal(p.fake.launches.length, 1); assert.equal(p.clock.timers.size, 0);
   assert.equal(p.fake.launches[0].settings.shell, false); assert.equal(p.fake.launches[0].settings.detached, false);
-  assert.deepEqual(p.fake.launches[0].args, buildManagedSetupArguments());
+  assert.deepEqual(p.fake.launches[0].args, buildManagedSetupArguments(input.request.startup));
 });
 await check("fixed permission arguments cannot be replaced by a free command", () => {
   const input = fixture(), fake = fakeProcess(), options = transportOptions(input, fake);
@@ -163,7 +166,7 @@ for (const name of ["NODE_OPTIONS", "CODEX_WINDOWS_REGISTERED_CORE", "HTTPS_PROX
 }
 await check("constructor cannot be tricked by hidden args toJSON", () => {
   const input = fixture(), fake = fakeProcess(), options = transportOptions(input, fake), args = ["exec", "forbidden"];
-  Object.defineProperty(args, "toJSON", { value: () => buildManagedSetupArguments() }); options.client = { ...options.client, args };
+  Object.defineProperty(args, "toJSON", { value: () => buildManagedSetupArguments(input.request.startup) }); options.client = { ...options.client, args };
   assert.throws(() => createManagedSetupTransport(options), { code: "SETUP_TRANSPORT_DATA_INVALID" }); assert.equal(fake.launches.length, 0);
 });
 await check("wrong method and out of order frame are refused before lazy spawn", async () => {
@@ -392,7 +395,7 @@ await check("no transport restart after stop and no implicit launch from stdout 
   assert.equal(fake.launches.length, 0);
 });
 await check("sparse arguments cannot masquerade as the closed vector", () => {
-  const input = fixture(), fake = fakeProcess(), options = transportOptions(input, fake), args = buildManagedSetupArguments();
+  const input = fixture(), fake = fakeProcess(), options = transportOptions(input, fake), args = buildManagedSetupArguments(input.request.startup);
   delete args[0]; args["4294967295"] = "extra"; options.client = { ...options.client, args };
   assert.throws(() => createManagedSetupTransport(options), { code: "SETUP_TRANSPORT_DATA_INVALID" }); assert.equal(fake.launches.length, 0);
 });
@@ -420,6 +423,87 @@ await check("client-specific bound is 512 MiB and nonclient bound remains 256 Mi
   assert.equal(seen.get(input.request.client.executable), 512 * 1024 * 1024);
   assert.equal(seen.get(input.request.sidecars.command_runner.executable), 256 * 1024 * 1024);
   assert.equal(seen.get(input.request.powershell.executable), 256 * 1024 * 1024);
+});
+await check("startup is closed explicit and produces matching observation/setup settings", () => {
+  const { request } = fixture(), original = structuredClone(request.startup);
+  assert.equal(assertManagedSetupStartup(request.startup, { cwd: request.cwd, profile_root: request.env.CODEX_HOME, candidate_root: request.candidate_root }), true);
+  const paths = buildManagedSetupStartupPaths(request.startup), args = buildManagedSetupArguments(request.startup);
+  const common = buildCodexStartupArguments({ ...Object.fromEntries(Object.entries(request.startup).filter(([key]) => key !== "state_root")),
+    environment_names: CODEX_STARTUP_ENVIRONMENT_PROFILES.managed, log_dir: paths.log_dir, sqlite_home: paths.sqlite_home });
+  assert.deepEqual(args.slice(18, -3), common); assert.deepEqual(args.slice(-3), ["app-server", "--listen", "stdio://"]);
+  assert(args.includes("agents.enabled=false")); assert(args.includes('log_dir="C:\\\\fixture\\\\state\\\\logs"'));
+  assert(args.includes('sqlite_home="C:\\\\fixture\\\\state\\\\sqlite"'));
+  assert(!args.some(value => /^(model|model_reasoning_effort|reasoning_effort)=/u.test(value)));
+  assert.deepEqual(request.startup, original);
+  assert.throws(() => buildManagedSetupArguments());
+  assert.throws(() => assertManagedSetupStartup({ ...request.startup, model: "fallback" }));
+});
+await check("startup path derivation is pure across Windows and POSIX", () => {
+  const { request } = fixture(), startup = { ...request.startup, state_root: "/fixture/state été" };
+  assert.deepEqual(buildManagedSetupStartupPaths(startup), { state_root: "/fixture/state été", log_dir: "/fixture/state été/logs", sqlite_home: "/fixture/state été/sqlite" });
+  assert.equal(assertManagedSetupStartup(startup, { cwd: "/fixture/work", profile_root: "/fixture/profile", candidate_root: "/fixture/candidate" }), true);
+});
+for (const stateRoot of ["relative", "C:state", "C:\\fixture\\state\\..", "C:\\fixture\\state.", "C:\\fixture\\state ", "C:\\fixture\\CON", "C:\\fixture\\state:stream", "\\\\server\\share\\state", "\\\\?\\C:\\state", "/fixture/../state", "/fixture/state/", "/fixture\\state"]) await check("startup rejects path alias " + stateRoot, () => {
+  const { request } = fixture(); assert.throws(() => buildManagedSetupStartupPaths({ ...request.startup, state_root: stateRoot }), /MANAGED_STARTUP_PATH_INVALID/u);
+});
+await check("startup refuses getters and sparse arrays without executing them", () => {
+  const { request } = fixture(), startup = { ...request.startup }; let observed = false;
+  Object.defineProperty(startup, "state_root", { enumerable: true, get() { observed = true; return "C:\\fixture\\state"; } });
+  assert.throws(() => assertManagedSetupStartup(startup), /MANAGED_STARTUP_DATA_INVALID/u); assert.equal(observed, false);
+  const ids = ["one", "two"]; delete ids[0]; ids["4294967295"] = "hidden";
+  assert.throws(() => assertManagedSetupStartup({ ...request.startup, mcp_server_ids: ids }), /MANAGED_STARTUP_DATA_INVALID/u);
+});
+for (const field of ["cwd", "profile_root", "candidate_root"]) await check("startup requires disjoint " + field + " in both directions", () => {
+  const { request } = fixture(), context = { cwd: request.cwd, profile_root: request.env.CODEX_HOME, candidate_root: request.candidate_root };
+  for (const overlap of [request.startup.state_root, request.startup.state_root + "\\child", "C:\\FIXTURE"]) {
+    assert.throws(() => assertManagedSetupStartup(request.startup, { ...context, [field]: overlap }), /MANAGED_STARTUP_ROOT_OVERLAP/u);
+  }
+  assert.throws(() => assertManagedSetupStartup(request.startup, { cwd: request.cwd }), /MANAGED_STARTUP_CONTEXT_INVALID/u);
+});
+await check("legacy v1 and missing startup cannot reach inspectors or launch", async () => {
+  for (const variant of ["v1", "missing"]) {
+    const input = fixture(), p = ports(input), body = bodyOf(input.request);
+    if (variant === "v1") body.protocol = "aidn-controlled-managed-setup.v1"; else delete body.startup;
+    const result = await finish(runManagedSetupBridge(seal(body), p.options)); assert.equal(result.ok, false);
+    assert.equal(p.inspections.length, 0); assert.equal(p.fake.launches.length, 0);
+  }
+});
+for (const changed of ["state", "integration", "temp", "tmp", "home", "candidate", "common-pin"]) await check("startup mismatch " + changed + " refuses before any inspection", async () => {
+  const input = fixture(), p = ports(input), body = bodyOf(input.request);
+  if (changed === "state") body.startup = { ...body.startup, state_root: "C:\\fixture\\other-state" };
+  if (changed === "integration") body.startup = { ...body.startup, mcp_server_ids: ["different"] };
+  if (changed === "temp") body.env = { ...body.env, TEMP: "C:\\fixture\\ambient" };
+  if (changed === "tmp") body.env = { ...body.env, TMP: "C:\\fixture\\ambient" };
+  if (changed === "home") { body.env = { ...body.env, CODEX_HOME: body.startup.state_root }; body.protocol_config = { ...body.protocol_config, expected_codex_home: body.startup.state_root }; }
+  if (changed === "candidate") body.candidate_root = body.startup.state_root;
+  if (changed === "common-pin") { body.source_inventory = { ...body.source_inventory }; delete body.source_inventory["src/core/agents/codex-startup-arguments.mjs"]; }
+  const result = await finish(runManagedSetupBridge(seal(body), p.options)); assert.equal(result.ok, false);
+  assert.equal(p.inspections.length, 0); assert.equal(p.fake.launches.length, 0);
+});
+await check("v2 prerequisite binds startup and never accepts v1", async () => {
+  for (const change of ["version", "startup"]) {
+    const input = fixture(), p = ports(input);
+    if (change === "version") input.record.contract_version = "aidn-managed-setup-prerequisites.v1"; else input.record.startup_sha256 = C;
+    input.content = Buffer.from(JSON.stringify(input.record)); const body = bodyOf(input.request); body.prerequisites.sha256 = hash(input.content); input.request = seal(body);
+    const result = await finish(runManagedSetupBridge(input.request, p.options)); assert.equal(result.ok, false); assert.equal(p.fake.launches.length, 0);
+  }
+});
+await check("startup directories must already exist and are rechecked after live preflight", async () => {
+  for (const stage of [1, 2]) for (const field of ["state_root", "log_dir", "sqlite_home"]) {
+    const input = fixture(), p = ports(input), selected = buildManagedSetupStartupPaths(input.request.startup)[field]; let count = 0;
+    p.options.inspectDirectory = async directory => {
+      if (directory === selected && ++count === stage) return { kind: "missing", physical_path: directory };
+      return { kind: "directory", physical_path: directory };
+    };
+    const result = await finish(runManagedSetupBridge(input.request, p.options)); assert.equal(result.error.code, "SETUP_BRIDGE_DIRECTORY_MISMATCH");
+    assert.equal(p.fake.launches.length, 0); assert.equal(count, stage);
+  }
+});
+await check("startup directory alias cannot satisfy a physical observation", async () => {
+  const input = fixture(), p = ports(input), selected = buildManagedSetupStartupPaths(input.request.startup).log_dir;
+  p.options.inspectDirectory = async directory => ({ kind: "directory", physical_path: directory === selected ? "C:\\fixture\\foreign" : directory });
+  assert.equal((await finish(runManagedSetupBridge(input.request, p.options))).error.code, "SETUP_BRIDGE_DIRECTORY_MISMATCH");
+  assert.equal(p.fake.launches.length, 0);
 });
 await check("module import and injected execution do not write spawn real children or access network", async () => {
   const fs = (await import("node:fs")).default, cp = (await import("node:child_process")).default;

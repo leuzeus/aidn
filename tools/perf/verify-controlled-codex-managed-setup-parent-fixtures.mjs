@@ -13,15 +13,16 @@ async function check(name, fn) { try { await fn(); checks.push({ name, status: "
 function fixture() {
   const inventory = Object.fromEntries([...MANAGED_SETUP_BRIDGE_SOURCE_FILES, self].map(name => [name, H]));
   const cwd = "C:\\Fixture Workspace", home = "C:\\Fixture Profile";
-  const body = { protocol: "aidn-controlled-managed-setup.v1", intent: "execute-managed-setup", invocation_id: "fixture.managed.setup",
+  const startup = { state_root: "C:\\Fixture State", mcp_server_ids: [], plugin_ids: [], app_ids: [], environment_override_names: [] };
+  const body = { protocol: "aidn-controlled-managed-setup.v2", intent: "execute-managed-setup", invocation_id: "fixture.managed.setup",
     operation_sha256: H, configuration_sha256: H, approval_sha256: H,
     protocol_config: { operation_sha256: H, client_sha256: H, cwd, expected_codex_home: home,
       limits: { initialize_timeout_ms: 500, setup_timeout_ms: 1000, max_duration_ms: 2000, max_frame_bytes: 8192, max_total_bytes: 65536, max_frames: 16 } },
     node: { executable: "C:\\Fixture Bin\\node.exe", sha256: H }, powershell: { executable: "C:\\Fixture Bin\\pwsh.exe", sha256: H },
     job_name: "Local\\aidn-execution-" + "a".repeat(32), candidate_root: "C:\\Fixture Candidate", source_inventory: inventory,
-    client: { executable: "C:\\Fixture Bin\\codex.exe", sha256: H, args: buildManagedSetupArguments() },
+    client: { executable: "C:\\Fixture Bin\\codex.exe", sha256: H, args: buildManagedSetupArguments(startup) },
     sidecars: { setup: { executable: "C:\\Fixture Bin\\setup.exe", sha256: H }, command_runner: { executable: "C:\\Fixture Bin\\runner.exe", sha256: H } },
-    cwd, env: { CODEX_HOME: home }, limits: { max_stdout_bytes: 65536, max_stderr_bytes: 16384, max_pending_bytes: 65536, stop_timeout_ms: 500 },
+    cwd, startup, env: { CODEX_HOME: home, TEMP: startup.state_root, TMP: startup.state_root }, limits: { max_stdout_bytes: 65536, max_stderr_bytes: 16384, max_pending_bytes: 65536, stop_timeout_ms: 500 },
     prerequisites: { reference: "C:\\Fixture Review\\prerequisites.json", sha256: H } };
   const request = { ...body, request_sha256: hash(body) }, events = [];
   const token = (pid, job = null) => ({ pid, started_at: created, elevated: true, admin_enabled: true,
@@ -37,7 +38,7 @@ function fixture() {
   const bridge = { protocol: body.protocol, invocation_id: body.invocation_id, request_sha256: request.request_sha256, operation_sha256: body.operation_sha256, ok: true,
     result: { channel, transport: { closed: true, forced: false, stdout_ended: true, exit_code: 0, signal: null, reason_code: null }, preflight: { target: token(runner.pid, body.job_name) } } };
   const ports = {
-    inspectMaterial: async ({ request: req }) => { events.push("material"); return { verified: true, request_sha256: req.request_sha256, inventory_sha256: hash(req.source_inventory) }; },
+    inspectMaterial: async ({ request: req }) => { events.push("material"); return { verified: true, request_sha256: req.request_sha256, inventory_sha256: hash(req.source_inventory), startup_sha256: hash(req.startup) }; },
     authorizeOperation: async ({ request: req, phase }) => { events.push(phase + ":authorize"); return { status: "AUTHORIZED", request_sha256: req.request_sha256,
       operation_sha256: req.operation_sha256, approval_sha256: req.approval_sha256, configuration_sha256: req.configuration_sha256,
       effects_adequate: true, expires_at: new Date(Date.now() + 120000).toISOString() }; },
@@ -139,9 +140,23 @@ await check("validated observations are immutable detached snapshots across effe
   assert.equal(result.outcome, "completed"); assert.equal(result.tree_termination.state, "confirmed");
   assert.equal(result.process.termination_proof.active_processes, 0); assert.equal(result.bridge.result.channel.reason_code, null);
 });
+for (const phase of ["before_create", "before_resume"]) await check("startup material digest mismatch refuses " + phase, async () => {
+  const f = fixture(), inspect = f.ports.inspectMaterial; let calls = 0;
+  f.ports.inspectMaterial = async input => { const record = await inspect(input); calls++;
+    if (calls === (phase === "before_create" ? 1 : 2)) record.startup_sha256 = OTHER; return record; };
+  const result = await createControlledCodexManagedSetup(f.ports)(f.request, f.options);
+  assert.equal(result.outcome, phase === "before_create" ? "refused" : "indeterminate");
+  assert(!f.events.includes(phase === "before_create" ? "create" : "resumed"));
+});
+await check("v1 startup cannot enter the parent authority ports", async () => {
+  const f = fixture(); f.request.protocol = "aidn-controlled-managed-setup.v1";
+  const { request_sha256, ...body } = f.request; f.request.request_sha256 = hash(body); f.options.expectRequestSha256 = f.request.request_sha256;
+  await assert.rejects(createControlledCodexManagedSetup(f.ports)(f.request, f.options), /SETUP_BRIDGE_REQUEST_INVALID/u);
+  assert.deepEqual(f.events, []);
+});
 await check("changed material at prepared prevents resumption", async () => {
   const f = fixture(); let calls = 0;
-  f.ports.inspectMaterial = async ({ request }) => ({ request_sha256: request.request_sha256, inventory_sha256: hash(request.source_inventory), verified: ++calls === 1 });
+  f.ports.inspectMaterial = async ({ request }) => ({ request_sha256: request.request_sha256, inventory_sha256: hash(request.source_inventory), startup_sha256: hash(request.startup), verified: ++calls === 1 });
   const result = await createControlledCodexManagedSetup(f.ports)(f.request, f.options); assert.equal(result.outcome, "indeterminate"); assert(!f.events.includes("resumed"));
 });
 await check("foreign error code never leaks through authority port", async () => {

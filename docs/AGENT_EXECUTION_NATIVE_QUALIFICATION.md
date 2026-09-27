@@ -555,6 +555,35 @@ proof and observed effects distinct. An uncertain operation blocks further
 operations in that parent instance. Neither the bridge nor the parent is
 registered as a native executor.
 
+The pure shared constructor in `src/core/agents/codex-startup-arguments.mjs`
+preserves the historical worker settings and order. It disables each explicitly
+listed MCP/plugin/app integration, notifications and memory features without
+erasing hook configuration. Empty tables do not neutralize inherited entries;
+the complete observed identifier lists must be fixed before startup. The
+managed startup record contains exactly `state_root`, `mcp_server_ids`,
+`plugin_ids`, `app_ids` and `environment_override_names`. It selects the closed
+12-name environment profile, places logs in `state_root/logs` and SQLite in
+`state_root/sqlite`, and binds `TEMP` and `TMP` to `state_root`. This root must be
+physically distinct from the profile, operation cwd and candidate; the parent
+and bridge require the directories to exist and do not create them implicitly.
+Authentication refresh, profile caches and native historical metadata backfill
+remain explicitly reviewed startup effects; redirecting SQLite is not a promise
+of no profile effects or a bound on native disk consumption.
+
+Internal protocol `aidn-controlled-managed-setup.v2` requires that startup record.
+`aidn-managed-setup-prerequisites.v2` includes its `startup_sha256` alongside the
+argument, environment and configuration hashes. Version 1 inputs are refused
+without migration or inferred defaults. The managed metadata observer remains
+unimplemented; its future observation must use the same full startup arguments,
+profile, cwd and environment as the setup it describes. A hash from differently
+overridden metadata cannot authorize setup.
+
+`config/read` exposes merged TOML values and their layers, not the compiled
+`PermissionProfile`. If a named permission profile applies, the legacy
+`sandbox_mode` and `sandbox_workspace_write` values alone do not establish its
+effective filesystem or network permissions. Resolving and checking that exact
+permission configuration remains separate from argument construction.
+
 The portable transport/bridge and parent fixtures use doubles and perform no
 setup. The separate Windows preflight campaign has 89 checks with mocked token,
 process, Job and helper observations; native declarations are compiled but never
@@ -564,6 +593,18 @@ and `compareEffects` still need their approved composition. Startup and effectiv
 configuration, complete observed effects and exact-operation authorization remain
 required before any first native setup operation. No candidate or fixture result
 satisfies those prerequisites implicitly.
+
+A separate locally retained native preflight campaign exercised `before_create`,
+`before_resume` and `inside_bridge` with inert Node processes. It also rejected
+a 100 ns process-creation mismatch and a wrong Job. Six Jobs were observed empty
+in 12.057 seconds, and 124 audit checks passed. The exact PowerShell preflight
+producer SHA-256 was
+`3a6070533c4ae6eb2cd88f79d1cc709c2da5d7339e215cf5419236a5dd44052f`.
+The private plan, process identities and host paths remain outside the repository.
+This evidence covers the observed preflight script and process/token checks; it
+ran no Codex, setup or worker and does not qualify the startup/bridge changes,
+complete setup effects or the managed backend. The 89 mocked PowerShell checks
+above remain a distinct evidence set.
 
 Collector diagnostics identify the observer's token context and projection
 digest, provider duration, exit code and privilege-related failures without

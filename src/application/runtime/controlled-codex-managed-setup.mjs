@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
+import { buildManagedSetupStartupPaths } from "../../core/agents/codex-managed-startup.mjs";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../core/agents/agent-execution-contracts.mjs";
 import { assertManagedSetupBridgeRequest, MANAGED_SETUP_BRIDGE_SOURCE_FILES } from "../../adapters/agents/process-tree/codex-managed-setup-bridge.mjs";
 
@@ -109,11 +110,12 @@ export function createControlledCodexManagedSetup({ controller, authorizeOperati
       // result is never independently authenticated native evidence.
       if (inspectMaterial) {
         checkpoint(); const seen = await inspectMaterial({ request, signal: stop.signal }); checkpoint(); fingerprint(seen);
-        ensure(exact(seen, ["request_sha256", "inventory_sha256", "verified"]) && seen.request_sha256 === requestHash
-          && seen.inventory_sha256 === inventoryHash && seen.verified === true, "MANAGED_TREE_MATERIAL_REFUSED");
+        ensure(exact(seen, ["request_sha256", "inventory_sha256", "startup_sha256", "verified"]) && seen.request_sha256 === requestHash
+          && seen.inventory_sha256 === inventoryHash && seen.startup_sha256 === fingerprint(body.startup) && seen.verified === true, "MANAGED_TREE_MATERIAL_REFUSED");
         return;
       }
       checkpoint(); await physical(body.candidate_root, true); await physical(body.cwd, true); await physical(body.protocol_config.expected_codex_home, true);
+      for (const directory of Object.values(buildManagedSetupStartupPaths(body.startup))) { checkpoint(); await physical(directory, true); }
       for (const pin of [body.node, body.client, body.powershell, ...Object.values(body.sidecars), { executable: body.prerequisites.reference, sha256: body.prerequisites.sha256 }]) {
         ensure((await hashFile(pin.executable, checkpoint)).sha256 === pin.sha256, "MANAGED_TREE_PIN_CHANGED");
       }

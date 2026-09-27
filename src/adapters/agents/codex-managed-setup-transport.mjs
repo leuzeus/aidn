@@ -1,7 +1,9 @@
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { assertManagedSetupStartup, buildManagedSetupStartupPaths } from "../../core/agents/codex-managed-startup.mjs";
+import { buildCodexStartupArguments, CODEX_STARTUP_ENVIRONMENT_PROFILES } from "../../core/agents/codex-startup-arguments.mjs";
 
-const ENV = new Set(["SYSTEMROOT", "WINDIR", "COMSPEC", "PATH", "PATHEXT", "USERPROFILE", "LOCALAPPDATA", "APPDATA", "PROGRAMDATA", "CODEX_HOME", "TEMP", "TMP"]);
+const ENV = new Set(CODEX_STARTUP_ENVIRONMENT_PROFILES.managed);
 const ARGUMENTS = Object.freeze([
   "-c", 'sandbox_mode="workspace-write"', "-c", 'windows.sandbox="elevated"',
   "-c", "features.windows_sandbox_service=false", "-c", 'approval_policy="never"',
@@ -9,7 +11,13 @@ const ARGUMENTS = Object.freeze([
   "-c", "sandbox_workspace_write.exclude_tmpdir_env_var=true", "-c", "sandbox_workspace_write.exclude_slash_tmp=true",
   "app-server", "--listen", "stdio://",
 ]);
-export function buildManagedSetupArguments() { return [...ARGUMENTS]; }
+export function buildManagedSetupArguments(startup) {
+  const paths = buildManagedSetupStartupPaths(startup);
+  const common = buildCodexStartupArguments({ mcp_server_ids: startup.mcp_server_ids, plugin_ids: startup.plugin_ids, app_ids: startup.app_ids,
+    environment_override_names: startup.environment_override_names, environment_names: CODEX_STARTUP_ENVIRONMENT_PROFILES.managed,
+    log_dir: paths.log_dir, sqlite_home: paths.sqlite_home });
+  return [...ARGUMENTS.slice(0, -3), "-c", "agents.enabled=false", ...common, ...ARGUMENTS.slice(-3)];
+}
 const HASH = /^[a-f0-9]{64}$/u;
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const ensure = (ok, code) => { if (!ok) fail(code); };
@@ -47,10 +55,11 @@ function jsonData(value, depth = 0, seen = new Set()) {
   }
   seen.delete(value);
 }
-export function createManagedSetupTransport({ client, cwd, env, limits, spawnProcess } = {}) {
-  jsonData({ client, cwd, env, limits });
+export function createManagedSetupTransport({ client, cwd, env, limits, startup, spawnProcess } = {}) {
+  jsonData({ client, cwd, env, limits, startup });
+  const expectedArguments = buildManagedSetupArguments(startup);
   ensure(exact(client, ["executable", "sha256", "args"]) && absolute(client.executable) && typeof client.sha256 === "string" && HASH.test(client.sha256)
-    && Array.isArray(client.args) && client.args.length === ARGUMENTS.length && client.args.every((value, index) => value === ARGUMENTS[index]), "SETUP_TRANSPORT_CLIENT_INVALID");
+    && Array.isArray(client.args) && client.args.length === expectedArguments.length && client.args.every((value, index) => value === expectedArguments[index]), "SETUP_TRANSPORT_CLIENT_INVALID");
   ensure(absolute(cwd) && typeof spawnProcess === "function", "SETUP_TRANSPORT_DEPENDENCY_INVALID");
   ensure(env && typeof env === "object" && !Array.isArray(env) && Object.keys(env).length <= ENV.size
     && new Set(Object.keys(env).map(name => name.toUpperCase())).size === Object.keys(env).length
@@ -60,7 +69,10 @@ export function createManagedSetupTransport({ client, cwd, env, limits, spawnPro
   ensure(exact(limits, ["max_stdout_bytes", "max_stderr_bytes", "max_pending_bytes"])
     && positive(limits.max_stdout_bytes, 1048576) && positive(limits.max_stderr_bytes, 1048576)
     && positive(limits.max_pending_bytes, limits.max_stdout_bytes), "SETUP_TRANSPORT_LIMIT_INVALID");
-  const selected = structuredClone({ client, cwd, env, limits });
+  const environmentValue = name => Object.entries(env).find(([key]) => key.toUpperCase() === name)?.[1];
+  assertManagedSetupStartup(startup, { cwd, profile_root: environmentValue("CODEX_HOME"), candidate_root: cwd });
+  ensure(environmentValue("TEMP") === startup.state_root && environmentValue("TMP") === startup.state_root, "SETUP_TRANSPORT_STARTUP_ENVIRONMENT_MISMATCH");
+  const selected = structuredClone({ client, cwd, env, limits, startup });
   const frames = [
     { id: "aidn.managed-setup.initialize.1", method: "initialize", params: { clientInfo: { name: "aidn_managed_setup_protocol", version: "0.1.0-preparation" } } },
     { method: "initialized" },

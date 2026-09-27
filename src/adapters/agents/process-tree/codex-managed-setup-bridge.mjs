@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { assertManagedSetupStartup, buildManagedSetupStartupPaths } from "../../../core/agents/codex-managed-startup.mjs";
 import { createManagedSetupProtocol } from "../../../core/agents/codex-managed-setup-protocol.mjs";
 import { runManagedSetupChannel } from "../codex-managed-setup-channel.mjs";
 import { createManagedSetupTransport, buildManagedSetupArguments } from "../codex-managed-setup-transport.mjs";
@@ -14,8 +15,10 @@ export const MANAGED_SETUP_BRIDGE_SOURCE_FILES = Object.freeze([
   "src/adapters/agents/codex-managed-setup-transport.mjs",
   "src/adapters/agents/codex-managed-setup-channel.mjs",
   "src/core/agents/codex-managed-setup-protocol.mjs",
+  "src/core/agents/codex-startup-arguments.mjs",
+  "src/core/agents/codex-managed-startup.mjs",
 ]);
-const PROTOCOL = "aidn-controlled-managed-setup.v1", HASH = /^[a-f0-9]{64}$/u;
+const PROTOCOL = "aidn-controlled-managed-setup.v2", HASH = /^[a-f0-9]{64}$/u;
 const INPUT_LIMIT = 262144, OUTPUT_LIMIT = 131072;
 class BridgeFailure extends Error { constructor(code) { super(code); this.code = code; } }
 const ensure = (condition, code) => { if (!condition) throw new BridgeFailure(code); };
@@ -59,7 +62,7 @@ function freeze(value) { if (value && typeof value === "object") { Object.values
 export function assertManagedSetupBridgeRequest(envelope) {
   jsonData(envelope);
   const fields = ["protocol", "intent", "invocation_id", "operation_sha256", "configuration_sha256", "approval_sha256", "protocol_config",
-    "node", "powershell", "job_name", "candidate_root", "source_inventory", "client", "sidecars", "cwd", "env", "limits", "prerequisites", "request_sha256"];
+    "node", "powershell", "job_name", "candidate_root", "source_inventory", "client", "sidecars", "cwd", "env", "startup", "limits", "prerequisites", "request_sha256"];
   ensure(exact(envelope, fields) && envelope.protocol === PROTOCOL && envelope.intent === "execute-managed-setup"
     && typeof envelope.invocation_id === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(envelope.invocation_id), "SETUP_BRIDGE_REQUEST_INVALID");
   for (const field of ["operation_sha256", "configuration_sha256", "approval_sha256", "request_sha256"]) ensure(typeof envelope[field] === "string" && HASH.test(envelope[field]), "SETUP_BRIDGE_PIN_INVALID");
@@ -81,11 +84,12 @@ export function assertManagedSetupBridgeRequest(envelope) {
     && Number.isSafeInteger(body.limits.stop_timeout_ms) && body.limits.stop_timeout_ms > 0 && body.limits.stop_timeout_ms <= 60000
     && body.limits.max_stdout_bytes <= body.protocol_config.limits.max_total_bytes, "SETUP_BRIDGE_LIMIT_INVALID");
   // Construction validates the closed environment/arguments without spawning.
-  createManagedSetupTransport({ client: body.client, cwd: body.cwd, env: body.env,
+  createManagedSetupTransport({ client: body.client, cwd: body.cwd, env: body.env, startup: body.startup,
     limits: { max_stdout_bytes: body.limits.max_stdout_bytes, max_stderr_bytes: body.limits.max_stderr_bytes, max_pending_bytes: body.limits.max_pending_bytes },
     spawnProcess() { throw new BridgeFailure("SETUP_BRIDGE_VALIDATION_SPAWN_FORBIDDEN"); } });
   const home = Object.entries(body.env).find(([name]) => name.toUpperCase() === "CODEX_HOME")?.[1];
   ensure(home === body.protocol_config.expected_codex_home, "SETUP_BRIDGE_HOME_BINDING");
+  assertManagedSetupStartup(body.startup, { cwd: body.cwd, profile_root: home, candidate_root: body.candidate_root });
   ensure(exact(body.prerequisites, ["reference", "sha256"]) && absolute(body.prerequisites.reference)
     && typeof body.prerequisites.sha256 === "string" && HASH.test(body.prerequisites.sha256), "SETUP_BRIDGE_PREREQUISITE_REFERENCE_INVALID");
   return true;
@@ -126,9 +130,9 @@ const iso = value => typeof value === "string" && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d
   && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
 function prerequisites(record, body, at) {
   const fields = ["contract_version", "operation_sha256", "client_sha256", "configuration_sha256", "cwd", "profile_root", "node_sha256",
-    "candidate_inventory_sha256", "environment_sha256", "client_arguments_sha256", "approval_sha256", "observed_at", "expires_at", "route"];
+    "candidate_inventory_sha256", "environment_sha256", "client_arguments_sha256", "startup_sha256", "approval_sha256", "observed_at", "expires_at", "route"];
   jsonData(record);
-  ensure(exact(record, fields) && record.contract_version === "aidn-managed-setup-prerequisites.v1"
+  ensure(exact(record, fields) && record.contract_version === "aidn-managed-setup-prerequisites.v2"
     && iso(record.observed_at) && iso(record.expires_at) && iso(at), "SETUP_BRIDGE_PREREQUISITE_INVALID");
   ensure(Date.parse(record.observed_at) <= Date.parse(at) && Date.parse(at) < Date.parse(record.expires_at)
     && Date.parse(record.expires_at) - Date.parse(record.observed_at) > 0
@@ -136,7 +140,7 @@ function prerequisites(record, body, at) {
   const bindings = { operation_sha256: body.operation_sha256, client_sha256: body.client.sha256, configuration_sha256: body.configuration_sha256,
     cwd: body.cwd, profile_root: body.protocol_config.expected_codex_home, node_sha256: body.node.sha256,
     candidate_inventory_sha256: fingerprint(body.source_inventory), environment_sha256: fingerprint(body.env),
-    client_arguments_sha256: fingerprint(body.client.args), approval_sha256: body.approval_sha256 };
+    client_arguments_sha256: fingerprint(body.client.args), startup_sha256: fingerprint(body.startup), approval_sha256: body.approval_sha256 };
   ensure(Object.entries(bindings).every(([name, value]) => record[name] === value)
     && exact(record.route, ["service_enabled", "registered_core_requested"])
     && record.route.service_enabled === false && record.route.registered_core_requested === false, "SETUP_BRIDGE_PREREQUISITE_BINDING");
@@ -289,11 +293,14 @@ export async function runManagedSetupBridge(input, {
       if (keepBytes) ensure(record.content instanceof Uint8Array && record.content.byteLength === record.bytes && digest(record.content) === sha256, "SETUP_BRIDGE_FILE_PIN_MISMATCH");
       return record;
     }
-    try {
-      for (const directory of [body.candidate_root, body.cwd, body.protocol_config.expected_codex_home]) {
+    async function checkDirectories() {
+      for (const directory of [body.candidate_root, body.cwd, body.protocol_config.expected_codex_home, ...Object.values(buildManagedSetupStartupPaths(body.startup))]) {
         const record = await bounded(() => directoryInspector(directory, { signal: stop.signal }));
         ensure(record?.kind === "directory" && samePath(record.physical_path, directory), "SETUP_BRIDGE_DIRECTORY_MISMATCH");
       }
+    }
+    try {
+      await checkDirectories();
       for (const [name, sha256] of Object.entries(body.source_inventory)) await checkFile(join(body.candidate_root, name), sha256, 8 * 1024 * 1024);
       for (const selected of [body.node, body.powershell, body.sidecars.setup, body.sidecars.command_runner]) await checkFile(selected.executable, selected.sha256, 256 * 1024 * 1024);
       await checkFile(body.client.executable, body.client.sha256, 512 * 1024 * 1024);
@@ -308,12 +315,13 @@ export async function runManagedSetupBridge(input, {
       containingJob = JSON.parse(canonical(observedJob));
       // Native preflight can take time. Recheck material and receipt freshness
       // before the lazy app-server spawn, never extend the overall bridge budget.
+      await checkDirectories();
       await checkFile(body.client.executable, body.client.sha256, 512 * 1024 * 1024);
       for (const selected of Object.values(body.sidecars)) await checkFile(selected.executable, selected.sha256, 256 * 1024 * 1024);
       const finalReceipt = await checkFile(body.prerequisites.reference, body.prerequisites.sha256, INPUT_LIMIT, true);
       ensure(digest(finalReceipt.content) === digest(receipt.content), "SETUP_BRIDGE_PREREQUISITE_CHANGED");
       checkpoint(); prerequisites(record, body, new Date(Date.parse(at) + clock.now() - began).toISOString());
-      transport = createManagedSetupTransport({ client: body.client, cwd: body.cwd, env: body.env,
+      transport = createManagedSetupTransport({ client: body.client, cwd: body.cwd, env: body.env, startup: body.startup,
         limits: { max_stdout_bytes: body.limits.max_stdout_bytes, max_stderr_bytes: body.limits.max_stderr_bytes, max_pending_bytes: body.limits.max_pending_bytes }, spawnProcess });
       const lifetime = new AbortController(); let deadlineExpired = false, timerFailed = false;
       const budget = Promise.resolve().then(() => clock.waitUntil(deadline, { signal: lifetime.signal })).then(() => {

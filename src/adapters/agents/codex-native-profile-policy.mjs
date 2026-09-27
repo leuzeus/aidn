@@ -1,5 +1,6 @@
 import path from "node:path";
 import { fingerprintAgentExecutionValue } from "../../core/agents/agent-execution-contracts.mjs";
+import { buildCodexStartupArguments, CODEX_STARTUP_ENVIRONMENT_PROFILES } from "../../core/agents/codex-startup-arguments.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const digest = value => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
@@ -18,10 +19,7 @@ const ids = value => Array.isArray(value) && value.length <= 128 && new Set(valu
 
 // Match the environment accepted by createCodexWorkerEnvironment. Exact names
 // also form the final native shell filter; empty set values alone are not removal.
-export const CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES = Object.freeze([
-  "SYSTEMROOT", "WINDIR", "COMSPEC", "PATH", "PATHEXT", "USERPROFILE", "LOCALAPPDATA", "APPDATA", "PROGRAMDATA",
-  "CODEX_HOME", "TEMP", "TMP", "AIDN_AGENT_ADMISSION_ENDPOINT", "AIDN_AGENT_ADMISSION_TOKEN", "AIDN_AGENT_ATTEMPT_ID", "AIDN_AGENT_REQUEST_SHA256",
-]);
+export const CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES = CODEX_STARTUP_ENVIRONMENT_PROFILES.worker;
 const reservedEnvironmentNames = new Set(CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES);
 const environmentNames = names => Array.isArray(names) && names.length <= 128
   && names.every(name => typeof name === "string" && /^[A-Za-z_][A-Za-z0-9_]{0,255}$/.test(name)
@@ -84,29 +82,20 @@ export function resolveCodexNativeProfileStatePaths(policy, request) {
   return { root, logs: path.join(root, "logs"), sqlite: path.join(root, "sqlite") };
 }
 
-// Inline TOML tables quote the integration identifier as a table key. A dotted
-// CLI assignment with a quoted identifier can create a different literal key;
-// an empty table merges with existing entries and does not disable them.
-const disabledTable = names => `{${[...new Set(names)].sort().map(name => `${JSON.stringify(name)}={enabled=false}`).join(",")}}`;
+// Keep policy/attempt admission here; the shared builder only formats settings.
 export function buildCodexNativeProfileArguments(policy, request) {
   if (!assertCodexNativeProfileBinding(policy, request)) return [];
   const state = resolveCodexNativeProfileStatePaths(policy, request);
-  const settings = [
-    `mcp_servers=${disabledTable(policy.configuration.mcp_server_ids)}`,
-    `plugins=${disabledTable(policy.configuration.plugin_ids)}`,
-    `apps=${disabledTable(["_default", ...policy.configuration.app_ids])}`,
-    "features.plugins=false", "features.apps=false", "notify=[]",
-    'model_provider="openai"', 'history.persistence="none"',
-    "memories.generate_memories=false", "memories.use_memories=false", "features.memories=false",
-    'developer_instructions=""', 'instructions=""',
-    `shell_environment_policy.set={${[...policy.configuration.environment_override_names].sort().map(name => `${JSON.stringify(name)}=""`).join(",")}}`,
-    'shell_environment_policy.inherit="all"', "shell_environment_policy.ignore_default_excludes=true",
-    `shell_environment_policy.filters={${CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES.map(name => `${JSON.stringify(name)}="include"`).join(",")}}`,
-    `log_dir=${JSON.stringify(state.logs)}`, `sqlite_home=${JSON.stringify(state.sqlite)}`,
-  ];
-  // Never erase hook configuration: the live hooks/list observation must reject
-  // every extra enabled hook and preserve the exact reviewed AIDN definitions.
-  return settings.flatMap(setting => ["-c", setting]);
+  // Never erase hook configuration: the live observation still verifies it.
+  return buildCodexStartupArguments({
+    mcp_server_ids: policy.configuration.mcp_server_ids,
+    plugin_ids: policy.configuration.plugin_ids,
+    app_ids: policy.configuration.app_ids,
+    environment_override_names: policy.configuration.environment_override_names,
+    environment_names: CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES,
+    log_dir: state.logs,
+    sqlite_home: state.sqlite,
+  });
 }
 
 export function assertCodexNativeProfileVerification(decision, { policy, request, phase, challenge }) {

@@ -577,6 +577,21 @@ effect-comparison ports, startup/effective configuration and complete effect
 evidence remain required. An inspection test seam and portable fixture doubles
 do not authenticate native evidence or authorize first setup.
 
+Startup settings share a pure constructor with byte-for-byte historical worker
+compatibility. Managed startup fixes explicit integration identifiers, a closed
+12-name environment and a physically separate state root for logs, SQLite and
+temporary files. Existing directories are verified, never implicitly created.
+Observation and setup must use identical complete arguments, profile, cwd and
+environment. The managed metadata observer is still to be implemented. Internal
+bridge protocol v2 and prerequisites v2 bind the startup hash and reject v1
+without conversion; the historical profile contract retains its behavior.
+
+Configuration values and layers returned by `config/read` are not a compiled
+`PermissionProfile`. Named permission profiles require their effective semantics
+to be established; legacy sandbox flags alone cannot supply that evidence.
+Matching startup parameters, preflight success and readiness do not establish
+filesystem denial, network confinement or complete setup effects.
+
 The operator owns these local preparation and approval records. They may later
 be referenced by the frozen configuration of an `execution_run`; they are not
 an alternative PostgreSQL authority or a new autonomous information concept.
@@ -613,13 +628,17 @@ worker. Native qualification is separate from these CI checks.
 An unqualified OS cannot advertise the future capability.
 
 Lot 7 adds `runtime-agent-run-lifecycle`, required once for dev, main and release,
-covering eleven portable lifecycle, workspace, composition, validation-boundary
+covering twelve portable lifecycle, workspace, composition, validation-boundary
 and managed-preparation/controlled-setup fixture scripts. Omission or duplicate
 invocation of any script is rejected. The Windows inventory and 89-check
 preflight fixtures are separate, use mocked providers and do not qualify a
-native setup operation. The four context-resilience gates and their 43 historical
-invocations remain unchanged. PostgreSQL, Windows process trees, actual native hooks,
-validation confinement and parallel Codex execution are reported independently.
+native setup operation. A separate private campaign observed the three native
+preflight phases with inert Node processes, two identity/Job refusals and six
+empty Jobs, with 124 audit checks; it ran no Codex or setup. That evidence does
+not qualify the new composition or managed backend. The four context-resilience
+gates and their 43 historical invocations remain unchanged. PostgreSQL, Windows
+process trees, actual native hooks, validation confinement and parallel Codex
+execution are reported independently.
 
 The scheduler and Git integration gates use bounded subprocesses and disposable
 repositories. They qualify ordering, recovery and effects independently of real
