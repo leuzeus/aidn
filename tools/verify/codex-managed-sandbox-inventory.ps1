@@ -415,11 +415,11 @@ function Netsh-StateRaw($Pin) {
             Check-Time; if ($script:Clock.ElapsedMilliseconds -gt $until) { Stop-Code 'INVENTORY_NETSH_TIMEOUT' }
             if ($null -ne $ot -and $ot.IsCompleted) {
                 $n=$ot.GetAwaiter().GetResult(); $ot=$null
-                if ($n -gt 0) { $outCount += $script:Utf8.GetByteCount($obuf,0,$n); if ($outCount -gt $script:OutputLimit) { Stop-Code 'INVENTORY_NETSH_OUTPUT_LIMIT' }; $null=$out.Append($obuf,0,$n); $ot=$process.StandardOutput.ReadAsync($obuf,0,$obuf.Length) }
+                if ($n -gt 0) { $outCount += $script:Utf8.GetByteCount($obuf,0,$n); $script:CurrentProviderDetail.stdout_bytes=$outCount; if ($outCount -gt $script:OutputLimit) { Stop-Code 'INVENTORY_NETSH_OUTPUT_LIMIT' }; $null=$out.Append($obuf,0,$n); $ot=$process.StandardOutput.ReadAsync($obuf,0,$obuf.Length) }
             }
             if ($null -ne $et -and $et.IsCompleted) {
                 $n=$et.GetAwaiter().GetResult(); $et=$null
-                if ($n -gt 0) { $errCount += $script:Utf8.GetByteCount($ebuf,0,$n); if ($errCount -gt 65536) { Stop-Code 'INVENTORY_NETSH_OUTPUT_LIMIT' }; $et=$process.StandardError.ReadAsync($ebuf,0,$ebuf.Length) }
+                if ($n -gt 0) { $errCount += $script:Utf8.GetByteCount($ebuf,0,$n); $script:CurrentProviderDetail.stderr_bytes=$errCount; if ($errCount -gt 65536) { Stop-Code 'INVENTORY_NETSH_OUTPUT_LIMIT' }; $et=$process.StandardError.ReadAsync($ebuf,0,$ebuf.Length) }
             }
             [Threading.Thread]::Sleep(5)
         }

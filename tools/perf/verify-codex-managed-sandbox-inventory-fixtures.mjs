@@ -96,6 +96,47 @@ try {
   $badSize=$null; try { $decode.Invoke($null,@($buffer,20,1)) | Out-Null } catch { $badSize=Reason $_ }
   Assert ($badSize -ceq 'INVENTORY_TOKEN_NUMBER_SIZE') 'TOKEN_UNEXPECTED_FIELD_SIZE_REFUSED'
 } finally { [Runtime.InteropServices.Marshal]::FreeHGlobal($buffer) }
+# Run the actual production netsh read loop against an in-memory process.
+# The fixed process factory is intercepted; no executable is started.
+function Test-PartialNetsh([string]$Mode) {
+  $savedCalls=$script:ReadCalls; $savedLimit=$script:OutputLimit; $script:FakeClockChecks=0
+  $script:FakeMode=$Mode; $script:OutputLimit=$(if($Mode -ceq 'output-limit'){2}else{1048576})
+  function Check-Time { $script:FakeClockChecks++; if($script:FakeMode -ceq 'timeout' -and $script:FakeClockChecks -ge 3){Stop-Code 'INVENTORY_NETSH_TIMEOUT'} }
+  function Remaining { return 10000 }
+  $streamFactory={param([string]$Text)
+    $stream=[pscustomobject]@{Text=$Text;Reads=0}
+    Add-Member -InputObject $stream -MemberType ScriptMethod -Name ReadAsync -Value {
+      param([char[]]$Buffer,[int]$Offset,[int]$Count)
+      $this.Reads++
+      if($this.Reads -eq 1){$characters=$this.Text.ToCharArray();[Array]::Copy($characters,0,$Buffer,$Offset,$characters.Length);return [Threading.Tasks.Task]::FromResult([int]$characters.Length)}
+      return [Threading.Tasks.TaskCompletionSource[int]]::new().Task
+    }
+    return $stream
+  }
+  $script:FakeNetsh=[pscustomobject]@{StartInfo=$null;StandardOutput=(& $streamFactory 'été');StandardError=(& $streamFactory 'é');HasExited=$false;Disposed=$false;Started=$false;Killed=$false}
+  Add-Member -InputObject $script:FakeNetsh -MemberType ScriptMethod -Name Start -Value {$this.Started=$true;return $true}
+  Add-Member -InputObject $script:FakeNetsh -MemberType ScriptMethod -Name Kill -Value {$this.Killed=$true;$this.HasExited=$true}
+  Add-Member -InputObject $script:FakeNetsh -MemberType ScriptMethod -Name WaitForExit -Value {param([int]$Timeout);return $true}
+  Add-Member -InputObject $script:FakeNetsh -MemberType ScriptMethod -Name Dispose -Value {$this.Disposed=$true}
+  function New-Object([string]$TypeName,[object[]]$ArgumentList) {
+    if($TypeName -ceq 'Diagnostics.Process'){return $script:FakeNetsh}
+    return Microsoft.PowerShell.Utility\New-Object -TypeName $TypeName -ArgumentList $ArgumentList
+  }
+  $production=@($ast.EndBlock.Statements | Where-Object {$_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -ceq 'Netsh-StateRaw'})[0]
+  . ([ScriptBlock]::Create($production.Extent.Text))
+  $script:ProviderDetails=@();$errorCode=$null
+  try { Netsh-State @{path=[IO.Path]::Combine([Environment]::SystemDirectory,'netsh.exe');sha256=('a'*64)} | Out-Null }
+  catch {$errorCode=Reason $_}
+  finally {$script:ReadCalls=$savedCalls;$script:OutputLimit=$savedLimit}
+  return @{detail=$script:ProviderDetails[0];error=$errorCode;process=$script:FakeNetsh;stop_unconfirmed=$script:UnstoppedProvider}
+}
+$partial=Test-PartialNetsh 'timeout'
+Assert ($partial.error -ceq 'INVENTORY_NETSH_TIMEOUT' -and $partial.detail.stdout_bytes -eq 5 -and $partial.detail.stderr_bytes -eq 2) 'TIMEOUT_PRESERVES_ACTUAL_PARTIAL_UTF8_BYTES'
+Assert ($partial.detail.status -ceq 'timed_out' -and $partial.detail.access -ceq 'unknown' -and $null -eq $partial.detail.exit_code -and $partial.stop_unconfirmed) 'PARTIAL_OUTPUT_DOES_NOT_PROVE_ACCESS_OR_TERMINATION'
+Assert ($partial.process.Started -and $partial.process.Killed -and $partial.process.Disposed) 'SIMULATED_TIMEOUT_DISPOSES_PROCESS'
+$limited=Test-PartialNetsh 'output-limit'
+Assert ($limited.error -ceq 'INVENTORY_NETSH_OUTPUT_LIMIT' -and $limited.detail.stdout_bytes -eq 5 -and $limited.detail.stderr_bytes -eq 0) 'OUTPUT_LIMIT_PRESERVES_REJECTED_READ_BYTE_COUNT'
+$script:UnstoppedProvider=$false
 $beforeContext=Build-ObserverContext $script:FixtureToken
 $reordered=$script:FixtureToken.Clone(); $reordered.groups=@('S-1-1-0:7','S-1-5-32-545:7')
 Assert ((Build-ObserverContext $reordered).token_projection_sha256 -ceq $beforeContext.token_projection_sha256) 'TOKEN_SETS_ORDER_INDEPENDENT'
@@ -231,7 +272,7 @@ try {
   record("actual-powershell-parser-and-mocked-inventory-assertions", () => {
     assert.ifError(result.error); assert.equal(result.status, 0, result.stderr);
     const summary = JSON.parse(result.stdout.trim()); assert.equal(summary.status, "PASS");
-    assert.equal(summary.utf8_probe, "été 😀"); assert.equal(summary.checks, 49); assert.equal(summary.host_queries, "MOCKED");
+    assert.equal(summary.utf8_probe, "été 😀"); assert.equal(summary.checks, 53); assert.equal(summary.host_queries, "MOCKED");
     fixtureResult = JSON.parse(fs.readFileSync(output, "utf8"));
     assert.equal(fixtureResult.native_execution, "NOT_EXECUTED");
   });
