@@ -122,3 +122,10 @@ to the absence of a prior receipt remains supported. The host migration recovery
 binding survives project rollback, including older installation history; only
 explicit `--restore-global-skills` releases that binding after restoring the
 unchanged host configuration post-image.
+
+Lot 6 separates validation from delegated editing. Its exact-commit snapshot and
+proof authority do not confer native hook trust or widen the worker scope. A
+qualified verification boundary must keep supervisor proofs and secrets
+inaccessible and the snapshot read-only. Missing platform evidence makes that
+concrete runner unavailable; successful fixture signatures cannot substitute for
+activation, hook or sandbox qualification.

@@ -6,7 +6,8 @@ Accepted. Lot 2 provided internal contracts and pure validation (`model_only`).
 Lot 3 added PostgreSQL persistence (`persistence_only`). Lot 4 introduced the
 candidate Codex executor, delegated admission and native process controller.
 Lot 5 adds an internal bounded scheduler and the durable consolidation needed
-by dependent tasks (`supervision_candidate`). Native availability still requires
+by dependent tasks (`supervision_candidate`). Lot 6 adds durable preparation
+intent and verification on an isolated exact-commit snapshot. Native availability still requires
 separate qualification of the exact composition. Public `agent-run*` commands
 remain unavailable.
 
@@ -60,9 +61,9 @@ supervision authority without claiming that workers are available.
 ### Frozen execution contract
 
 Internal versioned schemas live under `src/core/contracts/agent-execution/`.
-The fifteen kinds are descriptor, availability, plan, run, task, attempt,
+The sixteen kinds are descriptor, availability, plan, run, task, attempt,
 delegation, request, event, result, acceptance, supervisor, integration-prepared,
-integration-applied and run-validation.
+integration-applied, integration-intent and run-validation.
 `src/core/agents/agent-execution-contracts.mjs` owns pure semantic checks and
 canonical fingerprints. Keys are sorted recursively, arrays retain their order,
 and the plan fingerprint itself is excluded from its hash input. Omitted
@@ -184,7 +185,9 @@ execution_events through an explicit locked additive migration from schema 2.
 An aligned migration does not replay DDL. Readiness and ordinary coordination
 reads do not bootstrap, register a workspace or renew a worktree heartbeat.
 Intact schema 2 remains readable for backup before migration. Lot 3 required
-schema 3 for writes; lot 5 raises that explicit prerequisite to schema 4.
+schema 3 for writes; lot 5 raised that prerequisite to schema 4, and lot 6
+requires explicit migration to schema 5 for integration intentions and verified
+acceptance observations. Intact historical schemas remain readable for backup.
 Backup refuses failed reads instead of emitting an empty success.
 The historical shared-coordination backup/restore covers planning, handoff and
 coordination records only. It is not a backup of execution runs or attempts;
@@ -355,6 +358,54 @@ completion requires every task accepted and integrated, no uncertain processes
 or journal, a current matching Git head, and complete validation and audit
 evidence. Repair requires a new explicit task. Public commands and general
 cleanup are subsequent increments.
+
+### Recoverable consolidation and verification
+
+Shared schema 5 adds immutable integration intentions before Git preparation.
+The intent binds the accepted source, expected parent, ordered integration,
+physical workspace and explicit commit identity. Its creator is distinct from
+the actual producer of a prepared result. A replacement supervisor first proves
+the previous process tree and Git operations stopped. It can adopt the exact
+local prepared bytes, or prepare once after proving the intended resource absent
+under current authority. Partial preparation and conflicts remain preserved.
+An expired intention with no prepared result retains its reservation.
+
+Explicit recovery can attach a complete local preparation factually after the
+deadline or revocation. That record grants no new Git operation or CAS. A
+reference already at the prepared result is reconciled without a second update;
+a different reference blocks recovery. Historical journals without an intent
+cannot acquire a fabricated retrospective intent.
+
+New concrete verification requires a frozen plan manifest. It pins the runner
+executable, sanitized environment, regular control files and modes, audit policy,
+budgets and the SHA-256 of an Ed25519 public key in SPKI DER form. The key is
+selected explicitly before plan creation. Its private half and proof directory
+remain supervisor-owned; no key is generated or substituted implicitly on resume.
+PostgreSQL stores the plan pin, never the private key. A proof cannot nominate its
+own trust anchor. Historical plans keep their previous injected interfaces.
+
+Validation observes a separate detached worktree at the task commit or final
+integrated SHA, not the unchanged worker HEAD. The supervisor records fresh
+before/after Git observations, process termination, invocation and output hashes,
+then signs the evidence. The store verifies it against the pinned authority and
+rechecks ownership and deadline before commit. Acceptance, process exit status,
+integration and cleanup remain distinct. Final validation and audit share the
+same exact snapshot. Worker edits cannot change the frozen control files.
+
+The audit policy maps every criterion to an explicit supported check. An unknown
+criterion remains unavailable. Observed preservation does not prove OS confinement:
+the concrete runner also requires an explicitly qualified execution boundary,
+with no raw process fallback. Fixture boundaries and signatures only qualify the
+protocol. Its attestation binds the OS, candidate engine, runner, environment and
+policy, and requires read-only snapshot access, inaccessible supervisor resources,
+disabled network and confirmed descendant termination. The verifier inherits no
+environment; its closed variable allowlist permits only OS, locale and explicit
+scratch settings. Each check returns one JSON document containing exactly
+`contract_version: agent-verification-check.v1`, `validation_id` and `status`;
+the child never supplies the tested SHA. Canonical audit replay rereads the
+PostgreSQL and Git facts and refuses material change while retaining prior proof
+bytes. Native permission enforcement requires separate platform evidence.
+No evidence is purged automatically, and repair still requires an explicit task.
 
 ## Compatibility and qualification
 

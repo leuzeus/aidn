@@ -82,9 +82,15 @@ file-authoritative canonical state are not admitted. Sequential paths retain
 optional PostgreSQL. Internal supervision requires explicit runtime composition
 and native qualification; no public `agent-run*` command is available.
 
+Lot 6 adds explicit shared schema 5 integration intentions and authenticated
+verification observations. The intention precedes Git effects; local prepared
+results are adopted only after reconciliation. The frozen plan pins verification
+controls and the proof authority; PostgreSQL remains the exclusive shared
+authority and existing sequential workflows still need no PostgreSQL.
+
 The port is `src/core/ports/agent-execution-store-port.mjs`; its PostgreSQL
 adapter and the shared PostgreSQL v3/v4 migrations are implementation evidence.
-Shared schema 2 to 3 to 4 migrations are explicit and locked.
+Shared schema 2 to 3 to 4 to 5 migrations are explicit and locked.
 Readiness, registry-independent reads and normal claims never apply DDL. Intact
 v2 historical coordination data remains readable for pre-migration backup;
 normal shared writes require v4. A reservation requires a positive planning

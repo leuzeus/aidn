@@ -72,7 +72,8 @@ local, with only bounded references, sizes and hashes in shared results and no
 automatic purge. No existing checkout-bound artifact is relocated by this
 extension. Lot 4 adds candidate native execution and delegated admission with
 separate qualification. Lot 5 adds an internal scheduler, supervisor generation,
-acceptance and integration records in shared schema 4; the public supervisor
+acceptance and integration records in shared schema 4. Lot 6 adds schema 5
+intentions before Git effects and authenticated verification observations; the public supervisor
 remains unavailable. These records stay attached to the same three concepts.
 
 ## Options Compared

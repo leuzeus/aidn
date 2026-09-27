@@ -132,3 +132,9 @@ when no explicit home is supplied. Generated operational commands and Codex asse
 must use the same verified package and integration revision. Repair remains an
 explicit project operation with ownership checks and an exact plan; global update
 does not regenerate project views or silently migrate their durable adapter.
+
+Lot 6 verification selects and pins its runner executable and proof authority
+before the run plan is frozen. It neither upgrades the installed global engine
+nor reuses its generation lease as a task or verification lease. Missing keys,
+dependencies or qualified execution boundaries remain explicit unavailability;
+no global setup, implicit key replacement or raw process fallback is performed.

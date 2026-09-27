@@ -77,6 +77,12 @@ verified termination of the former supervisor, descendants and Git operations.
 An internal scheduler and Git adapter consume this port. Their existence does
 not establish native availability or add public commands.
 
+Lot 6 adds explicit shared schema 5 integration intentions and authenticated
+verification observations. The intention precedes Git effects; local prepared
+results are adopted only after reconciliation. The frozen plan pins verification
+controls and the proof authority; PostgreSQL remains the exclusive shared
+authority and existing sequential workflows still need no PostgreSQL.
+
 ## Options Compared
 
 | Option | Result |

@@ -413,6 +413,15 @@
       "obligation": {"dev": "required", "main": "required", "release": "required"}
     },
     {
+      "id": "runtime-agent-verification",
+      "family": "runtime",
+      "script": "perf:verify-agent-verification-fixtures",
+      "job": "governance-admission/gates",
+      "surfaces": ["exact commit validation", "sealed verification controls", "authenticated supervisor evidence"],
+      "condition": "always",
+      "obligation": {"dev": "required", "main": "required", "release": "required"}
+    },
+    {
       "id": "runtime-agent-git-integration",
       "family": "runtime",
       "script": "perf:verify-agent-git-integration-fixtures",
