@@ -144,6 +144,31 @@ CLI effect semantics:
 - Public command effect classes live in `src/core/cli/effect-policy.mjs` and are verified with `npm run perf:verify-cli-effect-policy` plus `npm run perf:verify-cli-no-implicit-write`.
 - Public JSON output contracts live under `src/core/contracts/cli-output/` and are verified with `npm run perf:verify-cli-output-contracts`.
 
+Bounded supervised runs use a separate opt-in command family:
+`aidn runtime agent-run`, `agent-run-status`, `agent-run-resume`,
+`agent-run-cancel` and `agent-run-cleanup`. Every command selects a pinned local
+`--configuration`; launch also selects `--plan`, while the other commands select
+`--run`. Preview performs no reservation, heartbeat, worktree creation, migration
+or native Codex observation. Launch, resume and cancellation require
+`--execute --expect-plan <action_sha256> --sync-relay`; cleanup requires
+`--write --expect-plan <action_sha256> --sync-relay`. Status is read-only.
+
+This remains a supervision candidate: applying a run requires matching native
+evidence for the package, client, helper, profile and validation boundary.
+The initial Windows preexisting-profile composition admits at most four
+individually prepared and reviewed worker roots. That capacity is distinct from
+the plan's concurrency limit of one to four. Missing native prerequisites refuse
+execution; fixture success does not qualify real Codex parallelism. Supervision
+requires PostgreSQL, while existing sequential commands retain optional
+PostgreSQL. See [command details](docs/CLI_SURFACE_INVENTORY.md) and
+[native preparation and qualification](docs/AGENT_EXECUTION_NATIVE_QUALIFICATION.md).
+
+The current Windows validation backend reports
+`SANDBOX_EXISTING_ONLY_UNSUPPORTED`: the inspected Codex sandbox path refreshes
+native provisioning even with existing state. That conflicts with this
+candidate's no-provisioning boundary. Native end-to-end qualification is therefore
+UNAVAILABLE; source and fixture checks do not establish delivery readiness.
+
 Runtime state modes:
 
 | Mode | Canonical source | Local projections | Shared runtime |

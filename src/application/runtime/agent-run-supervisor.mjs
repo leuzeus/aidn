@@ -18,6 +18,19 @@ const terminal = new Set(["completed", "failed", "cancelled", "timed_out"]);
 const STOPPED = new Set(["confirmed", "not_started"]);
 const PREPARATION_LIMIT = 8 * 1024 * 1024;
 
+// This only describes an initial durable reservation. Process closure is a
+// separate observation made by the native composition before initial takeover.
+export function assertUnclaimedAgentRun(snapshot) {
+  requireThat(snapshot?.run?.lifecycle_status === "planned" && snapshot.supervision?.current === null
+    && snapshot.supervision.mode === "legacy" && snapshot.supervision.history.length === 0
+    && snapshot.attempts.length === 0 && snapshot.integration_intents.length === 0
+    && snapshot.integrations.length === 0 && snapshot.acceptances.length === 0
+    && snapshot.integration_head === null && snapshot.final_validation === null
+    && snapshot.run_started_at === null && snapshot.run_deadline_at === null, "UNCLAIMED_RUN_RECONCILIATION_REQUIRED");
+  return { contract_version: "agent-unclaimed-run-observation.v1", run_id: snapshot.run.run_id,
+    plan_sha256: snapshot.run.plan_sha256, control_revision: snapshot.supervision.control_revision };
+}
+
 // Construction is probe-free. All effects are explicitly injected. In particular
 // there is no implicit Codex registration, native bootstrap, DB fallback or CLI.
 export function createAgentExecutionScheduler({
@@ -40,7 +53,7 @@ export function createAgentExecutionScheduler({
     requireThat(signal === undefined || signal instanceof AbortSignal, "SUPERVISOR_SIGNAL_INVALID");
     running = true;
     const stop = new AbortController(), active = new Map(), heartbeats = new Set(), instances = new WeakSet();
-    let snapshot = null, supervisor = null, plan = null, graph = null, fatal = null, cancelled = false, timedOut = false, coordinationLost = false;
+    let snapshot = null, supervisor = null, plan = null, graph = null, fatal = null, cancelled = false, durableCancellation = false, timedOut = false, coordinationLost = false;
     let deadline = Infinity, deadlineTimer = null;
     const abort = () => { cancelled = true; stop.abort(error("RUN_CANCELLED")); };
     if (signal) { signal.addEventListener("abort", abort, { once: true }); if (signal.aborted) abort(); }
@@ -111,6 +124,7 @@ export function createAgentExecutionScheduler({
     function adopt(next, began = clock.now()) {
       requireThat(next?.run?.run_id === runId, "RUN_SNAPSHOT_MISMATCH");
       snapshot = next;
+      if (next.cancel_request) { durableCancellation = true; cancelled = true; if (supervisor) stop.abort(error("RUN_CANCELLED")); }
       if (next.run_deadline_at !== null && next.run_deadline_at !== undefined) {
         const remaining = Date.parse(next.run_deadline_at) - Date.parse(next.server_now);
         requireThat(Number.isFinite(remaining), "RUN_DEADLINE_MISSING");
@@ -223,7 +237,9 @@ export function createAgentExecutionScheduler({
           requireThat(checked.ok, "SUPERVISOR_REQUEST_INVALID");
           alive();
           await coordinate("recordLaunchIntent", { ...owned(view), request });
-          const created = await git.prepareAttemptWorkspace({ workspace, inputSha });
+          const attemptBinding = { run_id: runId, task_id: taskId, attempt_id: attemptId, cwd: workspace.cwd, branch: workspace.branch, input_sha: inputSha };
+          const created = await git.prepareAttemptWorkspace({ workspace, inputSha, attemptBinding,
+            verifyAuthority: () => coordinate("recordLaunchIntent", { ...owned(view), request }) });
           requireThat(created.cwd === workspace.cwd && created.branch === workspace.branch
             && created.worktree_id === workspace.worktree_id && created.input_sha === inputSha, "PREPARED_WORKTREE_MISMATCH");
           const binding = { run_id: runId, task_id: taskId, attempt_id: attemptId, cwd: workspace.cwd,
@@ -285,7 +301,7 @@ export function createAgentExecutionScheduler({
       await integrationService.applyPrepared({ prepared, preparedSha256, supervisor, intent,
         expectedControlRevision: snapshot.supervision.control_revision });
     }
-    async function reconcilePendingIntegrations() {
+    async function reconcilePendingIntegrations({ cancelling = false } = {}) {
       const pendingIntents = (snapshot.integration_intents ?? []).filter(row => row.status !== "applied");
       requireThat(pendingIntents.length <= 1, "MULTIPLE_PREPARED_INTEGRATIONS");
       for (const row of pendingIntents) {
@@ -294,6 +310,7 @@ export function createAgentExecutionScheduler({
           intentSha256: row.intent_sha256, supervisor, expectedControlRevision: snapshot.supervision.control_revision,
           reconciliation: true }), coordinationTimeoutMs, "INTEGRATION_INSPECTION_TIMEOUT");
         if (restored.status === "absent") {
+          requireThat(!cancelling, "CANCEL_PENDING_INTEGRATION");
           alive(); // Absence is not permission to work after the frozen deadline.
           restored = await integrationService.resumePreparation({ intent: row.intent, intentSha256: row.intent_sha256,
             supervisor, expectedControlRevision: snapshot.supervision.control_revision, reconciliation: false });
@@ -315,7 +332,7 @@ export function createAgentExecutionScheduler({
           await coordinate("recordIntegrationApplied", { runId, supervisor,
             expectedControlRevision: snapshot.supervision.control_revision, integrationId: prepared.integration_id,
             preparedSha256: fingerprintAgentExecutionValue(prepared), proof: { evidence: prepared.evidence }, reconciliation: true });
-        } else await applyPrepared(row);
+        } else { requireThat(!cancelling, "CANCEL_PENDING_INTEGRATION"); await applyPrepared(row); }
         await fresh();
       }
     }
@@ -351,47 +368,59 @@ export function createAgentExecutionScheduler({
       if (["completed", "failed", "cancelled"].includes(snapshot.run.lifecycle_status)) return { status: snapshot.run.lifecycle_status, snapshot };
       // Explicit resume may reconcile facts after the deadline, but cannot
       // restart work. Caller cancellation still stops before any takeover.
-      if (!resuming || cancelled) alive();
-      if (resuming) {
+      if (signal?.aborted || !resuming && !durableCancellation) alive();
+      const initialResume = resuming && snapshot.supervision.current === null;
+      if (initialResume) requireThat(reconciliation?.unclaimedRun
+        && fingerprintAgentExecutionValue(reconciliation.unclaimedRun) === fingerprintAgentExecutionValue(assertUnclaimedAgentRun(snapshot)), "UNCLAIMED_RUN_OBSERVATION_REQUIRED");
+      if (resuming && !initialResume) {
         requireThat(reconciliation?.supervisorProof, "SUPERVISOR_RECONCILIATION_REQUIRED");
         const previous = copy(snapshot.supervision.current.ownership);
         adopt(await coordinate("reconcileSupervisor", { runId, expectedSupervisor: previous,
           expectedControlRevision: snapshot.supervision.control_revision, proof: reconciliation.supervisorProof }));
         adopt(await coordinate("claimSupervisor", { runId, ownerId, runner,
-          expectedControlRevision: snapshot.supervision.control_revision, expectedPreviousGeneration: previous.generation,
+          expectedControlRevision: snapshot.supervision.control_revision, expectedPreviousGeneration: previous.generation, drainOnly: durableCancellation,
           integration: { repository_identity_sha256: snapshot.integration_head.repository_identity_sha256,
             ref: snapshot.integration_head.ref, base_sha: plan.base.sha } }));
       } else {
         requireThat(snapshot.attempts.length === 0, "RESUME_REQUIRED");
         const identity = await bounded(() => git.inspectIntegration({ phase: "head" }), coordinationTimeoutMs, "INTEGRATION_INSPECTION_TIMEOUT");
-        alive();
+        if (!durableCancellation) alive();
         requireThat(identity.head_sha === null || identity.head_sha === plan.base.sha, "INTEGRATION_BASE_CHANGED");
         adopt(await coordinate("claimSupervisor", { runId, ownerId, runner, expectedControlRevision: snapshot.supervision.control_revision,
-          integration: { repository_identity_sha256: identity.repository_identity_sha256, ref: identity.ref, base_sha: plan.base.sha }, expectedPreviousGeneration: null }));
+          integration: { repository_identity_sha256: identity.repository_identity_sha256, ref: identity.ref, base_sha: plan.base.sha }, expectedPreviousGeneration: null, drainOnly: durableCancellation }));
       }
       supervisor = copy(snapshot.supervision.current.ownership);
-      startHeartbeat(() => coordinate("renewSupervisor", { runId, supervisor }));
+      if (durableCancellation) stop.abort(error("RUN_CANCELLED"));
+      startHeartbeat(async () => adopt(await coordinate("renewSupervisor", { runId, supervisor })));
       requireThat(Number.isFinite(deadline), "RUN_DEADLINE_MISSING");
-      if (resuming) {
+      if (resuming && !initialResume) {
         for (const entry of reconciliation.attempts ?? []) await coordinate("reconcileAttempt", { ...entry, supervisor });
         await fresh();
         requireThat(snapshot.attempts.every(view => terminal.has(view.attempt.lifecycle_status)
           && (view.termination || view.reconciliation)), "ATTEMPT_RECONCILIATION_REQUIRED");
-        await reconcilePendingIntegrations();
+        await reconcilePendingIntegrations({ cancelling: durableCancellation });
+        if (durableCancellation) {
+          const finished = await coordinate("finishRun", { runId, supervisor, outcome: "cancelled", expectedControlRevision: snapshot.supervision.control_revision });
+          return { status: "cancelled", snapshot: finished, blocked_tasks: projection().blocked };
+        }
         alive();
         adopt(await coordinate("resumeRun", { runId, supervisor, expectedControlRevision: snapshot.supervision.control_revision }));
         // Existing completed workers are never executed again. Only immutable
         // preparation evidence can supply a baseline for unfinished acceptance.
         for (const view of snapshot.attempts) if (view.result?.outcome === "completed"
           && !acceptances().some(item => item.attempt_id === view.attempt.attempt_id)) await acceptResult(view, await restorePreparation(view));
-      } else { alive(); await withinRun(() => git.initializeIntegration({ baseSha: plan.base.sha }), "INTEGRATION_INITIALIZATION_INTERRUPTED"); }
+      } else if (!durableCancellation) { alive(); await withinRun(() => git.initializeIntegration({ baseSha: plan.base.sha }), "INTEGRATION_INITIALIZATION_INTERRUPTED"); }
       await fresh();
       while (!stop.signal.aborted) {
+        await fresh();
+        if (stop.signal.aborted) break;
         if (await integrateNext()) continue;
         await checkHead();
         const selected = projection();
         for (const taskId of selected.ready) {
           if (active.size >= plan.limits.concurrency || stop.signal.aborted) break;
+          await fresh();
+          if (stop.signal.aborted) break;
           await launch(taskId);
         }
         if (!active.size) {

@@ -131,7 +131,10 @@ internal static class AgentJobHelper {
             foreach (var entry in env) { Require(entry.Key.Length > 0 && entry.Key.IndexOfAny(new char[] { '=', '\0' }) < 0 && entry.Value is string && ((string)entry.Value).IndexOf('\0') < 0 && keys.Add(entry.Key), "INVALID_REQUEST"); entries.Add(entry.Key + "=" + (string)entry.Value); }
             entries.Sort(StringComparer.OrdinalIgnoreCase); string block = String.Join("\0", entries) + "\0\0"; Require(block.Length < 32767, "INVALID_REQUEST");
             byte[] prompt = Convert.FromBase64String(Text(request, "stdin_base64")); Require(prompt.Length <= 262144, "INVALID_REQUEST");
-            jobName = "Local\\aidn-execution-" + Guid.NewGuid().ToString("N"); Job = CreateJobObject(IntPtr.Zero, jobName); Require(Job != IntPtr.Zero, "JOB_CREATE_FAILED");
+            jobName = request.ContainsKey("job_name") ? Text(request, "job_name") : "Local\\aidn-execution-" + Guid.NewGuid().ToString("N");
+            Require(System.Text.RegularExpressions.Regex.IsMatch(jobName, "^Local\\\\aidn-execution-[a-f0-9]{32}$"), "INVALID_JOB_NAME");
+            Job = CreateJobObject(IntPtr.Zero, jobName); int jobError = Marshal.GetLastWin32Error();
+            Require(Job != IntPtr.Zero, "JOB_CREATE_FAILED"); Require(jobError != 183, "JOB_ALREADY_EXISTS");
             var limits = new EXTENDED_LIMITS(); limits.basic.flags = 0x2000;
             Require(SetInformationJobObject(Job, 9, ref limits, (uint)Marshal.SizeOf(typeof(EXTENDED_LIMITS))), "JOB_LIMIT_FAILED");
             var security = new SECURITY_ATTRIBUTES { length = Marshal.SizeOf(typeof(SECURITY_ATTRIBUTES)), inherit = 1 };

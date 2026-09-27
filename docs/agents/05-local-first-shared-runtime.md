@@ -71,7 +71,9 @@ schema 4 supervisor generations, acceptances, integration and final validation,
 with `supervision_candidate` coverage. Canonical runtime and supervision must
 share one PostgreSQL transaction. Writers check reservations atomically. The
 internal scheduler requires explicit preparation, Git and validation dependencies
-and a separately qualified native executor; public commands remain unavailable.
+and a separately qualified native executor. Lot 7 exposes explicit public
+preview/status/resume/cancel/cleanup commands; their native execution availability
+remains conditional on exact composition evidence.
 Readiness and reads do not register, heartbeat or migrate;
 intact v2 remains readable for backup while writes require explicit migration.
 
@@ -107,3 +109,13 @@ verification observations. The intention precedes Git effects; local prepared
 results are adopted only after reconciliation. The frozen plan pins verification
 controls and the proof authority; PostgreSQL remains the exclusive shared
 authority and existing sequential workflows still need no PostgreSQL.
+
+Lot 7 adds shared schema 6 for durable cancellation requests and cleanup
+operations/resources. Migration stays explicit. Cancellation is a request to
+stop, never proof of termination. Cleanup admits completed runs only, with
+stopped supervisor/attempt/Git trees, integrated commits and retained resource
+preimages. A new cleaner generation needs proof that its predecessor stopped.
+Removal recovery observes the original directory and worktree metadata absent;
+a relocated worktree cannot be reported as removed. Owned verification snapshots
+must bind to persisted authenticated validation observations. Archives and source
+commit references survive cleanup; failed runs and conflicts are retained.

@@ -93,6 +93,8 @@ const importPaths = new Set([
   "tools/verify/qualify-agent-native-worker.mjs", "tools/verify/agent-native-qualification-driver.mjs",
   "tools/verify/agent-native-refusal-evidence.mjs",
   "tools/verify/agent-native-profile-observation.mjs",
+  "src/application/runtime/codex-native-profile-observation-service.mjs",
+  "src/application/runtime/codex-native-profile-bootstrap-service.mjs",
   "src/adapters/agents/codex-native-profile-policy.mjs",
   "src/core/agents/agent-execution-contracts.mjs",
   "src/core/contracts/json-schema-validator.mjs",

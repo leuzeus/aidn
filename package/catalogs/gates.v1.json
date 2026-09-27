@@ -431,6 +431,15 @@
       "obligation": {"dev": "required", "main": "required", "release": "required"}
     },
     {
+      "id": "runtime-agent-run-lifecycle",
+      "family": "runtime",
+      "script": "perf:verify-agent-run-lifecycle-fixtures",
+      "job": "governance-admission/gates",
+      "surfaces": ["explicit supervised lifecycle", "prepared workspace adoption and owned cleanup", "pinned native composition and validation boundary contracts"],
+      "condition": "always",
+      "obligation": {"dev": "required", "main": "required", "release": "required"}
+    },
+    {
       "id": "runtime-shared-coordination-concurrency",
       "family": "runtime",
       "script": "perf:verify-shared-coordination-concurrency-gate",

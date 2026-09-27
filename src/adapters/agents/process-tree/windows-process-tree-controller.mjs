@@ -37,12 +37,13 @@ export function createWindowsProcessTreeController({ helperPath, helperSha256, h
     } catch { return { available: false, reason_code: "PROCESS_HELPER_UNAVAILABLE" }; }
   }
   async function run(request, { signal, onEvent = async () => {} } = {}) {
-    const { runnerId, executable, executableSha256, args, cwd, env, stdin,
+    const { runnerId, executable, executableSha256, args, cwd, env, stdin, jobName,
       maxDurationMs, maxOutputBytes = 16 * 1024 * 1024, maxPendingBytes = 1024 * 1024,
       stopTimeoutMs = 5000 } = request ?? {};
     if (signal?.aborted) return { ...failure("PROCESS_CANCELLED_BEFORE_START"), outcome: "cancelled" };
     if (typeof onEvent !== "function" || signal !== undefined && !(signal instanceof AbortSignal)
       || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(runnerId ?? "")
+      || jobName !== undefined && !/^Local\\aidn-execution-[a-f0-9]{32}$/u.test(jobName)
       || !Array.isArray(args) || args.length > 256 || args.some((arg) => typeof arg !== "string" || arg.includes("\0"))
       || !env || typeof env !== "object" || Array.isArray(env) || Object.keys(env).length > 512
       || Object.entries(env).some(([key, value]) => !key || /[=\0]/u.test(key) || typeof value !== "string" || value.includes("\0"))
@@ -52,7 +53,7 @@ export function createWindowsProcessTreeController({ helperPath, helperSha256, h
       || !positive(maxOutputBytes, 1024 * 1024 * 1024) || !positive(maxPendingBytes, 16 * 1024 * 1024)) return failure("PROCESS_REQUEST_INVALID");
     const payload = JSON.stringify({ protocol: PROTOCOL, runner_id: runnerId, executable, executable_sha256: executableSha256,
       args, cwd, env, stdin_base64: Buffer.from(stdin).toString("base64"), max_duration_ms: maxDurationMs,
-      max_output_bytes: maxOutputBytes, stop_timeout_ms: stopTimeoutMs });
+      max_output_bytes: maxOutputBytes, stop_timeout_ms: stopTimeoutMs, ...(jobName === undefined ? {} : { job_name: jobName }) });
     if (Buffer.byteLength(payload) > 1024 * 1024) return failure("PROCESS_REQUEST_INVALID");
     const availability = await checkAvailability({ cwd, signal, executable, executableSha256 });
     if (!availability.available) return failure(availability.reason_code);
@@ -94,6 +95,7 @@ export function createWindowsProcessTreeController({ helperPath, helperSha256, h
       let event;
       if (frame.type === "prepared") {
         if (runner || !Number.isSafeInteger(frame.pid) || frame.pid <= 0 || frame.suspended !== true || frame.job_assigned !== true
+          || jobName !== undefined && frame.job_name !== jobName
           || !/^Local\\aidn-execution-[a-f0-9]{32}$/u.test(frame.job_name ?? "") || !Number.isFinite(Date.parse(frame.started_at))) { invalid(); return; }
         runner = { runner_id: runnerId, pid: frame.pid, started_at: frame.started_at, job_name: frame.job_name,
           helper_pid: child.pid, executable_sha256: executableSha256, ...hashes };

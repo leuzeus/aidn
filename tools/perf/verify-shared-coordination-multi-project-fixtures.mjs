@@ -54,6 +54,8 @@ async function main() {
       runGit(targetRoot, ["commit", "-m", "initial"]);
     }
 
+    if (process.argv.includes("--inject-failure-after-setup")) throw new Error("FIXTURE_INJECTED_FAILURE");
+
     writeSharedRuntimeLocator(alphaRoot, {
       enabled: true,
       projectId: "project-alpha",
@@ -280,7 +282,7 @@ async function main() {
     console.log("PASS");
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       const cleanup = removePathWithRetry(tempRoot);

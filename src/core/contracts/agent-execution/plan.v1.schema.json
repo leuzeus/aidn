@@ -530,6 +530,19 @@
         }
       },
       "additionalProperties": false
+    },
+    "supervision": {
+      "type": "object",
+      "required": [
+        "configuration_sha256"
+      ],
+      "properties": {
+        "configuration_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

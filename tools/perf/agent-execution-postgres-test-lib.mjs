@@ -4,6 +4,7 @@ import path from "node:path";
 import net from "node:net";
 import { randomBytes, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { removePathWithRetry } from "../../src/lib/fs/remove-path-with-retry.mjs";
 
 // A private cluster, never an installed project's connection. No service or
 // machine configuration is changed. The generated credential is never emitted.
@@ -51,7 +52,7 @@ export async function withEphemeralPostgres(fn, { binDir = process.env.PG_BIN_DI
     }
     return result.stdout.trim();
   };
-  let started = false;
+  let started = false, primary = null;
   try {
     const version = run("postgres", ["--version"]);
     run("initdb", ["-D", data, "-U", "aidn_test", "--pwfile", passwordFile, "--auth=scram-sha-256", "--encoding=UTF8", "--no-locale"]);
@@ -67,7 +68,12 @@ export async function withEphemeralPostgres(fn, { binDir = process.env.PG_BIN_DI
     started = true;
     const connectionString = `postgresql://aidn_test:${password}@127.0.0.1:${port}/postgres`;
     return await fn({ connectionString, version, root });
+  } catch(error) {
+    primary=error;
+    primary.fixture_postgres_log=redact(serverLogTail()).slice(-2048);
+    throw error;
   } finally {
+    try {
     // A partially started server must also be stopped; never delete its data
     // while postmaster.pid exists or if shutdown cannot be established.
     if (started || fs.existsSync(path.join(data, "postmaster.pid"))) run("pg_ctl", ["-D", data, "-m", "immediate", "-w", "-t", "30", "stop"]);
@@ -75,7 +81,19 @@ export async function withEphemeralPostgres(fn, { binDir = process.env.PG_BIN_DI
     const resolved = fs.realpathSync(root), temp = fs.realpathSync(os.tmpdir());
     if (path.dirname(resolved) !== temp || !path.basename(resolved).startsWith("aidn-execution-pg-")
       || JSON.parse(fs.readFileSync(path.join(resolved, "owner.json"), "utf8")).owner !== owner) throw new Error("EPHEMERAL_POSTGRES_CLEANUP_REFUSED");
-    fs.rmSync(resolved, { recursive: true });
+    // Windows can briefly retain handles after confirmed server shutdown.
+    // Retry only this already-owned, stopped cluster; never restart processes.
+    removePathWithRetry(resolved, { retries: 5, retryDelayMs: 100 });
     if (fs.existsSync(resolved)) throw new Error("EPHEMERAL_POSTGRES_CLEANUP_FAILED");
+    } catch(error) {
+      const reported=primary ?? error;
+      reported.fixture_cleanup_failure=/^[A-Z_]+$/.test(error.code ?? "") ? error.code
+        : /^EPHEMERAL_POSTGRES_[A-Z_]+$/.test(error.message ?? "") ? error.message : "EPHEMERAL_POSTGRES_CLEANUP_FAILED";
+      if(typeof error.path === "string") {
+        const relative=path.relative(root,error.path);
+        if(!path.isAbsolute(relative) && relative!==".." && !relative.startsWith(`..${path.sep}`)) reported.fixture_cleanup_path=relative.slice(0,256);
+      }
+      throw reported;
+    }
   }
 }

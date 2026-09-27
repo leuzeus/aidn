@@ -109,6 +109,11 @@ finalization; `--verify` retains its read-only verification behavior.
 - `aidn runtime state-reanchor --json`
 - `aidn runtime shared-coordination-status --json`
 - `aidn runtime shared-coordination-projects --json`
+- `aidn runtime agent-run --configuration <file> --plan <file> --json`
+- `aidn runtime agent-run-status --configuration <file> --run <id> --json`
+- `aidn runtime agent-run-resume --configuration <file> --run <id> --json`
+- `aidn runtime agent-run-cancel --configuration <file> --run <id> --json`
+- `aidn runtime agent-run-cleanup --configuration <file> --run <id> --json`
 - `aidn runtime governance-diagnostics --json`
 - `aidn runtime list-agent-adapters --json`
 - `aidn runtime verify-agent-roster --json`
@@ -133,6 +138,53 @@ finalization; `--verify` retains its read-only verification behavior.
   - shared runtime synchronization remains explicit and is not implied by `--json`
 
 ## Advanced public command families
+
+The five `agent-run*` commands are opt-in supervision candidates. They use
+`tools/runtime/agent-run-cli.mjs` and one schema per command under `cli-output`.
+Each output is one JSON document; raw Codex events remain local evidence. Existing
+workflow adapters and sequential commands retain their contracts.
+
+| Command | Default effect | Explicit application |
+| --- | --- | --- |
+| `agent-run` | Preview a frozen plan and local configuration | `--execute --expect-plan <action_sha256> --sync-relay` |
+| `agent-run-status` | Read execution, attempts, validation, integration and cleanup separately | No write selector |
+| `agent-run-resume` | Preview reconciliation and remaining work | `--execute --expect-plan <action_sha256> --sync-relay` |
+| `agent-run-cancel` | Preview a durable stop request for the current generation | `--execute --expect-plan <action_sha256> --sync-relay` |
+| `agent-run-cleanup` | Preview eligible, retained resources of a completed run | `--write --expect-plan <action_sha256> --sync-relay` |
+
+All accept `--target <root>`, `--configuration <file>` and `--json`.
+`agent-run` requires `--plan <file>`; the other four require `--run <id>`.
+`--help`/`-h` is read-only and returns before configuration or native discovery.
+`--dry-run` is preview-only and cannot combine with effect selectors or
+`--sync-relay`. Duplicate, unknown and contradictory options are refused.
+`--expect-plan` names the preview's **action_sha256**, not merely the execution
+plan digest: target, configuration, base, activation, generation and material
+preconditions are re-observed before any apply. Heartbeat timestamps alone do
+not invalidate the action.
+
+Preview creates no run, claim, lease, heartbeat, worktree, archive or schema, and
+does not launch a native metadata observer. PostgreSQL read-only readiness and
+canonical state must be available. The local configuration pins the prepared
+catalogue, engine, client, helper, native profile/consent, Git executable and
+verification authority. Its canonical digest is bound by
+`plan.supervision.configuration_sha256`. Model and effort have no silent fallback.
+
+Cancellation records a request; it does not report stopped descendants until the
+supervisor observes their termination. Resume first reconciles uncertain work.
+Cleanup is restricted to completed runs after every supervisor and child has
+stopped. It archives exact owned worktree bytes before the durable cleanup
+intention and removes only that intention's resources. It preserves source
+commits and evidence; failed runs, conflicts and indeterminate processes remain
+available for diagnosis. No general worktree administration command is added.
+
+The native initial capacity is four prepared worker roots on Windows with an
+explicit preexisting profile. Every root requires actual native trust observation,
+and the exact candidate still needs separate execution and confinement evidence.
+See [native qualification](AGENT_EXECUTION_NATIVE_QUALIFICATION.md).
+The current validation backend refuses with `SANDBOX_EXISTING_ONLY_UNSUPPORTED`
+before launching a native process: its existing-state path cannot satisfy the
+required absence of provisioning. These public candidates remain previewable;
+the final native run is UNAVAILABLE.
 
 These surfaces are public and contract-backed, but they are more operational or coordination-sensitive than the stable core families above:
 

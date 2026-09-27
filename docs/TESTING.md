@@ -259,6 +259,36 @@ native Codex, OS confinement and concurrent workers remain unqualified here.
 The gate belongs only to the runtime family; the four context-resilience groups
 and their 43 historical invocations are unchanged.
 
+For the public run lifecycle, run
+`npm run perf:verify-agent-run-lifecycle-fixtures`. The required runtime gate
+`runtime-agent-run-lifecycle` executes the lifecycle, workspace, native-attempt
+composition, sandbox-validation and controlled-metadata contract fixtures exactly once on dev, main
+and release. It checks preview purity, explicit action fingerprints, stale state,
+cancellation, read-only status, prepared-root adoption and completed-run cleanup.
+Disposable Git tests retain source commits and all local bytes before removal,
+reject relocation as evidence of deletion, recover an already removed owned
+worktree, and preserve unknown controlled-process termination. The injected
+process controller in these tests is a double, even when its child is real Git.
+
+The native composition fixtures check pinned files, immutable preparation and
+termination receipts, unavailable prerequisites and absence of constructor
+effects. Sandbox-validation fixtures verify closed configuration, framed
+protocol and boundary contracts without invoking Codex. Controlled-metadata
+fixtures check explicit candidate/Node pins, bounded protocol and unknown-tree
+recovery using injected controllers. These five scripts run
+on Linux and Windows; they do not provision a sandbox, use a real user profile,
+launch a model or qualify Windows process confinement. The separate native
+Windows process fixtures (`node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs --native`
+for the metadata bridge) and exact-package end-to-end campaign remain outside
+this required portable gate. Report their missing prerequisites as UNAVAILABLE,
+never as a fixture PASS. Initial native capacity is four prepared worker roots;
+the final three-task/two-simultaneous-Codex qualification remains outstanding
+until its exact candidate evidence is recorded.
+The current Windows validation backend returns
+`SANDBOX_EXISTING_ONLY_UNSUPPORTED` before any native process because its
+existing-state path refreshes provisioning. Its native campaign is UNAVAILABLE,
+including when fixture or local attestation inputs are otherwise positive.
+
 For the injected supervisor candidate, run
 `npm run perf:verify-agent-execution-scheduler-fixtures` and
 `npm run perf:verify-agent-git-integration-fixtures`. Their required runtime gates
@@ -286,6 +316,12 @@ it does not establish native read/write denial or authorize sandbox setup.
 Git recovery fixtures separately cover intent-before-effect, adoption of exact
 local preparation, missing/partial resources and preserved conflicts. PostgreSQL
 fixtures cover additive schema 5, immutable intent and authenticated observations.
+Schema 6 adds cancellation and cleanup ownership. The PostgreSQL suite tests
+generations, retention evidence, stopped predecessors, immutable cleanup results
+and the window between actual Git removal and result publication. Its owned
+verification snapshots are eligible only through authenticated observations
+already accepted by PostgreSQL. Test cleanup removes only the disposable corpus;
+it does not authorize deleting failed or preexisting user resources.
 
 For the candidate Codex task executor and delegated admission, run
 `npm run perf:verify-agent-worker-fixtures`. The required runtime gate tests

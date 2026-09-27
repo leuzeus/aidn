@@ -8,8 +8,10 @@ candidate Codex executor, delegated admission and native process controller.
 Lot 5 adds an internal bounded scheduler and the durable consolidation needed
 by dependent tasks (`supervision_candidate`). Lot 6 adds durable preparation
 intent and verification on an isolated exact-commit snapshot. Native availability still requires
-separate qualification of the exact composition. Public `agent-run*` commands
-remain unavailable.
+separate qualification of the exact composition. Lot 7 exposes explicit public
+`agent-run*` previews and lifecycle operations, with a pinned native composition
+that refuses application without the required exact evidence. Coverage remains
+`supervision_candidate`; the final parallel Codex campaign is a separate proof.
 
 ## Date
 
@@ -50,7 +52,7 @@ session, cycle, logical plan reference, exact task selector, canonical plan
 SHA-256, shared planning revision and activation authority/revision. The
 canonical task has no invented UUID; delegated IDs do not replace its identity.
 
-PostgreSQL remains optional for existing workflows. The future supervised path
+PostgreSQL remains optional for existing workflows. The supervised path
 requires PostgreSQL exclusively and fails closed if it is unavailable. It has
 no file, SQLite or in-memory authority fallback. Lot 2 modeled this requirement;
 lot 3 implements the separate `AgentExecutionStore` port and shared schema 3.
@@ -187,7 +189,8 @@ reads do not bootstrap, register a workspace or renew a worktree heartbeat.
 Intact schema 2 remains readable for backup before migration. Lot 3 required
 schema 3 for writes; lot 5 raised that prerequisite to schema 4, and lot 6
 requires explicit migration to schema 5 for integration intentions and verified
-acceptance observations. Intact historical schemas remain readable for backup.
+acceptance observations. Lot 7 requires schema 6 for durable cancellation and
+cleanup ownership. Intact historical schemas remain readable for backup.
 Backup refuses failed reads instead of emitting an empty success.
 The historical shared-coordination backup/restore covers planning, handoff and
 coordination records only. It is not a backup of execution runs or attempts;
@@ -407,6 +410,93 @@ PostgreSQL and Git facts and refuses material change while retaining prior proof
 bytes. Native permission enforcement requires separate platform evidence.
 No evidence is purged automatically, and repair still requires an explicit task.
 
+### Explicit lifecycle and native composition (lot 7)
+
+The five public commands are launch, status, resume, cancel and cleanup under
+`aidn runtime agent-run*`. Status is read-only; the other commands preview by
+default. `--json` changes only formatting. Launch/resume/cancel require
+`--execute --expect-plan <action_sha256> --sync-relay`; cleanup requires
+`--write --expect-plan <action_sha256> --sync-relay`. The complete action binds
+configuration, target, plan, activation, generation and material preconditions.
+Re-observation must produce the same digest before application. Preview never
+creates claims, leases, worktrees, archives or migrations and never invokes a
+native metadata observer.
+
+The public path requires `plan.supervision.configuration_sha256`. The local
+configuration pins the prepared catalogue, exact installed engine, client,
+helper, Git executable, native profile/consent and verification authorities.
+Historical plans remain valid without this optional field. The prepared
+catalogue binds base and task contracts before a run exists; final plan and
+attempt bindings are applied after reservation, avoiding a fingerprint cycle.
+
+Preparation of fresh unassigned worktrees is an explicit operation before the
+human native review. Each root receives its own canonical verify-only receipt;
+no receipt, authentication or trust is copied. The initial native composition
+supports Windows with an explicitly selected preexisting profile and at most
+four prepared worker roots. This is a native capacity limit, separate from plan
+concurrency. Every root needs an actual native trust observation. Linked roots
+may use the coordinator's observed hook definition, but its trust is not inferred
+for a new root.
+
+After the claim, adoption verifies the complete prepared preimage and durable
+placement intention. Dependent tasks receive the exact integrated input SHA.
+The supervisor preserves installed controls and refuses conflicts, dirty or
+ambiguous roots and protected-path changes. An interrupted placement is retained
+for reconciliation; it cannot reset the root or retry blindly. The native
+bootstrap has its own immutable intent/terminal observations and never converts
+an unknown metadata process into a stopped worker proof.
+The configuration also pins `native.metadata_runner` (Node executable and
+SHA-256). A candidate bridge places metadata observation beneath the controlled
+Windows Job and journals every invocation. Historical `closed`/`pid_absent`
+fields establish only parent-process observation; they never prove descendants
+stopped. Recovery requires the matching Job proof for every metadata operation,
+including failed observations. This bridge still needs separate native evidence.
+
+Production Git commands use the pinned process controller and executable under
+a Job, with an explicit environment and bounded stdin/output. Actual termination
+proofs bind the operation and observed runner; cancellation propagates to that
+controller. An unconfirmed tree quarantines further mutations. Legacy injected
+Git fixtures retain their separate, weaker process evidence and cannot qualify
+the public native path.
+
+Verification snapshots live in a dedicated subtree of run resources. The
+validation boundary must prevent access to sibling supervisor evidence, signing
+keys and PostgreSQL credentials, deny network access, and preserve the exact
+snapshot. Its executable, trampoline, process controller and policy require
+independent native qualification; no caller-provided availability flag supplies
+that proof.
+The inspected Windows Codex elevated sandbox path refreshes native setup even
+when an existing backend is present. It cannot satisfy the current no-provisioning
+boundary and is explicitly refused with `SANDBOX_EXISTING_ONLY_UNSUPPORTED`
+before native process creation. A fabricated positive qualification record cannot
+override this refusal. No fallback backend, profile change or setup operation is
+introduced; the final native composition remains UNAVAILABLE.
+
+Shared schema 6 adds immutable cancellation requests, cleanup operations and
+cleanup resources. A cancellation request is durable and generation-bound; the
+supervisor stops launching and drains its workers. Resume reconciles old owners
+before continuing, including a cancelled run's drain-only path.
+A reservation interrupted before the first supervisor claim uses a distinct
+initial observation: no supervisor history, attempt, acceptance, integration or
+run deadline may exist. The observation binds the run, plan and control revision;
+local process journals must also establish termination before the first claim.
+Earlier worktree preparation is admitted only when each frozen catalogue row
+retains its exact preimage and one matching Git creation invocation. An extra,
+foreign or unfinished mutation blocks this initial recovery; matching a command
+does not replace the independent proof that its process tree has stopped.
+A pending cancellation permits only a drain claim, without launching a worker.
+
+Cleanup accepts completed runs only, after every supervisor, attempt and Git
+operation has confirmed termination. A separate leased cleaner generation owns
+the exact resource set. Before deletion, all bytes, Git metadata and immutable
+descriptors are retained outside those worktrees and bound to the PostgreSQL
+cleanup intention. Accepted verification snapshots must be identified by
+authenticated observations already persisted in PostgreSQL. Removal preserves
+task/source refs and proofs. Recovery after removal observes both the original
+physical root and its worktree metadata absent; relocation or unexplained state
+is refused. Failed runs, conflicts and unknown processes are preserved. No
+automatic purge or general worktree-management API is introduced.
+
 ## Compatibility and qualification
 
 The synchronous adapter and all historical commands retain their behavior.
@@ -428,6 +518,12 @@ fixtures do not establish that native hooks ran or that the sandbox confined a
 worker. Native qualification is separate from these CI checks.
 An unqualified OS cannot advertise the future capability.
 
+Lot 7 adds `runtime-agent-run-lifecycle`, required once for dev, main and release,
+covering portable lifecycle, workspaces, composition and validation-boundary
+fixtures. The four context-resilience gates and their 43 historical invocations
+remain unchanged. PostgreSQL, Windows process trees, actual native hooks,
+validation confinement and parallel Codex execution are reported independently.
+
 The scheduler and Git integration gates use bounded subprocesses and disposable
 repositories. They qualify ordering, recovery and effects independently of real
 Codex parallelism, host confinement and the final native end-to-end scenario.
@@ -438,7 +534,8 @@ Codex parallelism, host confinement and the final native end-to-end scenario.
 - Three information concepts add governance without fabricating runtime state.
 - Pure checks cannot prove physical path safety, live ownership or process death;
   later adapters must enforce and qualify those boundaries.
-- The internal scheduler depends on durable integration for dependent tasks;
-  public command delivery and general cleanup remain subsequent increments.
+- The scheduler depends on durable integration for dependent tasks. Public
+  command availability does not establish native execution readiness; cleanup
+  remains limited to the frozen resources of a completed run.
   No swarm, mailbox, quorum, automatic
   reassignment, unbounded repair or general worktree administration is introduced.

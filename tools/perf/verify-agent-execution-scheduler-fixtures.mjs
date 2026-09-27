@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { buildAgentExecutionSchedule, projectAgentExecutionSchedule } from "../../src/core/agents/agent-execution-schedule.mjs";
 import { createLocalAgentGitIntegration } from "../../src/adapters/runtime/local-agent-git-integration.mjs";
+import { assertUnclaimedAgentRun } from "../../src/application/runtime/agent-run-supervisor.mjs";
 import { createSchedulerFixture, delay } from "./agent-execution-scheduler-test-lib.mjs";
 
 const checks = [];
@@ -343,6 +344,65 @@ await check("cancelled resume does not acquire a new generation",async()=>fixtur
   const resumed=await f.create().resume({...f.options,reconciliation:proof,signal:controller.signal});
   assert.equal(resumed.status,"recovery_required");assert.equal(f.state.supervision.current.ownership.generation,generation);
 }));
+
+
+await check("durable cancellation before launch finishes without a worker", async () => fixture({}, async f => {
+  f.state.cancel_request = { request_sha256: "a".repeat(64) };
+  let drainOnly = null; const original = f.store.claimSupervisor;
+  f.store.claimSupervisor = async value => { drainOnly = value.drainOnly; return original(value); };
+  const outcome = await f.create().run(f.options);
+  assert.equal(outcome.status, "cancelled", outcome.reason_code); assert.equal(drainOnly, true);
+  assert.equal(f.state.attempts.length, 0); assert.ok(!f.operations.some(value => value.startsWith("start:")));
+}));
+await check("durable cancellation heartbeat drains results before finishing", async () => {
+  const clock = { now: () => performance.now(), setTimeout: (fn, ms) => setTimeout(fn, ms === 10000 ? 4 : ms), clearTimeout };
+  await fixture({ failure: { workerDelay: 30 }, clock }, async f => {
+    const original = f.store.renewSupervisor;
+    f.store.renewSupervisor = async () => { f.state.cancel_request = { request_sha256: "a".repeat(64) }; return original(); };
+    const outcome = await f.create().run(f.options);
+    assert.equal(outcome.status, "cancelled", outcome.reason_code);
+    assert.ok(f.operations.includes("renewSupervisor")); assert.equal(f.state.attempts.length, 2);
+    assert.ok(f.state.attempts.every(row => row.result.outcome === "cancelled" && row.termination.confirmed));
+    assert.ok(f.operations.indexOf("result:a") < f.operations.indexOf("finish:cancelled"));
+    assert.ok(!f.operations.includes("claim:c")); assert.equal(f.state.acceptances.length, 0);
+  });
+});
+await check("cancelled recovery drains instead of resuming or retrying", async () => fixture({ concurrency: 1, failure: { indeterminate: "a" } }, async f => {
+  await f.create().run(f.options);
+  f.state.cancel_request = { request_sha256: "a".repeat(64) };
+  const outcome = await f.create().resume({ ...f.options, reconciliation: { ...proof,
+    attempts: [{ attemptId: f.state.attempts[0].attempt.attempt_id, proof: { confirmed: true } }] } });
+  assert.equal(outcome.status, "cancelled", outcome.reason_code);
+  assert.ok(!f.operations.includes("resumeRun")); assert.ok(!f.operations.includes("claim:b"));
+  assert.equal(f.operations.filter(value => value === "claim:a").length, 1);
+}));
+
+
+await check("reserved run resumes before first supervisor claim", async () => fixture({}, async f => {
+  const observation = assertUnclaimedAgentRun(f.state);
+  const outcome = await f.create().resume({ ...f.options, reconciliation: { unclaimedRun: observation } });
+  assert.equal(outcome.status, "completed", outcome.reason_code);
+  assert.equal(f.operations.filter(value => value === "claimSupervisor").length, 1);
+  assert.ok(!f.operations.includes("reconcileSupervisor") && !f.operations.includes("resumeRun"));
+}));
+await check("reserved cancellation resumes only to drain without launch", async () => fixture({}, async f => {
+  f.state.cancel_request = { request_sha256: "a".repeat(64) };
+  let drainOnly = false; const original = f.store.claimSupervisor;
+  f.store.claimSupervisor = async value => { drainOnly = value.drainOnly; return original(value); };
+  const outcome = await f.create().resume({ ...f.options, reconciliation: { unclaimedRun: assertUnclaimedAgentRun(f.state) } });
+  assert.equal(outcome.status, "cancelled", outcome.reason_code); assert.equal(drainOnly, true);
+  assert.equal(f.state.attempts.length, 0); assert.ok(!f.operations.includes("resumeRun"));
+}));
+await check("unclaimed resume refuses absent or stale observation and hidden history", async () => {
+  for (const mutate of [f => null, f => ({ ...assertUnclaimedAgentRun(f.state), control_revision: 99 }),
+    f => { const value = assertUnclaimedAgentRun(f.state); f.state.supervision.history.push({}); return value; }]) {
+    await fixture({}, async f => {
+      const unclaimedRun = mutate(f), outcome = await f.create().resume({ ...f.options, reconciliation: { unclaimedRun } });
+      assert.equal(outcome.status, "recovery_required"); assert.match(outcome.reason_code, /UNCLAIMED_RUN_/);
+      assert.ok(!f.operations.includes("claimSupervisor")); assert.equal(f.state.attempts.length, 0);
+    });
+  }
+});
 
 const failed = checks.filter(check => check.status === "FAIL");
 console.log(JSON.stringify({ ok: !failed.length, checks, evidence: {

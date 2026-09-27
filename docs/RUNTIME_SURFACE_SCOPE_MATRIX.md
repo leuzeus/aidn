@@ -80,7 +80,9 @@ contracts. Lot 5 extends AgentExecutionStore to shared schema 4 and
 canonical runtime and supervision in one transaction; separate databases or
 file-authoritative canonical state are not admitted. Sequential paths retain
 optional PostgreSQL. Internal supervision requires explicit runtime composition
-and native qualification; no public `agent-run*` command is available.
+and native qualification. Lot 7 exposes the five `agent-run*` commands with
+explicit action fingerprints; native application still requires exact package,
+client, helper, profile and validation-boundary evidence.
 
 Lot 6 adds explicit shared schema 5 integration intentions and authenticated
 verification observations. The intention precedes Git effects; local prepared
@@ -89,11 +91,11 @@ controls and the proof authority; PostgreSQL remains the exclusive shared
 authority and existing sequential workflows still need no PostgreSQL.
 
 The port is `src/core/ports/agent-execution-store-port.mjs`; its PostgreSQL
-adapter and the shared PostgreSQL v3/v4/v5 migrations are implementation evidence.
-Shared schema 2 to 3 to 4 to 5 migrations are explicit and locked.
+adapter and the shared PostgreSQL v3/v4/v5/v6 migrations are implementation evidence.
+Shared schema 2 to 3 to 4 to 5 to 6 migrations are explicit and locked.
 Readiness, registry-independent reads and normal claims never apply DDL. Intact
-v2-v4 historical coordination data remains readable for pre-migration backup;
-normal shared writes require v5. A reservation requires a positive planning
+v2-v5 historical coordination data remains readable for pre-migration backup;
+normal shared writes require v6. A reservation requires a positive planning
 revision; it does not change the initial historical revision zero implicitly.
 Injected activation and termination fixture verifiers establish no native
 admission or descendant-termination proof. Lot 4 adds a candidate executor and
@@ -103,7 +105,7 @@ live attempt reservation. Native trust, hook execution and confinement must be
 qualified before this candidate can advertise availability. `supervision_candidate`
 remains the governed coverage while native composition is pending.
 
-The future run lifecycle owns local worker worktrees and bulky output files.
+The explicit run lifecycle owns local worker worktrees and bulky output files.
 Shared attempt results contain bounded local references, byte counts and hashes,
 never transcripts or credentials. No automatic purge applies. Task leases,
 worktree heartbeats and global generation leases have separate authority.
@@ -178,6 +180,9 @@ ADR-0008 or in the shared coordination port.
   - `execution_integrations`
   - `execution_run_validations`
   - `execution_integration_intents`
+  - `execution_cancel_requests`
+  - `execution_cleanup_operations`
+  - `execution_cleanup_resources`
 
 ## Regression Rules
 

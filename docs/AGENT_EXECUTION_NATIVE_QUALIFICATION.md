@@ -382,3 +382,64 @@ termination and preservation; the old package's results are not transferred.
 For preexisting mode, also observe the effective configuration and consented
 effects again, freeze the local policy and bind the new review to the refreshed
 manifest and candidate. Fresh launch-time observations remain mandatory.
+
+## Public lifecycle qualification (lot 7 candidate)
+
+The production composition now reuses the metadata observer and bounded
+bootstrap from `src/application/runtime/codex-native-profile-observation-service.mjs`
+and `codex-native-profile-bootstrap-service.mjs`. The historical tool exports
+remain compatible. `codex-agent-attempt-service.mjs` performs actual delegated
+admission, authenticated transport and pinned execution. Import and construction
+do not probe a profile. Preview verifies pinned local evidence and PostgreSQL
+readiness without launching Codex; fresh native observations still precede an
+explicit worker launch.
+The production metadata bridge uses a separately pinned Node executable
+(`native.metadata_runner`) inside the controlled Job. Its journal distinguishes
+closed parent observations from actual descendant termination. Historical
+`closed`/`pid_absent` flags cannot satisfy recovery of that tree; every invocation
+needs a matching candidate/helper/Node/bridge proof, including after an error.
+This new bridge has not received native qualification for the lot 7 candidate.
+
+Prepare a new catalogue for the campaign before reserving the run. It needs one
+distinct pristine worker root per attempt, including the dependent task; do not
+reuse a dirty root or a previous campaign's marker. Canonical installation is
+verify-only with an independent receipt at each root. Freeze base SHA, task
+contract hashes, root identities and complete preimages, then review the exact
+native hook definitions and observe trust for every root through the supported
+native API. Linked worktrees may legitimately share the coordinator's hook
+source; this never substitutes for observing trust at each worker root. The
+initial native capacity is one to four worker roots, separately from concurrency.
+
+Claim and placement occur later. The supervisor may place a pristine reviewed
+root at a dependent task's integrated SHA only under current authority and an
+immutable placement intent, preserving installed controls. Unexpected state,
+conflict or interrupted placement stops the run without reset. Each native
+metadata bootstrap has its own retained intent/terminal evidence. A never-started
+worker does not prove the distinct metadata process stopped.
+
+The public configuration pins the candidate, runtime, helper, preparation,
+native profile/consent, Git executable and validation boundary. A helper or
+trampoline change requires new native evidence. Earlier lot 4 results qualify
+only their original bytes. The final lot 7 campaign must run two actual Codex
+workers concurrently, integrate their independent scopes, run a dependent task
+on that integrated SHA, validate and audit it, and demonstrate preservation and
+owned cleanup. This campaign has not been executed for the current lot 7
+candidate. Portable fixture PASS, native metadata readiness and human approval
+remain distinct from that final result.
+
+Windows process and validation confinement probes are separate explicit tools;
+they are not required Linux CI invocations. The current production path selects
+Windows preexisting-profile mode only. Unqualified OS/profile/helper/boundary
+compositions report UNAVAILABLE and cannot fall back to ordinary subprocesses,
+copied trust or a different sandbox. Existing profile setup is a precondition,
+never an implicit lifecycle effect.
+
+The validation backend currently fails that prerequisite. The inspected official
+source for Codex `0.158.0-alpha.2.1` invokes an elevated setup refresh on the
+`codex sandbox` path even when sandbox state exists. Its current implementation
+therefore returns `SANDBOX_EXISTING_ONLY_UNSUPPORTED` before any native process,
+including qualification probes. A positive local attestation cannot override
+that refusal. The final lot 7 native campaign is UNAVAILABLE until an explicitly
+authorized compatible backend is implemented and independently qualified.
+Portable checks and Job/trampoline fixtures may still pass; they do not close
+that confinement requirement or establish merge/release readiness.

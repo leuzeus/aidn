@@ -40,9 +40,9 @@ function main() {
       assert(schemaSql.includes(`aidn_shared.${tableName}`), `expected schema to declare ${tableName}`);
     }
 
-    assert(contract.schema_version === 5, "expected shared coordination schema version 5");
+    assert(contract.schema_version === 6, "expected shared coordination schema version 6");
     const migrations = getPostgresSharedCoordinationMigrationFiles();
-    assert(JSON.stringify(migrations.map(item => item.version)) === "[2,3,4,5]", "expected ordered explicit additive migrations");
+    assert(JSON.stringify(migrations.map(item => item.version)) === "[2,3,4,5,6]", "expected ordered explicit additive migrations");
     const supervisionSql = fs.readFileSync(migrations[1].file, "utf8");
     for (const tableName of ["execution_runs", "execution_tasks", "execution_attempts", "execution_events"]) {
       assert(tableNames.has(tableName), `expected supervision contract table ${tableName}`);
@@ -58,6 +58,11 @@ function main() {
     const consolidationSql=fs.readFileSync(migrations[3].file,"utf8");
     assert(tableNames.has("execution_integration_intents") && consolidationSql.includes("CREATE TABLE aidn_shared.execution_integration_intents"), "expected durable intention before Git effects");
     assert(consolidationSql.includes("evidence_verification_sha256") && !consolidationSql.includes("DROP "), "expected additive authenticated evidence without rewriting history");
+    const lifecycleSql=fs.readFileSync(migrations[4].file,"utf8");
+    for(const table of ["execution_cancel_requests","execution_cleanup_operations","execution_cleanup_resources"]){
+      assert(tableNames.has(table) && lifecycleSql.includes(`CREATE TABLE aidn_shared.${table}`),"expected explicit lifecycle authority table");
+    }
+    assert(!lifecycleSql.includes("DROP ") && !lifecycleSql.includes("DELETE "),"lifecycle migration never purges existing evidence");
 
     for (const operation of ["registerWorkspace", "registerWorktreeHeartbeat", "upsertPlanningState", "appendHandoffRelay", "appendCoordinationRecord", "healthcheck"]) {
       assert(contract.operations.includes(operation), `expected operation ${operation}`);

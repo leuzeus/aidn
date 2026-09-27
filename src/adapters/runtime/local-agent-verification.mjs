@@ -25,7 +25,8 @@ function verdict(protocol, processResult, validationId) {
   const valid = exactKeys(protocol, ["contract_version", "validation_id", "status"])
     && protocol.contract_version === "agent-verification-check.v1" && protocol.validation_id === validationId
     && ["passed", "failed", "unavailable"].includes(protocol.status);
-  return !valid ? "unavailable" : processResult.exit_code === 0 && processResult.signal === null ? protocol.status : "failed";
+  return !valid ? "unavailable" : processResult.exit_code === 0 && processResult.signal === null
+    && (processResult.outcome === undefined || processResult.outcome === "completed") ? protocol.status : "failed";
 }
 
 function publicMaterial(value) {
@@ -217,6 +218,10 @@ export function createLocalAgentVerification({ resourcesRoot, scratchRoot, runId
     let qualification = null;
     if (execution) {
       requireThat(typeof boundary?.getDescriptor === "function" && typeof boundary?.run === "function" && typeof boundary?.requestStop === "function", "VERIFICATION_BOUNDARY_UNAVAILABLE");
+      if (typeof boundary.checkAvailability === "function") {
+        const live = await boundary.checkAvailability({ signal });
+        requireThat(live?.available === true && (evidenceClass !== "native" || live.native === true), "VERIFICATION_BOUNDARY_UNAVAILABLE");
+      }
       const descriptor = clone(boundary.getDescriptor()); qualification = openSigned(descriptor.qualification, authority);
       requireThat(qualification.contract_version === "agent-verification-boundary.v1" && qualification.boundary_id === descriptor.boundary_id
         && qualification.platform === process.platform && qualification.evidence_class === evidenceClass
@@ -367,7 +372,8 @@ export function createLocalAgentVerification({ resourcesRoot, scratchRoot, runId
         let protocol = null; try { protocol = JSON.parse(stdout.toString("utf8")); } catch { /* a successful exit alone never supplies a verdict */ }
         const status = verdict(protocol, result, validationId);
         checks.push({ validation_id: validationId, status, invocation, request_sha256: requestHash,
-          process: { exit_code: result.exit_code, signal: result.signal, termination_state: result.termination_state }, stdout: stdoutRef, stderr: stderrRef });
+          process: { exit_code: result.exit_code, signal: result.signal, termination_state: result.termination_state,
+            ...(result.outcome === undefined ? {} : { outcome: result.outcome }) }, stdout: stdoutRef, stderr: stderrRef });
       }
       await bounded(() => material(plan, phase !== "audit", stop.signal), remaining(), stop.signal); await controls(); const after = await observe("after");
       const payload = { contract_version: VERSION, evidence_class: evidenceClass, bindings, snapshot: prepared,
@@ -440,6 +446,7 @@ async function verifyPayload(envelope, authority, root, plan, evidenceClass, sig
         && check.request_sha256 === fingerprint(invocation) && check.process.termination_state === "confirmed"
         && (check.process.exit_code === null || Number.isSafeInteger(check.process.exit_code))
         && (check.process.signal === null || typeof check.process.signal === "string")
+        && (check.process.outcome === undefined || ["completed", "failed", "cancelled", "timed_out", "indeterminate"].includes(check.process.outcome))
         && ["passed", "failed", "unavailable"].includes(check.status), "VERIFICATION_INVOCATION_INVALID");
       let protocol = null; try { protocol = JSON.parse(await readReference(root, check.stdout, policy.limits.max_output_bytes, signal)); } catch (cause) { if (cause.code) throw cause; }
       await readReference(root, check.stderr, policy.limits.max_output_bytes, signal);
