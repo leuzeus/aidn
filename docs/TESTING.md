@@ -374,14 +374,29 @@ closed 16-name worker and 12-name managed environment profiles, quoted integrati
 IDs, bounded inputs, and absence of import or construction effects. The managed
 transport uses these common settings with explicit state/log/SQLite paths;
 metadata observation must use the same complete startup arguments as setup.
-The managed metadata observer is not yet implemented. Internal setup bridge v2
-and prerequisites v2 bind `startup_sha256` and reject v1 input without conversion;
-missing or physically aliased state directories are refused, not created.
+The existing metadata collector has an explicit `metadataProfile: "managed-setup.v1"`
+option. It accepts one root and adds only `configRequirements/read` to its read
+RPCs, returning the response separately. Its internal bridge uses v2 for this
+option; absent profile retains historical v1 and its response count. Unknown
+profiles, incomplete responses and unconfirmed process trees are refused.
+Internal setup bridge v2 and prerequisites v2 bind `startup_sha256` and reject v1
+input without conversion; missing or physically aliased state directories are
+refused, not created. Native observer composition is still a separate proof.
 
 `config/read` returns merged TOML configuration and layers, not the compiled
 `PermissionProfile`. Legacy sandbox flags alone cannot qualify effective
 permissions when a named permission profile is selected. Such unresolved
 permission semantics remain a prerequisite, even when startup arguments match.
+
+The thirteenth lifecycle script,
+`node tools/perf/verify-codex-managed-configuration-fixtures.mjs`, checks the pure
+source-configuration assessment. It requires the exact reviewed client, one
+session override layer, represented source files and origins, all fixed startup
+settings, and an exact `{requirements: null}` response. Any requirements object
+or selected permission profile is refused. A source recorded absent can represent
+only an empty layer. Fixture success establishes neither physical observations
+nor compiled permissions: the assessment retains `PERMISSION_SCOPE_UNRESOLVED`
+and does not create a setup prerequisite, approval or available executor.
 
 For the injected supervisor candidate, run
 `npm run perf:verify-agent-execution-scheduler-fixtures` and

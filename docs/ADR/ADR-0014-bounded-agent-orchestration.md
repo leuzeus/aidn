@@ -582,7 +582,8 @@ compatibility. Managed startup fixes explicit integration identifiers, a closed
 12-name environment and a physically separate state root for logs, SQLite and
 temporary files. Existing directories are verified, never implicitly created.
 Observation and setup must use identical complete arguments, profile, cwd and
-environment. The managed metadata observer is still to be implemented. Internal
+environment. Managed metadata collection is available through the explicit
+profile described below; its native composition remains unqualified. Internal
 bridge protocol v2 and prerequisites v2 bind the startup hash and reject v1
 without conversion; the historical profile contract retains its behavior.
 
@@ -655,3 +656,19 @@ Codex parallelism, host confinement and the final native end-to-end scenario.
   remains limited to the frozen resources of a completed run.
   No swarm, mailbox, quorum, automatic
   reassignment, unbounded repair or general worktree administration is introduced.
+
+### Managed setup source-configuration boundary
+
+The opt-in managed metadata profile adds only `configRequirements/read` to the
+existing controlled collector. Its internal protocol is v2; the historical
+profile remains unchanged. A pure source-configuration assessment accepts only
+the reviewed client and the fixed Legacy subset with an exact null requirements
+response, represented sources/origins and the same startup settings. A null
+source hash means explicitly observed absence and can cover only an empty layer.
+Any requirements object or active named permission profile is refused.
+This assessment deliberately leaves `PERMISSION_SCOPE_UNRESOLVED`; merged TOML
+does not establish the compiled profile, Windows filesystem expansion or setup
+effect coverage. It cannot issue a prerequisite, approval or native qualification.
+Raw configuration values remain transient; retained evidence uses projections
+and fingerprints. Real observation and its declared startup side effects require
+their own bounded composition and operation authorization.

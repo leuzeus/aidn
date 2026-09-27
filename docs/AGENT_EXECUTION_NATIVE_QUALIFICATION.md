@@ -573,16 +573,32 @@ of no profile effects or a bound on native disk consumption.
 Internal protocol `aidn-controlled-managed-setup.v2` requires that startup record.
 `aidn-managed-setup-prerequisites.v2` includes its `startup_sha256` alongside the
 argument, environment and configuration hashes. Version 1 inputs are refused
-without migration or inferred defaults. The managed metadata observer remains
-unimplemented; its future observation must use the same full startup arguments,
-profile, cwd and environment as the setup it describes. A hash from differently
-overridden metadata cannot authorize setup.
+without migration or inferred defaults. A managed metadata observation must use
+the same full startup arguments, profile, cwd and environment as the setup it
+describes. A hash from differently overridden metadata cannot authorize setup.
+The controlled metadata collector now accepts the explicit
+`metadataProfile: "managed-setup.v1"` option for one root. It adds only the
+`configRequirements/read` RPC and returns that response separately. Its bridge
+uses internal protocol v2 for this option; the absent-profile historical path
+retains v1, its output shape and response count. It does not start a thread,
+worker or setup. Natural app-server closure and an observed empty Job are still
+required. Raw configurations and layers remain transient, not retained evidence.
 
 `config/read` exposes merged TOML values and their layers, not the compiled
 `PermissionProfile`. If a named permission profile applies, the legacy
 `sandbox_mode` and `sandbox_workspace_write` values alone do not establish its
 effective filesystem or network permissions. Resolving and checking that exact
 permission configuration remains separate from argument construction.
+The pure `assessManagedSetupConfiguration` checks only a restricted Legacy
+source configuration. The reviewed client's `configRequirements/read` must return
+exactly `{requirements: null}`; every object is refused, including an object of
+null visible fields, because the RPC does not expose all managed filesystem and
+profile constraints. Non-null permission profiles are refused. Source files,
+the unique session override layer, origins and each startup setting must agree.
+An explicitly absent source can cover only an empty layer. A successful assessment
+retains `PERMISSION_SCOPE_UNRESOLVED`: Windows path expansion, previous deny-read
+state, runtime ACL effects and physical preservation require separate observation.
+It supplies no setup prerequisite receipt, authorization or native availability.
 
 The portable transport/bridge and parent fixtures use doubles and perform no
 setup. The separate Windows preflight campaign has 89 checks with mocked token,

@@ -58,7 +58,7 @@ function fixture() {
   return { policy, request, manifest, config, metadata, sourceFiles, consent, review, observation };
 }
 
-function doubleTransport({ alter, silent = false, leaveAlive = false, chunked = false } = {}) {
+function doubleTransport({ alter, silent = false, leaveAlive = false, chunked = false, omitRequirements = false } = {}) {
   const calls = []; let alive = false;
   const spawnProcess = () => {
     alive = true; const child = new EventEmitter(); child.pid = 12345; child.stdout = new PassThrough(); child.stderr = new PassThrough();
@@ -67,7 +67,8 @@ function doubleTransport({ alter, silent = false, leaveAlive = false, chunked = 
     child.stdin = new Writable({ write(chunk, encoding, callback) {
       const message = JSON.parse(chunk.toString()); calls.push(message);
       if (message.id && !silent) queueMicrotask(() => {
-        const reply = alter ? alter(message) : { id: message.id, result: { marker: "été", method: message.method } };
+        if (omitRequirements && message.method === "configRequirements/read") { close(); return; }
+        const reply = alter ? alter(message) : { id: message.id, result: message.method === "configRequirements/read" ? { requirements: null } : { marker: "été", method: message.method } };
         const bytes = Buffer.from(JSON.stringify(reply) + "\r\n");
         if (chunked) for (const byte of bytes) child.stdout.write(Buffer.from([byte])); else child.stdout.write(bytes);
       }); callback();
@@ -299,6 +300,60 @@ export async function runAgentNativeProfileObservationFixtures() {
     assert.equal(result.process.budget_ms, 10000);
     assert.equal(result.process.pid_absent, true); assert.deepEqual(transport.calls.map(x => x.method), ["initialize", "initialized", "config/read", "config/read", "hooks/list", "windowsSandbox/readiness"]);
     assert.equal(result.configs[0].marker, "été");
+  });
+  await check("managed metadata adds exactly the source-defined requirements RPC", async () => {
+    const x = fixture(), transport = doubleTransport({ chunked: true });
+    const result = await collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1, 2), metadataProfile: "managed-setup.v1" }, transport);
+    assert.deepEqual(transport.calls.map(row => row.method), ["initialize", "initialized", "config/read", "configRequirements/read", "hooks/list", "windowsSandbox/readiness"]);
+    assert.deepEqual(transport.calls.find(row => row.method === "configRequirements/read"), { id: 3, method: "configRequirements/read" });
+    assert.deepEqual(result.requirements, { requirements: null }); assert.equal(result.configs.length, 1);
+    assert.equal(result.process.response_count, 5); assert.equal(result.process.closed, true); assert.equal(transport.isAlive(), false);
+    assert.equal(Object.hasOwn(result, "authorized"), false); assert.equal(Object.hasOwn(result, "permission"), false);
+  });
+  await check("historical one-root metadata preserves four responses and no requirements field", async () => {
+    const x = fixture(), transport = doubleTransport();
+    const result = await collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1, 2) }, transport);
+    assert.equal(result.process.response_count, 4); assert.equal(Object.hasOwn(result, "requirements"), false);
+    assert(!transport.calls.some(row => row.method === "configRequirements/read"));
+  });
+  for (const invalid of [null, false, "managed-setup.v2", "", {}]) await check("unknown metadata profile refused " + JSON.stringify(invalid), async () => {
+    const x = fixture(); let calls = 0;
+    await assert.rejects(collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1, 2), metadataProfile: invalid }, { spawnProcess() { calls++; } }), code("PROFILE_METADATA_PROFILE_INVALID"));
+    assert.equal(calls, 0);
+  });
+  await check("managed metadata cannot observe multiple roots", async () => {
+    const x = fixture(); let calls = 0;
+    await assert.rejects(collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1), metadataProfile: "managed-setup.v1" }, { spawnProcess() { calls++; } }), code("PROFILE_METADATA_SINGLE_ROOT_REQUIRED"));
+    assert.equal(calls, 0);
+  });
+  for (const invalid of [null, [], 1, {}, { requirements: [] }, { requirements: "unknown" }, { requirements: null, extra: true }]) await check("managed requirements malformed " + JSON.stringify(invalid), async () => {
+    const x = fixture(), transport = doubleTransport({ alter: message => ({ id: message.id, result: message.method === "configRequirements/read" ? invalid : {} }) });
+    await assert.rejects(collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1, 2), metadataProfile: "managed-setup.v1" }, transport), code("PROFILE_METADATA_REQUIREMENTS_MALFORMED"));
+    assert.equal(transport.isAlive(), false); assert(!transport.calls.some(row => row.method === "hooks/list"));
+  });
+  await check("requirements RPC error stops without interpreting it as null", async () => {
+    const x = fixture(), transport = doubleTransport({ alter: message => message.method === "configRequirements/read"
+      ? { id: message.id, error: { code: -32601, message: "private-error" } } : { id: message.id, result: {} } });
+    await assert.rejects(collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1, 2), metadataProfile: "managed-setup.v1" }, transport), code("PROFILE_METADATA_RPC_REFUSED"));
+    assert(!transport.calls.some(row => row.method === "hooks/list")); assert.equal(transport.isAlive(), false);
+  });
+  for (const error of [null, false, 0, ""]) await check("requirements result cannot coexist with falsy error " + JSON.stringify(error), async () => {
+    const x = fixture(), transport = doubleTransport({ alter: message => message.method === "configRequirements/read"
+      ? { id: message.id, result: { requirements: null }, error } : { id: message.id, result: {} } });
+    await assert.rejects(collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1, 2), metadataProfile: "managed-setup.v1" }, transport), code("PROFILE_METADATA_RPC_REFUSED"));
+    assert.equal(transport.isAlive(), false); assert(!transport.calls.some(row => row.method === "hooks/list"));
+  });
+  await check("missing requirements response cannot complete metadata", async () => {
+    const x = fixture(), transport = doubleTransport({ omitRequirements: true });
+    await assert.rejects(collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1, 2), metadataProfile: "managed-setup.v1" }, transport), error => error.code === "PROFILE_METADATA_INCOMPLETE" && error.process.response_count === 2);
+    assert.equal(transport.isAlive(), false);
+  });
+  await check("requirements objects and readiness remain uninterpreted observations", async () => {
+    const x = fixture(), transport = doubleTransport({ alter: message => ({ id: message.id, result: message.method === "configRequirements/read"
+      ? { requirements: { future: true } } : message.method === "windowsSandbox/readiness" ? { status: "updateRequired" } : {} }) });
+    const result = await collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1, 2), metadataProfile: "managed-setup.v1" }, transport);
+    assert.deepEqual(result.requirements, { requirements: { future: true } }); assert.equal(result.readiness.status, "updateRequired");
+    assert.equal(Object.hasOwn(result, "authorized"), false); assert.equal(transport.calls.length, 6);
   });
   await check("extended transport budget must be explicit and is capped at sixty seconds", async () => {
     const x = fixture(), transport = doubleTransport();

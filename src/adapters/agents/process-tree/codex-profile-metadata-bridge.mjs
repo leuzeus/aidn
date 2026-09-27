@@ -1,25 +1,46 @@
-import { collectCodexNativeProfileMetadata } from "../../../application/runtime/codex-native-profile-observation-service.mjs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import { collectCodexNativeProfileMetadata, resolveCodexNativeProfileMetadataProfile } from "../../../application/runtime/codex-native-profile-observation-service.mjs";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../../core/agents/agent-execution-contracts.mjs";
 
 // Executed only as a pinned Node child already assigned to the supervisor Job.
-// No log, evidence file, shell, profile edit or native worker is launched here.
-// Raw metadata is transient pipe data; all descendants inherit the existing Job.
-const protocol = "aidn-controlled-profile-metadata.v1";
-let identity = { protocol, invocation_id: null, request_sha256: null };
-try {
-  const chunks = []; let count = 0;
-  for await (const chunk of process.stdin) { count += chunk.length; if (count > 262144) throw Object.assign(new Error(), { code: "PROFILE_TREE_INPUT_LIMIT" }); chunks.push(chunk); }
-  const document = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks, count)));
-  const { request_sha256, ...body } = document;
-  if (body.protocol !== protocol || fingerprint(body) !== request_sha256 || typeof body.invocation_id !== "string"
-    || !Number.isSafeInteger(body.timeout_ms) || body.timeout_ms < 1 || body.timeout_ms > 60000) throw Object.assign(new Error(), { code: "PROFILE_TREE_INPUT_INVALID" });
-  identity = { protocol, invocation_id: body.invocation_id, request_sha256 };
-  const result = await collectCodexNativeProfileMetadata(body.input, { timeoutMs: body.timeout_ms });
-  const output = JSON.stringify({ ...identity, ok: true, result });
-  if (Buffer.byteLength(output) > 2 * 1024 * 1024 + 32768) throw Object.assign(new Error(), { code: "PROFILE_TREE_OUTPUT_LIMIT", process: result.process });
-  process.stdout.write(output + "\n");
-} catch (cause) {
-  const code = /^[A-Z][A-Z0-9_]{0,100}$/u.test(cause.code ?? "") ? cause.code : "PROFILE_TREE_BRIDGE_FAILED";
-  process.stdout.write(JSON.stringify({ ...identity, ok: false, error: { code, process: cause.process ?? null } }) + "\n");
-  process.exitCode = 1;
+// Import and validation have no effects. Raw metadata remains bounded pipe data;
+// requirements and readiness never authorize setup, threads or workers.
+export async function runCodexProfileMetadataBridge(document, { collect = collectCodexNativeProfileMetadata } = {}) {
+  let identity = { protocol: "aidn-controlled-profile-metadata.v1", invocation_id: null, request_sha256: null };
+  try {
+    const { request_sha256, ...body } = document;
+    const fields = ["protocol", "invocation_id", "input", "timeout_ms"];
+    if (Object.keys(body).sort().join("|") !== fields.sort().join("|") || fingerprint(body) !== request_sha256 || typeof body.invocation_id !== "string"
+      || !Number.isSafeInteger(body.timeout_ms) || body.timeout_ms < 1 || body.timeout_ms > 60000 || typeof collect !== "function") {
+      throw Object.assign(new Error(), { code: "PROFILE_TREE_INPUT_INVALID" });
+    }
+    const selected = resolveCodexNativeProfileMetadataProfile(body.input?.metadataProfile, body.input?.roots);
+    if (body.protocol !== selected || Object.hasOwn(body.input ?? {}, "metadataProfile") && body.input.metadataProfile !== "managed-setup.v1") {
+      throw Object.assign(new Error(), { code: "PROFILE_TREE_INPUT_INVALID" });
+    }
+    identity = { protocol: selected, invocation_id: body.invocation_id, request_sha256 };
+    const result = await collect(body.input, { timeoutMs: body.timeout_ms });
+    const output = { ...identity, ok: true, result };
+    if (Buffer.byteLength(JSON.stringify(output)) > 2 * 1024 * 1024 + 32768) throw Object.assign(new Error(), { code: "PROFILE_TREE_OUTPUT_LIMIT", process: result.process });
+    return output;
+  } catch (cause) {
+    const code = /^[A-Z][A-Z0-9_]{0,100}$/u.test(cause.code ?? "") ? cause.code : "PROFILE_TREE_BRIDGE_FAILED";
+    return { ...identity, ok: false, error: { code, process: cause.process ?? null } };
+  }
+}
+
+// No new public command: the existing controller supplies the pinned stdin body.
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    const chunks = []; let count = 0;
+    for await (const chunk of process.stdin) { count += chunk.length; if (count > 262144) throw Object.assign(new Error(), { code: "PROFILE_TREE_INPUT_LIMIT" }); chunks.push(chunk); }
+    const document = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks, count)));
+    const output = await runCodexProfileMetadataBridge(document);
+    process.stdout.write(JSON.stringify(output) + "\n"); if (!output.ok) process.exitCode = 1;
+  } catch (cause) {
+    const code = /^[A-Z][A-Z0-9_]{0,100}$/u.test(cause.code ?? "") ? cause.code : "PROFILE_TREE_BRIDGE_FAILED";
+    process.stdout.write(JSON.stringify({ protocol: "aidn-controlled-profile-metadata.v1", invocation_id: null, request_sha256: null,
+      ok: false, error: { code, process: cause.process ?? null } }) + "\n"); process.exitCode = 1;
+  }
 }

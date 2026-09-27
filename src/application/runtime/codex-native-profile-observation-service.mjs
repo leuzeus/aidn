@@ -116,15 +116,32 @@ export function buildCodexNativeProfileObservationArguments(policy, request) {
     ...buildCodexNativeProfileArguments(policy, request), "app-server", "--listen", "stdio://"];
 }
 
+// Explicit metadata extension only. Neither a requirements response nor a
+// readiness observation grants permission to run setup, threads or workers.
+export function resolveCodexNativeProfileMetadataProfile(metadataProfile, roots) {
+  requireProof(metadataProfile === undefined || metadataProfile === "managed-setup.v1", "PROFILE_METADATA_PROFILE_INVALID");
+  if (metadataProfile !== undefined) requireProof(Array.isArray(roots) && roots.length === 1
+    && object(roots[0]) && typeof roots[0].root === "string" && path.isAbsolute(roots[0].root), "PROFILE_METADATA_SINGLE_ROOT_REQUIRED");
+  return metadataProfile === undefined ? "aidn-controlled-profile-metadata.v1" : "aidn-controlled-profile-metadata.v2";
+}
+export function assertCodexNativeProfileRequirementsResponse(value) {
+  requireProof(object(value) && Object.keys(value).length === 1 && Object.hasOwn(value, "requirements")
+    && (value.requirements === null || object(value.requirements)), "PROFILE_METADATA_REQUIREMENTS_MALFORMED");
+  return true;
+}
+
 // Only this function owns protocol writes. Server requests are never dispatched.
 // Raw responses/stderr exist transiently in memory and are never logged or saved.
-export async function collectCodexNativeProfileMetadata({ executable, args, cwd, env, roots, signal },
+export async function collectCodexNativeProfileMetadata({ executable, args, cwd, env, roots, signal, metadataProfile },
   { spawnProcess = spawn, isAlive = pid => { try { process.kill(pid, 0); return true; } catch (error) { if (error.code === "ESRCH") return false; throw error; } }, timeoutMs = 10000 } = {}) {
   requireProof(Number.isInteger(timeoutMs) && timeoutMs > 0 && timeoutMs <= 60000, "PROFILE_METADATA_TIMEOUT_INVALID");
   const deadline = performance.now() + timeoutMs;
   if (signal?.aborted) fail("PROFILE_METADATA_CANCELLED");
+  resolveCodexNativeProfileMetadataProfile(metadataProfile, roots);
+  const managed = metadataProfile === "managed-setup.v1";
   const calls = [{ method: "initialize", params: { clientInfo: { name: "aidn-native-profile-observer", version: "1" }, capabilities: { experimentalApi: true } } },
     ...roots.map(root => ({ method: "config/read", params: { cwd: root.root, includeLayers: true } })),
+    ...(managed ? [{ method: "configRequirements/read" }] : []),
     { method: "hooks/list", params: { cwds: roots.map(root => root.root) } }, { method: "windowsSandbox/readiness", params: null }];
   let child, closed = false, exitCode = null, exitSignal = null, failed = null, index = 0, bytes = 0, stderrBytes = 0, tail = "", buffer = "";
   const responses = [], decoder = new TextDecoder("utf-8", { fatal: true });
@@ -156,6 +173,11 @@ export async function collectCodexNativeProfileMetadata({ executable, args, cwd,
         if (!object(message)) { stop("PROFILE_METADATA_PROTOCOL_INVALID"); return; }
         if (message.method) { if (message.id !== undefined || !["configWarning", "remoteControl/status/changed"].includes(message.method)) stop("PROFILE_METADATA_UNEXPECTED_RPC"); continue; }
         if (message.id !== index + 1 || message.error || !Object.hasOwn(message, "result")) { stop("PROFILE_METADATA_RPC_REFUSED"); return; }
+        if (managed && calls[index]?.method === "configRequirements/read") {
+          if (Object.keys(message).sort().join("|") !== "id|result") { stop("PROFILE_METADATA_RPC_REFUSED"); return; }
+          try { assertCodexNativeProfileRequirementsResponse(message.result); }
+          catch { stop("PROFILE_METADATA_REQUIREMENTS_MALFORMED"); return; }
+        }
         responses.push(message.result); index++;
         if (index === 1) child.stdin.write(JSON.stringify({ method: "initialized", params: {} }) + "\n");
         if (index < calls.length) send(); else { child.stdin.end(); exitTimer = setTimeout(() => stop("PROFILE_METADATA_CLOSE_TIMEOUT"), 500); }
@@ -171,7 +193,8 @@ export async function collectCodexNativeProfileMetadata({ executable, args, cwd,
   if (failed || exitCode !== 0 || exitSignal !== null || responses.length !== calls.length || buffer.trim()) {
     const code = failed ?? "PROFILE_METADATA_INCOMPLETE"; throw Object.assign(new Error(code), { code, process: processEvidence });
   }
-  return { configs: responses.slice(1, 1 + roots.length), hooks: responses.at(-2), readiness: responses.at(-1), process: processEvidence };
+  return { configs: responses.slice(1, 1 + roots.length), hooks: responses.at(-2), readiness: responses.at(-1),
+    ...(managed ? { requirements: responses[1 + roots.length] } : {}), process: processEvidence };
 }
 
 export function normalizeCodexNativeProfileConfiguration(config, policy, request) {
