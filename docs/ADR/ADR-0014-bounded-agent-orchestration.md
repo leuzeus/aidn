@@ -142,6 +142,22 @@ profile. This mode remains unavailable until its full native qualification prove
 the frozen policy, hooks, confinement and preservation boundaries. Contract or
 fixture success does not establish native PASS.
 
+Native initialization can backfill historical titles, first messages and
+previews into the exact attempt's local SQLite directory. This effect requires
+explicit consent under the current policy digest; the copied metadata remains
+outside Git and PR evidence. The qualification driver allocates a distinct
+60-second preparation budget, including fresh canonical preflight, while
+renewing ownership. A preparation result binds request, policy, attempt and
+confirmed process termination, but grants no admission or native qualification.
+The run budget includes this preparation and the unchanged worker duration;
+worker timing begins only after preparation succeeds. Independent ten-second
+checks still precede creation and resume. A failed preparation prevents launch,
+preserves its state and cannot trigger a retry, SQLite disabling or backfill
+metadata changes. No native setup or trust operation is added.
+This native SQLite index never carries AIDN claims or replaces PostgreSQL
+authority. Unconfirmed metadata-process termination prevents further native
+observation and is reported independently of a worker that never started.
+
 ### Durable ownership (lot 3)
 
 Shared schema 3 adds execution_runs, execution_tasks, execution_attempts and

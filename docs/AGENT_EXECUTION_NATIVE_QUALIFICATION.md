@@ -135,6 +135,12 @@ observation and freezes the resulting configuration and hook fingerprints.
 This ordering keeps fresh untrusted roots from requiring an unrestricted native
 session merely to discover the inherited integrations.
 
+An explicitly consented `bootstrapMetadata: true` option prepares the same
+attempt's native metadata before discovery or proposal, with at most 60 seconds.
+The following strict observation still has its own ten-second budget. Bootstrap
+does not grant trust, admission or qualification, and cannot replace that fresh
+observation. It never retries a failed preparation automatically.
+
 Before execution, a local codex-native-profile-policy.v1 document binds the home
 identity, client hash, elevated backend, configuration-source and effective-setting
 hashes, integration identifiers, reviewed hooks, separate attempt-state directory
@@ -161,6 +167,39 @@ protected after review. No setup, repair, credential copy or automatic trust
 approval belongs to this path. Existing-only is the supervisor's rule, not a
 guarantee that the native client cannot attempt repair; failed preservation or
 backend health checks invalidate qualification.
+
+Native initialization of a new attempt SQLite directory can copy historical
+conversation metadata from the selected profile, including titles, first
+messages and previews. This requires explicit consent bound to the current
+shared-effects digest and local state directory. Keep these copies outside Git
+and PR artifacts. The qualifier preview reads only filesystem evidence, checks
+that the reviewed effect digest is current, and declares this copy and its
+preparation budget before execution. Do not disable SQLite, alter backfill
+metadata or erase failed state to bypass a startup failure.
+This SQLite directory is Codex's local native index. PostgreSQL remains the
+exclusive authority for AIDN supervised runs and claims; the native index is
+neither their storage nor a replacement backend.
+
+Each preexisting-profile scenario reserves 60 seconds for metadata bootstrap
+and the subsequent fresh canonical preflight together. The heartbeat continues
+during this preparation. Its result binds the exact request, policy, attempt
+state directory and confirmed metadata-process termination, and remains
+`NOT_GRANTED` / `NOT_RUN`. Missing bootstrap, refusal, cancellation, expiration
+or an identity mismatch prevents worker creation; no automatic retry resets
+this deadline. Evidence and failed attempt state are preserved.
+Metadata-process cleanup is recorded separately from worker cleanup. If a
+deadline or cancellation wins before the observer confirms closure and PID
+absence, metadata cleanup remains `UNCONFIRMED` even when the worker is
+`NOT_STARTED`. Final observation is then suppressed, including observation of
+an older successful attempt, until termination is reconciled. No extra wait
+extends the preparation budget and no later callback authorizes a new launch.
+
+The frozen run duration includes preparation plus the unchanged worker duration
+(for example, 60 + 150 seconds). Worker latency and timeout measurement start
+only after preparation and its canonical preflight complete. The smaller timeout
+scenario budget is derived from the cancellation case's worker latency alone.
+Preparation cannot consume or extend the worker budget; the worker deadline
+then remains fixed through its separate before-create and before-resume checks.
 
 The supervisor checks the effective configuration and hooks before creation and
 again before resuming a suspended worker. Responses bind a fresh challenge,

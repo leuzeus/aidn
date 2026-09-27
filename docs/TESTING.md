@@ -269,6 +269,16 @@ metadata observations, human trust and actual worker execution remain separate
 evidence; an existing Windows backend is never provisioned by those fixtures.
 It also checks the native qualification tools' review bindings, receipt-only
 refresh and preservation guards without launching a model or PostgreSQL.
+The targeted `node tools/perf/verify-agent-native-qualification-fixtures.mjs`
+check also covers consented metadata preparation, request/policy/attempt and
+termination bindings, no-launch failures, cancellation and late decisions.
+An observer that ignores cancellation leaves metadata cleanup unconfirmed and
+cannot trigger a final observation of a previously successful attempt.
+Synthetic callbacks verify that bootstrap and fresh canonical preflight share
+one 60-second maximum budget, counted separately in the run, before the unchanged
+worker deadline begins. The metadata collector and its warm verification remain
+separate bounded observations. These checks neither copy a real profile's
+historical metadata nor establish native startup performance.
 It does not execute Codex or qualify the OS sandbox. The explicit Windows helper
 build and `tools/perf/verify-agent-process-tree-fixtures.mjs` separately test native
 process trees. An unavailable native prerequisite is not a fixture PASS.

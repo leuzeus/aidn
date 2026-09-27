@@ -172,6 +172,8 @@ try {
   const driver = await import("../verify/agent-native-qualification-driver.mjs");
   const refusal = await import("../verify/agent-native-refusal-evidence.mjs");
   const profileObservation = await import("../verify/agent-native-profile-observation.mjs");
+  const profilePolicy = await import("../../src/adapters/agents/codex-native-profile-policy.mjs");
+  const {fingerprintAgentExecutionValue:fingerprint} = await import("../../src/core/agents/agent-execution-contracts.mjs");
   phase = "validation";
   await check("native tool imports perform no writes, process launch or connection", () => {
     assert.deepEqual(effects, []);
@@ -182,6 +184,102 @@ try {
   const review = refresh.assertAgentNativeRefreshReview, plan = refresh.assertAgentNativeRefreshPlan;
   const preserve = refresh.assertAgentNativeRefreshPreservation, gitMarkers = refresh.assertAgentNativeRefreshGitMarkers;
   const rejects = (fn, code) => assert.throws(fn, { code });
+  const bootstrapFixture=()=>{
+    const policy={contract_version:"codex-native-profile-policy.v1",mode:"preexisting",
+      home:{physical_path:path.join(root,"selected-profile"),identity_sha256:sha("a")},client_sha256:sha("b"),
+      backend:{platform:"win32",architecture:"x64",sandbox:"elevated",provisioning:"existing-only"},
+      configuration:{sources_sha256:sha("c"),effective_settings_sha256:sha("d"),mcp_server_ids:[],plugin_ids:[],app_ids:[]},
+      hooks_sha256:sha("e"),effects:{state_root:path.join(root,"attempt-state"),shared_effects_sha256:sha("f")}};
+    const request={attempt_id:"attempt.bootstrap",cwd:path.join(root,"worker-a"),execution:{native_profile:{mode:"preexisting",policy_sha256:profilePolicy.fingerprintCodexNativeProfilePolicy(policy)}}};
+    const observation={protocol_version:1,status:"bootstrap_completed",authorization:"NOT_GRANTED",native_execution:"NOT_RUN",
+      attempt_id:request.attempt_id,request_sha256:fingerprint(request),policy_sha256:profilePolicy.fingerprintCodexNativeProfilePolicy(policy),
+      state_root:profilePolicy.resolveCodexNativeProfileStatePaths(policy,request).root,budget_ms:60000,
+      process:{closed:true,pid_absent:true,exit_code:0,signal:null,response_count:5,budget_ms:60000},preservation:"PASS",
+      home_identity_sha256:policy.home.identity_sha256,client_sha256:policy.client_sha256,
+      sources_sha256:policy.configuration.sources_sha256,effective_settings_sha256:policy.configuration.effective_settings_sha256,
+      hooks_sha256:policy.hooks_sha256,setup_sha256:sha("1"),shared_effects_sha256:policy.effects.shared_effects_sha256,
+      provisioning_performed:false,environment_restricted:true};
+    const calls=[],verify=()=>assert.fail("bootstrap cannot replace fresh challenge verification");
+    verify.bootstrap=async(received,{timeoutMs,signal})=>{calls.push("bootstrap");assert.deepEqual(received,request);assert.equal(signal.aborted,false);
+      return {...structuredClone(observation),budget_ms:timeoutMs,process:{...observation.process,budget_ms:timeoutMs}};};
+    return {policy,request,observation,calls,options:{modules:profilePolicy,policy,request,runtime:{codexHome:policy.home.physical_path,sha256:policy.client_sha256},verify,
+      admitLaunch:async({signal})=>{calls.push("preflight");assert.equal(signal.aborted,false);return {ok:true};}}};
+  };
+  await check("native preparation has its own explicit run budget without extending task duration",()=>{
+    assert.deepEqual(driver.nativeQualificationBudgets({preexisting:true,maxDurationMs:150000}),{preparation_max_duration_ms:60000,worker_max_duration_ms:150000,run_max_duration_ms:210000});
+    assert.deepEqual(driver.nativeQualificationBudgets({maxDurationMs:5000}),{preparation_max_duration_ms:0,worker_max_duration_ms:5000,run_max_duration_ms:5000});
+    rejects(()=>driver.nativeQualificationBudgets({preexisting:true,maxDurationMs:150001}),"QUALIFICATION_TASK_BUDGET_INVALID");
+  });
+  await check("legacy qualification performs no metadata bootstrap",async()=>assert.equal(await driver.bootstrapNativeQualificationProfile({request:{execution:{}}}),null));
+  await check("bootstrap termination and exact identity precede fresh canonical admission",async()=>{
+    const x=bootstrapFixture(),before=JSON.stringify({policy:x.policy,request:x.request});
+    const result=await driver.bootstrapNativeQualificationProfile(x.options);
+    assert.deepEqual(x.calls,["bootstrap","preflight"]);assert.deepEqual(result,{observation:x.observation,admission:{ok:true}});
+    assert.equal(JSON.stringify({policy:x.policy,request:x.request}),before);
+  });
+  for(const [name,mutate] of [
+    ["foreign attempt",v=>{v.attempt_id="attempt.other";}],
+    ["foreign request",v=>{v.request_sha256=sha("2");}],
+    ["foreign policy",v=>{v.policy_sha256=sha("2");}],
+    ["foreign state",v=>{v.state_root+="-other";}],
+    ["living metadata process",v=>{v.process.pid_absent=false;}],
+    ["unconfirmed closure",v=>{v.process.closed=false;}],
+    ["falsely granted admission",v=>{v.authorization="GRANTED";}],
+  ]) await check("invalid bootstrap prevents preflight and launch: "+name,async()=>{
+    const x=bootstrapFixture();mutate(x.observation);let launches=0;
+    await assert.rejects(async()=>{await driver.bootstrapNativeQualificationProfile(x.options);launches++;},{code:"PROFILE_BOOTSTRAP_REFUSED"});
+    assert.deepEqual(x.calls,["bootstrap"]);assert.equal(launches,0);
+  });
+  await check("missing bootstrap fails before filesystem, PostgreSQL or worker effects",async()=>{
+    const x=bootstrapFixture();delete x.options.verify.bootstrap;
+    await assert.rejects(()=>driver.bootstrapNativeQualificationProfile(x.options),{code:"QUALIFICATION_NATIVE_PROFILE_BOOTSTRAP_REQUIRED"});
+    await assert.rejects(()=>driver.runNativeQualificationCase({manifest:{native_profile:{mode:"preexisting"}},nativeProfilePolicy:x.policy,verifyNativeProfile:x.options.verify}),{code:"QUALIFICATION_NATIVE_PROFILE_BOOTSTRAP_REQUIRED"});
+    assert.deepEqual(x.calls,[]);
+  });
+  await check("post-bootstrap canonical refusal prevents launch",async()=>{
+    const x=bootstrapFixture();let launches=0;x.options.admitLaunch=async()=>({ok:false,reason_code:"LEASE_EXPIRED"});
+    await assert.rejects(async()=>{await driver.bootstrapNativeQualificationProfile(x.options);launches++;},{code:"QUALIFICATION_POST_BOOTSTRAP_PREFLIGHT_REFUSED"});assert.equal(launches,0);
+  });
+  await check("late synchronous bootstrap cannot outrun its preparation timer",async()=>{
+    const x=bootstrapFixture(),original=x.options.verify.bootstrap;x.options.timeoutMs=1;
+    x.options.verify.bootstrap=async(...args)=>{const until=performance.now()+5;while(performance.now()<until){}return original(...args);};
+    await assert.rejects(()=>driver.bootstrapNativeQualificationProfile(x.options),{code:"QUALIFICATION_NATIVE_PROFILE_PREPARATION_TIMEOUT"});assert.deepEqual(x.calls,["bootstrap"]);
+  });
+  await check("canonical preflight shares the preparation deadline rather than resetting it",async()=>{
+    const x=bootstrapFixture(),original=x.options.verify.bootstrap;x.options.timeoutMs=20;let launches=0;
+    x.options.verify.bootstrap=async(...args)=>{const until=performance.now()+12;while(performance.now()<until){}return original(...args);};
+    x.options.admitLaunch=async()=>{x.calls.push("preflight");const until=performance.now()+12;while(performance.now()<until){}return {ok:true};};
+    await assert.rejects(async()=>{await driver.bootstrapNativeQualificationProfile(x.options);launches++;},{code:"QUALIFICATION_NATIVE_PROFILE_PREPARATION_TIMEOUT"});assert.equal(launches,0);
+  });
+  await check("cancellation during metadata preparation prevents admission and launch",async()=>{
+    const x=bootstrapFixture(),stop=new AbortController(),original=x.options.verify.bootstrap;x.options.signal=stop.signal;
+    x.options.verify.bootstrap=async(...args)=>{const result=await original(...args);stop.abort();return result;};
+    await assert.rejects(()=>driver.bootstrapNativeQualificationProfile(x.options),{code:"QUALIFICATION_NATIVE_PROFILE_PREPARATION_CANCELLED"});assert.deepEqual(x.calls,["bootstrap"]);
+  });
+  await check("hung metadata preparation is bounded and never relaunched",async()=>{
+    const x=bootstrapFixture();x.options.timeoutMs=2;x.options.verify.bootstrap=async()=>{x.calls.push("bootstrap");return new Promise(()=>{});};
+    const error=await driver.bootstrapNativeQualificationProfile(x.options).catch(error=>error);
+    assert.equal(error.code,"QUALIFICATION_NATIVE_PROFILE_PREPARATION_TIMEOUT");assert.deepEqual(x.calls,["bootstrap"]);
+    assert.equal(error.nativeProfilePreparation.process_cleanup,"UNCONFIRMED");assert.equal(error.nativeProfilePreparation.process,null);
+    let finalized=0;
+    const result=await qualification.finalizeNativeQualificationProfile({verify:{finalize:async()=>{finalized++;}},preparation:error.nativeProfilePreparation});
+    assert.equal(finalized,0);assert.equal(result.status,"UNCONFIRMED");assert.equal(result.native_profile_preparation.process_cleanup,"UNCONFIRMED");
+  });
+  await check("aborted signal ignored by bootstrap cannot start another metadata observation",async()=>{
+    const x=bootstrapFixture(),stop=new AbortController();x.options.signal=stop.signal;let launches=0,finalized=0;
+    x.options.verify.bootstrap=async()=>{x.calls.push("bootstrap");stop.abort();return new Promise(()=>{});};
+    const error=await (async()=>{await driver.bootstrapNativeQualificationProfile(x.options);launches++;})().catch(error=>error);
+    assert.equal(error.code,"QUALIFICATION_NATIVE_PROFILE_PREPARATION_CANCELLED");assert.equal(error.nativeProfilePreparation.process_cleanup,"UNCONFIRMED");
+    await qualification.finalizeNativeQualificationProfile({verify:{finalize:async()=>{finalized++;}},preparation:error.nativeProfilePreparation});
+    assert.equal(launches,0);assert.equal(finalized,0);assert.deepEqual(x.calls,["bootstrap"]);
+  });
+  await check("metadata failure preserves its confirmed termination separately from worker nonlaunch",async()=>{
+    const x=bootstrapFixture(),proof={closed:true,pid_absent:true,exit_code:1,signal:null,response_count:2,budget_ms:60000};
+    x.options.verify.bootstrap=async()=>{throw Object.assign(new Error("synthetic metadata failure"),{code:"PROFILE_METADATA_INCOMPLETE",process:proof});};
+    const error=await driver.bootstrapNativeQualificationProfile(x.options).catch(error=>error);
+    assert.equal(error.code,"PROFILE_METADATA_INCOMPLETE");assert.equal(error.nativeProfilePreparation.process_cleanup,"CONFIRMED");assert.deepEqual(error.nativeProfilePreparation.process,proof);
+    let finalized=0;await qualification.finalizeNativeQualificationProfile({verify:{finalize:async()=>{finalized++;return {ok:true};}},preparation:error.nativeProfilePreparation});assert.equal(finalized,1);
+  });
   await check("native review accepts both worktrees with the shared coordinator source", () => assert.equal(review(manifest, trust), true));
   await check("refresh refuses preexisting profiles without touching their contents", () => {
     const value = structuredClone(manifest); value.native_profile = { mode: "preexisting" };

@@ -8,7 +8,9 @@ import { fingerprintAgentExecutionValue as fingerprint } from "../../src/core/ag
 import * as profile from "../../src/adapters/agents/codex-native-profile-policy.mjs";
 import { normalizeCodexNativeProfileConfiguration, validateCodexNativeProfileMetadata,
   createCodexNativeProfileVerifier, collectCodexNativeProfileMetadata,
-  buildCodexNativeProfileObservationArguments } from "../verify/agent-native-profile-observation.mjs";
+  buildCodexNativeProfileObservationArguments, assertCodexNativeProfileBootstrap,
+  createCodexNativeProfileObserver, CODEX_NATIVE_PROFILE_SHARED_EFFECTS,
+  discoverCodexNativeProfileMetadata } from "../verify/agent-native-profile-observation.mjs";
 import { assertNativeQualificationProfileReview } from "../verify/qualify-agent-native-worker.mjs";
 import { verifyNativeQualificationProfile } from "../verify/agent-native-qualification-driver.mjs";
 
@@ -43,7 +45,7 @@ function fixture() {
       eventName, sourcePath: manifest.roots[0].hooks.config.path, source: "project", enabled: true, trustStatus: "trusted", handlerType: "command", async: false,
       currentHash: "sha256:" + H(eventName === "preToolUse" ? "c" : "d"), matcher: ".*", timeoutSec: 600,
       command: eventName === "preToolUse" ? "synthetic-before" : "synthetic-start" })) })) },
-    readiness: { status: "ready" }, process: { closed: true, pid_absent: true, exit_code: 0, signal: null, response_count: 5 } };
+    readiness: { status: "ready" }, process: { closed: true, pid_absent: true, exit_code: 0, signal: null, response_count: 5, budget_ms: 10000 } };
   const result = validateCodexNativeProfileMetadata({ metadata, manifest, policy, request, sourceFiles });
   policy.configuration.sources_sha256 = result.sources_sha256; policy.configuration.effective_settings_sha256 = result.effective_settings_sha256; policy.hooks_sha256 = result.hooks_sha256;
   request.execution.native_profile.policy_sha256 = profile.fingerprintCodexNativeProfilePolicy(policy);
@@ -175,11 +177,99 @@ export async function runAgentNativeProfileObservationFixtures() {
     const x = fixture(); x.observation.hooks_sha256 = H("0"); const verifier = createCodexNativeProfileVerifier({ ...x, observer: async () => x.observation });
     await assert.rejects(verifier(x.request, { phase: "before_create", challenge: "11111111-1111-1111-1111-111111111111" }), code("PROFILE_OBSERVATION_INCOMPLETE"));
   });
+  await check("bootstrap prepares exact request state but cannot substitute verification", async () => {
+    const x = fixture(), calls = [];
+    const verifier = createCodexNativeProfileVerifier({ ...x, observer: async options => {
+      calls.push({ request: options.request, metadataBootstrap: options.metadataBootstrap, timeoutMs: options.timeoutMs });
+      return { ...clone(x.observation), process: { ...x.observation.process, budget_ms: options.timeoutMs } };
+    } });
+    const result = await verifier.bootstrap(x.request, {});
+    assert.equal(assertCodexNativeProfileBootstrap(result, x), true);
+    assert.equal(result.authorization, "NOT_GRANTED"); assert.equal(result.native_execution, "NOT_RUN");
+    assert.equal(Object.hasOwn(result, "ok"), false); assert.equal(Object.hasOwn(result, "challenge"), false);
+    assert.equal(result.state_root, profile.resolveCodexNativeProfileStatePaths(x.policy, x.request).root);
+    await assert.rejects(verifier.finalize({ request: x.request }), code("PROFILE_INITIAL_OBSERVATION_REQUIRED"));
+    assert.throws(() => profile.assertCodexNativeProfileVerification(result, { policy: x.policy, request: x.request, phase: "before_create", challenge: "11111111-1111-1111-1111-111111111111" }), code("CODEX_NATIVE_PROFILE_VERIFICATION_REFUSED"));
+    await verifier(x.request, { phase: "before_create", challenge: "11111111-1111-1111-1111-111111111111", timeoutMs: 60000 });
+    assert.deepEqual(calls.map(call => [call.metadataBootstrap, call.timeoutMs]), [[true, 60000], [false, 10000]]);
+    assert.deepEqual(calls[0].request, calls[1].request);
+  });
+  await check("bootstrap evidence cannot transfer between attempts or changed requests", async () => {
+    const x = fixture(), verifier = createCodexNativeProfileVerifier({ ...x, observer: async options => ({ ...clone(x.observation), process: { ...x.observation.process, budget_ms: options.timeoutMs } }) });
+    const result = await verifier.bootstrap(x.request);
+    for (const mutate of [request => { request.attempt_id = "attempt-2"; }, request => { request.cwd = x.manifest.roots[2].root; }, request => { request.instruction = "changed"; }]) {
+      const changed = clone(x.request); mutate(changed);
+      assert.throws(() => assertCodexNativeProfileBootstrap(result, { policy: x.policy, request: changed }), code("PROFILE_BOOTSTRAP_REFUSED"));
+    }
+    for (const mutate of [proof => { proof.process.pid_absent = false; }, proof => { proof.budget_ms = 60001; }, proof => { proof.authorization = "GRANTED"; }, proof => { proof.state_root = x.policy.effects.state_root; }]) {
+      const changed = clone(result); mutate(changed); assert.throws(() => assertCodexNativeProfileBootstrap(changed, x), code("PROFILE_BOOTSTRAP_REFUSED"));
+    }
+  });
+  await check("successful bootstrap does not conceal fresh verification failure", async () => {
+    const x = fixture(); let calls = 0;
+    const verifier = createCodexNativeProfileVerifier({ ...x, observer: async options => {
+      calls++; if (!options.metadataBootstrap) throw Object.assign(new Error("PROFILE_POLICY_OBSERVATION_CHANGED"), { code: "PROFILE_POLICY_OBSERVATION_CHANGED" });
+      return { ...clone(x.observation), process: { ...x.observation.process, budget_ms: options.timeoutMs } };
+    } });
+    await verifier.bootstrap(x.request);
+    await assert.rejects(verifier(x.request, { phase: "before_create", challenge: "11111111-1111-1111-1111-111111111111" }), code("PROFILE_POLICY_OBSERVATION_CHANGED"));
+    assert.equal(calls, 2);
+  });
+  await check("bootstrap failure and timeout stop without retry or initial observation", async () => {
+    for (const expected of ["PROFILE_METADATA_TIMEOUT", "PROFILE_METADATA_TERMINATION_UNCONFIRMED"]) {
+      const x = fixture(); let calls = 0;
+      const verifier = createCodexNativeProfileVerifier({ ...x, observer: async () => { calls++; throw Object.assign(new Error(expected), { code: expected }); } });
+      await assert.rejects(verifier.bootstrap(x.request), code(expected)); assert.equal(calls, 1);
+      await assert.rejects(verifier.finalize({ request: x.request }), code("PROFILE_INITIAL_OBSERVATION_REQUIRED"));
+    }
+  });
+  await check("bootstrap cancellation and invalid budget refuse before observation", async () => {
+    const x = fixture(); let calls = 0; const verifier = createCodexNativeProfileVerifier({ ...x, observer: async () => { calls++; } });
+    await assert.rejects(verifier.bootstrap(x.request, { signal: AbortSignal.abort() }), code("PROFILE_METADATA_CANCELLED"));
+    for (const timeoutMs of [0, -1, 60001, 1.5]) await assert.rejects(verifier.bootstrap(x.request, { timeoutMs }), code("PROFILE_METADATA_TIMEOUT_INVALID"));
+    assert.equal(calls, 0);
+  });
+  await check("ordinary observer cannot select extended preparation budget", async () => {
+    let calls = 0; const observer = createCodexNativeProfileObserver({ collect: async () => { calls++; } });
+    await assert.rejects(observer({ timeoutMs: 60000 }), code("PROFILE_METADATA_TIMEOUT_INVALID")); assert.equal(calls, 0);
+  });
+  await check("late bootstrap cancellation retains closure evidence and never prepares verification", async () => {
+    const x = fixture(), stop = new AbortController();
+    const verifier = createCodexNativeProfileVerifier({ ...x, observer: async options => {
+      stop.abort(); return { ...clone(x.observation), process: { ...x.observation.process, budget_ms: options.timeoutMs } };
+    } });
+    await assert.rejects(verifier.bootstrap(x.request, { signal: stop.signal }), error => error.code === "PROFILE_METADATA_CANCELLED" && error.process.closed && error.process.pid_absent);
+    await assert.rejects(verifier.finalize({ request: x.request }), code("PROFILE_INITIAL_OBSERVATION_REQUIRED"));
+  });
+  await check("discovery bootstrap rejects invalid intent and cancellation before profile access", async () => {
+    let calls = 0; const collect = async () => { calls++; };
+    await assert.rejects(discoverCodexNativeProfileMetadata({ bootstrapMetadata: "yes", collect }), code("PROFILE_METADATA_TIMEOUT_INVALID"));
+    await assert.rejects(discoverCodexNativeProfileMetadata({ bootstrapMetadata: true, bootstrapTimeoutMs: 60001, collect }), code("PROFILE_METADATA_TIMEOUT_INVALID"));
+    await assert.rejects(discoverCodexNativeProfileMetadata({ bootstrapMetadata: true, signal: AbortSignal.abort(), collect }), code("PROFILE_METADATA_CANCELLED"));
+    assert.equal(calls, 0);
+  });
+  await check("historical metadata copying is material to effect consent", () => {
+    const current = clone(CODEX_NATIVE_PROFILE_SHARED_EFFECTS), previous = clone(current);
+    assert.equal(current.allowed_effects.some(effect => effect.includes("titles, first user messages and previews")), true);
+    previous.allowed_effects = previous.allowed_effects.filter(effect => !effect.includes("historical metadata"));
+    assert.notEqual(fingerprint(previous), fingerprint(current));
+    const x = fixture(); x.policy.effects.shared_effects_sha256 = fingerprint(current); x.consent.shared_effects_sha256 = fingerprint(previous);
+    assert.throws(() => createCodexNativeProfileVerifier(x), code("PROFILE_EXPLICIT_CONSENT_REQUIRED"));
+  });
   await check("metadata transport uses only five permitted requests and initialized", async () => {
     const transport = doubleTransport({ chunked: true }), x = fixture();
     const result = await collectCodexNativeProfileMetadata({ executable: "never-executed", args: [], cwd: x.request.cwd, env: {}, roots: x.manifest.roots.slice(1) }, transport);
+    assert.equal(result.process.budget_ms, 10000);
     assert.equal(result.process.pid_absent, true); assert.deepEqual(transport.calls.map(x => x.method), ["initialize", "initialized", "config/read", "config/read", "hooks/list", "windowsSandbox/readiness"]);
     assert.equal(result.configs[0].marker, "été");
+  });
+  await check("extended transport budget must be explicit and is capped at sixty seconds", async () => {
+    const x = fixture(), transport = doubleTransport();
+    const result = await collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1) }, { ...transport, timeoutMs: 60000 });
+    assert.equal(result.process.budget_ms, 60000); assert.equal(result.process.closed, true);
+    let calls = 0;
+    await assert.rejects(collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1) }, { timeoutMs: 60001, spawnProcess() { calls++; } }), code("PROFILE_METADATA_TIMEOUT_INVALID"));
+    assert.equal(calls, 0);
   });
   await check("server request cannot trigger a command", async () => {
     const transport = doubleTransport({ alter: () => ({ id: "server-1", method: "command/exec", params: {} }) }), x = fixture();

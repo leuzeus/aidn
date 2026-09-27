@@ -22,7 +22,8 @@ const SETUP_FILES = Object.freeze([".sandbox/setup_marker.json", ".sandbox/deny_
 export const CODEX_NATIVE_PROFILE_SHARED_EFFECTS = Object.freeze({
   contract_version: "codex-native-profile-shared-effects.v1",
   allowed_effects: Object.freeze(["native authentication refresh in the selected profile", "native logs and caches in the selected profile",
-    "attempt-scoped logs, SQLite and temporary files below the consented state root"]),
+    "attempt-scoped logs, SQLite and temporary files below the consented state root",
+    "native historical metadata backfill, including titles, first user messages and previews, into the attempt-scoped SQLite state"]),
   protected_effects: Object.freeze(["configuration, hook trust and rule files remain unchanged", "observed sandbox provisioning files remain unchanged",
     "no setup, login, configuration write or approval RPC"]),
   evidence_limit: "File preimages and readiness do not establish unchanged Windows accounts, ACLs or firewall state.",
@@ -87,6 +88,10 @@ function protectedSnapshot(manifest, home, environment) {
 function setupSnapshot(home) { return SETUP_FILES.map(relative => ({ relative, ...fileRecord(path.join(home, relative), false) })); }
 function sharedEffects(setup) { return { ...CODEX_NATIVE_PROFILE_SHARED_EFFECTS, immutable_setup_sha256: fingerprint(setup) }; }
 
+export function readCodexNativeProfileSharedEffects(home) {
+  return sharedEffects(setupSnapshot(home));
+}
+
 function checkedConsent(consent, policy, proposal = false) {
   requireProof(object(consent) && consent.approved === true && consent.state_root === policy.effects.state_root
     && (proposal ? consent.metadata_only === true : consent.shared_effects_sha256 === policy.effects.shared_effects_sha256), "PROFILE_EXPLICIT_CONSENT_REQUIRED");
@@ -114,7 +119,7 @@ export function buildCodexNativeProfileObservationArguments(policy, request) {
 // Raw responses/stderr exist transiently in memory and are never logged or saved.
 export async function collectCodexNativeProfileMetadata({ executable, args, cwd, env, roots, signal },
   { spawnProcess = spawn, isAlive = pid => { try { process.kill(pid, 0); return true; } catch (error) { if (error.code === "ESRCH") return false; throw error; } }, timeoutMs = 10000 } = {}) {
-  requireProof(Number.isInteger(timeoutMs) && timeoutMs > 0 && timeoutMs <= 10000, "PROFILE_METADATA_TIMEOUT_INVALID");
+  requireProof(Number.isInteger(timeoutMs) && timeoutMs > 0 && timeoutMs <= 60000, "PROFILE_METADATA_TIMEOUT_INVALID");
   const deadline = performance.now() + timeoutMs;
   if (signal?.aborted) fail("PROFILE_METADATA_CANCELLED");
   const calls = [{ method: "initialize", params: { clientInfo: { name: "aidn-native-profile-observer", version: "1" }, capabilities: { experimentalApi: true } } },
@@ -158,7 +163,7 @@ export async function collectCodexNativeProfileMetadata({ executable, args, cwd,
     signal?.addEventListener("abort", abort, { once: true }); send();
   });
   const absent = Number.isSafeInteger(child?.pid) && !isAlive(child.pid);
-  const processEvidence = { closed, pid_absent: absent, exit_code: exitCode, signal: exitSignal, response_count: responses.length };
+  const processEvidence = { closed, pid_absent: absent, exit_code: exitCode, signal: exitSignal, response_count: responses.length, budget_ms: timeoutMs };
   if (!closed || !absent) { const error = Object.assign(new Error("PROFILE_METADATA_TERMINATION_UNCONFIRMED"), { code: "PROFILE_METADATA_TERMINATION_UNCONFIRMED", process: processEvidence }); throw error; }
   try { buffer += decoder.decode(); } catch { failed ??= "PROFILE_METADATA_PROTOCOL_INVALID"; }
   if (performance.now() >= deadline) failed ??= "PROFILE_METADATA_TIMEOUT";
@@ -258,14 +263,18 @@ function prepareObservation({ manifest, policy, request, consent, proposal }, ho
 }
 
 export function createCodexNativeProfileObserver({ collect = collectCodexNativeProfileMetadata, host = process.env } = {}) {
-  return async function observe({ manifest, policy, request, consent, signal, proposal = false }) {
+  return async function observe({ manifest, policy, request, consent, signal, proposal = false, metadataBootstrap = false, timeoutMs = 10000 }) {
+    requireProof(typeof metadataBootstrap === "boolean" && Number.isInteger(timeoutMs) && timeoutMs > 0
+      && (metadataBootstrap ? timeoutMs <= 60000 : timeoutMs === 10000), "PROFILE_METADATA_TIMEOUT_INVALID");
+    if (signal?.aborted) fail("PROFILE_METADATA_CANCELLED");
     const before = prepareObservation({ manifest, policy, request, consent, proposal }, host);
     let metadata, failure;
-    try { metadata = await collect({ executable: manifest.codex.binary_path, args: buildCodexNativeProfileObservationArguments(policy, request), cwd: request.cwd, env: before.env, roots: workerRoots(manifest), signal }); }
+    try { metadata = await collect({ executable: manifest.codex.binary_path, args: buildCodexNativeProfileObservationArguments(policy, request), cwd: request.cwd, env: before.env, roots: workerRoots(manifest), signal }, { timeoutMs }); }
     catch (error) { failure = error; }
     const after = prepareObservation({ manifest, policy, request, consent, proposal }, host);
     requireProof(same(before.home, after.home) && same(before.sources, after.sources) && same(before.setup, after.setup), "PROFILE_PRESERVATION_FAILED");
     if (failure) throw failure;
+    if (signal?.aborted) throw Object.assign(new Error("PROFILE_METADATA_CANCELLED"), { code: "PROFILE_METADATA_CANCELLED", process: metadata.process });
     const evidence = validateCodexNativeProfileMetadata({ metadata, manifest, policy, request, sourceFiles: before.sources });
     if (!proposal) requireProof(evidence.sources_sha256 === policy.configuration.sources_sha256
       && evidence.effective_settings_sha256 === policy.configuration.effective_settings_sha256 && evidence.hooks_sha256 === policy.hooks_sha256, "PROFILE_POLICY_OBSERVATION_CHANGED");
@@ -278,27 +287,50 @@ export function createCodexNativeProfileObserver({ collect = collectCodexNativeP
 
 export const observerMetadata = createCodexNativeProfileObserver();
 
+// Bootstrap prepares native metadata for this exact request. Its evidence
+// cannot satisfy challenge-bearing verification or admit a worker.
+export function assertCodexNativeProfileBootstrap(result, { policy, request } = {}) {
+  assertCodexNativeProfileBinding(policy, request);
+  const state = resolveCodexNativeProfileStatePaths(policy, request);
+  const expected = { protocol_version: 1, status: "bootstrap_completed", authorization: "NOT_GRANTED", native_execution: "NOT_RUN",
+    attempt_id: request.attempt_id, request_sha256: fingerprint(request), policy_sha256: fingerprintCodexNativeProfilePolicy(policy), state_root: state.root,
+    preservation: "PASS", home_identity_sha256: policy.home.identity_sha256, client_sha256: policy.client_sha256,
+    sources_sha256: policy.configuration.sources_sha256, effective_settings_sha256: policy.configuration.effective_settings_sha256,
+    hooks_sha256: policy.hooks_sha256, shared_effects_sha256: policy.effects.shared_effects_sha256, provisioning_performed: false, environment_restricted: true };
+  requireProof(object(result) && Object.keys(result).length === Object.keys(expected).length + 3
+    && Object.entries(expected).every(([key, value]) => result[key] === value)
+    && /^[a-f0-9]{64}$/.test(result.setup_sha256 ?? "") && Number.isInteger(result.budget_ms) && result.budget_ms > 0 && result.budget_ms <= 60000
+    && object(result.process) && same(result.process, { closed: true, pid_absent: true, exit_code: 0, signal: null, response_count: 5, budget_ms: result.budget_ms }), "PROFILE_BOOTSTRAP_REFUSED");
+  return true;
+}
+
 export function createCodexNativeProfileVerifier({ manifest, policy, outputRoot, consent, observer = observerMetadata } = {}) {
   assertCodexNativeProfilePolicy(policy); checkedConsent(consent, policy);
   const frozen = { manifest: structuredClone(manifest), policy: structuredClone(policy), consent: structuredClone(consent) };
   let lastRequest, initial, count = 0;
-  async function observe(request, signal) {
+  async function observe(request, signal, { metadataBootstrap = false, timeoutMs = 10000 } = {}) {
+    if (signal?.aborted) fail("PROFILE_METADATA_CANCELLED");
     assertCodexNativeProfileBinding(frozen.policy, request);
-    const observation = await observer({ ...frozen, request, signal });
+    const observation = await observer({ ...frozen, request: structuredClone(request), signal, metadataBootstrap, timeoutMs });
+    if (signal?.aborted) throw Object.assign(new Error("PROFILE_METADATA_CANCELLED"), { code: "PROFILE_METADATA_CANCELLED", process: observation?.process });
     requireProof(observation.status === "verified" && observation.process?.closed === true && observation.process?.pid_absent === true
+      && observation.process.budget_ms === timeoutMs
       && observation.preservation === "PASS" && observation.provisioning_performed === false
       && observation.home_identity_sha256 === policy.home.identity_sha256 && observation.client_sha256 === policy.client_sha256
       && observation.sources_sha256 === policy.configuration.sources_sha256 && observation.effective_settings_sha256 === policy.configuration.effective_settings_sha256
       && observation.hooks_sha256 === policy.hooks_sha256 && observation.shared_effects_sha256 === policy.effects.shared_effects_sha256
       && observation.integrations_disabled === true && observation.environment_restricted === true && observation.unexpected_hooks === 0, "PROFILE_OBSERVATION_INCOMPLETE");
     if (initial) requireProof(initial.sources_sha256 === observation.sources_sha256 && initial.setup_sha256 === observation.setup_sha256, "PROFILE_PRESERVATION_FAILED");
-    else initial = observation;
-    lastRequest = structuredClone(request);
+    if (!metadataBootstrap) {
+      initial ??= observation;
+      lastRequest = structuredClone(request);
+    }
     if (outputRoot) {
       physical(outputRoot, "directory");
       requireProof(!inside(policy.home.physical_path, outputRoot) && !inside(outputRoot, policy.home.physical_path)
         && manifest.roots.every(root => !inside(root.root, outputRoot)), "PROFILE_EVIDENCE_ROOT_UNSAFE");
-      fs.writeFileSync(path.join(outputRoot, `native-profile-observation-${++count}.json`), JSON.stringify(observation, null, 2) + "\n", { flag: "wx" });
+      const retained = metadataBootstrap ? { ...observation, status: "bootstrap_observed", authorization: "NOT_GRANTED", native_execution: "NOT_RUN" } : observation;
+      fs.writeFileSync(path.join(outputRoot, `native-profile-${metadataBootstrap ? "bootstrap" : "observation"}-${++count}.json`), JSON.stringify(retained, null, 2) + "\n", { flag: "wx" });
     }
     return observation;
   }
@@ -310,6 +342,19 @@ export function createCodexNativeProfileVerifier({ manifest, policy, outputRoot,
       backend: policy.backend.sandbox, sources_sha256: policy.configuration.sources_sha256, effective_settings_sha256: policy.configuration.effective_settings_sha256,
       hooks_sha256: policy.hooks_sha256, shared_effects_sha256: policy.effects.shared_effects_sha256,
       unexpected_hooks: 0, integrations_disabled: true, environment_restricted: true, provisioning_performed: false };
+  };
+  verifier.bootstrap = async (request, { signal, timeoutMs = 60000 } = {}) => {
+    requireProof(Number.isInteger(timeoutMs) && timeoutMs > 0 && timeoutMs <= 60000, "PROFILE_METADATA_TIMEOUT_INVALID");
+    const observation = await observe(request, signal, { metadataBootstrap: true, timeoutMs });
+    const result = { protocol_version: 1, status: "bootstrap_completed", authorization: "NOT_GRANTED", native_execution: "NOT_RUN",
+      attempt_id: request.attempt_id, request_sha256: fingerprint(request), policy_sha256: fingerprintCodexNativeProfilePolicy(policy),
+      state_root: resolveCodexNativeProfileStatePaths(policy, request).root, budget_ms: timeoutMs, process: observation.process,
+      preservation: "PASS", home_identity_sha256: policy.home.identity_sha256, client_sha256: policy.client_sha256,
+      sources_sha256: observation.sources_sha256, effective_settings_sha256: observation.effective_settings_sha256,
+      hooks_sha256: observation.hooks_sha256, setup_sha256: observation.setup_sha256, shared_effects_sha256: observation.shared_effects_sha256,
+      provisioning_performed: false, environment_restricted: true };
+    assertCodexNativeProfileBootstrap(result, { policy, request });
+    return result;
   };
   verifier.finalize = async ({ signal, request = lastRequest } = {}) => {
     requireProof(initial && request, "PROFILE_INITIAL_OBSERVATION_REQUIRED");
@@ -324,18 +369,34 @@ export function createCodexNativeProfileVerifier({ manifest, policy, outputRoot,
 // Bootstrap is metadata-only and yields a proposal, never a runnable decision.
 // Final verification never learns new identifiers or substitutes missing hashes.
 export async function inspectCodexNativeProfileProposal({ manifest, policyTemplate, request, consent, signal,
-  collect = collectCodexNativeProfileMetadata, host = process.env, discoveryOnly = false } = {}) {
+  collect = collectCodexNativeProfileMetadata, host = process.env, discoveryOnly = false,
+  bootstrapMetadata = false, bootstrapTimeoutMs = 60000 } = {}) {
+  requireProof(typeof bootstrapMetadata === "boolean" && Number.isInteger(bootstrapTimeoutMs) && bootstrapTimeoutMs > 0
+    && bootstrapTimeoutMs <= 60000, "PROFILE_METADATA_TIMEOUT_INVALID");
+  if (signal?.aborted) fail("PROFILE_METADATA_CANCELLED");
   const candidate = structuredClone(policyTemplate);
   candidate.configuration = { sources_sha256: ZERO, effective_settings_sha256: ZERO, mcp_server_ids: [], plugin_ids: [], app_ids: [] };
   candidate.hooks_sha256 = ZERO; candidate.effects.shared_effects_sha256 = ZERO;
   const bind = () => ({ ...structuredClone(request), execution: { ...structuredClone(request.execution), native_profile: { mode: "preexisting", policy_sha256: fingerprintCodexNativeProfilePolicy(candidate) } } });
   let bound = bind(); const before = prepareObservation({ manifest, policy: candidate, request: bound, consent, proposal: true }, host);
-  let raw, failure;
-  try { raw = await collect({ executable: manifest.codex.binary_path, args: buildCodexNativeProfileObservationArguments(candidate, bound), cwd: bound.cwd, env: before.env, roots: workerRoots(manifest), signal }); }
-  catch (error) { failure = error; }
-  const after = prepareObservation({ manifest, policy: candidate, request: bound, consent, proposal: true }, host);
-  requireProof(same(before.sources, after.sources) && same(before.setup, after.setup), "PROFILE_PRESERVATION_FAILED");
-  if (failure) throw failure;
+  async function collectRound(timeoutMs) {
+    let raw, failure;
+    try { raw = await collect({ executable: manifest.codex.binary_path, args: buildCodexNativeProfileObservationArguments(candidate, bound), cwd: bound.cwd, env: before.env, roots: workerRoots(manifest), signal }, { timeoutMs }); }
+    catch (error) { failure = error; }
+    const after = prepareObservation({ manifest, policy: candidate, request: bound, consent, proposal: true }, host);
+    requireProof(same(before.home, after.home) && same(before.sources, after.sources) && same(before.setup, after.setup), "PROFILE_PRESERVATION_FAILED");
+    if (failure) throw failure;
+    if (signal?.aborted) throw Object.assign(new Error("PROFILE_METADATA_CANCELLED"), { code: "PROFILE_METADATA_CANCELLED", process: raw.process });
+    requireProof(same(raw.process, { closed: true, pid_absent: true, exit_code: 0, signal: null, response_count: 5, budget_ms: timeoutMs }), "PROFILE_METADATA_INCOMPLETE");
+    return raw;
+  }
+  let bootstrap = null;
+  if (bootstrapMetadata) {
+    const prepared = await collectRound(bootstrapTimeoutMs);
+    bootstrap = { status: "metadata_bootstrap_completed", authorization: "NOT_GRANTED", native_execution: "NOT_RUN",
+      attempt_id: bound.attempt_id, request_sha256: fingerprint(bound), state_root: before.state.root, budget_ms: bootstrapTimeoutMs, process: prepared.process };
+  }
+  const raw = await collectRound(10000);
   for (const [key, field] of [["mcp_servers", "mcp_server_ids"], ["plugins", "plugin_ids"], ["apps", "app_ids"]]) {
     candidate.configuration[field] = [...new Set(raw.configs.flatMap(response => Object.keys(response.config?.[key] ?? {})))].filter(id => key !== "apps" || id !== "_default").sort();
   }
@@ -348,7 +409,7 @@ export async function inspectCodexNativeProfileProposal({ manifest, policyTempla
       return response.layers.filter(layer => layer.name?.type !== "sessionFlags").map(layer => ({
         name_sha256: fingerprint(layer.name), version_sha256: fingerprint(layer.version), config_sha256: fingerprint(layer.config ?? null), disabled: Boolean(layer.disabledReason) }));
     });
-    return { status: "discovery_only", authorization: "NOT_GRANTED", native_execution: "NOT_RUN",
+    return { status: "discovery_only", authorization: "NOT_GRANTED", native_execution: "NOT_RUN", metadata_bootstrap: bootstrap,
       integration_ids: { mcp_server_ids: candidate.configuration.mcp_server_ids, plugin_ids: candidate.configuration.plugin_ids, app_ids: candidate.configuration.app_ids },
       sources_sha256: fingerprint({ files: before.sources, layers }), shared_effects: before.effects,
       shared_effects_sha256: fingerprint(before.effects), readiness: raw.readiness.status, process: raw.process,
@@ -363,7 +424,7 @@ export async function inspectCodexNativeProfileProposal({ manifest, policyTempla
   candidate.configuration.effective_settings_sha256 = observation.effective_settings_sha256;
   candidate.hooks_sha256 = observation.hooks_sha256; candidate.effects.shared_effects_sha256 = observation.shared_effects_sha256;
   assertCodexNativeProfilePolicy(candidate);
-  return { status: "proposal", policy_candidate: candidate, shared_effects: observation.shared_effects,
+  return { status: "proposal", policy_candidate: candidate, shared_effects: observation.shared_effects, metadata_bootstrap: bootstrap,
     process: observation.process, authorization: "NOT_GRANTED", native_execution: "NOT_RUN" };
 }
 
