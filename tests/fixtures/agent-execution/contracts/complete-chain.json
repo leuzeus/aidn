@@ -407,5 +407,106 @@
     "result_sha256": "13a6fc1fe46b02c71f4946fe74972939fe885eb60d3e7012397bcb9b97bbba5e",
     "request_sha256": "5e4594363a49d9ecc230c0e2af714067ad835b0371de91a2498767610a576e4d",
     "delegation_sha256": "d4d7de835d4653f614415c9098d2e79ae8b7292b46a8ea520e247165c0e26471"
+  },
+  "supervisor": {
+    "contract_version": "agent-execution-supervisor.v1",
+    "run_id": "run.fixture",
+    "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
+    "ownership": {
+      "owner_id": "supervisor.fixture",
+      "generation": 1,
+      "lease_id": "supervisor-lease.fixture"
+    },
+    "runner": {
+      "host_id": "host.fixture",
+      "runner_id": "runner.supervisor.fixture",
+      "pid": 42,
+      "started_at": "2026-09-26T00:00:00.000Z"
+    },
+    "status": "active"
+  },
+  "integration-prepared": {
+    "contract_version": "agent-integration-prepared.v1",
+    "integration_id": "integration.fixture",
+    "run_id": "run.fixture",
+    "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
+    "task_id": "alpha",
+    "attempt_id": "attempt.alpha.1",
+    "acceptance_sha256": "c170a5e0efc4465bd61bcc66446e45d8364d94d1ea70d4d6280f9deb7d114448",
+    "sequence": 1,
+    "repository_identity_sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+    "ref": "refs/heads/codex/integration-fixture",
+    "source_sha": "2222222222222222222222222222222222222222",
+    "parent_sha": "1111111111111111111111111111111111111111",
+    "result_sha": "5555555555555555555555555555555555555555",
+    "prepared_by": {
+      "owner_id": "supervisor.fixture",
+      "generation": 1,
+      "lease_id": "supervisor-lease.fixture"
+    },
+    "evidence": [
+      {
+        "ref": "evidence/integration.json",
+        "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+        "bytes": 128
+      }
+    ]
+  },
+  "integration-applied": {
+    "contract_version": "agent-integration-applied.v1",
+    "integration_id": "integration.fixture",
+    "run_id": "run.fixture",
+    "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
+    "sequence": 1,
+    "prepared_sha256": "792c060c14f00721e56fe654193fb04aaf21418b7dfee86438aa470650ff198c",
+    "result_sha": "5555555555555555555555555555555555555555",
+    "applied_by": {
+      "owner_id": "supervisor.fixture",
+      "generation": 1,
+      "lease_id": "supervisor-lease.fixture"
+    },
+    "evidence": [
+      {
+        "ref": "evidence/integration.json",
+        "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+        "bytes": 128
+      }
+    ]
+  },
+  "run-validation": {
+    "contract_version": "agent-run-validation.v1",
+    "validation_id": "final.fixture",
+    "run_id": "run.fixture",
+    "plan_sha256": "f65f063f386ba8077889ece3aef02450b55d8dc5d6e35e3c98d37c44da2d1acf",
+    "integration_sequence": 3,
+    "integrated_sha": "6666666666666666666666666666666666666666",
+    "checks": [
+      {
+        "validation_id": "unit",
+        "status": "passed",
+        "tested_sha": "6666666666666666666666666666666666666666",
+        "evidence": {
+          "ref": "validation/unit.json",
+          "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "bytes": 64
+        }
+      }
+    ],
+    "audit": {
+      "read_only": true,
+      "tested_sha": "6666666666666666666666666666666666666666",
+      "checks": [
+        {
+          "criterion_index": 0,
+          "status": "passed",
+          "evidence": {
+            "ref": "evidence/integration.json",
+            "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+            "bytes": 128
+          }
+        }
+      ]
+    },
+    "outcome": "passed"
   }
 }

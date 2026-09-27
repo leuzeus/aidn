@@ -10,8 +10,10 @@ import {
   fingerprintTaskContract,
   listAgentExecutionContractKinds,
   normalizeAgentExecutionPlan,
+  taskValidationIds,
   validateAgentExecutionBindings,
   validateAgentExecutionContract,
+  validateAgentRunValidationBindings,
 } from "../../src/core/agents/agent-execution-contracts.mjs";
 import { validateJsonSchema, validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import { assertAgentAdapter } from "../../src/core/ports/agent-adapter-port.mjs";
@@ -20,7 +22,7 @@ import { runAgentTaskExecutorConformanceChecks } from "./agent-task-executor-con
 
 const fixture = JSON.parse(readFileSync(new URL("../../tests/fixtures/agent-execution/contracts/complete-chain.json", import.meta.url), "utf8"));
 const schemaRoot = new URL("../../src/core/contracts/agent-execution/", import.meta.url);
-const kinds = ["acceptance", "attempt", "availability", "delegation", "descriptor", "event", "plan", "request", "result", "run", "task"];
+const kinds = ["acceptance", "attempt", "availability", "delegation", "descriptor", "event", "integration-applied", "integration-prepared", "plan", "request", "result", "run", "run-validation", "supervisor", "task"];
 const checks = [];
 const copy = (value) => structuredClone(value);
 const profile = { contractKind: "agent-execution" };
@@ -74,7 +76,7 @@ function withPreexistingNativeProfile() {
 
 await check("registry has exactly one positive case per internal schema", () => {
   assert.deepEqual(listAgentExecutionContractKinds().sort(), kinds);
-  assert.deepEqual(readdirSync(schemaRoot).filter((name) => name.endsWith(".schema.json")).sort(), kinds.map((kind) => `${kind}.v1.schema.json`));
+  assert.deepEqual(readdirSync(schemaRoot).filter((name) => name.endsWith(".schema.json")).sort(), kinds.map((kind) => `${kind}.v1.schema.json`).sort());
 });
 for (const kind of kinds) {
   const schema = JSON.parse(readFileSync(new URL(`${kind}.v1.schema.json`, schemaRoot), "utf8"));
@@ -400,6 +402,87 @@ await check("import, discovery and validation have no state reads, process, netw
   assert.equal(result.error, undefined, String(result.error));
   assert.equal(result.status, 0, String(result.stderr).slice(-1800));
   assert.deepEqual(JSON.parse(result.stdout), { status: "PASS", effects: [], probes: 0, tasks: 0 });
+});
+
+function selectedValidationBundle(selection) {
+  const bundle = copy(fixture);
+  bundle.plan.validations.push({ validation_id: "future-integration", argv: ["node", "--test", "tests/future.test.mjs"] });
+  if (selection) {
+    bundle.plan.tasks[0].validation_ids = [...selection];
+    bundle.task.validation_ids = [...selection];
+  }
+  delete bundle.plan.plan_sha256;
+  bundle.plan.plan_sha256 = fingerprintAgentExecutionPlan(bundle.plan);
+  const taskHash = fingerprintTaskContract(bundle.plan.tasks[0]);
+  for (const kind of ["run", "task", "attempt", "delegation", "request", "result", "acceptance"]) {
+    bundle[kind].plan_sha256 = bundle.plan.plan_sha256;
+    if (kind !== "run") bundle[kind].task_contract_sha256 = taskHash;
+  }
+  for (const event of bundle.events) event.plan_sha256 = bundle.plan.plan_sha256;
+  bundle.request.delegation_sha256 = fingerprintAgentExecutionValue(bundle.delegation);
+  bundle.result.request_sha256 = fingerprintAgentExecutionValue(bundle.request);
+  bundle.acceptance.result_sha256 = fingerprintAgentExecutionValue(bundle.result);
+  return bundle;
+}
+await check("explicit task validation avoids a future dependent validation", () => {
+  const bundle = selectedValidationBundle(["unit"]);
+  const before = JSON.stringify(bundle);
+  assert.deepEqual(validateAgentExecutionBindings(bundle), { ok: true, issues: [] });
+  assert.equal(JSON.stringify(bundle), before);
+  const ids = taskValidationIds(bundle.plan, bundle.task); ids.push("local-only");
+  assert.deepEqual(bundle.task.validation_ids, ["unit"]);
+});
+await check("omitted selection retains all historical plan validations", () => {
+  const bundle = selectedValidationBundle();
+  expectIssue(validateAgentExecutionBindings(bundle), "VALIDATION_SET_MISMATCH");
+  assert.deepEqual(taskValidationIds(bundle.plan, bundle.task), ["unit", "future-integration"]);
+});
+await check("selection changes both frozen plan and task fingerprints", () => {
+  const explicit = selectedValidationBundle(["unit"]), omitted = selectedValidationBundle();
+  assert.notEqual(explicit.plan.plan_sha256, omitted.plan.plan_sha256);
+  assert.notEqual(explicit.task.task_contract_sha256, omitted.task.task_contract_sha256);
+});
+await check("task cannot replace its planned validation selection", () => {
+  const bundle = selectedValidationBundle(["unit"]);
+  delete bundle.task.validation_ids;
+  bundle.task.task_contract_sha256 = fingerprintTaskContract(bundle.task);
+  expectIssue(validateAgentExecutionBindings(bundle), "TASK_CONTRACT_MISMATCH");
+});
+await rejectContract("unknown task validation is refused", "plan", value => { value.tasks[0].validation_ids = ["missing"]; }, "UNKNOWN_TASK_VALIDATION");
+await rejectContract("duplicate task validation is refused", "plan", value => { value.tasks[0].validation_ids = ["unit", "unit"]; }, "DUPLICATE_TASK_VALIDATION");
+await rejectContract("empty task selection cannot avoid validation", "plan", value => { value.tasks[0].validation_ids = []; }, "SCHEMA_INVALID");
+
+await rejectContract("integration cannot advance an integration branch outside codex", "integration-prepared", value => { value.ref = "refs/heads/dev"; }, "INVALID_INTEGRATION_REF");
+await rejectContract("integration rejects malformed refs", "integration-prepared", value => { value.ref = "refs/heads/codex/../dev"; }, "INVALID_INTEGRATION_REF");
+await rejectContract("integration cannot mix Git object formats", "integration-prepared", value => { value.result_sha = "3".repeat(64); }, "GIT_OBJECT_FORMAT_MISMATCH");
+await rejectContract("integration result must be a distinct commit", "integration-prepared", value => { value.result_sha = value.parent_sha; }, "INTEGRATION_RESULT_REQUIRES_COMMIT");
+await rejectContract("integration evidence cannot traverse", "integration-applied", value => { value.evidence[0].ref = "../outside.json"; }, "INVALID_EVIDENCE_REF");
+await rejectContract("final validations must target the integrated SHA", "run-validation", value => { value.checks[0].tested_sha = "9".repeat(40); }, "VALIDATION_SHA_MISMATCH");
+await rejectContract("final audit must target the integrated SHA", "run-validation", value => { value.audit.tested_sha = "9".repeat(40); }, "VALIDATION_SHA_MISMATCH");
+await rejectContract("final audit cannot skip a criterion index", "run-validation", value => { value.audit.checks[0].criterion_index = 1; }, "AUDIT_CRITERIA_INVALID");
+await rejectContract("final audit cannot hide unavailability behind passed", "run-validation", value => { value.audit.checks[0].status = "unavailable"; }, "INVALID_PASSED_VALIDATION");
+await rejectContract("final checks cannot hide failure behind passed", "run-validation", value => { value.checks[0].status = "failed"; }, "INVALID_PASSED_VALIDATION");
+await check("final validation is bound to full plan and exact integration", () => {
+  const args={plan:fixture.plan,run:fixture.run,validation:fixture["run-validation"],integratedSha:"6".repeat(40),integrationSequence:3};
+  const before=JSON.stringify(args);
+  assert.deepEqual(validateAgentRunValidationBindings(args),{ok:true,issues:[]});
+  assert.equal(JSON.stringify(args),before);
+  expectIssue(validateAgentRunValidationBindings({...args,integratedSha:"9".repeat(40)}),"INTEGRATION_BINDING_MISMATCH");
+  expectIssue(validateAgentRunValidationBindings({...args,integrationSequence:4}),"INTEGRATION_BINDING_MISMATCH");
+});
+await check("task subset cannot omit final run validations or audit criteria", () => {
+  const bundle=selectedValidationBundle(["unit"]),validation=copy(fixture["run-validation"]);
+  validation.plan_sha256=bundle.plan.plan_sha256;
+  expectIssue(validateAgentRunValidationBindings({plan:bundle.plan,run:bundle.run,validation,integratedSha:validation.integrated_sha,integrationSequence:3}),"VALIDATION_SET_MISMATCH");
+  const plan=copy(fixture.plan);delete plan.plan_sha256;plan.audit.criteria.push("Another criterion");plan.plan_sha256=fingerprintAgentExecutionPlan(plan);
+  const run={...fixture.run,plan_sha256:plan.plan_sha256};validation.plan_sha256=plan.plan_sha256;
+  expectIssue(validateAgentRunValidationBindings({plan,run,validation,integratedSha:validation.integrated_sha,integrationSequence:3}),"AUDIT_SET_MISMATCH");
+});
+await check("final binding rejects non-JSON inputs without invoking accessors", () => {
+  let reads=0;
+  expectIssue(validateAgentRunValidationBindings({get plan(){reads++;return fixture.plan;}}),"INVALID_JSON");
+  expectIssue(validateAgentRunValidationBindings(null),"BINDING_CONTEXT_REQUIRED");
+  assert.equal(reads,0);
 });
 
 const failed = checks.filter((entry) => entry.status === "FAIL");

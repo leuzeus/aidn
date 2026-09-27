@@ -84,11 +84,13 @@ Both profiles reject unsupported validation keywords. Positive and adversarial
 payloads, semantic checks and executor doubles are covered by the dedicated
 `runtime-agent-execution-contracts` gate.
 
-These eleven schemas are `model_only`: descriptor, availability, plan, run,
-delegated task, attempt, delegation, request, event, result and acceptance
-contracts do not imply a working executor, live lease,
-native admission or PostgreSQL persistence. Contract validity and runtime
-availability are separate evidence.
+The fifteen schemas cover descriptor, availability, plan, run, delegated task,
+attempt, delegation, request, event, result, acceptance, supervisor, prepared
+and applied integration, and final run validation. Their pure validity does not
+prove a working executor, live lease, Git reference or native admission. Task
+validation selection is optional for v1 compatibility; final run validation
+always covers the complete plan and audit on the exact integrated SHA.
+Contract validity and runtime availability remain separate evidence.
 
 ## Activation Refusals
 

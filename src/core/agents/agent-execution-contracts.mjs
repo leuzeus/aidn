@@ -11,10 +11,15 @@ import request from "../contracts/agent-execution/request.v1.schema.json" with {
 import event from "../contracts/agent-execution/event.v1.schema.json" with { type: "json" };
 import result from "../contracts/agent-execution/result.v1.schema.json" with { type: "json" };
 import acceptance from "../contracts/agent-execution/acceptance.v1.schema.json" with { type: "json" };
+import supervisor from "../contracts/agent-execution/supervisor.v1.schema.json" with { type: "json" };
+import integrationPrepared from "../contracts/agent-execution/integration-prepared.v1.schema.json" with { type: "json" };
+import integrationApplied from "../contracts/agent-execution/integration-applied.v1.schema.json" with { type: "json" };
+import runValidation from "../contracts/agent-execution/run-validation.v1.schema.json" with { type: "json" };
 
 // Model only. These functions observe neither Git, configuration, leases nor files.
 // Validating an ownership reference never proves that its lease exists or is live.
-const SCHEMAS = freeze({ descriptor, availability, plan, run, task, attempt, delegation, request, event, result, acceptance });
+const SCHEMAS = freeze({ descriptor, availability, plan, run, task, attempt, delegation, request, event, result, acceptance,
+  supervisor, "integration-prepared": integrationPrepared, "integration-applied": integrationApplied, "run-validation": runValidation });
 const TASK_FIELDS = ["task_id", "objective", "scope", "depends_on", "acceptance_criteria", "max_duration_ms"];
 const DEVICE = /^(?:con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/i;
 const issue = (code, path = "$", detail) => ({ code, path, ...(detail ? { detail } : {}) });
@@ -87,7 +92,15 @@ export function fingerprintAgentExecutionPlan(value) {
 export function fingerprintTaskContract(value) {
   const problems = jsonIssues(value);
   if (problems.length) throw contractError(problems[0]);
-  return fingerprintAgentExecutionValue(Object.fromEntries(TASK_FIELDS.map((field) => [field, value[field]])));
+  const content = Object.fromEntries(TASK_FIELDS.map((field) => [field, value[field]]));
+  if (Object.hasOwn(value, "validation_ids")) content.validation_ids = value.validation_ids;
+  return fingerprintAgentExecutionValue(content);
+}
+
+// Omission retains the original v1 behavior. An explicit selection is frozen in
+// both the task and plan fingerprints; final run validation still uses all IDs.
+export function taskValidationIds(plan, task) {
+  return [...(task.validation_ids ?? plan.validations.map(item => item.validation_id))];
 }
 
 export function normalizeAgentExecutionPlan(value) {
@@ -180,6 +193,10 @@ function planIssues(value, checkFingerprint) {
     if (item.max_duration_ms > value.limits.max_duration_ms) issues.push(issue("TASK_DURATION_EXCEEDS_RUN", location));
     if (new Set(item.depends_on).size !== item.depends_on.length) issues.push(issue("DUPLICATE_DEPENDENCY", location));
     if (item.depends_on.some((dep) => !tasks.has(dep))) issues.push(issue("UNKNOWN_DEPENDENCY", location));
+    if (item.validation_ids) {
+      if (new Set(item.validation_ids).size !== item.validation_ids.length) issues.push(issue("DUPLICATE_TASK_VALIDATION", location));
+      if (item.validation_ids.some(id => !validations.includes(id))) issues.push(issue("UNKNOWN_TASK_VALIDATION", location));
+    }
   }
   const visiting = new Set(), visited = new Set(), ancestors = new Map();
   function walk(id) {
@@ -236,6 +253,7 @@ function validateContract(kind, value, checkFingerprint) {
   if (kind === "task") {
     if (fingerprintTaskContract(value) !== value.task_contract_sha256) issues.push(issue("TASK_FINGERPRINT_MISMATCH", "$.task_contract_sha256"));
     if (new Set(value.depends_on).size !== value.depends_on.length || value.depends_on.includes(value.task_id)) issues.push(issue("INVALID_TASK_DEPENDENCY", "$.depends_on"));
+    if (value.validation_ids && new Set(value.validation_ids).size !== value.validation_ids.length) issues.push(issue("DUPLICATE_TASK_VALIDATION", "$.validation_ids"));
   }
   if (["attempt", "delegation"].includes(kind)) {
     if (!isAbsoluteExecutionCwd(value.worktree.cwd)) issues.push(issue("ABSOLUTE_CWD_REQUIRED", "$.worktree.cwd"));
@@ -265,6 +283,43 @@ function validateContract(kind, value, checkFingerprint) {
       if (!isExactExecutionPath(proof.ref)) issues.push(issue("INVALID_EVIDENCE_REF", "$.validation"));
     }
   }
+  if (kind === "integration-prepared") {
+    if (!value.ref.startsWith("refs/heads/codex/") || !validBranch(value.ref.slice("refs/heads/".length))) issues.push(issue("INVALID_INTEGRATION_REF", "$.ref"));
+    if (new Set([value.source_sha.length, value.parent_sha.length, value.result_sha.length]).size !== 1) issues.push(issue("GIT_OBJECT_FORMAT_MISMATCH", "$"));
+    if (value.result_sha === value.parent_sha) issues.push(issue("INTEGRATION_RESULT_REQUIRES_COMMIT", "$.result_sha"));
+  }
+  if (kind === "run-validation") {
+    const ids = value.checks.map(check => check.validation_id);
+    if (new Set(ids).size !== ids.length) issues.push(issue("DUPLICATE_VALIDATION", "$.checks"));
+    if (value.audit.tested_sha !== value.integrated_sha || value.checks.some(check => check.tested_sha !== value.integrated_sha)) issues.push(issue("VALIDATION_SHA_MISMATCH", "$"));
+    const indices = value.audit.checks.map(check => check.criterion_index).sort((a,b) => a-b);
+    if (indices.some((index, position) => index !== position)) issues.push(issue("AUDIT_CRITERIA_INVALID", "$.audit.checks"));
+    if (value.outcome === "passed" && [...value.checks, ...value.audit.checks].some(check => check.status !== "passed")) issues.push(issue("INVALID_PASSED_VALIDATION", "$"));
+    for (const check of [...value.checks, ...value.audit.checks]) {
+      if (!isExactExecutionPath(check.evidence.ref)) issues.push(issue("INVALID_EVIDENCE_REF", "$"));
+    }
+  }
+  return report(issues);
+}
+
+// Pure binding only: callers must independently observe the canonical store
+// and the Git reference. A caller-supplied SHA is not a Git observation.
+export function validateAgentRunValidationBindings(value) {
+  const inputIssues = jsonIssues(value);
+  if (inputIssues.length) return report(inputIssues);
+  if (!value || typeof value !== "object" || Array.isArray(value)) return report([issue("BINDING_CONTEXT_REQUIRED")]);
+  const { plan, run, validation, integratedSha, integrationSequence } = value;
+  const issues = [];
+  for (const [kind, value] of [["plan",plan],["run",run],["run-validation",validation]]) {
+    issues.push(...validateAgentExecutionContract(kind, value).issues);
+  }
+  if (issues.length) return report(issues);
+  if (run.plan_id !== plan.plan_id || run.plan_sha256 !== fingerprintAgentExecutionPlan(plan)
+      || !equal(run.canonical, plan.canonical) || !equal(run.task_ids, plan.tasks.map(task => task.task_id))) issues.push(issue("RUN_CONTEXT_MISMATCH", "$.run"));
+  if (validation.run_id !== run.run_id || validation.plan_sha256 !== run.plan_sha256) issues.push(issue("RUN_BINDING_MISMATCH", "$.validation"));
+  if (validation.integrated_sha !== integratedSha || validation.integration_sequence !== integrationSequence) issues.push(issue("INTEGRATION_BINDING_MISMATCH", "$.validation"));
+  if (!equal(validation.checks.map(check => check.validation_id).sort(), plan.validations.map(check => check.validation_id).sort())) issues.push(issue("VALIDATION_SET_MISMATCH", "$.validation.checks"));
+  if (validation.audit.checks.length !== plan.audit.criteria.length) issues.push(issue("AUDIT_SET_MISMATCH", "$.validation.audit"));
   return report(issues);
 }
 
@@ -288,6 +343,8 @@ export function validateAgentExecutionBindings(bundle) {
   mismatch(equal(run.task_ids, plan.tasks.map((item) => item.task_id)), "RUN_TASKS_MISMATCH", "$.run.task_ids");
   if (!plannedTask) return report([...issues, issue("TASK_NOT_IN_PLAN", "$.task.task_id")]);
   mismatch(TASK_FIELDS.every((field) => equal(task[field], plannedTask[field])), "TASK_CONTRACT_MISMATCH", "$.task");
+  mismatch(Object.hasOwn(task, "validation_ids") === Object.hasOwn(plannedTask, "validation_ids")
+    && equal(task.validation_ids ?? null, plannedTask.validation_ids ?? null), "TASK_CONTRACT_MISMATCH", "$.task.validation_ids");
   for (const [kind, value] of Object.entries({ run, task, attempt, delegation, request, ...(result ? { result } : {}), ...(acceptance ? { acceptance } : {}) })) {
     mismatch(value.plan_sha256 === planHash, "PLAN_BINDING_MISMATCH", `$.${kind}.plan_sha256`);
     mismatch(value.run_id === run.run_id, "RUN_BINDING_MISMATCH", `$.${kind}.run_id`);
@@ -319,7 +376,7 @@ export function validateAgentExecutionBindings(bundle) {
     if (acceptance.decision === "accepted") {
       mismatch(result?.outcome === "completed" && result?.termination_state === "confirmed", "ACCEPTANCE_REQUIRES_COMPLETION", "$.acceptance.decision");
       const checks = acceptance.validation.checks.map((check) => check.validation_id).sort();
-      mismatch(equal(checks, plan.validations.map((item) => item.validation_id).sort()), "VALIDATION_SET_MISMATCH", "$.acceptance.validation.checks");
+      mismatch(equal(checks, taskValidationIds(plan, task).sort()), "VALIDATION_SET_MISMATCH", "$.acceptance.validation.checks");
     }
   }
   if (bundle.events !== undefined) {
