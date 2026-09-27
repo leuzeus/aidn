@@ -24,7 +24,7 @@ try {
   const candidateRoot = path.join(root, "candidate espace Ã©tÃ©"), cwd = path.join(root, "workspace"); fs.mkdirSync(candidateRoot); fs.mkdirSync(cwd);
   // Minimal exact candidate fixture contains real production modules and schemas.
   const selected = [BRIDGE, "src/application/runtime/controlled-codex-profile-metadata.mjs", "src/application/runtime/codex-native-profile-observation-service.mjs",
-    "src/adapters/agents/codex-native-profile-policy.mjs", "src/core/agents/codex-startup-arguments.mjs", "src/core/agents/agent-execution-contracts.mjs", "src/core/contracts/json-schema-validator.mjs",
+    "src/adapters/agents/codex-native-profile-policy.mjs", "src/core/agents/codex-startup-arguments.mjs", "src/core/agents/agent-execution-contracts.mjs", "src/core/agents/agent-local-path-policy.mjs", "src/core/contracts/json-schema-validator.mjs",
     ...fs.readdirSync(path.join(source, "src/core/contracts/agent-execution")).filter(name => name.endsWith(".json")).map(name => `src/core/contracts/agent-execution/${name}`)];
   for (const relative of selected) { const target = path.join(candidateRoot, relative); fs.mkdirSync(path.dirname(target), { recursive: true }); fs.copyFileSync(path.join(source, relative), target); }
   const candidateInventory = Object.fromEntries(selected.map(name => [name, hash(fs.readFileSync(path.join(candidateRoot, name)))]));

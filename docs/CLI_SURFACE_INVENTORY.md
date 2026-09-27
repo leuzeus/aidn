@@ -162,6 +162,11 @@ plan digest: target, configuration, base, activation, generation and material
 preconditions are re-observed before any apply. Heartbeat timestamps alone do
 not invalidate the action.
 
+OneDrive workspaces, task scopes and configuration/evidence paths are excluded
+by the agent execution path policy. Excluded destinations are rejected before
+target observation, including known local Git and installation pointers. No
+OneDrive ACL is changed; this policy is not a Windows read-denial guarantee.
+
 Preview creates no run, claim, lease, heartbeat, worktree, archive or schema, and
 does not launch a native metadata observer. PostgreSQL read-only readiness and
 canonical state must be available. The local configuration pins the prepared

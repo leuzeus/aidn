@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isExcludedAgentPath } from "./agent-local-path-policy.mjs";
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import descriptor from "../contracts/agent-execution/descriptor.v1.schema.json" with { type: "json" };
 import availability from "../contracts/agent-execution/availability.v1.schema.json" with { type: "json" };
@@ -126,7 +127,7 @@ export function assertAgentExecutionContract(kind, value) {
 export function listAgentExecutionContractKinds() { return Object.keys(SCHEMAS); }
 
 export function isExactExecutionPath(value) {
-  if (typeof value !== "string" || !value || value !== value.normalize("NFC")
+  if (typeof value !== "string" || !value || isExcludedAgentPath(value) || value !== value.normalize("NFC")
     || /[\\\x00-\x1f\x7f:<>"|?*~]/.test(value)) return false;
   return value.split("/").every((part) => part && part !== "." && part !== ".."
     && !/[. ]$/.test(part) && !DEVICE.test(part));

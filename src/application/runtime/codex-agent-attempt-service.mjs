@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { assertAgentLocalPath } from "../../core/agents/agent-local-path-policy.mjs";
 import path from "node:path";
 import os from "node:os";
 import { createHash, randomUUID } from "node:crypto";
@@ -22,6 +23,7 @@ const digest = value => /^[a-f0-9]{64}$/.test(value ?? "");
 const equalPath = (a, b) => process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b;
 const inside = (parent, child) => { const relative = path.relative(parent, child); return !relative || !path.isAbsolute(relative) && relative !== ".." && !relative.startsWith(`..${path.sep}`); };
 function physical(input, type = "file") {
+  assertAgentLocalPath(input);
   requireProof(typeof input === "string" && path.isAbsolute(input) && path.normalize(input) === input, "AGENT_NATIVE_PATH_INVALID");
   let current = input;
   while (true) { const stat = fs.lstatSync(current); requireProof(!stat.isSymbolicLink(), "AGENT_NATIVE_PATH_REDIRECT"); const parent = path.dirname(current); if (parent === current) break; current = parent; }

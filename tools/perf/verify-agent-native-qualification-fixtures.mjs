@@ -97,7 +97,7 @@ const importPaths = new Set([
   "src/application/runtime/codex-native-profile-bootstrap-service.mjs",
   "src/adapters/agents/codex-native-profile-policy.mjs",
   "src/core/agents/codex-startup-arguments.mjs",
-  "src/core/agents/agent-execution-contracts.mjs",
+  "src/core/agents/agent-execution-contracts.mjs", "src/core/agents/agent-local-path-policy.mjs",
   "src/core/contracts/json-schema-validator.mjs",
   "tools/perf/agent-execution-postgres-test-lib.mjs",
   "src/lib/fs/remove-path-with-retry.mjs",
@@ -190,6 +190,49 @@ try {
     assert.throws(() => fs.readFileSync(startupSource), /Forbidden native fixture effect/);
     assert.throws(() => fsPromises.readFile(startupSource), /Forbidden native fixture effect/);
     assert.deepEqual(effects, ["fs.readFileSync:read", "fs.promises.readFile:read"]); effects.length = 0;
+  });
+  await check("qualification path helpers refuse cloud roots before filesystem observation", async () => {
+    for (const name of ["OneDrive", "oNeDrIvE - Fixture", "OneDrive. ", "ONEDRI~1"]) {
+      const cloud = path.join(root, name, "unobserved");
+      assert.throws(() => driver.physical(cloud, "file"), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+      assert.throws(() => driver.inventory(cloud), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+      assert.throws(() => preparation.nativeQualificationHomeIdentity(cloud), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+      assert.throws(() => refresh.readAgentNativeRefreshHomeIdentity({ codex_home: cloud }), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+      await assert.rejects(driver.loadCandidate({ packageRoot: cloud }), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+    }
+    assert.deepEqual(effects, []);
+  });
+  await check("preparation previews reject every explicit cloud argument before any read", async () => {
+    for (const field of ["outputRoot", "codexBinary", "npmCli", "codexHome"]) {
+      const options = { outputRoot: path.join(root, "output"), codexBinary: path.join(root, "codex.exe"), npmCli: path.join(root, "npm-cli.js"),
+        ...(field === "codexHome" ? { nativeProfileMode: "preexisting" } : {}) };
+      options[field] = path.join(root, "OneDrive", "unobserved");
+      await assert.rejects(preparation.prepareAgentNativeQualification(options), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+    }
+    assert.deepEqual(effects, []);
+  });
+  await check("refresh previews reject every explicit cloud argument before any read", async () => {
+    for (const field of ["manifestPath", "trustEvidencePath", "outputRoot", "npmCli"]) {
+      const options = { manifestPath: path.join(root, "manifest.json"), trustEvidencePath: path.join(root, "review.json"), outputRoot: path.join(root, "output"), npmCli: path.join(root, "npm-cli.js") };
+      options[field] = path.join(root, "OneDrive - Fixture", "unobserved");
+      await assert.rejects(refresh.refreshAgentNativeCandidate(options), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+    }
+    assert.deepEqual(effects, []);
+  });
+  await check("worker previews reject every explicit cloud argument before any read", async () => {
+    for (const field of ["manifest", "helperManifest", "reviewProof", "pgBin", "outputRoot", "nativeProfilePolicy"]) {
+      const options = { manifest: path.join(root, "manifest.json"), helperManifest: path.join(root, "helper.json"), reviewProof: path.join(root, "review.json"),
+        pgBin: path.join(root, "pgsql"), outputRoot: path.join(root, "output"), nativeProfilePolicy: path.join(root, "policy.json"), model: "fixture", effort: "high" };
+      options[field] = path.join(root, "OneDrive", "unobserved");
+      await assert.rejects(qualification.qualifyAgentNativeWorker(options), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+    }
+    assert.deepEqual(effects, []);
+  });
+  await check("path policy import allowance remains closed during validation", () => {
+    const policySource = path.join(packageRoot, "src/core/agents/agent-local-path-policy.mjs");
+    assert(importPaths.has(key(policySource)));
+    assert.throws(() => fs.readFileSync(policySource), /Forbidden native fixture effect/);
+    assert.deepEqual(effects, ["fs.readFileSync:read"]); effects.length = 0;
   });
   const review = refresh.assertAgentNativeRefreshReview, plan = refresh.assertAgentNativeRefreshPlan;
   const preserve = refresh.assertAgentNativeRefreshPreservation, gitMarkers = refresh.assertAgentNativeRefreshGitMarkers;

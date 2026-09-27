@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { assertAgentLocalPath } from "../../core/agents/agent-local-path-policy.mjs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { fingerprintAgentExecutionValue } from "../../core/agents/agent-execution-contracts.mjs";
@@ -13,6 +14,7 @@ function object(value, keys, code) {
     || keys.some(key => !Object.hasOwn(value, key))) fail(code);
 }
 function absolute(value) {
+  assertAgentLocalPath(value);
   if (typeof value !== "string" || !path.isAbsolute(value) || value.includes("\0")
     || value.split(/[\\/]/).includes("..")) fail("AGENT_RUN_ABSOLUTE_PATH_REQUIRED");
   return value;

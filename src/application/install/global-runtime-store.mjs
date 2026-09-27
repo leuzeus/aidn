@@ -92,12 +92,16 @@ function put(file, value) {
 }
 const at = (home, name) => inside(assertGlobalHomeVisibility(home), name);
 
-export function inventoryRuntime(root) {
+// Optional synchronous denial port for supervised readers. It must run before
+// metadata/content access; absence preserves the historical inventory behavior.
+export function inventoryRuntime(root, { beforeObserve } = {}) {
+  beforeObserve?.(root);
   checkedHostPath(root);
   const files = {};
   function walk(directory, prefix = '') {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
       const relative = prefix + entry.name;
+      beforeObserve?.(path.join(root, ...relative.split('/')));
       const file = inside(root, relative);
       if (entry.isDirectory()) walk(file, relative + '/');
       else {
@@ -127,23 +131,27 @@ export function sealRuntimeGeneration({ home, directory, packageRoot, provenance
   return { id: manifest.id, version, manifest_sha256: digest(Buffer.from(json(manifest))) };
 }
 
-export function verifyRuntimeGeneration(home, pointer) {
+export function verifyRuntimeGeneration(home, pointer, { beforeObserve } = {}) {
+  beforeObserve?.(home);
   if (!idPattern.test(pointer?.id ?? '') || !stableVersion.test(pointer?.version ?? '')
       || !hashPattern.test(pointer?.manifest_sha256 ?? '')) fail('GLOBAL_INVALID_POINTER');
+  beforeObserve?.(path.join(home, 'generations', pointer.id));
   const directory = at(home, `generations/${pointer.id}`);
+  beforeObserve?.(path.join(directory, 'manifest.json'));
   const raw = bytes(path.join(directory, 'manifest.json'));
   if (!raw || digest(raw) !== pointer.manifest_sha256) fail('GLOBAL_MANIFEST_CHANGED');
   const manifest = JSON.parse(raw);
   if (manifest.schema_version !== 1 || manifest.id !== pointer.id || manifest.version !== pointer.version
       || manifest.integration_revision !== GLOBAL_INTEGRATION_REVISION || !manifest.files
       || typeof manifest.files !== 'object' || Array.isArray(manifest.files)) fail('GLOBAL_MANIFEST_INVALID');
-  const actual = inventoryRuntime(path.join(directory, 'node_modules'));
+  const actual = inventoryRuntime(path.join(directory, 'node_modules'), { beforeObserve });
   if (Object.keys(actual).length !== Object.keys(manifest.files).length
       || Object.entries(manifest.files).some(([name, hash]) => !hashPattern.test(hash) || actual[name] !== hash)) fail('GLOBAL_PACKAGE_CHANGED');
   return { directory, packageRoot: path.join(directory, 'node_modules', 'aidn-workflow'), manifest };
 }
 
-export function readGlobalState(home) {
+export function readGlobalState(home, { beforeObserve } = {}) {
+  beforeObserve?.(home); beforeObserve?.(path.join(home, 'runtime.json'));
   const state = read(at(home, 'runtime.json'));
   if (state === null) return null;
   if (state.schema_version !== 1 || !idPattern.test(state.installation_id ?? '') || !state.active
@@ -155,9 +163,10 @@ function assetBytes(asset) {
   if (typeof asset.path !== 'string' || !path.isAbsolute(asset.path)) fail('GLOBAL_ASSET_INVALID');
   return bytes(asset.path);
 }
-export function verifyGlobalAssets(state) {
+export function verifyGlobalAssets(state, { beforeObserve } = {}) {
   for (const asset of state.assets) {
     if (!hashPattern.test(asset.sha256 ?? '')) fail('GLOBAL_ASSET_INVALID');
+    beforeObserve?.(asset.path);
     const content = assetBytes(asset);
     if (!content || digest(content) !== asset.sha256) fail('GLOBAL_ASSET_CHANGED');
   }
@@ -174,14 +183,16 @@ function locked(home, name, callback) {
   } finally { fs.closeSync(fd); fs.unlinkSync(file); }
 }
 
-export function resolveGlobalRuntime({ home = globalHome(), installationId, integrationRevision } = {}) {
+export function resolveGlobalRuntime({ home, installationId, integrationRevision, beforeObserve } = {}) {
+  if (home === undefined) { if (beforeObserve) fail('GLOBAL_EXPLICIT_HOME_REQUIRED'); home = globalHome(); }
+  beforeObserve?.(home); beforeObserve?.(path.join(home, "pending.json"));
   if (bytes(at(home, 'pending.json'))) fail('GLOBAL_TRANSACTION_PENDING');
-  const state = readGlobalState(home);
+  const state = readGlobalState(home, { beforeObserve });
   if (!state) fail('GLOBAL_NOT_INSTALLED');
   if (installationId && state.installation_id !== installationId) fail('GLOBAL_INSTALLATION_MISMATCH');
   if (integrationRevision !== undefined && integrationRevision !== GLOBAL_INTEGRATION_REVISION) fail('GLOBAL_INSTRUCTIONS_STALE');
-  const generation = verifyRuntimeGeneration(home, state.active);
-  verifyGlobalAssets(state);
+  const generation = verifyRuntimeGeneration(home, state.active, { beforeObserve });
+  verifyGlobalAssets(state, { beforeObserve });
   return { ...generation, state, home, version: state.active.version, entry: path.join(generation.packageRoot, 'bin', 'aidn.mjs') };
 }
 
@@ -193,9 +204,11 @@ function pendingTransaction(home, expectedPlanId) {
   return transaction;
 }
 
-export function resolveGlobalRecoveryRuntime({ home = globalHome(), expectedPlanId } = {}) {
+export function resolveGlobalRecoveryRuntime({ home, expectedPlanId, beforeObserve } = {}) {
+  if (home === undefined) { if (beforeObserve) fail('GLOBAL_EXPLICIT_HOME_REQUIRED'); home = globalHome(); }
+  beforeObserve?.(home); beforeObserve?.(path.join(home, "pending.json"));
   const transaction = pendingTransaction(home, expectedPlanId ?? read(at(home, 'pending.json'))?.plan_id);
-  const generation = verifyRuntimeGeneration(home, transaction.candidate);
+  const generation = verifyRuntimeGeneration(home, transaction.candidate, { beforeObserve });
   return { ...generation, home, version: transaction.candidate.version,
     state: { active: transaction.candidate, installation_id: transaction.installation_id },
     entry: path.join(generation.packageRoot, 'bin', 'aidn.mjs') };

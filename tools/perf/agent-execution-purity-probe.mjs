@@ -31,6 +31,7 @@ function fileKey(value) {
 }
 const importReads = new Set([
   "src/core/agents/agent-execution-contracts.mjs",
+  "src/core/agents/agent-local-path-policy.mjs",
   "src/core/contracts/json-schema-validator.mjs",
   "src/core/ports/agent-task-executor-port.mjs",
   "src/application/runtime/agent-task-executor-registry-service.mjs",

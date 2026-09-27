@@ -153,6 +153,10 @@ or native Codex observation. Launch, resume and cancellation require
 `--execute --expect-plan <action_sha256> --sync-relay`; cleanup requires
 `--write --expect-plan <action_sha256> --sync-relay`. Status is read-only.
 
+Supervised workspaces and task paths under OneDrive are refused by AIDN.
+This application exclusion does not modify OneDrive permissions or establish
+a Windows read prohibition.
+
 This remains a supervision candidate: applying a run requires matching native
 evidence for the package, client, helper, profile and validation boundary.
 The initial Windows preexisting-profile composition admits at most four

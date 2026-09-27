@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { assertAgentLocalPath } from "../../src/core/agents/agent-local-path-policy.mjs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
@@ -86,6 +87,7 @@ export function summarizeNativeProcessCleanup({launchRequests,processesStarted,c
 // Existing native project/hook trust and authentication must already exist.
 export async function qualifyAgentNativeWorker({manifest:manifestFile,helperManifest,pgBin,model,effort,reviewProof,nativeProfilePolicy:policyFile,outputRoot,write=false}={}) {
   requireProof(typeof write==="boolean","QUALIFICATION_EXPLICIT_WRITE_BOOLEAN_REQUIRED");
+  for(const value of [manifestFile,helperManifest,reviewProof,pgBin,outputRoot,policyFile]) assertAgentLocalPath(value);
   manifestFile=physical(manifestFile,"file"); helperManifest=physical(helperManifest,"file"); reviewProof=physical(reviewProof,"file"); pgBin=physical(pgBin,"directory"); outputRoot=physical(outputRoot);
   const manifest=read(manifestFile), helper=read(helperManifest), review=read(reviewProof);
   const nativeProfilePolicy=policyFile===undefined?undefined:read(policyFile);
@@ -198,7 +200,7 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
   }
   try {
     const modules=await loadCandidate(manifest.candidate,{nativeProfile:Boolean(profileReview)});
-    requireProof(modules.fingerprintAgentExecutionValue(modules.inventoryRuntime(manifest.candidate.packageRoot))===modules.fingerprintAgentExecutionValue(manifest.candidate.inventory),"QUALIFICATION_INSTALLED_CANDIDATE_CHANGED");
+    requireProof(modules.fingerprintAgentExecutionValue(modules.inventoryRuntime(manifest.candidate.packageRoot,{beforeObserve:assertAgentLocalPath}))===modules.fingerprintAgentExecutionValue(manifest.candidate.inventory),"QUALIFICATION_INSTALLED_CANDIDATE_CHANGED");
     if(profileReview) {
       requireProof(modules.fingerprintCodexNativeProfilePolicy(nativeProfilePolicy)===profileReview.policy_sha256,"QUALIFICATION_CANDIDATE_PROFILE_POLICY_MISMATCH");
       const {createCodexNativeProfileVerifier}=await import("./agent-native-profile-observation.mjs");
@@ -228,7 +230,7 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
           if(profileReview) result.native_profile_preparation={...check.native_profile_preparation,completed_attempts:result.checks.length};
           process.stderr.write(JSON.stringify({qualification_case:mode,state:"passed",native_process_cleanup:check.native_process_cleanup,at:new Date().toISOString()})+"\n");
         }
-        requireProof(modules.fingerprintAgentExecutionValue(modules.inventoryRuntime(manifest.candidate.packageRoot))===modules.fingerprintAgentExecutionValue(manifest.candidate.inventory) && hash(fs.readFileSync(manifest.candidate.archivePath))===manifest.candidate.sha256,"QUALIFICATION_FINAL_CANDIDATE_CHANGED");
+        requireProof(modules.fingerprintAgentExecutionValue(modules.inventoryRuntime(manifest.candidate.packageRoot,{beforeObserve:assertAgentLocalPath}))===modules.fingerprintAgentExecutionValue(manifest.candidate.inventory) && hash(fs.readFileSync(manifest.candidate.archivePath))===manifest.candidate.sha256,"QUALIFICATION_FINAL_CANDIDATE_CHANGED");
         requireProof(hash(fs.readFileSync(manifest.codex.binary_path))===manifest.codex.sha256 && hash(fs.readFileSync(helper.helper_path))===helper.helper_sha256,"QUALIFICATION_FINAL_EXECUTABLE_CHANGED");
       } finally {await admin.end();}
     },{binDir:pgBin});

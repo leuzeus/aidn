@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { assertAgentLocalPath } from "../../src/core/agents/agent-local-path-policy.mjs";
 import path from "node:path";
 import os from "node:os";
 import { createHash, randomUUID } from "node:crypto";
@@ -27,6 +28,7 @@ export function nativeQualificationBudgets({preexisting=false,maxDurationMs=1500
 }
 
 export function physical(value, kind) {
+  assertAgentLocalPath(value);
   requireProof(typeof value === "string" && path.isAbsolute(value), "QUALIFICATION_ABSOLUTE_PATH_REQUIRED");
   const absolute = path.resolve(value);
   for (let cursor = absolute;;) {
@@ -61,6 +63,7 @@ export function writeEvidence(root,relative,value) {
   return {ref:relative,bytes:fs.statSync(file).size,sha256:hash(fs.readFileSync(file))};
 }
 export async function loadCandidate(candidate,{nativeProfile=false}={}) {
+  assertAgentLocalPath(candidate?.packageRoot);
   const imports=[
     "src/adapters/agents/codex-cli-task-executor.mjs",
     "src/adapters/agents/process-tree/windows-process-tree-controller.mjs",
