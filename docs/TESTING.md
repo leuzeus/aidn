@@ -259,6 +259,24 @@ native Codex, OS confinement and concurrent workers remain unqualified here.
 The gate belongs only to the runtime family; the four context-resilience groups
 and their 43 historical invocations are unchanged.
 
+For the injected supervisor candidate, run
+`npm run perf:verify-agent-execution-scheduler-fixtures` and
+`npm run perf:verify-agent-git-integration-fixtures`. Their required runtime gates
+are `runtime-agent-execution-scheduler` and `runtime-agent-git-integration`,
+selected once for dev, main and release admissions. Scheduler doubles cover
+dependency ordering, deadlines, cancellation, coordination loss and recovery;
+the separate process scenario must demonstrate overlapping children, the actual
+concurrency ceiling and a dependent task reading accepted predecessor changes.
+Git fixtures use disposable repositories and verify complete change capture,
+protected paths, task commits, preserved conflicts and prepared/CAS/applied
+recovery. They do not qualify real Codex parallelism or an OS sandbox.
+
+Task-specific validation IDs, when present, select existing frozen plan checks;
+omission retains the historical all-checks behavior. Final run validation still
+requires every plan check and every audit criterion on the exact integrated SHA.
+The pure contract gate checks the supervisor, integration journals and final
+validation bindings without claiming that it observed Git or a live lease.
+
 For the candidate Codex task executor and delegated admission, run
 `npm run perf:verify-agent-worker-fixtures`. The required runtime gate tests
 bounded JSONL, explicit configuration, serialized callbacks, termination outcomes,
@@ -313,9 +331,14 @@ acquire a PostgreSQL prerequisite. No system service or existing database is mod
 The suite uses separate Node processes and an IPC start barrier for concurrent
 migration, reservations and claims. It checks stale ownership, lease expiry,
 durable launch intent, immutable event replay, canonical planning/artifact
-consistency, reservation-aware writers and explicit reconciliation. Activation
-and termination verifiers are test doubles: this proves database transitions,
-not native admission, revocation or termination of a Codex process tree.
+consistency, reservation-aware writers and explicit reconciliation. The
+fixtures also cover schema 4 supervisor generations, durable deadlines,
+acceptance and prepared/applied journals. Concurrent ownership checks use
+separate processes. Focused transaction cases inject Git observations; the
+combined scheduler case instead uses real Git, two overlapping Node workers
+and a dependent task with the real PostgreSQL store. Activation and termination
+verifiers remain test doubles: these checks do not qualify native admission,
+revocation or termination of a Codex process tree.
 Cluster shutdown and removal are checked on success and injected failure.
 This required disposable-database gate is distinct from both optional external
 PostgreSQL smokes. The required `runtime-shared-coordination-concurrency` gate

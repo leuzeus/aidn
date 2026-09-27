@@ -66,7 +66,11 @@ ADR-0014 adds `execution_run`, `delegated_task` and `execution_attempt` with
 `model_only` coverage in Lot 2 and `persistence_only` coverage in Lot 3.
 `AgentExecutionStore` and its PostgreSQL adapter persist the frozen run/task
 descriptors, attempt ownership, delegation, results and immutable events in
-shared schema 3. Supervised execution remains unavailable. The run preserves
+shared schema 3. Lot 5 extends their coverage to `supervision_candidate` and
+shared schema 4: supervisor generations and final validation belong to the run,
+integration belongs to the delegated task, and preparation and acceptance belong
+to the attempt. The internal scheduler requires explicitly injected dependencies;
+public supervised commands remain unavailable. The run preserves
 canonical session/cycle/task context without creating synthetic sessions;
 reservation requires canonical runtime and shared planning in the same database
 transaction. There is no SQLite, file or in-memory authority fallback.

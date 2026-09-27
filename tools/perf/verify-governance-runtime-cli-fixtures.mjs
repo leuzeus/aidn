@@ -59,8 +59,8 @@ function main() {
     for (const conceptId of ["execution_run", "delegated_task", "execution_attempt"]) {
       const concept = runtimeDiagnostics.concepts.find((item) => item.concept === conceptId);
       assert(concept?.status === "complete", `${conceptId} must have complete policy coverage`);
-      assert(concept?.coverage_kind === "persistence_only", `${conceptId} must remain persistence-only`);
-      assert(concept?.coverage_note.includes("supervised execution is unavailable"), `${conceptId} must state runtime unavailability`);
+      assert(concept?.coverage_kind === "supervision_candidate", `${conceptId} must retain conditional supervision coverage`);
+      assert(concept?.coverage_note.includes("public supervised commands remain unavailable"), `${conceptId} must state public command unavailability`);
       assert(concept?.cli_contract_status === "not_applicable", `${conceptId} must not invent a public CLI contract`);
       assert(!runtimeDiagnostics.observed_artifacts.some((item) => item.concept === conceptId), `${conceptId} must not fabricate observed instances`);
     }
