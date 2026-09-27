@@ -8,6 +8,7 @@ import { createCodexJsonlProtocol } from "../../src/adapters/agents/codex-jsonl-
 import { buildCodexTaskArguments, createCodexCliTaskExecutor, createCodexWorkerEnvironment } from "../../src/adapters/agents/codex-cli-task-executor.mjs";
 import { createAgentTaskEvidenceStore } from "../../src/adapters/agents/agent-task-evidence-store.mjs";
 import { fingerprintAgentExecutionValue } from "../../src/core/agents/agent-execution-contracts.mjs";
+import { nativeProfileFixturePolicy, nativeProfileFixtureDecision, verifyNativeProfileFixtures } from "./codex-native-profile-fixtures.mjs";
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-codex-task-fixture-"));
 const fixture = JSON.parse(fs.readFileSync(fileURLToPath(new URL("../../tests/fixtures/agent-execution/contracts/complete-chain.json", import.meta.url)), "utf8"));
@@ -19,11 +20,17 @@ const lines = [{ type: "thread.started", thread_id: "thread.fixture" }, { type: 
   { type: "item.completed", item: { type: "agent_message", text: "été" } }, { type: "turn.completed", usage: {} }];
 const bytes = Buffer.from(lines.map(item => JSON.stringify(item)).join("\n") + "\n");
 let ordinal = 0;
-function setup({ output = bytes, termination = "confirmed", exit = 0, outcome = "completed", qualify = true, throwController = false, failPrepared = false, callbackTimeoutMs = 5000, admissionTimeoutMs = 10000, admission, omitAdmission = false, invalidatePreparation = false, minimalEnvironment = false } = {}) {
+function setup({ output = bytes, termination = "confirmed", exit = 0, outcome = "completed", qualify = true, throwController = false, failPrepared = false, callbackTimeoutMs = 5000, admissionTimeoutMs = 10000, admission, omitAdmission = false, invalidatePreparation = false, minimalEnvironment = false,
+  nativeProfile = false, nativeProfileTimeoutMs = 10000, profileVerification, omitProfileVerifier = false, mutatePolicy } = {}) {
   const request = structuredClone(fixture.request);
   request.cwd = cwd; request.attempt_id = `fixture.${++ordinal}`;
   const calls = [], events = [];
   const runtime = { executable: process.execPath, sha256: createHash("sha256").update(fs.readFileSync(process.execPath)).digest("hex"), engine: request.execution.engine, codexHome: path.join(root, "profile") };
+  if (nativeProfile) {
+    runtime.nativeProfilePolicy = nativeProfileFixturePolicy(runtime, path.join(root, "native-state"));
+    mutatePolicy?.(runtime.nativeProfilePolicy);
+    request.execution.native_profile = { mode: "preexisting", policy_sha256: fingerprintAgentExecutionValue(runtime.nativeProfilePolicy) };
+  }
   const controller = {
     async checkAvailability() { calls.push("availability"); return { available: true }; },
     async run(spec, { signal, onEvent }) {
@@ -40,7 +47,12 @@ function setup({ output = bytes, termination = "confirmed", exit = 0, outcome = 
       }
     },
   };
-  const executor = createCodexCliTaskExecutor({ runtime, controller, callbackTimeoutMs, admissionTimeoutMs,
+  const executor = createCodexCliTaskExecutor({ runtime, controller, callbackTimeoutMs, admissionTimeoutMs, nativeProfileTimeoutMs,
+    verifyNativeProfile: omitProfileVerifier ? undefined : async (req, options) => {
+      calls.push(`profile:${options.phase}`);
+      const decision = nativeProfileFixtureDecision(req, options);
+      return profileVerification ? profileVerification(req, options, decision) : decision;
+    },
     qualify: async () => ({ qualified: qualify }),
     prepare: async req => { if (invalidatePreparation) qualify = false; return { request_sha256: fingerprintAgentExecutionValue(req),
       env: minimalEnvironment ? { AIDN_AGENT_ATTEMPT_ID: req.attempt_id, AIDN_AGENT_REQUEST_SHA256: fingerprintAgentExecutionValue(req) } : createCodexWorkerEnvironment({ host: { PATH: process.env.PATH ?? "", AIDN_PG_URL: "never-forward", OPENAI_API_KEY: "never-forward" },
@@ -56,7 +68,7 @@ function setup({ output = bytes, termination = "confirmed", exit = 0, outcome = 
     },
     openEvidence: createAgentTaskEvidenceStore({ root: evidenceRoot }).open,
   });
-  return { request, executor, calls, events };
+  return { request, executor, calls, events, runtime };
 }
 try {
   await check("construction and descriptor do not probe", () => {
@@ -210,6 +222,7 @@ try {
     const store = createAgentTaskEvidenceStore({ root: evidenceRoot }), evidence = await store.open(request); await evidence.finish({});
     await assert.rejects(store.open(request), /EEXIST/);
   });
+  await verifyNativeProfileFixtures({ check, setup, cwd });
   process.stdout.write(`PASS ${checks} Codex task executor fixtures; native Codex, hooks and OS qualification NOT EXECUTED\n`);
 } finally {
   const resolved = path.resolve(root), temp = path.resolve(os.tmpdir());

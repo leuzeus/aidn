@@ -113,6 +113,28 @@ prove that a dependent task's recorded input SHA contains its integrated
 predecessors. A final run audit is frozen in the plan but is not represented as
 successful merely because an individual task acceptance passes.
 
+### Explicit preexisting native profile (lot 4 amendment)
+
+The optional additive `execution.native_profile` contract selects
+`{ mode: "preexisting", policy_sha256: "<64 lowercase hex characters>" }`.
+Its presence binds the plan and request to one explicitly selected, verified and
+frozen local policy. It carries no profile path, authentication material or trust
+configuration. Changing its policy digest changes the plan and request hashes;
+adding, removing or replacing it in a request conflicts with the frozen plan.
+Historical contracts without this field remain valid and imply no selection or
+fallback to a preexisting profile.
+
+AIDN does not provision this profile, copy authentication, grant native trust,
+run native setup or silently substitute another profile. Config, trust,
+authorization, AIDN runtime state and Git metadata remain protected. The local
+policy must explicitly bound any ordinary native cache, session or authentication
+effects and record consent for those effects; this permission does not authorize
+changes to the protected authorities. Preparation, fixtures, independent review
+and explicit native approval precede any worker execution against the selected
+profile. This mode remains unavailable until its full native qualification proves
+the frozen policy, hooks, confinement and preservation boundaries. Contract or
+fixture success does not establish native PASS.
+
 ### Durable ownership (lot 3)
 
 Shared schema 3 adds execution_runs, execution_tasks, execution_attempts and

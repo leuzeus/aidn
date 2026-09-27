@@ -4,6 +4,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { assertAgentExecutionContract, fingerprintAgentExecutionValue } from "../../core/agents/agent-execution-contracts.mjs";
 import { createAgentTaskEventChannel } from "../../core/ports/agent-task-executor-port.mjs";
 import { createCodexJsonlProtocol } from "./codex-jsonl-protocol.mjs";
+import { assertCodexNativeProfilePolicy, assertCodexNativeProfileBinding, buildCodexNativeProfileArguments,
+  assertCodexNativeProfileVerification } from "./codex-native-profile-policy.mjs";
 
 const EXECUTOR = "codex-cli-task";
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
@@ -27,21 +29,22 @@ function boundedCallback(operation, { signal, timeoutMs }) {
   });
 }
 
-export function buildCodexTaskArguments(request) {
+export function buildCodexTaskArguments(request, { nativeProfilePolicy } = {}) {
   assertAgentExecutionContract("request", request);
   if (request.execution.executor_id !== EXECUTOR) fail("CODEX_EXECUTOR_MISMATCH");
-  // Read only the explicitly isolated profile: its native project/hook trust
-  // must remain visible. --ignore-user-config would also hide project trust.
+  const profileArguments = buildCodexNativeProfileArguments(nativeProfilePolicy, request);
+  // The explicitly selected profile's native project/hook trust must remain
+  // visible. --ignore-user-config would also hide project trust.
   return ["exec", "--json", "--ephemeral", "--strict-config",
     "--cd", request.cwd, "--sandbox", request.execution.sandbox, "--model", request.execution.model,
     "-c", `model_reasoning_effort=${JSON.stringify(request.execution.effort)}`, "-c", "agents.enabled=false",
-    // Loading the isolated profile preserves native trust, not permission to
+    // Loading the selected profile preserves native trust, not permission to
     // widen this worker's filesystem, temporary-directory or network boundary.
     "-c", 'approval_policy="never"', "-c", "sandbox_workspace_write.writable_roots=[]",
     "-c", "sandbox_workspace_write.network_access=false",
     "-c", "sandbox_workspace_write.exclude_tmpdir_env_var=true",
     "-c", "sandbox_workspace_write.exclude_slash_tmp=true",
-    ...(process.platform === "win32" ? ["-c", 'windows.sandbox="elevated"'] : []), "-"];
+    ...(process.platform === "win32" ? ["-c", 'windows.sandbox="elevated"'] : []), ...profileArguments, "-"];
 }
 
 // Explicit allowlist: do not copy process.env, PG credentials, API keys, Git
@@ -72,7 +75,8 @@ function verifyExecutable(runtime) {
 // never worker calls. Admission has a separate bounded budget because it includes
 // canonical reads and physical candidate inspection, not an event notification.
 export function createCodexCliTaskExecutor({ runtime, controller, qualify, prepare, recordLaunchIntent,
-  observeRunner, admitLaunch, openEvidence, callbackTimeoutMs = 5000, admissionTimeoutMs = 10000 } = {}) {
+  observeRunner, admitLaunch, openEvidence, verifyNativeProfile, callbackTimeoutMs = 5000, admissionTimeoutMs = 10000,
+  nativeProfileTimeoutMs = 10000 } = {}) {
   for (const callback of [qualify, prepare, recordLaunchIntent, observeRunner, admitLaunch, openEvidence]) {
     if (typeof callback !== "function") throw new TypeError("CODEX_SUPERVISOR_DEPENDENCY_REQUIRED");
   }
@@ -80,6 +84,12 @@ export function createCodexCliTaskExecutor({ runtime, controller, qualify, prepa
   if (!path.isAbsolute(runtime.codexHome ?? "")) throw new TypeError("CODEX_PROFILE_REQUIRED");
   if (!Number.isSafeInteger(callbackTimeoutMs) || callbackTimeoutMs < 1 || callbackTimeoutMs > 5000) throw new TypeError("CODEX_CALLBACK_LIMIT_INVALID");
   if (!Number.isSafeInteger(admissionTimeoutMs) || admissionTimeoutMs < 1 || admissionTimeoutMs > 10000) throw new TypeError("CODEX_ADMISSION_LIMIT_INVALID");
+  if (!Number.isSafeInteger(nativeProfileTimeoutMs) || nativeProfileTimeoutMs < 1 || nativeProfileTimeoutMs > 10000) throw new TypeError("CODEX_NATIVE_PROFILE_LIMIT_INVALID");
+  if (runtime.nativeProfilePolicy !== undefined) {
+    assertCodexNativeProfilePolicy(runtime.nativeProfilePolicy);
+    if (typeof verifyNativeProfile !== "function") throw new TypeError("CODEX_NATIVE_PROFILE_VERIFIER_REQUIRED");
+    if (runtime.codexHome !== runtime.nativeProfilePolicy.home.physical_path || runtime.sha256 !== runtime.nativeProfilePolicy.client_sha256) fail("CODEX_NATIVE_PROFILE_BINDING_MISMATCH");
+  }
   const frozenRuntime = structuredClone(runtime);
   let active = false;
   async function availability({ cwd, signal } = {}) {
@@ -105,7 +115,9 @@ export function createCodexCliTaskExecutor({ runtime, controller, qualify, prepa
     checkAvailability: availability,
     async runTask(input, { signal, onEvent } = {}) {
       assertAgentExecutionContract("request", input);
-      const request = structuredClone(input), args = buildCodexTaskArguments(request);
+      const request = structuredClone(input);
+      const usesNativeProfile = assertCodexNativeProfileBinding(frozenRuntime.nativeProfilePolicy, request, frozenRuntime);
+      const args = buildCodexTaskArguments(request, { nativeProfilePolicy: frozenRuntime.nativeProfilePolicy });
       if (!same(request.execution.engine, frozenRuntime.engine)) fail("CODEX_CANDIDATE_MISMATCH");
       if (active) fail("CODEX_EXECUTOR_ALREADY_RUNNING");
       if (signal !== undefined && !(signal instanceof AbortSignal)) throw new TypeError("CODEX_SIGNAL_INVALID");
@@ -125,6 +137,28 @@ export function createCodexCliTaskExecutor({ runtime, controller, qualify, prepa
       const emit = async (type, message) => channel.emit({ contract_version: "agent-task-event.v1",
         event_id: randomUUID(), run_id: request.run_id, task_id: request.task_id, attempt_id: request.attempt_id,
         plan_sha256: request.plan_sha256, sequence: ++sequence, type, message, evidence: [] });
+      const recheckNativeProfile = async phase => {
+        if (!usesNativeProfile) return;
+        let taskBudgetLimited = false;
+        try {
+          const remaining = Math.floor(taskDeadline - performance.now());
+          if (remaining <= 0) { deadlineReached = true; stop.abort(); fail("CODEX_NATIVE_PROFILE_TIMEOUT"); }
+          const budget = Math.min(nativeProfileTimeoutMs, remaining), deadline = performance.now() + budget;
+          taskBudgetLimited = remaining <= nativeProfileTimeoutMs;
+          const challenge = randomUUID();
+          const decision = await boundedCallback(() => verifyNativeProfile(structuredClone(request), {
+            signal: stop.signal, phase, challenge, policy: structuredClone(frozenRuntime.nativeProfilePolicy),
+          }), { signal: stop.signal, timeoutMs: budget });
+          if (performance.now() >= deadline) fail("CODEX_NATIVE_PROFILE_TIMEOUT");
+          if (stop.signal.aborted) fail("CODEX_CALLBACK_CANCELLED");
+          assertCodexNativeProfileVerification(decision, { policy: frozenRuntime.nativeProfilePolicy, request, phase, challenge });
+        } catch (error) {
+          failure = error.message === "CODEX_CALLBACK_TIMEOUT" ? "CODEX_NATIVE_PROFILE_TIMEOUT"
+            : /^CODEX_[A-Z_]+$/.test(error.code ?? error.message) ? (error.code ?? error.message) : "CODEX_NATIVE_PROFILE_VERIFICATION_FAILED";
+          if (failure === "CODEX_NATIVE_PROFILE_TIMEOUT" && taskBudgetLimited) deadlineReached = true;
+          stop.abort(); throw Object.assign(new Error(failure), { code: failure });
+        }
+      };
       const recheckAdmission = async phase => {
         let taskBudgetLimited = false;
         try {
@@ -176,6 +210,7 @@ export function createCodexCliTaskExecutor({ runtime, controller, qualify, prepa
         if (typeof evidence?.append !== "function" || typeof evidence?.finish !== "function") fail("CODEX_EVIDENCE_INVALID");
         if (stop.signal.aborted) fail("CODEX_CANCELLED_BEFORE_LAUNCH");
         await bounded(() => recordLaunchIntent(structuredClone(request), { signal: stop.signal }));
+        await recheckNativeProfile("before_create");
         await recheckAdmission("before_create");
         verifyExecutable(frozenRuntime);
         called = true;
@@ -190,6 +225,7 @@ export function createCodexCliTaskExecutor({ runtime, controller, qualify, prepa
               await recheckQualification();
               // The controller keeps this process suspended until prepared
               // settles successfully. Late admission after abort cannot resume.
+              await recheckNativeProfile("before_resume");
               await recheckAdmission("before_resume");
             }
             else if (event.type === "resumed") await emit("started", "Codex task process started");
