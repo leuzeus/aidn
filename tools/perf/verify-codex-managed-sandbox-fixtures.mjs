@@ -189,6 +189,14 @@ try {
   const input = fixture(), manifestPath = path.join(temporaryRoot, "manifest.json"), inventoryPath = path.join(temporaryRoot, "inventory.json"), partialPath = path.join(temporaryRoot, "partial.json");
   for (const [file, value] of [[manifestPath, input.manifest], [inventoryPath, input.inventory], [partialPath, { inventory: partial(input.inventory) }]]) fs.writeFileSync(file, JSON.stringify(value), { flag: "wx" });
   const digest = () => fs.readdirSync(temporaryRoot).sort().map(name => [name, createHash("sha256").update(fs.readFileSync(path.join(temporaryRoot, name))).digest("hex")]);
+  const operationPath = path.join(temporaryRoot, "operation.json");
+  fs.writeFileSync(operationPath, JSON.stringify({ contract_version: "codex-managed-sandbox-operation.v1",
+    policy_id: "codex-0.158.0-alpha.2.1-setup-start-legacy.v1", manifest_sha256: manifestHash(input.manifest),
+    request: { mode: "elevated", cwd: input.manifest.roots.find(row => row.role === "scratch").path },
+    configuration: { configuration_sha256: H, permission_profile_sha256: H, environment_sha256: H,
+      registered_core_requested: false, service_enabled: false, network: { allow_local_binding: false, proxy_ports: [] }, read_roots: [], write_roots: [],
+      deny_read_paths: [], prior_deny_read_paths: [], deny_write_paths: [], runtime_paths: [] },
+    control: { method: "pre-elevated-job", launcher_sha256: H, controller_sha256: H } }), { flag: "wx" });
   const before = digest();
   function cli(args) {
     const result = childProcess.spawnSync(process.execPath, [tool, ...args], { encoding: "utf8", windowsHide: true, timeout: 15000, maxBuffer: 1024 * 1024 });
@@ -206,6 +214,24 @@ try {
     assert.equal(result.status, 1); assert.equal(result.document.status, "PREPARATION_BLOCKED");
     assert.deepEqual(result.document.plan.incomplete_categories, ["wfp_rule"]); assert.equal(result.document.execution_available, false);
     assert.equal(result.document.written, false); assert.deepEqual(digest(), before);
+  });
+  await check("optional operation preview reports separate gaps without changing legacy plan or effects", () => {
+    const args = ["--manifest", manifestPath, "--inventory", inventoryPath, "--operation", operationPath, "--at", NOW];
+    const result = cli(args), json = cli([...args, "--json"]);
+    assert.deepEqual(json, result); assert.equal(result.status, 1);
+    assert.equal(result.document.contract_version, "codex-managed-sandbox-operation-preview.v1");
+    assert.equal(result.document.status, "REVIEWABLE_WITH_GAPS");
+    assert.equal(result.document.plan.status, "PREPARED_NOT_AUTHORIZED");
+    assert.equal(result.document.operation_assessment.assessment, "STRUCTURAL_NOT_AUTHENTICATED");
+    assert.equal(result.document.operation_assessment.execution_available, false);
+    assert.equal(result.document.written, false); assert.deepEqual(digest(), before);
+  });
+  await check("operation flags require explicit operation and clock before input access", () => {
+    for (const extra of [["--operation", operationPath], ["--coverage", inventoryPath], ["--at", NOW]]) {
+      const result = cli(["--manifest", path.join(temporaryRoot, "absent.json"), "--inventory", inventoryPath, ...extra]);
+      assert.equal(result.status, 1); assert.deepEqual(result.document.errors, [{ code: "MANAGED_PREVIEW_OPERATION_INPUT_REQUIRED" }]);
+      assert.equal(result.document.plan, null); assert.deepEqual(digest(), before);
+    }
   });
   await check("real Node execute flag is rejected before any input read", () => {
     const result = cli(["--manifest", path.join(temporaryRoot, "absent-manifest.json"), "--inventory", path.join(temporaryRoot, "absent-inventory.json"), "--execute"]);

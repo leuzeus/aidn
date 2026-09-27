@@ -24,7 +24,7 @@ Set-StrictMode -Version Latest
 $tokens=$null; $errors=$null
 $ast=[Management.Automation.Language.Parser]::ParseFile($Source,[ref]$tokens,[ref]$errors)
 if ($errors.Count) { throw 'SOURCE_PARSE_FAILED' }
-$skip=@('Read-File','Local-Path','Query','Netsh-State','Path-Metadata')
+$skip=@('Read-File','Local-Path','Query-Raw','Netsh-StateRaw','Path-Metadata','Token-Projection','Registry-Value')
 foreach ($s in $ast.EndBlock.Statements) {
   if ($s -is [Management.Automation.Language.FunctionDefinitionAst] -and $skip -notcontains $s.Name) { . ([ScriptBlock]::Create($s.Extent.Text)) }
   elseif ($s -is [Management.Automation.Language.AssignmentStatementAst]) { . ([ScriptBlock]::Create($s.Extent.Text)) }
@@ -44,7 +44,25 @@ function Read-File([string]$Path,[long]$Limit,[bool]$KeepBytes=$false) {
 }
 function Local-Path([string]$Path) { if ($Path -eq $script:DeniedPath) { throw [UnauthorizedAccessException]::new('fixture-secret-never-export') }; return $Path }
 function Path-Metadata([string]$Path) { return @{directory=$false;attributes=32;bytes=1} }
-function Query([string]$Kind,[string]$Argument='') {
+$script:FirewallDenied=$false
+$script:NetshExitCode=0
+$script:RegistryDenied=$false
+$script:RegistryCalls=@()
+$script:FixtureToken=@{user_sid='S-1-5-21-1-2-3-1001';groups=@('S-1-5-32-545:7','S-1-1-0:7');restricted_sids=@();privileges=@('0000000000000017:2');integrity_sid='S-1-16-8192';elevation_type=3;elevated=$false;is_app_container=$false;app_container_sid=$null;has_restrictions=$false;mandatory_policy=1;virtualization_allowed=$true;virtualization_enabled=$false;impersonation_level='None'}
+function Token-Projection { return $script:FixtureToken }
+function Registry-Value([string]$Name) {
+  $script:RegistryCalls+=,$Name
+  if ($Name -cnotin @('CodexSandboxOffline','CodexSandboxOnline')) { throw 'MOCK_REGISTRY_UNEXPECTED' }
+  if ($Name -ceq 'CodexSandboxOffline') {
+    if ($script:RegistryDenied) { throw [UnauthorizedAccessException]::new('fixture-secret-never-export') }
+    return @{state='observed';value_kind='DWord';value=0}
+  }
+  return @{state='absent_at_observation';value_kind=$null;value=$null}
+}
+function Query-Raw([string]$Kind,[string]$Argument='') {
+  $module=@{accounts='Microsoft.PowerShell.LocalAccounts';groups='Microsoft.PowerShell.LocalAccounts';members='Microsoft.PowerShell.LocalAccounts';firewall='NetSecurity';acl='Microsoft.PowerShell.Security'}[$Kind]
+  $script:CurrentProviderDetail.module=Select-ProviderModule $module ('C:\fixture\'+$module+'.psd1')
+  if ($Kind -ceq 'firewall' -and $script:FirewallDenied) { throw [ComponentModel.Win32Exception]::new(5,'fixture-secret-never-export') }
   switch ($Kind) {
     'accounts' { return ,@(@{Name='CodexSandboxOffline';SID='S-1-5-21-1-2-3-1001';Enabled='True'}) }
     'groups' { return ,@(@{Name='CodexSandboxUsers';SID='S-1-5-21-1-2-3-1002'}) }
@@ -54,9 +72,36 @@ function Query([string]$Kind,[string]$Argument='') {
   }; throw 'MOCK_QUERY_UNEXPECTED'
 }
 $script:FixtureXml='<wfpstate><providers><item><providerKey>{2e31d31c-3948-4753-9117-e5d1a6496f41}</providerKey><displayData><name>fixture</name></displayData></item></providers><subLayers><item><subLayerKey>{e65054fd-4d32-4c7c-95ef-621f0cf6431a}</subLayerKey></item></subLayers><filters><item><filterKey>{9f5f3812-79f0-4fe9-9615-4c2c92d2f0ff}</filterKey><providerKey>{2e31d31c-3948-4753-9117-e5d1a6496f41}</providerKey></item></filters></wfpstate>'
-function Netsh-State($Pin) { return $script:FixtureXml }
+function Netsh-StateRaw($Pin) {
+  $script:CurrentProviderDetail.exit_code=$script:NetshExitCode
+  $script:CurrentProviderDetail.stdout_bytes=$script:Utf8.GetByteCount($script:FixtureXml)
+  $script:CurrentProviderDetail.stderr_bytes=0
+  if ($script:NetshExitCode -ne 0) { Stop-Code 'INVENTORY_NETSH_QUERY_FAILED' }
+  return $script:FixtureXml
+}
 function Assert([bool]$Condition,[string]$Name) { if (!$Condition) { throw $Name }; $script:Pass++ }
 $script:Pass=0
+$tokenFunction=@($ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -ceq 'Token-Projection' })[0]
+$addType=@($tokenFunction.FindAll({param($n) $n -is [Management.Automation.Language.CommandAst] -and $n.GetCommandName() -ceq 'Add-Type'},$true))[0]
+$nativeSource=$addType.CommandElements[2].Value
+Add-Type -TypeDefinition $nativeSource -ErrorAction Stop
+$imports=@([AidnManagedObserverTokenV1].GetMethods([Reflection.BindingFlags]'Static,NonPublic') | Where-Object { $_.GetCustomAttributes([Runtime.InteropServices.DllImportAttribute],$false).Count -gt 0 } | ForEach-Object { $_.Name })
+Assert (($imports | Sort-Object) -join ',' -ceq 'GetTokenInformation,RegQueryValueEx') 'NATIVE_IMPORTS_READ_ONLY_AND_COMPILE'
+$decode=[AidnManagedObserverTokenV1].GetMethod('DecodeNumber',[Reflection.BindingFlags]'Static,NonPublic')
+$buffer=[Runtime.InteropServices.Marshal]::AllocHGlobal(4)
+try {
+  [Runtime.InteropServices.Marshal]::WriteInt32($buffer,2130706433)
+  Assert ($decode.Invoke($null,@($buffer,21,1)) -eq 1) 'TOKEN_RESTRICTION_BOOLEAN_READS_ONE_BYTE'
+  Assert ($decode.Invoke($null,@($buffer,20,4)) -eq 2130706433) 'TOKEN_ELEVATION_DWORD_READS_FOUR_BYTES'
+  $badSize=$null; try { $decode.Invoke($null,@($buffer,20,1)) | Out-Null } catch { $badSize=Reason $_ }
+  Assert ($badSize -ceq 'INVENTORY_TOKEN_NUMBER_SIZE') 'TOKEN_UNEXPECTED_FIELD_SIZE_REFUSED'
+} finally { [Runtime.InteropServices.Marshal]::FreeHGlobal($buffer) }
+$beforeContext=Build-ObserverContext $script:FixtureToken
+$reordered=$script:FixtureToken.Clone(); $reordered.groups=@('S-1-1-0:7','S-1-5-32-545:7')
+Assert ((Build-ObserverContext $reordered).token_projection_sha256 -ceq $beforeContext.token_projection_sha256) 'TOKEN_SETS_ORDER_INDEPENDENT'
+$restricted=$script:FixtureToken.Clone(); $restricted.restricted_sids=@('S-1-1-0:7'); $restricted.has_restrictions=$true
+Assert ((Build-ObserverContext $restricted).token_projection_sha256 -cne $beforeContext.token_projection_sha256) 'TOKEN_RESTRICTIONS_INVALIDATE_DIGEST'
+Assert ((ConvertTo-Json $beforeContext -Depth 8 -Compress) -notmatch 'S-1-5-21-|S-1-5-32-545|0000000000000017|TokenId|ProcessId') 'RAW_PRINCIPAL_AND_TOKEN_DETAILS_REDACTED'
 $missingFixture=Join-Path ([IO.Path]::GetDirectoryName($Output)) 'does-not-exist.fixture'
 Assert ($null -eq (& $realMetadata $missingFixture)) 'REAL_MISSING_FILE_METADATA'
 function Path-Attributes([string]$Path) { throw [UnauthorizedAccessException]::new('fixture-secret-never-export') }
@@ -101,7 +146,7 @@ $pins=@('C:\fixture\codex.exe','C:\fixture\setup.exe','C:\fixture\runner.exe')
 $script:FixtureRequest=[ordered]@{
  contract_version='codex-managed-sandbox-observation-request.v1';host_id=[Environment]::MachineName
  client=@{path=$pins[0];sha256=$hash};manifest_sha256=$hash
- resources=@(@{kind='local_account';id='CodexSandboxOffline'})
+ resources=@(@{kind='local_account';id='CodexSandboxOffline'},@{kind='registry';id='HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList\CodexSandboxOffline'},@{kind='registry';id='HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList\CodexSandboxOnline'})
  protected_resources=@($pins | ForEach-Object { @{kind='filesystem';id=$_} })
  paths=@($pins | ForEach-Object { @{id=$_;path=$_;hash_content=$true} })
  netsh=@{path='C:\Windows\System32\netsh.exe';sha256=$hash}
@@ -114,6 +159,7 @@ $RequestPath='C:\fixture\request.json'
 . $mainBlock
 if ($report.errors.Count) { throw ($report.errors | ConvertTo-Json -Compress) }
 Assert ($null -ne $report.inventory) 'INVENTORY_PRESENT'
+Assert ($null -ne $report.observer_context -and $report.observer_context.token_projection_sha256 -match '^[a-f0-9]{64}$') 'OBSERVER_CONTEXT_BOUND'
 Assert ($report.inventory.coverage.Count -eq 11) 'ALL_CATEGORIES'
 Assert (@($report.inventory.coverage | Where-Object { $_.complete -or $null -ne $_.outside_authority_sha256 }).Count -eq 0) 'NO_FALSE_COMPLETENESS'
 Assert ($report.inventory.observed_at -match '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$') 'TIMESTAMP_CONTRACT'
@@ -124,6 +170,29 @@ Assert (@($script:ReadCalls | Where-Object { $_.path -ne $pins[0] -and $_.limit 
 $bounded=Report-Json $report 1024
 Assert ($script:Utf8.GetByteCount($bounded) -lt 1024 -and ($bounded | ConvertFrom-Json).errors[0].code -ceq 'INVENTORY_FINAL_OUTPUT_LIMIT') 'FINAL_JSON_BOUNDED'
 $good=$report.inventory
+$goodObserver=$report.observer_context
+Assert ($goodObserver.host_id -ceq [Environment]::MachineName -and $goodObserver.elevation_type -ceq 'limited' -and !$goodObserver.elevated -and $goodObserver.process_bitness -in @(32,64) -and $goodObserver.os_bitness -in @(32,64)) 'OBSERVER_HOST_ELEVATION_BITNESS'
+Assert ($goodObserver.selected_modules.Count -eq 3 -and @($goodObserver.selected_modules | Where-Object { $_.manifest_sha256 -cne $hash -or $_.manifest_path_sha256 -notmatch '^[a-f0-9]{64}$' }).Count -eq 0) 'SELECTED_MODULE_PINS_REPORTED'
+$registry=@($report.diagnostics | Where-Object { $_.kind -ceq 'registry' })[0]
+Assert ($script:RegistryCalls.Count -eq 2 -and ($script:RegistryCalls -join ',') -ceq 'CodexSandboxOffline,CodexSandboxOnline') 'ONLY_TWO_EXACT_REGISTRY_VALUES'
+Assert ($registry.registry_values[0].state -ceq 'observed' -and $registry.registry_values[1].state -ceq 'absent_at_observation' -and $null -ne $good.resources[1].sha256 -and $null -eq $good.resources[2].sha256) 'REGISTRY_OBSERVED_VERSUS_ABSENT'
+$wfp=@($report.diagnostics | Where-Object { $_.kind -ceq 'wfp_rule' })[0].providers[0]
+Assert ($wfp.exit_code -eq 0 -and $wfp.duration_ms -ge 0 -and $wfp.status -ceq 'succeeded' -and $wfp.access -ceq 'observed' -and $wfp.observer_elevated -eq $false) 'WFP_STRUCTURED_PROCESS_DIAGNOSTIC'
+$script:FixtureToken.elevated=$true; $script:FixtureToken.elevation_type=2
+. $mainBlock
+Assert (@($report.inventory.coverage | Where-Object { $row=$_; @($good.coverage | Where-Object { $_.kind -ceq $row.kind -and $_.scope_sha256 -ceq $row.scope_sha256 }).Count -gt 0 }).Count -eq 0) 'ALL_SCOPES_BOUND_TO_OBSERVER_TOKEN'
+$script:FixtureToken.elevated=$false; $script:FixtureToken.elevation_type=3
+$script:FirewallDenied=$true; $script:NetshExitCode=5; $script:RegistryDenied=$true
+. $mainBlock
+$fwDenied=@($report.diagnostics | Where-Object { $_.kind -ceq 'firewall_rule' })[0].providers[0]
+$wfpDenied=@($report.diagnostics | Where-Object { $_.kind -ceq 'wfp_rule' })[0].providers[0]
+$registryDenied=@($report.diagnostics | Where-Object { $_.kind -ceq 'registry' })[0].registry_values
+Assert ($fwDenied.access -ceq 'denied' -and $fwDenied.status -ceq 'failed' -and $null -eq $fwDenied.exit_code -and $fwDenied.duration_ms -ge 0) 'FIREWALL_ACCESS_DENIED_WITHOUT_PROCESS_EXIT_INVENTION'
+Assert ($wfpDenied.access -ceq 'denied' -and $wfpDenied.exit_code -eq 5 -and $wfpDenied.status -ceq 'failed') 'WFP_EXIT_CODE_ACCESS_DIAGNOSTIC'
+Assert ($registryDenied[0].state -ceq 'unobserved' -and $registryDenied[1].state -ceq 'absent_at_observation' -and $null -eq $report.inventory.resources[1].sha256) 'REGISTRY_DENIED_NOT_ABSENCE'
+Assert ((ConvertTo-Json $report.diagnostics -Depth 15 -Compress) -notmatch 'fixture-secret-never-export|<wfpstate>|message|stack') 'PROVIDER_FAILURE_NO_RAW_MESSAGE_XML'
+Assert (@($report.inventory.coverage | Where-Object { $_.complete }).Count -eq 0) 'PROVIDER_SUCCESS_OR_DENIAL_NEVER_COMPLETE'
+$script:FirewallDenied=$false; $script:NetshExitCode=0; $script:RegistryDenied=$false
 $report.errors=@(); $script:DeniedPath=$pins[1]
 . $mainBlock
 Assert ($report.errors.Count -eq 0 -and $null -eq $report.inventory.protected_resources[1].sha256 -and $report.inventory.protected_resources[0].sha256 -ceq $hash -and $report.inventory.protected_resources[2].sha256 -ceq $hash) 'INACCESSIBLE_PATH_PRESERVES_OTHER_OBSERVATIONS'
@@ -159,10 +228,10 @@ try {
     cwd: root, env: { SystemRoot: windowsRoot, WINDIR: windowsRoot, TEMP: root, TMP: root },
     encoding: "utf8", timeout: 20000, maxBuffer: 1024 * 1024, windowsHide: true,
   });
-  record("actual-powershell-parser-and-30-mocked-inventory-assertions", () => {
+  record("actual-powershell-parser-and-mocked-inventory-assertions", () => {
     assert.ifError(result.error); assert.equal(result.status, 0, result.stderr);
     const summary = JSON.parse(result.stdout.trim()); assert.equal(summary.status, "PASS");
-    assert.equal(summary.utf8_probe, "été 😀"); assert.equal(summary.checks, 30); assert.equal(summary.host_queries, "MOCKED");
+    assert.equal(summary.utf8_probe, "été 😀"); assert.equal(summary.checks, 49); assert.equal(summary.host_queries, "MOCKED");
     fixtureResult = JSON.parse(fs.readFileSync(output, "utf8"));
     assert.equal(fixtureResult.native_execution, "NOT_EXECUTED");
   });
@@ -172,7 +241,7 @@ try {
       client: { executable: "C:\\fixture\\codex.exe", sha256 }, setup: { executable: "C:\\fixture\\setup.exe", sha256 }, command_runner: { executable: "C:\\fixture\\runner.exe", sha256 },
       profile_root: "C:\\fixture\\profile", roots: [{ role: "profile", path: "C:\\fixture\\profile" }, { role: "snapshots", path: "C:\\fixture\\snapshots" },
         { role: "scratch", path: "C:\\fixture\\scratch" }, { role: "supervisor", path: "C:\\fixture\\supervisor" }],
-      resources: [{ kind: "local_account", id: "CodexSandboxOffline", operations: ["update"] }],
+      resources: inventory.resources.map(({ kind, id }) => ({ kind, id, operations: ["update"] })),
       protected_resources: inventory.protected_resources.map(({ kind, id }) => ({ kind, id })) };
     record("real-core-refuses-foreign-manifest-binding", () => {
       assert.throws(() => buildManagedSandboxPreparationPlan({ manifest, inventory }), { code: "MANAGED_SANDBOX_INVENTORY_BINDING_INVALID" });
@@ -201,6 +270,6 @@ finally {
 }
 const failed = checks.some(check => check.status === "FAIL");
 const unavailable = checks.some(check => check.status === "UNAVAILABLE");
-process.stdout.write(`${JSON.stringify({ status: failed ? "FAIL" : unavailable ? "UNAVAILABLE" : "PASS", checks, assertions: fixtureResult ? 35 : 0, cleanup,
+process.stdout.write(`${JSON.stringify({ status: failed ? "FAIL" : unavailable ? "UNAVAILABLE" : "PASS", checks, assertions: fixtureResult ? fixtureResult.checks : 0, cleanup,
   host_inventory: "NOT_EXECUTED", host_providers: "MOCKED", native_execution: "NOT_EXECUTED" }, null, 2)}\n`);
 if (failed || unavailable) process.exitCode = 1;

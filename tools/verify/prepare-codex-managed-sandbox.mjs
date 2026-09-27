@@ -3,6 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildManagedSandboxPreparationPlan } from "../../src/core/agents/codex-managed-sandbox-contracts.mjs";
 
+import { assessManagedSandboxOperationAdequacy } from "../../src/core/agents/codex-managed-sandbox-operation-policy.mjs";
+
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 function readDocument(file) {
   if (!path.isAbsolute(file) || path.normalize(file) !== file || /[\x00-\x1f\x7f]/u.test(file)) fail("MANAGED_PREVIEW_PATH_INVALID");
@@ -40,20 +42,27 @@ export function prepareManagedSandboxPreview(argv) {
     native_execution: "NOT_EXECUTED", execution_available: false, plan: null, errors: [] };
   try {
     if (argv.includes("--help") || argv.includes("-h")) return { ...envelope, status: "HELP",
-      usage: "node tools/verify/prepare-codex-managed-sandbox.mjs --manifest <absolute-json> --inventory <absolute-json> [--json]",
+      usage: "node tools/verify/prepare-codex-managed-sandbox.mjs --manifest <absolute-json> --inventory <absolute-json> [--operation <absolute-json> --at <ISO-time> [--coverage <absolute-json>]] [--json]",
       note: "Read-only preparation. Does not collect host state, grant consent, configure or launch a sandbox." };
     const args = {}, seen = new Set();
     for (let index = 0; index < argv.length; index++) {
       const flag = argv[index];
-      if (!["--manifest", "--inventory", "--json"].includes(flag) || seen.has(flag)) fail("MANAGED_PREVIEW_ARGUMENT_INVALID");
+      if (!["--manifest", "--inventory", "--operation", "--coverage", "--at", "--json"].includes(flag) || seen.has(flag)) fail("MANAGED_PREVIEW_ARGUMENT_INVALID");
       seen.add(flag); if (flag === "--json") continue;
       const value = argv[++index]; if (!value || value.startsWith("--")) fail("MANAGED_PREVIEW_ARGUMENT_INVALID");
       args[flag.slice(2)] = value;
     }
     if (!args.manifest || !args.inventory) fail("MANAGED_PREVIEW_INPUT_REQUIRED");
+    if (Boolean(args.operation) !== Boolean(args.at) || args.coverage && !args.operation) fail("MANAGED_PREVIEW_OPERATION_INPUT_REQUIRED");
     const manifest = readDocument(args.manifest), observed = readDocument(args.inventory);
     const inventory = observed.contract_version === "codex-managed-sandbox-inventory.v1" ? observed : observed.inventory;
     const plan = buildManagedSandboxPreparationPlan({ manifest, inventory });
+    if (args.operation) {
+      const operation_assessment = assessManagedSandboxOperationAdequacy({ manifest, inventory,
+        operation: readDocument(args.operation), observation: args.coverage ? readDocument(args.coverage) : null, at: args.at });
+      return { ...envelope, contract_version: "codex-managed-sandbox-operation-preview.v1",
+        status: operation_assessment.status, plan, operation_assessment };
+    }
     return { ...envelope, status: plan.status, plan };
   } catch (error) {
     const code = /^[A-Z][A-Z0-9_]{1,100}$/u.test(error.code ?? "") ? error.code : "MANAGED_PREVIEW_INPUT_INVALID";
@@ -64,5 +73,5 @@ export function prepareManagedSandboxPreview(argv) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const report = prepareManagedSandboxPreview(process.argv.slice(2));
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  if (report.status === "PREPARATION_BLOCKED") process.exitCode = 1;
+  if (["PREPARATION_BLOCKED", "INVALID", "REVIEWABLE_WITH_GAPS"].includes(report.status)) process.exitCode = 1;
 }

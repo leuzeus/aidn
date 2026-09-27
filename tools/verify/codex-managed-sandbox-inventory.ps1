@@ -21,6 +21,10 @@ $script:FileLimit = 33554432
 $script:OutputLimit = 16777216
 $script:UnstoppedProvider = $false
 $script:Phase = 'entry'
+$script:ProviderDetails = @()
+$script:SelectedModules = @{}
+$script:ObserverContext = $null
+$script:CurrentProviderDetail = $null
 $script:Utf8 = New-Object Text.UTF8Encoding($false, $true)
 [Console]::OutputEncoding = New-Object Text.UTF8Encoding($false)
 $script:Kinds = @('local_account','local_group','filesystem','filesystem_acl','wfp_rule','firewall_rule','desktop','device_acl','local_policy','service','registry')
@@ -114,6 +118,8 @@ function Io-Reason($ErrorRecord) {
 function Reason($ErrorRecord) {
     $message = [string]$ErrorRecord.Exception.Message
     if ($message -cmatch '^INVENTORY_[A-Z0-9_]+$') { return $message }
+    $baseMessage=[string]$ErrorRecord.Exception.GetBaseException().Message
+    if ($baseMessage -cmatch '^INVENTORY_[A-Z0-9_]+$') { return $baseMessage }
     $io=Io-Reason $ErrorRecord; if ($null -ne $io) { return $io }
     return 'INVENTORY_PROVIDER_UNAVAILABLE'
 }
@@ -125,7 +131,9 @@ function Failure-Detail($ErrorRecord) {
     $base=$ErrorRecord.Exception.GetBaseException()
     $innerType=$base.GetType().FullName
     if ($innerType -cnotmatch '^[A-Za-z][A-Za-z0-9._+`]{0,159}$') { $innerType='Exception' }
-    return [ordered]@{code=(Reason $ErrorRecord);phase=$script:Phase;exception_type=$type;script_line=$line;inner_exception_type=$innerType;hresult=$base.HResult}
+    $nativeCode=$null; if ($base -is [ComponentModel.Win32Exception]) { $nativeCode=$base.NativeErrorCode }
+    $tokenClass=$null; if ($base.Data.Contains('token_information_class') -and $base.Data['token_information_class'] -is [int]) { $tokenClass=$base.Data['token_information_class'] }
+    return [ordered]@{code=(Reason $ErrorRecord);phase=$script:Phase;exception_type=$type;script_line=$line;inner_exception_type=$innerType;hresult=$base.HResult;native_error_code=$nativeCode;token_information_class=$tokenClass;returned_size=$(if ($base.Data.Contains('returned_size') -and $base.Data['returned_size'] -is [int]) { $base.Data['returned_size'] } else { $null })}
 }
 function Path-Metadata([string]$Path) {
     Check-Time; $null=Local-Path $Path
@@ -135,6 +143,184 @@ function Path-Metadata([string]$Path) {
     $bytes=$null; if (!$directory) { $fi=New-Object IO.FileInfo($Path); $bytes=$fi.Length }
     return @{directory=$directory;attributes=[int]$attributes;bytes=$bytes}
 }
+
+# Read only the effective token. No token adjustment, account lookup or privilege
+# enablement occurs. The fixed type is compiled in memory by PowerShell 7.
+function Token-Projection {
+    Check-Time
+    if ($PSVersionTable.PSEdition -cne 'Core' -or $PSVersionTable.PSVersion.Major -lt 7) { Stop-Code 'INVENTORY_POWERSHELL_7_REQUIRED' }
+    if ($null -eq ('AidnManagedObserverTokenV1' -as [type])) {
+        Add-Type -TypeDefinition @"
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using System.Security.Principal;
+public static class AidnManagedObserverTokenV1 {
+    [DllImport("advapi32.dll", SetLastError=true)]
+    private static extern bool GetTokenInformation(IntPtr token, int kind, IntPtr buffer, int size, out int needed);
+    private static Win32Exception QueryError(int error,int kind) { var value=new Win32Exception(error); value.Data["token_information_class"]=kind; return value; }
+    private static IntPtr Read(IntPtr token, int kind) {
+        int needed;
+        GetTokenInformation(token, kind, IntPtr.Zero, 0, out needed);
+        int error = Marshal.GetLastWin32Error();
+        if (needed <= 0 || needed > 1048576 || error != 122) throw QueryError(error,kind);
+        IntPtr buffer = Marshal.AllocHGlobal(needed);
+        if (!GetTokenInformation(token, kind, buffer, needed, out needed)) {
+            error=Marshal.GetLastWin32Error(); Marshal.FreeHGlobal(buffer); throw QueryError(error,kind);
+        }
+        return buffer;
+    }
+    private static int Number(IntPtr token, int kind) {
+        // Fixed DWORD classes (notably TokenElevation) can return BAD_LENGTH
+        // instead of INSUFFICIENT_BUFFER for a zero-length sizing call.
+        IntPtr p=Marshal.AllocHGlobal(4); try {
+            int needed; if(!GetTokenInformation(token,kind,p,4,out needed)) throw QueryError(Marshal.GetLastWin32Error(),kind);
+            return DecodeNumber(p,kind,needed);
+        } finally { Marshal.FreeHGlobal(p); }
+    }
+    private static int DecodeNumber(IntPtr p,int kind,int needed) {
+        if(needed == 4) return Marshal.ReadInt32(p);
+        // Windows reports TokenHasRestrictions as a one-byte BOOLEAN.
+        if(kind == 21 && needed == 1) return Marshal.ReadByte(p);
+        var error=new InvalidOperationException("INVENTORY_TOKEN_NUMBER_SIZE");
+        error.Data["token_information_class"]=kind; error.Data["returned_size"]=needed; throw error;
+    }
+    private static string Sid(IntPtr token, int kind) {
+        IntPtr p=Read(token,kind); try {
+            IntPtr sid=Marshal.ReadIntPtr(p); return sid == IntPtr.Zero ? null : new SecurityIdentifier(sid).Value;
+        } finally { Marshal.FreeHGlobal(p); }
+    }
+    private static string[] Groups(IntPtr token, int kind) {
+        IntPtr p=Read(token,kind); try {
+            int count=Marshal.ReadInt32(p); if (count < 0 || count > 4096) throw new InvalidOperationException("INVENTORY_TOKEN_ROW_LIMIT");
+            var rows=new string[count]; int offset=IntPtr.Size == 8 ? 8 : 4, stride=IntPtr.Size == 8 ? 16 : 8;
+            for(int i=0;i<count;i++) { IntPtr row=IntPtr.Add(p,offset+i*stride);
+                rows[i]=new SecurityIdentifier(Marshal.ReadIntPtr(row)).Value+":"+unchecked((uint)Marshal.ReadInt32(row,IntPtr.Size)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+            Array.Sort(rows,StringComparer.Ordinal); return rows;
+        } finally { Marshal.FreeHGlobal(p); }
+    }
+    private static string[] Privileges(IntPtr token) {
+        IntPtr p=Read(token,3); try {
+            int count=Marshal.ReadInt32(p); if(count < 0 || count > 4096) throw new InvalidOperationException("INVENTORY_TOKEN_ROW_LIMIT");
+            var rows=new string[count];
+            for(int i=0;i<count;i++) { IntPtr row=IntPtr.Add(p,4+i*12);
+                rows[i]=unchecked((uint)Marshal.ReadInt32(row,4)).ToString("x8")+unchecked((uint)Marshal.ReadInt32(row)).ToString("x8")+":"+(unchecked((uint)Marshal.ReadInt32(row,8)) & 7u).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+            Array.Sort(rows,StringComparer.Ordinal); return rows;
+        } finally { Marshal.FreeHGlobal(p); }
+    }
+    [DllImport("advapi32.dll", CharSet=CharSet.Unicode)]
+    private static extern int RegQueryValueEx(IntPtr key, string name, IntPtr reserved, out uint kind, out uint value, ref uint length);
+    public static Dictionary<string,object> RegistryDword(IntPtr key, string name) {
+        uint kind,value,length=4; int status=RegQueryValueEx(key,name,IntPtr.Zero,out kind,out value,ref length);
+        if(status == 2) return new Dictionary<string,object> { {"state","absent_at_observation"}, {"value_kind",null}, {"value",null} };
+        if(status == 234 || (status == 0 && (kind != 4 || length != 4))) throw new InvalidOperationException("INVENTORY_REGISTRY_VALUE_TYPE_UNSUPPORTED");
+        if(status != 0) throw new Win32Exception(status);
+        return new Dictionary<string,object> { {"state","observed"}, {"value_kind","DWord"}, {"value",value} };
+    }
+    public static Dictionary<string,object> Snapshot() {
+        using(var identity=WindowsIdentity.GetCurrent()) {
+            IntPtr token=identity.AccessToken.DangerousGetHandle();
+            return new Dictionary<string,object> {
+                {"user_sid",Sid(token,1)}, {"groups",Groups(token,2)}, {"restricted_sids",Groups(token,11)},
+                {"privileges",Privileges(token)}, {"integrity_sid",Sid(token,25)},
+                {"elevation_type",Number(token,18)}, {"elevated",Number(token,20)!=0},
+                {"is_app_container",Number(token,29)!=0}, {"app_container_sid",Sid(token,31)},
+                {"has_restrictions",Number(token,21)!=0}, {"mandatory_policy",Number(token,27)},
+                {"virtualization_allowed",Number(token,23)!=0}, {"virtualization_enabled",Number(token,24)!=0},
+                {"impersonation_level",identity.ImpersonationLevel.ToString()}
+            };
+        }
+    }
+}
+"@ -ErrorAction Stop
+    }
+    $snapshot=[AidnManagedObserverTokenV1]::Snapshot(); Check-Time; return $snapshot
+}
+function Build-ObserverContext($Snapshot) {
+    if ($Snapshot.user_sid -notmatch '^S-1-[0-9-]+$' -or $Snapshot.integrity_sid -notmatch '^S-1-16-[0-9]+$' -or $Snapshot.elevation_type -notin @(1,2,3)) { Stop-Code 'INVENTORY_TOKEN_SHAPE' }
+    # Sort sets ordinally; no PID, TokenId or authentication-session identifier
+    # enters this semantic projection. Raw principal/group/privilege data stays
+    # in memory and is never copied to the observation document.
+    $stable=[ordered]@{}
+    foreach ($key in @('user_sid','integrity_sid','elevation_type','elevated','is_app_container','app_container_sid','has_restrictions','mandatory_policy','virtualization_allowed','virtualization_enabled','impersonation_level')) { $stable[$key]=$Snapshot[$key] }
+    foreach ($key in @('groups','restricted_sids','privileges')) { [string[]]$items=@($Snapshot[$key]); if ($items.Count -gt 4096) { Stop-Code 'INVENTORY_TOKEN_ROW_LIMIT' }; [Array]::Sort($items,[StringComparer]::Ordinal); $stable[$key]=$items }
+    return [ordered]@{
+        contract_version='codex-managed-sandbox-observer-context.v1';state='observed';host_id=[Environment]::MachineName
+        user_sid_sha256=(Digest $stable.user_sid);token_projection_sha256=(Digest $stable)
+        integrity_sid=$stable.integrity_sid;elevation_type=@{1='default';2='full';3='limited'}[[int]$stable.elevation_type];elevated=$stable.elevated
+        is_app_container=$stable.is_app_container;has_restrictions=$stable.has_restrictions;restricted_sid_count=$stable.restricted_sids.Count
+        process_bitness=([IntPtr]::Size*8);os_bitness=$(if ([Environment]::Is64BitOperatingSystem) {64} else {32})
+        powershell_version=$PSVersionTable.PSVersion.ToString();selected_modules=@()
+    }
+}
+function Observer-Context { return Build-ObserverContext (Token-Projection) }
+function Provider-Detail([string]$Name) {
+    $elevated=$null; $token=$null
+    if ($null -ne $script:ObserverContext) { $elevated=$script:ObserverContext.elevated; $token=$script:ObserverContext.token_projection_sha256 }
+    return [ordered]@{provider=$Name;status='unavailable';duration_ms=0;exit_code=$null;access='unknown';observer_elevated=$elevated;observer_token_sha256=$token;module=$null;stdout_bytes=0;stderr_bytes=0;failure=$null}
+}
+function Provider-Failure($Detail,$ErrorRecord) {
+    $Detail.failure=Failure-Detail $ErrorRecord; $Detail.status='failed'
+    if ($Detail.failure.code -match 'TIMEOUT|TIME_LIMIT') { $Detail.status='timed_out' }
+    $base=$ErrorRecord.Exception.GetBaseException()
+    if ($base -is [UnauthorizedAccessException] -or $base.HResult -eq -2147024891 -or ($base -is [ComponentModel.Win32Exception] -and $base.NativeErrorCode -eq 5) -or $Detail.exit_code -eq 5) { $Detail.access='denied' }
+}
+function Save-ProviderDetail($Detail,[Diagnostics.Stopwatch]$Watch) {
+    $Detail.duration_ms=[long]$Watch.ElapsedMilliseconds
+    if ($script:ProviderDetails.Count -ge 512) { Stop-Code 'INVENTORY_PROVIDER_DIAGNOSTIC_LIMIT' }
+    $script:ProviderDetails+=,$Detail
+}
+function Select-ProviderModule([string]$Module,[string]$Manifest) {
+    $record=[ordered]@{name=$Module;manifest_path_sha256=(Digest $Manifest.ToUpperInvariant());manifest_sha256=(Read-File $Manifest $script:FileLimit).sha256}
+    $script:SelectedModules[$Module]=$record
+    return $record
+}
+# Only these two source-established DWORD values are read. The key is opened
+# without write access and names/values are never enumerated. Unsupported value
+# types remain unobserved, so arbitrary strings cannot leak through diagnostics.
+function Registry-Value([string]$Name) {
+    if ($Name -cnotin @('CodexSandboxOffline','CodexSandboxOnline')) { Stop-Code 'INVENTORY_REGISTRY_SELECTOR_INVALID' }
+    Check-Time; $base=$null; $key=$null
+    try {
+        $base=[Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine,[Microsoft.Win32.RegistryView]::Registry64)
+        $key=$base.OpenSubKey('SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList',$false)
+        if ($null -eq $key) { return @{state='absent_at_observation';value_kind=$null;value=$null} }
+        # Fixed four-byte native buffer: even a concurrent type replacement
+        # cannot cause string, binary or oversized registry data to be read.
+        $value=[AidnManagedObserverTokenV1]::RegistryDword($key.Handle.DangerousGetHandle(),$Name)
+        Check-Time; return $value
+    } finally { if ($null -ne $key) { $key.Dispose() }; if ($null -ne $base) { $base.Dispose() } }
+}
+function Registry-UserList {
+    $rows=@()
+    foreach ($name in @('CodexSandboxOffline','CodexSandboxOnline')) {
+        $id='HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList\'+$name
+        $detail=Provider-Detail 'registry-userlist'; $watch=[Diagnostics.Stopwatch]::StartNew()
+        try {
+            $value=Registry-Value $name; $detail.status='succeeded'; $detail.access='observed'
+            $record=@{view='Registry64';state=$value.state;value_kind=$value.value_kind;value=$value.value}
+            $rows+=,@{id=$id;state=$value.state;sha256=$(if ($value.state -ceq 'observed') { Digest $record } else { $null });failure=$null}
+        } catch { Provider-Failure $detail $_; $rows+=,@{id=$id;state='unobserved';sha256=$null;failure=$detail.failure} }
+        finally { Save-ProviderDetail $detail $watch }
+    }
+    return ,$rows
+}
+function Query([string]$Kind,[string]$Argument='') {
+    $detail=Provider-Detail ('powershell-'+$Kind); $watch=[Diagnostics.Stopwatch]::StartNew(); $script:CurrentProviderDetail=$detail
+    try { $rows=Query-Raw $Kind $Argument; $detail.status='succeeded'; $detail.access='observed'; return ,$rows }
+    catch { Provider-Failure $detail $_; throw }
+    finally { Save-ProviderDetail $detail $watch; $script:CurrentProviderDetail=$null }
+}
+function Netsh-State($Pin) {
+    $detail=Provider-Detail 'netsh-wfp'; $watch=[Diagnostics.Stopwatch]::StartNew(); $script:CurrentProviderDetail=$detail
+    try { $xml=Netsh-StateRaw $Pin; $detail.status='succeeded'; $detail.access='observed'; return $xml }
+    catch { Provider-Failure $detail $_; throw }
+    finally { Save-ProviderDetail $detail $watch; $script:CurrentProviderDetail=$null }
+}
+
 # Fixed provider commands only; no executable/script/command supplied by input.
 # BeginStop is intentionally not a claim that descendants or a provider stopped.
 function Find-ModuleManifest([string]$Module, [string[]]$Roots) {
@@ -166,7 +352,7 @@ function Official-ModuleManifest([string]$Module) {
     $roots=@([IO.Path]::Combine($PSHOME,'Modules'),[IO.Path]::Combine([Environment]::SystemDirectory,'WindowsPowerShell\v1.0\Modules'))
     return Find-ModuleManifest $Module $roots
 }
-function Query([string]$Kind, [string]$Argument = '') {
+function Query-Raw([string]$Kind, [string]$Argument = '') {
     Check-Time; $ps = [PowerShell]::Create(); $done = $false
     try {
         switch ($Kind) {
@@ -178,6 +364,7 @@ function Query([string]$Kind, [string]$Argument = '') {
             default { Stop-Code 'INVENTORY_QUERY_INVALID' }
         }
         $manifest = Official-ModuleManifest $module
+        $script:CurrentProviderDetail.module=Select-ProviderModule $module $manifest
         $null = $ps.AddCommand('Microsoft.PowerShell.Core\Import-Module').AddParameter('Name',$manifest).AddParameter('ErrorAction','Stop').AddStatement()
         $null = $ps.AddCommand(($module + '\' + $command)).AddParameter('ErrorAction','Stop')
         if ($Kind -eq 'members') { $null=$ps.AddParameter('Group',$Argument) }
@@ -207,7 +394,7 @@ function Query([string]$Kind, [string]$Argument = '') {
         Check-Time; return ,$rows
     } finally { if ($done) { $ps.Dispose() } }
 }
-function Netsh-State($Pin) {
+function Netsh-StateRaw($Pin) {
     $expected=[IO.Path]::Combine([Environment]::SystemDirectory,'netsh.exe')
     if (![string]::Equals($Pin.path,$expected,[StringComparison]::OrdinalIgnoreCase)) { Stop-Code 'INVENTORY_NETSH_PATH_INVALID' }
     if ((Read-File $Pin.path $script:FileLimit).sha256 -cne $Pin.sha256) { Stop-Code 'INVENTORY_NETSH_PIN_CHANGED' }
@@ -236,7 +423,8 @@ function Netsh-State($Pin) {
             }
             [Threading.Thread]::Sleep(5)
         }
-        $closed=$true; if ($process.ExitCode -ne 0 -or $errCount -gt 0) { Stop-Code 'INVENTORY_NETSH_QUERY_FAILED' }
+        $closed=$true; $script:CurrentProviderDetail.exit_code=$process.ExitCode; $script:CurrentProviderDetail.stdout_bytes=$outCount; $script:CurrentProviderDetail.stderr_bytes=$errCount
+        if ($process.ExitCode -ne 0 -or $errCount -gt 0) { Stop-Code 'INVENTORY_NETSH_QUERY_FAILED' }
         return $out.ToString()
     } finally {
         if ($started -and !$closed) { try { if (!$process.HasExited) { $process.Kill(); $null=$process.WaitForExit(250) } } catch {}; $script:UnstoppedProvider=$true }
@@ -276,7 +464,7 @@ function Report-Json($Value, [long]$Limit) {
     return $json
 }
 
-$report=[ordered]@{contract_version='codex-managed-sandbox-observation.v1';status='PREPARATION_BLOCKED';effect_class='read-only';written=$false;native_execution='NOT_EXECUTED';inventory=$null;diagnostics=@();errors=@()}
+$report=[ordered]@{contract_version='codex-managed-sandbox-observation.v1';status='PREPARATION_BLOCKED';effect_class='read-only';written=$false;native_execution='NOT_EXECUTED';observer_context=$null;inventory=$null;diagnostics=@();errors=@()}
 try {
     if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { Stop-Code 'INVENTORY_WINDOWS_REQUIRED' }
     $script:Phase='request.read'
@@ -332,11 +520,13 @@ try {
         $pathMap[$item.id]=$item; $pathSeen[$item.path]=$true
     }
     foreach ($row in $requested) { if ($row.kind -in @('filesystem','filesystem_acl') -and !$pathMap.ContainsKey($row.id)) { Stop-Code 'INVENTORY_PATH_REQUIRED' } }
+    $script:Phase='observer.context'
+    $script:SelectedModules=@{}; $script:ObserverContext=Observer-Context; $report.observer_context=$script:ObserverContext
     $observed=@{}; $coverage=@(); $diag=@()
     foreach ($kind in $script:Kinds) {
         $script:Phase='observe.'+$kind
-        $failure=$null; $pathDiagnostics=@()
-        $projection=@(); $reason='INVENTORY_PROVIDER_NOT_IMPLEMENTED'; $scope=[ordered]@{observer='managed-windows-observer.v1';kind=$kind;selectors=@();projection='unavailable'}
+        $failure=$null; $pathDiagnostics=@(); $registryDiagnostics=@(); $script:ProviderDetails=@()
+        $projection=@(); $reason='INVENTORY_PROVIDER_NOT_IMPLEMENTED'; $scope=[ordered]@{observer='managed-windows-observer.v1';kind=$kind;observer_token_sha256=$script:ObserverContext.token_projection_sha256;observer_process_bitness=$script:ObserverContext.process_bitness;selectors=@();projection='unavailable'}
         try {
             Check-Time
             switch ($kind) {
@@ -394,16 +584,25 @@ try {
                 'device_acl' { $reason='INVENTORY_NT_DEVICE_SECURITY_PROVIDER_UNAVAILABLE' }
                 'local_policy' { $reason='INVENTORY_LSA_RIGHTS_AND_EFFECTIVE_POLICY_PROVIDER_UNAVAILABLE' }
                 'service' { $reason='INVENTORY_SERVICE_EFFECT_SCOPE_NOT_ESTABLISHED' }
-                'registry' { $reason='INVENTORY_REGISTRY_EFFECT_SCOPE_NOT_ESTABLISHED' }
+                'registry' {
+                    $scope.projection='two exact UserList DWORD values in Registry64; no key security, inheritance or other values'; $scope.selectors=@('HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList\CodexSandboxOffline','HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList\CodexSandboxOnline')
+                    $registryDiagnostics=Registry-UserList
+                    foreach ($r in $registryDiagnostics) {
+                        if ($r.state -ceq 'observed') { $observed['registry:'+$r.id]=$r.sha256 }
+                        if ($r.state -cne 'unobserved') { $projection+=,@{id=$r.id;sha256=(Digest @{state=$r.state;sha256=$r.sha256})} }
+                    }
+                    $reason='INVENTORY_REGISTRY_KEY_SECURITY_AND_PHASE_SCOPE_NOT_ESTABLISHED'
+                }
             }
         } catch { $reason=Reason $_; $failure=Failure-Detail $_ }
+        $scope['provider_modules']=@($script:ProviderDetails | Where-Object { $null -ne $_.module } | ForEach-Object { $_.module } | Sort-Object name,manifest_sha256 -Unique)
         $stable=@($projection | Sort-Object id,sha256)
         # Outside is diagnostic only. The exact allowed row set, not protected
         # rows, is subtracted; this is not an exhaustive host-state envelope.
         $allowed=@{}; foreach ($r in $request.resources) { if ($r.kind -ceq $kind) { $allowed[$r.id]=$true } }
         $outside=@($stable | Where-Object { !$allowed.ContainsKey($_.id) })
         $coverage+=,[ordered]@{kind=$kind;scope_id=('managed-windows-observer.v1.'+$kind);scope_sha256=(Digest $scope);complete=$false;outside_authority_sha256=$null;reason_code=$reason}
-        $diag+=,[ordered]@{kind=$kind;reason_code=$reason;observed_count=$stable.Count;observed_projection_sha256=(Digest $stable);outside_projection_sha256=(Digest $outside);projection_is_complete=$false;failure=$failure;paths=$pathDiagnostics}
+        $diag+=,[ordered]@{kind=$kind;reason_code=$reason;observed_count=$stable.Count;observed_projection_sha256=(Digest $stable);outside_projection_sha256=(Digest $outside);projection_is_complete=$false;failure=$failure;paths=$pathDiagnostics;registry_values=$registryDiagnostics;providers=$script:ProviderDetails}
     }
     $script:Phase='report.build'
     $resultRows=@{}; foreach ($list in @('resources','protected_resources')) {
@@ -411,6 +610,7 @@ try {
     }
     $report.inventory=[ordered]@{contract_version='codex-managed-sandbox-inventory.v1';host_id=$request.host_id;client_sha256=$request.client.sha256;manifest_sha256=$request.manifest_sha256;observed_at=[DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ');coverage=$coverage;resources=$resultRows.resources;protected_resources=$resultRows.protected_resources}
     $report.diagnostics=$diag
+    $report.observer_context.selected_modules=@($script:SelectedModules.Values | Sort-Object name)
     if ($script:UnstoppedProvider) { $report.errors+=,@{code='INVENTORY_PROVIDER_STOP_UNCONFIRMED'} }
 } catch { $report.errors+=,(Failure-Detail $_) }
 # Partial null rows never establish absence. The caller must preserve this

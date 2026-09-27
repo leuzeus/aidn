@@ -505,7 +505,42 @@ the whole OS. Before operational use, a reviewed policy must map the exact
 client and phase (setup, refresh or command launch) to the observed dimensions
 it requires, including justified non-applicable categories. Structural
 completeness alone does not establish that those observations cover the effects.
-The preparation model does not implement that operational adequacy policy.
+The separate pure policy in
+`src/core/agents/codex-managed-sandbox-operation-policy.mjs` now defines those
+requirements for the pinned client's legacy `windowsSandbox/setupStart` phase.
+It distinguishes reviewability from authorization and operational availability.
+The initial collector does not yet emit exhaustive dimension receipts. A caller
+cannot supply a replacement requirements list or turn partial coverage into
+complete evidence. Even structurally valid receipts do not prove authenticated
+collection or establish that an operation is authorized.
+
+An optional read-only assessment uses explicit operation and observation documents:
+
+~~~text
+node tools/verify/prepare-codex-managed-sandbox.mjs --manifest <effects.json> --inventory <inventory.json> --operation <operation.json> --at <ISO-time> --coverage <coverage.json> --json
+~~~
+
+Omitting `--coverage` reports the missing evidence. This mode returns the
+separate `codex-managed-sandbox-operation-preview.v1` envelope. The historical
+preview shape is unchanged when `--operation` is absent. Neither mode has an
+execute switch. Legacy cleanup, transactional replacement and log retention have
+explicitly unsupported mechanisms under the create/update-only manifest.
+
+Collector diagnostics identify the observer's token context and projection
+digest, provider duration, exit code and privilege-related failures without
+returning raw WFP XML, credentials or provider error messages. Scope digests
+include the observer context: observations under different tokens cannot be
+silently compared as equivalent. Registry reads target only the two documented
+UserList values; this projection is not registry completeness.
+
+For controlled setup, an app-server started without elevation is insufficient:
+the official provisioning path may use UAC, whose helper is not proven to belong
+to the AIDN Job. A future broker must already be elevated before creating the Job,
+exclude service and Registered Core routes, and reconcile external ACL helpers.
+The Job's empty-process proof covers only its members. It cannot prove that a
+pre-existing helper or service stopped. First collect privileged diagnostics in
+a separately reviewed read-only operation; no setup or worker belongs in that
+collection.
 
 For the pinned client above, setup also refreshes ACLs, persists configuration
 and can start an asynchronous read-ACL helper. Its completion notification does

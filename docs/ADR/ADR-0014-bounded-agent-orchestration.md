@@ -528,6 +528,21 @@ launcher must journal each operation, observe its permitted changes, and stop on
 unexpected or unconfirmed effects. Refreshing a backend is not exempt from that
 scope merely because it already exists.
 
+A separate fixed operation-adequacy policy binds the exact client and legacy
+setup phase to required observation dimensions. It retains explicit gaps for
+unsupported cleanup/replacement mechanisms and unknown configuration or external
+process ownership. It does not change the create/update-only manifest or make
+structurally valid observations into authenticated evidence or user permission.
+Optional operation assessment has a separate preview envelope; the original
+preparation preview remains compatible.
+
+The observer's security context forms part of each observation scope. Partial
+read-only projections, access refusals and provider timeouts remain distinct.
+UAC activation from a non-elevated app-server is outside the current Job proof;
+a managed launcher must establish elevation before creating its controlled tree
+and separately exclude external service/helper work. Setup completion alone
+does not establish descendant termination.
+
 The operator owns these local preparation and approval records. They may later
 be referenced by the frozen configuration of an `execution_run`; they are not
 an alternative PostgreSQL authority or a new autonomous information concept.
