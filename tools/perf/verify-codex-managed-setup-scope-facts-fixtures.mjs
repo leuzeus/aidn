@@ -72,6 +72,55 @@ function Read-RequestFixture($value) {
     return Read-ScopeRequest
 }
 Check 'native CSharp compiles' { Add-Type -TypeDefinition $nativeSource -ErrorAction Stop }
+
+# Exercise the real Final body without invoking an OS API. Only its private
+# P/Invoke declaration is replaced; capacities and results are controlled data.
+Check 'final-path buffer harness compiles the actual production method' {
+    $declaration='\[DllImport\("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true\)\]\s*static extern uint GetFinalPathNameByHandleW\(SafeFileHandle handle,StringBuilder path,uint size,uint flags\);'
+    if([regex]::Matches($nativeSource,$declaration).Count -ne 1) { throw 'FINAL_DECLARATION_NOT_UNIQUE' }
+    $replacement=@'
+    public static uint[] FinalReturns;
+    public static string[] FinalPaths;
+    public static readonly List<uint> FinalCapacities=new List<uint>();
+    static uint GetFinalPathNameByHandleW(SafeFileHandle handle,StringBuilder path,uint size,uint flags) {
+        int index=FinalCapacities.Count; FinalCapacities.Add(size);
+        if(index>=FinalReturns.Length) throw new InvalidOperationException("EXTRA_FINAL_CALL");
+        path.Clear(); if(FinalPaths[index]!=null) path.Append(FinalPaths[index]);
+        return FinalReturns[index];
+    }
+    public static string TestFinal(uint[] values,string[] paths) {
+        FinalReturns=values; FinalPaths=paths; FinalCapacities.Clear();
+        using(var handle=new SafeFileHandle(IntPtr.Zero,false)) return Final(handle);
+    }
+'@
+    $fake=[regex]::Replace($nativeSource,$declaration,[Text.RegularExpressions.MatchEvaluator]{param($match) $replacement})
+    $fake=$fake.Replace('public static class AidnScopeNative','public static class AidnScopeFinalBufferFixture')
+    Add-Type -TypeDefinition $fake -ErrorAction Stop
+}
+function Final-PathValue([int]$Length) { return '\\?\C:\'+('x'*($Length-7)) }
+Check 'final-path short result uses one 512-character buffer' {
+    $value=Final-PathValue 511
+    Equal ([AidnScopeFinalBufferFixture]::TestFinal([uint32[]]@(511),[string[]]@($value))) $value.Substring(4)
+    Equal ([string]::Join(',',[AidnScopeFinalBufferFixture]::FinalCapacities)) '512'
+}
+Check 'final-path required length includes the terminator and is retried once' {
+    foreach($required in @(513,32768)) {
+        $value=Final-PathValue ($required-1)
+        Equal ([AidnScopeFinalBufferFixture]::TestFinal([uint32[]]@($required,($required-1)),[string[]]@($null,$value))) $value.Substring(4)
+        Equal ([string]::Join(',',[AidnScopeFinalBufferFixture]::FinalCapacities)) ('512,'+$required)
+    }
+}
+Check 'final-path refuses oversized or unstable required lengths' {
+    Reject { [AidnScopeFinalBufferFixture]::TestFinal([uint32[]]@(32769),[string[]]@($null)) } 'SCOPE_PATH_LIMIT'
+    Equal ([AidnScopeFinalBufferFixture]::FinalCapacities.Count) 1
+    Reject { [AidnScopeFinalBufferFixture]::TestFinal([uint32[]]@(700,701),[string[]]@($null,$null)) } 'SCOPE_PATH_LIMIT'
+    Equal ([AidnScopeFinalBufferFixture]::FinalCapacities.Count) 2
+}
+Check 'final-path preserves native failures and local-DOS validation' {
+    Reject { [AidnScopeFinalBufferFixture]::TestFinal([uint32[]]@(0),[string[]]@($null)) } 'SCOPE_NATIVE_READ_FAILED'
+    Reject { [AidnScopeFinalBufferFixture]::TestFinal([uint32[]]@(700,0),[string[]]@($null,$null)) } 'SCOPE_NATIVE_READ_FAILED'
+    Reject { [AidnScopeFinalBufferFixture]::TestFinal([uint32[]]@(9),[string[]]@('untrusted')) } 'SCOPE_NONLOCAL_PATH'
+}
 function ReparseBuffer([uint32]$tag,[byte[]]$payload) {
     $buffer=[byte[]]::new(8+$payload.Length)
     [Array]::Copy([BitConverter]::GetBytes($tag),0,$buffer,0,4)
@@ -183,6 +232,15 @@ Check 'diagnostic projection rejects unknown metadata and omits unrelated native
 Check 'native two-pass witness is deterministic' {
     [AidnScopeNative]::BeginPass(); $null=[AidnScopeNative]::Read(($scratch+'\one.txt'),$false,$false); $a=[AidnScopeNative]::WitnessHash()
     [AidnScopeNative]::BeginPass(); $null=[AidnScopeNative]::Read(($scratch+'\one.txt'),$false,$false); Equal ([AidnScopeNative]::WitnessHash()) $a
+}
+Check 'native witness refuses a changed attribute on an already observed file' {
+    $file=$scratch+'\one.txt'; $original=[IO.File]::GetAttributes($file)
+    try {
+        [AidnScopeNative]::BeginPass(); $null=[AidnScopeNative]::Read($file,$false,$false)
+        [IO.File]::SetAttributes($file,($original -bxor [IO.FileAttributes]::ReadOnly))
+        Reject { [AidnScopeNative]::Read($file,$false,$false) } 'SCOPE_PATH_CHANGED'
+    } finally { [IO.File]::SetAttributes($file,$original) }
+    [AidnScopeNative]::BeginPass()
 }
 function NativeRow([string]$p,[string]$type='directory') {
     return @{Path=$p;State='present';ObjectType=$type;PhysicalPath=$p;VolumeId='0000000000000001';FileId=('0'*31)+'1';

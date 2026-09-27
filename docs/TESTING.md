@@ -436,6 +436,12 @@ observation remains separate from fixtures and requires a pinned controlled
 process and retained termination proof. Reparse diagnostics have separate fixture
 coverage for unchanged refusal codes, closed fields and exact path hashing without
 raw paths or exception messages. Neither suite runs Codex setup.
+The final-path query uses a 512-character buffer with one retry bounded at
+32,768 characters. The fixture covers the native API's required-size boundary,
+errors and a second insufficient buffer, while retaining before/after identity
+observations. A separate paired benchmark on disposable files may compare facts,
+witnesses, duration and allocated bytes against a pinned previous producer.
+Such a benchmark does not establish the duration or safety of a profile scan.
 
 For the injected supervisor candidate, run
 `npm run perf:verify-agent-execution-scheduler-fixtures` and

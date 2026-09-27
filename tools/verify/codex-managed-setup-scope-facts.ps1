@@ -184,21 +184,30 @@ public static class AidnScopeNative {
     }
     static string Hex(byte[] bytes) { return BitConverter.ToString(bytes).Replace("-","").ToLowerInvariant(); }
     static string Final(SafeFileHandle handle) {
-        var buffer=new StringBuilder(32768);
+        // Most paths fit the small buffer. Preserve the original hard limit
+        // and allow one bounded retry on this same handle for a longer path.
+        var buffer=new StringBuilder(512);
         uint size=GetFinalPathNameByHandleW(handle,buffer,(uint)buffer.Capacity,0);
         if(size==0) WinFail(Marshal.GetLastWin32Error());
-        if(size>=buffer.Capacity) Fail("SCOPE_PATH_LIMIT");
+        if(size>=buffer.Capacity) {
+            if(size>32768) Fail("SCOPE_PATH_LIMIT");
+            buffer=new StringBuilder((int)size);
+            size=GetFinalPathNameByHandleW(handle,buffer,(uint)buffer.Capacity,0);
+            if(size==0) WinFail(Marshal.GetLastWin32Error());
+            if(size>=buffer.Capacity) Fail("SCOPE_PATH_LIMIT");
+        }
         string path=buffer.ToString();
         if(!path.StartsWith(@"\\?\") || path.Length<7 || path[5]!=':') Fail("SCOPE_NONLOCAL_PATH");
         return path.Substring(4);
     }
-    static string Identity(SafeFileHandle handle,out FileIdInfo id,out BasicInfo basic,bool content=false) {
+    static string Identity(SafeFileHandle handle,out FileIdInfo id,out BasicInfo basic,out string physical,bool content=false) {
         if(!GetFileInformationByHandleEx(handle,18,out id,(uint)Marshal.SizeOf<FileIdInfo>())) WinFail(Marshal.GetLastWin32Error());
         if(!GetFileInformationByHandle(handle,out basic)) WinFail(Marshal.GetLastWin32Error());
+        physical=Final(handle);
         // Ancestor size/mtime are not scope evidence: unrelated siblings may
         // change them. Exact directory listings are compared independently.
         return id.VolumeSerialNumber.ToString("x16")+":"+Hex(id.Identifier)+":"+basic.Attributes+":"+basic.Links+
-            ":"+basic.Creation.dwHighDateTime+":"+basic.Creation.dwLowDateTime+":"+Final(handle)+
+            ":"+basic.Creation.dwHighDateTime+":"+basic.Creation.dwLowDateTime+":"+physical+
             (content?":"+basic.SizeHigh+":"+basic.SizeLow+":"+basic.Write.dwHighDateTime+":"+basic.Write.dwLowDateTime:"");
     }
     static void Remember(string path,string state) {
@@ -241,8 +250,8 @@ public static class AidnScopeNative {
                 if(code==2 || code==3) { Remember(path,"absent"); Check(); return new Fact { Path=path,State="absent" }; }
                 WinFail(code);
             }
-            FileIdInfo id; BasicInfo basic; string before=Identity(handle,out id,out basic,readContent);
-            string physical=Final(handle);
+            FileIdInfo id; BasicInfo basic; string physical;
+            string before=Identity(handle,out id,out basic,out physical,readContent);
             if(!string.Equals(path,physical,StringComparison.OrdinalIgnoreCase)) Fail("SCOPE_PHYSICAL_PATH_MISMATCH");
             bool directory=(basic.Attributes&0x10)!=0, reparse=(basic.Attributes&0x400)!=0;
             if(reparse && !allowProfileReparse) ReparseFail("SCOPE_REPARSE_UNSUPPORTED","reparse_not_allowed",path,phase);
@@ -262,12 +271,12 @@ public static class AidnScopeNative {
                     byte[] bytes=memory.ToArray();
                     fact.Content=new UTF8Encoding(false,true).GetString(bytes);
                     using(var hash=SHA256.Create()) fact.ContentHash=Hex(hash.ComputeHash(bytes));
-                    FileIdInfo afterId; BasicInfo afterBasic;
-                    if(Identity(handle,out afterId,out afterBasic,true)!=before) Fail("SCOPE_PATH_CHANGED");
+                    FileIdInfo afterId; BasicInfo afterBasic; string afterPhysical;
+                    if(Identity(handle,out afterId,out afterBasic,out afterPhysical,true)!=before) Fail("SCOPE_PATH_CHANGED");
                 }
             } else {
-                FileIdInfo afterId; BasicInfo afterBasic;
-                if(Identity(handle,out afterId,out afterBasic)!=before) Fail("SCOPE_PATH_CHANGED");
+                FileIdInfo afterId; BasicInfo afterBasic; string afterPhysical;
+                if(Identity(handle,out afterId,out afterBasic,out afterPhysical)!=before) Fail("SCOPE_PATH_CHANGED");
             }
             Remember(path,before+(fact.ContentHash??"")+(fact.Target??"")+":"+fact.ReparseTag); Check(); return fact;
         }
