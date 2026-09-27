@@ -262,7 +262,8 @@ and their 43 historical invocations are unchanged.
 For the public run lifecycle, run
 `npm run perf:verify-agent-run-lifecycle-fixtures`. The required runtime gate
 `runtime-agent-run-lifecycle` executes the lifecycle, workspace, native-attempt
-composition, sandbox-validation and controlled-metadata contract fixtures exactly once on dev, main
+composition, sandbox-validation, controlled-metadata and managed-sandbox preparation
+contract fixtures exactly once on dev, main
 and release. It checks preview purity, explicit action fingerprints, stale state,
 cancellation, read-only status, prepared-root adoption and completed-run cleanup.
 Disposable Git tests retain source commits and all local bytes before removal,
@@ -275,7 +276,7 @@ termination receipts, unavailable prerequisites and absence of constructor
 effects. Sandbox-validation fixtures verify closed configuration, framed
 protocol and boundary contracts without invoking Codex. Controlled-metadata
 fixtures check explicit candidate/Node pins, bounded protocol and unknown-tree
-recovery using injected controllers. These five scripts run
+recovery using injected controllers. These six scripts run
 on Linux and Windows; they do not provision a sandbox, use a real user profile,
 launch a model or qualify Windows process confinement. The separate native
 Windows process fixtures (`node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs --native`
@@ -288,6 +289,25 @@ The current Windows validation backend returns
 `SANDBOX_EXISTING_ONLY_UNSUPPORTED` before any native process because its
 existing-state path refreshes provisioning. Its native campaign is UNAVAILABLE,
 including when fixture or local attestation inputs are otherwise positive.
+
+The separate Windows-only check
+`node tools/perf/verify-codex-managed-sandbox-inventory-fixtures.mjs` parses the
+actual collector and exercises its protocol with mocked host providers. It
+requires an installed PowerShell 7 executable; a missing platform/runtime is
+UNAVAILABLE with a failing exit code. This check is not part of the portable
+lifecycle gate and does not collect real host state or qualify confinement.
+
+For managed Windows sandbox preparation, run
+`node tools/perf/verify-codex-managed-sandbox-fixtures.mjs`. This sixth script in
+`runtime-agent-run-lifecycle` checks the versioned effects manifest, complete or
+partial inventory, deterministic preview, exact scoped approval and rejection
+of changed or out-of-scope effects. It does not inventory the operating system,
+approve an operation, launch Codex, change a profile or provision any Windows
+resource. Complete fixture inventory produces `PREPARED_NOT_AUTHORIZED`;
+incomplete coverage produces `PREPARATION_BLOCKED`. Both report unavailable
+execution. The existing-only refusal remains covered by the sandbox validation
+fixtures. Actual inventory, first-operation approval, five native confinement
+cases and the final worker campaign require separate evidence.
 
 For the injected supervisor candidate, run
 `npm run perf:verify-agent-execution-scheduler-fixtures` and

@@ -435,7 +435,7 @@
       "family": "runtime",
       "script": "perf:verify-agent-run-lifecycle-fixtures",
       "job": "governance-admission/gates",
-      "surfaces": ["explicit supervised lifecycle", "prepared workspace adoption and owned cleanup", "pinned native composition and validation boundary contracts"],
+      "surfaces": ["explicit supervised lifecycle", "prepared workspace adoption and owned cleanup", "pinned native composition and validation boundary contracts", "managed sandbox preparation and effect inventory contracts"],
       "condition": "always",
       "obligation": {"dev": "required", "main": "required", "release": "required"}
     },

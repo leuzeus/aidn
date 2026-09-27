@@ -449,3 +449,79 @@ that refusal. The final lot 7 native campaign is UNAVAILABLE until an explicitly
 authorized compatible backend is implemented and independently qualified.
 Portable checks and Job/trampoline fixtures may still pass; they do not close
 that confinement requirement or establish merge/release readiness.
+
+## Managed elevated preparation: review before effects
+
+The `managed-elevated` preparation model is distinct from the historical
+existing-only path above. It declares that the official Windows backend may
+refresh setup on every launch, including when provisioned state already exists.
+It does not weaken `SANDBOX_EXISTING_ONLY_UNSUPPORTED` or enable a managed
+executor. Preparing a reviewable plan is the present scope; the native campaign
+remains UNAVAILABLE.
+
+Before the first proposed native operation, obtain a read-only inventory for the
+exact host, client and profile, then review a versioned effects manifest. The
+manifest names pinned executables, physical roots, exact resource identities and
+permitted create/update operations. Inventory all eleven categories: local
+accounts, local groups, filesystems, filesystem ACLs, WFP rules, firewall rules,
+desktops, device ACLs, local policies, services and registry state. Each category
+binds its observation scope and digest; a complete category describes that
+bounded scope, never the whole OS. Missing coverage produces
+`PREPARATION_BLOCKED`; it cannot be silently treated as complete. Protected
+resources and everything outside the allowed effects within the declared
+observation scope must retain their observed state. Host inventory and project
+preservation are distinct from native hooks or confinement evidence.
+
+The pure contracts in `src/core/agents/codex-managed-sandbox-contracts.mjs`
+validate the effects manifest, inventory, preparation plan and scoped approval.
+They use distinct versioned `codex-managed-sandbox-*` records and perform no
+filesystem, process or clock reads. The read-only preview consumes explicit local
+documents:
+
+~~~text
+node tools/verify/prepare-codex-managed-sandbox.mjs --manifest <effects.json> --inventory <inventory.json> --json
+~~~
+
+It does not collect host information, invoke Codex or accept an execution flag.
+The separate PowerShell collector
+`tools/verify/codex-managed-sandbox-inventory.ps1 -RequestPath <request.json>`
+performs explicitly selected read-only observations. Incomplete WFP or policy
+visibility remains partial coverage; the collector never repairs privileges or
+changes those resources to make inventory succeed. Keep the actual inventory
+local and use neutral fixture data in tracked examples.
+
+A complete preparation preview has status `PREPARED_NOT_AUTHORIZED` and a canonical
+fingerprint; it reports no available execution capability. A separate explicit
+user approval must reference that exact plan and its manifest/inventory/host/client
+bindings, with a bounded validity interval. A changed inventory, executable,
+root or manifest invalidates that approval. The pure approval validator uses an
+explicit observation time; inventory freshness and the approval interval are
+bounded to five minutes. A preparation tool never manufactures approval or
+writes native trust or configuration.
+
+The initial collector intentionally reports partial coverage. A projected
+account or DACL inventory does not need credential contents or an inventory of
+the whole OS. Before operational use, a reviewed policy must map the exact
+client and phase (setup, refresh or command launch) to the observed dimensions
+it requires, including justified non-applicable categories. Structural
+completeness alone does not establish that those observations cover the effects.
+The preparation model does not implement that operational adequacy policy.
+
+For the pinned client above, setup also refreshes ACLs, persists configuration
+and can start an asynchronous read-ACL helper. Its completion notification does
+not prove the termination of that helper or the stabilization of its effects.
+Legacy cleanup and WFP replacement also require phase-specific treatment; the
+preparatory create/update manifest grants no general deletion authority.
+
+A future managed operation must observe the effects of every launch, including
+setup refresh, and accept only the declared resource changes. Unexpected,
+unobserved or indeterminate effects stop subsequent launches and preserve the
+evidence for reconciliation. The same profile's continued operation must also
+be observed; successful setup alone is insufficient.
+
+After the managed backend is implemented and an exact operation is approved,
+qualify its filesystem denial, disabled network, timeout, cancellation and
+callback-failure behavior. Then qualify the worker and run the two-worker plus
+dependent-task campaign on the exact candidate. Neither a project pilot nor an
+older worker result replaces these requirements. Current preparation artifacts
+perform none of these native operations.

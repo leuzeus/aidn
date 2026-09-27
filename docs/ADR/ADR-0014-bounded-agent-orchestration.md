@@ -497,6 +497,51 @@ physical root and its worktree metadata absent; relocation or unexplained state
 is refused. Failed runs, conflicts and unknown processes are preserved. No
 automatic purge or general worktree-management API is introduced.
 
+### Managed elevated preparation (separate candidate)
+
+The existing-only contract remains unchanged. A separate `managed-elevated`
+preparation model describes the official Windows elevated backend's possible
+shared effects, including a setup refresh at every launch. This is an explicit
+policy choice, never a fallback after an existing-only refusal. No managed
+executor or setup operation is enabled by this amendment.
+
+A versioned manifest pins the client, setup executable, command runner, host,
+profile and physical roots. It names exact resource identities and permitted
+create/update operations; deletion, wildcard authority and changes outside the
+manifest are refused. Protected resources remain unchanged. The read-only host
+inventory covers local accounts, local groups, filesystems, filesystem ACLs,
+WFP rules, firewall rules, desktops, device ACLs, local policies, services and
+registry state. Its completeness and preservation observations must be established
+before proposing any effect. Each category binds an explicit observation scope
+and digest; complete coverage refers only to that scope, never the entire OS.
+An incomplete inventory cannot become permission to ignore an unobserved
+resource category.
+
+Pure contracts produce a `PREPARED_NOT_AUTHORIZED` preview with a canonical
+fingerprint, or `PREPARATION_BLOCKED` when inventory coverage is incomplete.
+Explicit user approval must bind that exact preview, manifest, inventory, host
+and client, together with a bounded validity interval and the user's approval
+reference. Re-observation must reject changed prerequisites. The preparation
+model performs no OS operation and cannot create approval, change Codex
+configuration, grant native trust or make the runtime available. A future managed
+launcher must journal each operation, observe its permitted changes, and stop on
+unexpected or unconfirmed effects. Refreshing a backend is not exempt from that
+scope merely because it already exists.
+
+The operator owns these local preparation and approval records. They may later
+be referenced by the frozen configuration of an `execution_run`; they are not
+an alternative PostgreSQL authority or a new autonomous information concept.
+Retain earlier revisions. A material change requires a new fingerprint and a
+new record, without overwriting previous evidence or applying automatic purge.
+
+Native availability remains unavailable until a managed implementation and its
+independent evidence exist. The five confinement cases (filesystem, network,
+timeout, cancellation and callback failure), worker admission and preservation,
+and the final parallel campaign remain separate requirements on the exact
+candidate. A manifest, consent record, matching inventory or pure fixture PASS
+is not confinement evidence. The current existing-only launch guard remains
+in force.
+
 ## Compatibility and qualification
 
 The synchronous adapter and all historical commands retain their behavior.
