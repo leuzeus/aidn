@@ -277,6 +277,16 @@ requires every plan check and every audit criterion on the exact integrated SHA.
 The pure contract gate checks the supervisor, integration journals and final
 validation bindings without claiming that it observed Git or a live lease.
 
+For exact-commit verification, run
+`npm run perf:verify-agent-verification-fixtures`. Its required runtime gate
+`runtime-agent-verification` checks frozen controls, runner/environment pins,
+bounded output, cancellation, immutable Ed25519 evidence and rejection of proofs
+for another SHA, attempt, policy or key. It uses an explicit fixture boundary;
+it does not establish native read/write denial or authorize sandbox setup.
+Git recovery fixtures separately cover intent-before-effect, adoption of exact
+local preparation, missing/partial resources and preserved conflicts. PostgreSQL
+fixtures cover additive schema 5, immutable intent and authenticated observations.
+
 For the candidate Codex task executor and delegated admission, run
 `npm run perf:verify-agent-worker-fixtures`. The required runtime gate tests
 bounded JSONL, explicit configuration, serialized callbacks, termination outcomes,

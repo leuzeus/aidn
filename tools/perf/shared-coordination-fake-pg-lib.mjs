@@ -3,6 +3,7 @@ import fs from "node:fs";
 // This double acknowledges only the packaged migration. PostgreSQL semantics
 // and transactional DDL are covered by the separate ephemeral database gate.
 const supervisionMigrationSql = fs.readFileSync(new URL("./sql/shared-coordination-postgres-v4.sql", import.meta.url), "utf8").trim();
+const consolidationMigrationSql = fs.readFileSync(new URL("./sql/shared-coordination-postgres-v5.sql", import.meta.url), "utf8").trim();
 const supervisionTables = ["execution_supervisors", "execution_acceptances", "execution_integrations", "execution_run_validations"];
 
 function normalizeScalar(value) {
@@ -25,9 +26,9 @@ export function createConcurrentFakePgClientFactory({
   planningLaterSourceWorktreeId = "worktree-1",
   handoffLaterSourceWorktreeId = "worktree-2",
   coordinationLaterSourceWorktreeId = "worktree-2",
-  initialSchemaVersion = 4,
+  initialSchemaVersion = 5,
 } = {}) {
-  if (![3, 4].includes(initialSchemaVersion)) throw new TypeError("The coordination fake supports schema v3 or v4");
+  if (![3, 4, 5].includes(initialSchemaVersion)) throw new TypeError("The coordination fake supports schemas v3 through v5");
   const state = {
     planningStates: new Map(),
     handoffRelays: new Map(),
@@ -35,7 +36,7 @@ export function createConcurrentFakePgClientFactory({
     projectRegistry: new Map(),
     workspaceRegistry: new Map(),
     worktreeRegistry: new Map(),
-    schemaMigrations: initialSchemaVersion === 3 ? [2, 3] : [2, 3, 4],
+    schemaMigrations: [2,3,4,5].filter(version=>version<=initialSchemaVersion),
     queryLog: [],
     sequence: 0,
   };
@@ -91,7 +92,7 @@ export function createConcurrentFakePgClientFactory({
           if (sql.includes("to_regclass('aidn_shared.execution_runs')")) return { rows: [{ execution_runs: "aidn_shared.execution_runs" }] };
           if (sql.includes("FROM aidn_shared.execution_runs")) return { rows: [] };
           if (sql.includes("CREATE TABLE aidn_shared.execution_runs")) return { rows: [] };
-          if (sql === supervisionMigrationSql) return { rows: [] };
+          if (sql === supervisionMigrationSql || sql === consolidationMigrationSql) return { rows: [] };
           if (!sql || sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK" || sql.startsWith("CREATE SCHEMA") || sql.startsWith("CREATE TABLE") || sql.startsWith("CREATE INDEX")) {
             return { rows: [] };
           }
@@ -273,6 +274,7 @@ export function createConcurrentFakePgClientFactory({
                 { table_name: "worktree_registry" },
                 ...["execution_runs", "execution_tasks", "execution_attempts", "execution_events"].map(table_name => ({ table_name })),
                 ...(state.schemaMigrations.includes(4) ? supervisionTables.map(table_name => ({ table_name })) : []),
+                ...(state.schemaMigrations.includes(5) ? [{table_name:"execution_integration_intents"}] : []),
               ],
             };
           }

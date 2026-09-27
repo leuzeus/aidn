@@ -40,9 +40,9 @@ function main() {
       assert(schemaSql.includes(`aidn_shared.${tableName}`), `expected schema to declare ${tableName}`);
     }
 
-    assert(contract.schema_version === 4, "expected shared coordination schema version 4");
+    assert(contract.schema_version === 5, "expected shared coordination schema version 5");
     const migrations = getPostgresSharedCoordinationMigrationFiles();
-    assert(JSON.stringify(migrations.map(item => item.version)) === "[2,3,4]", "expected ordered explicit additive migrations");
+    assert(JSON.stringify(migrations.map(item => item.version)) === "[2,3,4,5]", "expected ordered explicit additive migrations");
     const supervisionSql = fs.readFileSync(migrations[1].file, "utf8");
     for (const tableName of ["execution_runs", "execution_tasks", "execution_attempts", "execution_events"]) {
       assert(tableNames.has(tableName), `expected supervision contract table ${tableName}`);
@@ -55,6 +55,9 @@ function main() {
     }
     assert(schedulerSql.includes("DEFAULT 'legacy'"), "expected existing runs to remain historical");
     assert(schedulerSql.includes("run_deadline_at TIMESTAMPTZ"), "expected durable database deadline");
+    const consolidationSql=fs.readFileSync(migrations[3].file,"utf8");
+    assert(tableNames.has("execution_integration_intents") && consolidationSql.includes("CREATE TABLE aidn_shared.execution_integration_intents"), "expected durable intention before Git effects");
+    assert(consolidationSql.includes("evidence_verification_sha256") && !consolidationSql.includes("DROP "), "expected additive authenticated evidence without rewriting history");
 
     for (const operation of ["registerWorkspace", "registerWorktreeHeartbeat", "upsertPlanningState", "appendHandoffRelay", "appendCoordinationRecord", "healthcheck"]) {
       assert(contract.operations.includes(operation), `expected operation ${operation}`);

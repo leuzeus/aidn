@@ -7,6 +7,8 @@ import { fork } from "node:child_process";
 import pg from "pg";
 import { withEphemeralPostgres } from "./agent-execution-postgres-test-lib.mjs";
 import { createSchedulerFixture } from "./agent-execution-scheduler-test-lib.mjs";
+import { createVerificationFixture } from "./agent-verification-test-lib.mjs";
+import { createAgentTaskIntegrationService } from "../../src/application/runtime/agent-task-integration-service.mjs";
 import { createPostgresAgentExecutionStore } from "../../src/adapters/runtime/postgres-agent-execution-store.mjs";
 import { createPostgresSharedCoordinationStore } from "../../src/adapters/runtime/postgres-shared-coordination-store.mjs";
 import { executePostgresArtifactCommand } from "../../src/adapters/runtime/postgres-artifact-command-lib.mjs";
@@ -111,6 +113,7 @@ async function runSuite({ connectionString, version, root }) {
     (SELECT jsonb_agg(t ORDER BY run_id,generation) FROM aidn_shared.execution_supervisors t) AS supervisors,
     (SELECT jsonb_agg(t ORDER BY attempt_id) FROM aidn_shared.execution_acceptances t) AS acceptances,
     (SELECT jsonb_agg(t ORDER BY run_id,sequence) FROM aidn_shared.execution_integrations t) AS integrations,
+    (SELECT jsonb_agg(t ORDER BY run_id,sequence) FROM aidn_shared.execution_integration_intents t) AS integration_intents,
     (SELECT jsonb_agg(t ORDER BY run_id) FROM aidn_shared.execution_run_validations t) AS validations`)).rows[0]);
   async function seed({ concurrency = 2, reserve = true, options = {}, transform = null, planInput = null, runIdOverride = null } = {}) {
     const key = id("scenario"), text = `# Fixture backlog ${key}\n`;
@@ -221,6 +224,57 @@ async function runSuite({ connectionString, version, root }) {
     return context.store.recordIntegrationApplied({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:snapshot.supervision.control_revision,
       integrationId:prepared.integration.integration_id,preparedSha256:prepared.prepared_sha256,proof:{evidence:prepared.integration.evidence}});
   }
+  async function intentFor(context,accepted) {
+    const snapshot=await context.store.getRun({runId:context.runId}), head=snapshot.integration_head, integrationId=id("integration");
+    return {contract_version:"agent-integration-intent.v1",integration_id:integrationId,run_id:context.runId,plan_sha256:context.plan.plan_sha256,
+      task_id:accepted.acceptance.task_id,attempt_id:accepted.acceptance.attempt_id,acceptance_sha256:accepted.acceptance_sha256,sequence:head.sequence+1,
+      repository_identity_sha256:head.repository_identity_sha256,ref:head.ref,source_sha:accepted.acceptance.candidate_sha,parent_sha:head.sha,
+      created_by:structuredClone(context.supervisor),workspace:{cwd:path.join(root,"integration",integrationId),detached:true},
+      commit_identity:{name:"Fixture Supervisor",email:"fixture@example.invalid",timestamp:"2030-01-01T00:00:00.000Z"}};
+  }
+  async function reserveIntent(context,intent) {
+    const snapshot=await context.store.getRun({runId:context.runId});
+    return context.store.recordIntegrationIntent({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:snapshot.supervision.control_revision,intent});
+  }
+  function preparedForIntent(context,reserved,producer=context.supervisor) {
+    const {created_by,workspace,commit_identity,...rest}=reserved.intent;
+    const integration={...rest,contract_version:"agent-integration-prepared.v1",intent_sha256:reserved.intent_sha256,
+      result_sha:sha(id("integrated")).slice(0,rest.parent_sha.length),prepared_by:structuredClone(producer),evidence:[evidence()]};
+    gitStates.get(context.runId).parents.set(integration.result_sha,integration.parent_sha);
+    return integration;
+  }
+  async function prepareIntent(context,reserved,integration,{reconciliation=false}={}) {
+    const snapshot=await context.store.getRun({runId:context.runId});
+    return context.store.prepareIntegration({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:snapshot.supervision.control_revision,
+      intentSha256:reserved.intent_sha256,integration,reconciliation});
+  }
+  async function takeover(context) {
+    const old=structuredClone(context.supervisor);
+    await context.store.invalidateRun({runId:context.runId,supervisor:old,reason:"FIXTURE_RECOVERY"});
+    const snapshot=await context.store.getRun({runId:context.runId});
+    const reconciled=await context.store.reconcileSupervisor({runId:context.runId,expectedSupervisor:old,
+      expectedControlRevision:snapshot.supervision.control_revision,proof:{fixtureConfirmed:true}});
+    const previous=gitStates.get(context.runId), args=supervisorArgs(context,reconciled.supervision.control_revision);
+    // supervisorArgs resets only the fixture Git observer; preserve factual refs.
+    const claimed=await context.store.claimSupervisor({...args,expectedPreviousGeneration:old.generation});
+    gitStates.set(context.runId,previous);
+    context.supervisor=claimed.supervision.current.ownership;
+    return {old,claimed,previous};
+  }
+  const verificationPolicy={runner:{id:"fixture.verifier",executable_sha256:sha("fixture executable")},environment_sha256:sha("fixture environment"),
+    proof_authority_sha256:sha("fixture public key pin"),control_files:[{path:"test/verify.mjs",sha256:sha("fixture control"),git_mode:"100644"}],
+    audit_policy_sha256:sha("fixture audit"),limits:{max_duration_ms:1000,max_output_bytes:4096}};
+  const evidenceVerifier={getDescriptor:()=>({verifier_id:"local-agent-verification",contract_version:"agent-evidence-verification.v1",algorithm:"Ed25519"}),
+    verify:input=>{
+      const checks=input.phase==="task" ? input.document.validation.checks : [...input.document.checks,...input.document.audit.checks];
+      return {contract_version:"agent-evidence-verification.v1",verifier_id:"local-agent-verification",phase:input.phase,run_id:input.run.run_id,
+        plan_sha256:input.run.plan_sha256,policy_sha256:fingerprintAgentExecutionValue(input.plan.verification),subject_sha256:input.subject_sha256,
+        tested_sha:input.expected.tested_sha,proof_authority_sha256:input.plan.verification.proof_authority_sha256,
+        verified_refs:[...new Map(checks.map(check=>[check.evidence.ref,check.evidence])).values()].sort((a,b)=>a.ref.localeCompare(b.ref,"en")),
+        snapshots:(input.phase==="task" ? ["task"] : ["audit","run"]).map(phase=>({phase,snapshot_sha256:sha("snapshot"),candidate_sha:input.expected.tested_sha,
+          tree_sha:sha("tree").slice(0,input.expected.tested_sha.length),repository_identity_sha256:gitStates.get(input.run.run_id).identity,
+          before_sha256:sha("before"),after_sha256:sha("after")}))};
+    }};
   try {
     await check("missing schema is unavailable without implicit DDL", async () => {
       assert.equal((await store.checkReadiness()).ready, false);
@@ -235,25 +289,25 @@ async function runSuite({ connectionString, version, root }) {
     await client.query(`CREATE TABLE public.ddl_observations(tag text NOT NULL);
       CREATE FUNCTION public.record_fixture_ddl() RETURNS event_trigger LANGUAGE plpgsql AS $$ BEGIN INSERT INTO public.ddl_observations(tag) VALUES(TG_TAG); END $$;
       CREATE EVENT TRIGGER fixture_ddl ON ddl_command_end EXECUTE FUNCTION public.record_fixture_ddl();`);
-    await check("two-process migration applies v3 and v4 once and preserves v2 data", async () => {
+    await check("two-process migration applies v3 v4 and v5 once and preserves v2 data", async () => {
       const sentinel = (await client.query("SELECT * FROM aidn_shared.workspace_registry WHERE workspace_id='sentinel.workspace'")).rows;
       const results = await race(connectionString, "migrate", [{},{}]);
       assert.deepEqual(results.map(value => value.ok), [true,true]);
-      assert.deepEqual((await client.query("SELECT schema_version FROM aidn_shared.schema_migrations ORDER BY schema_version")).rows.map(row => row.schema_version), [2,3,4]);
+      assert.deepEqual((await client.query("SELECT schema_version FROM aidn_shared.schema_migrations ORDER BY schema_version")).rows.map(row => row.schema_version), [2,3,4,5]);
       assert.deepEqual((await client.query("SELECT * FROM aidn_shared.workspace_registry WHERE workspace_id='sentinel.workspace'")).rows, sentinel);
-      assert.equal(Number((await client.query("SELECT count(*) AS count FROM public.ddl_observations WHERE tag='CREATE TABLE'")).rows[0].count), 8);
+      assert.equal(Number((await client.query("SELECT count(*) AS count FROM public.ddl_observations WHERE tag='CREATE TABLE'")).rows[0].count), 9);
       const before = await ddlCount();
       assert.equal((await shared.bootstrap()).ok, true);
       assert.equal(await ddlCount(), before);
       assert.equal((await store.checkReadiness()).ready, true);
     });
-    await check("v3 upgrade preserves existing run task result and immutable event evidence", async () => {
+    for (const legacyVersion of [3,4]) await check(`v${legacyVersion} upgrade preserves existing run task result and immutable evidence`, async () => {
       // This additional database belongs to this same private disposable cluster.
-      await client.query("CREATE DATABASE aidn_v3_upgrade_fixture");
-      const uri=new URL(connectionString); uri.pathname="/aidn_v3_upgrade_fixture";
+      await client.query(`CREATE DATABASE aidn_v${legacyVersion}_upgrade_fixture`);
+      const uri=new URL(connectionString); uri.pathname=`/aidn_v${legacyVersion}_upgrade_fixture`;
       const legacy=new pg.Client({connectionString:uri.href}); await legacy.connect();
       try {
-        for (const migration of getPostgresSharedCoordinationMigrationFiles().filter(item=>item.version<=3)) {
+        for (const migration of getPostgresSharedCoordinationMigrationFiles().filter(item=>item.version<=legacyVersion)) {
           await legacy.query(fs.readFileSync(migration.file,"utf8"));
           await legacy.query("INSERT INTO aidn_shared.schema_migrations(schema_name,schema_version) VALUES('aidn_shared',$1)",[migration.version]);
         }
@@ -267,10 +321,25 @@ async function runSuite({ connectionString, version, root }) {
         await legacy.query("INSERT INTO aidn_shared.execution_attempts(attempt_id,run_id,task_id,ordinal,owner_id,generation,lease_id,lease_until,attempt_json,delegation_json,request_json,result_json,termination_json) VALUES($1,$2,$3,1,$4,$5,$6,clock_timestamp(),$7::jsonb,$8::jsonb,$9::jsonb,$10::jsonb,$11::jsonb)",
           [a.attempt_id,a.run_id,a.task_id,a.ownership.owner_id,a.ownership.generation,a.ownership.lease_id,JSON.stringify(a),JSON.stringify(fixture.delegation),JSON.stringify(fixture.request),JSON.stringify(fixture.result),JSON.stringify({fixtureConfirmed:true})]);
         await legacy.query("INSERT INTO aidn_shared.execution_events(attempt_id,event_id,sequence,payload_sha256,event_json) VALUES($1,$2,1,$3,$4::jsonb)",[a.attempt_id,fixture.event.event_id,fingerprintAgentExecutionValue(fixture.event),JSON.stringify(fixture.event)]);
+        let journalsBefore=null;
+        const journalSql="SELECT (SELECT jsonb_agg(jsonb_build_object('prepared',prepared_json,'applied',applied_json,'prepared_sha256',prepared_sha256,'applied_sha256',applied_sha256)) FROM aidn_shared.execution_integrations) AS integrations,(SELECT jsonb_agg(acceptance_json) FROM aidn_shared.execution_acceptances) AS acceptances,(SELECT jsonb_agg(validation_json) FROM aidn_shared.execution_run_validations) AS validations";
+        if (legacyVersion===4) {
+          const owner=fixture.supervisor.ownership, prepared=fixture["integration-prepared"], applied=fixture["integration-applied"], validation=fixture["run-validation"];
+          await legacy.query("INSERT INTO aidn_shared.execution_supervisors(run_id,generation,lease_id,lease_until,supervisor_json) VALUES($1,$2,$3,clock_timestamp(),$4::jsonb)",[a.run_id,owner.generation,owner.lease_id,JSON.stringify(fixture.supervisor)]);
+          await legacy.query("INSERT INTO aidn_shared.execution_acceptances(attempt_id,run_id,task_id,acceptance_sha256,acceptance_json,supervisor_generation) VALUES($1,$2,$3,$4,$5::jsonb,$6)",[a.attempt_id,a.run_id,a.task_id,fingerprintAgentExecutionValue(fixture.acceptance),JSON.stringify(fixture.acceptance),owner.generation]);
+          await legacy.query("INSERT INTO aidn_shared.execution_integrations(run_id,integration_id,sequence,attempt_id,prepared_sha256,prepared_json,applied_sha256,applied_json) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8::jsonb)",[a.run_id,prepared.integration_id,prepared.sequence,a.attempt_id,fingerprintAgentExecutionValue(prepared),JSON.stringify(prepared),fingerprintAgentExecutionValue(applied),JSON.stringify(applied)]);
+          await legacy.query("INSERT INTO aidn_shared.execution_run_validations(run_id,validation_sha256,validation_json,supervisor_generation) VALUES($1,$2,$3::jsonb,$4)",[a.run_id,fingerprintAgentExecutionValue(validation),JSON.stringify(validation),owner.generation]);
+          journalsBefore=(await legacy.query(journalSql)).rows;
+        }
         const evidenceSql="SELECT (SELECT jsonb_agg(jsonb_build_object('plan',plan_json,'run',run_json,'created',created_at)) FROM aidn_shared.execution_runs) AS runs,(SELECT jsonb_agg(task_json) FROM aidn_shared.execution_tasks) AS tasks,(SELECT jsonb_agg(jsonb_build_object('attempt',attempt_json,'result',result_json,'termination',termination_json)) FROM aidn_shared.execution_attempts) AS attempts,(SELECT jsonb_agg(event_json) FROM aidn_shared.execution_events) AS events";
         const before=(await legacy.query(evidenceSql)).rows;
         const migrated=await race(uri.href,"migrate",[{},{}]); assert.deepEqual(migrated.map(row=>row.ok),[true,true]);
         assert.deepEqual((await legacy.query(evidenceSql)).rows,before);
+        if (legacyVersion===4) {
+          assert.deepEqual((await legacy.query(journalSql)).rows,journalsBefore);
+          assert.equal((await legacy.query("SELECT intent_sha256 FROM aidn_shared.execution_integrations")).rows[0].intent_sha256,null);
+          assert.equal((await legacy.query("SELECT count(*)::int AS count FROM aidn_shared.execution_integration_intents")).rows[0].count,0);
+        }
         const preserved=(await legacy.query("SELECT supervision_mode,supervisor_generation,run_started_at,run_deadline_at FROM aidn_shared.execution_runs")).rows[0];
         assert.equal(preserved.supervision_mode,"legacy"); assert.equal(Number(preserved.supervisor_generation),0); assert.equal(preserved.run_started_at,null); assert.equal(preserved.run_deadline_at,null);
       } finally { await legacy.end(); }
@@ -726,6 +795,195 @@ async function runSuite({ connectionString, version, root }) {
       const cancelled=await context.store.finishRun({...guarded,outcome:"cancelled"});
       assert.equal(cancelled.reservation_active,false); assert.equal(cancelled.run.lifecycle_status,"cancelled");
     });
+    await check("durable intention precedes preparation and reserves the single pending integration", async () => {
+      const context=await seed(); await supervise(context);
+      const accepted=await acceptedTask(context), beta=await acceptedTask(context,"beta"), intent=await intentFor(context,accepted);
+      const reserved=await reserveIntent(context,intent), before=await store.getRun({runId:context.runId});
+      assert.equal(before.integration_intents[0].status,"reserved"); assert.equal(before.integrations.length,0);
+      assert.equal((await reserveIntent(context,intent)).idempotent,true);
+      await reject(reserveIntent(context,{...intent,commit_identity:{...intent.commit_identity,name:"different"}}),"AGENT_EXECUTION_INTEGRATION_INTENT_CONFLICT");
+      await reject(reserveIntent(context,await intentFor(context,beta)),"AGENT_EXECUTION_INTEGRATION_PENDING");
+      for (const outcome of ["failed","cancelled"]) await reject(store.finishRun({runId:context.runId,supervisor:context.supervisor,outcome}),"AGENT_EXECUTION_RECOVERY_REQUIRED");
+      const integration=preparedForIntent(context,reserved);
+      await reject(prepareIntent(context,{...reserved,intent_sha256:sha("foreign")},integration),"AGENT_EXECUTION_INTEGRATION_INTENT_BINDING_INVALID");
+      const prepared=await prepareIntent(context,reserved,integration), applied=await applyTask(context,prepared);
+      const after=await store.getRun({runId:context.runId}); assert.equal(after.integration_intents[0].status,"applied");
+      assert.equal(after.integration_intents[0].prepared_sha256,prepared.prepared_sha256); assert.equal(after.integration_intents[0].applied_sha256,applied.integration.applied_sha256);
+      assert.deepEqual(after.integration_intents[0].intent,intent);
+    });
+    await check("two independent processes cannot reserve different intentions at the same revision", async () => {
+      const context=await seed(); await supervise(context); const accepted=await acceptedTask(context), intent=await intentFor(context,accepted);
+      const before=await store.getRun({runId:context.runId}), args={runId:context.runId,supervisor:context.supervisor,expectedControlRevision:before.supervision.control_revision,intent};
+      const results=await race(connectionString,"recordIntegrationIntent",[args,{...args,intent:{...intent,integration_id:id("competitor")}}]);
+      assert.equal(results.filter(item=>item.ok).length,1);
+      assert.equal(results.find(item=>!item.ok).code,"AGENT_EXECUTION_CONTROL_REVISION_MISMATCH");
+      assert.equal((await store.getRun({runId:context.runId})).integration_intents.length,1);
+    });
+    await check("orphan prepared attaches after takeover without changing producer or result", async () => {
+      const context=await seed(); await supervise(context); const accepted=await acceptedTask(context), reserved=await reserveIntent(context,await intentFor(context,accepted));
+      const integration=preparedForIntent(context,reserved), hash=fingerprintAgentExecutionValue(integration);
+      const {old}=await takeover(context);
+      const forged=structuredClone(integration); forged.prepared_by.owner_id="foreign.owner";
+      await reject(prepareIntent(context,reserved,forged),"AGENT_EXECUTION_SUPERVISOR_RECONCILIATION_REQUIRED");
+      const attached=await prepareIntent(context,reserved,integration,{reconciliation:true});
+      assert.equal(attached.prepared_sha256,hash); assert.deepEqual(attached.integration.prepared_by,old);
+      assert.equal((await prepareIntent(context,reserved,integration)).idempotent,true);
+      await applyTask(context,attached);
+      const state=await store.getRun({runId:context.runId});
+      await store.resumeRun({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:state.supervision.control_revision});
+    });
+    await check("fresh generation can prepare an absent intent while recovery remains pending", async () => {
+      const context=await seed(); await supervise(context); const accepted=await acceptedTask(context), reserved=await reserveIntent(context,await intentFor(context,accepted));
+      const {old}=await takeover(context), integration=preparedForIntent(context,reserved);
+      const state=await store.getRun({runId:context.runId});
+      await reject(store.resumeRun({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:state.supervision.control_revision}),"AGENT_EXECUTION_RECOVERY_REQUIRED");
+      const prepared=await prepareIntent(context,reserved,integration);
+      assert.deepEqual(reserved.intent.created_by,old); assert.deepEqual(prepared.integration.prepared_by,context.supervisor);
+      await applyTask(context,prepared);
+    });
+    await check("expired revoked orphan can only attach factually and observe the already applied SHA", async () => {
+      let active=true, checks=0;
+      const context=await seed({options:{verifyActivation:()=>{checks++;return active;}}}); await supervise(context);
+      const accepted=await acceptedTask(context), reserved=await reserveIntent(context,await intentFor(context,accepted)), integration=preparedForIntent(context,reserved);
+      await takeover(context);
+      await client.query("UPDATE aidn_shared.execution_runs SET run_deadline_at=clock_timestamp()-interval '1 second' WHERE run_id=$1",[context.runId]); active=false;
+      await reject(prepareIntent(context,reserved,integration),"AGENT_EXECUTION_RUN_DEADLINE_EXPIRED");
+      const priorChecks=checks, prepared=await prepareIntent(context,reserved,integration,{reconciliation:true}); assert.equal(checks,priorChecks);
+      const state=await store.getRun({runId:context.runId}), args={runId:context.runId,supervisor:context.supervisor,expectedControlRevision:state.supervision.control_revision,
+        integrationId:integration.integration_id,preparedSha256:prepared.prepared_sha256,proof:{evidence:integration.evidence},reconciliation:true};
+      await reject(store.recordIntegrationApplied(args),"AGENT_EXECUTION_INTEGRATION_GIT_MISMATCH");
+      gitStates.get(context.runId).head=sha("unexpected").slice(0,integration.result_sha.length);
+      await reject(store.recordIntegrationApplied(args),"AGENT_EXECUTION_INTEGRATION_GIT_MISMATCH");
+      gitStates.get(context.runId).head=integration.result_sha;
+      await context.store.recordIntegrationApplied(args); assert.equal(checks,priorChecks);
+      assert.equal((await context.store.finishRun({runId:context.runId,supervisor:context.supervisor,outcome:"cancelled"})).reservation_active,false);
+    });
+    await check("expired absent intention remains reserved without implicit abandonment", async () => {
+      const context=await seed(); await supervise(context); const accepted=await acceptedTask(context), reserved=await reserveIntent(context,await intentFor(context,accepted));
+      await takeover(context); await client.query("UPDATE aidn_shared.execution_runs SET run_deadline_at=clock_timestamp()-interval '1 second' WHERE run_id=$1",[context.runId]);
+      await reject(prepareIntent(context,reserved,preparedForIntent(context,reserved)),"AGENT_EXECUTION_RUN_DEADLINE_EXPIRED");
+      await reject(store.finishRun({runId:context.runId,supervisor:context.supervisor,outcome:"cancelled"}),"AGENT_EXECUTION_RECOVERY_REQUIRED");
+      const snapshot=await store.getRun({runId:context.runId}); assert.equal(snapshot.reservation_active,true); assert.equal(snapshot.integration_intents[0].status,"reserved");
+    });
+    await check("verification plans reject missing boolean foreign and malformed evidence authorities", async () => {
+      const context=await seed({transform:plan=>{plan.verification=structuredClone(verificationPolicy);}}); await supervise(context);
+      const task=await completedTask(context), acceptance=acceptanceFor(context,task), args={runId:context.runId,supervisor:context.supervisor,acceptance};
+      await reject(context.store.recordAcceptance(args),"AGENT_EXECUTION_VALIDATION_EVIDENCE_VERIFIER_REQUIRED");
+      for (const alter of [()=>true,value=>({...value,proof_authority_sha256:sha("foreign pin")}),value=>({...value,subject_sha256:sha("other subject")}),value=>({...value,verified_refs:[]}),value=>({...value,snapshots:[]}),value=>({...value,snapshots:[null]})]) {
+        const selected=createPostgresAgentExecutionStore({...storeOptions,validationEvidenceVerifier:{...evidenceVerifier,verify:input=>alter(evidenceVerifier.verify(input))}});
+        await reject(selected.recordAcceptance(args),"AGENT_EXECUTION_VALIDATION_EVIDENCE_BINDING_INVALID");
+      }
+      assert.equal((await store.getRun({runId:context.runId})).acceptances.length,0);
+      context.store=createPostgresAgentExecutionStore({...storeOptions,validationEvidenceVerifier:evidenceVerifier});
+      const accepted=await context.store.recordAcceptance(args), replay=await context.store.recordAcceptance(args);
+      assert.equal(replay.idempotent,true); assert.equal(accepted.evidence_verification_sha256,replay.evidence_verification_sha256);
+      assert.equal(accepted.evidence_verification.subject_sha256,accepted.acceptance_sha256);
+      await reject(prepareTask(context,{...task,...accepted}),"AGENT_EXECUTION_INTEGRATION_INTENT_REQUIRED");
+    });
+    await check("evidence verification cannot commit after supervisor lease expiry", async () => {
+      const context=await seed({transform:plan=>{plan.verification=structuredClone(verificationPolicy);},options:{validationEvidenceVerifier:{...evidenceVerifier,verify:async input=>{
+        await new Promise(resolve=>setTimeout(resolve,1800)); return evidenceVerifier.verify(input);
+      }}}}); await supervise(context); const task=await completedTask(context), acceptance=acceptanceFor(context,task);
+      await client.query("UPDATE aidn_shared.execution_supervisors SET lease_until=clock_timestamp()+interval '1200 milliseconds' WHERE run_id=$1",[context.runId]);
+      await reject(context.store.recordAcceptance({runId:context.runId,supervisor:context.supervisor,acceptance}),"AGENT_EXECUTION_SUPERVISOR_LEASE_EXPIRED");
+      assert.equal((await store.getRun({runId:context.runId})).acceptances.length,0);
+    });
+    await check("evidence descriptor time is included in the verification deadline", async () => {
+      const context=await seed({transform:plan=>{plan.verification=structuredClone(verificationPolicy);},options:{validationEvidenceVerifier:{...evidenceVerifier,getDescriptor:()=>{
+        const end=performance.now()+4550;
+        while (performance.now()<end) { /* Model a blocking synchronous descriptor. */ }
+        return evidenceVerifier.getDescriptor();
+      }}}});
+      await supervise(context); const task=await completedTask(context);
+      await reject(context.store.recordAcceptance({runId:context.runId,supervisor:context.supervisor,acceptance:acceptanceFor(context,task)}),"AGENT_EXECUTION_VALIDATION_EVIDENCE_TIMED_OUT");
+      assert.equal((await context.store.getRun({runId:context.runId})).acceptances.length,0);
+    });
+    await check("activation revoked during evidence verification refuses acceptance final validation and closure", async () => {
+      for (const stage of ["acceptance","validation","finish"]) {
+        let authorized=true, revoke=false;
+        const context=await seed({transform:plan=>{plan.verification=structuredClone(verificationPolicy);plan.tasks=[plan.tasks[0]];},options:{
+          verifyActivation:()=>authorized,
+          validationEvidenceVerifier:{...evidenceVerifier,verify:input=>{if(revoke) authorized=false;return evidenceVerifier.verify(input);}},
+        }});
+        await supervise(context); const task=await completedTask(context), acceptance=acceptanceFor(context,task);
+        const args={runId:context.runId,supervisor:context.supervisor};
+        if (stage==="acceptance") {
+          revoke=true;
+          await reject(context.store.recordAcceptance({...args,acceptance}),"AGENT_EXECUTION_ACTIVATION_INVALID");
+          const after=await context.store.getRun(args);
+          assert.equal(after.acceptances.length,0); assert.equal(after.run.lifecycle_status,"recovery_required");
+          continue;
+        }
+        const accepted=await context.store.recordAcceptance({...args,acceptance});
+        const reserved=await reserveIntent(context,await intentFor(context,{...task,...accepted}));
+        await applyTask(context,await prepareIntent(context,reserved,preparedForIntent(context,reserved)));
+        const state=await context.store.getRun(args), head=state.integration_head;
+        const validation={contract_version:"agent-run-validation.v1",validation_id:id("activation.final"),run_id:context.runId,plan_sha256:context.plan.plan_sha256,
+          integration_sequence:head.sequence,integrated_sha:head.sha,outcome:"passed",
+          checks:context.plan.validations.map(item=>({validation_id:item.validation_id,status:"passed",tested_sha:head.sha,evidence:evidence()})),
+          audit:{read_only:true,tested_sha:head.sha,checks:context.plan.audit.criteria.map((_,criterion_index)=>({criterion_index,status:"passed",evidence:evidence()}))}};
+        if (stage==="validation") {
+          revoke=true;
+          await reject(context.store.recordRunValidation({...args,expectedControlRevision:state.supervision.control_revision,validation}),"AGENT_EXECUTION_ACTIVATION_INVALID");
+          const after=await context.store.getRun(args);
+          assert.equal(after.final_validation,null); assert.equal(after.run.lifecycle_status,"recovery_required");
+        } else {
+          const final=await context.store.recordRunValidation({...args,expectedControlRevision:state.supervision.control_revision,validation});
+          revoke=true;
+          await reject(context.store.finishRun({...args,expectedControlRevision:final.control_revision,finalValidationSha256:final.validation_sha256,outcome:"completed"}),"AGENT_EXECUTION_ACTIVATION_INVALID");
+          const after=await context.store.getRun(args);
+          assert.equal(after.reservation_active,true); assert.equal(after.run.lifecycle_status,"recovery_required");
+          assert.equal(after.final_validation.validation_sha256,final.validation_sha256);
+        }
+      }
+    });
+    await check("real PostgreSQL Git and signed verifier bind canonical audit and exact final evidence", async () => {
+      const f=await createVerificationFixture({auditChecks:["all-tasks-integrated","no-uncertain-work"]});
+      try {
+        let context;
+        const git=f.configuration.git, producer=f.create({readRun:()=>context.store.getRun({runId:context.runId})});
+        context=await seed({planInput:f.plan,runIdOverride:f.run.run_id,options:{inspectIntegration:git.inspectIntegration,validationEvidenceVerifier:producer.evidenceVerifier}});
+        const observed=await git.inspectIntegration({}, {phase:"head"});
+        gitStates.set(context.runId,{identity:observed.repository_identity_sha256,ref:observed.ref,head:f.baseSha,parents:new Map()});
+        const initial=await context.store.claimSupervisor({runId:context.runId,ownerId:id("signed.supervisor"),runner:runner(),expectedControlRevision:0,
+          integration:{repository_identity_sha256:observed.repository_identity_sha256,ref:observed.ref,base_sha:f.baseSha}});
+        context.supervisor=initial.supervision.current.ownership;
+        const task=await completedTask(context,"task.fixture"), acceptance=acceptanceFor(context,task,f.candidateSha);
+        acceptance.validation=await producer.validateTask({...f.taskInput,plan:context.plan,resultSha256:fingerprintAgentExecutionValue(task.result),
+          binding:{...f.taskInput.binding,attempt_id:task.claimed.attempt.attempt_id,input_sha:task.claimed.attempt.input_sha}});
+        const accepted=await context.store.recordAcceptance({runId:context.runId,supervisor:context.supervisor,acceptance});
+        assert.equal(accepted.evidence_verification.proof_authority_sha256,f.pin);
+        assert.equal(accepted.evidence_verification.snapshots[0].candidate_sha,f.candidateSha);
+        const service=createAgentTaskIntegrationService({git,store:context.store}), before=await context.store.getRun({runId:context.runId});
+        const prepared=await service.prepare({runId:context.runId,planSha256:context.plan.plan_sha256,taskId:acceptance.task_id,attemptId:acceptance.attempt_id,
+          acceptanceSha256:accepted.acceptance_sha256,sequence:1,integrationId:id("signed.integration"),sourceSha:f.candidateSha,parentSha:f.baseSha,
+          supervisor:context.supervisor,expectedControlRevision:before.supervision.control_revision,verification:context.plan.verification,
+          commitIdentity:{name:"Fixture Supervisor",email:"fixture@example.invalid",timestamp:"2030-01-01T00:00:00.000Z"}});
+        await service.applyPrepared({prepared:prepared.prepared,preparedSha256:prepared.prepared_sha256,intent:prepared.intent,
+          supervisor:context.supervisor,expectedControlRevision:prepared.control_revision});
+        const state=await context.store.getRun({runId:context.runId}), input={plan:context.plan,runId:context.runId,integratedSha:state.integration_head.sha,integrationSequence:1};
+        await context.store.renewSupervisor({runId:context.runId,supervisor:context.supervisor});
+        const checks=await producer.validateRun(input);
+        await context.store.renewSupervisor({runId:context.runId,supervisor:context.supervisor});
+        const audit=await producer.auditRun(input);
+        assert.equal(audit.checks.length,2); assert.ok(audit.checks.every(check=>check.status==="passed"));
+        const validation={contract_version:"agent-run-validation.v1",validation_id:id("signed.final"),run_id:context.runId,plan_sha256:context.plan.plan_sha256,
+          integration_sequence:1,integrated_sha:state.integration_head.sha,outcome:"passed",checks,audit};
+        const recorded=await context.store.recordRunValidation({runId:context.runId,supervisor:context.supervisor,expectedControlRevision:state.supervision.control_revision,validation});
+        assert.deepEqual(recorded.evidence_verification.snapshots.map(item=>item.phase),["audit","run"]);
+        const proofPath=path.join(f.resourcesRoot,...checks[0].evidence.ref.split("/")), original=fs.readFileSync(proofPath);
+        const finish={runId:context.runId,supervisor:context.supervisor,expectedControlRevision:recorded.control_revision,outcome:"completed",finalValidationSha256:recorded.validation_sha256};
+        fs.writeFileSync(proofPath,"tampered");
+        try { await reject(context.store.finishRun(finish),"AGENT_EXECUTION_VALIDATION_EVIDENCE_INVALID"); }
+        finally { fs.writeFileSync(proofPath,original); }
+        const completed=await context.store.finishRun(finish);
+        assert.equal(completed.run.lifecycle_status,"completed"); assert.equal(completed.reservation_active,false);
+        assert.equal(completed.integration_intents[0].status,"applied");
+        assert.equal(completed.final_validation.evidence_verification.subject_sha256,recorded.validation_sha256);
+        assert.equal(f.gitCommand(["rev-parse","HEAD"]),f.baseSha,"worker checkout remains at its original HEAD");
+        assert.equal(f.gitCommand(["show",`${state.integration_head.sha}:subject.txt`]),"new");
+      } finally { f.cleanup(); }
+    });
     await check("real PostgreSQL and Git scheduler overlap two children and integrate dependent output", async () => {
       const fixtureRun=createSchedulerFixture({realGit:true});
       try {
@@ -795,7 +1053,8 @@ try {
     assert.ok(participantPid); assert.equal(children.size,0); assert.equal(fs.existsSync(injectedRoot),false);
   });
   process.stdout.write(JSON.stringify({ ok:true, backend:"ephemeral-postgres", version:result.version, checks:checks.length,
-    cleanup:"PASS", codex_native:"SKIP", os_confinement:"SKIP", verifier_authority:"injected-supervisor-doubles" })+"\n");
+    cleanup:"PASS", codex_native:"SKIP", os_confinement:"SKIP", verifier_authority:"injected-supervisor-doubles",
+    validation_evidence:"real-ed25519-with-fixture-process-boundary" })+"\n");
 } catch (error) {
   try { await drainChildren(); } catch { /* Retain unconfirmed children in diagnostics. */ }
   // The assertion's bounded message is useful, but driver/connection details

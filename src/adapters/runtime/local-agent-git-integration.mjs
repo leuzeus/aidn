@@ -3,7 +3,7 @@ import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { assertAgentGitIntegration } from "../../core/ports/agent-git-integration-port.mjs";
-import { fingerprintAgentExecutionValue as fingerprint, isExactExecutionPath } from "../../core/agents/agent-execution-contracts.mjs";
+import { assertAgentExecutionContract, fingerprintAgentExecutionValue as fingerprint, isExactExecutionPath } from "../../core/agents/agent-execution-contracts.mjs";
 
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 const fail = code => { throw Object.assign(new Error(code), { code }); };
@@ -14,6 +14,8 @@ const sha = value => typeof value === "string" && /^(?:[a-f0-9]{40}|[a-f0-9]{64}
 const id = value => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
 const freeze = value => { if (value && typeof value === "object") { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
 const inside = (root, target) => { const relative = path.relative(root, target); return relative && !path.isAbsolute(relative) && relative !== ".." && !relative.startsWith(`..${path.sep}`); };
+const canonical = value => Array.isArray(value) ? `[${value.map(canonical).join(",")}]` : value && typeof value === "object"
+  ? `{${Object.keys(value).sort().map(name => `${JSON.stringify(name)}:${canonical(value[name])}`).join(",")}}` : JSON.stringify(value);
 
 function safePath(input, { missing = false } = {}) {
   requireProof(typeof input === "string" && path.isAbsolute(input), "AGENT_GIT_ABSOLUTE_PATH_REQUIRED");
@@ -108,16 +110,22 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
   async function assertOperationsAvailable() {
     requireProof(!uncertainRead && !(await readOperations({ pendingOnly: true })).some(record => record.recovery_required && !activeOperations.has(record.operation_id)), "AGENT_GIT_RECOVERY_REQUIRED");
   }
-  async function git(root, args, { input, env = {}, allowFailure = false, buffer = false } = {}) {
+  async function git(root, args, { input, env = {}, allowFailure = false, buffer = false, integrationIntentSha256 = null } = {}) {
     await assertOperationsAvailable();
     const environment = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^GIT_/i.test(name)));
     const argv = ["-C", root, "-c", `core.hooksPath=${path.join(resourcePath, "no-hooks")}`,
       "-c", "core.fsmonitor=false", "-c", "commit.gpgSign=false", "-c", "core.autocrlf=false",
-      "-c", "checkout.workers=1", "-c", "gc.auto=0", "-c", "maintenance.auto=false", ...args];
-    const mutating = ["worktree", "read-tree", "update-index", "hash-object", "write-tree", "commit-tree", "update-ref", "cherry-pick"].includes(args[0]);
+      "-c", "checkout.workers=1", "-c", "gc.auto=0", "-c", "maintenance.auto=false",
+      "-c", "rerere.enabled=false", "-c", "rerere.autoupdate=false", ...args];
+    const mutating = args[0] === "worktree" ? args[1] !== "list"
+      : ["read-tree", "update-index", "hash-object", "write-tree", "commit-tree", "update-ref", "cherry-pick"].includes(args[0]);
     const operationId = randomUUID(), intent = { operation_id: operationId, repository_root: repoPath, ref: integrationRef,
       cwd: root, executable: gitExecutable, invocation_sha256: fingerprint(argv), input_sha256: input === undefined ? null : hash(input),
       started_at: new Date().toISOString(), command_timeout_ms: commandTimeoutMs, stop_grace_ms: stopGraceMs };
+    if (integrationIntentSha256 !== null) {
+      requireProof(/^[a-f0-9]{64}$/.test(integrationIntentSha256), "AGENT_GIT_INTENT_MISMATCH");
+      intent.integration_intent_sha256 = integrationIntentSha256;
+    }
     let intentDigest = fingerprint(intent);
     if (mutating) {
       requireProof(fs.existsSync(path.join(resourcePath, "owner.json")), "AGENT_GIT_RESOURCE_OWNER_MISMATCH");
@@ -230,7 +238,191 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
     return { GIT_AUTHOR_NAME: value.name, GIT_COMMITTER_NAME: value.name, GIT_AUTHOR_EMAIL: value.email,
       GIT_COMMITTER_EMAIL: value.email, GIT_AUTHOR_DATE: value.timestamp, GIT_COMMITTER_DATE: value.timestamp };
   }
+  function saveEvidence(name, value) {
+    requireProof(isExactExecutionPath(name) && !name.includes("/"), "AGENT_GIT_EVIDENCE_PATH_INVALID");
+    const file = path.join(resourcePath, name), bytes = Buffer.from(canonical(value));
+    if (fs.existsSync(file)) { fileState(safePath(file)); requireProof(fs.readFileSync(file).equals(bytes), "AGENT_GIT_EVIDENCE_CHANGED"); }
+    else fs.writeFileSync(file, bytes, { flag: "wx" });
+    return { ref: name, sha256: hash(bytes), bytes: bytes.length };
+  }
+  function readEvidence(name) {
+    const file = safePath(path.join(resourcePath, name));
+    requireProof(fs.lstatSync(file).size <= maxBytes, "AGENT_GIT_CAPTURE_LIMIT"); fileState(file);
+    const bytes = fs.readFileSync(file); return { value: JSON.parse(bytes), evidence: { ref: name, sha256: hash(bytes), bytes: bytes.length } };
+  }
+  async function verificationState(cwd) {
+    const identity = await repository(), physical = safePath(cwd);
+    requireProof(inside(resourcePath, physical), "AGENT_GIT_REPOSITORY_MISMATCH");
+    requireProof(key(safePath(await git(physical, ["rev-parse", "--path-format=absolute", "--git-common-dir"]))) === key(identity.common_dir), "AGENT_GIT_REPOSITORY_MISMATCH");
+    const gitDir = safePath(await git(physical, ["rev-parse", "--absolute-git-dir"])), controls = {};
+    for (const file of [path.join(physical, ".git"), path.join(gitDir, "HEAD"), path.join(gitDir, "index"), path.join(identity.common_dir, "config")]) controls[file] = fileState(file);
+    const branch = await git(physical, ["symbolic-ref", "--quiet", "HEAD"], { allowFailure: true });
+    requireProof(!branch.error && [0, 1].includes(branch.status), "AGENT_GIT_HEAD_OBSERVATION_FAILED");
+    const entries = (await git(physical, ["ls-files", "--stage", "-z"])).split("\0").filter(Boolean);
+    requireProof(entries.every(line => /^100(?:644|755) [a-f0-9]+ 0\t/.test(line)), "AGENT_GIT_UNSUPPORTED_INDEX_ENTRY");
+    const stat = fs.lstatSync(physical), headSha = await head(physical);
+    const indexed = Object.fromEntries(entries.map(line => { const at = line.indexOf("\t"), [mode, oid] = line.slice(0, at).split(" "); return [line.slice(at + 1), { mode, oid }]; }));
+    const treeEntries = (await git(physical, ["ls-tree", "-r", "-z", headSha])).split("\0").filter(Boolean);
+    requireProof(treeEntries.every(line => /^100(?:644|755) blob [a-f0-9]+\t/.test(line)), "AGENT_GIT_UNSUPPORTED_INDEX_ENTRY");
+    const treeFiles = Object.fromEntries(treeEntries.map(line => { const at = line.indexOf("\t"), [mode, , oid] = line.slice(0, at).split(" "); return [line.slice(at + 1), { mode, oid }]; }));
+    const files = await snapshot(physical, limits), worktreeGit = await snapshot(gitDir, limits), blobs = {}, modes = {}, directoryModes = {};
+    for (const name of Object.keys(files.files)) {
+      const absolute = path.join(physical, name), bytes = fs.readFileSync(absolute);
+      requireProof(hash(bytes) === files.files[name].sha256, "AGENT_GIT_CAPTURE_RACE");
+      blobs[name] = createHash(identity.object_format).update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
+      modes[name] = fs.lstatSync(absolute).mode;
+      await new Promise(resolve => setImmediate(resolve));
+    }
+    for (const name of files.dirs) { directoryModes[name] = fs.lstatSync(path.join(physical, name)).mode; await new Promise(resolve => setImmediate(resolve)); }
+    return { cwd: physical, physical_identity: { device: stat.dev, inode: stat.ino, birthtime_ms: stat.birthtimeMs },
+      repository_identity_sha256: identity.repository_identity_sha256, head_sha: headSha,
+      tree_sha: await git(physical, ["rev-parse", `${headSha}^{tree}`]), detached: branch.status === 1,
+      controls, worktree_git: worktreeGit, root_mode: stat.mode, directory_modes: directoryModes,
+      index_entries: indexed, tree_entries: treeFiles, blobs, modes, ...files };
+  }
+  function checkIntent(intent, intentSha256) {
+    assertAgentExecutionContract("integration-intent", intent);
+    requireProof(fingerprint(intent) === intentSha256 && intent.ref === integrationRef
+      && same(intent.workspace, port.allocateIntegrationWorkspace({ integrationId: intent.integration_id })), "AGENT_GIT_INTENT_MISMATCH");
+    identityEnvironment(intent.commit_identity);
+    return intent;
+  }
+  function localPrepared(local, evidence, intent, intentSha256) {
+    requireProof(local.intent_sha256 === intentSha256 && local.integration_id === intent.integration_id
+      && local.source_sha === intent.source_sha && local.parent_sha === intent.parent_sha
+      && local.repository_identity_sha256 === intent.repository_identity_sha256 && local.ref === intent.ref
+      && local.workspace.cwd === intent.workspace.cwd, "AGENT_GIT_PREPARED_PROOF_MISMATCH");
+    const { created_by, workspace, commit_identity, ...fields } = intent;
+    return assertAgentExecutionContract("integration-prepared", { ...fields, contract_version: "agent-integration-prepared.v1",
+      intent_sha256: intentSha256, result_sha: local.result_sha, prepared_by: local.prepared_by, evidence: [evidence] });
+  }
   const port = {
+    allocateIntegrationWorkspace({ integrationId }) {
+      requireProof(id(integrationId), "AGENT_GIT_INTEGRATION_INVALID");
+      return { cwd: path.join(resourcePath, `integration-${hash(integrationId)}`), detached: true };
+    },
+    async inspectLocalIntegration({ intent, intentSha256 }) {
+      intent = structuredClone(checkIntent(intent, intentSha256));
+      const identity = await repository();
+      requireProof(identity.repository_identity_sha256 === intent.repository_identity_sha256, "AGENT_GIT_REPOSITORY_MISMATCH");
+      const cwd = intent.workspace.cwd, suffix = hash(intent.integration_id), originFile = path.join(resourcePath, `integration-${suffix}.origin.json`);
+      const exists = fs.existsSync(cwd), originExists = fs.existsSync(originFile);
+      if (!exists && !originExists) {
+        const partial = () => ({ status: "partial", integration_id: intent.integration_id, intent_sha256: intentSha256, workspace: intent.workspace });
+        for (const name of [`integration-${suffix}.prepared.json`, `integration-${suffix}.conflict.json`]) {
+          if (fs.existsSync(path.join(resourcePath, name))) return partial();
+        }
+        // A surviving object proof or operation cannot be relabelled as absence.
+        // Bound the scan; a missing summary receipt never permits recomputation.
+        const names = fs.existsSync(resourcePath) ? fs.readdirSync(safePath(resourcePath)) : [];
+        requireProof(names.length <= maxEntries, "AGENT_GIT_PREPARATION_INSPECTION_LIMIT");
+        const end = performance.now() + 4500; let totalBytes = 0;
+        for (const name of names.filter(name => /^prepared-(?:[a-f0-9]{40}|[a-f0-9]{64})\.json$/.test(name))) {
+          totalBytes += fs.lstatSync(safePath(path.join(resourcePath, name))).size;
+          requireProof(totalBytes <= maxBytes && performance.now() < end, "AGENT_GIT_PREPARATION_INSPECTION_LIMIT");
+          const prior = readEvidence(name).value;
+          if (prior.integration_id === intent.integration_id || prior.intent_sha256 === intentSha256) return partial();
+          await new Promise(resolve => setImmediate(resolve));
+        }
+        if ((await readOperations()).some(row => row.intent.integration_intent_sha256 === intentSha256)) return partial();
+        // A removed/incomplete working directory must not hide Git's registration.
+        const worktrees = await git(identity.root, ["worktree", "list", "--porcelain", "-z"]);
+        const registered = worktrees.split("\0").some(line => line.startsWith("worktree ") && key(path.resolve(line.slice(9))) === key(path.resolve(cwd)));
+        requireProof(!registered, "AGENT_GIT_PREPARATION_CHANGED");
+        return { status: "absent", integration_id: intent.integration_id, intent_sha256: intentSha256,
+          repository_identity_sha256: identity.repository_identity_sha256, ref: intent.ref, workspace: intent.workspace,
+          head_sha: await head(identity.root, integrationRef, true) };
+      }
+      requireProof(originExists, "AGENT_GIT_PREPARATION_CHANGED");
+      const origin = readEvidence(path.basename(originFile)).value;
+      requireProof(same(origin.intent, intent) && origin.intent_sha256 === intentSha256, "AGENT_GIT_INTENT_MISMATCH");
+      if (!exists) return { status: "partial", integration_id: intent.integration_id, intent_sha256: intentSha256, workspace: intent.workspace };
+      const physical = safePath(cwd);
+      requireProof(key(safePath(await git(physical, ["rev-parse", "--path-format=absolute", "--git-common-dir"]))) === key(identity.common_dir), "AGENT_GIT_REPOSITORY_MISMATCH");
+      const current = await head(physical), conflictName = `integration-${suffix}.conflict.json`;
+      if (fs.existsSync(path.join(resourcePath, conflictName))) {
+        const recorded = readEvidence(conflictName), value = recorded.value;
+        const index = safePath(await git(physical, ["rev-parse", "--git-path", "index"]));
+        requireProof(value.intent_sha256 === intentSha256 && current === intent.parent_sha && value.index_sha256 === fileState(index).sha256
+          && same(value.files, await snapshot(physical, limits))
+          && value.unmerged_sha256 === hash(await git(physical, ["ls-files", "--unmerged", "-z"])), "AGENT_GIT_PREPARATION_CHANGED");
+        return { status: "conflict", integration_id: intent.integration_id, intent_sha256: intentSha256,
+          workspace: intent.workspace, evidence: [recorded.evidence] };
+      }
+      const name = `prepared-${current}.json`, completedName = `integration-${suffix}.prepared.json`;
+      if (current === intent.parent_sha || !fs.existsSync(path.join(resourcePath, name)) || !fs.existsSync(path.join(resourcePath, completedName))) return { status: "partial", integration_id: intent.integration_id,
+        intent_sha256: intentSha256, workspace: intent.workspace };
+      const recorded = readEvidence(name), completed = readEvidence(completedName).value;
+      requireProof(completed.intent_sha256 === intentSha256 && same(completed.evidence, recorded.evidence)
+        && same(completed.prepared_by, origin.prepared_by), "AGENT_GIT_PREPARED_PROOF_MISMATCH");
+      const prepared = localPrepared(recorded.value, recorded.evidence, intent, intentSha256);
+      requireProof(same(prepared.prepared_by, origin.prepared_by), "AGENT_GIT_PREPARATION_CHANGED");
+      const observed = await port.inspectIntegration({ ...prepared, intent }, { phase: "prepared" });
+      requireProof([intent.parent_sha, prepared.result_sha].includes(observed.head_sha), "AGENT_GIT_REF_DIVERGED");
+      requireProof(recorded.value.verification_state && same(recorded.value.verification_state, await verificationState(physical)), "AGENT_GIT_PREPARATION_CHANGED");
+      return { status: "prepared", prepared, prepared_sha256: fingerprint(prepared), workspace: recorded.value.workspace,
+        intent, intent_sha256: intentSha256 };
+    },
+    async prepareVerificationSnapshot({ snapshotId, purpose, runId, taskId = null, attemptId = null, candidateSha, validatorManifestSha256 }) {
+      requireProof(id(snapshotId) && id(runId) && ["task", "run"].includes(purpose) && sha(candidateSha)
+        && /^[a-f0-9]{64}$/.test(validatorManifestSha256 ?? "")
+        && (purpose === "task" ? id(taskId) && id(attemptId) : taskId === null && attemptId === null), "AGENT_GIT_SNAPSHOT_INVALID");
+      const identity = await repository(); ensureResources(identity);
+      const suffix = hash(snapshotId), cwd = path.join(resourcePath, `verification-${suffix}`), name = `verification-${suffix}.snapshot.json`;
+      const expected = { snapshot_id: snapshotId, purpose, run_id: runId, task_id: taskId, attempt_id: attemptId,
+        candidate_sha: candidateSha, validator_manifest_sha256: validatorManifestSha256, repository_identity_sha256: identity.repository_identity_sha256, cwd };
+      if (fs.existsSync(path.join(resourcePath, name))) {
+        const prior = readEvidence(name), descriptor = prior.value;
+        requireProof(Object.keys(expected).every(field => same(descriptor[field], expected[field])), "AGENT_GIT_SNAPSHOT_CHANGED");
+        const observed = await port.inspectVerificationSnapshot({ snapshot: descriptor, expectedSnapshotSha256: fingerprint(descriptor),
+          observationId: randomUUID(), challenge: randomUUID(), phase: `${purpose}-before` });
+        requireProof(JSON.parse(observed.content).pristine, "AGENT_GIT_SNAPSHOT_CHANGED");
+        return { snapshot: descriptor, snapshot_sha256: fingerprint(descriptor), evidence: [prior.evidence, readEvidence(`verification-${suffix}.baseline.json`).evidence] };
+      }
+      requireProof(!fs.existsSync(cwd) && !fs.existsSync(path.join(resourcePath, `verification-${suffix}.baseline.json`)), "AGENT_GIT_SNAPSHOT_PARTIAL");
+      requireProof(await head(identity.root, candidateSha) === candidateSha, "AGENT_GIT_SHA_INVALID");
+      await git(identity.root, ["worktree", "add", "--detach", cwd, candidateSha]);
+      const state = await verificationState(cwd);
+      requireProof(state.detached && state.head_sha === candidateSha && same(state.index_entries, state.tree_entries)
+        && same(Object.keys(state.files).sort(), Object.keys(state.tree_entries).sort())
+        && Object.entries(state.tree_entries).every(([name, entry]) => state.blobs[name] === entry.oid), "AGENT_GIT_SNAPSHOT_CHANGED");
+      const baseline = { ...expected, state }, descriptor = { ...expected, tree_sha: state.tree_sha, baseline_sha256: fingerprint(baseline) };
+      const baselineProof = saveEvidence(`verification-${suffix}.baseline.json`, baseline), proof = saveEvidence(name, descriptor);
+      return freeze({ snapshot: descriptor, snapshot_sha256: fingerprint(descriptor), evidence: [proof, baselineProof] });
+    },
+    async inspectVerificationSnapshot({ snapshot: descriptor, expectedSnapshotSha256, observationId, challenge, phase, controlFiles = [] }) {
+      descriptor = structuredClone(descriptor); controlFiles = structuredClone(controlFiles);
+      requireProof(descriptor && fingerprint(descriptor) === expectedSnapshotSha256 && id(descriptor.snapshot_id) && id(observationId)
+        && typeof challenge === "string" && /^[A-Za-z0-9._:-]{16,256}$/.test(challenge)
+        && ["task-before", "task-after", "run-before", "run-after", "audit-before", "audit-after"].includes(phase), "AGENT_GIT_SNAPSHOT_BINDING_INVALID");
+      requireProof(descriptor.purpose === "task" ? phase.startsWith("task-") : !phase.startsWith("task-"), "AGENT_GIT_SNAPSHOT_BINDING_INVALID");
+      const suffix = hash(descriptor.snapshot_id);
+      requireProof(descriptor.cwd === path.join(resourcePath, `verification-${suffix}`), "AGENT_GIT_SNAPSHOT_BINDING_INVALID");
+      requireProof(same(readEvidence(`verification-${suffix}.snapshot.json`).value, descriptor), "AGENT_GIT_SNAPSHOT_CHANGED");
+      const baseline = readEvidence(`verification-${suffix}.baseline.json`).value;
+      requireProof(fingerprint(baseline) === descriptor.baseline_sha256 && baseline.candidate_sha === descriptor.candidate_sha, "AGENT_GIT_SNAPSHOT_CHANGED");
+      const current = await verificationState(descriptor.cwd), previous = baseline.state;
+      requireProof(Array.isArray(controlFiles) && controlFiles.length <= maxEntries && controlFiles.every(value => value && isExactExecutionPath(value.path))
+        && new Set(controlFiles.map(value => value.path.toLowerCase())).size === controlFiles.length, "AGENT_GIT_SNAPSHOT_BINDING_INVALID");
+      const control_files = controlFiles.map(value => ({ path: value.path, sha256: current.files[value.path]?.sha256 ?? null,
+        git_mode: current.index_entries[value.path]?.mode ?? null, tree_git_mode: current.tree_entries[value.path]?.mode ?? null }));
+      const different = (left, right) => [...new Set([...Object.keys(left), ...Object.keys(right)])].filter(name => !same(left[name] ?? null, right[name] ?? null)).sort();
+      const changes = { files: [...new Set([...different(previous.files, current.files), ...different(previous.modes, current.modes)])].sort(),
+        directories: [...new Set([...different(previous.directory_modes, current.directory_modes), ...previous.dirs, ...current.dirs].filter(name => previous.directory_modes[name] !== current.directory_modes[name]))].sort(),
+        controls: [...different(previous.controls, current.controls),
+          ...different(previous.worktree_git.files, current.worktree_git.files).map(name => `worktree_git/${name}`),
+          ...[...new Set([...previous.worktree_git.dirs, ...current.worktree_git.dirs])].filter(name => previous.worktree_git.dirs.includes(name) !== current.worktree_git.dirs.includes(name)).map(name => `worktree_git/${name}/`)] };
+      if (previous.root_mode !== current.root_mode || !same(previous.physical_identity, current.physical_identity)) changes.controls.push("worktree_root");
+      const observation = { contract_version: "agent-verification-observation.v1", observation_id: observationId, challenge, phase,
+        snapshot_sha256: expectedSnapshotSha256, candidate_sha: descriptor.candidate_sha, head_sha: current.head_sha, tree_sha: current.tree_sha,
+        repository_identity_sha256: current.repository_identity_sha256, cwd: current.cwd, detached: current.detached,
+        physical_identity: current.physical_identity, baseline_sha256: descriptor.baseline_sha256, current_sha256: fingerprint(current),
+        files_sha256: fingerprint(current.files), directories_sha256: fingerprint(current.dirs), controls: current.controls, control_files, changes,
+        pristine: same(current, previous) && current.head_sha === descriptor.candidate_sha && current.tree_sha === descriptor.tree_sha && current.detached };
+      const content = canonical(observation), bytes = Buffer.byteLength(content);
+      requireProof(bytes <= 4 * 1024 * 1024, "AGENT_GIT_OBSERVATION_LIMIT");
+      return freeze({ content, sha256: hash(content), bytes });
+    },
     async inspectGitOperations() { return freeze({ operations: await readOperations(), uncertain_read: structuredClone(uncertainRead) }); },
     async reconcileGitOperation({ operationId, proof }) {
       requireProof(typeof verifyGitTermination === "function", "AGENT_GIT_OPERATION_VERIFIER_REQUIRED");
@@ -387,32 +579,50 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
       fs.writeFileSync(file, bytes, { flag: "wx" });
       return { ...record, evidence: [{ ref: path.basename(file), sha256: hash(bytes), bytes: bytes.length }] };
     },
-    async prepareIntegration({ integrationId, sourceSha, expectedParent, commitIdentity }) {
+    async prepareIntegration({ integrationId, sourceSha, expectedParent, commitIdentity, intent = null, intentSha256 = null, preparedBy = null }) {
+      if (intent) {
+        intent = structuredClone(checkIntent(intent, intentSha256)); preparedBy = structuredClone(preparedBy);
+        integrationId = intent.integration_id; sourceSha = intent.source_sha; expectedParent = intent.parent_sha; commitIdentity = intent.commit_identity;
+        requireProof(preparedBy && id(preparedBy.owner_id) && id(preparedBy.lease_id) && Number.isSafeInteger(preparedBy.generation) && preparedBy.generation > 0, "AGENT_GIT_PRODUCER_REQUIRED");
+        requireProof((await port.inspectLocalIntegration({ intent, intentSha256 })).status === "absent", "AGENT_GIT_PREPARATION_EXISTS");
+      }
       requireProof(id(integrationId) && sha(sourceSha) && sha(expectedParent), "AGENT_GIT_INTEGRATION_INVALID");
       const identity = await repository(); ensureResources(identity); const sourceParent = await parents(identity.root, sourceSha);
       requireProof(await head(identity.root, integrationRef, true) === expectedParent, "AGENT_GIT_REF_DIVERGED");
       const cwd = path.join(resourcePath, `integration-${hash(integrationId)}`);
       requireProof(!fs.existsSync(cwd), "AGENT_GIT_PREPARATION_EXISTS");
-      await git(identity.root, ["worktree", "add", "--detach", cwd, expectedParent]);
-      const outcome = await git(cwd, ["cherry-pick", "--no-commit", sourceSha], { allowFailure: true });
+      if (intent) saveEvidence(`integration-${hash(integrationId)}.origin.json`, { intent, intent_sha256: intentSha256, prepared_by: preparedBy });
+      const operation = intent ? { integrationIntentSha256: intentSha256 } : {};
+      await git(identity.root, ["worktree", "add", "--detach", cwd, expectedParent], operation);
+      const outcome = await git(cwd, ["cherry-pick", "--no-commit", sourceSha], { ...operation, allowFailure: true });
       if (outcome.error || outcome.status !== 0 || outcome.signal) {
         const unmerged = await git(cwd, ["ls-files", "--unmerged", "-z"]);
         requireProof(Boolean(unmerged), "AGENT_GIT_PREPARATION_FAILED");
+        const evidence = intent ? [saveEvidence(`integration-${hash(integrationId)}.conflict.json`, { intent_sha256: intentSha256,
+          prepared_by: preparedBy, index_sha256: fileState(safePath(await git(cwd, ["rev-parse", "--git-path", "index"]))).sha256,
+          unmerged_sha256: hash(unmerged), files: await snapshot(cwd, limits) })] : [];
         return { status: "conflict", integration_id: integrationId, source_sha: sourceSha, parent_sha: expectedParent,
-          repository_identity_sha256: identity.repository_identity_sha256, ref: integrationRef, workspace: { cwd, head_sha: expectedParent } };
+          repository_identity_sha256: identity.repository_identity_sha256, ref: integrationRef, workspace: { cwd, head_sha: expectedParent }, evidence };
       }
       requireProof(await head(cwd) === expectedParent && await parents(identity.root, sourceSha) === sourceParent, "AGENT_GIT_PREPARATION_DRIFT");
-      const tree = await git(cwd, ["write-tree"]), result = await git(cwd, ["commit-tree", tree, "-p", expectedParent], {
-        env: identityEnvironment(commitIdentity), input: `AIDN integration ${integrationId}\n\nSource: ${sourceSha}\n` });
+      const tree = await git(cwd, ["write-tree"], operation), result = await git(cwd, ["commit-tree", tree, "-p", expectedParent], {
+        ...operation, env: identityEnvironment(commitIdentity), input: `AIDN integration ${integrationId}\n\nSource: ${sourceSha}\n` });
       // The validation worktree names the actual candidate commit. This changes
       // only its detached HEAD; the dedicated integration ref remains untouched.
-      await git(cwd, ["update-ref", "--no-deref", "HEAD", result, expectedParent]);
+      await git(cwd, ["update-ref", "--no-deref", "HEAD", result, expectedParent], operation);
       const prepared = { status: "prepared", integration_id: integrationId, source_sha: sourceSha, parent_sha: expectedParent,
         result_sha: result, source_parent_sha: sourceParent, tree_sha: tree, repository_identity_sha256: identity.repository_identity_sha256,
         ref: integrationRef, workspace: { cwd, head_sha: result } };
+      if (intent) Object.assign(prepared, { intent_sha256: intentSha256, prepared_by: preparedBy, verification_state: await verificationState(cwd) });
       const file = path.join(resourcePath, `prepared-${result}.json`), bytes = Buffer.from(JSON.stringify(prepared, null, 2) + "\n");
       fs.writeFileSync(file, bytes, { flag: "wx" });
-      return { ...prepared, evidence: [{ ref: path.basename(file), sha256: hash(bytes), bytes: bytes.length }] };
+      const evidence = { ref: path.basename(file), sha256: hash(bytes), bytes: bytes.length };
+      if (intent) {
+        saveEvidence(`integration-${hash(integrationId)}.prepared.json`, { intent_sha256: intentSha256, prepared_by: preparedBy, evidence });
+        return { status: "prepared", prepared: localPrepared(prepared, evidence, intent, intentSha256), workspace: prepared.workspace,
+          intent, intent_sha256: intentSha256 };
+      }
+      return { ...prepared, evidence: [evidence] };
     },
     async inspectIntegration(input = {}, options = {}) {
       const identity = await repository();
@@ -430,21 +640,26 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
         requireProof(["ref", "parent_sha", "source_sha", "result_sha", "repository_identity_sha256"].every(name => recorded[name] === input[name])
           && recorded.source_parent_sha === sourceParent && await git(identity.root, ["rev-parse", `${input.result_sha}^{tree}`]) === recorded.tree_sha,
         "AGENT_GIT_PREPARED_PROOF_MISMATCH");
+        if (input.intent_sha256) {
+          requireProof(recorded.intent_sha256 === input.intent_sha256 && same(recorded.prepared_by, input.prepared_by), "AGENT_GIT_PREPARED_PROOF_MISMATCH");
+          if (input.intent) localPrepared(recorded, evidence, checkIntent(input.intent, input.intent_sha256), input.intent_sha256);
+        }
       }
       return { ok: true, repository_identity_sha256: identity.repository_identity_sha256, ref: integrationRef, head_sha: current,
         source_parent_sha: sourceParent, result_parent_sha: resultParent };
     },
-    async compareAndSwapIntegration({ prepared }) {
+    async compareAndSwapIntegration({ prepared, intent = null }) {
       // The application service verifies the immutable PostgreSQL prepared record
       // and current authority immediately before this operation. Git provides CAS,
       // not a distributed PostgreSQL/Git transaction.
-      const before = await port.inspectIntegration(prepared, { phase: "prepared" });
+      const inspection = intent ? { ...prepared, intent } : prepared;
+      const before = await port.inspectIntegration(inspection, { phase: "prepared" });
       const alreadyApplied = before.head_sha === prepared.result_sha;
       if (!alreadyApplied) {
         requireProof(before.head_sha === prepared.parent_sha, "AGENT_GIT_REF_DIVERGED");
         await git((await repository()).root, ["update-ref", integrationRef, prepared.result_sha, prepared.parent_sha]);
       }
-      const after = await port.inspectIntegration(prepared, { phase: "applied" });
+      const after = await port.inspectIntegration(inspection, { phase: "applied" });
       requireProof(after.head_sha === prepared.result_sha, "AGENT_GIT_REF_DIVERGED");
       const file = path.join(resourcePath, `applied-${prepared.result_sha}.json`);
       const bytes = Buffer.from(JSON.stringify({ ...after, prepared_sha256: fingerprint(prepared) }, null, 2) + "\n");

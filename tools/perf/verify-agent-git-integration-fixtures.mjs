@@ -5,7 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createLocalAgentGitIntegration } from "../../src/adapters/runtime/local-agent-git-integration.mjs";
 import { createAgentTaskIntegrationService } from "../../src/application/runtime/agent-task-integration-service.mjs";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../src/core/agents/agent-execution-contracts.mjs";
@@ -15,6 +15,7 @@ const nonce = randomUUID(); fs.writeFileSync(path.join(temp, "owner"), nonce);
 const repo = path.join(temp, "repository espace été"), resources = path.join(temp, "run resources été");
 const ref = "refs/heads/codex/fixture-integration";
 const author = { name: "AIDN Fixture", email: "fixture@example.invalid", timestamp: "2026-01-01T00:00:00Z" };
+const hash = value => createHash("sha256").update(value).digest("hex");
 let checks = 0, ordinal = 0, cleanup = false;
 const test = async (name, body) => { await body(); checks++; process.stdout.write(`PASS ${name}\n`); };
 const git = (root, args, options = {}) => {
@@ -211,7 +212,7 @@ try {
     const blocked = factory(options), started = performance.now();
     await assert.rejects(blocked.initializeIntegration({ baseSha: base }), error => error.code === "AGENT_GIT_TERMINATION_UNCONFIRMED");
     assert(performance.now() - started < 3000); assert.equal(killed, 1);
-    for (const control of ["checkout.workers=1", "gc.auto=0", "maintenance.auto=false"]) assert(capturedArgs.includes(control));
+    for (const control of ["checkout.workers=1", "gc.auto=0", "maintenance.auto=false", "rerere.enabled=false", "rerere.autoupdate=false"]) assert(capturedArgs.includes(control));
     const state = await blocked.inspectGitOperations(), pending = state.operations.find(value => value.recovery_required);
     assert(pending); assert.equal(pending.observed.pid, 424242); assert.equal(pending.closed.parent_closed, false);
     assert.equal(pending.closed.descendants_termination, "unconfirmed"); assert.equal(pending.intent.repository_identity_sha256, identity.repository_identity_sha256);
@@ -245,6 +246,216 @@ try {
     await assert.rejects(service.applyPrepared({ prepared: pending.prepared, preparedSha256: pending.prepared_sha256, supervisor, expectedControlRevision: revision }), /injected-after-CAS/);
     const done = await service.applyPrepared({ prepared: JSON.parse(JSON.stringify(pending.prepared)), preparedSha256: pending.prepared_sha256, supervisor, expectedControlRevision: revision });
     assert.equal(done.observed.status, "already_applied"); assert.deepEqual(calls, ["prepared", "prepared", "applied", "prepared", "applied"]);
+  });
+  const oldOwner = { owner_id: "supervisor.old", generation: 1, lease_id: "lease.old" };
+  const newOwner = { owner_id: "supervisor.new", generation: 2, lease_id: "lease.new" };
+  const argsFor = (task, integrationId) => ({ runId: "run.fixture", planSha256: "a".repeat(64), taskId: task.binding.task_id,
+    attemptId: task.binding.attempt_id, acceptanceSha256: "b".repeat(64), sequence: 1, integrationId,
+    sourceSha: task.commit.source_sha, parentSha: task.binding.input_sha, supervisor: oldOwner,
+    expectedControlRevision: 1, commitIdentity: author, verification: { fixture: "strict-intent-path" } });
+  function durableDouble({ rejectPrepared = false, rejectIntent = false } = {}) {
+    const state = { intent: null, prepared: null, calls: [], revision: 1 };
+    return { state,
+      async recordIntegrationIntent({ intent, supervisor }) {
+        state.calls.push(["intent", supervisor.generation]); if (rejectIntent) throw new Error("injected-intent-denied");
+        if (state.intent) assert.deepEqual(intent, state.intent); else state.intent = structuredClone(intent);
+        return { intent: structuredClone(state.intent), intent_sha256: fingerprint(state.intent), control_revision: ++state.revision };
+      },
+      async prepareIntegration({ integration, intentSha256, reconciliation }) {
+        state.calls.push(["prepared", reconciliation]); assert.equal(intentSha256, fingerprint(state.intent));
+        if (rejectPrepared) { rejectPrepared = false; throw new Error("injected-before-PG-prepared"); }
+        if (state.prepared) assert.deepEqual(integration, state.prepared); else state.prepared = structuredClone(integration);
+        return { integration: structuredClone(state.prepared), prepared_sha256: fingerprint(state.prepared), control_revision: ++state.revision };
+      },
+      async recordIntegrationApplied({ proof }) { assert(proof.evidence.length); state.calls.push(["applied"]); return { control_revision: ++state.revision }; },
+    };
+  }
+  let strictPending, strictStore;
+  await test("strict durable intent precedes Git and crash before PG attaches identical prepared with its original producer", async () => {
+    const task = await source("src/b.txt", "durable intention\n", git(repo, ["rev-parse", ref]));
+    strictStore = durableDouble({ rejectPrepared: true });
+    const checked = { ...port, async prepareIntegration(input) { assert(strictStore.state.intent); return port.prepareIntegration(input); } };
+    const service = createAgentTaskIntegrationService({ git: checked, store: strictStore });
+    await assert.rejects(service.prepare(argsFor(task, "strict.prejournal")), /injected-before-PG-prepared/);
+    const intent = strictStore.state.intent, intentSha256 = fingerprint(intent);
+    const local = await factory().inspectLocalIntegration({ intent, intentSha256 });
+    assert.equal(local.status, "prepared"); assert.deepEqual(local.prepared.prepared_by, oldOwner);
+    const proof = local.prepared.evidence[0], before = fs.readFileSync(path.join(resources, proof.ref));
+    const files = fs.readdirSync(resources).sort(), operations = fs.readdirSync(path.join(resources, "git-operations")).sort();
+    strictPending = await createAgentTaskIntegrationService({ git: factory(), store: strictStore }).resumePreparation({ intent, intentSha256,
+      supervisor: newOwner, expectedControlRevision: strictStore.state.revision, reconciliation: true });
+    assert.equal(strictPending.prepared_sha256, fingerprint(local.prepared)); assert.deepEqual(strictPending.prepared.prepared_by, oldOwner);
+    assert.equal(strictPending.intent_sha256, intentSha256); assert(fs.readFileSync(path.join(resources, proof.ref)).equals(before));
+    assert.deepEqual(fs.readdirSync(resources).sort(), files); assert.deepEqual(fs.readdirSync(path.join(resources, "git-operations")).sort(), operations);
+    assert.equal(git(repo, ["rev-parse", ref]), task.binding.input_sha);
+  });
+  await test("local prepared receipt rejects equivalent JSON mutation before adoption and ignored worktree changes", async () => {
+    const { intent, intent_sha256: intentSha256, prepared, workspace } = strictPending, file = path.join(resources, prepared.evidence[0].ref), before = fs.readFileSync(file);
+    try {
+      fs.appendFileSync(file, " ");
+      await assert.rejects(factory().inspectLocalIntegration({ intent, intentSha256 }), error => error.code === "AGENT_GIT_PREPARED_PROOF_MISMATCH");
+    } finally { fs.writeFileSync(file, before); }
+    const ignored = path.join(workspace.cwd, "ignored-unexpected.txt");
+    try { fs.writeFileSync(ignored, "preserved"); await assert.rejects(factory().inspectLocalIntegration({ intent, intentSha256 }), error => error.code === "AGENT_GIT_PREPARATION_CHANGED"); }
+    finally { fs.unlinkSync(ignored); }
+    assert.equal((await factory().inspectLocalIntegration({ intent, intentSha256 })).status, "prepared");
+  });
+  await test("adopted strict prepared applies once and retained intent binds CAS proof", async () => {
+    const service = createAgentTaskIntegrationService({ git: factory(), store: strictStore });
+    const options = { prepared: strictPending.prepared, preparedSha256: strictPending.prepared_sha256, intent: strictPending.intent,
+      supervisor: newOwner, expectedControlRevision: strictStore.state.revision };
+    const result = await service.applyPrepared(options), replay = await service.applyPrepared({ ...options, expectedControlRevision: strictStore.state.revision });
+    assert.equal(result.observed.status, "applied"); assert.equal(replay.observed.status, "already_applied");
+    assert.equal(git(repo, ["rev-parse", ref]), strictPending.prepared.result_sha);
+    await assert.rejects(service.applyPrepared({ ...options, intent: { ...options.intent, acceptance_sha256: "c".repeat(64) } }), error => error.code === "AGENT_GIT_INTENT_MISMATCH");
+  });
+  await test("intent-only crash permits read-only absence then explicit preparation with a fresh producer", async () => {
+    const task = await source("src/a.txt", "fresh producer\n", git(repo, ["rev-parse", ref])), store = durableDouble();
+    const interrupted = { ...port, async prepareIntegration() { throw new Error("injected-before-Git"); } };
+    await assert.rejects(createAgentTaskIntegrationService({ git: interrupted, store }).prepare(argsFor(task, "strict.absent")), /injected-before-Git/);
+    const intent = store.state.intent, options = { intent, intentSha256: fingerprint(intent), supervisor: newOwner, expectedControlRevision: store.state.revision };
+    const service = createAgentTaskIntegrationService({ git: factory(), store }), before = fs.readdirSync(resources).sort(), calls = store.state.calls.length;
+    const operations = fs.readdirSync(path.join(resources, "git-operations")).sort();
+    assert.equal((await service.resumePreparation({ ...options, reconciliation: true })).status, "absent");
+    assert.equal(store.state.calls.length, calls); assert.deepEqual(fs.readdirSync(resources).sort(), before);
+    assert.deepEqual(fs.readdirSync(path.join(resources, "git-operations")).sort(), operations);
+    const resumed = await service.resumePreparation(options);
+    assert.deepEqual(resumed.prepared.prepared_by, newOwner); assert.deepEqual(resumed.intent.created_by, oldOwner);
+    assert.deepEqual(store.state.calls.slice(-2), [["intent", 2], ["prepared", false]]);
+    await service.applyPrepared({ prepared: resumed.prepared, preparedSha256: resumed.prepared_sha256, intent,
+      supervisor: newOwner, expectedControlRevision: store.state.revision });
+  });
+  await test("denied durable intent produces no Git preparation or local artifacts", async () => {
+    const task = await source("src/b.txt", "denied intention\n", git(repo, ["rev-parse", ref])), store = durableDouble({ rejectIntent: true });
+    const before = fs.readdirSync(resources).sort(), operations = fs.readdirSync(path.join(resources, "git-operations")).sort();
+    await assert.rejects(createAgentTaskIntegrationService({ git: factory(), store }).prepare(argsFor(task, "strict.denied")), /injected-intent-denied/);
+    assert.deepEqual(fs.readdirSync(resources).sort(), before); assert.deepEqual(fs.readdirSync(path.join(resources, "git-operations")).sort(), operations);
+  });
+  await test("removed workspace and origin cannot turn surviving receipts, object proofs or Git operations into absence", async () => {
+    const task = await source("src/a.txt", "preserve residual proof\n", git(repo, ["rev-parse", ref])), store = durableDouble({ rejectPrepared: true });
+    const service = createAgentTaskIntegrationService({ git: factory(), store });
+    await assert.rejects(service.prepare(argsFor(task, "strict.residual")), /injected-before-PG-prepared/);
+    const intent = store.state.intent, intentSha256 = fingerprint(intent), local = await factory().inspectLocalIntegration({ intent, intentSha256 });
+    const suffix = hash(intent.integration_id), receipt = path.join(resources, `integration-${suffix}.prepared.json`), proof = path.join(resources, local.prepared.evidence[0].ref);
+    const receiptBytes = fs.readFileSync(receipt), proofBytes = fs.readFileSync(proof);
+    const ownedWorkspace = fs.realpathSync.native(intent.workspace.cwd), ownedResources = fs.realpathSync.native(resources);
+    assert.equal(path.dirname(ownedWorkspace).toLowerCase(), ownedResources.toLowerCase());
+    git(repo, ["worktree", "remove", "--force", ownedWorkspace]);
+    fs.unlinkSync(path.join(resources, `integration-${suffix}.origin.json`));
+    const operations = fs.readdirSync(path.join(resources, "git-operations")).sort(), calls = store.state.calls.length;
+    const checkPartial = async () => {
+      for (const reconciliation of [true, false]) assert.equal((await service.resumePreparation({ intent, intentSha256,
+        supervisor: newOwner, expectedControlRevision: store.state.revision, reconciliation })).status, "partial");
+      assert(!fs.existsSync(intent.workspace.cwd)); assert.equal(store.state.calls.length, calls);
+      assert.deepEqual(fs.readdirSync(path.join(resources, "git-operations")).sort(), operations);
+    };
+    try {
+      await checkPartial(); // Completion receipt survives.
+      fs.unlinkSync(receipt); await checkPartial(); // Only the prepared object proof survives.
+      fs.unlinkSync(proof); await checkPartial(); // Only the bounded, intent-linked Git journal survives.
+    } finally {
+      for (const [file, bytes] of [[receipt, receiptBytes], [proof, proofBytes]]) {
+        if (fs.existsSync(file)) assert(fs.readFileSync(file).equals(bytes)); else fs.writeFileSync(file, bytes, { flag: "wx" });
+      }
+    }
+  });
+  await test("partial origin and conflicting preparation remain intact during explicit recovery", async () => {
+    const task = await source("src/a.txt", "partial origin\n", git(repo, ["rev-parse", ref])), store = durableDouble();
+    await assert.rejects(createAgentTaskIntegrationService({ git: { ...port, async prepareIntegration() { throw new Error("injected-before-Git"); } }, store }).prepare(argsFor(task, "strict.partial")), /injected-before-Git/);
+    const intent = store.state.intent, intentSha256 = fingerprint(intent), file = path.join(resources, `integration-${hash(intent.integration_id)}.origin.json`);
+    fs.writeFileSync(file, JSON.stringify({ intent, intent_sha256: intentSha256, prepared_by: oldOwner }), { flag: "wx" });
+    const before = fs.readFileSync(file), service = createAgentTaskIntegrationService({ git: factory(), store });
+    for (const reconciliation of [true, false]) assert.equal((await service.resumePreparation({ intent, intentSha256, supervisor: newOwner,
+      expectedControlRevision: store.state.revision, reconciliation })).status, "partial");
+    assert(fs.readFileSync(file).equals(before)); assert(!fs.existsSync(intent.workspace.cwd));
+    const parent = git(repo, ["rev-parse", ref]), left = await source("src/conflict.txt", "strict left\n", parent), right = await source("src/conflict.txt", "strict right\n", parent);
+    const changed = await port.prepareIntegration({ integrationId: "strict.conflict.left", sourceSha: left.commit.source_sha, expectedParent: parent, commitIdentity: author });
+    await port.compareAndSwapIntegration({ prepared: changed });
+    const conflictStore = durableDouble(), conflictArgs = argsFor(right, "strict.conflict.right"); conflictArgs.parentSha = changed.result_sha;
+    const conflictService = createAgentTaskIntegrationService({ git: port, store: conflictStore });
+    const configPath = path.join(repo, ".git", "config"), originalConfig = fs.readFileSync(configPath), rerereCache = path.join(repo, ".git", "rr-cache");
+    assert(!fs.existsSync(rerereCache)); fs.mkdirSync(rerereCache); let conflict;
+    try {
+      git(repo, ["config", "rerere.enabled", "true"]); git(repo, ["config", "rerere.autoupdate", "true"]);
+      conflict = await conflictService.prepare(conflictArgs); assert.equal(conflict.status, "conflict");
+      assert.deepEqual(fs.readdirSync(rerereCache), [], "inherited rerere must not record or reuse resolutions");
+    } finally { fs.writeFileSync(configPath, originalConfig); if (fs.readdirSync(rerereCache).length === 0) fs.rmdirSync(rerereCache); }
+    const conflictIntent = conflictStore.state.intent, worktreeBefore = fs.readFileSync(path.join(conflict.workspace.cwd, "src/conflict.txt"));
+    const resumed = await conflictService.resumePreparation({ intent: conflictIntent, intentSha256: fingerprint(conflictIntent), supervisor: newOwner,
+      expectedControlRevision: conflictStore.state.revision, reconciliation: true });
+    assert.equal(resumed.status, "conflict"); assert(fs.readFileSync(path.join(conflict.workspace.cwd, "src/conflict.txt")).equals(worktreeBefore));
+    assert.equal(git(repo, ["rev-parse", ref]), changed.result_sha);
+  });
+  let verificationSnapshot, snapshotArgs, controlFiles;
+  await test("verification snapshot is detached at candidate SHA while worker HEAD remains its input", async () => {
+    snapshotArgs = { snapshotId: "snapshot.task.a", purpose: "task", runId: "run.fixture", taskId: a.binding.task_id,
+      attemptId: a.binding.attempt_id, candidateSha: a.commit.source_sha, validatorManifestSha256: "d".repeat(64) };
+    verificationSnapshot = await factory().prepareVerificationSnapshot(snapshotArgs);
+    assert.equal(git(a.binding.cwd, ["rev-parse", "HEAD"]), base);
+    assert.equal(git(verificationSnapshot.snapshot.cwd, ["rev-parse", "HEAD"]), a.commit.source_sha);
+    assert.equal(fs.readFileSync(path.join(verificationSnapshot.snapshot.cwd, "src/a.txt"), "utf8"), "accepted A été\n");
+    assert.equal(fingerprint(verificationSnapshot.snapshot), verificationSnapshot.snapshot_sha256);
+    controlFiles = [{ path: "src/a.txt", sha256: hash("accepted A été\n"), git_mode: "100644" }];
+    for (const proof of verificationSnapshot.evidence) { const bytes = fs.readFileSync(path.join(resources, proof.ref)); assert.equal(hash(bytes), proof.sha256); assert.equal(bytes.length, proof.bytes); }
+  });
+  const inspectSnapshot = async (overrides = {}) => factory().inspectVerificationSnapshot({ snapshot: verificationSnapshot.snapshot,
+    expectedSnapshotSha256: verificationSnapshot.snapshot_sha256, observationId: randomUUID(), challenge: randomUUID(), phase: "task-before", controlFiles, ...overrides });
+  await test("fresh verification observations carry concrete Git modes, content hashes, challenge and no writes", async () => {
+    const before = fs.readdirSync(resources).sort(), operations = fs.readdirSync(path.join(resources, "git-operations")).sort(), challenge = randomUUID();
+    const result = await inspectSnapshot({ challenge }), value = JSON.parse(result.content);
+    assert.equal(result.sha256, hash(result.content)); assert.equal(result.bytes, Buffer.byteLength(result.content));
+    assert.equal(value.challenge, challenge); assert.equal(value.candidate_sha, a.commit.source_sha); assert.equal(value.detached, true); assert.equal(value.pristine, true);
+    assert.deepEqual(value.changes, { files: [], directories: [], controls: [] });
+    assert.deepEqual(value.control_files, [{ ...controlFiles[0], tree_git_mode: "100644" }]);
+    assert.deepEqual(fs.readdirSync(resources).sort(), before); assert.deepEqual(fs.readdirSync(path.join(resources, "git-operations")).sort(), operations);
+    assert.deepEqual(await factory().prepareVerificationSnapshot(snapshotArgs), verificationSnapshot);
+  });
+  await test("tracked, untracked, ignored and mode mutations prevent a pristine validation observation", async () => {
+    const cwd = verificationSnapshot.snapshot.cwd, tracked = path.join(cwd, "src/a.txt"), bytes = fs.readFileSync(tracked);
+    for (const name of ["src/a.txt", "unexpected.txt", "ignored-secret.txt"]) {
+      const file = path.join(cwd, name);
+      try { fs.writeFileSync(file, "mutation"); const value = JSON.parse((await inspectSnapshot({ phase: "task-after" })).content);
+        assert.equal(value.pristine, false); assert(value.changes.files.includes(name));
+        await assert.rejects(factory().prepareVerificationSnapshot(snapshotArgs), error => error.code === "AGENT_GIT_SNAPSHOT_CHANGED");
+      } finally { if (name === "src/a.txt") fs.writeFileSync(file, bytes); else fs.unlinkSync(file); }
+    }
+    const beforeIndex = git(cwd, ["rev-parse", "--git-path", "index"]), indexBytes = fs.readFileSync(beforeIndex);
+    try {
+      git(cwd, ["update-index", "--chmod=+x", "src/a.txt"]);
+      const value = JSON.parse((await inspectSnapshot()).content); assert.equal(value.pristine, false);
+      assert.equal(value.control_files[0].git_mode, "100755"); assert.equal(value.control_files[0].tree_git_mode, "100644"); assert(value.changes.controls.length);
+    } finally { fs.writeFileSync(beforeIndex, indexBytes); }
+  });
+  await test("snapshot rejects foreign hash, wrong phase, missing challenge, pointer mutation and untrusted links", async () => {
+    for (const overrides of [{ expectedSnapshotSha256: "0".repeat(64) }, { phase: "audit-before" }, { challenge: "short" }])
+      await assert.rejects(inspectSnapshot(overrides), error => error.code === "AGENT_GIT_SNAPSHOT_BINDING_INVALID");
+    await assert.rejects(factory().prepareVerificationSnapshot({ ...snapshotArgs, candidateSha: base }), error => error.code === "AGENT_GIT_SNAPSHOT_CHANGED");
+    const pointer = path.join(verificationSnapshot.snapshot.cwd, ".git"), original = fs.readFileSync(pointer);
+    const restorePointer = bytes => { const fd = fs.openSync(pointer, "r+"); try { fs.writeSync(fd, bytes, 0, bytes.length, 0); fs.ftruncateSync(fd, bytes.length); } finally { fs.closeSync(fd); } };
+    try { restorePointer(Buffer.concat([original, Buffer.from("\n")])); const observed = JSON.parse((await inspectSnapshot()).content); assert.equal(observed.pristine, false); assert(observed.changes.controls.includes(pointer)); }
+    finally { restorePointer(original); }
+    const link = path.join(verificationSnapshot.snapshot.cwd, "redirect");
+    try { fs.symlinkSync(path.join(repo, "protected"), link, process.platform === "win32" ? "junction" : "dir");
+      await assert.rejects(inspectSnapshot(), error => error.code === "AGENT_GIT_PATH_REDIRECT"); }
+    finally { fs.unlinkSync(link); }
+  });
+  await test("verification also detects empty directories and private Git metadata mutation", async () => {
+    const cwd = verificationSnapshot.snapshot.cwd, directory = path.join(cwd, "empty-unexpected"), gitDir = git(cwd, ["rev-parse", "--absolute-git-dir"]);
+    try { fs.mkdirSync(directory); const value = JSON.parse((await inspectSnapshot()).content); assert.equal(value.pristine, false); assert(value.changes.directories.includes("empty-unexpected")); }
+    finally { fs.rmdirSync(directory); }
+    const metadata = path.join(gitDir, "ORIG_HEAD"), before = fs.existsSync(metadata) ? fs.readFileSync(metadata) : null;
+    try { fs.writeFileSync(metadata, base + "\n"); const value = JSON.parse((await inspectSnapshot()).content);
+      assert.equal(value.pristine, false); assert(value.changes.controls.includes("worktree_git/ORIG_HEAD")); }
+    finally { if (before) fs.writeFileSync(metadata, before); else fs.unlinkSync(metadata); }
+    assert.equal(JSON.parse((await inspectSnapshot()).content).pristine, true);
+  });
+  await test("run validation and audit share one exact pristine snapshot and independent observations", async () => {
+    const value = await factory().prepareVerificationSnapshot({ snapshotId: "snapshot.run", purpose: "run", runId: "run.fixture",
+      candidateSha: git(repo, ["rev-parse", ref]), validatorManifestSha256: "e".repeat(64) });
+    for (const phase of ["run-before", "run-after", "audit-before", "audit-after"]) {
+      const observation = JSON.parse((await inspectSnapshot({ ...value, expectedSnapshotSha256: value.snapshot_sha256, phase, controlFiles: [] })).content);
+      assert.equal(observation.pristine, true); assert.equal(observation.phase, phase); assert.equal(observation.head_sha, value.snapshot.candidate_sha);
+    }
   });
   assert.equal(git(repo, ["rev-parse", "dev"]), base);
 } finally {

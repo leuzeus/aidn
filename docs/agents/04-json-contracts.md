@@ -84,12 +84,19 @@ Both profiles reject unsupported validation keywords. Positive and adversarial
 payloads, semantic checks and executor doubles are covered by the dedicated
 `runtime-agent-execution-contracts` gate.
 
-The fifteen schemas cover descriptor, availability, plan, run, delegated task,
+The sixteen schemas cover descriptor, availability, plan, run, delegated task,
 attempt, delegation, request, event, result, acceptance, supervisor, prepared
-and applied integration, and final run validation. Their pure validity does not
+and applied integration, the pre-Git integration intent, and final run validation. Their pure validity does not
 prove a working executor, live lease, Git reference or native admission. Task
 validation selection is optional for v1 compatibility; final run validation
 always covers the complete plan and audit on the exact integrated SHA.
+An optional frozen verification configuration preserves historical v1 fingerprints.
+It pins the executable, environment, exact regular control files, audit policy,
+verification limits and SHA-256 of an explicitly selected Ed25519 public key in
+SPKI DER form. Delegated operations cannot touch control files. An integration
+intent binds the accepted source, expected parent, workspace, commit identity and
+original creator before Git preparation. The prepared record retains its actual
+producer and references the intent hash. These are model bindings, not live leases.
 Contract validity and runtime availability remain separate evidence.
 
 ## Activation Refusals

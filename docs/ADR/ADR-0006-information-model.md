@@ -69,7 +69,10 @@ descriptors, attempt ownership, delegation, results and immutable events in
 shared schema 3. Lot 5 extends their coverage to `supervision_candidate` and
 shared schema 4: supervisor generations and final validation belong to the run,
 integration belongs to the delegated task, and preparation and acceptance belong
-to the attempt. The internal scheduler requires explicitly injected dependencies;
+to the attempt. Lot 6 adds schema 5 integration intentions to the delegated task
+and authenticated verification observations to acceptance and final validation.
+The plan pins verification controls and its proof authority; bulky signed proofs
+remain local with immutable references. The internal scheduler requires explicitly injected dependencies;
 public supervised commands remain unavailable. The run preserves
 canonical session/cycle/task context without creating synthetic sessions;
 reservation requires canonical runtime and shared planning in the same database

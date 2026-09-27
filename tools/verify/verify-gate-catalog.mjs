@@ -763,6 +763,7 @@ for (const [id, script] of [
   ["runtime-agent-execution-postgres", "perf:verify-agent-execution-postgres"],
   ["runtime-agent-worker-fixtures", "perf:verify-agent-worker-fixtures"],
   ["runtime-agent-execution-scheduler", "perf:verify-agent-execution-scheduler-fixtures"],
+  ["runtime-agent-verification", "perf:verify-agent-verification-fixtures"],
   ["runtime-agent-git-integration", "perf:verify-agent-git-integration-fixtures"],
   ["runtime-shared-coordination-concurrency", "perf:verify-shared-coordination-concurrency-gate"],
 ]) {
