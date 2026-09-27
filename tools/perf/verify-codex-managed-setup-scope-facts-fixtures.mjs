@@ -29,6 +29,13 @@ check("request, output, traversal and shared clock are bounded", () => {
     "firstWitness -cne $secondWitness", "(Scope-Hash $first) -cne (Scope-Hash $second)"]) assert(source.includes(text), text);
   assert.doesNotMatch(source, /\.CopyTo\(/u);
 });
+check("Cloud metadata adds no read API or permissive reparse call site", () => {
+  assert.equal([...source.matchAll(/Read-PhysicalScopeFact \$path \$true/gu)].length, 1);
+  assert.match(source, /if\(reparse && !allowProfileReparse\) ReparseFail/u);
+  assert.match(source, /Remember\(path,before\+\(fact\.ContentHash\?\?""\)\+\(fact\.Target\?\?""\)\+":"\+fact\.ReparseTag\)/u);
+  assert(source.includes("contract_version='aidn-managed-setup-legacy-facts.v3'"));
+  assert(source.includes("$cloudDirectories.Count -ge 32"));
+});
 const pwsh = process.env.ProgramFiles && path.join(process.env.ProgramFiles, "PowerShell/7/pwsh.exe");
 if (process.platform !== "win32" || !pwsh || !fs.existsSync(pwsh)) {
   console.log(JSON.stringify({ status: "UNAVAILABLE", checks, errors: ["WINDOWS_POWERSHELL_7_REQUIRED"], setup: "NOT_RUN" }));
@@ -65,6 +72,38 @@ function Read-RequestFixture($value) {
     return Read-ScopeRequest
 }
 Check 'native CSharp compiles' { Add-Type -TypeDefinition $nativeSource -ErrorAction Stop }
+function ReparseBuffer([uint32]$tag,[byte[]]$payload) {
+    $buffer=[byte[]]::new(8+$payload.Length)
+    [Array]::Copy([BitConverter]::GetBytes($tag),0,$buffer,0,4)
+    [Array]::Copy([BitConverter]::GetBytes([uint16]$payload.Length),0,$buffer,4,2)
+    [Array]::Copy($payload,0,$buffer,8,$payload.Length)
+    return ,$buffer
+}
+function Decode-ReparseFixture([byte[]]$buffer,[uint32]$returned) {
+    $method=[AidnScopeNative].GetMethod('DecodeProfileReparse',[Reflection.BindingFlags]'Static,NonPublic')
+    return $method.Invoke($null,@($buffer,$returned,'C:\fixture\cloud','target'))
+}
+Check 'pure Cloud codec accepts exact CLOUD_7 and never interprets opaque payload as a target' {
+    $payload=[Text.Encoding]::Unicode.GetBytes('\??\D:\not-a-target')
+    $buffer=ReparseBuffer ([uint32]2415947802) $payload
+    $row=Decode-ReparseFixture $buffer $buffer.Length
+    Equal $row.Tag ([uint32]2415947802); Equal $row.Target $null
+    $empty=ReparseBuffer ([uint32]2415947802) ([byte[]]@())
+    Equal (Decode-ReparseFixture $empty $empty.Length).Target $null
+}
+Check 'pure Cloud codec rejects other Cloud tags symlinks and unknown tags' {
+    foreach($tag in @([uint32]2415919130,[uint32]2415943706,[uint32]2415951898,[uint32]2684354572,[uint32]2415947803)) {
+        $buffer=ReparseBuffer $tag ([byte[]]@())
+        Reject { Decode-ReparseFixture $buffer $buffer.Length } 'SCOPE_REPARSE_UNSUPPORTED'
+    }
+}
+Check 'pure Cloud codec rejects truncated or inconsistent buffers' {
+    Reject { Decode-ReparseFixture ([byte[]]::new(7)) 7 } 'SCOPE_REPARSE_UNSUPPORTED'
+    Reject { Decode-ReparseFixture ([byte[]]::new(7)) 8 } 'SCOPE_REPARSE_INVALID'
+    $buffer=ReparseBuffer ([uint32]2415947802) ([byte[]]@())
+    Reject { Decode-ReparseFixture $buffer 9 } 'SCOPE_REPARSE_INVALID'
+    $buffer[4]=100; Reject { Decode-ReparseFixture $buffer 8 } 'SCOPE_REPARSE_INVALID'
+}
 Check 'canonical Unicode quoting and integer hash match the Node contract' {
     $value=ConvertFrom-Json -InputObject ($script:Utf8.GetString([Convert]::FromBase64String($env:AIDN_SCOPE_FIXTURE_UNICODE))) -AsHashtable
     Equal (Scope-Hash $value) $env:AIDN_SCOPE_FIXTURE_UNICODE_SHA256
@@ -129,7 +168,7 @@ Check 'native junction ancestor is never followed and reports the ancestor hash'
 Check 'diagnostic projection rejects unknown metadata and omits unrelated native data' {
     $script:ScopePass=1; $script:ScopeRole='profile_child'
     $cause=[InvalidOperationException]::new('SCOPE_REPARSE_UNSUPPORTED')
-    $cause.Data['native_phase']='target'; $cause.Data['reparse_variant']='tag_not_mount_point'; $cause.Data['path_sha256']='a'*64
+    $cause.Data['native_phase']='target'; $cause.Data['reparse_variant']='tag_not_supported'; $cause.Data['path_sha256']='a'*64
     $cause.Data['private_path']='C:\private'; $cause.Data['private_content']='must-not-escape'
     $d=Convert-ScopeReparseDiagnostic $cause; Equal $d.Count 5
     $json=ConvertTo-Json -InputObject $d -Compress
@@ -150,7 +189,7 @@ function NativeRow([string]$p,[string]$type='directory') {
         LinkCount=$(if($type -ceq 'file'){1}else{$null});Reparse=$false;ContentHash=$null;Content=$null;Target=$null;ReparseTag=$null}
 }
 function ResetGraph {
-    $script:graph=@{}; $script:listing=@{}; $script:failure=$null
+    $script:graph=@{}; $script:listing=@{}; $script:failure=$null; $script:reads=[Collections.Generic.List[string]]::new()
     foreach($p in @('C:\work','C:\profile','C:\candidate','C:\user','C:\state','C:\profile\.sandbox-bin','C:\Windows','C:\Program Files','C:\Program Files (x86)','C:\ProgramData',
         'C:\user\AppData','C:\user\AppData\Local\OpenAI\Codex','C:\user\AppData\Local\OpenAI\Codex\runtimes','C:\user\.cache\codex-runtimes','C:\user\.ssh')) { $script:graph[$p]=NativeRow $p }
     $script:graph['C:\user\note.txt']=NativeRow 'C:\user\note.txt' 'file'
@@ -167,7 +206,17 @@ function Throw-MockReparse([string]$p) {
 }
 function Read-PhysicalScopeFact([string]$p,[bool]$allow=$false,[bool]$prior=$false) {
     Throw-MockReparse $p
-    if($script:graph.ContainsKey($p)) { return $script:graph[$p] }
+    $script:reads.Add($p)
+    $ancestor=[IO.Path]::GetDirectoryName($p)
+    while($ancestor) {
+        if($script:graph.ContainsKey($ancestor) -and $script:graph[$ancestor].Reparse) { Stop-Scope 'SCOPE_REPARSE_UNSUPPORTED' }
+        $ancestor=[IO.Path]::GetDirectoryName($ancestor)
+    }
+    if($script:graph.ContainsKey($p)) {
+        $row=$script:graph[$p]
+        if($row.Reparse -and (!$allow -or $row.ObjectType -cne 'directory')) { Stop-Scope 'SCOPE_REPARSE_UNSUPPORTED' }
+        return $row
+    }
     return @{Path=$p;State='absent';ObjectType=$null;PhysicalPath=$null;VolumeId=$null;FileId=$null;LinkCount=$null;Reparse=$false;ContentHash=$null;Content=$null;Target=$null;ReparseTag=$null}
 }
 function Read-PhysicalScopeListing([string]$p,[int]$maximum) {
@@ -214,8 +263,48 @@ Check 'scope records an internal junction and deduplicates its target fact' {
     $out=Observe-PhysicalScope (Roots); Equal $out.profile_junctions.Count 1; Equal @($out.paths | Where-Object path -CEQ 'C:\user\AppData').Count 1
 }
 Check 'scope rejects an external profile junction' {
-    ResetGraph; $p='C:\user\Compatibility'; $r=NativeRow $p; $r.Reparse=$true; $r.Target='C:\foreign'; $script:graph[$p]=$r; $script:listing['C:\user']+=,$p
+    ResetGraph; $p='C:\user\Compatibility'; $r=NativeRow $p; $r.Reparse=$true; $r.Target='C:\foreign'; $r.ReparseTag=[uint32]2684354563; $script:graph[$p]=$r; $script:listing['C:\user']+=,$p
     Reject { Observe-PhysicalScope (Roots) } 'SCOPE_JUNCTION_OUTSIDE_PROFILE'
+}
+function Add-CloudDirectory([string]$p) {
+    $r=NativeRow $p; $r.Reparse=$true; $r.ReparseTag=[uint32]2415947802; $script:graph[$p]=$r
+    return $r
+}
+Check 'scope retains Cloud directory metadata without following listing or reading its contents' {
+    ResetGraph; $p='C:\user\Cloud'; $null=Add-CloudDirectory $p; $script:listing['C:\user']+=,$p
+    $script:graph[$p+'\private.txt']=NativeRow ($p+'\private.txt') 'file'
+    $out=Observe-PhysicalScope (Roots)
+    Equal $out.profile_cloud_directories.Count 1; Equal $out.profile_cloud_directories[0].path $p
+    Equal $out.profile_cloud_directories[0].reparse_tag ([long]2415947802); Equal $out.profile_junctions.Count 0
+    Equal @($out.paths | Where-Object path -CEQ $p).Count 1; Equal @($out.listings | Where-Object path -CEQ $p).Count 0
+    Equal @($script:reads | Where-Object { $_.StartsWith($p+'\') }).Count 0
+    Equal @($script:reads | Where-Object { $_ -ceq $p }).Count 1
+    $before=Scope-Hash $out; $out.profile_cloud_directories[0].reparse_tag=[long]2415943706
+    if((Scope-Hash $out) -ceq $before) { throw 'CLOUD_TAG_MISSING_FROM_FACT_HASH' }
+}
+Check 'scope enforces exactly 32 Cloud directories' {
+    ResetGraph
+    foreach($number in 1..32) { $p='C:\user\Cloud'+$number; $null=Add-CloudDirectory $p; $script:listing['C:\user']+=,$p }
+    Equal (Observe-PhysicalScope (Roots)).profile_cloud_directories.Count 32
+    $p='C:\user\Cloud33'; $null=Add-CloudDirectory $p; $script:listing['C:\user']+=,$p
+    Reject { Observe-PhysicalScope (Roots) } 'SCOPE_CLOUD_DIRECTORY_LIMIT'
+}
+Check 'scope refuses Cloud files targets other tags roots ancestors and runtime entries' {
+    foreach($bad in @('file','target','tag')) {
+        ResetGraph; $p='C:\user\Cloud'; $r=Add-CloudDirectory $p; $script:listing['C:\user']+=,$p
+        if($bad -ceq 'file') { $r.ObjectType='file'; $r.LinkCount=1 }
+        elseif($bad -ceq 'target') { $r.Target='C:\outside' } else { $r.ReparseTag=[uint32]2415943706 }
+        Reject { Observe-PhysicalScope (Roots) } 'SCOPE_REPARSE_UNSUPPORTED'
+    }
+    ResetGraph; $null=Add-CloudDirectory 'C:\profile'
+    Reject { Observe-PhysicalScope (Roots) } 'SCOPE_REPARSE_UNSUPPORTED'
+    ResetGraph; $null=Add-CloudDirectory 'C:\user\Cloud'; $roots=Roots; $roots.cwd='C:\user\Cloud\work'
+    Reject { Observe-PhysicalScope $roots } 'SCOPE_REPARSE_UNSUPPORTED'
+    ResetGraph; $null=Add-CloudDirectory 'C:\user\AppData\Local\OpenAI\Codex'
+    Reject { Observe-PhysicalScope (Roots) } 'SCOPE_REPARSE_UNSUPPORTED'
+    ResetGraph; $p='C:\user\AppData\Local\OpenAI\Codex\runtimes\cloud'; $null=Add-CloudDirectory $p
+    $script:listing['C:\user\AppData\Local\OpenAI\Codex\runtimes']=@($p)
+    Reject { Observe-PhysicalScope (Roots) } 'SCOPE_REPARSE_UNSUPPORTED'
 }
 Check 'scope accepts 4096 runtime descendants with two hashed passes under 40 seconds' {
     ResetGraph; $parent='C:\user\AppData\Local\OpenAI\Codex\runtimes'

@@ -690,6 +690,13 @@ expansion as at most 4,096 descendants plus three roots; exceeding this bound or
 an incomplete
 enumeration refuses the projection rather than omitting effects.
 
+The pure facts/scope v3 additionally represents at most 32 immediate profile
+cloud directories with exact tag CLOUD_7 (`0x9000701a`), no target, stable directory
+identity and non-reparse ancestors. It rejects cloud descendants, internal
+listings and content; historical versions keep their refusal. This representation
+is review material only. It does not establish provider side effects or coverage
+of inheritable ACL changes made later by the official setup.
+
 A separate read-only Windows producer observes this closed physical subset with
 FileIdInfo and link counts on the same handle, bounded complete listings and a
 second observation pass. It returns facts through one bounded JSON document.

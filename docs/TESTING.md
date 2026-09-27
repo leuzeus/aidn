@@ -417,11 +417,18 @@ requirements; no available executor or setup approval is produced. V2 fixtures
 also cover immediate profile junctions, canonical-target exclusions and
 deduplication, refusal of chains/cycles/outside targets, and unchanged V1 hashes.
 
+The portable scope suite also covers the pure v3 cloud-directory extension:
+exact CLOUD_7 tags, immediate directory metadata, the 32-entry limit, refusal of
+content/descendants/listings, historical-version compatibility and unchanged
+non-authorization flags. These simulated facts do not qualify native cloud access.
+
 The separate native command
 `node tools/perf/verify-codex-managed-setup-scope-facts-fixtures.mjs` verifies the
 closed read-only Windows physical-fact producer. Its bounded temporary corpus
 checks complete listings and same-handle identities without reading a user
-profile. It requires Windows and PowerShell 7 and fails with `UNAVAILABLE` when
+profile. Cloud tag decoding uses in-memory buffers and cloud traversal uses
+simulated graphs; running on Windows does not make those cases native Cloud Files
+qualification. It requires Windows and PowerShell 7 and fails with `UNAVAILABLE` when
 either precondition is missing. It is separate from the fourteen-script portable
 lifecycle gate, just like the Windows inventory and preflight campaigns; Linux
 admission does not execute or qualify its native calls. An actual principal-profile

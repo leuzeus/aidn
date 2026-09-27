@@ -624,12 +624,26 @@ that profile with no reparse ancestors. The pinned client canonicalizes these
 targets; the projector applies its exclusions and deduplication. Chains, cycles,
 outside targets and aliases elsewhere remain refused. V1 retains its refusal.
 
+The pure v3 facts/scope extension adds `profile_cloud_directories`, limited to 32
+immediate profile directories with the exact `IO_REPARSE_TAG_CLOUD_7` value
+`0x9000701a`. These directories have no declared target. Their path and identity
+must describe the directory itself through an `OPEN_REPARSE_POINT` handle, with
+non-reparse ancestors. Descendant facts, internal listings and content hashes are
+refused; v1/v2 continue to refuse this extension. Other cloud tags remain refused.
+The Windows [tag definition](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-fscc/c8e77b37-3909-4fe6-a4ea-2b9d423b1ee4)
+does not make it a name surrogate. This metadata model is not qualification of
+provider behavior or subsequent setup: inheritable ACL changes can affect
+children, which require separate effect coverage.
+
 The separate `tools/verify/codex-managed-setup-scope-facts.ps1` producer observes
 only this closed physical subset. Its versioned request binds roots, observer
 context and duration; FileIdInfo and link counts use the same handle. Two bounded
 passes compare identities, complete listings and junction targets. Only Win32
 NotFound establishes absence. The only file content accepted is the small empty
 prior deny-read state; no SSH configuration or credential content is read.
+Its v3 cloud branch retains only the exact directory tag and identity from the
+same handle. The cloud payload is opaque and supplies no path to follow; no cloud
+child enumeration is performed.
 The parent must pin and contain this producer and bind its request, PID, creation
 time, output digest and stopped Job. A syntactically valid observation or supplied
 context hash alone supplies no authenticated authority. This producer does not

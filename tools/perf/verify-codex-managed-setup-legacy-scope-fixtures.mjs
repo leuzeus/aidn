@@ -182,16 +182,79 @@ await check("v2 refuses a chain and a two-link cycle without following either",(
 await check("excluded junction declaration cannot conceal an external target",()=>{const f=fixtureV2(),j=junction(f,".aws",path.join(f.environment.USERPROFILE,"AppData"));j.target_path="D:\\outside";assert.throws(()=>project(f),{code:"MANAGED_LEGACY_SCOPE_JUNCTION_TARGET_OUTSIDE"});});
 await check("v2 does not generalize runtime reparse points",()=>rejectsJunction(f=>{row(f,runtimeRoot(f)).reparse=true;},"JUNCTION_UNBOUND"));
 await check("v2 does not allow profile home or helper through a junction",()=>{const f=fixtureV2();junction(f,".codex",path.join(f.environment.USERPROFILE,"AppData"));assert.throws(()=>project(f),{code:"MANAGED_LEGACY_SCOPE_JUNCTION_CHAIN_UNSUPPORTED"});});
+function fixtureV3(){const f=fixtureV2();f.facts.contract_version="aidn-managed-setup-legacy-facts.v3";f.facts.profile_cloud_directories=[];return f;}
+function cloud(f,name="Cloud folder"){
+  const p=path.join(f.environment.USERPROFILE,name),r=row(f,p)??present(f,p),entries=listing(f,f.environment.USERPROFILE).entries;
+  r.reparse=true;if(!entries.includes(p))entries.push(p);
+  const c={path:p,reparse_tag:0x9000701a};f.facts.profile_cloud_directories.push(c);return c;
+}
+function cloudFixture(){const f=fixtureV3();cloud(f);return f;}
+function rejectsCloud(mutate,code){const f=cloudFixture();mutate(f);assert.throws(()=>project(f),{code:"MANAGED_LEGACY_SCOPE_"+code});}
+await check("v3 represents CLOUD_7 directory metadata without qualification",()=>{
+  const f=cloudFixture(),before=copy(f),r=project(f);assert.equal(r.contract_version,"aidn-managed-setup-legacy-scope.v3");
+  assert(r.preimage.read_roots.includes(f.facts.profile_cloud_directories[0].path));assert.deepEqual(f,before);
+  assert.equal(r.authorization,"NOT_AUTHORIZED");assert.equal(r.native_qualified,false);assert.equal(r.complete_effect_coverage,false);
+  assert.deepEqual(r.preimage.write_roots,[f.configuration.cwd]);assert.equal(r.permission_profile_sha256,hash(r.preimage));
+});
+await check("v3 without cloud entries preserves v2 path sets",()=>{
+  const a=project(fixtureV2()).preimage,b=project(fixtureV3()).preimage;
+  for(const k of ["read_roots","write_roots","runtime_paths","deny_read_paths","deny_write_paths"])assert.deepEqual(a[k],b[k]);
+});
+await check("v3 cloud and junction metadata remain distinct",()=>{
+  const f=cloudFixture(),c=f.facts.profile_cloud_directories[0];junction(f,"Compatibility",path.join(f.environment.USERPROFILE,"AppData","Roaming"));
+  const reads=project(f).preimage.read_roots;assert(reads.includes(c.path));assert(reads.includes(f.facts.profile_junctions[0].target_path));
+});
+await check("v3 retains cloud exclusions without skipping their facts",()=>{
+  const f=fixtureV3(),c=cloud(f,".aws");assert(!project(f).preimage.read_roots.includes(c.path));
+  row(f,c.path).content_sha256=H;assert.throws(()=>project(f),{code:"MANAGED_LEGACY_SCOPE_CLOUD_FACT_INVALID"});
+});
+await check("v3 cloud physical identity changes invalidate the scope",()=>{
+  const f=cloudFixture(),a=project(f);row(f,f.facts.profile_cloud_directories[0].path).file_id="e".repeat(32);
+  assert.notEqual(a.permission_profile_sha256,project(f).permission_profile_sha256);
+});
+await check("v3 accepts at most 32 immediate cloud directories",()=>{
+  const f=fixtureV3();for(let i=0;i<32;i++)cloud(f,"Cloud "+i);assert.equal(project(f).status,"RESOLVED_FOR_REVIEW");
+  cloud(f,"Cloud extra");assert.throws(()=>project(f),{code:"MANAGED_LEGACY_SCOPE_CLOUD_LIMIT"});
+});
+for(const tag of [0x9000001a,0x9000601a,0x9000801a,0x9000f01a,0xb000701a,0xa0000003,0xa000000c,0x9000001c,"2415947802",null])
+  await check("v3 refuses unsupported cloud tag "+JSON.stringify(tag),()=>rejectsCloud(f=>{f.facts.profile_cloud_directories[0].reparse_tag=tag;},"CLOUD_INVALID"));
+for(const [name,mutate,code] of [
+  ["missing declaration",f=>{f.facts.profile_cloud_directories=[];},"JUNCTION_UNBOUND"],
+  ["nonarray declarations",f=>{f.facts.profile_cloud_directories={};},"CLOUD_LIMIT"],
+  ["extra target field",f=>{f.facts.profile_cloud_directories[0].target_path="D:\\elsewhere";},"CLOUD_INVALID"],
+  ["duplicate declaration",f=>{f.facts.profile_cloud_directories.push(copy(f.facts.profile_cloud_directories[0]));},"CLOUD_INVALID"],
+  ["case alias declaration",f=>{f.facts.profile_cloud_directories.push({...f.facts.profile_cloud_directories[0],path:f.facts.profile_cloud_directories[0].path.toUpperCase()});},"CLOUD_INVALID"],
+  ["outside profile",f=>{f.facts.profile_cloud_directories[0].path="D:\\outside\\cloud";},"CLOUD_INVALID"],
+  ["nested declaration",f=>{f.facts.profile_cloud_directories[0].path=path.join(f.facts.profile_cloud_directories[0].path,"child");},"CLOUD_INVALID"],
+  ["profile root declaration",f=>{f.facts.profile_cloud_directories[0].path=f.environment.USERPROFILE;},"CLOUD_INVALID"],
+  ["unlisted directory",f=>{const p=f.facts.profile_cloud_directories[0].path,l=listing(f,f.environment.USERPROFILE);l.entries=l.entries.filter(e=>e!==p);},"CLOUD_FACT_INVALID"],
+  ["nonreparse directory",f=>{row(f,f.facts.profile_cloud_directories[0].path).reparse=false;},"CLOUD_FACT_INVALID"],
+  ["cloud file",f=>{const r=row(f,f.facts.profile_cloud_directories[0].path);r.object_type="file";r.link_count=1;},"PATH_FACT_INVALID"],
+  ["content digest",f=>{row(f,f.facts.profile_cloud_directories[0].path).content_sha256=H;},"CLOUD_FACT_INVALID"],
+  ["changed physical path",f=>{row(f,f.facts.profile_cloud_directories[0].path).physical_path="D:\\outside";},"PATH_FACT_INVALID"],
+  ["unknown ancestors",f=>{row(f,f.facts.profile_cloud_directories[0].path).ancestors_non_reparse=false;},"ANCESTORS_UNVERIFIED"],
+  ["descendant fact",f=>{absent(f,path.join(f.facts.profile_cloud_directories[0].path,"child"));},"CLOUD_DESCENDANT_UNSUPPORTED"],
+  ["cloud listing",f=>{f.facts.listings.push({path:f.facts.profile_cloud_directories[0].path,complete:true,entries:[]});},"CLOUD_LISTING_UNSUPPORTED"],
+  ["descendant listing",f=>{f.facts.listings.push({path:path.join(f.facts.profile_cloud_directories[0].path,"child"),complete:true,entries:[]});},"CLOUD_LISTING_UNSUPPORTED"],
+  ["junction on same path",f=>{junction(f,"Cloud folder",path.join(f.environment.USERPROFILE,"AppData"));},"JUNCTION_INVALID"],
+  ["junction target is cloud",f=>{junction(f,"Other alias",f.facts.profile_cloud_directories[0].path);},"JUNCTION_TARGET_INVALID"]
+])await check("v3 refuses "+name,()=>rejectsCloud(mutate,code));
+await check("v1 and v2 refuse cloud metadata without the new contract",()=>{
+  for(const version of [1,2]){const f=cloudFixture();f.facts.contract_version="aidn-managed-setup-legacy-facts.v"+version;
+    assert.throws(()=>project(f),{code:"MANAGED_LEGACY_SCOPE_FACTS_INVALID"});
+    delete f.facts.profile_cloud_directories;if(version===1)delete f.facts.profile_junctions;
+    assert.throws(()=>project(f),{code:"MANAGED_LEGACY_SCOPE_"+(version===1?"PATH_FACT_INVALID":"JUNCTION_UNBOUND")});}
+});
 await check("import and projection have no I/O, process, network or implicit clock",async()=>{
   const source=new URL("../../src/core/agents/codex-managed-setup-legacy-scope.mjs",import.meta.url);
   const code=fs.readFileSync(source,"utf8").replace(/from "(\.\/[^"]+)"/gu,(_,relative)=>"from "+JSON.stringify(new URL(relative,source).href));
-  const f=fixture(),expected=project(f),f2=junctionFixture(),expected2=project(f2),saved=[];const block=(target,key)=>{saved.push([target,key,target[key]]);target[key]=()=>{throw new Error("UNEXPECTED_EFFECT_"+key);};};
+  const f=fixture(),expected=project(f),f2=junctionFixture(),expected2=project(f2),f3=cloudFixture(),expected3=project(f3),saved=[];const block=(target,key)=>{saved.push([target,key,target[key]]);target[key]=()=>{throw new Error("UNEXPECTED_EFFECT_"+key);};};
   try{for(const key of ["readFileSync","writeFileSync","openSync","mkdirSync","statSync","readdirSync","rmSync"])block(fs,key);
     for(const key of ["readFile","writeFile","open","mkdir","stat","readdir","rm"])block(fs.promises,key);
     for(const key of ["spawn","spawnSync","exec","execSync","execFile","execFileSync","fork"])block(childProcess,key);
     for(const target of [http,https])for(const key of ["get","request"])block(target,key);
     for(const key of ["connect","createConnection"])block(net,key);block(Date,"now");block(process,"cwd");syncBuiltinESMExports();
-    const m=await import("data:text/javascript;base64,"+Buffer.from(code).toString("base64"));assert.deepEqual(m.projectManagedSetupLegacyScope(f),expected);assert.deepEqual(m.projectManagedSetupLegacyScope(f2),expected2);
+    const m=await import("data:text/javascript;base64,"+Buffer.from(code).toString("base64"));assert.deepEqual(m.projectManagedSetupLegacyScope(f),expected);assert.deepEqual(m.projectManagedSetupLegacyScope(f2),expected2);assert.deepEqual(m.projectManagedSetupLegacyScope(f3),expected3);
   }finally{for(const [target,key,value]of saved.reverse())target[key]=value;syncBuiltinESMExports();}
 });
 const failed=checks.filter(r=>r.status==="FAIL");

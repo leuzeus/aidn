@@ -14,11 +14,13 @@ import { getManagedSandboxOperationPolicy } from "./codex-managed-sandbox-operat
 // The caller must observe these same inputs again before any authorized launch.
 const VERSION = "aidn-managed-setup-legacy-scope.v1";
 const JUNCTION_VERSION = "aidn-managed-setup-legacy-scope.v2";
+const CLOUD_VERSION = "aidn-managed-setup-legacy-scope.v3";
 const MOUNT_POINT_TAG = 0xa0000003;
+const CLOUD_7_TAG = 0x9000701a;
 const EXCLUSIONS = Object.freeze([".ssh", ".tsh", ".brev", ".gnupg", ".aws", ".azure", ".kube", ".docker", ".config", ".npm", ".pki", ".terraform.d"]);
 const PLATFORM = Object.freeze(["C:\\Windows", "C:\\Program Files", "C:\\Program Files (x86)", "C:\\ProgramData"]);
 const POLICY = getManagedSandboxOperationPolicy();
-const LIMITS = Object.freeze({ paths: 4609, listings: 4097, profile_entries: 512, nonruntime_paths: 512, runtime_entries: 4096, runtime_depth: 32, profile_junctions: 32, document_bytes: 2097152, max_age_ms: 300000 });
+const LIMITS = Object.freeze({ paths: 4609, listings: 4097, profile_entries: 512, nonruntime_paths: 512, runtime_entries: 4096, runtime_depth: 32, profile_junctions: 32, profile_cloud_directories: 32, document_bytes: 2097152, max_age_ms: 300000 });
 const fail = code => { throw Object.assign(new Error("MANAGED_LEGACY_SCOPE_" + code), { code: "MANAGED_LEGACY_SCOPE_" + code }); };
 const ensure = (ok, code) => { if (!ok) fail(code); };
 const object = value => value !== null && typeof value === "object" && !Array.isArray(value);
@@ -84,10 +86,11 @@ export function projectManagedSetupLegacyScope(input) {
     && samePath(environment.TMP, startup.state_root), "ENVIRONMENT_BINDING");
   const profile = environment.USERPROFILE, local = environment.LOCALAPPDATA;
   ensure(!inside(profile, cwd) && !inside(cwd, profile) && !inside(cwd, home) && !inside(home, cwd), "CWD_SUBSET_UNSUPPORTED");
-  const junctionsEnabled = facts?.contract_version === "aidn-managed-setup-legacy-facts.v2";
-  const version = junctionsEnabled ? JUNCTION_VERSION : VERSION;
+  const cloudsEnabled = facts?.contract_version === "aidn-managed-setup-legacy-facts.v3";
+  const junctionsEnabled = cloudsEnabled || facts?.contract_version === "aidn-managed-setup-legacy-facts.v2";
+  const version = cloudsEnabled ? CLOUD_VERSION : junctionsEnabled ? JUNCTION_VERSION : VERSION;
   ensure(exact(facts, ["contract_version", "observed_at", "observer_context_sha256", "paths", "listings", "prior_deny_read_content",
-    ...(junctionsEnabled ? ["profile_junctions"] : [])])
+    ...(junctionsEnabled ? ["profile_junctions"] : []), ...(cloudsEnabled ? ["profile_cloud_directories"] : [])])
     && (junctionsEnabled || facts.contract_version === "aidn-managed-setup-legacy-facts.v1") && digest(facts.observer_context_sha256), "FACTS_INVALID");
   const now = stamp(at), observed = stamp(facts.observed_at);
   ensure(now >= observed && now - observed <= LIMITS.max_age_ms, "FACTS_STALE");
@@ -142,20 +145,45 @@ export function projectManagedSetupLegacyScope(input) {
   // handle. This pure contract binds those claims; it does not observe handles.
   // Source setup.rs536-613 canonicalizes retained profile children before
   // exclusions (1289-1292,1381-1399). No recursive alias resolver is supplied.
+  const clouds = new Map();
+  if (cloudsEnabled) {
+    ensure(Array.isArray(facts.profile_cloud_directories)
+      && facts.profile_cloud_directories.length <= LIMITS.profile_cloud_directories, "CLOUD_LIMIT");
+    for (const cloud of facts.profile_cloud_directories) {
+      ensure(exact(cloud, ["path", "reparse_tag"]) && cloud.reparse_tag === CLOUD_7_TAG, "CLOUD_INVALID");
+      const id = key(cloud.path);
+      ensure(samePath(windows.dirname(cloud.path), profile) && !clouds.has(id), "CLOUD_INVALID");
+      clouds.set(id, cloud);
+    }
+    // CLOUD_7 is not a name surrogate. Observe only the directory metadata
+    // through OPEN_REPARSE_POINT, never content, descendants or a cloud listing.
+    // These facts neither prove hydration behavior nor qualify later setup ACLs.
+    for (const row of facts.paths) ensure(![...clouds.values()].some(cloud =>
+      !samePath(cloud.path, row.path) && inside(cloud.path, row.path)), "CLOUD_DESCENDANT_UNSUPPORTED");
+    for (const row of facts.listings) ensure(![...clouds.values()].some(cloud =>
+      inside(cloud.path, row.path)), "CLOUD_LISTING_UNSUPPORTED");
+    const entries = children(profile);
+    for (const cloud of clouds.values()) {
+      const row = fact(cloud.path);
+      ensure(row.state === "present" && row.object_type === "directory" && row.reparse === true
+        && row.path === cloud.path && row.physical_path === cloud.path && row.content_sha256 === null
+        && entries.some(entry => entry === cloud.path), "CLOUD_FACT_INVALID");
+    }
+  }
   const junctions = new Map();
   if (junctionsEnabled) {
     ensure(Array.isArray(facts.profile_junctions) && facts.profile_junctions.length <= LIMITS.profile_junctions, "JUNCTION_LIMIT");
     for (const junction of facts.profile_junctions) {
       ensure(exact(junction, ["path", "target_path", "reparse_tag"]) && junction.reparse_tag === MOUNT_POINT_TAG, "JUNCTION_INVALID");
       const id = key(junction.path); absolute(junction.target_path);
-      ensure(samePath(windows.dirname(junction.path), profile) && !junctions.has(id), "JUNCTION_INVALID");
+      ensure(samePath(windows.dirname(junction.path), profile) && !junctions.has(id) && !clouds.has(id), "JUNCTION_INVALID");
       junctions.set(id, junction);
     }
     // Reject every observed path through a declared junction, not just the
     // target itself: such a path contradicts ancestors_non_reparse.
     for (const row of facts.paths) {
       ensure(![...junctions.values()].some(junction => !samePath(junction.path, row.path) && inside(junction.path, row.path)), "JUNCTION_CHAIN_UNSUPPORTED");
-      ensure(row.reparse !== true || junctions.has(key(row.path)), "JUNCTION_UNBOUND");
+      ensure(row.reparse !== true || junctions.has(key(row.path)) || clouds.has(key(row.path)), "JUNCTION_UNBOUND");
     }
     const entries = children(profile); ensure(entries.length <= LIMITS.profile_entries, "PROFILE_LIMIT");
     for (const junction of junctions.values()) {

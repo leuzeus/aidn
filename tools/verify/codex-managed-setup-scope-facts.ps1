@@ -212,18 +212,28 @@ public static class AidnScopeNative {
         var rows=Witness.OrderBy(x=>x.Key,StringComparer.OrdinalIgnoreCase).Select(x=>x.Key.ToUpperInvariant()+"\0"+x.Value);
         using(var hash=SHA256.Create()) return Hex(hash.ComputeHash(Encoding.UTF8.GetBytes(string.Join("\n",rows))));
     }
-    static string Junction(SafeFileHandle handle,string path,string phase) {
-        var buffer=new byte[16384]; uint returned;
-        if(!DeviceIoControl(handle,0x000900A8,IntPtr.Zero,0,buffer,(uint)buffer.Length,out returned,IntPtr.Zero)) WinFail(Marshal.GetLastWin32Error());
+    sealed class ProfileReparse { public uint Tag; public string Target; }
+    // MS-FSCC 2.1.2.1: CLOUD_7 is not a name surrogate. Its opaque payload is
+    // never interpreted as a target. Only the mount-point format has one.
+    static ProfileReparse DecodeProfileReparse(byte[] buffer,uint returned,string path,string phase) {
+        if(returned<8) ReparseFail("SCOPE_REPARSE_UNSUPPORTED","buffer_too_short",path,phase);
+        if(returned>buffer.Length || 8+BitConverter.ToUInt16(buffer,4)>returned) ReparseFail("SCOPE_REPARSE_INVALID","invalid_buffer",path,phase);
+        uint tag=BitConverter.ToUInt32(buffer,0);
+        if(tag==0x9000701A) return new ProfileReparse { Tag=tag,Target=null };
+        if(tag!=0xA0000003) ReparseFail("SCOPE_REPARSE_UNSUPPORTED","tag_not_supported",path,phase);
         if(returned<16) ReparseFail("SCOPE_REPARSE_UNSUPPORTED","buffer_too_short",path,phase);
-        if(BitConverter.ToUInt32(buffer,0)!=0xA0000003) ReparseFail("SCOPE_REPARSE_UNSUPPORTED","tag_not_mount_point",path,phase);
         int dataLength=BitConverter.ToUInt16(buffer,4), offset=BitConverter.ToUInt16(buffer,8), length=BitConverter.ToUInt16(buffer,10);
         if(8+dataLength>returned || (offset|length)%2!=0 || length==0 || 16+offset+length>8+dataLength) ReparseFail("SCOPE_REPARSE_INVALID","invalid_buffer",path,phase);
         string target=new UnicodeEncoding(false,false,true).GetString(buffer,16+offset,length);
         if(!target.StartsWith(@"\??\") || target.Length<7 || target[5]!=':') ReparseFail("SCOPE_REPARSE_UNSUPPORTED","target_not_local_dos",path,phase);
-        return target.Substring(4).TrimEnd('\\');
+        return new ProfileReparse { Tag=tag,Target=target.Substring(4).TrimEnd('\\') };
     }
-    static Fact OpenFact(string path,bool allowJunction,bool readContent,string phase) {
+    static ProfileReparse ReadProfileReparse(SafeFileHandle handle,string path,string phase) {
+        var buffer=new byte[16384]; uint returned;
+        if(!DeviceIoControl(handle,0x000900A8,IntPtr.Zero,0,buffer,(uint)buffer.Length,out returned,IntPtr.Zero)) WinFail(Marshal.GetLastWin32Error());
+        return DecodeProfileReparse(buffer,returned,path,phase);
+    }
+    static Fact OpenFact(string path,bool allowProfileReparse,bool readContent,string phase) {
         Check();
         using(var handle=CreateFileW(path,readContent?0x80000080u:0x80u,7,IntPtr.Zero,3,0x02200000,IntPtr.Zero)) {
             if(handle.IsInvalid) {
@@ -235,12 +245,12 @@ public static class AidnScopeNative {
             string physical=Final(handle);
             if(!string.Equals(path,physical,StringComparison.OrdinalIgnoreCase)) Fail("SCOPE_PHYSICAL_PATH_MISMATCH");
             bool directory=(basic.Attributes&0x10)!=0, reparse=(basic.Attributes&0x400)!=0;
-            if(reparse && !allowJunction) ReparseFail("SCOPE_REPARSE_UNSUPPORTED","reparse_not_allowed",path,phase);
+            if(reparse && !allowProfileReparse) ReparseFail("SCOPE_REPARSE_UNSUPPORTED","reparse_not_allowed",path,phase);
             if(reparse && !directory) ReparseFail("SCOPE_REPARSE_UNSUPPORTED","reparse_not_directory",path,phase);
             if(!directory && basic.Links!=1) Fail("SCOPE_LINK_COUNT_UNSUPPORTED");
             var fact=new Fact { Path=physical,State="present",ObjectType=directory?"directory":"file",PhysicalPath=physical,
                 VolumeId=id.VolumeSerialNumber.ToString("x16"),FileId=Hex(id.Identifier),LinkCount=directory?(uint?)null:basic.Links,Reparse=reparse };
-            if(reparse) { fact.Target=Junction(handle,path,phase); fact.ReparseTag=0xA0000003; }
+            if(reparse) { var parsed=ReadProfileReparse(handle,path,phase); fact.Target=parsed.Target; fact.ReparseTag=parsed.Tag; }
             if(readContent) {
                 if(directory || reparse || (((ulong)basic.SizeHigh<<32)|basic.SizeLow)>65536) Fail("SCOPE_PRIOR_STATE_LIMIT");
                 using(var stream=new FileStream(handle,FileAccess.Read,4096,false))
@@ -259,10 +269,10 @@ public static class AidnScopeNative {
                 FileIdInfo afterId; BasicInfo afterBasic;
                 if(Identity(handle,out afterId,out afterBasic)!=before) Fail("SCOPE_PATH_CHANGED");
             }
-            Remember(path,before+(fact.ContentHash??"")+(fact.Target??"")); Check(); return fact;
+            Remember(path,before+(fact.ContentHash??"")+(fact.Target??"")+":"+fact.ReparseTag); Check(); return fact;
         }
     }
-    public static Fact Read(string path,bool allowJunction,bool readContent) {
+    public static Fact Read(string path,bool allowProfileReparse,bool readContent) {
         Check(); string root=System.IO.Path.GetPathRoot(path);
         if(GetDriveTypeW(root)!=3) Fail("SCOPE_FIXED_VOLUME_REQUIRED");
         var ancestors=new List<string>(); string cursor=System.IO.Path.GetDirectoryName(path);
@@ -275,7 +285,7 @@ public static class AidnScopeNative {
             else if(row.ObjectType!="directory") Fail("SCOPE_ANCESTOR_INVALID");
         }
         if(absent) { Remember(path,"absent"); Check(); return new Fact { Path=path,State="absent" }; }
-        Fact result=OpenFact(path,allowJunction,readContent,"target");
+        Fact result=OpenFact(path,allowProfileReparse,readContent,"target");
         foreach(string ancestor in ancestors) {
             Fact row=OpenFact(ancestor,false,false,"ancestor_after");
             if(row.State!="present" || row.ObjectType!="directory") Fail("SCOPE_ANCESTOR_CHANGED");
@@ -297,9 +307,9 @@ public static class AidnScopeNative {
 }
 '@
 
-function Read-PhysicalScopeFact([string]$Path,[bool]$AllowJunction=$false,[bool]$ReadPrior=$false) {
+function Read-PhysicalScopeFact([string]$Path,[bool]$AllowProfileReparse=$false,[bool]$ReadPrior=$false) {
     Check-ScopeTime; $null=Scope-Path $Path
-    return [AidnScopeNative]::Read($Path,$AllowJunction,$ReadPrior)
+    return [AidnScopeNative]::Read($Path,$AllowProfileReparse,$ReadPrior)
 }
 function Read-PhysicalScopeListing([string]$Path,[int]$Maximum) {
     Check-ScopeTime; return ,([AidnScopeNative]::List($Path,$Maximum))
@@ -315,7 +325,7 @@ function Convert-PhysicalScopeFact($Native) {
 function Convert-ScopeReparseDiagnostic($Cause) {
     $roles=@('required_root','cwd_metadata','ssh_config','prior_deny_read','sandbox_bin','platform_root',
         'profile_listing','profile_child','profile_junction_target','runtime_root','runtime_entry','runtime_listing')
-    $variants=@('reparse_not_allowed','reparse_not_directory','buffer_too_short','tag_not_mount_point','target_not_local_dos','invalid_buffer')
+    $variants=@('reparse_not_allowed','reparse_not_directory','buffer_too_short','tag_not_supported','target_not_local_dos','invalid_buffer')
     if($Cause.Message -cnotin @('SCOPE_REPARSE_UNSUPPORTED','SCOPE_REPARSE_INVALID') -or
         $script:ScopePass -notin @(1,2) -or $script:ScopeRole -cnotin $roles -or
         $Cause.Data['native_phase'] -cnotin @('ancestor_before','target','ancestor_after') -or
@@ -328,6 +338,7 @@ function Observe-PhysicalScope($Roots) {
     $paths=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
     $listings=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
     $junctions=[Collections.Generic.List[object]]::new()
+    $cloudDirectories=[Collections.Generic.List[object]]::new()
     $exclusions=@('.ssh','.tsh','.brev','.gnupg','.aws','.azure','.kube','.docker','.config','.npm','.pki','.terraform.d')
     function Keep($Row) {
         $fact=Convert-PhysicalScopeFact $Row
@@ -380,6 +391,14 @@ function Observe-PhysicalScope($Roots) {
         $row=Read-PhysicalScopeFact $path $true
         if($row.State -cne 'present') { Stop-Scope 'SCOPE_LISTING_CHANGED' }
         if($row.Reparse) {
+            if($row.ReparseTag -eq [uint32]2415947802) {
+                if($cloudDirectories.Count -ge 32) { Stop-Scope 'SCOPE_CLOUD_DIRECTORY_LIMIT' }
+                if($row.ObjectType -cne 'directory' -or $null -ne $row.Target) { Stop-Scope 'SCOPE_REPARSE_UNSUPPORTED' }
+                Keep $row
+                $cloudDirectories.Add([ordered]@{path=$row.Path;reparse_tag=[long]2415947802})
+                continue
+            }
+            if($row.ReparseTag -ne [uint32]2684354563) { Stop-Scope 'SCOPE_REPARSE_UNSUPPORTED' }
             if($junctions.Count -ge 32) { Stop-Scope 'SCOPE_JUNCTION_LIMIT' }
             $target=Scope-Path $row.Target
             $prefix=$Roots.user_profile+'\'
@@ -422,7 +441,8 @@ function Observe-PhysicalScope($Roots) {
     $pathRows=@($paths.Values | Sort-Object -Property path -CaseSensitive)
     $listingRows=@($listings.Values | Sort-Object -Property path -CaseSensitive)
     $junctionRows=@($junctions | Sort-Object -Property path -CaseSensitive)
-    return [ordered]@{paths=$pathRows;listings=$listingRows;prior_deny_read_content=$priorContent;profile_junctions=$junctionRows}
+    $cloudRows=@($cloudDirectories | Sort-Object -Property path -CaseSensitive)
+    return [ordered]@{paths=$pathRows;listings=$listingRows;prior_deny_read_content=$priorContent;profile_junctions=$junctionRows;profile_cloud_directories=$cloudRows}
 }
 function Convert-ScopeReport($Report) {
     $Report.duration_ms=$script:Clock.ElapsedMilliseconds
@@ -452,9 +472,9 @@ try {
     $script:ScopePass=2; [AidnScopeNative]::BeginPass(); $second=Observe-PhysicalScope $request.roots; $secondWitness=[AidnScopeNative]::WitnessHash()
     Check-ScopeTime
     if($firstWitness -cne $secondWitness -or (Scope-Hash $first) -cne (Scope-Hash $second)) { Stop-Scope 'SCOPE_TWO_PASS_MISMATCH' }
-    $facts=[ordered]@{contract_version='aidn-managed-setup-legacy-facts.v2';observed_at=[DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ',[Globalization.CultureInfo]::InvariantCulture);
+    $facts=[ordered]@{contract_version='aidn-managed-setup-legacy-facts.v3';observed_at=[DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ',[Globalization.CultureInfo]::InvariantCulture);
         observer_context_sha256=$request.observer_context_sha256;paths=$second.paths;listings=$second.listings;
-        prior_deny_read_content=$second.prior_deny_read_content;profile_junctions=$second.profile_junctions}
+        prior_deny_read_content=$second.prior_deny_read_content;profile_junctions=$second.profile_junctions;profile_cloud_directories=$second.profile_cloud_directories}
     $report.facts=$facts; $report.facts_sha256=Scope-Hash $facts; Check-ScopeTime; $report.status='OBSERVED'
 } catch {
     $cause=$_.Exception.GetBaseException(); $code='SCOPE_OBSERVATION_FAILED'; $native=$null
