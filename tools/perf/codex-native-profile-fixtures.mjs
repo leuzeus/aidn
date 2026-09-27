@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { fingerprintAgentExecutionValue } from "../../src/core/agents/agent-execution-contracts.mjs";
-import { buildCodexTaskArguments } from "../../src/adapters/agents/codex-cli-task-executor.mjs";
+import { buildCodexTaskArguments, createCodexWorkerEnvironment } from "../../src/adapters/agents/codex-cli-task-executor.mjs";
 import { assertCodexNativeProfilePolicy, fingerprintCodexNativeProfilePolicy, assertCodexNativeProfileBinding,
-  resolveCodexNativeProfileStatePaths } from "../../src/adapters/agents/codex-native-profile-policy.mjs";
+  resolveCodexNativeProfileStatePaths, CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES } from "../../src/adapters/agents/codex-native-profile-policy.mjs";
 
 // Contract doubles only: these responses never qualify a native profile.
 export function nativeProfileFixturePolicy(runtime, stateRoot) {
@@ -11,7 +11,7 @@ export function nativeProfileFixturePolicy(runtime, stateRoot) {
     home: { physical_path: runtime.codexHome, identity_sha256: "1".repeat(64) }, client_sha256: runtime.sha256,
     backend: { platform: "win32", architecture: "x64", sandbox: "elevated", provisioning: "existing-only" },
     configuration: { sources_sha256: "2".repeat(64), effective_settings_sha256: "3".repeat(64),
-      mcp_server_ids: ["server.with.dot space"], plugin_ids: ['plugin"quoted@local'], app_ids: ["synthetic.app"] },
+      mcp_server_ids: ["server.with.dot space"], plugin_ids: ['plugin"quoted@local'], app_ids: ["synthetic.app"], environment_override_names: ["SYNTHETIC_EXTRA"] },
     hooks_sha256: "4".repeat(64), effects: { state_root: stateRoot, shared_effects_sha256: "5".repeat(64) } };
 }
 
@@ -33,15 +33,39 @@ export async function verifyNativeProfileFixtures({ check, setup, cwd }) {
     assert.deepEqual(policy, original);
     for (const mutate of [p => { p.unknown = true; }, p => { p.backend.provisioning = "repair"; },
       p => { p.configuration.plugin_ids.push(p.configuration.plugin_ids[0]); }, p => { p.configuration.mcp_server_ids = ["unsafe\nname"]; },
+      p => { delete p.configuration.environment_override_names; },
+      p => { p.configuration.environment_override_names = ["SYNTHETIC_EXTRA", "synthetic_extra"]; },
+      p => { p.configuration.environment_override_names = ["bad name"]; },
+      p => { p.configuration.environment_override_names = ["été"]; },
+      p => { p.configuration.environment_override_names = ["STAR_*"]; },
+      p => { p.configuration.environment_override_names = ["A".repeat(257)]; },
+      p => { p.configuration.environment_override_names = Array.from({ length: 129 }, (_, index) => `VAR_${index}`); },
       p => { p.home.identity_sha256 = "bad"; }, p => { p.effects.state_root = p.home.physical_path; },
       p => { Object.defineProperty(p, "mode", { get() { throw new Error("getter invoked"); }, enumerable: true }); }]) {
       const invalid = structuredClone(policy); mutate(invalid);
       assert.throws(() => assertCodexNativeProfilePolicy(invalid), /CODEX_NATIVE_PROFILE_POLICY_INVALID/);
     }
-    for (const mutate of [p => { p.configuration.sources_sha256 = "6".repeat(64); }, p => { p.effects.shared_effects_sha256 = "6".repeat(64); }]) {
+    for (const name of CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES) {
+      const invalid = structuredClone(policy); invalid.configuration.environment_override_names = [name.toLowerCase()];
+      assert.throws(() => assertCodexNativeProfilePolicy(invalid), /CODEX_NATIVE_PROFILE_POLICY_INVALID/);
+    }
+    for (const mutate of [p => { p.configuration.sources_sha256 = "6".repeat(64); }, p => { p.effects.shared_effects_sha256 = "6".repeat(64); },
+      p => { p.configuration.environment_override_names = ["OTHER_VARIABLE"]; }]) {
       const changed = structuredClone(policy); mutate(changed);
       assert.notEqual(fingerprintCodexNativeProfilePolicy(changed), fingerprintCodexNativeProfilePolicy(policy));
     }
+  });
+  await check("native profile final environment filters exactly match the worker allowlist", () => {
+    const { runtime, request } = setup({ nativeProfile: true }), policy = runtime.nativeProfilePolicy;
+    const host = Object.fromEntries(CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES.map(name => [name, "synthetic"])); host.EXTRA_PRIVATE_VALUE = "not-admitted";
+    const environment = createCodexWorkerEnvironment({ host, codexHome: runtime.codexHome, tempDirectory: path.join(cwd, "temp"),
+      admission: { endpoint: "http://127.0.0.1:1/v1/admit", token: "1".repeat(64), attemptId: "attempt", requestSha256: "2".repeat(64) } });
+    assert.deepEqual(Object.keys(environment).map(name => name.toUpperCase()).sort(), [...CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES].sort());
+    const args = buildCodexTaskArguments(request, { nativeProfilePolicy: policy });
+    assert(args.includes('shell_environment_policy.set={"SYNTHETIC_EXTRA"=""}'));
+    assert(args.includes('shell_environment_policy.inherit="all"')); assert(args.includes("shell_environment_policy.ignore_default_excludes=true"));
+    assert(args.includes(`shell_environment_policy.filters={${CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES.map(name => `${JSON.stringify(name)}="include"`).join(",")}}`));
+    assert(!args.some(arg => arg.startsWith("shell_environment_policy.include_only=") || arg.startsWith("shell_environment_policy.exclude=")));
   });
   await check("native profile requires explicit policy verifier and finite budget without probes", () => {
     const { executor, calls } = setup({ nativeProfile: true }); executor.getDescriptor(); assert.deepEqual(calls, []);

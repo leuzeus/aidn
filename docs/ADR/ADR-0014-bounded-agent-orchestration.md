@@ -131,6 +131,13 @@ control. Isolated homes retain strict parsing. This is a fixed mode invariant,
 not an automatic retry after configuration failure; no user configuration is
 deleted and no sandbox, hook, provider or integration requirement is relaxed.
 
+The local policy freezes inherited shell-environment override names, not their
+values. Process arguments empty each declared override and enforce an exact
+final include filter for the required runtime variables. Empty values alone do
+not prove removal. Reserved-name collisions, Windows case aliases, additional
+names, nonempty values and wider filters fail validation. Native observations
+must establish these effective controls without changing the user's profile.
+
 AIDN does not provision this profile, copy authentication, grant native trust,
 run native setup or silently substitute another profile. Config, trust,
 authorization, AIDN runtime state and Git metadata remain protected. The local

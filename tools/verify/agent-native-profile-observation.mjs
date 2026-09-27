@@ -4,7 +4,8 @@ import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../src/core/agents/agent-execution-contracts.mjs";
 import { assertCodexNativeProfilePolicy, assertCodexNativeProfileBinding, fingerprintCodexNativeProfilePolicy,
-  resolveCodexNativeProfileStatePaths, buildCodexNativeProfileArguments } from "../../src/adapters/agents/codex-native-profile-policy.mjs";
+  resolveCodexNativeProfileStatePaths, buildCodexNativeProfileArguments, CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES,
+  assertCodexNativeProfileEnvironmentOverrideNames } from "../../src/adapters/agents/codex-native-profile-policy.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const requireProof = (condition, code) => { if (!condition) fail(code); };
@@ -186,8 +187,13 @@ export function normalizeCodexNativeProfileConfiguration(config, policy, request
     && config.instructions === "" && config.developer_instructions === ""
     && config.log_dir === state.logs && config.sqlite_home === state.sqlite, "PROFILE_EFFECTIVE_SETTINGS_REFUSED");
   requireProof(!config.model_providers?.openai && !config.openai_base_url && !config.auth_command, "PROFILE_PROVIDER_OVERRIDE_REFUSED");
-  requireProof(!config.shell_environment_policy?.set || (object(config.shell_environment_policy.set)
-    && Object.keys(config.shell_environment_policy.set).length === 0), "PROFILE_ENVIRONMENT_OVERRIDE_REFUSED");
+  const environment = config.shell_environment_policy;
+  requireProof(object(environment?.set) && same(Object.keys(environment.set).sort(), [...policy.configuration.environment_override_names].sort())
+    && Object.values(environment.set).every(value => value === ""), "PROFILE_ENVIRONMENT_OVERRIDE_REFUSED");
+  requireProof(environment.inherit === "all" && environment.ignore_default_excludes === true
+    && object(environment.filters) && same(environment.filters, Object.fromEntries(CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES.map(name => [name, "include"])))
+    && [environment.include_only, environment.exclude].every(list => list == null || (Array.isArray(list) && list.length === 0)),
+  "PROFILE_ENVIRONMENT_FILTER_REFUSED");
   requireProof(["read-only", "workspace-write"].includes(request.execution.sandbox) && config.approval_policy === "never"
     && config.sandbox_mode === request.execution.sandbox && config.windows?.sandbox === "elevated"
     && config.agents?.enabled === false && config.sandbox_workspace_write?.network_access === false
@@ -375,7 +381,7 @@ export async function inspectCodexNativeProfileProposal({ manifest, policyTempla
     && bootstrapTimeoutMs <= 60000, "PROFILE_METADATA_TIMEOUT_INVALID");
   if (signal?.aborted) fail("PROFILE_METADATA_CANCELLED");
   const candidate = structuredClone(policyTemplate);
-  candidate.configuration = { sources_sha256: ZERO, effective_settings_sha256: ZERO, mcp_server_ids: [], plugin_ids: [], app_ids: [] };
+  candidate.configuration = { sources_sha256: ZERO, effective_settings_sha256: ZERO, mcp_server_ids: [], plugin_ids: [], app_ids: [], environment_override_names: [] };
   candidate.hooks_sha256 = ZERO; candidate.effects.shared_effects_sha256 = ZERO;
   const bind = () => ({ ...structuredClone(request), execution: { ...structuredClone(request.execution), native_profile: { mode: "preexisting", policy_sha256: fingerprintCodexNativeProfilePolicy(candidate) } } });
   let bound = bind(); const before = prepareObservation({ manifest, policy: candidate, request: bound, consent, proposal: true }, host);
@@ -400,6 +406,7 @@ export async function inspectCodexNativeProfileProposal({ manifest, policyTempla
   for (const [key, field] of [["mcp_servers", "mcp_server_ids"], ["plugins", "plugin_ids"], ["apps", "app_ids"]]) {
     candidate.configuration[field] = [...new Set(raw.configs.flatMap(response => Object.keys(response.config?.[key] ?? {})))].filter(id => key !== "apps" || id !== "_default").sort();
   }
+  candidate.configuration.environment_override_names = discoverCodexNativeProfileEnvironmentOverrideNames(raw.configs);
   assertCodexNativeProfilePolicy(candidate);
   if (discoveryOnly) {
     requireProof(["ready", "notConfigured", "updateRequired"].includes(raw.readiness?.status)
@@ -411,6 +418,7 @@ export async function inspectCodexNativeProfileProposal({ manifest, policyTempla
     });
     return { status: "discovery_only", authorization: "NOT_GRANTED", native_execution: "NOT_RUN", metadata_bootstrap: bootstrap,
       integration_ids: { mcp_server_ids: candidate.configuration.mcp_server_ids, plugin_ids: candidate.configuration.plugin_ids, app_ids: candidate.configuration.app_ids },
+      environment_override_names: candidate.configuration.environment_override_names,
       sources_sha256: fingerprint({ files: before.sources, layers }), shared_effects: before.effects,
       shared_effects_sha256: fingerprint(before.effects), readiness: raw.readiness.status, process: raw.process,
       hooks: raw.hooks.data.map(surface => ({ cwd_sha256: fingerprint(surface.cwd), errors: surface.errors?.length ?? 0, warnings: surface.warnings?.length ?? 0,
@@ -430,4 +438,18 @@ export async function inspectCodexNativeProfileProposal({ manifest, policyTempla
 
 export async function discoverCodexNativeProfileMetadata(options) {
   return inspectCodexNativeProfileProposal({ ...options, discoveryOnly: true });
+}
+
+// Discovery emits identifiers only. Inherited values remain transient, then the
+// strict proposal must observe all frozen names blanked and final filters exact.
+export function discoverCodexNativeProfileEnvironmentOverrideNames(configs) {
+  requireProof(Array.isArray(configs) && configs.length > 0, "PROFILE_CONFIG_MALFORMED");
+  const names = [...new Set(configs.flatMap(response => {
+    requireProof(object(response?.config), "PROFILE_CONFIG_MALFORMED");
+    const overrides = response.config.shell_environment_policy?.set ?? {};
+    requireProof(object(overrides), "PROFILE_ENVIRONMENT_OVERRIDE_REFUSED");
+    return Object.keys(overrides);
+  }))].sort();
+  assertCodexNativeProfileEnvironmentOverrideNames(names);
+  return names;
 }

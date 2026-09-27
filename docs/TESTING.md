@@ -267,6 +267,10 @@ It also checks explicit preexisting-profile policy bindings, configuration
 neutralization and fresh verification challenges using synthetic inputs. Native
 metadata observations, human trust and actual worker execution remain separate
 evidence; an existing Windows backend is never provisioned by those fixtures.
+Environment fixtures cover inherited table merging, discovered names without
+values, explicit empty overrides plus a final exact include filter, unexpected
+names or values, Windows case aliases and collisions with runtime variables.
+These fixtures do not prove the native command environment on an operating system.
 It also checks the native qualification tools' review bindings, receipt-only
 refresh and preservation guards without launching a model or PostgreSQL.
 The targeted `node tools/perf/verify-agent-native-qualification-fixtures.mjs`

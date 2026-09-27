@@ -16,6 +16,23 @@ const contained = (parent, child) => {
 const ids = value => Array.isArray(value) && value.length <= 128 && new Set(value).size === value.length
   && value.every(item => typeof item === "string" && item.length > 0 && item.length <= 256 && !/[\x00-\x1f\x7f]/.test(item));
 
+// Match the environment accepted by createCodexWorkerEnvironment. Exact names
+// also form the final native shell filter; empty set values alone are not removal.
+export const CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES = Object.freeze([
+  "SYSTEMROOT", "WINDIR", "COMSPEC", "PATH", "PATHEXT", "USERPROFILE", "LOCALAPPDATA", "APPDATA", "PROGRAMDATA",
+  "CODEX_HOME", "TEMP", "TMP", "AIDN_AGENT_ADMISSION_ENDPOINT", "AIDN_AGENT_ADMISSION_TOKEN", "AIDN_AGENT_ATTEMPT_ID", "AIDN_AGENT_REQUEST_SHA256",
+]);
+const reservedEnvironmentNames = new Set(CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES);
+const environmentNames = names => Array.isArray(names) && names.length <= 128
+  && names.every(name => typeof name === "string" && /^[A-Za-z_][A-Za-z0-9_]{0,255}$/.test(name)
+    && !reservedEnvironmentNames.has(name.toUpperCase()))
+  && new Set(names.map(name => name.toUpperCase())).size === names.length;
+
+export function assertCodexNativeProfileEnvironmentOverrideNames(names) {
+  if (!environmentNames(names)) fail("CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES_INVALID");
+  return true;
+}
+
 // Local, bounded JSON policy only. Hashes reference supervisor observations;
 // validating this document does not inspect files, establish trust or provision
 // a backend. effective_settings_sha256 describes normalized settings: request
@@ -29,9 +46,10 @@ export function assertCodexNativeProfilePolicy(policy) {
       || !exact(policy.backend, ["platform", "architecture", "sandbox", "provisioning"])
       || policy.backend.platform !== "win32" || policy.backend.architecture !== "x64"
       || policy.backend.sandbox !== "elevated" || policy.backend.provisioning !== "existing-only"
-      || !exact(policy.configuration, ["sources_sha256", "effective_settings_sha256", "mcp_server_ids", "plugin_ids", "app_ids"])
+      || !exact(policy.configuration, ["sources_sha256", "effective_settings_sha256", "mcp_server_ids", "plugin_ids", "app_ids", "environment_override_names"])
       || !digest(policy.configuration.sources_sha256) || !digest(policy.configuration.effective_settings_sha256)
       || ![policy.configuration.mcp_server_ids, policy.configuration.plugin_ids, policy.configuration.app_ids].every(ids)
+      || !environmentNames(policy.configuration.environment_override_names)
       || !exact(policy.effects, ["state_root", "shared_effects_sha256"]) || !absolute(policy.effects.state_root)
       || !digest(policy.effects.shared_effects_sha256)
       || contained(policy.home.physical_path, policy.effects.state_root) || contained(policy.effects.state_root, policy.home.physical_path)) {
@@ -81,6 +99,9 @@ export function buildCodexNativeProfileArguments(policy, request) {
     'model_provider="openai"', 'history.persistence="none"',
     "memories.generate_memories=false", "memories.use_memories=false", "features.memories=false",
     'developer_instructions=""', 'instructions=""',
+    `shell_environment_policy.set={${[...policy.configuration.environment_override_names].sort().map(name => `${JSON.stringify(name)}=""`).join(",")}}`,
+    'shell_environment_policy.inherit="all"', "shell_environment_policy.ignore_default_excludes=true",
+    `shell_environment_policy.filters={${CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES.map(name => `${JSON.stringify(name)}="include"`).join(",")}}`,
     `log_dir=${JSON.stringify(state.logs)}`, `sqlite_home=${JSON.stringify(state.sqlite)}`,
   ];
   // Never erase hook configuration: the live hooks/list observation must reject

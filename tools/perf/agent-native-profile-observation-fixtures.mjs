@@ -10,7 +10,7 @@ import { normalizeCodexNativeProfileConfiguration, validateCodexNativeProfileMet
   createCodexNativeProfileVerifier, collectCodexNativeProfileMetadata,
   buildCodexNativeProfileObservationArguments, assertCodexNativeProfileBootstrap,
   createCodexNativeProfileObserver, CODEX_NATIVE_PROFILE_SHARED_EFFECTS,
-  discoverCodexNativeProfileMetadata } from "../verify/agent-native-profile-observation.mjs";
+  discoverCodexNativeProfileMetadata, discoverCodexNativeProfileEnvironmentOverrideNames } from "../verify/agent-native-profile-observation.mjs";
 import { assertNativeQualificationProfileReview } from "../verify/qualify-agent-native-worker.mjs";
 import { verifyNativeQualificationProfile } from "../verify/agent-native-qualification-driver.mjs";
 
@@ -20,7 +20,7 @@ function fixture() {
   const base = path.join(os.tmpdir(), "aidn-profile-observation-pure"), home = path.join(base, "home"), stateRoot = path.join(base, "state");
   const policy = { contract_version: "codex-native-profile-policy.v1", mode: "preexisting", home: { physical_path: home, identity_sha256: H("a") },
     client_sha256: H("b"), backend: { platform: "win32", architecture: "x64", sandbox: "elevated", provisioning: "existing-only" },
-    configuration: { sources_sha256: H("c"), effective_settings_sha256: H("d"), mcp_server_ids: ["one.with space"], plugin_ids: ["synthetic@local"], app_ids: ["app1"] },
+    configuration: { sources_sha256: H("c"), effective_settings_sha256: H("d"), mcp_server_ids: ["one.with space"], plugin_ids: ["synthetic@local"], app_ids: ["app1"], environment_override_names: ["SYNTHETIC_EXTRA"] },
     hooks_sha256: H("e"), effects: { state_root: stateRoot, shared_effects_sha256: H("f") } };
   const definition = JSON.stringify({ hooks: { PreToolUse: [{ matcher: ".*", hooks: [{ type: "command", command: "synthetic-before", timeout: 600 }] }],
     SessionStart: [{ matcher: ".*", hooks: [{ type: "command", command: "synthetic-start", timeout: 600 }] }] } });
@@ -36,6 +36,8 @@ function fixture() {
     apps: { _default: { enabled: false }, app1: { enabled: false } }, features: { plugins: false, apps: false, memories: false }, notify: [],
     history: { persistence: "none" }, memories: { generate_memories: false, use_memories: false }, instructions: "", developer_instructions: "",
     log_dir: state.logs, sqlite_home: state.sqlite, approval_policy: "never", sandbox_mode: "workspace-write", windows: { sandbox: "elevated" }, agents: { enabled: false },
+    shell_environment_policy: { set: { SYNTHETIC_EXTRA: "" }, inherit: "all", ignore_default_excludes: true,
+      filters: Object.fromEntries(profile.CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES.map(name => [name, "include"])) },
     sandbox_workspace_write: { network_access: false, writable_roots: [], exclude_tmpdir_env_var: true, exclude_slash_tmp: true } };
   const sourceFiles = [{ path: path.join(home, "config.toml"), present: true, size: 3, sha256: H("a") }];
   const metadata = { configs: manifest.roots.slice(1).map(() => ({ config: clone(config), layers: [
@@ -126,11 +128,46 @@ export async function runAgentNativeProfileObservationFixtures() {
     x.metadata.configs[0].config.openai_base_url = "https://example.invalid/active";
     assert.throws(() => validate(x), code("PROFILE_PROVIDER_OVERRIDE_REFUSED"));
   });
+  await check("environment discovery retains only names and rejects ambiguous Windows aliases", () => {
+    const configs = [{ config: { shell_environment_policy: { set: { SYNTHETIC_EXTRA: "fake-secret-never-export", SECOND_VARIABLE: "different-private-value" } } } }];
+    const names = discoverCodexNativeProfileEnvironmentOverrideNames(configs);
+    assert.deepEqual(names, ["SECOND_VARIABLE", "SYNTHETIC_EXTRA"]); assert.equal(JSON.stringify(names).includes("fake-secret"), false);
+    assert.deepEqual(discoverCodexNativeProfileEnvironmentOverrideNames([...configs, ...clone(configs)]), names);
+    configs[0].config.shell_environment_policy.set.synthetic_extra = "";
+    assert.throws(() => discoverCodexNativeProfileEnvironmentOverrideNames(configs), code("CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES_INVALID"));
+  });
+  await check("explicit empty values neutralize inherited table entries while final filters remove their names", () => {
+    const x = fixture(), args = buildCodexNativeProfileObservationArguments(x.policy, x.request);
+    assert.equal(args.includes('shell_environment_policy.set={"SYNTHETIC_EXTRA"=""}'), true);
+    assert.equal(args.includes('shell_environment_policy.inherit="all"'), true);
+    assert.equal(args.includes("shell_environment_policy.ignore_default_excludes=true"), true);
+    assert.equal(args.some(arg => arg.startsWith("shell_environment_policy.include_only=") || arg.startsWith("shell_environment_policy.exclude=")), false);
+    const environment = x.metadata.configs[0].config.shell_environment_policy;
+    assert.equal(Object.hasOwn(environment.filters, "SYNTHETIC_EXTRA"), false);
+    assert.equal(validate(x).integrations_disabled, true);
+    // An empty TOML table would merge with this value rather than erase it.
+    environment.set.SYNTHETIC_EXTRA = "still-inherited";
+    assert.throws(() => validate(x), code("PROFILE_ENVIRONMENT_OVERRIDE_REFUSED"));
+  });
+  await check("empty legacy lists are inert but broadened or narrowing lists are refused", () => {
+    const x = fixture(), environment = x.metadata.configs[0].config.shell_environment_policy;
+    environment.include_only = []; environment.exclude = null; assert.equal(validate(x).integrations_disabled, true);
+    environment.include_only = ["*"];
+    assert.throws(() => validate(x), code("PROFILE_ENVIRONMENT_FILTER_REFUSED"));
+    environment.include_only = []; environment.exclude = ["PATH"];
+    assert.throws(() => validate(x), code("PROFILE_ENVIRONMENT_FILTER_REFUSED"));
+  });
   const mutations = [
     ["active MCP", x => { x.metadata.configs[0].config.mcp_servers["one.with space"].enabled = true; }, "PROFILE_INTEGRATION_ACTIVE_OR_CHANGED"],
     ["new integration", x => { x.metadata.configs[0].config.plugins.unknown = { enabled: false }; }, "PROFILE_INTEGRATION_ACTIVE_OR_CHANGED"],
     ["provider override", x => { x.metadata.configs[0].config.model_providers = { openai: { env_key: "FAKE" } }; }, "PROFILE_PROVIDER_OVERRIDE_REFUSED"],
     ["shell credential override", x => { x.metadata.configs[0].config.shell_environment_policy = { set: { FAKE: "synthetic" } }; }, "PROFILE_ENVIRONMENT_OVERRIDE_REFUSED"],
+    ["new inherited environment name even if blank", x => { x.metadata.configs[0].config.shell_environment_policy.set.NEW_NAME = ""; }, "PROFILE_ENVIRONMENT_OVERRIDE_REFUSED"],
+    ["case drift in frozen environment name", x => { const env = x.metadata.configs[0].config.shell_environment_policy.set; delete env.SYNTHETIC_EXTRA; env.synthetic_extra = ""; }, "PROFILE_ENVIRONMENT_OVERRIDE_REFUSED"],
+    ["inherited filter broadening", x => { x.metadata.configs[0].config.shell_environment_policy.filters["*"] = "include"; }, "PROFILE_ENVIRONMENT_FILTER_REFUSED"],
+    ["inherited filter admits blank override", x => { x.metadata.configs[0].config.shell_environment_policy.filters.SYNTHETIC_EXTRA = "include"; }, "PROFILE_ENVIRONMENT_FILTER_REFUSED"],
+    ["filter removes required path", x => { x.metadata.configs[0].config.shell_environment_policy.filters.PATH = "exclude"; }, "PROFILE_ENVIRONMENT_FILTER_REFUSED"],
+    ["environment inheritance changed", x => { x.metadata.configs[0].config.shell_environment_policy.inherit = "core"; }, "PROFILE_ENVIRONMENT_FILTER_REFUSED"],
     ["notify command", x => { x.metadata.configs[0].config.notify = ["fake.exe"]; }, "PROFILE_EFFECTIVE_SETTINGS_REFUSED"],
     ["wrong model", x => { x.metadata.configs[0].config.model = "other"; }, "PROFILE_EFFECTIVE_SETTINGS_REFUSED"],
     ["wrong SQLite", x => { x.metadata.configs[0].config.sqlite_home = x.policy.home.physical_path; }, "PROFILE_EFFECTIVE_SETTINGS_REFUSED"],

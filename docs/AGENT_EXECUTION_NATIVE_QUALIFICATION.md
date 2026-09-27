@@ -211,6 +211,16 @@ tables are not evidence of neutralization: native configuration merging can
 retain entries, and hooks/list can expose hooks absent from config/read.
 Unexpected hooks, integrations or configuration drift refuse execution.
 
+The policy also freezes the names of inherited `shell_environment_policy.set`
+entries, without retaining their values in discovery output. Per-process
+arguments replace those values with empty strings and impose an exact final
+include filter for the worker's OS, native-home, temporary-directory and
+admission variables. The final filter removes other names; an empty value alone
+does not establish absence. Names are bounded and compared case-insensitively
+on Windows. A collision with a required variable, a new or duplicate name, a
+nonempty effective value, or a wider inherited filter refuses execution.
+The selected profile is never rewritten to remove its custom environment.
+
 Fixtures prove these bindings and refusals with synthetic inputs. They do not
 qualify an actual profile, backend or OS. The four native cases and preservation
 checks must pass on the exact candidate before this capability is available.

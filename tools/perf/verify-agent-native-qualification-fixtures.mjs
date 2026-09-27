@@ -188,7 +188,7 @@ try {
     const policy={contract_version:"codex-native-profile-policy.v1",mode:"preexisting",
       home:{physical_path:path.join(root,"selected-profile"),identity_sha256:sha("a")},client_sha256:sha("b"),
       backend:{platform:"win32",architecture:"x64",sandbox:"elevated",provisioning:"existing-only"},
-      configuration:{sources_sha256:sha("c"),effective_settings_sha256:sha("d"),mcp_server_ids:[],plugin_ids:[],app_ids:[]},
+      configuration:{sources_sha256:sha("c"),effective_settings_sha256:sha("d"),mcp_server_ids:[],plugin_ids:[],app_ids:[],environment_override_names:[]},
       hooks_sha256:sha("e"),effects:{state_root:path.join(root,"attempt-state"),shared_effects_sha256:sha("f")}};
     const request={attempt_id:"attempt.bootstrap",cwd:path.join(root,"worker-a"),execution:{native_profile:{mode:"preexisting",policy_sha256:profilePolicy.fingerprintCodexNativeProfilePolicy(policy)}}};
     const observation={protocol_version:1,status:"bootstrap_completed",authorization:"NOT_GRANTED",native_execution:"NOT_RUN",
