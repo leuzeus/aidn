@@ -1418,7 +1418,7 @@ try {
   process.stdout.write(JSON.stringify({ ok:true, backend:"ephemeral-postgres", version:result.version, checks:checks.length,
     qualification:focused ? "partial" : "full",selection:focused ? "lifecycle-fences" : "all",skipped:skipped.length,
     cleanup:"PASS", codex_native:"SKIP", os_confinement:"SKIP", verifier_authority:"injected-supervisor-doubles",
-    validation_evidence:"real-ed25519-with-fixture-process-boundary" })+"\n");
+    validation_evidence:focused ? "injected-double-for-cleanup" : "real-ed25519-with-fixture-process-boundary" })+"\n");
 } catch (error) {
   try { await drainChildren(); } catch { /* Retain unconfirmed children in diagnostics. */ }
   // The assertion's bounded message is useful, but driver/connection details

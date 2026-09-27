@@ -27,6 +27,15 @@ function printUsage() {
   console.log("  node tools/perf/verify-governance-completeness.mjs --json");
 }
 
+function isSupervisionCandidateCoverage(concept) {
+  return concept?.status === "complete" && concept.coverage_kind === "supervision_candidate"
+    && concept.cli_contract === "runtime-agent-run.v1.schema.json" && concept.cli_contract_status === "covered"
+    && concept.required?.includes("cli_contract")
+    && /conditional native prototype/i.test(concept.coverage_note ?? "")
+    && /matching native qualification are required/i.test(concept.coverage_note ?? "")
+    && /No runtime instances or operational availability are inferred/i.test(concept.coverage_note ?? "");
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const output = projectGovernanceDiagnostics({
@@ -36,10 +45,19 @@ function main() {
   });
   for (const conceptId of ["execution_run", "delegated_task", "execution_attempt"]) {
     const concept = output.concepts.find((item) => item.concept === conceptId);
-    if (concept?.status !== "complete" || concept?.coverage_kind !== "supervision_candidate"
-      || !concept?.coverage_note.includes("public supervised commands remain unavailable")
-      || concept?.cli_contract_status !== "not_applicable") {
-      output.issues.push(`${conceptId}: persistence-only coverage must not advertise an executable CLI capability`);
+    if (!isSupervisionCandidateCoverage(concept)) {
+      output.issues.push(`${conceptId}: supervision candidate coverage requires its public CLI contract and explicit native qualification limits`);
+      output.ok = false;
+    }
+    // Public command coverage must not be mistaken for native availability.
+    // Keep the two regressions independent: losing a CLI contract or promoting
+    // the candidate to an operational capability must both fail this gate.
+    for (const changed of [
+      { ...concept, cli_contract_status: "not_applicable" },
+      { ...concept, coverage_kind: "operational" },
+      { ...concept, coverage_note: "Public commands are operational without native qualification." },
+    ]) if (isSupervisionCandidateCoverage(changed)) {
+      output.issues.push(`${conceptId}: supervision coverage negative fixture was accepted`);
       output.ok = false;
     }
   }
