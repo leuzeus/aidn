@@ -49,6 +49,24 @@ await check("merged model/effort may be absent or independently selected without
   const f = fixture(); assess(f); response(f).config.model = "arbitrary-fixture-model"; response(f).config.model_reasoning_effort = "ultra"; assess(f);
   assert(!buildManagedSetupArguments(f.startup).some(arg => /^(model|model_reasoning_effort)=/u.test(arg)));
 });
+await check("typed merged shell policy permits null profile default while the session remains raw", () => {
+  const f = fixture(), raw = assess(f), environment = response(f).config.shell_environment_policy;
+  assert(!Object.hasOwn(environment, "experimental_use_profile"));
+  environment.exclude = null; environment.include_only = null; environment.experimental_use_profile = null;
+  assert(!Object.hasOwn(session(f).config.shell_environment_policy, "experimental_use_profile"));
+  const before = copy(f), typed = assess(f);
+  assert.deepEqual(f, before); assert.equal(typed.status, "SOURCE_CONFIGURATION_VERIFIED");
+  assert.equal(typed.permission_scope, "PERMISSION_SCOPE_UNRESOLVED"); assert.equal(typed.native, false);
+  assert.equal(typed.execution_available, false); assert.equal(typed.authorization, "NOT_AUTHORIZED");
+  assert.equal(typed.qualification, "NOT_RUN"); assert.equal(typed.session_flags_sha256, raw.session_flags_sha256);
+  assert.notEqual(typed.configuration_sha256, raw.configuration_sha256);
+});
+for (const value of [false, true, "false", "", 0, [], {}]) await check("merged profile control nonnull is refused: " + JSON.stringify(value), () =>
+  reject(f => { response(f).config.shell_environment_policy.experimental_use_profile = value; }, "ENVIRONMENT_SETTINGS_MISMATCH"));
+await check("typed null profile default does not relax unknown merged environment controls", () =>
+  reject(f => { const environment = response(f).config.shell_environment_policy; environment.experimental_use_profile = null; environment.unknown = null; }, "ENVIRONMENT_SETTINGS_MISMATCH"));
+for (const value of [null, false, true]) await check("session does not accept merged profile default: " + JSON.stringify(value), () =>
+  reject(f => { session(f).config.shell_environment_policy.experimental_use_profile = value; }, "SESSION_SETTINGS_MISMATCH"));
 await check("all actual setup -c settings have matching semantic values in the accepted session", () => {
   const f = fixture(), settings = session(f).config, args = buildManagedSetupArguments(f.startup), projected = {};
   function toml(value) {

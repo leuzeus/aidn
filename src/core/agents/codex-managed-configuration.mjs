@@ -109,8 +109,11 @@ function checkSettings(config, expected, session) {
   ensure(config.model_providers == null || object(config.model_providers), "PROVIDER_OVERRIDE_UNSUPPORTED");
   ensure(config.model_providers?.openai == null && config.openai_base_url == null && config.auth_command == null, "PROVIDER_OVERRIDE_UNSUPPORTED");
   const environment = config.shell_environment_policy;
-  ensure(object(environment) && Object.keys(environment).every(key => [...Object.keys(expected.shell_environment_policy), "include_only", "exclude"].includes(key))
+  // Upstream 0d9c7cbf config/src/shell_environment_policy.rs:13-37 serializes the
+  // absent Option<bool> as null in merged ConfigToml, unlike raw session flags.
+  ensure(object(environment) && Object.keys(environment).every(key => [...Object.keys(expected.shell_environment_policy), "include_only", "exclude", "experimental_use_profile"].includes(key))
     && Object.entries(expected.shell_environment_policy).every(([key, value]) => Object.hasOwn(environment, key) && same(environment[key], value))
+    && (!Object.hasOwn(environment, "experimental_use_profile") || environment.experimental_use_profile === null)
     && [environment.include_only, environment.exclude].every(value => value == null || Array.isArray(value) && value.length === 0), "ENVIRONMENT_SETTINGS_MISMATCH");
 }
 
