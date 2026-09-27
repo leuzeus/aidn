@@ -263,7 +263,7 @@ For the public run lifecycle, run
 `npm run perf:verify-agent-run-lifecycle-fixtures`. The required runtime gate
 `runtime-agent-run-lifecycle` executes the lifecycle, workspace, native-attempt
 composition, sandbox-validation, controlled-metadata, managed-sandbox preparation
-and operation-adequacy contract fixtures exactly once on dev, main
+operation-adequacy, setup-protocol and setup-effect contract fixtures exactly once on dev, main
 and release. It checks preview purity, explicit action fingerprints, stale state,
 cancellation, read-only status, prepared-root adoption and completed-run cleanup.
 Disposable Git tests retain source commits and all local bytes before removal,
@@ -276,7 +276,7 @@ termination receipts, unavailable prerequisites and absence of constructor
 effects. Sandbox-validation fixtures verify closed configuration, framed
 protocol and boundary contracts without invoking Codex. Controlled-metadata
 fixtures check explicit candidate/Node pins, bounded protocol and unknown-tree
-recovery using injected controllers. These seven scripts run
+recovery using injected controllers. These nine scripts run
 on Linux and Windows; they do not provision a sandbox, use a real user profile,
 launch a model or qualify Windows process confinement. The separate native
 Windows process fixtures (`node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs --native`
@@ -317,6 +317,21 @@ structurally validated model inputs, not authenticated host observations. A
 reviewable model cannot authorize setup or qualify execution. The Windows
 collector fixtures separately check observer-context binding, registry selectors
 and redacted provider diagnostics. No fixture requires administrative elevation.
+
+The eighth lifecycle script,
+`node tools/perf/verify-codex-managed-setup-protocol-fixtures.mjs`, checks the
+pure setup state machine and its injected duplex channel. It covers strict UTF-8
+streaming, bounded JSONL frames, request ordering, callback backpressure and
+failure, cancellation, deadlines and separate process-termination evidence.
+The channel never creates a process. Its transport doubles cannot establish
+real Job membership, elevation, authorization or native confinement.
+
+The ninth script,
+`node tools/perf/verify-codex-managed-sandbox-setup-effects-fixtures.mjs`, checks
+closed setup-effect recipes and their observation bindings. Unrepresented
+temporary effects and unverified postconditions remain explicit gaps. These
+models neither extend the historical create/update manifest nor authorize setup.
+Both suites use neutral fixture data and perform no Windows provider operation.
 
 For the injected supervisor candidate, run
 `npm run perf:verify-agent-execution-scheduler-fixtures` and

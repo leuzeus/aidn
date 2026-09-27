@@ -526,6 +526,18 @@ preview shape is unchanged when `--operation` is absent. Neither mode has an
 execute switch. Legacy cleanup, transactional replacement and log retention have
 explicitly unsupported mechanisms under the create/update-only manifest.
 
+Separate internal setup-effect recipes now represent the closed mechanisms
+needed for review without changing that manifest. Their model checks bind the
+operation, observations and preimages and retain missing postconditions as gaps.
+They cannot turn model inputs into authenticated host evidence or approval.
+
+The internal setup protocol and injected duplex channel describe one fresh
+connection, initialize it and request only the fixed elevated setup operation.
+Streaming input, callbacks and stop requests are bounded. Setup completion is
+recorded separately from transport termination; a transport receipt is still an
+injected assertion until an actual controller proves the stopped Job. These
+modules contain no process launcher and are not a managed native backend.
+
 Collector diagnostics identify the observer's token context and projection
 digest, provider duration, exit code and privilege-related failures without
 returning raw WFP XML, credentials or provider error messages. Scope digests

@@ -819,8 +819,11 @@ const negativeProbes = {
   agent_run_lifecycle_invocation_omission: (() => {
     const commands = packageJson.scripts["perf:verify-agent-run-lifecycle-fixtures"].split(" && ");
     const managedPreparation = "node tools/perf/verify-codex-managed-sandbox-fixtures.mjs";
-    return commands.length === 7 && commands.includes(managedPreparation)
-      && commands.includes("node tools/perf/verify-codex-managed-sandbox-operation-fixtures.mjs") && new Set(commands).size === commands.length
+    return commands.length === 9 && commands.includes(managedPreparation)
+      && commands.includes("node tools/perf/verify-codex-managed-sandbox-operation-fixtures.mjs")
+      && commands.includes("node tools/perf/verify-codex-managed-setup-protocol-fixtures.mjs")
+      && commands.includes("node tools/perf/verify-codex-managed-sandbox-setup-effects-fixtures.mjs")
+      && new Set(commands).size === commands.length
       && commands.every((_, index) => {
         const candidate = clone(packageJson);
         candidate.scripts["perf:verify-agent-run-lifecycle-fixtures"] = commands.filter((_, position) => position !== index).join(" && ");

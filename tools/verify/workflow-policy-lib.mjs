@@ -83,7 +83,7 @@ const GOVERNED_RUNTIME_COMMANDS = Object.freeze({
   "runtime-agent-execution-scheduler": "node tools/perf/verify-agent-execution-scheduler-fixtures.mjs",
   "runtime-agent-verification": "node tools/perf/verify-agent-verification-fixtures.mjs",
   "runtime-agent-git-integration": "node tools/perf/verify-agent-git-integration-fixtures.mjs",
-  "runtime-agent-run-lifecycle": "node tools/perf/verify-agent-run-lifecycle-fixtures.mjs && node tools/perf/verify-agent-run-workspace-fixtures.mjs && node tools/perf/verify-codex-agent-attempt-fixtures.mjs && node tools/perf/verify-codex-sandbox-validation-fixtures.mjs && node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs && node tools/perf/verify-codex-managed-sandbox-fixtures.mjs && node tools/perf/verify-codex-managed-sandbox-operation-fixtures.mjs",
+  "runtime-agent-run-lifecycle": "node tools/perf/verify-agent-run-lifecycle-fixtures.mjs && node tools/perf/verify-agent-run-workspace-fixtures.mjs && node tools/perf/verify-codex-agent-attempt-fixtures.mjs && node tools/perf/verify-codex-sandbox-validation-fixtures.mjs && node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs && node tools/perf/verify-codex-managed-sandbox-fixtures.mjs && node tools/perf/verify-codex-managed-sandbox-operation-fixtures.mjs && node tools/perf/verify-codex-managed-setup-protocol-fixtures.mjs && node tools/perf/verify-codex-managed-sandbox-setup-effects-fixtures.mjs",
   "runtime-shared-coordination-concurrency": [
     "node tools/perf/verify-shared-coordination-concurrency-fixtures.mjs",
     "node tools/perf/verify-shared-coordination-worktree-concurrency-fixtures.mjs",

@@ -536,6 +536,23 @@ structurally valid observations into authenticated evidence or user permission.
 Optional operation assessment has a separate preview envelope; the original
 preparation preview remains compatible.
 
+Two additional preparation components remain unavailable for native execution.
+A pure protocol state machine describes one fresh app-server connection with
+initialize, initialized and one elevated setupStart request. An injected duplex
+channel bounds framing, bytes and time, serializes awaited event callbacks, and
+requests controlled termination on failure or completion. A setup notification,
+transport stop receipt and actual controller termination proof are distinct;
+the channel cannot authenticate its injected transport's claim. No process,
+approval RPC, worker or setup is started by discovery or model validation.
+
+A separate setup-effect model describes closed recipes for the selected client's
+marker replacement, WFP filter transaction, configuration edit, log retention and
+identified legacy cleanup. It binds exact targets and observed preimages, while
+retaining missing semantics as gaps. It does not introduce general deletion
+authority, reinterpret v1 create/update permissions or claim complete OS coverage.
+These contracts prepare a later reviewed implementation; they do not bypass
+operation adequacy, native admission or first-operation approval.
+
 The observer's security context forms part of each observation scope. Partial
 read-only projections, access refusals and provider timeouts remain distinct.
 UAC activation from a non-elevated app-server is outside the current Job proof;
