@@ -13,10 +13,12 @@ import { getManagedSandboxOperationPolicy } from "./codex-managed-sandbox-operat
 // allow.rs14-41; deny_read_resolver.rs32-46; setup_runtime_bin.rs22-207.
 // The caller must observe these same inputs again before any authorized launch.
 const VERSION = "aidn-managed-setup-legacy-scope.v1";
+const JUNCTION_VERSION = "aidn-managed-setup-legacy-scope.v2";
+const MOUNT_POINT_TAG = 0xa0000003;
 const EXCLUSIONS = Object.freeze([".ssh", ".tsh", ".brev", ".gnupg", ".aws", ".azure", ".kube", ".docker", ".config", ".npm", ".pki", ".terraform.d"]);
 const PLATFORM = Object.freeze(["C:\\Windows", "C:\\Program Files", "C:\\Program Files (x86)", "C:\\ProgramData"]);
 const POLICY = getManagedSandboxOperationPolicy();
-const LIMITS = Object.freeze({ paths: 4609, listings: 4097, profile_entries: 512, nonruntime_paths: 512, runtime_entries: 4096, runtime_depth: 32, document_bytes: 2097152, max_age_ms: 300000 });
+const LIMITS = Object.freeze({ paths: 4609, listings: 4097, profile_entries: 512, nonruntime_paths: 512, runtime_entries: 4096, runtime_depth: 32, profile_junctions: 32, document_bytes: 2097152, max_age_ms: 300000 });
 const fail = code => { throw Object.assign(new Error("MANAGED_LEGACY_SCOPE_" + code), { code: "MANAGED_LEGACY_SCOPE_" + code }); };
 const ensure = (ok, code) => { if (!ok) fail(code); };
 const object = value => value !== null && typeof value === "object" && !Array.isArray(value);
@@ -82,8 +84,11 @@ export function projectManagedSetupLegacyScope(input) {
     && samePath(environment.TMP, startup.state_root), "ENVIRONMENT_BINDING");
   const profile = environment.USERPROFILE, local = environment.LOCALAPPDATA;
   ensure(!inside(profile, cwd) && !inside(cwd, profile) && !inside(cwd, home) && !inside(home, cwd), "CWD_SUBSET_UNSUPPORTED");
-  ensure(exact(facts, ["contract_version", "observed_at", "observer_context_sha256", "paths", "listings", "prior_deny_read_content"])
-    && facts.contract_version === "aidn-managed-setup-legacy-facts.v1" && digest(facts.observer_context_sha256), "FACTS_INVALID");
+  const junctionsEnabled = facts?.contract_version === "aidn-managed-setup-legacy-facts.v2";
+  const version = junctionsEnabled ? JUNCTION_VERSION : VERSION;
+  ensure(exact(facts, ["contract_version", "observed_at", "observer_context_sha256", "paths", "listings", "prior_deny_read_content",
+    ...(junctionsEnabled ? ["profile_junctions"] : [])])
+    && (junctionsEnabled || facts.contract_version === "aidn-managed-setup-legacy-facts.v1") && digest(facts.observer_context_sha256), "FACTS_INVALID");
   const now = stamp(at), observed = stamp(facts.observed_at);
   ensure(now >= observed && now - observed <= LIMITS.max_age_ms, "FACTS_STALE");
   ensure(Array.isArray(facts.paths) && facts.paths.length <= LIMITS.paths && Array.isArray(facts.listings)
@@ -101,7 +106,8 @@ export function projectManagedSetupLegacyScope(input) {
     ensure(row.ancestors_non_reparse === true, "ANCESTORS_UNVERIFIED");
     if (row.state === "absent") ensure(["object_type", "physical_path", "volume_id", "file_id", "link_count", "reparse", "content_sha256"].every(name => row[name] === null), "ABSENCE_INVALID");
     else {
-      ensure(row.state === "present" && ["file", "directory"].includes(row.object_type) && row.reparse === false
+      ensure(row.state === "present" && ["file", "directory"].includes(row.object_type)
+        && (row.reparse === false || junctionsEnabled && row.reparse === true && row.object_type === "directory")
         && samePath(row.physical_path, row.path) && typeof row.volume_id === "string" && /^[a-f0-9]{16}$/u.test(row.volume_id)
         && typeof row.file_id === "string" && /^[a-f0-9]{32}$/u.test(row.file_id)
         && (row.content_sha256 === null || digest(row.content_sha256)), "PATH_FACT_INVALID");
@@ -124,12 +130,47 @@ export function projectManagedSetupLegacyScope(input) {
   function directory(target, optional = false) {
     const row = fact(target);
     if (optional && row.state === "absent") return null;
-    ensure(row.state === "present" && row.object_type === "directory", "DIRECTORY_REQUIRED"); return row.path;
+    ensure(row.state === "present" && row.object_type === "directory" && row.reparse === false, "DIRECTORY_REQUIRED"); return row.path;
   }
   function absent(target, code) { ensure(fact(target).state === "absent", code); }
   function children(target) {
     directory(target); const id = key(target), row = listings.get(id); ensure(row, "LISTING_UNOBSERVED");
     usedListings.add(id); return row.entries;
+  }
+  // v2 resolves only immediate USERPROFILE directory junctions. Link IDs must
+  // come from OPEN_REPARSE_POINT, target IDs from the canonical non-reparse
+  // handle. This pure contract binds those claims; it does not observe handles.
+  // Source setup.rs536-613 canonicalizes retained profile children before
+  // exclusions (1289-1292,1381-1399). No recursive alias resolver is supplied.
+  const junctions = new Map();
+  if (junctionsEnabled) {
+    ensure(Array.isArray(facts.profile_junctions) && facts.profile_junctions.length <= LIMITS.profile_junctions, "JUNCTION_LIMIT");
+    for (const junction of facts.profile_junctions) {
+      ensure(exact(junction, ["path", "target_path", "reparse_tag"]) && junction.reparse_tag === MOUNT_POINT_TAG, "JUNCTION_INVALID");
+      const id = key(junction.path); absolute(junction.target_path);
+      ensure(samePath(windows.dirname(junction.path), profile) && !junctions.has(id), "JUNCTION_INVALID");
+      junctions.set(id, junction);
+    }
+    // Reject every observed path through a declared junction, not just the
+    // target itself: such a path contradicts ancestors_non_reparse.
+    for (const row of facts.paths) {
+      ensure(![...junctions.values()].some(junction => !samePath(junction.path, row.path) && inside(junction.path, row.path)), "JUNCTION_CHAIN_UNSUPPORTED");
+      ensure(row.reparse !== true || junctions.has(key(row.path)), "JUNCTION_UNBOUND");
+    }
+    const entries = children(profile); ensure(entries.length <= LIMITS.profile_entries, "PROFILE_LIMIT");
+    for (const junction of junctions.values()) {
+      const link = fact(junction.path);
+      ensure(link.state === "present" && link.object_type === "directory" && link.reparse === true
+        && link.path === junction.path && link.physical_path === junction.path
+        && entries.some(entry => entry === junction.path), "JUNCTION_FACT_INVALID");
+      ensure(inside(profile, junction.target_path) && !samePath(profile, junction.target_path), "JUNCTION_TARGET_OUTSIDE");
+      ensure(![...junctions.values()].some(other => inside(other.path, junction.target_path)), "JUNCTION_CHAIN_UNSUPPORTED");
+      const target = fact(junction.target_path);
+      ensure(target.state === "present" && target.object_type === "directory" && target.reparse === false
+        && target.physical_path === junction.target_path && target.path === junction.target_path, "JUNCTION_TARGET_INVALID");
+      const targetChild = windows.join(profile, windows.relative(profile, junction.target_path).split("\\")[0]);
+      ensure(entries.some(entry => samePath(entry, targetChild)), "JUNCTION_TARGET_UNLISTED");
+    }
   }
   for (const target of [cwd, home, candidate, profile, ...Object.values(buildManagedSetupStartupPaths(startup))]) directory(target);
   for (const name of [".git", ".agents", ".codex"]) absent(windows.join(cwd, name), "CWD_METADATA_UNSUPPORTED");
@@ -153,7 +194,7 @@ export function projectManagedSetupLegacyScope(input) {
   for (const target of PLATFORM) { const row = fact(target); if (row.state === "present") {
     ensure(row.object_type === "directory", "PLATFORM_ROOT_INVALID"); read.push(row.path);
   } }
-  for (const child of homeChildren) { const row = fact(child); ensure(row.state === "present", "LISTING_CHANGED"); read.push(row.path); }
+  for (const child of homeChildren) { const row = fact(child); ensure(row.state === "present", "LISTING_CHANGED"); read.push(junctions.get(key(child))?.target_path ?? row.path); }
   read.push(cwd); // Fixed symbolic-root read; readable_roots_for_cwd returns [].
   const filtered = value => !samePath(value, profile) && !(inside(profile, value)
     && EXCLUSIONS.includes(ascii(windows.relative(profile, value).split("\\")[0])));
@@ -180,12 +221,12 @@ export function projectManagedSetupLegacyScope(input) {
   ensure(usedPaths.size === paths.size && usedListings.size === listings.size, "UNUSED_FACTS");
   const scope = { read_roots: readRoots, write_roots: write, deny_read_paths: [], prior_deny_read_paths: [],
     deny_write_paths: [], runtime_paths: ordered(runtime), network: { allow_local_binding: false, proxy_ports: [] } };
-  const preimage = { contract_version: VERSION, source_commit: POLICY.source_commit, client_sha256: POLICY.client_sha256,
+  const preimage = { contract_version: version, source_commit: POLICY.source_commit, client_sha256: POLICY.client_sha256,
     setup_sha256: POLICY.setup_sha256, command_runner_sha256: POLICY.command_runner_sha256,
     phase: "Full", runtime: "Legacy", refresh_only: true, configuration_assessment_sha256: hash(assessment),
     startup_sha256: assessment.startup_sha256, environment_sha256: hash(environment), facts_sha256: hash(facts),
     observer_context_sha256: facts.observer_context_sha256, observed_at: facts.observed_at, ...scope };
-  return freeze({ contract_version: VERSION, status: "RESOLVED_FOR_REVIEW", representation: "DERIVED_LEGACY_SETUP_SCOPE",
+  return freeze({ contract_version: version, status: "RESOLVED_FOR_REVIEW", representation: "DERIVED_LEGACY_SETUP_SCOPE",
     authority: "STRUCTURAL_NOT_AUTHENTICATED", authorization: "NOT_AUTHORIZED", native: false, native_qualified: false,
     execution_available: false, qualification: "NOT_RUN", complete_effect_coverage: false,
     initial_provisioning: "CONDITIONAL_NOT_ASSESSED", assessed_at: at, preimage, permission_profile_sha256: hash(preimage) });

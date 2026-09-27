@@ -680,10 +680,22 @@ environment to explicitly observed physical paths. It computes a canonical
 preimage and the six operation path lists instead of accepting an arbitrary
 permission-profile digest. Its first subset is deliberately narrow: a new cwd
 without Git or agent metadata, absent SSH configuration, no prior deny-read
-entries and no aliases or reparse points. It represents the complete runtime
+entries and no aliases or reparse points. A versioned facts/scope v2 adds only
+explicit immediate USERPROFILE directory junctions with observed link identities
+and canonical non-reparse targets strictly inside that profile. Original listings
+remain complete; name and canonical-target exclusions precede target deduplication.
+Chains, cycles and other aliases remain refused. V1 fingerprints are unchanged.
+It represents the complete runtime
 expansion as at most 4,096 descendants plus three roots; exceeding this bound or
 an incomplete
 enumeration refuses the projection rather than omitting effects.
+
+A separate read-only Windows producer observes this closed physical subset with
+FileIdInfo and link counts on the same handle, bounded complete listings and a
+second observation pass. It returns facts through one bounded JSON document.
+Its request hash and caller context do not authenticate its process: the parent
+must bind the pinned producer, request, PID, creation time, output hash and stopped
+Job. It reads no general profile content and neither provisions nor changes ACLs.
 
 This derived scope is review material, not an authenticated native observation,
 compiled Codex profile, setup prerequisite or authorization. The containing

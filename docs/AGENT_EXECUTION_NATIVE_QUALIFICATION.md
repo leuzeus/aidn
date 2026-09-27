@@ -616,11 +616,24 @@ These facts remain structural inputs until an actual bounded observer supplies
 and authenticates them. The projector neither grants setup permission nor closes
 ACL, network, failure-path or process-provenance gaps. The historical Windows
 inventory request remains capped at 512 paths; the larger pure projection is not
-a qualification of that collector or a complete setup composition. Standard
-USERPROFILE junctions also cause this initial subset to refuse: the pinned
-client canonicalizes their targets instead of skipping them. A future physical
-observer and scope variant must bind those exact targets; omitting junctions
-from the captured directory listing cannot establish complete coverage.
+a qualification of that collector or a complete setup composition. Facts/scope
+v2 supports up to 32 immediate USERPROFILE directory junctions: the original
+listing remains complete, link identities are obtained without following the
+reparse point, and targets are canonical observed directories strictly inside
+that profile with no reparse ancestors. The pinned client canonicalizes these
+targets; the projector applies its exclusions and deduplication. Chains, cycles,
+outside targets and aliases elsewhere remain refused. V1 retains its refusal.
+
+The separate `tools/verify/codex-managed-setup-scope-facts.ps1` producer observes
+only this closed physical subset. Its versioned request binds roots, observer
+context and duration; FileIdInfo and link counts use the same handle. Two bounded
+passes compare identities, complete listings and junction targets. Only Win32
+NotFound establishes absence. The only file content accepted is the small empty
+prior deny-read state; no SSH configuration or credential content is read.
+The parent must pin and contain this producer and bind its request, PID, creation
+time, output digest and stopped Job. A syntactically valid observation or supplied
+context hash alone supplies no authenticated authority. This producer does not
+collect ACL/network effects and does not launch setup or qualify a native executor.
 
 The portable transport/bridge and parent fixtures use doubles and perform no
 setup. The separate Windows preflight campaign has 89 checks with mocked token,

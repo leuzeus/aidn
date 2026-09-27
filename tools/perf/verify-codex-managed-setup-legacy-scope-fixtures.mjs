@@ -49,6 +49,16 @@ function runtimeChildren(f,count){const p=runtimeRoot(f);f.facts.paths=f.facts.p
   const list=listing(f,p);list.entries=[];for(let n=0;n<count;n++){const child=path.join(p,"f"+n);present(f,child,"file");list.entries.push(child);}}
 function prior(f,text){f.facts.paths=f.facts.paths.filter(r=>r.path!==priorPath(f));present(f,priorPath(f),"file").content_sha256=rawHash(text);f.facts.prior_deny_read_content=text;}
 function rejects(mutate,code){const f=fixture();mutate(f);assert.throws(()=>project(f),e=>e.code==="MANAGED_LEGACY_SCOPE_"+code);}
+function fixtureV2(){const f=fixture();f.facts.contract_version="aidn-managed-setup-legacy-facts.v2";f.facts.profile_junctions=[];return f;}
+function junction(f,name,target){
+  const profile=f.environment.USERPROFILE,p=path.join(profile,name),entries=listing(f,profile).entries;
+  const link=row(f,p)??present(f,p);link.reparse=true;if(!entries.includes(p))entries.push(p);
+  if(!row(f,target))present(f,target);
+  const child=path.join(profile,path.relative(profile,target).split("\\")[0]);if(!entries.includes(child))entries.push(child);
+  const result={path:p,target_path:target,reparse_tag:0xa0000003};f.facts.profile_junctions.push(result);return result;
+}
+function junctionFixture(){const f=fixtureV2();junction(f,"Application Data",path.join(f.environment.USERPROFILE,"AppData","Roaming"));return f;}
+function rejectsJunction(mutate,code){const f=junctionFixture();mutate(f);assert.throws(()=>project(f),e=>e.code==="MANAGED_LEGACY_SCOPE_"+code);}
 await check("Full scope is derived, hashed and never authorizes execution",()=>{
   const f=fixture(),r=project(f),p=r.preimage;assert.equal(r.status,"RESOLVED_FOR_REVIEW");assert.equal(r.authority,"STRUCTURAL_NOT_AUTHENTICATED");
   assert.equal(r.authorization,"NOT_AUTHORIZED");assert.equal(r.execution_available,false);assert.equal(r.native_qualified,false);assert.equal(r.qualification,"NOT_RUN");
@@ -111,16 +121,77 @@ for(const p of ["C:\\a\\..\\b","\\\\server\\share\\x","C:\\a:stream","C:\\a\\NUL
 await check("recalculates configuration rather than trusting caller status",()=>{const f=fixture();f.configuration.metadata.requirements.requirements={};assert.throws(()=>project(f),{code:"MANAGED_CONFIGURATION_REQUIREMENTS_UNSUPPORTED"});});
 await check("accessors do not run",()=>{const f=fixture();let calls=0;Object.defineProperty(f.facts.paths[0],"path",{enumerable:true,get(){calls++;return"D:\\x";}});assert.throws(()=>project(f),{code:"MANAGED_LEGACY_SCOPE_JSON_INVALID"});assert.equal(calls,0);});
 await check("UTF8 document bound precedes processing",()=>{const f=fixture();f.facts.extra="é".repeat(1100000);assert.throws(()=>project(f),{code:"MANAGED_LEGACY_SCOPE_JSON_LIMIT"});});
+await check("v1 output is byte-for-byte compatible with the reviewed projection",()=>assert.equal(hash(project(fixture())),"bfd10c47d5583df2c37695b5b0acdb9db9f61d1ae4e70e73ddbb4de27095c563"));
+await check("v2 empty declaration changes version and evidence, not derived scope",()=>{
+  const a=project(fixture()),b=project(fixtureV2());assert.equal(b.contract_version,"aidn-managed-setup-legacy-scope.v2");assert.equal(b.preimage.contract_version,b.contract_version);
+  for(const k of ["read_roots","write_roots","deny_read_paths","prior_deny_read_paths","deny_write_paths","runtime_paths","network"])assert.deepEqual(a.preimage[k],b.preimage[k]);
+  assert.notEqual(a.permission_profile_sha256,b.permission_profile_sha256);assert.equal(b.authorization,"NOT_AUTHORIZED");assert.equal(b.qualification,"NOT_RUN");assert.equal(b.execution_available,false);
+});
+await check("standard immediate profile junctions resolve to observed internal directories",()=>{
+  const f=junctionFixture();junction(f,"Local Settings",path.join(f.environment.USERPROFILE,"AppData","Local"));junction(f,"My Documents",path.join(f.environment.USERPROFILE,"Documents"));
+  const before=copy(f),r=project(f);assert.deepEqual(f,before);for(const j of f.facts.profile_junctions){assert(r.preimage.read_roots.includes(j.target_path));assert(!r.preimage.read_roots.includes(j.path));}
+  assert(Object.isFrozen(r.preimage));assert.equal(r.authority,"STRUCTURAL_NOT_AUTHENTICATED");
+});
+await check("several physical junction links to one canonical target deduplicate only the read target",()=>{
+  const f=junctionFixture(),target=f.facts.profile_junctions[0].target_path;junction(f,"Roaming alias",target);const r=project(f);assert.equal(r.preimage.read_roots.filter(p=>p===target).length,1);
+  assert.equal(f.facts.paths.filter(p=>p.path===target).length,1);assert.notEqual(row(f,f.facts.profile_junctions[0].path).file_id,row(f,f.facts.profile_junctions[1].path).file_id);
+});
+await check("canonical target exclusions remove aliases into .ssh",()=>{
+  const f=fixtureV2(),target=path.join(f.environment.USERPROFILE,".ssh");junction(f,"Key alias",target);const r=project(f);assert(!r.preimage.read_roots.includes(target));assert(!r.preimage.read_roots.includes(f.facts.profile_junctions[0].path));
+});
+await check("initially excluded junctions are validated and consumed without adding their targets",()=>{
+  const f=fixtureV2(),target=path.join(f.environment.USERPROFILE,"AppData","Roaming");junction(f,".aws",target);const r=project(f);assert(!r.preimage.read_roots.includes(target));assert(!r.preimage.read_roots.includes(path.join(f.environment.USERPROFILE,".aws")));
+});
+await check("retargeting and link identity changes invalidate the v2 preimage",()=>{
+  const f=junctionFixture(),a=project(f),old=f.facts.profile_junctions[0].target_path,newTarget=path.join(f.environment.USERPROFILE,"AppData","Local");
+  f.facts.paths=f.facts.paths.filter(r=>r.path!==old);present(f,newTarget);f.facts.profile_junctions[0].target_path=newTarget;const b=project(f);assert.notEqual(a.permission_profile_sha256,b.permission_profile_sha256);
+  row(f,f.facts.profile_junctions[0].path).file_id="e".repeat(32);assert.notEqual(b.permission_profile_sha256,project(f).permission_profile_sha256);
+});
+await check("32 declared junctions are bounded and deduplicate an observed target",()=>{const f=fixtureV2(),target=path.join(f.environment.USERPROFILE,"AppData");for(let n=0;n<32;n++)junction(f,"alias-"+n,target);assert.equal(project(f).preimage.read_roots.filter(p=>p===target).length,1);});
+await check("33 declared junctions refuse without truncation",()=>{const f=fixtureV2(),target=path.join(f.environment.USERPROFILE,"AppData");for(let n=0;n<33;n++)junction(f,"alias-"+n,target);assert.throws(()=>project(f),{code:"MANAGED_LEGACY_SCOPE_JUNCTION_LIMIT"});});
+await check("v2 with 4096 runtime descendants stays below 2MiB",()=>{const f=junctionFixture();runtimeChildren(f,4096);assert(Buffer.byteLength(JSON.stringify(f))<2097152);assert.equal(project(f).preimage.runtime_paths.length,4099);});
+for(const [name,mutate,code] of [
+  ["v1 declaration",f=>{f.facts.contract_version="aidn-managed-setup-legacy-facts.v1";},"FACTS_INVALID"],
+  ["v1 reparse without extension",f=>{f.facts.contract_version="aidn-managed-setup-legacy-facts.v1";delete f.facts.profile_junctions;},"PATH_FACT_INVALID"],
+  ["unknown version",f=>{f.facts.contract_version="aidn-managed-setup-legacy-facts.v3";},"FACTS_INVALID"],
+  ["missing declarations",f=>{delete f.facts.profile_junctions;},"FACTS_INVALID"],
+  ["malformed declarations",f=>{f.facts.profile_junctions={};},"JUNCTION_LIMIT"],
+  ["symlink tag",f=>{f.facts.profile_junctions[0].reparse_tag=0xa000000c;},"JUNCTION_INVALID"],
+  ["string tag",f=>{f.facts.profile_junctions[0].reparse_tag="2684354563";},"JUNCTION_INVALID"],
+  ["extra declaration field",f=>{f.facts.profile_junctions[0].resolved=true;},"JUNCTION_INVALID"],
+  ["duplicate declaration",f=>{f.facts.profile_junctions.push(copy(f.facts.profile_junctions[0]));},"JUNCTION_INVALID"],
+  ["unlisted link",f=>{listing(f,f.environment.USERPROFILE).entries=listing(f,f.environment.USERPROFILE).entries.filter(p=>p!==f.facts.profile_junctions[0].path);},"JUNCTION_FACT_INVALID"],
+  ["non immediate link",f=>{f.facts.profile_junctions[0].path=path.join(f.environment.USERPROFILE,"AppData","Alias");},"JUNCTION_INVALID"],
+  ["undeclared reparse fact",f=>{f.facts.profile_junctions=[];},"JUNCTION_UNBOUND"],
+  ["non junction fact",f=>{row(f,f.facts.profile_junctions[0].path).reparse=false;},"JUNCTION_FACT_INVALID"],
+  ["file as junction",f=>{const r=row(f,f.facts.profile_junctions[0].path);r.object_type="file";r.link_count=1;},"PATH_FACT_INVALID"],
+  ["external target",f=>{f.facts.profile_junctions[0].target_path="D:\\outside";},"JUNCTION_TARGET_OUTSIDE"],
+  ["profile root target",f=>{f.facts.profile_junctions[0].target_path=f.environment.USERPROFILE;},"JUNCTION_TARGET_OUTSIDE"],
+  ["self target",f=>{f.facts.profile_junctions[0].target_path=f.facts.profile_junctions[0].path;},"JUNCTION_CHAIN_UNSUPPORTED"],
+  ["target beneath link",f=>{f.facts.profile_junctions[0].target_path=path.join(f.facts.profile_junctions[0].path,"child");},"JUNCTION_CHAIN_UNSUPPORTED"],
+  ["unobserved target",f=>{f.facts.paths=f.facts.paths.filter(r=>r.path!==f.facts.profile_junctions[0].target_path);},"PATH_UNOBSERVED"],
+  ["unknown target",f=>{row(f,f.facts.profile_junctions[0].target_path).state="unknown";},"PATH_FACT_INVALID"],
+  ["absent target",f=>{const target=f.facts.profile_junctions[0].target_path;f.facts.paths=f.facts.paths.filter(r=>r.path!==target);absent(f,target);},"JUNCTION_TARGET_INVALID"],
+  ["file target",f=>{const r=row(f,f.facts.profile_junctions[0].target_path);r.object_type="file";r.link_count=1;},"JUNCTION_TARGET_INVALID"],
+  ["target ancestors unknown",f=>{row(f,f.facts.profile_junctions[0].target_path).ancestors_non_reparse=false;},"ANCESTORS_UNVERIFIED"],
+  ["target identity same as link",f=>{const j=f.facts.profile_junctions[0],a=row(f,j.path),b=row(f,j.target_path);b.file_id=a.file_id;b.volume_id=a.volume_id;},"PHYSICAL_IDENTITY_DUPLICATE"],
+  ["unlisted target ancestor",f=>{const target=path.join(f.environment.USERPROFILE,"Missing","Target");present(f,target);f.facts.profile_junctions[0].target_path=target;},"JUNCTION_TARGET_UNLISTED"],
+  ["observed child through junction",f=>{absent(f,path.join(f.facts.profile_junctions[0].path,"child"));},"JUNCTION_CHAIN_UNSUPPORTED"]
+])await check("v2 refuses "+name,()=>rejectsJunction(mutate,code));
+await check("v2 refuses a chain and a two-link cycle without following either",()=>{for(const cycle of [false,true]){const f=junctionFixture(),a=f.facts.profile_junctions[0],b=junction(f,"Second alias",a.target_path);a.target_path=b.path;if(cycle)b.target_path=a.path;assert.throws(()=>project(f),{code:"MANAGED_LEGACY_SCOPE_JUNCTION_CHAIN_UNSUPPORTED"});}});
+await check("excluded junction declaration cannot conceal an external target",()=>{const f=fixtureV2(),j=junction(f,".aws",path.join(f.environment.USERPROFILE,"AppData"));j.target_path="D:\\outside";assert.throws(()=>project(f),{code:"MANAGED_LEGACY_SCOPE_JUNCTION_TARGET_OUTSIDE"});});
+await check("v2 does not generalize runtime reparse points",()=>rejectsJunction(f=>{row(f,runtimeRoot(f)).reparse=true;},"JUNCTION_UNBOUND"));
+await check("v2 does not allow profile home or helper through a junction",()=>{const f=fixtureV2();junction(f,".codex",path.join(f.environment.USERPROFILE,"AppData"));assert.throws(()=>project(f),{code:"MANAGED_LEGACY_SCOPE_JUNCTION_CHAIN_UNSUPPORTED"});});
 await check("import and projection have no I/O, process, network or implicit clock",async()=>{
   const source=new URL("../../src/core/agents/codex-managed-setup-legacy-scope.mjs",import.meta.url);
   const code=fs.readFileSync(source,"utf8").replace(/from "(\.\/[^"]+)"/gu,(_,relative)=>"from "+JSON.stringify(new URL(relative,source).href));
-  const f=fixture(),expected=project(f),saved=[];const block=(target,key)=>{saved.push([target,key,target[key]]);target[key]=()=>{throw new Error("UNEXPECTED_EFFECT_"+key);};};
+  const f=fixture(),expected=project(f),f2=junctionFixture(),expected2=project(f2),saved=[];const block=(target,key)=>{saved.push([target,key,target[key]]);target[key]=()=>{throw new Error("UNEXPECTED_EFFECT_"+key);};};
   try{for(const key of ["readFileSync","writeFileSync","openSync","mkdirSync","statSync","readdirSync","rmSync"])block(fs,key);
     for(const key of ["readFile","writeFile","open","mkdir","stat","readdir","rm"])block(fs.promises,key);
     for(const key of ["spawn","spawnSync","exec","execSync","execFile","execFileSync","fork"])block(childProcess,key);
     for(const target of [http,https])for(const key of ["get","request"])block(target,key);
     for(const key of ["connect","createConnection"])block(net,key);block(Date,"now");block(process,"cwd");syncBuiltinESMExports();
-    const m=await import("data:text/javascript;base64,"+Buffer.from(code).toString("base64"));assert.deepEqual(m.projectManagedSetupLegacyScope(f),expected);
+    const m=await import("data:text/javascript;base64,"+Buffer.from(code).toString("base64"));assert.deepEqual(m.projectManagedSetupLegacyScope(f),expected);assert.deepEqual(m.projectManagedSetupLegacyScope(f2),expected2);
   }finally{for(const [target,key,value]of saved.reverse())target[key]=value;syncBuiltinESMExports();}
 });
 const failed=checks.filter(r=>r.status==="FAIL");

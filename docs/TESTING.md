@@ -413,7 +413,20 @@ that list to 4,355. Other path lists and observation profiles retain their prior
 bounds; the 2 MiB operation and observation limit is measured in UTF-8 bytes.
 These fixtures qualify the derivation only. Observation authenticity, ACL and
 network effects, native setup authorization and confinement remain separate
-requirements; no available executor or setup approval is produced.
+requirements; no available executor or setup approval is produced. V2 fixtures
+also cover immediate profile junctions, canonical-target exclusions and
+deduplication, refusal of chains/cycles/outside targets, and unchanged V1 hashes.
+
+The separate native command
+`node tools/perf/verify-codex-managed-setup-scope-facts-fixtures.mjs` verifies the
+closed read-only Windows physical-fact producer. Its bounded temporary corpus
+checks complete listings and same-handle identities without reading a user
+profile. It requires Windows and PowerShell 7 and fails with `UNAVAILABLE` when
+either precondition is missing. It is separate from the fourteen-script portable
+lifecycle gate, just like the Windows inventory and preflight campaigns; Linux
+admission does not execute or qualify its native calls. An actual principal-profile
+observation remains separate from fixtures and requires a pinned controlled
+process and retained termination proof. Neither suite runs Codex setup.
 
 For the injected supervisor candidate, run
 `npm run perf:verify-agent-execution-scheduler-fixtures` and
