@@ -77,6 +77,28 @@ await check("empty layer backed by explicitly observed absence is accepted", () 
   const f = fixture(); response(f).layers.unshift({ name: { type: "system", file: "/fixture/system/config.toml" }, version: "absent", config: {}, disabledReason: null });
   f.source_files.push({ path: "/fixture/system/config.toml", sha256: null }); assess(f);
 });
+await check("neutralized native session/user/system capture omits disabledReason as Rust serde does", () => {
+  const f = fixture(), selectedSession = session(f), user = response(f).layers[0];
+  const system = { name: { type: "system", file: "/fixture/system/config.toml" }, version: "absent", config: {} };
+  delete selectedSession.disabledReason; delete user.disabledReason;
+  response(f).layers = [selectedSession, user, system];
+  f.source_files.push({ path: system.name.file, sha256: null });
+  assert(response(f).layers.every(layer => !Object.hasOwn(layer, "disabledReason")));
+  const before = copy(f), result = assess(f);
+  assert.deepEqual(f, before); assert.equal(result.status, "SOURCE_CONFIGURATION_VERIFIED");
+  assert.equal(result.permission_scope, "PERMISSION_SCOPE_UNRESOLVED"); assert.equal(result.native, false);
+  assert.equal(result.execution_available, false); assert.equal(result.authorization, "NOT_AUTHORIZED");
+  for (const layer of response(f).layers) layer.disabledReason = null;
+  const explicitNull = assess(f);
+  assert.equal(result.configuration_sha256, explicitNull.configuration_sha256);
+  assert.notEqual(result.layers_sha256, explicitNull.layers_sha256);
+});
+for (const value of ["", false, true, 0, [], {}]) await check("disabledReason nonnull is refused: " + JSON.stringify(value), () =>
+  reject(f => { session(f).disabledReason = value; }, "LAYER_DISABLED"));
+for (const key of ["name", "version", "config"]) await check("omitted disabledReason never makes layer field optional: " + key, () =>
+  reject(f => { const layer = session(f); delete layer.disabledReason; delete layer[key]; }, "LAYER_INVALID"));
+await check("disabledReason explicitly undefined is not an omitted JSON property", () =>
+  reject(f => { session(f).disabledReason = undefined; }, "JSON_INVALID"));
 await check("physically observed project/package/legacy source variants bind exact files", () => {
   const f = fixture(); for (const type of ["packagedDefaults", "project", "legacyManagedConfigTomlFromFile"]) {
     const directory = "/fixture/" + type; const name = type === "project" ? { type, dotCodexFolder: directory } : { type, file: directory + "/config.toml" };
@@ -122,7 +144,6 @@ for (const [name, mutate, code] of [
   ["no session flags", f => { response(f).layers.pop(); }, "SESSION_FLAGS_REQUIRED"],
   ["two session flags", f => { response(f).layers.push(copy(session(f))); }, "LAYER_DUPLICATE"],
   ["disabled layer", f => { response(f).layers[0].disabledReason = "untrusted"; }, "LAYER_DISABLED"],
-  ["missing disabledReason", f => { delete session(f).disabledReason; }, "LAYER_INVALID"],
   ["version not string", f => { session(f).version = 12; }, "LAYER_INVALID"],
   ["version empty", f => { session(f).version = ""; }, "LAYER_INVALID"],
   ["version too long", f => { session(f).version = "x".repeat(257); }, "LAYER_INVALID"],

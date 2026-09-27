@@ -139,8 +139,11 @@ export function assessManagedSetupConfiguration(input) {
   }
   const expected = settings(startup), identities = new Set(); let session = null;
   for (const layer of response.layers) {
-    ensure(exact(layer, ["name", "version", "config", "disabledReason"]) && text(layer.version), "LAYER_INVALID");
-    ensure(layer.disabledReason === null, "LAYER_DISABLED");
+    // Pinned protocol config.rs:329-334 uses skip_serializing_if=Option::is_none.
+    // Absence and explicit null are accepted; no other value disables this guard.
+    ensure((exact(layer, ["name", "version", "config"]) || exact(layer, ["name", "version", "config", "disabledReason"]))
+      && text(layer.version), "LAYER_INVALID");
+    ensure(!Object.hasOwn(layer, "disabledReason") || layer.disabledReason === null, "LAYER_DISABLED");
     noPermissionSelection(layer.config);
     const file = sourcePath(layer.name), identity = file === null ? "sessionFlags" : pathKey(file);
     ensure(!identities.has(identity), "LAYER_DUPLICATE"); identities.add(identity);
