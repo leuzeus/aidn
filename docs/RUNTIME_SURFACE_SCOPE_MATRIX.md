@@ -89,19 +89,19 @@ controls and the proof authority; PostgreSQL remains the exclusive shared
 authority and existing sequential workflows still need no PostgreSQL.
 
 The port is `src/core/ports/agent-execution-store-port.mjs`; its PostgreSQL
-adapter and the shared PostgreSQL v3/v4 migrations are implementation evidence.
+adapter and the shared PostgreSQL v3/v4/v5 migrations are implementation evidence.
 Shared schema 2 to 3 to 4 to 5 migrations are explicit and locked.
 Readiness, registry-independent reads and normal claims never apply DDL. Intact
-v2 historical coordination data remains readable for pre-migration backup;
-normal shared writes require v4. A reservation requires a positive planning
+v2-v4 historical coordination data remains readable for pre-migration backup;
+normal shared writes require v5. A reservation requires a positive planning
 revision; it does not change the initial historical revision zero implicitly.
 Injected activation and termination fixture verifiers establish no native
 admission or descendant-termination proof. Lot 4 adds a candidate executor and
 authenticated local admission transport. Its worker environment contains no
 PostgreSQL writer credentials; the supervisor evaluates exact scopes under the
 live attempt reservation. Native trust, hook execution and confinement must be
-qualified before this candidate can advertise availability. `persistence_only`
-remains the governed coverage while that qualification is pending.
+qualified before this candidate can advertise availability. `supervision_candidate`
+remains the governed coverage while native composition is pending.
 
 The future run lifecycle owns local worker worktrees and bulky output files.
 Shared attempt results contain bounded local references, byte counts and hashes,
@@ -177,6 +177,7 @@ ADR-0008 or in the shared coordination port.
   - `execution_acceptances`
   - `execution_integrations`
   - `execution_run_validations`
+  - `execution_integration_intents`
 
 ## Regression Rules
 
