@@ -35,7 +35,10 @@ export function buildCodexTaskArguments(request, { nativeProfilePolicy } = {}) {
   const profileArguments = buildCodexNativeProfileArguments(nativeProfilePolicy, request);
   // The explicitly selected profile's native project/hook trust must remain
   // visible. --ignore-user-config would also hide project trust.
-  return ["exec", "--json", "--ephemeral", "--strict-config",
+  // Existing homes may contain inert historical keys. Their complete source
+  // hash and effective controls are verified before launch; this is a selected
+  // mode, never a fallback after strict parsing fails. Isolated homes stay strict.
+  return ["exec", "--json", "--ephemeral", ...(nativeProfilePolicy ? [] : ["--strict-config"]),
     "--cd", request.cwd, "--sandbox", request.execution.sandbox, "--model", request.execution.model,
     "-c", `model_reasoning_effort=${JSON.stringify(request.execution.effort)}`, "-c", "agents.enabled=false",
     // Loading the selected profile preserves native trust, not permission to

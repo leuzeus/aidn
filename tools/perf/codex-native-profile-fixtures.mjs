@@ -64,6 +64,8 @@ export async function verifyNativeProfileFixtures({ check, setup, cwd }) {
   await check("known inherited integrations get exact TOML keys and native hooks remain observable", () => {
     const { runtime, request } = setup({ nativeProfile: true }), policy = runtime.nativeProfilePolicy;
     const args = buildCodexTaskArguments(request, { nativeProfilePolicy: policy });
+    assert(!args.includes("--strict-config"), "explicit preexisting mode verifies effective settings without rejecting inert legacy keys");
+    assert(!args.some(arg => arg.includes("dangerously")));
     assert(args.includes('mcp_servers={"server.with.dot space"={enabled=false}}'));
     assert(args.includes('plugins={"plugin\\"quoted@local"={enabled=false}}'));
     assert(args.includes('apps={"_default"={enabled=false},"synthetic.app"={enabled=false}}'));

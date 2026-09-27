@@ -143,6 +143,15 @@ plan and request as execution.native_profile. Missing or changed policy refuses
 the request; there is no profile or model fallback. The existing contract without
 this field remains valid.
 
+The preexisting mode uses Codex's ordinary configuration loader for both metadata
+observation and exec. It does not pass --strict-config: a home can contain inert
+historical keys, including unused named-profile fields. Their presence does not
+justify deleting user settings. The complete source bytes and effective settings
+remain fingerprinted, and every required sandbox, provider, integration and hook
+condition is still checked. Configuration warnings are not successful validation.
+Isolated profiles retain strict parsing. This choice follows the explicit bound
+mode; a failed launch never retries with relaxed arguments.
+
 The preexisting mode requires separately recorded consent for native profile
 effects and new human review of the disposable roots through /hooks. Native log,
 cache and authentication-refresh activity is distinct from project mutation;

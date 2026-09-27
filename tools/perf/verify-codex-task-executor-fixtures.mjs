@@ -84,6 +84,7 @@ try {
     assert.equal(args[args.indexOf("--cd") + 1], cwd); assert.equal(args[args.indexOf("--model") + 1], request.execution.model);
     assert(args.includes("workspace-write")); assert(!args.some(value => value.includes("dangerously")));
     assert(!args.includes("--ignore-user-config"), "the isolated profile's native trust must be loaded");
+    assert(args.includes("--strict-config"), "isolated profiles retain strict configuration loading");
     assert(args.includes("agents.enabled=false"), "workers cannot create a second delegation authority");
     for (const policy of ['approval_policy="never"', "sandbox_workspace_write.writable_roots=[]",
       "sandbox_workspace_write.network_access=false", "sandbox_workspace_write.exclude_tmpdir_env_var=true",

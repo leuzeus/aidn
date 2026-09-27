@@ -7,7 +7,8 @@ import { pathToFileURL } from "node:url";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../src/core/agents/agent-execution-contracts.mjs";
 import * as profile from "../../src/adapters/agents/codex-native-profile-policy.mjs";
 import { normalizeCodexNativeProfileConfiguration, validateCodexNativeProfileMetadata,
-  createCodexNativeProfileVerifier, collectCodexNativeProfileMetadata } from "../verify/agent-native-profile-observation.mjs";
+  createCodexNativeProfileVerifier, collectCodexNativeProfileMetadata,
+  buildCodexNativeProfileObservationArguments } from "../verify/agent-native-profile-observation.mjs";
 import { assertNativeQualificationProfileReview } from "../verify/qualify-agent-native-worker.mjs";
 import { verifyNativeQualificationProfile } from "../verify/agent-native-qualification-driver.mjs";
 
@@ -91,6 +92,37 @@ export async function runAgentNativeProfileObservationFixtures() {
     assert.throws(() => normalizeCodexNativeProfileConfiguration(x.config, x.policy, x.request), code("PROFILE_SANDBOX_SETTINGS_REFUSED"));
     x.config.sandbox_mode = "read-only";
     assert.notEqual(fingerprint(normalizeCodexNativeProfileConfiguration(x.config, x.policy, x.request)), fingerprint(original));
+  });
+  await check("preexisting metadata argv uses explicit compatibility without bypassing native trust or sandbox", () => {
+    const x = fixture(), args = buildCodexNativeProfileObservationArguments(x.policy, x.request);
+    for (const forbidden of ["--strict-config", "--ignore-user-config", "--dangerously-bypass-approvals-and-sandbox", "--yolo", "--full-auto"])
+      assert.equal(args.includes(forbidden), false);
+    assert.deepEqual(args.slice(-3), ["app-server", "--listen", "stdio://"]);
+    const settings = args.filter((value, index) => args[index - 1] === "-c");
+    for (const expected of ['sandbox_mode="workspace-write"', 'windows.sandbox="elevated"', 'approval_policy="never"',
+      "sandbox_workspace_write.writable_roots=[]", "sandbox_workspace_write.network_access=false",
+      "sandbox_workspace_write.exclude_tmpdir_env_var=true", "sandbox_workspace_write.exclude_slash_tmp=true"])
+      assert.equal(settings.includes(expected), true);
+    x.request.execution.sandbox = "read-only";
+    assert.equal(buildCodexNativeProfileObservationArguments(x.policy, x.request).includes('sandbox_mode="read-only"'), true);
+  });
+  await check("inert legacy fields are accepted but remain material to observed hashes", () => {
+    const x = fixture(), before = validate(x);
+    for (const response of x.metadata.configs) {
+      response.config.windows_wsl_setup_acknowledged = true;
+      response.config.profiles = { inactive_example: { openai_base_url: "https://example.invalid/unused" } };
+      response.layers[1].config.windows_wsl_setup_acknowledged = true;
+      response.layers[1].config.profiles = clone(response.config.profiles);
+    }
+    const after = validate(x);
+    assert.equal(after.integrations_disabled, true);
+    assert.notEqual(after.sources_sha256, before.sources_sha256);
+    assert.notEqual(after.effective_settings_sha256, before.effective_settings_sha256);
+  });
+  await check("legacy compatibility never accepts an active provider override", () => {
+    const x = fixture(); x.metadata.configs[0].config.windows_wsl_setup_acknowledged = true;
+    x.metadata.configs[0].config.openai_base_url = "https://example.invalid/active";
+    assert.throws(() => validate(x), code("PROFILE_PROVIDER_OVERRIDE_REFUSED"));
   });
   const mutations = [
     ["active MCP", x => { x.metadata.configs[0].config.mcp_servers["one.with space"].enabled = true; }, "PROFILE_INTEGRATION_ACTIVE_OR_CHANGED"],

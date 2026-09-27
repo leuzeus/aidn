@@ -98,8 +98,12 @@ function environmentFor(home, stateRoot, host) {
     CODEX_HOME: home, TEMP: stateRoot, TMP: stateRoot };
 }
 
-function argumentsFor(policy, request) {
-  return ["--strict-config", "-c", `model=${JSON.stringify(request.execution.model)}`, "-c", `model_reasoning_effort=${JSON.stringify(request.execution.effort)}`,
+// Preexisting profiles can retain inert legacy fields. This mode deliberately
+// uses native compatibility parsing on its first and only launch; it never
+// retries a rejected configuration with weaker flags. Effective controls and
+// every observed source remain mandatory and fingerprinted below.
+export function buildCodexNativeProfileObservationArguments(policy, request) {
+  return ["-c", `model=${JSON.stringify(request.execution.model)}`, "-c", `model_reasoning_effort=${JSON.stringify(request.execution.effort)}`,
     "-c", `sandbox_mode=${JSON.stringify(request.execution.sandbox)}`, "-c", 'windows.sandbox="elevated"', "-c", 'approval_policy="never"', "-c", "agents.enabled=false",
     "-c", "sandbox_workspace_write.writable_roots=[]", "-c", "sandbox_workspace_write.network_access=false",
     "-c", "sandbox_workspace_write.exclude_tmpdir_env_var=true", "-c", "sandbox_workspace_write.exclude_slash_tmp=true",
@@ -257,7 +261,7 @@ export function createCodexNativeProfileObserver({ collect = collectCodexNativeP
   return async function observe({ manifest, policy, request, consent, signal, proposal = false }) {
     const before = prepareObservation({ manifest, policy, request, consent, proposal }, host);
     let metadata, failure;
-    try { metadata = await collect({ executable: manifest.codex.binary_path, args: argumentsFor(policy, request), cwd: request.cwd, env: before.env, roots: workerRoots(manifest), signal }); }
+    try { metadata = await collect({ executable: manifest.codex.binary_path, args: buildCodexNativeProfileObservationArguments(policy, request), cwd: request.cwd, env: before.env, roots: workerRoots(manifest), signal }); }
     catch (error) { failure = error; }
     const after = prepareObservation({ manifest, policy, request, consent, proposal }, host);
     requireProof(same(before.home, after.home) && same(before.sources, after.sources) && same(before.setup, after.setup), "PROFILE_PRESERVATION_FAILED");
@@ -327,7 +331,7 @@ export async function inspectCodexNativeProfileProposal({ manifest, policyTempla
   const bind = () => ({ ...structuredClone(request), execution: { ...structuredClone(request.execution), native_profile: { mode: "preexisting", policy_sha256: fingerprintCodexNativeProfilePolicy(candidate) } } });
   let bound = bind(); const before = prepareObservation({ manifest, policy: candidate, request: bound, consent, proposal: true }, host);
   let raw, failure;
-  try { raw = await collect({ executable: manifest.codex.binary_path, args: argumentsFor(candidate, bound), cwd: bound.cwd, env: before.env, roots: workerRoots(manifest), signal }); }
+  try { raw = await collect({ executable: manifest.codex.binary_path, args: buildCodexNativeProfileObservationArguments(candidate, bound), cwd: bound.cwd, env: before.env, roots: workerRoots(manifest), signal }); }
   catch (error) { failure = error; }
   const after = prepareObservation({ manifest, policy: candidate, request: bound, consent, proposal: true }, host);
   requireProof(same(before.sources, after.sources) && same(before.setup, after.setup), "PROFILE_PRESERVATION_FAILED");

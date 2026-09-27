@@ -124,6 +124,13 @@ adding, removing or replacing it in a request conflicts with the frozen plan.
 Historical contracts without this field remain valid and imply no selection or
 fallback to a preexisting profile.
 
+The explicit preexisting mode uses the ordinary native configuration loader in
+both its metadata observer and executor. It tolerates inert historical fields
+while freezing complete source bytes and verifying every required effective
+control. Isolated homes retain strict parsing. This is a fixed mode invariant,
+not an automatic retry after configuration failure; no user configuration is
+deleted and no sandbox, hook, provider or integration requirement is relaxed.
+
 AIDN does not provision this profile, copy authentication, grant native trust,
 run native setup or silently substitute another profile. Config, trust,
 authorization, AIDN runtime state and Git metadata remain protected. The local
