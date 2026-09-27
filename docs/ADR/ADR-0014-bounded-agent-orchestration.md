@@ -138,6 +138,15 @@ not prove removal. Reserved-name collisions, Windows case aliases, additional
 names, nonempty values and wider filters fail validation. Native observations
 must establish these effective controls without changing the user's profile.
 
+A correction limited to package bytes may retain reviewed disposable roots and
+their selected native home before any delegated attempt. Refresh preserves the
+home's mode and physical identity, exact hook assets, activation, Git and runtime
+preimages; only root-specific receipts and completed installation transactions
+may change. A preexisting
+home stays outside the owned outputs and is never inventoried or copied. Native
+hook trust must be observed again and the profile policy frozen for the new
+candidate. Earlier native execution results do not qualify the refreshed package.
+
 AIDN does not provision this profile, copy authentication, grant native trust,
 run native setup or silently substitute another profile. Config, trust,
 authorization, AIDN runtime state and Git metadata remain protected. The local

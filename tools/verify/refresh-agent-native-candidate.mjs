@@ -6,6 +6,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
+import { nativeQualificationHomeIdentity } from "./prepare-agent-native-qualification.mjs";
 
 const SOURCE = path.resolve(import.meta.dirname, "../..");
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -92,9 +93,28 @@ function nativeHomeIdentity(root) {
   // Native profiles contain live databases, lock files and credentials. Never
   // read or copy their contents. Trust is observed separately through the API;
   // preservation here follows from directory identity and bounded write roots.
-  const absolute = checkedPath(root, "directory"), stat = fs.statSync(absolute);
-  return { path: absolute, physical_path: fs.realpathSync.native(absolute), device: stat.dev,
-    inode: stat.ino, birthtime_ms: stat.birthtimeMs };
+  const absolute = checkedPath(root, "directory");
+  return { path: absolute, ...nativeQualificationHomeIdentity(absolute) };
+}
+
+export function agentNativeRefreshProfileSelection(manifest) {
+  const selected=manifest?.native_profile;
+  if(selected===undefined) return {mode:"isolated"};
+  const keys=selected && typeof selected==="object" && !Array.isArray(selected)?Object.keys(selected):[];
+  if(selected?.mode==="isolated" && keys.length===1) return {mode:"isolated"};
+  if(selected?.mode!=="preexisting" || keys.length!==2 || !keys.includes("mode") || !keys.includes("home_identity_sha256")
+      || !/^[a-f0-9]{64}$/.test(selected.home_identity_sha256 ?? "")) fail("REFRESH_NATIVE_PROFILE_SELECTION_INVALID");
+  return {mode:"preexisting",home_identity_sha256:selected.home_identity_sha256};
+}
+
+// Metadata only: shared with preparation so its manifest digest cannot drift
+// because this refresh tool has historically included an additional `path` key.
+export function readAgentNativeRefreshHomeIdentity(manifest) {
+  const selected=agentNativeRefreshProfileSelection(manifest), observed=nativeHomeIdentity(manifest.codex_home);
+  const {path:declared,...physicalIdentity}=observed;
+  if(!equalPath(declared,physicalIdentity.physical_path)) fail("REFRESH_PATH_ALIAS");
+  if(selected.mode==="preexisting" && fingerprint(physicalIdentity)!==selected.home_identity_sha256) fail("REFRESH_NATIVE_HOME_CHANGED");
+  return observed;
 }
 
 function put(root, relative, contents) {
@@ -153,6 +173,8 @@ const requireContinuity = (condition, code) => { if (!condition) fail(code); };
 export function assertAgentNativeQualificationRefreshContinuity({manifest,trust,previousManifest,previousTrust}) {
   assertAgentNativeRefreshReview(manifest,trust);
   assertAgentNativeRefreshReview(previousManifest,previousTrust);
+  requireContinuity(same(agentNativeRefreshProfileSelection(manifest),agentNativeRefreshProfileSelection(previousManifest)),
+    "QUALIFICATION_REFRESH_NATIVE_PROFILE_CHANGED");
   requireContinuity(identityContinuity(manifest.codex_home)===identityContinuity(previousManifest.codex_home)
     && isDeepStrictEqual(manifest.codex,previousManifest.codex)
     && manifest.host.platform===previousManifest.host.platform && manifest.host.architecture===previousManifest.host.architecture,
@@ -252,14 +274,22 @@ export function assertAgentNativeRefreshLineage(lineage, outputRoot) {
   const seen = new Set();
   for (const [index, entry] of lineage.entries()) {
     const { manifest, evidence, manifestPath, manifestSha256, trustEvidencePath, trustSha256 } = entry;
-    // This helper's continuity contract owns the original isolated home only.
-    // A preexisting profile requires a new preparation and frozen policy review.
-    if (manifest.native_profile && manifest.native_profile.mode !== "isolated") fail("REFRESH_PREEXISTING_PROFILE_UNSUPPORTED");
+    const selected=agentNativeRefreshProfileSelection(manifest);
     if (![manifestPath, trustEvidencePath, manifest.output_root, manifest.codex_home,
       manifest.candidate.packageRoot, manifest.candidate.archivePath, ...manifest.roots.map(root => root.root)]
       .every(value => typeof value === "string" && path.isAbsolute(value))) fail("REFRESH_ABSOLUTE_PATH_REQUIRED");
     if (![manifestSha256, trustSha256].every(value => /^[a-f0-9]{64}$/.test(value ?? ""))) fail("REFRESH_LINEAGE_HASH_INVALID");
     assertAgentNativeRefreshReview(manifest, evidence);
+    if(manifest.roots.some(root=>root.attempt_marker_present!==false)) fail("REFRESH_ATTEMPT_ALREADY_STARTED");
+    if(selected.mode==="preexisting") {
+      // Codex-managed source worktrees may reside below CODEX_HOME. Only this
+      // exact source is read and packed; the surrounding profile is not scanned.
+      // The home itself must never be a source entry eligible for packaging.
+      if(inside(SOURCE,manifest.codex_home)) fail("REFRESH_NATIVE_PROFILE_OVERLAP");
+      const protectedRoots=[outputRoot,manifest.output_root,manifest.candidate.packageRoot,
+        manifest.candidate.archivePath,manifest.codex.binary_path,...manifest.roots.map(root=>root.root)];
+      if(protectedRoots.some(root=>inside(root,manifest.codex_home) || inside(manifest.codex_home,root))) fail("REFRESH_NATIVE_PROFILE_OVERLAP");
+    }
     const key = identityContinuity(manifestPath);
     if (seen.has(key)) fail("REFRESH_LINEAGE_CYCLE");
     seen.add(key);
@@ -279,7 +309,8 @@ export function assertAgentNativeRefreshLineage(lineage, outputRoot) {
   }
   const origin = lineage.at(-1).manifest.output_root;
   for (const { manifest } of lineage) {
-    if (!inside(origin, manifest.codex_home) || manifest.roots.some(entry => !inside(origin, entry.root))) fail("REFRESH_PREPARATION_PATH_MISMATCH");
+    if ((agentNativeRefreshProfileSelection(manifest).mode==="isolated" && !inside(origin, manifest.codex_home))
+        || manifest.roots.some(entry => !inside(origin, entry.root))) fail("REFRESH_PREPARATION_PATH_MISMATCH");
   }
   return origin;
 }
@@ -312,13 +343,14 @@ async function inspect({ manifestPath, trustEvidencePath, outputRoot, npmCli }) 
   if (inside(SOURCE, outputRoot)) fail("REFRESH_OUTPUT_INSIDE_SOURCE");
   const { lineage, originOutput } = readAgentNativeRefreshLineage(manifestPath, trustEvidencePath, outputRoot);
   const { manifest, evidence } = lineage[0];
+  const selected=agentNativeRefreshProfileSelection(manifest);
   const oldOutput = checkedPath(manifest.output_root, "directory");
   if (!equalPath(path.dirname(manifestPath), oldOutput) || inside(oldOutput, outputRoot)) fail("REFRESH_OUTPUT_OVERLAP");
   checkedPath(manifest.codex_home, "directory");
   checkedPath(manifest.codex.binary_path, "file");
   checkedPath(manifest.candidate.packageRoot, "directory");
   checkedPath(manifest.candidate.archivePath, "file");
-  if (!inside(originOutput, manifest.codex_home) || !inside(oldOutput, manifest.candidate.packageRoot)
+  if ((selected.mode==="isolated" && !inside(originOutput, manifest.codex_home)) || !inside(oldOutput, manifest.candidate.packageRoot)
       || !inside(oldOutput, manifest.candidate.archivePath)) fail("REFRESH_PREPARATION_PATH_MISMATCH");
   if (new Set(manifest.roots.map((entry) => identityPath(checkedPath(entry.root, "directory")))).size !== 3
       || new Set(manifest.roots.map((entry) => entry.worktree_id)).size !== 3) fail("REFRESH_ROOT_IDENTITY_INVALID");
@@ -338,7 +370,7 @@ async function inspect({ manifestPath, trustEvidencePath, outputRoot, npmCli }) 
   const baselinePath = checkedPath(path.join(oldOutput, "baseline.local.json"), "file");
   const baselineBytes = fs.readFileSync(baselinePath);
   if (hash(baselineBytes) !== manifest.baseline_sha256 || !same(JSON.parse(baselineBytes), before)) fail("REFRESH_PREPARATION_BASELINE_DRIFT");
-  const homeBefore = nativeHomeIdentity(manifest.codex_home);
+  const homeBefore = readAgentNativeRefreshHomeIdentity(manifest);
   const source = sourceRecord(), { diff, ...sourceIdentity } = source;
   const sourceInstall = await from(SOURCE, "src/application/install/installation-service.mjs");
   const sourcePlans = [];
@@ -350,8 +382,9 @@ async function inspect({ manifestPath, trustEvidencePath, outputRoot, npmCli }) 
   }
   assertAgentNativeRefreshPreservation(before, baseline(manifest.roots));
   assertAgentNativeRefreshGitMarkers(markersBefore, gitMarkers(manifest.roots));
-  if (!same(homeBefore, nativeHomeIdentity(manifest.codex_home))) fail("REFRESH_NATIVE_HOME_CHANGED");
+  if (!same(homeBefore, readAgentNativeRefreshHomeIdentity(manifest))) fail("REFRESH_NATIVE_HOME_CHANGED");
   npmCli = findNpm(npmCli);
+  if(selected.mode==="preexisting" && inside(manifest.codex_home,npmCli)) fail("REFRESH_NATIVE_PROFILE_OVERLAP");
   const preimages = { manifest_sha256: hash(fs.readFileSync(manifestPath)), trust_evidence_sha256: hash(fs.readFileSync(trustEvidencePath)),
     lineage: lineage.map(({ manifestPath, manifestSha256, trustEvidencePath, trustSha256 }) => ({ manifestPath, manifestSha256, trustEvidencePath, trustSha256 })),
     baseline_sha256: fingerprint(before), git_markers: markersBefore, codex_home_identity_sha256: fingerprint(homeBefore), source: sourceIdentity,
@@ -364,11 +397,12 @@ async function inspect({ manifestPath, trustEvidencePath, outputRoot, npmCli }) 
 export async function refreshAgentNativeCandidate({ manifestPath, trustEvidencePath, outputRoot, npmCli, write = false, expectedPlanId } = {}) {
   const context = await inspect({ manifestPath, trustEvidencePath, outputRoot, npmCli });
   const { manifest, before, markersBefore, homeBefore, preimages, planId, source, oldActivation } = context;
+  const selected=agentNativeRefreshProfileSelection(manifest), preexisting=selected.mode==="preexisting";
   ({ manifestPath, trustEvidencePath, outputRoot, npmCli } = context);
   const { diff, ...sourceIdentity } = source;
   const preview = { ok: true, status: "preview", written: false, plan_id: planId, output_root: outputRoot,
     prior_manifest: manifestPath, source: sourceIdentity, roots: manifest.roots.map(({ role, root }) => ({ role, root })),
-    codex_home: manifest.codex_home, preimages_sha256: fingerprint(preimages),
+    codex_home: manifest.codex_home, native_profile:selected, preimages_sha256: fingerprint(preimages),
     effects: ["pack exact source", "install new isolated engine", "rebind three root-specific receipts with verify-only", "record fresh baseline"],
     native_execution: "NOT_RUN", human_trust: "PRESERVED_DEFINITION_RECHECK_REQUIRED", llm_calls: 0 };
   if (!write) return preview;
@@ -412,7 +446,7 @@ export async function refreshAgentNativeCandidate({ manifestPath, trustEvidenceP
     for (const [index, entry] of manifest.roots.entries()) {
       assertAgentNativeRefreshPreservation(before, baseline(manifest.roots), completedRoles);
       assertAgentNativeRefreshGitMarkers(markersBefore, gitMarkers(manifest.roots));
-      if (!same(homeBefore, nativeHomeIdentity(manifest.codex_home))) fail("REFRESH_NATIVE_HOME_CHANGED");
+      if (!same(homeBefore, readAgentNativeRefreshHomeIdentity(manifest))) fail("REFRESH_NATIVE_HOME_CHANGED");
       assertActivation(entry, oldActivation.readActivation({ targetRoot: entry.root }), manifest.candidate.packageRoot);
       if (hash(fs.readFileSync(entry.receipt.path)) !== entry.receipt.sha256 || !same(hooksRecord(entry.root), entry.hooks)) fail("REFRESH_PREIMAGE_CHANGED");
       const options = { repoRoot: packageRoot, targetRoot: entry.root, args: ARGS };
@@ -429,7 +463,7 @@ export async function refreshAgentNativeCandidate({ manifestPath, trustEvidenceP
       roots.push({ ...entry, installation: { ...entry.installation, plan_id: plans[index].plan_id },
         receipt: { ...entry.receipt, sha256: hash(fs.readFileSync(entry.receipt.path)) } });
     }
-    if (!same(homeBefore, nativeHomeIdentity(manifest.codex_home))) fail("REFRESH_NATIVE_HOME_CHANGED");
+    if (!same(homeBefore, readAgentNativeRefreshHomeIdentity(manifest))) fail("REFRESH_NATIVE_HOME_CHANGED");
     if (hash(fs.readFileSync(manifest.codex.binary_path)) !== manifest.codex.sha256
         || !same(inventoryRuntime(packageRoot), candidate.inventory)) fail("REFRESH_BINARY_IDENTITY_DRIFT");
     const after = baseline(roots);
@@ -437,7 +471,7 @@ export async function refreshAgentNativeCandidate({ manifestPath, trustEvidenceP
     assertAgentNativeRefreshGitMarkers(markersBefore, gitMarkers(roots));
     const record = { ...manifest, preparation_id: preparationId, source: sourceIdentity, candidate, output_root: outputRoot,
       host: { platform: process.platform, architecture: process.arch, release: os.release(), node: process.version }, roots,
-      codex_home_empty: fs.readdirSync(manifest.codex_home).length === 0, engine_lock_sha256: hash(fs.readFileSync(path.join(engine, "package-lock.json"))),
+      codex_home_empty: preexisting?false:fs.readdirSync(manifest.codex_home).length === 0, engine_lock_sha256: hash(fs.readFileSync(path.join(engine, "package-lock.json"))),
       baseline_sha256: hash(json(after)), human_trust: preview.human_trust, native_execution: "NOT_RUN", llm_calls: 0,
       refresh: { plan_id: planId, prior_manifest: manifestPath, prior_manifest_sha256: preimages.manifest_sha256,
         trust_evidence: { path: trustEvidencePath, sha256: preimages.trust_evidence_sha256 },
@@ -447,9 +481,10 @@ export async function refreshAgentNativeCandidate({ manifestPath, trustEvidenceP
     put(outputRoot, "manifest.local.json", json(record));
     put(outputRoot, "REVIEW.md", ["# Native candidate refresh", "", "Exact candidate: " + candidate.sha256,
       "Source HEAD: " + sourceIdentity.head, "", "Prior reviewed preparation: " + manifestPath,
-      "Native review evidence: " + trustEvidencePath, "", "The three roots, hook definitions/handlers, Git metadata, runtime sentinels and isolated native home are preserved.",
+      "Native review evidence: " + trustEvidencePath, "", "The three roots, hook definitions/handlers, Git metadata, runtime sentinels and " + (preexisting?"explicitly selected preexisting":"isolated") + " native home are preserved.",
       "Only root-specific receipts and new completed installation transactions changed. No trust or authentication was copied or written.",
-      "Before native execution, query the supported hooks/list API again for both worker roots in the same isolated home. Require the same source paths and native hashes, enabled and trusted status. Preserve that fresh observation separately.",
+      "Before native execution, query the supported hooks/list API again for both worker roots in the same " + (preexisting?"selected preexisting":"isolated") + " home. Require the same source paths and native hashes, enabled and trusted status. Preserve that fresh observation separately.",
+      ...(preexisting?["Profile contents and policies were neither read nor copied. Observe configuration, native hooks and consented effects afresh for this candidate, then freeze its local policy before execution; the existing approval alone is not runtime admission."]:[]),
       "The new package has no native execution evidence. Repeat allowed/refused edit, actual descendant termination and preservation cases against this exact candidate.",
       "Changed roots, definitions or handlers require new preparation and human review. Old output and all failures remain preserved.", ""].join("\n"));
     return { ...preview, status: "prepared", written: true, preparation_id: preparationId,

@@ -224,8 +224,9 @@ The selected profile is never rewritten to remove its custom environment.
 Fixtures prove these bindings and refusals with synthetic inputs. They do not
 qualify an actual profile, backend or OS. The four native cases and preservation
 checks must pass on the exact candidate before this capability is available.
-The refresh helper below supports its original isolated-home layout only;
-preexisting mode requires a fresh preparation and policy review.
+The refresh helper below also supports a previously reviewed preexisting home.
+It preserves its physical identity and exact hook definitions, reads no profile
+contents, and requires fresh native observation and policy review after refresh.
 
 The internal qualify-agent-native-worker driver previews by default. Its
 explicit write mode permits four bounded calls: acquisition of edit/refusal
@@ -305,7 +306,7 @@ block removal. No failed evidence is converted to PASS after a source fix.
 ## Refresh a candidate without changing the reviewed definitions
 
 Before the first delegated attempt, a package-only correction can retain the
-three disposable roots and their isolated native home. This bounded operation
+three disposable roots and their selected native home. This bounded operation
 uses a new output directory for the new archive, installed engine and evidence.
 It never rewrites authentication or trust, copies a profile, authorizes a revoked
 root, or treats a previous package's native result as evidence for the new package.
@@ -321,7 +322,7 @@ node tools/verify/refresh-agent-native-candidate.mjs --manifest <reviewed-manife
 
 The native evidence records a human confirmation and the supported hooks/list
 API response for both worker roots, with enabled, trusted project hooks and their
-native hashes. Its candidate, source, executable and isolated home must match the
+native hashes. Its candidate, source, executable and selected home must match the
 reviewed preparation, and its discovery process must be closed. With linked Git
 worktrees the client may resolve the hook source in the coordinator root; the
 refresh verifies that exact source as well as each worker's handlers. A listed
@@ -354,7 +355,14 @@ the new exact candidate. Native execution remains NOT_RUN. The status
 of each later refresh is bound to its complete prior chain, limited to 32
 manifests. Every prior manifest and trust observation is checked by hash, with
 unchanged root, activation and hook identities. Roots and the native home stay
-in the original preparation; each package belongs to its own output directory.
+in their original locations; each package belongs to its own output directory.
+The isolated home remains inside the original preparation. A preexisting home
+must keep its exact physical identity and stay disjoint from outputs, engines
+and qualification worktrees. It cannot be inside the source checkout. A source
+checkout managed below that home is allowed: packing reads that selected
+checkout, without traversing the surrounding profile. Its mode and identity are
+immutable across the lineage;
+the helper never inspects its contents or copies a runnable profile policy.
 New output cannot be inside any previous output, and the preview fingerprint
 includes the chain. A missing, changed or cyclic chain is refused. The status
 PRESERVED_DEFINITION_RECHECK_REQUIRED means the supported native API must be read
@@ -364,3 +372,6 @@ definitions can retain their existing approval. A difference requires renewed
 human review through native controls. Then repeat all native qualification cases
 against the new package hash, including allowed and refused edits, descendant
 termination and preservation; the old package's results are not transferred.
+For preexisting mode, also observe the effective configuration and consented
+effects again, freeze the local policy and bind the new review to the refreshed
+manifest and candidate. Fresh launch-time observations remain mandatory.

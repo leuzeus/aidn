@@ -273,6 +273,12 @@ names or values, Windows case aliases and collisions with runtime variables.
 These fixtures do not prove the native command environment on an operating system.
 It also checks the native qualification tools' review bindings, receipt-only
 refresh and preservation guards without launching a model or PostgreSQL.
+Refresh fixtures include an external preexisting home whose directory identity
+matches preparation, immutable mode and lineage, overlap and alias refusals, and
+guards against reading profile contents. A managed source checkout below the
+home is accepted; a home inside the source is refused. Reviewed hook bytes and
+absence of old
+attempt markers remain mandatory; no previous native execution proof transfers.
 The targeted `node tools/perf/verify-agent-native-qualification-fixtures.mjs`
 check also covers consented metadata preparation, request/policy/attempt and
 termination bindings, no-launch failures, cancellation and late decisions.

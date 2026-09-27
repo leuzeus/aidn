@@ -281,10 +281,42 @@ try {
     let finalized=0;await qualification.finalizeNativeQualificationProfile({verify:{finalize:async()=>{finalized++;return {ok:true};}},preparation:error.nativeProfilePreparation});assert.equal(finalized,1);
   });
   await check("native review accepts both worktrees with the shared coordinator source", () => assert.equal(review(manifest, trust), true));
-  await check("refresh refuses preexisting profiles without touching their contents", () => {
+  await check("refresh requires a complete explicit preexisting-profile identity", () => {
     const value = structuredClone(manifest); value.native_profile = { mode: "preexisting" };
-    rejects(() => refresh.assertAgentNativeRefreshLineage([{ manifest: value }], root + "-next"), "REFRESH_PREEXISTING_PROFILE_UNSUPPORTED");
+    rejects(() => refresh.assertAgentNativeRefreshLineage([{ manifest: value }], root + "-next"), "REFRESH_NATIVE_PROFILE_SELECTION_INVALID");
   });
+  await check("refresh preserves legacy absent-mode compatibility",()=>{
+    assert.deepEqual(refresh.agentNativeRefreshProfileSelection(manifest),{mode:"isolated"});
+    assert.deepEqual(refresh.agentNativeRefreshProfileSelection({...manifest,native_profile:{mode:"isolated"}}),{mode:"isolated"});
+  });
+  for(const selected of [null,[],{mode:"other"},{mode:"preexisting",home_identity_sha256:sha("A")},
+    {mode:"preexisting",home_identity_sha256:sha("a"),extra:true},{mode:"isolated",home_identity_sha256:sha("a")}])
+    await check("refresh refuses malformed native-profile selection "+JSON.stringify(selected),()=>rejects(()=>refresh.agentNativeRefreshProfileSelection({...manifest,native_profile:selected}),"REFRESH_NATIVE_PROFILE_SELECTION_INVALID"));
+  // Metadata doubles permit only directory identity. Existing read/content,
+  // write, process and connection guards remain active during each assertion.
+  const withHomeMetadata=(action,{alias=false,symlink=false,inode=22}={})=>{
+    const home=path.join(root+"-external","selected-profile"),calls=[];
+    const identity={physical_path:home,device:11,inode:22,birthtime_ms:33};
+    const selected={...manifest,codex_home:home,native_profile:{mode:"preexisting",home_identity_sha256:fingerprint(identity)}};
+    const originals=new Map();
+    const set=(name,fn)=>{originals.set(name,fs[name]);fs[name]=fn;};
+    try {
+      set("lstatSync",value=>{calls.push(["lstat",value]);return {isSymbolicLink:()=>symlink && value===home,isDirectory:()=>true};});
+      set("statSync",value=>{calls.push(["stat",value]);return {isDirectory:()=>true,dev:11,ino:inode,birthtimeMs:33};});
+      set("existsSync",value=>{calls.push(["exists",value]);return true;});
+      const realpath=value=>{calls.push(["realpath",value]);return alias && value===home?home+"-alias":value;};realpath.native=realpath;
+      set("realpathSync",realpath);
+      return action({selected,identity,calls});
+    } finally {for(const [name,fn] of originals)fs[name]=fn;}
+  };
+  await check("refresh binds preparation home identity without reading profile contents",()=>withHomeMetadata(({selected,identity,calls})=>{
+    const before=JSON.stringify(selected),result=refresh.readAgentNativeRefreshHomeIdentity(selected);
+    assert.deepEqual(result,{path:selected.codex_home,...identity});assert.equal(JSON.stringify(selected),before);
+    assert.ok(calls.length>0);assert.ok(calls.every(([kind])=>["lstat","stat","exists","realpath"].includes(kind)));assert.deepEqual(effects,[]);
+  }));
+  await check("refresh refuses a replaced physical home",()=>withHomeMetadata(({selected})=>rejects(()=>refresh.readAgentNativeRefreshHomeIdentity(selected),"REFRESH_NATIVE_HOME_CHANGED"),{inode:23}));
+  await check("refresh refuses native home aliases",()=>withHomeMetadata(({selected})=>rejects(()=>refresh.readAgentNativeRefreshHomeIdentity(selected),"REFRESH_PATH_ALIAS"),{alias:true}));
+  await check("refresh refuses symlinked native homes",()=>withHomeMetadata(({selected})=>rejects(()=>refresh.readAgentNativeRefreshHomeIdentity(selected),"REFRESH_UNSAFE_PATH"),{symlink:true}));
   for (const [name, mutate, code] of [
     ["foreign candidate", (v) => { v.candidate_sha256 = sha("0"); }, "REFRESH_NATIVE_REVIEW_BINDING_MISMATCH"],
     ["foreign source commit", (v) => { v.source_head = "0".repeat(40); }, "REFRESH_NATIVE_REVIEW_BINDING_MISMATCH"],
@@ -412,6 +444,46 @@ try {
     const lineage = makeLineage(), before = JSON.stringify(lineage);
     assert.equal(refresh.assertAgentNativeRefreshLineage(lineage, lineageOutput), root);
     assert.equal(JSON.stringify(lineage), before);
+  });
+  const preexistingLineage=()=>{
+    const lineage=makeLineage(),home=path.join(root+"-external","selected-profile");
+    for(const entry of lineage) {
+      entry.manifest.codex_home=home;entry.evidence.codex_home=home;
+      entry.manifest.native_profile={mode:"preexisting",home_identity_sha256:sha("a")};
+    }
+    return lineage;
+  };
+  await check("package-only refresh preserves an external preexisting profile and original three roots",()=>{
+    const lineage=preexistingLineage(),before=JSON.stringify(lineage);
+    assert.equal(refresh.assertAgentNativeRefreshLineage(lineage,lineageOutput),root);
+    assert.equal(refresh.assertAgentNativeRefreshLineage(lineage.slice(1),lineageOutput),root);
+    assert.equal(JSON.stringify(lineage),before);assert.deepEqual(effects,[]);
+  });
+  for(const [name,mutate,code] of [
+    ["profile mode",v=>{v[0].manifest.native_profile={mode:"isolated"};},"QUALIFICATION_REFRESH_NATIVE_PROFILE_CHANGED"],
+    ["home identity",v=>{v[0].manifest.native_profile.home_identity_sha256=sha("b");},"QUALIFICATION_REFRESH_NATIVE_PROFILE_CHANGED"],
+    ["previous marker",v=>{v[1].manifest.roots[1].attempt_marker_present=true;},"QUALIFICATION_REFRESH_ROOT_IDENTITY_CHANGED"],
+    ["current marker",v=>{v[0].manifest.roots[2].attempt_marker_present=true;},"REFRESH_ATTEMPT_ALREADY_STARTED"],
+    ["hook handler",v=>{v[0].manifest.roots[1].hooks.handlers[0].sha256=sha("0");},"QUALIFICATION_REFRESH_ROOT_IDENTITY_CHANGED"],
+    ["native approval",v=>{v[0].evidence.hooks.data[0].hooks[0].currentHash="sha256:"+sha("0");},"QUALIFICATION_REFRESH_NATIVE_DEFINITION_CHANGED"],
+  ]) await check("preexisting refresh lineage rejects changed "+name,()=>{
+    const lineage=preexistingLineage();mutate(lineage);rejects(()=>refresh.assertAgentNativeRefreshLineage(lineage,lineageOutput),code);
+  });
+  await check("preexisting refresh allows the exact read-only source below its home without profile reads",()=>{
+    const lineage=preexistingLineage(),home=path.dirname(packageRoot);
+    for(const entry of lineage){entry.manifest.codex_home=home;entry.evidence.codex_home=home;}
+    const before=JSON.stringify(lineage);
+    assert.equal(refresh.assertAgentNativeRefreshLineage(lineage,lineageOutput),root);
+    assert.equal(JSON.stringify(lineage),before);assert.deepEqual(effects,[]);
+  });
+  for(const [name,home] of [
+    ["home inside source",path.join(packageRoot,"profile")],["home equals source",packageRoot],
+    ["old output",path.join(root,"profile")],["new output",path.join(lineageOutput,"profile")],
+    ["output ancestor",path.dirname(lineageOutput)],["engine",path.join(root+"-refresh","engine","profile")],
+    ["worktree",path.join(root,"worker-a","profile")],
+  ]) await check("preexisting refresh refuses profile overlap with "+name,()=>{
+    const lineage=preexistingLineage();for(const entry of lineage){entry.manifest.codex_home=home;entry.evidence.codex_home=home;}
+    rejects(()=>refresh.assertAgentNativeRefreshLineage(lineage,lineageOutput),"REFRESH_NATIVE_PROFILE_OVERLAP");
   });
   for (const [name, mutate, code] of [
     ["changed ancestor manifest hash", v => { v[1].manifestSha256 = sha("0"); }, "REFRESH_LINEAGE_BINDING_MISMATCH"],
