@@ -96,6 +96,7 @@ const importPaths = new Set([
   "src/application/runtime/codex-native-profile-observation-service.mjs",
   "src/application/runtime/codex-native-profile-bootstrap-service.mjs",
   "src/adapters/agents/codex-native-profile-policy.mjs",
+  "src/core/agents/codex-startup-arguments.mjs",
   "src/core/agents/agent-execution-contracts.mjs",
   "src/core/contracts/json-schema-validator.mjs",
   "tools/perf/agent-execution-postgres-test-lib.mjs",
@@ -183,6 +184,12 @@ try {
     for (const fn of [refresh.refreshAgentNativeCandidate, preparation.prepareAgentNativeQualification,
       qualification.qualifyAgentNativeWorker, driver.runNativeQualificationCase,
       profileObservation.observerMetadata, profileObservation.discoverCodexNativeProfileMetadata]) assert.equal(typeof fn, "function");
+  });
+  await check("startup source import allowance never permits validation reads", () => {
+    const startupSource = path.join(packageRoot, "src/core/agents/codex-startup-arguments.mjs");
+    assert.throws(() => fs.readFileSync(startupSource), /Forbidden native fixture effect/);
+    assert.throws(() => fsPromises.readFile(startupSource), /Forbidden native fixture effect/);
+    assert.deepEqual(effects, ["fs.readFileSync:read", "fs.promises.readFile:read"]); effects.length = 0;
   });
   const review = refresh.assertAgentNativeRefreshReview, plan = refresh.assertAgentNativeRefreshPlan;
   const preserve = refresh.assertAgentNativeRefreshPreservation, gitMarkers = refresh.assertAgentNativeRefreshGitMarkers;
