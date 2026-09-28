@@ -27,7 +27,7 @@ function currentRunner() {
   return { host_id: os.hostname(), runner_id: randomUUID(), pid: process.pid,
     started_at: new Date(Date.now() - process.uptime() * 1000).toISOString() };
 }
-function loadMaterials(context, { execution = false, recoveryOnly = false } = {}) {
+export function readNativeAgentRunMaterials(context, { execution = false, recoveryOnly = false } = {}) {
   const config = context.configuration, plan = context.plan;
   if (!recoveryOnly) ensure(equalPath(agentRunPhysicalPath(path.resolve(import.meta.dirname, "../../.."), { directory: true }),
     agentRunPhysicalPath(config.native.candidate.packageRoot, { directory: true })), "AGENT_RUN_CANDIDATE_ENGINE_REQUIRED");
@@ -46,7 +46,9 @@ function loadMaterials(context, { execution = false, recoveryOnly = false } = {}
     && equalPath(boundaryConfiguration.roots.scratch, path.join(config.resources_root, "scratch"))
     && equalPath(boundaryConfiguration.profile.home, config.native.runtime.codexHome), "AGENT_RUN_BOUNDARY_ROOTS_CHANGED");
   const boundaryQualification = readAgentRunReference(config.verification.boundary.qualification).value;
-  assertAgentRunAssuranceBinding(plan, boundaryConfiguration, boundaryQualification);
+  // This only binds declarations. The boundary still receives the intact envelope
+  // and authenticates its signature before making any availability claim.
+  assertAgentRunAssuranceBinding(plan, boundaryConfiguration, boundaryQualification?.payload);
   if (["agent-execution-plan.v2", "agent-execution-plan.v3"].includes(plan.contract_version)) ensure(profile.policy.contract_version === "codex-native-profile-policy.v2", "AGENT_RUN_COOPERATIVE_PROFILE_REQUIRED");
   if (execution && !recoveryOnly) {
     assertAgentRunSecretScope(config.resources_root, config.verification.private_key.path);
@@ -60,7 +62,7 @@ function loadMaterials(context, { execution = false, recoveryOnly = false } = {}
     auditPolicy: readAgentRunReference(config.verification.audit_policy).value };
 }
 function makeAssembly({ context, connectionString, verifyActivation }, options = {}) {
-  const config = context.configuration, plan = context.plan, selected = loadMaterials(context, options);
+  const config = context.configuration, plan = context.plan, selected = readNativeAgentRunMaterials(context, options);
   const attempts = createCodexAgentAttemptService({ ...config.native, preparedManifest: selected.preparedManifest,
     resourcesRoot: config.resources_root, qualificationEvidence: config.native.qualification, profile: selected.profile });
   const controller = createWindowsProcessTreeController({ helperPath: config.native.helper.helper_path,

@@ -2,6 +2,8 @@
 import fs from "node:fs";
 import assert from "node:assert/strict";
 import os from "node:os";
+import { createHash, generateKeyPairSync, sign, verify } from "node:crypto";
+import { readNativeAgentRunMaterials } from "../../src/application/runtime/agent-run-native-runtime-service.mjs";
 import { assertAgentRunSecretScope, readAgentRunFile } from "../../src/application/runtime/agent-run-configuration-service.mjs";
 import path from "node:path";
 import { previewNativeAgentCleanup, applyNativeAgentCleanup } from "../../src/application/runtime/agent-run-cleanup-service.mjs";
@@ -284,6 +286,47 @@ function cleanupHarness(root) {
 }
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-lifecycle-cleanup-"));
 try {
+  await check("native material reader binds the signed payload and retains the exact envelope", () => {
+    const {publicKey,privateKey}=generateKeyPairSync("ed25519");
+    const sha=bytes=>createHash("sha256").update(bytes).digest("hex");
+    const canonical=value=>value&&typeof value==="object" ? `{${Object.keys(value).sort().map(key=>JSON.stringify(key)+":"+canonical(value[key])).join(",")}}` : JSON.stringify(value);
+    let serial=0;
+    const material=(value,raw=false)=>{
+      const bytes=raw?Buffer.from(value):Buffer.from(JSON.stringify(value));
+      const file=path.join(fixtureRoot,`native-material-${++serial}.json`);
+      fs.writeFileSync(file,bytes,{flag:"wx"});return {path:file,sha256:sha(bytes)};
+    };
+    const publicReference=material(publicKey.export({format:"pem",type:"spki"}),true);
+    const authorityHash=sha(publicKey.export({format:"der",type:"spki"}));
+    for(const version of [2,3]){
+      const plan={...cooperativeContext(version).plan,verification:{proof_authority_sha256:authorityHash}};
+      const declaration={assurance_profile:plan.assurance_profile,read_isolation:"not_guaranteed",
+        ...(version===3?{network_isolation:"not_guaranteed"}:{})};
+      const boundary={contract_version:`codex-sandbox-validation-configuration.v${version+1}`,...declaration,
+        roots:{supervisor:fixtureRoot,snapshots:path.join(fixtureRoot,"snapshots"),scratch:path.join(fixtureRoot,"scratch")},
+        profile:{home:path.join(fixtureRoot,"profile")}};
+      const payload={contract_version:`agent-verification-boundary.v${version+1}`,...declaration,network_disabled:version===2};
+      const signedBytes=Buffer.from(canonical(payload)),envelope={payload,signature:sign(null,signedBytes,privateKey).toString("base64")};
+      const configuration={resources_root:fixtureRoot,prepared_manifest:material({fixture:true}),
+        native:{profile:{manifest:material({fixture:true}),policy:material({contract_version:"codex-native-profile-policy.v2"})},runtime:{codexHome:boundary.profile.home}},
+        verification:{public_key:publicReference,boundary:{configuration:material(boundary),qualification:material(envelope)},audit_policy:material({fixture:true})}};
+      const context={plan,configuration},before=structuredClone(context);
+      // Recovery uses the production file reader while avoiding candidate inventory
+      // and private-key access. It still performs the same payload/profile binding.
+      const loaded=readNativeAgentRunMaterials(context,{recoveryOnly:true});
+      assert.deepEqual(loaded.boundaryQualification,envelope);assert.deepEqual(loaded.boundaryConfiguration,boundary);
+      assert.equal(verify(null,signedBytes,publicKey,Buffer.from(loaded.boundaryQualification.signature,"base64")),true);
+      assert.equal(loaded.privateKey,null);assert.equal(Object.hasOwn(loaded,"available"),false);assert.deepEqual(context,before);
+      configuration.verification.boundary.qualification=material(payload);
+      assert.throws(()=>readNativeAgentRunMaterials(context,{recoveryOnly:true}),{code:"AGENT_RUN_ASSURANCE_PROFILE_MISMATCH"});
+      configuration.verification.boundary.qualification=material({...envelope,payload:{...payload,assurance_profile:"foreign"}});
+      assert.throws(()=>readNativeAgentRunMaterials(context,{recoveryOnly:true}),{code:"AGENT_RUN_ASSURANCE_PROFILE_MISMATCH"});
+      configuration.verification.boundary.qualification=material({...envelope,signature:Buffer.alloc(64).toString("base64")});
+      const untrusted=readNativeAgentRunMaterials(context,{recoveryOnly:true});
+      assert.equal(verify(null,signedBytes,publicKey,Buffer.from(untrusted.boundaryQualification.signature,"base64")),false);
+      assert.equal(Object.hasOwn(untrusted,"available"),false,"material loading cannot confer cryptographic trust");
+    }
+  });
   await check("private signing key is outside validator-readable snapshots and writable scratch", () => {
     for (const folder of ["snapshots", "scratch", "authority"]) fs.mkdirSync(path.join(fixtureRoot, folder));
     for (const folder of ["snapshots", "scratch", "authority"]) fs.writeFileSync(path.join(fixtureRoot, folder, "key.pem"), "fixture-key");
