@@ -17,19 +17,28 @@ const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 const samePath = (a, b) => process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b;
 const absolute = value => typeof value === "string" && path.isAbsolute(value) && path.normalize(value) === value && !/[\x00-\x1f]/u.test(value);
 const relative = value => typeof value === "string" && /^[A-Za-z0-9_./ -]+$/u.test(value) && !value.split("/").some(part => !part || part === "." || part === ".." || /[. ]$/u.test(part));
-async function physical(target, directory = false) {
-  ensure(absolute(target), "PROFILE_TREE_PATH_INVALID"); let cursor = target;
-  for (;;) { const stat = await fs.lstat(cursor); ensure(!stat.isSymbolicLink(), "PROFILE_TREE_PATH_ALIAS"); const parent = path.dirname(cursor); if (parent === cursor) break; cursor = parent; }
-  const stat = await fs.lstat(target); ensure(directory ? stat.isDirectory() : stat.isFile() && stat.nlink === 1, "PROFILE_TREE_PATH_INVALID");
-  ensure(samePath(await fs.realpath(target), target), "PROFILE_TREE_PATH_ALIAS"); return stat;
+async function physical(target, directory = false, checkpoint = () => {}) {
+  checkpoint(); ensure(absolute(target), "PROFILE_TREE_PATH_INVALID"); let cursor = target;
+  for (;;) { checkpoint(); const stat = await fs.lstat(cursor); checkpoint(); ensure(!stat.isSymbolicLink(), "PROFILE_TREE_PATH_ALIAS");
+    const parent = path.dirname(cursor); if (parent === cursor) break; cursor = parent; }
+  checkpoint(); const stat = await fs.lstat(target); checkpoint();
+  ensure(directory ? stat.isDirectory() : stat.isFile() && stat.nlink === 1, "PROFILE_TREE_PATH_INVALID");
+  const resolved = await fs.realpath(target); checkpoint(); ensure(samePath(resolved, target), "PROFILE_TREE_PATH_ALIAS"); return stat;
 }
-async function digestFile(file, checkpoint, limit = 512 * 1024 * 1024) {
-  checkpoint(); const before = await physical(file); ensure(before.size <= limit, "PROFILE_TREE_FILE_LIMIT");
-  const handle = await fs.open(file, "r"), digest = createHash("sha256"); let total = 0;
-  try { const opened = await handle.stat(); ensure(opened.dev === before.dev && opened.ino === before.ino, "PROFILE_TREE_FILE_CHANGED");
-    for (;;) { checkpoint(); const buffer = Buffer.alloc(Math.min(65536, limit - total + 1)); const read = await handle.read(buffer, 0, buffer.length, null);
-      if (!read.bytesRead) break; total += read.bytesRead; ensure(total <= limit, "PROFILE_TREE_FILE_LIMIT"); digest.update(buffer.subarray(0, read.bytesRead)); }
-    const after = await handle.stat(), final = await physical(file);
+async function digestFile(file, checkpoint, limit = 512 * 1024 * 1024, reserveBytes = null) {
+  checkpoint(); const before = await physical(file, false, checkpoint); ensure(before.size <= limit, "PROFILE_TREE_FILE_LIMIT");
+  // Candidate readers reserve their complete physical size synchronously before
+  // opening. They never read beyond it; final size/time checks reject growth.
+  if (reserveBytes) reserveBytes(before.size);
+  checkpoint(); const handle = await fs.open(file, "r"), digest = createHash("sha256"); let total = 0;
+  try { checkpoint(); const opened = await handle.stat(); checkpoint();
+    ensure(opened.dev === before.dev && opened.ino === before.ino, "PROFILE_TREE_FILE_CHANGED");
+    for (;;) {
+      checkpoint(); const remaining = reserveBytes ? before.size - total : limit - total + 1; if (!remaining) break;
+      const buffer = Buffer.alloc(Math.min(65536, remaining)), read = await handle.read(buffer, 0, buffer.length, null); checkpoint();
+      if (!read.bytesRead) break; total += read.bytesRead; ensure(total <= limit, "PROFILE_TREE_FILE_LIMIT"); digest.update(buffer.subarray(0, read.bytesRead));
+    }
+    checkpoint(); const after = await handle.stat(); checkpoint(); const final = await physical(file, false, checkpoint);
     ensure(total === before.size && after.size === before.size && after.mtimeMs === before.mtimeMs && after.ctimeMs === before.ctimeMs
       && final.dev === before.dev && final.ino === before.ino, "PROFILE_TREE_FILE_CHANGED");
     checkpoint(); return { sha256: digest.digest("hex"), bytes: total };
@@ -78,7 +87,7 @@ export function createControlledCodexProfileMetadata({ controller, nodeRuntime, 
     const frozen = structuredClone(plain), stop = new AbortController();
     const abort = () => stop.abort(signal.reason); signal?.addEventListener("abort", abort, { once: true }); if (signal?.aborted) abort();
     const checkpoint = () => { if (stop.signal.aborted) fail("PROFILE_TREE_CANCELLED"); if (performance.now() - began >= timeoutMs - 2000) fail("PROFILE_TREE_TIMEOUT"); };
-    let requestHash = null, observed = null, availability = null, controllerPromise = null, timer = null, launchRequested = false;
+    let requestHash = null, observed = null, availability = null, controllerPromise = null, timer = null, launchRequested = false, pendingMaterial = null, callbackErrorCode = null, primaryFailure = null;
     const invocationId = randomUUID(); active = true;
     const tree = () => {
       const runner = observed?.runner ?? null, proof = observed?.termination_proof ?? null;
@@ -90,20 +99,38 @@ export function createControlledCodexProfileMetadata({ controller, nodeRuntime, 
         runner, proof, bridge_sha256: inventory[BRIDGE], collector_sha256: inventory[COLLECTOR], candidate_inventory_sha256: inventoryHash, request_sha256: requestHash };
     };
     async function material() {
-      checkpoint(); await physical(candidateRoot, true); await physical(frozen.cwd, true);
+      checkpoint(); await physical(candidateRoot, true, checkpoint); await physical(frozen.cwd, true, checkpoint);
       ensure((await digestFile(node.executable, checkpoint)).sha256 === node.sha256, "PROFILE_TREE_NODE_CHANGED");
-      // Compare the exact supplied inventory, including additions and aliases.
-      const actual = []; let total = 0;
+      // Close the complete path inventory before hashing. Both passes inspect
+      // every file; four readers share one queue and the unchanged deadline.
+      const actual = [], files = [];
       async function visit(directory, prefix = "") {
         checkpoint(); const entries = await fs.readdir(directory, { withFileTypes: true });
         for (const entry of entries) { checkpoint(); const name = prefix + entry.name, file = path.join(directory, entry.name);
           ensure(!entry.isSymbolicLink(), "PROFILE_TREE_PATH_ALIAS");
-          if (entry.isDirectory()) { await physical(file, true); await visit(file, name + "/"); }
+          if (entry.isDirectory()) { await physical(file, true, checkpoint); await visit(file, name + "/"); }
           else { ensure(entry.isFile() && HASH.test(inventory[name] ?? "") && actual.length < 20000, "PROFILE_TREE_CANDIDATE_CHANGED");
-            const seen = await digestFile(file, checkpoint); total += seen.bytes; ensure(total <= 512 * 1024 * 1024 && seen.sha256 === inventory[name], "PROFILE_TREE_CANDIDATE_CHANGED"); actual.push(name); }
+            actual.push(name); files.push({ name, file }); }
         }
       }
       await visit(candidateRoot); ensure(actual.sort().join("|") === [...names].sort().join("|"), "PROFILE_TREE_CANDIDATE_CHANGED");
+      let next = 0, total = 0, failure = null;
+      const readCheckpoint = () => { if (failure) throw failure; checkpoint(); };
+      const reserveBytes = bytes => {
+        readCheckpoint(); ensure(total + bytes <= 512 * 1024 * 1024, "PROFILE_TREE_CANDIDATE_CHANGED"); total += bytes;
+      };
+      async function reader() {
+        while (!failure) {
+          try {
+            readCheckpoint(); const entry = files[next++]; if (!entry) return;
+            const seen = await digestFile(entry.file, readCheckpoint, 512 * 1024 * 1024, reserveBytes); readCheckpoint();
+            ensure(seen.sha256 === inventory[entry.name], "PROFILE_TREE_CANDIDATE_CHANGED");
+          } catch (cause) { failure ??= cause; }
+        }
+      }
+      // All engaged readers close their handles before the first error escapes.
+      await Promise.all(Array.from({ length: Math.min(4, files.length) }, () => reader()));
+      if (failure) throw failure;
       ensure((await digestFile(path.resolve(import.meta.filename), checkpoint)).sha256 === inventory[SELF], "PROFILE_TREE_PRODUCER_CHANGED");
       checkpoint();
     }
@@ -116,7 +143,7 @@ export function createControlledCodexProfileMetadata({ controller, nodeRuntime, 
           timeout = setTimeout(() => { rejectWith("PROFILE_TREE_TIMEOUT"); stop.abort(); }, Math.max(1, timeoutMs - (performance.now() - began) - 2000));
         })]); } finally { clearTimeout(timeout); stop.signal.removeEventListener("abort", onAbort); }
       }
-      checkpoint(); await bounded(material);
+      checkpoint(); await bounded(() => (pendingMaterial = material()));
       availability = await bounded(() => controller.checkAvailability({ cwd: frozen.cwd, signal: stop.signal, executable: node.executable, executableSha256: node.sha256 }));
       ensure(availability?.available === true, "PROFILE_TREE_CONTROLLER_UNAVAILABLE"); checkpoint();
       // The collector retains its historical configured budget. The containing
@@ -132,12 +159,18 @@ export function createControlledCodexProfileMetadata({ controller, nodeRuntime, 
         args: [bridgePath], cwd: frozen.cwd, env: frozen.env, stdin, maxDurationMs: Math.max(1, remaining - 2000),
         maxOutputBytes: OUTPUT_LIMIT, maxPendingBytes: OUTPUT_LIMIT, stopTimeoutMs: 500 }, {
         signal: stop.signal, async onEvent(event) {
-          checkpoint();
-          if (event.type === "prepared") await material();
-          else if (event.type === "stdout") { ensure(Buffer.isBuffer(event.bytes), "PROFILE_TREE_PROTOCOL_INVALID"); bytes += event.bytes.length;
-            ensure(bytes <= OUTPUT_LIMIT, "PROFILE_TREE_OUTPUT_LIMIT"); chunks.push(Buffer.from(event.bytes)); }
-          else if (event.type === "stderr" && event.bytes?.length) fail("PROFILE_TREE_BRIDGE_DIAGNOSTIC");
-          checkpoint();
+          try {
+            checkpoint();
+            if (event.type === "prepared") await (pendingMaterial = material());
+            else if (event.type === "stdout") { ensure(Buffer.isBuffer(event.bytes), "PROFILE_TREE_PROTOCOL_INVALID"); bytes += event.bytes.length;
+              ensure(bytes <= OUTPUT_LIMIT, "PROFILE_TREE_OUTPUT_LIMIT"); chunks.push(Buffer.from(event.bytes)); }
+            else if (event.type === "stderr" && event.bytes?.length) fail("PROFILE_TREE_BRIDGE_DIAGNOSTIC");
+            checkpoint();
+          } catch (cause) {
+            callbackErrorCode ??= typeof cause?.code === "string" && /^[A-Z][A-Z0-9_]{0,100}$/u.test(cause.code)
+              ? cause.code : "PROFILE_TREE_CALLBACK_FAILED";
+            throw cause;
+          }
         },
       });
       const outcome = await Promise.race([controllerPromise.then(value => ({ value }), () => ({ rejected: true })), new Promise(resolve => {
@@ -146,9 +179,12 @@ export function createControlledCodexProfileMetadata({ controller, nodeRuntime, 
       if (!outcome.value) fail(outcome.expired ? "PROFILE_TREE_TIMEOUT" : "PROFILE_TREE_CONTROLLER_FAILED");
       observed = outcome.value; const termination = tree();
       if (termination.termination_state !== "confirmed") fail("PROFILE_TREE_TERMINATION_UNCONFIRMED");
-      if (!bytes && observed.outcome !== "completed") fail(observed.reason_code === "PROCESS_CANCELLED" ? "PROFILE_TREE_CANCELLED"
-        : observed.reason_code === "PROCESS_TIMEOUT" ? "PROFILE_TREE_TIMEOUT"
-          : observed.reason_code === "PROCESS_CALLBACK_FAILED" ? "PROFILE_TREE_CALLBACK_FAILED" : "PROFILE_TREE_EXECUTION_FAILED");
+      // Only a confirmed empty Job can expose the bounded callback cause.
+      // Controller cancellation and timeout retain their own first-stop outcome.
+      if (observed.reason_code === "PROCESS_CANCELLED") fail("PROFILE_TREE_CANCELLED");
+      if (observed.reason_code === "PROCESS_TIMEOUT") fail("PROFILE_TREE_TIMEOUT");
+      if (observed.reason_code === "PROCESS_CALLBACK_FAILED") fail(callbackErrorCode ?? "PROFILE_TREE_CALLBACK_FAILED");
+      if (!bytes && observed.outcome !== "completed") fail("PROFILE_TREE_EXECUTION_FAILED");
       let envelope; try { envelope = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks, bytes))); }
       catch { fail("PROFILE_TREE_PROTOCOL_INVALID"); }
       ensure(envelope?.protocol === body.protocol && envelope.request_sha256 === requestHash && envelope.invocation_id === invocationId
@@ -164,10 +200,32 @@ export function createControlledCodexProfileMetadata({ controller, nodeRuntime, 
       ensure(!Object.hasOwn(envelope.result, "requirements"), "PROFILE_TREE_PROTOCOL_INVALID");
       return { ...envelope.result, process };
     } catch (cause) {
-      stop.abort();
+      primaryFailure = cause; stop.abort();
       if (!cause.process) cause.process = { ...parentEvidence(null, timeoutMs), tree_termination: tree() };
       if (cause.process.tree_termination?.termination_state === "unknown") recoveryRequired = true;
       throw cause;
-    } finally { clearTimeout(timer); signal?.removeEventListener("abort", abort); active = false; }
+    } finally {
+      clearTimeout(timer); signal?.removeEventListener("abort", abort);
+      // Drain within the original deadline, including its cleanup reserve.
+      // An outstanding filesystem call cannot be cancelled; quarantine instead
+      // of extending the budget or permitting another invocation.
+      let materialUnconfirmed = false;
+      if (pendingMaterial) {
+        let settled = false, drainTimer;
+        const drained = pendingMaterial.then(() => { settled = true; }, () => { settled = true; });
+        try {
+          await Promise.race([drained, new Promise(resolve => {
+            drainTimer = setTimeout(resolve, Math.max(0, timeoutMs - (performance.now() - began)));
+          })]);
+        } finally { clearTimeout(drainTimer); }
+        if (!settled) {
+          materialUnconfirmed = true; stop.abort(); recoveryRequired = true;
+          if (primaryFailure?.process) primaryFailure.process.material_cleanup = "UNCONFIRMED";
+        }
+      }
+      active = false;
+      if (materialUnconfirmed && !primaryFailure) fail("PROFILE_TREE_MATERIAL_CLEANUP_UNCONFIRMED",
+        { ...parentEvidence(null, timeoutMs), tree_termination: tree(), material_cleanup: "UNCONFIRMED" });
+    }
   };
 }

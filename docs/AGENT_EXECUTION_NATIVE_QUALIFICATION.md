@@ -417,6 +417,17 @@ The production metadata bridge uses a separately pinned Node executable
 closed parent observations from actual descendant termination. Historical
 `closed`/`pid_absent` flags cannot satisfy recovery of that tree; every invocation
 needs a matching candidate/helper/Node/bridge proof, including after an error.
+
+The controlled metadata bridge verifies the complete candidate inventory before
+creation and again before resuming its suspended process. Each pass uses at
+most four concurrent file readers, retains the physical-path and before/after
+identity checks, and stays inside the original observation deadline. There is
+no cross-pass hash cache. A failed pass stops assigning reads. If in-flight
+reads cannot settle within the original remaining budget, their cleanup stays
+unconfirmed and the collector refuses subsequent calls. After a confirmed
+empty Job, a callback refusal retains its first bounded integrity or deadline
+code; controller timeout,
+cancellation and unknown termination retain their own precedence.
 This new bridge has not received native qualification for the lot 7 candidate.
 
 Prepare a new catalogue for the campaign before reserving the run. It needs one
