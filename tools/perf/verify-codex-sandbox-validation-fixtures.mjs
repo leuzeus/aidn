@@ -11,7 +11,8 @@ import { assertCodexSandboxValidationConfiguration as validate, fingerprintCodex
   createCodexSandboxValidationBoundary, createCodexSandboxValidationJournal, inspectCodexSandboxValidationBinaryPins,
   assertCodexSandboxProtectedBaseline, assertCodexSandboxValidationQualificationPayload, assertCodexSandboxNativeCase } from "../../src/adapters/runtime/codex-sandbox-validation-boundary.mjs";
 import { assertAgentVerificationQualificationVersion } from "../../src/adapters/runtime/local-agent-verification.mjs";
-import { buildCodexValidationQualificationPlan, executeCodexValidationQualificationCase } from "../verify/qualify-codex-validation-boundary.mjs";
+import { buildCodexValidationQualificationPlan, executeCodexValidationQualificationCase,
+  createCodexValidationProbeStderr, assertCodexValidationProbeTermination } from "../verify/qualify-codex-validation-boundary.mjs";
 
 const checks = [], H = "a".repeat(64);
 async function check(name, fn) { try { await fn(); checks.push({ name, status: "PASS" }); } catch (error) { checks.push({ name, status: "FAIL", detail: String(error.stack ?? error).slice(0, 2000) }); } }
@@ -269,6 +270,38 @@ await check("generic verifier refuses malformed or downgraded v2 declarations", 
     assert.throws(() => assertAgentVerificationQualificationVersion(mutate(q, next => { delete next[field]; })));
   assert.throws(() => assertAgentVerificationQualificationVersion(mutate(q, next => { next.evidence_class = "fixture"; })));
   assert.throws(() => assertAgentVerificationQualificationVersion(mutate(q, next => { next.boundary_id = "another-boundary"; })));
+});
+
+
+await check("native failure retains bounded stderr and full controller evidence", () => {
+  const capture = createCodexValidationProbeStderr(), content = Buffer.from("Codex: invalid permission profile é\n");
+  capture.consume(content.subarray(0, 7)); capture.consume(content.subarray(7));
+  const sha256 = createHash("sha256").update(content).digest("hex"), result = capture.snapshot({ bytes: { stderr: content.length }, hashes: { stderr_sha256: sha256 } });
+  assert.equal(result.total_bytes, content.length); assert.equal(result.sha256, sha256); assert.equal(result.retained_bytes, content.length);
+  assert.equal(result.tail_utf8, content.toString("utf8")); assert.deepEqual(Buffer.from(result.tail_base64, "base64"), content); assert.equal(result.truncated, false);
+});
+await check("native stderr tail is capped at 4096 raw bytes including abundant and partial delivery", () => {
+  const capture = createCodexValidationProbeStderr(); capture.consume(Buffer.alloc(8000, 97)); capture.consume(Buffer.from("final diagnostic"));
+  const result = capture.snapshot({ bytes: { stderr: 9000 }, hashes: { stderr_sha256: H } });
+  assert.equal(result.total_bytes, 9000); assert.equal(result.sha256, H); assert.equal(result.observed_bytes, 8016);
+  assert.equal(result.retained_bytes, 4096); assert.equal(Buffer.from(result.tail_base64, "base64").length, 4096);
+  assert.equal(result.truncated, true); assert(result.tail_utf8.endsWith("final diagnostic"));
+});
+await check("native stderr split UTF-8 never loses raw tail or expands its diagnostic bound", () => {
+  const capture = createCodexValidationProbeStderr(), content = Buffer.from("é".repeat(3000) + "x"); capture.consume(content);
+  const result = capture.snapshot({ bytes: { stderr: content.length }, hashes: { stderr_sha256: H } });
+  assert.equal(result.retained_bytes, 4096); assert(Buffer.byteLength(result.tail_utf8) <= 4096); assert(!result.tail_utf8.includes("�"));
+  capture.consume(Buffer.from([255])); const invalid = capture.snapshot(); assert.equal(invalid.tail_utf8, null);
+  assert.equal(Buffer.from(invalid.tail_base64, "base64").at(-1), 255);
+});
+await check("Job0 without child handshake reports missing child evidence rather than live descendants", () => {
+  const process = { termination_state: "confirmed", exit_code: 1, termination_proof: { job_name: "fixture.job", active_processes: 0 } };
+  assert.throws(() => assertCodexValidationProbeTermination(process, null, "fixture.job"), code("NATIVE_PROBE_CHILD_NOT_OBSERVED"));
+  assert.equal(process.termination_state, "confirmed");
+  assert.throws(() => assertCodexValidationProbeTermination({ ...process, termination_state: "unknown" }, null, "fixture.job"), code("NATIVE_PROBE_TERMINATION_UNCONFIRMED"));
+  assert.throws(() => assertCodexValidationProbeTermination({ ...process, termination_proof: { job_name: "fixture.job", active_processes: 1 } }, null, "fixture.job"), code("NATIVE_PROBE_TERMINATION_UNCONFIRMED"));
+  assert.throws(() => assertCodexValidationProbeTermination(process, { parent_job_member: true, parent_job_name: "other" }, "fixture.job"), code("NATIVE_PROBE_CHILD_MEMBERSHIP_UNCONFIRMED"));
+  assert.equal(assertCodexValidationProbeTermination(process, { parent_job_member: true, parent_job_name: "fixture.job" }, "fixture.job"), true);
 });
 
 // Sparse fixture bytes are never retained in memory. NTFS needs its explicit

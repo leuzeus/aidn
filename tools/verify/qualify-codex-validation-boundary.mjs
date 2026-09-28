@@ -91,6 +91,33 @@ async function listener(port, challenge) {
   } catch (cause) { for (const socket of sockets) socket.destroy(); server.close(); throw cause; }
 }
 
+// Retain only a bounded diagnostic tail locally. Full-stream totals and hash
+// remain those produced by the process controller, including undelivered bytes.
+export function createCodexValidationProbeStderr() {
+  const limit = 4096; let tail = Buffer.alloc(0), observed = 0;
+  return {
+    consume(bytes) { const chunk = Buffer.from(bytes); observed += chunk.length;
+      tail = chunk.length >= limit ? Buffer.from(chunk.subarray(-limit)) : Buffer.concat([tail, chunk]).subarray(-limit); },
+    snapshot(process) {
+      let text = null, offset = 0;
+      if (observed > tail.length) while (offset < Math.min(4, tail.length) && (tail[offset] & 0xc0) === 0x80) offset++;
+      try { text = new TextDecoder("utf-8", { fatal: true }).decode(tail.subarray(offset)); } catch { /* Exact bytes remain available below. */ }
+      return { total_bytes: process?.bytes?.stderr ?? null, sha256: process?.hashes?.stderr_sha256 ?? null,
+        observed_bytes: observed, retained_bytes: tail.length, truncated: (process?.bytes?.stderr ?? observed) > tail.length,
+        tail_base64: tail.toString("base64"), tail_utf8: text };
+    },
+  };
+}
+export function assertCodexValidationProbeTermination(process, member, jobName) {
+  requireThat(process?.termination_state === "confirmed" && process.termination_proof?.job_name === jobName
+    && process.termination_proof.active_processes === 0, "NATIVE_PROBE_TERMINATION_UNCONFIRMED");
+  // Missing handshake says nothing about a child's start. It must not erase
+  // the independently confirmed termination of the containing process tree.
+  requireThat(member, "NATIVE_PROBE_CHILD_NOT_OBSERVED");
+  requireThat(member.parent_job_member === true && member.parent_job_name === jobName, "NATIVE_PROBE_CHILD_MEMBERSHIP_UNCONFIRMED");
+  return true;
+}
+
 // An explicit reviewed case is the only native entry point. Its result is raw
 // review material: independent review must still authenticate provenance and
 // decide whether to sign a separate native qualification under the plan key.
@@ -120,7 +147,7 @@ export async function executeCodexValidationQualificationCase({ configuration, p
     && (await fs.realpath(plan.evidence_root)).toLowerCase() === path.resolve(plan.evidence_root).toLowerCase(), "NATIVE_PROBE_EVIDENCE_ROOT_INVALID");
   await fs.writeFile(path.join(plan.evidence_root, `${caseId}.intent.json`), JSON.stringify({ plan_sha256: expected, case_id: caseId, request_sha256: selected.request.request_sha256, observed_at: new Date().toISOString() }) + "\n", { flag: "wx" });
   const stop = new AbortController(), abort = () => stop.abort(signal.reason); signal?.addEventListener("abort", abort, { once: true }); if (signal?.aborted) abort();
-  const controller = createWindowsProcessTreeController(configuration.controller), stream = createCodexValidationStreamParser(selected.request);
+  const controller = createWindowsProcessTreeController(configuration.controller), stream = createCodexValidationStreamParser(selected.request), stderr = createCodexValidationProbeStderr();
   const launch = buildCodexSandboxValidationInvocation(configuration, selected.request); let network, processResult, diagnostic = null, observation = null, after = null, childTerminal = null;
   try {
     if (caseId === "network") network = await listener(plan.network_port, plan.challenge);
@@ -131,6 +158,7 @@ export async function executeCodexValidationQualificationCase({ configuration, p
         await inspectCodexSandboxValidationConfiguration(configuration, { cwd: plan.cwd, signal: stop.signal });
         await observe(observeHost, { caseId, phase: "before_resume", expected: plan.host_baseline, signal: stop.signal, configuration });
       }
+      if (event.type === "stderr") { stderr.consume(event.bytes); return; }
       if (event.type !== "stdout") return; stream.consume(event.bytes);
       const output = stream.output().stdout.toString("utf8"); if (!output.endsWith("\n")) return;
       observation = JSON.parse(output);
@@ -139,8 +167,7 @@ export async function executeCodexValidationQualificationCase({ configuration, p
       if (["timeout", "cancel", "callback"].includes(caseId)) requireThat(Number.isSafeInteger(observation.observations?.descendant_pid) && observation.observations.descendant_pid > 0, "NATIVE_PROBE_DESCENDANT_MISSING");
       if (caseId === "cancel") stop.abort(); if (caseId === "callback") throw new Error("NATIVE_PROBE_EXPECTED_CALLBACK_FAILURE");
     } });
-    requireThat(processResult.termination_state === "confirmed" && processResult.termination_proof?.job_name === launch.jobName
-      && stream.observation()?.parent_job_member === true && stream.observation().parent_job_name === launch.jobName, "NATIVE_PROBE_TERMINATION_UNCONFIRMED");
+    assertCodexValidationProbeTermination(processResult, stream.observation(), launch.jobName);
     requireThat(observation, "NATIVE_PROBE_OBSERVATION_MISSING");
     if (["filesystem", "network", "timeout"].includes(caseId)) { childTerminal = stream.finish().terminal;
       requireThat(childTerminal.outcome === (caseId === "timeout" ? "timed_out" : "completed"), "NATIVE_PROBE_OUTCOME_MISMATCH"); }
@@ -166,7 +193,7 @@ export async function executeCodexValidationQualificationCase({ configuration, p
     configuration_sha256: plan.configuration_sha256,
     ...(managed(configuration) ? { sandbox_maintenance: "codex-managed", protected_resources_sha256: fingerprint(configuration.protected_resources) } : {}),
     source, before, after, observation, prepared: stream.observation(), child_terminal: childTerminal, process: processResult ?? null,
-    network: network?.observation() ?? null, diagnostic, native_availability: false,
+    network: network?.observation() ?? null, diagnostic, stderr: stderr.snapshot(processResult), native_availability: false,
     retention: "Preserve canaries, outputs and failed evidence. This helper never signs a qualification or cleans resources." };
   await fs.writeFile(path.join(plan.evidence_root, `${caseId}.result.json`), JSON.stringify(report) + "\n", { flag: "wx" }); return report;
 }
